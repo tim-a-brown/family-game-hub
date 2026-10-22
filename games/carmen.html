@@ -598,11 +598,39 @@ html,body{overflow:hidden;overscroll-behavior:none;}
     if (label) d.appendChild(el('i', { text: label }));
     $.ov.appendChild(d); return d;
   }
+  // city names on the map don't sit on top of each other: a name that would overlap one already placed moves
+  // just above or below it (or flips to the other side of its dot)
+  function unclutter() {
+    // measured from the layout (not the screen), so the dots' pop-in animation doesn't throw it off
+    function rd(d) { return { left: d.offsetLeft, top: d.offsetTop, right: d.offsetLeft + d.offsetWidth, bottom: d.offsetTop + d.offsetHeight }; }
+    function rl(l) { var d = l.parentNode, x = d.offsetLeft + l.offsetLeft, y = d.offsetTop + l.offsetTop; return { left: x, top: y, right: x + l.offsetWidth, bottom: y + l.offsetHeight }; }
+    var dots = [].slice.call($.ov.querySelectorAll('.dot')), placed = dots.map(rd);
+    var ls = [].slice.call($.ov.querySelectorAll('.dot i'));
+    // where you are first, then top to bottom
+    ls.sort(function (a, b) { var ha = a.parentNode.classList.contains('here'), hb = b.parentNode.classList.contains('here'); if (ha !== hb) return ha ? -1 : 1; return rl(a).top - rl(b).top; });
+    function overlap(r) { var a = 0; placed.forEach(function (q) { var w = Math.min(r.right, q.right + 2) - Math.max(r.left, q.left - 2), h = Math.min(r.bottom, q.bottom + 1) - Math.max(r.top, q.top - 1); if (w > 0 && h > 0) a += w * h; }); return a; }
+    ls.forEach(function (lab) {
+      var dotEl = lab.parentNode, side0 = dotEl.classList.contains('left'), h = lab.offsetHeight + 2, t0 = parseFloat(getComputedStyle(lab).top) || -6;
+      var box = { left: 0, top: 0, right: $.ov.clientWidth, bottom: $.ov.clientHeight }, best = null;
+      [false, true].forEach(function (flip) {
+        dotEl.classList.toggle('left', flip ? !side0 : side0);
+        [0, -1, 1, -2, 2, -3, 3].forEach(function (k) {
+          lab.style.top = (t0 + k * h) + 'px';
+          var r = rl(lab), out = Math.max(0, box.left - r.left) + Math.max(0, r.right - box.right) + Math.max(0, box.top - r.top) + Math.max(0, r.bottom - box.bottom);
+          var score = overlap(r) + out * 40 + Math.abs(k) * 6 + (flip ? 10 : 0);
+          if (!best || score < best.s) best = { s: score, flip: flip, top: t0 + k * h };
+        });
+      });
+      dotEl.classList.toggle('left', best.flip ? !side0 : side0); lab.style.top = best.top + 'px';
+      placed.push(rl(lab));
+    });
+  }
   function departMenu() {
     var cd = city(C.at), here = place(C.at);
     mapPic(); dot(here, 'here', here.name);
     var dots = {};
     cd.opts.forEach(function (id) { var p = place(id); dots[id] = dot(p, 'opt', p.name + (C.v === 'time' ? ' ' + yr(p.year) : '')); });
+    unclutter();
     say('Where to? You can reach these ' + (C.v === 'time' ? 'times and places' : V[C.v].unit) + ' from ' + esc(here.name) + '.', C.v === 'time' ? 'CHRONOSKIMMER' : 'FLIGHTS');
     var keys = cd.opts.map(function (id) {
       var p = place(id), b = keyBtn('plane', p.name, (C.v === 'time' ? yr(p.year) + ' · ' : '') + flightHours(here, p) + ' hrs', function () { fly(id); });

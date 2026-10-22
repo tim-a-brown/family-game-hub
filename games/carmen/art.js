@@ -721,7 +721,8 @@
     function mk(v, ox, oy, w, h, stretch) {
       var lm = (v.lat0 + v.lat1) / 2, k = Math.cos(lm * Math.PI / 180), pw = (v.lon1 - v.lon0) * k, ph = v.lat1 - v.lat0;
       var sc = stretch ? Math.min(w / pw, h / ph) : Math.min(w / pw, h / ph), dx = ox + (w - pw * sc) / 2, dy = oy + (h - ph * sc) / 2;
-      return function (lat, lon) { var L = lon; if (v.lon1 > 180 && L < v.lon0) L += 360; return { x: dx + (L - v.lon0) * k * sc, y: dy + (v.lat1 - lat) * sc }; };
+      // raw: place the longitude as given (the land outlines decide their own side of the date line)
+      return function (lat, lon, raw) { var L = lon; if (!raw && v.lon1 > 180 && L < v.lon0) L += 360; return { x: dx + (L - v.lon0) * k * sc, y: dy + (v.lat1 - lat) * sc }; };
     }
   }
   function map(cv, view, opt) {
@@ -732,8 +733,12 @@
     var shift = view !== 'usa' && view.lon1 > 180;
     list.forEach(function (r) {
       var lo = Infinity, hi = -Infinity; r.pts.forEach(function (p) { lo = Math.min(lo, p[0]); hi = Math.max(hi, p[0]); });
-      var wrap = view !== 'usa' && hi - lo > 300;   // a ring cut at the date line (eastern Russia): keep it on one side
-      var pts = r.pts.map(function (p) { var q = pr(p[1], wrap && p[0] < 0 ? p[0] + 360 : p[0]); return [q.x, q.y]; });
+      // Keep each outline whole on one side of the date line: one cut there (Afro-Eurasia's Chukotka tip) or reaching past
+      // the map's west edge (the Aleutians) would otherwise be split across both edges and filled as bands across the map.
+      // Only the points out past the date line move (west of 100°W), never the rest of the outline (Spain, West Africa).
+      var mean = 0; r.pts.forEach(function (p) { mean += p[0]; }); mean /= r.pts.length || 1;
+      var east = view !== 'usa' && (hi - lo > 300 || (shift && mean > 0));
+      var pts = r.pts.map(function (p) { var q = view === 'usa' ? pr(p[1], p[0]) : pr(p[1], east && p[0] < -100 ? p[0] + 360 : p[0], true); return [q.x, q.y]; });
       var minx = Infinity, maxx = -Infinity; pts.forEach(function (q) { minx = Math.min(minx, q[0]); maxx = Math.max(maxx, q[0]); });
       if (maxx < 0 || minx > MAPW) return;
       if (view !== 'usa' && r.pts.every(function (q) { return q[1] < -55; })) return;   // (no Antarctica)
