@@ -468,7 +468,11 @@
     var K = S.players[kn].name, D = S.players[df].name;
     if (gin) S.highlights.push(K + ' went gin in hand ' + S.hand + (lo.dw >= 30 ? ', catching ' + D + ' with ' + lo.dw + ' deadwood' : ''));
     else if (res.undercut) S.highlights.push('Undercut! ' + D + ' caught ' + K + ' knocking with ' + kb.dw + ' in hand ' + S.hand);
-    S.log.push({ hand: S.hand, kn: kn, gin: gin, undercut: !!res.undercut, kDw: kb.dw, dDw: lo.dw, winner: res.winner, pts: res.pts, lays: lo.lays.length });
+    // the cards as laid down (history): 2 letters a card ('Th' = 10♥), melds split by '|'
+    function c2(a) { return (a || []).map(function (c) { return (c.r === '10' ? 'T' : c.r) + c.s; }).join(''); }
+    function m2(m) { return (m || []).map(c2).join('|'); }
+    S.log.push({ hand: S.hand, kn: kn, gin: gin, undercut: !!res.undercut, kDw: kb.dw, dDw: lo.dw, winner: res.winner, pts: res.pts, lays: lo.lays.length,
+      cards: [m2(kb.melds), c2(kb.dead), m2(lo.melds), c2(lo.dead), c2((lo.lays || []).map(function (l) { return l.c; }))].join('/') });
     S.res = res; S.phase = 'reveal'; S.turn = -1;
     clearUndo(); save(); paint();
     var mine = res.winner === 0;
@@ -560,7 +564,7 @@
     if (r && !r.dead) last = { kn: r.kn, gin: !!r.gin, uc: !!r.undercut, w: r.winner, pts: r.pts, kw: r.kDw, dw: r.dDw,
       km: ms(r.kMelds), kd: cs(r.kDead), dm: ms(r.dMelds), dd: cs(r.dDead), ly: (r.dLays || []).map(function (l) { return l.c.r + l.c.s; }) };
     return { last: last, hand: S.hand, wins: S.players.map(function (p) { return p.wins; }), bonus: bonus, to: S.target,
-      hx: S.log.map(function (x) { return x.dead ? { x: 1 } : { w: x.winner, k: x.kn, g: x.gin ? 1 : 0, u: x.undercut ? 1 : 0, kd: x.kDw, dd: x.dDw, p: x.pts }; }) };
+      hx: S.log.map(function (x) { var o = x.dead ? { x: 1 } : { w: x.winner, k: x.kn, g: x.gin ? 1 : 0, u: x.undercut ? 1 : 0, kd: x.kDw, dd: x.dDw, p: x.pts }; if (x.cards) o.c = x.cards; return o; }) };
   }
   function finish() {
     S.phase = 'over';

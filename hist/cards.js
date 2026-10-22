@@ -408,11 +408,10 @@
     return ui.wrap(out);
   });
 
-  // ── Gin Rummy: the last hand laid down, and how every hand ended ──
+  // ── Gin Rummy: every hand laid down (melds, deadwood, layoffs), and what decided it ──
   R('gin-rummy', function (e, ui) {
     var d = e.dt; if (!d) return null;
-    var nm = names(e), out = [];
-    var L = d.last;
+    var nm = names(e), out = [], hx = d.hx || [], L = d.last;
     function melds(ms, dead, lays) {
       var box = K().el('div', { class: 'hvc-pair' });
       (ms || []).forEach(function (m) { var cs = String(m).split(','); box.appendChild(row(cs, { w: 32, fan: true })); });
@@ -420,23 +419,49 @@
       if (dead && dead.length) box.appendChild(grp('', row(dead, { w: 32, fan: true, cls: function () { return 'dim'; } }), 'deadwood'));
       return box;
     }
-    if (L) {
-      var K1 = nm[L.kn], D = nm[1 - L.kn];
-      var head = L.gin ? K1 + ' went gin' : L.uc ? D + ' undercut ' + K1 : K1 + ' knocked';
-      out.push(ui.section('Last hand: ' + head, felt('gin', [
-        grp(K1 + (L.gin ? ' · gin' : ' · ' + L.kw + ' deadwood'), melds(L.km, L.kd)),
-        grp(D + ' · ' + L.dw + ' deadwood', melds(L.dm, L.dd, L.ly), L.ly && L.ly.length ? 'Laid off cards went onto ' + first(K1) + "'s melds" : ''),
-        K().el('div', { class: 'hvc-sub', text: nm[L.w] + ' scored ' + L.pts + (L.gin ? ' (deadwood + 25 gin bonus)' : L.uc ? ' (difference + 25 undercut bonus)' : ' (deadwood difference)') })
-      ])));
-    }
-    if (d.hx && d.hx.length) {
-      out.push(ui.section('How each hand ended', ui.log(d.hx.map(function (h, i) {
+    function how(h) { return h.g ? nm[h.k] + ' went gin' : h.u ? nm[h.w] + ' undercut ' + first(nm[h.k]) : nm[h.k] + ' knocked'; }
+    var gins = hx.filter(function (h) { return h.g; }).length, ucs = hx.filter(function (h) { return h.u; }).length, big = null;
+    hx.forEach(function (h, i) { if (!h.x && (!big || h.p > big.p)) big = { p: h.p, w: h.w, i: i }; });
+    out.push(ui.stats([d.wins ? ['Hands won', d.wins[0] + ' – ' + d.wins[1], first(nm[0]) + ' first'] : null, big ? ['Biggest hand', big.p, first(nm[big.w]) + ', hand ' + (big.i + 1)] : null,
+      gins + ucs ? ['Gin / undercut', gins + ' / ' + ucs] : null, ['Played to', d.to]].filter(Boolean).slice(0, 3)));
+    var withCards = hx.some(function (h) { return h.c; });
+    if (hx.length && (withCards || L)) {
+      var panel = K().el('div', { class: 'hv' });
+      var show = function (i) {
+        var h = hx[i], kids = [];
+        if (h.x) { kids.push(head('<b>Hand ' + (i + 1) + '</b>', 'No winner', '')); kids.push(K().el('div', { class: 'hvc-sub', text: 'The stock ran down to two cards before anyone knocked, so the hand was thrown in.' })); }
+        else {
+          var tag = h.g ? 'Gin' : h.u ? 'Undercut' : 'Knock';
+          kids.push(head('<b>Hand ' + (i + 1) + '</b> · ' + K().esc(how(h)), tag + ' +' + h.p, h.g || h.u ? 'big' : 'good'));
+          var c = h.c ? String(h.c).split('/') : null, kn = h.k, df = 1 - h.k;
+          var sp = function (str) { return String(str || '').split('|').filter(Boolean).map(function (m) { return codes2(m).join(','); }); };
+          var km, kd, dm, dd, ly;
+          if (c) { km = sp(c[0]); kd = codes2(c[1]); dm = sp(c[2]); dd = codes2(c[3]); ly = codes2(c[4]); }
+          else if (L && i === hx.length - 1) { km = L.km; kd = L.kd; dm = L.dm; dd = L.dd; ly = L.ly; }
+          kids.push(plates([kn, df].map(function (p) { return { n: first(nm[p]) + (p === kn ? ' knocked' : ''), v: p === kn ? h.kd : h.dd, s: 'deadwood', c: ui.color(p), cls: p === h.w ? 'good' : '' }; })));
+          if (km) {
+            kids.push(grp(nm[kn] + (h.g ? ' · gin' : ' · ' + h.kd + ' deadwood'), melds(km, kd)));
+            kids.push(grp(nm[df] + ' · ' + h.dd + ' deadwood', melds(dm, dd, ly), ly && ly.length ? 'Ringed cards were laid off on ' + first(nm[kn]) + "'s melds" : ''));
+          }
+          kids.push(K().el('div', { class: 'hvc-sub', text: nm[h.w] + ' scored ' + h.p + (h.g ? ' (deadwood + 25 gin bonus)' : h.u ? ' (difference + 25 undercut bonus)' : ' (deadwood difference)') }));
+        }
+        panel.innerHTML = ''; panel.appendChild(felt('gin', kids));
+      };
+      var items = hx.map(function (h, i) { return { t: String(i + 1), c: h.x ? null : ui.color(h.w), ring: !!(h.g || h.u), title: 'Hand ' + (i + 1) + (h.x ? ': no winner' : ': ' + how(h) + ', +' + h.p) }; });
+      out.push(ui.section('Every hand · tap one', [road(items, hx.length - 1, show), panel, key([['Won by ' + first(nm[0]), ui.color(0)], ['Won by ' + first(nm[1]), ui.color(1)], gins + ucs ? ['Gin or undercut', 'ring'] : null])], { icon: 'cards' }));
+    } else if (hx.length) {
+      out.push(ui.section('How each hand ended', ui.log(hx.map(function (h, i) {
         if (h.x) return { b: 'H' + (i + 1), t: 'No winner: the stock ran out' };
-        var t = h.g ? nm[h.k] + ' went gin' : h.u ? nm[h.w] + ' undercut ' + first(nm[h.k]) + ' (' + h.dd + ' vs ' + h.kd + ')' : nm[h.k] + ' knocked with ' + h.kd + ' (' + first(nm[1 - h.k]) + ' had ' + h.dd + ')';
-        return { b: 'H' + (i + 1), t: t + ' · +' + h.p, c: h.w };
+        return { b: 'H' + (i + 1), t: how(h) + ' · +' + h.p, c: h.w };
       }))));
     }
-    if (d.wins) out.push(ui.stats([[first(nm[0]) + ' hands won', d.wins[0]], [first(nm[1]) + ' hands won', d.wins[1]], ['Played to', d.to]]));
+    var fin = (e.players || []).map(function (p) { return p.score; });
+    if (fin.length === 2 && fin[0] != null) {
+      var w = fin[0] > fin[1] ? 0 : 1, lh = hx[hx.length - 1];
+      var why = nm[w] + ' reached ' + (d.to || 100) + (lh && !lh.x && lh.w === w ? ' when ' + (lh.g ? 'going gin' : lh.u ? 'undercutting ' + first(nm[lh.k]) : 'knocking') + ' in hand ' + hx.length : '') + ', and won ' + fin[w] + ' to ' + fin[1 - w] + ' with the bonuses.';
+      if (d.wins && !d.wins[1 - w]) why += ' A shutout: ' + nm[1 - w] + ' won no hands.';
+      out.push(foot(why, 'flag'));
+    }
     return ui.wrap(out);
   });
 
