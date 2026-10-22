@@ -791,20 +791,41 @@
     if (TW.el) TW.el.remove();
     clearTimeout(TW.hide);
     var href = (/\/games\//.test(location.pathname) ? '' : 'games/') + x.file;
-    var b = el('div', { class: 'k-note k-turnban', role: 'status', 'aria-label': 'Your turn in ' + g.name + '. Tap to play' }, [
+    var b = el('div', { class: 'k-note k-turnban', role: 'status', 'aria-label': 'Your turn in ' + g.name }, [
       el('span', { class: 'ic', html: window.GameIcon ? GameIcon(g.id) : '' }),
       el('span', { class: 'grow' }, [
         el('span', { class: 'yt', html: '<i></i>Your turn' }),
         el('b', { text: g.name }),
         el('small', { text: (x.vs && x.vs !== 'the computer' ? x.vs + ' moved' : 'It’s back to you') + (more > 0 ? ' · ' + more + ' more waiting' : '') })]),
-      el('span', { class: 'go', html: icon('play') })
+      el('button', { type: 'button', class: 'go', 'aria-label': 'Play ' + g.name }, [el('span', { html: icon('play') })])
     ]);
     function close() { clearTimeout(TW.hide); if (!b.isConnected) return; b.style.transform = ''; b.classList.remove('show'); setTimeout(function () { b.remove(); }, 520); if (TW.el === b) TW.el = null; }
-    var y0 = null, moved = false;
-    b.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; moved = false; }, { passive: true });
-    b.addEventListener('touchmove', function (e) { if (y0 == null) return; var dy = e.touches[0].clientY - y0; if (dy < -6) { moved = true; b.style.transform = 'translate(-50%,' + dy + 'px)'; } }, { passive: true });
-    b.addEventListener('touchend', function (e) { if (moved) { var dy = e.changedTouches[0].clientY - y0; if (dy < -30) close(); else b.style.transform = ''; } y0 = null; });
-    b.addEventListener('click', function () { if (moved) return; haptic('light'); sfx('pop'); close(); setTimeout(function () { location.href = href; }, 120); });
+    // only the play button goes to the game; a tap anywhere else, or a swipe up or to either side, puts it away
+    var x0 = null, y0 = null, moved = false;
+    b.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; moved = false; b.style.transition = 'none'; }, { passive: true });
+    b.addEventListener('touchmove', function (e) {
+      if (y0 == null) return;
+      var dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+      if (!moved && Math.abs(dx) < 6 && dy > -6) return;
+      moved = true;
+      b.style.transform = Math.abs(dx) > Math.abs(dy) ? 'translate(calc(-50% + ' + dx + 'px),0)' : 'translate(-50%,' + Math.min(0, dy) + 'px)';
+      b.style.opacity = String(Math.max(0.3, 1 - Math.max(Math.abs(dx), -dy) / 260));
+    }, { passive: true });
+    b.addEventListener('touchend', function (e) {
+      b.style.transition = '';
+      if (moved) {
+        var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+        if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy)) { b.style.transition = 'transform .25s ease-in, opacity .25s'; b.style.transform = 'translate(calc(-50% + ' + (dx > 0 ? '100vw' : '-100vw') + '),0)'; b.style.opacity = '0'; clearTimeout(TW.hide); setTimeout(function () { b.remove(); if (TW.el === b) TW.el = null; }, 260); }
+        else if (dy < -30) { b.style.opacity = ''; close(); }
+        else { b.style.transform = ''; b.style.opacity = ''; }
+      }
+      x0 = y0 = null;
+    });
+    b.addEventListener('click', function (e) {
+      if (moved) return;
+      if (e.target.closest && e.target.closest('.go')) { haptic('light'); sfx('pop'); close(); setTimeout(function () { location.href = href; }, 120); }
+      else { sfx('tap', 0.5); close(); }
+    });
     doc.body.appendChild(b); TW.el = b;
     requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
     sfx('pop'); haptic('medium');
