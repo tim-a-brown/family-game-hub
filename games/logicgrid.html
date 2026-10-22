@@ -1239,9 +1239,18 @@ var LG = (function () {
     }
     return out.sort(function (x, y) { return y.v - x.v; });
   }
+  // for the history: circles on the page every few seconds ('pg', sampled every S.ps seconds) and when hints and checks happened
+  function progress() {
+    S.ps = S.ps || 10; if (S.time % S.ps) return;
+    var a = S.pg ? S.pg.split(',') : [];
+    a.push(String(S.m.split('2').length - 1));
+    if (a.length > 90) { a = a.filter(function (_, i) { return i % 2; }); S.ps *= 2; }
+    S.pg = a.join(',');
+  }
+  function evAdd(k) { S.ev = ((S.ev || '') + ' ' + k + S.time).trim(); }
   function check() {
     if (!S || S.done) return;
-    var w = wrongMarks(); S.checks++;
+    var w = wrongMarks(); S.checks++; evAdd(w.length ? 'x' : 'c');
     clearFlags(); w.forEach(function (x) { badSet[key(x.a, x.i, x.b, x.j)] = 1; });
     if (w.length) { S.wrong += w.length; Kit.sfx('bad'); Kit.haptic('error'); note(w.length === 1 ? 'One mark is wrong. It is circled in red.' : w.length + ' marks are wrong. They are circled in red.', true); showCell(w[0]); }
     else { Kit.sfx('good'); Kit.haptic('success'); note('No mistakes so far. Keep going!'); }
@@ -1253,7 +1262,7 @@ var LG = (function () {
     var w = wrongMarks();
     if (w.length) {
       clearFlags(); badSet[key(w[0].a, w[0].i, w[0].b, w[0].j)] = 1; focus = cellRef(w[0].a, w[0].i, w[0].b, w[0].j);
-      S.hints++; render(); showCell(w[0]);
+      S.hints++; evAdd('h'); render(); showCell(w[0]);
       note((w[0].v === 2 ? 'This check' : 'This X') + " isn't right. Clear it and think again.", true); Kit.sfx('bad'); save(); return;
     }
     clueEls.forEach(function (x) { x.classList.remove('hl'); });
@@ -1261,7 +1270,7 @@ var LG = (function () {
     if (!d || d.bad) { note('Every square that can be worked out is marked. Fill in any you have left.'); return; }
     snap();
     var v = d.v === 1 ? 2 : 1;
-    setMk(d.a, d.i, d.b, d.j, v); S.hd[key(d.a, d.i, d.b, d.j)] = 1; S.hints++;
+    setMk(d.a, d.i, d.b, d.j, v); S.hd[key(d.a, d.i, d.b, d.j)] = 1; S.hints++; evAdd('h');
     clearFlags(); fresh = {}; fresh[key(d.a, d.i, d.b, d.j)] = 1;
     hintAt = key(d.a, d.i, d.b, d.j); focus = cellRef(d.a, d.i, d.b, d.j);
     if (d.rule === 'trans') srcAt = [key(d.a, d.i, d.via[0], d.via[1]), key(d.via[0], d.via[1], d.b, d.j)];
@@ -1298,7 +1307,7 @@ var LG = (function () {
     tick = setInterval(function () {
       if (!S || S.done || document.hidden) return;
       S.time++; var t = document.getElementById('tm'); if (t) t.textContent = fmt(S.time);
-      if (S.time % 10 === 0) save();
+      if (S.time % 10 === 0) { progress(); save(); }
     }, 1000);
   }
   function stopClock() { if (tick) clearInterval(tick); tick = null; }
@@ -1729,7 +1738,7 @@ var LG = (function () {
       started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
       summary: lvn + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
       meta: { lv: S.lv, seconds: S.time, hints: S.hints, checks: S.checks, wrong: S.wrong, daily: S.daily, no: S.no, th: P.th },
-      detail: histDetail()
+      detail: histDetail(prev)
     });
     clearSave(); save();
     // the answers fill in row by row, then the stamp
@@ -1754,11 +1763,14 @@ var LG = (function () {
       }, 160 * n + 1700);
     }, 700);
   }
-  function histDetail() {
+  function histDetail(prev) {
     var rows = [];
     for (var p = 0; p < P.n; p++) { var r = [LG.label(P, 0, p)]; for (var c = 1; c < P.k; c++) r.push(LG.label(P, c, P.itemOf[c][p])); rows.push(r.join('|')); }
     var cats = []; for (var c2 = 0; c2 < P.k; c2++) cats.push(LG.catDef(P, c2).n);
-    return { t: LG.theme(P).title, lv: S.lv, no: S.no, d: S.daily || 0, h: cats.join('|'), a: rows, cl: P.clues.length, hi: S.hints, ck: S.checks, w: S.wrong };
+    // newer records add each category's items in the page's order (to draw the grid), the clues, and how it went
+    var items = []; for (var c3 = 0; c3 < P.k; c3++) { var L = []; for (var i3 = 0; i3 < P.n; i3++) L.push(LG.label(P, c3, i3)); items.push(L.join('|')); }
+    return { t: LG.theme(P).title, lv: S.lv, no: S.no, d: S.daily || 0, h: cats.join('|'), a: rows, cl: P.clues.length, hi: S.hints, ck: S.checks, w: S.wrong,
+      it: items, ct: P.clues.map(function (cl) { return LG.clueText(P, cl); }), ev: S.ev || '', pg: S.pg || '', ps: S.ps || 10, pt: S.m.split('2').length - 1, pb: prev || 0 };
   }
   function showBests() {
     var rows = ['easy', 'medium', 'hard', 'hard5'].map(function (l) {
@@ -1789,7 +1801,7 @@ var LG = (function () {
   });
 
   // Test hook
-  window.__lg = { get: function () { return S; }, P: function () { return P; }, LG: LG,
+  window.__lg = { get: function () { return S; }, P: function () { return P; }, LG: LG, start: function (lv, no) { newPuzzle(lv, no || 0, false); }, hint: function () { hint(); }, check: function () { check(); }, tick: function (t) { S.time = t; progress(); },
     solveTo: function (leave) { // fill the answer, leaving `leave` anchor checks off
       var n = 0;
       for (var c = 1; c < P.k; c++) for (var p = 0; p < P.n; p++) { if (n++ < (leave || 0)) continue; setMk(0, p, c, P.itemOf[c][p], 2); }

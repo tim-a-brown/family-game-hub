@@ -534,7 +534,7 @@
     var left = S.words.filter(function (w) { return !w.f; });
     if (!left.length) return;
     var w = left[rnd(left.length)], ce = cellEls[w.r * S.n + w.c];
-    S.hints++; S.seconds += 15;
+    S.ev = ((S.ev || '') + ' h' + S.seconds).trim(); S.hints++; S.seconds += 15;
     ce.classList.remove('tip'); void ce.offsetWidth; ce.classList.add('tip');
     Kit.sfx('pop'); Kit.toast('Look for ' + w.w + ' starting here (+15 seconds)');
     paintTop(); save();
@@ -602,7 +602,7 @@
       highlights: hl.slice(0, 6),
       meta: { cat: S.cat, diff: S.diff, seconds: S.seconds, timed: !!S.limit, hints: S.hints, gaveUp: S.gaveUp, daily: S.daily || 0, words: S.words.map(function (w) { return w.w; }) },
       // History: the printed grid and each word as 'WORD r c dr dc order seconds' (order 0 = not found)
-      detail: { g: S.grid.slice(), w: S.words.map(function (w) { return [w.w, w.r, w.c, w.dr, w.dc, w.f > 0 ? w.f : 0, w.f > 0 ? w.t || 0 : ''].join(' '); }), lim: S.limit || 0, tu: S.timeUp ? 1 : 0 }
+      detail: { g: S.grid.slice(), w: S.words.map(function (w) { return [w.w, w.r, w.c, w.dr, w.dc, w.f > 0 ? w.f : 0, w.f > 0 ? w.t || 0 : ''].join(' '); }), lim: S.limit || 0, tu: S.timeUp ? 1 : 0, ev: S.ev || '', pb: best == null ? -1 : best }
     });
     clearSave();
     render(false);
@@ -640,7 +640,7 @@
     else startDaily();
   } else if (going) resumeSaved();
   else showSetup();
-  window.__ws = { state: function () { return S; } };
+  window.__ws = { state: function () { return S; }, hint: function () { hint(); }, start: newPuzzle, select: function (w) { sel = { r: w.r, c: w.c, dr: w.dr, dc: w.dc, len: w.w.length }; moved = true; finish(); } };
 })();
 </script>
 </body>

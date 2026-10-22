@@ -6,6 +6,9 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function words(s) { return String(s || '').split(' ').filter(Boolean); }
   function up(s) { return String(s || '').toUpperCase(); }
+  // ids in a picture must be unique on the page (several records can be open at once)
+  var UQ = 0;
+  function uniq(svg) { var n = 'hw' + (++UQ) + '_'; return String(svg).replace(/id="([^"]+)"/g, 'id="' + n + '$1"').replace(/url\(#([^)]+)\)/g, 'url(#' + n + '$1)'); }
 
   HistView.css('hv-words',
     /* paper sheet (crossword, word search) */
@@ -37,6 +40,8 @@
     '.hvw-wgrid .hv-tile.s-y{background:#c9a227;}' +
     '.hvw-wgrid .hv-tile.s-g{background:#4a9b4f;}' +
     '.hvw-wgrid .hv-tile.s-x{box-shadow:inset 0 0 0 2px #2b2c31;}' +
+    '.hvw-wr{display:flex;align-items:center;gap:8px;}.hvw-wr .lf{width:58px;font-size:.66rem;font-weight:800;color:rgba(255,255,255,.5);line-height:1.15;}' +
+    '.hvw-wr .lf b{display:block;font-size:.95rem;color:#fff;font-variant-numeric:tabular-nums;}.hvw-wr .lf.one b{color:#7fd987;}' +
     '.hvw-ans{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}' +
     '.hvw-ans .hv-tile{width:34px;height:34px;font-size:1.1rem;}' +
     '.hvw-kb{display:flex;flex-direction:column;gap:4px;align-items:center;}' +
@@ -75,6 +80,11 @@
     '.hvw-hmc .hv-tile.s-r{color:#ff9d9d;background:transparent;box-shadow:inset 0 -2px 0 rgba(255,157,157,.6);}' +
     '.hvw-hmc .hv-tile.s-n{width:10px;box-shadow:none;}' +
     '.hvw-hmc .miss{font-size:.78rem;color:rgba(244,241,230,.55);font-weight:700;}' +
+    '.hvw-hmc .seq{display:flex;flex-wrap:wrap;gap:3px;}' +
+    '.hvw-hmc .seq button{appearance:none;border:0;padding:0;width:20px;height:22px;border-radius:4px;font:900 .78rem/1 "Chalkboard SE","Comic Sans MS",ui-rounded,sans-serif;cursor:pointer;background:rgba(244,241,230,.12);color:#f4f1e6;}' +
+    '.hvw-hmc .seq button.x{color:#ff9d9d;background:rgba(255,120,120,.12);text-decoration:line-through;}' +
+    '.hvw-hmc .seq button.cur{outline:2px solid #ffe28a;outline-offset:1px;}' +
+    '.hvw-hmc.mid{box-shadow:inset 0 0 0 2px #8a6a3a,inset 0 0 0 4px #3b2a19;}' +
     '.hvw-hmc .miss s{color:#ff9d9d;font-weight:900;letter-spacing:.12em;text-decoration-thickness:2px;margin-left:3px;}' +
     /* word scramble */
     '.hvw-sc{display:flex;flex-direction:column;gap:6px;}' +
@@ -93,6 +103,7 @@
     '.hvw-wsl span{justify-self:start;font-weight:900;font-size:.74rem;letter-spacing:.05em;padding:1px 3px;border-radius:3px;font-family:"Courier New",ui-monospace,monospace;}' +
     '.hvw-wsl span.f{text-decoration:line-through;text-decoration-thickness:1.5px;color:rgba(22,19,15,.6);}' +
     '.hvw-wsl span.n{color:#b3122f;}' +
+    '.hvw-replay{display:flex;flex-direction:column;gap:6px;}.hvw-range{width:100%;accent-color:var(--yellow);}.hvw-replay b{font-size:.85rem;color:var(--text-2);}' +
     '.hvw-wsl span small{font-family:system-ui;font-weight:700;font-size:.62rem;color:#6b6455;margin-left:3px;text-decoration:none;display:inline-block;}'
   );
 
@@ -134,7 +145,7 @@
     ]);
     var revCells = m.join('').split('r').length - 1;
     var out = [ui.section(null, paper)];
-    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Revealed', revCells ? revCells + (revCells === 1 ? ' square' : ' squares') : 0]]));
+    out.push(ui.stats([['Time', d.gu ? 'Revealed' : ui.time(d.s)], ['Checks', d.ch || 0], ['Squares revealed', revCells]]));
     // the clues, with the ones that needed revealing marked
     var A = d.a || [], D = d.d || [], ai = 0, di = 0;
     M.words.sort(function (x, y) { return (x.dir === y.dir ? 0 : x.dir === 'a' ? -1 : 1) || x.n - y.n; });
@@ -167,13 +178,18 @@
   R('wordle', function (e, ui) {
     var ans = up(e.answer), gs = (e.guesses || []).map(up);
     if (!ans || !gs.length) return null;
-    var grid = ui.el('div', { class: 'hvw-wgrid' }), best = {}, rank = { b: 1, y: 2, g: 3 };
+    var grid = ui.el('div', { class: 'hvw-wgrid' }), best = {}, rank = { b: 1, y: 2, g: 3 }, d = e.dt || {}, lf = Array.isArray(d.lf) ? d.lf : null;
     for (var i = 0; i < 6; i++) {
-      if (gs[i]) { var st = wordleCheck(gs[i], ans); grid.appendChild(ui.tiles(gs[i], st)); gs[i].split('').forEach(function (ch, j) { var v = st.charAt(j); if (!best[ch] || rank[v] > rank[best[ch]]) best[ch] = v; }); }
-      else grid.appendChild(ui.tiles('_____', 'xxxxx'));
+      var row;
+      if (gs[i]) { var st = wordleCheck(gs[i], ans); row = ui.tiles(gs[i], st); gs[i].split('').forEach(function (ch, j) { var v = st.charAt(j); if (!best[ch] || rank[v] > rank[best[ch]]) best[ch] = v; }); }
+      else row = ui.tiles('_____', 'xxxxx');
+      // how many answers were still possible after this guess
+      if (lf) grid.appendChild(ui.el('div', { class: 'hvw-wr' }, [row, ui.el('span', { class: 'lf' + (gs[i] && lf[i] === 1 ? ' one' : ''), html: gs[i] && lf[i] != null && gs[i] !== ans ? '<b>' + lf[i].toLocaleString('en-US') + '</b>' + (lf[i] === 1 ? 'word' : 'words') + ' left' : '' })]));
+      else grid.appendChild(row);
     }
     var won = gs[gs.length - 1] === ans;
     var out = [ui.section(null, grid)];
+    if (e.dt) out.push(ui.stats([['Guesses', won ? gs.length + ' / 6' : 'X / 6'], ['Streak', d.sk || 0], e.hard ? ['Mode', 'Hard'] : null]));
     if (!won) out.push(ui.section('The word', ui.el('div', { class: 'hvw-ans' }, [ui.tiles(ans, 'rrrrr'),
       ui.el('span', { class: 'muted', style: { 'font-weight': '800', 'font-size': '.88rem' }, text: 'Not solved' + (e.hard ? ' · hard mode' : '') })])));
     else if (e.hard) out.push(ui.chips([{ t: 'Hard mode', c: '#f97316' }]));
@@ -240,7 +256,7 @@
       s += '<text x="' + (x + cs / 2) + '" y="' + (y + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="' + (qu ? 18 : 25) + '" font-weight="900" fill="#1b1a24" font-family="Arial Black,Helvetica Neue,sans-serif">' + esc(qu ? 'Qu' : ch) + '</text>';
     });
     if (path && path.length > 1) s += '<polyline points="' + path.map(function (i) { return cx(i) + ',' + cy(i); }).join(' ') + '" fill="none" stroke="rgba(255,120,0,.45)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>';
-    return s + '</svg>';
+    return uniq(s + '</svg>');
   }
   function bogglePath(board, word) {
     var n = Math.round(Math.sqrt(board.length)), w = up(word), best = null;
@@ -320,10 +336,10 @@
       '<circle cx="130" cy="62" r="16" fill="none" stroke="@" stroke-width="4.5"/>', L(130, 78, 130, 132, '@', 4.5), L(130, 92, 106, 116, '@', 4.5), L(130, 92, 154, 116, '@', 4.5), L(130, 132, 112, 170, '@', 4.5), L(130, 132, 148, 170, '@', 4.5)];
     var shown = 10 - max + mi;
     for (var i = 0; i < Math.min(shown, 10); i++) {
-      if (i < 4) { if (i === 3 && w.ok) s += L(130, 20, 130, 30); else s += parts[i]; }
-      else if (!w.ok) s += parts[i].replace(/@/g, red);
+      if (i < 4) { if (i === 3 && w.ok && !w.mid) s += L(130, 20, 130, 30); else s += parts[i]; }
+      else if (!w.ok || w.mid) s += parts[i].replace(/@/g, w.mid ? ch : red);
     }
-    if (w.ok) {
+    if (w.ok && !w.mid) {
       // freed: the figure stands on the ground beside the gallows
       var y = '#ffe28a';
       s += '<circle cx="172" cy="132" r="13" fill="none" stroke="' + y + '" stroke-width="4"/>' + L(172, 145, 172, 178, y, 4) + L(172, 156, 152, 146, y, 4) + L(172, 156, 192, 146, y, 4) + L(172, 178, 160, 204, y, 4) + L(172, 178, 184, 204, y, 4) +
@@ -336,31 +352,55 @@
     var list = d && d.w ? d.w : (e.words || []).map(function (x) { return { w: x.w, ok: x.won ? 1 : 0, m: x.misses, mx: { easy: 10, medium: 8, hard: 6 }[e.diff] || 6, g: '' }; });
     if (!list.length) return null;
     var box = ui.el('div', { class: 'hvw-hm' }), oneCat = list.every(function (w) { return w.c === list[0].c; });
-    list.forEach(function (w) {
-      var word = up(w.w), gs = up(w.g), have = !!gs;
+    // one word's chalkboard as it stood after `upto` guesses (all of them when upto is null)
+    function card(w, upto) {
+      var word = up(w.w), all = up(w.g), have = !!all, gs = upto == null ? all : all.slice(0, upto), end = upto == null || upto >= all.length;
+      var misses = gs.split('').filter(function (c) { return word.indexOf(c) < 0; }).length;
+      var shown = end ? w : { w: w.w, ok: 1, m: misses, mx: w.mx, mid: 1 };
       var tiles = '', st = '';
-      word.split('').forEach(function (c) { if (c === ' ') { tiles += '_'; st += 'n'; } else { tiles += c; st += !w.ok && have && gs.indexOf(c) < 0 ? 'r' : 'w'; } });
-      if (!w.ok && !have) st = st.replace(/w/g, 'r');
-      var missed = gs.split('').filter(function (c) { return word.indexOf(c) < 0; }).join(' ');
-      var top = [ui.el('b', { text: w.ok ? 'Saved' : 'Lost', class: w.ok ? 'ok' : 'no' }), ui.el('span', { text: w.m + ' of ' + w.mx + ' misses' })];
-      if (w.c && !oneCat) top.push(ui.el('span', { text: '· ' + w.c }));
-      if (duel && w.gu != null) top.push(ui.el('span', { text: '· ' + ((P[w.gu] || {}).name || '') + ' guessing' }));
-      if (w.ok && w.p) top.push(ui.el('span', { text: '· +' + w.p + (w.p === 1 ? ' pt' : ' pts') }));
-      if (!w.ok && w.st) top.push(ui.el('span', { text: '· +' + w.st + ' to ' + ((P[w.se] || {}).name || 'setter') }));
+      word.split('').forEach(function (c) {
+        if (c === ' ') { tiles += '_'; st += 'n'; return; }
+        var known = gs.indexOf(c) >= 0 || (end && w.ok) || (end && !have);
+        tiles += end || known ? c : '_';
+        st += end ? (!w.ok && have && gs.indexOf(c) < 0 ? 'r' : 'w') : 'w';
+      });
+      if (end && !w.ok && !have) st = st.replace(/w/g, 'r');
+      var top = [ui.el('b', { text: !end ? 'Guess ' + upto + ' of ' + all.length : w.ok ? 'Saved' : 'Lost', class: !end ? '' : w.ok ? 'ok' : 'no' }), ui.el('span', { text: (end ? w.m : misses) + ' of ' + w.mx + ' misses' })];
+      if (end && w.c && !oneCat) top.push(ui.el('span', { text: '· ' + w.c }));
+      if (end && duel && w.gu != null) top.push(ui.el('span', { text: '· ' + ((P[w.gu] || {}).name || '') + ' guessing' }));
+      if (end && w.ok && w.p) top.push(ui.el('span', { text: '· +' + w.p + (w.p === 1 ? ' pt' : ' pts') }));
+      if (end && !w.ok && w.st) top.push(ui.el('span', { text: '· +' + w.st + ' to ' + ((P[w.se] || {}).name || 'setter') }));
+      // the guesses in order: tap one to see the board at that point
+      var seq = null;
+      if (have) {
+        seq = ui.el('div', { class: 'seq' });
+        all.split('').forEach(function (c, k) {
+          var hit = word.indexOf(c) >= 0;
+          seq.appendChild(ui.el('button', { type: 'button', class: (hit ? 'h' : 'x') + (upto != null && k < upto ? ' on' : '') + (upto === k + 1 ? ' cur' : ''), text: c, 'aria-label': 'Guess ' + (k + 1) + ': ' + c + (hit ? ', in the word' : ', a miss'),
+            onclick: function () { paint(upto === k + 1 ? null : k + 1); } }));
+        });
+      }
       var extras = [];
-      if (w.wh) extras.push('solved in one go');
-      if (w.cl) extras.push('used the clue');
-      box.appendChild(ui.el('div', { class: 'hvw-hmc' }, [
-        ui.el('div', { html: hmPic(w, d && d.th) }),
-        ui.el('div', { class: 'info' }, [
-          ui.el('div', { class: 'top' }, top),
-          ui.tiles(tiles, st),
-          missed ? ui.el('div', { class: 'miss', html: 'Wrong letters<s>' + esc(missed) + '</s>' }) : have ? ui.el('div', { class: 'miss', text: 'No wrong letters' }) : null,
-          extras.length ? ui.el('div', { class: 'miss', text: extras.join(' · ') }) : null
-        ])
-      ]));
-    });
-    return ui.wrap([ui.section(list.length === 1 ? 'The word' : 'The words', box)]);
+      if (end && w.wh) extras.push('solved in one go');
+      if (end && w.cl) extras.push('used the clue');
+      var row = ui.el('div', { class: 'hvw-hmc' + (end ? '' : ' mid') }, [
+        ui.el('div', { html: hmPic(shown, d && d.th) }),
+        ui.el('div', { class: 'info' }, [ui.el('div', { class: 'top' }, top), ui.tiles(tiles, st), seq,
+          !have ? null : null, extras.length ? ui.el('div', { class: 'miss', text: extras.join(' · ') }) : null])
+      ]);
+      var wrap = ui.el('div'); wrap.appendChild(row);
+      function paint(u) { var n2 = card(w, u); wrap.parentNode.replaceChild(n2, wrap); }
+      return wrap;
+    }
+    list.forEach(function (w) { box.appendChild(card(w, null)); });
+    var out = [];
+    if (list.length > 1 && !duel) {
+      var saved = list.filter(function (w) { return w.ok; }).length, miss = list.reduce(function (a, w) { return a + (w.m || 0); }, 0), clean = list.filter(function (w) { return w.ok && !w.m; }).length;
+      out.push(ui.stats([['Saved', saved + ' / ' + list.length], ['Misses', miss], ['No-miss words', clean]]));
+    }
+    out.push(ui.section(list.length === 1 ? 'The word' : 'The words', box));
+    if (list.some(function (w) { return w.g; })) out.push(ui.el('p', { class: 'muted', style: { margin: '0', 'font-size': '.78rem', 'font-weight': '700', 'text-align': 'center' }, text: 'Letters in the order guessed: red ones missed. Tap one to see the board at that guess.' }));
+    return ui.wrap(out);
   });
 
   // ── Word Scramble: every word, how long it took ────────────────────────────
@@ -379,7 +419,16 @@
     var fastest = allW.filter(function (x) { return x.s != null; }).sort(function (a, b) { return a.s - b.s; })[0];
     var solved = allW.length, timed = allW.filter(function (x) { return x.s != null; });
     var avg = timed.length ? Math.round(timed.reduce(function (s, x) { return s + x.s; }, 0) / timed.length) : null;
-    out.push(ui.stats([['Solved', solved], ['Average', avg != null ? avg + 's' : null], ['Fastest', fastest ? fastest.s + 's' : null, fastest ? up(fastest.w) : '']]));
+    var top = multi ? null : (P[0] || {}).score;
+    out.push(ui.stats([['Solved', solved], ['Average', avg != null ? avg + 's' : null], ['Fastest', fastest ? fastest.s + 's' : null, fastest ? up(fastest.w) : ''],
+      !multi && d.pb != null && top != null ? ['Points', top, top > d.pb ? 'new best (was ' + d.pb + ')' : 'best ' + d.pb] : null]));
+    // seconds on each word: gold for the fastest, grey for skipped
+    var Z = HistView._pz;
+    if (!multi && Z && d.t[0] && d.t[0].ws.some(function (x) { return x.s != null; })) {
+      var ws0 = d.t[0].ws;
+      out.push(ui.section('Time on each word', [Z.columns(ui, ws0.map(function (x) { var sk = x.fl.replace(/a=.*/, '').indexOf('k') >= 0; return { v: x.s || 0, top: x.s != null ? x.s + 's' : '', c: x === fastest ? '#facc15' : sk ? '#6b7280' : /[ch]/.test(x.fl.replace(/a=.*/, '')) ? '#b7a0ff' : '#7ee2a0' }; }), { aria: 'Seconds on each word', avg: true }),
+        ui.el('p', { class: 'muted', style: { margin: '0', 'font-size': '.78rem', 'font-weight': '700', 'text-align': 'center' }, text: 'Gold: fastest · Purple: used a clue or hint · Grey: skipped · Dashed: average' })], { icon: 'chart' }));
+    }
     d.t.forEach(function (T) {
       var box = ui.el('div', { class: 'hvw-sc' });
       T.ws.forEach(function (x) {
@@ -409,29 +458,53 @@
     var d = e.dt; if (!d || !d.g || !d.g.length) return null;
     var g = d.g.map(up), n = g.length, cs = 24, W = n * cs;
     var ws = (d.w || []).map(function (s) { var p = String(s).split(' '); return { w: p[0], r: +p[1], c: +p[2], dr: +p[3], dc: +p[4], f: +p[5] || 0, t: p[6] === '' || p[6] == null ? null : +p[6] }; });
-    var s = '<svg viewBox="-2 -2 ' + (W + 4) + ' ' + (W + 4) + '" role="img" aria-label="Word search grid">';
-    ws.forEach(function (w) {
-      var L = w.w.length - 1, x1 = w.c * cs + cs / 2, y1 = w.r * cs + cs / 2, x2 = (w.c + w.dc * L) * cs + cs / 2, y2 = (w.r + w.dr * L) * cs + cs / 2;
-      if (w.f) s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + cs * 0.8 + '" stroke-linecap="round" opacity=".7"/>';
-      else s += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#b3122f" stroke-width="' + cs * 0.78 + '" stroke-linecap="round" fill="none" opacity=".12"/>' +
-        '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#b3122f" stroke-width="1.6" stroke-dasharray="3 2.5" stroke-linecap="round" opacity=".85"/>';
-    });
-    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) s += '<text x="' + (c * cs + cs / 2) + '" y="' + (r * cs + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="900" fill="#262636" font-family="Courier New,ui-monospace,monospace">' + esc(g[r].charAt(c)) + '</text>';
-    s += '</svg>';
-    var list = ui.el('div', { class: 'hvw-wsl' });
-    ws.forEach(function (w) {
-      list.appendChild(ui.el('span', { class: w.f ? 'f' : 'n', style: w.f ? { background: WS_HL[(w.f - 1) % WS_HL.length] } : null, html: esc(w.w) }));
-    });
-    var found = ws.filter(function (w) { return w.f; }).sort(function (a, b) { return a.f - b.f; });
-    var mode = String(e.mode || '').split(' · ')[1] || e.cat || 'Word Search';
-    var paper = ui.el('div', { class: 'hvw-paper' }, [ui.el('div', { class: 'hvw-mast', html: '<b>' + esc(mode) + '</b><span>' + n + '×' + n + ' · ' + found.length + ' of ' + ws.length + ' found</span>' }), ui.el('div', { html: s }), list]);
-    var out = [ui.section(null, paper)];
-    out.push(ui.stats([['Time', e.seconds != null ? ui.time(e.seconds) : null, d.lim ? 'of ' + ui.time(d.lim) : ''], ['Found', found.length + ' / ' + ws.length], ['Hints', e.hints || 0]]));
-    if (found.length > 1 && found.some(function (w) { return w.t != null; })) {
-      var prev = 0;
-      out.push(ui.section('Order found', ui.log(found.map(function (w) { var gap = w.t - prev; prev = w.t; return { b: ui.time(w.t), t: w.w + (found.indexOf(w) ? '  (+' + Math.max(0, gap) + 's)' : ''), c: WS_HL[(w.f - 1) % WS_HL.length] }; }))));
+    var found = ws.filter(function (w) { return w.f > 0; }).sort(function (a, b) { return a.f - b.f; });
+    // the page with the highlighter marks of the first `upto` finds (the last of them ringed); the rest, when it's over, in red
+    function draw(upto, end) {
+      var s = '<svg viewBox="-2 -2 ' + (W + 4) + ' ' + (W + 4) + '" role="img" aria-label="Word search grid">';
+      ws.forEach(function (w) {
+        var L = w.w.length - 1, x1 = w.c * cs + cs / 2, y1 = w.r * cs + cs / 2, x2 = (w.c + w.dc * L) * cs + cs / 2, y2 = (w.r + w.dr * L) * cs + cs / 2, line = 'x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"';
+        if (w.f > 0 && w.f <= upto) {
+          s += '<line ' + line + ' stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + cs * 0.8 + '" stroke-linecap="round" opacity=".7"/>';
+          if (w.f === upto && !end) s += '<line ' + line + ' stroke="#262636" stroke-width="' + (cs * 0.8 + 3) + '" stroke-linecap="round" fill="none" opacity=".9" stroke-dasharray="0" style="mix-blend-mode:multiply" /><line ' + line + ' stroke="' + WS_HL[(w.f - 1) % WS_HL.length] + '" stroke-width="' + (cs * 0.8 - 1) + '" stroke-linecap="round"/>';
+        } else if (end && !(w.f > 0)) s += '<line ' + line + ' stroke="#b3122f" stroke-width="' + cs * 0.78 + '" stroke-linecap="round" fill="none" opacity=".12"/><line ' + line + ' stroke="#b3122f" stroke-width="1.6" stroke-dasharray="3 2.5" stroke-linecap="round" opacity=".85"/>';
+      });
+      for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) s += '<text x="' + (c * cs + cs / 2) + '" y="' + (r * cs + cs / 2 + 1) + '" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="900" fill="#262636" font-family="Courier New,ui-monospace,monospace">' + esc(g[r].charAt(c)) + '</text>';
+      return s + '</svg>';
     }
-    if (found.length < ws.length) out.push(ui.facts([['Not found', ws.filter(function (w) { return !w.f; }).map(function (w) { return w.w; }).join(', ')]]));
+    var list = ui.el('div', { class: 'hvw-wsl' }), items = [];
+    ws.forEach(function (w) { var sp = ui.el('span', { html: esc(w.w) }); items.push({ w: w, el: sp }); list.appendChild(sp); });
+    function paintList(upto, end) {
+      items.forEach(function (it) {
+        var on = it.w.f > 0 && it.w.f <= upto;
+        it.el.className = on ? 'f' : end && !(it.w.f > 0) ? 'n' : '';
+        it.el.style.background = on ? WS_HL[(it.w.f - 1) % WS_HL.length] : '';
+      });
+    }
+    var mode = String(e.mode || '').split(' · ')[1] || e.cat || 'Word Search';
+    var gridBox = ui.el('div'), head = ui.el('span');
+    var paper = ui.el('div', { class: 'hvw-paper' }, [ui.el('div', { class: 'hvw-mast' }, [ui.el('b', { text: mode }), head]), gridBox, list]);
+    var out = [ui.section(null, paper)];
+    function show(m) {
+      var end = m >= found.length;
+      gridBox.innerHTML = draw(m, end); paintList(m, end);
+      head.textContent = n + '×' + n + ' · ' + (end ? found.length + ' of ' + ws.length + ' found' : 'find ' + m + ' of ' + found.length);
+      var w = found[m - 1];
+      return m === 0 ? 'The printed page' : end ? (found.length === ws.length ? 'All ' + ws.length + ' found' : found.length + ' of ' + ws.length + ' found · the rest are dashed in red') : 'Find ' + m + ': ' + w.w + (w.t != null ? ' at ' + ui.time(w.t) : '');
+    }
+    if (found.length > 1 && found.some(function (w) { return w.t != null; })) {
+      var label = ui.el('b'), rng = ui.el('input', { type: 'range', min: '0', max: String(found.length), value: String(found.length), class: 'hvw-range', 'aria-label': 'Step through the finds' });
+      rng.addEventListener('input', function () { label.textContent = show(+rng.value); });
+      label.textContent = show(found.length);
+      out.push(ui.el('div', { class: 'hvw-replay' }, [rng, label]));
+    } else show(found.length);
+    var pb = d.pb, done = !d.tu && found.length === ws.length;
+    out.push(ui.stats([['Time', e.seconds != null ? ui.time(e.seconds) : null, d.lim ? 'of ' + ui.time(d.lim) : pb == null ? '' : !done ? '' : pb < 0 ? 'first finish' : e.seconds < pb ? 'new best (was ' + ui.time(pb) + ')' : 'best ' + ui.time(pb)], ['Found', found.length + ' / ' + ws.length], ['Hints', e.hints || 0, e.hints ? '+15s each' : '']]));
+    var Z = HistView._pz;
+    if (Z && found.length > 1 && found.some(function (w) { return w.t != null; }) && e.seconds > 0) {
+      var line = []; found.forEach(function (w, i) { if (w.t != null) line.push([w.t, i + 1]); });
+      out.push(ui.section('How it went', Z.howItWent(ui, { total: e.seconds, ev: d.ev, line: line, max: ws.length, unit: 'words', lim: d.lim || 0, end: done ? 'All found' : d.tu ? 'Time up' : 'Stopped', endOk: done }), { icon: 'chart' }));
+    }
     return ui.wrap(out);
   });
 })();

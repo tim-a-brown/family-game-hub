@@ -6,6 +6,10 @@
 
   // ── shared bits ──
   function f2(n) { return Math.round(n * 100) / 100; }
+  // gradients and clip paths need ids that are unique on the page (several records can be open, and a closed one
+  // hides its picture, which would take its gradients with it)
+  var UQ = 0;
+  function uniq(svg) { var n = 'hz' + (++UQ) + '_'; return String(svg).replace(/id="([^"]+)"/g, 'id="' + n + '$1"').replace(/url\(#([^)]+)\)/g, 'url(#' + n + '$1)'); }
   function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many || one + 's'); }
   function sec(t) { t = Math.round(Number(t) || 0); var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
   // A step-through slider: draw(n) paints frame n (0..max) into box and returns the caption
@@ -16,9 +20,121 @@
     show(start);
     return ui.el('div', { class: 'hv-replay' }, [rng, label]);
   }
+
+  // ── Shared pieces for the puzzle and word views (words.js and the mazes view use them through HistView._pz) ──
+  // Events a game keeps while you play, as one string: 'h35 x80 c120' = a hint at 0:35, a wrong try at 1:20, a check at 2:00
+  var EVK = { h: ['#f5c542', 'Hint'], x: ['#f0645a', 'Wrong try'], c: ['#7cb4ff', 'Check'], s: ['#5ad17a', 'Found'], u: ['#c4a0ff', 'Undo'] };
+  function evList(ev) {
+    return String(ev || '').split(' ').map(function (x) { var k = x.charAt(0), t = +x.slice(1); return EVK[k] && !isNaN(t) ? { k: k, t: t } : null; }).filter(Boolean);
+  }
+  function evMark(k, x, y, r) {
+    var c = EVK[k] ? EVK[k][0] : '#fff';
+    if (k === 'x') return '<path d="M' + f2(x - r) + ' ' + f2(y - r) + 'L' + f2(x + r) + ' ' + f2(y + r) + 'M' + f2(x + r) + ' ' + f2(y - r) + 'L' + f2(x - r) + ' ' + f2(y + r) + '" stroke="' + c + '" stroke-width="2.6" stroke-linecap="round"/>';
+    if (k === 'c') return '<path d="M' + f2(x) + ' ' + f2(y - r - 1) + 'L' + f2(x + r + 1) + ' ' + f2(y) + 'L' + f2(x) + ' ' + f2(y + r + 1) + 'L' + f2(x - r - 1) + ' ' + f2(y) + 'Z" fill="' + c + '"/>';
+    if (k === 'h') return '<circle cx="' + f2(x) + '" cy="' + f2(y) + '" r="' + r + '" fill="' + c + '"/><path d="M' + f2(x - r * .45) + ' ' + f2(y + r + 2) + 'h' + f2(r * .9) + '" stroke="' + c + '" stroke-width="1.6" stroke-linecap="round"/>';
+    return '<circle cx="' + f2(x) + '" cy="' + f2(y) + '" r="' + (r - 1) + '" fill="' + c + '"/>';
+  }
+  // A time line of the game: the clock along the bottom, each hint / wrong try / check where it happened,
+  // and (o.line: [[sec, value], ...]) how far along the puzzle was. o: {total, ev, line, max, unit, lim, end: 'Solved', endOk}
+  function howItWent(ui, o) {
+    var marks = Array.isArray(o.ev) ? o.ev : evList(o.ev), line = o.line || [], total = Math.max(1, Number(o.total) || 0);
+    marks.concat(line.map(function (p) { return { t: p[0] }; })).forEach(function (m) { if (m.t > total) total = m.t; });
+    if (o.lim && o.lim > total) total = o.lim;
+    var W = 320, pl = 8, pr = 8, hasL = line.length > 1, top = 16, track = hasL ? 92 : 30, H = track + 26;
+    var x = function (t) { return pl + Math.max(0, Math.min(1, t / total)) * (W - pl - pr); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="How it went">';
+    // minute ticks
+    var step = [15, 30, 60, 120, 300, 600, 900, 1800, 3600].filter(function (v) { return total / v <= 7; })[0] || 3600;
+    for (var t = step; t < total - step * 0.3; t += step) s += '<line x1="' + f2(x(t)) + '" x2="' + f2(x(t)) + '" y1="' + (top - 4) + '" y2="' + track + '" stroke="rgba(255,255,255,.08)"/>';
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + track + '" y2="' + track + '" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>';
+    if (hasL) {
+      var mx = o.max || Math.max.apply(null, line.map(function (p) { return p[1]; })) || 1, y = function (v) { return track - 4 - (v / mx) * (track - 4 - top); };
+      var d = 'M' + f2(x(0)) + ' ' + f2(y(0)), prev = 0;
+      line.forEach(function (p) { d += 'L' + f2(x(p[0])) + ' ' + f2(y(prev)) + 'L' + f2(x(p[0])) + ' ' + f2(y(p[1])); prev = p[1]; });
+      var last = line[line.length - 1];
+      s += '<defs><linearGradient id="hvtlg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#5ad17a" stop-opacity=".38"/><stop offset="1" stop-color="#5ad17a" stop-opacity="0"/></linearGradient></defs>';
+      s += '<path d="' + d + 'L' + f2(x(last[0])) + ' ' + (track - 4) + 'L' + f2(x(0)) + ' ' + (track - 4) + 'Z" fill="url(#hvtlg)"/>';
+      s += '<path d="' + d + '" fill="none" stroke="#5ad17a" stroke-width="2.2" stroke-linejoin="round"/>';
+      s += '<circle cx="' + f2(x(last[0])) + '" cy="' + f2(y(last[1])) + '" r="3.6" fill="#5ad17a" stroke="#fff" stroke-width="1.4"/>';
+      s += '<text x="' + pl + '" y="' + (top - 5) + '" font-size="9.5" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">' + ui.esc(mx + (o.unit ? ' ' + o.unit : '')) + '</text>';
+    }
+    if (o.lim) s += '<line x1="' + f2(x(o.lim)) + '" x2="' + f2(x(o.lim)) + '" y1="' + (top - 6) + '" y2="' + (track + 4) + '" stroke="#f0645a" stroke-dasharray="3 3" stroke-width="1.4"/><text x="' + f2(x(o.lim) - 3) + '" y="' + (top - 5) + '" text-anchor="end" font-size="9.5" font-weight="800" fill="#f0645a" font-family="system-ui,sans-serif">time limit</text>';
+    // the marks sit on the track; ones close together stack upwards
+    var lastX = {}, row = 0;
+    marks.slice().sort(function (a, b) { return a.t - b.t; }).forEach(function (m) {
+      var mx2 = x(m.t), k = Math.round(mx2 / 9);
+      row = lastX[k] || 0; lastX[k] = row + 1; lastX[k - 1] = Math.max(lastX[k - 1] || 0, row + 1); lastX[k + 1] = Math.max(lastX[k + 1] || 0, row + 1);
+      s += evMark(m.k, mx2, track - 7 - row * 11, 3.6);
+    });
+    // the end: a little flag
+    var ex = x(Number(o.total) || total), ok = o.endOk !== false;
+    s += '<path d="M' + f2(ex) + ' ' + (track + 1) + 'V' + (track - 15) + '" stroke="' + (ok ? '#5ad17a' : '#9aa1b2') + '" stroke-width="1.6"/><path d="M' + f2(ex) + ' ' + (track - 15) + 'l' + (ex > W - 20 ? -9 : 9) + ' 3.5l' + (ex > W - 20 ? 9 : -9) + ' 3.5z" fill="' + (ok ? '#5ad17a' : '#9aa1b2') + '"/>';
+    s += '<text x="' + pl + '" y="' + (H - 6) + '" font-size="10" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">0:00</text>';
+    s += '<text x="' + (W - pr) + '" y="' + (H - 6) + '" text-anchor="end" font-size="10" font-weight="800" fill="rgba(255,255,255,.75)" font-family="system-ui,sans-serif">' + ui.esc((o.end ? o.end + ' · ' : '') + sec(o.total || total)) + '</text>';
+    s += '</svg>';
+    var used = {}; marks.forEach(function (m) { used[m.k] = (used[m.k] || 0) + 1; });
+    var key = ui.el('div', { class: 'hv-tlk' });
+    Object.keys(EVK).forEach(function (k) { if (used[k]) key.appendChild(ui.el('span', { html: '<svg viewBox="-6 -6 12 14" width="12" height="13" aria-hidden="true">' + evMark(k, 0, 0, 3.6) + '</svg>' + ui.esc((o.names && o.names[k]) || EVK[k][1]) + (used[k] > 1 ? ' ×' + used[k] : '') })); });
+    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: uniq(s) }), key.children.length ? key : null]);
+  }
+  // Columns, one per question / word / riddle: list = [{v, c: colour, lab}], o: {unit:'s', avg:true}
+  function columns(ui, list, o) {
+    o = o || {}; if (!list.length) return null;
+    var W = 320, H = 108, pl = 4, pr = 4, top = 16, base = H - 18, n = list.length, gap = n > 24 ? 1.5 : 3, cw = (W - pl - pr - gap * (n - 1)) / n;
+    var mx = Math.max.apply(null, list.map(function (x) { return x.v || 0; }).concat([1])), s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + ui.esc(o.aria || 'Chart') + '">';
+    var hi = 0; list.forEach(function (x, i) { if ((x.v || 0) > (list[hi].v || 0)) hi = i; });
+    list.forEach(function (x, i) {
+      var h = Math.max(2, (x.v || 0) / mx * (base - top)), xx = pl + i * (cw + gap);
+      s += '<rect x="' + f2(xx) + '" y="' + f2(base - h) + '" width="' + f2(cw) + '" height="' + f2(h) + '" rx="' + f2(Math.min(3, cw / 3)) + '" fill="' + (x.c || '#7cb4ff') + '"' + (x.dim ? ' opacity=".45"' : '') + '/>';
+      if (n <= 14 || i === hi) s += '<text x="' + f2(xx + cw / 2) + '" y="' + f2(base - h - 3) + '" text-anchor="middle" font-size="9" font-weight="800" fill="rgba(255,255,255,.8)" font-family="system-ui,sans-serif">' + ui.esc((x.top != null ? x.top : x.v) + (o.unit || '')) + '</text>';
+      if (n <= 20 || (i + 1) % 5 === 0 || i === 0) s += '<text x="' + f2(xx + cw / 2) + '" y="' + (H - 5) + '" text-anchor="middle" font-size="9" font-weight="800" fill="rgba(255,255,255,.5)" font-family="system-ui,sans-serif">' + ui.esc(x.lab != null ? x.lab : i + 1) + '</text>';
+    });
+    if (o.avg) {
+      var vals = list.filter(function (x) { return x.v != null; }), av = vals.reduce(function (a, x) { return a + x.v; }, 0) / Math.max(1, vals.length), ay = base - av / mx * (base - top);
+      s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + f2(ay) + '" y2="' + f2(ay) + '" stroke="rgba(255,255,255,.4)" stroke-dasharray="4 4"/>';
+    }
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + base + '" y2="' + base + '" stroke="rgba(255,255,255,.25)"/></svg>';
+    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: s })]);
+  }
+  // A strip of small numbered squares, one per step; tap one to show it. items = [{t, c: 'ok'|'no'|'half'|'gold', title}]
+  function strip(ui, items, start, show) {
+    var box = ui.el('div', { class: 'hv-road' }), btns = [];
+    items.forEach(function (it, i) {
+      var b = ui.el('button', { type: 'button', class: 'hv-rb ' + (it.c || ''), text: it.t != null ? String(it.t) : String(i + 1), title: it.title || '', 'aria-label': it.title || String(i + 1), onclick: function () { pick(i); } });
+      btns.push(b); box.appendChild(b);
+    });
+    function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); show(i); }
+    if (items.length) pick(Math.max(0, Math.min(items.length - 1, start)));
+    return box;
+  }
+  // run fn once the node is on screen (pictures that measure themselves, like the mysteries photo)
+  function whenShown(node, fn) {
+    var n = 0;
+    (function look() { if (node.isConnected && node.getBoundingClientRect().width > 0) { try { fn(); } catch (e) { console.warn('[hist]', e); } return; } if (++n < 300) requestAnimationFrame(look); })();
+  }
+  // load a game's data files on a page that doesn't have them (in order, once)
+  var loaded = {};
+  function loadScripts(list) {
+    var base = ''; try { base = new URL('.', document.querySelector('script[src*="hist-view.js"]').src).href; } catch (e) {}
+    return list.reduce(function (p, src) {
+      return p.then(function () {
+        return loaded[src] || (loaded[src] = new Promise(function (res) { var sc = document.createElement('script'); sc.src = base + src; sc.onload = sc.onerror = function () { res(); }; document.head.appendChild(sc); }));
+      });
+    }, Promise.resolve());
+  }
+  HistView._pz = { uniq: uniq, evList: evList, howItWent: howItWent, columns: columns, strip: strip, whenShown: whenShown, sec: sec };
   HistView.css('hv-puzzle', [
     '.hv-replay{display:flex;flex-direction:column;gap:6px;}.hv-range{width:100%;accent-color:var(--yellow);}.hv-replay b{font-size:.85rem;color:var(--text-2);}',
     '.hv-pz-note{margin:0;font-size:.8rem;color:var(--text-3);font-weight:700;text-align:center;}',
+    // time line / columns / tap strip
+    '.hv-tl{display:flex;flex-direction:column;gap:6px;padding:10px 10px 8px;border-radius:12px;background:linear-gradient(180deg,#1b2030,#141826);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);}',
+    '.hv-tlw{line-height:0;}.hv-tlw svg{width:100%;height:auto;display:block;}',
+    '.hv-tlk{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:.7rem;font-weight:800;color:rgba(255,255,255,.65);}',
+    '.hv-tlk span{display:inline-flex;align-items:center;gap:4px;}',
+    '.hv-road{display:flex;flex-wrap:wrap;gap:4px;}',
+    '.hv-rb{appearance:none;border:0;cursor:pointer;min-width:26px;height:26px;border-radius:6px;padding:0 4px;font:inherit;font-size:.7rem;font-weight:900;color:#fff;background:rgba(255,255,255,.12);font-variant-numeric:tabular-nums;}',
+    '.hv-rb.ok{background:#1f9d55;}.hv-rb.no{background:#b91c1c;}.hv-rb.half{background:#b7791f;}.hv-rb.gold{background:#d4a017;color:#1b1404;}.hv-rb.skip{background:#4b5263;}',
+    '.hv-rb.on{outline:2.5px solid #fff;outline-offset:1px;}',
     // 2048 climb
     '.hv-climb{display:flex;flex-wrap:wrap;gap:8px 6px;}',
     '.hv-climb span{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.7rem;font-weight:800;color:var(--text-3);}',
@@ -35,9 +151,9 @@
     '.hv-slate ol{list-style:none;margin:0;padding:4px 2px;display:flex;flex-direction:column;gap:7px;counter-reset:q;}',
     '.hv-slate li{display:grid;grid-template-columns:20px 1fr auto;gap:8px;align-items:baseline;color:#eef2ea;font-family:"Bradley Hand","Segoe Print","Comic Sans MS",cursive;font-size:1rem;line-height:1.25;}',
     '.hv-slate li::before{counter-increment:q;content:counter(q);font-family:var(--font,system-ui);font-size:.7rem;font-weight:900;color:rgba(238,242,234,.45);text-align:right;}',
-    '.hv-slate .q{min-width:0;overflow-wrap:anywhere;}.hv-slate .a{font-weight:700;color:#fff6b0;white-space:nowrap;}',
-    '.hv-slate .w{color:#ff9b9b;text-decoration:line-through;margin-right:6px;font-size:.88em;}',
-    '.hv-slate .m{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;}.hv-slate .m .ico{width:15px;height:15px;}',
+    '.hv-slate li{text-align:left;}.hv-slate .hq{min-width:0;overflow-wrap:anywhere;}.hv-slate .ha{font-weight:700;color:#fff6b0;white-space:nowrap;}',
+    '.hv-slate .hw{color:#ff9b9b;text-decoration:line-through;margin-right:6px;font-size:.88em;}',
+    '.hv-slate .hm{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;}.hv-slate .hm .ico{width:15px;height:15px;}',
     '.hv-slate .ok{color:#7ee2a0;}.hv-slate .half{color:#ffd46b;}.hv-slate .no{color:#ff8a8a;}.hv-slate .skip{color:rgba(238,242,234,.5);}',
     '.hv-slate small{font-family:var(--font,system-ui);font-size:.68rem;font-weight:800;color:rgba(238,242,234,.55);margin-left:6px;}'
   ].join(''));
@@ -65,7 +181,7 @@
       s += '<text x="' + (x + cs / 2) + '" y="' + (y + cs / 2 - 2) + '" text-anchor="middle" dominant-baseline="central" font-family="var(--display),ui-rounded,system-ui" font-weight="900" font-size="' + fs + '" fill="' + c[3] + '">' + v + '</text>';
     });
     s += '</svg>';
-    var out = [ui.section('Final board', ui.picture(s, { frame: 'wood', max: 300 }))];
+    var out = [ui.section('Final board', ui.picture(uniq(s), { frame: 'wood', max: 300 }))];
     out.push(ui.stats([['Score', ui.num(e.score)], ['Biggest tile', e.maxTile], ['Moves', ui.num(e.moves)], ['Undos', e.undos || 0], d.merge ? ['Biggest join', d.merge] : null]));
     // the climb: first time each tile from 32 up appeared
     var fk = Object.keys(d.first || {}).map(Number).filter(function (v) { return v >= 32; }).sort(function (a, b) { return a - b; });
@@ -113,7 +229,7 @@
     });
     (o.ring || []).forEach(function (i) { var h = geo.holes[i]; if (h) s += '<circle cx="' + f2(h.x) + '" cy="' + f2(h.y) + '" r=".5" fill="none" stroke="#fff6c8" stroke-width=".08"/>'; });
     if (o.path) { var a = geo.holes[o.path[0]], b = geo.holes[o.path[1]]; if (a && b) s += '<path d="M' + f2(a.x) + ' ' + f2(a.y) + 'L' + f2(b.x) + ' ' + f2(b.y) + '" stroke="#fff6c8" stroke-width=".07" stroke-dasharray=".14 .1" opacity=".8"/>'; }
-    return s + '</svg>';
+    return uniq(s + '</svg>');
   }
   R('marblesolitaire', function (e, ui) {
     var B = MS_BOARDS[e.board]; if (!B || typeof e.final !== 'string') return null;
@@ -229,7 +345,7 @@
     var base = given.map(function (g, i) { return g || (inOrd[i] ? 0 : vals[i]); });
     if (ord.length > 4) {
       var fill = ui.el('div', { class: 'hv-snap f-paper', style: { 'max-width': '320px', padding: '6px' } });
-      out.push(ui.section('How you filled it in', [fill, replay(ui, fill, ord.length, Math.min(ord.length, Math.round(ord.length / 2)), function (m) {
+      var fillSec = (ui.section('How you filled it in', [fill, replay(ui, fill, ord.length, Math.min(ord.length, Math.round(ord.length / 2)), function (m) {
         var v = base.slice(); for (var j = 0; j < m; j++) v[ord[j]] = vals[ord[j]];
         fill.innerHTML = sdSvg(given, v, { last: m ? ord[m - 1] : -1, h: d.h });
         var c = m ? ord[m - 1] : -1;
@@ -237,7 +353,16 @@
       })]));
     }
     var lvl = d.lv >= 5 ? 'Advanced chains' : d.lv === 4 ? 'XY-Wing or Swordfish' : d.lv === 3 ? 'Triples or X-Wing' : '';
-    out.push(ui.stats([['Time', sec(e.seconds)], ['Level', SD_DIFF[e.diff] || e.diff], ['Wrong numbers', d.mh ? '–' : e.mistakes || 0], ['Hints', e.hints || 0]]));
+    var pb = d.pb || 0, best = !e.hints && (!pb || e.seconds < pb);
+    out.push(ui.stats([['Time', sec(e.seconds), d.pb != null ? (best ? (pb ? 'new best (was ' + sec(pb) + ')' : 'first clean solve') : pb ? 'best ' + sec(pb) : '') : ''], ['Wrong numbers', d.mh ? '–' : e.mistakes || 0], ['Hints', e.hints || 0]]));
+    // squares filled over time, with the hints and wrong numbers on the clock
+    if (Array.isArray(d.t) && d.t.length && e.seconds > 0) {
+      var ts = d.t.filter(function (x) { return x >= 0; }).sort(function (a, b) { return a - b; }), line = [], prevT = -1;
+      ts.forEach(function (x, i) { if (x === prevT) line[line.length - 1][1] = i + 1; else line.push([x, i + 1]); prevT = x; });
+      var ev = evList(d.ev).filter(function (m) { return !(d.mh && m.k === 'x'); });
+      if (line.length > 1) out.push(ui.section('How it went', howItWent(ui, { total: e.seconds, ev: ev, line: line, max: ts.length, unit: 'squares to fill', end: 'Solved', names: { x: 'Wrong number' } }), { icon: 'chart' }));
+    }
+    if (fillSec) out.push(fillSec);
     out.push(ui.facts([['Puzzle', d.no ? 'No. ' + d.no + (e.daily ? ' (daily)' : '') : ''], ['Needed', lvl]]));
     return ui.wrap(out);
   });
@@ -415,14 +540,21 @@
     d.log.forEach(function (l) {
       var cls = l.r === 2 ? 'ok' : l.r === 1 ? 'half' : l.r === 0 ? 'no' : 'skip';
       var q = String(l.q || l.t || '').replace(/\s*=\s*\?\s*$/, '');
-      var ans = ui.el('span', { class: 'a' }, [l.w && l.r !== -1 ? ui.el('span', { class: 'w', text: String(l.w).replace(/ /g, ', ') }) : null, ui.el('span', { text: l.r === -1 ? 'skipped · ' + (l.a || '') : (l.a || '') })]);
-      var mark = ui.el('span', { class: 'm ' + cls, html: l.r > 0 ? ui.icon('check') : l.r === 0 ? ui.icon('close') : ui.icon('right') });
+      var ans = ui.el('span', { class: 'ha' }, [l.w && l.r !== -1 ? ui.el('span', { class: 'hw', text: String(l.w).replace(/ /g, ', ') }) : null, ui.el('span', { text: l.r === -1 ? 'skipped · ' + (l.a || '') : (l.a || '') })]);
+      var mark = ui.el('span', { class: 'hm ' + cls, html: l.r > 0 ? ui.icon('check') : l.r === 0 ? ui.icon('close') : ui.icon('right') });
       var meta = (l.h ? 'hint' : '') + (l.s ? (l.h ? ' · ' : '') + l.s + 's' : '');
-      ol.appendChild(ui.el('li', null, [ui.el('span', { class: 'q' }, [ui.el('span', { text: q + (/[?]/.test(q) || l.q == null ? '' : ' =') }), meta ? ui.el('small', { text: meta }) : null]), ui.el('span', { style: { display: 'flex', gap: '6px', 'align-items': 'baseline' } }, [ans, mark])]));
+      ol.appendChild(ui.el('li', null, [ui.el('span', { class: 'hq' }, [ui.el('span', { text: q + (/[?]/.test(q) || l.q == null ? '' : ' =') }), meta ? ui.el('small', { text: meta }) : null]), ui.el('span', { style: { display: 'flex', gap: '6px', 'align-items': 'baseline' } }, [ans, mark])]));
     });
     var out = [ui.section(d.more ? 'The last ' + d.log.length + ' problems' : 'The problems', ui.el('div', { class: 'hv-slate' }, [ol]))];
     var right = e.right != null ? e.right : d.log.filter(function (l) { return l.r > 0; }).length, n = e.total || d.log.length;
-    out.push(ui.stats([['Points', e.score], ['Right', right + ' / ' + n], ['Best streak', e.streak || 0], d.fast ? ['Fastest', d.fast + 's'] : null]));
+    var pb = d.pb != null ? d.pb : null;
+    out.push(ui.stats([['Points', e.score, pb == null ? '' : pb < 0 ? 'first time' : e.score > pb ? 'new best (was ' + pb + ')' : 'best ' + pb], ['Right', right + ' / ' + n], ['Best streak', e.streak || 0]]));
+    // seconds on each problem, coloured by how it went
+    if (d.log.some(function (l) { return l.s > 0; })) {
+      var MC = { 2: '#7ee2a0', 1: '#ffd46b', 0: '#ff8a8a' };
+      out.push(ui.section('Time on each problem', [columns(ui, d.log.map(function (l) { return { v: l.s || 0, top: l.s ? l.s + 's' : '', c: MC[l.r] || '#6b7280' }; }), { aria: 'Seconds on each problem', avg: true }),
+        ui.el('p', { class: 'hv-pz-note', text: 'Green: right · Yellow: right with a hint · Red: wrong' + (d.log.some(function (l) { return l.r === -1; }) ? ' · Grey: skipped' : '') + ' · Dashed: average' + (d.fast ? ' · Fastest ' + d.fast + 's' : '') })], { icon: 'chart' }));
+    }
     // which kinds of puzzle went well
     var kinds = {}; d.log.forEach(function (l) { var k = kinds[l.t] = kinds[l.t] || { n: 0, ok: 0 }; k.n++; if (l.r > 0) k.ok++; });
     var ks = Object.keys(kinds); if (ks.length > 1 && ks.some(function (k) { return kinds[k].n > 1; })) out.push(ui.section('By kind', ui.bars(ks.map(function (k) { return { label: k, value: Math.round(100 * kinds[k].ok / kinds[k].n), max: 100, color: '#7ee2a0', text: kinds[k].ok + ' / ' + kinds[k].n }; }))));
@@ -441,6 +573,96 @@
     '.hv-cm small{font-size:.66rem;font-weight:900;color:#7a0f45;font-variant-numeric:tabular-nums;}',
     '.hv-cm span.no small{color:#5a4a60;}'
   ].join(''));
+  // the candies, drawn the way the game draws them: each colour its own shape, glossy, with stripes / wrappers
+  var CM_COL = [['#ff9aa3', '#e8233a', '#7d0a18'], ['#ffcf96', '#ff8414', '#9a3d00'], ['#fff6b8', '#ffcf14', '#a07000'], ['#aef7b9', '#2cc24e', '#0d6224'], ['#acd8ff', '#2386ff', '#0a3a8f'], ['#e4c0ff', '#a548ff', '#4f128c']];
+  function cmShape(c, R) {
+    if (c === 0) return '<ellipse rx="' + f2(R * .98) + '" ry="' + f2(R * .66) + '" transform="rotate(-35)"/>';
+    if (c === 1) return '<path d="M' + f2(-R * .9) + ' ' + f2(R * .12) + 'A' + f2(R * .9) + ' ' + f2(R * .9) + ' 0 0 1 ' + f2(R * .9) + ' ' + f2(R * .12) + 'L' + f2(R * .9) + ' ' + f2(R * .52) + 'Q' + f2(R * .9) + ' ' + f2(R * .82) + ' ' + f2(R * .6) + ' ' + f2(R * .82) + 'L' + f2(-R * .6) + ' ' + f2(R * .82) + 'Q' + f2(-R * .9) + ' ' + f2(R * .82) + ' ' + f2(-R * .9) + ' ' + f2(R * .52) + 'Z"/>';
+    if (c === 2) return '<path transform="rotate(-24)" d="M' + f2(-R * 1.02) + ' 0C' + f2(-R * .62) + ' ' + f2(-R * .86) + ' ' + f2(R * .62) + ' ' + f2(-R * .86) + ' ' + f2(R * 1.02) + ' 0C' + f2(R * .62) + ' ' + f2(R * .86) + ' ' + f2(-R * .62) + ' ' + f2(R * .86) + ' ' + f2(-R * 1.02) + ' 0Z"/>';
+    if (c === 3) return '<rect x="' + f2(-R * .8) + '" y="' + f2(-R * .8) + '" width="' + f2(R * 1.6) + '" height="' + f2(R * 1.6) + '" rx="' + f2(R * .4) + '"/>';
+    if (c === 4) return '<circle r="' + f2(R * .88) + '"/>';
+    var d = '', ro = R * 1.08, ri = R * .5;
+    for (var k = 0; k < 5; k++) { var a = -Math.PI / 2 + k * Math.PI * 2 / 5, ai = a + Math.PI / 5, ap = a - Math.PI / 5; d += (k ? '' : 'M' + f2(Math.cos(ap) * ri) + ' ' + f2(Math.sin(ap) * ri)) + 'Q' + f2(Math.cos(a) * ro) + ' ' + f2(Math.sin(a) * ro) + ' ' + f2(Math.cos(ai) * ri) + ' ' + f2(Math.sin(ai) * ri); }
+    return '<path d="' + d + 'Z"/>';
+  }
+  function cmDefs(R) {
+    var s = '<defs>';
+    CM_COL.forEach(function (c, i) {
+      s += '<radialGradient id="cmg' + i + '" cx=".34" cy=".3" r=".8"><stop offset="0" stop-color="' + c[0] + '"/><stop offset=".45" stop-color="' + c[1] + '"/><stop offset="1" stop-color="' + c[2] + '"/></radialGradient>';
+      s += '<clipPath id="cmk' + i + '">' + cmShape(i, R) + '</clipPath>';
+    });
+    s += '<radialGradient id="cmbomb" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#9a6040"/><stop offset=".5" stop-color="#5a3220"/><stop offset="1" stop-color="#24110a"/></radialGradient>';
+    s += '<radialGradient id="cmliner" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="#5a2f6e"/><stop offset=".65" stop-color="#3d1d4f"/><stop offset="1" stop-color="#2a1238"/></radialGradient>';
+    return s + '</defs>';
+  }
+  function cmCandy(ch, x, y, R) {
+    var s = '<g transform="translate(' + f2(x) + ' ' + f2(y) + ')">', code = ch.charCodeAt(0) - 97;
+    if (ch === 'B') {
+      s += '<circle r="' + f2(R * .9) + '" fill="url(#cmbomb)"/>';
+      for (var k = 0; k < 9; k++) { var a = k * 2.4, dd = R * .58 * Math.sqrt((k + .5) / 9); s += '<rect x="' + f2(Math.cos(a) * dd - R * .1) + '" y="' + f2(Math.sin(a) * dd - R * .04) + '" width="' + f2(R * .2) + '" height="' + f2(R * .08) + '" rx="' + f2(R * .04) + '" fill="' + CM_COL[k % 6][1] + '" transform="rotate(' + (k * 47) + ' ' + f2(Math.cos(a) * dd) + ' ' + f2(Math.sin(a) * dd) + ')"/>'; }
+    } else if (ch === 'I') {
+      s += '<path d="M' + f2(-R * .3) + ' ' + f2(-R * .1) + 'Q' + f2(-R * .1) + ' ' + f2(-R * .9) + ' ' + f2(R * .4) + ' ' + f2(-R * .9) + 'M' + f2(R * .35) + ' ' + f2(R * .05) + 'Q' + f2(R * .3) + ' ' + f2(-R * .5) + ' ' + f2(R * .4) + ' ' + f2(-R * .9) + '" stroke="#2f7a2a" stroke-width="' + f2(R * .12) + '" fill="none" stroke-linecap="round"/>';
+      s += '<circle cx="' + f2(-R * .35) + '" cy="' + f2(R * .3) + '" r="' + f2(R * .45) + '" fill="#d0142c"/><circle cx="' + f2(R * .38) + '" cy="' + f2(R * .42) + '" r="' + f2(R * .42) + '" fill="#e8233a"/>';
+    } else if (ch === 'N') {
+      s += '<ellipse cy="' + f2(R * .15) + '" rx="' + f2(R * .62) + '" ry="' + f2(R * .72) + '" fill="#b5783e"/><path d="M' + f2(-R * .7) + ' ' + f2(-R * .2) + 'Q0 ' + f2(-R * 1.05) + ' ' + f2(R * .7) + ' ' + f2(-R * .2) + 'Z" fill="#6b3f1d"/>';
+    } else if (code >= 0 && code < 24) {
+      var c = code % 6, sp = Math.floor(code / 6);
+      if (sp === 3) s += '<circle r="' + f2(R * 1.02) + '" fill="rgba(255,255,255,.22)" stroke="#fff" stroke-width="' + f2(R * .1) + '" stroke-dasharray="' + f2(R * .3) + ' ' + f2(R * .16) + '"/>';
+      s += '<g fill="url(#cmg' + c + ')">' + cmShape(c, R) + '</g>';
+      if (sp === 1 || sp === 2) {
+        s += '<g clip-path="url(#cmk' + c + ')" fill="#fff" opacity=".92">';
+        for (var b = -1; b <= 1; b++) s += sp === 1 ? '<rect x="' + f2(-R * 1.3) + '" y="' + f2(b * R * .42 - R * .1) + '" width="' + f2(R * 2.6) + '" height="' + f2(R * .2) + '"/>' : '<rect y="' + f2(-R * 1.3) + '" x="' + f2(b * R * .42 - R * .1) + '" height="' + f2(R * 2.6) + '" width="' + f2(R * .2) + '"/>';
+        s += '</g>';
+      }
+    } else return '';
+    s += '<ellipse cx="' + f2(-R * .3) + '" cy="' + f2(-R * .42) + '" rx="' + f2(R * .28) + '" ry="' + f2(R * .12) + '" transform="rotate(-30 ' + f2(-R * .3) + ' ' + f2(-R * .42) + ')" fill="#fff" opacity=".75"/>';
+    return s + '</g>';
+  }
+  function cmBoard(b) {
+    var rows = (b.bd || []).map(String), Rn = rows.length; if (!Rn) return null;
+    var Cn = rows[0].length, cs = 32, R = cs * .38, pad = 6, W = Cn * cs + pad * 2, H = Rn * cs + pad * 2, jel = (b.bj || []).map(String);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="The board at the end">' + cmDefs(R);
+    var liner = '';
+    rows.forEach(function (row, r) { for (var c = 0; c < Cn; c++) if (row.charAt(c) !== '_') liner += 'M' + (pad + c * cs) + ' ' + (pad + r * cs) + 'h' + cs + 'v' + cs + 'h-' + cs + 'z'; });
+    s += '<path d="' + liner + '" fill="url(#cmliner)"/>';
+    rows.forEach(function (row, r) {
+      for (var c = 0; c < Cn; c++) {
+        var ch = row.charAt(c); if (ch === '_') continue;
+        var x = pad + c * cs, y = pad + r * cs, j = +(jel[r] || '').charAt(c) || 0;
+        s += '<rect x="' + f2(x + cs * .05) + '" y="' + f2(y + cs * .05) + '" width="' + f2(cs * .9) + '" height="' + f2(cs * .9) + '" rx="' + f2(cs * .2) + '" fill="rgba(255,255,255,' + ((r + c) % 2 ? .05 : .1) + ')"/>';
+        if (j) s += '<rect x="' + f2(x + cs * .07) + '" y="' + f2(y + cs * .07) + '" width="' + f2(cs * .86) + '" height="' + f2(cs * .86) + '" rx="' + f2(cs * .22) + '" fill="' + (j > 1 ? '#ff5fae' : '#ff9ccf') + '" opacity="' + (j > 1 ? .75 : .55) + '" stroke="#ffd0e8" stroke-width="1.2"/>';
+        if (ch === 'f' || ch === 'F') s += '<rect x="' + f2(x + cs * .06) + '" y="' + f2(y + cs * .06) + '" width="' + f2(cs * .88) + '" height="' + f2(cs * .88) + '" rx="' + f2(cs * .18) + '" fill="' + (ch === 'F' ? '#cfe6f7' : '#f4fbff') + '" stroke="#9ec3e0" stroke-width="1.2"/><path d="M' + f2(x + cs * .2) + ' ' + f2(y + cs * .3) + 'q' + f2(cs * .15) + ' ' + f2(-cs * .1) + ' ' + f2(cs * .3) + ' 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>' + (ch === 'F' ? '<path d="M' + f2(x + cs * .25) + ' ' + f2(y + cs * .62) + 'h' + f2(cs * .5) + '" stroke="#9ec3e0" stroke-width="1.4"/>' : '');
+        else if (ch !== '.') s += cmCandy(ch, x + cs / 2, y + cs / 2, R);
+      }
+    });
+    return uniq(s + '</svg>');
+  }
+  // the score after each move, with the star lines
+  function cmScore(ui, b) {
+    var v = String(b.sc || '').split(',').filter(function (x) { return x !== ''; }).map(Number); if (v.length < 2) return null;
+    var ss = String(b.ss || '').split(',').map(Number), fs = b.fs || v[v.length - 1];
+    var W = 320, H = 120, pl = 6, pr = 6, pt = 12, pb = 18, mx = Math.max.apply(null, v.concat(ss).concat([fs, 1])) * 1.05, n = Math.max(v.length, b.m0 || 0);
+    var x = function (i) { return pl + i * (W - pl - pr) / n; }, y = function (s2) { return pt + (1 - s2 / mx) * (H - pt - pb); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Score after each move">';
+    ss.forEach(function (t, i) {
+      if (!(t > 0)) return;
+      var yy = f2(y(t)), got = fs >= t;
+      s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + yy + '" y2="' + yy + '" stroke="' + (got ? 'rgba(255,201,40,.55)' : 'rgba(255,255,255,.18)') + '" stroke-dasharray="4 4"/>';
+      for (var k = 0; k <= i; k++) s += '<path transform="translate(' + (pl + 2 + k * 11) + ' ' + (yy - 11) + ') scale(.42)" d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 7L12 17.6 5.8 21.1l1.4-7L2 9.3l7-.8z" fill="' + (got ? '#ffc928' : 'rgba(255,255,255,.25)') + '"/>';
+    });
+    var pts = [[x(0), y(0)]].concat(v.map(function (s2, i) { return [x(i + 1), y(s2)]; }));
+    s += '<polygon points="' + pts.map(function (p) { return f2(p[0]) + ',' + f2(p[1]); }).join(' ') + ' ' + f2(pts[pts.length - 1][0]) + ',' + (H - pb) + ' ' + f2(pl) + ',' + (H - pb) + '" fill="rgba(255,111,180,.22)"/>';
+    s += '<polyline points="' + pts.map(function (p) { return f2(p[0]) + ',' + f2(p[1]); }).join(' ') + '" fill="none" stroke="#ff6fb4" stroke-width="2.4" stroke-linejoin="round"/>';
+    // moves left over at the end went off as a bonus
+    var lp = pts[pts.length - 1];
+    if (fs > v[v.length - 1]) s += '<path d="M' + f2(lp[0]) + ' ' + f2(lp[1]) + 'L' + f2(x(n)) + ' ' + f2(y(fs)) + '" stroke="#ffd54a" stroke-width="2" stroke-dasharray="4 3" fill="none"/><circle cx="' + f2(x(n)) + '" cy="' + f2(y(fs)) + '" r="3.5" fill="#ffd54a"/><text x="' + f2(x(n) - 6) + '" y="' + f2(y(fs) + 14) + '" text-anchor="end" font-size="9.5" font-weight="800" fill="#ffd54a" font-family="system-ui,sans-serif">bonus +' + (fs - v[v.length - 1]).toLocaleString('en-US') + '</text>';
+    // the move that scored the most
+    var big = 0, bi = 0; v.forEach(function (s2, i) { var g = s2 - (i ? v[i - 1] : 0); if (g > big) { big = g; bi = i; } });
+    s += '<circle cx="' + f2(x(bi + 1)) + '" cy="' + f2(y(v[bi])) + '" r="4" fill="#ffd54a" stroke="#fff" stroke-width="1.4"/>';
+    s += '<text x="' + pl + '" y="' + (H - 4) + '" font-size="10" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">Start</text>';
+    s += '<text x="' + (W - pr) + '" y="' + (H - 4) + '" text-anchor="end" font-size="10" font-weight="800" fill="rgba(255,255,255,.55)" font-family="system-ui,sans-serif">' + (b.m0 ? b.m0 + ' moves' : 'Move ' + v.length) + '</text></svg>';
+    return ui.el('div', { class: 'hv-tl' }, [ui.el('div', { class: 'hv-tlw', html: s }), ui.el('div', { class: 'hv-tlk', html: '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffd54a"></i>Biggest move: +' + ui.esc(big.toLocaleString('en-US')) + ' (move ' + (bi + 1) + ')</span>' })]);
+  }
   function candyStars(ui, n) { var b = ui.el('div', { class: 's' }); for (var k = 1; k <= 3; k++) { var x = ui.el('span', { html: ui.icon('star') }).firstChild; if (k <= n) x.classList.add('on'); b.appendChild(x); } return b; }
   R('candymatch', function (e, ui) {
     var d = e.dt; if (!d || (d.lv == null && d.n == null)) return null;
@@ -457,8 +679,18 @@
       out.push(ui.section('Level ' + d.n + (d.nm ? ' · ' + d.nm : '') + ' (practice)', path));
       out.push(ui.stats([['Moves used', d.mv], ['Stars', d.won ? d.st : null]]));
     }
-    out.push(ui.stats([['Color bombs', d.mb || null], ['Wrapped', d.mw || null], ['Striped', d.mh || null], ['Special combos', d.cb || null],
-      ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]));
+    // the last level's board as it was left, its goal, and the score move by move
+    var b = d.b;
+    if (b && b.bd) {
+      var goal = b.gl === 'jelly' ? (b.jn ? b.jn + ' of ' + b.j0 + ' jelly left' : 'All jelly cleared') : b.gl === 'ingred' ? b.id + ' of ' + b.it + ' brought down' : 'Target ' + (b.tg || 0).toLocaleString('en-US');
+      var last = String(b.sc || '').split(',').filter(Boolean).pop();
+      out.push(ui.section('Level ' + b.bn + (b.bm ? ' · ' + b.bm : '') + ': the board at the end', [ui.picture(cmBoard(b), { frame: 'wood', max: 330 }),
+        ui.el('p', { class: 'hv-pz-note', text: goal + ' · ' + (b.mu != null ? b.mu : b.m0 - b.ml) + ' of ' + b.m0 + ' moves used · ' + (b.fs != null ? b.fs : +last || 0).toLocaleString('en-US') + ' points' })], { icon: 'tiles' }));
+      var ch = cmScore(ui, b); if (ch) out.push(ui.section('Score, move by move', ch, { icon: 'chart' }));
+    }
+    var sp = ui.stats([['Color bombs', d.mb || null], ['Wrapped', d.mw || null], ['Striped', d.mh || null], ['Special combos', d.cb || null],
+      ['Biggest cascade', d.cs >= 2 ? d.cs + ' clears' : null], ['Jelly cleared', d.jl || null]]);
+    if (sp) out.push(ui.section('Specials made', sp, { icon: 'sparkle' }));
     return ui.wrap(out);
   });
   // ── Riddles: each riddle of the round on a little stone, with its answer, stars and hints ──
@@ -470,10 +702,13 @@
     '.hv-rd .top .s{margin-left:auto;display:flex;gap:2px;}',
     '.hv-rd .top .s .ico{width:15px;height:15px;color:rgba(92,58,20,.38);}',
     '.hv-rd .top .s .on{color:#8d5e10;fill:#e3b04b;}',
-    '.hv-rd .rq{margin:7px 0 5px;font:italic 400 .92rem/1.32 "Pagella",Georgia,serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}',
+    '.hv-rd .rq{margin:7px 0 5px;font:italic 400 .92rem/1.32 "Pagella",Georgia,serif;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;}',
     '.hv-rd .a{font:700 1rem/1.2 "Cinzel",Georgia,serif;letter-spacing:.05em;text-transform:uppercase;color:#7a4e0c;}',
     '.hv-rd .t.g .a{color:#5e4a30;}',
-    '.hv-rd .n{margin-top:3px;font:400 .8rem/1.2 Georgia,serif;color:rgba(74,50,24,.75);}'
+    '.hv-rd .n{margin-top:3px;font:400 .8rem/1.2 Georgia,serif;color:rgba(74,50,24,.75);}',
+    '.hv-rd .y{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;font:400 1.02rem/1.15 "Patrick Hand","Bradley Hand",cursive;color:#3d2810;}',
+    '.hv-rd .y s{color:#9b2c1c;text-decoration-thickness:1.5px;}.hv-rd .y s small{font:800 .58rem system-ui,sans-serif;letter-spacing:.08em;color:#b7791f;margin-left:3px;text-decoration:none;display:inline-block;}',
+    '.hv-rd .y b{display:inline-flex;align-items:center;gap:3px;color:#1d6a3e;font-weight:400;}.hv-rd .y b .ico{width:14px;height:14px;}'
   ].join(''));
   R('riddles', function (e, ui) {
     var d = e.dt; if (!d || !d.r || !d.r.length) return null;
@@ -482,16 +717,33 @@
       var st = ui.el('span', { class: 's', 'aria-label': (x.g ? 0 : x.s) + ' stars' });
       for (var k = 0; k < 3; k++) st.appendChild(ui.el('span', { html: ui.icon('star').replace('class="ico"', 'class="ico' + (!x.g && k < x.s ? ' on' : '') + '"') }));
       var note = x.g ? 'Gave up' : (x.h ? x.h + (x.h === 1 ? ' hint' : ' hints') : 'No hints') + ' · ' + x.t + (x.t === 1 ? ' try' : ' tries');
+      if (x.sc) note += ' · ' + sec(x.sc);
+      if (x.p) note += ' · +' + x.p + ' points';
+      // what was typed: wrong ones crossed out, the right one ticked
+      var ys = x.y ? String(x.y).split('|') : [], yb = null;
+      if (ys.length) {
+        yb = ui.el('div', { class: 'y' });
+        ys.forEach(function (t, k) {
+          var close = /~$/.test(t), w = t.replace(/~$/, ''), right = !x.g && k === ys.length - 1;
+          yb.appendChild(right ? ui.el('b', { html: ui.icon('check') + ui.esc(w) }) : ui.el('s', { html: ui.esc(w) + (close ? '<small>CLOSE</small>' : '') }));
+        });
+      }
       box.appendChild(ui.el('div', { class: 't' + (x.g ? ' g' : '') }, [
         ui.el('div', { class: 'top' }, [ui.el('span', { text: (d.r.length > 1 ? (i + 1) + ' · ' : '') + (LV[x.d] || '') }), st]),
-        ui.el('div', { class: 'rq', text: x.q }), ui.el('div', { class: 'a', text: x.a }), ui.el('div', { class: 'n', text: note })
+        ui.el('div', { class: 'rq', text: x.q }), ui.el('div', { class: 'a', text: x.a }), yb, ui.el('div', { class: 'n', text: note })
       ]));
     });
     var solved = d.r.filter(function (x) { return !x.g; }).length, hints = d.r.reduce(function (a, x) { return a + (x.h || 0); }, 0);
-    return ui.wrap([
-      d.r.length > 1 ? ui.stats([['Solved', solved + ' / ' + d.r.length], ['Points', e.pts != null ? e.pts : null], ['Hints', hints]]) : null,
-      ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box)
-    ]);
+    var tot = d.r.reduce(function (a, x) { return a + (x.sc || 0); }, 0), out = [];
+    if (d.r.length > 1) out.push(ui.stats([['Solved', solved + ' / ' + d.r.length], ['Hints', hints], tot ? ['Time', sec(tot)] : ['Points', e.pts != null ? e.pts : null]]));
+    else if (tot) out.push(ui.stats([['Time', sec(tot)], ['Points', e.pts || 0], ['Tries', d.r[0].t || 0]]));
+    if (d.r.length > 1 && tot) {
+      var SC = ['#8a5a2a', '#c48a1c', '#e3b04b', '#f6d77c'];
+      out.push(ui.section('Time on each riddle', [columns(ui, d.r.map(function (x) { return { v: x.sc || 0, top: x.sc ? sec(x.sc) : '', c: x.g ? '#b4534a' : SC[x.s || 0] }; }), { aria: 'Time on each riddle' }),
+        ui.el('p', { class: 'hv-pz-note', text: 'Brighter gold: more stars · Red: gave up' })], { icon: 'chart' }));
+    }
+    out.push(ui.section(d.r.length > 1 ? 'The riddles' : 'The riddle', box));
+    return ui.wrap(out);
   });
   // ── Truth or Lies: the cast, what each one said, and who was lying ──
   HistView.css('hv-truthlies', [
@@ -507,7 +759,17 @@
     '.hvtl .tf{font-family:var(--font,system-ui);font-weight:900;font-size:.62rem;letter-spacing:.1em;padding:1px 4px;border:1.5px solid currentColor;border-radius:4px;transform:rotate(-6deg);}',
     '.hvtl .tf.t{color:#1d7a46;}.hvtl .tf.f{color:#b3202f;}',
     '.hvtl .end{margin:8px 0 0;text-align:center;font-weight:700;font-size:.86rem;}',
-    '.hvtl .end.g{color:#8a6a3a;font-weight:400;font-style:italic;}'
+    '.hvtl .end.g{color:#8a6a3a;font-weight:400;font-style:italic;}',
+    '.hvtl li{grid-template-columns:auto 1fr auto;}',
+    '.hvtl .face{display:flex;flex-direction:column;align-items:center;gap:2px;}',
+    '.hvtl .face .hd{width:40px;height:40px;border-radius:50%;overflow:hidden;background:#e9dcc0;box-shadow:0 0 0 2px var(--wc,#888);}.hvtl .face .hd svg{width:100%;height:100%;display:block;}',
+    '.hvtl .why{display:block;margin-top:2px;font-family:Georgia,serif;font-style:italic;font-size:.74rem;line-height:1.3;color:#6b5a44;}',
+    '.hvtl .acc{position:relative;}.hvtl .acc::after{content:"";position:absolute;inset:-4px;border:2.5px solid #d0283c;border-radius:50%;}',
+    '.hvtl-w{display:flex;flex-direction:column;gap:6px;}',
+    '.hvtl-w .r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem;font-weight:800;color:var(--text-2);}',
+    '.hvtl-w .r>b{font-size:.7rem;color:#f0645a;letter-spacing:.08em;min-width:46px;}',
+    '.hvtl-w .t{display:inline-flex;align-items:center;gap:4px;padding:2px 7px 2px 3px;border-radius:999px;background:rgba(255,255,255,.06);}',
+    '.hvtl-w .t i{width:14px;height:14px;border-radius:50%;}.hvtl-w .t.bad{box-shadow:0 0 0 2px #f0645a;}'
   ].join(''));
   R('truthlies', function (e, ui) {
     var d = e.dt; if (!d || !d.nm || !d.st) return null;
@@ -520,19 +782,38 @@
       ui.el('h5', { text: S[0] }),
       ui.el('p', { class: 'r', text: wd ? (RULES[d.rule] || '') : 'Truth-tellers and liars' + (d.spy ? ', and one spy' : '') + '.' })
     ]);
-    var ul = ui.el('ul');
+    var ul = ui.el('ul'), heads = null, wy = d.wy || [], WC = ['#1f9a55', '#d0283c', '#7a52c7'];
+    try { if (window.TruthArt) heads = TruthArt.heads(d.set, names); } catch (err) { heads = null; }
     [].concat(d.st).forEach(function (s, i) {
       var ty = +t.charAt(i), kind = wd ? (ty ? 'lying' : 'honest') : ty === 2 ? 'spy' : S[ty ? 2 : 1];
+      var badge = ui.el('span', { class: 'who w' + ty, html: ui.esc(names[i] || '') + '<small>' + ui.esc(kind) + '</small>' });
       ul.appendChild(ui.el('li', null, [
-        ui.el('span', { class: 'who w' + ty, html: ui.esc(names[i] || '') + '<small>' + ui.esc(kind) + '</small>' }),
-        ui.el('span', { class: 'say', text: s }),
+        heads ? ui.el('span', { class: 'face' }, [ui.el('span', { class: 'hd' + (wd && i === d.c ? ' acc' : ''), style: { '--wc': WC[ty] || '#888' }, html: heads[i] }), badge]) : badge,
+        ui.el('span', { class: 'say' }, [ui.el('span', { text: s }), wy[i] ? ui.el('span', { class: 'why', text: wy[i] }) : null]),
         tv ? ui.el('span', { class: 'tf ' + (tv.charAt(i) === '1' ? 't' : 'f'), text: tv.charAt(i) === '1' ? 'TRUE' : 'FALSE' }) : null
       ]));
     });
     box.appendChild(ul);
     if (wd && d.c >= 0) box.appendChild(ui.el('p', { class: 'end', text: (names[d.c] || '') + ' ' + S[1] + '.' }));
     if (d.g) box.appendChild(ui.el('p', { class: 'end g', text: 'Answer shown' }));
-    return ui.wrap([box, ui.stats([['Time', d.g ? '' : ui.time(e.seconds || 0)], ['Hints', d.h], ['Wrong guesses', d.w]])]);
+    var out = [box, ui.stats([['Time', d.g ? '' : ui.time(e.seconds || 0)], ['Hints', d.h], ['Wrong guesses', d.w]])];
+    if (evList(d.ev).length && e.seconds > 0) out.push(ui.section('How it went', howItWent(ui, { total: e.seconds, ev: d.ev, end: d.g ? 'Shown' : 'Solved', endOk: !d.g, names: { x: 'Wrong guess' } }), { icon: 'chart' }));
+    // the wrong guesses: who you pointed at, or the tokens you had out
+    if (d.wt && d.wt.length) {
+      var wb = ui.el('div', { class: 'hvtl-w' }), first = Math.max(0, (d.w || d.wt.length) - d.wt.length);
+      d.wt.forEach(function (w, k) {
+        var row = ui.el('div', { class: 'r' }, [ui.el('b', { text: 'TRY ' + (first + k + 1) })]);
+        if (wd) row.appendChild(ui.el('span', { text: 'You said ' + (names[+w] || '?') + ' ' + S[1] + '.' }));
+        else String(w).split('').forEach(function (m, j) {
+          var bad = m !== t.charAt(j);
+          row.appendChild(ui.el('span', { class: 't' + (bad ? ' bad' : ''), title: bad ? 'Wrong' : '' }, [ui.el('i', { style: { background: WC[+m] || '#888' } }), ui.el('span', { text: names[j] || '' })]));
+        });
+        wb.appendChild(row);
+      });
+      if (!wd) wb.appendChild(ui.el('p', { class: 'hv-pz-note', text: 'Green: ' + S[1] + ' · Red: ' + S[2] + (d.spy ? ' · Purple: spy' : '') + ' · Ringed: had it wrong' }));
+      out.push(ui.section('Wrong guesses', wb, { icon: 'close' }));
+    }
+    return ui.wrap(out);
   });
   // ── Cipher Cases: the case file with its code, the answer and the wrong tries ──
   HistView.css('hv-ciphers', '.hv-cc{position:relative;align-self:center;width:100%;max-width:380px;box-sizing:border-box;border-radius:3px 10px 10px 10px;padding:12px 14px;color:#3a2c14;background:linear-gradient(175deg,#ecd9a8,#dcc28a);box-shadow:0 3px 0 #b99c5e,0 10px 20px rgba(0,0,0,.4);font-family:"American Typewriter","Courier New",monospace;}' +
@@ -542,21 +823,66 @@
     '.hv-cc .a{margin-top:6px;font-family:var(--hand);font-size:1.35rem;color:#1f2a6b;line-height:1.15;}' +
     '.hv-cc .by{font-style:italic;font-size:.78rem;color:#6b5a3a;}' +
     '.hv-cc .st{position:absolute;right:10px;top:10px;padding:1px 8px;border:2.5px solid #c22a2a;border-radius:5px;color:#c22a2a;font-weight:700;font-size:.78rem;letter-spacing:.14em;transform:rotate(-10deg);}' +
-    '.hv-cc .st.g{border-color:#6e6250;color:#6e6250;}');
+    '.hv-cc .st.g{border-color:#6e6250;color:#6e6250;}' +
+    '.hv-cc .s{font-size:.8rem;line-height:1.4;color:#4a3a1c;margin:-2px 0 8px;}' +
+    '.hv-cc .lab{margin:8px 0 3px;font-size:.62rem;letter-spacing:.16em;font-weight:700;color:#7a6234;}' +
+    '.hv-ccp{position:relative;line-height:0;border-radius:6px;overflow:hidden;box-shadow:0 0 0 5px #3a2614,0 0 0 6px #1c1209,0 10px 20px rgba(0,0,0,.5);margin:6px 6px 4px;}.hv-ccp svg{width:100%;height:auto;display:block;}' +
+    '.hv-ccw{display:flex;flex-wrap:wrap;align-items:center;gap:4px;}' +
+    '.hv-ccw span{display:grid;place-items:center;min-width:28px;height:38px;padding:0 4px;border-radius:5px;font:900 1.25rem/1 ui-monospace,Menlo,monospace;color:#1d1406;' +
+    'background:linear-gradient(180deg,#8a5e14,#f6d98a 22%,#fff3cc 50%,#f6d98a 78%,#8a5e14);box-shadow:inset 0 0 0 1px rgba(60,40,0,.5),0 2px 3px rgba(0,0,0,.35);}' +
+    '.hv-ccw span.d{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#5b6270,#22262e 70%);color:#f2f2f2;font-size:1rem;box-shadow:0 0 0 3px #c8962f,0 3px 5px rgba(0,0,0,.4);margin:3px;}' +
+    '.hv-ccw span.k{min-width:22px;height:34px;background:linear-gradient(180deg,#1f3a2a,#10241a);color:#7dff9a;box-shadow:inset 0 0 0 1px #000,0 0 6px rgba(125,255,154,.25);text-shadow:0 0 6px rgba(125,255,154,.6);}' +
+    '.hv-ccw i{font-style:normal;font-weight:900;color:#7a6234;}' +
+    '.hv-cct{display:flex;flex-direction:column;gap:6px;}' +
+    '.hv-cct .r{display:flex;align-items:center;gap:8px;}.hv-cct .r .hv-ccw span{opacity:.8;filter:saturate(.5);}' +
+    '.hv-cct .r>b{font-size:.72rem;font-weight:900;color:#f0645a;letter-spacing:.08em;min-width:44px;}' +
+    '.hv-cct .w{position:relative;}.hv-cct .w::after{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:2.5px;background:#f0645a;transform:rotate(-4deg);border-radius:2px;}' +
+    '.hv-cct .m{font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:.86rem;letter-spacing:.06em;color:var(--text-2);text-decoration:line-through;text-decoration-color:#f0645a;text-decoration-thickness:2px;}' +
+    '.hv-cce{margin:0;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);font-size:.9rem;line-height:1.45;color:var(--text-2);}');
+  // the lock with the answer set on it: number wheels, letter wheels, a safe's dial numbers or a keypad's screen
+  function ccWheels(ui, dev, v) {
+    v = String(v || ''); var box = ui.el('div', { class: 'hv-ccw' });
+    if (dev === 'dial') v.split('-').forEach(function (n, i) { if (i) box.appendChild(ui.el('i', { text: '·' })); box.appendChild(ui.el('span', { class: 'd', text: n })); });
+    else v.replace(/\s+/g, '').split('').forEach(function (ch) { box.appendChild(ui.el('span', { class: dev === 'keypad' ? 'k' : '', text: ch.toUpperCase() })); });
+    return box;
+  }
   R('ciphers', function (e, ui) {
     var d = e.dt; if (!d || !d.t) return null;
-    var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+    var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' }, lock = d.d && d.d !== 'msg', out = [];
     function sentence(s) { s = String(s || ''); return /[a-z]/.test(s) || !/[A-Z]{2}/.test(s) ? s : s.charAt(0) + s.slice(1).toLowerCase().replace(/\bi\b/g, 'I'); }
+    // the case's own picture, when this page can draw it (the Cipher Cases page)
+    var pic = null, A = window.CipherArt;
+    if (A) {
+      try {
+        var c = d.id ? A.byId(d.id) : null;
+        if (!c && d.g) { var g = String(d.g).split('|'); c = A.gen(g[0], g[1], +g[2], +g[3] || 0); }
+        if (!c && e.cid) c = A.byId(e.cid);
+        if (c) pic = ui.el('div', { class: 'hv-ccp', html: A.scene(c) });
+      } catch (err) { pic = null; }
+    }
     var card = ui.el('div', { class: 'hv-cc' }, [
       ui.el('span', { class: 'st' + (d.rv ? ' g' : ''), text: d.rv ? 'OPENED' : 'SOLVED' }),
       ui.el('div', { class: 'n', text: [d.no, LV[d.lv], d.k].filter(Boolean).join(' · ').toUpperCase() }),
       ui.el('b', { text: d.t }),
+      d.s ? ui.el('div', { class: 's', text: d.s }) : null,
+      d.c ? ui.el('div', { class: 'lab', text: 'THE CODE' }) : null,
       d.c ? ui.el('div', { class: 'c', text: d.c }) : null,
-      ui.el('div', { class: 'a', text: d.d === 'msg' ? sentence(d.a) : d.a }),
+      ui.el('div', { class: 'lab', text: lock ? (d.rv ? 'IT OPENS WITH' : 'YOU OPENED IT WITH') : d.rv ? 'IT SAID' : 'YOU CRACKED IT' }),
+      lock ? ccWheels(ui, d.d, d.a) : ui.el('div', { class: 'a', text: sentence(d.a) }),
       d.by ? ui.el('div', { class: 'by', text: '— ' + d.by }) : null
     ]);
-    var out = [ui.section('The case', card), ui.stats([['Time', ui.time(e.secs)], ['Wrong tries', e.tries || 0], ['Hints', e.hints || 0]])];
-    if (d.tr && d.tr.length) out.push(ui.section('Wrong tries', ui.chips(d.tr.map(function (t) { return { t: t, off: true }; }))));
+    out.push(ui.section('The case', [pic, card].filter(Boolean)));
+    out.push(ui.stats([['Time', ui.time(e.secs)], ['Wrong tries', e.tries || 0], ['Hints', (e.hints || 0) + ' of 2']]));
+    if (d.ev && evList(d.ev).length && e.secs > 0) out.push(ui.section('How it went', howItWent(ui, { total: e.secs, ev: d.ev, end: d.rv ? 'Opened' : 'Solved', endOk: !d.rv }), { icon: 'chart' }));
+    if (d.tr && d.tr.length) {
+      var tr = ui.el('div', { class: 'hv-cct' });
+      d.tr.forEach(function (t, i) {
+        tr.appendChild(ui.el('div', { class: 'r' }, [ui.el('b', { text: 'TRY ' + (e.tries > d.tr.length ? e.tries - d.tr.length + i + 1 : i + 1) }),
+          lock ? ui.el('div', { class: 'w' }, [ccWheels(ui, d.d, t)]) : ui.el('span', { class: 'm', text: t })]));
+      });
+      out.push(ui.section(d.tr.length < (e.tries || 0) ? 'The last wrong tries' : 'Wrong tries', tr, { icon: 'close' }));
+    }
+    if (d.x) out.push(ui.section('How it was cracked', ui.el('p', { class: 'hv-cce', text: d.x }), { icon: 'key' }));
     return ui.wrap(out);
   });
   // ── Logic Grids: the solved answer table, printed on a puzzle-book page ──
@@ -568,30 +894,171 @@
     '.hv-lg table{width:100%;border-collapse:collapse;font-size:.82rem;}',
     '.hv-lg th{font:800 .6rem "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#6b6455;text-align:left;padding:3px 4px;border-bottom:1px solid #1d1b22;}',
     '.hv-lg td{padding:4px;border-bottom:1px solid rgba(29,27,34,.2);font-family:"Patrick Hand","Bradley Hand",cursive;font-size:1rem;color:#1f3a8a;}',
-    '.hv-lg td:first-child{font:700 .85rem Georgia,serif;color:#1d1b22;}'
+    '.hv-lg td:first-child{font:700 .85rem Georgia,serif;color:#1d1b22;}',
+    '.hv-lg tr.on td{background:#ffe36b;}.hv-lg tr[onclick],.hv-lg tr{cursor:default;}',
+    '.hv-lgg{line-height:0;margin:2px 0 10px;}.hv-lgg svg{width:100%;height:auto;display:block;}',
+    '.hv-lgn{margin:6px 0 0;font:italic .74rem Georgia,serif;color:#6b6455;text-align:center;}',
+    '.hv-lgc{margin:0;padding:0 0 0 1.4em;display:flex;flex-direction:column;gap:5px;font:.86rem/1.35 Georgia,"Times New Roman",serif;color:#1d1b22;}',
+    '.hv-lgc li::marker{font-weight:700;}'
   ].join(''));
+  // the solved grid as the page prints it: categories across the top and down the side, circles where things match
+  function lgSvg(ui, head, items, rowOf, hl) {
+    var k = head.length, n = items[0].length, top = [], left = [0], c;
+    for (c = 1; c < k; c++) top.push(c);
+    for (c = k - 1; c >= 2; c--) left.push(c);
+    var cw = function (s) { return String(s).length * 5.7 + 8; }, lw = 0, lh = 0;
+    items.forEach(function (L, ci) { L.forEach(function (s) { if (ci === 0 || ci >= 2) lw = Math.max(lw, cw(s)); if (ci >= 1) lh = Math.max(lh, cw(s)); }); });
+    lw = Math.min(lw, 92); lh = Math.min(lh, 84);
+    var band = 13, C = (k - 1) * n, cs = Math.max(13, Math.min(24, Math.floor((330 - band - lw) / C))), ox = band + lw, oy = band + lh, W = ox + C * cs + 2, H = oy + C * cs + 2;
+    var ink = '#1d1b22', s = '<svg viewBox="0 0 ' + f2(W) + ' ' + f2(H) + '" role="img" aria-label="The solved grid">';
+    var txt = function (x, y, t, o) { return '<text x="' + f2(x) + '" y="' + f2(y) + '"' + (o || '') + ' font-family="Helvetica Neue,Helvetica,Arial,sans-serif">' + ui.esc(t) + '</text>'; };
+    top.forEach(function (tc, cb) {
+      var x0 = ox + cb * n * cs;
+      s += '<rect x="' + f2(x0) + '" y="0" width="' + (n * cs) + '" height="' + band + '" fill="' + ink + '"/>' + txt(x0 + n * cs / 2, band / 2 + .5, String(head[tc]).toUpperCase(), ' text-anchor="middle" dominant-baseline="central" font-size="7.5" font-weight="800" letter-spacing=".6" fill="#fbf6e9"');
+      for (var j = 0; j < n; j++) s += txt(0, 0, items[tc][j], ' transform="translate(' + f2(x0 + j * cs + cs / 2 + 3) + ' ' + f2(oy - 4) + ') rotate(-90)" font-size="9" font-weight="600" fill="' + ink + '"');
+    });
+    left.forEach(function (lc, rb) {
+      var y0 = oy + rb * n * cs;
+      s += '<rect x="0" y="' + f2(y0) + '" width="' + band + '" height="' + (n * cs) + '" fill="' + ink + '"/>' + txt(0, 0, String(head[lc]).toUpperCase(), ' transform="translate(' + (band / 2 + .5) + ' ' + f2(y0 + n * cs / 2) + ') rotate(-90)" text-anchor="middle" dominant-baseline="central" font-size="7.5" font-weight="800" letter-spacing=".6" fill="#fbf6e9"');
+      for (var i = 0; i < n; i++) s += txt(ox - 4, y0 + i * cs + cs / 2 + 3, items[lc][i], ' text-anchor="end" font-size="9" font-weight="600" fill="' + ink + '"');
+    });
+    left.forEach(function (a, rb) {
+      top.forEach(function (b, cb) {
+        if (rb + cb > k - 2) return;
+        var x0 = ox + cb * n * cs, y0 = oy + rb * n * cs;
+        s += '<rect x="' + f2(x0) + '" y="' + f2(y0) + '" width="' + (n * cs) + '" height="' + (n * cs) + '" fill="#fffdf7"/>';
+        for (var i = 0; i < n; i++) for (var j = 0; j < n; j++) {
+          var x = x0 + j * cs, y = y0 + i * cs, r = rowOf[a][items[a][i]], yes = r != null && r === rowOf[b][items[b][j]];
+          if (yes && hl === r) s += '<rect x="' + f2(x) + '" y="' + f2(y) + '" width="' + cs + '" height="' + cs + '" fill="#ffe36b"/>';
+          if (yes) s += '<circle cx="' + f2(x + cs / 2) + '" cy="' + f2(y + cs / 2) + '" r="' + f2(cs * .32) + '" fill="none" stroke="#1f3a8a" stroke-width="' + f2(Math.max(1.6, cs * .1)) + '"/>';
+          else { var q = cs * .3; s += '<path d="M' + f2(x + q) + ' ' + f2(y + q) + 'L' + f2(x + cs - q) + ' ' + f2(y + cs - q) + 'M' + f2(x + cs - q) + ' ' + f2(y + q) + 'L' + f2(x + q) + ' ' + f2(y + cs - q) + '" stroke="#3a3a44" stroke-width="1.1" stroke-linecap="round" opacity="' + (hl != null ? .25 : .55) + '"/>'; }
+        }
+        for (var g = 0; g <= n; g++) {
+          var w = g === 0 || g === n ? 1.6 : .5, col = g === 0 || g === n ? ink : 'rgba(29,27,34,.3)';
+          s += '<line x1="' + f2(x0 + g * cs) + '" x2="' + f2(x0 + g * cs) + '" y1="' + f2(y0) + '" y2="' + f2(y0 + n * cs) + '" stroke="' + col + '" stroke-width="' + w + '"/><line y1="' + f2(y0 + g * cs) + '" y2="' + f2(y0 + g * cs) + '" x1="' + f2(x0) + '" x2="' + f2(x0 + n * cs) + '" stroke="' + col + '" stroke-width="' + w + '"/>';
+        }
+      });
+    });
+    return s + '</svg>';
+  }
   R('logicgrid', function (e, ui) {
     var d = e.dt || {};
     if (!d.h || !Array.isArray(d.a) || !d.a.length) return null;
-    var head = String(d.h).split('|'), rows = d.a.map(function (r) { return String(r).split('|'); });
-    var t = ui.el('table'), hr = ui.el('tr');
+    var head = String(d.h).split('|'), rows = d.a.map(function (r) { return String(r).split('|'); }), out = [];
+    var items = Array.isArray(d.it) && d.it.length === head.length ? d.it.map(function (s) { return String(s).split('|'); }) : null;
+    // which answer row each item is in
+    var rowOf = head.map(function () { return {}; });
+    rows.forEach(function (r, ri) { r.forEach(function (v, ci) { if (rowOf[ci]) rowOf[ci][v] = ri; }); });
+    if (items && items.some(function (L) { return L.length !== rows.length; })) items = null;
+    var gridBox = items ? ui.el('div', { class: 'hv-lgg' }) : null, hl = null;
+    function paint() { if (gridBox) gridBox.innerHTML = lgSvg(ui, head, items, rowOf, hl); }
+    var t = ui.el('table'), hr = ui.el('tr'), trs = [];
     head.forEach(function (h) { hr.appendChild(ui.el('th', { text: h })); });
     t.appendChild(hr);
-    rows.forEach(function (r) { var tr = ui.el('tr'); r.forEach(function (v) { tr.appendChild(ui.el('td', { text: v })); }); t.appendChild(tr); });
-    var page = ui.el('div', { class: 'hv-lg' }, [ui.el('h5', { html: ui.esc(d.t || 'Logic grid') + '<i>No. ' + ui.esc(d.no || e.no || '') + '</i>' }), t]);
-    return ui.wrap([
-      ui.section('The answers', page),
-      ui.stats([['Time', sec(e.seconds)], ['Level', LG_LV[e.lv] || e.lv], ['Hints', e.hints || 0], ['Checks', e.checks || 0]]),
-      ui.facts([['Puzzle', (d.no ? 'No. ' + d.no : '') + (e.daily ? ' (daily)' : '')], ['Clues', d.cl || ''], ['Wrong marks found', d.w || '']])
-    ]);
+    rows.forEach(function (r, ri) {
+      var tr = ui.el('tr', items ? { onclick: function () { hl = hl === ri ? null : ri; trs.forEach(function (x, j) { x.classList.toggle('on', j === hl); }); paint(); } } : null);
+      r.forEach(function (v) { tr.appendChild(ui.el('td', { text: v })); }); trs.push(tr); t.appendChild(tr);
+    });
+    paint();
+    var page = ui.el('div', { class: 'hv-lg' }, [ui.el('h5', { html: ui.esc(d.t || 'Logic grid') + '<i>No. ' + ui.esc(d.no || e.no || '') + (e.daily ? ' · Daily' : '') + '</i>' }), gridBox, t,
+      items ? ui.el('p', { class: 'hv-lgn', text: 'Tap a row to light up its circles' }) : null]);
+    out.push(ui.section(items ? 'The solved grid' : 'The answers', page));
+    var pb = d.pb || 0, best = !e.hints && (!pb || e.seconds < pb);
+    out.push(ui.stats([['Time', sec(e.seconds), d.pb != null ? (best ? (pb ? 'new best' : 'first clean solve') : pb ? 'best ' + sec(pb) : '') : ''], ['Hints', e.hints || 0], ['Checks', e.checks || 0, d.w ? d.w + ' wrong marks found' : '']]));
+    if (d.pg != null && e.seconds > 0) {
+      var ps = d.ps || 10, line = String(d.pg || '').split(',').filter(function (x) { return x !== ''; }).map(function (v, i) { return [ps * (i + 1), +v]; }).filter(function (p) { return p[0] < e.seconds; });
+      line.push([e.seconds, d.pt || 0]);
+      out.push(ui.section('How it went', howItWent(ui, { total: e.seconds, ev: d.ev, line: line, max: d.pt || null, unit: 'matches circled', end: 'Solved', names: { x: 'Check with mistakes', c: 'Check, all right' } }), { icon: 'chart' }));
+    }
+    if (Array.isArray(d.ct) && d.ct.length) {
+      var ol = ui.el('ol', { class: 'hv-lgc' }); d.ct.forEach(function (c) { ol.appendChild(ui.el('li', { text: c })); });
+      out.push(ui.section('The clues', ui.el('div', { class: 'hv-lg' }, [ol]), { icon: 'search' }));
+    } else if (d.cl) out.push(ui.facts([['Clues', d.cl]]));
+    return ui.wrap(out);
   });
-  // ── Picture Mysteries: the case, how long, hints and misses ──
+  // ── Picture Mysteries: the case file, the photo with the solution circled, the line-up, how it was solved ──
+  HistView.css('hv-mysteries', [
+    '.hv-msf{position:relative;margin-top:14px;padding:14px 12px 12px;border-radius:3px 12px 12px 12px;color:#3a2a14;',
+    'background:radial-gradient(120% 60% at 20% 0%,rgba(255,255,255,.35),transparent 60%),repeating-linear-gradient(0deg,rgba(120,80,20,.035) 0 2px,transparent 2px 5px),linear-gradient(170deg,#f0dfb0,#dcc286);',
+    'box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 10px 22px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:8px;}',
+    '.hv-msf .tab{position:absolute;left:14px;top:-17px;height:20px;padding:4px 14px 0;border-radius:8px 8px 0 0;background:#f0dfb0;font:700 .66rem/1.2 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#7a5a2a;}',
+    '.hv-msf h5{margin:0;font-family:var(--display);font-weight:400;font-size:1.3rem;line-height:1.08;color:#4a2d10;}',
+    '.hv-msp{position:relative;padding:6px;border-radius:2px;background:linear-gradient(180deg,#fdfcf7,#f1ede2);box-shadow:0 10px 20px rgba(0,0,0,.4);transform:rotate(-.5deg);}',
+    '.hv-msp .v{position:relative;overflow:hidden;background:#ddd;line-height:0;min-height:60px;}.hv-msp svg{display:block;width:100%;height:auto;}',
+    '.hv-msp .stp{position:absolute;right:12px;top:14px;padding:1px 8px;border:3px double rgba(192,25,43,.85);border-radius:4px;font:400 1.1rem/1.1 var(--display);letter-spacing:.14em;color:rgba(192,25,43,.9);background:rgba(255,250,240,.35);transform:rotate(-12deg);}',
+    '.hv-msp .stp.g{border-color:rgba(70,70,90,.8);color:rgba(70,70,90,.85);}.hv-msp .stp.p{border-color:#b8860b;color:#9a6a00;}',
+    '.hv-msq{display:flex;align-items:flex-start;gap:7px;font-family:var(--hand);font-size:1.25rem;line-height:1.15;color:#1f2a6b;}',
+    '.hv-msq .ico{flex:none;width:19px;height:19px;margin-top:2px;color:#a33a2a;}',
+    '.hv-msl{display:flex;flex-wrap:wrap;gap:6px;}',
+    '.hv-msl span{display:inline-flex;align-items:center;gap:4px;padding:3px 9px 3px 7px;border-radius:4px;background:rgba(255,253,246,.7);box-shadow:0 1px 2px rgba(0,0,0,.25);font-weight:800;font-size:.84rem;color:#4a3a22;}',
+    '.hv-msl span .ico{width:14px;height:14px;}',
+    '.hv-msl span.ans{background:#fffdf6;color:#14532d;box-shadow:0 0 0 2.5px #1d7a46,0 2px 4px rgba(0,0,0,.25);}',
+    '.hv-msl span.no{color:#9b1c1c;text-decoration:line-through;text-decoration-thickness:2px;opacity:.85;}',
+    '.hv-mss{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none;}',
+    '.hv-mss li{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;padding:7px 9px;border-radius:8px;background:rgba(255,255,255,.04);cursor:pointer;font-size:.88rem;line-height:1.35;color:var(--text-2);transition:background .15s;}',
+    '.hv-mss li i{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#d0192b;color:#fff;font-style:normal;font-size:.72rem;font-weight:900;box-shadow:0 0 0 1.5px #fff;}',
+    '.hv-mss li.on{background:rgba(208,25,43,.18);color:var(--text);}',
+    '.hv-msv{margin:2px 0 0;padding:8px 10px;border-left:4px solid #d0192b;background:rgba(255,255,255,.04);border-radius:0 8px 8px 0;font-weight:800;font-size:.9rem;line-height:1.35;}'
+  ].join(''));
+  function msCase(id) {
+    var L = window.MYSTERY_CASES || [];
+    for (var i = 0; i < L.length; i++) if (L[i].id === id) return L[i];
+    try { return window.MysteryGen && id ? MysteryGen.byId(id) : null; } catch (e) { return null; }
+  }
   R('mysteries', function (e, ui) {
     var d = e.dt || {};
     if (!d.t) return null;
-    var out = [];
-    out.push(ui.stats([['Time', sec(d.s)], ['Hints', d.h || 0], ['Misses', d.m || 0], ['Result', d.ok ? 'Solved' : 'Solution seen']]));
-    out.push(ui.facts([['Case', (d.lv ? d.lv.charAt(0).toUpperCase() + d.lv.slice(1) + ' · ' : '') + 'No. ' + d.n + ' · ' + d.t], ['Wrong guesses', (d.x || []).join(', ')]]));
-    return ui.wrap(out);
+    var el = ui.el, LV = { easy: 'EASY', medium: 'MEDIUM', hard: 'HARD' }, solved = !!d.ok, perfect = solved && !d.h && !d.m, out = [];
+    var tab = (d.dy ? 'DAILY' : /^(daily|endless)-/.test(d.c || '') ? 'EXTRA No. ' + d.n : 'CASE ' + ('0' + d.n).slice(-2)) + (LV[d.lv] ? ' · ' + LV[d.lv] : '');
+    var view = el('div', { class: 'v' }), photo = el('div', { class: 'hv-msp', hidden: true }, [view, el('span', { class: 'stp' + (perfect ? ' p' : solved ? '' : ' g'), text: perfect ? 'PERFECT' : solved ? 'SOLVED' : 'CLOSED' })]);
+    var q = el('div', { class: 'hv-msq', hidden: !d.q, html: ui.icon('search') + '<span>' + ui.esc(d.q || '') + '</span>' });
+    var lineup = el('div', { class: 'hv-msl' });
+    var file = el('div', { class: 'hv-msf' }, [el('span', { class: 'tab', text: tab }), el('h5', { text: d.t }), photo, q, lineup]);
+    out.push(file);
+    var wrong = d.x || [];
+    function tag(label, isAns) {
+      var no = wrong.indexOf(label) >= 0;
+      return el('span', { class: isAns ? 'ans' : no ? 'no' : '', html: (isAns ? ui.icon('check') : no ? ui.icon('close') : '') + '<span>' + ui.esc(label) + '</span>' });
+    }
+    // what the record alone knows: the wrong guesses and (newer records) the answer
+    function plainLineup() { lineup.innerHTML = ''; wrong.forEach(function (w) { lineup.appendChild(tag(w, false)); }); if (d.a) lineup.appendChild(tag(d.a, true)); }
+    plainLineup();
+    out.push(ui.stats([['Time', sec(d.s)], ['Hints', (d.h || 0) + ' of 2'], ['Wrong guesses', d.m || 0]]));
+    if (evList(d.ev).length && d.s > 0) out.push(ui.section('How it went', howItWent(ui, { total: d.s, ev: d.ev, end: solved ? 'Solved' : 'Shown', endOk: solved, names: { x: 'Wrong guess' } }), { icon: 'chart' }));
+    var steps = el('div', { class: 'hv' }), stepSec = ui.section('How it was solved', steps, { icon: 'lightbulb' });
+    stepSec.hidden = true; out.push(stepSec);
+    var box = ui.wrap(out);
+    // the photo and the solution need the case itself (and its drawing code, which only the mysteries page has loaded)
+    function fill() {
+      var c = msCase(d.c); if (!c || !window.MysteryScene) return;
+      view.innerHTML = MysteryScene.render(c, 'hvms' + Math.floor(Math.random() * 1e6));
+      var svg = view.querySelector('svg'); photo.hidden = false;
+      if (c.q && !d.q) { q.lastChild.textContent = c.q; q.hidden = false; }
+      if (c.choices && c.choices.length) {
+        var ans = (c.choices.filter(function (x) { return x.id === c.answer; })[0] || {}).label;
+        lineup.innerHTML = ''; c.choices.forEach(function (x) { lineup.appendChild(tag(x.label, x.label === ans)); });
+      }
+      var sol = c.solution || {}, list = sol.steps || [];
+      if (!list.length) return;
+      var ol = el('ol', { class: 'hv-mss' }), lis = [], g = document.createElementNS('http://www.w3.org/2000/svg', 'g'), only = -1;
+      function marks() {
+        var s = ''; list.forEach(function (st, i) { if (only >= 0 && i !== only) return; (st.marks || []).forEach(function (m) { s += MysteryScene.markSvg(svg, m, i + 1); }); });
+        g.innerHTML = s; lis.forEach(function (li, i) { li.classList.toggle('on', i === only); });
+      }
+      list.forEach(function (st, i) {
+        var li = el('li', { onclick: function () { only = only === i ? -1 : i; marks(); } }, [el('i', { text: String(i + 1) }), el('span', { text: st.text })]);
+        lis.push(li); ol.appendChild(li);
+      });
+      steps.appendChild(ol);
+      if (sol.verdict) steps.appendChild(el('p', { class: 'hv-msv', text: sol.verdict }));
+      steps.appendChild(el('p', { class: 'hv-pz-note', text: 'Tap a step to see just its clue on the photo' }));
+      stepSec.hidden = false;
+      var world = svg && svg.querySelector('.ms-world');
+      (world ? world.parentNode : svg).appendChild(g);
+      whenShown(view, marks);
+    }
+    if (window.MysteryScene && (window.MYSTERY_CASES || window.MysteryGen)) fill();
+    else loadScripts(['data/mysteries-scene.js', 'data/mysteries-cases.js', 'data/mysteries-gen.js']).then(fill);
+    return box;
   });
 })();

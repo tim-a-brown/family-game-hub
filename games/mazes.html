@@ -573,7 +573,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var tp = MC.treePath(M, S.head, c, hook ? null : 2);
     if (!tp) return false;
     var old = S.head, back = M.depth[c] < M.depth[old];
-    if (back && lastDir > 0 && !onSolution(old)) S.wrong++;
+    if (back && lastDir > 0 && !onSolution(old)) { S.wrong++; S.dx = (S.dx || []).concat([old]).slice(-40); S.ev = ((S.ev || '') + ' x' + Math.round(S.ms / 1000)).trim(); }   // dead ends, for the history
     lastDir = back ? -1 : 1;
     S.drawn += tp.length - 1;
     go();
@@ -808,7 +808,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var back = 0; while (back + 1 < route.length && M.depth[route[back + 1]] < M.depth[route[back]]) back++;
     var show = route.slice(0, Math.min(route.length, back + 1 + 6));
     var p = PENALTY[S.size] || 10;
-    S.hints++; S.pen += p; go(); updHud(); updTime(); save();
+    S.ev = ((S.ev || '') + ' h' + Math.round(S.ms / 1000)).trim(); S.hints++; S.pen += p; go(); updHud(); updTime(); save();
     hud.timeBox.classList.remove('penal'); void hud.timeBox.offsetWidth; hud.timeBox.classList.add('penal');
     SND.hint(); Kit.haptic('light'); Kit.callout('+' + p + 's');
     if (back > 0) Kit.toast('Back up to the blue circle first');
@@ -922,7 +922,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       highlights: hl,
       meta: { play: S.mode, size: S.size, shape: S.shape, paths: S.paths, holes: S.holes, seed: S.seed, solved: S.solved, revealed: S.revealed, secs: sec,
         hints: S.hints, pen: S.pen, wrong: S.wrong, falls: S.falls, daily: S.daily || '', replay: S.replay },
-      detail: { s: S.seed, z: S.size, sh: S.shape, p: S.paths, h: S.mode === 'tilt' ? (S.solved ? M.finish : ballCell()) : S.head, m: S.mode, t: sec, hn: S.hints, w: S.wrong, f: S.falls }
+      detail: { s: S.seed, z: S.size, sh: S.shape, p: S.paths, h: S.mode === 'tilt' ? (S.solved ? M.finish : ballCell()) : S.head, m: S.mode, t: sec, hn: S.hints, w: S.wrong, f: S.falls,
+        dx: (S.dx || []).slice(-40), ev: (S.ev || '').split(' ').slice(-40).join(' '), dr: S.drawn || 0, pn: S.pen || 0, rt: Math.round(S.ms / 1000), pb: S.daily || S.replay ? -1 : boardBest(S.mode, S.size) || 0 }
     });
   }
   function pastGames() {
@@ -1335,7 +1336,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     setup: function () { leave(); showSetup(); },
     lab: function () { return { follow: follow, cellPx: cellPx, tr: tr }; },
     stepDir: function (a, b) { return stepDir(a, b); },
-    centerHead: function () { centerOn(MC.center(M, S.head, tr)); }
+    centerHead: function () { centerOn(MC.center(M, S.head, tr)); },
+    clock: function (ms) { S.ms = ms; }
   };
 
   // ── Boot ───────────────────────────────────────────────────────────────
