@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hot Dog Stand</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../arcade-hi.js"></script>
+<style>
+body{overflow-x:hidden;}
+.hd{max-width:1180px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 10px);display:flex;flex-direction:column;gap:8px;}
+.hd-main{display:flex;flex-direction:column;gap:10px;}
+.hd-panel{display:flex;flex-direction:column;gap:10px;min-width:0;}
+
+/* ── The secret: tap the hot dog on the setup screen (see showSetup) ─────── */
+.k-hero-ic{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.k-hero-ic.wob .gicon{animation:wob .45s var(--spring);}
+@keyframes wob{25%{transform:rotate(calc(var(--wob,8deg) * -1)) scale(var(--wsc,1.04));}60%{transform:rotate(var(--wob,8deg));}100%{transform:none;}}
+.k-hero-ic.spin .gicon{animation:spinIt 1.1s cubic-bezier(.3,1.3,.5,1);}
+@keyframes spinIt{0%{transform:none;}40%{transform:rotateY(540deg) scale(1.35);filter:grayscale(1) contrast(1.4);}100%{transform:rotateY(720deg);}}
+/* unlocked: a switch dressed as a TI-82, its little LCD reading DRUGWAR */
+.dw-sec{display:flex;flex-direction:column;gap:6px;}
+.dw-row{display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px 10px 10px;border:0;border-radius:14px 14px 20px 20px;cursor:pointer;text-align:left;font:inherit;color:#eef0f3;
+  background:linear-gradient(180deg,#45484f,#2a2c31);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 6px 14px rgba(0,0,0,.35);}
+.dw-row .lcd{flex:none;width:92px;height:40px;border-radius:5px;padding:5px;background:#17181c;box-shadow:inset 0 2px 4px rgba(0,0,0,.7);}
+.dw-row canvas{display:block;width:100%;height:100%;border-radius:2px;image-rendering:pixelated;background:#b0bd9e;transition:filter .3s;}
+.dw-row[aria-checked="false"] canvas{filter:brightness(.55) saturate(.4);}
+.dw-row .grow{flex:1;min-width:0;}
+.dw-row .grow b{display:block;font:900 1.02rem/1.15 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.02em;}
+.dw-row .grow small{display:block;color:rgba(255,255,255,.66);font-size:.8rem;font-weight:700;margin-top:2px;}
+.dw-row .sw{flex:none;position:relative;width:48px;height:28px;border-radius:14px;background:rgba(255,255,255,.2);transition:background .2s;}
+.dw-row .sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s var(--spring);}
+.dw-row[aria-checked="true"] .sw{background:#8fc597;}
+.dw-row[aria-checked="true"] .sw::after{transform:translateX(20px);}
+.dw-row.arrive{animation:dwArrive .7s var(--spring) both;}
+@keyframes dwArrive{0%{transform:translateY(16px) scale(.92);opacity:0;}60%{box-shadow:0 0 0 6px rgba(143,197,151,.4);}100%{transform:none;opacity:1;}}
+.dw-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
+.setup.dw-on .modes{opacity:.35;pointer-events:none;filter:grayscale(1);transition:opacity .3s,filter .3s;}
+
+/* ── Season strip: game n of N, cash toward the goal ─────────────────────── */
+.hd-strip{display:flex;align-items:center;gap:10px;padding:2px 2px 0;}
+.hd-strip .gn{font:400 1rem/1 var(--display);color:var(--text-2);white-space:nowrap;}
+.hd-strip .gn b{color:var(--text);font-weight:400;}
+.hd-goal{flex:1;min-width:0;position:relative;height:12px;border-radius:99px;background:var(--inset);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);}
+.hd-goal i{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:linear-gradient(180deg,#5fe39a,#23a35f);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);transition:width .9s cubic-bezier(.2,.8,.2,1);}
+.hd-goal.met i{background:linear-gradient(180deg,#ffe07a,#e3a51c);}
+.hd-goal .dots{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;padding:0 4px;pointer-events:none;}
+.hd-strip .cash{font:400 1.15rem/1 var(--display);color:#7ef0b0;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.hd-strip .cash small{font:800 .7rem/1 var(--font);color:var(--text-3);letter-spacing:.04em;margin-left:3px;}
+
+/* ── The scene: a stadium plaza and your stand (one SVG, 400 × 250) ─────── */
+.hd-scene{position:relative;border-radius:18px;overflow:hidden;aspect-ratio:400/290;flex:none;background:#2a3346;
+  box-shadow:0 14px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+  --sky1:#4fa6f5;--sky2:#cfe8ff;--wall:#6f7891;--wall2:#59627a;--rim:#3c4357;--win:#2d3446;--floor1:#c9c1b3;--floor2:#9d9586;--glow:0;}
+.hd-scene > svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+.hd-scene[data-wx="cloudy"]{--sky1:#8ea2b8;--sky2:#d9e1ea;}
+.hd-scene[data-wx="rain"]{--sky1:#5b6878;--sky2:#97a3b0;--floor1:#9f9a90;--floor2:#7a756c;}
+.hd-scene[data-wx="snow"]{--sky1:#9aa8b8;--sky2:#e3e9ef;--floor1:#e9edf1;--floor2:#c9d0d8;}
+.hd-scene[data-night]{--sky1:#060d22;--sky2:#20365f;--wall:#2f3550;--wall2:#262b42;--rim:#1a1e2e;--win:#ffd98a;--floor1:#6f6a62;--floor2:#4a463f;--glow:1;}
+.hd-scene[data-night][data-wx="rain"]{--sky1:#0b1018;--sky2:#253040;}
+.hd-scene[data-night][data-wx="snow"]{--sky1:#141c2c;--sky2:#3b4a62;--floor1:#b9c0c8;--floor2:#8d949c;}
+.sky1{stop-color:var(--sky1);} .sky2{stop-color:var(--sky2);}
+.fl1{stop-color:var(--floor1);} .fl2{stop-color:var(--floor2);}
+.st-wall{fill:var(--wall);} .st-wall2{fill:var(--wall2);} .st-rim{fill:var(--rim);} .st-win{fill:var(--win);}
+.night-only{opacity:var(--glow);transition:opacity .6s;}
+.day-only{opacity:calc(1 - var(--glow));}
+.hd-scene:not([data-wx="sunny"]) .sun{display:none;}
+.hd-scene:not([data-wx="cloudy"]):not([data-wx="rain"]):not([data-wx="snow"]) .clouds .heavy{display:none;}
+.clouds g{animation:drift 60s linear infinite;}
+.clouds g:nth-child(2){animation-duration:85s;animation-delay:-30s;}
+.clouds g:nth-child(3){animation-duration:70s;animation-delay:-50s;}
+@keyframes drift{from{transform:translate(-60px,-26px);}to{transform:translate(460px,-26px);}}
+.hd-scene[data-wx="rain"] .clouds ellipse,.hd-scene[data-wx="snow"] .clouds ellipse{fill:#c3cad3;}
+.hd-scene[data-night] .clouds ellipse{fill:#3a4660;}
+/* weather over the whole scene */
+.wx{position:absolute;inset:0;pointer-events:none;display:none;}
+.hd-scene[data-wx="rain"] .wx.rain{display:block;background:repeating-linear-gradient(104deg,transparent 0 13px,rgba(220,235,255,.32) 13px 14px,transparent 14px 31px) 0 0/62px 120px;animation:rain .35s linear infinite;}
+.hd-scene[data-wx="rain"] .wx.rain2{display:block;background:repeating-linear-gradient(100deg,transparent 0 21px,rgba(220,235,255,.2) 21px 22px,transparent 22px 47px) 0 0/94px 160px;animation:rain2 .5s linear infinite;}
+@keyframes rain{to{background-position:-26px 120px;}}
+@keyframes rain2{to{background-position:-28px 160px;}}
+.hd-scene[data-wx="snow"] .wx.rain{display:block;background-image:radial-gradient(circle,#fff 0 1.6px,transparent 2.2px),radial-gradient(circle,rgba(255,255,255,.8) 0 1.1px,transparent 1.6px);
+  background-size:46px 46px,29px 29px;background-position:0 0,13px 7px;animation:snow 5s linear infinite;}
+.hd-scene[data-wx="snow"] .wx.rain2{display:block;background-image:radial-gradient(circle,rgba(255,255,255,.9) 0 2px,transparent 2.6px);background-size:71px 71px;animation:snow2 7s linear infinite;}
+@keyframes snow{to{background-position:30px 46px,-10px 36px;}}
+@keyframes snow2{to{background-position:-24px 71px;}}
+
+/* stand pieces */
+.bulb{fill:#fff3c4;}
+.hd-scene .sign-on .bulb{animation:bulb 1.2s steps(1) infinite;filter:drop-shadow(0 0 2px #ffd36b);}
+.hd-scene .sign-on .bulb:nth-child(odd){animation-delay:.6s;}
+@keyframes bulb{0%{fill:#fff6cf;}50%{fill:#9a7a3a;}}
+.sign-glow{opacity:0;transition:opacity .6s;}
+.sign-on .sign-glow{opacity:1;}
+.roller{animation:roll .5s linear infinite;}
+@keyframes roll{to{transform:translateX(-4px);}}
+.steam path{animation:steam 2.4s ease-in-out infinite;opacity:0;}
+.steam path:nth-child(2){animation-delay:.8s;} .steam path:nth-child(3){animation-delay:1.6s;}
+@keyframes steam{0%{opacity:0;transform:translateY(3px);}40%{opacity:.7;}100%{opacity:0;transform:translateY(-9px);}}
+.shutter{transition:transform 1.1s cubic-bezier(.6,0,.3,1);}
+.open .shutter{transform:translateY(-50px);}
+.closed-tag{transition:opacity .4s;transform-box:fill-box;transform-origin:50% 0;animation:swing 3.2s ease-in-out infinite;}
+.open .closed-tag{opacity:0;}
+@keyframes swing{0%,100%{transform:rotate(-4deg);}50%{transform:rotate(4deg);}}
+.soldout{opacity:0;transition:opacity .25s;}
+.soldout.on{opacity:1;}
+.mp text{transition:opacity .2s;}
+.mp.wipe text{opacity:0;}
+.crate{animation:crateIn .45s cubic-bezier(.3,1.4,.5,1) both;}
+@keyframes crateIn{from{transform:translateY(-40px);opacity:0;}}
+.till-pop{animation:tillpop .25s ease-out;}
+@keyframes tillpop{50%{transform:translateY(-1.5px);}}
+.bubble{animation:bub .2s ease-out both;transform-box:fill-box;transform-origin:50% 100%;}
+@keyframes bub{from{transform:scale(.2);opacity:0;}}
+
+/* HTML pieces over the scene */
+.tkt{position:absolute;left:3%;top:5%;width:min(56%,300px);transform:rotate(-2deg);transform-origin:0 0;
+  display:flex;color:#2a2418;border-radius:7px;overflow:hidden;filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));
+  animation:tktIn .6s cubic-bezier(.2,1.2,.4,1) both;cursor:pointer;}
+@keyframes tktIn{from{transform:translate(-30px,-60px) rotate(-14deg);opacity:0;}}
+.tkt .stub{flex:none;width:clamp(26px,8cqw,40px);background:var(--tk,#c8322f);color:#fff;display:grid;place-items:center;position:relative;
+  border-right:2px dashed rgba(255,255,255,.65);}
+.tkt .stub span{writing-mode:vertical-rl;transform:rotate(180deg);font:400 clamp(.7rem,2.6cqw,.95rem)/1 var(--display);letter-spacing:.08em;}
+.tkt .bd{flex:1;min-width:0;padding:clamp(5px,1.6cqw,9px) clamp(7px,2cqw,11px);background:linear-gradient(180deg,#fffaf0,#f1e6cc);
+  background-image:radial-gradient(rgba(120,90,40,.08) 1px,transparent 1px),linear-gradient(180deg,#fffaf0,#f1e6cc);background-size:5px 5px,auto;}
+.tkt h3{margin:0;font:400 clamp(.9rem,3.6cqw,1.3rem)/1.05 var(--display);color:#1f1a10;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tkt .when{font:800 clamp(.62rem,2.3cqw,.82rem)/1.2 var(--font);color:#6b5d40;letter-spacing:.02em;margin:2px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tkt .fc{display:flex;align-items:center;gap:5px;font:800 clamp(.68rem,2.5cqw,.9rem)/1.25 var(--font);white-space:nowrap;}
+.tkt .fc svg{width:1.25em;height:1.25em;flex:none;}
+.tkt .fc + .fc{margin-top:1px;}
+.tkt .news{margin-top:4px;padding-top:4px;border-top:1px dashed rgba(60,40,10,.3);font:700 clamp(.6rem,2.2cqw,.78rem)/1.2 var(--font);color:#9a3412;display:flex;gap:4px;align-items:flex-start;}
+.tkt .news svg{width:1.2em;height:1.2em;flex:none;}
+.hd-scene{container-type:inline-size;}
+.jumbo{position:absolute;left:50%;top:3.5%;transform:translateX(-50%);min-width:min(64%,420px);
+  background:linear-gradient(180deg,#14161d,#07080b);border-radius:6px;padding:4px 10px 5px;
+  box-shadow:0 0 0 2px #2a2e38, 0 6px 14px rgba(0,0,0,.5);color:#ffcf5a;text-align:center;
+  font:400 clamp(.72rem,2.9cqw,1.1rem)/1.1 var(--display);letter-spacing:.06em;text-shadow:0 0 6px rgba(255,190,60,.55);}
+.jumbo .row{display:flex;justify-content:center;align-items:center;gap:.7em;white-space:nowrap;}
+.jumbo .row b{font-weight:400;color:#fff6d8;font-variant-numeric:tabular-nums;min-width:1.3em;display:inline-block;}
+.jumbo .ph{color:#7fd8ff;text-shadow:0 0 6px rgba(80,180,255,.6);font-size:.82em;letter-spacing:.1em;}
+.jumbo.flash{animation:jflash .25s steps(2) 6;}
+@keyframes jflash{50%{background:#5a3b06;}}
+.wxchip{position:absolute;right:2.5%;top:4%;display:flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:99px;
+  background:rgba(10,14,24,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:#fff;font:800 clamp(.66rem,2.4cqw,.85rem)/1 var(--font);}
+.wxchip svg{width:1.3em;height:1.3em;}
+.banner{position:absolute;left:0;right:0;top:34%;display:flex;justify-content:center;pointer-events:none;}
+.banner span{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;background:#0d1220e6;color:#fff;
+  font:400 clamp(.85rem,3.4cqw,1.2rem)/1 var(--display);letter-spacing:.03em;box-shadow:0 8px 20px rgba(0,0,0,.4);animation:banner 2.6s ease both;}
+.banner span svg{width:1.2em;height:1.2em;}
+.banner span.bad{background:#7f1d1de6;}
+.banner span.good{background:#14532de6;}
+@keyframes banner{0%{transform:translateY(10px) scale(.9);opacity:0;}10%,82%{transform:none;opacity:1;}100%{transform:translateY(-8px);opacity:0;}}
+
+/* ── Panels (chrome: clean) ──────────────────────────────────────────────── */
+.card{background:var(--surface);border-radius:16px;box-shadow:var(--shadow-sm, 0 2px 8px rgba(0,0,0,.25));}
+.tabs{display:flex;gap:4px;padding:4px;border-radius:14px;background:var(--seg);}
+.tabs button{flex:1;min-height:40px;border:0;border-radius:10px;background:transparent;color:var(--text-2);font-weight:800;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:6px;}
+.tabs button.on{background:var(--surface-3);color:var(--text);box-shadow:var(--shadow-sm);}
+.tabs button .ico{width:18px;height:18px;}
+.tabs button .warn{width:7px;height:7px;border-radius:50%;background:#ff9a3d;box-shadow:0 0 0 2px var(--seg);}
+
+/* Order rows */
+.rows{display:flex;flex-direction:column;gap:6px;}
+.ord{display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:var(--surface);}
+.ord .art{width:46px;height:46px;display:grid;place-items:center;border-radius:12px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.14),rgba(255,255,255,.03));}
+.ord .art svg{width:40px;height:40px;}
+.ord .nm{font-weight:900;font-size:1rem;line-height:1.1;}
+.ord .sub{font-size:.8rem;font-weight:700;color:var(--text-3);line-height:1.25;margin-top:2px;}
+.ord .have{font-size:.86rem;font-weight:800;color:var(--text-2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.ord .have b{color:var(--text);font-variant-numeric:tabular-nums;}
+.ord .have .arrow{opacity:.5;}
+.ord .have .tot{color:#7ef0b0;}
+.ord .warn{color:#ffad5c;font-weight:800;}
+.step{display:flex;align-items:center;gap:6px;}
+.step button{width:40px;height:40px;border-radius:50%;border:0;background:var(--surface-3);color:var(--text);display:grid;place-items:center;
+  box-shadow:0 3px 0 rgba(0,0,0,.35), inset 0 1px 0 var(--w18);transition:transform .08s;}
+.step button:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.step button:disabled{opacity:.35;}
+.step button .ico{width:20px;height:20px;}
+.step .n{min-width:44px;text-align:center;font:400 1.25rem/1 var(--display);font-variant-numeric:tabular-nums;}
+.step .n small{display:block;font:800 .62rem/1.2 var(--font);color:var(--text-3);letter-spacing:.04em;text-transform:uppercase;}
+.bump{animation:bump .25s ease;}
+@keyframes bump{40%{transform:scale(1.22);}}
+
+/* Prices: a chalkboard */
+.chalk{position:relative;border-radius:14px;padding:12px 12px 10px;color:#f4f1e8;
+  background:radial-gradient(120% 90% at 30% 20%,#3b4d43 0%,#24332b 60%,#1b2721 100%);
+  box-shadow:inset 0 0 0 6px #8a5a32, inset 0 0 0 8px #5f3c1e, inset 0 0 28px rgba(0,0,0,.55), 0 10px 22px rgba(0,0,0,.4);
+  padding:16px 16px 12px;}
+.chalk::after{content:"";position:absolute;inset:8px;border-radius:8px;pointer-events:none;
+  background:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.2px) 0 0/3px 3px, linear-gradient(115deg,transparent 30%,rgba(255,255,255,.05) 45%,transparent 60%);}
+.chalk h4{margin:0 0 6px;text-align:center;font:400 1.5rem/1 var(--hand);letter-spacing:.04em;color:#fff;opacity:.92;}
+.prow{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:10px;padding:6px 2px;border-top:1px dashed rgba(255,255,255,.14);}
+.prow:first-of-type{border-top:0;}
+.prow .art svg{width:38px;height:38px;}
+.prow .nm{font:400 1.35rem/1 var(--hand);}
+.prow .cost{font:400 .95rem/1.1 var(--hand);color:#c9d6cc;opacity:.85;}
+.prow .cost b{font-weight:400;color:#9ff0c0;}
+.prow .cost b.thin{color:#ffb38a;}
+.prow.off{opacity:.45;}
+.prow .step button{background:rgba(255,255,255,.1);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);}
+.prow .step .n{font:400 1.75rem/1 var(--hand);min-width:66px;color:#fff;}
+
+/* Crew and gear */
+.sect{background:var(--surface);border-radius:14px;padding:10px 12px;}
+.sect h4{margin:0 0 2px;font-size:1rem;font-weight:900;display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.sect h4 small{font-size:.8rem;font-weight:800;color:var(--text-3);}
+.sect p{margin:0 0 8px;font-size:.82rem;font-weight:700;color:var(--text-3);}
+.crew{display:flex;gap:8px;}
+.crew button{flex:1;border:0;border-radius:12px;background:var(--inset);padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--text-3);font-weight:800;font-size:.75rem;transition:transform .1s,background .2s;}
+.crew button svg{width:38px;height:44px;}
+.crew button.on{background:color-mix(in srgb,#3ddc84 22%,var(--surface-2));color:var(--text);box-shadow:inset 0 0 0 2px #3ddc84;}
+.crew button:active{transform:scale(.95);}
+.crew button.you{background:var(--surface-2);color:var(--text-2);}
+.ads{display:flex;gap:6px;}
+.ads button{flex:1;border:0;border-radius:12px;background:var(--inset);padding:8px 4px;color:var(--text-2);font-weight:800;font-size:.85rem;line-height:1.15;}
+.ads button small{display:block;font-size:.72rem;color:var(--text-3);font-weight:800;}
+.ads button.on{background:var(--surface-3);color:var(--text);box-shadow:inset 0 0 0 2px var(--accent);}
+.gear{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.gear button{border:0;border-radius:12px;background:var(--inset);padding:9px 10px;text-align:left;color:var(--text);display:grid;grid-template-columns:28px 1fr;gap:2px 8px;align-items:center;transition:transform .1s;}
+.gear button:active:not(:disabled){transform:scale(.97);}
+.gear button .ico{width:26px;height:26px;grid-row:span 2;color:var(--accent);}
+.gear button b{font-size:.9rem;font-weight:900;line-height:1.1;}
+.gear button span{font-size:.72rem;font-weight:700;color:var(--text-3);line-height:1.2;}
+.gear button em{grid-column:2;font-style:normal;font-size:.8rem;font-weight:900;color:#ffd166;}
+.gear button.own{background:color-mix(in srgb,#3ddc84 14%,var(--surface-2));}
+.gear button.own em{color:#7ef0b0;}
+.gear button:disabled{opacity:.45;}
+
+/* Footer: money out, money left, open */
+.foot{display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:16px;background:var(--surface-2);position:sticky;bottom:calc(var(--safe-b) + 8px);z-index:5;box-shadow:0 -8px 22px rgba(0,0,0,.35);}
+.foot .sum{flex:1;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-3);line-height:1.3;}
+.foot .sum b{display:block;font:400 1.2rem/1.1 var(--display);color:var(--text);font-variant-numeric:tabular-nums;}
+.foot .sum b.neg{color:#ff8a8a;}
+.foot .btn{flex:none;}
+
+/* Game day */
+.live{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.till{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:16px;
+  background:linear-gradient(180deg,#121a14,#0a0f0b);box-shadow:inset 0 2px 8px rgba(0,0,0,.6), 0 1px 0 var(--w08);}
+.till small{display:block;font:800 .66rem/1 var(--font);letter-spacing:.14em;text-transform:uppercase;color:#6c8a74;}
+.till b{font:400 2rem/1 var(--display);color:#6dff9e;text-shadow:0 0 12px rgba(80,255,140,.35);font-variant-numeric:tabular-nums;}
+.till .cl{text-align:right;}
+.till .cl b{font-size:1.25rem;color:#ffcf5a;text-shadow:0 0 10px rgba(255,200,80,.3);}
+.meter{display:grid;grid-template-columns:34px 1fr;gap:2px 8px;align-items:center;padding:8px 10px;border-radius:14px;background:var(--surface);position:relative;overflow:hidden;}
+.meter svg.it{width:34px;height:34px;grid-row:span 2;}
+.meter .t{display:flex;justify-content:space-between;align-items:baseline;font-weight:900;font-size:.85rem;}
+.meter .t b{font:400 1.1rem/1 var(--display);font-variant-numeric:tabular-nums;}
+.meter .bar{height:7px;border-radius:99px;background:var(--inset);overflow:hidden;}
+.meter .bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#3ddc84,#9ef0c0);transition:width .3s;}
+.meter.low .bar i{background:linear-gradient(90deg,#ff9a3d,#ffd166);}
+.meter.out .bar i{width:0!important;}
+.meter.out::after{content:"SOLD OUT";position:absolute;right:6px;top:50%;transform:translateY(-50%) rotate(-8deg);padding:2px 6px;border:2.5px solid #ff4d5e;border-radius:6px;color:#ff4d5e;
+  font:400 .9rem/1 var(--display);letter-spacing:.06em;background:color-mix(in srgb,var(--surface) 85%,transparent);animation:stamp .3s cubic-bezier(.3,1.6,.5,1) both;}
+@keyframes stamp{from{transform:translateY(-50%) rotate(-8deg) scale(2.2);opacity:0;}}
+.meter.none{opacity:.4;}
+.lost{grid-column:1 / -1;display:flex;gap:6px;}
+.lost div{flex:1;display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:12px;background:var(--surface);font-size:.74rem;font-weight:800;color:var(--text-3);line-height:1.1;}
+.lost div svg{width:22px;height:22px;flex:none;}
+.lost div b{display:block;font:400 1.1rem/1 var(--display);color:var(--text);font-variant-numeric:tabular-nums;}
+.lost div.hit b{color:#ffad5c;}
+.ctl{display:flex;gap:8px;}
+.ctl .seg{flex:1;}
+
+/* the line at your window, drawn as the day goes */
+.lchart{grid-column:1 / -1;padding:8px 10px 6px;border-radius:14px;background:var(--surface);}
+.lchart .hd2{display:flex;justify-content:space-between;align-items:baseline;font-weight:900;font-size:.85rem;margin-bottom:2px;}
+.lchart .hd2 b{font:400 1.05rem/1 var(--display);color:#ffd166;font-variant-numeric:tabular-nums;}
+.lchart svg{display:block;width:100%;height:auto;overflow:visible;}
+
+/* Report: the ledger */
+.ledger{position:relative;border-radius:6px 6px 14px 14px;padding:18px 16px 14px 46px;color:#2a2a3a;
+  background:repeating-linear-gradient(180deg,transparent 0 25px,rgba(60,90,170,.18) 25px 26px),linear-gradient(180deg,#fffcf3,#f5edd8);
+  background-position:0 10px;box-shadow:0 16px 34px rgba(0,0,0,.45);font-family:var(--hand);}
+.ledger::before{content:"";position:absolute;left:34px;top:0;bottom:0;width:1.5px;background:rgba(220,60,60,.45);}
+.ledger::after{content:"";position:absolute;left:10px;top:14px;bottom:14px;width:12px;background:radial-gradient(circle,#2a2236 0 4px,transparent 4.5px) 0 0/12px 34px repeat-y;opacity:.85;}
+.ledger h3{margin:0 0 2px;font:400 1.6rem/1 var(--hand);color:#1d2b5c;}
+.ledger .ev{font:700 .78rem/1.3 var(--font);color:#7a6f5a;margin-bottom:6px;}
+.lrow{display:grid;grid-template-columns:24px 1fr auto auto;gap:4px 8px;align-items:center;font-size:1.15rem;line-height:26px;opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s;}
+.lrow.in{opacity:1;transform:none;}
+.lrow svg{width:22px;height:22px;}
+.lrow .q{color:#5b5b6e;font-size:1rem;}
+.lrow .v{text-align:right;min-width:4.4em;font-variant-numeric:tabular-nums;color:#1d2b5c;}
+.lrow.cost .v{color:#a32626;}
+.lrow.tot{border-top:2px solid #1d2b5c;margin-top:4px;font-size:1.35rem;}
+.lrow.tot .v{font-size:1.55rem;}
+.lrow.tot.up .v{color:#167a3c;}
+.lrow.tot.down .v{color:#b42318;}
+.lrow.sp{grid-template-columns:24px 1fr auto;}
+.stampx{position:absolute;right:14px;top:12px;padding:4px 10px;border:3px solid currentColor;border-radius:8px;font:400 1.15rem/1 var(--display);letter-spacing:.06em;
+  transform:rotate(9deg);opacity:0;}
+.stampx.on{animation:stampin .35s cubic-bezier(.3,1.6,.5,1) both;}
+@keyframes stampin{from{transform:rotate(9deg) scale(2.4);opacity:0;}to{transform:rotate(9deg);opacity:.85;}}
+.notes{display:flex;flex-direction:column;gap:6px;}
+.note{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:12px;background:var(--surface);font-size:.88rem;font-weight:700;line-height:1.3;color:var(--text-2);
+  opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s;}
+.note.in{opacity:1;transform:none;}
+.note svg{width:26px;height:26px;flex:none;}
+.note b{color:var(--text);}
+.note.warn{box-shadow:inset 3px 0 0 #ffad5c;}
+.note.good{box-shadow:inset 3px 0 0 #3ddc84;}
+.note.bad{box-shadow:inset 3px 0 0 #ff6b6b;}
+
+/* Season sheet */
+.sea{width:100%;border-collapse:collapse;font-size:.9rem;}
+.sea td{padding:7px 4px;border-bottom:1px solid var(--line);}
+.sea td:last-child{text-align:right;font-weight:900;font-variant-numeric:tabular-nums;}
+.sea .up{color:#3ddc84;} .sea .down{color:#ff6b6b;}
+
+/* Landscape and big screens: look on the left, act on the right */
+@media (orientation:landscape) and (min-width:640px){
+  .hd{height:calc(100dvh - var(--bar));padding-bottom:calc(var(--safe-b) + 8px);}
+  .hd-main{flex-direction:row;flex:1;min-height:0;}
+  .hd-scene{flex:1 1 auto;aspect-ratio:auto;height:100%;}
+  .hd-panel{flex:0 0 clamp(330px,40%,440px);overflow-y:auto;overscroll-behavior:contain;padding-bottom:4px;}
+  .hd-panel::-webkit-scrollbar{display:none;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .lchart{display:none;}
+  .till{padding:6px 12px;} .meter{padding:5px 8px;} .meter svg.it{width:28px;height:28px;} .lost div{padding:5px 8px;}
+  .ord{padding:6px 8px;} .ord .art{width:40px;height:40px;} .ord .art svg{width:34px;height:34px;}
+  .step button{width:36px;height:36px;}
+  .till b{font-size:1.6rem;}
+}
+@media (orientation:portrait) and (min-width:700px){
+  .hd{max-width:860px;}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'hotdogstand_state', HKEY = 'hotdogstand';
+  var ICO = Kit.icon;
+
+  // ── Money in cents ────────────────────────────────────────────────────────
+  function money(c, whole) {
+    var neg = c < 0; c = Math.abs(Math.round(c));
+    var d = Math.floor(c / 100), r = c % 100;
+    var s = '$' + d.toLocaleString('en-US') + (whole || (r === 0 && d >= 100) ? '' : '.' + ('0' + r).slice(-2));
+    return (neg ? '−' : '') + s;
+  }
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+  function rng(seed) {
+    var s = (seed >>> 0) || 1;
+    return function () { s = (s + 0x6D2B79F5) >>> 0; var t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  function pick(R, a) { return a[Math.floor(R() * a.length)]; }
+  function poisson(R, m) {
+    if (m <= 0) return 0;
+    if (m > 40) return Math.max(0, Math.round(m + Math.sqrt(m) * gauss(R)));
+    var L = Math.exp(-m), k = 0, p = 1; do { k++; p *= R(); } while (p > L); return k - 1;
+  }
+  function gauss(R) { var u = R() || 1e-9, v = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.2832 * v); }
+
+  // ── What you sell and what it costs ───────────────────────────────────────
+  // fair: what a typical fan thinks it's worth (each fan's limit varies around it, and some events pay more)
+  var ITEMS = {
+    dog:   { name: 'Hot dogs', one: 'hot dog', fair: 400, pack: 40, cost: 3000, packName: 'case', sell: true, keep: 3 },
+    bun:   { name: 'Buns', one: 'bun', pack: 24, cost: 720, packName: 'bag', keep: 2 },
+    soda:  { name: 'Soda', one: 'soda', fair: 300, pack: 24, cost: 1200, packName: 'case', sell: true },
+    chips: { name: 'Chips', one: 'bag of chips', fair: 200, pack: 30, cost: 1200, packName: 'box', sell: true },
+    cocoa: { name: 'Hot cocoa', one: 'cocoa', fair: 300, pack: 50, cost: 1600, packName: 'tub', sell: true }
+  };
+  var STOCK = ['dog', 'bun', 'soda', 'chips', 'cocoa'], SELL = ['dog', 'soda', 'chips', 'cocoa'];
+  var WAGE = 4000, ADS = [{ id: 0, name: 'None', cost: 0, lift: 1 }, { id: 1, name: 'Flyers', cost: 2500, lift: 1.1 }, { id: 2, name: 'Radio spot', cost: 10000, lift: 1.28 }];
+  var GEAR = [
+    { id: 'reader', name: 'Card reader', icon: 'bolt', cost: 15000, desc: 'Serve every fan a third faster' },
+    { id: 'sign', name: 'Lighted sign', icon: 'sparkle', cost: 20000, desc: '12% more fans find you' },
+    { id: 'freezer', name: 'Chest freezer', icon: 'snowflake', cost: 12000, desc: 'Hot dogs never go bad' },
+    { id: 'canopy', name: 'Big canopy', icon: 'umbrella', cost: 16000, desc: 'Rain and snow send fans your way' }
+  ];
+  function gear(id) { for (var i = 0; i < GEAR.length; i++) if (GEAR[i].id === id) return GEAR[i]; }
+
+  // ── Events at the stadium ─────────────────────────────────────────────────
+  // segs: [label, from, to (minutes from the start), how busy the stand is]. share: fans who come to your stand.
+  var HOME = 'Highlanders';
+  var FOES = ['Comets', 'Bison', 'Thunder', 'Pioneers', 'Lumberjacks', 'Stallions', 'Grizzlies', 'Coyotes', 'Rockets', 'Mariners', 'Wolves', 'Outlaws'];
+  var BANDS = ['The Midnight Pines', 'Neon Coyotes', 'Velvet Static', 'Copper Lanterns', 'Summit Radio', 'The Paper Kites Club'];
+  var FOOT = [['Gates open', -60, 0, 1], ['1st quarter', 0, 45, .35], ['2nd quarter', 45, 90, .42], ['Halftime', 90, 110, 2.5], ['3rd quarter', 110, 155, .35], ['4th quarter', 155, 200, .3], ['Final', 200, 215, .5]];
+  var TYPES = {
+    football:   { name: 'Football', crowd: [44000, 62000], share: .0082, tol: 1.12, want: { dog: 1.15, soda: 1, chips: 1, cocoa: 1 }, segs: FOOT, sport: 1, hours: [13.08, 13.08, 18.33, 14.42], tk: '#c8322f' },
+    college:    { name: 'College football', crowd: [26000, 42000], share: .011, tol: 1, want: { dog: 1.1, soda: 1, chips: 1.05, cocoa: 1 }, segs: FOOT, sport: 1, hours: [11, 13.5, 17], tk: '#7c3aed' },
+    highschool: { name: 'State semifinal', crowd: [7000, 12000], share: .032, tol: .92, want: { dog: 1.05, soda: .95, chips: 1.15, cocoa: 1.15 }, segs: FOOT, sport: 1, hours: [13, 18], tk: '#0f766e' },
+    soccer:     { name: 'Soccer', crowd: [16000, 26000], share: .013, tol: 1, want: { dog: .95, soda: 1.1, chips: .9, cocoa: 1 },
+      segs: [['Gates open', -60, 0, 1], ['1st half', 0, 47, .3], ['Halftime', 47, 62, 2.7], ['2nd half', 62, 110, .3], ['Full time', 110, 122, .45]], sport: 1, hours: [14, 19.5], tk: '#15803d' },
+    concert:    { name: 'Concert', crowd: [32000, 50000], share: .0088, tol: 1.3, want: { dog: .7, soda: 1.35, chips: .8, cocoa: .9 },
+      segs: [['Doors open', -75, 0, 1.15], ['Opening act', 0, 45, .5], ['Set change', 45, 75, 1.7], ['Headliner', 75, 180, .22], ['Encore', 180, 195, .35]], hours: [19.5, 20], tk: '#be185d' },
+    trucks:     { name: 'Monster trucks', crowd: [24000, 38000], share: .012, tol: 1, want: { dog: 1.3, soda: 1.05, chips: 1.25, cocoa: 1 },
+      segs: [['Pit party', -90, 0, .9], ['Racing', 0, 55, .4], ['Intermission', 55, 80, 2.1], ['Freestyle', 80, 140, .4], ['Last laps', 140, 150, .4]], hours: [19, 13], tk: '#ea580c' },
+    band:       { name: 'Marching band festival', crowd: [9000, 15000], share: .026, tol: .9, want: { dog: .95, soda: 1.15, chips: 1.25, cocoa: 1.1 },
+      segs: [['Warm-ups', -30, 0, .8], ['Bands on the field', 0, 150, .6], ['Awards', 150, 175, 1.4]], hours: [10, 11], tk: '#1d4ed8' },
+    bowl:       { name: 'Championship', crowd: [62000, 72000], share: .0078, tol: 1.4, want: { dog: 1.2, soda: 1, chips: 1, cocoa: 1.05 }, segs: FOOT, sport: 1, hours: [14.42, 18.5], tk: '#b45309' }
+  };
+  var MODES = {
+    rookie:  { name: 'Rookie', n: 8, goal: 700000, tErr: 3, cErr: .08, acc: .92, surp: .3, desc: '8 events · reach $7,000 · spot-on forecasts' },
+    pro:     { name: 'Pro', n: 10, goal: 1000000, tErr: 7, cErr: .2, acc: .78, surp: .45, desc: '10 events · reach $10,000 · forecasts can miss' },
+    allstar: { name: 'All-Star', n: 12, goal: 1350000, tErr: 11, cErr: .32, acc: .62, surp: .6, desc: '12 events · reach $13,500 · anything can happen' }
+  };
+  var START_CASH = 50000;
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  function clock12(h) { var hh = Math.floor(h), mm = Math.round((h - hh) * 60); return ((hh + 11) % 12 + 1) + ':' + ('0' + mm).slice(-2) + (hh >= 12 ? ' PM' : ' AM'); }
+
+  function makeSeason(mode, seed) {
+    var M = MODES[mode], R = rng(seed), n = M.n, out = [];
+    var mid = ['football', 'concert', 'college', 'trucks', 'football', 'soccer', 'highschool', 'football', 'band', 'college', 'concert', 'football', 'trucks', 'soccer'];
+    // shuffle the middle a little, but keep football the most common
+    for (var i = mid.length - 1; i > 0; i--) { var j = Math.floor(R() * (i + 1)), t = mid[i]; mid[i] = mid[j]; mid[j] = t; }
+    var list = ['football'].concat(mid.slice(0, n - 2)).concat(['bowl']);
+    var y = new Date().getFullYear(), d0 = new Date(y, 8, 5), span = 98, gap = span / (n - 1);
+    for (i = 0; i < n; i++) {
+      var type = list[i], T = TYPES[type], day = new Date(d0.getTime() + Math.round(i * gap) * 864e5);
+      if (type !== 'band' && day.getDay() > 0 && day.getDay() < 5) day = new Date(day.getTime() + (6 - day.getDay()) * 864e5);
+      var hour = pick(R, T.hours), night = hour >= 17.5;
+      var frac = (day - d0) / (span * 864e5);
+      var temp = Math.round(81 - 44 * frac + gauss(R) * 7 - (night ? 8 : 0) + (hour < 12 ? -5 : 0));
+      var wet = R() < .22, cond = wet ? (temp <= 34 ? 'snow' : 'rain') : (R() < .35 ? 'cloudy' : 'sunny');
+      var crowd = Math.round((T.crowd[0] + (T.crowd[1] - T.crowd[0]) * R()) * (cond === 'rain' ? .88 : cond === 'snow' ? .82 : 1) / 10) * 10;
+      // the forecast: a range around the truth that is off by up to the level's error
+      var tc = temp + (R() - .5) * M.tErr * 1.6, tLo = Math.round(tc - M.tErr / 2 - 2), tHi = Math.round(tc + M.tErr / 2 + 2);
+      var fCond = cond;
+      if (R() > M.acc) fCond = cond === 'sunny' ? 'cloudy' : cond === 'cloudy' ? pick(R, ['sunny', 'rain']) : cond === 'rain' ? 'cloudy' : 'cloudy';
+      var cc = crowd * (1 + (R() - .5) * M.cErr * 1.4), cLo = Math.round(cc * (1 - M.cErr / 2 - .04) / 500) * 500, cHi = Math.round(cc * (1 + M.cErr / 2 + .04) / 500) * 500;
+      var foe = pick(R, FOES), title = T.sport ? HOME + ' vs ' + foe : type === 'concert' ? pick(R, BANDS) : type === 'trucks' ? 'Monster Truck Jam' : 'Marching band festival';
+      if (type === 'bowl') title = 'Championship: ' + HOME + ' vs ' + foe;
+      if (type === 'highschool') title = 'State semifinal';
+      var cost = {}; STOCK.forEach(function (k) { cost[k] = Math.round(ITEMS[k].cost * (.93 + R() * .14) / 10) * 10; });
+      var news = null;
+      if (i > 0 && R() < M.surp * .55) {
+        var nk = pick(R, ['dogup', 'bunsale', 'truck', 'promo', 'sodaup']);
+        if (nk === 'dogup') { cost.dog = Math.round(cost.dog * 1.35 / 10) * 10; news = { k: nk, icon: 'flame', text: 'Hot dog shortage: cases cost 35% more' }; }
+        if (nk === 'sodaup') { cost.soda = Math.round(cost.soda * 1.3 / 10) * 10; news = { k: nk, icon: 'flame', text: 'Soda supplier raised prices 30%' }; }
+        if (nk === 'bunsale') { cost.bun = Math.round(cost.bun * .5 / 10) * 10; news = { k: nk, icon: 'star', text: 'The bakery is selling buns half price' }; }
+        if (nk === 'truck') news = { k: nk, icon: 'car', text: 'A food truck is parking outside the gates' };
+        if (nk === 'promo') { news = { k: nk, icon: 'users', text: 'Ticket giveaway: a bigger crowd than usual' }; }
+      }
+      var surprise = null;
+      if (R() < M.surp * .5) surprise = T.sport ? pick(R, wet ? ['delay', 'overtime'] : ['overtime', 'overtime', 'tv']) : wet ? 'delay' : 'tv';
+      out.push({ type: type, title: title, foe: foe, date: day.getTime(), hour: hour, night: night, temp: temp, cond: cond, crowd: crowd,
+        tLo: tLo, tHi: tHi, fCond: fCond, cLo: cLo, cHi: cHi, cost: cost, news: news, surprise: surprise, seed: Math.floor(R() * 2e9) });
+    }
+    return out;
+  }
+  function dateText(ev) { var d = new Date(ev.date); return DAYS[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate() + ' · ' + clock12(ev.hour); }
+
+  // ── The day itself: every fan who walks up, second by second ──────────────
+  // Uses the event's own seed, so the same choices always play out the same way.
+  function simulate(ev, st) {
+    var T = TYPES[ev.type], R = rng(ev.seed ^ 0x5bd1e995), M = MODES[st.mode];
+    var servers = 1 + st.helpers, own = st.owned;
+    var bad = ev.cond === 'rain' || ev.cond === 'snow';
+    var lift = ADS[st.ad].lift * (own.sign ? 1.12 : 1) * (bad ? (own.canopy ? 1.22 : .9) : 1) * (ev.news && ev.news.k === 'truck' ? .8 : 1);
+    var crowd = ev.crowd * (ev.news && ev.news.k === 'promo' ? 1.18 : 1);
+    var V = crowd * T.share * lift;
+    var tol = T.tol, temp = ev.temp;
+    var meal = (ev.hour >= 11 && ev.hour <= 13.6) || (ev.hour >= 17 && ev.hour <= 19.6) ? 1.12 : ev.hour >= 19.6 ? .88 : 1;
+    var P = {
+      dog: clamp(.5 * T.want.dog * meal * (temp < 45 ? 1.08 : 1), 0, .95),
+      soda: clamp((.24 + (temp - 50) * .011) * T.want.soda, .06, .85),
+      chips: .26 * T.want.chips,
+      cocoa: clamp((60 - temp) * .019, 0, .78) * T.want.cocoa
+    };
+    // the scoreboard and any surprise change the timetable
+    var segs = T.segs.map(function (s) { return s.slice(); });
+    var news = [], score = [0, 0], scores = [];
+    if (ev.surprise === 'delay') {
+      var at = segs.length > 4 ? 3 : 1, s0 = segs[at][1];
+      segs.splice(at, 0, ['Weather delay', s0, s0 + 30, 1.6]);
+      for (var i = at + 1; i < segs.length; i++) { segs[i][1] += 30; segs[i][2] += 30; }
+      news.push({ t: s0 * 60, k: 'news', icon: 'clock', text: 'Weather delay: 30 minutes', tone: 'good' });
+    }
+    var last = segs[segs.length - 1];
+    if (T.sport) {
+      // play the game: scoring chances through the playing segments
+      segs.forEach(function (s) {
+        if (s[3] < 1 && !/Gates|Final|Full time/.test(s[0])) {
+          for (var m = s[1]; m < s[2]; m += 1) for (var side = 0; side < 2; side++) {
+            var p = ev.type === 'soccer' ? .009 : .022;
+            if (side === 0) p *= 1.15;
+            if (R() < p) { var pts = ev.type === 'soccer' ? 1 : R() < .62 ? 7 : 3; score[side] += pts; scores.push({ t: (m + R()) * 60, k: 'score', side: side, pts: pts, sc: score.slice() }); }
+          }
+        }
+      });
+      if (score[0] === score[1] && ev.type !== 'soccer' || ev.surprise === 'overtime') {
+        var fin = segs.length - 1, a0 = segs[fin][1];
+        segs.splice(fin, 0, ['Overtime', a0, a0 + 15, .55]);
+        segs[fin + 1][1] += 15; segs[fin + 1][2] += 15;
+        news.push({ t: a0 * 60, k: 'news', icon: 'clock', text: 'Overtime! 15 more minutes', tone: 'good' });
+        if (ev.type !== 'soccer') {
+          var side2 = R() < .58 ? 0 : 1, p2 = R() < .55 ? 7 : 3;
+          if (score[0] === score[1]) { score[side2] += p2; scores.push({ t: (a0 + 3 + R() * 10) * 60, k: 'score', side: side2, pts: p2, sc: score.slice(), ot: 1 }); }
+        }
+      }
+      last = segs[segs.length - 1];
+      if (score[0] > score[1]) last[3] *= 1.5;   // a home win: fans hang around to celebrate
+    }
+    if (ev.surprise === 'tv') { segs[0][3] *= 1.35; news.push({ t: (segs[0][1] + 10) * 60, k: 'news', icon: 'camera', text: 'A TV crew is filming the plaza', tone: 'good' }); }
+    var W = 0; segs.forEach(function (s) { W += (s[2] - s[1]) * s[3]; });
+    // stock on hand (hot dogs only sell with a bun)
+    var have = { dog: lots(st.stock.dog), bun: lots(st.stock.bun), soda: st.stock.soda, chips: st.stock.chips, cocoa: st.stock.cocoa };
+    var start = { dog: have.dog, bun: have.bun, soda: have.soda, chips: have.chips, cocoa: have.cocoa };
+    function avail(k) { return k === 'dog' ? Math.min(have.dog, have.bun) : have[k]; }
+    // arrivals, minute by minute
+    var arr = [];
+    segs.forEach(function (s, si) {
+      for (var m = s[1]; m < s[2]; m++) {
+        var w = s[3];
+        if (si === 0) w *= .45 + 1.1 * (m - s[1]) / Math.max(1, s[2] - s[1]);   // the gates crowd builds up
+        var n = poisson(R, V * w / W);
+        for (var j = 0; j < n; j++) arr.push((m + R()) * 60);
+      }
+    });
+    arr.sort(function (a, b) { return a - b; });
+    var T0 = segs[0][1] * 60, TEND = last[2] * 60;
+    var res = { sold: {}, take: {}, pass: {}, miss: {}, walks: { price: 0, line: 0, out: 0 }, served: 0, fans: 0, peakQ: 0, peakAt: 0,
+      outAt: {}, events: [], q: [], segs: segs, score: score, scores: scores, start: start, servers: servers, T0: T0, TEND: TEND };
+    SELL.forEach(function (k) { res.sold[k] = 0; res.take[k] = 0; res.pass[k] = 0; res.miss[k] = 0; });
+    var queue = [], busy = [], ai = 0, svcK = st.owned.reader ? .7 : 1, wasOut = {};
+    for (i = 0; i < servers; i++) busy.push(T0);
+    function segAt(t) { for (var i = 0; i < segs.length; i++) if (t < segs[i][2] * 60) return segs[i]; return last; }
+    function noteOut(t) {
+      SELL.forEach(function (k) {
+        if (!wasOut[k] && start[k === 'dog' ? 'dog' : k] > 0 && avail(k) <= 0) {
+          wasOut[k] = 1; res.outAt[k] = t;
+          res.events.push({ t: t, k: 'out', it: k, why: k === 'dog' ? (have.dog <= 0 ? 'dog' : 'bun') : k });
+        }
+      });
+    }
+    var lastQ = T0, tEnd = TEND + 600;
+    for (var t = T0; t < tEnd; t++) {
+      while (ai < arr.length && arr[ai] < t + 1) {
+        var at2 = arr[ai++], sg = segAt(at2), rush = sg[3] >= 1.5;
+        var wants = [];
+        SELL.forEach(function (k) { if (R() < P[k]) wants.push(k); });
+        if (!wants.length) { if (R() < .55) { var best = 'dog'; SELL.forEach(function (k) { if (P[k] > P[best]) best = k; }); wants.push(best); } else continue; }
+        res.fans++;
+        var spend = .74 + .72 * (R() * .5 + R() * .5), ok = [], passed = 0;
+        wants.forEach(function (k) {
+          var limit = ITEMS[k].fair * tol * spend * (.92 + R() * .16);
+          if (st.prices[k] <= limit) ok.push(k); else { res.pass[k]++; passed++; }
+        });
+        if (!ok.length) { res.walks.price++; res.events.push({ t: at2, k: 'walk', r: 'price', it: wants[0] }); continue; }
+        var can = ok.filter(function (k) { return avail(k) > 0; });
+        ok.forEach(function (k) { if (avail(k) <= 0) res.miss[k]++; });
+        if (!can.length) { res.walks.out++; res.events.push({ t: at2, k: 'walk', r: 'out', it: ok[0] }); continue; }
+        var wait = queue.length * 40 * svcK / servers / 60, patience = rush ? 4 + R() * 7 : 6 + R() * 11;
+        if (wait > patience) { res.walks.line++; can.forEach(function (k) { res.miss[k]++; }); res.events.push({ t: at2, k: 'walk', r: 'line', it: can[0] }); continue; }
+        queue.push({ t: at2, items: can });
+      }
+      for (var s = 0; s < servers; s++) {
+        if (busy[s] <= t && queue.length) {
+          var c = queue.shift(), got = [], paid = 0;
+          c.items.forEach(function (k) {
+            if (avail(k) > 0) {
+              if (k === 'dog') { have.dog--; have.bun--; } else have[k]--;
+              got.push(k); paid += st.prices[k]; res.sold[k]++; res.take[k] += st.prices[k];
+            } else res.miss[k]++;
+          });
+          if (got.length) {
+            res.served++;
+            res.events.push({ t: t, k: 'serve', s: s, items: got, paid: paid });
+            busy[s] = t + Math.round((26 + 11 * got.length) * svcK * (.85 + R() * .3));
+            noteOut(t);
+          } else { res.walks.out++; res.events.push({ t: t, k: 'walk', r: 'out', it: c.items[0], front: 1 }); }
+        }
+      }
+      if (t - lastQ >= 15) { lastQ = t; res.q.push(queue.length); if (queue.length > res.peakQ) { res.peakQ = queue.length; res.peakAt = t; } }
+      if (t >= TEND && !queue.length) break;
+    }
+    res.TEND = Math.max(TEND, t);
+    segs.forEach(function (s, i) { if (i) res.events.push({ t: s[1] * 60, k: 'phase', label: s[0], w: s[3] }); });
+    res.events = res.events.concat(news, scores).sort(function (a, b) { return a.t - b.t; });
+    res.left = { dog: have.dog, bun: have.bun, soda: have.soda, chips: have.chips, cocoa: have.cocoa };
+    res.revenue = 0; SELL.forEach(function (k) { res.revenue += res.take[k]; });
+    return res;
+  }
+  function lots(a) { var n = 0; (a || []).forEach(function (l) { n += l.q; }); return n; }
+  function takeLots(a, n) { // sell the oldest first
+    a.sort(function (x, y) { return y.age - x.age; });
+    for (var i = 0; i < a.length && n > 0; i++) { var d = Math.min(a[i].q, n); a[i].q -= d; n -= d; }
+    return a.filter(function (l) { return l.q > 0; });
+  }
+
+  // ── Pictures (no emoji): the items, people, the stand ────────────────────
+  function art(k, x) {
+    var s = '';
+    if (k === 'dog') s = '<path d="M5 25c0-4 6-7 19-7s19 3 19 7c0 3-6 6-19 6S5 28 5 25z" fill="#d8954a"/><path d="M5 25c0 3 6 6 19 6s19-3 19-6c0 5-7 9-19 9S5 30 5 25z" fill="#b8742f"/>' +
+      '<rect x="3" y="18.5" width="42" height="8" rx="4" fill="#b8432c"/><rect x="5" y="19.5" width="38" height="2" rx="1" fill="#e07658" opacity=".7"/>' +
+      '<path d="M8 22.5c2.5-2 4.5 2 7 0s4.5 2 7 0 4.5 2 7 0 4.5 2 7 0 3.5 1.5 4.5.5" fill="none" stroke="#f2c531" stroke-width="1.9" stroke-linecap="round"/>' +
+      '<path d="M7 18c0-3 7-5 17-5s17 2 17 5" fill="#e8ad62"/>';
+    else if (k === 'bun') s = '<path d="M5 26c0-6 8-10 19-10s19 4 19 10c0 4-8 6-19 6S5 30 5 26z" fill="#e3a458"/><path d="M5 26c0 4 8 6 19 6s19-2 19-6c0 5-8 9-19 9S5 31 5 26z" fill="#b8742f"/>' +
+      '<path d="M8 25c6-2 26-2 32 0" stroke="#9a5c22" stroke-width="1.6" fill="none" stroke-linecap="round"/><ellipse cx="18" cy="20" rx="6" ry="1.6" fill="#f6c98a" opacity=".7"/>';
+    else if (k === 'soda') s = '<path d="M14 14h20l-2.6 27a3 3 0 0 1-3 2.7h-8.8a3 3 0 0 1-3-2.7z" fill="#e8343a"/><path d="M15.2 26h17.6l-.6 6H15.8z" fill="#fff"/><path d="M15.8 32h16.4" stroke="#e8343a" stroke-width="1.4"/>' +
+      '<rect x="12" y="10.5" width="24" height="4.5" rx="2" fill="#f4f4f4"/><path d="M26 11 30 2" stroke="#3f8cff" stroke-width="2.6" stroke-linecap="round"/><path d="M17 16v24" stroke="#fff" stroke-width="1.6" opacity=".35"/>';
+    else if (k === 'chips') s = '<path d="M11 9h26l-1.5 3 1.5 3-2 26H12.5l-2-26 1.5-3z" fill="#f4b81c"/><path d="M11 9h26l-1.5 3 1.5 3H11l1.5-3z" fill="#d43a2f"/><path d="M12 37h23l-.4 4H12.5z" fill="#d43a2f"/>' +
+      '<ellipse cx="24" cy="26" rx="7.5" ry="6" fill="#fff3c8"/><path d="M19 26q2.5-4 5 0t5 0" stroke="#d48c12" stroke-width="1.4" fill="none"/><path d="M15 16v18" stroke="#fff" stroke-width="1.6" opacity=".35"/>';
+    else if (k === 'cocoa') s = '<path d="M13 17h22l-2.4 23a3 3 0 0 1-3 2.6h-11.2a3 3 0 0 1-3-2.6z" fill="#f2ebe0"/><path d="M14 24h20l-1 10H15z" fill="#7a4a2a"/>' +
+      '<rect x="11.5" y="13" width="25" height="5" rx="2.2" fill="#5b3820"/><path d="M19 10c-2-3 2-4 0-7M24 10c-2-3 2-4 0-7M29 10c-2-3 2-4 0-7" stroke="#cfd6df" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+    return '<svg viewBox="0 0 48 48" aria-hidden="true"' + (x || '') + '>' + s + '</svg>';
+  }
+  var WX_ICON = { sunny: 'sun', cloudy: 'cloud', rain: 'umbrella', snow: 'snowflake' };
+  var WX_NAME = { sunny: 'Sunny', cloudy: 'Cloudy', rain: 'Rain', snow: 'Snow' };
+  function wxIcon(c, night) { return c === 'sunny' && night ? ICO('moon') : ICO(WX_ICON[c]); }
+
+  // A fan seen from behind: jersey, number, hair or cap. Feet at 0,0.
+  var SKIN = ['#f1c7a3', '#e0ac85', '#c98d64', '#a86b45', '#7a4a2e', '#5a3622'], HAIR = ['#2a1c14', '#4a3020', '#7a5230', '#b88a4a', '#d9c08a', '#1c1c1c', '#8a8a8a'];
+  var SHIRT = ['#c8322f', '#c8322f', '#c8322f', '#1f3a7a', '#f2f2f2', '#2f6d3a', '#e8a41c', '#5b3a8a', '#3a3f4a', '#c8322f'];
+  var PANTS = ['#2b3a55', '#3a3a3a', '#5a4a3a', '#1f2a40', '#6b6f7a'];
+  function personSVG(R, opts) {
+    opts = opts || {};
+    var sk = pick(R, SKIN), hr = pick(R, HAIR), sh = opts.shirt || pick(R, SHIRT), pa = pick(R, PANTS), kid = R() < .14, sc = kid ? .74 : .92 + R() * .16;
+    var num = R() < .55 && sh !== '#f2f2f2' ? String(Math.floor(R() * 89) + 1) : '', cap = R() < .3, beanie = !cap && opts.cold && R() < .45, long = !cap && !beanie && R() < .35;
+    var sleeve = shade(sh, -18), out = '';
+    out += '<ellipse cx="0" cy="0" rx="11" ry="2.8" fill="rgba(0,0,0,.28)"/>';
+    out += '<g class="bd" transform="scale(' + sc.toFixed(2) + ')">';
+    out += '<rect x="-7" y="-23" width="6" height="23" rx="2.5" fill="' + pa + '"/><rect x="1" y="-23" width="6" height="23" rx="2.5" fill="' + shade(pa, -10) + '"/>';
+    out += '<rect x="-7.5" y="-2.5" width="7" height="3" rx="1.5" fill="#222"/><rect x="0.5" y="-2.5" width="7" height="3" rx="1.5" fill="#222"/>';
+    out += '<rect x="-13" y="-45" width="5" height="21" rx="2.5" fill="' + sleeve + '"/><rect x="8" y="-45" width="5" height="21" rx="2.5" fill="' + sleeve + '"/>';
+    out += '<circle cx="-10.5" cy="-23.5" r="2.4" fill="' + sk + '"/><circle cx="10.5" cy="-23.5" r="2.4" fill="' + sk + '"/>';
+    out += '<path d="M-10 -40a6 6 0 0 1 6-6h8a6 6 0 0 1 6 6v18h-20z" fill="' + sh + '"/>';
+    if (opts.cold) out += '<path d="M-10 -40a6 6 0 0 1 6-6h8a6 6 0 0 1 6 6v18h-20z" fill="' + shade(sh, -25) + '" opacity=".35"/><path d="M0 -46v24" stroke="rgba(0,0,0,.25)" stroke-width="1"/>';
+    if (num && !opts.cold) out += '<text x="0" y="-29" text-anchor="middle" font-family="Lilita One, sans-serif" font-size="10" fill="' + (sh === '#e8a41c' ? '#3a2a00' : '#fff') + '" opacity=".92">' + num + '</text>';
+    out += '<rect x="-2.6" y="-49" width="5.2" height="4" fill="' + shade(sk, -15) + '"/>';
+    out += '<circle cx="0" cy="-54" r="7.4" fill="' + sk + '"/>';
+    if (cap) out += '<path d="M-7.6 -54.5a7.6 7.6 0 0 1 15.2 0z" fill="' + (R() < .6 ? '#c8322f' : '#1f3a7a') + '"/><rect x="-7.8" y="-55.2" width="15.6" height="2.2" rx="1" fill="rgba(0,0,0,.25)"/>';
+    else if (beanie) out += '<path d="M-7.8 -53a7.8 7.8 0 0 1 15.6 0z" fill="' + pick(R, ['#c8322f', '#2f6d3a', '#e8a41c', '#1f3a7a']) + '"/><circle cx="0" cy="-62" r="2.4" fill="#f4f4f4"/><rect x="-7.9" y="-54.5" width="15.8" height="3" rx="1.4" fill="#f4f4f4" opacity=".85"/>';
+    else out += '<path d="M-7.6 -53.2a7.6 7.6 0 0 1 15.2 0c0 3-1 ' + (long ? '9 -2 12h-11.2c-1-3-2-9-2-12z' : '4 -1.6 6h-12c-.6-2-1.6-3-1.6-6z') + '" fill="' + hr + '"/>';
+    out += '</g>';
+    return out;
+  }
+  function shade(hex, amt) {
+    var n = parseInt(hex.slice(1), 16), r = (n >> 16) + amt, g = (n >> 8 & 255) + amt, b = (n & 255) + amt;
+    return '#' + ((1 << 24) + (clamp(r, 0, 255) << 16) + (clamp(g, 0, 255) << 8) + clamp(b, 0, 255)).toString(16).slice(1);
+  }
+  // a vendor behind the counter (you or a helper): white cap, apron
+  function vendorSVG(x, i) {
+    var sk = SKIN[(i * 2 + 1) % SKIN.length];
+    return '<g transform="translate(' + x + ',162)"><path d="M-11 0v-14a7 7 0 0 1 7-7h8a7 7 0 0 1 7 7V0z" fill="#e9e3d6"/><path d="M-7 0v-15h14V0z" fill="#c8322f"/><path d="M-7 -15l-3-6M7 -15l3-6" stroke="#c8322f" stroke-width="1.6"/>' +
+      '<rect x="-2.4" y="-25" width="4.8" height="4" fill="' + shade(sk, -15) + '"/><circle cx="0" cy="-30" r="7" fill="' + sk + '"/>' +
+      '<circle cx="-2.4" cy="-30.5" r=".9" fill="#2a1c14"/><circle cx="2.4" cy="-30.5" r=".9" fill="#2a1c14"/><path d="M-2.4 -27a3 3 0 0 0 4.8 0" stroke="#7a3a2a" stroke-width=".9" fill="none"/>' +
+      '<path d="M-7.6 -32a7.6 6 0 0 1 15.2 0z" fill="#f7f7f7"/><rect x="-8.4" y="-33" width="16.8" height="2.6" rx="1.3" fill="#c8322f"/></g>';
+  }
+
+  function sceneSVG(name) {
+    var s = '<svg viewBox="0 -40 400 290" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+    s += '<defs><linearGradient id="hsky" gradientUnits="userSpaceOnUse" x1="0" y1="-60" x2="0" y2="140"><stop offset="0" class="sky1"/><stop offset="1" class="sky2"/></linearGradient>' +
+      '<linearGradient id="hfloor" gradientUnits="userSpaceOnUse" x1="0" y1="126" x2="0" y2="300"><stop offset="0" class="fl2"/><stop offset=".25" class="fl1"/><stop offset="1" class="fl2"/></linearGradient>' +
+      '<radialGradient id="hlamp"><stop offset="0" stop-color="#fff6d8" stop-opacity=".95"/><stop offset=".25" stop-color="#ffe7a0" stop-opacity=".55"/><stop offset="1" stop-color="#ffe7a0" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="hpool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffd27a" stop-opacity=".42"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>' +
+      '<linearGradient id="hint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a1a10"/><stop offset="1" stop-color="#4d3320"/></linearGradient>' +
+      '<linearGradient id="hwood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c08850"/><stop offset="1" stop-color="#8a5a30"/></linearGradient>' +
+      '<linearGradient id="hshut" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9bfc8"/><stop offset="1" stop-color="#8b929c"/></linearGradient>' +
+      '<pattern id="hslat" width="8" height="5" patternUnits="userSpaceOnUse"><rect width="8" height="5" fill="url(#hshut)"/><rect y="4" width="8" height="1" fill="rgba(0,0,0,.22)"/><rect y="0" width="8" height=".8" fill="rgba(255,255,255,.35)"/></pattern>' +
+      '<clipPath id="hwin"><rect x="232" y="114" width="146" height="47"/></clipPath>' +
+      '<clipPath id="hawn"><path d="M226 46h158l12 24H214z"/></clipPath>' +
+      '</defs>';
+    // sky, sun, clouds
+    s += '<rect x="-300" y="-400" width="1000" height="540" fill="url(#hsky)"/>';
+    s += '<g class="sun"><circle cx="56" cy="2" r="24" fill="#fff2b0" opacity=".35" class="day-only"/><circle cx="56" cy="2" r="12" fill="#fff4c2" class="day-only"/><circle cx="56" cy="2" r="9" fill="#f4f1ff" class="night-only"/><circle cx="52" cy="-1" r="8" fill="#20365f" class="night-only"/></g>';
+    s += '<g class="night-only">' + [[30, -14], [110, 2], [150, -21], [190, 16], [250, -12], [300, 10], [350, -26], [385, 2], [90, 28], [212, -30], [130, -32], [330, -6]].map(function (p) { return '<circle cx="' + p[0] + '" cy="' + p[1] + '" r=".9" fill="#fff" opacity=".7"/>'; }).join('') + '</g>';
+    s += '<g class="clouds"><g><ellipse cx="40" cy="30" rx="26" ry="8" fill="#fff" opacity=".85"/><ellipse cx="56" cy="25" rx="16" ry="8" fill="#fff" opacity=".85"/></g>' +
+      '<g><ellipse cx="160" cy="18" rx="30" ry="7" fill="#fff" opacity=".7"/><ellipse cx="176" cy="13" rx="15" ry="7" fill="#fff" opacity=".7"/></g>' +
+      '<g class="heavy"><ellipse cx="90" cy="14" rx="60" ry="12" fill="#fff" opacity=".8"/><ellipse cx="300" cy="22" rx="70" ry="13" fill="#fff" opacity=".8"/><ellipse cx="200" cy="8" rx="80" ry="11" fill="#fff" opacity=".75"/></g></g>';
+    // the stadium behind the plaza
+    s += '<path d="M-300 128V92Q-150 66 -10 62Q200 30 410 62Q550 66 700 92V128z" class="st-wall"/>';
+    s += '<path d="M-300 92Q-150 66 -10 62Q200 30 410 62Q550 66 700 92" stroke="#000" stroke-opacity=".25" stroke-width="7" fill="none"/>';
+    s += '<path d="M-300 88Q-150 62 -10 58Q200 26 410 58Q550 62 700 88V93Q550 67 410 63Q200 31 -10 63Q-150 67 -300 93z" class="st-rim"/>';
+    var cols = '';
+    for (var x = -198; x < 600; x += 24) {
+      var yt = x < -6 || x > 400 ? 72 + Math.min(6, Math.abs(x < 0 ? x + 6 : x - 400) * .04) : 62 - 32 * (1 - Math.pow((x - 200) / 210, 2)) + 10;
+      cols += '<rect x="' + (x + 4) + '" y="' + (yt + 4).toFixed(1) + '" width="14" height="' + (88 - yt).toFixed(1) + '" rx="6" class="st-win" opacity=".85"/>';
+      cols += '<rect x="' + (x + 4) + '" y="' + (yt + 4).toFixed(1) + '" width="14" height="' + (88 - yt).toFixed(1) + '" rx="6" fill="#000" opacity=".2" class="day-only"/>';
+    }
+    s += cols + '<rect x="-300" y="92" width="1000" height="36" class="st-wall2"/>';
+    for (x = -200; x < 600; x += 40) s += '<rect x="' + (x + 6) + '" y="98" width="28" height="30" rx="2" fill="#000" opacity=".22"/>';
+    // team banners
+    [[118, '#c8322f'], [198, '#1f3a7a'], [278, '#c8322f']].forEach(function (b) {
+      s += '<path d="M' + b[0] + ' 60h16v26l-8-5-8 5z" fill="' + b[1] + '"/><path d="M' + (b[0] + 4) + ' 66h8" stroke="#fff" stroke-width="2"/>';
+    });
+    // light towers, glowing at night
+    [26, 374].forEach(function (lx) {
+      s += '<path d="M' + (lx - 1.6) + ' 128L' + lx + ' -6L' + (lx + 1.6) + ' 128z" fill="#3a4152"/>';
+      s += '<rect x="' + (lx - 14) + '" y="-16" width="28" height="13" rx="2" fill="#2c3240"/>';
+      for (var r = 0; r < 2; r++) for (var c = 0; c < 4; c++) s += '<circle cx="' + (lx - 9.6 + c * 6.4) + '" cy="' + (-12 + r * 5.4) + '" r="2" fill="#fff8de"/>';
+      s += '<circle cx="' + lx + '" cy="-10" r="52" fill="url(#hlamp)" class="night-only"/>';
+    });
+    // plaza
+    s += '<rect x="-300" y="126" width="1000" height="400" fill="url(#hfloor)"/>';
+    s += '<path d="M-300 126H700" stroke="rgba(0,0,0,.25)" stroke-width="2"/>';
+    [140, 160, 188, 226, 276, 340].forEach(function (y) { s += '<path d="M-300 ' + y + 'H700" stroke="rgba(0,0,0,.09)" stroke-width="1"/>'; });
+    for (x = -1000; x <= 1400; x += 50) s += '<path d="M' + (200 + (x - 200) * .32) + ' 126L' + x + ' 250" stroke="rgba(0,0,0,.07)" stroke-width="1"/>';
+    s += '<ellipse cx="305" cy="232" rx="120" ry="20" fill="url(#hpool)" class="night-only"/>';
+    s += '<g id="h-amb"></g>';
+    // flyer board (advertising), the freezer, helpers waiting outside (prep)
+    s += '<g id="h-flyer" style="display:none"><path d="M150 230l8-40h28l8 40" fill="none" stroke="#5f3c1e" stroke-width="3"/><rect x="154" y="186" width="36" height="28" rx="2" fill="#fffaf0" transform="rotate(-2 172 200)"/>' +
+      '<text x="172" y="198" text-anchor="middle" font-family="Lilita One" font-size="7.5" fill="#c8322f" transform="rotate(-2 172 200)">HOT DOGS</text><path d="M162 205h18l-4-3M180 205l-4 3" stroke="#1f3a7a" stroke-width="2" fill="none" transform="rotate(-2 172 200)"/></g>';
+    s += '<g id="h-crates"></g>';
+    // ── the stand ──
+    s += '<ellipse cx="305" cy="226" rx="104" ry="9" fill="rgba(0,0,0,.28)"/>';
+    s += '<g id="h-freezer" style="display:none"><ellipse cx="379" cy="233" rx="18" ry="3" fill="rgba(0,0,0,.3)"/><rect x="362" y="206" width="34" height="27" rx="3" fill="#e9eef3"/><rect x="361" y="203" width="36" height="7" rx="2.5" fill="#cfd8e2"/><rect x="374" y="213" width="10" height="2.4" rx="1" fill="#9aa6b2"/><text x="379" y="226" text-anchor="middle" font-family="Lilita One" font-size="6.5" fill="#1f6fb8">ICE</text></g>';
+    s += '<rect x="222" y="40" width="166" height="186" fill="#efe4cc"/>';                                     // body
+    s += '<rect x="222" y="40" width="166" height="186" fill="none" stroke="#8a5a30" stroke-width="3"/>';
+    s += '<rect x="226" y="76" width="158" height="38" fill="#e4d6b8"/>';                                      // upper wall
+    // menu board
+    s += '<g id="h-menu"><rect x="234" y="78" width="142" height="33" rx="2" fill="#5f3c1e"/><rect x="236" y="80" width="138" height="29" rx="1.5" fill="#22312a"/>';
+    SELL.forEach(function (k, i) {
+      var cx = 253 + i * 34.5;
+      s += '<g transform="translate(' + (cx - 7) + ',81) scale(.29)">' + art(k).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g>';
+      s += '<g class="mp" id="mp-' + k + '"><text x="' + cx + '" y="106" text-anchor="middle" font-family="Patrick Hand, cursive" font-size="10.5" fill="#f4f1e8">$4</text></g>';
+      s += '<g class="soldout" id="so-' + k + '"><path d="M' + (cx - 15) + ' 104L' + (cx + 15) + ' 84" stroke="#ff5a5a" stroke-width="2.2" stroke-linecap="round"/><text x="' + cx + '" y="98" text-anchor="middle" font-family="Lilita One" font-size="7" fill="#ff7a7a" transform="rotate(-24 ' + cx + ' 96)" letter-spacing=".5">OUT</text></g>';
+    });
+    s += '</g>';
+    // window and what's inside
+    s += '<g clip-path="url(#hwin)"><rect x="232" y="114" width="146" height="47" fill="url(#hint)"/>';
+    s += '<path d="M232 128H378" stroke="#6b4a30" stroke-width="2"/>';
+    for (var j = 0; j < 8; j++) s += '<rect x="' + (240 + j * 17) + '" y="' + (119 + (j % 2)) + '" width="' + (6 + (j % 3) * 2) + '" height="' + (8 - (j % 2)) + '" rx="1.5" fill="' + ['#c8322f', '#f2c531', '#e8e0d0', '#3f8cff'][j % 4] + '" opacity=".75"/>';
+    s += '<g id="h-vendors"></g>';
+    // roller grill
+    s += '<rect x="236" y="146" width="44" height="14" rx="2" fill="#8d949c"/><rect x="238" y="148" width="40" height="10" rx="1.5" fill="#3a3f47"/>';
+    s += '<g id="h-grill">';
+    for (j = 0; j < 6; j++) s += '<g class="gd"><rect x="' + (240 + j * 6.2) + '" y="149.5" width="5.2" height="7" rx="2.6" fill="#b8432c"/><rect class="roller" x="' + (240.8 + j * 6.2) + '" y="150.5" width="1.4" height="5" rx=".7" fill="#e07658"/></g>';
+    s += '</g>';
+    // soda fountain and cups
+    s += '<rect x="288" y="132" width="26" height="28" rx="2" fill="#c8322f"/><rect x="290" y="134" width="22" height="9" rx="1" fill="#f4f4f4"/><text x="301" y="141" text-anchor="middle" font-family="Lilita One" font-size="6" fill="#c8322f">COLA</text>';
+    s += '<rect x="292" y="145" width="3" height="5" fill="#333"/><rect x="299.5" y="145" width="3" height="5" fill="#333"/><rect x="307" y="145" width="3" height="5" fill="#333"/>';
+    s += '<g id="h-cups">';
+    for (j = 0; j < 5; j++) s += '<path d="M318 ' + (158 - j * 3.2) + 'h8l-.6 3.2h-6.8z" fill="' + (j % 2 ? '#f4f4f4' : '#e8343a') + '"/>';
+    s += '</g>';
+    // cocoa urn
+    s += '<g id="h-urn"><rect x="334" y="134" width="15" height="26" rx="4" fill="#b9bfc8"/><rect x="334" y="134" width="15" height="4" rx="2" fill="#8b929c"/><rect x="336" y="150" width="4" height="3" fill="#555"/>' +
+      '<text x="341.5" y="146" text-anchor="middle" font-family="Lilita One" font-size="4.6" fill="#5b3820">COCOA</text>' +
+      '<g class="steam" id="h-steam"><path d="M338 131c-2-3 2-4 0-7" stroke="#fff" stroke-width="1.2" fill="none" opacity=".7"/><path d="M342 131c-2-3 2-4 0-7" stroke="#fff" stroke-width="1.2" fill="none"/><path d="M346 131c-2-3 2-4 0-7" stroke="#fff" stroke-width="1.2" fill="none"/></g></g>';
+    // chips hanging on a clip strip
+    s += '<path d="M358 116v40" stroke="#888" stroke-width="1"/><g id="h-chips">';
+    for (j = 0; j < 4; j++) s += '<g transform="translate(352,' + (118 + j * 10) + ') scale(.2)">' + art('chips').replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g>';
+    s += '</g>';
+    // register
+    s += '<g id="h-till"><rect x="360" y="141" width="18" height="19" rx="2" fill="#3a3f47"/><rect x="362" y="143" width="14" height="5" rx="1" fill="#0d2a16"/><text id="h-tilltx" x="375" y="147.2" text-anchor="end" font-family="Lilita One" font-size="4.2" fill="#6dff9e">0</text>' +
+      '<g fill="#cfd6df">' + [0, 1, 2].map(function (r) { return [0, 1, 2].map(function (c) { return '<rect x="' + (363 + c * 4.2) + '" y="' + (150 + r * 3.2) + '" width="3" height="2.2" rx=".5"/>'; }).join(''); }).join('') + '</g></g>';
+    s += '<g id="h-reader" style="display:none"><rect x="350" y="153" width="7" height="8" rx="1.2" fill="#22262e"/><rect x="351.2" y="154.2" width="4.6" height="2.6" fill="#4ad08a"/></g>';
+    s += '</g>';   // end window clip
+    // the shutter rolls up when you open
+    s += '<g clip-path="url(#hwin)"><g class="shutter"><rect x="232" y="114" width="146" height="47" fill="url(#hslat)"/><rect x="232" y="158" width="146" height="3" fill="#6b727c"/>' +
+      '<g class="closed-tag"><path d="M296 120l9-5 9 5" stroke="#555" stroke-width=".8" fill="none"/><rect x="290" y="120" width="30" height="12" rx="2" fill="#c8322f"/><text x="305" y="129" text-anchor="middle" font-family="Lilita One" font-size="7.5" fill="#fff">CLOSED</text></g></g></g>';
+    // counter and front
+    s += '<rect x="224" y="160" width="162" height="8" rx="1.5" fill="url(#hwood)"/><rect x="224" y="160" width="162" height="1.6" fill="#e6b37a"/>';
+    s += '<rect x="228" y="168" width="154" height="56" fill="#c8322f"/>';
+    s += '<rect x="232" y="172" width="146" height="48" fill="none" stroke="#f4e7c8" stroke-width="1.4"/>';
+    for (j = 0; j < 7; j++) s += '<path d="M' + (229 + j * 22) + ' 168v56" stroke="rgba(0,0,0,.1)" stroke-width="1"/>';
+    s += '<g transform="translate(281,176) scale(1.0)">' + art('dog').replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g>';
+    // awning: stripes in perspective, then scallops
+    var aw = '<g clip-path="url(#hawn)">';
+    for (j = 0; j < 10; j++) {
+      var t0 = 226 + j * 15.8, t1 = t0 + 15.8, b0 = 214 + j * 18.2, b1 = b0 + 18.2;
+      aw += '<path d="M' + t0 + ' 46H' + t1 + 'L' + b1 + ' 70H' + b0 + 'z" fill="' + (j % 2 ? '#f6efe0' : '#c8322f') + '"/>';
+    }
+    aw += '<rect x="210" y="46" width="190" height="6" fill="rgba(255,255,255,.18)"/></g>';
+    for (j = 0; j < 10; j++) aw += '<path d="M' + (214 + j * 18.2) + ' 69.5a9.1 7 0 0 0 18.2 0z" fill="' + (j % 2 ? '#e6dcc6' : '#a8261f') + '"/>';
+    s += aw + '<path d="M214 70H396" stroke="rgba(0,0,0,.15)" stroke-width="1"/>';
+    s += '<path d="M226 46H384" stroke="#7a4a20" stroke-width="2"/>';
+    // the sign on the roof, with marquee bulbs
+    s += '<g id="h-sign"><rect x="240" y="8" width="130" height="34" rx="5" fill="#5f3c1e"/><rect x="243" y="11" width="124" height="28" rx="3.5" fill="#fff4dc"/>' +
+      '<rect class="sign-glow" x="234" y="2" width="142" height="46" rx="10" fill="#ffd36b" opacity=".0" style="filter:blur(6px)"/>' +
+      '<text id="h-name" x="305" y="31" text-anchor="middle" font-family="Lilita One" font-size="15" fill="#c8322f" letter-spacing=".5">' + esc(name) + '</text><g>';
+    for (j = 0; j < 14; j++) s += '<circle class="bulb" cx="' + (247 + j * 8.6) + '" cy="13.8" r="1.4"/><circle class="bulb" cx="' + (247 + j * 8.6) + '" cy="36.2" r="1.4"/>';
+    s += '</g><path d="M260 42v4M350 42v4" stroke="#5f3c1e" stroke-width="3"/></g>';
+    // canopy reaching over the line
+    s += '<g id="h-canopy" style="display:none"><path d="M214 66L120 92H226z" fill="#c8322f" opacity=".95"/><path d="M120 92H226" stroke="#7a1a14" stroke-width="2"/>' +
+      '<path d="M120 92a7 5 0 0 0 14 0a7 5 0 0 0 14 0a7 5 0 0 0 14 0a7 5 0 0 0 14 0a7 5 0 0 0 14 0a7 5 0 0 0 14 0a7 5 0 0 0 14 0" fill="#f6efe0"/><path d="M124 92v136" stroke="#6b727c" stroke-width="2.5"/></g>';
+    // string lights at night
+    s += '<g class="night-only"><path d="M222 46Q190 60 150 56" stroke="#333" stroke-width=".6" fill="none"/>' + [158, 170, 182, 194, 206].map(function (x2, i) { return '<circle cx="' + x2 + '" cy="' + (57 + Math.sin(i) * 1.5) + '" r="1.6" fill="#ffe08a"/>'; }).join('') + '</g>';
+    // people and things flying go on top
+    s += '<g id="h-front"></g><g id="h-crew"></g><g id="h-people"></g><g id="h-fx"></g>';
+    return s + '</svg>';
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
+  var NS = 'http://www.w3.org/2000/svg';
+  function svgEl(tag, attrs, html) { var n = document.createElementNS(NS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); if (html) n.innerHTML = html; return n; }
+
+  // ── Sound ─────────────────────────────────────────────────────────────────
+  var AC = null;
+  function ac() {
+    try { if (localStorage.getItem('gn_sound') === '0') return null; } catch (e) {}
+    if (!AC) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; AC = new C(); }
+    if (AC.state === 'suspended') AC.resume();
+    return AC;
+  }
+  function tone(f, t0, dur, type, vol, slide) {
+    var a = ac(); if (!a) return;
+    var o = a.createOscillator(), g = a.createGain(), t = a.currentTime + t0;
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function noise(t0, dur, vol, type, freq, q, sweepTo, attack) {
+    var a = ac(); if (!a) return;
+    var n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    var s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + t0;
+    f.type = type || 'lowpass'; f.frequency.setValueAtTime(freq || 1000, t); if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur); f.Q.value = q || 0.7;
+    if (attack) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + attack); } else g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.buffer = b; s.connect(f); f.connect(g); g.connect(a.destination); s.start(t);
+  }
+  // loops: grill sizzle and crowd murmur, while the stand is open
+  var loops = null;
+  function loopStart() {
+    var a = ac(); if (!a || loops) return;
+    function mk(sec, fill) { var n = a.sampleRate * sec, b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0); fill(d, n); var s = a.createBufferSource(); s.buffer = b; s.loop = true; return s; }
+    var siz = mk(2, function (d, n) { for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (Math.random() < .004 ? 1 : .25); });
+    var crowd = mk(3, function (d, n) { var v = 0; for (var i = 0; i < n; i++) { v = v * .97 + (Math.random() * 2 - 1) * .03; d[i] = v * (1 + .4 * Math.sin(i / n * 6.283 * 3)); } });
+    var f1 = a.createBiquadFilter(); f1.type = 'highpass'; f1.frequency.value = 2800;
+    var g1 = a.createGain(); g1.gain.value = 0.0001; g1.gain.exponentialRampToValueAtTime(.05, a.currentTime + 1.2);
+    var f2 = a.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 520; f2.Q.value = .6;
+    var g2 = a.createGain(); g2.gain.value = 0.0001; g2.gain.exponentialRampToValueAtTime(.55, a.currentTime + 1.5);
+    siz.connect(f1); f1.connect(g1); g1.connect(a.destination); crowd.connect(f2); f2.connect(g2); g2.connect(a.destination);
+    siz.start(); crowd.start();
+    loops = { siz: siz, crowd: crowd, g1: g1, g2: g2 };
+  }
+  function loopLevel(v) { if (!loops || !AC) return; try { loops.g2.gain.setTargetAtTime(.55 * v, AC.currentTime, .4); } catch (e) {} }
+  function loopStop() {
+    if (!loops || !AC) { loops = null; return; }
+    var l = loops; loops = null;
+    try { l.g1.gain.setTargetAtTime(0.0001, AC.currentTime, .2); l.g2.gain.setTargetAtTime(0.0001, AC.currentTime, .3); } catch (e) {}
+    setTimeout(function () { try { l.siz.stop(); l.crowd.stop(); } catch (e) {} }, 1400);
+  }
+  var SND = {
+    crate: function () { noise(0, .12, .35, 'lowpass', 380); tone(95, 0, .12, 'sine', .25, 60); noise(.02, .05, .12, 'bandpass', 1800, 2); },
+    unload: function () { noise(0, .08, .18, 'lowpass', 600); tone(140, 0, .08, 'sine', .1, 100); },
+    chalk: function () { noise(0, .07, .16, 'bandpass', 3400, 3, 2600); noise(.08, .05, .1, 'bandpass', 3000, 3); },
+    coin: function () { tone(2637, 0, .07, 'square', .018); tone(3520, .04, .12, 'square', .014); },
+    ching: function () { noise(0, .06, .2, 'bandpass', 2200, 1.4); tone(2093, .02, .35, 'triangle', .07); tone(2637, .09, .5, 'triangle', .06); },
+    hmm: function () { tone(210, 0, .22, 'sine', .07, 150); },
+    shutter: function (up) { for (var i = 0; i < 14; i++) noise(i * .055, .05, .09, 'bandpass', up ? 900 + i * 40 : 1400 - i * 40, 2); tone(up ? 70 : 90, 0, .8, 'sawtooth', .02, up ? 110 : 60); },
+    horn: function () { [233, 293, 349].forEach(function (f) { tone(f, 0, 1.1, 'sawtooth', .045); tone(f * 1.003, .02, 1.1, 'sawtooth', .03); }); },
+    roar: function () { noise(0, 2.2, .35, 'bandpass', 700, .5, 1100, .5); noise(.1, 1.6, .12, 'highpass', 2500, .7, 0, .4); },
+    groan: function () { noise(0, 1.2, .18, 'lowpass', 600, .6, 250, .3); },
+    out: function () { noise(0, .18, .4, 'lowpass', 220); tone(80, 0, .25, 'sine', .3, 50); },
+    pencil: function () { for (var i = 0; i < 5; i++) noise(i * .045, .04, .05, 'bandpass', 4200 + Math.random() * 1200, 4); },
+    stamp: function () { noise(0, .16, .45, 'lowpass', 300); tone(70, 0, .2, 'sine', .35, 45); },
+    pop: function () { tone(520, 0, .07, 'sine', .08, 900); },
+    hire: function () { tone(660, 0, .09, 'triangle', .06); tone(880, .08, .14, 'triangle', .06); },
+    buy: function () { tone(523, 0, .12, 'triangle', .07); tone(784, .1, .18, 'triangle', .07); tone(1047, .2, .3, 'triangle', .06); }
+  };
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null;   // the season
+  var D = null;   // the day being played back
+  function save() {
+    if (!S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set('Event ' + (S.i + 1) + ' of ' + S.sched.length + ' · ' + money(S.cash, true));
+    else Kit.resume.clear();
+  }
+  function load() { try { var v = JSON.parse(localStorage.getItem(SAVE) || 'null'); return v && v.v === 1 && v.sched ? v : null; } catch (e) { return null; } }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function ev() { return S.sched[S.i]; }
+  function standName() {
+    var n = (Kit.player() || '').trim();
+    if (!n || n === 'You') return 'HOT DOGS';
+    n = n.split(/\s+/)[0];
+    return (n + (/s$/i.test(n) ? "'" : "'s") + ' Dogs').toUpperCase();
+  }
+
+  Kit.init({
+    id: 'hotdogstand',
+    theme: { wood: ['#9a6a3e', '#6a4424'] },
+    onNew: function () { if (S && S.phase !== 'over') { Kit.confirm('Start a new season? This one ends here.', { ok: 'New season', danger: true }).then(function (y) { if (y) { abandon(); showSetup(); } }); } else showSetup(); },
+    menu: [
+      { icon: 'chart', label: 'Season so far', onClick: function () { seasonSheet(); } },
+      { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show('hotdogstand_' + (S ? S.mode : 'rookie')); } },
+      { icon: 'history', label: 'Past seasons', onClick: function () { Kit.history(HKEY, { title: 'Hot Dog Stand: past seasons' }); } }
+    ],
+    rules:
+      '<p class="goal">Run a hot dog stand outside the stadium for a whole season. Grow your $500 into the season goal by the last event.</p>' +
+      '<h3>Before each event</h3><ul>' +
+      '<li><b>Read the ticket.</b> It shows the event, the start time, the weather forecast and the expected crowd. Your stand sees roughly one fan in a hundred.</li>' +
+      '<li><b>Order supplies.</b> Hot dogs only sell with a bun, so buy both. Leftover buns keep for one more event, hot dogs for two more; soda, chips and cocoa keep all season.</li>' +
+      '<li><b>Set your prices</b> on the chalkboard. Higher prices earn more on each sale, but more fans pass. Concerts and big games will pay more than a school event.</li>' +
+      '<li><b>Hire helpers</b> ($40 each) so the line moves faster. Fans leave a line that is too long, especially at halftime.</li>' +
+      '<li><b>Advertise</b> to bring more fans, and buy <b>gear</b> that helps for the rest of the season.</li></ul>' +
+      '<h3>The event</h3><ul><li>Watch the line. Fans who walk away show why: the price, the wait, or something sold out.</li>' +
+      '<li>Hot days sell soda, cold nights sell cocoa. Lunch and dinner times sell more hot dogs. Halftime is the big rush.</li></ul>' +
+      '<h3>After each event</h3><p>The ledger shows what sold, what it cost, and what you missed. Use it to plan the next one.</p>' +
+      '<h3>Seasons</h3><ul><li><b>Rookie:</b> 8 events, reach $7,000, forecasts are spot on.</li><li><b>Pro:</b> 10 events, reach $10,000, forecasts can miss.</li>' +
+      '<li><b>All-Star:</b> 12 events, reach $13,500, forecasts are rough and surprises are common.</li></ul>' +
+      '<p>Your final cash is your score on the high score board.</p>'
+  });
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  // The secret (same as Apples to Apples): tap the hot dog 12 times in a row and it turns into Drug Wars, the
+  // TI-82 game (games/drugwars.html). Unlocked, a switch shows here; it starts off every time.
+  var DWK = 'hotdogstand_dw';
+  function dwUnlocked() { try { return localStorage.getItem(DWK) === '1'; } catch (e) { return false; } }
+  function showSetup() {
+    stopDay(); app.className = 'hd'; app.innerHTML = '';
+    var dwOn = false;
+    var st = Kit.setup(app, {
+      intro: 'Run the stand outside the stadium for a season',
+      modes: Object.keys(MODES).map(function (k) { var m = MODES[k]; return { id: k, icon: k === 'rookie' ? 'star' : k === 'pro' ? 'flag' : 'flame', title: m.name, desc: m.desc }; }),
+      mode: 'rookie', start: 'Open for the season',
+      players: { min: 1, max: 1, count: 1, label: 'Owner' },
+      onStart: function (cfg) {
+        if (dwOn) { var nm = cfg.players[0] && cfg.players[0].name; location.href = 'drugwars.html' + (nm && nm !== 'You' ? '?p=' + encodeURIComponent(nm) : ''); return; }
+        newSeason(cfg.mode);
+      }
+    });
+    if (!st || !st.el || /[?&]defaults=1/.test(location.search)) return;
+    var box = el('div', { class: 'dw-sec' }), startBtn = st.el.querySelector('.k-start');
+    st.el.insertBefore(box, startBtn);
+    function paint() {
+      box.innerHTML = '';
+      st.el.classList.toggle('dw-on', dwOn);
+      if (startBtn) startBtn.textContent = dwOn ? 'Turn on the TI-82' : 'Open for the season';
+      if (!dwUnlocked()) return;
+      var cv = el('canvas', { width: 46, height: 14 });
+      var row = el('button', { type: 'button', class: 'dw-row', role: 'switch', 'aria-checked': String(dwOn), onclick: function () {
+        dwOn = !dwOn; Kit.sfx(dwOn ? 'pop' : 'tap'); Kit.haptic('light'); paint();
+      } }, [el('span', { class: 'lcd' }, [cv]), el('span', { class: 'grow' }, [el('b', { text: 'Drug Wars' }), el('small', { text: dwOn ? 'On: the TI-82 game from math class' : 'Off: running the hot dog stand' })]), el('span', { class: 'sw' })]);
+      lcdWord(cv, 'DRUGWAR');
+      box.appendChild(row);
+      box.appendChild(el('button', { type: 'button', class: 'dw-hide', text: 'Hide Drug Wars on this device', onclick: function () { try { localStorage.removeItem(DWK); } catch (e) {} dwOn = false; Kit.toast('Hidden'); paint(); } }));
+    }
+    paint();
+    // the hot dog in the header: 12 taps in a row (each within 1.2 s). The first 5 do nothing you can see; from the
+    // 6th it starts to shake, harder each tap, and the 12th unlocks Drug Wars
+    var ic = st.el.querySelector('.k-hero-ic'), taps = 0, lastTap = 0, QUIET = 5, NEED = 12;
+    if (ic) ic.addEventListener('click', function () {
+      var now = Date.now(); taps = now - lastTap < 1200 ? taps + 1 : 1; lastTap = now;
+      if (taps <= QUIET) return;
+      var k = taps - QUIET;
+      ic.style.setProperty('--wob', (6 + k * 3) + 'deg'); ic.style.setProperty('--wsc', String(1 + k * 0.03));
+      ic.classList.remove('wob', 'spin'); void ic.offsetWidth; ic.classList.add('wob');
+      Kit.sfx(taps >= NEED ? 'sparkle' : k >= 4 ? 'pop' : 'tap', 0.4 + k * 0.08); Kit.haptic(k >= 4 ? 'light' : 'tick');
+      if (taps < NEED) return;
+      taps = 0;
+      if (dwUnlocked()) { var r0 = box.querySelector('.dw-row'); if (r0) { r0.scrollIntoView({ behavior: 'smooth', block: 'center' }); r0.classList.remove('arrive'); void r0.offsetWidth; r0.classList.add('arrive'); } return; }
+      try { localStorage.setItem(DWK, '1'); } catch (e) {}
+      ic.classList.remove('wob'); void ic.offsetWidth; ic.classList.add('spin');
+      Kit.haptic('success'); Kit.sfx('win');
+      Kit.confetti({ count: 150, colors: ['#b0bd9e', '#1f281a', '#45484f', '#8fc597', '#6fb6e8'] });
+      setTimeout(function () { Kit.callout('Drug Wars unlocked', '#b9dfbd'); }, 450);
+      setTimeout(function () {
+        paint();
+        var row = box.querySelector('.dw-row'); if (row) { row.classList.add('arrive'); row.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      }, 900);
+    });
+  }
+  // a word in the TI-82's pixel font on a little LCD (6 × 8 cells, 5 × 7 letters)
+  var DW_GLY = { D: '1c12111111121c', R: '1e11111e141211', U: '1111111111110e', G: '0e11101711110f', W: '1111111515150a', A: '0e11111f111111' };
+  function lcdWord(cv, w) {
+    var c = cv.getContext('2d'); c.fillStyle = '#b0bd9e'; c.fillRect(0, 0, cv.width, cv.height); c.fillStyle = '#1f281a';
+    var x0 = Math.floor((cv.width - w.length * 6 + 1) / 2), y0 = Math.floor((cv.height - 7) / 2);
+    w.split('').forEach(function (ch, i) { var h = DW_GLY[ch]; for (var y = 0; y < 7; y++) { var b = parseInt(h.substr(y * 2, 2), 16); for (var x = 0; x < 5; x++) if ((b >> (4 - x)) & 1) c.fillRect(x0 + i * 6 + x, y0 + y, 1, 1); } });
+  }
+  function newSeason(mode) {
+    var seed = Math.floor(Math.random() * 2e9);
+    S = { v: 1, mode: mode, seed: seed, started: Date.now(), cash: START_CASH, i: 0, sched: makeSeason(mode, seed), phase: 'prep',
+      stock: { dog: [], bun: [], soda: 0, chips: 0, cocoa: 0 }, prices: { dog: 400, soda: 300, chips: 200, cocoa: 300 },
+      order: { dog: 0, bun: 0, soda: 0, chips: 0, cocoa: 0 }, helpers: 0, ad: 0, owned: {}, log: [], last: null, tab: 'order',
+      tot: { sold: { dog: 0, soda: 0, chips: 0, cocoa: 0 }, revenue: 0, fans: 0, walks: 0, outs: 0, spoiled: 0 }, best: null };
+    Kit.gameStart(); save(); render(true);
+  }
+  function abandon() { stopDay(); if (S && S.phase !== 'over' && S.i > 0) recordSeason(false); clearSave(); S = null; }
+
+  // ── Layout ────────────────────────────────────────────────────────────────
+  var scene = null, panel = null, strip = null;
+  function render(fresh) {
+    stopDay();
+    app.className = 'hd'; app.innerHTML = '';
+    strip = el('div', { class: 'hd-strip' }); app.appendChild(strip);
+    var main = el('div', { class: 'hd-main' });
+    scene = el('div', { class: 'hd-scene' });
+    scene.innerHTML = sceneSVG(standName()) + '<div class="wx rain"></div><div class="wx rain2"></div>';
+    panel = el('div', { class: 'hd-panel' });
+    main.appendChild(scene); main.appendChild(panel); app.appendChild(main);
+    if (RO) { RO.disconnect(); RO.observe(scene); } fitScene();
+    drawStrip();
+    if (S.phase === 'prep') showPrep(fresh);
+    else if (S.phase === 'report') showReport(false);
+    else if (S.phase === 'over') showOver();
+  }
+  // Fit the scene to its box: a tall box shows more sky and plaza, a wide one more plaza to the sides.
+  var VB = { x: 0, y: -40, w: 400, h: 290 };
+  function fitScene() {
+    if (!scene) return;
+    var svg = scene.querySelector('svg'), w = scene.clientWidth, h = scene.clientHeight; if (!svg || !w || !h) return;
+    var A = w / h, base = 400 / 290;
+    if (A < base) { var H = 400 / A, ex = H - 290; VB = { x: 0, y: -40 - ex * .6, w: 400, h: H }; }
+    else { var W = 290 * A; VB = { x: (400 - W) / 2 - Math.min(30, (W - 400) * .15), y: -40, w: W, h: 290 }; }
+    svg.setAttribute('viewBox', VB.x.toFixed(1) + ' ' + VB.y.toFixed(1) + ' ' + VB.w.toFixed(1) + ' ' + VB.h.toFixed(1));
+  }
+  var RO = window.ResizeObserver ? new ResizeObserver(function () { fitScene(); }) : null;
+  window.addEventListener('resize', fitScene);
+  function drawStrip() {
+    if (!strip) return;
+    var M = MODES[S.mode], pct = clamp(S.cash / M.goal, 0, 1) * 100, n = S.sched.length;
+    var dots = '';
+    for (var i = 0; i < n; i++) {
+      var lg = S.log[i], c = lg ? (lg.net >= 0 ? '#3ddc84' : '#ff6b6b') : i === S.i && S.phase !== 'over' ? '#fff' : 'rgba(255,255,255,.22)';
+      dots += '<span style="width:5px;height:5px;border-radius:50%;background:' + c + (i === S.i && !lg ? ';box-shadow:0 0 0 2px rgba(255,255,255,.3)' : '') + '"></span>';
+    }
+    strip.innerHTML = '<span class="gn">Event <b>' + Math.min(S.i + 1, n) + '</b> of ' + n + '</span>' +
+      '<div class="hd-goal' + (S.cash >= M.goal ? ' met' : '') + '" title="Season goal ' + money(M.goal, true) + '"><i style="width:' + pct.toFixed(1) + '%"></i><div class="dots">' + dots + '</div></div>' +
+      '<span class="cash">' + money(S.cash, true) + '<small>/ ' + money(M.goal, true).replace(/,000$/, 'K').replace(/,500$/, '.5K') + '</small></span>';
+  }
+  function setScene(e, open) {
+    var svg = scene.querySelector('svg');
+    var fz = svg.querySelector('#h-freezer'); if (fz && fz.parentNode.id !== 'h-front') svg.querySelector('#h-front').appendChild(fz);
+    scene.setAttribute('data-wx', e.cond);
+    if (e.night) scene.setAttribute('data-night', ''); else scene.removeAttribute('data-night');
+    svg.classList.toggle('open', !!open);
+    var sg = svg.querySelector('#h-sign'); sg.classList.toggle('sign-on', !!S.owned.sign);
+    svg.querySelector('#h-freezer').style.display = S.owned.freezer ? '' : 'none';
+    svg.querySelector('#h-reader').style.display = S.owned.reader ? '' : 'none';
+    svg.querySelector('#h-canopy').style.display = S.owned.canopy ? '' : 'none';
+    svg.querySelector('#h-flyer').style.display = S.ad ? '' : 'none';
+    var v = '', n = 1 + S.helpers, xs = n === 1 ? [300] : n === 2 ? [268, 330] : n === 3 ? [258, 300, 342] : [250, 284, 318, 352];
+    xs.forEach(function (x, i) { v += vendorSVG(x, i); });
+    svg.querySelector('#h-vendors').innerHTML = v;
+    SELL.forEach(function (k) { menuPrice(k, false); svg.querySelector('#so-' + k).classList.remove('on'); });
+    stockArt(null);
+  }
+  function menuPrice(k, anim) {
+    var g = scene && scene.querySelector('#mp-' + k); if (!g) return;
+    var p = S.prices[k], t = '$' + (p % 100 ? (p / 100).toFixed(2) : String(p / 100));
+    if (!anim) { g.querySelector('text').textContent = t; return; }
+    g.classList.add('wipe');
+    setTimeout(function () { g.querySelector('text').textContent = t; g.classList.remove('wipe'); }, 140);
+  }
+  // what you can see of the stock inside the stand: dogs on the grill, cups, chip bags, cocoa steam
+  function stockArt(have) {
+    if (!scene) return;
+    var h = have || { dog: lots(S.stock.dog), bun: lots(S.stock.bun), soda: S.stock.soda, chips: S.stock.chips, cocoa: S.stock.cocoa }, svg = scene.querySelector('svg');
+    var dogs = Math.min(h.dog, h.bun), gd = svg.querySelectorAll('#h-grill .gd');
+    for (var i = 0; i < gd.length; i++) gd[i].style.opacity = dogs > i * 12 ? 1 : 0;
+    var cups = svg.querySelectorAll('#h-cups path');
+    for (i = 0; i < cups.length; i++) cups[i].style.opacity = h.soda > i * 10 ? 1 : 0;
+    var ch = svg.querySelectorAll('#h-chips > g');
+    for (i = 0; i < ch.length; i++) ch[i].style.opacity = h.chips > i * 8 ? 1 : 0;
+    svg.querySelector('#h-steam').style.display = h.cocoa > 0 ? '' : 'none';
+  }
+
+  // ── Prep: ticket, order, prices, crew ─────────────────────────────────────
+  function ticketHTML(e) {
+    var T = TYPES[e.type];
+    var news = e.news ? '<div class="news">' + ICO(e.news.icon) + '<span>' + esc(e.news.text) + '</span></div>' : '';
+    var tRange = e.tLo + '–' + e.tHi + '°F';
+    return '<div class="stub" style="--tk:' + T.tk + '"><span>' + (e.type === 'bowl' ? 'FINAL' : 'EVENT ' + (S.i + 1)) + '</span></div><div class="bd">' +
+      '<h3>' + esc(e.title) + '</h3><div class="when">' + esc(T.name) + ' · ' + dateText(e) + '</div>' +
+      '<div class="fc">' + wxIcon(e.fCond, e.night) + '<span>' + WX_NAME[e.fCond] + ' · ' + tRange + '</span></div>' +
+      '<div class="fc">' + ICO('users') + '<span>' + e.cLo.toLocaleString() + '–' + e.cHi.toLocaleString() + ' fans</span></div>' + news + '</div>';
+  }
+  function planCost() {
+    var e = ev(), sup = 0;
+    STOCK.forEach(function (k) { sup += S.order[k] * e.cost[k]; });
+    return { sup: sup, crew: S.helpers * WAGE, ads: ADS[S.ad].cost, total: sup + S.helpers * WAGE + ADS[S.ad].cost };
+  }
+  function onHand(k) { return k === 'dog' || k === 'bun' ? lots(S.stock[k]) : S.stock[k]; }
+  function afterOrder(k) { return onHand(k) + S.order[k] * ITEMS[k].pack; }
+  // how many of the lots on hand go bad after this event if they don't sell
+  function expiring(k) {
+    if (k === 'dog' && S.owned.freezer) return 0;
+    var keep = ITEMS[k].keep; if (!keep) return 0;
+    var n = 0; (S.stock[k] || []).forEach(function (l) { if (l.age + 1 >= keep) n += l.q; }); return n;
+  }
+  var tkEl = null;
+  function showPrep(fresh) {
+    var e = ev();
+    setScene(e, false);
+    tkEl = el('div', { class: 'tkt', html: ticketHTML(e), onclick: function () { SND.pop(); tkEl.style.animation = 'none'; void tkEl.offsetWidth; tkEl.style.animation = ''; } });
+    scene.appendChild(tkEl);
+    if (fresh) setTimeout(function () { Kit.sfx('whoosh', .5); }, 80);
+    drawCrates(false); drawCrew();
+    drawPanel();
+  }
+  function drawPanel() {
+    var keep = panel.scrollTop;
+    panel.innerHTML = '';
+    setTimeout(function () { panel.scrollTop = keep; }, 0);
+    var tabs = el('div', { class: 'tabs' });
+    [['order', 'Order', 'inbox'], ['prices', 'Prices', 'pencil'], ['crew', 'Crew', 'users']].forEach(function (t) {
+      var warn = t[0] === 'order' && afterOrder('dog') > afterOrder('bun') + 0;
+      tabs.appendChild(el('button', { class: S.tab === t[0] ? 'on' : '', html: ICO(t[2]) + '<span>' + t[1] + '</span>' + (warn ? '<i class="warn"></i>' : ''), onclick: function () { if (S.tab === t[0]) return; S.tab = t[0]; Kit.sfx('tap', .4); save(); drawPanel(); } }));
+    });
+    panel.appendChild(tabs);
+    var body = el('div', { class: 'rows' });
+    if (S.tab === 'order') orderTab(body); else if (S.tab === 'prices') pricesTab(body); else crewTab(body);
+    panel.appendChild(body);
+    var c = planCost(), left = S.cash - c.total;
+    var foot = el('div', { class: 'foot' }, [
+      el('div', { class: 'sum', html: (c.total ? 'Spend ' + money(c.total) + ' · ' : '') + 'cash left<b class="' + (left < 0 ? 'neg' : '') + '">' + money(left) + '</b>' }),
+      el('button', { class: 'btn btn-primary btn-lg', disabled: left < 0, html: ICO('play') + 'Open the stand', onclick: openStand })
+    ]);
+    panel.appendChild(foot);
+  }
+  function orderTab(body) {
+    var e = ev(), last = S.log.length ? S.log[S.log.length - 1] : null;
+    STOCK.forEach(function (k) {
+      var it = ITEMS[k], have = onHand(k), after = afterOrder(k), exp = expiring(k);
+      var sub = money(e.cost[k]) + ' a ' + it.packName + ' of ' + it.pack;
+      if (last && last.sold && it.sell) sub += ' · sold ' + last.sold[k] + ' last time' + (last.outs && last.outs[k] ? ' (ran out)' : '');
+      var warn = '';
+      if (k === 'dog' && after > afterOrder('bun')) warn = '<span class="warn">Buns for only ' + afterOrder('bun') + '</span>';
+      if (k === 'bun' && after < afterOrder('dog')) warn = '<span class="warn">' + (afterOrder('dog') - after) + ' short</span>';
+      if (exp) warn += '<span class="warn">' + exp + ' go bad after this</span>';
+      var row = el('div', { class: 'ord' }, [
+        el('div', { class: 'art', html: art(k) }),
+        el('div', { html: '<div class="nm">' + it.name + '</div><div class="have"><b>' + have + '</b>' + (S.order[k] ? '<span class="arrow">' + ICO('right') + '</span><b class="tot">' + after + '</b>' : ' on hand') + ' ' + warn + '</div><div class="sub">' + sub + '</div>' }),
+        stepper(S.order[k], it.packName + (it.packName === 'box' ? 'es' : 's'), function (d) {
+          var nv = S.order[k] + d; if (nv < 0) return false;
+          if (d > 0 && planCost().total + e.cost[k] > S.cash) { Kit.toast('Not enough cash'); Kit.haptic('error'); return false; }
+          S.order[k] = nv; save(); if (d > 0) { SND.crate(); Kit.haptic('light'); } else SND.unload();
+          drawCrates(true, d > 0 ? k : null); drawPanel(); return true;
+        }, S.order[k] <= 0)
+      ]);
+      body.appendChild(row);
+    });
+  }
+  function stepper(v, unit, fn, minOff) {
+    var n = el('div', { class: 'n', html: v + '<small>' + unit + '</small>' });
+    return el('div', { class: 'step' }, [
+      el('button', { 'aria-label': 'Less', html: ICO('minus'), disabled: minOff, onclick: function () { fn(-1); } }),
+      n,
+      el('button', { 'aria-label': 'More', html: ICO('plus'), onclick: function () { fn(1); } })
+    ]);
+  }
+  function unitCost(k) { var e = ev(); return k === 'dog' ? e.cost.dog / 40 + e.cost.bun / 24 : e.cost[k] / ITEMS[k].pack; }
+  function pricesTab(body) {
+    var b = el('div', { class: 'chalk' }, [el('h4', { text: 'Today’s prices' })]);
+    SELL.forEach(function (k) {
+      var p = S.prices[k], uc = unitCost(k), m = p - uc;
+      var off = afterOrder(k === 'dog' ? 'dog' : k) <= 0 || (k === 'dog' && afterOrder('bun') <= 0);
+      var n = el('div', { class: 'n', html: '$' + (p / 100).toFixed(2) });
+      var row = el('div', { class: 'prow' + (off ? ' off' : '') }, [
+        el('div', { class: 'art', html: art(k) }),
+        el('div', { html: '<div class="nm">' + (k === 'dog' ? 'Hot dog' : ITEMS[k].name) + '</div><div class="cost">costs ' + money(uc) + ' · <b class="' + (m < uc * .5 ? 'thin' : '') + '">' + (m >= 0 ? '+' : '−') + money(Math.abs(m)) + '</b></div>' }),
+        el('div', { class: 'step' }, [
+          el('button', { 'aria-label': 'Lower', html: ICO('minus'), disabled: p <= 25, onclick: function () { setPrice(k, -25); } }),
+          n,
+          el('button', { 'aria-label': 'Raise', html: ICO('plus'), disabled: p >= 1500, onclick: function () { setPrice(k, 25); } })
+        ])
+      ]);
+      b.appendChild(row);
+    });
+    body.appendChild(b);
+  }
+  function setPrice(k, d) { S.prices[k] = clamp(S.prices[k] + d, 25, 1500); save(); SND.chalk(); Kit.haptic('tick'); menuPrice(k, true); drawPanel(); }
+  function crewTab(body) {
+    var e = ev();
+    var hs = el('div', { class: 'sect', html: '<h4>Helpers <small>' + money(WAGE, true) + ' each</small></h4><p>More hands at the window: the line moves faster.</p>' });
+    var crew = el('div', { class: 'crew' });
+    crew.appendChild(el('button', { class: 'you', disabled: true, html: crewFig(0) + 'You' }));
+    for (var i = 1; i <= 3; i++) (function (i) {
+      crew.appendChild(el('button', { class: S.helpers >= i ? 'on' : '', html: crewFig(i) + (S.helpers >= i ? 'Hired' : 'Hire'), onclick: function () {
+        var nv = S.helpers >= i ? i - 1 : i;
+        if (nv > S.helpers && planCost().total + (nv - S.helpers) * WAGE > S.cash) { Kit.toast('Not enough cash'); Kit.haptic('error'); return; }
+        S.helpers = nv; save(); if (nv >= i) SND.hire(); else SND.unload(); Kit.haptic('light'); drawCrew(true); setScene(e, false); drawPanel();
+      } }));
+    })(i);
+    hs.appendChild(crew); body.appendChild(hs);
+    var as = el('div', { class: 'sect', html: '<h4>Advertising <small>this event only</small></h4><p>Bring more fans to your window.</p>' });
+    var ads = el('div', { class: 'ads' });
+    ADS.forEach(function (a) {
+      ads.appendChild(el('button', { class: S.ad === a.id ? 'on' : '', html: a.name + '<small>' + (a.cost ? money(a.cost, true) + ' · +' + Math.round((a.lift - 1) * 100) + '% fans' : 'Free') + '</small>', onclick: function () {
+        if (a.cost - ADS[S.ad].cost + planCost().total > S.cash) { Kit.toast('Not enough cash'); Kit.haptic('error'); return; }
+        S.ad = a.id; save(); Kit.sfx('tap', .5); setScene(e, false); drawPanel();
+      } }));
+    });
+    as.appendChild(ads); body.appendChild(as);
+    var gs = el('div', { class: 'sect', html: '<h4>Gear <small>yours for the season</small></h4>' });
+    var g = el('div', { class: 'gear' });
+    GEAR.forEach(function (it) {
+      var own = !!S.owned[it.id];
+      g.appendChild(el('button', { class: own ? 'own' : '', disabled: !own && it.cost + planCost().total > S.cash, html: ICO(it.icon) + '<b>' + it.name + '</b><span>' + it.desc + '</span><em>' + (own ? 'Owned' : money(it.cost, true)) + '</em>', onclick: function () {
+        if (own) return;
+        Kit.confirm('Buy the ' + it.name.toLowerCase() + ' for ' + money(it.cost, true) + '? ' + it.desc + '.', { ok: 'Buy it' }).then(function (y) {
+          if (!y) return;
+          S.cash -= it.cost; S.owned[it.id] = 1; S.gearSpent = (S.gearSpent || 0) + it.cost; save();
+          SND.buy(); Kit.haptic('success'); drawStrip(); setScene(e, false); drawPanel();
+          if (it.id === 'sign') Kit.callout('Lit up!');
+        });
+      } }));
+    });
+    gs.appendChild(g); body.appendChild(gs);
+  }
+  function crewFig(i) {
+    return '<svg viewBox="-14 -40 28 44" aria-hidden="true">' + vendorSVG(0, i).replace('translate(0,162)', 'translate(0,2)') + '</svg>';
+  }
+  // crates of what you ordered, stacked beside the stand
+  function drawCrates(anim, fresh) {
+    var g = scene.querySelector('#h-crates'), out = '', n = 0, col = { dog: '#b8432c', bun: '#d8954a', soda: '#e8343a', chips: '#f4b81c', cocoa: '#7a4a2a' };
+    var list = [];
+    STOCK.forEach(function (k) { for (var i = 0; i < S.order[k]; i++) list.push(k); });
+    var shown = list.slice(0, 18), last = shown.length - 1, freshIdx = fresh ? shown.lastIndexOf(fresh) : -1;
+    shown.forEach(function (k, i) {
+      var colI = Math.floor(i / 6), row = i % 6, x = 192 - colI * 30 - (row % 2) * 2, y = 224 - row * 15 - 14;
+      out += '<g' + (anim && i === freshIdx ? ' class="crate"' : '') + '><rect x="' + x + '" y="' + y + '" width="26" height="14" rx="1.5" fill="#a87a48"/><rect x="' + x + '" y="' + y + '" width="26" height="2.5" fill="#c79a62"/>' +
+        '<rect x="' + (x + 2) + '" y="' + (y + 4) + '" width="22" height="8" rx="1" fill="' + col[k] + '"/><g transform="translate(' + (x + 8) + ',' + (y + 3) + ') scale(.2)">' + art(k).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g></g>';
+      n++;
+    });
+    if (list.length > shown.length) out += '<text x="180" y="116" text-anchor="middle" font-family="Lilita One" font-size="10" fill="#fff" stroke="rgba(0,0,0,.55)" stroke-width="1.6" paint-order="stroke">+' + (list.length - shown.length) + ' more</text>';
+    g.innerHTML = out;
+  }
+  // helpers wait beside the stand until it opens
+  function drawCrew(anim) {
+    var g = scene.querySelector('#h-crew'), out = '';
+    for (var i = 1; i <= S.helpers; i++) {
+      var x = 210 - i * 3 + (i - 1) * -2, y = 238;
+      out += '<g transform="translate(' + (395 - (i - 1) * 0) + ',0)"></g>';
+    }
+    // helpers stand to the right of the stand in aprons, facing us
+    out = '';
+    var hx = S.helpers === 1 ? [305] : S.helpers === 2 ? [282, 328] : [262, 305, 348];
+    for (i = 0; i < S.helpers; i++) out += '<g' + (anim && i === S.helpers - 1 ? ' class="crate"' : '') + ' transform="translate(' + hx[i] + ',' + (238 + (i % 2) * 3) + ') scale(1.15)">' + helperStanding(i + 1) + '</g>';
+    g.innerHTML = out;
+  }
+  function helperStanding(i) {
+    var sk = SKIN[(i * 2 + 1) % SKIN.length];
+    return '<ellipse cx="0" cy="0" rx="9" ry="2.4" fill="rgba(0,0,0,.25)"/><rect x="-6" y="-20" width="5" height="20" rx="2" fill="#2b3a55"/><rect x="1" y="-20" width="5" height="20" rx="2" fill="#2b3a55"/>' +
+      '<path d="M-9 -35a5 5 0 0 1 5-5h8a5 5 0 0 1 5 5v16h-18z" fill="#e9e3d6"/><path d="M-6 -36h12v18h-12z" fill="#c8322f"/>' +
+      '<rect x="-12" y="-38" width="4.4" height="17" rx="2.2" fill="#e9e3d6"/><rect x="7.6" y="-38" width="4.4" height="17" rx="2.2" fill="#e9e3d6"/>' +
+      '<circle cx="0" cy="-46" r="6.6" fill="' + sk + '"/><circle cx="-2.2" cy="-46.5" r=".8" fill="#2a1c14"/><circle cx="2.2" cy="-46.5" r=".8" fill="#2a1c14"/><path d="M-2.2 -43.5a2.6 2.6 0 0 0 4.4 0" stroke="#7a3a2a" stroke-width=".8" fill="none"/>' +
+      '<path d="M-7 -47.5a7 5.6 0 0 1 14 0z" fill="#f7f7f7"/><rect x="-7.8" y="-48.6" width="15.6" height="2.4" rx="1.2" fill="#c8322f"/>';
+  }
+
+  // ── Opening the stand: buy, play the day, apply it ────────────────────────
+  function openStand() {
+    var c = planCost(); if (c.total > S.cash) return;
+    var e = ev();
+    var sold = { dog: 0, bun: 0, soda: 0, chips: 0, cocoa: 0 };
+    var hasAny = false; SELL.forEach(function (k) { if (afterOrder(k) > 0) hasAny = true; });
+    if (!hasAny || afterOrder('dog') && !afterOrder('bun') && !afterOrder('soda') && !afterOrder('chips') && !afterOrder('cocoa')) {
+      Kit.confirm('You have nothing to sell yet. Open anyway?', { ok: 'Open anyway' }).then(function (y) { if (y) go(); });
+      return;
+    }
+    go();
+    function go() {
+      // pay for everything and put the order on the shelves
+      S.cash -= c.total;
+      STOCK.forEach(function (k) {
+        var q = S.order[k] * ITEMS[k].pack; if (!q) return;
+        if (k === 'dog' || k === 'bun') S.stock[k].push({ q: q, age: 0 }); else S.stock[k] += q;
+      });
+      var before = { cash: S.cash + c.total, spend: c };
+      var res = simulate(e, S);
+      // apply the day: sales, what's left, what goes bad
+      S.cash += res.revenue;
+      S.stock.dog = takeLots(S.stock.dog, res.start.dog - res.left.dog);
+      S.stock.bun = takeLots(S.stock.bun, res.start.bun - res.left.bun);
+      S.stock.soda = res.left.soda; S.stock.chips = res.left.chips; S.stock.cocoa = res.left.cocoa;
+      var spoiled = { dog: 0, bun: 0 };
+      ['dog', 'bun'].forEach(function (k) {
+        S.stock[k].forEach(function (l) { l.age++; });
+        if (k === 'dog' && S.owned.freezer) return;
+        S.stock[k] = S.stock[k].filter(function (l) { if (l.age >= ITEMS[k].keep) { spoiled[k] += l.q; return false; } return true; });
+      });
+      var cogs = 0; SELL.forEach(function (k) { cogs += res.sold[k] * Math.round(unitCost(k)); });
+      var rep = {
+        i: S.i, title: e.title, type: e.type, cond: e.cond, temp: e.temp, night: e.night, crowd: e.crowd, date: e.date, hour: e.hour,
+        sold: res.sold, take: res.take, revenue: res.revenue, spend: c, net: res.revenue - c.total, cashBefore: before.cash, cashAfter: S.cash,
+        pass: res.pass, miss: res.miss, walks: res.walks, fans: res.fans, served: res.served, peakQ: res.peakQ, peakAt: res.peakAt,
+        outs: {}, outAt: res.outAt, spoiled: spoiled, prices: JSON.parse(JSON.stringify(S.prices)), helpers: S.helpers, ad: S.ad,
+        score: res.score, sport: !!TYPES[e.type].sport, foe: e.foe, left: res.left, cogs: cogs, outWhy: {}
+      };
+      res.events.forEach(function (x) { if (x.k === 'out') { rep.outs[x.it] = 1; rep.outWhy[x.it] = x.why; } });
+      S.log.push({ net: rep.net, revenue: rep.revenue, title: e.title, sold: res.sold, outs: rep.outs, date: e.date });
+      S.last = rep;
+      SELL.forEach(function (k) { S.tot.sold[k] += res.sold[k]; });
+      S.tot.revenue += res.revenue; S.tot.fans += res.fans; S.tot.walks += res.walks.price + res.walks.line + res.walks.out;
+      S.tot.outs += Object.keys(rep.outs).length; S.tot.spoiled += spoiled.dog + spoiled.bun;
+      if (!S.best || rep.net > S.best.net) S.best = { net: rep.net, title: e.title, i: S.i };
+      S.order = { dog: 0, bun: 0, soda: 0, chips: 0, cocoa: 0 };
+      S.phase = 'report'; save();
+      playDay(e, res, rep);
+    }
+  }
+
+  // ── Game day playback ─────────────────────────────────────────────────────
+  // Real seconds for the whole event at normal speed; Fast is three times quicker.
+  var DAY_SECS = 46;
+  function stopDay() {
+    if (D) { D.dead = true; cancelAnimationFrame(D.raf); D.timers.forEach(clearTimeout); D = null; }
+    loopStop();
+  }
+  function playDay(e, res, rep) {
+    stopDay();
+    if (tkEl) { tkEl.style.transition = 'transform .5s ease-in, opacity .5s'; tkEl.style.transform = 'translate(-40px,-120px) rotate(-18deg)'; tkEl.style.opacity = '0'; }
+    var svg = scene.querySelector('svg');
+    D = { e: e, res: res, rep: rep, t: res.T0, ei: 0, speed: 1, raf: 0, last: 0, timers: [], dead: false, people: [], fx: [], spot: [], qShown: [], till: 0,
+      have: JSON.parse(JSON.stringify(res.start)), sold: { dog: 0, soda: 0, chips: 0, cocoa: 0 }, walks: { price: 0, line: 0, out: 0 }, R: rng(e.seed ^ 77), walkVis: 0, outs: {}, sc: [0, 0], amb: [] };
+    var svA = res.servers, xs = svA === 1 ? [300] : svA === 2 ? [270, 330] : svA === 3 ? [258, 302, 346] : [248, 283, 318, 353];
+    D.spots = xs.map(function (x) { return { x: x, p: null, until: 0 }; });
+    // the crates go inside, helpers step in, shutter up
+    scene.querySelector('#h-crates').innerHTML = ''; scene.querySelector('#h-crew').innerHTML = '';
+    stockArt(D.have);
+    drawDayPanel();
+    var jumbo = el('div', { class: 'jumbo', html: jumboHTML() }); scene.appendChild(jumbo); D.jumbo = jumbo;
+    var wx = el('div', { class: 'wxchip', html: wxIcon(e.cond, e.night) + e.temp + '°F' }); scene.appendChild(wx);
+    D.banner = el('div', { class: 'banner' }); scene.appendChild(D.banner);
+    later(function () { svg.classList.add('open'); SND.shutter(true); Kit.haptic('medium'); }, 450);
+    later(function () { loopStart(); banner('Open for business!', 'good', 'sparkle'); }, 1500);
+    later(function () { D.last = performance.now(); D.raf = requestAnimationFrame(frame); }, 1900);
+  }
+  function later(fn, ms) { if (!D) return; var d = D; d.timers.push(setTimeout(function () { if (!d.dead) fn(); }, ms)); }
+  function jumboHTML() {
+    var r = D.res, e = D.e, seg = segAt(D.t), lab = D.t < 0 ? seg[0] : seg[0];
+    var clock = '';
+    if (TYPES[e.type].sport && D.t >= 0) {
+      var m = Math.max(0, seg[2] * 60 - D.t) / 60 * (/quarter/.test(seg[0]) ? 15 / 45 : /half/.test(seg[0]) ? 45 / 47 : 1);
+      if (/quarter|half|Overtime/i.test(seg[0]) && !/Halftime/.test(seg[0])) clock = ' ' + Math.floor(m) + ':' + ('0' + Math.floor(m % 1 * 60)).slice(-2);
+    }
+    if (TYPES[e.type].sport) {
+      return '<div class="row"><span>' + HOME.toUpperCase().slice(0, 11) + '</span><b>' + D.sc[0] + '</b><span style="opacity:.5">·</span><b>' + D.sc[1] + '</b><span>' + esc(e.foe.toUpperCase()) + '</span></div><div class="ph">' + esc(lab.toUpperCase()) + clock + '</div>';
+    }
+    var tod = e.hour + D.t / 3600, hh = Math.floor(tod), mm = Math.floor((tod - hh) * 60);
+    return '<div class="row"><span>' + esc(e.title.toUpperCase()) + '</span></div><div class="ph">' + esc(lab.toUpperCase()) + ' · ' + ((hh + 11) % 12 + 1) + ':' + ('0' + mm).slice(-2) + '</div>';
+  }
+  function segAt(t) { var sg = D.res.segs; for (var i = 0; i < sg.length; i++) if (t < sg[i][2] * 60) return sg[i]; return sg[sg.length - 1]; }
+  function banner(text, tone, icon) {
+    if (!D) return;
+    D.banner.innerHTML = '<span class="' + (tone || '') + '">' + (icon ? ICO(icon) : '') + esc(text) + '</span>';
+  }
+  function drawDayPanel() {
+    panel.innerHTML = ''; panel.scrollTop = 0;
+    var live = el('div', { class: 'live' });
+    live.appendChild(el('div', { class: 'till', html: '<div><small>In the till today</small><b id="d-till">$0</b></div><div class="cl"><small>Fans served</small><b id="d-served">0</b></div>' }));
+    SELL.forEach(function (k) {
+      var st = k === 'dog' ? Math.min(D.have.dog, D.have.bun) : D.have[k];
+      live.appendChild(el('div', { class: 'meter' + (st ? '' : ' none'), id: 'm-' + k, html: art(k, ' class="it"') + '<div class="t"><span>' + (k === 'dog' ? 'Hot dogs' : ITEMS[k].name) + '</span><b>' + st + '</b></div><div class="bar"><i style="width:100%"></i></div>' }));
+    });
+    live.appendChild(el('div', { class: 'lost', html:
+      '<div id="w-price">' + walkIcon('price') + '<span><b>0</b>too pricey</span></div>' +
+      '<div id="w-line">' + walkIcon('line') + '<span><b>0</b>line too long</span></div>' +
+      '<div id="w-out">' + walkIcon('out') + '<span><b>0</b>sold out</span></div>' }));
+    live.appendChild(el('div', { class: 'lchart', html: '<div class="hd2"><span>Line at your window</span><b id="d-q">0 waiting</b></div>' + chartSVG() }));
+    panel.appendChild(live);
+    var seg = el('div', { class: 'seg' });
+    [['Normal', 1], ['Fast', 3]].forEach(function (s) {
+      seg.appendChild(el('button', { class: D.speed === s[1] ? 'on' : '', text: s[0], onclick: function () { D.speed = s[1]; Kit.sfx('tap', .4); [].forEach.call(seg.children, function (b) { b.classList.toggle('on', b === this); }, this); } }));
+    });
+    panel.appendChild(el('div', { class: 'ctl' }, [seg, el('button', { class: 'btn btn-soft', html: 'Skip to the end', onclick: function () { finishDay(true); } })]));
+  }
+  var SHORT = { 'Gates open': 'Pregame', '1st quarter': 'Q1', '2nd quarter': 'Q2', 'Halftime': 'Half', '3rd quarter': 'Q3', '4th quarter': 'Q4', 'Final': 'End', 'Overtime': 'OT',
+    'Weather delay': 'Delay', '1st half': '1st half', '2nd half': '2nd half', 'Full time': 'End', 'Doors open': 'Doors', 'Opening act': 'Opener', 'Set change': 'Break', 'Headliner': 'Headliner',
+    'Encore': 'Encore', 'Pit party': 'Pits', 'Racing': 'Racing', 'Intermission': 'Break', 'Freestyle': 'Freestyle', 'Last laps': 'End', 'Warm-ups': 'Warm-up', 'Bands on the field': 'Bands', 'Awards': 'Awards' };
+  var CW = 300, CH = 54;
+  function cx(t) { var r = D.res; return (t - r.T0) / (r.TEND - r.T0) * CW; }
+  function chartSVG() {
+    var r = D.res, mx = Math.max(8, Math.max.apply(null, r.q.concat([0]))), out = '<svg viewBox="0 0 ' + CW + ' ' + (CH + 13) + '" aria-hidden="true">';
+    D.qmax = mx;
+    r.segs.forEach(function (sg, i) {
+      var a = cx(Math.max(r.T0, sg[1] * 60)), b = cx(Math.min(r.TEND, sg[2] * 60)), rush = sg[3] >= 1.5;
+      out += '<rect x="' + a.toFixed(1) + '" y="0" width="' + Math.max(0, b - a).toFixed(1) + '" height="' + CH + '" fill="' + (rush ? 'rgba(255,209,102,.12)' : i % 2 ? 'rgba(255,255,255,.035)' : 'transparent') + '"/>';
+      if (b - a >= 22) out += '<text x="' + ((a + b) / 2).toFixed(1) + '" y="' + (CH + 10) + '" text-anchor="middle" font-size="8.5" font-weight="800" fill="' + (rush ? '#ffd166' : 'rgba(255,255,255,.45)') + '">' + (SHORT[sg[0]] || sg[0]) + '</text>';
+    });
+    out += '<path d="M0 ' + CH + 'H' + CW + '" stroke="rgba(255,255,255,.18)" stroke-width="1"/>';
+    out += '<path id="c-area" d="" fill="rgba(255,209,102,.22)"/><path id="c-line" d="" fill="none" stroke="#ffd166" stroke-width="1.8" stroke-linejoin="round"/>';
+    out += '<g id="c-outs"></g><path id="c-now" d="M0 0V' + CH + '" stroke="#fff" stroke-width="1" opacity=".55"/>';
+    return out + '</svg>';
+  }
+  function drawChart() {
+    var r = D.res, n = Math.min(r.q.length, Math.floor((D.t - r.T0) / 15) + 1), pts = [];
+    for (var i = 0; i < n; i++) pts.push(cx(r.T0 + i * 15).toFixed(1) + ' ' + (CH - r.q[i] / D.qmax * (CH - 4)).toFixed(1));
+    var ln = document.getElementById('c-line'); if (!ln) return;
+    if (pts.length) { ln.setAttribute('d', 'M' + pts.join('L')); document.getElementById('c-area').setAttribute('d', 'M0 ' + CH + 'L' + pts.join('L') + 'L' + pts[pts.length - 1].split(' ')[0] + ' ' + CH + 'z'); }
+    var x = cx(D.t).toFixed(1); document.getElementById('c-now').setAttribute('d', 'M' + x + ' 0V' + CH);
+    var q = r.q[Math.max(0, n - 1)] || 0, qe = document.getElementById('d-q'); if (qe) qe.textContent = q + ' waiting';
+  }
+  function chartOut(t) {
+    var g = document.getElementById('c-outs'); if (!g) return;
+    var x = cx(t);
+    g.insertAdjacentHTML('beforeend', '<path d="M' + x.toFixed(1) + ' 0V' + CH + '" stroke="#ff5a5a" stroke-width="1.2" stroke-dasharray="2 2"/><circle cx="' + x.toFixed(1) + '" cy="3" r="2.6" fill="#ff5a5a"/>');
+  }
+
+  // little pictures for why fans walked away: a price tag, a clock, an empty box
+  function walkIcon(r, inSvg) {
+    var b = r === 'price' ? '<path d="M3 12.5V5a2 2 0 0 1 2-2h7.5l8.5 8.5-9.5 9.5z" fill="#ffd166" stroke="#7a5a10" stroke-width="1.4" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.6" fill="#7a5a10"/><path d="M14.5 9.5v6M12.2 11.6l2.3-2.3 2.3 2.3" stroke="#b42318" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+      : r === 'line' ? '<circle cx="12" cy="12" r="9" fill="#cfe4ff" stroke="#2a4a7a" stroke-width="1.6"/><path d="M12 6.5V12l3.6 2.2" stroke="#2a4a7a" stroke-width="2" fill="none" stroke-linecap="round"/>'
+      : '<path d="M3.5 8.5 12 4l8.5 4.5v8L12 21l-8.5-4.5z" fill="#e2c49a" stroke="#7a5230" stroke-width="1.4" stroke-linejoin="round"/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v8" stroke="#7a5230" stroke-width="1.2" fill="none"/><path d="M6 4l12 16" stroke="#d92d2d" stroke-width="2.4" stroke-linecap="round"/>';
+    return inSvg ? b : '<svg viewBox="0 0 24 24" aria-hidden="true">' + b + '</svg>';
+  }
+
+  // Fans: little SVG people. They walk to a slot, stand, step up, and leave.
+  function spawn(x, y, opts) {
+    var g = svgEl('g', {}), p = { g: g, x: x, y: y, tx: x, ty: y, v: 70 + D.R() * 30, ph: D.R() * 6, bubble: null, gone: false, then: null };
+    g.innerHTML = personSVG(D.R, { cold: D.e.temp < 50 });
+    scene.querySelector('#h-people').appendChild(g); D.people.push(p);
+    place(p); return p;
+  }
+  function spawnAmb() {
+    var y = 132 + D.R() * 62, s = .42 + (y - 132) / 62 * .34, dir = D.R() < .5 ? 1 : -1;
+    var g = svgEl('g', {}); g.innerHTML = personSVG(D.R, { cold: D.e.temp < 50 });
+    g.setAttribute('opacity', (.75 + s * .3).toFixed(2));
+    var layer = scene.querySelector('#h-amb'), kids = layer.children, at = null;
+    for (var i = 0; i < kids.length; i++) if (+kids[i].dataset.y > y) { at = kids[i]; break; }
+    g.dataset.y = y; layer.insertBefore(g, at);
+    D.amb.push({ g: g, x: dir > 0 ? VB.x - 20 : VB.x + VB.w + 20, y: y, s: s, vx: dir * (26 + D.R() * 16) * s * 1.6, ph: D.R() * 6 });
+  }
+  function place(p) { p.g.setAttribute('transform', 'translate(' + p.x.toFixed(1) + ',' + p.y.toFixed(1) + ')'); }
+  function walkTo(p, x, y, then) { p.tx = x; p.ty = y; p.then = then || null; }
+  var QX = function (k) { return 214 - k * 18; }, QY = function (k) { return 240 + (k % 2) * 3; }, QMAX = 11;
+  function fly(kind, x0, y0, x1, y1, dur, arc, done) {
+    var g = svgEl('g', {});
+    if (kind === 'coin') g.innerHTML = '<circle r="3.2" fill="#ffd34d" stroke="#b8860b" stroke-width="1"/><path d="M-1 -1.4h1.6" stroke="#fff6c4" stroke-width=".8"/>';
+    else g.innerHTML = '<g transform="translate(-8,-8) scale(.34)">' + art(kind).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</g>';
+    scene.querySelector('#h-fx').appendChild(g);
+    D.fx.push({ g: g, x0: x0, y0: y0, x1: x1, y1: y1, t: 0, dur: dur, arc: arc, done: done });
+  }
+  function bubble(p, r) {
+    var b = svgEl('g', { class: 'bubble' });
+    b.innerHTML = '<path d="M-11 -86h22a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4h-7l-4 5-4-5h-7a4 4 0 0 1-4-4v-14a4 4 0 0 1 4-4z" fill="#fff" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>' +
+      '<g transform="translate(-8,-83) scale(.68)">' + walkIcon(r, true) + '</g>';
+    p.g.appendChild(b); p.bubble = b;
+  }
+
+  function frame(now) {
+    if (!D || D.dead) return;
+    var dt = Math.min(.05, (now - D.last) / 1000); D.last = now;
+    var r = D.res, span = r.TEND - r.T0, rate = span / DAY_SECS * D.speed;
+    var t1 = Math.min(r.TEND, D.t + dt * rate);
+    // events up to now
+    while (D.ei < r.events.length && r.events[D.ei].t <= t1) { onEvent(r.events[D.ei]); D.ei++; }
+    D.t = t1;
+    // the line: how many fans are waiting now
+    var qi = Math.floor((D.t - r.T0) / 15), ql = r.q[clamp(qi, 0, r.q.length - 1)] || 0;
+    syncQueue(Math.min(QMAX, ql), ql);
+    // fans crossing the plaza: busy at the gates and the breaks, quiet while the game is on
+    var sgw = segAt(D.t)[3];
+    D.ambAcc = Math.min(1.5, (D.ambAcc || 0) + dt * (.35 + 3.4 * Math.min(1, sgw / 1.6)) * Math.min(2, D.speed));
+    while (D.ambAcc >= 1 && D.amb.length < 18) { D.ambAcc -= 1; spawnAmb(); }
+    D.amb = D.amb.filter(function (a) {
+      a.x += a.vx * dt * (D.speed > 1 ? 2 : 1); a.ph += dt * 11;
+      a.g.setAttribute('transform', 'translate(' + a.x.toFixed(1) + ',' + (a.y - Math.abs(Math.sin(a.ph)) * 1.2 * a.s).toFixed(1) + ') scale(' + a.s.toFixed(2) + ')');
+      if (a.x < VB.x - 30 || a.x > VB.x + VB.w + 30) { a.g.remove(); return false; }
+      return true;
+    });
+    // move people
+    D.people.forEach(function (p) {
+      var dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = p.v * dt * (D.speed > 1 ? 1.8 : 1);
+      if (d > .5) {
+        if (d <= step) { p.x = p.tx; p.y = p.ty; } else { p.x += dx / d * step; p.y += dy / d * step; }
+        p.ph += dt * 14;
+        var bd = p.g.querySelector('.bd'); if (bd) bd.style.transform = 'translateY(' + (-Math.abs(Math.sin(p.ph)) * 1.6).toFixed(2) + 'px)';
+        place(p);
+      } else if (p.then) { var f = p.then; p.then = null; f(); }
+    });
+    D.people = D.people.filter(function (p) { if (p.gone) { p.g.remove(); return false; } return true; });
+    // flying things
+    D.fx = D.fx.filter(function (f) {
+      f.t += dt; var k = Math.min(1, f.t / f.dur), e2 = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      var x = f.x0 + (f.x1 - f.x0) * e2, y = f.y0 + (f.y1 - f.y0) * e2 - Math.sin(k * Math.PI) * f.arc;
+      f.g.setAttribute('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ') scale(' + (1 - .25 * k).toFixed(2) + ')');
+      if (k >= 1) { f.g.remove(); if (f.done) f.done(); return false; }
+      return true;
+    });
+    if (D.jumbo && (!D.jt || now - D.jt > 120)) { D.jt = now; D.jumbo.innerHTML = jumboHTML(); drawChart(); }
+    if (D.t >= r.TEND && D.ei >= r.events.length) { finishDay(false); return; }
+    D.raf = requestAnimationFrame(frame);
+  }
+  // keep the visible line in step with the real one
+  function syncQueue(n, real) {
+    var q = D.qShown;
+    while (q.length > n) { var p = q.pop(); walkTo(p, VB.x - 30, 246, (function (p) { return function () { p.gone = true; }; })(p)); }
+    while (q.length < n) { var np = spawn(VB.x - 24 - D.R() * 20, 240 + D.R() * 6); q.push(np); }
+    q.forEach(function (p, k) { if (Math.abs(p.tx - QX(k)) > .5 && !p.then) walkTo(p, QX(k), QY(k)); else if (Math.abs(p.tx - QX(k)) > .5) { p.tx = QX(k); p.ty = QY(k); } });
+    if (!D.more) { D.more = svgEl('text', { x: Math.max(VB.x + 10, 12), y: 196, 'font-family': 'Lilita One', 'font-size': 11, fill: '#fff', stroke: 'rgba(0,0,0,.6)', 'stroke-width': .6, 'paint-order': 'stroke' }); scene.querySelector('#h-fx').appendChild(D.more); }
+    D.more.textContent = real > QMAX ? '+' + (real - QMAX) + ' more' : '';
+    loopLevel(.6 + Math.min(1, real / 14) * .7);
+  }
+  function onEvent(x) {
+    var r = D.res;
+    if (x.k === 'serve') {
+      x.items.forEach(function (k) { D.sold[k]++; if (k === 'dog') { D.have.dog--; D.have.bun--; } else D.have[k]--; });
+      D.till += x.paid; D.served = (D.served || 0) + 1;
+      updLive();
+      var sp = D.spots[x.s], now = performance.now();
+      if (!sp.p && now >= sp.until) {
+        // the next fan steps up from the line (or straight in) and gets the order
+        var p = D.qShown.length ? D.qShown.shift() : spawn(VB.x - 20, 242);
+        sp.p = p; sp.until = now + 380 / D.speed;
+        walkTo(p, sp.x + (D.R() - .5) * 4, 236, function () {
+          x.items.forEach(function (k, i) { later(function () { fly(k, sp.x, 150, p.x, p.y - 52, .32, 10); }, i * 70); });
+          later(function () {
+            fly('coin', p.x, p.y - 40, 369, 150, .35, 14, function () { var tl = scene.querySelector('#h-till'); tl.classList.remove('till-pop'); void tl.getBBox; tl.classList.add('till-pop'); });
+            if (D.R() < .45 || x.paid >= 1000) SND.ching(); else SND.coin();
+          }, 200);
+          later(function () { sp.p = null; walkTo(p, VB.x + VB.w + 30 + D.R() * 20, 246 + D.R() * 4, function () { p.gone = true; }); }, 330 / D.speed);
+        });
+      } else {
+        // too busy to show every hand-off: a coin pops into the till
+        if (D.R() < .5) { fly('coin', sp.x, 150, 369, 150, .3, 8); if (D.R() < .3) SND.coin(); }
+      }
+      stockArt(D.have);
+    } else if (x.k === 'walk') {
+      D.walks[x.r]++; updLive();
+      var now2 = performance.now();
+      if (now2 - D.walkVis > 520 / D.speed) {
+        D.walkVis = now2;
+        var w = spawn(VB.x - 20, 216 + D.R() * 8), sx = 70 + D.R() * 110;
+        walkTo(w, sx, w.y, function () {
+          bubble(w, x.r); if (x.r === 'price' || D.R() < .5) SND.hmm();
+          later(function () { if (w.bubble) w.bubble.remove(); walkTo(w, VB.x - 40, w.y + 4, function () { w.gone = true; }); }, 700 / Math.max(1, D.speed * .7));
+        });
+      }
+    } else if (x.k === 'out') {
+      D.outs[x.it] = 1;
+      scene.querySelector('#so-' + x.it).classList.add('on');
+      var m = document.getElementById('m-' + x.it); if (m) m.classList.add('out');
+      chartOut(x.t); SND.out(); Kit.haptic('heavy');
+      banner(x.why === 'bun' ? 'Out of buns!' : 'Out of ' + (x.it === 'dog' ? 'hot dogs' : ITEMS[x.it].name.toLowerCase()) + '!', 'bad', 'close');
+    } else if (x.k === 'phase') {
+      if (x.w >= 1.5) { SND.horn(); banner(x.label + ' rush!', '', 'users'); Kit.haptic('medium'); }
+      else if (/Final|Full time|Encore|Last laps|Awards/.test(x.label)) { banner(x.label, '', 'flag'); }
+    } else if (x.k === 'score') {
+      D.sc = x.sc.slice();
+      D.jumbo.classList.remove('flash'); void D.jumbo.offsetWidth; D.jumbo.classList.add('flash');
+      if (x.side === 0) { SND.roar(); banner((D.e.type === 'soccer' ? 'GOAL! ' : x.pts === 7 ? 'Touchdown, ' : 'Field goal, ') + HOME + '!', 'good', 'star'); }
+      else SND.groan();
+    } else if (x.k === 'news') {
+      banner(x.text, x.tone, x.icon); Kit.sfx('whoosh', .4);
+    }
+  }
+  function updLive() {
+    var t = document.getElementById('d-till'); if (t) t.textContent = money(D.till);
+    var sv = document.getElementById('d-served'); if (sv) sv.textContent = String(D.served || 0);
+    var st = D.res.start;
+    SELL.forEach(function (k) {
+      var m = document.getElementById('m-' + k); if (!m) return;
+      var s0 = k === 'dog' ? Math.min(st.dog, st.bun) : st[k], now = k === 'dog' ? Math.min(D.have.dog, D.have.bun) : D.have[k];
+      m.querySelector('.t b').textContent = String(Math.max(0, now));
+      m.querySelector('.bar i').style.width = (s0 ? Math.max(0, now) / s0 * 100 : 0).toFixed(1) + '%';
+      m.classList.toggle('low', s0 > 0 && now > 0 && now / s0 < .2);
+    });
+    ['price', 'line', 'out'].forEach(function (r) {
+      var w = document.getElementById('w-' + r); if (!w) return;
+      w.querySelector('b').textContent = String(D.walks[r]); w.classList.toggle('hit', D.walks[r] > 0);
+    });
+  }
+  D = null;
+  function finishDay(skip) {
+    if (!D || D.done) return;
+    D.done = true;
+    if (skip) {
+      // run the rest at once
+      var r = D.res;
+      while (D.ei < r.events.length) { var x = r.events[D.ei++]; if (x.k === 'serve') { x.items.forEach(function (k) { D.sold[k]++; if (k === 'dog') { D.have.dog--; D.have.bun--; } else D.have[k]--; }); D.till += x.paid; D.served = (D.served || 0) + 1; } else if (x.k === 'walk') D.walks[x.r]++; else if (x.k === 'out') { scene.querySelector('#so-' + x.it).classList.add('on'); var m = document.getElementById('m-' + x.it); if (m) m.classList.add('out'); chartOut(x.t); } else if (x.k === 'score') D.sc = x.sc.slice(); }
+      D.t = r.TEND; updLive(); if (D.jumbo) D.jumbo.innerHTML = jumboHTML(); stockArt(D.have); drawChart();
+    }
+    cancelAnimationFrame(D.raf);
+    var d = D;
+    d.qShown.forEach(function (p) { walkTo(p, VB.x - 40, 246, function () { p.gone = true; }); }); d.qShown = [];
+    // let the last fans leave, then close up
+    function drain() { if (d.dead) return; var now = performance.now(), dt = .016; d.people.forEach(function (p) { var dx = p.tx - p.x, dy = p.ty - p.y, dd = Math.hypot(dx, dy), st = 160 * dt; if (dd > st) { p.x += dx / dd * st; p.y += dy / dd * st; place(p); } else if (p.then) { var f = p.then; p.then = null; f(); } else if (dd <= st) { p.x = p.tx; p.y = p.ty; place(p); } }); d.people = d.people.filter(function (p) { if (p.gone) { p.g.remove(); return false; } return true; }); d.raf = requestAnimationFrame(drain); }
+    d.raf = requestAnimationFrame(drain);
+    loopStop();
+    var rep = d.rep;
+    later(function () { SND.horn(); banner(rep.sport ? 'Final: ' + HOME + ' ' + rep.score[0] + ', ' + rep.foe + ' ' + rep.score[1] : 'That’s a wrap!', rep.sport && rep.score[0] > rep.score[1] ? 'good' : '', 'flag'); }, 200);
+    later(function () { scene.querySelector('svg').classList.remove('open'); SND.shutter(false); }, 1500);
+    later(function () { cancelAnimationFrame(d.raf); d.dead = true; D = null; showReport(true); }, 2900);
+  }
+
+  // ── The ledger ────────────────────────────────────────────────────────────
+  function showReport(anim) {
+    var r = S.last, e = S.sched[r.i];
+    if (!anim) { setScene(e, false); stockArt(null); }
+    drawStrip();
+    scene.querySelectorAll('.jumbo,.wxchip,.banner,.tkt').forEach(function (n) { n.remove(); });
+    scene.querySelector('#h-people').innerHTML = ''; scene.querySelector('#h-fx').innerHTML = ''; scene.querySelector('#h-amb').innerHTML = '';
+    panel.innerHTML = ''; panel.scrollTop = 0;
+    var L = el('div', { class: 'ledger' });
+    L.appendChild(el('h3', { text: e.title }));
+    L.appendChild(el('div', { class: 'ev', text: TYPES[e.type].name + ' · ' + dateText(e) + ' · ' + WX_NAME[e.cond] + ' ' + e.temp + '°F · ' + e.crowd.toLocaleString() + ' fans' }));
+    var rows = [];
+    SELL.forEach(function (k) {
+      if (!r.sold[k] && !(r.miss[k] + r.pass[k])) return;
+      rows.push(lrow(art(k), (k === 'dog' ? 'Hot dogs' : ITEMS[k].name), r.sold[k] + ' × ' + money(r.prices[k]), money(r.take[k])));
+    });
+    rows.push(lrow(ICO('inbox'), 'Supplies', '', '−' + money(r.spend.sup), 'cost'));
+    if (r.spend.crew) rows.push(lrow(ICO('users'), 'Helpers', r.helpers + ' × ' + money(WAGE, true), '−' + money(r.spend.crew), 'cost'));
+    if (r.spend.ads) rows.push(lrow(ICO('sparkle'), ADS[r.ad].name, '', '−' + money(r.spend.ads), 'cost'));
+    var tot = lrow('', 'Today', '', (r.net >= 0 ? '+' : '−') + money(Math.abs(r.net)), 'tot ' + (r.net >= 0 ? 'up' : 'down'));
+    rows.push(tot);
+    rows.forEach(function (x) { L.appendChild(x); });
+    var best = S.best && S.best.i === r.i && S.log.length > 1;
+    var stamp = el('div', { class: 'stampx', style: { color: r.net >= 0 ? '#167a3c' : '#b42318' }, text: best ? 'BEST DAY' : r.net >= 0 ? 'PROFIT' : 'LOSS' });
+    L.appendChild(stamp);
+    panel.appendChild(L);
+    var notes = el('div', { class: 'notes' });
+    insights(r).forEach(function (n) { notes.appendChild(el('div', { class: 'note ' + (n.tone || ''), html: n.icon + '<span>' + n.text + '</span>' })); });
+    panel.appendChild(notes);
+    var lastOne = S.i >= S.sched.length - 1;
+    var btn = el('button', { class: 'btn btn-primary btn-lg btn-block', html: lastOne ? ICO('trophy') + 'Finish the season' : ICO('right') + 'Next event', onclick: next });
+    panel.appendChild(btn);
+    var all = [].slice.call(L.querySelectorAll('.lrow')), ns = [].slice.call(notes.children);
+    if (!anim) { all.forEach(function (x) { x.classList.add('in'); }); stamp.classList.add('on'); ns.forEach(function (x) { x.classList.add('in'); }); return; }
+    btn.style.visibility = 'hidden';
+    all.forEach(function (x, i) { setTimeout(function () { x.classList.add('in'); SND.pencil(); }, 250 + i * 190); });
+    var tEnd = 250 + all.length * 190 + 150;
+    setTimeout(function () {
+      stamp.classList.add('on'); SND.stamp(); Kit.haptic('medium');
+      if (best) { Kit.callout('Best day yet!'); Kit.sfx('win', .6); }
+      else if (r.net > 0 && r.revenue >= 150000) { Kit.callout(money(r.net, true) + '!'); Kit.sfx('good', .7); }
+      else if (r.net < 0) Kit.sfx('bad', .5);
+      var M = MODES[S.mode];
+      if (S.cash >= M.goal && r.cashBefore < M.goal) setTimeout(function () { Kit.confetti(); Kit.callout('Season goal reached!'); Kit.sfx('win'); Kit.haptic('success'); }, 900);
+    }, tEnd);
+    ns.forEach(function (x, i) { setTimeout(function () { x.classList.add('in'); }, tEnd + 350 + i * 160); });
+    setTimeout(function () { btn.style.visibility = ''; }, tEnd + 350 + ns.length * 160);
+  }
+  function lrow(icon, name, q, v, cls) {
+    return el('div', { class: 'lrow ' + (cls || ''), html: '<span>' + icon + '</span><span>' + name + '</span><span class="q">' + q + '</span><span class="v">' + v + '</span>' });
+  }
+  // What the day says about your choices, in plain words
+  function insights(r) {
+    var out = [], nm = function (k) { return k === 'dog' ? 'hot dogs' : ITEMS[k].name.toLowerCase(); };
+    SELL.forEach(function (k) {
+      if (r.outs[k]) {
+        var at = r.outAt[k], seg = phaseName(r, at);
+        if (r.miss[k] <= 4 && lateInDay(r, at)) { out.push({ tone: 'good', icon: ICO('check'), text: 'Sold the last of the ' + (r.outWhy[k] === 'bun' ? 'buns' : nm(k)) + ' in ' + seg + '. <b>Spot-on order.</b>' }); return; }
+        out.push({ tone: 'warn', icon: walkIcon('out'), text: '<b>Sold out of ' + (r.outWhy[k] === 'bun' ? 'buns' : nm(k)) + '</b>' + (seg ? ' during ' + seg : '') + '. About <b>' + r.miss[k] + '</b> more ' + (r.miss[k] === 1 ? 'sale' : 'sales') + ' were there to be had.' });
+      }
+    });
+    var worst = null; SELL.forEach(function (k) { if (r.pass[k] > (worst ? r.pass[worst] : 0)) worst = k; });
+    if (worst && r.pass[worst] >= Math.max(8, r.sold[worst] * .25)) out.push({ tone: 'warn', icon: walkIcon('price'), text: '<b>' + r.pass[worst] + ' fans passed on ' + nm(worst) + '</b> at ' + money(r.prices[worst]) + '.' });
+    else if (worst === null || r.pass[worst] < r.sold[worst] * .06) {
+      var cheap = SELL.filter(function (k) { return r.sold[k] > 30 && r.pass[k] < r.sold[k] * .04; })[0];
+      if (cheap) out.push({ tone: '', icon: walkIcon('price'), text: 'Hardly anyone blinked at ' + money(r.prices[cheap]) + ' for ' + (cheap === 'dog' ? 'a hot dog' : nm(cheap)) + '. Fans might pay more.' });
+    }
+    if (r.walks.line >= 6) out.push({ tone: 'warn', icon: walkIcon('line'), text: '<b>' + r.walks.line + ' fans gave up on the line</b>' + (r.peakQ >= 8 ? ', which hit ' + r.peakQ + ' deep' + (phaseName(r, r.peakAt) ? ' at ' + phaseName(r, r.peakAt) : '') : '') + '. ' + (r.helpers < 3 ? 'Another helper would move it faster.' : 'Gear can speed up the window.') });
+    if (r.spoiled.dog || r.spoiled.bun) out.push({ tone: 'bad', icon: ICO('trash'), text: 'Threw out ' + [r.spoiled.dog ? r.spoiled.dog + ' hot dogs' : '', r.spoiled.bun ? r.spoiled.bun + ' stale buns' : ''].filter(Boolean).join(' and ') + '.' });
+    var leftDog = r.left.dog, leftBun = r.left.bun;
+    if (leftDog > leftBun + 20 && !r.outs.dog) out.push({ tone: '', icon: art('bun'), text: leftDog - leftBun + ' hot dogs have no bun to go with them.' });
+    if (r.sport) out.push({ tone: r.score[0] > r.score[1] ? 'good' : '', icon: ICO('flag'), text: r.score[0] > r.score[1] ? 'The ' + HOME + ' won ' + r.score[0] + '–' + r.score[1] + ' and the fans hung around.' : r.score[0] < r.score[1] ? 'The ' + HOME + ' lost ' + r.score[1] + '–' + r.score[0] + '.' : 'A ' + r.score[0] + '–' + r.score[1] + ' tie.' });
+    if (!out.length || (out.length === 1 && r.sport)) out.unshift({ tone: 'good', icon: ICO('check'), text: 'A smooth day: <b>' + r.served + '</b> fans served.' });
+    return out.slice(0, 4);
+  }
+  var PHRASE = { 'Gates open': 'the pregame', 'Halftime': 'halftime', 'Final': 'the last minutes', 'Full time': 'the last minutes', 'Overtime': 'overtime', 'Weather delay': 'the weather delay',
+    'Doors open': 'the doors opening', 'Opening act': 'the opening act', 'Set change': 'the set change', 'Headliner': 'the headliner', 'Encore': 'the encore', 'Pit party': 'the pit party',
+    'Racing': 'the racing', 'Intermission': 'intermission', 'Freestyle': 'freestyle', 'Last laps': 'the last laps', 'Warm-ups': 'warm-ups', 'Bands on the field': 'the band show', 'Awards': 'the awards' };
+  function phaseName(r, t) {
+    if (t == null) return '';
+    var segs = TYPES[r.type].segs;
+    for (var i = 0; i < segs.length; i++) if (t < segs[i][2] * 60) return PHRASE[segs[i][0]] || 'the ' + segs[i][0].toLowerCase();
+    return 'the very end';
+  }
+  function lateInDay(r, t) { var segs = TYPES[r.type].segs, last = segs[segs.length - 1]; return t >= (last[1] - 8) * 60; }
+  function next() {
+    if (S.i >= S.sched.length - 1) { endSeason(); return; }
+    S.i++; S.phase = 'prep'; S.tab = 'order'; S.ad = 0; save();
+    Kit.sfx('flip', .6); render(true);
+  }
+
+  // ── End of the season ─────────────────────────────────────────────────────
+  function endSeason() {
+    S.phase = 'over'; save();
+    var M = MODES[S.mode], won = S.cash >= M.goal, score = Math.round(S.cash / 100);
+    recordSeason(true);
+    clearSave();
+    var finalS = S;
+    render(false);
+    ArcadeHi.check('hotdogstand_' + finalS.mode, score, function () {
+      Kit.win({
+        lose: !won, icon: won ? null : 'meh',
+        title: won ? 'Season goal reached!' : 'Season over',
+        sub: M.name + ' season · finished with ' + money(finalS.cash, true) + (won ? '' : ' · goal ' + money(M.goal, true)),
+        againLabel: 'New season', again: function () { newSeason(finalS.mode); },
+        extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show('hotdogstand_' + finalS.mode); } }, { label: 'Change level', onClick: function () { S = null; showSetup(); } }],
+        onClose: function () { S = null; Kit.home(); }
+      });
+    });
+  }
+  function recordSeason(done) {
+    if (!S || S.recorded) return;
+    S.recorded = true;
+    var M = MODES[S.mode], won = done && S.cash >= M.goal, t = S.tot;
+    var hl = [];
+    hl.push((done ? 'Finished the ' : 'Stopped the ') + M.name + ' season with ' + money(S.cash, true) + (done ? '' : ' after ' + S.log.length + ' of ' + S.sched.length + ' events'));
+    if (S.best) hl.push('Best day: ' + money(S.best.net, true) + ' at ' + S.best.title);
+    hl.push('Sold ' + t.sold.dog.toLocaleString() + ' hot dogs, ' + t.sold.soda.toLocaleString() + ' sodas, ' + t.sold.chips.toLocaleString() + ' chips' + (t.sold.cocoa ? ' and ' + t.sold.cocoa.toLocaleString() + ' cocoas' : ''));
+    if (t.outs) hl.push('Sold out ' + t.outs + (t.outs === 1 ? ' time' : ' times'));
+    var g = Object.keys(S.owned); if (g.length) hl.push('Gear: ' + g.map(function (k) { return gear(k).name.toLowerCase(); }).join(', '));
+    Kit.record(HKEY, {
+      started: S.started, mode: M.name, players: [{ name: Kit.player() || 'You', score: Math.round(S.cash / 100) }], winner: won ? (Kit.player() || 'You') : null,
+      summary: (won ? 'Reached the goal · ' : done ? 'Season over · ' : 'Stopped · ') + money(S.cash, true), badge: money(S.cash, true), highlights: hl,
+      meta: { mode: S.mode, cash: S.cash, goal: M.goal, won: won, events: S.log.length },
+      detail: { log: S.log.map(function (l) { return { t: l.title, n: l.net, r: l.revenue }; }) }
+    });
+  }
+  function showOver() {
+    setScene(S.sched[S.sched.length - 1], false); drawStrip();
+    panel.innerHTML = '';
+    panel.appendChild(seasonTable());
+    panel.appendChild(el('button', { class: 'btn btn-primary btn-lg btn-block', text: 'New season', onclick: function () { newSeason(S.mode); } }));
+  }
+  function seasonTable() {
+    var t = '<table class="sea"><tbody>';
+    S.log.forEach(function (l, i) { t += '<tr><td>' + (i + 1) + '</td><td>' + esc(l.title) + '</td><td class="' + (l.net >= 0 ? 'up' : 'down') + '">' + (l.net >= 0 ? '+' : '−') + money(Math.abs(l.net), true) + '</td></tr>'; });
+    if (!S.log.length) t += '<tr><td colspan="3">No events yet.</td></tr>';
+    return el('div', { class: 'sect', html: '<h4>Season so far <small>' + MODES[S.mode].name + ' · goal ' + money(MODES[S.mode].goal, true) + '</small></h4>' + t + '</tbody></table>' });
+  }
+  function seasonSheet() {
+    if (!S) { Kit.toast('No season running'); return; }
+    var n = seasonTable(), up = S.sched.slice(S.i + (S.phase === 'prep' ? 0 : 1)).map(function (e) { return '<tr><td></td><td>' + esc(e.title) + '</td><td style="font-weight:700;color:var(--text-3)">' + MON[new Date(e.date).getMonth()] + ' ' + new Date(e.date).getDate() + '</td></tr>'; }).join('');
+    if (up) n.innerHTML += '<h4 style="margin-top:12px">Still to come</h4><table class="sea"><tbody>' + up + '</tbody></table>';
+    Kit.sheet({ title: 'Season so far', node: n });
+  }
+
+  document.addEventListener('visibilitychange', function () { if (document.hidden && D) { D.speed = D.speed; loopStop(); } else if (!document.hidden && D && !D.done) { loopStart(); D.last = performance.now(); } });
+
+  // test hooks
+  window.__hd = { simulate: simulate, makeSeason: makeSeason, MODES: MODES, TYPES: TYPES, ITEMS: ITEMS, state: function () { return S; }, render: render, setState: function (s) { S = s; save(); render(false); }, money: money };
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  S = load();
+  if (S && S.phase !== 'over') { render(false); }
+  else { S = null; showSetup(); }
+})();
+</script>
+</body>
+</html>

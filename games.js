@@ -144,7 +144,14 @@ var GAMES = [
   { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 1, tag: 'Set a high hand and a low hand', play: 'paigow' },
 
   // ── Arcade ───────────────────────────────────────────────────────────────
-  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 1, tag: 'Stack and clear lines', play: 'tetris' },
+  { id: 'tetris',      name: 'Tetris',       color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Stack and clear lines, solo or TetriNET with up to 6', play: 'tetris',
+    launch: [
+      { icon: 'gamepad', title: 'Play Tetris', desc: 'Just you: clear lines and climb the levels', file: 'tetris.html' },
+      { icon: 'bot', title: 'TetriNET vs computer', desc: 'Up to 6 fields at once, with specials to fire at the others', file: 'tetrinet.html' },
+      { icon: 'users', title: 'TetriNET online', desc: '2 to 6 players, each on their own device', file: 'tetrinet.html?online=1' }
+    ] },
+  // TetriNET lives under Tetris (its launch options), so it has no tile of its own
+  { id: 'tetrinet',    name: 'TetriNET',     color: '#8b5cf6', cat: 'arcade', min: 1, max: 6, tag: 'Multiplayer Tetris with specials, online or vs computer', play: 'tetrinet', hidden: true },
   { id: 'snake',       name: 'Snake',        color: '#22c55e', cat: 'arcade', min: 1, max: 1, tag: "Eat, grow, don't crash", play: 'snake' },
   { id: 'pacman',      name: 'Pac-Man',      color: '#facc15', cat: 'arcade', min: 1, max: 1, tag: 'Eat the dots, dodge the ghosts', play: 'pacman' },
   { id: 'donkeykong',  name: 'Donkey Kong',  color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Climb the girders, jump the barrels, rescue Pauline', play: 'donkeykong' },
@@ -166,6 +173,7 @@ var GAMES = [
   { id: 'pinball',     name: 'Pinball',      color: '#000', cat: 'arcade', min: 1, max: 1, tag: 'Six 3D tables: flip, ramp, lock, multiball', play: 'pinball' },
   { id: 'minesweeper', name: 'Minesweeper',  color: '#64748b', cat: 'arcade', min: 1, max: 1, tag: 'Clear the field without a boom', play: 'minesweeper' },
   { id: 'carmen',      name: 'Carmen Sandiego', color: '#c81e24', cat: 'arcade', min: 1, max: 1, tag: 'Track V.I.L.E. thieves around the world and through time', play: 'carmen' },
+  { id: 'hotdogstand', name: 'Hot Dog Stand', color: '#d6402f', cat: 'arcade', min: 1, max: 1, tag: 'Run the stadium stand for a season', play: 'hotdogstand' },
   { id: 'candymatch',  name: 'Candy Match',  color: '#ff4f9a', cat: 'arcade', min: 1, max: 1, tag: 'Swap candies, match three, beat the level', play: 'candymatch' },
 
   // ── Consoles: your own cartridges. The consoles' shelves have no tiles (Edit on the home screen opens them);
@@ -265,6 +273,12 @@ var HI_BOARDS = (function () {
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
+  // Hot Dog Stand: final cash for the season, one board per season level
+  [['rookie', 'Rookie'], ['pro', 'Pro'], ['allstar', 'All-Star']].forEach(function (d) {
+    add('hotdogstand', 'hotdogstand_' + d[0], { label: d[1] + ' season', tab: d[1], unit: 'cash', pin: 1 });
+  });
+  // Drug Wars (hidden in Hot Dog Stand): net worth at the end of the 30 days. Not in the catalog, so it names itself
+  add('drugwars', 'drugwars', { label: '', title: 'Drug Wars', unit: 'cash', secret: 'hotdogstand_dw' });
   // Trivia Countdown (solo): one board per level and game length
   [['easy', 'Elementary'], ['medium', 'General'], ['hard', 'Genius']].forEach(function (l) {
     [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: l[1] + ' · ' + n + ' questions', tab: l[1] + ' ' + n, unit: 'points' }); });

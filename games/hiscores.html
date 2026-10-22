@@ -290,7 +290,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   // ── Puzzles: every board in HI_BOARDS (games.js), A to Z, in a plain cabinet of the game's own colour ──
   // Games with lots of boards (Math Puzzles, Marble Solitaire) show only the boards that have scores, plus a default.
   var PZ_SHORT = { '2048': '2048', candymatch: 'CANDY', mahjong: 'MAHJONG', marblesolitaire: 'MARBLES', mathpuzzles: 'MATH', memorymatch: 'MEMORY', mazes: 'MAZES', minesweeper: 'MINES', slidepuzzle: 'SLIDE', sudoku: 'SUDOKU' };
-  var PZ_NAME = { candymatch: 'Candy Match' };   // games not in the catalog yet
+  var PZ_NAME = { candymatch: 'Candy Match', drugwars: 'Drug Wars' };   // games not in the catalog yet
   var PZ_DEFAULT = { mazes: 'mazes_easy', marblesolitaire: 'marblesolitaire_english', mathpuzzles: 'mathpuzzles_g34_60' };
   function hx(h) { var n = parseInt(String(h).replace('#', ''), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
   function mix(a, b, t) { var x = hx(a), y = hx(b); return '#' + x.map(function (v, i) { return ('0' + Math.round(v + (y[i] - v) * t).toString(16)).slice(-2); }).join(''); }
@@ -320,14 +320,15 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
   (function () {
     if (typeof HI_BOARDS === 'undefined' || typeof ArcadeHi === 'undefined') return;
     var games = [];
-    Object.keys(HI_BOARDS).forEach(function (k) { var g = HI_BOARDS[k].game; if (games.indexOf(g) < 0) games.push(g); });
+    // a secret board (secret: its unlock key) shows only on a device where it's unlocked
+    Object.keys(HI_BOARDS).forEach(function (k) { var b = HI_BOARDS[k], g = b.game; if (b.secret) { try { if (localStorage.getItem(b.secret) !== '1') return; } catch (e) { return; } } if (games.indexOf(g) < 0) games.push(g); });
     games.sort(function (a, b) { return pzName(a).localeCompare(pzName(b), 'en', { numeric: true }); });
     games.forEach(function (game) {
       if (BOARDS.some(function (b) { return b.game === game; })) return;   // has its own arcade cabinet (Peggle)
       var keys = Object.keys(HI_BOARDS).filter(function (k) { return HI_BOARDS[k].game === game; });
       if (keys.length > 6) keys = keys.filter(function (k) { return k === PZ_DEFAULT[game] || k === want || ArcadeHi.board(k).length; });
       var c = pzTheme(pzColor(game)), name = pzName(game).toUpperCase();
-      var gm = typeof findGame === 'function' && findGame(game), sec = gm && gm.cat === 'arcade' ? 'arcade' : 'puzzle';   // Candy Match, Minesweeper sit with the arcade games
+      var gm = typeof findGame === 'function' && findGame(game), sec = gm && gm.cat === 'arcade' || game === 'drugwars' ? 'arcade' : 'puzzle';   // Candy Match, Minesweeper sit with the arcade games
       keys.forEach(function (k) {
         var cfg = ArcadeHi.config(k), mode = pzMode(cfg), unit = cfg.unit;
         var what = cfg.low ? (unit === 'time' ? 'BEST TIMES' : unit === 'marbles' ? 'BEST FINISHES' : 'FEWEST MOVES') : 'HIGH SCORES';

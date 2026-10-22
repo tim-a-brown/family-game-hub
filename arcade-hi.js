@@ -57,6 +57,7 @@ const ArcadeHi = (function(){
     const c = conf(key);
     v = Number(v) || 0;
     if(c.unit === 'time') return clock(v, c.dec);
+    if(c.unit === 'cash') return '$' + v.toLocaleString();
     if(c.unit === 'moves') return v.toLocaleString() + (short ? '' : v === 1 ? ' move' : ' moves');
     if(c.unit === 'marbles'){
       const m = marblesRead(v);
@@ -64,7 +65,7 @@ const ArcadeHi = (function(){
     }
     return v.toLocaleString();
   }
-  function unitName(key){ return ({ time: 'Time', moves: 'Moves', marbles: 'Finish', points: 'Points' })[conf(key).unit] || 'Score'; }
+  function unitName(key){ return ({ time: 'Time', moves: 'Moves', marbles: 'Finish', points: 'Points', cash: 'Cash' })[conf(key).unit] || 'Score'; }
   function boardTitle(key){
     const c = conf(key);
     if(c.title) return c.title;

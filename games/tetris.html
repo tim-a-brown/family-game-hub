@@ -469,13 +469,24 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     app.className = 'stage';
     Kit.setup(app, {
       intro: 'Stack the blocks, clear the lines',
-      options: [{ id: 'start', label: 'Starting level', help: 'Blocks fall faster at higher levels, and every line is worth more points.',
+      // TetriNET (games/tetrinet.html): the multiplayer game with specials, against the computer or online
+      modes: [{ id: 'solo', title: 'Tetris', desc: 'Just you: clear lines and climb the levels', icon: 'user' },
+        { id: 'tnet', title: 'TetriNET vs computer', desc: 'Up to 6 fields at once. Clear lines for specials and fire them at the others', icon: 'bot' },
+        { id: 'tnet-online', title: 'TetriNET online', desc: '2 to 6 players, each on their own device', icon: 'users' }],
+      options: [{ id: 'start', label: 'Starting level', when: function (m) { return m === 'solo'; }, help: 'Blocks fall faster at higher levels, and every line is worth more points.',
         choices: [[1, '1', 'A gentle start. Best for learning.'], [5, '5', 'Already quick. Good if you know the moves.'], [10, '10', 'Fast! For confident players.'], [15, '15', 'Very fast. Experts only.']], value: 1 },
-        { id: 'style', label: 'Style', help: 'Modern Tetris has Hold, a landing shadow and five pieces of preview. Classic plays like the original Game Boy and NES versions.', value: 'modern',
+        { id: 'style', label: 'Style', when: function (m) { return m === 'solo'; }, help: 'Modern Tetris has Hold, a landing shadow and five pieces of preview. Classic plays like the original Game Boy and NES versions.', value: 'modern',
           choices: [['modern', 'Modern', 'Hold a piece for later, see where it will land, and see the next five pieces.'], ['classic', 'Classic', 'Like the original: no Hold, no landing shadow, and only the next piece is shown.']] }],
-      players: { min: 1, max: 1, count: 1, label: 'Player' },
+      players: { min: 1, max: 1, count: 1, label: 'Who’s playing?', range: function (m) { return m === 'tnet' ? [2, 6] : [1, 1]; }, cpu: function (m) { return m === 'tnet' ? 'seats' : false; } },
       start: 'Play',
       onStart: function (cfg) {
+        if (cfg.mode === 'tnet' || cfg.mode === 'tnet-online') {
+          var nm = cfg.players[0] && cfg.players[0].name;
+          if (nm) try { localStorage.setItem('tetrinet_me', JSON.stringify({ name: nm })); } catch (e) {}
+          if (cfg.mode === 'tnet-online') { location.href = 'tetrinet.html?online=1'; return; }
+          try { sessionStorage.setItem('tetrinet_go', JSON.stringify({ seats: cfg.players.map(function (p, i) { return { name: p.name || (i ? 'Computer' : 'You'), bot: i > 0 }; }) })); } catch (e) {}
+          location.href = 'tetrinet.html'; return;
+        }
         startGame({ who: cfg.players[0] ? cfg.players[0].name : 'Player', startLevel: +cfg.options.start || 1, classic: cfg.options.style === 'classic' });
       }
     });
