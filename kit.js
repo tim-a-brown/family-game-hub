@@ -203,6 +203,8 @@
     bird: '<path d="M16 7h.01"/><path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20"/><path d="m20 7 2 .5-2 .5"/><path d="M10 18v3"/><path d="M14 17.75V21"/><path d="M7 18a6 6 0 0 0 3.84-10.61"/>',
     bike: '<circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/>',
     car: '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+    badge: '<rect x="3" y="6" width="15" height="15" rx="4"/><circle cx="18" cy="6" r="3.5" fill="currentColor"/>',
+    bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
     plane: '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
     pizza: '<path d="M15 11h.01"/><path d="M11 15h.01"/><path d="M16 16h.01"/><path d="m2 16 20 6-6-20A20 20 0 0 0 2 16"/><path d="M5.71 17.11a17 17 0 0 1 11.4-11.4"/>',
     cake: '<path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3"/><path d="M12 8v3"/><path d="M17 8v3"/><path d="M7 4h.01"/><path d="M12 4h.01"/><path d="M17 4h.01"/>',
@@ -756,21 +758,59 @@
       });
     }).catch(function () { return null; });
   }
+  // Notification settings (menu > Notifications): the banner, its sound and buzz, the count on the app's icon
+  function nPref(k) { return lsGet(k, '1') !== '0'; }
+  function notifyStatus() { var b = nPref('gn_turn_ban'), c = nPref('gn_turn_badge'); return b && c ? 'On' : b ? 'Banner only' : c ? 'Icon count only' : 'Off'; }
+  function standaloneApp() { return !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)); }
   // The app's icon carries the count of games waiting on your move (an installed app; iPhone and iPad show it only
   // once notifications are allowed, asked the first time you tap through to an online game)
   function turnBadge(list) {
     if (!list) return;
-    var n = list.filter(function (x) { return x.mine; }).length;
+    var n = nPref('gn_turn_badge') ? list.filter(function (x) { return x.mine; }).length : 0;
     try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n).catch(function () {}); else navigator.clearAppBadge().catch(function () {}); } } catch (e) {}
   }
   function badgeAsk() {
-    var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-    if (!standalone || !window.Notification || Notification.permission !== 'default' || lsGet('badge_asked_dev', '')) return Promise.resolve();
+    if (!standaloneApp() || !nPref('gn_turn_badge') || !window.Notification || Notification.permission !== 'default' || lsGet('badge_asked_dev', '')) return Promise.resolve();
     try { LS.setItem('badge_asked_dev', '1'); } catch (e) {}
     var asked;
     try { asked = Notification.requestPermission(); } catch (e) { return Promise.resolve(); }
     // (the answer, or on after a few seconds either way)
     return Promise.race([Promise.resolve(asked).catch(function () {}), new Promise(function (ok) { setTimeout(ok, 8000); })]);
+  }
+  // The settings sheet: what the banner looks like, then a switch for each part
+  function notifySheet() {
+    sfx('pop');
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin();
+    var demo = el('div', { class: 'k-note k-turnban k-tb-demo', 'aria-hidden': 'true' }, [
+      el('span', { class: 'ic', html: window.GameIcon ? GameIcon('chess') : '' }),
+      el('span', { class: 'grow' }, [el('span', { class: 'yt', html: '<i></i>Your turn' }), el('b', { text: 'Chess' }), el('small', { text: 'Cam moved' })]),
+      el('span', { class: 'go' }, [el('span', { html: icon('play') })])]);
+    var list = el('div', { class: 'k-list' });
+    function sw(ic, label, sub, key, after) {
+      var subEl = el('small', { text: sub || '' });
+      var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(nPref(key)) },
+        [el('span', { class: 'ic', html: icon(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label }), subEl]), el('i', { class: 'sw' })]);
+      b.onclick = function () { var on = !nPref(key); lsSet(key, on ? '1' : '0'); b.setAttribute('aria-checked', String(on)); haptic('light'); sfx('tap'); if (after) after(on, subEl); };
+      list.appendChild(b); return subEl;
+    }
+    sw('bell', 'Your turn banner', 'Pops in when a move comes back to you in another game', 'gn_turn_ban', function (on) { demo.classList.toggle('off', !on); });
+    sw('sound', 'Sound and buzz', 'A pop and a tap when the banner comes in', 'gn_turn_ban_snd');
+    // the count needs the app on the Home Screen, and on iPhone and iPad notifications allowed
+    function badgeNote() {
+      if (!nPref('gn_turn_badge')) return 'The number of games waiting on your move';
+      if (!standaloneApp()) return 'Shows once Game Night is on your Home Screen';
+      if (!window.Notification) return 'On';
+      return Notification.permission === 'granted' ? 'On' : Notification.permission === 'denied' ? 'Turned off for Game Night in Settings, under Notifications' : 'Tap to allow it';
+    }
+    var bn = sw('badge', 'Count on the app icon', '', 'gn_turn_badge', function (on, subEl) {
+      if (!on) { try { if (navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {}); } catch (e) {} subEl.textContent = badgeNote(); return; }
+      try { LS.removeItem('badge_asked_dev'); } catch (e) {}
+      badgeAsk().then(function () { subEl.textContent = badgeNote(); netTurns().then(turnBadge); });
+    });
+    bn.textContent = badgeNote();
+    if (!pin) list.appendChild(el('p', { class: 'k-tb-note', text: 'These are for online games, so they work once you’re signed in with your PIN.' }));
+    if (!nPref('gn_turn_ban')) demo.classList.add('off');
+    sheet({ title: 'Notifications', node: el('div', { class: 'k-tb-set' }, [demo, list]), actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
   // the moves already told about (on this device): a table's turn is news once
   function turnsSeen() { try { return JSON.parse(lsGet('turns_seen_dev', '{}')) || {}; } catch (e) { return {}; } }
@@ -793,7 +833,7 @@
         var seen = turnsSeen();
         var fresh = list.filter(function (x) { return x.mine && x.at && seen[x.id + ':' + x.code] !== x.at && x.id !== game.id; });
         turnsMark(list); turnBadge(list);
-        if (fresh.length) turnBanner(fresh[0], fresh.length - 1);
+        if (fresh.length && nPref('gn_turn_ban')) turnBanner(fresh[0], fresh.length - 1);
       });
     }
     setTimeout(check, 4000);
@@ -801,7 +841,7 @@
     doc.addEventListener('visibilitychange', function () { if (doc.visibilityState === 'visible') setTimeout(check, 800); });
   }
   // The banner: the game's icon, whose move it is, and a Play button; tap it to go, swipe it up (or wait) to let it be
-  function turnBanner(x, more) {
+  function turnBanner(x, more, o) {
     var g = findGameSafe(x.id); if (!g) return;
     if (TW.el) TW.el.remove();
     clearTimeout(TW.hide);
@@ -843,8 +883,8 @@
     });
     doc.body.appendChild(b); TW.el = b;
     requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
-    sfx('pop'); haptic('medium');
-    TW.hide = setTimeout(close, 4000);   // (about as long as a phone's own banner stays up)
+    if (nPref('gn_turn_ban_snd') && !(o && o.quiet)) { sfx('pop'); haptic('medium'); }
+    TW.hide = setTimeout(close, (o && o.ms) || 4000);   // (about as long as a phone's own banner stays up)
   }
 
   // ── Favorites (same storage the home screen and sync use) ─────────────────
@@ -1050,6 +1090,7 @@
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     item('Settings', 'clock', 'Game timer', timerSheet, '', timerStatus());
+    item('Settings', 'bell', 'Notifications', notifySheet, '', notifyStatus());
     var spP = game && spotifyPick(game.id);
     item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
@@ -3676,7 +3717,7 @@
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
   window.Kit = {
-    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk,
+    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
     init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
