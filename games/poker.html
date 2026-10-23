@@ -752,8 +752,18 @@
 .pfull-l .st{color:var(--text);}
 .pfull-l > div.win{display:grid;grid-template-columns:8px minmax(0,1fr);column-gap:6px;row-gap:3px;color:var(--text);font-weight:900;}
 .pfull-l .win .cs{grid-column:2;}
-.pfull-l .win .vs,.plog .win .vs{grid-column:2;font-size:.72rem;font-weight:800;color:inherit;opacity:.78;}
-.plog-in > div.win{white-space:normal;} .plog-in > div.win .dot,.pfull-l > div.win .dot{align-self:start;margin-top:.42em;} .plog .win .vs{white-space:normal;}   /* the hand's result is the one line that wraps rather than cut off */
+:is(.pfull-l,.plog) .win .wt{grid-column:2;display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-weight:700;}
+:is(.pfull-l,.plog) .win .wt b{font-weight:900;}
+:is(.pfull-l,.plog) .win .wt .wm{flex:none;font-variant-numeric:tabular-nums;}
+:is(.pfull-l,.plog) .win .wh2{grid-column:2;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;font-weight:900;}
+:is(.pfull-l,.plog) .win .wh2.dim{font-weight:700;opacity:.7;}
+:is(.pfull-l,.plog) .win .wh2 em{font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;opacity:.65;}
+/* the hands it beat: a little table, names lined up with what they held */
+:is(.pfull-l,.plog) .win .vs{grid-column:2;display:grid;grid-template-columns:auto auto minmax(0,1fr);column-gap:8px;row-gap:1px;align-items:baseline;font-size:.72rem;font-weight:700;opacity:.8;margin-top:1px;}
+:is(.pfull-l,.plog) .win .vs small{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
+:is(.pfull-l,.plog) .win .vs b{font-weight:900;white-space:nowrap;}
+.plog.novs .win .vs,.plog.nocs .win .cs{display:none;}
+.plog-in > div.win{white-space:normal;} .plog-in > div.win .dot,.pfull-l > div.win .dot{align-self:start;margin-top:.42em;}    /* the hand's result is the one line that wraps rather than cut off */
 :is(.plog-in,.pfull-l) > div.shw .cs{flex:none;}
 .plog.tap{cursor:pointer;}
 /* the log is receipt paper: a strip of it at the foot of the card, perforated along the top; tap it and the whole
@@ -3116,11 +3126,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       r.w.forEach(function (j) {
         var c = r.lo ? [] : five[j] && five[j].length ? five[j] : H.hole[j] || [];
         var so = c.length === 5 && evBased() && !gv().wild && scores[j] != null ? scoreOrder(c, scores[j]) : null;
-        H.log.push({ win: j, n: S.players[j].name, sp: r.w.length > 1 ? 1 : 0, a: (r.lo ? (gv().chicago ? 'the spade half' : 'low') : r.half ? 'high' : amt(r.amt)) + (r.side ? ' (side pot)' : '') + (hn ? ' \u00b7 ' + hn : ''), c: so ? so.c : c.slice(), k: so ? so.k : 0, vs: vs });
+        H.log.push({ win: j, n: S.players[j].name, sp: r.w.length > 1 ? 1 : 0, m: amt(r.amt), q: r.lo ? (gv().chicago ? 'the spade half' : 'low') : r.half ? 'high' : '', side: r.side ? 1 : 0, h: hn, c: so ? so.c : c.slice(), k: so ? so.k : 0, vs: vs });
       });
     });
     else results.forEach(function (r) {
-      if (r.fold && r.w.length === 1) H.log.push({ win: r.w[0], n: S.players[r.w[0]].name, a: amt(r.amt) + ' uncontested', c: [] });
+      if (r.fold && r.w.length === 1) H.log.push({ win: r.w[0], n: S.players[r.w[0]].name, m: amt(r.amt), h: 'Uncontested', u: 1, c: [] });
     });
     if (H.log.length > 40) H.log.splice(0, H.log.length - 40);
     H.say = H.say.map(function (s, j) { return s === 'Fold' ? s : ''; });
@@ -5010,6 +5020,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       sn.style.fontSize = (parseFloat(getComputedStyle(sn).fontSize) * Math.max(sn.clientWidth / sn.scrollWidth * 0.97, 0.7)).toFixed(1) + 'px';
     });
     placeSays(); fitWins();
+    // the side panel never cuts its last section off: short of room, the log's one-line preview sheds its smaller
+    // detail (the hands it beat, then its cards; the whole log has them) before anything is clipped
+    var side = document.querySelector('.pside'), tk = side && side.querySelector('.plog.tk');
+    if (tk) {
+      tk.classList.remove('novs', 'nocs');
+      if (side.scrollHeight > side.clientHeight + 1) tk.classList.add('novs');
+      if (side.scrollHeight > side.clientHeight + 1) tk.classList.add('nocs');
+    }
     Array.prototype.forEach.call(document.querySelectorAll('.ptile b'), function (b) {
       var sp = b.querySelector('span');
       b.style.fontSize = ''; if (sp) sp.style.fontSize = '';
@@ -5328,9 +5346,30 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     return box;
   }
   function logWho(i, n) { return i === 0 && (!n || n === S.players[0].name) ? 'You' : n || (S.players[i] ? S.players[i].name : ''); }
+  // A pot's result in the log: who took it with the amount at the far end, the hand on its own line, its cards
+  // (the ones that made it raised), then the hands it beat lined up as a small table. Each thing in its own place,
+  // no dots or brackets stringing them together.
+  function winRow(e) {
+    var who = logWho(e.win, e.n), you = who === 'You';
+    var verbW = (e.sp ? (you ? ' split' : ' splits') : (you ? ' win' : ' wins')) + (e.q ? ' ' + e.q : '');
+    var kids = [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }),
+      el('div', { class: 'wt' }, [el('span', null, [el('b', { text: who }), document.createTextNode(verbW)]), el('b', { class: 'wm', text: e.m })])];
+    if (e.h || e.side) kids.push(el('div', { class: 'wh2' + (e.u ? ' dim' : '') }, [e.side ? el('em', { text: 'Side pot' }) : null, e.h ? el('span', { text: e.h }) : null]));
+    if (e.c && e.c.length) kids.push(el('span', { class: 'cs', html: e.c.map(function (c, i) { return miniCard(c, i < (e.k || 0)); }).join(' ') }));
+    if (e.vs && e.vs.length) {
+      var t = el('div', { class: 'vs' });
+      e.vs.forEach(function (o, k) {
+        t.appendChild(el('small', { text: k ? '' : 'Beat' }));
+        t.appendChild(el('b', { text: logWho(o.i, o.n) }));
+        t.appendChild(el('span', { text: o.h || '' }));
+      });
+      kids.push(t);
+    }
+    return el('div', { class: 'win' }, kids);
+  }
   function logRow(e) {
-    if (e.win != null) return el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }),
-      el('span', { text: e.a != null ? logWho(e.win, e.n) + (logWho(e.win, e.n) === 'You' ? (e.sp ? ' split ' : ' win ') : e.sp ? ' splits ' : ' wins ') + e.a : e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(function (c, i) { return miniCard(c, i < (e.k || 0)); }).join(' ') }) : null, e.vs && e.vs.length ? el('span', { class: 'vs', text: 'Beat ' + e.vs.map(function (o) { var w = logWho(o.i, o.n); return (w === 'You' ? 'you' : w) + (o.h ? ' (' + o.h + ')' : ''); }).join(', ') }) : null]);
+    if (e.win != null && e.m != null) return winRow(e);
+    if (e.win != null) return el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }), el('span', { text: e.a != null ? logWho(e.win, e.n) + (logWho(e.win, e.n) === 'You' ? (e.sp ? ' split ' : ' win ') : e.sp ? ' splits ' : ' wins ') + e.a : e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(function (c, i) { return miniCard(c, i < (e.k || 0)); }).join(' ') }) : null]);   // (a hand logged before this layout)
     if (e.sh != null) return el('div', { class: 'shw' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.sh) } }), el('span', { text: logWho(e.sh, e.n) + (logWho(e.sh, e.n) === 'You' ? ' show' : ' shows') }), el('span', { class: 'cs', html: e.c.map(function (c) { return miniCard(c); }).join(' ') })]);
     if (e.s) return el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(function (c) { return miniCard(c); }).join(' ') }) : null]);
     return el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t, e.n) })]);

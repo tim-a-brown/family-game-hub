@@ -52,6 +52,9 @@ Underlying principles for everything:
 
 - **No emoji in the UI.** Use `Kit.icon(name)` line icons. Emoji look cheap.
 - **Text first for finding things.** Game names must be readable at a glance.
+- **No dots (·) stringing text together.** Don't join facts with " · " (or brackets) on one line. Design it: put each
+  thing in its own place (a name and its amount at either end of a row, the detail on a line of its own, a small
+  table to line up names and hands, a caps label over a value).
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
