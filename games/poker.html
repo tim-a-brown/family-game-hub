@@ -2679,7 +2679,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     else if (H.phase === 'swap') { if (H.swapWait && !QUIET) { save(); renderTable(); } else finishSwap(); }
     else if (H.phase === 'guts') { save(); renderTable(); if (!H.gutsWait) later(gutsReveal, 900); }
     else if (H.phase === 'acey') { save(); renderTable(); if (!H.aceyWait) later(aceyNext, 600); }
-    else if (H.phase === 'runout') { if (QUIET) return runout(); save(); renderTable(); later(runout, 1100); }
+    else if (H.phase === 'runout') { if (QUIET) return runout(); save(); renderTable(); var first = !H.aiP; H.aiP = 1; later(runout, first && !SIM ? 2800 : 1100); }   // (all in: a couple of seconds to take in who's in it, before the cards come)
     else {
       save(); renderTable();
       if (S.circ) { if (S.players[0].out || (S.circ.else === 0 && alive().length <= 1)) later(endEvent, 1800); }
@@ -4755,6 +4755,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('acting');   // (not 'turn': that is Kit's turn banner)
       var isWin = main && main.w.indexOf(i) >= 0 && H.won[i] > 0;
       if (isWin) seat.classList.add('win');
+      // an all-in run-out: everyone in it stands in the light (a player who can no longer win, in a red one)
+      if (!done && reqs && reqs[i] != null) { seat.classList.add('spot'); if (reqs[i] <= 0.0005) seat.classList.add('dead'); }
       else if (done && main && main.v != null && H.shown[i] && H.inHand[i] && !H.folded[i]) seat.classList.add('lost');   // a hand shown down that lost: it steps back
       if (!me) {
         var vv = gv(), nh = H && H.hole[i] ? H.hole[i].length : 0;
@@ -4875,6 +4877,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     // the winner's spotlight: a soft warm light pooled on the felt where they sit (placed by placeSpot)
     if (done && main && main.w.some(function (j) { return H.won[j] > 0; })) felt.appendChild(el('div', { class: 'pspot' + (winAnim ? ' anim' : '') }));
+    else if (reqs) { var spA = R.spotNo !== H.no; R.spotNo = H.no; felt.appendChild(el('div', { class: 'pspot' + (spA ? ' anim' : '') })); }
     tb.appendChild(at(board, land ? CENL : CEN));
     if (H && H.phase === 'runout') tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 64] : [50, 68]));
     app.appendChild(tb);
@@ -5193,13 +5196,16 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function placeSpot() {
     var sp = document.querySelector('.ptable .pspot'); if (!sp) return;
     var r0 = sp.getBoundingClientRect(), pools = [];
-    [].slice.call(document.querySelectorAll('.ptable .pseat.win')).forEach(function (st) {
+    [].slice.call(document.querySelectorAll('.ptable .pseat:is(.win,.spot)')).forEach(function (st) {
       var t = st.classList.contains('me') ? document.querySelector('.ptable .phand') || st : st, r = t.getBoundingClientRect();
-      pools.push([((r.left + r.width / 2 - r0.left) / r0.width * 100).toFixed(1), ((r.top + r.height / 2 - r0.top) / r0.height * 100).toFixed(1)]);
+      pools.push([((r.left + r.width / 2 - r0.left) / r0.width * 100).toFixed(1), ((r.top + r.height / 2 - r0.top) / r0.height * 100).toFixed(1), st.classList.contains('dead')]);
     });
     if (!pools.length) { sp.style.background = 'none'; return; }
     var R0 = Math.round(Math.min(r0.width, r0.height) * 0.36);
-    var g = pools.map(function (q) { return 'radial-gradient(circle at ' + q[0] + '% ' + q[1] + '%, rgba(255,236,190,.3) 0, rgba(255,226,160,.14) ' + Math.round(R0 * 0.55) + 'px, rgba(255,226,160,0) ' + R0 + 'px)'; });
+    // (warm light; red for a player drawing dead)
+    var run = !document.querySelector('.ptable .pseat.win');   // (a run-out: everyone in it lit, the rest of the felt a shade darker)
+    var g = pools.map(function (q) { var c = q[2] ? ['255,96,84', '235,60,52'] : ['255,236,190', '255,226,160'], a = q[2] ? [.42, .2] : run ? [.36, .17] : [.3, .14]; return 'radial-gradient(circle at ' + q[0] + '% ' + q[1] + '%, rgba(' + c[0] + ',' + a[0] + ') 0, rgba(' + c[1] + ',' + a[1] + ') ' + Math.round(R0 * 0.55) + 'px, rgba(' + c[1] + ',0) ' + R0 + 'px)'; });
+    if (run && pools.length > 1) g.push('linear-gradient(rgba(0,0,0,.18),rgba(0,0,0,.18))');
     if (pools.length === 1) g.push('radial-gradient(circle at ' + pools[0][0] + '% ' + pools[0][1] + '%, rgba(0,0,0,0) ' + R0 + 'px, rgba(0,0,0,.26) ' + Math.round(R0 * 2.2) + 'px)');   // (the rest of the felt eases back a touch)
     sp.style.background = g.join(',');
   }
