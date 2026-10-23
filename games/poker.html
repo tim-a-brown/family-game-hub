@@ -5912,6 +5912,20 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     slice(); sync = false;
     return cMemo.key === key ? cMemo.v : null;
   }
+  // the best move's own picture: chips going up for a bet or raise, matching chips for a call, a tap for a check,
+  // cards dropped for a fold, the whole stack pushed in for all in
+  function moveIcon(id) {
+    var chip = function (y) { return '<ellipse cx="9" cy="' + y + '" rx="6" ry="2.4"/>'; }, sides = function (y0, y1) { return '<path d="M3 ' + y0 + 'v' + (y1 - y0) + 'M15 ' + y0 + 'v' + (y1 - y0) + '"/>'; };
+    var P = {
+      raise: chip(15) + sides(15, 19) + '<path d="M3 19a6 2.4 0 0 0 12 0"/><path d="M19 15V4"/><path d="M15.5 7.5 19 4l3.5 3.5"/>',
+      call: chip(9) + sides(9, 12) + '<path d="M3 12a6 2.4 0 0 0 12 0"/>' + sides(15, 18) + '<path d="M3 15a6 2.4 0 0 0 12 0M3 18a6 2.4 0 0 0 12 0"/><path d="M18 10h4M18 14h4"/>',
+      check: '<path d="M4 12.5l5 5L20 6.5"/>',
+      fold: '<path d="M8.6 4H4.6A1.6 1.6 0 0 0 3 5.6v9.8A1.6 1.6 0 0 0 4.6 17H7.6" transform="rotate(-14 7.5 10.5)"/><rect x="9" y="3" width="9" height="13" rx="1.6" transform="rotate(10 13.5 9.5)"/><path d="M12 19.5v2.5M9.5 20.5l2.5 2.5 2.5-2.5"/>',
+      allin: chip(6) + sides(6, 16) + '<path d="M3 10a6 2.4 0 0 0 12 0M3 13a6 2.4 0 0 0 12 0M3 16a6 2.4 0 0 0 12 0"/><path d="M17 12h5.5"/><path d="M19.5 9l3 3-3 3"/>'
+    };
+    P.bet = P.raise;
+    return '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (P[id] || P.raise) + '</svg>';
+  }
   // The chip's holder; null when there's no decision to help with
   function coachSlot(cls) {
     cSlot = null;
@@ -5928,7 +5942,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (a === undefined) return;
     if (cSlot.classList.contains('pbm')) {
       cSlot.appendChild(el('button', { type: 'button', class: 'pbm-b' + (a ? '' : ' wait'), disabled: !a, 'aria-label': 'Best move: ' + (a ? a.short : 'working it out'), onclick: function (e) { e.stopPropagation(); if (a) { Kit.sfx('tap'); a.open(); } } },
-        [el('span', { class: 'ic', html: Kit.icon('lightbulb') }), el('b', { text: a ? a.short : '…' })]));
+        [el('span', { class: 'ic', html: a ? moveIcon(a.id) : Kit.icon('lightbulb') }), el('b', { text: a ? a.short : '…' })]));
       return;
     }
     cSlot.appendChild(a ? Coach.chip(a.chip, a.open) : el('span', { class: 'pc-wait', text: 'Working out the odds…' }));
@@ -6087,7 +6101,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       function (st) { return { n: st.n, win: st.win / st.n, tie: st.tie / st.n, eq: (st.win + st.share) / st.n }; });
     if (!sd) return null;
     var plan = tablePlan(sd, o, nOpp), mv = plan.moves.filter(function (m) { return m.best; })[0];
-    return { chip: 'Best move: <b>' + mv.short + '</b>', short: mv.short, open: function () { tableSheet(plan); } };
+    return { chip: 'Best move: <b>' + mv.short + '</b>', short: mv.short, id: mv.short === 'All in' ? 'allin' : mv.id, open: function () { tableSheet(plan); } };
   }
   function cAmt(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : usd(x); }
   function potOf(x) { return S.tourn ? 'the ' + Math.round(x).toLocaleString() + '-chip pot' : 'the ' + usd(x) + ' pot'; }
