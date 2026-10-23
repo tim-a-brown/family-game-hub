@@ -1507,10 +1507,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
 
   // ── Money / chips ──────────────────────────────────────────────────────────
-  function usd(n) { n = Math.round(n); return (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString(); }
+  // Money and chips are written short from a thousand up: 50K, 73.5K, 175K, 1.7M (no long runs of zeroes)
+  function kmTxt(n) {
+    n = Math.round(Math.abs(n));
+    if (n < 1000) return String(n);
+    var big = n >= 1e6, v = n / (big ? 1e6 : 1e3), d = v < 100 ? 2 : 1, t = v.toFixed(d).replace(/\.?0+$/, '');
+    if (!big && t === '1000') return '1M';   // (999,999 rounds up to a million, not 1000K)
+    return t + (big ? 'M' : 'K');
+  }
+  function usd(n) { n = Math.round(n); return (n < 0 ? '−$' : '$') + kmTxt(n); }
   function signed(n) { return (n > 0 ? '+' : '') + usd(n); }
   function amt(n) { return S && S.tourn ? chipsTxt(n) : usd(n); }
-  function chipsTxt(n) { n = Math.round(n); return n >= 1e7 ? Math.round(n / 1e6) + 'M' : n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'M' : n >= 1e5 ? Math.round(n / 1e3) + 'k' : n.toLocaleString(); }
+  function chipsTxt(n) { n = Math.round(n); return (n < 0 ? '−' : '') + kmTxt(n); }
   // chip colours by value: the cash-game set ($1 white to $5,000 orange) and tournament chips above it
   var DEN = [[5000000, '#7a4a24', '#f3dcae'], [1000000, '#e05aa0', '#fff'], [500000, '#8d96a3', '#2b2f36'], [100000, '#2a7fd4', '#fff'], [25000, '#19a7a0', '#fff'], [5000, '#e8742a', '#fff'],
     [1000, '#e9c02a', '#2a2418'], [500, '#7b3fc4', '#fff'], [100, '#24242a', '#f2eee4'], [25, '#1f9a4a', '#fff'], [5, '#d42a2a', '#fff'], [1, '#f2eee4', '#2a6fd6']];   // [value, chip, inserts]
@@ -3777,7 +3785,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     for (k = 1; k <= paid; k++) { var x = Math.pow(k + 0.4, -1.15); w.push(x); sum += x; }
     return w.map(function (x) { var v = floor + rest * x / sum, u = v >= 1e6 ? 1000 : v >= 1e4 ? 100 : v >= 1000 ? 10 : 1; return Math.round(v / u) * u; });
   }
-  function kUsd(n) { return n >= 1000 ? '$' + (n / 1000) + 'K' : '$' + n; }
+  function kUsd(n) { return '$' + kmTxt(n); }
   // poker_circuit: {track: the one picked last, he|om|mx: {open (stops open), best, cash, wins, net, played, tix (seats won)}}
   function circAll() { var a = load(CKEY) || {}; if (typeof a.open === 'number') a = { he: a }; if (!TR[a.track]) a.track = 'he'; return a; }
   function circLoad(track) {
@@ -3886,7 +3894,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // the local stops of the Mixed road deal home games too
   function homeAt(ev) { return ev.mix && ev.local; }
-  function amt2(n) { return n >= 1e6 ? (Math.round(n / 1e5) / 10) + 'M' : n >= 1e4 ? Math.round(n / 1000) + 'K' : n.toLocaleString(); }
+  function amt2(n) { return kmTxt(n); }
   // the big-field week: four events side by side; pick one
   function bigSheet(g) {
     var pg = circLoad(g.track), box = el('div', { class: 'czbig' }), sh = null, tix = pg.tix[g.id];
@@ -3926,7 +3934,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     } else if (homeAt(ev)) box.appendChild(el('p', { class: 'muted', style: { 'margin-top': '6px' }, html: 'Home games come round now and then: Stud, Draw, Razz, Omaha Hi-Lo and more. The first time you play one, it\'s dealt out for you.' }));
     box.appendChild(el('div', { class: 'czs-facts' }, [
       el('div', null, [el('small', { text: 'Players expected' }), el('b', { text: fieldTxt(ev) })]),
-      el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: ev.stack.toLocaleString() })]),
+      el('div', null, [el('small', { text: 'Starting chips' }), el('b', { text: kmTxt(ev.stack) })]),
       el('div', null, [el('small', { text: 'Blinds go up' }), el('b', { text: 'every ' + perOf(ev) + ' hands' })]),
       el('div', null, [el('small', { text: reRule(ev).rebuy ? 'Rebuys' : 'Re-entry' }), el('b', { text: !reRule(ev).n ? 'None (freezeout)' : (reRule(ev).n === 1 ? 'One, ' : '') + 'first ' + reRule(ev).lv + ' levels' })]),
       el('div', null, [el('small', { text: 'The field' }), el('b', { text: fieldWord(ev.ai0) === fieldWord(ev.ai1) ? fieldWord(ev.ai0) : fieldWord(ev.ai0) + ', then ' + fieldWord(ev.ai1).toLowerCase() + ' by the end' })])
@@ -4630,7 +4638,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       box.appendChild(el('div', { class: 'row' }, [
         el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
         el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out · ' + ordinal(p.place) : i === 0 ? 'Your seat' : p.cpu ? (STYLES[p.style] || STYLES.tag).label : 'Playing online' })]),
-        el('span', { class: 's', text: S.tourn ? p.stack.toLocaleString() : signed(p.stack - p.buyin) })
+        el('span', { class: 's', text: S.tourn ? kmTxt(p.stack) : signed(p.stack - p.buyin) })
       ]));
     });
     var head = S.tourn ? 'Chips' : 'Up or down this session';
@@ -5868,7 +5876,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (me.wantRe && (!NET || NETSEAT >= 0)) {
       box.classList.add('mine');
       var cost = reCost(), short = S.circ && Casino.balance() < cost;
-      box.appendChild(el('div', { class: 'pswap', html: 'Out of chips. ' + (S.circ ? '<b>' + (reRule(EV[S.circ.id]).rebuy ? 'Rebuy' : 'Re-enter') + ': ' + usd(cost) + ' for ' + reStack().toLocaleString() + ' chips</b>' + (reRule(EV[S.circ.id]).n === 1 ? 'Just the one ' + (reRule(EV[S.circ.id]).rebuy ? 'rebuy' : 're-entry') + ' allowed.' : 'Open until level ' + (reRule(EV[S.circ.id]).lv + 1) + '.') : !S.tourn ? 'Buy back in for <b>' + usd(cost) + '</b> from your bank?' : 'Rebuy for <b>' + reStack().toLocaleString() + '</b> new chips?') + (S.tourn && !S.circ && S.rebuyLv ? ' (rebuys until level ' + (S.rebuyLv + 1) + ')' : '') }));
+      box.appendChild(el('div', { class: 'pswap', html: 'Out of chips. ' + (S.circ ? '<b>' + (reRule(EV[S.circ.id]).rebuy ? 'Rebuy' : 'Re-enter') + ': ' + usd(cost) + ' for ' + kmTxt(reStack()) + ' chips</b>' + (reRule(EV[S.circ.id]).n === 1 ? 'Just the one ' + (reRule(EV[S.circ.id]).rebuy ? 'rebuy' : 're-entry') + ' allowed.' : 'Open until level ' + (reRule(EV[S.circ.id]).lv + 1) + '.') : !S.tourn ? 'Buy back in for <b>' + usd(cost) + '</b> from your bank?' : 'Rebuy for <b>' + reStack().toLocaleString() + '</b> new chips?') + (S.tourn && !S.circ && S.rebuyLv ? ' (rebuys until level ' + (S.rebuyLv + 1) + ')' : '') }));
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: S.tourn ? 'I\'m out' : 'Leave the table', onclick: function () { reAct(false); } }));
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary', disabled: short, html: short ? 'Bank too low' : S.circ ? '<span class="two">' + (reRule(EV[S.circ.id]).rebuy ? 'Rebuy' : 'Re-enter') + '<small>' + usd(cost) + '</small></span>' : S.tourn ? 'Rebuy' : '<span class="two">Rebuy<small>' + usd(cost) + '</small></span>', onclick: function () { reAct(true); } }));
       box.appendChild(bar);
@@ -6133,7 +6141,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   var SUITCH = ['♣', '♦', '♥', '♠'], SUITN = ['club', 'diamond', 'heart', 'spade'];
   function ctxt(c) { return RN[c >> 2] + SUITCH[c & 3] + '︎'; }
   function ctxts(cs) { return cs.map(ctxt).join(' '); }
-  function money2(x) { return '$' + (x >= 1000 ? Math.round(x).toLocaleString('en-US') : x.toFixed(2)); }
+  function money2(x) { return '$' + (x >= 1000 ? kmTxt(x) : x.toFixed(2)); }
   // 34% · 4.2% · 1 in 360 (rare results read better as "1 in")
   function chance(p) {
     if (p <= 0) return '0%';
@@ -6286,10 +6294,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var plan = tablePlan(sd, o, nOpp), mv = plan.moves.filter(function (m) { return m.best; })[0];
     return { chip: 'Best move: <b>' + mv.short + '</b>', short: mv.short, id: mv.short === 'All in' ? 'allin' : mv.id, open: function () { tableSheet(plan); } };
   }
-  function cAmt(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : usd(x); }
-  function potOf(x) { return S.tourn ? 'the ' + Math.round(x).toLocaleString() + '-chip pot' : 'the ' + usd(x) + ' pot'; }
-  function cAmt2(x) { return S.tourn ? Math.round(x).toLocaleString() + ' chips' : money2(x); }
-  function cSigned(x) { return S.tourn ? (x >= 0.5 ? '+' : x <= -0.5 ? '−' : '') + Math.round(Math.abs(x)).toLocaleString() + ' chips' : Coach.cash(x); }
+  function cAmt(x) { return S.tourn ? kmTxt(x) + ' chips' : usd(x); }
+  function potOf(x) { return S.tourn ? 'the ' + kmTxt(x) + '-chip pot' : 'the ' + usd(x) + ' pot'; }
+  function cAmt2(x) { return S.tourn ? kmTxt(x) + ' chips' : money2(x); }
+  function cSigned(x) { return S.tourn ? (x >= 0.5 ? '+' : x <= -0.5 ? '−' : '') + kmTxt(x) + ' chips' : Coach.cash(x); }
   function pc(x) { return Math.round(x * 100) + '%'; }
   // Two percentages being compared: one decimal place when whole numbers would look the same
   function pcs(a, b) {
