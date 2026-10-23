@@ -52,6 +52,10 @@ Underlying principles for everything:
 
 - **No emoji in the UI.** Use `Kit.icon(name)` line icons. Emoji look cheap.
 - **Text first for finding things.** Game names must be readable at a glance.
+- **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
+  wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
+  for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
+  anything past the screen edge) at phone upright/sideways and iPad sizes, not just by eye.
 - **Game play areas must feel like a real game, not an app.** Use table
   materials from `kit.css` (`.wood`, `.felt-in`, `.paper`, `.ink`,
   `.display`), real-looking pieces (`Kit.die`, `Kit.card`), and motion. Chrome
