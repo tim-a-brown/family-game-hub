@@ -1,0 +1,68 @@
+# Temporary (approved by Tim): one sample of ESPN's public sports data for building the sportsbook. Deleted before shipping.
+name: ESPN sample
+on:
+  push:
+    branches: [claude/happy-hamilton-8hf2d3]
+    paths: ['.github/workflows/espn-probe.yml']
+permissions:
+  contents: write
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch samples
+        run: |
+          mkdir -p espn-sample
+          cat > /tmp/probe.js <<'EOF'
+          const fs = require('fs');
+          const S = 'https://site.api.espn.com/apis/site/v2/sports/', C = 'https://sports.core.api.espn.com/v2/sports/';
+          const out = (n, v) => fs.writeFileSync('espn-sample/' + n + '.json', JSON.stringify(v, null, 1));
+          async function get(u, hdr) { try { const r = await fetch(u, { headers: hdr || {} }); const h = {}; r.headers.forEach((v, k) => { if (/access-control|content-type/.test(k)) h[k] = v; }); let b = null; try { b = await r.json(); } catch (e) {} return { url: u, status: r.status, headers: h, body: b }; } catch (e) { return { url: u, err: String(e) }; } }
+          const trim = (b, n) => { if (b && Array.isArray(b.events)) b.events = b.events.slice(0, n); return b; };
+          (async () => {
+            const d0 = new Date(), ymd = d => d.toISOString().slice(0, 10).replace(/-/g, ''), d7 = new Date(Date.now() + 6 * 864e5);
+            // team sports: CORS headers and two events each (the odds block)
+            for (const p of ['football/nfl', 'basketball/nba', 'basketball/wnba', 'hockey/nhl', 'baseball/mlb', 'football/college-football', 'basketball/mens-college-basketball']) {
+              const r = await get(S + p + '/scoreboard?dates=' + ymd(d0) + '-' + ymd(d7) + '&limit=500', { Origin: 'https://games.timbrown.xyz' });
+              const n = r.body && r.body.events ? r.body.events.length : 0;
+              const withOdds = r.body && r.body.events ? r.body.events.filter(e => e.competitions && e.competitions[0].odds) : [];
+              if (r.body) r.body = { count: n, withOdds: withOdds.length, events: withOdds.slice(0, 2).concat((r.body.events || []).slice(0, 1)) };
+              out('team_' + p.replace('/', '_'), r);
+            }
+            // tennis: scoreboards, rankings, a match's odds and summary
+            for (const t of ['atp', 'wta']) {
+              const sb = await get(S + 'tennis/' + t + '/scoreboard', { Origin: 'https://games.timbrown.xyz' });
+              out('tennis_' + t + '_scoreboard_full', sb);
+              out('tennis_' + t + '_rankings', await get(S + 'tennis/' + t + '/rankings'));
+              out('tennis_' + t + '_core_rankings', await get(C + 'tennis/leagues/' + t + '/rankings'));
+              const ev = sb.body && sb.body.events && sb.body.events[0];
+              const comp = ev && ((ev.groupings && ev.groupings[0] && ev.groupings[0].competitions && ev.groupings[0].competitions.slice(-1)[0]) || (ev.competitions && ev.competitions[0]));
+              if (ev && comp) {
+                out('tennis_' + t + '_core_odds', await get(C + 'tennis/leagues/' + t + '/events/' + ev.id + '/competitions/' + comp.id + '/odds'));
+                out('tennis_' + t + '_summary', await get(S + 'tennis/' + t + '/summary?event=' + comp.id));
+              }
+              out('tennis_' + t + '_scoreboard_dates', trim((await get(S + 'tennis/' + t + '/scoreboard?dates=' + ymd(d0))), 2));
+            }
+            // golf: scoreboard, rankings, the event's odds (futures), leaderboard
+            const g = await get(S + 'golf/pga/scoreboard', { Origin: 'https://games.timbrown.xyz' });
+            out('golf_pga_scoreboard_full', g);
+            const ge = g.body && g.body.events && g.body.events[0];
+            if (ge) {
+              const cid = (ge.competitions && ge.competitions[0] && ge.competitions[0].id) || ge.id;
+              out('golf_pga_core_odds', await get(C + 'golf/leagues/pga/events/' + ge.id + '/competitions/' + cid + '/odds'));
+              out('golf_pga_core_event', await get(C + 'golf/leagues/pga/events/' + ge.id));
+              out('golf_pga_leaderboard', await get('https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=' + ge.id));
+            }
+            out('golf_pga_rankings', await get(S + 'golf/pga/rankings'));
+            out('golf_pga_core_rankings', await get(C + 'golf/leagues/pga/rankings'));
+            out('golf_pga_core_futures', await get(C + 'golf/leagues/pga/seasons/' + d0.getFullYear() + '/futures'));
+            out('golf_pga_scoreboard_next', await get(S + 'golf/pga/scoreboard?dates=' + ymd(new Date(Date.now() + 7 * 864e5))));
+          })();
+          EOF
+          node /tmp/probe.js
+          ls -la espn-sample
+      - name: Commit
+        run: |
+          git config user.name "espn-sample"; git config user.email "espn-sample@users.noreply.github.com"
+          git add espn-sample && git commit -m "ESPN data sample (temporary, for building the sportsbook)" && git push
