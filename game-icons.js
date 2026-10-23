@@ -334,6 +334,13 @@ var GameIcon = (function () {
       rows.forEach(function (r, y) { for (var x = 0; x < 11; x++) { var ch = r.charAt(x); if (ch !== '.') out += rect(1 + x * 2, 3 + y * 2, 2, 2, 0, cols[ch]); } });
       return out;
     },
+    junglehunt: function () {   // Sir Dudley hanging from his vine, pixel for pixel from the cartridge (Atari pixels are wide)
+      var rows = ['...V.....', '...V.....', '...W.WWW.', '...WWWWWW', '...P..PP.', '.P.P.PPP.', '.PPP.PP..', '..PP..PP.', '...WWWWW.', '...WWWWW.', '...W.WWW.',
+        '..W..WWW.', '..W......', '..W..WWW.', '..W..WWW.', '.WW..WWW.', '.PPPPPP..', '.PPP.....', '.P.......', '.v.......', 'v........'];
+      var cols = { W: '#ffffff', P: '#d77a99', V: '#ca9242', v: '#d5c353' }, out = '';
+      rows.forEach(function (r, y) { for (var x = 0; x < 9; x++) { var ch = r.charAt(x); if (ch !== '.') out += rect(3.6 + x * 1.9, 1.5 + y * 1.0, 1.9, 1.0, 0, cols[ch]); } });
+      return out;
+    },
     invaders: function () {   // one classic invader (the crab), pixel for pixel
       var rows = ['..#.....#..', '...#...#...', '..#######..', '.##.###.##.', '###########', '#.#######.#', '#.#.....#.#', '...##.##...'], d = '';
       rows.forEach(function (r, y) { for (var x = 0; x < 11; x++) if (r.charAt(x) === '#') d += 'M' + (1 + x * 2) + ' ' + (4 + y * 2) + 'h2v2h-2z'; });
