@@ -73,6 +73,7 @@ body{overflow-x:hidden;}
 .px i{font-style:normal;font-size:.95rem;font-weight:900;color:#ffc84a;text-shadow:0 0 8px rgba(255,190,60,.35);font-variant-numeric:tabular-nums;white-space:nowrap;}
 .px span{font-size:.8rem;font-weight:800;color:#c9d1e0;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .px.solo span{font-size:.98rem;color:#fff;font-weight:900;}
+.px.solo span.long{font-size:.84rem;letter-spacing:-.02em;}
 .px.on{background:linear-gradient(180deg,#25a35b,#16703e);border-color:#53e892;box-shadow:0 0 0 1px #53e892,0 0 18px rgba(61,220,132,.5),inset 0 1px 0 rgba(255,255,255,.25);animation:sbpx .35s var(--spring);}
 .px.on i,.px.on span{color:#fff;text-shadow:none;}
 @keyframes sbpx{0%{transform:scale(.9)}100%{transform:scale(1)}}
@@ -81,6 +82,8 @@ body{overflow-x:hidden;}
 .px[disabled]{cursor:default;opacity:.5;background:#151a22;box-shadow:none;}
 .px[disabled] svg{width:15px;height:15px;color:#6d778a;}
 .px.none{background:transparent;border:1px dashed rgba(255,255,255,.08);box-shadow:none;}
+.gm .gev{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;margin:0 0 6px;font-size:.74rem;font-weight:800;color:#9aa6bd;}
+.gm .gev b{color:#dfe5f0;font-weight:900;}
 .gm .note{grid-column:1/-1;font-size:.72rem;font-weight:700;color:#7d879b;margin-top:6px;}
 
 .sb-empty{text-align:center;padding:34px 18px;color:var(--text-2);}
@@ -90,6 +93,25 @@ body{overflow-x:hidden;}
 .sb-load{display:grid;gap:10px;}
 .sb-load div{height:118px;border-radius:16px;background:linear-gradient(90deg,#121721 0%,#1a2130 50%,#121721 100%) 0 0/200% 100%;animation:sbshim 1.2s infinite linear;}
 @keyframes sbshim{to{background-position:-200% 0}}
+
+/* Golf: a leaderboard */
+.gm.golf{--pw:clamp(60px,17vw,88px);}
+.gm .gtop{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;margin:2px 0 8px;}
+.gm .gtop b{font-size:1.08rem;font-weight:900;line-height:1.15;}
+.lb{display:grid;grid-template-columns:34px minmax(0,1fr) 42px 30px var(--pw);gap:6px;align-items:center;padding:4px 0;border-top:1px solid rgba(255,255,255,.05);}
+.lb.lbh{border-top:0;padding:0 0 2px;font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#7d879b;}
+.lb.lbh .mk{text-align:center;}
+.lb .pos{font-size:.82rem;font-weight:900;color:#c9d1e0;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.lb .tm{gap:8px;}
+.lb .logo{width:24px;height:24px;}
+.lb .logo img{width:100%;height:100%;object-fit:cover;}
+.lb .nm b{font-size:.92rem;}
+.lb .tp{font-size:1.02rem;font-weight:900;text-align:right;font-variant-numeric:tabular-nums;color:#f4f6fb;}
+.lb .tp.under{color:#ff6b6b;text-shadow:0 0 8px rgba(255,90,90,.35);}
+.lb .th{font-size:.78rem;font-weight:800;color:#8590a6;text-align:center;}
+.lb .px{min-height:40px;}
+.lb.out{opacity:.42;}
+.lbmore{display:block;width:100%;margin:8px 0 0;padding:10px;border:0;border-radius:11px;background:rgba(255,255,255,.06);color:#c9d1e0;font:inherit;font-weight:800;font-size:.85rem;}
 
 /* My teams strip */
 .myt{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -14px 6px;padding:2px 14px 6px;}
@@ -119,6 +141,7 @@ body{overflow-x:hidden;}
 .tk .lg.push::before{background:#c79a1c;}
 .tk .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 .tk .row > :first-child{min-width:0;}
+.tk .row > :last-child:not(:first-child){white-space:nowrap;}
 .tk .cap{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6c6a72;}
 .tk .pick{font-size:15px;font-weight:800;color:#111;}
 .tk .odds{font-size:14px;font-weight:800;white-space:nowrap;}
@@ -198,7 +221,8 @@ body{overflow-x:hidden;}
 /* My bets */
 .bt-seg{margin:0 0 12px;}
 .tkl{display:grid;gap:0;}
-@media (min-width:700px){.tkl{grid-template-columns:1fr 1fr;column-gap:14px;align-items:start;}}
+.tkl{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));column-gap:14px;align-items:start;}
+.tkl > *{min-width:0;}
 
 /* Team picker */
 .tp-lgs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -20px 10px;padding:0 20px 2px;}
@@ -257,13 +281,17 @@ body{overflow-x:hidden;}
     mlb: { name: 'MLB', path: 'baseball/mlb', days: 4, sd: 4.3, unit: 'runs', spread: 'Run line', pro: 1 },
     nba: { name: 'NBA', path: 'basketball/nba', days: 4, sd: 12, unit: 'points', spread: 'Spread', pro: 1 },
     wnba: { name: 'WNBA', path: 'basketball/wnba', days: 4, sd: 11, unit: 'points', spread: 'Spread', pro: 1 },
-    nfl: { name: 'NFL', path: 'football/nfl', days: 7, sd: 13.5, unit: 'points', spread: 'Spread', pro: 1 },
+    nfl: { name: 'NFL', path: 'football/nfl', week: 1, sd: 13.5, unit: 'points', spread: 'Spread', pro: 1 },
     nhl: { name: 'NHL', path: 'hockey/nhl', days: 4, sd: 2.4, unit: 'goals', spread: 'Puck line', pro: 1 },
-    cbb: { name: 'College Hoops', path: 'basketball/mens-college-basketball', q: 'groups=50', days: 2, sd: 11, unit: 'points', spread: 'Spread' },
-    cfb: { name: 'College Football', path: 'football/college-football', q: 'groups=80', days: 7, sd: 15.5, unit: 'points', spread: 'Spread' }
+    cbb: { name: 'College Hoops', path: 'basketball/mens-college-basketball', q: 'groups=50&limit=300', days: 2, sd: 11, unit: 'points', spread: 'Spread' },
+    cfb: { name: 'College Football', path: 'football/college-football', q: 'groups=80&limit=300', week: 1, sd: 15.5, unit: 'points', spread: 'Spread' },
+    // ESPN carries no odds for these two: the book sets them (tennis from the world rankings, golf from the
+    // leaderboard and this season's results)
+    tennis: { name: 'Tennis', kind: 'tennis', paths: ['tennis/atp', 'tennis/wta'], unit: 'games', spread: 'Games', pro: 1 },
+    golf: { name: 'Golf', kind: 'golf', path: 'golf/pga', pro: 1 }
   };
-  var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb'];
-  var MKN = { ml: 'Moneyline', sp: 'Spread', tot: 'Total' };
+  var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb', 'tennis', 'golf'];
+  var MKN = { ml: 'Moneyline', sp: 'Spread', tot: 'Total', win: 'To win' };
   var MAXLEGS = 10;
 
   // ── Storage (bets and favourite teams follow the PIN; the slip and the board cache stay on this device) ──
@@ -366,7 +394,7 @@ body{overflow-x:hidden;}
     if (lh == null && o.details) {
       var d = String(o.details).trim(), m = d.match(/^(\S+)\s+([+-]?\d+(\.\d+)?)$/);
       if (/^(EVEN|PK|PICK)$/i.test(d)) lh = 0;
-      else if (m) { var v = parseFloat(m[2]); if (m[1] === g.home.abbr) lh = v; else if (m[1] === g.away.abbr) lh = -v; }
+      else if (m && Math.abs(parseFloat(m[2])) < 60) { var v = parseFloat(m[2]); if (m[1] === g.home.abbr) lh = v; else if (m[1] === g.away.abbr) lh = -v; }
     }
     if (lh == null && typeof o.spread === 'number' && o.homeTeamOdds) lh = (o.homeTeamOdds.favorite ? -1 : 1) * Math.abs(o.spread);
     if (lh != null) {
@@ -387,20 +415,195 @@ body{overflow-x:hidden;}
     else if (g.sp && L) { var p = phi(-g.sp.h / L.sd); g.ml = { h: amFromProb(p + .0225), a: amFromProb(1 - p + .0225) }; }
   }
 
+
+  // ── Tennis: singles matches from every ATP and WTA event this week ──
+  var RANKS = {};   // tour -> {athlete id: world ranking}
+  function loadRanks() {
+    var jobs = ['atp', 'wta'].map(function (tour) {
+      var k = 'sb_rank_cache_' + tour, c = lsGet(k, null);
+      if (c && c.map && Date.now() - c.at < 3 * 864e5) { RANKS[tour] = c.map; return Promise.resolve(); }
+      return getJSON(API + 'tennis/' + tour + '/rankings').then(function (j) {
+        var map = {}, names = {};
+        (((j.rankings || [])[0] || {}).ranks || []).forEach(function (r) { if (r.athlete && r.athlete.id) { map[r.athlete.id] = r.current; names[r.athlete.id] = [r.athlete.displayName, r.athlete.shortname || r.athlete.shortName || '', r.athlete.flag && r.athlete.flag.href || '']; } });
+        RANKS[tour] = map;
+        try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), map: map, names: names })); } catch (e) {}
+      }).catch(function () { if (c && c.map) RANKS[tour] = c.map; });
+    });
+    return Promise.all(jobs);
+  }
+  function lastName(n) { n = String(n || '').trim().split(/\s+/); return n[n.length - 1] || ''; }
+  function player(x, tour) {
+    var a = x.athlete || {}, ls = (x.linescores || []).map(function (l) { return { v: Number(l.value) || 0, w: !!l.winner }; });
+    var rank = (RANKS[tour] || {})[x.id] || 0, seed = x.curatedRank && x.curatedRank.current < 99 ? x.curatedRank.current : 0;
+    var sur = String(a.shortName || a.displayName || '').replace(/^[A-Z][a-z]?\.\s*/, '');
+    return { id: String(x.id), abbr: sur, name: a.displayName || '', short: sur, loc: sur, nick: sur,
+      color: '#2b3340', logo: a.flag && a.flag.href || '', rank: 0, wr: rank, seed: seed, rec: rank ? 'World No. ' + rank : seed ? 'Seed ' + seed : '',
+      score: ls.reduce(function (s, l) { return s + l.v; }, 0), sets: ls.filter(function (l) { return l.w; }).length, ls: ls.map(function (l) { return l.v; }), winner: !!x.winner };
+  }
+  function parseTennis(j, path) {
+    var tour = path.split('/')[1], out = [];
+    (j.events || []).forEach(function (ev) {
+      var groups = ev.groupings || [{ grouping: { slug: 'singles' }, competitions: ev.competitions || [] }];
+      groups.forEach(function (gr) {
+        if (!/singles/.test((gr.grouping && gr.grouping.slug) || '')) return;
+        (gr.competitions || []).forEach(function (c) {
+          var h = null, a = null;
+          (c.competitors || []).forEach(function (x) { if (x.homeAway === 'home') h = x; else if (x.homeAway === 'away') a = x; });
+          if (!h || !a || !(+h.id > 0) || !(+a.id > 0)) return;
+          var st = (c.status || {}).type || {};
+          var g = { id: 't' + c.id, lg: 'tennis', tour: tour, t: Date.parse(c.date || c.startDate), tbd: c.timeValid === false, state: st.state || 'pre', done: !!st.completed,
+            detail: st.shortDetail || st.detail || '', sname: st.name || '', ev: ev.shortName || ev.name || '', round: (c.round && c.round.displayName) || '', bo5: !!ev.major && tour === 'atp',
+            home: player(h, tour), away: player(a, tour) };
+          g.void = /RETIRED|WALKOVER|POSTPONED|CANCEL|DEFAULT|ABANDON/.test(g.sname);
+          g.win = g.home.winner ? 'h' : g.away.winner ? 'a' : null;
+          g.setline = g.away.ls.map(function (v, i) { return v + '-' + (g.home.ls[i] != null ? g.home.ls[i] : 0); }).join(' ');
+          if (g.state === 'pre') tennisLines(g);
+          out.push(g);
+        });
+      });
+    });
+    return out;
+  }
+  // the book's prices: who wins from the world rankings; the games handicap and total games from that
+  function tennisLines(g) {
+    var rh = g.home.wr || 250, ra = g.away.wr || 250;
+    var p = 1 / (1 + Math.pow(rh / ra, .7)), fav = p >= .5 ? 'h' : 'a', pf = Math.max(p, 1 - p), b5 = g.bo5;
+    g.ml = { h: amFromProb(p + .025), a: amFromProb(1 - p + .025) };
+    var m = (pf - .5) * (b5 ? 26 : 16), L = Math.max(1.5, Math.floor(m) + .5), pc = phi((m - L) / (b5 ? 7.5 : 5.2));
+    var fo = amFromProb(pc + .025), dog = amFromProb(1 - pc + .025);
+    g.sp = fav === 'h' ? { h: -L, a: L, ho: fo, ao: dog } : { h: L, a: -L, ho: dog, ao: fo };
+    var mean = (b5 ? 38.5 : 22.5) - (pf - .5) * (b5 ? 16 : 10), tl = Math.floor(mean) + .5, po = phi((mean - tl) / (b5 ? 6.5 : 4.2));
+    g.tot = { n: tl, o: amFromProb(po + .025), u: amFromProb(1 - po + .025) };
+  }
+
+  // ── Golf: this week's PGA TOUR event, to win ──
+  var SKILL = null;   // athlete id -> strokes a round against the field (minus is better), from recent events
+  function toPar(s) { s = String(s == null ? '' : s).trim().toUpperCase(); if (s === 'E' || s === '') return 0; var n = parseInt(s, 10); return isFinite(n) ? n : 0; }
+  function roundsOf(x) { return (x.linescores || []).filter(function (l) { return l.value > 50 && (!l.linescores || l.linescores.length >= 18); }); }
+  function addForm(ev, acc) {
+    var R = {};
+    ((ev.competitions || [])[0] || { competitors: [] }).competitors.forEach(function (x) {
+      (x.linescores || []).forEach(function (l, i) { if (l.value > 50 && (!l.linescores || l.linescores.length >= 18)) (R[i] = R[i] || []).push([x.id, l.value]); });
+    });
+    Object.keys(R).forEach(function (i) {
+      var arr = R[i]; if (arr.length < 20) return;
+      var avg = arr.reduce(function (s, a) { return s + a[1]; }, 0) / arr.length;
+      arr.forEach(function (a) { var o = acc[a[0]] = acc[a[0]] || { s: 0, n: 0 }; o.s += a[1] - avg; o.n++; });
+    });
+  }
+  var GOLFCAL = null;
+  function loadSkill() {
+    var k = 'sb_golf_cache_skill', c = lsGet(k, null);
+    if (c && c.map && Date.now() - c.at < 5 * 864e5) { SKILL = c.map; return Promise.resolve(); }
+    var calP = GOLFCAL ? Promise.resolve(GOLFCAL) : getJSON(sbUrl('golf/pga')).then(function (j) { return (((j.leagues || [])[0] || {}).calendar) || []; });
+    return calP.then(function (cal) {
+      var past = cal.filter(function (e) { return Date.parse(e.endDate || e.startDate) < Date.now() - 864e5; }).slice(-5);
+      return Promise.all(past.map(function (e) { return getJSON(sbUrl('golf/pga', '', ymdET(Date.parse(e.startDate) + 6 * 3600e3))).catch(function () { return null; }); }));
+    }).then(function (rs) {
+      var acc = {};
+      rs.forEach(function (j) { if (j) (j.events || []).forEach(function (ev) { addForm(ev, acc); }); });
+      var map = {}; Object.keys(acc).forEach(function (id) { map[id] = Math.round(acc[id].s / (acc[id].n + 6) * 100) / 100; });
+      SKILL = map;
+      try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), map: map })); } catch (e) {}
+    }).catch(function () { SKILL = c && c.map || {}; });
+  }
+  function parseGolf(j) {
+    GOLFCAL = (((j.leagues || [])[0] || {}).calendar) || GOLFCAL;
+    return (j.events || []).map(function (ev) {
+      var c = (ev.competitions || [])[0]; if (!c) return null;
+      var st = ((c.status || ev.status || {}).type) || {}, period = (c.status || ev.status || {}).period || 0;
+      var g = { id: 'g' + ev.id, eid: String(ev.id), lg: 'golf', t: Date.parse(ev.date || c.date), end: Date.parse(ev.endDate || c.endDate || ev.date), name: ev.name || ev.shortName || 'PGA TOUR',
+        state: st.state || 'pre', done: st.name === 'STATUS_FINAL', sname: st.name || '', detail: st.shortDetail || st.detail || st.description || '', period: period, players: [] };
+      g.void = /CANCEL|POSTPONED/.test(g.sname);
+      var par = 0, field = [];
+      (c.competitors || []).forEach(function (x) {
+        var a = x.athlete || {}, holes = 0, cur = 0, rounds = [];
+        (x.linescores || []).forEach(function (l, i) {
+          var n = l.linescores ? l.linescores.length : (l.value > 50 ? 18 : 0);
+          holes += Math.min(18, n); if (n > 0) cur = i + 1;
+          if (l.value > 50 && n >= 18) { rounds.push(l.value); if (!par && l.displayValue != null) par = l.value - toPar(l.displayValue); }
+        });
+        var thruN = 0; if (cur) { var lr = x.linescores[cur - 1]; thruN = lr.linescores ? lr.linescores.length : 18; }
+        g.players.push({ id: String(x.id), name: a.displayName || '', short: a.shortName || a.displayName || '', abbr: lastName(a.displayName).toUpperCase(), logo: a.flag && a.flag.href || '', color: '#2b3340',
+          order: x.order || 999, tp: toPar(x.score), holes: holes, rnd: cur, thru: thruN, rounds: rounds });
+      });
+      g.players.forEach(function (p) { p.rounds.forEach(function (v) { field.push(v - par); }); });
+      g.base = field.length ? field.reduce(function (s, v) { return s + v; }, 0) / field.length : 0;
+      g.round = g.players.reduce(function (m, p) { return Math.max(m, p.rnd); }, 0);
+      // the 36-hole cut (top 65 and ties) once the second round is in
+      var cutIn = g.players.length > 78 && (g.round >= 3 || (period >= 2 && g.state === 'post') || g.players.some(function (p) { return p.holes > 36; }));
+      var sorted = g.players.slice().sort(function (a, b) { return a.tp - b.tp; });
+      if (cutIn && sorted.length > 65) { var line = sorted[64].tp; g.players.forEach(function (p) { if (p.tp > line) p.out = true; }); }
+      // positions with ties
+      sorted.forEach(function (p, i) { var first = sorted.findIndex(function (q) { return q.tp === p.tp; }), ties = sorted.filter(function (q) { return q.tp === p.tp; }).length; p.pos = (ties > 1 ? 'T' : '') + (first + 1); });
+      var win = g.players.filter(function (p) { return p.order === 1; })[0]; g.winner = g.done && win ? win.id : null;
+      golfOdds(g);
+      return g;
+    }).filter(Boolean);
+  }
+  function hashStr(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // the book's prices: play out the rest of the event a few thousand times, from each golfer's score and form
+  function golfOdds(g) {
+    g.odds = {};
+    if (g.done || g.void) return;
+    var alive = g.players.filter(function (p) { return !p.out; }); if (!alive.length) return;
+    var R = rng(hashStr(g.id + ':' + g.players.reduce(function (s, p) { return s + p.holes * 7 + p.tp; }, 0))), N = 2500, wins = {};
+    var sk = SKILL || {}, spare = null;
+    function gauss() { if (spare != null) { var v = spare; spare = null; return v; } var u = R() || 1e-9, w = R(), r = Math.sqrt(-2 * Math.log(u)); spare = r * Math.sin(2 * Math.PI * w); return r * Math.cos(2 * Math.PI * w); }
+    var mu = alive.map(function (p) { var rem = Math.max(0, 72 - p.holes) / 18; return { id: p.id, tp: p.tp, rem: rem, m: rem * (g.base + (sk[p.id] != null ? sk[p.id] : .35)), sd: 2.9 * Math.sqrt(rem) }; });
+    for (var n = 0; n < N; n++) {
+      var best = 1e9, who = [];
+      for (var i = 0; i < mu.length; i++) { var q = mu[i], v = Math.round(q.tp + q.m + (q.rem ? gauss() * q.sd : 0)); if (v < best) { best = v; who = [q.id]; } else if (v === best) who.push(q.id); }
+      var w = who[Math.floor(R() * who.length)]; wins[w] = (wins[w] || 0) + 1;
+    }
+    alive.forEach(function (p) { var pr = (wins[p.id] || 0) / N, qv = Math.min(.92, Math.max(.0039, pr * 1.3)); g.odds[p.id] = golfAm(qv); });
+  }
+  function golfAm(q) {
+    var v = q >= .5 ? -100 * q / (1 - q) : 100 * (1 - q) / q;
+    if (v < 0) return Math.round(v / 10) * 10;
+    var st = v < 300 ? 10 : v < 1000 ? 25 : v < 5000 ? 100 : v < 20000 ? 500 : 5000;
+    return Math.min(25000, Math.max(100, Math.round(v / st) * st));
+  }
+
   var GAMES = {};       // every game seen, by id (the latest copy)
   var BOARD = {};       // league -> {games, at, err, p}
   var RANGE = {};       // 'lg:d0-d1' -> {at, p}
-  function url(lg, d0, d1) { var L = LG[lg]; return API + L.path + '/scoreboard?dates=' + ymd(d0) + (d1 && ymd(d1) !== ymd(d0) ? '-' + ymd(d1) : '') + '&limit=500' + (L.q ? '&' + L.q : ''); }
+  // ESPN takes one date at a time (US Eastern dates); with none it gives the current week or tournament
+  function ymdET(t) { try { return new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }).replace(/-/g, ''); } catch (e) { return ymd(new Date(t)); } }
+  function sbUrl(path, q, day) { var a = []; if (day) a.push('dates=' + day); if (q) a.push(q); return API + path + '/scoreboard' + (a.length ? '?' + a.join('&') : ''); }
   function getJSON(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
-  function take(list) { list.forEach(function (g) { var old = GAMES[g.id]; GAMES[g.id] = g; if (old) g.prev = { ml: old.ml, sp: old.sp, tot: old.tot }; }); }
+  function parseAll(lg, j, path) {
+    var k = LG[lg].kind;
+    if (k === 'tennis') return parseTennis(j, path);
+    if (k === 'golf') return parseGolf(j);
+    return (j.events || []).map(function (ev) { return parseEvent(ev, lg); }).filter(Boolean);
+  }
+  // the board's games for a league: [days], or the whole current week/tournament
+  function fetchLeague(lg, days) {
+    var L = LG[lg], paths = L.paths || [L.path], jobs = [];
+    var pre = L.kind === 'tennis' ? loadRanks() : L.kind === 'golf' ? loadSkill() : Promise.resolve();
+    paths.forEach(function (path) {
+      function one(day) { jobs.push(getJSON(sbUrl(path, L.q, day)).then(function (j) { return { j: j, path: path }; })); }
+      if (days) days.forEach(one);
+      else if (L.week || L.kind) one('');
+      else for (var i = -1; i < (L.days || 3); i++) one(ymdET(Date.now() + i * 864e5));
+    });
+    var got = jobs.map(function (p) { return p.catch(function () { return null; }); });
+    return pre.catch(function () {}).then(function () { return Promise.all(got); }).then(function (rs) {
+      if (rs.every(function (r) { return !r; })) throw new Error('feed');
+      var seen = {}, out = [];
+      rs.forEach(function (r) { if (r) parseAll(lg, r.j, r.path).forEach(function (g) { if (!seen[g.id]) { seen[g.id] = 1; out.push(g); } }); });
+      return out;
+    });
+  }
+  function take(list) { list.forEach(function (g) { var old = GAMES[g.id]; GAMES[g.id] = g; if (old) g.prev = { ml: old.ml, sp: old.sp, tot: old.tot, odds: old.odds }; }); }
   function loadLeague(lg, force) {
     var b = BOARD[lg];
     if (b && b.p) return b.p;
     var live = b && b.games && b.games.some(function (g) { return g.state === 'in'; });
     if (b && !b.err && !force && Date.now() - b.at < (live ? 30000 : 90000)) return Promise.resolve(b);
-    var d0 = addDays(day0(), -1), d1 = addDays(day0(), LG[lg].days - 1);
-    var p = getJSON(url(lg, d0, d1)).then(function (j) {
-      var games = (j.events || []).map(function (ev) { return parseEvent(ev, lg); }).filter(Boolean);
+    var p = fetchLeague(lg).then(function (games) {
       take(games);
       BOARD[lg] = { games: games, at: Date.now() };
       try { localStorage.setItem('sb_cache_' + lg, JSON.stringify({ at: Date.now(), games: games.map(function (g) { var c = Object.assign({}, g); delete c.prev; return c; }) })); } catch (e) {}
@@ -416,10 +619,10 @@ body{overflow-x:hidden;}
     return p;
   }
   // games from other days (an open ticket's game): the scoreboard for those dates
-  function loadRange(lg, d0, d1) {
-    var k = lg + ':' + ymd(d0) + '-' + ymd(d1), r = RANGE[k];
+  function loadRange(lg, days) {
+    var k = lg + ':' + days.join(','), r = RANGE[k];
     if (r && (r.p || Date.now() - r.at < 30000)) return r.p || Promise.resolve();
-    var p = getJSON(url(lg, d0, d1)).then(function (j) { take((j.events || []).map(function (ev) { return parseEvent(ev, lg); }).filter(Boolean)); }).catch(function () {});
+    var p = fetchLeague(lg, days).then(take).catch(function () {});
     RANGE[k] = { at: Date.now(), p: p }; p.then(function () { RANGE[k].p = null; });
     return p;
   }
@@ -429,6 +632,11 @@ body{overflow-x:hidden;}
   // ── Bets ─────────────────────────────────────────────────────────────────
   // a pick: {k, gid, lg, mk: ml|sp|tot, side: h|a|o|u, line, odds, an, hn, aa, ha, t}
   function pickOf(g, mk, side) {
+    if (g.lg === 'golf') {
+      var pl = g.players.filter(function (x) { return x.id === side; })[0], o = g.odds && g.odds[side];
+      if (!pl || o == null || pl.out) return null;
+      return { k: g.id + ':win:' + side, gid: g.id, lg: 'golf', mk: 'win', side: side, pn: pl.name, ev: g.name, odds: o, t: g.t, end: g.end };
+    }
     var p = { k: g.id + ':' + mk + ':' + side, gid: g.id, lg: g.lg, mk: mk, side: side, an: tname(g.away, g.lg), hn: tname(g.home, g.lg), aa: g.away.abbr, ha: g.home.abbr, t: g.t };
     if (mk === 'ml') { if (!g.ml) return null; p.odds = g.ml[side]; }
     else if (mk === 'sp') { if (!g.sp) return null; p.line = g.sp[side]; p.odds = g.sp[side + 'o']; }
@@ -436,20 +644,24 @@ body{overflow-x:hidden;}
     return p;
   }
   function pickTitle(p) {
+    if (p.mk === 'win') return p.pn;
     if (p.mk === 'tot') return (p.side === 'o' ? 'Over ' : 'Under ') + p.line;
     var n = p.side === 'h' ? p.hn : p.an;
     return p.mk === 'ml' ? n : n + ' ' + lineTxt(p.line);
   }
   // what has to happen, in plain words: [main, push note]
   function says(p) {
+    if (p.mk === 'win') return ['Wins the ' + p.ev, ''];
     var n = p.side === 'h' ? p.hn : p.an, L = p.line, u = (LG[p.lg] || {}).unit || 'points';
-    if (p.mk === 'ml') return [n + ' win', p.lg === 'nfl' ? 'A tie is a push' : ''];
+    var one = p.lg === 'tennis', win = one ? ' wins' : ' win', gm = one ? ' games' : '';
+    if (p.mk === 'ml') return [n + (one ? ' wins the match' : ' win'), p.lg === 'nfl' ? 'A tie is a push' : one ? 'A retirement or walkover is a push' : ''];
     if (p.mk === 'sp') {
-      if (L < 0) { var need = Math.floor(-L) + 1; return [n + ' win by ' + need + ' or more', isInt(L) ? 'Win by exactly ' + (-L) + ' is a push' : '']; }
-      if (L === 0) return [n + ' win', 'A tie is a push'];
-      if (L < 1) return [n + ' win or tie', ''];
+      if (one) return L < 0 ? [n + ' wins at least ' + (Math.floor(-L) + 1) + ' more games in all', 'Every game of every set counts'] : [n + ' trails by ' + (Math.ceil(L) - 1) + ' games or fewer in all, or wins more', 'Every game of every set counts'];
+      if (L < 0) { var need = Math.floor(-L) + 1; return [n + win + ' by ' + need + ' or more', isInt(L) ? 'Win by exactly ' + (-L) + ' is a push' : '']; }
+      if (L === 0) return [n + win, 'A tie is a push'];
+      if (L < 1) return [n + win + ' or tie', ''];
       var can = Math.ceil(L) - 1;
-      return [n + ' win, or lose by ' + can + (can > 1 ? ' or less' : ''), isInt(L) ? 'Lose by exactly ' + L + ' is a push' : ''];
+      return [n + win + ', or lose by ' + can + (can > 1 ? ' or less' : ''), isInt(L) ? 'Lose by exactly ' + L + ' is a push' : ''];
     }
     var lo = Math.floor(L) + 1, hi = Math.ceil(L) - 1;
     if (p.side === 'o') return [lo + ' or more ' + u + ' in all', isInt(L) ? 'Exactly ' + L + ' is a push' : ''];
@@ -459,12 +671,16 @@ body{overflow-x:hidden;}
   function legNow(leg, g) {
     if (!g) return null;
     if (g.void) return 'push';
+    if (leg.mk === 'win') { if (g.done) return g.winner === leg.side ? 'win' : 'loss'; var pl = g.players.filter(function (x) { return x.id === leg.side; })[0]; return pl && pl.out ? 'loss' : pl && pl.pos === '1' ? 'win' : null; }
     var hs = g.home.score, as = g.away.score; if (hs == null || as == null) return null;
+    if (leg.mk === 'ml' && g.lg === 'tennis') { if (g.done) return g.win ? (leg.side === g.win ? 'win' : 'loss') : 'push'; return g.home.sets === g.away.sets ? null : (leg.side === 'h') === (g.home.sets > g.away.sets) ? 'win' : 'loss'; }
     if (leg.mk === 'ml') return hs === as ? 'push' : (leg.side === 'h') === (hs > as) ? 'win' : 'loss';
     if (leg.mk === 'sp') { var m = (leg.side === 'h' ? hs - as : as - hs) + leg.line; return m > 0 ? 'win' : m < 0 ? 'loss' : 'push'; }
     var tot = hs + as; if (tot === leg.line) return 'push';
     return (leg.side === 'o') === (tot > leg.line) ? 'win' : 'loss';
   }
+  function matchTxt(p) { return p.lg === 'golf' ? p.ev : p.lg === 'tennis' ? p.an + ' vs ' + p.hn : p.an + ' at ' + p.hn; }
+  function tpTxt(n) { return n === 0 ? 'E' : n > 0 ? '+' + n : String(n); }
   function ticketDec(t) { return t.legs.reduce(function (a, l) { return a * dec(l.odds); }, 1); }
   function toWin(t) { return Math.round(t.stake * ticketDec(t)) - t.stake; }
   function openBets() { return bets.filter(function (t) { return t.st === 'open'; }); }
@@ -478,7 +694,15 @@ body{overflow-x:hidden;}
       t.legs.forEach(function (l) {
         if (l.r) return;
         var g = GAMES[l.gid];
-        if (g && (g.void || (g.state === 'post' && g.done))) { l.r = legNow(l, g); l.fs = g.void ? null : [g.away.score, g.home.score]; any = true; }
+        var over = g && (g.void || (g.lg === 'golf' ? g.done : g.state === 'post' && g.done));
+        // a golfer who misses the cut has lost
+        if (g && !over && l.mk === 'win' && legNow(l, g) === 'loss') over = true;
+        if (over) {
+          l.r = legNow(l, g);
+          if (g.lg === 'golf') { var pl = g.players.filter(function (x) { return x.id === l.side; })[0]; l.fs = pl ? (pl.out ? 'Missed the cut' : g.winner === l.side ? 'Won at ' + tpTxt(pl.tp) : 'Finished ' + pl.pos + '  ' + tpTxt(pl.tp)) : 'Final'; }
+          else l.fs = g.void ? null : g.lg === 'tennis' ? g.setline : [g.away.score, g.home.score];
+          any = true;
+        }
       });
       if (!any) return;
       var rs = t.legs.map(function (l) { return l.r; });
@@ -496,11 +720,12 @@ body{overflow-x:hidden;}
   }
   function gradeAll() {
     var need = {};
-    openBets().forEach(function (t) { t.legs.forEach(function (l) { if (!l.r && l.t <= Date.now() + 6e4) (need[l.lg] = need[l.lg] || []).push(l.t); }); });
-    var jobs = Object.keys(need).map(function (lg) {
-      var ts = need[lg], lo = Math.min.apply(null, ts), hi = Math.max.apply(null, ts);
-      return loadRange(lg, addDays(day0(lo), -1), addDays(day0(hi), 1));
-    });
+    openBets().forEach(function (t) { t.legs.forEach(function (l) {
+      if (l.r || (l.t > Date.now() + 6e4 && l.lg !== 'golf')) return;
+      var n = need[l.lg] = need[l.lg] || [], d = ymdET(l.t);
+      if (n.indexOf(d) < 0) n.push(d);
+    }); });
+    var jobs = Object.keys(need).map(function (lg) { return LG[lg] ? loadRange(lg, need[lg].sort()) : null; });
     return Promise.all(jobs).then(function () {
       var newly = settle();
       if (view === 'bets') paintBets(); else if (openBets().length) paintBadge();
@@ -574,9 +799,13 @@ body{overflow-x:hidden;}
 
   // ── Board ────────────────────────────────────────────────────────────────
   function isFav(lg, tid) { return favs.some(function (f) { return f.lg === lg && f.id === tid; }); }
-  function favGame(g) { return isFav(g.lg, g.home.id) || isFav(g.lg, g.away.id); }
+  function favGame(g) { return g.lg === 'golf' ? g.players.some(function (p) { return isFav('golf', p.id); }) : isFav(g.lg, g.home.id) || isFav(g.lg, g.away.id); }
   function hasLines(g) { return !!(g.ml || g.sp || g.tot); }
-  function bettable(g) { return g.state === 'pre' && !g.void && g.t > Date.now(); }
+  function bettable(g) {
+    if (g.void) return false;
+    if (g.lg === 'golf') return !g.done;
+    return g.state === 'pre' && (g.tbd || g.t > Date.now());
+  }
   var paintSeq = 0;
   function paintBoard() {
     var seq = ++paintSeq, body = dom.body;
@@ -602,12 +831,14 @@ body{overflow-x:hidden;}
     var mine = tab === 'my';
     games = games.filter(function (g) {
       if (mine && !favGame(g)) return false;
+      if (g.lg === 'golf') return !g.done || (mine && now - g.end < 30 * 3600e3);
       if (g.state === 'post' || g.void) return mine && now - g.t < 30 * 3600e3;   // finished: only your teams' (until the next day)
       if (g.state === 'pre' && g.t < day0() - 0) return false;
       if (!LG[g.lg].pro && !hasLines(g) && !favGame(g)) return false;           // college: only games with lines
       return true;
     });
-    games.sort(function (a, b) { var s = { in: 0, pre: 1, post: 2 }; return (s[a.state] - s[b.state]) || a.t - b.t; });
+    function stage(g) { return g.lg === 'golf' ? (g.done ? 2 : g.state === 'pre' ? 1 : 0) : { in: 0, pre: 1, post: 2 }[g.state]; }
+    games.sort(function (a, b) { return (stage(a) - stage(b)) || a.t - b.t; });
     holder.innerHTML = '';
     if (err) holder.appendChild(el('p', { class: 'muted', style: { margin: '0 4px 10px', 'font-size': '.85rem' }, text: games.length ? 'Can’t reach the lines right now. This is the last board saved here.' : 'Can’t reach the lines right now.' }));
     if (!games.length) {
@@ -621,12 +852,13 @@ body{overflow-x:hidden;}
     var groups = [];
     if (!mine) { var fg = games.filter(favGame); if (fg.length) { groups.push({ h: 'Your teams', list: fg }); games = games.filter(function (g) { return !favGame(g); }); } }
     games.forEach(function (g) {
-      var h = g.state === 'in' ? 'Live now' : g.state === 'post' ? 'Final' : dayName(g.t);
+      var st = stage(g), h = st === 0 ? 'Live now' : st === 2 ? 'Final' : dayName(g.t);
       var last = groups[groups.length - 1]; if (!last || last.h !== h) groups.push({ h: h, list: [] }); groups[groups.length - 1].list.push(g);
     });
     groups.forEach(function (gr) {
-      holder.appendChild(el('div', { class: 'sb-day' }, [el('span', { text: gr.h }), el('span', { text: gr.list.length + (gr.list.length === 1 ? ' game' : ' games') })]));
-      gr.list.forEach(function (g) { holder.appendChild(gameEl(g, mine)); });
+      var word = gr.list.every(function (g) { return g.lg === 'golf'; }) ? ['event', 'events'] : gr.list.every(function (g) { return g.lg === 'tennis'; }) ? ['match', 'matches'] : ['game', 'games'];
+      holder.appendChild(el('div', { class: 'sb-day' }, [el('span', { text: gr.h }), el('span', { text: gr.list.length + ' ' + word[gr.list.length === 1 ? 0 : 1] })]));
+      gr.list.forEach(function (g) { holder.appendChild(g.lg === 'golf' ? golfEl(g, mine) : gameEl(g, mine)); });
     });
     fitNames(holder);
   }
@@ -635,19 +867,21 @@ body{overflow-x:hidden;}
     var when = el('span', { class: 'when' });
     if (g.state === 'in') { when.appendChild(el('span', { class: 'live', text: 'LIVE' })); when.appendChild(document.createTextNode(g.detail)); }
     else if (g.state === 'post' || g.void) when.textContent = g.void ? 'Postponed' : g.detail || 'Final';
-    else when.textContent = (showLg ? L.name + '  ' : '') + timeTxt(g.t);
+    else when.textContent = (showLg ? L.name + '  ' : '') + (g.tbd ? 'Time TBD' : timeTxt(g.t));
+    if (g.lg === 'tennis') card.appendChild(el('div', { class: 'gev' }, [el('b', { text: g.ev }), el('span', { text: g.round })]));
     var live = g.state !== 'pre';
     card.appendChild(el('div', { class: 'gh' }, [when,
-      el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? 'Score' : 'Money' })]));
+      el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]));
     if (showLg && g.state !== 'pre') when.insertBefore(document.createTextNode(L.name + '  '), when.firstChild);
     ['a', 'h'].forEach(function (s) {
       var tm = s === 'h' ? g.home : g.away, other = s === 'h' ? g.away : g.home;
       var nm = el('span', { class: 'nm' }, [
         el('b', { 'data-abbr': tm.abbr, html: (tm.rank ? '<span class="rk">' + tm.rank + '</span>' : '') + esc(tname(tm, g.lg)) + (isFav(g.lg, tm.id) ? Kit.icon('star') : '') }),
-        el('small', { text: tm.rec || '' })]);
+        el('small', { text: g.lg === 'tennis' && live && tm.ls && tm.ls.length ? tm.ls.join('  ') : tm.rec || '' })]);
       var row = el('div', { class: 'tr' + (live ? ' live' : '') }, [el('span', { class: 'tm' }, [logoEl(tm), nm])]);
       if (live) {
-        row.appendChild(el('span', { class: 'sc' + (tm.score > other.score ? ' lead' : ''), text: tm.score == null ? '' : String(tm.score) }));
+        var sv = g.lg === 'tennis' ? tm.sets : tm.score, ov = g.lg === 'tennis' ? other.sets : other.score;
+        row.appendChild(el('span', { class: 'sc' + (sv > ov ? ' lead' : ''), text: sv == null ? '' : String(sv) }));
       } else {
         row.appendChild(pxEl(g, 'sp', s));
         row.appendChild(pxEl(g, 'tot', s === 'a' ? 'o' : 'u'));
@@ -658,16 +892,47 @@ body{overflow-x:hidden;}
     if (!live && !hasLines(g)) card.appendChild(el('div', { class: 'note', text: 'Lines open closer to game time.' }));
     return card;
   }
+  // a golf event: the leaderboard, each golfer with a price to win
+  var golfAll = {};
+  function golfEl(g, mine) {
+    var card = el('div', { class: 'gm golf' + (favGame(g) ? ' fav' : ''), 'data-gid': g.id });
+    var status = g.done ? 'Final' : g.void ? 'Cancelled' : g.state === 'pre' ? 'Starts ' + dayName(g.t) + ' ' + timeTxt(g.t) : g.detail || ('Round ' + g.round);
+    var live = !g.done && g.state === 'in';
+    card.appendChild(el('div', { class: 'gtop' }, [el('b', { text: g.name }), el('span', { class: 'when' }, live ? [el('span', { class: 'live', text: 'LIVE' }), document.createTextNode(status)] : [document.createTextNode(status)])]));
+    var started = g.players.some(function (p) { return p.holes > 0; });
+    var list = g.players.slice();
+    if (started) list.sort(function (a, b) { return (a.out ? 1 : 0) - (b.out ? 1 : 0) || a.tp - b.tp || a.order - b.order; });
+    else list.sort(function (a, b) { return dec(g.odds[a.id] || 50000) - dec(g.odds[b.id] || 50000); });
+    var inSlip = {}; slip.picks.forEach(function (x) { if (x.gid === g.id) inSlip[x.side] = 1; });
+    var all = golfAll[g.id], shown = list.filter(function (p, i) { return mine ? isFav('golf', p.id) : all || i < 20 || isFav('golf', p.id) || inSlip[p.id]; });
+    card.appendChild(el('div', { class: 'lb lbh' }, [el('span', { text: started ? 'Pos' : '' }), el('span', { text: 'Golfer' }), el('span', { text: started ? 'Score' : '' }), el('span', { text: started ? 'Thru' : '' }), el('span', { class: 'mk', text: 'To win' })]));
+    shown.forEach(function (p) {
+      var thru = !p.rnd ? '' : p.thru >= 18 ? 'F' : String(p.thru);
+      var nm = el('span', { class: 'nm' }, [el('b', { 'data-abbr': p.short, html: esc(p.name) + (isFav('golf', p.id) ? Kit.icon('star') : '') })]);
+      var row = el('div', { class: 'lb' + (p.out ? ' out' : '') }, [
+        el('span', { class: 'pos', text: started ? (p.out ? 'CUT' : p.pos) : '' }),
+        el('span', { class: 'tm' }, [logoEl(p), nm]),
+        el('span', { class: 'tp' + (p.tp < 0 ? ' under' : ''), text: started ? tpTxt(p.tp) : '' }),
+        el('span', { class: 'th', text: started ? thru : '' })]);
+      row.appendChild(p.out || g.done ? el('span', { class: 'px none' }) : pxEl(g, 'win', p.id));
+      card.appendChild(row);
+    });
+    if (!mine && list.length > 20) card.appendChild(el('button', { type: 'button', class: 'lbmore', text: all ? 'Show the top 20' : 'Show all ' + list.length + ' golfers', onclick: function () { golfAll[g.id] = !all; var n = golfEl(g, mine); card.replaceWith(n); fitNames(n); } }));
+    if (!started && !g.done) card.appendChild(el('div', { class: 'note', text: 'Prices come from each golfer’s recent results and move with the leaderboard.' }));
+    return card;
+  }
   function pxEl(g, mk, side) {
     var p = pickOf(g, mk, side);
     if (!p) return el('span', { class: 'px none' });
     var on = slip.picks.some(function (x) { return x.k === p.k; });
     var kids = [];
-    if (mk === 'ml') kids.push(el('span', { text: am(p.odds) }));
+    if (mk === 'ml' || mk === 'win') kids.push(el('span', { class: am(p.odds).length > 5 ? 'long' : null, text: am(p.odds) }));
     else { kids.push(el('i', { text: mk === 'tot' ? (side === 'o' ? 'O ' : 'U ') + p.line : lineTxt(p.line) })); kids.push(el('span', { text: am(p.odds) })); }
-    var b = el('button', { type: 'button', class: 'px' + (mk === 'ml' ? ' solo' : '') + (on ? ' on' : ''), 'data-k': p.k, 'aria-pressed': on ? 'true' : 'false', 'aria-label': pickTitle(p) + ' ' + am(p.odds), onclick: function () { togglePick(g, mk, side, b); } }, kids);
+    var b = el('button', { type: 'button', class: 'px' + (mk === 'ml' || mk === 'win' ? ' solo' : '') + (on ? ' on' : ''), 'data-k': p.k, 'aria-pressed': on ? 'true' : 'false', 'aria-label': pickTitle(p) + ' ' + am(p.odds), onclick: function () { togglePick(g, mk, side, b); } }, kids);
     // a price that changed since the last look lights up for a moment
     var pv = g.prev && g.prev[mk];
+    if (mk === 'win') pv = g.prev && g.prev.odds ? { x: g.prev.odds[side] } : null;
+    if (pv && mk === 'win') { if (pv.x != null && pv.x !== p.odds) b.classList.add('moved'); pv = null; }
     if (pv) { var was = mk === 'ml' ? pv[side] : mk === 'sp' ? pv[side] + '|' + pv[side + 'o'] : pv.n + '|' + pv[side], now = mk === 'ml' ? p.odds : p.line + '|' + p.odds; if (String(was) !== String(now)) b.classList.add('moved'); }
     if (!bettable(g)) { b.disabled = true; b.innerHTML = Kit.icon('lock'); }
     return b;
@@ -680,6 +945,10 @@ body{overflow-x:hidden;}
         var f = 1;
         while (b.scrollWidth > b.clientWidth + 1 && f > .8) { f -= .05; b.style.fontSize = f + 'em'; }
         if (b.scrollWidth > b.clientWidth + 1 && b.dataset.abbr) { var star = b.querySelector('svg'), rk = b.querySelector('.rk'); b.textContent = ''; if (rk) b.appendChild(rk); b.appendChild(document.createTextNode(b.dataset.abbr)); if (star) b.appendChild(star); }
+        // still too long (one long surname): ease further, then let it wrap
+        f = 1; b.style.fontSize = '';
+        while (b.scrollWidth > b.clientWidth + 1 && f > .66) { f -= .04; b.style.fontSize = f + 'em'; }
+        if (b.scrollWidth > b.clientWidth + 1) { b.style.whiteSpace = 'normal'; b.style.overflowWrap = 'anywhere'; }
       });
     });
   }
@@ -698,7 +967,7 @@ body{overflow-x:hidden;}
     if (i >= 0) { slip.picks.splice(i, 1); Kit.sfx('tap'); }
     else {
       // one side of a market at a time
-      slip.picks = slip.picks.filter(function (x) { return !(x.gid === g.id && x.mk === mk); });
+      if (mk !== 'win') slip.picks = slip.picks.filter(function (x) { return !(x.gid === g.id && x.mk === mk); });
       if (slip.picks.length >= 12) { Kit.toast('The slip holds 12 picks'); return; }
       slip.picks.push(p); Kit.sfx('chip'); Kit.haptic('light');
     }
@@ -788,7 +1057,7 @@ body{overflow-x:hidden;}
         el('div', { class: 'row' }, [el('span', { class: 'pick', text: pickTitle(p) }), el('span', { class: 'odds', text: slip.mode === 'parlay' ? am(p.odds) : am(p.odds) })]),
         el('div', { class: 'says', text: p.gone ? 'This game has started. Remove it to place the rest.' : s[0] }),
         s[1] && !p.gone ? el('div', { class: 'says nb', text: s[1] }) : null,
-        el('div', { class: 'row mu' }, [el('span', { text: p.an + ' at ' + p.hn }), el('span', { text: shortDay(p.t) })])
+        el('div', { class: 'row mu' }, [el('span', { text: matchTxt(p) }), el('span', { text: p.lg === 'golf' ? 'Ends ' + new Date(p.end || p.t).toLocaleDateString([], { weekday: 'short' }) : shortDay(p.t) })])
       ]);
       t.appendChild(lg);
     });
@@ -828,7 +1097,7 @@ body{overflow-x:hidden;}
     if (num.cost > Casino.balance()) { Kit.toast('Not enough in the bankroll'); return; }
     if (slip.mode === 'parlay' && parlayOk()) return;
     var made = [], now = Date.now();
-    function leg(p) { return { gid: p.gid, lg: p.lg, mk: p.mk, side: p.side, line: p.line, odds: p.odds, an: p.an, hn: p.hn, aa: p.aa, ha: p.ha, t: p.t }; }
+    function leg(p) { return { gid: p.gid, lg: p.lg, mk: p.mk, side: p.side, line: p.line, odds: p.odds, an: p.an, hn: p.hn, aa: p.aa, ha: p.ha, pn: p.pn, ev: p.ev, end: p.end, t: p.t }; }
     if (slip.mode === 'parlay') made.push({ id: rid(), at: now, kind: 'parlay', stake: slip.stake, legs: live.map(leg), st: 'open' });
     else live.forEach(function (p) { made.push({ id: rid(), at: now, kind: 'single', stake: slip.stake, legs: [leg(p)], st: 'open' }); });
     if (!Casino.bet(num.cost)) { Kit.toast('Not enough in the bankroll'); return; }
@@ -885,9 +1154,8 @@ body{overflow-x:hidden;}
       box.appendChild(el('div', { class: 'says', text: s[0] }));
       if (s[1]) box.appendChild(el('div', { class: 'says nb', text: s[1] }));
       // matchup, then the score: live, final, or the start time
-      var sc = l.fs ? l.fs : g && g.state !== 'pre' && g.home.score != null ? [g.away.score, g.home.score] : null;
-      if (sc) box.appendChild(el('div', { class: 'row mu' }, [el('span', { class: 'lv', text: l.aa + ' ' + sc[0] + '   ' + l.ha + ' ' + sc[1] }), el('span', { text: l.r ? 'Final' : g && g.state === 'in' ? g.detail : g && g.void ? 'Postponed' : 'Final' })]));
-      else box.appendChild(el('div', { class: 'row mu' }, [el('span', { text: l.an + ' at ' + l.hn }), el('span', { text: g && g.void ? 'Postponed' : shortDay(l.t) })]));
+      var info = legInfo(l, g);
+      box.appendChild(el('div', { class: 'row mu' }, [el('span', { class: info[2] ? 'lv' : '', text: info[0] }), el('span', { text: info[1] })]));
       k.appendChild(box);
     });
     k.appendChild(el('hr'));
@@ -900,6 +1168,25 @@ body{overflow-x:hidden;}
     k.appendChild(barcode(t.id));
     if (paid && !o.noStamp) k.appendChild(el('div', { class: 'stamp ' + t.st + (o.stampIn ? ' in' : ''), text: t.st === 'win' ? 'WINNER' : t.st === 'loss' ? 'LOST' : 'PUSH' }));
     return w;
+  }
+  // a ticket leg's bottom line: [left, right, bold]: the matchup and start, or the score live and final
+  function legInfo(l, g) {
+    var voided = g && g.void;
+    if (l.lg === 'golf') {
+      var pl = g && g.players.filter(function (x) { return x.id === l.side; })[0];
+      if (l.r) return [l.fs || 'Final', 'Final', 1];
+      if (voided) return [l.ev, 'Cancelled', 0];
+      if (pl && pl.holes > 0) return ['Now ' + pl.pos + '  ' + tpTxt(pl.tp), g.state === 'in' ? (pl.thru >= 18 ? 'Round ' + pl.rnd + ' done' : 'Thru ' + pl.thru) : g.detail, 1];
+      return [l.ev, 'Starts ' + shortDay(l.t), 0];
+    }
+    if (l.lg === 'tennis') {
+      var line = l.fs || (g && g.state !== 'pre' && g.setline);
+      if (line) return [l.aa + '  ' + line, l.r ? 'Final' : g && g.state === 'in' ? g.detail : voided ? 'Void' : 'Final', 1];
+      return [l.an + ' vs ' + l.hn, voided ? 'Void' : g && g.tbd ? dayName(l.t) : shortDay(l.t), 0];
+    }
+    var sc = l.fs ? l.fs : g && g.state !== 'pre' && g.home.score != null ? [g.away.score, g.home.score] : null;
+    if (sc) return [l.aa + ' ' + sc[0] + '   ' + l.ha + ' ' + sc[1], l.r ? 'Final' : g && g.state === 'in' ? g.detail : voided ? 'Postponed' : 'Final', 1];
+    return [l.an + ' at ' + l.hn, voided ? 'Postponed' : shortDay(l.t), 0];
   }
   function paintBets() {
     var body = dom.body; body.innerHTML = '';
@@ -953,6 +1240,20 @@ body{overflow-x:hidden;}
 
   // ── Favourite teams ──────────────────────────────────────────────────────
   function loadTeams(lg) {
+    // tennis: the ranked players on both tours; golf: this week's field
+    if (lg === 'tennis') return loadRanks().then(function () {
+      var out = [];
+      ['atp', 'wta'].forEach(function (tour) {
+        var c = lsGet('sb_rank_cache_' + tour, null) || {}, nm = c.names || {};
+        Object.keys(nm).forEach(function (id) { out.push({ id: id, name: nm[id][0], short: nm[id][1] || nm[id][0], nick: nm[id][1] || nm[id][0], loc: nm[id][1] || nm[id][0], abbr: lastName(nm[id][0]).toUpperCase(), logo: nm[id][2], color: '#2b3340', sub: tour.toUpperCase() + '  World No. ' + c.map[id], r: c.map[id] + (tour === 'wta' ? .5 : 0) }); });
+      });
+      return out.sort(function (a, b) { return a.r - b.r; });
+    });
+    if (lg === 'golf') return loadLeague('golf').then(function (b) {
+      var out = [];
+      (b.games || []).forEach(function (g) { g.players.forEach(function (p) { out.push({ id: p.id, name: p.name, short: p.short, nick: p.short, loc: p.short, abbr: p.abbr, logo: p.logo, color: '#2b3340', sub: g.name }); }); });
+      return out.sort(function (a, b) { return lastName(a.name).localeCompare(lastName(b.name)); });
+    });
     var k = 'sb_teams_cache_' + lg, c = lsGet(k, null);
     if (c && c.list && Date.now() - c.at < 7 * 864e5) return Promise.resolve(c.list);
     var L = LG[lg];
@@ -971,8 +1272,9 @@ body{overflow-x:hidden;}
     var teams = [];
     function paintMine() {
       mine.innerHTML = '';
-      if (!favs.length) { mine.appendChild(el('p', { class: 'muted', style: { margin: '0', 'font-size': '.85rem' }, text: 'Tap a star to follow a team.' })); return; }
+      if (!favs.length) { mine.appendChild(el('p', { class: 'muted', style: { margin: '0', 'font-size': '.85rem' }, text: 'Tap a star to follow a team or player.' })); return; }
       favs.forEach(function (f) { mine.appendChild(el('span', null, [logoEl(f), document.createTextNode(f.lg === 'cbb' || f.lg === 'cfb' ? f.loc || f.short : f.nick || f.short)])); });
+      inp.placeholder = LG[cur].kind ? 'Search players' : 'Search teams';
     }
     function paintLgs() {
       lgs.innerHTML = '';
@@ -988,15 +1290,16 @@ body{overflow-x:hidden;}
           var i = -1; favs.forEach(function (f, j) { if (f.lg === cur && f.id === t.id) i = j; });
           if (i >= 0) { favs.splice(i, 1); Kit.sfx('tap'); } else { favs.push(Object.assign({ lg: cur }, t)); Kit.sfx('pop'); Kit.haptic('light'); }
           saveFavs(); r.classList.toggle('on', i < 0); paintMine();
-        } }, [logoEl(t), el('span', { class: 'tx' }, [el('b', { text: t.name }), el('small', { text: LG[cur].name })]), el('span', { class: 'st', html: Kit.icon('star') })]);
+        } }, [logoEl(t), el('span', { class: 'tx' }, [el('b', { text: t.name }), el('small', { text: t.sub || LG[cur].name })]), el('span', { class: 'st', html: Kit.icon('star') })]);
         list.appendChild(r);
       });
-      if (!shown.length) list.appendChild(el('p', { class: 'muted', text: teams.length ? 'No team by that name.' : 'Can’t load the teams right now.' }));
+      var who = LG[cur].kind ? 'player' : 'team';
+      if (!shown.length) list.appendChild(el('p', { class: 'muted', text: teams.length ? 'No ' + who + ' by that name.' : cur === 'golf' ? 'This week’s field isn’t out yet.' : 'Can’t load the ' + who + 's right now.' }));
     }
     function fill() { list.innerHTML = '<p class="muted">Loading teams…</p>'; var k = cur; loadTeams(k).then(function (l) { if (k !== cur) return; teams = l; rows(); }); }
     inp.addEventListener('input', function () { q = inp.value; rows(); });
     paintMine(); paintLgs(); fill();
-    Kit.sheet({ title: 'My teams', node: box, actions: [{ label: 'Done', cls: 'btn-primary', onClick: function () { if (view === 'board') { paintTabs(); paintBoard(); } } }] });
+    Kit.sheet({ title: 'My teams and players', node: box, actions: [{ label: 'Done', cls: 'btn-primary', onClick: function () { if (view === 'board') { paintTabs(); paintBoard(); } } }] });
   }
 
   // ── Home screen: open bets show under Keep playing ──
@@ -1016,7 +1319,7 @@ body{overflow-x:hidden;}
       } }
     ],
     rules:
-      '<p class="goal">Bet your casino bankroll on real games: MLB, NBA, NFL, NHL, college basketball and college football. The lines and scores are the real ones, and bets settle on their own when the games end.</p>' +
+      '<p class="goal">Bet your casino bankroll on real games: MLB, NBA, WNBA, NFL, NHL, college basketball, college football, tennis and golf. The lines and scores are the real ones, and bets settle on their own when the games end.</p>' +
       '<h3>Placing a bet</h3><ul><li>Tap a price on the board. It lights up and goes on your bet slip.</li>' +
       '<li>Pick your stake with the chips, then <b>Place bet</b>. Your ticket prints and waits in <b>My bets</b>.</li>' +
       '<li>Betting on a game closes when it starts.</li></ul>' +
@@ -1025,6 +1328,8 @@ body{overflow-x:hidden;}
       '<li><b>Spread:</b> the favourite gives points, the underdog gets them. <b>Chiefs −3.5</b> wins if the Chiefs win by 4 or more; <b>Bills +3.5</b> wins if the Bills win or lose by 3 or less. Baseball calls it the run line and hockey the puck line (usually 1.5).</li>' +
       '<li><b>Total (over/under):</b> bet on the two teams’ combined score. <b>Over 47.5</b> wins with 48 or more.</li></ul>' +
       '<p>The slip spells out what has to happen for every pick.</p>' +
+      '<h3>Tennis</h3><p>Singles matches on the ATP and WTA tours: who wins the match, a games handicap (<b>Sinner −4.5</b> wins if he takes at least 5 more games than his opponent across every set), and total games. A retirement or walkover voids the bet. ESPN posts no odds for tennis, so the book prices each match from the world rankings.</p>' +
+      '<h3>Golf</h3><p>Pick the winner of this week’s PGA TOUR event. Betting stays open until the final round ends, and the prices move with the leaderboard. A golfer who misses the cut loses. ESPN posts no golf odds, so the book prices every golfer from his score so far and his results in recent events.</p>' +
       '<h3>Parlays</h3><p>Put two to ten picks from different games on one ticket. Every pick has to win, and the payouts multiply, so a small stake can win a lot. A pick that pushes drops out and the rest still pays.</p>' +
       '<h3>Pushes and postponed games</h3><p>When the result lands exactly on the line (a 3-point win against −3), it’s a push and your stake comes back. A postponed or cancelled game is a push too.</p>' +
       '<h3>Your teams</h3><p>Star your teams under <b>My teams</b>. Their games get their own tab and sit at the top of each league’s board.</p>' +
