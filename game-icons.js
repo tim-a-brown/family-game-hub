@@ -339,7 +339,10 @@ var GameIcon = (function () {
         '..W..WWW.', '..W......', '..W..WWW.', '..W..WWW.', '.WW..WWW.', '.PPPPPP..', '.PPP.....', '.P.......', '.v.......', 'v........'];
       var cols = { W: '#ffffff', P: '#d77a99', V: '#ca9242', v: '#d5c353' }, out = '';
       rows.forEach(function (r, y) { for (var x = 0; x < 9; x++) { var ch = r.charAt(x); if (ch !== '.') out += rect(3.6 + x * 1.9, 1.5 + y * 1.0, 1.9, 1.0, 0, cols[ch]); } });
-      return out;
+      // on the cartridge's label, as on the real one: the game's logo across the top, Sir Dudley under it
+      return '<image href="/img/consoles/logos/junglehunt.png" x="-3" y="-0.5" width="30" height="7.2" preserveAspectRatio="xMidYMid meet"/>' +
+        rect(-1.5, 7.6, 27, 16.6, 1.6, '#24702c') + rect(-1.5, 20.4, 27, 3.8, 0, '#1a5321') +
+        '<g transform="translate(5.2 7.9) scale(.75)">' + out + '</g>';
     },
     invaders: function () {   // one classic invader (the crab), pixel for pixel
       var rows = ['..#.....#..', '...#...#...', '..#######..', '.##.###.##.', '###########', '#.#######.#', '#.#.....#.#', '...##.##...'], d = '';
