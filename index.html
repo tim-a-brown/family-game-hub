@@ -1155,7 +1155,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // Returns what it removed, so Undo can put it back
   function deleteSaved(x) {
     var file = x.r.file || x.g.play, back = { id: x.g.id, keys: {}, resume: null };
-    var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || []);
+    // the game's listed save keys, plus the usual <game>_state name, so a game missing from the list still goes
+    var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || [], SAVE_KEYS[x.g.id] || [], [file + '_state', x.g.id + '_state']);
     keys.forEach(function (k) { try { var v = LS.getItem(k); if (v != null) back.keys[k] = v; LS.removeItem(k); } catch (e) {} });
     try { var all = JSON.parse(get('gn_resume', '{}')) || {}; back.resume = all[x.g.id] || null; all[x.g.id] = { ts: Date.now(), x: 1 }; set('gn_resume', JSON.stringify(all)); } catch (e) {}
     return back;
