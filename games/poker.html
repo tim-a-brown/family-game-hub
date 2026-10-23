@@ -58,26 +58,21 @@
 .pseat.top{display:grid;grid-template-columns:auto auto;column-gap:6px;row-gap:3px;align-items:center;justify-items:start;}
 .pseat.top > .cards{grid-row:1 / 3;}
 .pseat.acting .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6);}
-.pseat.win .tag{box-shadow:0 0 0 3px #ffd84a,0 0 26px rgba(255,200,61,.75);animation:wglow 1.5s ease-in-out infinite;}
-@keyframes wglow{50%{box-shadow:0 0 0 3px #ffe9a0,0 0 36px rgba(255,214,90,.95);}}
-.pseat.lost > .cards,.pseat.lost > .tag{opacity:.55;filter:saturate(.55);}
-.pseat.lost .psay.hand{opacity:.8;font-size:.66rem;}
-.psay.champ{display:inline-flex;align-items:center;gap:4px;padding:3px 10px 3px 7px;border-radius:12px;font-size:.84rem;z-index:7;
-  background:linear-gradient(180deg,#ffe788,#f3ae1a);color:#2b1a00;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 4px 14px rgba(0,0,0,.45),0 0 22px rgba(255,200,61,.65);}
-.psay.champ svg{width:14px;height:14px;flex:none;}
-.psay.champ.anim{animation:champ .55s var(--spring) both;}
-@keyframes champ{0%{opacity:0;scale:.3;}60%{opacity:1;}100%{scale:1;}}
+.pseat.win .tag{box-shadow:0 0 0 2px #ffd84a,0 0 10px rgba(255,200,61,.4);}
+.pseat.lost > .cards,.pseat.lost > .tag{opacity:.7;}
+.pseat.lost .psay.hand{opacity:.85;}
+.psay.champ{font-size:.78rem;padding:2px 9px;z-index:7;background:var(--yellow);color:#2b1a00;}
+.psay.champ.anim{animation:fadein .3s ease-out both;}
 /* under the board when a hand is over: who won it, with what and how much */
-.pwinb{position:absolute;left:50%;top:calc(100% + 9px);translate:-50% 0;display:flex;align-items:center;gap:7px;padding:5px 13px 5px 8px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:5;
-  background:rgba(12,10,24,.86);color:#fff;font-weight:900;font-size:.84rem;box-shadow:0 0 0 2px #ffd84a,0 0 22px rgba(255,200,61,.35),0 8px 20px rgba(0,0,0,.45);}
+.pwinb{position:absolute;left:50%;top:calc(100% + 8px);translate:-50% 0;display:flex;align-items:center;gap:6px;padding:3px 11px 3px 7px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:5;
+  background:rgba(12,10,24,.72);color:#fff;font-weight:800;font-size:.76rem;}
 .pwinb .dots{display:flex;}
-.pwinb .dot{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px rgba(255,255,255,.85);}
-.pwinb .dot+.dot{margin-left:-4px;}
+.pwinb .dot{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1.5px rgba(255,255,255,.8);}
+.pwinb .dot+.dot{margin-left:-3px;}
 .pwinb .hn{color:#ffd84a;}
 .pwinb .amt{color:#8ff0b0;font-variant-numeric:tabular-nums;}
-.pwinb.me{box-shadow:0 0 0 2px #8ff0b0,0 0 26px rgba(61,220,132,.45),0 8px 20px rgba(0,0,0,.45);}
-.pwinb.anim{animation:wbin .5s var(--spring) both;}
-@keyframes wbin{from{opacity:0;translate:-50% 12px;scale:.7;}to{opacity:1;translate:-50% 0;scale:1;}}
+.pwinb.anim{animation:fadein .3s ease-out both;}
+@keyframes fadein{from{opacity:0;}to{opacity:1;}}
 .pseat.fold > .cards,.pseat.fold > .tag{opacity:.45;}
 .pseat.out{opacity:.35;}
 .pseat .cards{display:flex;--cw:24px;min-height:34px;}
@@ -4641,9 +4636,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
       else if (H && H.say[i]) say = H.say[i];
       if (isWin) {
-        // the winner's pill: the whole hand by name (or that they took the pot), in gold, with a trophy
-        var full = H.scores && H.scores[i] != null ? (hName(H, i) || say) : 'Takes the pot';
-        var cp = el('div', { class: 'psay champ' + (winAnim ? ' anim' : ''), html: Kit.icon('trophy') }); cp.appendChild(el('span', { text: full })); seat.appendChild(cp);
+        // the winner's pill: their hand (the banner under the board names it in full), or that they took the pot
+        seat.appendChild(el('div', { class: 'psay champ' + (winAnim ? ' anim' : ''), text: H.scores && H.scores[i] != null ? say : 'Takes the pot' }));
       } else if (say) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
       if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && lme) meEq = eb; else seat.appendChild(eb); }
       if (lme && me) meSeat = seat;
@@ -4663,7 +4657,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         tb.appendChild(atBet(be)); betEls[i] = be;
       } else if (done && H.won[i] > 0) {
         var we = el('div', { class: 'pbet won' }, [chipStack(H.won[i]), el('span', { class: 'amt', text: '+' + amt(H.won[i]) })]);
-        if (me && (land || port)) bp = land ? [79, 84] : [50, 77];   // your winnings land beside your cards, clear of the winner banner under the board
+        if (me && (land || port)) bp = land ? [79, 79] : [50, 77];   // your winnings land beside your cards, clear of the winner banner under the board
         tb.appendChild(atBet(we)); betEls[i] = we;
       }
       if (H && H.button === i && lme) {
@@ -4703,7 +4697,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (ws.length) {
         var wsc = H.scores && H.scores[ws[0]] != null ? hName(H, ws[0]) : '', tot = ws.reduce(function (a, j) { return a + H.won[j]; }, 0);
         var who = ws.length > 1 ? ws.map(function (j) { return j === 0 ? 'You' : S.players[j].name; }).join(' & ') + (ws.length > 1 ? ' split' : '') : (ws[0] === 0 ? 'You win' : S.players[ws[0]].name + ' wins');
-        board.appendChild(el('div', { class: 'pwinb' + (winAnim ? ' anim' : '') + (ws.indexOf(0) >= 0 ? ' me' : '') }, [
+        board.appendChild(el('div', { class: 'pwinb' + (winAnim ? ' anim' : '') }, [
           el('span', { class: 'dots' }, ws.map(function (j) { return el('i', { class: 'dot', style: { '--c': seatColor(j) } }); })),
           el('b', { text: who }), wsc ? el('span', { class: 'hn', text: wsc }) : null, el('span', { class: 'amt', text: '+' + amt(tot) })]));
       }
