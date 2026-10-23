@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Goblin Defenders sprite renderer</title>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js", "three/addons/": "/vendor/three/addons/" } }</script>
+</head><body style="margin:0;background:#888">
+<script type="module">
+// Renders the models in models.js to sprite frames: an orthographic camera looking down at the game's three-quarter
+// angle, rendered at 2x and scaled down for smooth edges, a saturation lift, and a dark cartoon outline. build.mjs
+// calls window.renderJobs() and packs the frames into the sheets the game loads.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { initMaterials, TOWERS, ENEMIES, PROPS, hero } from './models.js';
+import { ICONS } from './icons.js';
+
+const ELEV = 40 * Math.PI / 180;   // camera elevation (the game draws heights with cos and ground depth with sin of this)
+const SS = 2;                      // supersampling
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x000000, 0);
+initMaterials();
+const pmrem = new THREE.PMREMGenerator(renderer), env = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+
+function makeScene(f) {
+  const s = new THREE.Scene(); s.environment = env; s.environmentIntensity = f && f.env != null ? f.env : .55;
+  s.add(new THREE.HemisphereLight(0xeaf4ff, 0x7a6a4a, 1.25));
+  const sun = new THREE.DirectionalLight(0xfff1d8, 2.7); sun.position.set(-3, 7, 5); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024); const sc = sun.shadow.camera; sc.left = sc.bottom = -2.5; sc.right = sc.top = 2.5; sc.near = .1; sc.far = 20; sun.shadow.bias = -.0015; sun.shadow.radius = 3;
+  s.add(sun);
+  const rim = new THREE.DirectionalLight(0xbfe0ff, .9); rim.position.set(4, 3, -4); s.add(rim);
+  const fill = new THREE.DirectionalLight(0xffe6c8, .45); fill.position.set(3, 2, 6); s.add(fill);
+  return s;
+}
+function camFor(w, h, unit, ax, ay) {
+  const c = new THREE.OrthographicCamera(-ax / unit, (w - ax) / unit, ay / unit, -(h - ay) / unit, .1, 50);
+  c.position.set(0, Math.sin(ELEV) * 20, Math.cos(ELEV) * 20); c.lookAt(0, 0, 0); return c;
+}
+const out = document.createElement('canvas'), ox = out.getContext('2d', { willReadFrequently: true });
+// one frame: obj rendered with origin at pixel (ax, ay) of a w x h frame, unit px per cell
+function shot(obj, f) {
+  const scene = makeScene(f); scene.add(obj); renderer.toneMappingExposure = f.exp || 1.0;
+  renderer.setSize(f.w * SS, f.h * SS, false);
+  renderer.render(scene, camFor(f.w * SS, f.h * SS, f.unit * SS, f.ax * SS, f.ay * SS));
+  scene.remove(obj);
+  const c = document.createElement('canvas'); c.width = f.w; c.height = f.h; const g = c.getContext('2d');
+  g.imageSmoothingQuality = 'high'; g.filter = 'saturate(' + (f.sat || 1.25) + ') contrast(1.08)';
+  g.drawImage(renderer.domElement, 0, 0, f.w, f.h); g.filter = 'none';
+  const r = f.outline === 0 ? c : outline(c, f.outline || 1.4, f.oc || 'rgba(34,18,8,.9)'); r.unit = f.unit; return r;
+}
+function outline(src, r, col) {
+  const w = src.width, h = src.height, sil = document.createElement('canvas'); sil.width = w; sil.height = h; const s = sil.getContext('2d');
+  s.drawImage(src, 0, 0); s.globalCompositeOperation = 'source-in'; s.fillStyle = col; s.fillRect(0, 0, w, h);
+  // threshold the silhouette so faint antialias fringes don't make a halo
+  const id = s.getImageData(0, 0, w, h), d = id.data; for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 40 ? 255 : 0; s.putImageData(id, 0, 0);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+  for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; g.drawImage(sil, Math.cos(a) * r, Math.sin(a) * r); }
+  g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over';
+  g.drawImage(src, 0, 0); return c;
+}
+let lastUnit = 128;
+function frameData(c) { lastUnit = c.unit || 128; return c.toDataURL('image/png'); }
+
+// ── Jobs ────────────────────────────────────────────────────────────────────
+// Frames are returned as {sheet, key, png, w, h, ax, ay}; build.mjs packs each sheet.
+const TW = { w: 176, h: 216, unit: 128, ax: 88, ay: 160 };     // tower bases: the cell's centre at (88, 160)
+const HD = { w: 168, h: 168, unit: 128, ax: 84, ay: 92 };       // tower heads, turning round their pivot
+const EN = { w: 128, h: 128, unit: 160, ax: 64, ay: 100 };       // enemies: feet at (60, 96)
+const ANG = 16, WALK = 8;
+const BOSS = { blackKnight: 1, frostTroll: 1, spiderQueen: 1, ogreWarlord: 1, wraithLord: 1 };
+function setAngle(o, a) { o.rotation.y = -a; }   // a: screen angle (0 = right, PI/2 = down)
+
+window.renderJobs = async function (only) {
+  const frames = [], push = o => { o.u = lastUnit; frames.push(o); };
+  const want = k => !only || only.some(o => k.indexOf(o) === 0);
+  for (const t of Object.keys(TOWERS)) for (let lv = 1; lv <= 3; lv++) {
+    if (!want('tower:' + t)) continue;
+    const m = TOWERS[t](lv);
+    push({ sheet: 'towers', key: t + lv, png: frameData(shot(m.base, TW)), w: TW.w, h: TW.h, ax: TW.ax, ay: TW.ay, pivot: m.pivot });
+    if (m.head) for (let i = 0; i < ANG; i++) {
+      const g = new THREE.Group(); g.add(m.head); m.head.position.set(0, 0, 0); m.head.scale.setScalar(m.hs || 1.3); setAngle(m.head, i / ANG * Math.PI * 2);
+      push({ sheet: 'heads', key: t + lv + '_' + i, png: frameData(shot(g, HD)), w: HD.w, h: HD.h, ax: HD.ax, ay: HD.ay });
+      g.remove(m.head);
+    }
+  }
+  for (const e of Object.keys(ENEMIES)) {
+    if (!want('enemy:' + e)) continue;
+    const big = BOSS[e], f = big ? { w: 216, h: 216, unit: 150, ax: 108, ay: 176 } : EN;
+    // facings: side (right; the game mirrors it for left), toward the camera (down) and away (up)
+    [['r', 0], ['d', Math.PI / 2], ['u', -Math.PI / 2]].forEach(([dir, a]) => {
+      for (let i = 0; i < WALK; i++) {
+        const m = ENEMIES[e](); m.pose(i / WALK); setAngle(m.root, a);
+        push({ sheet: big ? 'bosses' : 'enemies', key: e + '_' + dir + i, png: frameData(shot(m.root, Object.assign({ outline: 1.7 }, f))), w: f.w, h: f.h, ax: f.ax, ay: f.ay, fly: !!m.fly });
+      }
+    });
+  }
+  if (want('hero')) for (let i = 0; i < WALK; i++) {
+    const m = hero(); m.pose(i / WALK); setAngle(m.root, Math.PI / 2 - .5);
+    push({ sheet: 'enemies', key: 'hero_d' + i, png: frameData(shot(m.root, { w: 120, h: 132, unit: 150, ax: 60, ay: 110 })), w: 120, h: 132, ax: 60, ay: 110 });
+  }
+  const PS = { village: [400, 420, 150, 200, 300], cave: [260, 240, 150, 130, 160], caveSnow: [260, 240, 150, 130, 160], caveSand: [260, 240, 150, 130, 160], caveLava: [260, 240, 150, 130, 160],
+    gate: [300, 300, 150, 150, 220], pyramid: [320, 280, 150, 160, 190], palm: [220, 260, 130, 110, 200], palmLeft: [220, 260, 130, 110, 200],
+    pineSnowBig: [200, 260, 130, 100, 220] };
+  for (const p of Object.keys(PROPS)) {
+    if (!want('prop:' + p)) continue;
+    const s = PS[p] || [160, 180, 130, 80, 130], f = { w: s[0], h: s[1], unit: s[2], ax: s[3], ay: s[4], exp: .88 };
+    push({ sheet: 'props', key: p, png: frameData(shot(PROPS[p](), f)), w: f.w, h: f.h, ax: f.ax, ay: f.ay });
+  }
+  for (const k of Object.keys(ICONS)) {
+    if (!want('icon:' + k)) continue;
+    const ic = ICONS[k](), f = Object.assign({ w: 128, h: 128, unit: 128, ax: 64, ay: 64, outline: 2.2, oc: 'rgba(30,16,6,.85)', exp: .6, env: .2 }, ic.frame || {});
+    push({ sheet: ic.sheet || 'icons', key: k, png: frameData(shot(ic.obj, f)), w: f.w, h: f.h, ax: f.ax, ay: f.ay });
+  }
+  return frames;
+};
+window.ready = true;
+</script></body></html>

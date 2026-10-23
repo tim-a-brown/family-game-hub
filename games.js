@@ -165,6 +165,7 @@ var GAMES = [
       { icon: 'users', title: 'Play online', desc: '2 or 3 players, each on their own device', file: 'centipede.html?online=1' }
     ] },
   { id: 'junglehunt',  name: 'Jungle Hunt',  color: '#2f8a3a', cat: 'console', min: 1, max: 1, tag: 'Swing, swim and leap to rescue Lady Penelope', play: 'junglehunt', hidden: true },   // (played from its Atari 2600 cartridge: see CONSOLE_NATIVE)
+  { id: 'goblindefenders', name: 'Goblin Defenders', color: '#4f9a2c', cat: 'arcade', min: 1, max: 1, tag: 'Build towers of steel and wood, stop the march on the village', play: 'goblindefenders' },
   { id: 'galaga',      name: 'Galaga',       color: '#2a5cff', cat: 'arcade', min: 1, max: 1, tag: 'Blast the swarm, dodge the tractor beam', play: 'galaga' },
   { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders' },
   { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
