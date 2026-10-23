@@ -2090,9 +2090,13 @@
   }
   // the best five, written where the arcade keeps them
   function setBest5(list) {
-    list = list || [];
+    // the family's best, with the arcade's own table (20000, N.N A.A M.M C.C O.O) filling any gaps, highest first
+    var DEF = ['N.N', 'A.A', 'M.M', 'C.C', 'O.O'];
+    list = (list || []).slice(0, 5);
+    for (var d = 0; list.length < 5; d++) list.push({ score: 20000, ini: DEF[d] });
+    list.sort(function (a, b) { return b.score - a.score; });
     for (var r = 0; r < 5; r++) {
-      var e = list[r] || { score: 20000, ini: ['N.N', 'A.A', 'M.M', 'C.C', 'O.O'][r] };   // the arcade's own table
+      var e = list[r];
       var s = String(Math.min(999999, e.score | 0)), base = 0x8A20 + r * 6;
       for (var k = 0; k < 6; k++) {
         var ch = s.length - 1 - k;
