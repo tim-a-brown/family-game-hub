@@ -572,7 +572,7 @@ const ArcadeHi = (function(){
     document.addEventListener('keydown', onEsc);
   }
 
-  const PAGE = /^(ast|breakout|flappy|flappywild|flappy_classic|pac|peggle|peggle_l\d+|peggle_run|paddleball|cubehopper|snake|tetris|crossyroad|willycrash|crazytower|centipede|centipede_chaos|invaders|invaders_frenzy|galaga|junglehunt|pinball_[a-z]+|console_[a-z0-9_]+)$/;   // (console_*: the console games that keep a score, games/console-hi.js)
+  const PAGE = /^(ast|breakout|flappy|flappywild|flappy_classic|pac|peggle|peggle_l\d+|peggle_run|paddleball|cubehopper|snake|tetris|crossyroad|willycrash|crazytower|centipede|centipede_chaos|invaders|invaders_frenzy|galaga|pinball_[a-z]+|console_[a-z0-9_]+)$/;   // (console_*: the console games that keep a score, games/console-hi.js)
   // ...and every board in HI_BOARDS (games.js): the puzzle games, each level or size on its own board
   function onPage(key){ key = String(key||''); if(PAGE.test(key)) return true; try{ return typeof hiBoard === 'function' && !!hiBoard(key); }catch(e){ return false; } }
   // ── Public API ─────────────────────────────────────────────────────────────

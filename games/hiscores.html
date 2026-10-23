@@ -256,8 +256,6 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       c: { sel: '#4ade80', sd: '#04180b', sm: '#166534', bd: '#0b3a1e', trim: '#4ade80', mq: 'linear-gradient(180deg,#0f3d22,#041a0c)', tc: '#a3e635', glow: '#22c55e', hc: '#c5f07a', lc: '#8bac0f', rows: ['#c5f07a', '#9bbc0f', '#e0f8a0'], pn: '#052e16', pn2: '#14532d', btna: '#a3e635', btnb: '#22c55e', ball: '#22c55e', scr: '#0d260d', bgo: '.55' } },
     { key: 'galaga', game: 'galaga', title: 'GALAGA', anim: 'galaga',
       c: { sel: '#3b6cff', sd: '#03051a', sm: '#1a2266', bd: '#0a0f3a', trim: '#ff3a2a', mq: 'linear-gradient(180deg,#0e1a6a,#02041a)', tc: '#ffd820', glow: '#4a8cff', hc: '#ff4a3a', lc: '#9cc0ff', rows: ['#ff4a3a', '#ffffff', '#4ad8ff', '#18c040'], pn: '#03051a', pn2: '#1a2266', btna: '#ff2a1e', btnb: '#ff2a1e', ball: '#ff2a1e', bgo: '.6' } },
-    { key: 'junglehunt', game: 'junglehunt', title: 'JUNGLE HUNT', short: 'JUNGLE', anim: 'jungle',
-      c: { sel: '#5fd35a', sd: '#03140a', sm: '#14532d', bd: '#082a14', trim: '#ca9242', mq: 'linear-gradient(180deg,#1f7a2a 0,#1f7a2a 30%,#00475b 30%,#00475b 82%,#5a6a10 82%)', tc: '#ffd27a', glow: '#5fd35a', hc: '#d77a99', lc: '#a7e08a', rows: ['#ffffff', '#d77a99', '#ffd27a', '#a7e08a'], pn: '#03140a', pn2: '#14532d', btna: '#e01f1a', btnb: '#e01f1a', ball: '#e01f1a', bgo: '.6' } },
     { key: 'invaders_frenzy', game: 'invaders', title: 'SPACE INVADERS', short: 'INVADERS', anim: 'invaders',
       c: { sel: '#2fd35a', sd: '#030303', sm: '#1c1c1c', bd: '#0b0b0b', trim: '#2fd35a', mq: 'linear-gradient(180deg,#d42a2a 0,#d42a2a 20%,#070707 20%,#070707 80%,#1f9e44 80%)', tc: '#fff', glow: '#2fd35a', hc: '#ff4a4a', lc: '#7dff9a', rows: ['#ffffff', '#2fd35a', '#ff4a4a'], pn: '#080808', pn2: '#1d1d1d', btna: '#2fd35a', btnb: '#ff4a4a', ball: '#2fd35a', scr: '#000', bgo: '.65' } },
     { key: 'tetris', game: 'tetris', title: 'TETRIS', anim: 'tetris', letters: ['#00e5ff', '#ffe600', '#b14dff', '#3dff6a', '#ff3b3b', '#ff9f1a'],
@@ -469,9 +467,6 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     // the Galaga fighter
     galaga: { pal: { W: '#ffffff', R: '#ff2a1e', B: '#2a5cff' }, rows: [
       '......W......', '......W......', '.....WWW.....', '..R..WWW..R..', '..W.WWWWW.W..', 'R.WBWWRWWBW.R', 'W.WWWRRRWWW.W', 'WWWWWWRWWWWWW', 'WWW.RWWWR.WWW', 'WW...R.R...WW'] },
-    // Sir Dudley hanging from his vine, from the Atari cartridge
-    junglehunt: { pal: { W: '#ffffff', P: '#d77a99', V: '#ca9242' }, rows: [
-      '...V.....', '...W.WWW.', '...WWWWWW', '...P..PP.', '.P.P.PPP.', '.PPP.PP..', '..PP..PP.', '...WWWWW.', '...W.WWW.', '..W..WWW.', '.WW..WWW.', '.PPPPPP..', '.P.......'] },
     // a chicken, side on, mid-hop
     crossyroad: { pal: { W: '#ffffff', S: '#d6d3d1', R: '#ff3b3b', O: '#ff9a1a', K: '#111111' }, rows: [
       '....RR...', '...RRR...', '...WWWW..', '...WKWWOO', '...WWWWOO', '...WWWWR.', 'WW.WWWW..', 'WWWWSSWW.',
@@ -1803,51 +1798,6 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
 
     // Galaga: the swarm sways and breathes in formation, bees and butterflies peel off and dive, a boss now and then
     // stops to lower its tractor beam; the fighter dodges along the bottom and picks them off
-    // Jungle Hunt: the canopy along the top, vines swinging below it; Sir Dudley rides one, lets go at the top of its
-    // swing and catches the next, scoring as he goes, while a crocodile cruises the river at the bottom
-    jungle: function (W, H) {
-      var pp = popups(), sp = sparks(), t = 0, CAN = Math.round(H * 0.22), RIV = Math.round(H * 0.8), GAP = Math.max(34, Math.round(W / 4.2));
-      var vines = [], cur = 0, fly = null, croc = { x: 0, d: 1 }, LEN = Math.round((RIV - CAN) * 0.62), score = 0;
-      for (var i = 0; i < 12; i++) vines.push({ x: 20 + i * GAP, ph: rnd(0, 6), sp: rnd(1.6, 2.3) });
-      function tip(v) { var a = Math.sin(t * v.sp + v.ph) * 0.62; return { x: v.x + Math.sin(a) * LEN, y: CAN + Math.cos(a) * LEN, a: a }; }
-      var scroll = 0;
-      function dudley(g, x, y) {
-        x = Math.round(x); y = Math.round(y);
-        R(g, x, y, 2, 1, '#fff'); R(g, x + 3, y, 3, 1, '#fff'); R(g, x - 1, y + 1, 6, 2, '#d77a99'); R(g, x, y + 3, 5, 4, '#fff');
-        R(g, x - 1, y + 4, 1, 4, '#fff'); R(g, x, y + 7, 6, 1, '#d77a99'); R(g, x, y + 8, 2, 3, '#d77a99'); R(g, x + 3, y + 8, 2, 2, '#d77a99');
-      }
-      return {
-        step: function (dt) {
-          t += dt; pp.step(dt); sp.step(dt);
-          var target = vines[cur].x - W * 0.3; scroll += (target - scroll) * Math.min(1, dt * 1.5);
-          croc.x += croc.d * dt * 22; if (croc.x > W + 30) croc.x = -40;
-          if (fly) {
-            fly.t += dt; fly.x += fly.vx * dt; fly.y += fly.vy * dt; fly.vy += 160 * dt;
-            var nv = vines[cur + 1], p = tip(nv);
-            if (Math.abs(fly.x - p.x) < 8 && Math.abs(fly.y - p.y) < 12) { cur++; fly = null; score += 100; pp.add('100', p.x - scroll, p.y - 14, '#ffd27a'); if (cur > vines.length - 3) { vines.forEach(function (v) { v.x -= vines[cur].x - 20; }); scroll -= 0; cur = 0; scroll = vines[0].x - W * 0.3; } }
-            else if (fly.y > RIV) { sp.burst(fly.x - scroll, RIV, 14, ['#ffffff', '#7dd3fc']); fly = null; }
-          } else {
-            var v = vines[cur], q = tip(v), dA = Math.cos(t * v.sp + v.ph);
-            if (q.a > 0.5 && dA < 0.1 && Math.random() < 0.08) fly = { x: q.x, y: q.y, vx: 70, vy: -40, t: 0 };
-          }
-        },
-        draw: function (g) {
-          R(g, 0, 0, W, CAN, '#1f7a2a');
-          for (var x = 0; x < W; x += 6) R(g, x, CAN - 2 + ((x / 6 + Math.floor(scroll / 6)) % 3), 6, 4, '#0f5a1c');
-          R(g, 0, CAN + 2, W, RIV - CAN - 2, '#00475b');
-          R(g, 0, RIV, W, H - RIV, '#5a6a10');
-          for (var x2 = 0; x2 < W; x2 += 8) R(g, x2, RIV + ((x2 / 8) % 2) * 2, 8, 2, '#7a8a20');
-          vines.forEach(function (v, i) {
-            var p = tip(v), bx = v.x - scroll; if (bx < -LEN || bx > W + LEN) return;
-            g.strokeStyle = '#ca9242'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx, CAN); g.lineTo(p.x - scroll, p.y); g.stroke();
-            if (i === cur && !fly) dudley(g, p.x - scroll - 3, p.y - 5);
-          });
-          if (fly) dudley(g, fly.x - scroll - 3, fly.y - 5);
-          var cx = Math.round(croc.x), cy = RIV - 4; R(g, cx, cy, 22, 3, '#d5c353'); R(g, cx + 20, cy - 1, 6, 2, '#d5c353'); R(g, cx + 3, cy + 3, 2, 1, '#d5c353'); R(g, cx + 14, cy + 3, 2, 1, '#d5c353');
-          sp.draw(g); pp.draw(g);
-        }
-      };
-    },
     galaga: function (W, H) {
       var sp = sparks(), pp = popups(), t = 0, stage = 0, form, divers = [], shots = [], bul = [], diveT = 1.5, fireT = 0, shipX = W / 2, dead = 0, stars = [];
       var FY = 14, GY = H - 8, CW = 12;
@@ -1986,12 +1936,6 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     tetris: function (g, t, side) { var sh = side ? [[0, 0], [1, 0], [2, 0], [1, 1]] : [[1, 0], [2, 0], [0, 1], [1, 1]], c = side ? '#b14dff' : '#3dff6a', k = Math.floor(t / 1.2) % 4;
       sh.forEach(function (p) { var x = p[0], y = p[1]; for (var i = 0; i < k; i++) { var nx = 1 - y + 1; y = x; x = nx; } block(g, 4 + x * 5, 3 + y * 5, 5, c); }); },
     snake: function (g, t, side) { if (side) { R(g, 8, 6, 8, 8, '#ef4444'); R(g, 11, 3, 2, 3, '#22c55e'); R(g, 10, 7, 2, 2, '#fca5a5'); return; } for (var i = 0; i < 6; i++) R(g, 2 + i * 3, 8 + Math.round(Math.sin(t * 6 + i) * 2), 3, 3, i ? '#9bbc0f' : '#c5f07a'); },
-    jungle: function (g, t, side) {
-      if (side) { var cx = 2 + ((t * 8) % 14); R(g, cx, 9, 12, 2, '#d5c353'); R(g, cx + 11, 8, 4, 2, '#d5c353'); R(g, cx + 2, 11, 1, 1, '#d5c353'); R(g, cx + 8, 11, 1, 1, '#d5c353'); return; }
-      var a = Math.sin(t * 2.2) * 0.6, x = 12 + Math.sin(a) * 11, y = 1 + Math.cos(a) * 11;
-      g.strokeStyle = '#ca9242'; g.lineWidth = 1; g.beginPath(); g.moveTo(12, 0); g.lineTo(x, y); g.stroke();
-      R(g, x - 2, y, 4, 1, '#fff'); R(g, x - 2, y + 1, 4, 2, '#d77a99'); R(g, x - 2, y + 3, 4, 3, '#fff'); R(g, x - 2, y + 6, 4, 1, '#d77a99'); R(g, x - 2, y + 7, 1, 2, '#d77a99'); R(g, x + 1, y + 7, 1, 2, '#d77a99');
-    },
     galaga: function (g, t, side) {
       if (side) { var f = Math.floor(t * 3) % 2; R(g, 11, 3, 3, 5, '#ffd820'); R(g, 12, 5, 1, 1, '#ff2a1e'); R(g, 5, 7 + f, 15, 3, '#18c040'); R(g, 5, 10 + f, 2, 3, '#18c040'); R(g, 18, 10 + f, 2, 3, '#18c040'); R(g, 10, 10, 1, 3, '#18c040'); R(g, 14, 10, 1, 3, '#18c040'); return; }
       var x = 12 + Math.round(Math.sin(t * 1.6) * 3); R(g, x, 2, 1, 4, '#fff'); R(g, x - 1, 5, 3, 5, '#fff'); R(g, x - 4, 9, 9, 4, '#fff'); R(g, x - 6, 11, 2, 4, '#fff'); R(g, x + 5, 11, 2, 4, '#fff');
