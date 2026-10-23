@@ -226,6 +226,14 @@ const ArcadeHi = (function(){
     const guess = mine || (who ? String(who).toUpperCase().replace(/[^A-Z]/g,'').slice(0,3) : '');
     const letters = guess.length >= 2 ? (guess+'AAA').slice(0,3).split('') : ['A','A','A'];
     let focusIdx = guess.length >= 2 ? Math.min(guess.length, 2) : 0;
+    // whose initials these are: you, someone whose saved initials they are, or a regular whose name starts that way
+    function ownerOf(t){
+      if(!t) return '';
+      if(mine && t===mine) return myName();
+      let names = []; try{ names = window.Kit && Kit.knownNames ? Kit.knownNames() : []; }catch(e){}
+      return names.filter(n=>iniOf(n)===t)[0] || names.filter(n=>!iniOf(n) && String(n).toUpperCase().replace(/[^A-Z]/g,'').slice(0,3)===t)[0] || '';
+    }
+    let picked = null;   // the person behind a tapped pick
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
@@ -336,7 +344,7 @@ const ArcadeHi = (function(){
       picks.forEach(t=>{
         const b=document.createElement('button'); b.type='button'; b.textContent=t;
         if(t===mine){ b.innerHTML=avHTML(myName()||t,'sm')+'<span>'+esc(t)+'</span>'; b.className='ahi-me'; b.setAttribute('aria-label','Your initials, '+t); }
-        b.addEventListener('click',()=>{ for(let i=0;i<3;i++) letters[i]=t[i]||' '; dismiss(true); });
+        b.addEventListener('click',()=>{ for(let i=0;i<3;i++) letters[i]=t[i]||' '; picked = ownerOf(t); dismiss(true); });
         box.appendChild(b);
       });
     })();
@@ -374,9 +382,17 @@ const ArcadeHi = (function(){
           return;
         }
         const name = letters.join('').trim()||'???';
-        if(who) iniSave(who, name);   // next time their scores file under these without asking
-        insert(key, name, score, who);
-        also.forEach(a=>insert(a.key, name, a.score, who));
+        // the score goes to whoever these initials belong to: the player when they're theirs (or they had none yet),
+        // otherwise the person they match (TIM was playing, CAM tapped: it's Cam's score, and TIM stays Tim's)
+        let person = picked !== null ? picked : '';
+        if(picked === null) person = who && (!iniOf(who) || iniOf(who)===name) ? who : ownerOf(name);
+        if(person && !iniOf(person)) iniSave(person, name);   // next time their scores file under these without asking
+        insert(key, name, score, person);
+        also.forEach(a=>insert(a.key, name, a.score, person));
+        overlay.remove();
+        // show where it went: the rank, their initials and who they are
+        showFiled(key, score, name, person, also, onDone, true);
+        return;
       }
       overlay.remove();
       onDone && onDone();
@@ -387,10 +403,10 @@ const ArcadeHi = (function(){
   }
 
   // Known player: the score files under their initials straight away; a short moment shows it (tap to go on)
-  function showFiled(key, score, ini, who, also, onDone){
+  // (filed: already on the boards, from the initials screen)
+  function showFiled(key, score, ini, who, also, onDone, filed){
     injectCSS();
-    insert(key, ini, score, who);
-    also.forEach(a=>insert(a.key, ini, a.score, who));
+    if(!filed){ insert(key, ini, score, who); also.forEach(a=>insert(a.key, ini, a.score, who)); }
     const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
     const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;
