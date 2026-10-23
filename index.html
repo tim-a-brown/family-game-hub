@@ -803,7 +803,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   var resumeMap = resumeRead();
   function players(g) { return g.max === 0 ? g.min + '+' : g.min === g.max ? String(g.min) : g.min + '–' + g.max; }
   function badge(g) {
-    return resumeMap[g.id] ? el('span', { class: 'live', text: 'Resume' }) : el('span', { class: 'meta', html: Kit.icon(g.max === 1 ? 'user' : 'users') + '<span>' + players(g) + '</span>' });
+    var b = resumeMap[g.id] ? el('span', { class: 'live', text: 'Resume' }) : el('span', { class: 'meta', html: Kit.icon(g.max === 1 ? 'user' : 'users') + '<span>' + players(g) + '</span>' });
+    b.dataset.g = g.id; return b;
+  }
+  // a game deleted from Keep playing (or put back with Undo, or saved on another device) changes its tile's tag right away
+  function refreshBadges() {
+    document.querySelectorAll('#list [data-g]').forEach(function (b) {
+      var on = !!resumeMap[b.dataset.g];
+      if (on !== b.classList.contains('live')) { var g = findGame(b.dataset.g); if (g) b.replaceWith(badge(g)); }
+    });
   }
   var tiles = get('gn_home_view', 'tiles') !== 'list';
   // Console games: the tile is the cartridge itself, in its console's plastic, with the game's label (box art and
@@ -1460,6 +1468,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var narrowed = !!state.q || state.cat !== 'all', vis = narrowed ? visibleGames() : null;
     var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && (state.cat === 'all' || (state.cat === 'fav' ? isFav(x.g) : x.g.cat === state.cat))); });
     railItems = items;
+    refreshBadges();
     if (!items.length) editing = false;
     var nets0 = netTurns.map(function (x) { return x.id + ':' + x.code + ':' + (x.at || 0) + ':' + (x.mine ? 1 : 0) + ':' + (x.vs || ''); });
     var sig = JSON.stringify([editing, !!undoList, Math.floor(Date.now() / 6e4), items.map(function (x) { return x.g.id + ':' + x.r.ts + ':' + (x.r.label || '') + ':' + (x.r.file || ''); }), nets0]);
