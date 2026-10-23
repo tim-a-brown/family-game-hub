@@ -3966,10 +3966,22 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function circAfter(H, busted) {
     var C = S.circ, ev = EV[C.id], main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0];
     C.h++;
+    // every knockout at this table goes in the log with its bounty (in Mystery Millions, the envelope it opened);
+    // the ones you make are paid to you
+    var koBy = main.w.indexOf(0) >= 0 ? 0 : main.w[0];
+    var bAmt = {};
+    if (busted.length && koBy != null && (ev.bounty || ev.mystery)) busted.forEach(function (i) {
+      if (i === koBy) return;
+      var b = S.players[i].bty || 0, a = ev.mystery ? mysteryBounty(b) : b;
+      if (!a) return;
+      bAmt[i] = a;
+      H.log.push({ win: koBy, t: (ev.mystery ? 'Mystery bounty ' : 'Bounty ') + usd(a) + (koBy === 0 ? ': you knock out ' : ': ' + nm(koBy) + ' knocks out ') + S.players[i].name, c: [] });
+    });
+    if (H.log.length > 24) H.log.splice(0, H.log.length - 24);
     if (busted.length && main.w.indexOf(0) >= 0) {
       var mine = busted.filter(function (i) { return i !== 0; });
       C.kos += mine.length;
-      var bt = mine.reduce(function (a, i) { return a + (ev.mystery ? mysteryBounty(S.players[i].bty || 0) : S.players[i].bty || 0); }, 0);
+      var bt = mine.reduce(function (a, i) { return a + (bAmt[i] || 0); }, 0);
       if (bt) { Casino.win(bt); C.bounty += bt; if (!SIM) setTimeout(function () { Kit.callout((ev.mystery ? 'Mystery bounty: ' : '+') + usd(bt) + (ev.mystery ? '' : ' bounty')); Kit.sfx(bt >= 20 * ev.buy ? 'win' : 'chip'); if (bt >= 20 * ev.buy) Kit.haptic('success'); }, 700); }
     }
     var reIn = busted.filter(function (i) { return S.players[i].reent; });
