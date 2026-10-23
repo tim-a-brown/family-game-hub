@@ -101,7 +101,7 @@
 .pseat .cards.face .pcard+.pcard{margin-left:-9px;}
 .pseat .cards.face.om .pcard+.pcard{margin-left:-19px;}
 .pseat .cards .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.15),0 3px 6px rgba(0,0,0,.35);}
-.psay{position:absolute;left:50%;top:100%;transform:translate(-50%,3px);padding:2px 8px;border-radius:9px;background:#fff;color:#1d1b2e;font-weight:900;font-size:.72rem;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.35);z-index:6;}
+.psay{position:absolute;left:50%;top:100%;transform:translate(-50%,3px);padding:2px 8px;border-radius:9px;background:#fff;color:#1d1b2e;font-weight:900;font-size:.67rem;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.35);z-index:6;}
 .psay.new{animation:pop .35s var(--spring);}
 .psay.hand{background:var(--yellow);color:#2b1a00;}
 .psay.fold{background:rgba(255,255,255,.55);}
@@ -143,8 +143,8 @@
 .pbet{z-index:2;display:flex;align-items:flex-end;gap:4px;}
 .pa.bl{transform:translate(0,-50%);}
 .pa.br{transform:translate(-100%,-50%);flex-direction:row-reverse;}
-.pbet .amt{font-weight:900;font-size:.76rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.pbet.won .amt{color:var(--yellow);font-size:.86rem;}
+.pbet .amt{font-weight:900;font-size:.7rem;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pbet.won .amt{color:var(--yellow);font-size:.8rem;}
 .ppot{z-index:2;display:flex;flex-direction:column;align-items:center;gap:4px;}
 .ppot .lbl:has(small){border-radius:10px;text-align:center;}
 .ppot .lbl small{display:block;font-size:.66rem;font-weight:800;opacity:.75;text-align:center;line-height:1.1;}
@@ -442,7 +442,7 @@
 .pland .pseat.me .psay{top:50%;bottom:auto;left:100%;transform:translate(6px,-50%);}
 .pland .ppot{flex-direction:row;align-items:flex-end;}
 .pland .ppot .lbl{font-size:.76rem;}
-.pland .pbet .amt{font-size:.72rem;}
+.pland .pbet .amt{font-size:.67rem;}
 .pland .pmsg{font-size:.78rem;padding:4px 12px;}
 
 /* iPad sideways: the same layout, sized up */
@@ -457,7 +457,7 @@
   .pland .plabel{font-size:1.05rem;} .pland .plabel.res{font-size:.98rem;}
   .pland .pseat .tag{font-size:.9rem;max-width:150px;}
   .pland .pseat .tag .avatar{width:26px;height:26px;}
-  .pland .pseat .stack,.pland .pbet .amt{font-size:.82rem;}
+  .pland .pseat .stack,.pland .pbet .amt{font-size:.76rem;}
   .pland .pseat .cards{--cw:30px;min-height:42px;}
   .pland .pseat .cards .pcard+.pcard{margin-left:-16px;}
   .pland .pseat .cards.face{--cw:42px;min-height:59px;}
@@ -486,7 +486,7 @@
   .pseat .cards.face.om .pcard+.pcard{margin-left:-25px;}
   .pseat .tag{font-size:.92rem;max-width:150px;}
   .pseat .tag .avatar{width:28px;height:28px;}
-  .pseat .stack,.pbet .amt{font-size:.84rem;}
+  .pseat .stack,.pbet .amt{font-size:.78rem;}
   .ppot .lbl{font-size:.92rem;}
   .phand{--cw:92px;gap:12px;}
   .phand.om{--cw:80px;}
@@ -4908,7 +4908,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (H && R.no !== H.no) { R.no = H.no; R.board = H.board.length; R.bets = H.bet.slice(); animateDeal(); }
     else if (H) {
       if (R.bets) H.bet.forEach(function (b, i) { if (b > (R.bets[i] || 0) && betEls[i] && seatEls[i]) Cards.fly(betEls[i], seatEls[i].querySelector('.tag'), { ms: 320 }); });
-      if (done && !R.paid) { R.paid = H.no; H.won.forEach(function (w, i) { if (w > 0 && betEls[i]) Cards.fly(betEls[i], board, { ms: 520 }).then(function () { betEls[i].style.transform = ''; placeSays(); fitWins(); }); }); }
+      if (done && !R.paid) { R.paid = H.no; H.won.forEach(function (w, i) { if (w > 0 && betEls[i]) Cards.fly(betEls[i], board, { ms: 520 }).then(function () { betEls[i].style.transform = ''; placeBets(); placeSays(true); fitWins(); }); }); }
       R.board = H.board.length; R.bets = H.bet.slice();
     }
     if (H && !done) R.paid = 0;
@@ -5097,10 +5097,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   function placeSays(keep) {   // keep: a second look once things settle; a pill whose spot is still clear stays put
     var T = tableClear(); if (!T) return;
-    [].slice.call(document.querySelectorAll('.ptable .psay')).forEach(function (sy) {
+    if (S && S.hand && R.sayNo !== S.hand.no) { R.sayNo = S.hand.no; R.sayAt = {}; }   // (a new hand starts fresh)
+    var sk = function (sy) { var ps = sy.closest('.pseat'); return ps ? seatEls.indexOf(ps) : 'me'; }, sm = R.sayAt || {};
+    [].slice.call(document.querySelectorAll('.ptable .psay')).sort(function (a, b) { return (sm[sk(b)] != null ? 1 : 0) - (sm[sk(a)] != null ? 1 : 0); }).forEach(function (sy) {
       if (keep && sy.dataset.placed && T.area(restRect(sy), sy) < 4) { T.obs.push(sy); return; }
       sy.dataset.placed = 1;
-      var best = null;
+      // a player's pill goes back to the spot it had last time if that's still clear, so it doesn't hop between actions
+      var ps = sy.closest('.pseat'), key = ps ? seatEls.indexOf(ps) : 'me', was = (R.sayAt || (R.sayAt = {}))[key], best = null;
+      if (was != null) {
+        SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
+        if (SAYAT[was]) sy.classList.add(SAYAT[was]);
+        if (T.area(restRect(sy), sy) < 4) { T.obs.push(sy); return; }
+      }
       for (var k = 0; k < SAYAT.length; k++) {
         SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
         if (SAYAT[k]) sy.classList.add(SAYAT[k]);
@@ -5110,6 +5118,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       }
       SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
       if (SAYAT[best.k]) sy.classList.add(SAYAT[best.k]);
+      R.sayAt[key] = best.k;
       T.obs.push(sy);   // (a pill placed is in the way of the next)
     });
   }
@@ -5155,25 +5164,38 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Bets never sit on each other: big amounts side by side ("3,000" by "24,000") push the later pile to the nearest
   // clear spot (below, above, then aside), never onto a seat, a card or the pot
   function placeBets() {
-    var bets = [].slice.call(document.querySelectorAll('.ptable .pbet:not(.won)'));
+    var bets = [].slice.call(document.querySelectorAll('.ptable .pbet'));
     bets.forEach(function (b) { b.style.translate = ''; });
-    if (bets.length < 2) return;
+    if (!bets.length) return;
     var hit = function (a, q) { return Math.min(a.right, q.right) - Math.max(a.left, q.left) > 1 && Math.min(a.bottom, q.bottom) - Math.max(a.top, q.top) > 1; };
-    var fixed = [].slice.call(document.querySelectorAll('.ptable :is(.pseat .tag, .pseat .pstk, .pseat .cards, .phand .pcard, .pboard .pcard, .ppot)')).map(function (o) { return o.getBoundingClientRect(); });
+    var fixed = [].slice.call(document.querySelectorAll('.ptable :is(.pseat .tag, .pseat .pstk, .pseat .cards, .phand .pcard, .pboard .pcard, .ppot, .psay)')).map(function (o) { return o.getBoundingClientRect(); });
     var placed = [], fe = document.querySelector('.ptable .felt-in'), fr = fe && fe.getBoundingClientRect();   // (and never off the felt)
+    var board = [].slice.call(document.querySelectorAll('.ptable .pboard :is(.pcard,.card)')).map(function (o) { return o.getBoundingClientRect(); }), bb = null;
+    board.forEach(function (c) { bb = bb ? { left: Math.min(bb.left, c.left), right: Math.max(bb.right, c.right), top: Math.min(bb.top, c.top), bottom: Math.max(bb.bottom, c.bottom) } : { left: c.left, right: c.right, top: c.top, bottom: c.bottom }; });
     // (a bet still flying in from its seat is measured where it lands)
     var rest = function (b) { var t = b.style.transform, tn = b.style.transition; if (!t) return b.getBoundingClientRect(); b.style.transition = 'none'; b.style.transform = ''; var r = b.getBoundingClientRect(); b.style.transform = t; b.style.transition = tn; return r; };
+    // what's already on the table stays where it is; only a newcomer looks for room (so nothing hops between actions)
+    var H0 = S && S.hand, mem = R.betNo === (H0 && H0.no) && R.betAt || {};
+    R.betAt = {}; R.betNo = H0 && H0.no;
+    var keyOf = function (b) { return (b.classList.contains('won') ? 'w' : 'b') + betEls.indexOf(b); };
+    bets.sort(function (a, b) { return (mem[keyOf(b)] ? 1 : 0) - (mem[keyOf(a)] ? 1 : 0); });
     bets.forEach(function (b) {
-      var r = rest(b), d = r.height + 3, w = r.width * 0.6;
+      // (the pot going to a winner carries its hand's name: the two move as one, and stay off the board's cards)
+      var r = rest(b), wh = b.querySelector('.wh'), won = b.classList.contains('won');
+      if (wh) { var q0 = wh.getBoundingClientRect(); r = { left: Math.min(r.left, q0.left), right: Math.max(r.right, q0.right), top: Math.min(r.top, q0.top), bottom: Math.max(r.bottom, q0.bottom) }; }
+      var d = r.bottom - r.top + 3, w = (r.right - r.left) * 0.6;
       var area = function (a, q) { return Math.max(0, Math.min(a.right, q.right) - Math.max(a.left, q.left)) * Math.max(0, Math.min(a.bottom, q.bottom) - Math.max(a.top, q.top)); };
       // each spot scored by what it covers: another bet counts most, then a seat, a card or the pot (moving is a last resort)
       var cost = function (dx, dy) { var q = { left: r.left + dx, right: r.right + dx, top: r.top + dy, bottom: r.bottom + dy }, c = 0;
-        placed.forEach(function (p) { c += area(q, p) * 10; }); if (dx || dy) { fixed.forEach(function (f) { c += area(q, f); }); if (fr) c += ((q.right - q.left) * (q.bottom - q.top) - area(q, fr)) * 10; } return c + (Math.abs(dx) + Math.abs(dy)) * 0.01; };
-      if (!placed.some(function (p) { return hit(r, p); })) { placed.push(r); return; }
+        placed.forEach(function (p) { c += area(q, p) * 10; }); if (won) board.forEach(function (f) { c += area(q, f) * 5; }); if (dx || dy) { fixed.forEach(function (f) { c += area(q, f); }); if (fr) c += ((q.right - q.left) * (q.bottom - q.top) - area(q, fr)) * 10; } return c + (Math.abs(dx) + Math.abs(dy)) * 0.01; };
+      var onBoard = won && board.some(function (c) { return hit(r, c); }), k0 = keyOf(b), m = mem[k0];
+      var put = function (t) { if (t[0] || t[1]) b.style.translate = t[0].toFixed(0) + 'px ' + t[1].toFixed(0) + 'px'; R.betAt[k0] = t; placed.push({ left: r.left + t[0], right: r.right + t[0], top: r.top + t[1], bottom: r.bottom + t[1] }); };
+      if (m) { var q1 = { left: r.left + m[0], right: r.right + m[0], top: r.top + m[1], bottom: r.bottom + m[1] }; if (!placed.some(function (p) { return hit(q1, p); }) && !(won && board.some(function (c) { return hit(q1, c); }))) return put(m); }
+      if (!onBoard && !placed.some(function (p) { return hit(r, p); })) return put([0, 0]);
       var tries = [[0, 0], [0, d], [0, -d], [w, 0], [-w, 0], [w, d], [-w, d], [w, -d], [-w, -d], [0, 2 * d], [0, -2 * d], [1.6 * w, 0], [-1.6 * w, 0]], go = tries[0], best = Infinity;
+      if (bb) [[0, bb.top - r.bottom - 4], [0, bb.bottom - r.top + 4], [bb.right - r.left + 4, 0], [bb.left - r.right - 4, 0]].forEach(function (t) { tries.push(t); });
       tries.forEach(function (t) { var c = cost(t[0], t[1]); if (c < best - 0.001) { best = c; go = t; } });
-      b.style.translate = go[0].toFixed(0) + 'px ' + go[1].toFixed(0) + 'px';
-      placed.push({ left: r.left + go[0], right: r.right + go[0], top: r.top + go[1], bottom: r.bottom + go[1] });
+      put(go);
     });
   }
   function fitTiles() {
@@ -5195,7 +5217,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (sn.scrollWidth <= sn.clientWidth + 0.5) return;
       sn.style.fontSize = (parseFloat(getComputedStyle(sn).fontSize) * Math.max(sn.clientWidth / sn.scrollWidth * 0.97, 0.7)).toFixed(1) + 'px';
     });
+    // (bets still flying in from their seats, or the pot on its way to the winner, are placed around where they land)
+    var fly = [].slice.call(document.querySelectorAll('.ptable .pbet')).filter(function (b) { return b.style.transform; }).map(function (b) { var f = [b, b.style.transform, b.style.transition]; b.style.transition = 'none'; b.style.transform = ''; return f; });
     placeBets(); placeSays(); fitWins();
+    fly.forEach(function (f) { f[0].style.transform = f[1]; f[0].style.transition = f[2]; });
     // (a pill popping in or chips sliding measure small or in the wrong place: once they've settled, place again)
     clearTimeout(fitTiles.t); fitTiles.t = setTimeout(function () { placeSays(true); fitWins(); }, 560);
     // the side panel never cuts its last section off: short of room, the log's one-line preview sheds its smaller
