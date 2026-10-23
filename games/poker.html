@@ -57,7 +57,7 @@
 .pseat.me{flex-direction:row;gap:6px;}
 .pseat.top{display:grid;grid-template-columns:auto auto;column-gap:6px;row-gap:3px;align-items:center;justify-items:start;}
 .pseat.top > .cards{grid-row:1 / 3;}
-.pseat.turn .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6);transform:scale(1.06);}
+.pseat.acting .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6);}
 .pseat.win .tag{box-shadow:0 0 0 3px var(--green),0 0 20px rgba(61,220,132,.65);}
 .pseat.fold > .cards,.pseat.fold > .tag{opacity:.45;}
 .pseat.out{opacity:.35;}
@@ -99,6 +99,11 @@
 .ppot .stk.big{--w:24px;gap:3px;}
 .pland .ppot .stk.big{--w:20px;}
 .pstk{display:flex;align-items:flex-end;gap:4px;}
+.pseat .pcard.gone{visibility:hidden;}
+/* a player's chips and amount keep one size whatever the stack (four chip colours at most; room for 102,450) */
+.pseat .stk.mini{min-width:calc(var(--w) * 4 + 3px);min-height:calc(var(--w) * .9);justify-content:flex-end;}
+:is(.ps-lt,.ps-lb,.ps-l) > .pstk .stk.mini{justify-content:flex-start;}
+.pseat .pstk .stack{min-width:4.3em;text-align:center;box-sizing:border-box;}
 .pbet{z-index:2;display:flex;align-items:flex-end;gap:4px;}
 .pa.bl{transform:translate(0,-50%);}
 .pa.br{transform:translate(-100%,-50%);flex-direction:row-reverse;}
@@ -396,7 +401,6 @@
 .stage.pland .phand.om{--cw:clamp(40px,13dvh,54px);gap:0;}
 .pland .phand.om .pcard+.pcard{margin-left:-10px;}
 .pland .phand .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.15),0 6px 14px rgba(0,0,0,.45);}
-.pland .pseat.turn{min-height:0;margin:0;}   /* not Kit's turn banner */
 .pland .pseat.me{position:relative;z-index:2;margin-top:-20px;gap:4px;min-width:0;}
 .pland .pseat.me .psay{top:50%;bottom:auto;left:100%;transform:translate(6px,-50%);}
 .pland .ppot{flex-direction:row;align-items:flex-end;}
@@ -651,9 +655,9 @@
 .peq{position:absolute;left:50%;bottom:calc(100% + 3px);transform:translateX(-50%);padding:1px 8px;border-radius:999px;background:#0b0f24;color:#fff;font-weight:900;font-size:.76rem;font-variant-numeric:tabular-nums;white-space:nowrap;box-shadow:0 0 0 2px var(--w20,rgba(255,255,255,.2)),0 3px 8px rgba(0,0,0,.45);z-index:7;animation:pop .35s var(--spring);}
 .peq.lead{background:var(--green);color:#062312;box-shadow:0 0 0 2px #fff,0 0 14px rgba(61,220,132,.6);}
 .pseat .tag .pb{margin-left:3px;padding:0 5px;border-radius:999px;background:var(--yellow);color:#2b1a00;font-size:.6rem;font-weight:900;line-height:1.5;}
-.pme.turn .phand .pcard{box-shadow:0 0 0 3px var(--yellow),0 0 22px rgba(255,200,61,.55),0 8px 16px rgba(0,0,0,.45);}
-.pme.turn .phand{animation:myturn 1.6s ease-in-out infinite;}
-@keyframes myturn{50%{transform:translateY(-3px);}}
+:is(.pme.acting .phand,.phand.acting) .pcard{box-shadow:0 0 0 3px var(--yellow),0 0 22px rgba(255,200,61,.55),0 8px 16px rgba(0,0,0,.45);}
+:is(.pme.acting .phand,.phand.acting){animation:myturn 1.6s ease-in-out infinite;}
+@keyframes myturn{50%{filter:drop-shadow(0 0 10px rgba(255,200,61,.75));}}   /* your turn: your cards glow (they never move) */
 .pseat.sit .tag{animation:sitdown .6s var(--spring);}
 @keyframes sitdown{from{transform:translateY(-14px) scale(.8);opacity:0;}}
 /* the venue's name printed on the felt */
@@ -809,6 +813,9 @@
 .pport .ptable > .felt-in::after{inset:12% 10%;border-radius:46% / 30%;}
 .pport .pme{bottom:-22px;flex-direction:row;align-items:flex-end;gap:8px;}
 .pport .pme .pdealer{left:calc(100% + 8px);right:auto;top:auto;bottom:30px;}
+.pport .pseat .tag{position:relative;overflow:visible;} .pport .pseat .tag > span:nth-child(2){overflow:hidden;text-overflow:ellipsis;}
+.pport .pseat .tag > .pdealer{position:absolute;top:50%;left:calc(100% + 5px);margin-top:-10px;width:20px;height:20px;font-size:.62rem;}
+.pport :is(.ps-rt,.ps-rb,.ps-r) .tag > .pdealer{left:auto;right:calc(100% + 5px);}
 .pport .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 .pport .pme .pseat{position:absolute;right:calc(100% + 8px);bottom:26px;margin:0;flex-direction:column;align-items:flex-end;gap:3px;}   /* your cards stay centred; your name and chips beside them */
 .pport .pme .pseat .psay{top:auto;bottom:100%;left:auto;right:0;transform:translate(0,-4px);}
@@ -4534,7 +4541,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (p.out) seat.classList.add('out');
       if (p.sat && H && p.sat === H.no) seat.classList.add('sit');
       if (H && H.folded[i]) seat.classList.add('fold');
-      if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('turn');
+      if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('acting');   // (not 'turn': that is Kit's turn banner)
       if (main && main.w.indexOf(i) >= 0 && H.won[i] > 0) seat.classList.add('win');
       if (!me) {
         var vv = gv(), nh = H && H.hole[i] ? H.hole[i].length : 0;
@@ -4552,6 +4559,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
             if (H.shown[i] && done && H.five && H.five[i] && H.five[i].length && main && main.w.indexOf(i) >= 0 && main.v != null) ce.classList.add(H.five[i].indexOf(c) >= 0 ? 'best' : 'unused');
             cards.appendChild(ce);
           });
+        } else if (H && H.inHand[i] && H.hole[i]) {
+          // folded: the cards' room stays (unseen), so the name and chips beside them don't move
+          H.hole[i].forEach(function () { var ce = backEl(); ce.classList.add('gone'); cards.appendChild(ce); });
         }
         seat.appendChild(cards);
         // press and hold a player's cards to see them big in the middle of the table (any card showing face up)
@@ -4571,7 +4581,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (p.cpu || p.pr || me) { tag.classList.add('tap'); tag.addEventListener('click', function () { profileSheet(p); }); }
       seat.appendChild(tag);
       // what each player has: their chips beside the amount
-      if (p.left || p.out || p.stack <= 0) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : p.out ? ordinal(p.place) : amt(p.stack) }));
+      if (p.left || p.out) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : ordinal(p.place) }));
+      else if (p.stack <= 0) seat.appendChild(el('div', { class: 'pstk' }, [el('div', { class: 'stk mini' }), el('span', { class: 'stack', text: amt(0) })]));   // all in: the same shape, no chips
       else seat.appendChild(el('div', { class: 'pstk' }, [chipStack(p.stack, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]));
       var say = '';
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
@@ -4599,7 +4610,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       }
       if (H && H.button === i && lme) {
         var dl = el('div', { class: 'pdealer', text: 'D', 'aria-label': 'Dealer button' });
-        if (me) meDealer = dl; else seat.appendChild(dl);
+        if (me) meDealer = dl; else if (port) tag.appendChild(dl); else seat.appendChild(dl);   // (upright phone: it floats beside the name, so the seat never changes size)
       } else if (H && H.button === i) {
         var dp = lerp(pos, CEN, me ? 0.3 : 0.24);
         dp[0] += pos[0] < 50 ? 8 : pos[0] > 50 ? -8 : (me ? -16 : 16);
@@ -4650,8 +4661,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (done && H.five && H.five[0] && H.five[0].length && main && main.v != null && main.w.indexOf(0) >= 0) ce.classList.add(H.five[0].indexOf(c) >= 0 ? 'best' : 'unused');
       hand.appendChild(ce);
     });
-    if (lme) tb.appendChild(el('div', { class: 'pme' + (myTurn ? ' turn' : '') }, [meDealer, meSeat, hand, meEq]));
-    else { if (myTurn) hand.classList.add('turn'); app.appendChild(hand); }
+    if (lme) tb.appendChild(el('div', { class: 'pme' + (myTurn ? ' acting' : '') }, [meDealer, meSeat, hand, meEq]));
+    else { if (myTurn) hand.classList.add('acting'); app.appendChild(hand); }
     app.appendChild(rail(final));
     requestAnimationFrame(fitTiles);
 
