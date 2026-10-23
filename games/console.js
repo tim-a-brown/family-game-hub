@@ -678,6 +678,7 @@
       glassEl.classList.remove('loading');
       try { emu().gameManager.setFastForwardRatio(3); } catch (e) {}
       ConsoleNet.install(emu());
+      if (!NET.mode) quietStart();
       if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'ready' }, true); return; }
       hiStart(c);
       if (NET.pick) { var nm = NET.pick; NET.pick = null; root.classList.remove('net-pick'); netHost(nm); return; }
@@ -695,6 +696,9 @@
     window.EJS_ready = function () {
       window.EJS_emulator.on('saveDatabaseLoaded', function (FS) {
         if (TAP_ON) tapIn(FS);
+        // no "Fast-Forward" caption on the picture (the button lights up instead, and a game starting before your
+        // first touch runs that way at normal speed)
+        try { var cfgP = '/home/web_user/.config/retroarch/retroarch.cfg'; FS.writeFile(cfgP, FS.readFile(cfgP, { encoding: 'utf8' }) + 'notification_show_fast_forward = "false"\n'); } catch (e) {}
         if (sram) { try { var dir = sram.path.split('/').slice(0, -1).join('/'), p = ''; dir.split('/').slice(1).forEach(function (part) { p += '/' + part; try { FS.mkdir(p); } catch (e) {} }); FS.writeFile(sram.path, sram.data); sram.done(); } catch (e) { console.warn('[console] battery save not put in place', e); } }
       });
       // the game's own battery save, each time it's written out (sent only when it changed)
@@ -756,8 +760,26 @@
   function emu() { return window.EJS_emulator && window.EJS_emulator.gameManager ? window.EJS_emulator : null; }
   function press(i, v, player) { var e = emu(); if (e && started) try { e.gameManager.simulateInput(player || 0, i, v); } catch (er) {} if (v) hiInput(); }
   // a game started straight from the home screen has no tap behind it yet: its sound starts with your first touch
-  function wakeAudio() { try { var E = emu(), a = E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; if (a && a.state === 'suspended') a.resume(); } catch (e) {} }
+  function actxOf() { try { var E = emu(); return E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; } catch (e) { return null; } }
+  // ...and the console waits on its sound before drawing the next frame, so until then it runs on the clock instead
+  // (fast-forward at 1x doesn't wait on sound): the title screen plays straight away, in silence, until you touch
+  var quiet = false;
+  function quietStart() {
+    var a = actxOf(), E = emu(); if (!a || a.state !== 'suspended' || !E) return;
+    quiet = true;
+    try { E.gameManager.setFastForwardRatio(1); E.gameManager.toggleFastForward(1); } catch (e) {}
+  }
+  function quietEnd() {
+    if (!quiet) return; quiet = false;
+    var E = emu(); if (E) try { E.gameManager.setFastForwardRatio(3); E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (e) {}
+  }
+  function wakeAudio() {
+    var a = actxOf(); if (!a) return;
+    if (a.state === 'suspended') { var r = a.resume(); if (r && r.then) r.then(function () { if (a.state === 'running') quietEnd(); }); }
+    else quietEnd();
+  }
   document.addEventListener('pointerdown', wakeAudio, true);
+  document.addEventListener('keydown', wakeAudio, true);
   document.addEventListener('keydown', wakeAudio, true);
 
   // the last picture from when you left, to carry on from
