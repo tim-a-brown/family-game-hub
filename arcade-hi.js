@@ -185,6 +185,31 @@ const ArcadeHi = (function(){
 .ahi-plate small{font-size:.8rem;font-weight:800;color:rgba(255,255,255,.6);}
 .ahi-change{display:block;margin:0 auto;padding:6px 10px;border:0;background:none;color:rgba(255,255,255,.5);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;}
 @keyframes ahi-plate{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
+/* the board right after a score files: the rows around it, the new one dropping into its place and the ones below
+   stepping down to make room */
+.ahi-snap{margin:4px 0 6px;display:flex;flex-direction:column;gap:4px;}
+.ahi-sr{display:grid;grid-template-columns:26px 30px 1fr auto;align-items:center;gap:8px;padding:5px 10px;border-radius:12px;background:rgba(255,255,255,.04);}
+.ahi-sr .avatar{width:28px;height:28px;font-size:.8rem;}
+.ahi-sr-rk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.72rem;font-weight:900;color:rgba(255,255,255,.4);}
+.ahi-sr-rk.m{color:#2b1a00;}
+.ahi-sr-nm{min-width:0;font-family:var(--display);font-size:1.02rem;letter-spacing:.1em;line-height:1.05;}
+.ahi-sr-nm small{display:block;font-family:var(--font,system-ui);font-size:.66rem;font-weight:700;letter-spacing:0;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ahi-sr-pt{font-family:var(--display);font-size:1rem;}
+.ahi-sr.me{background:rgba(245,200,66,.14);box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.6),0 0 18px rgba(245,200,66,.18);color:#f5c842;animation:ahi-drop .6s cubic-bezier(.3,1.5,.5,1) .45s backwards;}
+.ahi-sr.me .ahi-sr-nm small{color:rgba(245,200,66,.75);}
+.ahi-sr.dn{animation:ahi-step .45s cubic-bezier(.3,1.2,.5,1) .2s backwards;}
+.ahi-sr-gap{height:10px;margin:-2px 0;background:radial-gradient(circle,rgba(255,255,255,.3) 1.5px,transparent 2px) center/12px 10px repeat-x;width:40px;align-self:center;}
+@keyframes ahi-drop{from{transform:translateY(-14px) scale(1.12);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes ahi-step{from{transform:translateY(calc(-100% - 4px));}to{transform:none;}}
+@media (prefers-reduced-motion:reduce){.ahi-sr.me,.ahi-sr.dn{animation:none;}}
+/* sideways phone: the score on the left, the board and Continue on the right */
+@media (max-height:540px) and (orientation:landscape){
+  .ahi-box.ahi-two{max-width:720px;display:grid;grid-template-columns:1fr 1.35fr;gap:4px 22px;align-items:center;padding:16px 20px;}
+  .ahi-two .ahi-score-disp{margin-bottom:0;}
+  .ahi-two .ahi-sr{padding:3px 10px;}
+  .ahi-two .ahi-sr .avatar{width:24px;height:24px;}
+  .ahi-two #ahi-go{margin:10px auto 2px !important;}
+}
 /* Leaderboard table */
 .ahi-table{width:100%;border-collapse:collapse;font-size:.82rem;}
 .ahi-table th{color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);}
@@ -410,25 +435,28 @@ const ArcadeHi = (function(){
     const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
     const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;
+    const snap = snapshot(key, ini, score);
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay ahi-filed';
     overlay.innerHTML = `
-      <div class="ahi-box">
-        <div class="ahi-title">${ttl}</div>
+      <div class="ahi-box${snap ? ' ahi-two' : ''}">
+        <div class="ahi-l"><div class="ahi-title">${ttl}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
-          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}${rank ? ' · #' + rank : ''}</div>
+          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}${rank && !snap ? ' · #' + rank : ''}</div>
           ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
-        </div>
-        <div class="ahi-plate">${avHTML(who || ini, 'sm')}<span class="ahi-plate-ini">${esc(ini)}</span><small>${esc(who || '')}</small></div>
+        </div></div>
+        <div class="ahi-r">${snap || `<div class="ahi-plate">${avHTML(who || ini, 'sm')}<span class="ahi-plate-ini">${esc(ini)}</span><small>${esc(who || '')}</small></div>`}
         <button class="btn btn-gold btn-block" id="ahi-go" style="max-width:240px;margin:14px auto 6px;display:block;">Continue</button>
-        <button class="ahi-change" id="ahi-change" type="button">Not ${esc(ini)}? Change</button>
+        <button class="ahi-change" id="ahi-change" type="button">Not ${esc(ini)}? Change</button></div>
       </div>`;
     document.body.style.overflow = 'hidden';
     document.body.appendChild(overlay);
     let done = false;
     function close(){ if(done) return; done = true; clearTimeout(t); overlay.remove(); document.body.style.overflow = ''; onDone && onDone(); }
-    const t = setTimeout(close, 4200);
+    // long enough to find yourself on the board; touching it keeps it up until Continue
+    const t = setTimeout(close, snap ? 8000 : 4200);
+    overlay.querySelector('.ahi-box').addEventListener('pointerdown', ()=>clearTimeout(t));
     overlay.querySelector('#ahi-go').addEventListener('click', close);
     overlay.querySelector('#ahi-change').addEventListener('click', ()=>{
       if(done) return; done = true; clearTimeout(t);
@@ -438,6 +466,25 @@ const ArcadeHi = (function(){
       showEntry(key, score, onDone, also, who);
     });
     try{ if(window.Kit){ Kit.sfx && Kit.sfx('good'); Kit.haptic && Kit.haptic('success'); } }catch(e){}
+  }
+
+  // The board around a score that just filed: up to five rows centred on it, with #1 above when it's further down
+  function snapshot(key, ini, score){
+    const list = merged(key), at = list.findIndex(e=>!e.who && e.name.trim()===ini && e.score===score);
+    if(at < 0 || list.length < 2) return '';
+    const start = Math.max(0, Math.min(at - 2, list.length - 5)), idx = [];
+    if(start > 0) idx.push(0, -1);
+    for(let i = start; i < Math.min(list.length, start + 5); i++) idx.push(i);
+    const medal = ['#ffc83d','#cfd6e4','#d9925a'];
+    return '<div class="ahi-snap">' + idx.map(i=>{
+      if(i < 0) return '<div class="ahi-sr-gap"></div>';
+      const e = list[i], nm = e.who || (e.mine ? (myName() || 'You') : e.by || '');
+      return `<div class="ahi-sr${i===at?' me':i>at?' dn':''}">
+        <span class="ahi-sr-rk${i<3?' m':''}"${i<3?` style="background:${medal[i]}"`:''}>${i+1}</span>
+        ${avHTML(nm || e.name)}
+        <span class="ahi-sr-nm">${esc(e.name.trim())}${nm ? `<small>${esc(nm)}</small>` : ''}</span>
+        <span class="ahi-sr-pt">${esc(fmt(key, e.score, true))}</span></div>`;
+    }).join('') + '</div>';
   }
 
   // ── Leaderboard display ───────────────────────────────────────────────────
