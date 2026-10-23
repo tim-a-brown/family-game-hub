@@ -102,6 +102,7 @@
   function startWave(s) {
     if (s.over || (s.waves && s.wave >= s.waves)) return false;
     var early = s.waiting ? 0 : Math.ceil(s.countdown);
+    s.checkpoint = snapshot(s);   // the save point: everything just before this wave (its bonus not yet paid)
     s.waiting = false; s.wave++;
     var w = GD.wave(s.map, s.wave);
     w.groups.forEach(function (g) { for (var n = 0; n < g.n; n++) s.spawning.push({ type: g.type, at: s.time + g.at + n * g.gap, hp: w.hp, sp: g.sp }); });
