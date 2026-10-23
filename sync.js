@@ -403,10 +403,23 @@
   }
   // What changed on this device since the last look. Only a change made once this page has synced and you've touched
   // it counts as new play; a game re-saving what it loaded (or tidying it) stays on this device and isn't sent.
-  var _stPaged = false, _stInput = false, _stKeys = {}, _stFrozen = {};
-  function stStamp(o){
+  var _stPaged = false, _stInput = false, _stKeys = {}, _stFrozen = {}, _stDirty = {}, _stScans = 0;
+  // full: look at every saved key. Otherwise only the keys games wrote since the last look (a game in play saves
+  // often; going over everything the site holds after each pause made taps lag the longer it ran); every tenth
+  // look is a full one anyway, for anything written some other way
+  function stStamp(o, full){
     var first = !o.done, live = !first && _stPaged && _stInput, now = Date.now(), seen = {}, i, k, v, h;
     function mark(k){ var at = Number(o.at[k]) || 0; o.at[k] = first ? Math.max(1, at) : live ? Math.max(now, at + 1) : (at || 1); }
+    if(!full && !first && _stScans++ % 10){
+      var dk = Object.keys(_stDirty); _stDirty = {};
+      dk.forEach(function(k){
+        if(!stKey(k)) return;
+        v = LS.getItem(k); h = v == null ? '-' : v.length > ST_MAX ? 'big' : strHash(v);
+        if(o.sig[k] !== h && !(v == null && o.sig[k] == null)){ o.sig[k] = h; mark(k); }
+      });
+      return;
+    }
+    _stDirty = {};
     for(i = 0; i < LS.length; i++){
       k = LS.key(i); if(!stKey(k)) continue;
       v = LS.getItem(k); if(v == null) continue;
@@ -518,10 +531,10 @@
     _stChain = _stChain.then(function(){
       if(!isPin()) return [];
       var o = stLoad(), took = [];
-      stStamp(o);
+      stStamp(o, pull);
       return Promise.resolve()
         .then(function(){ return pull ? stPull(o) : []; })
-        .then(function(t){ took = t || []; stStamp(o); return stPush(o); })
+        .then(function(t){ took = t || []; stStamp(o, pull || took.length > 0); return stPush(o); })
         .then(function(){
           if(pull){ o.done = 1; ssSet(ST_PULL, String(Date.now())); }
           stSave(o); _stPaged = true;
@@ -543,12 +556,12 @@
     P.setItem = function(k, v){
       if(this === ls && _stFrozen[k]) return;
       st.apply(this, arguments);
-      if(this === ls && stKey(k)){ _stKeys[k] = 1; stSoon(); }
+      if(this === ls && stKey(k)){ _stKeys[k] = 1; _stDirty[k] = 1; stSoon(); }
     };
     P.removeItem = function(k){
       if(this === ls && _stFrozen[k]) return;
       rm.apply(this, arguments);
-      if(this === ls && stKey(k)){ _stKeys[k] = 1; stSoon(); }
+      if(this === ls && stKey(k)){ _stKeys[k] = 1; _stDirty[k] = 1; stSoon(); }
     };
     ['pointerdown', 'keydown', 'touchstart'].forEach(function(t){ document.addEventListener(t, function(){ _stInput = true; }, { capture: true, passive: true }); });
     document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden' && isPin() && _stPaged){ clearTimeout(_stT); stSync(false); } });

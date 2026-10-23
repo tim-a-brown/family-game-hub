@@ -734,15 +734,15 @@
 .pland .pzoom .pzc{--cw:clamp(52px,17dvh,92px);}
 .pzoom .pzc .pcard{margin:0!important;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 8px 18px rgba(0,0,0,.5);}
 .plogo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:0;white-space:nowrap;}
-.plogo b{font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,4.2vw,2.7rem);letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.075);line-height:1;}
-.plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.08);margin-top:4px;}
-.plogo.ft b{color:rgba(255,216,77,.12);}
+.plogo b{font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,4.2vw,2.7rem);letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.54);line-height:1;}
+.plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(255,255,255,.54);margin-top:4px;}
+.plogo.ft b{color:rgba(255,216,77,.56);}
 /* the place's own logo, printed across the felt (gold at the final table) */
 .plogo.art{inset:0;transform:none;display:block;}
-.plogo.art svg{position:absolute;left:10%;top:10%;width:80%;height:80%;color:#fff;opacity:.13;overflow:visible;}
-.plogo.art.ft svg{color:#ffd84d;opacity:.17;}
+.plogo.art svg{position:absolute;left:10%;top:10%;width:80%;height:80%;color:#fff;opacity:.565;overflow:visible;}
+.plogo.art.ft svg{color:#ffd84d;opacity:.585;}
 .pport .plogo.art svg{left:4%;width:92%;}
-.plogo.art .ftl{position:absolute;left:0;right:0;bottom:3.5%;text-align:center;font-weight:900;font-size:clamp(.55rem,1.3vw,.8rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,216,77,.22);}
+.plogo.art .ftl{position:absolute;left:0;right:0;bottom:3.5%;text-align:center;font-weight:900;font-size:clamp(.55rem,1.3vw,.8rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,216,77,.61);}
 .pcirc .felt-in::before{display:none;}
 .stage.pland{grid-template-columns:minmax(0,1fr) clamp(224px,28vw,272px);grid-template-rows:minmax(0,1fr);}
 .stage.pland .ptable{grid-row:1;}
@@ -1537,23 +1537,38 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var k = (st.pick || st.game) + '_' + (st.tourn ? 'tourn' : 'cash');
     return KEYS[k] || 'poker_' + k;
   }
-  function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function load(k) { if (saveS) saveNow(); try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
   var SIM = false, QUIET = false;   // QUIET: working out an online move (state only: nothing drawn, saved or heard)   // test hook (__pk.sim): computer players only, nothing drawn or saved
+  // Saving: the table is written a moment after things settle, once, not after every action (a computer player's turn
+  // and yours in quick succession make one save); anything that reads the saves, leaving, or putting the app away
+  // writes it first
+  var saveS = null, saveT = 0;
   function save() {
     if (!S || SIM || QUIET || NET) return;
-    try { localStorage.setItem(keyOf(S), JSON.stringify(S)); localStorage.setItem(LAST, keyOf(S)); } catch (e) {}
+    if (saveS && saveS !== S) saveNow();
+    saveS = S; clearTimeout(saveT); saveT = setTimeout(saveNow, 400);
+  }
+  function saveNow() {
+    clearTimeout(saveT); var st = saveS; saveS = null; if (!st) return;
+    try { localStorage.setItem(keyOf(st), JSON.stringify(st)); localStorage.setItem(LAST, keyOf(st)); } catch (e) {}
+    delete GC[keyOf(st)];
     resumeSync();
   }
+  window.addEventListener('pagehide', function () { saveNow(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveNow(); });
   // Every game in progress, one of each kind (newest first): {key, st}
   function allKeys() {
     var l = Object.keys(KEYS).map(function (k) { return KEYS[k]; });
     Object.keys(PICK).forEach(function (g) { ['cash', 'tourn'].forEach(function (f) { var k = g + '_' + f; if (!KEYS[k]) l.push('poker_' + k); }); });
     return l;
   }
+  // the other games waiting (read once, kept: only the one at the table changes while you play it)
+  var GC = {};
   function going() {
-    var l = [];
+    if (saveS) saveNow();
+    var l = [], cur = S && !SIM && !QUIET && !NET ? keyOf(S) : null;
     allKeys().forEach(function (key) {
-      var st = load(key);
+      var st = key === cur ? S : key in GC ? GC[key] : (GC[key] = load(key));
       if (st && st.kind && (st.kind === 'vp' ? st.hands > 0 || st.phase === 'hold' : st.handNo > 0)) l.push({ key: key, st: st });
     });
     var last = null; try { last = localStorage.getItem(LAST); } catch (e) {}
@@ -1604,6 +1619,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function yourBank() { return Casino.mode() === 'mine' ? 'your bank' : bankWords(seatName()); }
   function seatName(st) { st = st || S; return !st ? 'You' : st.kind === 'vp' ? st.name : st.players && st.players[0] ? st.players[0].name : 'You'; }
   function drop(st) {
+    if (saveS === st) { clearTimeout(saveT); saveS = null; }   // (a save still waiting must not bring it back)
+    delete GC[keyOf(st)];
     try { localStorage.removeItem(keyOf(st)); if (localStorage.getItem(LAST) === keyOf(st)) localStorage.removeItem(LAST); } catch (e) {}
     resumeSync();
   }
@@ -2805,7 +2822,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (NET) return netHuman(a);
     var H = S.hand;
     if (!H || H.phase !== 'bet' || H.actor !== 0) return;
-    undoStack.push({ s: JSON.stringify(S), no: H.no, street: H.street });
+    if (!S.circ) undoStack.push({ s: JSON.stringify(S, function (k, v) { return k === 'tlog' && this === S ? undefined : v; }), no: H.no, street: H.street });   // (a take-back stays in this street: the hands before it don't change)
     if (undoStack.length > 12) undoStack.shift();
     raiseUI = null; SZ = null; R.pre = null;
     Kit.haptic(a.t === 'fold' ? 'light' : 'medium');
@@ -4568,7 +4585,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var u = undoStack[undoStack.length - 1];
     if (!u) return Kit.toast('Nothing to undo');
     if (!S.hand || u.no !== S.hand.no || u.street !== S.hand.street || S.hand.phase !== 'bet') { undoStack = []; return Kit.toast('Can\'t undo once new cards are out'); }
-    undoStack.pop(); stop(); S = JSON.parse(u.s); raiseUI = null; R.bets = null;
+    undoStack.pop(); stop(); var tl = S.tlog; S = JSON.parse(u.s); S.tlog = tl; raiseUI = null; R.bets = null;
     Kit.sfx('whoosh'); Kit.toast('Undone'); save(); step();
   }
 
@@ -6644,7 +6661,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, render: function () { renderTable(); }, act: function (a) { humanAct(a); }, undo: function () { undo(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     ring: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(ringPlate(rec), { rain: true })); } else ringShow(rec); },
     bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
