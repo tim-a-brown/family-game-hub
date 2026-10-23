@@ -140,6 +140,7 @@ var GAMES = [
   { id: 'craps',       name: 'Craps',        color: '#047857', cat: 'casino', min: 1, max: 1, tag: 'Roll the bones, ride the point', play: 'craps' },
   { id: 'baccarat',    name: 'Baccarat',     color: '#7c3aed', cat: 'casino', min: 1, max: 1, tag: 'Player, Banker or Tie', play: 'baccarat' },
   { id: 'horserace',   name: 'Horse Race',   color: '#000', cat: 'casino', min: 1, max: 6, tag: 'Pick your horse, place your bets', play: 'horserace' },
+  { id: 'sportsbook',  name: 'Sportsbook',   color: '#16703e', cat: 'casino', min: 1, max: 1, tag: 'Bet real games: moneylines, spreads, totals and parlays', play: 'sportsbook' },
   { id: 'threecardpoker', name: 'Three Card Poker', color: '#0f766e', cat: 'casino', min: 1, max: 1, tag: 'Ante up and beat the dealer', play: 'threecardpoker' },
   { id: 'paigow',      name: 'Pai Gow',      color: '#9f1239', cat: 'casino', min: 1, max: 1, tag: 'Set a high hand and a low hand', play: 'paigow' },
 

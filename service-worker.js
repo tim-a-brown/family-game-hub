@@ -366,6 +366,7 @@ const PRECACHE_URLS = [
   '/games/spades-ai.html',
   '/games/spades.html',
   '/games/spellingbee.html',
+  '/games/sportsbook.html',
   '/games/sudoku.html',
   '/games/tetris.html',
   '/games/tetrinet.html',

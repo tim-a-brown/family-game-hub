@@ -276,6 +276,13 @@ var GameIcon = (function () {
         circ(5.2, 15.8, 1.5, W, ' opacity=".8"') + circ(15.2, 16.4, 1.5, W, ' opacity=".8"');
     },
     craps: function () { return '<g transform="rotate(-12 7 11.5)">' + rect(1.5, 6, 11, 11, 2.5, R) + circ(4.3, 8.8, 1.05, W) + circ(9.7, 8.8, 1.05, W) + circ(7, 11.5, 1.05, W) + circ(4.3, 14.2, 1.05, W) + circ(9.7, 14.2, 1.05, W) + '</g>' + rect(11.5, 7, 11, 11, 2.5, K, ' transform="rotate(10 17 12.5)"') + circ(15, 10.4, 1.1, W) + circ(19.2, 14.6, 1.1, W); },
+    sportsbook: function () {   // a football with white laces, a baseball tucked behind it
+      return circ(17.4, 17.2, 5.2, W, ' stroke="' + K + '" stroke-opacity=".18" stroke-width=".8"') +
+        line('M13.6 14.2c1.5 1.6 1.5 4.4 0 6M21.2 14.2c-1.5 1.6-1.5 4.4 0 6', R, 1) +
+        '<ellipse cx="10" cy="10.4" rx="9.2" ry="5.6" fill="#8a4a22" transform="rotate(-35 10 10.4)"/>' +
+        line('M3.9 13.6 5.6 12.4M14.4 6.2l1.7-1.2', W, 1.1) +
+        line('M7.2 13.4l5.6-6', W, 1.3) + line('M8.4 9.6l1.2 1.2M9.6 8.4l1.2 1.2M10.8 7.2 12 8.4M7.2 10.8l1.2 1.2', W, 1.1);
+    },
     baccarat: function () {   // a natural nine: an elegant gold 9 on a dark card with diamond pips
       return rect(3.6, .8, 16.8, 22.4, 2.6, K, ' stroke="' + Y + '" stroke-width="1.2"') +
         '<text x="12" y="18.4" text-anchor="middle" font-family="Georgia,\'Times New Roman\',serif" font-style="italic" font-weight="700" font-size="18.5" fill="' + Y + '">9</text>';
