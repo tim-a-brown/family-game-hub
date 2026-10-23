@@ -829,6 +829,14 @@
 .stage.pport .prail:has(> .pfull){height:58%;} .pport .prail > .pfull{flex:1 1 auto;min-height:0;}   /* the whole log takes the lower half; the table stays in view above it */
 .pport .pseat.up.pa{transform:translate(-50%,-100%);} .pport .pseat.pa:is(.ps-lb,.ps-rb){transform:translate(-50%,0);}
 .pport .ps-lb .psay{top:50%;bottom:auto;left:100%;transform:translate(4px,-50%);} .pport .ps-rb .psay{top:50%;bottom:auto;left:auto;right:100%;transform:translate(-4px,-50%);}   /* what they said sits toward the middle, clear of your seat */   /* the upper side seats stand on their chips: cards turned up grow away from the board */
+/* the side seats keep inside the rail: pinned by their outer edge, the amount on the outside and the chips toward the middle */
+.pport .pseat.pa:is(.ps-lt,.ps-lb,.ps-l){left:0 !important;align-items:flex-start;justify-items:start;}
+.pport .pseat.pa:is(.ps-rt,.ps-rb,.ps-r){left:auto !important;right:0;align-items:flex-end;justify-items:end;}
+.pport .pseat.pa:is(.ps-lt,.ps-lb,.ps-l,.ps-rt,.ps-rb,.ps-r){transform:translate(0,-50%);}
+.pport .pseat.up.pa:is(.ps-lt,.ps-l,.ps-rt,.ps-r){transform:translate(0,-100%);} .pport .pseat.pa:is(.ps-lb,.ps-rb){transform:none;}
+.pport :is(.ps-lt,.ps-lb,.ps-l) > .pstk{flex-direction:row-reverse;}
+/* your seat beside your cards: your chips stand on your amount, so the pair is no wider than either */
+.pport .pme .pseat .pstk{flex-direction:column;align-items:flex-end;gap:2px;}
 /* short phones (SE): everything a notch tighter, and while you size a bet the event and the two tiles step aside */
 @media (orientation:portrait) and (max-height:740px){
   .stage.pport .prail{gap:5px;}
@@ -1399,7 +1407,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   function chipStack(v, size) {
     var box = el('div', { class: 'stk' + (size ? ' ' + size : '') }), per = size === 'big' ? 10 : size === 'mini' ? 5 : 8;   // (a player's stack stays as low as the amount beside it)
-    chipCols(v).forEach(function (c) {
+    var cols = chipCols(v);
+    if (size === 'mini') cols = cols.slice(0, 4);   // a player's stack: the four biggest colours (the amount beside it is exact)
+    cols.forEach(function (c) {
       for (var n = c[1]; n > 0; n -= per) {
         var col = el('div', { class: 'col' });
         for (var i = 0; i < Math.min(n, per); i++) col.appendChild(el('i', { style: { '--c': c[0][1], '--s': c[0][2] } }));
