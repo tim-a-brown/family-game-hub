@@ -733,6 +733,9 @@
 /* the whole table's log, over the sidebar */
 .pfull{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:inset 0 0 0 1px var(--line),var(--shadow-sm);animation:rise .25s var(--ease) both;}
 .pcirc .pfull{background:linear-gradient(var(--glass),var(--glass)),var(--glass);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3);box-shadow:inset 0 0 0 1px var(--line-2),0 6px 18px rgba(0,0,0,.22);}
+.pfull.shown,.prail > .pfull.shown,.pcirc .prail > .pfull.shown{animation:none;}   /* (opened once: moving into the next redraw's sidebar doesn't play it again) */
+.pfull-l > .fresh{animation:pfline .3s var(--ease) both;}
+@keyframes pfline{from{opacity:0;transform:translateY(6px);}}
 .pfull-h{flex:none;display:flex;align-items:center;gap:8px;padding:8px 6px 8px 12px;border-bottom:1px solid var(--line);}
 .pfull-h b{font-weight:900;font-size:.95rem;white-space:nowrap;} .pfull-h small{flex:1;font-size:.74rem;font-weight:800;color:var(--text-3);}
 .pfull-go{flex:none;margin-left:auto;min-height:32px;padding:0 10px;white-space:nowrap;border:0;border-radius:999px;background:var(--yellow-fill);color:#2b1a00;font-weight:900;font-size:.82rem;box-shadow:0 3px 0 #9a6b00;animation:pfgo 1.4s ease-in-out infinite;}
@@ -852,6 +855,7 @@
 .pport .pme .pseat{position:absolute;right:calc(100% + 8px);bottom:26px;margin:0;flex-direction:column;align-items:flex-end;gap:3px;}   /* your cards stay centred; your name and chips beside them */
 .pport .pme .pseat .psay{top:auto;bottom:100%;left:auto;right:0;transform:translate(0,-4px);}
 .pport .pme > .psay.rt{left:calc(100% + 8px);right:auto;top:4px;bottom:auto;transform:none;}
+.stage.pport:has(.prail > .pfull) .pme .pseat > .tag{display:none;}   /* (the log open squeezes the table: your cards say it's you, and the side seats keep their names) */
 .pport .pseat.up.ps-lt > .psay{top:0;bottom:auto;left:100%;right:auto;transform:translate(4px,0);} .pport .pseat.up.ps-rt > .psay{top:0;bottom:auto;left:auto;right:100%;transform:translate(-4px,0);}   /* the upper side seats: what they say sits toward the middle, not up off the table */
 .pport .pev .tg:not(.hot):not(.ok):not(.gold){display:none;}   /* in the narrow box only the tags that say something now */
 .stage.pport .phand,.stage.pport.raising .phand{--cw:clamp(56px,16.5vw,70px);gap:6px;min-height:0;}
@@ -4873,7 +4877,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       card.appendChild(railStand());
       if (railPref('log')) {
         var lg = railLog(); lg.classList.add('tap');
-        lg.onclick = function () { R.logOpen = true; R.logEnd = true; Kit.sfx('tap', 0.5); renderTable(); };
+        lg.onclick = function () { R.logOpen = true; R.logEnd = true; R.pfull = null; Kit.sfx('tap', 0.5); renderTable(); };
         card.appendChild(lg);
       }
       box.appendChild(card);
@@ -5331,20 +5335,60 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (e.s) return el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(function (c) { return miniCard(c); }).join(' ') }) : null]);
     return el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t, e.n) })]);
   }
-  // every hand at this table so far, newest at the bottom; it stays where you scrolled while the hand goes on
+  // every hand at this table so far, newest at the bottom. It is built once when you open it and kept while the
+  // hand goes on: each redraw only adds the new lines (they ease in) and leaves the rest, and where you scrolled, alone;
+  // when you're at the bottom it glides down to what just happened
   function fullLog(yourTurn) {
-    var H = S.hand, box = el('div', { class: 'pfull' }), list = el('div', { class: 'pfull-l' });
-    function shut() { R.logOpen = false; Kit.sfx('tap', 0.5); renderTable(); }
-    var nH = (S.tlog || []).length + (H ? 1 : 0);
-    box.appendChild(el('div', { class: 'pfull-h' }, [
-      el('b', { text: 'This table' }),
-      yourTurn ? el('button', { type: 'button', class: 'pfull-go', text: 'Your move', onclick: shut }) : el('small', { text: nH + ' hand' + (nH === 1 ? '' : 's') }),
-      el('button', { type: 'button', class: 'pfull-x', 'aria-label': 'Close the log', html: Kit.icon('close'), onclick: shut })]));
-    box.appendChild(list);
-    (S.tlog || []).concat(H ? [H.log] : []).forEach(function (hand) { hand.forEach(function (e) { list.appendChild(logRow(e)); }); });
-    list.addEventListener('scroll', function () { R.logTop = list.scrollTop; R.logEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 8; }, { passive: true });
-    requestAnimationFrame(function () { list.scrollTop = R.logEnd === false && R.logTop != null ? R.logTop : list.scrollHeight; });
-    return box;
+    var H = S.hand, P = R.pfull, first = !P;   // (not keyed to the table object: online, every update is a fresh copy of it)
+    function shut() { R.logOpen = false; R.pfull = null; Kit.sfx('tap', 0.5); renderTable(); }
+    if (first) {
+      var box = el('div', { class: 'pfull' }), head = el('div', { class: 'pfull-h' }), list = el('div', { class: 'pfull-l' });
+      box.appendChild(head); box.appendChild(list);
+      list.addEventListener('scroll', function () {
+        if (!list.isConnected) return;   // (taken out for a moment while the sidebar is redrawn: not a scroll of yours)
+        R.logTop = list.scrollTop; R.logEnd = list.scrollTop + list.clientHeight >= list.scrollHeight - 8;
+        if (R.logEnd) P.glide = false;
+      }, { passive: true });
+      ['touchstart', 'wheel'].forEach(function (t) { list.addEventListener(t, function () { P.glide = false; }, { passive: true }); });   // (you took over the scrolling)
+      box.addEventListener('animationend', function (ev) { if (ev.target === box) box.classList.add('shown'); else ev.target.classList.remove('fresh'); });
+      P = R.pfull = { box: box, head: head, list: list, keys: [], els: [], hk: '' };
+      R.logEnd = true; R.logTop = null;
+    }
+    // the header: only redrawn when it changes (so its button doesn't restart its pulse)
+    var nH = (S.tlog || []).length + (H ? 1 : 0), hk = (yourTurn ? 'go' : nH) + '';
+    if (hk !== P.hk) {
+      P.hk = hk; P.head.textContent = '';
+      [el('b', { text: 'This table' }),
+        yourTurn ? el('button', { type: 'button', class: 'pfull-go', text: 'Your move', onclick: shut }) : el('small', { text: nH + ' hand' + (nH === 1 ? '' : 's') }),
+        el('button', { type: 'button', class: 'pfull-x', 'aria-label': 'Close the log', html: Kit.icon('close'), onclick: shut })].forEach(function (n) { P.head.appendChild(n); });
+    }
+    // the lines: each keyed by what it says (and which time it said it), so the ones already showing stay put
+    var keys = [], ents = [], seen = {};
+    (S.tlog || []).concat(H ? [H.log] : []).forEach(function (hand) {
+      hand.forEach(function (e) {
+        var k = JSON.stringify(e, function (f, v) { return f === 'n' ? undefined : v; });   // (a finished hand's lines gain the name of the time; same line)
+        seen[k] = (seen[k] || 0) + 1; keys.push(k + '#' + seen[k]); ents.push(e);
+      });
+    });
+    var old = {}, list2 = P.list, added = 0;
+    P.keys.forEach(function (k, j) { old[k] = P.els[j]; });
+    var els = keys.map(function (k, j) {
+      if (old[k]) { var o = old[k]; delete old[k]; return o; }
+      var r = logRow(ents[j]); if (!first) { r.classList.add('fresh'); added++; }
+      return r;
+    });
+    var keepTop = R.logTop != null ? R.logTop : list2.scrollTop, atEnd = first || R.logEnd !== false || P.glide;
+    Object.keys(old).forEach(function (k) { if (old[k].parentNode) old[k].parentNode.removeChild(old[k]); });
+    els.forEach(function (r, j) { if (list2.children[j] !== r) list2.insertBefore(r, list2.children[j] || null); });
+    P.keys = keys; P.els = els;
+    // the panel moves into this redraw's sidebar: put the scroll back before it's drawn, then glide to the new lines
+    Promise.resolve().then(function () {
+      if (!list2.isConnected) return;
+      if (first) { list2.scrollTop = list2.scrollHeight; return; }
+      list2.scrollTop = keepTop;
+      if (atEnd && added) { P.glide = true; list2.scrollTo({ top: list2.scrollHeight, behavior: 'smooth' }); }
+    });
+    return P.box;
   }
   function startName(h) {
     var a = h[0] >> 2, b = h[1] >> 2, hi = Math.max(a, b), lo = Math.min(a, b);
