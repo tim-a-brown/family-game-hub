@@ -1055,8 +1055,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 }
 .pin-h{margin:4px 0 -4px;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
 .pin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+.pin-stats.four{grid-template-columns:repeat(2,minmax(0,1fr));}
+.pin-st.gold{background:var(--yellow-fill);box-shadow:none;} .pin-st.gold :is(small,b,span){color:#2a1c00;}
 .pin-st{padding:8px 10px 9px;border-radius:12px;background:var(--w05);box-shadow:inset 0 0 0 1px var(--line);min-width:0;}
-.pin-st small{display:block;font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pin-st small{display:block;font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
 .pin-st b{display:block;font-size:1.3rem;font-weight:900;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pin-st span{display:block;font-size:.74rem;font-weight:700;color:var(--text-2);}
 .pin-head{margin:0;font-size:1.05rem;font-weight:900;line-height:1.3;}
@@ -1077,6 +1079,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 .pin-pay > div:nth-child(even){background:var(--w04);}
 .pin-pay > div.gone{opacity:.42;}
 .pin-pay > div.me{background:var(--yellow-fill);color:#2a1c00;}
+.pin-pay em{margin-left:8px;padding:0 7px;border-radius:999px;background:rgba(42,28,0,.14);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;vertical-align:1px;}
+.pin-pay em.mc{background:var(--w07);color:var(--text-2);}
 .pin-pay > div.cut{margin-top:6px;border-radius:0 0 12px 12px;}
 .pdet .pstand{display:flex;}
 .pin-eq{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px 10px;}
@@ -5199,29 +5203,27 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var C = S.circ, me = S.players[0], root = el('div', { class: 'pdet' }), cols = pinCols(root), box = cols[0], avg = tableAvg(), bbs = S.bb ? Math.round(me.stack / S.bb) : 0;
     if (C) {
       var rk = me.out ? me.place : circRank(), est = !!C.else && !me.out, ab = est ? 'About ' : '', toGo = C.left - C.paid, tables = C.else ? Math.ceil(C.left / 6) : 1;
-      box.appendChild(el('div', { class: 'pin-stats' }, [
+      // four numbers say it all: where you are, how many are left, how far the money is, and your stack (the line under
+      // them shows it; the pay table says what each place is worth)
+      var st4 = el('div', { class: 'pin-stats four' }, me.out ? [
+        pinStat('You finished', ordinal(me.place), me.place <= C.paid ? usd(C.pays[me.place - 1]) : 'of ' + C.field.toLocaleString()),
+        pinStat('Players left', C.left.toLocaleString(), 'of ' + C.field.toLocaleString())] : [
+        pinStat('Your place', (est ? '~' : '') + ordinal(rk), 'of ' + C.left.toLocaleString()),
         pinStat('Players left', C.left.toLocaleString(), 'of ' + C.field.toLocaleString()),
-        pinStat(tables === 1 ? 'Tables' : 'Tables left', tables === 1 ? 'Final' : tables.toLocaleString(), tables === 1 ? 'table' : 'of ' + Math.ceil(C.field / 6).toLocaleString()),
-        pinStat('Paid', C.paid.toLocaleString(), 'places')]));
+        toGo > 0 ? pinStat('To the money', toGo.toLocaleString(), 'more out') : C.left > 1 ? pinStat('Next out gets', usd(C.pays[C.left - 1]), ordinal(C.left) + ' place') : pinStat('Players left', '1', ''),
+        pinStat('Your stack', bbs + ' BB', 'Avg ' + Math.round(avg / Math.max(1, S.bb)) + ' BB')]);
+      if (!me.out && rk <= C.paid) st4.firstChild.classList.add('gold');
+      box.appendChild(st4);
       // the money line: everyone still in, last place on the left to 1st on the right; the paid places in gold
       var line = el('div', { class: 'pin-line' }), gw = Math.min(100, C.paid / Math.max(1, C.left) * 100);
       var gold = el('div', { class: 'gold' }); gold.style.width = gw + '%'; if (gw >= 14) gold.appendChild(el('small', { text: 'Paid' }));
       line.appendChild(gold);
       if (!me.out) {
-        var at = C.left > 1 ? (C.left - rk) / (C.left - 1) * 100 : 100, pin = el('div', { class: 'you' + (rk <= C.paid ? ' in' : '') }, [el('span', { text: 'You ' + (est ? '~' : '') + ordinal(rk) })]);
+        var at = C.left > 1 ? (C.left - rk) / (C.left - 1) * 100 : 100, pin = el('div', { class: 'you' + (rk <= C.paid ? ' in' : '') }, [el('span', { text: 'You' })]);
         pin.style.left = at + '%'; pin.firstChild.style.transform = 'translateX(' + (at < 14 ? -12 : at > 86 ? -88 : -50) + '%)';
         line.appendChild(pin);
       }
       box.appendChild(el('div', null, [line, el('div', { class: 'pin-ends' }, [el('span', { text: ordinal(C.left) }), el('span', { text: '1st' })])]));
-      var head, sub;
-      if (me.out) { head = 'You finished ' + ordinal(me.place) + (me.place <= C.paid ? ' for ' + usd(C.pays[me.place - 1]) : ''); sub = ''; }
-      else if (rk <= C.paid) { head = ab + ordinal(rk) + ': a paying spot, worth ' + usd(C.pays[rk - 1]) + ' right now'; }
-      else head = ab + ordinal(rk) + ': ' + (rk - C.paid).toLocaleString() + ' place' + (rk - C.paid === 1 ? '' : 's') + ' short of the money';
-      if (!me.out) sub = toGo > 0 ? toGo.toLocaleString() + ' more player' + (toGo === 1 ? '' : 's') + ' out and everyone left is paid. The least anyone gets is ' + usd(C.pays[C.paid - 1]) + '.'
-        : C.left > 1 ? 'Everyone left is in the money. The next one out gets ' + usd(C.pays[C.left - 1]) + '; outlast them and it\'s ' + usd(C.pays[C.left - 2]) + '.' : '';
-      box.appendChild(el('p', { class: 'pin-head', text: head }));
-      if (sub) box.appendChild(el('p', { class: 'pin-sub', text: sub }));
-      if (!me.out) box.appendChild(el('p', { class: 'pin-sub', text: 'Your stack ' + amt(me.stack) + ' (' + bbs + ' big blinds). Average ' + amt(avg) + '.' + (est ? ' Until the final table your place is worked out from your stack against the average.' : '') }));
       // what each place pays: the top nine one by one, then in bands that widen down the list
       box = cols[1];
       box.appendChild(pinH('What each place pays'));
@@ -5231,11 +5233,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         if (a > 9) { b = Math.min(C.paid, a + sz - 1); if (++k % 2 === 0) sz *= 2; }
         var mine = !me.out && rk >= a && rk <= b || me.out && me.place >= a && me.place <= b;
         pay.appendChild(el('div', { class: (mine ? 'me' : '') + (a > C.left ? ' gone' : '') }, [
-          el('span', { text: (a === b ? ordinal(a) : ordinal(a) + '–' + ordinal(b)) + (mine ? ' · you' : b === C.paid ? ' · min cash' : '') }),
+          el('span', null, [document.createTextNode(a === b ? ordinal(a) : ordinal(a) + '–' + ordinal(b)), mine ? el('em', { text: 'You' }) : b === C.paid ? el('em', { class: 'mc', text: 'Min cash' }) : null]),
           el('b', { text: usd(C.pays[b - 1]) })]));
         a = b + 1;
       }
-      if (rk > C.paid) pay.appendChild(el('div', { class: 'me cut' }, [el('span', { text: (est ? '~' : '') + ordinal(rk) + ' · you' }), el('b', { text: me.out ? '–' : 'Not yet' })]));
+      if (rk > C.paid) pay.appendChild(el('div', { class: 'me cut' }, [el('span', null, [document.createTextNode((est ? '~' : '') + ordinal(rk)), el('em', { text: 'You' })]), el('b', { text: me.out ? '–' : 'Not yet' })]));
       box.appendChild(pay);
     } else if (S.tourn) {
       var al = alive(), rk2 = me.out ? me.place : 1 + al.filter(function (i) { return S.players[i].stack > me.stack; }).length;
