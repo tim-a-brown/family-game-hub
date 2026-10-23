@@ -907,6 +907,11 @@
 .stage.pport .phand.o5{--cw:clamp(42px,12vw,52px);}
 .stage.pport .phand.s7{--cw:clamp(38px,10.5vw,48px);}
 .stage.pport .prail{flex:none;display:flex;flex-direction:column;gap:6px;margin:0;}
+.stage.pport.plock .prail{height:var(--railh);}   /* (lockPort: the panel at its busiest, so the table never moves) */
+.stage.pport.plock .pside{flex:1 1 auto;min-height:0;}
+.stage.pport.plock .pside > .plog{display:flex;flex-direction:column;justify-content:flex-start;}
+.stage.pport.plock .pdeck .ppre button{min-height:var(--barh,52px);}   /* the advance buttons sit where Fold, Call and Raise do, at their size */
+.stage.pport.plock .pdeck .ppre.three{grid-template-columns:repeat(3,minmax(0,1fr));} .stage.pport.plock .pdeck .ppre.three button{grid-area:auto !important;justify-content:center;padding:0 6px;}
 .stage.pport .pboard{--cw:clamp(36px,min(11.5vw,6.2dvh),52px);}
 .pport .pside{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);}
 .pport .pside > *{grid-column:1 / -1;}
@@ -936,7 +941,7 @@
   .pport .pdeck{--pd:7px;gap:6px;}
   .pport .psz .pre button{min-height:34px;font-size:.8rem;} .pport .psz .row{margin-top:3px;} .pport .psz .row button{width:36px;height:36px;} .pport .psz input[type=range]{height:24px;}
   .pport .pctl{gap:5px;} .pport .pctl .pbar .btn{min-height:46px;}
-  .pport .ppre button{min-height:38px;}
+  .pport .ppre button{min-height:38px;} .stage.pport.plock .pdeck .ppre button{min-height:var(--barh,46px);}
   .stage.pport .phand,.stage.pport.raising .phand{--cw:clamp(46px,13.5vw,56px);}
   .stage.pport .ptable{margin-bottom:18px;} .pport .pme{bottom:-16px;}
   .pport .pme .pseat > .tag{display:none;} .pport .pme .pseat{bottom:0;}   /* your cards say it's you; the side seats get the room */
@@ -4902,6 +4907,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     else { if (myTurn) hand.classList.add('acting'); app.appendChild(hand); }
     app.appendChild(rail(final));
+    if (port) lockPort(app);
     requestAnimationFrame(fitTiles);
 
     if (H && R.mine) { R.mineNo = H.no; if (!picking) R.mine = null; }
@@ -4992,6 +4998,34 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function skillWord(sk) { return sk < 0.25 ? 'Beginner' : sk < 0.4 ? 'Casual' : sk < 0.6 ? 'Regular' : sk < 0.75 ? 'Grinder' : sk < 0.9 ? 'Pro' : 'World class'; }
 
   // ── The rail ─────────────────────────────────────────────────────────────
+  // An upright phone: the table keeps one height through the whole hand. The panel under it is sized for its busiest
+  // moment (sizing a bet: the presets, the slider and the three buttons), measured once for this screen from stand-ins;
+  // at quieter moments the info card takes the room, and whatever buttons there are sit where Fold, Call and Raise do
+  function lockPort(app) {
+    var rl = app.querySelector(':scope > .prail'), side = rl && rl.querySelector(':scope > .pside');
+    app.classList.remove('plock'); app.style.removeProperty('--railh');
+    if (side) side.style.gridTemplateRows = '';
+    if (!side || rl.querySelector('.pfull')) return;   // (the whole log open: as before)
+    var B = function (t) { return el('button', { type: 'button', class: 'btn', text: t }); };
+    var barH = 0, probe = function (deck) {
+      var p = el('div', { class: 'prail', style: { position: 'absolute', left: '10px', right: '10px', top: '0', visibility: 'hidden', pointerEvents: 'none' } });
+      p.appendChild(side.cloneNode(true)); if (deck) p.appendChild(deck); app.appendChild(p);
+      var h = p.offsetHeight, bb = p.querySelector('.pbar .btn'); if (bb) barH = Math.max(barH, bb.offsetHeight); p.remove(); return h;
+    };
+    var full = el('div', { class: 'pdeck' }, [el('div', { class: 'pctl mine' }, [
+      el('div', { class: 'psz' }, [el('div', { class: 'pre' }, ['Min', '½', '¾', 'Pot', 'All in'].map(function (t) { return el('button', { type: 'button', text: t }); })),
+        el('div', { class: 'row' }, [el('button', { type: 'button', text: '−' }), el('div', { class: 'trk' }, [el('input', { type: 'range' }), el('div', { class: 'ends' }, [el('span', { text: 'Min 1' }), el('span', { text: 'All in 1' })])]), el('button', { type: 'button', text: '+' })])]),
+      el('div', { class: 'pbar' }, [B('Fold'), B('Call'), B('Raise')])])]);
+    var wait = el('div', { class: 'pdeck' }, [el('div', { class: 'pctl' }, [el('div', { class: 'pwait', text: 'Thinking' }), el('div', { class: 'ppre' }, [el('button', { type: 'button', text: 'Fold' }), el('button', { type: 'button', text: 'Call' })])])]);
+    // (stand-ins measured once per screen size; again only if the card gains a row, like your hand once one's dealt. A
+    // busy log line at a quiet moment sheds its detail to fit: fitTiles)
+    var rows = [].slice.call(side.children).filter(function (c) { return !c.classList.contains('ptiles') && getComputedStyle(c).display !== 'none'; }).length;
+    var key = innerWidth + 'x' + innerHeight, mem = R.railH || (R.railH = {}), m = mem[key];
+    if (!m || rows > m.rows) { var h0 = Math.max(probe(full), probe(wait)); m = mem[key] = { h: Math.max(h0, m ? m.h : 0), rows: Math.max(rows, m ? m.rows : 0), bar: barH || (m && m.bar) || 52 }; }
+    app.style.setProperty('--railh', m.h + 'px'); app.style.setProperty('--barh', m.bar + 'px'); app.classList.add('plock');
+    // the card's last row (the hand so far) takes the room the buttons don't need
+    if (rows > 1) side.style.gridTemplateRows = 'repeat(' + (rows - 1) + ', auto) minmax(0, 1fr)';
+  }
   function rail(final) {
     YOUBM = false;
     var box = el('div', { class: 'prail' }), you = railYou(final), tc = final || YOUBM ? null : coachSlot('pcoach'), ctl = final ? null : controls();
