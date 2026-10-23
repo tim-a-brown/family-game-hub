@@ -4908,7 +4908,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (H && R.no !== H.no) { R.no = H.no; R.board = H.board.length; R.bets = H.bet.slice(); animateDeal(); }
     else if (H) {
       if (R.bets) H.bet.forEach(function (b, i) { if (b > (R.bets[i] || 0) && betEls[i] && seatEls[i]) Cards.fly(betEls[i], seatEls[i].querySelector('.tag'), { ms: 320 }); });
-      if (done && !R.paid) { R.paid = H.no; H.won.forEach(function (w, i) { if (w > 0 && betEls[i]) Cards.fly(betEls[i], board, { ms: 520 }).then(function () { betEls[i].style.transform = ''; placeBets(); placeSays(true); fitWins(); }); }); }
+      if (done && !R.paid) { R.paid = H.no; H.won.forEach(function (w, i) { if (w > 0 && betEls[i]) { var pile = betEls[i]; Cards.fly(pile, board, { ms: 520 }).then(function () { pile.style.transform = ''; if (pile.isConnected) { placeBets(); placeSays(true); fitWins(); } }); } }); }   // (the table may have been redrawn while it slid)
       R.board = H.board.length; R.bets = H.bet.slice();
     }
     if (H && !done) R.paid = 0;
@@ -5098,16 +5098,21 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function placeSays(keep) {   // keep: a second look once things settle; a pill whose spot is still clear stays put
     var T = tableClear(); if (!T) return;
     if (S && S.hand && R.sayNo !== S.hand.no) { R.sayNo = S.hand.no; R.sayAt = {}; }   // (a new hand starts fresh)
-    var sk = function (sy) { var ps = sy.closest('.pseat'); return ps ? seatEls.indexOf(ps) : 'me'; }, sm = R.sayAt || {};
-    [].slice.call(document.querySelectorAll('.ptable .psay')).sort(function (a, b) { return (sm[sk(b)] != null ? 1 : 0) - (sm[sk(a)] != null ? 1 : 0); }).forEach(function (sy) {
+    // a pill is placed once, when it first says something, and stays there as long as it says it (whatever turns up
+    // later finds room around it); a new word from the same player tries its old spot first
+    var sk = function (sy) { var ps = sy.closest('.pseat'); return ps ? seatEls.indexOf(ps) : 'me'; }, sm = R.sayAt || (R.sayAt = {});
+    var same = function (sy) { var m = sm[sk(sy)]; return m && m.t === sy.textContent; };
+    var setAt = function (sy, k) { SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); }); if (SAYAT[k]) sy.classList.add(SAYAT[k]); };
+    [].slice.call(document.querySelectorAll('.ptable .psay')).sort(function (a, b) { return (same(b) ? 1 : 0) - (same(a) ? 1 : 0); }).forEach(function (sy) {
+      var key = sk(sy), m = sm[key];
+      if (m && m.t === sy.textContent) { setAt(sy, m.k); T.obs.push(sy); return; }
       if (keep && sy.dataset.placed && T.area(restRect(sy), sy) < 4) { T.obs.push(sy); return; }
       sy.dataset.placed = 1;
-      // a player's pill goes back to the spot it had last time if that's still clear, so it doesn't hop between actions
-      var ps = sy.closest('.pseat'), key = ps ? seatEls.indexOf(ps) : 'me', was = (R.sayAt || (R.sayAt = {}))[key], best = null;
+      var was = m ? m.k : null, best = null;
       if (was != null) {
         SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
         if (SAYAT[was]) sy.classList.add(SAYAT[was]);
-        if (T.area(restRect(sy), sy) < 4) { T.obs.push(sy); return; }
+        if (T.area(restRect(sy), sy) < 4) { sm[key] = { t: sy.textContent, k: was }; T.obs.push(sy); return; }
       }
       for (var k = 0; k < SAYAT.length; k++) {
         SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
@@ -5118,7 +5123,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       }
       SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
       if (SAYAT[best.k]) sy.classList.add(SAYAT[best.k]);
-      R.sayAt[key] = best.k;
+      sm[key] = { t: sy.textContent, k: best.k };
       T.obs.push(sy);   // (a pill placed is in the way of the next)
     });
   }
@@ -5178,7 +5183,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var H0 = S && S.hand, mem = R.betNo === (H0 && H0.no) && R.betAt || {};
     R.betAt = {}; R.betNo = H0 && H0.no;
     var keyOf = function (b) { return (b.classList.contains('won') ? 'w' : 'b') + betEls.indexOf(b); };
-    bets.sort(function (a, b) { return (mem[keyOf(b)] ? 1 : 0) - (mem[keyOf(a)] ? 1 : 0); });
+    var kept = function (b) { var m = mem[keyOf(b)]; return m && m.a === (b.querySelector('.amt') || b).textContent ? 2 : m ? 1 : 0; };
+    bets.sort(function (a, b) { return kept(b) - kept(a); });
     bets.forEach(function (b) {
       // (the pot going to a winner carries its hand's name: the two move as one, and stay off the board's cards)
       var r = rest(b), wh = b.querySelector('.wh'), won = b.classList.contains('won');
@@ -5189,8 +5195,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var cost = function (dx, dy) { var q = { left: r.left + dx, right: r.right + dx, top: r.top + dy, bottom: r.bottom + dy }, c = 0;
         placed.forEach(function (p) { c += area(q, p) * 10; }); if (won) board.forEach(function (f) { c += area(q, f) * 5; }); if (dx || dy) { fixed.forEach(function (f) { c += area(q, f); }); if (fr) c += ((q.right - q.left) * (q.bottom - q.top) - area(q, fr)) * 10; } return c + (Math.abs(dx) + Math.abs(dy)) * 0.01; };
       var onBoard = won && board.some(function (c) { return hit(r, c); }), k0 = keyOf(b), m = mem[k0];
-      var put = function (t) { if (t[0] || t[1]) b.style.translate = t[0].toFixed(0) + 'px ' + t[1].toFixed(0) + 'px'; R.betAt[k0] = t; placed.push({ left: r.left + t[0], right: r.right + t[0], top: r.top + t[1], bottom: r.bottom + t[1] }); };
-      if (m) { var q1 = { left: r.left + m[0], right: r.right + m[0], top: r.top + m[1], bottom: r.bottom + m[1] }; if (!placed.some(function (p) { return hit(q1, p); }) && !(won && board.some(function (c) { return hit(q1, c); }))) return put(m); }
+      var put = function (t) { if (t[0] || t[1]) b.style.translate = t[0].toFixed(0) + 'px ' + t[1].toFixed(0) + 'px'; R.betAt[k0] = { t: t, a: (b.querySelector('.amt') || b).textContent }; placed.push({ left: r.left + t[0], right: r.right + t[0], top: r.top + t[1], bottom: r.bottom + t[1] }); };
+      var amtT = (b.querySelector('.amt') || b).textContent;
+      if (m && m.a === amtT) return put(m.t);   // (the same pile as before stays exactly where it was)
+      if (m) { var q1 = { left: r.left + m.t[0], right: r.right + m.t[0], top: r.top + m.t[1], bottom: r.bottom + m.t[1] }; if (!placed.some(function (p) { return hit(q1, p); }) && !(won && board.some(function (c) { return hit(q1, c); }))) return put(m.t); }
       if (!onBoard && !placed.some(function (p) { return hit(r, p); })) return put([0, 0]);
       var tries = [[0, 0], [0, d], [0, -d], [w, 0], [-w, 0], [w, d], [-w, d], [w, -d], [-w, -d], [0, 2 * d], [0, -2 * d], [1.6 * w, 0], [-1.6 * w, 0]], go = tries[0], best = Infinity;
       if (bb) [[0, bb.top - r.bottom - 4], [0, bb.bottom - r.top + 4], [bb.right - r.left + 4, 0], [bb.left - r.right - 4, 0]].forEach(function (t) { tries.push(t); });
