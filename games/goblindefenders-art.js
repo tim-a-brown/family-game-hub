@@ -9,7 +9,8 @@
   A.load = function (base, done) {
     var x = new XMLHttpRequest(); x.open('GET', base + 'sprites.json'); x.onload = function () {
       var idx; try { idx = JSON.parse(x.responseText); } catch (e) { return done && done(false); }
-      A.F = idx.frames; var names = Object.keys(idx.sheets), left = names.length, failed = false;
+      A.F = idx.frames; if (idx.elev) { A.COSE = Math.cos(idx.elev * Math.PI / 180); A.SINE = Math.sin(idx.elev * Math.PI / 180); }
+      var names = Object.keys(idx.sheets), left = names.length, failed = false;
       names.forEach(function (n) {
         var im = new Image(); im.decoding = 'async';
         im.onload = function () { A.sheets[n] = im; if (--left === 0) { A.ready = !failed; done && done(!failed); } };

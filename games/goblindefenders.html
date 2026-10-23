@@ -148,8 +148,53 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     gn.gain.setValueAtTime(.0001, t); gn.gain.exponentialRampToValueAtTime(v, t + Math.min(.008, d / 5)); gn.gain.exponentialRampToValueAtTime(.0001, t + d);
     s.connect(fl); fl.connect(gn); gn.connect(master); s.start(t, Math.random() * .5); s.stop(t + d + .03);
   }
+  // The original game's own recordings (goblin/snd), loaded once sound is on; the synthesised ones below stand in
+  // until they arrive (or if they can't load)
+  var SAMPLES = {}, sampling = false;
+  var SMAP = {
+    bolt: [['t_arrow_shoot', 't_arrow_shoot2', 't_arrow_shoot3'], .5], bomb: [['t_rocket_shoot'], .45], ice: [['t_ice_shoot'], .5], acid: [['t_poison_shoot'], .55],
+    claw: [['t_heavy_shoot'], .6], shell: [['t_rocket_shoot'], .6], zap: [['t_electro_shoot'], .45], slam: [['t_blade_shoot', 't_blade_shoot1', 't_blade_shoot2'], .55],
+    boomS: [['t_rocket_hit'], .45], boomL: [['t_rocket_hit'], .75], thud: [['t_heavy_hit', 't_heavy_hit2'], .6], build: [['placing'], .75], upgrade: [['upgrade'], .75],
+    sell: [['selling'], .75], leak: [['castle_hit'], .8], baa: [['m_sheep_die1'], .8], rocket: [['t_rocket_shoot'], .75], star: [['achieve'], .6], tap: [['button_wood'], .6],
+    sheep: [['m_sheep_run1'], .6], victory: [['victory'], .8], defeat: [['defeat'], .8], ogre: [['m_ogre_step1'], .5], ghost: [['m_ghost_run1'], .4]
+  };
+  var DIE = { footman: ['m_skelet_die1', 'm_skelet_die2'], skeleton: ['m_rat_die1', 'm_rat_die2'], knight: ['m_tank_die1'], rider: ['m_skelet_die2', 'm_rat_die2'],
+    spider: ['m_spider_die1', 'm_spider_die2', 'm_spider_die3', 'm_spider_die4', 'm_spider_die5'], ogre: ['m_ogre_die1', 'm_ogre_die2'], wraith: ['m_ghost_die1', 'm_ghost_die2', 'm_ghost_die3'],
+    shaman: ['m_zapp_die1'], gargoyle: ['m_gargoley_die1', 'm_gargoley_die2'], sheep: ['m_sheep_die1'], blackKnight: ['m_demon_die1'], frostTroll: ['m_iceman_die1', 'm_iceman_die2'],
+    spiderQueen: ['m_spider_die3'], ogreWarlord: ['m_tank_die2'], wraithLord: ['m_ghost_die3'] };
+  function loadSamples() {
+    if (sampling || !AC || !window.fetch) return; sampling = true;
+    var all = {}; Object.keys(SMAP).forEach(function (k) { SMAP[k][0].forEach(function (n) { all[n] = 1; }); }); Object.keys(DIE).forEach(function (k) { DIE[k].forEach(function (n) { all[n] = 1; }); });
+    Object.keys(all).forEach(function (n) {
+      fetch('goblin/snd/' + n + '.m4a').then(function (r) { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then(function (b) { return new Promise(function (res, rej) { var pr = AC.decodeAudioData(b, res, rej); if (pr && pr.catch) pr.catch(rej); }); })
+        .then(function (buf) { SAMPLES[n] = buf; }).catch(function () {});
+    });
+  }
+  function sample(names, vol) {
+    var ok = names.filter(function (n) { return SAMPLES[n]; }); if (!ok.length || !AC) return false;
+    var s = AC.createBufferSource(), gn = AC.createGain(); s.buffer = SAMPLES[ok[Math.floor(Math.random() * ok.length)]];
+    s.playbackRate.value = .95 + Math.random() * .1; gn.gain.value = vol; s.connect(gn); gn.connect(master); s.start(); return true;
+  }
   // each sound at most every `gap` seconds, so a busy fight doesn't turn to mush
-  function play(name, gap) { var now = performance.now() / 1000; if (now - (lastSnd[name] || 0) < (gap || .04)) return false; lastSnd[name] = now; if (!ac()) return false; try { SND[name](); } catch (e) {} return true; }
+  function play(name, gap) {
+    var now = performance.now() / 1000; if (now - (lastSnd[name] || 0) < (gap || .04)) return false; lastSnd[name] = now; if (!ac()) return false;
+    loadSamples();
+    if (SMAP[name] && sample(SMAP[name][0], SMAP[name][1])) return true;
+    try { if (SND[name]) SND[name](); } catch (e) {} return true;
+  }
+  function dieSound(type) { if (!ac()) return; loadSamples(); var n = 'die_' + type, now = performance.now() / 1000; if (now - (lastSnd[n] || 0) < .12) return; lastSnd[n] = now; if (!sample(DIE[type] || [], .55)) play('die', .05); }
+  function tap() { play('tap', .03); }
+  // The original's music: the forest, polar and sand tunes for the lands, its menu tune on the world map
+  var musicEl = null, musicTrack = null;
+  function musicOn() { return lsGet('goblin_music', '1') === '1' && soundOn(); }
+  function landTrack() { return mapDef ? { jungle: 'forest', snow: 'polar', desert: 'sand', canyon: 'forest', volcano: 'sand' }[mapDef.land] : 'mainmenu'; }
+  function music() {
+    var want = screen === 'map' ? 'mainmenu' : screen === 'play' ? landTrack() : null, quiet = !musicOn() || !want || paused || welcome || document.hidden || (screen === 'play' && ending);
+    if (quiet) { if (musicEl && !musicEl.paused) musicEl.pause(); return; }
+    if (musicTrack !== want || !musicEl) { if (musicEl) musicEl.pause(); musicEl = new Audio('goblin/snd/music-' + want + '.m4a'); musicEl.loop = true; musicEl.volume = .38; musicTrack = want; }
+    if (musicEl.paused) { var pr = musicEl.play(); if (pr && pr.catch) pr.catch(function () {}); }
+  }
   var SND = {
     bolt: function () { tone(520 + Math.random() * 60, 0, .07, 'triangle', .07, 180); noise(0, .05, .08, 2600, 2); },
     bomb: function () { tone(150, 0, .14, 'sine', .16, 60); noise(0, .1, .07, 500, 1); },
@@ -208,7 +253,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     mapIdx = i; mapDef = i < 0 ? GD.SURVIVAL : GD.MAPS[i];
     S = C.create(mapDef, { shop: shopRanks() });
     if (resume && resume.snap) C.restore(S, resume.snap);
-    sel = placing = aiming = ghost = null; parts.length = texts.length = rings.length = bolts.length = flyers.length = 0; built = {}; ending = null; banner = null;
+    waterCells = null; sel = placing = aiming = ghost = null; parts.length = texts.length = rings.length = bolts.length = flyers.length = 0; built = {}; ending = null; banner = null;
     speed = 1; paused = false; welcome = !!resume; startedAt = resume && resume.started || Date.now();
     bg = null; screen = 'play'; Kit.gameStart && Kit.gameStart();
     setTitle(); saveRun(); if (!resume) showBanner(mapDef.name, S.survival ? 'Survive as long as you can' : (S.waves + ' waves'), 2.4);
@@ -264,12 +309,12 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
           burst(en.x, en.y, def.boss ? 40 : 10, def.fly ? ['#d8a0ff', '#9a5ae0', '#ffffff'] : ['#e8d8c0', '#a08a70', '#6a5a48'], def.boss ? 3 : 1.4, { size: def.boss ? .1 : .06 });
           smoke(en.x, en.y, def.boss ? 12 : 3, def.fly ? '#9a6ac0' : '#9a9088', def.boss ? .6 : .25);
           if (e.gold) { coinsTo(en.x, en.y - .3, Math.ceil(e.gold / 2)); floatText(en.x, en.y - .7, '+' + e.gold, '#ffd84a', 'coin', def.boss ? 1.5 : 1); }
-          play('die', .05); if (e.gold) play('coin', .08);
+          dieSound(en.type); if (e.gold) play('coin', .08);
           if (def.boss) { bump(10); Kit.haptic('success'); Kit.callout && Kit.callout(def.name + ' defeated!'); play('boomL'); flashT = .4; }
           break;
-        case 'sheep': deaths.push({ e: e.e, t: 0 }); burst(e.e.x, e.e.y, 30, ['#ffffff', '#f2eee4', '#e8e2d4'], 2.4, { size: .09, up: 2.4, grav: 2.5, kind: 'wool' });
+        case 'sheep': dieSound('sheep'); deaths.push({ e: e.e, t: 0 }); burst(e.e.x, e.e.y, 30, ['#ffffff', '#f2eee4', '#e8e2d4'], 2.4, { size: .09, up: 2.4, grav: 2.5, kind: 'wool' });
           coinsTo(e.e.x, e.e.y - .3, 5); coinsTo(e.e.x, e.e.y - .3, 1, 'gem'); floatText(e.e.x, e.e.y - .8, '+10', '#ffd84a', 'coin', 1.2); floatText(e.e.x + .3, e.e.y - 1.25, '+1', '#ff7ae0', 'gem', 1.1);
-          play('baa'); play('coin'); Kit.haptic('success'); break;
+          play('coin'); Kit.haptic('success'); break;
         case 'leak': leakT = .6; var vx = (mapDef.village ? mapDef.village[0] : S.exit.i + .7), vy = (mapDef.village ? mapDef.village[1] : S.exit.j + .9) - .6;
           burst(vx, vy, 16, ['#ff4a3a', '#ffd0c0'], 2, { size: .07 }); floatText(vx, vy - .4, '-' + e.lives, '#ff5a4a', 'shield', 1.2); play('leak', .15); Kit.haptic('error'); bump(3); break;
         case 'wave':
@@ -292,7 +337,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   function showBanner(title, sub, life, boss) { banner = { title: title, sub: sub, t: 0, life: life || 1.6, boss: !!boss }; }
 
   // ═══ The main loop ═══════════════════════════════════════════════════════
-  var raf = 0, last = 0, acc = 0, DT = 1 / 60, now = 0;
+  var raf = 0, last = 0, acc = 0, DT = 1 / 60, now = 0, lastMus = 0;
   function running() { return screen !== 'none' && !document.hidden && Kit.orientOk(); }
   function loop(t) {
     raf = 0; var dt = last ? Math.min(.1, (t - last) / 1000) : 0; last = t; now += dt;
@@ -302,14 +347,30 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
       if (n >= 8) acc = 0;
     }
     stepFx(screen === 'play' && (paused || welcome) ? 0 : dt * (screen === 'play' ? speed : 1), dt);
-    draw();
+    draw(); if ((now * 4 | 0) !== (lastMus || 0)) { lastMus = now * 4 | 0; music(); }
     if (running()) raf = requestAnimationFrame(loop);
   }
   function kick() { if (!raf && running()) { last = 0; raf = requestAnimationFrame(loop); } }
+  // the land breathing: glints on water, embers off the lava, snow drifting down
+  var waterCells = null;
+  function ambient(dt) {
+    if (!S || !dt) return;
+    if (!waterCells) { waterCells = []; for (var j = 0; j < ROWS; j++) for (var i = 0; i < COLS; i++) { var t = S.cells[C.idx(i, j)]; if (t === C.T.WATER || t === C.T.BRIDGE) waterCells.push([i, j]); } }
+    var land = mapDef.land;
+    if (waterCells.length && Math.random() < dt * waterCells.length * (land === 'volcano' ? .5 : 1.2)) {
+      var w = waterCells[Math.floor(Math.random() * waterCells.length)], x = w[0] + .15 + Math.random() * .7, y = w[1] + .15 + Math.random() * .7;
+      if (land === 'volcano') P({ x: x, y: y, z: .05, vx: (Math.random() - .5) * .2, vy: 0, vz: .5 + Math.random() * .5, life: 1.2 + Math.random(), t: 0, size: .025, col: '#ffb040', grav: 0, kind: 'spark' });
+      else P({ x: x, y: y, z: 0, vx: 0, vy: 0, vz: 0, life: .5 + Math.random() * .4, t: 0, size: .05 + Math.random() * .04, col: '#ffffff', grav: 0, kind: 'glint' });
+    }
+    if (land === 'volcano' && Math.random() < dt * 3) P({ x: Math.random() * COLS, y: Math.random() * ROWS, z: .02, vx: (Math.random() - .5) * .15, vy: 0, vz: .4 + Math.random() * .4, life: 1.5 + Math.random(), t: 0, size: .02, col: '#ff7a20', grav: 0, kind: 'spark' });
+    if (land === 'snow' && Math.random() < dt * 9) P({ x: Math.random() * (COLS + 4) - 2, y: Math.random() * ROWS - 1, z: 3, vx: .25 + Math.random() * .2, vy: .1, vz: -.9 - Math.random() * .4, life: 4, t: 0, size: .03 + Math.random() * .02, col: '#ffffff', grav: 0, kind: 'snow' });
+  }
   function stepFx(dt, rdt) {
+    if (screen === 'play') ambient(dt);
     parts = parts.filter(function (p) {
       p.t += dt; if (p.t >= p.life) return false;
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; p.vz -= p.grav * dt;
+      if (p.z < 0 && p.kind === 'snow') return false;
       if (p.z < 0 && p.kind !== 'scorch' && p.kind !== 'flash') { p.z = 0; p.vz *= -.3; p.vx *= .6; p.vy *= .6; }
       return true;
     });
@@ -324,9 +385,25 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     if (flashT > 0) flashT -= rdt; if (leakT > 0) leakT -= rdt;
   }
 
+  // ═══ The map: its rendered picture (goblin/maps/<id>.jpg, covering cells x0..x1, y0..y1), the painted one meanwhile ══
+  var pics = {}, region = null, regionLoading = false;
+  function mapPicture() {
+    if (!mapDef) return null;
+    if (!region) { if (!regionLoading) { regionLoading = true; fetch('goblin/maps/region.json').then(function (r) { return r.json(); }).then(function (j) { region = j; bg = null; }).catch(function () {}); } return null; }
+    var p = pics[mapDef.id];
+    if (!p) { p = pics[mapDef.id] = new Image(); p.onload = function () { bg = null; }; p.src = 'goblin/maps/' + mapDef.id + '.jpg'; }
+    if (!p.complete || !p.naturalWidth) return null;
+    var c = document.createElement('canvas'); c.width = Math.ceil(L.W * dpr); c.height = Math.ceil(L.H * dpr); var gg = c.getContext('2d'); gg.scale(dpr, dpr);
+    gg.fillStyle = '#1a2a10'; gg.fillRect(0, 0, L.W, L.H);
+    gg.imageSmoothingQuality = 'high';
+    gg.drawImage(p, L.ox + region.x0 * L.C, L.oy + region.y0 * L.C, (region.x1 - region.x0) * L.C, (region.y1 - region.y0) * L.C);
+    var vg = gg.createRadialGradient(L.W / 2, L.H / 2, Math.min(L.W, L.H) * .5, L.W / 2, L.H / 2, Math.max(L.W, L.H) * .8); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.3)'); gg.fillStyle = vg; gg.fillRect(0, 0, L.W, L.H);
+    return c;
+  }
+
   // ═══ Drawing the battle ══════════════════════════════════════════════════
   function X(x) { return L.ox + x * L.C; } function Y(y) { return L.oy + y * L.C; }
-  var ENEMY_SCALE = 1.3, HEIGHT = { small: .55, normal: .86, big: 1.2, fly: 1.05, boss: 1.55 };
+  var ENEMY_SCALE = 1, HEIGHT = { small: .38, normal: .62, big: .78, fly: .78, boss: 1.2 };
   function enemyKey(e) {
     var d = e.dir === 'l' ? 'r' : e.dir; return e.type + '_' + d + (Math.floor(e.phase * 8) % 8);
   }
@@ -334,7 +411,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     if (screen === 'map') { drawWorld(); g.drawImage(frame, 0, 0, L.W, L.H); return; }
     if (screen !== 'play' || !S) { g.fillStyle = '#2a160a'; g.fillRect(0, 0, L.W, L.H); g.drawImage(frame, 0, 0, L.W, L.H); return; }
-    if (!bg) bg = A.paintMap(mapDef, S, L, dpr);
+    if (!bg) bg = mapPicture() || A.paintMap(mapDef, S, L, dpr);
     var sx = shake ? (Math.random() - .5) * shake : 0, sy = shake ? (Math.random() - .5) * shake : 0;
     g.save(); g.translate(sx, sy);
     g.drawImage(bg, -2, -2, L.W + 4, L.H + 4);
@@ -358,8 +435,6 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     deaths.forEach(function (d) { items.push({ y: d.e.y, f: drawDeath, o: d }); });
     items.sort(function (a, b) { return a.y - b.y; });
     // shadows first
-    S.enemies.forEach(function (e) { var big = GD.ENEMIES[e.type]; var r = big.boss ? .5 : big.big ? .34 : big.small ? .18 : .24; g.fillStyle = 'rgba(15,10,0,' + (e.fly ? .18 : .3) + ')'; g.beginPath(); g.ellipse(X(e.x), Y(e.y) + (e.fly ? Cs * .25 : 0), r * Cs, r * Cs * .42, 0, 0, 7); g.fill(); });
-    S.towers.forEach(function (t) { g.fillStyle = 'rgba(15,10,0,.32)'; g.beginPath(); g.ellipse(X(t.x), Y(t.y) + Cs * .14, Cs * .44, Cs * .2, 0, 0, 7); g.fill(); });
     items.forEach(function (it) { it.f(it.o); });
     if (ghost && placing) drawGhost();
     // shots in the air
@@ -525,6 +600,8 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
       if (p.kind === 'bubble') { g.strokeStyle = 'rgba(220,255,140,' + (1 - f) + ')'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); return; }
       if (p.kind === 'plus') { g.fillStyle = A.rgba(p.col, 1 - f); g.fillRect(x - r, y - r * .3, r * 2, r * .6); g.fillRect(x - r * .3, y - r, r * .6, r * 2); return; }
       if (p.kind === 'flake') { g.strokeStyle = A.rgba(p.col, 1 - f); g.lineWidth = 1; for (var i = 0; i < 3; i++) { var a = i * Math.PI / 3 + p.t * 2; g.beginPath(); g.moveTo(x - Math.cos(a) * r, y - Math.sin(a) * r); g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); g.stroke(); } return; }
+      if (p.kind === 'glint') { var ga = Math.sin(f * Math.PI); g.fillStyle = 'rgba(255,255,255,' + .75 * ga + ')'; g.beginPath(); g.ellipse(x, y, r * (1 + f), r * .3, 0, 0, 7); g.fill(); return; }
+      if (p.kind === 'snow') { g.fillStyle = 'rgba(255,255,255,' + Math.min(1, (1 - f) * 3) * .85 + ')'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); return; }
       if (p.kind === 'wool') { g.fillStyle = A.rgba(p.col, 1 - f * .8); g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); return; }
       g.fillStyle = A.rgba(p.col, 1 - f * f); g.beginPath(); g.arc(x, y, Math.max(.8, r * (1 - f * .5)), 0, 7); g.fill();
     });
@@ -712,7 +789,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   function cellAt(x, y) { return { i: Math.floor((x - L.ox) / L.C), j: Math.floor((y - L.oy) / L.C), fx: (x - L.ox) / L.C, fy: (y - L.oy) / L.C }; }
   function pt(e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   cv.addEventListener('pointerdown', function (e) {
-    e.preventDefault(); ac();
+    e.preventDefault(); ac(); loadSamples(); music();
     var p = pt(e);
     if (screen === 'map') return worldTap(p.x, p.y);
     if (screen !== 'play' || !S) return;
@@ -722,7 +799,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     if (b) return corner(b.act);
     if (sel) { var m = hit(menuBtns, p.x, p.y); if (m) return menuAct(m.act); }
     var bb = hit(barBtns, p.x, p.y);
-    if (bb) { Kit.sfx('tap'); sel = null; aiming = null;
+    if (bb) { tap(); sel = null; aiming = null;
       if (placing === bb.k) { placing = null; ghost = null; return; }
       if (S.gold < GD.TOWERS[bb.k].cost) { play('leak', .3); bumpGold(); return; }
       placing = bb.k; ghost = null; press = { drag: true, id: e.pointerId }; try { cv.setPointerCapture(e.pointerId); } catch (x) {} return; }
@@ -732,7 +809,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     if (aiming === 'rocket') { if (c.fx > -0.5 && c.fx < COLS + .5 && c.fy > -.5 && c.fy < ROWS + .5) { C.rocket(S, c.fx, c.fy); handleEvents(); aiming = null; Kit.haptic('medium'); } else aiming = null; return; }
     if (placing) { ghost = { i: c.i, j: c.j }; press = { drag: false, id: e.pointerId, i: c.i, j: c.j }; return; }
     var t = C.inside(c.i, c.j) ? S.tw[C.idx(c.i, c.j)] : null;
-    if (t) { sel = sel === t ? null : t; Kit.sfx('tap'); return; }
+    if (t) { sel = sel === t ? null : t; tap(); return; }
     sel = null;
   });
   // taps act on the press; the click a phone sends afterwards must not land on a sheet that press just opened
@@ -756,7 +833,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   }
   function bumpGold() { var hp = hudPos.coin; if (hp) floatText((hp.x - L.ox) / L.C + .6, (hp.y - L.oy) / L.C + .6, 'Not enough gold', '#ff8a7a', null, .7); }
   function corner(act) {
-    Kit.sfx('tap');
+    tap();
     if (act === 'pause') return setPaused(true);
     if (act === 'speed') { speed = speed > 1 ? 1 : 2; Kit.haptic('light'); return; }
     if (act === 'gear') return openSettings();
@@ -805,7 +882,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     var newBest = S.score > (p.best[id] || 0); if (newBest) p.best[id] = S.score;
     p.gems = (p.gems || 0) + gemsWon; saveProg(p); clearRun();
     ending = { won: won, stars: st, gems: gemsWon, t: 0, score: S.score, newBest: newBest, shown: false };
-    if (won) { Kit.haptic('success'); Kit.confetti && Kit.confetti(); } else { Kit.haptic('error'); }
+    if (won) { Kit.haptic('success'); Kit.confetti && Kit.confetti(); play('victory'); } else { Kit.haptic('error'); play('defeat'); }
     try {
       Kit.record(KEY, { players: [{ name: who, score: S.score }], winner: won ? who : null, started: startedAt, mode: mapDef.name,
         summary: mapDef.name + (won ? ': ' + st + (st === 1 ? ' star' : ' stars') : S.survival ? ': wave ' + S.wave : ': overrun at wave ' + S.wave), badge: won ? st + '★' : 'Wave ' + S.wave,
@@ -847,13 +924,33 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   // ten stops across five lands, left to right (top to bottom on a tall screen)
   var NODES = [[.07, .66], [.16, .38], [.26, .62], [.35, .34], [.46, .64], [.55, .36], [.65, .66], [.74, .38], [.84, .62], [.93, .36]];
   var worldBtns = [];
+  // the rendered world map (goblin/maps/world.jpg, 2:1) cropped to fill the screen; its stops come with it
+  var world = { img: null, info: null, asked: false };
+  function worldRect() {
+    if (!world.asked) {
+      world.asked = true;
+      fetch('goblin/maps/world.json').then(function (r) { return r.json(); }).then(function (j) { world.info = j; mapBg = null; }).catch(function () {});
+      var im = new Image(); im.onload = function () { world.img = im; mapBg = null; }; im.src = 'goblin/maps/world.jpg';
+    }
+    if (!world.img || !world.info) return null;
+    var a = world.info.aspect || 2, sc = Math.max(L.W / a, L.H), w = a * sc, h = sc;
+    return { x: (L.W - w) / 2, y: (L.H - h) / 2 + Math.min(0, (L.H - h) / 2) * -0.3, w: w, h: h };
+  }
   function nodePos(i) {
+    var wr = worldRect(); if (wr) { var q = world.info.nodes[i]; return { x: wr.x + q[0] * wr.w, y: wr.y + q[1] * wr.h }; }
     var n = NODES[i], tall = L.ih > L.iw * 1.05;
     var u = n[0], v = n[1];
     if (tall) return { x: L.ix + L.iw * (.25 + (v - .34) / .32 * .5), y: L.iy + L.ih * (.14 + u * .74) };
     return { x: L.ix + L.iw * u, y: L.iy + L.ih * (.16 + v * .78) };
   }
   function paintWorld() {
+    var wr = worldRect();
+    if (wr) {
+      var cw = document.createElement('canvas'); cw.width = Math.ceil(L.W * dpr); cw.height = Math.ceil(L.H * dpr); var gw = cw.getContext('2d'); gw.scale(dpr, dpr);
+      gw.imageSmoothingQuality = 'high'; gw.drawImage(world.img, wr.x, wr.y, wr.w, wr.h);
+      var vg0 = gw.createRadialGradient(L.W / 2, L.H / 2, Math.min(L.W, L.H) * .45, L.W / 2, L.H / 2, Math.max(L.W, L.H) * .75); vg0.addColorStop(0, 'rgba(0,0,0,0)'); vg0.addColorStop(1, 'rgba(10,5,0,.35)'); gw.fillStyle = vg0; gw.fillRect(0, 0, L.W, L.H);
+      return cw;
+    }
     var W = L.W, H = L.H, c = document.createElement('canvas'); c.width = Math.ceil(W * dpr); c.height = Math.ceil(H * dpr); var gg = c.getContext('2d'); gg.scale(dpr, dpr);
     var tall = L.ih > L.iw * 1.05, lands = ['jungle', 'snow', 'desert', 'canyon', 'volcano'], rnd = (function () { var s = 99; return function () { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; }; })();
     // five bands of land flowing into each other
@@ -878,6 +975,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   }
   function drawWorld() {
     if (!mapBg) mapBg = paintWorld();
+    if (!world.img) { g.fillStyle = '#2a160a'; g.fillRect(0, 0, L.W, L.H); }
     g.drawImage(mapBg, 0, 0, L.W, L.H);
     var p = prog(), open = unlockedMaps(p), r = clamp(Math.min(L.iw, L.ih) * .062, 22, 44);
     worldBtns = [];
@@ -909,7 +1007,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   }
   function worldTap(x, y) {
     var b = hit(worldBtns, x, y); if (!b) return;
-    Kit.sfx('tap');
+    tap();
     if (b.act === 'map') return levelCard(b.i);
     if (b.act === 'shop') return openShop();
     if (b.act === 'survival') return levelCard(-1);
@@ -980,7 +1078,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   }
   window.addEventListener('resize', function () { if (!view.hidden) { layout(); kick(); } });
   new ResizeObserver(function () { if (!view.hidden) { layout(); kick(); } }).observe(view);
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { if (screen === 'play' && S && !S.over) { paused = true; saveRun(); } } else kick(); });
+  document.addEventListener('visibilitychange', function () { music(); if (document.hidden) { if (screen === 'play' && S && !S.over) { paused = true; saveRun(); } } else kick(); });
   document.addEventListener('kit:orient', function (e) { if (!e.detail.ok && screen === 'play') { paused = true; saveRun(); } else kick(); });
   window.addEventListener('pagehide', function () { if (screen === 'play' && S && !S.over) saveRun(); });
 
@@ -991,7 +1089,8 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
       { icon: 'compass', label: 'World map', onClick: function () { if (screen === 'play') leaveToMap(); else if (screen !== 'map') showSetup(); } },
       { icon: 'gem', label: 'Gem shop', onClick: function () { if (screen === 'play') paused = true; openShop(); } },
       { icon: 'trophy', label: 'High scores', onClick: function () { if (screen === 'play') { paused = true; saveRun(); } ArcadeHi.show(HI, 'Goblin Defenders'); } },
-      { icon: 'history', label: 'Past games', onClick: function () { if (screen === 'play') paused = true; Kit.history(KEY, { title: 'Goblin Defenders: past games' }); } }
+      { icon: 'history', label: 'Past games', onClick: function () { if (screen === 'play') paused = true; Kit.history(KEY, { title: 'Goblin Defenders: past games' }); } },
+      { icon: 'music', label: 'Game music', sub: 'The original soundtrack', toggle: function () { return lsGet('goblin_music', '1') === '1'; }, onClick: function () { lsSet('goblin_music', lsGet('goblin_music', '1') === '1' ? '0' : '1'); music(); } }
     ],
     rules:
       '<p class="goal">The enemy is marching on the goblin village. Build towers beside their road to stop them before they reach the gate. Each map is a run of waves: survive them all to save the village.</p>' +
@@ -1000,7 +1099,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
       '<h3>The towers</h3><ul><li><b>Crossbow</b> (10): fast bolts at one enemy. Hits flyers.</li><li><b>Bomb Tower</b> (15): bombs that blast a crowd.</li><li><b>Frost Cannon</b> (18): ice that slows enemies down. Hits flyers.</li>' +
       '<li><b>Acid Barrel</b> (25): a pool of acid that burns everyone who walks through it.</li><li><b>Heavy Claw</b> (30): long range boulders that crush armour.</li>' +
       '<li>The <b>Tesla Coil</b> (chain lightning), <b>Mortar</b> (huge range and blast) and <b>Spike Dome</b> (slams everyone around it) are unlocked in the gem shop.</li>' +
-      '<li>Flyers (wraiths, gargoyles) cross the map in a straight line: only crossbows, frost cannons and tesla coils can reach them.</li></ul>' +
+      '<li>Flyers (ghosts, gargoyles) cross the map in a straight line: only crossbows, frost cannons and tesla coils can reach them.</li></ul>' +
       '<h3>Upgrades</h3><p>Tap a tower to see its range. The green arrow upgrades it (each tower has three levels; the sign above shows what changes), the coins sell it back for half what you spent.</p>' +
       '<h3>Waves</h3><ul><li>Tap the skull by the entrance to send the first wave. After that the next wave comes when its ring runs out; tap it early for bonus gold.</li>' +
       '<li>Every enemy that reaches the village costs a heart (big ones and bosses cost more). Lose them all and the village falls.</li>' +
@@ -1017,6 +1116,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
 
   // load the sprites, then go
   A.load('goblin/', function (ok) {
+    COSE = A.COSE;
     $('load').hidden = true;
     if (!ok) { $('load').hidden = false; $('load').textContent = 'Couldn’t load the pictures. Check the connection and reload.'; return; }
     var run = loadRun();

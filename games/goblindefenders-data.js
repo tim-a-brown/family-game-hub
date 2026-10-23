@@ -31,21 +31,21 @@
   // hp at wave 1 of the first map (waves and later maps scale it), speed in cells a second, armour comes off every
   // hit (the Heavy Claw ignores it), gold when killed, lives lost on reaching the village.
   var ENEMIES = {
-    footman: { name: 'Footman', hp: 22, speed: 1.0, gold: 2, lives: 1 },
-    skeleton: { name: 'Skeleton', hp: 15, speed: 1.15, gold: 1, lives: 1 },
+    footman: { name: 'Skeleton', hp: 22, speed: 1.0, gold: 2, lives: 1 },
+    skeleton: { name: 'Giant Rat', hp: 15, speed: 1.15, gold: 1, lives: 1 },
     knight: { name: 'Knight', hp: 50, speed: .8, armor: 3, gold: 4, lives: 1 },
-    rider: { name: 'Boar Rider', hp: 32, speed: 1.95, gold: 3, lives: 1 },
+    rider: { name: 'Boar Raider', hp: 32, speed: 1.95, gold: 3, lives: 1 },
     spider: { name: 'Spider', hp: 13, speed: 1.8, gold: 1, lives: 1, small: true },
     ogre: { name: 'Ogre', hp: 150, speed: .55, armor: 2, gold: 8, lives: 2, big: true },
-    wraith: { name: 'Wraith', hp: 38, speed: 1.1, gold: 4, lives: 1, fly: true },
+    wraith: { name: 'Ghost', hp: 38, speed: 1.1, gold: 4, lives: 1, fly: true },
     shaman: { name: 'Shaman', hp: 55, speed: .8, gold: 5, lives: 1, heal: true },
     gargoyle: { name: 'Gargoyle', hp: 80, speed: .85, armor: 3, gold: 6, lives: 2, fly: true },
     sheep: { name: 'Sheep', hp: 10, speed: .5, gold: 0, lives: 0, sheep: true },
-    blackKnight: { name: 'Black Knight', hp: 1400, speed: .55, armor: 6, gold: 60, lives: 5, boss: true },
-    frostTroll: { name: 'Frost Troll', hp: 2300, speed: .5, armor: 4, gold: 80, lives: 6, boss: true, noSlow: true },
+    blackKnight: { name: 'Demon Knight', hp: 1400, speed: .55, armor: 6, gold: 60, lives: 5, boss: true },
+    frostTroll: { name: 'Ice Giant', hp: 2300, speed: .5, armor: 4, gold: 80, lives: 6, boss: true, noSlow: true },
     spiderQueen: { name: 'Spider Queen', hp: 2600, speed: .7, armor: 3, gold: 100, lives: 6, boss: true, brood: true },
-    ogreWarlord: { name: 'Ogre Warlord', hp: 4400, speed: .45, armor: 8, gold: 120, lives: 8, boss: true },
-    wraithLord: { name: 'Wraith Lord', hp: 5400, speed: .6, armor: 2, gold: 150, lives: 10, boss: true, fly: true }
+    ogreWarlord: { name: 'Iron Juggernaut', hp: 4400, speed: .45, armor: 8, gold: 120, lives: 8, boss: true },
+    wraithLord: { name: 'Ghost King', hp: 5400, speed: .6, armor: 2, gold: 150, lives: 10, boss: true, fly: true }
   };
 
   // ── Maps ─────────────────────────────────────────────────────────────────

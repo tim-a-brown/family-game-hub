@@ -329,7 +329,8 @@
     for (n = 0; n < s.towers.length; n++) {
       var t = s.towers[n]; t.cd -= dt; if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 4);
       if (t.cd > 0) continue;
-      var tg = pickTarget(s, t); if (!tg) { t.cd = .05; continue; }
+      var tg = pickTarget(s, t); if (!tg) { t.cd = .05; t.idle = (t.idle || 0) + .05; if (t.idle > 1.2) t.angle += Math.sin(s.time * .7 + t.id) * .02; continue; }   // nothing in range: scan slowly
+      t.idle = 0;
       fire(s, t, tg); t.cd = 1 / stat(s, t, 'rate');
     }
     // shots in flight
