@@ -1346,9 +1346,17 @@
   // the arrow alone (gbar.k-tight) so the name wins
   function fitBar() {
     if (!gbarEl) return;
-    gbarEl.classList.remove('k-tight');
+    gbarEl.classList.remove('k-tight', 'k-noic');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
-    if (t && t.scrollWidth > t.clientWidth) gbarEl.classList.add('k-tight');
+    if (!t) return;
+    t.style.fontSize = '';
+    if (t.scrollWidth > t.clientWidth) gbarEl.classList.add('k-tight');
+    // still too long: the name eases down a little, then the game's icon steps aside, then a little more; the
+    // title is never cut off
+    var fs0 = parseFloat(getComputedStyle(t).fontSize), fs = fs0;
+    while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.84) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+    if (t.scrollWidth > t.clientWidth + 0.5 && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
+    while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
   }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
