@@ -16,48 +16,32 @@ jobs:
           mkdir -p espn-sample
           cat > /tmp/probe.js <<'EOF'
           const fs = require('fs');
-          const S = 'https://site.api.espn.com/apis/site/v2/sports/', C = 'https://sports.core.api.espn.com/v2/sports/';
+          const S = 'https://site.api.espn.com/apis/site/v2/sports/';
           const out = (n, v) => fs.writeFileSync('espn-sample/' + n + '.json', JSON.stringify(v, null, 1));
-          async function get(u, hdr) { try { const r = await fetch(u, { headers: hdr || {} }); const h = {}; r.headers.forEach((v, k) => { if (/access-control|content-type/.test(k)) h[k] = v; }); let b = null; try { b = await r.json(); } catch (e) {} return { url: u, status: r.status, headers: h, body: b }; } catch (e) { return { url: u, err: String(e) }; } }
-          const trim = (b, n) => { if (b && Array.isArray(b.events)) b.events = b.events.slice(0, n); return b; };
+          async function get(u) { try { const r = await fetch(u); const txt = await r.text(); let b = null; try { b = JSON.parse(txt); } catch (e) { b = txt.slice(0, 500); } return { url: u, status: r.status, body: b }; } catch (e) { return { url: u, err: String(e) }; } }
           (async () => {
-            const d0 = new Date(), ymd = d => d.toISOString().slice(0, 10).replace(/-/g, ''), d7 = new Date(Date.now() + 6 * 864e5);
-            // team sports: CORS headers and two events each (the odds block)
-            for (const p of ['football/nfl', 'basketball/nba', 'basketball/wnba', 'hockey/nhl', 'baseball/mlb', 'football/college-football', 'basketball/mens-college-basketball']) {
-              const r = await get(S + p + '/scoreboard?dates=' + ymd(d0) + '-' + ymd(d7) + '&limit=500', { Origin: 'https://games.timbrown.xyz' });
-              const n = r.body && r.body.events ? r.body.events.length : 0;
-              const withOdds = r.body && r.body.events ? r.body.events.filter(e => e.competitions && e.competitions[0].odds) : [];
-              if (r.body) r.body = { count: n, withOdds: withOdds.length, events: withOdds.slice(0, 2).concat((r.body.events || []).slice(0, 1)) };
-              out('team_' + p.replace('/', '_'), r);
+            const ymd = d => d.toISOString().slice(0, 10).replace(/-/g, ''), d0 = new Date(), d3 = new Date(Date.now() + 3 * 864e5), d6 = new Date(Date.now() + 6 * 864e5);
+            const res = [];
+            for (const q of ['', '?limit=100', '?limit=500', '?limit=1000', '?dates=' + ymd(d0), '?dates=' + ymd(d0) + '-' + ymd(d3), '?dates=' + ymd(d0) + '-' + ymd(d6), '?dates=' + ymd(d0) + '-' + ymd(d6) + '&limit=300', '?dates=' + ymd(d0) + '-' + ymd(d6) + '&limit=100']) {
+              const r = await get(S + 'football/nfl/scoreboard' + q);
+              res.push({ q, status: r.status, n: r.body && r.body.events ? r.body.events.length : null, err: r.body && !r.body.events ? r.body : null });
             }
-            // tennis: scoreboards, rankings, a match's odds and summary
-            for (const t of ['atp', 'wta']) {
-              const sb = await get(S + 'tennis/' + t + '/scoreboard', { Origin: 'https://games.timbrown.xyz' });
-              out('tennis_' + t + '_scoreboard_full', sb);
-              out('tennis_' + t + '_rankings', await get(S + 'tennis/' + t + '/rankings'));
-              out('tennis_' + t + '_core_rankings', await get(C + 'tennis/leagues/' + t + '/rankings'));
-              const ev = sb.body && sb.body.events && sb.body.events[0];
-              const comp = ev && ((ev.groupings && ev.groupings[0] && ev.groupings[0].competitions && ev.groupings[0].competitions.slice(-1)[0]) || (ev.competitions && ev.competitions[0]));
-              if (ev && comp) {
-                out('tennis_' + t + '_core_odds', await get(C + 'tennis/leagues/' + t + '/events/' + ev.id + '/competitions/' + comp.id + '/odds'));
-                out('tennis_' + t + '_summary', await get(S + 'tennis/' + t + '/summary?event=' + comp.id));
-              }
-              out('tennis_' + t + '_scoreboard_dates', trim((await get(S + 'tennis/' + t + '/scoreboard?dates=' + ymd(d0))), 2));
+            out('variants_nfl', res);
+            for (const p of ['football/nfl', 'basketball/nba', 'hockey/nhl', 'basketball/wnba', 'baseball/mlb']) {
+              const r = await get(S + p + '/scoreboard?dates=' + ymd(d0) + '-' + ymd(d3));
+              const ev = r.body && r.body.events || [];
+              out('team2_' + p.replace('/', '_'), { status: r.status, n: ev.length, withOdds: ev.filter(e => e.competitions[0].odds).length, sample: ev.filter(e => e.competitions[0].odds).slice(0, 2).concat(ev.filter(e => !e.competitions[0].odds).slice(0, 1)), err: r.body && !r.body.events ? r.body : null });
             }
-            // golf: scoreboard, rankings, the event's odds (futures), leaderboard
-            const g = await get(S + 'golf/pga/scoreboard', { Origin: 'https://games.timbrown.xyz' });
-            out('golf_pga_scoreboard_full', g);
-            const ge = g.body && g.body.events && g.body.events[0];
-            if (ge) {
-              const cid = (ge.competitions && ge.competitions[0] && ge.competitions[0].id) || ge.id;
-              out('golf_pga_core_odds', await get(C + 'golf/leagues/pga/events/' + ge.id + '/competitions/' + cid + '/odds'));
-              out('golf_pga_core_event', await get(C + 'golf/leagues/pga/events/' + ge.id));
-              out('golf_pga_leaderboard', await get('https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard?event=' + ge.id));
+            for (const [p, g] of [['football/college-football', 80], ['basketball/mens-college-basketball', 50]]) {
+              const r = await get(S + p + '/scoreboard?groups=' + g + '&dates=' + ymd(d0) + '-' + ymd(d3) + '&limit=300');
+              const ev = r.body && r.body.events || [];
+              out('team2_' + p.replace('/', '_'), { status: r.status, n: ev.length, withOdds: ev.filter(e => e.competitions[0].odds).length, sample: ev.filter(e => e.competitions[0].odds).slice(0, 2), err: r.body && !r.body.events ? r.body : null });
             }
-            out('golf_pga_rankings', await get(S + 'golf/pga/rankings'));
-            out('golf_pga_core_rankings', await get(C + 'golf/leagues/pga/rankings'));
-            out('golf_pga_core_futures', await get(C + 'golf/leagues/pga/seasons/' + d0.getFullYear() + '/futures'));
-            out('golf_pga_scoreboard_next', await get(S + 'golf/pga/scoreboard?dates=' + ymd(new Date(Date.now() + 7 * 864e5))));
+            const tm = await get(S + 'football/college-football/teams?limit=1000');
+            out('teams_cfb', { status: tm.status, n: tm.body && tm.body.sports ? tm.body.sports[0].leagues[0].teams.length : null, first: tm.body && tm.body.sports ? tm.body.sports[0].leagues[0].teams.slice(0, 2) : tm.body });
+            // golf: last finished events for player form
+            const g = await get(S + 'golf/pga/scoreboard?dates=20261015');
+            out('golf_prev', { status: g.status, events: g.body && g.body.events ? g.body.events.map(e => ({ id: e.id, name: e.name, status: e.status, n: e.competitions[0].competitors.length, top: e.competitions[0].competitors.slice(0, 3).map(c => ({ order: c.order, name: c.athlete.displayName, score: c.score, ls: c.linescores.map(l => l.value) })), last: e.competitions[0].competitors.slice(-3).map(c => ({ order: c.order, name: c.athlete.displayName, score: c.score, ls: c.linescores.map(l => l.value) })) })) : g.body });
           })();
           EOF
           node /tmp/probe.js
@@ -65,4 +49,4 @@ jobs:
       - name: Commit
         run: |
           git config user.name "espn-sample"; git config user.email "espn-sample@users.noreply.github.com"
-          git add espn-sample && git commit -m "ESPN data sample (temporary, for building the sportsbook)" && git push
+          git add espn-sample && git commit -m "ESPN data sample 2 (temporary, for building the sportsbook)" && git push
