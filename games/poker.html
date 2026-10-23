@@ -64,6 +64,14 @@
 .psay.champ{font-size:.78rem;padding:2px 9px;z-index:7;background:var(--yellow);color:#2b1a00;}
 .psay.champ.anim{animation:fadein .3s ease-out both;}
 @keyframes fadein{from{opacity:0;}to{opacity:1;}}
+/* all in: a red stamp with gold letters; the moment it happens it lands big and settles, and a red ring pulses off the seat */
+.psay.allin{background:linear-gradient(180deg,#ff5d52,#c11a2c);color:#fff;text-transform:uppercase;letter-spacing:.07em;font-size:.68rem;box-shadow:0 0 0 1.5px #ffd84a,0 3px 10px rgba(0,0,0,.45);}
+:is(.pseat.allinfx,.pme.allinfx) .psay.allin{animation:stamp .5s cubic-bezier(.2,1.5,.4,1) both;}
+@keyframes stamp{from{scale:1.9;rotate:-9deg;opacity:0;}55%{opacity:1;}to{scale:1;rotate:0deg;}}
+.pseat.allinfx > .tag{animation:allinring 1.1s ease-out 2;}
+.pme.allinfx .phand{animation:allinglow 1.1s ease-out 2;}
+@keyframes allinring{0%{box-shadow:0 0 0 0 rgba(255,93,82,.95),0 2px 8px rgba(0,0,0,.4);}100%{box-shadow:0 0 0 20px rgba(255,93,82,0),0 2px 8px rgba(0,0,0,.4);}}
+@keyframes allinglow{0%{filter:drop-shadow(0 0 0 rgba(255,93,82,.9));}40%{filter:drop-shadow(0 0 16px rgba(255,93,82,.85));}100%{filter:drop-shadow(0 0 0 rgba(255,93,82,0));}}
 .pspot{position:absolute;inset:0;border-radius:inherit;pointer-events:none;}
 .pspot.anim{animation:fadein .9s ease-out .35s both;}
 /* the spots a seat's pill can move to when its usual one would cover something (placeSays) */
@@ -2738,7 +2746,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       H.say[i] = p.stack === 0 ? 'All in' : (wasBet ? 'Bet ' : 'Raise to ') + amt(to);
       Kit.sfx('chip'); if (p.stack === 0 && !QUIET) setTimeout(function () { Kit.sfx('chip'); }, 90);
     }
-    if (p.stack === 0 && !H.folded[i] && H.say[i] === 'All in') { S.st.allins++; if (i === 0 && !QUIET) { Kit.haptic('heavy'); Kit.callout('All in!'); } }
+    // all in: a quick beat at the table (the stamp and the ring are drawn by renderTable), never a pause
+    if (p.stack === 0 && !H.folded[i] && H.say[i] === 'All in') {
+      S.st.allins++;
+      if (!QUIET && !SIM) { Kit.sfx('slide', 0.7); setTimeout(function () { Kit.sfx('chip'); }, 180); if (i === 0) Kit.haptic('heavy'); }
+    }
     logAdd(i, H.say[i]);
     H.sayNew = i;
     H.acted[i] = true;
@@ -4737,7 +4749,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       else if (isWin) {
         // the winner's pill when nothing was shown: that they took the pot
         seat.appendChild(el('div', { class: 'psay champ' + (winAnim ? ' anim' : ''), text: H.scores && H.scores[i] != null ? say : 'Takes the pot' }));
-      } else if (say && !(done && say === 'Fold')) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
+      } else if (say && !(done && say === 'Fold')) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : say === 'All in' ? ' allin' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
+      if (say === 'All in' && H && H.sayNew === i && !done && !fx['a' + H.no + ':' + i]) { fx['a' + H.no + ':' + i] = 1; seat.classList.add('allinfx'); }   // (its moment plays once)
       if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && lme) meEq = eb; else seat.appendChild(eb); }
       if (lme && me) meSeat = seat;
       else {
@@ -4825,6 +4838,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (lme) {
       var pmeEl = el('div', { class: 'pme' + (myTurn ? ' acting' : '') }, [meDealer, meSeat, hand, meEq]);
       // (upright phone: what you said or hold sits beside your cards, where it can't land on the next seat's name)
+      if (meSeat && meSeat.classList.contains('allinfx')) pmeEl.classList.add('allinfx');
       var mySay = port && meSeat && meSeat.querySelector(':scope > .psay');
       if (mySay) { mySay.classList.add('rt'); pmeEl.appendChild(mySay); }
       tb.appendChild(pmeEl);
@@ -5019,14 +5033,21 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     return { obs: obs, area: area };
   }
-  function placeSays() {
+  // where a pill sits once its pop-in or stamp has settled: its own size around the centre it's animating about
+  function restRect(e) {
+    var r = e.getBoundingClientRect(), cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2, w = e.offsetWidth, h = e.offsetHeight;
+    return { left: cx - w / 2, right: cx + w / 2, top: cy - h / 2, bottom: cy + h / 2, width: w, height: h };
+  }
+  function placeSays(keep) {   // keep: a second look once things settle; a pill whose spot is still clear stays put
     var T = tableClear(); if (!T) return;
     [].slice.call(document.querySelectorAll('.ptable .psay')).forEach(function (sy) {
+      if (keep && sy.dataset.placed && T.area(restRect(sy), sy) < 4) { T.obs.push(sy); return; }
+      sy.dataset.placed = 1;
       var best = null;
       for (var k = 0; k < SAYAT.length; k++) {
         SAYAT.forEach(function (c) { if (c) sy.classList.remove(c); });
         if (SAYAT[k]) sy.classList.add(SAYAT[k]);
-        var a = T.area(sy.getBoundingClientRect(), sy);
+        var a = T.area(restRect(sy), sy);
         if (!best || a < best.a) best = { k: k, a: a };
         if (a < 4) break;
       }
@@ -5095,7 +5116,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     });
     placeSays(); fitWins();
     // (a pill popping in or chips sliding measure small or in the wrong place: once they've settled, place again)
-    clearTimeout(fitTiles.t); fitTiles.t = setTimeout(function () { placeSays(); fitWins(); }, 460);
+    clearTimeout(fitTiles.t); fitTiles.t = setTimeout(function () { placeSays(true); fitWins(); }, 560);
     // the side panel never cuts its last section off: short of room, the log's one-line preview sheds its smaller
     // detail (the hands it beat, then its cards; the whole log has them) before anything is clipped
     var side = document.querySelector('.pside'), tk = side && side.querySelector('.plog.tk');
