@@ -64,6 +64,8 @@
 .psay.champ{font-size:.78rem;padding:2px 9px;z-index:7;background:var(--yellow);color:#2b1a00;}
 .psay.champ.anim{animation:fadein .3s ease-out both;}
 @keyframes fadein{from{opacity:0;}to{opacity:1;}}
+.pspot{position:absolute;inset:0;border-radius:inherit;pointer-events:none;}
+.pspot.anim{animation:fadein .9s ease-out .35s both;}
 /* the spots a seat's pill can move to when its usual one would cover something (placeSays) */
 .psay.at-t{top:auto !important;bottom:100% !important;left:50% !important;right:auto !important;transform:translate(-50%,-3px) !important;}
 .psay.at-b{top:100% !important;bottom:auto !important;left:50% !important;right:auto !important;transform:translate(-50%,3px) !important;}
@@ -126,6 +128,9 @@
 .pseat .stk.mini{min-width:calc(var(--w) * 4 + 3px);min-height:calc(var(--w) * .9);justify-content:flex-end;}
 :is(.ps-lt,.ps-lb,.ps-l) > .pstk .stk.mini{justify-content:flex-start;}
 .pseat .pstk .stack{min-width:4.3em;text-align:center;box-sizing:border-box;}
+/* the blinds: like the dealer button but smaller and quieter (a dark token with a thin ring, not a white disc) */
+.pblind{flex:none;align-self:center;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:rgba(10,12,28,.62);color:rgba(255,255,255,.82);font-weight:900;font-size:.46rem;letter-spacing:.02em;box-shadow:0 0 0 1.5px rgba(255,255,255,.45) inset;}
+.pblind.bb{box-shadow:0 0 0 1.5px rgba(255,216,74,.7) inset;color:#ffe9a8;}
 .pbet{z-index:2;display:flex;align-items:flex-end;gap:4px;}
 .pa.bl{transform:translate(0,-50%);}
 .pa.br{transform:translate(-100%,-50%);flex-direction:row-reverse;}
@@ -4632,6 +4637,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var myTurn = H && H.phase === 'bet' && H.actor === 0 && !final;
     S.players.forEach(function (p, i) {
       var me = i === 0, pos = land && !me ? POSL[lay[i]] : port && !me && POSP[lay[i]] && (n <= 6 || /^[lr]b$|^b[lr]$/.test(lay[i])) ? POSP[lay[i]] : POS[lay[i]];
+      if (port && !me && innerHeight <= 740 && /^(lt|rt)$/.test(lay[i])) pos = [pos[0], pos[1] + 4];   // (a short phone: the upper side seats sit a little lower, clear of the top seat's chips)
       var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : n > 6 ? '' : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) + (n > 6 && !me ? ' many' : '') });
       if (port && !me) seat.classList.add('ps-' + lay[i]);
       if (p.out) seat.classList.add('out');
@@ -4680,13 +4686,19 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       seat.appendChild(tag);
       // what each player has: their chips beside the amount
       if (p.left || p.out) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : ordinal(p.place) }));
-      else if (p.stack <= 0) seat.appendChild(el('div', { class: 'pstk' }, [el('div', { class: 'stk mini' }), el('span', { class: 'stack', text: amt(0) })]));   // all in: the same shape, no chips
-      else seat.appendChild(el('div', { class: 'pstk' }, [chipStack(p.stack, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]));
+      else {
+        var pk = el('div', { class: 'pstk' }, p.stack <= 0 ? [el('div', { class: 'stk mini' }), el('span', { class: 'stack', text: amt(0) })] : [chipStack(p.stack, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]);   // (all in: the same shape, no chips)
+        // the blinds: small quiet tokens beside the chips, under the dealer button's notice (heads-up the button is the small blind)
+        var gb = gv();
+        if (H && !done && !gb.stud && !gb.guts && !gb.acey && (i === H.bbI || (i === H.sbI && H.sbI !== H.button))) pk.appendChild(el('span', { class: 'pblind' + (i === H.bbI ? ' bb' : ''), text: i === H.bbI ? 'BB' : 'SB', 'aria-label': i === H.bbI ? 'Big blind' : 'Small blind' }));
+        seat.appendChild(pk);
+      }
       var say = '';
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
       else if (H && H.say[i]) say = H.say[i];
-      if (isWin) {
-        // the winner's pill: their hand (the banner under the board names it in full), or that they took the pot
+      if (isWin && H.scores && H.scores[i] != null && main.v != null) {}   // (a showdown winner: the hand rides on the pot to them, named there; no second pill)
+      else if (isWin) {
+        // the winner's pill when nothing was shown: that they took the pot
         seat.appendChild(el('div', { class: 'psay champ' + (winAnim ? ' anim' : ''), text: H.scores && H.scores[i] != null ? say : 'Takes the pot' }));
       } else if (say && !(done && say === 'Fold')) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
       if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && lme) meEq = eb; else seat.appendChild(eb); }
@@ -4708,7 +4720,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       } else if (done && H.won[i] > 0) {
         // the pot slides to whoever won it, carrying the hand that won it, so the eye follows it to them
         var we = el('div', { class: 'pbet won' }, [chipStack(H.won[i]), el('span', { class: 'amt', text: '+' + amt(H.won[i]) })]);
-        if (me && (land || port)) bp = land ? [79, 79] : [50, 77];   // your winnings land beside your cards
+        if (me && (land || port)) bp = land ? [79, 79] : [50, innerHeight <= 740 ? 69 : 77];   // your winnings land beside your cards (a short phone: a little higher, clear of them)
         if (isWin && main.v != null && H.scores && H.scores[i] != null) {
           // (sideways, your pile sits in the corner beside your cards: the short name, growing away from them)
           var tight = land && me && evBased() && !gv().wild;
@@ -4749,6 +4761,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         board.appendChild(ce);
       } else board.appendChild(Kit.card('', '', { cls: 'slot' }));
     }
+    // the winner's spotlight: a soft warm light pooled on the felt where they sit (placed by placeSpot)
+    if (done && main && main.w.some(function (j) { return H.won[j] > 0; })) felt.appendChild(el('div', { class: 'pspot' + (winAnim ? ' anim' : '') }));
     tb.appendChild(at(board, land ? CENL : CEN));
     if (H && H.phase === 'runout') tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 64] : [50, 68]));
     app.appendChild(tb);
@@ -4955,10 +4969,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function tableClear() {
     var tb = document.querySelector('.ptable'); if (!tb) return null;
     var lim = tb.getBoundingClientRect(), hd = document.querySelector('.gbar'), top = Math.max(lim.top, hd ? hd.getBoundingClientRect().bottom : 0);
-    var obs = [].slice.call(tb.querySelectorAll('.pseat .tag, .pseat .stack, .pseat .cards, .pseat .pstk, .pbet .amt, .pbet .stk, .ppot, .pboard .pcard, .pboard .card, .phand .pcard, .pdealer, .peq, .pmsg, .pbet .wh'));
+    var obs = [].slice.call(tb.querySelectorAll('.pseat .tag, .pseat .stack, .pseat .cards, .pseat .pstk, .pbet .amt, .pbet .stk, .ppot, .pboard .pcard, .pboard .card, .phand .pcard, .pdealer, .peq, .pmsg, .pbet .wh')).concat([].slice.call(document.querySelectorAll('.prail')));   // (and nothing spills onto the side panel)
     function area(r, skip) {
       var a = 0;
-      if (r.left < 2) a += (2 - r.left) * r.height; if (r.right > innerWidth - 2) a += (r.right - innerWidth + 2) * r.height; if (r.top < top) a += (top - r.top) * r.width;
+      if (r.left < 2) a += (2 - r.left) * r.height * 10; if (r.right > innerWidth - 2) a += (r.right - innerWidth + 2) * r.height * 10; if (r.top < top) a += (top - r.top) * r.width * 10;   // (off the screen is worse than a corner covered)
       obs.forEach(function (o) {
         if (skip && (skip === o || skip.contains(o) || o.contains(skip))) return;
         var q = o.getBoundingClientRect(), w = Math.min(r.right, q.right) - Math.max(r.left, q.left), h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
@@ -5009,7 +5023,29 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       T.obs.push(wh);
     });
   }
+  function placeSpot() {
+    var sp = document.querySelector('.ptable .pspot'); if (!sp) return;
+    var r0 = sp.getBoundingClientRect(), pools = [];
+    [].slice.call(document.querySelectorAll('.ptable .pseat.win')).forEach(function (st) {
+      var t = st.classList.contains('me') ? document.querySelector('.ptable .phand') || st : st, r = t.getBoundingClientRect();
+      pools.push([((r.left + r.width / 2 - r0.left) / r0.width * 100).toFixed(1), ((r.top + r.height / 2 - r0.top) / r0.height * 100).toFixed(1)]);
+    });
+    if (!pools.length) { sp.style.background = 'none'; return; }
+    var R0 = Math.round(Math.min(r0.width, r0.height) * 0.36);
+    var g = pools.map(function (q) { return 'radial-gradient(circle at ' + q[0] + '% ' + q[1] + '%, rgba(255,236,190,.3) 0, rgba(255,226,160,.14) ' + Math.round(R0 * 0.55) + 'px, rgba(255,226,160,0) ' + R0 + 'px)'; });
+    if (pools.length === 1) g.push('radial-gradient(circle at ' + pools[0][0] + '% ' + pools[0][1] + '%, rgba(0,0,0,0) ' + R0 + 'px, rgba(0,0,0,.26) ' + Math.round(R0 * 2.2) + 'px)');   // (the rest of the felt eases back a touch)
+    sp.style.background = g.join(',');
+  }
   function fitTiles() {
+    placeSpot();
+    var myTag = document.querySelector('.pme .pseat > .tag');
+    if (myTag) {
+      myTag.style.visibility = '';
+      var mr = myTag.getBoundingClientRect();
+      if (mr.width && [].slice.call(document.querySelectorAll('.ptable .pseat:not(.me) :is(.tag,.pstk,.cards)')).some(function (o) {
+        var q = o.getBoundingClientRect(); return Math.min(mr.right, q.right) - Math.max(mr.left, q.left) > 2 && Math.min(mr.bottom, q.bottom) - Math.max(mr.top, q.top) > 2;
+      })) myTag.style.visibility = 'hidden';   // (your cards say it's you; the other seat keeps its name)
+    }
     // names on the table never cut off: "Kathleen M." drops the initial first, then the name eases down in size
     Array.prototype.forEach.call(document.querySelectorAll('.pseat .tag > .nm, .pstand .nm'), function (sn) {
       var full = sn.getAttribute('data-full'); if (!full) return;
@@ -5020,6 +5056,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       sn.style.fontSize = (parseFloat(getComputedStyle(sn).fontSize) * Math.max(sn.clientWidth / sn.scrollWidth * 0.97, 0.7)).toFixed(1) + 'px';
     });
     placeSays(); fitWins();
+    // (a pill popping in or chips sliding measure small or in the wrong place: once they've settled, place again)
+    clearTimeout(fitTiles.t); fitTiles.t = setTimeout(function () { placeSays(); fitWins(); }, 460);
     // the side panel never cuts its last section off: short of room, the log's one-line preview sheds its smaller
     // detail (the hands it beat, then its cards; the whole log has them) before anything is clipped
     var side = document.querySelector('.pside'), tk = side && side.querySelector('.plog.tk');
