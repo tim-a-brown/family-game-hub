@@ -58,7 +58,26 @@
 .pseat.top{display:grid;grid-template-columns:auto auto;column-gap:6px;row-gap:3px;align-items:center;justify-items:start;}
 .pseat.top > .cards{grid-row:1 / 3;}
 .pseat.acting .tag{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.6);}
-.pseat.win .tag{box-shadow:0 0 0 3px var(--green),0 0 20px rgba(61,220,132,.65);}
+.pseat.win .tag{box-shadow:0 0 0 3px #ffd84a,0 0 26px rgba(255,200,61,.75);animation:wglow 1.5s ease-in-out infinite;}
+@keyframes wglow{50%{box-shadow:0 0 0 3px #ffe9a0,0 0 36px rgba(255,214,90,.95);}}
+.pseat.lost > .cards,.pseat.lost > .tag{opacity:.55;filter:saturate(.55);}
+.pseat.lost .psay.hand{opacity:.8;font-size:.66rem;}
+.psay.champ{display:inline-flex;align-items:center;gap:4px;padding:3px 10px 3px 7px;border-radius:12px;font-size:.84rem;z-index:7;
+  background:linear-gradient(180deg,#ffe788,#f3ae1a);color:#2b1a00;box-shadow:0 0 0 2px rgba(255,255,255,.9),0 4px 14px rgba(0,0,0,.45),0 0 22px rgba(255,200,61,.65);}
+.psay.champ svg{width:14px;height:14px;flex:none;}
+.psay.champ.anim{animation:champ .55s var(--spring) both;}
+@keyframes champ{0%{opacity:0;scale:.3;}60%{opacity:1;}100%{scale:1;}}
+/* under the board when a hand is over: who won it, with what and how much */
+.pwinb{position:absolute;left:50%;top:calc(100% + 9px);translate:-50% 0;display:flex;align-items:center;gap:7px;padding:5px 13px 5px 8px;border-radius:999px;white-space:nowrap;pointer-events:none;z-index:5;
+  background:rgba(12,10,24,.86);color:#fff;font-weight:900;font-size:.84rem;box-shadow:0 0 0 2px #ffd84a,0 0 22px rgba(255,200,61,.35),0 8px 20px rgba(0,0,0,.45);}
+.pwinb .dots{display:flex;}
+.pwinb .dot{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px rgba(255,255,255,.85);}
+.pwinb .dot+.dot{margin-left:-4px;}
+.pwinb .hn{color:#ffd84a;}
+.pwinb .amt{color:#8ff0b0;font-variant-numeric:tabular-nums;}
+.pwinb.me{box-shadow:0 0 0 2px #8ff0b0,0 0 26px rgba(61,220,132,.45),0 8px 20px rgba(0,0,0,.45);}
+.pwinb.anim{animation:wbin .5s var(--spring) both;}
+@keyframes wbin{from{opacity:0;translate:-50% 12px;scale:.7;}to{opacity:1;translate:-50% 0;scale:1;}}
 .pseat.fold > .cards,.pseat.fold > .tag{opacity:.45;}
 .pseat.out{opacity:.35;}
 .pseat .cards{display:flex;--cw:24px;min-height:34px;}
@@ -594,6 +613,8 @@
 .plog .hd b{color:var(--text-3);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;}
 .mc{display:inline-block;padding:0 3px;border-radius:4px;background:#fbf8f0;color:#1d1b2e;font-weight:900;font-size:.72rem;line-height:1.35;}
 .mc.r{color:#d0263b;}
+.mc.up{position:relative;top:-3px;box-shadow:0 0 0 1.5px var(--yellow),0 3px 6px rgba(0,0,0,.25);}   /* the cards that make the hand, raised above the kickers */
+.mc.up + .mc:not(.up){margin-left:5px;}
 /* controls */
 .pctl{display:flex;flex-direction:column;gap:6px;margin-top:auto;}
 .prail .pcoach{margin:0;min-height:0;justify-content:flex-start;}
@@ -819,6 +840,7 @@
 .pport .pme .peq{left:auto;right:0;transform:none;bottom:100%;}
 .pport .pme .pseat{position:absolute;right:calc(100% + 8px);bottom:26px;margin:0;flex-direction:column;align-items:flex-end;gap:3px;}   /* your cards stay centred; your name and chips beside them */
 .pport .pme .pseat .psay{top:auto;bottom:100%;left:auto;right:0;transform:translate(0,-4px);}
+.pport .pme .pseat .psay.champ{left:0;right:auto;}   /* the winning hand's name is long: it grows over the felt, never off the screen */
 .pport .pev .tg:not(.hot):not(.ok):not(.gold){display:none;}   /* in the narrow box only the tags that say something now */
 .stage.pport .phand,.stage.pport.raising .phand{--cw:clamp(56px,16.5vw,70px);gap:6px;min-height:0;}
 .stage.pport .phand.om{--cw:clamp(46px,13vw,58px);gap:3px;}
@@ -1226,6 +1248,20 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       case 1: return 'Pair of ' + RP[a];
       default: return RW[a] + ' high';
     }
+  }
+  // a winning five in the order it scores: the cards that make the hand first (the pair, the trips, the two pairs
+  // high then low; quads; a straight from the top, the wheel's ace last), then the kickers high to low. k: how many
+  // of the cards make the hand (the rest are kickers)
+  function scoreOrder(cards, v) {
+    var cat = catOf(v), cnt = {};
+    cards.forEach(function (c) { cnt[c >> 2] = (cnt[c >> 2] || 0) + 1; });
+    var wheel = cat === 4 || cat === 8 ? cards.some(function (c) { return c >> 2 === 12; }) && cards.some(function (c) { return c >> 2 === 3; }) && !cards.some(function (c) { return c >> 2 === 11; }) : false;
+    var o = cards.slice().sort(function (a, b) {
+      var ra = a >> 2, rb = b >> 2;
+      if (wheel) { ra = ra === 12 ? -1 : ra; rb = rb === 12 ? -1 : rb; }
+      return (cnt[b >> 2] - cnt[a >> 2]) || (rb - ra) || ((a & 3) - (b & 3));
+    });
+    return { c: o, k: [1, 2, 4, 3, 5, 5, 5, 4, 5, 5][cat] || 0 };
   }
   function shortName(v) { var c = catOf(v); return c === 8 && kOf(v, 0) === 12 ? 'Royal flush' : CAT[c]; }
   function aName(v) { var n = handName(v), l = n.charAt(0).toLowerCase() + n.slice(1), c = catOf(v); return c === 1 || c === 4 || c === 5 || c === 6 || c === 8 ? 'a ' + l : l; }
@@ -3047,7 +3083,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var hn = r.lo ? r.label : r.v != null ? (evBased() && !H.hn ? handName(r.v) : hName(H, r.w[0]) || handName(r.v)) : '';
       r.w.forEach(function (j) {
         var c = r.lo ? [] : five[j] && five[j].length ? five[j] : H.hole[j] || [];
-        H.log.push({ win: j, t: nm(j) + (r.w.length > 1 ? (j === 0 ? ' split ' : ' splits ') : j === 0 ? ' win ' : ' wins ') + (r.lo ? (gv().chicago ? 'the spade half' : 'low') : r.half ? 'high' : amt(r.amt)) + (c.length ? '' : hn ? ' \u00b7 ' + hn : ''), c: c.slice() });
+        var so = c.length === 5 && evBased() && !gv().wild && scores[j] != null ? scoreOrder(c, scores[j]) : null;
+        H.log.push({ win: j, t: nm(j) + (r.w.length > 1 ? (j === 0 ? ' split ' : ' splits ') : j === 0 ? ' win ' : ' wins ') + (r.lo ? (gv().chicago ? 'the spade half' : 'low') : r.half ? 'high' : amt(r.amt)) + (c.length ? '' : hn ? ' \u00b7 ' + hn : ''), c: so ? so.c : c.slice(), k: so ? so.k : 0 });
       });
     });
     if (H.log.length > 24) H.log.splice(0, H.log.length - 24);
@@ -4544,6 +4581,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var meSeat = null, meDealer = null, meEq = null;
     var done = H && H.phase === 'done';
     var main = done ? (H.results.filter(function (r) { return !r.back; })[0] || H.results[0]) : null;
+    // the winner's moment plays once per hand (the table redraws while the hand sits finished)
+    var winAnim = !!(done && main && R.winNo !== H.no); if (winAnim) R.winNo = H.no;
     var reqs = H && (H.phase === 'runout' || (H.phase === 'collect' && H.ai)) ? runEq() : null;
     var myTurn = H && H.phase === 'bet' && H.actor === 0 && !final;
     S.players.forEach(function (p, i) {
@@ -4554,7 +4593,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (p.sat && H && p.sat === H.no) seat.classList.add('sit');
       if (H && H.folded[i]) seat.classList.add('fold');
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('acting');   // (not 'turn': that is Kit's turn banner)
-      if (main && main.w.indexOf(i) >= 0 && H.won[i] > 0) seat.classList.add('win');
+      var isWin = main && main.w.indexOf(i) >= 0 && H.won[i] > 0;
+      if (isWin) seat.classList.add('win');
+      else if (done && main && main.v != null && H.shown[i] && H.inHand[i] && !H.folded[i]) seat.classList.add('lost');   // a hand shown down that lost: it steps back
       if (!me) {
         var vv = gv(), nh = H && H.hole[i] ? H.hole[i].length : 0;
         var cards = el('div', { class: 'cards' + (vv.stud ? ' face st' + (nh > 5 ? ' s7' : '') : nh > 2 ? ' om' + (nh > 4 ? ' o5' : '') : '') });
@@ -4599,7 +4640,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var say = '';
       if (done && H.scores && H.scores[i] != null) say = evBased() && !gv().wild && !gv().ftq ? shortName(H.scores[i]) : hName(H, i);
       else if (H && H.say[i]) say = H.say[i];
-      if (say) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
+      if (isWin) {
+        // the winner's pill: the whole hand by name (or that they took the pot), in gold, with a trophy
+        var full = H.scores && H.scores[i] != null ? (hName(H, i) || say) : 'Takes the pot';
+        var cp = el('div', { class: 'psay champ' + (winAnim ? ' anim' : ''), html: Kit.icon('trophy') }); cp.appendChild(el('span', { text: full })); seat.appendChild(cp);
+      } else if (say) seat.appendChild(el('div', { class: 'psay' + (done && H.scores && H.scores[i] != null ? ' hand' : say === 'Fold' ? ' fold' : '') + (H && H.sayNew === i ? ' new' : ''), text: say }));
       if (reqs && reqs[i] != null) { var eb = el('div', { class: 'peq' + (reqs.lead === i ? ' lead' : ''), text: Math.round(reqs[i] * 100) + '%' }); if (me && lme) meEq = eb; else seat.appendChild(eb); }
       if (lme && me) meSeat = seat;
       else {
@@ -4618,6 +4663,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         tb.appendChild(atBet(be)); betEls[i] = be;
       } else if (done && H.won[i] > 0) {
         var we = el('div', { class: 'pbet won' }, [chipStack(H.won[i]), el('span', { class: 'amt', text: '+' + amt(H.won[i]) })]);
+        if (me && (land || port)) bp = land ? [79, 84] : [50, 77];   // your winnings land beside your cards, clear of the winner banner under the board
         tb.appendChild(atBet(we)); betEls[i] = we;
       }
       if (H && H.button === i && lme) {
@@ -4650,6 +4696,17 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         if (done && main && main.v != null && H.five && H.five[main.w[0]] && H.five[main.w[0]].length) { var w0 = main.w[0]; ce.classList.add(H.five[w0].indexOf(bl[k]) >= 0 ? 'best' : 'unused'); }
         board.appendChild(ce);
       } else board.appendChild(Kit.card('', '', { cls: 'slot' }));
+    }
+    // under the board: who won it, with what, and how much
+    if (done && main && main.w && main.w.length) {
+      var ws = main.w.filter(function (j) { return H.won[j] > 0; });
+      if (ws.length) {
+        var wsc = H.scores && H.scores[ws[0]] != null ? hName(H, ws[0]) : '', tot = ws.reduce(function (a, j) { return a + H.won[j]; }, 0);
+        var who = ws.length > 1 ? ws.map(function (j) { return j === 0 ? 'You' : S.players[j].name; }).join(' & ') + (ws.length > 1 ? ' split' : '') : (ws[0] === 0 ? 'You win' : S.players[ws[0]].name + ' wins');
+        board.appendChild(el('div', { class: 'pwinb' + (winAnim ? ' anim' : '') + (ws.indexOf(0) >= 0 ? ' me' : '') }, [
+          el('span', { class: 'dots' }, ws.map(function (j) { return el('i', { class: 'dot', style: { '--c': seatColor(j) } }); })),
+          el('b', { text: who }), wsc ? el('span', { class: 'hn', text: wsc }) : null, el('span', { class: 'amt', text: '+' + amt(tot) })]));
+      }
     }
     tb.appendChild(at(board, land ? CENL : CEN));
     if (H && H.phase === 'runout') tb.appendChild(at(el('div', { class: 'pmsg', html: 'All in: <b>running it out</b>' }), land ? [50, 64] : [50, 68]));
@@ -5135,7 +5192,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     });
     return box;
   }
-  function miniCard(c) { return '<span class="mc' + ((c & 3) === 1 || (c & 3) === 2 ? ' r' : '') + '">' + RN[c >> 2] + SUITCH[c & 3] + '︎</span>'; }
+  function miniCard(c, up) { return '<span class="mc' + ((c & 3) === 1 || (c & 3) === 2 ? ' r' : '') + (up ? ' up' : '') + '">' + RN[c >> 2] + SUITCH[c & 3] + '︎</span>'; }
   function verb(i, t, nm) {   // nm: the name at the time (a hand that's over, where the seat may have changed hands)
     var you = i === 0 && (!nm || nm === S.players[0].name), m = /^(Fold|Check|Call|Bet|Raise to|All in|Rebuys|Sits down|Draws|Stands pat|Throws)(.*)$/.exec(t) || [t, t, ''];
     var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'], Draws: ['draw', 'draws'], 'Stands pat': ['stand pat', 'stands pat'], Throws: ['throw away', 'throws away'] }[m[1]];
@@ -5161,8 +5218,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     return box;
   }
   function logRow(e) {
-    if (e.win != null) return el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }), el('span', { text: e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(miniCard).join(' ') }) : null]);
-    if (e.s) return el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(miniCard).join(' ') }) : null]);
+    if (e.win != null) return el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }), el('span', { text: e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(function (c, i) { return miniCard(c, i < (e.k || 0)); }).join(' ') }) : null]);
+    if (e.s) return el('div', { class: e.c && e.c.length ? 'st' : 'hd' }, [el('b', { text: e.s }), e.c && e.c.length ? el('span', { html: e.c.map(function (c) { return miniCard(c); }).join(' ') }) : null]);
     return el('div', null, [el('i', { class: 'dot', style: { '--c': seatColor(e.i) } }), el('span', { text: verb(e.i, e.t, e.n) })]);
   }
   // every hand at this table so far, newest at the bottom; it stays where you scrolled while the hand goes on
