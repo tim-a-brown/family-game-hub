@@ -138,7 +138,7 @@
       '<li>Whoever wins the trick leads the next one.</li></ul>' +
       '<h3>Scoring</h3><ul><li><b>Make it:</b> 10 points for each trick you bid, plus 1 point for each extra trick.</li>' +
       '<li><b>Go set</b> (take fewer than you bid): lose 10 points for each trick you bid.</li>' +
-      '<li>Extra tricks are <b>bags</b>. Every 10 bags costs your team <b>100 points</b>.</li>' +
+      '<li>Extra tricks are <b>bags</b> (sandbags). Every 10 bags costs your team <b>100 points</b>. This can be turned off at setup: then an extra trick is just 1 point.</li>' +
       '<li><b>Nil:</b> +100 if you take no tricks, −100 if you take any. Blind Nil is ±200. Tricks the Nil player takes don\'t help the partner\'s bid, but they count as bags.</li>' +
       '<li>When a team reaches the target at the end of a hand, the higher score wins. If it\'s tied, play another hand.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and up to three others join on their own devices. The first two people to sit are partners. Empty seats are played by the computer.</li>' +
@@ -155,9 +155,10 @@
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
-  function freshGame(players, target, blindOpt) {
+  // bagsOpt false: sandbags off (an extra trick is just a point; nothing carries over)
+  function freshGame(players, target, blindOpt, bagsOpt) {
     return {
-      target: target, blindOpt: !!blindOpt, round: 0, dealer: Math.floor(Math.random() * 4),
+      target: target, blindOpt: !!blindOpt, bagsOff: bagsOpt === false, round: 0, dealer: Math.floor(Math.random() * 4),
       scores: [0, 0], bags: [0, 0], rounds: [], highlights: [], started: Date.now(),
       tricksAll: [0, 0, 0, 0], sets: [0, 0], nilsMade: [0, 0, 0, 0],
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu }; })
@@ -170,10 +171,11 @@
       players: { min: 4, max: 4, cpu: 'seats', label: 'You, West, North (partner), East' },
       options: [
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 500, choices: [[300, '300 · quicker'], [500, '500 · standard']] },
+        { id: 'bags', label: 'Sandbags', help: 'Tricks a team takes beyond its bid are bags.', value: 1, choices: [[1, 'On', 'Every 10 bags costs the team 100 points.'], [0, 'Off', 'Extra tricks are just 1 point each.']] },
         { id: 'blind', label: 'Blind Nil', help: 'Bidding to take zero tricks before you look at your cards, for 200 points (or minus 200).', value: 0, choices: [[0, 'Off', 'No Blind Nil bids.'], [1, 'On', 'A team that is behind by 100 or more can bid Blind Nil.']] }
       ],
       onStart: function (cfg) {
-        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1);
+        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1, +cfg.options.bags !== 0);
         Kit.gameStart(); undoStack = []; newHand();
       }
     });
@@ -447,7 +449,7 @@
       if (S.taken[p]) { r.pts += S.taken[p]; r.bags += S.taken[p]; }   // nil player's tricks count as bags
       r.nils.push({ p: p, ok: ok, blind: S.blind[p], v: v });
     });
-    var bagsNow = S.bags[t] + r.bags;
+    var bagsNow = S.bagsOff ? 0 : S.bags[t] + r.bags;   // (sandbags off: nothing carries over)
     while (bagsNow >= 10) { bagsNow -= 10; r.pts -= 100; r.penalty++; }
     r.bagsAfter = bagsNow;
     return r;
@@ -485,8 +487,8 @@
 
   function scoreTable(withHand) {
     var t = el('table', { class: 'sum' });
-    t.appendChild(el('tr', null, withHand ? [el('th', { text: 'Team' }), el('th', { text: 'Bid' }), el('th', { text: 'Took' }), el('th', { text: 'Hand' }), el('th', { text: 'Bags' }), el('th', { text: 'Total' })]
-      : [el('th', { text: 'Team' }), el('th', { text: 'Bags' }), el('th', { text: 'Total' })]));
+    t.appendChild(el('tr', null, withHand ? [el('th', { text: 'Team' }), el('th', { text: 'Bid' }), el('th', { text: 'Took' }), el('th', { text: 'Hand' }), S.bagsOff ? null : el('th', { text: 'Bags' }), el('th', { text: 'Total' })]
+      : [el('th', { text: 'Team' }), S.bagsOff ? null : el('th', { text: 'Bags' }), el('th', { text: 'Total' })]));
     var lead = S.scores[0] === S.scores[1] ? -1 : S.scores[0] > S.scores[1] ? 0 : 1;
     [0, 1].forEach(function (i) {
       var r = withHand ? S.last.res[i] : null;
@@ -497,7 +499,7 @@
         cells.push(el('td', { text: String(r.took) }));
         cells.push(el('td', { class: r.pts >= 0 ? 'pos' : 'neg', text: (r.pts > 0 ? '+' : r.pts < 0 ? '−' : '') + Math.abs(r.pts) }));
       }
-      cells.push(el('td', { text: String(S.bags[i]) }));
+      if (!S.bagsOff) cells.push(el('td', { text: String(S.bags[i]) }));
       cells.push(el('td', { class: 'big', text: String(S.scores[i]) }));
       t.appendChild(el('tr', { class: i === lead ? 'lead' : '' }, cells));
     });
@@ -539,14 +541,14 @@
       highlights: hl,
       detail: { names: S.players.map(function (p) { return p.name; }), hx: S.hx || [], bags: S.bags, sets: S.sets, nils: S.nilsMade, tricks: S.tricksAll, hand: S.dtHand || null, to: S.target }
     });
-    var players = S.players, target = S.target, blind = S.blindOpt;
+    var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff;
     clearSave(); S.phase = 'over';
     Kit.win({
       title: w === 0 ? 'You win!' : teamShort(1) + ' win',
       sub: (w === 0 ? 'You and ' + players[2].name + ' won by ' : 'They won by ') + (S.scores[w] - S.scores[l]),
       rank: [w, l].map(function (t) { return { name: teamShort(t), score: S.scores[t], color: Kit.color(t) }; }),
       lose: w !== 0, icon: w === 0 ? 'trophy' : 'bot',
-      again: function () { S = freshGame(players, target, blind); Kit.gameStart(); undoStack = []; newHand(); },
+      again: function () { S = freshGame(players, target, blind, bagsOn); Kit.gameStart(); undoStack = []; newHand(); },
       extra: [{ label: 'Change players', onClick: function () { clearSave(); showSetup(); } }]
     });
   }
@@ -588,12 +590,12 @@
       var q = plqEls[t]; if (!q) return;
       q.style.setProperty('--c', Kit.color(t));
       var biddingDone = S.bids && S.bids.every(function (b) { return b != null; });
-      var line = biddingDone && S.phase !== 'handover' ? 'Won <b>' + wonFor(t) + '</b> of ' + contract(t) : S.phase === 'handover' && S.last ? 'Hand ' + (S.last.res[t].pts >= 0 ? '+' : '−') + Math.abs(S.last.res[t].pts) : 'Bags ' + S.bags[t];
+      var line = biddingDone && S.phase !== 'handover' ? 'Won <b>' + wonFor(t) + '</b> of ' + contract(t) : S.phase === 'handover' && S.last ? 'Hand ' + (S.last.res[t].pts >= 0 ? '+' : '−') + Math.abs(S.last.res[t].pts) : S.bagsOff ? '' : 'Bags ' + S.bags[t];
       var bags = ''; for (var i = 0; i < 10; i++) bags += '<i class="' + (i < S.bags[t] ? 'on' : '') + '"></i>';
       q.innerHTML = '<div class="t">' + Kit.esc(t === 0 ? 'Us · N/S' : 'Them · E/W') + '</div>' +
         '<div class="v' + (S.scores[t] < 0 ? ' neg' : '') + '">' + S.scores[t] + '</div>' +
         '<div class="d">' + line + '</div>' +
-        '<div class="bags' + (S.bags[t] >= 7 ? ' warn' : '') + '" title="Bags: ' + S.bags[t] + ' of 10">' + bags + '</div>';
+        (S.bagsOff ? '' : '<div class="bags' + (S.bags[t] >= 7 ? ' warn' : '') + '" title="Bags: ' + S.bags[t] + ' of 10">' + bags + '</div>');
     });
   }
   function paintSeats() {
@@ -714,11 +716,11 @@
   function withS(st, f) { var keep = S; S = st; try { return f(); } finally { S = keep; } }
   function netOpts() {
     var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_spades')) || {}).options || {}; } catch (e) {}
-    return { target: +o.target === 300 ? 300 : 500, blind: +o.blind === 1 };
+    return { target: +o.target === 300 ? 300 : 500, blind: +o.blind === 1, bags: +o.bags !== 0 };
   }
   function netStart(players, opts, last) {
     var pl = [0, 1, 2, 3].map(function (p) { var x = players[PS[p]] || { name: 'Robot', bot: true }; return { name: x.name, cpu: !!x.bot }; });
-    var st = freshGame(pl, +opts.target || 500, !!opts.blind);
+    var st = freshGame(pl, +opts.target || 500, !!opts.blind, opts.bags !== false);
     st.series = last && last.series ? last.series.slice() : [0, 0];
     nDeal(st);
     return st;
