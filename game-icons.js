@@ -381,13 +381,13 @@ var GameIcon = (function () {
   // Games played from a console cartridge (games.js CONSOLE_NATIVE): the icon is the cartridge itself, as the home
   // screen and the console's shelf show it: Atari's paper label with its logo, the red title band and the game's
   // picture (the cartridge art found for it on the shelf, else its logo on the jungle's dark green)
-  var CART = { junglehunt: { name: 'Jungle Hunt', logo: '/img/consoles/logos/junglehunt.png' } };
+  var CART = { junglehunt: { name: 'Jungle Hunt', logo: '/img/consoles/logos/junglehunt.png', art: '/img/consoles/art/junglehunt.jpg' } };
   function cartArt(id) {
     try {
       var idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || [];
       for (var i = 0; i < idx.length; i++) if (idx[i] && idx[i].art && window.consoleNative && consoleNative(idx[i]) === id) return idx[i].art;
     } catch (e) {}
-    return null;
+    return CART[id].art;
   }
   function cartIcon(id, opts) {
     var k = CART[id], cid = 'gc' + (++uid), art = cartArt(id), esc = function (u) { return String(u).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); };

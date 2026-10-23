@@ -200,9 +200,10 @@ var GAMES = [
 // get their own cartridge tile,
 // opening straight into its console. gn_console_vis {id: 0} hides a game from the home screen.
 // Cartridges with a native version on this site (the game's own program translated, games/junglehunt.html): their
-// home tile and their cartridge on the console's shelf open that page instead of the emulator
+// home tile and their cartridge on the console's shelf open that page instead of the emulator. Needing no game file,
+// they're on everyone's console shelf on the home screen (with their own label art), signed in or not
 var CONSOLE_NATIVE = [
-  { sys: 'atari2600', page: 'junglehunt', sha1: ['83a32a2d686355438c915540cfe0bb13b76c1113'], name: /^jungle hunt\b/i }
+  { sys: 'atari2600', page: 'junglehunt', title: 'Jungle Hunt', art: '/img/consoles/art/junglehunt.jpg', sha1: ['83a32a2d686355438c915540cfe0bb13b76c1113'], name: /^jungle hunt\b/i }
 ];
 function consoleNative(c) {
   for (var i = 0; i < CONSOLE_NATIVE.length; i++) {
@@ -219,9 +220,16 @@ function addConsoleGames() {
   idx.forEach(function (c) {
     if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id) || (c.h && !pin)) return;   // (the house games: signed in only)
     GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: consoleNative(c) ? consoleNative(c) + '.html?from=' + c.sys : c.sys + '.html?play=' + c.id,
-      mark: c.sys, cart: c.id, sys: c.sys, art: c.art || null, hidden: vis[c.id] === 0 });
+      mark: c.sys, cart: c.id, sys: c.sys, art: c.art || (consoleNative(c) && nativeOf(c).art) || null, hidden: vis[c.id] === 0 });
+  });
+  CONSOLE_NATIVE.forEach(function (n) {
+    if (GAMES.some(function (g) { return g.cart && consoleNative({ sys: g.sys, id: g.cart, name: g.name }) === n.page; })) return;   // (already there from the shelf)
+    var id = n.sha1[0];
+    GAMES.push({ id: 'cart-' + id.slice(0, 16), name: n.title, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[n.sys] + ' game', play: n.page + '.html?from=' + n.sys,
+      mark: n.sys, cart: id, sys: n.sys, art: n.art, hidden: vis[id] === 0 });
   });
 }
+function nativeOf(c) { var p = consoleNative(c); for (var i = 0; i < CONSOLE_NATIVE.length; i++) if (CONSOLE_NATIVE[i].page === p) return CONSOLE_NATIVE[i]; return null; }
 addConsoleGames();
 
 // Section colour families: shade each game's colour from its section's hue,
