@@ -89,14 +89,15 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     var T = Math.round(clamp(Math.min(W, H) * .032, 9, 24));
     L.W = W; L.H = H; L.T = T; L.ix = T; L.iy = T; L.iw = W - 2 * T; L.ih = H - 2 * T;
     // The 16 x 9 grid, as big as it goes, with the tower medallions where they don't cover it: a column on the right
-    // (where the right thumb is) on a wide screen, a strip along the bottom on a squarer one.
+    // (where the right thumb is) on a wide screen, a strip along the bottom on a squarer one. The score line keeps a band
+    // of its own along the top (.84 of a cell), so no tower hides under it.
     var sh = progShop(), nT = 5 + ['tesla', 'mortar', 'dome'].filter(function (k) { return sh[k]; }).length, nH = sh.ice ? 2 : 1, n = nT + nH;
     var side = { C: 0 }, bot = { C: 0 }, c = Math.min(L.iw / 17, L.ih / 9.2);
     for (var it = 0; it < 3; it++) {
       var M = clamp(c * 1.05, 36, 70), per = Math.max(1, Math.floor((L.ih - M * .9) / (M * 1.3))), cols = Math.min(2, Math.ceil(n / per)), barW = cols * M * 1.1 + 6;
-      side = { C: Math.min((L.iw - barW) / 16.6, L.ih / 9.1), M: M, cols: cols, barW: barW };
+      side = { C: Math.min((L.iw - barW) / 16.6, L.ih / 9.94), M: M, cols: cols, barW: barW };
       var M2 = clamp(c * 1.05, 36, 70), stripH = M2 * 1.38;
-      bot = { C: Math.min(L.iw / 16.9, (L.ih - stripH) / 9.05), M: M2, stripH: stripH };
+      bot = { C: Math.min(L.iw / 16.9, (L.ih - stripH) / 9.89), M: M2, stripH: stripH };
       c = Math.max(side.C, bot.C);
     }
     var useSide = side.C >= bot.C * .97 && W > H;
@@ -104,10 +105,10 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
     L.hud = clamp(L.C * .48, 16, 30);
     if (useSide) {
       L.barW = side.barW; L.cols = side.cols;
-      L.ox = Math.round(L.ix + (L.iw - L.barW - 16 * L.C) / 2); L.oy = Math.round(L.iy + (L.ih - 9 * L.C) / 2);
+      L.ox = Math.round(L.ix + (L.iw - L.barW - 16 * L.C) / 2); L.oy = Math.round(L.iy + L.C * .84 + (L.ih - L.C * .84 - 9 * L.C) / 2);
     } else {
       L.stripH = bot.stripH;
-      L.ox = Math.round(L.ix + (L.iw - 16 * L.C) / 2); L.oy = Math.round(L.iy + (L.ih - L.stripH - 9 * L.C) / 2);
+      L.ox = Math.round(L.ix + (L.iw - 16 * L.C) / 2); L.oy = Math.round(L.iy + L.C * .84 + (L.ih - L.C * .84 - L.stripH - 9 * L.C) / 2);
     }
     // slots: [hero, ice?, towers...] from the top of the right column, or along the bottom strip
     L.slots = []; var Mx = L.M, cr = clamp(L.C * .5, 18, 30);
@@ -403,7 +404,7 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
 
   // ═══ Drawing the battle ══════════════════════════════════════════════════
   function X(x) { return L.ox + x * L.C; } function Y(y) { return L.oy + y * L.C; }
-  var ENEMY_SCALE = 1, HEIGHT = { small: .38, normal: .62, big: .78, fly: .78, boss: 1.2 };
+  var ENEMY_SCALE = 1.25, HEIGHT = { small: .38, normal: .62, big: .78, fly: .78, boss: 1.2 };
   function enemyKey(e) {
     var d = e.dir === 'l' ? 'r' : e.dir; return e.type + '_' + d + (Math.floor(e.phase * 8) % 8);
   }
@@ -760,8 +761,8 @@ html.gd-on #app{flex:1;min-height:0;width:100%;display:flex;padding:0 calc(var(-
   }
   function drawBanner() {
     var b = banner, f = b.t / b.life, inn = Math.min(1, b.t / .25), out = f > .8 ? (f - .8) / .2 : 0, Cs = L.C;
-    var w = clamp(Cs * 6, 200, 380), h = clamp(Cs * 1.05, 40, 70), x = L.ox + 8 * Cs, y = L.iy + L.hud * 1.9 + h * .62 + (1 - inn) * -h * 2.5 - out * h * 2.5;
-    g.save(); g.globalAlpha = 1 - out;
+    var w = clamp(Cs * 6, 200, 380), h = clamp(Cs * 1.05, 40, 70), x = L.ox + 8 * Cs, y = L.iy + L.hud * 1.9 + h * .62 + (1 - inn) * -h * 1.1 + out * h * .3;
+    g.save(); g.globalAlpha = inn * (1 - out);   // drops a little and fades in, sinks a little and fades out: never across the score line
     // a wooden sign on two chains
     g.strokeStyle = '#4a4a50'; g.lineWidth = 3; [-1, 1].forEach(function (k) { g.beginPath(); g.moveTo(x + k * w * .35, y - h * 1.6); g.lineTo(x + k * w * .35, y - h * .4); g.stroke(); });
     var gr = g.createLinearGradient(0, y - h / 2, 0, y + h / 2); gr.addColorStop(0, b.boss ? '#7a1a10' : '#b8743a'); gr.addColorStop(1, b.boss ? '#3a0804' : '#6a3a14');

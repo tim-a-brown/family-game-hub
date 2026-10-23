@@ -24,13 +24,22 @@ def road_points():
             out.append((x, y))
     return out
 
+TRAIL = ['#d8b278', '#b88a50', '#ecd29c']; TRAIL_RIM = '#8a6234'
+
+def fix_uv(o):
+    # a strip plane's UVs still run over the whole picture
+    for lp in o.data.loops:
+        v = o.data.vertices[lp.vertex_index].co
+        o.data.uv_layers.active.data[lp.index].uv = (v.x / UW, 1 + v.y * maps.SE / VH)
+
 def main():
     maps.X0, maps.X1, maps.Y0, maps.Y1 = 0, UW, 0, VH
     reset(); sc = bpy.context.scene
+    sc.cycles.transparent_max_bounces = 32   # the lands' ground layers are see-through where another land shows
     MK = maps.MK; w, h = UW * MK, VH * MK
     road = Image.new('L', (w, h), 0); dr = ImageDraw.Draw(road)
     rp = [(x * w, y * h) for x, y in road_points()]
-    dr.line(rp, fill=255, width=int(MK * 0.75), joint='curve')
+    dr.line(rp, fill=255, width=int(MK * 0.5), joint='curve')
     for x, y in NODES: dr.ellipse([x * w - MK * 0.8, y * h - MK * 0.65, x * w + MK * 0.8, y * h + MK * 0.65], fill=255)
     water = Image.new('L', (w, h), 0); dw = ImageDraw.Draw(water)
     dw.ellipse([.05 * w, .2 * h, .13 * w, .34 * h], fill=255)                    # a jungle lake
@@ -40,7 +49,8 @@ def main():
     road_a = np.asarray(road, np.float32) / 255; water_a = np.asarray(water, np.float32) / 255
     # one ground strip per land, each fading out at its sides into the next
     for k, (land, a, b) in enumerate(BANDS):
-        m = maps.ground_material(maps.LAND[land], road_s, water_s, land)
+        L = dict(maps.LAND[land], dirt=TRAIL, rim=TRAIL_RIM)   # one light dirt trail runs through every land
+        m = maps.ground_material(L, road_s, water_s, land)
         if k == 0: maps.plane(m, 0, 'ground_' + land, 1); continue   # the jungle lies under everything; the others fade in over it
         nt = m.node_tree; out = [n for n in nt.nodes if n.type == 'OUTPUT_MATERIAL'][0]; bs = out.inputs[0].links[0].from_node
         uv = nt.nodes.new('ShaderNodeTexCoord'); sep = nt.nodes.new('ShaderNodeSeparateXYZ'); nt.links.new(uv.outputs['UV'], sep.inputs[0])
@@ -52,7 +62,10 @@ def main():
         nt.links.new(jx.outputs[0], ramp.inputs[0])
         tr = nt.nodes.new('ShaderNodeBsdfTransparent'); mx = nt.nodes.new('ShaderNodeMixShader')
         nt.links.new(ramp.outputs[0], mx.inputs[0]); nt.links.new(tr.outputs[0], mx.inputs[1]); nt.links.new(bs.outputs[0], mx.inputs[2]); nt.links.new(mx.outputs[0], out.inputs[0])
-        maps.plane(m, k * 0.002, 'ground_' + land, 1)
+        # only over its own strip (and the fade), so few layers stack anywhere
+        maps.X0, maps.X1 = max(0, (a - 0.03) * UW), min(UW, (b + 0.06) * UW) if b < 1 else UW
+        o = maps.plane(m, k * 0.002, 'ground_' + land, 1); maps.X0, maps.X1 = 0, UW
+        fix_uv(o)
     # water (lava in the volcano), one plane each side of the canyon
     wm = maps.water_material(maps.LAND['jungle'], water_s, 'worldW'); maps.plane(wm, 0.03, 'water', 1)
     R = random.Random(9)
@@ -75,7 +88,7 @@ def main():
         if any((px - x) ** 2 + (py - y) ** 2 < 0.5 for px, py in placed): continue
         land = land_at(u)
         put(R.choice(maps.LAND[land]['border']), x, y, R.uniform(0.9, 1.5), R.uniform(-3, 3))
-    maps.camera(2400, 1200, 2400 / UW, 0, 0)
+    PW = int(os.environ.get('GD_WORLD_W', 2400)); maps.camera(PW, PW // 2, PW / UW, 0, 0)
     sc.cycles.samples = int(os.environ.get('GD_MAP_SAMPLES', 64)); sc.render.film_transparent = False
     sc.render.image_settings.color_mode = 'RGB'
     tmp = os.path.join(os.environ.get('GD_WORK', '/tmp'), 'world.png'); render(tmp)
