@@ -5022,6 +5022,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var rows = [].slice.call(side.children).filter(function (c) { return !c.classList.contains('ptiles') && getComputedStyle(c).display !== 'none'; }).length;
     var key = innerWidth + 'x' + innerHeight, mem = R.railH || (R.railH = {}), m = mem[key];
     if (!m || rows > m.rows) { var h0 = Math.max(probe(full), probe(wait)); m = mem[key] = { h: Math.max(h0, m ? m.h : 0), rows: Math.max(rows, m ? m.rows : 0), bar: barH || (m && m.bar) || 52 }; }
+    // (and never less than this moment needs: its own card and buttons, the log down to its one-line preview)
+    var lg = side.querySelector(':scope > .plog'), need = rl.offsetHeight - (lg ? Math.max(0, lg.offsetHeight - 46) : 0);
+    if (need > m.h) m.h = need;
     app.style.setProperty('--railh', m.h + 'px'); app.style.setProperty('--barh', m.bar + 'px'); app.classList.add('plock');
     // the card's last row (the hand so far) takes the room the buttons don't need
     if (rows > 1) side.style.gridTemplateRows = 'repeat(' + (rows - 1) + ', auto) minmax(0, 1fr)';
@@ -5288,7 +5291,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (C) {
       var avg = tableAvg();
       var toGo = C.left - C.paid;
-      t.appendChild(tile(['Left', toGo > 0 ? (toGo <= 3 ? 'on the bubble' : C.paid.toLocaleString() + ' paid') : 'all paid'], C.left.toLocaleString(), toGo <= 3 ? 'gold' : '', C.left < C.field ? 'of ' + C.field.toLocaleString() : ''));
+      // (Mystery Millions, once everyone left is paid: where Day 2's envelopes start, then that they're live)
+      t.appendChild(tile(['Left', EV[C.id].mystery && toGo <= 0 ? (C.env ? 'bounties live' : 'bounties at ' + Math.round((C.entries || C.field) * DAY2).toLocaleString()) : toGo > 0 ? (toGo <= 3 ? 'on the bubble' : C.paid.toLocaleString() + ' paid') : 'all paid'], C.left.toLocaleString(), toGo <= 3 ? 'gold' : '', C.left < C.field ? 'of ' + C.field.toLocaleString() : ''));
       t.appendChild(tile('Place', me.out ? ordinal(me.place) : ordinal(circRank()), 'gold'));
       if (toGo > 0) t.appendChild(tile('Min cash', usd(C.pays[C.paid - 1])));
       else t.appendChild(tile(C.left > 1 ? 'Next pay jump' : 'Champion', usd(C.pays[Math.max(0, C.left - 2)]), 'gold'));
