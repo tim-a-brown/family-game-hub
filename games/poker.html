@@ -50,7 +50,7 @@
 .pa{position:absolute;transform:translate(-50%,-50%);}
 .pseat{z-index:4;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px;transition:opacity .3s;}
 .pseat .tag{display:flex;align-items:center;gap:4px;max-width:120px;padding:3px 8px 3px 3px;border-radius:999px;background:rgba(8,10,26,.82);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.4);transition:box-shadow .2s, transform .3s var(--spring);}
-.pseat .tag > span:last-child{overflow:hidden;text-overflow:ellipsis;}
+.pseat .tag > .nm{min-width:0;overflow:hidden;}   /* (fitTiles fits the name: the initial goes, then the size eases down) */
 .pseat .tag .avatar{width:24px;height:24px;font-size:.72rem;flex:none;}
 .pseat .tag .avatar .ico{width:60%;height:60%;}
 .pseat .stack{padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.92);color:#1d1b2e;font-size:.74rem;font-weight:900;font-variant-numeric:tabular-nums;box-shadow:0 2px 6px rgba(0,0,0,.3);}
@@ -83,6 +83,7 @@
 .pbet .wh.lft{left:0;translate:0 3px;} .pbet .wh.lft.up{translate:0 -3px;}
 .pbet .wh svg{width:14px;height:14px;flex:none;color:#ffd84a;filter:drop-shadow(0 1px 1px rgba(0,0,0,.8));}
 .pbet .wh.anim{animation:fadein .35s ease-out .55s both;}
+.pbet.won.over{z-index:6;} .pbet.won.over .wh{padding:2px 8px 2px 6px;border-radius:999px;background:rgba(8,10,26,.82);}
 .pseat.fold > .cards,.pseat.fold > .tag{opacity:.45;}
 .pseat.out{opacity:.35;}
 .pseat .cards{display:flex;--cw:24px;min-height:34px;}
@@ -692,8 +693,25 @@
 :is(.pme.acting .phand,.phand.acting) .pcard{box-shadow:0 0 0 3px var(--yellow),0 0 22px rgba(255,200,61,.55),0 8px 16px rgba(0,0,0,.45);}
 :is(.pme.acting .phand,.phand.acting){animation:myturn 1.6s ease-in-out infinite;}
 @keyframes myturn{50%{filter:drop-shadow(0 0 10px rgba(255,200,61,.75));}}   /* your turn: your cards glow (they never move) */
-.pseat.sit .tag{animation:sitdown .6s var(--spring);}
-@keyframes sitdown{from{transform:translateY(-14px) scale(.8);opacity:0;}}
+/* a new player: slides in from the rail, a green glow and a "New" badge through their first hand */
+.pseat.sit > .tag{box-shadow:0 0 0 2px rgba(110,231,165,.85),0 0 14px rgba(61,220,132,.4);}
+.pseat.sitanim{animation:sitin .8s var(--spring) both;}
+@keyframes sitin{from{translate:var(--dx,0) var(--dy,0);scale:.8;opacity:0;}}
+.pseat.sitanim > .tag{animation:sitglow 1.1s ease-in-out .7s 2;}
+@keyframes sitglow{50%{box-shadow:0 0 0 3px rgba(110,231,165,1),0 0 26px rgba(61,220,132,.75);}}
+.pnew{position:absolute;top:-8px;left:-4px;padding:0 6px;border-radius:999px;background:#3ddc84;color:#062312;font-size:.52rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;line-height:1.5;box-shadow:0 2px 5px rgba(0,0,0,.35);pointer-events:none;}
+.pseat .tag{position:relative;}
+/* a player who just went out: a shake, the colour drains, and a plaque with their finish where their chips were */
+.pseat.bust > .tag{filter:grayscale(.85);opacity:.8;}
+.pseat.bust > :is(.cards,.pstk){opacity:.6;}
+.pseat.bustanim > .tag{animation:bustout 1.1s ease-out both;}
+@keyframes bustout{0%{filter:none;opacity:1;translate:0;}12%{translate:-4px 0;}24%{translate:4px 0;}36%{translate:-3px 0;}48%{translate:2px 0;filter:none;opacity:1;}100%{translate:0;filter:grayscale(.85);opacity:.8;}}
+.pout{display:inline-flex;align-items:baseline;gap:5px;padding:1px 9px;border-radius:999px;background:#3b1520;color:#ffc2c2;box-shadow:inset 0 0 0 1.5px rgba(255,120,120,.45),0 2px 6px rgba(0,0,0,.35);font-weight:900;font-size:.74rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pout em{font-style:normal;color:#9cf0bd;}
+.pout small{font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;opacity:.85;}
+.pseat.bustanim > .pout{animation:outdrop .5s var(--spring) .5s both;}
+@keyframes outdrop{from{translate:0 -8px;scale:.7;opacity:0;}}
+.pseat.out > .pout{background:rgba(40,20,28,.7);}
 /* the venue's name printed on the felt */
 .pseat .cards.zoomable{cursor:zoom-in;touch-action:none;-webkit-touch-callout:none;}
 .pzoom{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px;
@@ -2590,7 +2608,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     else if (v.guts) gutsStart(act);
     else if (v.acey) aceyStart(act);
     else { put(sbI, S.sb); put(bbI, S.bb); H.curBet = S.bb; }
-    S.players.forEach(function (p, i) { if (p.rebought) { H.say[i] = 'Rebuys'; delete p.rebought; } if (p.sat === S.handNo) H.say[i] = 'Sits down'; });
+    S.players.forEach(function (p, i) { if (p.rebought) { H.say[i] = 'Rebuys'; delete p.rebought; } if (p.sat === S.handNo) { H.say[i] = 'Sits down'; logAdd(i, 'Sits down with ' + amt(p.stack)); } });
     if (!v.stud && !v.guts && !v.acey) H.first = nextToAct(bbI);   // first to act, once the cards are out
     undoStack = [];
     save();
@@ -3274,6 +3292,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       S.players[i].out = true; S.players[i].place = left + k + 1 + (S.circ ? S.circ.else : 0);
       var by = main && main.w.length ? main.w[0] : i;
       if (S.players[i].reent) S.players[i].place = 0;   // (back in the field: no finishing place yet)
+      if (i) H.log.push({ i: i, t: 'Busts out' + (S.players[i].place && S.tourn ? ' in ' + ordinal(S.players[i].place) : '') });
       S.st.kos.push({ who: i, by: by, no: H.no, place: S.players[i].place, wn: S.players[i].name, bn: S.players[by].name });
     });
     return gone;
@@ -4085,7 +4104,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     C.left = C.else + tableLeft;
     var outs = busted.filter(function (i) { return i !== 0; }).map(function (i) { return { n: S.players[i].name, pl: S.players[i].place, re: S.players[i].reent }; });
-    if (outs.length && !SIM) setTimeout(function () { outs.forEach(function (o, k) { var pl = o.pl, pz = pl <= C.paid ? ' · ' + usd(C.pays[pl - 1]) : ''; setTimeout(function () { Kit.toast(o.re ? o.n + ' busts and re-enters' : o.n + ' is out in ' + ordinal(pl) + pz); }, k * 1600); }); }, 900);
+    if (outs.length && !SIM) setTimeout(function () { outs.forEach(function (o, k) { var pl = o.pl, pz = pl <= C.paid ? ' and takes ' + usd(C.pays[pl - 1]) : ''; setTimeout(function () { Kit.toast(o.re ? o.n + ' busts and re-enters' : o.n + ' is out in ' + ordinal(pl) + pz); }, k * 1600); }); }, 900);
     if (!C.itmAt && C.left <= C.paid) C.itmAt = S.handNo;
     if (!C.ftAt && C.else === 0) C.ftAt = S.handNo;
     if (SIM) return;
@@ -4640,8 +4659,20 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (port && !me && innerHeight <= 740 && /^(lt|rt)$/.test(lay[i])) pos = [pos[0], pos[1] + 4];   // (a short phone: the upper side seats sit a little lower, clear of the top seat's chips)
       var seat = el('div', { class: 'pseat' + (me ? ' me' : '') + (land ? (me ? '' : ' ls ls-' + lay[i]) : n > 6 ? '' : (/^(l|r|lt|rt)$/.test(lay[i]) ? ' up' : '') + (lay[i] === 't' ? ' top' : '')) + (n > 6 && !me ? ' many' : '') });
       if (port && !me) seat.classList.add('ps-' + lay[i]);
-      if (p.out) seat.classList.add('out');
-      if (p.sat && H && p.sat === H.no) seat.classList.add('sit');
+      // a player who just busted (or got up) this hand: they stay readable with their finish until the next deal; a new
+      // player slides in from the rail and wears "New" through their first hand. Each plays its moment once.
+      var bust = !!(H && done && (p.out || p.left) && H.inHand[i]), fx = R.fx || (R.fx = {});
+      if (p.out && !bust) seat.classList.add('out');
+      if (bust) { seat.classList.add('bust'); if (!fx['b' + H.no + ':' + i]) { fx['b' + H.no + ':' + i] = 1; seat.classList.add('bustanim'); if (!SIM) Kit.sfx('lose', 0.45); } }
+      if (p.sat && H && p.sat === H.no) {
+        seat.classList.add('sit');
+        if (!fx['s' + H.no + ':' + i] && !me) {
+          fx['s' + H.no + ':' + i] = 1; seat.classList.add('sitanim');
+          var dl = Math.hypot(pos[0] - 50, pos[1] - 50) || 1;
+          seat.style.setProperty('--dx', ((pos[0] - 50) / dl * 30).toFixed(1) + 'px'); seat.style.setProperty('--dy', ((pos[1] - 50) / dl * 30).toFixed(1) + 'px');
+          if (!SIM) Kit.sfx('chip', 0.6);
+        }
+      }
       if (H && H.folded[i]) seat.classList.add('fold');
       if (H && H.phase === 'bet' && H.actor === i) seat.classList.add('acting');   // (not 'turn': that is Kit's turn banner)
       var isWin = main && main.w.indexOf(i) >= 0 && H.won[i] > 0;
@@ -4680,12 +4711,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
         el('span', { class: 'nm', text: me ? 'You' : p.name, 'data-full': me ? 'You' : p.name }),
+        p.sat && H && p.sat === H.no && !me ? el('span', { class: 'pnew', text: 'New' }) : null,
         p.bty && !p.out ? el('span', { class: 'pb', text: S.circ && EV[S.circ.id].mystery ? '?' : usd(p.bty) }) : null
       ]);
       if (p.cpu || p.pr || me) { tag.classList.add('tap'); tag.addEventListener('click', function () { profileSheet(p); }); }
       seat.appendChild(tag);
       // what each player has: their chips beside the amount
-      if (p.left || p.out) seat.appendChild(el('span', { class: 'stack', text: p.left ? 'Left' : ordinal(p.place) }));
+      if (p.left || p.out) seat.appendChild(el('span', { class: 'pout' }, [el('small', { text: p.left ? 'Left' : 'Out' }), !p.left && S.tourn && p.place ? el('b', { text: ordinal(p.place) }) : null,
+        !p.left && S.circ && p.place && p.place <= S.circ.paid ? el('em', { text: usd(S.circ.pays[p.place - 1]) }) : null]));   // (cashed: what they take with them)
       else {
         var pk = el('div', { class: 'pstk' }, p.stack <= 0 ? [el('div', { class: 'stk mini' }), el('span', { class: 'stack', text: amt(0) })] : [chipStack(p.stack, 'mini'), el('span', { class: 'stack', text: amt(p.stack) })]);   // (all in: the same shape, no chips)
         // the blinds: small quiet tokens beside the chips, under the dealer button's notice (heads-up the button is the small blind)
@@ -5020,6 +5053,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       }
       sp.textContent = tries[best.k][0];
       wh.classList.remove('up', 'at-r', 'at-l'); if (tries[best.k][1]) wh.classList.add(tries[best.k][1]);
+      pile.classList.toggle('over', best.a >= 4);   // (no clear spot anywhere: it sits on top, on a dark backing, so it still reads)
       T.obs.push(wh);
     });
   }
@@ -5360,8 +5394,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   function miniCard(c, up) { return '<span class="mc' + ((c & 3) === 1 || (c & 3) === 2 ? ' r' : '') + (up ? ' up' : '') + '">' + RN[c >> 2] + SUITCH[c & 3] + '︎</span>'; }
   function verb(i, t, nm) {   // nm: the name at the time (a hand that's over, where the seat may have changed hands)
-    var you = i === 0 && (!nm || nm === S.players[0].name), m = /^(Fold|Check|Call|Bet|Raise to|All in|Rebuys|Sits down|Draws|Stands pat|Throws)(.*)$/.exec(t) || [t, t, ''];
-    var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'], Draws: ['draw', 'draws'], 'Stands pat': ['stand pat', 'stands pat'], Throws: ['throw away', 'throws away'] }[m[1]];
+    var you = i === 0 && (!nm || nm === S.players[0].name), m = /^(Fold|Check|Call|Bet|Raise to|All in|Rebuys|Sits down|Busts out|Draws|Stands pat|Throws)(.*)$/.exec(t) || [t, t, ''];
+    var v = { Fold: ['fold', 'folds'], Check: ['check', 'checks'], Call: ['call', 'calls'], Bet: ['bet', 'bets'], 'Raise to': ['raise to', 'raises to'], 'All in': ['go all in', 'is all in'], Rebuys: ['rebuy', 'rebuys'], 'Sits down': ['sit down', 'sits down'], 'Busts out': ['bust out', 'busts out'], Draws: ['draw', 'draws'], 'Stands pat': ['stand pat', 'stands pat'], Throws: ['throw away', 'throws away'] }[m[1]];
     return (you ? 'You ' : (nm || S.players[i].name) + ' ') + (v ? v[you ? 0 : 1] : t.toLowerCase()) + m[2];
   }
   // the latest thing that happened, one line; each new one rolls in from below as the last one rolls away. The arrow
