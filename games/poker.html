@@ -552,6 +552,26 @@
 .pyou .yd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
 .pyou .yd .net{flex:none;font-weight:900;font-size:1.05rem;color:var(--text-2);font-variant-numeric:tabular-nums;}
 .pyou .yd .net.up{color:var(--green);} .pyou .yd .net.down{color:var(--red);}
+.pyou.done{display:flex;flex-direction:column;gap:6px;animation:rise .35s var(--ease) both;}
+/* the hand as it went: your chance at each street, like the TV graphic */
+.podds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.podds .st{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.podds small{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.podds b{font-size:.92rem;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;}
+.podds .bar{height:4px;border-radius:2px;background:var(--w12);overflow:hidden;}
+.podds .bar i{display:block;height:100%;border-radius:2px;}
+.precap .say{margin-top:5px;font-size:.74rem;font-weight:800;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* your stack over the session */
+.ptrend.none{display:none;}
+.ptrend .hd{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+.ptrend .hd small{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ptrend .hd b{font-size:.8rem;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;}
+.ptrend .sp{position:relative;height:26px;margin-top:3px;}
+.ptrend svg{display:block;width:100%;height:100%;overflow:visible;}
+.ptrend polyline{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round;}
+.ptrend .a{opacity:.14;}
+.ptrend .z{stroke:var(--text-3);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;}
+.ptrend .end{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;box-shadow:0 0 0 2px var(--bg-2);}
 .pmeter{position:relative;height:8px;border-radius:4px;background:var(--w12);margin:7px 0 4px;}
 .pmeter > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transition:width .5s var(--ease),background .5s;}
 .pmeter > b{position:absolute;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;border-radius:2px;background:#fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.5);}
@@ -5236,16 +5256,75 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (a === b) return 'Pair of ' + RP[a];
     return RW[hi] + '-' + RW[lo] + ((h[0] & 3) === (h[1] & 3) ? ' suited' : '');
   }
-  // the hand's over: how it went for you (who won it shows on the table, and in the log)
+  // the hand's over: how it went for you (who won it shows on the table, and in the log). Under that, what the hand
+  // looked like as it went: the TV graphic of your chance to win at each street when you went to the showdown, or
+  // your stack over the session when you didn't
   function youDone(H, box) {
     if (H.results.some(function (r) { return r.acey || r.carry; })) { box.classList.add('res'); box.innerHTML = resultText(H); return box; }
     var me = S.players[0];
-    if (!H.inHand[0]) { box.appendChild(el('div', { class: 'n dim', text: me.out ? 'You\'re out: ' + ordinal(me.place) : 'Sitting this one out' })); return box; }
-    var net = H.won[0] - H.total[0], fold = H.folded[0];
-    var what = fold ? 'You folded' : H.scores && H.scores[0] != null ? hName(H, 0) || shortName(H.scores[0]) : youName(H, gv());
-    box.appendChild(el('div', { class: 'yd' }, [el('div', { class: 'n' + (fold ? ' dim' : ''), text: what }),
-      net || !fold ? el('b', { class: 'net' + (net > 0 ? ' up' : net < 0 ? ' down' : ''), text: net === 0 ? 'Even' : (net > 0 ? '+' : '\u2212') + amt(Math.abs(net)) }) : null]));
+    if (!H.inHand[0]) { box.appendChild(el('div', { class: 'n dim', text: me.out ? 'You\'re out: ' + ordinal(me.place) : 'Sitting this one out' })); box.appendChild(stackTrend()); return box; }
+    var net = H.won[0] - H.total[0], fold = H.folded[0], h0 = H.hole[0] || [];
+    var what = fold ? el('div', { class: 'n dim', html: 'You folded' + (h0.length === 2 && !gv().indian ? ' ' + startHTML(h0) : '') })
+      : H.scores && H.scores[0] != null ? el('div', { class: 'n', text: hName(H, 0) || shortName(H.scores[0]) })
+      : el('div', { class: 'n', html: 'Uncontested' + (h0.length === 2 && !gv().indian ? ' ' + startHTML(h0) : '') });
+    if (what.querySelector('.dash')) what.classList.add('cs2');
+    box.classList.add('done');
+    box.appendChild(el('div', { class: 'yd' }, [what,
+      net || !fold ? el('b', { class: 'net' + (net > 0 ? ' up' : net < 0 ? ' down' : ''), text: net === 0 ? 'Even' : (net > 0 ? '+' : '−') + amt(Math.abs(net)) }) : null]));
+    var od = handOdds(H);
+    box.appendChild(od ? oddsStrip(od) : stackTrend());
     return box;
+  }
+  // your chance to win at each street against the hands you actually faced (worked out once, when the hand is over)
+  var STREETS = ['Pre', 'Flop', 'Turn', 'River'];
+  function handOdds(H) {
+    var v = gv();
+    if (H.odds !== undefined) return H.odds;
+    var lv = live(), ok = !noBoard() && !v.gen && !v.keep && !v.wild && !v.lo8 && !v.chicago && evBased() && H.board.length === 5 && lv.length > 1 && lv.indexOf(0) >= 0 && H.shown[0];
+    if (!ok) return (H.odds = null);
+    var hs = lv.map(function (j) { return H.hole[j]; }), me = lv.indexOf(0);
+    H.odds = [0, 3, 4, 5].map(function (nb) {
+      var eq = openEquity(hs, H.board.slice(0, nb), S.om, nb === 5 ? 1 : S.om ? 500 : 1200);
+      var others = eq.filter(function (x, k) { return k !== me; });
+      return { e: eq[me], lead: eq[me] >= Math.max.apply(null, others) - 1e-9 };
+    });
+    return H.odds;
+  }
+  function oddsStrip(od) {
+    var fin = od[3].e, word = STREETS.map(function (s) { return s === 'Pre' ? 'before the flop' : 'on the ' + s.toLowerCase(); }), say;
+    var lastBehind = -1, lastAhead = -1;
+    for (var k = 0; k < 3; k++) { if (od[k].lead) lastAhead = k; else lastBehind = k; }
+    if (fin > 0 && fin < 1) say = 'Split pot';
+    else if (fin === 1) {
+      if (lastBehind < 0) say = 'Ahead all the way';
+      else if (od[2].e <= 0.2 && !od[2].lead) say = 'Got there on the river with ' + Math.round(od[2].e * 100) + '%';
+      else say = 'Came from behind ' + word[lastBehind + 1];
+    } else {
+      if (lastAhead < 0) say = 'Behind all the way';
+      else if (od[2].e >= 0.75) say = 'Bad beat: ' + Math.round(od[2].e * 100) + '% on the turn';
+      else say = 'Outdrawn ' + word[lastAhead + 1];
+    }
+    var row = el('div', { class: 'podds' }, od.map(function (o, k) {
+      var pc = Math.round(o.e * 100), c = eqColor(o.e), bar = el('i');
+      bar.style.width = Math.max(4, pc) + '%'; bar.style.background = c;
+      return el('div', { class: 'st' + (o.lead ? ' lead' : '') }, [el('small', { text: STREETS[k] }), el('b', { text: pc + '%', style: { color: c } }), el('span', { class: 'bar' }, [bar])]);
+    }));
+    return el('div', { class: 'precap' }, [row, el('div', { class: 'say', text: say })]);
+  }
+  // your stack, hand by hand this session: a line on the felt's own scale (the dashes are where you started)
+  function stackTrend() {
+    var rows = (S.st && S.st.rows || []).slice(-40), me = S.players[0];
+    if (rows.length < 2) return el('div', { class: 'ptrend none' });
+    var pts = [0], t = 0;
+    rows.forEach(function (r) { t += r[0] || 0; pts.push(t); });
+    var lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), sp = hi - lo || 1, n = pts.length - 1;
+    var xy = pts.map(function (p, k) { return [(k / n * 100).toFixed(2), (22 - (p - lo) / sp * 20).toFixed(2)]; });
+    var line = xy.map(function (q) { return q.join(','); }).join(' '), z = (22 - (0 - lo) / sp * 20).toFixed(2), last = xy[xy.length - 1];
+    var col = t > 0 ? 'var(--green)' : t < 0 ? 'var(--red)' : 'var(--text-2)';
+    var svg = '<svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true"><line x1="0" x2="100" y1="' + z + '" y2="' + z + '" class="z"/>' +
+      '<polygon points="0,' + z + ' ' + line + ' 100,' + z + '" style="fill:' + col + '" class="a"/><polyline points="' + line + '" style="stroke:' + col + '"/></svg>' +
+      '<i class="end" style="left:' + last[0] + '%;top:' + (last[1] / 24 * 100) + '%;background:' + col + '"></i>';
+    return el('div', { class: 'ptrend' }, [el('div', { class: 'hd' }, [el('small', { text: 'Your stack, last ' + rows.length + ' hands' }), el('b', { text: amt(me.stack) })]), el('div', { class: 'sp', html: svg })]);
   }
   function resultText(H) {
     var parts = [];
