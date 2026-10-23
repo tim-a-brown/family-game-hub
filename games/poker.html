@@ -795,6 +795,7 @@
 :is(.pfull-l,.plog) .win .vs small{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
 :is(.pfull-l,.plog) .win .vs b{font-weight:900;white-space:nowrap;}
 .plog.novs .win .vs,.plog.nocs .win .cs{display:none;}
+:is(.pfull-l,.plog) .win.ko .wm{color:#2f8f57;}   /* (a bounty paid, in green) */
 .plog-in > div.win{white-space:normal;} .plog-in > div.win .dot,.pfull-l > div.win .dot{align-self:start;margin-top:.42em;}    /* the hand's result is the one line that wraps rather than cut off */
 :is(.plog-in,.pfull-l) > div.shw .cs{flex:none;}
 .plog.tap{cursor:pointer;}
@@ -819,6 +820,7 @@
 .prail > .pfull .pfull-h b{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .prail > .pfull .pfull-h b{font-size:.84rem;letter-spacing:.1em;text-transform:uppercase;color:var(--rc-ink);}
 .prail > .pfull .pfull-h small{color:var(--rc-ink2);}
+.prail :is(.pfull-l,.plog) .win .wh2 span,.prail :is(.pfull-l,.plog) .win .wh2 em{color:var(--rc-ink2);}   /* (on the paper: its own ink) */
 .prail > .pfull .pfull-x{background:rgba(46,39,23,.08);color:var(--rc-ink);}
 .prail > .pfull .pfull-l{padding:10px 14px 20px;gap:5px;color:var(--rc-ink2);}
 .prail > .pfull .pfull-l .hd{margin-top:12px;padding-top:12px;border-top:2px dashed rgba(46,39,23,.3);}
@@ -3284,6 +3286,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var d = startName(H.hole[j]); return /^Pair/.test(d) ? 'a ' + d.toLowerCase() : d;
   }
   function nmPoss2(j) { return S.players[j].name + '\'s'; }
+  // who knocked a player out: whoever won the last pot they had chips in (a side pot can bust someone the main pot's
+  // winner never played against); a split pot shares the knockout
+  function knockers(H, i) {
+    var rs = H.results.filter(function (r) { return !r.back && !r.lo && r.elig && r.elig.indexOf(i) >= 0 && r.w.length && r.w.indexOf(i) < 0; });
+    if (rs.length) return rs[rs.length - 1].w.slice();
+    var main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0];
+    return main && main.w.length && main.w.indexOf(i) < 0 ? main.w.slice() : [];
+  }
   function eliminate(H) {
     var gone = S.players.map(function (p, i) { return i; }).filter(function (i) { return H.inHand[i] && S.players[i].stack <= 0 && !S.players[i].out; });
     if (!gone.length) return [];
@@ -3307,9 +3317,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var main = H.results.filter(function (r) { return !r.back; })[0] || H.results[0];
     gone.forEach(function (i, k) {
       S.players[i].out = true; S.players[i].place = left + k + 1 + (S.circ ? S.circ.else : 0);
-      var by = main && main.w.length ? main.w[0] : i;
+      var kw = knockers(H, i), by = kw.length ? kw[0] : i;
       if (S.players[i].reent) S.players[i].place = 0;   // (back in the field: no finishing place yet)
-      if (i) H.log.push({ i: i, t: 'Busts out' + (S.players[i].place && S.tourn ? ' in ' + ordinal(S.players[i].place) : '') });
+      // the log: who knocked them out (and, in a bounty event, what it paid: circAfter fills that in)
+      {
+        var ko = { ko: kw, kn: kw.map(function (j) { return S.players[j].name; }), vi: i, vn: S.players[i].name, pl: S.players[i].place || 0 };
+        if (kw.length) { H.log.push(ko); (H.kos || (H.kos = {}))[i] = ko; }
+        else H.log.push({ i: i, t: 'Busts out' + (S.players[i].place && S.tourn ? ' in ' + ordinal(S.players[i].place) : '') });
+      }
       S.st.kos.push({ who: i, by: by, no: H.no, place: S.players[i].place, wn: S.players[i].name, bn: S.players[by].name });
     });
     return gone;
@@ -4092,22 +4107,20 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     C.h++;
     // every knockout at this table goes in the log with its bounty (in Mystery Millions, the envelope it opened);
     // the ones you make are paid to you
-    var koBy = main.w.indexOf(0) >= 0 ? 0 : main.w[0];
-    var bAmt = {};
-    if (busted.length && koBy != null && (ev.bounty || ev.mystery)) busted.forEach(function (i) {
-      if (i === koBy) return;
+    // each knockout's bounty (in Mystery Millions, the envelope it opens) goes to whoever won the busted player's last
+    // chips, shared on a split; yours is paid to you straight away, and every one is in the log on its knockout line
+    var bt = 0, myKo = 0;
+    busted.forEach(function (i) {
+      var kw = knockers(H, i); if (!kw.length || i === 0) return;
+      if (kw.indexOf(0) >= 0) myKo++;
+      if (!(ev.bounty || ev.mystery)) return;
       var b = S.players[i].bty || 0, a = ev.mystery ? mysteryBounty(b) : b;
       if (!a) return;
-      bAmt[i] = a;
-      H.log.push({ win: koBy, t: (ev.mystery ? 'Mystery bounty ' : 'Bounty ') + usd(a) + (koBy === 0 ? ': you knock out ' : ': ' + nm(koBy) + ' knocks out ') + S.players[i].name, c: [] });
+      var ko = H.kos && H.kos[i]; if (ko) { ko.b = usd(a); ko.my = ev.mystery ? 1 : 0; }
+      if (kw.indexOf(0) >= 0) bt += Math.round(a / kw.length);
     });
-    if (H.log.length > 24) H.log.splice(0, H.log.length - 24);
-    if (busted.length && main.w.indexOf(0) >= 0) {
-      var mine = busted.filter(function (i) { return i !== 0; });
-      C.kos += mine.length;
-      var bt = mine.reduce(function (a, i) { return a + (bAmt[i] || 0); }, 0);
-      if (bt) { Casino.win(bt); C.bounty += bt; if (!SIM) setTimeout(function () { Kit.callout((ev.mystery ? 'Mystery bounty: ' : '+') + usd(bt) + (ev.mystery ? '' : ' bounty')); Kit.sfx(bt >= 20 * ev.buy ? 'win' : 'chip'); if (bt >= 20 * ev.buy) Kit.haptic('success'); }, 700); }
-    }
+    C.kos += myKo;
+    if (bt) { Casino.win(bt); C.bounty += bt; if (!SIM) setTimeout(function () { Kit.callout((ev.mystery ? 'Mystery bounty: ' : '+') + usd(bt) + (ev.mystery ? '' : ' bounty')); Kit.sfx(bt >= 20 * ev.buy ? 'win' : 'chip'); if (bt >= 20 * ev.buy) Kit.haptic('success'); }, 700); }
     var reIn = busted.filter(function (i) { return S.players[i].reent; });
     C.else += reIn.length;   // (re-entered: back in the field, at another table)
     var tableLeft = alive().length, before = C.else + tableLeft + busted.length, L = C.else + tableLeft;
@@ -5464,7 +5477,17 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     return el('div', { class: 'win' }, kids);
   }
+  // a knockout: who knocked whom out, what the bounty paid at the far end, and the place they went out in
+  function koRow(e) {
+    var who = e.ko.map(function (j, k) { var w = logWho(j, e.kn && e.kn[k]); return k === 0 ? w : w === 'You' ? 'you' : w; });
+    var you = who[0] === 'You';
+    var kids = [el('i', { class: 'dot', style: { '--c': seatColor(e.ko[0]) } }),
+      el('div', { class: 'wt' }, [el('span', null, logWho(e.vi, e.vn) === 'You' ? [el('b', { text: who.join(' and ') }), document.createTextNode(' knocked you out')] : [el('b', { text: who.join(' and ') }), document.createTextNode(' knocked out '), el('b', { text: e.vn || S.players[e.vi].name })]), e.b ? el('b', { class: 'wm', text: e.b }) : null])];
+    if (e.pl || e.b) kids.push(el('div', { class: 'wh2 dim' }, [e.my ? el('em', { text: 'Mystery bounty' }) : e.b ? el('em', { text: 'Bounty' }) : null, e.pl ? el('span', { text: ordinal(e.pl) + ' place' }) : null]));
+    return el('div', { class: 'win ko' + (you ? ' mine' : '') }, kids);
+  }
   function logRow(e) {
+    if (e.ko != null) return koRow(e);
     if (e.win != null && e.m != null) return winRow(e);
     if (e.win != null) return el('div', { class: 'win' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.win) } }), el('span', { text: e.a != null ? logWho(e.win, e.n) + (logWho(e.win, e.n) === 'You' ? (e.sp ? ' split ' : ' win ') : e.sp ? ' splits ' : ' wins ') + e.a : e.t }), e.c && e.c.length ? el('span', { class: 'cs', html: e.c.map(function (c, i) { return miniCard(c, i < (e.k || 0)); }).join(' ') }) : null]);   // (a hand logged before this layout)
     if (e.sh != null) return el('div', { class: 'shw' }, [el('i', { class: 'dot', style: { '--c': seatColor(e.sh) } }), el('span', { text: logWho(e.sh, e.n) + (logWho(e.sh, e.n) === 'You' ? ' show' : ' shows') }), el('span', { class: 'cs', html: e.c.map(function (c) { return miniCard(c); }).join(' ') })]);
@@ -6489,7 +6512,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (H.ai) H.ai.seats = H.ai.seats.map(ix);
       if (H.refund) H.refund.i = ix(H.refund.i);
       if (H.log) H.log.forEach(function (e) {
-        ['i', 'win', 'sh'].forEach(function (f) { if (typeof e[f] === 'number') e[f] = ix(e[f]); });
+        ['i', 'win', 'sh', 'vi'].forEach(function (f) { if (typeof e[f] === 'number') e[f] = ix(e[f]); });
+        if (e.ko) e.ko = e.ko.map(ix);
         if (e.vs) e.vs.forEach(function (o) { o.i = ix(o.i); });
       });
     });
