@@ -289,13 +289,16 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
 
   // ── Puzzles: every board in HI_BOARDS (games.js), A to Z, in a plain cabinet of the game's own colour ──
   // Games with lots of boards (Math Puzzles, Marble Solitaire) show only the boards that have scores, plus a default.
-  var PZ_SHORT = { '2048': '2048', candymatch: 'CANDY', mahjong: 'MAHJONG', marblesolitaire: 'MARBLES', mathpuzzles: 'MATH', memorymatch: 'MEMORY', mazes: 'MAZES', minesweeper: 'MINES', slidepuzzle: 'SLIDE', sudoku: 'SUDOKU' };
+  var PZ_SHORT = { '2048': '2048', candymatch: 'CANDY', carmen: 'CARMEN', hotdogstand: 'HOT DOG', oregon: 'OREGON', drugwars: 'DRUG WARS', mahjong: 'MAHJONG', marblesolitaire: 'MARBLES', mathpuzzles: 'MATH', memorymatch: 'MEMORY', mazes: 'MAZES', minesweeper: 'MINES', slidepuzzle: 'SLIDE', sudoku: 'SUDOKU' };
   var PZ_NAME = { candymatch: 'Candy Match', drugwars: 'Drug Wars' };   // games not in the catalog yet
-  var PZ_DEFAULT = { mazes: 'mazes_easy', marblesolitaire: 'marblesolitaire_english', mathpuzzles: 'mathpuzzles_g34_60' };
+  var PZ_DEFAULT = { carmen: 'carmen_world', mazes: 'mazes_easy', marblesolitaire: 'marblesolitaire_english', mathpuzzles: 'mathpuzzles_g34_60' };
   function hx(h) { var n = parseInt(String(h).replace('#', ''), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
   function mix(a, b, t) { var x = hx(a), y = hx(b); return '#' + x.map(function (v, i) { return ('0' + Math.round(v + (y[i] - v) * t).toString(16)).slice(-2); }).join(''); }
   function pzName(game) { var g = typeof findGame === 'function' && findGame(game); return g ? g.name : PZ_NAME[game] || game; }
+  // the arcade-shelf ones get a cabinet colour of their own, like the other arcade games
+  var PZ_COLOR = { candymatch: '#ef3f7a', carmen: '#c81e24', hotdogstand: '#e0912a', minesweeper: '#5b6678', oregon: '#8b5a2b' };
   function pzColor(game) {
+    if (PZ_COLOR[game]) return PZ_COLOR[game];
     var g = typeof findGame === 'function' && findGame(game);
     if (g && /^#[0-9a-f]{6}$/i.test(g.color)) return g.color;
     var cat = typeof GAME_CATS !== 'undefined' && GAME_CATS.filter(function (c) { return c.id === 'puzzle'; })[0];
@@ -354,6 +357,14 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       BOARDS.push({ key: cb.key, game: 'console_' + cb.game, title: cb.name.toUpperCase().replace(/’/g, "'"), short: cb.short, tag: sy.name + ' · HIGH SCORES',
         anim: 'console', cons: cb, href: cb.sys + '.html?play=' + encodeURIComponent(cb.id), sec: 'console', c: sy.c });
     });
+  })();
+
+  // ── The Arcade shelf, A to Z by the name on its button (a game's boards stay together, in their order) ──
+  (function () {
+    var arc = BOARDS.filter(function (b) { return b.sec === 'arcade'; }), rest = BOARDS.filter(function (b) { return b.sec !== 'arcade'; });
+    function nm(b) { return String(b.short || b.title).replace(/^THE /, ''); }
+    arc = arc.map(function (b, i) { return { b: b, i: i }; }).sort(function (x, y) { return nm(x.b).localeCompare(nm(y.b), 'en', { numeric: true }) || x.i - y.i; }).map(function (x) { return x.b; });
+    BOARDS.length = 0; Array.prototype.push.apply(BOARDS, arc.concat(rest));
   })();
 
   // ── Page ──
@@ -463,6 +474,24 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     crazytower: { pal: { P: '#ff4fb4', p: '#b3246f', C: '#4fd2ff', c: '#1f86b0', M: '#d946ef', m: '#8a1fa0', G: '#ffb21a', g: '#a86a00' }, rows: [
       '...PPPPPP...', '...pppppp...', '..CCCCCCC...', '..ccccccc...', '....MMMMMMM.', '....mmmmmmm.',
       '.GGGGGGGGGG.', '.gggggggggg.'] },
+    // a wrapped peppermint
+    candymatch: { pal: { R: '#ef2b3c', W: '#ffffff', C: '#cfe3f5' }, rows: [
+      '......RRR......', '....WWRRRWW....', 'C...WWWRWWW...C', 'CC.RRWWRWWRR.CC', 'CCCRRRRWRRRRCCC', 'CC.RRWWRWWRR.CC', 'C...WWWRWWW...C', '....WWRRRWW....', '......RRR......'] },
+    // Carmen: red fedora with its gold band, half her face in shadow, the red coat and gold scarf
+    carmen: { pal: { R: '#e3262d', D: '#9e1419', Y: '#f2b632', S: '#f0c49a', K: '#3a1a14' }, rows: [
+      '.....RRRR.....', '....RRRRRR....', '....YYYYYY....', '.DRRRRRRRRRRD.', '.....SSKK.....', '.....SSKK.....',
+      '....RRYRRR....', '...RRRYRRRR...', '..RRRRRRRRRR..', '..RRRRRRRRRR..', '..DR.RRRR.RD..'] },
+    // a hot dog with mustard, in its bun
+    hotdogstand: { pal: { S: '#d9532b', s: '#8f2a12', Y: '#ffd23f', B: '#f2b45c', b: '#b8752c' }, rows: [
+      '..sSSSSSSSSSs..', '.sSYYSSYYSSYYs.', 'BBBSSYYSSYYSBBB', 'BBBBBBBBBBBBBBB', '.bBBBBBBBBBBBb.', '..bbbbbbbbbbb..'] },
+    // a mine, spikes out, with its shine
+    minesweeper: { pal: { G: '#59606f', W: '#ffffff', L: '#8b93a3' }, rows: [
+      '......L......', '..L...G...L..', '...GGGGGGG...', '...GWWGGGG...', '..GGWWGGGGG..', 'LGGGGGGGGGGGL',
+      '..GGGGGGGGG..', '...GGGGGGG...', '...GGGGGGG...', '..L...G...L..', '......L......'] },
+    // a covered wagon
+    oregon: { pal: { W: '#f3ead7', S: '#c9b896', B: '#8b5a2b', b: '#5e3a18', K: '#3b2414', Y: '#d6a85c' }, rows: [
+      '...WWWWWWWW....', '..WWSWWSWWSW...', '..WWSWWSWWSW...', '..WWWWWWWWWW...', '.BBBBBBBBBBBB..', '.bbbbbbbbbbbbbb',
+      '..KKK....KKK...', '.KKYKK..KKYKK..', '..KKK....KKK...'] },
     // an invader, mid-march
     invaders: { pal: { W: '#f2f2f2', G: '#2fd35a' }, rows: [
       '..W...W..', '...WWW...', '.WWWWWWW.', 'WW.WWW.WW', 'WWWWWWWWW', '.W.....W.', 'W.......W'] },
@@ -519,7 +548,7 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     var bc = b0.c.sel || b0.c.glow;
     g.btn = el('button', { type: 'button', role: 'tab', class: 'sel-b', 'aria-label': b0.cons ? b0.cons.name : gm ? gm.name : b0.title, style: { '--bc': bc, '--bk': inkOn(bc) },
       onclick: function () { if (groupOf(cur) !== g) { var from = GROUPS.indexOf(groupOf(cur)); show(g.last, gi > from ? 1 : -1); } } },
-      b0.cons ? consLogo(b0.cons) : [b0.puzzle ? el('span', { class: 'pzb', html: pzIcon(b0.game), 'aria-hidden': 'true' }) : spriteCanvas(b0.game), el('span', { text: b0.short || b0.title })]);
+      b0.cons ? consLogo(b0.cons) : [b0.puzzle && !SPR[b0.game] ? el('span', { class: 'pzb', html: pzIcon(b0.game), 'aria-hidden': 'true' }) : spriteCanvas(b0.game), el('span', { text: b0.short || b0.title })]);
     if (b0.cons) g.btn.classList.add('cs');
     sel.appendChild(g.btn);
   });
