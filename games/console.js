@@ -568,6 +568,8 @@
   // ═══ Playing ══════════════════════════════════════════════════════════════
   var cur = null, booted = false, started = false, playEl = null, scrEl = null, glassEl = null, skinEl = null, resumeEl = null;
   function play(c) {
+    var nat = window.consoleNative && consoleNative(c);   // (a cartridge with its own native version: games.js CONSOLE_NATIVE)
+    if (nat) { location.href = nat + '.html?from=' + SYS_ID; return; }
     cur = c;
     if (Kit.playing) Kit.playing('cart-' + String(c.id).slice(0, 16), c.name);   // play time counts this cartridge
     Kit.titleSwitch && Kit.titleSwitch(c.name, function () { toShelf(); }, 'Change cartridge');

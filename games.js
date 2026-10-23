@@ -164,7 +164,7 @@ var GAMES = [
       { icon: 'gamepad', title: 'Play solo', desc: 'Ten waves and four bosses', file: 'centipede.html' },
       { icon: 'users', title: 'Play online', desc: '2 or 3 players, each on their own device', file: 'centipede.html?online=1' }
     ] },
-  { id: 'junglehunt',  name: 'Jungle Hunt',  color: '#2f8a3a', cat: 'arcade', min: 1, max: 1, tag: 'Swing, swim and leap to rescue Lady Penelope', play: 'junglehunt' },
+  { id: 'junglehunt',  name: 'Jungle Hunt',  color: '#2f8a3a', cat: 'console', min: 1, max: 1, tag: 'Swing, swim and leap to rescue Lady Penelope', play: 'junglehunt', hidden: true },   // (played from its Atari 2600 cartridge: see CONSOLE_NATIVE)
   { id: 'galaga',      name: 'Galaga',       color: '#2a5cff', cat: 'arcade', min: 1, max: 1, tag: 'Blast the swarm, dodge the tractor beam', play: 'galaga' },
   { id: 'invaders',    name: 'Space Invaders', color: '#2fd35a', cat: 'arcade', min: 1, max: 2, tag: 'Stop the invaders before they land', play: 'invaders' },
   { id: 'asteroids',   name: 'Asteroids',   color: '#6366f1', cat: 'arcade', min: 1, max: 1, tag: 'Blast rocks, stay alive', play: 'asteroids' },
@@ -199,6 +199,18 @@ var GAMES = [
 // Console games: the house games and each game file you've added (console-lib.js keeps the list in gn_console_idx)
 // get their own cartridge tile,
 // opening straight into its console. gn_console_vis {id: 0} hides a game from the home screen.
+// Cartridges with a native version on this site (the game's own program translated, games/junglehunt.html): their
+// home tile and their cartridge on the console's shelf open that page instead of the emulator
+var CONSOLE_NATIVE = [
+  { sys: 'atari2600', page: 'junglehunt', sha1: ['83a32a2d686355438c915540cfe0bb13b76c1113'], name: /^jungle hunt\b/i }
+];
+function consoleNative(c) {
+  for (var i = 0; i < CONSOLE_NATIVE.length; i++) {
+    var n = CONSOLE_NATIVE[i];
+    if (c && c.sys === n.sys && (n.sha1.indexOf(c.id) >= 0 || n.name.test(String(c.name || '')))) return n.page;
+  }
+  return null;
+}
 function addConsoleGames() {
   for (var i = GAMES.length - 1; i >= 0; i--) if (GAMES[i].cart) GAMES.splice(i, 1);
   var idx = [], vis = {}, SYS = { nes: 'NES', snes: 'Super Nintendo', genesis: 'Sega Genesis', atari2600: 'Atari 2600' };
@@ -206,7 +218,7 @@ function addConsoleGames() {
   var pin = !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin());
   idx.forEach(function (c) {
     if (!c || !SYS[c.sys] || !/^[0-9a-f]+$/.test(c.id) || (c.h && !pin)) return;   // (the house games: signed in only)
-    GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: c.sys + '.html?play=' + c.id,
+    GAMES.push({ id: 'cart-' + c.id.slice(0, 16), name: c.name, color: '#000', cat: 'console', min: 1, max: 1, tag: SYS[c.sys] + ' game', play: consoleNative(c) ? consoleNative(c) + '.html?from=' + c.sys : c.sys + '.html?play=' + c.id,
       mark: c.sys, cart: c.id, sys: c.sys, art: c.art || null, hidden: vis[c.id] === 0 });
   });
 }
