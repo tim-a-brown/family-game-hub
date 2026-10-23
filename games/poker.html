@@ -1071,6 +1071,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   .pk-wide .pin-cards{padding:8px 10px;}
 }
 .pin-h{margin:4px 0 -4px;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.pp-meta{display:flex;flex-wrap:wrap;column-gap:14px;row-gap:2px;}   /* age, job and hometown, each its own piece */
 .pin-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
 .pin-stats.four{grid-template-columns:repeat(2,minmax(0,1fr));}
 .pin-st.gold{background:var(--yellow-fill);box-shadow:none;} .pin-st.gold :is(small,b,span){color:#2a1c00;}
@@ -4112,9 +4113,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function tableAvg() { var al = alive().filter(function (i) { return S.players[i].stack > 0; }); return al.reduce(function (a, i) { return a + S.players[i].stack; }, 0) / Math.max(1, al.length); }
   // a stack as the hand was dealt (so your place holds still while the chips are in the middle)
   function stackAt(i) { var H = S.hand; return H && H.phase !== 'done' && H.start && H.start[i] != null ? H.start[i] : S.players[i].stack; }
-  function circRank() {
-    var C = S.circ, me = stackAt(0), al = alive();
-    var above = al.filter(function (i) { return i !== 0 && stackAt(i) > me; }).length;
+  function circRank(who) {   // (who: a seat at your table; you when left out)
+    who = who || 0;
+    var C = S.circ, me = stackAt(who), al = alive();
+    var above = al.filter(function (i) { return i !== who && stackAt(i) > me; }).length;
     if (!C.else) return above + 1;
     var avgElse = Math.max(1, tableAvg());
     return Math.max(1, Math.min(C.left, above + 1 + Math.round(C.else * Math.exp(-me / avgElse))));
@@ -6466,7 +6468,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       el('span', { class: 'avatar pp-av', style: { '--c': i >= 0 ? seatColor(i) : 'var(--surface-3)' }, html: avHtml(p) }),
       el('div', { class: 'pp-id' }, [
         el('b', { text: pr ? pr.f + ' ' + pr.l + (pr.k ? ' "' + pr.k + '"' : '') : p.name }),
-        pr ? el('span', { text: pr.a + ' · ' + cap(pr.j) + ' · ' + pr.h }) : you ? el('span', { text: S.circ ? 'Your habits follow you from stop to stop' : 'Your habits at this table' }) : null,
+        pr ? el('span', { class: 'pp-meta' }, [el('span', { text: String(pr.a) }), el('span', { text: cap(pr.j) }), el('span', { text: pr.h })]) : you ? el('span', { text: S.circ ? 'Your habits follow you from stop to stop' : 'Your habits at this table' }) : null,
         pills.childNodes.length ? pills : null])]));
     if (pr && pr.s) a.appendChild(el('p', { class: 'pp-story', text: pr.s }));
     // their chips, exactly, on the felt; then how that stacks up
@@ -6476,7 +6478,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var tiles = [pinStat('At the table', ordinal(rk), 'of ' + al.length)];
       if (i !== 0 && !me.out) { var d = p.stack - me.stack; tiles.push(pinStat('Against you', d === 0 ? 'Even' : (d > 0 ? '+' : '−') + amt(Math.abs(d)), d > 0 ? 'more than you' : d < 0 ? 'less than you' : 'same stack')); }
       if (S.tourn) { var avg = al.reduce(function (t, j) { return t + S.players[j].stack; }, 0) / Math.max(1, al.length); tiles.push(pinStat('Average', amt(avg), (you ? 'you\'re ' : 'they\'re ') + (p.stack >= avg ? 'above it' : 'below it'))); }
-      a.appendChild(el('div', { class: 'pin-stats' }, tiles));
+      // in a circuit event with more tables than this one: where they stand in the whole field
+      if (S.circ && S.circ.else > 0) tiles.splice(1, 0, pinStat('In the event', ordinal(circRank(i)), 'of ' + S.circ.left.toLocaleString()));
+      a.appendChild(el('div', { class: 'pin-stats' + (tiles.length === 4 ? ' four' : '') }, tiles));
     }
     // how they play: their style's read, then what they've actually done here
     var ps = ps0, seen = ps.hands || 0, R0 = p.cpu ? READS[p.style] || READS.tag : null;
