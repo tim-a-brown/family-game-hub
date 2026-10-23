@@ -741,6 +741,7 @@
 .plogo.art{inset:0;transform:none;display:block;}
 .plogo.art svg{position:absolute;left:10%;top:10%;width:80%;height:80%;color:#000;opacity:.3;overflow:visible;filter:drop-shadow(0 1px 0 rgba(255,255,255,.15));}
 .pport .plogo.art svg{left:4%;width:92%;}
+.plogo.ft{filter:url(#pk-gild);}   /* the final table: the same dark logo, edged in gold leaf */
 .plogo.art .ftl{position:absolute;left:0;right:0;bottom:3.5%;text-align:center;font-weight:900;font-size:clamp(.55rem,1.3vw,.8rem);letter-spacing:.42em;text-transform:uppercase;color:rgba(0,0,0,.34);text-shadow:0 1px 0 rgba(255,255,255,.05);}
 .pcirc .felt-in::before{display:none;}
 .stage.pland{grid-template-columns:minmax(0,1fr) clamp(224px,28vw,272px);grid-template-rows:minmax(0,1fr);}
@@ -6685,7 +6686,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // Test hook: computer players of the given skills play n cash hands against each other; resolves with each seat's
   // result in big blinds per 100 hands
   window.__pk = {
-    get S() { return S; }, render: function () { renderTable(); }, act: function (a) { humanAct(a); }, undo: function () { undo(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
+    get S() { return S; }, get EV() { return EV; }, render: function () { renderTable(); }, act: function (a) { humanAct(a); }, undo: function () { undo(); }, deal: function () { startHand(); }, learn: function (g) { learnSheet(g); }, oneLine: function (b, w, m) { oneLine(b, w, m); }, _net: { start: netStart, move: netMove, turn: netTurn, bot: netBot, resign: netResign, decide: function (st, i) { return quiet(st, function () { return cpuDecide(i); }); } }, lobby: function () { circLobby(); }, end: function () { endEvent(); },
     ring: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(ringPlate(rec), { rain: true })); } else ringShow(rec); },
     bracelet: function (rec, rain) { if (rain) { var art = el('div', { class: 'pbr-art' }), ov = el('div', { class: 'pbr-ov' }, [art]); document.body.appendChild(ov); braceletInto(art, Object.assign(braceletPlate(rec), { rain: true })); } else braceletShow(rec); },
     peek: function () { return S && { no: S.handNo, phase: S.hand && S.hand.phase, actor: S.hand && S.hand.actor, street: S.hand && S.hand.street, held: !!held }; },
@@ -6725,5 +6726,14 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   });
 })();
 </script>
+<!-- the final table's gilded trim: a hairline of gold just outside the logo's every edge -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="pk-gild" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+  <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 6 0" result="a"/>
+  <feMorphology in="a" operator="dilate" radius="0.8" result="d"/>
+  <feComposite in="d" in2="a" operator="out" result="ring"/>
+  <feFlood flood-color="#e3bf66" flood-opacity=".85"/>
+  <feComposite in2="ring" operator="in" result="gold"/>
+  <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="gold"/></feMerge>
+</filter></svg>
 </body>
 </html>
