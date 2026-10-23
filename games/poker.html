@@ -5264,6 +5264,18 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     });
     // (bets still flying in from their seats, or the pot on its way to the winner, are placed around where they land)
     var fly = [].slice.call(document.querySelectorAll('.ptable .pbet')).filter(function (b) { return b.style.transform; }).map(function (b) { var f = [b, b.style.transform, b.style.transition]; b.style.transition = 'none'; b.style.transform = ''; return f; });
+    // a tile's two-part label ("Left" and "bounties at 431") stays on one line: its spacing, then its size, ease a
+    // little before it would wrap (wrapping only as a last resort)
+    [].slice.call(document.querySelectorAll('.ptile small')).forEach(function (sm) {
+      if (sm.children.length < 2) return;
+      sm.style.letterSpacing = ''; sm.style.fontSize = '';
+      var one = function () { return sm.lastChild.offsetTop === sm.firstChild.offsetTop; };
+      if (!sm.offsetWidth || one()) return;
+      sm.style.letterSpacing = '.03em';
+      var f = parseFloat(getComputedStyle(sm).fontSize);
+      for (var k = 1; k <= 4 && !one(); k++) sm.style.fontSize = (f * (1 - k * 0.05)).toFixed(2) + 'px';
+      if (!one()) { sm.style.letterSpacing = ''; sm.style.fontSize = ''; }
+    });
     placeBets(); placeSays(); fitWins();
     fly.forEach(function (f) { f[0].style.transform = f[1]; f[0].style.transition = f[2]; });
     // (a pill popping in or chips sliding measure small or in the wrong place: once they've settled, place again)
