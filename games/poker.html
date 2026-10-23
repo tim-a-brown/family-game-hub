@@ -360,6 +360,7 @@
 @keyframes czshim{from{background-position:120% 0;}to{background-position:-120% 0;}}
 @keyframes czpic{from{opacity:.4;filter:blur(6px);}to{opacity:1;filter:none;}}
 .czi-city{margin:0 0 4px;font-size:.84rem;font-weight:800;color:var(--text-2);}
+.czi-city .sty{margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--w07);font-size:.72rem;}
 .czi > p{margin:0 0 10px;line-height:1.4;}
 .czi-row{padding:9px 0;border-top:1px solid var(--line);}
 .czi-row small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
@@ -3959,9 +3960,10 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   }
   // the ? on every stop: the place, the game and how it's played, who turns up and how many; k >= 0: a locked stop
   function infoSheet(ev, k, now) {
-    var box = el('div', { class: 'czi' }), pl = PLACE[sceneOf(ev)] || ['', ''], g = ev.grp ? grpEvs(ev) : null, dc = ev.mix && ev.no === 0;
+    var box = el('div', { class: 'czi' }), pl = PLACE[sceneOf(ev)] || ['', ''], g = ev.opts && ev.opts.length ? grpEvs(ev) : null,   // (the group's stop lists its events; one of them shows its own details)
+      dc = ev.mix && ev.no === 0;
     box.appendChild(venuePic(ev, el('div')));
-    box.appendChild(el('p', { class: 'czi-city', text: ev.city + (ev.grp ? '' : ' \u00b7 ' + ev.style) }));
+    box.appendChild(el('p', { class: 'czi-city' }, [document.createTextNode(ev.city), g || !ev.style ? null : el('span', { class: 'sty', text: ev.style })]));
     if (pl[0]) box.appendChild(el('p', { text: pl[0] }));
     if (now) nowRows(box);
     function row(label, text, extra) { box.appendChild(el('div', { class: 'czi-row' }, [el('small', { text: label }), el('p', { text: text }), extra || null])); }
