@@ -378,6 +378,31 @@ var GameIcon = (function () {
 
   // Games whose tile shows a picture instead of a drawn base and mark (the picture fills the tile)
   var PIC = { monopoly: '/img/monopoly-man.webp' };
+  // Games played from a console cartridge (games.js CONSOLE_NATIVE): the icon is the cartridge itself, as the home
+  // screen and the console's shelf show it: Atari's paper label with its logo, the red title band and the game's
+  // picture (the cartridge art found for it on the shelf, else its logo on the jungle's dark green)
+  var CART = { junglehunt: { name: 'Jungle Hunt', logo: '/img/consoles/logos/junglehunt.png' } };
+  function cartArt(id) {
+    try {
+      var idx = JSON.parse(localStorage.getItem('gn_console_idx') || '[]') || [];
+      for (var i = 0; i < idx.length; i++) if (idx[i] && idx[i].art && window.consoleNative && consoleNative(idx[i]) === id) return idx[i].art;
+    } catch (e) {}
+    return null;
+  }
+  function cartIcon(id, opts) {
+    var k = CART[id], cid = 'gc' + (++uid), art = cartArt(id), esc = function (u) { return String(u).replace(/&/g, '&amp;').replace(/"/g, '&quot;'); };
+    var pic = art ? '<image href="' + esc(art) + '" x="9" y="19.6" width="30" height="16.8" preserveAspectRatio="xMidYMid slice" clip-path="url(#' + cid + ')"/>'
+      : '<rect x="9" y="19.6" width="30" height="16.8" fill="#1f4a24"/><image href="' + k.logo + '" x="9.6" y="23.6" width="28.8" height="8.8" preserveAspectRatio="xMidYMid meet"/>';
+    return '<svg class="gicon' + (opts.cls ? ' ' + opts.cls : '') + '" viewBox="0 0 48 48" role="img" aria-label="' + k.name + '">' +
+      '<defs><clipPath id="' + cid + '"><rect x="9" y="19.6" width="30" height="16.8"/></clipPath></defs>' +
+      rect(2.5, 1.5, 43, 45, 4.2, '#232227') + rect(3.2, 2.2, 41.6, 43.6, 3.6, 'none', ' stroke="#fff" stroke-opacity=".1" stroke-width=".6"') +
+      rect(5.6, 4.2, 36.8, 39.4, 1.6, '#efe9dd') +
+      '<image href="/img/consoles/atari2600.svg" x="15" y="5.6" width="18" height="6.6" preserveAspectRatio="xMidYMid meet"/>' +
+      rect(5.6, 12.8, 36.8, 5.2, 0, '#c4343b') +
+      '<text x="24" y="16.6" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,sans-serif" font-weight="800" font-size="3.3" fill="#fff">' + k.name + '</text>' +
+      pic + rect(9, 19.6, 30, 16.8, 0, 'none', ' stroke="#000" stroke-opacity=".25" stroke-width=".4"') +
+      rect(10, 38.6, 28, .5, .25, '#cfc7b8') + rect(10, 40.3, 28, .5, .25, '#cfc7b8') + '</svg>';
+  }
 
   function lighten(hex, amt) {
     var m = /^#?([0-9a-f]{6})$/i.exec(hex); if (!m) return hex;
@@ -388,6 +413,7 @@ var GameIcon = (function () {
 
   function render(id, opts) {
     opts = opts || {};
+    if (CART[id]) return cartIcon(id, opts);
     var g = (typeof findGame === 'function' && findGame(id)) || { id: id, cat: 'tools', color: '#8b55ff' };
     var c = g.color, gid = 'gi' + (++uid);
     var base = (BASE[g.base || g.cat] || BASE.tools)(c);
