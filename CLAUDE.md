@@ -81,6 +81,10 @@ Underlying principles for everything:
   A play space that's wider than tall (cribbage's pegboard, a line of dominoes, a backgammon board) instead sits
   up top across the full width, with the actions and information in a strip below it: buttons on the right of
   that strip, information on the left.
+- **Show every board that isn't secret.** When each player has their own board, card or sheet that the others
+  could see at a real table (Bingo and Keno cards, score sheets), show them all at once on every screen size, never
+  behind tabs: shrink them to fit, two to a row on a phone. Only things that are hidden in the real game (a hand of
+  cards, a Battleship grid) are shown one player at a time.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
