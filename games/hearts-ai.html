@@ -131,6 +131,13 @@
     });
   }
   function firstPerson() { for (var p = 0; p < 4; p++) if (person(p)) return p; return 0; }
+  function nextPasser() { for (var p = 0; p < 4; p++) if (p !== ME && person(p) && !(S.passes && S.passes[p])) return p; return -1; }
+  // picking up a saved game (or coming back from an online table)
+  function resumeLocal() {
+    if (S.phase === 'pass' && passedYet()) { var nx = nextPasser(); if (nx >= 0) gate(nx, render); else doPass(); }
+    else if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
+    else if (S.phase === 'play') next();
+  }
 
   function showSetup() {
     S = null; token++; BLIND = false; ME = 0; Kit.handoff.close();
@@ -207,7 +214,7 @@
   function passNow() {
     if (S.passSel.length !== 3) return;
     if (!S.passes) S.passes = [null, null, null, null];
-    var nxt = -1; for (var p = 0; p < 4; p++) if (p !== ME && person(p) && !S.passes[p]) { nxt = p; break; }
+    var nxt = nextPasser();
     if (nxt < 0) snapshot();
     S.passes[ME] = S.passSel.slice(); S.passSel = [];
     if (nxt >= 0) { save(); gate(nxt, render); return; }
@@ -516,7 +523,10 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.phase === 'pass' && passedYet()) {
+    if (S.phase === 'pass' && passedYet() && !NET) {
+      var nx = nextPasser();
+      barEl.appendChild(el('span', { class: 'hint', text: nx >= 0 ? 'Pass the device to ' + S.players[nx].name : '' }));
+    } else if (S.phase === 'pass' && passedYet()) {
       var wait = netTurn(S);
       barEl.appendChild(el('span', { class: 'hint', text: wait.length ? 'Waiting for ' + names(wait) : '' }));
     } else if (S.phase === 'pass') {
@@ -854,8 +864,7 @@
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.players && sv.hands && sv.phase !== 'over') {
       S = sv; ME = S.me || 0; render();
-      if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
-      else if (S.phase === 'play') next();
+      resumeLocal();
     } else showSetup();
   }
   // ── Boot ──────────────────────────────────────────────────────────────────
@@ -863,8 +872,7 @@
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
     S = saved; ME = S.me || 0; Kit.gameStart();
     render();
-    if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
-    else if (S.phase === 'play') next();
+    resumeLocal();
   } else showSetup();
 
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen

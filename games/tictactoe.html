@@ -126,7 +126,8 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
   var LINE_NAME = ['across the top', 'across the middle', 'across the bottom', 'down the left side', 'down the middle', 'down the right side', 'corner to corner', 'corner to corner'];
   var COL = { X: '#9fd3ff', O: '#ffa3b5', T: '#ffe28a' };
   var SYMTXT = { X: 'X', O: 'O', T: '△' };
-  var MODE_NAME = { cpu: 'vs Computer', '2p': 'Two players', multi: 'Multi-board', '3p': 'Three players' };
+  var MODE_NAME = { cpu: 'vs Computer', '2p': 'Pass & play', multi: 'Multi-board', '3p': 'Three players' };
+  var VARIANT_NAME = { ultimate: 'Ultimate', multi: 'Multi-board', '3p': 'Three players' };
   var LEVEL_NAME = { easy: 'Easy', med: 'Medium', hard: 'Hard' };
 
   Kit.init({
@@ -157,7 +158,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
   var S = null, token = 0, undoStack = [], lastMove = null, fresh = false;
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.G && !S.G.over) Kit.resume.set((S.variant === 'ultimate' ? 'Ultimate' : MODE_NAME[S.mode]) + ' · game ' + gameNo());
+    if (S && S.G && !S.G.over) Kit.resume.set((VARIANT_NAME[S.variant] || MODE_NAME[S.mode]) + ' · game ' + gameNo());
   }
   function clearSave() { token++; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function gameNo() { return S.wins.reduce(function (a, b) { return a + b; }, 0) + S.draws + 1; }
@@ -166,27 +167,28 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     S = null; token++; undoStack = [];
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Classic or Ultimate. Can you beat it?' },
-        { id: '2p', icon: 'users', title: 'Two players', desc: 'Classic or Ultimate, pass the phone' },
-        { id: 'multi', icon: 'board', title: 'Multi-board', desc: 'Two players, several boards at once' },
-        { id: '3p', icon: 'users', title: 'Three players', desc: 'X, O and △ on three boards' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Classic or Ultimate. Can you beat it?' }, { id: '2p', kind: 'local', desc: 'Two or three players, pass the phone' }]),
       options: [
-        { id: 'variant', label: 'Board', value: 'classic', choices: [['classic', 'Classic', 'One 3×3 board. Get three in a row.'], ['ultimate', 'Ultimate', 'Nine small boards inside a big one. Win small boards to get three in a row on the big board.']], when: function (m) { return m === 'cpu' || m === '2p'; } },
-        { id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Often misses wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Plays perfectly on the classic board. The best you can do is a tie.']], when: function (m) { return m === 'cpu'; } },
-        { id: 'nboards', label: 'Boards', help: 'How many boards you play at once. Win the most boards to win.', value: 3, choices: [[2, '2'], [3, '3'], [4, '4'], [5, '5']], when: function (m) { return m === 'multi'; } }
+        // Classic and Ultimate for any table; two people can also play several boards at once; three people always play three boards
+        { id: 'variant', label: 'Board', value: 'classic', choices: function (n, m) {
+          if (n === 3) return [['classic', 'Three boards', 'X, O and △ on three boards. First to win two boards wins.']];
+          var c = [['classic', 'Classic', 'One 3×3 board. Get three in a row.'], ['ultimate', 'Ultimate', 'Nine small boards inside a big one. Win small boards to get three in a row on the big board.']];
+          if (m === '2p') [2, 3, 4, 5].forEach(function (k) { c.push(['m' + k, k + ' boards', k + ' boards at once. Win the most boards to win.']); });
+          return c;
+        } },
+        { id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Often misses wins and blocks. Good for little kids.'], ['med', 'Medium', 'Always wins or blocks when it can, but sometimes slips up.'], ['hard', 'Hard', 'Plays perfectly on the classic board. The best you can do is a tie.']], when: function (m) { return m === 'cpu'; } }
       ],
       players: {
-        min: 2, max: 2,
-        range: function (m) { return m === '3p' ? [3, 3] : [2, 2]; },
+        min: 2, max: 3,
+        range: function (m) { return m === '2p' ? [2, 3] : [2, 2]; },
         cpu: function (m) { return m === 'cpu' ? 'seats' : false; }
       },
       onStart: function (cfg) {
-        var m = cfg.mode;
+        var m = cfg.mode, v = cfg.options.variant || 'classic', multi = /^m\d$/.test(v);
+        if (cfg.players.length === 3) v = '3p'; else if (multi) v = 'multi';
         S = {
-          mode: m, variant: (m === 'cpu' || m === '2p') ? (cfg.options.variant || 'classic') : m,
-          level: cfg.options.level || 'med', nboards: m === 'multi' ? (+cfg.options.nboards || 3) : m === '3p' ? 3 : 1,
+          mode: m, variant: v,
+          level: cfg.options.level || 'med', nboards: v === 'multi' ? (+cfg.options.variant[1] || 3) : v === '3p' ? 3 : 1,
           players: cfg.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, sym: ['X', 'O', 'T'][i] }; }),
           wins: cfg.players.map(function () { return 0; }), draws: 0, first: 0
         };
@@ -586,7 +588,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     S.players.forEach(function (p, i) { if (G.blocks[i] >= 2) hl.push(p.name + ' blocked ' + G.blocks[i] + ' wins'); else if (G.blocks[i] === 1 && S.variant === 'classic') hl.push(p.name + ' made a key block'); });
     if (vsCpu) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     if (gameNo() > 2) hl.push('Series so far: ' + S.players.map(function (p, i) { return p.name + ' ' + S.wins[i]; }).join(' – ') + (S.draws ? ', ' + S.draws + ' draws' : ''));
-    var modeName = (S.variant === 'ultimate' ? 'Ultimate · ' : '') + MODE_NAME[S.mode] + (S.mode === 'multi' ? ' (' + S.nboards + ' boards)' : '');
+    var modeName = (VARIANT_NAME[S.variant] && S.mode !== S.variant ? VARIANT_NAME[S.variant] + ' · ' : '') + MODE_NAME[S.mode] + (S.variant === 'multi' ? ' (' + S.nboards + ' boards)' : '');
     Kit.record(KEY, {
       started: S.started, mode: modeName,
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: S.nboards > 1 ? boardsWon(G, p.sym) : (i === G.winner ? 1 : 0) }; }),
@@ -607,9 +609,10 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
       icon: !w ? 'users' : lose ? 'bot' : 'trophy',
       title: !w ? (S.variant === 'classic' ? "Cat's game!" : "It's a draw!") : lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',
       sub: seriesText().replace('Series  ', 'Series: '),
-      lose: !!lose, againLabel: 'Next game',
+      lose: !!lose,
       again: function () { newGame(false); },
-      extra: [{ label: 'Look at the board', onClick: function () {} }]
+      look: true,
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 

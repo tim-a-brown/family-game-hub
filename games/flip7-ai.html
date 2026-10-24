@@ -193,14 +193,15 @@
   var S = null, token = 0, timer = null, undoStack = [], says = [], flyIds = [];
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' · you have ' + S.players[0].total);
+    if (S && S.phase !== 'over') Kit.resume.set(solo() ? 'Round ' + S.round + ' · you have ' + S.players[0].total : 'Round ' + S.round + ' of pass & play');
   }
   function clearSave() { token++; clearTimeout(timer); try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
     S = null; token++; clearTimeout(timer);
     Kit.setup(app, {
-      players: { min: 3, max: 8, count: 4, cpu: 'seats', label: 'Players (you + computers)' },
+      modes: Kit.modes(['cpu', { id: 'local' }]),
+      players: { min: 3, max: 8, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The first player to reach this many points wins.', value: 200, choices: [[100, '100 · quick'], [200, '200 · standard']] }],
       onStart: function (cfg) {
         newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 200);
@@ -245,8 +246,13 @@
   }
 
   // ── Card helpers ──────────────────────────────────────────────────────────
-  function who(p) { return p === 0 ? 'You' : S.players[p].name; }
-  function vb(p, you, them) { return p === 0 ? you : them; }
+  // One person at the table (seat 0 against computers): they're "you". More than one person: everyone by name.
+  function solo() { return S.players.filter(function (p) { return !p.cpu; }).length === 1; }
+  function human(p) { return p >= 0 && !S.players[p].cpu; }
+  function isYou(p) { return p === 0 && solo(); }
+  function who(p) { return isYou(p) ? 'You' : S.players[p].name; }
+  function youOr(p) { return isYou(p) ? 'you' : S.players[p].name; }
+  function vb(p, you, them) { return isYou(p) ? you : them; }
   function cardName(c) {
     return c.k === 'n' ? String(c.v) : c.k === 'm' ? '+' + c.v : c.k === 'x2' ? '×2' : c.k === 'fz' ? 'Freeze' : c.k === 'f3' ? 'Flip Three' : 'Second Chance';
   }
@@ -298,7 +304,7 @@
     if (!S || (S.phase !== 'deal' && S.phase !== 'play')) return;
     if (S.status.indexOf('flip7') >= 0) return endRound();
     if (S.choose) {
-      if (S.choose.p === 0) { render(); return; }      // waiting for you
+      if (human(S.choose.p)) { render(); return; }      // waiting for a person to choose
       applyChoice(cpuTarget(S.choose));
       return after(750);
     }
@@ -319,12 +325,12 @@
     if (!act.length) return endRound();
     if (S.acted || S.status[S.turn] !== 'in') {
       S.turn = nextActive(S.turn); S.acted = false;
-      S.msg = S.turn === 0 ? 'Your turn' : S.players[S.turn].name + ' is thinking…';
+      S.msg = isYou(S.turn) ? 'Your turn' : human(S.turn) ? S.players[S.turn].name + ', your turn' : S.players[S.turn].name + ' is thinking…';
       save(); render();
-      if (S.turn === 0) { Kit.haptic('light'); return; }
+      if (human(S.turn)) { Kit.haptic('light'); return; }
       return pump(waitMs(380, 620));
     }
-    if (S.turn === 0) { render(); return; }
+    if (human(S.turn)) { render(); return; }
     // Computer's turn
     var p2 = S.turn;
     S.acted = true;
@@ -338,7 +344,7 @@
   function after(ms) {
     if (S.status.indexOf('flip7') >= 0) { save(); render(); return pump(1500); }
     save(); render();
-    if (S.choose && S.choose.p === 0) { Kit.haptic('medium'); return; }
+    if (S.choose && human(S.choose.p)) { Kit.haptic('medium'); return; }
     pump(ms);
   }
   function nextActive(from) {
@@ -371,8 +377,8 @@
           S.rows[p] = S.rows[p].filter(function (x) { return x !== sc; });
           S.discard.push(sc, c);
           S.ev.push({ k: 'save', p: p, r: S.round, v: c.v });
-          S.msg = 'Second Chance saves ' + (p === 0 ? 'you' : S.players[p].name) + ' from a ' + c.v + '!';
-          say(p, 'Saved!', 'good'); Kit.sfx('good'); if (p === 0) Kit.haptic('success');
+          S.msg = 'Second Chance saves ' + youOr(p) + ' from a ' + c.v + '!';
+          say(p, 'Saved!', 'good'); Kit.sfx('good'); if (human(p)) Kit.haptic('success');
           return slow + 300;
         }
         var before = calc(p).pts;
@@ -380,7 +386,7 @@
         S.status[p] = 'bust';
         S.ev.push({ k: 'bust', p: p, r: S.round, v: c.v, pts: before });
         S.msg = who(p) + ' ' + vb(p, 'bust', 'busts') + ' on ' + article(c) + '!';
-        say(p, 'Bust!', 'bad'); Kit.sfx('bad'); if (p === 0) Kit.haptic('error');
+        say(p, 'Bust!', 'bad'); Kit.sfx('bad'); if (human(p)) Kit.haptic('error');
         return slow + 300;
       }
       S.rows[p].push(c); fly(c); Kit.sfx('flip');
@@ -389,7 +395,7 @@
         S.status[p] = 'flip7'; S.queue = []; S.choose = null;
         S.ev.push({ k: 'f7', p: p, r: S.round, pts: cc.pts });
         S.msg = who(p) + ' flipped 7!';
-        Kit.callout('Flip 7!'); Kit.sfx('win'); Kit.haptic('success'); if (p === 0) Kit.confetti({ count: 80 });
+        Kit.callout('Flip 7!'); Kit.sfx('win'); Kit.haptic('success'); if (human(p)) Kit.confetti({ count: 80 });
         return 1500;
       }
       S.msg = who(p) + ' ' + vb(p, 'flip', 'flips') + ' ' + article(c) + (t.f3 ? ' (' + t.f3 + ' of 3)' : '');
@@ -432,7 +438,7 @@
     var c = ch.c, p = ch.p;
     if (ch.kind === 'sc') {
       S.rows[q].push(c); fly(c, true);
-      S.msg = who(p) + ' ' + vb(p, 'give', 'gives') + ' the Second Chance to ' + (q === 0 ? 'you' : S.players[q].name);
+      S.msg = who(p) + ' ' + vb(p, 'give', 'gives') + ' the Second Chance to ' + youOr(q);
       say(q, '+ Second Chance', 'good'); Kit.sfx('chip');
       return;
     }
@@ -441,10 +447,10 @@
       S.status[q] = 'frozen';
       S.ev.push({ k: 'freeze', by: p, p: q, r: S.round, pts: calc(q).pts });
       S.msg = q === p ? who(p) + ' ' + vb(p, 'freeze yourself', 'freezes themselves') + ' at ' + calc(q).pts
-        : who(p) + ' ' + vb(p, 'freeze', 'freezes') + ' ' + (q === 0 ? 'you' : S.players[q].name) + ' at ' + calc(q).pts;
-      say(q, 'Frozen'); Kit.sfx('whoosh'); if (q === 0) Kit.haptic('medium');
+        : who(p) + ' ' + vb(p, 'freeze', 'freezes') + ' ' + youOr(q) + ' at ' + calc(q).pts;
+      say(q, 'Frozen'); Kit.sfx('whoosh'); if (human(q)) Kit.haptic('medium');
     } else {
-      S.msg = (q === p ? who(p) + ' ' + vb(p, 'flip three yourself', 'flips three') : who(p) + ' ' + vb(p, 'make', 'makes') + ' ' + (q === 0 ? 'you' : S.players[q].name) + ' flip three');
+      S.msg = (q === p ? who(p) + ' ' + vb(p, 'flip three yourself', 'flips three') : who(p) + ' ' + vb(p, 'make', 'makes') + ' ' + youOr(q) + ' flip three');
       say(q, 'Flip three!'); Kit.sfx('whoosh');
       S.ev.push({ k: 'f3', by: p, p: q, r: S.round });
       S.queue = [{ t: 'draw', p: q, f3: 1 }, { t: 'draw', p: q, f3: 2 }, { t: 'draw', p: q, f3: 3 }, { t: 'f3end', p: q }].concat(S.queue);
@@ -493,22 +499,24 @@
   }
 
   // ── Your moves ────────────────────────────────────────────────────────────
-  function myTurn() { return S && S.phase === 'play' && !S.choose && !S.queue.length && S.turn === 0 && !S.acted && S.status[0] === 'in'; }
+  // A person's turn (seat 0, or any person's seat at a pass & play table)
+  function myTurn() { return S && S.phase === 'play' && !S.choose && !S.queue.length && human(S.turn) && !S.acted && S.status[S.turn] === 'in'; }
   function hit() {
     if (!myTurn()) return;
     snapshot(); S.acted = true;
-    S.queue.push({ t: 'draw', p: 0 });
+    S.queue.push({ t: 'draw', p: S.turn });
     Kit.haptic('light'); step();
   }
   function stay() {
     if (!myTurn()) return;
-    snapshot(); S.acted = true; S.status[0] = 'stay';
-    S.msg = 'You stay with ' + calc(0).pts;
-    say(0, 'Stay'); Kit.sfx('chip'); Kit.haptic('medium');
+    var p = S.turn;
+    snapshot(); S.acted = true; S.status[p] = 'stay';
+    S.msg = who(p) + ' ' + vb(p, 'stay', 'stays') + ' with ' + calc(p).pts;
+    say(p, 'Stay'); Kit.sfx('chip'); Kit.haptic('medium');
     after(500);
   }
   function pick(q) {
-    if (!S || !S.choose || S.choose.p !== 0 || S.choose.targets.indexOf(q) < 0) return;
+    if (!S || !S.choose || !human(S.choose.p) || S.choose.targets.indexOf(q) < 0) return;
     snapshot(); Kit.haptic('light');
     applyChoice(q); after(800);
   }
@@ -549,7 +557,7 @@
     S.players.forEach(function (p, i) {
       var d = between && det ? det[i] : '';
       t.appendChild(el('tr', { class: p.total === top && top > 0 ? 'lead' : '' }, [
-        el('td', { text: i === 0 ? p.name + (p.name === 'You' ? '' : ' (you)') : p.name }),
+        el('td', { text: isYou(i) && p.name !== 'You' ? p.name + ' (you)' : p.name }),
         el('td', { class: d === 'Bust' ? 'bust' : '', html: between ? (d === 'Bust' ? 'Bust' : '+' + last[i]) + (d && d !== 'Bust' ? '<small>' + Kit.esc(d) + '</small>' : '') : '' }),
         el('td', { class: 'big', text: String(p.total) })
       ]));
@@ -585,7 +593,7 @@
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.score - a.score; });
     var w = rank[0];
     Kit.record(KEY, {
-      started: S.started, mode: 'vs Computer',
+      started: S.started, mode: solo() ? 'vs Computer' : 'Pass & play',
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: w.name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'R' + (i + 1); }), scores: S.rounds },
@@ -603,10 +611,11 @@
     var players = S.players, target = S.target;
     clearSave();
     Kit.win({
-      title: w.i === 0 ? 'You win!' : w.name + ' wins', sub: w.score + ' points after ' + S.rounds.length + ' rounds',
-      rank: rank, lose: w.i !== 0, icon: w.i === 0 ? 'trophy' : 'bot',
+      title: isYou(w.i) ? 'You win!' : w.cpu ? w.name + ' wins' : w.name + ' wins!', sub: w.score + ' points after ' + S.rounds.length + ' rounds',
+      rank: rank, lose: !!w.cpu, icon: w.cpu ? 'bot' : 'trophy',
       again: function () { newGame(players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), target); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 
@@ -689,16 +698,17 @@
   }
   function spot(p, top) {
     var pl = S.players[p], st = S.status[p] || 'in';
-    var picking = S.choose && S.choose.p === 0 && S.choose.targets.indexOf(p) >= 0;
+    var picking = S.choose && human(S.choose.p) && S.choose.targets.indexOf(p) >= 0;
     var s = el('div', { class: 'spot' + (p === 0 ? ' me' : '') + (S.phase === 'play' && S.turn === p && st === 'in' && !S.choose ? ' now' : '') + (st === 'bust' ? ' out' : '') + (picking ? ' pick' : '') });
     if (picking) s.addEventListener('click', function () { pick(p); });
     var head = el('div', { class: 'sh' }, [
       el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-      el('span', { class: 'nm', text: p === 0 ? (pl.name === 'You' ? 'You' : pl.name + ' (you)') : pl.name })
+      el('span', { class: 'nm', text: isYou(p) && pl.name !== 'You' ? pl.name + ' (you)' : pl.name })
     ]);
-    if (p === 0 && st === 'in' && S.phase !== 'roundover') {
-      var o = odds(0), rows = S.rows[0].some(function (c) { return c.k === 'n'; });
-      if (hasSC(0)) head.appendChild(el('span', { class: 'risk safe', html: '<b>Protected</b>' }));
+    // the bust risk: yours (one person at the table), or a person's on their turn
+    if (human(p) && (p === 0 || S.turn === p) && st === 'in' && S.phase !== 'roundover') {
+      var o = odds(p), rows = S.rows[p].some(function (c) { return c.k === 'n'; });
+      if (hasSC(p)) head.appendChild(el('span', { class: 'risk safe', html: '<b>Protected</b>' }));
       else if (rows) head.appendChild(el('span', { class: 'risk', html: 'Bust risk <b>' + Math.round(o.pb * 100) + '%</b>' }));
     }
     head.appendChild(el('span', { class: 'tot' + (pl.total === top && top > 0 ? ' lead' : ''), text: String(pl.total) }));
@@ -738,25 +748,26 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.choose && S.choose.p === 0) {
-      var k = S.choose.kind;
-      barEl.appendChild(el('div', { class: 'pickl', text: k === 'fz' ? 'Freeze who? They stop and keep their points.' : k === 'f3' ? 'Who has to flip three cards?' : 'Give the extra Second Chance to…' }));
+    if (S.choose && human(S.choose.p)) {
+      var k = S.choose.kind, cp = S.choose.p, lead = isYou(cp) ? '' : S.players[cp].name + ': ';
+      barEl.appendChild(el('div', { class: 'pickl', text: lead + (k === 'fz' ? 'Freeze who? They stop and keep their points.' : k === 'f3' ? 'Who has to flip three cards?' : 'Give the extra Second Chance to…') }));
       S.choose.targets.forEach(function (q) {
-        barEl.appendChild(el('button', { type: 'button', class: 'chip', html: Kit.esc(q === 0 ? 'Me' : S.players[q].name) + '<small>' + shown(q) + '</small>', onclick: function () { pick(q); } }));
+        barEl.appendChild(el('button', { type: 'button', class: 'chip', html: Kit.esc(q === cp ? 'Me' : S.players[q].name) + '<small>' + shown(q) + '</small>', onclick: function () { pick(q); } }));
       });
       return;
     }
     if (myTurn()) {
+      if (!isYou(S.turn)) barEl.appendChild(el('div', { class: 'pickl', text: S.players[S.turn].name + ', your turn' }));
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>Flip</span>', onclick: hit }));
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg', text: 'Stay · ' + calc(0).pts, onclick: stay }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg', text: 'Stay with ' + calc(S.turn).pts, onclick: stay }));
       return;
     }
     var h = '';
     if (S.phase === 'deal') h = 'Dealing…';
     else if (S.phase === 'play') {
       var st = S.status[0];
-      h = S.turn >= 0 && S.turn !== 0 && S.status[S.turn] === 'in' ? S.players[S.turn].name + ' is playing…' : '';
-      if (st !== 'in') h = (st === 'bust' ? 'You busted. ' : st === 'frozen' ? 'You are frozen. ' : st === 'stay' ? 'You stayed. ' : '') + 'Waiting for the round to end…';
+      h = S.turn >= 0 && !human(S.turn) && S.status[S.turn] === 'in' ? S.players[S.turn].name + ' is playing…' : '';
+      if (st !== 'in' && solo()) h = (st === 'bust' ? 'You busted. ' : st === 'frozen' ? 'You are frozen. ' : st === 'stay' ? 'You stayed. ' : '') + 'Waiting for the round to end…';
       if (S.status.indexOf('flip7') >= 0) h = 'Flip 7! The round is over.';
     }
     if (S.phase === 'roundover') {
