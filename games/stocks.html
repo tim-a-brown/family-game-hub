@@ -833,7 +833,8 @@ body{overflow-x:hidden;}
     [['w', '1W'], ['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y'], ['5y', '5Y'], ['max', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { Kit.sfx('tap'); detRange = r[0]; drawChart(); } })); });
     p.appendChild(rg); drawChart();
     w.appendChild(p);
-    var se = series(sym), yr = se.length > 200 ? (s.p - se[0][1]) / se[0][1] : null, hi = Math.max.apply(null, s.h), lo = Math.min.apply(null, s.h);
+    var se = series(sym).slice(-253), yr = se.length > 200 ? (s.p - se[0][1]) / se[0][1] : null,   // (the same year as the 1Y chart)
+      hi = Math.max.apply(null, se.map(function (x) { return x[1]; })), lo = Math.min.apply(null, se.map(function (x) { return x[1]; }));
     var dvy = (s.dv || []).reduce(function (a, d) { return a + d[1]; }, 0) / (s.p || 1);
     var a = el('div', { class: 'pnl' });
     a.appendChild(el('h3', null, [el('span', { text: 'About' }), el('span', { text: ({ stock: 'Stock', fund: 'Fund', bond: 'Bond fund', coin: 'Crypto' })[s.k] })]));
@@ -1289,7 +1290,7 @@ body{overflow-x:hidden;}
   if (Q) paint();
   loadQuotes().then(start);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes().then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (!dom.pane.classList.contains('on')) paint(); }); });
-  window.__mk = { A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
+  window.__mk = { open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
 })();
 </script>
 </body>
