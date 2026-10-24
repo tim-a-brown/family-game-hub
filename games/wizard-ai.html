@@ -154,24 +154,26 @@
   function N() { return S.players.length; }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' of ' + S.nRounds + ' · you have ' + S.players[0].total);
+    if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' of ' + S.nRounds + (humans() > 1 ? '' : ' · you have ' + S.players[0].total));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
     S = null; token++; undoStack = [];
     Kit.setup(app, {
-      players: { min: 3, max: 6, count: 4, cpu: 'seats', label: 'Players (you + computers)' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 3, max: 6, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [
         { id: 'len', label: 'Game length', value: 'full', choices: [['full', 'Full · 60 ÷ players', 'Deal one more card each round until the deck runs out.'], ['half', 'Half', 'Stop halfway for a shorter game.']] },
         { id: 'hook', label: 'Total bids', help: 'Whether everyone’s bids are allowed to add up to the number of tricks in the round.', value: 'any', choices: [['any', 'Any total (standard)', 'Bid whatever you like.'], ['no', "Can't equal tricks", 'The dealer can’t make the total match, so someone always misses their bid.']] }
       ],
-      onStart: function (cfg) { newGame(cfg.players, cfg.options); }
+      onStart: function (cfg) { newGame(cfg.players, cfg.options, cfg.mode); }
     });
   }
-  function newGame(players, options) {
+  function newGame(players, options, mode) {
     var n = players.length, full = Math.floor(60 / n);
     S = {
+      mode: mode || 'cpu', me: 0,
       opts: { len: options.len || 'full', hook: options.hook || 'any' },
       nRounds: options.len === 'half' ? Math.ceil(full / 2) : full,
       round: 0, dealer: Math.floor(Math.random() * n), rounds: [], detail: [], highlights: [], started: Date.now(),
@@ -180,6 +182,30 @@
     };
     S.dealer = (S.dealer + n - 1) % n; // newRound moves it on one
     undoStack = []; Kit.gameStart(); newRound();
+  }
+
+  // ── Viewer seat (pass & play) ─────────────────────────────────────────────
+  // S.me is the seat whose hand is face up at the bottom; the table turns so they sit there.
+  // One person at the table: always seat 0, exactly as vs Computer.
+  function person(p) { return !!(S && S.players[p] && !S.players[p].cpu); }
+  function humans() { return S ? S.players.filter(function (p) { return !p.cpu; }).length : 1; }
+  function isMe(p) { return p === S.me; }
+  function isYou(p) { return isMe(p) && humans() < 2; }
+  function nm(p) { return isYou(p) ? 'You' : S.players[p].name; }
+  // The seat that acts next, if it is a person other than the viewer: hide every hand and pass the device
+  function needsGate() {
+    if (!S || S.cover) return -1;
+    var p = S.phase === 'trump' ? S.dealer : (S.phase === 'bid' || S.phase === 'play') ? S.turn : -1;
+    return p >= 0 && person(p) && !isMe(p) ? p : -1;
+  }
+  function gate(p) {
+    var t = ++token;
+    S.cover = true; clearUndo(); save(); paintSeats(); paintHand(); paintMsg();
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S || !S.cover) return;
+      S.cover = false; S.me = p; S.dealt = false;
+      save(); render(); next();
+    });
   }
 
   // ── Cards ─────────────────────────────────────────────────────────────────
@@ -264,7 +290,7 @@
     S.dealt = true;
     clearUndo(); save(); render();
     Kit.sfx('deal'); setTimeout(function () { Kit.sfx('flip'); }, 420);
-    if (isW(S.trumpCard)) flash(S.dealer === 0 ? 'A Wizard! You pick trump' : 'A Wizard! ' + S.players[S.dealer].name + ' picks trump', 2000);
+    if (isW(S.trumpCard)) flash(isYou(S.dealer) ? 'A Wizard! You pick trump' : 'A Wizard! ' + S.players[S.dealer].name + ' picks trump', 2000);
     else if (isJ(S.trumpCard)) flash('A Jester: no trump this round', 1800);
     else if (!S.trumpCard) flash('Last round: no trump', 1800);
     var t = token;
@@ -274,6 +300,7 @@
   function next() {
     if (!S) return;
     paintSeats(); paintHand(); paintMsg();
+    var g = needsGate(); if (g >= 0) { gate(g); return; }
     var p = S.turn, t = token;
     if (S.phase === 'trump') {
       if (S.players[S.dealer].cpu) setTimeout(function () { if (t === token && S.phase === 'trump') chooseTrump(cpuTrump(S.dealer)); }, 900);
@@ -310,14 +337,14 @@
   function play(p, card) {
     if (!S || S.phase !== 'play' || S.turn !== p) return;
     var i = find(S.hands[p], card.id); if (i < 0) return;
-    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    var from = isMe(p) ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
     if (isW(card)) { Kit.sfx('pop'); S.wizPlayed[p]++; } else Kit.sfx('flip');
     var node = trickCard(S.trick.length - 1);
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340, endRot: VEC[pos(p)][2] });
-    if (p === 0) paintHand();
+    if (isMe(p)) paintHand();
     if (S.trick.length === N()) { S.turn = -1; save(); paintSeats(); paintBar(); var t = token; setTimeout(function () { if (t === token) resolveTrick(); }, 850); }
     else { S.turn = (p + 1) % N(); save(); next(); }
   }
@@ -326,7 +353,7 @@
     var wi = winnerIdx(S.trick), win = S.trick[wi];
     S.taken[win.p]++;
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
-    if (win.p === 0) { Kit.haptic('medium'); Kit.sfx('good'); }
+    if (person(win.p)) { Kit.haptic('medium'); Kit.sfx('good'); }
     var b = S.bids[win.p];
     seatSay(win.p, S.taken[win.p] === b ? 'Got ' + b + '!' : S.taken[win.p] > b ? 'One too many' : '+1 trick');
     paintSeats();
@@ -357,7 +384,8 @@
     S.phase = 'roundover';
     clearUndo(); save();
     paintSeats(); paintBar();
-    if (pts[0] > 0) { Kit.callout(S.bids[0] >= 3 ? 'Nailed ' + S.bids[0] + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
+    var me = S.me;
+    if (pts[me] > 0) { Kit.callout(S.bids[me] >= 3 ? 'Nailed ' + S.bids[me] + '!' : 'Nailed it!'); Kit.sfx('good'); Kit.haptic('success'); }
     else { Kit.sfx('bad'); Kit.haptic('error'); }
     var t = token;
     setTimeout(function () { if (t === token) { S.round >= S.nRounds ? finish() : showScores(true); } }, 1100);
@@ -437,9 +465,9 @@
     S.phase = 'over';
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.score - a.score; });
     var tie = rank[1].score === rank[0].score;
-    var youWin = rank[0].score === S.players[0].total;
+    var top = rank[0], youWin = humans() < 2 ? top.score === S.players[0].total : !top.cpu;
     Kit.record(KEY, {
-      started: S.started, mode: 'vs Computer',
+      started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer',
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'R' + (i + 1); }), scores: S.rounds },
@@ -449,12 +477,13 @@
     });
     clearSave();
     Kit.win({
-      title: tie ? (youWin ? 'Tied for the win!' : "It's a tie!") : rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
+      title: tie ? (youWin && humans() < 2 ? 'Tied for the win!' : "It's a tie!") : isYou(top.i) ? 'You win!' : top.name + ' wins',
       sub: 'After ' + S.rounds.length + ' rounds', rank: rank, lose: !youWin, icon: youWin ? 'trophy' : 'bot',
       again: function () {
-        newGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts);
+        newGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts, S.mode);
       },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { token++; clearSave(); showSetup(); }
     });
   }
 
@@ -530,7 +559,7 @@
 
   // ── Render ────────────────────────────────────────────────────────────────
   var seatEls = [], trickEl, handEl, barEl, msgEl, trumpEl, roundEl;
-  function pos(p) { return LAYOUT[N()][p]; }
+  function pos(p) { return LAYOUT[N()][(p - (S.me || 0) + N()) % N()]; }
   function render() {
     app.innerHTML = '';
     var n = N();
@@ -582,14 +611,14 @@
       s.classList.toggle('dealer', S.dealer === p);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === 0 ? 'You' : pl.name })
+        el('span', { text: nm(p) })
       ]);
       var b = S.bids[p], tk = S.taken[p], bidTxt, cls = 'chip-s';
       if (b == null) bidTxt = S.phase === 'bid' && S.turn === p ? 'bidding' : 'no bid';
       else if (S.phase === 'bid') bidTxt = 'bid ' + b;
       else { bidTxt = tk + ' of ' + b; cls += tk === b ? ' made' : tk > b ? ' over' : ''; }
       var info = el('div', { class: 'info' }, [el('span', { class: cls, text: bidTxt }), el('span', { class: 'chip-s tot', text: String(pl.total) })]);
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (isMe(p)) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         if (S.hands && S.hands[p].length) {
@@ -607,8 +636,13 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands ? view(S.hands[0]) : [];
-    var ok = S.phase === 'play' && S.turn === 0 && S.trick.length < N() ? legal(0).map(function (c) { return c.id; }) : null;
+    var mine = S.hands ? view(S.hands[S.me]) : [];
+    if (S.cover) {   // between two people's turns: card backs only
+      var hb = el('div', { class: 'chand' });
+      mine.forEach(function () { hb.appendChild(Kit.card('', '', { back: true })); });
+      handEl.appendChild(hb); requestAnimationFrame(fanAll); paintBar(); return;
+    }
+    var ok = S.phase === 'play' && S.turn === S.me && S.trick.length < N() ? legal(S.me).map(function (c) { return c.id; }) : null;
     var rows = mine.length > handCap() ? [mine.slice(0, Math.ceil(mine.length / 2)), mine.slice(Math.ceil(mine.length / 2))] : [mine];
     var deal = S.dealt; S.dealt = false;
     rows.forEach(function (row, ri) {
@@ -617,7 +651,7 @@
         var nd = cardEl(c, deal ? 'deal' : '');
         if (deal) nd.style.animationDelay = (ci * 45 + ri * 120) + 'ms';
         if (ok) {
-          if (ok.indexOf(c.id) >= 0) { nd.classList.add('play'); nd.addEventListener('click', function () { snapshot(); play(0, c); }); }
+          if (ok.indexOf(c.id) >= 0) { nd.classList.add('play'); nd.addEventListener('click', function () { snapshot(); play(S.me, c); }); }
           else { nd.classList.add('dim'); nd.addEventListener('click', function () { Kit.haptic('error'); Kit.toast('Follow suit: play ' + SUITN[ledSuit(S.trick)].toLowerCase() + ', a Wizard or a Jester'); }); }
         }
         h.appendChild(nd);
@@ -631,36 +665,36 @@
   function handCap() { return handEl && handEl.clientWidth >= 760 ? 20 : 12; }
   function onResize() {
     if (!handEl || !S || !S.hands) return;
-    var n = view(S.hands[0]).length, want = n > handCap() ? 2 : 1;
+    var n = view(S.hands[S.me]).length, want = n > handCap() ? 2 : 1;
     if (n && handEl.querySelectorAll('.chand').length !== want) paintHand(); else fanAll();
   }
   function fanAll() { if (handEl) Array.prototype.forEach.call(handEl.querySelectorAll('.chand'), function (h) { Cards.fan(h); }); }
   function paintBar() {
     barEl.innerHTML = '';
-    if (!S) return;
-    if (S.phase === 'trump' && S.dealer === 0) {
+    if (!S || S.cover) return;
+    if (S.phase === 'trump' && isMe(S.dealer)) {
       var box = el('div', { class: 'picker' }, [el('div', { class: 'q', text: 'You turned up a Wizard. Pick trump:' }), el('div', { class: 'sub', text: 'Choose the suit you have the most good cards in.' })]);
       var g = el('div', { class: 'suits' });
       ['s', 'h', 'd', 'c'].forEach(function (s) {
         g.appendChild(el('button', { type: 'button', class: s === 'h' || s === 'd' ? 'red' : '', 'aria-label': SUITN[s], text: Cards.GLYPH[s], onclick: function () { snapshot(); Kit.haptic('light'); chooseTrump(s); } }));
       });
       box.appendChild(g); barEl.appendChild(box);
-    } else if (S.phase === 'bid' && S.turn === 0) {
+    } else if (S.phase === 'bid' && isMe(S.turn)) {
       var sum = 0, cnt = 0; S.bids.forEach(function (b) { if (b != null) { sum += b; cnt++; } });
-      var f = forbiddenBid(0);
+      var f = forbiddenBid(S.me);
       var pk = el('div', { class: 'picker' }, [
         el('div', { class: 'q', text: 'How many tricks will you win?' }),
         el('div', { class: 'sub', text: (cnt ? 'Others bid ' + sum + ' so far · ' : '') + S.round + (S.round === 1 ? ' trick' : ' tricks') + ' this round' + (f >= 0 ? ' · dealer can\'t bid ' + f : '') })
       ]);
       var bids = el('div', { class: 'bids' });
       for (var i = 0; i <= S.round; i++) (function (i) {
-        var bt = el('button', { type: 'button', text: String(i), onclick: function () { snapshot(); Kit.haptic('light'); makeBid(0, i); } });
+        var bt = el('button', { type: 'button', text: String(i), onclick: function () { snapshot(); Kit.haptic('light'); makeBid(S.me, i); } });
         if (i === f) bt.disabled = true;
         bids.appendChild(bt);
       })(i);
       pk.appendChild(bids); barEl.appendChild(pk);
     } else if (S.phase === 'play') {
-      barEl.appendChild(el('span', { class: 'hint', text: S.turn === 0 ? (S.trick.length ? 'Your turn: follow suit if you can' : 'Your lead: play any card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '' }));
+      barEl.appendChild(el('span', { class: 'hint', text: isMe(S.turn) ? (S.trick.length ? 'Your turn: follow suit if you can' : 'Your lead: play any card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '' }));
     } else if (S.phase === 'bid') {
       barEl.appendChild(el('span', { class: 'hint', text: S.players[S.turn].name + ' is bidding…' }));
     } else if (S.phase === 'trump') {
@@ -670,7 +704,7 @@
   var flashT = null, flashMsg = '';
   function paintMsg() {
     var m = flashMsg;
-    if (!m && S.phase === 'bid' && S.turn === 0) m = 'Your bid';
+    if (!m && S.phase === 'bid' && isMe(S.turn) && !S.cover) m = 'Your bid';
     msgEl.hidden = !m; msgEl.textContent = m;
     paintRoundOnly();
   }
@@ -686,7 +720,7 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; S.dealt = false;
+    S = saved; S.dealt = false; if (S.me == null) S.me = 0; S.cover = false;
     render();
     if (S.phase === 'play' && S.trick.length === N()) setTimeout(resolveTrick, 600);
     else next();

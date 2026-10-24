@@ -1618,7 +1618,7 @@
   // Kit.modes(['cpu', 'local']) builds the cards. A game whose saved games know its own mode ids keeps them:
   // Kit.modes([{id:'2p', kind:'local'}]) draws the standard card under the game's id. An entry can override
   // desc (one short line about this game) and, rarely, title or icon. Cards come out in the standard order
-  // whatever order they're given in; a kind the list doesn't know stays where it was put, after the known ones.
+  // whatever order they're given in; a kind of the game's own sits right after the standard card listed before it.
   var MODE_KINDS = {
     solo:   { icon: 'user',  title: 'Just me',     desc: 'One player' },
     cpu:    { icon: 'bot',   title: 'vs Computer', desc: 'You against computer players' },
@@ -1627,11 +1627,12 @@
   };
   var MODE_ORDER = ['solo', 'cpu', 'local', 'online'];
   function modes(list) {
+    var last = 0;   // a kind of the game's own stays right after the standard card before it in the list
     var out = (list || []).map(function (m, i) {
       if (typeof m === 'string') m = { id: m };
       var kind = m.kind || m.id, k = MODE_KINDS[kind] || {};
-      var r = MODE_ORDER.indexOf(kind);
-      return { id: m.id, kind: kind, icon: m.icon || k.icon || 'sparkle', title: m.title || k.title || m.id, desc: m.desc, _o: (r < 0 ? 10 : r) * 100 + i };
+      var r = MODE_ORDER.indexOf(kind); if (r >= 0) last = r;
+      return { id: m.id, kind: kind, icon: m.icon || k.icon || 'sparkle', title: m.title || k.title || m.id, desc: m.desc, _o: (r < 0 ? last : r) * 100 + i };
     });
     out.sort(function (a, b) { return a._o - b._o; });
     out.forEach(function (m) { delete m._o; });
