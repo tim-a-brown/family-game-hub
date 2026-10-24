@@ -104,16 +104,27 @@ const INDEX = { spx: ['^GSPC', 'S&P 500'], dji: ['^DJI', 'Dow'], ixic: ['^IXIC',
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function fetchText(url, opt) {
-  const r = await fetch(url, Object.assign({ headers: UA }, opt));
+  const r = await fetch(url, Object.assign({ headers: UA, signal: AbortSignal.timeout(12000) }, opt));
   if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url.split('?')[0]);
   return r.text();
 }
 const r2 = (n) => Math.round(n * 100) / 100, r4 = (n) => Math.round(n * 10000) / 10000;
 const day = (ms) => new Date(ms).toISOString().slice(0, 10);
 
-// Yahoo: a year of daily closes, the latest price, and dividends
+// Each source returns { p: latest price, pc: previous close, at: ms, hist: [[YYYY-MM-DD, close]], dv: [[YYYY-MM-DD, amount]] }.
+// Free sources come and go (and some refuse cloud servers), so several are tried; the first run logs which answer.
+let ycookie = '', ycrumb = '';
+async function yahooAuth() {
+  if (ycrumb) return;
+  const r = await fetch('https://fc.yahoo.com/', { headers: UA, redirect: 'manual', signal: AbortSignal.timeout(12000) }).catch(() => null);
+  const sc = r && r.headers.getSetCookie ? r.headers.getSetCookie() : [];
+  ycookie = sc.map((c) => c.split(';')[0]).join('; ');
+  ycrumb = (await fetchText('https://query2.finance.yahoo.com/v1/test/getcrumb', { headers: Object.assign({ Cookie: ycookie }, UA) })).trim();
+  if (!ycrumb || ycrumb.length > 30) throw new Error('no crumb');
+}
 async function yahoo(sym) {
-  const j = JSON.parse(await fetchText('https://query1.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym) + '?range=1y&interval=1d&events=div&includePrePost=false'));
+  await yahooAuth();
+  const j = JSON.parse(await fetchText('https://query2.finance.yahoo.com/v8/finance/chart/' + encodeURIComponent(sym) + '?range=1y&interval=1d&events=div&crumb=' + encodeURIComponent(ycrumb), { headers: Object.assign({ Cookie: ycookie }, UA) }));
   const res = j.chart && j.chart.result && j.chart.result[0];
   if (!res || !res.meta) throw new Error('no chart');
   const m = res.meta, ts = res.timestamp || [], cl = ((res.indicators || {}).quote || [{}])[0].close || [];
@@ -122,24 +133,84 @@ async function yahoo(sym) {
   if (!hist.length || !isFinite(m.regularMarketPrice)) throw new Error('no prices');
   const dv = Object.values((res.events || {}).dividends || {}).map((d) => [day(d.date * 1000), r4(d.amount)]).sort((a, b) => a[0] < b[0] ? -1 : 1);
   const at = (m.regularMarketTime || ts[ts.length - 1]) * 1000;
-  // the latest price stands in for today's close until the day is over
   if (hist[hist.length - 1][0] !== day(at)) hist.push([day(at), m.regularMarketPrice]); else hist[hist.length - 1][1] = m.regularMarketPrice;
-  return { p: m.regularMarketPrice, pc: hist.length > 1 ? hist[hist.length - 2][1] : m.chartPreviousClose, at, hist, dv, src: 'y' };
+  return { p: m.regularMarketPrice, pc: hist.length > 1 ? hist[hist.length - 2][1] : m.chartPreviousClose, at, hist, dv };
 }
-// Stooq (no dividends): daily history as CSV
-async function stooq(sym) {
-  const s = sym.replace('-USD', '').toLowerCase().replace('-', '.') + (/-USD$/.test(sym) ? '.v' : '.us');
-  const csv = await fetchText('https://stooq.com/q/d/l/?s=' + encodeURIComponent(s) + '&i=d');
-  const rows = csv.trim().split('\n').slice(1).map((l) => l.split(',')).filter((c) => c.length >= 5 && isFinite(+c[4]));
-  if (rows.length < 20) throw new Error('stooq: no rows');
-  const hist = rows.slice(-260).map((c) => [c[0], +c[4]]);
-  const last = hist[hist.length - 1];
-  return { p: last[1], pc: hist[hist.length - 2][1], at: Date.parse(last[0] + 'T21:00:00Z'), hist, dv: [], src: 's' };
+// Nasdaq's site API: a year of closes, the latest sale and dividends
+const NQ = { Accept: 'application/json, text/plain, */*', 'User-Agent': UA['User-Agent'], Origin: 'https://www.nasdaq.com', Referer: 'https://www.nasdaq.com/' };
+const num = (s) => parseFloat(String(s == null ? '' : s).replace(/[$,%\s]/g, ''));
+const mdy = (s) => { const m = String(s).match(/(\d+)\/(\d+)\/(\d{4})/); return m ? m[3] + '-' + ('0' + m[1]).slice(-2) + '-' + ('0' + m[2]).slice(-2) : null; };
+async function nasdaq(sym, kind) {
+  const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
+  const to = day(Date.now()), from = day(Date.now() - 370 * 864e5);
+  const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=' + from + '&todate=' + to + '&limit=400', { headers: NQ }));
+  const rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1])).reverse();
+  if (rows.length < 20) throw new Error('nasdaq: ' + JSON.stringify(hj).slice(0, 160));
+  let p = rows[rows.length - 1][1], pc = rows[rows.length - 2][1], at = Date.parse(rows[rows.length - 1][0] + 'T20:00:00Z');
+  try {
+    const ij = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/info?assetclass=' + ac, { headers: NQ }));
+    const pd = (ij.data || {}).primaryData || {}, lp = num(pd.lastSalePrice), ch = num(pd.netChange);
+    if (isFinite(lp) && lp > 0) {
+      p = lp; if (isFinite(ch)) pc = r4(lp - ch); at = Date.now();
+      if (rows[rows.length - 1][0] === day(Date.now())) rows[rows.length - 1][1] = lp; else rows.push([day(Date.now()), lp]);
+    }
+  } catch (e) {}
+  let dv = [];
+  try {
+    const dj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/dividends?assetclass=' + ac, { headers: NQ }));
+    dv = ((((dj.data || {}).dividends || {}).rows) || []).map((r) => [mdy(r.exOrEffDate), r4(num(r.amount))]).filter((d) => d[0] && d[1] > 0 && d[0] >= from).sort((a, b) => a[0] < b[0] ? -1 : 1);
+  } catch (e) {}
+  return { p, pc, at, hist: rows.slice(-260), dv };
 }
-async function quote(sym) {
-  try { return await yahoo(sym); } catch (e) { console.log('  yahoo ' + sym + ': ' + e.message); }
-  try { return await stooq(sym); } catch (e) { console.log('  stooq ' + sym + ': ' + e.message); }
+// CNBC: the latest quote only (history then comes from the saved file)
+async function cnbc(sym, kind, prev) {
+  const s = sym === 'BRK-B' ? 'BRK.B' : sym;
+  const j = JSON.parse(await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=' + encodeURIComponent(s) + '&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json'));
+  const q = (((j.FormattedQuoteResult || {}).FormattedQuote) || [])[0];
+  const p = q && num(q.last), pc = q && num(q.previous_day_closing);
+  if (!isFinite(p) || p <= 0) throw new Error('cnbc: ' + JSON.stringify(j).slice(0, 160));
+  const hist = prev && prev.h ? prev.h.map((v, i) => [day(Date.parse(prev.d0) + (prev.o ? prev.o[i] : i) * 864e5), v]) : [];
+  if (hist.length && hist[hist.length - 1][0] === day(Date.now())) hist[hist.length - 1][1] = p; else hist.push([day(Date.now()), p]);
+  return { p, pc: isFinite(pc) ? pc : p, at: Date.now(), hist: hist.slice(-260), dv: (prev && prev.dv) || [] };
+}
+// CoinGecko for Bitcoin and Ethereum
+async function gecko(sym) {
+  const id = { 'BTC-USD': 'bitcoin', 'ETH-USD': 'ethereum' }[sym];
+  const j = JSON.parse(await fetchText('https://api.coingecko.com/api/v3/coins/' + id + '/market_chart?vs_currency=usd&days=365&interval=daily'));
+  const pr = (j.prices || []).filter((x) => isFinite(x[1]));
+  if (pr.length < 20) throw new Error('gecko: ' + JSON.stringify(j).slice(0, 160));
+  const byDay = {}; pr.forEach((x) => { byDay[day(x[0])] = x[1]; });
+  const hist = Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
+  return { p: hist[hist.length - 1][1], pc: hist[hist.length - 2][1], at: pr[pr.length - 1][0], hist: hist.slice(-260), dv: [] };
+}
+// The US Treasury's own daily yield curve
+async function treasury() {
+  const y = new Date().getFullYear(), out = {};
+  for (const yr of [y, y - 1]) {
+    const csv = await fetchText('https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/' + yr + '/all?type=daily_treasury_yield_curve&field_tdr_date_value=' + yr + '&page&_format=csv');
+    const lines = csv.trim().split(/\r?\n/), head = lines[0].split(',').map((h) => h.replace(/"/g, '').trim());
+    const row = lines[1] && lines[1].split(',').map((c) => c.replace(/"/g, '').trim());
+    if (!row) continue;
+    const col = (n) => { const i = head.indexOf(n); return i >= 0 ? parseFloat(row[i]) : NaN; };
+    out.irx = col('3 Mo'); out.fvx = col('5 Yr'); out.tnx = col('10 Yr'); out.tyx = col('30 Yr'); out.date = row[0];
+    if (isFinite(out.tnx)) return out;
+  }
+  throw new Error('treasury: no rows');
+}
+const SOURCES = { yahoo, nasdaq, cnbc };
+let ORDER = ['nasdaq', 'yahoo', 'cnbc'];
+async function quote(sym, kind, prev) {
+  if (kind === 'coin') { try { return await gecko(sym); } catch (e) { console.log('  gecko ' + sym + ': ' + e.message); } }
+  for (const src of ORDER) {
+    try { return await SOURCES[src](sym, kind === 'coin' ? 'stock' : kind, prev); } catch (e) { console.log('  ' + src + ' ' + sym + ': ' + e.message.slice(0, 200)); }
+  }
   return null;
+}
+// which sources answer today (tried with Apple), best first
+async function probe() {
+  const ok = [];
+  for (const src of ORDER) { try { const q = await SOURCES[src]('AAPL', 'stock', null); console.log('source ' + src + ': ok, AAPL ' + q.p + ', ' + q.hist.length + ' days'); ok.push(src); } catch (e) { console.log('source ' + src + ': ' + e.message.slice(0, 200)); } }
+  ORDER = ok.concat(ORDER.filter((s) => ok.indexOf(s) < 0));
 }
 
 async function token(key) {
@@ -155,17 +226,23 @@ async function token(key) {
   let old = {};
   try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(OBJ) + '?alt=media')); } catch (e) { console.log('no saved file yet'); }
   const out = { v: 1, at: Date.now(), q: {}, rates: {}, idx: {} }, fails = [];
+  await probe();
   for (const [sym, name, kind, group, about] of LIST) {
-    const q = await quote(sym);
     const prev = old.q && old.q[sym];
+    const q = await quote(sym, kind, prev);
     if (!q) { fails.push(sym); if (prev) out.q[sym] = prev; await sleep(300); continue; }
     // closes (oldest first), each with its date as days after the first one (d0); dividends as [date, amount]
     const t0 = Date.parse(q.hist[0][0]);
     out.q[sym] = { n: name, k: kind, g: group, a: about, p: r4(q.p), pc: r4(q.pc), at: q.at, d0: q.hist[0][0], h: q.hist.map((x) => r2(x[1])), o: q.hist.map((x) => Math.round((Date.parse(x[0]) - t0) / 864e5)), dv: q.dv.length ? q.dv : (prev && prev.dv) || [] };
     await sleep(250);
   }
-  for (const k in RATES) { const q = await quote(RATES[k]); if (q) out.rates[k] = r4(q.p); else if (old.rates) out.rates[k] = old.rates[k]; await sleep(250); }
-  for (const k in INDEX) { const q = await quote(INDEX[k][0]); if (q) out.idx[k] = { n: INDEX[k][1], p: r2(q.p), pc: r2(q.pc), h: q.hist.slice(-30).map((x) => r2(x[1])) }; else if (old.idx) out.idx[k] = old.idx[k]; await sleep(250); }
+  try { const t = await treasury(); ['irx', 'fvx', 'tnx', 'tyx'].forEach((k) => { if (isFinite(t[k])) out.rates[k] = t[k]; }); out.rates.date = t.date; console.log('Treasury yields ' + JSON.stringify(t)); }
+  catch (e) { console.log('treasury: ' + e.message); for (const k in RATES) { try { const q = await yahoo(RATES[k]); out.rates[k] = r4(q.p); } catch (e2) { if (old.rates) out.rates[k] = old.rates[k]; } } }
+  for (const k in INDEX) {
+    let q = null; try { q = await yahoo(INDEX[k][0]); } catch (e) { try { q = await cnbc({ '^GSPC': '.SPX', '^DJI': '.DJI', '^IXIC': '.IXIC' }[INDEX[k][0]], 'stock', old.idx && old.idx[k] && null); } catch (e2) { console.log('  index ' + k + ': ' + e2.message.slice(0, 120)); } }
+    if (q) out.idx[k] = { n: INDEX[k][1], p: r2(q.p), pc: r2(q.pc) }; else if (old.idx && old.idx[k]) out.idx[k] = old.idx[k];
+    await sleep(250);
+  }
   // the market's own time for the stock prices (the latest of them)
   out.asof = Math.max.apply(null, Object.keys(out.q).filter((s) => out.q[s].k !== 'coin').map((s) => out.q[s].at || 0));
   console.log(Object.keys(out.q).length + ' symbols, ' + fails.length + ' not fetched' + (fails.length ? ': ' + fails.join(' ') : '') + '; rates ' + JSON.stringify(out.rates));
