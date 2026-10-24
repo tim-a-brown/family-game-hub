@@ -247,6 +247,33 @@
 @keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-14deg) scale(2.4);opacity:0;}100%{transform:translate(-50%,-50%) rotate(-14deg);opacity:.9;}}
 .kb-stamp small{display:block;font-family:var(--font);font-weight:900;font-size:.24em;letter-spacing:.12em;text-align:center;margin-top:-.2em;}
 
+/* Bingo on the screen: balls in place of cards on the table, numbers under B I N G O on the cards */
+.bcards .k-deck .stack{display:grid;place-items:center;}
+.bcards .k-deck .stack .ball{position:absolute;}
+.bcards .k-deck .stack .ball:nth-child(1){transform:translate(-30%,20%);}
+.bcards .k-deck .stack .ball:nth-child(2){transform:translate(28%,-6%);}
+.bcards .k-deck .stack .ball:nth-child(3){transform:translate(-4%,-32%);}
+.bcards .k-deck.empty .stack{border-radius:50%;}
+.ball.mini{--s:clamp(24px,7vw,32px);}
+.ball.mini .l{display:none;}
+.ball.blank .face{display:none;}
+.ball.mini .n{font-size:calc(var(--s) * .42);}
+.bcards .k-now{display:grid;place-items:center;}
+.bcards .k-now .ball.now{--s:var(--cw);}
+.bcards .k-now .slot{border-radius:50%;}
+.bcards .k-recent{min-height:calc(var(--cw) * 1.4);gap:4px;}
+.bcards .k-recent .ball + .ball{margin-left:-6px;}
+.bcards .k-recent .ball.in{animation:kin .4s var(--spring);}
+.bcards .kb-grid{grid-template-rows:auto repeat(5,minmax(0,1fr));}
+.kh{display:grid;place-items:center;height:calc(100cqi / var(--kn) * .42);border-radius:calc(100cqi / var(--kn) * .1);background:var(--c);color:var(--ci);
+  font-family:var(--display);font-size:calc(100cqi / var(--kn) * .3);box-shadow:inset 0 -2px 0 rgba(0,0,0,.2);}
+.kc.bn{aspect-ratio:1/1;}
+.kc.bn .r{font-size:calc(100cqi / var(--kn) * .4);}
+.kc.bn.free{background:linear-gradient(160deg,#fff3c8,#f6dd92);color:#8a5b00;}
+.kc.bn.free .f .ico{width:calc(100cqi / var(--kn) * .42);height:calc(100cqi / var(--kn) * .42);}
+.k-tab .nm .ico{width:14px;height:14px;vertical-align:-2px;margin-right:3px;}
+.kb-who .avatar .ico{width:16px;height:16px;}
+
 /* every card drawn so far, a row per suit */
 .kd .frow{grid-template-columns:26px repeat(13,1fr);}
 .kd .fl{font-family:var(--font);font-size:1.05rem;background:#fbf7ee;color:var(--ink);}
@@ -345,6 +372,7 @@
       '<h3>Calling</h3><ul><li>Tap <b>Draw ball</b>. The ball rolls out of the cage and is read out, like "B 12".</li><li>If that number is on your card, cover it with a marker.</li><li>Turn on <b>Auto</b> to draw a ball every few seconds, and <b>Voice</b> to have the phone read the calls.</li></ul>' +
       '<h3>Winning</h3><ul><li><b>Line</b> (standard): 5 in a row across, down, or corner to corner. The free space can be one of them.</li><li><b>4 corners</b>, <b>X</b> (both diagonals) and <b>Blackout</b> (the whole card) are fun variations. Pick one when you start.</li></ul>' +
       '<h3>Shout Bingo!</h3><p>The player reads out their numbers. Tap <b>Check a card</b> and type them in. The caller checks every one was really called. If it is good, pick the winner and celebrate. You can keep calling for second place.</p>' +
+      '<h3>Playing on this phone</h3><p>Pick <b>vs Computer</b> or <b>Pass & play</b> and everyone at the table gets a card on the screen, Bingo or Keno. Draw the balls (or cards) and every card is marked for its player. Computer players can take any seat after yours.</p>' +
       '<h3>Keno</h3><p>Bingo with a deck of cards. Everyone gets their own card on the screen, filled with playing cards in a random order: 5 by 5, 6 by 6 or 7 by 7. Every player\'s card is different.</p>' +
       '<ul><li>Tap <b>Draw card</b> (or the deck). The top card is turned over and read out, like "Jack of hearts".</li><li>Everyone who has that card on their card gets it marked straight away.</li>' +
       '<li>When someone is one card away, the card they need glows.</li><li>The same patterns win: a <b>Line</b> all the way across, down or corner to corner, <b>4 corners</b>, an <b>X</b>, or <b>Blackout</b>. First to finish it gets <b>KENO!</b> Keep drawing to play for second place.</li></ul>'
@@ -357,15 +385,15 @@
   function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(P)); } catch (e) {} }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S.mode === 'keno') { if (S.drawn.length) Kit.resume.set('Keno: ' + S.drawn.length + ' cards drawn'); }
+    if (onScreen()) { if (S.drawn.length) Kit.resume.set((cards() ? 'Bingo: ' + S.drawn.length + ' balls called' : 'Keno: ' + S.drawn.length + ' cards drawn') + (S.players.length > 1 ? ', ' + S.players.length + ' cards' : '')); }
     else if (S.called.length) Kit.resume.set(S.called.length + ' balls called');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() {
     try {
       var s = JSON.parse(localStorage.getItem(SAVE));
-      if (s && s.mode === 'keno' && Array.isArray(s.deck) && Array.isArray(s.drawn) && Array.isArray(s.players) && s.players.length) return s;
-      if (s && s.mode !== 'keno' && Array.isArray(s.pool) && Array.isArray(s.called)) return s;
+      if (s && (s.mode === 'keno' || s.mode === 'cards') && Array.isArray(s.deck) && Array.isArray(s.drawn) && Array.isArray(s.players) && s.players.length) return s;
+      if (s && s.mode !== 'keno' && s.mode !== 'cards' && Array.isArray(s.pool) && Array.isArray(s.called)) return s;
     } catch (e) {}
     return null;
   }
@@ -404,26 +432,31 @@
     if (cage) cage.off();
     cage = null;
     Kit.setup(app, {
-      modes: [
-        { id: 'bingo', icon: 'sound', title: 'Bingo', desc: 'You call the balls. Everyone marks their own paper cards.' },
-        { id: 'keno', icon: 'cards', title: 'Keno', desc: 'Everyone gets a card of playing cards. Draw from the deck and every card gets marked for you.' }
-      ],
-      players: { min: 1, max: 8, count: 2, range: function (m) { return m === 'keno' ? [1, 8] : [0, 0]; } },
+      modes: Kit.modes([
+        { id: 'caller', kind: 'caller', icon: 'sound', title: 'Call the balls', desc: 'You call. Everyone marks their own paper cards' },
+        { id: 'cpu', desc: 'Your card against computer players, all marked for you' },
+        { id: 'local', desc: 'Everyone gets a card on this phone, marked for them. Computer players can join' }
+      ]),
+      players: { min: 1, max: 8, count: 2, range: function (m) { return m === 'caller' ? [0, 0] : [1, 8]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [
-        { id: 'size', label: 'Card size', when: function (m) { return m === 'keno'; }, value: 5,
+        { id: 'game', label: 'Game', value: 'bingo', when: function (m) { return m !== 'caller'; },
+          help: 'Bingo cards hold numbers under B I N G O and the balls come out of the cage. Keno cards hold playing cards and you draw from a deck.',
+          choices: [['bingo', 'Bingo', 'A 5 by 5 card of numbers with a free space in the middle.'], ['keno', 'Keno', 'A card of playing cards, 5 by 5 up to 7 by 7.']] },
+        { id: 'size', label: 'Card size', when: function (m, op) { return m !== 'caller' && op.game === 'keno'; }, value: 5,
           help: 'How many squares across and down. A bigger card holds more of the deck.',
           choices: [[5, '5 by 5', '25 cards on each player\'s card.'], [6, '6 by 6', '36 cards on each player\'s card.'], [7, '7 by 7', '49 cards: nearly the whole deck.']] },
         { id: 'pattern', label: 'Winning pattern', value: 'line',
-          help: 'What you need to cover on your card to win.', choices: function (n, m) {
-            var k = m === 'keno';
+          help: 'What you need to cover on your card to win.', choices: function (n, m, op) {
+            var k = m !== 'caller' && op.game === 'keno';
             return [['line', 'Line', k ? 'A full row across, down or corner to corner. This is the standard way.' : 'Five in a row across, down or corner to corner. This is the standard way.'],
               ['corners', '4 corners', 'Just the four corner squares.'], ['x', 'X', 'Both diagonals, making a big X.'],
               ['blackout', 'Blackout', 'Every square on the card. This takes the longest!']];
           } }
       ],
       onStart: function (cfg) {
-        if (cfg.mode === 'keno') { freshKeno(cfg); buildKeno(); }
-        else { freshGame(cfg.options.pattern); build(); }
+        if (cfg.mode === 'caller') { freshGame(cfg.options.pattern); build(); }
+        else if (cfg.options.game === 'keno') { freshKeno(cfg); buildKeno(); }
+        else { freshCards(cfg); buildKeno(); }
       }
     });
   }
@@ -533,7 +566,7 @@
     R.foot.appendChild(el('span', { text: S.pool.length + ' left' }));
   }
   function paintButtons() {
-    if (S.mode === 'keno') return kButtons();
+    if (onScreen()) return kButtons();
     var done = !S.pool.length;
     R.draw.disabled = busy || done;
     R.draw.innerHTML = done ? '<span>All 75 called</span>' : '<span>' + (S.called.length ? 'Draw next ball' : 'Draw ball') + '</span>';
@@ -550,7 +583,7 @@
 
   // ── Drawing a ball ─────────────────────────────────────────────────────
   function draw() {
-    if (S && S.mode === 'keno') return kDraw();
+    if (S && onScreen()) return kDraw();
     if (busy || !S || !S.pool.length) return;
     busy = true; paintButtons();
     var n = S.pool.pop();
@@ -587,7 +620,7 @@
   }
 
   function undo() {
-    if (S && S.mode === 'keno') return kUndo();
+    if (S && onScreen()) return kUndo();
     if (!S || !S.called.length) { Kit.toast('Nothing to undo'); return; }
     if (busy) return;
     stopAuto();
@@ -604,7 +637,7 @@
   var autoOn = false, timer = null, tStart = 0, raf = 0;
   function toggleAuto() {
     if (autoOn) { stopAuto(); Kit.sfx('tap'); return; }
-    if (!(S.mode === 'keno' ? S.deck : S.pool).length) return;
+    if (!(onScreen() ? S.deck : S.pool).length) return;
     autoOn = true; Kit.sfx('good'); Kit.haptic('light');
     paintButtons();
     if (!busy) draw();
@@ -639,7 +672,7 @@
     Object.keys(PAT).forEach(function (k) {
       seg.appendChild(el('button', { type: 'button', class: 'btn btn-block ' + (S.pattern === k ? 'btn-primary' : 'btn-soft'), text: PAT[k].long,
         style: { 'justify-content': 'flex-start', 'text-align': 'left', 'font-size': '.98rem' },
-        onclick: function () { S.pattern = k; save(); if (S.mode === 'keno') kPaint(); else paintButtons(); s.close(); Kit.sfx('tap'); Kit.toast('Pattern: ' + PAT[k].name); } }));
+        onclick: function () { S.pattern = k; save(); if (onScreen()) kPaint(); else paintButtons(); s.close(); Kit.sfx('tap'); Kit.toast('Pattern: ' + PAT[k].name); } }));
     });
     s = Kit.sheet({ title: 'Winning pattern', node: seg });
   }
@@ -798,10 +831,34 @@
   function freshKeno(cfg) {
     var n = Math.min(7, Math.max(5, +cfg.options.size || 5));
     S = { mode: 'keno', size: n, deck: shuffled(52), drawn: [], pattern: cfg.options.pattern || 'line', started: Date.now(), wins: [],
-      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, grid: shuffled(52).slice(0, n * n) }; }) };
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, grid: shuffled(52).slice(0, n * n) }; }) };
     Kit.gameStart();
     save();
   }
+  // Bingo on the screen (S.mode 'cards'): the same engine with 75 balls. A card is 5 by 5, each column its own
+  // fifteen numbers (B 1 to 15 ... O 61 to 75), the middle square free (value 0, always marked)
+  function bingoGrid() {
+    var cols = [], g = [];
+    for (var c = 0; c < 5; c++) cols.push(shuffled(15).slice(0, 5).map(function (k) { return c * 15 + k + 1; }));
+    for (var r = 0; r < 5; r++) for (c = 0; c < 5; c++) g.push(r === 2 && c === 2 ? 0 : cols[c][r]);
+    return g;
+  }
+  function freshCards(cfg) {
+    S = { mode: 'cards', size: 5, deck: shuffled(75).map(function (i) { return i + 1; }), drawn: [], pattern: cfg.options.pattern || 'line', started: Date.now(), wins: [],
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, grid: bingoGrid() }; }) };
+    Kit.gameStart();
+    save();
+  }
+  function cards() { return !!S && S.mode === 'cards'; }
+  function onScreen() { return !!S && (S.mode === 'keno' || S.mode === 'cards'); }
+  function itemName(v) { return cards() ? letter(v) + ' ' + v : cname(v); }
+  function itemShort(v) { return cards() ? letter(v) + v : cshort(v); }
+  function STAMP() { return cards() ? 'BINGO' : 'KENO'; }
+  function gameName() { return cards() ? 'Bingo' : 'Keno'; }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }); }
+  // a name as the device holder reads it: "You" when one person plays against computers
+  function nameOf(p) { return humans().length === 1 && !p.cpu ? 'You' : p.name; }
+  function whoEl(p) { return p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color); }
   // The groups of squares that win under the pattern (each one a list of square numbers, row by row)
   function kLines() {
     var n = S.size, out = [], i, j, d1 = [], d2 = [];
@@ -813,7 +870,7 @@
     return out.concat([d1, d2]);
   }
   var DR = [];   // DR[card] = 1 once drawn
-  function kSet() { DR = []; S.drawn.forEach(function (c) { DR[c] = 1; }); }
+  function kSet() { DR = []; S.drawn.forEach(function (c) { DR[c] = 1; }); if (cards()) DR[0] = 1; }
   // How close a player is: squares left on their nearest line, the squares that would finish one, and a won line
   function kState(p) {
     var left = 1e9, need = [], win = null;
@@ -836,12 +893,12 @@
     R = {};
     kSet();
     var many = S.players.length > 1;
-    var root = el('div', { class: 'keno ' + (many ? 'k-many' : 'k-one') });
+    var root = el('div', { class: 'keno ' + (many ? 'k-many' : 'k-one') + (cards() ? ' bcards' : '') });
     root.style.setProperty('--kn', S.size);
 
     // The table: the deck, the card just turned, its name, and the few before it
-    R.deck = el('button', { type: 'button', class: 'k-deck', 'aria-label': 'Draw a card', onclick: function () { kDraw(); } }, [el('div', { class: 'stack' }), el('span', { class: 'cnt' })]);
-    R.now = el('div', { class: 'k-now', role: 'button', 'aria-label': 'Draw a card', onclick: function () {
+    R.deck = el('button', { type: 'button', class: 'k-deck', 'aria-label': cards() ? 'Draw a ball' : 'Draw a card', onclick: function () { kDraw(); } }, [el('div', { class: 'stack' }), el('span', { class: 'cnt' })]);
+    R.now = el('div', { class: 'k-now', role: 'button', 'aria-label': cards() ? 'Draw a ball' : 'Draw a card', onclick: function () {
       if (S.drawn.length && !busy) { sayCard(S.drawn[S.drawn.length - 1]); Kit.sfx('tap'); } else kDraw();
     } });
     R.line = el('div', { class: 'k-call' });
@@ -849,7 +906,7 @@
     var felt = el('div', { class: 'felt-in' }, [R.deck, R.now, el('div', { class: 'k-info' }, [R.line, R.recent])]);
     var table = el('section', { class: 'k-table wood' }, [felt]);
 
-    R.undo = el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': 'Undo last card', html: icon('undo'), onclick: function () { kUndo(); } });
+    R.undo = el('button', { type: 'button', class: 'btn btn-soft sq', 'aria-label': cards() ? 'Undo last ball' : 'Undo last card', html: icon('undo'), onclick: function () { kUndo(); } });
     R.draw = el('button', { type: 'button', class: 'btn btn-primary drawbtn', onclick: function () { kDraw(); } });
     R.auto = el('button', { type: 'button', class: 'btn btn-soft sq autobtn', 'aria-label': 'Auto draw', onclick: function () { toggleAuto(); } });
     R.bar = el('div', { class: 'autobar' }, [el('i')]);
@@ -865,16 +922,22 @@
     R.pat = el('button', { type: 'button', class: 'chip', onclick: function () { choosePattern(); } });
     var ctl = el('div', { class: 'k-ctl' }, [el('div', { class: 'ctl' }, [R.undo, R.draw, R.auto]), R.bar, el('div', { class: 'opts' }, [R.voice, R.every, R.pat])]);
 
-    // Every card drawn so far, a row per suit
-    var fb = el('div', { class: 'flash kd' });
+    // Every card drawn so far, a row per suit (Bingo: every ball called, a row per letter)
+    var fb = el('div', { class: 'flash' + (cards() ? '' : ' kd') });
     R.dcells = [];
-    SU.forEach(function (su, si) {
+    if (cards()) {
+      for (var c0 = 0; c0 < 5; c0++) {
+        var brow = el('div', { class: 'frow c' + L[c0] }, [el('div', { class: 'fl', text: L[c0] })]);
+        for (var k0 = 1; k0 <= 15; k0++) { var n0 = c0 * 15 + k0, bc = el('div', { class: 'fc', text: String(n0) }); R.dcells[n0] = bc; brow.appendChild(bc); }
+        fb.appendChild(brow);
+      }
+    } else SU.forEach(function (su, si) {
       var row = el('div', { class: 'frow' + (su === 'h' || su === 'd' ? ' red' : '') }, [el('div', { class: 'fl', text: SYM[su] })]);
       RK.forEach(function (rk, ri) { var c = el('div', { class: 'fc', text: rk }); R.dcells[si * 13 + ri] = c; row.appendChild(c); });
       fb.appendChild(row);
     });
     R.dfoot = el('div', { class: 'bfoot' });
-    var drawnBox = el('div', { class: 'k-drawn' }, [el('div', { class: 'bhead' }, [el('div', { class: 'label', text: 'Cards drawn' })]), fb, R.dfoot]);
+    var drawnBox = el('div', { class: 'k-drawn' }, [el('div', { class: 'bhead' }, [el('div', { class: 'label', text: cards() ? 'Balls called' : 'Cards drawn' })]), fb, R.dfoot]);
 
     // The players' cards, and on phones a tab for each
     R.tabs = el('div', { class: 'k-tabs' });
@@ -884,17 +947,21 @@
     R.tabEls = []; R.bEls = [];
     if (tab >= S.players.length) tab = 0;
     S.players.forEach(function (p, i) {
-      var t = el('button', { type: 'button', class: 'k-tab', style: { '--pc': p.color }, onclick: function () { tab = i; Kit.sfx('tap'); Kit.haptic('light'); paintTabs(); } },
-        [el('span', { class: 'nm', text: firstName(p.name) }), el('span', { class: 'tg' })]);
+      var t = el('button', { type: 'button', class: 'k-tab' + (p.cpu ? ' cpu' : ''), style: { '--pc': p.color }, onclick: function () { tab = i; Kit.sfx('tap'); Kit.haptic('light'); paintTabs(); } },
+        [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + Kit.esc(firstName(nameOf(p))) }), el('span', { class: 'tg' })]);
       R.tabEls.push(t); R.tabs.appendChild(t);
       var grid = el('div', { class: 'kb-grid' }), cells = [];
+      if (cards()) L.forEach(function (ltr) { grid.appendChild(el('div', { class: 'kh c' + ltr, text: ltr })); });   // B I N G O over the columns
       p.grid.forEach(function (c) {
-        var k = el('div', { class: 'kc' + (red(c) ? ' red' : ''), 'data-s': cs(c), 'aria-label': cname(c) }, [el('span', { class: 'r', text: cr(c) }), el('span', { class: 's', text: SYM[cs(c)] })]);
+        var k;
+        if (cards()) k = c ? el('div', { class: 'kc bn', 'aria-label': letter(c) + ' ' + c }, [el('span', { class: 'r', text: String(c) })])
+          : el('div', { class: 'kc bn free', 'aria-label': 'Free space' }, [el('span', { class: 'f', html: Kit.icon('star') })]);
+        else k = el('div', { class: 'kc' + (red(c) ? ' red' : ''), 'data-s': cs(c), 'aria-label': cname(c) }, [el('span', { class: 'r', text: cr(c) }), el('span', { class: 's', text: SYM[cs(c)] })]);
         cells.push(k); grid.appendChild(k);
       });
       var go = el('div', { class: 'kb-go' });
       var b = el('div', { class: 'kb', style: { '--pc': p.color } }, [
-        el('div', { class: 'kb-head' }, [el('div', { class: 'kb-who' }, [Kit.avatar.el(p.name, 'sm', p.color), el('b', { text: p.name })]), go]),
+        el('div', { class: 'kb-head' }, [el('div', { class: 'kb-who' }, [whoEl(p), el('b', { text: nameOf(p) })]), go]),
         grid
       ]);
       R.bEls.push({ b: b, cells: cells, go: go });
@@ -910,6 +977,7 @@
   }
 
   function sayCard(c) {
+    if (cards()) return say(c);
     if (!P.voice || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
@@ -923,30 +991,32 @@
   function deckStack() {
     var st = R.deck.querySelector('.stack'), n = S.deck.length;
     st.innerHTML = '';
-    for (var i = 0; i < Math.min(3, Math.ceil(n / 12)); i++) st.appendChild(Kit.card('A', 's', { back: true }));
+    if (cards()) { for (var b = 0; b < Math.min(3, Math.ceil(n / 20)); b++) st.appendChild(el('div', { class: 'ball mini blank c' + L[(b * 2 + n) % 5] })); }   // (a jumble of balls, no numbers showing)
+    else for (var i = 0; i < Math.min(3, Math.ceil(n / 12)); i++) st.appendChild(Kit.card('A', 's', { back: true }));
     R.deck.classList.toggle('empty', !n);
-    R.deck.querySelector('.cnt').textContent = n ? n + ' in deck' : 'Deck empty';
+    R.deck.querySelector('.cnt').textContent = cards() ? (n ? n + ' in cage' : 'Cage empty') : (n ? n + ' in deck' : 'Deck empty');
   }
   function flipEl(c) {
     return el('div', { class: 'kflip' }, [Kit.card(cr(c), cs(c)), Kit.card('A', 's', { back: true })]);
   }
   function setNow(c) {
     R.now.innerHTML = '';
-    R.now.appendChild(c == null ? el('div', { class: 'slot', text: 'Ready' }) : flipEl(c));
-    R.now.setAttribute('aria-label', c == null ? 'Draw a card' : 'Last card ' + cname(c) + '. Tap to hear it again.');
-    R.line.innerHTML = c == null ? '<small>Tap the deck to turn a card</small>' : Kit.esc(cname(c)) + '<small>Card ' + S.drawn.length + ' of 52</small>';
+    R.now.appendChild(c == null ? el('div', { class: 'slot', text: 'Ready' }) : cards() ? ballEl(c, 'now') : flipEl(c));
+    R.now.setAttribute('aria-label', c == null ? (cards() ? 'Draw a ball' : 'Draw a card') : 'Last ' + (cards() ? 'ball ' : 'card ') + itemName(c) + '. Tap to hear it again.');
+    R.line.innerHTML = c == null ? '<small>' + (cards() ? 'Tap the cage for a ball' : 'Tap the deck to turn a card') + '</small>'
+      : Kit.esc(itemName(c)) + '<small>' + (cards() ? 'Ball ' + S.drawn.length + ' of 75' : 'Card ' + S.drawn.length + ' of 52') + '</small>';
   }
   function paintKRecent(fresh) {
     R.recent.innerHTML = '';
     S.drawn.slice(0, -1).slice(-6).reverse().forEach(function (c, i) {
-      var k = Kit.card(cr(c), cs(c));
+      var k = cards() ? ballEl(c, 'mini') : Kit.card(cr(c), cs(c));
       if (fresh && i === 0) k.classList.add('in');
       R.recent.appendChild(k);
     });
   }
   function paintDrawn() {
     var lastC = S.drawn[S.drawn.length - 1];
-    for (var c = 0; c < 52; c++) { R.dcells[c].classList.toggle('on', !!DR[c]); R.dcells[c].classList.toggle('last', c === lastC); }
+    R.dcells.forEach(function (cell, c) { if (!cell) return; cell.classList.toggle('on', !!DR[c]); cell.classList.toggle('last', c === lastC); });
     R.dfoot.innerHTML = '';
     R.dfoot.appendChild(el('span', { text: S.drawn.length + ' drawn' }));
     R.dfoot.appendChild(el('span', { text: S.deck.length + ' left' }));
@@ -965,16 +1035,16 @@
         if (fresh != null && c === fresh) { cell.classList.remove('new'); void cell.offsetWidth; cell.classList.add('new'); hits.push(i); }
       });
       B.b.classList.toggle('one', !w && st.left === 1);
-      B.go.innerHTML = w ? '<span class="v">KENO</span>' : '<span class="v">' + st.left + '</span><span>to go</span>';
+      B.go.innerHTML = w ? '<span class="v">' + STAMP() + '</span>' : '<span class="v">' + st.left + '</span><span>to go</span>';
       var stamp = B.b.querySelector('.kb-stamp');
       if (w && !stamp) {
-        stamp = el('div', { class: 'kb-stamp' + (fresh != null ? ' in' : '') }, [document.createTextNode('KENO'), el('small', { text: ordinal(S.wins.indexOf(w)) + ' place' })]);
+        stamp = el('div', { class: 'kb-stamp' + (fresh != null ? ' in' : '') }, [document.createTextNode(STAMP()), el('small', { text: ordinal(S.wins.indexOf(w)) + ' place' })]);
         B.b.appendChild(stamp);
       } else if (!w && stamp) stamp.remove();
       var t = R.tabEls[i];
       t.classList.toggle('one', !w && st.left === 1);
       t.classList.toggle('won', !!w);
-      t.querySelector('.tg').textContent = w ? 'KENO' : st.left + ' to go';
+      t.querySelector('.tg').textContent = w ? STAMP() : st.left + ' to go';
       if (hits.indexOf(i) >= 0) { t.classList.remove('hit'); void t.offsetWidth; t.classList.add('hit'); }
     });
     return hits;
@@ -987,7 +1057,7 @@
   function kButtons() {
     var done = !S.deck.length;
     R.draw.disabled = busy || done;
-    R.draw.innerHTML = done ? '<span>Deck empty</span>' : '<span>Draw card</span>';
+    R.draw.innerHTML = done ? '<span>' + (cards() ? 'All 75 called' : 'Deck empty') + '</span>' : '<span>' + (cards() ? 'Draw ball' : 'Draw card') + '</span>';
     R.undo.disabled = !S.drawn.length || busy;
     R.auto.classList.toggle('on', autoOn);
     R.auto.innerHTML = autoOn ? PAUSE : icon('play');
@@ -1002,16 +1072,27 @@
   }
 
   function kDraw() {
-    if (busy || !S || S.mode !== 'keno' || !S.deck.length) return;
+    if (busy || !S || !onScreen() || !S.deck.length) return;
     busy = true; kButtons();
     var c = S.deck.pop();
     S.drawn.push(c); DR[c] = 1;
     save();
-    Kit.sfx('deal'); Kit.haptic('light');
+    Kit.sfx(cards() ? 'roll' : 'deal'); Kit.haptic('light');
     deckStack();
     setNow(c);
     paintKRecent(true);
     var f = R.now.querySelector('.kflip'), ms = reduce ? 0 : 560;
+    var bl = R.now.querySelector('.ball');
+    if (bl && bl.animate && !reduce) {
+      // the ball rolls out of the cage and settles
+      var a0 = R.deck.querySelector('.stack').getBoundingClientRect(), b0 = R.now.getBoundingClientRect();
+      var dx0 = (a0.left + a0.width / 2) - (b0.left + b0.width / 2), dy0 = (a0.top + a0.height / 2) - (b0.top + b0.height / 2);
+      bl.animate([
+        { transform: 'translate(' + dx0 + 'px,' + dy0 + 'px) scale(.4) rotate(-200deg)', opacity: .6 },
+        { transform: 'translate(' + (dx0 * .3) + 'px,' + (dy0 * .3 - 24) + 'px) scale(1.15) rotate(-40deg)', opacity: 1, offset: .55 },
+        { transform: 'none' }
+      ], { duration: ms, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    }
     if (f && f.animate && !reduce) {
       var a = R.deck.querySelector('.stack').getBoundingClientRect(), b = R.now.getBoundingClientRect();
       var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2), sc = a.width / b.width || .6;
@@ -1039,13 +1120,13 @@
         stopAuto();
         if (S.players.length > 1) { tab = newW[0]; paintTabs(); }
         Kit.sfx('good'); Kit.haptic('success');
-        Kit.callout('KENO!');
+        Kit.callout(STAMP() + '!');
         return wait(reduce ? 200 : 1300).then(function () { kCelebrate(newW, before); });
       }
       return wait(reduce ? 50 : 350);
     }).then(function () {
       busy = false; kButtons();
-      if (!S.deck.length) { stopAuto(); Kit.callout('Deck empty'); }
+      if (!S.deck.length) { stopAuto(); Kit.callout(cards() ? 'All 75 called' : 'Deck empty'); }
       else if (autoOn) restartTimer();
     });
   }
@@ -1059,45 +1140,53 @@
     S.wins = S.wins.filter(function (w) { return w.card <= S.drawn.length; });
     save();
     kPaint();
-    Kit.toast(cname(c) + ' went back in the deck');
+    Kit.toast(itemName(c) + (cards() ? ' went back in the cage' : ' went back in the deck'));
     Kit.sfx('tap'); Kit.haptic('light');
   }
 
   function kCelebrate(idx, before) {
-    var k = S.drawn.length, c = S.drawn[k - 1];
-    var names = idx.map(function (i) { return S.players[i].name; });
+    var k = S.drawn.length, c = S.drawn[k - 1], G = gameName(), unit = cards() ? 'ball' : 'card';
+    var names = idx.map(function (i) { return nameOf(S.players[i]); });
     var who = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0];
     var hl = [];
-    hl.push(who + ' got Keno on card ' + k + ', and the ' + cname(c) + ' sealed it');
-    if (before) hl.push('After ' + S.wins.slice(0, before).map(function (w) { return w.name; }).join(' and ') + (before > 1 ? ' had already won' : ' had already won'));
-    if (names.length > 1) hl.push('A tie: ' + names.length + ' cards finished on the same draw');
+    hl.push(who + ' got ' + G + ' on ' + unit + ' ' + k + ', and ' + (cards() ? itemName(c) : 'the ' + cname(c)) + ' sealed it');
+    if (before) hl.push('After ' + S.wins.slice(0, before).map(function (w) { return nameOf(S.players[w.i]); }).join(' and ') + ' had already won');
+    if (names.length > 1) hl.push('A tie: ' + names.length + ' cards finished on the same ' + unit);
     var prev = []; try { prev = GameHistory.load(KEY) || []; } catch (e) {}
-    var best = prev.filter(function (e) { return e && e.cards && e.pattern === S.pattern && e.size === S.size; }).map(function (e) { return e.cards; });
-    if (!before && best.length && k < Math.min.apply(null, best)) hl.push('Quickest ' + PAT[S.pattern].name + ' Keno on a ' + S.size + ' by ' + S.size + ' card yet (the old record was ' + Math.min.apply(null, best) + ' cards)');
+    var best = prev.filter(function (e) { return e && e.cards && e.pattern === S.pattern && e.size === S.size && !!e.bingo === cards(); }).map(function (e) { return e.cards; });
+    if (!before && best.length && k < Math.min.apply(null, best)) hl.push('Quickest ' + PAT[S.pattern].name + ' ' + G + (cards() ? '' : ' on a ' + S.size + ' by ' + S.size + ' card') + ' yet (the old record was ' + Math.min.apply(null, best) + ' ' + unit + 's)');
     if (S.pattern === 'line') {
       var others = S.players.map(function (p, i) { return { p: p, i: i, st: kState(p) }; }).filter(function (x) { return !wonBy(x.i) && x.st.left === 1; });
-      if (others.length) hl.push(others.map(function (x) { return x.p.name; }).join(' and ') + (others.length > 1 ? ' were' : ' was') + ' one card away');
+      if (others.length) hl.push(others.map(function (x) { return nameOf(x.p); }).join(' and ') + (others.length > 1 ? ' were' : ' was') + ' one ' + unit + ' away');
     }
+    var nCpu = S.players.filter(function (p) { return p.cpu; }).length;
+    if (nCpu) hl.push(nCpu === 1 ? 'One computer player at the table' : nCpu + ' computer players at the table');
+    var cpuWon = idx.every(function (i) { return S.players[i].cpu; }), youWon = idx.some(function (i) { return !S.players[i].cpu; }) && humans().length === 1;
     Kit.record(KEY, {
-      started: S.started, mode: 'Keno ' + S.size + ' by ' + S.size + ' ' + PAT[S.pattern].name,
-      players: S.players.map(function (p) { return { name: p.name }; }),
-      winner: names.length === 1 ? names[0] : null,
-      summary: who + (names.length > 1 ? ' tied' : ' won') + ' on card ' + k,
-      highlights: hl, meta: { cards: k, pattern: S.pattern, size: S.size, keno: 1 },
+      started: S.started, mode: (cards() ? 'Bingo ' : 'Keno ' + S.size + ' by ' + S.size + ' ') + PAT[S.pattern].name + (nCpu ? (humans().length > 1 ? ', with computers' : ', vs computer') : ''),
+      players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
+      winner: names.length === 1 ? S.players[idx[0]].name : null,
+      summary: who + (names.length > 1 ? ' tied' : ' won') + ' on ' + unit + ' ' + k,
+      highlights: hl, meta: cards() ? { cards: k, pattern: S.pattern, size: 5, bingo: 1 } : { cards: k, pattern: S.pattern, size: S.size, keno: 1 },
       // for game history: the winner's card, the squares that won, and every card in the order drawn
-      detail: { k: 1, s: S.size, d: S.drawn.map(cshort).join(' '), g: S.players[idx[0]].grid.map(cshort).join(' '), wl: (kState(S.players[idx[0]]).win || []).join(','), wn: names[0], n: S.wins.length }
+      detail: cards()
+        // the same shape the caller's games save, so history draws the winning card and the flashboard
+        ? (function () { var g = S.players[idx[0]].grid, wl = kState(S.players[idx[0]]).win || [], wn = wl.map(function (k) { return g[k]; }); return { c: S.drawn.join(','), w: wn.filter(Boolean).join(','), f: wn.indexOf(0) >= 0 ? 1 : 0 }; })()
+        : { k: 1, s: S.size, d: S.drawn.map(itemShort).join(' '), g: S.players[idx[0]].grid.map(itemShort).join(' '), wl: (kState(S.players[idx[0]]).win || []).join(','), wn: S.players[idx[0]].name, n: S.wins.length }
     });
     Kit.win({
-      title: who + (names.length > 1 ? ' win!' : ' wins!'),
-      sub: PAT[S.pattern].name + ' Keno on card ' + k,
-      rank: S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: p.name, color: p.color, score: w ? 'KENO' : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
+      icon: cpuWon ? 'bot' : 'trophy', lose: cpuWon,
+      title: youWon ? 'You win!' : cpuWon && humans().length === 1 ? who + (names.length > 1 ? ' win this one' : ' wins this one') : who + (names.length > 1 ? ' win!' : ' wins!'),
+      sub: PAT[S.pattern].name + ' ' + G + ' on ' + unit + ' ' + k,
+      rank: S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
         .sort(function (a, b) { return a.o - b.o; }),
       againLabel: 'New game', again: function () {
-        freshKeno({ options: { size: S.size, pattern: S.pattern }, players: S.players.map(function (p) { return { name: p.name, color: p.color }; }) });
+        var cfg = { options: { size: S.size, pattern: S.pattern }, players: S.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu }; }) };
+        if (cards()) freshCards(cfg); else freshKeno(cfg);
         buildKeno();
       },
       look: { label: 'Look at the cards', onClick: function () { save(); } },
-      extra: S.players.length > S.wins.length && S.deck.length ? [{ label: 'Keep drawing', onClick: function () { save(); } }] : [],
+      extra: S.players.length > S.wins.length && S.deck.length ? [{ label: cards() ? 'Keep calling' : 'Keep drawing', onClick: function () { save(); } }] : [],
       setup: function () { stopAuto(); clearSave(); S = null; showSetup(); }
     });
   }
@@ -1231,7 +1320,7 @@
 
   // ── Boot ───────────────────────────────────────────────────────────────
   S = load();
-  if (S && S.mode === 'keno') { if (!PAT[S.pattern]) S.pattern = 'line'; buildKeno(); }
+  if (S && (S.mode === 'keno' || S.mode === 'cards')) { if (!PAT[S.pattern]) S.pattern = 'line'; buildKeno(); }
   else if (S && (S.called.length || S.pool.length)) { if (!S.pattern || !PAT[S.pattern]) S.pattern = 'line'; if (S.started) Kit.gameStart(); build(); }
   else showSetup();
   window.__bingo = { state: function () { return S; }, draw: function () { draw(); } };

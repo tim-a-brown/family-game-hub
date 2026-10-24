@@ -1644,7 +1644,7 @@
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats'|'mix', seatLabel}
   //            cpu 'seats': every seat but the first is a computer. 'mix': every seat but the first has a
   //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat
-  //   options: [{id, label, choices:[[value,label],...], value, help}]  segmented pickers
+  //   options: [{id, label, choices:[[value,label],...], value, help, when:(mode, options)=>bool}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
@@ -1735,11 +1735,12 @@
       });
     }
     // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
-    function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode) : op.choices; }
+    // op.when(mode, options) and op.choices(count, mode, options) can depend on the other options' values
+    function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode, state.options) : op.choices; }
     function renderOptions() {
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
-        if (op.when && !op.when(state.mode)) return;
+        if (op.when && !op.when(state.mode, state.options)) return;
         // op.render(value, set): the game draws its own picker (a value it keeps in the options like any other)
         if (op.render) { optsBox.appendChild(op.render(state.options[op.id], function (v) { state.options[op.id] = v; renderOptions(); })); return; }
         var seg = el('div', { class: 'seg' }), choices = choicesOf(op);
@@ -1881,7 +1882,7 @@
       if (o.modes && o.modes.length > 1) { var m = o.modes.filter(function (x) { return x.id === state.mode; })[0]; if (m) bits.push(m.title); }
       if (P) { var r = range(); if (r[1] > r[0]) bits.push(state.count + (state.count === 1 ? ' player' : ' players')); }
       (o.options || []).forEach(function (op) {
-        if (op.when && !op.when(state.mode)) return;
+        if (op.when && !op.when(state.mode, state.options)) return;
         if (op.render) { if (op.summary) bits.push(op.summary(state.options[op.id])); return; }
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
         if (c) bits.push(c[1]);
