@@ -382,28 +382,47 @@
   var S = null, token = 0, undoStack = [];
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.stage !== 'over') Kit.resume.set('Hand ' + S.hand + ' · on phase ' + S.players[0].ph);
+    if (S && S.stage !== 'over') Kit.resume.set('Hand ' + S.hand + (humans() > 1 ? '' : ' · on phase ' + S.players[0].ph));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; }
   function N() { return S.players.length; }
-  function me() { return S.turn === 0 && S.stage === 'play'; }
+  function me() { return !S.cover && S.turn === S.me && S.stage === 'play'; }
+
+  // ── Viewer seat (pass & play) ─────────────────────────────────────────────
+  // S.me is the seat whose hand is face up at the bottom; the other seats line the top from their left.
+  // One person at the table: always seat 0, exactly as vs Computer.
+  function person(p) { return !!(S && S.players[p] && !S.players[p].cpu); }
+  function humans() { return S ? S.players.filter(function (p) { return !p.cpu; }).length : 1; }
+  function isMe(p) { return p === S.me; }
+  function isYou(p) { return isMe(p) && humans() < 2; }
+  function nm(p) { return isYou(p) ? 'You' : S.players[p].name; }
+  function gate(p) {
+    var t = ++token;
+    S.cover = true; clearUndo(); save(); paint();
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S || !S.cover) return;
+      S.cover = false; S.me = p; S.sel = null;
+      save(); render(); next();
+    });
+  }
 
   function showSetup() {
-    S = null; token++; app.innerHTML = '';
+    S = null; token++; app.innerHTML = ''; Kit.handoff.close();
     app.classList.remove('p10-play');
     Kit.setup(app, {
-      players: { min: 2, max: 6, count: 3, cpu: 'seats', label: 'Players (you + computers)' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 6, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases', 'The full game: the first to finish phase 10 wins.'], [5, 'Quick · phases 1–5', 'A shorter game: the first to finish phase 5 wins.']] }],
       onStart: function (cfg) {
-        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.last || 10);
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.last || 10, cfg.mode);
         Kit.gameStart(); newHand();
       }
     });
   }
-  function freshGame(players, last) {
+  function freshGame(players, last, mode) {
     var n = players.length, z = function (v) { return players.map(function () { return v; }); };
     return {
-      last: last, hand: 0, dealer: n - 1, started: Date.now(), rounds: [], phRounds: [], highlights: [],
+      mode: mode || 'cpu', me: 0, last: last, hand: 0, dealer: n - 1, started: Date.now(), rounds: [], phRounds: [], highlights: [],
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu, ph: 1, total: 0, done: false }; }),
       stats: { skips: players.map(function () { return z(0); }), outs: z(0), streak: z(0), stuck: null, big: null, firstTurn: [], missed: z(0), finishedHand: z(0) },
       sort: 'num'
@@ -441,7 +460,7 @@
         S.skipNext[p] = false; S.step = 'skipped';
         save(); paint();
         say(p, 'Skipped!'); Kit.sfx('bad');
-        if (p === 0) { Kit.callout('You were skipped'); Kit.haptic('error'); }
+        if (person(p)) { Kit.callout(isYou(p) ? 'You were skipped' : S.players[p].name + ' was skipped'); Kit.haptic('error'); }
         setTimeout(function () { if (t === token) advance(); }, 1000);
       }, 500);
       return;
@@ -449,6 +468,7 @@
     if (S.step === 'skipped') { paint(); setTimeout(function () { if (t === token) advance(); }, 700); return; }
     paint();
     if (S.players[p].cpu) setTimeout(function () { if (t === token && S && S.stage === 'play' && S.turn === p) cpuStep(p); }, S.step === 'draw' ? 750 : 650);
+    else if (!isMe(p)) gate(p);
     else if (S.step === 'draw' && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) Kit.haptic('light');
   }
   function advance() {
@@ -470,9 +490,9 @@
     S.hands[p].push(c); S.step = 'play'; S.turns[p]++;
     Kit.sfx('flip');
     save(); paint();
-    if (p === 0) { flyIn(c.id, r0); }
+    if (isMe(p)) { flyIn(c.id, r0); }
     else ghost(fromDiscard ? c : null, r0, rectOf(seatEls[p] && seatEls[p].querySelector('.tag')));
-    if (p !== 0 && fromDiscard) say(p, 'Takes ' + cname(c));
+    if (!isMe(p) && fromDiscard) say(p, 'Takes ' + cname(c));
     return c;
   }
 
@@ -480,7 +500,7 @@
   function layDown(p, groups) {
     var ph = S.players[p].ph - 1, req = PH[ph].req, made = [];
     for (var i = 0; i < req.length; i++) { var a = analyze(req[i], groups[i]); if (!a.ok) return false; made.push(a.g); }
-    var from = p === 0 ? rectOf(goalEl) : rectOf(seatEls[p].querySelector('.tag'));
+    var from = isMe(p) ? rectOf(goalEl) : rectOf(seatEls[p].querySelector('.tag'));
     var used = [].concat.apply([], groups).map(function (c) { return c.id; });
     S.hands[p] = S.hands[p].filter(function (c) { return used.indexOf(c.id) < 0; });
     S.laid[p] = made;
@@ -490,12 +510,12 @@
     var mr = app.querySelector('.mrow[data-p="' + p + '"]');
     if (mr) Array.prototype.forEach.call(mr.querySelectorAll('.pcard'), function (n, k) { if (from) flyNode(n, from, 360 + k * 20); });
     say(p, 'Phase ' + (ph + 1) + '!');
-    if (p === 0) Kit.callout('Phase ' + (ph + 1) + ' down!');
+    if (isMe(p)) Kit.callout('Phase ' + (ph + 1) + ' down!');
     return true;
   }
   function hit(p, card, owner, gi) {
     var g = S.laid[owner][gi]; if (!canHit(card, g)) return false;
-    var from = p === 0 ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
+    var from = isMe(p) ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
     S.hands[p] = S.hands[p].filter(function (c) { return c.id !== card.id; });
     addHit(card, g); S.lastHit = card.id;
     Kit.sfx('chip'); Kit.haptic('light');
@@ -504,7 +524,7 @@
     return true;
   }
   function discard(p, card, target) {
-    var from = p === 0 ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
+    var from = isMe(p) ? rectOf(handEl.querySelector('[data-id="' + card.id + '"]')) : rectOf(seatEls[p].querySelector('.tag'));
     S.hands[p] = S.hands[p].filter(function (c) { return c.id !== card.id; });
     S.discard.push(card); S.sel = null;
     if (isS(card) && target != null && target >= 0) {
@@ -513,15 +533,15 @@
     } else Kit.sfx('flip');
     save(); paint();
     flyNode(app.querySelector('#discardTop'), from, 360);
-    if (isS(card) && target != null && target >= 0) { say(p, 'Skip ' + (target === 0 ? 'you' : S.players[target].name) + '!'); if (target === 0) Kit.haptic('error'); }
+    if (isS(card) && target != null && target >= 0) { say(p, 'Skip ' + (isYou(target) ? 'you' : S.players[target].name) + '!'); if (person(target)) Kit.haptic('error'); }
     if (!S.hands[p].length) { endHandSoon(p); return; }
     var t = token;
-    setTimeout(function () { if (t === token) advance(); }, p === 0 ? 350 : 450);
+    setTimeout(function () { if (t === token) advance(); }, isMe(p) ? 350 : 450);
   }
   function endHandSoon(p) {
     S.stage = 'ending'; save(); paint();
     say(p, 'Out!');
-    if (p === 0) Kit.callout('You went out!');
+    if (person(p)) Kit.callout(isYou(p) ? 'You went out!' : S.players[p].name + ' went out!');
     var t = token;
     setTimeout(function () { if (t === token) endHand(p); }, 1100);
   }
@@ -607,28 +627,28 @@
   }
 
   // ── You ───────────────────────────────────────────────────────────────────
-  function find(id) { var h = S.hands[0]; for (var i = 0; i < h.length; i++) if (h[i].id === id) return h[i]; return null; }
+  function find(id) { var h = S.hands[S.me]; for (var i = 0; i < h.length; i++) if (h[i].id === id) return h[i]; return null; }
   function youDraw(fromDiscard) {
-    if (!me() || S.step !== 'draw' || S.skipNext[0]) return;
+    if (!me() || S.step !== 'draw' || S.skipNext[S.me]) return;
     var top = S.discard[S.discard.length - 1];
     if (fromDiscard) {
       if (!top) return;
       if (isS(top)) { Kit.toast("You can't pick up a Skip"); Kit.haptic('error'); return; }
       snapshot();
     } else clearUndo(); // no peeking at the deck and putting it back
-    draw(0, fromDiscard);
+    draw(S.me, fromDiscard);
   }
   function tapCard(c) {
     if (!S || S.stage !== 'play') return;
-    if (S.turn !== 0) { Kit.toast('Wait for your turn'); return; }
+    if (!me()) { if (!S.cover) Kit.toast('Wait for your turn'); return; }
     if (S.step === 'draw') { Kit.toast('Draw a card first'); Kit.haptic('error'); return; }
     if (S.step !== 'play') return;
     if (S.building) {
       S.build[S.bActive].push(c.id);
-      var a = analyze(PH[S.players[0].ph - 1].req[S.bActive], ids(S.build[S.bActive]));
-      if (a.ok && S.build[S.bActive].length === PH[S.players[0].ph - 1].req[S.bActive][1]) {
+      var a = analyze(PH[S.players[S.me].ph - 1].req[S.bActive], ids(S.build[S.bActive]));
+      if (a.ok && S.build[S.bActive].length === PH[S.players[S.me].ph - 1].req[S.bActive][1]) {
         // move on to the next unfinished group
-        for (var k = 0; k < S.build.length; k++) if (!analyze(PH[S.players[0].ph - 1].req[k], ids(S.build[k])).ok) { S.bActive = k; break; }
+        for (var k = 0; k < S.build.length; k++) if (!analyze(PH[S.players[S.me].ph - 1].req[k], ids(S.build[k])).ok) { S.bActive = k; break; }
       }
       Kit.sfx('tap'); Kit.haptic('light'); save(); paint();
       return;
@@ -638,50 +658,50 @@
   }
   function ids(list) { return list.map(find).filter(Boolean); }
   function openBuilder() {
-    if (!me() || S.step !== 'play' || S.laid[0]) return;
+    if (!me() || S.step !== 'play' || S.laid[S.me]) return;
     S.building = true; S.sel = null; S.bActive = 0;
-    S.build = PH[S.players[0].ph - 1].req.map(function () { return []; });
+    S.build = PH[S.players[S.me].ph - 1].req.map(function () { return []; });
     Kit.sfx('pop'); save(); paint();
   }
   function closeBuilder() { S.building = false; S.build = null; save(); paint(); }
   function fillForMe() {
-    var gs = findPhase(S.hands[0], S.players[0].ph - 1);
+    var gs = findPhase(S.hands[S.me], S.players[S.me].ph - 1);
     if (!gs) { Kit.toast("You don't have this phase yet"); Kit.haptic('error'); return; }
     S.build = gs.map(function (g) { return g.map(function (c) { return c.id; }); });
     Kit.sfx('good'); save(); paint();
   }
   function youLay() {
-    var req = PH[S.players[0].ph - 1].req, groups = S.build.map(ids);
+    var m = S.me, req = PH[S.players[m].ph - 1].req, groups = S.build.map(ids);
     for (var i = 0; i < req.length; i++) if (!analyze(req[i], groups[i]).ok) { Kit.toast('Finish every group first'); Kit.haptic('error'); return; }
     snapshot();
     S.building = false; S.build = null;
-    layDown(0, groups);
-    if (!S.hands[0].length) endHandSoon(0);
+    layDown(m, groups);
+    if (!S.hands[m].length) endHandSoon(m);
   }
   function youHit(owner, gi) {
-    var c = S.sel && find(S.sel); if (!c) return;
+    var c = S.sel && find(S.sel), m = S.me; if (!c) return;
     snapshot();
-    if (!hit(0, c, owner, gi)) { undoStack.pop(); return; }
+    if (!hit(m, c, owner, gi)) { undoStack.pop(); return; }
     S.sel = null; save(); paint();
-    if (!S.hands[0].length) endHandSoon(0);
+    if (!S.hands[m].length) endHandSoon(m);
   }
   function youDiscard() {
-    var c = S.sel && find(S.sel);
+    var c = S.sel && find(S.sel), m = S.me;
     if (!c) { Kit.toast('Tap a card to discard'); return; }
     if (isS(c)) {
-      var ops = others(0);
-      if (ops.every(function (o) { return S.skipNext[o]; })) { snapshot(); Kit.toast('Everyone is already skipped'); discard(0, c, -1); return; }
-      if (ops.length === 1) { snapshot(); discard(0, c, S.skipNext[ops[0]] ? -1 : ops[0]); return; }
+      var ops = others(m);
+      if (ops.every(function (o) { return S.skipNext[o]; })) { snapshot(); Kit.toast('Everyone is already skipped'); discard(m, c, -1); return; }
+      if (ops.length === 1) { snapshot(); discard(m, c, S.skipNext[ops[0]] ? -1 : ops[0]); return; }
       var box = el('div', { class: 'skiplist' }), sh;
       ops.forEach(function (o) {
-        var pl = S.players[o], b = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: '<span class="avatar sm" style="--c:' + Kit.color(o) + '">' + Kit.icon('bot') + '</span><span>' + Kit.esc(pl.name) + ' · phase ' + pl.ph + (S.laid[o] ? ' · laid down, ' + S.hands[o].length + ' cards left' : '') + '</span>', onclick: function () { sh.close(); snapshot(); discard(0, c, o); } });
+        var pl = S.players[o], b = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: '<span class="avatar sm" style="--c:' + Kit.color(o) + '">' + (pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase())) + '</span><span>' + Kit.esc(pl.name) + ' · phase ' + pl.ph + (S.laid[o] ? ' · laid down, ' + S.hands[o].length + ' cards left' : '') + '</span>', onclick: function () { sh.close(); snapshot(); discard(m, c, o); } });
         if (S.skipNext[o]) { b.disabled = true; }
         box.appendChild(b);
       });
       sh = Kit.sheet({ title: 'Who loses a turn?', node: box, actions: [{ label: 'Cancel', cls: 'btn-ghost' }] });
       return;
     }
-    snapshot(); discard(0, c);
+    snapshot(); discard(m, c);
   }
 
   // ── End of a hand ─────────────────────────────────────────────────────────
@@ -720,14 +740,14 @@
     order.forEach(function (i, k) {
       var p = S.players[i];
       t.appendChild(el('tr', { class: k === 0 ? 'lead' : '' }, [
-        el('td', { text: i === 0 ? 'You' : p.name }),
+        el('td', { text: nm(i) }),
         between ? el('td', { class: lph[i] ? 'yes' : 'no', html: lph[i] ? Kit.icon('check') : '–' }) : el('td'),
         el('td', { text: between ? '+' + last[i] : '' }),
         el('td', { class: 'big', text: String(p.total) }),
         el('td', { class: 'big', text: p.done ? 'Done' : String(p.ph) })
       ]));
     });
-    var sub = between ? (S.lastOut === 0 ? 'You went out! ' : S.lastOut > 0 ? S.players[S.lastOut].name + ' went out. ' : '') + (lph[0] ? 'You made your phase.' : 'You try phase ' + S.players[0].ph + ' again.') : 'First to finish phase ' + S.last + ' wins. Fewest points breaks a tie.';
+    var sub = between ? (S.lastOut >= 0 && isYou(S.lastOut) ? 'You went out! ' : S.lastOut >= 0 ? S.players[S.lastOut].name + ' went out. ' : '') + (humans() > 1 ? '' : lph[0] ? 'You made your phase.' : 'You try phase ' + S.players[0].ph + ' again.') : 'First to finish phase ' + S.last + ' wins. Fewest points breaks a tie.';
     var node = el('div', null, [el('p', { class: 'muted', text: sub }), t]);
     Kit.sheet({
       title: between ? 'Hand ' + S.hand + ' done' : 'Scores', node: node, dismissible: !between,
@@ -740,11 +760,12 @@
     done.sort(function (a, b) { return S.players[a].total - S.players[b].total; });
     var tie = done.length > 1 && S.players[done[0]].total === S.players[done[1]].total;
     var w = tie ? -1 : done[0];
-    var rank = S.players.map(function (p, i) { return { i: i, name: i === 0 ? p.name : p.name, ph: p.done ? S.last + 1 : p.ph, pts: p.total, color: Kit.color(i) }; })
+    var rank = S.players.map(function (p, i) { return { i: i, name: p.name, cpu: p.cpu, ph: p.done ? S.last + 1 : p.ph, pts: p.total, color: Kit.color(i) }; })
       .sort(function (a, b) { return b.ph - a.ph || a.pts - b.pts; })
-      .map(function (r) { return { name: r.name, score: (r.ph > S.last ? 'Done' : 'Ph ' + r.ph) + ' · ' + r.pts, color: r.color, i: r.i }; });
+      .map(function (r) { return { name: r.name, score: (r.ph > S.last ? 'Done' : 'Ph ' + r.ph) + ' · ' + r.pts, color: r.color, i: r.i, cpu: r.cpu }; });
+    var lose = w >= 0 && !!S.players[w].cpu;
     Kit.record(KEY, {
-      started: S.started, mode: 'vs Computer' + (S.last < 10 ? ' · phases 1–' + S.last : ''), lowWins: true,
+      started: S.started, mode: (S.mode === 'local' ? 'Pass & play' : 'vs Computer') + (S.last < 10 ? ' · phases 1–' + S.last : ''), lowWins: true,
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: w >= 0 ? S.players[w].name : null,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
@@ -762,14 +783,15 @@
     });
     clearSave();
     Kit.win({
-      title: w < 0 ? "It's a tie!" : w === 0 ? 'You win!' : S.players[w].name + ' wins',
-      sub: w >= 0 ? (w === 0 ? 'You' : S.players[w].name) + ' finished phase ' + S.last + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands') : 'Tied on points after phase ' + S.last,
-      rank: rank, lose: w !== 0 && w >= 0, icon: w === 0 ? 'trophy' : w < 0 ? 'trophy' : 'bot',
+      title: w < 0 ? "It's a tie!" : isYou(w) ? 'You win!' : S.players[w].name + ' wins',
+      sub: w >= 0 ? nm(w) + ' finished phase ' + S.last + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands') : 'Tied on points after phase ' + S.last,
+      rank: rank, lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () {
-        S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.last);
+        S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.last, S.mode);
         Kit.gameStart(); newHand();
       },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { clearSave(); showSetup(); }
     });
   }
   function highlights(w) {
@@ -845,28 +867,29 @@
     if (S.stage === 'handover') setTimeout(function () { showScores(true); }, 200);
   }
   function seat(p) {
-    var pl = S.players[p], s = el('div', { class: 'cseat' + (p === 0 ? ' me' : '') + (S.stage === 'play' && S.turn === p ? ' turn' : '') });
+    var pl = S.players[p], s = el('div', { class: 'cseat' + (isMe(p) ? ' me' : '') + (S.stage === 'play' && S.turn === p ? ' turn' : '') });
     var tag = el('div', { class: 'tag' }, [
       el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-      el('span', { class: 'nm', text: p === 0 ? 'You' : pl.name })
+      el('span', { class: 'nm', text: nm(p) })
     ]);
     var info = el('div', { class: 'info' }, [
       el('span', { class: 'chip-s ph' + (S.laid && S.laid[p] ? ' laid' : ''), html: (S.laid && S.laid[p] ? Kit.icon('check') : '') + (pl.done ? 'Done' : (N() >= 4 ? 'Ph ' : 'Phase ') + pl.ph) }),
-      p !== 0 && S.hands ? el('span', { class: 'chip-s cnt', 'aria-label': S.hands[p].length + ' cards', html: Kit.icon('cards') + S.hands[p].length }) : null,
+      !isMe(p) && S.hands ? el('span', { class: 'chip-s cnt', 'aria-label': S.hands[p].length + ' cards', html: Kit.icon('cards') + S.hands[p].length }) : null,
       S.skipNext && S.skipNext[p] ? el('span', { class: 'chip-s skp', text: 'Skip' }) : null
     ]);
-    if (p === 0) { s.appendChild(info); s.appendChild(tag); } else { s.appendChild(tag); s.appendChild(info); }
+    if (isMe(p)) { s.appendChild(info); s.appendChild(tag); } else { s.appendChild(tag); s.appendChild(info); }
     var b = SAY[p];
     if (b && Date.now() - b.at < 1500) s.appendChild(el('div', { class: 'say', text: b.t, style: Date.now() - b.at > 300 ? { animation: 'none' } : null }));
     return s;
   }
   function paint() {
     if (!feltEl || !S || !S.hands) return;
-    var n = N(), mine = me(), ph = S.players[0].ph - 1, sel = S.sel && find(S.sel);
+    var n = N(), mine = me(), sel = S.sel && find(S.sel);
     feltEl.innerHTML = '';
     seatEls = [];
     var opps = el('div', { class: 'opps' + (n >= 4 ? ' many' : '') });
-    for (var i = 1; i < n; i++) { seatEls[i] = seat(i); opps.appendChild(seatEls[i]); }
+    // the other seats, in turn order from the viewer's left
+    for (var d = 1; d < n; d++) { var i = (S.me + d) % n; seatEls[i] = seat(i); opps.appendChild(seatEls[i]); }
     feltEl.appendChild(opps);
     // piles
     var mid = el('div', { class: 'mid' });
@@ -886,10 +909,10 @@
     var melds = el('div', { class: 'melds' }), any = false;
     for (var p = 0; p < n; p++) {
       if (!S.laid[p]) continue; any = true;
-      var row = el('div', { class: 'mrow', 'data-p': p }, [el('div', { class: 'who' }, [el('span', { text: p === 0 ? 'You' : S.players[p].name, style: { color: Kit.color(p) } }), el('small', { text: 'Phase ' + S.players[p].ph })])]);
+      var row = el('div', { class: 'mrow', 'data-p': p }, [el('div', { class: 'who' }, [el('span', { text: nm(p), style: { color: Kit.color(p) } }), el('small', { text: 'Phase ' + S.players[p].ph })])]);
       var grps = el('div', { class: 'grps' });
       S.laid[p].forEach(function (g, gi) {
-        var target = mine && S.step === 'play' && S.laid[0] && sel && canHit(sel, g);
+        var target = mine && S.step === 'play' && S.laid[S.me] && sel && canHit(sel, g);
         var gEl = el(target ? 'button' : 'div', { class: 'grp' + (target ? ' tgt' : ''), 'aria-label': target ? 'Add to this group' : null });
         g.cards.forEach(function (c) { var cn = cardEl(c, { mini: true }); if (c.id === S.lastHit) cn.classList.add('newc'); gEl.appendChild(cn); });
         if (target) (function (o, k) { gEl.addEventListener('click', function () { youHit(o, k); }); })(p, gi);
@@ -899,19 +922,19 @@
     }
     if (!any) melds.appendChild(el('div', { class: 'none', text: 'Laid-down phases go here' }));
     feltEl.appendChild(melds);
-    seatEls[0] = null;
+    seatEls[S.me] = null;
     paintGoal(); paintBuilder(); paintHand(); paintBar();
   }
   function paintGoal() {
-    var pl = S.players[0], ph = pl.ph - 1;
+    var m = S.me, pl = S.players[m], ph = pl.ph - 1;
     goalEl.innerHTML = '';
-    goalEl.classList.toggle('turn', S.stage === 'play' && S.turn === 0);
+    goalEl.classList.toggle('turn', me());
     var dots = el('div', { class: 'dots' });
     for (var k = 1; k <= S.last; k++) dots.appendChild(el('i', { class: k < pl.ph || pl.done ? 'done' : k === pl.ph ? 'cur' : '', text: String(k) }));
     if (S.last < 10) dots.style.gridTemplateColumns = 'repeat(' + S.last + ',18px)';
     goalEl.appendChild(el('div', { class: 'gl' }, [
-      el('b', { html: (pl.done ? 'All done!' : 'Your phase ' + pl.ph) + (S.skipNext && S.skipNext[0] ? ' <em class="skp">Skip</em>' : '') }),
-      el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[0] ? ' <span class="ok">· laid down</span>' : '') })
+      el('b', { html: (pl.done ? 'All done!' : (isYou(m) ? 'Your phase ' : Kit.esc(pl.name) + ': phase ') + pl.ph) + (S.skipNext && S.skipNext[m] ? ' <em class="skp">Skip</em>' : '') }),
+      el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[m] ? ' <span class="ok">· laid down</span>' : '') })
     ]));
     goalEl.appendChild(dots);
   }
@@ -933,7 +956,7 @@
     builderEl.hidden = !(S.building && S.build && me());
     builderEl.innerHTML = '';
     if (builderEl.hidden) return;
-    var req = PH[S.players[0].ph - 1].req;
+    var req = PH[S.players[S.me].ph - 1].req;
     builderEl.appendChild(el('div', { class: 'bhead' }, [
       el('span', { class: 'grow', text: 'Tap a group, then tap cards' }),
       el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('lightbulb') + '<span>Fill for me</span>', onclick: fillForMe })
@@ -965,7 +988,11 @@
     handEl.innerHTML = '';
     var used = S.building && S.build ? [].concat.apply([], S.build) : [];
     var mine = me() && S.step === 'play';
-    sorted(S.hands[0]).forEach(function (c) {
+    if (S.cover) {   // between two people's turns: card backs only
+      S.hands[S.me].forEach(function () { handEl.appendChild(Kit.card('', '', { back: true })); });
+      requestAnimationFrame(function () { Cards.fan(handEl); }); return;
+    }
+    sorted(S.hands[S.me]).forEach(function (c) {
       if (used.indexOf(c.id) >= 0) return;
       var n = cardEl(c);
       if (mine) n.classList.add('play');
@@ -978,15 +1005,16 @@
   function paintBar() {
     barEl.innerHTML = '';
     if (S.stage !== 'play') { barEl.appendChild(el('span', { class: 'hint', text: S.stage === 'ending' ? 'Hand over!' : '' })); return; }
-    var p = S.turn;
-    if (p !== 0) {
+    var p = S.turn, m = S.me;
+    if (S.cover) return;
+    if (p !== m) {
       barEl.appendChild(el('span', { class: 'hint', text: (S.skipNext[p] && S.step === 'draw') || S.step === 'skipped' ? S.players[p].name + ' loses this turn' : S.players[p].name + ' is playing…' }));
       return;
     }
     if (S.step === 'skipped') { barEl.appendChild(el('span', { class: 'hint', text: 'You lose this turn' })); return; }
     if (S.step === 'draw') {
       var top = S.discard[S.discard.length - 1];
-      if (S.skipNext[0]) { barEl.appendChild(el('span', { class: 'hint', text: 'You lose this turn' })); return; }
+      if (S.skipNext[m]) { barEl.appendChild(el('span', { class: 'hint', text: 'You lose this turn' })); return; }
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('cards') + '<span>Draw</span>', onclick: function () { youDraw(false); } }));
       var tb = el('button', { type: 'button', class: 'btn btn-soft', text: top ? (isS(top) ? "Can't take Skip" : 'Take ' + cname(top)) : 'Discard empty', onclick: function () { youDraw(true); } });
       tb.disabled = !top || isS(top);
@@ -994,7 +1022,7 @@
       return;
     }
     if (S.building) {
-      var req = PH[S.players[0].ph - 1].req, ok = S.build.every(function (b, k) { return analyze(req[k], ids(b)).ok; });
+      var req = PH[S.players[m].ph - 1].req, ok = S.build.every(function (b, k) { return analyze(req[k], ids(b)).ok; });
       var lay = el('button', { type: 'button', class: 'btn btn-primary' + (ok ? ' pulse' : ''), html: Kit.icon('check') + '<span>Lay down</span>', onclick: youLay });
       lay.disabled = !ok;
       barEl.appendChild(lay);
@@ -1002,14 +1030,14 @@
       return;
     }
     var sel = S.sel && find(S.sel);
-    if (!S.laid[0]) {
-      var has = !!findPhase(S.hands[0], S.players[0].ph - 1);
+    if (!S.laid[m]) {
+      var has = !!findPhase(S.hands[m], S.players[m].ph - 1);
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary' + (has ? ' pulse' : ''), html: Kit.icon('plus') + '<span>Build phase</span>', onclick: openBuilder }));
     } else if (sel) {
       var fits = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(sel, g); }); });
       if (fits) barEl.appendChild(el('span', { class: 'hint', text: 'Tap a glowing group' }));
     } else barEl.appendChild(el('span', { class: 'hint', text: 'Hit or discard' }));
-    var db = el('button', { type: 'button', class: 'btn ' + (S.laid[0] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + (isN(sel) ? sel.n : cname(sel)) : 'Discard', onclick: youDiscard });
+    var db = el('button', { type: 'button', class: 'btn ' + (S.laid[m] ? 'btn-primary' : 'btn-soft'), text: sel ? 'Discard ' + (isN(sel) ? sel.n : cname(sel)) : 'Discard', onclick: youDiscard });
     db.disabled = !sel;
     barEl.appendChild(db);
   }
@@ -1031,7 +1059,7 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.stage !== 'over') {
-    S = saved; Kit.gameStart();
+    S = saved; if (S.me == null) S.me = 0; S.cover = false; Kit.gameStart();
     // older saves kept the sort choice in the game state
     if (S.sort === 'color' && Cards.sortMode('phase10_sort', null) == null) sortT.set('color');
     if (S.stage === 'ending') { S.stage = 'play'; }

@@ -152,41 +152,59 @@
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [];
+  // Pass & play: ME is the seat drawn at the bottom with its hand face up (the person holding the device, S.me);
+  // BLIND hides every hand while the device is handed over. One person among robots never sees the cover.
+  var ME = 0, BLIND = false;
+  function posOf(p) { return SEATS[(p - ME + 4) % 4]; }
+  function MT() { return ME % 2; }
+  function person(p) { return p >= 0 && !!S.players[p] && !S.players[p].cpu; }
+  function onePerson() { return !S || S.players.filter(function (q) { return !q.cpu; }).length < 2; }
+  function showFor(p) { BLIND = false; ME = p; S.me = p; S.wantAlone = false; save(); render(); }
+  function gate(p, then) {
+    if (!person(p) || p === ME) { then && then(); return; }
+    BLIND = true; undoStack = []; render();
+    var t = token;
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p % 2), what: 'cards' }).then(function () {
+      if (t !== token || !S) return;
+      showFor(p); then && then();
+    });
+  }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.handNo + ' · ' + S.scores[0] + '–' + S.scores[1]);
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
-  function nm(p) { return p === 0 ? S.players[0].name : S.players[p].name; }
-  function who(p) { return p === 0 ? 'You' : S.players[p].name; }
+  function nm(p) { return S.players[p].name; }
+  function who(p) { return p === ME && onePerson() ? 'You' : S.players[p].name; }
   function team(t) { return S.players[t].name + ' & ' + S.players[t + 2].name; }
   function partner(p) { return (p + 2) % 4; }
 
   function freshGame(players, o) {
     return {
-      target: o.target, stick: o.stick, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
+      mode: o.mode || 'cpu', me: 0, target: o.target, stick: o.stick, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
       rounds: [], log: [], highlights: [], started: Date.now(), throwins: 0, worst: [null, null]
     };
   }
   function showSetup() {
-    S = null; token++;
+    S = null; token++; BLIND = false; ME = 0; Kit.handoff.close();
     var st = Kit.setup(app, {
-      players: { min: 4, max: 4, cpu: 'seats', label: 'Players' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; }, label: 'Players' },
       intro: 'You and a computer partner against two computers',
       options: [
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 10, choices: [[5, '5 · quick'], [10, '10 · standard']] },
         { id: 'stick', label: 'Stick the dealer', help: 'What happens if all four players pass on picking trump twice.', value: 0, choices: [[0, 'Off · redeal', 'The cards are thrown in and the next player deals.'], [1, 'On · dealer must call', 'The dealer is stuck and has to pick a trump suit.']] }
       ],
       onStart: function (cfg) {
-        var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; });
-        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1 });
-        hideTeamName();
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1, mode: cfg.mode });
+        hideTeamName(); ME = 0;
         undoStack = []; Kit.gameStart(); newHand();
       }
     });
     // Seat 3 sits across from you: say so under the seat list
     var seats = st.el.querySelector('.k-seats'), start = seats && seats.nextSibling;
-    if (start) st.el.insertBefore(el('p', { class: 'muted', style: { 'text-align': 'center', margin: '-4px 0 0' }, text: 'Seat 3 is your partner. Seats 2 and 4 are the other team.' }), start);
+    if (start) st.el.insertBefore(el('p', { class: 'muted', style: { 'text-align': 'center', margin: '-4px 0 0' }, text: 'Seats 1 and 3 are partners. Seats 2 and 4 are the other team.' }), start);
   }
   // Team names like "Tim & Bender" go in game history; keep them out of the
   // frequent-players list on this device.
@@ -282,9 +300,11 @@
   // ── Turn driver ───────────────────────────────────────────────────────────
   function next(first) {
     if (!S) return;
-    paintAll();
     var p = S.turn, ph = S.phase;
-    if ((ph === 'bid1' || ph === 'bid2' || ph === 'play') && p !== 0) {
+    // a different person's turn: hands down, pass the device, then carry on as them
+    if ((ph === 'bid1' || ph === 'bid2' || ph === 'play' || ph === 'discard') && person(p) && p !== ME) { gate(p, function () { next(first); }); return; }
+    paintAll();
+    if ((ph === 'bid1' || ph === 'bid2' || ph === 'play') && p >= 0 && !person(p)) {
       var t = token;
       setTimeout(function () {
         if (t !== token || !S || S.phase !== ph || S.turn !== p) return;
@@ -347,7 +367,7 @@
         upNode.style.opacity = '.2';
       }
       S.hands[S.dealer].push(S.up); sortHand(S.hands[S.dealer], suit);
-      if (S.dealer === 0) { S.phase = 'discard'; S.turn = 0; save(); setTimeout(function () { if (t === token) paintAll(); }, 520); return; }
+      if (person(S.dealer)) { S.phase = 'discard'; S.turn = S.dealer; save(); setTimeout(function () { if (t === token) next(); }, 520); return; }
       var dc = cpuDiscard(S.dealer); S.hands[S.dealer].splice(find(S.hands[S.dealer], dc.id), 1);
       S.phase = 'starting'; save();
       setTimeout(function () { if (t === token) startPlay(); }, 900);
@@ -359,7 +379,7 @@
   function discard(c) {
     if (!S || S.phase !== 'discard') return;
     snapshot();
-    S.hands[0].splice(find(S.hands[0], c.id), 1);
+    S.hands[S.dealer].splice(find(S.hands[S.dealer], c.id), 1);
     Kit.sfx('flip'); Kit.haptic('light');
     startPlay();
   }
@@ -499,15 +519,15 @@
   function play(p, card) {
     if (!S || S.phase !== 'play' || S.turn !== p || !card) return;
     var i = find(S.hands[p], card.id); if (i < 0) return;
-    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    var from = p === ME ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     if (S.trick.length) { var led = eff(S.trick[0].c, S.trump); if (eff(card, S.trump) !== led) S.voids[p][led] = 1; }
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
     Kit.sfx(isRight(card, S.trump) || isLeft(card, S.trump) ? 'chip' : 'flip');
-    var node = Cards.el(card, { cls: 'p-' + SEATS[p] });
+    var node = Cards.el(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
-    if (p === 0) paintHand();
+    if (p === ME) paintHand();
     paintSeats();
     if (S.trick.length === activeCount()) { S.turn = -1; save(); paintSeats(); paintBar(); setTimeout(resolveTrick, 850); }
     else { S.turn = nextActive(p); save(); next(); }
@@ -517,7 +537,7 @@
     if (!S || S.phase !== 'play' || S.trick.length !== activeCount()) return;
     var win = trickWinner(S.trick, S.trump);
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
-    if (win.p % 2 === 0) Kit.haptic('light');
+    if (win.p % 2 === MT()) Kit.haptic('light');
     setTimeout(function () {
       if (t !== token) return;
       var dest = seatEls[win.p].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
@@ -553,7 +573,7 @@
     var name = nm(S.maker);
     if (res === 'alone-march') S.highlights.push(name + ' went alone and marched in hand ' + S.handNo);
     if (S.alone && res === 'euchred') S.highlights.push(name + ' went alone and got euchred in hand ' + S.handNo);
-    var good = (res === 'euchred') !== (mt === 0);
+    var good = (res === 'euchred') !== (mt === MT());
     if (res === 'euchred') Kit.callout('Euchred!', good ? null : '#ff4d5e');
     else if (res === 'alone-march') Kit.callout('Alone march!');
     else if (res === 'march') Kit.callout('March!');
@@ -566,10 +586,10 @@
   }
   function resultText(L) {
     var mt = L.maker % 2;
-    if (L.res === 'euchred') return { big: 'Euchred!', why: team(1 - mt) + ' get 2 points', bad: mt === 0 };
-    if (L.res === 'alone-march') return { big: 'Alone march!', why: who(L.maker) + ' took all 5 tricks alone: 4 points', bad: mt !== 0 };
-    if (L.res === 'march') return { big: 'March!', why: team(mt) + ' took all 5 tricks: 2 points', bad: mt !== 0 };
-    return { big: 'Made it', why: team(mt) + ' took ' + L.tricks + ' tricks: 1 point', bad: mt !== 0 };
+    if (L.res === 'euchred') return { big: 'Euchred!', why: team(1 - mt) + ' get 2 points', bad: mt === MT() };
+    if (L.res === 'alone-march') return { big: 'Alone march!', why: who(L.maker) + ' took all 5 tricks alone: 4 points', bad: mt !== MT() };
+    if (L.res === 'march') return { big: 'March!', why: team(mt) + ' took all 5 tricks: 2 points', bad: mt !== MT() };
+    return { big: 'Made it', why: team(mt) + ' took ' + L.tricks + ' tricks: 1 point', bad: mt !== MT() };
   }
   function scoreTable(pts) {
     var t = el('table', { class: 'sum' });
@@ -614,8 +634,8 @@
     if (S.worst[w] && S.worst[w].d >= 4) hl.push('Comeback! ' + team(w) + ' were down ' + S.worst[w].a + '–' + S.worst[w].b + ' and won');
     if (S.throwins) hl.push(S.throwins === 1 ? 'One deal was thrown in when everyone passed' : S.throwins + ' deals were thrown in when everyone passed');
     Kit.record('euchre', {
-      started: S.started, mode: 'vs Computer' + (S.stick ? ' · stick the dealer' : ''),
-      players: [{ name: team(0), score: S.scores[0], cpu: false }, { name: team(1), score: S.scores[1], cpu: true }],
+      started: S.started, mode: (S.mode === 'local' ? 'Pass & play' : 'vs Computer') + (S.stick ? ' · stick the dealer' : ''),
+      players: [0, 1].map(function (tm) { return { name: team(tm), score: S.scores[tm], cpu: !person(tm) && !person(tm + 2) }; }),
       winner: team(w),
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
       highlights: hl.slice(0, 5).concat([S.rounds.length + ' hands, played to ' + S.target]),
@@ -624,15 +644,17 @@
           if (L.w) o.w = L.w; if (L.y) o.y = L.y; if (L.sc) o.s = L.sc; return o; }) }
     });
     clearSave();
+    var mine = w === MT() && onePerson(), lose = !person(w) && !person(w + 2);
     Kit.win({
-      title: w === 0 ? (S.players[0].name === 'You' ? 'You win!' : 'You win, ' + S.players[0].name + '!') : team(1) + ' win',
-      sub: S.scores[0] + ' to ' + S.scores[1] + (w === 0 ? ' with ' + S.players[2].name : ''),
+      title: mine ? (S.players[ME].name === 'You' ? 'You win!' : 'You win, ' + S.players[ME].name + '!') : team(w) + ' win',
+      sub: S.scores[w] + ' to ' + S.scores[1 - w] + (mine ? ' with ' + S.players[partner(ME)].name : ''),
       rank: [w, 1 - w].map(function (tm) { return { name: team(tm), score: S.scores[tm], color: Kit.color(tm) }; }),
-      lose: w !== 0, icon: w === 0 ? 'trophy' : 'bot',
+      lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () {
-        S = freshGame(S.players, { target: S.target, stick: S.stick }); Kit.gameStart(); newHand();
+        S = freshGame(S.players, { target: S.target, stick: S.stick, mode: S.mode }); ME = 0; Kit.gameStart(); newHand();
       },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { token++; clearSave(); showSetup(); }
     });
   }
 
@@ -640,7 +662,10 @@
   function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 20) undoStack.shift(); }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if ((back.me || 0) !== ME) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; S = back; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
     next();
   }
 
@@ -649,7 +674,7 @@
   function render() {
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
-    seatEls = SEATS.map(function (pos) { var s = el('div', { class: 'cseat ' + pos }); felt.appendChild(s); return s; });
+    seatEls = SEATS.map(function (pos, p) { var s = el('div', { class: 'cseat ' + posOf(p) }); felt.appendChild(s); return s; });
     trickEl = el('div', { class: 'ctrick' });
     kittyEl = el('div', { class: 'kitty' });
     msgEl = el('div', { class: 'cmsg', hidden: true });
@@ -663,7 +688,7 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
-    (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + SEATS[t.p] })); });
+    (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintAll();
     if (S.phase === 'handover') setTimeout(function () { if (S && S.phase === 'handover') showHandSummary(); }, 250);
   }
@@ -680,12 +705,12 @@
         p === S.dealer ? el('span', { class: 'dbtn', title: 'Dealer', 'aria-label': 'Dealer', text: 'D' }) : null
       ]);
       var chips = [];
-      if (p === 2 && S.out !== 2) chips.push(el('span', { class: 'chip-s pt', text: 'Partner' }));
+      if (p === partner(ME) && S.out !== p) chips.push(el('span', { class: 'chip-s pt', text: 'Partner' }));
       if (S.maker === p) chips.push(el('span', { class: 'chip-s mk', html: (S.alone ? 'Alone ' : 'Called ') + suitHtml(S.trump) }));
       if (S.out === p) chips.push(el('span', { class: 'chip-s', text: 'Sitting out' }));
       else if (S.phase === 'play' || S.phase === 'handover') chips.push(el('span', { class: 'chip-s' + (S.lastWin === p && S.phase === 'play' ? ' hot' : ''), text: S.tricks[p] + (S.tricks[p] === 1 ? ' trick' : ' tricks') }));
       var info = el('div', { class: 'info' }, chips);
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (p === ME) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         if (S.hands && S.hands[p].length && S.out !== p) {
@@ -707,7 +732,7 @@
     if (S.phase === 'bid1') stack.appendChild(Cards.el(S.up, { cls: 'up' }));
     else if (!S.picked) stack.appendChild(Kit.card('', '', { back: true, cls: 'up' }));
     kittyEl.appendChild(stack);
-    var txt = S.phase === 'bid1' ? 'Turned up' : S.phase === 'bid2' ? 'No ' + SNAME[S.up.s] : S.phase === 'thrown' ? 'Thrown in' : S.picked ? (S.dealer === 0 ? 'You picked it up' : who(S.dealer) + ' picked it up') : '';
+    var txt = S.phase === 'bid1' ? 'Turned up' : S.phase === 'bid2' ? 'No ' + SNAME[S.up.s] : S.phase === 'thrown' ? 'Thrown in' : S.picked ? (S.dealer === ME && onePerson() ? 'You picked it up' : who(S.dealer) + ' picked it up') : '';
     if (txt) kittyEl.appendChild(el('div', { class: 'klbl', text: txt }));
   }
   function paintHud() {
@@ -716,29 +741,33 @@
     trumpEl.hidden = !showTrump;
     if (showTrump) {
       trumpEl.innerHTML = '<div class="lb">Trump</div><div class="st' + (S.trump === 'h' || S.trump === 'd' ? ' r' : '') + '">' + GLYPH[S.trump] + '</div>' +
-        '<div class="by">' + Kit.esc(S.maker === 0 ? 'you called' : 'by ' + S.players[S.maker].name) + '</div>' + (S.alone ? '<span class="al">Alone</span>' : '');
+        '<div class="by">' + Kit.esc(S.maker === ME && onePerson() ? 'you called' : 'by ' + S.players[S.maker].name) + '</div>' + (S.alone ? '<span class="al">Alone</span>' : '');
       if (wasHidden) { trumpEl.classList.remove('pop'); void trumpEl.offsetWidth; trumpEl.classList.add('pop'); }
     }
-    var tk = [S.tricks[0] + S.tricks[2], S.tricks[1] + S.tricks[3]];
+    var tk = [S.tricks[0] + S.tricks[2], S.tricks[1] + S.tricks[3]], m = MT();
     var playing = S.phase === 'play' || S.phase === 'handover';
-    scoreEl.innerHTML = '<div class="lb">Score</div>' + [0, 1].map(function (tm) {
-      return '<div class="row2"><span class="dot" style="background:' + Kit.color(tm) + '"></span><span class="t">' + (tm === 0 ? 'Us' : 'Them') + '</span><span class="n">' + S.scores[tm] + '</span></div>';
-    }).join('') + '<div class="goal">' + (playing ? 'tricks ' + tk[0] + '–' + tk[1] : 'to ' + S.target) + '</div>';
+    scoreEl.innerHTML = '<div class="lb">Score</div>' + [m, 1 - m].map(function (tm) {
+      return '<div class="row2"><span class="dot" style="background:' + Kit.color(tm) + '"></span><span class="t">' + (tm === m ? 'Us' : 'Them') + '</span><span class="n">' + S.scores[tm] + '</span></div>';
+    }).join('') + '<div class="goal">' + (playing ? 'tricks ' + tk[m] + '–' + tk[1 - m] : 'to ' + S.target) + '</div>';
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands ? S.hands[0] : [];
-    var sitting = S.out === 0;
-    var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
+    var mine = S.hands ? S.hands[ME] : [];
+    if (BLIND) {   // the device is being passed: this hand stays face down too
+      for (var k = 0; k < mine.length; k++) handEl.appendChild(Kit.card('', '', { back: true }));
+      requestAnimationFrame(function () { Cards.fan(handEl); }); paintBar(); return;
+    }
+    var sitting = S.out === ME;
+    var ok = S.phase === 'play' && S.turn === ME ? legal(ME).map(function (c) { return c.id; }) : null;
     view(mine).forEach(function (c) {
       var n = Cards.el(c);
       if (sitting) n.classList.add('dim');
-      else if (S.phase === 'discard') {
+      else if (S.phase === 'discard' && S.dealer === ME) {
         n.classList.add('play');
         if (c.id === S.up.id) n.classList.add('hint');
         n.addEventListener('click', function () { discard(c); });
       } else if (ok) {
-        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); Kit.haptic('light'); play(0, c); }); }
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); Kit.haptic('light'); play(ME, c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot()); }); }
       }
       handEl.appendChild(n);
@@ -748,43 +777,45 @@
   }
   function whyNot() {
     var led = eff(S.trick[0].c, S.trump);
-    if (led === S.trump) return 'Trump was led: you have to play a trump' + (S.hands[0].some(function (c) { return isLeft(c, S.trump); }) ? ' (your left bower counts)' : '');
-    return 'You have to follow ' + SNAME[led].toLowerCase() + (S.hands[0].some(function (c) { return isLeft(c, S.trump) && c.s === led; }) ? '. Your J' + GLYPH[led] + ' is a trump now' : '');
+    if (led === S.trump) return 'Trump was led: you have to play a trump' + (S.hands[ME].some(function (c) { return isLeft(c, S.trump); }) ? ' (your left bower counts)' : '');
+    return 'You have to follow ' + SNAME[led].toLowerCase() + (S.hands[ME].some(function (c) { return isLeft(c, S.trump) && c.s === led; }) ? '. Your J' + GLYPH[led] + ' is a trump now' : '');
   }
   function paintBar() {
     barEl.innerHTML = '';
     var hint = function (t) { barEl.appendChild(el('span', { class: 'hint', html: t })); };
-    if (S.phase === 'bid1' && S.turn === 0) {
-      var me = S.dealer === 0, pd = S.dealer === 2;
+    if (BLIND) { hint(''); return; }
+    if (S.phase === 'bid1' && S.turn === ME) {
+      var me = S.dealer === ME, pd = S.dealer === partner(ME);
       var box = el('div', { class: 'bidbox' }, [
         el('div', { class: 'q', html: (me ? 'Pick up the ' : 'Order up the ') + '<span class="s">' + cardHtml(S.up) + '</span>? ' + SNAME[S.up.s] + ' would be trump' + (pd ? ' (your partner picks it up)' : '') }),
         el('div', { class: 'btns' }, [
-          el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); bid1(0, false); } }),
-          el('button', { type: 'button', class: 'btn btn-primary', text: me ? 'Pick it up' : 'Order up', onclick: function () { snapshot(); bid1(0, true, S.wantAlone); } })
+          el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); bid1(ME, false); } }),
+          el('button', { type: 'button', class: 'btn btn-primary', text: me ? 'Pick it up' : 'Order up', onclick: function () { snapshot(); bid1(ME, true, S.wantAlone); } })
         ]),
         aloneSwitch()
       ]);
       barEl.appendChild(box);
-    } else if (S.phase === 'bid2' && S.turn === 0) {
-      var stuck = S.stick && S.dealer === 0;
+    } else if (S.phase === 'bid2' && S.turn === ME) {
+      var stuck = S.stick && S.dealer === ME;
       var row = el('div', { class: 'btns' });
       ['s', 'h', 'd', 'c'].forEach(function (s) {
         if (s === S.up.s) return;
-        row.appendChild(el('button', { type: 'button', class: 'suitbtn' + (s === 'h' || s === 'd' ? ' r' : ''), 'aria-label': 'Name ' + SNAME[s], html: GLYPH[s] + '<small>' + SNAME[s] + '</small>', onclick: function () { snapshot(); bid2(0, s, S.wantAlone); } }));
+        row.appendChild(el('button', { type: 'button', class: 'suitbtn' + (s === 'h' || s === 'd' ? ' r' : ''), 'aria-label': 'Name ' + SNAME[s], html: GLYPH[s] + '<small>' + SNAME[s] + '</small>', onclick: function () { snapshot(); bid2(ME, s, S.wantAlone); } }));
       });
       var b2 = el('div', { class: 'bidbox' }, [
         el('div', { class: 'q', text: stuck ? 'You’re stuck! Pick a trump suit' : 'Name a trump suit, or pass' }),
         row,
-        el('div', { class: 'btns' }, [aloneSwitch(), stuck ? null : el('button', { type: 'button', class: 'btn btn-soft btn-sm', style: { flex: '0 0 120px' }, text: 'Pass', onclick: function () { snapshot(); bid2(0, null); } })])
+        el('div', { class: 'btns' }, [aloneSwitch(), stuck ? null : el('button', { type: 'button', class: 'btn btn-soft btn-sm', style: { flex: '0 0 120px' }, text: 'Pass', onclick: function () { snapshot(); bid2(ME, null); } })])
       ]);
       barEl.appendChild(b2);
-    } else if (S.phase === 'discard') hint('You picked up the ' + cardHtml(S.up) + '. Tap a card to throw away');
-    else if (bidding() && S.turn > 0) hint(Kit.esc(who(S.turn)) + ' is deciding…');
-    else if (S.phase === 'starting' || (bidding() && S.turn < 0)) hint(S.maker === 0 ? 'You picked trump' : Kit.esc(who(S.maker)) + ' picked trump');
+    } else if (S.phase === 'discard' && S.dealer === ME) hint('You picked up the ' + cardHtml(S.up) + '. Tap a card to throw away');
+    else if (S.phase === 'discard') hint('Pass the device to ' + Kit.esc(nm(S.dealer)));
+    else if (bidding() && S.turn >= 0 && S.turn !== ME) hint(Kit.esc(who(S.turn)) + (person(S.turn) ? ': pass them the device' : ' is deciding…'));
+    else if (S.phase === 'starting' || (bidding() && S.turn < 0)) hint(S.maker === ME && onePerson() ? 'You picked trump' : Kit.esc(who(S.maker)) + ' picked trump');
     else if (S.phase === 'play') {
-      if (S.out === 0) hint('Your partner is going alone. Cheer them on!');
-      else if (S.turn === 0) hint(S.trick.length ? 'Your turn: tap a card' : 'Your lead: tap a card');
-      else if (S.turn >= 0) hint(Kit.esc(S.players[S.turn].name) + ' is thinking…');
+      if (S.out === ME) hint('Your partner is going alone. Cheer them on!');
+      else if (S.turn === ME) hint(S.trick.length ? 'Your turn: tap a card' : 'Your lead: tap a card');
+      else if (S.turn >= 0) hint(Kit.esc(S.players[S.turn].name) + (person(S.turn) ? ': pass them the device' : ' is thinking…'));
     }
   }
   function cardHtml(c) { return (c.r) + suitHtml(c.s); }
@@ -810,7 +841,7 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; Kit.gameStart();
+    S = saved; ME = S.me || 0; Kit.gameStart();
     if (S.phase === 'starting') S.phase = 'play', S.trick = [], S.trickNo = 0, S.tricks = [0, 0, 0, 0], S.turn = S.leader = nextActive(S.dealer), S.bids = [null, null, null, null];
     render();
     if (S.phase === 'thrown') newHand();

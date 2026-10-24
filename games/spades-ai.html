@@ -148,6 +148,26 @@
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [], busy = false;
   var NET = null;   // the online table while playing at one (see Online below)
+  // Pass & play: LME is the seat drawn at the bottom with its hand face up (the person holding the device, S.me);
+  // BLIND hides every hand while the device is handed over. Online the view is already turned so seat 0 is you.
+  var LME = 0, BLIND = false;
+  function me() { return NET ? 0 : LME; }
+  function posOf(p) { return SEATS[(p - me() + 4) % 4]; }
+  function MT() { return teamOf(me()); }
+  function onePerson() { return !!NET || !S || S.players.filter(function (p) { return !p.cpu; }).length < 2; }
+  function person(p) { return p >= 0 && S.players[p] && !S.players[p].cpu; }
+  function showFor(p) { BLIND = false; LME = p; S.me = p; save(); render(); }
+  // Before a different person acts: every hand face down and the cover asks to pass the device; one person
+  // among robots (and online) never sees it
+  function gate(p, then) {
+    if (NET || !person(p) || p === LME) { then && then(); return; }
+    BLIND = true; undoStack = []; render();
+    var t = token;
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S || NET) return;
+      showFor(p); then && then();
+    });
+  }
   function save() {
     if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -156,27 +176,28 @@
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
 
   // bagsOpt false: sandbags off (an extra trick is just a point; nothing carries over)
-  function freshGame(players, target, blindOpt, bagsOpt) {
+  function freshGame(players, target, blindOpt, bagsOpt, mode) {
     return {
-      target: target, blindOpt: !!blindOpt, bagsOff: bagsOpt === false, round: 0, dealer: Math.floor(Math.random() * 4),
+      mode: mode || 'cpu', me: 0, target: target, blindOpt: !!blindOpt, bagsOff: bagsOpt === false, round: 0, dealer: Math.floor(Math.random() * 4),
       scores: [0, 0], bags: [0, 0], rounds: [], highlights: [], started: Date.now(),
       tricksAll: [0, 0, 0, 0], sets: [0, 0], nilsMade: [0, 0, 0, 0],
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu }; })
+      players: players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; })
     };
   }
   function showSetup() {
-    S = null; token++;
+    S = null; token++; BLIND = false; LME = 0; Kit.handoff.close();
     Kit.setup(app, {
       intro: 'You sit South. North is your partner. East and West play against you.',
-      players: { min: 4, max: 4, cpu: 'seats', label: 'You, West, North (partner), East' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; }, label: 'Seats 1 and 3 are partners' },
       options: [
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 500, choices: [[300, '300 · quicker'], [500, '500 · standard']] },
         { id: 'bags', label: 'Sandbags', help: 'Tricks a team takes beyond its bid are bags.', value: 1, choices: [[1, 'On', 'Every 10 bags costs the team 100 points.'], [0, 'Off', 'Extra tricks are just 1 point each.']] },
         { id: 'blind', label: 'Blind Nil', help: 'Bidding to take zero tricks before you look at your cards, for 200 points (or minus 200).', value: 0, choices: [[0, 'Off', 'No Blind Nil bids.'], [1, 'On', 'A team that is behind by 100 or more can bid Blind Nil.']] }
       ],
       onStart: function (cfg) {
-        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1, +cfg.options.bags !== 0);
-        Kit.gameStart(); undoStack = []; newHand();
+        S = freshGame(cfg.players, +cfg.options.target || 500, +cfg.options.blind === 1, +cfg.options.bags !== 0, cfg.mode);
+        LME = 0; Kit.gameStart(); undoStack = []; newHand();
       }
     });
   }
@@ -200,9 +221,9 @@
   function view(h) { return Cards.sort(h.slice(), { suits: ['s', 'h', 'c', 'd'], by: sortT.get() }); }
   function partnerOf(p) { return (p + 2) % 4; }
   function teamOf(p) { return p % 2; }
-  function short(p) { return p === 0 ? 'You' : S.players[p].name; }
+  function short(p) { return p === me() && onePerson() ? 'You' : S.players[p].name; }
   function teamName(t) { return S.players[t].name + ' & ' + S.players[t + 2].name; }
-  function teamShort(t) { return t === 0 ? 'You + ' + S.players[2].name : S.players[1].name + ' + ' + S.players[3].name; }
+  function teamShort(t) { return !onePerson() ? teamName(t) : t === 0 ? 'You + ' + S.players[2].name : S.players[1].name + ' + ' + S.players[3].name; }
   function isNil(p) { return S.bids && S.bids[p] === 0; }
   function contract(t) { var b = 0; [t, t + 2].forEach(function (p) { if (S.bids[p] > 0) b += S.bids[p]; }); return b; }
   function wonFor(t) { var w = 0; [t, t + 2].forEach(function (p) { if (!isNil(p)) w += S.taken[p]; }); return w; }
@@ -238,7 +259,10 @@
     S.voids = [{}, {}, {}, {}];
     S.dtHand = S.hands[0].map(key);
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
-    S.phase = S.blindOpt && S.scores[1] - S.scores[0] >= 100 ? 'blind' : 'bid';
+    // Blind Nil: each person on a team behind by 100 or more chooses before seeing their cards
+    S.blindAsk = [];
+    if (S.blindOpt) [0, 1, 2, 3].forEach(function (p) { var t = p % 2; if (person(p) && S.scores[1 - t] - S.scores[t] >= 100) S.blindAsk.push(p); });
+    S.phase = S.blindAsk.length ? 'blind' : 'bid';
     S.last = null;
     clearUndo(); save(); render(); Kit.sfx('deal'); next();
   }
@@ -279,32 +303,40 @@
     if (!S || S.phase !== 'bid' || S.turn !== p || S.bids[p] != null) return;
     S.bids[p] = b;
     seatSay(p, b === 0 ? (S.blind[p] ? 'Blind Nil!' : 'Nil') : 'Bid ' + b);
-    Kit.sfx(b === 0 ? 'pop' : 'chip'); if (p === 0) Kit.haptic('medium');
+    Kit.sfx(b === 0 ? 'pop' : 'chip'); if (p === me()) Kit.haptic('medium');
     S.turn = (p + 1) % 4;
     if (S.bids.every(function (x) { return x != null; })) {
       S.phase = 'play'; S.turn = S.leader = (S.dealer + 1) % 4;
-      flash('Your team: ' + contract(0) + ' · Them: ' + contract(1));
+      flash('Your team: ' + contract(MT()) + ' · Them: ' + contract(1 - MT()));
     }
     save(); paintSeats(); paintHand(); paintPlaques(); next();
   }
   function chooseBlind(yes) {
-    if (!S || S.phase !== 'blind') return;
+    var p = me();
+    if (!S || S.phase !== 'blind' || blindAsk().indexOf(p) < 0) return;
     snapshot();
-    if (yes) { S.blind[0] = true; Kit.callout('Blind Nil!'); Kit.sfx('pop'); Kit.haptic('heavy'); }
+    if (yes) { S.blind[p] = true; Kit.callout('Blind Nil!'); Kit.sfx('pop'); Kit.haptic('heavy'); }
     else Kit.sfx('flip');
-    S.phase = 'bid'; save(); paintHand(); paintSeats(); paintMsg(); next();
+    S.blindAsk = blindAsk().filter(function (x) { return x !== p; });
+    if (!S.blindAsk.length) S.phase = 'bid';
+    save(); paintHand(); paintSeats(); paintMsg(); next();
   }
+  function blindAsk() { return S.blindAsk || (S.phase === 'blind' ? [0] : []); }
 
   // ── Turn driver ───────────────────────────────────────────────────────────
   function next() {
     if (!S || NET) return;
+    // a different person's turn: hands down, pass the device, then carry on as them
+    if (S.phase === 'blind' && blindAsk().length && blindAsk()[0] !== LME) { gate(blindAsk()[0], next); return; }
+    if ((S.phase === 'bid' || S.phase === 'play' && S.trick.length < 4) && person(S.turn) && S.turn !== LME && !(S.phase === 'bid' && S.blind[S.turn])) { gate(S.turn, next); return; }
     paintSeats(); paintHand(); paintMsg(); paintPlaques();
     var t = token, wait = 550 + Math.random() * 350;
     if (S.phase === 'bid') {
-      if (S.turn !== 0) setTimeout(function () { if (t === token && S && S.phase === 'bid' && S.turn !== 0) doBid(S.turn, cpuBid(S.turn)); }, wait + 150);
-      else if (S.blind[0]) setTimeout(function () { if (t === token && S && S.phase === 'bid' && S.turn === 0) doBid(0, 0); }, 500);
-    } else if (S.phase === 'play' && S.turn !== 0 && S.trick.length < 4) {
-      setTimeout(function () { if (t === token && S && S.phase === 'play' && S.turn !== 0 && S.trick.length < 4) play(S.turn, cpuChoose(S.turn)); }, wait);
+      var q = S.turn;
+      if (!person(q)) setTimeout(function () { if (t === token && S && S.phase === 'bid' && S.turn === q) doBid(q, cpuBid(q)); }, wait + 150);
+      else if (S.blind[q]) setTimeout(function () { if (t === token && S && S.phase === 'bid' && S.turn === q) doBid(q, 0); }, 500);
+    } else if (S.phase === 'play' && !person(S.turn) && S.turn >= 0 && S.trick.length < 4) {
+      setTimeout(function () { if (t === token && S && S.phase === 'play' && !person(S.turn) && S.turn >= 0 && S.trick.length < 4) play(S.turn, cpuChoose(S.turn)); }, wait);
     }
   }
 
@@ -386,7 +418,7 @@
   function play(p, card) {
     if (!S || busy || S.phase !== 'play' || S.turn !== p || S.trick.length >= 4) return;
     var i = find(S.hands[p], card.id); if (i < 0) return;
-    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    var from = p === me() ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     if (S.trick.length && card.s !== S.trick[0].c.s) S.voids[p][S.trick[0].c.s] = 1;
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
@@ -395,7 +427,7 @@
       if (S.trick.length > 1) { flash('Spades are broken!'); Kit.sfx('bad'); }
     }
     Kit.sfx(card.s === 's' && S.trick.length > 1 && S.trick[0].c.s !== 's' ? 'chip' : 'flip');
-    var node = Cards.el(card, { cls: 'p-' + SEATS[p] });
+    var node = Cards.el(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
     if (S.trick.length === 4) { S.turn = -1; busy = true; save(); paintSeats(); paintHand(); setTimeout(resolveTrick, 850); }
@@ -411,10 +443,10 @@
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
     if (isNil(win.p) && S.taken[win.p] === 1) {
       seatSay(win.p, 'Nil broken!'); Kit.sfx('bad');
-      if (teamOf(win.p) === 0) Kit.haptic('error');
-    } else if (!isNil(win.p) && teamOf(win.p) === 0 && wonFor(0) === contract(0) && contract(0) > 0) {
+      if (teamOf(win.p) === MT()) Kit.haptic('error');
+    } else if (!isNil(win.p) && teamOf(win.p) === MT() && wonFor(MT()) === contract(MT()) && contract(MT()) > 0) {
       Kit.callout('Bid made!', 'var(--green)'); Kit.sfx('good'); Kit.haptic('success');
-    } else if (win.p === 0) Kit.haptic('light');
+    } else if (win.p === me()) Kit.haptic('light');
     S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
     var done = S.trickNo === 13;
     save(); paintSeats(); paintPlaques();
@@ -459,15 +491,15 @@
     res.forEach(function (r, t) {
       S.scores[t] += r.pts; S.bags[t] = r.bagsAfter;
       var nm = teamName(t);
-      if (r.set) { S.sets[t]++; S.highlights.push(nm + ' went set bidding ' + r.bid + ' in hand ' + n); notes.push({ bad: t === 0, text: teamShort(t) + ' went set (bid ' + r.bid + ', took ' + r.won + ')' }); }
+      if (r.set) { S.sets[t]++; S.highlights.push(nm + ' went set bidding ' + r.bid + ' in hand ' + n); notes.push({ bad: t === MT(), text: teamShort(t) + ' went set (bid ' + r.bid + ', took ' + r.won + ')' }); }
       else if (r.made && r.bid >= 9) S.highlights.push(nm + ' made a big bid of ' + r.bid + ' in hand ' + n);
       if (r.made) notes.push({ text: teamShort(t) + ' made ' + r.bid + (r.won > r.bid ? ' with ' + (r.won - r.bid) + ' bag' + (r.won - r.bid === 1 ? '' : 's') : ' exactly') });
       r.nils.forEach(function (x) {
         var label = x.blind ? 'Blind Nil' : 'Nil';
         if (x.ok) { S.nilsMade[x.p]++; S.highlights.push(S.players[x.p].name + ' made ' + label + ' in hand ' + n); notes.push({ text: short(x.p) + ' made ' + label + ' (+' + x.v + ')' }); }
-        else { S.highlights.push(Kit.poss(S.players[x.p].name) + ' ' + label + ' was broken in hand ' + n); notes.push({ bad: t === 0, text: Kit.poss(short(x.p)) + ' ' + label + ' failed (−' + x.v + ')' }); }
+        else { S.highlights.push(Kit.poss(S.players[x.p].name) + ' ' + label + ' was broken in hand ' + n); notes.push({ bad: t === MT(), text: Kit.poss(short(x.p)) + ' ' + label + ' failed (−' + x.v + ')' }); }
       });
-      if (r.penalty) { S.highlights.push('Bag penalty hit ' + nm + ' in hand ' + n); notes.push({ bad: t === 0, text: 'Bag penalty! ' + teamShort(t) + ' lose 100' }); }
+      if (r.penalty) { S.highlights.push('Bag penalty hit ' + nm + ' in hand ' + n); notes.push({ bad: t === MT(), text: 'Bag penalty! ' + teamShort(t) + ' lose 100' }); }
       if (r.took === 13) S.highlights.push(nm + ' took all 13 tricks in hand ' + n);
     });
     S.rounds.push([res[0].pts, res[1].pts]);
@@ -475,11 +507,12 @@
     S.last = { res: res.map(function (r) { return { bid: r.bid, took: r.took, pts: r.pts, bags: r.bags, penalty: r.penalty }; }), notes: notes };
     S.phase = 'handover';
     clearUndo(); save(); paintPlaques();
-    // Big moments
-    if (res[0].nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
-    else if (res[0].set) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
-    else if (res[1].set) { Kit.callout('They went set!', 'var(--green)'); Kit.sfx('good'); }
-    else if (res[0].penalty) { Kit.callout('Bag penalty!', 'var(--red)'); Kit.sfx('bad'); }
+    // Big moments (from the side of whoever holds the device)
+    var us = res[MT()], them = res[1 - MT()];
+    if (us.nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
+    else if (us.set) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
+    else if (them.set) { Kit.callout('They went set!', 'var(--green)'); Kit.sfx('good'); }
+    else if (us.penalty) { Kit.callout('Bag penalty!', 'var(--red)'); Kit.sfx('bad'); }
     var hi = Math.max(S.scores[0], S.scores[1]);
     var over = hi >= S.target && S.scores[0] !== S.scores[1];
     setTimeout(function () { over ? finish() : showHandSummary(); }, 900);
@@ -534,22 +567,24 @@
     hl.push('Most tricks: ' + S.players[top].name + ', ' + S.tricksAll[top] + ' over the game');
     hl.push(S.rounds.length + ' hands, played to ' + S.target);
     Kit.record(HKEY, {
-      started: S.started, mode: 'vs Computer',
-      players: [{ name: teamName(0), score: S.scores[0], cpu: false }, { name: teamName(1), score: S.scores[1], cpu: true }],
+      started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer',
+      players: [0, 1].map(function (t) { return { name: teamName(t), score: S.scores[t], cpu: !person(t) && !person(t + 2) }; }),
       winner: teamName(w),
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
       highlights: hl,
       detail: { names: S.players.map(function (p) { return p.name; }), hx: S.hx || [], bags: S.bags, sets: S.sets, nils: S.nilsMade, tricks: S.tricksAll, hand: S.dtHand || null, to: S.target }
     });
-    var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff;
+    var players = S.players, target = S.target, blind = S.blindOpt, bagsOn = !S.bagsOff, mode = S.mode;
+    var lose = !person(w) && !person(w + 2), mine = w === MT() && onePerson();
     clearSave(); S.phase = 'over';
     Kit.win({
-      title: w === 0 ? 'You win!' : teamShort(1) + ' win',
-      sub: (w === 0 ? 'You and ' + players[2].name + ' won by ' : 'They won by ') + (S.scores[w] - S.scores[l]),
+      title: mine ? 'You win!' : teamShort(w) + ' win',
+      sub: (mine ? 'You and ' + players[partnerOf(me())].name + ' won by ' : onePerson() ? 'They won by ' : 'Won by ') + (S.scores[w] - S.scores[l]),
       rank: [w, l].map(function (t) { return { name: teamShort(t), score: S.scores[t], color: Kit.color(t) }; }),
-      lose: w !== 0, icon: w === 0 ? 'trophy' : 'bot',
-      again: function () { S = freshGame(players, target, blind, bagsOn); Kit.gameStart(); undoStack = []; newHand(); },
-      extra: [{ label: 'Change players', onClick: function () { clearSave(); showSetup(); } }]
+      lose: lose, icon: lose ? 'bot' : 'trophy',
+      again: function () { S = freshGame(players, target, blind, bagsOn, mode); LME = 0; Kit.gameStart(); undoStack = []; newHand(); },
+      look: 'Look at the table',
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 
@@ -558,7 +593,10 @@
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; busy = false; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if ((back.me || 0) !== LME) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; busy = false; S = back; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -567,7 +605,7 @@
     app.innerHTML = '';
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
     seatEls = SEATS.map(function () { var s = el('div', { class: 'cseat ' }); felt.appendChild(s); return s; });
-    seatEls.forEach(function (s, p) { s.className = 'cseat ' + SEATS[p]; });
+    seatEls.forEach(function (s, p) { s.className = 'cseat ' + posOf(p); });
     plqEls = [el('div', { class: 'plq l' }), el('div', { class: 'plq r' })];
     plqEls.forEach(function (q) { felt.appendChild(q); });
     trickEl = el('div', { class: 'ctrick' });
@@ -581,18 +619,18 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
-    (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + SEATS[t.p] })); });
+    (S.trick || []).forEach(function (t) { trickEl.appendChild(Cards.el(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintSeats(); paintHand(); paintMsg(); paintPlaques();
     if (S.phase === 'handover') setTimeout(showHandSummary, 200);
   }
   function paintPlaques() {
     [0, 1].forEach(function (t) {
-      var q = plqEls[t]; if (!q) return;
+      var q = plqEls[t === MT() ? 0 : 1]; if (!q) return;   // us on the left, whoever holds the device
       q.style.setProperty('--c', Kit.color(t));
       var biddingDone = S.bids && S.bids.every(function (b) { return b != null; });
       var line = biddingDone && S.phase !== 'handover' ? 'Won <b>' + wonFor(t) + '</b> of ' + contract(t) : S.phase === 'handover' && S.last ? 'Hand ' + (S.last.res[t].pts >= 0 ? '+' : '−') + Math.abs(S.last.res[t].pts) : S.bagsOff ? '' : 'Bags ' + S.bags[t];
       var bags = ''; for (var i = 0; i < 10; i++) bags += '<i class="' + (i < S.bags[t] ? 'on' : '') + '"></i>';
-      q.innerHTML = '<div class="t">' + Kit.esc(t === 0 ? 'Us · N/S' : 'Them · E/W') + '</div>' +
+      q.innerHTML = '<div class="t">' + Kit.esc(t === MT() ? 'Us · N/S' : 'Them · E/W') + '</div>' +
         '<div class="v' + (S.scores[t] < 0 ? ' neg' : '') + '">' + S.scores[t] + '</div>' +
         '<div class="d">' + line + '</div>' +
         (S.bagsOff ? '' : '<div class="bags' + (S.bags[t] >= 7 ? ' warn' : '') + '" title="Bags: ' + S.bags[t] + ' of 10">' + bags + '</div>');
@@ -601,23 +639,23 @@
   function paintSeats() {
     S.players.forEach(function (pl, p) {
       var s = seatEls[p]; s.innerHTML = '';
-      s.classList.toggle('turn', (S.phase === 'play' || S.phase === 'bid') && S.turn === p || S.phase === 'blind' && !!S.blindAsk && S.blindAsk.indexOf(p) >= 0);
+      s.classList.toggle('turn', (S.phase === 'play' || S.phase === 'bid') && S.turn === p || S.phase === 'blind' && blindAsk().indexOf(p) >= 0);
       s.classList.toggle('away', !!pl.away);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === 0 ? 'You' : pl.name }),
-        p === 2 ? el('span', { class: 'ptn', text: 'partner' }) : null
+        el('span', { text: p === me() && onePerson() ? 'You' : pl.name }),
+        p === partnerOf(me()) ? el('span', { class: 'ptn', text: 'partner' }) : null
       ]);
       var info = el('div', { class: 'info' });
       var b = S.bids ? S.bids[p] : null;
-      if (b == null) info.appendChild(el('span', { class: 'chip-s', text: S.phase === 'bid' && S.turn === p ? 'Bidding…' : (S.phase === 'blind' && (S.blindAsk ? S.blindAsk.indexOf(p) >= 0 : p === 0) ? 'Blind?' : 'Bid –') }));
+      if (b == null) info.appendChild(el('span', { class: 'chip-s', text: S.phase === 'bid' && S.turn === p ? 'Bidding…' : (S.phase === 'blind' && blindAsk().indexOf(p) >= 0 ? 'Blind?' : 'Bid –') }));
       else {
         var nil = b === 0;
         info.appendChild(el('span', { class: 'chip-s' + (nil ? ' nil' : ''), text: nil ? bidText(p) : 'Bid ' + b }));
         var tk = S.taken[p], cls = nil ? (tk ? ' bust' : '') : (tk >= b ? ' made' : '');
         info.appendChild(el('span', { class: 'chip-s' + cls, text: 'Took ' + tk }));
       }
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (p === me()) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         if (S.hands && S.hands[p].length) {
@@ -630,16 +668,15 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands ? S.hands[0] : [];
-    var hidden = NET ? S.phase === 'blind' && S.blindAsk.indexOf(0) >= 0 || S.blind[0] && (S.phase === 'bid' || S.phase === 'blind')
-      : S.phase === 'blind' || (S.blind[0] && S.phase === 'bid');
+    var m = me(), mine = S.hands ? S.hands[m] : [];
+    var hidden = BLIND || S.phase === 'blind' && blindAsk().indexOf(m) >= 0 || S.blind[m] && (S.phase === 'bid' || S.phase === 'blind');
     if (sortRow) sortRow.style.visibility = hidden ? 'hidden' : '';
-    var ok = !busy && S.phase === 'play' && S.turn === 0 && S.trick.length < 4 && (!NET || NET.myTurn()) ? legal(0).map(function (c) { return c.id; }) : null;
+    var ok = !busy && !BLIND && S.phase === 'play' && S.turn === m && S.trick.length < 4 && (!NET || NET.myTurn()) ? legal(m).map(function (c) { return c.id; }) : null;
     view(mine).forEach(function (c) {
       if (hidden) { handEl.appendChild(Kit.card('', '', { back: true })); return; }
       var n = Cards.el(c);
       if (ok) {
-        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (NET) { netPlay(c); return; } if (busy || S.turn !== 0) return; snapshot(); play(0, c); }); }
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (NET) { netPlay(c); return; } if (busy || S.turn !== me()) return; snapshot(); play(me(), c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
       } else if (NET && S.phase !== 'over') n.addEventListener('click', netNudge);
       handEl.appendChild(n);
@@ -655,9 +692,14 @@
   function paintBar() {
     barEl.innerHTML = '';
     if (NET) { netBar(); return; }
+    if (BLIND) { barEl.appendChild(el('span', { class: 'hint', text: '' })); return; }
+    if (S.phase === 'blind' && blindAsk().indexOf(me()) < 0) {
+      barEl.appendChild(el('span', { class: 'hint', text: blindAsk().length ? 'Pass the device to ' + S.players[blindAsk()[0]].name : '' }));
+      return;
+    }
     if (S.phase === 'blind') {
       barEl.appendChild(el('div', { class: 'blindbox' }, [
-        el('p', { text: 'You\'re behind by ' + (S.scores[1] - S.scores[0]) + '. Bid Blind Nil before looking? Worth 200 if you take no tricks.' }),
+        el('p', { text: 'You\'re behind by ' + (S.scores[1 - MT()] - S.scores[MT()]) + '. Bid Blind Nil before looking? Worth 200 if you take no tricks.' }),
         el('div', { class: 'row' }, [
           el('button', { type: 'button', class: 'btn btn-soft', text: 'Bid Blind Nil', onclick: function () { chooseBlind(true); } }),
           el('button', { type: 'button', class: 'btn btn-primary', text: 'Show my cards', onclick: function () { chooseBlind(false); } })
@@ -665,19 +707,19 @@
       ]));
       return;
     }
-    if (S.phase === 'bid' && S.turn === 0 && !S.blind[0]) {
-      barEl.appendChild(bidBox(function (b) { snapshot(); doBid(0, b); }));
+    if (S.phase === 'bid' && S.turn === me() && !S.blind[me()]) {
+      barEl.appendChild(bidBox(function (b) { snapshot(); doBid(me(), b); }));
       return;
     }
-    var txt = '';
-    if (S.phase === 'bid') txt = S.turn === 0 ? 'Bidding Blind Nil…' : S.players[S.turn].name + ' is bidding…';
-    else if (S.phase === 'play') txt = S.turn === 0 ? (S.trick.length ? 'Your turn: tap a card' : 'Your lead' + (S.broken ? '' : ' (spades not broken yet)')) : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '';
+    var txt = '', m = me();
+    if (S.phase === 'bid') txt = S.turn === m ? 'Bidding Blind Nil…' : S.players[S.turn].name + ' is bidding…';
+    else if (S.phase === 'play') txt = S.turn === m ? (S.trick.length ? 'Your turn: tap a card' : 'Your lead' + (S.broken ? '' : ' (spades not broken yet)')) : S.turn >= 0 ? (person(S.turn) ? 'Pass the device to ' : '') + S.players[S.turn].name + (person(S.turn) ? '' : ' is thinking…') : '';
     barEl.appendChild(el('span', { class: 'hint', text: txt }));
   }
   // The bid buttons (0 = Nil); the suggested bid is outlined
   function bidBox(pick) {
-    var e = estimate(S.hands[0]), sug = Math.max(1, Math.min(13, Math.round(e.est)));
-    var mate = S.bids[2];
+    var e = estimate(S.hands[me()]), sug = Math.max(1, Math.min(13, Math.round(e.est)));
+    var mate = S.bids[partnerOf(me())];
     var grid = el('div', { class: 'bidgrid' });
     for (var b = 0; b <= 13; b++) (function (b) {
       grid.appendChild(el('button', { type: 'button', class: (b === 0 ? 'nil' : '') + (b === sug ? ' sug' : ''), text: b === 0 ? 'Nil' : String(b), 'aria-label': b === 0 ? 'Bid Nil' : 'Bid ' + b,
@@ -692,7 +734,7 @@
   function paintMsg() {
     if (flashT) return;
     var m = '';
-    if (S.phase === 'bid' || S.phase === 'blind') m = 'Hand ' + S.round + ' · ' + (S.dealer === 0 ? 'you deal' : S.players[S.dealer].name + ' deals');
+    if (S.phase === 'bid' || S.phase === 'blind') m = 'Hand ' + S.round + ' · ' + (S.dealer === me() && onePerson() ? 'you deal' : S.players[S.dealer].name + ' deals');
     msgEl.hidden = !m; msgEl.textContent = m;
   }
   function flash(t) {
@@ -1073,7 +1115,8 @@
   function resumeLocal(back) {
     var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-      S = saved; Kit.gameStart(); S.started = S.started || Date.now();
+      S = saved; LME = S.me || 0; BLIND = false; Kit.gameStart(); S.started = S.started || Date.now();
+      if (S.phase === 'blind' && !S.blindAsk) S.blindAsk = [0];
       if (back) save();
       render();
       if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);

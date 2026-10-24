@@ -338,19 +338,40 @@
   var S = null, undoStack = [], tok = 0, sel = null, busy = false;
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.handNo + ', ' + WIND_EN[S.wind] + ' · you ' + S.scores[0]);
+    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.handNo + ', ' + WIND_EN[S.wind] + (humans() > 1 ? '' : ' · you ' + S.scores[0]));
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
+  // ── Viewer seat (pass & play) ─────────────────────────────────────────────
+  // S.me is the seat whose tiles are face up on the rack; the table turns so they sit at the bottom.
+  // One person at the table: always seat 0, exactly as vs Computer.
+  function person(p) { return !!(S && S.players[p] && !S.players[p].cpu); }
+  function humans() { return S ? S.players.filter(function (p) { return !p.cpu; }).length : 1; }
+  function isMe(p) { return p === S.me; }
+  function Q(p) { return (p - (S.me || 0) + 4) % 4; }       // seat -> place on screen (0 bottom, 1 right, 2 top, 3 left)
+  function seatAt(q) { return ((S.me || 0) + q) % 4; }       // place on screen -> seat
+  // Before another person acts: hide every tile, pass the device, then make them the viewer and carry on
+  function gate(p, then) {
+    var t = ++tok;
+    S.cover = true; undoStack = []; sel = null; save(); render();
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'tiles' }).then(function () {
+      if (t !== tok || !S || !S.cover) return;
+      S.cover = false; S.me = p; sel = null;
+      save(); render();
+      if (then) then();
+    });
+  }
+
   function showSetup() {
-    S = null; app.innerHTML = '';
+    S = null; app.innerHTML = ''; tok++; Kit.handoff.close();
     app.classList.remove('ipl');
     Kit.setup(app, {
-      intro: 'Four-player Mahjong, Hong Kong style, against three computer players',
+      modes: Kit.modes(['cpu', 'local']),
       options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] }],
-      players: { min: 4, max: 4, cpu: 'seats', label: 'At the table' },
+      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       onStart: function (cfg) {
         S = {
+          mode: cfg.mode || 'cpu', me: 0,
           len: cfg.options.len || 'quick',
           players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
           scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(),
@@ -381,8 +402,9 @@
     var t = ++tok;
     setTimeout(function () {
       if (t !== tok || !S) return;
-      if (S.phase === 'draw') draw(S.cur, false);
+      if (S.phase === 'draw') { if (person(S.cur) && !isMe(S.cur)) gate(S.cur, function () { draw(S.cur, false); }); else draw(S.cur, false); }
       else if (S.phase === 'discard' && S.players[S.cur].cpu) cpuTurn(S.cur);
+      else if (S.phase === 'discard' && !isMe(S.cur)) gate(S.cur);
       else if (S.phase === 'claim' && !S.claim) afterDiscard();
     }, delay == null ? 500 : delay);
   }
@@ -396,7 +418,7 @@
     if (S.players[p].cpu) flow(650);
     else {
       Kit.haptic('light');
-      if (canWin(S.hands[0], S.melds[0].length)) { Kit.sfx('good'); Kit.haptic('success'); }
+      if (canWin(S.hands[p], S.melds[p].length)) { Kit.sfx('good'); Kit.haptic('success'); }
     }
   }
 
@@ -426,11 +448,11 @@
     return o;
   }
   function afterDiscard() {
-    var L = S.last, from = L.from, k = kindOf(L.id), cpuBest = null, human = null;
+    var L = S.last, from = L.from, k = kindOf(L.id), cpuBest = null, people = [];
     var lastDiscard = wallLeft() === 0;
     for (var d = 1; d <= 3; d++) {
       var q = (from + d) % 4, o = claimOptions(q, L.id, from);
-      if (!S.players[q].cpu) { if (o.win || o.pung || o.kong || o.chows.length) human = { q: q, o: o, d: d }; continue; }
+      if (!S.players[q].cpu) { if (o.win || o.pung || o.kong || o.chows.length) people.push({ q: q, o: o, d: d }); continue; }
       var want = null;
       if (o.win) want = { t: 'win', rank: 3 };
       else if (!lastDiscard && o.kong && cpuWantsSet(q, k, 'kong')) want = { t: 'kong', rank: 2 };
@@ -438,20 +460,30 @@
       else if (!lastDiscard && o.chows.length) { var ch = cpuWantsChow(q, o.chows); if (ch) want = { t: 'chow', rank: 1, pair: ch }; }
       if (want) { want.q = q; want.d = d; if (!cpuBest || want.rank > cpuBest.rank || (want.rank === cpuBest.rank && want.d < cpuBest.d)) cpuBest = want; }
     }
-    var ask = false;
-    if (human) {
-      var hr = human.o.win ? 3 : (human.o.pung || human.o.kong) && !lastDiscard ? 2 : human.o.chows.length && !lastDiscard ? 1 : 0;
-      if (!human.o.win && lastDiscard) hr = 0;
-      if (hr && (!cpuBest || hr > cpuBest.rank || (hr === cpuBest.rank && human.d < cpuBest.d))) ask = true;
+    // people who could claim, best claim first (a win beats a pung or kong beats a chow; ties go to the next in turn)
+    people.forEach(function (h) {
+      if (lastDiscard) { h.o.pung = h.o.kong = false; h.o.chows = []; }
+      h.rank = h.o.win ? 3 : (h.o.pung || h.o.kong) ? 2 : h.o.chows.length ? 1 : 0;
+    });
+    people = people.filter(function (h) { return h.rank > 0; }).sort(function (a, b) { return b.rank - a.rank || a.d - b.d; });
+    askClaim(people, cpuBest);
+  }
+  // Ask the first person in line whose claim would beat the computers' best; the rest wait in case they pass
+  function askClaim(people, cpuBest) {
+    while (people.length) {
+      var h = people.shift();
+      if (!cpuBest || h.rank > cpuBest.rank || (h.rank === cpuBest.rank && h.d < cpuBest.d)) {
+        S.claim = { q: h.q, opts: h.o, cpu: cpuBest, rest: people.map(function (x) { return { q: x.q, o: x.o, d: x.d, rank: x.rank }; }) };
+        S.phase = 'claim'; save();
+        if (!isMe(h.q)) { gate(h.q, function () { Kit.sfx('pop'); Kit.haptic('medium'); }); return; }
+        render(); Kit.sfx('pop'); Kit.haptic('medium');
+        return;
+      }
     }
-    if (ask) {
-      var ho = human.o;
-      if (lastDiscard) { ho.pung = ho.kong = false; ho.chows = []; }
-      S.claim = { opts: ho, cpu: cpuBest };
-      S.phase = 'claim'; save(); render();
-      Kit.sfx('pop'); Kit.haptic('medium');
-      return;
-    }
+    noClaim(cpuBest);
+  }
+  function noClaim(cpuBest) {
+    var from = S.last.from, lastDiscard = wallLeft() === 0;
     if (cpuBest) { var t = ++tok; setTimeout(function () { if (t === tok) execClaim(cpuBest.q, cpuBest.t, cpuBest.pair); }, 700); return; }
     S.claim = null;
     if (lastDiscard) { var t2 = ++tok; setTimeout(function () { if (t2 === tok) endHand(null); }, 700); return; }
@@ -563,33 +595,34 @@
   }
 
   // ── Human actions ─────────────────────────────────────────────────────────
-  function myTurn() { return S && S.phase === 'discard' && S.cur === 0 && !S.players[0].cpu; }
+  function myTurn() { return S && !S.cover && S.phase === 'discard' && S.cur === S.me && !S.players[S.me].cpu; }
   function tapTile(id) {
-    if (!myTurn()) { if (S && S.phase === 'claim' && S.claim) Kit.toast('Choose a claim or Pass first'); return; }
-    if (sel === id) { snapshot(); discard(0, id); return; }
+    if (!myTurn()) { if (S && !S.cover && S.phase === 'claim' && S.claim) Kit.toast('Choose a claim or Pass first'); return; }
+    if (sel === id) { snapshot(); discard(S.me, id); return; }
     sel = id; Kit.sfx('tap'); Kit.haptic('light'); render();
   }
   function declareWin() {
-    if (!myTurn() || !canWin(S.hands[0], S.melds[0].length)) return;
-    snapshot(); endHand({ winner: 0, self: true });
+    if (!myTurn() || !canWin(S.hands[S.me], S.melds[S.me].length)) return;
+    snapshot(); endHand({ winner: S.me, self: true });
   }
-  function humanKong(k) { if (!myTurn()) return; snapshot(); selfKong(0, k); }
+  function humanKong(k) { if (!myTurn()) return; snapshot(); selfKong(S.me, k); }
   function humanClaim(type, pair) {
-    if (!S.claim) return;
+    if (!S.claim || S.cover) return;
     snapshot();
-    var cl = S.claim;
+    var cl = S.claim, q = cl.q == null ? 0 : cl.q;
     if (type === 'pass') {
       S.claim = null;
+      if (cl.rest && cl.rest.length) { askClaim(cl.rest.slice(), cl.cpu); return; }
       if (cl.cpu) { var t = ++tok; setTimeout(function () { if (t === tok) execClaim(cl.cpu.q, cl.cpu.t, cl.cpu.pair); }, 300); render(); return; }
       if (wallLeft() === 0) { endHand(null); return; }
       S.cur = (S.last.from + 1) % 4; S.phase = 'draw'; save(); render(); flow(400); return;
     }
-    execClaim(0, type, pair);
+    execClaim(q, type, pair);
   }
   function hint() {
     if (!myTurn()) return Kit.toast('Hints are for your turn to discard');
-    if (canWin(S.hands[0], S.melds[0].length)) return Kit.toast('You can win! Tap Mahjong');
-    sel = bestDiscard(0); render();
+    if (canWin(S.hands[S.me], S.melds[S.me].length)) return Kit.toast('You can win! Tap Mahjong');
+    sel = bestDiscard(S.me); render();
     Kit.toast('Try discarding the ' + kname(kindOf(sel)));
   }
 
@@ -615,7 +648,7 @@
       if (res.self) { for (var q = 0; q < 4; q++) if (q !== p) { deltas[q] -= sc.pts; deltas[p] += sc.pts; } }
       else { deltas[res.from] -= sc.pts * 2; deltas[p] += sc.pts * 2; }
       for (q = 0; q < 4; q++) S.scores[q] += deltas[q];
-      Kit.callout(P[p].name === 'You' ? 'Mahjong!' : P[p].name + ': Mahjong!');
+      Kit.callout(isMe(p) && humans() < 2 ? 'Mahjong!' : P[p].name + ': Mahjong!');
       if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
     } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
     var label = 'ESWN'[S.wind] + S.handNo;
@@ -703,7 +736,7 @@
     var kg = S.stats.kongs.reduce(function (a, b) { return a + b; }, 0); if (kg) hl.push(kg + ' kong' + (kg === 1 ? '' : 's') + ' declared');
     var draws = S.log.filter(function (h) { return h.winner < 0; }).length; if (draws) hl.push(draws + ' hand' + (draws === 1 ? '' : 's') + ' ended in a draw');
     Kit.record(KEY, {
-      started: S.started, mode: { quick: 'Quick game', east: 'East round', full: 'Full game' }[S.len] + ' vs Computer',
+      started: S.started, mode: { quick: 'Quick game', east: 'East round', full: 'Full game' }[S.len] + (S.mode === 'local' ? ', pass & play' : ' vs Computer'),
       players: P.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: { labels: S.log.map(function (h) { return h.label; }), scores: S.log.map(function (h) { return h.deltas; }) },
@@ -712,19 +745,21 @@
     clearSave();
     var lose = top.cpu || tie && rank.filter(function (x) { return x.score === top.score; }).every(function (x) { return x.cpu; });
     Kit.win({
-      icon: lose ? 'bot' : 'trophy', title: tie ? 'A tie at the top!' : top.name === 'You' ? 'You win!' : top.name + ' wins!',
+      icon: lose ? 'bot' : 'trophy', title: tie ? 'A tie at the top!' : !top.cpu && humans() < 2 ? 'You win!' : top.name + ' wins!',
       sub: S.log.length + ' hands played', rank: rank, lose: !!lose,
-      again: function () { var keep = S; S = { len: keep.len, players: keep.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } }; startHand(); },
-      extra: [{ label: 'Look at the table', onClick: function () { render(); } }, { label: 'Change players', onClick: showSetup }]
+      again: function () { var keep = S; S = { mode: keep.mode, me: 0, len: keep.len, players: keep.players, scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } }; startHand(); },
+      look: 'Look at the table',
+      setup: function () { tok++; clearSave(); undoStack = []; showSetup(); }
     });
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
   var bubbles = [];
   function say(p, text) { bubbles.push({ p: p, text: text, t: Date.now() }); }
-  // seat on screen: 0 you (bottom), 1 right, 2 top, 3 left
+  // place on screen: 0 the viewer (bottom), 1 right, 2 top, 3 left; seatAt(q) says who sits there
   function render(ev) {
     if (!S || !S.hands) return;
+    if (S.me == null) S.me = 0;
     // iPad: a bigger table (k scales the tile caps); landscape puts scores, rack and buttons beside it
     app.classList.add('ipl');
     var side = window.matchMedia && matchMedia(LAND_MQ).matches, vh = window.innerHeight || 800;
@@ -736,11 +771,11 @@
     // score pills, laid out left / across / right / you
     var strip = el('div', { class: 'scores' });
     [3, 2, 1, 0].forEach(function (q) {
-      var on = S.cur === q && (S.phase === 'discard' || S.phase === 'draw');
-      var sw = seatWind(q);
+      var p = seatAt(q), on = S.cur === p && (S.phase === 'discard' || S.phase === 'draw');
+      var sw = seatWind(p);
       strip.appendChild(el('div', { class: 'score' + (on ? ' on' : ''), style: { '--c': q === 0 ? 'var(--yellow)' : '#9fd8ff' } }, [
-        el('span', { class: 'nm', text: P[q].name }),
-        el('span', { class: 'pt', text: String(S.scores[q]) }),
+        el('span', { class: 'nm', text: P[p].name }),
+        el('span', { class: 'pt', text: String(S.scores[p]) }),
         el('span', { class: 'sub', html: '<span class="wd">' + WIND_CH[sw] + '</span> ' + WIND_EN[sw] + (sw === 0 ? '<i class="dlr" title="Dealer"></i>' : '') })
       ]));
     });
@@ -757,7 +792,7 @@
 
     // wall: 68 stacks of two around the square, drawn from the front, replacements from the back
     var ring = Math.max(8, Math.round(L * 0.036)), wall = el('div', { class: 'wall', style: { left: ox + 'px', top: oy + 'px', width: L + 'px', height: L + 'px' } });
-    var seg = (L - ring) / 17, startStack = ((S.dealer * 17) + 7) % 68;
+    var seg = (L - ring) / 17, startStack = ((Q(S.dealer) * 17) + 7) % 68;
     for (var st = 0; st < 68; st++) {
       var j0 = st * 2, present = (j0 >= S.front && j0 < 136 - S.back ? 1 : 0) + (j0 + 1 >= S.front && j0 + 1 < 136 - S.back ? 1 : 0);
       if (!present) continue;
@@ -782,9 +817,9 @@
     [0, 1, 2, 3].forEach(function (q) {
       var r = rot[q], px, py;
       if (q === 0) { px = cx; py = cy + half; } else if (q === 1) { px = cx + half; py = cy; } else if (q === 2) { px = cx; py = cy - half; } else { px = cx - half; py = cy; }
-      var pond = el('div', { class: 'pond', style: { left: (px - pondW / 2) + 'px', top: py + 'px', width: pondW + 'px', transform: 'rotate(' + r + 'deg)' } });
-      S.ponds[q].forEach(function (id, i) {
-        var isLast = S.last && S.last.id === id && i === S.ponds[q].length - 1;
+      var pond = el('div', { class: 'pond', style: { left: (px - pondW / 2) + 'px', top: py + 'px', width: pondW + 'px', transform: 'rotate(' + r + 'deg)' } }), pq = S.ponds[seatAt(q)];
+      pq.forEach(function (id, i) {
+        var isLast = S.last && S.last.id === id && i === pq.length - 1;
         pond.appendChild(tile(id, ptw, isLast ? 'hot' : ''));
       });
       pondEls[q] = pond;
@@ -795,26 +830,26 @@
     var btw = Math.max(10, Math.min(Math.round(16 * KZ), Math.floor((L - 10) / 15.5)));
     var mtw = Math.max(12, Math.min(Math.round(17 * KZ), Math.floor(SB * 0.42)));
     // across (2)
-    var nb = S.hands[2].length, rowB = el('div', { class: 'backs', style: { left: (ox + 2) + 'px', top: '6px' } });
+    var nb = S.hands[seatAt(2)].length, rowB = el('div', { class: 'backs', style: { left: (ox + 2) + 'px', top: '6px' } });
     for (var i = 0; i < nb; i++) rowB.appendChild(backTile(btw, 'side'));
     felt.appendChild(rowB);
     var md2 = el('div', { class: 'melds', style: { right: (ox + 2) + 'px', top: '6px', 'flex-direction': 'row-reverse' } });
-    S.melds[2].forEach(function (m) { md2.appendChild(meldEl(m, mtw, 180)); });
+    S.melds[seatAt(2)].forEach(function (m) { md2.appendChild(meldEl(m, mtw, 180)); });
     felt.appendChild(md2);
     // sides (1 right, 3 left): tile edges + rotated melds
     [1, 3].forEach(function (q) {
-      var n = S.hands[q].length, eh = Math.max(8, Math.min(Math.round(14 * KZ), Math.floor((L * 0.55) / 13))), ew = Math.round(SB * 0.32);
+      var n = S.hands[seatAt(q)].length, eh = Math.max(8, Math.min(Math.round(14 * KZ), Math.floor((L * 0.55) / 13))), ew = Math.round(SB * 0.32);
       var col = el('div', { class: 'backs col', style: { top: (oy + 2) + 'px' } });
       col.style[q === 1 ? 'right' : 'left'] = '5px';
       for (var k = 0; k < n; k++) { var e = el('div', { class: 'mt edge' + (q === 1 ? ' r' : ''), style: { width: ew + 'px', height: (eh - 1) + 'px' } }); col.appendChild(e); }
       felt.appendChild(col);
       var mc = el('div', { class: 'melds col', style: { bottom: (BB + 4) + 'px' } });
       mc.style[q === 1 ? 'right' : 'left'] = (ew + 8) + 'px';
-      S.melds[q].forEach(function (m) { mc.appendChild(meldEl(m, mtw, q === 1 ? -90 : 90)); });
+      S.melds[seatAt(q)].forEach(function (m) { mc.appendChild(meldEl(m, mtw, q === 1 ? -90 : 90)); });
       felt.appendChild(mc);
     });
     // your melds along the bottom edge
-    var my = S.melds[0];
+    var my = S.melds[S.me];
     if (my.length) {
       var nT = my.reduce(function (a, m) { return a + m.ids.length; }, 0), ytw = Math.min(Math.round(24 * KZ), Math.floor((FW - 16 - my.length * 6) / nT));
       var md0 = el('div', { class: 'melds', style: { left: '0', right: '0', 'justify-content': 'center', bottom: '4px' } });
@@ -825,32 +860,36 @@
     var now = Date.now();
     bubbles = bubbles.filter(function (b) { return now - b.t < 1500; });
     bubbles.forEach(function (b) {
-      var bx = [cx, ox + L - 30, cx, ox + 30][b.p], by = [cy + L / 2 - 30, cy, oy + 30, cy][b.p];
+      var bx = [cx, ox + L - 30, cx, ox + 30][Q(b.p)], by = [cy + L / 2 - 30, cy, oy + 30, cy][Q(b.p)];
       felt.appendChild(el('div', { class: 'say', text: b.text, style: { left: bx + 'px', top: by + 'px' } }));
     });
     wrap.appendChild(table);
 
     // status, claim bar, rack, actions
-    var me = S.hands[0], mine = myTurn();
+    var ME = S.me, mh = S.hands[ME], mine = myTurn();
     var st2 = el('div', { class: 'status' });
-    if (S.phase === 'claim' && S.claim) st2.textContent = '';
-    else if (mine) st2.innerHTML = sel != null ? 'Tap the raised tile again to <b>discard</b> it' : canWin(me, S.melds[0].length) ? '<b>You can win!</b> Tap Mahjong' : 'Your turn: tap a tile to discard';
+    if (S.cover || (S.phase === 'claim' && S.claim)) st2.textContent = '';
+    else if (mine) st2.innerHTML = sel != null ? 'Tap the raised tile again to <b>discard</b> it' : canWin(mh, S.melds[ME].length) ? '<b>You can win!</b> Tap Mahjong' : 'Your turn: tap a tile to discard';
     else if (S.phase === 'end' || S.phase === 'over') st2.textContent = S.result && S.result.res ? (P[S.result.res.winner].name + ' won the hand') : 'Hand over';
     else st2.textContent = P[S.cur].cpu ? P[S.cur].name + (S.phase === 'draw' ? ' is drawing…' : ' is thinking…') : '';
     wrap.appendChild(st2);
 
-    if (S.phase === 'claim' && S.claim) table.appendChild(claimBar());
+    if (!S.cover && S.phase === 'claim' && S.claim) table.appendChild(claimBar());
 
     var rtw = Math.floor(Math.min(side ? 48 : Math.round(48 * Math.min(KZ, 1.15)), (RW - 40) / 7.4));
     var rack = el('div', { class: 'rack', style: { width: Math.min(RW, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
-    var sorted = me.slice().sort(function (a, b) { return a - b; });
-    if (S.drawn != null && S.cur === 0 && me.indexOf(S.drawn) >= 0) { sorted.splice(sorted.indexOf(S.drawn), 1); sorted.push(S.drawn); }
-    var wt = S.phase !== 'discard' || S.cur !== 0 ? waits(me, S.melds[0].length) : [];
+    if (S.cover) {   // between two people's turns: tile backs only
+      mh.forEach(function () { rack.appendChild(backTile(rtw)); });
+      wrap.appendChild(rack); app.appendChild(wrap); return;
+    }
+    var sorted = mh.slice().sort(function (a, b) { return a - b; });
+    if (S.drawn != null && S.cur === ME && mh.indexOf(S.drawn) >= 0) { sorted.splice(sorted.indexOf(S.drawn), 1); sorted.push(S.drawn); }
+    var wt = S.phase !== 'discard' || S.cur !== ME ? waits(mh, S.melds[ME].length) : [];
     sorted.forEach(function (id, i) {
-      var cls = (sel === id ? 'sel' : '') + (S.drawn === id && S.cur === 0 && i === sorted.length - 1 && sorted.length > 1 && i % 7 !== 0 ? ' new' : '');
+      var cls = (sel === id ? 'sel' : '') + (S.drawn === id && S.cur === ME && i === sorted.length - 1 && sorted.length > 1 && i % 7 !== 0 ? ' new' : '');
       var t = tile(id, rtw, cls, 'button');
       t.addEventListener('click', function () { tapTile(id); });
-      if (ev && ev.drew === 0 && id === S.drawn) t.classList.add('pop');
+      if (ev && ev.drew === ME && id === S.drawn) t.classList.add('pop');
       rack.appendChild(t);
     });
     wrap.appendChild(rack);
@@ -864,11 +903,11 @@
 
     // discard flies from the player's spot into their pond
     if (ev && ev.discard != null) {
-      var pd = pondEls[ev.discard], last = pd && pd.lastElementChild;
+      var dq = Q(ev.discard), pd = pondEls[dq], last = pd && pd.lastElementChild;
       if (last) {
         var tr = table.getBoundingClientRect(), lr = last.getBoundingClientRect();
-        var fx = [tr.left + tr.width / 2, tr.right - 20, tr.left + tr.width / 2, tr.left + 20][ev.discard], fy = [tr.bottom + 40, tr.top + tr.height / 2, tr.top + 10, tr.top + tr.height / 2][ev.discard];
-        var dx = fx - (lr.left + lr.width / 2), dy = fy - (lr.top + lr.height / 2), th = -rot[ev.discard] * Math.PI / 180;
+        var fx = [tr.left + tr.width / 2, tr.right - 20, tr.left + tr.width / 2, tr.left + 20][dq], fy = [tr.bottom + 40, tr.top + tr.height / 2, tr.top + 10, tr.top + tr.height / 2][dq];
+        var dx = fx - (lr.left + lr.width / 2), dy = fy - (lr.top + lr.height / 2), th = -rot[dq] * Math.PI / 180;
         var lx = dx * Math.cos(th) - dy * Math.sin(th), ly = dx * Math.sin(th) + dy * Math.cos(th);
         last.style.transition = 'none'; last.style.transform = 'translate(' + lx + 'px,' + ly + 'px) scale(1.6)';
         void last.offsetWidth;
@@ -896,6 +935,7 @@
   }
   function actions() {
     var a = el('div', { class: 'acts' });
+    if (S.cover) return a;
     if (S.phase === 'claim' && S.claim) {
       var o = S.claim.opts;
       if (o.win) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: function () { humanClaim('win'); } }));
@@ -911,14 +951,14 @@
       return a;
     }
     if (myTurn()) {
-      if (canWin(S.hands[0], S.melds[0].length)) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: declareWin }));
-      kongChoices(0).forEach(function (k) {
+      if (canWin(S.hands[S.me], S.melds[S.me].length)) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: declareWin }));
+      kongChoices(S.me).forEach(function (k) {
         var b = el('button', { type: 'button', class: 'btn btn-soft' }, [el('span', { text: 'Kong' }), tile(k * 4, 16)]);
         b.addEventListener('click', function () { humanKong(k); });
         a.appendChild(b);
       });
       a.appendChild(el('button', { type: 'button', class: 'btn btn-soft hintb', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + (a.children.length ? '' : '<span>Hint</span>'), onclick: hint }));
-      var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { snapshot(); discard(0, sel); } } });
+      var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { snapshot(); discard(S.me, sel); } } });
       d.disabled = sel == null; a.appendChild(d);
     } else if (S.phase === 'end') {
       a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Hand result', onclick: function () { showResult(false); } }));
@@ -933,14 +973,14 @@
     if (!S) return;
     if (S.phase === 'end') { showResult(false); return; }
     if (S.phase === 'over') { showResult(true); return; }
-    if (S.phase === 'claim') { if (!S.claim) afterDiscard(); return; }
+    if (S.phase === 'claim') { if (!S.claim) afterDiscard(); else if (!isMe(S.claim.q == null ? 0 : S.claim.q)) gate(S.claim.q); return; }
     flow(600);
   }
   var rT = null;
   window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && S.hands) render(); }, 150); });
 
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; render(); resumeFlow(); }
+  if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; if (S.me == null) S.me = 0; S.cover = false; render(); resumeFlow(); }
   else { try { localStorage.removeItem(SAVE); } catch (e) {} showSetup(); }
 })();
 </script>
