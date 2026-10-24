@@ -573,8 +573,32 @@
     }
     return g;
   }
+  // Keno (dt.k): the winner's card of playing cards with the winning squares ringed, and every card drawn
+  // dt: {k:1, s: size, d: 'A♠ 10♥ ..' in the order drawn, g: winner's card row by row, wl: winning squares, wn: winner}
+  function kenoView(e, ui) {
+    var el = ui.el, d = e.dt, n = +d.s || 5;
+    var drawn = String(d.d || '').split(' ').filter(Boolean), g = String(d.g || '').split(' ').filter(Boolean);
+    var set = {}; drawn.forEach(function (c) { set[c] = 1; });
+    var lastC = drawn[drawn.length - 1], wl = String(d.wl || '').split(',').filter(Boolean).map(Number);
+    function isRed(c) { return /[♥♦]/.test(c); }
+    var out = [];
+    if (g.length === n * n) {
+      var card = el('div', { class: 'kv-card', style: { '--n': n } });
+      g.forEach(function (c, i) {
+        card.appendChild(el('span', { class: 'kv-sq' + (isRed(c) ? ' red' : '') + (set[c] ? ' on' : '') + (wl.indexOf(i) >= 0 ? ' win' : '') + (c === lastC ? ' last' : '') },
+          [el('b', { text: c.slice(0, -1) }), el('i', { text: c.slice(-1) })]));
+      });
+      out.push(ui.section((d.wn || 'Winning') + '\u2019s card', el('div', { class: 'bg-wrap' }, [card,
+        el('small', { class: 'bg-note', text: (PATN[e.pattern] || 'Line') + ' Keno. Ringed in gold: the squares that won.' })]), { icon: 'trophy' }));
+    }
+    var seq = el('div', { class: 'kv-seq' });
+    drawn.forEach(function (c, i) { seq.appendChild(el('span', { class: 'kv-c' + (isRed(c) ? ' red' : '') + (c === lastC ? ' last' : ''), title: 'Card ' + (i + 1) }, [el('b', { text: c.slice(0, -1) }), el('i', { text: c.slice(-1) })])); });
+    out.push(ui.section('Cards drawn: ' + drawn.length + ' of 52', seq, { icon: 'cards' }));
+    return ui.wrap(out);
+  }
   R('bingo', function (e, ui) {
     var el = ui.el, d = e.dt;
+    if (d && d.k) return kenoView(e, ui);
     if (!d || !d.c) return null;
     var called = nums(d.c), w = nums(d.w), set = {}; called.forEach(function (n) { set[n] = 1; });
     var lastN = called[called.length - 1], pat = e.pattern || 'line';
@@ -632,7 +656,18 @@
     '.bg-seq{display:flex;flex-wrap:wrap;gap:4px;}' +
     '.bg-ball{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 70%,#fff),var(--c) 70%);}' +
     '.bg-ball i{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#fff;color:#1b1d2a;font-style:normal;font-size:.6rem;font-weight:900;}' +
-    '.bg-ball.last{box-shadow:0 0 0 2px #ffd447;}');
+    '.bg-ball.last{box-shadow:0 0 0 2px #ffd447;}' +
+    '.kv-card{width:100%;max-width:300px;padding:6px;border-radius:12px;background:#fffdf6;box-shadow:inset 0 0 0 3px #e11d48,0 10px 22px -10px rgba(0,0,0,.7);display:grid;grid-template-columns:repeat(var(--n),1fr);gap:3px;}' +
+    '.kv-sq{position:relative;z-index:0;display:flex;flex-direction:column;align-items:center;justify-content:center;aspect-ratio:4/5;border-radius:4px;border:1px solid #e3dccb;background:#fff;color:#1d1b2e;line-height:1;}' +
+    '.kv-sq.red,.kv-c.red{color:#d81e3a;}' +
+    '.kv-sq b{font-family:var(--display);font-weight:400;font-size:.95rem;}.kv-sq i{font-style:normal;font-size:.8rem;}' +
+    '.kv-sq.on::before{content:"";position:absolute;inset:8%;border-radius:50%;z-index:-1;background:radial-gradient(circle at 40% 35%,rgba(255,120,160,.55),rgba(225,29,72,.45));}' +
+    '.kv-sq.win{box-shadow:0 0 0 2.5px #ffc83d;}' +
+    '.kv-sq.last{outline:2px solid #1d1b2e;outline-offset:-4px;}' +
+    '.kv-seq{display:flex;flex-wrap:wrap;gap:4px;}' +
+    '.kv-c{display:flex;flex-direction:column;align-items:center;justify-content:center;width:26px;height:34px;border-radius:4px;background:#fffdf6;color:#1d1b2e;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.4);}' +
+    '.kv-c b{font-family:var(--display);font-weight:400;font-size:.8rem;}.kv-c i{font-style:normal;font-size:.66rem;}' +
+    '.kv-c.last{box-shadow:0 0 0 2px #ffd447;}');
 
   // ── Apples to Apples: the race for cards, then every round on the table (tap one) ──
   // dt: {dk: 'a2a'|'cah', k: kinds 'gr' (prompt, answer: g green, r red, b black, w white), t: target, ru: house rules,

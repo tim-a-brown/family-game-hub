@@ -1724,6 +1724,7 @@
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
       renderOptions();
+      if (r[1] === 0) return;   // a mode with nobody to seat (Bingo's caller)
       var head = el('div', { class: 'row' }, [el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" })]);
       if (r[1] > r[0]) {
         var out = el('output', { text: String(state.count) });
