@@ -161,10 +161,7 @@
     S = null; app.innerHTML = '';
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You play White against the computer' },
-        { id: '2p', icon: 'users', title: 'Two players', desc: 'Pass the phone back and forth' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'You play White against the computer' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'target', label: 'Match length', help: 'A win scores 1 point, a gammon 2 and a backgammon 3 (times the cube); first to this many points wins.', value: '1', choices: [['1', 'One game'], ['3', 'To 3'], ['5', 'To 5'], ['7', 'To 7']] },
         { id: 'cube', label: 'Doubling cube', value: 'on', choices: [['on', 'On', 'Before rolling, you can double the stakes; the other player must take it or give up the game.'], ['off', 'Off', 'No doubling: each game is worth its normal points.']] },
@@ -621,14 +618,15 @@
       icon: lose ? 'bot' : 'trophy',
       title: P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!',
       sub: S.target > 1 ? 'Match ' + S.score[0] + ' – ' + S.score[1] + (last2.how === 'gammon' ? ', finished with a gammon' : last2.how === 'backgammon' ? ', finished with a backgammon' : '') : (last2.how === 'gammon' ? 'With a gammon!' : last2.how === 'backgammon' ? 'With a backgammon!' : last2.how === 'drop' ? 'Double dropped' : 'All 15 checkers off') + (last2.pts > 1 ? ' · ' + last2.pts + ' points' : ''),
-      lose: lose, againLabel: 'Play again',
+      lose: lose,
       again: function () {
         var keep = { mode: S.mode, level: S.level, cubeOn: S.cubeOn, target: S.target, players: S.players };
         S = keep; S.score = [0, 0]; S.games = []; S.gameNo = 0; S.crawfordUsed = false; S.started = Date.now();
         S.ms = { hits: [0, 0], doubles: [0, 0], maxCube: 1, drops: [], gammons: [] };
         newGame();
       },
-      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: showSetup }]
+      look: { label: 'Look at the board', onClick: function () { render(); } },
+      setup: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); }
     });
   }
 

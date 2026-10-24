@@ -311,10 +311,7 @@
     S = null; sel = -1; prefix = [];
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
-        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks a move or two ahead and makes mistakes.'], ['normal', 'Normal', 'Looks several moves ahead.'], ['hard', 'Hard', 'Looks far ahead and takes its time. Tough to beat.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black (first)', 'Black always moves first, so you start.'], ['r', 'Red', 'The computer plays Black and moves first.']], when: function (m) { return m === 'cpu'; } },
@@ -410,10 +407,10 @@
         icon: !winner ? 'users' : lose ? 'bot' : 'trophy',
         title: !winner ? "It's a draw" : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
         sub: res.type === 'wipe' ? 'Every checker captured' : res.type === 'blocked' ? loser.name + ' has no moves left' : res.type === 'resign' ? loser.name + ' resigned' : 'No progress for 40 moves each',
-        lose: !!lose, againLabel: 'Play again',
+        lose: !!lose,
         again: function () { newGame(true); },
-        extra: [{ label: 'View the board', onClick: function () {} }],
-        closeLabel: 'Back to games'
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
     }, 500);
   }
@@ -761,8 +758,7 @@
       sub: left ? '' : why, notes: [series], notesTitle: 'Series',
       lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { WINO = null; netAgain(); },
-      extra: [{ label: 'View the board', onClick: function () { WINO = null; } }],
-      closeLabel: 'Back to games'
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
     });
   }
   function netLeave() {

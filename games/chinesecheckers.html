@@ -323,31 +323,20 @@
     S = null; sel = -1; selMoves = [];
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 5 computer players' },
-        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '1 to 6 people on one device' },
-        { id: 'mix', icon: 'sparkle', title: 'People + computers', desc: 'Friends and robots at one table' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 5 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
-        { id: 'cpus', label: 'Computer players', value: 1, choices: [[1, '1'], [2, '2'], [3, '3'], [4, '4']], when: function (m) { return m === 'mix'; } },
-        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.']], when: function (m) { return m !== 'pp'; } },
+        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.']] },
         { id: 'places', label: 'Play for', value: 'win', choices: [['win', 'The winner', 'The game ends as soon as someone fills the opposite point.'], ['all', 'All places', 'After the winner, everyone else keeps going to decide 2nd, 3rd and so on.']] },
         { id: 'nostay', label: 'Other players’ points', value: 'stop', help: 'The star points that belong to other players (not your start or your goal).', choices: [['stop', 'Can stop there', 'Your marbles may hop into and stay in other players’ points.'], ['pass', 'Pass through only', 'You can hop through other players’ points, but you can’t end your move there.']] },
         { id: 'spin', label: 'Board', value: 'turn', choices: [['turn', 'Turns to each player', 'The board rotates so whoever’s turn it is has their home at the bottom.'], ['fixed', 'Stays put', 'The board never rotates.']], when: function (m) { return m !== 'cpu'; } }
       ],
       players: {
         min: 1, max: 6,
-        range: function (m) { return m === 'cpu' ? [2, 6] : m === 'mix' ? [2, 5] : [1, 6]; },
-        cpu: function (m) { return m === 'cpu' ? 'seats' : false; }
+        range: function (m) { return m === 'cpu' ? [2, 6] : [1, 6]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }
       },
       onStart: function (cfg) {
         var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
-        if (cfg.mode === 'mix') {
-          var want = Math.min(+cfg.options.cpus || 1, 6 - players.length);
-          if (want < (+cfg.options.cpus || 1)) Kit.toast('The board seats 6, so ' + want + (want === 1 ? ' computer joins' : ' computers join'));
-          var avoid = players.map(function (p) { return p.name; });
-          Kit.cpuNames(want, avoid, 8).forEach(function (n) { players.push({ name: n, cpu: true }); });
-        }
         players.forEach(function (p, i) { p.col = COLORS[i]; });
         newGame({
           mode: cfg.mode, level: cfg.options.level || 'normal', players: players,
@@ -506,7 +495,7 @@
     }
     if (S.nostay) hl.push('Played with pass-through-only points');
     if (hasCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
-    var modeName = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : S.mode === 'mix' ? 'People + computers (' + LEVEL_NAME[S.level] + ')' : n === 1 ? 'Solo' : 'Pass & play';
+    var modeName = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : hasCpu() ? 'People + computers (' + LEVEL_NAME[S.level] + ')' : n === 1 ? 'Solo' : 'Pass & play';
     Kit.record(KEY, {
       started: S.started, mode: modeName + (n > 1 ? ' · ' + n + ' players' : ''),
       players: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: S.won.indexOf(i) >= 0 ? 10 : E.homeCount(S.b, i, S.pts), cpu: x.cpu }; }),
@@ -517,7 +506,7 @@
         fin: S.fin.slice(), mv: S.cnt.slice(), ch: (S.st.chains || []).slice(), hm: S.players.map(function (x, i) { return E.homeCount(S.b, i, S.pts); }), r: S.round,
         ml: S.ml && S.ml.length === movesMade() * 4 && S.ml.length <= 2800 ? S.ml : undefined }
     });
-    var lose = W.cpu && humans() > 0 && S.mode !== 'pp';
+    var lose = W.cpu && humans() > 0;
     Kit.callout(W.name === 'You' ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
     setTimeout(function () {
       Kit.win({
@@ -529,9 +518,9 @@
           var x = S.players[i];
           return { name: x.name, score: S.won.indexOf(i) >= 0 ? S.cnt[i] + ' moves' : E.homeCount(S.b, i, S.pts) + '/10 home', color: CHEX[x.col] };
         }) : null,
-        again: again, againLabel: 'Play again',
-        extra: [{ label: 'View the board', onClick: function () {} }],
-        closeLabel: 'Back to games'
+        again: again,
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
     }, 900);
   }

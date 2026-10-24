@@ -611,12 +611,8 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
   function showSetup() {
     pickStop(); S = null; mode = null; view = null; app.className = 'stage'; app.innerHTML = '';
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 7 computer players' },
-        { id: 'pass', icon: 'users', title: 'Pass and play', desc: '2 to 8 players sharing this phone' },
-        { id: 'online', icon: 'globe', title: 'Play online', desc: '2 to 8 players, each on their own device' }
-      ],
-      players: { min: 2, max: 8, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 8]; } },
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 7 computer players' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: '2 to 8 players, each on their own device' }]),
+      players: { min: 2, max: 8, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 8]; } },
       options: [
         { id: 'len', label: 'Game length', value: 'all', choices: [['all', 'Classic', 'Play until one player is left. A full game can take a couple of hours.'], ['m60', '1 hour', 'After an hour, the round is finished and the richest player wins.'], ['m90', '90 min', 'After 90 minutes, the round is finished and the richest player wins.'], ['r25', '25 rounds', 'After 25 rounds, the richest player wins.']] },
         { id: 'auction', label: 'Auctions', value: 'on', choices: [['on', 'On', 'The official rule: a property no one buys is auctioned to everyone.'], ['off', 'Off', 'House rule: a property no one buys stays with the bank.']] },
@@ -2031,7 +2027,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     else if (!S.recorded) { S.recorded = true; recordGame(); }
     var rank = P.map(function (p, i) { return { i: i, w: M.worth(S, i), out: p.out ? p.outAt : 1e9 }; })
       .sort(function (a, b) { return (a.i === w ? -1 : b.i === w ? 1 : 0) || b.out - a.out || b.w - a.w; });
-    var lose = mode === 'cpu' ? P[w].cpu : mode === 'online' ? !NET || w !== NET.seat : false;
+    var lose = mode === 'online' ? !NET || w !== NET.seat : !!P[w].cpu;
     if (winOv) winOv.close();
     winOv = Kit.win({
       icon: lose ? (P[w].cpu ? 'bot' : 'meh') : 'trophy', lose: lose, quiet: !!again,
@@ -2039,12 +2035,14 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       sub: S.endWhy === 'time' ? 'Richest when time ran out · worth ' + money(M.worth(S, w)) : 'Last one standing after ' + S.round + ' rounds',
       rank: rank.map(function (r) { var p = P[r.i]; return { name: p.name, score: p.out ? 'Bankrupt' : money(r.w), color: pcolor(r.i), cpu: p.cpu }; }),
       notes: highlights().slice(0, 4), notesTitle: 'How it went',
-      againLabel: 'Play again',
       again: function () {
         if (mode === 'online') { if (NET) NET.again(); return; }
         start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu, tok: p.tok }; }), S.opts);
       },
-      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, mode === 'online' ? { label: 'Leave the table', onClick: function () { TurnNet.leave(); } } : { label: 'Change players', onClick: function () { showSetup(); } }]
+      look: { label: 'Look at the board', onClick: function () { render(); } },
+      setup: mode === 'online' ? null : function () { stopAll(); clearSave(); showSetup(); },
+      closeLabel: mode === 'online' ? 'Leave the table' : null,
+      onClose: mode === 'online' ? function () { TurnNet.leave(); } : null
     });
   }
   function highlights() {

@@ -272,7 +272,6 @@
   });
 
   // ── Setup ────────────────────────────────────────────────────────────────
-  var setupObs = null;
   function savedRules() {
     try { var s = JSON.parse(localStorage.getItem('gn_setup_marbles') || '{}'); return (s.options && s.options.ruleset) || 'cards'; } catch (e) { return 'cards'; }
   }
@@ -283,10 +282,7 @@
     var st = null;
     function rulesNow() { return st ? st.state.options.ruleset : savedRules(); }
     st = Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against computer players' },
-        { id: 'mix', icon: 'users', title: 'Family game', desc: 'Pass the phone. Leave a seat blank for a computer player' }
-      ],
+      modes: Kit.modes(['cpu', { id: 'mix', kind: 'local' }]),
       options: [
         { id: 'ruleset', label: 'Rules', help: 'Which version of Marbles to play.', value: 'cards', choices: [
           ['cards', 'Cards', 'The usual family game: play cards to move. No center hole.'],
@@ -304,38 +300,13 @@
           ['shrink', '5, 4, 3, 2, 1', 'Hands shrink: 5 cards, then 4, 3, 2 and 1. Then the deck is reshuffled, the deal passes to the next player, and it starts again at 5.']] },
         { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
-      players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; } },
       onStart: function (cfg) {
-        if (setupObs) { setupObs.disconnect(); setupObs = null; }
-        var mix = cfg.mode === 'mix', blanks = [];
-        var inputs = app.querySelectorAll('.seat input');
-        var names = cfg.players.map(function (p, i) {
-          var blank = mix && inputs[i] && !inputs[i].value.trim();
-          if (blank) blanks.push(i);
-          return p.name;
-        });
-        var bots = Kit.cpuNames(blanks.length, names, cfg.players.length >= 4 ? 8 : 0);
-        var players = cfg.players.map(function (p, i) {
-          var b = blanks.indexOf(i);
-          return b >= 0 ? { name: bots[b] || 'Computer ' + (b + 1), cpu: true, color: p.color } : { name: p.name, cpu: !!p.cpu, color: p.color };
-        });
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, color: p.color }; });
         var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);
         start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', deal: cfg.options.deal || '5', teams: teams, players: players });
       }
     });
-    // Family game: blank seats become computer players
-    function hint() {
-      var mixOn = st.state.mode === 'mix';
-      app.querySelectorAll('.seat input').forEach(function (inp) {
-        if (inp.readOnly) return;
-        var want = mixOn ? 'Name, or blank for computer' : inp.getAttribute('data-ph') || inp.placeholder;
-        if (!inp.getAttribute('data-ph')) inp.setAttribute('data-ph', inp.placeholder);
-        if (inp.placeholder !== want) inp.placeholder = want;
-      });
-    }
-    if (setupObs) setupObs.disconnect();
-    setupObs = new MutationObserver(hint); setupObs.observe(app, { childList: true, subtree: true });
-    hint();
   }
   function armsFor(n) { return n === 2 ? [0, 2] : n === 3 ? [0, 1, 2] : n === 4 ? [0, 1, 2, 3] : n === 5 ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5]; }
   function newStats() { return { agg: {}, got: 0, centre: 0, star: 0, maxSix: 0, turns: 0, home: 0, jk: {}, swaps: 0, back4: 0, split2: 0, discards: 0 }; }
@@ -1024,7 +995,8 @@
       sub: names.length > 1 ? 'All eight marbles home' : 'All four marbles home',
       rank: rank, lose: lose,
       again: function () { start(setup0); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: true,
+      setup: function () { tok++; Kit.handoff.close(); clearSave(); showSetup(); }
     });
   }
 

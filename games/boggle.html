@@ -184,10 +184,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     stopTimer(); S = null; app.className = 'bg';
     Kit.setup(app, {
       intro: 'Find hidden words before the sand runs out.',
-      modes: [
-        { id: 'solo', icon: 'user', title: 'Solo', desc: 'One player, beat your best score' },
-        { id: 'party', icon: 'users', title: 'Pass and play', desc: '2 to 4 players take turns on the same board' }
-      ],
+      modes: Kit.modes([{ id: 'solo' }, { id: 'party', kind: 'local', desc: '2 to 4 players take turns on the same board' }]),
       players: { range: function (m) { return m === 'party' ? [2, 4] : [1, 1]; }, count: 2, names: true },
       options: [
         { id: 'size', label: 'Board', choices: [['4', '4×4 Classic', 'The classic 16-letter board. Words need 3 or more letters.'], ['5', '5×5 Big Boggle', 'A bigger 25-letter board. Words need 4 or more letters.']], value: '4' },
@@ -660,8 +657,9 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       sub: multi ? (best ? 'Longest word: ' + best.w.toUpperCase() : '') : (best ? 'Longest word: ' + best.w.toUpperCase() + ' · ' : '') + S.log[0].words[0].length + ' words',
       rank: multi ? rank : null,
       again: function () { var cfg = { size: S.size, time: S.time, rounds: S.rounds, rule: S.rule, players: S.players }; S = { size: cfg.size, time: cfg.time, rounds: cfg.rounds, rule: cfg.rule, players: cfg.players, round: 0, turn: 0, phase: 'ready', board: null, words: [], left: 0, log: [], started: Date.now(), shook: false }; Kit.gameStart(); newRound(); },
-      againLabel: 'Play again', extra: [{ label: 'See every word', onClick: function () { showRoundResults(); } }],
-      closeLabel: 'Close', onClose: function () {}
+      look: 'Look at the grid',
+      extra: [{ label: 'See every word', onClick: function () { showRoundResults(); } }],
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 

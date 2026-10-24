@@ -206,10 +206,7 @@
   function showSetup() {
     S = null; token++; undoStack = []; busy = false;
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Hunt down the computer\'s hidden fleet' },
-        { id: '2p', icon: 'users', title: 'Pass and play', desc: 'Two players, one phone, no peeking' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local', desc: 'Take turns on this phone, no peeking' }]),
       options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Fires mostly at random and only sometimes follows up a hit.'], ['normal', 'Normal', 'Keeps firing around a hit until the ship sinks.'], ['hard', 'Hard', 'Works out where ships are most likely hiding and aims there.']], when: function (m) { return m === 'cpu'; } }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       start: 'Place your ships',
@@ -786,8 +783,9 @@
       title: lose ? W.name + ' wins this one' : W.name === 'You' ? 'You win!' : W.name + ' wins!',
       sub: (lose ? W.name + ' sank your fleet in ' : 'Whole fleet sunk in ') + st.shots + ' shots · ' + Math.round(st.hits / st.shots * 100) + '% hits',
       rank: [{ name: W.name, score: '5 sunk', color: Kit.color(w) }, { name: S.players[l].name, score: sunkCount(w) + ' sunk', color: Kit.color(l) }],
-      lose: lose, againLabel: 'New battle', again: newBattle,
-      extra: [{ label: 'Look at the boards', onClick: function () {} }]
+      lose: lose, again: newBattle,
+      look: 'Look at the boards',
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 
@@ -972,7 +970,7 @@
       rank: W ? [{ name: W.name, score: '5 sunk', color: Kit.color(w) }, { name: G.players[1 - w].name, score: G.sunk[w].filter(Boolean).length + ' sunk', color: Kit.color(1 - w) }] : null,
       lose: !left && w !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
-      extra: [{ label: 'Look at the boards', onClick: function () {} }]
+      look: 'Look at the boards'
     });
   }
   function netLeave() {

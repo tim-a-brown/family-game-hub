@@ -421,11 +421,7 @@
     tok++; S = null; sel = -1; lock = false;
     app.className = 'stage';
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 3 computer players' },
-        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '2 to 4 people on one phone, tiles kept secret' },
-        { id: 'mix', icon: 'sparkle', title: 'People + computers', desc: 'Friends and robots at one table' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
         { id: 'variant', label: 'Game', value: 'draw', choices: [
           ['draw', 'Draw', 'If you can\'t play, take tiles from the boneyard until one fits.'],
@@ -436,21 +432,15 @@
           ['long', 'Longer', '150 points (250 in All Fives).']] },
         { id: 'teams', label: 'Partners (4 players)', value: 'off', help: 'With 4 players you can team up with the player sitting across from you.', choices: [
           ['off', 'On your own', 'Each player keeps their own score.'],
-          ['on', 'Partners across', 'You and the player across share a score.']] },
-        { id: 'cpus', label: 'Computer players', value: 1, help: 'How many computer players join the people.', choices: [[1, '1'], [2, '2'], [3, '3']], when: function (m) { return m === 'mix'; } }
+          ['on', 'Partners across', 'You and the player across share a score.']] }
       ],
       players: {
         min: 1, max: 4, count: 2,
-        range: function (m) { return m === 'mix' ? [1, 3] : [2, 4]; },
-        cpu: function (m) { return m === 'cpu' ? 'seats' : false; }
+        range: function () { return [2, 4]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }
       },
       onStart: function (cfg) {
         var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
-        if (cfg.mode === 'mix') {
-          var want = Math.min(+cfg.options.cpus || 1, 4 - players.length);
-          if (want < (+cfg.options.cpus || 1)) Kit.toast('The table seats 4, so ' + want + (want === 1 ? ' computer joins' : ' computers join'));
-          Kit.cpuNames(want, players.map(function (p) { return p.name; }), 8).forEach(function (n) { players.push({ name: n, cpu: true }); });
-        }
         players.forEach(function (p, i) { p.color = Kit.color(i); });
         var teams = cfg.options.teams === 'on';
         if (teams && players.length !== 4) { Kit.toast('Partners need 4 players'); teams = false; }
@@ -731,7 +721,7 @@
     }
     hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).sort(function (a, b) { return b - a; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
     var players = S.players.map(function (p, i) { return { name: p.name, score: S.score[sideOf(i)], cpu: p.cpu }; });
-    var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : S.mode === 'mix' ? ', with computers' : '');
+    var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : S.players.some(function (p) { return p.cpu; }) ? ', with computers' : '');
     Kit.record(KEY, {
       started: S.started, mode: modeName, players: players, winner: wname,
       summary: wname + ' won · ' + VNAME[S.variant],
@@ -751,7 +741,8 @@
       sub: VNAME[S.variant] + ' to ' + S.target + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'),
       rank: rank, lose: lose,
       again: function () { newMatch(again); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { tok++; clearSave(); showSetup(); }
     });
   }
 

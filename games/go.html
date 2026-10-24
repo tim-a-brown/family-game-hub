@@ -809,10 +809,7 @@ function GoEngine() {
     S = null; pv = -1;
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
-        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one phone' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'level', label: 'Computer skill', value: 'normal', when: function (m) { return m === 'cpu'; },
           help: 'How hard the computer tries.',
@@ -1028,10 +1025,10 @@ function GoEngine() {
         title: lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
         sub: o.resign ? loser.name + ' resigned' : cname(winC) + ' wins by ' + fmt(margin) + ' points',
         rank: sc ? [winC, 3 - winC].map(function (c) { return { name: pl(c).name, score: sc.total[c], color: c === BLACK ? '#8b8b96' : '#f1efe9' }; }) : null,
-        lose: !!lose, againLabel: 'Play again',
+        lose: !!lose,
         again: function () { newGame(true); },
-        extra: [{ label: 'View the board', onClick: function () {} }],
-        closeLabel: 'Back to games'
+        look: true,
+        setup: function () { epoch++; cancelThink(); clearSave(); showSetup(); }
       });
     }, o.resign ? 300 : 900);
   }

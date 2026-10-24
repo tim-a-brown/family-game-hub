@@ -710,13 +710,9 @@
     app.className = 'stage';
     Kit.setup(app, {
       intro: 'Build words, hit the bonus squares, and score big.',
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against 1 to 3 robots' },
-        { id: 'pp', icon: 'users', title: 'Pass & play', desc: '2 to 4 players sharing this phone' },
-        { id: 'online', icon: 'globe', title: 'Play online', desc: '2 to 4 players, each on their own device' }
-      ],
-      players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 4]; } },
-      options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m === 'cpu'; } }],
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 robots' }, { id: 'pp', kind: 'local' }, { id: 'online', desc: '2 to 4 players, each on their own device' }]),
+      players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 4]; } },
+      options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m !== 'online'; } }],
       start: "Let's play!",
       onStart: function (cfg) {
         if (cfg.mode === 'online') { var nm0 = cfg.players[0] && cfg.players[0].name; if (nm0 && nm0 !== 'Player 1') lsSet('tn_me', { name: nm0 }); TurnNet.open(); return; }
@@ -797,7 +793,7 @@
     pend = []; selId = null;
     var p = P(S.turn);
     if (S.mode === 'online') { veil = false; paintAll(); return; }   // (turnnet.js makes the computer seats' moves)
-    if (p.cpu) { veil = false; paintAll(); robotTurn(); return; }
+    if (p.cpu) { veil = S.mode === 'pp'; paintAll(); robotTurn(); return; }
     if (S.mode === 'pp' && humans() > 1) {
       veil = true; paintAll();
       var lastTxt = lastMoveText();
@@ -1707,10 +1703,12 @@
       sub: w >= 0 && order.length > 1 ? 'by ' + (P(order[0]).score - P(order[1]).score) + (P(order[0]).score - P(order[1]).score === 1 ? ' point' : ' points') : 'Scores are level',
       rank: order.map(function (i) { return { name: nm(i), score: P(i).score, color: col(i), cpu: P(i).cpu }; }),
       notes: notes, notesTitle: 'The game',
-      againLabel: left ? 'Back to the lobby' : 'Play again',
+      againLabel: left ? 'Back to the lobby' : undefined,
       again: function () { playAgain(); },
-      extra: [{ label: 'Look at the board', onClick: function () {} }],
-      closeLabel: 'Back to games'
+      look: true,
+      setup: S.mode === 'online' ? null : function () { cancelThink(); clearSave(); S = null; showSetup(); },
+      closeLabel: S.mode === 'online' ? 'Leave the table' : undefined,
+      onClose: S.mode === 'online' ? function () { TurnNet.leave(); } : undefined
     });
     // the best play of the game, spelled out in tiles
     var card = document.querySelector('.k-win:last-of-type .card'), sub = card && card.querySelector('.sub');

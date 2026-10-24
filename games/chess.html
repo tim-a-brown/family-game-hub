@@ -555,11 +555,7 @@
     S = null; sel = -1; NET.screen = 'setup'; Kit.onBack = null;
     app.classList.remove('ipl');
     var su = Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
-        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' },
-        { id: 'online', icon: 'globe', title: 'Play online', desc: 'Two devices, each signed in with a PIN' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }, { id: 'online', desc: 'Two devices, each signed in with a PIN' }]),
       options: [
         { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and often blunders.'], ['normal', 'Normal', 'Looks a few moves ahead. A good challenge.'], ['hard', 'Hard', 'Thinks deeper and longer. Very tough to beat.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'w', choices: [['w', 'White', 'White moves first, so you start.'], ['b', 'Black', 'The computer plays White and moves first.'], ['r', 'Random', 'A coin toss picks your color.']], when: function (m) { return m === 'cpu'; } }
@@ -697,8 +693,8 @@
           icon: !winner ? 'users' : 'trophy', lose: lose,
           title: !winner ? (res.type === 'stalemate' ? "Stalemate: it's a draw" : "It's a draw") : winner.me ? 'You win!' : winner.name + ' wins',
           sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : res.type === 'abandon' ? loser.name + ' stopped moving' : DRAW_TEXT[res.type],
-          againLabel: 'Rematch', again: function () { NET.win = null; netRematch(); },
-          extra: [{ label: 'View the board', onClick: function () { NET.win = null; } }],
+          again: function () { NET.win = null; netRematch(); },
+          look: { label: 'Look at the board', onClick: function () { NET.win = null; } },
           closeLabel: 'Leave the table', onClose: function () { NET.win = null; netLeave(false); showLobby(); }
         });
         keepResume();
@@ -711,10 +707,10 @@
         icon: !winner ? 'users' : lose ? 'bot' : 'trophy',
         title: !winner ? (res.type === 'stalemate' ? "Stalemate: it's a draw" : "It's a draw") : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
         sub: res.type === 'mate' ? 'Checkmate in ' + moves + (moves === 1 ? ' move' : ' moves') : res.type === 'resign' ? loser.name + ' resigned' : DRAW_TEXT[res.type],
-        lose: !!lose, againLabel: 'Play again',
+        lose: !!lose,
         again: function () { newGame(true); },
-        extra: [{ label: 'View the board', onClick: function () {} }],
-        closeLabel: 'Back to games'
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
     }, res.type === 'mate' ? 1300 : 700);
   }

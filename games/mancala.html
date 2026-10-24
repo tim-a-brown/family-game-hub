@@ -121,10 +121,7 @@
     S = null; app.innerHTML = '';
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against the computer' },
-        { id: '2p', icon: 'users', title: 'Two players', desc: 'Pass the phone back and forth' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'stones', label: 'Stones per pit', help: 'How many stones start in each small pit. More stones make a longer game.', value: '4', choices: [['4', '4 stones'], ['6', '6 stones']] },
         { id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks only one move ahead and often picks a pit at random.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and plays its best move. Tough to beat.']], when: function (m) { return m === 'cpu'; } }
@@ -329,9 +326,10 @@
       title: w < 0 ? "It's a tie!" : P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!',
       sub: s0 + ' – ' + s1 + ' · Series ' + S.wins[0] + '–' + S.wins[1] + (S.wins[2] ? ' (' + S.wins[2] + ' tied)' : ''),
       rank: [{ name: P[0].name, score: s0, color: P[0].color }, { name: P[1].name, score: s1, color: P[1].color }].sort(function (a, b) { return b.score - a.score; }),
-      lose: lose, againLabel: 'Play again',
+      lose: lose,
       again: function () { newRound(); },
-      extra: [{ label: 'Look at the board', onClick: function () { render(); } }, { label: 'Change players', onClick: showSetup }]
+      look: { label: 'Look at the board', onClick: function () { render(); } },
+      setup: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); }
     });
   }
 

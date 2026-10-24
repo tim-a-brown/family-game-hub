@@ -702,11 +702,11 @@
     Kit.setup(app, {
       title: 'Sandlot Showdown',
       intro: 'Your old baseball cards, their real stats, nine innings of baseball.',
-      modes: [
-        { id: 'two', icon: 'users', title: 'Two managers', desc: 'Each builds a team from real cards and you take turns on this phone' },
-        { id: 'cpu', icon: 'bot', title: 'vs Computer manager', desc: 'Solo: you manage one team, the computer manages the other' },
-        { id: 'derby', icon: 'trophy', title: 'Home Run Derby', desc: 'A 5-minute slugfest that only needs home run numbers' }
-      ],
+      modes: Kit.modes([
+        { id: 'cpu', desc: 'You manage one team, the computer manages the other' },
+        { id: 'two', kind: 'local', desc: 'Each builds a team from real cards and you take turns on this phone' },
+        { id: 'derby', icon: 'target', title: 'Home Run Derby', desc: 'A 5-minute slugfest that only needs home run numbers' }
+      ]),
       players: {
         range: function (m) { return m === 'derby' ? [1, 4] : [2, 2]; },
         cpu: function (m) { return m === 'cpu' ? 'seats' : false; },
@@ -2189,7 +2189,8 @@
       lose: youLost,
       again: function () { rematch(ps); },
       againLabel: 'Rematch, same teams',
-      extra: [{ label: 'Box score', onClick: function () { S = ps; openBox(true); } }, { label: 'New teams', onClick: showSetup }]
+      extra: [{ label: 'Box score', onClick: function () { S = ps; openBox(true); } }],
+      setup: showSetup, setupLabel: 'New teams'
     });
   }
   // For the history detail: line score, box score lines (as 'a|b|c' strings) and the scoring plays
@@ -2519,7 +2520,7 @@
       rank: S.teams.length > 1 ? S.teams.map(function (T, i) { return { name: T.name, score: tots[i], color: T.color, i: i }; }).sort(function (a, b) { return b.score - a.score || (a.i === win ? -1 : 1); }) : null,
       again: function () { S = ps; S.started = Date.now(); Kit.gameStart(); startDerby(); },
       againLabel: 'Derby again, same sluggers',
-      extra: [{ label: 'New game', onClick: showSetup }]
+      setup: showSetup, setupLabel: 'New teams'
     });
   }
   function openDerbyBox() {

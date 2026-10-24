@@ -259,11 +259,11 @@ button.hole{cursor:pointer;}
     S = null; tok++; busy = false;
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'solo', icon: 'user', title: 'Crack the code', desc: 'The computer hides a code. Can you break it?' },
-        { id: '2p', icon: 'users', title: 'Two players', desc: 'Take turns making and breaking codes' },
+      modes: Kit.modes([
+        { id: 'solo', kind: 'cpu', desc: 'The computer hides a code. Can you break it?' },
+        { id: '2p', kind: 'local', desc: 'Take turns making and breaking codes' },
         { id: 'watch', icon: 'bot', title: 'Computer breaks', desc: 'You set a code, watch the computer crack it' }
-      ],
+      ]),
       options: [
         { id: 'diff', label: 'Difficulty', value: 'classic', choices: [['easy', 'Easy', '4 pegs from 6 colors, no repeats, 10 guesses.'], ['classic', 'Classic', '4 pegs from 6 colors, colors can repeat, 10 guesses. Like the real Mastermind.'], ['hard', 'Hard', '5 pegs from 8 colors, colors can repeat, 12 guesses.']] },
         { id: 'blanks', label: 'Blanks allowed in the code', help: 'A blank is an empty hole that can be part of the secret code.', value: 'no', choices: [['no', 'No', 'Every hole in the code has a colored peg.'], ['yes', 'Yes', 'The code can have empty holes too, which makes it harder to crack.']] },
@@ -556,7 +556,8 @@ button.hole{cursor:pointer;}
         title: L.cracked ? (L.n === 1 ? 'First try!' : 'Code cracked!') : 'The code wins',
         sub: L.cracked ? 'You needed ' + L.n + ' guess' + (L.n === 1 ? '' : 'es') + (pb != null && L.n < pb ? ': a new best!' : '') : 'It was ' + codeName(L.code),
         againLabel: 'New code', again: function () { S.log = []; S.started = Date.now(); Kit.gameStart(); startRound(); },
-        extra: [{ label: 'Look at the board', onClick: function () {} }]
+        look: true,
+        setup: function () { clearSave(); showSetup(); }
       });
       return;
     }
@@ -577,7 +578,8 @@ button.hole{cursor:pointer;}
         title: W.cracked ? bot.name + ' cracked it in ' + W.n : 'Your code held!',
         sub: W.cracked ? 'Your code scored ' + S.scores[0] + ' point' + (S.scores[0] === 1 ? '' : 's') : bot.name + ' ran out of guesses',
         againLabel: 'Set another code', again: function () { S.log = []; S.scores = [0, 0]; S.started = Date.now(); Kit.gameStart(); startRound(); },
-        extra: [{ label: 'Look at the board', onClick: function () {} }]
+        look: true,
+        setup: function () { clearSave(); showSetup(); }
       });
       return;
     }
@@ -610,8 +612,9 @@ button.hole{cursor:pointer;}
       title: lead < 0 ? "It's a tie!" : ps[lead].name + ' wins!',
       sub: ps[0].name + ' ' + S.scores[0] + ' – ' + S.scores[1] + ' ' + ps[1].name,
       rank: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], color: Kit.color(i) }; }).sort(function (a, b) { return b.score - a.score; }),
-      againLabel: 'Play again', again: function () { S.round = 0; S.scores = [0, 0]; S.log = []; S.started = Date.now(); Kit.gameStart(); startRound(); },
-      extra: [{ label: 'Look at the board', onClick: function () {} }]
+      again: function () { S.round = 0; S.scores = [0, 0]; S.log = []; S.started = Date.now(); Kit.gameStart(); startRound(); },
+      look: true,
+      setup: function () { clearSave(); showSetup(); }
     });
   }
   function nextRound() { S.round++; startRound(); }

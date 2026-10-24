@@ -467,10 +467,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
     if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
     var st = Kit.setup(app, {
-      modes: [
-        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Guess words from a category' },
-        { id: 'duel', icon: 'users', title: 'Two players', desc: 'Take turns writing a secret word for each other' }
-      ],
+      modes: Kit.modes([{ id: 'solo', desc: 'Guess words from a category' }, { id: 'duel', kind: 'local', desc: 'Take turns writing a secret word for each other' }]),
       options: [
         { id: 'diff', label: 'Difficulty', value: 'easy', choices: [['easy', 'Easy', 'Shorter words and 10 misses allowed.'], ['medium', 'Medium', 'Medium-length words and 8 misses allowed.'], ['hard', 'Hard', 'Long words and only 6 misses allowed.']] },
         { id: 'theme', label: 'Picture', value: 'classic', choices: [['classic', 'Classic', 'A chalk stick figure is drawn one piece for each miss.'], ['balloons', 'Balloons', 'Gentler: each miss pops a balloon, and if they all pop the basket drops.']] },
@@ -489,7 +486,10 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       });
     }
     paint();
-    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Category' }), box]), st.el.querySelector('.btn-lg'));
+    // Category sits with the other choices, above How to play and the start button
+    var dock = st.el.querySelector('.k-startdock') || st.el.querySelector('.btn-lg'), before = dock;
+    if (dock && dock.previousElementSibling && /How to play/.test(dock.previousElementSibling.textContent)) before = dock.previousElementSibling;
+    st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Category' }), box]), before);
   }
   function start(cfg, cat) {
     S = { mode: cfg.mode, diff: cfg.options.diff || 'easy', theme: cfg.options.theme || 'classic', cat: cat || 'Animals',
@@ -1012,8 +1012,8 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       sub: solo ? S.scores[0] + ' points' : 'After ' + L.length / 2 + (L.length > 2 ? ' rounds' : ' round'),
       lose: solo && !wonN,
       rank: solo ? null : [0, 1].sort(function (x, y) { return S.scores[y] - S.scores[x]; }).map(function (i) { return { name: P[i].name, score: S.scores[i], color: Kit.color(i) }; }),
-      againLabel: 'Play again', again: again,
-      extra: [{ label: 'Change settings', onClick: showSetup }]
+      again: again,
+      setup: showSetup, setupLabel: 'Change settings'
     });
     app.innerHTML = '';
   }

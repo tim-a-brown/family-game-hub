@@ -101,10 +101,7 @@
     S = null;
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Can you outsmart it?' },
-        { id: '2p', icon: 'users', title: 'Two players', desc: 'Pass the phone back and forth' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Medium or Hard' }, { id: '2p', kind: 'local' }]),
       options: [{ id: 'level', label: 'Computer skill', value: 'med', choices: [['easy', 'Easy', 'Looks a little ahead and sometimes drops a disc anywhere.'], ['med', 'Medium', 'Looks a few moves ahead.'], ['hard', 'Hard', 'Looks far ahead and rarely misses a threat.']], when: function (m) { return m === 'cpu'; } }],
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       onStart: function (cfg) {
@@ -325,10 +322,10 @@
       icon: !p ? 'users' : lose ? 'bot' : 'trophy',
       title: !p ? "It's a draw!" : lose ? p.name + ' wins this one' : p.name === 'You' ? 'You win!' : p.name + ' wins!',
       sub: 'Series: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name + (S.wins[2] ? ' · ' + S.wins[2] + ' draw' + (S.wins[2] > 1 ? 's' : '') : ''),
-      lose: !!lose, againLabel: 'Next game',
+      lose: !!lose,
       again: function () { newRound(); },
-      extra: [{ label: 'View the board', onClick: function () {} }],
-      closeLabel: 'Back to games'
+      look: true,
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 
@@ -470,7 +467,7 @@
       sub: 'Series: ' + S.players[0].name + ' ' + S.wins[0] + ' – ' + S.wins[1] + ' ' + S.players[1].name,
       lose: !!p && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
-      closeLabel: 'Back to games'
+      look: true
     });
   }
   function netLeave() {

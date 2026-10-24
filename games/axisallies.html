@@ -3374,9 +3374,17 @@ function gameOver(side, why) {
     title: SIDE[side] + ' win!',
     sub: why + ' · round ' + S.round,
     rank: aaRank(side),
-    again: function () { showSetup(); }, againLabel: 'New game',
-    extra: [{ label: 'Look at the map', onClick: function () {} }]
+    again: rematch,
+    look: 'Look at the map',
+    setup: function () { clearSave(); showSetup(); }
   });
+}
+// The same generals and settings, from the opening position
+function rematch() {
+  if (!S) return showSetup();
+  var o = S.opt || {};
+  newGame({ map: S.mode, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: String(o.limit || 0), order: o.order || 'de', guide: !!o.guide,
+    seats: S.seats.map(function (x) { return { name: x.name, cpu: !!x.cpu, powers: x.powers.slice() }; }) });
 }
 // The game's history record (mode: how it was played); returns the winning seats
 function aaRecord(side, why, mode, extra) {
@@ -3560,10 +3568,7 @@ function showSetup() {
   app.className = 'stage'; app.innerHTML = ''; R = {};
   var st = Kit.setup(app, {
     intro: 'World War II strategy for 2 to 5 generals. Buy armies, move them across the world and roll for every battle.',
-    modes: [
-      { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You command one side; computer generals play the rest' },
-      { id: 'mix', icon: 'users', title: 'Pass & play', desc: 'Share the phone. Leave a seat blank for a computer general' }
-    ],
+    modes: Kit.modes([{ id: 'cpu', desc: 'You command one side; computer generals play the rest' }, { id: 'mix', kind: 'local' }]),
     options: [
       { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', choices: [
         ['full', '1942 Second Edition', 'The whole world: 5 powers, the real starting armies. A long game (a few hours).'],
@@ -3580,21 +3585,15 @@ function showSetup() {
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
-    players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+    players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; } },
     start: 'Start the war',
     onStart: function (cfg) {
       if (setupObs) { setupObs.disconnect(); setupObs = null; }
       var o = cfg.options, map = o.map || 'full';
-      var inputs = app.querySelectorAll('.seat input');
       var n = map === 'skirm' ? Math.min(3, cfg.players.length) : cfg.players.length;
       var groups = splitFor(map, n, cfg.mode, o.side);
-      var blanks = 0;
-      var names = cfg.players.slice(0, n).map(function (p) { return p.name; });
-      var bots = Kit.cpuNames(n, names, 10);
       var seats = groups.map(function (g, i) {
         var p = cfg.players[i];
-        var blank = cfg.mode === 'mix' && inputs[i] && !inputs[i].value.trim();
-        if (blank) return { name: bots[blanks++] || 'Computer', cpu: true, powers: g };
         return { name: p.name, cpu: !!p.cpu, powers: g };
       });
       newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'de', guide: o.guide === 'on', seats: seats });
@@ -3610,8 +3609,6 @@ function showSetup() {
       var nx = row.nextSibling, want = groups[i] ? groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') : '<span>Sits out in Skirmish (3 powers)</span>';
       if (nx && nx.classList && nx.classList.contains('seat-pw')) { if (nx.innerHTML !== want) nx.innerHTML = want; }
       else row.parentNode.insertBefore(el('div', { class: 'seat-pw', html: want }), row.nextSibling);
-      var inp = row.querySelector('input');
-      if (inp && !inp.readOnly && s.mode === 'mix' && inp.placeholder !== 'Name, or blank for computer') inp.placeholder = 'Name, or blank for computer';
     });
   }
   if (setupObs) setupObs.disconnect();
@@ -4064,7 +4061,8 @@ function netEnd() {
     rank: aaRank(side),
     againLabel: left ? 'Back to the lobby' : 'Play again',
     again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else if (NET) NET.again(); },
-    extra: [{ label: 'Look at the map', onClick: function () {} }]
+    look: 'Look at the map',
+    closeLabel: 'Leave the table', onClose: function () { TurnNet.leave(); }
   });
 }
 // Back to playing on this device: the local game is where it was left

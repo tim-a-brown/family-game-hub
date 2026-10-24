@@ -1051,7 +1051,10 @@
     ArcadeHi.check(HKEY, best, function () {
       Kit.win({ lose: true, icon: 'meh', title: 'Game Over', sub: (s.stats.lostTo ? s.stats.lostTo.name + ' needed ' + fmt(s.stats.lostTo.target) + '. ' : '') + 'You reached ante ' + s.ante + '.',
         againLabel: 'New run', again: function () { startRun(s.name, s.deckId); },
-        extra: [{ label: 'See the table', onClick: function () {} }, { label: 'Past runs', onClick: function () { Kit.history(HKEY, { title: 'Balatro: past runs' }); } }] });
+        look: 'Look at the table',
+        extra: [{ label: 'Past runs', onClick: function () { Kit.history(HKEY, { title: 'Balatro: past runs' }); } }],
+        setup: function () { clearSave(); showSetup(); }, setupLabel: 'Change settings',
+        scores: function () { ArcadeHi.show(HKEY, 'Balatro: biggest hands'); }, scoresLabel: 'Biggest hands' });
     });
   }
   function winRun() {
@@ -1061,7 +1064,10 @@
     ArcadeHi.check(HKEY, best, function () {
       Kit.win({ icon: 'trophy', title: 'You Win!', sub: 'You beat ante 8. Biggest hand: ' + fmt(best) + '. Keep going in endless mode, or start fresh.',
         againLabel: 'Keep going (endless)', again: function () { save(); render(); },
-        extra: [{ label: 'Start a new run', onClick: function () { clearSave(); startRun(s.name, s.deckId); } }] });
+        look: 'Look at the table',
+        extra: [{ label: 'Start a new run', onClick: function () { clearSave(); startRun(s.name, s.deckId); } }],
+        setup: function () { clearSave(); showSetup(); }, setupLabel: 'Change settings',
+        scores: function () { ArcadeHi.show(HKEY, 'Balatro: biggest hands'); }, scoresLabel: 'Biggest hands' });
     });
   }
 

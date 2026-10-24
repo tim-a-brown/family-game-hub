@@ -96,15 +96,12 @@
     S = null; token++; undoStack = [];
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against one or two computers' },
-        { id: 'pp', icon: 'users', title: 'Pass and play', desc: '2 to 4 players on one phone' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'You against one or two computers' }, { id: 'pp', kind: 'local' }]),
       options: [
         { id: 'n', label: 'Boxes', help: 'How many boxes across and down. Bigger boards take longer.', value: 4, choices: [[2, '2×2'], [3, '3×3'], [4, '4×4'], [5, '5×5'], [6, '6×6'], [7, '7×7']] },
-        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes but often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.']], when: function (m) { return m === 'cpu'; } }
+        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes but often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.']] }
       ],
-      players: { min: 2, max: 4, range: function (m) { return m === 'cpu' ? [2, 3] : [2, 4]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      players: { min: 2, max: 4, range: function (m) { return m === 'cpu' ? [2, 3] : [2, 4]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; } },
       onStart: function (cfg) {
         S = { mode: cfg.mode, level: cfg.options.level || 'normal', n: +cfg.options.n || 4,
           players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), first: 0 };
@@ -475,7 +472,7 @@
     runs.slice(0, 2).forEach(function (x) { hl.push(S.players[x.i].name + ' took ' + ([8, 11, 18].indexOf(x.b) >= 0 ? 'an ' : 'a ') + x.b + '-box chain'); });
     S.players.forEach(function (p, i) { if (S.dd[i]) hl.push(p.name + ' left two boxes on purpose to keep control' + (S.dd[i] > 1 ? ' (' + S.dd[i] + ' times)' : '')); });
     if (S.lastBy != null) hl.push(S.players[S.lastBy].name + ' closed the last box');
-    if (S.mode === 'cpu') hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    if (S.players.some(function (p) { return p.cpu; })) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     Kit.record(KEY, {
       started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Pass and play') + ' · ' + S.n + '×' + S.n,
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: sc[i] }; }),
@@ -492,8 +489,9 @@
       icon: !w ? 'users' : lose ? 'bot' : 'trophy',
       title: !w ? "It's a tie!" : lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',
       sub: sc.join(' – ') + ' boxes', rank: rank, lose: lose,
-      againLabel: 'Play again', again: newGame,
-      extra: [{ label: 'Look at the board', onClick: function () {} }]
+      again: newGame,
+      look: true,
+      setup: function () { clearSave(); showSetup(); }
     });
     Kit.resume.clear();
   }

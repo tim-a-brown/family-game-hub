@@ -7103,10 +7103,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     document.documentElement.classList.remove('lp-on'); Kit.orient(null); app.className = 'stage';
     var st = Kit.setup(app, {
       title: 'Lorcana', mode: ui.launchMode || undefined, modeLocked: !!ui.launchMode,
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against a computer player' },
-        { id: 'pass', icon: 'users', title: 'Pass & play', desc: 'Two players share this device. Your hand stays hidden from the other player' }
-      ],
+      modes: Kit.modes(['cpu', { id: 'pass', kind: 'local', desc: 'Two players share this device. Your hand stays hidden from the other player' }]),
       players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       options: [
         { id: 'first', label: 'Who goes first', help: 'The first player skips their first draw, as in the real game.', value: 'random', choices: [
@@ -11672,7 +11669,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     render();
     var lose = S.mode === 'cpu' ? wp.cpu : online && w.pi !== NET.seat;
     if (online) { Kit.win({ icon: 'trophy', lose: lose, title: lose ? wp.name + ' wins' : 'You win!', sub: w.how === 'deck' ? lp.name + ' couldn’t draw a card' : wp.lore + ' lore',
-      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }), again: function () { showLobby(); } }); return; }
+      rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color }; }), again: function () { showLobby(); }, againLabel: 'Back to the lobby' }); return; }
     // how it ended: the last few moves (public ones), oldest first
     var notes = S.log.filter(function (l) { return l && l.t && !/^(Turn \d|— )/.test(l.t); }).slice(-3).map(function (l) { return l.t; });
     var wo = {
@@ -11682,12 +11679,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       notes: notes,
       rank: [wp, lp].map(function (p) { return { name: p.name, score: p.lore + ' lore', color: p.color, cpu: p.cpu }; }),
       again: function () { endPill(); newGame(cfg, choices); },
-      extra: [{ label: 'View board', onClick: viewBoard }, { label: 'Change decks', onClick: function () { endPill(); lastCfg = cfg; showDeckPick(cfg, choices); } }],
+      look: true,
+      extra: [{ label: 'Change decks', onClick: function () { endPill(); lastCfg = cfg; showDeckPick(cfg, choices); } }],
+      setup: function () { endPill(); tok++; resetQ(); Kit.handoff.close(); closeOverlays(); clearSave(); S = null; showSetup(); },
       onClose: function () { endPill(); Kit.home(); }
     };
     Kit.win(wo);
-    // look at the final table; a button brings the results back
-    function viewBoard() { ui.results = function () { ui.results = null; wo.quiet = true; Kit.win(wo); renderBar(); }; renderBar(); }
   }
 
   // ═════════════════════════════════════════════════════════════════════════

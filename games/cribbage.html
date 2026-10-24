@@ -346,10 +346,7 @@
   function showSetup() {
     S = null; token++; undoStack = [];
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against a computer player' },
-        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Two players share this phone' }
-      ],
+      modes: Kit.modes(['cpu', { id: 'pass', kind: 'local' }]),
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       intro: 'Peg your way to 121',
       onStart: function (cfg) { newGame(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; })); }
@@ -668,7 +665,8 @@
       sub: skunk === 2 ? 'Double skunk! ' + nm(l) + ' stayed under 61' : skunk ? 'Skunk! ' + nm(l) + " didn't reach 91" : 'Won by ' + (WIN - ls) + ' points',
       rank: rank, lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () { newGame(S.mode, S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; })); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { clearSave(); showSetup(); }
     });
   }
 

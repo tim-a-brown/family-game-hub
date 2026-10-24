@@ -1395,7 +1395,11 @@
   function andList(n) { return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0] || ''; }
   function pcNames(p) { p = p || pcGet(); return p ? andList(Object.keys(p.parents).map(function (c) { return p.parents[c].name; })) : ''; }
   function pcCatOff(id) { var p = pcGet(); return !!(p && p.cats && p.cats.indexOf(id) >= 0); }
-  function gameOn(g) { var p = pcGet(); return !p || !g || ((p.games || []).indexOf(g.id) < 0 && (p.cats || []).indexOf(g.cat) < 0); }
+  // Games switched off in the Home screen sheet (gn_games_off: [game ids]): off the home screen, its search and
+  // Surprise, like a section that's off; the game page itself still opens from a link
+  function gamesOff() { try { var a = JSON.parse(lsGet('gn_games_off', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function gameOff(id) { return gamesOff().indexOf(id) >= 0; }
+  function gameOn(g) { var p = pcGet(); if (g && gameOff(g.id)) return false; return !p || !g || ((p.games || []).indexOf(g.id) < 0 && (p.cats || []).indexOf(g.cat) < 0); }
   function catName(id) { try { for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === id) return GAME_CATS[i].name; } catch (e) {} return ''; }
   function findGameSafe(k) { try { return typeof findGame === 'function' ? findGame(k) : null; } catch (e) { return null; } }
 
@@ -3073,26 +3077,57 @@
     // Home screen sections: move them up and down; Favorites always stays first
     var ord = el('div', { class: 'k-ord' });
     // drag a section by its grip into the order you like (the same feel as the Daily puzzles list)
-    var ordGrip = dragGrip(ord, '.k-ord-row.mv', function () {
-      lsSet('gn_cat_order', JSON.stringify(Array.prototype.map.call(ord.querySelectorAll('.k-ord-row.mv'), function (r) { return r.getAttribute('data-id'); })));
+    var ordGrip = dragGrip(ord, '.k-ord-sec', function () {
+      lsSet('gn_cat_order', JSON.stringify(Array.prototype.map.call(ord.querySelectorAll('.k-ord-sec'), function (r) { return r.getAttribute('data-id'); })));
       try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
       paintOrd();
     }, 'k-ord-grip');
+    var openCat = {};   // sections whose game list is open
+    function catsChanged() { try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} }
     function paintOrd() {
       ord.innerHTML = '';
       ord.appendChild(el('div', { class: 'k-ord-row fixed' }, [el('span', { class: 'ic', html: icon('star') }), el('span', { class: 'grow' }, [el('b', { text: 'Favorites' }), el('small', { text: 'Always first' })])]));
-      var cs = catsOrdered();
+      var cs = catsOrdered(), allGames = typeof GAMES !== 'undefined' ? GAMES : [];
       cs.forEach(function (c, i) {
         // the switch shows or hides the whole section on the home screen (the row dims when it's off)
-        var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off'), 'data-id': c.id });
+        var on = catOn(c.id), pcOff = pcCatOff(c.id), row = el('div', { class: 'k-ord-row mv' + (on ? '' : ' off') });
+        var sec = el('div', { class: 'k-ord-sec', 'data-id': c.id }, [row]);
         var sw = pcOff ? el('span', { class: 'k-ord-pc', role: 'img', 'aria-label': 'Turned off by ' + pcNames(), html: icon('lock') }) : el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(on), 'aria-label': 'Show ' + c.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
           var off = catsOff(), k = off.indexOf(c.id);
           if (k >= 0) off.splice(k, 1); else off.push(c.id);
-          lsSet('gn_cat_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd();
-          try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
+          lsSet('gn_cat_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd(); catsChanged();
         } });
-        ord.appendChild(row);
-        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(on ? [] : [el('small', { text: pcOff ? 'Turned off by ' + pcNames() : 'Hidden from the home screen' })])), sw].forEach(function (x) { row.appendChild(x); });
+        // the section's games: each with its own switch (console cartridges are managed on their shelf, so they stay out)
+        var games = allGames.filter(function (g) { return g.cat === c.id && !g.hidden && !g.cart; });
+        var nOff = games.filter(function (g) { return !gameOn(g); }).length;
+        var small = !on ? (pcOff ? 'Turned off by ' + pcNames() : 'Hidden from the home screen') : nOff ? nOff + ' of ' + games.length + ' games hidden' : '';
+        var open = !!openCat[c.id];
+        var disc = games.length ? el('button', { type: 'button', class: 'k-ord-b k-ord-open' + (open ? ' up' : ''), 'aria-expanded': String(open), 'aria-label': (open ? 'Hide' : 'Show') + ' the games in ' + c.name, html: icon('down'), onclick: function () {
+          openCat[c.id] = !openCat[c.id]; sfx('tap'); paintOrd();
+        } }) : null;
+        ord.appendChild(sec);
+        [ordGrip(), el('span', { class: 'ic', html: icon(c.id) }), el('span', { class: 'grow' }, [el('b', { text: c.name })].concat(small ? [el('small', { text: small })] : [])), disc, sw].forEach(function (x) { if (x) row.appendChild(x); });
+        if (!open) return;
+        var list = el('div', { class: 'k-ord-games' });
+        games.forEach(function (g) {
+          var gOn = !gameOff(g.id), pcG = pcGet() && (pcGet().games || []).indexOf(g.id) >= 0;
+          var gsw = pcG ? el('span', { class: 'k-ord-pc', role: 'img', 'aria-label': 'Turned off by ' + pcNames(), html: icon('lock') }) : el('button', { type: 'button', class: 'k-ord-sw', role: 'switch', 'aria-checked': String(gOn), 'aria-label': 'Show ' + g.name + ' on the home screen', html: '<i class="sw"></i>', onclick: function () {
+            var off = gamesOff(), k = off.indexOf(g.id);
+            if (k >= 0) off.splice(k, 1); else off.push(g.id);
+            lsSet('gn_games_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd(); catsChanged();
+          } });
+          list.appendChild(el('div', { class: 'k-ord-row gm' + (gOn && !pcG ? '' : ' off') }, [
+            el('span', { class: 'ic gic', html: window.GameIcon && GameIcon.solo ? GameIcon.solo(g.id) : icon(c.id) }),
+            el('span', { class: 'grow' }, [el('b', { text: g.name })].concat(pcG ? [el('small', { text: 'Turned off by ' + pcNames() })] : !gOn ? [el('small', { text: 'Hidden from the home screen' })] : [])),
+            gsw]));
+        });
+        if (games.length > 1 && !pcOff) list.appendChild(el('div', { class: 'k-ord-all' }, [
+          el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: nOff === games.length ? 'Show all' : 'Hide all', onclick: function () {
+            var off = gamesOff().filter(function (id) { return !games.some(function (g) { return g.id === id; }); });
+            if (nOff !== games.length) games.forEach(function (g) { off.push(g.id); });
+            lsSet('gn_games_off', JSON.stringify(off)); sfx('tap'); haptic('light'); paintOrd(); catsChanged();
+          } })]));
+        sec.appendChild(list);
       });
       if (lsGet('gn_cat_order', '') && lsGet('gn_cat_order', '') !== '[]') ord.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ord-reset', text: 'Back to the usual order', onclick: function () {
         lsSet('gn_cat_order', '[]'); sfx('tap'); paintOrd(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {}
@@ -3121,7 +3156,7 @@
     q.addEventListener('input', paint);
     paint();
     if (part === 'home') return sheet({ title: 'Home screen', node: el('div', null, [
-        el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch one off to hide its games from home, search, Surprise and High Scores.' }), ord]),
+        el('p', { class: 'muted', style: { margin: '0 0 4px' }, text: 'Drag sections into the order you like. Switch a section off to hide all its games from home, search, Surprise and High Scores, or open a section to switch off single games.' }), ord]),
       actions: [{ label: 'Done', cls: 'btn-soft' }] });
     sheet({ title: 'Game defaults', node: el('div', null, [
         el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Pick a game to set how it starts: who plays, the computer’s skill and its options. A game also remembers whatever you pick when you start it.' }), q, box]),
@@ -3131,7 +3166,11 @@
   function timerSheet() { sheet({ title: 'Game timer', node: timerPanel(), actions: [{ label: 'Done', cls: 'btn-soft' }] }); }
   // a few words for the menus: what the timer and the sections are set to now
   function timerStatus(t) { t = t === undefined ? timerGet() : t; if (!t) return 'Off'; if (t.cut) return 'Games off'; var ms = t.end - Date.now(); return ms > 0 ? (ms >= 3600000 ? Math.floor(ms / 3600000) + ' hr ' + Math.floor(ms / 60000) % 60 + ' min' : Math.ceil(ms / 60000) + ' min') + ' left' : t.lock && ms <= -60000 ? 'Locked' : 'Time’s up'; }
-  function homeStatus() { var n = catsOrdered().filter(function (c) { return !catOn(c.id); }).length; return n ? n + ' hidden' : 'All shown'; }
+  function homeStatus() {
+    var n = catsOrdered().filter(function (c) { return !catOn(c.id); }).length;
+    var g = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (x) { return !x.hidden && !x.cart && catOn(x.cat) && !gameOn(x); }).length;
+    return n || g ? [n ? n + (n === 1 ? ' section' : ' sections') : '', g ? g + (g === 1 ? ' game' : ' games') : ''].filter(Boolean).join(' and ') + ' hidden' : 'All shown';
+  }
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
     var node = el('div', { class: 'lk' }), s;
