@@ -451,10 +451,7 @@ body{overflow-x:hidden;}
   function catchUp() {
     var now = Date.now(), ev = [];
     if (!Q) return ev;
-    // interest on cash (a money market fund, paying about the T-bill rate)
-    var days = Math.floor((now - (A.mmAt || now)) / DAY);
-    if (days >= 1 && A.cash > 1) { var i = r2(A.cash * rate('irx') * days / 365); if (i >= .01) { A.cash = r2(A.cash + i); addTx({ type: 'int', amt: i, inc: i, note: 'Interest on cash' }); ev.push(['Interest on your cash', signed(i, 1)]); } }
-    if (days >= 1) A.mmAt = (A.mmAt || now) + days * DAY;
+    var i = accrue(); if (i) ev.push(['Interest on your cash', signed(i, 1)]);
     // dividends
     Object.keys(A.dvSeen).forEach(function (sym) {
       var s = S(sym); if (!s || !s.dv) return;
@@ -492,6 +489,13 @@ body{overflow-x:hidden;}
       }
     });
     return ev;
+  }
+  // interest on cash (a money market fund, paying about the T-bill rate), for each whole day since the last time
+  function accrue() {
+    var now = Date.now(), days = Math.floor((now - (A.mmAt || now)) / DAY), i = 0;
+    if (days >= 1 && A.cash > 1) { i = r2(A.cash * rate('irx') * days / 365); if (i >= .01) { A.cash = r2(A.cash + i); addTx({ type: 'int', amt: i, inc: i, note: 'Interest on cash' }); } else i = 0; }
+    if (days >= 1 || !A.mmAt) A.mmAt = (A.mmAt || now) + days * DAY;
+    return i;
   }
   function recordValue() {
     var v = totals().all, d = ymd(Date.now());
@@ -1023,7 +1027,7 @@ body{overflow-x:hidden;}
     function refresh() { var v = Math.floor(parseFloat(inp.value) || 0); go.disabled = v < 1 || v > bank; go.textContent = 'Add ' + money(v); }
     inp.addEventListener('input', refresh); refresh();
     var sh = Kit.sheet({ title: 'Add money', node: box });
-    go.onclick = function () { var v = Math.floor(parseFloat(inp.value) || 0); if (v < 1 || !Casino.bet(v)) return; A.cash = r2(A.cash + v); A.dep += v; if (!A.mmAt) A.mmAt = Date.now(); addTx({ type: 'dep', amt: v }); recordValue(); save(); sh.close(); Kit.sfx('chip'); Kit.haptic('light'); paint(); };
+    go.onclick = function () { var v = Math.floor(parseFloat(inp.value) || 0); if (v < 1 || !Casino.bet(v)) return; accrue(); if (A.cash <= 1) A.mmAt = Date.now(); A.cash = r2(A.cash + v); A.dep += v; if (!A.mmAt) A.mmAt = Date.now(); addTx({ type: 'dep', amt: v }); recordValue(); save(); sh.close(); Kit.sfx('chip'); Kit.haptic('light'); paint(); };
   }
   function withdraw() {
     var t = totals(), box = el('div', { class: 'tt' }), inp = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', placeholder: '0' }), sum = el('div', { class: 'sum' }), go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } }), warn = el('div');
