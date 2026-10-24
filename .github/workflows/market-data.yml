@@ -1,0 +1,31 @@
+# Prices for the Stock Market game: around midday and after the close in New York, every day (stocks only move on
+# weekdays; Bitcoin and Ethereum trade every day). See scripts/market-data.js. Run it any time from the Actions tab.
+name: Market prices
+
+on:
+  schedule:
+    - cron: '7 17 * * *'
+    - cron: '17 21 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/market-data.js
+      - .github/workflows/market-data.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: market-data
+  cancel-in-progress: false
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the latest prices and save them
+        run: node scripts/market-data.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
