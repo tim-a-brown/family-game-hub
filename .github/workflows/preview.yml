@@ -1,0 +1,36 @@
+# Deploys any branch except main to a Firebase Hosting preview channel named after the branch
+# (expires in 7 days; the live site is untouched). The preview URL is printed in the job summary.
+# Same secret as deploy.yml. Preview channels share the live site's Firestore: test in guest mode.
+name: Preview channel
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-preview-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: List files for offline
+        run: python3 scripts/build-offline-list.py
+      - name: Channel name
+        id: ch
+        run: echo "id=$(echo '${{ github.ref_name }}' | tr -c 'a-zA-Z0-9\n' '-' | cut -c1-40)" >> "$GITHUB_OUTPUT"
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        id: deploy
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: familygames-da3e5
+          channelId: ${{ steps.ch.outputs.id }}
+          expires: 7d
+      - name: Preview URL
+        run: |
+          echo "PREVIEW_URL=${{ steps.deploy.outputs.details_url }}"
+          echo "Preview: ${{ steps.deploy.outputs.details_url }}" >> "$GITHUB_STEP_SUMMARY"
