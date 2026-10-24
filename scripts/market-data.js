@@ -5,10 +5,28 @@
 // when Yahoo won't answer), and saves them to Firebase Storage market/quotes.json (public), which the game reads.
 // A symbol that can't be fetched keeps its last saved prices.
 //   FIREBASE_SERVICE_ACCOUNT='{...json key...}' node scripts/market-data.js        (DRY=1: print, don't save)
-const crypto = require('crypto');
+const crypto = require('crypto'), zlib = require('zlib');
 const BUCKET = 'familygames-da3e5.firebasestorage.app', OBJ = 'market/quotes.json';
 // The long view (5 years and all time) for the charts, refreshed once a day: market/history.json
-const HOBJ = 'market/history.json';
+const OBJ2 = 'market/q2.json', AOBJ = 'market/all.json', DDIR = 'market/d/';   // every US stock and ETF (price only); one file per symbol with the full picture
+const TOP = 500;   // the biggest companies by value get the full picture
+// popular funds beyond the hand-picked ones: [symbol, name, kind]
+const FUNDS = [['IVV', 'iShares Core S&P 500 ETF'], ['RSP', 'Invesco S&P 500 Equal Weight ETF'], ['VUG', 'Vanguard Growth ETF'], ['VTV', 'Vanguard Value ETF'], ['SCHB', 'Schwab US Broad Market ETF'],
+  ['SCHX', 'Schwab US Large-Cap ETF'], ['VB', 'Vanguard Small-Cap ETF'], ['VO', 'Vanguard Mid-Cap ETF'], ['IJH', 'iShares Core S&P Mid-Cap ETF'], ['IJR', 'iShares Core S&P Small-Cap ETF'],
+  ['VEA', 'Vanguard Developed Markets ETF'], ['VWO', 'Vanguard Emerging Markets ETF'], ['IEFA', 'iShares Core MSCI EAFE ETF'], ['IEMG', 'iShares Core MSCI Emerging Markets ETF'], ['EFA', 'iShares MSCI EAFE ETF'],
+  ['VIG', 'Vanguard Dividend Appreciation ETF'], ['VYM', 'Vanguard High Dividend Yield ETF'], ['JEPI', 'JPMorgan Equity Premium Income ETF'], ['DGRO', 'iShares Core Dividend Growth ETF'],
+  ['VGT', 'Vanguard Information Technology ETF'], ['SMH', 'VanEck Semiconductor ETF'], ['SOXX', 'iShares Semiconductor ETF'], ['XLF', 'Financial Select Sector SPDR'], ['XLV', 'Health Care Select Sector SPDR'],
+  ['XLY', 'Consumer Discretionary Select Sector SPDR'], ['XLP', 'Consumer Staples Select Sector SPDR'], ['XLI', 'Industrial Select Sector SPDR'], ['XLU', 'Utilities Select Sector SPDR'], ['XLB', 'Materials Select Sector SPDR'],
+  ['XLRE', 'Real Estate Select Sector SPDR'], ['XLC', 'Communication Services Select Sector SPDR'], ['ARKK', 'ARK Innovation ETF'], ['IWF', 'iShares Russell 1000 Growth ETF'], ['IWD', 'iShares Russell 1000 Value ETF'],
+  ['IAU', 'iShares Gold Trust'], ['SLV', 'iShares Silver Trust'], ['USO', 'United States Oil Fund'],
+  ['BIL', 'SPDR 1-3 Month T-Bill ETF', 'bond', 'bondfund'], ['SGOV', 'iShares 0-3 Month Treasury Bond ETF', 'bond', 'bondfund'], ['IEF', 'iShares 7-10 Year Treasury Bond ETF', 'bond', 'bondfund'],
+  ['VCIT', 'Vanguard Intermediate-Term Corporate Bond ETF', 'bond', 'bondfund'], ['VCSH', 'Vanguard Short-Term Corporate Bond ETF', 'bond', 'bondfund'], ['BNDX', 'Vanguard Total International Bond ETF', 'bond', 'bondfund']];
+// coins (Coinbase): [symbol, name, about]
+const COINS = [['BTC-USD', 'Bitcoin', 'The first cryptocurrency. Trades every day, all day, and swings hard.'], ['ETH-USD', 'Ethereum', 'The network most crypto apps and tokens run on.'],
+  ['SOL-USD', 'Solana', 'A fast network for apps and payments.'], ['XRP-USD', 'XRP', 'Built for moving money between banks and countries.'], ['DOGE-USD', 'Dogecoin', 'Started as a joke about a Shiba Inu dog.'],
+  ['ADA-USD', 'Cardano', 'A network built step by step from research papers.'], ['AVAX-USD', 'Avalanche', 'A network of many linked blockchains.'], ['LINK-USD', 'Chainlink', 'Feeds real-world data, like prices, to blockchains.'],
+  ['LTC-USD', 'Litecoin', 'An early copy of Bitcoin with faster payments.'], ['DOT-USD', 'Polkadot', 'Connects separate blockchains to each other.'], ['BCH-USD', 'Bitcoin Cash', 'A 2017 split from Bitcoin aimed at everyday payments.'],
+  ['XLM-USD', 'Stellar', 'Cheap payments across borders.'], ['SHIB-USD', 'Shiba Inu', 'A meme coin inspired by Dogecoin.'], ['UNI-USD', 'Uniswap', 'Trading crypto without a company in the middle.'], ['AAVE-USD', 'Aave', 'Lending and borrowing crypto.']];
 const UA = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Accept: 'application/json,text/csv,*/*' };
 
 // [symbol, name, kind (stock | fund | bond | coin), group, one line about it]
@@ -174,48 +192,98 @@ async function cnbc(sym, kind, prev) {
   if (hist.length && hist[hist.length - 1][0] === day(Date.now())) hist[hist.length - 1][1] = p; else hist.push([day(Date.now()), p]);
   return { p, pc: isFinite(pc) ? pc : p, at: marketOpen() ? Date.now() : lastClose(), hist: hist.slice(-260), dv: (prev && prev.dv) || [] };
 }
-// CoinGecko for Bitcoin and Ethereum
-async function gecko(sym) {
-  const id = { 'BTC-USD': 'bitcoin', 'ETH-USD': 'ethereum' }[sym];
-  const j = JSON.parse(await fetchText('https://api.coingecko.com/api/v3/coins/' + id + '/market_chart?vs_currency=usd&days=365&interval=daily'));
-  const pr = (j.prices || []).filter((x) => isFinite(x[1]));
-  if (pr.length < 20) throw new Error('gecko: ' + JSON.stringify(j).slice(0, 160));
-  const byDay = {}; pr.forEach((x) => { byDay[day(x[0])] = x[1]; });
-  const hist = Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
-  return { p: hist[hist.length - 1][1], pc: hist[hist.length - 2][1], at: pr[pr.length - 1][0], hist: hist.slice(-260), dv: [] };
+// ── The whole US market (Nasdaq's stock screener): every listed stock and ETF in one request each ──
+// Sectors as Nasdaq names them, kept as short codes
+const SECT = { 'Technology': 'tech', 'Health Care': 'health', 'Finance': 'fin', 'Consumer Discretionary': 'disc', 'Consumer Staples': 'stap', 'Industrials': 'ind', 'Energy': 'energy', 'Real Estate': 're', 'Utilities': 'util', 'Basic Materials': 'mat', 'Telecommunications': 'tel', 'Miscellaneous': 'misc' };
+// "Apple Inc. Common Stock" → "Apple"
+function cleanName(n) {
+  n = String(n || '').replace(/\s+/g, ' ').trim();
+  n = n.replace(/\s+(Class [A-C] )?(Common Stock|Ordinary Shares|Common Shares|Capital Stock|Subordinate Voting Shares)\b.*$/i, '')
+    .replace(/\s+American Depositary (Shares|Receipts?)\b.*$/i, '').replace(/\s+ADS\b.*$/, '')
+    .replace(/,?\s+(Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|Ltd\.?|Limited|PLC|plc|N\.V\.|S\.A\.|AG|SE|Holdings?|Group)$/i, '')
+    .replace(/,?\s+(Inc\.?|Corporation|Corp\.?|Ltd\.?|Holdings?)$/i, '').replace(/[,.]$/, '').trim();
+  return n;
 }
-// The long history: every close Nasdaq has (CoinGecko for crypto), as [[YYYY-MM-DD, close]] oldest first
-async function longHist(sym, kind) {
-  const byDay = {};
-  if (kind === 'coin') {
-    // Coinbase's public daily candles, 300 days a request, back until they run out
-    for (let end = Date.now(), k = 0; k < 20; k++, end -= 300 * 864e5) {
-      const start = end - 300 * 864e5;
-      let rows = [];
-      try { rows = JSON.parse(await fetchText('https://api.exchange.coinbase.com/products/' + sym + '/candles?granularity=86400&start=' + new Date(start).toISOString() + '&end=' + new Date(end).toISOString())); } catch (e) { if (!k) throw e; break; }
-      if (!Array.isArray(rows) || !rows.length) break;
-      rows.forEach((c) => { if (isFinite(c[4]) && c[4] > 0) byDay[day(c[0] * 1000)] = c[4]; });   // [time, low, high, open, close, volume]
-      await sleep(350);
-    }
-  } else {
-    // Nasdaq answers ten years at a time: step back a decade until a window comes back empty
-    const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
-    for (let to = Date.now(), k = 0; k < 6; k++) {
-      const from = to - 10 * 365.25 * 864e5;
-      let rows = [];
+function findRows(o, depth) {   // the screener's rows, wherever they sit in the answer
+  if (!o || depth > 4) return null;
+  if (Array.isArray(o)) return o.length && o[0] && o[0].symbol ? o : null;
+  if (typeof o === 'object') for (const k of Object.keys(o)) { const r = findRows(o[k], (depth || 0) + 1); if (r) return r; }
+  return null;
+}
+async function screener() {
+  const out = [];
+  const sj = JSON.parse(await fetchText('https://api.nasdaq.com/api/screener/stocks?tableonly=true&limit=25000&offset=0&download=true', { headers: NQ }));
+  (findRows(sj) || []).forEach((r) => {
+    const sym = String(r.symbol || '').trim(), p = num(r.lastsale), ch = num(r.netchange), cap = num(r.marketCap);
+    // shares only: no warrants, rights, units or preferred stock
+    if (!/^[A-Z]{1,5}$/.test(sym) || !(p > 0) || /\b(Warrants?|Rights?|Units?|Preferred|Depositary Shares, each|Notes due|Debentures)\b/i.test(r.name || '')) return;
+    out.push({ sym, name: cleanName(r.name), p, pc: isFinite(ch) ? r4(p - ch) : p, sec: SECT[r.sector] || 'misc', cap: cap > 0 ? cap : 0, k: 's' });
+  });
+  let etfs = 0;
+  try {
+    const ej = JSON.parse(await fetchText('https://api.nasdaq.com/api/screener/etf?download=true', { headers: NQ }));
+    (findRows(ej) || []).forEach((r) => {
+      const sym = String(r.symbol || '').trim(), p = num(r.lastSalePrice || r.lastsale), ch = num(r.netChange || r.netchange);
+      if (!/^[A-Z]{1,5}$/.test(sym) || !(p > 0)) return;
+      out.push({ sym, name: cleanName(r.companyName || r.name), p, pc: isFinite(ch) ? r4(p - ch) : p, sec: 'fund', cap: 0, k: 'f' }); etfs++;
+    });
+  } catch (e) { console.log('etf screener: ' + e.message.slice(0, 160)); }
+  if (out.length < 3000) throw new Error('screener: only ' + out.length + ' rows');
+  console.log('screener: ' + (out.length - etfs) + ' stocks, ' + etfs + ' ETFs');
+  return out;
+}
+
+// ── What the family owns or watches (each account's Stock Market keys, read with the service account) ──
+async function ownedSymbols(key) {
+  const tok = await token(key, 'https://www.googleapis.com/auth/datastore');
+  const base = 'https://firestore.googleapis.com/v1/projects/familygames-da3e5/databases/(default)/documents', h = { Authorization: 'Bearer ' + tok };
+  const pins = []; let page = '';
+  for (let i = 0; i < 20; i++) {
+    const j = JSON.parse(await fetchText(base + '/pins?showMissing=true&pageSize=300' + (page ? '&pageToken=' + encodeURIComponent(page) : ''), { headers: h }));
+    (j.documents || []).forEach((d) => pins.push(d.name.split('/').pop()));
+    if (!j.nextPageToken) break; page = j.nextPageToken;
+  }
+  const syms = {};
+  for (const pin of pins) {
+    for (const k of ['mk_acct', 'mk_watch']) {
       try {
-        const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=' + day(from) + '&todate=' + day(to) + '&limit=9999', { headers: NQ }));
-        rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1]) && r[1] > 0);
-      } catch (e) { if (!k) throw e; }
-      if (!rows.length) break;
-      rows.forEach((r) => { byDay[r[0]] = r[1]; });
-      to = from - 864e5;
-      await sleep(250);
+        const d = JSON.parse(await fetchText(base + '/pins/' + pin + '/st/' + k, { headers: h })), v = d.fields && d.fields.v && d.fields.v.stringValue;
+        if (!v) continue;
+        const o = JSON.parse(v);
+        if (k === 'mk_watch') (Array.isArray(o) ? o : []).forEach((s) => { syms[s] = 1; });
+        else ['lots', 'opts', 'orders'].forEach((f) => (o[f] || []).forEach((x) => { if (x && x.sym) syms[x.sym] = 1; }));
+      } catch (e) {}
     }
   }
-  const rows = Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
-  if (rows.length < 200) throw new Error('long: ' + rows.length + ' rows');
+  console.log('owned or watched: ' + Object.keys(syms).length + ' symbols across ' + pins.length + ' accounts');
+  return Object.keys(syms).filter((s) => /^[A-Z.\-]{1,10}$/.test(s));
+}
+
+// ── Coins: Coinbase's public daily candles, back as far as they go (300 days a request) ──
+async function coinDays(sym, all) {
+  const byDay = {};
+  for (let end = Date.now(), k = 0; k < (all ? 14 : 1); k++, end -= 300 * 864e5) {
+    let rows = [];
+    try { rows = JSON.parse(await fetchText('https://api.exchange.coinbase.com/products/' + sym + '/candles?granularity=86400&start=' + new Date(end - 300 * 864e5).toISOString() + '&end=' + new Date(end).toISOString())); } catch (e) { if (!k) throw e; break; }
+    if (!Array.isArray(rows) || !rows.length) break;
+    rows.forEach((c) => { if (isFinite(c[4]) && c[4] > 0) byDay[day(c[0] * 1000)] = c[4]; });   // [time, low, high, open, close, volume]
+    await sleep(300);
+  }
+  return Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
+}
+
+// ── Ten years of daily closes from Nasdaq (all it keeps) ──
+async function nasdaqYears(sym, kind) {
+  const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
+  const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=' + day(Date.now() - 10.1 * 365.25 * 864e5) + '&todate=' + day(Date.now()) + '&limit=9999', { headers: NQ }));
+  const rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1]) && r[1] > 0).reverse();
+  if (rows.length < 5) throw new Error('nasdaq: ' + rows.length + ' rows');
   return rows;
+}
+async function nasdaqDividends(sym, kind) {
+  const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.'), from = day(Date.now() - 370 * 864e5);
+  const dj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/dividends?assetclass=' + ac, { headers: NQ }));
+  return ((((dj.data || {}).dividends || {}).rows) || []).map((r) => [mdy(r.exOrEffDate), r4(num(r.amount))]).filter((d) => d[0] && d[1] > 0 && d[0] >= from).sort((a, b) => a[0] < b[0] ? -1 : 1);
 }
 // Thinned for a chart: the last close of each week for the past five years, of each month before that
 function thin(rows) {
@@ -254,122 +322,134 @@ function lastClose() {
   }
   return Date.now();
 }
-const SOURCES = { yahoo, nasdaq, cnbc };
-let ORDER = ['nasdaq', 'yahoo', 'cnbc'];
-async function quote(sym, kind, prev) {
-  if (kind === 'coin') { try { return await gecko(sym); } catch (e) { console.log('  gecko ' + sym + ': ' + e.message); } }
-  for (const src of ORDER) {
-    try { return await SOURCES[src](sym, kind === 'coin' ? 'stock' : kind, prev); } catch (e) { console.log('  ' + src + ' ' + sym + ': ' + e.message.slice(0, 200)); }
-  }
-  return null;
-}
-// which sources answer today (tried with Apple), best first
-async function probe() {
-  const ok = [];
-  for (const src of ORDER) { try { const q = await SOURCES[src]('AAPL', 'stock', null); console.log('source ' + src + ': ok, AAPL ' + q.p + ', ' + q.hist.length + ' days'); ok.push(src); } catch (e) { console.log('source ' + src + ': ' + e.message.slice(0, 200)); } }
-  ORDER = ok.concat(ORDER.filter((s) => ok.indexOf(s) < 0));
-}
-
-async function token(key) {
+async function token(key, scope) {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
   const now = Math.floor(Date.now() / 1000);
-  const body = b64({ alg: 'RS256', typ: 'JWT' }) + '.' + b64({ iss: key.client_email, scope: 'https://www.googleapis.com/auth/devstorage.read_write', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
+  const body = b64({ alg: 'RS256', typ: 'JWT' }) + '.' + b64({ iss: key.client_email, scope: scope || 'https://www.googleapis.com/auth/devstorage.read_write', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
   const sig = crypto.createSign('RSA-SHA256').update(body).sign(key.private_key).toString('base64url');
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + body + '.' + sig });
   return (await r.json()).access_token;
 }
 
+const KEY = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
+const isCoin = (s) => /-USD$/.test(s);
+const stored = (obj) => 'https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(obj) + '?alt=media';
+
 (async () => {
   let old = {};
-  try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(OBJ) + '?alt=media')); } catch (e) { console.log('no saved file yet'); }
-  const out = { v: 1, at: Date.now(), q: {}, rates: {}, idx: {} }, fails = [];
-  await probe();
-  const jobs = LIST.slice();
-  async function worker() { while (jobs.length) { const [sym, name, kind, group, about] = jobs.shift(); await one(sym, name, kind, group, about); } }
-  async function one(sym, name, kind, group, about) {
-    const prev = old.q && old.q[sym];
-    const q = await quote(sym, kind, prev);
-    if (!q) { fails.push(sym); if (prev) out.q[sym] = prev; return; }
-    // closes (oldest first), each with its date as days after the first one (d0); dividends as [date, amount]
-    const t0 = Date.parse(q.hist[0][0]);
-    out.q[sym] = { n: name, k: kind, g: group, a: about, p: r4(q.p), pc: r4(q.pc), at: q.at, d0: q.hist[0][0], h: q.hist.map((x) => r2(x[1])), o: q.hist.map((x) => Math.round((Date.parse(x[0]) - t0) / 864e5)), dv: q.dv.length ? q.dv : (prev && prev.dv) || [] };
+  try { old = JSON.parse(await fetchText(stored(OBJ2))); } catch (e) { try { old = JSON.parse(await fetchText(stored(OBJ))); } catch (e2) { console.log('no saved file yet'); } }
+  const now = Date.now(), at = marketOpen() ? now : lastClose();
+  // 1. The whole market, and what the family holds
+  const U = await screener().catch((e) => { console.log('screener: ' + e.message.slice(0, 200)); return null; });
+  const uBy = {}; (U || []).forEach((r) => { uBy[r.sym] = r; });
+  const own = KEY ? await ownedSymbols(KEY).catch((e) => { console.log('owned: ' + e.message.slice(0, 160)); return []; }) : [];
+  // 2. The symbols with the full picture (a year of prices, dividends, the long view): the hand-picked list, popular
+  //    funds, the biggest companies, and anything anyone owns or watches. [sym, name, kind, group, about]
+  const deep = [], seen = {};
+  const add = (s, n, k, g, a) => { if (seen[s] || isCoin(s)) return; seen[s] = 1; deep.push([s, n, k, g || '', a || '']); };
+  LIST.forEach((x) => add(x[0], x[1], x[2], x[3], x[4]));
+  FUNDS.forEach((x) => add(x[0], x[1], x[2] || 'fund', x[3] || 'etf', ''));
+  if (U) U.filter((r) => r.k === 's' && r.cap > 0).sort((a, b) => b.cap - a.cap).slice(0, TOP).forEach((r) => add(r.sym, r.name, 'stock'));
+  own.forEach((s) => { const r = uBy[s]; if (r) add(s, r.name, r.k === 'f' ? 'fund' : 'stock'); else if (old.q && old.q[s]) add(s, old.q[s].n, old.q[s].k, old.q[s].g, old.q[s].a); });
+  if (!U && old.q) Object.keys(old.q).forEach((s) => { const q = old.q[s]; add(s, q.n, q.k, q.g, q.a); });   // (no screener today: last time's list)
+  console.log('full picture for ' + deep.length + ' symbols plus ' + COINS.length + ' coins');
+
+  const out = { v: 2, at: now, q: {}, rates: {}, idx: {} }, fails = [], details = {}, year = {};
+  const jobs = deep.slice();
+  async function one([sym, name, kind, group, about]) {
+    const prev = old.q && old.q[sym], u = uBy[sym];
+    let rows = null, dv = [];
+    try { rows = await nasdaqYears(sym, kind === 'coin' ? 'stock' : kind); } catch (e) { console.log('  ' + sym + ': ' + e.message.slice(0, 120)); }
+    try { dv = await nasdaqDividends(sym, kind); } catch (e) {}
+    let p, pc;
+    if (u) { p = u.p; pc = u.pc; }
+    else if (rows && rows.length > 1) { p = rows[rows.length - 1][1]; pc = rows[rows.length - 2][1]; }
+    else { try { const c = await cnbc(sym, kind, prev); p = c.p; pc = c.pc; } catch (e) {} }
+    if (!(p > 0)) { fails.push(sym); if (prev) out.q[sym] = prev; return; }
+    let hist = rows ? rows.slice(-253) : prev && prev.h ? prev.h.map((v, i) => [day(Date.parse(prev.d0) + (prev.o ? prev.o[i] : i) * 864e5), v]) : [];
+    if (hist.length && hist[hist.length - 1][0] === day(now)) hist[hist.length - 1][1] = p; else if (marketOpen() || !rows) hist.push([day(now), p]);
+    if (!hist.length) hist = [[day(now), p]];
+    year[sym] = hist;
+    const last = hist.slice(-30), d = packed(last);
+    out.q[sym] = { n: name, k: kind, g: group || '', a: about || '', sec: u ? u.sec : (prev && prev.sec) || (kind === 'stock' ? 'misc' : 'fund'), cap: u ? Math.round(u.cap / 1e8) / 10 : (prev && prev.cap) || 0,
+      p: r4(p), pc: r4(pc), at, d0: d.d0, h: d.h, o: d.o, dv: dv.length ? dv : (prev && prev.dv) || [] };
+    if (rows && rows.length > 20) details[sym] = Object.assign({ v: 1, at: now, s: sym, dv: out.q[sym].dv, L: packed(thin(rows)) }, packed(hist));
   }
+  async function worker() { while (jobs.length) { await one(jobs.shift()); await sleep(120); } }
   await Promise.all([worker(), worker(), worker(), worker()]);
+  // coins
+  for (const [sym, name, about] of COINS) {
+    const prev = old.q && old.q[sym];
+    try {
+      const rows = await coinDays(sym, true);
+      if (rows.length < 30) throw new Error(rows.length + ' days');
+      const hist = rows.slice(-366), d = packed(hist.slice(-30)); year[sym] = hist.slice(-260);
+      out.q[sym] = { n: name, k: 'coin', g: 'crypto', a: about, sec: 'crypto', cap: 0, p: r4(hist[hist.length - 1][1]), pc: r4(hist[hist.length - 2][1]), at: now, d0: d.d0, h: d.h, o: d.o, dv: [] };
+      details[sym] = Object.assign({ v: 1, at: now, s: sym, dv: [], L: packed(thin(rows)) }, packed(hist));
+    } catch (e) { console.log('  ' + sym + ': ' + e.message.slice(0, 120)); fails.push(sym); if (prev) out.q[sym] = prev; }
+  }
   // Nasdaq only has dividend dates for Nasdaq-listed shares. For the rest, CNBC's yearly dividend is paid on the usual
   // schedule: four times a year (the 15th of March, June, September and December), bond funds on the 1st of each month.
-  const need = LIST.filter((x) => out.q[x[0]] && x[2] !== 'coin' && !(out.q[x[0]].dv || []).length).map((x) => x[0]);
+  const need = Object.keys(out.q).filter((s) => out.q[s].k !== 'coin' && !(out.q[s].dv || []).length);
   for (let i = 0; i < need.length; i += 40) {
     try {
-      const part = need.slice(i, i + 40), j = JSON.parse(await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=' + encodeURIComponent(part.map((x) => x === 'BRK-B' ? 'BRK.B' : x).join('|')) + '&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json'));
+      const part = need.slice(i, i + 40), j = JSON.parse(await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=' + encodeURIComponent(part.map((x) => x.replace('-', '.')).join('|')) + '&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json'));
       (((j.FormattedQuoteResult || {}).FormattedQuote) || []).forEach((q, k) => {
         const sym = part[k], yr = num(q.dividend); if (!sym || !(yr > 0) || !out.q[sym]) return;
-        const monthly = out.q[sym].k === 'bond', dv = [], now = new Date();
+        const monthly = out.q[sym].k === 'bond', dv = [], nd = new Date();
         for (let m = 12; m >= 0; m--) {
-          const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - m, monthly ? 1 : 15));
-          if (d > now || (!monthly && d.getUTCMonth() % 3 !== 2)) continue;
+          const d = new Date(Date.UTC(nd.getUTCFullYear(), nd.getUTCMonth() - m, monthly ? 1 : 15));
+          if (d > nd || (!monthly && d.getUTCMonth() % 3 !== 2)) continue;
           dv.push([day(d.getTime()), r4(yr / (monthly ? 12 : 4))]);
         }
-        out.q[sym].dv = dv; out.q[sym].dve = 1;
+        out.q[sym].dv = dv; out.q[sym].dve = 1; if (details[sym]) details[sym].dv = dv;
       });
     } catch (e) { console.log('cnbc dividends: ' + e.message.slice(0, 160)); }
   }
-  console.log('dividends: ' + LIST.filter((x) => out.q[x[0]] && (out.q[x[0]].dv || []).length).length + ' symbols');
-  // the list's own order (the game shows groups in this order)
-  const ordered = {}; LIST.forEach((x) => { if (out.q[x[0]]) ordered[x[0]] = out.q[x[0]]; }); out.q = ordered;
-  try { const t = await treasury(); ['irx', 'fvx', 'tnx', 'tyx'].forEach((k) => { if (isFinite(t[k])) out.rates[k] = t[k]; }); out.rates.date = t.date; console.log('Treasury yields ' + JSON.stringify(t)); }
+  // the hand-picked list's order first (the game shows its groups in this order), then the rest by size
+  const ordered = {};
+  LIST.concat(COINS.map((c) => [c[0]])).forEach((x) => { if (out.q[x[0]]) ordered[x[0]] = out.q[x[0]]; });
+  Object.keys(out.q).sort((a, b) => (out.q[b].cap || 0) - (out.q[a].cap || 0)).forEach((s) => { if (!ordered[s]) ordered[s] = out.q[s]; });
+  out.q = ordered;
+  try { const t = await treasury(); ['irx', 'fvx', 'tnx', 'tyx'].forEach((k) => { if (isFinite(t[k])) out.rates[k] = t[k]; }); out.rates.date = t.date; }
   catch (e) { console.log('treasury: ' + e.message); for (const k in RATES) { try { const q = await yahoo(RATES[k]); out.rates[k] = r4(q.p); } catch (e2) { if (old.rates) out.rates[k] = old.rates[k]; } } }
   for (const k in INDEX) {
-    let q = null; try { q = await yahoo(INDEX[k][0]); } catch (e) { try { q = await cnbc({ '^GSPC': '.SPX', '^DJI': '.DJI', '^IXIC': '.IXIC' }[INDEX[k][0]], 'stock', old.idx && old.idx[k] && null); } catch (e2) { console.log('  index ' + k + ': ' + e2.message.slice(0, 120)); } }
+    let q = null; try { q = await yahoo(INDEX[k][0]); } catch (e) { try { q = await cnbc({ '^GSPC': '.SPX', '^DJI': '.DJI', '^IXIC': '.IXIC' }[INDEX[k][0]], 'stock', null); } catch (e2) { console.log('  index ' + k + ': ' + e2.message.slice(0, 120)); } }
     if (q) out.idx[k] = { n: INDEX[k][1], p: r2(q.p), pc: r2(q.pc) }; else if (old.idx && old.idx[k]) out.idx[k] = old.idx[k];
     await sleep(250);
   }
-  // the market's own time for the stock prices (the latest of them)
   out.asof = Math.max.apply(null, Object.keys(out.q).filter((s) => out.q[s].k !== 'coin').map((s) => out.q[s].at || 0));
-  console.log(Object.keys(out.q).length + ' symbols, ' + fails.length + ' not fetched' + (fails.length ? ': ' + fails.join(' ') : '') + '; rates ' + JSON.stringify(out.rates));
-  if (fails.length > LIST.length / 2) throw new Error('too many symbols failed; leaving the saved prices as they are');
+  console.log(Object.keys(out.q).length + ' symbols, ' + Object.keys(details).length + ' detail files, ' + fails.length + ' not fetched' + (fails.length ? ': ' + fails.slice(0, 40).join(' ') : ''));
+  if (fails.length > deep.length / 2) throw new Error('too many symbols failed; leaving the saved prices as they are');
   const text = JSON.stringify(out);
-  if (process.env.DRY) { console.log(text.length + ' bytes'); }
-  else await upload(OBJ, text, 'no-cache, max-age=0');
-  // The long history, once a day (or when asked with LONG=1): a failure here never holds up the prices above
-  try { await history(out); } catch (e) { console.log('history: ' + (e.message || e)); }
+  // the whole market, compact: [symbol, name, price, previous close, sector, size in billions, s(tock) | f(und)]
+  const all = U ? JSON.stringify({ v: 1, at, s: U.map((r) => [r.sym, r.name, r4(r.p), r4(r.pc), r.sec, Math.round(r.cap / 1e8) / 10, r.k]) }) : null;
+  if (process.env.DRY) { console.log('quotes ' + text.length + ' bytes, all ' + (all ? all.length : 0) + ' bytes'); return; }
+  await upload(OBJ2, text, 'no-cache, max-age=0', true);
+  // The file the released game (before the whole-market update) reads: the hand-picked list with a year of closes,
+  // and its long view. Kept until every installed copy has moved to q2.json.
+  const legacy = { v: 1, at: now, asof: out.asof, q: {}, rates: out.rates, idx: out.idx }, lh = { v: 2, at: now, q: {} };
+  LIST.forEach((x) => { const s = x[0], q = out.q[s]; if (!q) return; legacy.q[s] = Object.assign({}, q, year[s] && year[s].length ? packed(year[s]) : {}); delete legacy.q[s].sec; delete legacy.q[s].cap; if (details[s]) lh.q[s] = details[s].L; });
+  await upload(OBJ, JSON.stringify(legacy), 'no-cache, max-age=0', true);
+  if (Object.keys(lh.q).length) await upload('market/history.json', JSON.stringify(lh), 'public, max-age=3600', true);
+  if (all) await upload(AOBJ, all, 'public, max-age=600', true);
+  const dj = Object.keys(details);
+  async function up() { while (dj.length) { const s = dj.shift(); try { await upload(DDIR + s + '.json', JSON.stringify(details[s]), 'public, max-age=600', true, true); } catch (e) { console.log('  detail ' + s + ': ' + e.message.slice(0, 120)); } } }
+  await Promise.all([up(), up(), up(), up(), up(), up()]);
+  console.log('Saved ' + Object.keys(details).length + ' detail files');
 })().catch((e) => { console.error(e.message || e); process.exit(1); });
 
 let auth = null;
-async function upload(obj, text, cache) {
+async function upload(obj, text, cache, gz, quiet) {
   if (!auth) {
-    const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
-    if (!key) throw new Error('no service account');
-    auth = { Authorization: 'Bearer ' + (await token(key)) };
+    if (!KEY) throw new Error('no service account');
+    auth = { Authorization: 'Bearer ' + (await token(KEY)) };
   }
   const bd = 'b' + crypto.randomBytes(8).toString('hex');
-  const meta = JSON.stringify({ name: obj, contentType: 'application/json', cacheControl: cache });
-  const body = '--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + bd + '\r\nContent-Type: application/json\r\n\r\n' + text + '\r\n--' + bd + '--';
+  const meta = JSON.stringify(Object.assign({ name: obj, contentType: 'application/json', cacheControl: cache }, gz ? { contentEncoding: 'gzip' } : {}));
+  const data = gz ? zlib.gzipSync(Buffer.from(text)) : Buffer.from(text);
+  const body = Buffer.concat([Buffer.from('--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + bd + '\r\nContent-Type: application/json\r\n\r\n'), data, Buffer.from('\r\n--' + bd + '--')]);
   const r = await fetch('https://storage.googleapis.com/upload/storage/v1/b/' + BUCKET + '/o?uploadType=multipart&fields=name', { method: 'POST', headers: Object.assign({ 'Content-Type': 'multipart/related; boundary=' + bd }, auth), body });
   if (!r.ok) throw new Error('upload HTTP ' + r.status + ' ' + (await r.text()).slice(0, 200));
-  console.log('Saved ' + obj + ' (' + text.length + ' bytes)');
-}
-
-async function history(out) {
-  let old = {};
-  try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(HOBJ) + '?alt=media')); } catch (e) { console.log('no saved history yet'); }
-  if (old.v === 2 && old.at && Date.now() - old.at < 20 * 3600e3 && !process.env.LONG) { console.log('history: fresh from ' + new Date(old.at).toISOString()); return; }
-  const H = { v: 2, at: Date.now(), q: {} }, jobs = LIST.slice(), got = [];
-  async function worker() {
-    while (jobs.length) {
-      const [sym, , kind] = jobs.shift();
-      try { const rows = await longHist(sym, kind); H.q[sym] = packed(thin(rows)); got.push(sym + ' ' + rows[0][0]); }
-      catch (e) {
-        console.log('  history ' + sym + ': ' + e.message.slice(0, 120));
-        if (old.q && old.q[sym]) H.q[sym] = old.q[sym];
-        else if (out.q[sym]) { const q = out.q[sym], t0 = Date.parse(q.d0); H.q[sym] = packed(thin(q.h.map((v, i) => [day(t0 + q.o[i] * 864e5), v]))); }
-      }
-      await sleep(300);
-    }
-  }
-  await Promise.all([worker(), worker(), worker()]);
-  console.log('history: ' + got.length + ' of ' + LIST.length + ' fetched; earliest dates: ' + got.slice(0, 12).join(', '));
-  if (got.length < LIST.length / 2 && old.q) { console.log('history: too many failed; keeping the saved file'); return; }
-  const text = JSON.stringify(H);
-  if (process.env.DRY) { console.log('history ' + text.length + ' bytes'); return; }
-  await upload(HOBJ, text, 'public, max-age=3600');
+  if (!quiet) console.log('Saved ' + obj + ' (' + text.length + ' bytes, ' + data.length + ' sent)');
 }
