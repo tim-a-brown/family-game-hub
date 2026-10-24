@@ -31,6 +31,11 @@ jobs:
           channelId: ${{ steps.ch.outputs.id }}
           expires: 7d
       - name: Preview URL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          URL: ${{ steps.deploy.outputs.details_url }}
         run: |
-          echo "PREVIEW_URL=${{ steps.deploy.outputs.details_url }}"
-          echo "Preview: ${{ steps.deploy.outputs.details_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "PREVIEW_URL=$URL"
+          echo "Preview: $URL" >> "$GITHUB_STEP_SUMMARY"
+          # also as a comment on the commit, so the URL can be read without the run log
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -f body="Preview: $URL" >/dev/null || true
