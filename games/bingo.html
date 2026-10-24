@@ -371,8 +371,9 @@
       '<h3>The card</h3><ul><li>A card has 5 columns: <b>B I N G O</b>.</li><li>B has numbers 1 to 15, I has 16 to 30, N has 31 to 45, G has 46 to 60, O has 61 to 75.</li><li>The middle square is a <b>free space</b>. It counts as covered from the start.</li></ul>' +
       '<h3>Calling</h3><ul><li>Tap <b>Draw ball</b>. The ball rolls out of the cage and is read out, like "B 12".</li><li>If that number is on your card, cover it with a marker.</li><li>Turn on <b>Auto</b> to draw a ball every few seconds, and <b>Voice</b> to have the phone read the calls.</li></ul>' +
       '<h3>Winning</h3><ul><li><b>Line</b> (standard): 5 in a row across, down, or corner to corner. The free space can be one of them.</li><li><b>4 corners</b>, <b>X</b> (both diagonals) and <b>Blackout</b> (the whole card) are fun variations. Pick one when you start.</li></ul>' +
-      '<h3>Shout Bingo!</h3><p>The player reads out their numbers. Tap <b>Check a card</b> and type them in. The caller checks every one was really called. If it is good, pick the winner and celebrate. You can keep calling for second place.</p>' +
-      '<h3>Playing on this phone</h3><p>Pick <b>vs Computer</b> or <b>Pass & play</b> and everyone at the table gets a card on the screen, Bingo or Keno. Draw the balls (or cards) and every card is marked for its player. Computer players can take any seat after yours.</p>' +
+      '<h3>Calling for paper cards</h3><p>Tap <b>Call only</b> next to Play to just call the balls while everyone marks their own paper cards.</p>' +
+      '<h3>Shout Bingo!</h3><p>With paper cards, the player reads out their numbers. Tap <b>Check a card</b> and type them in. The caller checks every one was really called. If it is good, pick the winner and celebrate. You can keep calling for second place.</p>' +
+      '<h3>Playing on this phone</h3><p>Tap <b>Play</b> and everyone at the table gets a card on the screen, Bingo or Keno. Draw the balls (or cards) and every card is marked for its player. Computer players can take any seat after yours: tap the robot at the end of a seat.</p>' +
       '<h3>Keno</h3><p>Bingo with a deck of cards. Everyone gets their own card on the screen, filled with playing cards in a random order: 5 by 5, 6 by 6 or 7 by 7. Every player\'s card is different.</p>' +
       '<ul><li>Tap <b>Draw card</b> (or the deck). The top card is turned over and read out, like "Jack of hearts".</li><li>Everyone who has that card on their card gets it marked straight away.</li>' +
       '<li>When someone is one card away, the card they need glows.</li><li>The same patterns win: a <b>Line</b> all the way across, down or corner to corner, <b>4 corners</b>, an <b>X</b>, or <b>Blackout</b>. First to finish it gets <b>KENO!</b> Keep drawing to play for second place.</li></ul>'
@@ -432,30 +433,27 @@
     if (cage) cage.off();
     cage = null;
     Kit.setup(app, {
-      modes: Kit.modes([
-        { id: 'caller', kind: 'caller', icon: 'sound', title: 'Call the balls', desc: 'You call. Everyone marks their own paper cards' },
-        { id: 'cpu', desc: 'Your card against computer players, all marked for you' },
-        { id: 'local', desc: 'Everyone gets a card on this phone, marked for them. Computer players can join' }
-      ]),
-      players: { min: 1, max: 8, count: 2, range: function (m) { return m === 'caller' ? [0, 0] : [1, 8]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
+      // everyone on this device gets a card (seats can be robots); "Call only" beside Play is for paper cards
+      mode: 'local', modeLocked: true,
+      players: { min: 1, max: 8, count: 2, cpu: 'mix' },
       options: [
-        { id: 'game', label: 'Game', value: 'bingo', when: function (m) { return m !== 'caller'; },
+        { id: 'game', label: 'Game', value: 'bingo',
           help: 'Bingo cards hold numbers under B I N G O and the balls come out of the cage. Keno cards hold playing cards and you draw from a deck.',
           choices: [['bingo', 'Bingo', 'A 5 by 5 card of numbers with a free space in the middle.'], ['keno', 'Keno', 'A card of playing cards, 5 by 5 up to 7 by 7.']] },
-        { id: 'size', label: 'Card size', when: function (m, op) { return m !== 'caller' && op.game === 'keno'; }, value: 5,
+        { id: 'size', label: 'Card size', when: function (m, op) { return op.game === 'keno'; }, value: 5,
           help: 'How many squares across and down. A bigger card holds more of the deck.',
           choices: [[5, '5 by 5', '25 cards on each player\'s card.'], [6, '6 by 6', '36 cards on each player\'s card.'], [7, '7 by 7', '49 cards: nearly the whole deck.']] },
         { id: 'pattern', label: 'Winning pattern', value: 'line',
           help: 'What you need to cover on your card to win.', choices: function (n, m, op) {
-            var k = m !== 'caller' && op.game === 'keno';
+            var k = op.game === 'keno';
             return [['line', 'Line', k ? 'A full row across, down or corner to corner. This is the standard way.' : 'Five in a row across, down or corner to corner. This is the standard way.'],
               ['corners', '4 corners', 'Just the four corner squares.'], ['x', 'X', 'Both diagonals, making a big X.'],
               ['blackout', 'Blackout', 'Every square on the card. This takes the longest!']];
           } }
       ],
+      alt: { label: 'Call only', icon: 'sound', onClick: function (cfg) { freshGame(cfg.options.pattern); build(); } },
       onStart: function (cfg) {
-        if (cfg.mode === 'caller') { freshGame(cfg.options.pattern); build(); }
-        else if (cfg.options.game === 'keno') { freshKeno(cfg); buildKeno(); }
+        if (cfg.options.game === 'keno') { freshKeno(cfg); buildKeno(); }
         else { freshCards(cfg); buildKeno(); }
       }
     });

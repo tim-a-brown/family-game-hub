@@ -1654,6 +1654,7 @@
   //            Or {id, value, render:(value, set)=>node, summary:(value)=>text}: the game draws its own picker.
   //   intro:   (no longer shown: the setup screen shows just the game's name)
   //   start:   button label
+  //   alt:     {label, icon, onClick(cfg)}  a smaller second start button to the right of the main one
   //   onStart: function(cfg)   cfg = {mode, players:[{name,cpu,color}], options:{}}
   // })
   // "Phone" in setup text reads oddly on an iPad: say what the device is
@@ -1942,7 +1943,11 @@
       }
     });
     // (the rules are the "? Rules" button in the bar above); the start button stays in view at the bottom whatever's above it
-    wrap.appendChild(el('div', { class: 'k-startdock' }, [startBtn]));
+    // o.alt: a smaller second way to start, beside the main button (Bingo's "Call only")
+    var dock = [startBtn];
+    if (o.alt) dock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (o.alt.icon ? icon(o.alt.icon) : '') + '<span>' + esc(o.alt.label) + '</span>',
+      onclick: function () { saveSetup(); sfx('pop'); haptic('medium'); o.alt.onClick && o.alt.onClick({ mode: state.mode, players: [], options: state.options }); } }));
+    wrap.appendChild(el('div', { class: 'k-startdock' + (o.alt ? ' has-alt' : '') }, dock));
     host.appendChild(wrap);
     winPeekClear();
     renderModes(); renderSeats();
