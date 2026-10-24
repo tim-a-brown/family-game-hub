@@ -254,6 +254,8 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       c: { sel: '#4f6bd8', sd: '#050b24', sm: '#1e3a8a', bd: '#0b1a45', trim: '#f97316', mq: 'linear-gradient(180deg,#14143a,#05050f)', tc: '#f97316', glow: '#fb923c', hc: '#f97316', lc: '#93c5fd', rows: ['#facc15', '#60a5fa', '#f97316', '#a78bfa'], pn: '#0a0a23', pn2: '#1e2a6b', btna: '#f97316', btnb: '#60a5fa', ball: '#f97316', bgo: '.65' } },
     { key: 'snake', game: 'snake', title: 'SNAKE', anim: 'snake',
       c: { sel: '#4ade80', sd: '#04180b', sm: '#166534', bd: '#0b3a1e', trim: '#4ade80', mq: 'linear-gradient(180deg,#0f3d22,#041a0c)', tc: '#a3e635', glow: '#22c55e', hc: '#c5f07a', lc: '#8bac0f', rows: ['#c5f07a', '#9bbc0f', '#e0f8a0'], pn: '#052e16', pn2: '#14532d', btna: '#a3e635', btnb: '#22c55e', ball: '#22c55e', scr: '#0d260d', bgo: '.55' } },
+    { key: 'goblin', game: 'goblindefenders', title: 'GOBLIN DEFENDERS', short: 'GOBLINS', anim: 'goblin',
+      c: { sel: '#4f9a2c', sd: '#1a0e04', sm: '#6a3a14', bd: '#3a1e08', trim: '#e2a63e', mq: 'linear-gradient(180deg,#a3622c,#5a2e10)', tc: '#ffe9b0', glow: '#7cc23a', hc: '#ffd84a', lc: '#c9e8a0', rows: ['#ffd84a', '#9ad44a', '#ff8a3a', '#7ac8ff'], pn: '#2a1608', pn2: '#6a3a14', btna: '#e84a2a', btnb: '#4f9a2c', ball: '#e2a63e', scr: '#173a0e', bgo: '.6' } },
     { key: 'galaga', game: 'galaga', title: 'GALAGA', anim: 'galaga',
       c: { sel: '#3b6cff', sd: '#03051a', sm: '#1a2266', bd: '#0a0f3a', trim: '#ff3a2a', mq: 'linear-gradient(180deg,#0e1a6a,#02041a)', tc: '#ffd820', glow: '#4a8cff', hc: '#ff4a3a', lc: '#9cc0ff', rows: ['#ff4a3a', '#ffffff', '#4ad8ff', '#18c040'], pn: '#03051a', pn2: '#1a2266', btna: '#ff2a1e', btnb: '#ff2a1e', ball: '#ff2a1e', bgo: '.6' } },
     { key: 'invaders_frenzy', game: 'invaders', title: 'SPACE INVADERS', short: 'INVADERS', anim: 'invaders',
@@ -465,6 +467,9 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       'RR...........', 'RRRRR........', '.DRRRRRR.....', '...DDDRRRR...', '......DDDD...'] },
     paddleball: { pal: { W: '#ffffff' }, rows: [
       'WW..........WW', 'WW..........WW', 'WW.....WW...WW', 'WW.....WW...WW', 'WW..........WW', 'WW..........WW'] },
+    // the crossbow tower: a wooden cart and its drawn bow
+    goblindefenders: { pal: { B: '#c9773a', D: '#6a3412', I: '#5a6068', W: '#f2e6c8', S: '#cfd6de' }, rows: [
+      '.......II....', '......I..I...', '.....I....I..', '...WWWWWWWWS.', '.....I....I..', '..BBBBBBBBB..', '.BBBBBBBBBBB.', '.BIBBBBBBBIB.', '.DD.......DD.'] },
     // the Galaga fighter
     galaga: { pal: { W: '#ffffff', R: '#ff2a1e', B: '#2a5cff' }, rows: [
       '......W......', '......W......', '.....WWW.....', '..R..WWW..R..', '..W.WWWWW.W..', 'R.WBWWRWWBW.R', 'W.WWWRRRWWW.W', 'WWWWWWRWWWWWW', 'WWW.RWWWR.WWW', 'WW...R.R...WW'] },
@@ -1797,6 +1802,52 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
       };
     },
 
+    // Goblin Defenders: soldiers march the winding dirt road to the goblin village while crossbow towers and a bomb
+    // tower pick them off; coins pop from the fallen
+    goblin: function (W, H) {
+      var sp = sparks(), pp = popups(), t = 0, score = 0, men = [], bolts = [], spawnT = 0, wave = 1, left = 8;
+      var P = [[-6, 30], [52, 30], [52, H - 30], [112, H - 30], [112, 26], [W + 6, 26]];
+      var TW = [{ x: 30, y: 44, k: 'x' }, { x: 74, y: H - 46, k: 'b' }, { x: 90, y: 44, k: 'x' }, { x: 134, y: 44, k: 'x' }, { x: 74, y: 52, k: 'x' }];
+      TW.forEach(function (tw) { tw.cd = rnd(0, 1); });
+      var segs = [], total = 0; for (var i = 0; i < P.length - 1; i++) { var l = Math.abs(P[i + 1][0] - P[i][0]) + Math.abs(P[i + 1][1] - P[i][1]); segs.push(l); total += l; }
+      function at(d) { for (var i = 0; i < segs.length; i++) { if (d <= segs[i]) { var f = d / segs[i]; return { x: P[i][0] + (P[i + 1][0] - P[i][0]) * f, y: P[i][1] + (P[i + 1][1] - P[i][1]) * f }; } d -= segs[i]; } return { x: W + 9, y: 26 }; }
+      return {
+        step: function (dt) {
+          t += dt; sp.step(dt, 30); pp.step(dt);
+          spawnT -= dt; if (spawnT <= 0 && left > 0) { spawnT = .9; left--; men.push({ d: 0, hp: 3 + wave, big: Math.random() < .15 }); }
+          if (!left && !men.length) { wave++; left = 7 + wave; pp.add('WAVE ' + wave, W / 2, H / 2 - 4, '#ffd84a'); }
+          men.forEach(function (m) { m.d += dt * (m.big ? 9 : 14); var p = at(m.d); m.x = p.x; m.y = p.y; if (m.d > total) { m.dead = true; sp.burst(W - 14, 26, 8, ['#ff4a3a'], 30); } });
+          TW.forEach(function (tw) { tw.cd -= dt; if (tw.cd > 0) return; var tgt = null, bd = 44 * 44;
+            men.forEach(function (m) { var dd = (m.x - tw.x) * (m.x - tw.x) + (m.y - tw.y) * (m.y - tw.y); if (!m.dead && dd < bd) { bd = dd; tgt = m; } });
+            if (tgt) { tw.cd = tw.k === 'b' ? 1.4 : .55; bolts.push({ x: tw.x, y: tw.y - 3, m: tgt, k: tw.k, sx: tw.x, sy: tw.y - 3, f: 0 }); } });
+          bolts.forEach(function (b) { b.f += dt * (b.k === 'b' ? 1.6 : 4); var f = Math.min(1, b.f); b.x = b.sx + (b.m.x - b.sx) * f; b.y = b.sy + (b.m.y - b.sy) * f - (b.k === 'b' ? Math.sin(f * Math.PI) * 14 : 0);
+            if (f >= 1) { b.done = true; var hitAll = b.k === 'b' ? men.filter(function (m) { return Math.abs(m.x - b.m.x) < 9 && Math.abs(m.y - b.m.y) < 9; }) : [b.m];
+              if (b.k === 'b') sp.burst(b.m.x, b.m.y, 14, ['#ffd84a', '#ff8a20', '#fff'], 50); else sp.burst(b.m.x, b.m.y, 3, ['#f2e6c8'], 20);
+              hitAll.forEach(function (m) { if (m.dead) return; m.hp -= b.k === 'b' ? 4 : 2; if (m.hp <= 0) { m.dead = true; score += m.big ? 8 : 2; pp.add('+' + (m.big ? 8 : 2), m.x, m.y - 8, '#ffd84a'); sp.burst(m.x, m.y, 6, ['#ffd84a', '#c9a66a'], 30); } }); } });
+          bolts = bolts.filter(function (b) { return !b.done; }); men = men.filter(function (m) { return !m.dead; });
+        },
+        draw: function (g) {
+          R(g, 0, 0, W, H, '#3f8a24');
+          for (var i = 0; i < 40; i++) R(g, (i * 37) % W, (i * 53) % H, 2, 1, i % 2 ? '#5aa83a' : '#2f6e1e');
+          for (i = 0; i < P.length - 1; i++) { var x0 = Math.min(P[i][0], P[i + 1][0]), y0 = Math.min(P[i][1], P[i + 1][1]); R(g, x0 - 5, y0 - 5, Math.abs(P[i + 1][0] - P[i][0]) + 10, Math.abs(P[i + 1][1] - P[i][1]) + 10, '#8c6232'); }
+          for (i = 0; i < P.length - 1; i++) { x0 = Math.min(P[i][0], P[i + 1][0]); y0 = Math.min(P[i][1], P[i + 1][1]); R(g, x0 - 4, y0 - 4, Math.abs(P[i + 1][0] - P[i][0]) + 8, Math.abs(P[i + 1][1] - P[i][1]) + 8, '#c99a58'); }
+          // the village: a stone keep and a cone roof with the heart flag
+          R(g, W - 14, 18, 12, 10, '#a59a8a'); R(g, W - 16, 12, 16, 6, '#9a6a3c'); R(g, W - 12, 8, 8, 4, '#9a6a3c'); R(g, W - 8, 2, 1, 6, '#5a2c10'); R(g, W - 7, 2, 4, 3, '#fff'); R(g, W - 6, 3, 2, 1, '#e0202e');
+          // the cave
+          R(g, 0, 22, 6, 14, '#5f7f52'); R(g, 0, 25, 4, 9, '#0c0806');
+          TW.forEach(function (tw) {
+            R(g, tw.x - 5, tw.y - 2, 11, 5, '#c9773a'); R(g, tw.x - 5, tw.y - 2, 11, 1, '#e8a062'); R(g, tw.x - 4, tw.y + 3, 2, 2, '#5a2c10'); R(g, tw.x + 3, tw.y + 3, 2, 2, '#5a2c10');
+            if (tw.k === 'b') { R(g, tw.x - 2, tw.y - 7, 5, 5, '#232428'); R(g, tw.x - 1, tw.y - 8, 3, 1, '#e2a63e'); }
+            else { R(g, tw.x - 3, tw.y - 5, 7, 2, '#a85a24'); R(g, tw.x - 4, tw.y - 7, 1, 6, '#3d4148'); R(g, tw.x + 4, tw.y - 7, 1, 6, '#3d4148'); }
+          });
+          men.forEach(function (m) { var f = Math.floor(t * 8) % 2, s = m.big ? 2 : 1; R(g, m.x - 1 * s, m.y - 5 * s, 3 * s, 2 * s, m.big ? '#7aa84a' : '#6b7179'); R(g, m.x - 1 * s, m.y - 3 * s, 3 * s, 3 * s, m.big ? '#7aa84a' : '#d8262e'); R(g, m.x - 1 * s + f, m.y, 1 * s, 1 * s, '#3a2414'); R(g, m.x + 1 * s - f, m.y, 1 * s, 1 * s, '#3a2414'); });
+          bolts.forEach(function (b) { R(g, b.x, b.y, b.k === 'b' ? 2 : 1, b.k === 'b' ? 2 : 1, b.k === 'b' ? '#111' : '#fff'); });
+          txt(g, 'SCORE ' + score, 4, 2, '#fff', 'left'); txt(g, 'W' + wave, W - 22, H - 10, '#ffd84a', 'left');
+          sp.draw(g); pp.draw(g);
+        }
+      };
+    },
+
     // Galaga: the swarm sways and breathes in formation, bees and butterflies peel off and dive, a boss now and then
     // stops to lower its tractor beam; the fighter dodges along the bottom and picks them off
     galaga: function (W, H) {
@@ -1937,6 +1988,11 @@ Kit.init({ id: 'hiscores', mark: false, menu: [
     tetris: function (g, t, side) { var sh = side ? [[0, 0], [1, 0], [2, 0], [1, 1]] : [[1, 0], [2, 0], [0, 1], [1, 1]], c = side ? '#b14dff' : '#3dff6a', k = Math.floor(t / 1.2) % 4;
       sh.forEach(function (p) { var x = p[0], y = p[1]; for (var i = 0; i < k; i++) { var nx = 1 - y + 1; y = x; x = nx; } block(g, 4 + x * 5, 3 + y * 5, 5, c); }); },
     snake: function (g, t, side) { if (side) { R(g, 8, 6, 8, 8, '#ef4444'); R(g, 11, 3, 2, 3, '#22c55e'); R(g, 10, 7, 2, 2, '#fca5a5'); return; } for (var i = 0; i < 6; i++) R(g, 2 + i * 3, 8 + Math.round(Math.sin(t * 6 + i) * 2), 3, 3, i ? '#9bbc0f' : '#c5f07a'); },
+    goblin: function (g, t, side) {
+      if (side) { var f = Math.floor(t * 4) % 2; R(g, 9, 6, 6, 5, '#d8262e'); R(g, 9, 3, 6, 3, '#6b7179'); R(g, 9 + f, 11, 2, 3, '#3a2414'); R(g, 13 - f, 11, 2, 3, '#3a2414'); R(g, 15, 5, 1, 8, '#cfd6de'); return; }
+      R(g, 3, 10, 18, 5, '#c9773a'); R(g, 3, 10, 18, 1, '#e8a062'); R(g, 4, 15, 3, 3, '#5a2c10'); R(g, 17, 15, 3, 3, '#5a2c10'); R(g, 6, 7, 12, 3, '#a85a24'); R(g, 5, 4, 1, 9, '#3d4148'); R(g, 18, 4, 1, 9, '#3d4148');
+      var bx = 19 + ((t * 30) % 10); R(g, bx, 8, 3, 1, '#f2e6c8');
+    },
     galaga: function (g, t, side) {
       if (side) { var f = Math.floor(t * 3) % 2; R(g, 11, 3, 3, 5, '#ffd820'); R(g, 12, 5, 1, 1, '#ff2a1e'); R(g, 5, 7 + f, 15, 3, '#18c040'); R(g, 5, 10 + f, 2, 3, '#18c040'); R(g, 18, 10 + f, 2, 3, '#18c040'); R(g, 10, 10, 1, 3, '#18c040'); R(g, 14, 10, 1, 3, '#18c040'); return; }
       var x = 12 + Math.round(Math.sin(t * 1.6) * 3); R(g, x, 2, 1, 4, '#fff'); R(g, x - 1, 5, 3, 5, '#fff'); R(g, x - 4, 9, 9, 4, '#fff'); R(g, x - 6, 11, 2, 4, '#fff'); R(g, x + 5, 11, 2, 4, '#fff');

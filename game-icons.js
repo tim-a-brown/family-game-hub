@@ -345,6 +345,12 @@ var GameIcon = (function () {
       rows.forEach(function (r, y) { for (var x = 0; x < 11; x++) { var ch = r.charAt(x); if (ch !== '.') out += rect(1 + x * 2, 3 + y * 2, 2, 2, 0, cols[ch]); } });
       return out;
     },
+    goblindefenders: function () {   // the crossbow tower: a wooden cart on stubby legs, iron straps, the bow drawn and a bolt aimed up and right
+      return rect(4, 17.5, 2.6, 4, .6, '#5a2c10') + rect(17.4, 17.5, 2.6, 4, .6, '#5a2c10') + rect(2.5, 13.5, 19, 5, 1.4, '#c9773a') + rect(2.5, 13.5, 19, 1.4, .7, '#e8a062') +
+        rect(4.5, 13.5, 1.6, 5, 0, '#5a6068') + rect(17.9, 13.5, 1.6, 5, 0, '#5a6068') + circ(12, 13.5, 2.6, '#3d4148') +
+        '<g transform="rotate(-40 12 11)">' + rect(5.5, 9.6, 13, 2.8, 1.2, '#a85a24') + path('M16.5 3.2 Q22 11 16.5 18.8', 'none', ' stroke="#3d4148" stroke-width="2" stroke-linecap="round"') +
+        line('M16.5 3.4 L8.5 11 L16.5 18.6', '#f2e6c8', .7) + rect(8.5, 10.4, 12, 1.2, .6, '#f2e6c8') + path('M20.5 9.6 L23.4 11 L20.5 12.4z', '#cfd6de') + '</g>';
+    },
     junglehunt: function () {   // Sir Dudley hanging from his vine, pixel for pixel from the cartridge (Atari pixels are wide)
       var rows = ['...V.....', '...V.....', '...W.WWW.', '...WWWWWW', '...P..PP.', '.P.P.PPP.', '.PPP.PP..', '..PP..PP.', '...WWWWW.', '...WWWWW.', '...W.WWW.',
         '..W..WWW.', '..W......', '..W..WWW.', '..W..WWW.', '.WW..WWW.', '.PPPPPP..', '.PPP.....', '.P.......', '.v.......', 'v........'];

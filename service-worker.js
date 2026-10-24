@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v629-2026-10-24-lorcana-joined-on-home';
+const CACHE_VERSION = 'v630-2026-10-24-goblin-defenders-locked-odds';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -160,6 +160,11 @@ const PRECACHE_URLS = [
   '/games/centipede-audio.js',
   '/games/invaders.html',
   '/games/galaga.html',
+  '/games/goblindefenders.html',
+  '/games/goblindefenders-data.js',
+  '/games/goblindefenders-core.js',
+  '/games/goblindefenders-art.js',
+  '/games/goblin/sprites.json',
   '/games/galaga-core.js',
   '/games/galaga-data.js',
   '/games/galaga-bang.mp3',

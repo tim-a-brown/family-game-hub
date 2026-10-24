@@ -120,6 +120,16 @@ Underlying principles for everything:
   `FIREBASE_SERVICE_ACCOUNT=... node scripts/upload-venue-art.js <folder>`. A changed scene needs its pictures
   re-rendered and re-uploaded, or the page falls back to the plainer in-browser look of the new scene.
 
+## Goblin Defenders art (Blender)
+
+- Every sprite (towers at 16 angles, enemies' walk cycles, icons) and every map picture is path-traced offline in
+  Blender/Cycles from Python models in `scripts/goblin-blender/` (`lib.py` materials and shapes, `towers.py`,
+  `enemies.py`, `icons.py`, `props.py`, `maps.py` map dioramas, `worldmap.py`). Run them with a Python that has bpy
+  (`pip install bpy` into a venv): `render.py frames <towers|enemies|hero|icons>` then `render.py pack` writes
+  `games/goblin/*.webp` + `sprites.json`; `maps.py [ids]` writes `games/goblin/maps/<id>.jpg`; `worldmap.py` the world.
+- A changed map grid in `goblindefenders-data.js` needs its picture re-rendered (the road is painted into it).
+- The sound effects and music in `games/goblin/snd/` are the original game's own (Tim's personal app).
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to

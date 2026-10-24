@@ -59,25 +59,26 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .pad .nub{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;
   background:radial-gradient(circle at 40% 32%,#ff9a8a,#e0302a 55%,#8a1010);box-shadow:0 4px 0 #5a0808,0 8px 16px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.55);
   transition:transform .08s;}
-.fbtn{flex:none;width:118px;height:118px;border-radius:50%;border:0;touch-action:none;-webkit-user-select:none;user-select:none;
+.fbtn{position:relative;flex:none;width:136px;height:136px;border-radius:50%;border:0;touch-action:none;-webkit-user-select:none;user-select:none;
   font-family:var(--display);font-weight:400;font-size:1.35rem;letter-spacing:.06em;color:#eef4ff;text-shadow:0 2px 0 rgba(0,0,0,.4);
   background:radial-gradient(circle at 42% 34%,#8fb4ff,#2f62e8 55%,#16308a);box-shadow:0 7px 0 #0e1f5a,0 12px 22px rgba(0,0,0,.5),inset 0 3px 0 rgba(255,255,255,.5);
   transition:transform .06s,box-shadow .06s;}
 .fbtn.start{background:radial-gradient(circle at 42% 34%,#ffd98a,#e8a12f 55%,#8a5a10);box-shadow:0 7px 0 #5a3a08,0 12px 22px rgba(0,0,0,.5),inset 0 3px 0 rgba(255,255,255,.5);animation:ggpulse 1.1s ease-in-out infinite;}
 @keyframes ggpulse{50%{filter:brightness(1.25);}}
+.fbtn::before{content:"";position:absolute;inset:-30px;border-radius:50%;}   /* a thumb-sized margin of error all round */
 .fbtn.down{transform:translateY(5px);box-shadow:0 2px 0 #0e1f5a,0 6px 12px rgba(0,0,0,.5),inset 0 3px 0 rgba(255,255,255,.4);}
 .hint{flex:none;font-size:.82rem;font-weight:700;color:var(--text-3);text-align:center;}
 @media (hover:hover) and (pointer:fine){ .ctrls{display:none;} }
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
 @media (max-height:720px){ .pad{width:140px;height:140px;} .pad i{width:44px;height:44px;} .pad i.l{left:3px;top:48px;} .pad i.r{right:3px;top:48px;}
-  .pad .nub{width:48px;height:48px;margin:-24px 0 0 -24px;} .fbtn{width:96px;height:96px;font-size:1.1rem;} }
+  .pad .nub{width:48px;height:48px;margin:-24px 0 0 -24px;} .fbtn{width:116px;height:116px;font-size:1.2rem;} }
 /* Tablet landscape: the screen takes the full height, the stick bottom-left and the button bottom-right, under the thumbs */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
   html.ar-on #app{max-width:none;position:relative;}
   .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 22px);padding:0 26px;pointer-events:none;}
   .ctrls > *{pointer-events:auto;}
   .pad{width:200px;height:200px;} .pad i{width:60px;height:60px;} .pad i.l{left:8px;top:70px;} .pad i.r{right:8px;top:70px;}
-  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .fbtn{width:140px;height:140px;font-size:1.6rem;}
+  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .fbtn{width:160px;height:160px;font-size:1.75rem;}
 }
 </style>
 </head>
@@ -179,12 +180,19 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   }
 
   // one arcade frame (60.6 a second)
-  var fireQ = 0, hold = false, RAPID = lsGet(RAPIDK, '0') === '1', rf = 0;
+  // A press waits up to 12 frames (a fifth of a second) for a free shot: the game fires only while fewer than two of
+  // your shots are in the air, so a tap a hair early would otherwise be lost.
+  var fireQ = 0, hold = false, RAPID = lsGet(RAPIDK, '0') === '1', rf = 0, lastFire = false;
+  function shotFree() { return (!M[0x9364] || !M[0x9366]) && !(M[0x9B63] & 4); }
   function tick() {
     if (coinT && !--coinT) C.start();
     var fire = false;
-    if (fireQ) { fire = true; fireQ = 0; }
+    if (fireQ) {
+      if (!lastFire && (shotFree() || !inGame())) { fire = true; fireQ = 0; }
+      else if (!--fireQ) fireQ = 0;
+    }
     else if (RAPID && hold && inGame()) { rf = (rf + 1) & 7; fire = rf < 4; }
+    lastFire = fire;
     C.setInput(ctl.l, ctl.r, fire);
     C.frame();
     V.draw(M, C.starCtrl(), C.starClr());
@@ -327,7 +335,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     Snd.unlock();
     if (paused) { setPaused(false); return; }
     if (mode === 'attract') { insertCoin(); Kit.haptic('light'); return; }
-    fireQ = 1; hold = true;
+    fireQ = 12; hold = true;
   }
   function overlayUp() { return document.querySelector('.ahi-overlay, .k-scrim, .k-win'); }
   document.addEventListener('keydown', function (e) {
@@ -414,7 +422,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     step: function (n) { for (var i = 0; i < (n || 1); i++) tick(); render(); },
     start: function (cfg) { startCab(cfg || { who: 'Tim', lives: 3 }); },
     coin: function () { insertCoin(true); },
-    fire: function () { fireQ = 1; }, move: function (l, r) { keyDir = { l: !!l, r: !!r }; syncCtl(); },
+    fire: function () { fireQ = 12; }, move: function (l, r) { keyDir = { l: !!l, r: !!r }; syncCtl(); },
     freeze: function (v) { frozen = !!v; if (!v) kick(); },
     frameImg: function () { render(); return scr.toDataURL(); }, render: render
   };
