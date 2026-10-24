@@ -109,7 +109,7 @@ body{overflow-x:hidden;}
 .pane{position:fixed;left:0;right:0;bottom:0;top:var(--bar);z-index:30;overflow-y:auto;overscroll-behavior:contain;background:var(--page-bg);background-attachment:fixed;transform:translateX(100%);visibility:hidden;transition:transform .3s var(--ease),visibility 0s .3s;padding:6px 0 calc(var(--safe-b) + 24px);}
 .pane.on{visibility:visible;transition:transform .3s var(--ease);}
 .pane.on{transform:none;}
-.pane .in{max-width:760px;margin:0 auto;padding:0 14px;}
+.pane .in{max-width:760px;margin:0 auto;padding:0 14px;min-height:calc(100% + 1px);}   /* (always a hair taller than the pane, so the pane itself takes every swipe) */
 .pane .top{display:flex;align-items:center;gap:10px;margin:0 0 10px;}
 .pane .top .back{width:44px;height:44px;border-radius:50%;border:0;background:var(--w07);color:var(--text);display:grid;place-items:center;flex:none;}
 .pane .top .back svg{width:22px;height:22px;}
@@ -775,8 +775,27 @@ body{overflow-x:hidden;}
 
   // ── One stock, fund or coin ──
   var detRange = 'q';
-  function openPane() { dom.pane.classList.add('on'); dom.pane.scrollTop = 0; document.documentElement.style.overflow = 'hidden'; }
-  function closePane() { dom.pane.classList.remove('on'); document.documentElement.style.overflow = ''; paint(); }
+  // A pane holds the page behind it still (pinned where it was), so a swipe only ever moves the pane: iPhone
+  // ignores overflow:hidden for touch scrolling and draws the moving page's scroll bar over the pane
+  var heldY = null;
+  function holdPage() {
+    if (heldY != null) return;
+    heldY = window.scrollY || 0;
+    var b = document.body.style; b.position = 'fixed'; b.top = -heldY + 'px'; b.left = '0'; b.right = '0';
+    document.documentElement.style.overflow = 'hidden';
+  }
+  function releasePage() {
+    if (heldY == null) return;
+    var b = document.body.style; b.position = ''; b.top = ''; b.left = ''; b.right = '';
+    document.documentElement.style.overflow = '';
+    var y = heldY; heldY = null;
+    window.scrollTo(0, y);
+    // (the kit's hold-still check saw a page that fit while it was pinned: put it back once that has caught up)
+    requestAnimationFrame(function () { requestAnimationFrame(function () { if (heldY == null) window.scrollTo(0, y); }); });
+    setTimeout(function () { if (heldY == null && Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); }, 120);
+  }
+  function openPane() { dom.pane.classList.add('on'); dom.pane.scrollTop = 0; holdPage(); }
+  function closePane() { dom.pane.classList.remove('on'); releasePage(); paint(); }
   function paneTop(title, sub) {
     return el('div', { class: 'top' }, [el('button', { type: 'button', class: 'back', 'aria-label': 'Back', html: Kit.icon('back'), onclick: function () { Kit.sfx('tap'); closePane(); } }), el('span', { class: 't' }, [el('b', { text: title }), el('small', { text: sub })])]);
   }
