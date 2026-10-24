@@ -1129,8 +1129,21 @@
   }
 
   // ── Entry points ──────────────────────────────────────────────────────
+  // A brand-new account (or a first visit as a guest) starts with Consoles, the Stock Market and the Sportsbook
+  // switched off: they're for people who go looking for them (Home screen, Edit, switches them on). Only a profile
+  // that has never set those switches gets this; anyone's existing choices stay as they are.
+  var NEW_OFF = { gn_cat_off: ['console'], gn_games_off: ['stocks', 'sportsbook'] };
+  function newDefaults(){
+    Object.keys(NEW_OFF).forEach(function(k){
+      try{ if(LS.getItem(k) == null){ LS.setItem(k, JSON.stringify(NEW_OFF[k])); noteWrite(k); } }catch(e){}
+    });
+  }
   function continueAsGuest(){
     switchSpace('g');
+    // (a guest profile with nothing in it yet: this device's first visit)
+    var empty = true;
+    for(var i = 0; i < LS.length; i++){ var k = LS.key(i); if(k && !DEVICE_RE.test(k) && k !== MODE_KEY && k !== PIN_KEY && k !== SPACE_KEY && k.indexOf(STASH) !== 0){ empty = false; break; } }
+    if(empty) newDefaults();
     LS.setItem(MODE_KEY, 'guest');
     LS.removeItem(PIN_KEY);
     notifyReady();
@@ -1158,6 +1171,7 @@
         var local   = scanLocal();
         var merged  = mergeSnapshots(local, remote);
         writeSnapshotToLocal(merged); reconcileName();
+        if(remote.isNew) newDefaults();   // (a brand-new account; uploaded with everything else just below)
         // Signed in once the cloud copy is merged in. The upload of this device's copy carries on in the background
         // instead of holding the sign-in (a slow first write took sign-in to half a minute); if it doesn't finish
         // before the page changes, the next page's sync sends it (the pull mark is only set once it lands).

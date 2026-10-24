@@ -55,6 +55,8 @@ body{overflow-x:hidden;}
 .tr{display:grid;grid-template-columns:minmax(0,1fr) var(--pw) var(--pw) var(--pw);gap:6px;align-items:stretch;}
 .tr + .tr{margin-top:6px;}
 .tr.live{grid-template-columns:minmax(0,1fr) auto;}
+.gm.mlo .gh,.gm.mlo .tr{grid-template-columns:minmax(0,1fr) calc(var(--pw) * 1.5);}
+.gm.mlo .tr.live{grid-template-columns:minmax(0,1fr) auto;}
 .tm{display:flex;align-items:center;gap:9px;min-width:0;}
 .logo{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;}
 .logo img{width:24px;height:24px;object-fit:contain;display:block;}
@@ -292,6 +294,18 @@ body{overflow-x:hidden;}
   };
   var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb', 'tennis', 'golf'];
   var MKN = { ml: 'Moneyline', sp: 'Spread', tot: 'Total', win: 'To win' };
+  // How deep the book goes (chosen on first load, changed from the menu; it follows the PIN)
+  var DEPTHS = [
+    { id: 'simple', title: 'Pick the winner', desc: 'Bet on who wins in the big four leagues.', feats: ['Who wins', 'NFL', 'NBA', 'MLB', 'NHL'] },
+    { id: 'fan', title: 'Lines and totals', desc: 'Point spreads and over/unders, plus college and the WNBA.', feats: ['Point spreads', 'Over/under', 'College football', 'College hoops', 'WNBA'] },
+    { id: 'all', title: 'The whole book', desc: 'Parlays that multiply, and tennis and golf priced by the book.', feats: ['Parlays', 'Tennis', 'Golf'] }
+  ];
+  var DEPTH_LG = { simple: ['mlb', 'nba', 'nfl', 'nhl'], fan: ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb'] };
+  var DEPTH = Kit.depth.get('sb_depth', null);
+  function lgOn(k) { return !DEPTH_LG[DEPTH] || DEPTH_LG[DEPTH].indexOf(k) >= 0; }
+  function lgsOn() { return ORDER.filter(lgOn); }
+  function linesOn() { return DEPTH !== 'simple'; }
+  function parlaysOn() { return DEPTH === 'all' || !DEPTH; }
   var MAXLEGS = 10;
 
   // ── Storage (bets and favourite teams follow the PIN; the slip and the board cache stay on this device) ──
@@ -786,7 +800,8 @@ body{overflow-x:hidden;}
   function paintTabs() {
     dom.tabs.innerHTML = ''; dom.tabs.style.display = view === 'board' ? '' : 'none';
     if (view !== 'board') return;
-    var list = [['my', 'My teams']].concat(ORDER.map(function (k) { return [k, LG[k].name]; }));
+    if (tab !== 'my' && !lgOn(tab)) tab = lgsOn()[0];
+    var list = [['my', 'My teams']].concat(lgsOn().map(function (k) { return [k, LG[k].name]; }));
     list.forEach(function (x) {
       var b = el('button', { type: 'button', class: 'chip' + (tab === x[0] ? ' on' : ''), onclick: function () { if (tab === x[0]) return; tab = x[0]; try { localStorage.setItem(TK, JSON.stringify(tab)); } catch (e) {} Kit.sfx('tap'); paintTabs(); paintBoard(); } });
       if (x[0] === 'my') b.innerHTML = Kit.icon('star');
@@ -809,7 +824,7 @@ body{overflow-x:hidden;}
   var paintSeq = 0;
   function paintBoard() {
     var seq = ++paintSeq, body = dom.body;
-    var lgs = tab === 'my' ? favs.reduce(function (a, f) { if (a.indexOf(f.lg) < 0) a.push(f.lg); return a; }, []) : [tab];
+    var lgs = tab === 'my' ? favs.reduce(function (a, f) { if (a.indexOf(f.lg) < 0 && lgOn(f.lg)) a.push(f.lg); return a; }, []) : [tab];
     body.innerHTML = '';
     if (tab === 'my') body.appendChild(myStrip());
     if (tab === 'my' && !favs.length) {
@@ -869,9 +884,11 @@ body{overflow-x:hidden;}
     else if (g.state === 'post' || g.void) when.textContent = g.void ? 'Postponed' : g.detail || 'Final';
     else when.textContent = (showLg ? L.name + '  ' : '') + (g.tbd ? 'Time TBD' : timeTxt(g.t));
     if (g.lg === 'tennis') card.appendChild(el('div', { class: 'gev' }, [el('b', { text: g.ev }), el('span', { text: g.round })]));
-    var live = g.state !== 'pre';
-    card.appendChild(el('div', { class: 'gh' }, [when,
-      el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]));
+    var live = g.state !== 'pre', lines = linesOn();
+    if (!lines) card.classList.add('mlo');   // (Pick the winner: just who wins)
+    card.appendChild(el('div', { class: 'gh' }, lines ? [when,
+      el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]
+      : [when, el('span', { class: 'mk', text: live ? 'Score' : 'To win' })]));
     if (showLg && g.state !== 'pre') when.insertBefore(document.createTextNode(L.name + '  '), when.firstChild);
     ['a', 'h'].forEach(function (s) {
       var tm = s === 'h' ? g.home : g.away, other = s === 'h' ? g.away : g.home;
@@ -883,8 +900,7 @@ body{overflow-x:hidden;}
         var sv = g.lg === 'tennis' ? tm.sets : tm.score, ov = g.lg === 'tennis' ? other.sets : other.score;
         row.appendChild(el('span', { class: 'sc' + (sv > ov ? ' lead' : ''), text: sv == null ? '' : String(sv) }));
       } else {
-        row.appendChild(pxEl(g, 'sp', s));
-        row.appendChild(pxEl(g, 'tot', s === 'a' ? 'o' : 'u'));
+        if (lines) { row.appendChild(pxEl(g, 'sp', s)); row.appendChild(pxEl(g, 'tot', s === 'a' ? 'o' : 'u')); }
         row.appendChild(pxEl(g, 'ml', s));
       }
       card.appendChild(row);
@@ -1038,7 +1054,8 @@ body{overflow-x:hidden;}
       t.appendChild(barcode('SLIP'));
       return w;
     }
-    if (slip.picks.length >= 2) {
+    if (slip.mode === 'parlay' && !parlaysOn()) { slip.mode = 'single'; saveSlip(); }
+    if (slip.picks.length >= 2 && parlaysOn()) {
       var why = parlayOk();
       var mode = el('div', { class: 'mode' });
       [['single', 'Singles'], ['parlay', 'Parlay']].forEach(function (m) {
@@ -1278,7 +1295,7 @@ body{overflow-x:hidden;}
     }
     function paintLgs() {
       lgs.innerHTML = '';
-      ORDER.forEach(function (k) { lgs.appendChild(el('button', { type: 'button', class: 'chip' + (k === cur ? ' on' : ''), text: LG[k].name, onclick: function () { cur = k; q = ''; inp.value = ''; paintLgs(); fill(); } })); });
+      lgsOn().forEach(function (k) { lgs.appendChild(el('button', { type: 'button', class: 'chip' + (k === cur ? ' on' : ''), text: LG[k].name, onclick: function () { cur = k; q = ''; inp.value = ''; paintLgs(); fill(); } })); });
     }
     function rows() {
       list.innerHTML = '';
@@ -1313,6 +1330,7 @@ body{overflow-x:hidden;}
     id: 'sportsbook',
     menu: [
       { icon: 'star', label: 'My teams', onClick: pickTeams },
+      { icon: 'sliders', label: 'How deep to go', onClick: function () { Kit.depth({ key: 'sb_depth', levels: DEPTHS, value: DEPTH || 'all', onPick: setDepth }); } },
       { icon: 'history', label: 'Bankroll history', onClick: function () { Casino.showHistory(); } },
       { icon: 'undo', label: 'Reset bankroll', onClick: function () {
         Kit.confirm('Reset your bankroll to $1,000? Open bets stay open.', { ok: 'Reset', danger: true }).then(function (y) { if (!y) return; Casino.reset(); Kit.toast('Bankroll reset to $1,000'); paintMoney(); paintSlip(); });
@@ -1336,11 +1354,17 @@ body{overflow-x:hidden;}
       '<p>Lines and scores come from ESPN. Your bankroll is the same one every casino game uses.</p>'
   });
 
-  layout();
-  paintAll();
+  function setDepth(d) {
+    DEPTH = d;
+    if (!lgOn(tab) && tab !== 'my') { tab = lgsOn()[0]; try { localStorage.setItem(TK, JSON.stringify(tab)); } catch (e) {} }
+    layout(); paintAll(); tick();
+  }
+  // First load: how deep to go (someone with bets or teams already starts on the whole book, so nothing they use goes)
+  if (!DEPTH) Kit.depth({ host: app, key: 'sb_depth', levels: DEPTHS, value: bets.length || favs.length ? 'all' : 'simple', start: 'Open the book', onPick: setDepth });
+  else { layout(); paintAll(); }
   // keep the board, the slip and open tickets current while the page is up
   function tick() {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible' || !dom.main) return;   // (not until the book is open)
     var lgs = view === 'board' ? (tab === 'my' ? favs.map(function (f) { return f.lg; }) : [tab]) : [];
     lgs = lgs.filter(function (x, i) { return lgs.indexOf(x) === i; });
     Promise.all(lgs.map(function (lg) { return loadLeague(lg); })).then(function () {
@@ -1349,7 +1373,7 @@ body{overflow-x:hidden;}
       return gradeAll();
     }).then(paintMoney);
   }
-  gradeAll().then(paintMoney);
+  gradeAll().then(function () { if (dom.money) paintMoney(); });
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tick(); });
 

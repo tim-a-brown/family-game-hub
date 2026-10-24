@@ -1641,6 +1641,47 @@
     out.forEach(function (m) { delete m._o; });
     return out;
   }
+  // Kit.depth({key, levels:[{id, title, desc, feats:[..]}], value, host, onPick(id)})
+  //   How deep a game goes (Stock Market, Sportsbook). With host: the first-load screen in it, the game's name on top
+  //   and Start at the bottom. Without: the same choice in a sheet (from the game's menu). Each level shows what it
+  //   adds (bright) over the ones before (dim) and a depth gauge; the pick is stored under key (it follows the PIN).
+  //   Kit.depth.get(key, dflt)
+  function depthGet(key, d) { try { var v = JSON.parse(lsGet(key, 'null')); return v || d; } catch (e) { return d; } }
+  function depth(o) {
+    var cur = o.value || depthGet(o.key, null) || o.levels[0].id, list = el('div', { class: 'k-depth' }), sh = null;
+    function paint() {
+      list.innerHTML = '';
+      o.levels.forEach(function (L, li) {
+        var on = L.id === cur, feats = el('span', { class: 'fe' + (li ? ' plus' : '') });
+        if (li) feats.appendChild(el('span', { class: 'pl', 'aria-label': 'Adds', html: icon('plus') }));   // (everything above, plus these)
+        L.feats.forEach(function (f) { feats.appendChild(el('span', { class: 'new', text: f })); });
+        var bars = el('span', { class: 'bars', 'aria-hidden': 'true' });
+        for (var b = 0; b < o.levels.length; b++) bars.appendChild(el('i', { class: b <= li ? 'f' : '' }));
+        list.appendChild(el('button', { type: 'button', class: 'dl' + (on ? ' on' : ''), 'aria-pressed': String(on), onclick: function () {
+          if (cur === L.id) return; cur = L.id; sfx('tap'); haptic('light'); paint();
+        } }, [bars, el('span', { class: 'tx' }, [el('span', { class: 't', text: L.title }), el('span', { class: 'd', text: L.desc }), feats]), el('span', { class: 'ok', html: icon('check') })]));
+      });
+    }
+    paint();
+    function done() { lsSet(o.key, JSON.stringify(cur)); o.onPick && o.onPick(cur); }
+    if (!o.host) {
+      sh = sheet({ title: o.sheetTitle || 'How deep to go', node: list, actions: [{ label: 'Done', primary: true, onClick: done }] });
+      return sh;
+    }
+    var host = o.host; host.innerHTML = '';
+    var wrap = el('div', { class: 'setup k-depth-screen' + (host.classList.contains('stage') ? '' : ' stage') });
+    wrap.appendChild(el('div', { class: 'setup-hero' + (game && window.GameIcon ? ' k-row' : '') }, [
+      game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
+      el('h1', { text: o.title || (game && game.name) || '' })]));
+    wrap.appendChild(el('h2', { class: 'k-depth-q', text: o.question || 'How deep do you want to go?' }));
+    wrap.appendChild(list);
+    wrap.appendChild(el('p', { class: 'k-depth-later', html: icon('more') + '<span>Change it any time in the menu</span>' }));
+    wrap.appendChild(el('div', { class: 'k-startdock' }, [el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's go", onclick: function () { sfx('pop'); haptic('medium'); done(); } })]));
+    host.appendChild(wrap);
+    try { window.scrollTo(0, 0); } catch (e) {}
+    return { el: wrap };
+  }
+  depth.get = depthGet;
   // Kit.setup(rootEl, {
   //   modes:   [{id, kind, icon, title, desc}]  icon = a Kit.icon name          optional mode cards (see Kit.modes)
   //   mode:    default mode id (modeLocked: true = use it even if a different mode was picked last time)
@@ -3986,7 +4027,7 @@
 
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
-    init: init, keepAwake: keepAwake, setup: setup, modes: modes, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    init: init, keepAwake: keepAwake, setup: setup, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
