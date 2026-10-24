@@ -17,7 +17,7 @@
 /* Scoreboard strip: two paper score cards and the trump/bid marker */
 .rk-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch;margin:2px 0 8px;}
 .rk-team{position:relative;border-radius:10px;padding:5px 10px 4px;min-width:0;background:linear-gradient(180deg,#fffaf0,#f1e8d2);color:#2a2a3a;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 6px 14px rgba(0,0,0,.35);}
-.rk-team .nm{display:block;font-size:.72rem;font-weight:900;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#6a6a80;}
+.rk-team .nm{display:block;font-size:.72rem;font-weight:900;letter-spacing:.02em;line-height:1.15;color:#6a6a80;}
 .rk-team .tot{font-family:var(--hand);font-size:1.7rem;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;}
 .rk-team .now{position:absolute;right:8px;bottom:6px;font-family:var(--hand);font-size:1.05rem;color:#3a7d4a;}
 .rk-team.us{border-left:5px solid var(--p1);}
@@ -147,6 +147,29 @@
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [];
+  // Pass & play: ME is the seat drawn at the bottom with its hand face up (the person holding the device, S.me);
+  // BLIND hides every hand while the device is handed over. One person among robots never sees the cover.
+  var ME = 0, BLIND = false;
+  function posOf(p) { return SEATS[(p - ME + 4) % 4]; }
+  function MT() { return ME % 2; }
+  function person(p) { return p >= 0 && !!S.players[p] && !S.players[p].cpu; }
+  function onePerson() { return !S || S.players.filter(function (q) { return !q.cpu; }).length < 2; }
+  function showFor(p) { BLIND = false; ME = p; S.me = p; save(); render(); }
+  function gate(p, then) {
+    if (!person(p) || p === ME) { then && then(); return; }
+    BLIND = true; undoStack = []; render();
+    var t = token;
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p % 2), what: 'cards' }).then(function () {
+      if (t !== token || !S) return;
+      showFor(p); then && then();
+    });
+  }
+  // whose move it is right now, if a person's
+  function actor() {
+    if (S.phase === 'bid' || S.phase === 'play') return S.turn;
+    if (S.phase === 'nest' || S.phase === 'trump') return S.bidder;
+    return -1;
+  }
   function save() {
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · ' + S.scores[0] + ' to ' + S.scores[1]);
@@ -154,26 +177,27 @@
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
-    S = null; token++;
+    S = null; token++; BLIND = false; ME = 0; Kit.handoff.close();
     Kit.setup(app, {
-      players: { min: 4, max: 4, cpu: 'seats', label: 'Players (the third one is your partner)' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; }, label: 'Seats 1 and 3 are partners' },
       intro: 'You and a computer partner against two computers',
       options: [{ id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 500, choices: [[300, '300 · quick'], [500, '500 · standard']] }],
       onStart: function (cfg) {
-        S = freshGame(+cfg.options.target || 500, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }));
-        undoStack = []; newHand();
+        S = freshGame(+cfg.options.target || 500, cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; }), cfg.mode);
+        ME = 0; undoStack = []; newHand();
       }
     });
   }
-  function freshGame(target, players) {
+  function freshGame(target, players, mode) {
     return {
-      target: target, players: players, scores: [0, 0], round: 0, rounds: [], dealer: 3, started: Date.now(),
+      mode: mode || 'cpu', me: 0, target: target, players: players, scores: [0, 0], round: 0, rounds: [], dealer: 3, started: Date.now(),
       events: [], rookCaps: [0, 0, 0, 0], made: [0, 0], set: [0, 0], bestMade: null
     };
   }
   function teamName(t) { return S.players[t].name + ' & ' + S.players[t + 2].name; }
   function teamAnd(t) { return S.players[t].name + ' and ' + S.players[t + 2].name; }
-  function shortName(p) { return p === 0 ? 'You' : S.players[p].name; }
+  function shortName(p) { return p === ME && onePerson() ? 'You' : S.players[p].name; }
 
   // ── Cards ─────────────────────────────────────────────────────────────────
   function deck() {
@@ -249,11 +273,15 @@
   // ── Main loop: schedule whatever the computer needs to do next ────────────
   function step() {
     if (!S) return;
+    // a different person's move: hands down, pass the device, then carry on as them
+    var a = actor();
+    if (person(a) && a !== ME) { gate(a, step); return; }
     paintAll();
     var t = token;
     function later(fn, ms) { setTimeout(function () { if (t === token && S) fn(); }, ms); }
     if (S.phase === 'bid' && S.players[S.turn].cpu) later(function () { if (S.phase === 'bid' && S.players[S.turn].cpu) placeBid(S.turn, cpuBid(S.turn)); }, 750);
     else if (S.phase === 'nest' && S.players[S.bidder].cpu) later(cpuNest, 900);
+    else if (S.phase === 'nest' && S.bidder === ME && !S.fromNest.length && S.nest.length) later(takeNest, 200);
     else if (S.phase === 'play' && S.turn >= 0 && S.players[S.turn].cpu) later(function () { if (S.phase === 'play' && S.turn >= 0 && S.players[S.turn].cpu) play(S.turn, cpuChoose(S.turn)); }, 700);
   }
 
@@ -275,11 +303,11 @@
     }
     if (active.length === 1 && S.bids[active[0]] > 0 || S.high === MAX_BID) {
       S.bid = S.high; S.phase = 'nest'; S.turn = -1;
-      Kit.callout(shortName(S.bidder) + ' ' + (S.bidder === 0 ? 'win' : 'wins') + ' the bid: ' + S.bid);
-      if (team(S.bidder) === 0) Kit.haptic('success');
+      Kit.callout(shortName(S.bidder) + ' ' + (shortName(S.bidder) === 'You' ? 'win' : 'wins') + ' the bid: ' + S.bid);
+      if (team(S.bidder) === MT()) Kit.haptic('success');
       save();
       var t2 = token;
-      setTimeout(function () { if (t2 !== token) return; if (S.bidder === 0) takeNest(); else step(); }, 900);
+      setTimeout(function () { if (t2 !== token) return; if (S.bidder === ME) takeNest(); else step(); }, 900);
       return;
     }
     var q = p;
@@ -319,11 +347,11 @@
 
   // ── The nest ──────────────────────────────────────────────────────────────
   function takeNest() {
-    var r = nestEl && !nestEl.hidden ? nestEl.getBoundingClientRect() : null;
+    var r = nestEl && !nestEl.hidden ? nestEl.getBoundingClientRect() : null, b = S.bidder;
     S.fromNest = S.nest.map(function (c) { return c.id; });
-    S.hands[0] = S.hands[0].concat(S.nest);
+    S.hands[b] = S.hands[b].concat(S.nest);
     S.nest = []; S.sel = [];
-    sortHand(S.hands[0]);
+    sortHand(S.hands[b]);
     Kit.sfx('deal'); save(); render(); step();
     if (r) requestAnimationFrame(function () {
       S.fromNest.forEach(function (id, i) {
@@ -342,8 +370,9 @@
   function bury() {
     if (S.sel.length !== 5) return;
     snapshot();
-    S.discards = S.hands[0].filter(function (c) { return S.sel.indexOf(c.id) >= 0; });
-    S.hands[0] = S.hands[0].filter(function (c) { return S.sel.indexOf(c.id) < 0; });
+    var b = S.bidder;
+    S.discards = S.hands[b].filter(function (c) { return S.sel.indexOf(c.id) >= 0; });
+    S.hands[b] = S.hands[b].filter(function (c) { return S.sel.indexOf(c.id) < 0; });
     S.sel = []; S.fromNest = []; S.phase = 'trump';
     Kit.sfx('whoosh'); save(); render(); step();
   }
@@ -382,7 +411,7 @@
     S.phase = 'play';
     S.hands.forEach(sortHand);
     // for the history: the bidder's 10 cards after the nest, and yours
-    S.dtBh = ids(S.hands[S.bidder]); S.dtYh = S.bidder !== 0 ? ids(S.hands[0]) : '';
+    S.dtBh = ids(S.hands[S.bidder]); S.dtYh = S.bidder !== ME ? ids(S.hands[ME]) : '';
     S.turn = (S.dealer + 1) % 4; S.leader = S.turn;
     Kit.callout(CNAME[S.trump] + ' is trump', CHEX[S.trump] === '#22202f' ? '#fff' : CHEX[S.trump]);
     Kit.sfx('good');
@@ -462,16 +491,16 @@
   function play(p, card) {
     if (!S || S.phase !== 'play' || S.turn !== p) return;
     var i = find(S.hands[p], card.id); if (i < 0) return;
-    var from = p === 0 ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
+    var from = p === ME ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
     S.trick.push({ p: p, c: card });
     S.played.push(card.id);
     if (card.rook) { Kit.sfx('pop'); Kit.haptic('medium'); } else Kit.sfx('flip');
-    if (S.trick.length > 1 && eff(card) === S.trump && eff(S.trick[0].c) !== S.trump) flash(shortName(p) + (p === 0 ? ' trump it!' : ' trumps it!'));
-    var node = cardEl(card, { cls: 'p-' + SEATS[p] });
+    if (S.trick.length > 1 && eff(card) === S.trump && eff(S.trick[0].c) !== S.trump) flash(shortName(p) + (shortName(p) === 'You' ? ' trump it!' : ' trumps it!'));
+    var node = cardEl(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
-    if (p === 0) paintHand();
+    if (p === ME) paintHand();
     if (S.trick.length === 4) { S.turn = -1; save(); paintSeats(); paintBar(); setTimeout(resolveTrick, 900); }
     else { S.turn = (p + 1) % 4; save(); step(); }
   }
@@ -492,9 +521,9 @@
     }
     var winNode = trickEl.querySelector('[data-id="' + w.c.id + '"]'); if (winNode) winNode.classList.add('win');
     if (gotPts) seatSay(w.p, '+' + gotPts + (lastTrick && sumPts(S.discards) ? ' with nest' : ''));
-    if (rook) Kit.callout(shortName(w.p) + (w.p === 0 ? ' catch' : ' catches') + ' the Rook!');
-    if (team(w.p) === 0 && gotPts) Kit.haptic('light');
-    if (lastTrick && S.discards.length) flash((w.p === 0 ? 'You take' : S.players[w.p].name + ' takes') + ' the nest');
+    if (rook) Kit.callout(shortName(w.p) + (shortName(w.p) === 'You' ? ' catch' : ' catches') + ' the Rook!');
+    if (team(w.p) === MT() && gotPts) Kit.haptic('light');
+    if (lastTrick && S.discards.length) flash((shortName(w.p) === 'You' ? 'You take' : S.players[w.p].name + ' takes') + ' the nest');
     setTimeout(function () {
       if (t !== token) return;
       var dest = seatEls[w.p].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
@@ -541,7 +570,7 @@
     S.rkBy = null;
     S.phase = 'handover';
     clearUndo(); save();
-    if (made) { Kit.sfx(bt === 0 ? 'good' : 'tick'); } else { Kit.sfx(bt === 0 ? 'bad' : 'good'); }
+    if (made) { Kit.sfx(bt === MT() ? 'good' : 'tick'); } else { Kit.sfx(bt === MT() ? 'bad' : 'good'); }
     var over = (S.scores[0] >= S.target || S.scores[1] >= S.target) && S.scores[0] !== S.scores[1];
     setTimeout(function () { over ? finish() : showScores(true); }, 500);
   }
@@ -559,7 +588,7 @@
     });
     var node = el('div');
     if (between) {
-      var bt = L.bt, ours = bt === 0;
+      var bt = L.bt, ours = bt === MT() && onePerson();
       var v = L.made ? (ours ? 'Your team bid ' + L.bid + ' and made it!' : teamAnd(bt) + ' bid ' + L.bid + ' and made it.')
         : (ours ? 'Your team bid ' + L.bid + ' and went set.' : teamAnd(bt) + ' bid ' + L.bid + ' and went set!');
       node.appendChild(el('p', { class: 'verdict', text: v }));
@@ -581,9 +610,9 @@
     var rc = S.rookCaps.indexOf(Math.max.apply(null, S.rookCaps));
     if (S.rookCaps[rc] > 1) hl.push(S.players[rc].name + ' caught the Rook ' + S.rookCaps[rc] + ' times');
     hl.push(S.rounds.length + ' hands, played to ' + S.target);
-    var teams = [0, 1].map(function (k) { return { name: teamName(k), score: S.scores[k], cpu: k === 1 }; });
+    var teams = [0, 1].map(function (k) { return { name: teamName(k), score: S.scores[k], cpu: !person(k) && !person(k + 2) }; });
     Kit.record(KEY, {
-      started: S.started, mode: 'vs Computer',
+      started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer',
       players: teams, winner: teams[w].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
       highlights: hl,
@@ -591,13 +620,15 @@
       detail: { pl: S.players.map(function (p) { return p.name; }), target: S.target, made: S.made.slice(), set: S.set.slice(), rook: S.rookCaps.slice(), h: S.hlog || [] }
     });
     clearSave();
+    var mine = w === MT() && onePerson(), lose = !person(w) && !person(w + 2);
     Kit.win({
-      title: w === 0 ? 'Your team wins!' : teamAnd(1) + ' win',
-      sub: S.scores[0] + ' to ' + S.scores[1],
+      title: mine ? 'Your team wins!' : teamAnd(w) + ' win',
+      sub: S.scores[w] + ' to ' + S.scores[1 - w],
       rank: [w, 1 - w].map(function (k) { return { name: teamName(k), score: S.scores[k], color: Kit.color(k) }; }),
-      lose: w !== 0, icon: w === 0 ? 'trophy' : 'bot',
-      again: function () { S = freshGame(S.target, S.players); undoStack = []; newHand(); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      lose: lose, icon: lose ? 'bot' : 'trophy',
+      again: function () { S = freshGame(S.target, S.players, S.mode); ME = 0; undoStack = []; newHand(); },
+      look: 'Look at the table',
+      setup: function () { token++; clearSave(); showSetup(); }
     });
   }
 
@@ -606,7 +637,10 @@
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); step();
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if ((back.me || 0) !== ME) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; S = back; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); step();
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -616,7 +650,7 @@
     topEl = el('div', { class: 'rk-top' });
     app.appendChild(topEl);
     var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
-    seatEls = SEATS.map(function (pos) { var s = el('div', { class: 'cseat ' + pos }); felt.appendChild(s); return s; });
+    seatEls = SEATS.map(function (pos, p) { var s = el('div', { class: 'cseat ' + posOf(p) }); felt.appendChild(s); return s; });
     trickEl = el('div', { class: 'ctrick' });
     nestEl = el('div', { class: 'nest' });
     msgEl = el('div', { class: 'cmsg', hidden: true });
@@ -628,22 +662,23 @@
     app.appendChild(handEl);
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
-    S.trick.forEach(function (t) { trickEl.appendChild(cardEl(t.c, { cls: 'p-' + SEATS[t.p] })); });
+    S.trick.forEach(function (t) { trickEl.appendChild(cardEl(t.c, { cls: 'p-' + posOf(t.p) })); });
     paintAll();
     if (S.phase === 'handover') setTimeout(function () { showScores(true); }, 200);
   }
   function paintAll() { paintTop(); paintSeats(); paintNest(); paintHand(); paintMsg(); }
   function paintTop() {
     topEl.innerHTML = '';
-    var live = S.phase === 'play' || S.phase === 'handover';
-    [0, 1].forEach(function (k) {
-      var card = el('div', { class: 'rk-team ' + (k === 0 ? 'us' : 'them') + (S.bidder >= 0 && team(S.bidder) === k && S.phase !== 'bid' ? ' bidding' : '') }, [
-        el('span', { class: 'nm', text: k === 0 ? 'You & ' + S.players[2].name : S.players[1].name + ' & ' + S.players[3].name }),
+    var live = S.phase === 'play' || S.phase === 'handover', m = MT();
+    [m, 1 - m].forEach(function (k, i) {
+      var card = el('div', { class: 'rk-team ' + (k === m ? 'us' : 'them') + (S.bidder >= 0 && team(S.bidder) === k && S.phase !== 'bid' ? ' bidding' : '') }, [
+        el('span', { class: 'nm', text: k === m && onePerson() ? 'You & ' + S.players[(ME + 2) % 4].name : teamName(k) }),
         el('span', { class: 'tot', text: String(S.scores[k]) }),
         live ? el('span', { class: 'now', text: '+' + sumPts(S.taken[k]) }) : null
       ]);
+      card.style.borderLeftColor = Kit.color(k);
       topEl.appendChild(card);
-      if (k === 0) {
+      if (i === 0) {
         var mid = el('div', { class: 'rk-mid' });
         if (S.trump) {
           mid.appendChild(el('span', { class: 'k', text: 'Trump' }));
@@ -670,12 +705,12 @@
         el('span', { text: shortName(p) })
       ]);
       var chips = [];
-      if (p === 2) chips.push(el('span', { class: 'chip-s mate', text: 'Partner' }));
+      if (p === (ME + 2) % 4) chips.push(el('span', { class: 'chip-s mate', text: 'Partner' }));
       if (S.phase === 'bid' && S.bids[p] != null) chips.push(el('span', { class: 'chip-s' + (S.bids[p] ? ' hot' : ''), text: S.bids[p] ? 'Bid ' + S.bids[p] : 'Pass' }));
       if (S.phase !== 'bid' && S.bidder === p) chips.push(el('span', { class: 'chip-s bidder', text: 'Bid ' + S.bid }));
       if ((S.phase === 'play' || S.phase === 'handover') && S.tricks[p]) chips.push(el('span', { class: 'chip-s', text: S.tricks[p] + (S.tricks[p] === 1 ? ' trick' : ' tricks') }));
       var info = el('div', { class: 'info' }, chips);
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (p === ME) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         var n = S.hands[p].length;
@@ -699,17 +734,21 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var mine = S.hands[0];
-    var ok = S.phase === 'play' && S.turn === 0 ? legal(0).map(function (c) { return c.id; }) : null;
+    var mine = S.hands[ME];
+    if (BLIND) {   // the device is being passed: this hand stays face down too
+      for (var k = 0; k < mine.length; k++) handEl.appendChild(Kit.card('', '', { back: true }));
+      requestAnimationFrame(function () { Cards.fan(handEl); }); paintBar(); return;
+    }
+    var ok = S.phase === 'play' && S.turn === ME ? legal(ME).map(function (c) { return c.id; }) : null;
     view(mine).forEach(function (c) {
       var n = cardEl(c);
-      if (S.phase === 'nest' && S.bidder === 0) {
+      if (S.phase === 'nest' && S.bidder === ME) {
         n.classList.add('play');
         if (S.sel.indexOf(c.id) >= 0) n.classList.add('sel');
         else if (S.fromNest.indexOf(c.id) >= 0) n.classList.add('new');
         n.addEventListener('click', function () { toggleBury(c); });
       } else if (ok) {
-        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); play(0, c); }); }
+        if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { snapshot(); play(ME, c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
       }
       handEl.appendChild(n);
@@ -724,7 +763,8 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.phase === 'bid' && S.turn === 0) {
+    if (BLIND) { barEl.appendChild(el('span', { class: 'hint', text: '' })); return; }
+    if (S.phase === 'bid' && S.turn === ME) {
       var amt = nextBid(), lo = amt;
       var out = el('output', { text: String(amt) });
       var minus = el('button', { type: 'button', 'aria-label': 'Lower bid', text: '−' });
@@ -733,35 +773,36 @@
       function upd() { out.textContent = String(amt); minus.disabled = amt <= lo; plus.disabled = amt >= MAX_BID; }
       minus.addEventListener('click', function () { amt = Math.max(lo, amt - 5); Kit.sfx('tick'); upd(); });
       plus.addEventListener('click', function () { amt = Math.min(MAX_BID, amt + 5); Kit.sfx('tick'); upd(); });
-      go.addEventListener('click', function () { snapshot(); Kit.haptic('medium'); placeBid(0, amt); });
-      var pass = el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); placeBid(0, 0); } });
+      go.addEventListener('click', function () { snapshot(); Kit.haptic('medium'); placeBid(ME, amt); });
+      var pass = el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); placeBid(ME, 0); } });
       barEl.appendChild(el('div', { class: 'bidbar' }, [pass, el('div', { class: 'amt' }, [minus, out, plus]), go]));
       upd();
-    } else if (S.phase === 'nest' && S.bidder === 0) {
+    } else if (S.phase === 'nest' && S.bidder === ME) {
       var b = el('button', { type: 'button', class: 'btn btn-primary', text: S.sel.length === 5 ? 'Bury these 5' : 'Pick 5 to bury (' + S.sel.length + '/5)', onclick: bury });
       b.disabled = S.sel.length !== 5;
       barEl.appendChild(b);
-    } else if (S.phase === 'trump' && S.bidder === 0) {
+    } else if (S.phase === 'trump' && S.bidder === ME) {
       var tr = el('div', { class: 'trumps' });
       COLS.forEach(function (c) {
-        var n = S.hands[0].filter(function (x) { return x.c === c; }).length;
+        var n = S.hands[ME].filter(function (x) { return x.c === c; }).length;
         tr.appendChild(el('button', { type: 'button', class: c === 'b' ? 'blk' : '', style: { background: CHEX[c] }, onclick: function () { Kit.haptic('medium'); nameTrump(c); } },
           [el('span', { text: CNAME[c] }), el('small', { text: n + (n === 1 ? ' card' : ' cards') })]));
       });
       barEl.appendChild(tr);
     } else {
       var txt = '';
-      if (S.phase === 'bid') txt = S.players[S.turn].name + ' is bidding…';
-      else if (S.phase === 'nest' || S.phase === 'trump') txt = S.players[S.bidder].name + ' is looking at the nest…';
-      else if (S.phase === 'play') txt = S.turn === 0 ? (S.trick.length ? 'Your turn: follow ' + CNAME[eff(S.trick[0].c)] + ' if you can' : 'Your lead: play any card') : S.turn >= 0 ? S.players[S.turn].name + ' is thinking…' : '';
+      if (S.phase === 'bid') txt = person(S.turn) ? 'Pass the device to ' + S.players[S.turn].name : S.players[S.turn].name + ' is bidding…';
+      else if (S.phase === 'nest' || S.phase === 'trump') txt = person(S.bidder) ? 'Pass the device to ' + S.players[S.bidder].name : S.players[S.bidder].name + ' is looking at the nest…';
+      else if (S.phase === 'play') txt = S.turn === ME ? (S.trick.length ? 'Your turn: follow ' + CNAME[eff(S.trick[0].c)] + ' if you can' : 'Your lead: play any card') : S.turn >= 0 ? (person(S.turn) ? 'Pass the device to ' : '') + S.players[S.turn].name + (person(S.turn) ? '' : ' is thinking…') : '';
       barEl.appendChild(el('span', { class: 'hint', text: txt }));
     }
   }
   function paintMsg() {
     var m = '';
-    if (S.phase === 'bid' && S.turn === 0) m = S.high ? 'Beat ' + S.high + ' or pass' : 'Open the bidding at 100+';
-    else if (S.phase === 'nest' && S.bidder === 0) m = 'Nest cards are outlined in green';
-    else if (S.phase === 'trump' && S.bidder === 0) m = 'Name trump';
+    if (BLIND) m = '';
+    else if (S.phase === 'bid' && S.turn === ME) m = S.high ? 'Beat ' + S.high + ' or pass' : 'Open the bidding at 100+';
+    else if (S.phase === 'nest' && S.bidder === ME) m = 'Nest cards are outlined in green';
+    else if (S.phase === 'trump' && S.bidder === ME) m = 'Name trump';
     msgEl.hidden = !m; msgEl.textContent = m;
   }
   function flash(t) { msgEl.hidden = false; msgEl.textContent = t; setTimeout(function () { paintMsg(); }, 1500); }
@@ -775,11 +816,10 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; Kit.gameStart();
+    S = saved; ME = S.me || 0; Kit.gameStart();
     render();
     if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
     else if (S.phase === 'nest' && S.players[S.bidder].cpu && S.nest.length === 0) { var t0 = token; setTimeout(function () { if (t0 === token && S.phase === 'nest') { S.trump = handValue(S.hands[S.bidder]).col; startPlay(); } }, 600); }
-    else if (S.phase === 'nest' && S.bidder === 0 && !S.fromNest.length && S.nest.length) takeNest();
     else step();
   } else showSetup();
 })();
