@@ -263,7 +263,7 @@ body{overflow-x:hidden;}
   }
   function longSeries(sym) {
     var h = HIST && HIST.q && HIST.q[sym], daily = series(sym);
-    if (!h || !h.h || !h.h.length) return daily;
+    if (!h || !h.h || h.h.length < 30) return daily;   // (no long history for it: its year of daily closes)
     var t0 = Date.parse(h.d0 + 'T12:00:00'), pts = h.h.map(function (v, i) { return [t0 + h.o[i] * DAY, v]; });
     var last = pts[pts.length - 1][0];
     return pts.concat(daily.filter(function (p) { return p[0] > last + DAY / 2; }));
