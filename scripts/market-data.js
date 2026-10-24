@@ -7,6 +7,8 @@
 //   FIREBASE_SERVICE_ACCOUNT='{...json key...}' node scripts/market-data.js        (DRY=1: print, don't save)
 const crypto = require('crypto');
 const BUCKET = 'familygames-da3e5.firebasestorage.app', OBJ = 'market/quotes.json';
+// The long view (5 years and all time) for the charts, refreshed once a day: market/history.json
+const HOBJ = 'market/history.json';
 const UA = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', Accept: 'application/json,text/csv,*/*' };
 
 // [symbol, name, kind (stock | fund | bond | coin), group, one line about it]
@@ -182,6 +184,35 @@ async function gecko(sym) {
   const hist = Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
   return { p: hist[hist.length - 1][1], pc: hist[hist.length - 2][1], at: pr[pr.length - 1][0], hist: hist.slice(-260), dv: [] };
 }
+// The long history: every close Nasdaq has (CoinGecko for crypto), as [[YYYY-MM-DD, close]] oldest first
+async function longHist(sym, kind) {
+  if (kind === 'coin') {
+    const id = { 'BTC-USD': 'bitcoin', 'ETH-USD': 'ethereum' }[sym];
+    let j = null;
+    for (const days of ['max', '3650', '1825', '365']) {
+      try { j = JSON.parse(await fetchText('https://api.coingecko.com/api/v3/coins/' + id + '/market_chart?vs_currency=usd&days=' + days + '&interval=daily')); if ((j.prices || []).length > 20) break; } catch (e) { j = null; }
+      await sleep(1500);
+    }
+    const byDay = {}; ((j && j.prices) || []).forEach((x) => { if (isFinite(x[1])) byDay[day(x[0])] = x[1]; });
+    return Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
+  }
+  const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
+  const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=1970-01-01&todate=' + day(Date.now()) + '&limit=20000', { headers: NQ }));
+  const rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1]) && r[1] > 0).reverse();
+  if (rows.length < 200) throw new Error('long: ' + rows.length + ' rows');
+  return rows;
+}
+// Thinned for a chart: the last close of each week for the past five years, of each month before that
+function thin(rows) {
+  const cut = day(Date.now() - 5 * 365.25 * 864e5), out = [];
+  const key = (d) => d < cut ? d.slice(0, 7) : (() => { const t = Date.parse(d + 'T12:00:00Z'); return 'w' + Math.floor((t / 864e5 + 3) / 7); })();
+  rows.forEach((r, i) => { const nx = rows[i + 1]; if (!nx || key(nx[0]) !== key(r[0])) out.push(r); });
+  return out;
+}
+function packed(rows) {
+  const t0 = Date.parse(rows[0][0]);
+  return { d0: rows[0][0], h: rows.map((x) => r2(x[1])), o: rows.map((x) => Math.round((Date.parse(x[0]) - t0) / 864e5)) };
+}
 // The US Treasury's own daily yield curve
 async function treasury() {
   const y = new Date().getFullYear(), out = {};
@@ -282,14 +313,48 @@ async function token(key) {
   console.log(Object.keys(out.q).length + ' symbols, ' + fails.length + ' not fetched' + (fails.length ? ': ' + fails.join(' ') : '') + '; rates ' + JSON.stringify(out.rates));
   if (fails.length > LIST.length / 2) throw new Error('too many symbols failed; leaving the saved prices as they are');
   const text = JSON.stringify(out);
-  if (process.env.DRY) { console.log(text.length + ' bytes'); return; }
-  const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
-  if (!key) throw new Error('no service account');
-  const auth = { Authorization: 'Bearer ' + (await token(key)) };
+  if (process.env.DRY) { console.log(text.length + ' bytes'); }
+  else await upload(OBJ, text, 'no-cache, max-age=0');
+  // The long history, once a day (or when asked with LONG=1): a failure here never holds up the prices above
+  try { await history(out); } catch (e) { console.log('history: ' + (e.message || e)); }
+})().catch((e) => { console.error(e.message || e); process.exit(1); });
+
+let auth = null;
+async function upload(obj, text, cache) {
+  if (!auth) {
+    const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
+    if (!key) throw new Error('no service account');
+    auth = { Authorization: 'Bearer ' + (await token(key)) };
+  }
   const bd = 'b' + crypto.randomBytes(8).toString('hex');
-  const meta = JSON.stringify({ name: OBJ, contentType: 'application/json', cacheControl: 'no-cache, max-age=0' });
+  const meta = JSON.stringify({ name: obj, contentType: 'application/json', cacheControl: cache });
   const body = '--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + meta + '\r\n--' + bd + '\r\nContent-Type: application/json\r\n\r\n' + text + '\r\n--' + bd + '--';
   const r = await fetch('https://storage.googleapis.com/upload/storage/v1/b/' + BUCKET + '/o?uploadType=multipart&fields=name', { method: 'POST', headers: Object.assign({ 'Content-Type': 'multipart/related; boundary=' + bd }, auth), body });
   if (!r.ok) throw new Error('upload HTTP ' + r.status + ' ' + (await r.text()).slice(0, 200));
-  console.log('Saved ' + OBJ + ' (' + text.length + ' bytes)');
-})().catch((e) => { console.error(e.message || e); process.exit(1); });
+  console.log('Saved ' + obj + ' (' + text.length + ' bytes)');
+}
+
+async function history(out) {
+  let old = {};
+  try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(HOBJ) + '?alt=media')); } catch (e) { console.log('no saved history yet'); }
+  if (old.at && Date.now() - old.at < 20 * 3600e3 && !process.env.LONG) { console.log('history: fresh from ' + new Date(old.at).toISOString()); return; }
+  const H = { v: 1, at: Date.now(), q: {} }, jobs = LIST.slice(), got = [];
+  async function worker() {
+    while (jobs.length) {
+      const [sym, , kind] = jobs.shift();
+      try { const rows = await longHist(sym, kind); H.q[sym] = packed(thin(rows)); got.push(sym + ' ' + rows[0][0]); }
+      catch (e) {
+        console.log('  history ' + sym + ': ' + e.message.slice(0, 120));
+        if (old.q && old.q[sym]) H.q[sym] = old.q[sym];
+        else if (out.q[sym]) { const q = out.q[sym], t0 = Date.parse(q.d0); H.q[sym] = packed(thin(q.h.map((v, i) => [day(t0 + q.o[i] * 864e5), v]))); }
+      }
+      await sleep(300);
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  console.log('history: ' + got.length + ' of ' + LIST.length + ' fetched; earliest dates: ' + got.slice(0, 12).join(', '));
+  if (got.length < LIST.length / 2 && old.q) { console.log('history: too many failed; keeping the saved file'); return; }
+  const text = JSON.stringify(H);
+  if (process.env.DRY) { console.log('history ' + text.length + ' bytes'); return; }
+  await upload(HOBJ, text, 'public, max-age=3600');
+}

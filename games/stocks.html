@@ -50,6 +50,10 @@ body{overflow-x:hidden;}
 .chart .tip{position:absolute;top:0;transform:translateX(-50%);pointer-events:none;background:#eef2f8;color:#0b0f15;border-radius:8px;padding:3px 8px;font-size:.75rem;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4);}
 .chart .tip small{display:block;font-size:.66rem;font-weight:700;color:#4a5468;}
 .rng{display:flex;gap:4px;margin-top:8px;}
+.span{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px;font-size:.8rem;font-weight:800;color:#9fb0cc;min-height:1.2em;}
+.span b{font-weight:900;}
+.chart .empty.loading{animation:mkpulse 1.2s ease-in-out infinite;}
+@keyframes mkpulse{50%{opacity:.45;}}
 .rng button{flex:1;border:0;border-radius:9px;background:rgba(255,255,255,.05);color:#9fb0cc;font:inherit;font-weight:900;font-size:.78rem;padding:7px 0;}
 .rng button.on{background:#eef2f8;color:#0b0f15;}
 
@@ -249,6 +253,21 @@ body{overflow-x:hidden;}
   function dayChg(sym) { var s = S(sym); return s && s.pc ? (s.p - s.pc) / s.pc : 0; }
   // closes with dates: [[ms, close]]
   function series(sym) { var s = S(sym); if (!s) return []; var t0 = Date.parse(s.d0 + 'T12:00:00'); return s.h.map(function (v, i) { return [t0 + (s.o ? s.o[i] : i) * DAY, v]; }); }
+  // The long view (5 years, all time): weekly closes, monthly further back, in a second file fetched the first time
+  // it's needed; the daily closes carry it up to today
+  var HURL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/market%2Fhistory.json?alt=media', HIST = null, histP = null;
+  function loadHist() {
+    if (!histP) histP = fetch(HURL + '&d=' + new Date().toISOString().slice(0, 10)).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { HIST = j; return j; }).catch(function () { histP = null; return null; });
+    return histP;
+  }
+  function longSeries(sym) {
+    var h = HIST && HIST.q && HIST.q[sym], daily = series(sym);
+    if (!h || !h.h || !h.h.length) return daily;
+    var t0 = Date.parse(h.d0 + 'T12:00:00'), pts = h.h.map(function (v, i) { return [t0 + h.o[i] * DAY, v]; });
+    var last = pts[pts.length - 1][0];
+    return pts.concat(daily.filter(function (p) { return p[0] > last + DAY / 2; }));
+  }
   function closeOn(sym, dayStr) { var se = series(sym), best = null; se.forEach(function (x) { if (ymd(x[0]) <= dayStr) best = x[1]; }); return best; }
   // yearly volatility from the last 60 closes
   function vol(sym) {
@@ -769,14 +788,30 @@ body{overflow-x:hidden;}
     p.appendChild(el('div', { class: 'val' }, [el('span', { class: 'big', text: px(s.p) }), el('span', { class: 'chg ' + cls(c) }, [el('small', { text: 'Today' }), document.createTextNode(signed(s.p - s.pc, 1) + '  ' + pct(c))])]));
     p.appendChild(el('div', { class: 'asof', text: asofTxt() }));
     var chartBox = el('div'); p.appendChild(chartBox);
+    var span = el('div', { class: 'span' }); p.appendChild(span);
     var rg = el('div', { class: 'rng' });
     function drawChart() {
-      chartBox.innerHTML = '';
-      var n = { m: 22, q: 64, h: 128, y: 400 }[detRange], se = series(sym).slice(-n);
-      chartBox.appendChild(lineChart(se, { fmt: px }));
       [].forEach.call(rg.children, function (b) { b.classList.toggle('on', b.dataset.r === detRange); });
+      var r = detRange, long = r === '5y' || r === 'max';
+      if (long && !HIST) {
+        chartBox.innerHTML = ''; chartBox.appendChild(el('div', { class: 'chart' }, [el('div', { class: 'empty loading', text: r === 'max' ? 'Fetching every year of prices' : 'Fetching five years of prices' })]));
+        span.innerHTML = '&nbsp;';
+        loadHist().then(function () { if (detRange === r && chartBox.isConnected) drawChart(); });
+        return;
+      }
+      var se;
+      if (long) { se = longSeries(sym); if (r === '5y') { var cut = Date.now() - 5 * 365.25 * DAY; se = se.filter(function (p) { return p[0] >= cut; }); } }
+      else se = series(sym).slice(-({ w: 6, m: 22, q: 64, h: 128, y: 253 }[r]));
+      chartBox.innerHTML = ''; chartBox.appendChild(lineChart(se, { fmt: px }));
+      // how it did over the span shown
+      span.innerHTML = '';
+      if (se.length > 1) {
+        var ch = (se[se.length - 1][1] - se[0][1]) / se[0][1];
+        var lbl = r === 'max' || (r === '5y' && se[0][0] > Date.now() - 4.8 * 365.25 * DAY) ? 'Since ' + dateTxt(se[0][0], true) : { w: 'Past week', m: 'Past month', q: 'Past 3 months', h: 'Past 6 months', y: 'Past year', '5y': 'Past 5 years' }[r];
+        span.appendChild(el('span', { text: lbl })); span.appendChild(el('b', { class: cls(ch), text: pct(ch) }));
+      }
     }
-    [['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { detRange = r[0]; drawChart(); } })); });
+    [['w', '1W'], ['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y'], ['5y', '5Y'], ['max', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { Kit.sfx('tap'); detRange = r[0]; drawChart(); } })); });
     p.appendChild(rg); drawChart();
     w.appendChild(p);
     var se = series(sym), yr = se.length > 200 ? (s.p - se[0][1]) / se[0][1] : null, hi = Math.max.apply(null, s.h), lo = Math.min.apply(null, s.h);
