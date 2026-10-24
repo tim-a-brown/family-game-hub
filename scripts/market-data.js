@@ -47,7 +47,6 @@ const LIST = [
   ['NTDOY', 'Nintendo', 'stock', 'fun', 'Switch, Mario, Zelda and Pokémon (shares from Japan, traded in the US).'],
   ['SONY', 'Sony', 'stock', 'fun', 'PlayStation, movies, music and cameras.'],
   ['RBLX', 'Roblox', 'stock', 'fun', 'The game platform where players build the games.'],
-  ['EA', 'Electronic Arts', 'stock', 'fun', 'Madden, EA Sports FC, The Sims and Apex Legends.'],
   ['TTWO', 'Take-Two Interactive', 'stock', 'fun', 'Grand Theft Auto, NBA 2K and Red Dead.'],
   ['DIS', 'Disney', 'stock', 'fun', 'Theme parks, Disney+, Marvel, Pixar and Star Wars.'],
   ['NFLX', 'Netflix', 'stock', 'fun', 'The biggest streaming service.'],
@@ -151,7 +150,7 @@ async function nasdaq(sym, kind) {
     const ij = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/info?assetclass=' + ac, { headers: NQ }));
     const pd = (ij.data || {}).primaryData || {}, lp = num(pd.lastSalePrice), ch = num(pd.netChange);
     if (isFinite(lp) && lp > 0) {
-      p = lp; if (isFinite(ch)) pc = r4(lp - ch); at = Date.now();
+      p = lp; if (isFinite(ch)) pc = r4(lp - ch); at = marketOpen() ? Date.now() : lastClose();
       if (rows[rows.length - 1][0] === day(Date.now())) rows[rows.length - 1][1] = lp; else rows.push([day(Date.now()), lp]);
     }
   } catch (e) {}
@@ -197,6 +196,18 @@ async function treasury() {
   }
   throw new Error('treasury: no rows');
 }
+// New York time: is the market open, and when was the last close (4 PM on the latest weekday)
+function ny(t) { const o = {}; new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date(t)).forEach((x) => { o[x.type] = x.value; }); return o; }
+function marketOpen() { const o = ny(Date.now()), m = (+o.hour % 24) * 60 + +o.minute; return !/Sat|Sun/.test(o.weekday) && m >= 570 && m < 960; }
+function lastClose() {
+  for (let d = 0; d < 7; d++) {
+    const t = Date.now() - d * 864e5, o = ny(t), m = (+o.hour % 24) * 60 + +o.minute;
+    if (/Sat|Sun/.test(o.weekday) || (d === 0 && m < 960)) continue;
+    // 4 PM New York that day: try both offsets and keep the one that reads 16:00 there
+    for (const off of ['-04:00', '-05:00']) { const c = Date.parse(o.year + '-' + o.month + '-' + o.day + 'T16:00:00' + off), q = ny(c); if (+q.hour === 16) return c; }
+  }
+  return Date.now();
+}
 const SOURCES = { yahoo, nasdaq, cnbc };
 let ORDER = ['nasdaq', 'yahoo', 'cnbc'];
 async function quote(sym, kind, prev) {
@@ -227,15 +238,19 @@ async function token(key) {
   try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(OBJ) + '?alt=media')); } catch (e) { console.log('no saved file yet'); }
   const out = { v: 1, at: Date.now(), q: {}, rates: {}, idx: {} }, fails = [];
   await probe();
-  for (const [sym, name, kind, group, about] of LIST) {
+  const jobs = LIST.slice();
+  async function worker() { while (jobs.length) { const [sym, name, kind, group, about] = jobs.shift(); await one(sym, name, kind, group, about); } }
+  async function one(sym, name, kind, group, about) {
     const prev = old.q && old.q[sym];
     const q = await quote(sym, kind, prev);
-    if (!q) { fails.push(sym); if (prev) out.q[sym] = prev; await sleep(300); continue; }
+    if (!q) { fails.push(sym); if (prev) out.q[sym] = prev; return; }
     // closes (oldest first), each with its date as days after the first one (d0); dividends as [date, amount]
     const t0 = Date.parse(q.hist[0][0]);
     out.q[sym] = { n: name, k: kind, g: group, a: about, p: r4(q.p), pc: r4(q.pc), at: q.at, d0: q.hist[0][0], h: q.hist.map((x) => r2(x[1])), o: q.hist.map((x) => Math.round((Date.parse(x[0]) - t0) / 864e5)), dv: q.dv.length ? q.dv : (prev && prev.dv) || [] };
-    await sleep(250);
   }
+  await Promise.all([worker(), worker(), worker(), worker()]);
+  // the list's own order (the game shows groups in this order)
+  const ordered = {}; LIST.forEach((x) => { if (out.q[x[0]]) ordered[x[0]] = out.q[x[0]]; }); out.q = ordered;
   try { const t = await treasury(); ['irx', 'fvx', 'tnx', 'tyx'].forEach((k) => { if (isFinite(t[k])) out.rates[k] = t[k]; }); out.rates.date = t.date; console.log('Treasury yields ' + JSON.stringify(t)); }
   catch (e) { console.log('treasury: ' + e.message); for (const k in RATES) { try { const q = await yahoo(RATES[k]); out.rates[k] = r4(q.p); } catch (e2) { if (old.rates) out.rates[k] = old.rates[k]; } } }
   for (const k in INDEX) {

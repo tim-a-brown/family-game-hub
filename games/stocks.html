@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stock Market</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../casino.js"></script>
+<style>
+body{overflow-x:hidden;}
+.mk{max-width:760px;margin:0 auto;padding:0 14px calc(var(--safe-b) + 28px);}
+.mk-side{display:contents;}
+.mk-main{min-width:0;}
+
+/* ── The ticker: an LED strip running across the top ── */
+.tape{position:relative;margin:2px -14px 12px;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
+.tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
+.tape .run{position:absolute;top:0;left:0;display:flex;white-space:nowrap;height:100%;align-items:center;animation:tape linear infinite;will-change:transform;}
+.tape .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 18px;font:800 .9rem/1 var(--mono);letter-spacing:.04em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.6);}
+.tape .it b{color:#fff3c4;font-weight:900;}
+.tape .it .up{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
+.tape .it .dn{color:#ff5a5f;text-shadow:0 0 6px rgba(255,80,90,.55);}
+@keyframes tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.tape .run{animation:none}}
+
+/* ── Panels: the dark trading-terminal glass ── */
+.pnl{position:relative;border-radius:18px;padding:14px;margin:0 0 12px;color:#eef2f8;background:linear-gradient(180deg,#151b24,#0b0f15);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(255,255,255,.04),0 8px 22px rgba(0,0,0,.42);}
+.pnl h3{margin:0 0 8px;font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#7f8aa0;display:flex;justify-content:space-between;gap:10px;}
+.pnl h3 button{border:0;background:none;color:#9fb0cc;font:inherit;letter-spacing:.08em;padding:0;}
+.cap{font-size:.66rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#7f8aa0;}
+.up{color:#3ddc84;}.dn{color:#ff6470;}
+.num{font-variant-numeric:tabular-nums;}
+
+.val{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.val .big{font:400 clamp(2rem,9vw,2.6rem)/1 var(--display);letter-spacing:.01em;font-variant-numeric:tabular-nums;}
+.val .chg{font-weight:900;font-size:.95rem;text-align:right;}
+.val .chg small{display:block;font-size:.7rem;font-weight:800;color:#7f8aa0;letter-spacing:.06em;text-transform:uppercase;}
+.asof{font-size:.74rem;font-weight:700;color:#7f8aa0;margin-top:6px;}
+
+/* charts */
+.chart{position:relative;margin:10px -4px 0;touch-action:pan-y;}
+.chart svg{display:block;width:100%;height:auto;overflow:visible;}
+.chart .tip{position:absolute;top:0;transform:translateX(-50%);pointer-events:none;background:#eef2f8;color:#0b0f15;border-radius:8px;padding:3px 8px;font-size:.75rem;font-weight:900;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.4);}
+.chart .tip small{display:block;font-size:.66rem;font-weight:700;color:#4a5468;}
+.rng{display:flex;gap:4px;margin-top:8px;}
+.rng button{flex:1;border:0;border-radius:9px;background:rgba(255,255,255,.05);color:#9fb0cc;font:inherit;font-weight:900;font-size:.78rem;padding:7px 0;}
+.rng button.on{background:#eef2f8;color:#0b0f15;}
+
+/* allocation */
+.alloc{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin:4px 0 8px;}
+.alloc i{display:block;height:100%;min-width:3px;}
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:4px 10px;}
+.legend div{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:.78rem;font-weight:800;color:#c9d2e3;}
+.legend div span{display:flex;align-items:center;gap:6px;}
+.legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+.cashrow{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cashrow .amt{font:400 1.5rem/1 var(--display);font-variant-numeric:tabular-nums;}
+.cashrow .btns{display:flex;gap:8px;}
+.btn-g{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:900;font-size:.9rem;color:#fff;background:linear-gradient(180deg,#25a35b,#16703e);box-shadow:0 3px 0 #0d4a28;}
+.btn-g:active{transform:translateY(2px);box-shadow:0 1px 0 #0d4a28;}
+.btn-d{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:900;font-size:.9rem;color:#eef2f8;background:#263041;box-shadow:0 3px 0 #141a24;}
+.btn-d:active{transform:translateY(2px);box-shadow:0 1px 0 #141a24;}
+.btn-g[disabled],.btn-d[disabled]{opacity:.45;}
+
+/* rows: holdings and market */
+.rows{display:grid;gap:0;}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 2px;border-top:1px solid rgba(255,255,255,.06);background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;font:inherit;text-align:left;width:100%;}
+.row:first-child{border-top:0;}
+.row:active{background:rgba(255,255,255,.04);}
+.tk{display:grid;place-items:center;min-width:52px;height:30px;padding:0 6px;border-radius:8px;font:900 .72rem/1 var(--mono);letter-spacing:.02em;color:#fff;background:#2b3648;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);white-space:nowrap;}
+.row .nm{min-width:0;}
+.row .nm b{display:block;font-size:.95rem;font-weight:900;line-height:1.2;}
+.row .nm small{display:block;font-size:.74rem;font-weight:700;color:#8590a6;}
+.row .px{text-align:right;font-weight:900;font-variant-numeric:tabular-nums;}
+.row .px small{display:block;font-size:.74rem;font-weight:800;}
+.row svg.spark{width:56px;height:24px;display:block;}
+.pill{display:inline-block;min-width:62px;text-align:center;border-radius:8px;padding:5px 6px;font-weight:900;font-size:.8rem;font-variant-numeric:tabular-nums;}
+.pill.up{background:rgba(61,220,132,.14);}.pill.dn{background:rgba(255,100,112,.14);}
+.empty{padding:16px 4px;color:#8590a6;font-size:.9rem;text-align:center;}
+
+/* market */
+.idx{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 12px;}
+.idx div{background:linear-gradient(180deg,#151b24,#0b0f15);border-radius:14px;padding:9px 10px;min-width:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);}
+.idx b{display:block;font-size:.98rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;color:#eef2f8;}
+.idx small{display:block;font-size:.76rem;font-weight:900;}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -14px 10px;padding:2px 14px 4px;}
+.chips::-webkit-scrollbar{display:none;}
+.q{width:100%;min-height:44px;border-radius:12px;border:0;background:var(--w07);color:var(--text);padding:0 14px;font:inherit;font-size:1rem;margin:0 0 10px;}
+
+/* the "since your last visit" report */
+.rep{border-left:3px solid #f2b632;}
+.rep ul{list-style:none;margin:0;padding:0;display:grid;gap:6px;}
+.rep li{display:flex;justify-content:space-between;gap:10px;font-size:.88rem;font-weight:700;color:#dfe5f0;}
+.rep li b{white-space:nowrap;}
+
+/* detail pane */
+.pane{position:fixed;left:0;right:0;bottom:0;top:var(--bar);z-index:30;overflow-y:auto;overscroll-behavior:contain;background:var(--page-bg);background-attachment:fixed;transform:translateX(100%);visibility:hidden;transition:transform .3s var(--ease),visibility 0s .3s;padding:6px 0 calc(var(--safe-b) + 24px);}
+.pane.on{visibility:visible;transition:transform .3s var(--ease);}
+.pane.on{transform:none;}
+.pane .in{max-width:760px;margin:0 auto;padding:0 14px;}
+.pane .top{display:flex;align-items:center;gap:10px;margin:0 0 10px;}
+.pane .top .back{width:44px;height:44px;border-radius:50%;border:0;background:var(--w07);color:var(--text);display:grid;place-items:center;flex:none;}
+.pane .top .back svg{width:22px;height:22px;}
+.pane .top .t{min-width:0;}
+.pane .top .t b{display:block;font:400 1.35rem/1.1 var(--display);}
+.pane .top .t small{display:block;font-size:.8rem;font-weight:700;color:var(--text-3);}
+.about{font-size:.9rem;line-height:1.45;color:#c9d2e3;margin:0;}
+.kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;}
+.kv div{min-width:0;}
+.kv b{display:block;font-size:1.05rem;font-weight:900;font-variant-numeric:tabular-nums;}
+.tradebar{position:sticky;bottom:calc(var(--safe-b) + 8px);display:flex;gap:10px;margin-top:12px;z-index:2;}
+.tradebar button{flex:1;min-height:52px;font-size:1rem;}
+
+/* trade ticket (sheet) */
+.tt .seg{margin:0 0 12px;}
+.amtbox{display:flex;align-items:center;gap:10px;background:var(--w07);border-radius:14px;padding:6px 12px;margin:0 0 10px;}
+.amtbox span{font:400 1.6rem var(--display);color:var(--text-3);}
+.amtbox input::-webkit-inner-spin-button,.amtbox input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.amtbox input{-moz-appearance:textfield;appearance:textfield;flex:1;min-width:0;border:0;background:none;color:var(--text);font:400 1.9rem var(--display);padding:6px 0;outline:none;font-variant-numeric:tabular-nums;}
+.qchips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;}
+.qchips button{border:0;border-radius:99px;background:var(--w07);color:var(--text-2);padding:7px 12px;font:inherit;font-weight:800;font-size:.85rem;}
+.sum{display:grid;gap:6px;margin:6px 0 4px;}
+.sum div{display:flex;justify-content:space-between;gap:12px;font-size:.92rem;font-weight:700;color:var(--text-2);}
+.sum div b{color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.sum .tot{border-top:1px solid var(--line);padding-top:8px;font-size:1rem;}
+.why{font-size:.84rem;line-height:1.4;color:var(--text-3);margin:8px 0 0;}
+.warn{border-radius:12px;padding:10px 12px;background:rgba(255,200,61,.12);color:#ffd970;font-size:.86rem;font-weight:700;line-height:1.4;margin:10px 0 0;}
+
+/* trade confirmation */
+.conf{position:fixed;inset:0;z-index:70;display:grid;place-items:center;pointer-events:none;background:rgba(5,3,14,.0);animation:confbg 1.6s ease both;}
+@keyframes confbg{0%{background:rgba(5,3,14,0)}15%,80%{background:rgba(5,3,14,.55)}100%{background:rgba(5,3,14,0)}}
+.conf .card{position:relative;width:min(84vw,330px);background:#f4f2ec;color:#1d1d22;border-radius:6px;padding:16px 16px 18px;font-family:var(--mono);box-shadow:0 20px 50px rgba(0,0,0,.6);animation:confin 1.6s cubic-bezier(.2,1.3,.4,1) both;}
+@keyframes confin{0%{transform:translateY(60px) scale(.9);opacity:0}15%{transform:none;opacity:1}80%{transform:none;opacity:1}100%{transform:translateY(-40px) scale(.95);opacity:0}}
+.conf .card .h{font:400 1.1rem var(--display);letter-spacing:.04em;text-transform:uppercase;}
+.conf .card .l{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-top:6px;}
+.conf .card .st{position:absolute;right:12px;top:12px;transform:rotate(-10deg);border:3px solid #16924a;color:#16924a;border-radius:7px;padding:1px 8px;font:400 1.3rem var(--display);letter-spacing:.06em;animation:stampin .4s .35s cubic-bezier(.2,1.6,.4,1) both;mix-blend-mode:multiply;}
+.conf .card .st.sell{border-color:#c0392b;color:#c0392b;}
+@keyframes stampin{0%{transform:rotate(-10deg) scale(2.2);opacity:0}100%{transform:rotate(-10deg) scale(1);opacity:1}}
+
+/* options chain */
+.chain{display:grid;gap:0;}
+.chain .crow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 2px;border-top:1px solid rgba(255,255,255,.06);background:none;border-left:0;border-right:0;border-bottom:0;color:inherit;font:inherit;text-align:left;width:100%;}
+.chain .crow.itm{background:linear-gradient(90deg,rgba(61,220,132,.08),transparent 70%);}
+.chain .crow .k{font-weight:900;font-size:1rem;font-variant-numeric:tabular-nums;}
+.chain .crow .k small{display:block;font-size:.72rem;font-weight:700;color:#8590a6;}
+.chain .crow .pr{text-align:right;font-weight:900;font-variant-numeric:tabular-nums;}
+.chain .crow .pr small{display:block;font-size:.72rem;font-weight:700;color:#8590a6;}
+.chain .spot{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.74rem;font-weight:900;color:#f2b632;letter-spacing:.08em;text-transform:uppercase;}
+.chain .spot::before,.chain .spot::after{content:"";flex:1;height:1px;background:#f2b632;opacity:.6;}
+.payoff{display:block;width:100%;height:auto;margin:8px 0 4px;}
+
+/* bonds */
+.bcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;}
+.bcard{border:0;text-align:left;color:#eef2f8;font:inherit;border-radius:16px;padding:12px;background:linear-gradient(160deg,#1b2b22,#0e1612);box-shadow:inset 0 0 0 1px rgba(160,200,170,.12),0 6px 16px rgba(0,0,0,.35);}
+.bcard .y{font:400 1.7rem/1 var(--display);color:#9ff0bf;margin:6px 0 4px;font-variant-numeric:tabular-nums;}
+.bcard b{display:block;font-size:.95rem;font-weight:900;}
+.bcard small{display:block;font-size:.74rem;font-weight:700;color:#a9bcb0;line-height:1.3;}
+
+/* lessons */
+.lessons{display:grid;gap:10px;}
+.lesson{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:0;text-align:left;width:100%;color:var(--text);font:inherit;padding:12px;border-radius:16px;background:var(--w06);}
+.lesson .n{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:#263041;color:#ffcc4d;font:400 1.1rem var(--display);}
+.lesson.done .n{background:#1d6b41;color:#fff;}
+.lesson .n svg{width:20px;height:20px;}
+.lesson b{display:block;font-weight:900;}
+.lesson small{display:block;font-size:.8rem;color:var(--text-3);font-weight:700;}
+.lesson .go svg{width:20px;height:20px;color:var(--text-3);}
+.lsn{font-size:.98rem;line-height:1.55;color:var(--text-2);}
+.lsn h4{margin:18px 0 6px;font:400 1.15rem var(--display);color:var(--text);}
+.lsn p{margin:0 0 10px;}
+.lsn b{color:var(--text);}
+.lsn .ex{background:linear-gradient(180deg,#151b24,#0b0f15);border-radius:14px;padding:12px 14px;margin:10px 0 12px;color:#dfe5f0;font-size:.92rem;}
+.lsn .ex .cap{display:block;margin-bottom:4px;}
+.lsn svg.fig{display:block;width:100%;height:auto;margin:6px 0;}
+.lsn ul{margin:0 0 10px;padding-left:20px;}
+.lsn li{margin:0 0 5px;}
+
+/* tax center */
+.taxt{width:100%;border-collapse:collapse;font-size:.92rem;}
+.taxt td{padding:7px 2px;border-top:1px solid var(--line);color:var(--text-2);font-weight:700;}
+.taxt td:last-child{text-align:right;color:var(--text);font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.taxt tr.tot td{font-size:1rem;}
+
+@media (min-width:900px),(orientation:landscape) and (min-width:640px){
+  .mk{max-width:1200px;display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:18px;}
+  .mk-side{display:block;position:sticky;top:calc(var(--bar) + 4px);align-self:start;max-height:calc(100dvh - var(--bar) - 10px);overflow-y:auto;scrollbar-width:none;}
+  .mk-side::-webkit-scrollbar{display:none;}
+  .tape{grid-column:1/-1;margin:2px -14px 4px;}
+  .chips{margin:0 0 10px;padding:2px 0 4px;}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var QURL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/market%2Fquotes.json?alt=media';
+  var DAY = 864e5, YEAR = 365 * DAY;
+
+  // ── Storage: the account and lessons follow the PIN; the price cache stays on this device ──
+  function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }
+  var AK = 'mk_acct', LK = 'mk_learn', SK = 'mk_set';
+  function fresh() { return { v: 1, cash: 0, lots: [], opts: [], bonds: [], orders: [], tx: [], paid: {}, vals: [], dvSeen: {}, mmAt: Date.now(), dep: 0, wd: 0, last: 0, lastVal: 0, lastPx: {} }; }
+  var A = lsGet(AK, null) || fresh();
+  ['lots', 'opts', 'bonds', 'orders', 'tx', 'vals'].forEach(function (k) { if (!Array.isArray(A[k])) A[k] = []; });
+  A.paid = A.paid || {}; A.dvSeen = A.dvSeen || {}; A.lastPx = A.lastPx || {};
+  var LEARN = lsGet(LK, {}) || {};
+  var SET = lsGet(SK, null) || { br: 22 };
+  function save() { if (A.tx.length > 600) A.tx = A.tx.slice(-600); lsSet(AK, A); }
+
+  // ── Numbers ──
+  function r2(n) { return Math.round(n * 100) / 100; }
+  function money(n, cents) { var neg = n < 0; n = Math.abs(n); var s = cents || n < 100 ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(n).toLocaleString(); return (neg ? '−$' : '$') + s; }
+  function px(n) { return '$' + (n >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : n < 1 ? n.toFixed(4) : n.toFixed(2)); }
+  function signed(n, cents) { return (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n), cents); }
+  function pct(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(2) + '%'; }
+  function shares(n) { return n >= 100 ? n.toFixed(2).replace(/\.?0+$/, '') : n.toFixed(4).replace(/\.?0+$/, ''); }
+  function cls(n) { return n > 0.00001 ? 'up' : n < -0.00001 ? 'dn' : ''; }
+  function rid() { return Math.random().toString(36).slice(2, 9); }
+  function ymd(t) { var d = new Date(t); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function dateTxt(t, yr) { return new Date(t).toLocaleDateString([], yr ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' }); }
+  function yearOf(t) { return new Date(t).getFullYear(); }
+  function phi(x) { var t = 1 / (1 + .2316419 * Math.abs(x)), d = .3989423 * Math.exp(-x * x / 2), p = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
+
+  // ── Prices ──
+  var Q = lsGet('mk_quotes_cache', null), qErr = false;
+  function loadQuotes() {
+    return fetch(QURL + '&t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
+      if (!j || !j.q) throw new Error('bad');
+      Q = j; qErr = false;
+      try { localStorage.setItem('mk_quotes_cache', JSON.stringify(j)); } catch (e) {}
+      return Q;
+    }).catch(function () { qErr = true; return Q; });
+  }
+  function S(sym) { return Q && Q.q && Q.q[sym]; }
+  function price(sym) { var s = S(sym); return s ? s.p : 0; }
+  function dayChg(sym) { var s = S(sym); return s && s.pc ? (s.p - s.pc) / s.pc : 0; }
+  // closes with dates: [[ms, close]]
+  function series(sym) { var s = S(sym); if (!s) return []; var t0 = Date.parse(s.d0 + 'T12:00:00'); return s.h.map(function (v, i) { return [t0 + (s.o ? s.o[i] : i) * DAY, v]; }); }
+  function closeOn(sym, dayStr) { var se = series(sym), best = null; se.forEach(function (x) { if (ymd(x[0]) <= dayStr) best = x[1]; }); return best; }
+  // yearly volatility from the last 60 closes
+  function vol(sym) {
+    var s = S(sym); if (!s || s.h.length < 10) return .3;
+    var h = s.h.slice(-61), r = [];
+    for (var i = 1; i < h.length; i++) if (h[i - 1] > 0) r.push(Math.log(h[i] / h[i - 1]));
+    var m = r.reduce(function (a, b) { return a + b; }, 0) / r.length, v = r.reduce(function (a, b) { return a + (b - m) * (b - m); }, 0) / (r.length - 1);
+    return Math.min(1.5, Math.max(.12, Math.sqrt(v * 252)));
+  }
+  var GROUPS = [['index', 'Index funds'], ['bondfund', 'Bond funds'], ['tbond', 'Treasuries'], ['sector', 'Sector and gold'], ['tech', 'Tech'], ['fun', 'Games and fun'], ['travel', 'Travel'], ['food', 'Food and shopping'], ['money', 'Banks and payments'], ['health', 'Health'], ['energy', 'Energy and mining'], ['cars', 'Cars'], ['crypto', 'Crypto']];
+  var GCOL = { index: '#2f6fd6', bondfund: '#1f8a5a', sector: '#8a6a1f', tech: '#6d4bd6', fun: '#c2417a', travel: '#1f8aa8', food: '#c46a1f', money: '#3d5a80', health: '#b03a48', energy: '#6b7a2a', cars: '#5a6270', crypto: '#c48a12' };
+  function kindOf(sym) { var s = S(sym); return s ? s.k : 'stock'; }
+  function isCoin(sym) { return kindOf(sym) === 'coin'; }
+
+  // ── Market clock: prices update around 1 PM and 5 PM New York time ──
+  function nyParts(t) {
+    var f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(t)), o = {};
+    f.forEach(function (p) { o[p.type] = p.value; }); return o;
+  }
+  function asofTxt() {
+    if (!Q || !Q.asof) return '';
+    var t = Q.asof, p = nyParts(t), mins = (+p.hour % 24) * 60 + (+p.minute), closed = mins >= 16 * 60 || mins < 9 * 60 + 30;
+    var when = new Date(t).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return (closed ? 'Closing prices from ' : 'Prices from ') + when;
+  }
+
+  // ── Treasuries ──
+  var TB = {
+    bill: { n: '13-week Treasury bill', short: 'T-Bill', yrs: .25, r: 'irx', about: 'Buy it for a little less than its face value; get the full face value back in 13 weeks. The difference is your interest.' },
+    n5: { n: '5-year Treasury note', short: '5-yr note', yrs: 5, r: 'fvx', about: 'Pays interest every 6 months for 5 years, then your money back.' },
+    n10: { n: '10-year Treasury note', short: '10-yr note', yrs: 10, r: 'tnx', about: 'The most watched interest rate in the world. Interest every 6 months for 10 years.' },
+    b30: { n: '30-year Treasury bond', short: '30-yr bond', yrs: 30, r: 'tyx', about: 'The longest Treasury: interest every 6 months for 30 years. Its price swings most when rates move.' }
+  };
+  function rate(key) { return Q && Q.rates && Q.rates[key] != null ? Q.rates[key] / 100 : ({ irx: .04, fvx: .04, tnx: .042, tyx: .045 })[key]; }
+  // the yield for any time left, along the curve 13 weeks to 30 years
+  function curve(yrs) {
+    var pts = [[.25, rate('irx')], [5, rate('fvx')], [10, rate('tnx')], [30, rate('tyx')]];
+    if (yrs <= pts[0][0]) return pts[0][1];
+    for (var i = 1; i < pts.length; i++) if (yrs <= pts[i][0]) { var a = pts[i - 1], b = pts[i]; return a[1] + (b[1] - a[1]) * (yrs - a[0]) / (b[0] - a[0]); }
+    return pts[pts.length - 1][1];
+  }
+  function bondValue(b, now) {
+    now = now || Date.now();
+    var left = Math.max(0, (b.mat - now) / YEAR), y = curve(Math.max(.02, left));
+    if (b.kind === 'bill') return b.face / (1 + y * left);
+    var v = 0, c = b.face * b.cpn / 2;
+    for (var t = b.next; t <= b.mat + DAY; t += YEAR / 2) { var yt = (t - now) / YEAR; if (yt < 0) continue; v += c / Math.pow(1 + y / 2, 2 * yt); }
+    return v + b.face / Math.pow(1 + y / 2, 2 * left);
+  }
+
+  // ── Options (Black-Scholes, from the stock's own swings) ──
+  function bs(S0, K, T, r, s, call) {
+    if (T <= 0) return Math.max(0, call ? S0 - K : K - S0);
+    var d1 = (Math.log(S0 / K) + (r + s * s / 2) * T) / (s * Math.sqrt(T)), d2 = d1 - s * Math.sqrt(T);
+    return call ? S0 * phi(d1) - K * Math.exp(-r * T) * phi(d2) : K * Math.exp(-r * T) * phi(-d2) - S0 * phi(-d1);
+  }
+  function itmChance(S0, K, T, r, s, call) { if (T <= 0) return (call ? S0 > K : S0 < K) ? 1 : 0; var d2 = (Math.log(S0 / K) + (r - s * s / 2) * T) / (s * Math.sqrt(T)); return call ? phi(d2) : phi(-d2); }
+  function tick(v) { return v >= 3 ? Math.round(v * 20) / 20 : Math.round(v * 100) / 100; }
+  function optQuote(sym, K, exp, call, now) {
+    var S0 = price(sym), T = Math.max(0, (expMs(exp) - (now || Date.now())) / YEAR), th = bs(S0, K, T, rate('irx'), vol(sym), call);
+    return { theo: th, ask: Math.max(.05, tick(th * 1.04 + .02)), bid: Math.max(0, tick(th * .96 - .02)), chance: itmChance(S0, K, T, rate('irx'), vol(sym), call), T: T };
+  }
+  function expMs(exp) { return Date.parse(exp + 'T16:00:00-05:00'); }   // 4 PM New York on expiration day
+  function fridays() {
+    // about 1 week, 1 month and 3 months out (standard monthly expirations are the third Friday)
+    var out = [], d = new Date(); d.setHours(12, 0, 0, 0);
+    var f = new Date(d); f.setDate(f.getDate() + ((5 - f.getDay() + 7) % 7 || 7)); if ((f - d) / DAY < 5) f.setDate(f.getDate() + 7);
+    out.push(ymd(f));
+    function third(y, m) { var x = new Date(y, m, 1, 12); x.setDate(1 + ((5 - x.getDay() + 7) % 7) + 14); return x; }
+    var m1 = third(d.getFullYear(), d.getMonth() + 1), m3 = third(d.getFullYear(), d.getMonth() + 3);
+    [m1, m3].forEach(function (x) { if (out.indexOf(ymd(x)) < 0) out.push(ymd(x)); });
+    return out;
+  }
+  function strikes(S0) {
+    var st = S0 < 10 ? .5 : S0 < 30 ? 1 : S0 < 80 ? 2.5 : S0 < 200 ? 5 : S0 < 500 ? 10 : S0 < 1200 ? 25 : 50;
+    var atm = Math.round(S0 / st) * st, out = [];
+    for (var i = -5; i <= 5; i++) { var k = r2(atm + i * st); if (k > 0) out.push(k); }
+    return out;
+  }
+
+  // ── The account ──
+  function heldQty(sym) { return A.lots.reduce(function (s, l) { return l.sym === sym ? s + l.q : s; }, 0); }
+  function costOf(sym) { return A.lots.reduce(function (s, l) { return l.sym === sym ? s + l.q * l.c : s; }, 0); }
+  function reserved() { return A.orders.reduce(function (s, o) { return o.side === 'buy' ? s + o.amt : s; }, 0); }
+  function avail() { return Math.max(0, r2(A.cash - reserved())); }
+  function optVal(o, now) { var q = optQuote(o.sym, o.k, o.exp, o.right === 'C', now); return q.theo * 100 * o.n; }
+  function holdings() {
+    var by = {};
+    A.lots.forEach(function (l) { var h = by[l.sym] = by[l.sym] || { sym: l.sym, q: 0, cost: 0 }; h.q += l.q; h.cost += l.q * l.c; });
+    return Object.keys(by).map(function (k) { var h = by[k]; h.val = h.q * price(k); return h; }).sort(function (a, b) { return b.val - a.val; });
+  }
+  function totals() {
+    var t = { cash: A.cash, stock: 0, fund: 0, bond: 0, coin: 0, opt: 0, tb: 0 };
+    holdings().forEach(function (h) { var k = kindOf(h.sym); t[k === 'fund' ? 'fund' : k === 'bond' ? 'bond' : k === 'coin' ? 'coin' : 'stock'] += h.val; });
+    A.opts.forEach(function (o) { t.opt += optVal(o); });
+    A.bonds.forEach(function (b) { t.tb += bondValue(b); });
+    t.all = t.cash + t.stock + t.fund + t.bond + t.coin + t.opt + t.tb;
+    return t;
+  }
+  function addTx(o) { o.id = o.id || rid(); o.t = o.t || Date.now(); A.tx.push(o); return o; }
+
+  // ── Taxes: gains count when you sell; the bill comes due when money goes back to your bankroll ──
+  var BRACKETS = [[12, 0], [22, 15], [24, 15], [32, 15], [35, 15], [37, 20]];
+  function ltRate() { for (var i = 0; i < BRACKETS.length; i++) if (BRACKETS[i][0] === SET.br) return BRACKETS[i][1] / 100; return .15; }
+  function stRate() { return SET.br / 100; }
+  function taxYears() {
+    var ys = {}, carry = 0, out = [];
+    A.tx.forEach(function (x) { var y = yearOf(x.t), o = ys[y] = ys[y] || { y: y, st: 0, lt: 0, int: 0, div: 0 }; if (x.gain != null) o[x.term === 'lt' ? 'lt' : 'st'] += x.gain; if (x.type === 'int' || x.type === 'cpn' || x.type === 'mat') o.int += x.inc || 0; if (x.type === 'div') o.div += x.amt; });
+    Object.keys(ys).sort().forEach(function (k) {
+      var o = ys[k], st = o.st, lt = o.lt;
+      o.carryIn = carry;
+      // last year's leftover losses come off this year's gains, short-term first
+      if (carry > 0) { var a = Math.min(carry, Math.max(0, st)); st -= a; carry -= a; var b = Math.min(carry, Math.max(0, lt)); lt -= b; carry -= b; }
+      // a loss on one side offsets a gain on the other
+      if (st < 0 && lt > 0) { var m = Math.min(-st, lt); st += m; lt -= m; }
+      if (lt < 0 && st > 0) { var n = Math.min(-lt, st); lt += n; st -= n; }
+      var loss = Math.max(0, -st) + Math.max(0, -lt);
+      // up to $3,000 of losses a year can also come off interest; the rest carries to next year
+      var off = Math.min(3000, loss, o.int); carry += loss - off;
+      o.stNet = Math.max(0, st); o.ltNet = Math.max(0, lt); o.intNet = o.int - off; o.carryOut = carry;
+      o.tax = r2(o.stNet * stRate() + o.intNet * stRate() + (o.ltNet + o.div) * ltRate());
+      o.paid = A.paid[k] || 0;
+      out.push(o);
+    });
+    return out;
+  }
+  function taxDue() { return r2(taxYears().reduce(function (s, o) { return s + o.tax - o.paid; }, 0)); }
+  // what a withdrawal of amt brings to the bankroll
+  function withdrawPlan(amt) {
+    var due = taxDue(), held = due > 0 ? Math.min(amt, due) : 0, refund = due < 0 ? -due : 0;
+    return { amt: amt, held: r2(held), refund: r2(refund), net: r2(amt - held + refund), due: due };
+  }
+  function payTax(held, refund) {
+    var ys = taxYears();
+    ys.forEach(function (o) { if (held <= 0) return; var owe = o.tax - o.paid; if (owe > 0) { var p = Math.min(owe, held); A.paid[o.y] = r2((A.paid[o.y] || 0) + p); held -= p; } });
+    if (held > 0) { var y = new Date().getFullYear(); A.paid[y] = r2((A.paid[y] || 0) + held); }
+    ys.forEach(function (o) { if (refund <= 0) return; var over = o.paid - o.tax; if (over > 0) { var r = Math.min(over, refund); A.paid[o.y] = r2(A.paid[o.y] - r); refund -= r; } });
+  }
+
+  // ── Trading ──
+  function buy(sym, dollars, p) {
+    p = p || price(sym); if (!p || dollars <= 0 || dollars > avail() + .005) return null;
+    var q = Math.floor(dollars / p * 1e6) / 1e6; if (q <= 0) return null;
+    var cost = r2(q * p);
+    A.cash = r2(A.cash - cost);
+    A.lots.push({ id: rid(), sym: sym, q: q, c: p, at: Date.now() });
+    if (A.dvSeen[sym] == null) A.dvSeen[sym] = ymd(Date.now());
+    return addTx({ type: 'buy', sym: sym, q: q, px: p, amt: cost });
+  }
+  // sells oldest shares first; one line per tax term
+  function sell(sym, q, p) {
+    p = p || price(sym); var have = heldQty(sym); q = Math.min(q, have); if (q <= 0 || !p) return null;
+    if (have - q < 1e-6) q = have;
+    var left = q, now = Date.now(), parts = { st: { q: 0, c: 0 }, lt: { q: 0, c: 0 } };
+    A.lots.filter(function (l) { return l.sym === sym; }).sort(function (a, b) { return a.at - b.at; }).forEach(function (l) {
+      if (left <= 1e-9) return;
+      var take = Math.min(l.q, left), term = now - l.at > YEAR ? 'lt' : 'st';
+      parts[term].q += take; parts[term].c += take * l.c; l.q -= take; left -= take;
+    });
+    A.lots = A.lots.filter(function (l) { return l.q > 1e-7; });
+    var out = [];
+    ['st', 'lt'].forEach(function (term) {
+      var pt = parts[term]; if (pt.q <= 0) return;
+      var amt = r2(pt.q * p);
+      A.cash = r2(A.cash + amt);
+      out.push(addTx({ type: 'sell', sym: sym, q: pt.q, px: p, amt: amt, gain: r2(amt - pt.c), term: term }));
+    });
+    return out;
+  }
+  function buyOpt(sym, K, exp, call, n) {
+    var q = optQuote(sym, K, exp, call), cost = r2(q.ask * 100 * n);
+    if (n <= 0 || cost > avail() + .005) return null;
+    A.cash = r2(A.cash - cost);
+    A.opts.push({ id: rid(), sym: sym, k: K, exp: exp, right: call ? 'C' : 'P', n: n, c: q.ask, at: Date.now() });
+    return addTx({ type: 'obuy', sym: sym, q: n, px: q.ask, amt: cost, note: optName({ sym: sym, k: K, exp: exp, right: call ? 'C' : 'P' }) });
+  }
+  function sellOpt(o, n) {
+    var q = optQuote(o.sym, o.k, o.exp, o.right === 'C'), amt = r2(q.bid * 100 * n);
+    A.cash = r2(A.cash + amt); o.n -= n;
+    A.opts = A.opts.filter(function (x) { return x.n > 0; });
+    return addTx({ type: 'osell', sym: o.sym, q: n, px: q.bid, amt: amt, gain: r2(amt - o.c * 100 * n), term: Date.now() - o.at > YEAR ? 'lt' : 'st', note: optName(o) });
+  }
+  function optName(o) { return o.sym + ' $' + o.k + ' ' + (o.right === 'C' ? 'call' : 'put') + ' ' + dateTxt(expMs(o.exp)); }
+  function buyBond(kind, face) {
+    var T = TB[kind], y = rate(T.r), now = Date.now(), cost;
+    var b = { id: rid(), kind: kind, face: face, at: now, mat: now + T.yrs * YEAR, y: y };
+    if (kind === 'bill') cost = r2(face / (1 + y * T.yrs));
+    else { b.cpn = Math.round(y * 800) / 800; b.next = now + YEAR / 2; cost = face; }
+    if (cost > avail() + .005) return null;
+    b.c = cost; A.cash = r2(A.cash - cost); A.bonds.push(b);
+    return addTx({ type: 'bbuy', sym: T.short, amt: cost, note: T.n });
+  }
+  function sellBond(b) {
+    var v = r2(bondValue(b)); A.cash = r2(A.cash + v); A.bonds = A.bonds.filter(function (x) { return x !== b; });
+    // a bill sold early: the interest it earned so far is interest, the rest a gain or loss
+    return addTx({ type: 'bsell', sym: TB[b.kind].short, amt: v, gain: r2(v - b.c), term: Date.now() - b.at > YEAR ? 'lt' : 'st', note: TB[b.kind].n });
+  }
+
+  // ── Catching up: everything that happened since the last visit ──
+  function catchUp() {
+    var now = Date.now(), ev = [];
+    if (!Q) return ev;
+    // interest on cash (a money market fund, paying about the T-bill rate)
+    var days = Math.floor((now - (A.mmAt || now)) / DAY);
+    if (days >= 1 && A.cash > 1) { var i = r2(A.cash * rate('irx') * days / 365); if (i >= .01) { A.cash = r2(A.cash + i); addTx({ type: 'int', amt: i, inc: i, note: 'Interest on cash' }); ev.push(['Interest on your cash', signed(i, 1)]); } }
+    if (days >= 1) A.mmAt = (A.mmAt || now) + days * DAY;
+    // dividends
+    Object.keys(A.dvSeen).forEach(function (sym) {
+      var s = S(sym); if (!s || !s.dv) return;
+      s.dv.forEach(function (d) {
+        if (d[0] <= A.dvSeen[sym] || d[0] > ymd(now)) return;
+        var ex = Date.parse(d[0] + 'T09:30:00'), q = A.lots.reduce(function (t, l) { return l.sym === sym && l.at < ex ? t + l.q : t; }, 0);
+        A.dvSeen[sym] = d[0];
+        var amt = r2(q * d[1]); if (amt < .01) return;
+        A.cash = r2(A.cash + amt); addTx({ type: 'div', sym: sym, amt: amt, note: sym + ' dividend' }); ev.push([sym + ' paid a dividend', signed(amt, 1)]);
+      });
+    });
+    // limit orders against the new prices
+    A.orders.slice().forEach(function (o) {
+      var p = price(o.sym); if (!p || (Q.at || 0) <= o.at) return;
+      if (now > o.exp) { A.orders = A.orders.filter(function (x) { return x !== o; }); ev.push(['Limit order expired', o.sym]); return; }
+      if (o.side === 'buy' && p <= o.lim) { A.orders = A.orders.filter(function (x) { return x !== o; }); var t = buy(o.sym, Math.min(o.amt, A.cash), p); if (t) ev.push(['Bought ' + o.sym + ' at ' + px(p), money(t.amt, 1)]); }
+      else if (o.side === 'sell' && p >= o.lim) { A.orders = A.orders.filter(function (x) { return x !== o; }); var s2 = sell(o.sym, o.q, p); if (s2 && s2.length) ev.push(['Sold ' + o.sym + ' at ' + px(p), money(s2.reduce(function (a, x) { return a + x.amt; }, 0), 1)]); }
+    });
+    // options at expiration: in the money pays what it's worth, out of the money expires worthless
+    A.opts.slice().forEach(function (o) {
+      if (now < expMs(o.exp) + 3600e3) return;
+      var close = closeOn(o.sym, o.exp) || price(o.sym), call = o.right === 'C', iv = Math.max(0, call ? close - o.k : o.k - close), amt = r2(iv * 100 * o.n);
+      A.opts = A.opts.filter(function (x) { return x !== o; });
+      A.cash = r2(A.cash + amt);
+      addTx({ type: 'oexp', sym: o.sym, q: o.n, amt: amt, gain: r2(amt - o.c * 100 * o.n), term: 'st', note: optName(o) });
+      ev.push([optName(o) + (amt > 0 ? ' finished in the money' : ' expired worthless'), signed(amt - o.c * 100 * o.n, 1)]);
+    });
+    // Treasury interest and maturities
+    A.bonds.slice().forEach(function (b) {
+      if (b.kind !== 'bill') while (b.next <= Math.min(now, b.mat + DAY)) { var c = r2(b.face * b.cpn / 2); A.cash = r2(A.cash + c); addTx({ type: 'cpn', sym: TB[b.kind].short, amt: c, inc: c, note: TB[b.kind].n + ' interest' }); ev.push([TB[b.kind].short + ' interest', signed(c, 1)]); b.next += YEAR / 2; }
+      if (now >= b.mat) {
+        A.bonds = A.bonds.filter(function (x) { return x !== b; }); A.cash = r2(A.cash + b.face);
+        addTx({ type: 'mat', sym: TB[b.kind].short, amt: b.face, inc: b.kind === 'bill' ? r2(b.face - b.c) : 0, note: TB[b.kind].n + ' matured' });
+        ev.push([TB[b.kind].n + ' paid back', money(b.face, 1)]);
+      }
+    });
+    return ev;
+  }
+  function recordValue() {
+    var v = totals().all, d = ymd(Date.now());
+    if (A.vals.length && A.vals[A.vals.length - 1][0] === d) A.vals[A.vals.length - 1][1] = r2(v); else A.vals.push([d, r2(v)]);
+    if (A.vals.length > 800) A.vals = A.vals.slice(-800);
+  }
+
+  // ── Charts ──
+  // a line over time: points [[ms, value]], with a finger-following readout
+  function lineChart(pts, o) {
+    o = o || {};
+    var W = 340, H = o.h || 150, box = el('div', { class: 'chart' });
+    if (pts.length < 2) { box.appendChild(el('div', { class: 'empty', text: o.empty || 'The chart fills in as days go by.' })); return box; }
+    var vs = pts.map(function (p) { return p[1]; }), lo = Math.min.apply(null, vs), hi = Math.max.apply(null, vs);
+    if (o.base != null) { lo = Math.min(lo, o.base); hi = Math.max(hi, o.base); }
+    var pad = (hi - lo) * .08 || hi * .02 || 1; lo -= pad; hi += pad;
+    var t0 = pts[0][0], t1 = pts[pts.length - 1][0] || t0 + 1;
+    function X(t) { return (t - t0) / ((t1 - t0) || 1) * W; } function Y(v) { return H - (v - lo) / (hi - lo) * H; }
+    var up = vs[vs.length - 1] >= (o.base != null ? o.base : vs[0]), col = up ? '#3ddc84' : '#ff6470', gid = 'g' + rid();
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join('');
+    var base = o.base != null ? o.base : vs[0];
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="aspect-ratio:' + W + '/' + H + '"><defs><linearGradient id="' + gid + '" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="' + col + '" stop-opacity=".28"/><stop offset="1" stop-color="' + col + '" stop-opacity="0"/></linearGradient></defs>' +
+      '<line x1="0" x2="' + W + '" y1="' + Y(base).toFixed(1) + '" y2="' + Y(base).toFixed(1) + '" stroke="rgba(255,255,255,.22)" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>' +
+      '<path d="' + d + 'L' + W + ' ' + H + 'L0 ' + H + 'Z" fill="url(#' + gid + ')"/>' +
+      '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
+      '<line class="xh" x1="0" x2="0" y1="0" y2="' + H + '" stroke="rgba(255,255,255,.5)" vector-effect="non-scaling-stroke" style="display:none"/>' +
+      '<circle class="dot" r="4" fill="' + col + '" stroke="#0b0f15" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/></svg>';
+    box.innerHTML = svg;
+    var tip = el('div', { class: 'tip', style: { display: 'none' } }); box.appendChild(tip);
+    var s = box.querySelector('svg'), xh = s.querySelector('.xh'), dot = s.querySelector('.dot');
+    function show(e) {
+      var r = s.getBoundingClientRect(), fx = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)), t = t0 + fx * (t1 - t0), best = pts[0];
+      pts.forEach(function (p) { if (Math.abs(p[0] - t) < Math.abs(best[0] - t)) best = p; });
+      var x = X(best[0]), y = Y(best[1]);
+      xh.setAttribute('x1', x); xh.setAttribute('x2', x); xh.style.display = ''; dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.style.display = '';
+      tip.style.display = ''; tip.style.left = Math.max(40, Math.min(r.width - 40, x / W * r.width)) + 'px'; tip.style.top = '-34px';
+      tip.innerHTML = (o.fmt || money)(best[1]) + '<small>' + dateTxt(best[0], true) + '</small>';
+    }
+    function hide() { xh.style.display = 'none'; dot.style.display = 'none'; tip.style.display = 'none'; }
+    s.addEventListener('pointerdown', show); s.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' || e.buttons) show(e); });
+    s.addEventListener('pointerleave', hide); s.addEventListener('pointerup', function (e) { if (e.pointerType !== 'mouse') setTimeout(hide, 1200); });
+    return box;
+  }
+  function spark(sym) {
+    var s = S(sym); if (!s) return el('span');
+    var h = s.h.slice(-22), lo = Math.min.apply(null, h), hi = Math.max.apply(null, h), W = 56, H = 24;
+    var d = h.map(function (v, i) { return (i ? 'L' : 'M') + (i / (h.length - 1) * W).toFixed(1) + ' ' + (H - 2 - (v - lo) / ((hi - lo) || 1) * (H - 4)).toFixed(1); }).join('');
+    var col = h[h.length - 1] >= h[0] ? '#3ddc84' : '#ff6470';
+    return el('span', { html: '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '"><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-linejoin="round"/></svg>' });
+  }
+  function tkBadge(sym) { var s = S(sym); return el('span', { class: 'tk', style: { background: GCOL[s && s.g] || '#2b3648' }, text: sym.replace('-USD', '') }); }
+
+  // ── Layout ──
+  var tab = 'port', mkt = { g: 'index', q: '' }, dom = {};
+  function layout() {
+    app.innerHTML = '';
+    var root = el('div', { class: 'mk' });
+    dom.tape = el('div', { class: 'tape' });
+    dom.side = el('aside', { class: 'mk-side' });
+    dom.main = el('main', { class: 'mk-main' });
+    dom.sum = el('div');
+    dom.seg = el('div', { class: 'seg', style: { margin: '0 0 12px' } });
+    dom.body = el('div');
+    root.appendChild(dom.tape); root.appendChild(dom.side); root.appendChild(dom.main);
+    dom.main.appendChild(dom.seg); dom.main.appendChild(dom.body);
+    app.appendChild(root);
+    dom.pane = el('div', { class: 'pane' }, [dom.paneIn = el('div', { class: 'in' })]);
+    document.body.appendChild(dom.pane);
+    var mq = window.matchMedia('(min-width:900px),(orientation:landscape) and (min-width:640px)');
+    function place() { dom.wide = mq.matches; if (dom.wide) dom.side.appendChild(dom.sum); paint(); }
+    if (mq.addEventListener) mq.addEventListener('change', place); else mq.addListener(place);
+    place();
+  }
+  function paint() {
+    paintTape(); paintSum(); paintSeg();
+    if (!dom.wide && tab === 'port') dom.body.innerHTML = '', dom.body.appendChild(dom.sum); else dom.body.innerHTML = '';
+    if (tab === 'port') paintPort(); else if (tab === 'mkt') paintMarket(); else paintLearn();
+  }
+  function paintTape() {
+    dom.tape.innerHTML = '';
+    if (!Q) return;
+    var syms = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'GOOGL', 'META', 'DIS', 'NTDOY', 'UAL', 'KO', 'BTC-USD', 'TLT', 'GLD'].filter(S);
+    holdings().forEach(function (h) { if (syms.indexOf(h.sym) < 0) syms.unshift(h.sym); });
+    var run = el('div', { class: 'run' });
+    for (var rep = 0; rep < 2; rep++) syms.forEach(function (sym) {
+      var c = dayChg(sym);
+      run.appendChild(el('span', { class: 'it' }, [el('b', { text: sym.replace('-USD', '') }), el('span', { text: px(price(sym)).replace('$', '') }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]));
+    });
+    run.style.animationDuration = syms.length * 4.5 + 's';
+    dom.tape.appendChild(run);
+  }
+  function paintSeg() {
+    dom.seg.innerHTML = '';
+    [['port', 'Portfolio'], ['mkt', 'Market'], ['learn', 'Learn']].forEach(function (x) {
+      dom.seg.appendChild(el('button', { type: 'button', class: tab === x[0] ? 'on' : '', onclick: function () { if (tab === x[0]) return; tab = x[0]; Kit.sfx('tap'); paint(); window.scrollTo(0, 0); } }, [x[1]]));
+    });
+  }
+  // the account summary: value, chart, cash, allocation
+  var valRange = 'all';
+  function paintSum() {
+    var s = dom.sum; s.innerHTML = '';
+    var t = totals(), first = A.vals.length ? A.vals[0][1] : t.all;
+    var day = A.vals.length > 1 ? t.all - A.vals[A.vals.length - 2][1] : 0, net = t.all - (A.dep - A.wd);
+    var p = el('div', { class: 'pnl' });
+    p.appendChild(el('h3', null, [el('span', { text: 'Account value' }), el('span', { text: A.dep ? '' : 'Play money from your bankroll' })]));
+    p.appendChild(el('div', { class: 'val' }, [el('span', { class: 'big', text: money(t.all, 1) }),
+      el('span', { class: 'chg ' + cls(net) }, [el('small', { text: 'All-time' }), document.createTextNode(signed(net, 1))])]));
+    if (Q) p.appendChild(el('div', { class: 'asof', text: asofTxt() + (qErr ? '  (saved copy)' : '') }));
+    var now = Date.now(), cut = { w: 7, m: 31, q: 92, all: 1e5 }[valRange], pts = A.vals.map(function (v) { return [Date.parse(v[0] + 'T12:00:00'), v[1]]; }).filter(function (v) { return now - v[0] <= cut * DAY; });
+    if (pts.length === 1) pts.unshift([pts[0][0] - DAY, A.dep ? A.dep - A.wd : pts[0][1]]);
+    p.appendChild(lineChart(pts, { h: 120, empty: 'Your account’s value is charted here, day by day.' }));
+    var rg = el('div', { class: 'rng' });
+    [['w', '1W'], ['m', '1M'], ['q', '3M'], ['all', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', class: valRange === r[0] ? 'on' : '', text: r[1], onclick: function () { valRange = r[0]; paintSum(); } })); });
+    p.appendChild(rg);
+    s.appendChild(p);
+    // cash
+    var c = el('div', { class: 'pnl' });
+    c.appendChild(el('h3', null, [el('span', { text: 'Cash to invest' }), el('span', { text: 'Earns ' + (rate('irx') * 100).toFixed(2) + '% a year' })]));
+    c.appendChild(el('div', { class: 'cashrow' }, [el('span', { class: 'amt', text: money(A.cash, 1) }), el('span', { class: 'btns' }, [
+      el('button', { type: 'button', class: 'btn-g', text: 'Add money', onclick: deposit }),
+      el('button', { type: 'button', class: 'btn-d', text: 'Cash out', disabled: t.all < .01 ? true : null, onclick: withdraw })])]));
+    if (reserved() > 0) c.appendChild(el('div', { class: 'asof', text: money(reserved(), 1) + ' set aside for limit orders' }));
+    s.appendChild(c);
+    // what it's in
+    if (t.all > .01) {
+      var parts = [['Stocks', t.stock, '#6d4bd6'], ['Funds', t.fund, '#2f6fd6'], ['Bonds', t.bond + t.tb, '#1f8a5a'], ['Options', t.opt, '#c2417a'], ['Crypto', t.coin, '#c48a12'], ['Cash', t.cash, '#5a6270']].filter(function (x) { return x[1] > .005; });
+      var al = el('div', { class: 'pnl' }); al.appendChild(el('h3', null, [el('span', { text: 'What it’s in' })]));
+      var bar = el('div', { class: 'alloc' }); parts.forEach(function (x) { bar.appendChild(el('i', { style: { width: (x[1] / t.all * 100) + '%', background: x[2] } })); });
+      al.appendChild(bar);
+      var lg = el('div', { class: 'legend' }); parts.forEach(function (x) { lg.appendChild(el('div', null, [el('span', null, [el('i', { style: { background: x[2] } }), document.createTextNode(x[0])]), el('b', { class: 'num', text: Math.round(x[1] / t.all * 100) + '%' })])); });
+      al.appendChild(lg);
+      s.appendChild(al);
+    }
+    // taxes
+    var ty = taxYears().filter(function (o) { return o.y === new Date().getFullYear(); })[0], due = taxDue();
+    if (ty || due) {
+      var tx = el('div', { class: 'pnl' }); tx.appendChild(el('h3', null, [el('span', { text: 'Taxes this year' }), el('button', { type: 'button', text: 'Details', onclick: taxSheet })]));
+      tx.appendChild(el('div', { class: 'kv' }, [
+        el('div', null, [el('span', { class: 'cap', text: 'Gains sold' }), el('b', { class: cls(ty ? ty.st + ty.lt : 0), text: signed(ty ? ty.st + ty.lt : 0, 1) })]),
+        el('div', null, [el('span', { class: 'cap', text: due >= 0 ? 'Tax owed' : 'Tax refund' }), el('b', { text: money(Math.abs(due), 1) })])]));
+      if (due > 0) tx.appendChild(el('div', { class: 'asof', text: 'Comes out when you cash out to your bankroll.' }));
+      s.appendChild(tx);
+    }
+  }
+
+  // ── Portfolio tab ──
+  function paintPort() {
+    var b = dom.body;
+    if (report && report.length) {
+      var r = el('div', { class: 'pnl rep' }); r.appendChild(el('h3', null, [el('span', { text: 'Since your last visit' }), el('button', { type: 'button', text: 'Got it', onclick: function () { report = null; paint(); } })]));
+      var ul = el('ul'); report.forEach(function (x) { ul.appendChild(el('li', null, [el('span', { text: x[0] }), el('b', { class: /^\+/.test(x[1]) ? 'up' : /^−/.test(x[1]) ? 'dn' : '', text: x[1] })])); });
+      r.appendChild(ul); b.appendChild(r);
+    }
+    var hs = holdings();
+    var p = el('div', { class: 'pnl' }); p.appendChild(el('h3', null, [el('span', { text: 'Stocks, funds and crypto' }), el('span', { text: hs.length ? '' : '' })]));
+    var rows = el('div', { class: 'rows' });
+    if (!hs.length) rows.appendChild(el('div', { class: 'empty', text: A.cash > 0 ? 'Nothing bought yet. Find something in Market.' : 'Add money from your bankroll, then find something in Market.' }));
+    hs.forEach(function (h) {
+      var g = h.val - h.cost;
+      rows.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { openSym(h.sym); } }, [tkBadge(h.sym),
+        el('span', { class: 'nm' }, [el('b', { text: S(h.sym) ? S(h.sym).n : h.sym }), el('small', { text: shares(h.q) + (isCoin(h.sym) ? ' coins' : ' shares') })]),
+        spark(h.sym),
+        el('span', { class: 'px' }, [document.createTextNode(money(h.val, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
+    });
+    p.appendChild(rows); b.appendChild(p);
+    if (A.opts.length) {
+      var po = el('div', { class: 'pnl' }); po.appendChild(el('h3', null, [el('span', { text: 'Options' })]));
+      var ro = el('div', { class: 'rows' });
+      A.opts.forEach(function (o) {
+        var v = optVal(o), g = v - o.c * 100 * o.n;
+        ro.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { optTicket(o.sym, o.k, o.exp, o.right === 'C', o); } }, [tkBadge(o.sym),
+          el('span', { class: 'nm' }, [el('b', { text: '$' + o.k + ' ' + (o.right === 'C' ? 'call' : 'put') }), el('small', { text: o.n + (o.n === 1 ? ' contract' : ' contracts') + '  ends ' + dateTxt(expMs(o.exp)) })]),
+          el('span'), el('span', { class: 'px' }, [document.createTextNode(money(v, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
+      });
+      po.appendChild(ro); b.appendChild(po);
+    }
+    if (A.bonds.length) {
+      var pb = el('div', { class: 'pnl' }); pb.appendChild(el('h3', null, [el('span', { text: 'Treasuries' })]));
+      var rb = el('div', { class: 'rows' });
+      A.bonds.forEach(function (bd) {
+        var v = bondValue(bd), g = v - bd.c;
+        rb.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { bondSheet(bd); } }, [el('span', { class: 'tk', style: { background: '#1f6b47' }, text: bd.kind === 'bill' ? 'T-BILL' : TB[bd.kind].yrs + ' YR' }),
+          el('span', { class: 'nm' }, [el('b', { text: money(bd.face) + ' ' + TB[bd.kind].short }), el('small', { text: (bd.cpn ? (bd.cpn * 100).toFixed(3).replace(/0+$/, '') + '% interest  ' : '') + 'matures ' + dateTxt(bd.mat, true) })]),
+          el('span'), el('span', { class: 'px' }, [document.createTextNode(money(v, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
+      });
+      pb.appendChild(rb); b.appendChild(pb);
+    }
+    if (A.orders.length) {
+      var pl = el('div', { class: 'pnl' }); pl.appendChild(el('h3', null, [el('span', { text: 'Waiting limit orders' })]));
+      var rl = el('div', { class: 'rows' });
+      A.orders.forEach(function (o) {
+        rl.appendChild(el('div', { class: 'row' }, [tkBadge(o.sym), el('span', { class: 'nm' }, [el('b', { text: (o.side === 'buy' ? 'Buy ' + money(o.amt, 1) : 'Sell ' + shares(o.q) + ' shares') }), el('small', { text: 'when ' + (o.side === 'buy' ? 'at or below ' : 'at or above ') + px(o.lim) })]), el('span'),
+          el('button', { type: 'button', class: 'btn-d', text: 'Cancel', onclick: function () { A.orders = A.orders.filter(function (x) { return x !== o; }); save(); Kit.sfx('tap'); paint(); } })]));
+      });
+      pl.appendChild(rl); b.appendChild(pl);
+    }
+    var hist = el('div', { class: 'pnl' }); hist.appendChild(el('h3', null, [el('span', { text: 'Activity' })]));
+    var rh = el('div', { class: 'rows' }), recent = A.tx.slice(-12).reverse();
+    if (!recent.length) rh.appendChild(el('div', { class: 'empty', text: 'Trades, dividends and interest show up here.' }));
+    recent.forEach(function (x) { rh.appendChild(el('div', { class: 'row', style: { 'grid-template-columns': 'minmax(0,1fr) auto' } }, [el('span', { class: 'nm' }, [el('b', { text: txTitle(x) }), el('small', { text: dateTxt(x.t, true) })]), el('span', { class: 'px' }, [document.createTextNode(txAmt(x)), x.gain != null ? el('small', { class: cls(x.gain), text: (x.gain >= 0 ? 'Gain ' : 'Loss ') + money(Math.abs(x.gain), 1) }) : null])])); });
+    hist.appendChild(rh); b.appendChild(hist);
+  }
+  function txTitle(x) {
+    switch (x.type) {
+      case 'buy': return 'Bought ' + shares(x.q) + ' ' + x.sym.replace('-USD', '');
+      case 'sell': return 'Sold ' + shares(x.q) + ' ' + x.sym.replace('-USD', '');
+      case 'obuy': return 'Bought ' + x.q + ' ' + x.note;
+      case 'osell': return 'Sold ' + x.q + ' ' + x.note;
+      case 'oexp': return x.note + ' ended';
+      case 'bbuy': return 'Bought a ' + x.note;
+      case 'bsell': return 'Sold a ' + x.note;
+      case 'dep': return 'Added from your bankroll';
+      case 'wd': return 'Cashed out to your bankroll';
+      default: return x.note || x.type;
+    }
+  }
+  function txAmt(x) { var out = { buy: 1, obuy: 1, bbuy: 1, wd: 1 }[x.type]; return (out ? '−' : '+') + money(x.amt, 1); }
+
+  // ── Market tab ──
+  function paintMarket() {
+    var b = dom.body;
+    if (!Q) { b.appendChild(el('div', { class: 'pnl empty', text: qErr ? 'Can’t reach the market prices right now. Try again in a bit.' : 'Getting today’s prices…' })); return; }
+    var ix = el('div', { class: 'idx' });
+    ['spx', 'dji', 'ixic'].forEach(function (k) { var i = Q.idx && Q.idx[k]; if (!i) return; var c = (i.p - i.pc) / i.pc; ix.appendChild(el('div', null, [el('span', { class: 'cap', text: i.n }), el('b', { text: Math.round(i.p).toLocaleString() }), el('small', { class: cls(c), text: pct(c) })])); });
+    b.appendChild(ix);
+    var q = el('input', { class: 'q', type: 'search', placeholder: 'Search by name or symbol', value: mkt.q, autocomplete: 'off' });
+    var list = el('div', { class: 'pnl' });
+    q.addEventListener('input', function () { mkt.q = q.value; fill(); });
+    b.appendChild(q);
+    var chips = el('div', { class: 'chips' });
+    GROUPS.forEach(function (g) { chips.appendChild(el('button', { type: 'button', class: 'chip' + (mkt.g === g[0] ? ' on' : ''), text: g[1], onclick: function () { mkt.g = g[0]; mkt.q = ''; q.value = ''; Kit.sfx('tap'); [].forEach.call(chips.children, function (c) { c.classList.toggle('on', c.textContent === g[1]); }); fill(); } })); });
+    b.appendChild(chips);
+    b.appendChild(list);
+    function fill() {
+      list.innerHTML = '';
+      if (!mkt.q && mkt.g === 'tbond') { list.appendChild(bondCards()); return; }
+      var s = mkt.q.trim().toLowerCase();
+      var syms = Object.keys(Q.q).filter(function (k) { var x = Q.q[k]; return s ? (k + ' ' + x.n).toLowerCase().indexOf(s) >= 0 : x.g === mkt.g; });
+      var g = GROUPS.filter(function (x) { return x[0] === mkt.g; })[0];
+      list.appendChild(el('h3', null, [el('span', { text: s ? 'Results' : g[1] }), el('span', { text: syms.length + '' })]));
+      if (!s && GBLURB[mkt.g]) list.appendChild(el('p', { class: 'about', style: { margin: '0 0 8px', 'font-size': '.84rem', color: '#9fb0cc' }, text: GBLURB[mkt.g] }));
+      var rows = el('div', { class: 'rows' });
+      syms.forEach(function (k) {
+        var c = dayChg(k);
+        rows.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { openSym(k); } }, [tkBadge(k), el('span', { class: 'nm' }, [el('b', { text: Q.q[k].n }), el('small', { text: px(price(k)) })]), spark(k), el('span', { class: 'pill ' + (c >= 0 ? 'up' : 'dn'), text: pct(c) })]));
+      });
+      if (!syms.length) rows.appendChild(el('div', { class: 'empty', text: 'Nothing by that name. The market here has about 90 well-known stocks, funds and coins.' }));
+      list.appendChild(rows);
+    }
+    fill();
+  }
+  var GBLURB = {
+    index: 'One share holds hundreds or thousands of companies. The easy way to own the whole market.',
+    bondfund: 'Funds that hold bonds: steadier than stocks, paying interest as dividends.',
+    sector: 'Funds that hold one slice of the market, or gold.',
+    crypto: 'Digital coins with no company behind them. They trade every day and swing hard.'
+  };
+
+  // ── One stock, fund or coin ──
+  var detRange = 'q';
+  function openPane() { dom.pane.classList.add('on'); dom.pane.scrollTop = 0; document.documentElement.style.overflow = 'hidden'; }
+  function closePane() { dom.pane.classList.remove('on'); document.documentElement.style.overflow = ''; paint(); }
+  function paneTop(title, sub) {
+    return el('div', { class: 'top' }, [el('button', { type: 'button', class: 'back', 'aria-label': 'Back', html: Kit.icon('back'), onclick: function () { Kit.sfx('tap'); closePane(); } }), el('span', { class: 't' }, [el('b', { text: title }), el('small', { text: sub })])]);
+  }
+  function openSym(sym) {
+    var s = S(sym); if (!s) return;
+    var w = dom.paneIn; w.innerHTML = '';
+    w.appendChild(paneTop(sym.replace('-USD', ''), s.n));
+    var p = el('div', { class: 'pnl' }), c = dayChg(sym);
+    p.appendChild(el('div', { class: 'val' }, [el('span', { class: 'big', text: px(s.p) }), el('span', { class: 'chg ' + cls(c) }, [el('small', { text: 'Today' }), document.createTextNode(signed(s.p - s.pc, 1) + '  ' + pct(c))])]));
+    p.appendChild(el('div', { class: 'asof', text: asofTxt() }));
+    var chartBox = el('div'); p.appendChild(chartBox);
+    var rg = el('div', { class: 'rng' });
+    function drawChart() {
+      chartBox.innerHTML = '';
+      var n = { m: 22, q: 64, h: 128, y: 400 }[detRange], se = series(sym).slice(-n);
+      chartBox.appendChild(lineChart(se, { fmt: px }));
+      [].forEach.call(rg.children, function (b) { b.classList.toggle('on', b.dataset.r === detRange); });
+    }
+    [['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { detRange = r[0]; drawChart(); } })); });
+    p.appendChild(rg); drawChart();
+    w.appendChild(p);
+    var se = series(sym), yr = se.length > 200 ? (s.p - se[0][1]) / se[0][1] : null, hi = Math.max.apply(null, s.h), lo = Math.min.apply(null, s.h);
+    var dvy = (s.dv || []).reduce(function (a, d) { return a + d[1]; }, 0) / (s.p || 1);
+    var a = el('div', { class: 'pnl' });
+    a.appendChild(el('h3', null, [el('span', { text: 'About' }), el('span', { text: ({ stock: 'Stock', fund: 'Fund', bond: 'Bond fund', coin: 'Crypto' })[s.k] })]));
+    a.appendChild(el('p', { class: 'about', text: s.a }));
+    a.appendChild(el('div', { class: 'kv', style: { 'margin-top': '12px' } }, [
+      el('div', null, [el('span', { class: 'cap', text: 'Past year' }), el('b', { class: cls(yr || 0), text: yr == null ? 'New' : pct(yr) })]),
+      el('div', null, [el('span', { class: 'cap', text: 'Swings' }), el('b', { text: vol(sym) < .2 ? 'Calm' : vol(sym) < .35 ? 'Moderate' : vol(sym) < .6 ? 'Big' : 'Wild' })]),
+      el('div', null, [el('span', { class: 'cap', text: 'Year high' }), el('b', { text: px(hi) })]),
+      el('div', null, [el('span', { class: 'cap', text: 'Year low' }), el('b', { text: px(lo) })]),
+      dvy > 0 ? el('div', null, [el('span', { class: 'cap', text: 'Dividend yield' }), el('b', { text: (dvy * 100).toFixed(2) + '% a year' })]) : null]));
+    w.appendChild(a);
+    var q = heldQty(sym);
+    if (q > 0) {
+      var cost = costOf(sym), val = q * s.p, lots = A.lots.filter(function (l) { return l.sym === sym; }), oldest = Math.min.apply(null, lots.map(function (l) { return l.at; }));
+      var y = el('div', { class: 'pnl' }); y.appendChild(el('h3', null, [el('span', { text: 'You own' })]));
+      y.appendChild(el('div', { class: 'kv' }, [
+        el('div', null, [el('span', { class: 'cap', text: isCoin(sym) ? 'Coins' : 'Shares' }), el('b', { text: shares(q) })]),
+        el('div', null, [el('span', { class: 'cap', text: 'Worth' }), el('b', { text: money(val, 1) })]),
+        el('div', null, [el('span', { class: 'cap', text: 'Average cost' }), el('b', { text: px(cost / q) })]),
+        el('div', null, [el('span', { class: 'cap', text: 'Gain' }), el('b', { class: cls(val - cost), text: signed(val - cost, 1) })])]));
+      var lt = oldest + YEAR;
+      y.appendChild(el('div', { class: 'asof', text: Date.now() > lt ? 'Held over a year: gains on your oldest shares are taxed at the lower long-term rate.' : 'Hold until ' + dateTxt(lt, true) + ' for the lower long-term tax rate.' }));
+      w.appendChild(y);
+    }
+    var bar = el('div', { class: 'tradebar' }, [
+      el('button', { type: 'button', class: 'btn-g', text: 'Buy', onclick: function () { ticket(sym, 'buy'); } }),
+      q > 0 ? el('button', { type: 'button', class: 'btn-d', text: 'Sell', onclick: function () { ticket(sym, 'sell'); } }) : null,
+      !isCoin(sym) ? el('button', { type: 'button', class: 'btn-d', text: 'Options', onclick: function () { openChain(sym); } }) : null]);
+    w.appendChild(bar);
+    openPane();
+  }
+
+  // ── Buy and sell ──
+  function ticket(sym, side) {
+    var s = S(sym), p = s.p, box = el('div', { class: 'tt' }), mode = 'mkt', unit = side === 'buy' ? 'usd' : 'qty';
+    var seg = el('div', { class: 'seg' }), inp = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', placeholder: '0' }), lim = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', value: p.toFixed(2) });
+    var unitSeg = el('div', { class: 'seg' }), chipsRow = el('div', { class: 'qchips' }), sum = el('div', { class: 'sum' }), notes = el('div'), limWrap = el('div');
+    var go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } });
+    [['mkt', side === 'buy' ? 'Buy now' : 'Sell now'], ['lim', 'Limit order']].forEach(function (m) { seg.appendChild(el('button', { type: 'button', class: m[0] === mode ? 'on' : '', 'data-m': m[0], text: m[1], onclick: function () { mode = m[0]; refresh(); } })); });
+    [['usd', 'Dollars'], ['qty', isCoin(sym) ? 'Coins' : 'Shares']].forEach(function (u) { unitSeg.appendChild(el('button', { type: 'button', 'data-u': u[0], text: u[1], onclick: function () { unit = u[0]; inp.value = ''; refresh(); } })); });
+    var have = heldQty(sym), cash = avail();
+    function amtUsd() { var v = parseFloat(inp.value) || 0; return unit === 'usd' ? v : v * (mode === 'lim' ? parseFloat(lim.value) || p : p); }
+    function qtyOf() { var v = parseFloat(inp.value) || 0, pp = mode === 'lim' ? parseFloat(lim.value) || p : p; return unit === 'qty' ? v : v / pp; }
+    function refresh() {
+      [].forEach.call(seg.children, function (b) { b.classList.toggle('on', b.dataset.m === mode); });
+      [].forEach.call(unitSeg.children, function (b) { b.classList.toggle('on', b.dataset.u === unit); });
+      limWrap.style.display = mode === 'lim' ? '' : 'none';
+      chipsRow.innerHTML = '';
+      var picks = side === 'buy' ? (unit === 'usd' ? [[100, '$100'], [500, '$500'], [1000, '$1,000'], [cash, 'All cash']] : [[1, '1'], [5, '5'], [10, '10']]) : (unit === 'qty' ? [[have / 4, 'A quarter'], [have / 2, 'Half'], [have, 'All']] : [[have * p / 2, 'Half'], [have * p, 'All']]);
+      picks.forEach(function (c) { if (c[0] > 0) chipsRow.appendChild(el('button', { type: 'button', text: c[1], onclick: function () { inp.value = unit === 'usd' ? (Math.floor(c[0] * 100) / 100).toFixed(2) : String(Math.floor(c[0] * 1e6) / 1e6); refresh(); } })); });
+      var usd = amtUsd(), q = qtyOf(), pp = mode === 'lim' ? parseFloat(lim.value) || 0 : p;
+      sum.innerHTML = ''; notes.innerHTML = '';
+      sum.appendChild(el('div', null, [el('span', { text: mode === 'lim' ? 'Limit price' : 'Price now' }), el('b', { text: px(pp || p) })]));
+      sum.appendChild(el('div', null, [el('span', { text: isCoin(sym) ? 'Coins' : 'Shares' }), el('b', { text: q > 0 ? shares(q) : '0' })]));
+      sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: side === 'buy' ? 'Cost' : 'You get' }), el('b', { text: money(usd, 1) })]));
+      var ok = q > 0 && usd >= 1 && (mode === 'mkt' || pp > 0);
+      if (side === 'buy' && usd > cash + .005) { ok = false; notes.appendChild(el('div', { class: 'warn', text: 'You have ' + money(cash, 1) + ' to invest. Add money from your bankroll first.' })); }
+      if (side === 'sell' && q > have + 1e-6) { ok = false; notes.appendChild(el('div', { class: 'warn', text: 'You own ' + shares(have) + '.' })); }
+      if (side === 'sell' && ok) {
+        // the tax picture of this sale
+        var left = q, gst = 0, glt = 0;
+        A.lots.filter(function (l) { return l.sym === sym; }).sort(function (a, b) { return a.at - b.at; }).forEach(function (l) { if (left <= 0) return; var t = Math.min(l.q, left); if (Date.now() - l.at > YEAR) glt += t * ((pp || p) - l.c); else gst += t * ((pp || p) - l.c); left -= t; });
+        var g = gst + glt;
+        sum.appendChild(el('div', null, [el('span', { text: g >= 0 ? 'Gain' : 'Loss' }), el('b', { class: cls(g), text: signed(g, 1) })]));
+        if (g > 0) notes.appendChild(el('p', { class: 'why', text: (gst > 0 ? 'Held under a year, so this is a short-term gain, taxed like income (' + SET.br + '%). ' : '') + (glt > 0 ? 'Held over a year: long-term gain, taxed at ' + Math.round(ltRate() * 100) + '%. ' : '') + 'The tax comes out when you cash out to your bankroll, not now.' }));
+        else if (g < 0) notes.appendChild(el('p', { class: 'why', text: 'A loss lowers the tax on your other gains this year.' }));
+      }
+      if (mode === 'lim') notes.appendChild(el('p', { class: 'why', text: side === 'buy' ? 'Buys at a later price check, if the price is at or below your limit. Waits up to 30 days. The money is set aside until then.' : 'Sells at a later price check, if the price is at or above your limit. Waits up to 30 days.' }));
+      else notes.appendChild(el('p', { class: 'why', text: 'Fills right away at the latest price. Prices here update around 1 PM and 5 PM New York time.' }));
+      go.disabled = !ok;
+      go.textContent = mode === 'lim' ? 'Place limit order' : side === 'buy' ? 'Buy ' + sym.replace('-USD', '') : 'Sell ' + sym.replace('-USD', '');
+    }
+    box.appendChild(seg);
+    limWrap.appendChild(el('span', { class: 'cap', text: 'Limit price' }));
+    limWrap.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: '$' }), lim]));
+    box.appendChild(limWrap);
+    box.appendChild(unitSeg);
+    box.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: unit === 'usd' ? '$' : '#' }), inp]));
+    box.appendChild(chipsRow); box.appendChild(sum); box.appendChild(notes); box.appendChild(go);
+    inp.addEventListener('input', refresh); lim.addEventListener('input', refresh);
+    var sh = Kit.sheet({ title: (side === 'buy' ? 'Buy ' : 'Sell ') + s.n, node: box });
+    go.onclick = function () {
+      var usd = amtUsd(), q = qtyOf();
+      if (mode === 'lim') {
+        var L = parseFloat(lim.value); if (!(L > 0)) return;
+        A.orders.push({ id: rid(), sym: sym, side: side, lim: L, amt: side === 'buy' ? r2(usd) : 0, q: side === 'sell' ? q : 0, at: Date.now(), exp: Date.now() + 30 * DAY });
+        save(); sh.close(); Kit.sfx('chip'); Kit.toast('Limit order placed'); openSym(sym); return;
+      }
+      var res = side === 'buy' ? buy(sym, usd) : sell(sym, q);
+      if (!res) return;
+      recordValue(); save(); sh.close();
+      var amt = side === 'buy' ? res.amt : res.reduce(function (a, x) { return a + x.amt; }, 0), qq = side === 'buy' ? res.q : res.reduce(function (a, x) { return a + x.q; }, 0);
+      confirmCard(side === 'buy' ? 'Bought' : 'Sold', sym.replace('-USD', ''), [[isCoin(sym) ? 'Coins' : 'Shares', shares(qq)], ['Price', px(p)], [side === 'buy' ? 'Cost' : 'Proceeds', money(amt, 1)]], side);
+      openSym(sym);
+    };
+    refresh();
+  }
+  function confirmCard(word, sym, lines, side) {
+    var c = el('div', { class: 'card' }, [el('div', { class: 'h', text: 'Trade confirmation' }), el('div', { class: 'l' }, [el('span', { text: word }), el('b', { text: sym })])].concat(lines.map(function (l) { return el('div', { class: 'l' }, [el('span', { text: l[0] }), el('b', { text: l[1] })]); })).concat([el('div', { class: 'st' + (side === 'sell' ? ' sell' : ''), text: 'FILLED' })]));
+    var ov = el('div', { class: 'conf' }, [c]); document.body.appendChild(ov);
+    Kit.sfx('chip'); setTimeout(function () { Kit.sfx('good'); Kit.haptic('success'); }, 380);
+    setTimeout(function () { ov.remove(); }, 1700);
+  }
+
+  // ── Options ──
+  var chainState = { exp: null, call: true };
+  function openChain(sym) {
+    var s = S(sym), w = dom.paneIn, exps = fridays();
+    if (exps.indexOf(chainState.exp) < 0) chainState.exp = exps[1] || exps[0];
+    w.innerHTML = '';
+    w.appendChild(paneTop(sym + ' options', 'Stock at ' + px(s.p)));
+    var intro = el('div', { class: 'pnl' });
+    intro.appendChild(el('p', { class: 'about', text: chainState.call ? 'A call pays off if ' + sym + ' rises above the strike price by the end date. You pay the price shown (for 100 shares’ worth) and can lose all of it.' : 'A put pays off if ' + sym + ' falls below the strike price by the end date. Like insurance: you can lose what you pay for it.' }));
+    w.appendChild(intro);
+    var seg = el('div', { class: 'seg', style: { margin: '0 0 10px' } });
+    [[true, 'Calls: bet it rises'], [false, 'Puts: bet it falls']].forEach(function (x) { seg.appendChild(el('button', { type: 'button', class: chainState.call === x[0] ? 'on' : '', text: x[1], onclick: function () { chainState.call = x[0]; openChain(sym); } })); });
+    w.appendChild(seg);
+    var ch = el('div', { class: 'chips', style: { margin: '0 0 10px', padding: '2px 0 4px' } });
+    exps.forEach(function (e) { var days = Math.round((expMs(e) - Date.now()) / DAY); ch.appendChild(el('button', { type: 'button', class: 'chip' + (e === chainState.exp ? ' on' : ''), text: dateTxt(expMs(e)) + '  ' + days + ' days', onclick: function () { chainState.exp = e; openChain(sym); } })); });
+    w.appendChild(ch);
+    var p = el('div', { class: 'pnl' }), list = el('div', { class: 'chain' });
+    p.appendChild(el('div', { class: 'chain' }, [el('div', { class: 'crow', style: { 'border-top': '0', padding: '0 2px 4px' } }, [el('span', { class: 'cap', text: 'Strike' }), el('span', { class: 'cap', text: 'Chance' }), el('span', { class: 'cap', text: 'Price' })])]));
+    var ks = strikes(s.p), spotDone = false;
+    ks.forEach(function (k) {
+      if (!spotDone && k > s.p) { list.appendChild(el('div', { class: 'spot', text: 'Stock now ' + px(s.p) })); spotDone = true; }
+      var q = optQuote(sym, k, chainState.exp, chainState.call), itm = chainState.call ? s.p > k : s.p < k;
+      var be = chainState.call ? k + q.ask : k - q.ask;
+      list.appendChild(el('button', { type: 'button', class: 'crow' + (itm ? ' itm' : ''), onclick: function () { optTicket(sym, k, chainState.exp, chainState.call); } }, [
+        el('span', { class: 'k' }, [document.createTextNode('$' + k), el('small', { text: 'Breakeven ' + px(be) })]),
+        el('span', { class: 'pr' }, [document.createTextNode(Math.round(q.chance * 100) + '%'), el('small', { text: 'ends in the money' })]),
+        el('span', { class: 'pr' }, [document.createTextNode(money(q.ask * 100, 1)), el('small', { text: px(q.ask) + ' a share' })])]));
+    });
+    if (!spotDone) list.appendChild(el('div', { class: 'spot', text: 'Stock now ' + px(s.p) }));
+    p.appendChild(list); w.appendChild(p);
+    w.appendChild(el('p', { class: 'why', style: { padding: '0 4px' }, text: 'Prices are the book’s fair value from ' + sym + '’s recent swings (Black-Scholes), plus a small spread. Each contract covers 100 shares. Options here settle in cash at the end date.' }));
+    openPane();
+  }
+  function payoffSvg(S0, K, prem, call, n) {
+    var W = 320, H = 130, lo = S0 * .75, hi = S0 * 1.25, pts = [], mx = 0, mn = 0;
+    for (var i = 0; i <= 60; i++) { var x = lo + (hi - lo) * i / 60, v = (Math.max(0, call ? x - K : K - x) - prem) * 100 * n; pts.push([x, v]); mx = Math.max(mx, v); mn = Math.min(mn, v); }
+    mx = Math.max(mx, -mn * .5); var X = function (x) { return (x - lo) / (hi - lo) * W; }, Y = function (v) { return 10 + (mx - v) / ((mx - mn) || 1) * (H - 30); };
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join('');
+    var be = call ? K + prem : K - prem;
+    return '<svg class="payoff" viewBox="0 0 ' + W + ' ' + H + '"><line x1="0" x2="' + W + '" y1="' + Y(0) + '" y2="' + Y(0) + '" stroke="rgba(255,255,255,.3)"/>' +
+      '<clipPath id="pu"><rect x="0" y="0" width="' + W + '" height="' + Y(0) + '"/></clipPath><clipPath id="pd"><rect x="0" y="' + Y(0) + '" width="' + W + '" height="' + H + '"/></clipPath>' +
+      '<path d="' + d + '" fill="none" stroke="#3ddc84" stroke-width="2.4" clip-path="url(#pu)"/><path d="' + d + '" fill="none" stroke="#ff6470" stroke-width="2.4" clip-path="url(#pd)"/>' +
+      '<line x1="' + X(S0) + '" x2="' + X(S0) + '" y1="4" y2="' + (H - 18) + '" stroke="#f2b632" stroke-dasharray="3 3"/>' +
+      '<text x="' + X(S0) + '" y="' + (H - 4) + '" fill="#f2b632" font-size="10" font-weight="800" text-anchor="middle">now ' + px(S0) + '</text>' +
+      (be > lo && be < hi ? '<circle cx="' + X(be) + '" cy="' + Y(0) + '" r="4" fill="#eef2f8"/><text x="' + X(be) + '" y="' + (Y(0) - 8) + '" fill="#eef2f8" font-size="10" font-weight="800" text-anchor="middle">breakeven</text>' : '') +
+      '</svg>';
+  }
+  function optTicket(sym, K, exp, call, own) {
+    var q = optQuote(sym, K, exp, call), box = el('div', { class: 'tt' }), n = own ? own.n : 1, S0 = price(sym);
+    var cnt = el('b', { class: 'num', style: { 'font-size': '1.6rem', 'min-width': '2ch', 'text-align': 'center' } }), sum = el('div', { class: 'sum' }), fig = el('div'), go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } });
+    var row = el('div', { style: { display: 'flex', 'align-items': 'center', 'justify-content': 'space-between', gap: '12px', margin: '0 0 8px' } }, [el('span', { class: 'cap', text: 'Contracts' }), el('span', { style: { display: 'flex', 'align-items': 'center', gap: '14px' } }, [
+      el('button', { type: 'button', class: 'btn-d', html: Kit.icon('minus'), onclick: function () { n = Math.max(1, n - 1); refresh(); } }), cnt,
+      el('button', { type: 'button', class: 'btn-d', html: Kit.icon('plus'), onclick: function () { n = Math.min(own ? own.n : 50, n + 1); refresh(); } })])]);
+    function refresh() {
+      cnt.textContent = n;
+      var prem = own ? own.c : q.ask, cost = q.ask * 100 * n, back = q.bid * 100 * n;
+      fig.innerHTML = payoffSvg(S0, K, prem, call, n);
+      sum.innerHTML = '';
+      var be = call ? K + prem : K - prem;
+      if (own) {
+        var g = back - own.c * 100 * n;
+        [['Sell price now', px(q.bid) + ' a share'], ['You paid', money(own.c * 100 * n, 1)], ['You get', money(back, 1)], [g >= 0 ? 'Gain' : 'Loss', signed(g, 1)]].forEach(function (x, i) { sum.appendChild(el('div', { class: i === 2 ? 'tot' : '' }, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+        go.textContent = 'Sell ' + n + (n === 1 ? ' contract' : ' contracts'); go.disabled = false;
+      } else {
+        [['Price', px(q.ask) + ' a share'], ['Covers', 100 * n + ' shares'], ['Breakeven at the end', px(be)], ['Most you can lose', money(cost, 1)], ['Chance it ends in the money', Math.round(q.chance * 100) + '%']].forEach(function (x) { sum.appendChild(el('div', null, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+        sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'Cost' }), el('b', { text: money(cost, 1) })]));
+        go.textContent = 'Buy ' + n + (n === 1 ? ' contract' : ' contracts'); go.disabled = cost > avail() + .005;
+      }
+    }
+    box.appendChild(el('p', { class: 'why', style: { margin: '0 0 6px' }, text: call ? 'Pays ' + money(100 * n) + ' for every $1 ' + sym + ' finishes above ' + px(K) + ' on ' + dateTxt(expMs(exp), true) + '.' : 'Pays ' + money(100 * n) + ' for every $1 ' + sym + ' finishes below ' + px(K) + ' on ' + dateTxt(expMs(exp), true) + '.' }));
+    box.appendChild(fig);
+    box.appendChild(el('p', { class: 'why', style: { margin: '0 0 10px' }, text: 'Profit or loss at the end date for each stock price: green above the line, red below.' }));
+    box.appendChild(row); box.appendChild(sum);
+    if (!own && q.ask * 100 > avail()) box.appendChild(el('div', { class: 'warn', text: 'You have ' + money(avail(), 1) + ' to invest.' }));
+    box.appendChild(go);
+    var sh = Kit.sheet({ title: sym + ' $' + K + ' ' + (call ? 'call' : 'put') + ', ' + dateTxt(expMs(exp)), node: box });
+    go.onclick = function () {
+      var t = own ? sellOpt(own, n) : buyOpt(sym, K, exp, call, n); if (!t) return;
+      recordValue(); save(); sh.close();
+      confirmCard(own ? 'Sold' : 'Bought', sym + ' $' + K + ' ' + (call ? 'call' : 'put'), [['Contracts', String(n)], ['Price', px(t.px) + ' a share'], [own ? 'Proceeds' : 'Cost', money(t.amt, 1)]], own ? 'sell' : 'buy');
+      if (dom.pane.classList.contains('on')) { if (own) closePane(); else openChain(sym); } else paint();
+    };
+    refresh();
+  }
+
+  // ── Treasuries ──
+  function bondCards() {
+    var w = el('div');
+    w.appendChild(el('h3', null, [el('span', { text: 'US Treasuries' }), el('span', { text: 'Yield a year' })]));
+    w.appendChild(el('p', { class: 'about', style: { margin: '0 0 10px', 'font-size': '.84rem', color: '#9fb0cc' }, text: 'Loans to the US government, the safest investment there is. Hold one to the end and you get exactly what it promised. Sell early and its price depends on where rates have gone.' }));
+    var g = el('div', { class: 'bcards' });
+    Object.keys(TB).forEach(function (k) { var T = TB[k]; g.appendChild(el('button', { type: 'button', class: 'bcard', onclick: function () { bondBuy(k); } }, [el('b', { text: T.n }), el('div', { class: 'y', text: (rate(T.r) * 100).toFixed(2) + '%' }), el('small', { text: T.about })])); });
+    w.appendChild(g);
+    return w;
+  }
+  function bondBuy(kind) {
+    var T = TB[kind], y = rate(T.r), box = el('div', { class: 'tt' }), inp = el('input', { type: 'number', inputmode: 'numeric', min: '100', step: '100', placeholder: '1000' }), sum = el('div', { class: 'sum' }), go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } });
+    function face() { return Math.floor((parseFloat(inp.value) || 0) / 100) * 100; }
+    function refresh() {
+      var f = face(), cost = kind === 'bill' ? f / (1 + y * T.yrs) : f, mat = Date.now() + T.yrs * YEAR, cpn = Math.round(y * 800) / 800;
+      sum.innerHTML = '';
+      sum.appendChild(el('div', null, [el('span', { text: 'Face value' }), el('b', { text: money(f) })]));
+      if (kind === 'bill') sum.appendChild(el('div', null, [el('span', { text: 'Interest at the end' }), el('b', { class: 'up', text: '+' + money(f - cost, 1) })]));
+      else { sum.appendChild(el('div', null, [el('span', { text: 'Interest rate' }), el('b', { text: (cpn * 100).toFixed(3).replace(/0+$/, '') + '%' })])); sum.appendChild(el('div', null, [el('span', { text: 'Every 6 months' }), el('b', { class: 'up', text: '+' + money(f * cpn / 2, 1) })])); }
+      sum.appendChild(el('div', null, [el('span', { text: 'Pays back ' + money(f) + ' on' }), el('b', { text: dateTxt(mat, true) })]));
+      sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'Cost' }), el('b', { text: money(cost, 1) })]));
+      go.disabled = f < 100 || cost > avail() + .005; go.textContent = 'Buy ' + money(f) + ' ' + T.short;
+    }
+    box.appendChild(el('p', { class: 'why', style: { margin: '0 0 10px' }, text: T.about + ' Interest is taxed as income (but never by states).' }));
+    box.appendChild(el('span', { class: 'cap', text: 'Face value (in $100s)' }));
+    box.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: '$' }), inp]));
+    var qc = el('div', { class: 'qchips' }); [100, 1000, 5000].forEach(function (v) { qc.appendChild(el('button', { type: 'button', text: money(v), onclick: function () { inp.value = v; refresh(); } })); });
+    box.appendChild(qc); box.appendChild(sum); box.appendChild(go);
+    inp.addEventListener('input', refresh);
+    var sh = Kit.sheet({ title: T.n, node: box });
+    go.onclick = function () { var t = buyBond(kind, face()); if (!t) return; recordValue(); save(); sh.close(); confirmCard('Bought', T.short, [['Face value', money(face())], ['Cost', money(t.amt, 1)], ['Yield', (y * 100).toFixed(2) + '%']], 'buy'); paint(); };
+    refresh();
+  }
+  function bondSheet(b) {
+    var T = TB[b.kind], v = bondValue(b), box = el('div', { class: 'tt' }), sum = el('div', { class: 'sum' });
+    [['Face value', money(b.face)], ['You paid', money(b.c, 1)], ['Yield when bought', (b.y * 100).toFixed(2) + '%'], ['Yield now', (curve(Math.max(.02, (b.mat - Date.now()) / YEAR)) * 100).toFixed(2) + '%'], ['Matures', dateTxt(b.mat, true)]].forEach(function (x) { sum.appendChild(el('div', null, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+    sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'Worth if sold now' }), el('b', { class: cls(v - b.c), text: money(v, 1) })]));
+    box.appendChild(sum);
+    box.appendChild(el('p', { class: 'why', text: 'When rates rise, older bonds paying less are worth less, and the other way around. Hold to the end and you get the full face value back no matter what.' }));
+    var go = el('button', { type: 'button', class: 'btn btn-soft', style: { width: '100%', 'min-height': '52px', 'margin-top': '12px' }, text: 'Sell for ' + money(v, 1) });
+    box.appendChild(go);
+    var sh = Kit.sheet({ title: money(b.face) + ' ' + T.n, node: box });
+    go.onclick = function () { var t = sellBond(b); recordValue(); save(); sh.close(); confirmCard('Sold', T.short, [['Proceeds', money(t.amt, 1)], [t.gain >= 0 ? 'Gain' : 'Loss', signed(t.gain, 1)]], 'sell'); paint(); };
+  }
+
+  // ── Money in and out ──
+  function deposit() {
+    var bank = Casino.balance(), box = el('div', { class: 'tt' }), inp = el('input', { type: 'number', inputmode: 'numeric', min: '1', step: '1', placeholder: '0' }), go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } });
+    box.appendChild(el('p', { class: 'why', style: { margin: '0 0 10px' }, text: 'Move play money from your casino bankroll (' + money(bank) + ') into your account. It waits here as cash, earning interest, until you invest it.' }));
+    box.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: '$' }), inp]));
+    var qc = el('div', { class: 'qchips' }); [[100, '$100'], [500, '$500'], [1000, '$1,000'], [bank, 'All of it']].forEach(function (c) { if (c[0] > 0) qc.appendChild(el('button', { type: 'button', text: c[1], onclick: function () { inp.value = Math.floor(c[0]); refresh(); } })); });
+    box.appendChild(qc); box.appendChild(go);
+    if (bank < 1) box.appendChild(el('div', { class: 'warn', text: 'Your bankroll is empty. You can reset it from the menu.' }));
+    function refresh() { var v = Math.floor(parseFloat(inp.value) || 0); go.disabled = v < 1 || v > bank; go.textContent = 'Add ' + money(v); }
+    inp.addEventListener('input', refresh); refresh();
+    var sh = Kit.sheet({ title: 'Add money', node: box });
+    go.onclick = function () { var v = Math.floor(parseFloat(inp.value) || 0); if (v < 1 || !Casino.bet(v)) return; A.cash = r2(A.cash + v); A.dep += v; if (!A.mmAt) A.mmAt = Date.now(); addTx({ type: 'dep', amt: v }); recordValue(); save(); sh.close(); Kit.sfx('chip'); Kit.haptic('light'); paint(); };
+  }
+  function withdraw() {
+    var t = totals(), box = el('div', { class: 'tt' }), inp = el('input', { type: 'number', inputmode: 'decimal', min: '0', step: 'any', placeholder: '0' }), sum = el('div', { class: 'sum' }), go = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', 'margin-top': '12px' } }), warn = el('div');
+    var invested = t.all - A.cash;
+    box.appendChild(el('p', { class: 'why', style: { margin: '0 0 10px' }, text: 'Send cash back to your casino bankroll. You have ' + money(A.cash, 1) + ' in cash' + (invested > .01 ? ' and ' + money(invested, 1) + ' invested (sell to turn it into cash).' : '.') }));
+    box.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: '$' }), inp]));
+    var qc = el('div', { class: 'qchips' });
+    if (A.cash > 0) qc.appendChild(el('button', { type: 'button', text: 'All my cash', onclick: function () { inp.value = avail().toFixed(2); refresh(); } }));
+    if (invested > .01) qc.appendChild(el('button', { type: 'button', text: 'Sell everything', onclick: sellAll }));
+    box.appendChild(qc); box.appendChild(sum); box.appendChild(warn); box.appendChild(go);
+    function refresh() {
+      var v = Math.min(avail(), parseFloat(inp.value) || 0), pl = withdrawPlan(v);
+      sum.innerHTML = ''; warn.innerHTML = '';
+      sum.appendChild(el('div', null, [el('span', { text: 'Cash out' }), el('b', { text: money(v, 1) })]));
+      if (pl.held > 0) sum.appendChild(el('div', null, [el('span', { text: 'Tax on your gains' }), el('b', { class: 'dn', text: '−' + money(pl.held, 1) })]));
+      if (pl.refund > 0) sum.appendChild(el('div', null, [el('span', { text: 'Tax refund from losses' }), el('b', { class: 'up', text: '+' + money(pl.refund, 1) })]));
+      sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'To your bankroll' }), el('b', { text: money(pl.net, 1) })]));
+      if (pl.due > 0) warn.appendChild(el('div', { class: 'warn', text: 'You owe ' + money(pl.due, 1) + ' in tax on gains you’ve sold' + (pl.held < pl.due ? '. This cash-out pays ' + money(pl.held, 1) + ' of it; the rest comes out of your next one.' : '. It comes out of this cash-out first.') + ' Short-term gains are taxed at ' + SET.br + '%, long-term at ' + Math.round(ltRate() * 100) + '%.' }));
+      go.disabled = v < .01; go.textContent = 'Cash out ' + money(pl.net, 1) + ' to bankroll';
+    }
+    inp.addEventListener('input', refresh); refresh();
+    var sh = Kit.sheet({ title: 'Cash out', node: box });
+    function sellAll() {
+      // a preview of selling it all, then the cash-out
+      var gains = 0;
+      holdings().forEach(function (h) { gains += h.val - h.cost; });
+      A.opts.forEach(function (o) { gains += optQuote(o.sym, o.k, o.exp, o.right === 'C').bid * 100 * o.n - o.c * 100 * o.n; });
+      A.bonds.forEach(function (b) { gains += bondValue(b) - b.c; });
+      Kit.confirm('Sell everything you own? That turns ' + money(invested, 1) + ' into cash, with ' + (gains >= 0 ? 'gains of ' : 'losses of ') + money(Math.abs(gains), 1) + '. Gains are taxed when you cash out.', { ok: 'Sell everything', danger: true }).then(function (y) {
+        if (!y) return;
+        holdings().forEach(function (h) { sell(h.sym, h.q); });
+        A.opts.slice().forEach(function (o) { sellOpt(o, o.n); });
+        A.bonds.slice().forEach(function (b) { sellBond(b); });
+        A.orders = A.orders.filter(function (o) { return o.side === 'buy'; });
+        recordValue(); save(); paint();
+        inp.value = avail().toFixed(2); refresh();
+        Kit.sfx('chip');
+      });
+    }
+    go.onclick = function () {
+      var v = Math.min(avail(), parseFloat(inp.value) || 0), pl = withdrawPlan(v); if (v < .01) return;
+      var msg = pl.held > 0 ? money(pl.held, 1) + ' of this goes to taxes on your gains. ' + money(pl.net, 1) + ' goes to your bankroll.' : money(pl.net, 1) + ' goes to your bankroll.';
+      Kit.confirm(msg, { ok: 'Cash out' }).then(function (y) {
+        if (!y) return;
+        A.cash = r2(A.cash - v); A.wd += v; payTax(pl.held, pl.refund);
+        Casino.win(pl.net);
+        addTx({ type: 'wd', amt: v, note: pl.held ? 'tax ' + pl.held : '' });
+        recordValue(); save(); sh.close(); Kit.sfx('win'); Kit.toast(money(pl.net, 1) + ' added to your bankroll'); paint();
+      });
+    };
+  }
+  function taxSheet() {
+    var box = el('div'), ys = taxYears().reverse();
+    var seg = el('div', { class: 'seg', style: { margin: '0 0 12px' } });
+    BRACKETS.forEach(function (b) { seg.appendChild(el('button', { type: 'button', class: SET.br === b[0] ? 'on' : '', text: b[0] + '%', onclick: function () { SET.br = b[0]; lsSet(SK, SET); sh.close(); taxSheet(); paint(); } })); });
+    box.appendChild(el('span', { class: 'cap', text: 'Your tax bracket' }));
+    box.appendChild(seg);
+    box.appendChild(el('p', { class: 'why', style: { margin: '-4px 0 12px' }, text: 'Short-term gains and interest are taxed at your bracket. Long-term gains (held over a year) and dividends at ' + Math.round(ltRate() * 100) + '%.' }));
+    if (!ys.length) box.appendChild(el('p', { class: 'muted', text: 'Nothing sold yet. Taxes only count gains once you sell.' }));
+    ys.forEach(function (o) {
+      box.appendChild(el('h3', { style: { margin: '10px 0 4px', font: '400 1.2rem var(--display)' }, text: String(o.y) }));
+      var t = el('table', { class: 'taxt' });
+      [['Short-term gains', signed(o.st, 1)], ['Long-term gains', signed(o.lt, 1)], ['Interest', money(o.int, 1)], ['Dividends', money(o.div, 1)], o.carryIn ? ['Losses from last year', '−' + money(o.carryIn, 1)] : null, o.carryOut ? ['Losses carried to next year', money(o.carryOut, 1)] : null,
+        ['Tax', money(o.tax, 1)], ['Paid when you cashed out', money(o.paid, 1)]].forEach(function (r) { if (r) t.appendChild(el('tr', null, [el('td', { text: r[0] }), el('td', { text: r[1] })])); });
+      t.appendChild(el('tr', { class: 'tot' }, [el('td', { text: o.tax - o.paid >= 0 ? 'Still owed' : 'Overpaid (comes back next cash-out)' }), el('td', { text: money(Math.abs(o.tax - o.paid), 1) })]));
+      box.appendChild(t);
+    });
+    var sh = Kit.sheet({ title: 'Taxes', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ── Learn ──
+  var LESSONS = [
+    { id: 'stocks', t: 'What a stock is', s: 'Owning a tiny piece of a company', try: ['sym', 'AAPL'] },
+    { id: 'orders', t: 'Buying and selling', s: 'Market orders, limit orders, fractional shares', try: ['sym', 'NTDOY'] },
+    { id: 'index', t: 'Index funds', s: 'Owning the whole market in one share', try: ['sym', 'VOO'] },
+    { id: 'risk', t: 'Risk and diversification', s: 'Why one basket is a bad idea', try: ['grp', 'index'] },
+    { id: 'divs', t: 'Dividends and compounding', s: 'Getting paid to own, and growth on growth', try: ['sym', 'SCHD'] },
+    { id: 'bonds', t: 'Bonds and Treasuries', s: 'Lending money, and why bond prices move', try: ['grp', 'tbond'] },
+    { id: 'options', t: 'Options: calls and puts', s: 'Betting on where a price goes, with a deadline', try: ['opt', 'AAPL'] },
+    { id: 'crypto', t: 'Crypto', s: 'Coins with no company behind them', try: ['sym', 'BTC-USD'] },
+    { id: 'taxes', t: 'Taxes on investing', s: 'Short-term, long-term, losses and accounts that skip tax', try: ['tax'] },
+    { id: 'plan', t: 'A simple plan', s: 'What most experts say to do', try: ['grp', 'index'] }
+  ];
+  function paintLearn() {
+    var b = dom.body, done = LESSONS.filter(function (l) { return LEARN[l.id]; }).length;
+    var p = el('div', { class: 'pnl' });
+    p.appendChild(el('h3', null, [el('span', { text: 'How investing works' }), el('span', { text: done + ' of ' + LESSONS.length + ' read' })]));
+    p.appendChild(el('p', { class: 'about', text: 'Short lessons with real numbers from today’s market. Each ends with something to try.' }));
+    b.appendChild(p);
+    var list = el('div', { class: 'lessons' });
+    LESSONS.forEach(function (l, i) {
+      list.appendChild(el('button', { type: 'button', class: 'lesson' + (LEARN[l.id] ? ' done' : ''), onclick: function () { openLesson(l); } }, [
+        el('span', { class: 'n', html: LEARN[l.id] ? Kit.icon('check') : String(i + 1) }), el('span', null, [el('b', { text: l.t }), el('small', { text: l.s })]), el('span', { class: 'go', html: Kit.icon('right') })]));
+    });
+    b.appendChild(list);
+  }
+  function openLesson(l) {
+    var w = dom.paneIn; w.innerHTML = '';
+    w.appendChild(paneTop(l.t, l.s));
+    var body = el('div', { class: 'lsn', html: lessonHtml(l.id) });
+    w.appendChild(body);
+    var tryBtn = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', margin: '16px 0 8px' }, text: tryLabel(l), onclick: function () {
+      LEARN[l.id] = Date.now(); lsSet(LK, LEARN); Kit.sfx('good');
+      var t = l.try;
+      if (t[0] === 'sym') openSym(t[1]);
+      else if (t[0] === 'opt') openChain(t[1]);
+      else if (t[0] === 'tax') { closePane(); taxSheet(); }
+      else { closePane(); tab = 'mkt'; mkt.g = t[1]; mkt.q = ''; paint(); }
+    } });
+    w.appendChild(tryBtn);
+    w.appendChild(el('button', { type: 'button', class: 'btn btn-soft', style: { width: '100%', 'min-height': '48px' }, text: 'Got it', onclick: function () { LEARN[l.id] = Date.now(); lsSet(LK, LEARN); Kit.sfx('good'); closePane(); } }));
+    openPane();
+  }
+  function tryLabel(l) { var t = l.try; return t[0] === 'sym' ? 'Look at ' + (S(t[1]) ? S(t[1]).n : t[1]) : t[0] === 'opt' ? 'See Apple’s options' : t[0] === 'tax' ? 'See your taxes' : t[1] === 'tbond' ? 'See Treasuries' : 'See index funds'; }
+  function ex(cap, html) { return '<div class="ex"><span class="cap">' + cap + '</span>' + html + '</div>'; }
+  function lessonHtml(id) {
+    var aapl = price('AAPL') || 230, voo = price('VOO') || 550, tsla = S('TSLA'), spy = S('SPY'), t10 = (rate('tnx') * 100).toFixed(2), bill = (rate('irx') * 100).toFixed(2);
+    var oneYr = function (sym) { var se = series(sym); return se.length > 200 ? (price(sym) - se[0][1]) / se[0][1] : null; };
+    var L = {
+      stocks: '<p>A company is owned by its <b>shareholders</b>. Apple, for example, is split into about 15 billion pieces called <b>shares</b>. Buy one and you own a tiny slice of Apple: its stores, its profits, all of it.</p>' +
+        ex('Right now', 'One Apple share costs <b>' + px(aapl) + '</b>. Buy $100 worth and you own ' + shares(100 / aapl) + ' of a share.') +
+        '<h4>Why prices move</h4><p>A share is worth what someone will pay for it. When people expect a company to earn more in the future, they pay more and the price rises. Bad news, or a gloomy economy, and it falls. Day to day it can look random; over many years, prices tend to follow how much the company actually earns.</p>' +
+        '<h4>How you make or lose money</h4><ul><li><b>The price rises</b> and you sell for more than you paid. That profit is a <b>capital gain</b>.</li><li>Some companies share profits as <b>dividends</b>, paid in cash to everyone who owns shares.</li><li><b>The price falls</b> and you sell for less: a loss. A company can even go out of business, and its shares go to zero.</li></ul>',
+      orders: '<p>Every stock has a <b>ticker symbol</b>: AAPL is Apple, NTDOY is Nintendo, UAL is United Airlines.</p>' +
+        '<h4>Two kinds of order</h4><ul><li>A <b>market order</b> (Buy now) buys at the current price.</li><li>A <b>limit order</b> sets your price: “buy Nintendo, but only at $15 or less.” If the price never gets there, nothing happens. Limit orders keep you from paying more than you meant to.</li></ul>' +
+        '<h4>Pieces of a share</h4><p>Most brokers now sell <b>fractional shares</b>: you can buy $50 of a $500 stock. This app does too. Type a dollar amount, or a number of shares.</p>' +
+        ex('How this app works', 'Real markets trade every second, 9:30 AM to 4 PM New York time on weekdays. Here, prices update twice a day (around 1 PM and after the close), so you can check in once or twice a day. Buy now fills at the latest price; a limit order waits for a later update.') +
+        '<p><b>The bid and the ask.</b> Real stocks have two prices: the highest anyone will pay (bid) and the lowest anyone will sell for (ask). For big stocks they’re a penny apart; for options the gap is bigger, which you’ll see in Options.</p>',
+      index: '<p>An <b>index</b> is a list of companies that stands for a market. The <b>S&P 500</b> is the 500 biggest US companies; the <b>Dow</b> is 30 famous ones; the <b>Nasdaq-100</b> is the 100 biggest on the Nasdaq.</p>' +
+        '<p>An <b>index fund</b> buys every company on the list, so one share of the fund owns a sliver of all of them. Most are <b>ETFs</b> (exchange-traded funds) that trade just like a stock.</p>' +
+        ex('In one share', 'One share of VOO (' + px(voo) + ') owns pieces of all 500: Apple, Microsoft, Nvidia, Amazon, Coca-Cola, Delta, and 494 more.' + (oneYr('VOO') != null ? ' Over the past year it’s ' + (oneYr('VOO') >= 0 ? 'up ' : 'down ') + Math.abs(oneYr('VOO') * 100).toFixed(1) + '%.' : '')) +
+        '<h4>Why so many people use them</h4><ul><li><b>Instant variety.</b> One company can have a disaster; 500 rarely do at once.</li><li><b>Low fees.</b> VOO charges 0.03% a year: $3 on $10,000. Actively managed funds often charge 0.5% to 1%.</li><li><b>Hard to beat.</b> Year after year, most professional stock pickers do worse than the plain S&P 500 after fees.</li></ul>' +
+        '<p><b>Mutual funds</b> are the older cousin: similar idea, but you buy at the end-of-day price directly from the fund company. Many 401(k) plans use them.</p>',
+      risk: '<p><b>Risk</b> is how much an investment can swing, and how much you could lose. Higher risk usually comes with a chance of higher reward, but no promise of it.</p>' +
+        (tsla && spy ? ex('Past year', 'Tesla moved about <b>' + Math.round(vol('TSLA') * 100) + '%</b> a year in swings; the S&P 500 about <b>' + Math.round(vol('SPY') * 100) + '%</b>. Same market, very different rides.') : '') +
+        '<h4>Don’t put all your eggs in one basket</h4><p><b>Diversification</b> means owning many different things, so one bad one can’t sink you. Mix big and small companies, US and international, stocks and bonds.</p>' +
+        '<ul><li><b>Stocks</b> grow the most over time but can drop 30% or more in a bad year.</li><li><b>Bonds</b> grow slower and swing less.</li><li><b>Cash</b> barely moves, and inflation slowly eats it.</li></ul>' +
+        '<p>Time helps: over any single year the S&P 500 might be down, but over 20-year stretches it has always ended up higher in its history. That’s why money you need soon belongs in safer places.</p>',
+      divs: '<p>A <b>dividend</b> is cash a company pays its shareholders out of profits, usually every three months. Coca-Cola has raised its dividend every year for more than 60 years.</p>' +
+        ex('Dividend yield', 'The <b>yield</b> is a year of dividends divided by the share price. A $100 stock paying $3 a year yields 3%. This app pays real dividends: own a stock before its dividend date and the cash lands in your account.') +
+        '<h4>Compounding</h4><p>Reinvest dividends and gains, and next year you earn on a bigger pile. That’s <b>compounding</b>: growth on growth.</p>' +
+        ex('The rule of 72', 'Divide 72 by a yearly return to see how long money takes to double. At 7% a year: about 10 years. At 10%: about 7. $1,000 at 7% becomes about $7,600 in 30 years without adding a dollar.'),
+      bonds: '<p>A <b>bond</b> is a loan you make. You lend money to a government or company; it pays you <b>interest</b> along the way and your money back at the end (the <b>maturity</b> date).</p>' +
+        '<h4>US Treasuries</h4><p>Loans to the US government, considered the safest investment in the world. </p>' +
+        ex('Today’s rates', '13-week T-bill: <b>' + bill + '%</b> a year. 10-year Treasury note: <b>' + t10 + '%</b> a year.') +
+        '<h4>The seesaw: rates up, bond prices down</h4><p>Say you own a bond paying 4%, and new bonds start paying 5%. Nobody will pay full price for your 4% bond anymore, so its price drops. When rates fall, your bond is worth more. Longer bonds swing more, because the difference lasts longer.</p>' +
+        '<svg class="fig" viewBox="0 0 320 90"><line x1="40" y1="45" x2="280" y2="45" stroke="#7f8aa0" stroke-width="3"/><polygon points="160,45 150,70 170,70" fill="#7f8aa0"/><line x1="60" y1="25" x2="260" y2="65" stroke="#eef2f8" stroke-width="5" stroke-linecap="round"/><text x="60" y="16" fill="#ff6470" font-size="13" font-weight="800">Rates up</text><text x="190" y="86" fill="#ff6470" font-size="13" font-weight="800">Bond prices down</text></svg>' +
+        '<p>Hold a Treasury to maturity and none of that matters: you get exactly what was promised. <b>Bond funds</b> like BND hold thousands of bonds and pay their interest as monthly dividends. <b>Corporate bonds</b> pay more than Treasuries because companies are riskier; <b>junk bonds</b> pay more still.</p>',
+      options: '<p>An <b>option</b> is a contract that gives you the right to buy or sell 100 shares at a set price (the <b>strike</b>) until a set date (the <b>expiration</b>). You pay a price for it, the <b>premium</b>.</p>' +
+        '<ul><li>A <b>call</b> is a bet the stock goes <b>up</b>. If it ends above the strike, the call is worth the difference.</li><li>A <b>put</b> is a bet it goes <b>down</b>, or insurance on shares you own.</li></ul>' +
+        ex('Example', 'Apple is at ' + px(aapl) + '. A call with a ' + px(Math.round(aapl / 5) * 5 + 10) + ' strike ending next month might cost about ' + money(optQuote('AAPL', Math.round(aapl / 5) * 5 + 10, fridays()[1], true).ask * 100, 1) + '. If Apple ends at ' + px(Math.round(aapl / 5) * 5 + 30) + ', it’s worth $2,000. If Apple ends below the strike, it’s worth nothing.') +
+        '<h4>Why they’re risky</h4><p>Options move much faster than the stock: small stock moves become big percentage gains or losses. And they have a deadline. Most options bought by regular investors expire worthless. The most you can lose buying one is what you paid.</p>' +
+        '<p>This app shows each option’s <b>breakeven</b> price, its <b>chance</b> of ending in the money, and a chart of what you’d make or lose at every stock price. Selling options to other people (writing them) is riskier still, and isn’t offered here.</p>',
+      crypto: '<p><b>Cryptocurrencies</b> like Bitcoin are digital money kept on a shared public record (a blockchain) instead of by a bank. There’s no company, no profits and no dividends behind them; a coin is worth whatever people will pay.</p>' +
+        ex('Swings', 'Bitcoin has swung about <b>' + Math.round(vol('BTC-USD') * 100) + '%</b> a year recently, against about ' + Math.round(vol('SPY') * 100) + '% for the S&P 500. It has dropped more than 70% several times, and climbed back.') +
+        '<p>Crypto trades every day, all day, even on holidays. Gains are taxed like stocks. Many investors who own it keep it to a small slice of their money.</p>',
+      taxes: '<p>When you sell something for more than you paid, the profit is a <b>capital gain</b>, and it’s taxed. Gains only count once you sell; a stock that’s up but unsold isn’t taxed yet.</p>' +
+        '<h4>Short-term and long-term</h4><ul><li>Held <b>a year or less</b>: a <b>short-term</b> gain, taxed like your paycheck (your bracket: 10% to 37%).</li><li>Held <b>over a year</b>: <b>long-term</b>, taxed at 0%, 15% or 20%. Most people pay 15%.</li></ul>' +
+        ex('Same gain, different tax', 'A $1,000 gain in the 22% bracket: <b>$220</b> tax if held 11 months, <b>$150</b> if held 13 months.') +
+        '<h4>Losses help</h4><p>Losses cancel out gains. If losses are bigger, up to $3,000 a year can come off other income, and the rest carries to next year. (The <b>wash sale</b> rule: buy the same stock back within 30 days of selling at a loss and you can’t count the loss yet.)</p>' +
+        '<h4>Other income</h4><p><b>Interest</b> is taxed like income. Treasury interest skips state tax; most <b>municipal bond</b> interest skips federal tax. <b>Dividends</b> from most US companies get the lower long-term rate.</p>' +
+        '<h4>Accounts that skip tax</h4><p>A <b>401(k)</b> or <b>traditional IRA</b> lets money grow untaxed until you take it out in retirement. A <b>Roth IRA</b> is taxed going in but never again. Most long-term investing happens in these.</p>' +
+        ex('In this app', 'Gains, interest and dividends add up through the year. When you cash out to your bankroll, the tax you owe comes out first. Set your bracket in Taxes.'),
+      plan: '<p>Nobody can predict next month’s market. Here’s what most experts suggest instead:</p>' +
+        '<ul><li><b>Emergency money first.</b> Keep a few months of expenses in savings before investing.</li><li><b>Use the accounts that skip tax</b>: a 401(k), especially when an employer matches, and an IRA.</li><li><b>Mostly index funds.</b> Cheap, diversified, and hard to beat.</li><li><b>Add a little every month</b> no matter what prices do. That’s <b>dollar-cost averaging</b>: you automatically buy more shares when prices are low.</li><li><b>More bonds as you get closer</b> to needing the money.</li><li><b>Don’t panic.</b> Selling in a crash locks in the loss. Time in the market beats timing the market.</li></ul>' +
+        ex('A classic mix', 'A total US stock fund (VTI), an international fund (VXUS) and a bond fund (BND). Three funds, thousands of companies and bonds, tiny fees.')
+    };
+    return L[id] || '';
+  }
+
+  // ── Shell ──
+  var report = null;
+  Kit.init({
+    id: 'stocks',
+    menu: [
+      { icon: 'chart', label: 'Taxes', onClick: taxSheet },
+      { icon: 'book', label: 'Lessons', onClick: function () { closePane(); tab = 'learn'; paint(); } },
+      { icon: 'history', label: 'Bankroll history', onClick: function () { Casino.showHistory(); } },
+      { icon: 'undo', label: 'Reset bankroll', onClick: function () { Kit.confirm('Reset your casino bankroll to $1,000? Your investing account stays as it is.', { ok: 'Reset', danger: true }).then(function (y) { if (y) { Casino.reset(); Kit.toast('Bankroll reset to $1,000'); } }); } },
+      { icon: 'trash', label: 'Start the account over', onClick: function () { Kit.confirm('Close this investing account and start over? Everything in it is lost (cash out first to keep it).', { ok: 'Start over', danger: true }).then(function (y) { if (y) { A = fresh(); save(); paint(); } }); } }
+    ],
+    rules:
+      '<p class="goal">Invest your casino bankroll in the real stock market: stocks, index funds, bonds, Treasuries, options and crypto. Prices are real and update twice a day, so check in once or twice a day.</p>' +
+      '<h3>Getting started</h3><ul><li><b>Add money</b> from your bankroll. It waits as cash, earning the T-bill rate.</li><li>Open <b>Market</b>, pick something and tap <b>Buy</b>. Buy by dollars or shares.</li><li><b>Buy now</b> fills at the latest price. A <b>limit order</b> waits for a later price update.</li></ul>' +
+      '<h3>What you can own</h3><ul><li>About 90 stocks, index funds, bond funds and coins. Real dividends are paid to your cash.</li><li><b>Treasuries</b> (Market, Treasuries): bills, notes and bonds at today’s rates, with interest every six months.</li><li><b>Options</b> (on any stock or fund): buy calls and puts, sell them back any time, settled in cash at the end date.</li></ul>' +
+      '<h3>Cashing out and taxes</h3><p>Gains count for tax when you sell. Short-term gains (held a year or less) and interest are taxed at your bracket; long-term gains and dividends at the lower rate. Losses offset gains. When you cash out to your bankroll, the tax you owe comes out first; the app shows you before you confirm.</p>' +
+      '<p>The <b>Learn</b> tab explains everything, with today’s real numbers.</p>'
+  });
+
+  layout();
+  function start() {
+    var ev = catchUp();
+    // how holdings moved since the last visit
+    if (A.last && Q) {
+      var v = totals().all, d = v - (A.lastVal || v);
+      if (Math.abs(d) >= .01 && (A.lots.length || A.opts.length)) ev.unshift(['Your account since ' + dateTxt(A.last), signed(d, 1)]);
+      holdings().forEach(function (h) { var was = A.lastPx[h.sym]; if (was) { var c = (price(h.sym) - was) / was; if (Math.abs(c) >= .03) ev.push([h.sym + (c > 0 ? ' up ' : ' down ') + Math.abs(c * 100).toFixed(1) + '%', signed((price(h.sym) - was) * h.q, 1)]); } });
+      if (d > Math.max(250, (A.lastVal || 0) * .05)) setTimeout(function () { Kit.confetti(); Kit.sfx('win'); }, 500);
+    }
+    if (ev.length) report = ev;
+    if (Q) { A.last = Date.now(); A.lastVal = totals().all; A.lastPx = {}; holdings().forEach(function (h) { A.lastPx[h.sym] = price(h.sym); }); recordValue(); }
+    save(); paint();
+    var t = totals(); if (t.all > .01) Kit.resume.set(money(t.all) + ' invested'); else Kit.resume.clear();
+  }
+  if (Q) paint();
+  loadQuotes().then(start);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes().then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (!dom.pane.classList.contains('on')) paint(); }); });
+  window.__mk = { A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
+})();
+</script>
+</body>
+</html>
