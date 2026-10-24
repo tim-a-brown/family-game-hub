@@ -223,6 +223,7 @@ async function probe() {
   const ok = [];
   for (const src of ORDER) { try { const q = await SOURCES[src]('AAPL', 'stock', null); console.log('source ' + src + ': ok, AAPL ' + q.p + ', ' + q.hist.length + ' days'); ok.push(src); } catch (e) { console.log('source ' + src + ': ' + e.message.slice(0, 200)); } }
   ORDER = ok.concat(ORDER.filter((s) => ok.indexOf(s) < 0));
+  try { console.log('cnbc KO: ' + (await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=KO|BND&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json')).slice(0, 2500)); } catch (e) { console.log('cnbc KO: ' + e.message); }
 }
 
 async function token(key) {
