@@ -724,7 +724,7 @@
         // every other turn-based game (turnnet.js): the same fields at every table, so no game needs its own code here
         var tq = db.collection('turnRooms').where('accts', 'array-contains', tag).limit(40).get()
           .then(function (qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; }).catch(function () { return []; });
-        return Promise.all([q('chessRooms', 'host', ['playing']), q('chessRooms', 'guest', ['playing']), q('lorcanaRooms', 'host', ['joined', 'playing']), q('lorcanaRooms', 'guest', ['playing']), tq]);
+        return Promise.all([q('chessRooms', 'host', ['playing']), q('chessRooms', 'guest', ['playing']), q('lorcanaRooms', 'host', ['joined', 'playing']), q('lorcanaRooms', 'guest', ['joined', 'playing']), tq]);
       }).then(function (r) {
         if (!r) return null;
         var out = [], seen = {};
