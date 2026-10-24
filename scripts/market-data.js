@@ -186,19 +186,34 @@ async function gecko(sym) {
 }
 // The long history: every close Nasdaq has (CoinGecko for crypto), as [[YYYY-MM-DD, close]] oldest first
 async function longHist(sym, kind) {
+  const byDay = {};
   if (kind === 'coin') {
-    const id = { 'BTC-USD': 'bitcoin', 'ETH-USD': 'ethereum' }[sym];
-    let j = null;
-    for (const days of ['max', '3650', '1825', '365']) {
-      try { j = JSON.parse(await fetchText('https://api.coingecko.com/api/v3/coins/' + id + '/market_chart?vs_currency=usd&days=' + days + '&interval=daily')); if ((j.prices || []).length > 20) break; } catch (e) { j = null; }
-      await sleep(1500);
+    // Coinbase's public daily candles, 300 days a request, back until they run out
+    for (let end = Date.now(), k = 0; k < 20; k++, end -= 300 * 864e5) {
+      const start = end - 300 * 864e5;
+      let rows = [];
+      try { rows = JSON.parse(await fetchText('https://api.exchange.coinbase.com/products/' + sym + '/candles?granularity=86400&start=' + new Date(start).toISOString() + '&end=' + new Date(end).toISOString())); } catch (e) { if (!k) throw e; break; }
+      if (!Array.isArray(rows) || !rows.length) break;
+      rows.forEach((c) => { if (isFinite(c[4]) && c[4] > 0) byDay[day(c[0] * 1000)] = c[4]; });   // [time, low, high, open, close, volume]
+      await sleep(350);
     }
-    const byDay = {}; ((j && j.prices) || []).forEach((x) => { if (isFinite(x[1])) byDay[day(x[0])] = x[1]; });
-    return Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
+  } else {
+    // Nasdaq answers ten years at a time: step back a decade until a window comes back empty
+    const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
+    for (let to = Date.now(), k = 0; k < 6; k++) {
+      const from = to - 10 * 365.25 * 864e5;
+      let rows = [];
+      try {
+        const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=' + day(from) + '&todate=' + day(to) + '&limit=9999', { headers: NQ }));
+        rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1]) && r[1] > 0);
+      } catch (e) { if (!k) throw e; }
+      if (!rows.length) break;
+      rows.forEach((r) => { byDay[r[0]] = r[1]; });
+      to = from - 864e5;
+      await sleep(250);
+    }
   }
-  const ac = kind === 'stock' ? 'stocks' : 'etf', s = sym.replace('-', '.');
-  const hj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/historical?assetclass=' + ac + '&fromdate=1970-01-01&todate=' + day(Date.now()) + '&limit=20000', { headers: NQ }));
-  const rows = (((hj.data || {}).tradesTable || {}).rows || []).map((r) => [mdy(r.date), num(r.close)]).filter((r) => r[0] && isFinite(r[1]) && r[1] > 0).reverse();
+  const rows = Object.keys(byDay).sort().map((d) => [d, byDay[d]]);
   if (rows.length < 200) throw new Error('long: ' + rows.length + ' rows');
   return rows;
 }
@@ -337,8 +352,8 @@ async function upload(obj, text, cache) {
 async function history(out) {
   let old = {};
   try { old = JSON.parse(await fetchText('https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(HOBJ) + '?alt=media')); } catch (e) { console.log('no saved history yet'); }
-  if (old.at && Date.now() - old.at < 20 * 3600e3 && !process.env.LONG) { console.log('history: fresh from ' + new Date(old.at).toISOString()); return; }
-  const H = { v: 1, at: Date.now(), q: {} }, jobs = LIST.slice(), got = [];
+  if (old.v === 2 && old.at && Date.now() - old.at < 20 * 3600e3 && !process.env.LONG) { console.log('history: fresh from ' + new Date(old.at).toISOString()); return; }
+  const H = { v: 2, at: Date.now(), q: {} }, jobs = LIST.slice(), got = [];
   async function worker() {
     while (jobs.length) {
       const [sym, , kind] = jobs.shift();
