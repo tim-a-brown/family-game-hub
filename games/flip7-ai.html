@@ -705,8 +705,8 @@
       el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
       el('span', { class: 'nm', text: isYou(p) && pl.name !== 'You' ? pl.name + ' (you)' : pl.name })
     ]);
-    // the bust risk: yours (one person at the table), or a person's on their turn
-    if (human(p) && (p === 0 || S.turn === p) && st === 'in' && S.phase !== 'roundover') {
+    // the bust risk: the first seat's shows here (the big spot has room); another person's shows in the bar on their turn
+    if (human(p) && p === 0 && st === 'in' && S.phase !== 'roundover') {
       var o = odds(p), rows = S.rows[p].some(function (c) { return c.k === 'n'; });
       if (hasSC(p)) head.appendChild(el('span', { class: 'risk safe', html: '<b>Protected</b>' }));
       else if (rows) head.appendChild(el('span', { class: 'risk', html: 'Bust risk <b>' + Math.round(o.pb * 100) + '%</b>' }));
@@ -757,7 +757,10 @@
       return;
     }
     if (myTurn()) {
-      if (!isYou(S.turn)) barEl.appendChild(el('div', { class: 'pickl', text: S.players[S.turn].name + ', your turn' }));
+      if (S.turn !== 0) {
+        var od = odds(S.turn), hasNums = S.rows[S.turn].some(function (c) { return c.k === 'n'; });
+        barEl.appendChild(el('div', { class: 'pickl', text: S.players[S.turn].name + ', your turn' + (hasSC(S.turn) ? '. Protected by a Second Chance' : hasNums ? '. Bust risk ' + Math.round(od.pb * 100) + '%' : '') }));
+      }
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', html: Kit.icon('plus') + '<span>Flip</span>', onclick: hit }));
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg', text: 'Stay with ' + calc(S.turn).pts, onclick: stay }));
       return;

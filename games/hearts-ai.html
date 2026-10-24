@@ -130,6 +130,7 @@
       showFor(p); then && then();
     });
   }
+  function onePerson() { return S.players.filter(function (p) { return !p.cpu; }).length < 2; }
   function firstPerson() { for (var p = 0; p < 4; p++) if (person(p)) return p; return 0; }
   function nextPasser() { for (var p = 0; p < 4; p++) if (p !== ME && person(p) && !(S.passes && S.passes[p])) return p; return -1; }
   // picking up a saved game (or coming back from an online table)
@@ -449,7 +450,7 @@
       s.classList.toggle('turn', up.indexOf(p) >= 0);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === mySeat() ? 'You' : pl.name })
+        el('span', { text: p === mySeat() && (NET || onePerson()) ? 'You' : pl.name })
       ]);
       var info = el('div', { class: 'info' }, [
         el('span', { class: 'chip-s' + (S.taken && S.taken[p] ? ' hot' : ''), html: '<span class="handpts"><span class="h">♥</span>' + (S.taken ? S.taken[p] : 0) + '</span>' }),
