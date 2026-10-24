@@ -1674,6 +1674,39 @@
     // cpu:'mix' tables: which seats (after the first) are robots, remembered with the names
     var robots = {}; (saved.robots || []).forEach(function (i) { if (i > 0) robots[i] = true; });
     var openHelp = {};
+    // One table, no mode cards: when a game's ways to play are the standard Just me / vs Computer / Pass & play
+    // (plus Play online), the seats say it all. One seat is Just me, robots in every other seat is vs Computer,
+    // people (and robots, where the game mixes them) is Pass & play, and Play online is a smaller button beside
+    // the start button. The game still gets the same mode ids in onStart.
+    var MK = {}, merged = false;
+    if (o.modes && o.modes.length > 1 && P && !o.noMerge && !EDIT_DEFAULTS) {
+      o.modes.forEach(function (m) { if (m.kind && !MK[m.kind]) MK[m.kind] = m.id; });
+      merged = o.modes.every(function (m) { return /^(solo|cpu|local|online)$/.test(m.kind || ''); }) && !!MK.local && !!(MK.cpu || MK.solo);
+    }
+    function modeCpu(m) { return typeof P.cpu === 'function' ? P.cpu(m) : P.cpu; }
+    function modeRange(m) { var r = typeof P.range === 'function' ? P.range(m) : null; return r || [P.min || 1, P.max || P.min || 1]; }
+    function inRange(m, n) { var r = modeRange(m); return n >= r[0] && n <= r[1]; }
+    var localMix = merged && modeCpu(MK.local) === 'mix';
+    function robotsOk(n) { return !!(MK.cpu && inRange(MK.cpu, n)) || localMix; }
+    // the mode the seats add up to
+    function resolved() {
+      var n = state.count, others = 0, bot = 0;
+      if (MK.solo && n === 1) return MK.solo;
+      for (var j = 1; j < n; j++) { others++; if (robots[j]) bot++; }
+      if (MK.cpu && others && bot === others && inRange(MK.cpu, n)) return MK.cpu;
+      if (MK.cpu && !inRange(MK.local, n)) return MK.cpu;
+      return MK.local;
+    }
+    if (merged) {
+      // last time it was vs Computer (before this screen merged its cards): the other seats start as robots
+      if (saved.mode === MK.cpu && !(saved.robots || []).length) for (var rj = 1; rj < 12; rj++) robots[rj] = true;
+      // first time here: start the way the first card used to (usually you and the computer)
+      if (!saved.mode && !saved.count) {
+        var first = o.modes[0];
+        saved = Object.assign({}, saved, { count: P.count || modeRange(first.id)[0] });
+        if (first.kind === 'cpu') for (var fj = 1; fj < 12; fj++) robots[fj] = true;
+      }
+    }
     // Opened from the home screen with its players filter on (?np=1 Just me, 2 Two of us, 3 Three or more):
     // start on a mode that suits that many people (vs Computer or solo for one, Pass & play for more) and seat them
     var NP = 0; try { NP = Math.min(3, parseInt(new URLSearchParams(location.search).get('np'), 10) || 0); } catch (e) {}
@@ -1690,6 +1723,8 @@
       }
       if (!cpuOf(state.mode)) saved = Object.assign({}, saved, { count: NP >= 3 ? Math.max(3, saved.count || 0) : NP });
     }
+    // (merged screens: one person from the home screen's filter plays the robots; two or more seats people)
+    if (NP && merged) { robots = {}; if (NP === 1 && !MK.solo && MK.cpu) for (var nj = 1; nj < 12; nj++) robots[nj] = true; }
 
     var wrap = el('div', { class: 'setup' });
     // the game's icon and its name side by side, centred (the Defaults editor keeps its stacked header)
@@ -1705,15 +1740,23 @@
     var seatsBox = el('div', { class: 'stack k-seats' });
     wrap.appendChild(seatsBox);
     var modesBox = null;
-    if (o.modes && o.modes.length > 1) {
+    if (o.modes && o.modes.length > 1 && !merged) {
       modesBox = el('div', { class: 'modes' });
       wrap.appendChild(modesBox);
     }
     var optsBox = el('div', { class: 'stack k-opts' });
     wrap.appendChild(optsBox);
 
-    function cpuFor() { return P && typeof P.cpu === 'function' ? P.cpu(state.mode) : (P && P.cpu) || false; }
+    function cpuFor() {
+      if (merged) return robotsOk(state.count) ? 'mix' : false;
+      return P && typeof P.cpu === 'function' ? P.cpu(state.mode) : (P && P.cpu) || false;
+    }
     function range() {
+      if (merged) {   // every count some way to play here can seat
+        var lo = 99, hi = 0;
+        [MK.solo, MK.cpu, MK.local].forEach(function (m) { if (m) { var q = modeRange(m); lo = Math.min(lo, q[0]); hi = Math.max(hi, q[1]); } });
+        return [lo, hi];
+      }
       var r = P && typeof P.range === 'function' ? P.range(state.mode) : null;
       return r || [P.min || 1, P.max || P.min || 1];
     }
@@ -1774,6 +1817,7 @@
       var r = range(), cpu = cpuFor();
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
+      if (merged) { state.mode = resolved(); if (!robotsOk(state.count)) robots = {}; cpu = cpuFor(); }
       renderOptions();
       if (r[1] === 0) return;   // a mode with nobody to seat (Bingo's caller)
       var head = el('div', { class: 'row' }, [el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" })]);
@@ -1829,7 +1873,11 @@
           // Mixed tables: every seat after the first has a switch between a person and a robot
           if (cpu === 'mix' && i > 0) {
             row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
-              onclick: function () { robots[i] = !robots[i]; sfx('pop'); haptic('light'); renderSeats(); } }));
+              onclick: function () {
+                if (merged && !localMix) { var v = !robots[i]; for (var j = 1; j < 12; j++) robots[j] = v; }   // (this game seats people or robots, not both)
+                else robots[i] = !robots[i];
+                sfx('pop'); haptic('light'); renderSeats();
+              } }));
           }
           // Two or more people (no computer seats): a handle to drag a player up or down the order
           if (!cpu && state.count > 1) row.appendChild(grip(row, i));
@@ -1911,16 +1959,23 @@
     }
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
-      onclick: function () {
-        var cpu = cpuFor(), players = [], picked = [];
+      onclick: function () { go(false); }
+    });
+    // online: the merged screen's Play online button (just your own seat; the others join from their devices)
+    function go(online) {
+        if (merged && !online) state.mode = resolved();
+        if (online) state.mode = MK.online;
+        var cpu = online ? false : cpuFor(), players = [], picked = [];
+        var nSeats = state.count;
+        if (online) { var orr = modeRange(MK.online); nSeats = Math.min(orr[1], Math.max(orr[0], state.count)); }
         // arcade games: every person playing is someone you can pick (their high scores file under their initials)
         if (P && P.names !== false && game && game.cat === 'arcade') {
           var ins = seatsBox.querySelectorAll('input');
-          for (var j = 0; j < state.count; j++) {
+          for (var j = 0; j < nSeats; j++) {
             var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
             if (cj || isPersonName(ins[j] ? ins[j].value : '')) continue;
             (function (j) {
-              pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { startBtn.click(); }, 260); },
+              pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { go(online); }, 260); },
                 { taken: names.slice(0, state.count).filter(function (x, q) { return q !== j; }), title: state.count > 1 && !cpu ? 'Player ' + (j + 1) : 'Who’s playing?' });
             })(j);
             return;
@@ -1928,7 +1983,7 @@
         }
         if (P) {
           var inputs = seatsBox.querySelectorAll('input');
-          for (var i = 0; i < state.count; i++) {
+          for (var i = 0; i < nSeats; i++) {
             var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
             var v = inputs[i] ? inputs[i].value.trim() : '';
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
@@ -1940,13 +1995,34 @@
         saveSetup();
         sfx('pop'); haptic('medium');
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
+    }
+    // Play online: any choices that only matter online come up first, in a sheet
+    function goOnline() {
+      var only = (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options) && !op.when(resolved(), state.options); });
+      if (!only.length) return go(true);
+      var box = el('div', { class: 'stack' }), sh;
+      function paint() {
+        box.innerHTML = '';
+        only.forEach(function (op) {
+          var seg = el('div', { class: 'seg' }), choices = typeof op.choices === 'function' ? op.choices(state.count, MK.online, state.options) : op.choices;
+          if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
+          choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1], onclick: function () { state.options[op.id] = c[0]; sfx('tap'); paint(); } })); });
+          var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
+          box.appendChild(el('div', { class: 'k-opt' }, [el('div', { class: 'label' }, [el('span', { text: op.label })]), seg, cur && cur[2] ? el('p', { class: 'k-help', style: { display: 'block' }, text: cur[2] }) : null]));
+        });
       }
-    });
+      paint();
+      sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Play online', primary: true, onClick: function () { setTimeout(function () { go(true); }, 0); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    }
     // (the rules are the "? Rules" button in the bar above); the start button stays in view at the bottom whatever's above it
-    // o.alt: a smaller second way to start, beside the main button (Bingo's "Call only")
+    // o.alt: a smaller second way to start, beside the main button (Bingo's "Call only"; Play online on a merged screen)
+    if (!o.alt && merged && MK.online) o.alt = { label: 'Play online', icon: 'globe', onClick: function () { goOnline(); }, own: true };
     var dock = [startBtn];
     if (o.alt) dock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (o.alt.icon ? icon(o.alt.icon) : '') + '<span>' + esc(o.alt.label) + '</span>',
-      onclick: function () { saveSetup(); sfx('pop'); haptic('medium'); o.alt.onClick && o.alt.onClick({ mode: state.mode, players: [], options: state.options }); } }));
+      onclick: function () {
+        if (o.alt.own) return o.alt.onClick();
+        saveSetup(); sfx('pop'); haptic('medium'); o.alt.onClick && o.alt.onClick({ mode: state.mode, players: [], options: state.options });
+      } }));
     wrap.appendChild(el('div', { class: 'k-startdock' + (o.alt ? ' has-alt' : '') }, dock));
     host.appendChild(wrap);
     winPeekClear();

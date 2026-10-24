@@ -88,10 +88,14 @@ Underlying principles for everything:
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
   computer players). Every game passes `undo` to `Kit.init` when moves can be
   taken back. The game menu always has Frequent players.
-- **Same setup, same results card, every game.** Ways to play are `Kit.modes([...])` cards, always in the
-  order Just me / vs Computer / Pass & play / Play online (`solo`, `cpu`, `local`, `online`); a game keeps its
-  own mode ids with `kind`. Tables with 3+ seats let robots sit anywhere after the first seat
-  (`cpu: 'mix'`); pass & play hands the device over with `Kit.handoff` between people only. The start button
+- **Same setup, same results card, every game.** Ways to play are declared with `Kit.modes([...])` (`solo`,
+  `cpu`, `local`, `online`; a game keeps its own mode ids with `kind`), but **no mode cards are shown** for these:
+  the setup is one seat list, where each seat after the first has a robot switch. One seat is Just me, robots in
+  every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
+  `onStart` still gets the matching mode id. Play online is a smaller button beside the start button (`Kit.setup`
+  does all this itself; a game's own extra way to play, like Bingo's Call only, uses `alt`). Only games with
+  their own kinds of play (Trivia's Buzz in, Sandlot's Derby) still show cards. Pass & play hands the device over
+  with `Kit.handoff` between people only. The start button
   stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`).
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
