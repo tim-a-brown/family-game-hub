@@ -157,9 +157,8 @@ async function nasdaq(sym, kind) {
   let dv = [];
   try {
     const dj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/dividends?assetclass=' + ac, { headers: NQ }));
-    if (sym === 'KO') console.log('dividends sample: ' + JSON.stringify(dj).slice(0, 400));
     dv = ((((dj.data || {}).dividends || {}).rows) || []).map((r) => [mdy(r.exOrEffDate), r4(num(r.amount))]).filter((d) => d[0] && d[1] > 0 && d[0] >= from).sort((a, b) => a[0] < b[0] ? -1 : 1);
-  } catch (e) { if (sym === 'KO') console.log('dividends: ' + e.message); }
+  } catch (e) {}
   return { p, pc, at, hist: rows.slice(-260), dv };
 }
 // CNBC: the latest quote only (history then comes from the saved file)
@@ -223,7 +222,6 @@ async function probe() {
   const ok = [];
   for (const src of ORDER) { try { const q = await SOURCES[src]('AAPL', 'stock', null); console.log('source ' + src + ': ok, AAPL ' + q.p + ', ' + q.hist.length + ' days'); ok.push(src); } catch (e) { console.log('source ' + src + ': ' + e.message.slice(0, 200)); } }
   ORDER = ok.concat(ORDER.filter((s) => ok.indexOf(s) < 0));
-  try { console.log('cnbc KO: ' + (await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=KO|BND&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json')).slice(0, 2500)); } catch (e) { console.log('cnbc KO: ' + e.message); }
 }
 
 async function token(key) {
@@ -251,6 +249,25 @@ async function token(key) {
     out.q[sym] = { n: name, k: kind, g: group, a: about, p: r4(q.p), pc: r4(q.pc), at: q.at, d0: q.hist[0][0], h: q.hist.map((x) => r2(x[1])), o: q.hist.map((x) => Math.round((Date.parse(x[0]) - t0) / 864e5)), dv: q.dv.length ? q.dv : (prev && prev.dv) || [] };
   }
   await Promise.all([worker(), worker(), worker(), worker()]);
+  // Nasdaq only has dividend dates for Nasdaq-listed shares. For the rest, CNBC's yearly dividend is paid on the usual
+  // schedule: four times a year (the 15th of March, June, September and December), bond funds on the 1st of each month.
+  const need = LIST.filter((x) => out.q[x[0]] && x[2] !== 'coin' && !(out.q[x[0]].dv || []).length).map((x) => x[0]);
+  for (let i = 0; i < need.length; i += 40) {
+    try {
+      const part = need.slice(i, i + 40), j = JSON.parse(await fetchText('https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=' + encodeURIComponent(part.map((x) => x === 'BRK-B' ? 'BRK.B' : x).join('|')) + '&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=0&output=json'));
+      (((j.FormattedQuoteResult || {}).FormattedQuote) || []).forEach((q, k) => {
+        const sym = part[k], yr = num(q.dividend); if (!sym || !(yr > 0) || !out.q[sym]) return;
+        const monthly = out.q[sym].k === 'bond', dv = [], now = new Date();
+        for (let m = 12; m >= 0; m--) {
+          const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - m, monthly ? 1 : 15));
+          if (d > now || (!monthly && d.getUTCMonth() % 3 !== 2)) continue;
+          dv.push([day(d.getTime()), r4(yr / (monthly ? 12 : 4))]);
+        }
+        out.q[sym].dv = dv; out.q[sym].dve = 1;
+      });
+    } catch (e) { console.log('cnbc dividends: ' + e.message.slice(0, 160)); }
+  }
+  console.log('dividends: ' + LIST.filter((x) => out.q[x[0]] && (out.q[x[0]].dv || []).length).length + ' symbols');
   // the list's own order (the game shows groups in this order)
   const ordered = {}; LIST.forEach((x) => { if (out.q[x[0]]) ordered[x[0]] = out.q[x[0]]; }); out.q = ordered;
   try { const t = await treasury(); ['irx', 'fvx', 'tnx', 'tyx'].forEach((k) => { if (isFinite(t[k])) out.rates[k] = t[k]; }); out.rates.date = t.date; console.log('Treasury yields ' + JSON.stringify(t)); }
