@@ -500,10 +500,10 @@ body{overflow-x:hidden;}
     var chosen = savedCats();
     var st = Kit.setup(app, {
       intro: TOTAL + ' tough choices. Vote, reveal, then debate.',
-      modes: [
-        { id: 'tally', icon: 'users', title: 'Quick vote', desc: 'Everyone says it out loud. Tap names onto a side' },
-        { id: 'pass', icon: 'phone', title: 'Secret vote', desc: 'Pass the phone. No peeking until the big reveal' }
-      ],
+      modes: Kit.modes([
+        { id: 'tally', kind: 'tally', icon: 'users', title: 'Quick vote', desc: 'Everyone says it out loud. Tap names onto a side' },
+        { id: 'pass', kind: 'secret', icon: 'eye', title: 'Secret vote', desc: 'Pass the phone. No peeking until the big reveal' }
+      ]),
       players: { min: 2, max: 8, count: 3, label: "Who's voting?" },
       options: [
         { id: 'rounds', label: 'Questions', value: 10, help: 'How many questions before the results.', choices: [[10, '10'], [20, '20'], [0, 'Endless', 'Keep going until you pick Finish in the menu.']] },
@@ -858,9 +858,9 @@ body{overflow-x:hidden;}
         title: scored ? (top ? top + ' wins!' : "It's a tie!") : "That's a wrap!",
         sub: S.log.length + ' questions · ' + st.unan.length + ' agreed by everyone',
         rank: scored ? ord.map(function (i) { return { name: P[i].name, score: S.scores[i], color: P[i].color }; }) : null,
-        againLabel: 'Play again', again: again,
-        extra: [{ label: 'Change settings', onClick: showSetup }],
-        closeLabel: 'See the results', onClose: function () {}
+        again: again,
+        look: 'See the results',
+        setup: showSetup
       });
     }, 500);
   }

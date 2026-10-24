@@ -1220,9 +1220,10 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     else title = 'It’s a tie!';
     setTimeout(function () {
       Kit.win({ title: title, lose: lose, icon: S.ghostWin ? 'ghost' : lose ? 'meh' : 'trophy', sub: S.ghostWin ? 'Everyone goes home in shame.' : 'First to ' + S.target + ' ' + w, rank: rank,
-        again: again, againLabel: net.mode ? 'Back to the table' : 'Play again',
-        extra: net.mode ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); goLobby(); } }] : [{ label: 'Change settings', onClick: showSetup }],
-        closeLabel: 'See the rounds', onClose: function () {} });
+        again: again, againLabel: net.mode ? 'Back to the table' : undefined,
+        look: 'See the rounds',
+        setup: net.mode ? null : showSetup,
+        closeLabel: net.mode ? 'Leave the table' : undefined, onClose: net.mode ? function () { leaveOnline(false); goLobby(); } : undefined });
     }, 600);
   }
   function renderOver(V) {
@@ -1319,11 +1320,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     initOpts.rules = rulesHtml();
     var st = Kit.setup(app, {
       intro: cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.',
-      modes: [
-        { id: 'solo', icon: 'bot', title: 'Solo', desc: 'You and computer players' },
-        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'One phone passed around the table' },
-        { id: 'online', icon: 'users', title: 'Online', desc: 'Everyone on their own phone, up to 24 players' }
-      ],
+      modes: Kit.modes([{ id: 'solo', kind: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Each player on their own device, up to 24' }]),
       players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
       options: [
         { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },

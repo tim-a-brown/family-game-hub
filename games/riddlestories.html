@@ -370,10 +370,7 @@
     var n = solvedCount();
     Kit.setup(app, {
       intro: n ? 'You have solved ' + n + ' of ' + CASES.length + ' cases. Unsolved ones come up first.' : 'Solve the mystery with yes-or-no questions. ' + CASES.length + ' cases to crack.',
-      modes: [
-        { id: 'group', icon: 'users', title: 'Pass & play', desc: 'Take turns reading. Solve cases to score points.' },
-        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Read the cases yourself and see how many you crack' }
-      ],
+      modes: Kit.modes([{ id: 'solo', desc: 'Read the cases yourself and see how many you crack' }, { id: 'group', kind: 'local', desc: 'Take turns reading. Solve cases to score points' }]),
       players: { range: function (m) { return m === 'solo' ? [1, 1] : [2, 8]; }, count: 3 },
       options: [
         { id: 'deck', label: 'Difficulty', value: 'M', help: 'Which pile of mysteries to read from.', choices: [
@@ -700,7 +697,7 @@
       rank: solo ? null : rank,
       lose: solo && solvedN === 0,
       again: function () { start(again); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      setup: function () { clearSave(); undoStack = []; showSetup(); }
     });
   }
 

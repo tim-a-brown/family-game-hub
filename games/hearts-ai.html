@@ -81,7 +81,7 @@
   Kit.init({
     orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'hearts',
-    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } token++; clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([
       { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(false); } },
@@ -103,26 +103,45 @@
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
-  // ME: the seat drawn at the bottom (you). 0 on this device; your seat at an online table.
-  var S = null, token = 0, undoStack = [], ME = 0;
+  // ME: the seat drawn at the bottom, whose hand is face up. Pass & play: the person holding the device (S.me);
+  // online: your seat at the table. BLIND: every hand face down while the device is handed to the next person.
+  var S = null, token = 0, undoStack = [], ME = 0, BLIND = false;
   var NET = null, NETREC = {}, NETSEL = [], NETQ = [], NETBUSY = false, NETSEEN = {}, NETFLY = null;
   function posOf(p) { return SEATS[(p - ME + 4) % 4]; }
   function save() {
     if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · you have ' + S.players[0].total);
+    if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · you have ' + S.players[S.me || 0].total);
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
+  // ── Pass & play ───────────────────────────────────────────────────────────
+  // People share the device: before a different person's turn every hand goes face down and the cover asks to
+  // pass the device; when they hold the button the table turns so they sit at the bottom. One person among
+  // robots (and online) never sees the cover.
+  function person(p) { return p >= 0 && !isCpu(p); }
+  function showFor(p) { BLIND = false; ME = p; S.me = p; save(); render(); }
+  function gate(p, then) {
+    if (NET || !person(p) || p === ME) { then && then(); return; }
+    BLIND = true; undoStack = []; render();
+    var t = token;
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S) return;
+      showFor(p); then && then();
+    });
+  }
+  function firstPerson() { for (var p = 0; p < 4; p++) if (person(p)) return p; return 0; }
+
   function showSetup() {
-    S = null; token++;
+    S = null; token++; BLIND = false; ME = 0; Kit.handoff.close();
     Kit.setup(app, {
-      players: { min: 4, max: 4, cpu: 'seats', label: 'Players (you + 3 computers)' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this score, and the lowest score wins.', value: 100, choices: [[50, '50 · quick'], [100, '100 · standard']] }],
       onStart: function (cfg) {
         S = {
-          target: +cfg.options.target || 100, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0],
-          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; })
+          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0],
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, total: 0 }; })
         };
         undoStack = []; newHand();
       }
@@ -163,9 +182,9 @@
     S.taken = [0, 0, 0, 0]; S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = [];
     S.tw = [0, 0, 0, 0]; S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
     S.passDir = PASS[(S.round - 1) % 4];
-    S.passSel = [];
+    S.passSel = []; S.passes = [null, null, null, null];
     if (S.passDir === 'hold') startPlay();
-    else { S.phase = 'pass'; save(); render(); }
+    else { S.phase = 'pass'; save(); gate(firstPerson(), render); }
     Kit.sfx('deal');
   }
   function cpuPass(p, X) {
@@ -183,17 +202,28 @@
     return scored.slice(0, 3).map(function (x) { return x.c.id; });
   }
   function passTarget(p, dir) { dir = dir || S.passDir; return dir === 'left' ? (p + 1) % 4 : dir === 'right' ? (p + 3) % 4 : (p + 2) % 4; }
-  function doPass() {
+  // the person at the bottom confirms their 3 cards; the next person gets the device, and when everyone has
+  // picked (robots pick as the cards move) the cards cross the table
+  function passNow() {
     if (S.passSel.length !== 3) return;
-    snapshot();
-    var sel = [S.passSel.slice(), cpuPass(1), cpuPass(2), cpuPass(3)];
+    if (!S.passes) S.passes = [null, null, null, null];
+    var nxt = -1; for (var p = 0; p < 4; p++) if (p !== ME && person(p) && !S.passes[p]) { nxt = p; break; }
+    if (nxt < 0) snapshot();
+    S.passes[ME] = S.passSel.slice(); S.passSel = [];
+    if (nxt >= 0) { save(); gate(nxt, render); return; }
+    doPass();
+  }
+  function doPass() {
+    var sel = [0, 1, 2, 3].map(function (p) { return person(p) && S.passes && S.passes[p] ? S.passes[p] : cpuPass(p); });
     var moving = sel.map(function (ids, p) { return ids.map(function (id) { return S.hands[p][find(S.hands[p], id)]; }); });
     moving.forEach(function (cards, p) { S.hands[p] = S.hands[p].filter(function (c) { return cards.indexOf(c) < 0; }); });
     moving.forEach(function (cards, p) { S.hands[passTarget(p)] = S.hands[passTarget(p)].concat(cards); });
     S.hands.forEach(sortHand);
-    S.received = moving[S.passDir === 'left' ? 3 : S.passDir === 'right' ? 1 : 2].map(function (c) { return c.id; });
-    S.dtPass = { out: moving[0].map(cc), got: moving[S.passDir === 'left' ? 3 : S.passDir === 'right' ? 1 : 2].map(cc) };
-    S.passSel = [];
+    var from = function (p) { return S.passDir === 'left' ? (p + 3) % 4 : S.passDir === 'right' ? (p + 1) % 4 : (p + 2) % 4; };
+    S.recvAll = [0, 1, 2, 3].map(function (p) { return moving[from(p)].map(function (c) { return c.id; }); });
+    S.received = S.recvAll[ME];
+    S.dtPass = { out: moving[0].map(cc), got: moving[from(0)].map(cc) };
+    S.passSel = []; S.passes = null;
     Kit.sfx('whoosh');
     startPlay();
   }
@@ -221,10 +251,10 @@
   // ── Playing ───────────────────────────────────────────────────────────────
   function next() {
     if (NET || !S || S.phase !== 'play') return;
-    if (S.turn !== 0) {
+    if (S.turn >= 0 && isCpu(S.turn)) {
       var t = token;
-      setTimeout(function () { if (t === token && S && S.phase === 'play' && S.turn !== 0) play(S.turn, cpuChoose(S.turn)); }, 650);
-    }
+      setTimeout(function () { if (t === token && S && S.phase === 'play' && S.turn >= 0 && isCpu(S.turn)) play(S.turn, cpuChoose(S.turn)); }, 650);
+    } else if (S.turn >= 0 && S.turn !== ME) { gate(S.turn, next); return; }
     paintSeats(); paintHand(); paintMsg();
   }
   function cpuChoose(p, X) {
@@ -279,7 +309,7 @@
     S.taken[win.p] += got; if (S.tw) S.tw[win.p]++;
     if (S.trick.some(function (x) { return isQS(x.c); })) { S.tookQS = win.p; S.dtQ = { w: win.p, l: S.trick[0].p, c: S.trick.map(function (x) { return cc(x.c); }), n: S.trickNo + 1 }; }
     var winNode = trickEl.querySelector('[data-id="' + win.c.id + '"]'); if (winNode) winNode.classList.add('win');
-    if (got) { seatSay(win.p, '+' + got); if (win.p === 0) Kit.haptic('error'); }
+    if (got) { seatSay(win.p, '+' + got); if (win.p === ME) Kit.haptic('error'); }
     setTimeout(function () {
       if (t !== token) return;
       var dest = seatEls[win.p].querySelector('.tag').getBoundingClientRect(), box = trickEl.getBoundingClientRect();
@@ -334,14 +364,14 @@
   function finish() {
     S.phase = 'over';
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: isCpu(i), color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
-    var tie = rank[1].score === rank[0].score;
+    var tie = rank[1].score === rank[0].score, solo = S.players.filter(function (p) { return !p.cpu; }).length === 1;
     var hl = S.highlights.slice();
     var qsMost = S.qs.indexOf(Math.max.apply(null, S.qs));
     if (S.qs[qsMost] > 1) hl.push(S.players[qsMost].name + ' got stuck with the Queen of Spades ' + S.qs[qsMost] + ' times');
     var clean = S.rounds.map(function (r, ri) { return r[0] === 0 ? ri + 1 : 0; }).filter(Boolean);
     if (clean.length) hl.push(S.players[0].name + ' took no points in ' + clean.length + ' of ' + S.rounds.length + ' hands');
     Kit.record('hearts', {
-      started: S.started, mode: 'vs Computer', lowWins: true,
+      started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer', lowWins: true,
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: S.rounds },
@@ -350,13 +380,14 @@
     });
     clearSave();
     Kit.win({
-      title: tie ? "It's a tie!" : rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
-      sub: 'Lowest score wins', rank: rank, lose: rank[0].i !== 0 && !tie, icon: rank[0].i === 0 ? 'trophy' : 'bot',
+      title: tie ? "It's a tie!" : solo && rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
+      sub: 'Lowest score wins', rank: rank, lose: rank[0].cpu && !tie, icon: rank[0].cpu ? 'bot' : 'trophy',
       again: function () {
-        S = { target: S.target, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; }) };
+        S = { mode: S.mode, me: S.me, target: S.target, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; }) };
         newHand();
       },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      look: 'Look at the table',
+      setup: function () { token++; clearSave(); showSetup(); }
     });
   }
 
@@ -365,7 +396,10 @@
   function clearUndo() { undoStack = []; }
   function undo() {
     if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
-    token++; S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if ((back.me || 0) !== ME) return Kit.toast('Only your own last card can be taken back');
+    undoStack.pop();
+    token++; S = back; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render();
     if (S.phase === 'play') next();
   }
 
@@ -398,7 +432,7 @@
     if (NET && S.phase === 'pass') return netTurn(S);
     return S.phase === 'play' && S.turn >= 0 ? [S.turn] : [];
   }
-  function mySeat() { return NET ? NET.seat : 0; }
+  function mySeat() { return NET ? NET.seat : ME; }
   // a computer player (online: also a seat the computer took over when its player left)
   function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
   function paintSeats() {
@@ -438,10 +472,15 @@
       feltEl.appendChild(st);
     });
   }
-  function passedYet() { return !!(NET && S.phase === 'pass' && S.pass && S.pass[ME]); }
+  function passedYet() { return S.phase === 'pass' && !!(NET ? S.pass && S.pass[ME] : S.passes && S.passes[ME]); }
   function paintHand() {
     handEl.innerHTML = '';
     var mine = S.hands && !(NET && NET.seat < 0) ? S.hands[ME] : [];
+    if (BLIND) {   // the device is being passed: this hand stays face down too
+      for (var k = 0; k < mine.length; k++) handEl.appendChild(Kit.card('', '', { back: true }));
+      Cards.fan(handEl); paintBar(); return;
+    }
+    var rec = S.recvAll ? S.recvAll[ME] : S.received;
     var ok = S.phase === 'play' && S.turn === ME && !(NET && NETBUSY) ? legal(ME).map(function (c) { return c.id; }) : null;
     var passing = S.phase === 'pass' && !passedYet();
     view(mine).forEach(function (c) {
@@ -457,7 +496,7 @@
         if (ok.indexOf(c.id) >= 0) { n.classList.add('play'); n.addEventListener('click', function () { if (NET) { netPlay(c, n); return; } snapshot(); play(ME, c); }); }
         else { n.classList.add('dim'); n.addEventListener('click', function () { Kit.haptic('error'); Kit.toast(whyNot(c)); }); }
       } else if (NET) n.addEventListener('click', netNudge);
-      if (S.received && S.received.indexOf(c.id) >= 0 && S.trickNo === 0 && !S.trick.length) n.classList.add('hint');
+      if (rec && rec.indexOf(c.id) >= 0 && S.trickNo === 0 && !S.trick.length) n.classList.add('hint');
       handEl.appendChild(n);
     });
     Cards.fan(handEl);
@@ -482,12 +521,12 @@
       barEl.appendChild(el('span', { class: 'hint', text: wait.length ? 'Waiting for ' + names(wait) : '' }));
     } else if (S.phase === 'pass') {
       var dirIcon = S.passDir === 'left' ? 'back' : S.passDir === 'right' ? 'right' : 'swap';
-      var b = el('button', { type: 'button', class: 'btn btn-primary', html: '<span class="passdir">' + Kit.icon(dirIcon) + '<span>Pass ' + S.passDir + (S.passSel.length === 3 ? '' : ' (' + S.passSel.length + '/3)') + '</span></span>', onclick: NET ? netPass : doPass });
+      var b = el('button', { type: 'button', class: 'btn btn-primary', html: '<span class="passdir">' + Kit.icon(dirIcon) + '<span>Pass ' + S.passDir + (S.passSel.length === 3 ? '' : ' (' + S.passSel.length + '/3)') + '</span></span>', onclick: NET ? netPass : passNow });
       b.disabled = S.passSel.length !== 3 || (NET && NET.seat < 0);
       barEl.appendChild(b);
     } else if (S.phase === 'play') {
       var who = S.turn >= 0 && S.players[S.turn];
-      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (NET && !isCpu(S.turn) ? 'Waiting for ' + who.name : who.name + ' is thinking…') : '' }));
+      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (!isCpu(S.turn) ? (NET ? 'Waiting for ' : 'Pass the device to ') + who.name : who.name + ' is thinking…') : '' }));
     }
   }
   function paintMsg() {
@@ -814,7 +853,7 @@
     netCloseOv();
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.players && sv.hands && sv.phase !== 'over') {
-      S = sv; render();
+      S = sv; ME = S.me || 0; render();
       if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
       else if (S.phase === 'play') next();
     } else showSetup();
@@ -822,7 +861,7 @@
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; Kit.gameStart();
+    S = saved; ME = S.me || 0; Kit.gameStart();
     render();
     if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
     else if (S.phase === 'play') next();

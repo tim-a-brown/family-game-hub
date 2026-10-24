@@ -634,12 +634,12 @@ body{overflow-x:hidden;}
     var chosen = savedCats();
     if (chosen.length === CATS.length) chosen = allCats();
     var st = Kit.setup(app, {
-      modes: [
-        { id: 'cd', icon: 'pulse', title: 'Countdown', desc: 'Solo. Points drain as the clock runs, so answer fast' },
-        { id: 'online', icon: 'globe', title: 'Play online', desc: '2 to 24 players, each on their own device, on one clock' },
-        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Take turns, each with your own question and level' },
-        { id: 'buzz', icon: 'users', title: 'Buzz in', desc: 'Everyone at once on one phone. Fastest finger wins' }
-      ],
+      modes: Kit.modes([
+        { id: 'cd', kind: 'solo', desc: 'Countdown: points drain as the clock runs, so answer fast' },
+        { id: 'pass', kind: 'local', desc: 'Take turns, each with your own question and level' },
+        { id: 'buzz', kind: 'buzz', icon: 'bolt', title: 'Buzz in', desc: 'Everyone at once on one phone. Fastest finger wins' },
+        { id: 'online', desc: '2 to 24 players, each on their own device, on one clock' }
+      ]),
       options: [
         { id: 'level', label: 'Level', value: 'medium', help: 'How hard the questions are.', choices: LEVEL_CHOICES },
         { id: 'each', label: 'Who sets the level', value: 'same', choices: [['same', 'Same for everyone', 'Everyone gets questions at the level above.'], ['each', 'Each picks their own', 'Each player picks their own level, so kids and grown-ups can play fair.']], when: function (m) { return m === 'pass'; } },
@@ -1105,9 +1105,9 @@ body{overflow-x:hidden;}
         sub: n === 1 ? S.scores[0] + ' points' : S.scores[ord[0]] + ' points',
         lose: lose,
         rank: n > 1 ? ord.map(function (i) { return { name: P[i].name, score: S.scores[i], color: Kit.color(i) }; }) : null,
-        againLabel: 'Play again', again: again,
-        extra: [{ label: 'Change settings', onClick: showSetup }],
-        closeLabel: 'See the podium', onClose: function () {}
+        again: again,
+        look: 'See the podium',
+        setup: showSetup
       });
     }, n > 1 ? 2600 : 900);
   }
@@ -1727,9 +1727,10 @@ body{overflow-x:hidden;}
             title: me.right === m.of ? 'Perfect game!' : newBest ? 'New high score!' : me.right + ' of ' + m.of + ' right',
             sub: fmtN(me.score) + ' points' + (avg ? ' · ' + avg.toFixed(1) + 's average' : ''),
             lose: me.right * 2 < m.of,
-            againLabel: 'Play again', again: cdAgain,
-            extra: [{ label: 'High scores', onClick: function () { showHi(v.cfg.lv, v.cfg.of); } }, { label: 'Change settings', onClick: showSetup }],
-            closeLabel: 'See my results', onClose: function () {}
+            again: cdAgain,
+            look: 'See my results',
+            setup: showSetup, setupLabel: 'Change settings',
+            scores: function () { showHi(v.cfg.lv, v.cfg.of); }
           });
         };
         if (HI() && me.score > 0) HI().check(hiK, me.score, showWin); else showWin();
@@ -1755,8 +1756,8 @@ body{overflow-x:hidden;}
         lose: !top.me && !tie,
         rank: list.map(function (p) { return { name: p.name, score: fmtN(p.score), color: p.color }; }),
         againLabel: net.mode === 'host' ? 'Back to your table' : 'Back to the table', again: backToTable,
-        extra: [{ label: 'Leave the table', onClick: function () { leaveOnline(false); goLobby(); } }],
-        closeLabel: 'See the podium', onClose: function () {}
+        look: 'See the podium',
+        closeLabel: 'Leave the table', onClose: function () { leaveOnline(false); goLobby(); }
       });
     }, 2600);
     return rec;

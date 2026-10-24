@@ -774,7 +774,8 @@
     Kit.win({
       title: name + ' wins!', sub: PAT[S.pattern].name + ' Bingo on ball ' + k,
       againLabel: 'New game', again: function () { var p = S.pattern; freshGame(p); build(); },
-      closeLabel: 'Keep calling', onClose: function () { save(); }
+      extra: [{ label: 'Keep calling', onClick: function () { save(); } }],
+      setup: function () { stopAuto(); clearSave(); S = null; showSetup(); }, setupLabel: 'Change settings'
     });
   }
 
@@ -1095,7 +1096,9 @@
         freshKeno({ options: { size: S.size, pattern: S.pattern }, players: S.players.map(function (p) { return { name: p.name, color: p.color }; }) });
         buildKeno();
       },
-      closeLabel: S.players.length > S.wins.length && S.deck.length ? 'Keep drawing' : 'Look at the cards', onClose: function () { save(); }
+      look: { label: 'Look at the cards', onClick: function () { save(); } },
+      extra: S.players.length > S.wins.length && S.deck.length ? [{ label: 'Keep drawing', onClick: function () { save(); } }] : [],
+      setup: function () { stopAuto(); clearSave(); S = null; showSetup(); }
     });
   }
 

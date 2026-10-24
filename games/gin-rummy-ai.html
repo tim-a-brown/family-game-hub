@@ -161,19 +161,39 @@
   function showSetup() {
     S = null; token++;
     Kit.setup(app, {
-      players: { min: 2, max: 2, cpu: 'seats', label: 'You vs the computer' },
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this many points; then bonuses are added.', value: 100, choices: [[100, '100 · standard'], [50, '50 · quick']] }],
       onStart: function (cfg) {
-        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 100);
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 100, cfg.mode);
         undoStack = []; Kit.gameStart(); newHand();
       }
     });
   }
-  function freshGame(players, target) {
+  function freshGame(players, target, mode) {
     return {
-      target: target, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
+      mode: mode || 'cpu', me: 0, target: target, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0, wins: 0 }; })
     };
+  }
+
+  // ── Viewer seat (pass & play) ─────────────────────────────────────────────
+  // S.me is the seat whose hand is face up at the bottom. One person at the table: always seat 0, as before.
+  function person(p) { return !!(S && S.players[p] && !S.players[p].cpu); }
+  function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
+  function isMe(p) { return p === S.me; }
+  function isYou(p) { return isMe(p) && humans() < 2; }
+  function pos(p) { return isMe(p) ? 0 : 1; }
+  function nm(p) { return isYou(p) ? 'You' : S.players[p].name; }
+  // Before another person's turn: hide every hand, show the cover, then make them the viewer
+  function gate(p) {
+    var t = ++token;
+    S.cover = true; clearUndo(); save(); paint();
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S || !S.cover) return;
+      S.cover = false; S.me = p; S.order = orderFor(S.hands[p]); S.manual = false; S.sel = null;
+      save(); render();
+    });
   }
 
   // ── Card helpers ──────────────────────────────────────────────────────────
@@ -283,7 +303,7 @@
   var sortT = Cards.sortToggle(null, {
     key: 'gin_sort', modes: ['melds', 'suit', 'rank'], value: 'melds', retap: true,
     flip: function () { return handEl; },
-    onChange: function () { if (!S || !S.hands || !handEl) return; S.order = orderFor(S.hands[0]); S.manual = false; save(); paintHand(); }
+    onChange: function () { if (!S || !S.hands || !handEl) return; S.order = orderFor(S.hands[S.me]); S.manual = false; save(); paintHand(); }
   });
   function orderFor(h) {
     var m = sortT.get();
@@ -304,8 +324,8 @@
     S.stock = d;
     S.turn = nd; S.phase = 'upcard'; S.upStep = 0; S.took = null; S.stockOnly = false; S.turnNo = 0;
     S.pubTook = [[], []]; S.disBy = [[], []];
-    S.order = orderFor(S.hands[0]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
-    S.msg = (S.dealer === 0 ? 'You dealt. ' : S.players[1].name + ' dealt. ') + (nd === 0 ? 'Want the upcard?' : '');
+    S.order = orderFor(S.hands[S.me]); S.manual = false; S.sel = null; S.newId = null; S.res = null;
+    S.msg = nm(S.dealer) + ' dealt. ' + (person(nd) ? 'Want the upcard?' : '');
     S.dealAnim = true;
     clearUndo(); save(); render(); Kit.sfx('deal');
     next(true);
@@ -315,19 +335,18 @@
   function next(painted) {
     if (!S || ['upcard', 'draw', 'discard'].indexOf(S.phase) < 0) return;
     if (!painted) paint();
-    if (S.turn === 1) {
-      var t = token;
-      setTimeout(function () { if (t === token && S && S.turn === 1) aiStep(); }, S.phase === 'discard' ? 750 : 650);
-    }
+    if (S.players[S.turn].cpu) {
+      var t = token, who = S.turn;
+      setTimeout(function () { if (t === token && S && S.turn === who) aiStep(); }, S.phase === 'discard' ? 750 : 650);
+    } else if (!isMe(S.turn)) gate(S.turn);
   }
-  function nm(p) { return p === 0 ? 'You' : S.players[p].name; }
 
   function takeUp(p) { draw(p, 'discard'); }
   function passUp(p) {
     S.upStep++;
     say(p, 'Pass');
-    if (S.upStep >= 2) { S.phase = 'draw'; S.turn = 1 - S.dealer; S.stockOnly = true; S.msg = 'Both passed. ' + (S.turn === 0 ? 'Draw from the stock.' : ''); }
-    else { S.turn = S.dealer; S.msg = nm(p) + (p === 0 ? ' pass' : ' passes') + ' on the upcard.' + (S.turn === 0 ? ' Want it?' : ''); }
+    if (S.upStep >= 2) { S.phase = 'draw'; S.turn = 1 - S.dealer; S.stockOnly = true; S.msg = 'Both passed. ' + (person(S.turn) ? 'Draw from the stock.' : ''); }
+    else { S.turn = S.dealer; S.msg = nm(p) + (isYou(p) ? ' pass' : ' passes') + ' on the upcard.' + (person(S.turn) ? ' Want it?' : ''); }
     Kit.sfx('tap'); save(); next();
   }
   function draw(p, src) {
@@ -336,16 +355,16 @@
     S.hands[p].push(c);
     if (src === 'discard') { S.took = c.id; S.pubTook[p].push(c.id); } else S.took = null;
     S.stockOnly = false; S.phase = 'discard';
-    if (p === 0) {
+    if (isMe(p)) {
       S.order.push(c.id); S.newId = c.id; S.sel = null;
-      S.msg = src === 'discard' ? 'You took the ' + lab(c) + '. Now discard.' : 'You drew the ' + lab(c) + '. Now discard.';
+      S.msg = src === 'discard' ? nm(p) + ' took the ' + lab(c) + '. Now discard.' : nm(p) + ' drew the ' + lab(c) + '. Now discard.';
     } else {
-      S.msg = src === 'discard' ? S.players[1].name + ' took the ' + lab(c) + '.' : S.players[1].name + ' drew from the stock.';
-      say(1, src === 'discard' ? 'Takes ' + lab(c) : 'Draws');
+      S.msg = src === 'discard' ? S.players[p].name + ' took the ' + lab(c) + '.' : S.players[p].name + ' drew from the stock.';
+      say(p, src === 'discard' ? 'Takes ' + lab(c) : 'Draws');
     }
     Kit.sfx('flip'); save(); paint();
     if (fromRect) {
-      if (p === 0) { var node = handEl.querySelector('[data-id="' + c.id + '"]'); if (node) Cards.fly(node, rectEl(fromRect), { ms: 380 }); }
+      if (isMe(p)) { var node = handEl.querySelector('[data-id="' + c.id + '"]'); if (node) Cards.fly(node, rectEl(fromRect), { ms: 380 }); }
       else flyTemp(fromRect, seatEls[1].querySelector('.backs') || seatEls[1], src === 'discard' ? Cards.el(c) : Kit.card('', '', { back: true }));
     }
     next(true);
@@ -353,21 +372,21 @@
   function discardCard(p, id, knock) {
     var h = S.hands[p], c = byId(h, id); if (!c) return;
     var fromRect = null;
-    if (p === 0) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) fromRect = n.getBoundingClientRect(); }
+    if (isMe(p)) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) fromRect = n.getBoundingClientRect(); }
     else { var b = seatEls[1].querySelector('.backs') || seatEls[1]; fromRect = b.getBoundingClientRect(); }
     S.hands[p] = h.filter(function (x) { return x.id !== id; });
     S.discard.push(c); S.disBy[p].push(c);
     S.pubTook[p] = S.pubTook[p].filter(function (x) { return x !== id; });
     S.took = null; S.turnNo++;
-    if (p === 0) {
+    if (isMe(p)) {
       S.order = S.order.filter(function (x) { return x !== id; }); S.sel = null; S.newId = null;
-      if (!S.manual) S.order = orderFor(S.hands[0]);
+      if (!S.manual) S.order = orderFor(S.hands[p]);
     }
     Kit.sfx('flip');
     if (knock) { S.msg = ''; save(); paint(); landDiscard(fromRect); endHand(p); return; }
     if (S.stock.length <= 2) { save(); paint(); landDiscard(fromRect); deadHand(); return; }
     S.turn = 1 - p; S.phase = 'draw';
-    S.msg = p === 0 ? '' : S.players[1].name + ' threw the ' + lab(c) + '.';
+    S.msg = isMe(p) ? '' : S.players[p].name + ' threw the ' + lab(c) + '.';
     save(); paint(); landDiscard(fromRect);
     next(true);
   }
@@ -475,11 +494,11 @@
       cards: [m2(kb.melds), c2(kb.dead), m2(lo.melds), c2(lo.dead), c2((lo.lays || []).map(function (l) { return l.c; }))].join('/') });
     S.res = res; S.phase = 'reveal'; S.turn = -1;
     clearUndo(); save(); paint();
-    var mine = res.winner === 0;
+    var mine = person(res.winner);
     Kit.callout(gin ? 'Gin!' : res.undercut ? 'Undercut!' : 'Knock!');
     Kit.sfx(gin || res.undercut ? (mine ? 'win' : 'bad') : (mine ? 'good' : 'bad'));
     Kit.haptic(mine ? 'success' : 'error');
-    if (gin && kn === 0) Kit.confetti({ count: 90 });
+    if (gin && person(kn)) Kit.confetti({ count: 90 });
     setTimeout(function () { if (S && S.phase === 'reveal') showReveal(); }, 1000);
   }
   function deadHand() {
@@ -500,7 +519,7 @@
   function revealNode() {
     var r = S.res, box = el('div', { class: 'rv felt-in' });
     if (r.dead) {
-      box.appendChild(el('div', { class: 'rv-res' }, [el('div', { class: 'big display', text: 'Hand ' + S.hand + ' is a draw' }), el('small', { text: 'The stock ran down to 2 cards and nobody knocked. ' + (S.dealer === 0 ? 'You deal' : S.players[1].name + ' deals') + ' again.' })]));
+      box.appendChild(el('div', { class: 'rv-res' }, [el('div', { class: 'big display', text: 'Hand ' + S.hand + ' is a draw' }), el('small', { text: 'The stock ran down to 2 cards and nobody knocked. ' + (isYou(S.dealer) ? 'You deal' : S.players[S.dealer].name + ' deals') + ' again.' })]));
       return box;
     }
     function head(p, text, dw) {
@@ -527,7 +546,7 @@
     r.dMelds.forEach(function (m) { dg.appendChild(group(m, isSet(m) ? 'set' : 'run')); });
     if (r.dDead.length) dg.appendChild(group(r.dDead, 'deadwood', true));
     dp.appendChild(dg); box.appendChild(dp);
-    var who = r.winner === 0 ? 'You score ' : S.players[r.winner].name + ' scores ';
+    var who = nm(r.winner) + (isYou(r.winner) ? ' score ' : ' scores ');
     var how = r.gin ? r.dDw + ' deadwood + 25 gin bonus' : r.undercut ? (r.kDw + ' − ' + r.dDw + ' + 25 undercut bonus') : (r.dDw + ' − ' + r.kDw + ' deadwood');
     box.appendChild(el('div', { class: 'rv-res' }, [el('div', { class: 'big display', text: who + r.pts }), el('small', { text: how })]));
     return box;
@@ -538,7 +557,7 @@
     var hi = Math.max(S.players[0].total, S.players[1].total);
     S.players.forEach(function (p, i) {
       t.appendChild(el('tr', { class: p.total === hi && hi > 0 ? 'lead' : '' }, [
-        el('td', { text: i === 0 ? 'You' : p.name }), el('td', { text: hand ? (hand[i] ? '+' + hand[i] : '0') : String(p.wins) }), el('td', { class: 'big', text: String(p.total) })
+        el('td', { text: nm(i) }), el('td', { text: hand ? (hand[i] ? '+' + hand[i] : '0') : String(p.wins) }), el('td', { class: 'big', text: String(p.total) })
       ]));
     });
     return t;
@@ -546,7 +565,7 @@
   function showReveal() {
     var r = S.res, over = !r.dead && gameOver();
     var node = el('div', null, [revealNode(), totalsTable(S.rounds[S.rounds.length - 1]), el('div', { class: 'goalline', text: 'First to ' + S.target + ' wins' })]);
-    var title = r.dead ? 'No winner' : r.gin ? (r.kn === 0 ? 'Gin!' : S.players[r.kn].name + ' went gin') : r.undercut ? 'Undercut!' : (r.kn === 0 ? 'You knocked' : S.players[r.kn].name + ' knocked');
+    var title = r.dead ? 'No winner' : r.gin ? (isYou(r.kn) ? 'Gin!' : S.players[r.kn].name + ' went gin') : r.undercut ? 'Undercut!' : (isYou(r.kn) ? 'You knocked' : S.players[r.kn].name + ' knocked');
     Kit.sheet({
       title: title + ' · hand ' + S.hand, node: node, dismissible: false,
       actions: [{ label: over ? 'See the result' : 'Deal next hand', primary: true, onClick: function () { over ? finish() : newHand(); } }]
@@ -583,7 +602,7 @@
     hl = hl.slice(0, 5);
     hl.push(P[w].name + ' won ' + P[w].wins + ' hands to ' + P[l].wins + ' (' + S.rounds.length + ' dealt)');
     Kit.record(KEY, {
-      started: S.started, mode: 'vs Computer',
+      started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer',
       players: P.map(function (p, i) { return { name: p.name, score: fin[i], cpu: p.cpu }; }),
       winner: P[w].name,
       rounds: { labels: S.labels.concat(['Bonus']), scores: S.rounds.concat([bonus]) },
@@ -591,12 +610,13 @@
       detail: ginDetail(bonus)
     });
     clearSave();
-    var rank = [w, l].map(function (i) { return { name: P[i].name, score: fin[i], color: Kit.color(i) }; });
+    var rank = [w, l].map(function (i) { return { name: P[i].name, score: fin[i], color: Kit.color(i), cpu: P[i].cpu }; });
     Kit.win({
-      title: w === 0 ? 'You win!' : P[w].name + ' wins', icon: w === 0 ? 'trophy' : 'bot', lose: w !== 0,
+      title: isYou(w) ? 'You win!' : P[w].name + ' wins', icon: P[w].cpu ? 'bot' : 'trophy', lose: !!P[w].cpu,
       sub: 'Hands ' + P[w].total + ' + game bonus 100 + ' + P[w].wins + ' × 25 line bonus', rank: rank,
-      again: function () { S = freshGame(S.players, S.target); undoStack = []; Kit.gameStart(); newHand(); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      again: function () { S = freshGame(S.players, S.target, S.mode); undoStack = []; Kit.gameStart(); newHand(); },
+      look: 'Look at the table',
+      setup: function () { token++; clearSave(); showSetup(); }
     });
   }
 
@@ -609,24 +629,24 @@
   }
 
   // ── Human actions ─────────────────────────────────────────────────────────
-  function myTurn(ph) { return S && S.turn === 0 && S.phase === ph; }
+  function myTurn(ph) { return S && !S.cover && S.turn === S.me && S.phase === ph; }
   function tapStock() {
-    if (myTurn('draw')) { snapshot(); draw(0, 'stock'); }
+    if (myTurn('draw')) { snapshot(); draw(S.me, 'stock'); }
     else if (myTurn('upcard')) Kit.toast('Take the upcard or pass first');
-    else if (S.turn === 1) Kit.toast('Wait for ' + S.players[1].name);
+    else if (S.turn >= 0 && !isMe(S.turn)) Kit.toast('Wait for ' + S.players[S.turn].name);
   }
   function tapDiscard() {
-    if (myTurn('upcard')) { snapshot(); takeUp(0); }
-    else if (myTurn('draw')) { if (S.stockOnly) { Kit.haptic('error'); Kit.toast('Both passed, so draw from the stock'); return; } snapshot(); draw(0, 'discard'); }
+    if (myTurn('upcard')) { snapshot(); takeUp(S.me); }
+    else if (myTurn('draw')) { if (S.stockOnly) { Kit.haptic('error'); Kit.toast('Both passed, so draw from the stock'); return; } snapshot(); draw(S.me, 'discard'); }
   }
   function canKnockWith(id) {
-    var rest = S.hands[0].filter(function (c) { return c.id !== id; });
+    var rest = S.hands[S.me].filter(function (c) { return c.id !== id; });
     return best(rest).dw;
   }
   function tapCard(id) {
-    if (!myTurn('discard')) { if (S.turn === 0 && S.phase === 'draw') Kit.toast('Draw a card first'); return; }
+    if (!myTurn('discard')) { if (myTurn('draw')) Kit.toast('Draw a card first'); return; }
     if (id === S.took) { Kit.haptic('error'); Kit.toast("You just picked that up. Keep it this turn."); return; }
-    if (S.sel === id) { snapshot(); discardCard(0, id, false); return; }
+    if (S.sel === id) { snapshot(); discardCard(S.me, id, false); return; }
     S.sel = id; Kit.sfx('tap'); Kit.haptic('light'); paintHand(); paintBar(); paintSeats();
   }
 
@@ -673,24 +693,24 @@
   }
   function paintSeats() {
     [0, 1].forEach(function (p) {
-      var pl = S.players[p], s = seatEls[p]; s.innerHTML = '';
+      var pl = S.players[p], s = seatEls[pos(p)]; s.innerHTML = '';
       s.classList.toggle('turn', S.turn === p && S.phase !== 'reveal');
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === 0 ? 'You' : pl.name }),
+        el('span', { text: nm(p) }),
         S.dealer === p ? el('span', { class: 'dealer', title: 'Dealer', text: 'D' }) : null
       ]);
       var info = el('div', { class: 'info' }, [el('span', { class: 'chip-s', text: pl.total + ' pts' })]);
-      if (p === 0 && S.hands) {
+      if (isMe(p) && S.hands && !S.cover) {
         var dwv = liveDeadwood();
         info.appendChild(el('span', { class: 'chip-s dw' + (dwv === 0 ? ' gin' : dwv <= 10 ? ' ok' : ''), text: 'Deadwood ' + dwv }));
       }
-      if (p === 0) { s.appendChild(info); s.appendChild(tag); }
+      if (isMe(p)) { s.appendChild(info); s.appendChild(tag); }
       else {
         s.appendChild(tag); s.appendChild(info);
         if (S.hands && S.phase !== 'reveal') {
           var backs = el('div', { class: 'backs' });
-          for (var k = 0; k < S.hands[1].length; k++) backs.appendChild(Kit.card('', '', { back: true }));
+          for (var k = 0; k < S.hands[p].length; k++) backs.appendChild(Kit.card('', '', { back: true }));
           s.appendChild(backs);
         }
       }
@@ -698,7 +718,7 @@
   }
   // Deadwood shown for your hand: with 11 cards, what's left after the best (or selected) discard
   function liveDeadwood() {
-    var h = S.hands[0];
+    var h = S.hands[S.me];
     if (h.length <= 10) return best(h).dw;
     if (S.sel) return canKnockWith(S.sel);
     var m = Infinity; h.forEach(function (c) { if (c.id !== S.took) m = Math.min(m, canKnockWith(c.id)); });
@@ -706,7 +726,11 @@
   }
   function paintHand() {
     handEl.innerHTML = '';
-    var h = S.hands[0];
+    var h = S.hands[S.me];
+    if (S.cover) {   // between two people's turns: card backs only
+      h.forEach(function (c, i) { var n = Kit.card('', '', { back: true }); n.style.setProperty('--i', String(i)); handEl.appendChild(n); });
+      requestAnimationFrame(fanHand); return;
+    }
     // keep order in sync with the hand
     var have = {}; h.forEach(function (c) { have[c.id] = 1; });
     S.order = S.order.filter(function (id) { return have[id]; });
@@ -765,11 +789,11 @@
   }
   function paintBar() {
     barEl.innerHTML = '';
-    if (S.phase === 'reveal' || S.phase === 'over') return;
+    if (S.phase === 'reveal' || S.phase === 'over' || S.cover) return;
     if (myTurn('upcard')) {
       var top = S.discard[S.discard.length - 1];
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take the ' + lab(top), onclick: function () { snapshot(); takeUp(0); } }));
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); passUp(0); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take the ' + lab(top), onclick: function () { snapshot(); takeUp(S.me); } }));
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', onclick: function () { snapshot(); passUp(S.me); } }));
       return;
     }
     if (myTurn('draw')) {
@@ -778,21 +802,21 @@
     }
     if (myTurn('discard')) {
       if (!S.sel) {
-        var any = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) <= 10; });
-        var g = S.hands[0].some(function (c) { return c.id !== S.took && canKnockWith(c.id) === 0; });
+        var any = S.hands[S.me].some(function (c) { return c.id !== S.took && canKnockWith(c.id) <= 10; });
+        var g = S.hands[S.me].some(function (c) { return c.id !== S.took && canKnockWith(c.id) === 0; });
         barEl.appendChild(el('span', { class: 'hint', text: g ? 'You have gin! Pick the card to throw' : any ? 'You can knock! Pick a card to throw' : 'Tap a card to discard' }));
         return;
       }
-      var c = byId(S.hands[0], S.sel), dw = canKnockWith(S.sel);
-      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Discard ' + lab(c), onclick: function () { snapshot(); discardCard(0, S.sel, false); } }));
-      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock · ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(0, id, true); } }));
+      var c = byId(S.hands[S.me], S.sel), dw = canKnockWith(S.sel);
+      barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Discard ' + lab(c), onclick: function () { snapshot(); discardCard(S.me, S.sel, false); } }));
+      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock · ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(S.me, id, true); } }));
       return;
     }
-    barEl.appendChild(el('span', { class: 'hint', text: S.turn === 1 ? S.players[1].name + ' is thinking…' : '' }));
+    barEl.appendChild(el('span', { class: 'hint', text: S.turn >= 0 && S.players[S.turn].cpu ? S.players[S.turn].name + ' is thinking…' : '' }));
   }
   function say(p, t) {
-    if (!seatEls[p]) return;
-    var b = el('div', { class: 'say', text: t }); seatEls[p].appendChild(b);
+    if (!seatEls[pos(p)]) return;
+    var b = el('div', { class: 'say', text: t }); seatEls[pos(p)].appendChild(b);
     setTimeout(function () { b.remove(); }, 1400);
   }
   function rectEl(r) { return { getBoundingClientRect: function () { return r; } }; }
@@ -807,7 +831,7 @@
   function bindDrag() {
     var d = null;
     handEl.addEventListener('pointerdown', function (e) {
-      var n = e.target.closest('.pcard'); if (!n || !S || !S.hands) return;
+      var n = e.target.closest('.pcard'); if (!n || !S || !S.hands || S.cover) return;
       d = { n: n, id: n.dataset.id, x: e.clientX, y: e.clientY, on: false, pid: e.pointerId };
       try { handEl.setPointerCapture(e.pointerId); } catch (er) {}
     });
@@ -842,12 +866,12 @@
     handEl.addEventListener('pointerup', end);
     handEl.addEventListener('pointercancel', function (e) { if (d && d.on) end(e); else d = null; });
   }
-  window.addEventListener('resize', function () { if (handEl && S && S.hands) { fanHand(); brackets(best(S.hands[0])); } });
+  window.addEventListener('resize', function () { if (handEl && S && S.hands) { fanHand(); if (!S.cover) brackets(best(S.hands[S.me])); } });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands && saved.phase !== 'over') {
-    S = saved; S.dealAnim = false; Kit.gameStart();
+    S = saved; S.dealAnim = false; if (S.me == null) S.me = 0; S.cover = false; Kit.gameStart();
     render(); next(true);
   } else showSetup();
 })();
