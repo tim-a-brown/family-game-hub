@@ -223,6 +223,7 @@ body{overflow-x:hidden;}
   function r2(n) { return Math.round(n * 100) / 100; }
   function money(n, cents) { var neg = n < 0; n = Math.abs(n); var s = cents || n < 100 ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(n).toLocaleString(); return (neg ? '−$' : '$') + s; }
   function px(n) { return '$' + (n >= 1000 ? n.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }) : n < 1 ? n.toFixed(4) : n.toFixed(2)); }
+  function cents(n) { return '$' + n.toFixed(2); }
   function signed(n, cents) { return (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n), cents); }
   function pct(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n * 100).toFixed(2) + '%'; }
   function shares(n) { return n >= 100 ? n.toFixed(2).replace(/\.?0+$/, '') : n.toFixed(4).replace(/\.?0+$/, ''); }
@@ -662,7 +663,7 @@ body{overflow-x:hidden;}
       A.opts.forEach(function (o) {
         var v = optVal(o), g = v - o.c * 100 * o.n;
         ro.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { optTicket(o.sym, o.k, o.exp, o.right === 'C', o); } }, [tkBadge(o.sym),
-          el('span', { class: 'nm' }, [el('b', { text: '$' + o.k + ' ' + (o.right === 'C' ? 'call' : 'put') }), el('small', { text: o.n + (o.n === 1 ? ' contract' : ' contracts') + '  ends ' + dateTxt(expMs(o.exp)) })]),
+          el('span', { class: 'nm' }, [el('b', { text: '$' + o.k + ' ' + (o.right === 'C' ? 'call' : 'put') }), el('small', { text: o.n + (o.n === 1 ? ' contract' : ' contracts') }), el('small', { text: 'Ends ' + dateTxt(expMs(o.exp), true) })]),
           el('span'), el('span', { class: 'px' }, [document.createTextNode(money(v, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
       });
       po.appendChild(ro); b.appendChild(po);
@@ -673,7 +674,7 @@ body{overflow-x:hidden;}
       A.bonds.forEach(function (bd) {
         var v = bondValue(bd), g = v - bd.c;
         rb.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { bondSheet(bd); } }, [el('span', { class: 'tk', style: { background: '#1f6b47' }, text: bd.kind === 'bill' ? 'T-BILL' : TB[bd.kind].yrs + ' YR' }),
-          el('span', { class: 'nm' }, [el('b', { text: money(bd.face) + ' ' + TB[bd.kind].short }), el('small', { text: (bd.cpn ? (bd.cpn * 100).toFixed(3).replace(/0+$/, '') + '% interest  ' : '') + 'matures ' + dateTxt(bd.mat, true) })]),
+          el('span', { class: 'nm' }, [el('b', { text: money(bd.face) + ' ' + TB[bd.kind].short }), bd.cpn ? el('small', { text: (bd.cpn * 100).toFixed(3).replace(/\.?0+$/, '') + '% interest' }) : null, el('small', { text: 'Matures ' + dateTxt(bd.mat, true) })]),
           el('span'), el('span', { class: 'px' }, [document.createTextNode(money(v, 1)), el('small', { class: cls(g), text: signed(g, 1) })])]));
       });
       pb.appendChild(rb); b.appendChild(pb);
@@ -893,8 +894,10 @@ body{overflow-x:hidden;}
     [[true, 'Calls: bet it rises'], [false, 'Puts: bet it falls']].forEach(function (x) { seg.appendChild(el('button', { type: 'button', class: chainState.call === x[0] ? 'on' : '', text: x[1], onclick: function () { chainState.call = x[0]; openChain(sym); } })); });
     w.appendChild(seg);
     var ch = el('div', { class: 'chips', style: { margin: '0 0 10px', padding: '2px 0 4px' } });
-    exps.forEach(function (e) { var days = Math.round((expMs(e) - Date.now()) / DAY); ch.appendChild(el('button', { type: 'button', class: 'chip' + (e === chainState.exp ? ' on' : ''), text: dateTxt(expMs(e)) + '  ' + days + ' days', onclick: function () { chainState.exp = e; openChain(sym); } })); });
+    exps.forEach(function (e) { ch.appendChild(el('button', { type: 'button', class: 'chip' + (e === chainState.exp ? ' on' : ''), text: dateTxt(expMs(e)), onclick: function () { chainState.exp = e; openChain(sym); } })); });
     w.appendChild(ch);
+    var left = Math.round((expMs(chainState.exp) - Date.now()) / DAY);
+    w.appendChild(el('p', { class: 'why', style: { margin: '-2px 4px 10px' }, text: 'Ends ' + dateTxt(expMs(chainState.exp), true) + ', ' + left + (left === 1 ? ' day' : ' days') + ' from now.' }));
     var p = el('div', { class: 'pnl' }), list = el('div', { class: 'chain' });
     p.appendChild(el('div', { class: 'chain' }, [el('div', { class: 'crow', style: { 'border-top': '0', padding: '0 2px 4px' } }, [el('span', { class: 'cap', text: 'Strike' }), el('span', { class: 'cap', text: 'Chance' }), el('span', { class: 'cap', text: 'Price' })])]));
     var ks = strikes(s.p), spotDone = false;
@@ -905,7 +908,7 @@ body{overflow-x:hidden;}
       list.appendChild(el('button', { type: 'button', class: 'crow' + (itm ? ' itm' : ''), onclick: function () { optTicket(sym, k, chainState.exp, chainState.call); } }, [
         el('span', { class: 'k' }, [document.createTextNode('$' + k), el('small', { text: 'Breakeven ' + px(be) })]),
         el('span', { class: 'pr' }, [document.createTextNode(Math.round(q.chance * 100) + '%'), el('small', { text: 'ends in the money' })]),
-        el('span', { class: 'pr' }, [document.createTextNode(money(q.ask * 100, 1)), el('small', { text: px(q.ask) + ' a share' })])]));
+        el('span', { class: 'pr' }, [document.createTextNode(money(q.ask * 100, 1)), el('small', { text: cents(q.ask) + ' a share' })])]));
     });
     if (!spotDone) list.appendChild(el('div', { class: 'spot', text: 'Stock now ' + px(s.p) }));
     p.appendChild(list); w.appendChild(p);
@@ -940,10 +943,10 @@ body{overflow-x:hidden;}
       var be = call ? K + prem : K - prem;
       if (own) {
         var g = back - own.c * 100 * n;
-        [['Sell price now', px(q.bid) + ' a share'], ['You paid', money(own.c * 100 * n, 1)], ['You get', money(back, 1)], [g >= 0 ? 'Gain' : 'Loss', signed(g, 1)]].forEach(function (x, i) { sum.appendChild(el('div', { class: i === 2 ? 'tot' : '' }, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+        [['Sell price now', cents(q.bid) + ' a share'], ['You paid', money(own.c * 100 * n, 1)], ['You get', money(back, 1)], [g >= 0 ? 'Gain' : 'Loss', signed(g, 1)]].forEach(function (x, i) { sum.appendChild(el('div', { class: i === 2 ? 'tot' : '' }, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
         go.textContent = 'Sell ' + n + (n === 1 ? ' contract' : ' contracts'); go.disabled = false;
       } else {
-        [['Price', px(q.ask) + ' a share'], ['Covers', 100 * n + ' shares'], ['Breakeven at the end', px(be)], ['Most you can lose', money(cost, 1)], ['Chance it ends in the money', Math.round(q.chance * 100) + '%']].forEach(function (x) { sum.appendChild(el('div', null, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
+        [['Price', cents(q.ask) + ' a share'], ['Covers', 100 * n + ' shares'], ['Breakeven at the end', px(be)], ['Most you can lose', money(cost, 1)], ['Chance it ends in the money', Math.round(q.chance * 100) + '%']].forEach(function (x) { sum.appendChild(el('div', null, [el('span', { text: x[0] }), el('b', { text: x[1] })])); });
         sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'Cost' }), el('b', { text: money(cost, 1) })]));
         go.textContent = 'Buy ' + n + (n === 1 ? ' contract' : ' contracts'); go.disabled = cost > avail() + .005;
       }
@@ -958,7 +961,7 @@ body{overflow-x:hidden;}
     go.onclick = function () {
       var t = own ? sellOpt(own, n) : buyOpt(sym, K, exp, call, n); if (!t) return;
       recordValue(); save(); sh.close();
-      confirmCard(own ? 'Sold' : 'Bought', sym + ' $' + K + ' ' + (call ? 'call' : 'put'), [['Contracts', String(n)], ['Price', px(t.px) + ' a share'], [own ? 'Proceeds' : 'Cost', money(t.amt, 1)]], own ? 'sell' : 'buy');
+      confirmCard(own ? 'Sold' : 'Bought', sym + ' $' + K + ' ' + (call ? 'call' : 'put'), [['Contracts', String(n)], ['Price', cents(t.px) + ' a share'], [own ? 'Proceeds' : 'Cost', money(t.amt, 1)]], own ? 'sell' : 'buy');
       if (dom.pane.classList.contains('on')) { if (own) closePane(); else openChain(sym); } else paint();
     };
     refresh();
@@ -982,7 +985,7 @@ body{overflow-x:hidden;}
       sum.innerHTML = '';
       sum.appendChild(el('div', null, [el('span', { text: 'Face value' }), el('b', { text: money(f) })]));
       if (kind === 'bill') sum.appendChild(el('div', null, [el('span', { text: 'Interest at the end' }), el('b', { class: 'up', text: '+' + money(f - cost, 1) })]));
-      else { sum.appendChild(el('div', null, [el('span', { text: 'Interest rate' }), el('b', { text: (cpn * 100).toFixed(3).replace(/0+$/, '') + '%' })])); sum.appendChild(el('div', null, [el('span', { text: 'Every 6 months' }), el('b', { class: 'up', text: '+' + money(f * cpn / 2, 1) })])); }
+      else { sum.appendChild(el('div', null, [el('span', { text: 'Interest rate' }), el('b', { text: (cpn * 100).toFixed(3).replace(/\.?0+$/, '') + '%' })])); sum.appendChild(el('div', null, [el('span', { text: 'Every 6 months' }), el('b', { class: 'up', text: '+' + money(f * cpn / 2, 1) })])); }
       sum.appendChild(el('div', null, [el('span', { text: 'Pays back ' + money(f) + ' on' }), el('b', { text: dateTxt(mat, true) })]));
       sum.appendChild(el('div', { class: 'tot' }, [el('span', { text: 'Cost' }), el('b', { text: money(cost, 1) })]));
       go.disabled = f < 100 || cost > avail() + .005; go.textContent = 'Buy ' + money(f) + ' ' + T.short;

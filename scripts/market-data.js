@@ -157,8 +157,9 @@ async function nasdaq(sym, kind) {
   let dv = [];
   try {
     const dj = JSON.parse(await fetchText('https://api.nasdaq.com/api/quote/' + encodeURIComponent(s) + '/dividends?assetclass=' + ac, { headers: NQ }));
+    if (sym === 'KO') console.log('dividends sample: ' + JSON.stringify(dj).slice(0, 400));
     dv = ((((dj.data || {}).dividends || {}).rows) || []).map((r) => [mdy(r.exOrEffDate), r4(num(r.amount))]).filter((d) => d[0] && d[1] > 0 && d[0] >= from).sort((a, b) => a[0] < b[0] ? -1 : 1);
-  } catch (e) {}
+  } catch (e) { if (sym === 'KO') console.log('dividends: ' + e.message); }
   return { p, pc, at, hist: rows.slice(-260), dv };
 }
 // CNBC: the latest quote only (history then comes from the saved file)
@@ -170,7 +171,7 @@ async function cnbc(sym, kind, prev) {
   if (!isFinite(p) || p <= 0) throw new Error('cnbc: ' + JSON.stringify(j).slice(0, 160));
   const hist = prev && prev.h ? prev.h.map((v, i) => [day(Date.parse(prev.d0) + (prev.o ? prev.o[i] : i) * 864e5), v]) : [];
   if (hist.length && hist[hist.length - 1][0] === day(Date.now())) hist[hist.length - 1][1] = p; else hist.push([day(Date.now()), p]);
-  return { p, pc: isFinite(pc) ? pc : p, at: Date.now(), hist: hist.slice(-260), dv: (prev && prev.dv) || [] };
+  return { p, pc: isFinite(pc) ? pc : p, at: marketOpen() ? Date.now() : lastClose(), hist: hist.slice(-260), dv: (prev && prev.dv) || [] };
 }
 // CoinGecko for Bitcoin and Ethereum
 async function gecko(sym) {
