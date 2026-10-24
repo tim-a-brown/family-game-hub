@@ -1606,10 +1606,39 @@
   }
 
   // ── Setup screen ──────────────────────────────────────────────────────────
+  // Every game's setup offers the same ways to play, in the same order, with the same cards:
+  //   solo    Just me          one person, nobody to beat
+  //   cpu     vs Computer      you (seat 1) against computer players
+  //   local   Pass & play      people taking turns on this device; with cpu:'mix' any seat but the first can be a robot
+  //   online  Play online      each player on their own device
+  // Kit.modes(['cpu', 'local']) builds the cards. A game whose saved games know its own mode ids keeps them:
+  // Kit.modes([{id:'2p', kind:'local'}]) draws the standard card under the game's id. An entry can override
+  // desc (one short line about this game) and, rarely, title or icon. Cards come out in the standard order
+  // whatever order they're given in; a kind the list doesn't know stays where it was put, after the known ones.
+  var MODE_KINDS = {
+    solo:   { icon: 'user',  title: 'Just me',     desc: 'One player' },
+    cpu:    { icon: 'bot',   title: 'vs Computer', desc: 'You against computer players' },
+    local:  { icon: 'users', title: 'Pass & play', desc: 'Take turns on this phone', mix: 'Take turns on this phone, with computer players if you like' },
+    online: { icon: 'globe', title: 'Play online', desc: 'Each player on their own device' }
+  };
+  var MODE_ORDER = ['solo', 'cpu', 'local', 'online'];
+  function modes(list) {
+    var out = (list || []).map(function (m, i) {
+      if (typeof m === 'string') m = { id: m };
+      var kind = m.kind || m.id, k = MODE_KINDS[kind] || {};
+      var r = MODE_ORDER.indexOf(kind);
+      return { id: m.id, kind: kind, icon: m.icon || k.icon || 'sparkle', title: m.title || k.title || m.id, desc: m.desc, _o: (r < 0 ? 10 : r) * 100 + i };
+    });
+    out.sort(function (a, b) { return a._o - b._o; });
+    out.forEach(function (m) { delete m._o; });
+    return out;
+  }
   // Kit.setup(rootEl, {
-  //   modes:   [{id, icon, title, desc}]       icon = a Kit.icon name           optional mode cards
+  //   modes:   [{id, kind, icon, title, desc}]  icon = a Kit.icon name          optional mode cards (see Kit.modes)
   //   mode:    default mode id (modeLocked: true = use it even if a different mode was picked last time)
-  //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats', seatLabel}
+  //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats'|'mix', seatLabel}
+  //            cpu 'seats': every seat but the first is a computer. 'mix': every seat but the first has a
+  //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat
   //   options: [{id, label, choices:[[value,label],...], value, help}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
@@ -1633,6 +1662,8 @@
     (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
     var bots = cpuNames(8);
+    // cpu:'mix' tables: which seats (after the first) are robots, remembered with the names
+    var robots = {}; (saved.robots || []).forEach(function (i) { if (i > 0) robots[i] = true; });
     var openHelp = {};
     // Opened from the home screen with its players filter on (?np=1 Just me, 2 Two of us, 3 Three or more):
     // start on a mode that suits that many people (vs Computer or solo for one, Pass & play for more) and seat them
@@ -1678,14 +1709,24 @@
       return r || [P.min || 1, P.max || P.min || 1];
     }
 
+    // a mode card's words: the game's own, else its kind's (Pass & play says computers can join when seats can be robots)
+    function modeDesc(m) {
+      if (m.desc != null) return m.desc;
+      var k = MODE_KINDS[m.kind || m.id]; if (!k) return '';
+      if (k.mix && P && cpuOf2(m.id) === 'mix') return k.mix;
+      if ((m.kind || m.id) === 'local' && P) { var r = (typeof P.range === 'function' && P.range(m.id)) || [P.min || 1, P.max || P.min || 1]; if (r[1] === 2) return 'Two of you take turns on this phone'; }
+      return k.desc;
+    }
+    function cpuOf2(m) { return P && typeof P.cpu === 'function' ? P.cpu(m) : (P && P.cpu) || false; }
     function renderModes() {
       if (!modesBox) return;
       modesBox.innerHTML = '';
       o.modes.forEach(function (m) {
+        var k = MODE_KINDS[m.kind || m.id] || {};
         modesBox.appendChild(el('button', {
           type: 'button', class: 'mode' + (state.mode === m.id ? ' on' : ''),
           onclick: function () { state.mode = m.id; sfx('tap'); haptic('light'); renderModes(); renderSeats(); }
-        }, [el('span', { class: 'e', html: icon(m.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title }), el('span', { class: 'd', text: devWord(m.desc || '') })]), el('span', { class: 'ok', html: icon('check') })]));
+        }, [el('span', { class: 'e', html: icon(m.icon || k.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title || k.title || m.id }), el('span', { class: 'd', text: devWord(modeDesc(m)) })]), el('span', { class: 'ok', html: icon('check') })]));
       });
     }
     // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
@@ -1740,7 +1781,7 @@
       if (state.count >= 4) bots.forEach(function (b, k) { if (b.length > 8) bots[k] = cpuNames(1, bots, 8)[0] || b; });
       for (var i = 0; i < state.count; i++) {
         (function (i) {
-          var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
+          var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
           var c = playerColor(i);
           var inp = el('input', {
             class: 'input', type: 'text', maxlength: 14, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
@@ -1775,6 +1816,11 @@
             row.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.seat > .avatar, .seat > .seat-av')) { sfx('tap'); pick.click(); } });
           }
           row.appendChild(field);
+          // Mixed tables: every seat after the first has a switch between a person and a robot
+          if (cpu === 'mix' && i > 0) {
+            row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
+              onclick: function () { robots[i] = !robots[i]; sfx('pop'); haptic('light'); renderSeats(); } }));
+          }
           // Two or more people (no computer seats): a handle to drag a player up or down the order
           if (!cpu && state.count > 1) row.appendChild(grip(row, i));
           seatsBox.appendChild(row);
@@ -1838,7 +1884,7 @@
       return bits.join(' · ');
     }
     function saveSetup() {
-      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), sum: summary() }));
+      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), sum: summary() }));
     }
     if (EDIT_DEFAULTS) {
       var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
@@ -1847,8 +1893,8 @@
       } });
       // some games relabel their start button (e.g. "Play level 1"); here it always says what it does
       if (window.MutationObserver) new MutationObserver(function () { if (saveBtn.textContent !== 'Save defaults') saveBtn.textContent = 'Save defaults'; }).observe(saveBtn, { childList: true, characterData: true, subtree: true });
-      wrap.appendChild(saveBtn);
       wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Cancel', onclick: function () { location.href = rootPath() + 'index.html#game-defaults'; } }));
+      wrap.appendChild(el('div', { class: 'k-startdock' }, [saveBtn]));
       host.appendChild(wrap);
       renderModes(); renderSeats();
       return { el: wrap, state: state };
@@ -1861,7 +1907,7 @@
         if (P && P.names !== false && game && game.cat === 'arcade') {
           var ins = seatsBox.querySelectorAll('input');
           for (var j = 0; j < state.count; j++) {
-            var cj = cpu === 'seats' ? j > 0 : (cpu && j > 0);
+            var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
             if (cj || isPersonName(ins[j] ? ins[j].value : '')) continue;
             (function (j) {
               pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { startBtn.click(); }, 260); },
@@ -1873,7 +1919,7 @@
         if (P) {
           var inputs = seatsBox.querySelectorAll('input');
           for (var i = 0; i < state.count; i++) {
-            var isCpu = cpu === 'seats' ? i > 0 : (cpu && i > 0);
+            var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
             var v = inputs[i] ? inputs[i].value.trim() : '';
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
             if (!isCpu && isPersonName(v)) { picked.push(v); unhide(v); if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v])); }
@@ -1886,9 +1932,11 @@
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
       }
     });
-    wrap.appendChild(startBtn);
+    // How to play sits with the choices; the start button stays in view at the bottom whatever's above it
     if (opts.rules) wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: icon('book') + '<span>How to play</span>', onclick: rules }));
+    wrap.appendChild(el('div', { class: 'k-startdock' }, [startBtn]));
     host.appendChild(wrap);
+    winPeekClear();
     renderModes(); renderSeats();
     return { el: wrap, state: state };
   }
@@ -1896,8 +1944,21 @@
   // ── Win / results ─────────────────────────────────────────────────────────
   // Kit.win({icon:'trophy', title:'Sam wins!', sub:'by 12 points',
   //          rank:[{name,score,color}], lose:false, again:fn, againLabel, extra:[{label,onClick}]})
+  // Every game's results card offers the same things, in the same order, each only when it applies:
+  //   again   (primary)  Play again: the same people and settings. againLabel names what comes next
+  //                      when it isn't a rematch ('Next puzzle', 'New deal'); false leaves it out
+  //   look               Look at the board: closes the card to see how it ended. A Results button stays at
+  //                      the bottom of the page to bring the card back. true, a label ('Look at the table')
+  //                      or {label, onClick}. Kit.setup, Kit.gameStart or the next Kit.win clear the button
+  //   extra              the game's own buttons [{label, onClick}] (See every word, Box score)
+  //   setup              Change players: back to the setup screen (setupLabel: 'Change settings', 'Choose a level')
+  //   scores             High scores        stats   Statistics
+  //   close              Back to games (closeLabel/onClose: 'Leave the table' for an online game)
+  var peek = null;
+  function winPeekClear() { if (peek) { peek.remove(); peek = null; } }
   function win(o) {
     o = o || {};
+    winPeekClear();
     var card = el('div', { class: 'card' });
     card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
@@ -1919,10 +1980,26 @@
     var acts = el('div', { class: 'k-acts' });
     var ov = el('div', { class: 'k-win', role: 'dialog', 'aria-modal': 'true' }, [card]);
     function close() { ov.classList.remove('show'); setTimeout(function () { ov.remove(); }, 300); }
-    if (o.again !== false) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.againLabel || 'Play again', onclick: function () { sfx('pop'); close(); o.again && o.again(); } }));
-    (o.extra || []).forEach(function (x) { acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', text: x.label, onclick: function () { close(); x.onClick && x.onClick(); } })); });
-    if (fromDaily()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('calendar') + '<span>Daily puzzles</span>', onclick: function () { close(); toDaily(); } }));
-    acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.closeLabel || 'Back to games', onclick: o.onClose ? function () { close(); o.onClose(); } : goHome }));
+    function soft(label, fn, ic) { acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: (ic ? icon(ic) : '') + '<span>' + esc(label) + '</span>', onclick: function () { close(); fn && fn(); } })); }
+    if (o.again !== false) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: o.againLabel || 'Play again', onclick: function () { sfx('pop'); winPeekClear(); close(); o.again && o.again(); } }));
+    if (o.look) {
+      var lk = typeof o.look === 'object' ? o.look : { label: typeof o.look === 'string' ? o.look : 'Look at the board' };
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('eye') + '<span>' + esc(lk.label || 'Look at the board') + '</span>', onclick: function () {
+        close(); lk.onClick && lk.onClick();
+        // the way back to this card
+        winPeekClear();
+        var quiet = Object.assign({}, o, { quiet: true });
+        peek = el('button', { type: 'button', class: 'btn btn-soft k-peek', html: icon('trophy') + '<span>Results</span>', onclick: function () { sfx('tap'); win(quiet); } });
+        doc.body.appendChild(peek);
+        requestAnimationFrame(function () { requestAnimationFrame(function () { if (peek) peek.classList.add('show'); }); });
+      } }));
+    }
+    (o.extra || []).forEach(function (x) { soft(x.label, x.onClick); });
+    if (o.setup) soft(o.setupLabel || 'Change players', o.setup, 'sliders');
+    if (o.scores) soft(o.scoresLabel || 'High scores', o.scores, 'trophy');
+    if (o.stats) soft(o.statsLabel || 'Statistics', o.stats, 'chart');
+    if (fromDaily()) soft('Daily puzzles', toDaily, 'calendar');
+    acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.closeLabel || 'Back to games', onclick: o.onClose ? function () { winPeekClear(); close(); o.onClose(); } : goHome }));
     card.appendChild(acts);
     doc.body.appendChild(ov); pinFixed(ov, true);
     requestAnimationFrame(function () { requestAnimationFrame(function () { ov.classList.add('show'); }); });
@@ -1942,7 +2019,7 @@
   // Saves to gh_<key> through GameHistory (synced). Kit.gameStart() marks the
   // start time so the record knows how long the game took.
   var startedAt = Date.now();
-  function gameStart() { startedAt = Date.now(); }
+  function gameStart() { startedAt = Date.now(); winPeekClear(); }
   function record(key, r) {
     r = r || {};
     var players = (r.players || []).map(function (p) { return { name: p.name, score: p.score, cpu: !!p.cpu }; });
@@ -3732,7 +3809,7 @@
 
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
-    init: init, keepAwake: keepAwake, setup: setup, win: win, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    init: init, keepAwake: keepAwake, setup: setup, modes: modes, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },

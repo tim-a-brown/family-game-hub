@@ -236,10 +236,7 @@
     S = null;
     app.classList.remove('ipl');
     Kit.setup(app, {
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'Easy, Normal or Hard' },
-        { id: '2p', icon: 'users', title: 'Pass & play', desc: 'Two players, one device' }
-      ],
+      modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
         { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Only looks one move ahead and often slips.'], ['normal', 'Normal', 'Looks a few moves ahead and plays the endgame well.'], ['hard', 'Hard', 'Looks far ahead and plays the last moves perfectly.']], when: function (m) { return m === 'cpu'; } },
         { id: 'side', label: 'You play', value: 'b', choices: [['b', 'Black (first)', 'Black always moves first, so you start.'], ['w', 'White', 'The computer plays Black and moves first.']], when: function (m) { return m === 'cpu'; } }
@@ -318,10 +315,10 @@
         title: !winner ? "It's a tie!" : lose ? winner.name + ' wins this one' : winner.name === 'You' ? 'You win!' : winner.name + ' wins!',
         sub: 'Black ' + nb + ' – ' + nw + ' White',
         rank: S.players.slice().sort(function (a, c) { return count(c.side) - count(a.side); }).map(function (p) { return { name: p.name, score: count(p.side), color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
-        lose: !!lose, againLabel: 'Play again',
+        lose: !!lose,
         again: function () { newGame(true); },
-        extra: [{ label: 'View the board', onClick: function () {} }],
-        closeLabel: 'Back to games'
+        look: true,
+        setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
     }, 300);
   }
