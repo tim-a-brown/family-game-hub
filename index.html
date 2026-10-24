@@ -1870,15 +1870,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       item('link', 'Share my profile', function () { Kit.links.profile(); });
       var ini = FGHSync.initials ? FGHSync.initials() : '';
       item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
-      if (Kit.family) item('shield', 'Family', function () { Kit.family(); }, '', tag(Kit.familyStatus() || 'Parent controls'));
     }
-    // Linked players: the people you've linked with, under People
-    if (mode === 'pin' && Kit.links.panel) {
-      node.appendChild(list);
-      node.appendChild(el('div', { class: 'label k-sec', text: 'Linked players' }));
-      node.appendChild(Kit.links.panel(refreshWho));
-      list = el('div', { class: 'k-list', style: { 'margin-top': '10px' } });
-    }
+    group('Home & games');
+    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
+    item('sliders', 'Game defaults', function () { Kit.prefs(); });
+    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
+    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
     group('Look & sound');
     item('palette', 'Theme', function () { Kit.theme.pick(); }, '', tag(Kit.theme.name()));
     if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', tag(get('spotify_auth', '') ? 'Spotify' : 'Connect'));
@@ -1887,11 +1884,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     snd.onclick = function () { var on = get('gn_sound', '1') !== '1'; set('gn_sound', on ? '1' : '0'); snd.setAttribute('aria-checked', String(on)); snd.querySelector('.ic').innerHTML = Kit.icon(on ? 'sound' : 'mute'); if (on) Kit.sfx('good'); };
     if (get('gn_sound', '1') !== '1') snd.querySelector('.ic').innerHTML = Kit.icon('mute');
     grp.appendChild(snd);
-    group('Home & games');
-    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
-    item('sliders', 'Game defaults', function () { Kit.prefs(); });
-    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
-    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
+    // Linked players: the people you've linked with, then Family (parent controls) at the end of the list
+    if (mode === 'pin' && Kit.links.panel) {
+      node.appendChild(list);
+      node.appendChild(el('div', { class: 'label k-sec', text: 'Linked players' }));
+      node.appendChild(Kit.links.panel(refreshWho));
+      list = el('div', { class: 'k-list', style: { 'margin-top': '6px' } });
+      grp = el('div', { class: 'k-grp' }); list.appendChild(grp);
+      if (Kit.family) item('shield', 'Family', function () { Kit.family(); }, '', tag(Kit.familyStatus() || 'Parent controls'));
+    } else if (mode === 'pin' && Kit.family) item('shield', 'Family', function () { Kit.family(); }, '', tag(Kit.familyStatus() || 'Parent controls'));
     group('Account');
     if (mode === 'pin') {
       item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
