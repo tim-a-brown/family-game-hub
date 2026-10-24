@@ -1310,7 +1310,8 @@
         game && window.GameIcon ? el('span', { class: 'gi', html: GameIcon(game.id) }) : null,
         el('span', { text: opts.title || (game && game.name) || doc.title })
       ]),
-      opts.rules ? el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'How to play', html: ICON.help, onclick: rules }) : null,
+      // the rules: "? Rules" on the setup screen, folding down to just the ? once the game is on (html.k-in-setup)
+      opts.rules ? el('button', { class: 'icon-btn k-rules', type: 'button', 'aria-label': 'Rules', html: ICON.help + '<span class="k-rules-lbl">Rules</span>', onclick: rules }) : null,
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Menu', html: ICON.more, onclick: menu })
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);
@@ -1320,6 +1321,8 @@
     function barH() { var h = bar.offsetHeight; if (h) root.style.setProperty('--bar', h + 'px'); }
     barH(); try { new ResizeObserver(barH).observe(bar, { box: 'border-box' }); } catch (e) {}
     requestAnimationFrame(fitBar);
+    // the Rules pill folds to its ? as the game starts: measure the title again once it has
+    var rb = bar.querySelector('.k-rules'); if (rb) rb.addEventListener('transitionend', function (e) { if (e.propertyName === 'padding-left' || e.propertyName === 'max-width') requestAnimationFrame(fitBar); });
     window.addEventListener('resize', function () { clearTimeout(fitBar.t); fitBar.t = setTimeout(fitBar, 120); });
     try { doc.fonts.addEventListener('loadingdone', function () { requestAnimationFrame(fitBar); }); } catch (e) {}   // measured again in the title's own font (the first look can be in the fallback)
     try { new ResizeObserver(function () { requestAnimationFrame(fitBar); }).observe(gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)') || gbarEl.querySelector('.ttl')); } catch (e) {}   // and when the name's room changes (renamed, or its arrow shows after setup)
@@ -1938,8 +1941,7 @@
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
       }
     });
-    // How to play sits with the choices; the start button stays in view at the bottom whatever's above it
-    if (opts.rules) wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', html: icon('book') + '<span>How to play</span>', onclick: rules }));
+    // (the rules are the "? Rules" button in the bar above); the start button stays in view at the bottom whatever's above it
     wrap.appendChild(el('div', { class: 'k-startdock' }, [startBtn]));
     host.appendChild(wrap);
     winPeekClear();
