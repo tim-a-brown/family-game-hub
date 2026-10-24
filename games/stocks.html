@@ -116,6 +116,28 @@ body{overflow-x:hidden;}
 .pane .top .t{min-width:0;}
 .pane .top .t b{display:block;font:400 1.35rem/1.1 var(--display);}
 .pane .top .t small{display:block;font-size:.8rem;font-weight:700;color:var(--text-3);}
+.pane .top .t{flex:1;}
+.pane .top .star{width:44px;height:44px;border-radius:50%;border:0;background:var(--w07);color:var(--text-3);display:grid;place-items:center;flex:none;transition:transform .2s var(--ease),color .2s,background .2s;}
+.pane .top .star svg{width:22px;height:22px;}
+.pane .top .star.on{color:#ffc93c;background:rgba(255,201,60,.16);}
+.pane .top .star.on svg{fill:currentColor;}
+.pane .top .star.pop{animation:mkstar .45s var(--ease);}
+@keyframes mkstar{40%{transform:scale(1.25) rotate(-12deg);}100%{transform:none;}}
+.chip svg{width:14px;height:14px;margin:-2px 5px 0 -2px;vertical-align:middle;fill:#ffc93c;color:#ffc93c;}
+.mk-blurb{margin:0 0 8px;font-size:.84rem;color:#9fb0cc;}
+.mk-sub{margin:0 -14px 6px;padding:2px 14px 6px;}
+.mk-sub .chip{min-height:34px;font-size:.82rem;}
+.mk-h2{margin-top:18px;}
+.mk-more{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;padding:12px;border-radius:12px;background:var(--w07);font-size:.86rem;font-weight:700;color:#9fb0cc;}
+.mk-more span{flex:1 1 180px;}
+.lite-card{width:100%;text-align:left;color:inherit;font:inherit;display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;margin:12px 0 2px;padding:14px;border-radius:14px;background:rgba(255,201,60,.08);border:1px solid rgba(255,201,60,.22);}
+.lite-card .ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:rgba(255,201,60,.16);color:#ffc93c;}
+.lite-card .ic svg{width:22px;height:22px;}
+.lite-card b{display:block;font-size:.95rem;font-weight:900;}
+.lite-card small{display:block;font-size:.82rem;font-weight:700;color:#9fb0cc;margin-top:2px;}
+.daybar{position:relative;height:10px;border-radius:5px;background:var(--w07);margin:14px 0 6px;}
+.daybar i{position:absolute;top:0;bottom:0;border-radius:5px;}
+.daybar + .ends{display:flex;justify-content:space-between;font-size:.76rem;font-weight:800;color:#8590a6;font-variant-numeric:tabular-nums;}
 .about{font-size:.9rem;line-height:1.45;color:#c9d2e3;margin:0;}
 .kv{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px;}
 .kv div{min-width:0;}
@@ -208,19 +230,34 @@ body{overflow-x:hidden;}
 (function () {
   'use strict';
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
-  var QURL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/market%2Fquotes.json?alt=media';
+  var STO = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/market%2F';
+  var QURL = STO + 'q2.json?alt=media', QURL_OLD = STO + 'quotes.json?alt=media';
   var DAY = 864e5, YEAR = 365 * DAY;
 
   // ── Storage: the account and lessons follow the PIN; the price cache stays on this device ──
   function lsGet(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }
-  var AK = 'mk_acct', LK = 'mk_learn', SK = 'mk_set';
+  var AK = 'mk_acct', LK = 'mk_learn', SK = 'mk_set', WK = 'mk_watch';
   function fresh() { return { v: 1, cash: 0, lots: [], opts: [], bonds: [], orders: [], tx: [], paid: {}, vals: [], dvSeen: {}, mmAt: Date.now(), dep: 0, wd: 0, last: 0, lastVal: 0, lastPx: {} }; }
   var A = lsGet(AK, null) || fresh();
   ['lots', 'opts', 'bonds', 'orders', 'tx', 'vals'].forEach(function (k) { if (!Array.isArray(A[k])) A[k] = []; });
   A.paid = A.paid || {}; A.dvSeen = A.dvSeen || {}; A.lastPx = A.lastPx || {};
   var LEARN = lsGet(LK, {}) || {};
   var SET = lsGet(SK, null) || { br: 22 };
+  var WATCH = lsGet(WK, []); if (!Array.isArray(WATCH)) WATCH = [];
+  function watched(sym) { return WATCH.indexOf(sym) >= 0; }
+  function setWatch(sym, on) { WATCH = WATCH.filter(function (x) { return x !== sym; }); if (on) WATCH.unshift(sym); lsSet(WK, WATCH); }
+  // How deep to go (chosen on first load, changed from the menu; it follows the PIN):
+  // basic = well-known stocks and index funds; all = every US stock and fund, bonds, crypto, limit orders, taxes;
+  // pro = options and your own tax bracket too
+  var DEPTHS = [
+    { id: 'basic', title: 'Stocks and index funds', desc: 'Buy and sell well-known companies, and funds that hold the whole market.', feats: ['Famous companies', 'Index funds', 'Dividends', 'Lessons'] },
+    { id: 'all', title: 'The whole market', desc: 'Every US stock and fund, bonds and crypto. Taxes come out when you cash out.', feats: ['Every US stock', 'Bonds', 'Treasuries', 'Crypto', 'Limit orders', 'Taxes'] },
+    { id: 'pro', title: 'Everything', desc: 'Options on any stock or fund, and the tax bracket you pick.', feats: ['Calls and puts', 'Your tax bracket'] }
+  ];
+  var DEPTH = Kit.depth.get('mk_depth', null);
+  function lvl() { return DEPTH === 'basic' ? 0 : DEPTH === 'all' ? 1 : 2; }
+  function taxesOn() { return lvl() >= 1; }
   function save() { if (A.tx.length > 600) A.tx = A.tx.slice(-600); lsSet(AK, A); }
 
   // ── Numbers ──
@@ -239,34 +276,66 @@ body{overflow-x:hidden;}
   function phi(x) { var t = 1 / (1 + .2316419 * Math.abs(x)), d = .3989423 * Math.exp(-x * x / 2), p = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
 
   // ── Prices ──
+  // q2.json: the symbols with the full picture (the hand-picked list, popular funds, the 500 biggest companies, and
+  // anything an account owns or watches), each with its last 30 closes. all.json: every US stock and fund, price only.
+  // d/<SYM>.json: one symbol's year of closes and its long view, fetched when it's opened.
   var Q = lsGet('mk_quotes_cache', null), qErr = false;
+  function getJson(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
   function loadQuotes() {
-    return fetch(QURL + '&t=' + Math.floor(Date.now() / 60000), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
+    var t = '&t=' + Math.floor(Date.now() / 60000);
+    return getJson(QURL + t).catch(function () { return getJson(QURL_OLD + t); }).then(function (j) {
       if (!j || !j.q) throw new Error('bad');
+      if (!j.asof) j.asof = j.at;
       Q = j; qErr = false;
       try { localStorage.setItem('mk_quotes_cache', JSON.stringify(j)); } catch (e) {}
       return Q;
     }).catch(function () { qErr = true; return Q; });
   }
-  function S(sym) { return Q && Q.q && Q.q[sym]; }
+  var ALL = null, allP = null, ALLAT = 0;
+  function readAll(j) {
+    var m = {};
+    (j.s || []).forEach(function (r) { m[r[0]] = { n: r[1], k: r[6] === 'f' ? 'fund' : 'stock', p: r[2], pc: r[3], sec: r[4], cap: r[5] || 0, lite: 1, h: [], dv: [] }; });
+    ALL = m; ALLAT = j.at || 0;
+  }
+  (function () { var c = lsGet('mk_all_cache', null); if (c && c.s) readAll(c); })();
+  function loadAll() {
+    if (!allP) allP = getJson(STO + 'all.json?alt=media&t=' + Math.floor(Date.now() / 600000)).then(function (j) {
+      if (!j || !j.s) throw new Error('bad'); readAll(j);
+      try { localStorage.setItem('mk_all_cache', JSON.stringify(j)); } catch (e) {}
+      return ALL;
+    }).catch(function () { allP = null; return ALL; });
+    return allP;
+  }
+  // everything this account has its hands on that isn't in q2 needs the whole-market file for its price
+  function needAll() { return [].concat(A.lots.map(function (l) { return l.sym; }), A.orders.map(function (o) { return o.sym; }), A.opts.map(function (o) { return o.sym; }), WATCH).some(function (s) { return !(Q && Q.q && Q.q[s]); }); }
+  function ensureAll() { return needAll() ? loadAll() : Promise.resolve(ALL); }
+  function S(sym) { return (Q && Q.q && Q.q[sym]) || (ALL && ALL[sym]) || null; }
+  function isLite(sym) { var s = S(sym); return !!(s && s.lite); }
   function price(sym) { var s = S(sym); return s ? s.p : 0; }
   function dayChg(sym) { var s = S(sym); return s && s.pc ? (s.p - s.pc) / s.pc : 0; }
-  // closes with dates: [[ms, close]]
-  function series(sym) { var s = S(sym); if (!s) return []; var t0 = Date.parse(s.d0 + 'T12:00:00'); return s.h.map(function (v, i) { return [t0 + (s.o ? s.o[i] : i) * DAY, v]; }); }
-  // The long view (5 years, all time): weekly closes, monthly further back, in a second file fetched the first time
-  // it's needed; the daily closes carry it up to today
-  var HURL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/market%2Fhistory.json?alt=media', HIST = null, histP = null;
-  function loadHist() {
-    if (!histP) histP = fetch(HURL + '&d=' + new Date().toISOString().slice(0, 10)).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then(function (j) { HIST = j; return j; }).catch(function () { histP = null; return null; });
-    return histP;
+  function unpack(o) { var t0 = Date.parse(o.d0 + 'T12:00:00'); return o.h.map(function (v, i) { return [t0 + (o.o ? o.o[i] : i) * DAY, v]; }); }
+  // one symbol's full picture: a year of daily closes, and weekly (then monthly) closes as far back as there are
+  var DET = {}, detP = {};
+  function loadDetail(sym) {
+    if (DET[sym] !== undefined) return Promise.resolve(DET[sym]);
+    if (!detP[sym]) detP[sym] = getJson(STO + 'd%2F' + encodeURIComponent(sym) + '.json?alt=media&d=' + new Date().toISOString().slice(0, 13)).then(function (j) {
+      DET[sym] = j && j.h ? { day: unpack(j), long: j.L && j.L.h ? unpack(j.L) : [], dv: j.dv || [] } : null; return DET[sym];
+    }).catch(function () { DET[sym] = null; return null; }).then(function (d) { delete detP[sym]; return d; });
+    return detP[sym];
+  }
+  // closes with dates: [[ms, close]], carried up to the latest price
+  function series(sym) {
+    var s = S(sym); if (!s) return [];
+    var d = DET[sym], q = s.h && s.h.length ? unpack(s) : [];
+    if (!d) return q.length ? q : s.lite && s.pc ? [[Date.now() - DAY, s.pc], [Date.now(), s.p]] : q;
+    var last = d.day[d.day.length - 1][0];
+    return d.day.concat(q.filter(function (p) { return p[0] > last + DAY / 2; }));
   }
   function longSeries(sym) {
-    var h = HIST && HIST.q && HIST.q[sym], daily = series(sym);
-    if (!h || !h.h || h.h.length < 30) return daily;   // (no long history for it: its year of daily closes)
-    var t0 = Date.parse(h.d0 + 'T12:00:00'), pts = h.h.map(function (v, i) { return [t0 + h.o[i] * DAY, v]; });
-    var last = pts[pts.length - 1][0];
-    return pts.concat(daily.filter(function (p) { return p[0] > last + DAY / 2; }));
+    var d = DET[sym], daily = series(sym);
+    if (!d || d.long.length < 30) return daily;   // (no long history for it: its year of daily closes)
+    var last = d.long[d.long.length - 1][0];
+    return d.long.concat(daily.filter(function (p) { return p[0] > last + DAY / 2; }));
   }
   function closeOn(sym, dayStr) { var se = series(sym), best = null; se.forEach(function (x) { if (ymd(x[0]) <= dayStr) best = x[1]; }); return best; }
   // yearly volatility from the last 60 closes
@@ -279,6 +348,10 @@ body{overflow-x:hidden;}
   }
   var GROUPS = [['index', 'Index funds'], ['bondfund', 'Bond funds'], ['tbond', 'Treasuries'], ['sector', 'Sector and gold'], ['tech', 'Tech'], ['fun', 'Games and fun'], ['travel', 'Travel'], ['food', 'Food and shopping'], ['money', 'Banks and payments'], ['health', 'Health'], ['energy', 'Energy and mining'], ['cars', 'Cars'], ['crypto', 'Crypto']];
   var GCOL = { index: '#2f6fd6', bondfund: '#1f8a5a', sector: '#8a6a1f', tech: '#6d4bd6', fun: '#c2417a', travel: '#1f8aa8', food: '#c46a1f', money: '#3d5a80', health: '#b03a48', energy: '#6b7a2a', cars: '#5a6270', crypto: '#c48a12' };
+  // the whole market's sectors (from Nasdaq's listing)
+  var SECTS = [['tech', 'Technology'], ['health', 'Health care'], ['fin', 'Finance'], ['disc', 'Shopping and leisure'], ['stap', 'Everyday goods'], ['ind', 'Industry'], ['energy', 'Energy'], ['re', 'Real estate'], ['util', 'Utilities'], ['mat', 'Materials'], ['tel', 'Telecom'], ['misc', 'Other']];
+  var SCOL = { tech: '#6d4bd6', health: '#b03a48', fin: '#3d5a80', disc: '#c2417a', stap: '#c46a1f', ind: '#5a6270', energy: '#6b7a2a', re: '#7a5a3a', util: '#1f8aa8', mat: '#8a6a1f', tel: '#4b6bd6', misc: '#2b3648', fund: '#2f6fd6', crypto: '#c48a12' };
+  function sectName(k) { for (var i = 0; i < SECTS.length; i++) if (SECTS[i][0] === k) return SECTS[i][1]; return ''; }
   function kindOf(sym) { var s = S(sym); return s ? s.k : 'stock'; }
   function isCoin(sym) { return kindOf(sym) === 'coin'; }
 
@@ -367,7 +440,7 @@ body{overflow-x:hidden;}
     t.all = t.cash + t.stock + t.fund + t.bond + t.coin + t.opt + t.tb;
     return t;
   }
-  function addTx(o) { o.id = o.id || rid(); o.t = o.t || Date.now(); A.tx.push(o); return o; }
+  function addTx(o) { o.id = o.id || rid(); o.t = o.t || Date.now(); if (!taxesOn()) o.nt = 1; A.tx.push(o); return o; }
 
   // ── Taxes: gains count when you sell; the bill comes due when money goes back to your bankroll ──
   var BRACKETS = [[12, 0], [22, 15], [24, 15], [32, 15], [35, 15], [37, 20]];
@@ -375,7 +448,7 @@ body{overflow-x:hidden;}
   function stRate() { return SET.br / 100; }
   function taxYears() {
     var ys = {}, carry = 0, out = [];
-    A.tx.forEach(function (x) { var y = yearOf(x.t), o = ys[y] = ys[y] || { y: y, st: 0, lt: 0, int: 0, div: 0 }; if (x.gain != null) o[x.term === 'lt' ? 'lt' : 'st'] += x.gain; if (x.type === 'int' || x.type === 'cpn' || x.type === 'mat') o.int += x.inc || 0; if (x.type === 'div') o.div += x.amt; });
+    A.tx.forEach(function (x) { if (x.nt) return; var y = yearOf(x.t), o = ys[y] = ys[y] || { y: y, st: 0, lt: 0, int: 0, div: 0 }; if (x.gain != null) o[x.term === 'lt' ? 'lt' : 'st'] += x.gain; if (x.type === 'int' || x.type === 'cpn' || x.type === 'mat') o.int += x.inc || 0; if (x.type === 'div') o.div += x.amt; });
     Object.keys(ys).sort().forEach(function (k) {
       var o = ys[k], st = o.st, lt = o.lt;
       o.carryIn = carry;
@@ -559,13 +632,13 @@ body{overflow-x:hidden;}
     return box;
   }
   function spark(sym) {
-    var s = S(sym); if (!s) return el('span');
+    var s = S(sym); if (!s || !s.h || s.h.length < 2) return el('span');
     var h = s.h.slice(-22), lo = Math.min.apply(null, h), hi = Math.max.apply(null, h), W = 56, H = 24;
     var d = h.map(function (v, i) { return (i ? 'L' : 'M') + (i / (h.length - 1) * W).toFixed(1) + ' ' + (H - 2 - (v - lo) / ((hi - lo) || 1) * (H - 4)).toFixed(1); }).join('');
     var col = h[h.length - 1] >= h[0] ? '#3ddc84' : '#ff6470';
     return el('span', { html: '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '"><path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.6" stroke-linejoin="round"/></svg>' });
   }
-  function tkBadge(sym) { var s = S(sym); return el('span', { class: 'tk', style: { background: GCOL[s && s.g] || '#2b3648' }, text: sym.replace('-USD', '') }); }
+  function tkBadge(sym) { var s = S(sym); return el('span', { class: 'tk', style: { background: (s && (GCOL[s.g] || SCOL[s.sec])) || '#2b3648' }, text: sym.replace('-USD', '') }); }
 
   // ── Layout ──
   var tab = 'port', mkt = { g: 'index', q: '' }, dom = {};
@@ -650,7 +723,7 @@ body{overflow-x:hidden;}
     }
     // taxes
     var ty = taxYears().filter(function (o) { return o.y === new Date().getFullYear(); })[0], due = taxDue();
-    if (ty || due) {
+    if ((ty || due) && taxesOn()) {
       var tx = el('div', { class: 'pnl' }); tx.appendChild(el('h3', null, [el('span', { text: 'Taxes this year' }), el('button', { type: 'button', text: 'Details', onclick: taxSheet })]));
       tx.appendChild(el('div', { class: 'kv' }, [
         el('div', null, [el('span', { class: 'cap', text: 'Gains sold' }), el('b', { class: cls(ty ? ty.st + ty.lt : 0), text: signed(ty ? ty.st + ty.lt : 0, 1) })]),
@@ -734,35 +807,109 @@ body{overflow-x:hidden;}
   function txAmt(x) { var out = { buy: 1, obuy: 1, bbuy: 1, wd: 1 }[x.type]; return (out ? '−' : '+') + money(x.amt, 1); }
 
   // ── Market tab ──
+  var BASIC_G = { index: 1, sector: 1, tech: 1, fun: 1, travel: 1, food: 1, money: 1, health: 1, energy: 1, cars: 1 };
+  function groupsOn() {
+    var g = [];
+    if (WATCH.length) g.push(['watch', 'Watchlist']);
+    if (lvl() >= 1) g.push(['big', 'Biggest'], ['move', 'Movers']);
+    return g.concat(GROUPS.filter(function (x) { return lvl() >= 1 || BASIC_G[x[0]]; }));
+  }
+  // a company's size, the way people say it
+  function capTxt(b) { return b >= 1000 ? '$' + (b / 1000).toFixed(b >= 10000 ? 0 : 1) + ' trillion' : b >= 1 ? '$' + (b >= 100 ? Math.round(b) : b.toFixed(1)) + ' billion' : '$' + Math.round(b * 1000) + ' million'; }
+  // what can be found at this depth: basic is the well-known names (no bond funds, crypto, or the whole market)
+  function findable(sym, x) { return lvl() >= 1 || (x.k !== 'coin' && x.k !== 'bond' && x.g !== 'bondfund' && !x.lite); }
+  function pool(withAll) {
+    var out = {}, k;
+    for (k in Q.q) if (findable(k, Q.q[k])) out[k] = Q.q[k];
+    if (withAll && ALL && lvl() >= 1) for (k in ALL) if (!out[k]) out[k] = ALL[k];
+    return out;
+  }
+  function search(s) {
+    var P = pool(true), up = s.toUpperCase(), lo = s.toLowerCase(), hits = [];
+    Object.keys(P).forEach(function (k) {
+      var x = P[k], sk = k.replace('-USD', ''), n = (x.n || '').toLowerCase(), r;
+      if (sk === up) r = 0; else if (sk.indexOf(up) === 0) r = 1; else if (n.indexOf(lo) === 0) r = 2; else if (n.indexOf(' ' + lo) >= 0) r = 3; else if (n.indexOf(lo) >= 0) r = 4; else return;
+      hits.push([k, r, x.cap || (x.lite ? 0 : 50)]);
+    });
+    hits.sort(function (a, b) { return a[1] - b[1] || b[2] - a[2]; });
+    return hits.slice(0, 50).map(function (h) { return h[0]; });
+  }
+  var bigSect = '';
   function paintMarket() {
     var b = dom.body;
     if (!Q) { b.appendChild(el('div', { class: 'pnl empty', text: qErr ? 'Can’t reach the market prices right now. Try again in a bit.' : 'Getting today’s prices…' })); return; }
     var ix = el('div', { class: 'idx' });
     ['spx', 'dji', 'ixic'].forEach(function (k) { var i = Q.idx && Q.idx[k]; if (!i) return; var c = (i.p - i.pc) / i.pc; ix.appendChild(el('div', null, [el('span', { class: 'cap', text: i.n }), el('b', { text: Math.round(i.p).toLocaleString() }), el('small', { class: cls(c), text: pct(c) })])); });
     b.appendChild(ix);
-    var q = el('input', { class: 'q', type: 'search', placeholder: 'Search by name or symbol', value: mkt.q, autocomplete: 'off' });
+    var q = el('input', { class: 'q', type: 'search', placeholder: lvl() >= 1 ? 'Search every US stock and fund' : 'Search by name or symbol', value: mkt.q, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     var list = el('div', { class: 'pnl' });
     q.addEventListener('input', function () { mkt.q = q.value; fill(); });
     b.appendChild(q);
+    var gs = groupsOn();
+    if (!gs.some(function (g) { return g[0] === mkt.g; })) mkt.g = WATCH.length ? 'watch' : 'index';
     var chips = el('div', { class: 'chips' });
-    GROUPS.forEach(function (g) { chips.appendChild(el('button', { type: 'button', class: 'chip' + (mkt.g === g[0] ? ' on' : ''), text: g[1], onclick: function () { mkt.g = g[0]; mkt.q = ''; q.value = ''; Kit.sfx('tap'); [].forEach.call(chips.children, function (c) { c.classList.toggle('on', c.textContent === g[1]); }); fill(); } })); });
+    gs.forEach(function (g) { chips.appendChild(el('button', { type: 'button', class: 'chip' + (mkt.g === g[0] ? ' on' : ''), 'data-g': g[0], html: (g[0] === 'watch' ? Kit.icon('star') : '') + '<span>' + esc(g[1]) + '</span>', onclick: function () { mkt.g = g[0]; mkt.q = ''; q.value = ''; Kit.sfx('tap'); [].forEach.call(chips.children, function (c) { c.classList.toggle('on', c.dataset.g === g[0]); }); fill(); } })); });
     b.appendChild(chips);
     b.appendChild(list);
+    function row(k, sub) {
+      var x = S(k), c = dayChg(k);
+      return el('button', { type: 'button', class: 'row', onclick: function () { openSym(k); } }, [tkBadge(k),
+        el('span', { class: 'nm' }, [el('b', { text: x.n }), el('small', { text: px(x.p) }), sub ? el('small', { text: sub }) : null]),
+        spark(k), el('span', { class: 'pill ' + (c >= 0 ? 'up' : 'dn'), text: pct(c) })]);
+    }
+    function head(t, n) { list.appendChild(el('h3', null, [el('span', { text: t }), el('span', { text: n == null ? '' : String(n) })])); }
+    function blurb(t) { list.appendChild(el('p', { class: 'about mk-blurb', text: t })); }
+    function rows(syms, sub) { var r = el('div', { class: 'rows' }); syms.forEach(function (k) { r.appendChild(row(k, sub && sub(k))); }); list.appendChild(r); return r; }
+    function waitAll() { if (!ALL) { list.appendChild(el('div', { class: 'empty loading', text: 'Getting every US stock' })); loadAll().then(function () { if (list.isConnected && ALL) fill(); }); return true; } }
     function fill() {
       list.innerHTML = '';
-      if (!mkt.q && mkt.g === 'tbond') { list.appendChild(bondCards()); return; }
-      var s = mkt.q.trim().toLowerCase();
-      var syms = Object.keys(Q.q).filter(function (k) { var x = Q.q[k]; return s ? (k + ' ' + x.n).toLowerCase().indexOf(s) >= 0 : x.g === mkt.g; });
-      var g = GROUPS.filter(function (x) { return x[0] === mkt.g; })[0];
-      list.appendChild(el('h3', null, [el('span', { text: s ? 'Results' : g[1] }), el('span', { text: syms.length + '' })]));
-      if (!s && GBLURB[mkt.g]) list.appendChild(el('p', { class: 'about', style: { margin: '0 0 8px', 'font-size': '.84rem', color: '#9fb0cc' }, text: GBLURB[mkt.g] }));
-      var rows = el('div', { class: 'rows' });
-      syms.forEach(function (k) {
-        var c = dayChg(k);
-        rows.appendChild(el('button', { type: 'button', class: 'row', onclick: function () { openSym(k); } }, [tkBadge(k), el('span', { class: 'nm' }, [el('b', { text: Q.q[k].n }), el('small', { text: px(price(k)) })]), spark(k), el('span', { class: 'pill ' + (c >= 0 ? 'up' : 'dn'), text: pct(c) })]));
-      });
-      if (!syms.length) rows.appendChild(el('div', { class: 'empty', text: 'Nothing by that name. The market here has about 90 well-known stocks, funds and coins.' }));
-      list.appendChild(rows);
+      var s = mkt.q.trim();
+      if (s) {
+        if (lvl() >= 1 && !ALL) loadAll().then(function () { if (list.isConnected && ALL && mkt.q.trim() === s) fill(); });
+        var hits = search(s);
+        head('Results', hits.length >= 50 ? '50+' : hits.length);
+        if (hits.length) rows(hits);
+        else if (lvl() >= 1 && !ALL) list.appendChild(el('div', { class: 'empty loading', text: 'Searching every US stock' }));
+        else list.appendChild(el('div', { class: 'empty', text: 'Nothing by that name.' }));
+        if (lvl() === 0) list.appendChild(el('div', { class: 'mk-more' }, [el('span', { text: 'Only well-known companies show at this level.' }), el('button', { type: 'button', class: 'btn-d', text: 'Search every US stock', onclick: depthSheet })]));
+        return;
+      }
+      var g = mkt.g;
+      if (g === 'tbond') { list.appendChild(bondCards()); return; }
+      if (g === 'watch') {
+        var ws = WATCH.filter(S);
+        head('Watchlist', ws.length);
+        if (ws.length < WATCH.length && waitAll()) return;
+        rows(ws, function (k) { return isLite(k) ? 'Full chart with the next price update' : ''; });
+        return;
+      }
+      if (g === 'big') {
+        head(bigSect ? sectName(bigSect) : 'Biggest companies');
+        var sc = el('div', { class: 'chips mk-sub' });
+        [['', 'All']].concat(SECTS.filter(function (x) { return x[0] !== 'misc'; })).forEach(function (x) { sc.appendChild(el('button', { type: 'button', class: 'chip' + (bigSect === x[0] ? ' on' : ''), text: x[1], onclick: function () { bigSect = x[0]; Kit.sfx('tap'); fill(); } })); });
+        list.appendChild(sc);
+        var big = Object.keys(Q.q).filter(function (k) { var x = Q.q[k]; return x.k === 'stock' && x.cap > 0 && (!bigSect || x.sec === bigSect); }).sort(function (a, b2) { return Q.q[b2].cap - Q.q[a].cap; }).slice(0, 60);
+        if (big.length) rows(big, function (k) { return 'Worth ' + capTxt(S(k).cap); });
+        else list.appendChild(el('div', { class: 'empty', text: 'Company sizes arrive with the next price update.' }));
+        requestAnimationFrame(function () { var on = sc.querySelector('.on'); if (on && on.scrollIntoView) sc.scrollLeft = on.offsetLeft - 20; });
+        return;
+      }
+      if (g === 'move') {
+        if (waitAll()) return;
+        var P = pool(true), mv = Object.keys(P).filter(function (k) { var x = P[k]; return x.k === 'stock' && x.cap >= 2 && x.pc > 0 && x.p > 0; });
+        mv.sort(function (a, b2) { return dayChg(b2) - dayChg(a); });
+        head('Up the most today'); blurb('Companies worth $2 billion or more.');
+        rows(mv.slice(0, 12), function (k) { return sectName(S(k).sec); });
+        var dn = mv.slice(-12).reverse();
+        list.appendChild(el('h3', { class: 'mk-h2' }, [el('span', { text: 'Down the most today' }), el('span')]));
+        rows(dn, function (k) { return sectName(S(k).sec); });
+        return;
+      }
+      var gr = GROUPS.filter(function (x) { return x[0] === g; })[0];
+      var syms = Object.keys(Q.q).filter(function (k) { return Q.q[k].g === g; });
+      head(gr ? gr[1] : '', syms.length);
+      if (GBLURB[g]) blurb(GBLURB[g]);
+      rows(syms);
     }
     fill();
   }
@@ -796,75 +943,106 @@ body{overflow-x:hidden;}
   }
   function openPane() { dom.pane.classList.add('on'); dom.pane.scrollTop = 0; holdPage(); }
   function closePane() { dom.pane.classList.remove('on'); releasePage(); paint(); }
-  function paneTop(title, sub) {
-    return el('div', { class: 'top' }, [el('button', { type: 'button', class: 'back', 'aria-label': 'Back', html: Kit.icon('back'), onclick: function () { Kit.sfx('tap'); closePane(); } }), el('span', { class: 't' }, [el('b', { text: title }), el('small', { text: sub })])]);
+  function paneTop(title, sub, extra) {
+    return el('div', { class: 'top' }, [el('button', { type: 'button', class: 'back', 'aria-label': 'Back', html: Kit.icon('back'), onclick: function () { Kit.sfx('tap'); closePane(); } }), el('span', { class: 't' }, [el('b', { text: title }), el('small', { text: sub })]), extra || null]);
   }
-  function openSym(sym) {
+  function starBtn(sym) {
+    var b = el('button', { type: 'button', class: 'star' + (watched(sym) ? ' on' : ''), 'aria-label': 'Watchlist', 'aria-pressed': String(watched(sym)), html: Kit.icon('star') });
+    b.onclick = function () {
+      var on = !watched(sym); setWatch(sym, on);
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
+      b.classList.remove('pop'); void b.offsetWidth; if (on) b.classList.add('pop');
+      Kit.sfx(on ? 'good' : 'tap'); Kit.haptic('light');
+      Kit.toast(on ? 'On your watchlist' : 'Off your watchlist');
+      if (isLite(sym)) openSym(sym, true);
+    };
+    return b;
+  }
+  function kv(cap, val, c) { return el('div', null, [el('span', { class: 'cap', text: cap }), el('b', { class: c || '', text: val })]); }
+  function openSym(sym, keep) {
     var s = S(sym); if (!s) return;
-    var w = dom.paneIn; w.innerHTML = '';
-    w.appendChild(paneTop(sym.replace('-USD', ''), s.n));
+    var w = dom.paneIn, y0 = keep ? dom.pane.scrollTop : 0; w.innerHTML = '';
+    dom.paneSym = sym;
+    var det = DET[sym], pending = det === undefined;
+    if (pending) loadDetail(sym).then(function () { if (dom.paneSym === sym && dom.pane.classList.contains('on')) openSym(sym, true); });
+    var lite = isLite(sym) && !det && !pending;
+    w.appendChild(paneTop(sym.replace('-USD', ''), s.n, starBtn(sym)));
     var p = el('div', { class: 'pnl' }), c = dayChg(sym);
     p.appendChild(el('div', { class: 'val' }, [el('span', { class: 'big', text: px(s.p) }), el('span', { class: 'chg ' + cls(c) }, [el('small', { text: 'Today' }), document.createTextNode(signed(s.p - s.pc, 1) + '  ' + pct(c))])]));
     p.appendChild(el('div', { class: 'asof', text: asofTxt() }));
-    var chartBox = el('div'); p.appendChild(chartBox);
-    var span = el('div', { class: 'span' }); p.appendChild(span);
-    var rg = el('div', { class: 'rng' });
-    function drawChart() {
-      [].forEach.call(rg.children, function (b) { b.classList.toggle('on', b.dataset.r === detRange); });
-      var r = detRange, long = r === '5y' || r === 'max';
-      if (long && !HIST) {
-        chartBox.innerHTML = ''; chartBox.appendChild(el('div', { class: 'chart' }, [el('div', { class: 'empty loading', text: r === 'max' ? 'Fetching every year of prices' : 'Fetching five years of prices' })]));
-        span.innerHTML = '&nbsp;';
-        loadHist().then(function () { if (detRange === r && chartBox.isConnected) drawChart(); });
-        return;
-      }
-      var se;
-      if (long) { se = longSeries(sym); if (r === '5y') { var cut = Date.now() - 5 * 365.25 * DAY; se = se.filter(function (p) { return p[0] >= cut; }); } }
-      else se = series(sym).slice(-({ w: 6, m: 22, q: 64, h: 128, y: 253 }[r]));
-      chartBox.innerHTML = ''; chartBox.appendChild(lineChart(se, { fmt: px }));
-      // how it did over the span shown
-      span.innerHTML = '';
-      if (se.length > 1) {
-        var ch = (se[se.length - 1][1] - se[0][1]) / se[0][1];
-        var lbl = r === 'max' || (r === '5y' && se[0][0] > Date.now() - 4.8 * 365.25 * DAY) ? 'Since ' + dateTxt(se[0][0], true) : { w: 'Past week', m: 'Past month', q: 'Past 3 months', h: 'Past 6 months', y: 'Past year', '5y': 'Past 5 years' }[r];
-        span.appendChild(el('span', { text: lbl })); span.appendChild(el('b', { class: cls(ch), text: pct(ch) }));
-      }
+    if (lite) {
+      // a stock from the whole-market list: today's price only, until the next update brings its history
+      // (a bar from yesterday's close, in the middle, to now)
+      var up = s.p >= s.pc, mv = s.pc ? (s.p - s.pc) / s.pc : 0, bar = el('div', { class: 'daybar' }), x0 = .5, x1 = .5 + mv / Math.max(.02, Math.abs(mv) * 1.6) * .5;
+      bar.appendChild(el('i', { style: { left: (Math.min(x0, x1) * 100) + '%', width: Math.max(1, Math.abs(x1 - x0) * 100) + '%', background: up ? '#3ddc84' : '#ff6470' } }));
+      p.appendChild(bar);
+      p.appendChild(el('div', { class: 'ends' }, [el('span', { text: 'Yesterday ' + px(s.pc) }), el('span', { text: 'Now ' + px(s.p) })]));
+      var mine = watched(sym) || heldQty(sym) > 0;
+      var lc = el(mine ? 'div' : 'button', { type: mine ? null : 'button', class: 'lite-card', onclick: mine ? null : function () { w.querySelector('.star').click(); } }, [el('span', { class: 'ic', html: Kit.icon(mine ? 'clock' : 'star') }),
+        el('span', null, [el('b', { text: mine ? 'Its chart is on the way' : 'Star it to see its chart' }), el('small', { text: mine ? 'The chart, dividends and history arrive with the next price update, around 1 PM or 5 PM New York time.' : 'Star it or buy it, and its chart, dividends and history arrive with the next price update.' })])]);
+      p.appendChild(lc);
+    } else {
+      var chartBox = el('div'); p.appendChild(chartBox);
+      var span = el('div', { class: 'span' }); p.appendChild(span);
+      var rg = el('div', { class: 'rng' });
+      var drawChart = function () {
+        [].forEach.call(rg.children, function (b) { b.classList.toggle('on', b.dataset.r === detRange); });
+        var r = detRange, long = r === '5y' || r === 'max', n = { w: 6, m: 22, q: 64, h: 128, y: 253 }[r];
+        if (pending && (long || series(sym).length < n)) {
+          chartBox.innerHTML = ''; chartBox.appendChild(el('div', { class: 'chart' }, [el('div', { class: 'empty loading', text: long ? (r === 'max' ? 'Fetching every year of prices' : 'Fetching five years of prices') : 'Fetching a year of prices' })]));
+          span.innerHTML = '&nbsp;';
+          return;
+        }
+        var se;
+        if (long) { se = longSeries(sym); if (r === '5y') { var cut = Date.now() - 5 * 365.25 * DAY; se = se.filter(function (pt) { return pt[0] >= cut; }); } }
+        else se = series(sym).slice(-n);
+        chartBox.innerHTML = ''; chartBox.appendChild(lineChart(se, { fmt: px }));
+        // how it did over the span shown
+        span.innerHTML = '';
+        if (se.length > 1) {
+          var ch = (se[se.length - 1][1] - se[0][1]) / se[0][1], full = { w: 4 * DAY, m: 25 * DAY, q: 85 * DAY, h: 170 * DAY, y: 350 * DAY, '5y': 4.8 * 365.25 * DAY }[r];
+          var lbl = r === 'max' || se[se.length - 1][0] - se[0][0] < full ? 'Since ' + dateTxt(se[0][0], true) : { w: 'Past week', m: 'Past month', q: 'Past 3 months', h: 'Past 6 months', y: 'Past year', '5y': 'Past 5 years' }[r];
+          span.appendChild(el('span', { text: lbl })); span.appendChild(el('b', { class: cls(ch), text: pct(ch) }));
+        }
+      };
+      [['w', '1W'], ['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y'], ['5y', '5Y'], ['max', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { Kit.sfx('tap'); detRange = r[0]; drawChart(); } })); });
+      p.appendChild(rg); drawChart();
     }
-    [['w', '1W'], ['m', '1M'], ['q', '3M'], ['h', '6M'], ['y', '1Y'], ['5y', '5Y'], ['max', 'All']].forEach(function (r) { rg.appendChild(el('button', { type: 'button', 'data-r': r[0], text: r[1], onclick: function () { Kit.sfx('tap'); detRange = r[0]; drawChart(); } })); });
-    p.appendChild(rg); drawChart();
     w.appendChild(p);
-    var se = series(sym).slice(-253), yr = se.length > 200 ? (s.p - se[0][1]) / se[0][1] : null,   // (the same year as the 1Y chart)
-      hi = Math.max.apply(null, se.map(function (x) { return x[1]; })), lo = Math.min.apply(null, se.map(function (x) { return x[1]; }));
-    var dvy = (s.dv || []).reduce(function (a, d) { return a + d[1]; }, 0) / (s.p || 1);
-    var a = el('div', { class: 'pnl' });
+    var a = el('div', { class: 'pnl' }), facts = [];
     a.appendChild(el('h3', null, [el('span', { text: 'About' }), el('span', { text: ({ stock: 'Stock', fund: 'Fund', bond: 'Bond fund', coin: 'Crypto' })[s.k] })]));
-    a.appendChild(el('p', { class: 'about', text: s.a }));
-    a.appendChild(el('div', { class: 'kv', style: { 'margin-top': '12px' } }, [
-      el('div', null, [el('span', { class: 'cap', text: 'Past year' }), el('b', { class: cls(yr || 0), text: yr == null ? 'New' : pct(yr) })]),
-      el('div', null, [el('span', { class: 'cap', text: 'Swings' }), el('b', { text: vol(sym) < .2 ? 'Calm' : vol(sym) < .35 ? 'Moderate' : vol(sym) < .6 ? 'Big' : 'Wild' })]),
-      el('div', null, [el('span', { class: 'cap', text: 'Year high' }), el('b', { text: px(hi) })]),
-      el('div', null, [el('span', { class: 'cap', text: 'Year low' }), el('b', { text: px(lo) })]),
-      dvy > 0 ? el('div', null, [el('span', { class: 'cap', text: 'Dividend yield' }), el('b', { text: (dvy * 100).toFixed(2) + '% a year' })]) : null]));
+    if (s.a) a.appendChild(el('p', { class: 'about', text: s.a }));
+    if (!lite && !pending) {
+      var se2 = series(sym).slice(-253), yearly = se2.length > 200, yr = yearly ? (s.p - se2[0][1]) / se2[0][1] : null,   // (the same year as the 1Y chart)
+        hi = Math.max.apply(null, se2.map(function (x) { return x[1]; })), lo = Math.min.apply(null, se2.map(function (x) { return x[1]; }));
+      var vv = vol(sym);
+      facts.push(kv('Past year', yr == null ? 'New' : pct(yr), cls(yr || 0)), kv('Swings', vv < .2 ? 'Calm' : vv < .35 ? 'Moderate' : vv < .6 ? 'Big' : 'Wild'), kv(yearly ? 'Year high' : 'Recent high', px(hi)), kv(yearly ? 'Year low' : 'Recent low', px(lo)));
+    }
+    if (s.k === 'stock' && sectName(s.sec)) facts.push(kv('Sector', sectName(s.sec)));
+    if (s.k === 'stock' && s.cap > 0) facts.push(kv('Company value', capTxt(s.cap)));
+    if (lite) facts.push(kv('Yesterday’s close', px(s.pc)));
+    var dvy = (s.dv || []).reduce(function (t, d) { return t + d[1]; }, 0) / (s.p || 1);
+    if (dvy > 0) facts.push(kv('Dividend yield', (dvy * 100).toFixed(2) + '% a year'));
+    if (pending && !s.a) facts.push(el('div', { class: 'loading', style: { 'grid-column': '1/-1', color: '#8590a6', 'font-weight': '700', 'font-size': '.86rem' }, text: 'Getting its year of prices' }));
+    if (facts.length) a.appendChild(el('div', { class: 'kv', style: { 'margin-top': s.a ? '12px' : '0' } }, facts));
     w.appendChild(a);
     var q = heldQty(sym);
     if (q > 0) {
       var cost = costOf(sym), val = q * s.p, lots = A.lots.filter(function (l) { return l.sym === sym; }), oldest = Math.min.apply(null, lots.map(function (l) { return l.at; }));
-      var y = el('div', { class: 'pnl' }); y.appendChild(el('h3', null, [el('span', { text: 'You own' })]));
-      y.appendChild(el('div', { class: 'kv' }, [
-        el('div', null, [el('span', { class: 'cap', text: isCoin(sym) ? 'Coins' : 'Shares' }), el('b', { text: shares(q) })]),
-        el('div', null, [el('span', { class: 'cap', text: 'Worth' }), el('b', { text: money(val, 1) })]),
-        el('div', null, [el('span', { class: 'cap', text: 'Average cost' }), el('b', { text: px(cost / q) })]),
-        el('div', null, [el('span', { class: 'cap', text: 'Gain' }), el('b', { class: cls(val - cost), text: signed(val - cost, 1) })])]));
+      var yo = el('div', { class: 'pnl' }); yo.appendChild(el('h3', null, [el('span', { text: 'You own' })]));
+      yo.appendChild(el('div', { class: 'kv' }, [kv(isCoin(sym) ? 'Coins' : 'Shares', shares(q)), kv('Worth', money(val, 1)), kv('Average cost', px(cost / q)), kv('Gain', signed(val - cost, 1), cls(val - cost))]));
       var lt = oldest + YEAR;
-      y.appendChild(el('div', { class: 'asof', text: Date.now() > lt ? 'Held over a year: gains on your oldest shares are taxed at the lower long-term rate.' : 'Hold until ' + dateTxt(lt, true) + ' for the lower long-term tax rate.' }));
-      w.appendChild(y);
+      if (taxesOn()) yo.appendChild(el('div', { class: 'asof', text: Date.now() > lt ? 'Held over a year: gains on your oldest shares are taxed at the lower long-term rate.' : 'Hold until ' + dateTxt(lt, true) + ' for the lower long-term tax rate.' }));
+      w.appendChild(yo);
     }
-    var bar = el('div', { class: 'tradebar' }, [
+    var ownsOpt = A.opts.some(function (o) { return o.sym === sym; });
+    var tb = el('div', { class: 'tradebar' }, [
       el('button', { type: 'button', class: 'btn-g', text: 'Buy', onclick: function () { ticket(sym, 'buy'); } }),
       q > 0 ? el('button', { type: 'button', class: 'btn-d', text: 'Sell', onclick: function () { ticket(sym, 'sell'); } }) : null,
-      !isCoin(sym) ? el('button', { type: 'button', class: 'btn-d', text: 'Options', onclick: function () { openChain(sym); } }) : null]);
-    w.appendChild(bar);
-    openPane();
+      !isCoin(sym) && !isLite(sym) && (lvl() >= 2 || ownsOpt) ? el('button', { type: 'button', class: 'btn-d', text: 'Options', onclick: function () { openChain(sym); } }) : null]);
+    w.appendChild(tb);
+    if (!dom.pane.classList.contains('on')) openPane();
+    else if (keep) dom.pane.scrollTop = y0; else dom.pane.scrollTop = 0;
   }
 
   // ── Buy and sell ──
@@ -899,15 +1077,15 @@ body{overflow-x:hidden;}
         A.lots.filter(function (l) { return l.sym === sym; }).sort(function (a, b) { return a.at - b.at; }).forEach(function (l) { if (left <= 0) return; var t = Math.min(l.q, left); if (Date.now() - l.at > YEAR) glt += t * ((pp || p) - l.c); else gst += t * ((pp || p) - l.c); left -= t; });
         var g = gst + glt;
         sum.appendChild(el('div', null, [el('span', { text: g >= 0 ? 'Gain' : 'Loss' }), el('b', { class: cls(g), text: signed(g, 1) })]));
-        if (g > 0) notes.appendChild(el('p', { class: 'why', text: (gst > 0 ? 'Held under a year, so this is a short-term gain, taxed like income (' + SET.br + '%). ' : '') + (glt > 0 ? 'Held over a year: long-term gain, taxed at ' + Math.round(ltRate() * 100) + '%. ' : '') + 'The tax comes out when you cash out to your bankroll, not now.' }));
-        else if (g < 0) notes.appendChild(el('p', { class: 'why', text: 'A loss lowers the tax on your other gains this year.' }));
+        if (g > 0 && taxesOn()) notes.appendChild(el('p', { class: 'why', text: (gst > 0 ? 'Held under a year, so this is a short-term gain, taxed like income (' + SET.br + '%). ' : '') + (glt > 0 ? 'Held over a year: long-term gain, taxed at ' + Math.round(ltRate() * 100) + '%. ' : '') + 'The tax comes out when you cash out to your bankroll, not now.' }));
+        else if (g < 0 && taxesOn()) notes.appendChild(el('p', { class: 'why', text: 'A loss lowers the tax on your other gains this year.' }));
       }
       if (mode === 'lim') notes.appendChild(el('p', { class: 'why', text: side === 'buy' ? 'Buys at a later price check, if the price is at or below your limit. Waits up to 30 days. The money is set aside until then.' : 'Sells at a later price check, if the price is at or above your limit. Waits up to 30 days.' }));
       else notes.appendChild(el('p', { class: 'why', text: 'Fills right away at the latest price. Prices here update around 1 PM and 5 PM New York time.' }));
       go.disabled = !ok;
       go.textContent = mode === 'lim' ? 'Place limit order' : side === 'buy' ? 'Buy ' + sym.replace('-USD', '') : 'Sell ' + sym.replace('-USD', '');
     }
-    box.appendChild(seg);
+    if (lvl() >= 1) box.appendChild(seg);
     limWrap.appendChild(el('span', { class: 'cap', text: 'Limit price' }));
     limWrap.appendChild(el('div', { class: 'amtbox' }, [el('span', { text: '$' }), lim]));
     box.appendChild(limWrap);
@@ -1138,9 +1316,8 @@ body{overflow-x:hidden;}
     var box = el('div'), ys = taxYears().reverse();
     var seg = el('div', { class: 'seg', style: { margin: '0 0 12px' } });
     BRACKETS.forEach(function (b) { seg.appendChild(el('button', { type: 'button', class: SET.br === b[0] ? 'on' : '', text: b[0] + '%', onclick: function () { SET.br = b[0]; lsSet(SK, SET); sh.close(); taxSheet(); paint(); } })); });
-    box.appendChild(el('span', { class: 'cap', text: 'Your tax bracket' }));
-    box.appendChild(seg);
-    box.appendChild(el('p', { class: 'why', style: { margin: '-4px 0 12px' }, text: 'Short-term gains and interest are taxed at your bracket. Long-term gains (held over a year) and dividends at ' + Math.round(ltRate() * 100) + '%.' }));
+    if (lvl() >= 2) { box.appendChild(el('span', { class: 'cap', text: 'Your tax bracket' })); box.appendChild(seg); }
+    box.appendChild(el('p', { class: 'why', style: { margin: lvl() >= 2 ? '-4px 0 12px' : '0 0 12px' }, text: 'Short-term gains and interest are taxed at ' + SET.br + '%' + (lvl() >= 2 ? ', your bracket' : '') + '. Long-term gains, on things held over a year, and dividends at ' + Math.round(ltRate() * 100) + '%.' }));
     if (!ys.length) box.appendChild(el('p', { class: 'muted', text: 'Nothing sold yet. Taxes only count gains once you sell.' }));
     ys.forEach(function (o) {
       box.appendChild(el('h3', { style: { margin: '10px 0 4px', font: '400 1.2rem var(--display)' }, text: String(o.y) }));
@@ -1166,8 +1343,10 @@ body{overflow-x:hidden;}
     { id: 'taxes', t: 'Taxes on investing', s: 'Short-term, long-term, losses and accounts that skip tax', try: ['tax'] },
     { id: 'plan', t: 'A simple plan', s: 'What most experts say to do', try: ['grp', 'index'] }
   ];
+  var LESSON_LV = { bonds: 1, crypto: 1, taxes: 1, options: 2 };
+  function lessons() { return LESSONS.filter(function (l) { return (LESSON_LV[l.id] || 0) <= lvl(); }); }
   function paintLearn() {
-    var b = dom.body, done = LESSONS.filter(function (l) { return LEARN[l.id]; }).length;
+    var LESSONS = lessons(), b = dom.body, done = LESSONS.filter(function (l) { return LEARN[l.id]; }).length;
     var p = el('div', { class: 'pnl' });
     p.appendChild(el('h3', null, [el('span', { text: 'How investing works' }), el('span', { text: done + ' of ' + LESSONS.length + ' read' })]));
     p.appendChild(el('p', { class: 'about', text: 'Short lessons with real numbers from today’s market. Each ends with something to try.' }));
@@ -1184,6 +1363,8 @@ body{overflow-x:hidden;}
     w.appendChild(paneTop(l.t, l.s));
     var body = el('div', { class: 'lsn', html: lessonHtml(l.id) });
     w.appendChild(body);
+    // (the index lesson quotes VOO's past year, which comes with its full picture)
+    if (l.id === 'index' && DET.VOO === undefined) loadDetail('VOO').then(function () { if (body.isConnected) body.innerHTML = lessonHtml(l.id); });
     var tryBtn = el('button', { type: 'button', class: 'btn btn-primary', style: { width: '100%', 'min-height': '54px', margin: '16px 0 8px' }, text: tryLabel(l), onclick: function () {
       LEARN[l.id] = Date.now(); lsSet(LK, LEARN); Kit.sfx('good');
       var t = l.try;
@@ -1255,24 +1436,34 @@ body{overflow-x:hidden;}
 
   // ── Shell ──
   var report = null;
+  function depthTitle() { var d = DEPTHS.filter(function (x) { return x.id === DEPTH; })[0]; return d ? d.title : ''; }
+  var depthItem = { icon: 'sliders', label: 'How deep to go', sub: depthTitle(), onClick: depthSheet };
+  function depthSheet() { Kit.depth({ key: 'mk_depth', levels: DEPTHS, value: DEPTH || 'pro', onPick: setDepth }); }
+  function setDepth(d) {
+    DEPTH = d; depthItem.sub = depthTitle();
+    if (!dom.main) { layout(); return; }
+    if (tab === 'learn' || tab === 'mkt') window.scrollTo(0, 0);
+    if (dom.pane.classList.contains('on')) closePane(); else paint();
+  }
   Kit.init({
     id: 'stocks',
     menu: [
-      { icon: 'chart', label: 'Taxes', onClick: taxSheet },
+      depthItem,
+      { icon: 'chart', label: 'Taxes', when: taxesOn, onClick: taxSheet },
       { icon: 'book', label: 'Lessons', onClick: function () { closePane(); tab = 'learn'; paint(); } },
       { icon: 'history', label: 'Bankroll history', onClick: function () { Casino.showHistory(); } },
       { icon: 'undo', label: 'Reset bankroll', onClick: function () { Kit.confirm('Reset your casino bankroll to $1,000? Your investing account stays as it is.', { ok: 'Reset', danger: true }).then(function (y) { if (y) { Casino.reset(); Kit.toast('Bankroll reset to $1,000'); } }); } },
       { icon: 'trash', label: 'Start the account over', onClick: function () { Kit.confirm('Close this investing account and start over? Everything in it is lost (cash out first to keep it).', { ok: 'Start over', danger: true }).then(function (y) { if (y) { A = fresh(); save(); paint(); } }); } }
     ],
     rules:
-      '<p class="goal">Invest your casino bankroll in the real stock market: stocks, index funds, bonds, Treasuries, options and crypto. Prices are real and update twice a day, so check in once or twice a day.</p>' +
+      '<p class="goal">Invest your casino bankroll in the real stock market. Prices are real and update twice a day, so check in once or twice a day.</p>' +
+      '<h3>How deep to go</h3><p>Pick how much of the market you want (menu, How deep to go): well-known stocks and index funds; the whole market with bonds, Treasuries, crypto, limit orders and taxes; or everything, with options and your own tax bracket.</p>' +
       '<h3>Getting started</h3><ul><li><b>Add money</b> from your bankroll. It waits as cash, earning the T-bill rate.</li><li>Open <b>Market</b>, pick something and tap <b>Buy</b>. Buy by dollars or shares.</li><li><b>Buy now</b> fills at the latest price. A <b>limit order</b> waits for a later price update.</li></ul>' +
-      '<h3>What you can own</h3><ul><li>About 90 stocks, index funds, bond funds and coins. Real dividends are paid to your cash.</li><li><b>Treasuries</b> (Market, Treasuries): bills, notes and bonds at today’s rates, with interest every six months.</li><li><b>Options</b> (on any stock or fund): buy calls and puts, sell them back any time, settled in cash at the end date.</li></ul>' +
+      '<h3>What you can own</h3><ul><li>Every stock and fund listed in the US, and fifteen coins. Search by name or symbol; star one to keep it on your watchlist. Real dividends are paid to your cash.</li><li><b>Treasuries</b> (Market, Treasuries): bills, notes and bonds at today’s rates, with interest every six months.</li><li><b>Options</b> (on any stock or fund): buy calls and puts, sell them back any time, settled in cash at the end date.</li></ul>' +
       '<h3>Cashing out and taxes</h3><p>Gains count for tax when you sell. Short-term gains (held a year or less) and interest are taxed at your bracket; long-term gains and dividends at the lower rate. Losses offset gains. When you cash out to your bankroll, the tax you owe comes out first; the app shows you before you confirm.</p>' +
       '<p>The <b>Learn</b> tab explains everything, with today’s real numbers.</p>'
   });
 
-  layout();
   function start() {
     var ev = catchUp();
     // how holdings moved since the last visit
@@ -1284,13 +1475,15 @@ body{overflow-x:hidden;}
     }
     if (ev.length) report = ev;
     if (Q) { A.last = Date.now(); A.lastVal = totals().all; A.lastPx = {}; holdings().forEach(function (h) { A.lastPx[h.sym] = price(h.sym); }); recordValue(); }
-    save(); paint();
+    save(); if (dom.main) paint();
     var t = totals(); if (t.all > .01) Kit.resume.set(money(t.all) + ' invested'); else Kit.resume.clear();
   }
-  if (Q) paint();
-  loadQuotes().then(start);
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes().then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (!dom.pane.classList.contains('on')) paint(); }); });
-  window.__mk = { open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
+  // First load: how deep to go (an account already in use starts with everything, so nothing it holds goes missing)
+  if (!DEPTH) Kit.depth({ host: app, key: 'mk_depth', levels: DEPTHS, value: A.dep || A.lots.length || A.tx.length ? 'pro' : 'basic', start: 'Open the market', onPick: setDepth });
+  else layout();
+  loadQuotes().then(ensureAll).then(start);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && !dom.pane.classList.contains('on')) paint(); }); });
+  window.__mk = { loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
 })();
 </script>
 </body>
