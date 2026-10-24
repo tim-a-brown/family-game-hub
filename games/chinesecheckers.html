@@ -325,7 +325,7 @@
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 5 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
-        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes. Good for beginners.'], ['normal', 'Normal', 'Looks a couple of moves ahead.'], ['hard', 'Hard', 'Plans further ahead and rarely wastes a move.']] },
         { id: 'places', label: 'Play for', value: 'win', choices: [['win', 'The winner', 'The game ends as soon as someone fills the opposite point.'], ['all', 'All places', 'After the winner, everyone else keeps going to decide 2nd, 3rd and so on.']] },
         { id: 'nostay', label: 'Other players’ points', value: 'stop', help: 'The star points that belong to other players (not your start or your goal).', choices: [['stop', 'Can stop there', 'Your marbles may hop into and stay in other players’ points.'], ['pass', 'Pass through only', 'You can hop through other players’ points, but you can’t end your move there.']] },
         { id: 'spin', label: 'Board', value: 'turn', choices: [['turn', 'Turns to each player', 'The board rotates so whoever’s turn it is has their home at the bottom.'], ['fixed', 'Stays put', 'The board never rotates.']], when: function (m) { return m !== 'cpu'; } }
@@ -336,7 +336,7 @@
         cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }
       },
       onStart: function (cfg) {
-        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level }; });   // (each robot its own skill)
         players.forEach(function (p, i) { p.col = COLORS[i]; });
         newGame({
           mode: cfg.mode, level: cfg.options.level || 'normal', players: players,
@@ -456,7 +456,7 @@
   function maybeCpu() {
     if (!S || S.over || animating || S.busy || !cur().cpu) return;
     S.busy = true; paintChips(); paintTurn();
-    var t0 = Date.now(), myB = S.b, p = S.turn, lv = LEVELS[S.level] || LEVELS.normal;
+    var t0 = Date.now(), myB = S.b, p = S.turn, lv = LEVELS[(S.players[p] && S.players[p].level) || S.level] || LEVELS.normal;
     var o = { depth: lv.depth, beam: lv.beam, noise: lv.noise, wild: lv.wild, recent: S.rk[p] || {} };
     think(g(), p, o, function (res) {
       if (!S || S.b !== myB) return;

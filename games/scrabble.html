@@ -712,7 +712,7 @@
       intro: 'Build words, hit the bonus squares, and score big.',
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 robots' }, { id: 'pp', kind: 'local' }, { id: 'online', desc: '2 to 4 players, each on their own device' }]),
       players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 4]; } },
-      options: [{ id: 'level', label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m !== 'online'; } }],
+      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS, when: function (m) { return m !== 'online'; } }],
       start: "Let's play!",
       onStart: function (cfg) {
         if (cfg.mode === 'online') { var nm0 = cfg.players[0] && cfg.players[0].name; if (nm0 && nm0 !== 'Player 1') lsSet('tn_me', { name: nm0 }); TurnNet.open(); return; }
@@ -730,7 +730,7 @@
   function startLocal(cfg) {
     loading();
     loadDict().then(function () {
-      var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? cfg.options.level || 'normal' : null, score: 0, rack: [] }; });
+      var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? p.level || cfg.options.level || 'normal' : null, score: 0, rack: [] }; });
       newGame({ mode: cfg.mode, level: cfg.options.level || 'normal', players: players });
     }).catch(function (e) { Kit.toast(e.message); showSetup(); });
   }

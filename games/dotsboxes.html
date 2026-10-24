@@ -99,12 +99,12 @@
       modes: Kit.modes([{ id: 'cpu', desc: 'You against one or two computers' }, { id: 'pp', kind: 'local' }]),
       options: [
         { id: 'n', label: 'Boxes', help: 'How many boxes across and down. Bigger boards take longer.', value: 4, choices: [[2, '2×2'], [3, '3×3'], [4, '4×4'], [5, '5×5'], [6, '6×6'], [7, '7×7']] },
-        { id: 'level', label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes but often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.']] }
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Grabs boxes but often gives some away.'], ['normal', 'Normal', 'Takes every box it can and tries not to give any away.'], ['hard', 'Hard', 'Also plays the endgame smartly, sometimes passing up two boxes to win the long chains.']] }
       ],
       players: { min: 2, max: 4, range: function (m) { return m === 'cpu' ? [2, 3] : [2, 4]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; } },
       onStart: function (cfg) {
         S = { mode: cfg.mode, level: cfg.options.level || 'normal', n: +cfg.options.n || 4,
-          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), first: 0 };
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }), first: 0 };
         newGame();
       }
     });
@@ -216,7 +216,7 @@
   function boardNow() { return { n: S.n, h: S.h.map(Boolean), v: S.v.map(Boolean) }; }
   function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
   function cpuLine() {
-    var B = boardNow(), cs = caps(B), all = undrawn(B), lv = S.level;
+    var B = boardNow(), cs = caps(B), all = undrawn(B), lv = (cur() && cur().level) || S.level;
     var safe = all.filter(function (L) { return isSafe(B, L); });
     if (lv === 'easy') {
       if (cs.length && Math.random() < 0.8) return { ln: rnd(cs) };

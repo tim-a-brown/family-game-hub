@@ -1673,6 +1673,9 @@
     var bots = cpuNames(8);
     // cpu:'mix' tables: which seats (after the first) are robots, remembered with the names
     var robots = {}; (saved.robots || []).forEach(function (i) { if (i > 0) robots[i] = true; });
+    // The computer's skill ({robot: true} on that option): each robot seat carries its own, shown on its tile
+    var lvOp = (o.options || []).filter(function (op) { return op.robot; })[0] || null;
+    var levels = {}; if (saved.levels) Object.keys(saved.levels).forEach(function (k) { levels[k] = saved.levels[k]; });
     var openHelp = {};
     // One table, no mode cards: when a game's ways to play are the standard Just me / vs Computer / Pass & play
     // (plus Play online), the seats say it all. One seat is Just me, robots in every other seat is vs Computer,
@@ -1761,6 +1764,45 @@
       return r || [P.min || 1, P.max || P.min || 1];
     }
 
+    // per-robot skill: on mixed tables with a skill option
+    function lvTiles() { return !!(lvOp && P && cpuFor() === 'mix'); }
+    function lvChoices() { return lvOp ? (typeof lvOp.choices === 'function' ? lvOp.choices(state.count, state.mode, state.options) : lvOp.choices) : []; }
+    function levelOf(i) {
+      var cs = lvChoices(), v = levels[i];
+      if (v != null && cs.some(function (c) { return String(c[0]) === String(v); })) return v;
+      return state.options[lvOp.id];
+    }
+    function levelName(v) { var c = lvChoices().filter(function (x) { return String(x[0]) === String(v); })[0]; return c ? c[1] : String(v); }
+    // tap a robot's tile: its skill (or all the robots' at once), or a person for that seat
+    function robotSheet(i) {
+      var box = el('div', { class: 'k-bot-sheet' }), sh = null;
+      box.appendChild(el('div', { class: 'label', text: lvOp.label || 'Computer skill' }));
+      var others = []; for (var j = 1; j < state.count; j++) if (robots[j]) others.push(j);
+      var all = false;
+      var allBtn = others.length > 1 ? el('button', { type: 'button', class: 'k-bot-all', role: 'switch', 'aria-checked': 'false', onclick: function () {
+        all = !all; allBtn.classList.toggle('on', all); allBtn.setAttribute('aria-checked', String(all)); sfx('tap'); haptic('light'); paint();
+      } }, [el('span', { class: 'k-bot-chk', html: icon('check') }), el('span', { text: (others.length === 2 ? 'Set both' : 'Set all ' + others.length) + ' computer players' })]) : null;
+      if (allBtn) box.appendChild(allBtn);
+      var list = el('div', { class: 'k-bot-levels' });
+      box.appendChild(list);
+      function paint() {
+        list.innerHTML = '';
+        lvChoices().forEach(function (c) {
+          var on = all ? others.every(function (j) { return String(levelOf(j)) === String(c[0]); }) : String(levelOf(i)) === String(c[0]);
+          list.appendChild(el('button', { type: 'button', class: 'k-bot-lv' + (on ? ' on' : ''), onclick: function () {
+            (all ? others : [i]).forEach(function (j) { levels[j] = c[0]; });
+            if (all || others.length < 2) state.options[lvOp.id] = c[0];   // (and the default for robots seated next)
+            sfx('pop'); haptic('light'); sh.close(); renderSeats();
+          } }, [el('span', { class: 'k-bot-lv-t' }, [el('b', { text: c[1] }), c[2] ? el('small', { text: c[2] }) : null]), el('span', { class: 'k-bot-lv-ok', html: icon('check') })]));
+        });
+      }
+      paint();
+      box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-bot-person', html: icon('user') + '<span>A person plays this seat</span>', onclick: function () {
+        robots[i] = false; if (merged && !localMix) for (var q = 1; q < 12; q++) robots[q] = false;
+        sfx('pop'); haptic('light'); sh.close(); renderSeats();
+      } }));
+      sh = sheet({ title: bots[i - 1] || 'Computer', node: box });
+    }
     // a mode card's words: the game's own, else its kind's (Pass & play says computers can join when seats can be robots)
     function modeDesc(m) {
       if (m.desc != null) return m.desc;
@@ -1788,6 +1830,7 @@
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
         if (op.when && !op.when(state.mode, state.options)) return;
+        if (op.robot && lvTiles()) return;   // (each robot's tile carries it)
         // op.render(value, set): the game draws its own picker (a value it keeps in the options like any other)
         if (op.render) { optsBox.appendChild(op.render(state.options[op.id], function (v) { state.options[op.id] = v; renderOptions(); })); return; }
         var seg = el('div', { class: 'seg' }), choices = choicesOf(op);
@@ -1871,7 +1914,13 @@
           }
           row.appendChild(field);
           // Mixed tables: every seat after the first has a switch between a person and a robot
-          if (cpu === 'mix' && i > 0) {
+          if (cpu === 'mix' && i > 0 && isCpu && lvTiles()) {
+            // a robot with a skill: the tile says how good it is, and opens its skill (or a person) when tapped
+            var lvN = levelName(levelOf(i));
+            row.appendChild(el('button', { type: 'button', class: 'seat-bot on has-lv', 'aria-haspopup': 'dialog', 'aria-label': 'Computer plays this seat, skill ' + lvN + '. Tap to change',
+              html: icon('bot') + '<span class="lv"><span>' + esc(lvN) + '</span>' + icon('down') + '</span>',
+              onclick: function () { sfx('tap'); haptic('light'); robotSheet(i); } }));
+          } else if (cpu === 'mix' && i > 0) {
             row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
               onclick: function () {
                 if (merged && !localMix) { var v = !robots[i]; for (var j = 1; j < 12; j++) robots[j] = v; }   // (this game seats people or robots, not both)
@@ -1942,7 +1991,7 @@
       return bits.join(' · ');
     }
     function saveSetup() {
-      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), sum: summary() }));
+      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, sum: summary() }));
     }
     if (EDIT_DEFAULTS) {
       var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
@@ -1987,10 +2036,14 @@
             var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
             var v = inputs[i] ? inputs[i].value.trim() : '';
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
+            if (isCpu && lvOp && cpu === 'mix') players[i].level = levelOf(i);
             if (!isCpu && isPersonName(v)) { picked.push(v); unhide(v); if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v])); }
           }
         }
         if (picked.length) countPlays(picked);
+        // (a game with one skill for all its robots plays the first robot's)
+        var firstBot = players.filter(function (q) { return q.level != null; })[0];
+        if (firstBot && lvOp) state.options[lvOp.id] = firstBot.level;
         curPlayers = players.filter(function (p) { return !p.cpu; }).map(function (p) { return p.name; });
         saveSetup();
         sfx('pop'); haptic('medium');
