@@ -214,8 +214,12 @@ document.addEventListener('visibilitychange', function () {
 .ct-body{position:absolute;left:6%;right:6%;top:1%;height:76%;display:block;border-radius:5px 5px 8px 8px;
   background:linear-gradient(180deg,#b7b5b8,#8e8c8f 70%,#7d7b7e);box-shadow:inset 0 2px 0 rgba(255,255,255,.45),inset 0 -3px 0 rgba(0,0,0,.25),0 6px 10px -4px rgba(0,0,0,.6),0 2px 0 rgba(0,0,0,.35);
   transition:transform .25s var(--spring);}
-.tiles .g.ct:hover .ct-body{transform:translateY(-3px) rotate(-.8deg);}
-.tiles .g.ct .go:active .ct-body,.tiles .g.ct.in .ct-body{transform:translateY(5%) scale(.97);transition-duration:.12s;}
+/* hover lifts the whole cartridge (Safari mis-draws a clip-path shape that's itself moving, or that gains a filter, so
+   the body keeps still and no hover brightness) */
+.tiles .g.ct .go{transition:transform .25s var(--spring);}
+.tiles .g.ct:hover{filter:none;}
+.tiles .g.ct:hover .go{transform:translateY(-4px);}
+.tiles .g.ct .go:active,.tiles .g.ct.in .go{transform:translateY(4%) scale(.97);transition-duration:.12s;}
 .ct-lab{position:absolute;left:6%;right:6%;top:5%;display:flex;flex-direction:column;border-radius:3px;overflow:hidden;background:#111;
   box-shadow:0 0 0 1px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);}
 .ct-lab::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(155deg,rgba(255,255,255,.22),rgba(255,255,255,0) 40%,rgba(255,255,255,0) 70%,rgba(255,255,255,.06));}
@@ -1174,12 +1178,23 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var keys = (x.r.keys || []).concat(SAVE_KEYS[file] || [], SAVE_KEYS[x.g.id] || [], [file + '_state', x.g.id + '_state']);
     keys.forEach(function (k) { try { var v = LS.getItem(k); if (v != null) back.keys[k] = v; LS.removeItem(k); } catch (e) {} });
     try { var all = JSON.parse(get('gn_resume', '{}')) || {}; back.resume = all[x.g.id] || null; all[x.g.id] = { ts: Date.now(), x: 1 }; set('gn_resume', JSON.stringify(all)); } catch (e) {}
+    // a console cartridge: its place from when you left (on this device; Undo puts it back)
+    if (x.g.cart && window.ConsoleLib && ConsoleLib.tx) {
+      var sk = x.g.cart + ':auto';
+      ConsoleLib.tx('states', 'readonly', function (s) { return s.get(sk); }).then(function (st) {
+        if (!st) return; back.cst = st;
+        return ConsoleLib.tx('states', 'readwrite', function (s) { s.delete(sk); });
+      }).catch(function () {});
+    }
     return back;
   }
   function restoreSaved(list) {
     try {
       var all = JSON.parse(get('gn_resume', '{}')) || {};
-      list.forEach(function (b) { Object.keys(b.keys).forEach(function (k) { try { LS.setItem(k, b.keys[k]); } catch (e) {} }); if (b.resume) all[b.id] = b.resume; });
+      list.forEach(function (b) {
+        Object.keys(b.keys).forEach(function (k) { try { LS.setItem(k, b.keys[k]); } catch (e) {} }); if (b.resume) all[b.id] = b.resume;
+        if (b.cst && window.ConsoleLib) ConsoleLib.tx('states', 'readwrite', function (s) { s.put(b.cst); }).catch(function () {});
+      });
       set('gn_resume', JSON.stringify(all));
     } catch (e) {}
   }
@@ -1219,7 +1234,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   function shelfBox(x) {
     var g = x.g, cat = GAME_CATS.filter(function (c) { return c.id === g.cat; })[0], old = Date.now() - x.r.ts > 7 * 864e5;
-    var a = el('a', { class: 'sbox' + (old ? ' old' : ''), href: 'games/' + (x.r.file || g.play) + '.html', draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
+    var f = x.r.file || g.play;
+    var a = el('a', { class: 'sbox' + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
       el('span', { class: 'art' }, [g.cart ? el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), stLines(x.r.label || 'In progress'), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
       el('span', { class: 'nm', text: g.name })
     ]);

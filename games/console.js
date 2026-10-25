@@ -17,23 +17,24 @@
 (function () {
   'use strict';
   var SYS_ID = window.CONSOLE || 'nes';
-  // Controller buttons are RetroArch's: 0 B, 1 Y, 2 Select, 3 Start, 4-7 up/down/left/right, 8 A, 9 X, 10 L, 11 R
+  // Controller buttons are RetroArch's: 0 B, 1 Y, 2 Select, 3 Start, 4-7 up/down/left/right, 8 A, 9 X, 10 L, 11 R.
+  // keys: the keyboard key on each (EmulatorJS's own; the arrow keys are the D-pad)
   var SYSTEMS = {
     nes: {
       name: 'NES', core: 'nes', exts: ['nes', 'fds', 'unf', 'unif'], cw: 92, room: ['#2a2830', '#0c0b10'], wood: ['#7d5a3c', '#4b321e'], skin: ['#2c2b2f', '#18171a'],
-      keys: 'Arrow keys move · Z is A · X is B · Enter is Start · V is Select'
+      keys: { 8: 'Z', 0: 'X', 3: 'Enter', 2: 'V' }
     },
     snes: {
       name: 'Super Nintendo', core: 'snes', exts: ['sfc', 'smc', 'fig', 'swc', 'bs'], cw: 124, room: ['#2c2838', '#0d0b14'], wood: ['#80603f', '#4d3520'], skin: ['#d6d3db', '#b5b0bd'],
-      keys: 'Arrow keys move · Z is A · X is B · A is X · S is Y · Q and E are L and R · Enter is Start · V is Select'
+      keys: { 8: 'Z', 0: 'X', 9: 'A', 1: 'S', 10: 'Q', 11: 'E', 3: 'Enter', 2: 'V' }
     },
     genesis: {
       name: 'Sega Genesis', core: 'segaMD', exts: ['md', 'gen', 'smd', 'bin'], cw: 100, room: ['#26262c', '#0a0a0d'], wood: ['#6e5038', '#422c1b'], skin: ['#1d1d21', '#0c0c0e'],
-      keys: 'Arrow keys move · S is A · X is B · Z is C · Enter is Start'
+      keys: { 1: 'S', 0: 'X', 8: 'Z', 3: 'Enter' }
     },
     atari2600: {
       name: 'Atari 2600', core: 'atari2600', exts: ['a26', 'bin'], cw: 92, room: ['#2b2420', '#0d0a08'], wood: ['#7a5534', '#46301b'], skin: ['#1d1b1a', '#0b0a09'],
-      keys: 'Arrow keys move the joystick · X fires · Enter is Game Reset · V is Game Select'
+      keys: { 0: 'X', 3: 'Enter', 2: 'V' }
     }
   };
   var SYS = SYSTEMS[SYS_ID], L = ConsoleLib;
@@ -814,7 +815,14 @@
   function saveState(slot) {
     var E = emu(); if (!E || !started || !cur) return Promise.resolve(false);
     var data; try { data = E.gameManager.getState(); } catch (e) { return Promise.resolve(false); }
+    if (slot === 'auto') keepPlaying();
     return snap().then(function (img) { return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data }); }).then(function () { return true; });
+  }
+  // the cartridge in Keep playing on the home screen (your place, kept as you leave: the 'auto' save), opening straight
+  // into it; deleting it there drops that save too
+  function keepPlaying() {
+    if (!cur || cur.netGame || NET.mode === 'guest') return;
+    Kit.resume.set('Paused', { id: 'cart-' + String(cur.id).slice(0, 16), file: SYS_ID + '.html?play=' + cur.id });
   }
   function loadState(st) {
     var E = emu(); if (!E || !st) return;
@@ -852,7 +860,17 @@
     netQuit();
     hiLeave(function () { if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
   }
-  // leaving or switching away keeps your place
+  // leaving or switching away keeps your place. The bar's back button pauses the game and waits for its place to be
+  // kept before going home (the page hidden alone may close before the save is written)
+  var homeBound = false;
+  Kit.onBack = function () {
+    if (homeBound || !started || !cur || cur.netGame) return false;
+    homeBound = true; E_pause();
+    var gone = false, go = function () { if (!gone) { gone = true; Kit.home(); } };
+    hiLeave(function () { saveState('auto').then(go, go); });
+    setTimeout(go, 2500);   // (never stuck on a slow save)
+    return true;
+  };
   document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });   // (a joiner's game is the host's)
   // while you play: your place and the game's own save every few minutes, so another device can carry on even if this
   // one is closed without a goodbye
@@ -1277,6 +1295,33 @@
     var sh = { x: ['LB', 'RB', 'LT', 'RT', 'View', 'Menu'], ps: ['L1', 'R1', 'L2', 'R2', 'Share', 'Options'], n: ['L', 'R', 'ZL', 'ZR', 'Minus', 'Plus'], '': ['Left bumper', 'Right bumper', 'Left trigger', 'Right trigger', 'Select', 'Start'] }[f];
     return i < 4 ? face[i] : i < 10 ? sh[i - 4] : ['Left stick press', 'Right stick press', 'D-pad up', 'D-pad down', 'D-pad left', 'D-pad right', 'Home'][i - 10] || 'Button ' + i;
   }
+  // The controls table (How to play and Controls): each of the console's buttons, its key on a keyboard, and when a
+  // controller is connected (or one has been set up for this console) the button it's on now, remaps included
+  function ctlPad() {
+    var p = activePad(); if (p) return p;
+    var all = padMaps(), id = Object.keys(all).filter(function (k) { return all[k] && all[k][SYS_ID]; })[0];
+    return id ? { id: id, mapping: 'standard' } : null;
+  }
+  function ctlTable() {
+    var p = ctlPad(), m = p ? padMapOf(p) : null, T = PAD_TARGETS[SYS_ID];
+    var kc = function (t) { return '<kbd>' + Kit.esc(t) + '</kbd>'; };
+    var arrow = function (rot) { return '<svg viewBox="0 0 20 20" width="14" height="14" style="transform:rotate(' + rot + 'deg)"><path d="M10 4l6 9H4z" fill="currentColor"/></svg>'; };
+    var pad = function (code) { return (m[code] || []).map(function (c) { return Kit.esc(codeName(p, c)); }).join('<br>') || '<span class="none">Nothing</span>'; };
+    var dflt = padDefaults(), same = m && [4, 5, 6, 7].every(function (k) { return JSON.stringify(m[k] || []) === JSON.stringify(dflt[k]); });
+    var rows = '';
+    // the D-pad: one row while the directions are where they started, else one row each
+    var cross = '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="currentColor" opacity=".9"/></svg>';
+    if (!m || same) rows += '<tr><th><span class="pm-key k4 ctl-dpad">' + cross + '</span><span class="ctl-n">' + (SYS_ID === 'atari2600' ? 'Joystick' : 'D-pad') + '</span></th><td class="kb">' + kc('↑') + kc('↓') + kc('←') + kc('→') + '</td>' + (m ? '<td>D-pad<br>Left stick</td>' : '') + '</tr>';
+    T.forEach(function (t) {
+      var rot = { 4: 0, 7: 90, 5: 180, 6: 270 }[t[1]];
+      if (rot != null && (!m || same)) return;
+      var key = rot != null ? '<span class="pm-key k' + t[1] + '">' + arrow(rot) + '</span>' : '<span class="pm-key pm-' + SYS_ID + ' k' + t[1] + '">' + Kit.esc(t[0].replace('Game ', '')) + '</span>';
+      var kb = rot != null ? kc(['↑', '↓', '←', '→'][t[1] - 4]) : SYS.keys[t[1]] ? kc(SYS.keys[t[1]]) : '';
+      var chip = t[0].replace('Game ', '');   // (a button whose chip already says its name needs no name beside it)
+      rows += '<tr><th>' + key + (rot != null || chip !== t[0] ? '<span class="ctl-n">' + Kit.esc(t[0]) + '</span>' : '') + '</th><td class="kb">' + kb + '</td>' + (m ? '<td>' + pad(t[1]) + '</td>' : '') + '</tr>';
+    });
+    return '<table class="ctl-t"><thead><tr><th>' + Kit.esc(SYS.name) + '</th><th>Keyboard</th>' + (m ? '<th>' + Kit.esc(padName(p)) + '</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
   // The remap sheet: the console's buttons, each with what it's on now. Press anything on the controller and its row
   // lights up; tap a row, then press the controller button you want for it.
   function padSheet() {
@@ -1641,7 +1686,7 @@
     Kit.sheet({ title: 'Controls', html:
       '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both. A thumb on the D-pad keeps steering while it’s down, even if it drifts off the pad.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
-      '<p><b>Keyboard:</b> ' + SYS.keys + '.</p>' +
+      ctlTable() +
       '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' +
       '<p><b>Two players:</b> connect a second controller and press a button on it; it becomes player 2. <b>Controller buttons</b> shows who’s who and can swap them.</p>' +
       '<p><b>Online:</b> each of you plays with your own device’s controls (drawn, keyboard or a real controller) as your own player; the host is player 1.' + (TAPS[SYS_ID] ? ' Up to four can play ' + SYS.name + ' games made for four (' + (SYS_ID === 'snes' ? 'Super Multitap games like Super Bomberman 2 and NBA Jam' : 'Team Player games') + ').' : '') + '</p>' });
@@ -1669,7 +1714,7 @@
       { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },
       { icon: 'help', label: 'Controls', onClick: controls }
     ],
-    rules:
+    rules: function () { return '' +
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
       '<h3>Your games</h3><ul><li>Signed in with a PIN, everyone has the family’s games on the shelf. A game comes down the first time you play it on a device.</li>' +
       '<li>Tap the empty cartridge to add game files of your own (you can pick several at once).</li>' +
@@ -1677,14 +1722,15 @@
       '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Home tiles</b> on the shelf (or <b>Edit</b> on the home screen) chooses which games have one.</li>' +
       '<li><b>Download all</b> on the shelf puts every game there on this device, so they play offline. <b>Offline</b> in the home menu does every console at once.</li>' +
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
-      '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard (' + SYS.keys + '), or a real Bluetooth or USB controller.</li>' +
+      '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard, or a real Bluetooth or USB controller (<b>Controller buttons</b> in the menu remaps it):</li></ul>' + ctlTable() + '<ul>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
       '<li>Games that keep a score put your best on the High Scores page.</li>' +
-      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, your place is kept and you can carry on next time.</li></ul>' +
+      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, the game pauses and your place is kept: it waits in <b>Keep playing</b> on the home screen, and carries on from there.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table for the game you’re playing and the others join it on their own devices. You’re player 1; the next to join is player 2' + (TAPS[SYS_ID] ? ', then 3 and 4 (in games made for four players' + (SYS_ID === 'genesis' ? ' with the Team Player' : '') + ')' : '') + '.</li>' +
       '<li>Their device gets the game from the family’s games, or straight from yours, and starts from exactly where you are. Someone can join a game under way: it starts again for everyone from that moment.</li>' +
       '<li>Every device plays the same game frame by frame. If one has to wait for another, the picture says who it’s waiting for. Opening the menu pauses the game for everyone.</li>' +
-      '<li>Reset and Load state on player 1’s device happen on every device. If someone leaves, the rest carry on; if player 1 leaves, everyone plays on alone. Fast-forward is off while you play online.</li></ul>'
+      '<li>Reset and Load state on player 1’s device happen on every device. If someone leaves, the rest carry on; if player 1 leaves, everyone plays on alone. Fast-forward is off while you play online.</li></ul>';
+    }
   });
 
   // ═══ Start ════════════════════════════════════════════════════════════════

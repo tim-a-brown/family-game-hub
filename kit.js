@@ -21,7 +21,7 @@
 //   Kit.card(rank, suit, {back, cls})          playing-card element
 //   Kit.die(value)                             die element
 //   Kit.color(i)                               player colour for seat i
-//   Kit.resume.set(label, {keys}) / .clear()           "Continue" rail on home
+//   Kit.resume.set(label, {keys, id, file}) / .clear({id})  "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
 //   Kit.offline()                              save everything on this device for offline (a flight); Kit.offlineTag()
@@ -661,17 +661,19 @@
 
   // ── "Continue" rail data (read by the home screen) ────────────────────────
   var resume = {
+    // o.id / o.file: an entry for another tile than the page's own game (a console's cartridge: its home tile's id, and
+    // the page with the cartridge to open, 'nes.html?play=<id>')
     set: function (label, o) {
       if (!game) return;
-      var all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
-      all[game.id] = { ts: Date.now(), label: label || 'In progress', file: pageKey() };
-      if (o && o.keys) all[game.id].keys = o.keys;   // saved-game keys, so home can delete it
+      var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
+      all[id] = { ts: Date.now(), label: label || 'In progress', file: (o && o.file) || pageKey() };
+      if (o && o.keys) all[id].keys = o.keys;   // saved-game keys, so home can delete it
       lsSet('gn_resume', JSON.stringify(all));
     },
-    clear: function () {
+    clear: function (o) {
       if (!game) return;
-      var all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
-      if (all[game.id] && !all[game.id].x) { all[game.id] = { ts: Date.now(), x: 1 }; lsSet('gn_resume', JSON.stringify(all)); }   // (kept as gone, so your other devices drop it too)
+      var id = (o && o.id) || game.id, all = {}; try { all = JSON.parse(lsGet('gn_resume', '{}')) || {}; } catch (e) {}
+      if (all[id] && !all[id].x) { all[id] = { ts: Date.now(), x: 1 }; lsSet('gn_resume', JSON.stringify(all)); }   // (kept as gone, so your other devices drop it too)
     }
   };
 
@@ -932,7 +934,7 @@
   function rules() {
     if (!opts.rules) return;
     sfx('pop');
-    sheet({ title: 'How to play', html: '<div class="rules">' + opts.rules + '</div>', actions: [{ label: 'Got it', primary: true }] });
+    sheet({ title: 'How to play', html: '<div class="rules">' + (typeof opts.rules === 'function' ? opts.rules() : opts.rules) + '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
   // Theme picker: a swatch per theme, tap to switch at once
   // ── Offline: save everything on this device before a flight ─────────────────────────────────────────────
