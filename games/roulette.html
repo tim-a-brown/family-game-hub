@@ -54,10 +54,16 @@
 .board .empty{color:#6b655a;font-size:.85rem;font-weight:700;margin:auto 0;}
 .board .hot{font-size:.74rem;font-weight:800;color:#c8bfa8;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.bank{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.bank{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:10px;}
+.bank:has(> .k-cash){grid-template-columns:repeat(3,minmax(0,1fr)) auto;}
+.mrow{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+/* a small phone: the money boxes and Cash out give up a little padding and letter spacing so every amount shows whole */
+@media (max-width:389px){.bank div{padding:5px 4px;} .bank small{letter-spacing:.04em;} .bank b{font-size:1rem;} .bank .k-cash.tile{padding:4px 6px;letter-spacing:.04em;}}
+.mrow .msg{flex:1;min-width:0;margin:0;}
+.mrow .k-cash{align-self:stretch;}
 .bank div{background:rgba(255,255,255,.06);border-radius:12px;padding:5px 8px;text-align:center;min-width:0;}
 .bank small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
-.bank b{display:block;font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bank b{display:block;font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .bank .gold{color:var(--yellow);} .pos{color:var(--green)!important;} .neg{color:var(--red)!important;}
 
 .msg{min-height:24px;text-align:center;font-weight:800;color:var(--text-2);margin:-2px 0 8px;font-size:.92rem;line-height:1.3;}
@@ -149,7 +155,8 @@
 .cmp .bank div{padding:3px 4px;border-radius:9px;background:rgba(0,0,0,.25);}
 .cmp .bank small{font-size:.52rem;}
 .cmp .bank b{font-size:.92rem;}
-.cmp .msg{min-height:0;height:20px;line-height:20px;margin:0 0 4px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cmp .msg{min-height:0;margin:0 0 4px;font-size:.8rem;line-height:1.25;}
+.cmp .mrow .msg{margin:0;}
 .cmp .tbl{padding:5px;border-radius:18px;}
 .cmp .tbl .felt-in{padding:6px;border-radius:13px;}
 @media (max-height:760px){
@@ -273,7 +280,7 @@
       '<h3>Buttons</h3><ul><li><b>Undo</b> takes back your last chip (or your last move). <b>Clear</b> takes all your chips back.</li>' +
       '<li>After a spin, <b>Repeat</b> puts the same bets down again.</li>' +
       '<li>Tap the little wheel to see the last spin again.</li></ul>' +
-      '<h3>Your money</h3><p>The bankroll is shared with all the casino games. <b>Cash out</b> (in the menu) ends your session and saves how it went to Past sessions.</p>' +
+      '<h3>Your money</h3><p>The bankroll is shared with all the casino games. <b>Cash out</b>, beside your money, ends your session between spins and saves how it went to Past sessions.</p>' +
       '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>'
   });
 
@@ -467,7 +474,8 @@
     R.bankEl = el('div', { class: 'bank' }, [
       el('div', null, [el('small', { html: bankLabelHtml(S.player, true) }), R.bal]),
       el('div', null, [el('small', { text: 'On table' }), R.on]),
-      el('div', null, [el('small', { text: 'Session' }), R.net])
+      el('div', null, [el('small', { text: 'Session' }), R.net]),
+      R.cash = Kit.cashOut(function () { endSession(false); }, { tile: true })
     ]);
     app.appendChild(R.bankEl);
     R.msg = el('div', { class: 'msg' });
@@ -517,12 +525,15 @@
       R.info.innerHTML = '';
       R.info.appendChild(R.head); R.info.appendChild(st);
       [R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) st.appendChild(n); });
+      R.bankEl.appendChild(R.cash); if (R.mrow) R.mrow.remove();
       if (R.info.parentNode !== R.railIn) R.railIn.insertBefore(R.info, R.railIn.firstChild);
     } else {
       var tbl = R.lay && R.lay.parentElement.parentElement;
       [R.head, R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) app.insertBefore(n, tbl); });
       if (R.info) R.info.remove();
-      if (c) R.hcol.appendChild(R.bankEl);
+      // compact (the money beside the wheel): Cash out sits at the end of the message line instead, with room
+      if (c) { R.hcol.appendChild(R.bankEl); if (!R.mrow) R.mrow = el('div', { class: 'mrow' }); app.insertBefore(R.mrow, R.msg); R.mrow.appendChild(R.msg); R.mrow.appendChild(R.cash); }
+      else { R.bankEl.appendChild(R.cash); if (R.mrow) R.mrow.remove(); }
     }
     if (R.setH) R.setH();
   }
@@ -616,7 +627,8 @@
     var b = Casino.balance();
     R.rack.refresh();
     R.undo.disabled = busy || !S.undo.length;
-    R.spin.disabled = busy || !t;
+    R.spin.disabled = busy || !t; R.cash.disabled = busy;
+    [R.bal, R.on, R.net].forEach(function (b) { Kit.fitText(b); });
     R.spin.querySelector('span').textContent = t ? 'Spin · ' + money(t) : 'Spin';
     if (!t && S.last && total(S.last)) { R.rep.innerHTML = Kit.icon('sync') + '<span>Repeat</span>'; R.rep.disabled = busy; R.rep.dataset.m = 'rep'; }
     else { R.rep.innerHTML = Kit.icon('close') + '<span>Clear</span>'; R.rep.disabled = busy || !t; R.rep.dataset.m = 'clr'; }

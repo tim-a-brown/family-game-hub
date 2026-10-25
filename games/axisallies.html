@@ -331,6 +331,14 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 /* Seat captions in setup */
 .seat-pw{font-size:.74rem;font-weight:800;color:var(--text-3);margin:-4px 0 2px 52px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .seat-pw i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px;}
+button.seat-pw{border:0;background:var(--w06);font:inherit;font-size:.74rem;font-weight:800;color:var(--text-2);padding:4px 10px;border-radius:999px;cursor:pointer;width:max-content;max-width:calc(100% - 52px);}
+button.seat-pw .ico{width:13px;height:13px;color:var(--text-3);}
+button.seat-pw:active{transform:scale(.96);}
+.aa-pick button{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.aa-pick .pws{display:flex;flex-wrap:wrap;gap:4px 10px;font-weight:800;}
+.aa-pick .pws i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:5px;}
+.aa-pick small{color:var(--text-3);font-weight:800;white-space:nowrap;}
+.aa-pick button.on{box-shadow:inset 0 0 0 2px var(--accent);}
 
 /* Rules */
 .rules table.ut{width:100%;border-collapse:collapse;font-size:.82rem;margin:6px 0;}
@@ -3220,6 +3228,21 @@ var SPLITS = {
   full: { 2: [['de', 'jp'], ['su', 'uk', 'us']], 3: [['de', 'jp'], ['su', 'us'], ['uk']], 4: [['de'], ['su', 'us'], ['jp'], ['uk']], 5: [['de'], ['su'], ['jp'], ['uk'], ['us']] },
   skirm: { 2: [['de'], ['su', 'uk']], 3: [['de'], ['su'], ['uk']] }
 };
+// Which group of powers each seat commands on the setup screen: a shuffle of SPLITS[map][n], kept for that table
+// size (axisallies_seats {map:n: [group index per seat]}), changed by tapping the powers under a seat
+function seatAsg(map, n) {
+  var k = map === 'skirm' ? Math.min(3, n) : Math.min(5, n), all = {}, a = null;
+  try { all = JSON.parse(localStorage.getItem('axisallies_seats') || '{}') || {}; } catch (e) {}
+  a = all[map + ':' + k];
+  if (!Array.isArray(a) || a.length !== k || a.slice().sort().join() !== Array.apply(null, Array(k)).map(function (x, i) { return i; }).join()) a = Array.apply(null, Array(k)).map(function (x, i) { return i; });
+  return a;
+}
+function asgSave(map, n, a) {
+  var k = map === 'skirm' ? Math.min(3, n) : Math.min(5, n), all = {};
+  try { all = JSON.parse(localStorage.getItem('axisallies_seats') || '{}') || {}; } catch (e) {}
+  all[map + ':' + k] = a; try { localStorage.setItem('axisallies_seats', JSON.stringify(all)); } catch (e) {}
+}
+function seatGroups(map, n) { var g = splitFor(map, n); return seatAsg(map, n).map(function (j) { return g[j].slice(); }); }
 function splitFor(map, n, mode, side) {
   var tbl = SPLITS[map];
   n = map === 'skirm' ? Math.min(3, n) : n;
@@ -3485,7 +3508,7 @@ var RULES =
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
   '<h3>Left out</h3><p>Optional rules aren’t included: national objectives, research and technology, and the starting bid. Units can’t ride on an ally’s transport. Fighters fly on their own (they don’t ride a moving carrier). AA hits on planes are taken from the cheapest planes first.</p>' +
   '<h3>Music</h3><p>Marches played by US military bands, public domain recordings from the Internet Archive: ' + MUSIC_TRACKS.map(function (t) { return '<i>' + t.t + '</i> (' + t.by + ', ' + t.band + ')'; }).join(', ') + '. Switch them off with <b>Marching bands</b> in the menu, or play your own Spotify from <b>Music</b>.</p>' +
-  '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general.</p>' +
+  '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general. Tap the countries under a seat to give that seat different ones (with computer teammates, play whichever country you like).</p>' +
   '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and 1 to 4 others join on their own devices. Powers are shared out as above, in the order people sat down. The game, victory and round limit are the ones on your setup screen; its number of players is how many generals there are, and seats nobody takes are computer generals.</li>' +
   '<li>Take your turn whenever you like; the home screen shows when it’s yours. When someone attacks you, it’s your turn to choose your losses (and whether your submarines dive).</li>' +
   '<li>Within a step you can undo until you finish it. Once a step is done, or the dice are rolled, it can’t be taken back online.</li>' +
@@ -3573,7 +3596,6 @@ function showSetup() {
       { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', choices: [
         ['full', '1942 Second Edition', 'The whole world: 5 powers, the real starting armies. A long game (a few hours).'],
         ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.']] },
-      { id: 'side', label: 'You play', value: 'X', help: 'In a game against the computer, which side is yours.', choices: [['X', 'Axis', 'Germany (and Japan in the full game).'], ['A', 'Allies', 'The Soviet Union, Britain and the United States.']] },
       { id: 'vc', label: 'Victory', value: 'std', help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
         ['std', 'Standard', 'Axis hold 9 of the 13 victory cities, or the Allies hold 10.'],
         ['quick', 'Quick', 'Axis need 8, Allies need 9. A shorter game.'],
@@ -3591,7 +3613,7 @@ function showSetup() {
       if (setupObs) { setupObs.disconnect(); setupObs = null; }
       var o = cfg.options, map = o.map || 'full';
       var n = map === 'skirm' ? Math.min(3, cfg.players.length) : cfg.players.length;
-      var groups = splitFor(map, n, cfg.mode, o.side);
+      var groups = seatGroups(map, n);
       var seats = groups.map(function (g, i) {
         var p = cfg.players[i];
         return { name: p.name, cpu: !!p.cpu, powers: g };
@@ -3599,17 +3621,44 @@ function showSetup() {
       newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'de', guide: o.guide === 'on', seats: seats });
     }
   });
+  // Under each seat, the powers it commands. Tap them to pick another: the seat that had those powers takes this
+  // seat's (so with computer teammates you can still be any country)
   function captions() {
     if (!st) return;
     var s = st.state, map = s.options.map || 'full';
     var seatsEl = app.querySelectorAll('.seat');
     var n = seatsEl.length; if (!n) return;
-    var groups = splitFor(map, Math.min(n, map === 'skirm' ? 3 : 5), s.mode, s.options.side);
+    var groups = seatGroups(map, n);
     seatsEl.forEach(function (row, i) {
-      var nx = row.nextSibling, want = groups[i] ? groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') : '<span>Sits out in Skirmish (3 powers)</span>';
-      if (nx && nx.classList && nx.classList.contains('seat-pw')) { if (nx.innerHTML !== want) nx.innerHTML = want; }
-      else row.parentNode.insertBefore(el('div', { class: 'seat-pw', html: want }), row.nextSibling);
+      var nx = row.nextSibling, sig = groups[i] ? groups[i].join('+') : '-';
+      if (nx && nx.classList && nx.classList.contains('seat-pw')) { if (nx.dataset.sig === sig) return; nx.remove(); }
+      var cap = groups[i]
+        ? el('button', { type: 'button', class: 'seat-pw tap', 'aria-label': 'Change the country this seat plays', html: groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') + Kit.icon('swap') })
+        : el('div', { class: 'seat-pw', html: '<span>Sits out in Skirmish (3 powers)</span>' });
+      cap.dataset.sig = sig;
+      if (groups[i]) cap.addEventListener('click', function () { pickPowers(i); });
+      row.parentNode.insertBefore(cap, row.nextSibling);
     });
+  }
+  function seatName(i) {
+    var row = app.querySelectorAll('.seat')[i], inp = row && row.querySelector('input');
+    return (inp && inp.value.trim()) || (row && !inp && row.textContent.trim()) || (i === 0 ? 'You' : 'Player ' + (i + 1));
+  }
+  function pickPowers(i) {
+    var map = st.state.options.map || 'full', n = app.querySelectorAll('.seat').length, k = Math.min(n, map === 'skirm' ? 3 : 5);
+    var all = SPLITS[map][k], a = seatAsg(map, n), box = el('div', { class: 'k-list aa-pick' }), sh;
+    all.forEach(function (g, j) {
+      var who = a.indexOf(j), mine = who === i;
+      var b = el('button', { type: 'button', class: mine ? 'on' : '' }, [
+        el('span', { class: 'pws', html: g.map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') }),
+        el('small', { text: mine ? 'This seat' : seatName(who) })]);
+      b.onclick = function () {
+        if (!mine) { a[who] = a[i]; a[i] = j; asgSave(map, n, a); Kit.sfx('tap'); Kit.haptic('light'); }
+        sh.close(); captions();
+      };
+      box.appendChild(b);
+    });
+    sh = Kit.sheet({ title: seatName(i) + ' plays', node: box });
   }
   if (setupObs) setupObs.disconnect();
   setupObs = new MutationObserver(function () { setupObs.disconnect(); captions(); setupObs.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] }); });

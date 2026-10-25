@@ -71,9 +71,12 @@
 
 /* ── Bank strip ────────────────────────────────────────────────────────── */
 .bank{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.bank.has-cash{grid-template-columns:repeat(3,minmax(0,1fr)) auto;}
+/* a small phone: the money boxes and Cash out give up a little padding and letter spacing so every amount shows whole */
+@media (max-width:389px){.bank div{padding:5px 4px;} .bank small{letter-spacing:.04em;} .bank b{font-size:1rem;} .bank .k-cash.tile{padding:4px 6px;letter-spacing:.04em;}}
 .bank div{background:var(--w06);border-radius:12px;padding:5px 8px;text-align:center;min-width:0;}
 .bank small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
-.bank b{display:block;font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bank b{display:block;font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .gold{color:var(--yellow);} .pos{color:var(--green)!important;} .neg{color:var(--red)!important;}
 .stand{display:flex;gap:6px;overflow-x:auto;margin:-2px 0 10px;padding-bottom:2px;scrollbar-width:none;}
 .stand::-webkit-scrollbar{display:none;}
@@ -1491,7 +1494,11 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       var paid = S.phase === 'result' && S.race && S.race.per ? S.race.per[0].ret : null;
       R.bank.appendChild(el('div', null, [el('small', { text: paid != null ? 'Paid out' : 'On tickets' }), el('b', { text: money(paid != null ? paid : staked()) })]));
       R.bank.appendChild(el('div', null, [el('small', { text: 'Session' }), el('b', { class: p.net > 0 ? 'pos' : p.net < 0 ? 'neg' : '', text: S.log.length ? signed(p.net) : '$0' })]));
+      var co = Kit.cashOut(function () { endSession(); }, { tile: true }); co.disabled = S.phase === 'race'; R.bank.appendChild(co);   // (walk away between races)
+      R.bank.classList.add('has-cash');
+      requestAnimationFrame(function () { R.bank.querySelectorAll('b').forEach(function (b) { Kit.fitText(b); }); });
     } else {
+      R.bank.classList.remove('has-cash');
       var cur = S.players[S.turn] || S.players[0];
       R.bal = el('b', { class: 'gold', text: money(cur.stack) });
       R.bank.appendChild(el('div', null, [el('small', { text: S.phase === 'bet' ? cur.name + ' has' : 'Race' }), S.phase === 'bet' ? R.bal : el('b', { text: S.raceNo + ' of ' + S.opt.races })]));

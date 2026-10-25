@@ -179,7 +179,7 @@
 .st .grow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .st .avatar{width:28px;height:28px;font-size:.8rem;}
 .st .bank{color:var(--text-2);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.st .bank.grow{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.st .bank.grow{min-width:0;overflow:hidden;}
 .st .lkb{display:inline-grid;place-items:center;width:16px;height:16px;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-3px;}
 .st .lkb .ico{width:11px;height:11px;stroke-width:3;}
 .st .bank b{color:var(--text);}
@@ -1454,8 +1454,9 @@
           btn(Kit.icon('play') + '<span>Deal</span>', 'btn-primary wide', deal)
         ], 3);
       }
-      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'bank grow', html: (humans().length > 1 && srcOf(i) !== 'link' ? 'Drag chips to anyone\'s circle · ' : '') + moneyLabel(i) + ' <b>' + money(left) + '</b>' }),
-        el('button', { type: 'button', class: 'linkb', html: Kit.icon('coins') + '<span>Cash out</span>', onclick: endSession })]));
+      var bk = el('span', { class: 'bank grow', html: (humans().length > 1 && srcOf(i) !== 'link' ? 'Drag chips to anyone\'s circle · ' : '') + moneyLabel(i) + ' <b>' + money(left) + '</b>' });
+      c.appendChild(el('div', { class: 'st' }, [bk, Kit.cashOut(endSession)]));
+      requestAnimationFrame(function () { Kit.fitText(bk, 0.7); });
     } else if (ph === 'ins' && S.insQ >= 0) {
       var ih = S.hands[S.insQ], bj = isBJ(ih), cost = insCost(ih);
       status([who(ih.seat), el('span', { text: (humans().length > 1 ? S.seats[ih.seat].name + ': d' : 'D') + 'ealer shows an Ace' })]);
@@ -1490,7 +1491,7 @@
       var lastBets = humans().map(function (j) { return Math.min(S.seats[j].last, bank(j), TABLE_MAX); }).reduce(function (a, b) { return a + b; }, 0);
       acts([btn('New bet', 'btn-soft', function () { nextRound(false); }),
         lastBets > 0 ? btn('Rebet ' + money(lastBets) + ' & deal', 'btn-primary wide', function () { nextRound(true); }) : btn('Next hand', 'btn-primary wide', function () { nextRound(false); })], 3);
-      c.appendChild(el('button', { type: 'button', class: 'linkb', html: Kit.icon('coins') + '<span>Cash out and end the session</span>', onclick: endSession }));
+      c.appendChild(el('div', { class: 'st' }, [el('span', { class: 'grow' }), Kit.cashOut(endSession)]));   // (the same place as while betting)
     } else {
       var txt = ph === 'dealer' ? 'Dealer plays…' : ph === 'peek' ? 'Dealer checks for blackjack…' : ph === 'deal' ? 'Dealing…' : h && S.seats[h.seat].cpu ? S.seats[h.seat].name + ' is thinking…' : '';
       c.appendChild(el('div', { class: 'wait', text: txt }));

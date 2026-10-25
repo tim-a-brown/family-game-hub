@@ -16,8 +16,12 @@
 <script src="../coach.js"></script>
 <style>
 .stage{max-width:520px;padding-top:0;padding-bottom:0;}
-.bankrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 8px;font-weight:800;font-size:.92rem;color:var(--text-2);}
-.bankrow b{color:var(--text);font-variant-numeric:tabular-nums;}
+.bankrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:6px;margin:0 0 8px;}
+.bankrow div{background:var(--w06);border-radius:12px;padding:5px 8px;text-align:center;min-width:0;}
+.bankrow small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.bankrow b{display:block;font-size:1.08rem;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.bankrow .gold{color:var(--yellow);}
+
 .bankrow .up{color:var(--green);} .bankrow .down{color:var(--red);}
 
 /* ── Kidney-style table: wooden rail, straight dealer side, curved player side */
@@ -214,7 +218,7 @@
       '<li>Limits: Player and Banker up to $1,000; Tie and pairs up to $200.</li></ul>' +
       '<h3>The scoreboard</h3><p>The <b>Big Road</b> tracks the shoe: red circles are Banker wins, blue are Player, a green line marks a tie, and small dots mark pairs. A new column starts each time the winner changes. Fun to watch, but past hands never change the odds of the next one.</p>' +
       '<h3>Best bets</h3><p>House edge: Banker 1.06%, Player 1.24%, Tie 14.4%, pairs 10.4%. Banker is the best bet on the table.</p>' +
-      '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b> ends the session and saves it to Past sessions. Your bankroll is shared by every casino game.</p>' +
+      '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b>, beside your money, ends the session between hands and saves it to Past sessions. Your bankroll is shared by every casino game.</p>' +
       '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>'
   });
   function openHistory() { Kit.history(HKEY, { title: 'Baccarat: past sessions' }); }
@@ -423,7 +427,10 @@
     if (!S || !dom.bank) return;
     var net = S.st.returned - S.st.wagered - (busy && S.hand ? S.hand.back - S.hand.wager : 0);
     var bal = busy && S.hand ? S.hand.bankBefore : Casino.balance();
-    dom.bank.innerHTML = '<span>' + (Casino.mode() === 'mine' ? Kit.esc(S.name) : bankLabelHtml(S.name)) + ' · <b>' + money(bal) + '</b></span><span>Session <b class="' + (net > 0.004 ? 'up' : net < -0.004 ? 'down' : '') + '">' + signed(net) + '</b></span>';
+    // the money, the session so far, and Cash out (between hands): one box each
+    dom.bank.innerHTML = '<div><small>' + bankLabelHtml(S.name, true) + '</small><b class="gold">' + money(bal) + '</b></div><div><small>Session</small><b class="' + (net > 0.004 ? 'up' : net < -0.004 ? 'down' : '') + '">' + signed(net) + '</b></div>';
+    if (!dom.cash) dom.cash = Kit.cashOut(function () { cashOut(); }, { tile: true });
+    dom.cash.disabled = busy; dom.bank.appendChild(dom.cash);
     var showBets = busy && S.hand ? S.hand.bets : S.bets;
     ORDER.forEach(function (k) { paintStack(k, showBets[k] || 0); });
     dom.felt.classList.toggle('betting', !busy);

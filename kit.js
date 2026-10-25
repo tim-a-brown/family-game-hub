@@ -23,6 +23,8 @@
 //   Kit.color(i)                               player colour for seat i
 //   Kit.resume.set(label, {keys, id, file}) / .clear({id})  "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
+//   Kit.cashOut(onClick, {label, tile})        the casino games' Cash out button (walk away with your money)
+//   Kit.fitText(el, min)                       ease a one-line number or label down until it fits (no "…")
 //   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
 //   Kit.offline()                              save everything on this device for offline (a flight); Kit.offlineTag()
 //   Kit.musicMini(slot, close)                 the Spotify player for the top of a menu (once something plays)
@@ -657,6 +659,25 @@
     var lum = [0, 2, 4].map(function (i) { var v = parseInt(h.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
     var L = 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2];
     return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0583 ? '#ffffff' : '#1a1033';
+  }
+
+  // ── Cash out: the one button every casino game where you can walk away shows, in the same look, beside the money ──
+  // Kit.cashOut(onClick, {label, tile}) -> a button; .disabled while the game is mid-round (it stays in place, greyed).
+  // tile: icon over a small caps label, to sit in a row of money boxes
+  function cashOutBtn(onClick, o) {
+    var b = el('button', { type: 'button', class: 'k-cash' + (o && o.tile ? ' tile' : ''), html: icon('coins') + '<span>' + esc((o && o.label) || 'Cash out') + '</span>' });
+    b.addEventListener('click', function () { if (b.disabled) return; sfx('tap'); haptic('light'); onClick(); });
+    return b;
+  }
+
+  // Kit.fitText(el, min): a one-line number or label eases its font down until it fits its box (never "…"); min is
+  // the smallest share of its own size it may go to (default .62)
+  function fitText(e, min) {
+    if (!e) return;
+    e.style.fontSize = '';
+    var w = e.clientWidth, need = e.scrollWidth;
+    if (!w || need <= w + 0.5) return;
+    e.style.fontSize = (parseFloat(getComputedStyle(e).fontSize) * Math.max(min || 0.62, w / need * 0.97)).toFixed(1) + 'px';
   }
 
   // ── "Continue" rail data (read by the home screen) ────────────────────────
@@ -4015,7 +4036,7 @@
 
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
-    init: init, keepAwake: keepAwake, setup: setup, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },

@@ -214,7 +214,8 @@
 .vp-leds b{display:block;font-family:var(--mono);font-size:1.02rem;color:#ff4b3a;text-shadow:0 0 8px rgba(255,75,58,.75);text-align:right;white-space:nowrap;overflow:hidden;}
 .vp-holds{display:flex;justify-content:center;gap:6px;margin:8px 0 0;}
 .vp-holds .vbtn{width:min(66px,calc((100vw - 96px) / 5));min-height:40px;font-size:.66rem;padding:0;}
-.vp-btns{display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:8px;max-width:440px;margin:0 auto;}
+.vp-btns{display:grid;grid-template-columns:.9fr 1fr 1fr 1fr 1.35fr;gap:7px;max-width:470px;margin:0 auto;}
+.vbtn.vcash{background:linear-gradient(180deg,#e9e2c8,#bfb38a);box-shadow:0 4px 0 #6d6248,inset 0 1px 0 rgba(255,255,255,.7);color:#4a4230;}
 .vbtn{min-height:54px;padding:0 4px;border:0;border-radius:10px;font-weight:900;font-size:.74rem;line-height:1.15;letter-spacing:.06em;text-transform:uppercase;color:#3a2600;
   background:linear-gradient(180deg,#fff4b0 0%,#ffd43d 45%,#e8a900 100%);box-shadow:0 4px 0 #8a5b00,inset 0 1px 0 rgba(255,255,255,.85),0 0 14px rgba(255,210,61,.22);transition:transform .08s, box-shadow .08s, filter .15s;}
 .vbtn:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #8a5b00,inset 0 1px 0 rgba(255,255,255,.85);}
@@ -546,6 +547,9 @@
 .pev .lv i.last{animation:lvpulse 1.2s ease-in-out infinite;}
 @keyframes lvpulse{50%{background:#ff8a3d;}}
 .ptiles{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.ptiles .pcash{grid-column:1 / -1;min-height:34px;margin:2px 0;}
+.ptiles .pcash.on{box-shadow:inset 0 0 0 1.5px var(--yellow);color:var(--yellow);}
+.pside .ptiles .pcash{margin:4px 10px 6px;}
 .ptile{padding:4px 9px 5px;border-radius:11px;background:var(--w05);min-width:0;}
 .ptile{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:5px;}
 .ptile small{display:flex;flex-wrap:wrap;column-gap:.9em;max-width:100%;font-size:.58rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
@@ -1239,7 +1243,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     '<h3>Online tables</h3><ul>' +
     '<li>2 to 10 people, each on their own device, signed in with their PIN. Computer players can fill the empty seats.</li>' +
     '<li>A tournament: everyone starts with 1,500 chips and the last player with chips wins the table. Take your turn whenever you like; the home screen shows when it\'s your move.</li>' +
-    '<li>Or a <b>cash game</b>: blinds $1/$2, and everyone buys in for $200 from their own bank. Run out and you choose: rebuy for $200 (from your bank) or leave. Leave whenever you like and your chips go back to your bank.</li>' +
+    '<li>Or a <b>cash game</b>: blinds $1/$2, and everyone buys in for $200 from their own bank. Run out and you choose: rebuy for $200 (from your bank) or leave. <b>Cash out</b>, beside your money, takes your chips back to your bank: right away between hands, or as soon as the hand you're in is over.</li>' +
     '<li>Play as many online tables as you like. Tournament chips aren\'t money: your bank isn\'t touched.</li></ul>' +
     '<h3>Games in progress</h3><ul>' +
     '<li>You can keep one game of each kind going (a Hold\'em cash game, an Omaha tournament, video poker, an event on each circuit road...) and switch between them: they wait for you on the setup screen. End one from the menu.</li></ul>' +
@@ -1946,6 +1950,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     }
     app.appendChild(cab);
     var btns = el('div', { class: 'vp-btns' }), betting = S.phase === 'bet';
+    // the machine's own Cash out, at the left of its buttons like the real thing (between hands)
+    btns.appendChild(el('button', { type: 'button', class: 'vbtn vcash', html: 'Cash<small>out</small>', disabled: !betting || !(S.hands || S.lr), onclick: function () { Kit.sfx('tap'); cashOutMenu(); } }));
     btns.appendChild(el('button', { type: 'button', class: 'vbtn', html: 'Coin<small>' + usd(S.denom) + '</small>', disabled: !betting, onclick: function () {
       var d = [1, 5, 25]; S.denom = d[(d.indexOf(S.denom) + 1) % 3]; Kit.sfx('chip'); save(); renderVP();
     } }));
@@ -2590,6 +2596,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   function roundTo(v) { var u = step0(); return Math.round(v / u) * u; }
 
   function startHand() {
+    if (!QUIET && S.leaving && S.kind === 'table' && !S.tourn && !NET) { clearTimeout(leaveT); leaveT = 0; S.leaving = 0; cashOut(false); return; }   // (you asked to stand up after the last hand)
     if (!QUIET) stop();
     var n = N();
     if (!QUIET && S.players[0].wantRe && !S.players[0].cpu) { save(); renderTable(); Kit.haptic('error'); return; }   // (your rebuy choice first)
@@ -3496,7 +3503,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'meh', lose: net < 0,
       title: net > 0 ? 'You won ' + usd(net) + '!' : net === 0 ? 'You broke even' : 'You lost ' + usd(-net),
-      sub: st.st.rows.length + ' hands · ' + bankLc() + ' ' + usd(Casino.balance()),
+      sub: st.st.rows.length + (st.st.rows.length === 1 ? ' hand · ' : ' hands · ') + bankLc() + ' ' + usd(Casino.balance()),
       rank: st.players.map(function (p, i) { return { name: i === 0 ? p.name : p.name, score: signed(p.stack - p.buyin), v: p.stack - p.buyin, color: Kit.color(i) }; }).sort(function (a, b) { return b.v - a.v; }),
       againLabel: 'Sit down again',
       again: function () { replay(st); },
@@ -5342,8 +5349,25 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       t.appendChild(tile(Casino.mode() === 'mine' ? 'Bank' : 'Bankroll', usd(Casino.balance())));
       t.appendChild(tile('On table', usd(me.stack)));
       t.appendChild(tile('Hands won', String(st.won[0]), '', 'of ' + st.rows.length));
+      // walk away with your chips: now when you're not in a hand, else as soon as this one's over
+      if (!NET) {
+        var co = Kit.cashOut(tableCashOut, { label: S.leaving ? 'Leaving after this hand' : 'Cash out' });
+        co.classList.add('pcash'); if (S.leaving) co.classList.add('on');
+        co.addEventListener('click', function (e) { e.stopPropagation(); });
+        t.appendChild(co); t.classList.add('has-cash');
+      }
     }
     return t;
+  }
+  // Cash out from a cash game: between hands (or folded) at once; still in a hand, you stand up when it ends
+  // (tap again to stay)
+  var leaveT = 0;
+  function tableCashOut() {
+    var H = S && S.hand, live = H && H.phase !== 'done' && H.inHand[0] && !H.folded[0];
+    if (!live) { if (S.leaving) S.leaving = 0; cashOutMenu(); return; }
+    S.leaving = S.leaving ? 0 : 1;
+    Kit.toast(S.leaving ? 'You’ll cash out when this hand is over' : 'Staying at the table');
+    save(); renderTable();
   }
   var YOUBM = false;   // the best-move tip went into your hand's section (so not into the deck)
   function railYou(final) {
@@ -5930,6 +5954,9 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     if (H.phase === 'done') {
       var C = S.circ, over = S.tourn && (me.out || (C ? C.else === 0 && alive().length <= 1 : alive().length <= 1));
       if (over) { box.appendChild(el('div', { class: 'pwait', text: me.out ? 'You\'re out of the tournament' : 'Tournament over' })); return box; }
+      if (!S.tourn && S.leaving && !leaveT) {   // (you asked to leave during the hand: once its result has had a moment, you cash out)
+        leaveT = setTimeout(function () { leaveT = 0; if (S && S.leaving && S.kind === 'table' && !S.tourn) { S.leaving = 0; cashOut(false); } }, 2600);
+      }
       if (!S.tourn) bar.appendChild(el('button', { type: 'button', class: 'btn btn-soft pleave', text: 'Leave', onclick: function () { cashOutMenu(); } }));
       var ms = (H.inHand[0] && !H.folded[0] && H.results && H.results.some(function (r) { return r.v != null; }) ? 11200 : 6800) * Math.max(0.75, paceMul());
       bar.appendChild(el('button', { type: 'button', class: 'btn btn-primary pnext', html: Kit.icon('cards') + '<span>Next hand</span><i class="ring" style="animation-duration:' + ms + 'ms"></i>', onclick: function () { Kit.sfx('tap'); startHand(); } }));
