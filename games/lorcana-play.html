@@ -1789,6 +1789,10 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .mull .mtog{border:0;border-radius:999px;padding:5px 10px;font:inherit;font-size:.74rem;font-weight:900;background:var(--w12);color:var(--text);white-space:nowrap;}
 .mull .mtog.on{background:#ff5c6c;color:#fff;}
 .mull .slot.out::after{display:none;}
+.mull-wait h2{font-size:1.3rem;max-width:420px;}
+.mull .mw-note{position:static;max-width:420px;font-weight:600;color:var(--text-3);font-size:.8rem;}
+.mull-wait .spin{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.14);border-top-color:#ffc84a;animation:mullspin 1s linear infinite;}
+@keyframes mullspin{to{transform:rotate(360deg);}}
 
 /* Loading / offline */
 .lp-load{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:60vh;padding:24px;text-align:center;}
@@ -8866,7 +8870,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var pi = mullPi(), p = S.P[pi];
     // online, on the device that isn't running the game: my hand while I'm choosing, otherwise waiting for the other player
     if (S.mode === 'online' && !NET.owner && !ui.netMull) {
-      host.appendChild(el('div', { class: 'mull', style: { background: 'rgba(5,8,28,.45)' } }, [el('p', { text: S.mull[NET.seat] ? 'Waiting for ' + S.P[opp(NET.seat)].name + '…' : 'Dealing…' })]));
+      // (the other device runs the game: it deals, and takes in my opening hand, when it has Lorcana open)
+      var on = S.P[opp(NET.seat)].name, d = NET.doc || {}, sent = !!(d.pr && d.pr.k === 'mull' && d.pr.seat === NET.seat && d.an && d.an.id === d.pr.id);
+      var head = S.mull[NET.seat] ? 'Waiting for ' + on + ' to choose a hand' : sent ? 'Your opening hand is in' : 'Waiting for ' + on + '’s device to deal';
+      var sub = S.mull[NET.seat] ? 'Play starts once ' + on + ' keeps a hand.' : sent ? on + '’s device deals your new cards as soon as it opens Lorcana.' : on + '’s device deals the opening hands as soon as it opens Lorcana.';
+      host.appendChild(el('div', { class: 'mull mull-wait', style: { background: 'rgba(5,8,28,.55)' } }, [
+        el('span', { class: 'spin', 'aria-hidden': 'true' }), el('h2', { text: head }), el('p', { text: sub }),
+        el('p', { class: 'mw-note', text: 'No need to wait here. The game waits for you in Your games.' }),
+        el('button', { type: 'button', class: 'btn btn-soft', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } })]));
       return;
     }
     if (p.cpu || !handShown(pi)) {
