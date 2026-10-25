@@ -801,7 +801,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // ── Game rows ─────────────────────────────────────────────────────────────
   // gn_resume {game id: {ts, label, file, keys?}}; a game taken off the list stays as {ts, x: 1} so other devices drop
   // it too (sync.js merges the list game by game)
-  function resumeRead() { var m = {}; try { m = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {} Object.keys(m).forEach(function (k) { if (!m[k] || m[k].x) delete m[k]; }); return m; }
+  // (the Stock Market account and the Sportsbook aren't games in progress: never in Keep playing)
+  var NOT_RESUME = { stocks: 1, sportsbook: 1 };
+  function resumeRead() { var m = {}; try { m = JSON.parse(get('gn_resume', '{}')) || {}; } catch (e) {} Object.keys(m).forEach(function (k) { if (!m[k] || m[k].x || NOT_RESUME[k]) delete m[k]; }); return m; }
   var resumeMap = resumeRead();
   function players(g) { return g.max === 0 ? g.min + '+' : g.min === g.max ? String(g.min) : g.min + '–' + g.max; }
   function badge(g) {

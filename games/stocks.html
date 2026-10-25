@@ -1452,8 +1452,7 @@ body{overflow-x:hidden;}
       { icon: 'chart', label: 'Taxes', when: taxesOn, onClick: taxSheet },
       { icon: 'book', label: 'Lessons', onClick: function () { closePane(); tab = 'learn'; paint(); } },
       { icon: 'history', label: 'Bankroll history', onClick: function () { Casino.showHistory(); } },
-      { icon: 'undo', label: 'Reset bankroll', onClick: function () { Kit.confirm('Reset your casino bankroll to $1,000? Your investing account stays as it is.', { ok: 'Reset', danger: true }).then(function (y) { if (y) { Casino.reset(); Kit.toast('Bankroll reset to $1,000'); } }); } },
-      { icon: 'trash', label: 'Start the account over', onClick: function () { Kit.confirm('Close this investing account and start over? Everything in it is lost (cash out first to keep it).', { ok: 'Start over', danger: true }).then(function (y) { if (y) { A = fresh(); save(); paint(); } }); } }
+      { icon: 'undo', label: 'Reset bankroll', onClick: function () { Kit.confirm('Reset your casino bankroll to $1,000? Your investing account stays as it is.', { ok: 'Reset', danger: true }).then(function (y) { if (y) { Casino.reset(); Kit.toast('Bankroll reset to $1,000'); } }); } }
     ],
     rules:
       '<p class="goal">Invest your casino bankroll in the real stock market. Prices are real and update twice a day, so check in once or twice a day.</p>' +
@@ -1476,7 +1475,7 @@ body{overflow-x:hidden;}
     if (ev.length) report = ev;
     if (Q) { A.last = Date.now(); A.lastVal = totals().all; A.lastPx = {}; holdings().forEach(function (h) { A.lastPx[h.sym] = price(h.sym); }); recordValue(); }
     save(); if (dom.main) paint();
-    var t = totals(); if (t.all > .01) Kit.resume.set(money(t.all) + ' invested'); else Kit.resume.clear();
+    Kit.resume.clear();   // (an investing account isn't a game in progress: it isn't in Keep playing, and doesn't start over)
   }
   // First load: how deep to go (an account already in use starts with everything, so nothing it holds goes missing)
   if (!DEPTH) Kit.depth({ host: app, key: 'mk_depth', levels: DEPTHS, value: A.dep || A.lots.length || A.tx.length ? 'pro' : 'basic', start: 'Open the market', onPick: setDepth });
