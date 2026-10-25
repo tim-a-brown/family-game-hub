@@ -57,6 +57,16 @@ body{overflow-x:hidden;}
 .tr.live{grid-template-columns:minmax(0,1fr) auto;}
 .gm.mlo .gh,.gm.mlo .tr{grid-template-columns:minmax(0,1fr) calc(var(--pw) * 1.5);}
 .gm.mlo .tr.live{grid-template-columns:minmax(0,1fr) auto;}
+/* a game under way: score, then the lines it closed at (greyed, for reference) */
+.gm.ref{--pw:clamp(50px,14.5vw,76px);}
+.gm.ref .gh,.gm.ref .tr.ref{grid-template-columns:minmax(0,1fr) 2.1em var(--pw) var(--pw) var(--pw);}
+.gm.ref.mlo .gh,.gm.ref.mlo .tr.ref{grid-template-columns:minmax(0,1fr) 2.1em calc(var(--pw) * 1.5);}
+.tr.ref .sc{align-self:center;font-size:1.3rem;min-width:0;text-align:center;}
+.gm.ref .px{min-height:44px;}
+.gm.ref .px i{font-size:.86rem;}
+.gm.ref .px span{font-size:.74rem;}
+.gm.ref .px.solo span{font-size:.88rem;}
+@media (max-width:359px){ .gm.ref .gh .when{grid-column:1/-1;} .gm.ref .gh .mk-sc{grid-column:2;} }   /* (the smallest phones: the clock on its own line, over the labels) */
 .tm{display:flex;align-items:center;gap:9px;min-width:0;}
 .logo{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;}
 .logo img{width:24px;height:24px;object-fit:contain;display:block;}
@@ -614,7 +624,23 @@ body{overflow-x:hidden;}
       return out;
     });
   }
-  function take(list) { list.forEach(function (g) { var old = GAMES[g.id]; GAMES[g.id] = g; if (old) g.prev = { ml: old.ml, sp: old.sp, tot: old.tot, odds: old.odds }; }); }
+  // Every game's last lines before it started, kept on this device: once a game is under way the feed often drops them,
+  // and the board still shows them (greyed) for reference
+  var CLOSE = lsGet('sb_lines_cache', {}) || {};
+  function take(list) {
+    var changed = false, now = Date.now();
+    list.forEach(function (g) {
+      var old = GAMES[g.id]; GAMES[g.id] = g; if (old) g.prev = { ml: old.ml, sp: old.sp, tot: old.tot, odds: old.odds };
+      if (g.lg === 'golf' || g.lg === 'tennis') return;
+      if (g.state === 'pre' && hasLines(g)) { var c = CLOSE[g.id]; if (!c || JSON.stringify(c.l) !== JSON.stringify([g.ml, g.sp, g.tot])) { CLOSE[g.id] = { t: g.t || now, l: [g.ml || null, g.sp || null, g.tot || null] }; changed = true; } }
+      else if (!hasLines(g)) {
+        var k = CLOSE[g.id] ? CLOSE[g.id].l : old && hasLines(old) ? [old.ml, old.sp, old.tot] : null;
+        if (k) { g.ml = k[0] || undefined; g.sp = k[1] || undefined; g.tot = k[2] || undefined; g.closing = true; }
+      }
+    });
+    Object.keys(CLOSE).forEach(function (id) { if (now - (CLOSE[id].t || 0) > 8 * 864e5) { delete CLOSE[id]; changed = true; } });
+    if (changed) try { localStorage.setItem('sb_lines_cache', JSON.stringify(CLOSE)); } catch (e) {}
+  }
   function loadLeague(lg, force) {
     var b = BOARD[lg];
     if (b && b.p) return b.p;
@@ -890,8 +916,12 @@ body{overflow-x:hidden;}
     if (g.state === 'pre' && !g.void && !bettable(g)) when.appendChild(el('span', { class: 'shut', title: 'Betting closed', 'aria-label': 'Betting closed', html: Kit.icon('lock') }));
     if (g.lg === 'tennis') card.appendChild(el('div', { class: 'gev' }, [el('b', { text: g.ev }), el('span', { text: g.round })]));
     var live = g.state !== 'pre', lines = linesOn();
+    // under way with its lines known: the score beside each team, then the lines it closed at, greyed, for reference
+    var ref = g.state === 'in' && g.lg !== 'tennis' && hasLines(g);
     if (!lines) card.classList.add('mlo');   // (Pick the winner: just who wins)
-    card.appendChild(el('div', { class: 'gh' }, lines ? [when,
+    if (ref) card.classList.add('ref');
+    card.appendChild(el('div', { class: 'gh' }, ref ? (lines ? [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk', text: L.spread }), el('span', { class: 'mk', text: 'Total' }), el('span', { class: 'mk', text: 'Money' })] : [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk', text: 'To win' })])
+      : lines ? [when,
       el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]
       : [when, el('span', { class: 'mk', text: live ? 'Score' : 'To win' })]));
     if (showLg && g.state !== 'pre') when.insertBefore(document.createTextNode(L.name + '  '), when.firstChild);
@@ -901,7 +931,12 @@ body{overflow-x:hidden;}
         el('b', { 'data-abbr': tm.abbr, html: (tm.rank ? '<span class="rk">' + tm.rank + '</span>' : '') + esc(tname(tm, g.lg)) + (isFav(g.lg, tm.id) ? Kit.icon('star') : '') }),
         el('small', { text: g.lg === 'tennis' && live && tm.ls && tm.ls.length ? tm.ls.join('  ') : tm.rec || '' })]);
       var row = el('div', { class: 'tr' + (live ? ' live' : '') }, [el('span', { class: 'tm' }, [logoEl(tm), nm])]);
-      if (live) {
+      if (ref) {
+        row.classList.add('ref');
+        row.appendChild(el('span', { class: 'sc' + (tm.score > other.score ? ' lead' : ''), text: tm.score == null ? '' : String(tm.score) }));
+        if (lines) { row.appendChild(pxEl(g, 'sp', s)); row.appendChild(pxEl(g, 'tot', s === 'a' ? 'o' : 'u')); }
+        row.appendChild(pxEl(g, 'ml', s));
+      } else if (live) {
         var sv = g.lg === 'tennis' ? tm.sets : tm.score, ov = g.lg === 'tennis' ? other.sets : other.score;
         row.appendChild(el('span', { class: 'sc' + (sv > ov ? ' lead' : ''), text: sv == null ? '' : String(sv) }));
       } else {
