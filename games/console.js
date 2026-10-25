@@ -797,6 +797,14 @@
     ]);
     glassEl.appendChild(resumeEl);
   }
+  // back from another app (or the phone unlocked): the game waited, paused, until you carry on
+  function offerPaused() {
+    if (resumeEl) return;
+    resumeEl = el('div', { class: 'resume paused' }, [el('b', { class: 'ps', text: 'Paused' }),
+      el('div', { class: 'row' }, [el('button', { type: 'button', onclick: function () { closeResume(); } }, ['Carry on'])])]);
+    glassEl.appendChild(resumeEl);
+  }
+  window.addEventListener('keydown', function (e) { if (resumeEl && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); var b0 = resumeEl.querySelector('button'); if (b0) b0.click(); } }, true);
   function closeResume() { if (resumeEl) { resumeEl.remove(); resumeEl = null; } var E = emu(); if (E) E.play(); Kit.sfx('tap'); }
 
   // ── Save states: three slots, plus the automatic one from when you last left ──
@@ -871,7 +879,12 @@
     setTimeout(go, 2500);   // (never stuck on a slow save)
     return true;
   };
-  document.addEventListener('visibilitychange', function () { if (document.hidden && started && !cur.netGame) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });   // (a joiner's game is the host's)
+  document.addEventListener('visibilitychange', function () {
+    if (!started || !cur || cur.netGame) return;   // (a joiner's game is the host's; online, the table keeps going)
+    if (document.hidden) { var E = emu(); bgPaused = !!(E && !E.paused && !resumeEl); E_pause(); saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} }
+    else if (bgPaused && !homeBound) { bgPaused = false; offerPaused(); }
+  });
+  var bgPaused = false;
   // while you play: your place and the game's own save every few minutes, so another device can carry on even if this
   // one is closed without a goodbye
   setInterval(function () { if (started && cur && !cur.netGame && !document.hidden && !resumeEl) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } }, 180000);
@@ -1266,6 +1279,8 @@
       if (scrim) { padRelease(n); continue; }
       var m = padMapOf(p), next = {};
       Object.keys(m).forEach(function (t) { if (m[t].some(function (c) { return down[c]; })) next[t] = 1; });
+      // the game waiting to carry on (Paused, or your place from last time): Start or A carries on
+      if (resumeEl) { var on = (next[3] && !held[n][3]) || (next[8] && !held[n][8]); for (var k0 in held[n]) if (!next[k0]) press(+k0, 0, n); held[n] = next; if (on) { var b0 = resumeEl.querySelector('button'); if (b0) b0.click(); } continue; }
       for (var k in held[n]) if (!next[k]) { press(+k, 0, n); delete held[n][k]; }
       for (var j in next) if (!held[n][j]) { press(+j, 1, n); held[n][j] = 1; }
       if (down.b16 || (down.b8 && down.b9)) menuNow = true;
