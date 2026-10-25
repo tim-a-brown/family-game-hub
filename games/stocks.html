@@ -356,7 +356,7 @@ body{overflow-x:hidden;}
   function kindOf(sym) { var s = S(sym); return s ? s.k : 'stock'; }
   function isCoin(sym) { return kindOf(sym) === 'coin'; }
 
-  // ── Market clock: prices update three times on market days (soon after the open, midday, after the close) ──
+  // ── Market clock: prices update every hour the market is open (and after the close); crypto every few hours at weekends ──
   function nyParts(t) {
     var f = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date(t)), o = {};
     f.forEach(function (p) { o[p.type] = p.value; }); return o;
@@ -980,7 +980,7 @@ body{overflow-x:hidden;}
       p.appendChild(el('div', { class: 'ends' }, [el('span', { text: 'Yesterday ' + px(s.pc) }), el('span', { text: 'Now ' + px(s.p) })]));
       var mine = watched(sym) || heldQty(sym) > 0;
       var lc = el(mine ? 'div' : 'button', { type: mine ? null : 'button', class: 'lite-card', onclick: mine ? null : function () { w.querySelector('.star').click(); } }, [el('span', { class: 'ic', html: Kit.icon(mine ? 'clock' : 'star') }),
-        el('span', null, [el('b', { text: mine ? 'Its chart is on the way' : 'Star it to see its chart' }), el('small', { text: mine ? 'The chart, dividends and history arrive with the next price update: soon after the open, midday, or after the close.' : 'Star it or buy it, and its chart, dividends and history arrive with the next price update.' })])]);
+        el('span', null, [el('b', { text: mine ? 'Its chart is on the way' : 'Star it to see its chart' }), el('small', { text: mine ? 'The chart, dividends and history arrive with the next full update: soon after the market opens, or after it closes.' : 'Star it or buy it, and its chart, dividends and history arrive with the next full update.' })])]);
       p.appendChild(lc);
     } else {
       var chartBox = el('div'); p.appendChild(chartBox);
@@ -1082,7 +1082,7 @@ body{overflow-x:hidden;}
         else if (g < 0 && taxesOn()) notes.appendChild(el('p', { class: 'why', text: 'A loss lowers the tax on your other gains this year.' }));
       }
       if (mode === 'lim') notes.appendChild(el('p', { class: 'why', text: side === 'buy' ? 'Buys at a later price check, if the price is at or below your limit. Waits up to 30 days. The money is set aside until then.' : 'Sells at a later price check, if the price is at or above your limit. Waits up to 30 days.' }));
-      else notes.appendChild(el('p', { class: 'why', text: 'Fills right away at the latest price. Prices here update soon after the market opens, at midday and after the close.' }));
+      else notes.appendChild(el('p', { class: 'why', text: 'Fills right away at the latest price. Prices here update every hour while the market is open.' }));
       go.disabled = !ok;
       go.textContent = mode === 'lim' ? 'Place limit order' : side === 'buy' ? 'Buy ' + sym.replace('-USD', '') : 'Sell ' + sym.replace('-USD', '');
     }
@@ -1391,7 +1391,7 @@ body{overflow-x:hidden;}
       orders: '<p>Every stock has a <b>ticker symbol</b>: AAPL is Apple, NTDOY is Nintendo, UAL is United Airlines.</p>' +
         '<h4>Two kinds of order</h4><ul><li>A <b>market order</b> (Buy now) buys at the current price.</li><li>A <b>limit order</b> sets your price: “buy Nintendo, but only at $15 or less.” If the price never gets there, nothing happens. Limit orders keep you from paying more than you meant to.</li></ul>' +
         '<h4>Pieces of a share</h4><p>Most brokers now sell <b>fractional shares</b>: you can buy $50 of a $500 stock. This app does too. Type a dollar amount, or a number of shares.</p>' +
-        ex('How this app works', 'Real markets trade every second, 9:30 AM to 4 PM New York time on weekdays. Here, prices update three times on market days (soon after the 9:30 open, around midday, and after the close), so you can check in a few times a day. Buy now fills at the latest price; a limit order waits for a later update.') +
+        ex('How this app works', 'Real markets trade every second, 9:30 AM to 4 PM New York time on weekdays. Here, prices update every hour while the market is open, and once more after the close, so check in whenever you like. Buy now fills at the latest price; a limit order waits for a later update.') +
         '<p><b>The bid and the ask.</b> Real stocks have two prices: the highest anyone will pay (bid) and the lowest anyone will sell for (ask). For big stocks they’re a penny apart; for options the gap is bigger, which you’ll see in Options.</p>',
       index: '<p>An <b>index</b> is a list of companies that stands for a market. The <b>S&P 500</b> is the 500 biggest US companies; the <b>Dow</b> is 30 famous ones; the <b>Nasdaq-100</b> is the 100 biggest on the Nasdaq.</p>' +
         '<p>An <b>index fund</b> buys every company on the list, so one share of the fund owns a sliver of all of them. Most are <b>ETFs</b> (exchange-traded funds) that trade just like a stock.</p>' +
@@ -1456,7 +1456,7 @@ body{overflow-x:hidden;}
       { icon: 'undo', label: 'Reset bankroll', onClick: function () { Kit.confirm('Reset your casino bankroll to $1,000? Your investing account stays as it is.', { ok: 'Reset', danger: true }).then(function (y) { if (y) { Casino.reset(); Kit.toast('Bankroll reset to $1,000'); } }); } }
     ],
     rules:
-      '<p class="goal">Invest your casino bankroll in the real stock market. Prices are real and update three times on market days: soon after the open, midday and after the close.</p>' +
+      '<p class="goal">Invest your casino bankroll in the real stock market. Prices are real and update every hour while the market is open.</p>' +
       '<h3>How deep to go</h3><p>Pick how much of the market you want (menu, How deep to go): well-known stocks and index funds; the whole market with bonds, Treasuries, crypto, limit orders and taxes; or everything, with options and your own tax bracket.</p>' +
       '<h3>Getting started</h3><ul><li><b>Add money</b> from your bankroll. It waits as cash, earning the T-bill rate.</li><li>Open <b>Market</b>, pick something and tap <b>Buy</b>. Buy by dollars or shares.</li><li><b>Buy now</b> fills at the latest price. A <b>limit order</b> waits for a later price update.</li></ul>' +
       '<h3>What you can own</h3><ul><li>Every stock and fund listed in the US, and fifteen coins. Search by name or symbol; star one to keep it on your watchlist. Real dividends are paid to your cash.</li><li><b>Treasuries</b> (Market, Treasuries): bills, notes and bonds at today’s rates, with interest every six months.</li><li><b>Options</b> (on any stock or fund): buy calls and puts, sell them back any time, settled in cash at the end date.</li></ul>' +

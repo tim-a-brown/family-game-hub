@@ -1,14 +1,17 @@
-# Prices for the Stock Market game, three times a day in New York (stocks only move on weekdays; crypto trades every
-# day): soon after the open, midday and after the close. The times are UTC, picked to land right in both EDT and EST:
-# 14:45 = 10:45 / 9:45 AM, 17:05 = 1:05 PM / 12:05 PM, 21:17 = 5:17 / 4:17 PM. See scripts/market-data.js.
+# Prices for the Stock Market game (see scripts/market-data.js). Times are UTC, picked to land right in both EDT and EST.
+# - The full run (a year of closes, dividends, the long view, the whole market): soon after the open and after the
+#   close, every day (14:45 = 10:45 / 9:45 AM New York; 21:17 = 5:17 / 4:17 PM).
+# - The quick run (today's prices only, about a minute): every hour the market is open on weekdays (13:15 to 20:15 =
+#   9:15 AM to 4:15 PM EDT, 8:15 AM to 3:15 PM EST; the full run after the close follows), and every three hours at weekends for crypto.
 # Run it any time from the Actions tab.
 name: Market prices
 
 on:
   schedule:
     - cron: '45 14 * * *'
-    - cron: '5 17 * * *'
     - cron: '17 21 * * *'
+    - cron: '15 13-20 * * 1-5'
+    - cron: '25 */3 * * 0,6'
   workflow_dispatch:
   push:
     paths:
@@ -32,3 +35,4 @@ jobs:
         run: node scripts/market-data.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          QUICK: ${{ (github.event.schedule == '15 13-20 * * 1-5' || github.event.schedule == '25 */3 * * 0,6') && '1' || '' }}

@@ -335,9 +335,51 @@ const KEY = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
 const isCoin = (s) => /-USD$/.test(s);
 const stored = (obj) => 'https://firebasestorage.googleapis.com/v0/b/' + BUCKET + '/o/' + encodeURIComponent(obj) + '?alt=media';
 
+// ── The quick run (QUICK=1, every hour the market is open, and every few hours for crypto at weekends): today's prices
+// only, into the saved file. One request covers every US stock and fund; the coins and indexes take a few more. The year
+// of closes, dividends and the long view stay as the last full run left them (that run comes after the open and close).
+async function quick(old) {
+  const now = Date.now(), at = marketOpen() ? now : lastClose(), today = day(now), out = Object.assign({}, old, { at: now, q: {} });
+  const U = await screener().catch((e) => { console.log('screener: ' + e.message.slice(0, 200)); return null; });
+  const uBy = {}; (U || []).forEach((r) => { uBy[r.sym] = r; });
+  // a price into a symbol's recent closes: today's point is replaced, or added once the market has opened today
+  function onto(q, p) {
+    const t0 = Date.parse(q.d0 + 'T12:00:00Z'), rows = (q.h || []).map((v, i) => [day(t0 + (q.o ? q.o[i] : i) * 864e5), v]);
+    if (rows.length && rows[rows.length - 1][0] === today) rows[rows.length - 1][1] = p; else if (marketOpen() || q.k === 'coin') rows.push([today, p]);   // (coins trade every day)
+    const d = packed(rows.slice(-30)); q.d0 = d.d0; q.h = d.h; q.o = d.o;
+  }
+  let n = 0, coins = 0;
+  for (const sym of Object.keys(old.q || {})) {
+    const q = Object.assign({}, old.q[sym]);
+    if (q.k === 'coin') {
+      try {
+        const rows = await coinDays(sym, false); if (rows.length < 2) throw new Error('no candles');
+        q.p = r4(rows[rows.length - 1][1]); q.pc = r4(rows[rows.length - 2][1]); q.at = now; onto(q, q.p); coins++;
+      } catch (e) { console.log('  ' + sym + ': ' + e.message.slice(0, 100)); }
+    } else {
+      const u = uBy[sym];
+      if (u && u.p > 0) { q.p = r4(u.p); q.pc = r4(u.pc); q.at = at; if (u.cap > 0) q.cap = Math.round(u.cap / 1e8) / 10; onto(q, q.p); n++; }
+    }
+    out.q[sym] = q;
+  }
+  out.idx = Object.assign({}, old.idx || {});
+  for (const k in INDEX) {
+    let q = null; try { q = await yahoo(INDEX[k][0]); } catch (e) { try { q = await cnbc({ '^GSPC': '.SPX', '^DJI': '.DJI', '^IXIC': '.IXIC' }[INDEX[k][0]], 'stock', null); } catch (e2) {} }
+    if (q) out.idx[k] = { n: INDEX[k][1], p: r2(q.p), pc: r2(q.pc) };
+    await sleep(250);
+  }
+  if (n) out.asof = at;
+  console.log('quick: ' + n + ' stocks and funds, ' + coins + ' coins, ' + (U ? U.length : 0) + ' in the whole market');
+  if (!n && !coins) throw new Error('nothing updated; leaving the saved prices as they are');
+  if (process.env.DRY) { const a = out.q.AAPL || out.q[Object.keys(out.q)[0]]; console.log('sample', a.p, a.pc, a.d0, a.h.slice(-3), a.o.slice(-3)); return; }
+  await upload(OBJ2, JSON.stringify(out), 'no-cache, max-age=0', true);
+  if (U) await upload(AOBJ, JSON.stringify({ v: 1, at, s: U.map((r) => [r.sym, r.name, r4(r.p), r4(r.pc), r.sec, Math.round(r.cap / 1e8) / 10, r.k]) }), 'public, max-age=600', true);
+}
+
 (async () => {
   let old = {};
   try { old = JSON.parse(await fetchText(stored(OBJ2))); } catch (e) { try { old = JSON.parse(await fetchText(stored(OBJ))); } catch (e2) { console.log('no saved file yet'); } }
+  if (process.env.QUICK && old.v === 2 && old.q) return quick(old);   // (no full file yet: a full run instead)
   const now = Date.now(), at = marketOpen() ? now : lastClose();
   // 1. The whole market, and what the family holds
   const U = await screener().catch((e) => { console.log('screener: ' + e.message.slice(0, 200)); return null; });
