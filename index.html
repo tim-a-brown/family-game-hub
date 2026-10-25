@@ -1846,8 +1846,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     ]));
     // what's playing on Spotify, with its controls
     if (Kit.musicMini) { var spSlot = el('div', { style: { 'margin-top': '12px' } }); node.appendChild(spSlot); Kit.musicMini(spSlot, function () { s.close(); }); }
-    // The rest in groups, as the in-game menu does: what you've played, the people you play with, how it looks and
-    // sounds, the home screen and game setups, and the account
+    // The rest in groups, as the in-game menu does: what you've played, the home screen and game setups, the people
+    // you play with, how it looks and sounds, and the account
     var list = el('div', { class: 'k-list', style: { 'margin-top': '10px' } }), grp = null;
     function group(name) { grp = el('div', { class: 'k-grp' }, [el('h3', { text: name })]); list.appendChild(grp); }
     function item(ic, t, fn, cls, extra) { grp.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); fn(); } }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('span', { text: t }), extra || null])); }
@@ -1864,6 +1864,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
     if (Kit.playTime) { var pt = Kit.playToday(), pm = Math.round(pt / 60); item('chart', 'Play time', function () { Kit.playTime(); }, '', tag(pm >= 60 ? Math.floor(pm / 60) + ' hr ' + (pm % 60) + ' min today' : pm ? pm + ' min today' : 'None today')); }
     if (Kit.timerSheet) item('clock', 'Game timer', function () { Kit.timerSheet(); }, '', tag(Kit.timerStatus()));
+    group('Home & games');
+    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
+    item('sliders', 'Game defaults', function () { Kit.prefs(); });
+    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
+    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
     group('People');
     item('users', 'Frequent players', function () { Kit.managePlayers(); });
     if (mode === 'pin') {
@@ -1887,11 +1892,6 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     snd.onclick = function () { var on = get('gn_sound', '1') !== '1'; set('gn_sound', on ? '1' : '0'); snd.setAttribute('aria-checked', String(on)); snd.querySelector('.ic').innerHTML = Kit.icon(on ? 'sound' : 'mute'); if (on) Kit.sfx('good'); };
     if (get('gn_sound', '1') !== '1') snd.querySelector('.ic').innerHTML = Kit.icon('mute');
     grp.appendChild(snd);
-    group('Home & games');
-    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
-    item('sliders', 'Game defaults', function () { Kit.prefs(); });
-    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
-    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
     group('Account');
     if (mode === 'pin') {
       item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
