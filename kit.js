@@ -1813,36 +1813,26 @@
       if (v != null && cs.some(function (c) { return String(c[0]) === String(v); })) return v;
       return state.options[lvOp.id];
     }
-    function levelName(v) { var c = lvChoices().filter(function (x) { return String(x[0]) === String(v); })[0]; return c ? c[1] : String(v); }
-    // tap a robot's tile: its skill (or all the robots' at once), or a person for that seat
-    function robotSheet(i) {
-      var box = el('div', { class: 'k-bot-sheet' }), sh = null;
-      box.appendChild(el('div', { class: 'label', text: lvOp.label || 'Computer skill' }));
-      var others = []; for (var j = 1; j < state.count; j++) if (robots[j]) others.push(j);
-      var all = false;
-      var allBtn = others.length > 1 ? el('button', { type: 'button', class: 'k-bot-all', role: 'switch', 'aria-checked': 'false', onclick: function () {
-        all = !all; allBtn.classList.toggle('on', all); allBtn.setAttribute('aria-checked', String(all)); sfx('tap'); haptic('light'); paint();
-      } }, [el('span', { class: 'k-bot-chk', html: icon('check') }), el('span', { text: (others.length === 2 ? 'Set both' : 'Set all ' + others.length) + ' computer players' })]) : null;
-      if (allBtn) box.appendChild(allBtn);
-      var list = el('div', { class: 'k-bot-levels' });
-      box.appendChild(list);
-      function paint() {
-        list.innerHTML = '';
-        lvChoices().forEach(function (c) {
-          var on = all ? others.every(function (j) { return String(levelOf(j)) === String(c[0]); }) : String(levelOf(i)) === String(c[0]);
-          list.appendChild(el('button', { type: 'button', class: 'k-bot-lv' + (on ? ' on' : ''), onclick: function () {
-            (all ? others : [i]).forEach(function (j) { levels[j] = c[0]; });
-            if (all || others.length < 2) state.options[lvOp.id] = c[0];   // (and the default for robots seated next)
-            sfx('pop'); haptic('light'); sh.close(); renderSeats();
-          } }, [el('span', { class: 'k-bot-lv-t' }, [el('b', { text: c[1] }), c[2] ? el('small', { text: c[2] }) : null]), el('span', { class: 'k-bot-lv-ok', html: icon('check') })]));
-        });
-      }
-      paint();
-      box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-bot-person', html: icon('user') + '<span>A person plays this seat</span>', onclick: function () {
-        robots[i] = false; if (merged && !localMix) for (var q = 1; q < 12; q++) robots[q] = false;
-        sfx('pop'); haptic('light'); sh.close(); renderSeats();
+    // A robot's skill, on a thin line under its seat: one tap per level; with other robots seated, one tap sets them all the same
+    var skLast = -1;
+    function skillLine(i) {
+      var cur = String(levelOf(i)), others = []; for (var j = 1; j < state.count; j++) if (robots[j] && j !== i) others.push(j);
+      var seg = el('div', { class: 'k-sk-seg', role: 'radiogroup', 'aria-label': (lvOp.label || 'Computer skill') + ', ' + (bots[i - 1] || 'computer') });
+      lvChoices().forEach(function (c) {
+        var on = String(c[0]) === cur;
+        seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', role: 'radio', 'aria-checked': String(on), title: c[2] || c[1], text: c[1], onclick: function () {
+          if (on) return;
+          levels[i] = c[0]; skLast = i; if (!others.length) state.options[lvOp.id] = c[0];   // (and the default for robots seated next)
+          sfx('tap'); haptic('light'); renderSeats();
+        } }));
+      });
+      var line = el('div', { class: 'k-sk' }, [el('span', { class: 'k-sk-l', text: 'Skill' }), seg]);
+      // (on the line just changed, while the other robots play at a different skill)
+      if (skLast === i && others.some(function (j) { return String(levelOf(j)) !== cur; })) line.appendChild(el('button', { type: 'button', class: 'k-sk-all', text: others.length === 1 ? 'Same for both' : 'Same for all', onclick: function () {
+        others.forEach(function (j) { levels[j] = levelOf(i); }); state.options[lvOp.id] = levelOf(i);
+        sfx('pop'); haptic('light'); renderSeats();
       } }));
-      sh = sheet({ title: bots[i - 1] || 'Computer', node: box });
+      return line;
     }
     // a mode card's words: the game's own, else its kind's (Pass & play says computers can join when seats can be robots)
     function modeDesc(m) {
@@ -1955,13 +1945,7 @@
           }
           row.appendChild(field);
           // Mixed tables: every seat after the first has a switch between a person and a robot
-          if (cpu === 'mix' && i > 0 && isCpu && lvTiles()) {
-            // a robot with a skill: the tile says how good it is, and opens its skill (or a person) when tapped
-            var lvN = levelName(levelOf(i));
-            row.appendChild(el('button', { type: 'button', class: 'seat-bot on has-lv', 'aria-haspopup': 'dialog', 'aria-label': 'Computer plays this seat, skill ' + lvN + '. Tap to change',
-              html: icon('bot') + '<span class="lv"><span>' + esc(lvN) + '</span>' + icon('down') + '</span>',
-              onclick: function () { sfx('tap'); haptic('light'); robotSheet(i); } }));
-          } else if (cpu === 'mix' && i > 0) {
+          if (cpu === 'mix' && i > 0) {
             row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
               onclick: function () {
                 if (merged && !localMix) { var v = !robots[i]; for (var j = 1; j < 12; j++) robots[j] = v; }   // (this game seats people or robots, not both)
@@ -1972,6 +1956,8 @@
           // Two or more people (no computer seats): a handle to drag a player up or down the order
           if (!cpu && state.count > 1) row.appendChild(grip(row, i));
           seatsBox.appendChild(row);
+          // a robot's skill sits on a thin line right under its seat
+          if (cpu === 'mix' && i > 0 && isCpu && lvTiles()) seatsBox.appendChild(skillLine(i));
         })(i);
       }
     }
