@@ -1790,6 +1790,15 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .mull .mtog.on{background:#ff5c6c;color:#fff;}
 .mull .slot.out::after{display:none;}
 .mull-wait h2{font-size:1.3rem;max-width:420px;}
+.mull .cards.held{gap:6px;flex-wrap:wrap;}
+.mull .cards.held .mcard{position:relative;}
+.mull .htag{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);padding:2px 7px;border-radius:999px;background:#ff5c6c;color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;z-index:3;}
+.mull-wait{overflow-y:auto;}
+.mw-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.mw-btns .btn{min-width:180px;}
+.mull .held-ok{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:#25a35b;color:#fff;box-shadow:0 0 18px rgba(61,220,132,.45);animation:mullpop .4s var(--spring,ease-out);}
+.mull .held-ok svg{width:22px;height:22px;}
+@keyframes mullpop{from{transform:scale(.4);opacity:0;}}
 .mull .mw-note{position:static;max-width:420px;font-weight:600;color:var(--text-3);font-size:.8rem;}
 .mull-wait .spin{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.14);border-top-color:#ffc84a;animation:mullspin 1s linear infinite;}
 @keyframes mullspin{to{transform:rotate(360deg);}}
@@ -8521,7 +8530,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (ctx === 'hand' && canAct() && !ui.pick && (canPlay(S.cur, u) || canInk(S.cur, u) || canShift(u) || canSing(u))) cls += ' can';
     // Hints: your characters that can still quest or challenge this turn glow like your playable cards
     if (board && c.o === S.cur && hintsOn() && canAct() && !ui.pick && (canQuest(u) || (canChallenger(u) && defenders(u).length))) cls += ' can';
-    if (ctx === 'mull' && ui.mullSel[u]) cls += ' out';
+    if ((ctx === 'mull' && ui.mullSel[u]) || (ctx === 'held' && ui.heldBack && ui.heldBack[u])) cls += ' out';
     if (ui.hint === u && board) cls += ' sel';
     node.className = cls; node.dataset.uid = u; node.dataset.ctx = ctx;
     var h = '';
@@ -8872,12 +8881,44 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (S.mode === 'online' && !NET.owner && !ui.netMull) {
       // (the other device runs the game: it deals, and takes in my opening hand, when it has Lorcana open)
       var on = S.P[opp(NET.seat)].name, d = NET.doc || {}, sent = !!(d.pr && d.pr.k === 'mull' && d.pr.seat === NET.seat && d.an && d.an.id === d.pr.id);
-      var head = S.mull[NET.seat] ? 'Waiting for ' + on + ' to choose a hand' : sent ? 'Your opening hand is in' : 'Waiting for ' + on + '’s device to deal';
-      var sub = S.mull[NET.seat] ? 'Play starts once ' + on + ' keeps a hand.' : sent ? on + '’s device deals your new cards as soon as it opens Lorcana.' : on + '’s device deals the opening hands as soon as it opens Lorcana.';
-      host.appendChild(el('div', { class: 'mull mull-wait', style: { background: 'rgba(5,8,28,.55)' } }, [
-        el('span', { class: 'spin', 'aria-hidden': 'true' }), el('h2', { text: head }), el('p', { text: sub }),
-        el('p', { class: 'mw-note', text: 'No need to wait here. The game waits for you in Your games.' }),
-        el('button', { type: 'button', class: 'btn btn-soft', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } })]));
+      var wait = el('div', { class: 'mull mull-wait', style: { background: 'rgba(5,8,28,.55)' } });
+      if (sent && !S.mull[NET.seat]) {
+        // my choice is held: the hand as I left it (the cards going back marked), and a way to change it until then
+        var back = []; try { back = JSON.parse(d.an.v).back || []; } catch (e) {}
+        var hand = S.P[NET.seat].hand; back = back.filter(function (u) { return hand.indexOf(u) >= 0; });
+        ui.heldBack = {}; back.forEach(function (u) { ui.heldBack[u] = 1; });
+        // one small row (the full hand is right below, in the hand): the cards going back dimmed and tagged
+        var cards = el('div', { class: 'cards held' }), W = Math.min(820, host.parentNode.clientWidth - 24), per = Math.min(hand.length, 7);
+        var cu = Math.min((W - (per - 1) * 6) / per / 0.716, 150);
+        cards.style.setProperty('--cu', Math.floor(cu) + 'px');
+        hand.forEach(function (u) { cards.appendChild(el('div', { class: 'mcard' }, [slotFor(u, 'held'), ui.heldBack[u] ? el('span', { class: 'htag', text: 'Back' }) : null])); });
+        wait.appendChild(el('span', { class: 'held-ok', html: Kit.icon('check') }));
+        wait.appendChild(el('h2', { text: 'Your opening hand is in' }));
+        wait.appendChild(el('p', { text: back.length ? 'Putting back ' + plural(back.length, 'card') + ' and drawing ' + back.length + ' new.' : 'Keeping all ' + hand.length + ' cards.' }));
+        wait.appendChild(cards);
+        wait.appendChild(el('p', { class: 'mw-note', text: on + '’s device deals your new cards as soon as it opens Lorcana. You can change your choice until then.' }));
+        var pid = d.pr.id;
+        wait.appendChild(el('div', { class: 'mw-btns' }, [
+          el('button', { type: 'button', class: 'btn btn-soft', text: 'Change my choice', onclick: function () {
+            var cur = NET.doc || {}; if (!cur.pr || cur.pr.id !== pid || S.mull[NET.seat]) { Kit.toast('Too late: ' + on + '’s device already dealt'); render(); return; }
+            ui.mullSel = {}; back.forEach(function (u) { ui.mullSel[u] = true; });
+            ui.netMull = function (v) {
+              var now = NET.doc || {}; if (!NET.ref || !now.pr || now.pr.id !== pid) { Kit.toast('Too late: ' + on + '’s device already dealt'); render(); return; }
+              NET.ref.update({ an: { id: pid, v: JSON.stringify(v) } }).catch(netErr);
+              NET.doc.an = { id: pid, v: JSON.stringify(v) }; render();
+            };
+            Kit.sfx('tap'); render();
+          } }),
+          el('button', { type: 'button', class: 'btn btn-ghost', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } })]));
+        host.appendChild(wait);
+        return;
+      }
+      var head = S.mull[NET.seat] ? 'Waiting for ' + on + ' to choose a hand' : 'Waiting for ' + on + '’s device to deal';
+      var sub = S.mull[NET.seat] ? 'Play starts once ' + on + ' keeps a hand.' : on + '’s device deals the opening hands as soon as it opens Lorcana.';
+      wait.appendChild(el('span', { class: 'spin', 'aria-hidden': 'true' })); wait.appendChild(el('h2', { text: head })); wait.appendChild(el('p', { text: sub }));
+      wait.appendChild(el('p', { class: 'mw-note', text: 'No need to wait here. The game waits for you in Your games.' }));
+      wait.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Back to Your games', onclick: function () { netStop(false); try { localStorage.removeItem(NETK); } catch (e) {} showLobby(); } }));
+      host.appendChild(wait);
       return;
     }
     if (p.cpu || !handShown(pi)) {
@@ -13111,6 +13152,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (NET.answered[pr.id] || !ref) return;
       NET.answered[pr.id] = 1; NET.showing = null;
       ref.update({ an: { id: pr.id, v: JSON.stringify(v) } }).catch(netErr);
+      if (NET.doc) NET.doc.an = { id: pr.id, v: JSON.stringify(v) };
       render();
     }
     Kit.sfx('pop'); if (Kit.haptic) Kit.haptic('light');
@@ -13190,7 +13232,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     else if (d.st && !NET.synced) netApply(d);
     if (!S || S.mode !== 'online') return;
     // a question for me
-    if (!NET.owner && d.pr && d.pr.seat === NET.seat) netPrompt(d.pr);
+    if (!NET.owner && d.pr && d.pr.seat === NET.seat && !(d.an && d.an.id === d.pr.id)) netPrompt(d.pr);   // (answered already, on this device or before a reload: it waits for theirs to take it in)
     else if (NET.showing && (!d.pr || d.pr.id !== NET.showing)) { NET.showing = null; closeOverlays(); render(); }
   }
   function netListen(ref, seat) {
