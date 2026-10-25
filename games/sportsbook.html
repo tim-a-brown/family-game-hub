@@ -604,7 +604,7 @@ body{overflow-x:hidden;}
     var k = LG[lg].kind;
     if (k === 'tennis') return parseTennis(j, path);
     if (k === 'golf') return parseGolf(j);
-    return (j.events || []).map(function (ev) { return parseEvent(ev, lg); }).filter(Boolean);
+    return (j.events || []).map(function (ev) { var g = parseEvent(ev, lg); if (g) g.src = path; return g; }).filter(Boolean);   // (src: where its summary lives)
   }
   // the board's games for a league: [days], or the whole current week/tournament
   function fetchLeague(lg, days) {
@@ -641,13 +641,30 @@ body{overflow-x:hidden;}
     Object.keys(CLOSE).forEach(function (id) { if (now - (CLOSE[id].t || 0) > 8 * 864e5) { delete CLOSE[id]; changed = true; } });
     if (changed) try { localStorage.setItem('sb_lines_cache', JSON.stringify(CLOSE)); } catch (e) {}
   }
+  // A game under way that came without lines (the scoreboard drops them once it starts, and this device may never have
+  // seen it before): ESPN's game summary still lists the lines it closed at. Asked once per game, kept with the rest.
+  var SUMQ = {};
+  function fillClosing(games) {
+    var now = Date.now(), need = games.filter(function (g) { return g.state === 'in' && g.src && !hasLines(g) && g.lg !== 'golf' && g.lg !== 'tennis' && !(SUMQ[g.id] > now); }).slice(0, 8);
+    return Promise.all(need.map(function (g) {
+      SUMQ[g.id] = Infinity;
+      var slow = new Promise(function (ok, no) { setTimeout(function () { no(new Error('slow')); }, 5000); });
+      return Promise.race([getJSON(API + g.src + '/summary?event=' + encodeURIComponent(g.id)), slow]).then(function (j) {
+        var list = [].concat(j.pickcenter || [], j.odds || []), t = { lg: g.lg, home: g.home, away: g.away };
+        for (var i = 0; i < list.length && !hasLines(t); i++) { try { lines(t, list[i]); } catch (e) {} }
+        if (!hasLines(t)) return;
+        g.ml = t.ml; g.sp = t.sp; g.tot = t.tot; g.closing = true;
+        CLOSE[g.id] = { t: g.t || now, l: [t.ml || null, t.sp || null, t.tot || null] };
+        try { localStorage.setItem('sb_lines_cache', JSON.stringify(CLOSE)); } catch (e) {}
+      }).catch(function () { SUMQ[g.id] = Date.now() + 5 * 60000; });   // (couldn't reach it: try again in five minutes)
+    }));
+  }
   function loadLeague(lg, force) {
     var b = BOARD[lg];
     if (b && b.p) return b.p;
     var live = b && b.games && b.games.some(function (g) { return g.state === 'in'; });
     if (b && !b.err && !force && Date.now() - b.at < (live ? 30000 : 90000)) return Promise.resolve(b);
-    var p = fetchLeague(lg).then(function (games) {
-      take(games);
+    var p = fetchLeague(lg).then(function (games) { take(games); return fillClosing(games).then(function () { return games; }); }).then(function (games) {
       BOARD[lg] = { games: games, at: Date.now() };
       try { localStorage.setItem('sb_cache_' + lg, JSON.stringify({ at: Date.now(), games: games.map(function (g) { var c = Object.assign({}, g); delete c.prev; return c; }) })); } catch (e) {}
       return BOARD[lg];
