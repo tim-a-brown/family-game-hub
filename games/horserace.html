@@ -289,11 +289,22 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
 .vo-tip{margin:0 0 12px;font-size:.88rem;line-height:1.45;color:var(--text-2);}
 .vo-tip b{color:var(--text);}
 .vo-list{display:flex;flex-direction:column;gap:6px;}
-.vo-row{display:flex;align-items:center;gap:8px;width:100%;min-height:48px;padding:8px 14px;border:0;border-radius:12px;background:var(--bg-2);color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer;box-shadow:inset 0 0 0 1.5px transparent;}
-.vo-row .vo-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.vo-row small{flex:none;font-weight:600;color:var(--text-3);}
+.vo-row{display:flex;align-items:center;gap:10px;width:100%;min-height:56px;padding:7px 12px 7px 8px;border:0;border-radius:12px;background:var(--bg-2);color:var(--text);font:inherit;font-weight:700;text-align:left;cursor:pointer;box-shadow:inset 0 0 0 1.5px transparent;}
+.vo-row .vo-p{flex:none;width:40px;height:40px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--w08);color:var(--text);cursor:pointer;transition:transform .12s,background .2s;}
+.vo-row .vo-p .ico{width:18px;height:18px;}
+.vo-row .vo-p:active{transform:scale(.92);}
+.vo-row.talk .vo-p{background:var(--accent,#e8c56f);color:#1b1408;animation:vo-talk .9s ease-in-out infinite;}
+@keyframes vo-talk{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent,#e8c56f) 55%,transparent);}50%{box-shadow:0 0 0 7px transparent;}}
+.vo-row .vo-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.vo-row .vo-n{overflow-wrap:anywhere;}
+.vo-row small{font-weight:700;font-size:.76rem;color:var(--text-3);}
+.vo-row .vo-c{flex:none;width:22px;display:grid;place-items:center;color:var(--accent,#e8c56f);opacity:0;}
+.vo-row .vo-c .ico{width:18px;height:18px;stroke-width:3;}
+.vo-row.on .vo-c{opacity:1;}
 .vo-row .vo-q{flex:none;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:800;background:rgba(227,189,98,.18);color:#e8c56f;}
 .vo-row .vo-q.best{background:rgba(125,240,166,.15);color:#8fe6ad;}
+html[data-theme="light"] .vo-row .vo-q,html[data-theme="parchment"] .vo-row .vo-q{background:rgba(160,108,0,.14);color:#7a5200;}
+html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row .vo-q.best{background:rgba(28,138,74,.14);color:#17703c;}
 .vo-row.on{box-shadow:inset 0 0 0 2px var(--accent,#e8c56f);}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk .ico{width:.85em;height:.85em;stroke-width:3;}
@@ -528,7 +539,16 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
     var ok = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined', voice = null, VKEY = 'hr_voice';
     // Best first: the downloadable Enhanced / Premium voices, then the good standard ones; never the novelty voices
     function score(v) { var n = v.name; return (/en[-_]US/i.test(v.lang) ? 4 : /en[-_](GB|AU|IE)/i.test(v.lang) ? 2 : 0) + (/premium/i.test(n) ? 8 : /enhanced|natural|neural/i.test(n) ? 6 : 0) + (/Evan|Nathan|Alex|Aaron|Tom|Daniel|Arthur|Samantha|Zoe|Ava|Google US/i.test(n) ? 2 : 0) + (v.localService ? 1 : 0) - (/Novelty|Bells|Bubbles|Whisper|Zarvox|Trinoids|Bahh|Boing|Jester|Organ|Cellos|Bad News|Good News|Albert|Fred|Junior|Ralph|Kathy|Superstar|Wobble|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley/i.test(n) ? 20 : 0); }
-    function voices() { if (!ok) return []; return speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang) && score(v) > -5; }).sort(function (a, b) { return score(b) - score(a); }); }
+    // (iPhone lists some voices twice under different ids: one row each)
+    function voices() {
+      if (!ok) return [];
+      var seen = {};
+      return speechSynthesis.getVoices().filter(function (v) { return /^en[-_]/i.test(v.lang) && score(v) > -5; }).sort(function (a, b) { return score(b) - score(a); })
+        .filter(function (v) { var k = v.name + '|' + v.lang.replace('_', '-'); if (seen[k]) return false; seen[k] = 1; return true; });
+    }
+    var ACCENT = { US: 'American', GB: 'British', AU: 'Australian', IE: 'Irish', IN: 'Indian', ZA: 'South African', NZ: 'New Zealand', CA: 'Canadian', SC: 'Scottish' };
+    function accent(v) { var c = (v.lang.split(/[-_]/)[1] || '').toUpperCase(); return ACCENT[c] || v.lang; }
+    var SAMPLE = ["And they're off! # breaks on top!", 'Down the stretch they come, and # is flying on the outside!', '# digs in, # giving chase. # wins it by a length!'];
     function chosen() { try { return localStorage.getItem(VKEY) || ''; } catch (e) { return ''; } }
     function pick() {
       if (!ok || voice) return;
@@ -544,8 +564,9 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
     function clean(t) { return String(t).replace(/(\d)½/g, '$1 and a half').replace(/½/g, 'a half').replace(/\.\.\./g, '.').replace(/!/g, '!'); }
     // heat 0..1 (how far into the race, and how big the moment): a real caller starts measured and ends near shouting,
     // so the voice speeds up and lifts as the race goes on
-    function speak(t, heat, v) {
+    function speak(t, heat, v, done) {
       var u = new SpeechSynthesisUtterance(clean(t));
+      if (done) { u.onend = done; u.onerror = done; }
       if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
       heat = Math.max(0, Math.min(1, heat || 0));
       u.rate = 1 + heat * 0.24; u.pitch = 1 + heat * 0.16; u.volume = 1;
@@ -564,23 +585,37 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
       var vs = voices(), cur = (pick(), voice), box = document.createElement('div');
       var good = vs.some(function (v) { return /premium|enhanced|natural|neural/i.test(v.name); });
       var tip = document.createElement('p'); tip.className = 'vo-tip';
-      tip.innerHTML = (good ? 'Tap a voice to hear it. To add more voices:' : 'Tap a voice to hear it. <b>For a much better announcer</b>, download an Enhanced or Premium voice.') +
-        ' On iPhone: <b>Settings › Accessibility › Spoken Content › Voices › English</b>, then pick one like Evan (Enhanced), Nathan (Enhanced) or Zoe (Premium). Come back here and it shows up in this list.';
+      tip.innerHTML = (good ? 'Play a voice to hear it, tap it to make it the announcer. To add more voices, on iPhone:' : 'Play a voice to hear it, tap it to make it the announcer. <b>For a much better announcer</b>, download an Enhanced or Premium voice. On iPhone:') +
+        ' <b>Settings › Accessibility › Spoken Content › Voices › English</b>, then pick one like Evan (Enhanced), Nathan (Enhanced) or Zoe (Premium). Come back here and it shows up in this list.';
       box.appendChild(tip);
       var list = document.createElement('div'); list.className = 'vo-list'; box.appendChild(list);
       if (!vs.length) { var none = document.createElement('p'); none.className = 'vo-tip'; none.textContent = ok ? 'No English voices found on this device yet.' : 'This browser can’t speak out loud.'; list.appendChild(none); }
+      // each voice: its play button (hear it, the button shows it talking), its name, quality and accent; tap the row
+      // to make it the announcer (it plays too); the announcer's row has a check
+      var playing = null, sn = 0;
+      function sample() { var t = SAMPLE[sn++ % SAMPLE.length]; return t.replace(/#/g, function () { return NAMES[Math.floor(Math.random() * NAMES.length)]; }); }
+      function stopPlay() { if (playing) { playing.classList.remove('talk'); playing.querySelector('.vo-p').innerHTML = Kit.icon('play'); playing = null; } }
+      function play(row, v) {
+        var again = playing === row;
+        try { speechSynthesis.cancel(); } catch (e) {}
+        stopPlay();
+        if (again) return;
+        playing = row; row.classList.add('talk'); row.querySelector('.vo-p').innerHTML = Kit.icon('pause');
+        speak(sample(), 0.6, v, function () { if (playing === row) stopPlay(); });
+      }
       vs.forEach(function (v, i) {
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'vo-row' + (cur && v.voiceURI === cur.voiceURI ? ' on' : '');
+        var b = document.createElement('div'); b.className = 'vo-row' + (cur && v.voiceURI === cur.voiceURI ? ' on' : ''); b.setAttribute('role', 'button'); b.tabIndex = 0;
         var q = /premium/i.test(v.name) ? 'Premium' : /enhanced|natural|neural/i.test(v.name) ? 'Enhanced' : '';
-        b.innerHTML = '<span class="vo-n"></span>' + (q ? '<span class="vo-q">' + q + '</span>' : '') + (i === 0 ? '<span class="vo-q best">Best</span>' : '') + '<small></small>';
+        b.innerHTML = '<button type="button" class="vo-p" aria-label="Hear this voice">' + Kit.icon('play') + '</button><span class="vo-t"><span class="vo-n"></span><small></small></span>' +
+          (q ? '<span class="vo-q">' + q + '</span>' : '') + (i === 0 ? '<span class="vo-q best">Best</span>' : '') + '<span class="vo-c">' + Kit.icon('check') + '</span>';
         b.querySelector('.vo-n').textContent = v.name.replace(/\s*\((Enhanced|Premium)\)/i, '');
-        b.querySelector('small').textContent = v.lang;
+        b.querySelector('small').textContent = accent(v);
+        b.querySelector('.vo-p').addEventListener('click', function (e) { e.stopPropagation(); play(b, v); Kit.haptic('light'); });
         b.addEventListener('click', function () {
           try { localStorage.setItem(VKEY, v.voiceURI || v.name); } catch (e) {}
           voice = v;
           [].forEach.call(list.children, function (x) { x.classList.toggle('on', x === b); });
-          try { speechSynthesis.cancel(); } catch (e) {}
-          speak("And they're off! " + NAMES[Math.floor(Math.random() * NAMES.length)] + ' breaks on top!', 0.6, v);
+          if (playing !== b) play(b, v);
           Kit.haptic('light');
         });
         list.appendChild(b);
