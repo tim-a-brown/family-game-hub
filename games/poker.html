@@ -800,6 +800,7 @@
 :is(.pfull-l,.plog) .win .vs{grid-column:2;display:grid;grid-template-columns:auto auto minmax(0,1fr);column-gap:8px;row-gap:1px;align-items:baseline;font-size:.72rem;font-weight:700;opacity:.8;margin-top:1px;}
 :is(.pfull-l,.plog) .win .vs small{font-size:.58rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;}
 :is(.pfull-l,.plog) .win .vs b{font-weight:900;white-space:nowrap;}
+:is(.pfull-l,.plog) .win .vs .vcs{grid-column:2 / -1;margin:2px 0 5px;}
 .plog.novs .win .vs,.plog.nocs .win .cs{display:none;}
 :is(.pfull-l,.plog) .win.ko .wm{color:#2f8f57;}   /* (a bounty paid, in green) */
 .plog-in > div.win{white-space:normal;} .plog-in > div.win .dot,.pfull-l > div.win .dot{align-self:start;margin-top:.42em;}    /* the hand's result is the one line that wraps rather than cut off */
@@ -3204,7 +3205,12 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (r.back || r.fold || r.carry || r.acey || !r.w.length) return;
       var hn = r.lo ? r.label : r.v != null ? (evBased() && !H.hn ? handName(r.v) : hName(H, r.w[0]) || handName(r.v)) : '';
       var beat = r.lo || !r.elig ? [] : r.elig.filter(function (j) { return r.w.indexOf(j) < 0 && scores[j] != null; });
-      var vs = beat.map(function (j) { return { i: j, n: S.players[j].name, h: hnOf(j) }; });
+      // each beaten hand with its cards too (the ones that made it raised, as the winner's are)
+      var vs = beat.map(function (j) {
+        var c = five[j] && five[j].length ? five[j] : H.hole[j] || [];
+        var so = c.length === 5 && evBased() && !gv().wild && scores[j] != null ? scoreOrder(c, scores[j]) : null;
+        return { i: j, n: S.players[j].name, h: hnOf(j), c: so ? so.c : c.slice(), k: so ? so.k : 0 };
+      });
       r.w.forEach(function (j) {
         var c = r.lo ? [] : five[j] && five[j].length ? five[j] : H.hole[j] || [];
         var so = c.length === 5 && evBased() && !gv().wild && scores[j] != null ? scoreOrder(c, scores[j]) : null;
@@ -5712,6 +5718,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         t.appendChild(el('small', { text: k ? '' : 'Beat' }));
         t.appendChild(el('b', { text: logWho(o.i, o.n) }));
         t.appendChild(el('span', { text: o.h || '' }));
+        if (o.c && o.c.length) { t.appendChild(el('small')); t.appendChild(el('span', { class: 'vcs', html: o.c.map(function (c, i) { return miniCard(c, i < (o.k || 0)); }).join(' ') })); }
       });
       kids.push(t);
     }
