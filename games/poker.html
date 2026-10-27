@@ -4930,6 +4930,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       });
       hand.addEventListener('click', function (e) { if (R.zHeld) { R.zHeld = false; e.stopPropagation(); e.preventDefault(); } }, true);
       hand.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      // (iPhone: the touch itself too, so a long press never turns into text selection or the system's own menu)
+      if (!picking) hand.addEventListener('touchstart', function (e) { e.preventDefault(); zoomOn(0); }, { passive: false });
     }
     if (lme) {
       var pmeEl = el('div', { class: 'pme' + (myTurn ? ' acting' : '') }, [meDealer, meSeat, hand, meEq]);
@@ -5008,7 +5010,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var cx = Math.max(hw + 6, Math.min(vw - hw - 6, br.left + br.width / 2));
     z.style.left = (cx - tr.left) + 'px'; z.style.top = (cy - tr.top) + 'px';
   }
-  ['pointerup', 'pointercancel'].forEach(function (t) { document.addEventListener(t, function () { clearTimeout(R.zt); zoomOff(); }); });
+  ['pointerup', 'pointercancel', 'touchend', 'touchcancel'].forEach(function (t) { document.addEventListener(t, function () { clearTimeout(R.zt); zoomOff(); }); });
   window.addEventListener('blur', zoomOff);
   function markWild(ce, c) { if (isWild(c)) ce.classList.add('wild'); return ce; }
   function hiddenCard() { var b = backEl(); b.classList.add('hid'); b.appendChild(el('i', { class: 'q', text: '?' })); return b; }
