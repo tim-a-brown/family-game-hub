@@ -728,7 +728,7 @@
 @keyframes outdrop{from{translate:0 -8px;scale:.7;opacity:0;}}
 .pseat.out > .pout{background:rgba(40,20,28,.7);}
 /* the venue's name printed on the felt */
-.pseat .cards.zoomable{cursor:zoom-in;touch-action:none;-webkit-touch-callout:none;}
+.pseat .cards.zoomable,.phand.zoomable{cursor:zoom-in;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 .pzoom{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;display:flex;flex-direction:column;align-items:center;gap:8px;
   padding:12px 16px 16px;border-radius:20px;background:rgba(8,10,26,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 18px 40px rgba(0,0,0,.55);}
 .pzoom.in{animation:pzin .18s var(--spring) both;}
@@ -736,9 +736,10 @@
 @keyframes pzin{from{opacity:0;transform:translate(-50%,-50%) scale(.6);}}
 @keyframes pzout{to{opacity:0;transform:translate(-50%,-50%) scale(.85);}}
 .pzoom .pzn{font-weight:900;font-size:.9rem;color:#fff;}
-.pzoom .pzc{display:flex;gap:6px;--cw:clamp(58px,9vw,96px);}
-.pland .pzoom .pzc{--cw:clamp(52px,17dvh,92px);}
+.pzoom .pzc{display:flex;gap:8px;--cw:clamp(58px,9vw,96px);}
 .pzoom .pzc .pcard{margin:0!important;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 8px 18px rgba(0,0,0,.5);}
+.pzoom .pzc.pzb{gap:6px;margin-top:2px;padding-top:10px;border-top:1px solid rgba(255,255,255,.14);}
+.pzoom .pzc.pzb .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.15),0 4px 10px rgba(0,0,0,.45);}
 .plogo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none;z-index:0;white-space:nowrap;}
 .plogo b{font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,4.2vw,2.7rem);letter-spacing:.06em;text-transform:uppercase;color:rgba(0,0,0,.08);text-shadow:0 1px 0 rgba(255,255,255,.02);line-height:1;}
 .plogo span{font-weight:900;font-size:clamp(.6rem,1.4vw,.9rem);letter-spacing:.4em;text-transform:uppercase;color:rgba(0,0,0,.08);text-shadow:0 1px 0 rgba(255,255,255,.02);margin-top:4px;}
@@ -4872,7 +4873,6 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         tb.appendChild(at(el('div', { class: 'pdealer', text: 'D', 'aria-label': 'Dealer button' }), dp));
       }
     });
-    if (ZOOM != null) drawZoom(false);
     potEl = null;
     if (H && !done) {
       // the chips in the middle and exactly what they add up to; with bets still out, the whole pot under it
@@ -4918,6 +4918,19 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       if (done && H.five && H.five[0] && H.five[0].length && main && main.v != null && main.w.indexOf(0) >= 0) ce.classList.add(H.five[0].indexOf(c) >= 0 ? 'best' : 'unused');
       hand.appendChild(ce);
     });
+    // press and hold your cards to see them big, above the board, clear of your finger (while picking cards to swap,
+    // a quick tap still picks: the zoom waits a moment)
+    R.handEl = hand;
+    if (H && H.inHand[0] && hand.querySelector('.pcard:not(.back)')) {
+      hand.classList.add('zoomable');
+      hand.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        if (!picking) { e.preventDefault(); zoomOn(0); return; }
+        clearTimeout(R.zt); R.zt = setTimeout(function () { R.zHeld = true; zoomOn(0); }, 260);
+      });
+      hand.addEventListener('click', function (e) { if (R.zHeld) { R.zHeld = false; e.stopPropagation(); e.preventDefault(); } }, true);
+      hand.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    }
     if (lme) {
       var pmeEl = el('div', { class: 'pme' + (myTurn ? ' acting' : '') }, [meDealer, meSeat, hand, meEq]);
       // (upright phone: what you said or hold sits beside your cards, where it can't land on the next seat's name)
@@ -4930,6 +4943,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     app.appendChild(rail(final));
     if (port) lockPort(app);
     fitTiles();   // (placed before the table is ever drawn: nothing shows in a first spot and then moves)
+    if (ZOOM != null) drawZoom(false);   // (still holding: the big cards stay up over the new table)
 
     if (H && R.mine) { R.mineNo = H.no; if (!picking) R.mine = null; }
     if (H && R.no !== H.no) { R.no = H.no; R.board = H.board.length; R.bets = H.bet.slice(); animateDeal(); }
@@ -4952,15 +4966,49 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var z = document.querySelector('.pzoom'); if (!z) return;
     z.classList.add('out'); setTimeout(function () { if (z.parentNode) z.parentNode.removeChild(z); }, 150);
   }
+  // The big cards sit just above the board, clear of your finger on the cards below it, as large as the room allows.
+  // Your own hand: where there isn't room above the board (a phone), the box sits over the middle of the table instead,
+  // between the top bar and your hand, and carries the board in a smaller row under your cards so you see both.
   function drawZoom(fresh) {
     var old = document.querySelector('.pzoom'); if (old && old.parentNode) old.parentNode.removeChild(old);
-    var seat = seatEls[ZOOM], src = seat && seat.querySelector('.cards'), p = S && S.players[ZOOM];
+    var seat = seatEls[ZOOM], src = ZOOM === 0 && R.handEl && document.body.contains(R.handEl) ? R.handEl : seat && seat.querySelector('.cards'), p = S && S.players[ZOOM];
     if (!tableEl || !src || !p || !src.querySelector('.pcard:not(.back)')) { ZOOM = null; return; }
-    var row = el('div', { class: 'pzc' });
-    Array.prototype.forEach.call(src.children, function (c) { var k = c.cloneNode(true); k.classList.remove('deal'); k.style.animationDelay = ''; row.appendChild(k); });
-    tableEl.appendChild(el('div', { class: 'pzoom' + (fresh ? ' in' : ''), 'aria-hidden': 'true' }, [el('div', { class: 'pzn', text: p.name }), row]));
+    function copies(from) {
+      var r = el('div', { class: 'pzc' });
+      Array.prototype.forEach.call(from, function (c) { var k = c.cloneNode(true); k.classList.remove('deal', 'pick', 'folded', 'best', 'unused'); k.style.animationDelay = ''; k.style.transform = ''; r.appendChild(k); });
+      return r;
+    }
+    var row = copies(Array.prototype.filter.call(src.children, function (c) { return c.classList.contains('pcard'); }));
+    var z = el('div', { class: 'pzoom' + (fresh ? ' in' : ''), 'aria-hidden': 'true' }, [ZOOM === 0 ? null : el('div', { class: 'pzn', text: p.name }), row]);
+    tableEl.appendChild(z);
+    var tr = tableEl.getBoundingClientRect(), bd = tableEl.querySelector('.pboard'), br = bd ? bd.getBoundingClientRect() : null;
+    var bar = document.querySelector('.gbar'), top0 = Math.max(6, bar ? bar.getBoundingClientRect().bottom + 6 : 6);
+    var n = row.children.length, vw = document.documentElement.clientWidth, wide = (Math.min(vw, tr.width) - 48 - 8 * (n - 1)) / n;
+    if (!br) { row.style.setProperty('--cw', Math.round(Math.max(64, Math.min(124, wide))) + 'px'); return; }
+    var cw = Math.min(124, wide, (br.top - 12 - top0 - 44) / 1.4), cy, boardRow = null;
+    if (ZOOM === 0 && cw < 96 && R.handEl.getBoundingClientRect().top > br.bottom) {
+      // over the middle: between the bar and your hand, with the board under your cards
+      var hTop = R.handEl.getBoundingClientRect().top - 10, dealt = bd.querySelectorAll('.pcard:not(.slot)');
+      if (dealt.length && !bd.classList.contains('nob')) { boardRow = copies(dealt); boardRow.classList.add('pzb'); z.appendChild(boardRow); }
+      var nb = boardRow ? boardRow.children.length : 0;
+      var BS = 0.46, setCw = function (c) { row.style.setProperty('--cw', c + 'px'); if (boardRow) boardRow.style.setProperty('--cw', Math.round(c * BS) + 'px'); };
+      cw = Math.min(124, wide, (hTop - top0 - 40) / (1.4 + (boardRow ? 1.4 * BS : 0)));
+      if (boardRow) cw = Math.min(cw, (Math.min(vw, tr.width) - 48 - 6 * (nb - 1)) / nb / BS);
+      cw = Math.round(Math.max(60, cw)); setCw(cw);
+      // measured, then eased down until the box clears your hand (it never sits under your finger)
+      for (var t = 0; t < 4 && z.offsetHeight > hTop - top0 && cw > 60; t++) { cw = Math.max(60, Math.floor(cw * (hTop - top0) / z.offsetHeight)); setCw(cw); }
+      cy = (top0 + hTop) / 2;
+    } else {
+      cw = Math.round(Math.max(64, cw));
+      row.style.setProperty('--cw', cw + 'px');
+      cy = br.top - 12 - z.offsetHeight / 2;   // (its size before the pop-in scale)
+    }
+    var hh = z.offsetHeight / 2, hw = z.offsetWidth / 2;
+    cy = Math.max(cy, top0 + hh);
+    var cx = Math.max(hw + 6, Math.min(vw - hw - 6, br.left + br.width / 2));
+    z.style.left = (cx - tr.left) + 'px'; z.style.top = (cy - tr.top) + 'px';
   }
-  ['pointerup', 'pointercancel'].forEach(function (t) { document.addEventListener(t, zoomOff); });
+  ['pointerup', 'pointercancel'].forEach(function (t) { document.addEventListener(t, function () { clearTimeout(R.zt); zoomOff(); }); });
   window.addEventListener('blur', zoomOff);
   function markWild(ce, c) { if (isWild(c)) ce.classList.add('wild'); return ce; }
   function hiddenCard() { var b = backEl(); b.classList.add('hid'); b.appendChild(el('i', { class: 'q', text: '?' })); return b; }
