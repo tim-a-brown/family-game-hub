@@ -3981,7 +3981,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       box.appendChild(el('p', { class: 'muted', style: { color: 'var(--yellow)', 'margin-top': '8px' }, text: 'You\'re still playing ' + liveEv.venue + ' (' + live.circ.left.toLocaleString() + ' left). Finish it, or give up that seat, before you play here.' }));
       acts.push({ label: 'Back to ' + liveEv.venue, primary: true, onClick: function () { S = live; S.coach = CZ.coach; moneyFor(seatName(S)); resume(); } });
     } else if (tix) acts.push({ label: 'Take your seat', sub: 'Won at ' + ladder(ev)[ev.no - 1].venue, primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, true, dcOn); } });
-    else if (can) acts.push({ label: 'Buy in · ' + usd(ev.buy), primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, false, dcOn); } });
+    else if (can) acts.push({ label: 'Buy in for ' + usd(ev.buy), primary: true, onClick: function () { Kit.sfx('chip'); newEvent(ev, false, dcOn); } });
     else {
       box.appendChild(el('p', { class: 'muted', style: { color: 'var(--red)', 'margin-top': '8px' }, text: 'You need ' + usd(ev.buy) + '. ' + bankNm() + ' has ' + usd(bank) + '.' }));
       if (bank < 1000) acts.push({ label: Casino.mode() === 'mine' ? 'Refill bank to $1,000' : topUp(seatName()).btn, primary: true, onClick: function () { refillNow(); circLobby(); } });
@@ -4084,8 +4084,19 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     moneyFor(CZ.name, true);
     var pg = circLoad(ev.track);
     var tk = pg.tix[ev.id] ? ev.id : ev.grp && pg.tix[ev.grp] ? ev.grp : null;
-    if (seat && tk) delete pg.tix[tk];
-    else { seat = false; if (Casino.balance() < ev.buy) return circSheet(ev); Casino.bet(ev.buy); }
+    if (!seat || !tk) { seat = false; if (Casino.balance() < ev.buy) return circSheet(ev); }
+    var paid = false;
+    try { if (seat) delete pg.tix[tk]; else { Casino.bet(ev.buy); paid = true; } evStart(ev, seat, dc, hgAt, pg); }
+    catch (e) {
+      if (SIM) throw e;
+      // (never a frozen table with the money gone: the buy-in or the seat goes back, and you're at the lobby)
+      console.error('[poker] circuit event did not start: ' + (e && e.message || e));
+      if (seat) { var pg2 = circLoad(ev.track); pg2.tix[tk] = 1; circSave(pg2, ev.track); } else if (paid) Casino.win(ev.buy);
+      if (S && S.circ && S.circ.id === ev.id) drop(S);
+      circLobby(ev.track); Kit.toast(seat ? 'That didn\u2019t start. Your seat is kept; try again.' : 'That didn\u2019t start. Your buy-in is back; try again.', 4000);
+    }
+  }
+  function evStart(ev, seat, dc, hgAt, pg) {
     // the Mixed road's home game: tonight's game is a surprise, found out at the table (hg): Hold'em, Omaha, dealer's
     // choice, or Hold'em and Omaha with the home games dealt in (the only stop where those and dealer's choice turn up)
     var hg = ev.mix && ev.no === 0 ? hgAt || pick(['he', 'om', 'dc', 'home']) : null;
@@ -4290,8 +4301,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         icon: place === 1 ? 'trophy' : prize ? 'coins' : 'meh', lose: !prize, title: title, sub: sub,
         rank: C.else === 0 ? rank : null, notes: hl.slice(0, 3), notesTitle: 'Your run',
         againLabel: seatWon ? 'Take your seat' : 'Back to the circuit',
-        again: function () { circLobby(); if (seatWon) circSheet(seatWon); },
-        extra: [{ label: 'Play this stop again', onClick: function () { circSheet(ev); } }]
+        again: function () { circLobby(ev.track); if (seatWon) circSheet(seatWon); },
+        extra: [{ label: 'Play this stop again', onClick: function () { circLobby(ev.track); circSheet(ev); } }]
       });
     }
     if (bracelet) return braceletReveal(bracelet, Object.assign({}, ev, { field: N }), prize, result);
