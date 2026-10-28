@@ -1,0 +1,23 @@
+# Publishes storage.rules whenever it changes on main (the hosting deploy doesn't carry it).
+# Run it any time from the Actions tab.
+name: Storage rules
+
+on:
+  push:
+    branches: [main]
+    paths: [storage.rules]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish storage.rules
+        run: node scripts/deploy-storage-rules.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
