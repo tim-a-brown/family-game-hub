@@ -1083,14 +1083,16 @@
     sfx('pop');
     var list = el('div', { class: 'k-list' });
     var s, groups = [], byName = {};
+    // a menu item's icon: a line icon by name, a game's own icon by its id (Back to Hot Dog Stand), never the name as text
+    function menuIc(ic) { if (P[ic]) return icon(ic); if (/^\s*</.test(ic)) return ic; var g = findGameSafe(ic); return g ? gameIconOf(g.id) : icon('sparkle'); }
     function group(name) { if (!byName[name]) { byName[name] = []; groups.push(name); } return byName[name]; }
     function item(g, ic, label, fn, cls, sub) {
       group(g).push(el('button', { type: 'button', class: cls || '', onclick: function () { sfx('tap'); s.close(); fn(); } },
-        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : []))]));
+        [el('span', { class: 'ic', html: menuIc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : []))]));
     }
     function toggle(g, ic, label, sub, get, set) {
       var b = el('button', { type: 'button', class: 'tg', role: 'switch', 'aria-checked': String(!!get()) },
-        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : [])), el('i', { class: 'sw' })]);
+        [el('span', { class: 'ic', html: menuIc(ic) }), el('span', { class: 'lbl' }, [el('span', { text: label })].concat(sub ? [el('small', { text: sub })] : [])), el('i', { class: 'sw' })]);
       b.onclick = function () { set(); b.setAttribute('aria-checked', String(!!get())); haptic('light'); };
       group(g).push(b);
     }
@@ -1100,7 +1102,7 @@
     // New game, Undo and Past games sit side by side across the top
     function tile(ic, label, fn) {
       top.push(el('button', { type: 'button', class: 'k-tile', onclick: function () { sfx('tap'); s.close(); fn(); } },
-        [el('span', { class: 'ic', html: P[ic] ? icon(ic) : esc(ic) }), el('span', { text: label })]));
+        [el('span', { class: 'ic', html: menuIc(ic) }), el('span', { text: label })]));
     }
     if (opts.onNew) tile('sparkle', 'New game', function () {
       if (opts.confirmNew === false) return opts.onNew();

@@ -42,6 +42,11 @@ body{overflow-x:hidden;}
 .dw-row.leave,.dw-row.leave ~ .dw-hide{transition:opacity .4s, transform .4s;opacity:0;transform:scale(.9);}
 @keyframes dwArrive{0%{transform:translateY(16px) scale(.92);opacity:0;}60%{box-shadow:0 0 0 6px rgba(143,197,151,.4);}100%{transform:none;opacity:1;}}
 .dw-hide{align-self:flex-start;border:0;background:none;color:var(--text-3);font-weight:800;font-size:.8rem;padding:4px 2px;cursor:pointer;text-decoration:underline;}
+.dw-view{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:14px;background:linear-gradient(180deg,#2a2c31,#1d1f23);box-shadow:inset 0 1px 3px rgba(0,0,0,.5);}
+.dw-view button{border:0;border-radius:10px;padding:9px 8px;background:transparent;color:rgba(255,255,255,.7);cursor:pointer;text-align:center;transition:background .2s,color .2s;}
+.dw-view button b{display:block;font:900 .95rem/1.1 var(--font);}
+.dw-view button small{display:block;margin-top:2px;font:700 .72rem/1.1 var(--font);opacity:.75;}
+.dw-view button.on{background:linear-gradient(180deg,#8fc597,#6fa877);color:#0f2414;box-shadow:0 2px 0 #3d6b45;}
 .setup.dw-on .modes{opacity:.35;pointer-events:none;transition:opacity .3s;}
 
 /* ── Season strip: game n of N, cash toward the goal ─────────────────────── */
@@ -903,14 +908,15 @@ body{overflow-x:hidden;}
   function dwUnlocked() { try { return localStorage.getItem(DWK) === '1'; } catch (e) { return false; } }
   function showSetup() {
     stopDay(); app.className = 'hd'; app.innerHTML = '';
-    var dwOn = false;
+    var dwOn = false, dwView = 'classic';
+    try { if (localStorage.getItem('drugwars_view_dev') === 'street') dwView = 'street'; } catch (e) {}
     var st = Kit.setup(app, {
       intro: 'Run the stand outside the stadium for a season',
       modes: Object.keys(MODES).map(function (k) { var m = MODES[k]; return { id: k, icon: k === 'rookie' ? 'star' : k === 'pro' ? 'flag' : 'flame', title: m.name, desc: m.desc }; }),
       mode: 'rookie', start: 'Open for the season',
       players: { min: 1, max: 1, count: 1, label: 'Owner' },
       onStart: function (cfg) {
-        if (dwOn) { var nm = cfg.players[0] && cfg.players[0].name; location.href = 'drugwars.html' + (nm && nm !== 'You' ? '?p=' + encodeURIComponent(nm) : ''); return; }
+        if (dwOn) { var nm = cfg.players[0] && cfg.players[0].name; location.href = 'drugwars.html?view=' + dwView + (nm && nm !== 'You' ? '&p=' + encodeURIComponent(nm) : ''); return; }
         newSeason(cfg.mode);
       }
     });
@@ -920,7 +926,7 @@ body{overflow-x:hidden;}
     function paint() {
       box.innerHTML = '';
       st.el.classList.toggle('dw-on', dwOn);
-      if (startBtn) startBtn.textContent = dwOn ? 'Turn on the TI-82' : 'Open for the season';
+      if (startBtn) startBtn.textContent = !dwOn ? 'Open for the season' : dwView === 'street' ? 'Hit the street' : 'Turn on the TI-82';
       if (!dwUnlocked()) return;
       var cv = el('canvas', { width: 46, height: 14 });
       var row = el('button', { type: 'button', class: 'dw-row', role: 'switch', 'aria-checked': String(dwOn), onclick: function () {
@@ -928,6 +934,11 @@ body{overflow-x:hidden;}
       } }, [el('span', { class: 'lcd' }, [cv]), el('span', { class: 'grow' }, [el('b', { text: 'Drug Wars' }), el('small', { text: dwOn ? 'On: the TI-82 game from math class' : 'Off: running the hot dog stand' })]), el('span', { class: 'sw' })]);
       lcdWord(cv, 'DRUGWAR');
       box.appendChild(row);
+      // Drug Wars on: which way to play it (the TI-82 as it was, or the street)
+      if (dwOn) box.appendChild(el('div', { class: 'dw-view' }, [['classic', 'Classic', 'The TI-82'], ['street', 'Street', 'Map, board and coat']].map(function (v) {
+        return el('button', { type: 'button', class: dwView === v[0] ? 'on' : '', onclick: function () { if (dwView === v[0]) return; dwView = v[0]; try { localStorage.setItem('drugwars_view_dev', dwView); } catch (e) {} Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
+          [el('b', { text: v[1] }), el('small', { text: v[2] })]);
+      })));
       box.appendChild(el('button', { type: 'button', class: 'dw-hide', text: 'Hide Drug Wars on this device', onclick: function () { try { localStorage.removeItem(DWK); } catch (e) {} dwOn = false; Kit.toast('Hidden'); paint(); } }));
     }
     paint();
