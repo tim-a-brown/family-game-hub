@@ -8,24 +8,39 @@
 // read (storage.rules has no rule for it, so it's closed).
 //   CODE=<the code Yahoo shows after you approve>  node scripts/yahoo-fantasy.js   one-time sign-in, then a first run
 //   node scripts/yahoo-fantasy.js                                                  the regular run (yahoo-fantasy.yml)
-// Needs YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, FIREBASE_SERVICE_ACCOUNT. DRY=1 prints instead of saving the scores.
+// The Yahoo app (United Haters League) is shared with the league manager app, so its secret lives in one place: Secret
+// Manager in the ffl-manager project (YAHOO_CLIENT_SECRET), read with this site's deploy service account
+// (claude-deploy@familygames-da3e5, given Secret Manager Secret Accessor on that secret). A YAHOO_CLIENT_SECRET
+// environment variable, when set, is used instead. Needs FIREBASE_SERVICE_ACCOUNT. DRY=1 prints instead of saving.
 const crypto = require('crypto');
 const BUCKET = 'familygames-da3e5.firebasestorage.app', OUT = 'fantasy/scores.json', TOKEN = 'fantasy/private/yahoo.json';
-const ID = process.env.YAHOO_CLIENT_ID, SECRET = process.env.YAHOO_CLIENT_SECRET, CODE = (process.env.CODE || '').trim();
+// (the client ID isn't secret: it's in every sign-in link)
+const ID = process.env.YAHOO_CLIENT_ID || 'dj0yJmk9NlBURFJPVzYxRzM3JmQ9WVdrOU4xWXhSRVpaVmpnbWNHbzlNQT09JnM9Y29uc3VtZXJzZWNyZXQmc3Y9MCZ4PTkw';
+const SECRET_AT = 'projects/' + (process.env.FFL_PROJECT || 'ffl-manager') + '/secrets/YAHOO_CLIENT_SECRET/versions/latest';
+let SECRET = process.env.YAHOO_CLIENT_SECRET || null;
+const CODE = (process.env.CODE || '').trim();
 const API = 'https://fantasysports.yahooapis.com/fantasy/v2/';
-if (!ID || !SECRET) { console.error('YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET are needed'); process.exit(1); }
 
 // ── Google Storage with the service account ──
-let gTok = null;
-async function google() {
-  if (gTok) return gTok;
+const gTok = {};
+async function google(scope) {
+  scope = scope || 'https://www.googleapis.com/auth/devstorage.read_write';
+  if (gTok[scope]) return gTok[scope];
   const key = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url'), now = Math.floor(Date.now() / 1000);
-  const body = b64({ alg: 'RS256', typ: 'JWT' }) + '.' + b64({ iss: key.client_email, scope: 'https://www.googleapis.com/auth/devstorage.read_write', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
+  const body = b64({ alg: 'RS256', typ: 'JWT' }) + '.' + b64({ iss: key.client_email, scope: scope, aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 });
   const sig = crypto.createSign('RSA-SHA256').update(body).sign(key.private_key).toString('base64url');
   const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + body + '.' + sig });
   if (!r.ok) throw new Error('Google token HTTP ' + r.status);
-  return (gTok = (await r.json()).access_token);
+  return (gTok[scope] = (await r.json()).access_token);
+}
+// the Yahoo app's secret, from the league manager's Secret Manager
+async function secret() {
+  if (SECRET) return SECRET;
+  const r = await fetch('https://secretmanager.googleapis.com/v1/' + SECRET_AT + ':access', { headers: { Authorization: 'Bearer ' + await google('https://www.googleapis.com/auth/cloud-platform') } });
+  if (!r.ok) throw new Error('Could not read the Yahoo secret from Secret Manager (' + SECRET_AT + '): HTTP ' + r.status + (r.status === 403 ? ' (the deploy service account needs Secret Manager Secret Accessor on it)' : r.status === 404 ? ' (no such secret yet)' : ''));
+  const j = await r.json();
+  return (SECRET = Buffer.from(j.payload.data, 'base64').toString('utf8').trim());
 }
 async function put(obj, text, cache) {
   const meta = { name: obj, contentType: 'application/json', cacheControl: cache };
@@ -43,7 +58,7 @@ async function get(obj) {
 
 // ── Yahoo sign-in ──
 async function yahooToken(form) {
-  const r = await fetch('https://api.login.yahoo.com/oauth2/get_token', { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(ID + ':' + SECRET).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+  const r = await fetch('https://api.login.yahoo.com/oauth2/get_token', { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(ID + ':' + await secret()).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(Object.assign({ redirect_uri: 'oob' }, form)).toString() });
   const t = await r.text(); let j = null; try { j = JSON.parse(t); } catch (e) {}
   if (!r.ok || !j || !j.access_token) throw new Error('Yahoo sign-in HTTP ' + r.status + ' ' + (j && (j.error_description || j.error) || t.slice(0, 160)));
