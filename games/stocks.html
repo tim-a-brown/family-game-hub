@@ -28,6 +28,14 @@ body{overflow-x:hidden;}
 .tape .it .dn{color:#ff5a5f;text-shadow:0 0 6px rgba(255,80,90,.55);}
 @keyframes tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.tape .run{animation:none}}
+/* the second strip: what you own and what you watch, running the other way, its label pinned at the left */
+.tapes{margin:2px 0 12px;}
+.tapes .tape{margin:0 -14px;}
+.tape.mine{border-top-color:#2a3240;}
+.tape.mine .run{animation-direction:reverse;}
+.tape.mine .it b{color:#bfe9ff;}
+.tape.mine .lbl{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 10px 0 14px;font:900 .62rem/1 var(--font);letter-spacing:.14em;color:#9fd8ff;
+  background:linear-gradient(90deg,#07090c 75%,rgba(7,9,12,0));text-shadow:0 0 6px rgba(120,200,255,.5);}
 
 /* ── Panels: the dark trading-terminal glass ── */
 .pnl{position:relative;border-radius:18px;padding:14px;margin:0 0 12px;color:#eef2f8;background:linear-gradient(180deg,#151b24,#0b0f15);
@@ -220,7 +228,7 @@ body{overflow-x:hidden;}
   .mk{max-width:1200px;display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:18px;}
   .mk-side{display:block;position:sticky;top:calc(var(--bar) + 4px);align-self:start;max-height:calc(100dvh - var(--bar) - 10px);overflow-y:auto;scrollbar-width:none;}
   .mk-side::-webkit-scrollbar{display:none;}
-  .tape{grid-column:1/-1;margin:2px -14px 4px;}
+  .tapes{grid-column:1/-1;margin:2px 0 4px;}
   .chips{margin:0 0 10px;padding:2px 0 4px;}
 }
 </style>
@@ -646,13 +654,14 @@ body{overflow-x:hidden;}
   function layout() {
     app.innerHTML = '';
     var root = el('div', { class: 'mk' });
-    dom.tape = el('div', { class: 'tape' });
+    dom.tape = el('div', { class: 'tape' }); dom.tape2 = el('div', { class: 'tape mine' });
+    dom.tapes = el('div', { class: 'tapes' }, [dom.tape, dom.tape2]);
     dom.side = el('aside', { class: 'mk-side' });
     dom.main = el('main', { class: 'mk-main' });
     dom.sum = el('div');
     dom.seg = el('div', { class: 'seg', style: { margin: '0 0 12px' } });
     dom.body = el('div');
-    root.appendChild(dom.tape); root.appendChild(dom.side); root.appendChild(dom.main);
+    root.appendChild(dom.tapes); root.appendChild(dom.side); root.appendChild(dom.main);
     dom.main.appendChild(dom.seg); dom.main.appendChild(dom.body);
     app.appendChild(root);
     dom.pane = el('div', { class: 'pane' }, [dom.paneIn = el('div', { class: 'in' })]);
@@ -671,14 +680,26 @@ body{overflow-x:hidden;}
     dom.tape.innerHTML = '';
     if (!Q) return;
     var syms = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'GOOGL', 'META', 'DIS', 'NTDOY', 'UAL', 'KO', 'BTC-USD', 'TLT', 'GLD'].filter(S);
-    holdings().forEach(function (h) { if (syms.indexOf(h.sym) < 0) syms.unshift(h.sym); });
+    tapeRun(dom.tape, syms);
+    // the second strip: everything you have a stake in (shares or options), then your watchlist
+    var mine = [];
+    holdings().forEach(function (h) { mine.push(h.sym); });
+    A.opts.forEach(function (o) { mine.push(o.sym); });
+    WATCH.forEach(function (w) { mine.push(w); });
+    mine = mine.filter(function (x, i) { return mine.indexOf(x) === i && S(x) && isFinite(price(x)) && price(x) > 0; });
+    dom.tape2.innerHTML = ''; dom.tape2.style.display = mine.length ? '' : 'none';
+    if (mine.length) { tapeRun(dom.tape2, mine); dom.tape2.appendChild(el('span', { class: 'lbl', text: 'YOURS' })); }
+  }
+  function tapeRun(host, syms) {
+    // (repeated until a half of the strip is wider than any screen, so a short list still runs without a gap)
+    var half = syms.slice(); while (half.length < 12) half = half.concat(syms);
     var run = el('div', { class: 'run' });
-    for (var rep = 0; rep < 2; rep++) syms.forEach(function (sym) {
+    for (var rep = 0; rep < 2; rep++) half.forEach(function (sym) {
       var c = dayChg(sym);
       run.appendChild(el('span', { class: 'it' }, [el('b', { text: sym.replace('-USD', '') }), el('span', { text: px(price(sym)).replace('$', '') }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]));
     });
-    run.style.animationDuration = syms.length * 4.5 + 's';
-    dom.tape.appendChild(run);
+    run.style.animationDuration = half.length * 4.5 + 's';
+    host.appendChild(run);
   }
   function paintSeg() {
     dom.seg.innerHTML = '';
