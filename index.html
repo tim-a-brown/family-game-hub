@@ -297,6 +297,14 @@ html[data-theme="light"] .tiles .g.ct,html[data-theme="parchment"] .tiles .g.ct{
 .gicon.ct-ic{position:relative;display:block;border-radius:6px;overflow:hidden;background:#111;box-shadow:0 0 0 2px #8e8c8f;}
 .gicon.ct-ic.ct-genesis,.gicon.ct-ic.ct-atari2600{box-shadow:0 0 0 2px #1d1d20;}
 .gicon.ct-ic .ct-plain b{font-size:.5rem;}
+/* Favorites: a console game's tile carries its cartridge, small, where the other tiles have their icon */
+:root .tiles .g:not(.ct) .gicon.mini-ct{width:calc(var(--gi) * .62);height:calc(var(--gi) * .8);left:calc(var(--arth) / 2 - var(--gi) * .31);top:calc(50% - var(--gi) * .4);transform:rotate(-4deg);}
+:root .tiles .g:not(.ct) .go:active .gicon.mini-ct{transform:scale(.9) rotate(-8deg);}
+.mini-ct .ct-body{left:0;right:0;top:0;height:100%;}
+.mini-ct.ct-snes .ct-body{top:6%;height:88%;}
+.mini-ct .ct-title{font-size:.3rem;padding:2px 4%;}
+.mini-ct .ct-plain b{font-size:.42rem;}
+.mini-ct .ct-arrow{border-width:3px;border-top-width:4px;margin-left:-3px;}
 /* the Consoles header's sort switch, and the console dividers when sorted by console */
 .sec-h .cs-head{margin-left:auto;display:flex;align-items:center;gap:8px;}
 .sec-h .cs-head .hs-link{margin-left:0;padding:0 11px;}
@@ -831,8 +839,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     return g.art ? el('img', { class: 'ct-art', src: g.art, alt: '', loading: 'lazy', decoding: 'async' })
       : el('span', { class: 'ct-plain' }, [el('b', { text: g.name })]);
   }
-  function cartTile(g, fav) {
-    var r = el('div', { class: 'g ct ct-' + g.sys, 'data-id': g.id });
+  function cartBody(g) {
     // the console's own logo where its cartridges carry it: under the art on NES, Super Nintendo and Genesis (its
     // gridded band), at the top of Atari's paper label
     var brand = el('span', { class: 'ct-brand' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '', decoding: 'async' })]);
@@ -841,15 +848,17 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       : el('span', { class: 'ct-lab' }, [el('span', { class: 'ct-win' }, [cartLabel(g)]), brand]);
     // the NES Game Pak: the ridged grip down its left side with the square finger notch at its top, the arrow under the label
     var nes = g.sys === 'nes';
-    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [el('span', { class: 'ct-body' },
-      [nes ? el('span', { class: 'ct-scoop' }) : null, el('span', { class: 'ct-grip' }), lab, nes ? el('span', { class: 'ct-arrow' }) : null]),
-      el('span', { class: 'ct-name', text: g.name })]);
+    return el('span', { class: 'ct-body' }, [nes ? el('span', { class: 'ct-scoop' }) : null, el('span', { class: 'ct-grip' }), lab, nes ? el('span', { class: 'ct-arrow' }) : null]);
+  }
+  function cartTile(g, fav) {
+    var r = el('div', { class: 'g ct ct-' + g.sys, 'data-id': g.id });
+    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag }, [cartBody(g), el('span', { class: 'ct-name', text: g.name })]);
     go.addEventListener('click', function () { r.classList.add('in'); launch(g); });
     return [r, go];
   }
-  function row(g) {
+  function row(g, inFavs) {
     var fav = isFav(g);
-    if (g.cart && tiles) {
+    if (g.cart && tiles && !inFavs) {
       var ct = cartTile(g, fav), r0 = ct[0];
       var star0 = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
       star0.addEventListener('click', function () { var on = toggleFav(g); Kit.haptic('success'); Kit.sfx(on ? 'good' : 'tap'); Kit.toast(on ? g.name + ' added to favorites' : g.name + ' removed from favorites'); render(); });
@@ -860,8 +869,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var cat = GAME_CATS.filter(function (x) { return x.id === g.cat; })[0];
     var r = el('div', { class: 'g', 'data-id': g.id, 'data-cat': g.cat, style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color } });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + players(g) + ' players' }, [
-      g.cart ? el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)]) : el('span', { html: GameIcon(g.id, { bare: tiles }), style: { display: 'contents' } }),
-      el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : g.name.length > 11 ? 'two' : '' })].concat(tiles ? [badge(g)] : [])),
+      g.cart ? (tiles ? el('span', { class: 'gicon mini-ct ct-' + g.sys }, [cartBody(g)]) : el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)])) : el('span', { html: GameIcon(g.id, { bare: tiles }), style: { display: 'contents' } }),
+      el('span', { class: 'txt' }, [el('b', { text: g.name, class: /\S{10,}/.test(g.name) ? 'long' : g.name.length > 11 ? 'two' : '' })].concat(tiles ? [g.cart && !resumeMap[g.id] ? el('span', { class: 'meta', html: Kit.icon('console') + '<span>' + ({ nes: 'NES', snes: 'SNES', genesis: 'Genesis', atari2600: 'Atari' }[g.sys] || '') + '</span>' }) : badge(g)] : [])),
     ].concat(tiles ? [] : [badge(g)]));
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
@@ -966,7 +975,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     games.slice().sort(favs ? function (a, b) { return favIndex(a) - favIndex(b); } : bySys ? consoleOrder : function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g, i, all) {
       // by console: each console's games under its own logo
       if (bySys && (!i || all[i - 1].sys !== g.sys)) list.appendChild(el('div', { class: 'cs-div' }, [el('img', { src: 'img/consoles/' + g.sys + '.svg', alt: '' }), el('span', { text: CONSOLE_NAME[g.sys] || '' })]));
-      list.appendChild(row(g));
+      list.appendChild(row(g, favs));
     });
     s.appendChild(list);
     if (favs) arrangeable(s, h, list);
