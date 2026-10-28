@@ -3,7 +3,7 @@
 // Every league on the signed-in Yahoo account (football, basketball, baseball, hockey), this week's matchups with
 // points and projections, saved to Firebase Storage fantasy/scores.json (public, read by the game).
 //
-// The Yahoo login: one sign-in, then kept fresh here. The app's secret never leaves GitHub; the long-lived login
+// The Yahoo login: one sign-in, then kept fresh here. The long-lived login
 // (Yahoo's refresh token) is kept in Storage at fantasy/private/yahoo.json, which nobody but this service account can
 // read (storage.rules has no rule for it, so it's closed).
 //   CODE=<the code Yahoo shows after you approve>  node scripts/yahoo-fantasy.js   one-time sign-in, then a first run
