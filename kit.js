@@ -10,6 +10,7 @@
 //
 // API (all on window.Kit)
 //   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent
+//                                              (sync: fn adds "Sync now": your saves, then fn() refreshes the game's live data)
 //                                              (undo: fn adds "Undo" to the menu)
 //   Kit.setup(root, {...})                     standard "who's playing" screen
 //   Kit.handoff({name, color, what}) -> Promise  pass-and-play cover; hold 3s to reveal
@@ -672,6 +673,25 @@
 
   // Kit.fitText(el, min): a one-line number or label eases its font down until it fits its box (never "…"); min is
   // the smallest share of its own size it may go to (default .62)
+  // Sync now (a game's menu, Kit.init({sync: fn})): your saves with the cloud (signed in), then the game's own live
+  // data refreshed by fn (prices, scores), which returns a promise
+  function syncSub() {
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin(), ls = pin && FGHSync.lastSync ? FGHSync.lastSync() : null;
+    if (!pin) return 'Get the latest';
+    return ls ? 'Last synced ' + new Date(ls.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (ls.ok ? '' : ', failed') : 'Not synced yet';
+  }
+  function syncNowItem() {
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin();
+    toast(pin ? 'Syncing…' : 'Getting the latest…');
+    var a = pin && FGHSync.syncNow ? FGHSync.syncNow().catch(function (e) { return { ok: false, error: e }; }) : Promise.resolve({ ok: true });
+    var b = Promise.resolve().then(function () { return opts.sync && opts.sync(); }).then(function () { return true; }, function () { return false; });
+    Promise.all([a, b]).then(function (r) {
+      var ok = r[0] && r[0].ok !== false, fresh = r[1];
+      if (ok && fresh) { toast(pin ? 'Synced' : 'Up to date'); haptic('success'); }
+      else if (!ok) { toast(r[0] && r[0].reason === 'offline' ? 'You\u2019re offline. Try again when you\u2019re back online.' : 'Couldn\u2019t sync. Try again in a moment.', 3600); haptic('error'); }
+      else { toast('Synced, but the latest data didn\u2019t load. Try again in a moment.', 3600); }
+    });
+  }
   function fitText(e, min) {
     if (!e) return;
     e.style.fontSize = '';
@@ -1116,6 +1136,7 @@
       if (m.toggle) toggle(g, m.icon || 'sparkle', m.label, m.sub, m.toggle, m.onClick);
       else item(g, m.icon || 'sparkle', typeof m.label === 'function' ? m.label() : m.label, m.onClick, m.cls, m.sub);
     });
+    if (opts.sync) item(G, 'sync', 'Sync now', syncNowItem, '', syncSub());
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);

@@ -1469,6 +1469,7 @@ body{overflow-x:hidden;}
   }
   Kit.init({
     id: 'stocks',
+    sync: function () { return refreshAll(); },
     menu: [
       depthItem,
       { icon: 'chart', label: 'Taxes', when: taxesOn, onClick: taxSheet },
@@ -1503,7 +1504,9 @@ body{overflow-x:hidden;}
   if (!DEPTH) Kit.depth({ host: app, key: 'mk_depth', levels: DEPTHS, value: A.dep || A.lots.length || A.tx.length ? 'pro' : 'basic', start: 'Open the market', onPick: setDepth });
   else layout();
   loadQuotes().then(ensureAll).then(start);
-  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && !dom.pane.classList.contains('on')) paint(); }); });
+  // the latest prices, and anything they settle (orders filled, options expired, dividends): on coming back, or Sync now
+  function refreshAll() { return loadQuotes().then(ensureAll).then(function () { var ev = catchUp(); if (ev.length) report = (report || []).concat(ev); save(); if (dom.main && !dom.pane.classList.contains('on')) paint(); }); }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refreshAll(); });
   window.__mk = { loadAll: loadAll, depth: function () { return DEPTH; }, setDepth: setDepth, ALL: function () { return ALL; }, open: function (s) { openSym(s); }, A: function () { return A; }, Q: function () { return Q; }, catchUp: catchUp, taxYears: taxYears, withdrawPlan: withdrawPlan, buy: buy, sell: sell, paint: paint, setQ: function (q) { Q = q; }, totals: totals };
 })();
 </script>
