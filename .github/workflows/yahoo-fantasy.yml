@@ -1,0 +1,33 @@
+# Fantasy scores from Yahoo for the Sportsbook's tickers (see scripts/yahoo-fantasy.js). Times are UTC:
+# - every 15 minutes through Sunday's NFL games (1 PM to after the night game, Eastern) and the Monday and Thursday
+#   night games;
+# - every three hours the rest of the time (basketball, hockey, baseball, waivers and projections).
+# Run it any time from the Actions tab.
+name: Fantasy scores
+
+on:
+  schedule:
+    - cron: '*/15 17-23 * * 0'
+    - cron: '*/15 0-4 * * 1,2,5'
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yahoo-fantasy
+  cancel-in-progress: false
+
+jobs:
+  scores:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get this week's fantasy matchups and save them
+        run: node scripts/yahoo-fantasy.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          YAHOO_CLIENT_ID: ${{ secrets.YAHOO_CLIENT_ID }}
+          YAHOO_CLIENT_SECRET: ${{ secrets.YAHOO_CLIENT_SECRET }}

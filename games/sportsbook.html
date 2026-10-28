@@ -17,7 +17,39 @@ body{overflow-x:hidden;}
 .sb{max-width:760px;margin:0 auto;padding:4px 14px calc(var(--safe-b) + 96px);}
 .sb-side{display:contents;}
 /* ── The tickers: the biggest games on top, yours (your teams, your bets) underneath, running the other way ── */
-.sbt{margin:2px -14px 12px;}
+.sbt{margin:2px -14px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;}
+.sbt .strips{min-width:0;}
+/* your fantasy matchup, pinned at the end of the strips: the same LED glass, your score against theirs */
+.fant{display:none;position:relative;flex-direction:column;justify-content:center;gap:3px;min-width:118px;max-width:46vw;padding:6px 12px 6px 12px;border:0;cursor:pointer;text-align:left;
+  background:#07090c;border-left:1px solid #2a3240;box-shadow:inset 0 0 14px rgba(0,0,0,.9),-8px 0 12px rgba(0,0,0,.5);font:800 .8rem/1 var(--mono);color:#ffcc4d;-webkit-tap-highlight-color:transparent;}
+.fant.on{display:flex;}
+.fant::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.5) .6px,transparent 1px) 0 0/3px 3px;}
+.fant .hd{display:flex;justify-content:space-between;gap:8px;font:900 .56rem/1 var(--font);letter-spacing:.12em;color:#c79bff;text-shadow:0 0 6px rgba(190,140,255,.5);white-space:nowrap;}
+.fant .hd span:last-child{color:#7f8aa0;text-shadow:none;}
+.fant .tm{display:flex;justify-content:space-between;align-items:baseline;gap:10px;min-width:0;}
+.fant .tm b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff3c4;font-weight:900;}
+.fant .tm span{flex:none;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);font-variant-numeric:tabular-nums;}
+.fant .tm.me b{color:#bfe9ff;}
+.fant .tm.ahead span{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
+.fant .tm.behind span{color:#ff8a8f;text-shadow:0 0 6px rgba(255,90,100,.5);}
+.fant .tm small{font-size:.6rem;color:#7f8aa0;margin-left:4px;}
+.fant.swap .tm,.fant.swap .hd{animation:fswap .5s ease;}
+@keyframes fswap{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:none;}}
+.fsh .lg{margin:4px 0 14px;}
+.fsh .lg h3{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 8px;font-size:1rem;}
+.fsh .lg h3 small{font-size:.75rem;color:var(--text-3);font-weight:800;white-space:nowrap;}
+.fsh .mu{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 12px;margin-bottom:6px;border-radius:12px;background:var(--w06);}
+.fsh .mu.mine{background:linear-gradient(180deg,rgba(150,110,255,.22),rgba(150,110,255,.08));box-shadow:inset 0 0 0 1px rgba(190,150,255,.35);}
+.fsh .mu .t{display:flex;align-items:center;gap:8px;min-width:0;}
+.fsh .mu .t img{width:26px;height:26px;border-radius:6px;flex:none;object-fit:cover;background:var(--w08);}
+.fsh .mu .t b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;}
+.fsh .mu .t.me b{color:#c9b3ff;}
+.fsh .mu .p{text-align:right;font:900 1.05rem/1.1 var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.fsh .mu .p small{display:block;font:700 .66rem/1.2 var(--font);color:var(--text-3);}
+.fsh .mu .p.win{color:#3ddc84;}
+.fsh .mu .bar{grid-column:1/-1;height:5px;border-radius:3px;background:var(--w08);overflow:hidden;display:flex;}
+.fsh .mu .bar i{display:block;height:100%;background:#9b7bff;}
+.fsh .open{display:inline-flex;margin-top:2px;font-weight:800;font-size:.82rem;color:var(--text-2);}
 .sbt .tape{position:relative;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
 .sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
 .sbt .run{position:absolute;top:0;left:0;display:flex;white-space:nowrap;height:100%;align-items:center;animation:sbtape linear infinite;will-change:transform;}
@@ -292,6 +324,7 @@ body{overflow-x:hidden;}
 @media (min-width:860px),(orientation:landscape) and (min-width:640px){
   .sb{max-width:1180px;display:grid;grid-template-columns:minmax(290px,350px) minmax(0,1fr);gap:20px;padding-bottom:calc(var(--safe-b) + 24px);}
   .sbt{grid-column:1/-1;margin:2px -14px 4px;}
+  .fant{max-width:280px;min-width:170px;}
   .sb-side{display:block;position:sticky;top:calc(var(--bar) + 4px);align-self:start;max-height:calc(100dvh - var(--bar) - 12px);overflow-y:auto;scrollbar-width:none;padding-bottom:10px;}
   .sb-side::-webkit-scrollbar{display:none;}
   .slip-wrap,.slip,.slip-shade{display:none !important;}
@@ -832,7 +865,8 @@ body{overflow-x:hidden;}
     app.innerHTML = '';
     var root = el('div', { class: 'sb' });
     dom.tape = el('div', { class: 'tape' }); dom.tape2 = el('div', { class: 'tape mine' });
-    root.appendChild(dom.tapes = el('div', { class: 'sbt' }, [dom.tape, dom.tape2]));
+    dom.fant = el('button', { type: 'button', class: 'fant', 'aria-label': 'Fantasy scores', onclick: function () { fantSheet(); } });
+    root.appendChild(dom.tapes = el('div', { class: 'sbt' }, [el('div', { class: 'strips' }, [dom.tape, dom.tape2]), dom.fant]));
     dom.side = el('aside', { class: 'sb-side' });
     dom.main = el('main', { class: 'sb-main' });
     dom.money = el('div', { class: 'sb-money' });
@@ -1416,9 +1450,10 @@ body{overflow-x:hidden;}
   // ── Shell ────────────────────────────────────────────────────────────────
   Kit.init({
     id: 'sportsbook',
-    sync: function () { Object.keys(BOARD).forEach(function (k) { if (BOARD[k] && !BOARD[k].p) BOARD[k].at = 0; }); tick(); return gradeAll().then(function () { if (dom.money) paintMoney(); }); },
+    sync: function () { loadFant(); Object.keys(BOARD).forEach(function (k) { if (BOARD[k] && !BOARD[k].p) BOARD[k].at = 0; }); tick(); return gradeAll().then(function () { if (dom.money) paintMoney(); }); },
     menu: [
       { icon: 'star', label: 'My teams', onClick: pickTeams },
+      { icon: 'trophy', label: 'Fantasy scores', sub: 'Your Yahoo matchups beside the tickers', when: function () { return !!(FANT && FANT.leagues && FANT.leagues.length); }, toggle: fantOn, onClick: function () { try { localStorage.setItem(FK2, fantOn() ? '1' : '0'); } catch (e) {} paintFant(); } },
       { icon: 'sliders', label: 'How deep to go', onClick: function () { Kit.depth({ key: 'sb_depth', levels: DEPTHS, value: DEPTH || 'all', onPick: setDepth }); } },
       { icon: 'history', label: 'Bankroll history', onClick: function () { Casino.showHistory(); } },
       { icon: 'undo', label: 'Reset bankroll', onClick: function () {
@@ -1446,7 +1481,7 @@ body{overflow-x:hidden;}
   function setDepth(d) {
     DEPTH = d;
     if (!lgOn(tab) && tab !== 'my') { tab = lgsOn()[0]; try { localStorage.setItem(TK, JSON.stringify(tab)); } catch (e) {} }
-    layout(); paintAll(); tick();
+    layout(); paintAll(); tick(); paintTicker(); paintFant();
   }
   // First load: how deep to go (someone with bets or teams already starts on the whole book, so nothing they use goes)
   if (!DEPTH) Kit.depth({ host: app, key: 'sb_depth', levels: DEPTHS, value: bets.length || favs.length ? 'all' : 'simple', start: 'Open the book', onPick: setDepth });
@@ -1560,6 +1595,65 @@ body{overflow-x:hidden;}
     if (mine.length) tkRun(dom.tape2, mine.slice(0, 25), 'YOURS');
     else tkRun(dom.tape2, all.slice(25, 50), 'MORE');
   }
+  // ── Fantasy scores (Yahoo), pinned at the end of the strips ─────────────────
+  // fantasy/scores.json is written by the yahoo-fantasy Action every 15 minutes through game windows. One league at a
+  // time in the panel (several take turns); tap it for every matchup in every league.
+  var FURL = 'https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/fantasy%2Fscores.json?alt=media';
+  var FK2 = 'sb_fant_off', FANT = lsGet('sb_fant_cache', null), fantI = 0, fantT = 0;
+  function fantOn() { try { return localStorage.getItem(FK2) !== '1'; } catch (e) { return true; } }
+  function loadFant() {
+    return getJSON(FURL + '&t=' + Math.floor(Date.now() / 60000)).then(function (j) {
+      if (j && j.leagues) { FANT = j; try { localStorage.setItem('sb_fant_cache', JSON.stringify(j)); } catch (e) {} }
+    }, function () {}).then(paintFant);
+  }
+  function fantLeagues() { return FANT && FANT.leagues ? FANT.leagues.filter(function (L) { return L.matchups && L.matchups.some(function (m) { return m.teams.some(function (t) { return t.mine; }); }); }) : []; }
+  function myMatch(L) { return L.matchups.filter(function (m) { return m.teams.some(function (t) { return t.mine; }); })[0]; }
+  var SPORT = { nfl: 'FOOTBALL', nba: 'HOOPS', mlb: 'BASEBALL', nhl: 'HOCKEY' };
+  function ptsTxt(n) { return n == null ? '-' : (Math.round(n * 10) / 10).toFixed(1); }
+  function paintFant(swap) {
+    if (!dom.fant) return;
+    var ls = fantLeagues(), on = fantOn() && ls.length > 0;
+    dom.fant.classList.toggle('on', on);
+    if (!on) return;
+    var L = ls[fantI % ls.length], m = myMatch(L), me = m.teams.filter(function (t) { return t.mine; })[0], op = m.teams.filter(function (t) { return !t.mine; })[0];
+    var pre = m.st === 'preevent', live = m.st === 'midevent';
+    function row(t, o) {
+      var a = pre ? t.proj : t.pts, b = pre ? o.proj : o.pts, cls = 'tm' + (t.mine ? ' me' : '') + (!pre && a != null && b != null && a !== b ? (a > b ? ' ahead' : ' behind') : '');
+      return el('div', { class: cls }, [el('b', { text: t.name }), el('span', { html: ptsTxt(a) + (pre ? '<small>proj</small>' : '') })]);
+    }
+    dom.fant.innerHTML = '';
+    dom.fant.appendChild(el('div', { class: 'hd' }, [el('span', { text: (SPORT[L.sport] || 'FANTASY') + (L.week ? ' WK ' + L.week : '') }), el('span', { text: live ? 'LIVE' : m.st === 'postevent' ? 'FINAL' : '' })]));
+    dom.fant.appendChild(row(me, op)); dom.fant.appendChild(row(op, me));
+    if (swap) { dom.fant.classList.remove('swap'); void dom.fant.offsetWidth; dom.fant.classList.add('swap'); }
+    clearTimeout(fantT);
+    if (ls.length > 1) fantT = setTimeout(function () { fantI++; paintFant(true); }, 7000);
+  }
+  function fantSheet() {
+    Kit.sfx('tap');
+    var box = el('div', { class: 'fsh' }), ls = (FANT && FANT.leagues || []).slice();
+    ls.forEach(function (L) {
+      var g = el('div', { class: 'lg' }, [el('h3', null, [el('span', { text: L.name }), el('small', { text: (L.week ? 'Week ' + L.week : '') })])]);
+      L.matchups.forEach(function (m) {
+        var mine = m.teams.some(function (t) { return t.mine; }), pre = m.st === 'preevent', a = m.teams[0], b = m.teams[1];
+        var va = pre ? a.proj : a.pts, vb = pre ? b.proj : b.pts;
+        var mu = el('div', { class: 'mu' + (mine ? ' mine' : '') });
+        [a, b].forEach(function (t, i) {
+          var v = i ? vb : va, w = i ? va : vb;
+          mu.appendChild(el('div', { class: 't' + (t.mine ? ' me' : '') }, [t.logo ? el('img', { src: t.logo, alt: '', loading: 'lazy' }) : null, el('b', { text: t.name })]));
+          mu.appendChild(el('div', { class: 'p' + (!pre && v != null && w != null && v > w ? ' win' : '') }, [document.createTextNode(ptsTxt(v)), el('small', { text: pre ? 'projected' : t.proj != null ? 'proj ' + ptsTxt(t.proj) : '' })]));
+        });
+        if (a.win != null && b.win != null) { var bar = el('div', { class: 'bar' }); bar.appendChild(el('i', { style: { width: Math.round(a.win * 100) + '%' } })); mu.appendChild(bar); }
+        g.appendChild(mu);
+      });
+      if (L.url) g.appendChild(el('a', { class: 'open', href: L.url, target: '_blank', rel: 'noopener', text: 'Open in Yahoo' }));
+      box.appendChild(g);
+    });
+    if (FANT && FANT.at) box.appendChild(el('p', { class: 'muted', style: { fontSize: '.78rem', margin: '4px 0 0' }, text: 'Updated ' + new Date(FANT.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }));
+    Kit.sheet({ title: 'Fantasy', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
+  paintFant(); loadFant();
+  setInterval(function () { if (document.visibilityState === 'visible') loadFant(); }, 120000);
+
   // every league's board for the strips (each kept fresh by its own clock: live games every 30 seconds)
   function tickerFeeds() {
     return Promise.all(lgsOn().filter(function (k) { return k !== 'golf'; }).map(function (k) { return loadLeague(k).catch(function () {}); })).then(paintTicker);
