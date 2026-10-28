@@ -16,6 +16,29 @@
 body{overflow-x:hidden;}
 .sb{max-width:760px;margin:0 auto;padding:4px 14px calc(var(--safe-b) + 96px);}
 .sb-side{display:contents;}
+/* ── The tickers: the biggest games on top, yours (your teams, your bets) underneath, running the other way ── */
+.sbt{margin:2px -14px 12px;}
+.sbt .tape{position:relative;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
+.sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
+.sbt .run{position:absolute;top:0;left:0;display:flex;white-space:nowrap;height:100%;align-items:center;animation:sbtape linear infinite;will-change:transform;}
+.sbt .tape.mine{border-top-color:#2a3240;}
+.sbt .tape.mine .run{animation-direction:reverse;}
+@keyframes sbtape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.sbt .run{animation:none}}
+.sbt .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
+.sbt .it i{font-style:normal;font-size:.68rem;color:#7f8aa0;text-shadow:none;letter-spacing:.08em;}
+.sbt .it b{color:#fff3c4;font-weight:900;}
+.sbt .it b.lose{color:#a99a72;text-shadow:none;font-weight:800;}
+.sbt .it .n{color:#ffcc4d;}
+.sbt .it .lv{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
+.sbt .it .fn{color:#8b93a3;text-shadow:none;}
+.sbt .it .ln{color:#9fd8ff;text-shadow:0 0 6px rgba(120,200,255,.45);}
+.sbt .it .rk{font-size:.7rem;color:#c9b27a;text-shadow:none;}
+.sbt .tape.mine .it b{color:#bfe9ff;}
+.sbt .lbl{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 10px 0 14px;font:900 .62rem/1 var(--font);letter-spacing:.14em;color:#9fd8ff;
+  background:linear-gradient(90deg,#07090c 75%,rgba(7,9,12,0));text-shadow:0 0 6px rgba(120,200,255,.5);pointer-events:none;}
+.gm.flash{animation:gmflash 1.6s ease-out;}
+@keyframes gmflash{0%{box-shadow:0 0 0 3px #ffcc4d,0 0 24px rgba(255,200,60,.6);}100%{box-shadow:0 0 0 0 transparent;}}
 .sb-main{min-width:0;}
 
 /* ── Money strip (chrome): a caps label over each amount ── */
@@ -268,6 +291,7 @@ body{overflow-x:hidden;}
 /* Wide screens and phones on their side: the slip stays open on the left, the board on the right */
 @media (min-width:860px),(orientation:landscape) and (min-width:640px){
   .sb{max-width:1180px;display:grid;grid-template-columns:minmax(290px,350px) minmax(0,1fr);gap:20px;padding-bottom:calc(var(--safe-b) + 24px);}
+  .sbt{grid-column:1/-1;margin:2px -14px 4px;}
   .sb-side{display:block;position:sticky;top:calc(var(--bar) + 4px);align-self:start;max-height:calc(100dvh - var(--bar) - 12px);overflow-y:auto;scrollbar-width:none;padding-bottom:10px;}
   .sb-side::-webkit-scrollbar{display:none;}
   .slip-wrap,.slip,.slip-shade{display:none !important;}
@@ -405,6 +429,13 @@ body{overflow-x:hidden;}
     var g = { id: String(ev.id), lg: lg, t: Date.parse(ev.date || c.date), state: st.state || 'pre', done: !!st.completed, detail: st.shortDetail || st.detail || '',
       sname: st.name || '', neutral: !!c.neutralSite, home: team(h, lg), away: team(a, lg) };
     g.void = /POSTPONED|CANCEL/.test(g.sname);
+    // how big a game is (for the ticker): on national TV, the playoffs, a headline like "World Series - Game 4"
+    var tv = [];
+    (c.broadcasts || []).forEach(function (b) { if (b && /national/i.test(b.market || '')) tv = tv.concat(b.names || []); });
+    (c.geoBroadcasts || []).forEach(function (b) { if (b && b.market && /national/i.test(b.market.type || '') && b.media && b.media.shortName) tv.push(b.media.shortName); });
+    if (tv.length) g.tv = tv.filter(function (x, i) { return tv.indexOf(x) === i; }).slice(0, 3);
+    if (ev.season && ev.season.type === 3) g.post = 1;
+    var nt = ((c.notes || [])[0] || {}).headline; if (nt) g.note = String(nt).slice(0, 60);
     var o = (c.odds || [])[0];
     if (o) lines(g, o);
     return g;
@@ -800,6 +831,8 @@ body{overflow-x:hidden;}
   function layout() {
     app.innerHTML = '';
     var root = el('div', { class: 'sb' });
+    dom.tape = el('div', { class: 'tape' }); dom.tape2 = el('div', { class: 'tape mine' });
+    root.appendChild(dom.tapes = el('div', { class: 'sbt' }, [dom.tape, dom.tape2]));
     dom.side = el('aside', { class: 'sb-side' });
     dom.main = el('main', { class: 'sb-main' });
     dom.money = el('div', { class: 'sb-money' });
@@ -1429,7 +1462,112 @@ body{overflow-x:hidden;}
       return gradeAll();
     }).then(paintMoney);
   }
-  gradeAll().then(function () { if (dom.money) paintMoney(); });
+  // ── The tickers ───────────────────────────────────────────────────────────
+  // Top: the 25 biggest games in the country right now (from yesterday to the next few days), the way a sports channel
+  // would rank them: the league, the playoffs, national TV, top-25 college teams, and live games and today's first.
+  // Bottom: your teams' games and the games you have open bets on; when you have none, the next 25 biggest.
+  var POP = { nfl: 100, nba: 62, cfb: 55, mlb: 52, nhl: 38, cbb: 34, wnba: 30, tennis: 12 };
+  var BIGTV = /^(ABC|CBS|NBC|FOX|ESPN|TNT|TBS|Prime Video|Peacock|Netflix|ESPN2|FS1|NFL Net|NBA TV|MLB Net)/i;
+  function pop(g, now) {
+    var v = POP[g.lg] || 0;
+    if (g.post) v += 70;
+    if (g.tv && g.tv.length) v += 30 + (g.tv.some(function (x) { return BIGTV.test(x); }) ? 12 : 0);
+    var ra = g.away && g.away.rank, rh = g.home && g.home.rank;
+    if (ra) v += (26 - ra) * 1.2; if (rh) v += (26 - rh) * 1.2; if (ra && rh) v += 15;
+    var dt = (g.t || 0) - now;
+    if (g.state === 'in') v += 45;
+    else if (g.state === 'pre') v += dt < 864e5 ? 18 : dt < 2 * 864e5 ? 4 : -10 * Math.floor(dt / 864e5);
+    else v += now - g.t < 14 * 36e5 ? 6 : -45;
+    return v;
+  }
+  function tickGames() {
+    var now = Date.now(), out = [];
+    Object.keys(GAMES).forEach(function (k) {
+      var g = GAMES[k];
+      if (!g || g.void || g.lg === 'golf' || !g.home || !g.away || !LG[g.lg] || !lgOn(g.lg)) return;
+      if (g.t < now - 20 * 36e5 || g.t > now + 4 * 864e5) return;
+      out.push(g);
+    });
+    return out;
+  }
+  function tkName(x) { return x.abbr || lastName(x.short || x.name) || '?'; }
+  function tkWhen(g) {
+    var d = new Date(g.t), today = ymdET(Date.now()) === ymdET(g.t);
+    return (today ? '' : d.toLocaleDateString([], { weekday: 'short' }) + ' ') + timeTxt(g.t);
+  }
+  // one game on the strip: the league, the two sides (rank, score), and how it stands (live, final, or when and the line)
+  function tkItem(g) {
+    var a = g.away, h = g.home, kids = [el('i', { text: LG[g.lg].name.replace('College ', 'C').replace('Hoops', 'BB').replace('Football', 'FB').toUpperCase() })];
+    function side(x, other) {
+      var lose = (g.state === 'post' || g.done) && x.score != null && other.score != null && x.score < other.score;
+      kids.push(el('b', { class: lose ? 'lose' : '', html: (x.rank ? '<span class="rk">' + x.rank + ' </span>' : '') + Kit.esc(tkName(x)) }));
+      if (g.state !== 'pre' && x.score != null) kids.push(el('span', { class: 'n', text: String(x.score) }));
+    }
+    side(a, h);
+    if (g.state === 'pre') kids.push(el('i', { text: '@' }));
+    side(h, a);
+    if (g.state === 'in') kids.push(el('span', { class: 'lv', text: g.detail || 'Live' }));
+    else if (g.state === 'post' || g.done) kids.push(el('span', { class: 'fn', text: /OT|SO|\//.test(g.detail || '') ? g.detail : 'Final' }));
+    else {
+      kids.push(el('span', { text: tkWhen(g) }));
+      if (g.sp && g.sp.h !== 0) kids.push(el('span', { class: 'ln', text: (g.sp.h < 0 ? tkName(h) + ' ' + g.sp.h : tkName(a) + ' ' + g.sp.a) }));
+      else if (g.ml) kids.push(el('span', { class: 'ln', text: (g.ml.h <= g.ml.a ? tkName(h) : tkName(a)) + ' ' + amTxtT(Math.min(g.ml.h, g.ml.a)) }));
+    }
+    var b = el('button', { type: 'button', class: 'it', 'aria-label': matchTxt({ lg: g.lg, an: a.name, hn: h.name }) }, kids);
+    b.addEventListener('click', function () { showGame(g); });
+    return b;
+  }
+  function amTxtT(n) { return n > 0 ? '+' + n : String(n); }
+  // tap a game on the strip: its league on the board, scrolled to it and lit up
+  function showGame(g) {
+    Kit.sfx('tap');
+    if (view !== 'board' || tab !== g.lg) { view = 'board'; tab = g.lg; try { localStorage.setItem(TK, JSON.stringify(tab)); } catch (e) {} paintAll(); }
+    var t0 = Date.now();
+    loadLeague(g.lg).then(function () { setTimeout(find, 250); }, function () { setTimeout(find, 250); });
+    function find() {
+      var c = document.querySelector('.gm[data-gid="' + g.id + '"]');
+      if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); return; }
+      if (Date.now() - t0 < 4000) setTimeout(find, 150);
+    }
+  }
+  function tkRun(host, games, label) {
+    var key = games.map(function (g) { return g.id; }).join(',') + '|' + (label || '');
+    host.style.display = games.length ? '' : 'none';
+    if (!games.length) { host.innerHTML = ''; host._k = ''; return; }
+    if (host._k === key) {   // the same games: their scores and clocks change where they are, so the strip doesn't jump
+      host.querySelectorAll('.it').forEach(function (o, j) { var g = GAMES[host._half[j % host._half.length].id] || host._half[j % host._half.length]; o.replaceWith(tkItem(g)); });
+      return;
+    }
+    host.innerHTML = ''; host._k = key;
+    // (repeated until half the strip is wider than any screen)
+    var half = games.slice(); while (half.length < 10) half = half.concat(games);
+    host._half = half;
+    var run = el('div', { class: 'run' });
+    for (var r = 0; r < 2; r++) half.forEach(function (g) { run.appendChild(tkItem(g)); });
+    run.style.animationDuration = half.length * 6 + 's';
+    host.appendChild(run);
+    if (label) host.appendChild(el('span', { class: 'lbl', text: label }));
+  }
+  function paintTicker() {
+    if (!dom.tape) return;
+    var now = Date.now(), all = tickGames().map(function (g) { return { g: g, v: pop(g, now) }; }).sort(function (x, y) { return y.v - x.v || x.g.t - y.g.t; }).map(function (x) { return x.g; });
+    var top = all.slice(0, 25);
+    var betIds = {}; openBets().forEach(function (t) { t.legs.forEach(function (l) { betIds[l.gid] = 1; }); });
+    var mine = all.filter(function (g) { return betIds[g.id] || favGame(g); });
+    Object.keys(betIds).forEach(function (id) { var g = GAMES[id]; if (g && g.home && mine.indexOf(g) < 0 && !g.void) mine.push(g); });
+    mine.sort(function (x, y) { return (x.state === 'in' ? 0 : 1) - (y.state === 'in' ? 0 : 1) || Math.abs(x.t - now) - Math.abs(y.t - now); });
+    tkRun(dom.tape, top);
+    if (mine.length) tkRun(dom.tape2, mine.slice(0, 25), 'YOURS');
+    else tkRun(dom.tape2, all.slice(25, 50), 'MORE');
+  }
+  // every league's board for the strips (each kept fresh by its own clock: live games every 30 seconds)
+  function tickerFeeds() {
+    return Promise.all(lgsOn().filter(function (k) { return k !== 'golf'; }).map(function (k) { return loadLeague(k).catch(function () {}); })).then(paintTicker);
+  }
+  tickerFeeds();
+  setInterval(function () { if (document.visibilityState === 'visible') tickerFeeds(); }, 60000);
+
+  gradeAll().then(function () { if (dom.money) paintMoney(); paintTicker(); });
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tick(); });
 
