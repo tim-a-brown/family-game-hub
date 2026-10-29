@@ -4061,7 +4061,7 @@
 
   // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
   // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
-  // menu: {title, options() -> [{id, label}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
+  // menu: {title, options() -> [{id, label, sub, group, icon | img | glyph, color, tone: 'up' | 'down'}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
   // and opens a choice of what else it could (set its words with .label(text)).
   // -> {set(items, fresh), label(text)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
   // fresh list never restarts it: what's showing rolls on (redrawn with the new figures) and the new list follows.
@@ -4136,11 +4136,21 @@
       ['pointerdown', 'pointermove', 'pointerup'].forEach(function (t) { tab.addEventListener(t, function (e) { e.stopPropagation(); }); });
       tab.addEventListener('click', function (e) {
         e.stopPropagation(); sfx('tap');
-        var box = el('div', { class: 'k-mq-opts' }), cur = o.menu.value(), sh = null;
-        o.menu.options().forEach(function (op) {
-          box.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (op.id === cur ? ' on' : ''), onclick: function () {
-            haptic('light'); sfx('pop'); if (sh) sh.close(); if (op.id !== cur) o.menu.pick(op.id);
-          } }, [el('b', { text: op.label }), op.sub ? el('small', { text: op.sub }) : null]));
+        // the choices as a little control board: grouped under caps headings, each tile with its mark (an icon, a
+        // logo or a glyph), its name and an LED readout of what's in it now; the one on air lit
+        var box = el('div', { class: 'k-mq-opts' }), cur = o.menu.value(), sh = null, groups = [], byG = {};
+        o.menu.options().forEach(function (op) { var g = op.group || ''; if (!byG[g]) { byG[g] = []; groups.push(g); } byG[g].push(op); });
+        groups.forEach(function (g) {
+          var ops = byG[g], logos = ops.every(function (op) { return op.img; }), grid = el('div', { class: 'k-mq-g' + (logos ? ' logos' : '') });
+          if (g) box.appendChild(el('div', { class: 'k-mq-h', text: g }));
+          ops.forEach(function (op) {
+            var mark = op.img ? el('img', { src: op.img, alt: '' }) : el('span', { class: 'ic', style: op.color ? { background: op.color, color: '#fff' } : null, html: op.icon ? icon(op.icon) : esc(op.glyph || '') });
+            if (op.img) mark.onerror = function () { mark.replaceWith(el('span', { class: 'ic', text: op.label.slice(0, 1) })); };
+            grid.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (logos ? ' k-mq-lg' : '') + (op.tone ? ' k-mq-' + op.tone : '') + (op.id === cur ? ' on' : ''), onclick: function () {
+              haptic('light'); sfx('pop'); if (sh) sh.close(); if (op.id !== cur) o.menu.pick(op.id);
+            } }, [mark, el('span', { class: 'tx' }, [el('b', { text: op.label }), op.sub ? el('small', { text: op.sub }) : null])]));
+          });
+          box.appendChild(grid);
         });
         sh = sheet({ title: o.menu.title || 'Show on this strip', node: box });
       });
@@ -4154,7 +4164,11 @@
     });
     return {
       speed: function () { return m.v; },   // (px a second now: tests)
-      label: function (t) { if (tab) tab.firstChild.textContent = t; },
+      // its words, and a logo before them when there is one (a league)
+      label: function (t, img) {
+        if (!tab) return; var sp = tab.firstChild; sp.textContent = t;
+        if (img) { var im = el('img', { src: img, alt: '' }); im.onerror = function () { im.remove(); }; sp.insertBefore(im, sp.firstChild); }
+      },
       // fresh: start over with these now (a different choice of what the strip shows), rather than roll them in
       set: function (items, fresh) {
         items = items || [];

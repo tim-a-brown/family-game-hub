@@ -675,9 +675,22 @@ body{overflow-x:hidden;}
   var TAPEF = [lsGet('mk_tk1', 'market'), lsGet('mk_tk2', 'yours')];
   var TAPEN = { market: 'Market', idx: 'Indexes', up: 'Gainers', down: 'Losers', yours: 'Yours', held: 'What you own', watch: 'Watchlist' };
   function tapeOpts() {
-    var o = [{ id: 'market', label: 'Market', sub: 'Big names and funds' }, { id: 'idx', label: 'Indexes', sub: 'S&P 500, Dow, Nasdaq' }, { id: 'up', label: 'Gainers', sub: 'Up the most today' },
-      { id: 'down', label: 'Losers', sub: 'Down the most today' }, { id: 'yours', label: 'Yours', sub: 'Owned and watched' }, { id: 'held', label: 'What you own' }, { id: 'watch', label: 'Watchlist' }];
-    GROUPS.forEach(function (g) { if (Object.keys(Q && Q.q || {}).some(function (k) { return Q.q[k].g === g[0]; })) o.push({ id: 'g:' + g[0], label: g[1] }); });
+    var pct = function (c) { return (c >= 0 ? '▲' : '▼') + Math.abs(c * 100).toFixed(2) + '%'; }, cnt = function (f, w) { var k = tapeList(f).length; return k ? k + ' ' + w + (k === 1 ? '' : 's') : 'None yet'; };
+    var lead = function (f) { var l = tapeList(f); return l.length ? l[0].replace('-USD', '') + ' ' + pct(dayChg(l[0])) : 'None today'; };
+    var spx = (Q.idx || {}).spx;
+    var o = [{ id: 'market', group: 'Market', icon: 'chart', label: 'Market', sub: 'Big names and funds' },
+      { id: 'idx', group: 'Market', icon: 'globe', tone: spx && spx.pc ? (spx.p >= spx.pc ? 'up' : 'down') : '', label: 'Indexes', sub: spx && spx.pc ? 'S&P ' + pct((spx.p - spx.pc) / spx.pc) : 'S&P, Dow, Nasdaq' },
+      { id: 'up', group: 'Market', glyph: '▲', tone: 'up', label: 'Gainers', sub: lead('up') },
+      { id: 'down', group: 'Market', glyph: '▼', tone: 'down', label: 'Losers', sub: lead('down') },
+      { id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours', sub: cnt('yours', 'name') },
+      { id: 'held', group: 'Yours', icon: 'coins', label: 'What you own', sub: cnt('held', 'holding') },
+      { id: 'watch', group: 'Yours', icon: 'eye', label: 'Watchlist', sub: cnt('watch', 'name') }];
+    // the groups, each with its colour and how it's doing today (the average of its names)
+    GROUPS.forEach(function (g) {
+      var l = tapeList('g:' + g[0]); if (!l.length) return;
+      var avg = l.reduce(function (a, k) { return a + dayChg(k); }, 0) / l.length;
+      o.push({ id: 'g:' + g[0], group: 'Groups', color: GCOL[g[0]] || '#2b3648', glyph: g[1].charAt(0), tone: avg >= 0 ? 'up' : 'down', label: g[1], sub: pct(avg) + ' avg' });
+    });
     return o;
   }
   function tapeLabel(f) { if (f.indexOf('g:') === 0) { var g = GROUPS.filter(function (x) { return x[0] === f.slice(2); })[0]; return g ? g[1] : f; } return TAPEN[f] || f; }
