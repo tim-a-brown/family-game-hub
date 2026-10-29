@@ -25,6 +25,7 @@
 //   Kit.resume.set(label, {keys, id, file}) / .clear({id})  "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.cashOut(onClick, {label, tile})        the casino games' Cash out button (walk away with your money)
+//   Kit.marquee(host, {dir, speed, make}) -> {set(items)}   LED ticker strip: rolls on through new data, swipeable
 //   Kit.fitText(el, min)                       ease a one-line number or label down until it fits (no "…")
 //   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
 //   Kit.offline()                              save everything on this device for offline (a flight); Kit.offlineTag()
@@ -4057,9 +4058,98 @@
 
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
+
+  // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
+  // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
+  // -> {set(items)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
+  // fresh list never restarts it: what's showing rolls on (redrawn with the new figures) and the new list follows.
+  // A finger stops it and drags it; let go and it carries on with the swipe's speed, easing back to its own pace.
+  var MQ = [], mqRaf = 0, mqLast = 0, mqStill = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function marquee(host, o) {
+    o = o || {};
+    var base = (o.dir === 1 ? 1 : -1) * (o.speed || 38), lead = base > 0, run = el('div', { class: 'k-mq-run' });
+    var m = { host: host, x: -41, v: base, q: [], by: {}, i: 0, p: 0, key: null, drag: null, noClick: false };
+    var idOf = o.id || function (it) { return it.id; };
+    host.classList.add('k-mq'); host.insertBefore(run, host.firstChild);
+    function make(id) { var it = m.by[id]; if (it == null) return null; var e = o.make(it); e._mq = id; return e; }
+    // the next item at an end: the end it comes in from takes the list forwards, the other end backwards
+    function next(atLead) {
+      var n = m.q.length; if (!n) return null; var id;
+      if (atLead) { id = m.q[m.i % n]; m.i = (m.i + 1) % n; } else { id = m.q[(m.p % n + n) % n]; m.p = (m.p - 1 + n) % n; }
+      return make(id);
+    }
+    function gone(atLead) { var n = m.q.length; if (!n) return; if (atLead) m.i = (m.i - 1 + n) % n; else m.p = (m.p + 1) % n; }
+    m.fill = function () {
+      var W = host.clientWidth || innerWidth;
+      for (var k = 0; k < 80; k++) {
+        var first = run.firstChild, last = run.lastChild, rw = run.scrollWidth;
+        if (m.x > -40) { var a = next(lead); if (!a) break; run.insertBefore(a, first); m.x -= a.offsetWidth; continue; }
+        if (m.x + rw < W + 40) { var b = next(!lead); if (!b) break; run.appendChild(b); continue; }
+        if (first && run.children.length > 1 && m.x + first.offsetWidth < -160) { m.x += first.offsetWidth; first.remove(); gone(lead); continue; }
+        if (last && run.children.length > 1 && m.x + rw - last.offsetWidth > W + 160) { last.remove(); gone(!lead); continue; }
+        break;
+      }
+      run.style.transform = 'translate3d(' + m.x.toFixed(1) + 'px,0,0)';
+    };
+    m.tick = function (dt) {
+      if (!m.drag) {
+        m.v += ((mqStill ? 0 : base) - m.v) * (1 - Math.exp(-dt / 0.55));   // a swipe's speed wears off into the strip's own
+        m.x += m.v * dt;
+      }
+      m.fill();
+    };
+    // the finger: down stops it, sideways drags it (up and down still scroll the page), the swipe's speed carries on
+    host.addEventListener('pointerdown', function (e) {
+      if (e.button > 0) return;
+      m.noClick = false; m.v = 0;
+      m.drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, lx: e.clientX, moved: false, vs: [] };
+    });
+    host.addEventListener('pointermove', function (e) {
+      var d = m.drag; if (!d || e.pointerId !== d.id) return;
+      if (!d.moved) {
+        var ax = Math.abs(e.clientX - d.x0), ay = Math.abs(e.clientY - d.y0);
+        if (ay > ax && ay > 6) { m.drag = null; return; }
+        if (ax < 6) return;
+        d.moved = true; try { host.setPointerCapture(e.pointerId); } catch (er) {}
+      }
+      var dx = e.clientX - d.lx; d.lx = e.clientX;
+      m.x += dx; d.vs.push([e.timeStamp, dx]); if (d.vs.length > 12) d.vs.shift();
+      m.fill();
+    });
+    function up(e) {
+      var d = m.drag; if (!d || e.pointerId !== d.id) return;
+      m.drag = null;
+      if (!d.moved) return;
+      m.noClick = true;
+      var now = e.timeStamp, sum = 0, t0 = now;
+      d.vs.forEach(function (sm) { if (now - sm[0] < 100) { sum += sm[1]; t0 = Math.min(t0, sm[0]); } });
+      m.v = now - t0 > 10 ? Math.max(-4000, Math.min(4000, sum / ((now - t0) / 1000))) : 0;
+    }
+    host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
+    host.addEventListener('click', function (e) { if (m.noClick) { m.noClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
+    MQ.push(m);
+    if (!mqRaf) mqRaf = requestAnimationFrame(function frame(t) {
+      var dt = mqLast ? Math.min(0.1, (t - mqLast) / 1000) : 0; mqLast = t;
+      MQ.forEach(function (q) { if (q.q.length && q.host.isConnected && q.host.offsetParent !== null) q.tick(dt); });
+      mqRaf = requestAnimationFrame(frame);
+    });
+    return {
+      speed: function () { return m.v; },   // (px a second now: tests)
+      set: function (items) {
+        items = items || [];
+        var ids = items.map(idOf), key = ids.join('\u0001');
+        m.by = {}; items.forEach(function (it, j) { m.by[ids[j]] = it; });
+        if (key !== m.key) { m.key = key; m.q = ids; m.i = 0; m.p = ids.length - 1; }
+        // what's showing, with the new figures (an item no longer listed rolls off as it was)
+        [].slice.call(run.children).forEach(function (c) { var n = make(c._mq); if (n) c.replaceWith(n); });
+        if (ids.length) m.fill(); else { run.innerHTML = ''; m.x = -41; }
+      }
+    };
+  }
+
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
-    init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },

@@ -52,12 +52,9 @@ body{overflow-x:hidden;}
 .fsh .open{display:inline-flex;margin-top:2px;font-weight:800;font-size:.82rem;color:var(--text-2);}
 .sbt .tape{position:relative;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
 .sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
-.sbt .run{position:absolute;top:0;left:0;display:flex;white-space:nowrap;height:100%;align-items:center;animation:sbtape linear infinite;will-change:transform;}
 .sbt .tape.mine{border-top-color:#2a3240;}
-.sbt .tape.mine .run{animation-direction:reverse;}
-@keyframes sbtape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.sbt .run{animation:none}}
 .sbt .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
+.sbt .it .lgp{align-self:center;image-rendering:pixelated;image-rendering:crisp-edges;flex:none;filter:drop-shadow(0 0 3px rgba(255,255,255,.25));}
 .sbt .it i{font-style:normal;font-size:.68rem;color:#7f8aa0;text-shadow:none;letter-spacing:.08em;}
 .sbt .it b{color:#fff3c4;font-weight:900;}
 .sbt .it b.lose{color:#a99a72;text-shadow:none;font-weight:800;}
@@ -1396,16 +1393,30 @@ body{overflow-x:hidden;}
       (b.games || []).forEach(function (g) { g.players.forEach(function (p) { out.push({ id: p.id, name: p.name, short: p.short, nick: p.short, loc: p.short, abbr: p.abbr, logo: p.logo, color: '#2b3340', sub: g.name }); }); });
       return out.sort(function (a, b) { return lastName(a.name).localeCompare(lastName(b.name)); });
     });
-    var k = 'sb_teams_cache_' + lg, c = lsGet(k, null);
-    if (c && c.list && Date.now() - c.at < 7 * 864e5) return Promise.resolve(c.list);
+    var k = 'sb_teams_cache_' + lg, c = lsGet(k, null), had = c && c.list && c.list.length ? c.list : null;
+    if (had && Date.now() - c.at < 7 * 864e5) return Promise.resolve(had);
     var L = LG[lg];
-    return getJSON(API + L.path + '/teams?limit=1000').then(function (j) {
+    function teamsOf(j) {
       var raw = (((j.sports || [])[0] || {}).leagues || [])[0];
-      var list = ((raw && raw.teams) || []).map(function (x) { var t = x.team || x; return { id: String(t.id), abbr: t.abbreviation || '', name: t.displayName || '', short: t.shortDisplayName || t.name || '', loc: t.location || '', nick: t.name || '', color: t.color ? '#' + t.color : '#556070', logo: (t.logos && t.logos[0] && t.logos[0].href) || '' }; })
-        .filter(function (t) { return t.id && t.name; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
-      try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), list: list })); } catch (e) {}
-      return list;
-    }).catch(function () { return c && c.list || []; });
+      return ((raw && raw.teams) || []).map(function (x) { var t = x.team || x; return { id: String(t.id), abbr: t.abbreviation || '', name: t.displayName || '', short: t.shortDisplayName || t.name || '', loc: t.location || '', nick: t.name || '', color: t.color ? '#' + t.color : '#556070', logo: (t.logos && t.logos[0] && t.logos[0].href) || '' }; })
+        .filter(function (t) { return t.id && t.name; });
+    }
+    // the teams in the games already on the board (and kept from earlier loads): enough to find yours when ESPN's
+    // team list won't come
+    function fromGames() {
+      var seen = {}, out = [];
+      [].concat(had || [], Object.keys(GAMES).map(function (id) { return GAMES[id]; }).filter(function (g) { return g.lg === lg; }).reduce(function (a, g) { return a.concat([g.home, g.away]); }, []))
+        .forEach(function (t) { if (t && t.id && t.name && !seen[t.id]) { seen[t.id] = 1; out.push({ id: t.id, abbr: t.abbr, name: t.name, short: t.short, loc: t.loc, nick: t.nick, color: t.color, logo: t.logo }); } });
+      return out;
+    }
+    var byName = function (a, b) { return a.name.localeCompare(b.name); };
+    return getJSON(API + L.path + '/teams?limit=1000').then(teamsOf).catch(function () { return []; })
+      .then(function (list) { return list.length ? list : getJSON(API + L.path + '/teams').then(teamsOf).catch(function () { return []; }); })
+      .then(function (list) {
+        // (an empty answer is never kept: it would hide the teams for a week)
+        if (list.length) { try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), list: list.sort(byName) })); } catch (e) {} return list; }
+        return fromGames().sort(byName);
+      });
   }
   function pickTeams() {
     var cur = tab !== 'my' && LG[tab] ? tab : (favs[0] && favs[0].lg) || 'nfl', q = '';
@@ -1531,8 +1542,33 @@ body{overflow-x:hidden;}
     return (today ? '' : d.toLocaleDateString([], { weekday: 'short' }) + ' ') + timeTxt(g.t);
   }
   // one game on the strip: the league, the two sides (rank, score), and how it stands (live, final, or when and the line)
+  // Each league's logo, drawn as a little pixel picture for the LED strips (one character a pixel, '.' clear)
+  var PIX_PAL = { w: '#ffffff', n: '#013369', r: '#d50a0a', b: '#1d428a', R: '#c8102e', m: '#041e42', M: '#bf0d3e', k: '#111111', s: '#a2aaad',
+    o: '#ff6a13', t: '#8a4b22', T: '#5e3115', B: '#e8792b', x: '#2a1606', l: '#d4ec3c', g: '#2fa24a', p: '#e8e2d0' };
+  var PIX = {
+    nfl: ['.wwwwwwwwwwwww.', 'wnnnnnnnnnnnnnw', 'wnnwnnwnwnnwnnw', 'wnnnnnnnnnnnnnw', 'wwwwwwwwwwwwwww', 'wnnnnnnnnnnnnnw', 'wnwnnwnwwwnwnnw', 'wnwwnwnwnnnwnnw', 'wnwnwwnwwnnwnnw', 'wnwnnwnwnnnwnnw', 'wnwnnwnwnnnwwnw', 'wnnnnnnnnnnnnnw', '.wnnnnnnnnnnnw.', '..wnnnrrrnnnw..', '...wwnrrrnww...', '.....wwwww.....'],
+    nba: ['bbbRRRR', 'bbbwRRR', 'bbwwwRR', 'bwbwwRR', 'bwbwwwR', 'bbbwwRw', 'bbbwwRR', 'bbbwwRR', 'bbwbwRR', 'bbwbRwR', 'bwbbRwR', 'bbbbRRR'],
+    wnba: ['nnnoooo', 'nnnwooo', 'nnwwwoo', 'nwnwwoo', 'nwnwwwo', 'nnnwwow', 'nnnwwoo', 'nnwwwoo', 'nwnnwoo', 'nwnnowo', 'nnnnoow', 'nnnnooo'],
+    mlb: ['mmmmmmwMMMMMMM', 'mwmmmmwwMMMMMM', 'mmmmmwwwMMMMMM', 'mmmmwwwwwMMMMM', 'mmmmmwwwMMMMMM', 'mmmmwwMwwMMMMM', 'mmmwwMMMwwMMMM', 'mmmmMMMMMMMMMM'],
+    nhl: ['sssssssssssssss', 'skkkkkkkkkkkkks', 'skwkkwkwkwkwkks', 'skwwkwkwkwkwkks', 'skwkwwkwwwkwkks', 'skwkkwkwkwkwkks', 'skwkkwkwkwkwwks', 'skkkkkkkkkkkkks', '.skkkkkkkkkkks.', '..sskkkkkkkss..', '....sssssss....'],
+    cfb: ['...ttttttt...', '.ttTtttttTtt.', 'ttTtwwwwwtTtt', 'tTttwtwtwttTt', 'ttTtttttttTtt', '.ttTtttttTtt.', '...ttttttt...'],
+    cbb: ['...BBxBB...', '.BBBBxBBBB.', '.xBBBxBBBx.', 'BBxBBxBBxBB', 'BBBxBxBxBBB', 'xxxxxxxxxxx', 'BBBxBxBxBBB', 'BBxBBxBBxBB', '.xBBBxBBBx.', '.BBBBxBBBB.', '...BBxBB...'],
+    tennis: ['..lllll..', '.lwlllll.', 'llwllllll', 'lllwlllll', 'llllwwlll', 'lllllllwl', 'lllllllwl', '.llllllw.', '..lllll..'],
+    golf: ['.rrr.....', '.rrrrr...', '.rrr.....', '.p.......', '.p.......', '.p.......', '.p...pp..', 'ggggggggg']
+  };
+  var pixUrl = {};
+  function lgPix(lg) {
+    var rows = PIX[lg]; if (!rows) return el('i', { text: LG[lg].name.toUpperCase() });
+    if (!pixUrl[lg]) {
+      var c = document.createElement('canvas'), x = c.getContext('2d'); c.width = rows[0].length; c.height = rows.length;
+      rows.forEach(function (r, y) { for (var i = 0; i < r.length; i++) { var col = PIX_PAL[r[i]]; if (col) { x.fillStyle = col; x.fillRect(i, y, 1, 1); } } });
+      pixUrl[lg] = c.toDataURL();
+    }
+    // (4 screen pixels a picture pixel on a phone)
+    return el('img', { class: 'lgp', src: pixUrl[lg], alt: LG[lg].name, width: String(rows[0].length * 4 / 3), height: String(rows.length * 4 / 3) });
+  }
   function tkItem(g) {
-    var a = g.away, h = g.home, kids = [el('i', { text: LG[g.lg].name.replace('College ', 'C').replace('Hoops', 'BB').replace('Football', 'FB').toUpperCase() })];
+    var a = g.away, h = g.home, kids = [lgPix(g.lg)];
     function side(x, other) {
       var lose = (g.state === 'post' || g.done) && x.score != null && other.score != null && x.score < other.score;
       kids.push(el('b', { class: lose ? 'lose' : '', html: (x.rank ? '<span class="rk">' + x.rank + ' </span>' : '') + Kit.esc(tkName(x)) }));
@@ -1565,23 +1601,14 @@ body{overflow-x:hidden;}
       if (Date.now() - t0 < 4000) setTimeout(find, 150);
     }
   }
+  // The strips are Kit.marquee: they roll on through a fresh lineup (the next game in is the first of the new list),
+  // and a finger can swipe them (the top strip moves left, YOURS right)
   function tkRun(host, games, label) {
-    var key = games.map(function (g) { return g.id; }).join(',') + '|' + (label || '');
     host.style.display = games.length ? '' : 'none';
-    if (!games.length) { host.innerHTML = ''; host._k = ''; return; }
-    if (host._k === key) {   // the same games: their scores and clocks change where they are, so the strip doesn't jump
-      host.querySelectorAll('.it').forEach(function (o, j) { var g = GAMES[host._half[j % host._half.length].id] || host._half[j % host._half.length]; o.replaceWith(tkItem(g)); });
-      return;
-    }
-    host.innerHTML = ''; host._k = key;
-    // (repeated until half the strip is wider than any screen)
-    var half = games.slice(); while (half.length < 10) half = half.concat(games);
-    host._half = half;
-    var run = el('div', { class: 'run' });
-    for (var r = 0; r < 2; r++) half.forEach(function (g) { run.appendChild(tkItem(g)); });
-    run.style.animationDuration = half.length * 6 + 's';
-    host.appendChild(run);
-    if (label) host.appendChild(el('span', { class: 'lbl', text: label }));
+    var lb = host.querySelector('.lbl');
+    if (label) { if (!lb) host.appendChild(lb = el('span', { class: 'lbl' })); lb.textContent = label; } else if (lb) lb.remove();
+    if (!host._mq) host._mq = Kit.marquee(host, { dir: host.classList.contains('mine') ? 1 : -1, make: function (g) { return tkItem(GAMES[g.id] || g); } });
+    host._mq.set(games);
   }
   function paintTicker() {
     if (!dom.tape) return;
@@ -1665,7 +1692,7 @@ body{overflow-x:hidden;}
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') tick(); });
 
-  window.__sb = { GAMES: GAMES, BOARD: BOARD, bets: function () { return bets; }, slip: slip, settle: settle, gradeAll: gradeAll, paintAll: paintAll, showResults: showResults, parseEvent: parseEvent, says: says };
+  window.__sb = { GAMES: GAMES, BOARD: BOARD, bets: function () { return bets; }, slip: slip, settle: settle, gradeAll: gradeAll, paintAll: paintAll, showResults: showResults, parseEvent: parseEvent, says: says, paintTicker: function () { paintTicker(); }, loadTeams: function (lg) { return loadTeams(lg); } };
 })();
 </script>
 </body>

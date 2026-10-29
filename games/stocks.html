@@ -21,18 +21,14 @@ body{overflow-x:hidden;}
 /* ── The ticker: an LED strip running across the top ── */
 .tape{position:relative;margin:2px -14px 12px;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
 .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
-.tape .run{position:absolute;top:0;left:0;display:flex;white-space:nowrap;height:100%;align-items:center;animation:tape linear infinite;will-change:transform;}
 .tape .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 18px;font:800 .9rem/1 var(--mono);letter-spacing:.04em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.6);}
 .tape .it b{color:#fff3c4;font-weight:900;}
 .tape .it .up{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
 .tape .it .dn{color:#ff5a5f;text-shadow:0 0 6px rgba(255,80,90,.55);}
-@keyframes tape{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){.tape .run{animation:none}}
 /* the second strip: what you own and what you watch, running the other way, its label pinned at the left */
 .tapes{margin:2px 0 12px;}
 .tapes .tape{margin:0 -14px;}
 .tape.mine{border-top-color:#2a3240;}
-.tape.mine .run{animation-direction:reverse;}
 .tape.mine .it b{color:#bfe9ff;}
 .tape.mine .lbl{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 10px 0 14px;font:900 .62rem/1 var(--font);letter-spacing:.14em;color:#9fd8ff;
   background:linear-gradient(90deg,#07090c 75%,rgba(7,9,12,0));text-shadow:0 0 6px rgba(120,200,255,.5);}
@@ -677,7 +673,6 @@ body{overflow-x:hidden;}
     if (tab === 'port') paintPort(); else if (tab === 'mkt') paintMarket(); else paintLearn();
   }
   function paintTape() {
-    dom.tape.innerHTML = '';
     if (!Q) return;
     var syms = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'GOOGL', 'META', 'DIS', 'NTDOY', 'UAL', 'KO', 'BTC-USD', 'TLT', 'GLD'].filter(S);
     tapeRun(dom.tape, syms);
@@ -687,19 +682,17 @@ body{overflow-x:hidden;}
     A.opts.forEach(function (o) { mine.push(o.sym); });
     WATCH.forEach(function (w) { mine.push(w); });
     mine = mine.filter(function (x, i) { return mine.indexOf(x) === i && S(x) && isFinite(price(x)) && price(x) > 0; });
-    dom.tape2.innerHTML = ''; dom.tape2.style.display = mine.length ? '' : 'none';
-    if (mine.length) { tapeRun(dom.tape2, mine); dom.tape2.appendChild(el('span', { class: 'lbl', text: 'YOURS' })); }
+    dom.tape2.style.display = mine.length ? '' : 'none';
+    if (!dom.tape2.querySelector('.lbl')) dom.tape2.appendChild(el('span', { class: 'lbl', text: 'YOURS' }));
+    tapeRun(dom.tape2, mine);
   }
+  // a strip of quotes: Kit.marquee (rolls on through new prices, swipeable; the top strip moves left, YOURS right)
   function tapeRun(host, syms) {
-    // (repeated until a half of the strip is wider than any screen, so a short list still runs without a gap)
-    var half = syms.slice(); while (half.length < 12) half = half.concat(syms);
-    var run = el('div', { class: 'run' });
-    for (var rep = 0; rep < 2; rep++) half.forEach(function (sym) {
+    if (!host._mq) host._mq = Kit.marquee(host, { dir: host.classList.contains('mine') ? 1 : -1, speed: 40, id: function (sym) { return sym; }, make: function (sym) {
       var c = dayChg(sym);
-      run.appendChild(el('span', { class: 'it' }, [el('b', { text: sym.replace('-USD', '') }), el('span', { text: px(price(sym)).replace('$', '') }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]));
-    });
-    run.style.animationDuration = half.length * 4.5 + 's';
-    host.appendChild(run);
+      return el('span', { class: 'it' }, [el('b', { text: sym.replace('-USD', '') }), el('span', { text: px(price(sym)).replace('$', '') }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]);
+    } });
+    host._mq.set(syms);
   }
   function paintSeg() {
     dom.seg.innerHTML = '';
