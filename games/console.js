@@ -496,8 +496,10 @@
   // Games that keep a score (console-hi.js knows which, and where each keeps it) put a finished game's score on
   // its board on the High Scores page (ArcadeHi, synced as hi_console_<game>). Followed only when playing on this
   // device: online, the game belongs to everyone at the table. A game left mid-way (the page closed) is kept in
-  // gn_con_hi_pending and offered for the board the next time a console page opens.
-  var hiW = null, hiQ = Promise.resolve(), HI_PEND = 'gn_con_hi_pending';
+  // gn_con_hi_pend_dev (this device only) and offered for the board the next time the console's shelf opens.
+  var hiW = null, hiQ = Promise.resolve(), HI_PEND = 'gn_con_hi_pend_dev';
+  // (it used to follow the PIN, so a score already filed came back from another device, over any game: let it go)
+  try { localStorage.removeItem('gn_con_hi_pending'); } catch (e) {}
   function loadScript(src) { return new Promise(function (ok) { var s = document.createElement('script'); s.src = src; s.onload = s.onerror = function () { ok(); }; document.head.appendChild(s); }); }
   var hiReady = (typeof ArcadeHi !== 'undefined' ? Promise.resolve() : loadScript('../arcade-hi.js')).then(function () { return window.ConsoleHi ? null : loadScript('console-hi.js'); });
   function hiOk() { return !!window.ConsoleHi && typeof ArcadeHi !== 'undefined'; }
@@ -561,6 +563,7 @@
     hiReady.then(function () {
       try { localStorage.removeItem(HI_PEND); } catch (e) {}
       if (!hiOk() || Date.now() - (p.at || 0) > 14 * 864e5 || !ArcadeHi.qualifies(p.key, p.score)) return;
+      if (ArcadeHi.list(p.key).some(function (r) { return r.score === p.score; })) return;   // (already on the board)
       Kit.toast('Your last game of ' + p.name);
       setTimeout(function () { hiFile(p.key, p.score, p.name); }, 600);
     });
@@ -1755,8 +1758,8 @@
     L.list().then(function (list) {
       carts = list || [];
       var c = want && carts.filter(function (x) { return x.id === want; })[0];
-      if (c) play(c); else drawShelf();
-      hiPending();
+      // (a score left from last time is offered on the shelf, never over another game being started)
+      if (c) play(c); else { drawShelf(); hiPending(); }
       if (/[?&]online=1/.test(location.search)) goOnline();   // from home's "open tables", or a joiner's fresh page
     }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
   }
