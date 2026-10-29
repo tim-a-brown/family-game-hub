@@ -110,7 +110,14 @@ function teamOf(t) {
 
 (async () => {
   const tok = await login();
-  const u = await y(tok, 'users;use_login=1/games;game_codes=nfl,nba,mlb,nhl/leagues');
+  let u;
+  try { u = await y(tok, 'users;use_login=1/games;game_codes=nfl,nba,mlb,nhl/leagues'); }
+  catch (e) {
+    // which Fantasy calls this login can make, to tell a missing permission from a narrower refusal
+    for (const p of ['game/nfl', 'users;use_login=1', 'users;use_login=1/games', 'league/461.l.338028'])
+      await y(tok, p).then(() => console.log('probe ' + p + ': ok'), (x) => console.log('probe ' + x.message));
+    throw e;
+  }
   const user = rec(list(u.users)[0].user), leagues = [];
   list(user.games).forEach((g) => {
     const game = rec(g.game);
