@@ -54,7 +54,8 @@ body{overflow-x:hidden;}
 .sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
 .sbt .tape.mine{border-top-color:#2a3240;}
 .sbt .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
-.sbt .it .lgp{align-self:center;image-rendering:pixelated;image-rendering:crisp-edges;flex:none;filter:drop-shadow(0 0 3px rgba(255,255,255,.25));}
+.sbt .it .lgl{align-self:center;flex:none;height:17px;width:auto;max-width:34px;object-fit:contain;
+  filter:grayscale(1) sepia(1) saturate(4.5) hue-rotate(-12deg) brightness(1.2) drop-shadow(0 0 3px rgba(255,190,60,.55));}
 .sbt .it i{font-style:normal;font-size:.68rem;color:#7f8aa0;text-shadow:none;letter-spacing:.08em;}
 .sbt .it b{color:#fff3c4;font-weight:900;}
 .sbt .it b.lose{color:#a99a72;text-shadow:none;font-weight:800;}
@@ -64,8 +65,6 @@ body{overflow-x:hidden;}
 .sbt .it .ln{color:#9fd8ff;text-shadow:0 0 6px rgba(120,200,255,.45);}
 .sbt .it .rk{font-size:.7rem;color:#c9b27a;text-shadow:none;}
 .sbt .tape.mine .it b{color:#bfe9ff;}
-.sbt .lbl{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 10px 0 14px;font:900 .62rem/1 var(--font);letter-spacing:.14em;color:#9fd8ff;
-  background:linear-gradient(90deg,#07090c 75%,rgba(7,9,12,0));text-shadow:0 0 6px rgba(120,200,255,.5);pointer-events:none;}
 .gm.flash{animation:gmflash 1.6s ease-out;}
 @keyframes gmflash{0%{box-shadow:0 0 0 3px #ffcc4d,0 0 24px rgba(255,200,60,.6);}100%{box-shadow:0 0 0 0 transparent;}}
 .sb-main{min-width:0;}
@@ -663,6 +662,7 @@ body{overflow-x:hidden;}
   function getJSON(u) { return fetch(u, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
   function parseAll(lg, j, path) {
     var k = LG[lg].kind;
+    if (!(k === 'tennis' && LGLOGO[lg])) keepLgLogo(lg, j);   // (tennis: the first tour's)
     if (k === 'tennis') return parseTennis(j, path);
     if (k === 'golf') return parseGolf(j);
     return (j.events || []).map(function (ev) { var g = parseEvent(ev, lg); if (g) g.src = path; return g; }).filter(Boolean);   // (src: where its summary lives)
@@ -1542,30 +1542,19 @@ body{overflow-x:hidden;}
     return (today ? '' : d.toLocaleDateString([], { weekday: 'short' }) + ' ') + timeTxt(g.t);
   }
   // one game on the strip: the league, the two sides (rank, score), and how it stands (live, final, or when and the line)
-  // Each league's logo, drawn as a little pixel picture for the LED strips (one character a pixel, '.' clear)
-  var PIX_PAL = { w: '#ffffff', n: '#013369', r: '#d50a0a', b: '#1d428a', R: '#c8102e', m: '#041e42', M: '#bf0d3e', k: '#111111', s: '#a2aaad',
-    o: '#ff6a13', t: '#8a4b22', T: '#5e3115', B: '#e8792b', x: '#2a1606', l: '#d4ec3c', g: '#2fa24a', p: '#e8e2d0' };
-  var PIX = {
-    nfl: ['.wwwwwwwwwwwww.', 'wnnnnnnnnnnnnnw', 'wnnwnnwnwnnwnnw', 'wnnnnnnnnnnnnnw', 'wwwwwwwwwwwwwww', 'wnnnnnnnnnnnnnw', 'wnwnnwnwwwnwnnw', 'wnwwnwnwnnnwnnw', 'wnwnwwnwwnnwnnw', 'wnwnnwnwnnnwnnw', 'wnwnnwnwnnnwwnw', 'wnnnnnnnnnnnnnw', '.wnnnnnnnnnnnw.', '..wnnnrrrnnnw..', '...wwnrrrnww...', '.....wwwww.....'],
-    nba: ['bbbRRRR', 'bbbwRRR', 'bbwwwRR', 'bwbwwRR', 'bwbwwwR', 'bbbwwRw', 'bbbwwRR', 'bbbwwRR', 'bbwbwRR', 'bbwbRwR', 'bwbbRwR', 'bbbbRRR'],
-    wnba: ['nnnoooo', 'nnnwooo', 'nnwwwoo', 'nwnwwoo', 'nwnwwwo', 'nnnwwow', 'nnnwwoo', 'nnwwwoo', 'nwnnwoo', 'nwnnowo', 'nnnnoow', 'nnnnooo'],
-    mlb: ['mmmmmmwMMMMMMM', 'mwmmmmwwMMMMMM', 'mmmmmwwwMMMMMM', 'mmmmwwwwwMMMMM', 'mmmmmwwwMMMMMM', 'mmmmwwMwwMMMMM', 'mmmwwMMMwwMMMM', 'mmmmMMMMMMMMMM'],
-    nhl: ['sssssssssssssss', 'skkkkkkkkkkkkks', 'skwkkwkwkwkwkks', 'skwwkwkwkwkwkks', 'skwkwwkwwwkwkks', 'skwkkwkwkwkwkks', 'skwkkwkwkwkwwks', 'skkkkkkkkkkkkks', '.skkkkkkkkkkks.', '..sskkkkkkkss..', '....sssssss....'],
-    cfb: ['...ttttttt...', '.ttTtttttTtt.', 'ttTtwwwwwtTtt', 'tTttwtwtwttTt', 'ttTtttttttTtt', '.ttTtttttTtt.', '...ttttttt...'],
-    cbb: ['...BBxBB...', '.BBBBxBBBB.', '.xBBBxBBBx.', 'BBxBBxBBxBB', 'BBBxBxBxBBB', 'xxxxxxxxxxx', 'BBBxBxBxBBB', 'BBxBBxBBxBB', '.xBBBxBBBx.', '.BBBBxBBBB.', '...BBxBB...'],
-    tennis: ['..lllll..', '.lwlllll.', 'llwllllll', 'lllwlllll', 'llllwwlll', 'lllllllwl', 'lllllllwl', '.llllllw.', '..lllll..'],
-    golf: ['.rrr.....', '.rrrrr...', '.rrr.....', '.p.......', '.p.......', '.p.......', '.p...pp..', 'ggggggggg']
-  };
-  var pixUrl = {};
+  // Each league's logo, as ESPN's scoreboard gives it (kept on the device), tinted to the strip's amber so it sits with
+  // the lit-up letters; the league's name until one has come
+  var LGLOGO = lsGet('sb_lglogo_cache', {});
+  function keepLgLogo(lg, j) {
+    var ls = (((j || {}).leagues || [])[0] || {}).logos || [], pick = null;
+    ls.forEach(function (x) { if (!pick || (x.rel || []).indexOf('dark') >= 0) pick = x; });
+    if (pick && pick.href && LGLOGO[lg] !== pick.href) { LGLOGO[lg] = pick.href; try { localStorage.setItem('sb_lglogo_cache', JSON.stringify(LGLOGO)); } catch (e) {} }
+  }
   function lgPix(lg) {
-    var rows = PIX[lg]; if (!rows) return el('i', { text: LG[lg].name.toUpperCase() });
-    if (!pixUrl[lg]) {
-      var c = document.createElement('canvas'), x = c.getContext('2d'); c.width = rows[0].length; c.height = rows.length;
-      rows.forEach(function (r, y) { for (var i = 0; i < r.length; i++) { var col = PIX_PAL[r[i]]; if (col) { x.fillStyle = col; x.fillRect(i, y, 1, 1); } } });
-      pixUrl[lg] = c.toDataURL();
-    }
-    // (4 screen pixels a picture pixel on a phone)
-    return el('img', { class: 'lgp', src: pixUrl[lg], alt: LG[lg].name, width: String(rows[0].length * 4 / 3), height: String(rows.length * 4 / 3) });
+    if (!LGLOGO[lg]) return el('i', { text: LG[lg].name.replace('College ', 'C').replace('Hoops', 'BB').replace('Football', 'FB').toUpperCase() });
+    var im = el('img', { class: 'lgl', src: LGLOGO[lg], alt: LG[lg].name, decoding: 'async' });
+    im.onerror = function () { im.replaceWith(el('i', { text: LG[lg].name.toUpperCase() })); };
+    return im;
   }
   function tkItem(g) {
     var a = g.away, h = g.home, kids = [lgPix(g.lg)];
@@ -1602,25 +1591,52 @@ body{overflow-x:hidden;}
     }
   }
   // The strips are Kit.marquee: they roll on through a fresh lineup (the next game in is the first of the new list),
-  // and a finger can swipe them (the top strip moves left, YOURS right)
-  function tkRun(host, games, label) {
-    host.style.display = games.length ? '' : 'none';
-    var lb = host.querySelector('.lbl');
-    if (label) { if (!lb) host.appendChild(lb = el('span', { class: 'lbl' })); lb.textContent = label; } else if (lb) lb.remove();
-    if (!host._mq) host._mq = Kit.marquee(host, { dir: host.classList.contains('mine') ? 1 : -1, make: function (g) { return tkItem(GAMES[g.id] || g); } });
-    host._mq.set(games);
+  // and a finger can swipe them (the top strip moves left, the bottom one right). The key at each strip's right end
+  // names what it shows and picks something else: the top 25, live games, yours, a league (sb_tk1, sb_tk2).
+  var TKF = [lsGet('sb_tk1', 'top'), lsGet('sb_tk2', 'yours')];
+  var TKN = { top: 'Top 25', live: 'Live now', yours: 'Yours', bets: 'My bets', teams: 'My teams', more: 'More games' };
+  function tkOpts() {
+    var o = [{ id: 'top', label: 'Top 25', sub: 'The biggest games' }, { id: 'live', label: 'Live now', sub: 'Under way' }, { id: 'yours', label: 'Yours', sub: 'Your bets and teams' },
+      { id: 'bets', label: 'My bets' }, { id: 'teams', label: 'My teams' }, { id: 'more', label: 'More games', sub: 'The next 25' }];
+    lgsOn().forEach(function (k) { o.push({ id: 'lg:' + k, label: LG[k].name }); });
+    return o;
   }
-  function paintTicker() {
+  function tkfLabel(f) { var k = f.indexOf('lg:') === 0 && f.slice(3); return k ? (LG[k] ? LG[k].name.replace('Football', 'FB') : k) : TKN[f] || f; }
+  function tkRun(host, games, i, f, fresh) {
+    host.style.display = '';
+    if (!host._mq) host._mq = Kit.marquee(host, { dir: i ? 1 : -1,
+      make: function (g) { return g.none ? el('span', { class: 'it none', text: g.none }) : tkItem(GAMES[g.id] || g); },
+      menu: { title: i ? 'Bottom strip' : 'Top strip', options: tkOpts, value: function () { return TKF[i]; },
+        pick: function (id) { TKF[i] = id; try { localStorage.setItem('sb_tk' + (i + 1), JSON.stringify(id)); } catch (e) {} paintTicker(i); } } });
+    host._mq.label(tkfLabel(f));
+    // (nothing to show: it says so, and the key stays to pick something else)
+    // (games after a "nothing here": straight in, not behind it)
+    host._mq.set(games.length ? games : [{ id: 'none:' + f, none: f === 'live' ? 'NO GAMES LIVE' : f === 'bets' ? 'NO OPEN BETS' : f === 'teams' ? 'STAR YOUR TEAMS UNDER MY TEAMS' : f === 'yours' ? 'NO BETS OR TEAMS YET' : f === 'more' ? 'NO MORE GAMES' : 'NO GAMES' }], fresh || (host._none && games.length > 0));
+    host._none = !games.length;
+  }
+  // fresh: the strip whose choice just changed (it starts over with it)
+  function paintTicker(fresh) {
     if (!dom.tape) return;
     var now = Date.now(), all = tickGames().map(function (g) { return { g: g, v: pop(g, now) }; }).sort(function (x, y) { return y.v - x.v || x.g.t - y.g.t; }).map(function (x) { return x.g; });
-    var top = all.slice(0, 25);
     var betIds = {}; openBets().forEach(function (t) { t.legs.forEach(function (l) { betIds[l.gid] = 1; }); });
-    var mine = all.filter(function (g) { return betIds[g.id] || favGame(g); });
-    Object.keys(betIds).forEach(function (id) { var g = GAMES[id]; if (g && g.home && mine.indexOf(g) < 0 && !g.void) mine.push(g); });
-    mine.sort(function (x, y) { return (x.state === 'in' ? 0 : 1) - (y.state === 'in' ? 0 : 1) || Math.abs(x.t - now) - Math.abs(y.t - now); });
-    tkRun(dom.tape, top);
-    if (mine.length) tkRun(dom.tape2, mine.slice(0, 25), 'YOURS');
-    else tkRun(dom.tape2, all.slice(25, 50), 'MORE');
+    var soon = function (x, y) { return (x.state === 'in' ? 0 : 1) - (y.state === 'in' ? 0 : 1) || Math.abs(x.t - now) - Math.abs(y.t - now); };
+    function bets() { var l = all.filter(function (g) { return betIds[g.id]; }); Object.keys(betIds).forEach(function (id) { var g = GAMES[id]; if (g && g.home && l.indexOf(g) < 0 && !g.void) l.push(g); }); return l; }
+    function list(f) {
+      if (f === 'top') return all.slice(0, 25);
+      if (f === 'live') return all.filter(function (g) { return g.state === 'in'; }).slice(0, 25);
+      if (f === 'more') return all.slice(25, 50);
+      if (f === 'bets') return bets().sort(soon).slice(0, 25);
+      if (f === 'teams') return all.filter(favGame).sort(soon).slice(0, 25);
+      if (f === 'yours') { var b = bets(); return b.concat(all.filter(function (g) { return favGame(g) && b.indexOf(g) < 0; })).sort(soon).slice(0, 25); }
+      if (f.indexOf('lg:') === 0) return all.filter(function (g) { return g.lg === f.slice(3); }).slice(0, 25);
+      return [];
+    }
+    [dom.tape, dom.tape2].forEach(function (host, i) {
+      var f = TKF[i], l = list(f);
+      // (the bottom strip as it comes: more games until you have bets or teams of your own)
+      if (!l.length && i === 1 && f === 'yours' && all.length > 25) { l = list('more'); f = 'more'; }
+      tkRun(host, l, i, f, fresh === i);
+    });
   }
   // ── Fantasy scores (Yahoo), pinned at the end of the strips ─────────────────
   // fantasy/scores.json is written by the yahoo-fantasy Action every 15 minutes through game windows. One league at a
@@ -1683,7 +1699,7 @@ body{overflow-x:hidden;}
 
   // every league's board for the strips (each kept fresh by its own clock: live games every 30 seconds)
   function tickerFeeds() {
-    return Promise.all(lgsOn().filter(function (k) { return k !== 'golf'; }).map(function (k) { return loadLeague(k).catch(function () {}); })).then(paintTicker);
+    return Promise.all(lgsOn().filter(function (k) { return k !== 'golf'; }).map(function (k) { return loadLeague(k).catch(function () {}); })).then(function () { paintTicker(); });
   }
   tickerFeeds();
   setInterval(function () { if (document.visibilityState === 'visible') tickerFeeds(); }, 60000);

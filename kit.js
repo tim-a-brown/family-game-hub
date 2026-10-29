@@ -4061,7 +4061,9 @@
 
   // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
   // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
-  // -> {set(items)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
+  // menu: {title, options() -> [{id, label}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
+  // and opens a choice of what else it could (set its words with .label(text)).
+  // -> {set(items, fresh), label(text)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
   // fresh list never restarts it: what's showing rolls on (redrawn with the new figures) and the new list follows.
   // A finger stops it and drags it; let go and it carries on with the swipe's speed, easing back to its own pace.
   var MQ = [], mqRaf = 0, mqLast = 0, mqStill = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -4126,7 +4128,24 @@
       m.v = now - t0 > 10 ? Math.max(-4000, Math.min(4000, sum / ((now - t0) / 1000))) : 0;
     }
     host.addEventListener('pointerup', up); host.addEventListener('pointercancel', up);
-    host.addEventListener('click', function (e) { if (m.noClick) { m.noClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
+    host.addEventListener('click', function (e) { if (m.noClick && !e.target.closest('.k-mq-tab')) { m.noClick = false; e.stopPropagation(); e.preventDefault(); } }, true);
+    var tab = null;
+    if (o.menu) {
+      tab = el('button', { type: 'button', class: 'k-mq-tab', 'aria-label': 'Choose what this strip shows' }, [el('span'), el('i', { html: icon('down') })]);
+      // (its own: a press here neither stops nor drags the strip)
+      ['pointerdown', 'pointermove', 'pointerup'].forEach(function (t) { tab.addEventListener(t, function (e) { e.stopPropagation(); }); });
+      tab.addEventListener('click', function (e) {
+        e.stopPropagation(); sfx('tap');
+        var box = el('div', { class: 'k-mq-opts' }), cur = o.menu.value(), sh = null;
+        o.menu.options().forEach(function (op) {
+          box.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (op.id === cur ? ' on' : ''), onclick: function () {
+            haptic('light'); sfx('pop'); if (sh) sh.close(); if (op.id !== cur) o.menu.pick(op.id);
+          } }, [el('b', { text: op.label }), op.sub ? el('small', { text: op.sub }) : null]));
+        });
+        sh = sheet({ title: o.menu.title || 'Show on this strip', node: box });
+      });
+      host.appendChild(tab);
+    }
     MQ.push(m);
     if (!mqRaf) mqRaf = requestAnimationFrame(function frame(t) {
       var dt = mqLast ? Math.min(0.1, (t - mqLast) / 1000) : 0; mqLast = t;
@@ -4135,8 +4154,11 @@
     });
     return {
       speed: function () { return m.v; },   // (px a second now: tests)
-      set: function (items) {
+      label: function (t) { if (tab) tab.firstChild.textContent = t; },
+      // fresh: start over with these now (a different choice of what the strip shows), rather than roll them in
+      set: function (items, fresh) {
         items = items || [];
+        if (fresh) { run.innerHTML = ''; m.x = -41; m.v = base; m.key = null; }
         var ids = items.map(idOf), key = ids.join('\u0001');
         m.by = {}; items.forEach(function (it, j) { m.by[ids[j]] = it; });
         if (key !== m.key) { m.key = key; m.q = ids; m.i = 0; m.p = ids.length - 1; }

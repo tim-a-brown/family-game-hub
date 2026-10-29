@@ -25,13 +25,11 @@ body{overflow-x:hidden;}
 .tape .it b{color:#fff3c4;font-weight:900;}
 .tape .it .up{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
 .tape .it .dn{color:#ff5a5f;text-shadow:0 0 6px rgba(255,80,90,.55);}
-/* the second strip: what you own and what you watch, running the other way, its label pinned at the left */
+/* the second strip runs the other way (what it shows: the key at its right end, Kit.marquee) */
 .tapes{margin:2px 0 12px;}
 .tapes .tape{margin:0 -14px;}
 .tape.mine{border-top-color:#2a3240;}
 .tape.mine .it b{color:#bfe9ff;}
-.tape.mine .lbl{position:absolute;left:0;top:0;bottom:0;z-index:2;display:flex;align-items:center;padding:0 10px 0 14px;font:900 .62rem/1 var(--font);letter-spacing:.14em;color:#9fd8ff;
-  background:linear-gradient(90deg,#07090c 75%,rgba(7,9,12,0));text-shadow:0 0 6px rgba(120,200,255,.5);}
 
 /* ── Panels: the dark trading-terminal glass ── */
 .pnl{position:relative;border-radius:18px;padding:14px;margin:0 0 12px;color:#eef2f8;background:linear-gradient(180deg,#151b24,#0b0f15);
@@ -672,27 +670,53 @@ body{overflow-x:hidden;}
     if (!dom.wide && tab === 'port') dom.body.innerHTML = '', dom.body.appendChild(dom.sum); else dom.body.innerHTML = '';
     if (tab === 'port') paintPort(); else if (tab === 'mkt') paintMarket(); else paintLearn();
   }
-  function paintTape() {
-    if (!Q) return;
-    var syms = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'GOOGL', 'META', 'DIS', 'NTDOY', 'UAL', 'KO', 'BTC-USD', 'TLT', 'GLD'].filter(S);
-    tapeRun(dom.tape, syms);
-    // the second strip: everything you have a stake in (shares or options), then your watchlist
-    var mine = [];
-    holdings().forEach(function (h) { mine.push(h.sym); });
-    A.opts.forEach(function (o) { mine.push(o.sym); });
-    WATCH.forEach(function (w) { mine.push(w); });
-    mine = mine.filter(function (x, i) { return mine.indexOf(x) === i && S(x) && isFinite(price(x)) && price(x) > 0; });
-    dom.tape2.style.display = mine.length ? '' : 'none';
-    if (!dom.tape2.querySelector('.lbl')) dom.tape2.appendChild(el('span', { class: 'lbl', text: 'YOURS' }));
-    tapeRun(dom.tape2, mine);
+  // The two strips (Kit.marquee: they roll on through new prices and can be swiped; the top one moves left, the bottom
+  // one right). The key at each strip's right end names what it shows and picks something else (mk_tk1, mk_tk2).
+  var TAPEF = [lsGet('mk_tk1', 'market'), lsGet('mk_tk2', 'yours')];
+  var TAPEN = { market: 'Market', idx: 'Indexes', up: 'Gainers', down: 'Losers', yours: 'Yours', held: 'What you own', watch: 'Watchlist' };
+  function tapeOpts() {
+    var o = [{ id: 'market', label: 'Market', sub: 'Big names and funds' }, { id: 'idx', label: 'Indexes', sub: 'S&P 500, Dow, Nasdaq' }, { id: 'up', label: 'Gainers', sub: 'Up the most today' },
+      { id: 'down', label: 'Losers', sub: 'Down the most today' }, { id: 'yours', label: 'Yours', sub: 'Owned and watched' }, { id: 'held', label: 'What you own' }, { id: 'watch', label: 'Watchlist' }];
+    GROUPS.forEach(function (g) { if (Object.keys(Q && Q.q || {}).some(function (k) { return Q.q[k].g === g[0]; })) o.push({ id: 'g:' + g[0], label: g[1] }); });
+    return o;
   }
-  // a strip of quotes: Kit.marquee (rolls on through new prices, swipeable; the top strip moves left, YOURS right)
-  function tapeRun(host, syms) {
-    if (!host._mq) host._mq = Kit.marquee(host, { dir: host.classList.contains('mine') ? 1 : -1, speed: 40, id: function (sym) { return sym; }, make: function (sym) {
-      var c = dayChg(sym);
-      return el('span', { class: 'it' }, [el('b', { text: sym.replace('-USD', '') }), el('span', { text: px(price(sym)).replace('$', '') }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]);
-    } });
-    host._mq.set(syms);
+  function tapeLabel(f) { if (f.indexOf('g:') === 0) { var g = GROUPS.filter(function (x) { return x[0] === f.slice(2); })[0]; return g ? g[1] : f; } return TAPEN[f] || f; }
+  function tapeList(f) {
+    var live = function (x) { return S(x) && isFinite(price(x)) && price(x) > 0; }, uniq = function (l) { return l.filter(function (x, i) { return l.indexOf(x) === i && live(x); }); };
+    var qs = Object.keys(Q.q || {}).filter(function (k) { return Q.q[k].g !== 'tbond' && live(k); });
+    if (f === 'market') return ['SPY', 'QQQ', 'AAPL', 'NVDA', 'MSFT', 'AMZN', 'TSLA', 'GOOGL', 'META', 'DIS', 'NTDOY', 'UAL', 'KO', 'BTC-USD', 'TLT', 'GLD'].filter(live);
+    if (f === 'idx') return Object.keys(Q.idx || {}).map(function (k) { return '^' + k; }).concat(['SPY', 'DIA', 'QQQ', 'IWM', 'VTI'].filter(live));
+    if (f === 'up' || f === 'down') return qs.filter(function (k) { return f === 'up' ? dayChg(k) > 0 : dayChg(k) < 0; }).sort(function (x, y) { return f === 'up' ? dayChg(y) - dayChg(x) : dayChg(x) - dayChg(y); }).slice(0, 20);
+    var held = holdings().map(function (h) { return h.sym; }).concat(A.opts.map(function (o) { return o.sym; }));
+    if (f === 'held') return uniq(held);
+    if (f === 'watch') return uniq(WATCH.slice());
+    if (f === 'yours') return uniq(held.concat(WATCH));
+    if (f.indexOf('g:') === 0) return qs.filter(function (k) { return Q.q[k].g === f.slice(2); });
+    return [];
+  }
+  function paintTape(fresh) {
+    if (!Q) return;
+    [dom.tape, dom.tape2].forEach(function (host, i) {
+      var f = TAPEF[i], l = tapeList(f);
+      tapeRun(host, l, i, f, fresh === i);
+    });
+  }
+  function tapeItem(sym) {
+    if (sym.none) return el('span', { class: 'it none', text: sym.none });
+    var c, nm, pr;
+    if (sym.charAt(0) === '^') { var x = (Q.idx || {})[sym.slice(1)] || {}; c = x.pc ? (x.p - x.pc) / x.pc : 0; nm = (x.n || sym.slice(1)).toUpperCase(); pr = (x.p || 0).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
+    else { c = dayChg(sym); nm = sym.replace('-USD', ''); pr = px(price(sym)).replace('$', ''); }
+    return el('span', { class: 'it' }, [el('b', { text: nm }), el('span', { text: pr }), el('span', { class: c >= 0 ? 'up' : 'dn', text: (c >= 0 ? '▲ ' : '▼ ') + Math.abs(c * 100).toFixed(2) + '%' })]);
+  }
+  function tapeRun(host, syms, i, f, fresh) {
+    if (!host._mq) host._mq = Kit.marquee(host, { dir: i ? 1 : -1, speed: 40, id: function (sym) { return sym.none ? 'none:' + sym.none : sym; }, make: tapeItem,
+      menu: { title: i ? 'Bottom strip' : 'Top strip', options: tapeOpts, value: function () { return TAPEF[i]; },
+        pick: function (id) { TAPEF[i] = id; lsSet('mk_tk' + (i + 1), id); paintTape(i); } } });
+    host._mq.label(tapeLabel(f));
+    // (nothing to show: it says so, and the key stays to pick something else)
+    // (prices after a "nothing here": straight in, not behind it)
+    host._mq.set(syms.length ? syms : [{ none: f === 'held' ? 'NOTHING OWNED YET' : f === 'watch' || f === 'yours' ? 'STAR A STOCK TO WATCH IT' : 'NOTHING HERE TODAY' }], fresh || (host._none && syms.length > 0));
+    host._none = !syms.length;
   }
   function paintSeg() {
     dom.seg.innerHTML = '';
