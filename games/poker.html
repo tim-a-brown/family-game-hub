@@ -4944,7 +4944,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     // hold the board to see it big (below your finger, with your own cards under it); a quick tap still explains the game
     if (bl.length && !nob) {
       board.classList.add('zoomable'); board.appendChild(zoomBadge());
-      board.addEventListener('pointerdown', function (e) { if (e.button > 0) return; clearTimeout(R.zt); R.zt = setTimeout(function () { R.zHeld = true; zoomOn('board'); }, 260); });
+      board.addEventListener('pointerdown', function (e) { if (e.button > 0) return; R.zy = e.clientY; clearTimeout(R.zt); R.zt = setTimeout(function () { R.zHeld = true; zoomOn('board'); }, 260); });
       board.addEventListener('click', function (e) { if (R.zHeld) { R.zHeld = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
       board.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     }
@@ -5065,8 +5065,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var cx = Math.max(hw + 6, Math.min(vw - hw - 6, br.left + br.width / 2));
     z.style.left = (cx - tr.left) + 'px'; z.style.top = (cy - tr.top) + 'px';
   }
-  // The board, big: just below the board (your finger is on it), as wide as the table allows, with your own cards in a
-  // smaller row under it; above the board instead when there's no room below
+  // The board, big: above your finger (it's on the board), as wide as the table allows, with your own cards in a
+  // smaller row under it; below the board only when there's next to no room above
   function zoomCopies(list, cls) {
     var r = el('div', { class: 'pzc' + (cls ? ' ' + cls : '') });
     Array.prototype.forEach.call(list, function (c) { var k = c.cloneNode(true); k.classList.remove('deal', 'pick', 'folded', 'best', 'unused'); k.style.animationDelay = ''; k.style.transform = ''; r.appendChild(k); });
@@ -5084,7 +5084,8 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var n = row.children.length, nh = hr ? hr.children.length : 0;
     var cw = Math.min(110, (Math.min(vw, tr.width) - 48 - 8 * (n - 1)) / n);
     if (hr) cw = Math.min(cw, (Math.min(vw, tr.width) - 48 - 6 * (nh - 1)) / nh / 0.6);
-    var below = vh - 8 - (br.bottom + 12), above = br.top - 12 - top0, room = Math.max(below, above), down = below >= above;
+    var fy = R.zy != null ? Math.max(br.top, Math.min(br.bottom, R.zy)) : br.top, GAP = 30;   // (clear of the fingertip)
+    var below = vh - 8 - (br.bottom + 12), above = fy - GAP - top0, down = above < 110 && below > above, room = down ? below : above;
     // short and wide (a phone sideways): the board and your cards side by side in one row, the same size
     var aw = Math.min(vw, tr.width) - 48, side = hr ? Math.min(110, (aw - 8 * (n + nh - 1) - 22) / (n + nh), (room - 28) / 1.4) : 0;
     var stack = Math.min(cw, (room - 38) / (1.4 * 1.6));
@@ -5094,7 +5095,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     cw = Math.round(Math.max(40, cw)); fit(cw);
     for (var t = 0; t < 4 && z.offsetHeight > room && cw > 40; t++) { cw = Math.max(40, Math.floor(cw * room / z.offsetHeight)); fit(cw); }
     var hh = z.offsetHeight / 2, hw = z.offsetWidth / 2;
-    var cy = down ? br.bottom + 12 + hh : br.top - 12 - hh;
+    var cy = down ? br.bottom + 12 + hh : fy - GAP - hh;
     cy = Math.max(top0 + hh, Math.min(vh - 8 - hh, cy));
     var cx = Math.max(hw + 6, Math.min(vw - hw - 6, br.left + br.width / 2));
     z.style.left = (cx - tr.left) + 'px'; z.style.top = (cy - tr.top) + 'px';
