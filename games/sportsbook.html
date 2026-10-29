@@ -54,7 +54,7 @@ body{overflow-x:hidden;}
 .sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
 .sbt .tape.mine{border-top-color:#2a3240;}
 .sbt .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
-.sbt .it .lgl{align-self:center;flex:none;height:17px;width:auto;max-width:34px;object-fit:contain;
+.sbt .it .lgl{align-self:center;flex:none;height:17px;width:auto;object-fit:contain;
   filter:grayscale(1) sepia(1) saturate(4.5) hue-rotate(-12deg) brightness(1.2) drop-shadow(0 0 3px rgba(255,190,60,.55));}
 .sbt .it i{font-style:normal;font-size:.68rem;color:#7f8aa0;text-shadow:none;letter-spacing:.08em;}
 .sbt .it b{color:#fff3c4;font-weight:900;}
@@ -1552,10 +1552,19 @@ body{overflow-x:hidden;}
   }
   // the logos kept with the game (games/sportsbook/<league>.png); a league without one gets ESPN's
   var LOGO_HERE = { mlb: 1, nba: 1, wnba: 1, nfl: 1, nhl: 1, cbb: 1, cfb: 1, tennis: 1, golf: 1 };
+  // Each logo's shape (width over height) and how much of its box it fills, so they can be sized to look the same:
+  // the same area of ink each, a thin one taller and a wide or solid one smaller (within the space there is)
+  var LOGO_SHAPE = { mlb: [1.858, .99], nba: [.417, .58], wnba: [.408, .70], nfl: [.725, .76], nhl: [.875, .76], cbb: [1.008, .75], cfb: [1.492, .44], tennis: [1.225, .57], golf: [.733, .98] };
+  function logoSize(lg, area, maxH, maxW) {
+    var sh = LOGO_SHAPE[lg] || [1, .8], r = sh[0], h = Math.sqrt(area / (r * (.5 + .5 * sh[1])));
+    h = Math.min(h, maxH, maxW / r);
+    return [Math.round(h * r), Math.round(h)];
+  }
   function lgLogo(lg) { return LOGO_HERE[lg] ? 'sportsbook/' + lg + '.png' : LGLOGO[lg] || null; }
   function lgPix(lg) {
     if (!lgLogo(lg)) return el('i', { text: LG[lg].name.replace('College ', 'C').replace('Hoops', 'BB').replace('Football', 'FB').toUpperCase() });
-    var im = el('img', { class: 'lgl', src: lgLogo(lg), alt: LG[lg].name, decoding: 'async' });
+    var sz = LOGO_HERE[lg] ? logoSize(lg, 300, 26, 40) : null;
+    var im = el('img', { class: 'lgl', src: lgLogo(lg), alt: LG[lg].name, decoding: 'async', style: sz ? { width: sz[0] + 'px', height: sz[1] + 'px' } : null });
     im.onerror = function () { im.replaceWith(el('i', { text: LG[lg].name.toUpperCase() })); };
     return im;
   }
@@ -1607,7 +1616,7 @@ body{overflow-x:hidden;}
       { id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours', sub: g('yours', 'game') },
       { id: 'bets', group: 'Yours', icon: 'coins', label: 'My bets', sub: n('bets') ? n('bets') + ' open' : 'None open' },
       { id: 'teams', group: 'Yours', icon: 'star', label: 'My teams', sub: g('teams', 'game') }];
-    lgsOn().forEach(function (k) { o.push({ id: 'lg:' + k, group: 'Leagues', img: lgLogo(k), glyph: LG[k].name.charAt(0), label: LG[k].name, sub: g('lg:' + k, 'game') }); });
+    lgsOn().forEach(function (k) { o.push({ id: 'lg:' + k, group: 'Leagues', img: lgLogo(k), imgSize: LOGO_HERE[k] ? logoSize(k, 1000, 48, 86) : null, glyph: LG[k].name.charAt(0), label: LG[k].name, sub: g('lg:' + k, 'game') }); });
     return o;
   }
   function tkfLabel(f) { var k = f.indexOf('lg:') === 0 && f.slice(3); return k ? (LG[k] ? LG[k].name.replace('Football', 'FB') : k) : TKN[f] || f; }
@@ -1617,7 +1626,8 @@ body{overflow-x:hidden;}
       make: function (g) { return g.none ? el('span', { class: 'it none', text: g.none }) : tkItem(GAMES[g.id] || g); },
       menu: { title: i ? 'Bottom strip' : 'Top strip', options: tkOpts, value: function () { return TKF[i]; },
         pick: function (id) { TKF[i] = id; try { localStorage.setItem('sb_tk' + (i + 1), JSON.stringify(id)); } catch (e) {} paintTicker(i); } } });
-    host._mq.label(tkfLabel(f), f.indexOf('lg:') === 0 ? lgLogo(f.slice(3)) : null);
+    var tl = f.indexOf('lg:') === 0 && f.slice(3);
+    host._mq.label(tkfLabel(f), tl ? lgLogo(tl) : null, tl && LOGO_HERE[tl] ? logoSize(tl, 220, 22, 32) : null);
     // (nothing to show: it says so, and the key stays to pick something else)
     // (games after a "nothing here": straight in, not behind it)
     host._mq.set(games.length ? games : [{ id: 'none:' + f, none: f === 'live' ? 'NO GAMES LIVE' : f === 'bets' ? 'NO OPEN BETS' : f === 'teams' ? 'STAR YOUR TEAMS UNDER MY TEAMS' : f === 'yours' ? 'NO BETS OR TEAMS YET' : f === 'more' ? 'NO MORE GAMES' : 'NO GAMES' }], fresh || (host._none && games.length > 0));

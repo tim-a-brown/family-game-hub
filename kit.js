@@ -4061,7 +4061,7 @@
 
   // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
   // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
-  // menu: {title, options() -> [{id, label, sub, group, icon | img | glyph, color, tone: 'up' | 'down'}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
+  // menu: {title, options() -> [{id, label, sub, group, icon | img (imgSize [w, h]) | glyph, color, tone: 'up' | 'down'}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
   // and opens a choice of what else it could (set its words with .label(text)).
   // -> {set(items, fresh), label(text)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
   // fresh list never restarts it: what's showing rolls on (redrawn with the new figures) and the new list follows.
@@ -4146,6 +4146,8 @@
           ops.forEach(function (op) {
             var mark = op.img ? el('img', { src: op.img, alt: '' }) : el('span', { class: 'ic', style: op.color ? { background: op.color, color: '#fff' } : null, html: op.icon ? icon(op.icon) : esc(op.glyph || '') });
             if (op.img) mark.onerror = function () { mark.replaceWith(el('span', { class: 'ic', text: op.label.slice(0, 1) })); };
+            // (a logo given its size sits in a slot of the same height in every tile, so the names line up)
+            if (op.img && op.imgSize) { mark.style.width = op.imgSize[0] + 'px'; mark.style.height = op.imgSize[1] + 'px'; mark = el('span', { class: 'k-mq-slot' }, [mark]); }
             grid.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (logos ? ' k-mq-lg' : '') + (op.tone ? ' k-mq-' + op.tone : '') + (op.id === cur ? ' on' : ''), onclick: function () {
               haptic('light'); sfx('pop'); if (sh) sh.close(); if (op.id !== cur) o.menu.pick(op.id);
             } }, [mark, el('span', { class: 'tx' }, [el('b', { text: op.label }), op.sub ? el('small', { text: op.sub }) : null])]));
@@ -4165,9 +4167,9 @@
     return {
       speed: function () { return m.v; },   // (px a second now: tests)
       // its words, and a logo before them when there is one (a league)
-      label: function (t, img) {
+      label: function (t, img, size) {
         if (!tab) return; var sp = tab.firstChild; sp.textContent = t;
-        if (img) { var im = el('img', { src: img, alt: '' }); im.onerror = function () { im.remove(); }; sp.insertBefore(im, sp.firstChild); }
+        if (img) { var im = el('img', { src: img, alt: '', style: size ? { width: size[0] + 'px', height: size[1] + 'px', maxWidth: 'none' } : null }); im.onerror = function () { im.remove(); }; sp.insertBefore(im, sp.firstChild); }
       },
       // fresh: start over with these now (a different choice of what the strip shows), rather than roll them in
       set: function (items, fresh) {
