@@ -89,7 +89,12 @@ function rec(x) {
 async function y(tok, path) {
   const r = await fetch(API + path + (path.includes('?') ? '&' : '?') + 'format=json', { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/json' } });
   const t = await r.text();
-  if (!r.ok) throw new Error('Yahoo ' + path + ' HTTP ' + r.status + ' ' + t.slice(0, 200));
+  if (!r.ok) {
+    let why = t.slice(0, 600);
+    try { const e = JSON.parse(t).error; why = (e && (e.description || e.detail)) || why; } catch (e) {}
+    const m = /<description>([\s\S]*?)<\/description>/.exec(t); if (m) why = m[1];
+    throw new Error('Yahoo ' + path + ' HTTP ' + r.status + ': ' + String(why).replace(/\s+/g, ' ').trim());
+  }
   return JSON.parse(t).fantasy_content;
 }
 const num = (v) => { const n = parseFloat(v); return isFinite(n) ? Math.round(n * 100) / 100 : null; };
