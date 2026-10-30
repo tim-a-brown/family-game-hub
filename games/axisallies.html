@@ -326,6 +326,15 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .war-list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:44vh;overscroll-behavior:contain;padding:1px;}
 .wr{border-radius:12px;background:rgba(0,0,0,.05);padding:7px 9px 8px;border-left:4px solid var(--ac);animation:rise .4s var(--ease) both;}
 .wh{display:flex;align-items:center;gap:8px;}
+.wtots{flex:none;display:flex;flex-direction:column;gap:4px;margin:0 0 8px;padding:7px 9px;border-radius:12px;background:rgba(0,0,0,.05);}
+.wtot{display:grid;grid-template-columns:5.6em 1fr auto;align-items:center;gap:6px;}
+.wtl{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#6b604c;}
+.wtot.you .wtl{color:#c8102e;} .wtot.en .wtl{color:#3f7a2a;}
+.wtot .vsg{display:flex;flex-wrap:wrap;gap:3px;min-width:0;}
+.wtot .vc{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 4px 0 2px;border-radius:5px;background:var(--pc);color:var(--pci);font-size:.7rem;font-weight:900;}
+.wtot .vc svg{width:21px;height:14px;}
+.wti{font-size:.72rem;font-weight:800;color:#6b604c;white-space:nowrap;}
+.wti b{color:#2a2a3a;font-variant-numeric:tabular-nums;}
 .wr{cursor:pointer;transition:box-shadow .2s;}
 .wr.on{box-shadow:inset 0 0 0 2px var(--ac);}
 .wpin{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.74rem;font-weight:900;color:#fff;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.35);}
@@ -369,8 +378,8 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-banner .card.wide > .war{flex-shrink:1;}
 @media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;}
   .aa-banner .card.wide:has(.wm){width:min(720px,100%);}
-  .war:has(.wm){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:10px;}
-  .war:has(.wm) .war-h{grid-column:1 / 3;}
+  .war:has(.wm){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto minmax(0,1fr);column-gap:10px;}
+  .war:has(.wm) .war-h,.war:has(.wm) .wtots{grid-column:1 / 3;}
   .war .wm{margin:0;aspect-ratio:auto;height:100%;min-height:0;}
   .war-list{max-height:none;min-height:0;}}
 .aa-banner .card.inc{max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px 16px 14px;text-align:left;}
@@ -5092,8 +5101,22 @@ function warReport(p, you) {
     var r = box.querySelector('.wr[data-i="' + i + '"]'); if (r) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
   var held = list.filter(function (e) { return warOutcome(e)[1] === 'good'; }).length, took = list.filter(function (e) { return e.cap; }).length;
+  // every unit lost, added up: yours (and friends' defending your places), and the attackers'
+  var tot = { you: {}, en: {}, fr: {} };
+  list.forEach(function (e) {
+    function add(m, k, n) { m[k] = (m[k] || 0) + n; }
+    Object.keys(e.la).forEach(function (k) { add(tot.en, k, e.la[k]); });
+    Object.keys(e.ld).forEach(function (k) { add(S.ctl[k.split(':')[0]] === si ? tot.you : tot.fr, k, e.ld[k]); });
+  });
+  function totRow(label, m, cls) {
+    var chips = lostChips(m); if (!chips.length) return null;
+    var ipc = chips.reduce(function (a, g) { return a + U[g.k].c * g.n; }, 0);
+    return el('div', { class: 'wtot ' + cls }, [el('span', { class: 'wtl', text: label }), vsChips(chips), el('span', { class: 'wti', html: '<b>' + ipc + '</b> IPCs' })]);
+  }
+  var totals = [totRow('You lost', tot.you, 'you'), totRow('Allies lost', tot.fr, 'fr'), totRow('Enemy lost', tot.en, 'en')].filter(Boolean);
   var box = el('div', { class: 'war' }, [
     el('div', { class: 'war-h' }, [el('span', { text: 'Since your last turn' }), el('span', { class: 'war-n', html: '<b>' + list.length + '</b> ' + (list.length === 1 ? 'attack' : 'attacks') + (took ? ', <b class="bad">' + took + '</b> taken' : '') + (held ? ', <b class="good">' + held + '</b> held' : '') })]),
+    totals.length ? el('div', { class: 'wtots' }, totals) : null,
     map,
     el('div', { class: 'war-list' }, rows)
   ]);
