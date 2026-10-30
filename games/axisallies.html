@@ -884,7 +884,7 @@ function reach(u, ph) {
       a = +a; if (a === u.t) continue;
       var left = r - res.dist[a];
       if (ph === 'cm') {
-        var hostile = enemiesAt(a, p).length > 0 || (u.k === 'bmb' && enemyLand(a, p) && S.ic[a]);
+        var hostile = enemiesAt(a, p).length > 0 || (u.k === 'bmb' && enemyLand(a, p) && S.ic[a] && (S.dmg[a] || 0) < ipcOf(a) * 2);
         if (!hostile) continue;
         if (!canLandFrom(a, left, u)) continue;
         out[a] = { d: res.dist[a], path: pathTo(res, u.t, a) };
@@ -1020,6 +1020,7 @@ function capture(t, p) {
     if (capitalOf(orig) === t || holdsCapital(orig)) to = orig;
   }
   S.own[t] = to;
+  S.units.forEach(function (u) { if (u.t === t && u.k === 'aa' && foe(u.o, p)) { u.o = p; u.m = U.aa.m; } });   // (AA guns are captured, not destroyed)
   if (!QUIET && !HEADLESS) fxCaptureSoon(t, to);
   if (S.capt.indexOf(t) < 0) S.capt.push(t);
   stat(p, 'caps');
@@ -1047,6 +1048,14 @@ function capture(t, p) {
   logLine(pname(p) + ' takes ' + tname(t));
 }
 function hostileSea(z, p) { return seaBlocked(z, p, false); }
+// Enemy land that falls to the land units moving in: nobody fighting there (AA guns don't hold it, unless planes of
+// ours are there for them to shoot at)
+function takeable(t, p) {
+  if (isSea(t) || !foe(S.own[t], p)) return false;
+  var en = enemiesAt(t, p);
+  if (en.some(function (u) { return u.k !== 'aa'; })) return false;
+  return !en.length || !S.units.some(function (u) { return u.t === t && u.o === p && U[u.k].dom === 'A'; });
+}
 // the last move's route, for the piece that travels it on the map: {ids, path, o}
 var FXM = null;
 function doMove(ids, dest, opt) {
@@ -1066,7 +1075,7 @@ function doMove(ids, dest, opt) {
       u.fr = u.t; u.on = null; u.t = dest; u.m = U[u.k].m;
       if (ph === 'cm') { u.c = 1; u.amph = null; u.amphF = 1; }
     });
-    if (ph === 'cm' && !hostile && !enemiesAt(dest, p).length && foe(S.own[dest], p)) capture(dest, p);
+    if (ph === 'cm' && !hostile && takeable(dest, p)) capture(dest, p);
     stat(p, 'landings');
     return true;
   }
@@ -1091,7 +1100,7 @@ function doMove(ids, dest, opt) {
     if (ph === 'cm' && U[u.k].dom === 'L') {
       for (var i = 1; i < path.length; i++) {
         var x = path[i];
-        if (foe(S.own[x], p) && !enemiesAt(x, p).length) { capture(x, p); if (x !== dest) stat(p, 'blitz'); }
+        if (takeable(x, p)) { capture(x, p); if (x !== dest) stat(p, 'blitz'); }
       }
     }
   });
@@ -1187,11 +1196,11 @@ var UNIT_NOTE = {
   inf: 'Cheap and steady. The backbone of every army: good on defence, better on attack when artillery is with it.',
   art: 'Each artillery lets one infantry attack on 2 instead of 1.',
   arm: 'Moves 2. Can blitz through an empty enemy territory and keep going.',
-  aa: 'When planes attack its territory it fires once at up to 3 of them before the battle; a 1 hits. Can’t move in a combat move.',
+  aa: 'When planes attack its territory it fires once at up to 3 of them before the battle; a 1 hits. Can’t move in a combat move. Never a casualty: whoever takes the territory takes the gun.',
   ftr: 'Flies 4. Must land where you held at the start of the turn, or on an aircraft carrier.',
   bmb: 'Flies 6. Can bomb an enemy factory instead of fighting (each surviving bomber rolls a die of damage).',
   sub: 'Fires first in a sea battle unless an enemy destroyer is there. Can dive instead of fighting. Can’t hit planes.',
-  tra: 'Carries 2 infantry, or 1 infantry plus 1 other land unit. No attack or defence; lost when left alone with enemy warships.',
+  tra: 'Carries 2 infantry, or 1 infantry plus 1 other land unit. No attack or defence: left alone with enemy warships or planes, it’s lost without a roll.',
   dd: 'Cancels every submarine trick: no surprise strike, no diving, and your planes can hit subs.',
   ca: 'A solid warship. Can bombard the beach once when your troops land from its sea zone.',
   cv: 'Carries 2 fighters. Fighters can land on it at sea, and the fighters on its deck sail with it when it moves.',
@@ -1458,7 +1467,7 @@ function openBattle(b) {
       B.bomb = ships.slice(0, landed.length).map(function (u) { return u.i; });
     }
     if (!A.length) { b.done = 1; save(); return null; }
-    if (!D.length) {
+    if (!fighting(D).length && !(D.length && A.some(isAir))) {
       if (A.some(function (u) { return U[u.k].dom === 'L'; }) && foe(S.own[b.t], p)) { capture(b.t, p); if (!QUIET) Kit.toast(pname(p) + ' takes ' + tname(b.t)); }
       A.forEach(function (u) { u.f = 1; });
       b.done = 1; save(); return null;
@@ -1467,6 +1476,7 @@ function openBattle(b) {
   if (b.k === 'sea' && (!A.length || !D.length)) { b.done = 1; save(); return null; }
   if (b.k === 'sbr' && !A.length) { b.done = 1; save(); return null; }
   B.start = { a: kindCount(A), d: kindCount(D) };
+  B.aaHad = D.some(function (u) { return u.k === 'aa'; });
   S.B = B; b.active = 1;
   save();
   return B;
@@ -1546,7 +1556,7 @@ function hitKinds(B, v) {
 }
 function targetsFor(B, v) {
   var tside = v.side === 'a' ? 'd' : 'a';
-  var list = bSide(B, tside).filter(function (u) { return pendIds(B).indexOf(u.i) < 0; });
+  var list = fighting(bSide(B, tside)).filter(function (u) { return pendIds(B).indexOf(u.i) < 0; });
   if (v.kind === 'aa') list = list.filter(isAir);
   return list;
 }
@@ -1635,7 +1645,7 @@ function endOfRound(B) {
     var mine = bSide(B, s), other = bSide(B, s === 'a' ? 'd' : 'a');
     if (mine.length && mine.every(function (u) { return u.k === 'tra'; }) && other.some(function (u) { return (s === 'a' ? U[u.k].d : U[u.k].a) > 0; })) {
       mine.forEach(function (u) { killInBattle(B, u, s); });
-      B.msg = 'Unescorted transports are lost.';
+      B.traSunk = s;
     }
   });
 }
@@ -1652,9 +1662,32 @@ function canHurt(from, to, side) {
   });
 }
 // After a round: decide whether the battle is over
+// The units that fight (AA guns only fire at planes, once, and are captured with the territory; they're never
+// casualties)
+function fighting(list) { return list.filter(function (u) { return u.k !== 'aa'; }); }
+function aaOnly(B) { return B.step === 'pre' && aaPending(B) && !fighting(bSide(B, 'd')).length; }
+function aaPending(B) {
+  return B.k === 'land' && B.round === 1 && !B.vols.some(function (v) { return v.rolled; }) &&
+    bSide(B, 'd').some(function (u) { return u.k === 'aa'; }) && bSide(B, 'a').some(isAir);
+}
+// Transports can't fight back: left alone with enemy units that can hit them, they're lost without a roll
+function sinkLoneTransports(B) {
+  if (B.k !== 'sea') return false;
+  var sank = false;
+  ['d', 'a'].forEach(function (s) {
+    var mine = bSide(B, s), other = bSide(B, s === 'a' ? 'd' : 'a');
+    if (!mine.length || !mine.every(function (u) { return u.k === 'tra'; }) || !other.length) return;
+    if (!canHurt(other, mine, s === 'a' ? 'd' : 'a')) return;
+    mine.forEach(function (u) { killInBattle(B, u, s); });
+    B.traSunk = s; sank = true;
+  });
+  return sank;
+}
 function battleOutcome(B) {
   if (B.k === 'sbr') return !bSide(B, 'a').length ? 'def' : (B.vols.length && B.vi >= B.vols.length ? 'done' : null);
-  var A = bSide(B, 'a'), D = bSide(B, 'd');
+  if (aaPending(B)) return null;   // (the AA guns get their shot at the planes first)
+  sinkLoneTransports(B);
+  var A = bSide(B, 'a'), D = fighting(bSide(B, 'd'));
   if (!A.length && !D.length) return 'both';
   if (!A.length) return 'def';
   if (!D.length) return 'att';
@@ -1723,6 +1756,8 @@ function finishBattle(B) {
     }
   }
   B.dived = divedA + divedD;
+  if (B.traSunk) B.msg += ' ' + (B.traSunk === 'd' ? 'The transports had nothing to fight back with' : 'Your transports had nothing to fight back with') + ': left alone with enemy warships or planes, transports are lost without a roll.';
+  if (B.k === 'land' && out === 'att' && S.units.some(function (u) { return u.t === B.t && u.k === 'aa' && u.o === p; }) && B.aaHad) B.msg += ' The AA gun there is captured.';
   var big = B.lossA + B.lossD;
   if (big >= 60 && big > (S.biggest || 0)) hl('Big battle at ' + tname(B.t) + ' in round ' + S.round + ': ' + big + ' IPCs of units destroyed');
   S.biggest = Math.max(S.biggest || 0, big);
@@ -1777,12 +1812,13 @@ function simOdds(att, def, o) {
     arr.sort(function (a, b) { return a.key - b.key; });
     return arr;
   }
-  var A0 = prep(att, 'a'), D0 = prep(def, 'd');
+  var gunsN = def.filter(function (k) { return (typeof k === 'string' ? k : k.k) === 'aa'; }).length;
+  var A0 = prep(att, 'a'), D0 = prep(def.filter(function (k) { return (typeof k === 'string' ? k : k.k) !== 'aa'; }), 'd');
   var bombard = o.bomb || [];
   for (var it = 0; it < n; it++) {
     var A = A0.slice(), D = D0.slice(), round = 0;
     if (land) {
-      var guns = D.filter(function (x) { return x.k === 'aa'; }).length;
+      var guns = gunsN;
       if (guns) {
         var air = A.filter(function (x) { return x.k === 'ftr' || x.k === 'bmb'; }).length, shots = Math.min(guns * 3, air), hh = 0;
         for (var s = 0; s < shots; s++) if (Math.random() < 1 / 6) hh++;
@@ -3195,8 +3231,9 @@ function cmTapHint() {
   return take && fight ? 'Tap red to attack, or gold to take it unopposed' : take ? 'Tap a gold place to take it: nobody defends it' : 'Tap a red place to attack it';
 }
 function freeToTake(t, p, ids) {
-  if (S.phase !== 'cm' || isSea(t) || !foe(S.own[t], p) || enemiesAt(t, p).length) return false;
-  var us = (ids || []).map(byId).filter(Boolean);
+  var en = enemiesAt(t, p), us = (ids || []).map(byId).filter(Boolean);
+  if (S.phase !== 'cm' || isSea(t) || !foe(S.own[t], p) || fighting(en).length) return false;
+  if (en.length && us.some(isAir)) return false;   // (AA guns would fire at the planes)
   if (us.length && us.every(function (u) { return u.k === 'bmb'; }) && S.ic[t]) return false;
   return true;
 }
@@ -3296,7 +3333,9 @@ function subChoice(B, side) {
   // Submarines may dive instead of fighting when no enemy destroyer is present
   if (B.k !== 'sea') return false;
   var mine = bSide(B, side), other = bSide(B, side === 'a' ? 'd' : 'a');
-  return mine.some(function (u) { return u.k === 'sub'; }) && !hasDD(other);
+  if (!mine.some(function (u) { return u.k === 'sub'; }) || hasDD(other)) return false;
+  // (only enemy ships can hit submarines here: against planes alone, diving changes nothing)
+  return other.some(function (u) { return U[u.k].dom === 'S' && (side === 'a' ? U[u.k].d : U[u.k].a) > 0; });
 }
 function cpuDive(B, side) {
   var o = liveOdds(B); if (!o) return false;
@@ -3311,6 +3350,7 @@ async function runBattle() {
     showBattle(B);
     while (S.B === B) {
       if (B.step === 'pre' || B.step === 'decide') {
+        if (battleOutcome(B)) { finishBattle(B); save(); continue; }   // (nothing left to roll for: lone transports sunk)
         var attHuman = humanPower(B.att), opts = retreatOpts(B);
         if (attHuman || (B.def && humanPower(B.def) && subChoice(B, 'd'))) {
           renderBattle(B);
@@ -3559,6 +3599,7 @@ function renderBattle(B, anim) {
   var cur0 = B.vols[B.vi], vt = B.step === 'vol' || B.step === 'cas' ? cur0 && cur0.rolled ? cur0 : B.vi > 0 ? B.vols[B.vi - 1] : null : null;
   var line = B.step === 'end' ? B.msg
     : B.step === 'dive' ? 'Round ' + B.round + ': ' + PW[B.att].short + ' is ready to fire.'
+    : B.step === 'pre' && aaOnly(B) ? 'Only an AA gun is here. It fires once at your planes, then the territory is yours.'
     : B.step === 'pre' && B.round === 1 ? 'Every unit rolls one die. A roll at or under the number of its column is a hit.'
     : B.step === 'decide' ? 'Round ' + B.round + ': roll again or pull back.'
     : vt && vt.kind !== 'main' ? VOL_TITLE[vt.kind] + '.' : '';
@@ -3610,7 +3651,7 @@ function renderBattle(B, anim) {
     if (B.step === 'decide') retreatOpts(B).slice(0, 3).forEach(function (r) {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: r === 'air' ? 'Planes break off' : 'Retreat to ' + tname(r), onclick: function () { Kit.sfx('whoosh'); giveInput({ retreat: r }); } }));
     });
-    acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>' + (B.k === 'sbr' ? 'Drop the bombs' : B.step === 'pre' ? 'Roll the dice' : 'Roll again') + '</span>', onclick: function () { giveInput('roll'); } }));
+    acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon(aaOnly(B) ? 'plane' : 'dice') + '<span>' + (B.k === 'sbr' ? 'Drop the bombs' : aaOnly(B) ? 'Fly in' : B.step === 'pre' ? 'Roll the dice' : 'Roll again') + '</span>', onclick: function () { giveInput('roll'); } }));
   } else if ((B.step === 'pre' || B.step === 'decide') && !NET && B.def && humanPower(B.def) && subChoice(B, 'd')) {
     acts.appendChild(el('div', { class: 'bdive' }, [el('p', { text: 'Your submarines: fight, or dive away?' }),
       el('button', { type: 'button', class: 'btn btn-soft', text: 'Dive', onclick: function () { Kit.sfx('whoosh'); ui.dive.d = true; giveInput('roll'); } }),
@@ -4338,7 +4379,7 @@ var RULES =
   '<li>Win a land battle with at least one land unit left and the territory is yours. Planes alone can’t take territory.</li></ul>' +
   '<h3>Units</h3>' + unitTable() +
   '<ul><li><b>Artillery:</b> each one boosts one infantry to attack on 2.</li>' +
-  '<li><b>AA gun:</b> when planes attack its territory, it shoots once at up to 3 planes (one shot per plane) before the battle; a 1 hits. It can’t move in an attack and can be lost as a casualty.</li>' +
+  '<li><b>AA gun:</b> when planes attack its territory, it shoots once at up to 3 planes (one shot per plane) before the battle; a 1 hits. It can’t move in an attack, isn’t lost as a casualty, and is captured with its territory.</li>' +
   '<li><b>Fighters</b> can land on aircraft carriers (2 per carrier). <b>Bombers</b> can also bomb a factory instead of fighting.</li>' +
   '<li><b>Battleship:</b> takes 2 hits to sink; it’s repaired at the end of every turn. Battleships and cruisers can <b>bombard</b> a beach once when troops land from their sea zone.</li>' +
   '<li><b>Transport:</b> carries 2 infantry, or 1 infantry plus 1 other land unit. It can’t fight; it’s lost when left alone with enemy warships, and it’s chosen last as a casualty.</li>' +
@@ -4614,6 +4655,7 @@ function bRun(inp) {
   while (B && S.B === B && g++ < 80) {
     var st = B.step;
     if (st === 'pre' || st === 'decide') {
+      if (battleOutcome(B)) { finishBattle(B); did = true; continue; }
       var choice = null, opts = retreatOpts(B);
       if (botPow(B.att)) {
         choice = { roll: 1 };
