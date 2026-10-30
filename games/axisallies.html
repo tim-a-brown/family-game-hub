@@ -338,6 +338,12 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .wm-land path{stroke:#1d1a14;stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
 .wm-ring{fill:none;stroke-width:2.6;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-dasharray:5 3;}
 .wm-ring.bad{stroke:#ff4a4a;fill:rgba(255,40,40,.18);} .wm-ring.good{stroke:#8fe36a;} .wm-ring.mid{stroke:#ffd34d;}
+.wm-arr{transition:opacity .2s;}
+.wm.pick .wm-arr:not(.on){opacity:.18;}
+.wm-arr .cs{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke;opacity:.9;}
+.wm-arr .ln{fill:none;stroke:var(--ac);stroke-width:2.6;stroke-linecap:round;vector-effect:non-scaling-stroke;}
+.wm-arr polygon{fill:var(--ac);stroke:#fff;stroke-width:1.2;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+.wm-arr circle{fill:var(--ac);stroke:#fff;stroke-width:1.4;vector-effect:non-scaling-stroke;}
 .wm-pin{cursor:pointer;}
 .wm-pin circle{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke;}
 .wm-pin.bad circle{fill:#c8102e;} .wm-pin.good circle{fill:#3f7a2a;} .wm-pin.mid circle{fill:#b98e1c;}
@@ -1296,7 +1302,8 @@ function capture(t, p) {
   S.units.forEach(function (u) { if (u.t === t && u.k === 'aa' && foe(u.o, p)) { u.o = p; u.m = U.aa.m; } });   // (AA guns are captured, not destroyed)
   if (!QUIET && !HEADLESS) fxCaptureSoon(t, to);
   if (S.capt.indexOf(t) < 0) S.capt.push(t);
-  if (!S.B && prev && foe(prev, p)) warLog({ a: p, d: [prev], t: t, k: 'cap', res: 'att', cap: 1, la: {}, ld: {} });
+  if (!S.B && prev && foe(prev, p)) warLog({ a: p, d: [prev], t: t, k: 'cap', res: 'att', cap: 1, la: {}, ld: {}, from: (CAPFROM || []).filter(function (x) { return x != null && x !== t; }) });
+  CAPFROM = null;
   stat(p, 'caps');
   var city = TER[t][7];
   // Capital captured: the captor takes the loser's treasury
@@ -1320,6 +1327,15 @@ function capture(t, p) {
     if (first || S.hl.length < 4) hl(pname(p) + (TER[t][3] === to ? ' retook ' : ' took ') + city + ' in round ' + S.round);
   }
   logLine(pname(p) + ' takes ' + tname(t));
+}
+// where the units taking a place without a fight came from (set just before capture)
+var CAPFROM = null;
+// where a battle's attackers set out from this turn (landed troops: the sea they came ashore from)
+function attackFrom(B, A) {
+  var o = {};
+  A.forEach(function (u) { var f = u.amphF && u.fr != null ? u.fr : u.org != null ? u.org : u.fr; if (f != null && f !== B.t) o[f] = 1; });
+  (B.bomb || []).forEach(function (id) { var u = byId(id); if (u && u.t !== B.t) o[u.t] = 1; });
+  return Object.keys(o).map(Number);
 }
 function hostileSea(z, p) { return seaBlocked(z, p, false); }
 // Enemy land that falls to the land units moving in: nobody fighting there (AA guns don't hold it, unless planes of
@@ -1349,7 +1365,7 @@ function doMove(ids, dest, opt) {
       u.fr = u.t; u.on = null; u.t = dest; u.m = U[u.k].m;
       if (ph === 'cm') { u.c = 1; u.amph = null; u.amphF = 1; }
     });
-    if (ph === 'cm' && !hostile && takeable(dest, p)) capture(dest, p);
+    if (ph === 'cm' && !hostile && takeable(dest, p)) { CAPFROM = [us[0].fr]; capture(dest, p); }
     stat(p, 'landings');
     return true;
   }
@@ -1369,6 +1385,7 @@ function doMove(ids, dest, opt) {
     var r = routes[u.i];
     if (!r) return;
     var path = r.path;
+    if (ph === 'cm' && u.org == null) u.org = path[0];   // (where the attack set out from, for the report)
     u.m += r.d; u.fr = path[path.length - 2]; u.t = dest;
     if (ph === 'cm') u.c = 1;
     if (u.k === 'tra') cargoOf(u).forEach(function (c) { c.t = dest; });
@@ -1378,7 +1395,7 @@ function doMove(ids, dest, opt) {
     if (ph === 'cm' && U[u.k].dom === 'L') {
       for (var i = 1; i < path.length; i++) {
         var x = path[i];
-        if (takeable(x, p)) { capture(x, p); if (x !== dest) stat(p, 'blitz'); }
+        if (takeable(x, p)) { CAPFROM = [u.org]; capture(x, p); if (x !== dest) stat(p, 'blitz'); }
       }
     }
   });
@@ -1494,7 +1511,7 @@ function startTurn() {
   var p = cur();
   S.units.forEach(function (u) {
     if (u.o !== p) return;
-    u.m = 0; u.c = 0; u.f = 0; u.ul = 0; u.ulT = null; u.sbr = null; u.amph = null; u.amphF = 0; u.dv = 0; u.fr = null;
+    u.m = 0; u.c = 0; u.f = 0; u.ul = 0; u.ulT = null; u.sbr = null; u.amph = null; u.amphF = 0; u.dv = 0; u.fr = null; u.org = null;
   });
   S.turnOwn = S.own.slice(); S.capt = []; S.buy = {}; S.rep = {}; S.placed = {};
   S.bl = []; S.B = null; S.phase = 'buy';
@@ -1762,7 +1779,7 @@ function openBattle(b) {
     }
     if (!A.length) { b.done = 1; save(); return null; }
     if (!fighting(D).length && !(D.length && A.some(isAir))) {
-      if (A.some(function (u) { return U[u.k].dom === 'L'; }) && foe(S.own[b.t], p)) { capture(b.t, p); if (!QUIET) Kit.toast(pname(p) + ' takes ' + tname(b.t)); }
+      if (A.some(function (u) { return U[u.k].dom === 'L'; }) && foe(S.own[b.t], p)) { CAPFROM = attackFrom(B, A); capture(b.t, p); if (!QUIET) Kit.toast(pname(p) + ' takes ' + tname(b.t)); }
       A.forEach(function (u) { u.f = 1; });
       b.done = 1; save(); return null;
     }
@@ -1770,6 +1787,7 @@ function openBattle(b) {
   if (b.k === 'sea' && (!A.length || !D.length)) { b.done = 1; save(); return null; }
   if (b.k === 'sbr' && !A.length) { b.done = 1; save(); return null; }
   B.start = { a: kindCount(A), d: kindCount(D) };
+  B.from = attackFrom(B, A);
   B.aaHad = D.some(function (u) { return u.k === 'aa'; });
   S.B = B; b.active = 1;
   save();
@@ -2070,7 +2088,7 @@ function finishBattle(B) {
   if (owner0 && foe(owner0, p) && (B.k === 'land' || B.k === 'sbr')) dp[owner0] = 1;
   warLog({ a: p, d: Object.keys(dp), t: B.t, k: B.k, res: out, cap: B.k === 'land' && out === 'att' && S.own[B.t] !== owner0 ? 1 : 0,
     dmg: B.k === 'sbr' ? B.vols.reduce(function (a, v) { return a + (v.kind === 'sbr' ? v.sbrDmg || 0 : 0); }, 0) : 0, dv: B.dived || 0,
-    la: (B.lost && B.lost.a) || {}, ld: (B.lost && B.lost.d) || {} });
+    la: (B.lost && B.lost.a) || {}, ld: (B.lost && B.lost.d) || {}, from: B.from || [] });
 }
 function closeBattle() {
   var B = S.B; if (!B) return;
@@ -3705,7 +3723,7 @@ function fireRockets() {
     if (r.dmg) S.dmg[r.t] = (S.dmg[r.t] || 0) + r.dmg;
     stat(p, 'bombed', r.dmg);
     logLine(pname(p) + ' rocket hits ' + tname(r.t) + ': ' + r.dmg + ' damage');
-    warLog({ a: p, d: [S.own[r.t]], t: r.t, k: 'rkt', res: 'att', dmg: r.dmg, la: {}, ld: {} });
+    warLog({ a: p, d: [S.own[r.t]], t: r.t, k: 'rkt', res: 'att', dmg: r.dmg, la: {}, ld: {}, from: [r.g] });
     if (!QUIET && !HEADLESS) fxArrow(r.g, r.t, '#ff8a3d');
   });
 }
@@ -4985,9 +5003,19 @@ function coastOf(z) { var l = seaAdjLand(z).filter(function (t) { return !imp(t)
 function placeTitle(t) { var c = isSea(t) && coastOf(t); return c ? 'Off ' + c : tname(t); }
 // The attacked places on a piece of the map: every place a numbered pin in the colour of how it went, the rows below
 // carrying the same numbers
-function warMap(places) {
+function warMap(places, list, pidx) {
   var V0 = M.view, ar = 2.35;
-  var xs = places.map(function (pl) { return TER[pl.t][5]; }), ys = places.map(function (pl) { return TER[pl.t][6]; });
+  // arrows: from where each attack set out (the short way round where the map wraps), one per attacker and route
+  var arrows = [], seenA = {};
+  list.forEach(function (e) {
+    (e.from || []).forEach(function (f) {
+      var key = e.a + ':' + f + ':' + e.t; if (seenA[key] || !TER[f]) return; seenA[key] = 1;
+      var fx = TER[f][5], tx = TER[e.t][5];
+      if (WRAP && Math.abs(fx - tx) > WRAP / 2) fx += fx < tx ? WRAP : -WRAP;
+      arrows.push({ a: e.a, i: pidx[e.t], fx: fx, fy: TER[f][6], tx: tx, ty: TER[e.t][6] });
+    });
+  });
+  var xs = places.map(function (pl) { return TER[pl.t][5]; }).concat(arrows.map(function (r) { return r.fx; })), ys = places.map(function (pl) { return TER[pl.t][6]; }).concat(arrows.map(function (r) { return r.fy; }));
   var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
   var w = Math.max(x1 - x0 + 160, 430), h = Math.max(y1 - y0 + 130, 180);
   if (w / h > ar) h = w / ar; else w = h * ar;
@@ -5000,13 +5028,26 @@ function warMap(places) {
     if (isSea(t)) sea += '<path d="' + GEO[t] + '"/>';
     else land += '<path d="' + GEO[t] + '" fill="' + (imp(t) ? 'url(#neutralHatch)' : landFill(t)) + '"/>';
   }
+  var arr = '';
+  arrows.forEach(function (r) {
+    var dx = r.tx - r.fx, dy = r.ty - r.fy, len = Math.hypot(dx, dy) || 1;
+    // a gentle bend, stopping short of the pin, with its head along the curve
+    var cx = (r.fx + r.tx) / 2 - dy * 0.18, cy = (r.fy + r.ty) / 2 + dx * 0.18;
+    var tdx = r.tx - cx, tdy = r.ty - cy, tl = Math.hypot(tdx, tdy) || 1, ux = tdx / tl, uy = tdy / tl;
+    var stop = Math.min(15 * k, len * 0.3), ex = r.tx - ux * stop, ey = r.ty - uy * stop, hl = 9 * k, hw = 5.5 * k;
+    var bx = ex - ux * hl, by = ey - uy * hl;
+    var d = 'M' + r.fx.toFixed(1) + ' ' + r.fy.toFixed(1) + 'Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1);
+    var head = [ex, ey, bx - uy * hw, by + ux * hw, bx + uy * hw, by - ux * hw].map(function (n) { return n.toFixed(1); }).join(' ');
+    var col = r.a === 'de' ? '#1d1f1e' : PW[r.a].col;
+    arr += '<g class="wm-arr" data-i="' + r.i + '" style="--ac:' + col + '"><path class="cs" d="' + d + '"/><path class="ln" d="' + d + '"/><polygon points="' + head + '"/><circle cx="' + r.fx + '" cy="' + r.fy + '" r="' + (3.2 * k).toFixed(1) + '"/></g>';
+  });
   places.forEach(function (pl, i) {
     var x = TER[pl.t][5], y = TER[pl.t][6], r = 9 * k;
     ring += '<path class="wm-ring ' + pl.tone + '" d="' + GEO[pl.t] + '"/>';
     pins += '<g class="wm-pin ' + pl.tone + '" data-i="' + i + '" transform="translate(' + x + ' ' + y + ')"><circle r="' + r * 1.9 + '" class="wm-glow"/><circle r="' + r + '"/><text dy="' + r * 0.38 + '" font-size="' + r * 1.15 + '">' + (i + 1) + '</text></g>';
   });
   return el('div', { class: 'wm', html: '<svg viewBox="' + [vx, vy, w, h].map(function (n) { return Math.round(n); }).join(' ') + '" preserveAspectRatio="xMidYMid meet" aria-label="Where you were attacked">' +
-    '<rect x="' + vx + '" y="' + vy + '" width="' + w + '" height="' + h + '" class="wm-bg"/><g class="wm-sea">' + sea + '</g><g class="wm-land">' + land + '</g>' + ring + pins + '</svg>' });
+    '<rect x="' + vx + '" y="' + vy + '" width="' + w + '" height="' + h + '" class="wm-bg"/><g class="wm-sea">' + sea + '</g><g class="wm-land">' + land + '</g>' + ring + arr + pins + '</svg>' });
 }
 function warReport(p, you) {
   var list = warSince(p);
@@ -5019,7 +5060,7 @@ function warReport(p, you) {
     var pl = places[pidx[e.t]], tone = warOutcome(e)[1];
     if (rank[tone] > rank[pl.tone]) pl.tone = tone;
   });
-  var map = warMap(places);
+  var map = warMap(places, list, pidx);
   var rows = list.map(function (e, i) {
     var oc = warOutcome(e), la = lostChips(e.la), ld = lostChips(e.ld);
     var mineLost = ld.filter(function (g) { return S.ctl[g.o] === si; }), friendsLost = ld.filter(function (g) { return S.ctl[g.o] !== si; });
@@ -5042,7 +5083,8 @@ function warReport(p, you) {
   });
   function light(i) {
     Kit.sfx('tap');
-    box.querySelectorAll('.wm-pin, .wr').forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-i') === i); });
+    box.querySelectorAll('.wm-pin, .wr, .wm-arr').forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-i') === i); });
+    box.querySelector('.wm').classList.add('pick');
   }
   map.addEventListener('click', function (ev) {
     var g = ev.target.closest && ev.target.closest('.wm-pin'); if (!g) return;
