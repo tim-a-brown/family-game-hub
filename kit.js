@@ -4061,7 +4061,7 @@
 
   // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
   // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
-  // menu: {title, options() -> [{id, label, sub, group, icon | img (imgSize [w, h]) | glyph, color, tone: 'up' | 'down'}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
+  // menu: {title, options() -> [{id, label, sub, group, icon | img (imgSize [w, h]) | glyph, color, tone: 'up' | 'down' | 'live', dim: nothing in it now}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
   // and opens a choice of what else it could (set its words with .label(text)).
   // -> {set(items, fresh), label(text)}. The strip runs on its own clock and is fed an item at a time at the edge it comes in from, so a
   // fresh list never restarts it: what's showing rolls on (redrawn with the new figures) and the new list follows.
@@ -4141,14 +4141,16 @@
         var box = el('div', { class: 'k-mq-opts' }), cur = o.menu.value(), sh = null, groups = [], byG = {};
         o.menu.options().forEach(function (op) { var g = op.group || ''; if (!byG[g]) { byG[g] = []; groups.push(g); } byG[g].push(op); });
         groups.forEach(function (g) {
-          var ops = byG[g], logos = ops.every(function (op) { return op.img; }), grid = el('div', { class: 'k-mq-g' + (logos ? ' logos' : '') });
+          var ops = byG[g], logos = ops.every(function (op) { return op.img; });
+          // (three to a group: three across, standing tiles; otherwise two across, an odd last one the full width)
+          var grid = el('div', { class: 'k-mq-g' + (logos ? ' logos' : ops.length === 3 ? ' three' : '') });
           if (g) box.appendChild(el('div', { class: 'k-mq-h', text: g }));
           ops.forEach(function (op) {
             var mark = op.img ? el('img', { src: op.img, alt: '' }) : el('span', { class: 'ic', style: op.color ? { background: op.color, color: '#fff' } : null, html: op.icon ? icon(op.icon) : esc(op.glyph || '') });
             if (op.img) mark.onerror = function () { mark.replaceWith(el('span', { class: 'ic', text: op.label.slice(0, 1) })); };
             // (a logo given its size sits in a slot of the same height in every tile, so the names line up)
             if (op.img && op.imgSize) { mark.style.width = op.imgSize[0] + 'px'; mark.style.height = op.imgSize[1] + 'px'; mark = el('span', { class: 'k-mq-slot' }, [mark]); }
-            grid.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (logos ? ' k-mq-lg' : '') + (op.tone ? ' k-mq-' + op.tone : '') + (op.id === cur ? ' on' : ''), onclick: function () {
+            grid.appendChild(el('button', { type: 'button', class: 'k-mq-opt' + (logos ? ' k-mq-lg' : '') + (op.tone ? ' k-mq-' + op.tone : '') + (op.dim ? ' k-mq-dim' : '') + (op.id === cur ? ' on' : ''), onclick: function () {
               haptic('light'); sfx('pop'); if (sh) sh.close(); if (op.id !== cur) o.menu.pick(op.id);
             } }, [mark, el('span', { class: 'tx' }, [el('b', { text: op.label }), op.sub ? el('small', { text: op.sub }) : null])]));
           });

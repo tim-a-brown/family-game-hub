@@ -674,22 +674,25 @@ body{overflow-x:hidden;}
   // one right). The key at each strip's right end names what it shows and picks something else (mk_tk1, mk_tk2).
   var TAPEF = [lsGet('mk_tk1', 'market'), lsGet('mk_tk2', 'yours')];
   var TAPEN = { market: 'Market', idx: 'Indexes', up: 'Gainers', down: 'Losers', yours: 'Yours', held: 'What you own', watch: 'Watchlist' };
+  // each group's mark on the choices
+  var GICON = { index: 'chart', bondfund: 'shield', tbond: 'flag', sector: 'crown', tech: 'lightbulb', fun: 'gamepad', travel: 'plane', food: 'pizza', money: 'coins', health: 'heart', energy: 'mountain', cars: 'car', crypto: 'key' };
   function tapeOpts() {
-    var pct = function (c) { return (c >= 0 ? '▲' : '▼') + Math.abs(c * 100).toFixed(2) + '%'; }, cnt = function (f, w) { var k = tapeList(f).length; return k ? k + ' ' + w + (k === 1 ? '' : 's') : 'None yet'; };
-    var lead = function (f) { var l = tapeList(f); return l.length ? l[0].replace('-USD', '') + ' ' + pct(dayChg(l[0])) : 'None today'; };
-    var spx = (Q.idx || {}).spx;
-    var o = [{ id: 'market', group: 'Market', icon: 'chart', label: 'Market', sub: 'Big names and funds' },
-      { id: 'idx', group: 'Market', icon: 'globe', tone: spx && spx.pc ? (spx.p >= spx.pc ? 'up' : 'down') : '', label: 'Indexes', sub: spx && spx.pc ? 'S&P ' + pct((spx.p - spx.pc) / spx.pc) : 'S&P, Dow, Nasdaq' },
-      { id: 'up', group: 'Market', glyph: '▲', tone: 'up', label: 'Gainers', sub: lead('up') },
-      { id: 'down', group: 'Market', glyph: '▼', tone: 'down', label: 'Losers', sub: lead('down') },
-      { id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours', sub: cnt('yours', 'name') },
-      { id: 'held', group: 'Yours', icon: 'coins', label: 'What you own', sub: cnt('held', 'holding') },
-      { id: 'watch', group: 'Yours', icon: 'eye', label: 'Watchlist', sub: cnt('watch', 'name') }];
-    // the groups, each with its colour and how it's doing today (the average of its names)
+    var pct = function (c) { return (c >= 0 ? '▲' : '▼') + Math.abs(c * 100).toFixed(2) + '%'; };
+    var cnt = function (f, w) { var k = tapeList(f).length; return { sub: k ? k + ' ' + w + (k === 1 ? '' : 's') : 'None yet', dim: !k }; };
+    var lead = function (f) { var l = tapeList(f); return l.length ? { sub: l[0].replace('-USD', '') + ' ' + pct(dayChg(l[0])) } : { sub: 'None today', dim: true }; };
+    var spx = (Q.idx || {}).spx, sc = spx && spx.pc ? (spx.p - spx.pc) / spx.pc : null;
+    var o = [Object.assign({ id: 'market', group: 'Market', icon: 'chart', label: 'Market' }, cnt('market', 'name')),
+      { id: 'idx', group: 'Market', icon: 'globe', tone: sc == null ? '' : sc >= 0 ? 'up' : 'down', label: 'Indexes', sub: sc == null ? 'S&P, Dow, Nasdaq' : 'S&P ' + pct(sc) },
+      Object.assign({ id: 'up', group: 'Market', glyph: '▲', tone: 'up', label: 'Gainers' }, lead('up')),
+      Object.assign({ id: 'down', group: 'Market', glyph: '▼', tone: 'down', label: 'Losers' }, lead('down')),
+      Object.assign({ id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours' }, cnt('yours', 'name')),
+      Object.assign({ id: 'held', group: 'Yours', icon: 'coins', label: 'What you own' }, cnt('held', 'holding')),
+      Object.assign({ id: 'watch', group: 'Yours', icon: 'eye', label: 'Watchlist' }, cnt('watch', 'name'))];
+    // the groups, each in its colour with its mark, and how it's doing today (the average of its names)
     GROUPS.forEach(function (g) {
       var l = tapeList('g:' + g[0]); if (!l.length) return;
       var avg = l.reduce(function (a, k) { return a + dayChg(k); }, 0) / l.length;
-      o.push({ id: 'g:' + g[0], group: 'Groups', color: GCOL[g[0]] || '#2b3648', glyph: g[1].charAt(0), tone: avg >= 0 ? 'up' : 'down', label: g[1], sub: pct(avg) + ' avg' });
+      o.push({ id: 'g:' + g[0], group: 'Groups', color: GCOL[g[0]] || '#2b3648', icon: GICON[g[0]] || 'chart', tone: avg >= 0 ? 'up' : 'down', label: g[1], sub: pct(avg) + ' avg' });
     });
     return o;
   }
@@ -723,7 +726,7 @@ body{overflow-x:hidden;}
   }
   function tapeRun(host, syms, i, f, fresh) {
     if (!host._mq) host._mq = Kit.marquee(host, { dir: i ? 1 : -1, speed: 40, id: function (sym) { return sym.none ? 'none:' + sym.none : sym; }, make: tapeItem,
-      menu: { title: i ? 'Bottom strip' : 'Top strip', options: tapeOpts, value: function () { return TAPEF[i]; },
+      menu: { title: i ? 'Bottom ticker' : 'Top ticker', options: tapeOpts, value: function () { return TAPEF[i]; },
         pick: function (id) { TAPEF[i] = id; lsSet('mk_tk' + (i + 1), id); paintTape(i); } } });
     host._mq.label(tapeLabel(f));
     // (nothing to show: it says so, and the key stays to pick something else)

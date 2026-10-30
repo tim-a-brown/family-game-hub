@@ -1608,15 +1608,18 @@ body{overflow-x:hidden;}
   var TKF = [lsGet('sb_tk1', 'top'), lsGet('sb_tk2', 'yours')];
   var TKN = { top: 'Top 25', live: 'Live now', yours: 'Yours', bets: 'My bets', teams: 'My teams', more: 'More games' };
   function tkOpts() {
-    var L = tkLists(), n = function (f) { return L.list(f).length; }, g = function (f, one) { var k = n(f); return k ? k + ' ' + (k === 1 ? one : one + 's') : 'None now'; };
-    var live = n('live');
-    var o = [{ id: 'top', group: 'Featured', icon: 'flame', label: 'Top 25', sub: n('top') ? 'The biggest ' + n('top') : 'None now' },
-      { id: 'live', group: 'Featured', icon: 'pulse', label: 'Live now', sub: live ? live + ' under way' : 'None right now' },
-      { id: 'more', group: 'Featured', icon: 'rows', label: 'More games', sub: g('more', 'game') },
-      { id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours', sub: g('yours', 'game') },
-      { id: 'bets', group: 'Yours', icon: 'coins', label: 'My bets', sub: n('bets') ? n('bets') + ' open' : 'None open' },
-      { id: 'teams', group: 'Yours', icon: 'star', label: 'My teams', sub: g('teams', 'game') }];
-    lgsOn().forEach(function (k) { o.push({ id: 'lg:' + k, group: 'Leagues', img: lgLogo(k), imgSize: LOGO_HERE[k] ? logoSize(k, 1000, 48, 86) : null, glyph: LG[k].name.charAt(0), label: LG[k].name, sub: g('lg:' + k, 'game') }); });
+    var L = tkLists(), n = function (f) { return L.list(f).length; };
+    var games = function (k) { return k + (k === 1 ? ' game' : ' games'); };
+    var o = [{ id: 'top', group: 'Featured', icon: 'flame', label: 'Top 25' }, { id: 'live', group: 'Featured', icon: 'pulse', label: 'Live now' }, { id: 'more', group: 'Featured', icon: 'rows', label: 'More games' },
+      { id: 'yours', group: 'Yours', icon: 'sparkle', label: 'Yours' }, { id: 'bets', group: 'Yours', icon: 'coins', label: 'My bets' }, { id: 'teams', group: 'Yours', icon: 'star', label: 'My teams' }];
+    lgsOn().forEach(function (k) { o.push({ id: 'lg:' + k, group: 'Leagues', img: lgLogo(k), imgSize: LOGO_HERE[k] ? logoSize(k, 1000, 48, 86) : null, glyph: LG[k].name.charAt(0), label: LG[k].name }); });
+    // each one's readout: what's in it right now (dark when nothing is)
+    o.forEach(function (x) {
+      var k = n(x.id);
+      x.dim = !k;
+      x.sub = !k ? (x.id === 'bets' ? 'None open' : x.id === 'live' ? 'None on' : 'None now') : x.id === 'live' ? k + ' on now' : x.id === 'bets' ? k + ' open' : games(k);
+      if (x.id === 'live' && k) x.tone = 'live';
+    });
     return o;
   }
   function tkfLabel(f) { var k = f.indexOf('lg:') === 0 && f.slice(3); return k ? (LG[k] ? LG[k].name.replace('Football', 'FB') : k) : TKN[f] || f; }
@@ -1624,7 +1627,7 @@ body{overflow-x:hidden;}
     host.style.display = '';
     if (!host._mq) host._mq = Kit.marquee(host, { dir: i ? 1 : -1,
       make: function (g) { return g.none ? el('span', { class: 'it none', text: g.none }) : tkItem(GAMES[g.id] || g); },
-      menu: { title: i ? 'Bottom strip' : 'Top strip', options: tkOpts, value: function () { return TKF[i]; },
+      menu: { title: i ? 'Bottom ticker' : 'Top ticker', options: tkOpts, value: function () { return TKF[i]; },
         pick: function (id) { TKF[i] = id; try { localStorage.setItem('sb_tk' + (i + 1), JSON.stringify(id)); } catch (e) {} paintTicker(i); } } });
     var tl = f.indexOf('lg:') === 0 && f.slice(3);
     host._mq.label(tkfLabel(f), tl ? lgLogo(tl) : null, tl && LOGO_HERE[tl] ? logoSize(tl, 220, 22, 32) : null);
