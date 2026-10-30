@@ -4170,7 +4170,7 @@
       speed: function () { return m.v; },   // (px a second now: tests)
       // its words, and a logo before them when there is one (a league)
       label: function (t, img, size) {
-        if (!tab) return; var sp = tab.firstChild; sp.textContent = t;
+        if (!tab) return; var sp = tab.firstChild; sp.innerHTML = ''; sp.appendChild(el('b', { class: 't', text: t }));
         if (img) { var im = el('img', { src: img, alt: '', style: size ? { width: size[0] + 'px', height: size[1] + 'px', maxWidth: 'none' } : null }); im.onerror = function () { im.remove(); }; sp.insertBefore(im, sp.firstChild); }
       },
       // fresh: start over with these now (a different choice of what the strip shows), rather than roll them in
