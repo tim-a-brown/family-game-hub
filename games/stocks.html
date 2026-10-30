@@ -21,8 +21,10 @@ body{overflow-x:hidden;}
 /* ── The ticker: an LED strip running across the top ── */
 .tape{position:relative;margin:2px -14px 12px;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
 .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
-.tape .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 18px;font:800 .9rem/1 var(--mono);letter-spacing:.04em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.6);}
+.tape .it{display:inline-flex;align-items:center;gap:7px;padding:0 18px;font:800 .9rem/1 var(--mono);letter-spacing:.04em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.6);}
 .tape .it b{color:#fff3c4;font-weight:900;}
+/* every piece centred on the ribbon by its capitals (not the font's line box, which leaves room below for descenders) */
+.tape .it > *{line-height:1;text-box:trim-both cap alphabetic;}
 .tape .it .up{color:#4dff94;text-shadow:0 0 6px rgba(60,255,140,.55);}
 .tape .it .dn{color:#ff5a5f;text-shadow:0 0 6px rgba(255,80,90,.55);}
 /* the second strip runs the other way (what it shows: the key at its right end, Kit.marquee) */
@@ -718,7 +720,7 @@ body{overflow-x:hidden;}
     });
   }
   function tapeItem(sym) {
-    if (sym.none) return el('span', { class: 'it none', text: sym.none });
+    if (sym.none) return el('span', { class: 'it none' }, [el('span', { text: sym.none })]);
     var c, nm, pr;
     if (sym.charAt(0) === '^') { var x = (Q.idx || {})[sym.slice(1)] || {}; c = x.pc ? (x.p - x.pc) / x.pc : 0; nm = (x.n || sym.slice(1)).toUpperCase(); pr = (x.p || 0).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 }); }
     else { c = dayChg(sym); nm = sym.replace('-USD', ''); pr = px(price(sym)).replace('$', ''); }

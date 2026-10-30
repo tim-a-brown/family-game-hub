@@ -53,7 +53,9 @@ body{overflow-x:hidden;}
 .sbt .tape{position:relative;height:34px;overflow:hidden;background:#07090c;border-block:1px solid #1d232c;box-shadow:inset 0 0 14px rgba(0,0,0,.9);}
 .sbt .tape::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(rgba(0,0,0,.55) .6px,transparent 1px) 0 0/3px 3px;}
 .sbt .tape.mine{border-top-color:#2a3240;}
-.sbt .it{display:inline-flex;align-items:baseline;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
+.sbt .it{display:inline-flex;align-items:center;gap:7px;padding:0 20px;border:0;background:none;cursor:pointer;font:800 .88rem/1 var(--mono);letter-spacing:.03em;color:#ffcc4d;text-shadow:0 0 6px rgba(255,190,60,.55);-webkit-tap-highlight-color:transparent;}
+/* every piece centred on the ribbon by its capitals (not the font's line box, which leaves room below for descenders) */
+.sbt .it > :not(img){line-height:1;text-box:trim-both cap alphabetic;}
 .sbt .it .lgl{align-self:center;flex:none;height:17px;width:auto;object-fit:contain;
   filter:grayscale(1) sepia(1) saturate(4.5) hue-rotate(-12deg) brightness(1.2) drop-shadow(0 0 3px rgba(255,190,60,.55));}
 .sbt .it i{font-style:normal;font-size:.68rem;color:#7f8aa0;text-shadow:none;letter-spacing:.08em;}
@@ -1626,7 +1628,7 @@ body{overflow-x:hidden;}
   function tkRun(host, games, i, f, fresh) {
     host.style.display = '';
     if (!host._mq) host._mq = Kit.marquee(host, { dir: i ? 1 : -1,
-      make: function (g) { return g.none ? el('span', { class: 'it none', text: g.none }) : tkItem(GAMES[g.id] || g); },
+      make: function (g) { return g.none ? el('span', { class: 'it none' }, [el('span', { text: g.none })]) : tkItem(GAMES[g.id] || g); },
       menu: { title: i ? 'Bottom ticker' : 'Top ticker', options: tkOpts, value: function () { return TKF[i]; },
         pick: function (id) { TKF[i] = id; try { localStorage.setItem('sb_tk' + (i + 1), JSON.stringify(id)); } catch (e) {} paintTicker(i); } } });
     var tl = f.indexOf('lg:') === 0 && f.slice(3);
