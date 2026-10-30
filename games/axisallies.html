@@ -1842,9 +1842,91 @@ function rollVolley(B) {
 function hitTotal(h) { return h.s + h.a + h.g; }
 
 // ── Odds: quick Monte Carlo estimate of the attacker winning ─────────────────
+// ── Odds: worked out exactly from every way the dice can fall ──────────────────
+// Each side loses its cheapest pieces first, so a battle's state is just how many each side has lost. Every round
+// the chance of each number of hits comes from the units still firing (infantry beside artillery on 2), and the
+// chances flow from state to state until one side is gone. Battles with submarines, an AA gun or ships bombarding
+// (where which piece a hit can land on depends on the dice) use a fixed-seed simulation instead, so the number is
+// still the same every time it's shown.
+var oddsCache = {};
 function simOdds(att, def, o) {
   o = o || {};
-  var n = o.n || 300, land = !!o.land, wins = 0, attLeft = 0, defLeft = 0;
+  var norm = function (l) { return l.map(function (k) { return typeof k === 'string' ? k : k.k + (k.h ? 'h' : ''); }).sort().join(','); };
+  var key = norm(att) + '|' + norm(def) + '|' + (o.land ? 1 : 0) + '|' + (o.bomb || []).join(',');
+  if (oddsCache[key]) return oddsCache[key];
+  var kinds = function (l) { return l.map(function (k) { return typeof k === 'string' ? k : k.k; }); };
+  var ka = kinds(att), kd = kinds(def);
+  var special = ka.concat(kd).indexOf('sub') >= 0 || (o.land && kd.indexOf('aa') >= 0 && ka.some(function (k) { return k === 'ftr' || k === 'bmb'; })) || (o.bomb && o.bomb.length);
+  var r = special ? simOddsMC(att, def, o, key) : exactOdds(att, def, o);
+  if (Object.keys(oddsCache).length > 400) oddsCache = {};
+  oddsCache[key] = r;
+  return r;
+}
+function exactOdds(att, def, o) {
+  function prep(list) {
+    var arr = [];
+    list.forEach(function (k) {
+      var x = typeof k === 'string' ? { k: k, h: 0 } : { k: k.k, h: k.h || 0 };
+      if (x.k === 'ic' || x.k === 'aa') return;
+      if (x.k === 'bb' && !x.h) arr.push({ k: 'bbd', key: -1 });
+      arr.push({ k: x.k, key: casKey({ k: x.k }) });
+    });
+    arr.sort(function (a, b) { return a.key - b.key; });
+    return arr;
+  }
+  var A = prep(att), D = prep(def), nA = A.length, nD = D.length, land = !!o.land;
+  if (!nD) return { win: nA ? 1 : 0, attLeft: nA, defLeft: 0, empty: true };
+  // the chance of 0..n hits from a list of hit chances
+  function hitDist(ps) {
+    var d = [1];
+    ps.forEach(function (q) { var nd = new Array(d.length + 1).fill(0); for (var i = 0; i < d.length; i++) { nd[i] += d[i] * (1 - q); nd[i + 1] += d[i] * q; } d = nd; });
+    return d;
+  }
+  function firing(list, side) {
+    var arts = side === 'a' ? list.filter(function (x) { return x.k === 'art'; }).length : 0, ps = [];
+    list.forEach(function (x) {
+      if (x.k === 'bbd') return;
+      var v = side === 'a' ? U[x.k].a : U[x.k].d;
+      if (side === 'a' && x.k === 'inf' && arts > 0) { arts--; v = 2; }
+      if (v > 0) ps.push(v / 6);
+    });
+    return hitDist(ps);
+  }
+  function onlyTra(list) { return list.length && list.every(function (x) { return x.k === 'tra'; }); }
+  var P = [], i, j;
+  for (i = 0; i <= nA; i++) { P.push(new Array(nD + 1).fill(0)); }
+  P[0][0] = 1;
+  var win = 0, attLeft = 0, defLeft = 0;
+  for (var sum = 0; sum <= nA + nD; sum++) {
+    for (i = Math.max(0, sum - nD); i <= Math.min(nA, sum); i++) {
+      j = sum - i;
+      var pr = P[i][j]; if (!pr) continue;
+      var aL = A.slice(i), dL = D.slice(j);
+      // lone transports are lost at once (when the other side can hit them)
+      if (onlyTra(dL) && aL.some(function (x) { return x.k !== 'bbd' && U[x.k].a > 0; })) dL = [];
+      if (onlyTra(aL) && dL.some(function (x) { return x.k !== 'bbd' && U[x.k].d > 0; })) aL = [];
+      var aliveA = aL.filter(function (x) { return x.k !== 'bbd'; }), aliveD = dL.filter(function (x) { return x.k !== 'bbd'; });
+      if (!aliveA.length || !aliveD.length) {
+        if (!aliveD.length && aliveA.length && (!land || aliveA.some(function (x) { return U[x.k].dom === 'L'; }))) win += pr;
+        attLeft += pr * aliveA.length; defLeft += pr * aliveD.length;
+        continue;
+      }
+      var ha = firing(aL, 'a'), hd = firing(dL, 'd'), stay = ha[0] * hd[0];
+      if (stay >= 1 - 1e-12) { attLeft += pr * aliveA.length; defLeft += pr * aliveD.length; continue; }   // (neither can hit)
+      for (var x = 0; x < ha.length; x++) for (var y = 0; y < hd.length; y++) {
+        if (!x && !y) continue;
+        var q = ha[x] * hd[y]; if (!q) continue;
+        P[Math.min(nA, i + y)][Math.min(nD, j + x)] += pr * q / (1 - stay);
+      }
+    }
+  }
+  return { win: win, attLeft: attLeft, defLeft: defLeft };
+}
+function simOddsMC(att, def, o, seedKey) {
+  o = o || {};
+  var seed = 0; for (var si = 0; si < seedKey.length; si++) seed = (seed * 31 + seedKey.charCodeAt(si)) | 0;
+  var rnd = function () { seed = (seed + 0x6D2B79F5) | 0; var t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  var n = 2000, land = !!o.land, wins = 0, attLeft = 0, defLeft = 0;
   function prep(list, side) {
     var arr = [];
     list.forEach(function (k) {
@@ -1865,7 +1947,7 @@ function simOdds(att, def, o) {
       var guns = gunsN;
       if (guns) {
         var air = A.filter(function (x) { return x.k === 'ftr' || x.k === 'bmb'; }).length, shots = Math.min(guns * 3, air), hh = 0;
-        for (var s = 0; s < shots; s++) if (Math.random() < 1 / 6) hh++;
+        for (var s = 0; s < shots; s++) if (rnd() < 1 / 6) hh++;
         for (var j = 0; j < A.length && hh > 0; j++) if (A[j].k === 'ftr' || A[j].k === 'bmb') { A.splice(j, 1); j--; hh--; }
       }
     }
@@ -1880,10 +1962,10 @@ function simOdds(att, def, o) {
         if (x.k === 'bbd' || x.k === 'aa') return;
         var v = U[x.k].a;
         if (x.k === 'inf' && infs < arts) { v = 2; infs++; }
-        if (v && Math.random() * 6 < v) ah[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddA ? 'a' : 'g']++;
+        if (v && rnd() * 6 < v) ah[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddA ? 'a' : 'g']++;
       });
-      if (round === 1) bombard.forEach(function (k) { if (Math.random() * 6 < U[k].a) ah.g++; });
-      D.forEach(function (x) { if (x.k === 'bbd') return; var v = U[x.k].d; if (v && Math.random() * 6 < v) dh[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddD ? 'a' : 'g']++; });
+      if (round === 1) bombard.forEach(function (k) { if (rnd() * 6 < U[k].a) ah.g++; });
+      D.forEach(function (x) { if (x.k === 'bbd') return; var v = U[x.k].d; if (v && rnd() * 6 < v) dh[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddD ? 'a' : 'g']++; });
       var hitA = ah.g + ah.s + ah.a, hitD = dh.g + dh.s + dh.a;
       takeHits(D, ah); takeHits(A, dh);
       if (!hitA && !hitD && !canHurtK(A, D) && !canHurtK(D, A)) break;
@@ -3709,7 +3791,7 @@ function renderBattle(B, anim) {
   var sc = el('div', { class: 'bscroll' });
   felt.appendChild(sc);
   var o = (B.step === 'pre' || B.step === 'decide' || B.step === 'dive') ? liveOdds(B) : null;
-  if (o) sc.appendChild(el('div', { class: 'bodds' }, [el('span', { text: PW[B.att].short + ' wins about ' + pct(o.win) + ' of the time from here' }), el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })])]));
+  if (o) sc.appendChild(el('div', { class: 'bodds' }, [el('span', { text: PW[B.att].short + ' has a ' + pct(o.win) + ' chance to win from here' }), el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })])]));
   sc.appendChild(battleBoard(B, anim));
   var cur0 = B.vols[B.vi], vt = B.step === 'vol' || B.step === 'cas' ? cur0 && cur0.rolled ? cur0 : B.vi > 0 ? B.vols[B.vi - 1] : null : null;
   var line = B.step === 'end' ? B.msg
@@ -5161,7 +5243,7 @@ TurnNet.setup({
   }
 });
 // test hook
-window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot,
+window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot, exactOdds: exactOdds, simOddsMC: simOddsMC,
   get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
