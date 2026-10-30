@@ -338,6 +338,7 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .trc .tseat svg{width:32px;height:22px;}
 .trc .tseat.full{background:var(--sc);color:var(--sci);box-shadow:0 2px 0 rgba(0,0,0,.3);transition:transform .15s var(--spring);}
 .trc .tseat.full:not(:disabled){cursor:pointer;}
+.trc .tseat.full.rides{box-shadow:0 0 0 2px #ffe066;}
 .trc .tseat.full.on{box-shadow:0 0 0 3px #ffe066,0 0 14px rgba(255,224,102,.5);transform:translateY(-3px);}
 .trc .tseat.empty{background:transparent;color:var(--text-3);box-shadow:inset 0 0 0 2px var(--w14);border:0;}
 .trc .tseat.empty .ico{width:16px;height:16px;opacity:.7;}
@@ -771,6 +772,24 @@ function alive(p) {
   return S.units.some(function (u) { return u.o === p; });
 }
 // Carrier room in a sea zone for side of p: 2 per friendly carrier, less fighters there
+// The fighters on each carrier's deck in sea zone z: two to a carrier, its own power's first, then allies'
+function decks(z) {
+  var out = {}, taken = {};
+  if (!isSea(z)) return out;
+  var cvs = S.units.filter(function (u) { return u.t === z && u.k === 'cv'; }).sort(function (a, b) { return a.i - b.i; });
+  var fs = S.units.filter(function (u) { return u.t === z && u.k === 'ftr'; }).sort(function (a, b) { return a.i - b.i; });
+  cvs.forEach(function (cv) { out[cv.i] = []; });
+  [true, false].forEach(function (own) {
+    cvs.forEach(function (cv) {
+      fs.forEach(function (f) {
+        if (taken[f.i] || out[cv.i].length >= 2 || (own ? f.o !== cv.o : !ally(f.o, cv.o))) return;
+        out[cv.i].push(f); taken[f.i] = 1;
+      });
+    });
+  });
+  return out;
+}
+function deckOf(cv) { return decks(cv.t)[cv.i] || []; }
 function carrierRoom(z, p) {
   var room = 0;
   S.units.forEach(function (u) {
@@ -1051,7 +1070,8 @@ function doMove(ids, dest, opt) {
     plan.forEach(function (pr) { var u = pr[0]; u.fr = u.t; u.on = pr[1].i; u.t = dest; u.m = U[u.k].m; if (ph === 'cm') u.c = 1; });
     return true;
   }
-  var moved = [];
+  var moved = [], riders = [];
+  us.forEach(function (u) { if (u.k === 'cv') deckOf(u).forEach(function (f) { if (ids.indexOf(f.i) < 0) riders.push(f); }); });
   us.forEach(function (u) {
     var r = reach(u, ph)[dest];
     if (!r) return;
@@ -1059,6 +1079,7 @@ function doMove(ids, dest, opt) {
     u.m += r.d; u.fr = path[path.length - 2]; u.t = dest;
     if (ph === 'cm') u.c = 1;
     if (u.k === 'tra') cargoOf(u).forEach(function (c) { c.t = dest; });
+    if (u.k === 'cv') riders.forEach(function (f) { f.t = dest; f.m = Math.max(f.m || 0, U.ftr.m); if (ph === 'cm') f.c = 1; });
     if (opt.sbr && u.k === 'bmb') u.sbr = dest; else u.sbr = null;
     moved.push(u);
     if (ph === 'cm' && U[u.k].dom === 'L') {
@@ -1167,7 +1188,7 @@ var UNIT_NOTE = {
   tra: 'Carries 2 infantry, or 1 infantry plus 1 other land unit. No attack or defence; lost when left alone with enemy warships.',
   dd: 'Cancels every submarine trick: no surprise strike, no diving, and your planes can hit subs.',
   ca: 'A solid warship. Can bombard the beach once when your troops land from its sea zone.',
-  cv: 'Carries 2 fighters. Fighters can land on it at sea.',
+  cv: 'Carries 2 fighters. Fighters can land on it at sea, and the fighters on its deck sail with it when it moves.',
   bb: 'Takes 2 hits to sink and is repaired at the end of every turn. Can bombard a beach when troops land from its sea zone.',
   ic: 'Costs 15. Build it on a territory worth 1 or more that you held all turn. Places up to the territory’s value in units each turn.'
 };
@@ -2127,11 +2148,14 @@ function paintLabels() {
 }
 function stackGroups(t, withCargo) {
   var g = {}, order = [], me = cur(), mv = (S.phase === 'cm' || S.phase === 'ncm') && !isCpu(me);
+  var dk = !withCargo && isSea(t) ? decks(t) : {}, onDk = {};
+  for (var c0 in dk) dk[c0].forEach(function (f) { onDk[f.i] = 1; });
   S.units.forEach(function (u) {
     if (u.t !== t) return;
     if (u.on != null && !withCargo && byId(u.on)) return;   // (drawn aboard its transport)
+    if (onDk[u.i]) return;                                   // (drawn on its carrier's deck)
     var spent = mv && u.o === me && u.on == null && u.k !== 'ic' && !movesLeft(u, S.phase) && (u.m || u.c || u.f || u.ul);
-    var load = u.k === 'tra' && !withCargo ? cargoOf(u).map(function (c) { return c.o + ':' + c.k; }).sort() : null;
+    var load = withCargo ? null : u.k === 'tra' ? cargoOf(u).map(function (c) { return c.o + ':' + c.k; }).sort() : u.k === 'cv' ? (dk[u.i] || []).map(function (c) { return c.o + ':' + c.k; }).sort() : null;
     var key = u.o + ':' + u.k + (u.on != null ? ':c' : '') + (spent ? ':s' : '') + (load ? ':' + load.join(',') : '');
     if (!g[key]) { g[key] = { o: u.o, k: u.k, n: 0, cargo: u.on != null, hurt: 0, spent: spent, load: load }; order.push(key); }
     g[key].n++;
@@ -2562,7 +2586,7 @@ function unitCard(k, o) {
 }
 function unitList(t, filter) {
   var box = el('div', { class: 'urows' });
-  stackGroups(t).forEach(function (g) {
+  stackGroups(t, true).forEach(function (g) {
     if (filter && !filter(g)) return;
     box.appendChild(el('div', { class: 'urow', style: { '--pc': PW[g.o].col }, onclick: function () { unitCard(g.k, { p: g.o }); } }, [
       el('span', { class: 'uic', style: { background: PW[g.o].col, color: PW[g.o].ink }, html: unitSvg(g.k) }),
@@ -2726,6 +2750,7 @@ function moveGroups(t) {
 // to send them ashore). An empty place shows what could still board: any land unit, or only infantry once a tank or
 // gun is aboard. After a landing it says where the rest must go; boarding from land, it's the place to tap.
 function seatsOf(tr) {
+  if (tr.k === 'cv') { var d = deckOf(tr).map(function (u) { return { u: u }; }); while (d.length < 2) d.push({ only: 'ftr' }); return d; }
   var c = cargoOf(tr), out = c.map(function (u) { return { u: u }; });
   var nonInf = c.some(function (u) { return u.k !== 'inf'; });
   while (out.length < 2) out.push({ only: nonInf ? 'inf' : '' });
@@ -2743,11 +2768,10 @@ function boardingTransports(t) {
   });
   return out;
 }
-function pickIds(ids, on) {
-  // (a hull and troops can't be picked together: a transport sails with its troops, or the troops go ashore)
-  var cargo = ids.some(function (id) { var u = byId(id); return u && u.on != null; });
-  var cur0 = (ui.pick._ids || []).filter(function (id) { var u = byId(id); return ids.indexOf(id) < 0 && u && (u.on != null) === cargo; });
-  ui.pick = { _ids: on ? cur0.concat(ids) : cur0 };
+function pickIds(ids, on, kind) {
+  // (a hull and what's aboard aren't picked together: a ship sails with them, or they leave it)
+  var cur0 = ui.pick._k === kind ? (ui.pick._ids || []).filter(function (id) { return ids.indexOf(id) < 0; }) : [];
+  ui.pick = { _ids: on ? cur0.concat(ids) : cur0, _k: kind };
 }
 function transportCard(tr, o) {
   o = o || {};
@@ -2766,25 +2790,28 @@ function transportCard(tr, o) {
     card.appendChild(go);
   } else {
     var canSail = mine && (ph === 'cm' || ph === 'ncm') && left > 0 && tr.ulT == null;
-    var hullOn = picks.indexOf(tr.i) >= 0;
+    var hullOn = picks.indexOf(tr.i) >= 0 && ui.pick._k === 'hull';
     var sub = tr.ulT != null ? 'Landed troops this turn' : left ? left + (left === 1 ? ' move left' : ' moves left') : tr.ul ? 'Unloaded this turn' : 'Done sailing this turn';
     card.appendChild(el('button', { type: 'button', class: 'hull' + (hullOn ? ' on' : ''), disabled: !canSail, onclick: function () {
-      Kit.sfx('tap'); pickIds([tr.i], !hullOn); renderAll();
-    } }, [el('span', { class: 'hic', html: unitSvg('tra') }), el('span', { class: 'ht' }, [el('b', { text: 'Transport' }), el('small', { text: sub })])]));
+      Kit.sfx('tap'); pickIds([tr.i], !hullOn, 'hull'); renderAll();
+    } }, [el('span', { class: 'hic', html: unitSvg(tr.k) }), el('span', { class: 'ht' }, [el('b', { text: tr.k === 'cv' ? 'Carrier' : 'Transport' }), el('small', { text: sub })])]));
   }
   // places aboard
   var landable = {};
-  (o.groups || []).forEach(function (g) { if (g.cargo) g.ids.forEach(function (id) { landable[id] = 1; }); });
+  (o.groups || []).forEach(function (g) { if (g.cargo || (tr.k === 'cv' && g.k === 'ftr')) g.ids.forEach(function (id) { landable[id] = 1; }); });
   var st = el('div', { class: 'tseats' });
   seats.forEach(function (x) {
     if (x.u) {
-      var u = x.u, on = picks.indexOf(u.i) >= 0, can = !o.board && mine && landable[u.i];
-      st.appendChild(el('button', { type: 'button', class: 'tseat full' + (on ? ' on' : ''), disabled: !can, title: U[u.k].n + (can ? ': tap to send ashore' : ''), style: { '--sc': PW[u.o].col, '--sci': PW[u.o].ink },
-        html: unitSvg(u.k), onclick: function () { Kit.sfx(on ? 'tap' : 'pop'); pickIds([u.i], !on); renderAll(); } }));
-    } else st.appendChild(el('span', { class: 'tseat empty' + (x.only ? ' only' : ''), title: x.only ? 'Room for one infantry' : 'Room for a land unit', html: x.only ? unitSvg('inf') : Kit.icon('plus') }));
+      var u = x.u, on = picks.indexOf(u.i) >= 0 && ui.pick._k === 'seat', can = !o.board && mine && landable[u.i];
+      var rides = hullOn && tr.k === 'cv';
+      st.appendChild(el('button', { type: 'button', class: 'tseat full' + (on ? ' on' : '') + (rides ? ' rides' : ''), disabled: !can, title: U[u.k].n + (can ? (tr.k === 'cv' ? ': tap to fly it off' : ': tap to send ashore') : ''), style: { '--sc': PW[u.o].col, '--sci': PW[u.o].ink },
+        html: unitSvg(u.k), onclick: function () { Kit.sfx(on ? 'tap' : 'pop'); pickIds([u.i], !on, 'seat'); renderAll(); } }));
+    } else st.appendChild(el('span', { class: 'tseat empty' + (x.only ? ' only' : ''), title: x.only === 'ftr' ? 'Room for a fighter' : x.only ? 'Room for one infantry' : 'Room for a land unit', html: x.only ? unitSvg(x.only) : Kit.icon('plus') }));
   });
   card.appendChild(st);
   if (!o.board && tr.ulT != null && cargoOf(tr).length) card.appendChild(el('div', { class: 'trnote', html: Kit.icon('anchor') + '<span>The rest can only land in <b>' + esc(tname(tr.ulT)) + '</b>: a transport lands its troops in one place a turn</span>' }));
+  else if (tr.k === 'cv' && hullOn && deckOf(tr).length) card.appendChild(el('div', { class: 'trnote soft', html: Kit.icon('plane') + '<span>The fighters on deck sail with it</span>' }));
+  else if (tr.k === 'cv' && deckOf(tr).some(function (u) { return landable[u.i]; }) && !picks.length) card.appendChild(el('div', { class: 'trnote soft', html: Kit.icon('hand') + '<span>Tap the hull to sail with the fighters aboard, or a fighter to fly it off</span>' }));
   else if (!o.board && cargoOf(tr).some(function (u) { return landable[u.i]; }) && !picks.length) card.appendChild(el('div', { class: 'trnote soft', html: Kit.icon('hand') + '<span>Tap the hull to sail, or the troops to land them</span>' }));
   return card;
 }
@@ -2820,10 +2847,15 @@ function movePanel() {
     b.appendChild(tinfoCard(ui.sel));
     var all = moveGroups(ui.sel);
     // transports (and the troops aboard) get their own cards; everything else is a row with a count
-    var myTr = isSea(ui.sel) ? S.units.filter(function (u) { return u.t === ui.sel && u.o === p && u.k === 'tra'; }) : [];
-    var gs = myTr.length ? all.filter(function (g) { return !g.cargo && g.k !== 'tra'; }) : all;
+    var myTr = isSea(ui.sel) ? S.units.filter(function (u) { return u.t === ui.sel && u.o === p && (u.k === 'tra' || u.k === 'cv'); }).sort(function (a, b) { return (a.k === 'cv') - (b.k === 'cv'); }) : [];
+    var onDeck = {}; myTr.forEach(function (c) { if (c.k === 'cv') deckOf(c).forEach(function (f) { onDeck[f.i] = 1; }); });
+    var gs = myTr.length ? all.filter(function (g) { return !g.cargo && g.k !== 'tra' && g.k !== 'cv'; }).map(function (g) {
+      var ids = g.ids.filter(function (id) { return !onDeck[id]; });
+      return ids.length === g.ids.length ? g : { key: g.key, k: g.k, ids: ids, sub: g.sub, cargo: g.cargo };
+    }).filter(function (g) { return g.ids.length; }) : all;
     if (myTr.length) {
-      b.appendChild(el('div', { class: 'aa-sec', text: myTr.length > 1 ? 'Transports' : 'Transport' }));
+      var kinds = {}; myTr.forEach(function (u) { kinds[u.k] = 1; });
+      b.appendChild(el('div', { class: 'aa-sec', text: kinds.tra && kinds.cv ? 'Transports and carriers' : kinds.cv ? (myTr.length > 1 ? 'Carriers' : 'Carrier') : myTr.length > 1 ? 'Transports' : 'Transport' }));
       var tl = el('div', { class: 'trcs' });
       myTr.forEach(function (tr) { tl.appendChild(transportCard(tr, { groups: all })); });
       b.appendChild(tl);
