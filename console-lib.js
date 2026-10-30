@@ -206,6 +206,15 @@ var ConsoleLib = (function () {
     });
   }
 
+  // the game file fetched again from your account (the copy kept on this device wouldn't read), and kept in its place
+  function refetch(c, onProgress) {
+    if (!c.lib) return Promise.reject(new Error('not in your account'));
+    return download(c.lib, c.id, onProgress).then(function (blob) {
+      var rec = strip(c); rec.data = blob;
+      return tx('carts', 'readwrite', function (s) { s.put(rec); }).then(function () { return rec; }, function () { return rec; });
+    });
+  }
+
   // every game in the list that isn't on this device yet, one after another, with its label (the service worker
   // keeps labels): onProgress({n (done so far), total, frac (of the one coming down), c, landed}); resolves to how
   // many couldn't be fetched
@@ -311,6 +320,6 @@ var ConsoleLib = (function () {
     }).catch(function (e) { console.warn('[console] battery save not fetched', e); return null; });
   }
 
-  return { db: db, tx: tx, list: list, stateUp: stateUp, statesDown: statesDown, statesPending: statesPending, sramUp: sramUp, sramDown: sramDown, within: within, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
+  return { refetch: refetch, db: db, tx: tx, list: list, stateUp: stateUp, statesDown: statesDown, statesPending: statesPending, sramUp: sramUp, sramDown: sramDown, within: within, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
     cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, showMany: showMany, vis: vis };
 })();

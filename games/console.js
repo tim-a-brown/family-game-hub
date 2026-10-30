@@ -588,11 +588,35 @@
     padMode();
     requestAnimationFrame(function () { playEl.classList.add('on'); });
     // the game file: on this device, or fetched from your account the first time
-    if (c.data) return boot(c);
+    if (c.data) return ready(c);
     msg('Reading cartridge', 0);
     L.file(c, function (f) { msg('Reading cartridge', f); }).then(function (full) {
-      c.data = full.data; c.local = true; boot(c);
+      c.data = full.data; c.local = true; ready(c);
     }).catch(function (e) { console.warn(e); msg('Couldn’t get this game. Check your connection.'); });
+  }
+  // The game file read into memory before the emulator gets it. On iPhone and iPad a file kept in the browser's
+  // storage can fail to read (the read never ends, or errors), and the emulator would wait on it for good with the
+  // static on. Read here with a time limit; a copy that won't read comes again from your account.
+  function ready(c) {
+    var read = function (b) { return Promise.race([b.arrayBuffer(), new Promise(function (ok, no) { setTimeout(function () { no(new Error('the saved file did not read')); }, 8000); })]); };
+    read(c.data).catch(function (e) {
+      console.warn('[console]', e);
+      msg('Reading cartridge', 0);
+      return L.refetch(c, function (f) { msg('Reading cartridge', f); }).then(function (rec) { return read(rec.data); });
+    }).then(function (buf) {
+      if (cur !== c) return;
+      c.data = new Blob([buf]);   // (held in memory from here on)
+      boot(c);
+    }, function (e) { console.warn('[console]', e); if (cur === c) stuck(c, 'Couldn’t read this game.'); });
+  }
+  // a game that never got going: says so, with a way to try again (the page fresh, the file read again)
+  function stuck(c, text) {
+    var m = $('tv-msg'); if (!m) return;
+    m.innerHTML = ''; m.classList.add('stuck');
+    m.appendChild(document.createTextNode(text));
+    m.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Try again', onclick: function () {
+      var u = new URL(location.href); u.searchParams.set('play', c.id); location.replace(u.toString());
+    } }));
   }
   // A drawn controller when you're playing by touch. A real controller on a phone or iPad: the drawn one steps aside
   // and the picture takes the whole screen (the game bar too; Home, or Select and Start together, or a tap on the
@@ -656,7 +680,7 @@
     return c;
   }
   function msg(t, frac) {
-    var m = $('tv-msg'); if (!m) return;
+    var m = $('tv-msg'); if (!m || m.classList.contains('stuck')) return;
     m.innerHTML = ''; if (!t) return;
     m.appendChild(document.createTextNode(t));
     if (frac != null) { var b = el('span', { class: 'bar' }, [el('i', { style: { width: Math.round(frac * 100) + '%' } })]); m.appendChild(b); }
@@ -714,9 +738,12 @@
       TAP_ON = r[0];
       var s = document.createElement('script'); s.src = '../emu/loader.js'; document.body.appendChild(s);
     });
-    var poll = setInterval(function () {
+    var dataAt = 0, poll = setInterval(function () {
       if (started) return clearInterval(poll);
       var t = document.querySelector('#ejs .ejs_loading_text'); if (t && t.textContent) msg(t.textContent.replace(/Download Game Core/, 'Warming up').replace(/Download Game Data/, 'Reading cartridge'));
+      // the emulator ready and handed the cartridge: a game that hasn't started 20 s on never will, so it says so
+      if (t && /Download Game Data/.test(t.textContent) && !dataAt) dataAt = Date.now();
+      if (dataAt && Date.now() - dataAt > 20000 && cur === c) { clearInterval(poll); stuck(c, 'This game didn’t start.'); }
     }, 200);
   }
   // ── Four players: a multitap in port 2, the way the real consoles did it ──
