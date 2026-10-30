@@ -120,6 +120,13 @@ Underlying principles for everything:
   `FIREBASE_SERVICE_ACCOUNT=... node scripts/upload-venue-art.js <folder>`. A changed scene needs its pictures
   re-rendered and re-uploaded, or the page falls back to the plainer in-browser look of the new scene.
 
+## Axis & Allies boards
+
+- Two boards: the 1942 Second Edition (data inside `games/axisallies.html`) and Classic, the 1984 Milton Bradley game,
+  in `games/axisallies-classic.js`. Classic is converted from TripleA's World War II Classic map by
+  `scripts/build-aa-classic.py <clone of github.com/triplea-maps/world_war_ii_classic>`; the page swaps the board in
+  place (`useBoard`) and Classic's rule differences hang off the `CLASSIC` flag.
+
 ## Goblin Defenders art (Blender)
 
 - Every sprite (towers at 16 angles, enemies' walk cycles, icons) and every map picture is path-traced offline in

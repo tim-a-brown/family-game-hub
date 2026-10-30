@@ -229,6 +229,7 @@ const PRECACHE_URLS = [
   '/games/dominoes.html',
   '/games/go.html',
   '/games/axisallies.html',
+  '/games/axisallies-classic.js',
   '/games/lorcana-play.html',
   '/games/lorcana-stories.js',
   '/games/lorcana-inks.webp',

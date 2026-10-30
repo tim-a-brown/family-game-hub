@@ -13,6 +13,7 @@
 <script src="../players.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script src="axisallies-classic.js"></script>
 <style>
 /* ── Power colors (board-game muted, readable with white or dark ink) ─────── */
 :root{
@@ -422,6 +423,9 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .trow.own .tic{background:var(--pc);color:var(--pci);}
 .trow .tok{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;}
 .trow .tok svg{width:14px;height:14px;}
+.tchart.pick .trow:not(.own){cursor:pointer;}
+.trow.goal{background:color-mix(in srgb,var(--yellow) 22%,transparent);box-shadow:inset 0 0 0 2px var(--yellow);}
+.trow .tok.goal{background:var(--yellow);color:#2a1a00;}
 .tchip-row{display:flex;flex-direction:column;gap:3px;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.06);}
 .tchip-row small{font-size:.76rem;font-weight:700;color:var(--text-2);}
 .tchip{display:inline-flex;align-items:center;gap:6px;font-size:.84rem;}
@@ -867,6 +871,16 @@ var TECH = {
   lra: { c: 2, n: 5, u: 'ftr', name: 'Long-range aircraft', fx: 'Fighters fly 6 and bombers fly 8.' },
   hvy: { c: 2, n: 6, u: 'bmb', name: 'Heavy bombers', fx: 'Bombers roll two dice when they attack, and two dice of damage when they bomb a factory.' }
 };
+// Classic's weapons development: name the weapon you're working on, buy research dice, and any 6 wins it (the
+// dice are spent either way)
+TECH.ind = { c: 1, n: 5, u: 'ic', name: 'Industrial technology', fx: 'Every unit costs 1 IPC less.' };
+var TECH_CLASSIC = ['jet', 'rkt', 'ssub', 'lra', 'ind', 'hvy'];
+var FX_CLASSIC = {
+  rkt: 'At the start of combat each AA gun fires a rocket at an enemy factory up to 3 spaces away: its owner loses a die of IPCs. One rocket per factory a turn.',
+  hvy: 'Bombers roll three dice when they attack, and three dice when they bomb a factory.'
+};
+function techFx(k) { return (CLASSIC && FX_CLASSIC[k]) || TECH[k].fx; }
+function charts() { return CLASSIC ? [{ name: 'Weapons development', keys: TECH_CLASSIC }] : CHARTS; }
 var CHARTS = [
   { name: 'Land and industry', keys: ['aart', 'rkt', 'para', 'ifp', 'wb', 'mech'] },
   { name: 'Sea and air', keys: ['ssub', 'jet', 'yard', 'radar', 'lra', 'hvy'] }
@@ -875,9 +889,9 @@ var YARD = { bb: 17, cv: 11, ca: 9, dd: 7, sub: 5, tra: 6 };
 // the breakthroughs that change a kind's battle numbers (for the odds cache)
 var TECH_K = { inf: 'aart', art: 'aart', sub: 'ssub', ftr: 'jet', bmb: 'hvy', aa: 'radar' };
 var RES_COST = 5;
-function techOn() { return !!(S && S.opt && S.opt.tech === 'on'); }
+function techOn() { return !!(S && S.opt && (S.opt.tech === 'on' || S.mode === 'classic')); }
 function hasT(p, k) { return !!(p && S && S.tech && S.tech[p] && S.tech[p][k]); }
-function techList(p) { var out = []; CHARTS.forEach(function (c) { c.keys.forEach(function (k) { if (hasT(p, k)) out.push(k); }); }); return out; }
+function techList(p) { var out = []; charts().forEach(function (c) { c.keys.forEach(function (k) { if (hasT(p, k)) out.push(k); }); }); return out; }
 function techIcon(k) { var t = TECH[k]; return t.u ? unitSvg(t.u) : Kit.icon(t.i); }
 // A unit's numbers for its owner, breakthroughs included: s is 'a' attack, 'd' defend, 'm' move, 'c' cost
 function uval(k, p, s) {
@@ -887,6 +901,7 @@ function uval(k, p, s) {
   if (s === 'd' && k === 'ftr' && hasT(p, 'jet')) return 5;
   if (s === 'm' && (k === 'ftr' || k === 'bmb') && hasT(p, 'lra')) return v + 2;
   if (s === 'c' && YARD[k] != null && hasT(p, 'yard')) return YARD[k];
+  if (s === 'c' && hasT(p, 'ind')) return Math.max(1, v - 1);
   return v;
 }
 // how many infantry one of p's artillery lifts to 2
@@ -924,19 +939,48 @@ function unitSvg(k) { return '<svg viewBox="0 0 24 16" fill="currentColor" aria-
 // ── Map in play (full board or skirmish subset) ────────────────────────────
 var NT = TER.length;
 var NAME = {}; TER.forEach(function (t, i) { NAME[t[0]] = i; });
+// ── Two boards: the 1942 Second Edition (above) and Classic, the 1984 Milton Bradley game (axisallies-classic.js).
+// The board in play is swapped in place, and Classic's units take Classic's prices and numbers.
+var BOARD42 = { TER: TER, ADJ: ADJ, SETUP: SETUP_FULL, CANALS: CANALS, GEO: GEO };
+var CLASSIC = false;
+var U42 = null;
+var U_CLASSIC = {
+  inf: { ts: 1 }, art: { ts: 1 }, arm: { c: 5, d: 2, ts: 2 }, aa: { ts: 2 }, ftr: { c: 12 }, bmb: { c: 15 },
+  sub: { c: 8, d: 2 }, tra: { c: 8, d: 1 }, cv: { c: 18, d: 3 }, bb: { c: 24, hp: 1 }
+};
+function useBoard(classic) {
+  var B = classic && window.CLASSIC_BOARD ? CLASSIC_BOARD : BOARD42;
+  classic = B !== BOARD42;
+  if (!U42) U42 = JSON.parse(JSON.stringify(U));
+  for (var k in U) { var base = U42[k]; for (var x in base) U[k][x] = base[x]; if (classic && U_CLASSIC[k]) for (var y in U_CLASSIC[k]) U[k][y] = U_CLASSIC[k][y]; }
+  CLASSIC = classic;
+  if (TER === B.TER) return;
+  TER = B.TER; ADJ = B.ADJ; SETUP_FULL = B.SETUP; CANALS = B.CANALS; GEO = B.GEO;
+  NT = TER.length; NAME = {}; TER.forEach(function (t, i) { NAME[t[0]] = i; });
+}
+// Classic: a battleship takes one hit, there are no destroyers (planes hit submarines freely), transports carry two
+// infantry or one other land unit and defend on 1, factories build without limit and bombing costs the owner IPCs
+function twoHit(u) { return u.k === 'bb' && !u.h && !CLASSIC; }
+function airHitsSubs(list) { return CLASSIC || hasDD(list); }
+function trCap() { return CLASSIC ? 2 : 5; }
+function buyList() { return CLASSIC ? BUYABLE.filter(function (k) { return k !== 'art' && k !== 'dd' && k !== 'ca'; }) : BUYABLE; }
+// how much more a bombing raid or a rocket can do there (Classic: whatever the owner still has in the bank)
+function bombRoom(t) { return CLASSIC ? Math.max(0, S.ipc[S.own[t]] || 0) : ipcOf(t) * 2 - (S.dmg[t] || 0); }
+function hvyDice() { return CLASSIC ? 3 : 2; }
 var SKIRM_LAND = ['United Kingdom', 'Norway', 'Finland', 'Karelia', 'Archangel', 'Vologda', 'Russia', 'West Russia', 'Belorussia', 'Ukraine',
   'Caucasus', 'Kazakh', 'Baltic States', 'Poland', 'Germany', 'NW Europe', 'France', 'Italy', 'Southern Europe', 'Bulgaria Romania',
   'Sweden', 'Switzerland', 'Turkey', 'Spain Portugal', 'Eire'];
 var SKIRM_SEA = [3, 4, 5, 6, 7, 8, 13, 14, 15, 16];
 var M = { on: [], adj: [], view: [0, 0, 1750, 1000], caps: {}, vcs: [] };
 function buildMap(mode) {
+  useBoard(mode === 'classic');
   var on = [];
   for (var i = 0; i < NT; i++) on.push(mode !== 'skirm');
   if (mode === 'skirm') {
     SKIRM_LAND.forEach(function (n) { on[NAME[n]] = true; });
     SKIRM_SEA.forEach(function (z) { on[z - 1] = true; });
   }
-  M.on = on; M.mode = mode === 'skirm' ? 'skirm' : 'full';
+  M.on = on; M.mode = mode === 'skirm' ? 'skirm' : mode === 'classic' && CLASSIC ? 'classic' : 'full';
   M.adj = ADJ.map(function (a, i) { return on[i] ? a.filter(function (j) { return on[j]; }) : []; });
   M.view = mode === 'skirm' ? [330, 60, 640, 470] : [0, 0, 1750, 1000];
   M.caps = {};
@@ -949,7 +993,7 @@ function buildMap(mode) {
 }
 function isSea(t) { return TER[t][1] === 1; }
 function ipcOf(t) { return TER[t][2]; }
-function tname(t) { return isSea(t) ? 'Sea zone ' + TER[t][0] : TER[t][0]; }
+function tname(t) { return isSea(t) ? (isNaN(+TER[t][0]) ? TER[t][0] + ' sea zone' : 'Sea zone ' + TER[t][0]) : TER[t][0]; }
 function imp(t) { return !!(TER[t][4] & 8); }
 function passable(t) { return M.on[t] && !imp(t); }
 function isVC(t) { return !!(TER[t][4] & 2); }
@@ -999,7 +1043,7 @@ function cargoSize(tr) { return cargoOf(tr).reduce(function (a, u) { return a + 
 function canCarry(tr, list) {
   var size = cargoSize(tr), nonInf = cargoOf(tr).filter(function (u) { return u.k !== 'inf'; }).length;
   for (var i = 0; i < list.length; i++) { size += U[list[i].k].ts; if (list[i].k !== 'inf') nonInf++; }
-  return size <= 5 && nonInf <= 1;
+  return size <= trCap() && (CLASSIC || nonInf <= 1);
 }
 function removeUnit(u) {
   var gone = [u.i];
@@ -1037,7 +1081,7 @@ function income(p) {
   if (S.mode === 'skirm' && p === 'uk') n += 10;   // overseas empire (off this map)
   return n;
 }
-function factoryCap(t) { return Math.max(0, ipcOf(t) + (ipcOf(t) >= 3 && hasT(S.own[t], 'ifp') ? 2 : 0) - (S.dmg[t] || 0)); }
+function factoryCap(t) { if (CLASSIC) return 99; return Math.max(0, ipcOf(t) + (ipcOf(t) >= 3 && hasT(S.own[t], 'ifp') ? 2 : 0) - (S.dmg[t] || 0)); }
 function vcCount(side) { return M.vcs.filter(function (t) { return sideOf(S.own[t]) === side; }).length; }
 function alive(p) {
   for (var t = 0; t < NT; t++) if (M.on[t] && S.own[t] === p) return true;
@@ -1151,7 +1195,7 @@ function reach(u, ph, o) {
       var left = r - res.dist[a];
       if (ph === 'cm') {
         // (bombers carrying paratroopers can drop them on any enemy land)
-        var hostile = enemiesAt(a, p).length > 0 || (u.k === 'bmb' && enemyLand(a, p) && ((o && o.para) || (S.ic[a] && (S.dmg[a] || 0) < ipcOf(a) * 2)));
+        var hostile = enemiesAt(a, p).length > 0 || (u.k === 'bmb' && enemyLand(a, p) && ((o && o.para) || (S.ic[a] && bombRoom(a) > 0)));
         if (!hostile) continue;
         if (!canLandFrom(a, left, u)) continue;
         out[a] = { d: res.dist[a], path: pathTo(res, u.t, a) };
@@ -1240,6 +1284,7 @@ function groupTargets(ids, ph) {
     // Planes can't hit submarines without a destroyer in the battle (and submarines can't hit planes): a zone
     // holding only enemy submarines is no target for planes unless something there or with them can hit back
     for (var k5 in out) {
+      if (CLASSIC) break;
       var t5 = +k5, en5 = enemiesAt(t5, p);
       if (!isSea(t5) || !en5.length || !en5.every(function (u) { return u.k === 'sub'; })) continue;
       var hitter = function (u) { return u.k === 'sub' || u.k === 'dd' || (U[u.k].dom === 'S' && U[u.k].a > 0); };
@@ -1285,7 +1330,7 @@ function planBoarding(us, z) {
       var cur2 = load[trs[j].i];
       var size = cur2.reduce(function (a, x) { return a + U[x.k].ts; }, 0) + U[u.k].ts;
       var nonInf = cur2.filter(function (x) { return x.k !== 'inf'; }).length + (u.k !== 'inf' ? 1 : 0);
-      if (size <= 5 && nonInf <= 1) { cur2.push(u); plan.push([u, trs[j]]); done = true; }
+      if (size <= trCap() && (CLASSIC || nonInf <= 1)) { cur2.push(u); plan.push([u, trs[j]]); done = true; }
     }
     if (!done) return null;
   }
@@ -1700,7 +1745,7 @@ function nextTurn() {
 }
 function vcNeed() {
   var o = S.opt.vc;
-  if (S.mode === 'skirm') return null;
+  if (S.mode === 'skirm' || S.mode === 'classic') return null;
   if (o === 'quick') return { X: 8, A: 9 };
   if (o === 'total') return { X: M.vcs.length, A: M.vcs.length };
   if (o === 'caps') return null;
@@ -1711,7 +1756,16 @@ function endRound() {
   var win = null, why = '';
   S.roundVc = S.roundVc || [];
   S.roundVc.push([vcCount('X'), vcCount('A')]);
-  if (S.mode === 'skirm') {
+  if (S.mode === 'classic') {
+    // Classic: the Axis win holding two Allied capitals (and their own), or with 84 IPCs of income between them;
+    // the Allies win holding Berlin and Tokyo
+    var axisLost = ['de', 'jp'].filter(function (q) { return foe(S.own[M.caps[q]], q); }).length;
+    var allyLost = ['su', 'uk', 'us'].filter(function (q) { return foe(S.own[M.caps[q]], q); }).length;
+    var axisInc = income('de') + income('jp');
+    if (axisLost >= 2) { win = 'A'; why = 'Berlin and Tokyo are both in Allied hands'; }
+    else if (allyLost >= 2 && !axisLost) { win = 'X'; why = 'The Axis hold two Allied capitals'; }
+    else if (axisInc >= 84) { win = 'X'; why = 'Axis income reached ' + axisInc + ' IPCs (84 wins)'; }
+  } else if (S.mode === 'skirm') {
     if (S.own[M.caps.de] && foe(S.own[M.caps.de], 'de')) { win = 'A'; why = 'Berlin fell'; }
     else if (foe(S.own[M.caps.su], 'su') || foe(S.own[M.caps.uk], 'uk')) { win = 'X'; why = (foe(S.own[M.caps.su], 'su') ? 'Moscow' : 'London') + ' fell'; }
     else if (vcCount('X') >= 5) { win = 'X'; why = 'Germany holds 5 victory cities'; }
@@ -1817,7 +1871,7 @@ function planRound(B) {
   if (B.round === 1 && B.bomb.length) v.push({ side: 'a', kind: 'bomb', imm: 0 });
   if (B.k === 'sea') {
     if (A.some(function (u) { return u.k === 'sub'; }) && !hasDD(D)) v.push({ side: 'a', kind: 'surp', imm: 1 });
-    if (D.some(function (u) { return u.k === 'sub'; }) && !hasDD(A)) v.push({ side: 'd', kind: 'surp', imm: 1 });
+    if (!CLASSIC && D.some(function (u) { return u.k === 'sub'; }) && !hasDD(A)) v.push({ side: 'd', kind: 'surp', imm: 1 });
   }
   v.push({ side: 'a', kind: 'main', imm: 0 });
   v.push({ side: 'd', kind: 'main', imm: 0 });
@@ -1841,7 +1895,7 @@ function volleyFire(B, v) {
   } else if (v.kind === 'sbr-aa') {
     add('ic', hasT(S.own[B.t], 'radar') ? 2 : 1, A.length, 'factory AA');
   } else if (v.kind === 'sbr') {
-    add('bmb', 6, A.length * (hasT(B.att, 'hvy') ? 2 : 1), hasT(B.att, 'hvy') ? 'two dice each' : 'damage');
+    add('bmb', 6, A.length * (hasT(B.att, 'hvy') ? hvyDice() : 1), hasT(B.att, 'hvy') ? (CLASSIC ? 'three dice each' : 'two dice each') : 'damage');
   } else {
     var surpA = B.k === 'sea' && !hasDD(D), surpD = B.k === 'sea' && !hasDD(A);
     var subsFired = v.side === 'a' ? surpA : surpD;
@@ -1853,7 +1907,7 @@ function volleyFire(B, v) {
         var us = mine.filter(function (u) { return u.k === k; }), n = us.length; if (!n) return;
         if (k === 'inf' && v.side === 'a' && arts) { var sup = Math.min(arts, n); add('inf', 2, sup, 'with artillery'); add('inf', 1, n - sup); return; }
         // (a heavy bomber rolls two dice when it attacks)
-        us.forEach(function (u) { var two = k === 'bmb' && v.side === 'a' && hasT(u.o, 'hvy'); add(k, uval(k, u.o, v.side), two ? 2 : 1, two ? 'two dice each' : ''); });
+        us.forEach(function (u) { var two = k === 'bmb' && v.side === 'a' && hasT(u.o, 'hvy'); add(k, uval(k, u.o, v.side), two ? hvyDice() : 1, two ? (CLASSIC ? 'three dice each' : 'two dice each') : ''); });
       });
     }
   }
@@ -1864,7 +1918,7 @@ function volleyFire(B, v) {
 // submarines unless a friendly destroyer is in the battle.
 function hitKinds(B, v) {
   var mine = bSide(B, v.side), other = bSide(B, v.side === 'a' ? 'd' : 'a');
-  var noDD = !hasDD(mine) && other.some(function (u) { return u.k === 'sub'; });
+  var noDD = !airHitsSubs(mine) && other.some(function (u) { return u.k === 'sub'; });
   var h = { s: 0, a: 0, g: 0 };
   v.groups.forEach(function (g) {
     var hits = g.dice.filter(function (d) { return d <= g.need; }).length;
@@ -1881,19 +1935,19 @@ function targetsFor(B, v) {
   if (v.kind === 'aa') list = list.filter(isAir);
   return list;
 }
-function casKey(u) { return u.k === 'tra' ? 1000 : u.k === 'aa' ? 2.5 : U[u.k].c + (isAir(u) ? 0.5 : 0); }
+function casKey(u) { return u.k === 'tra' && !CLASSIC ? 1000 : u.k === 'aa' ? 2.5 : U[u.k].c + (isAir(u) ? 0.5 : 0); }
 // Default casualties: battleship hits first, then cheapest, transports last
 function autoCas(list, h) {
   var slots = [];
   list.forEach(function (u) {
-    if (u.k === 'bb' && !u.h) slots.push({ id: u.i, dmg: 1, key: -1, u: u });
-    slots.push({ id: u.i, dmg: 0, key: casKey(u) + (u.k === 'bb' && !u.h ? 0.01 : 0), u: u });
+    if (twoHit(u)) slots.push({ id: u.i, dmg: 1, key: -1, u: u });
+    slots.push({ id: u.i, dmg: 0, key: casKey(u) + (twoHit(u) ? 0.01 : 0), u: u });
   });
   slots.sort(function (a, b) { return a.key - b.key; });
   var used = [], take = function (n, ok) {
     for (var i = 0; i < slots.length && n > 0; i++) {
       var s = slots[i]; if (s.used || !ok(s.u)) continue;
-      if (!s.dmg && s.u.k === 'bb' && !s.u.h && !slots.some(function (x) { return x.id === s.id && x.dmg && x.used; })) continue;
+      if (!s.dmg && twoHit(s.u) && !slots.some(function (x) { return x.id === s.id && x.dmg && x.used; })) continue;
       s.used = 1; used.push(s); n--;
     }
   };
@@ -1908,7 +1962,7 @@ function casFromCounts(list, counts) {
   KINDS.forEach(function (k) {
     var n = counts[k] || 0; if (!n) return;
     var us = list.filter(function (u) { return u.k === k; });
-    if (k === 'bb') {
+    if (k === 'bb' && !CLASSIC) {
       // hits on battleships: first damage healthy ones, then sink damaged ones
       var dmgd = us.filter(function (u) { return u.h; }), fresh = us.filter(function (u) { return !u.h; });
       fresh.forEach(function (u) { if (n > 0) { out.push({ id: u.i, dmg: 1 }); n--; } });
@@ -1930,7 +1984,7 @@ function casValid(list, h, cas, need) {
 }
 function maxNonTransport(list, h) {
   var air = 0, sub = 0, oth = 0;
-  list.forEach(function (u) { if (u.k === 'tra') return; var n = u.k === 'bb' && !u.h ? 2 : 1; if (isAir(u)) air += n; else if (u.k === 'sub') sub += n; else oth += n; });
+  list.forEach(function (u) { if (u.k === 'tra') return; var n = twoHit(u) ? 2 : 1; if (isAir(u)) air += n; else if (u.k === 'sub') sub += n; else oth += n; });
   var hs = h.s || 0, ha = h.a || 0, hg = h.g || 0, t;
   t = Math.min(hs, sub); sub -= t; hs -= t;
   t = Math.min(ha, air); air -= t; ha -= t;
@@ -1939,7 +1993,7 @@ function maxNonTransport(list, h) {
   t = Math.min(ha, oth); oth -= t; used += t;
   return used + Math.min(hg, air + sub + oth);
 }
-function slotsFor(list) { var o = {}; list.forEach(function (u) { o[u.k] = (o[u.k] || 0) + (u.k === 'bb' && !u.h ? 2 : 1); }); return o; }
+function slotsFor(list) { var o = {}; list.forEach(function (u) { o[u.k] = (o[u.k] || 0) + (twoHit(u) ? 2 : 1); }); return o; }
 function applyCas(B, v, cas) {
   var tside = v.side === 'a' ? 'd' : 'a';
   cas.forEach(function (c) {
@@ -1964,14 +2018,14 @@ function endOfRound(B) {
   // Defenseless transports: alone against armed enemies they are lost
   ['a', 'd'].forEach(function (s) {
     var mine = bSide(B, s), other = bSide(B, s === 'a' ? 'd' : 'a');
-    if (mine.length && mine.every(function (u) { return u.k === 'tra'; }) && other.some(function (u) { return (s === 'a' ? U[u.k].d : U[u.k].a) > 0; })) {
+    if (!CLASSIC && mine.length && mine.every(function (u) { return u.k === 'tra'; }) && other.some(function (u) { return (s === 'a' ? U[u.k].d : U[u.k].a) > 0; })) {
       mine.forEach(function (u) { killInBattle(B, u, s); });
       B.traSunk = s;
     }
   });
 }
 function canHurt(from, to, side) {
-  var dd = hasDD(from);
+  var dd = airHitsSubs(from);
   return from.some(function (u) {
     var val = side === 'a' ? U[u.k].a : U[u.k].d;
     if (val <= 0) return false;
@@ -1993,7 +2047,7 @@ function aaPending(B) {
 }
 // Transports can't fight back: left alone with enemy units that can hit them, they're lost without a roll
 function sinkLoneTransports(B) {
-  if (B.k !== 'sea') return false;
+  if (B.k !== 'sea' || CLASSIC) return false;
   var sank = false;
   ['d', 'a'].forEach(function (s) {
     var mine = bSide(B, s), other = bSide(B, s === 'a' ? 'd' : 'a');
@@ -2119,13 +2173,14 @@ function rollVolley(B) {
   v.rolled = 1;
   if (v.kind === 'sbr') {
     var dmg = 0; v.groups.forEach(function (g) { g.dice.forEach(function (d) { dmg += d; }); });
-    var cap = ipcOf(B.t) * 2 - (S.dmg[B.t] || 0);
+    var cap = bombRoom(B.t);
     var dealt = Math.max(0, Math.min(dmg, cap));
-    S.dmg[B.t] = (S.dmg[B.t] || 0) + dealt;
+    if (CLASSIC) S.ipc[S.own[B.t]] -= dealt; else S.dmg[B.t] = (S.dmg[B.t] || 0) + dealt;
     v.sbrDmg = dealt;
     stat(B.att, 'bombed', dealt);
     if (dealt >= 8) hl(pname(B.att) + ' bombers did ' + dealt + ' damage to the factory in ' + tname(B.t));
-    B.msg = 'The factory in ' + tname(B.t) + ' takes ' + dealt + ' damage' + (dealt < dmg ? ' (it can’t take more)' : '') + '.';
+    B.msg = CLASSIC ? pname(S.own[B.t]) + ' loses ' + dealt + ' IPCs to the raid' + (dealt < dmg ? ' (all it had)' : '') + '.'
+      : 'The factory in ' + tname(B.t) + ' takes ' + dealt + ' damage' + (dealt < dmg ? ' (it can’t take more)' : '') + '.';
     v.done = 1;
   }
   v.hits = hitKinds(B, v);
@@ -2160,7 +2215,7 @@ function exactOdds(att, def, o) {
     list.forEach(function (k) {
       var x = typeof k === 'string' ? { k: k, h: 0 } : { k: k.k, h: k.h || 0, o: k.o };
       if (x.k === 'ic' || x.k === 'aa') return;
-      if (x.k === 'bb' && !x.h) arr.push({ k: 'bbd', key: -1 });
+      if (twoHit(x)) arr.push({ k: 'bbd', key: -1 });
       arr.push({ k: x.k, o: x.o, key: casKey({ k: x.k }) });
     });
     arr.sort(function (a, b) { return a.key - b.key; });
@@ -2181,11 +2236,11 @@ function exactOdds(att, def, o) {
       var v = uval(x.k, x.o, side);
       if (side === 'a' && x.k === 'inf' && arts > 0) { arts--; v = 2; }
       if (v > 0) ps.push(v / 6);
-      if (v > 0 && side === 'a' && x.k === 'bmb' && hasT(x.o, 'hvy')) ps.push(v / 6);
+      if (v > 0 && side === 'a' && x.k === 'bmb' && hasT(x.o, 'hvy')) for (var hd = 1; hd < hvyDice(); hd++) ps.push(v / 6);
     });
     return hitDist(ps);
   }
-  function onlyTra(list) { return list.length && list.every(function (x) { return x.k === 'tra'; }); }
+  function onlyTra(list) { return !CLASSIC && list.length && list.every(function (x) { return x.k === 'tra'; }); }
   var P = [], i, j;
   for (i = 0; i <= nA; i++) { P.push(new Array(nD + 1).fill(0)); }
   P[0][0] = 1;
@@ -2225,7 +2280,7 @@ function simOddsMC(att, def, o, seedKey) {
     list.forEach(function (k) {
       var x = typeof k === 'string' ? { k: k, h: 0 } : { k: k.k, h: k.h || 0, o: k.o };
       if (x.k === 'ic') return;
-      if (x.k === 'bb' && !x.h) arr.push({ k: 'bbd', key: -1 });
+      if (twoHit(x)) arr.push({ k: 'bbd', key: -1 });
       arr.push({ k: x.k, o: x.o, key: casKey({ k: x.k }) });
     });
     arr.sort(function (a, b) { return a.key - b.key; });
@@ -2250,21 +2305,21 @@ function simOddsMC(att, def, o, seedKey) {
       // hits by kind: submarine hits can't land on planes; plane hits can't land on submarines unless the
       // firing side has a destroyer
       var ah = { g: 0, s: 0, a: 0 }, dh = { g: 0, s: 0, a: 0 }, arts = 0, infs = 0;
-      var ddA = A.some(function (x) { return x.k === 'dd'; }), ddD = D.some(function (x) { return x.k === 'dd'; });
+      var ddA = CLASSIC || A.some(function (x) { return x.k === 'dd'; }), ddD = CLASSIC || D.some(function (x) { return x.k === 'dd'; });
       A.forEach(function (x) { if (x.k === 'art') arts += artSupport(x.o); });
       A.forEach(function (x) {
         if (x.k === 'bbd' || x.k === 'aa') return;
         var v = uval(x.k, x.o, 'a');
         if (x.k === 'inf' && infs < arts) { v = 2; infs++; }
-        for (var dn = x.k === 'bmb' && hasT(x.o, 'hvy') ? 2 : 1; dn > 0; dn--) if (v && rnd() * 6 < v) ah[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddA ? 'a' : 'g']++;
+        for (var dn = x.k === 'bmb' && hasT(x.o, 'hvy') ? hvyDice() : 1; dn > 0; dn--) if (v && rnd() * 6 < v) ah[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddA ? 'a' : 'g']++;
       });
       if (round === 1) bombard.forEach(function (k) { if (rnd() * 6 < U[k].a) ah.g++; });
       D.forEach(function (x) { if (x.k === 'bbd') return; var v = uval(x.k, x.o, 'd'); if (v && rnd() * 6 < v) dh[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddD ? 'a' : 'g']++; });
       var hitA = ah.g + ah.s + ah.a, hitD = dh.g + dh.s + dh.a;
       takeHits(D, ah); takeHits(A, dh);
       if (!hitA && !hitD && !canHurtK(A, D) && !canHurtK(D, A)) break;
-      if (A.length && A.every(function (x) { return x.k === 'tra'; })) A = [];
-      if (D.length && D.every(function (x) { return x.k === 'tra'; })) D = [];
+      if (!CLASSIC && A.length && A.every(function (x) { return x.k === 'tra'; })) A = [];
+      if (!CLASSIC && D.length && D.every(function (x) { return x.k === 'tra'; })) D = [];
     }
     var win = !D.length && A.length > 0;
     if (win && land && !A.some(function (x) { return U[x.k] && U[x.k].dom === 'L'; })) win = false;
@@ -2281,7 +2336,7 @@ function takeHits(L, h) {
   take(h.g, function () { return true; });
 }
 function canHurtK(F, T) {
-  var dd = F.some(function (x) { return x.k === 'dd'; });
+  var dd = CLASSIC || F.some(function (x) { return x.k === 'dd'; });
   return F.some(function (x) {
     if (x.k === 'bbd' || !U[x.k] || !U[x.k].a && !U[x.k].d) return false;
     return T.some(function (y) { if (x.k === 'sub' && U[y.k === 'bbd' ? 'bb' : y.k].dom === 'A') return false; if (U[x.k].dom === 'A' && y.k === 'sub' && !dd) return false; return true; });
@@ -2835,7 +2890,7 @@ function renderTop() {
       el('b', { text: pname(p), style: { color: p === 'de' ? '#c9cfcb' : shade(PW[p].col, 0.4) } }),
       el('small', { html: '<span>' + (seat.cpu ? Kit.icon('bot') + ' ' : '') + esc(NET && S.ctl[p] === NET.seat ? 'You' : seat.name) + '</span><span class="rd">Round ' + S.round + '</span>' })
     ]),
-    el('span', { class: 'aa-pill', title: 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="14" height="14"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }),
+    el('span', { class: 'aa-pill', title: CLASSIC ? 'Capitals: Axis – Allies' : 'Victory cities: Axis – Allies', html: '<svg viewBox="0 0 24 24" width="14" height="14"><use href="#vc-star" width="24" height="24"/></svg>' + vcCount('X') + '–' + vcCount('A') }),
     el('span', { class: 'aa-pill ipc', title: 'IPCs: your money', 'aria-label': 'IPCs, your money', html: '<i>IPC</i>' + (S.ipc[p] - (S.phase === 'buy' ? (researching() ? (S.rbuy || 0) * RES_COST : buyCost()) : 0)) })
   ]));
   R.steps.innerHTML = '';
@@ -3056,8 +3111,8 @@ function unitCard(k, o) {
       el('div', { html: '<b>' + (k === 'aa' ? '–' : x.d) + '</b><small>Defend</small><em>' + (k === 'aa' ? 'shoots planes' : x.d ? 'hits on ' + x.d + (x.d > 1 ? ' or less' : '') : 'can’t hit') + '</em>' }),
       el('div', { html: '<b>' + x.m + '</b><small>Move</small><em>' + (x.m === 1 ? 'one space' : x.m + ' spaces') + '</em>' })
     ]),
-    el('p', { class: 'aa-p', text: UNIT_NOTE[k] || '' })
-  ].concat(boosts.map(function (t) { return el('div', { class: 'tchip-row' }, [el('span', { class: 'tchip', html: techIcon(t) + '<b>' + esc(TECH[t].name) + '</b>' }), el('small', { text: TECH[t].fx })]); })));
+    el('p', { class: 'aa-p', text: (CLASSIC && UNIT_NOTE_CLASSIC[k]) || UNIT_NOTE[k] || '' })
+  ].concat(boosts.map(function (t) { return el('div', { class: 'tchip-row' }, [el('span', { class: 'tchip', html: techIcon(t) + '<b>' + esc(TECH[t].name) + '</b>' }), el('small', { text: techFx(t) })]); })));
   Kit.sheet({ title: x.n, node: node, actions: [{ label: 'Got it', cls: 'btn-soft' }] });
 }
 function unitList(t, filter) {
@@ -3102,44 +3157,56 @@ function statIcons(k, p) {
 // ── Research & development (first part of step 1, when the optional rule is on) ──
 function researching() { return techOn() && S.phase === 'buy' && !S.rsd; }
 function resOdds(n) { return 1 - Math.pow(5 / 6, n); }
-function techLeft(p, c) { var out = []; CHARTS.forEach(function (ch, i) { if (c != null && c !== i) return; ch.keys.forEach(function (k) { if (!hasT(p, k)) out.push(k); }); }); return out; }
+function techLeft(p, c) { var out = []; charts().forEach(function (ch, i) { if (c != null && c !== i) return; ch.keys.forEach(function (k) { if (!hasT(p, k)) out.push(k); }); }); return out; }
 // Roll every research die p holds (kept from earlier turns plus the ones bought now). A 6 is a breakthrough, and
 // the dice are spent on it; otherwise they wait for next turn.
 function rollResearch(p) {
   var buy = S.rbuy || 0;
   S.rt = S.rt || {};
   if (buy) { S.ipc[p] -= buy * RES_COST; stat(p, 'spent', buy * RES_COST); }
-  S.rt[p] = (S.rt[p] || 0) + buy; S.rbuy = 0;
+  S.rt[p] = (CLASSIC ? 0 : S.rt[p] || 0) + buy; S.rbuy = 0;
   var dice = [];
   for (var i = 0; i < S.rt[p]; i++) dice.push(1 + Math.floor(Math.random() * 6));
-  var hit = dice.indexOf(6) >= 0 && techLeft(p).length > 0;
-  S.rr = { p: p, dice: dice, hit: hit, chart: null, rolls: [], tech: null };
-  if (hit) S.rt[p] = 0;
+  var goal = CLASSIC && S.rgoal && !hasT(p, S.rgoal) ? S.rgoal : null;
+  var hit = dice.indexOf(6) >= 0 && (CLASSIC ? !!goal : techLeft(p).length > 0);
+  S.rr = { p: p, dice: dice, hit: hit, chart: null, rolls: [], tech: null, goal: goal };
+  if (hit || CLASSIC) S.rt[p] = 0;
+  if (hit && goal) { S.rr.tech = goal; gainTech(p, goal); }
   logLine(pname(p) + ' rolls ' + dice.length + ' research ' + (dice.length === 1 ? 'die' : 'dice') + (hit ? ': a breakthrough' : ': no breakthrough'));
   return S.rr;
 }
 // Roll on chart c until a weapon p doesn't have yet comes up
 function rollChart(p, c) {
-  var r = S.rr, keys = CHARTS[c].keys, guard = 0;
+  var r = S.rr, keys = charts()[c].keys, guard = 0;
   if (!r || !r.hit || r.tech || !techLeft(p, c).length) return null;
   r.chart = c; r.rolls = [];
   while (guard++ < 60) { var d = 1 + Math.floor(Math.random() * 6); r.rolls.push(d); if (!hasT(p, keys[d - 1])) { r.tech = keys[d - 1]; break; } }
-  S.tech = S.tech || {}; S.tech[p] = S.tech[p] || {}; S.tech[p][r.tech] = 1;
-  hl(pname(p) + ' developed ' + TECH[r.tech].name.toLowerCase() + ' in round ' + S.round);
-  logLine(pname(p) + ' develops ' + TECH[r.tech].name.toLowerCase());
+  gainTech(p, r.tech);
+  return r.tech;
+}
+function gainTech(p, k) {
+  S.tech = S.tech || {}; S.tech[p] = S.tech[p] || {}; S.tech[p][k] = 1;
+  hl(pname(p) + ' developed ' + TECH[k].name.toLowerCase() + ' in round ' + S.round);
+  logLine(pname(p) + ' develops ' + TECH[k].name.toLowerCase());
   stat(p, 'tech');
   oddsCache = {}; tgCache.v = null;
-  return r.tech;
 }
 function endResearch() { S.rsd = 1; S.rbuy = 0; save(); renderAll(); }
 // A computer general: a die or two when it has money to spare, then its own kind of chart
 function aiResearch(p) {
   S.rbuy = 0;
-  var held = (S.rt && S.rt[p]) || 0;
+  var held = CLASSIC ? 0 : (S.rt && S.rt[p]) || 0;
   if (techLeft(p).length && held < 3) { if (S.ipc[p] >= 32) S.rbuy = 1; if (S.ipc[p] >= 50 && held < 1) S.rbuy = 2; }
+  if (CLASSIC) {
+    // each general's own priorities among the six
+    var want = (p === 'de' || p === 'su' ? ['hvy', 'jet', 'ind', 'rkt', 'lra', 'ssub'] : p === 'jp' ? ['lra', 'hvy', 'ssub', 'jet', 'ind', 'rkt'] : ['hvy', 'lra', 'jet', 'ind', 'ssub', 'rkt']).filter(function (k) { return !hasT(p, k); });
+    S.rgoal = want[0] || null;
+    if (!S.rgoal) S.rbuy = 0;
+  }
   if (held + S.rbuy) {
     var r = rollResearch(p);
-    if (r.hit) {
+    if (CLASSIC) { if (r.tech && !QUIET && !HEADLESS) { Kit.callout(TECH[r.tech].name, PW[p].col); Kit.toast(pname(p) + ' develops ' + TECH[r.tech].name.toLowerCase()); } }
+    else if (r.hit) {
       var pref = p === 'su' || p === 'de' ? 0 : 1;
       rollChart(p, techLeft(p, pref).length ? pref : 1 - pref);
       if (!QUIET && !HEADLESS && r.tech) { Kit.callout(TECH[r.tech].name, PW[p].col); Kit.toast(pname(p) + ' develops ' + TECH[r.tech].name.toLowerCase()); }
@@ -3150,7 +3217,8 @@ function aiResearch(p) {
 function researchPanel() {
   var p = cur(), sh = panelShell('Research', { now: false, tip: false });
   if (S.rr && S.rr.p === p) { showLab(true); }
-  var held = (S.rt && S.rt[p]) || 0, buy = S.rbuy || 0, n = held + buy, left = S.ipc[p] - buy * RES_COST;
+  var held = CLASSIC ? 0 : (S.rt && S.rt[p]) || 0, buy = S.rbuy || 0, n = held + buy, left = S.ipc[p] - buy * RES_COST;
+  if (CLASSIC && (!S.rgoal || hasT(p, S.rgoal))) S.rgoal = techLeft(p)[0] || null;
   function act(fn) { pushUndo(); fn(); Kit.sfx('chip'); Kit.haptic('light'); save(); renderAll(); }
   // the bench: your research dice (kept ones and new ones), more for 5 IPCs, and the chance of a 6
   var dice = el('div', { class: 'lab-dice' });
@@ -3163,22 +3231,25 @@ function researchPanel() {
   sh.body.appendChild(el('div', { class: 'lab felt-in' }, [
     dice,
     el('div', { class: 'lab-buy' }, [
-      el('div', { class: 'lab-n' }, [el('b', { text: 'Buy research dice' }), el('small', { html: '<i>IPC</i>' + RES_COST + ' each' + (held ? ', ' + held + ' kept' : '') })]),
+      el('div', { class: 'lab-n' }, [el('b', { text: CLASSIC && S.rgoal ? 'Dice for ' + TECH[S.rgoal].name.toLowerCase() : 'Buy research dice' }), el('small', { html: '<i>IPC</i>' + RES_COST + ' each' + (held ? ', ' + held + ' kept' : '') })]),
       el('span', { class: 'step' }, [minus, el('output', { text: String(buy) }), plus])
     ]),
     el('div', { class: 'lab-odds' }, [el('small', { text: 'Chance of a 6' }), el('b', { text: n ? pct(odds) : '0%' }), el('span', { class: 'bbar' }, [el('i', { style: { width: Math.round(odds * 100) + '%' } })])])
   ]));
   // the two charts: what a breakthrough could bring (yours already marked)
-  CHARTS.forEach(function (c, ci) {
-    var box = el('div', { class: 'tchart' }, [el('div', { class: 'aa-sec', text: 'Chart ' + (ci + 1) + ': ' + c.name })]);
+  charts().forEach(function (c, ci) {
+    var box = el('div', { class: 'tchart' + (CLASSIC ? ' pick' : '') }, [el('div', { class: 'aa-sec', text: CLASSIC ? 'Choose the weapon to research' : 'Chart ' + (ci + 1) + ': ' + c.name })]);
     c.keys.forEach(function (k, i) {
       var own = hasT(p, k);
-      box.appendChild(el('div', { class: 'trow' + (own ? ' own' : '') }, [
-        el('span', { class: 'tn', text: String(i + 1) }),
+      var goal = CLASSIC && S.rgoal === k;
+      var row = el('div', { class: 'trow' + (own ? ' own' : '') + (goal ? ' goal' : ''), role: CLASSIC && !own ? 'button' : null }, [
+        el('span', { class: 'tn', text: CLASSIC ? '' : String(i + 1) }),
         el('span', { class: 'tic', html: techIcon(k) }),
-        el('span', { class: 'tx' }, [el('b', { text: TECH[k].name }), el('small', { text: TECH[k].fx })]),
-        own ? el('span', { class: 'tok', html: Kit.icon('check') }) : null
-      ]));
+        el('span', { class: 'tx' }, [el('b', { text: TECH[k].name }), el('small', { text: techFx(k) })]),
+        own ? el('span', { class: 'tok', html: Kit.icon('check') }) : goal ? el('span', { class: 'tok goal', html: Kit.icon('lightbulb') }) : null
+      ]);
+      if (CLASSIC && !own) row.addEventListener('click', function () { if (S.rgoal === k) return; pushUndo(); S.rgoal = k; Kit.sfx('tap'); save(); renderAll(); });
+      box.appendChild(row);
     });
     sh.body.appendChild(box);
   });
@@ -3215,7 +3286,7 @@ function showLab(settled) {
     body.innerHTML = ''; msg.textContent = '';
     body.appendChild(el('div', { class: 'tcard' + (anim ? ' in' : '') }, [
       el('span', { class: 'big', html: techIcon(k) }),
-      el('div', null, [el('small', { text: 'Breakthrough' }), el('h3', { text: t.name }), el('p', { text: t.fx })])
+      el('div', null, [el('small', { text: 'Breakthrough' }), el('h3', { text: t.name }), el('p', { text: techFx(k) })])
     ]));
     if (anim) { Kit.sfx('win'); Kit.haptic('success'); }
     done();
@@ -3258,9 +3329,9 @@ function showLab(settled) {
   function settle(anim) {
     if (r.hit) {
       if (anim) { Kit.sfx('sparkle'); Kit.haptic('heavy'); }
-      if (r.tech) reveal(false); else chartPick();
+      if (r.tech) reveal(anim); else chartPick();
     } else {
-      msg.innerHTML = r.dice.length ? 'No 6 this time. Your ' + r.dice.length + ' research ' + (r.dice.length === 1 ? 'die stays' : 'dice stay') + ' for next turn.' : '';
+      msg.innerHTML = !r.dice.length ? '' : CLASSIC ? 'No 6 this time. The dice are spent: buy more next turn to try again.' : 'No 6 this time. Your ' + r.dice.length + ' research ' + (r.dice.length === 1 ? 'die stays' : 'dice stay') + ' for next turn.';
       if (anim) Kit.sfx('tap');
       done();
     }
@@ -3272,6 +3343,13 @@ function showLab(settled) {
     settle(true);
   }, 950);
 }
+function buyNote(k) { return CLASSIC && k === 'bb' ? 'One hit sinks it' : CLASSIC && k === 'tra' ? 'Carries 2, defends 1' : BUY_NOTE[k]; }
+var UNIT_NOTE_CLASSIC = {
+  tra: 'Carries 2 infantry, or 1 tank or AA gun. Defends on 1 and is lost like any other unit (no automatic sinking).',
+  sub: 'When it attacks it fires first, and what it hits can’t shoot back. Can’t hit planes, and can’t dive away.',
+  bb: 'One hit sinks it. Can bombard a beach once when troops land from its sea zone.',
+  ic: 'Costs 15. Places as many units as you can pay for. A bombing raid on it costs you IPCs from your bank instead of damaging it.'
+};
 var BUY_NOTE = { aa: 'Shoots planes', tra: 'Carries 2', cv: 'Holds 2 fighters', bb: 'Takes 2 hits', ic: 'Builds units here' };
 function buyPanel() {
   var p = cur(), sh = panelShell(PH_TITLE.buy, { now: false });
@@ -3302,7 +3380,7 @@ function buyPanel() {
   top.appendChild(el('div', { class: 'money' }, [
     el('span', { class: 'aa-pill ipc', html: '<i>IPC</i>' + left }),
     el('span', { text: broke && !buyCost() ? 'Not enough to buy anything' : 'to spend' }),
-    el('span', { class: 'room', title: 'Your factories can place this many units this turn', html: unitSvg('ic') + 'Room for <b>' + cap + '</b>' + (banked ? ', ' + banked + ' waiting' : '') })
+    el('span', { class: 'room', title: 'Your factories can place this many units this turn', html: unitSvg('ic') + (CLASSIC ? '<b>No limit</b>' : 'Room for <b>' + cap + '</b>' + (banked ? ', ' + banked + ' waiting' : '')) })
   ].concat(bought + banked > cap ? [el('span', { class: 'warn', text: 'Extra units wait for next turn' })] : [])));
   if (!holdsCapital(p) && capitalOf(p) != null) top.appendChild(el('p', { class: 'aa-p', html: '<b style="color:var(--red)">Your capital is in enemy hands.</b> You get no income until it is freed.' }));
   var order = BUYABLE.filter(function (k) { return S.buy[k]; });
@@ -3324,7 +3402,7 @@ function buyPanel() {
       function (d) { var v = Math.max(0, Math.min(S.dmg[t], n + d)); if (d > 0 && left < repCost(t, v) - repCost(t, n)) return; S.rep[t] = v; }, n < S.dmg[t] && left >= repCost(t, n + 1) - repCost(t, n)));
   });
   var grid = el('div', { class: 'bgrid' });
-  BUYABLE.forEach(function (k) {
+  buyList().forEach(function (k) {
     if (k === 'ic' && !icSites(p).length) return;
     var navalOk = k === 'ic' || U[k].dom !== 'S' || myFactories(p).some(function (f) { return coastal(f); });
     if (!navalOk) return;
@@ -3345,7 +3423,7 @@ function buyTile(k, n, can, bump, add, less) {
     el('span', { class: 'pic', html: unitSvg(k) }),
     el('span', { class: 'nm', text: k === 'ic' ? 'Factory' : k === 'cv' ? 'Carrier' : x.n }),
     k === 'ic' ? el('span', { class: 'nt', text: BUY_NOTE.ic }) : statIcons(k, p)
-  ].concat(BUY_NOTE[k] && k !== 'ic' ? [el('span', { class: 'nt', text: BUY_NOTE[k] })] : [])
+  ].concat(buyNote(k) && k !== 'ic' ? [el('span', { class: 'nt', text: buyNote(k) })] : [])
    .concat(n ? [el('span', { class: 'qty', text: String(n) })] : []));
   if (n) t.appendChild(el('button', { type: 'button', class: 'less', 'aria-label': 'One less ' + x.n, text: '−', onclick: function (e) { e.stopPropagation(); less(); } }));
   t.addEventListener('pointerdown', function (e) { if (e.target.closest('.less')) return; held = false; clearTimeout(timer); timer = setTimeout(function () { held = true; Kit.haptic('medium'); unitCard(k); }, 480); });
@@ -3402,6 +3480,7 @@ function seatsOf(tr) {
   if (tr.k === 'cv') { var d = deckOf(tr).map(function (u) { return { u: u }; }); while (d.length < 2) d.push({ only: 'ftr' }); return d; }
   var c = cargoOf(tr), out = c.map(function (u) { return { u: u }; });
   var nonInf = c.some(function (u) { return u.k !== 'inf'; });
+  if (CLASSIC) { for (var fr = 2 - cargoSize(tr); fr > 0; fr--) out.push({ only: fr === 1 ? 'inf' : '' }); return out; }
   while (out.length < 2) out.push({ only: nonInf ? 'inf' : '' });
   return out;
 }
@@ -3642,8 +3721,7 @@ function previewCard(sh) {
   var pv = ui.preview, p = cur(), t = pv.dest;
   var us = pv.ids.map(byId).filter(Boolean);
   var bombers = us.filter(function (u) { return u.k === 'bmb'; });
-  var maxDmg = ipcOf(t) * 2, dmgNow = S.dmg[t] || 0;
-  var canSbr = bombers.length === us.length && !isSea(t) && S.ic[t] && enemyLand(t, p) && dmgNow < maxDmg;
+  var canSbr = bombers.length === us.length && !isSea(t) && S.ic[t] && enemyLand(t, p) && bombRoom(t) > 0;
   var noTargets = !fighting(enemiesAt(t, p)).length;
   if (canSbr && noTargets) pv.sbr = true;
   var card = el('div', { class: 'preview' });
@@ -3694,6 +3772,15 @@ function previewCard(sh) {
 }
 // A factory's damage as a bar of its points: what it had, what this raid adds (lit), and what it can still build
 function factoryMeter(t, added) {
+  if (CLASSIC) {
+    // Classic: a raid or a rocket costs the factory's owner IPCs from the bank
+    var ow = S.own[t], bank = S.ipc[ow] || 0;
+    return el('div', { class: 'fmeter' }, [
+      el('div', { class: 'fm-top' }, [el('span', { class: 'fm-ic', html: unitSvg('ic') }), el('b', { text: 'Factory in ' + tname(t) }),
+        el('span', { class: 'fm-n', html: '<b>' + bank + '</b><small> IPCs in the bank</small>' })]),
+      el('small', { text: added ? pname(ow) + ' lost ' + added + ' IPCs' : 'Each bomb costs ' + (PW[ow] ? pname(ow) : 'its owner') + ' a die of IPCs from the bank' })
+    ]);
+  }
   var max = ipcOf(t) * 2, now = S.dmg[t] || 0, before = Math.max(0, now - (added || 0));
   var segs = el('div', { class: 'fm-bar', style: { '--n': max } });
   for (var i = 0; i < max; i++) segs.appendChild(el('i', { class: i < before ? 'old' : i < now ? 'new' : '' }));
@@ -3712,7 +3799,7 @@ function rocketPlan(p) {
   if (!hasT(p, 'rkt')) return null;
   var guns = S.units.filter(function (u) { return u.o === p && u.k === 'aa' && !u.m && !isSea(u.t); });
   var tg = [];
-  for (var t = 0; t < NT; t++) if (M.on[t] && S.ic[t] && enemyLand(t, p) && (S.dmg[t] || 0) < ipcOf(t) * 2) tg.push(t);
+  for (var t = 0; t < NT; t++) if (M.on[t] && S.ic[t] && enemyLand(t, p) && bombRoom(t) > 0) tg.push(t);
   tg.sort(function (a, b) { return ipcOf(b) - ipcOf(a); });
   var used = {}, out = [];
   tg.forEach(function (t) {
@@ -3728,8 +3815,8 @@ function fireRockets() {
   (S.rk || []).forEach(function (r) {
     if (r.die) return;
     r.die = 1 + Math.floor(Math.random() * 6);
-    r.dmg = Math.max(0, Math.min(r.die, ipcOf(r.t) * 2 - (S.dmg[r.t] || 0)));
-    if (r.dmg) S.dmg[r.t] = (S.dmg[r.t] || 0) + r.dmg;
+    r.dmg = Math.max(0, Math.min(r.die, bombRoom(r.t)));
+    if (r.dmg) { if (CLASSIC) S.ipc[S.own[r.t]] -= r.dmg; else S.dmg[r.t] = (S.dmg[r.t] || 0) + r.dmg; }
     stat(p, 'bombed', r.dmg);
     logLine(pname(p) + ' rocket hits ' + tname(r.t) + ': ' + r.dmg + ' damage');
     warLog({ a: p, d: [S.own[r.t]], t: r.t, k: 'rkt', res: 'att', dmg: r.dmg, la: {}, ld: {}, from: [r.g] });
@@ -4029,8 +4116,8 @@ function liveOdds(B) {
   return simOdds(bKinds(A), bKinds(D), { land: B.k === 'land', n: 300 });
 }
 function subChoice(B, side) {
-  // Submarines may dive instead of fighting when no enemy destroyer is present
-  if (B.k !== 'sea') return false;
+  // Submarines may dive instead of fighting when no enemy destroyer is present (not in Classic)
+  if (B.k !== 'sea' || CLASSIC) return false;
   var mine = bSide(B, side), other = bSide(B, side === 'a' ? 'd' : 'a');
   if (!mine.some(function (u) { return u.k === 'sub'; }) || hasDD(other)) return false;
   // (only enemy ships can hit submarines here: against planes alone, diving changes nothing)
@@ -4204,7 +4291,7 @@ function groupVoid(B, v, g) {
   var mine = bSide(B, v.side), other = bSide(B, v.side === 'a' ? 'd' : 'a');
   if (!other.length) return false;
   if (g.k === 'sub') return other.every(isAir);
-  if (U[g.k].dom === 'A' && !hasDD(mine)) return other.every(function (u) { return u.k === 'sub'; });
+  if (U[g.k].dom === 'A' && !airHitsSubs(mine)) return other.every(function (u) { return u.k === 'sub'; });
   return false;
 }
 function effHits(B, v) {
@@ -4433,8 +4520,8 @@ function casPicker(B) {
   KINDS.forEach(function (k) {
     if (!slots[k]) return;
     var n = counts[k] || 0, us = targets.filter(function (u) { return u.k === k; });
-    var pk = el('div', { class: 'pk' }, [el('div', { class: 'pl', html: '<span>' + esc(us.length > 1 ? U[k].p : U[k].n) + '</span><span>' + (k === 'bb' ? 'first hit only damages' : U[k].c + ' IPCs each') + '</span>' })]);
-    if (k === 'bb') {
+    var pk = el('div', { class: 'pk' }, [el('div', { class: 'pl', html: '<span>' + esc(us.length > 1 ? U[k].p : U[k].n) + '</span><span>' + (k === 'bb' && !CLASSIC ? 'first hit only damages' : U[k].c + ' IPCs each') + '</span>' })]);
+    if (k === 'bb' && !CLASSIC) {
       // Battleships take two hits: a stepper counts the hits (first damages a healthy ship, then it sinks)
       var minus = el('button', { type: 'button', 'aria-label': 'Fewer', text: '−', onclick: function () { counts[k] = Math.max(0, n - 1); Kit.sfx('tap'); renderBattle(B); } });
       var plus = el('button', { type: 'button', 'aria-label': 'More', text: '+', onclick: function () { counts[k] = Math.min(slots[k], n + 1); Kit.sfx('tap'); renderBattle(B); } });
@@ -4464,7 +4551,7 @@ function casPicker(B) {
   if (notes.length) box.appendChild(el('div', { class: 'note', text: notes.join(' ') }));
   // what those hits do: a hit on a healthy battleship only damages it; one on a damaged battleship sinks it
   // (hits past the healthy ships' first ones each sink a ship: an already damaged one first, then a newly damaged one)
-  var bbs = targets.filter(function (u) { return u.k === 'bb'; }), bbN = counts.bb || 0, healthy = bbs.filter(function (u) { return !u.h; }).length;
+  var bbs = targets.filter(function (u) { return u.k === 'bb'; }), bbN = counts.bb || 0, healthy = bbs.filter(function (u) { return twoHit(u); }).length;
   var sunk = Math.max(0, bbN - healthy), dmg = Math.min(bbN, healthy) - Math.max(0, sunk - (bbs.length - healthy)), lost = picked - bbN + sunk;
   return { node: box, ok: ok, cas: cas, need: need, chooser: chooser, lost: lost, dmg: dmg };
 }
@@ -4521,7 +4608,7 @@ function aiBuy(p) {
   var cap = myFactories(p).reduce(function (a, t) { return a + Math.max(0, factoryCap(t) + (S.rep[t] || 0)); }, 0);
   var waiting = 0; for (var k in S.bank[p]) if (k !== 'ic') waiting += S.bank[p][k];
   var room = Math.max(0, cap - waiting), n = 0;
-  function add(k) { var c = uval(k, p, 'c'); if (cash < c || (k !== 'ic' && n >= room)) return false; S.buy[k] = (S.buy[k] || 0) + 1; cash -= c; if (k !== 'ic') n++; return true; }
+  function add(k) { if (CLASSIC && buyList().indexOf(k) < 0) k = { art: 'arm', dd: 'sub', ca: 'bb' }[k] || 'inf'; var c = uval(k, p, 'c'); if (cash < c || (k !== 'ic' && n >= room)) return false; S.buy[k] = (S.buy[k] || 0) + 1; cash -= c; if (k !== 'ic') n++; return true; }
   if (!room) return;
   var capT = capitalOf(p);
   if (capT != null && S.own[capT] === p) {
@@ -4856,10 +4943,12 @@ async function runCpu() {
 // ═══════════════════════════════════════════════════════════════════════════
 var ORDERS = { de: ['de', 'su', 'jp', 'uk', 'us'], su: ['su', 'de', 'uk', 'jp', 'us'] };
 // Who plays which powers, by number of seats (same splits as the scorekeeper)
+function edName() { return S.mode === 'skirm' ? 'Skirmish' : S.mode === 'classic' ? 'Classic (1984)' : '1942 Second Edition'; }
 var SPLITS = {
   full: { 2: [['de', 'jp'], ['su', 'uk', 'us']], 3: [['de', 'jp'], ['su', 'us'], ['uk']], 4: [['de'], ['su', 'us'], ['jp'], ['uk']], 5: [['de'], ['su'], ['jp'], ['uk'], ['us']] },
   skirm: { 2: [['de'], ['su', 'uk']], 3: [['de'], ['su'], ['uk']] }
 };
+SPLITS.classic = SPLITS.full;
 // Which group of powers each seat commands on the setup screen: a shuffle of SPLITS[map][n], kept for that table
 // size (axisallies_seats {map:n: [group index per seat]}), changed by tapping the powers under a seat
 function seatAsg(map, n) {
@@ -4928,7 +5017,8 @@ function initGame(cfg) {
   buildMap(cfg.map);
   var powers = cfg.map === 'skirm' ? ['su', 'de', 'uk'] : ORDERS[cfg.order === 'su' ? 'su' : 'de'].slice();
   if (cfg.map === 'skirm' && cfg.order !== 'su') powers = ['de', 'su', 'uk'];
-  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.map === 'skirm' && !+cfg.limit ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
+  if (cfg.map === 'classic' && !CLASSIC) cfg.map = 'full';   // (the Classic board didn't load)
+  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.map === 'skirm' && !+cfg.limit ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' || cfg.map === 'classic' ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
     seats: cfg.seats, ctl: {}, powers: powers, round: 1, pi: 0, phase: 'buy', own: [], turnOwn: [], ic: {}, dmg: {},
     units: [], nid: 1, ipc: {}, buy: {}, rep: {}, bank: {}, placed: {}, capt: [], bl: [], B: null, hl: [], stats: {}, log: [], cityTaken: {}, tech: {}, rt: {},
     started: Date.now(), over: null };
@@ -5082,7 +5172,7 @@ function warReport(p, you) {
     var pi = pidx[e.t], row = el('div', { class: 'wr', 'data-i': pi, style: { '--ac': PW[e.a].col, animationDelay: Math.min(i * 60, 600) + 'ms' } }, [
       el('div', { class: 'wh' }, [
         el('span', { class: 'wpin ' + places[pi].tone, text: String(pi + 1) }),
-        el('div', { class: 'wt' }, [el('b', { text: placeTitle(e.t) }), el('small', { html: esc(kinds[e.k]) + ' by ' + roundelSvg(e.a, 'wlr') + esc(PW[e.a].short) + (isSea(e.t) && coastOf(e.t) ? ' in sea zone ' + esc(TER[e.t][0]) : '') })]),
+        el('div', { class: 'wt' }, [el('b', { text: placeTitle(e.t) }), el('small', { html: esc(kinds[e.k]) + ' by ' + roundelSvg(e.a, 'wlr') + esc(PW[e.a].short) + (isSea(e.t) && coastOf(e.t) ? ' in the ' + esc(tname(e.t).replace(/^Sea zone/, 'sea zone')) : '') })]),
         el('span', { class: 'wo ' + oc[1], text: oc[0] })
       ])
     ].concat(lines));
@@ -5145,7 +5235,7 @@ function aaDetail(side) {
     var own = aaOwnStr();
     var rh = S.rh && JSON.stringify(S.rh).length < 2600 ? { r0: S.rh.r0, o0: S.rh.o0, d: S.rh.d.slice(), i: S.rh.i } : undefined;
     return { rh: rh,
-      mp: S.mode === 'skirm' ? 's' : 'f', sd: side, r: S.round, own: own,
+      mp: S.mode === 'skirm' ? 's' : S.mode === 'classic' ? 'c' : 'f', sd: side, r: S.round, own: own,
       ic: Object.keys(S.ic).filter(function (t) { return S.ic[t] && M.on[t]; }).join(','),
       pw: S.powers.map(function (p) {
         var st = S.stats[p] || {}, cnt = KINDS.map(function (k) { return S.units.filter(function (u) { return u.o === p && u.k === k; }).length; });
@@ -5159,7 +5249,7 @@ function gameOver(side, why) {
   S.B = null; S.phase = 'mob';
   if (QUIET) { S.overWhy = why; return; }   // (online: worked out inside a move; every device shows the end itself)
   hideBattle(); closeBanner();
-  var winners = aaRecord(side, why, S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition');
+  var winners = aaRecord(side, why, edName());
   clearSave();
   renderAll();
   var anyHuman = S.seats.some(function (s) { return !s.cpu; });
@@ -5278,6 +5368,14 @@ var RULES =
   '<h3>Capitals and canals</h3><ul><li>Take an enemy capital and you seize all of its IPCs. Free a friend’s territory and it goes back to them (if their capital is free).</li><li>Ships can only use the Suez Canal if your side holds Egypt and Trans-Jordan, and the Panama Canal if your side holds Central America.</li><li>Gray striped places (Turkey, Sweden, Spain…) are neutral and can’t be entered or flown over.</li></ul>' +
   '<h3>Winning</h3><ul><li><b>Standard:</b> at the end of a round the Axis need <b>9</b> of the 13 victory cities, or the Allies need <b>10</b>.</li><li><b>Quick:</b> 8 for the Axis, 9 for the Allies. <b>Total:</b> all 13. <b>Capitals:</b> the Allies win by holding Berlin and Tokyo; the Axis win by holding two of London, Moscow and Washington.</li><li>With a round limit, the side with more victory cities when time runs out wins (ties go to the bigger total income).</li></ul>' +
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
+  '<h3>Classic (1984)</h3><p>The original Milton Bradley game, on its own map with its own starting armies (spring 1942, five powers, the same turn order). Pick it under <b>Game</b>. What changes:</p><ul>' +
+  '<li><b>Units:</b> no artillery, destroyers or cruisers. Tanks cost 5 and defend on 2; fighters 12; bombers 15; submarines 8 and defend on 2; transports 8 and defend on 1; carriers 18 and defend on 3; battleships 24.</li>' +
+  '<li><b>Battleships</b> sink with one hit. <b>Transports</b> carry 2 infantry, or 1 tank or AA gun, and fight like any other ship (they defend on 1).</li>' +
+  '<li><b>Submarines</b> attacking fire first and their targets don’t shoot back; they can’t dive away. Planes can always hit submarines.</li>' +
+  '<li><b>Factories</b> build as many units as you can pay for. A <b>bombing raid</b> costs the factory’s owner a die of IPCs per bomber, straight from the bank.</li>' +
+  '<li><b>Weapons development</b> is part of every turn: choose the weapon you want, buy research dice for 5 IPCs each, and any 6 wins it. The dice are spent either way. The six weapons: jet fighters (defend on 5), rockets (AA guns hit a factory’s owner for a die of IPCs), super submarines (attack on 3), long-range aircraft (fighters fly 6, bombers 8), industrial technology (every unit costs 1 less) and heavy bombers (three dice each).</li>' +
+  '<li><b>Winning:</b> the Axis win at the end of a round holding two Allied capitals and their own, or with 84 IPCs of income between them. The Allies win holding Berlin and Tokyo.</li>' +
+  '<li>Neutral countries can’t be entered. The map and setup come from the TripleA project’s World War II Classic.</li></ul>' +
   '<h3>Weapons research (optional)</h3><p>Turn it on in setup. It’s the research rule from the Anniversary Edition, played as the first part of step 1, before you shop.</p><ul><li>Buy <b>research dice</b> for 5 IPCs each. Every turn you roll all of them. Dice that don’t roll a 6 are kept for your next turn, so they add up.</li><li>Any <b>6</b> is a breakthrough (one a turn) and spends your dice. Pick one of the two charts and roll a die on it: that weapon is yours for the rest of the game, starting now. Roll one you already have and the die goes again.</li></ul>' + techTable() + '<h3>Left out</h3><p>Optional rules aren’t included, apart from weapons research: no national objectives and no starting bid. Units can’t ride on an ally’s transport. AA hits on planes are taken from the cheapest planes first.</p>' +
   '<h3>Music</h3><p>Marches played by US military bands, public domain recordings from the Internet Archive: ' + MUSIC_TRACKS.map(function (t) { return '<i>' + t.t + '</i> (' + t.by + ', ' + t.band + ')'; }).join(', ') + '. Switch them off with <b>Marching bands</b> in the menu, or play your own Spotify from <b>Music</b>.</p>' +
   '<h3>Who plays what</h3><p>2 players: Axis against Allies. 3: Germany + Japan; Soviet Union + United States; United Kingdom. 4: Germany; Soviet Union + United States; Japan; United Kingdom. 5: one power each. Any seat can be a computer general. Tap the countries under a seat to give that seat different ones (with computer teammates, play whichever country you like).</p>' +
@@ -5368,7 +5466,7 @@ var RULESETS = {
 };
 function customRules(m, o) { return o.rules === 'custom'; }
 function applyRules(v, o) { var r = RULESETS[v]; if (r) for (var k in r) o[k] = r[k]; }
-function withRules(o) { var x = {}; for (var k in o) x[k] = o[k]; if (RULESETS[o.rules]) applyRules(o.rules, x); return x; }
+function withRules(o) { var x = {}; for (var k in o) x[k] = o[k]; if (o.map === 'classic') x.tech = 'on'; else if (RULESETS[o.rules]) applyRules(o.rules, x); return x; }
 // a setup saved before presets: the preset its rules match, or Custom
 function rulesOf(o) {
   for (var id in RULESETS) { var r = RULESETS[id], ok = true; for (var k in r) if (String(o[k] == null ? r[k] : o[k]) !== r[k]) ok = false; if (ok) return id; }
@@ -5387,20 +5485,21 @@ function showSetup() {
     options: [
       { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', choices: [
         ['full', '1942 Second Edition', 'The whole world: 5 powers, the real starting armies. A long game (a few hours).'],
-        ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.']] },
-      { id: 'rules', label: 'Rules', value: 'orig', help: 'A ready-made set of the rules below. Custom lets you set each one yourself.', onPick: applyRules, choices: [
+        ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.'],
+        ['classic', 'Classic (1984)', 'The original Milton Bradley game: its own map, starting armies and rules. No artillery, destroyers or cruisers; one-hit battleships; weapons development; the Axis win with two Allied capitals or 84 IPCs of income.']] },
+      { id: 'rules', label: 'Rules', value: 'orig', when: function (m, o) { return o.map !== 'classic'; }, help: 'A ready-made set of the rules below. Custom lets you set each one yourself.', onPick: applyRules, choices: [
         ['orig', 'As printed', 'The 1942 Second Edition rules exactly as printed: Axis hold 9 victory cities or the Allies 10, no round limit, the official turn order, no research.'],
         ['quick', 'Quick game', 'A shorter war: Axis need 8 victory cities and the Allies 9, and it ends after 10 rounds.'],
         ['research', 'Weapons research', 'The printed rules plus the Anniversary Edition’s weapons research.'],
         ['custom', 'Custom', 'Choose the victory goal, round limit, turn order and research yourself.']] },
-      { id: 'vc', label: 'Victory', value: 'std', when: customRules, help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
+      { id: 'vc', label: 'Victory', value: 'std', when: function (m, o) { return o.map !== 'classic' && o.rules === 'custom'; }, help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
         ['std', 'Standard', 'Axis hold 9 of the 13 victory cities, or the Allies hold 10.'],
         ['quick', 'Quick', 'Axis need 8, Allies need 9. A shorter game.'],
         ['total', 'Total', 'Hold all 13 victory cities.'],
         ['caps', 'Capitals', 'Allies take Berlin and Tokyo; Axis take two of London, Moscow and Washington.']] },
-      { id: 'limit', label: 'Round limit', value: '0', when: customRules, help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
-      { id: 'order', label: 'Turn order', value: 'su', when: customRules, help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
-      { id: 'tech', label: 'Research', value: 'off', when: customRules, help: 'Weapons development, an optional rule.', choices: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']] },
+      { id: 'limit', label: 'Round limit', value: '0', when: function (m, o) { return o.map === 'classic' || o.rules === 'custom'; }, help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
+      { id: 'order', label: 'Turn order', value: 'su', when: function (m, o) { return o.map === 'classic' || o.rules === 'custom'; }, help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
+      { id: 'tech', label: 'Research', value: 'off', when: function (m, o) { return o.map !== 'classic' && o.rules === 'custom'; }, help: 'Weapons development, an optional rule.', choices: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']] },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
@@ -5515,7 +5614,7 @@ function later(ms, fn) { var n = netN; netTimers.push(setTimeout(function () { i
 function netOptsNow() {
   var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}') || {}; } catch (e) {}
   var o = withRules(g.options || {});
-  NETOPTS = { map: o.map === 'skirm' ? 'skirm' : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
+  NETOPTS = { map: o.map === 'skirm' || o.map === 'classic' ? o.map : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
   return NETOPTS;
 }
 function tableOpts() {
@@ -5525,7 +5624,7 @@ function tableOpts() {
 function netSeats(n) { var o = tableOpts(), cap = o.map === 'skirm' ? 3 : 5; return Math.max(n, Math.min(cap, +o.gen || 2)); }
 function netStart(players, opts, last) {
   return calc(null, function () {
-    var map = opts.map === 'skirm' ? 'skirm' : 'full', n = players.length, nG = Math.min(map === 'skirm' ? 3 : 5, n);
+    var map = opts.map === 'skirm' || opts.map === 'classic' ? opts.map : 'full', n = players.length, nG = Math.min(map === 'skirm' ? 3 : 5, n);
     var groups = splitFor(map, nG, 'mix');
     // a rematch at the same table hands the powers round, so the generals swap sides
     var rot = last ? ((last.rot || 0) + 1) % nG : 0;
@@ -5899,7 +5998,7 @@ function netEnd() {
   if (!NET || !S || !S.over) return;
   hideBattle(); closeBanner();
   var side = S.over, why = S.overWhy || '', key = NET.code + ':' + S.started;
-  if (!netRecorded(key)) aaRecord(side, why, 'Online', ['Online game at table ' + NET.code + ', ' + (S.mode === 'skirm' ? 'Skirmish' : '1942 Second Edition')]);
+  if (!netRecorded(key)) aaRecord(side, why, 'Online', ['Online game at table ' + NET.code + ', ' + edName()]);
   var me = S.seats[NET.seat], mySide = me && me.powers.length ? sideOf(me.powers[0]) : '';
   var res = NET.result, left = !!(res && res.left != null);
   if (netWinUI) netWinUI.close();

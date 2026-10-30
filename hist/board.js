@@ -1034,8 +1034,23 @@
   var AA = { s: { p: 'su', n: 'Soviet Union', sh: 'USSR', c: '#9c3b32' }, d: { p: 'de', n: 'Germany', sh: 'Germany', c: '#5a5f5c' }, k: { p: 'uk', n: 'United Kingdom', sh: 'UK', c: '#b98e52' }, j: { p: 'jp', n: 'Japan', sh: 'Japan', c: '#e0a43a' }, u: { p: 'us', n: 'United States', sh: 'USA', c: '#5d7a3a' } };
   var AA_BY = {}; Object.keys(AA).forEach(function (k) { AA_BY[AA[k].p] = AA[k]; });
   var AA_KINDS = [['infantry', 'infantry'], ['artillery', 'artillery'], ['tank', 'tanks'], ['AA gun', 'AA guns'], ['fighter', 'fighters'], ['bomber', 'bombers'], ['sub', 'subs'], ['transport', 'transports'], ['destroyer', 'destroyers'], ['cruiser', 'cruisers'], ['carrier', 'carriers'], ['battleship', 'battleships']];
-  var aaMap = null;
-  function aaLoad() {
+  var aaMap = null, aaClassic = null;
+  // Classic (1984) games: their own board, in games/axisallies-classic.js
+  function aaLoadClassic() {
+    if (aaClassic) return aaClassic;
+    var src = '', sc = document.querySelector('script[src*="hist-view"]');
+    try { src = sc ? new URL('games/axisallies-classic.js', sc.src.replace(/hist-view\.js.*$/, '')).href : (/\/games\//.test(location.pathname) ? 'axisallies-classic.js' : 'games/axisallies-classic.js'); } catch (err) { src = 'axisallies-classic.js'; }
+    aaClassic = fetch(src).then(function (r) { return r.text(); }).then(function (t) {
+      function grab(name) { var m = new RegExp('\\n' + name + ':(\\[.*?\\]),?\\n').exec(t); return m ? JSON.parse(m[1]) : null; }
+      var TER = grab('TER'), GEO = grab('GEO');
+      if (!TER || !GEO) throw new Error('no map');
+      return { TER: TER, GEO: GEO };
+    });
+    aaClassic.catch(function () { aaClassic = null; });
+    return aaClassic;
+  }
+  function aaLoad(classic) {
+    if (classic) return aaLoadClassic();
     if (aaMap) return aaMap;
     var src = '', sc = document.querySelector('script[src*="hist-view"]');
     try { src = sc ? new URL('games/axisallies.html', sc.src.replace(/hist-view\.js.*$/, '')).href : (/\/games\//.test(location.pathname) ? 'axisallies.html' : 'games/axisallies.html'); } catch (err) { src = 'axisallies.html'; }
@@ -1082,7 +1097,7 @@
     var letterOf = function (p) { return Object.keys(AA).filter(function (k) { return AA[k].p === p; })[0]; };
     var SIDE = { de: 'Axis', jp: 'Axis', su: 'Allies', uk: 'Allies', us: 'Allies' };
     var vc = { Axis: 0, Allies: 0 }; pw.forEach(function (x) { vc[SIDE[x.p]] = (vc[SIDE[x.p]] || 0) + (x.v || 0); });
-    out.push(ui.stats([['Rounds', d.r || null, d.mp === 's' ? 'Skirmish' : '1942 map'], ['Victory cities', vc.Axis + '–' + vc.Allies, 'Axis–Allies at the end'],
+    out.push(ui.stats([['Rounds', d.r || null, d.mp === 's' ? 'Skirmish' : d.mp === 'c' ? 'Classic map' : '1942 map'], [d.mp === 'c' ? 'Capitals' : 'Victory cities', vc.Axis + '–' + vc.Allies, 'Axis–Allies at the end'],
       ['Capitals lost', pw.filter(function (x) { return !x.cap; }).length || 0, pw.filter(function (x) { return !x.cap; }).map(function (x) { return (AA_BY[x.p] || {}).sh; }).join(', ') || 'none fell']]));
     var mapBox = ui.picture('<div class="ld">Loading the map…</div>', { frame: 'wood', max: 380 });
     mapBox.classList.add('hvb-map');
@@ -1100,7 +1115,7 @@
     var mapM = null, curF = frames.length - 1;
     function draw() { if (!mapM) return; var f = frames[curF]; mapBox.innerHTML = aaSvg(mapM, d, f ? f.o : own, f ? f.fl : null); }
     out.push(ui.section(frames.length > 1 ? 'The map' : 'The map at the end (round ' + (d.r || '?') + ')', mapBox));
-    try { aaLoad().then(function (m) { mapM = m; draw(); }).catch(function () { mapBox.remove(); }); } catch (err) { mapBox.remove(); }
+    try { aaLoad(d.mp === 'c').then(function (m) { mapM = m; draw(); }).catch(function () { mapBox.remove(); }); } catch (err) { mapBox.remove(); }
     var chart = null;
     if (frames.length > 1) {
       // income at the start of each round, and at the end
