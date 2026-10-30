@@ -315,6 +315,34 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-banner .bn-facts .bad{color:#c8102e;font-weight:900;}
 .aa-banner .step1{display:inline-flex;align-items:center;gap:6px;margin:0 auto 12px;padding:5px 11px;border-radius:999px;background:rgba(0,0,0,.07);color:#3a3326;font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;}
 /* Collect income: the last step of a turn, on its own card */
+/* Since your last turn: the attacks on you */
+.aa-banner .card.wide{width:min(440px,100%);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;}
+.aa-banner .card.wide > .rnd{width:56px;height:56px;margin-bottom:6px;}
+.war{text-align:left;margin:4px 0 12px;display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
+.war-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 2px 6px;}
+.war-h > span:first-child{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#6b604c;}
+.war-n{font-size:.78rem;font-weight:800;color:#6b604c;}
+.war-n b{color:#2a2a3a;} .war-n b.bad{color:#c8102e;} .war-n b.good{color:#3f7a2a;}
+.war-list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:44vh;overscroll-behavior:contain;padding:1px;}
+.wr{border-radius:12px;background:rgba(0,0,0,.05);padding:7px 9px 8px;border-left:4px solid var(--ac);animation:rise .4s var(--ease) both;}
+.wh{display:flex;align-items:center;gap:8px;}
+.wt{flex:1;min-width:0;line-height:1.15;}
+.wt b{display:block;font-size:.9rem;color:#2a2a3a;}
+.aa-banner .wt small{margin:0;font-size:.72rem;}
+.aa-banner .rnd.wlr{width:18px;height:18px;flex:none;margin:0;filter:none;animation:none;}
+.aa-banner .rnd.wlr.big{width:28px;height:28px;}
+.wo{flex:none;font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;padding:3px 7px;border-radius:7px;white-space:nowrap;}
+.wo.bad{background:#c8102e;color:#fff;} .wo.good{background:#3f7a2a;color:#fff;} .wo.mid{background:#b98e1c;color:#fff;}
+.wl{display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;margin:5px 0 0 36px;}
+.aa-banner .wl small{margin:0;font-size:.72rem;color:#4a4232;}
+.wl.none small{color:#8a7f6a;}
+.wl .vsg{display:flex;flex-wrap:wrap;gap:3px;}
+.wl .vc{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 4px 0 2px;border-radius:5px;background:var(--pc);color:var(--pci);font-size:.7rem;font-weight:900;}
+.wl .vc svg{width:21px;height:14px;}
+.aa-banner .war-quiet{font-size:.8rem;font-weight:700;color:#6b604c;margin:0 0 12px;}
+.aa-banner .card.wide > *{flex-shrink:0;}
+.aa-banner .card.wide > .war{flex-shrink:1;}
+@media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;} .war-list{max-height:none;}}
 .aa-banner .card.inc{max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px 16px 14px;text-align:left;}
 .card.inc .ih{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
 .card.inc .ih .rnd{width:40px;height:40px;margin:0;}
@@ -1244,6 +1272,7 @@ function capture(t, p) {
   S.units.forEach(function (u) { if (u.t === t && u.k === 'aa' && foe(u.o, p)) { u.o = p; u.m = U.aa.m; } });   // (AA guns are captured, not destroyed)
   if (!QUIET && !HEADLESS) fxCaptureSoon(t, to);
   if (S.capt.indexOf(t) < 0) S.capt.push(t);
+  if (!S.B && prev && foe(prev, p)) warLog({ a: p, d: [prev], t: t, k: 'cap', res: 'att', cap: 1, la: {}, ld: {} });
   stat(p, 'caps');
   var city = TER[t][7];
   // Capital captured: the captor takes the loser's treasury
@@ -1963,8 +1992,15 @@ function doRetreat(B, to) {
   stat(B.att, 'retreats');
   finishBattle(B);
 }
+// Every attack is written down (S.war), so each player's turn can open with what was done to them since their last
+// one: {n, r, a: attacker, d: [defending powers], t, k: land|sea|sbr|rkt|cap, res, cap, dmg, dv, la/ld: what each side lost}
+function warLog(e) {
+  S.war = S.war || []; S.wn = (S.wn || 0) + 1;
+  e.n = S.wn; e.r = S.round;
+  S.war.push(e); if (S.war.length > 80) S.war.shift();
+}
 function finishBattle(B) {
-  var p = B.att;
+  var p = B.att, owner0 = S.own[B.t];
   // the result first (submarines that dived are out of it), then the divers surface again where they were
   var out = B.res || battleOutcome(B) || 'stuck';
   var divedA = 0, divedD = 0;
@@ -2005,6 +2041,12 @@ function finishBattle(B) {
   S.biggest = Math.max(S.biggest || 0, big);
   B.step = 'end';
   logLine('Battle at ' + tname(B.t) + ': ' + B.msg);
+  var dp = {}; Object.keys((B.start && B.start.d) || {}).forEach(function (k) { dp[k.split(':')[0]] = 1; });
+  if (B.def) dp[B.def] = 1;
+  if (owner0 && foe(owner0, p) && (B.k === 'land' || B.k === 'sbr')) dp[owner0] = 1;
+  warLog({ a: p, d: Object.keys(dp), t: B.t, k: B.k, res: out, cap: B.k === 'land' && out === 'att' && S.own[B.t] !== owner0 ? 1 : 0,
+    dmg: B.k === 'sbr' ? B.vols.reduce(function (a, v) { return a + (v.kind === 'sbr' ? v.sbrDmg || 0 : 0); }, 0) : 0, dv: B.dived || 0,
+    la: (B.lost && B.lost.a) || {}, ld: (B.lost && B.lost.d) || {} });
 }
 function closeBattle() {
   var B = S.B; if (!B) return;
@@ -3639,6 +3681,7 @@ function fireRockets() {
     if (r.dmg) S.dmg[r.t] = (S.dmg[r.t] || 0) + r.dmg;
     stat(p, 'bombed', r.dmg);
     logLine(pname(p) + ' rocket hits ' + tname(r.t) + ': ' + r.dmg + ' damage');
+    warLog({ a: p, d: [S.own[r.t]], t: r.t, k: 'rkt', res: 'att', dmg: r.dmg, la: {}, ld: {} });
     if (!QUIET && !HEADLESS) fxArrow(r.g, r.t, '#ff8a3d');
   });
 }
@@ -4880,13 +4923,65 @@ function beginTurnUI(first) {
       return a;
     }, [])),
     el('div', { class: 'bn-facts' }, [el('span', { text: 'Round ' + S.round }), el('span', { html: '<b>' + S.ipc[p] + '</b> IPCs to spend' })].concat(holdsCapital(p) || capitalOf(p) == null ? [] : [el('span', { class: 'bad', text: 'Capital lost' })])),
-    el('div', null, [el('span', { class: 'step1', text: 'Step 1: ' + PH_TITLE.buy })]),
-    el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start turn', onclick: function () { Kit.sfx('pop'); closeBanner(); } })
+    warReport(p, you),
+    el('div', null, [el('span', { class: 'step1', text: 'Step 1: ' + (researching() ? 'Research' : PH_TITLE.buy) })]),
+    el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start turn', onclick: function () { Kit.sfx('pop'); warSeen(p); closeBanner(); } })
   ]);
+  if (card.querySelector('.war')) card.classList.add('wide');
   bannerEl = el('div', { class: 'aa-banner' }, [card]);
   document.body.appendChild(bannerEl);
   requestAnimationFrame(function () { bannerEl && bannerEl.classList.add('show'); });
   Kit.sfx('deal');
+}
+
+// What the enemy did to this player's powers since their last turn: every battle, raid, rocket and walk-in, with what
+// each side lost. Seen once the turn starts.
+function warSince(p) {
+  var si = S.ctl[p], since = (S.seen && S.seen[si]) || 0;
+  return (S.war || []).filter(function (e) { return e.n > since && S.ctl[e.a] !== si && e.d.some(function (q) { return S.ctl[q] === si; }); });
+}
+function warSeen(p) { S.seen = S.seen || {}; S.seen[S.ctl[p]] = S.wn || 0; save(); }
+function warOutcome(e) {
+  if (e.k === 'cap') return ['Taken', 'bad'];
+  if (e.k === 'rkt') return [e.dmg + ' damage', e.dmg ? 'bad' : 'good'];
+  if (e.k === 'sbr') return e.res === 'def' ? ['Shot down', 'good'] : [e.dmg + ' damage', e.dmg ? 'bad' : 'good'];
+  if (e.res === 'retreat') return ['Driven off', 'good'];
+  if (e.res === 'def') return ['Held', 'good'];
+  if (e.res === 'both') return ['Both wiped out', 'mid'];
+  if (e.res === 'stuck') return ['Stand-off', 'mid'];
+  if (e.dv) return ['Dived away', 'mid'];
+  if (e.cap) return ['Taken', 'bad'];
+  return [e.k === 'sea' ? 'Sunk' : 'Wiped out', 'bad'];
+}
+function lostChips(m) {
+  return Object.keys(m).map(function (k) { var q = k.split(':'); return { o: q[0], k: q[1], n: m[k] }; }).sort(function (a, b) { return U[a.k].o - U[b.k].o; });
+}
+function warReport(p, you) {
+  var list = warSince(p);
+  if (!list.length) return S.round > 1 ? el('p', { class: 'war-quiet', text: 'No attacks on you since your last turn.' }) : null;
+  var si = S.ctl[p], kinds = { land: 'Land battle', sea: 'Sea battle', sbr: 'Bombing raid', rkt: 'Rocket strike', cap: 'Marched in unopposed' };
+  var rows = list.map(function (e, i) {
+    var oc = warOutcome(e), la = lostChips(e.la), ld = lostChips(e.ld);
+    var mineLost = ld.filter(function (g) { return S.ctl[g.o] === si; }), friendsLost = ld.filter(function (g) { return S.ctl[g.o] !== si; });
+    function line(label, pw, chips) { return el('div', { class: 'wl' }, [el('span', { html: roundelSvg(pw, 'wlr') }).firstChild, el('small', { text: label }), vsChips(chips)]); }
+    var lines = [];
+    if (la.length) lines.push(line(PW[e.a].short + ' lost', e.a, la));
+    if (mineLost.length) lines.push(line('You lost', mineLost[0].o, mineLost));
+    if (friendsLost.length) lines.push(line(PW[friendsLost[0].o].short + ' lost', friendsLost[0].o, friendsLost));
+    if (!lines.length && (e.k === 'land' || e.k === 'sea')) lines.push(el('div', { class: 'wl none' }, [el('small', { text: 'No losses on either side' })]));
+    return el('div', { class: 'wr', style: { '--ac': PW[e.a].col, animationDelay: Math.min(i * 60, 600) + 'ms' } }, [
+      el('div', { class: 'wh' }, [
+        el('span', { html: roundelSvg(e.a, 'wlr big') }).firstChild,
+        el('div', { class: 'wt' }, [el('b', { text: tname(e.t) }), el('small', { text: kinds[e.k] + ' by ' + PW[e.a].short })]),
+        el('span', { class: 'wo ' + oc[1], text: oc[0] })
+      ])
+    ].concat(lines));
+  });
+  var held = list.filter(function (e) { return warOutcome(e)[1] === 'good'; }).length, took = list.filter(function (e) { return e.cap; }).length;
+  return el('div', { class: 'war' }, [
+    el('div', { class: 'war-h' }, [el('span', { text: 'Since your last turn' }), el('span', { class: 'war-n', html: '<b>' + list.length + '</b> ' + (list.length === 1 ? 'attack' : 'attacks') + (took ? ', <b class="bad">' + took + '</b> taken' : '') + (held ? ', <b class="good">' + held + '</b> held' : '') })]),
+    el('div', { class: 'war-list' }, rows)
+  ]);
 }
 
 // ── Game over ──────────────────────────────────────────────────────────────
@@ -5705,7 +5800,7 @@ TurnNet.setup({
   }
 });
 // test hook
-window.__aa = { uval: uval, factoryCap: factoryCap, rocketPlan: rocketPlan, fireRockets: fireRockets, setPhase: setPhase, battleOdds: battleOdds, endMobState: endMobState, buyCost: buyCost, reach: reach, get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot, exactOdds: exactOdds, simOddsMC: simOddsMC,
+window.__aa = { beginTurnUI: beginTurnUI, uval: uval, factoryCap: factoryCap, rocketPlan: rocketPlan, fireRockets: fireRockets, setPhase: setPhase, battleOdds: battleOdds, endMobState: endMobState, buyCost: buyCost, reach: reach, get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot, exactOdds: exactOdds, simOddsMC: simOddsMC,
   get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
