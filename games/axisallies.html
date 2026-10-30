@@ -326,6 +326,25 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .war-list{display:flex;flex-direction:column;gap:6px;overflow:auto;max-height:44vh;overscroll-behavior:contain;padding:1px;}
 .wr{border-radius:12px;background:rgba(0,0,0,.05);padding:7px 9px 8px;border-left:4px solid var(--ac);animation:rise .4s var(--ease) both;}
 .wh{display:flex;align-items:center;gap:8px;}
+.wr{cursor:pointer;transition:box-shadow .2s;}
+.wr.on{box-shadow:inset 0 0 0 2px var(--ac);}
+.wpin{flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:.74rem;font-weight:900;color:#fff;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.35);}
+.wpin.bad{background:#c8102e;} .wpin.good{background:#3f7a2a;} .wpin.mid{background:#b98e1c;}
+.aa-banner .wt small .rnd.wlr{display:inline-block;width:13px;height:13px;vertical-align:-2px;margin:0 3px 0 1px;}
+.wm{flex:none;border-radius:12px;overflow:hidden;margin:0 0 8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.2),0 2px 6px rgba(0,0,0,.18);background:#2d6790;aspect-ratio:2.35;}
+.wm svg{display:block;width:100%;height:100%;}
+.wm-bg{fill:#2d6790;}
+.wm-sea path{fill:#2d6790;stroke:rgba(255,255,255,.12);stroke-width:1;vector-effect:non-scaling-stroke;}
+.wm-land path{stroke:#1d1a14;stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+.wm-ring{fill:none;stroke-width:2.6;stroke-linejoin:round;vector-effect:non-scaling-stroke;stroke-dasharray:5 3;}
+.wm-ring.bad{stroke:#ff4a4a;fill:rgba(255,40,40,.18);} .wm-ring.good{stroke:#8fe36a;} .wm-ring.mid{stroke:#ffd34d;}
+.wm-pin{cursor:pointer;}
+.wm-pin circle{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke;}
+.wm-pin.bad circle{fill:#c8102e;} .wm-pin.good circle{fill:#3f7a2a;} .wm-pin.mid circle{fill:#b98e1c;}
+.wm-pin .wm-glow{fill:rgba(255,255,255,.0) !important;stroke:none;}
+.wm-pin.on .wm-glow{fill:rgba(255,255,255,.45) !important;animation:wmPulse 1.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+@keyframes wmPulse{50%{transform:scale(1.35);opacity:.4;}}
+.wm-pin text{fill:#fff;font-weight:900;text-anchor:middle;font-family:system-ui,sans-serif;pointer-events:none;}
 .wt{flex:1;min-width:0;line-height:1.15;}
 .wt b{display:block;font-size:.9rem;color:#2a2a3a;}
 .aa-banner .wt small{margin:0;font-size:.72rem;}
@@ -342,7 +361,12 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-banner .war-quiet{font-size:.8rem;font-weight:700;color:#6b604c;margin:0 0 12px;}
 .aa-banner .card.wide > *{flex-shrink:0;}
 .aa-banner .card.wide > .war{flex-shrink:1;}
-@media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;} .war-list{max-height:none;}}
+@media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;}
+  .aa-banner .card.wide:has(.wm){width:min(720px,100%);}
+  .war:has(.wm){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:10px;}
+  .war:has(.wm) .war-h{grid-column:1 / 3;}
+  .war .wm{margin:0;aspect-ratio:auto;height:100%;min-height:0;}
+  .war-list{max-height:none;min-height:0;}}
 .aa-banner .card.inc{max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px 16px 14px;text-align:left;}
 .card.inc .ih{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
 .card.inc .ih .rnd{width:40px;height:40px;margin:0;}
@@ -4956,10 +4980,46 @@ function warOutcome(e) {
 function lostChips(m) {
   return Object.keys(m).map(function (k) { var q = k.split(':'); return { o: q[0], k: q[1], n: m[k] }; }).sort(function (a, b) { return U[a.k].o - U[b.k].o; });
 }
+// A sea zone by the coast it lies off (its biggest neighbour on land)
+function coastOf(z) { var l = seaAdjLand(z).filter(function (t) { return !imp(t); }).sort(function (a, b) { return ipcOf(b) - ipcOf(a); })[0]; return l != null ? TER[l][0] : null; }
+function placeTitle(t) { var c = isSea(t) && coastOf(t); return c ? 'Off ' + c : tname(t); }
+// The attacked places on a piece of the map: every place a numbered pin in the colour of how it went, the rows below
+// carrying the same numbers
+function warMap(places) {
+  var V0 = M.view, ar = 2.35;
+  var xs = places.map(function (pl) { return TER[pl.t][5]; }), ys = places.map(function (pl) { return TER[pl.t][6]; });
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  var w = Math.max(x1 - x0 + 160, 430), h = Math.max(y1 - y0 + 130, 180);
+  if (w / h > ar) h = w / ar; else w = h * ar;
+  if (w > V0[2]) { w = V0[2]; h = w / ar; }
+  var vx = Math.max(V0[0], Math.min(V0[0] + V0[2] - w, (x0 + x1) / 2 - w / 2));
+  var vy = h >= V0[3] ? V0[1] + (V0[3] - h) / 2 : Math.max(V0[1], Math.min(V0[1] + V0[3] - h, (y0 + y1) / 2 - h / 2));
+  var k = w / 420, sea = '', land = '', ring = '', pins = '';
+  for (var t = 0; t < NT; t++) {
+    if (!M.on[t] || !GEO[t]) continue;
+    if (isSea(t)) sea += '<path d="' + GEO[t] + '"/>';
+    else land += '<path d="' + GEO[t] + '" fill="' + (imp(t) ? 'url(#neutralHatch)' : landFill(t)) + '"/>';
+  }
+  places.forEach(function (pl, i) {
+    var x = TER[pl.t][5], y = TER[pl.t][6], r = 9 * k;
+    ring += '<path class="wm-ring ' + pl.tone + '" d="' + GEO[pl.t] + '"/>';
+    pins += '<g class="wm-pin ' + pl.tone + '" data-i="' + i + '" transform="translate(' + x + ' ' + y + ')"><circle r="' + r * 1.9 + '" class="wm-glow"/><circle r="' + r + '"/><text dy="' + r * 0.38 + '" font-size="' + r * 1.15 + '">' + (i + 1) + '</text></g>';
+  });
+  return el('div', { class: 'wm', html: '<svg viewBox="' + [vx, vy, w, h].map(function (n) { return Math.round(n); }).join(' ') + '" preserveAspectRatio="xMidYMid meet" aria-label="Where you were attacked">' +
+    '<rect x="' + vx + '" y="' + vy + '" width="' + w + '" height="' + h + '" class="wm-bg"/><g class="wm-sea">' + sea + '</g><g class="wm-land">' + land + '</g>' + ring + pins + '</svg>' });
+}
 function warReport(p, you) {
   var list = warSince(p);
   if (!list.length) return S.round > 1 ? el('p', { class: 'war-quiet', text: 'No attacks on you since your last turn.' }) : null;
   var si = S.ctl[p], kinds = { land: 'Land battle', sea: 'Sea battle', sbr: 'Bombing raid', rkt: 'Rocket strike', cap: 'Marched in unopposed' };
+  // each place once, numbered in the order it was first hit, coloured by the worst that happened there
+  var places = [], pidx = {}, rank = { good: 0, mid: 1, bad: 2 };
+  list.forEach(function (e) {
+    if (pidx[e.t] == null) { pidx[e.t] = places.length; places.push({ t: e.t, tone: 'good' }); }
+    var pl = places[pidx[e.t]], tone = warOutcome(e)[1];
+    if (rank[tone] > rank[pl.tone]) pl.tone = tone;
+  });
+  var map = warMap(places);
   var rows = list.map(function (e, i) {
     var oc = warOutcome(e), la = lostChips(e.la), ld = lostChips(e.ld);
     var mineLost = ld.filter(function (g) { return S.ctl[g.o] === si; }), friendsLost = ld.filter(function (g) { return S.ctl[g.o] !== si; });
@@ -4969,19 +5029,33 @@ function warReport(p, you) {
     if (mineLost.length) lines.push(line('You lost', mineLost[0].o, mineLost));
     if (friendsLost.length) lines.push(line(PW[friendsLost[0].o].short + ' lost', friendsLost[0].o, friendsLost));
     if (!lines.length && (e.k === 'land' || e.k === 'sea')) lines.push(el('div', { class: 'wl none' }, [el('small', { text: 'No losses on either side' })]));
-    return el('div', { class: 'wr', style: { '--ac': PW[e.a].col, animationDelay: Math.min(i * 60, 600) + 'ms' } }, [
+    var pi = pidx[e.t], row = el('div', { class: 'wr', 'data-i': pi, style: { '--ac': PW[e.a].col, animationDelay: Math.min(i * 60, 600) + 'ms' } }, [
       el('div', { class: 'wh' }, [
-        el('span', { html: roundelSvg(e.a, 'wlr big') }).firstChild,
-        el('div', { class: 'wt' }, [el('b', { text: tname(e.t) }), el('small', { text: kinds[e.k] + ' by ' + PW[e.a].short })]),
+        el('span', { class: 'wpin ' + places[pi].tone, text: String(pi + 1) }),
+        el('div', { class: 'wt' }, [el('b', { text: placeTitle(e.t) }), el('small', { html: esc(kinds[e.k]) + ' by ' + roundelSvg(e.a, 'wlr') + esc(PW[e.a].short) + (isSea(e.t) && coastOf(e.t) ? ' in sea zone ' + esc(TER[e.t][0]) : '') })]),
         el('span', { class: 'wo ' + oc[1], text: oc[0] })
       ])
     ].concat(lines));
+    // a row lights its pin on the map
+    row.addEventListener('click', function () { light(pi); });
+    return row;
+  });
+  function light(i) {
+    Kit.sfx('tap');
+    box.querySelectorAll('.wm-pin, .wr').forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-i') === i); });
+  }
+  map.addEventListener('click', function (ev) {
+    var g = ev.target.closest && ev.target.closest('.wm-pin'); if (!g) return;
+    var i = +g.getAttribute('data-i'); light(i);
+    var r = box.querySelector('.wr[data-i="' + i + '"]'); if (r) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
   var held = list.filter(function (e) { return warOutcome(e)[1] === 'good'; }).length, took = list.filter(function (e) { return e.cap; }).length;
-  return el('div', { class: 'war' }, [
+  var box = el('div', { class: 'war' }, [
     el('div', { class: 'war-h' }, [el('span', { text: 'Since your last turn' }), el('span', { class: 'war-n', html: '<b>' + list.length + '</b> ' + (list.length === 1 ? 'attack' : 'attacks') + (took ? ', <b class="bad">' + took + '</b> taken' : '') + (held ? ', <b class="good">' + held + '</b> held' : '') })]),
+    map,
     el('div', { class: 'war-list' }, rows)
   ]);
+  return box;
 }
 
 // ── Game over ──────────────────────────────────────────────────────────────
