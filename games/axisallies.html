@@ -139,6 +139,13 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-foot .btn{flex:1;min-height:50px;}
 .aa-foot .btn.sm{flex:0 0 auto;}
 .aa-p{font-size:.86rem;color:var(--text-2);font-weight:600;margin:2px 0 8px;}
+.aa-note{display:flex;gap:8px;align-items:flex-start;margin:8px 0 4px;padding:9px 11px;border-radius:12px;background:color-mix(in srgb,var(--accent) 14%,transparent);font-size:.84rem;font-weight:600;color:var(--text);line-height:1.35;}
+.aa-note svg{flex:none;width:18px;height:18px;margin-top:1px;color:var(--accent);}
+.urow.sback{cursor:default;}
+.urow.sback .btn{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.urow.sback .btn svg{width:15px;height:15px;}
+.urows:has(.sback){container-type:inline-size;}
+@container (max-width:330px){.urow.sback .btn span{display:none;}.urow.sback .btn{padding-inline:10px;}}
 .aa-p b{color:var(--text);}
 .aa-sec{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin:10px 0 5px;}
 
@@ -158,8 +165,8 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .urow .uic{width:42px;height:30px;flex:none;border-radius:8px;display:grid;place-items:center;}
 .urow .uic svg{width:36px;height:24px;}
 .urow .un{flex:1;min-width:0;line-height:1.15;}
-.urow .un b{display:block;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.urow .un small{display:block;font-size:.7rem;color:var(--text-3);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.urow .un b{display:block;font-size:.9rem;text-wrap:balance;}
+.urow .un small{display:block;font-size:.7rem;color:var(--text-3);font-weight:700;text-wrap:balance;}
 .urow .cnt{font-weight:900;font-size:1rem;min-width:2.2ch;text-align:center;font-variant-numeric:tabular-nums;}
 .step{display:flex;align-items:center;gap:4px;flex:none;}
 .step button{width:38px;height:38px;border-radius:10px;border:0;background:var(--w1);color:var(--text);font-size:1.25rem;font-weight:900;line-height:1;}
@@ -880,6 +887,76 @@ function doMove(ids, dest, opt) {
     }
   });
   return moved.length > 0;
+}
+
+// ── Taking one move back ─────────────────────────────────────────────────────
+// Each move you make in a movement phase is written down (S.ml); the board as the phase began is kept on the device
+// (PB, and aa_pb_dev so it lasts a reload). Sending units back replays the phase from that board with every move of
+// theirs left out: territories they took go back, a transport's troops go back with it, and if a later move needed
+// them where they were, it isn't allowed (and says which move).
+var PB = null;
+function pbKey() { return S.round + '|' + S.pi + '|' + S.phase; }
+function logMove(ids, dest, opt) {
+  var pre = JSON.stringify(S), fresh = !S.ml || S.mlk !== pbKey();
+  var trs = [];
+  ids.forEach(function (id) { var u = byId(id); if (u && u.on != null && trs.indexOf(u.on) < 0) trs.push(u.on); });
+  var ok = doMove(ids, dest, opt);
+  if (!ok) return false;
+  if (fresh) { PB = pre; S.mlk = pbKey(); S.ml = []; try { localStorage.setItem('aa_pb_dev', JSON.stringify({ k: S.mlk, s: pre })); } catch (e) {} }
+  // boarding: the transports they went onto
+  ids.forEach(function (id) { var u = byId(id); if (u && u.on != null && trs.indexOf(u.on) < 0) trs.push(u.on); });
+  S.ml.push({ ids: ids.slice(), dest: dest, sbr: !!(opt && opt.sbr), tr: trs });
+  return true;
+}
+function phaseBase() {
+  if (!S.ml || S.mlk !== pbKey()) return null;
+  if (!PB) { try { var x = JSON.parse(localStorage.getItem('aa_pb_dev') || 'null'); if (x && x.k === S.mlk) PB = x.s; } catch (e) {} }
+  return PB;
+}
+// the units here that you moved this phase, by where each started it: [{from, ids}]
+function movedHere(t) {
+  var base = phaseBase(); if (!base) return [];
+  var b = JSON.parse(base), start = {}, startOn = {}, logged = {}, p = cur();
+  b.units.forEach(function (u) { start[u.i] = u.t; startOn[u.i] = u.on != null; });
+  S.ml.forEach(function (e) { e.ids.forEach(function (id) { logged[id] = 1; }); });
+  var g = {};
+  S.units.forEach(function (u) {
+    if (u.o !== p || u.t !== t || !logged[u.i] || start[u.i] == null) return;
+    if (start[u.i] === t && startOn[u.i] === (u.on != null)) return;   // (back where it began)
+    var f = start[u.i]; (g[f] = g[f] || []).push(u.i);
+  });
+  return Object.keys(g).map(function (f) { return { from: +f, ids: g[f] }; });
+}
+function sendBack(ids) {
+  var base = phaseBase(); if (!base) { Kit.toast('Use Undo for this one'); return; }
+  var out = {}; ids.forEach(function (id) { out[id] = 1; });
+  // a transport takes back everyone who rode it this phase, and they take it back too
+  for (var grew = true; grew;) {
+    grew = false;
+    S.ml.forEach(function (e) {
+      var hit = e.ids.some(function (id) { return out[id]; }) || e.tr.some(function (id) { return out[id]; });
+      if (!hit) return;
+      e.ids.concat(e.tr).forEach(function (id) { if (!out[id]) { out[id] = 1; grew = true; } });
+    });
+  }
+  var keep = S.ml.filter(function (e) { return !e.ids.some(function (id) { return out[id]; }); });
+  var old = S, oldJson = JSON.stringify(S), bad = null;
+  S = JSON.parse(base); QUIET++;
+  try {
+    for (var i = 0; i < keep.length; i++) {
+      var e = keep[i];
+      if (!doMove(e.ids, e.dest, { sbr: e.sbr })) { bad = e; break; }
+    }
+  } finally { QUIET--; }
+  if (bad) {
+    S = old;
+    var u = byId(bad.ids[0]);
+    Kit.toast('Can’t send them back: ' + (u ? (bad.ids.length > 1 ? U[u.k].p : U[u.k].n).toLowerCase() : 'a later move') + ' into ' + tname(bad.dest) + ' needs them where they are');
+    return false;
+  }
+  S.ml = keep; S.mlk = old.mlk; S.v = old.v + 1;
+  undoStack.push(oldJson); if (undoStack.length > 40) undoStack.shift();
+  return true;
 }
 
 // ── Phases ─────────────────────────────────────────────────────────────────
@@ -2243,7 +2320,8 @@ function moveGroups(t) {
       if (!tr || (tr.ulT != null && unloadTargets(t, p, ph).indexOf(tr.ulT) < 0)) return;
       if (!unloadTargets(t, p, ph).length) return;
       if (u.amph != null) return;
-      key = 'c|' + u.k; sub = 'On a transport · tap a coast to land';
+      key = 'c|' + u.k + '|' + (tr.ulT == null ? '' : tr.ulT);
+      sub = tr.ulT == null ? 'On a transport · tap a coast to land' : 'Can only land in ' + tname(tr.ulT) + ' this turn';
     } else {
       var left = movesLeft(u, ph);
       if (!left) return;
@@ -2284,6 +2362,7 @@ function movePanel() {
   if (ui.preview) return previewCard(sh);
   if (ui.sel >= 0) {
     b.appendChild(tinfoCard(ui.sel));
+    sendBackRows(b, ui.sel);
     var gs = moveGroups(ui.sel);
     if (gs.length) {
       var rows = el('div', { class: 'urows' });
@@ -2305,6 +2384,10 @@ function movePanel() {
       b.appendChild(rows);
       var ids = pickedIds(), tg = currentTargets();
       if (ids.length && !Object.keys(tg).length) b.appendChild(el('p', { class: 'aa-p', style: { marginTop: '8px' }, text: ph === 'cm' ? 'These units have nowhere to attack from here. Land units and planes can only end a combat move where there’s an enemy.' : 'These units can’t move anywhere together. Try fewer, or one kind at a time.' }));
+      // troops on a transport that already put others ashore: one landing place per transport each turn
+      var landed = {};
+      ids.map(byId).forEach(function (u) { var tr = u && u.on != null && byId(u.on); if (tr && tr.ulT != null) landed[tr.ulT] = 1; });
+      Object.keys(landed).forEach(function (lt) { b.appendChild(el('p', { class: 'aa-note', html: Kit.icon('anchor') + '<span>This transport already landed troops in <b>' + esc(tname(+lt)) + '</b> this turn. A transport lands its troops in one place a turn, so the rest can only go ashore there.</span>' })); });
       var others = stackGroups(ui.sel).filter(function (g) { return g.o !== p; });
       if (others.length) { b.appendChild(el('div', { class: 'aa-sec', text: 'Also here' })); b.appendChild(unitList(ui.sel, function (g) { return g.o !== p; })); }
     } else {
@@ -2384,7 +2467,7 @@ function previewCard(sh) {
   primary(sh.foot, pv.sbr ? 'Send bombers' : 'Attack', function () {
     pushUndo();
     var from = us[0].t;
-    if (doMove(pv.ids, t, { sbr: pv.sbr })) { Kit.sfx('whoosh'); Kit.haptic('medium'); fxArrow(from, t, '#ff6b5a'); }
+    if (logMove(pv.ids, t, { sbr: pv.sbr })) { Kit.sfx('whoosh'); Kit.haptic('medium'); fxArrow(from, t, '#ff6b5a'); }
     ui.preview = null; ui.pick = {}; S.v++; save(); renderAll();
   });
 }
@@ -2459,6 +2542,30 @@ function mobPanel() {
   }, acted() || !kinds.length || !roomLeft);
 }
 
+// units moved here this phase, each lot with a button that sends it back where it started
+function sendBackRows(b, t) {
+  if (NET) return;   // (online, a turn's moves go to the table as they're made)
+  var lots = movedHere(t), p = cur();
+  if (!lots.length) return;
+  b.appendChild(el('div', { class: 'aa-sec', text: 'Moved here this turn' }));
+  var box = el('div', { class: 'urows' });
+  lots.forEach(function (lot) {
+    var us = lot.ids.map(byId).filter(Boolean), kinds = {};
+    us.forEach(function (u) { kinds[u.k] = (kinds[u.k] || 0) + 1; });
+    var what = Object.keys(kinds).sort(function (a, c) { return U[a].o - U[c].o; }).map(function (k) { return kinds[k] + ' ' + (kinds[k] > 1 ? U[k].p : U[k].n).toLowerCase(); }).join(', ');
+    var k0 = Object.keys(kinds).sort(function (a, c) { return U[c].o - U[a].o; })[0];
+    box.appendChild(el('div', { class: 'urow sback', style: { '--pc': PW[p].col } }, [
+      el('span', { class: 'uic', style: { background: PW[p].col, color: PW[p].ink }, html: unitSvg(k0) }),
+      el('span', { class: 'un' }, [el('b', { text: what.charAt(0).toUpperCase() + what.slice(1) }), el('small', { text: 'From ' + tname(lot.from) })]),
+      el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Send back</span>', onclick: function (e) {
+        e.stopPropagation();
+        if (sendBack(lot.ids)) { Kit.sfx('whoosh'); Kit.haptic('light'); fxArrow(t, lot.from, '#9aa3b2'); ui.pick = {}; ui.preview = null; save(); renderAll(); }
+      } })
+    ]));
+  });
+  b.appendChild(box);
+}
+
 // ── Taps on the map ────────────────────────────────────────────────────────
 function selectPlace(t) {
   ui.sel = t; ui.pick = {}; ui.preview = null;
@@ -2485,7 +2592,7 @@ function onTap(t) {
     if (S.phase === 'cm' && (hostile || (tg[t].unload))) { ui.preview = { dest: t, ids: ids, sbr: false }; Kit.sfx('pop'); renderAll(); return; }
     pushUndo();
     var from = ui.sel;
-    if (doMove(ids, t)) { Kit.sfx('whoosh'); Kit.haptic('light'); fxArrow(from, t, PW[p].col === '#5a5f5c' ? '#e6e6e6' : PW[p].col); }
+    if (logMove(ids, t)) { Kit.sfx('whoosh'); Kit.haptic('light'); fxArrow(from, t, PW[p].col === '#5a5f5c' ? '#e6e6e6' : PW[p].col); }
     ui.pick = {}; S.v++; save(); renderAll(); return;
   }
   if (S.phase === 'bat') {
@@ -4159,7 +4266,7 @@ TurnNet.setup({
   }
 });
 // test hook
-window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir,
+window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere,
   get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
