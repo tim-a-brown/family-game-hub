@@ -5360,9 +5360,24 @@ Object.defineProperty(KIT_OPTS, 'rules', { get: rulesHtml, enumerable: true });
 Kit.init(KIT_OPTS);
 
 // ── Setup screen ───────────────────────────────────────────────────────────
+// Rule presets: each sets the victory goal, round limit, turn order and research at once (Custom shows them all)
+var RULESETS = {
+  orig: { vc: 'std', limit: '0', order: 'su', tech: 'off' },
+  quick: { vc: 'quick', limit: '10', order: 'su', tech: 'off' },
+  research: { vc: 'std', limit: '0', order: 'su', tech: 'on' }
+};
+function customRules(m, o) { return o.rules === 'custom'; }
+function applyRules(v, o) { var r = RULESETS[v]; if (r) for (var k in r) o[k] = r[k]; }
+function withRules(o) { var x = {}; for (var k in o) x[k] = o[k]; if (RULESETS[o.rules]) applyRules(o.rules, x); return x; }
+// a setup saved before presets: the preset its rules match, or Custom
+function rulesOf(o) {
+  for (var id in RULESETS) { var r = RULESETS[id], ok = true; for (var k in r) if (String(o[k] == null ? r[k] : o[k]) !== r[k]) ok = false; if (ok) return id; }
+  return 'custom';
+}
 var setupObs = null;
 function showSetup() {
   Music.stop();
+  try { var gs = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || 'null'); if (gs && gs.options && !gs.options.rules) { gs.options.rules = rulesOf(gs.options); localStorage.setItem('gn_setup_' + KEY, JSON.stringify(gs)); } } catch (e) {}
   tok++; S = null; busy = 0; cpuRunning = false; hideBattle(); closeBanner();
   document.documentElement.classList.remove('aa-play');
   app.className = 'stage'; app.innerHTML = ''; R = {};
@@ -5373,15 +5388,20 @@ function showSetup() {
       { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', choices: [
         ['full', '1942 Second Edition', 'The whole world: 5 powers, the real starting armies. A long game (a few hours).'],
         ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.']] },
-      { id: 'vc', label: 'Victory', value: 'std', help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
+      { id: 'rules', label: 'Rules', value: 'orig', help: 'A ready-made set of the rules below. Custom lets you set each one yourself.', onPick: applyRules, choices: [
+        ['orig', 'Original', 'The 1942 Second Edition as printed: Axis hold 9 victory cities or the Allies 10, no round limit, the official turn order, no research.'],
+        ['quick', 'Quick game', 'A shorter war: Axis need 8 victory cities and the Allies 9, and it ends after 10 rounds.'],
+        ['research', 'Weapons research', 'The original rules plus the Anniversary Edition’s weapons research.'],
+        ['custom', 'Custom', 'Choose the victory goal, round limit, turn order and research yourself.']] },
+      { id: 'vc', label: 'Victory', value: 'std', when: customRules, help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
         ['std', 'Standard', 'Axis hold 9 of the 13 victory cities, or the Allies hold 10.'],
         ['quick', 'Quick', 'Axis need 8, Allies need 9. A shorter game.'],
         ['total', 'Total', 'Hold all 13 victory cities.'],
         ['caps', 'Capitals', 'Allies take Berlin and Tokyo; Axis take two of London, Moscow and Washington.']] },
-      { id: 'limit', label: 'Round limit', value: '0', help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
-      { id: 'order', label: 'Turn order', value: 'su', help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
+      { id: 'limit', label: 'Round limit', value: '0', when: customRules, help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
+      { id: 'order', label: 'Turn order', value: 'su', when: customRules, help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
+      { id: 'tech', label: 'Research', value: 'off', when: customRules, help: 'Weapons development, an optional rule.', choices: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']] },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
-      { id: 'tech', label: 'Research', value: 'off', help: 'Weapons development, an optional rule.', choices: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']] },
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
@@ -5389,7 +5409,7 @@ function showSetup() {
     start: 'Start the war',
     onStart: function (cfg) {
       if (setupObs) { setupObs.disconnect(); setupObs = null; }
-      var o = cfg.options, map = o.map || 'full';
+      var o = withRules(cfg.options), map = o.map || 'full';
       var n = map === 'skirm' ? Math.min(3, cfg.players.length) : cfg.players.length;
       var groups = seatGroups(map, n);
       var seats = groups.map(function (g, i) {
@@ -5494,7 +5514,7 @@ function later(ms, fn) { var n = netN; netTimers.push(setTimeout(function () { i
 // The host's choices, from this game's own setup screen (its number of players is how many generals there are)
 function netOptsNow() {
   var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}') || {}; } catch (e) {}
-  var o = g.options || {};
+  var o = withRules(g.options || {});
   NETOPTS = { map: o.map === 'skirm' ? 'skirm' : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
   return NETOPTS;
 }

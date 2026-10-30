@@ -1740,6 +1740,7 @@
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
   //            Or {id, value, render:(value, set)=>node, summary:(value)=>text}: the game draws its own picker.
+  //            onPick:(value, options) runs when a choice is tapped and may set other options too (a preset).
   //   intro:   (no longer shown: the setup screen shows just the game's name)
   //   start:   button label
   //   alt:     {label, icon, onClick(cfg)}  a smaller second start button to the right of the main one
@@ -1903,6 +1904,7 @@
     }
     // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
     // op.when(mode, options) and op.choices(count, mode, options) can depend on the other options' values
+    // op.onPick(value, options): a choice that sets other options too (a preset); it may change options in place
     function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode, state.options) : op.choices; }
     function renderOptions() {
       optsBox.innerHTML = '';
@@ -1916,7 +1918,7 @@
         choices.forEach(function (c) {
           seg.appendChild(el('button', {
             type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1],
-            onclick: function () { state.options[op.id] = c[0]; sfx('tap'); renderOptions(); }
+            onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); renderOptions(); }
           }));
         });
         var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
