@@ -3195,6 +3195,8 @@ function whyNot(ids, t) {
     else {
       var d = plainDist(u.t, t, x.dom === 'A' ? 'A' : x.dom);
       if (d > left) r = d >= 99 ? nm + ' can’t get to ' + name + ' from here.' : nm + ' move ' + x.m + ' a turn' + (left < x.m ? ' (' + left + ' left)' : '') + '. ' + name + ' is ' + d + ' away.';
+      else if (u.k === 'bmb' && isSea(t) && ph === 'ncm') r = 'Only fighters can land on a carrier. Bombers have to end on land you held at the start of the turn.';
+      else if (u.k === 'ftr' && isSea(t) && ph === 'ncm' && S.units.some(function (c) { return c.t === t && c.k === 'cv' && ally(c.o, p); })) r = 'The carriers there are full: each one holds two fighters.';
       else if (x.dom === 'A') r = ph === 'cm' ? nm + ' could get there, but not back to a place you held at the start of the turn (or a carrier).' : 'Planes must end where you held at the start of the turn, or on a carrier.';
       else if (ph === 'cm' && !enemiesAt(t, p).length && !foe(S.own[t], p)) r = 'A combat move only goes where there’s a fight. Move here in step 4.';
       else if (ph === 'ncm' && (foe(S.own[t], p) || enemiesAt(t, p).length)) r = 'Noncombat moves can’t go into enemy territory.';
