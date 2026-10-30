@@ -391,6 +391,49 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .fac b{font-family:var(--display);font-weight:400;font-size:1.05rem;color:var(--yellow);margin-left:2px;}
 .fac.full{opacity:.5;}
 .fac.full b{color:var(--text-3);}
+/* Bombing: two missions to choose between, the raid's steps, the factory's damage */
+.missions{display:flex;flex-direction:column;gap:6px;margin:8px 0 6px;}
+.mission{display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:12px;background:var(--w06);color:var(--text);font:inherit;text-align:left;box-shadow:inset 0 0 0 1.5px var(--w12);}
+.mission .mi{width:34px;height:34px;flex:none;border-radius:10px;display:grid;place-items:center;background:var(--w1);}
+.mission .mi .ico{width:19px;height:19px;}
+.mission .mt{flex:1;min-width:0;line-height:1.2;}
+.mission .mt b{display:block;font-size:.95rem;}
+.mission .mt small{display:block;font-size:.74rem;font-weight:700;color:var(--text-2);}
+.mission .mr{width:20px;height:20px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 2px var(--w2);}
+.mission.on{background:color-mix(in srgb,#ff5a4a 14%,var(--w06));box-shadow:inset 0 0 0 2px #ff7a6b;}
+.mission.on .mi{background:#ff5a4a;color:#fff;}
+.mission.on .mr{box-shadow:inset 0 0 0 6px #ff7a6b;}
+.pv-body{margin-top:4px;}
+.pv-steps{list-style:none;counter-reset:st;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;}
+.pv-steps li{counter-increment:st;display:grid;grid-template-columns:22px 1fr;column-gap:8px;font-size:.78rem;line-height:1.3;}
+.pv-steps li::before{content:counter(st);grid-row:1 / 3;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--w1);font-weight:900;font-size:.74rem;}
+.pv-steps li b{font-size:.84rem;}
+.pv-steps li span{color:var(--text-2);font-weight:700;}
+.fmeter{display:flex;flex-direction:column;gap:5px;margin:8px 0 2px;}
+.fm-top{display:flex;align-items:center;gap:7px;}
+.fm-top .fm-ic svg{width:26px;height:17px;}
+.fm-top b{flex:1;min-width:0;font-size:.88rem;}
+.fm-top .fm-n{flex:none;white-space:nowrap;}
+.fm-top .fm-n b{font-family:var(--display);font-weight:400;font-size:1.3rem;flex:none;}
+.fm-top .fm-n small{display:inline;font-size:.72rem;font-weight:800;opacity:.75;}
+.fm-bar{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:2px;}
+.fm-bar i{height:10px;border-radius:2px;background:rgba(127,127,127,.28);}
+.fm-bar i.old{background:#b85a3a;}
+.fm-bar i.new{background:#ff7a3d;box-shadow:0 0 8px rgba(255,140,60,.8);animation:fmNew .6s var(--spring) both;}
+@keyframes fmNew{0%{transform:scaleY(.2);filter:brightness(2);}100%{transform:none;}}
+.fmeter > small{font-size:.74rem;font-weight:700;opacity:.8;}
+.sbrb .bds{padding:6px 10px;}
+.sbr-planes{display:flex;flex-wrap:wrap;gap:4px;padding:3px 0 2px;}
+.sbr-step{display:grid;grid-template-columns:26px 1fr;align-items:center;column-gap:8px;row-gap:4px;padding:6px 10px;color:#fff;border-top:1px solid rgba(255,255,255,.1);opacity:.55;}
+.sbr-step.live,.sbr-step.done{opacity:1;}
+.sbr-step.live .sn{background:#ffc83d;color:#3a2a05;animation:pop .45s var(--spring);}
+.sbr-step .sn{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.14);font-family:var(--display);font-size:1rem;}
+.sbr-step .st b{display:block;font-size:.88rem;}
+.sbr-step .st small{display:block;font-size:.72rem;font-weight:700;opacity:.8;}
+.sbr-dice{grid-column:2;display:flex;flex-wrap:wrap;gap:5px;}
+.sbr-dice:empty{display:none;}
+.sbr-dice .die{--ds:28px;padding:3px;pointer-events:none;}
+.sbrb .bds.d{color:#fff;border-top:1px solid rgba(255,255,255,.1);}
 /* The computer's turn */
 .cpu-ord{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:2px 0 8px;}
 .cpu-ord small{font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-right:4px;}
@@ -1740,6 +1783,7 @@ function finishBattle(B) {
   } else if (out === 'att' && divedD) B.msg = (B.def ? PW[B.def].adj : 'The enemy') + ' submarines dive and slip away. Only a destroyer stops submarines diving.';
   else if (out === 'att') B.msg = pname(p) + ' wins the battle.';
   else if (out === 'def' && divedA) B.msg = PW[p].adj + ' submarines dive and break off.';
+  else if (out === 'def' && B.k === 'sbr') B.msg = 'The factory’s AA fire brought down every bomber. No bombs fell.';
   else if (out === 'def') B.msg = (B.def ? pname(B.def) : 'The defenders') + ' hold' + (B.def === 'us' ? '' : 's') + ' ' + tname(B.t) + '.';
   else if (out === 'both') B.msg = 'Both sides are wiped out.';
   else if (out === 'stuck') B.msg = bSide(B, 'a').concat(bSide(B, 'd')).some(function (u) { return u.k === 'sub'; }) ? 'Neither side can hit the other: planes can’t hit submarines without a destroyer, and submarines can’t hit planes.' : 'Neither side can hit the other. The battle ends.';
@@ -1767,7 +1811,7 @@ function finishBattle(B) {
 function closeBattle() {
   var B = S.B; if (!B) return;
   var b = S.bl.filter(function (x) { return x.t === B.t && x.k === B.k && !x.done; })[0];
-  if (b) { b.done = 1; b.active = 0; b.res = B.res; b.resBy = B.def; b.dived = B.dived; }
+  if (b) { b.done = 1; b.active = 0; b.res = B.res; b.resBy = B.def; b.dived = B.dived; b.dmg = B.k === 'sbr' ? B.vols.reduce(function (a, v) { return a + (v.kind === 'sbr' ? v.sbrDmg || 0 : 0); }, 0) : 0; }
   S.B = null;
   if (B.k === 'sea') {
     // a cleared sea zone lets the waiting landings go ahead
@@ -3006,6 +3050,7 @@ function battleResult(b) {
   var p = cur();
   if (b.res === 'retreat') return 'Pulled back';
   if (b.dived) return 'Submarines dived away';
+  if (b.k === 'sbr') return b.res === 'def' ? 'Bombers shot down' : 'Factory bombed: ' + (b.dmg || 0) + ' damage';
   if (b.res === 'def') return 'Held by ' + (b.resBy ? PW[b.resBy].short : 'the defenders');
   if (b.res === 'both') return 'Both sides wiped out';
   if (b.res === 'stuck') return 'Neither side could hit';
@@ -3036,38 +3081,68 @@ function previewCard(sh) {
   var pv = ui.preview, p = cur(), t = pv.dest;
   var us = pv.ids.map(byId).filter(Boolean);
   var bombers = us.filter(function (u) { return u.k === 'bmb'; });
-  var canSbr = bombers.length === us.length && !isSea(t) && S.ic[t] && enemyLand(t, p);
-  var noTargets = !enemiesAt(t, p).length;
+  var maxDmg = ipcOf(t) * 2, dmgNow = S.dmg[t] || 0;
+  var canSbr = bombers.length === us.length && !isSea(t) && S.ic[t] && enemyLand(t, p) && dmgNow < maxDmg;
+  var noTargets = !fighting(enemiesAt(t, p)).length;
   if (canSbr && noTargets) pv.sbr = true;
   var card = el('div', { class: 'preview' });
   card.appendChild(el('div', { class: 'row1' }, [el('span', { html: Kit.icon(pv.sbr ? 'flame' : 'pulse') }).firstChild, el('b', { text: (pv.sbr ? 'Bomb the factory in ' : 'Attack ') + tname(t) })]));
-  if (pv.sbr) {
-    card.appendChild(el('p', { class: 'aa-p', style: { margin: '6px 0 0' }, text: 'Each bomber is shot at by the factory’s own anti-aircraft fire (hit on a 1). Survivors roll a die each: that much damage, up to ' + (ipcOf(t) * 2) + '. Damaged factories build fewer units until repaired.' }));
-  } else {
+  // the mission, as two cards to choose between when both are possible
+  function battleBody(box) {
     var o = battleOdds(t, pv.ids);
-    if (o.empty) card.appendChild(el('p', { class: 'aa-p', style: { margin: '6px 0 0' }, text: isSea(t) ? 'No ships to fight here.' : 'Nobody defends it. Your units take it right away.' }));
-    else {
-      card.appendChild(el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })]));
-      card.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: pct(o.win) }), el('span', { text: 'chance to win' })]));
-      card.appendChild(el('small', { text: 'You keep about ' + Math.round(o.attLeft) + (Math.round(o.attLeft) === 1 ? ' unit' : ' units') + ' if you fight to the end' }));
-    }
-    var def = enemiesAt(t, p).filter(function (u) { return u.on == null; });
-    if (def.length) { card.appendChild(el('div', { class: 'aa-sec', text: 'Defenders' })); card.appendChild(unitList(t, function (g) { return foe(g.o, p) && !g.cargo; })); }
+    if (o.empty) { box.appendChild(el('small', { text: isSea(t) ? 'No ships to fight here.' : 'Nobody defends it. Your units take it right away.' })); return; }
+    box.appendChild(el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })]));
+    box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: pct(o.win) }), el('span', { text: 'chance to win' })]));
+    box.appendChild(el('small', { text: 'You keep about ' + Math.round(o.attLeft) + (Math.round(o.attLeft) === 1 ? ' unit' : ' units') + ' if you fight to the end' }));
+  }
+  function bombBody(box) {
+    var n = bombers.length, room = maxDmg - dmgNow;
+    var expect = Math.min(room, Math.round(n * (5 / 6) * 3.5));
+    box.appendChild(factoryMeter(t, 0));
+    box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: 'about ' + expect }), el('span', { text: 'damage expected' })]));
+    box.appendChild(el('ol', { class: 'pv-steps' }, [
+      el('li', { html: '<b>AA fire</b><span>The factory shoots once at each bomber. A 1 brings it down.</span>' }),
+      el('li', { html: '<b>Bombs away</b><span>Each bomber that gets through rolls a die: that much damage, up to ' + maxDmg + '.</span>' }),
+      el('li', { html: '<b>The cost to them</b><span>The factory builds 1 fewer unit for each point of damage until ' + PW[S.own[t]].short + ' pays 1 IPC a point to repair it.</span>' })
+    ]));
   }
   if (canSbr && !noTargets) {
-    card.appendChild(el('div', { class: 'qbtns' }, [
-      el('button', { type: 'button', class: 'btn btn-sm ' + (!pv.sbr ? 'btn-primary' : 'btn-soft'), text: 'Join the battle', onclick: function () { pv.sbr = false; renderPanel(); } }),
-      el('button', { type: 'button', class: 'btn btn-sm ' + (pv.sbr ? 'btn-primary' : 'btn-soft'), text: 'Bomb the factory', onclick: function () { pv.sbr = true; renderPanel(); } })
-    ]));
+    var pick = el('div', { class: 'missions', role: 'radiogroup' });
+    [[false, 'pulse', 'Join the battle', 'Fight the defenders with the rest of the attack'], [true, 'flame', 'Bomb the factory', 'Fly past the battle and damage what it builds']].forEach(function (m) {
+      var on = !!pv.sbr === m[0];
+      pick.appendChild(el('button', { type: 'button', class: 'mission' + (on ? ' on' : ''), role: 'radio', 'aria-checked': String(on), onclick: function () { if (pv.sbr !== m[0]) { pv.sbr = m[0]; Kit.sfx('tap'); renderPanel(); } } }, [
+        el('span', { class: 'mi', html: Kit.icon(m[1]) }), el('span', { class: 'mt' }, [el('b', { text: m[2] }), el('small', { text: m[3] })]), el('span', { class: 'mr' })
+      ]));
+    });
+    card.appendChild(pick);
+  }
+  var body = el('div', { class: 'pv-body' });
+  if (pv.sbr) bombBody(body); else battleBody(body);
+  card.appendChild(body);
+  if (!pv.sbr) {
+    var def = fighting(enemiesAt(t, p)).filter(function (u) { return u.on == null; });
+    if (def.length) { card.appendChild(el('div', { class: 'aa-sec', text: 'Defenders' })); card.appendChild(unitList(t, function (g) { return foe(g.o, p) && !g.cargo; })); }
   }
   sh.body.appendChild(card);
   primary(sh.foot, 'Cancel', function () { ui.preview = null; renderAll(); }, { cls: 'btn-soft' });
-  primary(sh.foot, pv.sbr ? 'Send bombers' : 'Attack', function () {
+  primary(sh.foot, pv.sbr ? Kit.icon('flame') + '<span>Bomb it</span>' : 'Attack', function () {
     pushUndo();
-    var from = us[0].t;
     if (logMove(pv.ids, t, { sbr: pv.sbr })) { Kit.sfx('whoosh'); Kit.haptic('medium'); }
     ui.preview = null; ui.pick = {}; S.v++; save(); renderAll();
   });
+}
+// A factory's damage as a bar of its points: what it had, what this raid adds (lit), and what it can still build
+function factoryMeter(t, added) {
+  var max = ipcOf(t) * 2, now = S.dmg[t] || 0, before = Math.max(0, now - (added || 0));
+  var segs = el('div', { class: 'fm-bar', style: { '--n': max } });
+  for (var i = 0; i < max; i++) segs.appendChild(el('i', { class: i < before ? 'old' : i < now ? 'new' : '' }));
+  var builds = Math.max(0, ipcOf(t) - now);
+  return el('div', { class: 'fmeter' }, [
+    el('div', { class: 'fm-top' }, [el('span', { class: 'fm-ic', html: unitSvg('ic') }), el('b', { text: 'Factory in ' + tname(t) }),
+      el('span', { class: 'fm-n', html: '<b>' + now + '</b><small> of ' + max + ' damage</small>' })]),
+    segs,
+    el('small', { text: now ? 'Builds ' + builds + (builds === 1 ? ' unit' : ' units') + ' a turn until repaired (it could build ' + ipcOf(t) + ')' : 'Undamaged: builds up to ' + ipcOf(t) + ' units a turn' })
+  ]);
 }
 
 // ── Battles list ────────────────────────────────────────────────────────────
@@ -3509,7 +3584,45 @@ function effHits(B, v) {
   if (v.kind === 'sbr') return v.sbrDmg || 0;
   return v.groups.reduce(function (a, g) { return a + (groupVoid(B, v, g) ? 0 : g.dice.filter(function (d) { return d <= g.need; }).length); }, 0);
 }
+function sbrBoard(B, anim) {
+  var cur0 = B.vols[B.vi], board = el('div', { class: 'bdb sbrb' });
+  var aaV = B.vols.filter(function (v) { return v.kind === 'sbr-aa' && v.rolled; })[0], bV = B.vols.filter(function (v) { return v.kind === 'sbr' && v.rolled; })[0];
+  function diceOf(v, bomb) {
+    var row = el('div', { class: 'sbr-dice' });
+    if (!v) return row;
+    (v.groups || []).forEach(function (g) { g.dice.forEach(function (d, i) {
+      var die = Kit.die(d); die.disabled = true; die.tabIndex = -1;
+      var hit = bomb || d <= g.need; die.setAttribute('data-hit', hit ? '1' : '0');
+      if (anim && v === cur0) { die.classList.add('rolling'); die.style.setProperty('--dx', (Math.random() * 50 - 25) + 'px'); die.style.setProperty('--dr', (Math.random() * 400 - 200) + 'deg'); die.style.animationDelay = (i * 40) + 'ms'; }
+      else die.classList.add(hit ? 'hit' : 'miss');
+      row.appendChild(die);
+    }); });
+    return row;
+  }
+  // the bombers (and those shot down)
+  var lostN = (B.lost && B.lost.a && B.lost.a[B.att + ':bmb']) || 0, flying = bSide(B, 'a').length;
+  var planes = el('div', { class: 'sbr-planes' });
+  for (var i = 0; i < flying + lostN; i++) planes.appendChild(el('span', { class: 'bpc' + (i >= flying ? ' gone' : ''), style: { '--pc': PW[B.att].col, '--pci': PW[B.att].ink }, html: unitSvg('bmb') }));
+  board.appendChild(el('div', { class: 'bds a', style: { '--pc': PW[B.att].col } }, [
+    el('div', { class: 'bdh' }, [el('span', { html: roundelSvg(B.att) }).firstChild, el('span', { class: 'who', text: PW[B.att].short + ' bombers' }),
+      lostN ? el('span', { class: 'takes on', text: lostN + ' shot down' }) : null]),
+    planes]));
+  var stage = function (n, title, sub, v, bomb, live) {
+    return el('div', { class: 'sbr-step' + (v ? ' done' : live ? ' live' : '') }, [
+      el('span', { class: 'sn', text: String(n) }),
+      el('div', { class: 'st' }, [el('b', { text: title }), el('small', { text: sub })]),
+      diceOf(v, bomb)
+    ]);
+  };
+  var nextKind = cur0 && !cur0.rolled ? cur0.kind : null;
+  board.appendChild(stage(1, 'AA fire', 'One shot at each bomber. A 1 brings it down.', aaV, false, B.step === 'pre' || nextKind === 'sbr-aa'));
+  board.appendChild(stage(2, 'Bombs away', 'Each bomber left rolls a die of damage.', bV, true, nextKind === 'sbr'));
+  var dmgNow = bV && !(anim && bV === cur0) ? bV.sbrDmg || 0 : 0;
+  board.appendChild(el('div', { class: 'bds d', style: { '--pc': PW[S.own[B.t]].col } }, [factoryMeter(B.t, dmgNow)]));
+  return board;
+}
 function battleBoard(B, anim) {
+  if (B.k === 'sbr') return sbrBoard(B, anim);
   var sides = { a: bdPieces(B, 'a'), d: bdPieces(B, 'd') };
   var zero = B.k === 'sbr' || sides.a.concat(sides.d).some(function (x) { return x.col === 0; });
   var cols = zero ? [0, 1, 2, 3, 4] : [1, 2, 3, 4];
@@ -3567,7 +3680,7 @@ function markDice() {
   if (!R.bt) return;
   R.bt.querySelectorAll('.bdb .die.rolling').forEach(function (d) {
     d.classList.remove('rolling');
-    if (!R.bt.querySelector('.bdb .wide')) d.classList.add(d.getAttribute('data-hit') === '1' ? 'hit' : 'miss');
+    d.classList.add(d.getAttribute('data-hit') === '1' ? 'hit' : 'miss');
   });
   var B = S.B, v = B && B.vols[B.vi];
   if (!v || !v.rolled) return;
@@ -3576,8 +3689,10 @@ function markDice() {
   var pill = R.bt.querySelector('.takes[data-side="' + tside + '"]');
   if (pill && v.kind !== 'sbr') { var n = (parseInt(pill.textContent, 10) || 0) + tot; if (tot) { pill.textContent = n + (n === 1 ? ' hit' : ' hits'); pill.classList.add('on'); pill.classList.remove('wait'); } }
   var rowEl = R.bt.querySelector('.bds.' + tside);
+  if (v.kind === 'sbr-aa') { tside = 'a'; rowEl = R.bt.querySelector('.bds.a'); }
+  if (v.kind === 'sbr' && rowEl) { var fm = rowEl.querySelector('.fmeter'); if (fm) fm.replaceWith(factoryMeter(B.t, v.sbrDmg || 0)); }
   if (rowEl && tot) {
-    var st = el('div', { class: 'bstamp', text: v.kind === 'sbr' ? tot + ' damage' : tot + (tot === 1 ? ' hit' : ' hits') });
+    var st = el('div', { class: 'bstamp', text: v.kind === 'sbr' ? '+' + tot + ' damage' : v.kind === 'sbr-aa' ? tot + ' shot down' : tot + (tot === 1 ? ' hit' : ' hits') });
     rowEl.appendChild(st); setTimeout(function () { st.remove(); }, 1300);
     rowEl.classList.remove('struck'); void rowEl.offsetWidth; rowEl.classList.add('struck');
   }
@@ -3599,6 +3714,8 @@ function renderBattle(B, anim) {
   var cur0 = B.vols[B.vi], vt = B.step === 'vol' || B.step === 'cas' ? cur0 && cur0.rolled ? cur0 : B.vi > 0 ? B.vols[B.vi - 1] : null : null;
   var line = B.step === 'end' ? B.msg
     : B.step === 'dive' ? 'Round ' + B.round + ': ' + PW[B.att].short + ' is ready to fire.'
+    : B.k === 'sbr' && B.step === 'pre' ? 'The bombers fly in. First the factory’s AA fires, then the bombs fall.'
+    : B.k === 'sbr' ? ''
     : B.step === 'pre' && aaOnly(B) ? 'Only an AA gun is here. It fires once at your planes, then the territory is yours.'
     : B.step === 'pre' && B.round === 1 ? 'Every unit rolls one die. A roll at or under the number of its column is a hit.'
     : B.step === 'decide' ? 'Round ' + B.round + ': roll again or pull back.'
@@ -3609,7 +3726,7 @@ function renderBattle(B, anim) {
     var bdb = sc.querySelector('.bdb'), r = B.res, word, tone = 'even';
     // gold when it went the way of the person watching, red when it went against them
     var me = humanPower(B.att) ? 'a' : B.def && humanPower(B.def) ? 'd' : 'a';
-    if (B.k === 'sbr') word = 'Bombed';
+    if (B.k === 'sbr') { var shotAll = !bSide(B, 'a').length; word = shotAll ? 'Shot down' : 'Bombed'; tone = (me === 'a') === shotAll ? 'bad' : ''; }
     else if (r === 'att') { word = B.dived ? 'Dived away' : B.k === 'land' && ally(S.own[B.t], B.att) ? 'Captured' : 'Victory'; tone = me === 'a' ? '' : 'bad'; }
     else if (r === 'def') { word = 'Held'; tone = me === 'd' ? '' : 'bad'; }
     else if (r === 'retreat') word = 'Retreat';
