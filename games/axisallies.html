@@ -363,6 +363,7 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .bdr.wide .die{--ds:30px;padding:4px;pointer-events:none;}
 .bdb .die.hit{box-shadow:0 0 0 3px #ffc83d,0 0 12px rgba(255,200,61,.75),0 3px 4px rgba(0,0,0,.4);}
 .bdb .die.miss{opacity:.5;filter:saturate(.3);}
+.bdb .die.void{opacity:.35;filter:grayscale(1);box-shadow:none;}
 .bdb.faded .bdr.dice .die{opacity:.28;box-shadow:none;}
 .bdr.nums{padding:2px 6px;background:rgba(0,0,0,.28);border-block:1px solid rgba(255,255,255,.12);}
 .bdr.nums .cell{justify-content:center;align-items:center;font-family:var(--display);font-size:1.35rem;line-height:1.1;color:rgba(255,255,255,.88);text-shadow:0 2px 0 rgba(0,0,0,.35);}
@@ -870,6 +871,15 @@ function groupTargets(ids, ph) {
       var hostile = isSea(t3) ? seaBlocked(t3, p, false) : enemiesAt(t3, p).length > 0 || foe(S.own[t3], p);
       if (isSea(t3) && !hostile) continue;   // ships may stage in quiet water
       if (!punch && hostile) delete out[k3];
+    }
+    // Planes can't hit submarines without a destroyer in the battle (and submarines can't hit planes): a zone
+    // holding only enemy submarines is no target for planes unless something there or with them can hit back
+    for (var k5 in out) {
+      var t5 = +k5, en5 = enemiesAt(t5, p);
+      if (!isSea(t5) || !en5.length || !en5.every(function (u) { return u.k === 'sub'; })) continue;
+      var hitter = function (u) { return u.k === 'sub' || u.k === 'dd' || (U[u.k].dom === 'S' && U[u.k].a > 0); };
+      if (us.some(hitter) || S.units.some(function (u) { return u.t === t5 && u.o === p && u.on == null && hitter(u); })) continue;
+      delete out[k5];
     }
     // Land units only go to enemy territory; ships staging only (no air into empty water)
     for (var k4 in out) {
@@ -1584,8 +1594,10 @@ function doRetreat(B, to) {
 }
 function finishBattle(B) {
   var p = B.att;
-  S.units.forEach(function (u) { if (u.t === B.t && u.dv) u.dv = 0; });
-  var out = B.res || battleOutcome(B);
+  // the result first (submarines that dived are out of it), then the divers surface again where they were
+  var out = B.res || battleOutcome(B) || 'stuck';
+  var divedA = 0, divedD = 0;
+  S.units.forEach(function (u) { if (u.t === B.t && u.dv) { if (u.o === p) divedA++; else divedD++; u.dv = 0; } });
   B.res = out;
   bSide(B, 'a').forEach(function (u) { u.f = 1; });
   B.bomb.forEach(function (id) { var u = byId(id); if (u) u.f = 1; });
@@ -1595,10 +1607,12 @@ function finishBattle(B) {
       capture(B.t, p);
       B.msg = pname(p) + ' captures ' + tname(B.t) + '!';
     } else B.msg = 'Defenders destroyed, but only land units can take a territory.';
-  } else if (out === 'att') B.msg = pname(p) + ' wins the battle.';
+  } else if (out === 'att' && divedD) B.msg = (B.def ? PW[B.def].adj : 'The enemy') + ' submarines dive and slip away. Only a destroyer stops submarines diving.';
+  else if (out === 'att') B.msg = pname(p) + ' wins the battle.';
+  else if (out === 'def' && divedA) B.msg = PW[p].adj + ' submarines dive and break off.';
   else if (out === 'def') B.msg = (B.def ? pname(B.def) : 'The defenders') + ' hold' + (B.def === 'us' ? '' : 's') + ' ' + tname(B.t) + '.';
   else if (out === 'both') B.msg = 'Both sides are wiped out.';
-  else if (out === 'stuck') B.msg = 'Neither side can hit the other. The battle ends.';
+  else if (out === 'stuck') B.msg = bSide(B, 'a').concat(bSide(B, 'd')).some(function (u) { return u.k === 'sub'; }) ? 'Neither side can hit the other: planes can’t hit submarines without a destroyer, and submarines can’t hit planes.' : 'Neither side can hit the other. The battle ends.';
   if (B.k === 'sea') {
     // Defending fighters whose carriers sank fly to land nearby if they can
     var dp = B.def;
@@ -1611,6 +1625,7 @@ function finishBattle(B) {
       }
     }
   }
+  B.dived = divedA + divedD;
   var big = B.lossA + B.lossD;
   if (big >= 60 && big > (S.biggest || 0)) hl('Big battle at ' + tname(B.t) + ' in round ' + S.round + ': ' + big + ' IPCs of units destroyed');
   S.biggest = Math.max(S.biggest || 0, big);
@@ -1620,7 +1635,7 @@ function finishBattle(B) {
 function closeBattle() {
   var B = S.B; if (!B) return;
   var b = S.bl.filter(function (x) { return x.t === B.t && x.k === B.k && !x.done; })[0];
-  if (b) { b.done = 1; b.active = 0; b.res = B.res; b.resBy = B.def; }
+  if (b) { b.done = 1; b.active = 0; b.res = B.res; b.resBy = B.def; b.dived = B.dived; }
   S.B = null;
   if (B.k === 'sea') {
     // a cleared sea zone lets the waiting landings go ahead
@@ -1679,18 +1694,22 @@ function simOdds(att, def, o) {
     }
     while (A.length && D.length && round < 15) {
       round++;
-      var ah = 0, dh = 0, arts = 0, infs = 0;
+      // hits by kind: submarine hits can't land on planes; plane hits can't land on submarines unless the
+      // firing side has a destroyer
+      var ah = { g: 0, s: 0, a: 0 }, dh = { g: 0, s: 0, a: 0 }, arts = 0, infs = 0;
+      var ddA = A.some(function (x) { return x.k === 'dd'; }), ddD = D.some(function (x) { return x.k === 'dd'; });
       A.forEach(function (x) { if (x.k === 'art') arts++; });
       A.forEach(function (x) {
         if (x.k === 'bbd' || x.k === 'aa') return;
         var v = U[x.k].a;
         if (x.k === 'inf' && infs < arts) { v = 2; infs++; }
-        if (v && Math.random() * 6 < v) ah++;
+        if (v && Math.random() * 6 < v) ah[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddA ? 'a' : 'g']++;
       });
-      if (round === 1) bombard.forEach(function (k) { if (Math.random() * 6 < U[k].a) ah++; });
-      D.forEach(function (x) { if (x.k === 'bbd') return; var v = U[x.k].d; if (v && Math.random() * 6 < v) dh++; });
-      D.splice(0, Math.min(ah, D.length));
-      A.splice(0, Math.min(dh, A.length));
+      if (round === 1) bombard.forEach(function (k) { if (Math.random() * 6 < U[k].a) ah.g++; });
+      D.forEach(function (x) { if (x.k === 'bbd') return; var v = U[x.k].d; if (v && Math.random() * 6 < v) dh[x.k === 'sub' ? 's' : U[x.k].dom === 'A' && !ddD ? 'a' : 'g']++; });
+      var hitA = ah.g + ah.s + ah.a, hitD = dh.g + dh.s + dh.a;
+      takeHits(D, ah); takeHits(A, dh);
+      if (!hitA && !hitD && !canHurtK(A, D) && !canHurtK(D, A)) break;
       if (A.length && A.every(function (x) { return x.k === 'tra'; })) A = [];
       if (D.length && D.every(function (x) { return x.k === 'tra'; })) D = [];
     }
@@ -1700,6 +1719,20 @@ function simOdds(att, def, o) {
     attLeft += A.length; defLeft += D.length;
   }
   return { win: wins / n, attLeft: attLeft / n, defLeft: defLeft / n };
+}
+// remove the cheapest pieces each kind of hit can reach (list is sorted cheapest first)
+function takeHits(L, h) {
+  function take(n, ok) { for (var i = 0; i < L.length && n > 0; i++) if (ok(L[i])) { L.splice(i, 1); i--; n--; } }
+  take(h.s, function (x) { return U[x.k === 'bbd' ? 'bb' : x.k].dom !== 'A'; });
+  take(h.a, function (x) { return x.k !== 'sub'; });
+  take(h.g, function () { return true; });
+}
+function canHurtK(F, T) {
+  var dd = F.some(function (x) { return x.k === 'dd'; });
+  return F.some(function (x) {
+    if (x.k === 'bbd' || !U[x.k] || !U[x.k].a && !U[x.k].d) return false;
+    return T.some(function (y) { if (x.k === 'sub' && U[y.k === 'bbd' ? 'bb' : y.k].dom === 'A') return false; if (U[x.k].dom === 'A' && y.k === 'sub' && !dd) return false; return true; });
+  });
 }
 function oddsClass(w) { return w >= 0.7 ? 'g' : w >= 0.4 ? 'm' : 'b'; }
 function pct(w) { var n = Math.round(w * 100); if (n >= 100 && w < 1) n = 99; if (n <= 0 && w > 0) n = 1; return n + '%'; }
@@ -2676,6 +2709,7 @@ function vsChips(list) {
 function battleResult(b) {
   var p = cur();
   if (b.res === 'retreat') return 'Pulled back';
+  if (b.dived) return 'Submarines dived away';
   if (b.res === 'def') return 'Held by ' + (b.resBy ? PW[b.resBy].short : 'the defenders');
   if (b.res === 'both') return 'Both sides wiped out';
   if (b.res === 'stuck') return 'Neither side could hit';
@@ -2906,6 +2940,7 @@ function whyNot(ids, t) {
     if (reasons.some(function (r) { return r.k === u.k; })) return;
     var x = U[u.k], left = movesLeft(u, ph), r = null, nm = x.p;
     if (u.on != null) r = ph === 'cm' && !isSea(t) && foe(S.own[t], p) ? null : 'Troops on a transport can only go ashore on a coast next to it.';
+    else if (x.dom === 'A' && ph === 'cm' && isSea(t) && enemiesAt(t, p).length && enemiesAt(t, p).every(function (e) { return e.k === 'sub'; })) r = 'Planes can’t hit submarines unless a destroyer of yours is in the battle. Send one with them.';
     else if (reach(u, ph)[t]) return;
     else if (x.dom === 'L' && isSea(t)) r = nm + ' need a transport to cross the sea. Move one next to them first.';
     else if (x.dom === 'S' && !isSea(t)) r = 'Ships stay at sea.';
@@ -2989,7 +3024,8 @@ async function runBattle() {
         var attHuman = humanPower(B.att), opts = retreatOpts(B);
         if (attHuman || (B.def && humanPower(B.def) && subChoice(B, 'd'))) {
           renderBattle(B);
-          var choice = attHuman ? await waitInput() : (await wait(spd(500)), 'roll');
+          // (a person defending with submarines chooses: fight, or dive away)
+          var choice = await waitInput();
           if (choice && choice.retreat != null) { doRetreat(B, choice.retreat); save(); continue; }
         } else {
           renderBattle(B);
@@ -3127,6 +3163,21 @@ function bdPiece(x) {
     html: html + (cap ? '<b>' + (x.pair ? '×' : '') + cap + '</b>' : '') + (x.sea ? '<i class="lk">' + Kit.icon('anchor') + '</i>' : '') });
 }
 function B_T() { return S.B ? S.B.t : -1; }
+// A dice group whose hits have nothing to land on (planes without a destroyer against only submarines,
+// submarines against only planes): its dice roll, but don't count as hits
+function groupVoid(B, v, g) {
+  if (v.kind === 'aa' || v.kind === 'sbr' || v.kind === 'sbr-aa' || v.kind === 'bomb') return false;
+  var mine = bSide(B, v.side), other = bSide(B, v.side === 'a' ? 'd' : 'a');
+  if (!other.length) return false;
+  if (g.k === 'sub') return other.every(isAir);
+  if (U[g.k].dom === 'A' && !hasDD(mine)) return other.every(function (u) { return u.k === 'sub'; });
+  return false;
+}
+function effHits(B, v) {
+  if (!v || !v.groups) return 0;
+  if (v.kind === 'sbr') return v.sbrDmg || 0;
+  return v.groups.reduce(function (a, g) { return a + (groupVoid(B, v, g) ? 0 : g.dice.filter(function (d) { return d <= g.need; }).length); }, 0);
+}
 function battleBoard(B, anim) {
   var sides = { a: bdPieces(B, 'a'), d: bdPieces(B, 'd') };
   var zero = B.k === 'sbr' || sides.a.concat(sides.d).some(function (x) { return x.col === 0; });
@@ -3139,7 +3190,7 @@ function battleBoard(B, anim) {
   function row(side) {
     var pw = side === 'a' ? B.att : B.def, tside = side === 'a' ? 'd' : 'a';
     var taken = 0, pendingHits = false;
-    shown.forEach(function (v) { if (v.side !== tside || v.kind === 'sbr') return; var t = hitTotal(v.hits || { s: 0, a: 0, g: 0 }); if (anim && v === cur0) pendingHits = t > 0; else taken += t; });
+    shown.forEach(function (v) { if (v.side !== tside || v.kind === 'sbr') return; var t = Math.min(hitTotal(v.hits || { s: 0, a: 0, g: 0 }), effHits(B, v)); if (anim && v === cur0) pendingHits = t > 0; else taken += t; });
     var lost = (B.lost && B.lost[side]) || {}, lostEls = [];
     Object.keys(lost).forEach(function (key) { var q = key.split(':'); lostEls.push(el('span', { class: 'bl', style: { '--pc': PW[q[0]].col, '--pci': PW[q[0]].ink }, title: U[q[1]].n + ' lost', html: unitSvg(q[1]) + (lost[key] > 1 ? '<b>' + lost[key] + '</b>' : '') })); });
     var head = el('div', { class: 'bdh' }, [
@@ -3158,11 +3209,13 @@ function battleBoard(B, anim) {
       if (v.side !== side) return;
       var rolling = anim && v === cur0;
       (v.groups || []).forEach(function (g) {
+        var vd = groupVoid(B, v, g);
         var spot = g.need >= 1 && g.need <= 4 ? dice.querySelector('[data-c="' + g.need + '"]') : (wide = wide || el('div', { class: 'bdr wide' }));
         g.dice.forEach(function (d, i) {
           var die = Kit.die(d); die.disabled = true; die.tabIndex = -1;
-          var hit = v.kind === 'sbr' || d <= g.need;
+          var hit = v.kind === 'sbr' || (d <= g.need && !vd);
           die.setAttribute('data-hit', hit ? '1' : '0');
+          if (vd) { die.classList.add('void'); die.title = g.k === 'sub' ? 'Submarines can’t hit planes' : 'Planes can’t hit submarines without a destroyer'; }
           if (rolling) { die.classList.add('rolling'); die.style.setProperty('--dx', (Math.random() * 50 - 25) + 'px'); die.style.setProperty('--dr', (Math.random() * 400 - 200) + 'deg'); die.style.animationDelay = (i * 30) + 'ms'; }
           else if (v.kind !== 'sbr') die.classList.add(hit ? 'hit' : 'miss');
           spot.appendChild(die);
@@ -3187,7 +3240,7 @@ function markDice() {
   });
   var B = S.B, v = B && B.vols[B.vi];
   if (!v || !v.rolled) return;
-  var tot = v.kind === 'sbr' ? v.sbrDmg : hitTotal(v.hits || { s: 0, a: 0, g: 0 });
+  var tot = v.kind === 'sbr' ? v.sbrDmg : Math.min(hitTotal(v.hits || { s: 0, a: 0, g: 0 }), effHits(B, v));
   var tside = v.kind === 'sbr' ? 'd' : v.side === 'a' ? 'd' : 'a';
   var pill = R.bt.querySelector('.takes[data-side="' + tside + '"]');
   if (pill && v.kind !== 'sbr') { var n = (parseInt(pill.textContent, 10) || 0) + tot; if (tot) { pill.textContent = n + (n === 1 ? ' hit' : ' hits'); pill.classList.add('on'); pill.classList.remove('wait'); } }
@@ -3225,6 +3278,7 @@ function renderBattle(B, anim) {
     ['a', 'd'].forEach(function (s) {
       var pw = s === 'a' ? B.att : B.def;
       if (!subChoice(B, s) || !humanPower(pw) || (NET && s === 'd')) return;   // (online the defender gets its own turn to choose)
+      if (s === 'd' && !humanPower(B.att)) return;   // (the defender's own Fight / Dive buttons below)
       var seg = el('div', { class: 'seg' });
       [[false, 'Fight'], [true, 'Dive']].forEach(function (c) {
         seg.appendChild(el('button', { type: 'button', class: !!ui.dive[s] === c[0] ? 'on' : '', text: c[1], onclick: function () { ui.dive[s] = c[0]; Kit.sfx('tap'); renderBattle(B); } }));
@@ -3254,6 +3308,10 @@ function renderBattle(B, anim) {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: r === 'air' ? 'Planes break off' : 'Retreat to ' + tname(r), onclick: function () { Kit.sfx('whoosh'); giveInput({ retreat: r }); } }));
     });
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>' + (B.k === 'sbr' ? 'Drop the bombs' : B.step === 'pre' ? 'Roll the dice' : 'Roll again') + '</span>', onclick: function () { giveInput('roll'); } }));
+  } else if ((B.step === 'pre' || B.step === 'decide') && !NET && B.def && humanPower(B.def) && subChoice(B, 'd')) {
+    acts.appendChild(el('div', { class: 'bdive' }, [el('p', { text: 'Your submarines: fight, or dive away?' }),
+      el('button', { type: 'button', class: 'btn btn-soft', text: 'Dive', onclick: function () { Kit.sfx('whoosh'); ui.dive.d = true; giveInput('roll'); } }),
+      el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>Fight</span>', onclick: function () { Kit.sfx('tap'); ui.dive.d = false; giveInput('roll'); } })]));
   } else if (B.step === 'end' && attHuman) {
     acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Done', onclick: function () { Kit.sfx('tap'); giveInput('ok'); } }));
   } else if (B.step === 'dive') {
@@ -4641,7 +4699,7 @@ TurnNet.setup({
   }
 });
 // test hook
-window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere,
+window.__aa = { get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot,
   get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
