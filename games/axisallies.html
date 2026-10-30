@@ -866,9 +866,10 @@ function groupTargets(ids, ph) {
     for (var k3 in out) {
       var t3 = +k3;
       if (out[k3].board) continue;
-      var hostile = enemiesAt(t3, p).length > 0 || (!isSea(t3) && foe(S.own[t3], p));
+      // (enemy transports and submarines alone don't make a sea zone hostile: ships may pass or stop there)
+      var hostile = isSea(t3) ? seaBlocked(t3, p, false) : enemiesAt(t3, p).length > 0 || foe(S.own[t3], p);
       if (isSea(t3) && !hostile) continue;   // ships may stage in quiet water
-      if (!punch && enemiesAt(t3, p).length) delete out[k3];
+      if (!punch && hostile) delete out[k3];
     }
     // Land units only go to enemy territory; ships staging only (no air into empty water)
     for (var k4 in out) {
