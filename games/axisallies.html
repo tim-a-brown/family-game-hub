@@ -81,6 +81,9 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .t-land.imp{fill:url(#neutralHatch);}
 .t-hl{fill:none;stroke-width:3.2;vector-effect:non-scaling-stroke;pointer-events:none;stroke-linejoin:round;}
 .t-hl.sel{stroke:#fff;filter:drop-shadow(0 0 3px rgba(0,0,0,.8));}
+.t-hl.sel.from{stroke-width:4;fill:rgba(255,255,255,.22);animation:fromGlow 1.6s ease-in-out infinite;}
+@keyframes fromGlow{50%{fill:rgba(255,255,255,.08);}}
+.t-dim{fill:#08070a;fill-opacity:.62;fill-rule:evenodd;pointer-events:none;}
 .t-hl.go{stroke:#ffe066;stroke-dasharray:6 4;animation:march 1s linear infinite;}
 .t-hl.atk{stroke:#ff5a4a;stroke-dasharray:6 4;animation:march 1s linear infinite;}
 .t-hl.take{stroke:#ffd34d;stroke-width:3.6;stroke-dasharray:2 5;stroke-linecap:round;fill:rgba(255,211,77,.16);animation:march 1s linear infinite,takeGlow 1.4s ease-in-out infinite;}
@@ -323,6 +326,11 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-inc div:last-child{border-bottom:0;}
 .aa-inc div span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .aa-inc b{font-variant-numeric:tabular-nums;color:#5a4210;}
+.aa-inc div.nw{margin:0 -10px;padding:6px 10px;background:linear-gradient(90deg,rgba(214,160,40,.28),rgba(214,160,40,.1));border-bottom:1px solid rgba(150,105,10,.18);}
+.aa-inc div.nw span{display:flex;align-items:center;gap:7px;}
+.aa-inc div.nw i{flex:none;font-style:normal;font-size:.6rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:var(--pc);border-radius:5px;padding:2px 5px 1px;}
+.aa-inc div.nw b{color:#7a5200;}
+.aa-inc div.nwl{border-bottom:2px solid rgba(150,105,10,.35);margin-bottom:2px;}
 .aa-sum{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:10px 0 10px;font-weight:900;}
 .aa-sum b{font-family:var(--display);font-weight:400;font-size:1.7rem;color:var(--pc);}
 .aa-sum small{display:inline;margin:0;font-size:.8rem;}
@@ -1355,7 +1363,7 @@ function endMobState() {
   S.units.forEach(function (u) { if (u.h) u.h = 0; });
   S.incomeHist = S.incomeHist || [];
   S.phase = 'inc'; S.B = null; S.bl = [];
-  return { p: p, inc: inc, before: before };
+  return { p: p, inc: inc, before: before, capt: (S.capt || []).slice() };
 }
 function endMob() {
   if (NET) { netEndTurn(); return; }
@@ -1363,21 +1371,27 @@ function endMob() {
   ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   save();
   renderAll();
-  showIncome(p, inc, before, function () { if (S && S.phase === 'inc' && cur() === p) nextTurn(); });
+  showIncome(p, inc, before, function () { if (S && S.phase === 'inc' && cur() === p) nextTurn(); }, r.capt);
 }
-function incomeRows(p) {
+// Territories taken this turn come first, marked new
+function incomeRows(p, capt) {
   var rows = [];
-  for (var t = 0; t < NT; t++) if (M.on[t] && S.own[t] === p && ipcOf(t) > 0) rows.push({ name: tname(t), n: ipcOf(t) });
-  rows.sort(function (a, b) { return b.n - a.n || (a.name < b.name ? -1 : 1); });
+  capt = capt || [];
+  for (var t = 0; t < NT; t++) if (M.on[t] && S.own[t] === p && ipcOf(t) > 0) rows.push({ name: tname(t), n: ipcOf(t), nw: capt.indexOf(t) >= 0 });
+  rows.sort(function (a, b) { return (b.nw ? 1 : 0) - (a.nw ? 1 : 0) || b.n - a.n || (a.name < b.name ? -1 : 1); });
   if (S.mode === 'skirm' && p === 'uk') rows.push({ name: 'Empire overseas', n: 10 });
   return rows;
 }
-function showIncome(p, inc, before, done) {
+function showIncome(p, inc, before, done, capt) {
   var seat = seatOf(p), human = !seat.cpu && !NET, lost = !holdsCapital(p) && capitalOf(p) != null;
+  if (!capt) capt = cur() === p ? S.capt : [];
   closeBanner();
   var list = el('div', { class: 'aa-inc' });
   if (lost) list.appendChild(el('div', { html: '<span>Capital in enemy hands: no income</span><b>0</b>' }));
-  else incomeRows(p).forEach(function (r, i) { list.appendChild(el('div', { class: 'rise', style: { animationDelay: Math.min(i * 45, 700) + 'ms' }, html: '<span>' + esc(r.name) + '</span><b>' + r.n + '</b>' })); });
+  else incomeRows(p, capt).forEach(function (r, i, all) {
+    var last = r.nw && !(all[i + 1] && all[i + 1].nw);
+    list.appendChild(el('div', { class: 'rise' + (r.nw ? ' nw' : '') + (last ? ' nwl' : ''), style: { animationDelay: Math.min(i * 45, 700) + 'ms' }, html: '<span>' + (r.nw ? '<i>New</i>' : '') + esc(r.name) + '</span><b>' + r.n + '</b>' }));
+  });
   var card = el('div', { class: 'card paper inc', style: { '--pc': p === 'de' ? '#3d423f' : PW[p].col } }, [
     el('div', { class: 'ih' }, [el('span', { html: roundelSvg(p) }).firstChild, el('div', null, [el('h2', { text: 'Collect income' }), el('small', { text: pname(p) })])]),
     el('p', { class: 'why', text: lost ? pname(p) + ' can’t collect while an enemy holds its capital.' : 'IPCs are the money of the game. Every territory pays its value at the end of its owner’s turn.' }),
@@ -1393,7 +1407,7 @@ function showIncome(p, inc, before, done) {
   // the total counts up as the territories pay in
   var sumB = card.querySelector('.aa-sum b'), bankB = card.querySelector('.aa-sum .bank b');
   if (inc && sumB) {
-    var t0 = performance.now(), D = Math.min(1100, 300 + incomeRows(p).length * 45);
+    var t0 = performance.now(), D = Math.min(1100, 300 + incomeRows(p, capt).length * 45);
     (function tick(now) {
       var f = Math.min(1, (now - t0) / D), v = Math.round(inc * (1 - Math.pow(1 - f, 3)));
       sumB.textContent = '+' + v; if (bankB) bankB.textContent = before + v;
@@ -2055,6 +2069,7 @@ function buildBoard() {
   }
   s += '<g id="gSea">' + sea + '</g><g id="gLand">' + land + '</g></g>';
   if (WRAP) s += '<use href="#aaTerr" x="' + -WRAP + '"/><use href="#aaTerr" x="' + WRAP + '"/>';
+  if (WRAP) s += '<defs><clipPath id="aaDimClip"><rect x="0" y="-3000" width="' + WRAP + '" height="7000"/></clipPath></defs>';
   s += '<g id="aaTop"><g id="gHit"></g><g id="gHl"></g><g id="gPlan"></g><g id="gLbl"></g><g id="gStk"></g><g id="gFx"></g></g>';
   if (WRAP) s += '<use href="#aaTop" x="' + -WRAP + '"/><use href="#aaTop" x="' + WRAP + '"/>';
   s += '</g></svg>';
@@ -2255,6 +2270,16 @@ function paintMap() {
   });
   // highlights
   var h = '', sel = ui.sel, tg = currentTargets();
+  // Units picked to move (or a new unit to place): everywhere they can't go sinks into shadow, and where they
+  // stand lights up
+  var moving = (S.phase === 'cm' || S.phase === 'ncm') && sel >= 0 && pickedIds().length, dimOn = Object.keys(tg).length && (moving || S.phase === 'mob');
+  if (dimOn) {
+    var holes = '';
+    for (var dk in tg) if (GEO[dk]) holes += GEO[dk];
+    if (moving && GEO[sel]) holes += GEO[sel];
+    var v = M.view, box = WRAP ? 'M0 -3000H' + WRAP + 'V4000H0Z' : 'M' + (v[0] - 3000) + ' ' + (v[1] - 3000) + 'h' + (v[2] + 6000) + 'v' + (v[3] + 6000) + 'h' + -(v[2] + 6000) + 'Z';
+    h += '<path class="t-dim"' + (WRAP ? ' clip-path="url(#aaDimClip)"' : '') + ' d="' + box + holes + '"/>';
+  }
   if (S.phase === 'cm' || S.phase === 'bat') {
     battlePlaces().forEach(function (t) { if (GEO[t] && !tg[t]) h += '<path class="t-hl bat" d="' + GEO[t] + '"/>'; });
   }
@@ -2268,7 +2293,7 @@ function paintMap() {
     var can = actPlaces(), gold = S.phase === 'buy' || S.phase === 'mob';
     for (var c in can) { c = +c; if (c !== sel && GEO[c]) h += '<path class="t-hl can' + (gold ? ' gold' : '') + '" d="' + GEO[c] + '"/>'; }
   }
-  if (sel >= 0 && GEO[sel]) h += '<path class="t-hl sel" d="' + GEO[sel] + '"/>';
+  if (sel >= 0 && GEO[sel]) h += '<path class="t-hl sel' + (moving ? ' from' : '') + '" d="' + GEO[sel] + '"/>';
   R.gHl.innerHTML = h;
   if (R.gPlan) R.gPlan.innerHTML = planArrows();
   paintLabels();
@@ -4962,7 +4987,7 @@ function netCommit() {
 function netEndTurn() {
   if (!NET || !NET.myTurn()) return;
   var r = null, fin = calc(clone(S), function () { r = endMobState(); netNextTurn(); return S; });
-  netPush(fin, { k: 'inc', p: r.p, inc: r.inc, before: r.before });
+  netPush(fin, { k: 'inc', p: r.p, inc: r.inc, before: r.before, capt: r.capt });
 }
 function netOpenBattle(b) {
   if (!NET.myTurn()) { Kit.haptic('error'); return; }
@@ -5019,11 +5044,11 @@ function netBot(st, seat) {
         else { S.bl.forEach(function (x) { x.done = 1; }); setPhase('ncm'); }
       }
       else if (S.phase === 'ncm') { try { await aiNoncombat(p); } catch (e) { console.warn(e); } endNcm(); }
-      else { try { aiPlace(p); } catch (e) { console.warn(e); } r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before }; }
+      else { try { aiPlace(p); } catch (e) { console.warn(e); } r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before, capt: r.capt }; }
     } catch (e) {
       // never stall: skip whatever broke and finish the turn
       console.warn(e);
-      if (cur() === p && !S.over) { S.B = null; S.bl = []; S.phase = 'mob'; r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before }; }
+      if (cur() === p && !S.over) { S.B = null; S.bl = []; S.phase = 'mob'; r = endMobState(); netNextTurn(); mv = { k: 'inc', p: r.p, inc: r.inc, before: r.before, capt: r.capt }; }
     }
     return { state: compact(S), mv: mv };
   });
@@ -5080,7 +5105,7 @@ function netShow(net, info) {
   if (!first) netBattleView(false);
   if (info.again) { Kit.sfx('deal'); }
   if (S.over) {
-    if (!first && mv && mv.k === 'inc') showIncome(mv.p, mv.inc, mv.before, function () { netEnd(); });
+    if (!first && mv && mv.k === 'inc') showIncome(mv.p, mv.inc, mv.before, function () { netEnd(); }, mv.capt || []);
     else later(first ? 300 : 900, netEnd);
     return;
   }
@@ -5088,7 +5113,7 @@ function netShow(net, info) {
   var tk = S.round + ':' + S.pi, newTurn = tk !== lastTurnKey;
   lastTurnKey = tk;
   var banner = newTurn && mine && !S.B && S.phase === 'buy' && !restored && !buyCost();
-  if (!first && mv && mv.k === 'inc' && newTurn) showIncome(mv.p, mv.inc, mv.before, function () { if (banner && NET) beginTurnUI(); });
+  if (!first && mv && mv.k === 'inc' && newTurn) showIncome(mv.p, mv.inc, mv.before, function () { if (banner && NET) beginTurnUI(); }, mv.capt || []);
   else if (banner) later(first ? 500 : 250, beginTurnUI);
   else if (!first && newTurn && !mine) Kit.sfx('deal');
   if (!first && mine && !info.mine && !newTurn && !S.B) Kit.haptic('light');
