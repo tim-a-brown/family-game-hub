@@ -706,7 +706,7 @@
     window.EJS_onGameStart = function () {
       started = true; msg('');
       glassEl.classList.remove('loading');
-      applySpeed();
+      applySpeed(); keysApply();
       if (!spd.loop) { spd.loop = true; requestAnimationFrame(rafCount); }
       ConsoleNet.install(emu());
       if (!NET.mode) quietStart();
@@ -1388,7 +1388,7 @@
       var rot = { 4: 0, 7: 90, 5: 180, 6: 270 }[t[1]];
       if (rot != null && (!m || same)) return;
       var key = rot != null ? '<span class="pm-key k' + t[1] + '">' + arrow(rot) + '</span>' : '<span class="pm-key pm-' + SYS_ID + ' k' + t[1] + '">' + Kit.esc(t[0].replace('Game ', '')) + '</span>';
-      var kb = rot != null ? kc(['↑', '↓', '←', '→'][t[1] - 4]) : SYS.keys[t[1]] ? kc(SYS.keys[t[1]]) : '';
+      var kk = keyOf(t[1]), kb = kk ? kc(kk[1]) : '';
       var chip = t[0].replace('Game ', '');   // (a button whose chip already says its name needs no name beside it)
       rows += '<tr><th>' + key + (rot != null || chip !== t[0] ? '<span class="ctl-n">' + Kit.esc(t[0]) + '</span>' : '') + '</th><td class="kb">' + kb + '</td>' + (m ? '<td>' + pad(t[1]) + '</td>' : '') + '</tr>';
     });
@@ -1415,11 +1415,74 @@
     });
     return out;
   }
-  // The remap sheet: the console's buttons, each with what it's on now. Press anything on the controller and its row
-  // lights up; tap a row, then press the controller button you want for it.
+  // ── The keyboard: the key on each console button. EmulatorJS's own (SYS.keys, the arrows on the D-pad) unless you
+  // changed it: gn_key_map {console: {button: [keyCode, label]}}, which follows the PIN like the controller maps
+  var ARROW_KEYS = { 4: [38, '↑'], 5: [40, '↓'], 6: [37, '←'], 7: [39, '→'] };
+  var KEY_CODES = { Z: 90, X: 88, A: 65, S: 83, Q: 81, E: 69, V: 86, Enter: 13 };
+  function keyMaps() { try { return JSON.parse(localStorage.getItem('gn_key_map') || '{}') || {}; } catch (e) { return {}; } }
+  function keySave(all) { try { localStorage.setItem('gn_key_map', JSON.stringify(all)); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite('gn_key_map'); }
+  function keyDefault(code) { if (ARROW_KEYS[code]) return ARROW_KEYS[code]; var l = SYS.keys[code]; return l ? [KEY_CODES[l], l] : null; }
+  function keyOf(code) { return (keyMaps()[SYS_ID] || {})[code] || keyDefault(code); }
+  function keyLabel(e) {
+    var k = e.key || '';
+    return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', ' ': 'Space', Control: 'Ctrl', Meta: 'Cmd', Backspace: 'Delete' }[k] || (k.length === 1 ? k.toUpperCase() : k);
+  }
+  // the console button a key is on now (or -1)
+  function codeOfKey(kc) { var hit = -1; PAD_TARGETS[SYS_ID].forEach(function (t) { var k = keyOf(t[1]); if (k && k[0] === kc) hit = t[1]; }); return hit; }
+  // hand the keys to the emulator (it reads them on every key press)
+  function keysApply() {
+    var E = emu(); if (!E || !E.controls) return;
+    PAD_TARGETS[SYS_ID].forEach(function (t) { var k = keyOf(t[1]); if (!k) return; E.controls[0][t[1]] = E.controls[0][t[1]] || {}; E.controls[0][t[1]].value = k[0]; });
+  }
+
+  // ── The controller, drawn: the console's own pad with the keyboard key on each button (a key cap beside it), in a
+  // 400 x 200 box. Each control carries data-c (its console button; the D-pad its four arms) for lighting and tapping.
+  var ART = {
+    nes: { body: '<rect x="14" y="28" width="372" height="128" rx="12" fill="#c9c5bd"/><rect x="14" y="28" width="372" height="10" rx="5" fill="#fff" opacity=".25"/><rect x="26" y="40" width="348" height="104" rx="8" fill="#1d1c20"/>' +
+        '<rect x="150" y="52" width="100" height="80" rx="6" fill="#cfcbc4" opacity=".18"/><rect x="158" y="60" width="84" height="6" rx="3" fill="#000" opacity=".4"/><rect x="158" y="72" width="84" height="6" rx="3" fill="#000" opacity=".4"/><rect x="158" y="84" width="84" height="6" rx="3" fill="#000" opacity=".4"/>',
+      dp: [88, 92, 72], btn: { 0: [290, 96, 42, 'B', '#d42a2f', [0, 36]], 8: [342, 96, 42, 'A', '#d42a2f', [0, 36]] }, pill: { 2: [178, 112, 'SELECT'], 3: [222, 112, 'START'] } },
+    snes: { body: '<path d="M96 30 H304 A66 66 0 0 1 304 162 H96 A66 66 0 0 1 96 30 Z" fill="#d6d3db"/><path d="M96 30 H304 A66 66 0 0 1 362 62 H38 A66 66 0 0 1 96 30 Z" fill="#fff" opacity=".35"/>' +
+        '<circle cx="304" cy="96" r="54" fill="#8f86ad" opacity=".35"/><circle cx="96" cy="96" r="50" fill="#8f86ad" opacity=".16"/>',
+      dp: [96, 96, 70], btn: { 9: [304, 66, 30, 'X', '#3a6fd4', [-26, -12]], 1: [274, 96, 30, 'Y', '#2ea253', [-12, 25]], 8: [334, 96, 30, 'A', '#d93641', [12, 25]], 0: [304, 126, 30, 'B', '#ecbf22', [0, 28]] },
+      pill: { 2: [180, 110, 'SELECT'], 3: [220, 110, 'START'] }, sh: { 10: [50, 14, 'L'], 11: [350, 14, 'R'] } },
+    genesis: { body: '<path d="M40 70 Q200 6 360 70 Q396 132 342 166 Q262 178 200 140 Q138 178 58 166 Q4 132 40 70 Z" fill="#232328" stroke="#fff" stroke-opacity=".16" stroke-width="1.5"/><path d="M40 70 Q200 6 360 70 Q300 46 200 44 Q100 46 40 70 Z" fill="#fff" opacity=".07"/>' +
+        '<circle cx="104" cy="104" r="46" fill="#fff" opacity=".04"/>',
+      dp: [104, 104, 70], btn: { 1: [262, 118, 34, 'A', '#2c2c31', [0, 30]], 0: [302, 102, 34, 'B', '#2c2c31', [0, 30]], 8: [342, 86, 34, 'C', '#2c2c31', [0, 30]] }, pill: { 3: [200, 86, 'START'] } },
+    atari2600: { body: '<rect x="206" y="44" width="180" height="108" rx="10" fill="#6b4529"/><path d="M206 70 Q290 62 386 74 M206 98 Q290 108 386 96 M206 126 Q290 118 386 130" stroke="#2a180b" stroke-opacity=".35" stroke-width="3" fill="none"/>',
+      dp: [100, 98, 136], btn: { 0: [52, 46, 30, '', '#c9271d', [-2, -26]] }, pill: { 2: [256, 98, 'SELECT'], 3: [336, 98, 'RESET'] } }
+  };
+  function capSvg(x, y, code, small) {
+    var k = keyOf(code), t = k ? k[1] : '', w = Math.max(small ? 17 : 20, 10 + t.length * (small ? 6.5 : 7.5)), h = small ? 17 : 20;
+    return '<g class="cap" data-c="' + code + '"><rect x="' + (x - w / 2) + '" y="' + (y - h / 2) + '" width="' + w + '" height="' + h + '" rx="5" class="cap-b"/>' +
+      '<text x="' + x + '" y="' + (y + (small ? 4 : 4.5)) + '" text-anchor="middle" class="cap-t" font-size="' + (small ? 10 : 11) + '">' + Kit.esc(t) + '</text></g>';
+  }
+  function padArt() {
+    var A = ART[SYS_ID], o = '<svg class="pm-art" viewBox="0 0 400 200" role="img" aria-label="' + Kit.esc(SYS.name) + ' controller">' + A.body;
+    var dp = A.dp, d = dp[2];
+    // the D-pad (Atari: the joystick), its arms tappable, and the four arrow keys under it, laid out like a keyboard's
+    o += '<g class="ctl-dp"><svg x="' + (dp[0] - d / 2) + '" y="' + (dp[1] - d / 2) + '" width="' + d + '" height="' + d + '" viewBox="0 0 100 100" overflow="visible">' + svgDpad().replace(/^<svg[^>]*>|<\/svg>$/g, '') +
+      (SYS_ID === 'atari2600'   // (the joystick: its four arrow marks light up)
+        ? '<g class="arms tri"><path data-c="4" d="M50 8l9 12H41z"/><path data-c="5" d="M50 90l9-12H41z"/><path data-c="6" d="M8 49l12-9v18z"/><path data-c="7" d="M92 49l-12-9v18z"/></g></svg></g>'
+        : '<g class="arms"><path data-c="4" d="M36 9h28v27H36z"/><path data-c="5" d="M36 64h28v27H36z"/><path data-c="6" d="M6 36h30v28H6z"/><path data-c="7" d="M64 36h30v28H64z"/></g></svg></g>');
+    var ky = SYS_ID === 'atari2600' ? dp[1] + d / 2 + 2 : dp[1] + d / 2 + 6, kx = dp[0];
+    o += capSvg(kx, ky + 9, 4, true) + capSvg(kx - 21, ky + 29, 6, true) + capSvg(kx, ky + 29, 5, true) + capSvg(kx + 21, ky + 29, 7, true);
+    Object.keys(A.sh || {}).forEach(function (c) { var b = A.sh[c], r = c === '11';
+      o += '<g class="ctl-b" data-c="' + c + '"><svg x="' + (b[0] - 36) + '" y="' + b[1] + '" width="72" height="24" viewBox="0 0 120 40">' + svgShoulder(b[2], r).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</svg></g>' + capSvg(b[0] + (r ? -50 : 50), b[1] + 12, +c); });
+    Object.keys(A.pill).forEach(function (c) { var b = A.pill[c];
+      o += '<g class="ctl-b" data-c="' + c + '"><svg x="' + (b[0] - 24) + '" y="' + (b[1] - 8) + '" width="48" height="27" viewBox="0 0 100 56">' + svgPill(b[2]).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</svg></g>' + capSvg(b[0], b[1] + 30, +c, true); });
+    Object.keys(A.btn).forEach(function (c) { var b = A.btn[c], r = b[2] / 2;
+      o += '<g class="ctl-b" data-c="' + c + '"><svg x="' + (b[0] - r) + '" y="' + (b[1] - r) + '" width="' + b[2] + '" height="' + b[2] + '" viewBox="0 0 100 100">' + svgBtn(b[3], b[4]).replace(/^<svg[^>]*>|<\/svg>$/g, '') + '</svg></g>' +
+        capSvg(b[0] + b[5][0], b[1] + b[5][1], +c); });
+    return o + '</svg>';
+  }
+
+  // The controls sheet: the controller drawn, then each console button with what it does in this game, the controller
+  // button on it and the key. Press a key or a controller button and it lights up in both; tap a button (in the
+  // drawing or the list) and press the key or controller button you want on it.
   function padSheet() {
-    var box = el('div', { class: 'k-list pm' }), rows = {}, listen = null, startDown = null, s;
-    var head = el('p', { class: 'pm-who' }), m = null, p = null, acts = started ? gameActions(cur) : null;
+    var box = el('div', { class: 'k-list pm' }), rows = {}, listen = null, startDown = null, s, keyH = null, keyU = null;
+    var head = el('div', { class: 'pm-who' }), m = null, p = null, acts = started ? gameActions(cur) : null;
+    var art = el('div', { class: 'pm-stage pm-' + SYS_ID });
     // the players: who has which controller, and a swap when there are two
     var who = el('div', { class: 'pm-seats' });
     function drawSeats() {
@@ -1431,19 +1494,51 @@
         padRelease(); seats.reverse(); load(); showSeats(); Kit.haptic('medium'); Kit.toast('Players swapped');
       } }));
     }
-    box.appendChild(who); box.appendChild(head);
+    box.appendChild(art); box.appendChild(head); box.appendChild(who);
+    // what's lit (pressed) and what's waiting for a new key or button, in the drawing and the list together
+    var held = { pad: {}, key: {} };
+    function paint() {
+      var on = {}; Object.keys(held.pad).concat(Object.keys(held.key)).forEach(function (c) { on[c] = 1; });
+      Object.keys(rows).forEach(function (k) { rows[k].el.classList.toggle('lit', !!on[k]); });
+      art.querySelectorAll('[data-c]').forEach(function (g) { var c = g.getAttribute('data-c'); g.classList.toggle('lit', !!on[c]); g.classList.toggle('listen', String(listen) === c); });
+    }
     function load() {
       p = activePad();
       var n = seatOf(p);
       head.innerHTML = '';
+      // the two ways in: the keyboard, always; the controller once one is connected
+      head.appendChild(el('span', { class: 'pm-dev', html: '<svg viewBox="0 0 24 24" width="18" height="18"><rect x="2" y="6" width="20" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Keyboard</span>' }));
       if (p) {
-        if (n >= 0 && seats.filter(function (gi) { return padAt(gi); }).length > 1) head.appendChild(el('b', { class: 'pm-pn p' + (n + 1), text: 'Player ' + (n + 1) }));
-        head.appendChild(el('span', { html: Kit.icon('gamepad') + '<span>' + Kit.esc(padName(p)) + '</span>' }));
-      } else head.appendChild(el('span', { class: 'pm-none', text: 'Connect a controller and press any button on it to set it up here.' }));
+        var two = n >= 0 && seats.filter(function (gi) { return padAt(gi); }).length > 1;
+        head.appendChild(el('span', { class: 'pm-dev on', html: Kit.icon('gamepad') + '<span>' + Kit.esc(padName(p)) + '</span>' + (two ? '<b class="pm-pn p' + (n + 1) + '">P' + (n + 1) + '</b>' : '') }));
+      } else head.appendChild(el('span', { class: 'pm-dev off', html: Kit.icon('gamepad') + '<span>Press a button on a controller to add it</span>' }));
       drawSeats();
       m = JSON.parse(JSON.stringify(padMapOf(p)));
       box.classList.toggle('pm-nopad', !p);
-      PAD_TARGETS[SYS_ID].forEach(function (t) { var r = rows[t[1]]; if (r) r.sub.textContent = p ? (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing' : ''; });
+      art.innerHTML = padArt();
+      art.querySelectorAll('[data-c]').forEach(function (g) { g.addEventListener('click', function () { pick(+g.getAttribute('data-c')); }); });
+      PAD_TARGETS[SYS_ID].forEach(function (t) {
+        var r = rows[t[1]]; if (!r) return;
+        var k = keyOf(t[1]);
+        r.kb.textContent = k ? k[1] : ''; r.kb.classList.toggle('none', !k);
+        if (listen === t[1]) return;
+        r.sub.textContent = p ? (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing' : '';
+      });
+      paint();
+    }
+    // waiting for a key or a controller button for console button c (tapped again: stop waiting)
+    function pick(c) {
+      var r = rows[c]; if (!r) return;
+      if (listen === c) { listen = null; r.el.classList.remove('listen'); load(); return; }
+      Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('listen'); });
+      listen = c; startDown = p ? padDown(p) : {}; r.el.classList.add('listen');
+      r.sub.textContent = p ? 'Press a key or a controller button' : 'Press a key';
+      r.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      Kit.haptic('light'); paint();
+    }
+    function settled(codes) {
+      codes.forEach(function (k) { if (k == null || !rows[k]) return; var r = rows[k].el; r.classList.remove('listen'); r.classList.add('done'); setTimeout(function () { r.classList.remove('done'); }, 700); });
+      listen = null; Kit.haptic('success'); Kit.sfx('tap'); load();
     }
     var grp = el('div', { class: 'k-grp' });
     PAD_TARGETS[SYS_ID].forEach(function (t) {
@@ -1453,26 +1548,42 @@
         : el('span', { class: 'pm-key pm-' + SYS_ID + ' k' + t[1], text: t[0].replace('Game ', '') });
       // what it does in this game (the directions: their own, or the D-pad's in general); else the button's name
       var act = acts && (acts[t[1]] || (rot != null ? acts.d : null));
-      var kb = rot != null ? ['↑', '↓', '←', '→'][t[1] - 4] : SYS.keys[t[1]];
-      var sub = el('small', { class: 'pm-pad' });
-      var b = el('button', { type: 'button', class: 'pm-row' + (act ? ' has-act' : '') }, [el('span', { class: 'pm-kc' }, [key]),
-        el('span', { class: 'lbl' }, [el('span', { class: 'pm-act', text: act || t[0] }), sub]),
-        kb ? el('kbd', { class: 'pm-kb', 'aria-label': 'Keyboard ' + kb, text: kb }) : el('span', { class: 'pm-kb none' })]);
-      b.onclick = function () {
-        if (!p) return;
-        if (listen === t[1]) { listen = null; b.classList.remove('listen'); load(); return; }
-        Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('listen'); });
-        listen = t[1]; startDown = padDown(p); b.classList.add('listen'); sub.textContent = 'Press a button on the controller'; Kit.haptic('light');
-      };
-      rows[t[1]] = { el: b, sub: sub }; grp.appendChild(b);
+      var sub = el('small', { class: 'pm-pad' }), kb = el('kbd', { class: 'pm-kb' });
+      var b = el('button', { type: 'button', class: 'pm-row' + (act ? ' has-act' : ''), 'aria-label': (act ? act + ', ' : '') + t[0] }, [el('span', { class: 'pm-kc' }, [key]),
+        el('span', { class: 'lbl' }, [el('span', { class: 'pm-act', text: act || t[0] }), sub]), kb]);
+      b.onclick = function () { pick(t[1]); };
+      rows[t[1]] = { el: b, sub: sub, kb: kb }; grp.appendChild(b);
     });
     // over the list: whose actions they are, and the keyboard's column
     box.appendChild(el('div', { class: 'pm-cols' }, [el('span', { text: acts ? 'In ' + cur.name.replace(/\s*[\(\[].*$/, '') : SYS.name }), el('span', { text: 'Key' })]));
     box.appendChild(grp);
+    var custom = function () { return !!(keyMaps()[SYS_ID] && Object.keys(keyMaps()[SYS_ID]).length) || !!(p && padMaps()[p.id] && padMaps()[p.id][SYS_ID]); };
     var reset = el('button', { type: 'button', class: 'pm-reset' }, ['Back to the standard layout']);
-    reset.onclick = function () { if (!p) return; var all = padMaps(); if (all[p.id]) { delete all[p.id][SYS_ID]; padSave(all); } listen = null; load(); Kit.toast('Standard layout'); };
+    reset.onclick = function () {
+      var ks = keyMaps(); delete ks[SYS_ID]; keySave(ks);
+      if (p) { var all = padMaps(); if (all[p.id]) { delete all[p.id][SYS_ID]; padSave(all); } }
+      E_keys(); listen = null; load(); reset.hidden = !custom(); Kit.toast('Standard layout');
+    };
     box.appendChild(reset);
-    load();
+    function E_keys() { try { keysApply(); } catch (e) {} }
+    load(); reset.hidden = !custom();
+    // the keyboard: a key lights its button; while waiting, the key pressed goes on that button (Esc stops waiting)
+    keyH = function (e) {
+      if (listen != null) {
+        e.preventDefault(); e.stopImmediatePropagation();
+        if (e.repeat) return;
+        if (e.key === 'Escape' || e.key === 'Tab') { var was = listen; listen = null; if (rows[was]) rows[was].el.classList.remove('listen'); load(); return; }
+        var ks = keyMaps(), mine = ks[SYS_ID] = ks[SYS_ID] || {}, now = [e.keyCode, keyLabel(e)], old = keyOf(listen), other = codeOfKey(e.keyCode), c = listen;
+        // one button per key: whatever had this key takes this button's old one
+        if (other >= 0 && other !== c && old) mine[other] = old;
+        mine[c] = now;
+        keySave(ks); E_keys(); settled([c, other >= 0 && other !== c ? other : null]); reset.hidden = !custom();
+        return;
+      }
+      var c2 = codeOfKey(e.keyCode); if (c2 >= 0) { held.key[c2] = 1; paint(); }
+    };
+    keyU = function (e) { var c2 = codeOfKey(e.keyCode); if (c2 >= 0 && held.key[c2]) { delete held.key[c2]; paint(); } };
+    window.addEventListener('keydown', keyH, true); window.addEventListener('keyup', keyU, true);
     mapper = function (down, pad) {
       // the sheet follows whichever controller is being pressed (unless it's waiting for one to pick a button)
       if (listen == null && Object.keys(down).length && (!p || pad.index !== p.index)) { lastPad = pad.index; load(); }
@@ -1487,15 +1598,17 @@
           Object.keys(m).forEach(function (k) { if (+k !== listen && (m[k] || []).indexOf(code) >= 0) { var rest = m[k].filter(function (c) { return c !== code; }); m[k] = rest.length ? rest : old.filter(function (c) { return c !== code; }); swapped = k; } });
           m[listen] = [code];
           var all = padMaps(); all[p.id] = all[p.id] || {}; all[p.id][SYS_ID] = m; padSave(all);
-          [listen, swapped].forEach(function (k) { if (k == null || !rows[k]) return; var r = rows[k].el; r.classList.remove('listen'); r.classList.add('done'); setTimeout(function () { r.classList.remove('done'); }, 700); });
-          listen = null; Kit.haptic('success'); Kit.sfx('tap'); load();
+          settled([listen, swapped]); reset.hidden = !custom();
         }
         return;
       }
       // live: light up the console buttons the controller is pressing
-      Object.keys(rows).forEach(function (k) { rows[k].el.classList.toggle('lit', (m[k] || []).some(function (c) { return down[c]; })); });
+      var h = {}; Object.keys(m).forEach(function (k) { if ((m[k] || []).some(function (c) { return down[c]; })) h[k] = 1; });
+      if (JSON.stringify(h) !== JSON.stringify(held.pad)) { held.pad = h; paint(); }
     };
-    s = Kit.sheet({ title: SYS.name + ' controls', node: box, onClose: function () { mapper = null; } });
+    s = Kit.sheet({ title: SYS.name + ' controls', node: box, onClose: function () {
+      mapper = null; window.removeEventListener('keydown', keyH, true); window.removeEventListener('keyup', keyU, true);
+    } });
   }
 
   // ═══ Online: two to four players, each on their own device ════════════════
