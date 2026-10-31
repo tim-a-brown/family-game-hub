@@ -1619,7 +1619,7 @@ function startTurn() {
     if (u.o !== p) return;
     u.m = 0; u.c = 0; u.f = 0; u.ul = 0; u.ulT = null; u.sbr = null; u.amph = null; u.amphF = 0; u.dv = 0; u.fr = null; u.org = null;
   });
-  S.turnOwn = S.own.slice(); S.capt = []; S.buy = {}; S.rep = {}; S.placed = {};
+  S.turnOwn = S.own.slice(); S.capt = []; S.buy = {}; S.rep = {}; S.placed = {}; S.tw = S.wn || 0; S.tbuy = null; S.ttech = null;
   S.bl = []; S.B = null; S.phase = 'buy';
   S.rsd = techOn() && alive(p) ? 0 : 1; S.rbuy = 0; S.rr = null; S.rk = null;
   aaRoundSnap();
@@ -1725,7 +1725,9 @@ function endMob() {
   ui.sel = -1; ui.pick = {}; ui.preview = null; ui.bankSel = null;
   save();
   renderAll();
-  showIncome(p, inc, before, function () { if (S && S.phase === 'inc' && cur() === p) nextTurn(); }, { capt: r.capt, wb: r.wb });
+  var next = function () { if (S && S.phase === 'inc' && cur() === p) nextTurn(); };
+  if (isCpu(p) && watching()) turnSummary(p, inc, before, next);
+  else showIncome(p, inc, before, next, { capt: r.capt, wb: r.wb });
 }
 // Territories taken this turn come first, marked new
 function incomeRows(p, capt) {
@@ -4153,6 +4155,9 @@ function afterPhase() {
 // Battle board (overlay) and the battle runner
 // ═══════════════════════════════════════════════════════════════════════════
 function wait(ms) { var t = tok; return new Promise(function (res, rej) { setTimeout(function () { if (t !== tok) rej('cancel'); else res(); }, ms); }); }
+// Normal speed with someone watching at this table: computer battles wait for an OK at the end, and each computer
+// turn ends on its summary
+function watching() { return !NET && !!S && S.opt.speed !== 'fast' && S.seats.some(function (s) { return !s.cpu; }); }
 function spd(ms) { return S.opt.speed === 'fast' ? Math.round(ms * 0.4) : ms; }
 var inputWait = null;
 function waitInput() { return new Promise(function (res) { inputWait = res; }); }
@@ -4272,7 +4277,7 @@ async function runBattle() {
         var human = humanPower(B.att) || (B.def && humanPower(B.def));
         if (B.res === 'att' && humanPower(B.att)) { Kit.sfx('win'); Kit.haptic('success'); }
         else if (B.res === 'def' && humanPower(B.att)) Kit.sfx('lose');
-        if (humanPower(B.att)) await waitInput();
+        if (humanPower(B.att) || watching()) await waitInput();
         else await wait(spd(human ? 1600 : 1100));
         closeBattle();
         hideBattle();
@@ -4547,8 +4552,8 @@ function renderBattle(B, anim) {
     acts.appendChild(el('div', { class: 'bdive' }, [el('p', { text: 'Your submarines: fight, or dive away?' }),
       el('button', { type: 'button', class: 'btn btn-soft', text: 'Dive', onclick: function () { Kit.sfx('whoosh'); ui.dive.d = true; giveInput('roll'); } }),
       el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('dice') + '<span>Fight</span>', onclick: function () { Kit.sfx('tap'); ui.dive.d = false; giveInput('roll'); } })]));
-  } else if (B.step === 'end' && attHuman) {
-    acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Done', onclick: function () { Kit.sfx('tap'); giveInput('ok'); } }));
+  } else if (B.step === 'end' && (attHuman || (!NET && watching()))) {
+    acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: attHuman ? 'Done' : 'Continue', onclick: function () { Kit.sfx('tap'); giveInput('ok'); } }));
   } else if (B.step === 'dive') {
     // online: the defending submarines' choice, on the defender's own device
     if (humanPower(B.def)) acts.appendChild(el('div', { class: 'bdive' }, [el('p', { text: PW[B.def].short + ' submarines: fight, or dive away?' }),
@@ -5280,6 +5285,81 @@ function warReport(p, you) {
   return box;
 }
 
+// A computer general's turn, summed up for whoever is watching (normal speed): what it bought, every attack it made
+// (the map with numbered pins and arrows, then each battle with what both sides lost), what it took, and its income.
+// Colours are the watcher's: green when it went their side's way, red when it didn't.
+function turnSummary(p, inc, before, done) {
+  closeBanner();
+  var list = (S.war || []).filter(function (e) { return e.n > (S.tw || 0) && e.a === p; });
+  var me = S.seats.filter(function (s) { return !s.cpu; })[0], mine = me && me.powers[0] ? PW[me.powers[0]].side : null;
+  var flip = mine && PW[p].side === mine, kinds = { land: 'Land battle', sea: 'Sea battle', sbr: 'Bombing raid', rkt: 'Rocket strike', cap: 'Marched in unopposed' };
+  function tone(e) { var t = warOutcome(e)[1]; return !flip ? t : t === 'bad' ? 'good' : t === 'good' ? 'bad' : t; }
+  function word(e) { var w = warOutcome(e)[0]; return w === 'Held' ? 'Beaten off' : w === 'Driven off' ? 'Retreated' : w; }
+  var head = el('div', { class: 'bn-head' }, [
+    el('div', { html: roundelSvg(p) }).firstChild,
+    el('div', { class: 'bn-id' }, [el('h2', { text: pname(p) }), el('p', { text: 'Round ' + S.round + ' done' })]),
+    el('div', { class: 'bn-facts' }, [el('span', { html: '<b>+' + inc + '</b> IPCs income' }), el('span', { html: '<b>' + (before + inc) + '</b> to spend next turn' })])
+  ]);
+  var places = [], pidx = {}, rank = { good: 0, mid: 1, bad: 2 };
+  list.forEach(function (e) {
+    if (pidx[e.t] == null) { pidx[e.t] = places.length; places.push({ t: e.t, tone: 'good' }); }
+    var pl = places[pidx[e.t]], tn = tone(e);
+    if (rank[tn] > rank[pl.tone]) pl.tone = tn;
+  });
+  var tot = { a: {}, d: {} };
+  list.forEach(function (e) {
+    Object.keys(e.la).forEach(function (k) { tot.a[k] = (tot.a[k] || 0) + e.la[k]; });
+    Object.keys(e.ld).forEach(function (k) { tot.d[k] = (tot.d[k] || 0) + e.ld[k]; });
+  });
+  function totRow(label, chips, cls, ipcs) {
+    if (!chips.length) return null;
+    var ipc = chips.reduce(function (a, g) { return a + U[g.k].c * g.n; }, 0);
+    return el('div', { class: 'wtot ' + cls }, [el('span', { class: 'wtl', text: label }), vsChips(chips), el('span', { class: 'wti', html: '<b>' + ipc + '</b> IPCs' })]);
+  }
+  var bought = Object.keys(S.tbuy || {}).filter(function (k) { return U[k]; }).map(function (k) { return { o: p, k: k, n: S.tbuy[k] }; });
+  var rows = [
+    totRow('Bought', bought, 'buy'),
+    totRow(PW[p].short + ' lost', lostChips(tot.a), flip ? 'you' : 'en'),
+    totRow('Defenders lost', lostChips(tot.d), flip ? 'en' : 'you')
+  ].filter(Boolean);
+  var took = list.filter(function (e) { return e.cap; }).length;
+  var box;
+  if (list.length) {
+    var map = warMap(places, list, pidx);
+    var items = list.map(function (e, i) {
+      var la = lostChips(e.la), ld = lostChips(e.ld), lines = [];
+      function line(label, pw, chips) { return el('div', { class: 'wl' }, [el('span', { html: roundelSvg(pw, 'wlr') }).firstChild, el('small', { text: label }), vsChips(chips)]); }
+      if (la.length) lines.push(line(PW[e.a].short + ' lost', e.a, la));
+      var byPw = {}; ld.forEach(function (g) { (byPw[g.o] = byPw[g.o] || []).push(g); });
+      Object.keys(byPw).forEach(function (q) { lines.push(line(PW[q].short + ' lost', q, byPw[q])); });
+      if (!lines.length && (e.k === 'land' || e.k === 'sea')) lines.push(el('div', { class: 'wl none' }, [el('small', { text: 'No losses on either side' })]));
+      var pi = pidx[e.t], d0 = e.d && e.d[0];
+      return el('div', { class: 'wr', 'data-i': pi, style: { '--ac': PW[e.a].col, animationDelay: Math.min(i * 60, 600) + 'ms' } }, [
+        el('div', { class: 'wh' }, [
+          el('span', { class: 'wpin ' + places[pi].tone, text: String(pi + 1) }),
+          el('div', { class: 'wt' }, [el('b', { text: placeTitle(e.t) }), el('small', { html: esc(kinds[e.k]) + (d0 ? ' against ' + roundelSvg(d0, 'wlr') + esc(PW[d0].short) : '') })]),
+          el('span', { class: 'wo ' + places[pi].tone, text: word(e) })
+        ])
+      ].concat(lines));
+    });
+    box = el('div', { class: 'war' }, [
+      el('div', { class: 'war-h' }, [el('span', { text: 'This turn' }), el('span', { class: 'war-n', html: '<b>' + list.length + '</b> ' + (list.length === 1 ? 'attack' : 'attacks') + (took ? ', <b>' + took + '</b> taken' : '') })]),
+      rows.length ? el('div', { class: 'wtots' }, rows) : null,
+      map,
+      el('div', { class: 'war-list' }, items)
+    ]);
+    function light(i) { Kit.sfx('tap'); box.querySelectorAll('.wm-pin, .wr, .wm-arr').forEach(function (x) { x.classList.toggle('on', +x.getAttribute('data-i') === i); }); map.classList.add('pick'); }
+    items.forEach(function (r) { r.addEventListener('click', function () { light(+r.getAttribute('data-i')); }); });
+    map.addEventListener('click', function (ev) { var g = ev.target.closest && ev.target.closest('.wm-pin'); if (!g) return; var i = +g.getAttribute('data-i'); light(i); var r = box.querySelector('.wr[data-i="' + i + '"]'); if (r) r.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  } else box = el('div', { class: 'war calm' }, [rows.length ? el('div', { class: 'wtots' }, rows) : null, el('p', { class: 'war-quiet', text: 'No attacks this turn.' })]);
+  var card = el('div', { class: 'card paper tsum' + (list.length ? ' wide' : ''), style: { '--pc': p === 'de' ? '#3d423f' : PW[p].col } }, [head, box,
+    el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Continue', onclick: function () { Kit.sfx('pop'); closeBanner(); done(); } })]);
+  bannerEl = el('div', { class: 'aa-banner' }, [card]);
+  document.body.appendChild(bannerEl);
+  requestAnimationFrame(function () { bannerEl && bannerEl.classList.add('show'); });
+  Kit.sfx('deal');
+}
+
 // ── Game over ──────────────────────────────────────────────────────────────
 // History detail: who held each territory at the end (one letter per map place), and each power's standing
 var AA_LETTER = { su: 's', de: 'd', uk: 'k', jp: 'j', us: 'u' };
@@ -5508,7 +5588,7 @@ var Music = (function () {
     } }
   };
 })();
-var KIT_OPTS = { orient: 'landscape', orientTablets: true,
+var KIT_OPTS = { orient: 'landscape',
   id: KEY,
   theme: { wood: ['#7a5a3a', '#4e3620'] },
   onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
@@ -5606,7 +5686,7 @@ function showSetup() {
       { id: 'tech', label: 'Research', value: 'off', when: adjusting, help: 'Weapons development: spend IPCs on dice for a chance at new weapons.', choices: ruleChoices('tech') },
       { id: 'neu', label: 'Neutrals', value: 'off', when: adjusting, help: 'Whether the neutral countries (striped on the map) can be invaded.', choices: ruleChoices('neu') },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
-      { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
+      { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along: each computer battle waits for you at the end, and each computer turn ends with a summary of what it did.'], ['fast', 'Fast', 'Quick moves and dice, no stops.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
     players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; } },
@@ -5760,6 +5840,7 @@ function netNextTurn() {
   startTurn();
 }
 function buyLog(p) {
+  S.tbuy = {}; for (var k0 in S.buy) if (S.buy[k0]) S.tbuy[k0] = S.buy[k0];   // (for the turn's summary)
   var b = KINDS.concat(['ic']).filter(function (k) { return S.buy[k]; }).map(function (k) { return S.buy[k] + ' ' + (S.buy[k] > 1 ? U[k].p : U[k].n).toLowerCase(); });
   logLine(pname(p) + (b.length ? ' buys ' + b.join(', ') : ' buys nothing'));
 }
