@@ -7,6 +7,9 @@ Shared code:
 - `kit.css` / `kit.js`: design system and game shell (game bar, rules sheet,
   setup screen, win screen, sounds, haptics, icons, cards, dice). New and
   rebuilt games use these. API is documented at the top of `kit.js`.
+- `tour.js`: "First time here?" overview (sign-in page; opens once on a new device) and How Game Night works, the
+  in-app guide (profile menu, every game's menu via `Kit.tour(topic)`), both built from the same animated scenes. A new
+  account feature worth explaining gets a topic there.
 - `games.js`: the game catalog (names, colours, categories, player counts,
   which file is "play" vs "keep score"). Home screen and kit both read it.
 - `sync.js` (Firestore sync, PIN sign-in), `hist.js` (game history),

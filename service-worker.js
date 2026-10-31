@@ -27,6 +27,7 @@ const PRECACHE_URLS = [
   '/spotify.js',
   '/spotify.html',
   '/kit.js',
+  '/tour.js',
   '/spin.js',
   '/games.js',
   '/game-icons.js',

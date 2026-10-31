@@ -1153,6 +1153,7 @@
       var on = toggleFav(); toast(on ? 'Added to favorites' : 'Removed from favorites'); haptic('success');
     });
     item(M, 'plane', 'Offline', offlineSheet, '', offlineTag());
+    item(M, 'help', 'How Game Night works', function () { tour(); });
     item(M, 'home', 'All games', goHome);
     if (top.length) list.appendChild(el('div', { class: 'k-tiles' }, top));
     groups.forEach(function (g) {
@@ -3388,7 +3389,7 @@
   // Your profile: the code to give people, and whether their games need your OK first
   function profileSheet() {
     var node = el('div', { class: 'lk' }), s;
-    if (!linksOn()) { node.appendChild(el('p', { class: 'muted', text: 'Sign in with a PIN to share your profile.' })); sheet({ title: 'Share my profile', node: node, help: togetherSheet, helpLabel: 'How playing together works', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
+    if (!linksOn()) { node.appendChild(el('p', { class: 'muted', text: 'Sign in with a PIN to share your profile.' })); sheet({ title: 'Share my profile', node: node, help: function () { tour('link'); }, helpLabel: 'How playing together works', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
     var me = lsGet('my_name', '').trim();
     if (!me) {
       // no name yet: ask for it here, then carry on to the code
@@ -3411,7 +3412,7 @@
       if (!document.body.contains(node)) { clearInterval(peek); return; }
       if (document.visibilityState === 'visible' && FGHSync.linkPeek) FGHSync.linkPeek();
     }, 3000);
-    s = sheet({ title: 'Share my profile', node: node, help: togetherSheet, helpLabel: 'How playing together works', actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { clearInterval(peek); } });
+    s = sheet({ title: 'Share my profile', node: node, help: function () { tour('link'); }, helpLabel: 'How playing together works', actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { clearInterval(peek); } });
     FGHSync.linkShare().then(paint).catch(function (e) { node.innerHTML = ''; node.appendChild(el('p', { class: 'muted', text: linkErr(e) })); });
     function paint(own) {
       node.innerHTML = '';
@@ -3570,6 +3571,15 @@
         '<li>If someone you’ve linked has a table open, it shows up first with their avatar, so you don’t have to ask for the code.</li></ul>' +
       '</div>', actions: [{ label: 'Got it', primary: true }] });
   }
+  // How Game Night works (tour.js, loaded the first time it's asked for): topic opens that part of the guide, 'intro'
+  // the overview. Falls back to the old Playing together sheet if it can't load.
+  var tourP = null;
+  function tour(topic, opts) {
+    if (!tourP) tourP = (window.GameIcon ? Promise.resolve() : loadJs(rootPath() + 'game-icons.js').catch(function () {}))
+      .then(function () { return window.Tour ? null : loadJs(rootPath() + 'tour.js'); });
+    tourP.then(function () { if (topic === 'intro') Tour.intro(opts || { app: true }); else Tour.guide(topic || null, opts); }, function () { tourP = null; togetherSheet(); });
+  }
+  function loadJs(src) { return new Promise(function (res, rej) { var sc = doc.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = rej; doc.head.appendChild(sc); }); }
   // Your arcade initials: offered first (and filled in) when you make a high score; people who link you see your best scores
   function initialsSheet(onDone) {
     if (!linksOn()) { sheet({ title: 'Arcade initials', html: '<p class="muted">Sign in with a PIN to set your arcade initials.</p>', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
@@ -4195,7 +4205,7 @@
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
-    links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
+    tour: tour, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },

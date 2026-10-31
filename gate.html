@@ -14,7 +14,9 @@
 <link rel="stylesheet" href="kit.css">
 <script src="sync.js"></script>
 <script src="games.js"></script>
+<script src="game-icons.js"></script>
 <script src="kit.js"></script>
+<script src="tour.js" defer></script>
 <style>
 body{display:flex;min-height:100dvh;}
 .gate{margin:auto;width:100%;max-width:400px;padding:calc(var(--safe-t) + 24px) 20px calc(var(--safe-b) + 24px);display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;}
@@ -44,6 +46,13 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .gbtn svg{width:20px;height:20px;flex:none;}
 .gbtn.call{animation:gCall 1.4s ease-in-out 3;box-shadow:0 2px 0 rgba(0,0,0,.25),0 0 0 3px var(--yellow);}
 @keyframes gCall{50%{transform:scale(1.04);}}
+/* First time here? A pill under the title that opens the tour, with a soft glow so a new visitor finds it */
+.tour-pill{display:inline-flex;align-items:center;gap:8px;margin:-8px 0 14px;padding:8px 16px 8px 8px;border:0;border-radius:999px;background:rgba(255,209,102,.12);color:var(--text);font-weight:900;font-size:.92rem;box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.45);animation:tourGlow 2.6s ease-in-out infinite;}
+.tour-pill .pl{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:#2b1a00;}
+.tour-pill .pl .ico{width:14px;height:14px;fill:currentColor;}
+.tour-pill small{color:var(--yellow);font-weight:900;}
+@keyframes tourGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.8),0 0 18px rgba(255,209,102,.25);}}
+@media (prefers-reduced-motion:reduce){.tour-pill{animation:none;}}
 .or{display:flex;align-items:center;gap:10px;width:100%;max-width:330px;color:var(--text-3);font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;}
 .or::before,.or::after{content:'';flex:1;height:1px;background:var(--w1);}
 /* The three parts: title, keypad, and the rest (random PIN, guest, hint). Stacked on phones; on a tablet held
@@ -100,6 +109,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     <div class="logo" id="logo"></div>
     <h1>Game Night</h1>
     <p class="sub">Enter your PIN or sign in with Google to keep your games on all your devices.</p>
+    <button class="tour-pill" id="tour" type="button"></button>
   </div>
   <div class="g-pad">
     <div class="slots" id="slots"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
@@ -339,6 +349,22 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     setTimeout(function () { box.classList.add('bye'); }, 2750);
     setTimeout(function () { location.replace('./index.html'); }, 3150);
   }
+  // ── First time here? The tour, which ends by signing you in ──
+  $('tour').innerHTML = '<span class="pl">' + Kit.icon('play') + '</span><span>First time here?</span><small>Take the tour</small>';
+  function tour() {
+    if (!window.Tour) return;
+    Tour.intro({
+      onGoogle: function () { $('google').click(); },
+      onPin: function () { status('Type a PIN you’ll remember, or get a random one below.'); var k = document.querySelector('.key[data-k="1"]'); if (k) k.focus(); },
+      onGuest: function () { $('guest').click(); }
+    });
+  }
+  $('tour').addEventListener('click', function () { Kit.sfx('tap'); tour(); });
+  // a brand-new device (never signed in here, never seen the tour): the tour opens by itself, once
+  try {
+    var fresh = !localStorage.getItem('gn_toured') && !Object.keys(localStorage).some(function (k) { return /^fgh_space_/.test(k); }) && !localStorage.getItem('fgh_pin_moved') && !(FGHSync.googlePending && FGHSync.googlePending());
+    if (fresh) window.addEventListener('load', function () { setTimeout(tour, 500); });
+  } catch (e) {}
   render();
   // Signed out because this account moved: a new PIN, to Google, or the PIN belongs to someone new now
   try {
