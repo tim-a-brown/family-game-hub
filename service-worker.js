@@ -272,6 +272,7 @@ const PRECACHE_URLS = [
   '/games/console.js',
   '/games/console-art.js',
   '/games/console-net.js',
+  '/games/console-actions.js',
   '/games/console-hi.js',
   '/console-lib.js',
   '/games/console.css',

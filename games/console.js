@@ -1394,11 +1394,32 @@
     });
     return '<table class="ctl-t"><thead><tr><th>' + Kit.esc(SYS.name) + '</th><th>Keyboard</th>' + (m ? '<th>' + Kit.esc(padName(p)) + '</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>';
   }
+  // What each button does in the game being played (console-actions.js, matched on the cartridge's name):
+  // {code: 'Jump'} by the console's button codes, 'd' the D-pad in general
+  var ACT_KEYS = { nes: { a: 8, b: 0 }, snes: { a: 8, b: 0, x: 9, y: 1, l: 10, r: 11 }, genesis: { a: 1, b: 0, c: 8 }, atari2600: { fire: 0, reset: 3 } };
+  function titleKey(n) {
+    var r = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7 };
+    n = String(n || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/\.[a-z0-9]{2,4}$/, '').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    n = n.replace(/\b(ii|iii|iv|v|vi|vii)\b/g, function (m) { return r[m]; }).replace(/^the | the$/g, '');
+    return n.replace(/ /g, '');
+  }
+  function gameActions(c) {
+    var all = (window.CONSOLE_ACTIONS || {})[SYS_ID] || {}, want = c && titleKey(c.name), hit = null;
+    if (!want) return null;
+    Object.keys(all).forEach(function (g) { if (!hit && [g].concat(all[g].aka || []).some(function (x) { return titleKey(x) === want; })) hit = all[g]; });
+    if (!hit) return null;
+    var out = {}, K = ACT_KEYS[SYS_ID] || {};
+    Object.keys(hit).forEach(function (k) {
+      var code = K[k] != null ? K[k] : { select: 2, start: 3, up: 4, down: 5, left: 6, right: 7, dpad: 'd' }[k];
+      if (code != null && typeof hit[k] === 'string') out[code] = hit[k];
+    });
+    return out;
+  }
   // The remap sheet: the console's buttons, each with what it's on now. Press anything on the controller and its row
   // lights up; tap a row, then press the controller button you want for it.
   function padSheet() {
     var box = el('div', { class: 'k-list pm' }), rows = {}, listen = null, startDown = null, s;
-    var head = el('p', { class: 'pm-who' }), m = null, p = null;
+    var head = el('p', { class: 'pm-who' }), m = null, p = null, acts = started ? gameActions(cur) : null;
     // the players: who has which controller, and a swap when there are two
     var who = el('div', { class: 'pm-seats' });
     function drawSeats() {
@@ -1414,10 +1435,15 @@
     function load() {
       p = activePad();
       var n = seatOf(p);
-      head.textContent = p ? (n >= 0 ? 'Player ' + (n + 1) + ' · ' : '') + padName(p) + (seats.filter(function (gi) { return padAt(gi); }).length > 1 ? ' (press a button on the other controller to set up that one)' : '') : 'Press any button on your controller to connect it.';
+      head.innerHTML = '';
+      if (p) {
+        if (n >= 0 && seats.filter(function (gi) { return padAt(gi); }).length > 1) head.appendChild(el('b', { class: 'pm-pn p' + (n + 1), text: 'Player ' + (n + 1) }));
+        head.appendChild(el('span', { html: Kit.icon('gamepad') + '<span>' + Kit.esc(padName(p)) + '</span>' }));
+      } else head.appendChild(el('span', { class: 'pm-none', text: 'Connect a controller and press any button on it to set it up here.' }));
       drawSeats();
       m = JSON.parse(JSON.stringify(padMapOf(p)));
-      PAD_TARGETS[SYS_ID].forEach(function (t) { var r = rows[t[1]]; if (r) r.sub.textContent = (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing'; });
+      box.classList.toggle('pm-nopad', !p);
+      PAD_TARGETS[SYS_ID].forEach(function (t) { var r = rows[t[1]]; if (r) r.sub.textContent = p ? (m[t[1]] || []).map(function (c) { return codeName(p, c); }).join(' or ') || 'Nothing' : ''; });
     }
     var grp = el('div', { class: 'k-grp' });
     PAD_TARGETS[SYS_ID].forEach(function (t) {
@@ -1425,15 +1451,23 @@
       var rot = { 4: 0, 7: 90, 5: 180, 6: 270 }[t[1]];
       var key = rot != null ? el('span', { class: 'pm-key k' + t[1], html: '<svg viewBox="0 0 20 20" width="16" height="16" style="transform:rotate(' + rot + 'deg)"><path d="M10 4l6 9H4z" fill="currentColor"/></svg>' })
         : el('span', { class: 'pm-key pm-' + SYS_ID + ' k' + t[1], text: t[0].replace('Game ', '') });
-      var sub = el('small'), b = el('button', { type: 'button', class: 'pm-row' }, [key, el('span', { class: 'lbl' }, [el('span', { text: t[0] }), sub])]);
+      // what it does in this game (the directions: their own, or the D-pad's in general); else the button's name
+      var act = acts && (acts[t[1]] || (rot != null ? acts.d : null));
+      var kb = rot != null ? ['↑', '↓', '←', '→'][t[1] - 4] : SYS.keys[t[1]];
+      var sub = el('small', { class: 'pm-pad' });
+      var b = el('button', { type: 'button', class: 'pm-row' + (act ? ' has-act' : '') }, [el('span', { class: 'pm-kc' }, [key]),
+        el('span', { class: 'lbl' }, [el('span', { class: 'pm-act', text: act || t[0] }), sub]),
+        kb ? el('kbd', { class: 'pm-kb', 'aria-label': 'Keyboard ' + kb, text: kb }) : el('span', { class: 'pm-kb none' })]);
       b.onclick = function () {
         if (!p) return;
         if (listen === t[1]) { listen = null; b.classList.remove('listen'); load(); return; }
         Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('listen'); });
-        listen = t[1]; startDown = padDown(p); b.classList.add('listen'); sub.textContent = 'Press a button on the controller…'; Kit.haptic('light');
+        listen = t[1]; startDown = padDown(p); b.classList.add('listen'); sub.textContent = 'Press a button on the controller'; Kit.haptic('light');
       };
       rows[t[1]] = { el: b, sub: sub }; grp.appendChild(b);
     });
+    // over the list: whose actions they are, and the keyboard's column
+    box.appendChild(el('div', { class: 'pm-cols' }, [el('span', { text: acts ? 'In ' + cur.name.replace(/\s*[\(\[].*$/, '') : SYS.name }), el('span', { text: 'Key' })]));
     box.appendChild(grp);
     var reset = el('button', { type: 'button', class: 'pm-reset' }, ['Back to the standard layout']);
     reset.onclick = function () { if (!p) return; var all = padMaps(); if (all[p.id]) { delete all[p.id][SYS_ID]; padSave(all); } listen = null; load(); Kit.toast('Standard layout'); };
@@ -1461,7 +1495,7 @@
       // live: light up the console buttons the controller is pressing
       Object.keys(rows).forEach(function (k) { rows[k].el.classList.toggle('lit', (m[k] || []).some(function (c) { return down[c]; })); });
     };
-    s = Kit.sheet({ title: 'Controller buttons · ' + SYS.name, node: box, onClose: function () { mapper = null; } });
+    s = Kit.sheet({ title: SYS.name + ' controls', node: box, onClose: function () { mapper = null; } });
   }
 
   // ═══ Online: two to four players, each on their own device ════════════════
@@ -1783,7 +1817,7 @@
       { icon: 'trophy', label: 'High scores', sub: 'The best scores in this game', when: function () { return !!hiW && L.shown(cur.id); }, onClick: function () {   // (the High Scores page lists the games on the home screen)
         var k = hiW.key; hiLeave(function () { var go = function () { ArcadeHi.show(k); }; if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
       } },
-      { icon: 'gamepad', label: 'Controller buttons', sub: 'Remap a Bluetooth or USB controller', onClick: padSheet },
+      { icon: 'gamepad', label: 'Controller buttons', sub: 'What each button and key does, and remapping a controller', onClick: padSheet },
       { icon: 'help', label: 'Controls', onClick: controls }
     ],
     rules: function () { return '' +
@@ -1821,5 +1855,5 @@
   if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }
   else start();
 
-  window.__cs = { speed: function () { return { onClock: onClock, quiet: quiet }; }, net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; }, hi: function () { return hiW; } };
+  window.__cs = { padSheet: padSheet, speed: function () { return { onClock: onClock, quiet: quiet }; }, net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; }, hi: function () { return hiW; } };
 })();
