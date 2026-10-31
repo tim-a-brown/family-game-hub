@@ -706,7 +706,8 @@
     window.EJS_onGameStart = function () {
       started = true; msg('');
       glassEl.classList.remove('loading');
-      try { emu().gameManager.setFastForwardRatio(3); } catch (e) {}
+      applySpeed();
+      if (!spd.loop) { spd.loop = true; requestAnimationFrame(rafCount); }
       ConsoleNet.install(emu());
       if (!NET.mode) quietStart();
       if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'ready' }, true); return; }
@@ -796,16 +797,42 @@
   function actxOf() { try { var E = emu(); return E && E.Module && E.Module.AL && E.Module.AL.currentCtx && E.Module.AL.currentCtx.audioCtx; } catch (e) { return null; } }
   // ...and the console waits on its sound before drawing the next frame, so until then it runs on the clock instead
   // (fast-forward at 1x doesn't wait on sound): the title screen plays straight away, in silence, until you touch
-  var quiet = false;
+  var quiet = false, onClock = false;
   function quietStart() {
     var a = actxOf(), E = emu(); if (!a || a.state !== 'suspended' || !E) return;
-    quiet = true;
-    try { E.gameManager.setFastForwardRatio(1); E.gameManager.toggleFastForward(1); } catch (e) {}
+    quiet = true; applySpeed();
   }
   function quietEnd() {
-    if (!quiet) return; quiet = false;
-    var E = emu(); if (E) try { E.gameManager.setFastForwardRatio(3); E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (e) {}
+    if (!quiet) return; quiet = false; applySpeed();
   }
+  // How fast the console runs: the fast-forward button at 3x; on the clock at 1x before its sound can start, or when
+  // the screen draws fewer frames than the game needs (a laptop's battery saver or a phone's Low Power Mode holds the
+  // screen to 30 a second, the console draws one frame per screen frame, and every game ran at half speed)
+  function applySpeed() {
+    var E = emu(); if (!E) return;
+    try {
+      var g = E.gameManager;
+      if (ffOn) { g.setFastForwardRatio(3); g.toggleFastForward(1); }
+      else if (quiet || onClock) { g.setFastForwardRatio(1); g.toggleFastForward(1); }
+      else { g.setFastForwardRatio(3); g.toggleFastForward(0); }
+    } catch (e) {}
+  }
+  // the watch on it: frames the game ran and frames the screen drew, each second of play. A game falling behind
+  // (under 45 a second: PAL games run at 50) with the screen or its sound holding it back goes on the clock; back on
+  // the screen once that draws full speed again with the sound running
+  var spd = { f: -1, t: 0, raf: 0, slow: 0, ok: 0 };
+  function rafCount() { spd.raf++; if (started) requestAnimationFrame(rafCount); else spd.loop = false; }
+  setInterval(function () {
+    var E = emu(), now = performance.now(), dt = (now - spd.t) / 1000, r = spd.raf, f = -1;
+    spd.raf = 0; spd.t = now;
+    try { if (E && started) f = E.gameManager.getFrameNum(); } catch (e) {}
+    var df = f - spd.f; spd.f = f;
+    if (f < 0 || df < 0 || dt < .5 || dt > 3 || E.paused || document.hidden || resumeEl || ffOn || quiet || NET.mode || ConsoleNet.on()) { spd.slow = spd.ok = 0; return; }
+    var fps = df / dt, hz = r / dt, a = actxOf(), sound = !a || a.state === 'running';
+    if (!onClock) {
+      if (fps < 45 && (hz < 50 || !sound)) { if (++spd.slow >= 2) { spd.slow = 0; onClock = true; applySpeed(); } } else spd.slow = 0;
+    } else if (hz >= 55 && sound) { if (++spd.ok >= 3) { spd.ok = 0; onClock = false; applySpeed(); } } else spd.ok = 0;
+  }, 1000);
   function wakeAudio() {
     var a = actxOf(); if (!a) return;
     if (a.state === 'suspended') { var r = a.resume(); if (r && r.then) r.then(function () { if (a.state === 'running') quietEnd(); }); }
@@ -1188,7 +1215,7 @@
       Kit.haptic('light'); t.el.classList.add('on'); setTimeout(function () { t.el.classList.remove('on'); }, 120);
       if (t.t === 'menu') { var b = document.querySelector('.gbar button[aria-label="Menu"]'); if (b) b.click(); }
       else if (ConsoleNet.on()) Kit.toast('Fast-forward is off while you play online');   // (both devices run at the same speed)
-      else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); var E = emu(); if (E) try { E.gameManager.toggleFastForward(ffOn ? 1 : 0); } catch (er) {} }
+      else { ffOn = !ffOn; t.el.classList.toggle('lit', ffOn); applySpeed(); }
     }
     // Touch: what's pressed is worked out afresh from every finger still on the controller, at every touch event,
     // so a lift iOS never reported (a system gesture taking over a touch at the screen's edge) can't leave a
@@ -1724,7 +1751,7 @@
     }
     if (on !== netHud.veil.classList.contains('on')) { netHud.veil.classList.toggle('on', on); netHud.seats.classList.toggle('on', on || Date.now() < (netHud.peekUntil || 0)); }
   }
-  function ffOff() { if (!ffOn) return; ffOn = false; try { emu().gameManager.toggleFastForward(0); } catch (e) {} ctls.forEach(function (c) { if (c.t === 'ff') c.el.classList.remove('lit'); }); }
+  function ffOff() { if (!ffOn) return; ffOn = false; applySpeed(); ctls.forEach(function (c) { if (c.t === 'ff') c.el.classList.remove('lit'); }); }
 
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
@@ -1794,5 +1821,5 @@
   if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }
   else start();
 
-  window.__cs = { net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; }, hi: function () { return hiW; } };
+  window.__cs = { speed: function () { return { onClock: onClock, quiet: quiet }; }, net: { go: goOnline, state: function () { return NET; }, quit: netQuit }, carts: function () { return carts; }, emu: emu, started: function () { return started; }, press: press, saveState: saveState, getState: getState, ctls: function () { return ctls; }, hi: function () { return hiW; } };
 })();
