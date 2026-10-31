@@ -99,7 +99,18 @@
   function mode()  { return LS.getItem(MODE_KEY); }
   function pin()   { return LS.getItem(PIN_KEY); }
   function label() { return LS.getItem(LABEL_KEY); }
-  function isPin() { return mode() === 'pin' && PIN_RE.test(pin() || ''); }
+  // Signed in with Google instead (mode 'google'): the account lives at users/{uid}, which only that Google sign-in
+  // can read or write. Everything else works the same as a PIN account.
+  var UID_KEY = 'fgh_uid', GMAIL_KEY = 'fgh_gmail', UID_RE = /^[A-Za-z0-9]{6,128}$/;
+  function uid()   { return LS.getItem(UID_KEY); }
+  function gmail() { return LS.getItem(GMAIL_KEY); }
+  function isGoogle(){ return mode() === 'google' && UID_RE.test(uid() || ''); }
+  function isPinAcct(){ return mode() === 'pin' && PIN_RE.test(pin() || ''); }
+  // signed in to a cloud account of either kind (the name is older than Google sign-in; every page uses it that way)
+  function isPin() { return isPinAcct() || isGoogle(); }
+  // the account's name for itself: its PIN, or g:<uid> (its space on this device, its online-table tag)
+  function acctKey(){ return isPinAcct() ? pin() : isGoogle() ? 'g:' + uid() : null; }
+  function acctPath(){ return isPinAcct() ? 'pins/' + pin() : isGoogle() ? 'users/' + uid() : null; }
 
   function notifyReady(){
     _ready = true;
@@ -168,22 +179,121 @@
   }
 
   var _fbP = null;
+  // The Firebase code, and on a Google account its sign-in too (restored from the device): nothing reads or writes the
+  // account before that sign-in is back, or the cloud would turn it away
   function ensureFirebase(){
+    return loadFirebase().then(function(fb){ return isGoogle() ? googleReady().then(function(){ return fb; }) : fb; });
+  }
+  function loadFirebase(){
     if(_fb) return Promise.resolve(_fb);
     if(_fbP) return _fbP;   // one load at a time: a second caller waits for the first
     var V = '10.12.2';
     var t0 = tnow();
+    // Google sign-in goes through this site's own address (Firebase Hosting serves its sign-in pages under /__/auth/
+    // on every address it hosts), so Safari and the home-screen app keep the sign-in instead of losing it between sites
+    var h = location.hostname;
+    if(/^(games\.timbrown\.xyz|familygames-da3e5(--[a-z0-9-]+)?\.(web\.app|firebaseapp\.com))$/.test(h)) firebaseConfig.authDomain = h;
     return _fbP = loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-app-compat.js')
+      .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-auth-compat.js'); })
       .then(function(){ return loadScript('https://www.gstatic.com/firebasejs/'+V+'/firebase-firestore-compat.js'); })
       .then(function(){
         var app = firebase.initializeApp(firebaseConfig);
+        var auth = firebase.auth();
         var db  = firebase.firestore();
-        // local testing only: talk to the Firestore emulator
-        try{ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu')) db.useEmulator('localhost', 8080); }catch(e){}
-        _fb = { app: app, db: db };
+        // local testing only: talk to the Firestore and sign-in emulators
+        try{ if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu')){ db.useEmulator('localhost', 8080); auth.useEmulator('http://localhost:9099', { disableWarnings: true }); } }catch(e){}
+        _fb = { app: app, db: db, auth: auth };
         dlog('sync', 'Cloud code ready in ' + secs(tnow() - t0));
         return _fb;
       }, function(e){ _fbP = null; dlog('error', 'Cloud code didn’t load after ' + secs(tnow() - t0) + ': ' + ((e && e.message) || e)); throw e; });
+  }
+
+  // ── Google sign-in ────────────────────────────────────────────────────
+  // The Google account this device is signed in with, once its sign-in is back from the device's storage (null: none)
+  function authUser(){
+    return loadFirebase().then(function(fb){
+      var a = fb.auth;
+      if(a.currentUser) return a.currentUser;
+      return new Promise(function(res, rej){
+        var done = false, un = a.onAuthStateChanged(function(u){ if(done) return; done = true; setTimeout(function(){ try{ un(); }catch(e){} }, 0); res(u); }, function(e){ if(!done){ done = true; rej(e); } });
+        setTimeout(function(){ if(!done){ done = true; try{ un(); }catch(e){} rej(new Error('Google sign-in didn’t come back in time')); } }, 15000);
+      });
+    });
+  }
+  var _gOk = null;
+  function googleReady(){
+    var id = uid();
+    if(_gOk && _gOk.id === id) return _gOk.p;
+    var pr = authUser().then(function(u){
+      if(u && u.uid === id) return u;
+      googleOut();   // this device isn't signed in to that Google account any more
+      throw Object.assign(new Error('Signed out of Google'), { code: 'google-out' });
+    });
+    pr.catch(function(){ if(_gOk && _gOk.p === pr) _gOk = null; });
+    _gOk = { id: id, p: pr };
+    return pr;
+  }
+  // plain web requests to a Google account's cloud copy carry its sign-in
+  function authHeaders(){
+    if(!isGoogle()) return Promise.resolve({});
+    return googleReady().then(function(u){ return u.getIdToken(); }).then(function(t){ return t ? { Authorization: 'Bearer ' + t } : {}; });
+  }
+  function googleOut(){
+    console.warn('[sync] this device is no longer signed in to its Google account; signing out');
+    signOut();   // (its games stay packed away on the device for when it signs in again)
+    try{ LS.setItem(MOVED_FLAG, 'gout'); }catch(e){}
+    setStatus('idle');
+    try{ if(!/\/gate\.html$/.test(location.pathname)) location.replace('/gate.html'); }catch(e){}
+  }
+  // Google's own sign-in: a pop-up window in a browser. The home-screen app has no pop-ups, so there the page itself
+  // goes to Google and comes back, and googleResume() carries on with what was being done (intent).
+  var INTENT_KEY = 'fgh_g_intent';
+  function standalone(){ try{ return !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)); }catch(e){ return false; } }
+  function googleAuth(intent, extra){
+    return loadFirebase().then(function(fb){
+      var prov = new firebase.auth.GoogleAuthProvider();
+      prov.setCustomParameters({ prompt: 'select_account' });
+      function viaPage(){
+        try{ LS.setItem(INTENT_KEY, JSON.stringify(Object.assign({ go: intent, at: Date.now() }, extra || {}))); }catch(e){}
+        return fb.auth.signInWithRedirect(prov).then(function(){ return new Promise(function(){}); });   // off to Google
+      }
+      // local testing only: the sign-in emulator takes a made-up Google account
+      var fake = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu') && LS.getItem('fgh_emu_google');
+      if(fake) return fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(fake)).then(function(r){ return r.user; });
+      if(standalone()) return viaPage();
+      return fb.auth.signInWithPopup(prov).then(function(r){ return r.user; }, function(e){
+        var c = e && e.code;
+        if(c === 'auth/popup-blocked' || c === 'auth/operation-not-supported-in-this-environment') return viaPage();
+        if(c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request' || c === 'auth/user-cancelled') throw Object.assign(new Error('Google sign-in was cancelled'), { code: 'cancelled' });
+        throw e;
+      });
+    });
+  }
+  // Back from Google's page: what was being done when the app went there (null: nothing)
+  function googlePending(){ var x = lsJSON(INTENT_KEY); return x && x.go && Date.now() - (Number(x.at) || 0) < 20 * 60000 ? x : null; }
+  function googleResume(onStep){
+    var x = googlePending();
+    if(!x){ LS.removeItem(INTENT_KEY); return Promise.resolve(null); }
+    return loadFirebase().then(function(fb){ return fb.auth.getRedirectResult(); }).then(function(r){
+      LS.removeItem(INTENT_KEY);
+      var u = r && r.user; if(!u) throw Object.assign(new Error('Google sign-in was cancelled'), { code: 'cancelled' });
+      if(x.go === 'move') return moveFinish(x.pin, u, onStep).then(function(res){ res.go = 'move'; return res; });
+      return googleEnter(u).then(function(res){ res.go = 'signin'; return res; });
+    }, function(e){ LS.removeItem(INTENT_KEY); throw e; });
+  }
+  function signInWithGoogle(){ return googleAuth('signin').then(googleEnter); }
+  // Signed in with Google: this account's own things only (its space on this device), merged with its cloud copy
+  function googleEnter(u){
+    switchSpace(spaceOf('g:' + u.uid));
+    LS.setItem(MODE_KEY, 'google'); LS.setItem(UID_KEY, u.uid); LS.removeItem(PIN_KEY);
+    if(u.email) LS.setItem(GMAIL_KEY, u.email); else LS.removeItem(GMAIL_KEY);
+    _gOk = null; ssSet(PULL_KEY, '0');
+    var R = runStart('Sign-in with Google');
+    return timed(R, 'cloud code', ensureFirebase)
+      .then(function(){ return timed(R, 'download', pullCloud); })
+      .then(function(remote){ return arrive(R, remote); })
+      .then(function(result){ notifyReady(); return result; },
+            function(err){ if(!R.done) runDone(R, err); if(isGoogle() && uid() === u.uid) signOut(); throw err; });
   }
 
   // ── Scan localStorage ─────────────────────────────────────────────────
@@ -236,7 +346,7 @@
   // Theme, sound, music, home layout, per-game defaults and game options follow the PIN to every device (cloud
   // `prefs`). Each setting goes by when this device last saw it change (fgh_prefs_at {key: {v, at}}); settings
   // already on a device before they synced count as oldest, so the account's copy wins over them.
-  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_timer|gn_timer_lock|gn_timer_custom|gn_kids|gn_usage_[a-z0-9]+|gn_usegame_[a-z0-9]+|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
+  var PREF_RE = /^(fgh_theme|gn_ini|gn_sound|gn_music|hs_attract|gn_cat_order|gn_cat_off|gn_daily_order|gn_timer|gn_timer_lock|gn_timer_custom|gn_kids|gn_parent_code|gn_usage_[a-z0-9]+|gn_usegame_[a-z0-9]+|gn_setup_.+|gn_home_view|gn_spin|mazes_loupe|pinball_view|pinball_btns|pinball_quality|wordle_hard|sandlot_fast|invaders_auto|invaders_invx|invaders_invy|invaders_sticks|invaders_stick_right|jr_motion|jr_scan|jr_speed|lorc_fast|lorc_hints|lorc_sort|lorc_mat|lorc_dk_filter|fortune_mode|trivia_cats|trivia_levels|wyr_cats|hangman_cat|wordscramble_cat|wordsearch_cat|mahjong_dim|centi_opts|gn_spotify|randomtools_settings|diceroller_table|mysteries_book|gn_console_lib|gn_console_vis|gn_pad_map|casino_pb_[a-z0-9_]+|[a-z0-9]+_sort|[a-z0-9]+_music)$/;
   var PREFS_AT = 'fgh_prefs_at';
   function stampPrefs(){
     var had = LS.getItem(PREFS_AT) != null, rec = lsJSON(PREFS_AT) || {}, now = had ? Date.now() : 1, changed = !had, seen = {}, i, k, v;
@@ -434,16 +544,20 @@
     var emu = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu');
     return (emu ? 'http://localhost:8080/v1/' : 'https://firestore.googleapis.com/v1/') + 'projects/' + firebaseConfig.projectId + '/databases/(default)/documents';
   }
-  function stDocName(k){ return 'projects/' + firebaseConfig.projectId + '/databases/(default)/documents/pins/' + pin() + '/st/' + k; }
+  function stDocName(k, path){ return 'projects/' + firebaseConfig.projectId + '/databases/(default)/documents/' + (path || acctPath()) + '/st/' + k; }
   function stFetch(url, body, ms){
-    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, ms || 20000) : 0;
     var b = JSON.stringify(body);   // (a small save finishes even if the page is closed mid-way: keepalive)
-    return fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + firebaseConfig.apiKey, { method: 'POST', cache: 'no-store', headers: { 'Content-Type': 'application/json' }, body: b, keepalive: b.length < 60000, signal: ctl ? ctl.signal : undefined })
-      .then(function(r){ clearTimeout(to); return r; }, function(e){ clearTimeout(to); throw e; });
+    return authHeaders().then(function(h){
+      var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, ms || 20000) : 0;
+      return fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + firebaseConfig.apiKey, { method: 'POST', cache: 'no-store', headers: Object.assign({ 'Content-Type': 'application/json' }, h), body: b, keepalive: b.length < 60000, signal: ctl ? ctl.signal : undefined })
+        .then(function(r){ clearTimeout(to); return r; }, function(e){ clearTimeout(to); throw e; });
+    });
   }
-  function stQuery(since){
+  // path: whose saved games (pins/1234 or users/<uid>; this account's by default). ordered: oldest change first
+  function stQuery(since, path, ordered){
     var q = { structuredQuery: { from: [{ collectionId: 'st' }], where: { fieldFilter: { field: { fieldPath: 'ts' }, op: 'GREATER_THAN', value: { timestampValue: new Date(since || 0).toISOString() } } }, limit: 1000 } };
-    return stFetch(stBase() + '/pins/' + pin() + ':runQuery', q, 25000).then(function(r){
+    if(ordered) q.structuredQuery.orderBy = [{ field: { fieldPath: 'ts' }, direction: 'ASCENDING' }];
+    return stFetch(stBase() + '/' + (path || acctPath()) + ':runQuery', q, 25000).then(function(r){
       if(!r.ok) throw new Error('saved games read refused (' + r.status + ')');
       return r.json();
     }).then(function(rows){
@@ -454,13 +568,56 @@
     });
   }
   // one saved game up: 'ok', 'older' (the cloud has a newer copy) or an error
-  function stPut(k, v, at){
-    var w = { update: { name: stDocName(k), fields: { v: v == null ? { nullValue: null } : { stringValue: v }, at: { integerValue: String(Math.round(at)) } } },
+  function stWrite(k, v, at, path){
+    return { update: { name: stDocName(k, path), fields: { v: v == null ? { nullValue: null } : { stringValue: v }, at: { integerValue: String(Math.round(at)) } } },
       updateTransforms: [{ fieldPath: 'ts', setToServerValue: 'REQUEST_TIME' }] };
-    return stFetch(stBase() + ':commit', { writes: [w] }, 20000).then(function(r){
+  }
+  function stPut(k, v, at){
+    return stFetch(stBase() + ':commit', { writes: [stWrite(k, v, at)] }, 20000).then(function(r){
       if(r.ok) return 'ok';
       if(r.status === 403) return 'older';
       throw new Error('saved game ' + k + ' refused (' + r.status + ')');
+    });
+  }
+  // every saved game an account holds, a thousand at a time
+  function stAll(path){
+    var all = [];
+    function page(since){
+      return stQuery(since, path, true).then(function(rows){
+        all = all.concat(rows);
+        var last = rows.length ? rows[rows.length - 1].ts : 0;
+        return rows.length >= 1000 && last > since ? page(last) : all;
+      });
+    }
+    return page(0);
+  }
+  // several writes in one request: true when the cloud took them all (it takes all or none)
+  function stCommit(writes){
+    return stFetch(stBase() + ':commit', { writes: writes }, 60000).then(function(r){ if(r.ok) return true; if(r.status === 403) return false; throw new Error('saved games refused (' + r.status + ')'); });
+  }
+  // an account's saved games copied to another account as they are (each keeps its own time)
+  function stCopy(from, to){
+    return stAll(from).then(function(rows){
+      var groups = [], cur = [], size = 0, n = 0;
+      rows.forEach(function(r){ var w = (r.v || '').length + 300; if(cur.length && (cur.length >= 100 || size + w > 3000000)){ groups.push(cur); cur = []; size = 0; } cur.push(r); size += w; });
+      if(cur.length) groups.push(cur);
+      return groups.reduce(function(chain, g){
+        return chain.then(function(){
+          return stCommit(g.map(function(r){ return stWrite(r.id, r.v, r.at, to); })).then(function(ok){
+            if(ok){ n += g.length; return; }
+            // one of them is older than what the other account has: the rest one by one
+            return g.reduce(function(c2, r){ return c2.then(function(){ return stCommit([stWrite(r.id, r.v, r.at, to)]).then(function(ok1){ if(ok1) n++; }); }); }, Promise.resolve());
+          });
+        });
+      }, Promise.resolve()).then(function(){ dlog('sync', 'Saved games copied: ' + n + ' of ' + rows.length); return n; });
+    });
+  }
+  // an account's saved games removed from the cloud (a PIN given up)
+  function stWipe(path){
+    return stAll(path).then(function(rows){
+      var names = rows.map(function(r){ return stDocName(r.id, path); }), groups = [];
+      for(var i = 0; i < names.length; i += 200) groups.push(names.slice(i, i + 200));
+      return groups.reduce(function(chain, g){ return chain.then(function(){ return stCommit(g.map(function(nm){ return { delete: nm }; })); }); }, Promise.resolve()).then(function(){ return rows.length; });
     });
   }
   // newer copies from the cloud into this device; the keys that changed here
@@ -848,7 +1005,7 @@
   // ── Firestore IO ──────────────────────────────────────────────────────
   function cloudRef(){
     if(!isPin() || !_fb) return null;
-    return _fb.db.collection('pins').doc(pin());
+    return _fb.db.doc(acctPath());
   }
 
   // Reading your account: one plain web request first. The Firebase library reads through a live connection that on
@@ -866,10 +1023,13 @@
     if('arrayValue' in v) return ((v.arrayValue && v.arrayValue.values) || []).map(fromRest);
     return null;
   }
-  function restGetPin(p){
+  function restGetAcct(path){
+    return authHeaders().then(function(h){ return restGetDoc(path, h); });
+  }
+  function restGetDoc(path, h){
     var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = ctl ? setTimeout(function(){ ctl.abort(); }, 12000) : 0;
-    var url = 'https://firestore.googleapis.com/v1/projects/' + firebaseConfig.projectId + '/databases/(default)/documents/pins/' + p + '?key=' + firebaseConfig.apiKey;
-    return fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined }).then(function(r){
+    var url = 'https://firestore.googleapis.com/v1/projects/' + firebaseConfig.projectId + '/databases/(default)/documents/' + path + '?key=' + firebaseConfig.apiKey;
+    return fetch(url, { cache: 'no-store', headers: h || {}, signal: ctl ? ctl.signal : undefined }).then(function(r){
       if(r.status === 404) return { exists: false, data: function(){ return null; } };
       if(!r.ok) throw new Error('read refused (' + r.status + ')');
       return r.json().then(function(j){ var d = fromRest({ mapValue: { fields: j.fields || {} } }); return { exists: true, data: function(){ return d; } }; });
@@ -890,7 +1050,9 @@
     }, function(e){ clearTimeout(to); throw e; });
   }
   function getPinDoc(ref){
-    return restGetPin(pin()).catch(function(e){
+    var emu = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && LS.getItem('fgh_emu');
+    if(emu) return ref.get();
+    return restGetAcct(acctPath()).catch(function(e){
       dlog('warn', 'Quick read failed (' + ((e && e.name === 'AbortError') ? 'no answer in 12 s' : (e && e.message) || e) + '); reading through Firebase instead');
       return ref.get();
     });
@@ -904,7 +1066,7 @@
         return {hi:{}, gh:{}, label:null, bank:null, rklists:null, favs:null, favsAt:null, lorc:null, avatars:null, ghDel:null, links:null, isNew:true};
       }
       var d = doc.data() || {};
-      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, prog: d.prog||null, pc: d.pc||null, isNew:false, moved: !!d.moved };
+      var result = { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, prog: d.prog||null, pc: d.pc||null, isNew:false, moved: !!d.moved, to: d.to || null, movedAt: tsMs(d.updatedAt), reborn: tsMs(d.reborn) };
       console.log('[sync] pull', {
         rklists_count: result.rklists && result.rklists.lists ? asArray(result.rklists.lists).length : 0,
         favs_count: Array.isArray(result.favs) ? result.favs.length : 'absent',
@@ -973,7 +1135,7 @@
   }
   function docSig(doc){
     var c = {}; Object.keys(doc).forEach(function(k){ if(k !== 'updatedAt') c[k] = doc[k]; });
-    var str = pin() + '|' + stableStr(c), h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
+    var str = acctKey() + '|' + stableStr(c), h1 = 0x811c9dc5, h2 = 0x2b2b2b2b;
     for(var i = 0; i < str.length; i++){ var ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 16777619); h2 = Math.imul(h2 ^ ch, 2246822519); }
     return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36) + '.' + str.length;
   }
@@ -995,7 +1157,7 @@
     return (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36) + '.' + str.length;
   }
   // what this device last saved, part by part (for this PIN only; none yet means the next save sends everything)
-  function partSigs(){ var r = lsJSON(PARTS_KEY); return r && r.pin === pin() && r.s ? r.s : null; }
+  function partSigs(){ var r = lsJSON(PARTS_KEY); return r && r.pin === acctKey() && r.s ? r.s : null; }
   function pushNow(opts){
     opts = opts || {};
     var ref = cloudRef(); if(!ref) return Promise.resolve();
@@ -1060,7 +1222,7 @@
       console.log('[sync] push: ' + nUp + ' changed part' + (nUp === 1 ? '' : 's') + ' of ' + Object.keys(parts).length);
       doc = up;
     }
-    function saved(r){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); LS.setItem(PARTS_KEY, JSON.stringify({ pin: pin(), s: now })); }catch(e){} return r; }
+    function saved(r){ try{ LS.setItem(SIG_KEY, sig); LS.setItem(P_KEY, String(pushAt)); LS.setItem(PARTS_KEY, JSON.stringify({ pin: acctKey(), s: now })); }catch(e){} return r; }
     // merge:true means fields not in `doc` are preserved on the cloud side.
     // This prevents the race where device A has empty local for some field
     // and pushes before device B's newly-saved data lands — merge:false
@@ -1095,7 +1257,7 @@
       throw err;
     }).then(saved).catch(function(err){
       if(err && err.code === 'permission-denied'){
-        ref.get().then(function(d){ if(d.exists && d.data() && d.data().moved && ref.id === pin()) movedOut(); }).catch(function(){});
+        ref.get().then(function(d){ var x = d.exists && d.data(); if(x && x.moved && isPinAcct() && ref.path === 'pins/' + pin()) movedOut(x.to === 'google' ? 'google' : 'pin'); }).catch(function(){});
       }
       // Log detailed error for diagnostics
       console.error('[sync] ref.set failed', err && err.code, err && err.message, err);
@@ -1162,37 +1324,84 @@
       .then(function(){ return timed(R, 'download', pullCloud); })
       .then(function(remote){
         if(remote.moved){
+          // given up for a Google sign-in over 30 days ago: the PIN is free, and this is a new account on it
+          if(remote.to === 'google' && remote.movedAt && Date.now() - remote.movedAt > HOLD_MS) return claimPin();
           signOut(); LS.removeItem(STASH + spaceOf(p));
-          var me = new Error('That PIN was changed. Sign in with the new one.'); me.code = 'moved'; throw me;
+          var me = remote.to === 'google' ? new Error('That PIN’s account moved to Google. Sign in with Google.') : new Error('That PIN was changed. Sign in with the new one.');
+          me.code = remote.to === 'google' ? 'google' : 'moved'; throw me;
         }
-        try{ LS.removeItem(MOVED_FLAG); }catch(e){}
-        takeLabel(remote); takePc(remote);
-        if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
-        var local   = scanLocal();
-        var merged  = mergeSnapshots(local, remote);
-        writeSnapshotToLocal(merged); reconcileName();
-        if(remote.isNew) newDefaults();   // (a brand-new account; uploaded with everything else just below)
-        // Signed in once the cloud copy is merged in. The upload of this device's copy carries on in the background
-        // instead of holding the sign-in (a slow first write took sign-in to half a minute); if it doesn't finish
-        // before the page changes, the next page's sync sends it (the pull mark is only set once it lands).
-        runDone(R);
-        var U = runStart('Upload after sign-in');
-        timed(U, 'upload', function(){ return pushNow({ force: true }); }).then(function(){ runDone(U); ssSet(PULL_KEY, String(Date.now())); }, function(err){ runDone(U, err); console.warn('[sync] sign-in upload failed; the next page retries', err); });
-        stSync(true);   // saved games and progress
-        return {isNew: remote.isNew};
+        // a PIN someone new took after it was given up: what this device kept from before isn't theirs
+        if(remote.reborn && LS.getItem(GEN_KEY) !== String(remote.reborn)){ clearLocal(); LS.setItem(GEN_KEY, String(remote.reborn)); }
+        return remote;
       })
+      .then(function(remote){ return arrive(R, remote); })
       .then(function(result){ notifyReady(); return result; },
-            function(err){ if(!R.done) runDone(R, err); if(isPin() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
+            function(err){ if(!R.done) runDone(R, err); if(isPinAcct() && pin() === p) signOut(); throw err; });   // not signed in after all: pack it away again
   }
 
-  // Another device changed this account's PIN: the old PIN is wiped and marked moved. Sign this device out
-  // (its games stay on the device) and send it to the sign-in page, which explains what happened.
-  function movedOut(){
-    console.warn('[sync] this PIN was changed on another device; signing out');
+  // Signed in: the cloud copy merged into this device's. The upload of this device's copy carries on in the background
+  // instead of holding the sign-in (a slow first write took sign-in to half a minute); if it doesn't finish before the
+  // page changes, the next page's sync sends it (the pull mark is only set once it lands).
+  function arrive(R, remote){
+    try{ LS.removeItem(MOVED_FLAG); }catch(e){}
+    takeLabel(remote); takePc(remote);
+    if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
+    var merged = mergeSnapshots(scanLocal(), remote);
+    writeSnapshotToLocal(merged); reconcileName();
+    if(remote.isNew) newDefaults();   // (a brand-new account; uploaded with everything else just below)
+    runDone(R);
+    var U = runStart('Upload after sign-in');
+    timed(U, 'upload', function(){ return pushNow({ force: true }); }).then(function(){ runDone(U); ssSet(PULL_KEY, String(Date.now())); }, function(err){ runDone(U, err); console.warn('[sync] sign-in upload failed; the next page retries', err); });
+    stSync(true);   // saved games and progress
+    return { isNew: remote.isNew };
+  }
+
+  // ── A PIN given up ────────────────────────────────────────────────────
+  // A PIN whose account moved to Google keeps only {moved, to: 'google'} for 30 days, so devices still on it are
+  // signed out (and told to sign in with Google). After that anyone can take it: the new account starts with a
+  // fresh `reborn` time, and any device whose copy dates from before (fgh_acct_gen, kept per account) is signed out
+  // instead of mixing the two accounts.
+  var GEN_KEY = 'fgh_acct_gen', HOLD_MS = 30 * 864e5;
+  function tsMs(v){
+    if(!v) return 0;
+    if(typeof v === 'number') return v;
+    if(typeof v === 'string') return Date.parse(v) || 0;
+    if(typeof v.toMillis === 'function') return v.toMillis();
+    if(v.seconds != null) return v.seconds * 1000 + Math.round((v.nanoseconds || 0) / 1e6);
+    return 0;
+  }
+  // false (and this device signed out) when the cloud copy isn't this account's any more
+  function stillMine(remote){
+    if(remote.moved){ movedOut(remote.to === 'google' ? 'google' : 'pin'); return false; }
+    if(remote.reborn && LS.getItem(GEN_KEY) !== String(remote.reborn)){ movedOut('gone'); return false; }
+    return true;
+  }
+  // this account's things off the device (what it held belonged to someone else)
+  function clearLocal(){
+    var keys = [], i, k;
+    for(i = 0; i < LS.length; i++){ k = LS.key(i); if(k && !DEVICE_RE.test(k)) keys.push(k); }
+    keys.forEach(function(k){ LS.removeItem(k); });
+    _pushPending = false;
+  }
+  // take a PIN that was given up: a fresh account on it (none of the old one's saved games)
+  function claimPin(){
+    clearLocal();
+    var FV = firebase.firestore.FieldValue, path = acctPath();
+    return cloudRef().set({ reborn: FV.serverTimestamp(), updatedAt: FV.serverTimestamp() })
+      .then(function(){ return stWipe(path).catch(function(e){ console.warn('[sync] old saved games on the PIN stay', e && e.message); }); })
+      .then(pullCloud)
+      .then(function(remote){ LS.setItem(GEN_KEY, String(remote.reborn)); dlog('sync', 'Took a PIN that was given up: a new account'); remote.isNew = true; return remote; });
+  }
+
+  // Another device changed this account's PIN or moved it to Google (the PIN keeps only a moved mark), or the PIN now
+  // belongs to someone new. Sign this device out and send it to the sign-in page, which explains what happened.
+  function movedOut(why){
+    why = why || 'pin';
+    console.warn('[sync] this account is no longer on this PIN (' + why + '); signing out');
     var old = curSpace();
     signOut();
-    LS.removeItem(STASH + old);   // nobody can sign in with the old PIN again; its games live on under the new one
-    try{ LS.setItem(MOVED_FLAG, '1'); }catch(e){}
+    LS.removeItem(STASH + old);   // nobody signs in with the old PIN again; its games live on in the moved account
+    try{ LS.setItem(MOVED_FLAG, why === 'pin' ? '1' : why); }catch(e){}
     setStatus('idle');
     try{ if(!/\/gate\.html$/.test(location.pathname)) location.replace('/gate.html'); }catch(e){}
   }
@@ -1202,7 +1411,7 @@
   function changePin(np){
     var op = pin();
     function fail(msg, code){ var e = new Error(msg); e.code = code; return Promise.reject(e); }
-    if(!isPin()) return fail('Sign in with a PIN first.', 'signin');
+    if(!isPinAcct()) return fail('Sign in with a PIN first.', 'signin');
     if(!PIN_RE.test(np || '')) return fail('A PIN is 4 digits.', 'format');
     if(np === op) return fail('That is already your PIN.', 'same');
     if(weakPin(np)) return fail('That PIN is too easy to guess. Pick a less common one.', 'weak');
@@ -1214,7 +1423,7 @@
       .then(function(doc){ if(doc.exists) throw Object.assign(new Error('That PIN is taken. Pick another.'), { code: 'taken' }); })
       .then(pullCloud)
       .then(function(remote){
-        if(remote.moved){ movedOut(); throw Object.assign(new Error('This PIN was already changed on another device.'), { code: 'moved' }); }
+        if(!stillMine(remote)) throw Object.assign(new Error('This PIN was already changed on another device.'), { code: 'moved' });
         takeLabel(remote); takePc(remote);
         writeSnapshotToLocal(mergeSnapshots(scanLocal(), remote)); reconcileName();
         oldRef = cloudRef();
@@ -1245,8 +1454,12 @@
     switchSpace('g');
     LS.removeItem(MODE_KEY);
     LS.removeItem(PIN_KEY);
+    LS.removeItem(UID_KEY);
+    LS.removeItem(GMAIL_KEY);
     LS.removeItem(LABEL_KEY);
     ssSet(PULL_KEY, '0');
+    _gOk = null;
+    try{ if(_fb && _fb.auth && _fb.auth.currentUser) _fb.auth.signOut().catch(function(){}); }catch(e){}
   }
 
   // ── One device, several accounts ──────────────────────────────────────
@@ -1256,9 +1469,9 @@
   // unpacks only that PIN's own stash before syncing with its cloud copy. So nothing from one PIN is ever merged
   // into another. Only the phone's motion-permission answers and test flags stay with the device.
   var SPACE_KEY = 'fgh_space', STASH = 'fgh_space_';
-  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|emu|space(_.*)?|diag_log|sync_last|offline_at|usage_dev)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
+  var DEVICE_RE = /^(fgh_(mode|pin|pin_moved|uid|gmail|g_intent|emu(_google)?|space(_.*)?|diag_log|sync_last|offline_at|usage_dev)|online_transport|eightball_motion|lorc_tilt(_asked)?|firebase.*)$/;
   function spaceOf(p){ var h = 5381; p = String(p || ''); for(var i = 0; i < p.length; i++) h = ((h << 5) + h + p.charCodeAt(i)) | 0; return 'p' + (h >>> 0).toString(36); }
-  function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(pin()) : 'g'); }
+  function curSpace(){ return LS.getItem(SPACE_KEY) || (isPin() ? spaceOf(acctKey()) : 'g'); }
   function switchSpace(to){
     var from = curSpace();
     if(from === to){ try{ LS.setItem(SPACE_KEY, to); }catch(e){} return; }
@@ -1310,7 +1523,7 @@
     return timed(R, 'cloud code', ensureFirebase)
       .then(function(){ return timed(R, 'download', pullCloud); })
       .then(function(remote){
-        if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
+        if(!stillMine(remote)) throw Object.assign(new Error('PIN moved'), { code: 'moved' });
         takeLabel(remote); takePc(remote);
         if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
         var local  = scanLocal();
@@ -1422,8 +1635,8 @@
     // a page opened to edit a game's defaults (?defaults=1) changes nothing but that game's setup: no sync
     if(/\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search)){ notifyReady(); return; }
     var m = mode();
-    if(m === 'pin' && PIN_RE.test(pin()||'') && stampPrefs()) markWrite();   // settings changed since the last sync
-    if(m === 'pin' && PIN_RE.test(pin()||'')){
+    if(isPin() && stampPrefs()) markWrite();   // settings changed since the last sync
+    if(isPin()){
       if(ssGet('fgh_st_back')){ ssSet('fgh_st_back', ''); setTimeout(function(){ try{ if(window.Kit && Kit.toast) Kit.toast('Picked up from your other device'); }catch(e){} }, 700); }
       if(typeof navigator !== 'undefined' && navigator.onLine === false){
         setStatus('offline');
@@ -1447,7 +1660,7 @@
       timed(R, 'cloud code', ensureFirebase)
         .then(function(){ return timed(R, 'download', pullCloud); })
         .then(function(remote){
-          if(remote.moved){ movedOut(); throw Object.assign(new Error('PIN moved'), { code: 'moved' }); }
+          if(!stillMine(remote)) throw Object.assign(new Error('PIN moved'), { code: 'moved' });
           takeLabel(remote); takePc(remote);
           if(remote.bank !== null && remote.bank !== undefined) try{ LS.setItem('casino_bank', String(remote.bank)); }catch(e){}
           var local  = scanLocal();
@@ -2279,7 +2492,9 @@
       return true;
     });
   }
-  // The parent's side
+  // The parent's side. A parent who moved to Google sign-in keeps their old PIN as the code that opens their
+  // child's lock screen (gn_parent_code, a synced setting)
+  function parentPin(){ return isPinAcct() ? pin() : LS.getItem('gn_parent_code') || null; }
   function kidsGet(){ var k = lsJSON('gn_kids'); return k && typeof k === 'object' && !Array.isArray(k) ? k : {}; }
   function kidsSet(k){ try{ if(Object.keys(k).length) LS.setItem('gn_kids', JSON.stringify(k)); else LS.removeItem('gn_kids'); }catch(e){} noteWrite('gn_kids'); }
   function kidNews(code, yes, who){
@@ -2291,11 +2506,12 @@
     if(!isPin()) return Promise.reject(new Error('Sign in with your PIN first.'));
     if(!/^[0-9]{4}$/.test(p || '')) return Promise.reject(new Error('A PIN is 4 digits.'));
     if(p === pin()) return Promise.reject(new Error('That’s your own PIN.'));
+    if(!parentPin()) return Promise.reject(new Error('Parent controls need a PIN account for now.'));
     if(!own || !own.code) return Promise.reject(new Error('Share your profile once first (Share my profile).'));
     return ensureFirebase().then(function(){ return pinRef(p).get(); }).then(function(d){
       var x = d.exists ? d.data() || {} : null;
       if(!x || x.moved || codeOfDoc(x) !== code) throw new Error('That isn’t ' + name + '’s PIN.');
-      return pcHash(own.code, pin());
+      return pcHash(own.code, parentPin());
     }).then(function(h){
       var me = myName() || label() || 'Parent';
       return pcEdit(p, function(pc){ if(pc.parents[own.code]) { pc.parents[own.code].h = h; return; } pc.ask[own.code] = { name: me, h: h, at: Date.now() }; });
@@ -2317,7 +2533,7 @@
   // change a child's controls (as one of their parents), then nudge their devices
   function kidEdit(code, fn){
     var k = kidsGet()[code], own = linksGet().own; if(!k || !own || !own.code) return Promise.reject(new Error('Not set up'));
-    return pcHash(own.code, pin()).then(function(h){
+    return pcHash(own.code, parentPin()).then(function(h){
       return pcEdit(k.pin, function(pc){
         var me = pc.parents[own.code]; if(!me) throw Object.assign(new Error('You’re not ' + k.name + '’s parent here anymore.'), { code: 'off' });
         me.h = h; me.name = myName() || me.name; return fn(pc);
@@ -2339,10 +2555,117 @@
     });
   }
 
+  // ── Move a PIN account to Google sign-in ──────────────────────────────
+  // Everything the PIN holds (scores, history, saved games, settings, links, decks) goes to the Google account and this
+  // device switches to it; online tables follow (their seats carry the new account tag). Then the PIN is given up: it
+  // keeps only a moved mark, so devices still on it are signed out and told to sign in with Google, and after 30 days
+  // anyone can take it. A child's account (a parent looks after it) stays on its PIN. onStep(name) reports progress:
+  // sync, google, copy, games, tables, free.
+  function moveToGoogle(onStep){
+    function fail(msg, code){ return Promise.reject(Object.assign(new Error(msg), { code: code })); }
+    function step(n){ try{ if(onStep) onStep(n); }catch(e){} }
+    if(!isPinAcct()) return fail('Sign in with your PIN first.', 'signin');
+    if(typeof navigator !== 'undefined' && navigator.onLine === false) return fail('You’re offline. Connect to move your account.', 'offline');
+    var pc = pcLocal(); if(pc && Object.keys(pc.parents).length) return fail('A parent looks after this account, so it stays on its PIN.', 'child');
+    var p = pin();
+    step('sync');
+    return syncNow().then(function(r){
+      if(!r || !r.ok) throw Object.assign(new Error('Couldn’t sync your account first. Check your connection and try again.'), { code: 'sync' });
+      if(!isPinAcct() || pin() !== p) throw Object.assign(new Error('This device was signed out of that PIN.'), { code: 'signin' });
+      return stSync(true);
+    }).then(function(){ step('google'); return googleAuth('move', { pin: p }); })
+      .then(function(u){ return moveFinish(p, u, onStep); });
+  }
+  function moveFinish(p, u, onStep){
+    function step(n){ try{ if(onStep) onStep(n); }catch(e){} }
+    if(!isPinAcct() || pin() !== p) return Promise.reject(Object.assign(new Error('This device isn’t signed in with that PIN any more.'), { code: 'signin' }));
+    var key = 'g:' + u.uid, oldSpace = curSpace(), FV;
+    function backToPin(){ LS.setItem(MODE_KEY, 'pin'); LS.setItem(PIN_KEY, p); LS.removeItem(UID_KEY); LS.removeItem(GMAIL_KEY); LS.setItem(SPACE_KEY, oldSpace); _gOk = null; }
+    step('copy');
+    return loadFirebase().then(function(){
+      FV = firebase.firestore.FieldValue;
+      return _fb.db.doc('users/' + u.uid).get();
+    }).then(function(d){
+      // a Google account that already holds things (signed in with it before): the two come together
+      if(d.exists) writeSnapshotToLocal(mergeSnapshots(scanLocal(), remoteOf(d.data() || {})));
+      // a parent: their child's lock screen still opens with this PIN
+      if(Object.keys(kidsGet()).length && !LS.getItem('gn_parent_code')) LS.setItem('gn_parent_code', p);
+      // this device switches to the Google account (its things become that account's space here)
+      LS.removeItem(STASH + spaceOf(key));
+      LS.setItem(MODE_KEY, 'google'); LS.setItem(UID_KEY, u.uid); LS.removeItem(PIN_KEY); LS.setItem(SPACE_KEY, spaceOf(key));
+      if(u.email) LS.setItem(GMAIL_KEY, u.email); else LS.removeItem(GMAIL_KEY);
+      LS.removeItem(GEN_KEY); LS.removeItem(SIG_KEY); LS.removeItem(PARTS_KEY);
+      _gOk = null;
+      stampPrefs();
+      return pushNow({ force: true }).then(function(){ return _fb.db.doc('users/' + u.uid).get(); }).then(function(x){
+        if(!x.exists) throw new Error('The Google account’s copy didn’t save');
+      }).catch(function(err){ backToPin(); throw err; });
+    }).then(function(){ step('games'); return stCopy('pins/' + p, 'users/' + u.uid); })
+      .then(function(){ var so = stLoad(); so.sent = {}; so.ts = 0; stSave(so); return stSync(true); })
+      .then(function(){ step('tables'); return Promise.all([tagOf(p), tagOf(key)]); })
+      .then(function(t){
+        try{ LS.setItem('fgh_acct_tag', JSON.stringify({ k: spaceOf(key), t: t[1] })); }catch(e){}
+        return retag(t[0], t[1]);
+      })
+      .then(function(){
+        step('free');
+        return _fb.db.doc('pins/' + p).set({ moved: true, to: 'google', updatedAt: FV.serverTimestamp() })
+          .then(function(){ return stWipe('pins/' + p).catch(function(e){ console.warn('[sync] the old PIN’s saved games stay for now', e && e.message); }); })
+          .then(function(){ return true; }, function(e){ console.warn('[sync] could not give up the old PIN', e && (e.code || e.message)); return false; });
+      })
+      .then(function(freed){
+        ssSet(PULL_KEY, String(Date.now()));
+        dlog('sync', 'Moved the account from its PIN to Google sign-in' + (freed ? '' : ' (the PIN is still held)'));
+        setStatus('synced');
+        try{ document.dispatchEvent(new CustomEvent('fghsync:updated')); }catch(e){}
+        return { ok: true, email: u.email || '', freed: freed, pin: p };
+      });
+  }
+  // a cloud copy read straight from its document (the shape pullCloud gives)
+  function remoteOf(d){
+    return { hi: hiFromFirestore(d.hi||{}), gh: d.gh||{}, label: d.label||null, labelAt: d.labelAt||null, bank: typeof d.bank === 'number' && isFinite(d.bank) ? d.bank : null, rklists: d.rklists||null, favs: d.favs||null, favsAt: d.favsAt||null, lorc: d.lorcana||null, avatars: d.avatars||null, ghDel: d.ghDel||null, links: d.links||null, players: d.players||null, prefs: d.prefs||null, prog: d.prog||null, pc: d.pc||null, isNew: false };
+  }
+  // An account's tag on online tables: a slow one-way hash of its PIN (or g:<uid>), never the key itself. kit.js,
+  // turnnet.js, Chess and Lorcana work out the same one.
+  function tagOf(k){
+    var c = window.crypto && window.crypto.subtle;
+    if(!k || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    var enc = new TextEncoder();
+    return c.importKey('raw', enc.encode(k), 'PBKDF2', false, ['deriveBits']).then(function(key){
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-online-account'), iterations: 150000, hash: 'SHA-256' }, key, 64);
+    }).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0' + x.toString(16)).slice(-2); }).join(''); }, function(){ return null; });
+  }
+  // the account's online tables carry its new tag (so "your turn" still finds them, and nobody who takes the old PIN does)
+  function retag(from, to){
+    if(!from || !to || from === to) return Promise.resolve(0);
+    var db = _fb.db, n = 0, jobs = [];
+    jobs.push(db.collection('turnRooms').where('accts', 'array-contains', from).limit(50).get().then(function(q){
+      return Promise.all(q.docs.map(function(d){
+        var x = d.data() || {};
+        n++;
+        return d.ref.update({
+          accts: (x.accts || []).map(function(a){ return a === from ? to : a; }),
+          seats: (x.seats || []).map(function(st){ return st && st.acct === from ? Object.assign({}, st, { acct: to }) : st; })
+        });
+      }));
+    }));
+    ['chessRooms', 'lorcanaRooms'].forEach(function(c){
+      ['host', 'guest'].forEach(function(seat){
+        jobs.push(db.collection(c).where(seat + '.acct', '==', from).limit(40).get().then(function(q){
+          return Promise.all(q.docs.map(function(d){ var u = {}; u[seat + '.acct'] = to; n++; return d.ref.update(u); }));
+        }));
+      });
+    });
+    return Promise.all(jobs.map(function(j){ return j.catch(function(e){ console.warn('[sync] an online table kept the old tag', e && (e.code || e.message)); }); })).then(function(){ return n; });
+  }
+
   if(typeof document !== 'undefined') document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') linkPoll(); pendWatch(); });
 
   window.FGHSync = {
     mode: mode, pin: pin, label: label, isPin: isPin,
+    // Google sign-in: isGoogle, the Google address, the account's key (PIN or g:<uid>), signing in, moving a PIN account
+    isGoogle: isGoogle, gmail: gmail, acctKey: acctKey, signInWithGoogle: signInWithGoogle,
+    googlePending: googlePending, googleResume: googleResume, moveToGoogle: moveToGoogle,
     // Firestore handle for features beyond the PIN doc (Lorcana online tables)
     db: function(){ return ensureFirebase().then(function(f){ return f.db; }); },
     // activity log (this device only): add a line, read it, the last sync's timing, clear it

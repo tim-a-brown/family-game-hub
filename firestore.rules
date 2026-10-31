@@ -4,7 +4,8 @@ rules_version = '2';
 // Game Night — Firestore security rules
 //
 // Model: single doc per PIN at /pins/{pinId}. Anyone who knows the 4-digit
-// PIN can read/write — data is scoped by PIN-as-shared-secret.
+// PIN can read/write — data is scoped by PIN-as-shared-secret. Accounts signed in
+// with Google live at /users/{uid}, open only to that sign-in.
 //
 // Reads and writes are gated separately:
 //   - Reads just need the PIN format check. `request.resource.data` does
@@ -19,14 +20,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // An account given up by its PIN takes no more saved games (see /pins/{pinId}/st below)
+    function pinLive(p) {
+      return !exists(/databases/$(database)/documents/pins/$(p))
+        || get(/databases/$(database)/documents/pins/$(p)).data.get('moved', false) != true;
+    }
+
     match /pins/{pinId} {
       // Looked up one PIN at a time only: never listed, so nobody can pull every account in one query
       allow get: if pinId.matches('^[0-9]{4}$');
 
-      // A PIN whose account moved to a new PIN (Change PIN) holds only {moved, updatedAt} and takes no more
-      // writes, so a device still signed in with the old PIN can't fill it up again.
+      // A PIN whose account moved (Change PIN, or Move to Google) holds only {moved, to, updatedAt} and takes no more
+      // writes, so a device still signed in with the old PIN can't fill it up again. One given up for a Google
+      // sign-in (to: 'google') is free again after 30 days: a new account takes it whole (a fresh doc, no moved mark).
       allow write: if pinId.matches('^[0-9]{4}$')
-        && !(resource != null && resource.data.get('moved', false) == true)
+        && (resource == null || resource.data.get('moved', false) != true
+            || (resource.data.get('to', '') == 'google'
+                && resource.data.updatedAt < request.time - duration.value(30, 'd')
+                && !('moved' in request.resource.data)))
         && request.resource.data.keys().hasOnly([
           'hi',         // per-game high scores
           'gh',         // per-game history records
@@ -45,7 +56,9 @@ service cloud.firestore {
           'prefs',      // settings (theme, sound, music, per-game defaults and options), newest change wins per setting
           'prog',       // today's daily-puzzle progress (Spelling Bee words found), merged across devices
           'pc',         // parent controls (parents, sections and games off, game timer), written only by parents
-          'moved'       // set (with updatedAt only) on the old PIN when an account changes its PIN
+          'moved',      // set (with updatedAt only) on the old PIN when an account changes its PIN or moves to Google
+          'to',         // where a moved account went: 'google' (Move to Google sign-in)
+          'reborn'      // when a new account took a PIN that was given up (devices from before sign out)
         ]);
     }
 
@@ -59,7 +72,28 @@ service cloud.firestore {
         && request.resource.data.at is number
         && request.resource.data.ts == request.time
         && (request.resource.data.v == null || (request.resource.data.v is string && request.resource.data.v.size() <= 1000000))
-        && (resource == null || request.resource.data.at >= resource.data.at);
+        && (resource == null || request.resource.data.at >= resource.data.at)
+        && pinLive(pinId);
+      // cleared when the PIN is given up
+      allow delete: if pinId.matches('^[0-9]{4}$');
+    }
+
+    // Accounts signed in with Google: /users/{uid}, the same fields as a PIN's, and its saved games under st. Only
+    // that Google sign-in reads or writes them.
+    match /users/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['hi', 'gh', 'label', 'labelAt', 'bank', 'updatedAt', 'rklists', 'favs',
+          'favsAt', 'lorcana', 'avatars', 'ghDel', 'links', 'players', 'prefs', 'prog']);
+      match /st/{key} {
+        allow get, list, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['v', 'at', 'ts'])
+          && request.resource.data.at is number
+          && request.resource.data.ts == request.time
+          && (request.resource.data.v == null || (request.resource.data.v is string && request.resource.data.v.size() <= 1000000))
+          && (resource == null || request.resource.data.at >= resource.data.at);
+      }
     }
 
     // Lorcana online tables: one doc per table, a 4-letter code. Two devices

@@ -485,6 +485,9 @@ self.addEventListener('fetch', (event) => {
 
   if (req.method !== 'GET') return;
 
+  // Google sign-in's own pages (Firebase Hosting's /__/auth/ handler and /__/firebase/ settings): always the network
+  if (url.origin === self.location.origin && url.pathname.startsWith('/__/')) return;
+
   // App icons and the manifest always come straight from the network (iOS reads them when adding to the
   // home screen; a cached or failed copy would leave a plain letter icon)
   if (url.origin === self.location.origin && /^\/(apple-touch-icon[^/]*|icon-\d+\.png|img\/home-icon-\d+\.png|favicon\.png|manifest\.json)$/.test(url.pathname)) return;

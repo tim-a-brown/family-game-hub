@@ -73,7 +73,7 @@
     function list(qs) { var l = []; qs.forEach(function (x) { l.push({ code: x.id, d: x.data() }); }); return l; }
     return {
       ready: function () { return !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin()); },
-      pin: function () { return window.FGHSync && FGHSync.pin ? FGHSync.pin() : null; },
+      pin: function () { return window.FGHSync && FGHSync.acctKey ? FGHSync.acctKey() : window.FGHSync && FGHSync.pin ? FGHSync.pin() : null; },   // (the account's key: its PIN, or g:<uid> on Google)
       get: function (code) { return ref(code).then(function (r) { return r.get(); }).then(function (sn) { return sn.exists ? sn.data() : null; }); },
       del: function (code) { return ref(code).then(function (r) { return r.delete(); }); },
       // fn(data or null) -> the fields to write (a new doc when there was none), null to write nothing; may throw

@@ -38,6 +38,14 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .key.ghost{background:transparent;box-shadow:none;color:var(--text-3);font-size:.95rem;}
 .key .ico{width:24px;height:24px;}
 .hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:4px;}
+/* Sign in with Google: Google's own light button (white, the four-colour G), the same width as the PIN buttons */
+.gbtn{width:100%;max-width:330px;min-height:50px;gap:12px;background:#fff;color:#1f1f1f;font-weight:800;box-shadow:0 2px 0 rgba(0,0,0,.25),inset 0 0 0 1px #dadce0;}
+.gbtn:hover{background:#f8f9fa;}
+.gbtn svg{width:20px;height:20px;flex:none;}
+.gbtn.call{animation:gCall 1.4s ease-in-out 3;box-shadow:0 2px 0 rgba(0,0,0,.25),0 0 0 3px var(--yellow);}
+@keyframes gCall{50%{transform:scale(1.04);}}
+.or{display:flex;align-items:center;gap:10px;width:100%;max-width:330px;color:var(--text-3);font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;}
+.or::before,.or::after{content:'';flex:1;height:1px;background:var(--w1);}
 /* The three parts: title, keypad, and the rest (random PIN, guest, hint). Stacked on phones; on a tablet held
    sideways the keypad takes the right and the rest sits beside it on the left, so nothing needs a scroll */
 .g-head,.g-pad,.g-more{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
@@ -91,7 +99,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   <div class="g-head">
     <div class="logo" id="logo"></div>
     <h1>Game Night</h1>
-    <p class="sub">Enter your PIN to sync scores across your devices.</p>
+    <p class="sub">Enter your PIN or sign in with Google to keep your games on all your devices.</p>
   </div>
   <div class="g-pad">
     <div class="slots" id="slots"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
@@ -99,6 +107,8 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     <div class="pad" id="keypad"></div>
   </div>
   <div class="g-more">
+    <button class="btn gbtn" id="google" type="button"></button>
+    <div class="or" aria-hidden="true">or</div>
     <div class="rnd" id="rnd">
       <button class="btn btn-soft rnd-go" id="rnd-go" type="button"></button>
       <div class="rnd-offer" id="rnd-offer" hidden>
@@ -114,7 +124,7 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 (function () {
   'use strict';
   var m = FGHSync.mode();
-  if (m === 'pin' || m === 'guest') { location.replace('./index.html'); return; }
+  if (m === 'pin' || m === 'guest' || m === 'google') { location.replace('./index.html'); return; }
   if (FGHSync.warm) setTimeout(FGHSync.warm, 0);   // fetch the cloud code while the PIN is typed, not after
   var $ = function (id) { return document.getElementById(id); };
   $('logo').innerHTML = '<svg viewBox="40 40 176 176" aria-hidden="true"><g fill="none" stroke-width="18" stroke-linecap="round"><path d="M148 72A58 58 0 0 1 184 108" stroke="#ffd166"/><path d="M184 148A58 58 0 0 1 148 184" stroke="#ff7a8a"/><path d="M108 184A58 58 0 0 1 72 148" stroke="#4fd1c5"/><path d="M72 108A58 58 0 0 1 108 72" stroke="#8b7cff"/></g><g fill="#fff"><circle cx="79" cy="79" r="16"/><circle cx="177" cy="79" r="16"/><circle cx="177" cy="177" r="16"/><circle cx="79" cy="177" r="16"/></g></svg>';
@@ -135,7 +145,31 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     }
   }
   function status(msg, err) { $('status').textContent = msg || ''; $('status').classList.toggle('err', !!err); }
-  function setBusy(b) { busy = b; $('slots').classList.toggle('busy', b); keys.forEach(function (k) { k.disabled = b; }); ['rnd-go', 'rnd-in', 'rnd-again'].forEach(function (id) { $(id).disabled = b; }); render(); }
+  function setBusy(b) { busy = b; $('slots').classList.toggle('busy', b); keys.forEach(function (k) { k.disabled = b; }); ['rnd-go', 'rnd-in', 'rnd-again', 'google'].forEach(function (id) { $(id).disabled = b; }); render(); }
+
+  // ── Sign in with Google ──
+  var G_LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+  $('google').innerHTML = G_LOGO + '<span>Sign in with Google</span>';
+  function callGoogle() { var g = $('google'); g.classList.remove('call'); void g.offsetWidth; g.classList.add('call'); }
+  function googleDone(p) {
+    return p.then(function (r) {
+      if (!r) { setBusy(false); status(''); return; }
+      status(''); if (r.isNew) askName(true); else hello(true);
+    }).catch(function (e) {
+      setBusy(false);
+      if (e && e.code === 'cancelled') { status(''); return; }
+      Kit.haptic('error'); Kit.sfx('bad');
+      status(navigator.onLine === false ? 'You’re offline. Connect to sign in.' : 'Google sign-in didn’t work: ' + ((e && e.message) || 'try again'), true);
+    });
+  }
+  $('google').addEventListener('click', function () {
+    if (busy) return;
+    if (offer || rolling) { dropOffer(); pin = ''; }
+    Kit.sfx('tap'); setBusy(true); status('Signing in with Google…');
+    googleDone(FGHSync.signInWithGoogle());
+  });
+  // back from Google's page (the home-screen app goes there and comes back)
+  if (FGHSync.googlePending && FGHSync.googlePending()) { setBusy(true); status('Finishing Google sign-in…'); googleDone(FGHSync.googleResume()); }
 
   // ── Assign me a random PIN ──
   // The slots spin while a free PIN is found, then land on it one at a time, ringed in green. Nothing signs in until
@@ -227,20 +261,21 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
       $('slots').classList.remove('shake'); void $('slots').offsetWidth; $('slots').classList.add('shake');
       if (e && e.code === 'weak') status('That PIN is too easy to guess. Pick a less common one. If it was your PIN, change it on a device that is still signed in: tap your avatar, then Change PIN.', true);
       else if (e && e.code === 'moved') status('That PIN was changed. Sign in with the new one.', true);
+      else if (e && e.code === 'google') { status('That account moved to Google. Sign in with Google.', true); callGoogle(); }
       else status(e && e.message ? 'Sign-in failed: ' + e.message : "Couldn't sign in. Check your connection and try again.", true);
       setTimeout(function () { $('slots').classList.remove('shake'); pin = ''; render(); }, 650);
     });
   }
   $('guest').addEventListener('click', function () { FGHSync.continueAsGuest(); location.replace('./index.html'); });
 
-  function askName() {
+  function askName(google) {
     var inp = Kit.el('input', { class: 'input', maxlength: 14, placeholder: 'e.g. Tim', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'done' });
     // a PIN is one person's account: its name is your name in every game
     function go() { var v = inp.value.trim(); if (v) { FGHSync.setLabel(v); try { localStorage.setItem('my_name', v); } catch (e) {} } closeSheet(); hello(false); }
     function closeSheet() { document.querySelectorAll('.k-scrim').forEach(function (x) { x.remove(); }); }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     Kit.sheet({
-      title: 'New PIN! What’s your name?', node: Kit.el('div', null, [Kit.el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: 'This PIN is your account: your name, avatar and games on every device you sign in on. Everyone gets their own PIN.' }), inp]),
+      title: google ? 'Welcome! What’s your name?' : 'New PIN! What’s your name?', node: Kit.el('div', null, [Kit.el('p', { class: 'muted', style: { 'margin-bottom': '12px' }, text: google ? 'Your Google sign-in is your account: your name, avatar and games on every device you sign in on.' : 'This PIN is your account: your name, avatar and games on every device you sign in on. Everyone gets their own PIN.' }), inp]),
       dismissible: false,
       actions: [{ label: 'Save and continue', primary: true, onClick: go }, { label: 'Skip for now', cls: 'btn-ghost', onClick: function () { closeSheet(); hello(false); } }]
     });
@@ -305,8 +340,17 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
     setTimeout(function () { location.replace('./index.html'); }, 3150);
   }
   render();
-  // Signed out because this account's PIN was changed on another device
-  try { if (localStorage.getItem('fgh_pin_moved')) { localStorage.removeItem('fgh_pin_moved'); status('Your PIN was changed on another device. Sign in with the new PIN.', true); } } catch (e) {}
+  // Signed out because this account moved: a new PIN, to Google, or the PIN belongs to someone new now
+  try {
+    var why = localStorage.getItem('fgh_pin_moved');
+    if (why) {
+      localStorage.removeItem('fgh_pin_moved');
+      if (why === 'google') { status('Your account moved to Google sign-in. Sign in with Google to pick up where you left off.', true); callGoogle(); }
+      else if (why === 'gout') { status('Sign in with Google again to keep playing.', true); callGoogle(); }
+      else if (why === 'gone') status('That PIN belongs to someone else now. Sign in with your account.', true);
+      else status('Your PIN was changed on another device. Sign in with the new PIN.', true);
+    }
+  } catch (e) {}
 })();
 </script>
 </body>

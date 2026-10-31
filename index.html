@@ -128,6 +128,51 @@ document.addEventListener('visibilitychange', function () {
 .pin-ch .pin-in:placeholder-shown{letter-spacing:normal;font-size:1rem;font-weight:700;}
 .pin-msg{min-height:1.3em;font-size:.88rem;font-weight:700;color:var(--text-2);margin:0;}
 .pin-msg.err{color:var(--red);}
+/* Move to Google sign-in: your PIN flowing into your Google account, what happens, then each step ticking off */
+.mv{display:flex;flex-direction:column;gap:14px;}
+.mv-flow{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px 10px;border-radius:18px;background:rgba(0,0,0,.22);box-shadow:inset 0 0 0 1px var(--w08);}
+.mv-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:96px;height:78px;padding:0 12px;border-radius:16px;transition:opacity .4s,transform .4s var(--spring),filter .4s;}
+.mv-tile small{font-size:.66rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
+.mv-pin{background:var(--surface-2);box-shadow:inset 0 0 0 2px var(--yellow);}
+.mv-pin b{font-family:var(--display);font-weight:400;font-size:1.7rem;letter-spacing:.14em;line-height:1;}
+.mv-g{position:relative;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.25);}
+.mv-g svg{width:30px;height:30px;}
+.mv-g small{color:#5f6368;}
+.mv-g .ok{position:absolute;right:-8px;top:-8px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;transform:scale(0);transition:transform .45s var(--spring);}
+.mv-g .ok svg{width:16px;height:16px;}
+.mv-arr{display:flex;gap:5px;}
+.mv-arr i{width:7px;height:7px;border-radius:50%;background:var(--text-3);opacity:.5;}
+.mv.run .mv-arr i{animation:mvDot 1s ease-in-out infinite;background:var(--yellow);}
+.mv.run .mv-arr i:nth-child(2){animation-delay:.15s;} .mv.run .mv-arr i:nth-child(3){animation-delay:.3s;}
+@keyframes mvDot{0%,100%{opacity:.25;transform:translateX(-3px);}50%{opacity:1;transform:translateX(3px);}}
+.mv.done .mv-pin{opacity:.35;transform:scale(.9);filter:grayscale(1);}
+.mv.done .mv-pin b{text-decoration:line-through;text-decoration-thickness:2px;}
+.mv.done .mv-g{transform:scale(1.08);}
+.mv.done .mv-g .ok{transform:scale(1);}
+.mv-what,.mv-steps{display:flex;flex-direction:column;gap:6px;}
+.mv-row{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border-radius:14px;background:var(--w05);}
+.mv-row .ic{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--w1);color:var(--text-2);}
+.mv-row .ic svg{width:18px;height:18px;}
+.mv-row b{display:block;font-size:.92rem;}
+.mv-row span{display:block;font-size:.8rem;font-weight:700;color:var(--text-3);line-height:1.3;}
+.mv-step{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;font-weight:800;font-size:.9rem;color:var(--text-3);transition:background .3s,color .3s;}
+.mv-step .dot{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 2px var(--w1);}
+.mv-step .dot svg{width:14px;height:14px;opacity:0;}
+.mv-step.on{color:var(--text);background:var(--w05);}
+.mv-step.on .dot{box-shadow:none;border:2px solid var(--yellow);border-top-color:transparent;animation:mvSpin .9s linear infinite;}
+.mv-step.done{color:var(--text-2);}
+.mv-step.done .dot{background:var(--green);box-shadow:none;animation:none;color:#fff;}
+.mv-step.done .dot svg{opacity:1;}
+@keyframes mvSpin{to{transform:rotate(360deg);}}
+.mv-msg{min-height:1.2em;font-weight:800;font-size:.88rem;color:var(--text-2);text-align:center;}
+.mv-msg.err{color:var(--red);}
+.mv-acts{display:flex;flex-direction:column;gap:8px;}
+.mv-go{gap:10px;background:#fff;color:#1f1f1f;box-shadow:0 2px 0 rgba(0,0,0,.25),inset 0 0 0 1px #dadce0;}
+.mv-go svg{width:20px;height:20px;}
+.acct-g{display:inline-flex;align-items:center;gap:6px;min-width:0;}
+.acct-g svg{width:15px;height:15px;flex:none;}
+.acct-g span{min-width:0;overflow-wrap:anywhere;}
+@media (prefers-reduced-motion:reduce){.mv.run .mv-arr i,.mv-step.on .dot{animation:none;}}
 .pin-big{font-family:var(--display);font-size:1.3em;letter-spacing:.12em;color:var(--text);}
 
 /* Search row with the Surprise button */
@@ -1698,6 +1743,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 
   // ── Greeting + account ────────────────────────────────────────────────────
   var mode = window.FGHSync ? FGHSync.mode() : 'guest';
+  // a Google account works like a PIN account everywhere on this screen; only how it signs in differs
+  var gacct = mode === 'google';
+  if (gacct) mode = 'pin';
+  var G_LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
   function initials(s) {
     var w = String(s || '').trim().split(/\s+/).filter(function (x) { return x && !/^(family|fam|crew|team|house|household)$/i.test(x); });
     if (!w.length) return '#';
@@ -1856,8 +1905,70 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     s = Kit.sheet({ title: forced ? 'Choose a safer PIN' : 'Change PIN', node: body, actions: acts, dismissible: !forced });
     setTimeout(function () { a.focus(); }, 350);
   }
+  // Move to Google sign-in: what happens (everything comes along, other devices, the PIN is freed), then each step
+  // ticking off as it happens, ending on your Google account. resume: back from Google's page (the home-screen app)
+  function moveSheet(resume) {
+    var p = resume ? resume.pin : FGHSync.pin(), kids = FGHSync.kids && Object.keys(FGHSync.kids.list()).length;
+    var ok = el('i', { class: 'ok', html: Kit.icon('check') });
+    var box = el('div', { class: 'mv' }), msg = el('p', { class: 'mv-msg', role: 'status' });
+    box.appendChild(el('div', { class: 'mv-flow' }, [
+      el('div', { class: 'mv-tile mv-pin' }, [el('small', { text: 'PIN' }), el('b', { text: p })]),
+      el('div', { class: 'mv-arr', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')]),
+      el('div', { class: 'mv-tile mv-g', html: G_LOGO }, [el('small', { text: 'Google' }), ok])
+    ]));
+    function row(ic, t, d) { return el('div', { class: 'mv-row' }, [el('span', { class: 'ic', html: Kit.icon(ic) }), el('div', null, [el('b', { text: t }), el('span', { text: d })])]); }
+    var what = el('div', { class: 'mv-what' }, [
+      row('check', 'Everything comes with you', 'Scores, history, saved games, settings, decks and linked players'),
+      row('phone', 'Your other devices', 'They ask you to sign in with Google the next time they open'),
+      row('key', 'PIN ' + p + ' is given up', 'Someone else can use it after 30 days'),
+      kids ? row('shield', 'Your child’s lock screen', 'Still opens with ' + p) : null
+    ]);
+    var STEPS = [['sync', 'Syncing your account'], ['google', 'Signing in with Google'], ['copy', 'Copying scores and settings'], ['games', 'Copying saved games'], ['tables', 'Moving your online tables'], ['free', 'Giving up PIN ' + p]];
+    var stepEls = {}, steps = el('div', { class: 'mv-steps', hidden: true }, STEPS.map(function (x) {
+      return (stepEls[x[0]] = el('div', { class: 'mv-step' }, [el('span', { class: 'dot', html: Kit.icon('check') }), el('span', { text: x[1] })]));
+    }));
+    var go = el('button', { type: 'button', class: 'btn btn-block mv-go', html: G_LOGO + '<span>Continue with Google</span>' });
+    var cancel = el('button', { type: 'button', class: 'btn btn-block btn-ghost', text: 'Cancel' });
+    box.appendChild(what); box.appendChild(steps); box.appendChild(msg); box.appendChild(el('div', { class: 'mv-acts' }, [go, cancel]));
+    var sh = Kit.sheet({ title: 'Move to Google sign-in', node: box, dismissible: false });
+    var at = -1;
+    function step(n) {
+      var i = STEPS.map(function (x) { return x[0]; }).indexOf(n); if (i < 0) return;
+      for (var k = 0; k < STEPS.length; k++) { var e = stepEls[STEPS[k][0]]; e.classList.toggle('done', k < i); e.classList.toggle('on', k === i); }
+      if (i > at) { at = i; if (i) { Kit.sfx('tick'); Kit.haptic('tick'); } }
+    }
+    function start() {
+      what.hidden = true; steps.hidden = false; box.classList.add('run'); go.hidden = true; cancel.hidden = true;
+      msg.textContent = ''; msg.className = 'mv-msg';
+    }
+    function done(r) {
+      for (var k = 0; k < STEPS.length; k++) { stepEls[STEPS[k][0]].classList.remove('on'); stepEls[STEPS[k][0]].classList.add('done'); }
+      box.classList.remove('run'); box.classList.add('done');
+      Kit.sfx('win'); Kit.haptic('success');
+      msg.textContent = 'Signed in as ' + (r.email || 'your Google account');
+      gacct = true;
+      go.hidden = false; go.className = 'btn btn-block btn-primary'; go.innerHTML = ''; go.textContent = 'Done';
+      go.onclick = function () { sh.close(); location.reload(); };
+    }
+    function failed(e) {
+      box.classList.remove('run');
+      if (e && e.code === 'cancelled') { what.hidden = false; steps.hidden = true; }
+      else { Kit.sfx('bad'); Kit.haptic('error'); msg.className = 'mv-msg err'; msg.textContent = (e && e.message) || 'Couldn’t move your account. Try again.'; }
+      for (var k = 0; k < STEPS.length; k++) stepEls[STEPS[k][0]].classList.remove('on');
+      go.hidden = false; cancel.hidden = false; at = -1;
+    }
+    go.onclick = function () {
+      Kit.sfx('tap'); start();
+      FGHSync.moveToGoogle(step).then(done, failed);
+    };
+    cancel.onclick = function () { Kit.sfx('tap'); sh.close(); };
+    if (resume) { start(); step('copy'); FGHSync.googleResume(step).then(function (r) { if (r) done(r); else sh.close(); }, failed); }
+  }
+  // back from Google's page in the middle of a move (the home-screen app goes there and comes back)
+  if (window.FGHSync && FGHSync.googlePending) { var gp = FGHSync.googlePending(); if (gp && gp.go === 'move' && mode === 'pin' && !gacct) setTimeout(function () { moveSheet(gp); }, 400); }
+
   // On a PIN that's now too easy to guess: ask for a new one once the account has synced
-  if (mode === 'pin' && FGHSync.weakPin && FGHSync.weakPin(FGHSync.pin() || '')) {
+  if (mode === 'pin' && !gacct && FGHSync.weakPin && FGHSync.weakPin(FGHSync.pin() || '')) {
     (FGHSync.onReady || function (f) { f(); })(function () { if (FGHSync.isPin() && FGHSync.weakPin(FGHSync.pin() || '')) setTimeout(function () { changePinSheet(true); }, 600); });
   }
 
@@ -1872,7 +1983,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     myIn.addEventListener('change', saveName);
     myIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') myIn.blur(); });
     function editMine() { var v = saveName() || mn; if (!v) { Kit.toast('Type your name first'); myIn.focus(); return; } s.close(); Kit.avatar.edit(v, refreshWho); }
-    var acct = el('div', { class: 'acct-d' }, [el('span', { text: mode === 'pin' ? 'PIN ' + FGHSync.pin() + ' · your account, on all your devices' : 'Guest · scores stay on this device' })]);
+    var acct = el('div', { class: 'acct-d' }, [gacct ? el('span', { class: 'acct-g', html: G_LOGO }, [el('span', { text: FGHSync.gmail() || 'Google account' })]) : el('span', { text: mode === 'pin' ? 'PIN ' + FGHSync.pin() + ' · your account, on all your devices' : 'Guest · scores stay on this device' })]);
     node.appendChild(el('div', { class: 'acct' }, [
       el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', 'lg', 'var(--surface-3)')]),
       el('div', { class: 'grow', style: { 'min-width': '0' } }, [el('label', { class: 'acct-nm' }, [myIn, el('span', { class: 'acct-pen', 'aria-hidden': 'true', html: Kit.icon('pencil') })]), acct])
@@ -1928,10 +2039,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     group('Account');
     if (mode === 'pin') {
       item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
-      if (FGHSync.changePin) item('key', 'Change PIN', function () { changePinSheet(false); });
+      if (FGHSync.changePin && !gacct) item('key', 'Change PIN', function () { changePinSheet(false); });
+      if (FGHSync.moveToGoogle && !gacct) grp.appendChild(el('button', { type: 'button', onclick: function () { s.close(); moveSheet(); } }, [el('span', { class: 'ic', html: G_LOGO }), el('span', { text: 'Move to Google sign-in' })]));
     }
     if (FGHSync.logGet) item('pulse', 'Sync log', activityLog);
-    item('logout', mode === 'pin' ? 'Sign out' : 'Sign in with a PIN', function () {
+    item('logout', mode === 'pin' ? 'Sign out' : 'Sign in', function () {
       if (FGHSync.signOut) FGHSync.signOut(); location.replace('./gate.html');
     }, mode === 'pin' ? 'danger' : '');
     node.appendChild(list);

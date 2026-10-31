@@ -101,6 +101,23 @@ Underlying principles for everything:
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
 
+## Accounts: PIN or Google
+
+- A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable
+  only by that sign-in (Firebase Auth, Google provider). Both have the same fields and `st` saved games. `FGHSync.isPin()`
+  means "signed in to either"; `FGHSync.acctKey()` is the PIN or `g:<uid>` (device space, online-table tag).
+- Profile menu, Move to Google sign-in (`FGHSync.moveToGoogle`): copies everything, retags the account's online tables,
+  then the PIN keeps only `{moved: true, to: 'google'}`. Devices still on it are signed out and told to use Google; after
+  30 days anyone can take the PIN (a fresh doc with `reborn`; devices from before see a different `fgh_acct_gen` and
+  sign out). Child accounts (a parent looks after them) can't move. A parent who moves keeps their old PIN as the code
+  for their child's lock screen (`gn_parent_code`).
+- Google sign-in uses the page's own address as `authDomain` (Firebase Hosting's `/__/auth/handler`), so every address
+  that offers it (games.timbrown.xyz, each preview channel) must be in Firebase Auth's Authorized domains and its
+  `/__/auth/handler` URL in the Google Cloud OAuth client's redirect URIs. The home-screen app signs in by redirect
+  (`googlePending`/`googleResume`), browsers by pop-up.
+- Local testing: Firestore + Auth emulators with `localStorage.fgh_emu = '1'` (and `fgh_emu_google` = a fake Google id
+  token JSON for sign-in).
+
 ## Online games
 
 - **Turn-based games go online through `turnnet.js`** (TurnNet), never their own system: one Firestore doc per table

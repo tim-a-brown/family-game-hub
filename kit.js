@@ -725,7 +725,7 @@
   // that just came back to you (one you're not playing right now) drops a banner in from the top.
   var ACT = null;
   function acctTag() {
-    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? FGHSync.pin() : null, c = window.crypto && window.crypto.subtle;
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (FGHSync.acctKey ? FGHSync.acctKey() : FGHSync.pin()) : null, c = window.crypto && window.crypto.subtle;   // (the PIN, or g:<uid> on Google)
     if (!pin || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
     var h = 5381; for (var i = 0; i < pin.length; i++) h = ((h << 5) + h + pin.charCodeAt(i)) | 0;
     var k = 'p' + (h >>> 0).toString(36), saved = null;

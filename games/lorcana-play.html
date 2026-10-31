@@ -11777,8 +11777,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function deckFiles(after) {
     if (DB.status !== 'ready') { Kit.toast(DB.status === 'error' ? 'The card library isn’t downloaded yet' : 'Still loading the cards…'); if (DB.status === 'error' || DB.status === 'idle') DB.load(); return; }
     var node = el('div', { class: 'stack', style: { gap: '10px' } }), sh, mine = savedDecks();
-    var signed = window.FGHSync && FGHSync.mode && FGHSync.mode() === 'pin';
-    node.appendChild(el('p', { class: 'muted', text: signed ? 'Your decks and bookmarks are saved to PIN ' + FGHSync.pin() + ', so they show up on every device signed in with it.' : 'Sign in with your PIN on the home screen to keep decks and bookmarks on every device.' }));
+    var signed = window.FGHSync && FGHSync.isPin && FGHSync.isPin(), gsign = signed && FGHSync.isGoogle && FGHSync.isGoogle();
+    node.appendChild(el('p', { class: 'muted', text: gsign ? 'Your decks and bookmarks are saved to your Google account, so they show up on every device signed in with it.' : signed ? 'Your decks and bookmarks are saved to PIN ' + FGHSync.pin() + ', so they show up on every device signed in with it.' : 'Sign in on the home screen to keep decks and bookmarks on every device.' }));
     var ex = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: Kit.icon('share') + '<span>' + (mine.length ? 'Export ' + plural(mine.length, 'deck') + ' (.md file)' : 'No decks to export yet') + '</span>', onclick: function () {
       var blob = new Blob([decksToMd(mine)], { type: 'text/markdown' }), a = el('a', { href: URL.createObjectURL(blob), download: 'lorcana-decks-' + new Date().toISOString().slice(0, 10) + '.md' });
       document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -13331,7 +13331,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   // and the home screen (same salt, same cache).
   var ACT = {};
   function acctTag() {
-    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? FGHSync.pin() : null, c = window.crypto && window.crypto.subtle;
+    var pin = window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (FGHSync.acctKey ? FGHSync.acctKey() : FGHSync.pin()) : null, c = window.crypto && window.crypto.subtle;   // (the PIN, or g:<uid> on Google)
     if (!pin || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
     if (ACT[pin]) return ACT[pin];
     var k = pinKey(pin), saved = lsGet('fgh_acct_tag', null);

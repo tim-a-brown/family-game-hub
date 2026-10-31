@@ -45,7 +45,7 @@ function openSyncDiagnostics(){
   const local = countLocal();
   const mode = (typeof FGHSync !== 'undefined') ? FGHSync.mode() : null;
   const pin = (typeof FGHSync !== 'undefined') ? FGHSync.pin() : null;
-  document.getElementById('sd-sub').textContent = mode === 'pin' ? ('PIN ' + pin) : 'Guest mode (no cloud sync)';
+  document.getElementById('sd-sub').textContent = mode === 'pin' ? ('PIN ' + pin) : mode === 'google' ? ('Google ' + (FGHSync.gmail() || 'account')) : 'Guest mode (no cloud sync)';
 
   // If the last sync attempt errored, surface that message immediately — the
   // user hit Retry specifically to see this.
