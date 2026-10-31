@@ -143,28 +143,19 @@
     state().then(function (s) {
       if (p.u === 'off') { if (s && s.is_playing) pause(); return; }
       if (s && s.is_playing && s.context && s.context.uri === p.u) return;
-      return playUri(p.u).then(function (res) { after(res, id); });
+      return playUri(p.u);   // (no Spotify app open: nothing pops up; the Music menu has the way to open it)
     }).catch(function () {});
   }
-  // No Spotify app is open: show the way to open it, and start the music when they come back
+  // No Spotify app is open after you pressed play in the Music menu: the player there shows the way to open it, and
+  // the music starts when you come back (never a banner over the game)
   function openAppNudge(id) {
     waitingFor = id;
-    var k = K(); if (!k) return;
-    var old = document.querySelector('.sp-nudge'); if (old) old.remove();
-    var row = k.el('div', { class: 'sp-nudge' }, [
-      k.el('span', { class: 'sp-nudge-ic', html: k.icon('headphones') }),
-      k.el('span', { class: 'sp-nudge-t', text: 'Open Spotify, then come back here' }),
-      k.el('a', { class: 'btn btn-primary sp-nudge-go', href: 'spotify:', text: 'Open Spotify' }),
-      k.el('button', { type: 'button', class: 'icon-btn sp-nudge-x', 'aria-label': 'Not now', html: k.icon('close'), onclick: function () { row.remove(); waitingFor = null; } })
-    ]);
-    css(); document.body.appendChild(row);
-    requestAnimationFrame(function () { row.classList.add('show'); });
-    setTimeout(function () { if (row.isConnected) { row.classList.remove('show'); setTimeout(function () { row.remove(); }, 400); } }, 15000);
+    document.querySelectorAll('.sp-pl').forEach(function (b) { b.classList.add('sp-need'); });
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible' || !waitingFor) return;
     var id = waitingFor; waitingFor = null;
-    var old = document.querySelector('.sp-nudge'); if (old) old.remove();
+    document.querySelectorAll('.sp-pl.sp-need').forEach(function (b) { b.classList.remove('sp-need'); });
     setTimeout(function () { if (id === '*resume') resume(); else gameStart(id); }, 600);
   });
   function toast(m) { var k = K(); if (k) k.toast(m); }
@@ -224,8 +215,8 @@
     '.sp-hero .sp-big{width:72px;height:72px;border-radius:50%;background:var(--w08);display:grid;place-items:center;color:var(--accent)}.sp-hero .sp-big svg{width:36px;height:36px}' +
     '.sp-hero p{margin:0;color:var(--text-2)}.sp-foot{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--text-3);font-size:.85rem}' +
     '.sp-foot img{width:24px;height:24px;border-radius:50%}.sp-foot button{appearance:none;border:0;box-shadow:none;background:none;margin-left:auto;color:var(--text-2);font:inherit;font-weight:800;padding:8px;cursor:pointer}' +
-    '.sp-nudge{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translate(-50%,140%);z-index:90;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:16px;background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.4);transition:transform .35s cubic-bezier(.2,1.3,.4,1);max-width:calc(100vw - 32px)}' +
-    '.sp-nudge.show{transform:translate(-50%,0)}.sp-nudge-ic{color:var(--accent);display:grid}.sp-nudge-ic svg{width:22px;height:22px}.sp-nudge-t{font-weight:700}.sp-nudge-go{white-space:nowrap;text-decoration:none}';
+    '.sp-open{display:none;align-items:center;justify-content:space-between;gap:10px;margin:8px 2px 2px;font-size:.84rem;font-weight:700;color:var(--text-2)}' +
+    '.sp-pl.sp-need .sp-open{display:flex}.sp-open .btn{white-space:nowrap;text-decoration:none;min-height:38px;padding:0 16px}';
   var cssOn = false;
   function css() { if (cssOn) return; cssOn = true; var s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s); }
   function E(tag, a, kids) { var k = K(); return k.el(tag, a, kids); }
@@ -249,7 +240,8 @@
     var bRep = btn('', 'Repeat', IC.repeat, function () { if (!st) return; st.repeat_state = st.repeat_state === 'off' ? 'context' : st.repeat_state === 'context' ? 'track' : 'off'; paint(); repeat(st.repeat_state).then(soon); });
     var kids = [bShuf, bPrev, bPlay, bNext, bRep];
     if (o.onSearch) kids.push(btn('', 'Search', IC.search, o.onSearch));
-    var box = E('div', { class: 'sp-pl' }, [top, E('div', { class: 'sp-bar' }, [bar]), E('div', { class: 'sp-ctl' }, kids)]);
+    var open = E('div', { class: 'sp-open' }, [E('span', { text: 'Spotify isn’t open on any device' }), E('a', { class: 'btn btn-primary', href: 'spotify:', text: 'Open Spotify' })]);
+    var box = E('div', { class: 'sp-pl' + (waitingFor ? ' sp-need' : '') }, [top, E('div', { class: 'sp-bar' }, [bar]), E('div', { class: 'sp-ctl' }, kids), open]);
     if (o.onOpen) top.onclick = function () { k.sfx('tap'); o.onOpen(); }; else top.style.cursor = 'default';
     if (!o.always) box.hidden = true;
     var lastImg = '';
@@ -362,7 +354,7 @@
         // you hear the change right away
         if (u === 'off') pause().then(pl.refresh);
         else if (u === 'inherit') { if (g.id) gameStart(g.id); setTimeout(pl.refresh, 900); }
-        else playUri(u).then(function (res) { if (res === 'nodevice') { sh.close(); openAppNudge(g.id || '*resume'); } else after(res); setTimeout(pl.refresh, 900); });
+        else playUri(u).then(function (res) { after(res, g.id || '*resume'); setTimeout(pl.refresh, 900); });
       };
       rows.push({ el: b, u: kind === 'song' ? null : u, kind: kind }); list.appendChild(b);
     }
