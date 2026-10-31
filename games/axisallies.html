@@ -889,7 +889,7 @@ var YARD = { bb: 17, cv: 11, ca: 9, dd: 7, sub: 5, tra: 6 };
 // the breakthroughs that change a kind's battle numbers (for the odds cache)
 var TECH_K = { inf: 'aart', art: 'aart', sub: 'ssub', ftr: 'jet', bmb: 'hvy', aa: 'radar' };
 var RES_COST = 5;
-function techOn() { return !!(S && S.opt && (S.opt.tech === 'on' || S.mode === 'classic')); }
+function techOn() { return !!(S && S.opt && S.opt.tech === 'on'); }
 function hasT(p, k) { return !!(p && S && S.tech && S.tech[p] && S.tech[p][k]); }
 function techList(p) { var out = []; charts().forEach(function (c) { c.keys.forEach(function (k) { if (hasT(p, k)) out.push(k); }); }); return out; }
 function techIcon(k) { var t = TECH[k]; return t.u ? unitSvg(t.u) : Kit.icon(t.i); }
@@ -994,7 +994,20 @@ function buildMap(mode) {
 function isSea(t) { return TER[t][1] === 1; }
 function ipcOf(t) { return TER[t][2]; }
 function tname(t) { return isSea(t) ? (isNaN(+TER[t][0]) ? TER[t][0] + ' sea zone' : 'Sea zone ' + TER[t][0]) : TER[t][0]; }
-function imp(t) { return !!(TER[t][4] & 8); }
+// a neutral country nobody has taken (Classic: open to invasion for 3 IPCs, S.opt.neu; once taken it's ordinary land)
+function imp(t) { return !!(TER[t][4] & 8) && !(S && S.own && S.own[t]); }
+var NEU_COST = 3;
+function neuOpen() { return !!(S && S.opt && S.opt.neu === 'on'); }
+// a neutral that power p's land units may march into this combat move (it can pay the bank)
+function neuEnter(t, p) { return imp(t) && M.on[t] && neuOpen() && (S.ipc[p] || 0) >= NEU_COST; }
+// marching into a neutral: pay the bank and take it (no one defends it)
+function invadeNeutral(t, p, from) {
+  S.ipc[p] -= NEU_COST;
+  stat(p, 'neutral');
+  logLine(pname(p) + ' paid ' + NEU_COST + ' IPCs to invade ' + tname(t));
+  CAPFROM = from; capture(t, p);
+  if (!QUIET && !HEADLESS) Kit.callout(TER[t][0] + ' invaded', PW[p].col);
+}
 function passable(t) { return M.on[t] && !imp(t); }
 function isVC(t) { return !!(TER[t][4] & 2); }
 function sideOf(p) { return p ? PW[p].side : ''; }
@@ -1161,6 +1174,7 @@ function reach(u, ph, o) {
   var dom = U[u.k].dom, res;
   if (dom === 'L') {
     res = bfs(u.t, r, function (c, n) {
+      if (!isSea(n) && imp(n)) return ph === 'cm' && (c === u.t || !landStopsHere(c, p, u)) && neuEnter(n, p) ? 'stop' : false;
       if (isSea(n) || !passable(n)) return false;
       if (c !== u.t && landStopsHere(c, p, u)) return false;
       if (ph === 'ncm') return ally(S.own[n], p) ? true : false;
@@ -1169,7 +1183,7 @@ function reach(u, ph, o) {
     });
     for (var t in res.dist) {
       t = +t; if (t === u.t) continue;
-      var ok = ph === 'cm' ? foe(S.own[t], p) : ally(S.own[t], p);
+      var ok = ph === 'cm' ? foe(S.own[t], p) || imp(t) : ally(S.own[t], p);
       if (ok) out[t] = { d: res.dist[t], path: pathTo(res, u.t, t) };
     }
     // Board a transport in a neighbouring sea zone
@@ -1230,7 +1244,10 @@ function seaDist(a, b, max) {
 }
 // Unloading: cargo in sea zone z goes ashore into an adjacent territory
 function unloadTargets(z, p, ph) {
-  return seaAdjLand(z).filter(function (t) { return ph === 'cm' ? foe(S.own[t], p) : ally(S.own[t], p); });
+  var out = seaAdjLand(z).filter(function (t) { return ph === 'cm' ? foe(S.own[t], p) : ally(S.own[t], p); });
+  // (troops can storm a neutral's beach too, from a sea zone that's clear)
+  if (ph === 'cm' && neuOpen() && !hostileSea(z, p)) M.adj[z].forEach(function (t) { if (!isSea(t) && neuEnter(t, p)) out.push(t); });
+  return out;
 }
 // Destinations for a group of unit ids selected in place `from`
 function groupTargets(ids, ph) {
@@ -1420,6 +1437,7 @@ function doMove(ids, dest, opt) {
       if (ph === 'cm') { u.c = 1; u.amph = null; u.amphF = 1; }
     });
     if (ph === 'cm' && !hostile && takeable(dest, p)) { CAPFROM = [us[0].fr]; capture(dest, p); }
+    else if (ph === 'cm' && !hostile && imp(dest)) invadeNeutral(dest, p, [us[0].fr]);
     stat(p, 'landings');
     return true;
   }
@@ -1446,7 +1464,8 @@ function doMove(ids, dest, opt) {
     if (u.k === 'cv') riders.forEach(function (f) { f.t = dest; f.m = Math.max(f.m || 0, uval('ftr', f.o, 'm')); if (ph === 'cm') f.c = 1; });
     if (opt.sbr && u.k === 'bmb') u.sbr = dest; else u.sbr = null;
     moved.push(u);
-    if (ph === 'cm' && U[u.k].dom === 'L') {
+    if (ph === 'cm' && U[u.k].dom === 'L' && imp(dest)) invadeNeutral(dest, p, [u.org]);
+    else if (ph === 'cm' && U[u.k].dom === 'L') {
       for (var i = 1; i < path.length; i++) {
         var x = path[i];
         if (takeable(x, p)) { CAPFROM = [u.org]; capture(x, p); if (x !== dest) stat(p, 'blitz'); }
@@ -1764,12 +1783,12 @@ function endRound() {
     var axisInc = income('de') + income('jp');
     if (axisLost >= 2) { win = 'A'; why = 'Berlin and Tokyo are both in Allied hands'; }
     else if (allyLost >= 2 && !axisLost) { win = 'X'; why = 'The Axis hold two Allied capitals'; }
-    else if (axisInc >= 84) { win = 'X'; why = 'Axis income reached ' + axisInc + ' IPCs (84 wins)'; }
+    else if (axisInc >= 84 && S.opt.vc !== 'caps') { win = 'X'; why = 'Axis income reached ' + axisInc + ' IPCs (84 wins)'; }
   } else if (S.mode === 'skirm') {
     if (S.own[M.caps.de] && foe(S.own[M.caps.de], 'de')) { win = 'A'; why = 'Berlin fell'; }
     else if (foe(S.own[M.caps.su], 'su') || foe(S.own[M.caps.uk], 'uk')) { win = 'X'; why = (foe(S.own[M.caps.su], 'su') ? 'Moscow' : 'London') + ' fell'; }
-    else if (vcCount('X') >= 5) { win = 'X'; why = 'Germany holds 5 victory cities'; }
-    else if (vcCount('A') >= 5) { win = 'A'; why = 'The Allies hold 5 victory cities'; }
+    else if (vcCount('X') >= 5 && S.opt.vc !== 'caps') { win = 'X'; why = 'Germany holds 5 victory cities'; }
+    else if (vcCount('A') >= 5 && S.opt.vc !== 'caps') { win = 'A'; why = 'The Allies hold 5 victory cities'; }
   } else if (S.opt.vc === 'caps') {
     var axisCaps = ['de', 'jp'].filter(function (q) { return foe(S.own[M.caps[q]], q); }).length;
     var allyCaps = ['su', 'uk', 'us'].filter(function (q) { return foe(S.own[M.caps[q]], q); }).length;
@@ -2600,8 +2619,9 @@ function paintMap() {
   if (!R.gLand) return;
   var p = cur();
   R.gLand.querySelectorAll('path').forEach(function (pth) {
-    var t = +pth.getAttribute('data-t'), f = landFill(t);
-    if (f) pth.style.fill = f;
+    var t = +pth.getAttribute('data-t'), f = landFill(t), n = imp(t);
+    pth.style.fill = f || '';
+    if (pth.classList.contains('imp') !== n) pth.classList.toggle('imp', n);
   });
   // highlights
   var h = '', sel = ui.sel, tg = currentTargets();
@@ -3080,7 +3100,7 @@ function cpuPanel() {
 function tinfoCard(t) {
   var o = S.own[t], T = TER[t], sub = [];
   if (isSea(t)) sub.push('Sea zone');
-  else if (imp(t)) sub.push('Neutral. No one can enter');
+  else if (imp(t)) sub.push(neuOpen() ? 'Neutral. March in for ' + NEU_COST + ' IPCs' : 'Neutral. No one can enter');
   else {
     sub.push(o ? pname(o) : 'Neutral');
     if (T[3] && o && T[3] !== o) sub.push('was ' + PW[T[3]].short);
@@ -4045,7 +4065,12 @@ function whyNot(ids, t) {
   var p = cur(), ph = S.phase, us = ids.map(byId).filter(Boolean);
   if (!us.length) return '';
   var name = tname(t);
-  if (imp(t)) return name + ' is neutral. No one can enter it.';
+  if (imp(t)) {
+    if (!neuOpen()) return name + ' is neutral. No one can enter it.';
+    if (ph !== 'cm') return name + ' is neutral. Land units can march in during combat moves, for ' + NEU_COST + ' IPCs.';
+    if ((S.ipc[p] || 0) < NEU_COST) return 'Invading ' + name + ' costs ' + NEU_COST + ' IPCs. You have ' + (S.ipc[p] || 0) + '.';
+    if (us.some(function (u) { return U[u.k].dom !== 'L'; })) return name + ' is neutral. Only land units can enter it, and planes can’t fly over it.';
+  }
   var reasons = [];
   us.forEach(function (u) {
     if (reasons.some(function (r) { return r.k === u.k; })) return;
@@ -5018,7 +5043,7 @@ function initGame(cfg) {
   var powers = cfg.map === 'skirm' ? ['su', 'de', 'uk'] : ORDERS[cfg.order === 'su' ? 'su' : 'de'].slice();
   if (cfg.map === 'skirm' && cfg.order !== 'su') powers = ['de', 'su', 'uk'];
   if (cfg.map === 'classic' && !CLASSIC) cfg.map = 'full';   // (the Classic board didn't load)
-  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.map === 'skirm' && !+cfg.limit ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' || cfg.map === 'classic' ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
+  S = { v: 1, mode: cfg.map, opt: { vc: cfg.vc, cas: cfg.cas, speed: cfg.speed, limit: cfg.limit == null && cfg.map === 'skirm' ? 10 : +cfg.limit || 0, order: cfg.order, tech: cfg.tech === 'on' || (cfg.tech == null && cfg.map === 'classic') ? 'on' : 'off', neu: cfg.neu === 'on' || (cfg.neu == null && cfg.map === 'classic') ? 'on' : 'off', guide: !!cfg.guide && cfg.seats.some(function (s) { return !s.cpu; }) },
     seats: cfg.seats, ctl: {}, powers: powers, round: 1, pi: 0, phase: 'buy', own: [], turnOwn: [], ic: {}, dmg: {},
     units: [], nid: 1, ipc: {}, buy: {}, rep: {}, bank: {}, placed: {}, capt: [], bl: [], B: null, hl: [], stats: {}, log: [], cityTaken: {}, tech: {}, rt: {},
     started: Date.now(), over: null };
@@ -5365,10 +5390,10 @@ var RULES =
   '<li><b>Destroyers</b> cancel all those submarine tricks.</li>' +
   '<li><b>Industrial complex:</b> 15 IPCs; build one on any territory worth 1 or more that you held all turn.</li></ul>' +
   '<h3>Bombing raids</h3><p>Bombers sent at an enemy factory are each shot at by the factory’s own anti-aircraft fire (a 1 hits). Each surviving bomber rolls one die: that much damage, up to twice the territory’s value. Damage lowers how many units the factory can place until it’s repaired.</p>' +
-  '<h3>Capitals and canals</h3><ul><li>Take an enemy capital and you seize all of its IPCs. Free a friend’s territory and it goes back to them (if their capital is free).</li><li>Ships can only use the Suez Canal if your side holds Egypt and Trans-Jordan, and the Panama Canal if your side holds Central America.</li><li>Gray striped places (Turkey, Sweden, Spain…) are neutral and can’t be entered or flown over.</li></ul>' +
+  '<h3>Capitals and canals</h3><ul><li>Take an enemy capital and you seize all of its IPCs. Free a friend’s territory and it goes back to them (if their capital is free).</li><li>Ships can only use the Suez Canal if your side holds Egypt and Trans-Jordan, and the Panama Canal if your side holds Central America.</li><li>Gray striped places (Turkey, Sweden, Spain…) are neutral. Usually no one can enter or fly over them. With neutrals open (the Classic rule), land units can march into one during combat moves by paying the bank 3 IPCs; no one defends it, and once taken it’s ordinary land.</li></ul>' +
   '<h3>Winning</h3><ul><li><b>Standard:</b> at the end of a round the Axis need <b>9</b> of the 13 victory cities, or the Allies need <b>10</b>.</li><li><b>Quick:</b> 8 for the Axis, 9 for the Allies. <b>Total:</b> all 13. <b>Capitals:</b> the Allies win by holding Berlin and Tokyo; the Axis win by holding two of London, Moscow and Washington.</li><li>With a round limit, the side with more victory cities when time runs out wins (ties go to the bigger total income).</li></ul>' +
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
-  '<h3>Classic (1984)</h3><p>The original Milton Bradley game, on its own map with its own starting armies (spring 1942, five powers, the same turn order). Pick it under <b>Game</b>. What changes:</p><ul>' +
+  '<h3>Classic (1984)</h3><p>The original Milton Bradley game, on its own map with its own starting armies (spring 1942, five powers, the same turn order). Pick it under <b>Game</b>. What changes:</p><ul><li>Neutral countries can be invaded: march land units in during combat moves and pay the bank 3 IPCs each.</li>' +
   '<li><b>Units:</b> no artillery, destroyers or cruisers. Tanks cost 5 and defend on 2; fighters 12; bombers 15; submarines 8 and defend on 2; transports 8 and defend on 1; carriers 18 and defend on 3; battleships 24.</li>' +
   '<li><b>Battleships</b> sink with one hit. <b>Transports</b> carry 2 infantry, or 1 tank or AA gun, and fight like any other ship (they defend on 1).</li>' +
   '<li><b>Submarines</b> attacking fire first and their targets don’t shoot back; they can’t dive away. Planes can always hit submarines.</li>' +
@@ -5458,24 +5483,69 @@ Object.defineProperty(KIT_OPTS, 'rules', { get: rulesHtml, enumerable: true });
 Kit.init(KIT_OPTS);
 
 // ── Setup screen ───────────────────────────────────────────────────────────
-// Rule presets: each sets the victory goal, round limit, turn order and research at once (Custom shows them all)
-var RULESETS = {
-  orig: { vc: 'std', limit: '0', order: 'su', tech: 'off' },
-  quick: { vc: 'quick', limit: '10', order: 'su', tech: 'off' },
-  research: { vc: 'std', limit: '0', order: 'su', tech: 'on' }
+// Each game has its own rules as printed (Skirmish: its standard ones); "Adjust" shows each rule to change
+var GAME_RULES = {
+  classic: { vc: 'std', limit: '0', order: 'su', tech: 'on', neu: 'on' },
+  full: { vc: 'std', limit: '0', order: 'su', tech: 'off', neu: 'off' },
+  skirm: { vc: 'std', limit: '10', order: 'su', tech: 'off', neu: 'off' }
 };
-function customRules(m, o) { return o.rules === 'custom'; }
-function applyRules(v, o) { var r = RULESETS[v]; if (r) for (var k in r) o[k] = r[k]; }
-function withRules(o) { var x = {}; for (var k in o) x[k] = o[k]; if (o.map === 'classic') x.tech = 'on'; else if (RULESETS[o.rules]) applyRules(o.rules, x); return x; }
-// a setup saved before presets: the preset its rules match, or Custom
-function rulesOf(o) {
-  for (var id in RULESETS) { var r = RULESETS[id], ok = true; for (var k in r) if (String(o[k] == null ? r[k] : o[k]) !== r[k]) ok = false; if (ok) return id; }
-  return 'custom';
+function gameRules(map) { return GAME_RULES[map] || GAME_RULES.full; }
+function applyGame(map, o) { var r = gameRules(map); for (var k in r) o[k] = r[k]; }
+function withRules(o) { var x = {}; for (var k in o) x[k] = o[k]; if (x.rules !== 'custom') applyGame(x.map || 'full', x); return x; }
+function adjusting(m, o) { return o.rules === 'custom'; }
+// the setup choices that read differently in each game
+function ruleChoices(id) {
+  return function (n, m, o) {
+    var g = o.map === 'classic' ? 'classic' : o.map === 'skirm' ? 'skirm' : 'full';
+    return RULE_TEXT[id][g] || RULE_TEXT[id].full;
+  };
 }
+var RULE_TEXT = {
+  rules: {
+    classic: [['orig', 'As printed', 'The 1984 rules exactly: the Axis win holding two Allied capitals or with 84 IPCs of income, the Allies by taking Berlin and Tokyo. Weapons development is on, neutral countries can be invaded for 3 IPCs, the official turn order and no round limit.'], ['custom', 'Adjust', 'Start from the 1984 rules and change any of them.']],
+    full: [['orig', 'As printed', 'The 1942 Second Edition rules exactly: the Axis win with 9 victory cities or the Allies with 10. No research, neutral countries are closed, the official turn order and no round limit.'], ['custom', 'Adjust', 'Start from the printed rules and change any of them.']],
+    skirm: [['orig', 'Standard', 'Win by holding an enemy capital or 5 of the 6 victory cities. After round 10 the side with more victory cities wins. No research and neutral countries are closed.'], ['custom', 'Adjust', 'Start from the standard Skirmish rules and change any of them.']]
+  },
+  vc: {
+    classic: [['std', 'As printed', 'The Axis win holding two Allied capitals (and their own) or with 84 IPCs of income between them. The Allies win holding Berlin and Tokyo.'], ['caps', 'Capitals only', 'No income win: only capitals count.']],
+    full: [['std', 'Standard', 'Axis hold 9 of the 13 victory cities, or the Allies hold 10.'], ['quick', 'Quick', 'Axis need 8, Allies need 9. A shorter game.'], ['total', 'Total', 'Hold all 13 victory cities.'], ['caps', 'Capitals', 'Allies take Berlin and Tokyo; Axis take two of London, Moscow and Washington.']],
+    skirm: [['std', 'Standard', 'Hold an enemy capital or 5 of the 6 victory cities.'], ['caps', 'Capitals only', 'The Allies must take Berlin; Germany must take Moscow or London.']]
+  },
+  limit: {
+    classic: [['0', 'None', 'Play until someone wins.'], ['6', '6 rounds', 'A game that fits an evening. Then the side holding more capitals wins (or with more income, if tied).'], ['10', '10 rounds', 'A longer game with a sure end.']],
+    full: [['0', 'None', 'Play until someone meets the victory goal.'], ['6', '6 rounds', 'A game that fits an evening. Then the side holding more victory cities wins.'], ['10', '10 rounds', 'A longer game with a sure end.']],
+    skirm: [['0', 'None', 'Play until someone meets the victory goal.'], ['6', '6 rounds', 'A short war. Then the side holding more victory cities wins.'], ['10', '10 rounds', 'The standard Skirmish length.']]
+  },
+  order: {
+    full: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']],
+    skirm: [['su', 'Soviets first', 'Soviet Union, Germany, United Kingdom.'], ['de', 'Germany first', 'Germany, Soviet Union, United Kingdom. Gives Germany a stronger opening.']]
+  },
+  tech: {
+    classic: [['on', 'On', 'As printed: pick a weapon, buy dice for 5 IPCs each and roll. Any 6 wins it: jet fighters, rockets, super subs, long-range aircraft, industrial technology or heavy bombers.'], ['off', 'Off', 'No weapons development.']],
+    full: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']],
+    skirm: [['off', 'Off', 'No research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']]
+  },
+  neu: {
+    classic: [['on', 'Open', 'As printed: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it. Planes can’t fly over a neutral until someone holds it.'], ['off', 'Closed', 'No one can enter or fly over neutral countries.']],
+    full: [['off', 'Closed', 'As printed: no one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it.']],
+    skirm: [['off', 'Closed', 'No one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it.']]
+  }
+};
 var setupObs = null;
 function showSetup() {
   Music.stop();
-  try { var gs = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || 'null'); if (gs && gs.options && !gs.options.rules) { gs.options.rules = rulesOf(gs.options); localStorage.setItem('gn_setup_' + KEY, JSON.stringify(gs)); } } catch (e) {}
+  // (a setup saved before each game had its own rules: Quick game and Weapons research become adjusted 1942 rules)
+  try {
+    var gs = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || 'null'), go = gs && gs.options;
+    if (go && go.neu == null) {
+      var gm = go.map || 'full', adj = gm === 'full' && (go.rules === 'quick' || go.rules === 'research' || go.rules === 'custom' || (!go.rules && (go.vc && go.vc !== 'std' || +go.limit || go.order === 'de' || go.tech === 'on')));
+      if (go.rules === 'quick') { go.vc = 'quick'; go.limit = '10'; }
+      if (go.rules === 'research') go.tech = 'on';
+      go.rules = adj ? 'custom' : 'orig';
+      if (!adj) applyGame(gm, go); else go.neu = 'off';
+      localStorage.setItem('gn_setup_' + KEY, JSON.stringify(gs));
+    }
+  } catch (e) {}
   tok++; S = null; busy = 0; cpuRunning = false; hideBattle(); closeBanner();
   document.documentElement.classList.remove('aa-play');
   app.className = 'stage'; app.innerHTML = ''; R = {};
@@ -5483,23 +5553,16 @@ function showSetup() {
     intro: 'World War II strategy for 2 to 5 generals. Buy armies, move them across the world and roll for every battle.',
     modes: Kit.modes([{ id: 'cpu', desc: 'You command one side; computer generals play the rest' }, { id: 'mix', kind: 'local' }]),
     options: [
-      { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', choices: [
+      { id: 'map', label: 'Game', value: 'full', help: 'Which war to fight.', onPick: applyGame, choices: [
+        ['classic', 'Classic (1984)', 'The original Milton Bradley game: its own map, starting armies and rules. No artillery, destroyers or cruisers, one-hit battleships, weapons development, and neutral countries you can invade.'],
         ['full', '1942 Second Edition', 'The whole world: 5 powers, the real starting armies. A long game (a few hours).'],
-        ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.'],
-        ['classic', 'Classic (1984)', 'The original Milton Bradley game: its own map, starting armies and rules. No artillery, destroyers or cruisers; one-hit battleships; weapons development; the Axis win with two Allied capitals or 84 IPCs of income.']] },
-      { id: 'rules', label: 'Rules', value: 'orig', when: function (m, o) { return o.map !== 'classic'; }, help: 'A ready-made set of the rules below. Custom lets you set each one yourself.', onPick: applyRules, choices: [
-        ['orig', 'As printed', 'The 1942 Second Edition rules exactly as printed: Axis hold 9 victory cities or the Allies 10, no round limit, the official turn order, no research.'],
-        ['quick', 'Quick game', 'A shorter war: Axis need 8 victory cities and the Allies 9, and it ends after 10 rounds.'],
-        ['research', 'Weapons research', 'The printed rules plus the Anniversary Edition’s weapons research.'],
-        ['custom', 'Custom', 'Choose the victory goal, round limit, turn order and research yourself.']] },
-      { id: 'vc', label: 'Victory', value: 'std', when: function (m, o) { return o.map !== 'classic' && o.rules === 'custom'; }, help: 'What a side needs at the end of a round to win the full game (Skirmish has its own goal).', choices: [
-        ['std', 'Standard', 'Axis hold 9 of the 13 victory cities, or the Allies hold 10.'],
-        ['quick', 'Quick', 'Axis need 8, Allies need 9. A shorter game.'],
-        ['total', 'Total', 'Hold all 13 victory cities.'],
-        ['caps', 'Capitals', 'Allies take Berlin and Tokyo; Axis take two of London, Moscow and Washington.']] },
-      { id: 'limit', label: 'Round limit', value: '0', when: function (m, o) { return o.map === 'classic' || o.rules === 'custom'; }, help: 'Stop after this many rounds. Whoever holds more victory cities then wins.', choices: [['0', 'None', 'Play until someone meets the victory goal (Skirmish stops after 10).'], ['6', '6 rounds', 'A game that fits an evening.'], ['10', '10 rounds', 'A longer game with a sure end.']] },
-      { id: 'order', label: 'Turn order', value: 'su', when: function (m, o) { return o.map === 'classic' || o.rules === 'custom'; }, help: 'Who moves first each round.', choices: [['su', 'Official', 'Soviet Union, Germany, United Kingdom, Japan, United States: the order printed in the 1942 Second Edition rules.'], ['de', 'Germany first', 'Germany, Soviet Union, Japan, United Kingdom, United States. Gives Germany a stronger opening.']] },
-      { id: 'tech', label: 'Research', value: 'off', when: function (m, o) { return o.map !== 'classic' && o.rules === 'custom'; }, help: 'Weapons development, an optional rule.', choices: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']] },
+        ['skirm', 'Skirmish', 'Europe only: Germany against the Soviet Union and Britain with smaller armies. About an hour.']] },
+      { id: 'rules', label: 'Rules', value: 'orig', help: 'Play this game’s rules as they are, or change some of them.', onPick: function (v, o) { if (v === 'orig') applyGame(o.map || 'full', o); }, choices: ruleChoices('rules') },
+      { id: 'vc', label: 'Victory', value: 'std', when: adjusting, help: 'What a side needs at the end of a round to win.', choices: ruleChoices('vc') },
+      { id: 'limit', label: 'Round limit', value: '0', when: adjusting, help: 'Stop after this many rounds.', choices: ruleChoices('limit') },
+      { id: 'order', label: 'Turn order', value: 'su', when: adjusting, help: 'Who moves first each round.', choices: ruleChoices('order') },
+      { id: 'tech', label: 'Research', value: 'off', when: adjusting, help: 'Weapons development: spend IPCs on dice for a chance at new weapons.', choices: ruleChoices('tech') },
+      { id: 'neu', label: 'Neutrals', value: 'off', when: adjusting, help: 'Whether the neutral countries (striped on the map) can be invaded.', choices: ruleChoices('neu') },
       { id: 'cas', label: 'Your losses', value: 'ask', help: 'Who picks which of your units are lost in battle.', choices: [['ask', 'I choose', 'The cheapest units are picked for you; you can change them before they go.'], ['auto', 'Automatic', 'Always lose the cheapest units first. Faster.']] },
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along.'], ['fast', 'Fast', 'Quick moves and dice.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
@@ -5515,7 +5578,7 @@ function showSetup() {
         var p = cfg.players[i];
         return { name: p.name, cpu: !!p.cpu, powers: g };
       });
-      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'de', tech: o.tech || 'off', guide: o.guide === 'on', seats: seats });
+      newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'su', tech: o.tech || 'off', neu: o.neu || 'off', guide: o.guide === 'on', seats: seats });
     }
   });
   // Under each seat, the powers it commands. Tap them to pick another: the seat that had those powers takes this
@@ -5614,7 +5677,7 @@ function later(ms, fn) { var n = netN; netTimers.push(setTimeout(function () { i
 function netOptsNow() {
   var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_' + KEY) || '{}') || {}; } catch (e) {}
   var o = withRules(g.options || {});
-  NETOPTS = { map: o.map === 'skirm' || o.map === 'classic' ? o.map : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
+  NETOPTS = { map: o.map === 'skirm' || o.map === 'classic' ? o.map : 'full', vc: o.vc || 'std', limit: o.limit || '0', order: o.order || 'su', cas: o.cas || 'ask', speed: o.speed || 'normal', tech: o.tech === 'on' ? 'on' : 'off', neu: o.neu === 'on' ? 'on' : 'off', gen: Math.max(2, Math.min(5, +g.count || 2)) };
   return NETOPTS;
 }
 function tableOpts() {
@@ -5629,7 +5692,7 @@ function netStart(players, opts, last) {
     // a rematch at the same table hands the powers round, so the generals swap sides
     var rot = last ? ((last.rot || 0) + 1) % nG : 0;
     var seats = players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, powers: i < nG ? groups[(i + rot) % nG].slice() : [] }; });
-    initGame({ map: map, vc: opts.vc || 'std', cas: opts.cas === 'auto' ? 'auto' : 'ask', speed: opts.speed === 'fast' ? 'fast' : 'normal', limit: opts.limit || '0', order: opts.order || 'su', guide: false, seats: seats });
+    initGame({ map: map, vc: opts.vc || 'std', cas: opts.cas === 'auto' ? 'auto' : 'ask', speed: opts.speed === 'fast' ? 'fast' : 'normal', limit: opts.limit || '0', order: opts.order || 'su', tech: opts.tech === 'on' ? 'on' : 'off', neu: opts.neu === 'on' ? 'on' : 'off', guide: false, seats: seats });
     S.rot = rot;
     return compact(S);
   });
