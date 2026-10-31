@@ -318,7 +318,18 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 /* Collect income: the last step of a turn, on its own card */
 /* Since your last turn: the attacks on you */
 .aa-banner .card.wide{width:min(440px,100%);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;}
-.aa-banner .card.wide > .rnd{width:56px;height:56px;margin-bottom:6px;}
+.aa-banner .card.wide{padding:16px 16px 14px;}
+.bn-head{display:flex;align-items:center;gap:12px;text-align:left;margin:0 0 8px;}
+.bn-head .rnd{width:46px;height:46px;margin:0;flex:none;}
+.bn-head .bn-id{flex:1;min-width:0;}
+.aa-banner .bn-head h2{font-size:1.6rem;line-height:1.05;}
+.aa-banner .bn-head p{margin:1px 0 0;font-size:.86rem;}
+.aa-banner .bn-head .bn-facts{flex:none;flex-direction:column;align-items:flex-end;gap:1px;margin:0;text-align:right;font-size:.8rem;}
+.aa-banner .card.wide .aa-order{margin:0 0 10px;}
+.aa-banner .card.wide .aa-order .op .rnd{width:22px;height:22px;}
+.aa-banner .card.wide .aa-order .op.now .rnd{width:28px;height:28px;}
+.aa-banner .card.wide .aa-order .ar{margin-top:-10px;}
+.aa-banner .card.wide .step1{margin-bottom:8px;}
 .war{text-align:left;margin:4px 0 12px;display:flex;flex-direction:column;min-height:0;flex:1 1 auto;}
 .war-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 2px 6px;}
 .war-h > span:first-child{font-size:.68rem;font-weight:900;text-transform:uppercase;letter-spacing:.07em;color:#6b604c;}
@@ -377,7 +388,7 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .aa-banner .war-quiet{font-size:.8rem;font-weight:700;color:#6b604c;margin:0 0 12px;}
 .aa-banner .card.wide > *{flex-shrink:0;}
 .aa-banner .card.wide > .war{flex-shrink:1;}
-@media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;}
+@media (max-height:520px){.aa-banner .card.wide{padding:10px 14px;} .bn-head{margin-bottom:6px;} .bn-head .rnd{width:34px;height:34px;} .aa-banner .card.wide > .rnd,.aa-banner .card.wide > .aa-order{display:none;} .aa-banner .card.wide h2{font-size:1.3rem;} .aa-banner .card.wide > p{margin:0 0 4px;} .aa-banner .card.wide .bn-facts{margin-bottom:6px;} .aa-banner .card.wide .step1{display:none;} .war{margin-bottom:8px;}
   .aa-banner .card.wide:has(.wm){width:min(720px,100%);}
   .war:has(.wm){display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto auto minmax(0,1fr);column-gap:10px;}
   .war:has(.wm) .war-h,.war:has(.wm) .wtots{grid-column:1 / 3;}
@@ -386,19 +397,24 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 /* Wider than tall with room to spare (iPad sideways, a laptop): two columns. The report on the left, where you look
    (totals, the map, every attack, the list taking all the height left); who's up and Start turn on the right */
 @media (orientation:landscape) and (min-width:760px) and (min-height:521px){
-  .aa-banner .card.wide{width:min(1040px,calc(100vw - 32px));height:min(calc(100dvh - 32px),820px);max-height:none;display:grid;column-gap:22px;padding:18px 20px;
-    grid-template-columns:minmax(0,1.55fr) minmax(250px,1fr);grid-template-rows:1fr auto auto auto auto auto 1fr auto auto;
-    grid-template-areas:"war ." "war rnd" "war nm" "war who" "war ord" "war facts" "war ." "war step" "war go";}
-  .aa-banner .card.wide > .rnd{grid-area:rnd;justify-self:center;width:72px;height:72px;}
-  .aa-banner .card.wide > h2{grid-area:nm;}
-  .aa-banner .card.wide > p{grid-area:who;}
-  .aa-banner .card.wide > .aa-order{grid-area:ord;}
-  .aa-banner .card.wide > .bn-facts{grid-area:facts;flex-wrap:wrap;}
+  .aa-banner .card.wide{width:min(1040px,calc(100vw - 32px));height:min(calc(100dvh - 32px),820px);max-height:none;display:grid;column-gap:22px;padding:16px 20px;
+    grid-template-columns:minmax(0,1.55fr) minmax(250px,1fr);grid-template-rows:auto auto auto auto 1fr auto auto;
+    grid-template-areas:"wh head" "map head" "map ord" "map tots" "list ." "list step" "list go";}
+  /* (the report's own parts sit straight in the card's grid: its header, map and list on the left, the totals right) */
+  .aa-banner .card.wide > .war{display:contents;}
+  .aa-banner .card.wide .war-h{grid-area:wh;}
+  .aa-banner .card.wide .wm{grid-area:map;aspect-ratio:auto;height:100%;min-height:150px;margin:0 0 8px;}
+  .aa-banner .card.wide .war-list{grid-area:list;max-height:none;min-height:0;}
+  .aa-banner .card.wide .wtots{grid-area:tots;margin:0 0 6px;align-self:start;}
+  .aa-banner .card.wide > .bn-head{grid-area:head;flex-direction:column;text-align:center;gap:2px;margin:0 0 8px;}
+  .aa-banner .card.wide .bn-head .rnd{width:56px;height:56px;margin-bottom:2px;}
+  .aa-banner .bn-head h2{font-size:1.75rem;}
+  .aa-banner .card.wide .bn-head .bn-facts{flex-direction:row;gap:4px 14px;align-items:center;text-align:center;margin-top:4px;font-size:.84rem;}
+  .aa-banner .card.wide > .aa-order{grid-area:ord;margin:0 0 12px;}
+  .aa-banner .card.wide .aa-order .op .rnd{width:26px;height:26px;}
+  .aa-banner .card.wide .aa-order .op.now .rnd{width:34px;height:34px;}
   .aa-banner .card.wide > div:has(> .step1){grid-area:step;}
   .aa-banner .card.wide > button{grid-area:go;}
-  .aa-banner .card.wide > .war{grid-area:war;margin:0;min-height:0;overflow:hidden;}
-  .aa-banner .card.wide .war-list{max-height:none;flex:1 1 auto;min-height:0;}
-  .aa-banner .card.wide .wm{flex:none;}
 }
 .aa-banner .card.inc{max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:14px 16px 14px;text-align:left;}
 .card.inc .ih{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
@@ -5110,7 +5126,16 @@ function beginTurnUI(first) {
     el('div', null, [el('span', { class: 'step1', text: 'Step 1: ' + (researching() ? 'Research' : PH_TITLE.buy) })]),
     el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Start turn', onclick: function () { Kit.sfx('pop'); warSeen(p); closeBanner(); } })
   ]);
-  if (card.querySelector('.war')) card.classList.add('wide');
+  // with a report under it, who's up goes on one line at the top (seal, name and player, round and IPCs) to leave
+  // the room to the report
+  if (card.querySelector('.war')) {
+    card.classList.add('wide');
+    var seal = card.children[0], nm = card.querySelector('h2'), who = card.querySelector(':scope > p'), head = el('div', { class: 'bn-head' });
+    card.insertBefore(head, seal);
+    head.appendChild(seal);
+    head.appendChild(el('div', { class: 'bn-id' }, [nm, who]));
+    head.appendChild(card.querySelector('.bn-facts'));
+  }
   bannerEl = el('div', { class: 'aa-banner' }, [card]);
   document.body.appendChild(bannerEl);
   requestAnimationFrame(function () { bannerEl && bannerEl.classList.add('show'); });
