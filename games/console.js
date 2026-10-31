@@ -1376,24 +1376,51 @@
   }
   function ctlTable() {
     var p = ctlPad(), m = p ? padMapOf(p) : null, T = PAD_TARGETS[SYS_ID];
-    var kc = function (t) { return '<kbd>' + Kit.esc(t) + '</kbd>'; };
+    // each key a button: tap it, then press the key you want on that console button (see the key listener below)
+    var kc = function (code) { var k = keyOf(code); return k ? '<button type="button" class="ctl-kb" data-c="' + code + '" aria-label="Change this key"><kbd>' + Kit.esc(k[1]) + '</kbd></button>' : ''; };
     var arrow = function (rot) { return '<svg viewBox="0 0 20 20" width="14" height="14" style="transform:rotate(' + rot + 'deg)"><path d="M10 4l6 9H4z" fill="currentColor"/></svg>'; };
     var pad = function (code) { return (m[code] || []).map(function (c) { return Kit.esc(codeName(p, c)); }).join('<br>') || '<span class="none">Nothing</span>'; };
     var dflt = padDefaults(), same = m && [4, 5, 6, 7].every(function (k) { return JSON.stringify(m[k] || []) === JSON.stringify(dflt[k]); });
     var rows = '';
     // the D-pad: one row while the directions are where they started, else one row each
     var cross = '<svg viewBox="0 0 20 20" width="20" height="20"><path d="M7 1h6v6h6v6h-6v6H7v-6H1V7h6z" fill="currentColor" opacity=".9"/></svg>';
-    if (!m || same) rows += '<tr><th><span class="pm-key k4 ctl-dpad">' + cross + '</span><span class="ctl-n">' + (SYS_ID === 'atari2600' ? 'Joystick' : 'D-pad') + '</span></th><td class="kb">' + kc('↑') + kc('↓') + kc('←') + kc('→') + '</td>' + (m ? '<td>D-pad<br>Left stick</td>' : '') + '</tr>';
+    if (!m || same) rows += '<tr><th><span class="pm-key k4 ctl-dpad">' + cross + '</span><span class="ctl-n">' + (SYS_ID === 'atari2600' ? 'Joystick' : 'D-pad') + '</span></th><td class="kb">' + kc(4) + kc(5) + kc(6) + kc(7) + '</td>' + (m ? '<td>D-pad<br>Left stick</td>' : '') + '</tr>';
     T.forEach(function (t) {
       var rot = { 4: 0, 7: 90, 5: 180, 6: 270 }[t[1]];
       if (rot != null && (!m || same)) return;
       var key = rot != null ? '<span class="pm-key k' + t[1] + '">' + arrow(rot) + '</span>' : '<span class="pm-key pm-' + SYS_ID + ' k' + t[1] + '">' + Kit.esc(t[0].replace('Game ', '')) + '</span>';
-      var kk = keyOf(t[1]), kb = kk ? kc(kk[1]) : '';
+      var kb = kc(t[1]);
       var chip = t[0].replace('Game ', '');   // (a button whose chip already says its name needs no name beside it)
       rows += '<tr><th>' + key + (rot != null || chip !== t[0] ? '<span class="ctl-n">' + Kit.esc(t[0]) + '</span>' : '') + '</th><td class="kb">' + kb + '</td>' + (m ? '<td>' + pad(t[1]) + '</td>' : '') + '</tr>';
     });
-    return '<table class="ctl-t"><thead><tr><th>' + Kit.esc(SYS.name) + '</th><th>Keyboard</th>' + (m ? '<th>' + Kit.esc(padName(p)) + '</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    return '<table class="ctl-t"><thead><tr><th>' + Kit.esc(SYS.name) + '</th><th>Keyboard</th>' + (m ? '<th>' + Kit.esc(padName(p)) + '</th>' : '') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<div class="ctl-foot"><span>Tap a key to change it</span><button type="button" class="ctl-reset"' + (keysCustom() ? '' : ' hidden') + '>Back to the standard keys</button></div>';
   }
+  // Changing a key in the How to play table: the cap waits (blue) for the next key pressed; Esc stops it
+  var kbWait = null;
+  function ctlKeysRefresh() {
+    document.querySelectorAll('.ctl-t .ctl-kb[data-c]').forEach(function (b) { var k = keyOf(+b.getAttribute('data-c')); b.firstChild.textContent = k ? k[1] : ''; });
+    document.querySelectorAll('.ctl-reset').forEach(function (b) { b.hidden = !keysCustom(); });
+  }
+  function kbWaitEnd() { if (kbWait) { kbWait.classList.remove('wait'); kbWait = null; } ctlKeysRefresh(); }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.ctl-t .ctl-kb, .ctl-reset');
+    if (!b) return;
+    if (b.classList.contains('ctl-reset')) { var ks = keyMaps(); delete ks[SYS_ID]; keySave(ks); keysApply(); kbWaitEnd(); Kit.toast('Standard keys'); return; }
+    if (kbWait === b) { kbWaitEnd(); return; }
+    kbWaitEnd(); kbWait = b; b.classList.add('wait'); b.firstChild.textContent = 'Press a key'; Kit.haptic('light');
+  });
+  window.addEventListener('keydown', function (e) {
+    if (!kbWait) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (e.repeat) return;
+    var b = kbWait, c = +b.getAttribute('data-c');
+    if (e.key === 'Escape' || e.key === 'Tab') { kbWaitEnd(); return; }
+    var other = assignKey(c, e);
+    kbWaitEnd();
+    document.querySelectorAll('.ctl-t .ctl-kb[data-c="' + c + '"]' + (other >= 0 ? ', .ctl-t .ctl-kb[data-c="' + other + '"]' : '')).forEach(function (x) { x.classList.add('done'); setTimeout(function () { x.classList.remove('done'); }, 700); });
+    Kit.haptic('success'); Kit.sfx('tap');
+  }, true);
   // What each button does in the game being played (console-actions.js, matched on the cartridge's name):
   // {code: 'Jump'} by the console's button codes, 'd' the D-pad in general
   var ACT_KEYS = { nes: { a: 8, b: 0 }, snes: { a: 8, b: 0, x: 9, y: 1, l: 10, r: 11 }, genesis: { a: 1, b: 0, c: 8 }, atari2600: { fire: 0, reset: 3 } };
@@ -1418,6 +1445,15 @@
   function keyLabel(e) {
     var k = e.key || '';
     return { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', ' ': 'Space', Control: 'Ctrl', Meta: 'Cmd', Backspace: 'Delete' }[k] || (k.length === 1 ? k.toUpperCase() : k);
+  }
+  function keysCustom() { var m = keyMaps()[SYS_ID]; return !!(m && Object.keys(m).length); }
+  // key e on console button c (one button per key: whatever had it takes c's old key); returns that other button or -1
+  function assignKey(c, e) {
+    var ks = keyMaps(), mine = ks[SYS_ID] = ks[SYS_ID] || {}, old = keyOf(c), other = codeOfKey(e.keyCode);
+    if (other >= 0 && other !== c && old) mine[other] = old;
+    mine[c] = [e.keyCode, keyLabel(e)];
+    keySave(ks); keysApply();
+    return other !== c ? other : -1;
   }
   // the console button a key is on now (or -1)
   function codeOfKey(kc) { var hit = -1; PAD_TARGETS[SYS_ID].forEach(function (t) { var k = keyOf(t[1]); if (k && k[0] === kc) hit = t[1]; }); return hit; }
@@ -1549,7 +1585,7 @@
     // over the list: whose actions they are, and the keyboard's column
     box.appendChild(el('div', { class: 'pm-cols' }, [el('span', { text: acts ? 'In ' + cur.name.replace(/\s*[\(\[].*$/, '') : SYS.name }), el('span', { text: 'Key' })]));
     box.appendChild(grp);
-    var custom = function () { return !!(keyMaps()[SYS_ID] && Object.keys(keyMaps()[SYS_ID]).length) || !!(p && padMaps()[p.id] && padMaps()[p.id][SYS_ID]); };
+    var custom = function () { return keysCustom() || !!(p && padMaps()[p.id] && padMaps()[p.id][SYS_ID]); };
     var reset = el('button', { type: 'button', class: 'pm-reset' }, ['Back to the standard layout']);
     reset.onclick = function () {
       var ks = keyMaps(); delete ks[SYS_ID]; keySave(ks);
@@ -1565,11 +1601,8 @@
         e.preventDefault(); e.stopImmediatePropagation();
         if (e.repeat) return;
         if (e.key === 'Escape' || e.key === 'Tab') { var was = listen; listen = null; if (rows[was]) rows[was].el.classList.remove('listen'); load(); return; }
-        var ks = keyMaps(), mine = ks[SYS_ID] = ks[SYS_ID] || {}, now = [e.keyCode, keyLabel(e)], old = keyOf(listen), other = codeOfKey(e.keyCode), c = listen;
-        // one button per key: whatever had this key takes this button's old one
-        if (other >= 0 && other !== c && old) mine[other] = old;
-        mine[c] = now;
-        keySave(ks); E_keys(); settled([c, other >= 0 && other !== c ? other : null]); reset.hidden = !custom();
+        var c = listen, other = assignKey(c, e);
+        settled([c, other >= 0 ? other : null]); reset.hidden = !custom();
         return;
       }
       var c2 = codeOfKey(e.keyCode); if (c2 >= 0) { held.key[c2] = 1; paint(); }
