@@ -562,6 +562,10 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .al-tag.ok{color:#4ade80;}
 .al-tag.slow{color:var(--yellow);}
 .al-tag.bad{color:#ff8a96;}
+.al-tag.st2{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15;}
+.al-tag.st2 small{font-size:.72rem;font-weight:700;opacity:.8;}
+.k-list .k-grp.k-out{margin-top:16px;}
+.k-list .k-grp.k-out button{border-radius:var(--r);}
 .al{display:flex;flex-direction:column;gap:10px;}
 .al-sum{--sc:var(--text-3);padding:12px 14px;border-radius:16px;background:color-mix(in srgb,var(--sc) 12%,var(--surface-2));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--sc) 40%,transparent);}
 .al-sum.ok{--sc:#4ade80;}
@@ -1983,7 +1987,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     myIn.addEventListener('change', saveName);
     myIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') myIn.blur(); });
     function editMine() { var v = saveName() || mn; if (!v) { Kit.toast('Type your name first'); myIn.focus(); return; } s.close(); Kit.avatar.edit(v, refreshWho); }
-    var acct = el('div', { class: 'acct-d' }, [gacct ? el('span', { class: 'acct-g', html: G_LOGO }, [el('span', { text: FGHSync.gmail() || 'Google account' })]) : el('span', { text: mode === 'pin' ? 'PIN ' + FGHSync.pin() + ' · your account, on all your devices' : 'Guest · scores stay on this device' })]);
+    var acct = el('div', { class: 'acct-d' }, [gacct ? el('span', { class: 'acct-g', html: G_LOGO }, [el('span', { text: FGHSync.gmail() || 'Google account' })]) : el('span', { text: mode === 'pin' ? 'Signed in with PIN ' + FGHSync.pin() : 'Guest, scores stay on this device' })]);
     node.appendChild(el('div', { class: 'acct' }, [
       el('button', { type: 'button', class: 'av-btn', 'aria-label': 'Change your avatar', onclick: editMine }, [Kit.avatar.el(mn || '?', 'lg', 'var(--surface-3)')]),
       el('div', { class: 'grow', style: { 'min-width': '0' } }, [el('label', { class: 'acct-nm' }, [myIn, el('span', { class: 'acct-pen', 'aria-hidden': 'true', html: Kit.icon('pencil') })]), acct])
@@ -2004,15 +2008,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       if (reqs.length) item('link', reqs[0].name + ' wants to link with you', function () { Kit.links.request(reqs[0].id, refreshWho); }, 'hl');
       if (nPend) item('inbox', nPend + (nPend === 1 ? ' game' : ' games') + ' to review', function () { Kit.links.review(refreshWho); }, 'hl');
     }
+    // What you've played, the people you play with, how the app looks and behaves, then the account and its sync,
+    // help, and signing out last on its own
     group('Play');
     item('history', 'Game history', function () { location.href = 'games/history.html'; });
     if (Kit.playTime) { var pt = Kit.playToday(), pm = Math.round(pt / 60); item('chart', 'Play time', function () { Kit.playTime(); }, '', tag(pm >= 60 ? Math.floor(pm / 60) + ' hr ' + (pm % 60) + ' min today' : pm ? pm + ' min today' : 'None today')); }
     if (Kit.timerSheet) item('clock', 'Game timer', function () { Kit.timerSheet(); }, '', tag(Kit.timerStatus()));
-    group('Home & games');
-    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
-    item('sliders', 'Game defaults', function () { Kit.prefs(); });
-    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
-    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
     group('People');
     item('users', 'Frequent players', function () { Kit.managePlayers(); });
     if (mode === 'pin') {
@@ -2021,13 +2022,17 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       item('gamepad', 'Arcade initials', function () { Kit.links.initials(); }, '', el('span', { class: 'k-ini', text: ini || 'Set' }));
       if (Kit.family) item('shield', 'Family', function () { Kit.family(); }, '', tag(Kit.familyStatus() || 'Parent controls'));
     }
-    // Linked players: the people you've linked with, under People
+    // Linked players: the people you've linked with, right under People
     if (mode === 'pin' && Kit.links.panel) {
       node.appendChild(list);
       node.appendChild(el('div', { class: 'label k-sec', text: 'Linked players' }));
       node.appendChild(Kit.links.panel(refreshWho));
       list = el('div', { class: 'k-list', style: { 'margin-top': '10px' } });
     }
+    group('Home & games');
+    if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
+    item('sliders', 'Game defaults', function () { Kit.prefs(); });
+    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
     group('Look & sound');
     item('palette', 'Theme', function () { Kit.theme.pick(); }, '', tag(Kit.theme.name()));
     if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', tag(get('spotify_auth', '') ? 'Spotify' : 'Connect'));
@@ -2036,15 +2041,20 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     snd.onclick = function () { var on = get('gn_sound', '1') !== '1'; set('gn_sound', on ? '1' : '0'); snd.setAttribute('aria-checked', String(on)); snd.querySelector('.ic').innerHTML = Kit.icon(on ? 'sound' : 'mute'); if (on) Kit.sfx('good'); };
     if (get('gn_sound', '1') !== '1') snd.querySelector('.ic').innerHTML = Kit.icon('mute');
     grp.appendChild(snd);
+    // the account itself: how you sign in
+    if (mode === 'pin' && !gacct && (FGHSync.moveToGoogle || FGHSync.changePin)) {
+      group('Sign-in');
+      if (FGHSync.moveToGoogle) grp.appendChild(el('button', { type: 'button', onclick: function () { s.close(); moveSheet(); } }, [el('span', { class: 'ic', html: G_LOGO }), el('span', { text: 'Move to Google sign-in' })]));
+      if (FGHSync.changePin) item('key', 'Change PIN', function () { changePinSheet(false); });
+    }
+    // keeping this device up to date: syncing, what it did, and saving everything for offline
+    group('Sync & offline');
+    if (mode === 'pin') item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
+    if (FGHSync.logGet) item('pulse', 'Sync log', activityLog);
+    if (Kit.offline) item('plane', 'Offline', function () { Kit.offline(); }, '', tag(+get('fgh_offline_at', '0') ? 'Ready' : 'Save'));
     group('Help');
     item('help', 'How Game Night works', function () { Kit.tour(null, { actions: { move: gacct ? null : function () { moveSheet(); }, changePin: gacct ? null : function () { changePinSheet(false); } } }); });
-    group('Account');
-    if (mode === 'pin') {
-      item('sync', 'Sync now', function () { if (FGHSync.syncNow) FGHSync.syncNow(); Kit.toast('Syncing…'); }, '', lastSyncTag());
-      if (FGHSync.changePin && !gacct) item('key', 'Change PIN', function () { changePinSheet(false); });
-      if (FGHSync.moveToGoogle && !gacct) grp.appendChild(el('button', { type: 'button', onclick: function () { s.close(); moveSheet(); } }, [el('span', { class: 'ic', html: G_LOGO }), el('span', { text: 'Move to Google sign-in' })]));
-    }
-    if (FGHSync.logGet) item('pulse', 'Sync log', activityLog);
+    grp = el('div', { class: 'k-grp k-out' }); list.appendChild(grp);
     item('logout', mode === 'pin' ? 'Sign out' : 'Sign in', function () {
       if (FGHSync.signOut) FGHSync.signOut(); location.replace('./gate.html');
     }, mode === 'pin' ? 'danger' : '');
@@ -2058,7 +2068,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function lastSyncTag() {
     var ls = FGHSync.lastSync ? FGHSync.lastSync() : null; if (!ls) return null;
     var t = new Date(ls.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    return el('span', { class: 'al-tag ' + syncSpeed(ls), text: t + ' · ' + (ls.ok ? (ls.ms / 1000).toFixed(ls.ms < 10000 ? 1 : 0) + ' s' : 'failed') });
+    return el('span', { class: 'al-tag st2 ' + syncSpeed(ls) }, [el('span', { text: t }), el('small', { text: ls.ok ? (ls.ms / 1000).toFixed(ls.ms < 10000 ? 1 : 0) + ' s' : 'Failed' })]);
   }
   var AL_TAGS = { sync: 'Sync', error: 'Error', warn: 'Warning', online: 'Online', tables: 'Tables', page: 'App', net: 'Network' };
   function appVersion() {
