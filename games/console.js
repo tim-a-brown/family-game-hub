@@ -1397,16 +1397,8 @@
   // What each button does in the game being played (console-actions.js, matched on the cartridge's name):
   // {code: 'Jump'} by the console's button codes, 'd' the D-pad in general
   var ACT_KEYS = { nes: { a: 8, b: 0 }, snes: { a: 8, b: 0, x: 9, y: 1, l: 10, r: 11 }, genesis: { a: 1, b: 0, c: 8 }, atari2600: { fire: 0, reset: 3 } };
-  function titleKey(n) {
-    var r = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7 };
-    n = String(n || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/\.[a-z0-9]{2,4}$/, '').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-    n = n.replace(/\b(ii|iii|iv|v|vi|vii)\b/g, function (m) { return r[m]; }).replace(/^the | the$/g, '');
-    return n.replace(/ /g, '');
-  }
   function gameActions(c) {
-    var all = (window.CONSOLE_ACTIONS || {})[SYS_ID] || {}, want = c && titleKey(c.name), hit = null;
-    if (!want) return null;
-    Object.keys(all).forEach(function (g) { if (!hit && [g].concat(all[g].aka || []).some(function (x) { return titleKey(x) === want; })) hit = all[g]; });
+    var hit = c && window.CONSOLE_GAME ? CONSOLE_GAME(SYS_ID, c.name) : null;
     if (!hit) return null;
     var out = {}, K = ACT_KEYS[SYS_ID] || {};
     Object.keys(hit).forEach(function (k) {

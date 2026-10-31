@@ -13,6 +13,7 @@ window.CONSOLE_ACTIONS = {
     "Bases Loaded IV": { dpad: "Aim or pick base", a: "Swing or pitch", b: "Bunt or run", start: "Time out" },
     "Bases Loaded": { dpad: "Aim or pick base", a: "Swing or pitch", b: "Bunt or run", start: "Time out" },
     "Blades of Steel": { dpad: "Skate", a: "Shoot", b: "Pass or switch player", start: "Pause" },
+    "Contra": { dpad: "Run and aim", up: "Aim up", down: "Lie down", a: "Jump", b: "Fire", start: "Pause" },
     "DuckTales": { dpad: "Move", up: "Climb", down: "Climb down", a: "Jump", b: "Pogo or swing cane", start: "Pause" },
     "Ikari Warriors": { dpad: "Move and aim", a: "Grenade or board tank", b: "Fire gun", start: "Pause" },
     "The Legend of Zelda": { dpad: "Walk", a: "Sword", b: "Use item", select: "Pause", start: "Item screen" },
@@ -61,4 +62,20 @@ window.CONSOLE_ACTIONS = {
     "Pitfall!": { dpad: "Run", up: "Climb up", down: "Climb down or let go", fire: "Jump", reset: "Start game" },
     "Pole Position": { dpad: "Steer and shift", up: "Low gear", down: "High gear", left: "Steer left", right: "Steer right", fire: "Brake", reset: "Restart race" }
   }
+};
+
+// The entry for a cartridge, by its name: case, punctuation, tags like "(USA) [!]", a file extension, a leading or
+// trailing "The" and Roman numerals II to VII don't matter ("Legend of Zelda, The" is "The Legend of Zelda", "Mega
+// Man II" is "Mega Man 2"). Used by the console pages and by scripts/check-console-controls.js.
+window.CONSOLE_TITLE_KEY = function (n) {
+  var r = { ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7 };
+  n = String(n || '').toLowerCase().replace(/\(.*?\)|\[.*?\]/g, ' ').replace(/\.[a-z0-9]{2,4}$/, '').replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  n = n.replace(/\b(ii|iii|iv|v|vi|vii)\b/g, function (m) { return r[m]; }).replace(/^the | the$/g, '');
+  return n.replace(/ /g, '');
+};
+window.CONSOLE_GAME = function (sys, name) {
+  var all = window.CONSOLE_ACTIONS[sys] || {}, want = window.CONSOLE_TITLE_KEY(name), hit = null;
+  if (!want) return null;
+  Object.keys(all).forEach(function (g) { if (!hit && [g].concat(all[g].aka || []).some(function (x) { return window.CONSOLE_TITLE_KEY(x) === want; })) hit = all[g]; });
+  return hit;
 };

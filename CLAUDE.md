@@ -137,6 +137,17 @@ Underlying principles for everything:
 - A changed map grid in `goblindefenders-data.js` needs its picture re-rendered (the road is painted into it).
 - The sound effects and music in `games/goblin/snd/` are the original game's own (Tim's personal app).
 
+## Console game controls
+
+- What each button does in each console game (shown in Controller buttons with the keyboard keys) lives in
+  `games/console-actions.js`, by console then game, from the game's original instruction manual (archive.org's
+  NESManuals and console manual packs are reachable; StrategyWiki/Wikipedia/GameFAQs are not). Labels are short
+  ("Jump", "Swing or pitch"), no brackets, slashes or " · "; buttons the manual gives no job are left out.
+- The daily `console-controls.yml` Action runs `scripts/check-console-controls.js` over every game library in Storage
+  and keeps one GitHub issue (label `console-controls`) listing shelf games with no controls yet. A scheduled Claude
+  task works that issue: adds the games on branch `claude/console-controls`, previews on channel `controls`, and waits
+  for Tim's "ship it".
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to

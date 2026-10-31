@@ -1,0 +1,51 @@
+# Daily console controls check. Lists the console games on anyone's shelf (house games and each account's own, from
+# Firebase Storage) that games/console-actions.js doesn't have controls for yet, and keeps one GitHub issue (label
+# console-controls) up to date with them; a scheduled Claude task fills them in from each game's manual and puts
+# them on the preview. Nothing on the site changes. Run it any time from the Actions tab (Run workflow).
+name: Console controls check
+
+on:
+  schedule:
+    - cron: '23 9 * * *'
+  push:
+    branches: [main]
+    paths: ['games/console-actions.js']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: console-controls
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find games without controls
+        run: node scripts/check-console-controls.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Open, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          n=$(cat console-controls.count)
+          title="Consoles: $n games need their controls"
+          gh label create console-controls --color 7FD8FF --description "Daily console controls check" 2>/dev/null || true
+          num=$(gh issue list --state open --label console-controls --json number --jq '.[0].number // empty')
+          if [ "$n" -gt 0 ]; then
+            if [ -z "$num" ]; then
+              gh issue create --title "$title" --body-file console-controls.md --label console-controls
+            else
+              gh issue edit "$num" --title "$title" --body-file console-controls.md
+            fi
+          elif [ -n "$num" ]; then
+            gh issue close "$num" --comment "Every game on the shelves has its controls now."
+          fi
+          echo "$n games need controls" >> "$GITHUB_STEP_SUMMARY"
