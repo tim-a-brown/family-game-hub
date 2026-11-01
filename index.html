@@ -1254,7 +1254,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var sk = x.g.cart + ':auto';
       ConsoleLib.tx('states', 'readonly', function (s) { return s.get(sk); }).then(function (st) {
         if (!st) return; back.cst = st;
-        return ConsoleLib.tx('states', 'readwrite', function (s) { s.delete(sk); });
+        // (marked gone for your other devices too, so the game starts fresh on them as well)
+        return ConsoleLib.stateDrop ? ConsoleLib.stateDrop(x.g.cart, 'auto') : ConsoleLib.tx('states', 'readwrite', function (s) { s.delete(sk); });
       }).catch(function () {});
     }
     return back;
@@ -1264,7 +1265,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var all = JSON.parse(get('gn_resume', '{}')) || {};
       list.forEach(function (b) {
         Object.keys(b.keys).forEach(function (k) { try { LS.setItem(k, b.keys[k]); } catch (e) {} }); if (b.resume) all[b.id] = b.resume;
-        if (b.cst && window.ConsoleLib) ConsoleLib.tx('states', 'readwrite', function (s) { s.put(b.cst); }).catch(function () {});
+        if (b.cst && window.ConsoleLib) { b.cst.at = Date.now(); ConsoleLib.tx('states', 'readwrite', function (s) { s.put(b.cst); }).catch(function () {}); }   // (newer than its gone mark)
       });
       set('gn_resume', JSON.stringify(all));
     } catch (e) {}

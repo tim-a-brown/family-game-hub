@@ -12,6 +12,7 @@
 //   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent
 //                                              (sync: fn adds "Sync now": your saves, then fn() refreshes the game's live data)
 //                                              (undo: fn adds "Undo" to the menu)
+//   Kit.init({exitFirst: true})  All games first in the menu, beside menu items marked exit: true (consoles)
 //   Kit.setup(root, {...})                     standard "who's playing" screen
 //   Kit.handoff({name, color, what}) -> Promise  pass-and-play cover; hold 3s to reveal
 //   Kit.win({...})                             celebration + results card
@@ -1187,7 +1188,14 @@
       b.onclick = function () { set(); b.setAttribute('aria-checked', String(!!get())); haptic('light'); };
       group(g).push(b);
     }
-    var G = 'Game', top = [];
+    var G = 'Game', top = [], exits = [];
+    // opts.exitFirst: leaving comes first, All games (and a game's own way out, items with exit: true) in a row of its
+    // own above everything else (the consoles, where leaving asks whether to keep your place)
+    function exitBtn(ic, label, fn) {
+      exits.push(el('button', { type: 'button', class: 'k-exit', onclick: function () { sfx('tap'); s.close(); fn(); } },
+        [el('span', { class: 'ic', html: menuIc(ic) }), el('span', { class: 'lbl', text: label })]));
+    }
+    if (opts.exitFirst) exitBtn('home', 'All games', goHome);
     // what's playing on Spotify, with its controls, right at the top
     if (spotifyOn()) { var spSlot = el('div'); list.appendChild(spSlot); spotifyMini(spSlot, function () { s.close(); }); }
     // New game, Undo and Past games sit side by side across the top
@@ -1202,6 +1210,7 @@
     if (opts.undo) tile('undo', 'Undo', opts.undo);
     (opts.menu || []).forEach(function (m) {
       if (m.when && !m.when()) return;
+      if (m.exit && opts.exitFirst) { exitBtn(m.icon || 'logout', m.label, m.onClick); return; }
       if (m.top || m.label === 'Past games') { tile(m.icon || 'history', m.label, m.onClick); return; }
       var g = m.toggle ? 'Settings' : m.section || G;
       if (m.toggle) toggle(g, m.icon || 'sparkle', m.label, m.sub, m.toggle, m.onClick);
@@ -1224,7 +1233,8 @@
     });
     item(M, 'plane', 'Offline', offlineSheet, '', offlineTag());
     item(M, 'help', 'How Game Night works', function () { tour(); });
-    item(M, 'home', 'All games', goHome);
+    if (!opts.exitFirst) item(M, 'home', 'All games', goHome);
+    if (exits.length) list.insertBefore(el('div', { class: 'k-exits' }, exits), list.firstChild);
     if (top.length) list.appendChild(el('div', { class: 'k-tiles' }, top));
     groups.forEach(function (g) {
       list.appendChild(el('div', { class: 'k-grp' }, [el('h3', { text: g })].concat(byName[g])));

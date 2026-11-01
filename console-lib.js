@@ -277,7 +277,7 @@ var ConsoleLib = (function () {
   // newer save states for one game from the library onto this device
   function statesDown(id) {
     var k = lib(false); if (!k) return Promise.resolve(0);
-    var ix = jget('console_saves'), keys = Object.keys(ix).filter(function (x) { return x.indexOf(id + ':') === 0; });
+    var ix = jget('console_saves'), keys = Object.keys(ix).filter(function (x) { return x.indexOf(id + ':') === 0 && !ix[x].x; });
     return tx('states', 'readonly', function (s) { return s.index('id').getAll(id); }).then(function (have) {
       var at = {}; (have || []).forEach(function (h) { at[h.key] = h.at || 0; });
       return Promise.all(keys.filter(function (x) { return (ix[x].at || 0) > (at[x] || 0); }).map(function (x) {
@@ -291,6 +291,16 @@ var ConsoleLib = (function () {
       })).then(function (n) { return n.reduce(function (a, b) { return a + b; }, 0); });
     });
   }
+  // a save thrown away (left without keeping your place): gone from this device, and marked gone in the synced list so
+  // your other devices drop their copy too (a newer save takes its place as usual)
+  function stateDrop(id, slot) {
+    var key = id + ':' + slot, at = Date.now();
+    var ix = jget('console_saves'); ix[key] = { at: at, x: 1 }; jset('console_saves', ix);
+    var my = mine(); my.sv[key] = at; jset('console_local', my);
+    return tx('states', 'readwrite', function (s) { s.delete(key); }).catch(function () {});
+  }
+  // false when this saved state was thrown away on another device after it was made
+  function stateLive(st) { var g = st && jget('console_saves')[st.key]; return !!st && !(g && g.x && g.at >= (st.at || 0)); }
   // saves made here that never got sent (the app was closed first): send them now
   function statesPending() {
     if (!lib(false)) return Promise.resolve();
@@ -320,6 +330,6 @@ var ConsoleLib = (function () {
     }).catch(function (e) { console.warn('[console] battery save not fetched', e); return null; });
   }
 
-  return { refetch: refetch, db: db, tx: tx, list: list, stateUp: stateUp, statesDown: statesDown, statesPending: statesPending, sramUp: sramUp, sramDown: sramDown, within: within, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
+  return { refetch: refetch, db: db, tx: tx, list: list, stateUp: stateUp, statesDown: statesDown, stateDrop: stateDrop, stateLive: stateLive, statesPending: statesPending, sramUp: sramUp, sramDown: sramDown, within: within, save: save, saveAll: saveAll, toFetch: mbOf, setLabel: setLabel, rename: rename, drop: drop, file: file, cache: cache, strip: strip, houseKey: houseKey,
     cloud: function () { return !!(lib(false) || houseKey()); }, signedIn: signedIn, shown: shown, show: show, showMany: showMany, vis: vis };
 })();

@@ -717,7 +717,10 @@
       if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'ready' }, true); return; }
       hiStart(c);
       if (NET.pick) { var nm = NET.pick; NET.pick = null; root.classList.remove('net-pick'); netHost(nm); return; }
-      getState(c.id, 'auto').then(function (st) { if (st) offerResume(st); });
+      getState(c.id, 'auto').then(function (st) {
+        if (st && L.stateLive && !L.stateLive(st)) { L.tx('states', 'readwrite', function (s) { s.delete(st.key); }); return; }   // (thrown away on another device)
+        if (st) offerResume(st);
+      });
     };
     // (the multitap goes in before the console is switched on, as on the real thing: see tapOf)
     // saves from your other devices first: the newest save states, and the game's own battery save, which goes in
@@ -846,17 +849,39 @@
   document.addEventListener('keydown', wakeAudio, true);
   document.addEventListener('keydown', wakeAudio, true);
 
-  // the last picture from when you left, to carry on from
+  // Coming back to a game you saved your place in: the last picture from when you left, when that was and how long
+  // you'd played, then Resume game (straight back to that moment) or New game (from the title screen; the saved place
+  // stays until this game saves over it or you leave without saving)
+  function when(t) {
+    var d = new Date(t), now = new Date(), day = 864e5, t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    var hm = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    if (Date.now() - t < 60000) return 'Just now';
+    if (Date.now() - t < 3600000) return Math.round((Date.now() - t) / 60000) + ' min ago';
+    if (t >= t0) return 'Today ' + hm;
+    if (t >= t0 - day) return 'Yesterday ' + hm;
+    if (t >= t0 - 6 * day) return d.toLocaleDateString([], { weekday: 'long' }) + ' ' + hm;
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function dur(ms) { var m = Math.max(1, Math.round(ms / 60000)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + (m % 60 ? m % 60 + ' min' : ''); }
   function offerResume(st) {
     var E = emu(); if (E) E.pause();
-    resumeEl = el('div', { class: 'resume' }, [
-      st.img ? el('img', { src: st.img, alt: '' }) : null,
-      el('div', { class: 'row' }, [
-        el('button', { type: 'button', onclick: function () { loadState(st); closeResume(); } }, ['Carry on']),
-        el('button', { type: 'button', class: 'alt', onclick: function () { closeResume(); } }, ['Start over'])
+    function stat(k, v) { return el('div', { class: 'st' }, [el('small', { text: k }), el('b', { text: v })]); }
+    var stats = el('div', { class: 'stats' }, [stat('Saved', when(st.at)), st.played > 30000 ? stat('Played', dur(st.played).trim()) : null]);
+    resumeEl = el('div', { class: 'cs-cont' }, [el('div', { class: 'card' }, [
+      el('div', { class: 'pic' }, [st.img ? el('img', { src: st.img, alt: 'Where you left off' }) : el('span', { class: 'none', html: Kit.icon('gamepad') })]),
+      el('div', { class: 'side' }, [
+        el('small', { class: 'kick', text: 'Your saved place' }),
+        el('h2', { text: cur ? cur.name : '' }),
+        stats,
+        el('div', { class: 'acts' }, [
+          el('button', { type: 'button', class: 'go', onclick: function () { loadState(st); playMs = st.played || 0; closeResume(); Kit.haptic('medium'); } }, [el('span', { html: Kit.icon('play') }), 'Resume game']),
+          el('button', { type: 'button', class: 'alt', onclick: function () { playMs = 0; closeResume(); } }, [el('span', { html: Kit.icon('sparkle') }), 'New game'])
+        ])
       ])
-    ]);
-    glassEl.appendChild(resumeEl);
+    ])]);
+    playEl.appendChild(resumeEl);
+    requestAnimationFrame(function () { if (resumeEl) resumeEl.classList.add('on'); });
+    Kit.sfx('pop');
   }
   // back from another app (or the phone unlocked): the game waited, paused, until you carry on
   function offerPaused() {
@@ -875,17 +900,28 @@
       try {
         E.gameManager.screenshot().then(function (png) {
           var url = URL.createObjectURL(new Blob([png], { type: 'image/png' })), im = new Image();
-          im.onload = function () { var cv = document.createElement('canvas'); cv.width = 160; cv.height = 120; var x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, 160, 120); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', .8)); };
+          // (the picture's own shape, up to 320 wide: it's shown big when you come back)
+          im.onload = function () { var w = Math.min(320, im.width || 320), h = Math.round(w * (im.height || 240) / (im.width || 320)), cv = document.createElement('canvas'); cv.width = w; cv.height = h; var x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, w, h); URL.revokeObjectURL(url); ok(cv.toDataURL('image/jpeg', .82)); };
           im.onerror = function () { ok(null); }; im.src = url;
         }, function () { ok(null); });
       } catch (e) { ok(null); }
     });
   }
-  function saveState(slot) {
+  function saveState(slot, pic) {
     var E = emu(); if (!E || !started || !cur) return Promise.resolve(false);
     var data; try { data = E.gameManager.getState(); } catch (e) { return Promise.resolve(false); }
     if (slot === 'auto') keepPlaying();
-    return snap().then(function (img) { return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data }); }).then(function () { return true; });
+    var played = playMs;
+    return (pic ? Promise.resolve(pic) : snap()).then(function (img) { return putState({ key: cur.id + ':' + slot, id: cur.id, slot: slot, at: Date.now(), img: img, data: data, played: played }); }).then(function () { return true; });
+  }
+  // how long this game has been played, carried in its saves (counted while it runs on screen)
+  var playMs = 0;
+  setInterval(function () { var E = emu(); if (started && cur && E && !E.paused && !document.hidden && !resumeEl) playMs += 1000; }, 1000);
+  // leaving without keeping your place: the save goes (here and on your other devices) and so does Keep playing
+  function dropPlace() {
+    if (!cur) return;
+    if (L.stateDrop) L.stateDrop(cur.id, 'auto'); else L.tx('states', 'readwrite', function (s) { s.delete(cur.id + ':auto'); });
+    Kit.resume.clear({ id: 'cart-' + String(cur.id).slice(0, 16) });
   }
   // the cartridge in Keep playing on the home screen (your place, kept as you leave: the 'auto' save), opening straight
   // into it; deleting it there drops that save too
@@ -913,7 +949,7 @@
         box.appendChild(el('button', { type: 'button', class: 'cs-slot', onclick: function () {
           s.close();
           if (saving) saveState(k).then(function (ok) { Kit.toast(ok ? 'Saved in slot ' + k : 'Couldn’t save here'); if (ok) Kit.haptic('success'); });
-          else { loadState(st); Kit.haptic('medium'); }
+          else { loadState(st); playMs = st.played || 0; Kit.haptic('medium'); }
         } }, [
           st && st.img ? el('img', { src: st.img, alt: '' }) : el('span', { class: 'blank', html: Kit.icon(saving ? 'plus' : 'bookmark') }),
           el('span', { class: 't' }, [el('b', { text: k === 'auto' ? 'When you last left' : 'Slot ' + k }), el('small', { text: st ? ago(st.at) : 'Empty' })])
@@ -923,32 +959,51 @@
       s = Kit.sheet({ title: saving ? 'Save state' : 'Load state', node: box });
     });
   }
-  function toShelf() {
-    if (Kit.playing) Kit.playing(null);   // (the shelf isn't a game)
-    var go = function () { location.replace(location.pathname); };
-    netQuit();
-    hiLeave(function () { if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
+  // Leaving a game (All games, the bar's back button, Change cartridge, High scores) asks first: Save and leave keeps
+  // your place (Keep playing on the home screen, Resume game next time); Don't save throws it away, so the game starts
+  // from its title screen next time. Never a high score: only a game's own game over files one.
+  var leaving = false;
+  function leave(go) {
+    var done = false, once = function () { if (!done) { done = true; go(); } };
+    // (nothing to keep: no game running, a joiner's game is the host's, or the saved place is still being offered)
+    if (!started || !cur || cur.netGame || NET.mode === 'guest' || (resumeEl && resumeEl.classList.contains('cs-cont'))) { leaving = true; hiLeave(once); return; }
+    var E = emu(), was = !!(E && E.paused); E_pause();
+    snap().then(function (img) {
+      var box = el('div', { class: 'cs-leave' }, [
+        img ? el('div', { class: 'pic' }, [el('img', { src: img, alt: 'Where you are now' })]) : null,
+        el('p', { text: 'Save it and the game waits in Keep playing, right where you are.' })]);
+      Kit.sheet({ title: 'Save your place?', node: box,
+        onCancel: function () { var E2 = emu(); if (E2 && E2.paused && !was) try { E2.play(); } catch (e) {} },
+        actions: [
+          { label: 'Save and leave', primary: true, onClick: function () {
+            leaving = true; hiLeave(function () { saveState('auto', img).then(once, once); setTimeout(once, 2500); });   // (never stuck on a slow save)
+          } },
+          { label: 'Don’t save', sub: 'Next time starts from the title screen', cls: 'btn-soft', onClick: function () { leaving = true; hiLeave(function () { dropPlace(); once(); }); } },
+          { label: 'Keep playing', cls: 'btn-ghost', onClick: function () { var E2 = emu(); if (E2 && E2.paused) try { E2.play(); } catch (e) {} } }] });
+    });
   }
-  // leaving or switching away keeps your place. The bar's back button pauses the game and waits for its place to be
-  // kept before going home (the page hidden alone may close before the save is written)
+  function toShelf() {
+    leave(function () {
+      if (Kit.playing) Kit.playing(null);   // (the shelf isn't a game)
+      netQuit(); location.replace(location.pathname);
+    });
+  }
   var homeBound = false;
   Kit.onBack = function () {
     if (homeBound || !started || !cur || cur.netGame) return false;
-    homeBound = true; E_pause();
-    var gone = false, go = function () { if (!gone) { gone = true; Kit.home(); } };
-    hiLeave(function () { saveState('auto').then(go, go); });
-    setTimeout(go, 2500);   // (never stuck on a slow save)
+    leave(function () { homeBound = true; Kit.home(); });
     return true;
   };
+  // switching away (another app, the phone locked) keeps your place without asking, in case it never comes back
   document.addEventListener('visibilitychange', function () {
-    if (!started || !cur || cur.netGame) return;   // (a joiner's game is the host's; online, the table keeps going)
+    if (!started || !cur || cur.netGame || leaving) return;   // (a joiner's game is the host's; online, the table keeps going)
     if (document.hidden) { var E = emu(); bgPaused = !!(E && !E.paused && !resumeEl); E_pause(); saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} }
     else if (bgPaused && !homeBound) { bgPaused = false; offerPaused(); }
   });
   var bgPaused = false;
   // while you play: your place and the game's own save every few minutes, so another device can carry on even if this
   // one is closed without a goodbye
-  setInterval(function () { if (started && cur && !cur.netGame && !document.hidden && !resumeEl) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } }, 180000);
+  setInterval(function () { if (started && cur && !cur.netGame && !document.hidden && !resumeEl && !leaving) { saveState('auto'); try { emu().gameManager.saveSaveFiles(); } catch (e) {} } }, 180000);
   if (L.statesPending) setTimeout(function () { if (L.signedIn()) L.statesPending(); }, 4000);   // saves from last time that didn't get sent
   window.addEventListener('pagehide', function () { if (started) { try { emu().gameManager.saveSaveFiles(); } catch (e) {} } });
   // the game waits while a menu or sheet is open
@@ -1931,7 +1986,7 @@
 
   // ═══ Kit shell ════════════════════════════════════════════════════════════
   function controls() {
-    Kit.sheet({ title: 'Controls', html:
+    Kit.sheet({ title: 'Using the controls', html:
       '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both. A thumb on the D-pad keeps steering while it’s down, even if it drifts off the pad.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       ctlTable() +
@@ -1941,26 +1996,34 @@
   }
   var playing = function () { return !!cur; };
   var hostOrSolo = function () { return !!cur && !(NET.live && NET.mode === 'guest'); };   // online, the host's console has the Reset button
-  Kit.init({
-    id: SYS_ID,
-    menu: [
-      { icon: 'bookmark', label: 'Save state', sub: 'Keep this exact moment', when: playing, onClick: function () { slotsSheet(true); } },
-      { icon: 'history', label: 'Load state', sub: 'Go back to a saved moment', when: hostOrSolo, onClick: function () { slotsSheet(false); } },
-      { icon: 'globe', label: 'Play online', sub: TAPS[SYS_ID] ? 'Each player on their own device' : 'Two players, each on their own device', when: function () { return !NET.mode; }, onClick: goOnline },
-      { icon: 'users', label: 'Your online table', sub: 'Who’s here, and Start', when: function () { return NET.mode === 'host' && !NET.live; }, onClick: netShowWait },
-      { icon: 'logout', label: 'Leave the online game', sub: 'Keep playing on your own', when: function () { return !!NET.mode; }, onClick: function () { netQuit(); } },
-      { icon: 'sync', label: 'Reset', sub: 'Like the console’s Reset button', when: hostOrSolo, onClick: function () {
+  // The menu: leaving first (All games, Change cartridge), then your place in the game as tiles (Save, Load, Reset,
+  // High scores), playing together, the controller, then the kit's Settings and More
+  function resetConsole() {
+    Kit.sheet({ title: 'Reset the console?', html: '<p>The game starts again from its title screen, like the console’s Reset button. Anything since your last save is lost.</p>', actions: [
+      { label: 'Reset', primary: true, onClick: function () {
         var E = emu(); if (!E) return;
-        Kit.haptic('medium');
+        Kit.haptic('medium'); playMs = 0;
         if (ConsoleNet.on()) ConsoleNet.reset();   // online: both consoles, at the same frame
         else E.gameManager.restart();
       } },
-      { icon: 'swap', label: 'Change cartridge', sub: 'Back to the ' + SYS.name + ' shelf', when: playing, onClick: toShelf },
-      { icon: 'trophy', label: 'High scores', sub: 'The best scores in this game', when: function () { return !!hiW && L.shown(cur.id); }, onClick: function () {   // (the High Scores page lists the games on the home screen)
-        var k = hiW.key; hiLeave(function () { var go = function () { ArcadeHi.show(k); }; if (started && !cur.netGame) saveState('auto').then(go, go); else go(); });
+      { label: 'Cancel', cls: 'btn-ghost' }] });
+  }
+  Kit.init({
+    id: SYS_ID,
+    exitFirst: true,
+    menu: [
+      { exit: true, icon: 'swap', label: 'Change cartridge', when: playing, onClick: toShelf },
+      { top: true, icon: 'bookmark', label: 'Save state', when: playing, onClick: function () { slotsSheet(true); } },
+      { top: true, icon: 'history', label: 'Load state', when: hostOrSolo, onClick: function () { slotsSheet(false); } },
+      { top: true, icon: 'sync', label: 'Reset', when: hostOrSolo, onClick: resetConsole },
+      { top: true, icon: 'trophy', label: 'High scores', when: function () { return !!hiW && L.shown(cur.id); }, onClick: function () {   // (the High Scores page lists the games on the home screen)
+        var k = hiW.key; leave(function () { ArcadeHi.show(k); });
       } },
-      { icon: 'gamepad', label: 'Controller buttons', sub: 'What each button and key does, and remapping a controller', onClick: padSheet },
-      { icon: 'help', label: 'Controls', onClick: controls }
+      { section: 'Play together', icon: 'globe', label: 'Play online', sub: TAPS[SYS_ID] ? 'Each player on their own device' : 'Two players, each on their own device', when: function () { return !NET.mode; }, onClick: goOnline },
+      { section: 'Play together', icon: 'users', label: 'Your online table', sub: 'Who’s here, and Start', when: function () { return NET.mode === 'host' && !NET.live; }, onClick: netShowWait },
+      { section: 'Play together', icon: 'logout', label: 'Leave the online game', sub: 'Keep playing on your own', when: function () { return !!NET.mode; }, onClick: function () { netQuit(); } },
+      { section: 'Controller', icon: 'gamepad', label: 'Controller buttons', sub: 'What each button and key does, and remapping', onClick: padSheet },
+      { section: 'Controller', icon: 'help', label: 'Using the controls', sub: 'The drawn controller, keyboards and real controllers', onClick: controls }
     ],
     rules: function () { return '' +
       '<p class="goal">Play your own ' + SYS.name + ' games. Add the game files you own and they line up on the shelf as cartridges.</p>' +
@@ -1972,8 +2035,9 @@
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
       '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard, or a real Bluetooth or USB controller (<b>Controller buttons</b> in the menu remaps it):</li></ul>' + ctlTable() + '<ul>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
-      '<li>Games that keep a score put your best on the High Scores page.</li>' +
-      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game. When you leave, the game pauses and your place is kept: it waits in <b>Keep playing</b> on the home screen, and carries on from there.</li></ul>' +
+      '<li>Leaving a game (<b>All games</b> or <b>Change cartridge</b>) asks whether to save your place. Save it and the game waits in <b>Keep playing</b> on the home screen; next time it offers <b>Resume game</b>, straight back to that moment, or <b>New game</b>. Don’t save and it starts from the title screen next time.</li>' +
+      '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game.</li>' +
+      '<li>Only a game’s own game over puts a score on the High Scores page, never leaving partway.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table for the game you’re playing and the others join it on their own devices. You’re player 1; the next to join is player 2' + (TAPS[SYS_ID] ? ', then 3 and 4 (in games made for four players' + (SYS_ID === 'genesis' ? ' with the Team Player' : '') + ')' : '') + '.</li>' +
       '<li>Their device gets the game from the family’s games, or straight from yours, and starts from exactly where you are. Someone can join a game under way: it starts again for everyone from that moment.</li>' +
       '<li>Every device plays the same game frame by frame. If one has to wait for another, the picture says who it’s waiting for. Opening the menu pauses the game for everyone.</li>' +
