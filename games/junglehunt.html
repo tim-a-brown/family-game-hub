@@ -141,7 +141,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
 
   // ═══ Reading the console's RAM ══════════════════════════════════════════
   function bcd(v) { return (v >> 4) * 10 + (v & 15); }
-  function score() { return bcd(R[3]) * 10000 + bcd(R[4]) * 100 + bcd(R[5]); }
+  // packed decimal, the low byte first ($83 the hundreds and tens; checked against the cartridge 2026-11-01: an earlier
+  // reader took $83 as the high byte, so scores of 10,000 and up were wrong, and that board was reset, sync.js HI_RESET)
+  function score() { var v = bcd(R[5]) * 10000 + bcd(R[4]) * 100 + bcd(R[3]); return v - v % 10; }
   function attract() { return (R[0x18] & 0x80) !== 0; }   // the title/demo (and between games)
   function gameNo() { return (R[0x18] & 1) + 1; }           // GAME SELECT: skill level 1 or 2
   function scene() { return R[9] & 3; }

@@ -97,17 +97,35 @@ var ConsoleHi = (function () {
       score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; } },
     // ── Atari 2600 ──
     // packed decimal at $D5-$D7, starting at 2,000 and going down as well as up: the score at the end counts. The
-    // 20-minute clock ($D8 minutes, $D9 seconds) starts with the game and stops when it's over
+    // 20-minute clock ($D8 minutes, $D9 seconds) starts with the game. $9E is 0 only while Harry is in play (set on the
+    // title, while he dies, at 0:00 and when all 32 treasures are taken, $F1 below 0); $80 is the spare-lives picture
+    // ($A0, $80, 0: no Harry comes back after a death at 0). (Checked 2026-11-01 in the emulator: the score against the
+    // screen, to 114,000; out of lives, the clock at 0:00 and the last treasure each end it; a death with lives left doesn't.)
     { key: 'pitfall', short: 'PITFALL', name: 'Pitfall!', sys: 'atari2600', ids: ['8d525480445d48cc48460dc666ebad78c8fb7b73'], re: /^pitfall!?$/, down: 1,
       score: function (m) { return bcd(m, 0xD5, 3); },
       clock: function (m) { var t = bcd(m, 0xD8, 2); return t == null ? null : 1200 - (Math.floor(t / 100) * 60 + t % 100); },
-      play: function (m) { var t = bcd(m, 0xD8, 2); return t != null && t !== 2000; }, over: function (m) { return m(0xD8) === 0 && m(0xD9) === 0; } },
-    // packed decimal at $83-$85
-    { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/,
-      score: function (m) { return bcd(m, 0x83, 3); } },
-    // packed decimal at $DF-$E1, low byte first; the screen shows it to the ten (its last digit always 0)
-    { key: 'poleposition', short: 'POLE POS.', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/,
-      score: function (m) { var v = bcdLE(m, 0xDF, 3); return v == null ? null : v - v % 10; } }
+      play: function (m) { var t = bcd(m, 0xD8, 2); return t != null && t !== 2000; },
+      over: function (m) { return m(0x9E) !== 0 && (m(0x80) === 0 || (m(0xD8) === 0 && m(0xD9) === 0) || m(0xF1) === 0xFF); } },
+    // packed decimal at $83-$85, the low byte first (points are added at $83; a carry into $85 is the extra man at
+    // 10,000); the screen's last digit is always 0. $98 bit 7: the title, the demo (which doesn't score) and after a
+    // game. Game over: $98 bit 7 with a score still held (a new game clears it): out of men, the bonus timer run out,
+    // or Game Select pressed in a game (the cartridge ends the game then too). (Checked 2026-11-01 in the emulator:
+    // the screen against the read, 10,000 reached in play; out of men and the timer both end it; the demo and Reset
+    // file nothing. An earlier reader took $83 as the high byte, so scores of 10,000 and up were wrong: rev 2.)
+    { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/, rev: 2,
+      score: function (m) { var v = bcdLE(m, 0x83, 3); return v == null ? null : v - v % 10; },
+      play: function (m) { return (m(0x98) & 0x80) === 0; },
+      over: function (m) { return (m(0x98) & 0x80) !== 0 && (m(0x83) | m(0x84) | m(0x85)) !== 0; } },
+    // packed decimal at $DF-$E1, low byte first; the screen shows it to the ten (its last digit always 0). $FF bit 6: the
+    // title and a finished game. A game ends when the time ($DC) runs out, in qualifying or the race, or when the race's
+    // laps are done; the time left and $E2 are then counted into the score ($EB is $FF once the counting has started),
+    // so play runs on until it's done and the score at the end counts. After a full race the screen takes turns showing
+    // the race time in the score's place ($FF bit 5; the score is then at $E8/$EC, one digit up). (Checked 2026-11-01 in
+    // the emulator: the screen against the read; qualifying time-out, race finish and race time-out each filed once.)
+    { key: 'poleposition', short: 'POLE POS.', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/, down: 1,
+      score: function (m) { var v = m(0xFF) & 0x20 ? bcd(m, 0xE8, 1) * 1000 + bcd(m, 0xEC, 1) * 10 : bcdLE(m, 0xDF, 3); return v == null ? null : v - v % 10; },
+      play: function (m) { return !(m(0xFF) & 0x40) || m(0xDC) !== 0 || m(0xE2) !== 0 || m(0xEB) !== 0xFF; },
+      over: function (m) { return (m(0xFF) & 0x40) !== 0 && m(0xDC) === 0 && m(0xE2) === 0 && m(0xEB) === 0xFF && (m(0xDF) | m(0xE0) | m(0xE1)) !== 0; } }
   ];
 
   // ── Which game a cartridge is ──
@@ -180,21 +198,29 @@ var ConsoleHi = (function () {
   //     onEnd(key, score, game, why) -> a finished game's score to file (its initials are asked there)}
   function watch(o) {
     var g = mapFor(o.cart); if (!g || !CORE[o.sys] || !g.over) return null;   // (no checked game over: no high scores)
-    var C = CORE[o.sys], base = -1, cand = null, tries = 0, bad = 0, t = 0, since = Date.now(), lastIn = 0, cached = cacheGet(o.sys);
+    var C = CORE[o.sys], base = -1, cand = null, live = null, tries = 0, bad = 0, t = 0, since = Date.now(), lastIn = 0, cached = cacheGet(o.sys);
     var run = null, offT = 0, passed = false, top = null, hold = null;
     try { top = typeof ArcadeHi !== 'undefined' ? ArcadeHi.top(keyOf(g)) : null; } catch (e) {}
     function heap() { var E = o.emu(); return E && E.Module && E.Module.HEAPU8; }
     function mem(H) { return function (a) { return H[base + C.addr(a)]; }; }
     // find the RAM: a cached place or a scan, then a second save state picks the live copy
+    // (some cores keep copies of the RAM that every save state refreshes, so they match each state as well as the
+    // live RAM does: the live one is the place that has moved on a second later, with no save state in between)
     function locate(E) {
       if (Date.now() - since < 2500) return;   // (the game sets its RAM up first)
+      var H = E.Module.HEAPU8;
+      if (live) {
+        var moved = live.list.filter(function (b) { return !same(H, b, live.ram); });
+        live = null;
+        if (moved.length === 1) { base = moved[0]; cacheSet(o.sys, base); return; }
+      }
       var st; try { st = stateRam(E, o.sys); } catch (e) { return; }
       if (!st) return;
-      var H = E.Module.HEAPU8;
+      H = E.Module.HEAPU8;
       if (cand) {
         var ok = cand.filter(function (b) { return same(H, b, st.ram); });
         cand = null;
-        if (ok.length === 1) { base = ok[0]; cacheSet(o.sys, base); return; }
+        if (ok.length) { live = { list: ok, ram: st.ram.slice() }; return; }
       }
       if (cached != null && same(H, cached, st.ram)) { cand = [cached]; cached = null; return; }   // (confirmed by the next state, like a scan)
       cached = null;
