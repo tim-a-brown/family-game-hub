@@ -45,17 +45,34 @@ var ConsoleHi = (function () {
   // Without play(), any time counts (games with no demo that scores).
   var GAMES = [
     // ── NES ──
-    // Mario's score: a digit a byte at $07DD-$07E2, the screen adding a 0 (100 points reads 0,0,0,0,1,0). OperMode
-    // $0770: 0 title and demo, 1 playing, 2 the ending, 3 game over.
+    // Mario's score: a digit a byte at $07DD-$07E2 (Luigi's at $07E3-$07E8), the screen adding a 0 (100 points reads
+    // 0,0,0,0,1,0; the millions digit is drawn once reached). 2 players: the screen shows whoever is up, so the better
+    // of the two counts (both start at 0 every game, continue included). OperMode $0770: 0 title and demo (scores
+    // nothing), 1 playing, 2 the castle after an axe, 3 game over. Over: the last game over (1 player, or the other
+    // player's lives $0761 below 0: in 2 players the first one out shows GAME OVER and the other plays on), or World 8's
+    // PUSH BUTTON B (OperMode 2, task $0772 4, world $075F 7), after which the game goes to the title without a game
+    // over. (Checked 2026-11-01: the screen at 200, 1,500, 100,000 and 1,000,000; 1- and 2-player games; the ending.)
     { key: 'smb', short: 'MARIO', name: 'Super Mario Bros.', sys: 'nes', ids: ['ea343f4e445a9050d4b4fbac2c77d0693b1d0922'], re: /^super mario bros\.?$/,
-      score: function (m) { return x10(digits(m, 0x7DD, 6)); },
-      play: function (m) { return m(0x770) === 1 || m(0x770) === 2; }, over: function (m) { return m(0x770) === 3; } },
-    // 3 bytes at $0715, the screen adding a 0 (no demo)
+      score: function (m) { var a = digits(m, 0x7DD, 6), b = digits(m, 0x7E3, 6); return a == null || b == null ? null : Math.max(a, b) * 10; },
+      play: function (m) { return m(0x770) === 1 || m(0x770) === 2; },
+      over: function (m) { var o = m(0x770); return (o === 3 && (m(0x77A) === 0 || m(0x761) > 0x7F)) || (o === 2 && m(0x772) === 4 && m(0x75F) === 7); } },
+    // 3 bytes at $0715 (high first), the screen adding a 0: the score of whoever is up (2 players: each keeps their own,
+    // swapped in on the map). No demo. Over: the player up has lives ($0736 + $0726) at $FF, from losing the last life
+    // through the GAME OVER CONTINUE/END box (CONTINUE starts the score again at 0, so each game over files), or THE END
+    // after the credits (its sprites at $0200 with CHR bank $071E $1B), which waits for Start. (Checked 2026-11-01
+    // against the screen, 100 to 1,000,090; game over, continue, end, and the ending.)
     { key: 'smb3', short: 'MARIO 3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
-      score: function (m) { return be(m, 0x715, 3) * 10; } },
-    // the money: kept as the seven digits drawn on screen at $0324-$032A ($24 a blank before the first digit)
-    { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/,
-      score: function (m) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(0x324 + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } },
+      score: function (m) { return be(m, 0x715, 3) * 10; },
+      over: function (m) { return m(0x736 + (m(0x726) & 1)) === 0xFF || (m(0x200) === 0x60 && m(0x201) === 0xF1 && m(0x21D) === 0xFF && m(0x21F) === 0x98 && m(0x71E) === 0x1B); } },
+    // The money: TOTAL MONEY (8 characters at $0334-$033B, $24 a blank: what's banked when a land is cleared, and what the
+    // ending shows) plus this land's money (7 at $0324-$032A, the HUD's $, back to 0 each land), left out once the land is
+    // over ($5D) or the final tally began ($AC bit 7: both add it into TOTAL without clearing it). Can go down (payments of
+    // 300,000). No demo. Over: GAME OVER in the HUD (sprites at $0140: G A M ... V R), or the ending ($AC bit 7, $F6 9),
+    // which stays on "End.". (Checked 2026-11-01 against the HUD, the LAND CLEAR tally and the ending's TOTAL MONEY. An
+    // earlier reader took only this land's money: rev 2.)
+    { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 2,
+      score: function (m) { function f(a, n) { var v = 0; for (var i = 0; i < n; i++) { var d = m(a + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } var t = f(0x334, 8), c = f(0x324, 7); return t == null || c == null ? null : t + (m(0x5D) || (m(0xAC) & 0x80) ? 0 : c); },
+      over: function (m) { return (m(0x141) === 0x10 && m(0x145) === 0x0A && m(0x149) === 0x16 && m(0x155) === 0x1F && m(0x15D) === 0x1B) || ((m(0xAC) & 0x80) && m(0xF6) === 9); } },
     // seven digits a byte at $0108-$010E
     { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/,
       score: function (m) { return digits(m, 0x108, 7); } },
