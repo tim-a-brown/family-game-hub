@@ -40,6 +40,9 @@ var ConsoleHi = (function () {
 // Metropolis 3, Wing Fortress, Death Egg and Sky Chase included, and the special stages.)
 // where you are (Keep playing's tile): Sonic's zone $FFFE10 and act $FFFE11, by the games' own zone numbers (Sonic 1:
 // Scrap Brain 3 is Labyrinth's 4th act, the Final Zone Scrap Brain's 3rd; Sonic 2: Metropolis 3 is a zone of its own)
+var MM_STAGE = ['Cut Man', 'Ice Man', 'Bomb Man', 'Fire Man', 'Elec Man', 'Guts Man', 'Wily 1', 'Wily 2', 'Wily 3', 'Wily 4'];
+var PO_OPP = ['Glass Joe', 'Von Kaiser', 'Piston Honda', 'Don Flamenco', 'King Hippo', 'Great Tiger', 'Bald Bull', 'Piston Honda', 'Soda Popinski', 'Bald Bull', 'Don Flamenco', 'Mr. Sandman', 'Macho Man', 'Mike Tyson'];
+var DT_LAND = ['Amazon', 'Transylvania', 'African Mines', 'Himalayas', 'The Moon'];
 var COI_R = ['Enchanted Forest', 'Toyland', 'The Storm', 'The Library', 'The Castle', 'The Castle'];
 var SONIC_Z = ['Green Hill', 'Labyrinth', 'Marble', 'Star Light', 'Spring Yard', 'Scrap Brain'];
 function sonicWhere(m) {
@@ -92,7 +95,7 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // against the screen, 100 to 1,000,090; game over, continue, end, and the ending.)
     { key: 'smb3', short: 'MARIO 3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
       score: function (m) { return be(m, 0x715, 3) * 10; }, who: function (m) { return m(0x726) & 1; }, names: ['Mario', 'Luigi'],
-      where: function (m) { var w = m(0x727); return w < 8 ? 'World ' + (w + 1) : null; },
+      where: function (m) { var w = m(0x727); return w < 8 ? 'World ' + (w + 1) : w === 8 ? 'Warp Zone' : null; },
       over: function (m) { return m(0x736 + (m(0x726) & 1)) === 0xFF || (m(0x200) === 0x60 && m(0x201) === 0xF1 && m(0x21D) === 0xFF && m(0x21F) === 0x98 && m(0x71E) === 0x1B); } },
     // The money: TOTAL MONEY (8 characters at $0334-$033B, $24 a blank: what's banked when a land is cleared, and what the
     // ending shows) plus this land's money (7 at $0324-$032A, the HUD's $, back to 0 each land), left out once the land is
@@ -102,6 +105,9 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // earlier reader took only this land's money: rev 2.)
     { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 2,
       score: function (m) { function f(a, n) { var v = 0; for (var i = 0; i < n; i++) { var d = m(a + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } var t = f(0x334, 8), c = f(0x324, 7); return t == null || c == null ? null : t + (m(0x5D) || (m(0xAC) & 0x80) ? 0 : c); },
+      // where: the land $F6, only while a land is loaded ($2B 8; 1 on LAND SELECT, where $F6 is the cursor, 0 on the title).
+      // (Checked 2026-11-01: all five lands from LAND SELECT, the select screen, the title, pause.)
+      where: function (m) { return m(0x2B) === 8 ? DT_LAND[m(0xF6)] || null : null; },
       over: function (m) { return (m(0x141) === 0x10 && m(0x145) === 0x0A && m(0x149) === 0x16 && m(0x155) === 0x1F && m(0x15D) === 0x1B) || ((m(0xAC) & 0x80) && m(0xF6) === 9); } },
     // Player 1's score: seven digits a byte on the even addresses $E6-$F2; player 2's on the odd ones $E7-$F3
     // ($0108-$010E is the HI-SCORE). Lives: $E4 player 1, $E5 player 2 (always 0 in a 1-player game). $5E is $FF while
@@ -115,6 +121,8 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
       score: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return a == null || b == null ? null : Math.max(a, b); },
       scores: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return [a == null || m(0xE4) === 0 ? 0 : a, b == null || m(0xE5) === 0 ? 0 : b]; },
       names: ['Player 1', 'Player 2'],
+      // where: the area $06FC (0-3), AREA 1-4 on the game's own card. (Checked 2026-11-01: areas 1-4 from the hidden area select.)
+      where: function (m) { var a = m(0x6FC); return a < 4 ? 'Area ' + (a + 1) : null; },
       play: function (m) { return m(0x5E) === 0 && m(0x2C) === 0x0A; },
       over: function (m) { return m(0x5E) === 0 && m(0xE4) === 0 && m(0xE5) === 0 && (m(0x2C) === 0x0A || m(0x06) === 0xC0); } },
     // seven digits a byte at $0072-$0078, the ones first. No demo. Lives $A6 underflow to $FF at the last death and stay
@@ -122,6 +130,10 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // game). (Checked 2026-11-01 in the emulator: the score to 20,000 against the screen, deaths, continue, stage select.)
     { key: 'megaman', short: 'MEGA MAN', name: 'Mega Man', sys: 'nes', ids: ['2f88381557339a14c20428455f6991c1eb902c99'], re: /^mega ?man$/,
       score: function (m) { return digitsLE(m, 0x72, 7); },
+      // where: stage $31 (0 Cut, 1 Ice, 2 Bomb, 3 Fire, 4 Elec, 5 Guts, 6-9 Wily 1-4); on the stage select $31 is the cursor,
+      // told apart by the select screen's palette pointer $35/$36 $BDAB ($BDDB once Guts Man is beaten). (Checked 2026-11-01:
+      // all six stages and Wily 1 and 2 from the select screen, pause, deaths, game over.)
+      where: function (m) { return m(0x36) === 0xBD && (m(0x35) === 0xAB || m(0x35) === 0xDB) ? null : MM_STAGE[m(0x31)] || null; },
       over: function (m) { return m(0xA6) === 0xFF; } },
     // points: six digits a byte at $03E8, starting again each fight (the best fight counts). $04 is $80 while the attract
     // demo fight plays (it scores). Three losses ($0173, career losses) end the career on the "GIVE UP? RETIRE? GAME
@@ -131,6 +143,9 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     { key: 'punchout', short: 'PUNCH-OUT', name: 'Mike Tyson’s Punch-Out!!', sys: 'nes', ids: ['0f0c2c2e294ff8ce255a618964728c935fd8963b'], re: /^(mike tysons )?punch-?out!*$/, reset: 1,
       score: function (m) { return digits(m, 0x3E8, 6); },
       play: function (m) { return m(0x04) !== 0x80; },
+      // where: the opponent $01 in career order; $06 is 0 on a fresh title menu. (Checked 2026-11-01: a new career and the
+      // three circuit passwords, and every id against its VS. screen.)
+      where: function (m) { var n = PO_OPP[m(0x01)]; return m(0x06) && n ? 'vs ' + n : null; },
       over: function (m) { return m(0xA9) === 7 && m(0x173) >= 3; } },
     // ── Super Nintendo ──
     // Mario's score: 3 bytes at $7E0F34 (low first), Luigi's at $7E0F37, the screen adding a 0 (it stops at 9,999,990).
