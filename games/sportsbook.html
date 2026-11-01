@@ -189,9 +189,15 @@ body{overflow-x:hidden;}
 .myt button .logo{width:36px;height:36px;}
 .myt button .logo img{width:28px;height:28px;}
 .myt button span{max-width:100%;white-space:nowrap;}
-.myt .add{color:var(--text-3);}
-.myt .add i{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:2px dashed var(--line-2);}
-.myt .add svg{width:18px;height:18px;}
+.myt .add{width:46px;padding:8px 0 6px;background:transparent;color:var(--text-3);font-size:.62rem;}
+.myt .add i{display:grid;place-items:center;width:30px;height:30px;margin:3px 0;border-radius:50%;background:var(--w06);}
+.myt .add svg{width:15px;height:15px;}
+.myt .add.first{width:68px;background:var(--w06);font-size:.7rem;}
+.myt .add.first i{width:36px;height:36px;margin:0;border:2px dashed var(--line-2);background:transparent;}
+/* a team tapped: only its games on the board; the others step back until it's tapped again */
+.myt button.on{background:rgba(255,209,102,.14);box-shadow:inset 0 0 0 2px var(--yellow);color:var(--text);}
+.myt.focus button:not(.on):not(.add){opacity:.45;}
+.myt button{transition:opacity .2s,background .2s,box-shadow .2s;}
 
 /* ── Thermal paper: the bet slip and every ticket ── */
 .tk{position:relative;--z:6px;background:#f6f4ee;color:#1d1d22;font-family:var(--mono);font-size:12.5px;line-height:1.35;padding:calc(var(--z) + 10px) 14px calc(var(--z) + 10px);
@@ -958,9 +964,10 @@ body{overflow-x:hidden;}
   function drawGames(holder, lgs) {
     var games = [], err = false, now = Date.now();
     lgs.forEach(function (lg) { var b = BOARD[lg]; if (!b) return; if (b.err) err = true; games = games.concat(b.games.map(function (g) { return GAMES[g.id] || g; })); });
-    var mine = tab === 'my';
+    var mine = tab === 'my', ff = mine ? focusFav() : null;
     games = games.filter(function (g) {
       if (mine && !favGame(g)) return false;
+      if (ff && !inGame(g, ff)) return false;
       if (g.lg === 'golf') return !g.done || (mine && now - g.end < 30 * 3600e3);
       if (g.state === 'post' || g.void) return mine && now - g.t < 30 * 3600e3;   // finished: only your teams' (until the next day)
       if (g.state === 'pre' && g.t < day0() - 0) return false;
@@ -973,8 +980,8 @@ body{overflow-x:hidden;}
     if (err) holder.appendChild(el('p', { class: 'muted', style: { margin: '0 4px 10px', 'font-size': '.85rem' }, text: games.length ? 'Can’t reach the lines right now. This is the last board saved here.' : 'Can’t reach the lines right now.' }));
     if (!games.length) {
       holder.appendChild(el('div', { class: 'sb-empty' }, [el('span', { html: Kit.icon('calendar') }),
-        el('h3', { text: mine ? 'No games for your teams' : 'No games this week' }),
-        el('p', { text: mine ? 'Your teams’ next games show up here once they’re on the schedule.' : LG[tab].name + ' is between games or out of season.' }),
+        el('h3', { text: ff ? 'No games for ' + (ff.lg === 'cbb' || ff.lg === 'cfb' ? ff.loc || ff.short : ff.nick || ff.short) : mine ? 'No games for your teams' : 'No games this week' }),
+        el('p', { text: ff ? 'Their next game shows up here once it’s on the schedule. Tap them again to see all your teams.' : mine ? 'Your teams’ next games show up here once they’re on the schedule.' : LG[tab].name + ' is between games or out of season.' }),
         err ? el('button', { type: 'button', class: 'btn btn-soft', text: 'Try again', onclick: function () { lgs.forEach(function (lg) { if (BOARD[lg]) BOARD[lg].at = 0; }); paintBoard(); } }) : null]));
       return;
     }
@@ -1095,10 +1102,22 @@ body{overflow-x:hidden;}
       });
     });
   }
+  // Your teams in a row: tap one to see only its games (tap it again for all of them); Edit, small, at the start
+  var focus = null, myScroll = 0;
+  function focusFav() { return focus ? favs.filter(function (f) { return f.lg + ':' + f.id === focus; })[0] || null : null; }
+  function inGame(g, f) { return g.lg === f.lg && (g.lg === 'golf' ? g.players.some(function (p) { return p.id === f.id; }) : g.home.id === f.id || g.away.id === f.id); }
   function myStrip() {
-    var s = el('div', { class: 'myt' });
-    favs.forEach(function (f) { s.appendChild(el('button', { type: 'button', onclick: pickTeams }, [logoEl(f), el('span', { text: f.abbr || f.short })])); });
-    s.appendChild(el('button', { type: 'button', class: 'add', onclick: pickTeams }, [el('i', { html: Kit.icon(favs.length ? 'pencil' : 'plus') }), el('span', { text: favs.length ? 'Edit' : 'Add' })]));
+    if (!focusFav()) focus = null;
+    var s = el('div', { class: 'myt' + (focus ? ' focus' : '') });
+    s.appendChild(el('button', { type: 'button', class: 'add' + (favs.length ? '' : ' first'), 'aria-label': favs.length ? 'Edit my teams' : 'Add teams', onclick: pickTeams }, [el('i', { html: Kit.icon(favs.length ? 'pencil' : 'plus') }), el('span', { text: favs.length ? 'Edit' : 'Add' })]));
+    favs.forEach(function (f) {
+      var k = f.lg + ':' + f.id;
+      s.appendChild(el('button', { type: 'button', class: focus === k ? 'on' : '', 'aria-pressed': String(focus === k), 'aria-label': 'Only ' + (f.name || f.short) + ' games', onclick: function () {
+        myScroll = s.scrollLeft; focus = focus === k ? null : k; Kit.sfx('tap'); Kit.haptic('light'); paintBoard();
+      } }, [logoEl(f), el('span', { text: f.abbr || f.short })]));
+    });
+    requestAnimationFrame(function () { s.scrollLeft = myScroll; });
+    s.addEventListener('scroll', function () { myScroll = s.scrollLeft; }, { passive: true });
     return s;
   }
 
