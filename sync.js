@@ -747,8 +747,13 @@
   function hiDate(r){ return Array.isArray(r) ? r[2] : r.date; }
   // Boards where lower is better (times, moves): listed in HI_BOARDS in games.js
   function hiIsLow(key){ try{ return typeof hiLow === 'function' && hiLow(key); }catch(e){ return false; } }
+  // Boards started again after their score reader was fixed: rows filed before (no rv, or an older one) are dropped
+  // everywhere, on every device and in the cloud (games/console-hi.js rev). console_ssf2: SSF2 read the wrong bytes
+  // and filed mid-game until 2026-11-01.
+  var HI_RESET = { console_ssf2: 2 };
+  function hiKeep(key, row){ var v = HI_RESET[key]; if(!v) return true; return !!row && !Array.isArray(row) && typeof row === 'object' && (Number(row.rv) || 0) >= v; }
   function mergeHi(a, b, key){
-    var all = asArray(a).concat(asArray(b));
+    var all = asArray(a).concat(asArray(b)).filter(function(row){ return hiKeep(key, row); });
     var seen = {}, low = hiIsLow(key);
     // a row whose initials were changed (was: 'CAM' or 'CAM,CJB') replaces the copy still under the old ones
     all.forEach(function(row){
@@ -2721,6 +2726,7 @@
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
     inboxList: inboxList, inboxAdd: inboxAdd, linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
+    hiReset: HI_RESET, hiKeep: hiKeep,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };
 

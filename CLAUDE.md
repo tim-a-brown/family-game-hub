@@ -171,6 +171,15 @@ Underlying principles for everything:
   task works that issue: adds the games on branch `claude/console-controls`, previews on channel `controls`, and waits
   for Tim's "ship it".
 
+## Console high scores
+
+- `games/console-hi.js` says where each console game keeps its score and its game over. A score is filed only at the
+  game's own checked game over (`over(m)`), once per game, with the game paused behind the prompt; a game without a
+  checked `over()` gets no high scores at all (never guess from a score that drops or a trip to the title).
+- Check a game by playing it in the emulator and reading memory against the screen (the scratchpad bench: EmulatorJS
+  headless with the house library's file). A fixed reader gets a new `rev` on the game and an entry in `HI_RESET`
+  (sync.js), which drops that board's older rows on every device and in the cloud.
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to

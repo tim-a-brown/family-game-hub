@@ -37,9 +37,12 @@ var ConsoleHi = (function () {
   function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
 
   // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
-  // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over).
-  // Without play(), any time counts (games with no demo that scores). Without over(), a game ends when the next one
-  // starts (its score back at the start), back on the title (play() false a few seconds), or when you leave.
+  // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over),
+  // rev (the board was reset when its reader was fixed: sync.js HI_RESET drops rows filed before).
+  // A score is filed only at the game's own game over, over(m), checked against the real game: once per game, with
+  // the best score the game reached, while the game is paused. A game with no checked over() files nothing (no prompt,
+  // no score) until one is worked out: a score that goes down or a trip back to the title is not taken as the end.
+  // Without play(), any time counts (games with no demo that scores).
   var GAMES = [
     // ── NES ──
     // Mario's score: a digit a byte at $07DD-$07E2, the screen adding a 0 (100 points reads 0,0,0,0,1,0). OperMode
@@ -67,9 +70,16 @@ var ConsoleHi = (function () {
     // the demo plays (and scores); $0B on: the map, levels and the screens between
     { key: 'smw', short: 'MARIO WORLD', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
       score: function (m) { return le(m, 0x7E0F34, 3) * 10; }, play: function (m) { return m(0x7E0100) >= 0x0B; } },
-    // player 1's score: packed decimal at $7E0700-$7E0703, in hundreds. $7E0030 is 2 while the attract demo runs
-    { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/,
-      score: function (m) { var v = bcd(m, 0x7E0700, 4); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; } },
+    // Player 1's score: packed decimal in hundreds, low byte first, at $7E0703-$7E0705 (10,300 is $03 $01 $00). The
+    // screen shows it with one more digit after it, the number of continues (79,900 after two continues reads 79902).
+    // The score carries on through a continue. $7E0030 is 0 in a game, 2 or 3 in the attract demo and on the title.
+    // Game over: the routine word at $7E0072 is $7D74 on the continue / game over screen, and the score is cleared to 0
+    // at the moment the game is really over (a continue keeps it), so the game's score is the best it reached.
+    // (Checked 2026-11-01 by playing it in the emulator: score against the screen through rounds, a continue, and three
+    // game overs. An earlier reader took $7E0700-$7E0703 the other way round and so read junk above 9,900 points.)
+    { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 2,
+      score: function (m) { var v = bcdLE(m, 0x7E0703, 3); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; },
+      over: function (m) { return (m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74 && m(0x7E0703) === 0 && m(0x7E0704) === 0 && m(0x7E0705) === 0; } },
     // six digits a byte at $7E0B34, the ones first, the screen adding a 0; starting again each fight (the best counts)
     { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, reset: 1,
       score: function (m) { return x10(digitsLE(m, 0x7E0B34, 6)); } },
@@ -169,7 +179,7 @@ var ConsoleHi = (function () {
   // o: {cart, sys, emu() -> EmulatorJS or null, live() -> the game is running, skip() -> don't follow now (online),
   //     onEnd(key, score, game, why) -> a finished game's score to file (its initials are asked there)}
   function watch(o) {
-    var g = mapFor(o.cart); if (!g || !CORE[o.sys]) return null;
+    var g = mapFor(o.cart); if (!g || !CORE[o.sys] || !g.over) return null;   // (no checked game over: no high scores)
     var C = CORE[o.sys], base = -1, cand = null, tries = 0, bad = 0, t = 0, since = Date.now(), lastIn = 0, cached = cacheGet(o.sys);
     var run = null, offT = 0, passed = false, top = null, hold = null;
     try { top = typeof ArcadeHi !== 'undefined' ? ArcadeHi.top(keyOf(g)) : null; } catch (e) {}
@@ -201,10 +211,12 @@ var ConsoleHi = (function () {
       if (s == null || !isFinite(s)) { if (++bad > 8) { base = -1; bad = 0; since = Date.now(); } return; }   // (moved, or not this game: look again)
       bad = 0;
       if (!run) run = fresh(s, clk);
-      if (on && !over) {
+      // the game's own game over: the one moment a game's score is filed (once: the run starts again unearned)
+      if (over) { if (run.earned) { if (g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end('over'); } run = fresh(s, clk); return; }
+      if (on) {
         offT = 0;
-        // a new game (or Reset): the score went back (a game whose score can go down: its clock went back)
-        if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last) { end('new'); run = fresh(s, clk); }
+        // a new game without a game over (Reset, or a saved state loaded): start again, filing nothing
+        if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last && s === 0) { run = fresh(s, clk); }
         if (hold != null && (s < hold || (g.clock && clk < hold.clk))) hold = null;
         // a score counts once it moves while the player is pressing buttons (the demo plays itself), and, after a
         // game was filed, only in a new game (its score starts again lower), so one game is never filed twice
@@ -212,10 +224,7 @@ var ConsoleHi = (function () {
         if (g.clock && clk != null) { if (clk === run.clk && run.earned) { if (++run.still >= 10) { hold = { s: scoreOf(run), clk: clk }; end('over'); run = fresh(s, clk); return; } } else run.still = 0; run.clk = clk; }   // (the clock stopped: out of lives)
         run.last = s; if (s > run.best) run.best = s;
         if (run.earned && !passed && top > 0 && s > top) { passed = true; if (o.onPass) o.onPass(s, top); }
-      } else if (run.earned) {
-        offT += 1;   // (back on the title, or game over: the game is done)
-        if (over || offT >= 6) { if (over && g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end(over ? 'over' : 'idle'); run = fresh(s, clk); }
-      } else run = fresh(s, clk);
+      } else if (!run.earned) run = fresh(s, clk);   // (the title or the demo: a game that wasn't played; a game under way waits for its game over)
     }
     function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0 }; }
     function scoreOf(r) { return r ? (g.down ? r.last : r.best) : 0; }
@@ -230,10 +239,10 @@ var ConsoleHi = (function () {
     return {
       game: g, key: keyOf(g),
       input: function () { lastIn = Date.now(); },
-      // the score so far of a game under way (for leaving the page: filed next time)
-      pending: function () { return run && run.earned && scoreOf(run) > 0 ? { key: keyOf(g), score: scoreOf(run), name: g.name, at: Date.now() } : null; },
-      // the game ends here (leaving, changing cartridge, loading a saved state): its score, if it made one
-      finish: function (why) { tick(true); end(why || 'left'); run = null; },
+      // (a game left before its game over files nothing: only a game over files a score)
+      pending: function () { return null; },
+      // leaving, changing cartridge, loading a saved state: a game over just now still files; a game under way doesn't
+      finish: function () { tick(true); run = null; },
       stop: function () { clearInterval(timer); },
       // (tests) where the RAM is, and what's read
       debug: function () { var H = heap(); if (base < 0 || !H) return { base: base }; var m = mem(H); return { base: base, score: g.score(m), play: g.play ? g.play(m) : true, over: !!(g.over && g.over(m)), clock: g.clock ? g.clock(m) : null, run: run, hold: hold }; }

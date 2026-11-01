@@ -514,13 +514,17 @@
   function hiInput() { if (hiW) hiW.input(); }
   window.addEventListener('keydown', hiInput, true);
   // a finished game's score: the moment on the TV (a new record gets confetti), then the initials for the board
+  // (the game is paused while this is up: nothing plays on behind it, and it carries on where it was afterwards)
   function hiFile(key, score, name, after) {
     try { localStorage.removeItem(HI_PEND); } catch (e) {}
     hiQ = hiQ.then(function () {
       return new Promise(function (done) {
         if (!hiOk() || !ArcadeHi.qualifies(key, score)) { done(); return; }
+        var E = emu(), held = !!(E && started && !E.paused);
+        if (held) try { E.pause(); } catch (e) {}
+        function fin() { var E2 = emu(); if (held && E2 && E2.paused && !resumeEl) try { E2.play(); } catch (e) {} done(); }
         var top = ArcadeHi.top(key), first = top == null || score > top;
-        hiMoment(score, first ? 'New record' : 'High score', name, function () { ArcadeHi.check(key, score, done); }, first);
+        hiMoment(score, first ? 'New record' : 'High score', name, function () { ArcadeHi.check(key, score, fin); }, first);
       });
     });
     return hiQ.then(function () { if (after) after(); });

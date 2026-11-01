@@ -88,10 +88,14 @@ const ArcadeHi = (function(){
 
   // Read the board, skipping any entry without a real score (a bad entry
   // used to show up as "NaN"), best first (highest, or lowest on a low board)
+  // a board started again after its reader was fixed (sync.js HI_RESET): rows filed before come off, here and in the cloud
+  function resetRev(key){ try{ return typeof FGHSync!=='undefined' && FGHSync.hiReset ? FGHSync.hiReset[key] || 0 : ({ console_ssf2: 2 })[key] || 0; }catch(e){ return 0; } }
   function load(key){
     let list = [];
     try{ list = JSON.parse(localStorage.getItem('hi_'+key)||'[]'); }catch(e){ return []; }
     if(!Array.isArray(list)) return [];
+    const rv = resetRev(key);
+    if(rv){ const kept = list.filter(e=>e && (Number(e.rv)||0) >= rv); if(kept.length !== list.length){ list = kept; save(key, kept); } }
     return list.filter(e=>e && isFinite(Number(e.score)) && e.score !== null && e.score !== '')
       .map(e=>Object.assign({}, e, { score: Number(e.score), name: String(e.name || '???') }))
       .sort(order(key));
@@ -142,6 +146,7 @@ const ArcadeHi = (function(){
     const dateStr = now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});   // e.g. 'Oct 9, 2026'
     const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const row = {name: name.toUpperCase().slice(0,3).padEnd(3,' '), score, date: dateStr+' '+timeStr};
+    const rv = resetRev(key); if(rv) row.rv = rv;
     const pk = String(who||'').trim().toLowerCase(); if(pk && !/^player \d+$/.test(pk)) row.p = pk;
     list.push(row);
     list.sort(order(key));
