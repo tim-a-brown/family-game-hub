@@ -44,6 +44,19 @@ var MM_STAGE = ['Cut Man', 'Ice Man', 'Bomb Man', 'Fire Man', 'Elec Man', 'Guts 
 var PO_OPP = ['Glass Joe', 'Von Kaiser', 'Piston Honda', 'Don Flamenco', 'King Hippo', 'Great Tiger', 'Bald Bull', 'Piston Honda', 'Soda Popinski', 'Bald Bull', 'Don Flamenco', 'Mr. Sandman', 'Macho Man', 'Mike Tyson'];
 var DT_LAND = ['Amazon', 'Transylvania', 'African Mines', 'Himalayas', 'The Moon'];
 var JH_SCENE = ['Vines', 'Reptile River', 'Boulders', 'Cannibal Camp'], JH_SHORT = ['Vines', 'River', 'Boulders', 'Camp'];
+var SSF2_P = ['Ryu', 'E.Honda', 'Blanka', 'Guile', 'Ken', 'Chun Li', 'Zangief', 'Dhalsim', 'M.Bison', 'Sagat', 'Balrog', 'Vega', 'Cammy', 'T.Hawk', 'Fei Long', 'Dee Jay'];
+var SPO_O = ['Gabby Jay', 'Bear Hugger', 'Piston', 'Bald Bull', 'Bob Charlie', 'Dragon Chan', 'Masked Muscle', 'Mr. Sandman', 'Aran Ryan', 'Heike Kagero', 'Mad Clown', 'Macho Man', 'Narcis Prince', 'Hoy Quarlow', 'Rick Bruiser', 'Nick Bruiser'];
+// Super Mario World: in a level (game mode $7E0100 $12-$14) the level entered, translevel $7E13BF; on the map ($0D-$10)
+// the level the player stands on, from the map's level-number layer $7ED000 at the player's tile ($1F1F/$1F21 + $0DD6,
+// submap $1F11 + $0DD6/4). Null while the map loads and on unnamed tiles. Names from the game's own table (ROM $04A0FC),
+// shortened. (Checked 2026-11-01: Yoshi's House, Yoshi's Island 1 and 2, Donut Plains 1 and Iggy's Castle, map and level.)
+var SMW_L = { 1: 'Vanilla Secret 2', 2: 'Vanilla Secret 3', 3: 'Top Secret Area', 4: 'Donut Ghost', 5: 'Donut Plains 3', 6: 'Donut Plains 4', 7: "Morton's Castle", 8: 'Green Switch', 9: 'Donut Plains 2', 10: 'Donut Secret 1', 11: 'Vanilla Fortress', 12: 'Butter Bridge 1', 13: 'Butter Bridge 2', 14: "Ludwig's Castle", 15: 'Cheese Bridge', 16: 'Cookie Mountain', 17: 'Soda Lake', 18: 'Star Road', 19: 'Secret House', 20: 'Yellow Switch', 21: 'Donut Plains 1', 22: 'Star Road', 24: 'Sunken Ship', 26: "Wendy's Castle", 27: 'Choco Fortress', 28: 'Choco Island 5', 29: 'Choco Island 4', 30: 'Star Road', 31: 'Forest Fortress', 32: "Roy's Castle", 33: 'Choco-Ghost', 34: 'Choco Island 1', 35: 'Choco Island 3', 36: 'Choco Island 2', 37: "Iggy's Castle", 38: "Yoshi's Island 4", 39: "Yoshi's Island 3", 40: "Yoshi's House", 41: "Yoshi's Island 1", 42: "Yoshi's Island 2", 43: 'Vanilla Ghost', 44: 'Star Road', 45: 'Vanilla Secret 1', 46: 'Vanilla Dome 3', 47: 'Donut Secret 2', 48: 'Star Road', 49: 'Front Door', 50: 'Back Door', 51: 'Valley 4', 52: "Larry's Castle", 53: 'Valley Fortress', 55: 'Valley 3', 56: 'Valley Ghost', 57: 'Valley 2', 58: 'Valley 1', 59: 'Choco Secret', 60: 'Vanilla Dome 2', 61: 'Vanilla Dome 4', 62: 'Vanilla Dome 1', 63: 'Red Switch', 64: "Lemmy's Castle", 65: 'Forest Ghost', 66: 'Forest 1', 67: 'Forest 4', 68: 'Forest 2', 69: 'Blue Switch', 70: 'Forest Secret', 71: 'Forest 3', 72: 'Star Road', 73: 'Funky', 74: 'Outrageous', 75: 'Mondo', 76: 'Groovy', 77: 'Star Road', 78: 'Gnarly', 79: 'Tubular', 80: 'Way Cool', 81: 'Awesome', 82: 'Star Road', 83: 'Star Road', 84: 'Star World 2', 85: 'Star Road', 86: 'Star World 3', 87: 'Star Road', 88: 'Star World 1', 89: 'Star World 4', 90: 'Star World 5', 91: 'Star Road', 92: 'Star Road' };
+function smwWhere(m) {
+  var g = m(0x7E0100), p = m(0x7E0DD6) & 4, x = m(0x7E1F1F + p), y = m(0x7E1F21 + p);
+  if (g >= 0x12 && g <= 0x14) return SMW_L[m(0x7E13BF)] || null;
+  if (g < 0x0D || g > 0x10) return null;
+  return SMW_L[m(0x7ED000 + (x & 15) + ((x & 16) << 4) + ((y & 15) << 4) + ((y & 16) << 5) + (m(0x7E1F11 + (p >> 2)) ? 0x400 : 0))] || null;
+}
 var COI_R = ['Enchanted Forest', 'Toyland', 'The Storm', 'The Library', 'The Castle', 'The Castle'];
 var SONIC_Z = ['Green Hill', 'Labyrinth', 'Marble', 'Star Light', 'Spring Yard', 'Scrap Brain'];
 function sonicWhere(m) {
@@ -158,6 +171,7 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // 2026-11-01: the screen at 200 to 1,234,560 and the cap; 1- and 2-player game overs, TIME UP, continue, the ending.)
     { key: 'smw', short: 'MARIO WORLD', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
       score: function (m) { return Math.max(le(m, 0x7E0F34, 3), le(m, 0x7E0F37, 3)) * 10; },
+      where: smwWhere,
       scores: function (m) { return [le(m, 0x7E0F34, 3) * 10, le(m, 0x7E0F37, 3) * 10]; }, names: ['Mario', 'Luigi'],
       play: function (m) { return m(0x7E0100) >= 0x0B; },
       over: function (m) { var g = m(0x7E0100); return (g >= 0x15 && g <= 0x17 && m(0x7E0DBE) === 0xFF && ((m(0x7E0DB4) | m(0x7E0DB5)) & 0x80) !== 0) || g === 0x29; } },
@@ -170,6 +184,10 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // game overs. An earlier reader took $7E0700-$7E0703 the other way round and so read junk above 9,900 points.)
     { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 2,
       score: function (m) { var v = bcdLE(m, 0x7E0703, 3); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; },
+      // where: the computer's fighter, player 2's character $7E05DA (set at the VS screen; ids as on the select screen), left
+      // out on the character select ($7E00C6 0). (Checked 2026-11-01: the fight HUD against six fighters, second fights after
+      // a win, and every id's name on the select screen.)
+      where: function (m) { var o = SSF2_P[m(0x7E05DA)]; return m(0x7E00C6) && o ? 'vs ' + o : null; },
       over: function (m) { return (m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74 && m(0x7E0703) === 0 && m(0x7E0704) === 0 && m(0x7E0705) === 0; } },
     // The circuit's TOTAL SCORE: five digits a byte at $7E0611, the ones first, the screen adding a 0 (added at each
     // fight's tally, wins and losses; 0 when a circuit starts; $7E0616 becomes 9 once a circuit is won, so it's left out).
@@ -181,6 +199,9 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // fight's points: rev 2.)
     { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, rev: 2,
       score: function (m) { var v = digitsLE(m, 0x7E0611, 5); return v == null ? null : v * 10; },
+      // where: the opponent $7E0600 (circuit x 4 + bout, +1 after each win), as the intro card names him. (Checked 2026-11-01:
+      // Gabby Jay, then Bear Hugger after a real win, and the first bout of each circuit.)
+      where: function (m) { var o = SPO_O[m(0x7E0600)]; return o ? 'vs ' + o : null; },
       play: function (m) { return m(0x7E0B10) === 2; },
       over: function (m) { return m(0x7E0B10) === 2 && ((m(0x7E0000) === 0x80 && m(0x7E0606) === 0) || (m(0x7E0765) === 2 && m(0x7E0602) === 0)); } },
     // 4 bytes at $7E8949 (low first; the HUD shows six digits). $7E5F2E is 1 while the demo plays (it scores). $7E5F16 is
@@ -190,6 +211,9 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // 2026-11-01: the screen at 100 to 123,456, three deaths to a game over, the title, the demo and a floor's tally.)
     { key: 'wolf3d', short: 'WOLF 3D', name: 'Wolfenstein 3D', sys: 'snes', ids: ['88fe872eb984af84f8ca7633ef5bd3904a2baeb4'], re: /^wolfenstein 3-?d$/,
       score: function (m) { return le(m, 0x7E8949, 4); },
+      // where: the map $7E8947 (0-29) as the HUD's FLOOR shows it: missions of 3, 4, 5, 5, 6 and 7 floors. (Checked
+      // 2026-11-01: 1-1 and 1-2 in play, and every map reloaded by the game against its HUD.)
+      where: function (m) { var f = m(0x7E8947), e = 0, S = [0, 3, 7, 12, 17, 23, 30]; if (m(0x7E8948) || f > 29) return null; while (f >= S[e + 1]) e++; return 'Floor ' + (e + 1) + '-' + (f - S[e] + 1); },
       play: function (m) { var s = m(0x7E5F16); return m(0x7E5F2E) === 0 && s !== 1 && s !== 5; },
       over: function (m) { return m(0x7E5F16) === 4 && m(0x7E8953) === 0 && m(0x7E5F2E) === 0; } },
     // ── Genesis ──
