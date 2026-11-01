@@ -86,10 +86,16 @@ function sonic2Where(m) {
   return z === 6 || z === 14 || z === 16 ? n : n + ' ' + (a + 1);
 }
 function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
+// Super Bomberman's SC: packed decimal in two words, low byte first; player 1's last four digits at $7E0D5C, the digits
+// above at $7E0D5A; player 2's $40 on ($7E0D9C/$7E0D9A)
+function sbScore(m, a) { var h = bcdLE(m, a, 2), l = bcdLE(m, a + 2, 2); return h == null || l == null ? null : h * 10000 + l; }
+var CONTRA_S = ['Jungle', 'Base 1', 'Waterfall', 'Base 2', 'Snow Field', 'Energy Zone', 'Hangar', 'Alien\u2019s Lair'];
+function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8)) * 100; }
 
   // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
   // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over),
   // rev (the board was reset when its reader was fixed: sync.js HI_RESET drops rows filed before).
+  // carry (the score isn't cleared for a new game: a game after a game over counts from where it started).
   // Two players, each with their own score: scores(m) -> every player's score (all readable at once: each one's best is
   // offered to the board at the game over), or who(m) -> which player's score score(m) is showing (the screen shows
   // whoever is up: each player's best is kept while they're up, and offered when that player's game is over, the others
@@ -172,6 +178,18 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
       // three circuit passwords, and every id against its VS. screen.)
       where: function (m) { var n = PO_OPP[m(0x01)]; return m(0x06) && n ? 'vs ' + n : null; },
       over: function (m) { return m(0xA9) === 7 && m(0x173) >= 3; } },
+    // Each player's score: a number at $07E2 (player 1) and $07E4 (player 2), low byte first, the screen adding 00 (shown
+    // between stages and at GAME OVER). $18: 2 the attract demo, 1 the title, 5 a game. $38/$39: player 1/2 out (player
+    // 2's is set from the start in a 1-player game); one player out, the other plays on. Over: both out (GAME OVER,
+    // CONTINUE/END; it waits). CONTINUE starts both at 0, so each game over files. (Checked 2026-11-01: GAME OVER screens
+    // at 200/400, 700 and 1,234,500/25,500; 1- and 2-player games, continue, end, the demo.)
+    // where: the stage $30, named as its card. (Checked 2026-11-01: all eight cards.)
+    { key: 'contra', short: 'CONTRA', name: 'Contra', sys: 'nes', ids: ['c9ea66bb7cb30ad5343f1721b1d4d3219859319b'], re: /^contra$/,
+      score: function (m) { return Math.max(contraScore(m, 0), contraScore(m, 1)); },
+      scores: function (m) { return [contraScore(m, 0), contraScore(m, 1)]; }, names: ['Player 1', 'Player 2'],
+      play: function (m) { return m(0x18) === 5; },
+      where: function (m) { return CONTRA_S[m(0x30)] || null; },
+      over: function (m) { return m(0x18) === 5 && m(0x38) === 1 && m(0x39) === 1; } },
     // ── Super Nintendo ──
     // Mario's score: 3 bytes at $7E0F34 (low first), Luigi's at $7E0F37, the screen adding a 0 (it stops at 9,999,990).
     // Game mode $7E0100: $07 the title, where the demo plays (and scores); $08-$0A the file and player menus; $0B on: the
@@ -229,6 +247,31 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
       where: function (m) { var f = m(0x7E8947), e = 0, S = [0, 3, 7, 12, 17, 23, 30]; if (m(0x7E8948) || f > 29) return null; while (f >= S[e + 1]) e++; return 'Floor ' + (e + 1) + '-' + (f - S[e] + 1); },
       play: function (m) { var s = m(0x7E5F16); return m(0x7E5F2E) === 0 && s !== 1 && s !== 5; },
       over: function (m) { return m(0x7E5F16) === 4 && m(0x7E8953) === 0 && m(0x7E5F2E) === 0; } },
+    // Each player's SC (sbScore). Player 2 joins a Normal Game any time with Start (from 0; rejoining after their game over,
+    // with one of player 1's lives, starts them at 0 again); their score stays there once they're out. $7E0D30 is the
+    // screen: 1 title, intro, island map and CONTINUE?, 2 Normal Game, 3 Battle Mode and the attract demo (a battle: wins,
+    // no score). $7E0D32 counts the players still in a Normal Game. Over: CONTINUE? once both are out ($7E0D30 1, $7E0D32
+    // 0, the scores kept); YES starts both at 0 again (each game over files), NO leaves them on the title until the demo.
+    // (Checked 2026-11-01: the screen at 100 to 1,001,500; 1- and 2-player games, a player out while the other plays on,
+    // rejoining, continue, a 4-player Battle Mode, the demo.)
+    { key: 'superbomberman', short: 'BOMBERMAN', name: 'Super Bomberman', sys: 'snes', ids: ['5b99127cb3c60c5ebce11d9b91bd09914ebc53f2'], re: /^super bomberman$/,
+      score: function (m) { var a = sbScore(m, 0x7E0D5A), b = sbScore(m, 0x7E0D9A); return a == null || b == null ? null : Math.max(a, b); },
+      scores: function (m) { return [sbScore(m, 0x7E0D5A), sbScore(m, 0x7E0D9A)]; }, names: ['Player 1', 'Player 2'],
+      play: function (m) { return m(0x7E0D30) === 2 && m(0x7E0D32) > 0; },
+      over: function (m) { return m(0x7E0D30) === 1 && m(0x7E0D32) === 0 && (sbScore(m, 0x7E0D5A) > 0 || sbScore(m, 0x7E0D9A) > 0); } },
+    // A 16-bit number at $7E5DEE, low byte first, the screen adding 00. Normal Game is one player (player 2's Start only
+    // pauses); Battle Game (up to 4) keeps wins, no score. $7E00BA: 0 a Normal Game, $10 title, intro and CONTINUE?, $80
+    // battle, $90 the attract demo (a battle); $7E00B9 1 while a stage runs. The score carries on through a continue and
+    // even into a new game from the title (only power-on clears it: carry, so a new game counts from where it started).
+    // Over: CONTINUE? done (NO, or the 10 count run out), so the intro ($7E0001, the graphics set, $A3) or title ($5B).
+    // (Checked 2026-11-01: the screen at 100 to 903,000, continue YES then NO filed once, a 4-player battle, the demo.)
+    // where: $7E5D42 is the area x 16 plus the stage from 0 ($10 is the 1-1 card). (Checked 2026-11-01 for 1-1 to 1-3;
+    // areas 2 and 3 by their look.)
+    { key: 'superbomberman2', short: 'BOMBERMAN 2', name: 'Super Bomberman 2', sys: 'snes', ids: ['14e4d0b3d00fd04f996eea86daa485a35e501853'], re: /^super bomberman 2$/, carry: true,
+      score: function (m) { return le(m, 0x7E5DEE, 2) * 100; },
+      play: function (m) { return m(0x7E00BA) === 0 && m(0x7E00B9) === 1; },
+      where: function (m) { var s = m(0x7E5D42), a = s >> 4, n = (s & 15) + 1; return a >= 1 && a <= 5 && n <= 8 ? 'Stage ' + a + '-' + n : null; },
+      over: function (m) { var t = m(0x7E0001); return le(m, 0x7E5DEE, 2) > 0 && m(0x7E00BA) === 0x10 && (t === 0xA3 || t === 0x5B); } },
     // ── Genesis ──
     // Score: 4 bytes at $FFFE26, the screen adding a 0. Game over: on the last life once Sonic is dying (routine $FFD024 =
     // 6), then lives $FFFE12 = 0 with the score kept through the GAME OVER card, the continue screen and the Sega/title
@@ -374,7 +417,7 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
   function watch(o) {
     var g = mapFor(o.cart); if (!g || !CORE[o.sys] || !g.over) return null;   // (no checked game over: no high scores)
     var C = CORE[o.sys], base = -1, cand = null, live = null, tries = 0, bad = 0, t = 0, since = Date.now(), lastIn = 0, cached = cacheGet(o.sys);
-    var run = null, offT = 0, passed = false, top = null, hold = null;
+    var run = null, offT = 0, passed = false, top = null, hold = null, carried = 0;
     try { top = typeof ArcadeHi !== 'undefined' ? ArcadeHi.top(keyOf(g)) : null; } catch (e) {}
     function heap() { var E = o.emu(); return E && E.Module && E.Module.HEAPU8; }
     function mem(H) { return function (a) { return H[base + C.addr(a)]; }; }
@@ -417,7 +460,8 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
       if (over) {
         // (the screen shows whoever is up: that player's game is over, and anyone else plays on)
         if (g.who) { if (run.earned && !run.pf[w]) { run.pf[w] = 1; var v = Math.max(run.pb[w] || 0, s); run.pb[w] = 0; if (v > 0) send(v, label(w)); } return; }
-        if (run.earned) { if (g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end('over'); }
+        if (run.earned) { if (g.down) run.last = s; hold = g.carry ? null : g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end('over'); }
+        if (g.carry) carried = s;   // (carry: the next game starts from this score)
         run = fresh(s, clk); return;
       }
       if (on) {
@@ -433,14 +477,14 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
         if (s !== run.last && hold == null && Date.now() - lastIn < 60000) run.earned = true;
         if (g.clock && clk != null) { if (clk === run.clk && run.earned) { if (++run.still >= 10) { hold = { s: scoreOf(run), clk: clk }; end('over'); run = fresh(s, clk); return; } } else run.still = 0; run.clk = clk; }   // (the clock stopped: out of lives)
         run.last = s; if (s > run.best) run.best = s;
-        if (run.earned && !passed && top > 0 && s > top) { passed = true; if (o.onPass) o.onPass(s, top); }
+        if (run.earned && !passed && top > 0 && s - (run.from || 0) > top) { passed = true; if (o.onPass) o.onPass(s, top); }
       } else if (!run.earned) run = fresh(s, clk);   // (the title or the demo: a game that wasn't played; a game under way waits for its game over)
     }
-    function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0, pb: {}, pf: {}, w: -1 }; }
+    function fresh(s, clk) { if (s < carried) carried = 0; return { best: s, last: s, earned: false, clk: clk, still: 0, pb: {}, pf: {}, w: -1, from: carried }; }
     // what to call a player on the board's moment: only when more than one has played (one player is just "High score")
     function label(i) { var n = Object.keys(run.pb).filter(function (k) { return run.pb[k] > 0 || +k === i; }).length; return g.names && (n > 1 || i > 0 || run.multi) ? g.names[i] || 'Player ' + (i + 1) : null; }
     function send(sc, who) { if (o.onEnd) o.onEnd(keyOf(g), sc, g, 'over', who); try { top = ArcadeHi.top(keyOf(g)); } catch (e) {} passed = false; }
-    function scoreOf(r) { return r ? (g.down ? r.last : r.best) : 0; }
+    function scoreOf(r) { return r ? (g.down ? r.last : r.best) - (r.from || 0) : 0; }
     function end(why) {
       if (!run || !run.earned) return;
       var sc = scoreOf(run); run.earned = false;
