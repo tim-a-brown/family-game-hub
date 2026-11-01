@@ -36,19 +36,23 @@ var ConsoleHi = (function () {
 
   // Sonic games: game mode $FFF600 (bit 7 set while a stage loads): $00 Sega screen, $04 title, $08 the demo (which
   // scores), then levels ($0C), special stages, continue and ending screens are all a game under way
-  // where you are (Keep playing's tile): Sonic's zone $FFFE10 and act $FFFE11, by the games' own zone numbers (Sonic 1:
+  // (Checked 2026-11-01 with each game's level select against every zone's title card, Scrap Brain 3, Final Zone,
+// Metropolis 3, Wing Fortress, Death Egg and Sky Chase included, and the special stages.)
+// where you are (Keep playing's tile): Sonic's zone $FFFE10 and act $FFFE11, by the games' own zone numbers (Sonic 1:
 // Scrap Brain 3 is Labyrinth's 4th act, the Final Zone Scrap Brain's 3rd; Sonic 2: Metropolis 3 is a zone of its own)
+var COI_R = ['Enchanted Forest', 'Toyland', 'The Storm', 'The Library', 'The Castle', 'The Castle'];
 var SONIC_Z = ['Green Hill', 'Labyrinth', 'Marble', 'Star Light', 'Spring Yard', 'Scrap Brain'];
 function sonicWhere(m) {
   var z = m(0xFFFE10), a = m(0xFFFE11);
+  if ((m(0xFFF600) & 0x7F) === 0x10) return 'Special Stage';   // (game mode $10; the zone keeps the level's)
   if (z === 1 && a === 3) return 'Scrap Brain 3';
   if (z === 5 && a === 2) return 'Final Zone';
-  if (z === 7) return 'Special Stage';
   return SONIC_Z[z] && a < 3 ? SONIC_Z[z] + ' ' + (a + 1) : null;
 }
 var SONIC2_Z = { 0: 'Emerald Hill', 4: 'Metropolis', 5: 'Metropolis', 6: 'Wing Fortress', 7: 'Hill Top', 10: 'Oil Ocean', 11: 'Mystic Cave', 12: 'Casino Night', 13: 'Chemical Plant', 14: 'Death Egg', 15: 'Aquatic Ruin', 16: 'Sky Chase' };
 function sonic2Where(m) {
   var z = m(0xFFFE10), a = m(0xFFFE11), n = SONIC2_Z[z];
+  if ((m(0xFFF600) & 0x7F) === 0x10) return 'Special Stage';
   if (!n || a > 1) return null;
   if (z === 5) return 'Metropolis 3';
   return z === 6 || z === 14 || z === 16 ? n : n + ' ' + (a + 1);
@@ -197,6 +201,10 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     // screen, deaths with tries left, game overs with and without buttons, continue and new game, the demo.)
     { key: 'castleofillusion', short: 'MICKEY', name: 'Castle of Illusion', sys: 'genesis', ids: ['4ac3687634a5acc55ac7f156c6de9749158713e4'], re: /castle of illusion/,
       score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; },
+      // where you are: the stage $FFFF42 (word, 0-27) by the game's own round table (ROM $A008), named as the manual's
+      // five levels (the game has no title cards); only in a level ($FFF301 $0C loading, $0E playing), null in the hall.
+      // (Checked 2026-11-01: every stage loaded by the game from the hall.)
+      where: function (m) { var st = m(0xFFF301), k = m(0xFFFF43); return (st === 0x0C || st === 0x0E) && !m(0xFFFF42) && k < 28 ? COI_R['0000011112222333333333344445'.charAt(k)] : null; },
       over: function (m) { var s = m(0xFFF301); return s === 0x18 || s === 0x1A || (s === 0x0E && m(0xFFF449) === 1); } },
     // ── Atari 2600 ──
     // packed decimal at $D5-$D7, starting at 2,000 and going down as well as up: the score at the end counts. The
