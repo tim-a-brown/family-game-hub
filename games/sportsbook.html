@@ -88,6 +88,8 @@ body{overflow-x:hidden;}
 .sb-tabs::-webkit-scrollbar{display:none;}
 .sb-tabs .chip svg{width:16px;height:16px;}
 .sb-tabs .chip.on svg{color:#c8901a;}
+.sb-tabs .chip{gap:7px;}
+.sb-tabs .chip .tlg{flex:none;object-fit:contain;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));}
 
 /* ── The board: lit sportsbook panels ── */
 .sb-day{margin:16px 2px 8px;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);display:flex;justify-content:space-between;gap:10px;}
@@ -442,6 +444,11 @@ body{overflow-x:hidden;}
     golf: { name: 'Golf', kind: 'golf', path: 'golf/pga', pro: 1 }
   };
   var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb', 'tennis', 'golf'];
+  // the logos kept with the game (games/sportsbook/<league>.png); a league without one gets ESPN's
+  var LOGO_HERE = { mlb: 1, nba: 1, wnba: 1, nfl: 1, nhl: 1, cbb: 1, cfb: 1, tennis: 1, golf: 1 };
+  // Each logo's shape (width over height) and how much of its box it fills, so they can be sized to look the same:
+  // the same area of ink each, a thin one taller and a wide or solid one smaller (within the space there is)
+  var LOGO_SHAPE = { mlb: [1.858, .99], nba: [.417, .58], wnba: [.408, .70], nfl: [.725, .76], nhl: [.875, .76], cbb: [1.008, .75], cfb: [1.492, .44], tennis: [1.225, .57], golf: [.733, .98] };
   var MKN = { ml: 'Moneyline', sp: 'Spread', tot: 'Total', win: 'To win' };
   // How deep the book goes (chosen on first load, changed from the menu; it follows the PIN)
   var DEPTHS = [
@@ -998,6 +1005,10 @@ body{overflow-x:hidden;}
     list.forEach(function (x) {
       var b = el('button', { type: 'button', class: 'chip' + (tab === x[0] ? ' on' : ''), onclick: function () { if (tab === x[0]) return; tab = x[0]; try { localStorage.setItem(TK, JSON.stringify(tab)); } catch (e) {} Kit.sfx('tap'); paintTabs(); paintBoard(); } });
       if (x[0] === 'my') b.innerHTML = Kit.icon('star');
+      else if (LOGO_HERE[x[0]]) {   // the league's own logo, in colour, sized so they all look alike, then its name
+        var sz = logoSize(x[0], 230, 22, 34), im = el('img', { class: 'tlg', src: lgLogo(x[0]), alt: '', decoding: 'async', style: { width: sz[0] + 'px', height: sz[1] + 'px' } });
+        im.onerror = function () { im.remove(); }; b.appendChild(im);
+      }
       b.appendChild(document.createTextNode(x[1]));
       dom.tabs.appendChild(b);
     });
@@ -2000,11 +2011,6 @@ body{overflow-x:hidden;}
     ls.forEach(function (x) { if (!pick || (x.rel || []).indexOf('dark') >= 0) pick = x; });
     if (pick && pick.href && LGLOGO[lg] !== pick.href) { LGLOGO[lg] = pick.href; try { localStorage.setItem('sb_lglogo_cache', JSON.stringify(LGLOGO)); } catch (e) {} }
   }
-  // the logos kept with the game (games/sportsbook/<league>.png); a league without one gets ESPN's
-  var LOGO_HERE = { mlb: 1, nba: 1, wnba: 1, nfl: 1, nhl: 1, cbb: 1, cfb: 1, tennis: 1, golf: 1 };
-  // Each logo's shape (width over height) and how much of its box it fills, so they can be sized to look the same:
-  // the same area of ink each, a thin one taller and a wide or solid one smaller (within the space there is)
-  var LOGO_SHAPE = { mlb: [1.858, .99], nba: [.417, .58], wnba: [.408, .70], nfl: [.725, .76], nhl: [.875, .76], cbb: [1.008, .75], cfb: [1.492, .44], tennis: [1.225, .57], golf: [.733, .98] };
   function logoSize(lg, area, maxH, maxW) {
     var sh = LOGO_SHAPE[lg] || [1, .8], r = sh[0], h = Math.sqrt(area / (r * (.5 + .5 * sh[1])));
     h = Math.min(h, maxH, maxW / r);
