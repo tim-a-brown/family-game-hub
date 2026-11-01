@@ -263,12 +263,14 @@
         step(st);
       }
     }
-    // the end: most squares on the slab wins
+    // the squares still in a player's pieces (89 to start)
+    function leftSq(p) { var n = 0; p.left.forEach(function (id) { n += SHAPES[id].length; }); return n; }
+    // the end: the fewest squares left in your pieces wins
     function finish(st, why) {
       st.over = true;
       var pl = st.players;
-      pl.forEach(function (p) { p.total = p.cells; });
-      var order = pl.map(function (p, i) { return i; }).sort(function (a, b) { return pl[b].total - pl[a].total; });
+      pl.forEach(function (p) { p.total = leftSq(p); });
+      var order = pl.map(function (p, i) { return i; }).sort(function (a, b) { return pl[a].total - pl[b].total; });
       var best = pl[order[0]], win = order.filter(function (i) { return pl[i].total === best.total; });
       st.result = { why: why, order: order, win: win };
       st.ev.push({ k: 'end', why: why });
@@ -330,7 +332,7 @@
       if (level === 'easy') return best[Math.floor(Math.random() * Math.min(best.length, 6))];
       return best[0];
     }
-    return { SHAPES: SHAPES, ORDER: ORDER, ORI: ORI, seatAt: seatAt, start: start, cover: cover, legal: legal, places: places, canMove: canMove, apply: apply, reach: reach, think: think, rc: rc, hasAny: hasAny };
+    return { SHAPES: SHAPES, ORDER: ORDER, leftSq: leftSq, ORI: ORI, seatAt: seatAt, start: start, cover: cover, legal: legal, places: places, canMove: canMove, apply: apply, reach: reach, think: think, rc: rc, hasAny: hasAny };
   })();
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -343,7 +345,7 @@
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Quarry: past games' }); } }]),
     rules:
-      '<p class="goal">Grow out from your corner and cover more of the slab than anyone else.</p>' +
+      '<p class="goal">Grow out from your corner and lay as much of your set as you can: the fewest squares left in your pieces wins.</p>' +
       '<h3>Your pieces</h3><ul><li>Everyone has the same set of <b>21 pieces</b> in their colour: one single block, one pair, two threes, five fours and twelve fives. Each piece is laid once.</li></ul>' +
       '<h3>Your turn</h3><ul><li>Pick any piece you have left, turn it or flip it, and lay it on the slab.</li>' +
       '<li>Your <b>first piece</b> has to cover your corner (the dashed square in your colour).</li>' +
@@ -351,7 +353,7 @@
       '<li>The squares you can grow into glow in your colour.</li></ul>' +
       '<h3>Walled in</h3><ul><li>When none of your pieces fits anywhere, you’re walled in and sit out the rest of the game. The others carry on.</li></ul>' +
       '<h3>The end</h3><ul><li>The game ends when nobody can lay another piece.</li>' +
-      '<li>Whoever has the <b>most squares</b> on the slab wins.</li></ul>' +
+      '<li>Count the squares in the pieces you still have. The <b>fewest squares left</b> wins.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b>: 2 to 4 players, each on their own device, at your own pace. The home screen shows when it’s your turn. Moves can’t be taken back online.</li></ul>' +
       '<h3>Tips</h3><ul><li>Lay the big pieces while there’s room. The small ones squeeze into gaps late in the game.</li><li>Grow toward the open middle early, before someone else claims it.</li><li>Cut across a rival’s path to wall them off from the gems near them.</li></ul>'
   });
@@ -407,11 +409,11 @@
     V.pl.innerHTML = '';
     V.pl.style.setProperty('--n', S.players.length === 3 ? 3 : 2);
     S.players.forEach(function (p, i) {
-      var on = !S.over && i === S.turn, num = el('b', { class: bumpSeat === i ? 'bump' : null, text: String(p.cells) });
+      var on = !S.over && i === S.turn, left = Q.leftSq(p), num = el('b', { class: bumpSeat === i ? 'bump' : null, text: String(left) });
       var d = el('div', { class: 'qy-p' + (on ? ' on' : '') + (p.out && !S.over ? ' out' : ''), style: { '--c': p.color }, 'data-seat': i }, [
         el('span', { class: 'sw' }),
         el('span', { class: 'nm', html: Kit.esc(p.name) + (p.cpu ? '' : '') }),
-        el('span', { class: 'st' }, [el('span', { class: 'sq' }, [num, el('span', { text: p.cells === 1 ? 'square' : 'squares' })])])
+        el('span', { class: 'st' }, [el('span', { class: 'sq' }, [num, el('span', { text: (left === 1 ? 'square' : 'squares') + ' left' })])])
       ]);
       V.pl.appendChild(d);
     });
@@ -642,7 +644,7 @@
   // "+5" rising off the middle of a piece just laid
   function plusAt(sq, n) {
     var r = 0, c = 0; sq.forEach(function (x) { r += Math.floor(x / S.N); c += x % S.N; }); r = r / sq.length; c = c / sq.length;
-    var plus = el('div', { class: 'qy-plus', text: '+' + n, style: { left: ((c + .5) / S.N * 100) + '%', top: ((r + .5) / S.N * 100) + '%' } });
+    var plus = el('div', { class: 'qy-plus', text: '−' + n, style: { left: ((c + .5) / S.N * 100) + '%', top: ((r + .5) / S.N * 100) + '%' } });
     V.board.appendChild(plus); setTimeout(function () { plus.remove(); }, 1200);
   }
 
@@ -690,16 +692,16 @@
   function endGame() {
     var R = S.result, pl = S.players, w = R.win, wp = pl[w[0]];
     paintPlayers();
-    var rank = R.order.map(function (i) { return { name: pl[i].name, score: pl[i].total, color: pl[i].color }; });
-    var hl = R.order.map(function (i) { var p = pl[i]; return p.name + ': ' + p.cells + ' squares with ' + p.placed + ' of 21 pieces'; });
+    var rank = R.order.map(function (i) { return { name: pl[i].name, score: pl[i].total + ' left', color: pl[i].color }; });
+    var hl = R.order.map(function (i) { var p = pl[i]; return p.name + ': ' + p.total + (p.total === 1 ? ' square' : ' squares') + ' left, ' + p.placed + ' of 21 pieces laid'; });
     var key = (NET ? NET.code : 'local') + ':' + S.started;
     if (!NETREC[key]) {
       NETREC[key] = 1;
       Kit.record(KEY, {
         started: S.started, mode: NET ? 'Online' : pl.some(function (p) { return p.cpu; }) ? 'vs Computer' : 'Pass & play',
-        players: pl.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+        players: pl.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }), lowWins: true,
         winner: w.length === 1 ? wp.name : null,
-        summary: w.length === 1 ? wp.name + ' won with ' + wp.total : 'Tie at ' + wp.total,
+        summary: w.length === 1 ? wp.name + ' won with ' + wp.total + ' left' : 'Tie at ' + wp.total + ' left',
         highlights: hl.concat([R.why === 'all' ? 'Every piece was laid' : 'Nobody could lay another piece']).concat(NET ? ['Online game, table ' + NET.code] : []),
         detail: { N: S.N, board: S.b.map(function (v) { return v < 0 ? '.' : String(v); }).join(''), moves: S.moves.length }
       });
@@ -709,7 +711,7 @@
     var left = NET && NET.result && NET.result.left != null;
     Kit.win({
       icon: iWon || !solo && !NET ? 'trophy' : 'flag',
-      title: left ? NET.result.text : w.length > 1 ? 'A tie at ' + wp.total + '!' : (NET ? iWon : solo && iWon) ? 'You win!' : wp.name + ' wins!',
+      title: left ? NET.result.text : w.length > 1 ? 'A tie at ' + wp.total + ' left!' : (NET ? iWon : solo && iWon) ? 'You win!' : wp.name + ' wins!',
       sub: R.why === 'all' ? 'Every piece was laid' : 'Nobody could lay another piece',
       rank: rank, lose: (NET || solo) && !iWon,
       againLabel: left ? 'Back to the lobby' : 'Play again',
@@ -749,7 +751,7 @@
     over: function (st) {
       if (!st.over || !st.result) return null;
       var pl = st.players, w = st.result.win;
-      return { win: w, text: w.length === 1 ? pl[w[0]].name + ' won with ' + pl[w[0]].total : 'Tie at ' + pl[w[0]].total };
+      return { win: w, text: w.length === 1 ? pl[w[0]].name + ' won with ' + pl[w[0]].total + ' left' : 'Tie at ' + pl[w[0]].total + ' left' };
     },
     bot: function (st, seat) { var m = Q.think(st, seat, 'normal'); if (!m || !Q.apply(st, seat, m.id, m.o, m.r, m.c)) return null; return { state: st, mv: { seat: seat, t: m.id } }; },
     show: netShow, leave: netLeave
