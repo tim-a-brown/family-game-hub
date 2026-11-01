@@ -28,6 +28,8 @@ var ConsoleHi = (function () {
   function bcdLE(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) { var b = m(a + i), hi = b >> 4, lo = b & 15; if (hi > 9 || lo > 9) return null; v = v * 100 + hi * 10 + lo; } return v; }
   function be(m, a, n) { var v = 0; for (var i = 0; i < n; i++) v = v * 256 + m(a + i); return v; }
   function le(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) v = v * 256 + m(a + i); return v; }
+  // one digit every other byte, most significant first (two players' scores interleaved)
+  function digits2(m, a) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(a + 2 * i); if (d > 9) return null; v = v * 10 + d; } return v; }
   // one digit a byte, least significant first
   function digitsLE(m, a, n) { var v = 0; for (var i = n - 1; i >= 0; i--) { var d = m(a + i); if (d > 9) return null; v = v * 10 + d; } return v; }
   function x10(v) { return v == null ? null : v * 10; }
@@ -78,15 +80,20 @@ var ConsoleHi = (function () {
     { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 2,
       score: function (m) { function f(a, n) { var v = 0; for (var i = 0; i < n; i++) { var d = m(a + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } var t = f(0x334, 8), c = f(0x324, 7); return t == null || c == null ? null : t + (m(0x5D) || (m(0xAC) & 0x80) ? 0 : c); },
       over: function (m) { return (m(0x141) === 0x10 && m(0x145) === 0x0A && m(0x149) === 0x16 && m(0x155) === 0x1F && m(0x15D) === 0x1B) || ((m(0xAC) & 0x80) && m(0xF6) === 9); } },
-    // Player 1's score: seven digits a byte on the even addresses $E6-$F2 (player 2's on the odd ones); $0108-$010E is
-    // the HI-SCORE. $5E is $FF while the attract demo plays (it never scores); $2C is $0A on the playfield. Lives $E4
-    // reach 0 at the last death; then A,B,B,A within ~8 s continues with the score cleared to 0, else GAME OVER ($06 =
-    // $C0), so the game is over from the last death. (Checked 2026-11-01 in the emulator: the score against the screen
-    // to 15,900, deaths, continue, game over, demo. An earlier reader read the high score: rev 2.)
+    // Player 1's score: seven digits a byte on the even addresses $E6-$F2; player 2's on the odd ones $E7-$F3
+    // ($0108-$010E is the HI-SCORE). Lives: $E4 player 1, $E5 player 2 (always 0 in a 1-player game). $5E is $FF while
+    // the attract demo plays (it never scores); $2C is $0A on the playfield. A player's lives reach 0 at their last
+    // death; A,B,B,A then brings them back with the score cleared to 0 (in 1 player within ~8 s, then GAME OVER, $06 =
+    // $C0; in 2 players any time while the other plays on), so the game is over when both players' lives are 0. A player
+    // who is out counts 0 in scores() (their best is already kept). (Checked 2026-11-01 in the emulator: both scores
+    // against the screen, 1- and 2-player games to the end, continues, game over, demo. An earlier reader read the high
+    // score: rev 2.)
     { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/, rev: 2,
-      score: function (m) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(0xE6 + 2 * i); if (d > 9) return null; v = v * 10 + d; } return v; },
+      score: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return a == null || b == null ? null : Math.max(a, b); },
+      scores: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return [a == null || m(0xE4) === 0 ? 0 : a, b == null || m(0xE5) === 0 ? 0 : b]; },
+      names: ['Player 1', 'Player 2'],
       play: function (m) { return m(0x5E) === 0 && m(0x2C) === 0x0A; },
-      over: function (m) { return m(0x5E) === 0 && m(0xE4) === 0 && (m(0x2C) === 0x0A || m(0x06) === 0xC0); } },
+      over: function (m) { return m(0x5E) === 0 && m(0xE4) === 0 && m(0xE5) === 0 && (m(0x2C) === 0x0A || m(0x06) === 0xC0); } },
     // seven digits a byte at $0072-$0078, the ones first. No demo. Lives $A6 underflow to $FF at the last death and stay
     // there on the GAME OVER screen until CONTINUE or STAGE SELECT, both of which clear the score (each game over is a
     // game). (Checked 2026-11-01 in the emulator: the score to 20,000 against the screen, deaths, continue, stage select.)
