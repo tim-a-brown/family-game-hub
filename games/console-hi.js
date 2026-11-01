@@ -43,6 +43,7 @@ var ConsoleHi = (function () {
 var MM_STAGE = ['Cut Man', 'Ice Man', 'Bomb Man', 'Fire Man', 'Elec Man', 'Guts Man', 'Wily 1', 'Wily 2', 'Wily 3', 'Wily 4'];
 var PO_OPP = ['Glass Joe', 'Von Kaiser', 'Piston Honda', 'Don Flamenco', 'King Hippo', 'Great Tiger', 'Bald Bull', 'Piston Honda', 'Soda Popinski', 'Bald Bull', 'Don Flamenco', 'Mr. Sandman', 'Macho Man', 'Mike Tyson'];
 var DT_LAND = ['Amazon', 'Transylvania', 'African Mines', 'Himalayas', 'The Moon'];
+var JH_SCENE = ['Vines', 'Reptile River', 'Boulders', 'Cannibal Camp'], JH_SHORT = ['Vines', 'River', 'Boulders', 'Camp'];
 var COI_R = ['Enchanted Forest', 'Toyland', 'The Storm', 'The Library', 'The Castle', 'The Castle'];
 var SONIC_Z = ['Green Hill', 'Labyrinth', 'Marble', 'Star Light', 'Spring Yard', 'Scrap Brain'];
 function sonicWhere(m) {
@@ -230,6 +231,9 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     { key: 'pitfall', short: 'PITFALL', name: 'Pitfall!', sys: 'atari2600', ids: ['8d525480445d48cc48460dc666ebad78c8fb7b73'], re: /^pitfall!?$/, down: 1,
       score: function (m) { return bcd(m, 0xD5, 3); },
       clock: function (m) { var t = bcd(m, 0xD8, 2); return t == null ? null : 1200 - (Math.floor(t / 100) * 60 + t % 100); },
+      // where: no levels (255 unnamed screens), so the time left on the 20-minute clock ($D8 minutes, $D9 seconds) as the
+      // screen shows it. (Checked 2026-11-01 against the clock on screen.)
+      where: function (m) { var t = bcd(m, 0xD8, 2); return t == null || t > 2000 || t % 100 > 59 ? null : Math.floor(t / 100) + ':' + ('0' + t % 100).slice(-2) + ' left'; },
       play: function (m) { var t = bcd(m, 0xD8, 2); return t != null && t !== 2000; },
       over: function (m) { return m(0x9E) !== 0 && (m(0x80) === 0 || (m(0xD8) === 0 && m(0xD9) === 0) || m(0xF1) === 0xFF); } },
     // packed decimal at $83-$85, the low byte first (points are added at $83; a carry into $85 is the extra man at
@@ -241,6 +245,10 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/, rev: 2,
       score: function (m) { var v = bcdLE(m, 0x83, 3); return v == null ? null : v - v % 10; },
       play: function (m) { return (m(0x98) & 0x80) === 0; },
+      // where: the part of the jungle ($89: 0 vines, 1 river, 2 boulders, 3 cannibal camp) and, after a rescue, the round
+      // ($8B goes up at each rescue; Game 2 starts it at 1, $98 bit 0; the cartridge never shows a round number).
+      // (Checked 2026-11-01: played through all four parts to the rescue and into round 2; Game 2's start.)
+      where: function (m) { var s = m(0x89), r = m(0x8B) - (m(0x98) & 1) + 1; return s > 3 || r < 1 ? null : r === 1 ? JH_SCENE[s] : r < 10 ? 'Round ' + r + ' ' + JH_SHORT[s] : 'Round ' + r; },
       over: function (m) { return (m(0x98) & 0x80) !== 0 && (m(0x83) | m(0x84) | m(0x85)) !== 0; } },
     // packed decimal at $DF-$E1, low byte first; the screen shows it to the ten (its last digit always 0). $FF bit 6: the
     // title and a finished game. A game ends when the time ($DC) runs out, in qualifying or the race, or when the race's
@@ -251,6 +259,10 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     { key: 'poleposition', short: 'POLE POS.', name: 'Pole Position', sys: 'atari2600', ids: ['9d334da07352a9399cbbd9b41c6923232d0cdcd3'], re: /^pole position$/, down: 1,
       score: function (m) { var v = m(0xFF) & 0x20 ? bcd(m, 0xE8, 1) * 1000 + bcd(m, 0xEC, 1) * 10 : bcdLE(m, 0xDF, 3); return v == null ? null : v - v % 10; },
       play: function (m) { return !(m(0xFF) & 0x40) || m(0xDC) !== 0 || m(0xE2) !== 0 || m(0xEB) !== 0xFF; },
+      // where: the qualifying lap ($FF bit 7 clear) or the race lap, from the distance gone ($87:$86, $400 a lap: the
+      // qualifying lap, then 4 race laps); null once it's over ($FF bit 6). (Checked 2026-11-01: a full qualifying lap and
+      // race, each lap line against the screen.)
+      where: function (m) { var f = m(0xFF), l = m(0x87) >> 2; return f & 0x40 ? null : !(f & 0x80) ? 'Qualifying' : l >= 1 && l <= 4 ? 'Lap ' + l + ' of 4' : null; },
       over: function (m) { return (m(0xFF) & 0x40) !== 0 && m(0xDC) === 0 && m(0xE2) === 0 && m(0xEB) === 0xFF && (m(0xDF) | m(0xE0) | m(0xE1)) !== 0; } }
   ];
 
