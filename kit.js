@@ -1274,6 +1274,7 @@
     oregon:        { felt: ['#3f5a2a', '#2b3f1c', '#1c2a12'], wood: ['#9a6a3e', '#6a4424'] },
     monopoly:      { felt: ['#1f6b4f', '#155039', '#0e3a29'], wood: ['#6b4126', '#412614'], back: ['#c8102e', '#f3901d'] },
     scrabble:      { felt: ['#1f5c4c', '#143f34', '#0d2d25'], wood: ['#8f5a2e', '#5a3417'] },
+    quarry:        { wood: ['#8a5d36', '#5b3a1f'] },
     applestoapples:{ felt: ['#245069', '#173a4f', '#0f2a3a'], back: ['#b3122e', '#e4475d'], wood: ['#8a4b2a', '#5e2f18'] }
   };
   function applyTheme(id) {
