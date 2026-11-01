@@ -93,7 +93,7 @@ var Tour = (function () {
     var phone = mp(), pa = av('Ava', '#ff7a8a', 'sm'), pb = av('Leo', '#4fd1c5', 'sm');
     var ph1 = mp('#8b7cff'), ph2 = mp('#4fd1c5'), wave = el('i', { class: 'tr-wave' });
     var cards = [
-      card('Just me', [me1, el('span', { class: 'tr-vs', text: 'vs' }), bot]),
+      card('On your own', [me1, el('span', { class: 'tr-vs', text: 'vs' }), bot]),
       card('Pass & play', [pa, phone, pb]),
       card('Online', [ph1, wave, ph2])
     ];
@@ -161,8 +161,8 @@ var Tour = (function () {
     var slots = [0, 1, 2, 3].map(function () { return el('span', { class: 'tr-slot' }); });
     var gb = el('div', { class: 'tr-gbtn', html: G_LOGO }), ok = el('i', { class: 'tr-ok', html: icon('check') });
     function line(ic, t) { return el('div', { class: 'tr-li' }, [el('span', { html: icon(ic) }), el('span', { text: t })]); }
-    var pinC = el('div', { class: 'tr-way' }, [el('small', { text: 'PIN' }), el('div', { class: 'tr-slots' }, slots), line('key', 'Four digits'), line('users', 'Handy on a family iPad')]);
-    var gC = el('div', { class: 'tr-way g' }, [el('small', { text: 'Google' }), el('div', { class: 'tr-gwrap' }, [gb, ok]), line('check', 'Nothing to remember'), line('lock', 'Only you get in')]);
+    var pinC = el('div', { class: 'tr-way' }, [el('small', { text: 'PIN' }), el('div', { class: 'tr-slots' }, slots), line('key', 'Four numbers'), line('users', 'Good for a shared iPad')]);
+    var gC = el('div', { class: 'tr-way g' }, [el('small', { text: 'Google' }), el('div', { class: 'tr-gwrap' }, [gb, ok]), line('check', 'Nothing to remember'), line('lock', 'Only you can get in')]);
     box.appendChild(el('div', { class: 'tr-ways' }, [pinC, el('span', { class: 'tr-or', text: 'or' }), gC]));
     return {
       len: 5600,
@@ -423,7 +423,7 @@ var Tour = (function () {
 '.tr-ok{position:absolute;right:-12px;top:-8px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--green);color:#fff;transform:scale(0);transition:transform .4s cubic-bezier(.2,1.5,.4,1);}' +
 '.tr-ok.on{transform:scale(1);}' +
 '.tr-ok .ico{width:13px;height:13px;}' +
-'.tr-li{display:flex;align-items:flex-start;gap:6px;width:100%;font-size:.72rem;font-weight:800;color:var(--text-2);text-align:left;line-height:1.2;}' +
+'.tr-li{display:flex;align-items:flex-start;gap:6px;width:100%;font-size:.72rem;font-weight:800;color:var(--text-2);text-align:left;line-height:1.2;text-wrap:balance;}' +
 '.tr-li > span:first-child{flex:none;color:var(--text-3);}' +
 '.tr-li .ico{width:14px;height:14px;}' +
 /* link */
@@ -578,13 +578,13 @@ var Tour = (function () {
   // ── The overview ──
   var N_GAMES = ALL.length;
   var SLIDES = [
-    { s: 'games', k: 'Welcome to Game Night', h: 'Every game night, in one app', p: N_GAMES + ' games: cards, board games, dice, puzzles, party games, casino and arcade. Rules built in, pieces and dice that feel real.' },
-    { s: 'together', k: 'Play your way', h: 'Solo, with family, or online', p: 'Take on the computer, pass the phone around the table, or play friends on their own phones, even over days.' },
-    { s: 'sync', k: 'Sign in', h: 'Your games follow you', p: 'Scores, history and games in progress go with you to every phone and tablet you sign in on.' },
-    { s: 'signin', k: 'Two ways in', h: 'A PIN or your Google account', p: 'A PIN is four digits, quick on a shared family iPad. Google has nothing to remember and only you can get in. Or just look around as a guest.' },
-    { s: 'link', k: 'Friends & family', h: 'Link the people you play with', p: 'Scan each other’s code once. Their avatars come along, and games you play together land in both of your histories.' },
-    { s: 'scores', k: 'Bragging rights', h: 'Your friends are on your scoreboards', p: 'Linked players’ best arcade scores show up on yours. Beat them and everyone knows.' },
-    { s: 'home', k: 'Make it yours', h: 'Star your favorites, hide the rest', p: 'Favorites sit at the top. Switch off the games and sections you never play.' },
+    { s: 'games', k: 'Welcome to Game Night', h: 'All your games in one place', p: N_GAMES + ' games, from cards and board games to puzzles, party games, casino and arcade. The rules are built in, so you can just start playing.' },
+    { s: 'together', k: 'Ways to play', h: 'Play alone, together or online', p: 'Play the computer, pass the phone around the table, or play friends on their own phones. Online games can go on for days.' },
+    { s: 'sync', k: 'Sign in', h: 'Pick up where you left off', p: 'Sign in and your scores, history and unfinished games are on every phone and tablet you use.' },
+    { s: 'signin', k: 'Two ways to sign in', h: 'A PIN or your Google account', p: 'A PIN is four numbers, handy on a shared family iPad. With Google there’s nothing to remember and nobody else can get in. Or skip it and just look around.' },
+    { s: 'link', k: 'Friends & family', h: 'Link up with the people you play with', p: 'Scan each other’s code once. After that their picture shows up on your phone, and games you play together are saved for both of you.' },
+    { s: 'scores', k: 'High scores', h: 'See how you stack up', p: 'Your friends’ best arcade scores show up on your high score lists. Beat one and they’ll see it too.' },
+    { s: 'home', k: 'Your home screen', h: 'Keep your favorites up top', p: 'Star the games you play most and hide the ones you don’t.' },
     { s: 'mark', k: 'Ready?', h: 'Let’s play', p: '', last: true }
   ];
   function intro(opts) {
@@ -604,12 +604,12 @@ var Tour = (function () {
       var box = el('div', { class: 'tr-cta' });
       function b(cls, html, fn) { box.appendChild(el('button', { type: 'button', class: 'btn ' + cls, html: html, onclick: function () { sfx('tap'); close(); setTimeout(fn, 200); } })); }
       if (opts.app) {
-        b('btn-primary', icon('book') + '<span>See everything you can do</span>', function () { guide(null, opts); });
+        b('btn-primary', icon('book') + '<span>How Game Night works</span>', function () { guide(null, opts); });
         b('btn-ghost', '<span>Start playing</span>', function () {});
       } else {
         if (opts.onGoogle) b('gbtn', G_LOGO + '<span>Sign in with Google</span>', opts.onGoogle);
         if (opts.onPin) b('btn-soft', icon('key') + '<span>Use a PIN</span>', opts.onPin);
-        if (opts.onGuest) b('btn-ghost', '<span>Look around as a guest</span>', opts.onGuest);
+        if (opts.onGuest) b('btn-ghost', '<span>Just look around</span>', opts.onGuest);
       }
       return box;
     }
@@ -661,11 +661,11 @@ var Tour = (function () {
 
   // ── The guide ──
   var TOPICS = [
-    { id: 'signin', ic: 'key', tc: '#ffd166', t: 'Signing in', d: 'A PIN or Google, what comes with you, and moving over' },
-    { id: 'together', ic: 'users', tc: '#4fd1c5', t: 'Playing together', d: 'Solo, against the computer, pass and play, online' },
-    { id: 'link', ic: 'link', tc: '#ff7a8a', t: 'Friends & family', d: 'Linking, shared history, and who played what' },
-    { id: 'scores', ic: 'trophy', tc: '#8b7cff', t: 'Linked high scores', d: 'Your initials, friends on your boards, the cabinet' },
-    { id: 'home', ic: 'star', tc: '#7ee081', t: 'Favorites & hiding', d: 'Your games up top, the rest out of the way' }
+    { id: 'signin', ic: 'key', tc: '#ffd166', t: 'Signing in', d: 'PIN or Google, what gets saved, and switching to Google' },
+    { id: 'together', ic: 'users', tc: '#4fd1c5', t: 'Playing together', d: 'On your own, against the computer, passing the phone, or online' },
+    { id: 'link', ic: 'link', tc: '#ff7a8a', t: 'Friends & family', d: 'Linking up and sharing game history' },
+    { id: 'scores', ic: 'trophy', tc: '#8b7cff', t: 'High scores', d: 'Your initials and your friends’ scores' },
+    { id: 'home', ic: 'star', tc: '#7ee081', t: 'Favorites & hiding', d: 'Put the games you like first and hide the rest' }
   ];
   function signedIn() { return !!(window.FGHSync && FGHSync.isPin && FGHSync.isPin()); }
   function isGoogle() { return !!(window.FGHSync && FGHSync.isGoogle && FGHSync.isGoogle()); }
@@ -674,77 +674,77 @@ var Tour = (function () {
     var acts = (opts && opts.actions) || {}, pin = window.FGHSync && FGHSync.pin ? FGHSync.pin() : null;
     var X = {
       signin: {
-        lead: 'Signing in keeps your games on every phone and tablet you use. There are two ways to do it, and you can always play as a guest.',
+        lead: 'Signing in saves your games so you can play on any phone or tablet. Use a PIN or your Google account, or skip it and play as a guest.',
         parts: [
-          ['cloud', 'What comes with you', [
-            'High scores and the history of every game you’ve played.',
-            '<b>Games in progress.</b> Stop a game on your phone and pick it up on the iPad, right where you left it.',
-            'Your favorites, your home screen, game settings and Lorcana decks.',
-            'Linked players, your avatar and your arcade initials.']],
-          ['key', 'A PIN', [
-            '<b>Four digits</b> you pick, or tap <b>Assign me a random PIN</b> for one nobody has.',
-            'Quick on a shared family iPad: tap it in and you’re you.',
-            'Anyone who knows your PIN can open your account, so the app turns down easy ones like 1234.',
-            'To change it, tap your avatar, then <b>Change PIN</b>. Other devices on the old PIN sign out and ask for the new one.']],
-          ['google', 'Google', [
-            'Tap <b>Sign in with Google</b> and pick your account. Nothing to remember.',
-            'Only you can get in, because Google checks it’s you.',
-            'Everyone needs their own Google account. Kids can keep using a PIN.']],
-          ['swap', 'Moving a PIN account to Google', [
+          ['cloud', 'What gets saved', [
+            'Your high scores and the history of every game you’ve played.',
+            '<b>Unfinished games.</b> Start a game on your phone and finish it on the iPad.',
+            'Your favorites, how your home screen is set up, game settings and Lorcana decks.',
+            'Your linked players, your avatar and your arcade initials.']],
+          ['key', 'Using a PIN', [
+            'Pick any <b>four numbers</b>, or tap <b>Assign me a random PIN</b> to get one nobody else is using.',
+            'Good for a shared family iPad. Just tap it in.',
+            'Anyone who knows your PIN can get into your account, so easy ones like 1234 aren’t allowed.',
+            'To change it, tap your avatar, then <b>Change PIN</b>. Anything else signed in with the old PIN will ask for the new one.']],
+          ['google', 'Using Google', [
+            'Tap <b>Sign in with Google</b> and choose your account. There’s nothing to remember.',
+            'Google checks that it’s really you, so nobody else can get in.',
+            'Each person needs their own Google account. Kids can stick with a PIN.']],
+          ['swap', 'Switching from a PIN to Google', [
             'Tap your avatar, then <b>Move to Google sign-in</b>.',
-            'Everything comes along: scores, history, saved games, settings, links and online tables.',
-            'Your other phones and tablets ask you to sign in with Google the next time they open.',
-            'Your old PIN is given up. After 30 days someone else can use it.',
-            'A child’s account that a parent looks after stays on its PIN.']],
+            'Everything comes with you: scores, history, saved games, settings, linked players and online games.',
+            'Your other phones and tablets will ask you to sign in with Google the next time you open the app.',
+            'Your old PIN is let go. After 30 days someone else can use it.',
+            'If a parent manages the account, it has to stay on a PIN.']],
           ['user', 'Playing as a guest', [
-            'Everything stays on this one device and nothing goes to the cloud.',
-            'A guest’s games stay separate from any account you sign in to later.']],
+            'Everything is saved on this device only.',
+            'Guest games stay separate, even if you sign in later.']],
           ['logout', 'Signing out', [
-            'Tap your avatar, then <b>Sign out</b>. Your games are packed away on the device and come back when you sign in again.']]
+            'Tap your avatar, then <b>Sign out</b>. Your games stay on this device and come back when you sign in again.']]
         ],
         tries: signedIn() ? (isGoogle() ? [] : [
           acts.move ? ['google', 'Move to Google sign-in', acts.move] : null,
           acts.changePin ? ['key', 'Change PIN', acts.changePin] : null]) : [['key', 'Sign in', function () { location.href = '/gate.html'; }]]
       },
       together: {
-        lead: 'Every game starts the same way: one list of seats. Fill them with people, robots or both.',
+        lead: 'Every game starts with a list of seats. Fill them with people, computer players, or both.',
         parts: [
-          ['user', 'Just you', ['One seat. Puzzles, solitaire, arcade games and daily challenges.']],
+          ['user', 'On your own', ['Use one seat. Good for puzzles, solitaire, arcade games and the daily puzzles.']],
           ['bot', 'Against the computer', [
-            'Flip the robot switch on the other seats. Each robot gets its own name.',
-            'Set how good the computer is in the game’s options.']],
+            'Turn on the robot switch for the other seats. Each computer player gets its own name.',
+            'You can set how good the computer is in the game’s options.']],
           ['phone', 'Pass and play', [
             'Add everyone at the table, then pass the phone around.',
-            'In games with hidden cards the screen covers your hand before the next person takes over.']],
+            'In card games your hand is covered up before the next person takes the phone.']],
           ['globe', 'Online', [
-            'Tap <b>Play online</b> beside the start button. Friends join on their own phones with the four-letter table code.',
-            'Linked friends see your open table right on their home screen, with your avatar.',
-            'Turn-based games can take days. The home screen shows <b>Your turn</b> under Keep playing when it’s your move.']],
+            'Tap <b>Play online</b> next to the start button. Friends join from their own phones with the four-letter code.',
+            'If you’re linked with someone, the games you start show up on their home screen.',
+            'Turn-based games can go on for days. When it’s your move you’ll see <b>Your turn</b> under Keep playing, and in Notifications.']],
           ['history', 'Keep playing', [
-            'A game you leave partway waits at the top of the home screen, on all of your devices.',
+            'If you leave a game partway through, it waits for you at the top of the home screen on all your devices.',
             'Swipe it away when you’re done with it.']]
         ],
         tries: window.Kit && Kit.managePlayers ? [['users', 'Frequent players', function () { Kit.managePlayers(); }]] : []
       },
       link: {
-        lead: 'Link the people you play with, and the app knows who’s who on every phone.',
+        lead: 'Link up with the people you play with, so every phone knows who’s who.',
         parts: [
           ['sparkle', 'What linking does', [
-            'Their avatar comes from their own phone, so their picture is always right.',
-            'Games you play together go into both of your histories.',
-            'You see each other’s best arcade scores.',
-            'When a linked friend opens an online table, it shows up for you with their avatar.']],
-          ['link', 'How to link someone', [
-            '<b>On their phone:</b> tap their avatar, then <b>Share my profile</b>. They get a QR code and a six-letter code.',
-            '<b>On yours:</b> open <b>Frequent players</b> from your avatar or any game’s menu, then tap the link button next to their name.',
-            'Scan their QR code, or type in the code.',
-            'Their phone asks them to accept. Once they do, it works both ways.']],
+            'Their avatar comes from their own phone, so it’s always up to date.',
+            'Games you play together are saved in both of your histories.',
+            'You can see each other’s best arcade scores.',
+            'When a linked friend starts an online game, it shows up on your home screen.']],
+          ['link', 'How to link with someone', [
+            '<b>On their phone:</b> they tap their avatar, then <b>Share my profile</b>. That brings up a QR code and a six-letter code.',
+            '<b>On your phone:</b> open <b>Frequent players</b> from your avatar or any game’s menu, then tap the link button next to their name.',
+            'Scan their QR code or type in the code.',
+            'They’ll get a request to accept. Once they do, you’re linked.']],
           ['inbox', 'Games you play together', [
-            'Play on one phone with them in a seat and the game is copied into their history too.',
-            'Turn on <b>Ask before adding games</b> to look each one over first.',
-            'Tap <b>Not me</b> to send one back if it wasn’t you.']],
+            'When you play on one phone with them in a seat, the game is saved to their history too.',
+            'Turn on <b>Ask before adding games</b> if you want to check each one first.',
+            'If a game wasn’t you, tap <b>Not me</b> to send it back.']],
           ['shield', 'Family', [
-            'A parent can look after a child’s account from <b>Family</b>: a game timer, and sections or games switched off.']],
+            'A parent can manage a child’s account from <b>Family</b>: set a time limit and turn off sections or games.']],
           ['minus', 'Unlinking', ['Under <b>Linked players</b>, tap the person and choose <b>Unlink</b>.']]
         ],
         tries: signedIn() ? [
@@ -752,43 +752,43 @@ var Tour = (function () {
           window.Kit && Kit.managePlayers ? ['users', 'Frequent players', function () { Kit.managePlayers(); }] : null] : [['key', 'Sign in to link players', function () { location.href = '/gate.html'; }]]
       },
       scores: {
-        lead: 'Every arcade and puzzle game keeps a top 50. Link your people and their best scores land on your boards too.',
+        lead: 'Arcade and puzzle games keep a top 50 list. Once you link up, your friends’ best scores show up on your lists too.',
         parts: [
           ['gamepad', 'Your initials', [
-            'Three letters, like an arcade cabinet.',
-            'Set them under your avatar, <b>Arcade initials</b>. They’re filled in for you whenever you make a board.']],
-          ['link', 'Friends on your boards', [
-            'Linked players’ best scores show up on your boards, with their avatar beside them.',
-            'Pass one and you move up past them. They see it on their boards too.']],
-          ['trophy', 'The High Scores cabinet', [
-            '<b>High Scores</b> in Tools shows every board in one place.',
-            'Flip between games and modes with the arrows.']],
-          ['sparkle', 'A new high score', [
-            'Make the board and the game celebrates.',
-            'The score goes to all of your devices and to everyone you’ve linked.']]
+            'Three letters, like on an old arcade machine.',
+            'Set them from your avatar under <b>Arcade initials</b>. They’re filled in for you whenever you get a high score.']],
+          ['link', 'Friends on your lists', [
+            'Your linked friends’ best scores show up on your lists, with their avatar.',
+            'Beat one and you move ahead of them. They’ll see it on their lists too.']],
+          ['trophy', 'High Scores', [
+            '<b>High Scores</b> in Tools shows every list in one place.',
+            'Use the arrows to switch between games and modes.']],
+          ['sparkle', 'Getting a high score', [
+            'Make the list and the game celebrates.',
+            'Your score shows up on all of your devices and for everyone you’re linked with.']]
         ],
         tries: [
           signedIn() && window.Kit && Kit.links ? ['gamepad', 'Arcade initials', function () { Kit.links.initials(); }] : null,
           ['trophy', 'Open High Scores', function () { location.href = (/\/games\//.test(location.pathname) ? '' : 'games/') + 'hiscores.html'; }]]
       },
       home: {
-        lead: 'Make the home screen yours: the games you love up top, the ones you don’t play out of the way.',
+        lead: 'Set up the home screen your way: the games you play most at the top, and the ones you don’t out of sight.',
         parts: [
           ['star', 'Favorites', [
-            'Tap the star on any game’s tile. It joins <b>Favorites</b> at the top of the home screen.',
-            'Press and hold a favorite to arrange them. The tiles wiggle: drag one to a new spot, then tap <b>Done</b>.',
+            'Tap the star on a game to add it to <b>Favorites</b> at the top of the home screen.',
+            'To move them around, press and hold a favorite until the tiles wiggle, drag it where you want it, then tap <b>Done</b>.',
             'Tap the star again to take it off.']],
-          ['eye', 'Hide games and sections', [
+          ['eye', 'Hiding games and sections', [
             'Tap your avatar, then <b>Home screen</b>.',
-            'Drag sections into the order you like.',
-            'Switch a section off to hide all of its games, or open it and switch off single games.',
-            'Hidden games leave the home screen, search, Surprise and High Scores.']],
-          ['undo', 'Bring them back', [
-            'Switch them on again anytime in Home screen. Nothing is deleted: scores and history stay.']],
-          ['search', 'Find anything fast', [
-            'Search by name, tap a section to jump to it, or pick how many people are playing to see only games that fit.',
-            'Can’t decide? <b>Surprise</b> picks one for you.']],
-          ['cloud', 'On every device', ['Favorites, order and hidden games follow your account.']]
+            'Drag the sections into the order you want.',
+            'Turn a section off to hide all of its games, or open it and turn off just the ones you don’t want.',
+            'Hidden games won’t show up on the home screen, in search, in Surprise or in High Scores.']],
+          ['undo', 'Bringing them back', [
+            'Turn them back on anytime in Home screen. Nothing gets deleted, and your scores and history are still there.']],
+          ['search', 'Finding a game', [
+            'Search by name, tap a section to jump to it, or pick how many people are playing to see the games that fit.',
+            'Can’t decide? Tap <b>Surprise</b>.']],
+          ['cloud', 'On all your devices', ['Your favorites, order and hidden games are the same on every device you sign in on.']]
         ],
         tries: window.Kit && Kit.homeSheet ? [['tiles', 'Home screen', function () { Kit.homeSheet(); }]] : []
       }
@@ -817,14 +817,14 @@ var Tour = (function () {
       if (st) st.stop(); st = null;
       back.style.visibility = 'hidden'; chips.style.display = 'none'; title.textContent = 'How Game Night works';
       var wrap = el('div', { class: 'tr-gwrap2' }), grid = el('div', { class: 'tr-hub' });
-      wrap.appendChild(el('p', { class: 'tr-lead', text: 'Everything you can do once you’re signed in. Pick one to see it in action.' }));
+      wrap.appendChild(el('p', { class: 'tr-lead', text: 'Tap a topic to see how it works.' }));
       TOPICS.forEach(function (t, i) {
         var c = el('button', { type: 'button', class: 'tr-card', style: { '--tc': t.tc }, onclick: function () { sfx('tap'); show(t.id); } },
           [el('span', { class: 'big', html: icon(t.ic) }), el('span', { class: 'grow' }, [el('b', { text: t.t }), el('small', { text: t.d })]), el('span', { class: 'chev', html: icon('right') })]);
         c.style.transitionDelay = (i * 60) + 'ms'; grid.appendChild(c);
       });
       var ovc = el('button', { type: 'button', class: 'tr-card ov', onclick: function () { sfx('tap'); close(); setTimeout(function () { intro({ app: true, actions: opts.actions }); }, 250); } },
-        [el('span', { class: 'big', html: icon('play') }), el('span', { class: 'grow' }, [el('b', { text: 'Watch the overview' }), el('small', { text: 'Game Night in a minute' })]), el('span', { class: 'chev', html: icon('right') })]);
+        [el('span', { class: 'big', html: icon('play') }), el('span', { class: 'grow' }, [el('b', { text: 'Watch the intro again' }), el('small', { text: 'The quick tour, about a minute' })]), el('span', { class: 'chev', html: icon('right') })]);
       ovc.style.transitionDelay = (TOPICS.length * 60) + 'ms'; grid.appendChild(ovc);
       wrap.appendChild(grid);
       body.innerHTML = ''; body.scrollTop = 0; body.appendChild(wrap);
@@ -842,7 +842,7 @@ var Tour = (function () {
       var wrap = el('div', { class: 'tr-gwrap2 topic' }, [el('div', { class: 'tr-ghero' }, [st.el, replay]), el('p', { class: 'tr-lead', text: c.lead })]);
       var parts = c.parts.map(function (p, k) {
         var steps = el('div', { class: 'tr-steps' }, p[2].map(function (s, j) {
-          var n = p[2].length > 1 && /How to|Moving/.test(p[1]) ? el('span', { class: 'n', text: String(j + 1) }) : el('span', { class: 'n', html: icon('check') });
+          var n = p[2].length > 1 && /How to|Switching/.test(p[1]) ? el('span', { class: 'n', text: String(j + 1) }) : el('span', { class: 'n', html: icon('check') });
           var row = el('div', { class: 'tr-step' }, [n, el('span', { html: s })]); row.style.transitionDelay = (120 + j * 70) + 'ms'; return row;
         }));
         var ic = p[0] === 'google' ? G_LOGO : icon(p[0]);
