@@ -751,8 +751,9 @@
   // everywhere, on every device and in the cloud (games/console-hi.js rev). console_ssf2: SSF2 read the wrong bytes
   // and filed mid-game until 2026-11-01; console_junglehunt: the low byte was read as the high one (scores of 10,000
   // and up wrong, in the console and in games/junglehunt.html, which files to the same board); console_ducktales: only
-  // the land money was read, not the total; console_ikari: the high score was read, not player 1's.
-  var HI_RESET = { console_ssf2: 2, console_junglehunt: 2, console_ducktales: 2, console_ikari: 2 };
+  // the land money was read, not the total; console_ikari: the high score was read, not player 1's;
+  // console_superpunchout: one fight's points were read, not the circuit's total.
+  var HI_RESET = { console_ssf2: 2, console_junglehunt: 2, console_ducktales: 2, console_ikari: 2, console_superpunchout: 2 };
   function hiKeep(key, row){ var v = HI_RESET[key]; if(!v) return true; return !!row && !Array.isArray(row) && typeof row === 'object' && (Number(row.rv) || 0) >= v; }
   function mergeHi(a, b, key){
     var all = asArray(a).concat(asArray(b)).filter(function(row){ return hiKeep(key, row); });

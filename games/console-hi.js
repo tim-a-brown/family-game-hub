@@ -110,10 +110,18 @@ var ConsoleHi = (function () {
       play: function (m) { return m(0x04) !== 0x80; },
       over: function (m) { return m(0xA9) === 7 && m(0x173) >= 3; } },
     // ── Super Nintendo ──
-    // Mario's score: 3 bytes at $7E0F34 (low first), the screen adding a 0. Game mode $7E0100: $07 the title, where
-    // the demo plays (and scores); $0B on: the map, levels and the screens between
+    // Mario's score: 3 bytes at $7E0F34 (low first), Luigi's at $7E0F37, the screen adding a 0 (it stops at 9,999,990).
+    // Game mode $7E0100: $07 the title, where the demo plays (and scores); $08-$0A the file and player menus; $0B on: the
+    // map, levels and the screens between. Over: modes $15-$17 (GAME OVER, about 7 s) with the player's lives $7E0DBE at
+    // $FF and, as the game itself checks, a stored lives byte ($0DB4 Mario, $0DB5 Luigi, $FF in 1 player) at $FF too: in
+    // 2 players the first one out sees GAME OVER and the other plays on (TIME UP with lives left keeps lives >= 0); or
+    // THE END ($29), where the game stays. CONTINUE starts both scores again at 0, so each game over files. (Checked
+    // 2026-11-01: the screen at 200 to 1,234,560 and the cap; 1- and 2-player game overs, TIME UP, continue, the ending.)
     { key: 'smw', short: 'MARIO WORLD', name: 'Super Mario World', sys: 'snes', ids: ['6b47bb75d16514b6a476aa0c73a683a2a4c18765'], re: /^super mario world$/,
-      score: function (m) { return le(m, 0x7E0F34, 3) * 10; }, play: function (m) { return m(0x7E0100) >= 0x0B; } },
+      score: function (m) { return Math.max(le(m, 0x7E0F34, 3), le(m, 0x7E0F37, 3)) * 10; },
+      scores: function (m) { return [le(m, 0x7E0F34, 3) * 10, le(m, 0x7E0F37, 3) * 10]; }, names: ['Mario', 'Luigi'],
+      play: function (m) { return m(0x7E0100) >= 0x0B; },
+      over: function (m) { var g = m(0x7E0100); return (g >= 0x15 && g <= 0x17 && m(0x7E0DBE) === 0xFF && ((m(0x7E0DB4) | m(0x7E0DB5)) & 0x80) !== 0) || g === 0x29; } },
     // Player 1's score: packed decimal in hundreds, low byte first, at $7E0703-$7E0705 (10,300 is $03 $01 $00). The
     // screen shows it with one more digit after it, the number of continues (79,900 after two continues reads 79902).
     // The score carries on through a continue. $7E0030 is 0 in a game, 2 or 3 in the attract demo and on the title.
@@ -124,21 +132,53 @@ var ConsoleHi = (function () {
     { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 2,
       score: function (m) { var v = bcdLE(m, 0x7E0703, 3); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; },
       over: function (m) { return (m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74 && m(0x7E0703) === 0 && m(0x7E0704) === 0 && m(0x7E0705) === 0; } },
-    // six digits a byte at $7E0B34, the ones first, the screen adding a 0; starting again each fight (the best counts)
-    { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, reset: 1,
-      score: function (m) { return x10(digitsLE(m, 0x7E0B34, 6)); } },
-    // 4 bytes at $7E8949 (low first). $7E5F2E is 1 while the demo plays (it scores)
+    // The circuit's TOTAL SCORE: five digits a byte at $7E0611, the ones first, the screen adding a 0 (added at each
+    // fight's tally, wins and losses; 0 when a circuit starts; $7E0616 becomes 9 once a circuit is won, so it's left out).
+    // The SCORE shown in a fight ($7E0B34) is only that fight's points. $7E0B10 is 2 in a fight, its tally and game over
+    // (4 on the title, the demo and the menus). Over: GAME OVER after a circuit's third loss (losses left $7E0606 at 0,
+    // $7E0000 $80; it waits for a button), or the CIRCUIT CLEAR screen ($7E0765 2, the champion's rank $7E0602 0). Retire
+    // goes back to the menu with no game over; Time Attack keeps no total. (Checked 2026-11-01 by playing: totals against
+    // the tallies and the clear screen, 5,310 to 41,050; game overs and a Minor Circuit clear. An earlier reader took one
+    // fight's points: rev 2.)
+    { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, rev: 2,
+      score: function (m) { var v = digitsLE(m, 0x7E0611, 5); return v == null ? null : v * 10; },
+      play: function (m) { return m(0x7E0B10) === 2; },
+      over: function (m) { return m(0x7E0B10) === 2 && ((m(0x7E0000) === 0x80 && m(0x7E0606) === 0) || (m(0x7E0765) === 2 && m(0x7E0602) === 0)); } },
+    // 4 bytes at $7E8949 (low first; the HUD shows six digits). $7E5F2E is 1 while the demo plays (it scores). $7E5F16 is
+    // the game's state: 0 playing (and paused), 3 a floor's tally (6 a secret one), 4 dead, 1 the title and credits, 5 the
+    // menu. Lives $7E8953 (the number by the face is one less): dying with the last leaves 0 and shows GAME OVER (state 4,
+    // at least 6 s, then the title). A password starts its floor with 0 points, so each game over files. (Checked
+    // 2026-11-01: the screen at 100 to 123,456, three deaths to a game over, the title, the demo and a floor's tally.)
     { key: 'wolf3d', short: 'WOLF 3D', name: 'Wolfenstein 3D', sys: 'snes', ids: ['88fe872eb984af84f8ca7633ef5bd3904a2baeb4'], re: /^wolfenstein 3-?d$/,
-      score: function (m) { return le(m, 0x7E8949, 4); }, play: function (m) { return m(0x7E5F2E) === 0; } },
+      score: function (m) { return le(m, 0x7E8949, 4); },
+      play: function (m) { var s = m(0x7E5F16); return m(0x7E5F2E) === 0 && s !== 1 && s !== 5; },
+      over: function (m) { return m(0x7E5F16) === 4 && m(0x7E8953) === 0 && m(0x7E5F2E) === 0; } },
     // ── Genesis ──
-    // 4 bytes at $FFFE26, the screen adding a 0
+    // Score: 4 bytes at $FFFE26, the screen adding a 0. Game over: on the last life once Sonic is dying (routine $FFD024 =
+    // 6), then lives $FFFE12 = 0 with the score kept through the GAME OVER card, the continue screen and the Sega/title
+    // screens after it (pressing a button cuts the card to half a second); a continue starts the score again at 0, so each
+    // game over files. The ending ($18) ends a finished game. (Checked 2026-11-01 in the emulator: the score against the
+    // screen to 999,990, time over and deaths with lives left, game overs with and without buttons mashed, a continue, the demo.)
     { key: 'sonic', short: 'SONIC', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay,
+      over: function (m) { var md = m(0xFFF600) & 0x7F, L = m(0xFFFE12); if (md === 0x0C && L === 1 && m(0xFFD024) === 6) return true; if (md === 0x18) return true; return L === 0 && be(m, 0xFFFE26, 4) > 0 && (md === 0x0C || md === 0x14 || md === 0 || md === 4); } },
+    // The same score as Sonic 1. Sonic 2's own modes: $0C level, $10 special stage, $14 continue, $20 ending are play;
+    // $18/$1C (2-player results and zone select), $24 options, $28 level select are not. 2-player VS (word $FFFFD8 not 0)
+    // files nothing. Game over as Sonic 1 (the main character's routine at $FFB024). (Checked 2026-11-01: the score against
+    // the screen, deaths and time over, game over, continue, a 2-player match. The Sonic 1 play() counted the options
+    // screen and 2-player VS as play.)
     { key: 'sonic2', short: 'SONIC 2', name: 'Sonic the Hedgehog 2', sys: 'genesis', ids: ['8bca5dcef1af3e00098666fd892dc1c2a76333f9'], re: /^sonic the hedgehog 2$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay },
-    // 4 bytes at $FFF22C. $FFF283 is 1 while the demo plays (it starts with 50,000)
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; },
+      play: function (m) { var md = m(0xFFF600) & 0x7F; return (md === 0x0C || md === 0x10 || md === 0x14 || md === 0x20) && !m(0xFFFFD8) && !m(0xFFFFD9); },
+      over: function (m) { if (m(0xFFFFD8) || m(0xFFFFD9)) return false; var md = m(0xFFF600) & 0x7F, L = m(0xFFFE12); if (md === 0x0C && L === 1 && m(0xFFB024) === 6) return true; if (md === 0x20) return true; return L === 0 && be(m, 0xFFFE26, 4) > 0 && (md === 0x0C || md === 0x14 || md === 0 || md === 4); } },
+    // 4 bytes at $FFF22C (a plain number; the screen shows 8 digits). $FFF283 is 1 while the demo plays (it starts with
+    // 50,000). Game over: the state byte $FFF301 is $18/$1A from the GAME OVER screen through the continue sign, and
+    // $FFF449 is 1 during the death on the last try; the score is cleared to 0 as GAME OVER starts (so the game's score is
+    // the best it reached), and a continue starts again at 0. (Checked 2026-11-01 in the emulator: the score against the
+    // screen, deaths with tries left, game overs with and without buttons, continue and new game, the demo.)
     { key: 'castleofillusion', short: 'MICKEY', name: 'Castle of Illusion', sys: 'genesis', ids: ['4ac3687634a5acc55ac7f156c6de9749158713e4'], re: /castle of illusion/,
-      score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; } },
+      score: function (m) { return be(m, 0xFFF22C, 4); }, play: function (m) { return m(0xFFF283) === 0; },
+      over: function (m) { var s = m(0xFFF301); return s === 0x18 || s === 0x1A || (s === 0x0E && m(0xFFF449) === 1); } },
     // ── Atari 2600 ──
     // packed decimal at $D5-$D7, starting at 2,000 and going down as well as up: the score at the end counts. The
     // 20-minute clock ($D8 minutes, $D9 seconds) starts with the game. $9E is 0 only while Harry is in play (set on the
