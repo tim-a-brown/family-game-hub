@@ -36,7 +36,24 @@ var ConsoleHi = (function () {
 
   // Sonic games: game mode $FFF600 (bit 7 set while a stage loads): $00 Sega screen, $04 title, $08 the demo (which
   // scores), then levels ($0C), special stages, continue and ending screens are all a game under way
-  function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
+  // where you are (Keep playing's tile): Sonic's zone $FFFE10 and act $FFFE11, by the games' own zone numbers (Sonic 1:
+// Scrap Brain 3 is Labyrinth's 4th act, the Final Zone Scrap Brain's 3rd; Sonic 2: Metropolis 3 is a zone of its own)
+var SONIC_Z = ['Green Hill', 'Labyrinth', 'Marble', 'Star Light', 'Spring Yard', 'Scrap Brain'];
+function sonicWhere(m) {
+  var z = m(0xFFFE10), a = m(0xFFFE11);
+  if (z === 1 && a === 3) return 'Scrap Brain 3';
+  if (z === 5 && a === 2) return 'Final Zone';
+  if (z === 7) return 'Special Stage';
+  return SONIC_Z[z] && a < 3 ? SONIC_Z[z] + ' ' + (a + 1) : null;
+}
+var SONIC2_Z = { 0: 'Emerald Hill', 4: 'Metropolis', 5: 'Metropolis', 6: 'Wing Fortress', 7: 'Hill Top', 10: 'Oil Ocean', 11: 'Mystic Cave', 12: 'Casino Night', 13: 'Chemical Plant', 14: 'Death Egg', 15: 'Aquatic Ruin', 16: 'Sky Chase' };
+function sonic2Where(m) {
+  var z = m(0xFFFE10), a = m(0xFFFE11), n = SONIC2_Z[z];
+  if (!n || a > 1) return null;
+  if (z === 5) return 'Metropolis 3';
+  return z === 6 || z === 14 || z === 16 ? n : n + ' ' + (a + 1);
+}
+function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0x04 && md !== 0x08; }
 
   // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
   // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over),
@@ -62,6 +79,7 @@ var ConsoleHi = (function () {
       score: function (m) { var a = digits(m, 0x7DD, 6), b = digits(m, 0x7E3, 6); return a == null || b == null ? null : Math.max(a, b) * 10; },
       scores: function (m) { var a = digits(m, 0x7DD, 6), b = digits(m, 0x7E3, 6); return [a == null ? null : a * 10, b == null ? null : b * 10]; }, names: ['Mario', 'Luigi'],
       play: function (m) { return m(0x770) === 1 || m(0x770) === 2; },
+      where: function (m) { var w = m(0x75F), l = m(0x75C); return w < 8 && l < 4 ? 'World ' + (w + 1) + '-' + (l + 1) : null; },
       over: function (m) { var o = m(0x770); return (o === 3 && (m(0x77A) === 0 || m(0x761) > 0x7F)) || (o === 2 && m(0x772) === 4 && m(0x75F) === 7); } },
     // 3 bytes at $0715 (high first), the screen adding a 0: the score of whoever is up ($0726; 2 players: each keeps
     // their own, swapped in on the map, so each one's best is kept while they're up and filed at their own game over). No demo. Over: the player up has lives ($0736 + $0726) at $FF, from losing the last life
@@ -70,6 +88,7 @@ var ConsoleHi = (function () {
     // against the screen, 100 to 1,000,090; game over, continue, end, and the ending.)
     { key: 'smb3', short: 'MARIO 3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
       score: function (m) { return be(m, 0x715, 3) * 10; }, who: function (m) { return m(0x726) & 1; }, names: ['Mario', 'Luigi'],
+      where: function (m) { var w = m(0x727); return w < 8 ? 'World ' + (w + 1) : null; },
       over: function (m) { return m(0x736 + (m(0x726) & 1)) === 0xFF || (m(0x200) === 0x60 && m(0x201) === 0xF1 && m(0x21D) === 0xFF && m(0x21F) === 0x98 && m(0x71E) === 0x1B); } },
     // The money: TOTAL MONEY (8 characters at $0334-$033B, $24 a blank: what's banked when a land is cleared, and what the
     // ending shows) plus this land's money (7 at $0324-$032A, the HUD's $, back to 0 each land), left out once the land is
@@ -160,7 +179,7 @@ var ConsoleHi = (function () {
     // game over files. The ending ($18) ends a finished game. (Checked 2026-11-01 in the emulator: the score against the
     // screen to 999,990, time over and deaths with lives left, game overs with and without buttons mashed, a continue, the demo.)
     { key: 'sonic', short: 'SONIC', name: 'Sonic the Hedgehog', sys: 'genesis', ids: ['6ddb7de1e17e7f6cdb88927bd906352030daa194'], re: /^sonic the hedgehog$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay,
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, play: sonicPlay, where: sonicWhere,
       over: function (m) { var md = m(0xFFF600) & 0x7F, L = m(0xFFFE12); if (md === 0x0C && L === 1 && m(0xFFD024) === 6) return true; if (md === 0x18) return true; return L === 0 && be(m, 0xFFFE26, 4) > 0 && (md === 0x0C || md === 0x14 || md === 0 || md === 4); } },
     // The same score as Sonic 1. Sonic 2's own modes: $0C level, $10 special stage, $14 continue, $20 ending are play;
     // $18/$1C (2-player results and zone select), $24 options, $28 level select are not. 2-player VS (word $FFFFD8 not 0)
@@ -168,7 +187,7 @@ var ConsoleHi = (function () {
     // the screen, deaths and time over, game over, continue, a 2-player match. The Sonic 1 play() counted the options
     // screen and 2-player VS as play.)
     { key: 'sonic2', short: 'SONIC 2', name: 'Sonic the Hedgehog 2', sys: 'genesis', ids: ['8bca5dcef1af3e00098666fd892dc1c2a76333f9'], re: /^sonic the hedgehog 2$/,
-      score: function (m) { return be(m, 0xFFFE26, 4) * 10; },
+      score: function (m) { return be(m, 0xFFFE26, 4) * 10; }, where: sonic2Where,
       play: function (m) { var md = m(0xFFF600) & 0x7F; return (md === 0x0C || md === 0x10 || md === 0x14 || md === 0x20) && !m(0xFFFFD8) && !m(0xFFFFD9); },
       over: function (m) { if (m(0xFFFFD8) || m(0xFFFFD9)) return false; var md = m(0xFFF600) & 0x7F, L = m(0xFFFE12); if (md === 0x0C && L === 1 && m(0xFFB024) === 6) return true; if (md === 0x20) return true; return L === 0 && be(m, 0xFFFE26, 4) > 0 && (md === 0x0C || md === 0x14 || md === 0 || md === 4); } },
     // 4 bytes at $FFF22C (a plain number; the screen shows 8 digits). $FFF283 is 1 while the demo plays (it starts with
@@ -368,6 +387,8 @@ var ConsoleHi = (function () {
       // leaving, changing cartridge, loading a saved state: a game over just now still files; a game under way doesn't
       finish: function () { tick(true); run = null; },
       stop: function () { clearInterval(timer); },
+      // Keep playing's tile: where you are and the score, read now (nothing on the title or in a demo)
+      status: function () { var H = heap(); if (base < 0 || !H) return null; var m = mem(H), on = g.play ? !!g.play(m) : true; if (!on) return null; var sc = g.score(m); return { score: sc > 0 ? sc : 0, where: g.where ? g.where(m) : null }; },
       // (tests) where the RAM is, and what's read
       debug: function () { var H = heap(); if (base < 0 || !H) return { base: base }; var m = mem(H); return { base: base, score: g.score(m), play: g.play ? g.play(m) : true, over: !!(g.over && g.over(m)), clock: g.clock ? g.clock(m) : null, run: run, hold: hold }; }
     };

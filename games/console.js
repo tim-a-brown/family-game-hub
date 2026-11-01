@@ -497,7 +497,7 @@
   // its board on the High Scores page (ArcadeHi, synced as hi_console_<game>). Followed only when playing on this
   // device: online, the game belongs to everyone at the table. A game left mid-way (the page closed) is kept in
   // gn_con_hi_pend_dev (this device only) and offered for the board the next time the console's shelf opens.
-  var hiW = null, hiQ = Promise.resolve(), HI_PEND = 'gn_con_hi_pend_dev';
+  var hiW = null, hiLast = null, hiQ = Promise.resolve(), HI_PEND = 'gn_con_hi_pend_dev';
   // (it used to follow the PIN, so a score already filed came back from another device, over any game: let it go)
   try { localStorage.removeItem('gn_con_hi_pending'); } catch (e) {}
   function loadScript(src) { return new Promise(function (ok) { var s = document.createElement('script'); s.src = src; s.onload = s.onerror = function () { ok(); }; document.head.appendChild(s); }); }
@@ -506,6 +506,7 @@
   function hiStart(c) {
     hiReady.then(function () {
       if (!hiOk() || hiW || c.netGame) return;
+      hiLast = null;
       hiW = ConsoleHi.watch({ cart: c, sys: SYS_ID, emu: emu, live: function () { return started && !resumeEl; }, skip: function () { return !!NET.mode || ConsoleNet.on(); },
         onEnd: function (key, score, g, why, who) { hiFile(key, score, g.name, null, who); },
         onPass: function () { if (!document.querySelector('.ahi-overlay')) { Kit.callout('High score!'); Kit.sfx('sparkle'); Kit.haptic('success'); } } });
@@ -549,6 +550,7 @@
   function hiLeave(go) {
     if (!hiW) { go(); return; }
     var w = hiW; hiW = null;
+    try { hiLast = w.status ? w.status() : null; } catch (e) {}   // (for the Keep playing tile, saved just after)
     E_pause(); w.finish('left'); w.stop();
     hiQ.then(go);
   }
@@ -909,9 +911,20 @@
   }
   // the cartridge in Keep playing on the home screen (your place, kept as you leave: the 'auto' save), opening straight
   // into it; deleting it there drops that save too
+  // what the tile says (two short lines at most): where you are and the score where the game's memory is known
+  // ("Green Hill 2" over "12,300 pts"), else the score and how long it's been played, else just the time
+  function placeLabel() {
+    var st = hiLast; try { if (hiW && hiW.status) st = hiW.status(); } catch (e) {}
+    var mins = Math.round(playMs / 60000), time = mins < 1 ? 'Just started' : mins < 60 ? mins + ' min played' : Math.floor(mins / 60) + 'h ' + (mins % 60 ? mins % 60 + 'm ' : '') + 'played';
+    var pts = st && st.score ? st.score.toLocaleString('en-US') + ' pts' : null, out = [];
+    if (st && st.where) out.push(st.where);
+    if (pts) out.push(pts);
+    if (out.length < 2) out.push(time);
+    return out.slice(0, 2).join(' · ');
+  }
   function keepPlaying() {
     if (!cur || cur.netGame || NET.mode === 'guest') return;
-    Kit.resume.set('Paused', { id: 'cart-' + String(cur.id).slice(0, 16), file: SYS_ID + '.html?play=' + cur.id });
+    Kit.resume.set(placeLabel(), { id: 'cart-' + String(cur.id).slice(0, 16), file: SYS_ID + '.html?play=' + cur.id });
   }
   function loadState(st) {
     var E = emu(); if (!E || !st) return;
