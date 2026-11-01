@@ -156,11 +156,17 @@ body{overflow-x:hidden;}
     room: ['Room in a house', 'A room you might find at home.', ['kitchen', 'garage', 'bathroom', 'attic', 'closet']],
     thing: ['Silly object', 'Any object. Funny ones are best.', ['rubber duck', 'toilet plunger', 'banana peel', 'trophy', 'whoopee cushion']],
     country: ['Country', 'Any country in the world.', ['Canada', 'Japan', 'Mexico', 'Italy', 'Brazil']],
-    city: ['City', 'Any city or town.', ['Denver', 'New York', 'Paris', 'Boulder', 'Tokyo']]
+    city: ['City', 'Any city or town.', ['Denver', 'New York', 'Paris', 'Boulder', 'Tokyo']],
+    animalsound: ['Animal noise', 'The sound an animal makes.', ['moo', 'oink', 'ribbit', 'cock-a-doodle-doo', 'hiss', 'baa']],
+    bodynoise: ['Body noise', 'A noise your body makes.', ['burp', 'hiccup', 'snort', 'sneeze', 'giggle', 'yawn']],
+    dance: ['Dance move', 'A dance, real or made up.', ['the robot', 'the worm', 'the chicken dance', 'the moonwalk', 'the floss']],
+    gooey: ['Something gooey', 'Anything slimy, sticky or squishy.', ['slime', 'pudding', 'glue', 'oatmeal', 'toothpaste', 'jelly']],
+    nickname: ['Silly nickname', 'A funny name to call someone.', ['Captain Stinkfeet', 'Sir Wiggles', 'Noodle Legs', 'Duke of Pickles', 'Princess Burp']]
   };
 
   // ── Stories: blanks [key, type, hint] and text with {KEY} ─────────────────
-  var STORIES = [
+  // (the first set, 10 blanks each: kept so past stories and favorites made with them still read right)
+  var STORIES_V1 = [
     { id: 'space', t: 'The Space Mission', b: [['NAME', 'name', 'An astronaut'], ['PLANET', 'place', 'A planet or faraway place'], ['FOOD', 'food', 'Something weird to eat'], ['VERB1', 'verbing', ''], ['ANIMALS', 'animals', ''], ['BODYPART', 'bodies', ''], ['ADJ1', 'adj', 'Make it silly'], ['NUMBER', 'number', 'A big one'], ['EMOTION', 'feeling', ''], ['FAMOUS', 'famous', '']],
       s: "Captain {NAME} had been traveling to {PLANET} for {NUMBER} days when something very strange happened. The ship's food supply had been replaced entirely with {FOOD}. While {VERB1} through the cargo bay, the crew discovered {NUMBER} tiny {ANIMALS} hiding behind the control panel, waving their little {BODYPART} in greeting. Mission Control was told right away. The voice on the radio said, in a {ADJ1} tone, that this was normal behavior this close to the sun. The crew felt {EMOTION}. Later that evening, they sent a postcard to {FAMOUS} describing the whole adventure." },
     { id: 'school', t: 'The School Day', b: [['NAME', 'name', 'A student'], ['SUBJECT', 'noun', 'A school subject, like science or math'], ['ADJ1', 'adj', ''], ['VERB1', 'verbed', ''], ['ANIMAL', 'animal', ''], ['COLOR', 'color', ''], ['SOUND', 'sound', ''], ['FOOD', 'food', ''], ['PLACE', 'place', 'A famous place'], ['ADJ2', 'adj', '']],
@@ -254,7 +260,12 @@ body{overflow-x:hidden;}
     { id: 'chores', t: 'Chore Day', b: [['NAME', 'name', ''], ['NUM', 'number', ''], ['ROOM', 'room', ''], ['ADJ1', 'adj', ''], ['PLURAL', 'plural', ''], ['VERBED', 'verbed', ''], ['ANIMAL', 'animal', ''], ['LIQ', 'liquid', ''], ['THING', 'thing', ''], ['FEEL', 'feeling', '']],
       s: "Saturday was chore day. {NAME} had {NUM} chores, starting with the {ROOM}. It was so {ADJ1} that there were {PLURAL} on the ceiling. {NAME} {VERBED} through the mess with a mop while the family {ANIMAL} supervised. Then {NAME} spilled a bucket of {LIQ} on the floor, which actually made it cleaner. As a reward, {NAME} got a {THING} and felt {FEEL} the rest of the day." }
   ];
-  var BYID = {}; STORIES.forEach(function (s) { BYID[s.id] = s; });
+  // the stories now: longer, 15 to 20 blanks each, with noises, shouts and oddities
+  var STORIES = [
+/*STORIES_V2*/
+  ];
+  if (!STORIES.length) STORIES = STORIES_V1.slice();   // (until the longer stories are in)
+  var BYID = {}, BYID1 = {}; STORIES.forEach(function (s) { BYID[s.id] = s; }); STORIES_V1.forEach(function (s) { BYID1[s.id] = s; });
 
   // ── Shell ─────────────────────────────────────────────────────────────────
   Kit.init({
@@ -283,11 +294,12 @@ body{overflow-x:hidden;}
   function save() {
     lsSet(SAVE, S);
     if (!S) return;
-    var st = S.story ? BYID[S.story] : null;
+    var st = S.story ? story() : null;
     if (S.phase === 'fill' || S.phase === 'cover') Kit.resume.set((st ? st.t : 'Mad Libs') + ' · blank ' + (S.i + 1) + ' of ' + st.b.length);
     else Kit.resume.clear();
   }
-  function story() { return BYID[S.story]; }
+  // (a game started before the longer stories carries on with the story it started)
+  function story() { return (S.sv === 2 ? BYID : BYID1)[S.story] || BYID[S.story]; }
   function anon() { return N() === 1 && /^(Player \d+|You)$/.test(S.players[0].name); }
   function owner(i) { return N() > 1 ? i % N() : 0; }
   function played() { var a = lsGet(PLAYED, []); return Array.isArray(a) ? a : []; }
@@ -312,7 +324,7 @@ body{overflow-x:hidden;}
 
   function startStory(id) {
     var st = BYID[id];
-    S.story = id; S.words = {}; S.i = 0; S.started = Date.now(); S.fav = false; S.rid = null;
+    S.story = id; S.sv = 2; S.words = {}; S.i = 0; S.started = Date.now(); S.fav = false; S.rid = null;
     S.phase = N() > 1 ? 'cover' : 'fill';
     Kit.gameStart(); Kit.sfx('flip');
     save(); render();
@@ -386,7 +398,7 @@ body{overflow-x:hidden;}
       winner: null,
       summary: st.t + ' · ' + S.players.map(function (p) { return p.name; }).join(', '),
       highlights: hl,
-      meta: { story: st.id, title: st.t, words: st.b.map(function (b, i) { return S.words[i] || ''; }), by: st.b.map(function (b, i) { return owner(i); }), fav: false },
+      meta: { story: st.id, sv: S.sv === 2 ? 2 : 1, title: st.t, words: st.b.map(function (b, i) { return S.words[i] || ''; }), by: st.b.map(function (b, i) { return owner(i); }), fav: false },
       // for game history: the story with {0}, {1}… where each blank goes, and what kind of word each blank asked for
       detail: { s: (function () { var idx = {}; st.b.forEach(function (b, i) { idx[b[0]] = i; }); return st.s.replace(/\{([A-Z0-9_]+)\}/g, function (m, k) { return idx[k] != null ? '{' + idx[k] + '}' : ''; }).slice(0, 2400); })(),
         ty: st.b.map(function (b) { return T[b[1]] ? T[b[1]][0] : b[1]; }) }
@@ -406,7 +418,7 @@ body{overflow-x:hidden;}
     return true;
   }
   function entryText(e) {
-    var st = BYID[e.story]; if (!st || !Array.isArray(e.words)) return null;
+    var st = (e.sv === 2 ? BYID : BYID1)[e.story]; if (!st || !Array.isArray(e.words)) return null;
     var idx = {}; st.b.forEach(function (b, i) { idx[b[0]] = i; });
     return st.s.replace(/\{([A-Z0-9_]+)\}/g, function (m, k) { return '\u0001' + (e.words[idx[k]] || '___') + '\u0002'; });
   }
