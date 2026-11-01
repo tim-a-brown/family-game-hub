@@ -507,7 +507,7 @@
     hiReady.then(function () {
       if (!hiOk() || hiW || c.netGame) return;
       hiW = ConsoleHi.watch({ cart: c, sys: SYS_ID, emu: emu, live: function () { return started && !resumeEl; }, skip: function () { return !!NET.mode || ConsoleNet.on(); },
-        onEnd: function (key, score, g) { hiFile(key, score, g.name); },
+        onEnd: function (key, score, g, why, who) { hiFile(key, score, g.name, null, who); },
         onPass: function () { if (!document.querySelector('.ahi-overlay')) { Kit.callout('High score!'); Kit.sfx('sparkle'); Kit.haptic('success'); } } });
     });
   }
@@ -515,7 +515,8 @@
   window.addEventListener('keydown', hiInput, true);
   // a finished game's score: the moment on the TV (a new record gets confetti), then the initials for the board
   // (the game is paused while this is up: nothing plays on behind it, and it carries on where it was afterwards)
-  function hiFile(key, score, name, after) {
+  // who: the player's name when the game has two (Mario's, Luigi's), each filed in turn
+  function hiFile(key, score, name, after, who) {
     try { localStorage.removeItem(HI_PEND); } catch (e) {}
     hiQ = hiQ.then(function () {
       return new Promise(function (done) {
@@ -524,7 +525,7 @@
         if (held) try { E.pause(); } catch (e) {}
         function fin() { var E2 = emu(); if (held && E2 && E2.paused && !resumeEl) try { E2.play(); } catch (e) {} done(); }
         var top = ArcadeHi.top(key), first = top == null || score > top;
-        hiMoment(score, first ? 'New record' : 'High score', name, function () { ArcadeHi.check(key, score, fin); }, first);
+        hiMoment(score, who ? who + '’s ' + (first ? 'new record' : 'high score') : first ? 'New record' : 'High score', name, function () { ArcadeHi.check(key, score, fin); }, first);
       });
     });
     return hiQ.then(function () { if (after) after(); });

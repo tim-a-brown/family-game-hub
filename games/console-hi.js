@@ -39,6 +39,10 @@ var ConsoleHi = (function () {
   // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
   // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over),
   // rev (the board was reset when its reader was fixed: sync.js HI_RESET drops rows filed before).
+  // Two players, each with their own score: scores(m) -> every player's score (all readable at once: each one's best is
+  // offered to the board at the game over), or who(m) -> which player's score score(m) is showing (the screen shows
+  // whoever is up: each player's best is kept while they're up, and offered when that player's game is over, the others
+  // playing on); names: what to call them on the board's moment ('Mario', 'Luigi').
   // A score is filed only at the game's own game over, over(m), checked against the real game: once per game, with
   // the best score the game reached, while the game is paused. A game with no checked over() files nothing (no prompt,
   // no score) until one is worked out: a score that goes down or a trip back to the title is not taken as the end.
@@ -46,23 +50,24 @@ var ConsoleHi = (function () {
   var GAMES = [
     // ── NES ──
     // Mario's score: a digit a byte at $07DD-$07E2 (Luigi's at $07E3-$07E8), the screen adding a 0 (100 points reads
-    // 0,0,0,0,1,0; the millions digit is drawn once reached). 2 players: the screen shows whoever is up, so the better
-    // of the two counts (both start at 0 every game, continue included). OperMode $0770: 0 title and demo (scores
+    // 0,0,0,0,1,0; the millions digit is drawn once reached). 2 players: both scores are kept, and each player's goes
+    // to the board at the game over (both start at 0 every game, continue included). OperMode $0770: 0 title and demo (scores
     // nothing), 1 playing, 2 the castle after an axe, 3 game over. Over: the last game over (1 player, or the other
     // player's lives $0761 below 0: in 2 players the first one out shows GAME OVER and the other plays on), or World 8's
     // PUSH BUTTON B (OperMode 2, task $0772 4, world $075F 7), after which the game goes to the title without a game
     // over. (Checked 2026-11-01: the screen at 200, 1,500, 100,000 and 1,000,000; 1- and 2-player games; the ending.)
     { key: 'smb', short: 'MARIO', name: 'Super Mario Bros.', sys: 'nes', ids: ['ea343f4e445a9050d4b4fbac2c77d0693b1d0922'], re: /^super mario bros\.?$/,
       score: function (m) { var a = digits(m, 0x7DD, 6), b = digits(m, 0x7E3, 6); return a == null || b == null ? null : Math.max(a, b) * 10; },
+      scores: function (m) { var a = digits(m, 0x7DD, 6), b = digits(m, 0x7E3, 6); return [a == null ? null : a * 10, b == null ? null : b * 10]; }, names: ['Mario', 'Luigi'],
       play: function (m) { return m(0x770) === 1 || m(0x770) === 2; },
       over: function (m) { var o = m(0x770); return (o === 3 && (m(0x77A) === 0 || m(0x761) > 0x7F)) || (o === 2 && m(0x772) === 4 && m(0x75F) === 7); } },
-    // 3 bytes at $0715 (high first), the screen adding a 0: the score of whoever is up (2 players: each keeps their own,
-    // swapped in on the map). No demo. Over: the player up has lives ($0736 + $0726) at $FF, from losing the last life
+    // 3 bytes at $0715 (high first), the screen adding a 0: the score of whoever is up ($0726; 2 players: each keeps
+    // their own, swapped in on the map, so each one's best is kept while they're up and filed at their own game over). No demo. Over: the player up has lives ($0736 + $0726) at $FF, from losing the last life
     // through the GAME OVER CONTINUE/END box (CONTINUE starts the score again at 0, so each game over files), or THE END
     // after the credits (its sprites at $0200 with CHR bank $071E $1B), which waits for Start. (Checked 2026-11-01
     // against the screen, 100 to 1,000,090; game over, continue, end, and the ending.)
     { key: 'smb3', short: 'MARIO 3', name: 'Super Mario Bros. 3', sys: 'nes', ids: ['6bd518e85eb46a4252af07910f61036e84b020d1'], re: /^super mario bros\.? 3$/,
-      score: function (m) { return be(m, 0x715, 3) * 10; },
+      score: function (m) { return be(m, 0x715, 3) * 10; }, who: function (m) { return m(0x726) & 1; }, names: ['Mario', 'Luigi'],
       over: function (m) { return m(0x736 + (m(0x726) & 1)) === 0xFF || (m(0x200) === 0x60 && m(0x201) === 0xF1 && m(0x21D) === 0xFF && m(0x21F) === 0x98 && m(0x71E) === 0x1B); } },
     // The money: TOTAL MONEY (8 characters at $0334-$033B, $24 a blank: what's banked when a land is cleared, and what the
     // ending shows) plus this land's money (7 at $0324-$032A, the HUD's $, back to 0 each land), left out once the land is
@@ -254,12 +259,21 @@ var ConsoleHi = (function () {
       if (s == null || !isFinite(s)) { if (++bad > 8) { base = -1; bad = 0; since = Date.now(); } return; }   // (moved, or not this game: look again)
       bad = 0;
       if (!run) run = fresh(s, clk);
+      var w = g.who ? g.who(m) : 0, all = g.scores ? g.scores(m) : null;
       // the game's own game over: the one moment a game's score is filed (once: the run starts again unearned)
-      if (over) { if (run.earned) { if (g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end('over'); } run = fresh(s, clk); return; }
+      if (over) {
+        // (the screen shows whoever is up: that player's game is over, and anyone else plays on)
+        if (g.who) { if (run.earned && !run.pf[w]) { run.pf[w] = 1; var v = Math.max(run.pb[w] || 0, s); run.pb[w] = 0; if (v > 0) send(v, label(w)); } return; }
+        if (run.earned) { if (g.down) run.last = s; hold = g.clock ? { s: scoreOf(run), clk: clk } : scoreOf(run); end('over'); }
+        run = fresh(s, clk); return;
+      }
       if (on) {
         offT = 0;
-        // a new game without a game over (Reset, or a saved state loaded): start again, filing nothing
-        if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last && s === 0) { run = fresh(s, clk); }
+        // a new game without a game over (Reset, or a saved state loaded): start again, filing nothing (not when the
+        // turn has just passed to the other player, whose score can be lower)
+        if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last && s === 0 && !(g.who && w !== run.w)) { run = fresh(s, clk); }
+        if (g.who) { if (run.pf[w] && s === 0) run.pf[w] = 0; if (!run.pf[w] && s > (run.pb[w] || 0)) run.pb[w] = s; run.w = w; }   // (a continue: that player starts again)
+        if (all) all.forEach(function (v, i) { if (v != null && v > (run.pb[i] || 0)) run.pb[i] = v; });
         if (hold != null && (s < hold || (g.clock && clk < hold.clk))) hold = null;
         // a score counts once it moves while the player is pressing buttons (the demo plays itself), and, after a
         // game was filed, only in a new game (its score starts again lower), so one game is never filed twice
@@ -269,11 +283,16 @@ var ConsoleHi = (function () {
         if (run.earned && !passed && top > 0 && s > top) { passed = true; if (o.onPass) o.onPass(s, top); }
       } else if (!run.earned) run = fresh(s, clk);   // (the title or the demo: a game that wasn't played; a game under way waits for its game over)
     }
-    function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0 }; }
+    function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0, pb: {}, pf: {}, w: -1 }; }
+    // what to call a player on the board's moment: only when more than one has played (one player is just "High score")
+    function label(i) { var n = Object.keys(run.pb).filter(function (k) { return run.pb[k] > 0 || +k === i; }).length; return g.names && (n > 1 || i > 0) ? g.names[i] || 'Player ' + (i + 1) : null; }
+    function send(sc, who) { if (o.onEnd) o.onEnd(keyOf(g), sc, g, 'over', who); try { top = ArcadeHi.top(keyOf(g)); } catch (e) {} passed = false; }
     function scoreOf(r) { return r ? (g.down ? r.last : r.best) : 0; }
     function end(why) {
       if (!run || !run.earned) return;
       var sc = scoreOf(run); run.earned = false;
+      // every player's score readable: each one with a score goes to the board
+      if (g.scores) { var two = Object.keys(run.pb).filter(function (k) { return run.pb[k] > 0; }); if (two.length) { two.forEach(function (k) { if (o.onEnd) o.onEnd(keyOf(g), run.pb[k], g, why, two.length > 1 || +k > 0 ? g.names[+k] : null); }); try { top = ArcadeHi.top(keyOf(g)); } catch (e) {} passed = false; return; } }
       if (sc > 0 && o.onEnd) o.onEnd(keyOf(g), sc, g, why);
       try { top = ArcadeHi.top(keyOf(g)); } catch (e) {}
       passed = false;
