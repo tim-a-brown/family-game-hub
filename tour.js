@@ -24,7 +24,7 @@ var Tour = (function () {
   function gIcon(g) { try { if (window.GameIcon) return GameIcon(g.id); } catch (e) {} return icon('gamepad'); }
   // a game's little tile: its icon on its colour, as on the home screen
   function chip(g, cls) { return el('span', { class: 'tr-gi' + (cls ? ' ' + cls : ''), style: { '--c': g.color }, html: gIcon(g) }); }
-  // screen distances to the stage's own (a stage can be drawn larger on big screens with zoom)
+  // screen distances to the stage's own (a stage can be drawn larger on big screens, scaled with a transform)
   function kz(box) { var r = box.getBoundingClientRect(); return r.width ? box.offsetWidth / r.width : 1; }
   function av(name, color, cls) { return K.avatar.el(name, cls || null, color); }
   var G_LOGO = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
@@ -43,10 +43,14 @@ var Tour = (function () {
   // a scene: build(box) puts its pieces in the box and returns run(T) (one pass, which calls T.at to schedule)
   // and the length of a pass; the stage loops it while it's on screen
   function stage(build, cls) {
+    // the stage is a fixed 340 by 270 drawing, scaled to fit with a transform inside a box of the scaled size
+    // (not CSS zoom: Safari lays out moving rows wrongly inside a zoomed box)
     var box = el('div', { class: 'tr-stage' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' }), sc = null, T = null;
+    var wrap = el('div', { class: 'tr-sz' }, [box]);
     function loop() { if (!T || !T.live()) return; sc.run(T); T.at(sc.len, loop); }
     return {
-      el: box,
+      el: wrap,
+      scale: function (z) { z = Math.round(z * 1000) / 1000; wrap.style.width = 340 * z + 'px'; wrap.style.height = 270 * z + 'px'; box.style.transform = z === 1 ? '' : 'scale(' + z + ')'; },
       play: function () { this.stop(); box.innerHTML = ''; sc = build(box); T = timeline(); if (still) { if (sc.still) sc.still(); return; } loop(); },
       stop: function () { if (T) T.stop(); T = null; box.getAnimations && box.getAnimations({ subtree: true }).forEach(function (a) { a.cancel(); }); }
     };
@@ -450,7 +454,7 @@ var Tour = (function () {
 '.tr-bh b{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:.04em;color:#7ff6ff;text-shadow:0 0 10px rgba(127,246,255,.6);flex:1;text-align:left;}' +
 '.tr-bh-k{color:var(--yellow);} .tr-bh-k .ico{width:20px;height:20px;}' +
 '.tr-blist{display:flex;flex-direction:column;gap:5px;}' +
-'.tr-brow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.05);font-weight:900;}' +
+'.tr-brow{display:flex;align-items:center;gap:8px;width:100%;box-sizing:border-box;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.05);font-weight:900;}' +
 '.tr-brow .avatar.sm{width:24px;height:24px;font-size:.7rem;}' +
 '.tr-rk{width:16px;color:var(--text-3);font-variant-numeric:tabular-nums;}' +
 '.tr-ini{width:38px;text-align:left;letter-spacing:.12em;color:#fff;font-family:var(--display);font-weight:400;}' +
@@ -510,7 +514,8 @@ var Tour = (function () {
 '.tr-gbody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 16px calc(var(--safe-b,0px) + 24px);}' +
 '.tr-gwrap2{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:14px;}' +
 '.tr-ghero{position:relative;border-radius:24px;padding:14px 10px 50px;display:flex;flex-direction:column;align-items:center;background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--tc) 30%,#1d1745) 0%,#151033 70%);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--tc) 45%,transparent);overflow:hidden;}' +
-'.tr-ghero .tr-stage{zoom:var(--gz,1);}' +
+'.tr-sz{position:relative;flex:none;width:340px;height:270px;}' +
+'.tr-sz > .tr-stage{position:absolute;left:0;top:0;transform-origin:0 0;}' +
 '.tr-replay{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:rgba(0,0,0,.35);color:var(--text-2);display:grid;place-items:center;}' +
 '.tr-replay .ico{width:16px;height:16px;}' +
 '.tr-lead{font-size:1.05rem;font-weight:800;line-height:1.4;color:var(--text);text-wrap:pretty;}' +
@@ -624,10 +629,10 @@ var Tour = (function () {
       track.style.setProperty('--ch', '0px');
       var ch = wide ? 0 : Math.max.apply(null, copies.slice(0, -1).map(function (c) { return c.offsetHeight; }));
       track.style.setProperty('--ch', ch + 'px');
-      slides.forEach(function (s) {
-        var bx = s.querySelector('.tr-sbox'), stg = bx.firstChild;
+      slides.forEach(function (s, i) {
+        var bx = s.querySelector('.tr-sbox');
         var w = bx.clientWidth - (wide ? 0 : 8), h = bx.clientHeight - 8;
-        stg.style.zoom = String(Math.max(.55, Math.min(1.75, w / 340, h / 270)));
+        stages[i].scale(Math.max(.55, Math.min(1.75, w / 340, h / 270)));
       });
     }
     fit();
@@ -853,7 +858,7 @@ var Tour = (function () {
         return el('button', { type: 'button', class: 'btn ' + (i ? 'btn-soft' : 'btn-primary'), html: (tr[0] === 'google' ? G_LOGO : icon(tr[0])) + '<span>' + tr[1] + '</span>', onclick: function () { sfx('tap'); close(); setTimeout(tr[2], 250); } });
       })));
       body.innerHTML = ''; body.scrollTop = 0; body.appendChild(wrap);
-      var hero = wrap.firstChild; hero.style.setProperty('--gz', String(Math.min(innerWidth >= 700 && innerHeight >= 600 ? 1.35 : 1.1, (hero.clientWidth - 20) / 340)));
+      var hero = wrap.firstChild; st.scale(Math.min(innerWidth >= 700 && innerHeight >= 600 ? 1.35 : 1.1, (hero.clientWidth - 20) / 340));
       setTimeout(function () { if (st) st.play(); }, 200);
       reveal(parts);
     }
