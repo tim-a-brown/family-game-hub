@@ -73,36 +73,30 @@
 .qy-plus{position:absolute;z-index:6;pointer-events:none;font:900 1rem var(--display);color:#fff;text-shadow:0 2px 3px rgba(0,0,0,.6);animation:qplus 1.1s ease-out forwards;transform:translate(-50%,-50%);}
 @keyframes qplus{from{opacity:0;margin-top:0;}20%{opacity:1;}to{opacity:0;margin-top:-36px;}}
 
-/* the tray: three pieces on a wooden shelf, the deck beside it */
+/* the rack: the player's own 21 pieces on a wooden shelf, in a fixed order; laid ones leave a dashed outline */
 .qy-dock{width:var(--bs);display:flex;flex-direction:column;gap:8px;}
-.qy-tray{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:stretch;padding:9px;border-radius:14px;
+.qy-tray{position:relative;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;padding:8px;border-radius:14px;
   background:
     repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 7px),
     linear-gradient(180deg,var(--wood-a,#8a5d36),var(--wood-b,#5b3a1f));
   box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.35),0 10px 22px rgba(0,0,0,.4);}
-.qy-slot{position:relative;display:grid;place-items:center;aspect-ratio:1.15;border:0;border-radius:10px;padding:6px;background:rgba(0,0,0,.24);
-  box-shadow:inset 0 2px 5px rgba(0,0,0,.45);cursor:pointer;touch-action:none;transition:transform .2s var(--spring),background .2s,box-shadow .2s;}
-.qy-slot svg{position:absolute;left:8px;top:8px;width:calc(100% - 16px);height:calc(100% - 16px);overflow:visible;filter:drop-shadow(0 3px 2px rgba(0,0,0,.4));transition:transform .25s var(--spring);}
-.qy-slot.sel{background:rgba(255,236,190,.2);box-shadow:inset 0 0 0 2px #ffe08a,0 0 18px rgba(255,214,110,.35);}
-.qy-slot.sel svg{transform:translateY(-4px) scale(1.06);}
-.qy-slot.none{opacity:.35;}
-.qy-slot.empty{background:rgba(0,0,0,.14);cursor:default;}
-.qy-slot.in svg{animation:qin .5s cubic-bezier(.3,1.4,.5,1) both;}
-@keyframes qin{from{transform:translateX(70%) rotate(20deg);opacity:0;}to{transform:none;opacity:1;}}
-.qy-slot .sz{position:absolute;right:6px;bottom:4px;font:800 .62rem var(--body,inherit);color:rgba(255,236,200,.7);}
-.qy-deck{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:46px;color:#f6e3c4;}
-.qy-deck .pile{position:relative;width:34px;height:40px;}
-.qy-deck .pile i{position:absolute;left:0;right:0;height:30px;border-radius:6px;background:linear-gradient(180deg,#d9c3a0,#a98a63);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 3px rgba(0,0,0,.4);}
-.qy-deck .pile i:nth-child(1){top:10px;}.qy-deck .pile i:nth-child(2){top:5px;}.qy-deck .pile i:nth-child(3){top:0;}
-.qy-deck b{font:900 .95rem var(--display);line-height:1;}
-.qy-deck small{font-size:.58rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;opacity:.75;}
+.qy-slot{position:relative;display:block;aspect-ratio:1;border:0;border-radius:8px;padding:0;background:rgba(0,0,0,.22);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.4);cursor:pointer;touch-action:none;transition:transform .2s var(--spring),background .2s,box-shadow .2s,opacity .3s;}
+.qy-slot svg{position:absolute;left:12%;top:12%;width:76%;height:76%;overflow:visible;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.45));transition:transform .25s var(--spring);}
+.qy-slot.sel{background:rgba(255,236,190,.22);box-shadow:inset 0 0 0 2px #ffe08a,0 0 14px rgba(255,214,110,.4);z-index:1;}
+.qy-slot.sel svg{transform:translateY(-3px) scale(1.12);}
+.qy-slot.none{opacity:.32;}
+.qy-slot.used{background:rgba(0,0,0,.1);box-shadow:none;cursor:default;}
+.qy-slot.used svg{filter:none;}
+.qy-slot.gone svg{animation:qgone .45s ease-out both;}
+@keyframes qgone{from{opacity:0;transform:scale(1.3);}to{opacity:1;transform:none;}}
 .qy-acts{display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:8px;}
 .qy-acts .btn{min-height:50px;}
 .qy-acts .btn svg{width:18px;height:18px;}
 .qy-acts .btn:disabled{opacity:.4;}
 .qy-hint{font-size:.8rem;font-weight:700;color:var(--text-3);text-align:center;min-height:18px;}
 
-/* landscape: the players and the deck on the left (to look at), the slab and the tray on the right (to act on) */
+/* landscape: the players on the left (to look at), the slab and your pieces on the right (to act on) */
 @media (orientation:landscape) and (min-width:600px){
   .qy-wrap{--bs:min(calc(100dvh - 90px - var(--safe-t) - var(--safe-b)),calc(100vw - 620px),720px);display:grid;min-height:0;
     grid-template-columns:minmax(200px,250px) var(--bs) minmax(240px,300px);grid-template-areas:"pl board dock" "turn board dock";
@@ -111,19 +105,20 @@
   .qy-turn{grid-area:turn;text-align:left;}
   .qy-frame{grid-area:board;}
   .qy-dock{grid-area:dock;width:auto;}
-  .qy-tray{grid-template-columns:1fr 1fr;}
-  .qy-deck{grid-column:1/-1;flex-direction:row;gap:10px;}
+  .qy-tray{grid-template-columns:repeat(5,minmax(0,1fr));}
   .qy-acts{grid-template-columns:1fr 1fr;}
   .qy-acts .place{grid-column:1/-1;}
 }
 @media (orientation:landscape) and (max-height:500px){
   .qy-wrap{--bs:min(calc(100dvh - 70px - var(--safe-t) - var(--safe-b)),calc(100vw - 420px));grid-template-columns:minmax(118px,170px) var(--bs) minmax(190px,220px);column-gap:12px;}
   .qy-p{padding:4px 6px;}
-  .qy-tray{grid-template-columns:repeat(3,minmax(0,1fr));padding:7px;gap:6px;}
-  .qy-slot{aspect-ratio:1;padding:4px;}
-  .qy-slot svg{left:5px;top:5px;width:calc(100% - 10px);height:calc(100% - 10px);}
-  .qy-deck .pile{transform:scale(.75);}
-  .qy-acts .btn{min-height:42px;min-width:0;padding-left:6px;padding-right:6px;font-size:.9rem;}
+  .qy-tray{padding:6px;gap:4px;}
+  .qy-slot{border-radius:6px;}
+  .qy-dock{gap:6px;}
+  .qy-acts{grid-template-columns:1fr 1fr 2fr;gap:6px;}
+  .qy-acts .place{grid-column:auto;}
+  .qy-acts .btn{min-height:42px;min-width:0;padding-left:4px;padding-right:4px;font-size:.9rem;}
+  .qy-acts .btn-soft span{display:none;}
 }
 </style>
 </head>
@@ -140,7 +135,7 @@
   // The rules (pure: the same code runs the game here, online and for the robots)
   //   b[i]: -1 empty, else the seat whose block is there; pid[i]: which piece (for drawing its outline)
   //   g[i]: the gem at a square (1 quartz, 2 amethyst, 3 diamond), taken when a block covers it
-  //   tray: three shape ids anyone may take; deck: the rest, face down
+  //   players[i].left: the shape ids that player still has (everyone starts with one of each of the 21)
   // ═════════════════════════════════════════════════════════════════════════
   var Q = (function () {
     // every block shape, as cells [row, col]: 1 to 5 squares
@@ -155,8 +150,8 @@
       u5: [[0, 0], [0, 2], [1, 0], [1, 1], [1, 2]], v5: [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]], w5: [[0, 0], [1, 0], [1, 1], [2, 1], [2, 2]],
       x5: [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]], y5: [[0, 1], [1, 0], [1, 1], [2, 1], [3, 1]], z5: [[0, 0], [0, 1], [1, 1], [2, 1], [2, 2]]
     };
-    // how many of each are in the deck (52 pieces)
-    var COUNT = { o1: 3, i2: 4, i3: 3, l3: 3, i4: 3, o4: 3, t4: 3, s4: 3, l4: 3, f5: 2, i5: 2, l5: 2, n5: 2, p5: 2, t5: 2, u5: 2, v5: 2, w5: 2, x5: 2, y5: 2, z5: 2 };
+    // every player's set: one of each shape (21 pieces, 89 squares), smallest first
+    var ORDER = Object.keys(SHAPES);
     function norm(cells) {
       var r0 = Infinity, c0 = Infinity;
       cells.forEach(function (x) { r0 = Math.min(r0, x[0]); c0 = Math.min(c0, x[1]); });
@@ -181,11 +176,11 @@
     // where each seat starts: a corner of the slab (2 players opposite each other)
     function corners(n, N) {
       var bl = (N - 1) * N, tl = 0, tr = N - 1, br = N * N - 1;
-      // (3 players: the one between the other two goes first, which evens it up)
-      return n === 2 ? [bl, tr] : n === 3 ? [tl, bl, tr] : [bl, tl, tr, br];
+      // (3 players: the corner between the other two is the last to play, which evens it up)
+      return n === 2 ? [bl, tr] : n === 3 ? [bl, tr, tl] : [bl, tl, tr, br];
     }
     // gems: laid out in one quarter of the slab and turned into the other three, so every corner has the same
-    // chances; the four middle squares are the motherlode (diamonds)
+    // chances; the four middle squares are the motherlode (amethysts)
     function gems(N, R) {
       var g = {}, h = N / 2, spots = [];
       for (var r = 0; r < h; r++) for (var c = 0; c < h; c++) {
@@ -204,21 +199,18 @@
         var r = s[0], c = s[1];
         for (var q = 0; q < 4; q++) { g[r * N + c] = want[i]; var t = r; r = c; c = N - 1 - t; }
       });
-      [[h - 1, h - 1], [h - 1, h], [h, h - 1], [h, h]].forEach(function (x) { g[x[0] * N + x[1]] = 3; });
+      [[h - 1, h - 1], [h - 1, h], [h, h - 1], [h, h]].forEach(function (x) { g[x[0] * N + x[1]] = 2; });
       return g;
     }
     function start(players, seed) {
       var n = players.length, N = n === 2 ? 14 : 16, R = rng(seed || (Date.now() & 0x7fffffff)), b = [], pid = [];
       for (var i = 0; i < N * N; i++) { b.push(-1); pid.push(0); }
-      var deck = [];
-      Object.keys(COUNT).forEach(function (id) { for (var k = 0; k < COUNT[id]; k++) deck.push(id); });
-      shuffle(deck, R);
       // who goes first is drawn at random; the corners go round the table in turn order
       var g = gems(N, R), first = Math.floor(R() * n), cs = corners(n, N), corner = [];
       for (var j = 0; j < n; j++) corner.push(cs[(j - first + n) % n]);
-      var st = { v: 1, N: N, seed: seed, b: b, pid: pid, g: g, corner: corner, first: first, deck: deck, tray: deck.splice(0, 3),
-        players: players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, color: COLORS[i], score: 0, cells: 0, gems: [0, 0, 0, 0], placed: 0 }; }),
-        turn: first, slot: 0, passes: 0, n: 0, last: null, ev: [], over: false, result: null, started: Date.now(), moves: [] };
+      var st = { v: 2, N: N, seed: seed, b: b, pid: pid, g: g, corner: corner, first: first,
+        players: players.map(function (p, i) { return { name: p.name, cpu: !!p.cpu, level: p.level || null, color: COLORS[i], score: 0, cells: 0, gems: [0, 0, 0, 0], placed: 0, left: ORDER.slice(), out: false }; }),
+        turn: first, slot: 0, n: 0, last: null, ev: [], over: false, result: null, started: Date.now(), moves: [] };
       return st;
     }
     function rc(st, i) { return [Math.floor(i / st.N), i % st.N]; }
@@ -267,46 +259,40 @@
       });
       return out;
     }
-    function canMove(st, seat) { for (var t = 0; t < st.tray.length; t++) if (places(st, seat, st.tray[t]).length) return true; return false; }
-    // lay a piece: t = tray slot, o = orientation, r/c = its top-left. Returns false when it isn't legal.
-    function apply(st, seat, t, o, r, c) {
-      var id = st.tray[t]; if (!id || st.over || st.turn !== seat) return false;
+    function canMove(st, seat) { var L = st.players[seat].left; for (var t = L.length - 1; t >= 0; t--) if (places(st, seat, L[t]).length) return true; return false; }
+    // lay a piece: id = which of the seat's pieces, o = orientation, r/c = its top-left. Returns false when it isn't legal.
+    function apply(st, seat, id, o, r, c) {
+      var P0 = st.players[seat], li = P0 ? P0.left.indexOf(id) : -1;
+      if (li < 0 || st.over || st.turn !== seat || !ORI[id][o]) return false;
       var sq = cover(st, ORI[id][o].cells, r, c); if (!legal(st, seat, sq)) return false;
       var P = st.players[seat], got = [];
       st.n++;
       sq.forEach(function (s) { st.b[s] = seat; st.pid[s] = st.n; if (st.g[s]) { got.push({ s: s, v: st.g[s] }); P.score += st.g[s]; P.gems[st.g[s]]++; delete st.g[s]; } });
       P.cells += sq.length; P.placed++;
-      st.tray.splice(t, 1);
-      var drawn = st.deck.length ? st.deck.shift() : null;
-      if (drawn) st.tray.push(drawn);
-      st.last = { seat: seat, sq: sq, id: id, got: got, drawn: drawn };
+      P.left.splice(li, 1);
+      st.last = { seat: seat, sq: sq, id: id, got: got };
       st.moves.push(seat + id + ':' + o + ':' + r + ':' + c);
-      st.passes = 0;
-      st.ev = [{ k: 'place', seat: seat, sq: sq, got: got, id: id, drawn: drawn }];
+      st.ev = [{ k: 'place', seat: seat, sq: sq, got: got, id: id }];
+      if (!P.left.length) { P.out = true; st.ev.push({ k: 'all', seat: seat }); }
       next(st);
       return true;
     }
-    // on to the next player: one who can't lay any of the three gets the tray swept and three new pieces (once);
-    // still nothing, they pass. The game ends when everyone passes in a row, or the pieces run out.
+    // on to the next player: one who can't lay any piece they have left is walled in and sits out the rest of the game
+    // (the slab only fills up, so it never opens again). The game ends when everyone is walled in or out of pieces.
     // the order snakes, like a draft: 1 2 3, then 3 2 1, then 1 2 3... so nobody keeps the head start of going first
     function seatAt(n, slot, first) { var r = Math.floor(slot / n), p = slot % n; return ((r % 2 ? n - 1 - p : p) + (first || 0)) % n; }
     function step(st) { st.slot = (st.slot || 0) + 1; st.turn = seatAt(st.players.length, st.slot, st.first); }
     function next(st) {
       var n = st.players.length;
       step(st);
-      for (var guard = 0; guard < n * 3 && !st.over; guard++) {
-        if (!st.tray.length) { finish(st, 'empty'); return; }
-        if (canMove(st, st.turn)) return;
-        if (st.deck.length) {
-          var old = st.tray.slice();
-          st.deck = st.deck.concat(old);   // (to the bottom of the deck)
-          st.tray = st.deck.splice(0, 3);
-          st.ev.push({ k: 'sweep', seat: st.turn, old: old, tray: st.tray.slice() });
+      for (var guard = 0; guard < 64 && !st.over; guard++) {
+        if (st.players.every(function (p) { return p.out; })) { finish(st, st.players.every(function (p) { return !p.left.length; }) ? 'all' : 'blocked'); return; }
+        var P = st.players[st.turn];
+        if (!P.out) {
           if (canMove(st, st.turn)) return;
+          P.out = true; st.ev.push({ k: 'pass', seat: st.turn });
+          continue;   // (check again: that may have been the last one)
         }
-        st.ev.push({ k: 'pass', seat: st.turn });
-        st.passes++;
-        if (st.passes >= n) { finish(st, 'blocked'); return; }
         step(st);
       }
     }
@@ -357,16 +343,17 @@
       var best = [], others = st.players.map(function (p, i) { return i; }).filter(function (i) { return i !== seat; });
       var noise = level === 'easy' ? 9 : level === 'hard' ? 0.4 : 2.5;
       var gemList = Object.keys(st.g).map(Number);
-      st.tray.forEach(function (id, t) {
+      var L = st.players[seat].left;
+      L.forEach(function (id) {
         places(st, seat, id).forEach(function (p) {
           var b = st.b.slice(), v = 0;
           p.sq.forEach(function (s) { b[s] = seat; if (st.g[s]) v += st.g[s] * 14; });
-          v += p.sq.length * 2.2 + frontier(st, seat, b) * 0.35;
+          v += p.sq.length * (2.2 + 2.4 * L.length / ORDER.length) + frontier(st, seat, b) * 0.35;   // (big pieces while there's room)
           var d = dist(st, seat, b);
           gemList.forEach(function (s) { if (b[s] === -1) v += st.g[s] * 6 / (1 + d[s]); });
           if (level === 'hard') others.forEach(function (o) { v -= frontier(st, o, b) * 0.3; });
           v += (Math.random() - .5) * noise;
-          best.push({ v: v, t: t, o: p.o, r: p.r, c: p.c });
+          best.push({ v: v, id: id, o: p.o, r: p.r, c: p.c });
         });
       });
       if (!best.length) return null;
@@ -374,7 +361,7 @@
       if (level === 'easy') return best[Math.floor(Math.random() * Math.min(best.length, 6))];
       return best[0];
     }
-    return { SHAPES: SHAPES, ORI: ORI, seatAt: seatAt, start: start, cover: cover, legal: legal, places: places, canMove: canMove, apply: apply, reach: reach, think: think, rc: rc, hasAny: hasAny };
+    return { SHAPES: SHAPES, ORDER: ORDER, ORI: ORI, seatAt: seatAt, start: start, cover: cover, legal: legal, places: places, canMove: canMove, apply: apply, reach: reach, think: think, rc: rc, hasAny: hasAny };
   })();
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -388,16 +375,17 @@
     menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Quarry: past games' }); } }]),
     rules:
       '<p class="goal">Dig out from your corner of the quarry and collect the most gems.</p>' +
-      '<h3>Your turn</h3><ul><li>Take one of the <b>three pieces in the tray</b>. Turn it or flip it, then lay it on the slab. A new piece comes off the deck to fill the tray, so what you leave is what the next player gets.</li>' +
+      '<h3>Your pieces</h3><ul><li>Everyone has the same set of <b>21 pieces</b> in their colour: one single block, one pair, two threes, five fours and twelve fives. Each piece is laid once.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Pick any piece you have left, turn it or flip it, and lay it on the slab.</li>' +
       '<li>Your <b>first piece</b> has to cover your corner (the dashed square in your colour).</li>' +
       '<li>After that, every piece has to <b>touch one of your own blocks along a side</b>. Touching only at a corner doesn’t count. Pieces never overlap.</li>' +
       '<li>The squares you can grow into glow in your colour.</li></ul>' +
-      '<h3>Gems</h3><ul><li>Cover a gem to take it: <b>quartz 1</b>, <b>amethyst 2</b>, <b>diamond 3</b>. The four diamonds in the middle are the motherlode.</li></ul>' +
-      '<h3>Stuck?</h3><ul><li>If none of the three pieces fits anywhere for you, the tray is swept and three new pieces come out. If none of those fit either, you pass.</li></ul>' +
-      '<h3>The end</h3><ul><li>The game ends when nobody can lay a piece, or the pieces run out.</li>' +
+      '<h3>Gems</h3><ul><li>Cover a gem to take it: <b>quartz 1</b>, <b>amethyst 2</b>, <b>diamond 3</b>. The four amethysts in the middle are the motherlode.</li></ul>' +
+      '<h3>Walled in</h3><ul><li>When none of your pieces fits anywhere, you’re walled in and sit out the rest of the game. The others carry on.</li></ul>' +
+      '<h3>The end</h3><ul><li>The game ends when nobody can lay another piece.</li>' +
       '<li>Whoever dug the <b>most squares</b> gets 5 more points (with 3 or 4 players, the next most gets 2). Most points wins.</li></ul>' +
       '<h3>Online</h3><ul><li><b>Play online</b>: 2 to 4 players, each on their own device, at your own pace. The home screen shows when it’s your turn. Moves can’t be taken back online.</li></ul>' +
-      '<h3>Tips</h3><ul><li>Big pieces dig more, but a long thin one can reach a gem first.</li><li>Grow toward the middle early: the motherlode is worth 12.</li><li>Cut across a rival’s path to wall them off from the gems near them.</li></ul>'
+      '<h3>Tips</h3><ul><li>Lay the big pieces while there’s room. The small ones squeeze into gaps late in the game.</li><li>A long thin piece can reach a gem first.</li><li>Grow toward the middle early: the motherlode is worth 8.</li><li>Cut across a rival’s path to wall them off from the gems near them.</li></ul>'
   });
 
   var S = null, NET = null, NETREC = {}, hist = [];
@@ -486,7 +474,7 @@
     var N = S.N, reachSet = {}, fitSet = {}, cur = S.players[S.turn];
     var mine = myTurn();
     if (mine) {
-      if (sel >= 0) Q.places(S, S.turn, S.tray[sel], ori).forEach(function (p) { p.sq.forEach(function (s) { fitSet[s] = 1; }); });
+      if (sel >= 0) Q.places(S, S.turn, Q.ORDER[sel], ori).forEach(function (p) { p.sq.forEach(function (s) { fitSet[s] = 1; }); });
       else Q.reach(S, S.turn).forEach(function (s) { reachSet[s] = 1; });
     }
     for (var i = 0; i < N * N; i++) {
@@ -512,25 +500,31 @@
     var u = 10, pad = 2, W = Math.max(w, h, 3) * u, ox = (W - w * u) / 2, oy = (W - h * u) / 2, s = '';
     cells.forEach(function (x) {
       var X = ox + x[1] * u, Y = oy + x[0] * u;
+      if (!color) { s += '<rect x="' + (X + 1) + '" y="' + (Y + 1) + '" width="' + (u - 2) + '" height="' + (u - 2) + '" rx="1.6" fill="rgba(0,0,0,.18)" stroke="rgba(255,236,200,.22)" stroke-width=".8" stroke-dasharray="2 1.4"/>'; return; }
       s += '<rect x="' + (X + .5) + '" y="' + (Y + .5) + '" width="' + (u - 1) + '" height="' + (u - 1) + '" rx="1.6" fill="' + color + '"/>' +
         '<rect x="' + (X + .5) + '" y="' + (Y + .5) + '" width="' + (u - 1) + '" height="2" rx="1" fill="rgba(255,255,255,.4)"/>' +
         '<rect x="' + (X + .5) + '" y="' + (Y + u - 3) + '" width="' + (u - 1) + '" height="2.5" rx="1" fill="rgba(0,0,0,.3)"/>';
     });
     return '<svg viewBox="' + (-pad) + ' ' + (-pad) + ' ' + (W + pad * 2) + ' ' + (W + pad * 2) + '" aria-hidden="true">' + s + '</svg>';
   }
-  function paintTray(newIdx) {
+  // does the player whose turn it is still have piece t (an index into Q.ORDER)?
+  function has(t) { return S && t >= 0 && S.players[S.turn].left.indexOf(Q.ORDER[t]) >= 0; }
+  // the rack: the player's whole set in a fixed order; laid pieces leave their outline behind
+  function paintTray(gone) {
     V.tray.innerHTML = '';
-    var mine = myTurn(), color = S.players[S.turn].color;
-    for (var t = 0; t < 3; t++) {
-      var id = S.tray[t];
-      if (!id) { V.tray.appendChild(el('div', { class: 'qy-slot empty' })); continue; }
-      var fits = Q.places(S, S.turn, id).length > 0;
-      var b = el('button', { type: 'button', class: 'qy-slot' + (t === sel ? ' sel' : '') + (!fits ? ' none' : '') + (t === newIdx ? ' in' : ''), 'aria-label': Q.SHAPES[id].length + '-square piece' + (fits ? '' : ' (doesn’t fit)'),
-        html: pieceSvg(id, t === sel ? ori : 0, color) + '<span class="sz">' + Q.SHAPES[id].length + '</span>' });
-      (function (t, b) { trayInput(b, t); })(t, b);
+    var P = S.players[S.turn], color = P.color, mine = myTurn();
+    V.tray.style.setProperty('--c', color);
+    Q.ORDER.forEach(function (id, t) {
+      if (P.left.indexOf(id) < 0) {
+        V.tray.appendChild(el('div', { class: 'qy-slot used' + (id === gone ? ' gone' : ''), 'aria-hidden': 'true', html: pieceSvg(id, 0, null) }));
+        return;
+      }
+      var fits = !mine || Q.places(S, S.turn, id).length > 0;
+      var b = el('button', { type: 'button', class: 'qy-slot' + (t === sel ? ' sel' : '') + (!fits ? ' none' : ''), 'aria-label': Q.SHAPES[id].length + '-square piece' + (fits ? '' : ' (doesn’t fit)'),
+        html: pieceSvg(id, t === sel ? ori : 0, color) });
+      trayInput(b, t);
       V.tray.appendChild(b);
-    }
-    V.tray.appendChild(el('div', { class: 'qy-deck', 'aria-label': S.deck.length + ' pieces left in the deck' }, [el('div', { class: 'pile' }, S.deck.length ? [el('i'), el('i'), el('i')].slice(0, Math.min(3, S.deck.length)) : []), el('b', { text: String(S.deck.length) }), el('small', { text: 'Left' })]));
+    });
   }
   function paintGhost() {
     V.ghost.innerHTML = ''; V.ghost.className = 'qy-ghost';
@@ -538,10 +532,10 @@
     V.rot.disabled = V.flip.disabled = !mine || sel < 0;
     V.place.disabled = true;
     if (!mine || sel < 0 || !at) {
-      V.hint.textContent = !S || S.over ? '' : !mine ? '' : sel < 0 ? (Q.hasAny(S, S.turn) ? 'Pick a piece from the tray' : 'Pick a piece: your first one covers your corner') : 'Drag it onto the slab, or tap where it goes';
+      V.hint.textContent = !S || S.over ? '' : !mine ? '' : sel < 0 ? (Q.hasAny(S, S.turn) ? 'Pick one of your pieces' : 'Pick a piece: your first one covers your corner') : 'Drag it onto the slab, or tap where it goes';
       return;
     }
-    var id = S.tray[sel], cells = Q.ORI[id][ori].cells, N = S.N, sq = Q.cover(S, cells, at[0], at[1]), ok = sq && Q.legal(S, S.turn, sq);
+    var id = Q.ORDER[sel], cells = Q.ORI[id][ori].cells, N = S.N, sq = Q.cover(S, cells, at[0], at[1]), ok = sq && Q.legal(S, S.turn, sq);
     V.ghost.classList.toggle('bad', !ok); V.ghost.style.setProperty('--c', S.players[S.turn].color);
     cells.forEach(function (x) {
       var r = at[0] + x[0], c = at[1] + x[1];
@@ -555,12 +549,12 @@
 
   // ── Picking, turning, laying ─────────────────────────────────────────────
   function pick(t, quiet) {
-    if (!myTurn() || !S.tray[t]) return;
+    if (!myTurn() || !has(t)) return;
     if (sel === t) { turnPiece(1); return; }
     sel = t; ori = 0;
     // start it somewhere it fits, nearest the middle of where you can grow
-    var opts = Q.places(S, S.turn, S.tray[t], 0);
-    if (!opts.length) { var any = Q.places(S, S.turn, S.tray[t]); if (any.length) ori = any[0].o; opts = any.filter(function (p) { return p.o === ori; }); }
+    var opts = Q.places(S, S.turn, Q.ORDER[t], 0);
+    if (!opts.length) { var any = Q.places(S, S.turn, Q.ORDER[t]); if (any.length) ori = any[0].o; opts = any.filter(function (p) { return p.o === ori; }); }
     at = opts.length ? [opts[Math.floor(opts.length / 2)].r, opts[Math.floor(opts.length / 2)].c] : null;
     if (!at) { var cr = Q.rc(S, S.corner[S.turn]); at = [Math.min(cr[0], S.N - 3), Math.min(cr[1], S.N - 3)]; }
     if (!quiet) { Kit.sfx('tap'); Kit.haptic('light'); }
@@ -568,7 +562,7 @@
   }
   // turn or flip about the piece's middle, so it stays where it was
   function reorient(k) {
-    var id = S.tray[sel], a = Q.ORI[id][ori].cells, mid = centre(a);
+    var id = Q.ORDER[sel], a = Q.ORI[id][ori].cells, mid = centre(a);
     var want = Q.ORI[id].findIndex(function (x) { return x.k === k; });
     if (want < 0) { var c = orientCells(id, k); want = Q.ORI[id].findIndex(function (x) { return JSON.stringify(x.cells) === JSON.stringify(c); }); }
     ori = want < 0 ? 0 : want;
@@ -585,8 +579,8 @@
     var r0 = Infinity, c0 = Infinity; cells.forEach(function (x) { r0 = Math.min(r0, x[0]); c0 = Math.min(c0, x[1]); });
     return cells.map(function (x) { return [x[0] - r0, x[1] - c0]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
   }
-  function turnPiece() { if (sel < 0 || !myTurn()) return; var k = Q.ORI[S.tray[sel]][ori].k; reorient((k & 4) | ((k + 1) & 3)); }
-  function flipPiece() { if (sel < 0 || !myTurn()) return; var k = Q.ORI[S.tray[sel]][ori].k; reorient((k ^ 4) & 7); }
+  function turnPiece() { if (sel < 0 || !myTurn()) return; var k = Q.ORI[Q.ORDER[sel]][ori].k; reorient((k & 4) | ((k + 1) & 3)); }
+  function flipPiece() { if (sel < 0 || !myTurn()) return; var k = Q.ORI[Q.ORDER[sel]][ori].k; reorient((k ^ 4) & 7); }
   // drag a tray piece onto the slab, or move the one already there; a tap on the slab puts it there
   function cellAt(x, y) {
     var r = V.board.getBoundingClientRect(), N = S.N;
@@ -594,7 +588,7 @@
   }
   function moveTo(x, y, lift) {
     if (sel < 0) return;
-    var cells = Q.ORI[S.tray[sel]][ori].cells, m = centre(cells), rc = cellAt(x, y - (lift ? V.board.getBoundingClientRect().height / S.N * 1.4 : 0));
+    var cells = Q.ORI[Q.ORDER[sel]][ori].cells, m = centre(cells), rc = cellAt(x, y - (lift ? V.board.getBoundingClientRect().height / S.N * 1.4 : 0));
     var na = [Math.round(rc[0] - m[0]), Math.round(rc[1] - m[1])];
     if (!at || na[0] !== at[0] || na[1] !== at[1]) { at = na; paintGhost(); Kit.haptic('selection'); }
   }
@@ -614,7 +608,7 @@
       if (!drag) return; drag = false; V.ghost.classList.remove('lift');
       if (!moved) {
         // a tap on the piece itself turns it; anywhere else moves it there
-        var rc = cellAt(e.clientX, e.clientY), id = S.tray[sel], on = at && Q.ORI[id][ori].cells.some(function (x) { return x[0] + at[0] === rc[0] && x[1] + at[1] === rc[1]; });
+        var rc = cellAt(e.clientX, e.clientY), id = Q.ORDER[sel], on = at && Q.ORI[id][ori].cells.some(function (x) { return x[0] + at[0] === rc[0] && x[1] + at[1] === rc[1]; });
         if (on) turnPiece(); else moveTo(e.clientX, e.clientY, false);
       } else Kit.sfx('tap');
     }
@@ -623,10 +617,15 @@
   }
   function trayInput(b, t) {
     var x0 = 0, y0 = 0, dragging = false, down = false;
-    b.addEventListener('pointerdown', function (e) { if (!myTurn() || !S.tray[t]) return; down = true; dragging = false; x0 = e.clientX; y0 = e.clientY; try { b.setPointerCapture(e.pointerId); } catch (x) {} });
+    b.addEventListener('pointerdown', function (e) { if (!myTurn() || !has(t)) return; down = true; dragging = false; x0 = e.clientX; y0 = e.clientY; try { b.setPointerCapture(e.pointerId); } catch (x) {} });
     b.addEventListener('pointermove', function (e) {
       if (!down) return;
-      if (!dragging && Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 10) { dragging = true; if (sel !== t) { sel = t; ori = 0; paintTray(); paintBoard(); } V.ghost.classList.add('lift'); }
+      if (!dragging && Math.abs(e.clientX - x0) + Math.abs(e.clientY - y0) > 10) {
+        dragging = true;
+        // (the rack isn't redrawn mid-drag: that would drop this button and the drag with it)
+        if (sel !== t) { var was = V.tray.querySelector('.qy-slot.sel'); if (was) was.classList.remove('sel'); b.classList.add('sel'); sel = t; ori = 0; at = null; paintBoard(); Kit.sfx('tap'); }
+        V.ghost.classList.add('lift');
+      }
       if (dragging) { var r = V.board.getBoundingClientRect(); if (e.clientY < r.bottom + 20) moveTo(e.clientX, e.clientY, e.pointerType !== 'mouse'); }
     });
     function up() { if (!down) return; down = false; V.ghost.classList.remove('lift'); if (!dragging) pick(t); else { Kit.sfx('tap'); paintGhost(); } }
@@ -636,13 +635,13 @@
     if (!S || !myTurn() || document.querySelector('.k-scrim')) return;
     if (e.key === 'r' || e.key === 'R') turnPiece(); else if (e.key === 'f' || e.key === 'F') flipPiece();
     else if (e.key === 'Enter' && !V.place.disabled) placeIt();
-    else if (/^[123]$/.test(e.key)) pick(+e.key - 1);
+    else if (e.key === '[' || e.key === ']') { var d = e.key === ']' ? 1 : -1, t = sel; for (var k = 0; k < Q.ORDER.length; k++) { t = (t + d + Q.ORDER.length) % Q.ORDER.length; if (has(t)) { pick(t); break; } } }
     else if (at && sel >= 0 && /^Arrow/.test(e.key)) { e.preventDefault(); at = [at[0] + (e.key === 'ArrowDown') - (e.key === 'ArrowUp'), at[1] + (e.key === 'ArrowRight') - (e.key === 'ArrowLeft')]; paintGhost(); }
   });
 
   function placeIt() {
     if (!myTurn() || sel < 0 || !at) return;
-    var t = sel, o = ori, r = at[0], c = at[1];
+    var t = Q.ORDER[sel], o = ori, r = at[0], c = at[1];
     if (NET) {
       busy = true;
       NET.act(function (st) { return Q.apply(st, NET.seat, t, o, r, c) ? { state: st, mv: { seat: NET.seat, t: t } } : null; });
@@ -663,18 +662,18 @@
       if (!ev) { busy = false; done && done(); return; }
       if (ev.k === 'place') {
         var P = S.players[ev.seat];
-        paintBoard(); paintTray(S.tray.length === 3 && ev.drawn ? 2 : -1); paintGhost();
+        paintBoard(); paintTray(ev.id); paintGhost();
         ev.sq.forEach(function (s, k) { var b = V.cells[s].querySelector('.qy-b'); if (b) { b.classList.add('new'); b.style.animationDelay = (k * 45) + 'ms'; } });
         Kit.sfx('chip'); Kit.haptic('medium');
         var gemV = 0; ev.got.forEach(function (g, k) { gemV += g.v; setTimeout(function () { flyGem(g.s, g.v, ev.seat); }, 220 + k * 140); });
         var mother = ev.got.filter(function (g) { return isMiddle(g.s); }).length;
-        if (gemV) setTimeout(function () { Kit.sfx('sparkle'); Kit.haptic('success'); paintPlayers(ev.seat); if (mother) Kit.callout && Kit.callout(mother > 1 ? 'Motherlode!' : 'A diamond from the motherlode'); }, 520 + ev.got.length * 140);
+        if (gemV) setTimeout(function () { Kit.sfx('sparkle'); Kit.haptic('success'); paintPlayers(ev.seat); if (mother) Kit.callout && Kit.callout(mother > 1 ? 'Motherlode!' : 'A piece of the motherlode'); }, 520 + ev.got.length * 140);
         else paintPlayers();
         setTimeout(step, gemV ? 900 + ev.got.length * 140 : 450);
-      } else if (ev.k === 'sweep') {
+      } else if (ev.k === 'all') {
         var p = S.players[ev.seat];
-        Kit.sfx('whoosh'); Kit.callout && Kit.callout((NET && ev.seat === NET.seat || !NET && !p.cpu ? 'Nothing fits: ' : p.name + ' is stuck: ') + 'new pieces');
-        setTimeout(step, 1100);
+        Kit.sfx('win'); Kit.haptic('success'); Kit.callout && Kit.callout(p.name + (p.name === 'You' ? ' laid' : ' laid') + ' every piece!');
+        setTimeout(step, 1300);
       } else if (ev.k === 'pass') {
         var q = S.players[ev.seat];
         Kit.sfx('bad'); Kit.callout && Kit.callout(q.name + (q.name === 'You' ? ' are' : ' is') + ' walled in');
@@ -703,24 +702,25 @@
     if (p.cpu) { thinkT = setTimeout(cpuMove, first ? 900 : 650); return; }
     if (!first) Kit.haptic('light');
     // your turn: the first piece that fits is already in hand, laid where it can go
-    if (myTurn()) for (var t = 0; t < S.tray.length; t++) if (S.tray[t] && Q.places(S, S.turn, S.tray[t]).length) { pick(t, true); break; }
+    // (the biggest one: they're the hardest to fit later)
+    if (myTurn()) for (var t = Q.ORDER.length - 1; t >= 0; t--) if (has(t) && Q.places(S, S.turn, Q.ORDER[t]).length) { pick(t, true); break; }
   }
   function cpuMove() {
     if (!S || S.over || NET) return;
     var p = S.players[S.turn], m = Q.think(S, S.turn, p.level || 'normal');
     if (!m) { beginTurn(); return; }
-    // the robot's piece lifts out of the tray and settles where it goes
-    sel = m.t; ori = m.o; at = [m.r, m.c];
+    // the robot's piece lifts out of its rack and settles where it goes
+    sel = Q.ORDER.indexOf(m.id); ori = m.o; at = [m.r, m.c];
     busy = false; paintTray(); paintBoard(); busy = true; paintGhostAs(p);
     setTimeout(function () {
-      Q.apply(S, S.turn, m.t, m.o, m.r, m.c);
+      Q.apply(S, S.turn, m.id, m.o, m.r, m.c);
       sel = -1; at = null;
       play(S.ev, function () { save(); beginTurn(); });
     }, 700);
   }
   function paintGhostAs(p) {
     V.ghost.innerHTML = ''; V.ghost.className = 'qy-ghost lift'; V.ghost.style.setProperty('--c', p.color);
-    var cells = Q.ORI[S.tray[sel]][ori].cells, N = S.N;
+    var cells = Q.ORI[Q.ORDER[sel]][ori].cells, N = S.N;
     cells.forEach(function (x) { V.ghost.appendChild(el('i', { style: { left: ((at[1] + x[1]) / N * 100) + '%', top: ((at[0] + x[0]) / N * 100) + '%', width: (100 / N) + '%', height: (100 / N) + '%' } })); });
   }
   // back to before your last piece (and the robots' after it)
@@ -746,7 +746,7 @@
         players: pl.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
         winner: w.length === 1 ? wp.name : null,
         summary: w.length === 1 ? wp.name + ' won with ' + wp.total : 'Tie at ' + wp.total,
-        highlights: hl.concat([R.why === 'empty' ? 'The deck ran out' : 'Nobody could lay another piece']).concat(NET ? ['Online game, table ' + NET.code] : []),
+        highlights: hl.concat([R.why === 'all' ? 'Every piece was laid' : 'Nobody could lay another piece']).concat(NET ? ['Online game, table ' + NET.code] : []),
         detail: { N: S.N, board: S.b.map(function (v) { return v < 0 ? '.' : String(v); }).join(''), moves: S.moves.length }
       });
     }
@@ -756,7 +756,7 @@
     Kit.win({
       icon: iWon || !solo && !NET ? 'trophy' : 'gem',
       title: left ? NET.result.text : w.length > 1 ? 'A tie at ' + wp.total + '!' : (NET ? iWon : solo && iWon) ? 'You win!' : wp.name + ' wins!',
-      sub: R.why === 'empty' ? 'The deck ran out' : 'Nobody could lay another piece',
+      sub: R.why === 'all' ? 'Every piece was laid' : 'Nobody could lay another piece',
       rank: rank, lose: (NET || solo) && !iWon,
       againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { if (NET) { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); return; } var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }); S = Q.start(players, Math.floor(Math.random() * 2147483647)); hist = []; Kit.gameStart(); save(); build(); beginTurn(true); },
@@ -784,7 +784,7 @@
   function netLeave() {
     NET = null;
     var sv = lsGet(SAVE, null);
-    if (sv && sv.S && sv.S.b && !sv.S.over) { S = sv.S; hist = sv.hist || []; build(); beginTurn(true); } else showSetup();
+    if (sv && sv.S && sv.S.v === 2 && !sv.S.over) { S = sv.S; hist = sv.hist || []; build(); beginTurn(true); } else showSetup();
   }
   TurnNet.setup({
     game: 'quarry', title: 'Quarry', min: 2, max: 4,
@@ -797,14 +797,14 @@
       var pl = st.players, w = st.result.win;
       return { win: w, text: w.length === 1 ? pl[w[0]].name + ' won with ' + pl[w[0]].total : 'Tie at ' + pl[w[0]].total };
     },
-    bot: function (st, seat) { var m = Q.think(st, seat, 'normal'); if (!m || !Q.apply(st, seat, m.t, m.o, m.r, m.c)) return null; return { state: st, mv: { seat: seat, t: m.t } }; },
+    bot: function (st, seat) { var m = Q.think(st, seat, 'normal'); if (!m || !Q.apply(st, seat, m.id, m.o, m.r, m.c)) return null; return { state: st, mv: { seat: seat, t: m.id } }; },
     show: netShow, leave: netLeave
   });
 
   // ── Start ────────────────────────────────────────────────────────────────
-  window.__qy = { Q: Q, S: function () { return S; }, pick: pick, placeIt: placeIt, go: function (t, o, r, c) { pick(t); ori = o; at = [r, c]; paintGhost(); placeIt(); }, setAt: function (r, c) { at = [r, c]; paintGhost(); }, turn: turnPiece, flip: flipPiece };
+  window.__qy = { Q: Q, S: function () { return S; }, pick: pick, placeIt: placeIt, go: function (id, o, r, c) { pick(Q.ORDER.indexOf(id)); ori = o; at = [r, c]; paintGhost(); placeIt(); }, setAt: function (r, c) { at = [r, c]; paintGhost(); }, turn: turnPiece, flip: flipPiece };
   var saved = lsGet(SAVE, null);
-  if (saved && saved.S && saved.S.b && !saved.S.over && !/[?&]online=1/.test(location.search)) { S = saved.S; hist = saved.hist || []; build(); beginTurn(true); }
+  if (saved && saved.S && saved.S.v === 2 && !saved.S.over && !/[?&]online=1/.test(location.search)) { S = saved.S; hist = saved.hist || []; build(); beginTurn(true); }
   else showSetup();
   if (/[?&]online=1/.test(location.search)) TurnNet.open();
 })();
