@@ -25,7 +25,8 @@ body{display:flex;min-height:100dvh;}
 .logo svg{width:84px;height:84px;display:block;}
 @keyframes float{50%{transform:translateY(-6px) rotate(-2deg);}}
 h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
-.sub{color:var(--text-2);margin-bottom:18px;}
+.sub{color:var(--text-2);max-width:320px;text-wrap:balance;line-height:1.4;}
+.pin-lbl{font-size:.72rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);margin-top:4px;}
 .slots{display:flex;gap:12px;margin:6px 0 4px;}
 .slot{width:58px;height:68px;border-radius:18px;display:grid;place-items:center;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 2px var(--w1);
   font-family:var(--display);font-size:2rem;transition:box-shadow .2s, transform .2s var(--spring);}
@@ -34,12 +35,12 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .slots.busy .slot{opacity:.6;}
 .status{min-height:1.4em;max-width:330px;text-align:center;font-weight:800;color:var(--text-2);margin:6px 0 10px;line-height:1.35;}
 .status.err{color:var(--red);}
-.pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;margin:6px 0 18px;}
+.pad{display:grid;grid-template-columns:repeat(3,76px);gap:12px;margin:6px 0 4px;}
 .key{height:64px;border:0;border-radius:20px;background:var(--surface-2);color:var(--text);font-size:1.6rem;font-weight:900;box-shadow:0 4px 0 rgba(0,0,0,.35);}
 .key:active,.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
 .key.ghost{background:transparent;box-shadow:none;color:var(--text-3);font-size:.95rem;}
 .key .ico{width:24px;height:24px;}
-.hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:4px;}
+.hint{color:var(--text-3);font-size:.85rem;font-weight:700;max-width:300px;margin-top:6px;line-height:1.45;text-wrap:balance;}
 /* Sign in with Google: Google's own light button (white, the four-colour G), the same width as the PIN buttons */
 .gbtn{width:100%;max-width:330px;min-height:50px;gap:12px;background:#fff;color:#1f1f1f;font-weight:800;box-shadow:0 2px 0 rgba(0,0,0,.25),inset 0 0 0 1px #dadce0;}
 .gbtn:hover{background:#f8f9fa;}
@@ -47,19 +48,20 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .gbtn.call{animation:gCall 1.4s ease-in-out 3;box-shadow:0 2px 0 rgba(0,0,0,.25),0 0 0 3px var(--yellow);}
 @keyframes gCall{50%{transform:scale(1.04);}}
 /* First time here? A pill under the title that opens the tour, with a soft glow so a new visitor finds it */
-.tour-pill{display:inline-flex;align-items:center;gap:8px;margin:-8px 0 14px;padding:8px 16px 8px 8px;border:0;border-radius:999px;background:rgba(255,209,102,.12);color:var(--text);font-weight:900;font-size:.92rem;box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.45);animation:tourGlow 2.6s ease-in-out infinite;}
+.tour-pill{display:inline-flex;align-items:center;gap:8px;margin:14px 0 18px;padding:8px 16px 8px 8px;border:0;border-radius:999px;background:rgba(255,209,102,.12);color:var(--text);font-weight:900;font-size:.92rem;box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.45);animation:tourGlow 2.6s ease-in-out infinite;}
 .tour-pill .pl{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:#2b1a00;}
 .tour-pill .pl .ico{width:14px;height:14px;fill:currentColor;}
 .tour-pill small{color:var(--yellow);font-weight:900;}
 @keyframes tourGlow{50%{box-shadow:inset 0 0 0 1.5px rgba(255,209,102,.8),0 0 18px rgba(255,209,102,.25);}}
 @media (prefers-reduced-motion:reduce){.tour-pill{animation:none;}}
-.pv-link{display:inline-block;margin-top:10px;padding:6px 10px;color:var(--text-3);font-size:.85rem;font-weight:800;text-decoration:none;}
+.pv-link{display:inline-block;margin-top:4px;padding:6px 10px;color:var(--text-3);font-size:.85rem;font-weight:800;text-decoration:none;}
 .or{display:flex;align-items:center;gap:10px;width:100%;max-width:330px;color:var(--text-3);font-size:.78rem;font-weight:900;text-transform:uppercase;letter-spacing:.1em;}
 .or::before,.or::after{content:'';flex:1;height:1px;background:var(--w1);}
 /* The three parts: title, keypad, and the rest (random PIN, guest, hint). Stacked on phones; on a tablet held
    sideways the keypad takes the right and the rest sits beside it on the left, so nothing needs a scroll */
 .g-head,.g-pad,.g-more{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
-.g-more{gap:8px;}
+.g-more{gap:8px;margin-top:22px;}
+.pin-hint{margin-top:10px;}
 /* Assign me a random PIN: the slots spin and land on a free PIN; signing in is still your tap */
 .rnd{display:flex;flex-direction:column;align-items:center;width:100%;max-width:330px;}
 .rnd-go{width:100%;min-height:48px;gap:8px;}
@@ -76,14 +78,25 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
 .slots.offer .slot{box-shadow:inset 0 0 0 2.5px #4ade80, 0 0 18px rgba(74,222,128,.35);color:#eafff1;}
 .slot.land{animation:pop .3s var(--spring);}
 @media (prefers-reduced-motion:reduce){.rnd-offer,.slot.land{animation:none;}}
+/* Tablet or computer held sideways: who we are and the other ways in on the left, the PIN keypad on its own panel
+   on the right, both centred on the same line */
 @media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  .gate{max-width:860px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head pad" "more pad";column-gap:56px;row-gap:22px;align-items:center;text-align:left;}
+  .gate{max-width:920px;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"head pad" "more pad";column-gap:72px;row-gap:0;align-content:center;align-items:center;}
   .g-head{grid-area:head;align-self:end;}
-  .g-pad{grid-area:pad;}
-  .g-more{grid-area:more;align-self:start;}
-  .g-head .sub{margin-bottom:0;text-align:center;}
-  .g-more .hint{text-align:center;}
+  .g-head .tour-pill{margin-bottom:26px;}
+  .g-more{grid-area:more;align-self:start;margin-top:0;}
+  .g-pad{grid-area:pad;width:auto;padding:30px 36px 32px;border-radius:32px;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px var(--w08),0 24px 60px rgba(0,0,0,.35);}
+  .g-pad .pin-lbl{margin:0 0 8px;}
   .pad{margin-bottom:0;}
+  .g-pad .status{margin:4px 0 6px;}
+  .g-pad .pin-hint{margin-top:18px;max-width:270px;}
+}
+/* a shorter screen held sideways: a slightly smaller keypad so everything fits without scrolling */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (max-height:760px){
+  .g-pad{padding:22px 30px 24px;}
+  .key{height:56px;} .slot{width:52px;height:60px;}
+  .pad{gap:10px;} .g-pad .pin-hint{margin-top:12px;}
+  .logo{width:72px;height:72px;} .logo svg{width:72px;height:72px;}
 }
 /* Signed in: the keypad fades away, and the Game Night mark builds itself: the four dots fly in from the corners of
    the screen, the four arcs swirl in and lock into a ring, the ring flashes, and you pop into the middle of it */
@@ -109,13 +122,15 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
   <div class="g-head">
     <div class="logo" id="logo"></div>
     <h1>Game Night</h1>
-    <p class="sub">Enter your PIN or sign in with Google to keep your games on all your devices.</p>
+    <p class="sub">Sign in to keep your games on all your devices.</p>
     <button class="tour-pill" id="tour" type="button"></button>
   </div>
   <div class="g-pad">
+    <div class="pin-lbl">Your PIN</div>
     <div class="slots" id="slots"><div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div></div>
     <div class="status" id="status" role="status"></div>
     <div class="pad" id="keypad"></div>
+    <p class="hint pin-hint">New here? Pick any four numbers that aren’t easy to guess. Use the same PIN on your other devices to share your games.</p>
   </div>
   <div class="g-more">
     <button class="btn gbtn" id="google" type="button"></button>
@@ -128,7 +143,6 @@ h1{font-family:var(--display);font-weight:400;font-size:2.6rem;}
       </div>
     </div>
     <button class="btn btn-ghost" id="guest" type="button">Play as a guest on this device</button>
-    <p class="hint">New PIN? Pick any 4 digits that aren't easy to guess (no 1234, 0000 or 2580). The same PIN on another phone shares your scores and history.</p>
     <a class="pv-link" href="privacy.html">Privacy</a>
   </div>
 </div>
