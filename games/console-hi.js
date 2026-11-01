@@ -78,15 +78,30 @@ var ConsoleHi = (function () {
     { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 2,
       score: function (m) { function f(a, n) { var v = 0; for (var i = 0; i < n; i++) { var d = m(a + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } var t = f(0x334, 8), c = f(0x324, 7); return t == null || c == null ? null : t + (m(0x5D) || (m(0xAC) & 0x80) ? 0 : c); },
       over: function (m) { return (m(0x141) === 0x10 && m(0x145) === 0x0A && m(0x149) === 0x16 && m(0x155) === 0x1F && m(0x15D) === 0x1B) || ((m(0xAC) & 0x80) && m(0xF6) === 9); } },
-    // seven digits a byte at $0108-$010E
-    { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/,
-      score: function (m) { return digits(m, 0x108, 7); } },
-    // seven digits a byte at $0072-$0078, the ones first
+    // Player 1's score: seven digits a byte on the even addresses $E6-$F2 (player 2's on the odd ones); $0108-$010E is
+    // the HI-SCORE. $5E is $FF while the attract demo plays (it never scores); $2C is $0A on the playfield. Lives $E4
+    // reach 0 at the last death; then A,B,B,A within ~8 s continues with the score cleared to 0, else GAME OVER ($06 =
+    // $C0), so the game is over from the last death. (Checked 2026-11-01 in the emulator: the score against the screen
+    // to 15,900, deaths, continue, game over, demo. An earlier reader read the high score: rev 2.)
+    { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/, rev: 2,
+      score: function (m) { var v = 0; for (var i = 0; i < 7; i++) { var d = m(0xE6 + 2 * i); if (d > 9) return null; v = v * 10 + d; } return v; },
+      play: function (m) { return m(0x5E) === 0 && m(0x2C) === 0x0A; },
+      over: function (m) { return m(0x5E) === 0 && m(0xE4) === 0 && (m(0x2C) === 0x0A || m(0x06) === 0xC0); } },
+    // seven digits a byte at $0072-$0078, the ones first. No demo. Lives $A6 underflow to $FF at the last death and stay
+    // there on the GAME OVER screen until CONTINUE or STAGE SELECT, both of which clear the score (each game over is a
+    // game). (Checked 2026-11-01 in the emulator: the score to 20,000 against the screen, deaths, continue, stage select.)
     { key: 'megaman', short: 'MEGA MAN', name: 'Mega Man', sys: 'nes', ids: ['2f88381557339a14c20428455f6991c1eb902c99'], re: /^mega ?man$/,
-      score: function (m) { return digitsLE(m, 0x72, 7); } },
-    // points: six digits a byte at $03E8, starting again each fight (the best fight counts); $0006 is 1 in a game
+      score: function (m) { return digitsLE(m, 0x72, 7); },
+      over: function (m) { return m(0xA6) === 0xFF; } },
+    // points: six digits a byte at $03E8, starting again each fight (the best fight counts). $04 is $80 while the attract
+    // demo fight plays (it scores). Three losses ($0173, career losses) end the career on the "GIVE UP? RETIRE? GAME
+    // OVER" screen, the only one drawn with graphics bank $A9 = 7. (Checked 2026-11-01 in the emulator: points against
+    // the screen, KO/TKO/decision losses, rematches, a win, the Tyson password, game over, demo. An earlier play() took
+    // $06, which is 1 in the demo too.)
     { key: 'punchout', short: 'PUNCH-OUT', name: 'Mike Tyson’s Punch-Out!!', sys: 'nes', ids: ['0f0c2c2e294ff8ce255a618964728c935fd8963b'], re: /^(mike tysons )?punch-?out!*$/, reset: 1,
-      score: function (m) { return digits(m, 0x3E8, 6); }, play: function (m) { return m(0x06) === 1; } },
+      score: function (m) { return digits(m, 0x3E8, 6); },
+      play: function (m) { return m(0x04) !== 0x80; },
+      over: function (m) { return m(0xA9) === 7 && m(0x173) >= 3; } },
     // ── Super Nintendo ──
     // Mario's score: 3 bytes at $7E0F34 (low first), the screen adding a 0. Game mode $7E0100: $07 the title, where
     // the demo plays (and scores); $0B on: the map, levels and the screens between
