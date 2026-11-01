@@ -1725,6 +1725,24 @@
   function linksSet(l){ try{ LS.setItem('fgh_links', JSON.stringify(l)); }catch(e){} noteWrite('fgh_links'); linkEvent(); setTimeout(pendWatch, 0); }
   function linkEvent(linked, acc){ try{ window.dispatchEvent(new CustomEvent('fghlinks', { detail: { pending: _pending.length, linked: linked || [], accepted: acc || [], requests: _reqs.length } })); }catch(e){} }
   function myName(){ return (LS.getItem('my_name') || '').trim(); }
+  // ── Notifications to look back at (the bell on the home screen): what came in on this device, newest first, a
+  // month's worth. Each has an id, so the same news is kept once; a newer one with the same id (your turn again at
+  // the same table) takes its place. t: when it arrived here (new until the list is opened), at: when it happened.
+  var INBOX = 'gn_inbox_dev';
+  function inboxList(){ var a = lsJSON(INBOX); return Array.isArray(a) ? a.filter(function(x){ return x && x.id; }) : []; }
+  function inboxAdd(it){
+    try{
+      if(!it || !it.id) return;
+      var a = inboxList(), now = Date.now(), at = Number(it.at) || now, old = a.filter(function(x){ return x.id === it.id; })[0];
+      if(old && (Number(old.at) || 0) >= at) return;
+      it.at = at; it.t = now;
+      a = a.filter(function(x){ return x.id !== it.id && now - (Number(x.at) || 0) < 30 * 86400000; });
+      a.push(it); a.sort(function(x, y){ return (y.at || 0) - (x.at || 0); });
+      LS.setItem(INBOX, JSON.stringify(a.slice(0, 60)));
+      window.dispatchEvent(new CustomEvent('fghinbox'));
+    }catch(e){}
+  }
+  function inboxDay(){ var d = new Date(); return d.getFullYear() + '' + (d.getMonth() + 1) + '' + d.getDate(); }
   function lk(n){ return String(n || '').trim().toLowerCase(); }
   function linkCol(){ return _fb.db.collection('links'); }
   function myAvatar(){
@@ -2199,6 +2217,7 @@
       var gone = [];
       keys.forEach(function(k){ var r = L.others[k]; if(r && !r.off && r.code === code) gone.push(r.name); });
       gone.forEach(function(n){ linkRemove(n); });
+      gone.forEach(function(n){ inboxAdd({ id: 'deny:' + code + ':' + inboxDay(), k: 'deny', name: n }); });
       if(gone.length){ var dl = lsJSON('fgh_link_denied'); dl = Array.isArray(dl) ? dl : []; gone.forEach(function(n){ if(dl.indexOf(n) < 0) dl.push(n); }); try{ LS.setItem('fgh_link_denied', JSON.stringify(dl)); }catch(e){} }
       return true;
     }
@@ -2206,6 +2225,7 @@
     if(keys.some(function(k){ var r = L.others[k]; return r && !r.off && r.hs && r.code === code; })){ sendNote(code, 'ack', own).catch(function(e){ console.warn('[links] ack failed', e); }); return true; }
     var name = String(x.by || x.from || '').trim().slice(0, 40); if(!name || lk(name) === lk(myName())) return true;
     reqs.push({ id: id, code: code, name: name, at: Number(x.at) || 0 });
+    inboxAdd({ id: 'req:' + id, k: 'req', name: name, rid: id, at: Number(x.at) || 0 });
     return false;
   }
   // They accepted (or you both had each other's code): the link is on, and every past game with them goes across
@@ -2215,7 +2235,7 @@
     if(names.length){
       // the person who asked gets a banner, on whatever screen they're on (kept until a page shows it)
       var was = lsJSON('fgh_link_acc'); was = Array.isArray(was) ? was : [];
-      names.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); });
+      names.forEach(function(n){ if(was.indexOf(n) < 0) was.push(n); inboxAdd({ id: 'acc:' + code + ':' + inboxDay(), k: 'acc', name: n }); });
       try{ LS.setItem('fgh_link_acc', JSON.stringify(was)); }catch(e){}
       setTimeout(function(){ linkEvent([], names); }, 0);
       setTimeout(function(){ linkPoll(true); }, 300);   // their avatar and scores
@@ -2315,7 +2335,7 @@
             var x0 = d.data() || {};
             if(/^_(ask|ack|deny|par|pc|pok|pno)$/.test(x0.key || '')){ return readNote(own, x0, d.id, reqs) ? d.ref.delete() : null; }
             var it = received(own, d); if(!it || haveGame(it.key, it.entry._id || it.id)) return d.ref.delete();
-            if(own.ask){ pend.push(it); return null; }
+            if(own.ask){ pend.push(it); inboxAdd({ id: 'pend:' + it.id, k: 'pend', name: it.from, key: it.key, at: Number(it.at) || 0 }); return null; }
             if(!window.GameHistory) return null;   // filed by a page that keeps history
             fileGame(it); return d.ref.delete();
           })).then(function(){ _pending = pend.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); _reqs = reqs.sort(function(a, b){ return (b.at || 0) - (a.at || 0); }); });
@@ -2498,6 +2518,7 @@
   function kidsGet(){ var k = lsJSON('gn_kids'); return k && typeof k === 'object' && !Array.isArray(k) ? k : {}; }
   function kidsSet(k){ try{ if(Object.keys(k).length) LS.setItem('gn_kids', JSON.stringify(k)); else LS.removeItem('gn_kids'); }catch(e){} noteWrite('gn_kids'); }
   function kidNews(code, yes, who){
+    inboxAdd({ id: 'kid:' + code + ':' + (yes ? 1 : 0) + ':' + inboxDay(), k: 'kid', yes: !!yes, name: (kidsGet()[code] || {}).name || who || '' });
     try{ window.dispatchEvent(new CustomEvent('fghkids', { detail: { code: code, yes: yes, name: (kidsGet()[code] || {}).name || who || '' } })); }catch(e){}
   }
   // ask to be this linked player's parent, with their PIN
@@ -2698,7 +2719,7 @@
     initials: myInitials, setInitials: setInitials, renameIni: renameIni, tagOldScores: tagOldScores, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
-    linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
+    inboxList: inboxList, inboxAdd: inboxAdd, linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore
   };

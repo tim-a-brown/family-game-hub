@@ -798,6 +798,8 @@
           out.push({ id: g.id, code: x.code, at: d.at || 0, mine: !!mine, vs: (mine || !up ? others.join(', ') : knownBy(up)) || 'the computer', file: (g.play || g.id) + '.html?online=1&room=' + x.code });
         });
         out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
+        // each table that came back to you goes in Notifications (one line per table, moved up when it's your turn again)
+        if (FGHSync.inboxAdd) out.forEach(function (x) { if (x.mine && +x.at) FGHSync.inboxAdd({ id: 'turn:' + x.id + ':' + x.code, k: 'turn', game: x.id, vs: x.vs, file: x.file, at: +x.at }); });
         return out;
       });
     }).catch(function () { return null; });
@@ -855,6 +857,74 @@
     if (!pin) list.appendChild(el('p', { class: 'k-tb-note', text: 'These are for online games, so they work once you’re signed in with your PIN.' }));
     if (!nPref('gn_turn_ban')) demo.classList.add('off');
     sheet({ title: 'Notifications', node: el('div', { class: 'k-tb-set' }, [demo, list]), actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
+  // ── Notifications: everything that came in lately (your turns, link requests and answers, games to review, a
+  // child's answer), newest first, so a banner that went by too fast can still be found. Opened from the bell on the
+  // home screen, the profile menu and every game's menu. Kept on this device (sync.js inboxAdd).
+  function inboxList() { return window.FGHSync && FGHSync.inboxList ? FGHSync.inboxList() : []; }
+  function inboxSeen() { return +lsGet('gn_inbox_seen_dev', '0') || 0; }
+  function inboxNew() { var t = inboxSeen(); return inboxList().filter(function (x) { return (x.t || 0) > t; }).length; }
+  function inboxAgo(ts) {
+    var d = Date.now() - ts, m = Math.round(d / 60000);
+    if (m < 1) return 'Now';
+    if (m < 60) return m + ' min';
+    if (m < 60 * 20) return Math.round(m / 60) + ' hr';
+    var a = new Date(ts), b = new Date(), day = 86400000;
+    var days = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / day);
+    if (days <= 0) return Math.round(m / 60) + ' hr';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return a.toLocaleDateString([], { weekday: 'short' });
+    return a.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+  function inboxWhen(ts) {
+    var a = new Date(ts), b = new Date();
+    var days = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / 86400000);
+    return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? 'This week' : 'Earlier';
+  }
+  // what a line says and does: [picture, title, detail, action or null]
+  function inboxLine(x) {
+    var nm = x.name || 'Someone', g = x.game ? findGameSafe(x.game) : null, pend, reqs;
+    function face(badge, tone) { return el('span', { class: 'k-ib-face' }, [avEl(nm, null, 'var(--surface-3)'), el('i', { class: 'k-ib-badge ' + (tone || ''), html: icon(badge) })]); }
+    function gicon(id) { return el('span', { class: 'ic gic k-ib-gic', html: window.GameIcon ? GameIcon(id) : icon('gamepad') }); }
+    if (x.k === 'turn') {
+      return [gicon(x.game), 'Your turn in ' + (g ? g.name : 'a game'), x.vs ? 'With ' + x.vs : '', function () {
+        badgeAsk().then(function () { location.href = rootPath() + 'games/' + x.file; });
+      }];
+    }
+    if (x.k === 'req') {
+      reqs = linkReqs(); var open = reqs.some(function (r) { return r.id === x.rid; });
+      return [face('link', 'gold'), nm + ' wants to link with you', open ? 'Tap to accept or decline' : 'Answered', open ? function () { requestSheet(x.rid); } : null];
+    }
+    if (x.k === 'acc') return [face('check', 'green'), nm + ' accepted your link', 'You’re linked', null];
+    if (x.k === 'deny') return [face('close', 'red'), nm + ' declined your link', 'You’re not linked', null];
+    if (x.k === 'pend') {
+      var gid = String(x.key || '').replace(/^gh_/, ''), pg = findGameSafe(gid);
+      pend = window.FGHSync && FGHSync.linkPending ? FGHSync.linkPending() : [];
+      var still = pend.some(function (p) { return 'pend:' + p.id === x.id; });
+      return [pg ? gicon(pg.id) : face('inbox'), nm + ' added a game with you', (pg ? pg.name : 'A game') + (still ? ', waiting for your OK' : ''), still ? function () { reviewSheet(); } : null];
+    }
+    if (x.k === 'kid') return [face(x.yes ? 'shield' : 'close', x.yes ? 'green' : 'red'), x.yes ? nm + ' accepted' : nm + ' said no', x.yes ? 'You’re their parent here' : 'To parent controls', null];
+    return null;
+  }
+  function inboxSheet() {
+    sfx('pop');
+    var seen = inboxSeen(), all = inboxList();
+    lsSet('gn_inbox_seen_dev', String(Date.now()));
+    try { window.dispatchEvent(new Event('fghinbox')); } catch (e) {}
+    var box = el('div', { class: 'k-list k-ib' }), grp = null, last = '', s;
+    all.forEach(function (x) {
+      var L = inboxLine(x); if (!L) return;
+      var w = inboxWhen(x.at || x.t || 0);
+      if (w !== last) { last = w; grp = el('div', { class: 'k-grp' }, [el('h3', { text: w })]); box.appendChild(grp); }
+      var row = el(L[3] ? 'button' : 'div', { class: 'k-ib-row' + ((x.t || 0) > seen ? ' new' : '') + (L[3] ? '' : ' still'), type: L[3] ? 'button' : null }, [
+        L[0], el('span', { class: 'grow' }, [el('b', { text: L[1] })].concat(L[2] ? [el('small', { text: L[2] })] : [])),
+        el('span', { class: 'k-ib-ago', text: inboxAgo(x.at || x.t) })]);
+      if (L[3]) row.onclick = function () { sfx('tap'); s.close(); setTimeout(L[3], 250); };
+      grp.appendChild(row);
+    });
+    if (!box.firstChild) box.appendChild(el('div', { class: 'k-ib-empty' }, [el('span', { class: 'k-ib-bell', html: icon('bell') }), el('b', { text: 'Nothing yet' }),
+      el('p', { class: 'muted', text: window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? 'When it’s your move online, or someone links with you, it shows up here.' : 'Sign in to get your turns and link requests here.' })]));
+    s = sheet({ title: 'Notifications', node: box, actions: [{ label: 'Settings', cls: 'btn-ghost', keep: true, onClick: function () { s.close(); setTimeout(notifySheet, 250); } }, { label: 'Done', cls: 'btn-soft' }] });
   }
   // the moves already told about (on this device): a table's turn is news once
   function turnsSeen() { try { return JSON.parse(lsGet('turns_seen_dev', '{}')) || {}; } catch (e) { return {}; } }
@@ -1142,7 +1212,7 @@
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     item('Settings', 'clock', 'Game timer', timerSheet, '', timerStatus());
-    item('Settings', 'bell', 'Notifications', notifySheet, '', notifyStatus());
+    item('Settings', 'bell', 'Notifications', inboxSheet, '', inboxNew() ? inboxNew() + ' new' : '');
     var spP = game && spotifyPick(game.id);
     item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
@@ -4200,7 +4270,7 @@
   }
 
   window.Kit = {
-    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus,
+    netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
     marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },

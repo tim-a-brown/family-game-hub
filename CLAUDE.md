@@ -128,6 +128,9 @@ Underlying principles for everything:
   and `drive`, so the home screen's Keep playing shows "Your turn" for any game without game-specific code. A new
   turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
+- **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
+  device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
+  with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js.
 
 ## Poker circuit rooms (pictures)
 

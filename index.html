@@ -426,6 +426,15 @@ html[data-theme="light"],html[data-theme="parchment"]{--silver:#55606e;}
 .vbtn{flex:none;width:44px;height:44px;border:0;border-radius:50%;display:grid;place-items:center;background:var(--surface);color:var(--text-2);}
 .vbtn .ico{width:20px;height:20px;}
 .vbtn:active{transform:scale(.9);}
+.k-list button .k-st.bell-st{color:var(--yellow);font-weight:900;}
+/* the bell: what came in lately, with the count of new ones (a gentle ring when one arrives) */
+.bell{position:relative;}
+.bell-n{position:absolute;top:-2px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;display:grid;place-items:center;
+  background:var(--yellow);color:#2b1a00;font-size:.72rem;font-weight:900;box-shadow:0 0 0 2px var(--bg);font-variant-numeric:tabular-nums;}
+.bell.ring .ico{animation:bellRing .9s ease-in-out;transform-origin:50% 10%;}
+@keyframes bellRing{15%{transform:rotate(16deg);}30%{transform:rotate(-14deg);}45%{transform:rotate(10deg);}60%{transform:rotate(-6deg);}75%{transform:rotate(3deg);}}
+@media (prefers-reduced-motion:reduce){.bell.ring .ico{animation:none;}}
+@media (max-width:440px){.top{gap:6px;} .top .vbtn,.top .me{width:38px;height:38px;} .top .logo{width:38px;height:38px;} .top h1{font-size:clamp(1.05rem,calc((100vw - 214px) / 6.8),1.75rem);white-space:nowrap;}}
 .list.tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 @media (min-width:560px){.list.tiles{grid-template-columns:repeat(4,minmax(0,1fr));}}
 @media (min-width:720px){.list.tiles{grid-template-columns:repeat(5,minmax(0,1fr));}}
@@ -788,6 +797,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       <h1>Game Night</h1>
     </div>
     <button class="vbtn" id="view" type="button"></button>
+    <button class="vbtn bell" id="bell" type="button" aria-label="Notifications" hidden><span class="bell-n" id="bell-n" hidden></span></button>
     <button class="me" id="me" type="button" aria-label="Account">G</button>
   </header>
 
@@ -1852,6 +1862,24 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // the live listener brings requests and games; this catches avatar, initials and score changes (and a listener that dropped)
     setInterval(function () { if (document.visibilityState === 'visible' && FGHSync.linkPoll) FGHSync.linkPoll(); }, 60000);
   }
+  // The bell: Notifications (your turns, link requests and answers), with how many came in since you last looked
+  (function () {
+    var b = $('bell'), n = $('bell-n'), shown = -1;
+    if (mode !== 'pin' || !Kit.inbox) return;
+    b.hidden = false;
+    b.insertAdjacentHTML('afterbegin', Kit.icon('bell'));
+    b.addEventListener('click', function () { Kit.inbox(); });
+    function paint() {
+      var k = Kit.inboxNew();
+      n.hidden = !k; n.textContent = k > 9 ? '9+' : String(k);
+      b.setAttribute('aria-label', k ? 'Notifications, ' + k + ' new' : 'Notifications');
+      if (shown >= 0 && k > shown) { b.classList.remove('ring'); void b.offsetWidth; b.classList.add('ring'); }
+      shown = k;
+    }
+    window.addEventListener('fghinbox', paint);
+    window.addEventListener('storage', function (e) { if (!e.key || /^gn_inbox/.test(e.key)) paint(); });
+    paint();
+  })();
   // opened from someone's profile link (QR code or a tapped link): offer to link them
   setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 700);
   document.addEventListener('fghsync:updated', function () { setTimeout(function () { try { Kit.links.fromUrl(); } catch (e) {} }, 300); });
@@ -2032,7 +2060,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     group('Home & games');
     if (Kit.homeSheet) item('tiles', 'Home screen', function () { Kit.homeSheet(); }, '', tag(Kit.homeStatus()));
     item('sliders', 'Game defaults', function () { Kit.prefs(); });
-    if (Kit.notify) item('bell', 'Notifications', function () { Kit.notify(); }, '', tag(Kit.notifyStatus()));
+    if (Kit.inbox) item('bell', 'Notifications', function () { Kit.inbox(); }, '', Kit.inboxNew() ? el('span', { class: 'k-st bell-st', text: Kit.inboxNew() + ' new' }) : null);
     group('Look & sound');
     item('palette', 'Theme', function () { Kit.theme.pick(); }, '', tag(Kit.theme.name()));
     if (Kit.music) item('headphones', 'Music', function () { Kit.music(); }, '', tag(get('spotify_auth', '') ? 'Spotify' : 'Connect'));
