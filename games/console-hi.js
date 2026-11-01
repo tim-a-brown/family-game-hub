@@ -45,6 +45,17 @@ var PO_OPP = ['Glass Joe', 'Von Kaiser', 'Piston Honda', 'Don Flamenco', 'King H
 var DT_LAND = ['Amazon', 'Transylvania', 'African Mines', 'Himalayas', 'The Moon'];
 var JH_SCENE = ['Vines', 'Reptile River', 'Boulders', 'Cannibal Camp'], JH_SHORT = ['Vines', 'River', 'Boulders', 'Camp'];
 var SSF2_P = ['Ryu', 'E.Honda', 'Blanka', 'Guile', 'Ken', 'Chun Li', 'Zangief', 'Dhalsim', 'M.Bison', 'Sagat', 'Balrog', 'Vega', 'Cammy', 'T.Hawk', 'Fei Long', 'Dee Jay'];
+// Super Street Fighter II's players: player 2's block is $240 after player 1's (score $7E0703 / $7E0943; state $7E05C2 /
+// $7E0802: 2 in a game, 4 once the continue countdown has run out (the score still there), 6 while it's cleared, 0 out).
+// $7E18BF: the sides people are fighting on (1 left, 2 right, 3 both). (Checked 2026-11-01.)
+function ssf2Score(m, i) { var v = bcdLE(m, 0x7E0703 + i * 0x240, 3); return v == null ? null : v * 100; }
+function ssf2Out(m, i) { var s = m(0x7E05C2 + i * 0x240); return s === 4 || s === 6; }
+function ssf2Who(m) {
+  if (ssf2Out(m, 1)) return 1; if (ssf2Out(m, 0)) return 0;
+  if ((m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74) return m(0x7E18BF) === 2 ? 1 : 0;   // (the continue screen: whoever fought the computer)
+  var a = m(0x7E05C2) === 2, b = m(0x7E0802) === 2;
+  return b && (!a || ssf2Score(m, 1) === 0) ? 1 : 0;   // (both in: player 2 while their new game is at 0, so it starts again)
+}
 var SPO_O = ['Gabby Jay', 'Bear Hugger', 'Piston', 'Bald Bull', 'Bob Charlie', 'Dragon Chan', 'Masked Muscle', 'Mr. Sandman', 'Aran Ryan', 'Heike Kagero', 'Mad Clown', 'Macho Man', 'Narcis Prince', 'Hoy Quarlow', 'Rick Bruiser', 'Nick Bruiser'];
 // Super Mario World: in a level (game mode $7E0100 $12-$14) the level entered, translevel $7E13BF; on the map ($0D-$10)
 // the level the player stands on, from the map's level-number layer $7ED000 at the player's tile ($1F1F/$1F21 + $0DD6,
@@ -175,20 +186,22 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
       scores: function (m) { return [le(m, 0x7E0F34, 3) * 10, le(m, 0x7E0F37, 3) * 10]; }, names: ['Mario', 'Luigi'],
       play: function (m) { return m(0x7E0100) >= 0x0B; },
       over: function (m) { var g = m(0x7E0100); return (g >= 0x15 && g <= 0x17 && m(0x7E0DBE) === 0xFF && ((m(0x7E0DB4) | m(0x7E0DB5)) & 0x80) !== 0) || g === 0x29; } },
-    // Player 1's score: packed decimal in hundreds, low byte first, at $7E0703-$7E0705 (10,300 is $03 $01 $00). The
-    // screen shows it with one more digit after it, the number of continues (79,900 after two continues reads 79902).
-    // The score carries on through a continue. $7E0030 is 0 in a game, 2 or 3 in the attract demo and on the title.
-    // Game over: the routine word at $7E0072 is $7D74 on the continue / game over screen, and the score is cleared to 0
-    // at the moment the game is really over (a continue keeps it), so the game's score is the best it reached.
-    // (Checked 2026-11-01 by playing it in the emulator: score against the screen through rounds, a continue, and three
-    // game overs. An earlier reader took $7E0700-$7E0703 the other way round and so read junk above 9,900 points.)
+    // Each player's score: packed decimal in hundreds, low byte first, player 1 at $7E0703-$7E0705, player 2 at
+    // $7E0943-$7E0945 (10,300 is $03 $01 $00); the screen adds one more digit, the continues. Scores carry on through a
+    // continue. 2 players (Super Battle): the one who joins challenges, both scores count; the loser's continue countdown
+    // runs while the winner fights on, and each player's game is over when their own countdown runs out (state 4 or 6,
+    // the other playing on), or at the continue screen's end ($7E0072 $7D74, also passed for ~2 s on a continue) once
+    // the player who lost to the computer isn't back in (state not 2). Versus Battle keeps no score. $7E0030 is 0 in a
+    // game, 2 or 3 on the title and in the demo. (Checked 2026-11-01 by playing 1- and 2-player games: joins, human
+    // fights, continues, game overs, rejoining, Versus Battle. An earlier reader took $7E0700-$7E0703 the other way round.)
     { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 2,
-      score: function (m) { var v = bcdLE(m, 0x7E0703, 3); return v == null ? null : v * 100; }, play: function (m) { return m(0x7E0030) === 0; },
-      // where: the computer's fighter, player 2's character $7E05DA (set at the VS screen; ids as on the select screen), left
-      // out on the character select ($7E00C6 0). (Checked 2026-11-01: the fight HUD against six fighters, second fights after
-      // a win, and every id's name on the select screen.)
-      where: function (m) { var o = SSF2_P[m(0x7E05DA)]; return m(0x7E00C6) && o ? 'vs ' + o : null; },
-      over: function (m) { return (m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74 && m(0x7E0703) === 0 && m(0x7E0704) === 0 && m(0x7E0705) === 0; } },
+      score: function (m) { return ssf2Score(m, ssf2Who(m)); }, who: ssf2Who,
+      scores: function (m) { return [ssf2Score(m, 0), ssf2Score(m, 1)]; }, names: ['Player 1', 'Player 2'],
+      play: function (m) { return m(0x7E0030) === 0; },
+      // where: the fighters ($7E05D1 left, $7E0811 right, ids as on the select screen), from the VS screen to the KO
+      // ($7E00C6 8-$C): "Ryu vs Ken" when both are people, else "vs" the computer's. (Checked 2026-11-01.)
+      where: function (m) { var c = m(0x7E00C6), k = m(0x7E18BF), a = SSF2_P[m(0x7E05D1)], b = SSF2_P[m(0x7E0811)]; return c < 8 || c > 0x0C || !a || !b ? null : k === 3 ? a + ' vs ' + b : k === 1 ? 'vs ' + b : k === 2 ? 'vs ' + a : null; },
+      over: function (m) { return ssf2Out(m, 0) || ssf2Out(m, 1) || ((m(0x7E0072) | (m(0x7E0073) << 8)) === 0x7D74 && m(0x7E05C2 + ssf2Who(m) * 0x240) !== 2); } },
     // The circuit's TOTAL SCORE: five digits a byte at $7E0611, the ones first, the screen adding a 0 (added at each
     // fight's tally, wins and losses; 0 when a circuit starts; $7E0616 becomes 9 once a circuit is won, so it's left out).
     // The SCORE shown in a fight ($7E0B34) is only that fight's points. $7E0B10 is 2 in a fight, its tally and game over
@@ -412,7 +425,7 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
         // a new game without a game over (Reset, or a saved state loaded): start again, filing nothing (not when the
         // turn has just passed to the other player, whose score can be lower)
         if (g.clock ? clk != null && run.clk != null && clk < run.clk : !g.down && !g.reset && s < run.last && s === 0 && !(g.who && w !== run.w)) { run = fresh(s, clk); }
-        if (g.who) { if (run.pf[w] && s === 0) run.pf[w] = 0; if (!run.pf[w] && s > (run.pb[w] || 0)) run.pb[w] = s; run.w = w; }   // (a continue: that player starts again)
+        if (g.who) { if (run.pf[w] && s === 0) run.pf[w] = 0; if (!run.pf[w] && s > (run.pb[w] || 0)) run.pb[w] = s; run.w = w; if (w > 0) run.multi = 1; }   // (a continue: that player starts again)
         if (all) all.forEach(function (v, i) { if (v != null && v > (run.pb[i] || 0)) run.pb[i] = v; });
         if (hold != null && (s < hold || (g.clock && clk < hold.clk))) hold = null;
         // a score counts once it moves while the player is pressing buttons (the demo plays itself), and, after a
@@ -425,7 +438,7 @@ function sonicPlay(m) { var md = m(0xFFF600) & 0x7F; return md !== 0 && md !== 0
     }
     function fresh(s, clk) { return { best: s, last: s, earned: false, clk: clk, still: 0, pb: {}, pf: {}, w: -1 }; }
     // what to call a player on the board's moment: only when more than one has played (one player is just "High score")
-    function label(i) { var n = Object.keys(run.pb).filter(function (k) { return run.pb[k] > 0 || +k === i; }).length; return g.names && (n > 1 || i > 0) ? g.names[i] || 'Player ' + (i + 1) : null; }
+    function label(i) { var n = Object.keys(run.pb).filter(function (k) { return run.pb[k] > 0 || +k === i; }).length; return g.names && (n > 1 || i > 0 || run.multi) ? g.names[i] || 'Player ' + (i + 1) : null; }
     function send(sc, who) { if (o.onEnd) o.onEnd(keyOf(g), sc, g, 'over', who); try { top = ArcadeHi.top(keyOf(g)); } catch (e) {} passed = false; }
     function scoreOf(r) { return r ? (g.down ? r.last : r.best) : 0; }
     function end(why) {
