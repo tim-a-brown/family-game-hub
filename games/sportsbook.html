@@ -123,7 +123,8 @@ body{overflow-x:hidden;}
 .tm{display:flex;align-items:center;gap:9px;min-width:0;}
 .logo{width:30px;height:30px;flex:none;display:grid;place-items:center;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.5);overflow:hidden;}
 .logo img{width:24px;height:24px;object-fit:contain;display:block;}
-.logo.disc{font-size:.6rem;font-weight:900;letter-spacing:-.02em;}
+.logo.disc{font-size:.6rem;font-weight:900;letter-spacing:-.02em;container-type:size;}
+.logo.disc .dt{font-style:normal;line-height:1;font-size:min(.72rem,calc(100cqw * 1.22 / var(--n,2)));}   /* the letters sized to the disc, whatever its size */
 .nm{min-width:0;flex:1;display:flex;flex-direction:column;}
 .nm b{font-size:1.02rem;font-weight:900;line-height:1.1;white-space:nowrap;overflow:hidden;}
 .nm b .rk{font-size:.72em;color:#9aa6bd;margin-right:4px;font-weight:800;}
@@ -293,6 +294,7 @@ body{overflow-x:hidden;}
 .tkl > *{min-width:0;}
 
 /* Team picker */
+.tp-pin{position:sticky;top:-10px;z-index:3;margin:0 -20px;padding:8px 20px 4px;background:var(--bg-2);}
 .tp-lgs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 -20px 10px;padding:0 20px 2px;}
 .tp-lgs::-webkit-scrollbar{display:none;}
 .tp-q{width:100%;min-height:44px;border-radius:12px;border:0;background:var(--w07);color:var(--text);padding:0 14px;font:inherit;font-size:1rem;margin:0 0 8px;}
@@ -309,6 +311,7 @@ body{overflow-x:hidden;}
 .tp-mine{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
 .tp-mine span{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:99px;background:var(--w07);font-size:.8rem;font-weight:800;}
 .tp-mine .logo{width:22px;height:22px;}
+.tp-mine .tp-lg{width:16px;height:16px;object-fit:contain;flex:none;opacity:.85;margin-left:-2px;}
 .tp-mine .logo img{width:17px;height:17px;}
 
 /* Results */
@@ -416,7 +419,7 @@ body{overflow-x:hidden;}
   }
   function logoEl(tm) {
     var box = el('span', { class: 'logo' });
-    function disc() { box.classList.add('disc'); box.innerHTML = ''; box.style.background = tm.color || '#556'; box.style.color = inkFor(tm.color); box.textContent = (tm.abbr || '?').slice(0, 4); }
+    function disc() { var a = (tm.abbr || '?').slice(0, 3); box.classList.add('disc'); box.innerHTML = ''; box.style.background = tm.color || '#556'; box.style.color = inkFor(tm.color); box.appendChild(el('i', { class: 'dt', style: { '--n': Math.max(2, a.length) }, text: a })); }
     if (tm.logo) { var im = el('img', { src: tm.logo, alt: '', loading: 'lazy', decoding: 'async' }); im.onerror = disc; box.appendChild(im); } else disc();
     return box;
   }
@@ -1396,8 +1399,13 @@ body{overflow-x:hidden;}
       return out.sort(function (a, b) { return lastName(a.name).localeCompare(lastName(b.name)); });
     });
     var k = 'sb_teams_cache_' + lg, c = lsGet(k, null), had = c && c.list && c.list.length ? c.list : null;
-    if (had && Date.now() - c.at < 7 * 864e5) return Promise.resolve(had);
+    if (had && Date.now() - c.at < 7 * 864e5) return Promise.resolve(had.map(tidyTeam));
     var L = LG[lg];
+    // every league's full list, saved weekly by the sports-teams Action (in season or not); ESPN directly if it's missing
+    function saved() {
+      if (!TEAMS_ALL) TEAMS_ALL = getJSON('https://firebasestorage.googleapis.com/v0/b/familygames-da3e5.firebasestorage.app/o/sportsbook%2Fteams.json?alt=media').catch(function () { return null; });
+      return TEAMS_ALL.then(function (j) { return j && j.lg && j.lg[lg] && j.lg[lg].length ? j.lg[lg] : []; });
+    }
     function teamsOf(j) {
       var raw = (((j.sports || [])[0] || {}).leagues || [])[0];
       return ((raw && raw.teams) || []).map(function (x) { var t = x.team || x; return { id: String(t.id), abbr: t.abbreviation || '', name: t.displayName || '', short: t.shortDisplayName || t.name || '', loc: t.location || '', nick: t.name || '', color: t.color ? '#' + t.color : '#556070', logo: (t.logos && t.logos[0] && t.logos[0].href) || '' }; })
@@ -1412,23 +1420,32 @@ body{overflow-x:hidden;}
       return out;
     }
     var byName = function (a, b) { return a.name.localeCompare(b.name); };
-    return getJSON(API + L.path + '/teams?limit=1000').then(teamsOf).catch(function () { return []; })
+    return saved().then(function (list) { return list.length ? list : getJSON(API + L.path + '/teams?limit=1000').then(teamsOf).catch(function () { return []; }); })
       .then(function (list) { return list.length ? list : getJSON(API + L.path + '/teams').then(teamsOf).catch(function () { return []; }); })
       .then(function (list) {
         // (an empty answer is never kept: it would hide the teams for a week)
-        if (list.length) { try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), list: list.sort(byName) })); } catch (e) {} return list; }
-        return fromGames().sort(byName);
+        if (list.length) { try { localStorage.setItem(k, JSON.stringify({ at: Date.now(), list: list.sort(byName) })); } catch (e) {} return list.map(tidyTeam); }
+        return fromGames().sort(byName).map(tidyTeam);
       });
+  }
+  var TEAMS_ALL = null;
+  // a few small colleges come with their name twice, the second in capitals ("Maryville (MO) MARYVILLE UNIVERSITY
+  // (MO)"): the place on its own reads right
+  function tidyTeam(t) {
+    if (t && /\b[A-Z]{3,}\s+[A-Z]{3,}/.test(t.name || '') && t.loc) return Object.assign({}, t, { name: t.loc, short: t.loc, nick: t.loc });
+    return t;
   }
   function pickTeams() {
     var cur = tab !== 'my' && LG[tab] ? tab : (favs[0] && favs[0].lg) || 'nfl', q = '';
     var box = el('div'), mine = el('div', { class: 'tp-mine' }), lgs = el('div', { class: 'tp-lgs' }), inp = el('input', { class: 'tp-q', type: 'search', placeholder: 'Search teams', autocomplete: 'off' }), list = el('div', { class: 'tp-list' });
-    box.appendChild(mine); box.appendChild(lgs); box.appendChild(inp); box.appendChild(list);
-    var teams = [];
+    box.appendChild(mine); box.appendChild(el('div', { class: 'tp-pin' }, [lgs, inp])); box.appendChild(list);
+    var teams = [], before = JSON.stringify(favs);
     function paintMine() {
       mine.innerHTML = '';
       if (!favs.length) { mine.appendChild(el('p', { class: 'muted', style: { margin: '0', 'font-size': '.85rem' }, text: 'Tap a star to follow a team or player.' })); return; }
-      favs.forEach(function (f) { mine.appendChild(el('span', null, [logoEl(f), document.createTextNode(f.lg === 'cbb' || f.lg === 'cfb' ? f.loc || f.short : f.nick || f.short)])); });
+      // (a school followed in both college sports shows twice: a small league mark tells them apart)
+      favs.forEach(function (f) { var col = f.lg === 'cbb' || f.lg === 'cfb', ft = tidyTeam(f), lgl = col && lgLogo(f.lg);
+        mine.appendChild(el('span', null, [logoEl(ft), document.createTextNode(col ? ft.loc || ft.short : ft.nick || ft.short), lgl ? el('img', { class: 'tp-lg', src: lgl, alt: LG[f.lg].name }) : null])); });
       inp.placeholder = LG[cur].kind ? 'Search players' : 'Search teams';
     }
     function paintLgs() {
@@ -1454,7 +1471,10 @@ body{overflow-x:hidden;}
     function fill() { list.innerHTML = '<p class="muted">Loading teams…</p>'; var k = cur; loadTeams(k).then(function (l) { if (k !== cur) return; teams = l; rows(); }); }
     inp.addEventListener('input', function () { q = inp.value; rows(); });
     paintMine(); paintLgs(); fill();
-    Kit.sheet({ title: 'My teams and players', node: box, actions: [{ label: 'Done', cls: 'btn-primary', onClick: function () { if (view === 'board') { paintTabs(); paintBoard(); } } }] });
+    // Done keeps the changes; Cancel puts back what you followed before (a tap outside doesn't close it)
+    Kit.sheet({ title: 'My teams and players', node: box, dismissible: false, actions: [
+      { label: 'Done', cls: 'btn-primary', onClick: function () { if (view === 'board') { paintTabs(); paintBoard(); } } },
+      { label: 'Cancel', cls: 'btn-ghost', onClick: function () { if (JSON.stringify(favs) !== before) { favs = JSON.parse(before); saveFavs(); if (view === 'board') { paintTabs(); paintBoard(); } } } }] });
   }
 
   // ── Home screen: the book isn't a game in progress (open bets live under My bets), so it stays out of Keep playing ──

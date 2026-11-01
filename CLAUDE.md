@@ -205,7 +205,8 @@ Underlying principles for everything:
   is refused for the service account) and tell Tim. Firebase Storage holds the Lorcana card-art backup
   (`lorcana/`, filled by `scripts/mirror-lorcana-art.js` in deploy.yml) and the TURN logins for online games
   (`online/ice.json`, refreshed every six hours by `turn-credentials.yml` from Cloudflare; secrets
-  `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`).
+  `CF_TURN_KEY_ID`, `CF_TURN_API_TOKEN`). It also holds every Sportsbook league's team list (`sportsbook/teams.json`, saved weekly by
+  `sports-teams.yml` from ESPN, so My teams works out of season).
 - Files that must not be public go in Firebase's `hosting.ignore` (`firebase.json`).
 - **Firebase Storage CORS**: the app reads files from Storage with `fetch` (console game lists and game files), which
   needs the bucket's CORS setting from `scripts/storage-cors.json` (applied 2026-10-17). The deploy service account
