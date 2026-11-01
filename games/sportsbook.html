@@ -315,7 +315,12 @@ body{overflow-x:hidden;}
 .tp-row.on .st svg{fill:#f2b632;}
 .tp-row .st svg{width:26px;height:26px;}
 .tp-mine{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
-.tp-mine span{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:99px;background:var(--w07);font-size:.8rem;font-weight:800;}
+.tp-mine{position:relative;}
+.tp-mine .tp-ch{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:99px;background:var(--w07);font-size:.8rem;font-weight:800;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;transition:transform .2s cubic-bezier(.2,.8,.3,1),box-shadow .2s,background .2s;}
+.tp-mine .tp-ch .gr{display:grid;place-items:center;width:10px;margin:0 -2px 0 0;color:var(--text-3);opacity:.7;}
+.tp-mine .tp-ch .gr svg{width:7px;height:12px;}
+.tp-mine .tp-ch.drag{position:relative;z-index:2;transition:box-shadow .2s,background .2s;background:var(--bg-3,#2c2840);box-shadow:0 10px 24px rgba(0,0,0,.45),inset 0 0 0 2px var(--yellow);cursor:grabbing;}
+.tp-mine .tp-ch:focus-visible{outline:2px solid var(--yellow);outline-offset:2px;}
 .tp-mine .logo{width:22px;height:22px;}
 .tp-mine .tp-lg{width:16px;height:16px;object-fit:contain;flex:none;opacity:.85;margin-left:-2px;}
 .tp-mine .logo img{width:17px;height:17px;}
@@ -1454,6 +1459,7 @@ body{overflow-x:hidden;}
     if (t && /\b[A-Z]{3,}\s+[A-Z]{3,}/.test(t.name || '') && t.loc) return Object.assign({}, t, { name: t.loc, short: t.loc, nick: t.loc });
     return t;
   }
+  var CH_GRIP = '<svg viewBox="0 0 10 16" fill="currentColor" aria-hidden="true"><circle cx="2.5" cy="3" r="1.4"/><circle cx="7.5" cy="3" r="1.4"/><circle cx="2.5" cy="8" r="1.4"/><circle cx="7.5" cy="8" r="1.4"/><circle cx="2.5" cy="13" r="1.4"/><circle cx="7.5" cy="13" r="1.4"/></svg>';
   function pickTeams() {
     var cur = tab !== 'my' && LG[tab] ? tab : (favs[0] && favs[0].lg) || 'nfl', q = '';
     var box = el('div'), mine = el('div', { class: 'tp-mine' }), lgs = el('div', { class: 'tp-lgs' }), inp = el('input', { class: 'tp-q', type: 'search', placeholder: 'Search teams', autocomplete: 'off' }), list = el('div', { class: 'tp-list' });
@@ -1463,9 +1469,56 @@ body{overflow-x:hidden;}
       mine.innerHTML = '';
       if (!favs.length) { mine.appendChild(el('p', { class: 'muted', style: { margin: '0', 'font-size': '.85rem' }, text: 'Tap a star to follow a team or player.' })); return; }
       // (a school followed in both college sports shows twice: a small league mark tells them apart)
-      favs.forEach(function (f) { var col = f.lg === 'cbb' || f.lg === 'cfb', ft = tidyTeam(f), lgl = col && lgLogo(f.lg);
-        mine.appendChild(el('span', null, [logoEl(ft), document.createTextNode(col ? ft.loc || ft.short : ft.nick || ft.short), lgl ? el('img', { class: 'tp-lg', src: lgl, alt: LG[f.lg].name }) : null])); });
+      favs.forEach(function (f) { var col = f.lg === 'cbb' || f.lg === 'cfb', ft = tidyTeam(f), lgl = col && lgLogo(f.lg), nm = col ? ft.loc || ft.short : ft.nick || ft.short;
+        var c = el('span', { class: 'tp-ch', 'data-k': f.lg + ':' + f.id, tabindex: '0', role: 'button', 'aria-label': 'Move ' + nm + ' (drag, or use the arrow keys)' }, [logoEl(ft), document.createTextNode(nm), lgl ? el('img', { class: 'tp-lg', src: lgl, alt: LG[f.lg].name }) : null, favs.length > 1 ? el('i', { class: 'gr', html: CH_GRIP }) : null]);
+        if (favs.length > 1) chipDrag(c);
+        mine.appendChild(c); });
       inp.placeholder = LG[cur].kind ? 'Search players' : 'Search teams';
+    }
+    // drag a chip (or arrow-key it) into the order you like: it lifts and follows the finger, the others slide aside,
+    // and My teams on the board follows the same order
+    function chipOrder() {
+      var ks = Array.prototype.map.call(mine.querySelectorAll('.tp-ch'), function (n) { return n.getAttribute('data-k'); });
+      favs.sort(function (a, b) { return ks.indexOf(a.lg + ':' + a.id) - ks.indexOf(b.lg + ':' + b.id); }); saveFavs();
+    }
+    function slide(move) {   // FLIP: everyone else glides from where they were to their new place
+      var cs = Array.prototype.slice.call(mine.querySelectorAll('.tp-ch:not(.drag)')), was = cs.map(function (n) { return [n.offsetLeft, n.offsetTop]; });
+      move();
+      cs.forEach(function (n, j) { var dx = was[j][0] - n.offsetLeft, dy = was[j][1] - n.offsetTop; if (!dx && !dy) return;
+        n.style.transition = 'none'; n.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; n.offsetWidth; n.style.transition = ''; n.style.transform = ''; });
+    }
+    function chipDrag(c) {
+      var on = false, down = null, ox = 0, oy = 0;
+      function follow(x, y) { var b = mine.getBoundingClientRect(); c.style.transform = 'translate(' + (x - ox - b.left - c.offsetLeft) + 'px,' + (y - oy - b.top - c.offsetTop) + 'px) scale(1.06)'; }
+      function hit(x, y) {
+        var b = mine.getBoundingClientRect(), px = x - b.left, py = y - b.top, cs = mine.querySelectorAll('.tp-ch');
+        for (var j = 0; j < cs.length; j++) { var n = cs[j]; if (n === c) continue;
+          if (px >= n.offsetLeft - 3 && px <= n.offsetLeft + n.offsetWidth + 3 && py >= n.offsetTop - 3 && py <= n.offsetTop + n.offsetHeight + 3) {
+            var after = px > n.offsetLeft + n.offsetWidth / 2, ref = after ? n.nextSibling : n;
+            if (ref === c || (after ? n.nextSibling === c : n.previousSibling === c)) return;
+            slide(function () { mine.insertBefore(c, ref); }); Kit.haptic('light'); Kit.sfx('tap'); return; } }
+      }
+      c.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        down = [e.clientX, e.clientY]; var r = c.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top;
+        try { c.setPointerCapture(e.pointerId); } catch (x) {}
+      });
+      c.addEventListener('pointermove', function (e) {
+        if (!down) return;
+        if (!on) { if (Math.abs(e.clientX - down[0]) + Math.abs(e.clientY - down[1]) < 6) return; on = true; c.classList.add('drag'); mine.classList.add('dragging'); Kit.haptic('light'); }
+        follow(e.clientX, e.clientY); hit(e.clientX, e.clientY); follow(e.clientX, e.clientY);
+      });
+      function end() {
+        down = null; if (!on) return; on = false;
+        c.classList.remove('drag'); mine.classList.remove('dragging'); c.style.transform = '';   // (settles into its place)
+        chipOrder(); Kit.sfx('pop');
+      }
+      c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end);
+      c.addEventListener('keydown', function (e) {
+        var d = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : 0, sib = d < 0 ? c.previousSibling : c.nextSibling;
+        if (!d) return; e.preventDefault(); if (!sib) return;
+        slide(function () { mine.insertBefore(c, d < 0 ? sib : sib.nextSibling); }); chipOrder(); Kit.sfx('tap'); c.focus();
+      });
     }
     function paintLgs() {
       lgs.innerHTML = '';
