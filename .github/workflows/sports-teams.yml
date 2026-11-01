@@ -1,0 +1,25 @@
+# Every team in each Sportsbook league, for My teams (see scripts/sports-teams.js). Mondays, and any time from the Actions tab.
+name: Sportsbook teams
+
+on:
+  schedule:
+    - cron: '41 10 * * 1'
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/sports-teams.js
+      - .github/workflows/sports-teams.yml
+
+permissions:
+  contents: read
+
+jobs:
+  teams:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the team lists and save them
+        run: node scripts/sports-teams.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
