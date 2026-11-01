@@ -214,7 +214,6 @@ const PRECACHE_URLS = [
   '/games/minesweeper.html',
   '/games/minigolf.html',
   '/games/othello.html',
-  '/games/quarry.html',
   '/games/chinesecheckers.html',
   '/data/words-en.js',
   '/data/riddles.js',
