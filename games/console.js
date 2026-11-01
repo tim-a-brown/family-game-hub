@@ -552,26 +552,9 @@
     hiQ.then(go);
   }
   function E_pause() { var E = emu(); if (E && !E.paused) try { E.pause(); } catch (e) {} }
-  // the page hidden (switching apps, locking the phone, closing it): the game so far is kept, in case it never comes back
-  document.addEventListener('visibilitychange', function () {
-    try {
-      var p = hiW && hiW.pending();
-      if (document.hidden && p) localStorage.setItem(HI_PEND, JSON.stringify(p)); else if (!document.hidden) localStorage.removeItem(HI_PEND);
-    } catch (e) {}
-  });
-  window.addEventListener('pagehide', function () { try { var p = hiW && hiW.pending(); if (p) localStorage.setItem(HI_PEND, JSON.stringify(p)); } catch (e) {} });
-  // a score from a game left mid-way last time
-  function hiPending() {
-    var p = null; try { p = JSON.parse(localStorage.getItem(HI_PEND) || 'null'); } catch (e) {}
-    if (!p || !p.key || !(p.score > 0)) return;
-    hiReady.then(function () {
-      try { localStorage.removeItem(HI_PEND); } catch (e) {}
-      if (!hiOk() || Date.now() - (p.at || 0) > 14 * 864e5 || !ArcadeHi.qualifies(p.key, p.score)) return;
-      if (ArcadeHi.list(p.key).some(function (r) { return r.score === p.score; })) return;   // (already on the board)
-      Kit.toast('Your last game of ' + p.name);
-      setTimeout(function () { hiFile(p.key, p.score, p.name); }, 600);
-    });
-  }
+  // A game left part-way files nothing (only a game's own game over files a score). Versions before v671 kept a game
+  // left part-way here to file later: it's thrown away unread.
+  function hiPending() { try { localStorage.removeItem(HI_PEND); } catch (e) {} }
 
   // ═══ Playing ══════════════════════════════════════════════════════════════
   var cur = null, booted = false, started = false, playEl = null, scrEl = null, glassEl = null, skinEl = null, resumeEl = null;
@@ -2052,8 +2035,8 @@
     L.list().then(function (list) {
       carts = list || [];
       var c = want && carts.filter(function (x) { return x.id === want; })[0];
-      // (a score left from last time is offered on the shelf, never over another game being started)
-      if (c) play(c); else { drawShelf(); hiPending(); }
+      // (a game left part-way under an older version had its score kept to file later: thrown away now)
+      hiPending(); if (c) play(c); else drawShelf();
       if (/[?&]online=1/.test(location.search)) goOnline();   // from home's "open tables", or a joiner's fresh page
     }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
   }
