@@ -13,6 +13,8 @@ const LEAGUES = {
   wnba: ['basketball/wnba', ['limit=1000']],
   nfl: ['football/nfl', ['limit=1000']],
   nhl: ['hockey/nhl', ['limit=1000']],
+  mls: ['soccer/usa.1', ['limit=1000']],
+  nwsl: ['soccer/usa.nwsl', ['limit=1000']],
   cbb: ['basketball/mens-college-basketball', ['groups=50&limit=1000', 'limit=1000']],
   cfb: ['football/college-football', ['groups=80&limit=1000', 'groups=81&limit=1000', 'limit=1000']]
 };

@@ -155,6 +155,11 @@ body{overflow-x:hidden;}
 .px.none{background:transparent;border:1px dashed rgba(255,255,255,.08);box-shadow:none;}
 .gm .gev{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 10px;margin:0 0 6px;font-size:.74rem;font-weight:800;color:#9aa6bd;}
 .gm .gev b{color:#dfe5f0;font-weight:900;}
+.gm .mk.long{letter-spacing:.06em;white-space:normal;line-height:1.1;text-wrap:balance;}
+.tr.draw .px{min-height:38px;}
+.gm.ref .tr.draw .px{min-height:36px;}
+.tr.draw .nm b{font-size:.86rem;font-weight:800;color:#b9c2d3;}
+.logo.split{width:24px;height:24px;margin:0 3px;background:linear-gradient(135deg,var(--ca) 0 50%,var(--ch) 50% 100%);box-shadow:0 0 0 1.5px rgba(255,255,255,.8),0 1px 3px rgba(0,0,0,.5);}
 .gm .note{grid-column:1/-1;font-size:.72rem;font-weight:700;color:#7d879b;margin-top:6px;}
 
 .sb-empty{text-align:center;padding:34px 18px;color:var(--text-2);}
@@ -320,7 +325,7 @@ body{overflow-x:hidden;}
 .slip-bar .ct{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fff;color:#137140;font-weight:900;flex:none;}
 .slip-bar .t{flex:1;min-width:0;}
 .slip-bar .t b{display:block;font-size:1.02rem;font-weight:900;}
-.slip-bar .t small{display:block;font-size:.76rem;font-weight:700;opacity:.85;white-space:nowrap;}
+.slip-bar .t small{display:block;font-size:.76rem;font-weight:700;line-height:1.25;opacity:.85;overflow-wrap:anywhere;}
 .slip-bar .v{text-align:right;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;}
 .slip-bar .v small{display:block;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.8;}
 .slip-bar svg{width:20px;height:20px;flex:none;transform:rotate(180deg);}
@@ -436,6 +441,9 @@ body{overflow-x:hidden;}
     wnba: { name: 'WNBA', path: 'basketball/wnba', days: 4, sd: 11, unit: 'points', spread: 'Spread', pro: 1 },
     nfl: { name: 'NFL', path: 'football/nfl', week: 1, sd: 13.5, unit: 'points', spread: 'Spread', pro: 1 },
     nhl: { name: 'NHL', path: 'hockey/nhl', days: 4, sd: 2.4, unit: 'goals', spread: 'Puck line', pro: 1 },
+    // soccer: three ways to win (either side, or a draw), and games mostly at weekends, so the board looks a week ahead
+    mls: { name: 'MLS', path: 'soccer/usa.1', days: 6, sd: 1.6, unit: 'goals', spread: 'Goal line', pro: 1, soccer: 1 },
+    nwsl: { name: 'NWSL', path: 'soccer/usa.nwsl', days: 6, sd: 1.5, unit: 'goals', spread: 'Goal line', pro: 1, soccer: 1 },
     cbb: { name: 'College Hoops', path: 'basketball/mens-college-basketball', q: 'groups=50&limit=300', days: 2, sd: 11, unit: 'points', spread: 'Spread' },
     cfb: { name: 'College Football', path: 'football/college-football', q: 'groups=80&limit=300', week: 1, sd: 15.5, unit: 'points', spread: 'Spread' },
     // ESPN carries no odds for these two: the book sets them (tennis from the world rankings, golf from the
@@ -443,20 +451,21 @@ body{overflow-x:hidden;}
     tennis: { name: 'Tennis', kind: 'tennis', paths: ['tennis/atp', 'tennis/wta'], unit: 'games', spread: 'Games', pro: 1 },
     golf: { name: 'Golf', kind: 'golf', path: 'golf/pga', pro: 1 }
   };
-  var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb', 'tennis', 'golf'];
+  var ORDER = ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'mls', 'nwsl', 'cbb', 'cfb', 'tennis', 'golf'];
   // the logos kept with the game (games/sportsbook/<league>.png); a league without one gets ESPN's
   var LOGO_HERE = { mlb: 1, nba: 1, wnba: 1, nfl: 1, nhl: 1, cbb: 1, cfb: 1, tennis: 1, golf: 1 };
   // Each logo's shape (width over height) and how much of its box it fills, so they can be sized to look the same:
   // the same area of ink each, a thin one taller and a wide or solid one smaller (within the space there is)
   var LOGO_SHAPE = { mlb: [1.858, .99], nba: [.417, .58], wnba: [.408, .70], nfl: [.725, .76], nhl: [.875, .76], cbb: [1.008, .75], cfb: [1.492, .44], tennis: [1.225, .57], golf: [.733, .98] };
   var MKN = { ml: 'Moneyline', sp: 'Spread', tot: 'Total', win: 'To win' };
+  function isSoc(lg) { return !!(LG[lg] && LG[lg].soccer); }
   // How deep the book goes (chosen on first load, changed from the menu; it follows the PIN)
   var DEPTHS = [
     { id: 'simple', title: 'Pick the winner', desc: 'Bet on who wins in the big four leagues.', feats: ['Who wins', 'NFL', 'NBA', 'MLB', 'NHL'] },
-    { id: 'fan', title: 'Lines and totals', desc: 'Point spreads and over/unders, plus college and the WNBA.', feats: ['Point spreads', 'Over/under', 'College football', 'College hoops', 'WNBA'] },
+    { id: 'fan', title: 'Lines and totals', desc: 'Point spreads and over/unders, plus college, the WNBA and soccer.', feats: ['Point spreads', 'Over/under', 'College football', 'College hoops', 'WNBA', 'MLS and NWSL'] },
     { id: 'all', title: 'The whole book', desc: 'Parlays that multiply, and tennis and golf priced by the book.', feats: ['Parlays', 'Tennis', 'Golf'] }
   ];
-  var DEPTH_LG = { simple: ['mlb', 'nba', 'nfl', 'nhl'], fan: ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'cbb', 'cfb'] };
+  var DEPTH_LG = { simple: ['mlb', 'nba', 'nfl', 'nhl'], fan: ['mlb', 'nba', 'wnba', 'nfl', 'nhl', 'mls', 'nwsl', 'cbb', 'cfb'] };
   var DEPTH = Kit.depth.get('sb_depth', null);
   function lgOn(k) { return !DEPTH_LG[DEPTH] || DEPTH_LG[DEPTH].indexOf(k) >= 0; }
   function lgsOn() { return ORDER.filter(lgOn); }
@@ -508,7 +517,29 @@ body{overflow-x:hidden;}
     if (tm.logo) { var im = el('img', { src: tm.logo, alt: '', loading: 'lazy', decoding: 'async' }); im.onerror = disc; box.appendChild(im); } else disc();
     return box;
   }
-  function tname(tm, lg) { return (LG[lg] && LG[lg].pro ? tm.nick || tm.short : tm.loc || tm.short) || tm.abbr; }
+  function tname(tm, lg) { if (isSoc(lg)) return clubShort(tm, lg); return (LG[lg] && LG[lg].pro ? tm.nick || tm.short : tm.loc || tm.short) || tm.abbr; }
+  // Soccer clubs: ESPN gives the full name ("Colorado Rapids"), and its short one is sometimes the place ("Colorado"),
+  // which isn't what anyone calls them. The name fans use, by league (two leagues share cities: Orlando City and the
+  // Pride, the Timbers and the Thorns), for the tight spots; the full name wherever it fits.
+  var CLUBS = {
+    mls: [[/atlanta/i, 'Atlanta United'], [/austin/i, 'Austin FC'], [/charlotte/i, 'Charlotte FC'], [/chicago/i, 'Fire'], [/cincinnati/i, 'FC Cincinnati'],
+      [/colorado/i, 'Rapids'], [/columbus/i, 'Crew'], [/d\.?\s?c\.? united/i, 'D.C. United'], [/dallas/i, 'FC Dallas'], [/houston/i, 'Dynamo'], [/inter miami|miami/i, 'Inter Miami'],
+      [/galaxy/i, 'Galaxy'], [/lafc|los angeles fc|los angeles football/i, 'LAFC'], [/minnesota/i, 'Minnesota United'], [/montr[eé]al/i, 'CF Montréal'], [/nashville/i, 'Nashville SC'],
+      [/new england/i, 'Revolution'], [/new york city|nycfc/i, 'NYCFC'], [/red bull/i, 'Red Bulls'], [/orlando/i, 'Orlando City'], [/philadelphia/i, 'Union'], [/portland/i, 'Timbers'],
+      [/salt lake/i, 'Real Salt Lake'], [/san diego/i, 'San Diego FC'], [/san jos[eé]/i, 'Earthquakes'], [/seattle/i, 'Sounders'], [/sporting|kansas city/i, 'Sporting KC'],
+      [/st\.? louis/i, 'St. Louis City'], [/toronto/i, 'Toronto FC'], [/vancouver/i, 'Whitecaps']],
+    nwsl: [[/angel city/i, 'Angel City'], [/^bay\b/i, 'Bay FC'], [/boston/i, 'Legacy'], [/chicago/i, 'Stars'], [/denver/i, 'Summit'], [/houston/i, 'Dash'],
+      [/kansas city/i, 'Current'], [/gotham/i, 'Gotham FC'], [/north carolina/i, 'Courage'], [/orlando/i, 'Pride'], [/portland/i, 'Thorns'], [/louisville/i, 'Racing'],
+      [/san diego/i, 'Wave'], [/seattle|reign/i, 'Reign'], [/utah/i, 'Royals'], [/washington/i, 'Spirit']]
+  };
+  function clubFull(tm) { return tm.name || tm.loc || tm.short || tm.abbr || ''; }
+  function clubShort(tm, lg) {
+    var full = clubFull(tm), list = CLUBS[lg] || [];
+    for (var i = 0; i < list.length; i++) if (list[i][0].test(full)) return list[i][1];
+    // (a club this list doesn't know yet: ESPN's short name when it's a real one, else the name without its FC or SC)
+    var s = tm.short && tm.short !== full && tm.short.length >= 3 && full.indexOf(tm.short) > 0 ? tm.short : '';
+    return s || full.replace(/^(FC|CF|SC)\s+|\s+(FC|SC|CF)$/g, '') || tm.abbr;
+  }
   function rid() { return Math.random().toString(36).slice(2, 8).toUpperCase(); }
   function phi(x) { var t = 1 / (1 + .2316419 * Math.abs(x)), d = .3989423 * Math.exp(-x * x / 2), p = d * t * (.3193815 + t * (-.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return x > 0 ? 1 - p : p; }
   function amFromProb(q) { q = Math.min(.97, Math.max(.03, q)); var v = q >= .5 ? -100 * q / (1 - q) : 100 * (1 - q) / q; v = Math.round(v / 5) * 5; return Math.abs(v) < 100 ? (v < 0 ? -100 : 100) : v; }
@@ -547,7 +578,8 @@ body{overflow-x:hidden;}
     var st = ((c.status || ev.status || {}).type) || {};
     var g = { id: String(ev.id), lg: lg, t: Date.parse(ev.date || c.date), state: st.state || 'pre', done: !!st.completed, detail: st.shortDetail || st.detail || '',
       sname: st.name || '', neutral: !!c.neutralSite, home: team(h, lg), away: team(a, lg) };
-    g.void = /POSTPONED|CANCEL/.test(g.sname);
+    g.void = /POSTPONED|CANCEL/.test(g.sname) || (isSoc(lg) && /ABANDON/.test(g.sname));
+    if (isSoc(lg)) soccerTime(g, h, a, c);
     // how big a game is (for the ticker): on national TV, the playoffs, a headline like "World Series - Game 4"
     var tv = [];
     (c.broadcasts || []).forEach(function (b) { if (b && /national/i.test(b.market || '')) tv = tv.concat(b.names || []); });
@@ -559,8 +591,28 @@ body{overflow-x:hidden;}
     if (o) lines(g, o);
     return g;
   }
+  // Soccer bets count the 90 minutes and stoppage time, never extra time or a penalty shootout (ESPN's score leaves the
+  // shootout out but counts extra-time goals). A game that went to extra time was level after 90: the halves give the
+  // score then; without them it's level by a score we can't see (g.reg = [away, home] after 90, or g.lvl).
+  function soccerTime(g, h, a, c) {
+    var per = Number((c.status || {}).period) || 0, ls = function (x) { return (x.linescores || []).map(function (l) { var v = l && typeof l === 'object' ? (l.value != null ? l.value : l.displayValue) : l; return Number(v) || 0; }); };
+    if (g.state === 'pre') return;
+    var lh = ls(h), la = ls(a);
+    var et = /EXTRA|OVERTIME|AET|_PEN|PENALT|SHOOTOUT/.test(g.sname) || /\b(AET|ET|Pens?|PK)\b/.test(g.detail) || per > 2 || lh.length > 2 || la.length > 2;
+    if (!et) return;
+    g.et = 1;
+    if (lh.length >= 2 && la.length >= 2 && lh[0] + lh[1] === la[0] + la[1]) g.reg = [la[0] + la[1], lh[0] + lh[1]];
+    else g.lvl = 1;
+  }
+  // a game's score for grading: {a, h, lvl: level after 90 at a score we can't see (the total's unknown)}
+  function gradeScore(g) {
+    var hs = g.home.score, as = g.away.score; if (hs == null || as == null) return null;
+    if (isSoc(g.lg) && g.et) { if (g.reg) return { a: g.reg[0], h: g.reg[1], at90: 1 }; return { a: 0, h: 0, lvl: 1, max: hs + as, at90: 1 }; }
+    return { a: as, h: hs };
+  }
   function lines(g, o) {
     var L = LG[g.lg];
+    if (L && L.soccer) return soccerLines(g, o);
     // moneyline
     var mh = oddsNum((cur(o.moneyline, 'home') || {}).odds), ma = oddsNum((cur(o.moneyline, 'away') || {}).odds);
     if (mh == null && o.homeTeamOdds) mh = oddsNum(o.homeTeamOdds.moneyLine);
@@ -590,6 +642,59 @@ body{overflow-x:hidden;}
     }
     if (mh != null && ma != null) g.ml = { h: mh, a: ma };
     else if (g.sp && L) { var p = phi(-g.sp.h / L.sd); g.ml = { h: amFromProb(p + .0225), a: amFromProb(1 - p + .0225) }; }
+  }
+  // Soccer: the moneyline has three prices (home, away, the draw); ESPN's newer odds put the draw under moneyline.draw,
+  // the older ones under drawOdds. Whatever the feed leaves out (the draw, a price, every price) the book fills from a
+  // model of the game matched to the prices it did give: each side's goals as a Poisson count.
+  function soccerLines(g, o) {
+    var mh = oddsNum((cur(o.moneyline, 'home') || {}).odds), ma = oddsNum((cur(o.moneyline, 'away') || {}).odds), md = oddsNum((cur(o.moneyline, 'draw') || {}).odds);
+    if (mh == null && o.homeTeamOdds) mh = oddsNum(o.homeTeamOdds.moneyLine);
+    if (ma == null && o.awayTeamOdds) ma = oddsNum(o.awayTeamOdds.moneyLine);
+    if (md == null && o.drawOdds) md = oddsNum(typeof o.drawOdds === 'object' && o.drawOdds.moneyLine != null ? o.drawOdds.moneyLine : o.drawOdds);
+    // the goal line (the home side's), with its prices
+    var ph = cur(o.pointSpread, 'home'), pa = cur(o.pointSpread, 'away'), lh = ph ? lineNum(ph.line) : null;
+    if (lh == null && pa) { var la = lineNum(pa.line); if (la != null) lh = -la; }
+    if (lh == null && o.details) { var m = String(o.details).trim().match(/^(\S+)\s+([+-]?\d+(\.\d+)?)$/); if (m && Math.abs(parseFloat(m[2])) < 6) { var v = parseFloat(m[2]); if (m[1] === g.home.abbr) lh = v; else if (m[1] === g.away.abbr) lh = -v; } }
+    if (lh == null && typeof o.spread === 'number' && o.spread !== 0 && Math.abs(o.spread) < 6 && o.homeTeamOdds) lh = (o.homeTeamOdds.favorite ? -1 : 1) * Math.abs(o.spread);
+    var ho = oddsNum(ph && ph.odds), ao = oddsNum(pa && pa.odds);
+    if (ho == null && o.homeTeamOdds) ho = oddsNum(o.homeTeamOdds.spreadOdds);
+    if (ao == null && o.awayTeamOdds) ao = oddsNum(o.awayTeamOdds.spreadOdds);
+    // (quarter lines split the stake across two lines: not offered)
+    if (lh != null && !isInt(lh * 2)) lh = null;
+    var ov = cur(o.total, 'over'), un = cur(o.total, 'under');
+    var tl = typeof o.overUnder === 'number' ? o.overUnder : ov ? lineNum(ov.line) : null;
+    if (tl != null && (!(tl > 0) || !isInt(tl * 2))) tl = null;
+    var oo = oddsNum(ov && ov.odds), uo = oddsNum(un && un.odds);
+    if (oo == null) oo = oddsNum(o.overOdds); if (uo == null) uo = oddsNum(o.underOdds);
+    function nv(x, y) { var p = 1 / dec(x), q = 1 / dec(y); return p / (p + q); }
+    // the model: T goals expected in all, the home side m more than the away side
+    var T = tl != null ? tl + .35 : 2.9, mg = null;
+    var haveMl = mh != null && ma != null, haveSp = lh != null && ho != null && ao != null, haveTot = tl != null && oo != null && uo != null;
+    if (haveMl || lh != null) mg = haveMl || haveSp ? 0 : -lh * .9;
+    function fit(f, lo, hi, want) { for (var i = 0; i < 40; i++) { var mid = (lo + hi) / 2; if (f(mid) < want) lo = mid; else hi = mid; } return (lo + hi) / 2; }
+    for (var k = 0; k < 3; k++) {
+      if (haveTot) T = fit(function (t) { var r = poisGame(t, mg || 0).over(tl); return r.w / (r.w + r.l); }, .4, 7, nv(oo, uo));
+      if (haveMl) mg = fit(function (x) { var r = poisGame(T, x); return r.H / (r.H + r.A); }, -4, 4, nv(mh, ma));
+      else if (haveSp) mg = fit(function (x) { var r = poisGame(T, x).cover(lh); return r.w / (r.w + r.l); }, -4, 4, nv(ho, ao));
+    }
+    var G = poisGame(T, mg || 0);
+    if (lh != null) {
+      var c = G.cover(lh), pc = c.w / (c.w + c.l);
+      g.sp = { h: lh, a: -lh, ho: ho != null ? ho : amFromProb(pc + .025), ao: ao != null ? ao : amFromProb(1 - pc + .025) };
+    }
+    if (tl != null) { var t = G.over(tl), po = t.w / (t.w + t.l); g.tot = { n: tl, o: oo != null ? oo : amFromProb(po + .025), u: uo != null ? uo : amFromProb(1 - po + .025) }; }
+    if (mg != null) g.ml = { h: mh != null ? mh : amFromProb(G.H + .025), a: ma != null ? ma : amFromProb(G.A + .025), d: md != null ? md : amFromProb(G.D + .025) };
+  }
+  // a soccer game's chances with T goals expected in all and the home side m more: the result, the margin against a
+  // line, the total against a line ({w, p, l}: win, push, lose)
+  function poisGame(T, m) {
+    var lh = Math.max(.05, (T + m) / 2), la = Math.max(.05, (T - m) / 2), N = 11, ph = [], pa = [], H = 0, D = 0, A = 0;
+    function pmf(l, out) { var p = Math.exp(-l); for (var k = 0; k < N; k++) { out.push(p); p *= l / (k + 1); } }
+    pmf(lh, ph); pmf(la, pa);
+    var cells = [];
+    for (var i = 0; i < N; i++) for (var j = 0; j < N; j++) { var p = ph[i] * pa[j]; cells.push([i, j, p]); if (i > j) H += p; else if (i === j) D += p; else A += p; }
+    function tally(f) { var r = { w: 0, p: 0, l: 0 }; cells.forEach(function (c) { var v = f(c[0], c[1]); if (v > 0) r.w += c[2]; else if (v < 0) r.l += c[2]; else r.p += c[2]; }); return r; }
+    return { H: H, D: D, A: A, cover: function (L) { return tally(function (i, j) { return i - j + L; }); }, over: function (n) { return tally(function (i, j) { return i + j - n; }); } };
   }
 
 
@@ -857,22 +962,29 @@ body{overflow-x:hidden;}
   function pickTitle(p) {
     if (p.mk === 'win') return p.pn;
     if (p.mk === 'tot') return (p.side === 'o' ? 'Over ' : 'Under ') + p.line;
+    if (p.side === 'd') return 'Draw';
     var n = p.side === 'h' ? p.hn : p.an;
     return p.mk === 'ml' ? n : n + ' ' + lineTxt(p.line);
   }
+  // the pick on its own, out of its game's context (the slip's bar, a screen reader): which draw
+  function pickLong(p) { return p.side === 'd' ? p.an + ' and ' + p.hn + ' draw' : pickTitle(p); }
   // what has to happen, in plain words: [main, push note]
   function says(p) {
     if (p.mk === 'win') return ['Wins the ' + p.ev, ''];
     var n = p.side === 'h' ? p.hn : p.an, L = p.line, u = (LG[p.lg] || {}).unit || 'points';
-    var one = p.lg === 'tennis', win = one ? ' wins' : ' win', gm = one ? ' games' : '';
+    // (a club named in the singular wins: "Galaxy wins", "Rapids win")
+    var soc = isSoc(p.lg), one = p.lg === 'tennis', win = one || (soc && !/s$/i.test(n)) ? ' wins' : ' win', gm = one ? ' games' : '', tie = soc ? 'draw' : 'tie';
+    // (soccer's moneyline has three ways to go: a side that draws has lost, and the draw is a bet of its own)
+    if (p.mk === 'ml' && p.side === 'd') return [p.an + ' and ' + p.hn + ' draw', ''];
+    if (p.mk === 'ml' && soc) return [n + win, 'A draw loses'];
     if (p.mk === 'ml') return [n + (one ? ' wins the match' : ' win'), p.lg === 'nfl' ? 'A tie is a push' : one ? 'A retirement or walkover is a push' : ''];
     if (p.mk === 'sp') {
       if (one) return L < 0 ? [n + ' wins at least ' + (Math.floor(-L) + 1) + ' more games in all', 'Every game of every set counts'] : [n + ' trails by ' + (Math.ceil(L) - 1) + ' games or fewer in all, or wins more', 'Every game of every set counts'];
       if (L < 0) { var need = Math.floor(-L) + 1; return [n + win + ' by ' + need + ' or more', isInt(L) ? 'Win by exactly ' + (-L) + ' is a push' : '']; }
-      if (L === 0) return [n + win, 'A tie is a push'];
-      if (L < 1) return [n + win + ' or tie', ''];
+      if (L === 0) return [n + win, 'A ' + tie + ' is a push'];
+      if (L < 1) return [n + win + ' or ' + tie, ''];
       var can = Math.ceil(L) - 1;
-      return [n + win + ', or lose by ' + can + (can > 1 ? ' or less' : ''), isInt(L) ? 'Lose by exactly ' + L + ' is a push' : ''];
+      return [n + win + ', or ' + (win === ' wins' ? 'loses' : 'lose') + ' by ' + can + (can > 1 ? ' or less' : ''), isInt(L) ? 'Lose by exactly ' + L + ' is a push' : ''];
     }
     var lo = Math.floor(L) + 1, hi = Math.ceil(L) - 1;
     if (p.side === 'o') return [lo + ' or more ' + u + ' in all', isInt(L) ? 'Exactly ' + L + ' is a push' : ''];
@@ -883,11 +995,22 @@ body{overflow-x:hidden;}
     if (!g) return null;
     if (g.void) return 'push';
     if (leg.mk === 'win') { if (g.done) return g.winner === leg.side ? 'win' : 'loss'; var pl = g.players.filter(function (x) { return x.id === leg.side; })[0]; return pl && pl.out ? 'loss' : pl && pl.pos === '1' ? 'win' : null; }
+    if (isSoc(g.lg)) return socNow(leg, g);
     var hs = g.home.score, as = g.away.score; if (hs == null || as == null) return null;
     if (leg.mk === 'ml' && g.lg === 'tennis') { if (g.done) return g.win ? (leg.side === g.win ? 'win' : 'loss') : 'push'; return g.home.sets === g.away.sets ? null : (leg.side === 'h') === (g.home.sets > g.away.sets) ? 'win' : 'loss'; }
     if (leg.mk === 'ml') return hs === as ? 'push' : (leg.side === 'h') === (hs > as) ? 'win' : 'loss';
     if (leg.mk === 'sp') { var m = (leg.side === 'h' ? hs - as : as - hs) + leg.line; return m > 0 ? 'win' : m < 0 ? 'loss' : 'push'; }
     var tot = hs + as; if (tot === leg.line) return 'push';
+    return (leg.side === 'o') === (tot > leg.line) ? 'win' : 'loss';
+  }
+  // soccer: the moneyline's three ways (a draw beats both sides), on the score after 90 minutes; a game level after 90
+  // at a score we can't see still grades its result and goal line, and its total when the final already settles it
+  function socNow(leg, g) {
+    var s = gradeScore(g); if (!s) return null;
+    if (leg.mk === 'ml') return s.h === s.a ? (leg.side === 'd' ? 'win' : 'loss') : leg.side === 'd' ? 'loss' : (leg.side === 'h') === (s.h > s.a) ? 'win' : 'loss';
+    if (leg.mk === 'sp') { var m = (leg.side === 'h' ? s.h - s.a : s.a - s.h) + leg.line; return m > 0 ? 'win' : m < 0 ? 'loss' : 'push'; }
+    if (s.lvl) return s.max < leg.line ? (leg.side === 'u' ? 'win' : 'loss') : 'push';
+    var tot = s.h + s.a; if (tot === leg.line) return 'push';
     return (leg.side === 'o') === (tot > leg.line) ? 'win' : 'loss';
   }
   function matchTxt(p) { return p.lg === 'golf' ? p.ev : p.lg === 'tennis' ? p.an + ' vs ' + p.hn : p.an + ' at ' + p.hn; }
@@ -911,7 +1034,9 @@ body{overflow-x:hidden;}
         if (over) {
           l.r = legNow(l, g);
           if (g.lg === 'golf') { var pl = g.players.filter(function (x) { return x.id === l.side; })[0]; l.fs = pl ? (pl.out ? 'Missed the cut' : g.winner === l.side ? 'Won at ' + tpTxt(pl.tp) : 'Finished ' + pl.pos + '  ' + tpTxt(pl.tp)) : 'Final'; }
-          else l.fs = g.void ? null : g.lg === 'tennis' ? g.setline : [g.away.score, g.home.score];
+          else if (g.void) l.fs = null;
+          else if (g.lg === 'tennis') l.fs = g.setline;
+          else { var gs = isSoc(g.lg) && gradeScore(g); l.fs = gs && gs.at90 && !gs.lvl ? [gs.a, gs.h] : [g.away.score, g.home.score]; if (gs && gs.at90) l.f90 = gs.lvl ? 'aet' : '90'; }
           any = true;
         }
       });
@@ -1042,7 +1167,8 @@ body{overflow-x:hidden;}
     if (!have) holder.appendChild(el('div', { class: 'sb-load' }, [el('div'), el('div'), el('div')]));
     lgs.forEach(function (lg) { if (!BOARD[lg] || !BOARD[lg].games.length) { var c = lsGet('sb_cache_' + lg, null); if (c && c.games && !BOARD[lg]) BOARD[lg] = { games: c.games, at: 0 }; } });
     if (lgs.some(function (lg) { return BOARD[lg] && BOARD[lg].games.length; })) drawGames(holder, lgs);
-    Promise.all(lgs.map(function (lg) { return loadLeague(lg); })).then(function () { if (seq === paintSeq && view === 'board') drawGames(holder, lgs); });
+    // (soccer: the table too, for each club's record)
+    Promise.all(lgs.map(function (lg) { return isSoc(lg) ? Promise.all([loadLeague(lg), loadStand(lg)]) : loadLeague(lg); })).then(function () { if (seq === paintSeq && view === 'board') drawGames(holder, lgs); });
   }
   function drawGames(holder, lgs) {
     var games = [], err = false, now = Date.now();
@@ -1064,7 +1190,7 @@ body{overflow-x:hidden;}
     if (err) holder.appendChild(el('p', { class: 'muted', style: { margin: '0 4px 10px', 'font-size': '.85rem' }, text: games.length ? 'Can’t reach the lines right now. This is the last board saved here.' : 'Can’t reach the lines right now.' }));
     if (!games.length) {
       holder.appendChild(el('div', { class: 'sb-empty' }, [el('span', { html: Kit.icon('calendar') }),
-        el('h3', { text: ff ? 'No games for ' + (ff.lg === 'cbb' || ff.lg === 'cfb' ? ff.loc || ff.short : ff.nick || ff.short) : mine ? 'No games for your teams' : 'No games this week' }),
+        el('h3', { text: ff ? 'No games for ' + (ff.lg === 'cbb' || ff.lg === 'cfb' ? ff.loc || ff.short : isSoc(ff.lg) ? clubShort(ff, ff.lg) : ff.nick || ff.short) : mine ? 'No games for your teams' : 'No games this week' }),
         el('p', { text: ff ? 'Their next game shows up here once it’s on the schedule. Tap them again to see all your teams.' : mine ? 'Your teams’ next games show up here once they’re on the schedule.' : LG[tab].name + ' is between games or out of season.' }),
         err ? el('button', { type: 'button', class: 'btn btn-soft', text: 'Try again', onclick: function () { lgs.forEach(function (lg) { if (BOARD[lg]) BOARD[lg].at = 0; }); paintBoard(); } }) : null]));
       return;
@@ -1097,16 +1223,17 @@ body{overflow-x:hidden;}
     var ref = g.state === 'in' && g.lg !== 'tennis' && hasLines(g);
     if (!lines) card.classList.add('mlo');   // (Pick the winner: just who wins)
     if (ref) card.classList.add('ref');
-    card.appendChild(el('div', { class: 'gh' }, ref ? (lines ? [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk', text: L.spread }), el('span', { class: 'mk', text: 'Total' }), el('span', { class: 'mk', text: 'Money' })] : [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk', text: 'To win' })])
+    card.appendChild(el('div', { class: 'gh' }, ref ? (lines ? [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk' + (L.spread.length > 8 ? ' long' : ''), text: L.spread }), el('span', { class: 'mk', text: 'Total' }), el('span', { class: 'mk', text: 'Money' })] : [when, el('span', { class: 'mk mk-sc', text: '' }), el('span', { class: 'mk', text: 'To win' })])
       : lines ? [when,
-      el('span', { class: 'mk', text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]
+      el('span', { class: 'mk' + (L.spread.length > 8 ? ' long' : ''), text: live ? '' : L.spread }), el('span', { class: 'mk', text: live ? '' : 'Total' }), el('span', { class: 'mk', text: live ? (g.lg === 'tennis' ? 'Sets' : 'Score') : 'Money' })]
       : [when, el('span', { class: 'mk', text: live ? 'Score' : 'To win' })]));
     if (showLg && g.state !== 'pre') when.insertBefore(document.createTextNode(L.name + '  '), when.firstChild);
+    var soc = isSoc(g.lg);
     ['a', 'h'].forEach(function (s) {
       var tm = s === 'h' ? g.home : g.away, other = s === 'h' ? g.away : g.home;
       var nm = el('span', { class: 'nm' }, [
-        el('b', { 'data-abbr': tm.abbr, html: (tm.rank ? '<span class="rk">' + tm.rank + '</span>' : '') + esc(tname(tm, g.lg)) + (isFav(g.lg, tm.id) ? Kit.icon('star') : '') }),
-        el('small', { text: g.lg === 'tennis' && live && tm.ls && tm.ls.length ? tm.ls.join('  ') : tm.rec || '' })]);
+        el('b', { 'data-abbr': tm.abbr, 'data-short': soc ? clubShort(tm, g.lg) : null, html: (tm.rank ? '<span class="rk">' + tm.rank + '</span>' : '') + esc(soc ? clubFull(tm) : tname(tm, g.lg)) + (isFav(g.lg, tm.id) ? Kit.icon('star') : '') }),
+        el('small', { text: g.lg === 'tennis' && live && tm.ls && tm.ls.length ? tm.ls.join('  ') : soc ? socRec(g.lg, tm.id) : tm.rec || '' })]);
       var row = el('div', { class: 'tr' + (live ? ' live' : '') }, [el('span', { class: 'tm' }, [logoEl(tm), nm])]);
       if (ref) {
         row.classList.add('ref');
@@ -1122,6 +1249,14 @@ body{overflow-x:hidden;}
       }
       card.appendChild(row);
     });
+    // soccer: the draw, the third way a game can go, as its own slim row under the two sides (only a price to win)
+    if (soc && (!live || ref) && g.ml && g.ml.d != null) {
+      var dr = el('div', { class: 'tr draw' + (ref ? ' ref' : '') }, [el('span', { class: 'tm' }, [el('span', { class: 'logo split', style: { '--ca': g.away.color || '#556070', '--ch': g.home.color || '#556070' } }), el('span', { class: 'nm' }, [el('b', { text: 'Draw' })])])]);
+      if (ref) dr.appendChild(el('span', { class: 'sc' }));
+      if (lines) { dr.appendChild(el('span')); dr.appendChild(el('span')); }
+      dr.appendChild(pxEl(g, 'ml', 'd'));
+      card.appendChild(dr);
+    }
     if (!live && !hasLines(g)) card.appendChild(el('div', { class: 'note', text: 'Lines open closer to game time.' }));
     return card;
   }
@@ -1161,20 +1296,42 @@ body{overflow-x:hidden;}
     var kids = [];
     if (mk === 'ml' || mk === 'win') kids.push(el('span', { class: am(p.odds).length > 5 ? 'long' : null, text: am(p.odds) }));
     else { kids.push(el('i', { text: mk === 'tot' ? (side === 'o' ? 'O ' : 'U ') + p.line : lineTxt(p.line) })); kids.push(el('span', { text: am(p.odds) })); }
-    var b = el('button', { type: 'button', class: 'px' + (mk === 'ml' || mk === 'win' ? ' solo' : '') + (on ? ' on' : ''), 'data-k': p.k, 'aria-pressed': on ? 'true' : 'false', 'aria-label': pickTitle(p) + ' ' + am(p.odds), onclick: function () { togglePick(g, mk, side, b); } }, kids);
+    var b = el('button', { type: 'button', class: 'px' + (mk === 'ml' || mk === 'win' ? ' solo' : '') + (on ? ' on' : ''), 'data-k': p.k, 'aria-pressed': on ? 'true' : 'false', 'aria-label': pickLong(p) + ' ' + am(p.odds), onclick: function () { togglePick(g, mk, side, b); } }, kids);
     // a price that changed since the last look lights up for a moment
     var pv = g.prev && g.prev[mk];
     if (mk === 'win') pv = g.prev && g.prev.odds ? { x: g.prev.odds[side] } : null;
     if (pv && mk === 'win') { if (pv.x != null && pv.x !== p.odds) b.classList.add('moved'); pv = null; }
     if (pv) { var was = mk === 'ml' ? pv[side] : mk === 'sp' ? pv[side] + '|' + pv[side + 'o'] : pv.n + '|' + pv[side], now = mk === 'ml' ? p.odds : p.line + '|' + p.odds; if (String(was) !== String(now)) b.classList.add('moved'); }
     // betting closed: the last price stays readable, greyed (the game's header says it's closed)
-    if (!bettable(g)) { b.disabled = true; b.classList.remove('on', 'moved'); b.setAttribute('aria-label', pickTitle(p) + ' ' + am(p.odds) + ', betting closed'); }
+    if (!bettable(g)) { b.disabled = true; b.classList.remove('on', 'moved'); b.setAttribute('aria-label', pickLong(p) + ' ' + am(p.odds) + ', betting closed'); }
     return b;
   }
   // names that don't fit ease down, then fall back to the team's abbreviation
   function fitNames(root) {
     requestAnimationFrame(function () {
+      // (soccer clubs: the full name where it fits, else the name fans use, the same way for both sides of a game and down
+      // a schedule; a two-word one too long for its line goes onto two, a size smaller, before the letters)
+      var sets = [];
+      root.querySelectorAll('.nm b[data-short]').forEach(function (b) { var box = b.closest('.gm') || b.closest('.sched') || b, s = sets.filter(function (x) { return x.box === box; })[0]; if (!s) sets.push(s = { box: box, bs: [] }); s.bs.push(b); });
+      function over(b) { return b.scrollWidth > b.clientWidth + 1; }
+      function put(b, t) { var star = b.querySelector('svg'); b.textContent = t; if (star) b.appendChild(star); }
+      function plain(b) { b.style.whiteSpace = ''; b.style.overflowWrap = ''; b.style.fontSize = ''; b.style.lineHeight = ''; b.style.textWrap = ''; delete b.dataset.fit; }
+      sets.forEach(function (s) {
+        // (from the full name each time: a board drawn again is fitted again)
+        s.bs.forEach(function (b) { if (!b.dataset.full) b.dataset.full = b.textContent; put(b, b.dataset.full); plain(b); });
+        var tight = s.bs.some(function (b) { b.style.fontSize = '.9em'; var o = over(b); b.style.fontSize = ''; return o; });
+        if (tight) s.bs.forEach(function (b) {
+          var nm = b.dataset.short; put(b, nm);
+          b.style.fontSize = '.8em'; var o = over(b);
+          // ("Charlotte FC" where "Charlotte" is all it needs)
+          var bare = nm.replace(/^(FC|CF|SC)\s+|\s+(FC|SC|CF)$/g, '');
+          if (o && bare !== nm) { put(b, bare); o = over(b); if (!o) nm = bare; else put(b, nm); }
+          b.style.fontSize = '';
+          if (o && / /.test(nm)) { b.style.whiteSpace = 'normal'; b.style.fontSize = '.84em'; b.style.lineHeight = '1.05'; b.style.textWrap = 'balance'; if (!over(b)) b.dataset.fit = '1'; else plain(b); }
+        });
+      });
       root.querySelectorAll('.nm b').forEach(function (b) {
+        if (b.dataset.fit) return;
         b.style.fontSize = '';
         var f = 1;
         while (b.scrollWidth > b.clientWidth + 1 && f > .8) { f -= .05; b.style.fontSize = f + 'em'; }
@@ -1192,7 +1349,7 @@ body{overflow-x:hidden;}
   // projections (FPI for football, BPI for basketball, the MLB standings), and for the NHL, which has none, from
   // playing out the rest of the season from the standings; the schedule from the team's own schedule page.
   var S2 = 'https://site.api.espn.com/apis/v2/sports/', CORE = 'https://sports.core.api.espn.com/v2/sports/';
-  var SEASON_N = { nfl: 17, nba: 82, wnba: 44, nhl: 82, mlb: 162 };
+  var SEASON_N = { nfl: 17, nba: 82, wnba: 44, nhl: 82, mlb: 162, mls: 34, nwsl: 26 };
   var STAND = {}, SCHED = {}, ODDS = {};
   function memo(box, k, ttl, make) {
     var c = box[k];
@@ -1206,7 +1363,7 @@ body{overflow-x:hidden;}
   function shortGroup(n) { return String(n || '').replace(/^American League/, 'AL').replace(/^National League/, 'NL').replace(/ Division$/, ''); }
   // every team's line in the standings, with its division and conference
   function loadStand(lg) {
-    var L = LG[lg], q = L.pro ? '?level=3' : lg === 'cfb' ? '?group=80' : '';
+    var L = LG[lg], q = L.soccer ? '' : L.pro ? '?level=3' : lg === 'cfb' ? '?group=80' : '';
     return memo(STAND, lg, 600000, function () {
       return getJSON(S2 + L.path + '/standings' + q).then(function (j) {
         var teams = {}, year = j.season && j.season.year || (j.seasons && j.seasons[0] && j.seasons[0].year);
@@ -1216,16 +1373,17 @@ body{overflow-x:hidden;}
             var t = e.team || {}, st = {}, dv = {};
             var crec = null;
             (e.stats || []).forEach(function (x) { var k = x.name || x.type; if (k && !(k in st)) { st[k] = x.value; dv[k] = x.displayValue; } if (!crec && /conf/i.test(String(x.name || '') + ' ' + String(x.type || '') + ' ' + String(x.abbreviation || '')) && /^\d+-\d+/.test(x.displayValue || '')) crec = x.displayValue; });
-            teams[String(t.id)] = { id: String(t.id), abbr: t.abbreviation, logo: t.logos && t.logos[0] && t.logos[0].href || '', nick: t.name || t.shortDisplayName || '', school: t.location || '', short: t.shortDisplayName || '', grp: n.name, grpAbbr: n.abbreviation, conf: up && up.name, confAbbr: up && up.abbreviation, rank: i + 1, size: n.standings.entries.length,
-              w: st.wins || 0, l: st.losses || 0, t: st.ties || 0, otl: st.otLosses || st.overtimeLosses || 0, pts: st.points, gp: st.gamesPlayed, seed: st.playoffSeed || 0,
+            teams[String(t.id)] = { id: String(t.id), abbr: t.abbreviation, logo: t.logos && t.logos[0] && t.logos[0].href || '', nick: t.name || t.shortDisplayName || '', school: t.location || '', short: t.shortDisplayName || '', full: t.displayName || t.name || '', grp: n.name, grpAbbr: n.abbreviation, conf: up && up.name, confAbbr: up && up.abbreviation, rank: i + 1, size: n.standings.entries.length,
+              w: st.wins || 0, l: st.losses || 0, t: st.ties || 0, otl: st.otLosses || st.overtimeLosses || 0, pts: st.points, gp: st.gamesPlayed, seed: st.playoffSeed || 0, gd: st.pointDifferential, gf: st.pointsFor,
               gb: dv.gamesBehind, divgb: dv.divisionGamesBehind, rec: dv.overall, streak: dv.streak, clinch: dv.clincher || '', pct: dv.playoffPercent, winPct: st.winPercent, crec: crec, at: i };
           });
           (n.children || []).forEach(function (c) { walk(c, n.standings ? up : n); });
         })(j, null);
-        Object.keys(teams).forEach(function (k) { var e = teams[k]; if (e.gp == null) e.gp = e.w + e.l + e.t + (lg === 'nhl' ? e.otl : 0); });
+        Object.keys(teams).forEach(function (k) { var e = teams[k]; if (e.gp == null) e.gp = e.w + e.l + e.t + (lg === 'nhl' ? e.otl : 0); if (isSoc(lg) && e.pts == null) e.pts = 3 * e.w + e.t; });
         // each division's (or conference's) places, worked out here: ESPN's list isn't in standings order (it had the
         // Southeast's 3-3 Wizards fifth behind 2-4 teams). Hockey by points (fewer games played first), college by
-        // conference record, the rest by winning percentage (a tie half a win); then the playoff seed, then ESPN's order.
+        // conference record, soccer by points then wins then goal difference then goals, the rest by winning percentage (a
+        // tie half a win); then the playoff seed, then ESPN's order.
         function pct(w, l, t) { var g = w + l + t; return g ? (w + t / 2) / g : 0; }
         function confPct(e) { var m = /^(\d+)-(\d+)(?:-(\d+))?/.exec(e.crec || ''); return m ? pct(+m[1], +m[2], +(m[3] || 0)) : -1; }
         var groups = {};
@@ -1234,6 +1392,7 @@ body{overflow-x:hidden;}
           var L = groups[g], conf = lg === 'cfb' && L.every(function (e) { return e.crec; });
           L.sort(function (a, b) {
             var d = lg === 'nhl' ? ((b.pts || 0) - (a.pts || 0) || (a.gp || 0) - (b.gp || 0))
+              : isSoc(lg) ? ((b.pts || 0) - (a.pts || 0) || b.w - a.w || (b.gd || 0) - (a.gd || 0) || (b.gf || 0) - (a.gf || 0))
               : (conf ? confPct(b) - confPct(a) : 0) || pct(b.w, b.l, b.t) - pct(a.w, a.l, a.t);
             return d || (a.seed > 0 && b.seed > 0 ? a.seed - b.seed : 0) || a.l - b.l || a.at - b.at;
           });
@@ -1249,23 +1408,29 @@ body{overflow-x:hidden;}
     return memo(SCHED, lg + ':' + id, 600000, function () {
       function get(q) { return getJSON(base + q).then(function (j) { return { evs: j.events || [], year: j.requestedSeason && j.requestedSeason.year }; }); }
       function fut(r) { return r.evs.some(function (e) { return Date.parse(e.date) > Date.now() - 6 * 3600e3; }); }
+      // (soccer: ESPN keeps a club's results and its fixtures to come apart; both, as one list)
+      if (LG[lg].soccer) return Promise.all([get('').catch(function () { return null; }), get('?fixture=true').catch(function () { return null; })]).then(function (rs) {
+        if (!rs[0] && !rs[1]) throw new Error('feed');
+        return { evs: [].concat(rs[0] ? rs[0].evs : [], rs[1] ? rs[1].evs : []) };
+      }).then(done);
       return get('').then(function (r) {
         if (fut(r) || !LG[lg].pro) return r;
         return get('?seasontype=2').then(function (r2) {
           if (fut(r2)) return r2;
           return get('?seasontype=2&season=' + ((r2.year || r.year || new Date().getFullYear()) + 1)).then(function (r3) { return r3.evs.length ? { evs: r.evs.concat(r2.evs, r3.evs), year: r3.year, next: 1 } : r; }, function () { return r; });
         }, function () { return r; });
-      }).then(function (r) {
+      }).then(done);
+      function done(r) {
         var seen = {}, list = [];
         r.evs.forEach(function (ev) { var g = parseEvent(ev, lg); if (!g || seen[g.id]) return; seen[g.id] = 1; var c = (ev.competitions || [])[0] || {}; if (ev.timeValid === false || c.timeValid === false) g.tbd = true; list.push(g); });
         list.sort(function (a, b) { return a.t - b.t; });
         return { games: list, next: r.next };
-      });
+      }
     });
   }
   // the chance of making the playoffs, 0 to 100 (null when there's no projection)
   function loadOdds(lg, id, year) {
-    if (lg === 'mlb' || lg === 'nhl' || lg === 'cbb' || !year) return Promise.resolve(null);
+    if (lg === 'mlb' || lg === 'nhl' || lg === 'cbb' || isSoc(lg) || !year) return Promise.resolve(null);
     var sp = LG[lg].path.split('/');
     return memo(ODDS, lg + ':' + id, 1800000, function () {
       return getJSON(CORE + sp[0] + '/leagues/' + sp[1] + '/seasons/' + year + '/powerindex/' + id).then(function (j) {
@@ -1296,6 +1461,28 @@ body{overflow-x:hidden;}
     }
     return Math.round(made / N * 1000) / 10;
   }
+  // Soccer: the same, three points a win and one a draw (about a quarter of games end level): MLS takes the top nine in
+  // each conference (seven straight in, eighth and ninth through a wild card game), the NWSL its top eight
+  var SOC_IN = { mls: 9, nwsl: 8 };
+  function socChance(lg, S, id) {
+    var me = S.teams[id]; if (!me) return null;
+    var T = Object.keys(S.teams).map(function (k) { return S.teams[k]; }).filter(function (e) { return e.grp === me.grp; });
+    var made = 0, N = 2000, n = SEASON_N[lg], cut = SOC_IN[lg] || 8, DR = .25;
+    if (T.length <= cut) return 100;
+    // (points a game lean toward the league's average, more so early on; and how good a side really is stays a little
+    // uncertain in every run)
+    var rate = T.map(function (e) { var gp = e.gp || 0, ppg = ((e.pts || 0) + 1.38 * 8) / (gp + 8); return { e: e, rem: Math.max(0, n - gp), a: (ppg - DR) / 3 }; });
+    function gauss() { return Math.sqrt(-2 * Math.log(Math.random() || 1e-9)) * Math.cos(2 * Math.PI * Math.random()); }
+    for (var k = 0; k < N; k++) {
+      var fin = rate.map(function (r) { var p = r.e.pts || 0, a = Math.min(.7, Math.max(.06, r.a + gauss() * .04)); for (var g = 0; g < r.rem; g++) { var x = Math.random(); p += x < a ? 3 : x < a + DR ? 1 : 0; } return { e: r.e, p: p + Math.random() * .5 }; });
+      fin.sort(function (x, y) { return y.p - x.p; });
+      for (var i = 0; i < cut; i++) if (fin[i].e.id === id) { made++; break; }
+    }
+    return Math.round(made / N * 1000) / 10;
+  }
+  function simChance(lg, S, id) { return isSoc(lg) ? socChance(lg, S, id) : nhlChance(S, id); }
+  // a club's record the way its league prints it (wins, losses, draws), from the table
+  function socRec(lg, id) { var S = have(STAND, lg), e = S && S.teams[String(id)]; return e ? e.w + '-' + e.l + '-' + e.t : ''; }
   // the polls (college): AP Top 25, and the College Football Playoff committee's rankings once they're out
   var RANKS_C = {};
   function loadPolls(lg) {
@@ -1326,7 +1513,7 @@ body{overflow-x:hidden;}
     return { list: field.slice(0, 12).concat(out), auto: auto };
   }
   function divList(S, me) { return Object.keys(S.teams).map(function (k) { return S.teams[k]; }).filter(function (e) { return e.grp === me.grp; }).sort(function (a, b) { return a.rank - b.rank; }); }
-  function divCuts(lg) { return lg === 'nhl' ? [{ at: 3, label: 'Wild card race' }] : []; }
+  function divCuts(lg) { return lg === 'nhl' ? [{ at: 3, label: 'Wild card race' }] : lg === 'mls' ? [{ at: 7, label: 'Wild card' }, { at: 9, label: 'Out', hard: 1 }] : lg === 'nwsl' ? [{ at: 8, label: 'Out', hard: 1 }] : []; }
   // the playoff seeding the team is in: {title, list, cuts: [{at, label, hard}], num(e, i)}
   function raceOf(lg, S, me) {
     var T = Object.keys(S.teams).map(function (k) { return S.teams[k]; }), conf = T.filter(function (e) { return e.conf === me.conf; });
@@ -1346,10 +1533,10 @@ body{overflow-x:hidden;}
   // o: {num(e, i): the left number, around: only the rows either side of the team, val(e), mark(e): an icon}
   function standTable(lg, title, list, me, cuts, isDiv, num, o) {
     o = o || {};
-    var nhl = lg === 'nhl', box = el('div', { class: 'mst' }), college = !LG[lg].pro, ST = have(STAND, lg), fits = [];
-    box.appendChild(el('div', { class: 'mh' }, [el('small', { text: title }), el('small', { class: 'u', text: nhl ? 'PTS' : 'W-L' })]));
+    var nhl = lg === 'nhl', soc = isSoc(lg), byPts = nhl || soc, box = el('div', { class: 'mst' }), college = !LG[lg].pro, ST = have(STAND, lg), fits = [];
+    box.appendChild(el('div', { class: 'mh' }, [el('small', { text: title }), el('small', { class: 'u', text: byPts && !o.val ? 'PTS' : 'W-L' })]));
     var at = -1; list.forEach(function (e, i) { if (e.id === me.id) at = i; });
-    var MAX = 8, show = {};
+    var MAX = soc ? 99 : 8, show = {};   // (soccer: the whole table, its one table)
     if (o.around) { var lo = Math.max(0, Math.min(at - o.around, list.length - 1 - 2 * o.around)); for (var k = lo; k <= lo + 2 * o.around && k < list.length; k++) show[k] = 1; }
     else if (list.length <= MAX) list.forEach(function (e, i) { show[i] = 1; });
     else {
@@ -1366,11 +1553,11 @@ body{overflow-x:hidden;}
       cuts.forEach(function (c) { if (c.at === i && i > 0) box.appendChild(el('div', { class: 'mcut' + (c.hard ? ' hard' : '') }, [el('span', { text: c.label })])); });
       if (!show[i]) return;
       prev = i;
-      var rec = nhl ? e.w + '-' + e.l + '-' + e.otl : e.w + '-' + e.l + (e.t ? '-' + e.t : '');
+      var rec = nhl ? e.w + '-' + e.l + '-' + e.otl : soc ? e.w + '-' + e.l + '-' + e.t : e.w + '-' + e.l + (e.t ? '-' + e.t : '');
       var done = /^[xyzw*]$/.test(e.clinch), out = e.clinch === 'e', mine = e.id === me.id, mk = o.mark && o.mark(e);
       // names, not letters: the school's for college ("Georgia Southern", or its short "App State" where the full one
       // won't fit), the team's for the pros ("Avalanche", "Trail Blazers"); the letters only as a last resort
-      var sc = ST && ST.teams[String(e.id)] || e, names = (college ? [sc.school, sc.short] : [sc.nick || e.nick]).concat([e.abbr || e.nick || '']).filter(function (x, k, a) { return x && a.indexOf(x) === k; }), nm;
+      var sc = ST && ST.teams[String(e.id)] || e, names = (college ? [sc.school, sc.short] : soc ? [sc.full || sc.nick, clubShort({ name: sc.full || sc.nick, short: sc.short, abbr: e.abbr }, lg)] : [sc.nick || e.nick]).concat([e.abbr || e.nick || '']).filter(function (x, k, a) { return x && a.indexOf(x) === k; }), nm;
       // (each name on one line, then a size smaller, on two lines if it has two words, in a narrow column; then the letters)
       var sch = names.slice(0, -1), tries = !sch.length ? [] : sch.map(function (x) { return [x]; }).concat(sch.map(function (x) { return [x, 1]; }), [[names[names.length - 1]]]);
       if (tries.length) fits.push(function () {
@@ -1383,7 +1570,7 @@ body{overflow-x:hidden;}
         el('span', { class: 'n', text: num ? num(e, i) : String(i + 1) }),
         logoEl({ abbr: e.abbr, logo: e.logo, color: mine ? 'var(--tc)' : '#3a4150' }),
         nm = el('b', { title: done ? 'Clinched a playoff spot' : mk ? mk[1] : null, html: esc(names[0]) + (done ? Kit.icon('check') : mk ? '<span class="mk2">' + Kit.icon(mk[0]) + '</span>' : '') }),
-        el('span', { class: 'v', title: nhl ? rec : null, text: o.val ? o.val(e) : nhl ? String(e.pts != null ? e.pts : '') : rec })]));
+        el('span', { class: 'v', title: byPts ? rec : null, text: o.val ? o.val(e) : byPts ? String(e.pts != null ? e.pts : '') : rec })]));
     });
     // (once it's on the screen: a name that doesn't fit its column steps down to a shorter one)
     if (fits.length) { var runFits = function () { if (box.isConnected) fits.forEach(function (f) { f(); }); }; requestAnimationFrame(function () { runFits(); setTimeout(runFits, 300); }); }
@@ -1393,17 +1580,17 @@ body{overflow-x:hidden;}
     var lg = ff.lg, L = LG[lg], me = S && S.teams[ff.id], col = !L.pro, ft = tidyTeam(ff);
     var card = el('div', { class: 'tmc', style: { '--tc': ff.color || '#556070' } });
     var name = col ? ft.loc || ft.short : ft.name || ft.short;
-    var rec = me ? (lg === 'nhl' ? me.w + '-' + me.l + '-' + me.otl : me.rec || me.w + '-' + me.l + (me.t ? '-' + me.t : '')) : '';
+    var soc = isSoc(lg), rec = me ? (lg === 'nhl' ? me.w + '-' + me.l + '-' + me.otl : soc ? me.w + '-' + me.l + '-' + me.t : me.rec || me.w + '-' + me.l + (me.t ? '-' + me.t : '')) : '';
     var streak = me && me.streak && /^[WL]\d+$/.test(me.streak) ? (me.streak[0] === 'W' ? 'Won ' : 'Lost ') + me.streak.slice(1) + ' straight' : '';
     if (streak && / 1 straight$/.test(streak)) streak = streak[0] === 'W' ? 'Won their last game' : 'Lost their last game';
     card.appendChild(el('div', { class: 'top' }, [logoEl(ft), el('div', { class: 'who' }, [el('small', { text: L.name }), el('h3', { text: name })]),
-      el('div', { class: 'rec' }, me ? [el('b', { text: rec }), el('small', { text: lg === 'nhl' && me.pts != null ? me.pts + ' points' : streak })] : [el('b', { class: 'sk' })])]));
+      el('div', { class: 'rec' }, me ? [el('b', { text: rec }), el('small', { text: (lg === 'nhl' || soc) && me.pts != null ? me.pts + (me.pts === 1 ? ' point' : ' points') : streak })] : [el('b', { class: 'sk' })])]));
     // where they stand, as two short tables: the division in order, and the playoff seeding with its lines (the
     // division winners, the wild cards, who's out); the team picked is lit, and long lists keep the top and the
     // rows round the team
     if (me) {
       var tabs = el('div', { class: 'msts' });
-      tabs.appendChild(standTable(lg, col ? shortGroup(me.grp) : shortGroup(me.grp), divList(S, me), me, divCuts(lg), true));
+      tabs.appendChild(standTable(lg, soc && !/conference/i.test(me.grp || '') ? 'Standings' : shortGroup(me.grp), divList(S, me), me, divCuts(lg), true));
       var race = raceOf(lg, S, me);
       if (race) tabs.appendChild(standTable(lg, race.title, race.list, me, race.cuts, false, race.num));
       // college: the poll they're in (the playoff committee's once it's out), a couple either side; and for
@@ -1431,7 +1618,7 @@ body{overflow-x:hidden;}
       var pct = Math.max(0, Math.min(100, odds)), txt = pct < 1 ? '<1%' : pct > 99 ? '>99%' : Math.round(pct) + '%';   // (nothing's certain until it's clinched)
       var bar = el('i', { class: 'fill' });
       card.appendChild(el('div', { class: 'odds' }, [el('div', { class: 'ol' }, [el('small', { text: lg === 'cfb' ? 'Chance to make the Playoff' : 'Chance to make the playoffs' }), el('b', { text: txt })]), el('div', { class: 'meter' }, [bar]),
-        el('span', { class: 'src', text: lg === 'nhl' ? 'From the season played out from today’s standings' : lg === 'mlb' ? 'ESPN projection' : lg === 'nfl' || lg === 'cfb' ? 'ESPN Football Power Index' : 'ESPN Basketball Power Index' })]));
+        el('span', { class: 'src', text: lg === 'nhl' || soc ? 'From the season played out from today’s standings' : lg === 'mlb' ? 'ESPN projection' : lg === 'nfl' || lg === 'cfb' ? 'ESPN Football Power Index' : 'ESPN Basketball Power Index' })]));
       requestAnimationFrame(function () { requestAnimationFrame(function () { bar.style.width = pct + '%'; }); });
     }
     // the last game played
@@ -1439,7 +1626,7 @@ body{overflow-x:hidden;}
     if (last) {
       var home = last.home.id === ff.id, us = home ? last.home : last.away, them = home ? last.away : last.home, won = us.score > them.score, tie = us.score === them.score;
       card.appendChild(el('div', { class: 'last' }, [el('small', { text: 'Last game' }),
-        el('span', { class: 'res ' + (won ? 'w' : tie ? 't' : 'l'), text: won ? 'W' : tie ? 'T' : 'L' }),
+        el('span', { class: 'res ' + (won ? 'w' : tie ? 't' : 'l'), text: won ? 'W' : tie ? (soc ? 'D' : 'T') : 'L' }),
         el('b', { text: us.score + '-' + them.score + (home ? ' vs ' : ' at ') + tname(them, lg) }),
         el('span', { class: 'd', text: dayName(last.t) })]));
     }
@@ -1451,7 +1638,7 @@ body{overflow-x:hidden;}
     return el('div', { class: 'srow' }, [
       el('span', { class: 'sd' }, [el('small', { text: d.toLocaleDateString([], { weekday: 'short' }) }), el('b', { text: d.toLocaleDateString([], { month: 'short', day: 'numeric' }) })]),
       el('span', { class: 'va', text: home ? 'vs' : 'at' }),
-      el('span', { class: 'tm' }, [logoEl(them), el('span', { class: 'nm' }, [el('b', { 'data-abbr': them.abbr, text: tname(them, g.lg) }), them.rank ? el('small', { text: 'No. ' + them.rank }) : null])]),
+      el('span', { class: 'tm' }, [logoEl(them), el('span', { class: 'nm' }, [el('b', { 'data-abbr': them.abbr, 'data-short': isSoc(g.lg) ? clubShort(them, g.lg) : null, text: isSoc(g.lg) ? clubFull(them) : tname(them, g.lg) }), them.rank ? el('small', { text: 'No. ' + them.rank }) : null])]),
       el('span', { class: 'st', text: g.void ? 'Postponed' : g.tbd ? 'TBD' : timeTxt(g.t) })]);
   }
   var schedAll = {};
@@ -1461,7 +1648,7 @@ body{overflow-x:hidden;}
     var missing = S === undefined || sch === undefined || (od === undefined && lg !== 'mlb' && lg !== 'cbb');
     if (!LG[lg].pro && have(RANKS_C, lg) === undefined) missing = true;
     Promise.all([loadStand(lg), loadSched(lg, ff.id), LG[lg].pro ? null : loadPolls(lg)]).then(function (r) {
-      if (lg === 'nhl') { if (r[0] && (!ODDS[key] || Date.now() - ODDS[key].at > 1800000)) ODDS[key] = { at: Date.now(), v: nhlChance(r[0], ff.id) }; return; }
+      if (lg === 'nhl' || isSoc(lg)) { if (r[0] && (!ODDS[key] || Date.now() - ODDS[key].at > 1800000)) ODDS[key] = { at: Date.now(), v: simChance(lg, r[0], ff.id) }; return; }
       return lg === 'mlb' ? null : loadOdds(lg, ff.id, r[0] && r[0].year);
     }).then(function () { if (missing && focus === key && dom.holder === holder && holder.isConnected) teamView(holder, ff, err); });
     if (lg === 'mlb' && S && S.teams[ff.id]) { var pp = parseFloat(String(S.teams[ff.id].pct || '').replace('%', '')); od = isFinite(pp) ? pp : null; }
@@ -1578,7 +1765,7 @@ body{overflow-x:hidden;}
     if (n && !dom.wide && !slipOpen) {
       dom.slipWrap.appendChild(el('button', { type: 'button', class: 'slip-bar', onclick: function () { openSlip(true); } }, [
         el('span', { class: 'ct', text: String(n) }),
-        el('span', { class: 't' }, [el('b', { text: 'Bet slip' }), el('small', { text: slip.mode === 'parlay' ? n + '-leg parlay' : n === 1 ? pickTitle(slip.picks[0]) : n + ' bets' })]),
+        el('span', { class: 't' }, [el('b', { text: 'Bet slip' }), el('small', { text: slip.mode === 'parlay' ? n + '-leg parlay' : n === 1 ? pickLong(slip.picks[0]) : n + ' bets' })]),
         el('span', { class: 'v' }, [el('small', { text: 'To win' }), document.createTextNode(money(num.win))]),
         el('span', { html: Kit.icon('down') })]));
     }
@@ -1750,7 +1937,8 @@ body{overflow-x:hidden;}
       return [l.an + ' vs ' + l.hn, voided ? 'Void' : g && g.tbd ? dayName(l.t) : shortDay(l.t), 0];
     }
     var sc = l.fs ? l.fs : g && g.state !== 'pre' && g.home.score != null ? [g.away.score, g.home.score] : null;
-    if (sc) return [l.aa + ' ' + sc[0] + '   ' + l.ha + ' ' + sc[1], l.r ? 'Final' : g && g.state === 'in' ? g.detail : voided ? 'Postponed' : 'Final', 1];
+    // (soccer: the score after 90 minutes when the game went on to extra time)
+    if (sc) return [l.aa + ' ' + sc[0] + '   ' + l.ha + ' ' + sc[1], l.r ? (l.f90 === '90' ? 'After 90 minutes' : l.f90 === 'aet' ? 'After extra time' : 'Final') : g && g.state === 'in' ? g.detail : voided ? 'Postponed' : 'Final', 1];
     return [l.an + ' at ' + l.hn, voided ? 'Postponed' : shortDay(l.t), 0];
   }
   function paintBets() {
@@ -1866,7 +2054,7 @@ body{overflow-x:hidden;}
       mine.innerHTML = '';
       if (!favs.length) { mine.appendChild(el('p', { class: 'muted', style: { margin: '0', 'font-size': '.85rem' }, text: 'Tap a star to follow a team or player.' })); return; }
       // (a school followed in both college sports shows twice: a small league mark tells them apart)
-      favs.forEach(function (f) { var col = f.lg === 'cbb' || f.lg === 'cfb', ft = tidyTeam(f), lgl = col && lgLogo(f.lg), nm = col ? ft.loc || ft.short : ft.nick || ft.short;
+      favs.forEach(function (f) { var col = f.lg === 'cbb' || f.lg === 'cfb', ft = tidyTeam(f), lgl = col && lgLogo(f.lg), nm = col ? ft.loc || ft.short : isSoc(f.lg) ? clubShort(ft, f.lg) : ft.nick || ft.short;
         var c = el('span', { class: 'tp-ch', 'data-k': f.lg + ':' + f.id, tabindex: '0', role: 'button', 'aria-label': 'Move ' + nm + ' (drag, or use the arrow keys)' }, [logoEl(ft), document.createTextNode(nm), lgl ? el('img', { class: 'tp-lg', src: lgl, alt: LG[f.lg].name }) : null, favs.length > 1 ? el('i', { class: 'gr', html: CH_GRIP }) : null]);
         if (favs.length > 1) chipDrag(c);
         mine.appendChild(c); });
@@ -1923,7 +2111,7 @@ body{overflow-x:hidden;}
     }
     function rows() {
       list.innerHTML = '';
-      var s = q.trim().toLowerCase(), shown = teams.filter(function (t) { return !s || (t.name + ' ' + t.abbr + ' ' + t.loc).toLowerCase().indexOf(s) >= 0; });
+      var s = q.trim().toLowerCase(), shown = teams.filter(function (t) { return !s || (t.name + ' ' + t.abbr + ' ' + t.loc + ' ' + (isSoc(cur) ? clubShort(t, cur) : '')).toLowerCase().indexOf(s) >= 0; });
       shown.sort(function (a, b) { return (isFav(cur, b.id) ? 1 : 0) - (isFav(cur, a.id) ? 1 : 0); });
       shown.slice(0, 400).forEach(function (t) {
         var on = isFav(cur, t.id);
@@ -1963,7 +2151,7 @@ body{overflow-x:hidden;}
       } }
     ],
     rules:
-      '<p class="goal">Bet your casino bankroll on real games: MLB, NBA, WNBA, NFL, NHL, college basketball, college football, tennis and golf. The lines and scores are the real ones, and bets settle on their own when the games end.</p>' +
+      '<p class="goal">Bet your casino bankroll on real games: MLB, NBA, WNBA, NFL, NHL, MLS, NWSL, college basketball, college football, tennis and golf. The lines and scores are the real ones, and bets settle on their own when the games end.</p>' +
       '<h3>Placing a bet</h3><ul><li>Tap a price on the board. It lights up and goes on your bet slip.</li>' +
       '<li>Pick your stake with the chips, then <b>Place bet</b>. Your ticket prints and waits in <b>My bets</b>.</li>' +
       '<li>Betting on a game closes when it starts.</li></ul>' +
@@ -1972,6 +2160,7 @@ body{overflow-x:hidden;}
       '<li><b>Spread:</b> the favourite gives points, the underdog gets them. <b>Chiefs −3.5</b> wins if the Chiefs win by 4 or more; <b>Bills +3.5</b> wins if the Bills win or lose by 3 or less. Baseball calls it the run line and hockey the puck line (usually 1.5).</li>' +
       '<li><b>Total (over/under):</b> bet on the two teams’ combined score. <b>Over 47.5</b> wins with 48 or more.</li></ul>' +
       '<p>The slip spells out what has to happen for every pick.</p>' +
+      '<h3>Soccer</h3><p>MLS and NWSL games can end in a draw, so the moneyline has three picks: either team, or the <b>Draw</b>. Back a team and a draw loses; back the draw and any level score wins. The goal line works like a spread (<b>Rapids −0.5</b> wins if the Rapids win). Bets count the 90 minutes and stoppage time; extra time and penalty shootouts don’t.</p>' +
       '<h3>Tennis</h3><p>Singles matches on the ATP and WTA tours: who wins the match, a games handicap (<b>Sinner −4.5</b> wins if he takes at least 5 more games than his opponent across every set), and total games. A retirement or walkover voids the bet. ESPN posts no odds for tennis, so the book prices each match from the world rankings.</p>' +
       '<h3>Golf</h3><p>Pick the winner of this week’s PGA TOUR event. Betting stays open until the final round ends, and the prices move with the leaderboard. A golfer who misses the cut loses. ESPN posts no golf odds, so the book prices every golfer from his score so far and his results in recent events.</p>' +
       '<h3>Parlays</h3><p>Put two to ten picks from different games on one ticket. Every pick has to win, and the payouts multiply, so a small stake can win a lot. A pick that pushes drops out and the rest still pays.</p>' +
@@ -2003,7 +2192,7 @@ body{overflow-x:hidden;}
   // Top: the 25 biggest games in the country right now (from yesterday to the next few days), the way a sports channel
   // would rank them: the league, the playoffs, national TV, top-25 college teams, and live games and today's first.
   // Bottom: your teams' games and the games you have open bets on; when you have none, the next 25 biggest.
-  var POP = { nfl: 100, nba: 62, cfb: 55, mlb: 52, nhl: 38, cbb: 34, wnba: 30, tennis: 12 };
+  var POP = { nfl: 100, nba: 62, cfb: 55, mlb: 52, nhl: 38, cbb: 34, wnba: 30, mls: 28, nwsl: 18, tennis: 12 };
   var BIGTV = /^(ABC|CBS|NBC|FOX|ESPN|TNT|TBS|Prime Video|Peacock|Netflix|ESPN2|FS1|NFL Net|NBA TV|MLB Net)/i;
   function pop(g, now) {
     var v = POP[g.lg] || 0;
@@ -2065,7 +2254,7 @@ body{overflow-x:hidden;}
     if (g.state === 'pre') kids.push(el('i', { text: '@' }));
     side(h, a);
     if (g.state === 'in') kids.push(el('span', { class: 'lv', text: g.detail || 'Live' }));
-    else if (g.state === 'post' || g.done) kids.push(el('span', { class: 'fn', text: /OT|SO|\//.test(g.detail || '') ? g.detail : 'Final' }));
+    else if (g.state === 'post' || g.done) kids.push(el('span', { class: 'fn', text: /OT|SO|AET|Pens|\//.test(g.detail || '') ? g.detail : 'Final' }));
     else {
       kids.push(el('span', { text: tkWhen(g) }));
       if (g.sp && g.sp.h !== 0) kids.push(el('span', { class: 'ln', text: (g.sp.h < 0 ? tkName(h) + ' ' + g.sp.h : tkName(a) + ' ' + g.sp.a) }));
