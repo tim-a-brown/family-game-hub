@@ -1325,13 +1325,13 @@
       var now = typing() && kb > 80;
       if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(vv.height) + 'px'); }
       if (now !== on) { on = now; root.classList.toggle('k-kb', on); if (on) seat(); }
-      if (!on) setLift(0); else { clearTimeout(liftT); liftT = setTimeout(place, 80); }
+      if (!on) setLift(0); else { clearTimeout(liftT); clearTimeout(liftT2); liftT = setTimeout(place, 80); liftT2 = setTimeout(place, 420); }   // (again once the page settles)
     }
     function seat() { setTimeout(function () { var a = doc.activeElement, sh = a && a.closest && a.closest('.k-sheet'); if (sh && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' }); }, 60); }
     // Anywhere else (a setup screen's name box, a field in the game itself): the page is pinned so it never drifts, so
     // the phone can't slide it up to show the box itself. The box's scroller brings it up if it can, then the whole
     // page lifts (--kblift, kit.css html.k-kblift) just enough to sit the box above the keyboard, and drops back after.
-    var lift = 0, liftT = 0;
+    var lift = 0, liftT = 0, liftT2 = 0;
     function setLift(px) { px = Math.max(0, Math.round(px)); if (px === lift) return; lift = px; root.style.setProperty('--kblift', px + 'px'); root.classList.toggle('k-kblift', px > 0); }
     function place() {
       var a = doc.activeElement;
