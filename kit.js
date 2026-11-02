@@ -1325,8 +1325,25 @@
       var now = typing() && kb > 80;
       if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(vv.height) + 'px'); }
       if (now !== on) { on = now; root.classList.toggle('k-kb', on); if (on) seat(); }
+      if (!on) setLift(0); else { clearTimeout(liftT); liftT = setTimeout(place, 80); }
     }
     function seat() { setTimeout(function () { var a = doc.activeElement, sh = a && a.closest && a.closest('.k-sheet'); if (sh && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' }); }, 60); }
+    // Anywhere else (a setup screen's name box, a field in the game itself): the page is pinned so it never drifts, so
+    // the phone can't slide it up to show the box itself. The box's scroller brings it up if it can, then the whole
+    // page lifts (--kblift, kit.css html.k-kblift) just enough to sit the box above the keyboard, and drops back after.
+    var lift = 0, liftT = 0;
+    function setLift(px) { px = Math.max(0, Math.round(px)); if (px === lift) return; lift = px; root.style.setProperty('--kblift', px + 'px'); root.classList.toggle('k-kblift', px > 0); }
+    function place() {
+      var a = doc.activeElement;
+      if (!on || !a || !a.getBoundingClientRect || (a.closest && a.closest('.k-sheet'))) { setLift(0); return; }
+      var top = vv.offsetTop + 10, bot = vv.offsetTop + vv.height - 14, r = a.getBoundingClientRect();
+      if (r.bottom > bot || r.top < top) { a.scrollIntoView({ block: 'nearest' }); r = a.getBoundingClientRect(); }   // (its scroller, or a page that scrolls)
+      var d = r.bottom > bot ? r.bottom - bot : 0;
+      if (r.top - d < top) d = r.top - top;   // (a box taller than the space left: its top stays in view)
+      var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (Math.abs(d) > 1) setLift(Math.min(kb, lift + d));
+    }
+    window.KitKb = { on: function () { return on; }, place: place, fit: fit };
     vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit);
     doc.addEventListener('focusin', function () { setTimeout(fit, 50); setTimeout(fit, 400); });
     doc.addEventListener('focusout', function () { setTimeout(fit, 50); });
@@ -1339,7 +1356,7 @@
     if (window.MutationObserver) new MutationObserver(queueFit).observe(doc.body, { childList: true, subtree: true });
     // A page that fits the screen never stays shifted: iPhone can leave it scrolled or offset after a double tap
     function unshift() {
-      if (!fitLock) return; var vv = window.visualViewport;
+      if (!fitLock || root.classList.contains('k-kb')) return; var vv = window.visualViewport;   // (typing: the phone may slide the page to show the box)
       if (window.scrollY || window.scrollX || doc.body.scrollLeft || doc.body.scrollTop || root.scrollLeft || (vv && vv.scale < 1.02 && (vv.offsetTop > 0.5 || Math.abs(vv.offsetLeft) > 0.5))) pin();
     }
     window.addEventListener('scroll', unshift, { passive: true });
