@@ -1346,7 +1346,7 @@ body{overflow-x:hidden;}
   // o: {num(e, i): the left number, around: only the rows either side of the team, val(e), mark(e): an icon}
   function standTable(lg, title, list, me, cuts, isDiv, num, o) {
     o = o || {};
-    var nhl = lg === 'nhl', box = el('div', { class: 'mst' }), college = !LG[lg].pro, ST = college ? have(STAND, lg) : null, fits = [];
+    var nhl = lg === 'nhl', box = el('div', { class: 'mst' }), college = !LG[lg].pro, ST = have(STAND, lg), fits = [];
     box.appendChild(el('div', { class: 'mh' }, [el('small', { text: title }), el('small', { class: 'u', text: nhl ? 'PTS' : 'W-L' })]));
     var at = -1; list.forEach(function (e, i) { if (e.id === me.id) at = i; });
     var MAX = 8, show = {};
@@ -1368,12 +1368,11 @@ body{overflow-x:hidden;}
       prev = i;
       var rec = nhl ? e.w + '-' + e.l + '-' + e.otl : e.w + '-' + e.l + (e.t ? '-' + e.t : '');
       var done = /^[xyzw*]$/.test(e.clinch), out = e.clinch === 'e', mine = e.id === me.id, mk = o.mark && o.mark(e);
-      // college: the school's name ("Georgia Southern"), its short name ("App State") where the full one won't fit,
-      // and the letters only as a last resort
-      var sc = college && ST && ST.teams[String(e.id)] || e, names = [sc.school, sc.short, e.abbr || e.nick].filter(function (x, k, a) { return x && a.indexOf(x) === k; }), nm;
-      if (!college) names = [e.abbr || e.nick || ''];
-      // (each name on one line, then on two lines a size smaller in a narrow column, then the letters)
-      var sch = names.slice(0, -1), tries = !sch.length ? [] : sch.map(function (x) { return [x]; }).concat(sch.filter(function (x) { return / /.test(x); }).map(function (x) { return [x, 1]; }), [[names[names.length - 1]]]);
+      // names, not letters: the school's for college ("Georgia Southern", or its short "App State" where the full one
+      // won't fit), the team's for the pros ("Avalanche", "Trail Blazers"); the letters only as a last resort
+      var sc = ST && ST.teams[String(e.id)] || e, names = (college ? [sc.school, sc.short] : [sc.nick || e.nick]).concat([e.abbr || e.nick || '']).filter(function (x, k, a) { return x && a.indexOf(x) === k; }), nm;
+      // (each name on one line, then a size smaller, on two lines if it has two words, in a narrow column; then the letters)
+      var sch = names.slice(0, -1), tries = !sch.length ? [] : sch.map(function (x) { return [x]; }).concat(sch.map(function (x) { return [x, 1]; }), [[names[names.length - 1]]]);
       if (tries.length) fits.push(function () {
         for (var k = 0; k < tries.length; k++) {
           nm.firstChild.nodeValue = tries[k][0]; nm.style.whiteSpace = tries[k][1] ? 'normal' : ''; nm.style.fontSize = tries[k][1] ? '.74rem' : ''; nm.style.lineHeight = tries[k][1] ? '1.1' : '';
