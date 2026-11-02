@@ -1216,7 +1216,7 @@ body{overflow-x:hidden;}
             var t = e.team || {}, st = {}, dv = {};
             var crec = null;
             (e.stats || []).forEach(function (x) { var k = x.name || x.type; if (k && !(k in st)) { st[k] = x.value; dv[k] = x.displayValue; } if (!crec && /conf/i.test(String(x.name || '') + ' ' + String(x.type || '') + ' ' + String(x.abbreviation || '')) && /^\d+-\d+/.test(x.displayValue || '')) crec = x.displayValue; });
-            teams[String(t.id)] = { id: String(t.id), abbr: t.abbreviation, logo: t.logos && t.logos[0] && t.logos[0].href || '', nick: t.name || t.shortDisplayName || '', grp: n.name, grpAbbr: n.abbreviation, conf: up && up.name, confAbbr: up && up.abbreviation, rank: i + 1, size: n.standings.entries.length,
+            teams[String(t.id)] = { id: String(t.id), abbr: t.abbreviation, logo: t.logos && t.logos[0] && t.logos[0].href || '', nick: t.name || t.shortDisplayName || '', school: t.location || '', short: t.shortDisplayName || '', grp: n.name, grpAbbr: n.abbreviation, conf: up && up.name, confAbbr: up && up.abbreviation, rank: i + 1, size: n.standings.entries.length,
               w: st.wins || 0, l: st.losses || 0, t: st.ties || 0, otl: st.otLosses || st.overtimeLosses || 0, pts: st.points, gp: st.gamesPlayed, seed: st.playoffSeed || 0,
               gb: dv.gamesBehind, divgb: dv.divisionGamesBehind, rec: dv.overall, streak: dv.streak, clinch: dv.clincher || '', pct: dv.playoffPercent, winPct: st.winPercent, crec: crec, at: i };
           });
@@ -1346,7 +1346,7 @@ body{overflow-x:hidden;}
   // o: {num(e, i): the left number, around: only the rows either side of the team, val(e), mark(e): an icon}
   function standTable(lg, title, list, me, cuts, isDiv, num, o) {
     o = o || {};
-    var nhl = lg === 'nhl', box = el('div', { class: 'mst' });
+    var nhl = lg === 'nhl', box = el('div', { class: 'mst' }), college = !LG[lg].pro, ST = college ? have(STAND, lg) : null, fits = [];
     box.appendChild(el('div', { class: 'mh' }, [el('small', { text: title }), el('small', { class: 'u', text: nhl ? 'PTS' : 'W-L' })]));
     var at = -1; list.forEach(function (e, i) { if (e.id === me.id) at = i; });
     var MAX = 8, show = {};
@@ -1368,12 +1368,26 @@ body{overflow-x:hidden;}
       prev = i;
       var rec = nhl ? e.w + '-' + e.l + '-' + e.otl : e.w + '-' + e.l + (e.t ? '-' + e.t : '');
       var done = /^[xyzw*]$/.test(e.clinch), out = e.clinch === 'e', mine = e.id === me.id, mk = o.mark && o.mark(e);
+      // college: the school's name ("Georgia Southern"), its short name ("App State") where the full one won't fit,
+      // and the letters only as a last resort
+      var sc = college && ST && ST.teams[String(e.id)] || e, names = [sc.school, sc.short, e.abbr || e.nick].filter(function (x, k, a) { return x && a.indexOf(x) === k; }), nm;
+      if (!college) names = [e.abbr || e.nick || ''];
+      // (each name on one line, then on two lines a size smaller in a narrow column, then the letters)
+      var sch = names.slice(0, -1), tries = !sch.length ? [] : sch.map(function (x) { return [x]; }).concat(sch.filter(function (x) { return / /.test(x); }).map(function (x) { return [x, 1]; }), [[names[names.length - 1]]]);
+      if (tries.length) fits.push(function () {
+        for (var k = 0; k < tries.length; k++) {
+          nm.firstChild.nodeValue = tries[k][0]; nm.style.whiteSpace = tries[k][1] ? 'normal' : ''; nm.style.fontSize = tries[k][1] ? '.74rem' : ''; nm.style.lineHeight = tries[k][1] ? '1.1' : '';
+          if (nm.scrollWidth <= nm.clientWidth + 1) break;
+        }
+      });
       box.appendChild(el('div', { class: 'mr' + (mine ? ' me' : '') + (out ? ' out' : '') }, [
         el('span', { class: 'n', text: num ? num(e, i) : String(i + 1) }),
         logoEl({ abbr: e.abbr, logo: e.logo, color: mine ? 'var(--tc)' : '#3a4150' }),
-        el('b', { title: done ? 'Clinched a playoff spot' : mk ? mk[1] : null, html: esc(e.abbr || e.nick) + (done ? Kit.icon('check') : mk ? '<span class="mk2">' + Kit.icon(mk[0]) + '</span>' : '') }),
+        nm = el('b', { title: done ? 'Clinched a playoff spot' : mk ? mk[1] : null, html: esc(names[0]) + (done ? Kit.icon('check') : mk ? '<span class="mk2">' + Kit.icon(mk[0]) + '</span>' : '') }),
         el('span', { class: 'v', title: nhl ? rec : null, text: o.val ? o.val(e) : nhl ? String(e.pts != null ? e.pts : '') : rec })]));
     });
+    // (once it's on the screen: a name that doesn't fit its column steps down to a shorter one)
+    if (fits.length) { var runFits = function () { if (box.isConnected) fits.forEach(function (f) { f(); }); }; requestAnimationFrame(function () { runFits(); setTimeout(runFits, 300); }); }
     return box;
   }
   function teamCard(ff, S, odds, sch) {
