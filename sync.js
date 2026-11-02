@@ -753,7 +753,8 @@
   // and up wrong, in the console and in games/junglehunt.html, which files to the same board); console_ducktales: only
   // the land money was read, not the total; console_ikari: the high score was read, not player 1's;
   // console_superpunchout: one fight's points were read, not the circuit's total.
-  var HI_RESET = { console_ssf2: 2, console_junglehunt: 2, console_ducktales: 2, console_ikari: 2, console_superpunchout: 2 };
+  // 2026-11-02: every console board started again (Tim), once all the readers were checked.
+  var HI_RESET = { console_smb: 1, console_smb3: 1, console_ducktales: 3, console_ikari: 3, console_megaman: 1, console_punchout: 1, console_contra: 1, console_smw: 1, console_ssf2: 3, console_superpunchout: 3, console_wolf3d: 1, console_superbomberman: 1, console_superbomberman2: 1, console_sonic: 1, console_sonic2: 1, console_castleofillusion: 1, console_pitfall: 1, console_junglehunt: 3, console_poleposition: 1 };
   function hiKeep(key, row){ var v = HI_RESET[key]; if(!v) return true; return !!row && !Array.isArray(row) && typeof row === 'object' && (Number(row.rv) || 0) >= v; }
   function mergeHi(a, b, key){
     var all = asArray(a).concat(asArray(b)).filter(function(row){ return hiKeep(key, row); });
@@ -1838,8 +1839,8 @@
       var k = LS.key(i); if(!k || k.indexOf('hi_') !== 0) continue;
       var list = lsJSON(k); if(!Array.isArray(list)) continue;
       var low = hiIsLow(k.slice(3));
-      var mine = list.filter(function(e){ return e && (e.p ? e.p === me : String(e.name || '').trim().toUpperCase() === ini) && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
-        .map(function(e){ return { s: Number(e.score), d: String(e.date || '').slice(0, 24) }; })
+      var hk = k.slice(3), mine = list.filter(function(e){ return e && hiKeep(hk, e) && (e.p ? e.p === me : String(e.name || '').trim().toUpperCase() === ini) && isFinite(Number(e.score)) && e.score !== null && e.score !== ''; })
+        .map(function(e){ var o = { s: Number(e.score), d: String(e.date || '').slice(0, 24) }; if(e.rv) o.rv = Number(e.rv); return o; })
         .sort(function(a, b){ return low ? a.s - b.s : b.s - a.s; }).slice(0, 5);
       if(mine.length) out[k.slice(3)] = mine;
     }
@@ -1887,7 +1888,8 @@
     var c = lsJSON(LHI) || {}, l = linksGet(), out = [];
     Object.keys(c).forEach(function(k){
       var r = l.others[k], x = c[k]; if(!r || r.off || !r.code || !r.hs || r.code !== x.code) return;
-      ((x.hi || {})[key] || []).forEach(function(e){ out.push({ who: r.name, ini: x.ini || '', score: Number(e.s) || 0, date: e.d || '' }); });
+      // (a board started again: a linked person's scores from before it, published by an older copy of the app, are left out)
+      ((x.hi || {})[key] || []).forEach(function(e){ if(HI_RESET[key] && (Number(e.rv) || 0) < HI_RESET[key]) return; out.push({ who: r.name, ini: x.ini || '', score: Number(e.s) || 0, date: e.d || '' }); });
     });
     return out;
   }

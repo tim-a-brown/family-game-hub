@@ -89,7 +89,7 @@ const ArcadeHi = (function(){
   // Read the board, skipping any entry without a real score (a bad entry
   // used to show up as "NaN"), best first (highest, or lowest on a low board)
   // a board started again after its reader was fixed (sync.js HI_RESET): rows filed before come off, here and in the cloud
-  function resetRev(key){ try{ return typeof FGHSync!=='undefined' && FGHSync.hiReset ? FGHSync.hiReset[key] || 0 : ({ console_ssf2: 2, console_junglehunt: 2, console_ducktales: 2, console_ikari: 2, console_superpunchout: 2 })[key] || 0; }catch(e){ return 0; } }
+  function resetRev(key){ try{ return typeof FGHSync!=='undefined' && FGHSync.hiReset ? FGHSync.hiReset[key] || 0 : ({ console_smb: 1, console_smb3: 1, console_ducktales: 3, console_ikari: 3, console_megaman: 1, console_punchout: 1, console_contra: 1, console_smw: 1, console_ssf2: 3, console_superpunchout: 3, console_wolf3d: 1, console_superbomberman: 1, console_superbomberman2: 1, console_sonic: 1, console_sonic2: 1, console_castleofillusion: 1, console_pitfall: 1, console_junglehunt: 3, console_poleposition: 1 })[key] || 0; }catch(e){ return 0; } }
   function load(key){
     let list = [];
     try{ list = JSON.parse(localStorage.getItem('hi_'+key)||'[]'); }catch(e){ return []; }

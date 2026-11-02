@@ -94,7 +94,8 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
 
   // Options: down (the score can go down: the one at the end counts), reset (the score starts again within a game,
   // each fight: the best one counts), clock(m) (seconds played: going back means a new game; stopping means it's over),
-  // rev (the board was reset when its reader was fixed: sync.js HI_RESET drops rows filed before).
+  // rev (the board was reset when its reader was fixed: sync.js HI_RESET drops rows filed before; every console board
+  // was started again on 2026-11-02, so HI_RESET holds them all).
   // carry (the score isn't cleared for a new game: a game after a game over counts from where it started).
   // Two players, each with their own score: scores(m) -> every player's score (all readable at once: each one's best is
   // offered to the board at the game over), or who(m) -> which player's score score(m) is showing (the screen shows
@@ -134,7 +135,7 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
     // 300,000). No demo. Over: GAME OVER in the HUD (sprites at $0140: G A M ... V R), or the ending ($AC bit 7, $F6 9),
     // which stays on "End.". (Checked 2026-11-01 against the HUD, the LAND CLEAR tally and the ending's TOTAL MONEY. An
     // earlier reader took only this land's money: rev 2.)
-    { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 2,
+    { key: 'ducktales', short: 'DUCKTALES', name: 'DuckTales', sys: 'nes', ids: ['4b5720bc6e0590c9372cfbd0c418f8efd4d0c96d'], re: /^duck ?tales$/, down: 1, rev: 3,
       score: function (m) { function f(a, n) { var v = 0; for (var i = 0; i < n; i++) { var d = m(a + i); if (d === 0x24) d = 0; else if (d > 9) return null; v = v * 10 + d; } return v; } var t = f(0x334, 8), c = f(0x324, 7); return t == null || c == null ? null : t + (m(0x5D) || (m(0xAC) & 0x80) ? 0 : c); },
       // where: the land $F6, only while a land is loaded ($2B 8; 1 on LAND SELECT, where $F6 is the cursor, 0 on the title).
       // (Checked 2026-11-01: all five lands from LAND SELECT, the select screen, the title, pause.)
@@ -148,7 +149,7 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
     // who is out counts 0 in scores() (their best is already kept). (Checked 2026-11-01 in the emulator: both scores
     // against the screen, 1- and 2-player games to the end, continues, game over, demo. An earlier reader read the high
     // score: rev 2.)
-    { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/, rev: 2,
+    { key: 'ikari', short: 'IKARI', name: 'Ikari Warriors', sys: 'nes', ids: ['6eadbbe4c2a1f7ede2978f149b63270c72db281f'], re: /^ikari warriors$/, rev: 3,
       score: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return a == null || b == null ? null : Math.max(a, b); },
       scores: function (m) { var a = digits2(m, 0xE6), b = digits2(m, 0xE7); return [a == null || m(0xE4) === 0 ? 0 : a, b == null || m(0xE5) === 0 ? 0 : b]; },
       names: ['Player 1', 'Player 2'],
@@ -212,7 +213,7 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
     // the player who lost to the computer isn't back in (state not 2). Versus Battle keeps no score. $7E0030 is 0 in a
     // game, 2 or 3 on the title and in the demo. (Checked 2026-11-01 by playing 1- and 2-player games: joins, human
     // fights, continues, game overs, rejoining, Versus Battle. An earlier reader took $7E0700-$7E0703 the other way round.)
-    { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 2,
+    { key: 'ssf2', short: 'SF II', name: 'Super Street Fighter II', sys: 'snes', ids: ['8e67787988024503c4adeadd5fe50a340aa860d7'], re: /^super street fighter ii/, rev: 3,
       score: function (m) { return ssf2Score(m, ssf2Who(m)); }, who: ssf2Who,
       scores: function (m) { return [ssf2Score(m, 0), ssf2Score(m, 1)]; }, names: ['Player 1', 'Player 2'],
       play: function (m) { return m(0x7E0030) === 0; },
@@ -228,7 +229,7 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
     // goes back to the menu with no game over; Time Attack keeps no total. (Checked 2026-11-01 by playing: totals against
     // the tallies and the clear screen, 5,310 to 41,050; game overs and a Minor Circuit clear. An earlier reader took one
     // fight's points: rev 2.)
-    { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, rev: 2,
+    { key: 'superpunchout', short: 'SUPER PUNCH', name: 'Super Punch-Out!!', sys: 'snes', ids: ['3604c855790f37db567e9b425252625045f86697'], re: /^super punch-?out!*$/, rev: 3,
       score: function (m) { var v = digitsLE(m, 0x7E0611, 5); return v == null ? null : v * 10; },
       // where: the opponent $7E0600 (circuit x 4 + bout, +1 after each win), as the intro card names him. (Checked 2026-11-01:
       // Gabby Jay, then Bear Hugger after a real win, and the first bout of each circuit.)
@@ -325,7 +326,7 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
     // or Game Select pressed in a game (the cartridge ends the game then too). (Checked 2026-11-01 in the emulator:
     // the screen against the read, 10,000 reached in play; out of men and the timer both end it; the demo and Reset
     // file nothing. An earlier reader took $83 as the high byte, so scores of 10,000 and up were wrong: rev 2.)
-    { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/, rev: 2,
+    { key: 'junglehunt', short: 'JUNGLE HUNT', name: 'Jungle Hunt', sys: 'atari2600', ids: ['83a32a2d686355438c915540cfe0bb13b76c1113'], re: /^jungle hunt$/, rev: 3,
       score: function (m) { var v = bcdLE(m, 0x83, 3); return v == null ? null : v - v % 10; },
       play: function (m) { return (m(0x98) & 0x80) === 0; },
       // where: the part of the jungle ($89: 0 vines, 1 river, 2 boulders, 3 cannibal camp) and, after a rescue, the round
