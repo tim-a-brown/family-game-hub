@@ -258,6 +258,9 @@ function contraScore(m, i) { return (m(0x7E2 + 2 * i) | (m(0x7E3 + 2 * i) << 8))
       score: function (m) { var a = sbScore(m, 0x7E0D5A), b = sbScore(m, 0x7E0D9A); return a == null || b == null ? null : Math.max(a, b); },
       scores: function (m) { return [sbScore(m, 0x7E0D5A), sbScore(m, 0x7E0D9A)]; }, names: ['Player 1', 'Player 2'],
       play: function (m) { return m(0x7E0D30) === 2 && m(0x7E0D32) > 0; },
+      // where: $7E0D24, the stage as its card shows it (area in the high nibble, 1-8 in the low), worked out from the stage
+      // number $7E00A4. (Checked 2026-11-02: the cards for 1-1, 1-2 after a real clear, 1-8, 2-1 and 3-2.)
+      where: function (m) { var v = m(0x7E0D24), a = v >> 4, s = v & 15; return a >= 1 && a <= 6 && s >= 1 && s <= 8 ? 'Stage ' + a + '-' + s : null; },
       over: function (m) { return m(0x7E0D30) === 1 && m(0x7E0D32) === 0 && (sbScore(m, 0x7E0D5A) > 0 || sbScore(m, 0x7E0D9A) > 0); } },
     // A 16-bit number at $7E5DEE, low byte first, the screen adding 00. Normal Game is one player (player 2's Start only
     // pauses); Battle Game (up to 4) keeps wins, no score. $7E00BA: 0 a Normal Game, $10 title, intro and CONTINUE?, $80
