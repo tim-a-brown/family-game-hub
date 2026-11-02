@@ -1214,14 +1214,31 @@ body{overflow-x:hidden;}
           if (!n) return;
           if (n.standings && n.standings.entries) n.standings.entries.forEach(function (e, i) {
             var t = e.team || {}, st = {}, dv = {};
-            (e.stats || []).forEach(function (x) { var k = x.name || x.type; if (k && !(k in st)) { st[k] = x.value; dv[k] = x.displayValue; } });
+            var crec = null;
+            (e.stats || []).forEach(function (x) { var k = x.name || x.type; if (k && !(k in st)) { st[k] = x.value; dv[k] = x.displayValue; } if (!crec && /conf/i.test(String(x.name || '') + ' ' + String(x.type || '') + ' ' + String(x.abbreviation || '')) && /^\d+-\d+/.test(x.displayValue || '')) crec = x.displayValue; });
             teams[String(t.id)] = { id: String(t.id), abbr: t.abbreviation, logo: t.logos && t.logos[0] && t.logos[0].href || '', nick: t.name || t.shortDisplayName || '', grp: n.name, grpAbbr: n.abbreviation, conf: up && up.name, confAbbr: up && up.abbreviation, rank: i + 1, size: n.standings.entries.length,
               w: st.wins || 0, l: st.losses || 0, t: st.ties || 0, otl: st.otLosses || st.overtimeLosses || 0, pts: st.points, gp: st.gamesPlayed, seed: st.playoffSeed || 0,
-              gb: dv.gamesBehind, divgb: dv.divisionGamesBehind, rec: dv.overall, streak: dv.streak, clinch: dv.clincher || '', pct: dv.playoffPercent, winPct: st.winPercent };
+              gb: dv.gamesBehind, divgb: dv.divisionGamesBehind, rec: dv.overall, streak: dv.streak, clinch: dv.clincher || '', pct: dv.playoffPercent, winPct: st.winPercent, crec: crec, at: i };
           });
           (n.children || []).forEach(function (c) { walk(c, n.standings ? up : n); });
         })(j, null);
         Object.keys(teams).forEach(function (k) { var e = teams[k]; if (e.gp == null) e.gp = e.w + e.l + e.t + (lg === 'nhl' ? e.otl : 0); });
+        // each division's (or conference's) places, worked out here: ESPN's list isn't in standings order (it had the
+        // Southeast's 3-3 Wizards fifth behind 2-4 teams). Hockey by points (fewer games played first), college by
+        // conference record, the rest by winning percentage (a tie half a win); then the playoff seed, then ESPN's order.
+        function pct(w, l, t) { var g = w + l + t; return g ? (w + t / 2) / g : 0; }
+        function confPct(e) { var m = /^(\d+)-(\d+)(?:-(\d+))?/.exec(e.crec || ''); return m ? pct(+m[1], +m[2], +(m[3] || 0)) : -1; }
+        var groups = {};
+        Object.keys(teams).forEach(function (k) { var e = teams[k]; (groups[e.grp] = groups[e.grp] || []).push(e); });
+        Object.keys(groups).forEach(function (g) {
+          var L = groups[g], conf = lg === 'cfb' && L.every(function (e) { return e.crec; });
+          L.sort(function (a, b) {
+            var d = lg === 'nhl' ? ((b.pts || 0) - (a.pts || 0) || (a.gp || 0) - (b.gp || 0))
+              : (conf ? confPct(b) - confPct(a) : 0) || pct(b.w, b.l, b.t) - pct(a.w, a.l, a.t);
+            return d || (a.seed > 0 && b.seed > 0 ? a.seed - b.seed : 0) || a.l - b.l || a.at - b.at;
+          });
+          L.forEach(function (e, i) { e.rank = i + 1; });
+        });
         return { year: year, teams: teams };
       });
     });
