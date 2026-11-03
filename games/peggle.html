@@ -145,7 +145,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     guide: { name: 'Super Guide', icon: 'eye', desc: 'Long aiming line for 3 shots' },
     multi: { name: 'Multiball', icon: 'infinity', desc: 'A second ball pops out' },
     spooky: { name: 'Spooky Ball', icon: 'sync', desc: 'Ball comes back once from the top' },
-    random: { name: 'Random power', icon: 'shuffle', desc: 'A surprise power each time' },
+    random: { name: 'Random power', short: 'Random', icon: 'shuffle', desc: 'A surprise power each time' },
     off: { name: 'No power', icon: 'close', desc: 'Green pegs are plain pegs' }
   };
   var REAL_POWERS = ['guide', 'multi', 'spooky'];
@@ -1312,7 +1312,8 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
       L.stats = Object.assign(L.stats, saved.stats || {}); L.started = saved.started || Date.now();
       wt = saved.wt || 0; ang = saved.ang || 0;
       var g = String(saved.gone || ''), hp = String(saved.hp || '');
-      objs.forEach(function (o, i) { if (g.charAt(i) === '1') o.gone = true; if (o.iron && +hp.charAt(i) > 0) o.hp = +hp.charAt(i); });
+      // (cleared long ago: goneT in the past, or a bar would still be drawn while the ball passes through it)
+      objs.forEach(function (o, i) { if (g.charAt(i) === '1') { o.gone = true; o.goneT = -9; } if (o.iron && +hp.charAt(i) > 0) o.hp = +hp.charAt(i); });
       if (saved.purple >= 0 && objs[saved.purple] && !objs[saved.purple].gone && objs[saved.purple].c === 'b') { objs[saved.purple].c = 'p'; L.purple = saved.purple; }
       (saved.op || []).forEach(function (k) { L.open[k] = 1; });
     }
@@ -1812,7 +1813,11 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     pwEl.className = 'pg-plate pg-pw' + (live ? ' live' : '');
     pwEl.innerHTML = '';
     pwEl.appendChild(el('span', { class: 'pi', html: Kit.icon(P.icon) }));
-    pwEl.appendChild(el('span', null, [el('small', { text: live ? stat : 'Power' }), el('b', { text: P.name })]));
+    var pwB = el('b', { text: P.name });
+    pwEl.appendChild(el('span', null, [el('small', { text: live ? stat : 'Power' }), pwB]));
+    // (a name too long for the plate: its short form, then a size smaller; never cut off)
+    if (pwB.scrollWidth > pwB.clientWidth + 1 && P.short) pwB.textContent = P.short;
+    for (var fz = 0.84; pwB.scrollWidth > pwB.clientWidth + 1 && fz > 0.62; fz -= 0.04) pwB.style.fontSize = fz.toFixed(2) + 'rem';
     fireBtn.disabled = state !== 'aim';
   }
   var shownScore = -1, hudState = '';
@@ -2003,7 +2008,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     for (var i = 0; i < objs.length; i++) {
       var o = objs[i], a = 1, sc = 1;
       if (o.gone) {
-        var t = (rt - o.goneT) / 0.28; if (t >= 1) continue;
+        var t = (rt - (o.goneT == null ? -9 : o.goneT)) / 0.28; if (!(t < 1)) continue;
         a = 1 - t; sc = 1 + t * 0.7;
       }
       if (o.ph && !o.lit && !o.gone) a = ghostAlpha(o);
