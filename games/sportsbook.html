@@ -262,6 +262,9 @@ body{overflow-x:hidden;}
 .myt button{flex:none;display:flex;flex-direction:column;align-items:center;gap:4px;width:68px;padding:8px 4px 6px;border:0;border-radius:14px;background:var(--w06);color:var(--text-2);font:inherit;font-size:.7rem;font-weight:800;}
 .myt button .logo{width:36px;height:36px;}
 .myt button .logo img{width:28px;height:28px;}
+.myt .lgw{position:relative;display:block;font-style:normal;}
+.myt .lgw .sport{position:absolute;right:-6px;bottom:-4px;display:block;width:19px;height:19px;border-radius:50%;background:#fff;padding:1.5px;box-shadow:0 1px 3px rgba(0,0,0,.35);}
+.myt .lgw .sport svg{display:block;width:100%;height:100%;}
 .myt button span{max-width:100%;white-space:nowrap;}
 .myt .add{width:46px;padding:8px 0 6px;background:transparent;color:var(--text-3);font-size:.62rem;}
 .myt .add i{display:grid;place-items:center;width:30px;height:30px;margin:3px 0;border-radius:50%;background:var(--w06);}
@@ -1695,6 +1698,11 @@ body{overflow-x:hidden;}
   var focus = null, myScroll = 0;
   function focusFav() { return focus ? favs.filter(function (f) { return f.lg + ':' + f.id === focus; })[0] || null : null; }
   function inGame(g, f) { return g.lg === f.lg && (g.lg === 'golf' ? g.players.some(function (p) { return p.id === f.id; }) : g.home.id === f.id || g.away.id === f.id); }
+  // a college's hoops and football teams share a logo: a small ball in the corner says which is which
+  var BALL = {
+    cbb: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.6" fill="#f08a2a" stroke="#7a3a08" stroke-width="1.3"/><g fill="none" stroke="#5a2905" stroke-width="1.15"><path d="M1.6 10h16.8M10 1.4v17.2"/><path d="M4.1 4.1c2.6 2.6 2.6 9.2 0 11.8M15.9 4.1c-2.6 2.6-2.6 9.2 0 11.8"/></g></svg>',
+    cfb: '<svg viewBox="0 0 20 20"><g transform="rotate(-35 10 10)"><ellipse cx="10" cy="10" rx="9" ry="5.8" fill="#8a4a22" stroke="#4a230c" stroke-width="1.2"/><path d="M3.2 7.3c.9 1.6.9 3.8 0 5.4M16.8 7.3c-.9 1.6-.9 3.8 0 5.4" fill="none" stroke="#fff" stroke-width="1.1"/><path d="M6.6 10h6.8M7.8 8.7v2.6M9.3 8.7v2.6M10.8 8.7v2.6M12.3 8.7v2.6" fill="none" stroke="#fff" stroke-width="1" stroke-linecap="round"/></g></svg>'
+  };
   function myStrip() {
     if (!focusFav()) focus = null;
     var s = el('div', { class: 'myt' + (focus ? ' focus' : '') });
@@ -1703,7 +1711,7 @@ body{overflow-x:hidden;}
       var k = f.lg + ':' + f.id;
       s.appendChild(el('button', { type: 'button', class: focus === k ? 'on' : '', 'aria-pressed': String(focus === k), 'aria-label': 'Only ' + (f.name || f.short) + ' games', onclick: function () {
         myScroll = s.scrollLeft; focus = focus === k ? null : k; Kit.sfx('tap'); Kit.haptic('light'); paintBoard();
-      } }, [logoEl(f), el('span', { text: f.abbr || f.short })]));
+      } }, [f.lg === 'cbb' || f.lg === 'cfb' ? el('i', { class: 'lgw' }, [logoEl(f), el('i', { class: 'sport', 'aria-hidden': 'true', html: BALL[f.lg] })]) : logoEl(f), el('span', { text: f.abbr || f.short })]));
     });
     requestAnimationFrame(function () { s.scrollLeft = myScroll; });
     s.addEventListener('scroll', function () { myScroll = s.scrollLeft; }, { passive: true });
