@@ -171,10 +171,51 @@
     setTimeout(function () { if (id === '*resume') resume(); else gameStart(id); }, 600);
   });
   function toast(m) { var k = K(); if (k) k.toast(m); }
+  // Spotify's speakers (Spotify Connect: this phone, a computer, an Echo, a TV): tap one and the music moves there
+  function devices(done) {
+    var k = K(); if (!k) return; css();
+    var box = k.el('div', { class: 'sp-devs' }), sh;
+    var DI = { smartphone: IC.phone, tablet: IC.phone, computer: IC.laptop, tv: IC.tv, castvideo: IC.tv, speaker: IC.speaker, castaudio: IC.speaker, avr: IC.speaker, stb: IC.tv, audiodongle: IC.speaker, gameconsole: IC.tv, automobile: IC.speaker };
+    function paint(ds) {
+      box.innerHTML = '';
+      if (!ds) { box.appendChild(k.el('p', { class: 'sp-none', text: 'Looking for your speakers…' })); return; }
+      if (!ds.length) {
+        box.appendChild(k.el('p', { class: 'sp-none', text: 'No speakers awake. Open Spotify on your phone or a speaker and it shows up here.' }));
+        box.appendChild(k.el('a', { class: 'btn btn-primary sp-openb', href: 'spotify:', text: 'Open Spotify' }));
+        return;
+      }
+      ds.forEach(function (d) {
+        var b = k.el('button', { type: 'button', class: 'sp-row sp-devrow' + (d.is_active ? ' on' : ''), disabled: d.is_restricted ? true : null }, [
+          k.el('span', { class: 'sp-ph', html: DI[String(d.type || '').toLowerCase()] || IC.speaker }),
+          k.el('span', { class: 'sp-tx' }, [k.el('b', { text: d.name }), k.el('small', { text: d.is_active ? 'Playing here' : d.is_restricted ? 'Switch to it in Spotify' : String(d.type || 'Speaker').replace(/^Cast/, '').replace(/([a-z])([A-Z])/g, '$1 $2') })]),
+          k.el('i', { html: k.icon('check') })
+        ]);
+        b.onclick = function () {
+          if (d.is_active) { sh.close(); return; }
+          k.haptic('light'); k.sfx('tap');
+          box.querySelectorAll('.sp-devrow').forEach(function (r) { r.classList.toggle('on', r === b); });
+          api('PUT', '/me/player', { device_ids: [d.id], play: true }).then(function (r) {
+            if (r.status < 300) { toast('Playing on ' + d.name); sh.close(); if (done) done(); }
+            else toast(outcome(r) === 'premium' ? 'Spotify only lets apps move music on Premium' : 'Spotify couldn’t switch to ' + d.name);
+          });
+        };
+        box.appendChild(b);
+      });
+      // (headphones and AirPods belong to the phone, not Spotify: play on the phone and they carry it)
+      if (ds.some(function (d) { return /smartphone|tablet/i.test(d.type); })) box.appendChild(k.el('p', { class: 'sp-devnote', text: 'Bluetooth headphones go with your phone: pick it here, and the sound follows your phone’s Bluetooth.' }));
+    }
+    paint(null);
+    api('GET', '/me/player/devices').then(function (r) { paint((r.json && r.json.devices) || []); }, function () { paint([]); });
+    sh = k.sheet({ title: 'Play on', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+  }
 
   // ── Looks ───────────────────────────────────────────────────────────────
   function svg(p) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; }
   var IC = {
+    speaker: svg('<rect x="6" y="3" width="12" height="18" rx="2"/><circle cx="12" cy="14" r="3"/><circle cx="12" cy="7.5" r=".8" fill="currentColor"/>'),
+    phone: svg('<rect x="7" y="2.5" width="10" height="19" rx="2.2"/><path d="M11 18.5h2"/>'),
+    laptop: svg('<rect x="4.5" y="5" width="15" height="10" rx="1.5"/><path d="M2.5 18.5h19"/>'),
+    tv: svg('<rect x="3" y="5" width="18" height="12" rx="1.6"/><path d="M8.5 20.5h7"/>'),
     play: svg('<path d="M8 5.5v13l11-6.5z" fill="currentColor"/>'),
     pause: svg('<rect x="6.5" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/><rect x="13.9" y="5" width="3.6" height="14" rx="1" fill="currentColor" stroke="none"/>'),
     prev: svg('<path d="M18 6.5v11L10 12z" fill="currentColor"/><path d="M6.5 6v12"/>'),
@@ -195,7 +236,10 @@
     '.sp-art svg{width:24px;height:24px}.sp-art img{width:100%;height:100%;object-fit:cover;display:block}' +
     '.sp-np{flex:1;min-width:0}.sp-np b{display:block;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
     '.sp-np small{display:block;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.85rem}' +
-    '.sp-dev{color:var(--text-3);font-size:.74rem;white-space:nowrap}' +
+    '.sp-topw{display:flex;align-items:center;gap:8px}.sp-topw .sp-top{flex:1;min-width:0}' +
+    '.sp-dev{appearance:none;-webkit-appearance:none;flex:none;display:flex;align-items:center;gap:5px;max-width:42%;min-height:32px;margin:0;padding:5px 10px 5px 8px;border:0;border-radius:999px;background:var(--w1);color:var(--text-2);font:inherit;font-size:.74rem;font-weight:700;cursor:pointer}' +
+    '.sp-dev span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}.sp-dev i{display:grid;flex:none;width:15px;height:15px}.sp-dev i svg{width:15px;height:15px}.sp-dev:active{transform:scale(.95)}' +
+    '.sp-devs .sp-row:disabled{opacity:.5;cursor:default}.sp-devnote{margin:10px 6px 2px;font-size:.8rem;line-height:1.35;color:var(--text-3)}.sp-openb{display:block;margin:8px auto 0;text-align:center}' +
     '.sp-bar{height:3px;border-radius:2px;background:var(--w1);margin:10px 2px 6px;overflow:hidden}.sp-bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:2px;transition:width 1s linear}' +
     '.sp-ctl{display:flex;align-items:center;justify-content:space-between;gap:2px}' +
     '.sp-pl .sp-top:active{transform:none;background:none}' +
@@ -241,8 +285,10 @@
   function player(o) {
     o = o || {}; css();
     var k = K(), st = null, at = 0;
-    var art = E('span', { class: 'sp-art', html: IC.note }), title = E('b', { text: 'Nothing playing' }), sub = E('small', { text: '' }), dev = E('span', { class: 'sp-dev' });
-    var bar = E('i'), top = E('button', { type: 'button', class: 'sp-top', 'aria-label': 'Music' }, [art, E('span', { class: 'sp-np' }, [title, sub]), dev]);
+    var art = E('span', { class: 'sp-art', html: IC.note }), title = E('b', { text: 'Nothing playing' }), sub = E('small', { text: '' });
+    // where it's playing: tap for the list of Spotify speakers to move it to
+    var devName = E('span', { text: '' }), dev = E('button', { type: 'button', class: 'sp-dev', 'aria-label': 'Choose where Spotify plays', onclick: function (e) { e.stopPropagation(); k.haptic('light'); k.sfx('tap'); devices(function () { refresh(); setTimeout(refresh, 1200); }); } }, [E('i', { html: IC.speaker }), devName]);
+    var bar = E('i'), top = E('button', { type: 'button', class: 'sp-top', 'aria-label': 'Music' }, [art, E('span', { class: 'sp-np' }, [title, sub])]), topw = E('div', { class: 'sp-topw' }, [top, dev]);
     function btn(cls, label, ic, fn) { return E('button', { type: 'button', class: cls, 'aria-label': label, html: ic, onclick: function () { k.haptic('light'); fn(); } }); }
     var bShuf = btn('', 'Shuffle', IC.shuffle, function () { if (!st) return; st.shuffle_state = !st.shuffle_state; paint(); shuffle(st.shuffle_state).then(soon); });
     var bPrev = btn('', 'Back', IC.prev, function () { prev().then(soon); });
@@ -255,7 +301,7 @@
     var kids = [bShuf, bPrev, bPlay, bNext, bRep];
     if (o.onSearch) kids.push(btn('', 'Search', IC.search, o.onSearch));
     var open = E('div', { class: 'sp-open' }, [E('span', { text: 'Spotify isn’t open on any device' }), E('a', { class: 'btn btn-primary', href: 'spotify:', text: 'Open Spotify' })]);
-    var box = E('div', { class: 'sp-pl' + (waitingFor ? ' sp-need' : '') }, [top, E('div', { class: 'sp-bar' }, [bar]), E('div', { class: 'sp-ctl' }, kids), open]);
+    var box = E('div', { class: 'sp-pl' + (waitingFor ? ' sp-need' : '') }, [topw, E('div', { class: 'sp-bar' }, [bar]), E('div', { class: 'sp-ctl' }, kids), open]);
     if (o.onOpen) top.onclick = function () { k.sfx('tap'); o.onOpen(); }; else top.style.cursor = 'default';
     if (!o.always) box.hidden = true;
     var lastImg = '';
@@ -264,7 +310,7 @@
       box.hidden = !it && !o.always;
       title.textContent = it ? it.name : 'Nothing playing';
       sub.textContent = it ? ((it.artists || []).map(function (x) { return x.name; }).join(', ') || (it.show && it.show.name) || '') : (o.always ? 'Pick something below' : '');
-      dev.textContent = st && st.device ? st.device.name : '';
+      devName.textContent = st && st.device ? st.device.name : 'Speakers';
       var img = it && imgOf((it.album && it.album.images) || it.images, false);
       if (img !== lastImg) { lastImg = img; art.innerHTML = img ? '<img src="' + k.esc(img) + '" alt="">' : IC.note; }
       var playing = !!(st && st.is_playing);
