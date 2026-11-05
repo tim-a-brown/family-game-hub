@@ -1743,12 +1743,17 @@ html.lorc .k-sheet .dk-h{color:var(--gilt);font-family:var(--serif);font-style:i
 .da-row .grow{min-width:0;}
 .da-row b{display:block;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .da-row small{font-size:.75rem;font-weight:800;color:var(--text-3);}
+.da-row .da-cas{display:inline-block;margin-right:7px;padding:1px 7px;border-radius:999px;background:rgba(227,189,98,.14);color:var(--gilt-2);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;vertical-align:1px;}
+/* adding this card would take the deck past 2 inks: a soft note, the + ringed rather than solid */
+.da-row .da-warn{display:flex;align-items:center;gap:6px;margin-top:4px;font-family:var(--serif);font-style:italic;font-size:.8rem;line-height:1.2;color:#e8c98a;}
+.da-row .da-warn .inkico{flex:none;width:16px;height:16px;}
+.da-row.tocas .coin.add{background:transparent;color:var(--gilt-2);box-shadow:inset 0 0 0 2px var(--gilt);}
 .da-ink{flex:none;display:flex;justify-content:center;width:38px;}
 .da-ink .inkico{--ih:22px;}
 .da-ink .inkico + .inkico{margin-left:-5px;}
 /* Casual decks with 3+ inks: small gems in a tidy block instead of a long row */
-.da-ink .inkdots:has(.inkico:nth-child(3)){display:grid;grid-template-columns:repeat(3,14px);gap:2px;}
-.da-ink .inkdots:has(.inkico:nth-child(3)) .inkico{--ih:14px;margin:0;}
+.da-ink .inkdots:has(.inkico:nth-child(3)){display:grid;grid-template-columns:repeat(3,12px);gap:1px;}
+.da-ink .inkdots:has(.inkico:nth-child(3)) .inkico{--ih:12px;margin:0;}
 .da-pips{flex:none;display:flex;gap:3px;}
 .da-pips i{width:9px;height:13px;border-radius:2px;background:var(--w08);box-shadow:inset 0 0 0 1px rgba(227,189,98,.35);}
 .da-pips i.on{background:linear-gradient(160deg,#fbe9b7,#e3bd62 50%,#a77a26);box-shadow:0 0 6px rgba(246,196,80,.6);}
@@ -12487,9 +12492,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         mine.forEach(function (dk) {
           var have = copiesByFull(dk.cards, d.full), cnt = deckCount(dk.cards), pips = '';
           for (var k = 0; k < 4; k++) pips += '<i class="' + (k < have ? 'on' : '') + '"></i>';
-          node.appendChild(el('div', { class: 'da-row' + (have ? ' in' : '') }, [
+          // a legal deck this card's ink would push past 2 inks: said quietly on its row before you tap (adding still asks)
+          var toCas = !isCasual(dk) && have < copyLimit(d) && inkClash(dk.cards, d);
+          node.appendChild(el('div', { class: 'da-row' + (have ? ' in' : '') + (toCas ? ' tocas' : '') }, [
             el('span', { class: 'da-ink', html: inkDots(deckInks(dk.cards)) || '' }),
-            el('div', { class: 'grow' }, [el('b', { text: dk.name }), el('small', { html: (isCasual(dk) ? 'Casual · ' : '') + cnt + ' cards' })]),
+            el('div', { class: 'grow' }, [el('b', { text: dk.name }), el('small', { html: (isCasual(dk) ? '<span class="da-cas">Casual</span>' : '') + cnt + ' cards' }),
+              toCas ? el('span', { class: 'da-warn', html: inkIcon(inkOf(d).filter(function (i) { return deckInks(dk.cards).indexOf(i) < 0; })[0] || inkOf(d)[0]) + '<span>Adding it makes this a casual deck</span>' }) : null]),
             el('span', { class: 'da-pips', title: have + ' of 4 copies', html: pips }),
             el('div', { class: 'da-q' }, [el('button', { type: 'button', class: 'coin', html: '&minus;', 'aria-label': 'Remove one from ' + dk.name, disabled: !have, onclick: function () { change(dk, -1); } }),
               el('button', { type: 'button', class: 'coin add', html: '+', 'aria-label': 'Add one to ' + dk.name, disabled: have >= copyLimit(d), onclick: function () { change(dk, 1); } })])
