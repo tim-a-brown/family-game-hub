@@ -2150,7 +2150,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
   .bld.lib .row1 .sfield .input{font-size:.92rem;padding-left:12px;padding-right:36px;}
 }
 .fside-l .fchips.ovf{mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
-.flt-btn span{max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.flt-btn span{max-width:calc(100% - 10px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sortbox{display:flex;flex-direction:column;gap:6px;}
 .sort-tip{margin:0 0 10px;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text-2);}
 /* the card view's fine print: where and when the card first came out, and later sets */
@@ -12327,13 +12327,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var k = srt.k, dir = srt.dir;
       if (k === 'name') return list.slice().sort(function (a, b) { return dir * a.full.localeCompare(b.full); });
       if (k === 'rel') {
-        // by first release date (cards without a known date last, in set order), then card number (always in the set's
-        // own order, so newest first still reads a set from its first card)
-        var rk = {}, rn = {}; list.forEach(function (d) { var k = relKey(d); rk[d.id] = k && k.slice(0, 10); rn[d.id] = k ? +k.slice(11) : 0; });
+        // by first release date (the only part that reverses; cards without a known date last, in set order), then card
+        // type (characters, actions, songs, items, locations), then name A to Z
+        var rk = {}; list.forEach(function (d) { var k = relKey(d); rk[d.id] = k && k.slice(0, 10); });
+        var ty = function (d) { var i = TY_ORDER.indexOf(tyKey(d)); return i < 0 ? 9 : i; };
         return list.slice().sort(function (a, b) {
           var x = rk[a.id], y = rk[b.id];
           if (x && y && x !== y) return dir * (x < y ? -1 : 1);
-          if (x && y) return rn[a.id] - rn[b.id] || a.full.localeCompare(b.full);
+          if (x && y) return ty(a) - ty(b) || a.full.localeCompare(b.full);
           if (!x !== !y) return x ? -1 : 1;
           return dir * (setOrd(a.set) - setOrd(b.set)) || a.full.localeCompare(b.full);
         });
@@ -12347,7 +12348,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     function paintSort() {
       var on = !(srt.k === 'name' && srt.dir === 1), o = SORTS.filter(function (x) { return x[0] === srt.k; })[0] || SORTS[0];
-      sortBtn.innerHTML = SORT_ICO + '<span>' + (on ? esc(o[1]) : 'Sort') + '</span>'; sortBtn.classList.toggle('on', on);
+      // the round button's word: short enough to sit inside the circle (Release date says which end comes first)
+      var word = !on ? 'Sort' : srt.k === 'rel' ? (srt.dir === 1 ? 'Oldest' : 'Newest') : o[1];
+      sortBtn.innerHTML = SORT_ICO + '<span>' + esc(word) + '</span>'; sortBtn.classList.toggle('on', on);
+      var sw = sortBtn.querySelector('span'); sw.style.fontSize = '';
+      for (var fz = 1; sw.scrollWidth > sw.clientWidth + 1 && fz > 0.7; fz -= 0.06) sw.style.fontSize = fz.toFixed(2) + 'em';
       [storyChips, row2].forEach(function (r) { r.classList.toggle('ovf', r.scrollWidth > r.clientWidth + 2 && r.scrollLeft + r.clientWidth < r.scrollWidth - 2); });
       sortBtn.setAttribute('aria-label', 'Sort: ' + o[1] + ', ' + (srt.dir === 1 ? o[2] : o[3]).toLowerCase());
     }
