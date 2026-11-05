@@ -1321,8 +1321,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function shelfBox(x) {
     var g = x.g, cat = GAME_CATS.filter(function (c) { return c.id === g.cat; })[0], old = Date.now() - x.r.ts > 7 * 864e5;
     var f = x.r.file || g.play;
-    var a = el('a', { class: 'sbox' + (g.cart ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
-      el('span', { class: 'art' }, [g.cart ? el('span', { class: 'gicon mini-ct ct-' + g.sys }, [cartBody(g)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), stLines(x.r.label || 'In progress'), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
+    // a cartridge played on its own page (games.js CONSOLE_NATIVE, Jungle Hunt): its tile is the cartridge, like the
+    // other console games
+    var ct = g.cart ? g : window.consoleNative && GAMES.filter(function (c) { return c.cart && consoleNative({ sys: c.sys, id: c.cart, name: c.name }) === g.id; })[0];
+    var a = el('a', { class: 'sbox' + (ct ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
+      el('span', { class: 'art' }, [ct ? el('span', { class: 'gicon mini-ct ct-' + ct.sys }, [cartBody(ct)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), stLines(x.r.label || 'In progress'), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
       el('span', { class: 'nm', text: g.name })
     ]);
     function gone(then) { a.style.transition = 'opacity .22s, transform .22s'; a.style.opacity = '0'; a.style.transform = 'scale(.8)'; setTimeout(then, 230); }
