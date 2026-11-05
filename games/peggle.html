@@ -77,12 +77,15 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pg-frame{position:relative;padding:5px;border-radius:19px;}
 .pg-frame canvas{display:block;border-radius:14px;touch-action:none;-webkit-user-select:none;user-select:none;cursor:crosshair;}
 .pg-ctl{flex:none;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding-top:8px;}
+.pg-fire .pg-fast{display:none;position:absolute;top:50%;right:12px;transform:translateY(-50%);align-items:center;gap:1px;padding:2px 6px 2px 4px;border-radius:999px;background:rgba(0,0,0,.28);font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.02em;line-height:1;}
+.pg-fire .pg-fast .ico{width:11px;height:11px;stroke-width:2.6;}
+.pg-fire.fast .pg-fast{display:inline-flex;}
 .pg-nudge{flex:none;width:52px;height:52px;border:0;border-radius:50%;display:grid;place-items:center;color:#f7dc9a;
   background:radial-gradient(circle at 40% 30%,#3a2a1a,#1a120a);box-shadow:inset 0 0 0 2px rgba(232,180,90,.55),0 4px 0 #0b0704,0 8px 16px rgba(0,0,0,.4);
   touch-action:none;}
 .pg-nudge:active{transform:translateY(3px);box-shadow:inset 0 0 0 2px rgba(232,180,90,.55),0 1px 0 #0b0704;}
 .pg-nudge .ico{width:24px;height:24px;stroke-width:2.8;}
-.pg-fire{flex:1;max-width:220px;height:54px;border:0;border-radius:27px;font-family:var(--display);font-size:1.45rem;letter-spacing:.08em;color:#3a2200;
+.pg-fire{position:relative;flex:1;max-width:220px;height:54px;border:0;border-radius:27px;font-family:var(--display);font-size:1.45rem;letter-spacing:.08em;color:#3a2200;
   background:linear-gradient(180deg,#ffe9a8 0%,#f2c14e 45%,#c98a1c 100%);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.7),inset 0 -3px 0 rgba(120,70,0,.35),0 5px 0 #7a4c08,0 10px 20px rgba(0,0,0,.45);
   text-shadow:0 1px 0 rgba(255,255,255,.5);touch-action:manipulation;}
@@ -821,7 +824,10 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
   var L = null;            // current level run
   var objs = [], extras = [], colliders = [], movers = [], zones = [], phasers = [], dynAim = false;
   var balls = [], shot = null, state = 'none', view = 'none';
-  var wt = 0, rt = 0, ang = 0, acc = 0, speedMul = 1, timeScale = 1, tsTarget = 1, hitStop = 0;
+  // Speed mode (menu, off to start): the whole game runs at 3x, shots, slow motion and all
+  var FASTK = 'peggle_fast';
+  function fastOn() { try { return localStorage.getItem(FASTK) === '1'; } catch (e) { return false; } }
+  var wt = 0, rt = 0, ang = 0, acc = 0, speedMul = fastOn() ? 3 : 1, timeScale = 1, tsTarget = 1, hitStop = 0;
   var paused = false, recoil = 0, shake = 0, flash = 0;
   var zoom = { on: false, z: 1, fx: FW / 2, fy: FH / 2, target: null, until: 0, cool: 0 };
   var fx = { parts: [], pops: [], banners: [], later: [], shards: [], rings: [] };
@@ -1027,7 +1033,11 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
       { icon: 'board', label: 'Choose level', onClick: function () { if (L && !L.done) save(); showSetup(); } },
       { icon: 'trophy', label: 'High scores', onClick: showHighScores },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Peggle: past games' }); } },
-      Mus.menuItem
+      Mus.menuItem,
+      { icon: 'bolt', label: 'Speed mode', sub: 'The game plays at 3x speed', toggle: fastOn, onClick: function () {
+        var on = !fastOn(); try { localStorage.setItem(FASTK, on ? '1' : '0'); } catch (e) {}
+        speedMul = on ? 3 : 1; paintFast();
+      } }
     ],
     rules:
       '<p class="goal">Clear all 25 <b>orange pegs</b> using your 10 balls.</p>' +
@@ -1177,7 +1187,8 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     wrapEl = el('div', { class: 'pg-wrap' }, [frameEl]);
     var left = el('button', { type: 'button', class: 'pg-nudge', 'aria-label': 'Aim left', html: Kit.icon('back') });
     var right = el('button', { type: 'button', class: 'pg-nudge', 'aria-label': 'Aim right', html: Kit.icon('right') });
-    fireBtn = el('button', { type: 'button', class: 'pg-fire', text: 'FIRE', onclick: function () { fire(); } });
+    fireBtn = el('button', { type: 'button', class: 'pg-fire', onclick: function () { fire(); } }, [el('span', { text: 'FIRE' }), el('i', { class: 'pg-fast', 'aria-label': 'Speed mode: 3 times speed', html: Kit.icon('bolt') + '3x' })]);
+    paintFast();
     ctlEl = el('div', { class: 'pg-ctl' }, [left, fireBtn, right]);
     holdBtn(left, 1); holdBtn(right, -1);
     app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(ctlEl);
@@ -1217,10 +1228,11 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     render();
   }
 
-  // Aim fine-tune buttons: tap nudges, hold sweeps
+  // Aim fine-tune buttons: a tap turns the launcher a tenth of a degree; holding creeps (1.5 degrees a second), then
+  // speeds up gently the longer you hold (up to 8)
   var hold = null;
   function holdBtn(b, dir) {
-    b.addEventListener('pointerdown', function (e) { e.preventDefault(); if (state !== 'aim' || paused) return; ang = clamp(ang - dir * 0.4 * PI / 180, -MAX_ANG, MAX_ANG); hold = { dir: dir, t: rt }; Kit.sfx('tick'); });
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); if (state !== 'aim' || paused) return; ang = clamp(ang - dir * 0.1 * PI / 180, -MAX_ANG, MAX_ANG); hold = { dir: dir, t: rt }; Kit.sfx('tick'); });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, function () { hold = null; }); });
   }
 
@@ -1281,6 +1293,8 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     ]));
     pauseEl.classList.add('show');
   }
+  // (the FIRE button wears a small 3x mark while speed mode is on)
+  function paintFast() { if (fireBtn) fireBtn.classList.toggle('fast', speedMul === 3); }
   function resumeGame() {
     if (!paused) return;
     paused = false; pauseEl.classList.remove('show'); lastFrame = 0; kick();
@@ -1850,9 +1864,9 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
       // aim with keys / held nudge buttons
       if (state === 'aim') {
         var spd = 0;
-        if (keys.ArrowLeft) spd -= keys.shift ? 6 : 40;
-        if (keys.ArrowRight) spd += keys.shift ? 6 : 40;
-        if (hold && rt - hold.t > 0.3) spd -= hold.dir * 14;
+        if (keys.ArrowLeft) spd -= keys.shift ? 2 : 40;
+        if (keys.ArrowRight) spd += keys.shift ? 2 : 40;
+        if (hold && rt - hold.t > 0.35) spd -= hold.dir * (1.5 + Math.min(6.5, (rt - hold.t - 0.35) * 4));
         if (spd) ang = clamp(ang + spd * PI / 180 * rdt, -MAX_ANG, MAX_ANG);
       }
       // time scale: hit-stop, slow motion
@@ -1873,13 +1887,15 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
   function kick() { if (!raf && view === 'game' && L && !paused && !document.hidden) { lastFrame = 0; raf = requestAnimationFrame(frame); } }
 
   function updateFx(dt) {
-    for (var i = fx.later.length - 1; i >= 0; i--) { var l = fx.later[i]; l.t -= dt; if (l.t <= 0) { fx.later.splice(i, 1); l.fn(); } }
+    // (the game's own pauses, pegs clearing, the coin toss, the tally, run at the game's speed; banners stay readable)
+    var gdt = dt * speedMul;
+    for (var i = fx.later.length - 1; i >= 0; i--) { var l = fx.later[i]; l.t -= gdt; if (l.t <= 0) { fx.later.splice(i, 1); l.fn(); } }
     fx.parts.forEach(function (p) { p.life -= dt; p.vy += 260 * dt; p.vx *= 1 - dt * 1.5; p.x += p.vx * dt; p.y += p.vy * dt; });
     fx.parts = fx.parts.filter(function (p) { return p.life > 0; });
     fx.pops.forEach(function (p) { p.life -= dt; p.y -= 22 * dt; });
     fx.pops = fx.pops.filter(function (p) { return p.life > 0; });
     fx.banners.forEach(function (b) { b.life -= dt; });
-    if (fx.coin) { fx.coin.t += dt; if (fx.coin.t > COIN_TOSS + 1.0) fx.coin = null; }
+    if (fx.coin) { fx.coin.t += gdt; if (fx.coin.t > COIN_TOSS + 1.0) fx.coin = null; }
     fx.banners = fx.banners.filter(function (b) { return b.life > 0; });
     recoil = Math.max(0, recoil - dt * 5); shake = Math.max(0, shake - dt * 20); flash = Math.max(0, flash - dt * 1.4);
     meterPulse = Math.max(0, meterPulse - dt * 1.5); bucketFlash = Math.max(0, bucketFlash - dt * 1.6); pwFlash = Math.max(0, pwFlash - dt);
