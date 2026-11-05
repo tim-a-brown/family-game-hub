@@ -117,7 +117,15 @@
       return ds.filter(function (d) { return d.is_active; })[0] || ds.filter(function (d) { return !d.is_restricted && /tablet|smartphone|computer/i.test(d.type); })[0] || ds.filter(function (d) { return !d.is_restricted; })[0] || null;
     });
   }
-  function outcome(r) { return r.status < 300 ? 'ok' : r.status === 403 ? 'premium' : r.status === 404 ? 'nodevice' : 'err'; }
+  // what a play request came to: ok, premium (not Premium), nodevice (no Spotify app awake), refused (Spotify wouldn't start
+  // that: its own mixes, like a Daylist, can be off limits to apps)
+  function outcome(r) {
+    if (r.status < 300) return 'ok';
+    var why = r.json && r.json.error && (r.json.error.reason || r.json.error.message) || '';
+    if (/PREMIUM/i.test(why)) return 'premium';
+    if (/NO_ACTIVE_DEVICE|no active device/i.test(why)) return 'nodevice';
+    return r.status === 403 && !why ? 'premium' : r.status === 404 || r.status === 403 ? 'refused' : 'err';
+  }
   // play a playlist, album or artist (shuffled), or a song within its album; 'nodevice' when no Spotify app is open
   function playUri(uri, song) {
     return device().then(function (d) {
@@ -134,7 +142,11 @@
   function prev() { return api('POST', '/me/player/previous'); }
   function shuffle(on) { return api('PUT', '/me/player/shuffle?state=' + (on ? 'true' : 'false')); }
   function repeat(mode) { return api('PUT', '/me/player/repeat?state=' + mode); }
-  function after(res, where) { if (res === 'nodevice') openAppNudge(where); else if (res === 'premium') toast('Spotify only lets apps start music on Premium'); }
+  function after(res, where) {
+    if (res === 'nodevice') openAppNudge(where);
+    else if (res === 'premium') toast('Spotify only lets apps start music on Premium');
+    else if (res === 'refused') toast('Spotify won’t let apps start that one. Start it in Spotify and it keeps playing here.');
+  }
 
   // A game started: its playlist plays, unless it's already the one playing ('off' quiets Spotify)
   var waitingFor = null;
@@ -142,7 +154,7 @@
     var p = pickFor(id); if (!p || !jget(AUTH) || !CLIENT_ID) return;
     state().then(function (s) {
       if (p.u === 'off') { if (s && s.is_playing) pause(); return; }
-      if (s && s.is_playing && s.context && s.context.uri === p.u) return;
+      if (s && s.context && s.context.uri === p.u) return s.is_playing ? null : resume();   // (already loaded: carries on where it was)
       return playUri(p.u);   // (no Spotify app open: nothing pops up; the Music menu has the way to open it)
     }).catch(function () {});
   }
@@ -399,7 +411,7 @@
         // you hear the change right away
         if (u === 'off') pause().then(pl.refresh);
         else if (u === 'inherit') { if (g.id) gameStart(g.id); setTimeout(pl.refresh, 900); }
-        else playUri(u).then(function (res) { after(res, g.id || '*resume'); setTimeout(pl.refresh, 900); });
+        else (u === curCtx ? resume() : playUri(u)).then(function (res) { after(res, g.id || '*resume'); setTimeout(pl.refresh, 900); });
       };
       rows.push({ el: b, u: kind === 'song' ? null : u, kind: kind }); list.appendChild(b);
     }
@@ -448,15 +460,21 @@
       function paintQ(res) {
         if (n !== qN) return;
         list.innerHTML = ''; rows = [];
+        list.scrollTop = 0;
         if (mine.length) { head('Your playlists'); mine.forEach(plRow); }
         if (!res) { list.appendChild(el('p', { class: 'sp-none', text: 'Searching Spotify…' })); return; }
+        var meId = ((jget(AUTH) || {}).me || {}).id, mineU = {}; (myPls || []).forEach(function (p) { mineU[p.uri] = 1; }); mine.forEach(function (p) { mineU[p.uri] = 2; });
         var tr = ((res.tracks && res.tracks.items) || []).filter(Boolean), pls = ((res.playlists && res.playlists.items) || []).filter(Boolean),
           als = ((res.albums && res.albums.items) || []).filter(Boolean), ars = ((res.artists && res.artists.items) || []).filter(Boolean);
+        // (yours that Spotify's search found but the name match didn't: up with yours, not among everyone's)
+        var extra = pls.filter(function (p) { return mineU[p.uri] !== 2 && (mineU[p.uri] || (meId && p.owner && p.owner.id === meId)); });
+        pls = pls.filter(function (p) { return !mineU[p.uri] && !(meId && p.owner && p.owner.id === meId); });
+        if (extra.length) { if (!mine.length) head('Your playlists'); extra.forEach(plRow); }
         if (tr.length) { head('Songs'); tr.forEach(function (s) { row('song', s.uri, s.name, (s.artists || []).map(function (x) { return x.name; }).join(', '), imgOf(s.album && s.album.images, true), null, { uri: s.uri, album: s.album && s.album.uri }); }); }
         if (pls.length) { head('Playlists'); pls.forEach(plRow); }
         if (als.length) { head('Albums'); als.forEach(function (al) { row('ctx', al.uri, al.name, (al.artists || []).map(function (x) { return x.name; }).join(', '), imgOf(al.images, true)); }); }
         if (ars.length) { head('Artists'); ars.forEach(function (ar) { row('ctx', ar.uri, ar.name, 'Artist', imgOf(ar.images, true)); }); }
-        if (!mine.length && !tr.length && !pls.length && !als.length && !ars.length) list.appendChild(el('p', { class: 'sp-none', text: 'Nothing found for “' + t + '”' }));
+        if (!mine.length && !extra.length && !tr.length && !pls.length && !als.length && !ars.length) list.appendChild(el('p', { class: 'sp-none', text: 'Nothing found for “' + t + '”' }));
         markPlaying();
       }
       paintQ(null);
