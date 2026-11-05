@@ -201,6 +201,8 @@
     '.sp-h{margin:10px 6px 4px;font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}.sp-h:first-child{margin-top:2px}' +
     '.sp-row{appearance:none;-webkit-appearance:none;border:0;box-shadow:none;margin:0;font:inherit;cursor:pointer;background:none;width:100%;display:flex;align-items:center;gap:12px;min-height:56px;padding:6px 10px 6px 6px;border-radius:12px;text-align:left;color:var(--text);transition:background .15s,box-shadow .15s}' +
     '.sp-row:active{transform:scale(.98)}' +
+    '.sp-userow{margin:2px 0;box-shadow:inset 0 0 0 1.5px var(--accent,#5b2fd6);background:color-mix(in srgb,var(--accent,#5b2fd6) 8%,transparent)}.sp-userow .sp-eq{display:flex}' +
+    '.sp-tx .sp-k{font-size:.66rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:color-mix(in srgb,var(--accent,#5b2fd6) 55%,var(--text))}' +
     '.sp-row img,.sp-row .sp-ph{width:44px;height:44px;border-radius:6px;object-fit:cover;background:var(--w1);flex:none;display:grid;place-items:center;color:var(--text-3)}' +
     '.sp-row.artist img,.sp-row.artist .sp-ph{border-radius:50%}' +
     '.sp-row .sp-ph svg{width:22px;height:22px}.sp-row .sp-tx{flex:1;min-width:0}.sp-row b{display:block;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
@@ -294,13 +296,32 @@
     if (myPls) return Promise.resolve(myPls);
     var all = [];
     function page(off) {
+      // (every page: the ones you follow and your AI playlists count too, so there can be hundreds)
       return api('GET', '/me/playlists?limit=50&offset=' + off).then(function (r) {
         var items = (r.json && r.json.items) || [];
         items.forEach(function (p) { if (p && p.uri) all.push(p); });
-        return items.length === 50 && off < 150 ? page(off + 50) : all;
+        return items.length === 50 && r.json && r.json.next && off < 1950 ? page(off + 50) : all;
       });
     }
     return page(0).then(function (a) { myPls = a; return a; });
+  }
+  var META = {};
+  function metaOf(uri) {
+    var m = /^spotify:(playlist|album|artist|track):([A-Za-z0-9]+)$/.exec(uri || ''); if (!m) return Promise.resolve(null);
+    if (META[uri] !== undefined) return Promise.resolve(META[uri]);
+    var path = m[1] === 'playlist' ? '/playlists/' + m[2] + '?fields=name,images,owner(display_name),tracks(total)' : '/' + m[1] + 's/' + m[2];
+    return api('GET', path).then(function (r) {
+      var j = r.status === 200 ? r.json : null, out = null;
+      if (j && j.name) out = { n: j.name, img: imgOf(j.images || (j.album && j.album.images), true),
+        sub: m[1] === 'playlist' ? (j.tracks && j.tracks.total != null ? j.tracks.total + ' songs' : (j.owner && j.owner.display_name) || 'Playlist') : m[1] === 'album' ? (j.artists || []).map(function (x) { return x.name; }).join(', ') : m[1] === 'artist' ? 'Artist' : (j.artists || []).map(function (x) { return x.name; }).join(', '),
+        album: j.album && j.album.uri };
+      META[uri] = out; return out;
+    }, function () { return null; });
+  }
+  // a Spotify link pasted into the search box: open.spotify.com/playlist/…, spotify:album:…, a share link with ?si=
+  function linkUri(t) {
+    var m = /(?:open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?|spotify:)(playlist|album|artist|track)[\/:]([A-Za-z0-9]{10,})/i.exec(t || '');
+    return m ? 'spotify:' + m[1].toLowerCase() + ':' + m[2] : null;
   }
   function sheet(g, opt) {
     var k = K(); if (!k) return; css();
@@ -319,10 +340,10 @@
       return k.sheet({ title: 'Music', node: box, actions: [{ label: 'Connect Spotify', primary: true, onClick: connect }, { label: 'Not now', cls: 'btn-soft' }] });
     }
     var a = jget(AUTH), scope = g.id && (picks()[g.id] || !picks()['*']) ? g.id : '*', curCtx = null;
-    var pl = player({ always: true, onState: function (s) { curCtx = s && s.context ? s.context.uri : null; markPlaying(); } });
+    var pl = player({ always: true, onState: function (s) { curCtx = s && s.context ? s.context.uri : null; markPlaying(); paintNow(); } });
     box.appendChild(pl.el);
     // search
-    var q = el('input', { type: 'text', placeholder: 'Search your playlists and Spotify', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'search', 'aria-label': 'Search music' });
+    var q = el('input', { type: 'text', placeholder: 'Search, or paste a Spotify link', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', enterkeyhint: 'search', 'aria-label': 'Search music' });
     var clr = el('button', { type: 'button', 'aria-label': 'Clear', html: IC.x, onclick: function () { q.value = ''; onQ(); q.focus(); } }); clr.hidden = true;
     box.appendChild(el('label', { class: 'sp-q' }, [el('span', { html: IC.search }), q, clr]));
     // this game / all games
@@ -333,7 +354,31 @@
       seg = el('div', { class: 'sp-seg' }, [b1, b2]); box.appendChild(seg);
     }
     var list = el('div', { class: 'sp-list' }); box.appendChild(list);
-    var rows = [];
+    var rows = [], nowSlot = null, nowFor = '';
+    function paintNow() {
+      if (!nowSlot || !nowSlot.isConnected) return;
+      var u = curCtx && /^spotify:(playlist|album|artist):/.test(curCtx) ? curCtx : null, cur = picks()[scope];
+      if (!u || (cur && cur.u === u) || (myPls || []).some(function (p) { return p.uri === u; })) { nowSlot.innerHTML = ''; nowFor = ''; return; }
+      if (nowFor === u) return; nowFor = u;
+      function put(m) {
+        if (nowFor !== u || !nowSlot.isConnected) return;
+        nowSlot.innerHTML = '';
+        var kind = /:album:/.test(u) ? 'Album' : /:artist:/.test(u) ? 'Artist' : 'Playlist', name = m && m.n || 'Your Spotify mix';
+        var b = el('button', { type: 'button', class: 'sp-row sp-userow' }, [
+          m && m.img ? el('img', { src: m.img, alt: '' }) : el('span', { class: 'sp-ph', html: IC.note }),
+          el('span', { class: 'sp-tx' }, [el('small', { class: 'sp-k', text: 'Playing now in Spotify' }), el('b', { text: name }), el('small', { text: 'Tap to use it ' + (scope === '*' ? 'in all games' : 'in ' + (g.name || 'this game')) })]),
+          el('span', { class: 'sp-eq', html: '<u></u><u></u><u></u>' })
+        ]);
+        b.onclick = function () {
+          k.haptic('light'); k.sfx('tap');
+          setPick(scope, { u: u, n: name, img: m && m.img || null, k: kind });
+          toast(name + ' is the music ' + (scope === '*' ? 'for all games' : 'for ' + (g.name || 'this game')));
+          draw();
+        };
+        nowSlot.appendChild(b);
+      }
+      put(null); metaOf(u).then(put);
+    }
     function isPick(u) { var cur = picks()[scope]; return cur ? cur.u === u : u === (scope === '*' ? 'off' : 'inherit'); }
     function markPlaying() { rows.forEach(function (r) { r.el.classList.toggle('playing', !!r.u && r.u === curCtx); }); }
     function head(t) { list.appendChild(el('div', { class: 'sp-h', text: t })); }
@@ -366,6 +411,8 @@
       list.innerHTML = ''; rows = [];
       if (scope !== '*') { var all = picks()['*']; row('pick', 'inherit', 'Same as all games', all && all.u !== 'off' ? all.n : 'No music', null, icon('swap')); }
       row('pick', 'off', 'No music', scope === '*' ? 'Unless a game has its own' : 'Spotify pauses in this game', null, icon('mute'));
+      // whatever Spotify is playing (a Daylist, Discover Weekly, a mix: lists apps can't read) can be the music here
+      nowSlot = el('div', { class: 'sp-now' }); list.appendChild(nowSlot); nowFor = ''; paintNow();
       // something chosen from search that isn't one of your playlists stays on the list
       var cur = picks()[scope];
       if (cur && cur.u && cur.u !== 'off' && !(myPls || []).some(function (p) { return p.uri === cur.u; })) row('ctx', cur.u, cur.n || 'Spotify', /:album:/.test(cur.u) ? 'Album' : /:artist:/.test(cur.u) ? 'Artist' : 'Playlist', cur.img);
@@ -382,7 +429,21 @@
       clearTimeout(qT);
       if (!t) { draw(); return; }
       if (seg) seg.hidden = true;
-      var n = ++qN, lt = t.toLowerCase();
+      var n = ++qN, lt = t.toLowerCase(), lu = linkUri(t);
+      if (lu) {
+        list.innerHTML = ''; rows = []; head('From your link');
+        list.appendChild(el('p', { class: 'sp-none', text: 'Looking it up…' }));
+        metaOf(lu).then(function (m) {
+          if (n !== qN) return;
+          list.innerHTML = ''; rows = []; head('From your link');
+          var kind = /:album:/.test(lu) ? 'Album' : /:artist:/.test(lu) ? 'Artist' : /:track:/.test(lu) ? 'Song' : 'Playlist';
+          // (Spotify's own playlists can't be read, but they can be played)
+          if (kind === 'Song') { if (m) row('song', lu, m.n, m.sub, m.img, null, { uri: lu, album: m.album }); else list.appendChild(el('p', { class: 'sp-none', text: 'That song couldn’t be found.' })); }
+          else row('ctx', lu, m ? m.n : 'Spotify ' + kind.toLowerCase(), m ? m.sub : kind, m && m.img);
+          markPlaying();
+        });
+        return;
+      }
       var mine = (myPls || []).filter(function (p) { return (p.name || '').toLowerCase().indexOf(lt) >= 0; }).slice(0, 8);
       function paintQ(res) {
         if (n !== qN) return;
@@ -391,7 +452,7 @@
         if (!res) { list.appendChild(el('p', { class: 'sp-none', text: 'Searching Spotify…' })); return; }
         var tr = ((res.tracks && res.tracks.items) || []).filter(Boolean), pls = ((res.playlists && res.playlists.items) || []).filter(Boolean),
           als = ((res.albums && res.albums.items) || []).filter(Boolean), ars = ((res.artists && res.artists.items) || []).filter(Boolean);
-        if (tr.length) { head('Songs'); tr.forEach(function (s) { row('song', s.uri, s.name, (s.artists || []).map(function (x) { return x.name; }).join(', ') + (s.album ? ' · ' + s.album.name : ''), imgOf(s.album && s.album.images, true), null, { uri: s.uri, album: s.album && s.album.uri }); }); }
+        if (tr.length) { head('Songs'); tr.forEach(function (s) { row('song', s.uri, s.name, (s.artists || []).map(function (x) { return x.name; }).join(', '), imgOf(s.album && s.album.images, true), null, { uri: s.uri, album: s.album && s.album.uri }); }); }
         if (pls.length) { head('Playlists'); pls.forEach(plRow); }
         if (als.length) { head('Albums'); als.forEach(function (al) { row('ctx', al.uri, al.name, (al.artists || []).map(function (x) { return x.name; }).join(', '), imgOf(al.images, true)); }); }
         if (ars.length) { head('Artists'); ars.forEach(function (ar) { row('ctx', ar.uri, ar.name, 'Artist', imgOf(ar.images, true)); }); }
