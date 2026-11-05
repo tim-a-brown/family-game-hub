@@ -2158,6 +2158,7 @@ button.lz-story .ico{width:15px;height:15px;vertical-align:-2px;margin-left:2px;
 }
 .fside-l .fchips.ovf{mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);}
 .flt-btn span{max-width:calc(100% - 10px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.flt-btn span.sw{max-width:none;overflow:visible;}
 .sortbox{display:flex;flex-direction:column;gap:6px;}
 .sort-tip{margin:0 0 10px;text-align:center;font-family:var(--serif);font-style:italic;color:var(--text-2);}
 /* the card view's fine print: where and when the card first came out, and later sets */
@@ -12356,10 +12357,20 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function paintSort() {
       var on = !(srt.k === 'name' && srt.dir === 1), o = SORTS.filter(function (x) { return x[0] === srt.k; })[0] || SORTS[0];
       // the round button's word: short enough to sit inside the circle (Release date says which end comes first)
-      var word = !on ? 'Sort' : srt.k === 'rel' ? (srt.dir === 1 ? 'Oldest' : 'Newest') : o[1];
-      sortBtn.innerHTML = SORT_ICO + '<span>' + esc(word) + '</span>'; sortBtn.classList.toggle('on', on);
+      var word = !on ? 'Sort' : srt.k === 'rel' ? (srt.dir === 1 ? 'Oldest' : 'Newest') : ({ s: 'Str', w: 'Will' })[srt.k] || o[1];
+      sortBtn.innerHTML = SORT_ICO + '<span class="sw">' + esc(word) + '</span>'; sortBtn.classList.toggle('on', on);
+      // (the word sits low in the circle, where it's narrower: it keeps clear of the gold ring with room to spare)
       var sw = sortBtn.querySelector('span'); sw.style.fontSize = '';
-      for (var fz = 1; sw.scrollWidth > sw.clientWidth + 1 && fz > 0.7; fz -= 0.06) sw.style.fontSize = fz.toFixed(2) + 'em';
+      // measured against the circle itself: every corner of the word stays 5px inside the button's edge (the ring is 2)
+      var inCircle = function () {
+        var B = sortBtn.getBoundingClientRect(), r = B.width / 2 - 5, cx = B.left + B.width / 2, cy = B.top + B.height / 2;
+        if (!B.width) return true;
+        var rs = sw.getClientRects()[0], R = sw.getBoundingClientRect(), w = sw.scrollWidth * (R.width / Math.max(1, sw.clientWidth)), x0 = cx - w / 2;
+        // (the glyphs' own height, not the line box, a little under the font size)
+        var fsz = parseFloat(getComputedStyle(sw).fontSize), ym = R.top + R.height / 2, y0 = ym - fsz * 0.38, y1 = ym + fsz * 0.38;
+        return rs && [[x0, y0], [x0 + w, y0], [x0, y1], [x0 + w, y1]].every(function (p) { return Math.hypot(p[0] - cx, p[1] - cy) <= r; });
+      };
+      for (var fz = 1; !inCircle() && fz > 0.6; fz -= 0.03) sw.style.fontSize = fz.toFixed(2) + 'em';
       [storyChips, row2].forEach(function (r) { r.classList.toggle('ovf', r.scrollWidth > r.clientWidth + 2 && r.scrollLeft + r.clientWidth < r.scrollWidth - 2); });
       sortBtn.setAttribute('aria-label', 'Sort: ' + o[1] + ', ' + (srt.dir === 1 ? o[2] : o[3]).toLowerCase());
     }
