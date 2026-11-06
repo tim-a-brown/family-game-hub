@@ -1294,7 +1294,8 @@
     fitRaf = 0;
     // .k-hold on the page: the game is laid out to the screen and is always held still (a moment of overflow while
     // something animates in must not let it scroll, and the lock must not switch itself off)
-    var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2 || !!doc.querySelector('.k-hold');
+    // (html.ar-on: an arcade game is being played, laid out to the screen: held still the same way)
+    var se = doc.scrollingElement || root, fits = se.scrollHeight <= window.innerHeight + 2 || !!doc.querySelector('.k-hold') || root.classList.contains('ar-on');
     if (fits) pin();
     if (fits !== fitLock) { fitLock = fits; root.classList.toggle('k-fit', fits); }
   }
@@ -1364,7 +1365,8 @@
     if (window.visualViewport) { visualViewport.addEventListener('scroll', unshift); visualViewport.addEventListener('resize', unshift); }
     doc.addEventListener('touchend', function () { setTimeout(unshift, 350); }, { passive: true });
     doc.addEventListener('touchmove', function (e) {
-      if (!fitLock || e.touches.length > 1) return;   // pinch-zoom still works
+      // (two fingers too: quick taps with both thumbs overlap, and iPad would pan the page; pinch zoom is already off)
+      if (!fitLock) return;
       if (scrollerFor(e.target)) return;
       if (e.target.closest && e.target.closest('input[type="range"]')) return;   // sliders need the drag
       if (e.cancelable) e.preventDefault();
