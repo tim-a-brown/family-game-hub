@@ -2365,7 +2365,9 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
   function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 
   function drawGuide(g) {
-    var sup = L.guide > 0, key = ang.toFixed(4) + '|' + sup;
+    // (the board too: pegs a shot cleared, shields dropped or back up, so the line is right the moment you can aim again)
+    var gone = 0; for (var gi = 0; gi < objs.length; gi++) if (objs[gi].gone) gone++;
+    var sup = L.guide > 0, key = ang.toFixed(4) + '|' + sup + '|' + gone + '|' + L.shots.length + '|' + Object.keys(L.open || {}).join(',');
     if (guideCache.key !== key || (dynAim && rt - guideCache.t > 0.07)) {
       var dx = Math.sin(ang), dy = Math.cos(ang), first = null;
       var res = simulate(LX + dx * BARREL, LY + dy * BARREL, dx * V0, dy * V0, sup ? 2.2 : 0.5, function (b, o, wall) {
@@ -2920,6 +2922,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     aim: function (deg) { ang = clamp(deg * PI / 180, -MAX_ANG, MAX_ANG); },
     angle: function () { return Math.round(ang * 180 / PI * 10) / 10; },
     fire: fire, speed: function (k) { speedMul = k; },
+    guideLen: function () { return guideCache.pts.length; },   // tests: how far the aim line reaches
     start: function (n, master) { startLevel(n, { who: 'Tester', master: master || 'guide', fireMode: 'lift' }); },
     empty: function () { objs.forEach(function (o) { o.gone = true; o.goneT = -9; }); },   // tests: a shot that can't touch a peg
     leaveOne: function () { var left = objs.filter(function (o) { return o.c === 'o' && !o.gone; }); left.slice(1).forEach(function (o) { o.gone = true; o.goneT = -9; }); L.orangeHit = L.totalOrange - 1; },
