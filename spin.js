@@ -66,6 +66,11 @@ var Spin = (function () {
     if (!document.getElementById('sp-css')) { var st = document.createElement('style'); st.id = 'sp-css'; st.textContent = css; document.head.appendChild(st); }
     var f = load();
     f.cats = Array.isArray(f.cats) ? f.cats : [];   // [] = every type
+    // Sections and games hidden from the home screen (Preferences, or a parent) stay off the wheel too
+    function catShown(id) { return id !== 'tools' && (!Kit.catOn || Kit.catOn(id)); }
+    function gameShown(g) { return !g.hidden && catShown(g.cat) && (!Kit.gameOn || Kit.gameOn(g)); }
+    var CATS = GAME_CATS.filter(function (c) { return catShown(c.id); });
+    f.cats = f.cats.filter(catShown);
     f.who = f.who || 'any'; f.fav = !!f.fav; f.going = !!f.going;
     var going = o.going ? o.going() : {};
     f.off = Array.isArray(f.off) ? f.off : [];   // games taken off the wheel (hold a wedge)
@@ -112,13 +117,12 @@ var Spin = (function () {
       chip('fav', 'Favorites', 'star', 'fav', null, f.fav, function () { f.fav = !f.fav; changed(); });
       var nGo = Object.keys(going).length;
       if (nGo || f.going) chip('going', 'In progress' + (nGo ? ' (' + nGo + ')' : ''), 'history', 'going', null, f.going, function () { f.going = !f.going; changed(); });
-      GAME_CATS.forEach(function (c) {
-        if (c.id === 'tools') return;   // scorekeepers and timers aren't games to spin for
+      CATS.forEach(function (c) {   // (scorekeepers and timers aren't games to spin for)
         var on = f.cats.indexOf(c.id) >= 0;
         chip(c.id, c.name, c.id, '', c.color, on, function () {
           if (on) f.cats = f.cats.filter(function (x) { return x !== c.id; });
           else f.cats = f.cats.concat([c.id]);
-          if (f.cats.length === GAME_CATS.length - 1) f.cats = [];
+          if (f.cats.length === CATS.length) f.cats = [];
           changed();
         });
       });
@@ -142,7 +146,7 @@ var Spin = (function () {
     }
     function fill(keep) {
       if (spinning) return;
-      pool = GAMES.filter(function (g) { return g.cat !== 'tools' && (!Kit.catOn || Kit.catOn(g.cat)) && fits(g); });   // (not from sections switched off)
+      pool = GAMES.filter(function (g) { return gameShown(g) && fits(g); });
       if (!keep) wedges = spread(shuffle(pool.slice()).slice(0, MAXW));
       else wedges = wedges.filter(function (g) { return pool.indexOf(g) >= 0; });
       nLine.innerHTML = '';
