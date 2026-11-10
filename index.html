@@ -1021,7 +1021,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   window.addEventListener('message', function (e) {
     if (!GS || e.origin !== location.origin || !GS.frame || e.source !== GS.frame.contentWindow) return;
     var d = e.data || {};
-    if (d.kitSheet === 'h') { GS.fh = d.h; GS.fit(); GS.frame.closest('.gs-wrap').classList.add('on'); GS.dock(d); }
+    if (d.kitSheet === 'h') { GS.fh = d.h; GS.fit(); GS.frame.closest('.gs-wrap').classList.add('on'); if (d.start != null) GS.dock(d); }
+    else if (d.kitSheet === 'inner') {   // a sheet opened inside the setup: give it room, and move the start buttons out of its way
+      GS.inner = d.on ? d.h : 0; GS.fit(); var dk = GS.frame.closest('.gsheet').querySelector('.gs-dock'); if (dk) dk.style.display = d.on ? 'none' : '';
+      if (d.on) setTimeout(function () { try { GS.frame.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (e) {} }, 50);
+    }
     else if (d.kitSheet === 'go') GS.start(d.how, d.page);
     else if (d.kitSheet === 'pick') {   // an arcade seat needs a name before it starts
       var w = GS.frame.contentWindow, got = '';
@@ -1085,7 +1089,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var dockEl = el('div', { class: 'gs-dock' }), dockSig = '';
       box.appendChild(dockEl);
       GS = { frame: frame, fh: 0, start: start,
-        fit: function () { frame.style.height = Math.max(120, GS.fh || 360) + 'px'; },
+        fit: function () { frame.style.height = Math.max(120, GS.fh || 360, GS.inner || 0) + 'px'; },
         dock: function (d) {
           var sig = (d.start || '') + '|' + (d.alt || '') + '|' + (d.altIcon || '') + '|' + JSON.stringify(d.look || ''); if (sig === dockSig) return; dockSig = sig;
           dockEl.innerHTML = ''; dockEl.classList.toggle('has-alt', !!d.alt);

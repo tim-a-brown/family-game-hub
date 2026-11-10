@@ -491,8 +491,10 @@
     if (o.node) body.appendChild(o.node);
     var scrim = el('div', { class: 'k-scrim' }, [body]);
     var closed = false;
+    if (IN_SHEET) setTimeout(function () { if (!closed) try { parent.postMessage({ kitSheet: 'inner', on: true, h: body.offsetHeight + 80 }, location.origin); } catch (e) {} }, 60);
     function close(fromCancel) {
       if (closed) return; closed = true;
+      if (IN_SHEET) try { parent.postMessage({ kitSheet: 'inner', on: false }, location.origin); } catch (e) {}
       scrim.classList.remove('show'); scrim.style.pointerEvents = 'none';
       doc.removeEventListener('keydown', onKey);
       setTimeout(function () { scrim.remove(); }, 300);
@@ -1654,6 +1656,17 @@
   // Sheet: pick one of the regulars (the 5 who play most on top, then everyone else A to Z), or type a new name.
   function pickName(onPick, o) {
     o = o || {};
+    // inside the home screen's game sheet the frame is too short for a picker: the home screen shows it, full height
+    if (IN_SHEET) {
+      var onN = function (e) {
+        if (e.origin !== location.origin || !e.data || e.data.kitSheet !== 'name') return;
+        window.removeEventListener('message', onN);
+        if (e.data.name) onPick(e.data.name); else if (o.onClose) o.onClose();
+      };
+      window.addEventListener('message', onN);
+      try { parent.postMessage({ kitSheet: 'pick', taken: o.taken || [], title: o.title }, location.origin); } catch (e) {}
+      return;
+    }
     var taken = (o.taken || []).map(function (x) { return String(x || '').toLowerCase(); });
     var box = el('div', { class: 'k-names' }), s;
     var names = knownNames();
