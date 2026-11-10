@@ -222,6 +222,9 @@ Underlying principles for everything:
   change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the core set
   takes about 18 days of daily play at 3 games a day (it was about a month at 2 cards). Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
+  plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
+  screen doesn't restyle its own buttons' colour or face; size and layout only.
 - **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
   `guide` option; the rules on one page are still `Kit.rules()`). The quick start (shown once, the first time Anoria
   is opened: `anoria_guide`) and the twelve chapters are all **lessons**: a made-up position on the real table,
