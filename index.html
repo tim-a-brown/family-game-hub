@@ -737,6 +737,21 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .gs-wrap.on .gs-spin{display:none;}
 .gs-fb .gs-open{margin:14px 20px 6px;width:calc(100% - 40px);gap:8px;}
 @keyframes gsSpin{to{transform:rotate(360deg);}}
+/* Anoria's secret: Lorcana's icon wobbles from the sixth tap and flips to the crest on the twelfth */
+.pick-h .gicon{cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.pick-h .gicon.an-wob{animation:anWob .28s ease;}
+@keyframes anWob{0%,100%{transform:none;}30%{transform:rotate(calc(-1 * var(--wob,4deg))) scale(1.04);}70%{transform:rotate(var(--wob,4deg)) scale(1.04);}}
+.pick-h .gicon.an-flip{animation:anFlip .7s var(--ease);overflow:hidden;box-shadow:0 0 0 2px #c9a24a,0 8px 22px rgba(201,162,74,.35);}
+@keyframes anFlip{0%{transform:rotateY(0);}43%{transform:rotateY(90deg) scale(1.08);}100%{transform:rotateY(0) scale(1);}}
+.pick-h .gicon.an-crest2{display:block;border-radius:15px;}
+.pick-h .gicon.an-crest2 img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;}
+.pick button.anoria{background:linear-gradient(120deg,#0e1424,#17203a);box-shadow:inset 0 0 0 1.5px rgba(201,162,74,.7);}
+.pick button.anoria .t{color:#f1dc9c;}
+.pick button.anoria .d{color:#b9c0d4;}
+.pick .e.an-crest{padding:0;overflow:hidden;background:#0b0e16;}
+.pick .e.an-crest img{width:100%;height:100%;object-fit:cover;display:block;}
+.pick button.an-in{animation:anIn .5s var(--spring) backwards;}
+@keyframes anIn{from{opacity:0;transform:translateY(-10px) scale(.96);}}
 /* Mode chooser header */
 .pick-h{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
 .pick-h .gicon{width:64px;height:64px;flex:none;}
@@ -1066,7 +1081,33 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       try { sessionStorage.setItem('kit_go', JSON.stringify({ page: page || sp, how: how || 'start', t: Date.now() })); } catch (e) {}
       s.close(); go(g.play + nw, false);
     }
-    box.appendChild(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' }));
+    var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' });
+    box.appendChild(head);
+    // The secret (like the hot dog in Hot Dog Stand): tap Lorcana's icon 12 times in a row and it turns over to
+    // Anoria's crest; from then on Anoria has a row of its own in this sheet (anoria_unlocked; its menu can hide it)
+    if (g.id === 'lorcana') (function () {
+      var ic = head.querySelector('.gicon'), n = 0, last = 0, done = get('anoria_unlocked', '') === '1';
+      if (!ic) return;
+      ic.addEventListener('click', function () {
+        if (done) return;
+        var now = Date.now(); n = now - last < 900 ? n + 1 : 1; last = now;
+        Kit.haptic(n >= 6 ? 'medium' : 'tick');
+        if (n >= 6) { ic.classList.remove('an-wob'); void ic.offsetWidth; ic.classList.add('an-wob'); ic.style.setProperty('--wob', (n - 5) * 2.2 + 'deg'); }
+        if (n < 12) return;
+        done = true; set('anoria_unlocked', '1'); Kit.sfx('good'); Kit.haptic('success');
+        ic.classList.remove('an-wob'); ic.classList.add('an-flip');
+        setTimeout(function () {   // (the icon is an svg: the crest takes its place)
+          var crest = el('span', { class: 'gicon an-flip an-crest2', html: '<img src="games/anoria/ui/logo.webp" alt="">' }); ic.parentNode.replaceChild(crest, ic);
+        }, 300);
+        setTimeout(function () { var r = anoriaRow(); r.classList.add('an-in'); box.insertBefore(r, head.nextSibling); }, 650);
+      });
+    })();
+    function anoriaRow() {
+      return el('button', { type: 'button', class: 'alt anoria', onclick: function () { s.close(); go('anoria', false); } }, [
+        el('span', { class: 'e an-crest', html: '<img src="games/anoria/ui/logo.webp" alt="">' }),
+        el('span', { class: 'tx' }, [el('div', { class: 't', text: 'Anoria' }), el('div', { class: 'd', text: 'Every age of history on one map' })])]);
+    }
+    if (g.id === 'lorcana' && get('anoria_unlocked', '') === '1') box.appendChild(anoriaRow());
     if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [el('span', { text: live.label || 'In progress' }), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
     var chips = sp ? setupChips(g, sp) : null;
     if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
