@@ -18,3 +18,11 @@ The standard rules are `STD` at the top of `exp2.js`.
 make from two of them (one of each card), plus each pack twice (the tuned decks), all against all. It is the fairness
 test for a new pack: add its 15 cards and Guide to `ARCH` and run it. First run (40 games per matchup, 560 per deck):
 mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5). Results in `mash-40.txt`.
+
+## Collecting: copies of a card, and packs
+
+- `node scripts/anoria/copies.js star|cap [games]`: one strong card at 1 to 6 copies, and whole decks built to a cap of
+  2, 3, 4 or 6, each with and without `cfg.unique` (one of each person on your side of the table at a time). Results in
+  `copies-star.txt`, `copies-cap.txt`; the five ready decks under `cfg.unique` in `unique-rule.txt`.
+- `node scripts/anoria/packs.js [trials]`: how fast packs of 12 fill a collection that starts from one ready deck.
+  Results in `packs.txt`.
