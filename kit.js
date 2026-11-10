@@ -53,6 +53,16 @@
   })();
   if (window.Kit) return;
   var doc = document, root = doc.documentElement;
+  // The home screen's game sheet (games/<page>.html?defaults=1&sheet=1, in a frame inside the sheet): the game's
+  // own setup and nothing else, starting the game for real through the home screen (see setup's sheetGo).
+  // On that real page, kit_go (sessionStorage, set just before) presses its start button as soon as the setup
+  // is up, so it goes straight into the game.
+  var IN_SHEET = EDIT_DEFAULTS && /[?&]sheet=1(&|$)/.test(location.search);
+  if (IN_SHEET) root.classList.add('k-insheet');
+  var GO = null;
+  try { GO = JSON.parse(sessionStorage.getItem('kit_go') || 'null'); sessionStorage.removeItem('kit_go'); } catch (e) {}
+  if (GO && (IN_SHEET || EDIT_DEFAULTS || GO.page !== location.pathname.replace(/^.*\//, '').replace(/\.html$/, '') || !(Date.now() - GO.t < 30000))) GO = null;
+  if (GO) { GO.at = Date.now(); root.classList.add('k-going'); setTimeout(function () { root.classList.remove('k-going'); }, 6000); }
   var LS = (function () { try { return window.localStorage; } catch (e) { return null; } })();
   function lsGet(k, d) { try { var v = LS.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function lsSet(k, v) { try { LS.setItem(k, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }   // settings follow the PIN
@@ -1409,6 +1419,7 @@
     if (ok !== orientOk) { orientOk = ok; try { doc.dispatchEvent(new CustomEvent('kit:orient', { detail: { ok: ok } })); } catch (e) {} }
   }
   function orientGate(want, tablets) {
+    if (IN_SHEET) return;
     want = want === 'landscape' || want === 'portrait' ? want : null;
     if (want === orWant && !!tablets === orTabs) return;
     orWant = want; orTabs = !!tablets;
@@ -1436,10 +1447,10 @@
       }, 0);
     }
     opts = o || {};
-    startFitLock();
+    if (!IN_SHEET) startFitLock();
     game = findGameSafe(opts.id || pageKey());
-    if (game) setTimeout(turnWatch, 0);
-    if (opts.orient) orientGate(opts.orient, opts.orientTablets);
+    if (game && !IN_SHEET) setTimeout(turnWatch, 0);
+    if (opts.orient && !IN_SHEET) orientGate(opts.orient, opts.orientTablets);
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
@@ -1667,7 +1678,7 @@
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') addNew(); });
     var foot = el('div', { class: 'row', style: { 'margin-top': '14px' } }, [inp, el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: addNew })]);
     var node = el('div', null, [box, foot, el('button', { type: 'button', class: 'btn btn-ghost btn-block', style: { 'margin-top': '8px' }, html: icon('pencil') + '<span>Edit frequent players</span>', onclick: function () { s.close(); managePlayers(); } })]);
-    s = sheet({ title: o.title || 'Who is it?', node: node });
+    s = sheet({ title: o.title || 'Who is it?', node: node, onClose: o.onClose });
   }
   // Roster edits sync with the account (localStorage fgh_players_at, synced as 'players'): each name's newest
   // change wins on every device, so a removed player stays removed after a reinstall or on another phone.
@@ -1873,7 +1884,7 @@
     // people (and robots, where the game mixes them) is Pass & play, and Play online is a smaller button beside
     // the start button. The game still gets the same mode ids in onStart.
     var MK = {}, merged = false;
-    if (o.modes && o.modes.length > 1 && P && !o.noMerge && !EDIT_DEFAULTS) {
+    if (o.modes && o.modes.length > 1 && P && !o.noMerge && (!EDIT_DEFAULTS || IN_SHEET)) {
       o.modes.forEach(function (m) { if (m.kind && !MK[m.kind]) MK[m.kind] = m.id; });
       merged = o.modes.every(function (m) { return /^(solo|cpu|local|online)$/.test(m.kind || ''); }) && !!MK.local && !!(MK.cpu || MK.solo);
     }
@@ -1904,7 +1915,7 @@
     // Opened from the home screen with its players filter on (?np=1 Just me, 2 Two of us, 3 Three or more):
     // start on a mode that suits that many people (vs Computer or solo for one, Pass & play for more) and seat them
     var NP = 0; try { NP = Math.min(3, parseInt(new URLSearchParams(location.search).get('np'), 10) || 0); } catch (e) {}
-    if (NP && P && !EDIT_DEFAULTS) {
+    if (NP && P && (!EDIT_DEFAULTS || IN_SHEET)) {
       var cpuOf = function (m) { return typeof P.cpu === 'function' ? P.cpu(m) : P.cpu; };
       var fits = function (m, h) {   // can this mode seat h people at this device? (computer seats mean one person)
         if (cpuOf(m)) return h === 1;
@@ -1925,9 +1936,9 @@
     wrap.appendChild(el('div', { class: 'setup-hero' + (game && window.GameIcon && !EDIT_DEFAULTS ? ' k-row' : '') }, [
       game && window.GameIcon ? el('div', { class: 'k-hero-ic', html: GameIcon(game.id) }) : null,
       el('h1', { text: o.title || (game && game.name) || '' }),
-      EDIT_DEFAULTS ? el('p', { text: 'Set how this game starts. Saved on this device.' }) : null   // (just the name: no tagline)
+      EDIT_DEFAULTS && !IN_SHEET ? el('p', { text: 'Set how this game starts. Saved on this device.' }) : null   // (just the name: no tagline)
     ]));
-    if (EDIT_DEFAULTS) wrap.firstChild.insertBefore(el('div', { class: 'k-defs-tag', text: 'Defaults' }), wrap.firstChild.querySelector('h1'));
+    if (EDIT_DEFAULTS && !IN_SHEET) wrap.firstChild.insertBefore(el('div', { class: 'k-defs-tag', text: 'Defaults' }), wrap.firstChild.querySelector('h1'));
 
     // Who's playing comes first, right under the title; then the modes and options.
     // Games that add their own pickers put them after .k-seats (options live in .k-opts).
@@ -2171,6 +2182,47 @@
     function saveSetup() {
       lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, sum: summary() }));
     }
+    // In the home screen's sheet: the same start buttons, but the game starts on its own page (sheetGo)
+    if (IN_SHEET) {
+      // arcade games file high scores under a name: a seat with no name gets one first, picked on the home
+      // screen over this sheet (the frame is too small for its own picker)
+      var needName = function (how) {
+        if (how === 'online' || !(P && P.names !== false && game && game.cat === 'arcade')) return -1;
+        var cpu = cpuFor(), ins = seatsBox.querySelectorAll('input');
+        for (var j = 0; j < state.count; j++) {
+          var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
+          if (!cj && !isPersonName(ins[j] ? ins[j].value : '')) return j;
+        }
+        return -1;
+      };
+      var sheetGo = function (how) {
+        var nj = needName(how);
+        if (nj >= 0) {
+          var onName = function (e) {
+            if (e.origin !== location.origin || !e.data || e.data.kitSheet !== 'name') return;
+            window.removeEventListener('message', onName);
+            if (!e.data.name) return;
+            names[nj] = e.data.name; renderSeats(); setTimeout(function () { sheetGo(how); }, 260);
+          };
+          window.addEventListener('message', onName);
+          try { parent.postMessage({ kitSheet: 'pick', taken: names.slice(0, state.count).filter(function (x, q) { return x && q !== nj; }), title: state.count > 1 ? 'Player ' + (nj + 1) : 'Who’s playing?' }, location.origin); } catch (e) {}
+          return;
+        }
+        if (how === 'online') state.mode = MK.online; else if (merged && how === 'start') state.mode = resolved();
+        saveSetup(); sfx('pop'); haptic('medium');
+        try { parent.postMessage({ kitSheet: 'go', how: how, page: pageKey() }, location.origin); } catch (e) {}
+      };
+      var sDock = [el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!", onclick: function () { sheetGo('start'); } })];
+      var sAlt = o.alt ? o.alt : merged && MK.online ? { label: 'Play online', icon: 'globe', online: true } : null;
+      if (sAlt) sDock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (sAlt.icon ? icon(sAlt.icon) : '') + '<span>' + esc(sAlt.label) + '</span>', onclick: function () { sheetGo(sAlt.online ? 'online' : 'alt'); } }));
+      wrap.appendChild(el('div', { class: 'k-startdock' + (sAlt ? ' has-alt' : '') }, sDock));
+      host.appendChild(wrap);
+      renderModes(); renderSeats();
+      // the sheet sizes its frame to the setup
+      var tell = function () { try { parent.postMessage({ kitSheet: 'h', h: Math.ceil(wrap.getBoundingClientRect().height + wrap.offsetTop + 4), page: pageKey() }, location.origin); } catch (e) {} };
+      tell(); try { new ResizeObserver(tell).observe(wrap); } catch (e) { setInterval(tell, 500); }
+      return { el: wrap, state: state };
+    }
     if (EDIT_DEFAULTS) {
       var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
         saveSetup(); sfx('good'); haptic('success'); toast('Saved');
@@ -2258,6 +2310,15 @@
     host.appendChild(wrap);
     winPeekClear();
     renderModes(); renderSeats();
+    // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
+    if (GO && Date.now() - GO.at < 15000) {
+      var how = GO.how; GO = null;
+      setTimeout(function () {
+        var b = wrap.querySelector(how === 'start' ? '.k-start' : '.k-start-alt');
+        root.classList.remove('k-going');
+        if (b && wrap.isConnected) b.click();
+      }, 0);
+    }
     return { el: wrap, state: state };
   }
 
@@ -2868,6 +2929,7 @@
   }
   // They accepted your link: a small banner drops in from the top, on any screen (mid-game too), then slides away
   function acceptedBanner() {
+    if (IN_SHEET) return;
     var names; try { names = JSON.parse(lsGet('fgh_link_acc', '[]')); } catch (e) { names = []; }
     if (!Array.isArray(names) || !names.length || !doc.body) return;
     try { localStorage.removeItem('fgh_link_acc'); } catch (e) {}
@@ -3225,6 +3287,7 @@
   function timerLockOff() { timerLocked = false; if (tmLock) { tmLock.remove(); tmLock = null; } }
   function timerTick() {
     clearTimeout(tmT);
+    if (IN_SHEET) return;
     var t = timerGet();
     if (!t) { timerChipOff(); timerLockOff(); tmLast = null; return; }
     var left = t.end - Date.now(), grace = t.cut ? 0 : 60000;
@@ -3254,6 +3317,7 @@
   // A game (or its whole section) a parent turned off: its page is covered, with the way back home
   var blockEl = null;
   function blockCheck() {
+    if (IN_SHEET) return;
     if (!/\/games\//.test(location.pathname)) return;
     var g = findGameSafe(pageKey()), off = g && !gameOn(g);
     if (!off) { if (blockEl) { blockEl.remove(); blockEl = null; } return; }
@@ -3267,6 +3331,7 @@
   // device, and it goes in Notifications (so does turning games off, which the lock screen shows). Set while the app was closed: on the next page,
   // if it's still running.
   function pcTimerNews() {
+    if (IN_SHEET) return;
     var p = pcGet(), t = p && p.timer; if (!t || !t.end || !doc.body) return;
     var id = String(t.start || t.end);
     if (lsGet('gn_pct_seen_dev', '') === id) return;
@@ -4331,7 +4396,7 @@
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
     marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
-    defaults: { sheet: defaultsSheet, get: setupSaved }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
+    defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
     tour: tour, links: { link: linkSheet, profile: profileSheet, review: reviewSheet, fromUrl: linkFromUrl, request: requestSheet, on: linksOn, initials: initialsSheet, panel: linkedPanel, list: linkedList, remove: unlinkAsk }, histGame: histGameId, histSkip: GH_SKIP, fmtDur: fmtDur, cpuNameList: function () { return CPU_NAMES.slice(); },
     orientOk: function () { return orientOk; },

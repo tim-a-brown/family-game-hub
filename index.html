@@ -699,6 +699,30 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .pick .t{font-weight:900;font-size:1.1rem;}
 .pick .d{color:var(--text-2);font-size:.9rem;}
 
+/* The game sheet: condensed rows, Quick start first, then the game's own setup in a frame */
+.pick.gsheet{gap:9px;margin-top:4px;}
+.pick.gsheet button{padding:11px 12px;gap:12px;box-shadow:0 4px 0 rgba(0,0,0,.3);}
+.pick.gsheet .e{width:40px;height:40px;border-radius:12px;}
+.pick.gsheet .e .ico{width:21px;height:21px;}
+.pick.gsheet .tx{min-width:0;flex:1;}
+.pick.gsheet .t{font-size:1.02rem;}
+.pick.gsheet .d{font-size:.84rem;}
+.pick .d.rs{display:flex;justify-content:space-between;gap:10px;}
+.pick .d.rs .ago{flex:none;color:var(--text-3);font-weight:700;}
+.pick button.quick{background:color-mix(in srgb,var(--yellow-fill,#ffc83d) 16%,var(--surface-2));box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 0 0 2px color-mix(in srgb,var(--yellow-fill,#ffc83d) 70%,transparent);}
+.pick button.quick .e{background:var(--yellow-fill,var(--yellow));color:#2b1a00;}
+.pick button.alt{background:var(--w06);box-shadow:none;}
+.qs-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.qs-chip{padding:3px 9px;border-radius:999px;background:var(--w08);color:var(--text-2);font-size:.76rem;font-weight:800;line-height:1.3;}
+.qs-chip.who{background:color-mix(in srgb,var(--yellow-fill,#ffc83d) 26%,transparent);color:var(--text);}
+.gs-wrap{margin:6px -20px 0;}
+.gs-h{margin:0 20px 2px;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
+.gs-fb{position:relative;}
+.gs-frame{display:block;width:100%;border:0;background:transparent;opacity:0;transition:opacity .25s;}
+.gs-wrap.on .gs-frame{opacity:1;}
+.gs-spin{position:absolute;left:50%;top:60px;width:28px;height:28px;margin-left:-14px;border-radius:50%;border:3px solid var(--w2);border-top-color:var(--text-2);animation:gsSpin .8s linear infinite;}
+.gs-wrap.on .gs-spin{display:none;}
+@keyframes gsSpin{to{transform:rotate(360deg);}}
 /* Mode chooser header */
 .pick-h{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
 .pick-h .gicon{width:64px;height:64px;flex:none;}
@@ -976,34 +1000,76 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       DeviceOrientationEvent.requestPermission().then(function (r) { if (r === 'granted') localStorage.setItem('lorc_tilt', '1'); }).catch(function () {});
     } catch (e) {}
   }
-  function launch(g) {
-    Kit.haptic('light');
-    if (g.id === 'lorcana') askMotion();
-    // a game already going: offer to pick it up (or start fresh) instead of dropping straight in
-    var live = resumeRead()[g.id] || null;
-    if (!g.score && !live) return go(g.play, true);
-    Kit.sfx('pop');
-    var box = el('div', { class: 'pick' });
-    var s;
-    function opt(e, t, d, file, cls) {
-      box.appendChild(el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); go(file, cls !== 'resume' && cls !== 'tool'); } }, [
-        el('span', { class: 'e', html: Kit.icon(e) }), el('span', null, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: d })])
-      ]));
+  // Every game opens in a sheet: the game you left (Resume), Quick start (your last setup, one tap), its other ways
+  // in (Keep score, Lorcana's cards), then the game's whole setup, its own page in a frame (Kit setup ?sheet=1),
+  // whose start button opens the game and drops straight into play (kit_go)
+  var GS = null;
+  window.addEventListener('message', function (e) {
+    if (!GS || e.origin !== location.origin || !GS.frame || e.source !== GS.frame.contentWindow) return;
+    var d = e.data || {};
+    if (d.kitSheet === 'h') { GS.fh = d.h; GS.fit(); GS.frame.closest('.gs-wrap').classList.add('on'); }
+    else if (d.kitSheet === 'go') GS.start(d.how, d.page);
+    else if (d.kitSheet === 'pick') {   // an arcade seat needs a name before it starts
+      var w = GS.frame.contentWindow, got = '';
+      Kit.pickName(function (n) { got = n; w.postMessage({ kitSheet: 'name', name: n }, location.origin); }, { taken: d.taken || [], title: d.title, onClose: function () { setTimeout(function () { if (!got) w.postMessage({ kitSheet: 'name', name: '' }, location.origin); }, 0); } });
     }
-    var board = g.cat === 'board', nw = live ? '#new' : '';
-    if (live) opt('play', 'Resume game', (live.label || 'In progress') + ' · ' + ago(live.ts), live.file || g.play, 'resume');
-    // tool: not a game (e.g. Lorcana's cards and decks), so no "New:" and the unfinished game stays put; listed last
-    if (g.launch) g.launch.forEach(function (o) { if (!o.tool) opt(o.icon, (live ? 'New: ' : '') + o.title, o.desc, o.file + nw); });
-    else if (g.score) {
-      opt('phone', (live ? 'New game: ' : '') + 'Play on this device', board ? 'The whole game here, with family or computer players' : 'You against computer players', g.play + nw);
-      opt('pencil', (live ? 'New: ' : '') + (board ? 'Table companion' : 'Keep score'), board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', g.score + nw);
-    } else opt('sparkle', 'New game', 'Start over. The unfinished game is dropped; it isn’t saved to anyone’s history, linked players included.', g.play + nw);
-    // several ways to play: say the same once, under the choices
-    if (live && (g.launch || g.score)) box.appendChild(el('p', { class: 'muted pick-note', text: 'Starting a new game drops the unfinished one; it isn’t saved to anyone’s history, linked players included.' }));
-    if (g.launch) g.launch.forEach(function (o) { if (o.tool) opt(o.icon, o.title, o.desc, o.file, 'tool'); });
-    box.insertBefore(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' }), box.firstChild);
-    s = Kit.sheet({ node: box });
+  });
+  function setupChips(g, sp) {
+    var saved = Kit.defaults && Kit.defaults.get ? Kit.defaults.get(g.id) || Kit.defaults.get(sp) : null;
+    if (!saved || !saved.sum) return null;
+    var row = el('span', { class: 'qs-chips' });
+    var names = (saved.names || []).slice(0, saved.count || 0).filter(function (n) { return n; });
+    names.forEach(function (n) { row.appendChild(el('span', { class: 'qs-chip who', text: n })); });
+    String(saved.sum).split(' · ').forEach(function (t) { if (t) row.appendChild(el('span', { class: 'qs-chip', text: t })); });
+    return row;
   }
+  function launch(g) {
+    Kit.haptic('light'); Kit.sfx('pop');
+    if (g.id === 'lorcana') askMotion();
+    var live = resumeRead()[g.id] || null, nw = live ? '#new' : '';
+    var sp = Kit.setupPage ? Kit.setupPage(g) : null;
+    var box = el('div', { class: 'pick gsheet' }), s;
+    function opt(e, t, d, act, cls) {
+      var b = el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); act(); } }, [
+        el('span', { class: 'e', html: Kit.icon(e) }), el('span', { class: 'tx' }, [el('div', { class: 't', text: t })].concat(d ? [typeof d === 'string' ? el('div', { class: 'd', text: d }) : d] : []))
+      ]);
+      box.appendChild(b); return b;
+    }
+    function start(how, page) {
+      try { sessionStorage.setItem('kit_go', JSON.stringify({ page: page || sp, how: how || 'start', t: Date.now() })); } catch (e) {}
+      s.close(); go(g.play + nw, false);
+    }
+    box.appendChild(el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' }));
+    if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [el('span', { text: live.label || 'In progress' }), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
+    var chips = sp ? setupChips(g, sp) : null;
+    if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
+    else if (!sp) opt('play', live ? 'New game' : 'Play', live ? 'Start over' : g.tag, function () { go(g.play + nw, true); }, 'quick');
+    var board = g.cat === 'board';
+    if (g.launch) g.launch.forEach(function (o) {
+      if (o.tool || (sp && o.file === sp + '.html')) return;   // (playing on this device: that's the setup below)
+      opt(o.icon, o.title, o.desc, function () { go(o.file + nw, true); }, 'alt');
+    });
+    else if (g.score) opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', function () { go(g.score + nw, true); }, 'alt');
+    if (g.launch) g.launch.forEach(function (o) { if (o.tool) opt(o.icon, o.title, o.desc, function () { go(o.file, false); }, 'alt tool'); });
+    if (live) box.appendChild(el('p', { class: 'muted pick-note', text: 'Starting a new game drops the unfinished one; it isn’t saved to anyone’s history, linked players included.' }));
+    GS = null;
+    if (sp) {
+      var np = state.who && state.who !== 'any' ? '&np=' + state.who : '';
+      var frame = el('iframe', { class: 'gs-frame', title: g.name + ' setup', src: 'games/' + sp + '.html?defaults=1&sheet=1' + np });
+      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
+      box.appendChild(fw);
+      GS = { frame: frame, fh: 0, start: start, fit: function () {
+        var sh = box.closest('.k-sheet'); if (!sh) return;
+        var max = parseFloat(getComputedStyle(sh).maxHeight) || innerHeight * 0.88;
+        var other = sh.scrollHeight - frame.offsetHeight;
+        var h = Math.max(Math.min(280, innerHeight * 0.42), Math.min(GS.fh || 360, max - other));
+        frame.style.height = h + 'px';
+      } };
+    }
+    s = Kit.sheet({ node: box, onClose: function () { GS = null; } });
+    if (GS) { frame.style.height = '360px'; setTimeout(GS.fit, 0); }
+  }
+  window.addEventListener('resize', function () { if (GS) GS.fit(); });
 
   // ── Render ────────────────────────────────────────────────────────────────
   // Daily puzzles: under Surprise, as tall as the chips, with how many of today's are done
