@@ -716,10 +716,10 @@ var Tour = (function () {
         parts: [
           ['user', 'On your own', ['Use one seat. Good for puzzles, solitaire, arcade games and the daily puzzles.']],
           ['bot', 'Against the computer', [
-            'Tap who’s playing, then turn on the robot switch for the other seats. Each computer player gets its own name.',
-            'Each robot’s skill is on the line under its seat.']],
+            'Tap who’s playing, tap a seat, and switch on <b>Computer</b>. Each computer player gets its own name.',
+            'How well it plays is right under the switch.']],
           ['phone', 'Pass and play', [
-            'Tap who’s playing and add everyone at the table, then pass the phone around.',
+            'Tap who’s playing, then tap everyone at the table: each tap seats one more. Then pass the phone around.',
             'In card games your hand is covered up before the next person takes the phone.']],
           ['globe', 'Online', [
             'Tap <b>Play online</b> next to the start button. Friends join from their own phones with the four-letter code.',

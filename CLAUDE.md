@@ -94,8 +94,9 @@ Underlying principles for everything:
 - **Same setup, same results card, every game.** Ways to play are declared with `Kit.modes([...])` (`solo`,
   `cpu`, `local`, `online`; a game keeps its own mode ids with `kind`), but **no mode cards are shown** for these:
   the setup shows who's playing on one line (the people who played last; seat 1 starts as the signed-in player), and a
-  tap opens the **players sheet** (`Kit.playersSheet`: how many, who sits where, a robot switch on each seat after the
-  first, each robot's skill). A game never draws its own seat list; one that shows something per seat reads
+  tap opens the **players sheet** (`Kit.playersSheet`): the seats as tokens up top with one chosen, and under them what
+  can sit there, the Computer switch with its skill and everyone you play with as chips (a tap seats them and moves
+  to the next open seat; at a full table it adds a seat). A game never draws its own seat list; one that shows something per seat reads
   `setup.seats()` (Axis & Allies' countries). One seat is Just me, robots in
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
   `onStart` still gets the matching mode id. Play online is a smaller button beside the start button (`Kit.setup`
