@@ -213,8 +213,8 @@ function apply(S, a, da, dd, raw) {
     let h2c = a.h2 != null ? P.hand[a.h2] : null;
     if (a.h2 != null) { P.hand.splice(Math.max(a.h, a.h2), 1); P.hand.splice(Math.min(a.h, a.h2), 1); } else P.hand.splice(a.h, 1);
     if (ci === 'eureka') draw(S, o, 2);
-    else if (ci === 'caravan') P.spark += 3;
-    else if (ci === 'decree') S.pb[a.p][o] += 4;
+    else if (ci === 'caravan') P.spark += (S.cfg.caravan || 3);
+    else if (ci === 'decree') S.pb[a.p][o] += (S.cfg.decree || 4);
     else if (ci === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
     else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
