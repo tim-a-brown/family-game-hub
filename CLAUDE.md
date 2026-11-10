@@ -225,7 +225,8 @@ Underlying principles for everything:
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
   real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;
-  Saladin's straight sword; Anansi as the spider of the Akan stories; a Song dynasty water compass). No exoticised
+  Saladin's straight sword; Anansi as the spider of the Akan stories, a real spider with no face, mask or other
+  human feature, his character in his posture and eyes; a Song dynasty water compass). No exoticised
   or comic depictions of a people, no deck or power name that labels one (Harriet Tubman's deck is Pathfinders).
   Legends are captioned as legend. New sets get the same audit before their art is made.
   Art made in the figure's own time and culture is fair inspiration (Hammurabi after his law stele, Ashurbanipal after
