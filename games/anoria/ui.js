@@ -6,6 +6,7 @@
   const E = window.AnoriaEngine, C = window.AnoriaCards, TX = window.AnoriaText, LAND = window.AnoriaLand || [];
   const CARDS = C.CARDS, el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
+  const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
 
   // ═══ What things are called ═════════════════════════════════════════════════════════════════════════════
   const FAC = {
@@ -28,7 +29,7 @@
     swift: ['Swift', 'can walk the turn it arrives.'],
     raider: ['Raider', '+2 Might attacking on the other player\'s side of the map.']
   };
-  const LEVEL = { easy: 'novice', normal: 'holder', hard: 'raider' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
   const MARK = {
     fig: '<svg viewBox="0 0 12 12"><circle cx="6" cy="4" r="2.4" fill="#e8b04a"/><path d="M1.6 11.2c.4-3 2.3-4.3 4.4-4.3s4 1.3 4.4 4.3Z" fill="#e8b04a"/></svg>',
@@ -194,6 +195,11 @@
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
     if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: with ' + esc(names(c.insp)) + ' in play on your side, this costs 1 less, a gold line joins them, it has +1 Might while they stand, and you score 1 Renown (once a round).' }));
+    if (CARDS[key] && CARDS[key].from && E.STD.threads) {
+      const src = CARDS[key].from.map(x => x[0] === '@' ? C.PLACES[x.slice(1)].n : CARDS[x].n), fig = CARDS[key].t === 'fig';
+      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'arriving at ' : 'with a Figure of yours at ') + C.PLACES[x.slice(1)].n : 'with ' + CARDS[x].n + (CARDS[x].t === 'relic' ? ' in play' : ' on your side'));
+      notes.appendChild(el('p', { html: '<b>Thread</b>: grew from ' + esc(listOf(src)) + '. Played ' + esc(listOf(how, 'or')) + ', it scores 1 Renown (once a round).' }));
+    }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1]) })); });
     if (c.kind === 'place') {
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
@@ -218,61 +224,103 @@
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
 
+  const listOf = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
   // ═══ Setup ═══════════════════════════════════════════════════════════════════════════════════════════════
-  function deckFacs(name) {
-    const n = {}; C.ARCH[name].cards.forEach(k => { const f = CARDS[k].f; if (f !== 'N') n[f] = (n[f] || 0) + 1; });
+  function deckFacs(cards) {
+    const n = {}; cards.forEach(k => { const f = CARDS[k].f; if (f !== 'N') n[f] = (n[f] || 0) + 1; });
     return Object.keys(n).sort((a, b) => n[b] - n[a]).map(f => [f, n[f]]);
   }
-  function deckSheet(name) {
-    const A = C.ARCH[name], list = el('div', { class: 'dk-list' });
-    [A.guide].concat(A.cards.slice().sort((a, b) => (CARDS[a].t === 'fig' ? 0 : 1) - (CARDS[b].t === 'fig' ? 0 : 1) || CARDS[a].c - CARDS[b].c)).forEach(k => {
-      list.appendChild(el('button', { type: 'button', class: 'hc', 'aria-label': info(k).n, onclick: () => openView(k) }, [cardEl(k, { mini: true })]));
+  // a deck's Guide and cards, one of each with how many (d = {n, guide, cards})
+  function deckSheet(d) {
+    const list = el('div', { class: 'dk-list' }), n = {}; d.cards.forEach(k => { n[k] = (n[k] || 0) + 1; });
+    [d.guide].concat(Object.keys(n).sort((a, b) => (CARDS[a].t === 'fig' ? 0 : 1) - (CARDS[b].t === 'fig' ? 0 : 1) || CARDS[a].c - CARDS[b].c)).forEach(k => {
+      list.appendChild(el('button', { type: 'button', class: 'hc', 'aria-label': info(k).n + (n[k] > 1 ? ', two' : ''), onclick: () => openView(k) }, [cardEl(k, { mini: true }), n[k] > 1 ? el('span', { class: 'hc-n', text: '2' }) : null]));
     });
-    Kit.sheet({ title: name + ': the Guide and two of each card', node: list, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    Kit.sheet({ title: d.n + ': ' + d.cards.length + ' cards', node: list, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
-  function deckPicker(label, value, set) {
+  // The decks a seat can choose. A person: the decks they can play (their starter, any ready deck they own all of,
+  // the decks they built), then the ready decks still locked, with how much of each they own, and Build a deck.
+  // The computer: any of the five ready decks, or a surprise.
+  const readyDeck = name => ({ id: 'ready:' + name, n: name, guide: C.ARCH[name].guide, cards: C.ARCH[name].cards.concat(C.ARCH[name].cards), ready: true, ok: true });
+  const starterId = () => 'ready:' + (Coll.load().starter || DECKS[0]);
+  function deckChoice(v, who) {   // the choice as it stands: a deck this seat can play
+    if (who === 'cpu') { const n = String(v || '').replace(/^ready:/, ''); return C.ARCH[n] ? 'ready:' + n : 'any'; }
+    const d = Coll.deck(String(v || '')) || Coll.deck('ready:' + v); return d && d.ok ? d.id : starterId();
+  }
+  function deckPicker(label, value, set, who) {
+    value = deckChoice(value, who);
     const box = el('div', { class: 'k-opt dk-pick' }, [el('div', { class: 'label' }, [el('span', { text: label })])]);
     const row = el('div', { class: 'dk-row' });
-    ['any'].concat(DECKS).forEach(name => {
-      const any = name === 'any', g = any ? null : C.ARCH[name].guide;
-      const pic = el('span', { class: 'dk-g' + (any ? ' back' : ''), style: any ? null : { '--f': FAC[TX.GUIDES[g].f].c } });
+    const all = who === 'cpu' ? [{ id: 'any', n: 'Surprise me', ok: true }].concat(DECKS.map(readyDeck)) : Coll.decks().sort((a, b) => (b.ok ? 1 : 0) - (a.ok ? 1 : 0));
+    all.forEach(d => {
+      const any = d.id === 'any', g = any ? null : d.guide;
+      const pic = el('span', { class: 'dk-g' + (any || !g ? ' back' : ''), style: any || !g ? null : { '--f': FAC[TX.GUIDES[g].f].c } });
       if (g) { const im = artImg(g, true); if (im) pic.appendChild(im); }
       const cols = el('span', { class: 'dk-c' });
-      (any ? [['D', 1], ['S', 1], ['V', 1], ['A', 1], ['W', 1]] : deckFacs(name)).forEach(x => cols.appendChild(el('i', { style: { '--c': FAC[x[0]].c, '--n': x[1] } })));
-      row.appendChild(el('button', { type: 'button', class: 'dk' + (value === name ? ' on' : ''), 'aria-pressed': String(value === name), onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); set(name); } },
-        [pic, el('span', { class: 'dk-n', text: any ? 'Surprise me' : name }), cols]));
+      (any ? [['D', 1], ['S', 1], ['V', 1], ['A', 1], ['W', 1]] : deckFacs(d.cards)).forEach(x => cols.appendChild(el('i', { style: { '--c': FAC[x[0]].c, '--n': x[1] } })));
+      row.appendChild(el('button', { type: 'button', class: 'dk' + (value === d.id ? ' on' : '') + (d.ok ? '' : ' locked'), 'aria-pressed': String(value === d.id), 'aria-label': d.n + (d.ok ? '' : ', not yours to play yet: ' + d.why.join(', ')),
+        onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (d.ok) set(d.id); else lockedDeck(d); } },
+        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own + ' of 30' : d.cards.length + ' of 30') + '</b>' })]));
     });
+    if (who !== 'cpu' && window.AnoriaDecks) row.appendChild(el('button', { type: 'button', class: 'dk dk-new', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(null, showSetup); } },
+      [el('span', { class: 'dk-g back plus', html: Kit.icon('plus') }), el('span', { class: 'dk-n', text: 'Build a deck' })]));
     box.appendChild(row);
-    if (value !== 'any' && C.ARCH[value]) {
-      const g = TX.GUIDES[C.ARCH[value].guide];
+    const d = value === 'any' ? null : who === 'cpu' ? readyDeck(value.slice(6)) : Coll.deck(value);
+    if (d) {
+      const g = TX.GUIDES[d.guide];
       box.appendChild(el('div', { class: 'dk-info' }, [
-        el('div', { class: 'plan', text: PLAN[value] }),
+        el('div', { class: 'plan', text: d.ready ? PLAN[d.n] : 'A deck you built' }),
         el('div', { class: 'gd', html: '<b>' + esc(g.n) + '</b> guides it. ' + esc(g.tx) }),
-        el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(value); } })
+        el('span', { class: 'dk-btns' }, [
+          d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
+          el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])
       ]));
     } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'One of the five, picked when the game starts' })]));
     return box;
+  }
+  // a ready deck you don't own all of yet: what's missing, and where to go for it
+  function lockedDeck(d) {
+    const acts = [{ label: 'OK', cls: 'btn-soft' }];
+    if (d.ready && window.AnoriaLibrary) acts.unshift({ label: 'Open the Library', primary: true, onClick: () => window.AnoriaLibrary.open(showSetup) });
+    if (d.built && window.AnoriaDecks) acts.unshift({ label: 'Change this deck', primary: true, onClick: () => window.AnoriaDecks.open(d.id, showSetup) });
+    Kit.sheet({ title: d.n, html: '<p>' + esc(d.why.join('. ')) + '.</p>' + (d.ready ? '<p class="muted">A ready deck is yours to play once you own every card in it. New cards come in packs.</p>' : ''), actions: acts });
+  }
+  // The way into your collection, under who's playing: the Library (how much of it is yours), the packs waiting to
+  // be opened (or what earns the next one), and your decks
+  function hubRow() {
+    const c = Coll.counts(), packs = Coll.packs(), next = Coll.nextUp()[0], mine = Coll.myDecks().length, row = el('div', { class: 'an-hub' });
+    const tile = (cls, ic, name, sub, on, fn) => el('button', { type: 'button', class: 'an-hub-t ' + cls + (on ? ' on' : ''), onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fn(); } },
+      [el('span', { class: 'ic', html: ic }), el('b', { text: name }), el('small', { text: sub })]);
+    if (window.AnoriaLibrary) row.appendChild(tile('lib', Kit.icon('book'), 'Library', c.own + ' of ' + c.cards, false, () => window.AnoriaLibrary.open(showSetup)));
+    if (window.AnoriaPacks) row.appendChild(tile('pk', Kit.icon('sparkle'), 'Packs', packs.length ? packs.length + ' to open' : next && next.done ? 'Next one tomorrow' : 'Win today for one', packs.length > 0, () => window.AnoriaPacks.open(showSetup)));
+    if (window.AnoriaDecks) row.appendChild(tile('dk', Kit.icon('cards'), 'Decks', mine ? mine + ' you built' : 'Build your own', false, () => window.AnoriaDecks.open(null, showSetup)));
+    return row;
   }
   let curMode = 'cpu';
   function showSetup() {
     stop(); G = null; S = null; V = null; clearSave();
     app.className = 'stage'; app.innerHTML = ''; window.scrollTo(0, 0);
-    Kit.setup(app, {
+    // the first time: choose your Guide (their deck is your starter) and open your welcome packs
+    if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
+    const who = i => (i === 1 && curMode === 'cpu' ? 'cpu' : 'me');
+    const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
       options: [
-        { id: 'deck0', value: 'Explorers', when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set), summary: v => v === 'any' ? 'Surprise deck' : v },
-        { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set) },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Plays loosely and makes mistakes.'], ['normal', 'Normal', 'Plays to hold Places.'], ['hard', 'Hard', 'Comes for your Gate and your Seals.']], when: m => m === 'cpu' }
+        { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
+        { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Stops early and misses things. A good first game.'], ['normal', 'Normal', 'Plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'Plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
       ],
       players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
       start: 'Deal the cards',
       onStart: cfg => {
-        const pick = v => C.ARCH[v] ? v : DECKS[(Math.random() * DECKS.length) | 0];
         const cpu = cfg.players.some(p => p.cpu);
+        const theirs = v => { const id = deckChoice(v, 'cpu'); return readyDeck(id === 'any' ? DECKS[(Math.random() * DECKS.length) | 0] : id.slice(6)); };
         newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal',
-          players: cfg.players.map((p, i) => ({ name: p.name, cpu: !!p.cpu, color: PCOL[i], deck: pick(cfg.options['deck' + i]) })) });
+          players: cfg.players.map((p, i) => { const d = p.cpu ? theirs(cfg.options.deck1) : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
+            return { name: p.name, cpu: !!p.cpu, color: PCOL[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }; }) });
       }
     });
+    const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
   }
 
   // ═══ The game: state, saving ═════════════════════════════════════════════════════════════════════════════
@@ -294,21 +342,24 @@
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
   function stop() { gen++; document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  // (a player from before decks could be built: their ready deck by name)
+  function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
     stop();
-    const decks = cfg.players.map(p => C.ARCH[p.deck].cards.concat(C.ARCH[p.deck].cards)), guides = cfg.players.map(p => C.ARCH[p.deck].guide);
-    S = E.newGame(decks, guides, Object.assign({ log: 1 }, E.STD), E.rng((Math.random() * 4294967296) >>> 0));
+    cfg.players.forEach(deckOf);
+    const decks = cfg.players.map(p => p.cards.slice()), guides = cfg.players.map(p => p.guide);
+    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     G = { mode: cfg.mode, level: cfg.level, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
-      stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [] };
+      stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {} };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
     Kit.gameStart(); save(); buildTable(); V = snap(); render();
     beginTurn();
   }
   function restore(d) {
-    stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = [];
+    stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     buildTable(); V = snap(); render(); beginTurn();
   }
@@ -340,7 +391,7 @@
   }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
-    preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(C.ARCH[p.deck].cards), [])));
+    preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     dom.fx = el('div', { class: 'an-fx' });
@@ -803,6 +854,14 @@
       Kit.sfx('sparkle'); Kit.haptic('success'); await wait(900);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
+    async thread(ev) {
+      const src = ev.src.k === 'fig' ? dom.map.querySelector('.fp[data-u="' + ev.src.u + '"]') : ev.src.k === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.src.c + '"]') : dom.map.querySelector('.pl[data-p="' + ev.src.p + '"] .pl-tile');
+      const to = ev.u ? dom.map.querySelector('.fp[data-u="' + ev.u + '"]') : CARDS[ev.c].t === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.c + '"]') : q('.an-strip.p' + ev.o + ' .st-guide');
+      const from = ev.src.k === 'fig' ? CARDS[(vfig(ev.src.u) || {}).c] : ev.src.k === 'relic' ? CARDS[ev.src.c] : C.PLACES[S.places[ev.src.p]];
+      [src, to].forEach(n => { if (n) { n.classList.remove('thread'); void n.offsetWidth; n.classList.add('thread'); } });
+      Kit.callout((from ? from.n : 'A thread') + ' to ' + CARDS[ev.c].n); Kit.sfx('sparkle'); Kit.haptic('success'); await wait(950);
+      if (ev.ren) { V.P[ev.o].renown += ev.ren; await plus(ev.ren, rc(to || src), ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
+    },
     async relic(ev, ctx) {
       const o = ev.o, from = handRect(o, ctx.a.h); if (o !== ui.view) await showCard(ev.c, 900);
       dropHand(o, ctx.a.h); V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); V.P[o].relics.push(ev.c); render();
@@ -869,7 +928,8 @@
   function tally(evs) {
     evs.forEach(ev => {
       if (ev.t === 'ko' && ev.by) G.stats[1 - ev.o].ko++;
-      else if (ev.t === 'line') G.stats[ev.o].lines++;
+      else if (ev.t === 'line' || ev.t === 'thread') G.stats[ev.o].lines++;
+      if ((ev.t === 'arrive' || ev.t === 'relic' || ev.t === 'deed' || ev.t === 'quick') && ev.c) G.seen[ev.c] = 1;
       else if (ev.t === 'seal') G.stats[ev.by].seals++;
       else if (ev.t === 'hold') G.stats[ev.o].held++;
     });
@@ -1010,17 +1070,22 @@
         rounds: { labels: G.hist.map((x, i) => String(i + 1)), scores: G.hist }, highlights: hl,
         detail: { how: S.how, rounds: S.round, decks: G.players.map(p => p.deck).join(', '), seals: S.P.map(p => p.seals).join(' and ') } });
     } catch (e) {}
+    // the collection: cards that crossed the table are seen; a win against the computer can earn a pack or a Guide
+    try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w === 0, cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
   }
+  const earnedLabel = x => x.t === 'guide' ? 'Meet your new Guide' : 'Open your pack';
   function showWin(quiet) {
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
-    const notes = [];
+    const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
+    earned.forEach(x => notes.push(x.t === 'guide' ? TX.GUIDES[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
     notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to 30 Renown at the end of a round');
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
-      again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players' });
+      again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
+      extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -1041,6 +1106,9 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the lower Might is knocked out. A tie: nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
+    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. Play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing) and it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
+    '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack. So do your first win against Normal, against Hard, and with a deck you built. New Guides join you at 3, 8, 15 and 25 wins.</li>' +
+    '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. A tie: nobody. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
@@ -1054,11 +1122,16 @@
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
     onNew: showSetup, undo: undo,
     menu: [
+      { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => { if (window.AnoriaLibrary) window.AnoriaLibrary.open(); } },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
       { icon: 'eye', label: 'Hide Anoria', sub: 'Tucks it back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
     ]
   });
 
+  // what the collection's screens (library.js, packs.js, decks.js) share with the table
+  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+    cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
+    showSetup: showSetup, inGame: () => !!(G && S && !G.over) };
   window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}

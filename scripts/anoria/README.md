@@ -34,3 +34,12 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
 - The game's rules (`STD`) now have `dice: 'high'` (two ordinary dice, the higher roll adds 1 Might, 2 when higher by 3
   or more), `unique: 1` (one of each person on your side at a time) and `ret: 1` (a Figure whose other copy is in your
   discard pile costs 1 less). Earlier result files were run before these.
+
+## Robots, Threads and collecting
+
+- `node scripts/anoria/skill.js [games]`: Easy, Normal and Hard against each other (`skill.txt`). Easy stops its turn
+  early some of the time (`quit`), which is what makes it easy; noise alone barely did.
+- Threads (`cfg.threads`): any card can name what it grew from (`from` in cards.js). `variants.txt` has the test games
+  for the three ways of rewarding it.
+- `node scripts/anoria/pacing.js [players] [games a day] [win chance]`: plays the collection's own rules
+  (`games/anoria/coll.js`) for someone who plays every day, checks them, and says how long the set takes (`pacing.txt`).

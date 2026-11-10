@@ -79,6 +79,27 @@ const CARDS = {
   decree: { n: 'Royal Decree', t: 'deed', f: 'S', c: 1 },
   encore: { n: 'Encore', t: 'deed', f: 'A', c: 1 },
 };
+// Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
+// have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
+const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'odysseus': ['homer'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'trojan': ['odysseus'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'odysseus'], 'eclipse': ['antikythera']};
+Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
+// (Odysseus grew from Homer the way a Legacy Figure grows from a teacher: a line, with its +1 Might)
+CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
+// Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).
+const THREADS = [
+  { id: 'academy', n: 'The Academy', cards: ['socrates', 'plato', 'aristotle', 'alexander'] },
+  { id: 'heavens', n: 'The Heavens', cards: ['copernicus', 'galileo', 'newton'] },
+  { id: 'epic', n: 'The Epic', cards: ['homer', 'virgil', 'dante'] },
+  { id: 'horse', n: 'The Wooden Horse', cards: ['homer', 'odysseus', 'trojan', 'fairwinds'] },
+  { id: 'vienna', n: 'Vienna', cards: ['mozart', 'beethoven', 'encore'] },
+  { id: 'eureka', n: 'Eureka!', cards: ['archimedes', 'eureka', 'antikythera', 'eclipse'], places: ['library'] },
+  { id: 'searoads', n: 'The Sea Roads', cards: ['compass', 'zhenghe', 'marcopolo', 'caravan'], places: ['silk'] },
+  { id: 'law', n: 'The Law', cards: ['hammurabi', 'ashoka', 'decree'] },
+  { id: 'stage', n: 'The Stage', cards: ['press', 'shakespeare', 'nostradamus'], places: ['globe'] },
+  { id: 'learning', n: 'Houses of Learning', cards: ['hypatia', 'mansamusa', 'ashurbanipal', 'pericles'], places: ['library', 'timbuktu', 'nineveh', 'acropolis'] },
+  { id: 'shields', n: 'The Shield Wall', cards: ['leonidas', 'alexander', 'phalanx'] },
+  { id: 'trap', n: 'The Trap', cards: ['hannibal', 'ambush'] },
+];
 const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu' };
 const PLACES = {
   library: { n: 'Library of Alexandria', reg: 'AFR', era: 2 }, silk: { n: 'Silk Road', reg: 'ASIA', era: 3 },
@@ -97,5 +118,5 @@ const ARCH = {
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
   Tricksters: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
-return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH };
+return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, THREADS };
 });

@@ -6,7 +6,7 @@ const { CARDS, PLACES, CENTER, EDGE } = cards;
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1 };
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -84,10 +84,34 @@ function walkDests(S, f, free) {
   for (const i in seen) { const j = +i; if (j !== f.p && !(pid(S, j) === 'machu' && ownerOfSpoke(S, j) !== f.o) && room(S, j, f.o)) out.push(j); }
   return out;
 }
+// Threads: a card can name what it grew from (c.from): a Figure standing on your side, a Relic you have in play, or a
+// Place ('@library': for a Figure, the Place it arrives at; for a Relic or a Deed, a Place where you have a Figure).
+// A card played along a thread scores the Legacy Renown (once a round, shared with Legacy lines). A Figure's own
+// Legacy line (c.insp, Figure to Figure, with its discount and +1 Might) comes first. cfg.threads: 2 is the game's rule
+// (Renown only). 1 also made the card cost 1 less, and 3 was the discount alone: both pulled the ready decks 11 to 12
+// points apart in test games, where Renown only keeps them within 8 (scripts/anoria/variants.txt).
+function threadSrc(S, o, ci, place) {
+  const c = CARDS[ci]; if (!S.cfg.threads || !c.from) return null;
+  for (const s of c.from) {
+    if (s[0] === '@') { const id = s.slice(1);
+      if (c.t === 'fig') { if (place != null && pid(S, place) === id) return { k: 'place', p: place }; }
+      else { const f = S.figs.find(g => g.o === o && pid(S, g.p) === id); if (f) return { k: 'place', p: f.p }; } }
+    else if (CARDS[s].t === 'relic') { if (hasRelic(S.P[o], s)) return { k: 'relic', c: s }; }
+    else { const f = S.figs.find(g => g.o === o && g.c === s); if (f) return { k: 'fig', u: f.u }; }
+  }
+  return null;
+}
+function threadPlay(S, o, ci, src, u) {
+  const P = S.P[o]; if (!src) return;
+  const ren = S.cfg.threads === 3 || P.lr ? 0 : S.cfg.lineRen;
+  if (S.ev) S.ev.push({ t: 'thread', o: o, c: ci, u: u || 0, src: src, ren: ren });
+  if (ren) { P.renown += ren; P.lr = 1; } if (S.st) S.st.threads = (S.st.threads || 0) + 1;
+}
 function costOf(S, o, ci, place) {
   const c = CARDS[ci], P = S.P[o]; let x = c.c;
-  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; if (place != null && pid(S, place) === 'timbuktu') x -= 1;
+  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; else if (S.cfg.threads !== 2 && threadSrc(S, o, ci, place)) x -= S.cfg.disc; if (place != null && pid(S, place) === 'timbuktu') x -= 1;
     if (S.cfg.ret && P.gone && P.gone.indexOf(ci) >= 0) { x -= S.cfg.ret; if (S.st && place != null) S.st.retSeen = 1; } }   // (the return: their other copy lies in your discard pile)
+  if (c.t !== 'fig' && S.cfg.threads !== 2 && threadSrc(S, o, ci)) x -= S.cfg.disc;   // (threads 2: Renown only; 3: the discount only)
   if (c.t === 'relic' && P.guide === 'leonardo') x -= 1;
   if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
   return Math.max(0, x);
@@ -110,6 +134,7 @@ function arrive(S, f) {
     if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
   }
   if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: P.lr ? 0 : S.cfg.lineRen }); if (!P.lr) { P.renown += S.cfg.lineRen; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
+  if (!f.li) threadPlay(S, o, f.c, threadSrc(S, o, f.c, f.p), f.u);
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
 function putFig(S, o, ci, place) { const f = { u: S.uid++, c: ci, o, p: place, rdy: CARDS[ci].k.swift ? 1 : 0, arr: 1, tb: 0, stun: 0, stay: 0, li: 0 }; S.figs.push(f); if (S.ev) S.ev.push({ t: 'arrive', u: f.u, c: ci, o: o, p: place }); if (S.st) { S.st.plays++; if (CARDS[ci].reg === PLACES[S.places[place]].reg) S.st.home++; S.st.played[o][ci] = 1; } arrive(S, f); return f; }
@@ -178,13 +203,13 @@ function moveFig(S, f, to, jump) { if (S.ev) S.ev.push({ t: 'move', u: f.u, from
 function apply(S, a, da, dd, raw) {
   const o = S.turn, P = S.P[o];
   if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); P.hand.splice(a.h, 1); putFig(S, o, ci, a.p); }
-  else if (a.t === 'relic') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci); P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
+  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
   else if (a.t === 'walk') { const f = byU(S, a.u); const far = S.adj[f.p].indexOf(a.p) < 0; moveFig(S, f, a.p, far); f.rdy = 0; }
   else if (a.t === 'antik') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; P.uA = 1; }
   else if (a.t === 'tub') { moveFig(S, byU(S, a.u), a.p, false); P.uT = 1; }
-  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); } clash(S, f, g, da, dd, 0, raw); }
+  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'), tsrc = threadSrc(S, o, 'phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); threadPlay(S, o, 'phalanx', tsrc); } clash(S, f, g, da, dd, 0, raw); }
   else if (a.t === 'deed') {
-    const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci); P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v });
+    const ci = P.hand[a.h], tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v }); threadPlay(S, o, ci, tsrc);
     let h2c = a.h2 != null ? P.hand[a.h2] : null;
     if (a.h2 != null) { P.hand.splice(Math.max(a.h, a.h2), 1); P.hand.splice(Math.min(a.h, a.h2), 1); } else P.hand.splice(a.h, 1);
     if (ci === 'eureka') draw(S, o, 2);
@@ -222,7 +247,11 @@ const PROF = {
   raider: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0 },
   keeper: { pos: [1.3, 1.2, 1, 0.6, 0.5], wRen: 1.2, wSeal: 1, wFig: 0.3, wLine: 1.5, noise: 0 },
   brawler: { pos: [1, 1, 1.1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.9, wLine: 0.3, noise: 0 },
-  novice: { pos: [1, 1, 1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 2.5 },
+  // The three robots you can play. noise: how unclearly it judges a move; quit: its chance, at each step, of calling the
+  // turn early with Spark still to spend (the big one: 0.15 loses about three games in four to Normal).
+  novice: { pos: [1, 1, 1, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 3, quit: 0.15 },      // Easy
+  normal: { pos: [1, 1, 1.2, 1, 1], wRen: 1, wSeal: 2, wFig: 0.3, wLine: 0.5, noise: 1.5, quit: 0.03 },  // Normal
+  hard: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0 },            // Hard (the raider, playing its best)
 };
 function valueOf(S, a, me, prof) {
   const roll = a.t === 'clash' || (a.t === 'deed' && S.P[me].hand[a.h] === 'ambush');
@@ -232,6 +261,7 @@ function valueOf(S, a, me, prof) {
 // The robot's next step (null: it's done for the turn)
 function aiPick(S, prof, R) {
   const me = S.turn; let best = null, bv = evalS(S, me, prof) + 0.02;
+  if (prof.quit && R() < prof.quit) return null;   // (calls it a turn early)
   for (const a of actions(S)) { let v = valueOf(S, a, me, prof); if (prof.noise) v += (R() - 0.5) * prof.noise; if (v > bv) { bv = v; best = a; } }
   return best;
 }
@@ -298,5 +328,5 @@ function play(decks, guides, profs, cfg, seed) {
   return S;
 }
 return { play, PROF, rng, shuffle, DEF, STD, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, CARDS, PLACES };
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, CARDS, PLACES };
 });
