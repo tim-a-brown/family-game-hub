@@ -1,6 +1,6 @@
 // Anoria: the Library. Every card in the set has a spot: yours in full colour (with a pip for each copy), the ones
 // you've only met across the table in grey, and the ones you've never seen as the card back with nothing showing
-// but a ribbon in its faction's colour and where it sits in time.
+// but a sash in its faction's colour and where it sits in time.
 //
 // Two ways to look at it:
 //   Binder    a grid to roll through, with the count, filters and sorts
@@ -87,13 +87,13 @@
 
   // ═══ Small pieces ═════════════════════════════════════════════════════════════════════════════════════════
   const tap = () => { Kit.sfx('tap'); Kit.haptic('light'); };
-  // a small picture of a spot: the card's art, a Place's art in a round frame, or the card back with its ribbon
+  // a small picture of a spot: the card's art, a Place's art in a round frame, or the card back with its sash
   function thumb(id, cls) {
     const s = stateOf(id), p = el('span', { class: 'lb-th ' + s + (cls ? ' ' + cls : ''), style: { '--f': facOf(id).c } });
     if (s === 'new') p.appendChild(el('i', { class: 'lb-rib' })); else { const im = U.artImg(keyOf(id), true); if (im) p.appendChild(im); }
     return p;
   }
-  // the card back for a card never seen: its faction's ribbon, and (in the binder) its era on a plate
+  // the card back for a card never seen: its faction's sash, and (in the binder) its era on a plate
   function backEl(k, plate) {
     return el('span', { class: 'lb-back', style: { '--f': FAC[CARDS[k].f].c } }, [el('i', { class: 'lb-rib' }), plate ? el('span', { class: 'lb-plate', text: eraName(eraOf(k)) }) : null]);
   }
@@ -260,7 +260,7 @@
   // ═══ The binder ═══════════════════════════════════════════════════════════════════════════════════════════
   const filterCount = () => Object.keys(st.f).reduce((n, g) => n + st.f[g].length, 0);
   function flip(g, v) { const a = st.f[g], i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); }
-  // A card never seen is known only by its ribbon and its era (and a Relic's ribbon says Relic), so any other
+  // A card never seen is known only by its sash and its era (and a Relic's sash says Relic), so any other
   // filter leaves it out
   function match(k, f) {
     f = f || st.f;
