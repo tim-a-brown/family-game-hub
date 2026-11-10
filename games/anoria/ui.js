@@ -1144,7 +1144,7 @@
     const layer = el('div', { class: 'an-screen ' + (o.cls || ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || '' }, [head, body]);
     let closed = false;
     function close() { if (closed) return; closed = true; document.removeEventListener('keydown', key); layer.classList.remove('show'); setTimeout(() => layer.remove(), 240); if (o.onClose) o.onClose(); }
-    function key(e) { if (e.key === 'Escape' && !document.querySelector('.k-scrim.show, .view.show') && document.querySelector('.an-screen:last-of-type') === layer) close(); }
+    function key(e) { if (e.key !== 'Escape' || document.querySelector('.k-scrim.show, .view.show')) return; const all = document.querySelectorAll('.an-screen'); if (all[all.length - 1] === layer) close(); }   // (the top screen, with nothing open over it)
     back.addEventListener('click', () => { Kit.sfx('tap'); Kit.haptic('light'); close(); });
     document.addEventListener('keydown', key);
     document.body.appendChild(layer); requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('show')));
