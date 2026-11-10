@@ -228,6 +228,10 @@ Underlying principles for everything:
   Saladin's straight sword; Anansi as the spider of the Akan stories; a Song dynasty water compass). No exoticised
   or comic depictions of a people, no deck or power name that labels one (Harriet Tubman's deck is Pathfinders).
   Legends are captioned as legend. New sets get the same audit before their art is made.
+  Art made in the figure's own time and culture is fair inspiration (Hammurabi after his law stele, Ashurbanipal after
+  his palace reliefs, a djinn as medieval Arabic and Persian manuscripts drew them, Anansi patterned like Asante
+  goldweights), as long as it isn't a caricature. Pictures stay dramatic: accuracy is not a reason to go tame. No two
+  cards share a composition (two kings of one region, two commanders on a ship's deck: change the scene).
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.
