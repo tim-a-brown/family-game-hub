@@ -192,6 +192,20 @@ Underlying principles for everything:
 - "Wire up the Lorcana cards in the weekly check issue": read that issue or the saved card list, extend the
   parser/engine, check new screens and animations with Tim before building them, then preview as usual.
 
+## Anoria (the hidden card game)
+
+- Found by tapping Lorcana's icon 12 times in its sheet on the home screen (`anoria_unlocked`); Anoria's own menu hides
+  it again. Its catalog entry is `hidden: true`.
+- `games/anoria/engine.js` is the whole rules engine, for the page and for Node (`scripts/anoria/run.js` plays thousands
+  of robot games with it): rules and card numbers change only with the balance runs. `cards.js` has the numbers and the
+  five built decks, `text.js` what every card says, `land.js` the coastlines for the map behind a card's text.
+- `games/anoria/ui.js` + `ui.css` are the table: the card (`cardEl`, the approved design, sized in em), setup, and the
+  playback. Each step is applied in the engine at once and saved, then its event log (`S.ev`) is played back one moment
+  at a time: the `EV` handlers move the on-screen snapshot `V` along and `settle()` brings it level with the engine.
+  A new kind of engine event needs a handler there.
+- Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
+  are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
+
 ## Rules for every change
 
 - **Bump `CACHE_VERSION`** in `service-worker.js` on every release. Installed copies

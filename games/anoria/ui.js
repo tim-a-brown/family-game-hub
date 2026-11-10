@@ -56,14 +56,19 @@
   const names = list => list.map(k => info(k).n).join(' or ');
 
   // ═══ Pictures: a missing one leaves the flat panel underneath showing ════════════════════════════════════
-  const noArt = {};
+  const noArt = {}, hasArt = {};
   function artSrc(key, small) { return ART + (small ? 't/' : '') + (isPlace(key) ? 'place-' : '') + key + '.webp'; }
   function artImg(key, small) {
     const src = artSrc(key, small); if (noArt[src]) return null;
-    const im = el('img', { src: src, alt: '', draggable: 'false', decoding: 'async' });
+    const im = el('img', { src: src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
     im.onerror = function () { noArt[src] = 1; im.remove(); };
+    im.onload = function () { hasArt[src] = 1; };
     return im;
   }
+  // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
+  // that is drawn again never flashes its name)
+  const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
+  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
 
   // ═══ The map behind a card's text, drawn from the coastlines ═════════════════════════════════════════════
   let LB = null;
@@ -135,7 +140,7 @@
     const label = { place: 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
     const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' : ''), style: { '--f': f.c }, 'data-card': key });
     const inn = el('div', { class: 'ac-in' });
-    const art = el('div', { class: 'ac-art' }, [el('span', { class: 'ac-noart', text: c.n })]);
+    const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
     const im = artImg(key, !!o.mini); if (im) art.appendChild(im);
     inn.appendChild(art);
     if (c.c != null) { const cost = o.cost != null ? o.cost : c.c; inn.appendChild(el('div', { class: 'ac-cost' + (cost < c.c ? ' less' : '') }, [el('b', { text: String(cost) })])); }
@@ -288,7 +293,7 @@
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
-  function stop() { gen++; ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  function stop() { gen++; document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   function newGame(cfg) {
     stop();
     const decks = cfg.players.map(p => C.ARCH[p.deck].cards.concat(C.ARCH[p.deck].cards)), guides = cfg.players.map(p => C.ARCH[p.deck].guide);
@@ -312,7 +317,7 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, uA: p.uA, uT: p.uT })),
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()) };
   }
   function settle() {
@@ -323,12 +328,25 @@
   }
 
   // ═══ Drawing the table ═══════════════════════════════════════════════════════════════════════════════════
+  // An old chart of the world, engraved faintly into the mat (the coastlines, thinned out)
+  let chartURL = null;
+  function chart() {
+    if (chartURL != null) return chartURL;
+    let d = '';
+    for (const r of LAND) { if (r.length < 80) continue; for (let j = 0; j < r.length; j += 12) d += (j ? 'L' : 'M') + (r[j] + 180).toFixed(1) + ' ' + (90 - r[j + 1]).toFixed(1); d += 'Z'; }
+    let g = ''; for (let x = 0; x <= 360; x += 30) g += 'M' + x + ' 0V180'; for (let y = 0; y <= 180; y += 30) g += 'M0 ' + y + 'H360';
+    try { chartURL = d ? URL.createObjectURL(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 8 320 150" preserveAspectRatio="xMidYMid slice"><path d="' + g + '" fill="none" stroke="#e9cf86" stroke-width=".25" stroke-dasharray="1.2 1.8" opacity=".5"/><path d="' + d + '" fill="#e9cf86" fill-opacity=".1" stroke="#e9cf86" stroke-width=".45" stroke-linejoin="round"/></svg>'], { type: 'image/svg+xml' })) : ''; } catch (e) { chartURL = ''; }
+    return chartURL;
+  }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
+    preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(C.ARCH[p.deck].cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     dom.fx = el('div', { class: 'an-fx' });
-    dom.root = el('div', { class: 'an k-hold' + (speed > 1 ? ' fast' : '') }, [el('div', { class: 'an-mat wood' }, [el('div', { class: 'an-felt felt-in' }, [dom.opp, dom.map, dom.cap, dom.me, dom.hand])]), dom.fx]);
+    const felt = el('div', { class: 'an-felt felt-in' }, [dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
+    dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     app.appendChild(dom.root);
   }
   const rowsOrder = () => { const v = ui.view, t = 1 - v; return [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
@@ -337,7 +355,8 @@
   function stripEl(node, o, me) {
     const p = V.P[o], pl = G.players[o], g = TX.GUIDES[p.guide], on = V.turn === o && !G.over;
     node.className = 'an-strip ' + (me ? 'me' : 'opp') + ' p' + o + (on ? ' on' : ''); node.innerHTML = ''; node.dataset.o = o;
-    const gb = el('button', { type: 'button', class: 'st-guide', 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => openView(p.guide) }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
+    const spent = on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD));   // (a once-a-turn power, used)
+    const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => openView(p.guide) }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
     node.appendChild(gb);
     const seals = el('div', { class: 'st-seals', 'aria-label': p.seals + ' of 3 Seals left' });
@@ -377,19 +396,19 @@
 
   function figEl(f, T) {
     const c = CARDS[f.c], fac = FAC[c.f], mine = f.o === V.turn, pl = C.PLACES[S.places[f.p]];
-    const can = idle() && mine && ui.acts.some(a => a.u === f.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));
+    const can = idle() && mine && !ui.sel && ui.acts.some(a => a.u === f.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));   // (while something is picked up, only where it can go is lit)
     const done = mine && !G.over && !f.rdy && !(f.arr && !f.acted);
     const sel = ui.sel && ui.sel.kind === 'fig' && ui.sel.u === f.u, tg = T.figs[f.u];
     const picked = ui.sel && ui.sel.picks.some(p => p.k === 'f' && p.v === f.u);
     const insp = ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].insp && f.o === S.turn && CARDS[ui.sel.key].insp.indexOf(f.c) >= 0;
     const n = el('button', { type: 'button', class: 'fp o' + f.o + (can ? ' can' : '') + (done ? ' done' : '') + (f.stun ? ' stun' : '') + (sel || picked ? ' sel' : '') + (tg ? ' tgt' : '') + (insp ? ' insp' : '') + (ui.fresh[f.u] ? ' ' + ui.fresh[f.u] : ''),
       'data-u': f.u, 'aria-label': c.n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)), style: { '--f': fac.c } });
-    const art = el('span', { class: 'fp-art' }, [el('span', { class: 'na', text: c.n })]); const im = artImg(f.c, true); if (im) art.appendChild(im);
+    const art = el('span', { class: 'fp-art' }, [noArtLabel(f.c, true, 'na')]); const im = artImg(f.c, true); if (im) art.appendChild(im);
     n.appendChild(el('span', { class: 'fp-card' }, [art]));
     n.appendChild(el('span', { class: 'fp-m' + (f.m > c.m ? ' up' : '') }, [el('b', { text: String(f.m) })]));
     if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
-    if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span>' + SVG.swords + '<span>' + pv[1] + '</span>' })); }
+    if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
     return n;
   }
   function rowEl(i, T) {
@@ -402,7 +421,7 @@
       let free = 3 - figs.length;
       if (tg && sd[0] === S.turn && free > 0) {
         const pv = landPreview(tg);
-        if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); side.appendChild(s); free--; }
+        if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
       }
       for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       row.appendChild(side);
@@ -432,7 +451,7 @@
     if (ui.sel && idle()) {
       const s = ui.sel, key = s.kind === 'hand' ? s.key : E.byU(S, s.u).c, c = info(key), T = targets();
       n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => openView(key, s.kind === 'fig' ? { u: s.u } : null) }, [
-        el('span', { class: 'who', text: c.n }), el('span', { class: 'tx', html: boldKeys(c.tx) || esc(c.cap) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
+        el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
       if (s.kind === 'hand' && !s.picks.length && T.done.length) n.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm cap-play', text: 'Play', onclick: () => finishPick(T.done) }));
       return;
     }
@@ -448,11 +467,12 @@
     const n = dom.hand; n.innerHTML = '';
     if (ui.hideHand || ui.viewer < 0) return;
     const o = ui.view, hand = V.P[o].hand, can = idle() && o === S.turn, T = targets();
+    const picking = Object.keys(T.hand).length > 0;
     hand.forEach((key, h) => {
       const c = CARDS[key], cost = E.costOf(S, o, key);
       const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (key === 'phalanx' && ui.acts.some(a => a.ph)));
       const sel = ui.sel && ui.sel.kind === 'hand' && (ui.sel.h === h || ui.sel.picks.some(p => p.k === 'h' && p.v === h));
-      const b = el('button', { type: 'button', class: 'hc' + (ui.discard ? ' toss' : can ? (ok ? ' ok' : ' no') : '') + (sel ? ' sel' : '') + (T.hand[h] ? ' tgt' : '') + (ui.dealt && h >= ui.dealt ? ' in' : ''),
+      const b = el('button', { type: 'button', class: 'hc' + (ui.discard ? ' toss' : !can ? '' : picking ? (T.hand[h] || sel ? '' : ' no') : ui.sel ? (ok ? '' : ' no') : ok ? ' ok' : ' no') + (sel ? ' sel' : '') + (T.hand[h] ? ' tgt' : '') + (ui.dealt && h >= ui.dealt ? ' in' : ''),
         'data-h': h, 'aria-label': c.n + ', costs ' + cost }, [cardEl(key, { mini: true, cost: cost })]);
       n.appendChild(b);
     });
@@ -473,8 +493,8 @@
     const r = dom.map.getBoundingClientRect(); if (!r.width || !r.height) return;
     const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
     const rowH = (r.height - 4 * rg) / 5, mwMin = Math.max(r.width < 340 ? 84 : 98, Math.min(r.width * .27, 300));
-    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - 6 - 2 * gp - mwMin - 4 * sg) / 6, 118)));
-    const mw = Math.floor(Math.min(r.width - 6 - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
+    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - 12 - 2 * gp - mwMin - 4 * sg) / 6, 118)));
+    const mw = Math.floor(Math.min(r.width - 12 - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
     const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
     dom.map.classList.toggle('tight', rowH < 74);
     // the hand: side by side, never overlapping. As it fills the cards get smaller, and below a readable size
@@ -491,14 +511,14 @@
       for (let rw = 1; rw <= 3; rw++) { const pr = Math.ceil(n / rw), v = fit(rw, pr); if (v > hw + 2) { hw = v; rows = rw; per = pr; } }
     } else {
       // upright: one row while the names stay readable, else two (a phone keeps room for two rows, so the map never jumps)
-      const phone = W < 560; if (phone) per = Math.max(4, Math.ceil(n / 2));
+      const phone = W < 560 && window.innerHeight >= 740; if (phone) per = Math.max(4, Math.ceil(n / 2));   // (a short phone keeps one row of small cards)
       rows = phone ? 2 : 1;
       const hw4 = Math.min((W - 3 * g) / 4, cap);
       hw = Math.min((W - (per - 1) * g) / per, cap);
       h.style.minHeight = phone ? Math.ceil(2 * Math.floor(hw4) * 1.4 + 6 + 8) + 'px' : '';
       if (n <= per) rows = 1;
     }
-    if (rows === 2) { h.classList.add('two'); h.style.setProperty('--per', per); }
+    if (rows > 1) { h.classList.add('two'); h.style.setProperty('--per', per); }
     hw = Math.floor(Math.max(30, hw));
     h.style.setProperty('--hw', hw + 'px'); h.classList.toggle('small', hw < 62);
   }
@@ -548,7 +568,8 @@
     const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || ui.sel.key === 'trojan'));
     if (!moves) return null;
     const T = simulate(a), f = t === 'fig' || ui.sel.key === 'trojan' ? E.byU(T, S.uid) : E.byU(T, a.u);
-    return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null };
+    const via = acts.every(x => x.t === 'antik') ? 'antikythera' : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
+    return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
   }
   function clashPreview(acts) {
     const a = acts.filter(x => !x.ph)[0] || acts[0], s = ui.sel;
@@ -573,14 +594,16 @@
   function actLabel(a) {
     if (a.t === 'walk') return { label: 'Walk', sub: 'Its move for this turn' };
     if (a.t === 'tub') return { label: 'Free step', sub: TX.GUIDES[S.P[S.turn].guide].n + ', once a turn' };
-    if (a.t === 'antik') return { label: 'Jump', sub: 'Antikythera Mechanism, once a turn. Then it\'s done for the turn' };
+    if (a.t === 'antik') return { label: 'Jump', sub: 'Antikythera Mechanism. Done for the turn' };
     if (a.t === 'clash') return a.ph ? { label: 'Clash with Phalanx', sub: '+2 Might for ' + E.costOf(S, S.turn, 'phalanx') + ' Spark' } : { label: 'Clash' };
     return { label: 'Play' };
   }
   function finishPick(acts) {
     if (acts.length === 1) return doHuman(acts[0]);
-    const s = ui.sel, who = info(s.kind === 'hand' ? s.key : E.byU(S, s.u).c).n;
-    Kit.sheet({ title: who, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
+    const s = ui.sel, who = info(s.kind === 'hand' ? s.key : E.byU(S, s.u).c).n, rank = { walk: 0, tub: 1, antik: 2, clash: 0 };
+    acts = acts.slice().sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0));
+    const to = acts[0].p != null && acts[0].t !== 'clash' ? ' to ' + (/^(The|the) /.test(C.PLACES[S.places[acts[0].p]].n) ? '' : /^(Great Wall|Colosseum|Acropolis|Silk Road|Globe Theatre|Library)/.test(C.PLACES[S.places[acts[0].p]].n) ? 'the ' : '') + C.PLACES[S.places[acts[0].p]].n : '';
+    Kit.sheet({ title: who + to, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
   }
   function onMapTap(e) {
     if (!G) return;
@@ -718,7 +741,7 @@
   // Each kind of event in the engine's log: move what's on screen along by one step
   const EV = {
     async turn(ev) {
-      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].uA = V.P[ev.o].uT = 0;
+      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].uA = V.P[ev.o].uT = V.P[ev.o].uC = V.P[ev.o].uD = 0;
       V.figs.forEach(f => { if (f.o === ev.o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; } });
       render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('sparkle'); await wait(420);
     },
@@ -870,12 +893,12 @@
     const d = JSON.parse(undoStack.pop()); d.cfg = cfgStd(); d.st = null; d.ev = [];
     S = G.S = d; ui.sel = null; ui.discard = false; Kit.sfx('whoosh'); save(); legal(); V = snap(); render();
   }
-  function toggleFast() { speed = speed > 1 ? 1 : 4; lsSet(FAST, speed > 1 ? '1' : null); dom.root.classList.toggle('fast', speed > 1); Kit.sfx('tap'); Kit.haptic('light'); render(); }
+  function toggleFast() { speed = speed > 1 ? 1 : 4; lsSet(FAST, speed > 1 ? '1' : null); document.documentElement.classList.toggle('an-fast', speed > 1); Kit.sfx('tap'); Kit.haptic('light'); render(); }
 
   async function beginTurn() {
     const my = gen, o = S.turn, pl = G.players[o];
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true);
-    speed = ui.turbo || (pl.cpu && lsGet(FAST) === '1' ? 4 : 1); if (dom.root) dom.root.classList.toggle('fast', speed > 1);
+    speed = ui.turbo || (pl.cpu && lsGet(FAST) === '1' ? 4 : 1); document.documentElement.classList.toggle('an-fast', speed > 1);
     if (G.mode === 'local' && ui.viewer !== o) {
       ui.hideHand = true; ui.viewer = -1; ui.view = o; V = snap(); render();
       await Kit.handoff({ name: pl.name, color: pl.color, what: 'hand' });
@@ -883,6 +906,7 @@
       ui.viewer = o; ui.hideHand = false; render();
     }
     if (G.ph === 'start') {
+      V = snap(); render();
       if (G.k === 0 && ui.banner !== S.round) {
         ui.banner = S.round;
         const st = E.stake(S.cfg, S.round), up = S.round > 1 && st > E.stake(S.cfg, S.round - 1);
@@ -941,13 +965,26 @@
     evs.forEach(ev => { if (ev.t === 'hold') { cur = { p: ev.p, evs: [ev] }; groups.push(cur); } else if (ev.t === 'renown') { cur = null; tail.push(ev); } else if (cur) cur.evs.push(ev); else tail.push(ev); });
     groups.sort((a, b) => order.indexOf(a.p) - order.indexOf(b.p));
     V.turn = -1; render(); Kit.sfx('pop'); await banner('', 'The count', '<span>Round ' + V.round + '</span>'); if (gen !== my) return false;
-    const sp = speed; if (!ui.turbo) speed = 1;   // (the count is always played at its own pace)
+    const sp = speed; if (!ui.turbo) { speed = 1; document.documentElement.classList.remove('an-fast'); }   // (the count is always played at its own pace)
     for (const g of groups) { if (!(await playEvents(g.evs, {}))) return false; }
     ui.count = -1;
     if (!(await playEvents(tail, {}))) return false;
     render(); await wait(350); speed = sp;
     return gen === my;
   }
+
+  // If a step ever throws, the game doesn't freeze: the table is drawn again from the engine (which is already
+  // saved) and play carries on from there
+  let slips = 0;
+  function recover(e) {
+    if (window.console) console.error('anoria', e);
+    if (!G || !S || ++slips > 5) return;
+    try { document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); dom.fx.innerHTML = ''; ui.sel = null; ui.count = -1; V = snap(); setBusy(false); legal(); render(); } catch (e2) {}
+    if (G.over) setTimeout(() => showWin(true), 300);
+    else if (G.ph === 'start' || !human(S.turn)) setTimeout(() => { if (G && !G.over) beginTurn(); }, 400);
+  }
+  const guard = fn => function () { const my = gen; return fn.apply(null, arguments).catch(e => { if (gen === my) recover(e); }); };
+  beginTurn = guard(beginTurn); robotTurn = guard(robotTurn); endTurn = guard(endTurn); doHuman = guard(doHuman); discardOne = guard(discardOne);
 
   // ═══ The end ═════════════════════════════════════════════════════════════════════════════════════════════
   function modeName() { return G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
@@ -967,12 +1004,12 @@
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [];
     notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to 30 Renown at the end of a round');
-    G.players.forEach((p, i) => notes.push(p.name + ': ' + S.P[i].renown + ' Renown, ' + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
+    G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
-      again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup });
+      again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players' });
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -1005,11 +1042,11 @@
     onNew: showSetup, undo: undo,
     menu: [
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
-      { icon: 'eye', label: 'Hide Anoria on this device', sub: 'Takes it off the home screen again', section: 'More', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
+      { icon: 'eye', label: 'Hide Anoria on this device', sub: 'Takes it off the home screen again', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
     ]
   });
 
-  window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin };
+  window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
   if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
