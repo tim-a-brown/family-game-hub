@@ -141,5 +141,28 @@
     "mozart>encore": "Mozart was playing for royal courts at the age of six.",
     "@globe>encore": "The Globe held about 3,000 people for a play.",
   };
-  return { CARDS: T, GUIDES: GUIDES, PLACES: PLACES, LINKS: LINKS };
+
+  // How each name is said: plain respelling, the stressed part in capitals. Printed small at the foot of the card.
+  // Names from other languages follow the name itself (Zheng He, Sun Tzu and Ching Shih as Mandarin says them).
+  const SAY = {
+    archimedes: 'ar-kih-MEE-deez', hypatia: 'hy-PAY-shuh', copernicus: 'koh-PUR-nih-kus', galileo: 'gal-ih-LAY-oh', newton: 'EYE-zik NOO-tun',
+    zhenghe: 'jung huh', marcopolo: 'MAR-koh POH-loh', haytham: 'IB-un al-hy-THAM', ada: 'AY-duh LUV-layss', plato: 'PLAY-toh',
+    aristotle: 'AIR-ih-stot-ul', faraday: 'MY-kul FAIR-uh-day', socrates: 'SOK-ruh-teez', hammurabi: 'ham-oo-RAH-bee', hatshepsut: 'hat-SHEP-soot',
+    pericles: 'PAIR-ih-kleez', ashoka: 'uh-SHOH-kuh', confucius: 'kun-FYOO-shus', mansamusa: 'MAHN-sah MOO-sah', charlemagne: 'SHAR-luh-mayn',
+    elizabeth: 'ih-LIZ-uh-beth', alexander: 'al-ig-ZAN-dur', ashurbanipal: 'ah-shur-BAH-nih-pahl', douglass: 'FRED-rik DUG-lus',
+    spartacus: 'SPAR-tuh-kus', leonidas: 'lee-ON-ih-dus', boudica: 'BOO-dih-kuh', tomoe: 'toh-moh-eh GOH-zen', joan: 'jone uv ARK',
+    saladin: 'SAL-uh-din', yisunsin: 'ee soon-shin', hannibal: 'HAN-ih-bul', sittingbull: 'SIT-ing BULL',
+    homer: 'HOH-mur', sappho: 'SAF-oh', virgil: 'VUR-jul', dante: 'DAHN-tay', murasaki: 'moo-rah-SAH-kee shee-KEE-boo', shakespeare: 'SHAYK-speer',
+    michelangelo: 'my-kul-AN-juh-loh', mozart: 'MOHT-sart', beethoven: 'BAY-toh-vun', hokusai: 'HOH-koo-sy',
+    scheherazade: 'shuh-HAIR-uh-zahd', nostradamus: 'nos-truh-DAH-mus', imhotep: 'im-HOH-tep', anansi: 'uh-NAHN-see', atalanta: 'at-uh-LAN-tuh',
+    daedalus: 'DED-uh-lus', odysseus: 'oh-DISS-ee-us', chingshih: 'jung shur', beowulf: 'BAY-oh-wulf',
+    press: 'PRIN-ting press', antikythera: 'an-tih-kih-THEER-uh MEK-uh-niz-um', compass: 'KUM-pus', phalanx: 'FAY-lanks', ambush: 'AM-bush',
+    trojan: 'TROH-jun horss', fairwinds: 'fair windz', rift: 'rift', eclipse: 'ih-KLIPS', eureka: 'yoo-REE-kuh', caravan: 'trayd KAIR-uh-van',
+    decree: 'ROY-ul dih-KREE', encore: 'ON-kor',
+    cleopatra: 'klee-oh-PAT-ruh', leonardo: 'lee-oh-NAR-doh dah VIN-chee', tubman: 'HAIR-ee-ut TUB-mun', franklin: 'BEN-juh-min FRANK-lin', suntzu: 'soon dzuh',
+    library: 'LY-brair-ee uv al-ig-ZAN-dree-uh', silk: 'silk rohd', colosseum: 'kol-uh-SEE-um', acropolis: 'uh-KROP-uh-lis', wall: 'grayt wawl',
+    stonehenge: 'STOHN-henj', globe: 'glohb THEE-uh-tur', machu: 'MAH-choo PEEK-choo', timbuktu: 'tim-buk-TOO', petra: 'PET-ruh', nineveh: 'NIN-uh-vuh',
+    seneca: 'SEN-ih-kuh fawlz'
+  };
+  return { CARDS: T, GUIDES: GUIDES, PLACES: PLACES, LINKS: LINKS, SAY: SAY };
 });

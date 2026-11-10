@@ -47,10 +47,11 @@
   };
   const LAUREL = '<img src="anoria/ui/mark-renown.webp" alt="">';
 
+  const SAY = TX.SAY || {};
   function info(key) {
-    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll }; }
-    if (TX.GUIDES[key]) { const g = TX.GUIDES[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll }; }
-    if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll }; }
+    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key] }; }
+    if (TX.GUIDES[key]) { const g = TX.GUIDES[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key] }; }
+    if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
   }
   const isPlace = key => !CARDS[key] && !TX.GUIDES[key] && !!C.PLACES[key];
@@ -154,11 +155,16 @@
       paper.appendChild(el('div', { class: 'ac-when', text: c.cap }));
       paper.appendChild(el('div', { class: 'ac-txt', html: boldKeys(c.tx) }));
       if (c.fact) paper.appendChild(el('div', { class: 'ac-fact', text: c.fact }));
+      // (how the name is said, as fine print at the foot: a Place's paper is as tall as its words, so it goes last in it)
+      if (c.say && place) paper.appendChild(el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }));
     }
     inn.appendChild(paper);
-    if (fig) {
-      inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
-      if (!o.mini) inn.appendChild(el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }));
+    if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
+    // the foot of a full card: how the name is said, between a Figure's Might and its home
+    if (!o.mini && !place && (c.say || fig)) {
+      if (c.say) n.classList.add('hassay');
+      inn.appendChild(el('div', { class: 'ac-foot' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : el('span', { class: 'ac-say' }),
+        fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
     n.appendChild(inn);
     return n;
