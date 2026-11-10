@@ -222,6 +222,12 @@ Underlying principles for everything:
   change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the core set
   takes about 18 days of daily play at 3 games a day (it was about a month at 2 cards). Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
+  person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
+  real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;
+  Saladin's straight sword; Anansi as the spider of the Akan stories; a Song dynasty water compass). No exoticised
+  or comic depictions of a people, no deck or power name that labels one (Harriet Tubman's deck is Pathfinders).
+  Legends are captioned as legend. New sets get the same audit before their art is made.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.

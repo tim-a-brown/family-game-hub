@@ -53,7 +53,7 @@ const CARDS = {
   scheherazade: F('Scheherazade', 'W', 2, 2, 'MIDEAST', 3, 800, { untouchable: 1 }),
   nostradamus: F('Nostradamus', 'W', 2, 2, 'EUR', 4, 1555, { scholar: 1 }),
   imhotep: F('Imhotep', 'W', 3, 3, 'AFR', 1, -2650, { monument: 1 }),
-  anansi: F('Anansi', 'W', 3, 3, 'AFR', 3, 1200, {}, { arr: ['rob', 1] }),
+  anansi: F('Anansi', 'W', 3, 3, 'AFR', 3, 1200, {}, { arr: ['wits', 1] }),
   atalanta: F('Atalanta', 'W', 3, 3, 'MED', 1, -1300, { swift: 1, slayer: 1 }),
   daedalus: F('Daedalus', 'W', 2, 3, 'MED', 1, -1400, { voyager: 1 }),
   odysseus: F('Odysseus', 'W', 4, 4, 'MED', 1, -1200, { voyager: 1, steadfast: 1 }),
@@ -120,7 +120,7 @@ const ARCH = {
   Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
   Legacy: { guide: 'franklin', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
-  Tricksters: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
+  Pathfinders: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, THREADS, ERAS };
 });

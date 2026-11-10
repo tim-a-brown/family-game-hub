@@ -4,7 +4,7 @@
 //   node scripts/anoria/copies.js cap  [games per opponent]   whole decks built to a cap: best 10 x3, best 7 x4, best 5 x6
 const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH, CARDS } = require('../../games/anoria/cards');
 const part = process.argv[2] || 'star', n = +process.argv[3] || 30, D = Object.keys(ARCH);
-const style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Tricksters: 'raider' }, base = k => ARCH[k].cards.concat(ARCH[k].cards);
+const style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Pathfinders: 'raider' }, base = k => ARCH[k].cards.concat(ARCH[k].cards);
 // strongest first (win rate when played, from fin-cards.txt), for choosing what a capped deck keeps
 const RANK = require('fs').readFileSync(__dirname + '/fin-cards.txt', 'utf8').split('WIN RATE WHEN THE CARD WAS PLAYED')[1].split('\n\n')[0].split('\n').map(l => l.trim().replace(/ \[.*$/, '')).filter(Boolean);
 const rank = k => { const i = RANK.indexOf(CARDS[k].n); return i < 0 ? 99 : i; };
@@ -17,7 +17,7 @@ function run(deck, name, cfg, seed0) {   // this deck against the four other rea
 }
 const U = Object.assign({}, STD, { unique: 1 });
 if (part === 'star') {
-  const stars = { Legion: ['charlemagne', 'leonidas'], Court: ['hatshepsut', 'elizabeth'], Legacy: ['alexander', 'newton'], Explorers: ['zhenghe', 'copernicus'], Tricksters: ['imhotep', 'beowulf'] };
+  const stars = { Legion: ['charlemagne', 'leonidas'], Court: ['hatshepsut', 'elizabeth'], Legacy: ['alexander', 'newton'], Explorers: ['zhenghe', 'copernicus'], Pathfinders: ['imhotep', 'beowulf'] };
   const withK = (name, x, k) => {   // k copies of x; the weakest other cards give up (or take) the room, never below one copy
     const cnt = {}; ARCH[name].cards.forEach(c => cnt[c] = 2); cnt[x] = k;
     const others = ARCH[name].cards.filter(c => c !== x).sort((a, b) => rank(b) - rank(a)); let tot = 28 + k, i = 0;

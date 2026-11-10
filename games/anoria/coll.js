@@ -37,7 +37,9 @@ function load() {
   const raw = store.get(KEY);
   if (cache && raw === cacheRaw) return cache;   // (another device's newer copy arriving shows as different text)
   let s = null; try { s = raw ? JSON.parse(raw) : null; } catch (e) {}
-  cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw; return cache;
+  cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
+  if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
+  return cache;
 }
 function save(s) { cacheRaw = JSON.stringify(s); cache = s; store.set(KEY, cacheRaw); return s; }
 function reset() { cache = null; store.set(KEY, JSON.stringify(blank())); store.set(DKEY, '[]'); }

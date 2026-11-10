@@ -44,7 +44,7 @@ module.exports = function (exp, n) {
   }
   if (exp === 'decks2') { Object.assign(STD, { lineNear: 1 }); exp = 'decks'; }
   if (exp === 'decks') {   // the five built decks against each other, each played in its own style
-    const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Tricksters: 'raider' }, dk = k => ARCH[k].cards.concat(ARCH[k].cards);
+    const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Pathfinders: 'raider' }, dk = k => ARCH[k].cards.concat(ARCH[k].cards);
     for (const mode of (process.argv[4] ? ['own style'] : ['own style', 'all holder'])) {
       console.log('\nBUILT DECKS, ' + mode + ': ROW win % vs COLUMN (' + n + ' games each)\n            ' + D.map(x => (x + '         ').slice(0, 11)).join('') + 'overall  seal wins');
       for (const a of D) { let row = (a + '            ').slice(0, 12), tw = 0, tg = 0, sw = 0;

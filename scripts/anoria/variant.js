@@ -3,7 +3,7 @@
 //   e.g. node scripts/anoria/variant.js "one of each, return 1" '{"unique":1,"ret":1}' 200
 const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH } = require('../../games/anoria/cards');
 const label = process.argv[2] || 'today', cfg = Object.assign({}, STD, JSON.parse(process.argv[3] || '{}')), n = +process.argv[4] || 200;
-const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Tricksters: 'raider' }, dk = k => ARCH[k].cards.concat(ARCH[k].cards);
+const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Pathfinders: 'raider' }, dk = k => ARCH[k].cards.concat(ARCH[k].cards);
 let out = (label + ':').padEnd(44), rounds = 0, g = 0, ko = 0, seals = 0, first = 0, lo = 100, hi = 0, th = 0, ln = 0;
 for (const a of D) { let w = 0, t = 0;
   for (const b of D) { if (a === b) continue;
