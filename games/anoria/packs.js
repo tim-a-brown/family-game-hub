@@ -405,6 +405,7 @@
         const num = (label, v, cls) => { const b = el('b', { text: '0' }); countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
         plate.className = 'pk-plate tally'; plate.innerHTML = '';
         plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two')]));
+        if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep full', text: 'You already have two of every card.' }));
         if (res.threads.length) {
           const gifts = res.threads.some(t => t.gift);
           plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Thread', 'Threads') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
