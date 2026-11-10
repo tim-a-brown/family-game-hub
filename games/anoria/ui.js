@@ -1128,10 +1128,27 @@
     ]
   });
 
+  // A full-screen layer over the page (the table underneath is left alone), with a back button, a title and room on
+  // the right for the screen's own controls. Sheets and the card reader open above it. o = {title, cls, onClose}
+  // Returns {el (the layer), head, tools (right of the title), body (scrolls), close()}
+  function screen(o) {
+    o = o || {};
+    const back = el('button', { type: 'button', class: 'icon-btn an-sc-back', 'aria-label': 'Back', html: Kit.icon('back') });
+    const title = el('h1', { class: 'an-sc-t', text: o.title || '' }), tools = el('div', { class: 'an-sc-tools' });
+    const head = el('header', { class: 'an-sc-h' }, [back, title, tools]), body = el('div', { class: 'an-sc-b' });
+    const layer = el('div', { class: 'an-screen ' + (o.cls || ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || '' }, [head, body]);
+    let closed = false;
+    function close() { if (closed) return; closed = true; document.removeEventListener('keydown', key); layer.classList.remove('show'); setTimeout(() => layer.remove(), 240); if (o.onClose) o.onClose(); }
+    function key(e) { if (e.key === 'Escape' && !document.querySelector('.k-scrim.show, .view.show') && document.querySelector('.an-screen:last-of-type') === layer) close(); }
+    back.addEventListener('click', () => { Kit.sfx('tap'); Kit.haptic('light'); close(); });
+    document.addEventListener('keydown', key);
+    document.body.appendChild(layer); requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('show')));
+    return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
+  }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
-    showSetup: showSetup, inGame: () => !!(G && S && !G.over) };
+    showSetup: showSetup, inGame: () => !!(G && S && !G.over), screen: screen, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}

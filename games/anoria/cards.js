@@ -85,6 +85,10 @@ const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': 
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // (Odysseus grew from Homer the way a Legacy Figure grows from a teacher: a line, with its +1 Might)
 CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
+// A year for every card and Place that has one (the Library's timeline). Rift has none.
+const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, trojan: -1200, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
+Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
+const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1400 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }];
 // Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).
 const THREADS = [
   { id: 'academy', n: 'The Academy', cards: ['socrates', 'plato', 'aristotle', 'alexander'] },
@@ -102,12 +106,12 @@ const THREADS = [
 ];
 const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu' };
 const PLACES = {
-  library: { n: 'Library of Alexandria', reg: 'AFR', era: 2 }, silk: { n: 'Silk Road', reg: 'ASIA', era: 3 },
-  colosseum: { n: 'Colosseum', reg: 'MED', era: 2 }, acropolis: { n: 'Acropolis', reg: 'MED', era: 2 },
-  wall: { n: 'Great Wall', reg: 'ASIA', era: 2 }, stonehenge: { n: 'Stonehenge', reg: 'EUR', era: 1 },
-  globe: { n: 'Globe Theatre', reg: 'EUR', era: 4 }, machu: { n: 'Machu Picchu', reg: 'AMER', era: 4 },
-  timbuktu: { n: 'Timbuktu', reg: 'AFR', era: 3 }, petra: { n: 'Petra', reg: 'MIDEAST', era: 2 },
-  nineveh: { n: 'Nineveh', reg: 'MIDEAST', era: 1 }, seneca: { n: 'Seneca Falls', reg: 'AMER', era: 6 },
+  library: { n: 'Library of Alexandria', reg: 'AFR', era: 2, y: -285 }, silk: { n: 'Silk Road', reg: 'ASIA', era: 3, y: -130 },
+  colosseum: { n: 'Colosseum', reg: 'MED', era: 2, y: 80 }, acropolis: { n: 'Acropolis', reg: 'MED', era: 2, y: -447 },
+  wall: { n: 'Great Wall', reg: 'ASIA', era: 2, y: -214 }, stonehenge: { n: 'Stonehenge', reg: 'EUR', era: 1, y: -2500 },
+  globe: { n: 'Globe Theatre', reg: 'EUR', era: 4, y: 1599 }, machu: { n: 'Machu Picchu', reg: 'AMER', era: 4, y: 1450 },
+  timbuktu: { n: 'Timbuktu', reg: 'AFR', era: 3, y: 1327 }, petra: { n: 'Petra', reg: 'MIDEAST', era: 2, y: -300 },
+  nineveh: { n: 'Nineveh', reg: 'MIDEAST', era: 1, y: -700 }, seneca: { n: 'Seneca Falls', reg: 'AMER', era: 6, y: 1848 },
 };
 const CENTER = ['library', 'silk', 'colosseum', 'acropolis'], EDGE = ['wall', 'stonehenge', 'globe', 'machu', 'timbuktu', 'petra', 'nineveh', 'seneca'];
 // Five built decks, each around one way to win (15 cards, two of each)
@@ -118,5 +122,5 @@ const ARCH = {
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
   Tricksters: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
-return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, THREADS };
+return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, THREADS, ERAS };
 });
