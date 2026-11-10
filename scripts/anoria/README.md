@@ -26,3 +26,11 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   `copies-star.txt`, `copies-cap.txt`; the five ready decks under `cfg.unique` in `unique-rule.txt`.
 - `node scripts/anoria/packs.js [trials]`: how fast packs of 12 fill a collection that starts from one ready deck.
   Results in `packs.txt`.
+
+## Dice, and the second copy
+
+- `node scripts/anoria/dice.js [games]`: what the clash roll does under each kind of die (`dice.txt`).
+- `node scripts/anoria/variant.js "<label>" '<json>' [games]`: the five ready decks under any rule change (`variants.txt`).
+- The game's rules (`STD`) now have `dice: 'high'` (two ordinary dice, the higher roll adds 1 Might, 2 when higher by 3
+  or more), `unique: 1` (one of each person on your side at a time) and `ret: 1` (a Figure whose other copy is in your
+  discard pile costs 1 less). Earlier result files were run before these.

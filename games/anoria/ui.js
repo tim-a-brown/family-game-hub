@@ -443,6 +443,14 @@
     [t, v].forEach(o => { if (V.pb[i][o]) row.appendChild(el('span', { class: 'pl-decree ' + (o === t ? 'L' : 'R'), text: '+' + V.pb[i][o], 'aria-label': 'Royal Decree, ' + V.pb[i][o] + ' more Might' })); });
     return row;
   }
+  // a Figure in hand whose other copy matters: standing on your side already (one of each person at a time), or
+  // in your discard pile (it returns for less)
+  function twinNote(key) {
+    const c = CARDS[key], o = S.turn; if (!c || c.t !== 'fig') return '';
+    if (S.cfg.unique && S.figs.some(f => f.o === o && f.c === key)) return '<b>Already on your side.</b> One of each person at a time. ';
+    if (S.cfg.ret && (S.P[o].gone || []).indexOf(key) >= 0) return '<b>Returns for ' + S.cfg.ret + ' less.</b> ';
+    return '';
+  }
   function capEl() {
     const n = dom.cap; n.innerHTML = '';
     const st = E.stake(S.cfg, V.round);
@@ -451,7 +459,7 @@
     if (ui.sel && idle()) {
       const s = ui.sel, key = s.kind === 'hand' ? s.key : E.byU(S, s.u).c, c = info(key), T = targets();
       n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => openView(key, s.kind === 'fig' ? { u: s.u } : null) }, [
-        el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
+        el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (s.kind === 'hand' ? twinNote(key) : '') + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
       if (s.kind === 'hand' && !s.picks.length && T.done.length) n.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm cap-play', text: 'Play', onclick: () => finishPick(T.done) }));
       return;
     }
@@ -700,8 +708,11 @@
     const a = vfig(ev.a), d = vfig(ev.d); if (!a || !d) return;
     const am0 = Math.floor(ev.am - ev.da), dm0 = Math.floor(ev.dm - ev.dd), am = Math.floor(ev.am), dm = Math.floor(ev.dm);
     const res = ev.am > ev.dm ? 'a' : ev.dm > ev.am ? 'd' : '';
-    function side(f, base, die, total, att) {
-      const dn = Kit.die(1); dn.setAttribute('data-v', die); dn.setAttribute('aria-label', 'Die showing ' + die); dn.tabIndex = -1; dn.style.visibility = 'hidden';
+    // (plain dice: the face rolled, then what it was worth, +1 or +2 for the higher roll. Older games: a die of 0, 1, 2)
+    const plain = !!S.cfg.dice;
+    function side(f, base, die, total, att, face) {
+      const dn = Kit.die(1); dn.setAttribute('data-v', plain ? face : die); dn.setAttribute('aria-label', 'Die showing ' + (plain ? face : die)); dn.tabIndex = -1; dn.style.visibility = 'hidden';
+      const won = plain ? el('span', { class: 'cl-plus' + (die ? '' : ' none'), style: { visibility: 'hidden' }, text: die ? '+' + die : '' }) : null;
       const tot = el('span', { class: 'sh big', style: { visibility: 'hidden' } }, [el('b', { text: String(total) })]);
       const extra = base - f.m, notes = [];
       if (att && ctx.a && ctx.a.t === 'deed') notes.push('Ambush');
@@ -709,10 +720,10 @@
       const note = extra > 0 ? (notes.length ? notes.join(', ') : att ? 'Attacking' : 'Defending') + ' +' + extra : '';
       const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.o === ui.view ? 'R' : 'L') }, [
         el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
-        el('div', { class: 'cl-sum' }, [el('span', { class: 'sh' }, [el('b', { text: String(base) })]), dn, tot]), el('div', { class: 'cl-note', text: note })]);
-      return { n: n, die: dn, tot: tot, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note') };
+        el('div', { class: 'cl-sum' }, [el('span', { class: 'sh' }, [el('b', { text: String(base) })]), dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
+      return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note') };
     }
-    const A = side(a, am0, ev.da, am, true), D = side(d, dm0, ev.dd, dm, false), L = a.o === ui.view ? D : A, R = a.o === ui.view ? A : D;
+    const A = side(a, am0, ev.da, am, true, ev.ra), D = side(d, dm0, ev.dd, dm, false, ev.rd), L = a.o === ui.view ? D : A, R = a.o === ui.view ? A : D;
     const ov = el('div', { class: 'clash' }, [el('div', { class: 'cl-in' }, [L.n, el('div', { class: 'cl-vs', html: SVG.swords }), R.n, el('div', { class: 'cl-where', text: C.PLACES[S.places[ev.p]].n })])]);
     document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show');
     await wait(420);
@@ -721,6 +732,7 @@
     await wait(380);
     [A, D].forEach((x, i) => { x.die.style.visibility = ''; x.die.style.setProperty('--dx', (i ? 40 : -40) + 'px'); x.die.classList.add('rolling'); }); Kit.sfx('roll');
     await wait(760);
+    if (plain) { [A, D].forEach(x => { x.won.style.visibility = ''; if (!x.won.classList.contains('none')) { x.won.classList.add('bump'); x.die.classList.add('high'); } }); if (ev.da || ev.dd) Kit.sfx('pop'); await wait(380); }
     [A, D].forEach(x => { x.tot.style.visibility = ''; x.tot.classList.add('bump'); }); Kit.sfx('tick');
     await wait(420);
     if (res) {
@@ -864,7 +876,6 @@
   }
 
   // ═══ Taking turns ════════════════════════════════════════════════════════════════════════════════════════
-  const die = () => (Math.random() * 3) | 0;
   function setBusy(b) { ui.busy = b; }
   async function doAction(a, ctx) {
     const o = S.turn, P = S.P[o];
@@ -872,7 +883,7 @@
     ctx.key = a.h != null ? P.hand[a.h] : a.ph ? 'phalanx' : null; ctx.h2key = a.h2 != null ? P.hand[a.h2] : null;
     if (a.t === 'clash' && a.ph) ctx.key = 'phalanx';
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
-    E.apply(S, a, die(), die());
+    const roll = E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
     const evs = S.ev.splice(0); G.n++; tally(evs); save();
     ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash');
     const ok = await playEvents(evs, ctx);
@@ -1024,9 +1035,11 @@
     '<li><b>Relics</b> stay in play (up to 2). <b>Deeds</b> happen once.</li>' +
     '<li>Up to 2 Spark you don\'t spend wait through the other player\'s turn. They pay for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
+    '<h3>Two of a card</h3><ul><li>A deck holds two of each card. Only <b>one of each person</b> can stand on your side at a time.</li>' +
+    '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
-    '<h3>A clash</h3><ul><li>Both sides roll a die that adds 0, 1 or 2 to their Might. The lower total is knocked out. A tie: nothing happens.</li>' +
+    '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the lower Might is knocked out. A tie: nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. A tie: nobody. An empty or tied Gate stays with its owner.</li>' +

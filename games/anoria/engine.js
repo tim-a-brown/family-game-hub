@@ -4,7 +4,9 @@
 'use strict';
 const { CARDS, PLACES, CENTER, EDGE } = cards;
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8 };
+// dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
+// unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -84,7 +86,8 @@ function walkDests(S, f, free) {
 }
 function costOf(S, o, ci, place) {
   const c = CARDS[ci], P = S.P[o]; let x = c.c;
-  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; if (place != null && pid(S, place) === 'timbuktu') x -= 1; }
+  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; if (place != null && pid(S, place) === 'timbuktu') x -= 1;
+    if (S.cfg.ret && P.gone && P.gone.indexOf(ci) >= 0) { x -= S.cfg.ret; if (S.st && place != null) S.st.retSeen = 1; } }   // (the return: their other copy lies in your discard pile)
   if (c.t === 'relic' && P.guide === 'leonardo') x -= 1;
   if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
   return Math.max(0, x);
@@ -110,13 +113,25 @@ function arrive(S, f) {
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
 function putFig(S, o, ci, place) { const f = { u: S.uid++, c: ci, o, p: place, rdy: CARDS[ci].k.swift ? 1 : 0, arr: 1, tb: 0, stun: 0, stay: 0, li: 0 }; S.figs.push(f); if (S.ev) S.ev.push({ t: 'arrive', u: f.u, c: ci, o: o, p: place }); if (S.st) { S.st.plays++; if (CARDS[ci].reg === PLACES[S.places[place]].reg) S.st.home++; S.st.played[o][ci] = 1; } arrive(S, f); return f; }
-function clash(S, a, d, da, dd, bonus) {
+// Clash dice. cfg.dice 'high': both sides roll an ordinary die and the higher roll adds 1 Might, or 2 when it is higher
+// by 3 or more ('high1': always 1). Without cfg.dice, each side adds a die with the faces in cfg.die.
+// diceOdds: every way the dice can fall as [attacker's bonus, defender's bonus, weight]; rollClash: one roll
+function diceOdds(cfg) {
+  if (cfg.dice) { const two = cfg.dice === 'high' ? 6 : 0; return [[0, 0, 6], [1, 0, 15 - two], [0, 1, 15 - two]].concat(two ? [[2, 0, two], [0, 2, two]] : []); }
+  const out = []; for (const x of cfg.die) for (const y of cfg.die) out.push([x, y, 1]); return out;
+}
+function rollClash(cfg, R) {
+  R = R || Math.random;
+  if (cfg.dice) { const ra = 1 + ((R() * 6) | 0), rd = 1 + ((R() * 6) | 0), gap = Math.abs(ra - rd), b = !gap ? 0 : cfg.dice === 'high' && gap >= 3 ? 2 : 1; return { ra, rd, da: ra > rd ? b : 0, dd: rd > ra ? b : 0 }; }
+  const D = cfg.die, da = D[(R() * D.length) | 0], dd = D[(R() * D.length) | 0]; return { ra: da, rd: dd, da, dd };
+}
+function clash(S, a, d, da, dd, bonus, raw) {
   const A = S.P[a.o], D = S.P[d.o];
   let am = might(S, a, 1, d) + (bonus || 0) + da, dm = might(S, d, 2, a) + dd;
   // the defender's Phalanx, from Spark left over last turn
   const qi = D.hand.indexOf('phalanx'); if (qi >= 0 && D.reserve >= 1 && dm <= am && dm + 2 >= am) { D.hand.splice(qi, 1); D.reserve -= 1; dm += 2; if (S.st) S.st.played[d.o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: d.o, c: 'phalanx', u: d.u }); }
   A.uC = 1; a.rdy = 0; a.acted = 1; if (S.st) S.st.clash++;
-  if (S.ev) S.ev.push({ t: 'clash', a: a.u, d: d.u, p: a.p, am: am, dm: dm, da: da, dd: dd });
+  if (S.ev) S.ev.push({ t: 'clash', a: a.u, d: d.u, p: a.p, am: am, dm: dm, da: da, dd: dd, ra: raw ? raw.ra : da, rd: raw ? raw.rd : dd });
   const here = S.places[a.p];
   const ar = A.renown, dr = D.renown;
   if (am > dm) { ko(S, d, a); if (here === 'colosseum') { A.renown++; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && dr > ar) { A.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: S.cfg.bounty, why: 'bounty' }); } } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') { D.renown++; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && ar > dr) { D.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: S.cfg.bounty, why: 'bounty' }); } }
@@ -160,14 +175,14 @@ function actions(S) {
   return out;
 }
 function moveFig(S, f, to, jump) { if (S.ev) S.ev.push({ t: 'move', u: f.u, from: f.p, to: to, jump: jump ? 1 : 0 }); f.p = to; f.stay = 0; if (S.st) { if (jump) S.st.jump++; else S.st.walk++; } }
-function apply(S, a, da, dd) {
+function apply(S, a, da, dd, raw) {
   const o = S.turn, P = S.P[o];
   if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); P.hand.splice(a.h, 1); putFig(S, o, ci, a.p); }
   else if (a.t === 'relic') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci); P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
   else if (a.t === 'walk') { const f = byU(S, a.u); const far = S.adj[f.p].indexOf(a.p) < 0; moveFig(S, f, a.p, far); f.rdy = 0; }
   else if (a.t === 'antik') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; P.uA = 1; }
   else if (a.t === 'tub') { moveFig(S, byU(S, a.u), a.p, false); P.uT = 1; }
-  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); } clash(S, f, g, da, dd, 0); }
+  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); } clash(S, f, g, da, dd, 0, raw); }
   else if (a.t === 'deed') {
     const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci); P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v });
     let h2c = a.h2 != null ? P.hand[a.h2] : null;
@@ -178,7 +193,7 @@ function apply(S, a, da, dd) {
     else if (ci === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
     else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
-    else if (ci === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1); if (byU(S, a.u)) f.rdy = r; }
+    else if (ci === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
     else if (ci === 'trojan') putFig(S, o, h2c, a.p);
     else if (ci === 'rift') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; moveFig(S, f, g.p, true); moveFig(S, g, t, true); }
   }
@@ -212,7 +227,7 @@ const PROF = {
 function valueOf(S, a, me, prof) {
   const roll = a.t === 'clash' || (a.t === 'deed' && S.P[me].hand[a.h] === 'ambush');
   if (!roll) { const T = clone(S); apply(T, a, 0, 0); return evalS(T, me, prof); }
-  let s = 0; const D = S.cfg.die; for (const x of D) for (const y of D) { const T = clone(S); apply(T, a, x, y); s += evalS(T, me, prof); } return s / (D.length * D.length);
+  let s = 0, w = 0; for (const x of diceOdds(S.cfg)) { const T = clone(S); apply(T, a, x[0], x[1]); s += x[2] * evalS(T, me, prof); w += x[2]; } return s / w;
 }
 // The robot's next step (null: it's done for the turn)
 function aiPick(S, prof, R) {
@@ -234,7 +249,7 @@ function aiTurn(S, prof, R) {
     if (!best) return;
     if (S.cfg.trace) { const P = S.P[me], f = best.u ? byU(S, best.u) : null, g = best.v ? byU(S, best.v) : null, nm = x => x ? CARDS[x.c].n + '(' + might(S, x, 0) + ')' : '';
       S.cfg.trace.push('  P' + me + ' ' + best.t + ' ' + (best.h != null ? CARDS[P.hand[best.h]].n + ' ' : '') + nm(f) + (g ? ' vs ' + nm(g) : '') + (best.p != null ? ' -> ' + PLACES[S.places[best.p]].n : '') + (best.ph ? ' +Phalanx' : '') + ' [spark ' + P.spark + ']'); }
-    const nf = S.figs.length; apply(S, best, D[(R() * D.length) | 0], D[(R() * D.length) | 0]);
+    const nf = S.figs.length, roll = rollClash(S.cfg, R); apply(S, best, roll.da, roll.dd, roll);
     if (S.cfg.trace && S.figs.length < nf) S.cfg.trace.push('     knocked out! ' + S.figs.length + ' figures left');
   }
 }
@@ -283,5 +298,5 @@ function play(decks, guides, profs, cfg, seed) {
   return S;
 }
 return { play, PROF, rng, shuffle, DEF, STD, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, CARDS, PLACES };
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, CARDS, PLACES };
 });
