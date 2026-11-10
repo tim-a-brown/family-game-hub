@@ -11,3 +11,10 @@ The whole game as code, so rules and card numbers can be tested by playing thous
 - `fin-*.txt`: the results the design doc quotes.
 
 The standard rules are `STD` at the top of `exp2.js`.
+
+## Packs: two packs make a deck
+
+`node scripts/anoria/mash.js [games per matchup]` treats each ready deck as a 15-card pack and plays every deck you can
+make from two of them (one of each card), plus each pack twice (the tuned decks), all against all. It is the fairness
+test for a new pack: add its 15 cards and Guide to `ARCH` and run it. First run (40 games per matchup, 560 per deck):
+mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5). Results in `mash-40.txt`.
