@@ -232,6 +232,11 @@ Underlying principles for everything:
   his palace reliefs, a djinn as medieval Arabic and Persian manuscripts drew them, Anansi patterned like Asante
   goldweights), as long as it isn't a caricature. Pictures stay dramatic: accuracy is not a reason to go tame. No two
   cards share a composition (two kings of one region, two commanders on a ship's deck: change the scene).
+- **A picture's subject stays in view.** A full card's picture window ends where its paper begins and shows about
+  half the picture's height; `FY` in text.js says which part each card keeps (0 the top, 100 the bottom). A new or
+  redrawn picture is checked on the card, full size and small, before it goes in: nothing it is about behind the
+  text, and no face in the top left corner, where a small card's cost and Might sit. Briefs ask for the subject in
+  the upper half, away from that corner.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.
