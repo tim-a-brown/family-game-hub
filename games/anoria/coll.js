@@ -15,7 +15,8 @@
 //   - Your first win of the day against the computer: a pack of 2.
 //   - Once each: your first win against Normal, against Hard, and with a deck you built: a pack of 2.
 //   - A new Guide joins you at 3, 8, 15 and 25 wins.
-//   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift.
+//   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift. A Thread
+//     that comes whole in your starter deck gives none.
 //   Played every day, the core set takes about a month to finish (pacing.js).
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
@@ -61,6 +62,8 @@ function chooseStarter(name) {
   const s = load(); if (s.starter || !ARCH[name]) return false;
   s.starter = name; ARCH[name].cards.forEach(k => { s.cards[k] = CAP; s.seen[k] = 1; });
   s.guides = [ARCH[name].guide];
+  // (a Thread that comes whole in the starter is simply yours: gifts are for the ones you finish by collecting)
+  THREADS.forEach(t => { if (t.cards.every(k => s.cards[k])) s.threads[t.id] = 1; });
   WELCOME.forEach(n => s.packs.push({ id: s.pid++, k: 'welcome', why: 'A welcome pack', n: n }));
   save(s); return true;
 }
