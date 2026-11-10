@@ -1886,6 +1886,14 @@
     if (saved.mode && !o.modeLocked && o.modes && o.modes.some(function (m) { return m.id === saved.mode; })) state.mode = saved.mode;
     (o.options || []).forEach(function (op) { state.options[op.id] = saved.options && saved.options[op.id] != null ? saved.options[op.id] : op.value; });
     var names = (saved.names || []).map(function (n) { return isPersonName(n) ? n : ''; });
+    // The first seat starts as whoever is signed in on this device, rather than an empty "Player 1" (unless that
+    // seat was last played by someone else, or they sit somewhere else at this table)
+    (function () {
+      var me = lsGet('my_name', '').trim();
+      if (names[0] || !isPersonName(me)) return;
+      if (names.some(function (n) { return n && avKey(n) === avKey(me); })) return;
+      names[0] = me;
+    })();
     var bots = cpuNames(8);
     // cpu:'mix' tables: which seats (after the first) are robots, remembered with the names
     var robots = {}; (saved.robots || []).forEach(function (i) { if (i > 0) robots[i] = true; });

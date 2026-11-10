@@ -1085,7 +1085,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     box.appendChild(head);
     // The secret (like the hot dog in Hot Dog Stand): tap Lorcana's icon 12 times in a row and it turns over to
     // Anoria's crest; from then on Anoria has a row of its own in this sheet (anoria_unlocked; its menu can hide it)
-    if (g.id === 'lorcana') (function () {
+    var hasAnoria = GAMES.some(function (x) { return x.id === 'anoria'; });   // (the secret only exists once the game does)
+    if (g.id === 'lorcana' && hasAnoria) (function () {
       var ic = head.querySelector('.gicon'), n = 0, last = 0, done = get('anoria_unlocked', '') === '1';
       if (!ic) return;
       ic.addEventListener('click', function () {
@@ -1107,7 +1108,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         el('span', { class: 'e an-crest', html: '<img src="games/anoria/ui/logo.webp" alt="">' }),
         el('span', { class: 'tx' }, [el('div', { class: 't', text: 'Anoria' }), el('div', { class: 'd', text: 'Every age of history on one map' })])]);
     }
-    if (g.id === 'lorcana' && get('anoria_unlocked', '') === '1') box.appendChild(anoriaRow());
+    if (g.id === 'lorcana' && hasAnoria && get('anoria_unlocked', '') === '1') box.appendChild(anoriaRow());
     if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [el('span', { text: live.label || 'In progress' }), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
     var chips = sp ? setupChips(g, sp) : null;
     if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
