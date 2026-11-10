@@ -232,6 +232,10 @@ Underlying principles for everything:
   his palace reliefs, a djinn as medieval Arabic and Persian manuscripts drew them, Anansi patterned like Asante
   goldweights), as long as it isn't a caricature. Pictures stay dramatic: accuracy is not a reason to go tame. No two
   cards share a composition (two kings of one region, two commanders on a ship's deck: change the scene).
+- **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
+  she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
+  other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
+  and the reader's glossary key off that form.
 - **A picture's subject stays in view.** A full card's picture window ends where its paper begins and shows about
   half the picture's height; `FY` in text.js says which part each card keeps (0 the top, 100 the bottom). A new or
   redrawn picture is checked on the card, full size and small, before it goes in: nothing it is about behind the
