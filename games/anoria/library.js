@@ -108,7 +108,7 @@
   function open(done) {
     if (L) return;
     boot();
-    const scr = U.screen({ title: 'Library', cls: 'an-lib', onClose: () => { shut(); if (done) done(); } });
+    const scr = U.screen({ title: 'Library', cls: 'an-lib', onClose: () => { shut(); Coll.lookedAll(); if (done) done(); } });   // (New marks last for one visit)
     L = { scr: scr, first: true, wide: false,
       root: el('div', { class: 'lb' }), side: el('aside', { class: 'lb-side' }), main: el('div', { class: 'lb-main' }), scroll: el('div', { class: 'lb-scroll' }),
       ledger: el('section', { class: 'lb-led', 'aria-label': 'Your collection' }), bar: el('div', { class: 'lb-bar' }), acts: el('div', { class: 'lb-acts' }),
