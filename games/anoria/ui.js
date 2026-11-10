@@ -1042,7 +1042,7 @@
     onNew: showSetup, undo: undo,
     menu: [
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
-      { icon: 'eye', label: 'Hide Anoria on this device', sub: 'Takes it off the home screen again', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
+      { icon: 'eye', label: 'Hide Anoria', sub: 'Tucks it back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
     ]
   });
 
