@@ -519,7 +519,7 @@
     ]);
     app.innerHTML = ''; app.appendChild(root);
     // the logo first, for a breath (a tap moves on)
-    if (!calm()) { const sp = el('div', { class: 'pk-ch-splash' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
+    if (!calm() && !(window.AnoriaGuide && window.AnoriaGuide.justRan())) { const sp = el('div', { class: 'pk-ch-splash' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
     pick(0, false);
   }
 

@@ -219,8 +219,16 @@ Underlying principles for everything:
 - **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
   welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
   and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a
-  change to the economy is made there and re-run (target: about a month of daily play to finish a set). Its screens are
+  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the core set
+  takes about 18 days of daily play at 3 games a day (it was about a month at 2 cards). Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
+  `guide` option; the rules on one page are still `Kit.rules()`). The quick start (shown once, the first time Anoria
+  is opened: `anoria_guide`) and the twelve chapters are all **lessons**: a made-up position on the real table,
+  played by a script through `AnoriaUI.demo` in ui.js (`G.demo`: never saved or recorded, fixed dice; your own game
+  waits in its save and comes back). A lesson is `{id, n, table(), run(L)}`: `L.say` (caption, with `at` rings and
+  `tag` names), `L.play/walk/clash/relic/deed` (a finger taps, as a player would), `L.them.*`, `L.count`, `L.later`.
+  A rule that changes needs its chapter's script and captions changed with it; `Kit.init`'s `RULES` text too.
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
 

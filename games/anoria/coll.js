@@ -22,7 +22,7 @@
 'use strict';
 const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS;
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 30, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], DAILY = 2, FEAT = 2, GUIDE_AT = [3, 8, 15, 25];
+const WELCOME = [12, 12, 12], DAILY = 3, FEAT = 3, GUIDE_AT = [3, 8, 15, 25];
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 

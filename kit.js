@@ -9,7 +9,7 @@
 //   (optional) hist.js, players.js, casino.js, arcade-hi.js
 //
 // API (all on window.Kit)
-//   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent
+//   Kit.init({id, rules, menu, onNew, undo})  build the game bar, set accent (guide: fn opens the game's own how-to-play instead of the rules sheet)
 //                                              (sync: fn adds "Sync now": your saves, then fn() refreshes the game's live data)
 //                                              (undo: fn adds "Undo" to the menu)
 //   Kit.init({exitFirst: true})  All games first in the menu, beside menu items marked exit: true (consoles)
@@ -1058,6 +1058,8 @@
     } catch (e) {}
     location.href = '../index.html';
   }
+  // (a game with its own guide, opts.guide, opens that from the ? button and the menu; Kit.rules() is still the sheet)
+  function help() { if (typeof opts.guide === 'function') opts.guide(); else rules(); }
   function rules() {
     if (!opts.rules) return;
     sfx('pop');
@@ -1239,7 +1241,7 @@
     var spP = game && spotifyPick(game.id);
     item('Settings', 'headphones', 'Music', spotifySheet, '', !spotifyOn() ? 'Play your Spotify' : spP && spP.u !== 'off' ? spP.n || 'Spotify' : spP ? 'Spotify off in this game' : 'Search or pick a playlist');
     var M = 'More';
-    if (opts.rules) item(M, 'book', 'How to play', rules);
+    if (opts.rules) item(M, 'book', 'How to play', help);
     var nReq = linkReqs().length;
     item(M, 'users', 'Frequent players', function () { managePlayers(); }, nReq ? 'k-attn' : '', nReq ? (nReq === 1 ? '1 link request to review' : nReq + ' link requests to review') : null);
     if (game) item(M, 'star', isFav() ? 'Remove from favorites' : 'Add to favorites', function () {
@@ -1474,7 +1476,7 @@
         el('span', { text: opts.title || (game && game.name) || doc.title })
       ]),
       // the rules: "? Rules" on the setup screen, folding down to just the ? once the game is on (html.k-in-setup)
-      opts.rules ? el('button', { class: 'icon-btn k-rules', type: 'button', 'aria-label': 'Rules', html: ICON.help + '<span class="k-rules-lbl">Rules</span>', onclick: rules }) : null,
+      opts.rules ? el('button', { class: 'icon-btn k-rules', type: 'button', 'aria-label': 'Rules', html: ICON.help + '<span class="k-rules-lbl">Rules</span>', onclick: help }) : null,
       el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Menu', html: ICON.more, onclick: menu })
     ]);
     doc.body.insertBefore(bar, doc.body.firstChild);

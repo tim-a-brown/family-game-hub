@@ -336,13 +336,13 @@
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   function save() {
-    if (!G || !S) return;
+    if (!G || !S || G.demo) return;   // (a lesson on the table is never saved: your own game is)
     if (G.over) { clearSave(); return; }
     lsSet(SAVE, JSON.stringify({ v: 1, G: Object.assign({}, G, { S: Object.assign({}, S, { cfg: null, st: null, ev: null }) }) }));
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
-  function stop() { gen++; document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
@@ -402,7 +402,7 @@
     app.appendChild(dom.root);
   }
   const rowsOrder = () => { const v = ui.view, t = 1 - v; return [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
-  const idle = () => !!G && !G.over && !ui.busy && G.ph === 'play' && human(S.turn) && ui.viewer === S.turn && !ui.hideHand;
+  const idle = () => !!G && !G.over && !ui.busy && G.ph === 'play' && human(S.turn) && ui.viewer === S.turn && !ui.hideHand && (!G.demo || ui.demoIdle);
 
   function stripEl(node, o, me) {
     const p = V.P[o], pl = G.players[o], g = TX.GUIDES[p.guide], on = V.turn === o && !G.over;
@@ -518,7 +518,7 @@
     let txt = '', dim = false;
     if (G.over) txt = S.winner < 0 ? 'A draw' : pname(S.winner) === 'You' ? 'You win' : pname(S.winner) + ' wins';
     else if (ui.discard) { const k = S.P[S.turn].hand.length - S.cfg.handMax; txt = 'Hand limit ' + S.cfg.handMax + ': discard ' + k; }
-    else if (V.turn < 0) { txt = 'The count'; dim = true; }
+    else if (V.turn < 0) { txt = G.demo && !ui.counting ? '' : 'The count'; dim = true; }
     else if (!human(V.turn)) { txt = pname(V.turn) + ' is playing'; dim = true; }
     else txt = Kit.poss(pname(V.turn)) + ' turn';
     n.appendChild(el('div', { class: 'cap-txt' + (dim ? ' dim' : ''), text: txt }));
@@ -754,7 +754,7 @@
   const vfig = u => V.figs.filter(f => f.u === u)[0];
   const handRect = (o, h) => (o === ui.view && !ui.hideHand ? rc(dom.hand.querySelector('.hc[data-h="' + h + '"]')) : null) || rc(q('.an-strip.p' + o + ' .st-hand')) || rc(q('.an-strip.p' + o + ' .st-guide'));
   const told = {};
-  function story(key) { const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen) return; told[key] = gen; Kit.toast(t, 4200); }
+  function story(key) { const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen || (G && G.demo)) return; told[key] = gen; Kit.toast(t, 4200); }
   function dropHand(o, h) { if (h != null && h >= 0) V.P[o].hand.splice(h, 1); }
 
   // The clash: the two lunge, both dice tumble, the totals land, the loser's card tears in half
@@ -789,6 +789,7 @@
     if (plain) { [A, D].forEach(x => { x.won.style.visibility = ''; if (!x.won.classList.contains('none')) { x.won.classList.add('bump'); x.die.classList.add('high'); } }); if (ev.da || ev.dd) Kit.sfx('pop'); await wait(380); }
     [A, D].forEach(x => { x.tot.style.visibility = ''; x.tot.classList.add('bump'); }); Kit.sfx('tick');
     await wait(420);
+    if (ui.clashHold) { const h = ui.clashHold; ui.clashHold = null; await h(); }   // (a lesson holds the clash here, totals showing, while its caption is read)
     if (res) {
       const W = res === 'a' ? A : D, X = res === 'a' ? D : A, lost = res === 'a' ? d : a;
       if (am === dm) W.note.textContent = 'Sun Tzu wins the tie';
@@ -948,7 +949,7 @@
     ctx.key = a.h != null ? P.hand[a.h] : a.ph ? 'phalanx' : null; ctx.h2key = a.h2 != null ? P.hand[a.h2] : null;
     if (a.t === 'clash' && a.ph) ctx.key = 'phalanx';
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
-    const roll = E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
+    const roll = ctx.roll || E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
     const evs = S.ev.splice(0); G.n++; tally(evs); save();
     ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash');
     const ok = await playEvents(evs, ctx);
@@ -963,6 +964,7 @@
     setBusy(false); legal(); settle();
   }
   function undo() {
+    if (G && G.demo) return;
     if (!G || G.over) return Kit.toast('The game is over');
     if (!idle()) return Kit.toast('Wait for your turn');
     if (!undoStack.length) return Kit.toast('Nothing to take back: clashes and drawn cards stay');
@@ -1112,7 +1114,7 @@
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the lower Might is knocked out. A tie: nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
     '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. Play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing) and it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
-    '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack. So do your first win against Normal, against Hard, and with a deck you built. New Guides join you at 3, 8, 15 and 25 wins.</li>' +
+    '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built. New Guides join you at 3, 8, 15 and 25 wins.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. A tie: nobody. An empty or tied Gate stays with its owner.</li>' +
@@ -1123,15 +1125,81 @@
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
     '<li>Taking a move back: steps that drew no card and rolled no dice can be undone from the menu.</li></ul>';
   Kit.init({
-    id: KEY, color: '#d9b45a', mark: false, rules: RULES,
+    id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
-    onNew: showSetup, undo: undo,
+    onNew: () => { if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,
     menu: [
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => { if (window.AnoriaLibrary) window.AnoriaLibrary.open(); } },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
       { icon: 'eye', label: 'Hide Anoria', sub: 'Tucks it back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
     ]
   });
+
+
+  // ═══ Lessons on the table ════════════════════════════════════════════════════════════════════════════════
+  // guide.js plays its lessons and the quick start on this same table: a made-up position (never saved, never
+  // recorded), with the script choosing every step and every roll. Your own game waits in its save and comes back.
+  function resume() {
+    let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {}
+    if (d && d.v === 1 && d.G && d.G.S && !d.G.over && d.G.S.figs) { try { restore(d); return; } catch (e) {} }
+    showSetup();
+  }
+  const demo = {
+    on: () => !!(G && G.demo), gen: () => gen, S: () => S, q: s => (dom.root ? dom.root.querySelector(s) : null), wait: ms => wait(ms),
+    // o = {S (an engine state), players: [{name, cpu, color}]}
+    begin(o) {
+      stop(); S = o.S; S.st = null; S.ev = []; speed = 1; ui.clashHold = null;
+      G = { demo: 1, mode: 'cpu', level: 'normal', players: o.players, S: S, ord: [S.turn, 1 - S.turn], k: 0, ph: 'start', started: Date.now(), n: 0,
+        stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {} };
+      ui.view = 0; ui.viewer = 0; ui.hideHand = false; ui.banner = S.round; ui.count = -1;
+      buildTable(); V = snap(); V.turn = -1; render(); return gen;
+    },
+    // the start of o's turn: Figures ready, Spark, two cards
+    async turn(o) {
+      const my = gen; S.turn = o; ui.sel = null; ui.demoIdle = false; setBusy(true);
+      E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0);
+      if (!(await playEvents(evs, { o: o }))) return false;
+      V = snap(); setBusy(false); demo.light(human(o)); if (human(o)) Kit.sfx('turn', .5);
+      return gen === my;
+    },
+    // light up what can be played (as on your own turn), or put the lights out
+    light(on) { ui.demoIdle = !!on; ui.sel = null; legal(); render(); },
+    // pick something up: {kind: 'hand', h} or {kind: 'fig', u}; everywhere it can go lights up
+    lift(sel) { ui.demoIdle = true; setBusy(false); legal(); select(sel); },
+    drop() { ui.sel = null; render(); },
+    acts: () => E.actions(S), speed(n) { speed = n || 1; }, holdClash(fn) { ui.clashHold = fn; },
+    // one step, with the dice the lesson wants: roll = [attacker's die, defender's die]
+    async act(a, dice) {
+      const my = gen, lit = ui.demoIdle; let roll = null;
+      if (dice) { const gap = Math.abs(dice[0] - dice[1]), b = !gap ? 0 : gap >= 3 ? 2 : 1; roll = { ra: dice[0], rd: dice[1], da: dice[0] > dice[1] ? b : 0, dd: dice[1] > dice[0] ? b : 0 }; }
+      ui.sel = null; setBusy(true); render();
+      const ctx = await doAction(a, roll ? { roll: roll } : null); if (gen !== my || !ctx) return false;
+      setBusy(false); ui.demoIdle = lit; legal(); settle(); return true;
+    },
+    async endTurn() {
+      const my = gen; ui.sel = null; ui.demoIdle = false; setBusy(true); render();
+      E.endTurn(S); const evs = S.ev.splice(0); if (!(await playEvents(evs, { o: S.turn }))) return false;
+      V = snap(); V.turn = -1; render(); return gen === my;
+    },
+    // the count at the end of a round
+    async count() {
+      const my = gen, r0 = S.P.map(p => p.renown); ui.demoIdle = false; setBusy(true);
+      E.endRound(S); const evR = S.ev.splice(0); G.hist.push(S.P.map((p, i) => p.renown - r0[i]));
+      ui.counting = true; const ok = await roundEnd(evR); ui.counting = false; if (!ok) return false;
+      V = snap(); V.turn = -1; render(); return gen === my;
+    },
+    async round() {   // the banner that opens a round
+      const my = gen, st = E.stake(S.cfg, S.round), up = S.round > 1 && st > E.stake(S.cfg, S.round - 1);
+      V = snap(); V.turn = -1; render();
+      if (up) { Kit.sfx('win'); Kit.haptic('success'); ui.flip = 1; render(); ui.flip = 0; } else Kit.sfx('pop');
+      await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : '');
+      return gen === my;
+    },
+    // change the position by hand (a lesson skipping ahead), then draw it
+    set(fn) { fn(S); S.ev = []; demo.show(); },
+    show() { V = snap(); if (!ui.demoIdle) V.turn = -1; legal(); render(); },
+    end() { const was = demo.on(); stop(); if (!was) return; G = null; S = null; V = null; resume(); }
+  };
 
   // A full-screen layer over the page (the table underneath is left alone), with a back button, a title and room on
   // the right for the screen's own controls. Sheets and the card reader open above it. o = {title, cls, onClose}
@@ -1153,10 +1221,11 @@
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
-    showSetup: showSetup, inGame: () => !!(G && S && !G.over), screen: screen, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
+    showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
   if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
+  else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) window.AnoriaGuide.quickStart();   // (the first time here: a minute of the game being played)
   else showSetup();
 })();
