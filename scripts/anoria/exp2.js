@@ -1,5 +1,5 @@
 'use strict';
-const { play, PROF, rng, shuffle } = require('./sim'); const { CARDS, GUIDES, PLACES, ARCH } = require('./cards');
+const { play, PROF, rng, shuffle } = require('../../games/anoria/engine'); const { CARDS, GUIDES, PLACES, ARCH } = require('../../games/anoria/cards');
 module.exports = function (exp, n) {
   const { batch, fmt, mirror, randDeck, pct, GL } = require('./run');
   const base = { spark: 'round', scoring: 'round', order: 'alt' };
@@ -8,7 +8,7 @@ module.exports = function (exp, n) {
       'underdog + clash on arrival': { catchup: 2, rush: 1 }, 'underdog + stakes 1,1,1,2,2,2 + clash on arrival': { catchup: 2, ramp: [1, 1, 1, 2, 2, 2], rush: 1 }, 'underdog + clash on arrival + no dice': { catchup: 2, rush: 1, die: [0] } };
     for (const k in V) console.log(k + ':  ' + fmt(batch(n, Object.assign({}, base, V[k]), mirror(PROF.holder), 37)));
   }
-  const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1 };
+  const STD = Object.assign({}, require('../../games/anoria/engine').STD);
   const PN = ['holder', 'raider', 'keeper', 'brawler'];
   if (exp === 'cards') {
     const inc = {}, pl = {}, gd = {}, fp = {}, pr = {}, pair = {}, ev = {}, hub = {}; const bump = (m, k, w) => { const x = m[k] || (m[k] = [0, 0]); x[0]++; x[1] += w; };

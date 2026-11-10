@@ -1,6 +1,6 @@
 // Balance runs for Anoria. node run.js <experiment> [games]
 'use strict';
-const { play, PROF, rng, shuffle } = require('./sim'); const { CARDS, GUIDES, PLACES, ARCH } = require('./cards');
+const { play, PROF, rng, shuffle } = require('../../games/anoria/engine'); const { CARDS, GUIDES, PLACES, ARCH } = require('../../games/anoria/cards');
 const FACS = ['D', 'S', 'V', 'A', 'W'], GL = Object.keys(GUIDES);
 function randDeck(R) {
   for (;;) { const fs = shuffle(FACS.slice(), R).slice(0, 2), pool = []; for (const k in CARDS) { const c = CARDS[k]; if (fs.indexOf(c.f) >= 0 || c.f === 'N') pool.push(k, k); }

@@ -1,6 +1,7 @@
 // Anoria: the test card pool for the rules simulator (sim.js). Numbers here are what the balance runs tune.
 // Figure: f faction (D Discovery, S Statecraft, V Valor, A Arts, W Wonder), c Spark cost, m Might, reg home region,
 // era 1..6, y year (for the fun log), k keywords, arr arrive effect, insp who inspired them (Legacy)
+(function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.AnoriaCards = factory(); })(this, function () {
 'use strict';
 const F = (n, f, c, m, reg, era, y, k, x) => Object.assign({ n, t: 'fig', f, c, m, reg, era, y, k: k || {} }, x || {});
 const CARDS = {
@@ -96,4 +97,5 @@ const ARCH = {
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
   Tricksters: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
-module.exports = { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH };
+return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH };
+});
