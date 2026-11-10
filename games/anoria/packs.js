@@ -103,7 +103,7 @@
     }
     node.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tearAll(); } });
     draw();
-    return { el: node, body: body, tilt: tilt, tear: tearAll, bind: bind };
+    return { el: node, bind: bind };
   }
   // a pack drawn small (the row that says what earns the next one, the dots that count the packs)
   const miniPack = cls => el('i', { class: 'pk-mini ' + (cls || '') });
@@ -123,10 +123,12 @@
 
   // ═══ The event: one layer that carries a new Guide, each pack in turn, and the way out ═══════════════════
   // o = {guides: [{g, starter}], first: [ids of the packs to open first]}
+  let running = false;   // (one event at a time: a second tap on the way in doesn't start another over it)
   function run(o, done) {
+    if (running) return; running = true;
     const A = U(), guides = (o.guides || []).slice(), first = o.first || [], hadGuide = guides.length > 0;
     let alive = true, after = null, opened = 0, offs = [];
-    const sc = A.screen({ title: '', cls: 'pk-screen', onClose: () => { alive = false; offs.forEach(f => f()); offs = []; if (after) after(); else if (done) done(); } });
+    const sc = A.screen({ title: '', cls: 'pk-screen', onClose: () => { alive = false; running = false; offs.forEach(f => f()); offs = []; if (after) after(); else if (done) done(); } });
     const stage = el('div', { class: 'pk-stage' }), fx = el('div', { class: 'pk-fx', 'aria-hidden': 'true' }), dots = el('div', { class: 'pk-dots' });
     sc.body.appendChild(stage); sc.el.appendChild(fx); sc.tools.appendChild(dots);
     const waiting = () => { const all = Coll.packs(); return all.filter(p => first.indexOf(p.id) >= 0).concat(all.filter(p => first.indexOf(p.id) < 0)); };
@@ -203,7 +205,7 @@
       count(false); stage.classList.add('sealed');
       const stack = el('div', { class: 'pk-stack' });
       for (let i = Math.min(q.length - 1, 3); i >= 1; i--) stack.appendChild(el('i', { class: 'pk-under u' + i }));
-      const P = sealedPack(pack, fx, m => torn(pack, seal, P, m));
+      const P = sealedPack(pack, fx, m => torn(pack, seal, m));
       stack.appendChild(P.el); stack.appendChild(el('i', { class: 'pk-ring' }));
       const many = q.length > 1 ? el('div', { class: 'pk-many' }, [el('b', { text: String(q.length) }), ' packs to open']) : null;
       const seal = el('div', { class: 'pk-seal' }, [stack, many]);
@@ -212,7 +214,7 @@
     }
 
     // ── Torn: the cards are yours from this moment. They come out face down and are turned by the player. ──
-    function torn(pack, seal, P, mouth) {
+    function torn(pack, seal, mouth) {
       const res = Coll.openPack(pack.id);
       seal.classList.add('torn');
       if (!alive) return;
@@ -265,7 +267,7 @@
       function fit() {
         if (!ended && n) reserve();
         const r = field.getBoundingClientRect(); if (!r.width || !n) return;
-        const gap = r.width < 430 || r.height < 340 ? 7 : 10, top = 12, cap = n <= 2 ? 230 : n <= 4 ? 200 : 176;
+        const gap = r.width < 430 || r.height < 340 ? 7 : 10, top = 12, cap = n <= 2 ? 300 : n <= 4 ? 240 : 190;
         const size = c => { const rows = Math.ceil(n / c); return Math.min((r.width - gap * (c - 1)) / c, (r.height - top - gap * (rows - 1)) / rows / 1.4, cap); };
         let best = { w: 0, c: 1 };
         for (let c = 1; c <= n; c++) { const w = size(c), v = w * (n % c ? .9 : 1); if (v > best.v + .25 || !best.w) best = { w: w, c: c, v: v }; }
@@ -405,7 +407,7 @@
         plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two')]));
         if (res.threads.length) {
           const gifts = res.threads.some(t => t.gift);
-          plate.appendChild(el('div', { class: 'pk-t-ths' + (res.threads.length > 2 ? ' many' : '') }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Thread', 'Threads') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
+          plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Thread', 'Threads') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
             el('div', { class: 'pk-t-th' }, [t.gift ? el('button', { type: 'button', class: 'pk-t-gift', 'aria-label': 'Its gift: ' + CARDS[t.gift].n + '. Read it', onclick: () => A.openView(t.gift) }, [thumb(t.gift)]) : null, el('b', { text: t.n })])))));
         }
         foot.innerHTML = '';

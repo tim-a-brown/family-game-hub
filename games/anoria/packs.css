@@ -1,17 +1,18 @@
 /* Anoria: choosing a starter and opening packs (packs.js). Gilt on midnight navy, like the table and the cards.
    The pack and the cards size themselves from one width each (--pw the pack, --cw a card on the table, --hw and
    --gw a Guide's card), so one layout serves a phone either way up and an iPad. */
-.pk-screen,.pk-choose{--safe-r:env(safe-area-inset-right,0px);--safe-l:env(safe-area-inset-left,0px);
+.pk-choose{--safe-r:env(safe-area-inset-right,0px);--safe-l:env(safe-area-inset-left,0px);}
+.pk-screen,.pk-choose{--pk-vh:100vh;
   --pk-foil:linear-gradient(105deg,rgba(255,255,255,0) 22%,rgba(170,195,255,.14) 38%,rgba(255,255,255,0) 50%,rgba(170,195,255,.08) 68%,rgba(255,255,255,0) 80%),linear-gradient(90deg,#060a17 0,#162149 14%,#0c1430 36%,#1c2a5a 60%,#0d1532 82%,#060a17 100%);
   --pk-star:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0l2 8 8 2-8 2-2 8-2-8-8-2 8-2z' fill='%23e9cf86'/%3E%3Ccircle cx='10' cy='10' r='1.6' fill='%2310131c'/%3E%3C/svg%3E");}
+/* (the height that is really in view, where the browser can say) */
+@supports (height:100dvh){.pk-screen,.pk-choose{--pk-vh:100dvh;}}
 /* a small label in the period capitals, over the thing it names */
 .pk-k{display:block;font:400 .78rem/1.15 var(--fellsc);letter-spacing:.16em;color:#cbb98a;}
 
 /* ══ The layer the event plays on (AnoriaUI.screen) ═══════════════════════════════════════════════════════ */
 .pk-screen .an-sc-h{position:relative;z-index:14;padding-bottom:4px;min-height:calc(var(--safe-t) + 56px);}
 .pk-screen .an-sc-t{font-size:1.3rem;}
-/* (the layer is navy in every app theme, so its back button is light in every theme too) */
-.pk-screen .an-sc-back{background:rgba(255,255,255,.1);color:#f3e9d2;}
 .pk-screen .an-sc-b{position:relative;display:flex;flex-direction:column;overflow:hidden;padding:0 calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px);}
 .pk-stage{position:relative;flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;gap:8px;}
 .pk-fx{position:absolute;inset:0;z-index:20;pointer-events:none;overflow:hidden;}
@@ -28,7 +29,7 @@
 
 /* ══ The sealed pack ══════════════════════════════════════════════════════════════════════════════════════ */
 .pk-seal{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;touch-action:none;-webkit-user-select:none;user-select:none;
-  transition:transform .43s cubic-bezier(.5,0,.25,1),opacity .36s;--pw:min(70vw,48vh,330px);}
+  transition:transform .43s cubic-bezier(.5,0,.25,1),opacity .36s;--pw:min(70vw,calc(var(--pk-vh) * .48),330px);}
 .pk-seal::before{content:"";position:absolute;left:50%;top:50%;width:calc(var(--pw) * 2.5);aspect-ratio:1;transform:translate(-50%,-52%);border-radius:50%;pointer-events:none;
   background:radial-gradient(closest-side,rgba(233,207,134,.2),rgba(120,150,230,.1) 45%,rgba(0,0,0,0));transition:opacity .4s;}
 .pk-seal.torn::before,.pk-seal.away::before{opacity:0;}
@@ -239,8 +240,7 @@
 
 /* a Guide: the card large, light turning slowly behind it */
 .pk-moment.guide{position:relative;inset:auto;flex:1;min-height:0;overflow:hidden;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:none;padding:0 4px 4px;
-  --gw:max(120px,min(64vw,calc((100vh - 350px) / 1.4),300px));}
-@supports (height:100dvh){.pk-moment.guide{--gw:max(120px,min(64vw,calc((100dvh - 350px) / 1.4),300px));}}
+  --gw:max(120px,min(72vw,calc((var(--pk-vh) - 350px) / 1.4),300px));}
 .pk-g-show{position:relative;flex:none;width:var(--gw);height:calc(var(--gw) * 1.4);}
 .pk-rays{position:absolute;left:50%;top:50%;width:360%;aspect-ratio:1;margin:-180% 0 0 -180%;border-radius:50%;pointer-events:none;animation:pk-spin 30s linear infinite,pk-fade 1.2s backwards;
   background:repeating-conic-gradient(from 0deg,rgba(246,227,161,.2) 0 2.5deg,rgba(0,0,0,0) 2.5deg 11deg),repeating-conic-gradient(from 4deg,rgba(255,244,205,.16) 0 6deg,rgba(0,0,0,0) 6deg 29deg);mix-blend-mode:screen;
@@ -293,8 +293,7 @@
 /* ══ The first time: choose a Guide ═══════════════════════════════════════════════════════════════════════ */
 .pk-choose{position:fixed;left:0;right:0;top:var(--bar);bottom:0;z-index:1;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;color:#f3e9d2;
   background:radial-gradient(120% 70% at 50% 0%,#1b2547 0%,#10162d 55%,#0a0e1c 100%);border-radius:18px 18px 0 0;box-shadow:0 0 0 1px rgba(233,207,134,.18);transition:opacity .3s;
-  --hw:max(124px,min(58vw,calc((100vh - var(--bar) - 478px) / 1.4),380px));}
-@supports (height:100dvh){.pk-choose{--hw:max(124px,min(58vw,calc((100dvh - var(--bar) - 478px) / 1.4),380px));}}
+  --hw:max(124px,min(58vw,calc((var(--pk-vh) - var(--bar) - 510px) / 1.4),380px));}
 .pk-choose.gone{opacity:0;pointer-events:none;}
 .pk-ch-in{min-height:100%;display:flex;flex-direction:column;align-items:center;gap:10px;max-width:620px;margin:0 auto;padding:12px calc(var(--safe-r) + 14px) 0 calc(var(--safe-l) + 14px);}
 .pk-ch-hd{display:flex;align-items:center;gap:12px;width:100%;animation:pk-up .5s var(--ease) backwards;}
@@ -349,13 +348,16 @@
 
 /* ══ Sideways: what you tap on the right, what you look at on the left ════════════════════════════════════ */
 @media (orientation:landscape){
-  .pk-seal{--pw:min(34vw,50vh,300px);}
+  /* how many are waiting on the left, the pack you tear on the right */
+  .pk-seal{--pw:min(34vw,calc(var(--pk-vh) * .56),300px);flex-direction:row;gap:clamp(30px,7vw,84px);}
+  .pk-many{order:-1;display:flex;flex-direction:column;align-items:center;gap:6px;max-width:30vw;}
+  .pk-many b{margin:0;font-size:3.6rem;}
   .pk-stage.reveal{flex-direction:row;align-items:stretch;gap:16px;}
   .pk-stage.reveal .pk-info{width:clamp(196px,27vw,340px);align-self:center;}
   .pk-plate{min-height:150px;}
   .pk-foot{justify-content:flex-end;}
   .pk-foot .btn,.pk-foot .pk-b-main{flex:0 1 auto;} .pk-foot .pk-b-lib,.pk-foot .pk-b-done{padding:0 16px;}
-  .pk-moment.guide{flex-direction:row;gap:clamp(22px,5vw,64px);--gw:max(120px,min(34vw,calc((100vh - 110px) / 1.4),340px));}
+  .pk-moment.guide{flex-direction:row;gap:clamp(22px,5vw,64px);--gw:max(120px,min(34vw,calc((var(--pk-vh) - 110px) / 1.4),340px));}
   .pk-g-txt{align-items:flex-start;text-align:left;max-width:min(440px,46vw);}
   .pk-none{flex-direction:row;align-items:center;gap:clamp(18px,4vw,48px);max-width:900px;}
   .pk-none-a{flex:0 0 auto;width:min(30vw,260px);}
@@ -363,17 +365,13 @@
   .pk-none-b{flex:1;justify-content:center;}
   .pk-none-acts{margin-top:4px;justify-content:flex-end;}
   .pk-none-acts .btn{flex:0 1 auto;min-width:140px;}
-  .pk-choose{--hw:max(140px,min(30vw,calc((100vh - var(--bar) - 110px) / 1.4),340px));}
+  .pk-choose{--hw:max(140px,min(30vw,calc((var(--pk-vh) - var(--bar) - 110px) / 1.4),340px));}
   .pk-ch-in{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:clamp(16px,3.4vw,40px);row-gap:8px;max-width:980px;align-items:start;padding-top:8px;}
   .pk-ch-hd{grid-column:1;grid-row:1;width:auto;max-width:max(var(--hw),230px);}
   .pk-ch-hero{grid-column:1;grid-row:2;justify-self:center;margin:0;}
   .pk-ch-side{grid-column:2;grid-row:1/3;align-self:stretch;}
   .pk-ch-row{max-width:520px;}
 }
-@supports (height:100dvh){@media (orientation:landscape){
-  .pk-moment.guide{--gw:max(120px,min(34vw,calc((100dvh - 110px) / 1.4),340px));}
-  .pk-choose{--hw:max(140px,min(30vw,calc((100dvh - var(--bar) - 110px) / 1.4),340px));}
-}}
 /* a phone on its side: the back button rides over the corner so the cards get the height */
 @media (orientation:landscape) and (max-height:520px){
   .pk-screen .an-sc-h{position:absolute;left:0;top:0;right:auto;padding-top:calc(var(--safe-t) + 8px);padding-bottom:0;}
@@ -415,11 +413,13 @@
   .pk-ch-go{min-height:50px;}
 }
 @media (min-width:700px) and (min-height:700px){
-  .pk-seal{--pw:min(52vw,46vh,420px);gap:38px;}
+  .pk-seal{--pw:min(52vw,calc(var(--pk-vh) * .46),420px);gap:38px;}
   .pk-many{font-size:1.3rem;} .pk-many b{font-size:1.7rem;}
-  .pk-moment.guide{--gw:max(120px,min(52vw,calc((100vh - 440px) / 1.4),420px));gap:22px;}
+  .pk-moment.guide{--gw:max(120px,min(52vw,calc((var(--pk-vh) - 440px) / 1.4),420px));gap:22px;}
   .pk-g-pow{font-size:1.3rem;} .pk-g-note{font-size:1.15rem;} .pk-g-deck b{font-size:1.35rem;}
-  .pk-none{max-width:600px;gap:12px;}
+  .pk-none{max-width:600px;gap:12px;justify-content:center;}
+  .pk-none-b{flex:0 0 auto;}
+  .pk-none-acts{margin-top:10px;}
   .pk-ghost{width:min(22vw,16vh,170px);}
   .pk-none-t{font-size:2rem;}
   .pk-n-row{min-height:64px;padding:10px 16px 10px 14px;}
@@ -437,9 +437,14 @@
   .pk-ch-pow p{font-size:1.12rem;}
 }
 @media (orientation:landscape) and (min-width:700px) and (min-height:700px){
-  .pk-seal{--pw:min(34vw,50vh,420px);}
-  .pk-moment.guide{--gw:max(120px,min(36vw,calc((100vh - 130px) / 1.4),440px));}
+  .pk-seal{--pw:min(34vw,calc(var(--pk-vh) * .56),420px);}
+  .pk-many b{font-size:5rem;}
+  .pk-moment.guide{--gw:max(120px,min(36vw,calc((var(--pk-vh) - 130px) / 1.4),440px));}
   .pk-none{max-width:1000px;}
+  .pk-none-b{flex:1 1 0;}
+  .pk-none-acts{margin-top:4px;}
+  .pk-ch-logo{width:52px;height:52px;border-radius:12px;}
+  .pk-ch-ttl h1{font-size:1.55rem;white-space:nowrap;}
 }
 @media (orientation:landscape) and (min-height:600px){
   .pk-stage.reveal .pk-info{width:clamp(240px,27vw,340px);}
@@ -451,6 +456,8 @@
   .pk-big:focus-visible{outline:2px solid #fff1bf;outline-offset:5px;}
 }
 @media (orientation:portrait) and (min-width:700px){
+  .pk-choose{--hw:max(150px,min(58vw,calc((var(--pk-vh) - var(--bar) - 566px) / 1.4),380px));}
+  .pk-ch-row{max-width:520px;}
   .pk-stage.reveal{max-width:780px;width:100%;margin:0 auto;}
   .pk-foot .btn,.pk-foot .pk-b-main{flex:0 1 auto;min-width:130px;}
 }
