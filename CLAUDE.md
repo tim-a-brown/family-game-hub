@@ -232,6 +232,12 @@ Underlying principles for everything:
   his palace reliefs, a djinn as medieval Arabic and Persian manuscripts drew them, Anansi patterned like Asante
   goldweights), as long as it isn't a caricature. Pictures stay dramatic: accuracy is not a reason to go tame. No two
   cards share a composition (two kings of one region, two commanders on a ship's deck: change the scene).
+- **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
+  capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
+- **Drawing faults to look for in every new picture** (all found by Tim): a hand or head out of scale, something held
+  that can't be read, a weapon gripped wrongly, broken objects nobody asked for, two statues of a pair facing
+  different ways, a web or building that couldn't stand, and two people of one region with the same face and kit
+  (give each their own age, build, dress and scene; Sun Tzu is a Bronze Age scholar in robes, not an armoured general).
 - **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
