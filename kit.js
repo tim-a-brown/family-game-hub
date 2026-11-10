@@ -46,7 +46,7 @@
   var EDIT_DEFAULTS = /\/games\//.test(location.pathname) && /[?&]defaults=1(&|$)/.test(location.search);
   if (EDIT_DEFAULTS) (function () {
     var SP = Storage.prototype, get = SP.getItem, set = SP.setItem, del = SP.removeItem;
-    var KEEP = /^(gn_|fgh_|hi_|gh_|lorcana_|my_name$|frequent_players$|casino_bank$|rklists$|fav_games$)/;
+    var KEEP = /^(gn_|fgh_|hi_|gh_|lorcana_(?!play_state)|my_name$|frequent_players$|casino_bank$|rklists$|fav_games$)/;   // (Lorcana's decks and cards read normally; its game in progress doesn't)
     SP.getItem = function (k) { return this === window.localStorage && !KEEP.test(String(k)) ? null : get.call(this, k); };
     SP.setItem = function (k, v) { if (this === window.localStorage && !/^gn_setup_/.test(String(k))) return; return set.call(this, k, v); };
     SP.removeItem = function (k) { if (this === window.localStorage) return; return del.call(this, k); };

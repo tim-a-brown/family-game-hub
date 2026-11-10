@@ -735,6 +735,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .gs-wrap.on .gs-frame{opacity:1;}
 .gs-spin{position:absolute;left:50%;top:60px;width:28px;height:28px;margin-left:-14px;border-radius:50%;border:3px solid var(--w2);border-top-color:var(--text-2);animation:gsSpin .8s linear infinite;}
 .gs-wrap.on .gs-spin{display:none;}
+.gs-fb .gs-open{margin:14px 20px 6px;width:calc(100% - 40px);gap:8px;}
 @keyframes gsSpin{to{transform:rotate(360deg);}}
 /* Mode chooser header */
 .pick-h{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
@@ -1096,7 +1097,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         } };
     }
     s = Kit.sheet({ node: box, onClose: function () { GS = null; } });
-    if (GS) frame.style.height = '360px';
+    if (GS) {
+      frame.style.height = '360px';
+      // a setup that never shows up (a page that didn't load): offer the game's own page instead of a spinner
+      var gsNow = GS; setTimeout(function () {
+        if (GS !== gsNow || fw.classList.contains('on')) return;
+        var fb = fw.querySelector('.gs-fb'); fb.innerHTML = '';
+        fb.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block gs-open', html: Kit.icon('play') + '<span>Open ' + Kit.esc(g.name) + ' to set up</span>', onclick: function () { s.close(); go(g.play + nw, true); } }));
+      }, 6000);
+    }
   }
   window.addEventListener('resize', function () { if (GS) GS.fit(); });
 
