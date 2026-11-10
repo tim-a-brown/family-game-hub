@@ -1861,7 +1861,10 @@
   //   mode:    default mode id (modeLocked: true = use it even if a different mode was picked last time)
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats'|'mix', seatLabel}
   //            cpu 'seats': every seat but the first is a computer. 'mix': every seat but the first has a
-  //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat
+  //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat.
+  //            The setup shows who's playing on one line (the people from last time); a tap opens the players
+  //            sheet (playersSheet) for how many, who sits where, robots and their skill. The returned
+  //            object's seats() gives [{name, cpu}] as it stands, for a game that shows something per seat
   //   options: [{id, label, choices:[[value,label],...], value, help, when:(mode, options)=>bool}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
@@ -1876,6 +1879,155 @@
   // "Phone" in setup text reads oddly on an iPad: say what the device is
   var bigScreen = Math.min(screen.width || 0, screen.height || 0) >= 700;
   function devWord(t) { return bigScreen && typeof t === 'string' ? t.replace(/\b(the|this|one|a) phone\b/gi, function (m, a) { return a + ' iPad'; }) : t; }
+  // ── Players sheet ─────────────────────────────────────────────────────────
+  // Who's playing, all in one sheet: how many seats, who sits where (drag to reorder), which seats the computer plays
+  // and how well. It works on a plain description of the table, so the home screen can show it for a game's setup
+  // in its frame (kitSheet 'players'):
+  //   M = {label, lo, hi, count, names[], robots{seat: true}, levels{seat: value}, bots[] (robot names, seat - 1),
+  //        cpu{count: 'mix' | 'seats' | true | false}, merged, together (the robot switches move as one),
+  //        lv: {label, def, ch{count: [[value, text, title]]}} | null}
+  // o.onChange(M) runs after every change.
+  function seatIsBot(M, i) { var c = M.cpu[M.count]; return c === 'seats' ? i > 0 : c === 'mix' ? !!M.robots[i] : !!(c && i > 0); }
+  function seatLevel(M, i) {
+    var cs = (M.lv && M.lv.ch[M.count]) || [], v = M.levels[i];
+    return v != null && cs.some(function (c) { return String(c[0]) === String(v); }) ? v : M.lv.def;
+  }
+  // Seat marker: the seat number, or the person's avatar with a tag when it's you or someone linked to their own profile
+  function seatBadge(v, i, c) {
+    var m = whoMark(v);
+    if (!m) return el('span', { class: 'avatar', style: { '--c': c }, 'data-who': '', html: String(i + 1) });
+    var b = avMarked(v.trim(), c); b.setAttribute('data-who', m + ':' + avKey(v));
+    return b;
+  }
+  function playersSheet(M, o) {
+    o = o || {};
+    var box = el('div', { class: 'stack k-players' }), skLast = -1;
+    function changed() { if (o.onChange) o.onChange(M); }
+    function norm() {
+      M.count = Math.min(M.hi, Math.max(M.lo, M.count));
+      if (M.merged && M.cpu[M.count] !== 'mix') M.robots = {};
+      // crowded tables: keep robot names short so they fit
+      if (M.count >= 4) M.bots.forEach(function (b, k) { if (b.length > 8) M.bots[k] = cpuNames(1, M.bots, 8)[0] || b; });
+    }
+    function moveSeat(from, to) {
+      if (to === from || to < 0 || to >= M.count) return;
+      while (M.names.length < M.count) M.names.push('');
+      var n = M.names.splice(from, 1)[0]; M.names.splice(to, 0, n);
+      sfx('pop'); haptic('light'); paint(); changed();
+    }
+    function grip(row, i) {
+      var g = el('button', { type: 'button', class: 'seat-grip', 'aria-label': 'Move player ' + (i + 1) + ' (drag, or use the arrow keys)', title: 'Drag to reorder', html: GRIP_SVG });
+      var y0 = 0, rows = null, step = 0, to = i, on = false;
+      g.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); var t = i + (e.key === 'ArrowUp' ? -1 : 1); moveSeat(i, t); var again = box.querySelectorAll('.seat-grip')[t]; if (again) again.focus(); }
+      });
+      g.addEventListener('pointerdown', function (e) {
+        if (e.button > 0) return;
+        e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+        rows = Array.prototype.slice.call(box.querySelectorAll('.seat'));
+        step = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight + 10;
+        y0 = e.clientY; to = i; on = true; row.classList.add('drag'); haptic('light');
+      });
+      g.addEventListener('pointermove', function (e) {
+        if (!on) return;
+        var dy = e.clientY - y0, t = Math.max(0, Math.min(rows.length - 1, i + Math.round(dy / step)));
+        row.style.transform = 'translateY(' + dy + 'px)';
+        if (t !== to) { to = t; haptic('light'); }
+        rows.forEach(function (rw, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; rw.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
+      });
+      function end() {
+        if (!on) return; on = false;
+        rows.forEach(function (rw) { rw.style.transform = ''; }); row.classList.remove('drag');
+        if (to !== i) moveSeat(i, to);
+      }
+      g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+      return g;
+    }
+    // A robot's skill, on a thin line under its seat: one tap per level; with other robots seated, one tap sets them all the same
+    function skillLine(i) {
+      var cur = String(seatLevel(M, i)), others = []; for (var j = 1; j < M.count; j++) if (M.robots[j] && j !== i) others.push(j);
+      var seg = el('div', { class: 'k-sk-seg', role: 'radiogroup', 'aria-label': (M.lv.label || 'Computer skill') + ', ' + (M.bots[i - 1] || 'computer') });
+      (M.lv.ch[M.count] || []).forEach(function (c) {
+        var on = String(c[0]) === cur;
+        seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', role: 'radio', 'aria-checked': String(on), title: c[2] || c[1], text: c[1], onclick: function () {
+          if (on) return;
+          M.levels[i] = c[0]; skLast = i; if (!others.length) M.lv.def = c[0];   // (and the default for robots seated next)
+          sfx('tap'); haptic('light'); paint(); changed();
+        } }));
+      });
+      var line = el('div', { class: 'k-sk' }, [el('span', { class: 'k-sk-l', text: 'Skill' }), seg]);
+      // (on the line just changed, while the other robots play at a different skill)
+      if (skLast === i && others.some(function (j) { return String(seatLevel(M, j)) !== cur; })) line.appendChild(el('button', { type: 'button', class: 'k-sk-all', text: others.length === 1 ? 'Same for both' : 'Same for all', onclick: function () {
+        others.forEach(function (j) { M.levels[j] = seatLevel(M, i); }); M.lv.def = seatLevel(M, i);
+        sfx('pop'); haptic('light'); paint(); changed();
+      } }));
+      return line;
+    }
+    function paint() {
+      norm(); box.innerHTML = '';
+      var cpu = M.cpu[M.count];
+      if (M.hi > M.lo) {
+        var out = el('output', { text: String(M.count) });
+        var minus = el('button', { type: 'button', 'aria-label': 'Fewer players', text: '−', onclick: function () { M.count--; sfx('tap'); paint(); changed(); } });
+        var plus = el('button', { type: 'button', 'aria-label': 'More players', text: '+', onclick: function () { M.count++; sfx('tap'); paint(); changed(); } });
+        minus.disabled = M.count <= M.lo; plus.disabled = M.count >= M.hi;
+        box.appendChild(el('div', { class: 'row k-pl-n' }, [el('div', { class: 'label grow', style: { margin: 0 }, text: 'Players' }), el('div', { class: 'stepper' }, [minus, out, plus])]));
+      }
+      for (var i = 0; i < M.count; i++) (function (i) {
+        var isCpu = seatIsBot(M, i), c = playerColor(i);
+        var inp = el('input', {
+          class: 'input', type: 'text', maxlength: 14, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
+          placeholder: i === 0 && cpu ? 'Your name' : 'Player ' + (i + 1),
+          value: isCpu ? M.bots[i - 1] : (M.names[i] || '')
+        });
+        var row = el('div', { class: 'seat' + (isCpu ? ' cpu' : '') }, [isCpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : seatBadge(inp.value, i, c)]);
+        var field = el('div', { class: 'seat-field' }, [inp]);
+        if (isCpu) {
+          inp.readOnly = true; inp.setAttribute('aria-label', 'Computer player');
+          field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'New computer name', html: icon('shuffle'), onclick: function () {
+            M.bots[i - 1] = cpuNames(1, M.bots, M.count >= 4 ? 8 : 0)[0] || M.bots[i - 1]; inp.value = M.bots[i - 1]; sfx('pop'); haptic('light'); changed();
+          } }));
+        } else {
+          inp.addEventListener('input', function () {
+            M.names[i] = inp.value; clr.hidden = !inp.value;
+            var was = row.querySelector('.avatar, .seat-av'), nb = seatBadge(inp.value, i, c);
+            if (was && was.getAttribute('data-who') !== nb.getAttribute('data-who')) row.replaceChild(nb, was);
+            changed();
+          });
+          var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
+            M.names[i] = ''; sfx('tap'); haptic('light'); paint(); changed();
+            var again = box.querySelectorAll('.seat input')[i]; if (again) again.focus();
+          } });
+          clr.hidden = !inp.value;
+          field.appendChild(clr);
+          var pick = el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
+            pickName(function (n) { M.names[i] = n; paint(); changed(); }, { taken: M.names.slice(0, M.count).filter(function (x, j) { return j !== i; }), title: 'Seat ' + (i + 1) });
+          } });
+          field.appendChild(pick);
+          // the seat's avatar is a big target for choosing who sits there, too
+          row.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.seat > .avatar, .seat > .seat-av')) { sfx('tap'); pick.click(); } });
+        }
+        row.appendChild(field);
+        // Mixed tables: every seat after the first has a switch between a person and a robot
+        if (cpu === 'mix' && i > 0) {
+          row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
+            onclick: function () {
+              if (M.together) { var v = !M.robots[i]; for (var j = 1; j < 12; j++) M.robots[j] = v; }   // (this game seats people or robots, not both)
+              else M.robots[i] = !M.robots[i];
+              sfx('pop'); haptic('light'); paint(); changed();
+            } }));
+        }
+        // Two or more people (no computer seats): a handle to drag a player up or down the order
+        if (!cpu && M.count > 1) row.appendChild(grip(row, i));
+        box.appendChild(row);
+        // a robot's skill sits on a thin line right under its seat
+        if (cpu === 'mix' && i > 0 && isCpu && M.lv) box.appendChild(skillLine(i));
+      })(i);
+    }
+    paint();
+    return sheet({ title: M.label || 'Who’s playing?', node: box, actions: [{ label: 'Done', primary: true }], onClose: function () { if (o.onClose) o.onClose(M); } });
+  }
+
   function setup(host, o) {
     o = o || {};
     host.innerHTML = '';
@@ -1996,27 +2148,6 @@
       if (v != null && cs.some(function (c) { return String(c[0]) === String(v); })) return v;
       return state.options[lvOp.id];
     }
-    // A robot's skill, on a thin line under its seat: one tap per level; with other robots seated, one tap sets them all the same
-    var skLast = -1;
-    function skillLine(i) {
-      var cur = String(levelOf(i)), others = []; for (var j = 1; j < state.count; j++) if (robots[j] && j !== i) others.push(j);
-      var seg = el('div', { class: 'k-sk-seg', role: 'radiogroup', 'aria-label': (lvOp.label || 'Computer skill') + ', ' + (bots[i - 1] || 'computer') });
-      lvChoices().forEach(function (c) {
-        var on = String(c[0]) === cur;
-        seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', role: 'radio', 'aria-checked': String(on), title: c[2] || c[1], text: c[1], onclick: function () {
-          if (on) return;
-          levels[i] = c[0]; skLast = i; if (!others.length) state.options[lvOp.id] = c[0];   // (and the default for robots seated next)
-          sfx('tap'); haptic('light'); renderSeats();
-        } }));
-      });
-      var line = el('div', { class: 'k-sk' }, [el('span', { class: 'k-sk-l', text: 'Skill' }), seg]);
-      // (on the line just changed, while the other robots play at a different skill)
-      if (skLast === i && others.some(function (j) { return String(levelOf(j)) !== cur; })) line.appendChild(el('button', { type: 'button', class: 'k-sk-all', text: others.length === 1 ? 'Same for both' : 'Same for all', onclick: function () {
-        others.forEach(function (j) { levels[j] = levelOf(i); }); state.options[lvOp.id] = levelOf(i);
-        sfx('pop'); haptic('light'); renderSeats();
-      } }));
-      return line;
-    }
     // a mode card's words: the game's own, else its kind's (Pass & play says computers can join when seats can be robots)
     function modeDesc(m) {
       if (m.desc != null) return m.desc;
@@ -2081,6 +2212,42 @@
         optsBox.appendChild(box);
       });
     }
+    function seatCpu(i) { var cpu = cpuFor(); return cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : !!(cpu && i > 0); }
+    // who sits where right now: [{name ('' when nobody is named), cpu}] (also handed to the game as setup.seats())
+    function seatList() {
+      var out = [];
+      for (var i = 0; i < state.count; i++) { var c = seatCpu(i); out.push({ name: c ? (bots[i - 1] || 'Computer') : String(names[i] || '').trim(), cpu: c }); }
+      return out;
+    }
+    // The table as the players sheet reads it (see playersSheet): what each count allows is worked out up front
+    function seatModel() {
+      var r = range(), keep = state.count, cpuAt = {}, ch = {}, rb = {}, lv = {};
+      for (var n = Math.max(1, r[0]); n <= r[1]; n++) { state.count = n; cpuAt[n] = cpuFor(); if (lvOp) ch[n] = (lvChoices() || []).map(function (c) { return [c[0], c[1], c[2] || '']; }); }
+      state.count = keep;
+      Object.keys(robots).forEach(function (k) { if (robots[k]) rb[k] = true; }); Object.keys(levels).forEach(function (k) { lv[k] = levels[k]; });
+      return { label: P.label || "Who's playing?", lo: r[0], hi: r[1], count: state.count, names: names.slice(), robots: rb, levels: lv, bots: bots.slice(),
+        cpu: cpuAt, merged: merged, together: merged && !localMix, lv: lvOp ? { label: lvOp.label || 'Computer skill', def: state.options[lvOp.id], ch: ch } : null };
+    }
+    function seatApply(M) {
+      if (!M) return;
+      state.count = M.count; names = (M.names || []).slice(); bots = (M.bots || bots).slice();
+      robots = {}; Object.keys(M.robots || {}).forEach(function (k) { if (M.robots[k]) robots[k] = true; });
+      levels = {}; Object.keys(M.levels || {}).forEach(function (k) { levels[k] = M.levels[k]; });
+      if (lvOp && M.lv) state.options[lvOp.id] = M.lv.def;
+      renderSeats();
+    }
+    // Change who's playing: one seat and nothing else to set is just the name picker; anything more is the players
+    // sheet (on the home screen, over its game sheet, when this setup is in that sheet's frame)
+    function openPlayers() {
+      sfx('tap'); haptic('light');
+      var r = range();
+      if (r[1] <= 1 && !cpuFor()) { pickName(function (n) { names[0] = n; renderSeats(); }, { title: P.label || "Who's playing?" }); return; }
+      if (IN_SHEET) { try { parent.postMessage({ kitSheet: 'players', m: seatModel() }, location.origin); } catch (e) {} return; }
+      playersSheet(seatModel(), { onChange: seatApply });
+    }
+    if (IN_SHEET) window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data && e.data.kitSheet === 'players' && wrap.isConnected) seatApply(e.data.m); });
+    // Who's playing, at a glance: the people (and robots, with their skill) seated the way the game was last played.
+    // One tap opens the players sheet to change how many, who sits where and which seats the computer plays.
     function renderSeats() {
       seatsBox.innerHTML = '';
       if (!P) { renderOptions(); return; }
@@ -2090,116 +2257,34 @@
       if (merged) { state.mode = resolved(); if (!robotsOk(state.count)) robots = {}; cpu = cpuFor(); }
       renderOptions();
       if (r[1] === 0) return;   // a mode with nobody to seat (Bingo's caller)
-      var head = el('div', { class: 'row' }, [el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" })]);
-      if (r[1] > r[0]) {
-        var out = el('output', { text: String(state.count) });
-        var minus = el('button', { type: 'button', 'aria-label': 'Fewer players', text: '−', onclick: function () { state.count--; sfx('tap'); renderSeats(); } });
-        var plus = el('button', { type: 'button', 'aria-label': 'More players', text: '+', onclick: function () { state.count++; sfx('tap'); renderSeats(); } });
-        minus.disabled = state.count <= r[0]; plus.disabled = state.count >= r[1];
-        head.appendChild(el('div', { class: 'stepper' }, [minus, out, plus]));
+      var label = el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" });
+      if (P.names === false) {   // nobody is named: just how many
+        var head = el('div', { class: 'row' }, [label]);
+        if (r[1] > r[0]) {
+          var out = el('output', { text: String(state.count) });
+          var minus = el('button', { type: 'button', 'aria-label': 'Fewer players', text: '−', onclick: function () { state.count--; sfx('tap'); renderSeats(); } });
+          var plus = el('button', { type: 'button', 'aria-label': 'More players', text: '+', onclick: function () { state.count++; sfx('tap'); renderSeats(); } });
+          minus.disabled = state.count <= r[0]; plus.disabled = state.count >= r[1];
+          head.appendChild(el('div', { class: 'stepper' }, [minus, out, plus]));
+        }
+        seatsBox.appendChild(head);
+        return;
       }
-      seatsBox.appendChild(head);
-      if (P.names === false) return;
-      var inputs = [];
-      // Crowded tables: keep robot names short so seat labels fit
+      // Crowded tables: keep robot names short so they fit
       if (state.count >= 4) bots.forEach(function (b, k) { if (b.length > 8) bots[k] = cpuNames(1, bots, 8)[0] || b; });
-      for (var i = 0; i < state.count; i++) {
-        (function (i) {
-          var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
-          var c = playerColor(i);
-          var inp = el('input', {
-            class: 'input', type: 'text', maxlength: 14, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false',
-            placeholder: i === 0 && cpu ? 'Your name' : 'Player ' + (i + 1),
-            value: isCpu ? bots[i - 1] : (names[i] || '')
-          });
-          inputs.push(inp);
-          var row = el('div', { class: 'seat' + (isCpu ? ' cpu' : '') }, [isCpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : seatBadge(inp.value, i, c)]);
-          var field = el('div', { class: 'seat-field' }, [inp]);
-          if (isCpu) {
-            inp.readOnly = true; inp.setAttribute('aria-label', 'Computer player');
-            field.appendChild(el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'New computer name', html: icon('shuffle'), onclick: function () {
-              bots[i - 1] = cpuNames(1, bots, state.count >= 4 ? 8 : 0)[0] || bots[i - 1]; inp.value = bots[i - 1]; sfx('pop'); haptic('light');
-            } }));
-          } else {
-            inp.addEventListener('input', function () {
-              names[i] = inp.value; clr.hidden = !inp.value;
-              var was = row.firstChild, nb = seatBadge(inp.value, i, c);
-              if (was.getAttribute('data-who') !== nb.getAttribute('data-who')) row.replaceChild(nb, was);
-            });
-            var clr = el('button', { type: 'button', class: 'seat-clear', 'aria-label': 'Clear name', html: icon('close'), onclick: function () {
-              names[i] = ''; sfx('tap'); haptic('light'); renderSeats();
-              var again = seatsBox.querySelectorAll('input')[i]; if (again) again.focus();
-            } });
-            clr.hidden = !inp.value;
-            field.appendChild(clr);
-            var pick = el('button', { type: 'button', class: 'seat-btn', 'aria-label': 'Choose a player', html: icon('users'), onclick: function () {
-              pickName(function (n) { names[i] = n; renderSeats(); }, { taken: names.slice(0, state.count).filter(function (x, j) { return j !== i; }), title: 'Seat ' + (i + 1) });
-            } });
-            field.appendChild(pick);
-            // the seat's avatar is a big target for choosing who sits there, too
-            row.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.seat > .avatar, .seat > .seat-av')) { sfx('tap'); pick.click(); } });
-          }
-          row.appendChild(field);
-          // Mixed tables: every seat after the first has a switch between a person and a robot
-          if (cpu === 'mix' && i > 0) {
-            row.appendChild(el('button', { type: 'button', class: 'seat-bot' + (isCpu ? ' on' : ''), role: 'switch', 'aria-checked': String(!!isCpu), 'aria-label': isCpu ? 'Computer plays this seat. Tap for a person' : 'A person plays this seat. Tap for the computer', html: icon('bot'),
-              onclick: function () {
-                if (merged && !localMix) { var v = !robots[i]; for (var j = 1; j < 12; j++) robots[j] = v; }   // (this game seats people or robots, not both)
-                else robots[i] = !robots[i];
-                sfx('pop'); haptic('light'); renderSeats();
-              } }));
-          }
-          // Two or more people (no computer seats): a handle to drag a player up or down the order
-          if (!cpu && state.count > 1) row.appendChild(grip(row, i));
-          seatsBox.appendChild(row);
-          // a robot's skill sits on a thin line right under its seat
-          if (cpu === 'mix' && i > 0 && isCpu && lvTiles()) seatsBox.appendChild(skillLine(i));
-        })(i);
-      }
-    }
-    // Seat marker: the seat number, or the person's avatar with a tag when it's you or someone linked to their own profile
-    function seatBadge(v, i, c) {
-      var m = whoMark(v);
-      if (!m) return el('span', { class: 'avatar', style: { '--c': c }, 'data-who': '', html: String(i + 1) });
-      var b = avMarked(v.trim(), c); b.setAttribute('data-who', m + ':' + avKey(v));
-      return b;
-    }
-    var GRIP = '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>';
-    function moveSeat(from, to) {
-      if (to === from || to < 0 || to >= state.count) return;
-      while (names.length < state.count) names.push('');
-      var n = names.splice(from, 1)[0]; names.splice(to, 0, n);
-      sfx('pop'); haptic('light'); renderSeats();
-    }
-    function grip(row, i) {
-      var g = el('button', { type: 'button', class: 'seat-grip', 'aria-label': 'Move player ' + (i + 1) + ' (drag, or use the arrow keys)', title: 'Drag to reorder', html: GRIP });
-      var y0 = 0, rows = null, step = 0, to = i, on = false;
-      g.addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); var t = i + (e.key === 'ArrowUp' ? -1 : 1); moveSeat(i, t); var again = seatsBox.querySelectorAll('.seat-grip')[t]; if (again) again.focus(); }
+      var lvs = lvTiles() ? lvChoices() || [] : null, pills = [];
+      seatList().forEach(function (st, i) {
+        var c = playerColor(i), nm = st.name || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)), tag = null;
+        if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
+        pills.push(el('span', { class: 'k-wp' + (st.cpu ? ' cpu' : '') + (st.name ? '' : ' anon') }, [
+          st.cpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : st.name ? avMarked(st.name, c) : seatBadge('', i, c),
+          el('span', { class: 'k-wp-n' }, [el('b', { text: nm }), tag])]));
       });
-      g.addEventListener('pointerdown', function (e) {
-        if (e.button > 0) return;
-        e.preventDefault(); try { g.setPointerCapture(e.pointerId); } catch (x) {}
-        rows = Array.prototype.slice.call(seatsBox.querySelectorAll('.seat'));
-        step = rows.length > 1 ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : row.offsetHeight + 10;
-        y0 = e.clientY; to = i; on = true; row.classList.add('drag'); haptic('light');
-      });
-      g.addEventListener('pointermove', function (e) {
-        if (!on) return;
-        var dy = e.clientY - y0, t = Math.max(0, Math.min(rows.length - 1, i + Math.round(dy / step)));
-        row.style.transform = 'translateY(' + dy + 'px)';
-        if (t !== to) { to = t; haptic('light'); }
-        rows.forEach(function (rw, j) { if (j === i) return; var sh = (j > i && j <= to) ? -step : (j < i && j >= to) ? step : 0; rw.style.transform = sh ? 'translateY(' + sh + 'px)' : ''; });
-      });
-      function end() {
-        if (!on) return; on = false;
-        rows.forEach(function (rw) { rw.style.transform = ''; }); row.classList.remove('drag');
-        if (to !== i) moveSeat(i, to);
-      }
-      g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
-      return g;
+      var one = r[1] <= 1 && !cpu;
+      seatsBox.appendChild(label);
+      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who' + (state.count > 4 ? ' many' : ''), 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + seatList().map(function (st, i) { return st.name || 'Player ' + (i + 1); }).join(', '), onclick: openPlayers },
+        [el('span', { class: 'k-who-l' }, pills), el('span', { class: 'k-who-go', html: icon('users') })]));
     }
-
     // a short line for the Game defaults list: the mode, the player count and each option shown
     function summary() {
       var bits = [];
@@ -2243,10 +2328,10 @@
       // screen over this sheet (the frame is too small for its own picker)
       var needName = function (how) {
         if (how === 'online' || !(P && P.names !== false && game && game.cat === 'arcade')) return -1;
-        var cpu = cpuFor(), ins = seatsBox.querySelectorAll('input');
+        var cpu = cpuFor();
         for (var j = 0; j < state.count; j++) {
           var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
-          if (!cj && !isPersonName(ins[j] ? ins[j].value : '')) return j;
+          if (!cj && !isPersonName(names[j])) return j;
         }
         return -1;
       };
@@ -2288,7 +2373,7 @@
       });
       tell(); setTimeout(tell, 0);
       try { new ResizeObserver(tell).observe(wrap); new MutationObserver(tell).observe(sdock, { childList: true, characterData: true, subtree: true }); } catch (e) { setInterval(tell, 500); }
-      return { el: wrap, state: state };
+      return { el: wrap, state: state, seats: seatList };
     }
     if (EDIT_DEFAULTS) {
       var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
@@ -2301,7 +2386,7 @@
       wrap.appendChild(el('div', { class: 'k-startdock' }, [saveBtn]));
       host.appendChild(wrap);
       renderModes(); renderSeats();
-      return { el: wrap, state: state };
+      return { el: wrap, state: state, seats: seatList };
     }
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
@@ -2316,10 +2401,9 @@
         if (online) { var orr = modeRange(MK.online); nSeats = Math.min(orr[1], Math.max(orr[0], state.count)); }
         // arcade games: every person playing is someone you can pick (their high scores file under their initials)
         if (P && P.names !== false && game && game.cat === 'arcade') {
-          var ins = seatsBox.querySelectorAll('input');
           for (var j = 0; j < nSeats; j++) {
             var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
-            if (cj || isPersonName(ins[j] ? ins[j].value : '')) continue;
+            if (cj || isPersonName(names[j])) continue;
             (function (j) {
               pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { go(online); }, 260); },
                 { taken: names.slice(0, state.count).filter(function (x, q) { return q !== j; }), title: state.count > 1 && !cpu ? 'Player ' + (j + 1) : 'Who’s playing?' });
@@ -2328,10 +2412,9 @@
           }
         }
         if (P) {
-          var inputs = seatsBox.querySelectorAll('input');
           for (var i = 0; i < nSeats; i++) {
             var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
-            var v = inputs[i] ? inputs[i].value.trim() : '';
+            var v = String((isCpu ? bots[i - 1] : names[i]) || '').trim();
             players.push({ name: v || (isCpu ? 'Computer' : (i === 0 && cpu ? 'You' : 'Player ' + (i + 1))), cpu: !!isCpu, color: playerColor(i), seat: i });
             if (isCpu && lvOp && cpu === 'mix') players[i].level = levelOf(i);
             if (!isCpu && isPersonName(v)) { picked.push(v); unhide(v); if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v])); }
@@ -2386,7 +2469,7 @@
         if (b && wrap.isConnected) b.click();
       }, 0);
     }
-    return { el: wrap, state: state };
+    return { el: wrap, state: state, seats: seatList };
   }
 
   // ── Win / results ─────────────────────────────────────────────────────────
@@ -4470,7 +4553,7 @@
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
-    titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
+    titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

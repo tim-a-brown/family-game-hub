@@ -663,8 +663,8 @@ html.k-kblift body{transform:translateY(calc(-1 * var(--kblift,0px)));transition
 .seat > .avatar,.seat-av > .avatar{width:56px;height:56px;font-size:1.35rem;}
 .seat:not(.cpu) > .avatar,.seat:not(.cpu) > .seat-av{cursor:pointer;}
 .seat-av{position:relative;flex:none;display:inline-flex;}
-.seat-tag{position:absolute;right:-4px;bottom:-4px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gilt,#e3bd62);color:#16102e;box-shadow:0 0 0 2px var(--surface-2,#191d26);}
-.seat-tag.link{background:#5b8cff;color:#fff;}
+.seat-av > .seat-tag{padding:0;border:0;line-height:1;position:absolute;right:-4px;bottom:-4px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--gilt,#e3bd62);color:#16102e;box-shadow:0 0 0 2px var(--surface-2,#191d26);}
+.seat-av > .seat-tag.link{background:#5b8cff;color:#fff;}
 .seat-tag .ico{width:13px;height:13px;stroke-width:3;}
 .seat-field{position:relative;flex:1;min-width:0;}
 .seat-field .input{padding-right:80px;}
@@ -730,18 +730,48 @@ html.k-insheet .k-opt.k-sc{display:flex;flex-direction:column;gap:8px;}
 .k-opt.k-sc.k-open > .k-help{display:block;margin:0 4px;}
 .k-opt.k-sc.k-open > .seg{animation:kScIn .22s var(--ease);}
 @keyframes kScIn{from{opacity:0;transform:translateY(-4px);}}
-/* the seats, a size smaller: the whole table shows with less scrolling */
-html.k-insheet .seat .input{min-height:54px;font-size:1.15rem;padding-left:16px;}
-html.k-insheet .seat-field .input{padding-right:62px;}
-html.k-insheet .seat > .avatar,html.k-insheet .seat-av > .avatar{width:44px;height:44px;font-size:1.1rem;}
-html.k-insheet .seat-btn{width:46px;height:44px;border-radius:13px;}
-html.k-insheet .seat-btn .ico{width:24px;height:24px;}
-html.k-insheet .seat-bot{width:46px;height:54px;border-radius:13px;}
-html.k-insheet .seat-bot .ico{width:24px;height:24px;}
-html.k-insheet .seat-grip{height:54px;width:36px;}
-html.k-insheet .seat-grip .ico{width:30px;height:30px;}
-html.k-insheet .seat-clear{right:58px;width:40px;height:40px;}
+/* Who's playing, at a glance: the people and robots seated, in one field; a tap opens the players sheet */
+.k-who{display:flex;align-items:center;gap:10px;width:100%;min-height:74px;padding:12px 8px 12px 14px;border:2px solid transparent;border-radius:calc(var(--r) * 1.15);
+  background:var(--inset);color:var(--text);font:inherit;text-align:left;cursor:pointer;transition:transform .12s var(--spring),background .15s;}
+.k-who:active{transform:scale(.985);background:var(--inset-2);}
+.k-who-l{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;}
+.k-wp{display:inline-flex;align-items:center;gap:9px;min-width:0;max-width:100%;}
+.k-wp > .avatar,.k-wp > .seat-av > .avatar{width:44px;height:44px;font-size:1.1rem;flex:none;}
+.k-wp-n{display:flex;flex-direction:column;min-width:0;line-height:1.15;}
+.k-wp-n b{font-size:1.25rem;font-weight:800;overflow-wrap:anywhere;}
+.k-wp-n small{margin-top:2px;font-size:.7rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
+.k-wp.anon b,.k-wp.cpu b{color:var(--text-2);}
+.k-who.many .k-wp > .avatar,.k-who.many .k-wp > .seat-av > .avatar{width:34px;height:34px;font-size:.9rem;}
+.k-who.many .k-wp-n b{font-size:1.05rem;}
+.k-who.many .k-who-l{gap:8px 12px;}
+.k-who-go{flex:none;align-self:center;display:grid;place-items:center;width:54px;height:50px;border-radius:15px;background:var(--surface-3);color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--theme-accent,#ffc83d), 0 4px 0 color-mix(in srgb,var(--surface-3) 55%,#000), inset 0 1px 0 rgba(255,255,255,.22);}
+.k-who-go .ico{width:27px;height:27px;}
+.k-who:active .k-who-go{transform:translateY(3px);box-shadow:inset 0 0 0 1px var(--theme-accent,#ffc83d), 0 1px 0 color-mix(in srgb,var(--surface-3) 55%,#000), inset 0 1px 0 rgba(255,255,255,.22);}
+html.k-insheet .k-who{min-height:60px;padding:8px 6px 8px 12px;}
+html.k-insheet .k-wp > .avatar,html.k-insheet .k-wp > .seat-av > .avatar{width:38px;height:38px;font-size:1rem;}
+html.k-insheet .k-wp-n b{font-size:1.12rem;}
+html.k-insheet .k-who-go{width:46px;height:44px;border-radius:13px;}
+html.k-insheet .k-who-go .ico{width:24px;height:24px;}
 html.k-insheet .k-seats{gap:8px;}
+/* the players sheet: how many, who sits where, robots and their skill. Its seats are a size smaller than a page's */
+.k-players{gap:10px;margin-top:6px;}
+.k-players .k-pl-n{min-height:52px;}
+.k-players .seat .input{min-height:58px;font-size:1.2rem;padding-left:16px;}
+.k-players .seat-field .input{padding-right:64px;}
+.k-players .seat-field:has(.seat-clear:not([hidden])) .input{padding-right:112px;}
+/* (the clear button shows while a name is being typed, so a long name has the whole field the rest of the time) */
+.k-players .seat-field:not(:focus-within) .seat-clear{display:none;}
+.k-players .seat-field:not(:focus-within):has(.seat-clear) .input{padding-right:64px;}
+.k-players .seat > .avatar,.k-players .seat-av > .avatar{width:46px;height:46px;font-size:1.15rem;}
+.k-players .seat-btn{width:48px;height:46px;border-radius:13px;}
+.k-players .seat-btn .ico{width:25px;height:25px;}
+.k-players .seat-bot{width:48px;height:58px;border-radius:13px;}
+.k-players .seat-bot .ico{width:25px;height:25px;}
+.k-players .seat-grip{height:58px;width:36px;}
+.k-players .seat-grip .ico{width:30px;height:30px;}
+.k-players .seat-clear{right:60px;width:40px;height:40px;}
+.k-players .k-sk{margin:-4px 0 4px 56px;}
 html.k-insheet .k-opt{scroll-margin-bottom:110px;}
 /* ways to play: the chosen one says what it is; the others just their names */
 html.k-insheet .setup .modes{gap:6px;}

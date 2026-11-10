@@ -1042,6 +1042,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       if (d.on) setTimeout(function () { try { GS.frame.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (e) {} }, 50);
     }
     else if (d.kitSheet === 'go') GS.start(d.how, d.page);
+    else if (d.kitSheet === 'players') {   // the setup's players sheet, shown here over the game sheet; every change goes back to the frame
+      var pw = GS.frame.contentWindow;
+      Kit.playersSheet(d.m, { onChange: function (m) { try { pw.postMessage({ kitSheet: 'players', m: m }, location.origin); } catch (e) {} } });
+    }
     else if (d.kitSheet === 'pick') {   // an arcade seat needs a name before it starts
       var w = GS.frame.contentWindow, got = '';
       Kit.pickName(function (n) { got = n; w.postMessage({ kitSheet: 'name', name: n }, location.origin); }, { taken: d.taken || [], title: d.title, onClose: function () { setTimeout(function () { if (!got) w.postMessage({ kitSheet: 'name', name: '' }, location.origin); }, 0); } });

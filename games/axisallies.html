@@ -771,9 +771,13 @@ html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 .subsw .seg{flex:1;}
 
 /* Seat captions in setup */
-.seat-pw{font-size:.74rem;font-weight:800;color:var(--text-3);margin:-4px 0 2px 52px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.seat-pw{font-size:.74rem;font-weight:800;color:var(--text-3);margin:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.aa-cmd{display:flex;flex-direction:column;gap:6px;}
+.aa-cmd-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;}
+.aa-cmd-r b{display:inline-flex;align-items:center;gap:6px;font-size:.95rem;font-weight:800;min-width:0;}
+.aa-cmd-r b .ico{width:16px;height:16px;color:var(--text-3);flex:none;}
 .seat-pw i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:3px;}
-button.seat-pw{border:0;background:var(--w06);font:inherit;font-size:.74rem;font-weight:800;color:var(--text-2);padding:4px 10px;border-radius:999px;cursor:pointer;width:max-content;max-width:calc(100% - 52px);}
+button.seat-pw{border:0;background:var(--w06);font:inherit;font-size:.74rem;font-weight:800;color:var(--text-2);padding:4px 10px;border-radius:999px;cursor:pointer;flex:0 1 auto;max-width:72%;}
 button.seat-pw .ico{width:13px;height:13px;color:var(--text-3);}
 button.seat-pw:active{transform:scale(.96);}
 .aa-pick button{display:flex;align-items:center;justify-content:space-between;gap:10px;}
@@ -5704,31 +5708,30 @@ function showSetup() {
       newGame({ map: map, vc: o.vc || 'std', cas: o.cas || 'ask', speed: o.speed || 'normal', limit: o.limit || '0', order: o.order || 'su', tech: o.tech || 'off', neu: o.neu || 'off', guide: o.guide === 'on', seats: seats });
     }
   });
-  // Under each seat, the powers it commands. Tap them to pick another: the seat that had those powers takes this
-  // seat's (so with computer teammates you can still be any country)
+  // Under who's playing, the powers each seat commands. Tap one to pick another: the seat that had those powers
+  // takes this seat's (so with computer teammates you can still be any country)
   function captions() {
     if (!st) return;
     var s = st.state, map = s.options.map || 'full';
-    var seatsEl = app.querySelectorAll('.seat');
-    var n = seatsEl.length; if (!n) return;
+    var seats = st.seats(), n = seats.length, anchor = app.querySelector('.k-seats'); if (!n || !anchor) return;
     var groups = seatGroups(map, n);
-    seatsEl.forEach(function (row, i) {
-      var nx = row.nextSibling, sig = groups[i] ? groups[i].join('+') : '-';
-      if (nx && nx.classList && nx.classList.contains('seat-pw')) { if (nx.dataset.sig === sig) return; nx.remove(); }
+    var sig = map + '|' + seats.map(function (q, i) { return seatName(i) + ':' + (groups[i] ? groups[i].join('+') : '-'); }).join('|');
+    var box = app.querySelector('.aa-cmd');
+    if (box && box.dataset.sig === sig && box.previousSibling === anchor) return;
+    if (box) box.remove();
+    box = el('div', { class: 'aa-cmd' }, [el('div', { class: 'label', style: { margin: 0 }, text: 'Countries' })]); box.dataset.sig = sig;
+    seats.forEach(function (q, i) {
       var cap = groups[i]
-        ? el('button', { type: 'button', class: 'seat-pw tap', 'aria-label': 'Change the country this seat plays', html: groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') + Kit.icon('swap') })
+        ? el('button', { type: 'button', class: 'seat-pw tap', 'aria-label': 'Change the country ' + seatName(i) + ' plays', html: groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') + Kit.icon('swap') })
         : el('div', { class: 'seat-pw', html: '<span>Sits out in Skirmish (3 powers)</span>' });
-      cap.dataset.sig = sig;
       if (groups[i]) cap.addEventListener('click', function () { pickPowers(i); });
-      row.parentNode.insertBefore(cap, row.nextSibling);
+      box.appendChild(el('div', { class: 'aa-cmd-r' }, [el('b', { html: (q.cpu ? Kit.icon('bot') : '') + '<span>' + esc(seatName(i)) + '</span>' }), cap]));
     });
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
   }
-  function seatName(i) {
-    var row = app.querySelectorAll('.seat')[i], inp = row && row.querySelector('input');
-    return (inp && inp.value.trim()) || (row && !inp && row.textContent.trim()) || (i === 0 ? 'You' : 'Player ' + (i + 1));
-  }
+  function seatName(i) { var q = st.seats()[i]; return (q && q.name) || (i === 0 ? 'You' : 'Player ' + (i + 1)); }
   function pickPowers(i) {
-    var map = st.state.options.map || 'full', n = app.querySelectorAll('.seat').length, k = Math.min(n, map === 'skirm' ? 3 : 5);
+    var map = st.state.options.map || 'full', n = st.seats().length, k = Math.min(n, map === 'skirm' ? 3 : 5);
     var all = SPLITS[map][k], a = seatAsg(map, n), box = el('div', { class: 'k-list aa-pick' }), sh;
     all.forEach(function (g, j) {
       var who = a.indexOf(j), mine = who === i;

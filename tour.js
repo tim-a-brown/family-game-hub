@@ -712,14 +712,14 @@ var Tour = (function () {
           acts.changePin ? ['key', 'Change PIN', acts.changePin] : null]) : [['key', 'Sign in', function () { location.href = '/gate.html'; }]]
       },
       together: {
-        lead: 'Every game starts with a list of seats. Fill them with people, computer players, or both.',
+        lead: 'Every game starts with the people who played it last. Tap them to change who’s playing: people, computer players, or both.',
         parts: [
           ['user', 'On your own', ['Use one seat. Good for puzzles, solitaire, arcade games and the daily puzzles.']],
           ['bot', 'Against the computer', [
-            'Turn on the robot switch for the other seats. Each computer player gets its own name.',
-            'You can set how good the computer is in the game’s options.']],
+            'Tap who’s playing, then turn on the robot switch for the other seats. Each computer player gets its own name.',
+            'Each robot’s skill is on the line under its seat.']],
           ['phone', 'Pass and play', [
-            'Add everyone at the table, then pass the phone around.',
+            'Tap who’s playing and add everyone at the table, then pass the phone around.',
             'In card games your hand is covered up before the next person takes the phone.']],
           ['globe', 'Online', [
             'Tap <b>Play online</b> next to the start button. Friends join from their own phones with the four-letter code.',

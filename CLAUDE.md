@@ -93,7 +93,10 @@ Underlying principles for everything:
   taken back. The game menu always has Frequent players.
 - **Same setup, same results card, every game.** Ways to play are declared with `Kit.modes([...])` (`solo`,
   `cpu`, `local`, `online`; a game keeps its own mode ids with `kind`), but **no mode cards are shown** for these:
-  the setup is one seat list, where each seat after the first has a robot switch. One seat is Just me, robots in
+  the setup shows who's playing on one line (the people who played last; seat 1 starts as the signed-in player), and a
+  tap opens the **players sheet** (`Kit.playersSheet`: how many, who sits where, a robot switch on each seat after the
+  first, each robot's skill). A game never draws its own seat list; one that shows something per seat reads
+  `setup.seats()` (Axis & Allies' countries). One seat is Just me, robots in
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
   `onStart` still gets the matching mode id. Play online is a smaller button beside the start button (`Kit.setup`
   does all this itself; a game's own extra way to play, like Bingo's Call only, uses `alt`). Only games with
