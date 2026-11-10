@@ -1879,7 +1879,7 @@
     // The computer's skill ({robot: true} on that option): each robot seat carries its own, shown on its tile
     var lvOp = (o.options || []).filter(function (op) { return op.robot; })[0] || null;
     var levels = {}; if (saved.levels) Object.keys(saved.levels).forEach(function (k) { levels[k] = saved.levels[k]; });
-    var openHelp = {};
+    var openHelp = {}, scOpen = null;   // (scOpen: in the home screen's sheet, the one option row that's open)
     // One table, no mode cards: when a game's ways to play are the standard Just me / vs Computer / Pass & play
     // (plus Play online), the seats say it all. One seat is Just me, robots in every other seat is vs Computer,
     // people (and robots, where the game mixes them) is Pass & play, and Play online is a smaller button beside
@@ -2039,6 +2039,18 @@
         var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
         var note = devWord([op.help, cur && cur[2]].filter(Boolean).join(' '));
         var hasHelp = op.help || choices.some(function (c) { return c[2]; });
+        // In the home screen's sheet each option is one row, its name and what it's set to; tap it to open its
+        // choices (and what they mean), pick one and it folds back up
+        if (IN_SHEET) {
+          var openNow = scOpen === op.id;
+          Array.prototype.forEach.call(seg.children, function (b) { var f = b.onclick; b.onclick = function () { scOpen = null; f.apply(this, arguments); }; });
+          var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
+            [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? cur[1] : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
+          var scBox = el('div', { class: 'k-opt k-sc' + (openNow ? ' k-open' : '') }, [row, seg].concat(hasHelp && note ? [el('p', { class: 'k-help', text: note })] : []));
+          optsBox.appendChild(scBox);
+          if (openNow) setTimeout(function () { try { scBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 30);
+          return;
+        }
         var box = el('div', { class: 'k-opt' + (openHelp[op.id] ? ' help-on' : '') }, [lab, seg]);
         if (hasHelp) {
           lab.appendChild(el('button', { type: 'button', class: 'k-q', 'aria-label': 'What does ' + op.label + ' mean?', 'aria-expanded': String(!!openHelp[op.id]), text: '?',
@@ -2180,8 +2192,29 @@
       });
       return bits.join(' · ');
     }
+    // (who and top: what the home screen's Quick start shows. who = the people's names and how many robots;
+    // top = the first two choices, each with its name, so they read on their own)
+    function quickInfo() {
+      var who = null, top = [], mt = '';
+      if (P && state.count) {
+        var cpu = cpuFor(), ppl = [], bots = 0;
+        for (var i = 0; i < state.count; i++) {
+          var isCpu = cpu === 'seats' ? i > 0 : cpu === 'mix' ? !!robots[i] : (cpu && i > 0);
+          if (isCpu) bots++; else ppl.push(isPersonName(names[i]) ? names[i] : '');
+        }
+        who = { p: ppl, b: bots };
+      }
+      if (o.modes && o.modes.length > 1 && !merged) { var m = o.modes.filter(function (x) { return x.id === state.mode; })[0]; if (m) mt = m.title || ''; }
+      (o.options || []).forEach(function (op) {
+        if (top.length >= 2 || op.render || op.robot || (op.when && !op.when(state.mode, state.options))) return;
+        var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
+        if (c) top.push([op.label, c[1]]);
+      });
+      return { who: who, top: top, mt: mt };
+    }
     function saveSetup() {
-      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, sum: summary() }));
+      var q = quickInfo();
+      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, sum: summary(), who: q.who, top: q.top, mt: q.mt }));
     }
     // In the home screen's sheet: the same start buttons, but the game starts on its own page (sheetGo)
     if (IN_SHEET) {
@@ -2219,9 +2252,21 @@
       wrap.appendChild(el('div', { class: 'k-startdock' + (sAlt ? ' has-alt' : '') }, sDock));
       host.appendChild(wrap);
       renderModes(); renderSeats();
-      // the sheet sizes its frame to the setup
-      var tell = function () { try { parent.postMessage({ kitSheet: 'h', h: Math.ceil(wrap.getBoundingClientRect().height + wrap.offsetTop + 4), page: pageKey() }, location.origin); } catch (e) {} };
-      tell(); try { new ResizeObserver(tell).observe(wrap); } catch (e) { setInterval(tell, 500); }
+      // the sheet sizes its frame to the whole setup (one scroll, the sheet's) and shows these start buttons pinned
+      // at its own bottom (the dock here stays hidden; the sheet's buttons press it, kitSheet 'press')
+      var sdock = wrap.querySelector('.k-startdock');
+      var tell = function () {
+        var st = sdock.querySelector('.k-start'), al = sdock.querySelector('.k-start-alt');
+        try { parent.postMessage({ kitSheet: 'h', h: Math.ceil(wrap.getBoundingClientRect().height + wrap.offsetTop + 8), page: pageKey(),
+          start: st ? st.textContent : '', alt: al ? al.textContent : '', altIcon: sAlt && sAlt.icon || '',
+          look: st ? (function (cs) { return { bg: cs.backgroundImage !== 'none' ? cs.backgroundImage : cs.backgroundColor, fg: cs.color, sh: cs.boxShadow }; })(getComputedStyle(st)) : null }, location.origin); } catch (e) {}
+      };
+      window.addEventListener('message', function (e) {
+        if (e.origin !== location.origin || !e.data || e.data.kitSheet !== 'press') return;
+        var b = sdock.querySelector(e.data.which === 'alt' ? '.k-start-alt' : '.k-start'); if (b) b.click();
+      });
+      tell(); setTimeout(tell, 0);
+      try { new ResizeObserver(tell).observe(wrap); new MutationObserver(tell).observe(sdock, { childList: true, characterData: true, subtree: true }); } catch (e) { setInterval(tell, 500); }
       return { el: wrap, state: state };
     }
     if (EDIT_DEFAULTS) {

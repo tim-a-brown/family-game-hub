@@ -712,10 +712,23 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .pick button.quick{background:color-mix(in srgb,var(--yellow-fill,#ffc83d) 16%,var(--surface-2));box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 0 0 2px color-mix(in srgb,var(--yellow-fill,#ffc83d) 70%,transparent);}
 .pick button.quick .e{background:var(--yellow-fill,var(--yellow));color:#2b1a00;}
 .pick button.alt{background:var(--w06);box-shadow:none;}
-.qs-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}
+.qs{display:flex;flex-direction:column;gap:4px;margin-top:5px;}
+.qs-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.qs-chip.bot{display:inline-flex;align-items:center;gap:4px;}
+.qs-chip.bot .ico{width:13px;height:13px;}
+.qs-kv{display:flex;align-items:baseline;gap:8px;font-size:.84rem;line-height:1.3;}
+.qs-kv i{flex:none;font-style:normal;font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
+.qs-kv b{min-width:0;font-weight:800;color:var(--text-2);}
 .qs-chip{padding:3px 9px;border-radius:999px;background:var(--w08);color:var(--text-2);font-size:.76rem;font-weight:800;line-height:1.3;}
 .qs-chip.who{background:color-mix(in srgb,var(--yellow-fill,#ffc83d) 26%,transparent);color:var(--text);}
 .gs-wrap{margin:6px -20px 0;}
+/* the start buttons stay in view at the bottom of the sheet while the setup scrolls under them */
+.gs-dock{position:sticky;bottom:calc(-1 * (var(--safe-b) + 20px));z-index:3;display:flex;gap:10px;margin:-6px -20px calc(-1 * (var(--safe-b) + 20px));padding:16px 20px calc(var(--safe-b) + 16px);
+  background:linear-gradient(rgba(0,0,0,0),var(--bg-2) 34%);}
+.gs-dock:empty{display:none;}
+.gs-dock .gs-start{flex:1;min-width:0;margin:0;}
+.gs-dock .gs-alt{flex:none;width:auto;padding:0 14px;gap:6px;white-space:nowrap;font-size:.92rem;}
+.gs-dock .gs-alt .ico{width:18px;height:18px;}
 .gs-h{margin:0 20px 2px;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
 .gs-fb{position:relative;}
 .gs-frame{display:block;width:100%;border:0;background:transparent;opacity:0;transition:opacity .25s;}
@@ -1007,21 +1020,30 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   window.addEventListener('message', function (e) {
     if (!GS || e.origin !== location.origin || !GS.frame || e.source !== GS.frame.contentWindow) return;
     var d = e.data || {};
-    if (d.kitSheet === 'h') { GS.fh = d.h; GS.fit(); GS.frame.closest('.gs-wrap').classList.add('on'); }
+    if (d.kitSheet === 'h') { GS.fh = d.h; GS.fit(); GS.frame.closest('.gs-wrap').classList.add('on'); GS.dock(d); }
     else if (d.kitSheet === 'go') GS.start(d.how, d.page);
     else if (d.kitSheet === 'pick') {   // an arcade seat needs a name before it starts
       var w = GS.frame.contentWindow, got = '';
       Kit.pickName(function (n) { got = n; w.postMessage({ kitSheet: 'name', name: n }, location.origin); }, { taken: d.taken || [], title: d.title, onClose: function () { setTimeout(function () { if (!got) w.postMessage({ kitSheet: 'name', name: '' }, location.origin); }, 0); } });
     }
   });
+  // Quick start's detail: who's playing (names, then how many robots) and the first two choices with their names,
+  // so it reads on its own; older saves without that show the names and the player count
   function setupChips(g, sp) {
     var saved = Kit.defaults && Kit.defaults.get ? Kit.defaults.get(g.id) || Kit.defaults.get(sp) : null;
-    if (!saved || !saved.sum) return null;
-    var row = el('span', { class: 'qs-chips' });
-    var names = (saved.names || []).slice(0, saved.count || 0).filter(function (n) { return n; });
-    names.forEach(function (n) { row.appendChild(el('span', { class: 'qs-chip who', text: n })); });
-    String(saved.sum).split(' · ').forEach(function (t) { if (t) row.appendChild(el('span', { class: 'qs-chip', text: t })); });
-    return row;
+    if (!saved || !(saved.sum || saved.who)) return null;
+    var box = el('span', { class: 'qs' }), row = el('span', { class: 'qs-chips' });
+    var who = saved.who, ppl, bots = 0;
+    if (who) { ppl = (who.p || []).map(function (n, i) { return n || (i === 0 ? 'You' : 'Player ' + (i + 1)); }); bots = who.b || 0; }
+    else ppl = (saved.names || []).slice(0, saved.count || 0).filter(function (n) { return n; });
+    if (who && ppl.length === 1 && !bots) ppl = [ppl[0] === 'You' ? 'Just you' : ppl[0]];
+    ppl.forEach(function (n) { row.appendChild(el('span', { class: 'qs-chip who', text: n })); });
+    if (bots) row.appendChild(el('span', { class: 'qs-chip bot', html: Kit.icon('bot') + '<span>' + bots + (bots === 1 ? ' robot' : ' robots') + '</span>' }));
+    if (!who && saved.count > 1) row.appendChild(el('span', { class: 'qs-chip', text: saved.count + ' players' }));
+    if (saved.mt) row.appendChild(el('span', { class: 'qs-chip', text: saved.mt }));
+    if (row.firstChild) box.appendChild(row);
+    (saved.top || []).forEach(function (t) { box.appendChild(el('span', { class: 'qs-kv' }, [el('i', { text: t[0] }), el('b', { text: t[1] })])); });
+    return box.firstChild ? box : null;
   }
   function launch(g) {
     Kit.haptic('light'); Kit.sfx('pop');
@@ -1051,23 +1073,30 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     });
     else if (g.score) opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', function () { go(g.score + nw, true); }, 'alt');
     if (g.launch) g.launch.forEach(function (o) { if (o.tool) opt(o.icon, o.title, o.desc, function () { go(o.file, false); }, 'alt tool'); });
-    if (live) box.appendChild(el('p', { class: 'muted pick-note', text: 'Starting a new game drops the unfinished one; it isn’t saved to anyone’s history, linked players included.' }));
+    if (live) box.appendChild(el('p', { class: 'muted pick-note', text: 'A new game drops the unfinished one.' }));
     GS = null;
     if (sp) {
       var np = state.who && state.who !== 'any' ? '&np=' + state.who : '';
       var frame = el('iframe', { class: 'gs-frame', title: g.name + ' setup', src: 'games/' + sp + '.html?defaults=1&sheet=1' + np });
       var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
       box.appendChild(fw);
-      GS = { frame: frame, fh: 0, start: start, fit: function () {
-        var sh = box.closest('.k-sheet'); if (!sh) return;
-        var max = parseFloat(getComputedStyle(sh).maxHeight) || innerHeight * 0.88;
-        var other = sh.scrollHeight - frame.offsetHeight;
-        var h = Math.max(Math.min(280, innerHeight * 0.42), Math.min(GS.fh || 360, max - other));
-        frame.style.height = h + 'px';
-      } };
+      // the setup's start buttons, pinned to the bottom of the sheet (they press the frame's own)
+      var dockEl = el('div', { class: 'gs-dock' }), dockSig = '';
+      box.appendChild(dockEl);
+      GS = { frame: frame, fh: 0, start: start,
+        fit: function () { frame.style.height = Math.max(120, GS.fh || 360) + 'px'; },
+        dock: function (d) {
+          var sig = (d.start || '') + '|' + (d.alt || '') + '|' + (d.altIcon || '') + '|' + JSON.stringify(d.look || ''); if (sig === dockSig) return; dockSig = sig;
+          dockEl.innerHTML = ''; dockEl.classList.toggle('has-alt', !!d.alt);
+          function press(which) { return function () { frame.contentWindow.postMessage({ kitSheet: 'press', which: which }, location.origin); }; }
+          var sb = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block gs-start', text: d.start || 'Let’s play!', onclick: press('start') });
+          if (d.look) { sb.style.background = d.look.bg; sb.style.color = d.look.fg; if (d.look.sh && d.look.sh !== 'none') sb.style.boxShadow = d.look.sh; }   // (the game's own colours)
+          dockEl.appendChild(sb);
+          if (d.alt) dockEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-lg gs-alt', html: (d.altIcon ? Kit.icon(d.altIcon) : '') + '<span>' + Kit.esc(d.alt) + '</span>', onclick: press('alt') }));
+        } };
     }
     s = Kit.sheet({ node: box, onClose: function () { GS = null; } });
-    if (GS) { frame.style.height = '360px'; setTimeout(GS.fit, 0); }
+    if (GS) frame.style.height = '360px';
   }
   window.addEventListener('resize', function () { if (GS) GS.fit(); });
 
