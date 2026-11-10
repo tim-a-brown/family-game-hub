@@ -45,7 +45,7 @@ function might(S, f, mode, oth) {
     if (g.li === f.u) isIns = true;
   }
   if (f.li) m += 1; if (isIns && S.cfg.insBonus) m += 1; m += Math.min(2, insp);
-  if (k.uprising) m += own - 1; if (k.orator && own > opp) m += 2; if (k.underdog && opp > own) m += 2; if (k.monument) m += Math.min(2, f.stay); if (k.shoulders) m += S.P[f.o].lines;
+  if (k.uprising) m += own - 1; if (k.orator && own > opp) m += 2; if (k.underdog && opp > own) m += 2; if (k.monument) m += Math.min(2, f.stay); if (k.shoulders) m += Math.min(2, S.P[f.o].lines);
   if (S.places[f.p] === 'globe' && c.f === 'A') m += 1;
   if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; }   // (Sun Tzu: your first clash each turn wins ties)
   if (mode === 2) { if (k.steadfast) m += 2; if (S.places[f.p] === 'wall') m += 1; }
@@ -101,7 +101,7 @@ function arrive(S, f) {
     if (op === 'stun') { en.sort((a, b) => might(S, b, 0) - might(S, a, 0)); for (let i = 0; i < Math.min(n, en.length); i++) en[i].stun = 1; }
     if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { g.p = to; g.stay = 0; } } }
   }
-  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; P.renown += S.cfg.lineRen; if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) P.renown += 1; if (S.st) S.st.lines++; } }
+  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; if (!P.lr) { P.renown += S.cfg.lineRen; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
 function putFig(S, o, ci, place) { const f = { u: S.uid++, c: ci, o, p: place, rdy: 0, arr: 1, tb: 0, stun: 0, stay: 0, li: 0 }; S.figs.push(f); if (S.st) { S.st.plays++; if (CARDS[ci].reg === PLACES[S.places[place]].reg) S.st.home++; S.st.played[o][ci] = 1; } arrive(S, f); return f; }
@@ -112,7 +112,8 @@ function clash(S, a, d, da, dd, bonus) {
   const qi = D.hand.indexOf('phalanx'); if (qi >= 0 && D.reserve >= 1 && dm <= am && dm + 2 >= am) { D.hand.splice(qi, 1); D.reserve -= 1; dm += 2; if (S.st) S.st.played[d.o].phalanx = 1; }
   A.uC = 1; a.rdy = 0; a.acted = 1; if (S.st) S.st.clash++;
   const here = S.places[a.p];
-  if (am > dm) { ko(S, d, a); if (here === 'colosseum') A.renown++; } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') D.renown++; }
+  const ar = A.renown, dr = D.renown;
+  if (am > dm) { ko(S, d, a); if (here === 'colosseum') A.renown++; if (S.cfg.bounty && dr > ar) A.renown += S.cfg.bounty; } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') D.renown++; if (S.cfg.bounty && ar > dr) D.renown += S.cfg.bounty; }
 }
 function byU(S, u) { for (const f of S.figs) if (f.u === u) return f; return null; }
 // Every legal thing the player whose turn it is can do next
@@ -166,7 +167,7 @@ function apply(S, a, da, dd) {
     if (a.h2 != null) { P.hand.splice(Math.max(a.h, a.h2), 1); P.hand.splice(Math.min(a.h, a.h2), 1); } else P.hand.splice(a.h, 1);
     if (ci === 'eureka') draw(S, o, 2);
     else if (ci === 'caravan') P.spark += 3;
-    else if (ci === 'decree') S.pb[a.p][o] += 3;
+    else if (ci === 'decree') S.pb[a.p][o] += 4;
     else if (ci === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
     else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
@@ -224,7 +225,7 @@ function startTurn(S) {
   P.uA = P.uT = P.uD = P.uC = 0;
   let held = 0; if (cfg.spark !== 'round') for (let i = 0; i < S.places.length; i++) if (holder(S, i) === o) held++;
   P.spark = (cfg.spark === 'round' ? Math.min(S.round + 1, cfg.sparkCap || 99) : cfg.spark === 'hold' ? 2 + held : S.round + (held >= 3 ? 1 : 0)) + P.sb; P.sb = 0; P.reserve = 0;
-  if (cfg.catchup) { let mn = 1e9; for (let q = 0; q < S.N; q++) if (q !== o && S.P[q].renown < mn) mn = S.P[q].renown; if (P.renown < mn) { P.spark += 1; if (cfg.catchup > 1) draw(S, o, 1); } }
+  if (cfg.catchup) { let mn = 1e9; for (let q = 0; q < S.N; q++) if (q !== o && S.P[q].renown < mn) mn = S.P[q].renown; if (P.renown < mn) { P.spark += 1; if (cfg.catchup === 2) draw(S, o, 1); if (cfg.catchup === 3 && mn - P.renown >= (cfg.far || 4)) P.spark += 1; } }
   draw(S, o, (hasRelic(P, 'press') ? 2 : 1) + (cfg.draw2 ? 1 : 0));
   if (P.guide === 'franklin' && P.hand.length <= 4) draw(S, o, 1);   // (Franklin: a thin hand draws one more)
 }
@@ -237,8 +238,9 @@ function endRound(S) {
     if (pid(S, i) === 'library') draw(S, h, 1); if (pid(S, i) === 'stonehenge') P.sb = 1;
     if (isGate(S, i) && (i >> 1) !== h && S.P[i >> 1].seals > 0) { S.P[i >> 1].seals--; P.broke++; P.renown += cfg.sealRen; if (S.st) S.st.sealBreaks++; }
   }
+  if (cfg.majority) { const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; } let mx = 0, w = -1, tie = false; for (let o = 0; o < N; o++) { if (hc[o] > mx) { mx = hc[o]; w = o; tie = false; } else if (hc[o] === mx) tie = true; } if (!tie && w >= 0) S.P[w].renown += cfg.majority * stake(cfg, S.round); }
   for (const f of S.figs) { const k = CARDS[f.c].k; if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) S.P[f.o].renown++; else draw(S, f.o, 1); } f.stay++; }
-  for (const b of S.pb) b.fill(0);
+  for (const b of S.pb) b.fill(0); for (const p of S.P) p.lr = 0;
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
   if (N === 2) for (let o = 0; o < 2; o++) if (S.P[o].seals <= 0) { S.over = true; S.winner = 1 - o; S.how = 'seals'; return; }

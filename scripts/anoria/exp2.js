@@ -8,7 +8,7 @@ module.exports = function (exp, n) {
       'underdog + clash on arrival': { catchup: 2, rush: 1 }, 'underdog + stakes 1,1,1,2,2,2 + clash on arrival': { catchup: 2, ramp: [1, 1, 1, 2, 2, 2], rush: 1 }, 'underdog + clash on arrival + no dice': { catchup: 2, rush: 1, die: [0] } };
     for (const k in V) console.log(k + ':  ' + fmt(batch(n, Object.assign({}, base, V[k]), mirror(PROF.holder), 37)));
   }
-  const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1 };
+  const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1 };
   const PN = ['holder', 'raider', 'keeper', 'brawler'];
   if (exp === 'cards') {
     const inc = {}, pl = {}, gd = {}, fp = {}, pr = {}, pair = {}, ev = {}, hub = {}; const bump = (m, k, w) => { const x = m[k] || (m[k] = [0, 0]); x[0]++; x[1] += w; };
@@ -45,7 +45,7 @@ module.exports = function (exp, n) {
   if (exp === 'decks2') { Object.assign(STD, { lineNear: 1 }); exp = 'decks'; }
   if (exp === 'decks') {   // the five built decks against each other, each played in its own style
     const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Tricksters: 'raider' }, dk = k => ARCH[k].cards.concat(ARCH[k].cards);
-    for (const mode of ['own style', 'all holder']) {
+    for (const mode of (process.argv[4] ? ['own style'] : ['own style', 'all holder'])) {
       console.log('\nBUILT DECKS, ' + mode + ': ROW win % vs COLUMN (' + n + ' games each)\n            ' + D.map(x => (x + '         ').slice(0, 11)).join('') + 'overall  seal wins');
       for (const a of D) { let row = (a + '            ').slice(0, 12), tw = 0, tg = 0, sw = 0;
         for (const b of D) { if (a === b) { row += '   -       '; continue; } let w = 0;
@@ -66,6 +66,13 @@ module.exports = function (exp, n) {
       console.log(N + ' players (' + (2 * N + 1) + ' Places): wins by seat ' + seat.map(x => pct(x, n) + '%').join(' ') + '  draws ' + pct(draws, n) + '%  winner beats 2nd by ' + (top2 / n).toFixed(1) + '  first-to-last gap ' + (spread / n).toFixed(1) + '  last place scores ' + (lastPlace / n).toFixed(1) +
         '  leader after r3 wins ' + pct(lead3, l3n) + '%  last-round flips ' + pct(flips, n) + '%  figures ' + (figs / n).toFixed(0) + '  KOs ' + (ko / n).toFixed(1) + '  ' + ((Date.now() - t) / n).toFixed(0) + ' ms/game');
     }
+  }
+  if (exp === 'swing') {
+    const V = process.argv[4] ? { 'bounty, first to 30': { bounty: 1, target: 30 }, 'bounty, first to 28': { bounty: 1, target: 28 }, 'bounty, far behind +2 Spark, first to 28': { bounty: 1, catchup: 3, target: 28 } } : { 'now': {}, 'far behind (4+) gets +2 Spark': { catchup: 3 }, 'far behind (3+) gets +2 Spark': { catchup: 3, far: 3 }, 'bounty: knock out the leader\'s Figure, +1 Renown': { bounty: 1 }, 'most Places held: +1 (x stakes)': { majority: 1 },
+      'far behind +2 Spark, and bounty': { catchup: 3, bounty: 1 }, 'bounty 2': { bounty: 2 }, 'first to 30, far behind +2, bounty': { catchup: 3, bounty: 1, target: 30 } };
+    for (const k in V) { const cfg = Object.assign({}, STD, V[k]); let sk = 0, sn = 600;
+      for (let i = 0; i < sn; i++) { const R = rng(900 + i * 5), fl = i & 1, S = play([randDeck(R), randDeck(R)], [GL[(R() * 5) | 0], GL[(R() * 5) | 0]], fl ? [PROF.novice, PROF.holder] : [PROF.holder, PROF.novice], cfg, 4000 + i); if (S.winner === (fl ? 1 : 0)) sk++; else if (S.winner < 0) sk += 0.5; }
+      console.log(k + ':  steady player beats beginner ' + pct(sk, sn) + '%  ' + fmt(batch(n, cfg, (R) => { const g = mirror(PROF.holder)(R); g.profs = [PROF[PN[(R() * 4) | 0]], PROF[PN[(R() * 4) | 0]]]; return g; }, 71)).replace(/  clashes.*/, '')); }
   }
   if (exp === 'length') {
     const T = { rounds: 14, sparkCap: 7 };
