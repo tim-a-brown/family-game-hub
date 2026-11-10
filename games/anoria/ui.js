@@ -281,7 +281,7 @@
   let G = null, S = null, V = null, gen = 0, speed = 1, undoStack = [];
   const ui = { sel: null, busy: false, view: 0, viewer: -1, hideHand: false, discard: false, acts: [], newLine: 0, banner: 0, fresh: {}, crack: null, drop: {} };
   const dom = {};
-  const cfgStd = () => Object.assign({}, E.DEF, { log: 1 }, E.STD);
+  const cfgStd = () => Object.assign({}, E.DEF, { log: 1, coin: 1 }, E.STD);
   const pname = o => G.players[o].name;
   const human = o => !G.players[o].cpu;
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
@@ -757,7 +757,7 @@
       if (!trojan) { V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); if (o !== ui.view) await showCard(ev.c, 950); }
       dropHand(o, h);
       const f0 = S.figs.filter(f => f.u === ev.u)[0];
-      V.figs.push({ u: ev.u, c: ev.c, o: o, p: ev.p, rdy: 0, arr: 1, acted: 0, stun: 0, li: 0, m: f0 ? E.might(S, f0, 0) : CARDS[ev.c].m });
+      V.figs.push({ u: ev.u, c: ev.c, o: o, p: ev.p, rdy: f0 && f0.rdy ? 1 : 0, arr: 1, acted: 0, stun: 0, li: 0, m: f0 ? E.might(S, f0, 0) : CARDS[ev.c].m });
       V.tot[ev.p][o] += CARDS[ev.c].m;
       render();
       const n = dom.map.querySelector('.fp[data-u="' + ev.u + '"]');

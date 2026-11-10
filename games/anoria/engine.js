@@ -23,6 +23,7 @@ function newGame(decks, guides, cfg, R) {
   cfg = Object.assign({}, DEF, cfg); const N = decks.length, M = mkMap(N, R, cfg);
   const S = { cfg, N, round: 1, turn: 0, uid: 1, places: M.ids, adj: M.adj, pb: M.ids.map(() => new Array(N).fill(0)), figs: [], P: [], over: false, winner: -1, how: '', ev: cfg.log ? [] : null,
     st: { clash: 0, ko: 0, jump: 0, walk: 0, lines: 0, plays: 0, home: 0, lead: [], ev: [], played: decks.map(() => ({})), sealBreaks: 0, upsets: 0 } };
+  if (cfg.coin) S.f0 = (Math.random() * N) | 0;   // (who starts, when nobody leads)
   for (let p = 0; p < N; p++) {
     let deck = shuffle(decks[p].slice(), R), hand = deck.splice(0, cfg.hand);
     if (!hand.some(c => CARDS[c].t === 'fig' && CARDS[c].c <= 2)) { deck = shuffle(deck.concat(hand), R); hand = deck.splice(0, cfg.hand); }   // one mulligan
@@ -73,7 +74,7 @@ function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.
 function walkDests(S, f, free) {
   const c = CARDS[f.c]; if (c.k.monument) return [];
   const out = [], P = S.P[f.o];
-  if (c.k.voyager && !free) { for (let i = 0; i < S.places.length; i++) if (i !== f.p && room(S, i, f.o)) out.push(i); return out; }
+  if (c.k.voyager && !free) { for (let i = 0; i < S.places.length; i++) if (i !== f.p && !(pid(S, i) === 'machu' && ownerOfSpoke(S, i) !== f.o) && room(S, i, f.o)) out.push(i); return out; }
   const seen = {}; seen[f.p] = 1; let fr = [f.p];
   const steps = hasRelic(P, 'compass') && !free ? 2 : 1;
   for (let s = 0; s < steps; s++) { const nx = []; for (const a of fr) { const ns = (pid(S, a) === 'silk') ? S.places.map((_, i) => i) : S.adj[a].concat(S.places.map((x, i) => x === 'silk' ? i : -1).filter(i => i >= 0)); for (const b of ns) if (!seen[b]) { seen[b] = 1; nx.push(b); } } fr = nx; }
@@ -108,7 +109,7 @@ function arrive(S, f) {
   if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: P.lr ? 0 : S.cfg.lineRen }); if (!P.lr) { P.renown += S.cfg.lineRen; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
-function putFig(S, o, ci, place) { const f = { u: S.uid++, c: ci, o, p: place, rdy: 0, arr: 1, tb: 0, stun: 0, stay: 0, li: 0 }; S.figs.push(f); if (S.ev) S.ev.push({ t: 'arrive', u: f.u, c: ci, o: o, p: place }); if (S.st) { S.st.plays++; if (CARDS[ci].reg === PLACES[S.places[place]].reg) S.st.home++; S.st.played[o][ci] = 1; } arrive(S, f); return f; }
+function putFig(S, o, ci, place) { const f = { u: S.uid++, c: ci, o, p: place, rdy: CARDS[ci].k.swift ? 1 : 0, arr: 1, tb: 0, stun: 0, stay: 0, li: 0 }; S.figs.push(f); if (S.ev) S.ev.push({ t: 'arrive', u: f.u, c: ci, o: o, p: place }); if (S.st) { S.st.plays++; if (CARDS[ci].reg === PLACES[S.places[place]].reg) S.st.home++; S.st.played[o][ci] = 1; } arrive(S, f); return f; }
 function clash(S, a, d, da, dd, bonus) {
   const A = S.P[a.o], D = S.P[d.o];
   let am = might(S, a, 1, d) + (bonus || 0) + da, dm = might(S, d, 2, a) + dd;
@@ -128,7 +129,8 @@ function actions(S) {
   const seen = {};
   P.hand.forEach((ci, h) => {
     if (seen[ci]) return; seen[ci] = 1; const c = CARDS[ci];
-    if (c.t === 'fig') { for (const i of deploy) if (costOf(S, o, ci, i) <= P.spark) out.push({ t: 'fig', h, p: i }); return; }
+    if (c.t === 'fig') { if (S.cfg.unique && mine.some(f => f.c === ci)) return;   // (one of each person on your side of the table at a time)
+      for (const i of deploy) if (costOf(S, o, ci, i) <= P.spark) out.push({ t: 'fig', h, p: i }); return; }
     const x = costOf(S, o, ci); if (x > P.spark) return;
     if (c.t === 'relic') { if (P.relics.length < 2 && !hasRelic(P, ci)) out.push({ t: 'relic', h }); return; }
     const open = g => pid(S, g.p) !== 'petra';
@@ -222,7 +224,7 @@ function aiPick(S, prof, R) {
 function firstOf(S) {
   const N = S.N; if (S.cfg.order !== 'trail') return S.cfg.order === 'alt' ? (S.round - 1) % N : 0;
   let mx = -1, tie = false, w = 0; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; w = o; tie = false; } else if (S.P[o].renown === mx) tie = true; }
-  return tie ? (S.round - 1) % N : w;
+  return tie ? ((S.f0 || 0) + S.round - 1) % N : w;
 }
 function discard(S, o, h) { const P = S.P[o], c = P.hand.splice(h, 1)[0]; (P.gone || (P.gone = [])).push(c); if (S.ev) S.ev.push({ t: 'discard', o: o, c: c }); }
 function aiTurn(S, prof, R) {
