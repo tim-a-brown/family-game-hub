@@ -87,6 +87,9 @@ var GameIcon = (function () {
     freecell: function (c) { return rect(2, 3, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"') + rect(13, 3, 9, 8, 2, c) + rect(2, 13, 9, 8, 2, c) + rect(13, 13, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"'); },
     pyramid: function (c) { return rect(9, 2, 6, 6, 1.2, c) + rect(5.5, 9, 6, 6, 1.2, c) + rect(12.5, 9, 6, 6, 1.2, R) + rect(2, 16, 6, 6, 1.2, R) + rect(9, 16, 6, 6, 1.2, c) + rect(16, 16, 6, 6, 1.2, c); },
     pokersquares: function (c) { var s = ''; for (var i = 0; i < 9; i++) s += rect(2 + (i % 3) * 7, 2 + Math.floor(i / 3) * 7, 6, 6, 1.4, i % 2 ? R : c); return s; },
+    anoria: function () {   // a gilded A with a ring through it (the chronosphere)
+      return line('M5 21 12 3l7 18', '#c9972e', 2.8) + '<ellipse cx="12" cy="14" rx="9.2" ry="3.4" fill="none" stroke="' + K + '" stroke-width="1.7" transform="rotate(-14 12 14)"/>' + line('M3.1 15.6c2.4 2 9 1.6 13.6-.4', '#f1cf6b', 1.7) + circ(12, 13.6, 1.5, '#f1cf6b');
+    },
     lorcana: function () { return path('M12 1.5c.8 5.7 3.8 8.7 9.5 9.5-5.7.8-8.7 3.8-9.5 9.5-.8-5.7-3.8-8.7-9.5-9.5 5.7-.8 8.7-3.8 9.5-9.5z', P) + path('M19.5 15.5c.3 2 1.2 3 3 3.2-1.8.3-2.7 1.2-3 3.2-.3-2-1.2-2.9-3-3.2 1.8-.2 2.7-1.2 3-3.2z', Y); },
 
     // Board
