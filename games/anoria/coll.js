@@ -53,6 +53,8 @@ function counts() {
 }
 function markSeen(keys) { const s = load(); let ch = false; (keys || []).forEach(k => { if (CARDS[k] && !s.seen[k]) { s.seen[k] = 1; ch = true; } }); if (ch) save(s); }
 function looked(k) { const s = load(); if (s.fresh[k]) { delete s.fresh[k]; save(s); } }
+// (leaving the Library: you've seen what's new there)
+function lookedAll() { const s = load(); if (Object.keys(s.fresh).length) { s.fresh = {}; save(s); } }
 
 // ── Starting out ────────────────────────────────────────────────────────────────────────────────────────────
 function chooseStarter(name) {
@@ -175,6 +177,6 @@ function finish(d) {
   return cards;
 }
 
-return { use, load, reset, dayKey, copies, cardState, counts, markSeen, looked, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
+return { use, load, reset, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
   problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, DAILY, FEAT, GUIDE_AT, FEATS, ALL };
 });

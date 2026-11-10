@@ -62,6 +62,9 @@ Underlying principles for everything:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
   anything past the screen edge) at phone upright/sideways and iPad sizes, not just by eye.
+- **Screenshots are taken at Tim's devices**, upright and sideways: iPhone 17 Pro (402 x 874 CSS px, scale 3) and iPad
+  mini 5th generation (768 x 1024 CSS px, scale 2). Design is judged at those. Measuring for cut-off things still
+  covers smaller phones too (320 wide).
 - **Game play areas must feel like a real game, not an app.** Use table
   materials from `kit.css` (`.wood`, `.felt-in`, `.paper`, `.ink`,
   `.display`), real-looking pieces (`Kit.die`, `Kit.card`), and motion. Chrome
@@ -209,6 +212,17 @@ Underlying principles for everything:
   A new kind of engine event needs a handler there.
 - Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
   are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
+- The game's rules are `STD` in engine.js: clashes roll two ordinary dice (`dice: 'high'`), one of each person on your
+  side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
+  it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
+  sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
+- **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
+  welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
+  and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a
+  change to the economy is made there and re-run (target: about a month of daily play to finish a set). Its screens are
+  `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
+  (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
 
 ## Rules for every change
 

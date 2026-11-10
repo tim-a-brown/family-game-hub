@@ -303,12 +303,13 @@
     // the first time: choose your Guide (their deck is your starter) and open your welcome packs
     if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
     const who = i => (i === 1 && curMode === 'cpu' ? 'cpu' : 'me');
+    // (the computer starts on Easy until you've won a game: a first game is for learning)
     const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
       options: [
         { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
         { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
-        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Stops early and misses things. A good first game.'], ['normal', 'Normal', 'Plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'Plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'Stops early and misses things. A good first game.'], ['normal', 'Normal', 'Plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'Plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
       ],
       players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
       start: 'Deal the cards',
@@ -752,6 +753,8 @@
   }
   const vfig = u => V.figs.filter(f => f.u === u)[0];
   const handRect = (o, h) => (o === ui.view && !ui.hideHand ? rc(dom.hand.querySelector('.hc[data-h="' + h + '"]')) : null) || rc(q('.an-strip.p' + o + ' .st-hand')) || rc(q('.an-strip.p' + o + ' .st-guide'));
+  const told = {};
+  function story(key) { const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen) return; told[key] = gen; Kit.toast(t, 4200); }
   function dropHand(o, h) { if (h != null && h >= 0) V.P[o].hand.splice(h, 1); }
 
   // The clash: the two lunge, both dice tumble, the totals land, the loser's card tears in half
@@ -851,15 +854,17 @@
     },
     async line(ev) {
       const f = vfig(ev.a); if (!f) return; f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0;
-      Kit.sfx('sparkle'); Kit.haptic('success'); await wait(900);
+      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c); await wait(900);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
+    // (how one led to the other, in a sentence, the first time each link is drawn in a game)
     async thread(ev) {
       const src = ev.src.k === 'fig' ? dom.map.querySelector('.fp[data-u="' + ev.src.u + '"]') : ev.src.k === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.src.c + '"]') : dom.map.querySelector('.pl[data-p="' + ev.src.p + '"] .pl-tile');
       const to = ev.u ? dom.map.querySelector('.fp[data-u="' + ev.u + '"]') : CARDS[ev.c].t === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.c + '"]') : q('.an-strip.p' + ev.o + ' .st-guide');
       const from = ev.src.k === 'fig' ? CARDS[(vfig(ev.src.u) || {}).c] : ev.src.k === 'relic' ? CARDS[ev.src.c] : C.PLACES[S.places[ev.src.p]];
       [src, to].forEach(n => { if (n) { n.classList.remove('thread'); void n.offsetWidth; n.classList.add('thread'); } });
-      Kit.callout((from ? from.n : 'A thread') + ' to ' + CARDS[ev.c].n); Kit.sfx('sparkle'); Kit.haptic('success'); await wait(950);
+      Kit.callout((from ? from.n : 'A thread') + ' to ' + CARDS[ev.c].n); Kit.sfx('sparkle'); Kit.haptic('success');
+      story((ev.src.k === 'place' ? '@' + S.places[ev.src.p] : ev.src.k === 'relic' ? ev.src.c : (vfig(ev.src.u) || {}).c) + '>' + ev.c); await wait(950);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; await plus(ev.ren, rc(to || src), ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     async relic(ev, ctx) {
@@ -1139,7 +1144,7 @@
     const layer = el('div', { class: 'an-screen ' + (o.cls || ''), role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || '' }, [head, body]);
     let closed = false;
     function close() { if (closed) return; closed = true; document.removeEventListener('keydown', key); layer.classList.remove('show'); setTimeout(() => layer.remove(), 240); if (o.onClose) o.onClose(); }
-    function key(e) { if (e.key === 'Escape' && !document.querySelector('.k-scrim.show, .view.show') && document.querySelector('.an-screen:last-of-type') === layer) close(); }
+    function key(e) { if (e.key !== 'Escape' || document.querySelector('.k-scrim.show, .view.show')) return; const all = document.querySelectorAll('.an-screen'); if (all[all.length - 1] === layer) close(); }   // (the top screen, with nothing open over it)
     back.addEventListener('click', () => { Kit.sfx('tap'); Kit.haptic('light'); close(); });
     document.addEventListener('keydown', key);
     document.body.appendChild(layer); requestAnimationFrame(() => requestAnimationFrame(() => layer.classList.add('show')));

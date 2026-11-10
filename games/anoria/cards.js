@@ -11,7 +11,7 @@ const CARDS = {
   copernicus: F('Copernicus', 'D', 3, 4, 'EUR', 4, 1530),
   galileo: F('Galileo', 'D', 4, 4, 'MED', 4, 1610, { scholar: 1 }, { insp: ['archimedes', 'copernicus'] }),
   newton: F('Isaac Newton', 'D', 5, 4, 'EUR', 5, 1687, { shoulders: 1 }, { insp: ['galileo', 'copernicus'] }),
-  zhenghe: F('Zheng He', 'D', 4, 5, 'ASIA', 4, 1410, { voyager: 1 }, { arr: ['spark', 1] }),
+  zhenghe: F('Zheng He', 'D', 4, 5, 'ASIA', 3, 1410, { voyager: 1 }, { arr: ['spark', 1] }),
   marcopolo: F('Marco Polo', 'D', 3, 3, 'MED', 3, 1280, { voyager: 1, scholar: 1 }),
   haytham: F('Ibn al-Haytham', 'D', 3, 4, 'MIDEAST', 3, 1020, {}, { arr: ['stun', 1] }),
   ada: F('Ada Lovelace', 'D', 2, 2, 'EUR', 6, 1843, { deedsLess: 1 }),
@@ -88,7 +88,7 @@ CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, trojan: -1200, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
 Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
-const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1400 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }];
+const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1453 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }];
 // Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).
 const THREADS = [
   { id: 'academy', n: 'The Academy', cards: ['socrates', 'plato', 'aristotle', 'alexander'] },
