@@ -62,6 +62,9 @@ Underlying principles for everything:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
   anything past the screen edge) at phone upright/sideways and iPad sizes, not just by eye.
+- **Screenshots are taken at Tim's devices**, upright and sideways: iPhone 17 Pro (402 x 874 CSS px, scale 3) and iPad
+  mini 5th generation (768 x 1024 CSS px, scale 2). Design is judged at those. Measuring for cut-off things still
+  covers smaller phones too (320 wide).
 - **Game play areas must feel like a real game, not an app.** Use table
   materials from `kit.css` (`.wood`, `.felt-in`, `.paper`, `.ink`,
   `.display`), real-looking pieces (`Kit.die`, `Kit.card`), and motion. Chrome
