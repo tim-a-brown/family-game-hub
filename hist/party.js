@@ -315,9 +315,9 @@
     }
     return ui.wrap(out);
   });
-  // ── Think Alike: every card, the answers people matched on, and who scored what ──
+  // ── Mind Meld: every card, the answers people matched on, and who scored what ──
   // dt: {rs: [{q: the card, t: 'answer:how many wrote it' per line}]}; e.rounds.scores: points per card, per player
-  R('thinkalike', function (e, ui) {
+  R('mindmeld', function (e, ui) {
     var el = ui.el, P = names(e), d = e.dt, rs = d ? arr(d.rs) : [];
     if (!rs.length) return null;
     var sc = e.rounds && e.rounds.scores ? arr(e.rounds.scores) : [];

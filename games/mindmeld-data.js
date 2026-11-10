@@ -1,8 +1,8 @@
-// Think Alike: the prompt cards (games/thinkalike.html). Original prompts written for this site.
+// Mind Meld: the prompt cards (games/mindmeld.html). Original prompts written for this site.
 // Each card: {q: what it asks, n: how many answers to write (1 to 4), a: [[answer, weight, ...other ways to say it]]}
 // The weight is roughly how often people give that answer; computer players draw from it, so they usually
 // say the common things and sometimes miss. The other spellings help the game match answers on its own.
-window.THINKALIKE_PROMPTS = [
+window.MINDMELD_PROMPTS = [
 {q:"Name 3 pizza toppings",n:3,a:[["pepperoni",34],["cheese",12,"extra cheese"],["sausage",10],["mushroom",9,"mushrooms","shrooms"],["pineapple",8],["olive",6,"black olives","olives"],["onion",4,"onions"],["green pepper",4,"peppers","bell pepper","pepper"],["ham",3],["bacon",3],["anchovy",2,"anchovies"],["chicken",2],["jalapeno",2,"jalapenos","jalapeño"],["spinach",1],["tomato",1,"tomatoes"]]},
 {q:"Name 2 things you put on a hot dog",n:2,a:[["ketchup",30],["mustard",30],["relish",14],["onion",9,"onions"],["chili",6],["cheese",4],["sauerkraut",4,"kraut"],["mayo",1,"mayonnaise"],["pickle",1,"pickles"],["jalapeno",1,"jalapenos"]]},
 {q:"Name 3 things in a junk drawer",n:3,a:[["batteries",16,"battery"],["rubber band",14,"rubber bands"],["pen",12,"pens"],["tape",10,"scotch tape"],["scissors",9],["key",8,"keys","old keys"],["paper clip",7,"paper clips","paperclip"],["takeout menu",5,"menus","menu"],["twist tie",4,"twist ties"],["coin",3,"coins","change","money"],["charger",3,"cords","cord","phone charger"],["screwdriver",3],["lighter",2],["birthday candle",2,"candles"],["string",2],["glue",2],["tape measure",2,"measuring tape"],["flashlight",2],["coupon",1,"coupons"],["matches",1]]},
