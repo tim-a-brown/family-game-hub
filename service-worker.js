@@ -391,6 +391,8 @@ const PRECACHE_URLS = [
   '/games/wordsearch.html',
   '/games/wouldyourather.html',
   '/games/applestoapples.html',
+  '/games/thinkalike.html',
+  '/games/thinkalike-data.js',
   '/data/a2a-cards.js',
   '/data/cah-cards.js',
   '/games/yahtzee.html',

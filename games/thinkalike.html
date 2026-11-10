@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Think Alike</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="thinkalike-data.js"></script>
+<style>
+body{overflow-x:hidden;}
+#app:not(.stage){max-width:1280px;margin:0 auto;padding:2px 8px calc(var(--safe-b) + 12px);}
+
+/* ── The table: one felt top in a wooden rim; everything sits on it ───── */
+.ta{border-radius:26px;padding:8px;}
+.ta > .felt-in{position:relative;border-radius:19px;padding:12px 12px 16px;display:flex;flex-direction:column;gap:12px;
+  min-height:calc(100dvh - var(--bar) - 30px - var(--safe-b));}
+.sb{order:1;}.pcw{order:2;}.st{order:3;}.mid{order:4;}.pad{order:5;}.acts{order:6;}
+.st:empty,.acts:empty{display:none;}
+.ph-write > .mid,.ph-reveal > .mid,.ph-scored > .mid{flex:1;display:flex;flex-direction:column;}
+.mid > :first-child{margin-top:auto;}.mid > :last-child{margin-bottom:auto;}
+.acts{margin-top:auto;}
+
+/* Running scores: every player at once, wrapping (name at one end, points at the other) */
+.sb{display:flex;flex-wrap:wrap;gap:6px;}
+.pl{--c:#ffc83d;position:relative;flex:1 1 auto;display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px 4px 4px;border-radius:999px;
+  background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.07);transition:transform .3s var(--spring),opacity .3s;}
+.pl.me{box-shadow:inset 0 0 0 2px var(--c);}
+.pl.gone{opacity:.4;}
+.pl .av{position:relative;flex:none;display:grid;}
+.pl .nm{font-weight:800;font-size:.88rem;white-space:nowrap;color:#fff;}
+.pl .pt{margin-left:auto;padding-left:8px;font-family:var(--display);font-size:1.22rem;line-height:1;font-variant-numeric:tabular-nums;color:#fff;}
+.pl.lead .pt{color:#ffd447;}
+.pl .pt.bump{animation:ta_bump .6s var(--spring);}
+@keyframes ta_bump{40%{transform:scale(1.5);color:#7dffb3;}}
+.pl .mk{position:absolute;right:-5px;bottom:-4px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;background:#fffdf4;color:#1f2a6b;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.pl .mk .ico{width:11px;height:11px;}
+.pl .mk.ok{background:#3ddc84;color:#06301a;animation:ta_pop .4s var(--spring);}
+.pl .mk.wr .ico{animation:scrib .7s ease-in-out infinite;}
+@keyframes scrib{25%{transform:translate(-1.5px,1px) rotate(-8deg);}75%{transform:translate(1.5px,-1px) rotate(6deg);}}
+@keyframes ta_pop{from{transform:scale(.3);}}
+.pl .gain{position:absolute;top:-11px;right:-3px;padding:2px 7px;border-radius:999px;background:#3ddc84;color:#06301a;font-weight:900;font-size:.78rem;line-height:1.2;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);animation:gainUp .7s var(--spring) both;animation-delay:var(--gd,0s);}
+.pl .gain.zero{background:#d8d2c4;color:#4b4536;}
+@keyframes gainUp{from{transform:translateY(14px) scale(.4);opacity:0;}}
+.pl.shake{animation:ta_shake .5s;}
+@keyframes ta_shake{20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-3px);}80%{transform:translateX(3px);}}
+.pl.top{box-shadow:inset 0 0 0 2px #ffd447,0 0 16px rgba(255,212,71,.45);}
+.sb.many .pl{min-height:32px;padding:2px 10px 2px 2px;gap:6px;}
+.sb.many .pl .avatar.sm{width:24px;height:24px;font-size:.7rem;}
+.sb.many .pl .nm{font-size:.8rem;}
+.sb.many .pl .pt{font-size:1.02rem;}
+
+/* The prompt card, dealt onto the table, and the sand timer beside it */
+.pcw{display:flex;align-items:center;justify-content:center;gap:12px;}
+.pc{position:relative;flex:1;min-width:0;max-width:640px;padding:11px 15px 14px;border-radius:14px;color:#1d2340;
+  background:radial-gradient(120% 80% at 20% 0%,rgba(255,255,255,.7),transparent 60%),linear-gradient(170deg,#fffdf6,#f3e9d0);
+  box-shadow:inset 0 0 0 1px rgba(120,90,40,.18),0 2px 0 rgba(0,0,0,.18),0 12px 24px rgba(0,0,0,.42);transform:rotate(-.8deg);}
+.pc::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;border-radius:14px 14px 0 0;background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 60%,#fff));}
+.pc .k{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#8a7650;}
+.pc .slots{display:flex;gap:4px;flex:none;}
+.pc .slots i{width:16px;height:11px;border-radius:2px;background:#fffdf4;box-shadow:inset 0 0 0 1.5px #b9a678,0 1px 0 rgba(0,0,0,.08);}
+.pc .slots i::after{content:"";display:block;margin:4px 3px 0;height:1.5px;background:#3550a8;opacity:.55;border-radius:1px;}
+.pc .q{margin-top:5px;font-family:var(--display);font-weight:400;font-size:clamp(1.3rem,5.4vw,2rem);line-height:1.08;letter-spacing:.005em;text-wrap:balance;overflow-wrap:break-word;}
+.pc.deal{animation:dealIn .6s var(--spring) both;}
+@keyframes dealIn{from{transform:translate(60px,-120px) rotate(14deg) scale(.7);opacity:0;}}
+.hg{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px;width:48px;}
+.hg svg{width:44px;height:72px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.4));}
+.hg .sS{animation:pour .35s linear infinite;}
+@keyframes pour{to{stroke-dashoffset:-4;}}
+.hg.still .sS{display:none;}
+.hg b{font-family:var(--display);font-weight:400;font-size:1.05rem;line-height:1;color:#fff;font-variant-numeric:tabular-nums;}
+.hg.low b{color:#ff8a8a;animation:ta_pulse 1s ease-in-out infinite;}
+.hg.low svg{animation:ta_wob .5s ease-in-out infinite;}
+@keyframes ta_pulse{50%{opacity:.45;}}
+@keyframes ta_wob{50%{transform:rotate(4deg);}}
+
+/* What's happening, in a word or two, on the felt */
+.st{display:flex;align-items:center;justify-content:center;gap:8px;min-height:24px;text-align:center;color:rgba(255,255,255,.9);font-weight:800;font-size:.92rem;line-height:1.25;}
+.st .think{display:inline-flex;gap:3px;}
+.st .think i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:th 1s infinite;}
+.st .think i:nth-child(2){animation-delay:.15s;}.st .think i:nth-child(3){animation-delay:.3s;}
+@keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
+
+/* The bowl the folded answers go into */
+.bowl{--k:1;position:relative;margin:4px auto 2px;width:min(calc(280px * var(--k)),82%);height:calc(92px * var(--k));}
+.bowl::before{content:"";position:absolute;left:0;right:0;bottom:2px;border-radius:50%;
+  background:radial-gradient(ellipse at 50% 40%,#5a3b22 0 52%,transparent 53%),radial-gradient(ellipse at 50% 46%,#c08a52,#8d5b30 70%,#5e3a1c);
+  height:calc(70px * var(--k));box-shadow:0 12px 18px rgba(0,0,0,.45),inset 0 -6px 10px rgba(0,0,0,.3);}
+.bowl::after{content:"";position:absolute;left:12%;right:12%;bottom:calc(14px * var(--k));height:calc(36px * var(--k));border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.35),transparent 70%);}
+.fs{position:absolute;left:50%;top:50%;z-index:1;width:calc(42px * var(--k));height:calc(27px * var(--k));margin:calc(-12px * var(--k)) 0 0 calc(-21px * var(--k));border-radius:3px;
+  background:linear-gradient(180deg,#fffdf4 0 48%,#e9dfc5 50%,#f6eedb 52% 100%);box-shadow:0 2px 4px rgba(0,0,0,.4);
+  transform:translate(calc(var(--x) * var(--k) * 1px),calc(var(--y) * var(--k) * 1px)) rotate(var(--r));}
+.fs::before{content:"";position:absolute;left:4px;top:-2px;width:12px;height:6px;border-radius:1px;background:var(--c);opacity:.95;}
+.fs.drop{animation:slipIn .55s var(--spring) both;}
+@keyframes slipIn{from{transform:translate(calc(var(--x) * var(--k) * 1px),calc(var(--y) * var(--k) * 1px - 90px)) rotate(calc(var(--r) + 40deg)) scale(1.3);opacity:0;}}
+
+/* The clipboard and its lined paper: where you write */
+.pad{position:relative;align-self:center;width:100%;max-width:520px;padding:30px 12px 12px;border-radius:16px;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 2px,transparent 2px 9px),linear-gradient(175deg,#a5774a,#7a5230 70%,#6a4528);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.18),inset 0 -3px 0 rgba(0,0,0,.25),0 14px 28px rgba(0,0,0,.45);}
+.pad .clip{position:absolute;left:50%;top:-8px;width:118px;height:32px;margin-left:-59px;border-radius:9px 9px 12px 12px;z-index:3;
+  background:linear-gradient(180deg,#f1f2f4,#a9adb5 55%,#7d828b);box-shadow:inset 0 1px 0 #fff,0 4px 8px rgba(0,0,0,.45);}
+.pad .clip::after{content:"";position:absolute;left:36px;right:36px;top:6px;height:9px;border-radius:5px;background:rgba(0,0,0,.28);box-shadow:inset 0 2px 2px rgba(0,0,0,.4);}
+.sheet{--lh:40px;position:relative;border-radius:4px;padding:0 12px 6px 46px;
+  background:linear-gradient(90deg,transparent var(--ml,36px),rgba(214,70,70,.45) var(--ml,36px) calc(var(--ml,36px) + 2px),transparent calc(var(--ml,36px) + 2px)),
+    repeating-linear-gradient(180deg,transparent 0 calc(var(--lh) - 1px),rgba(60,80,160,.2) calc(var(--lh) - 1px) var(--lh)),linear-gradient(180deg,#fffdf4,#f6eedb);}
+.sheet .hd{height:var(--lh);display:flex;align-items:flex-end;justify-content:space-between;gap:8px;padding-bottom:6px;font-size:1.25rem;line-height:1;}
+.sheet .hd .who{color:#7a6a4a;}
+.ln{display:flex;align-items:center;height:var(--lh);margin-left:-38px;}
+.ln b{flex:none;width:32px;text-align:center;font-weight:400;font-size:calc(var(--lh) * .33);color:#c0392b;}
+.ln input,.ln .w{flex:1;min-width:0;height:var(--lh);margin-left:6px;padding:6px 2px 0;border:0;border-radius:0;background:transparent;outline:none;
+  font-family:var(--hand);font-size:calc(var(--lh) * .6);line-height:calc(var(--lh) - 6px);color:#1f2a6b;caret-color:#1f2a6b;-webkit-appearance:none;appearance:none;}
+.ln .w{overflow-wrap:anywhere;line-height:1.05;display:flex;align-items:flex-end;padding-bottom:4px;}
+.ln input::placeholder{color:rgba(31,42,107,.28);}
+.ln input:focus{background:linear-gradient(180deg,transparent 70%,rgba(255,212,71,.28) 70%);}
+.pad .fold{width:100%;margin-top:12px;}
+.pad.sent .sheet{filter:saturate(.8);}
+.pad .stamp{position:absolute;right:20px;bottom:18px;z-index:2;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;color:rgba(40,140,80,.85);
+  box-shadow:inset 0 0 0 3px rgba(40,140,80,.75),inset 0 0 0 6px rgba(255,255,255,0),inset 0 0 0 7.5px rgba(40,140,80,.5);transform:rotate(-14deg);animation:stampIn .45s cubic-bezier(.3,1.6,.5,1) both;}
+.pad .stamp .ico{width:36px;height:36px;stroke-width:3;}
+@keyframes stampIn{from{transform:rotate(-14deg) scale(2.2);opacity:0;}}
+.pad.idle .sheet{min-height:200px;}
+.pad.nudge{animation:ta_shake .45s;}
+.flyfold{position:fixed;z-index:60;pointer-events:none;transform-origin:50% 0;transition:transform .55s cubic-bezier(.5,0,.3,1),opacity .55s;}
+
+/* The answers, face up: matching slips stacked together */
+.mid{min-width:0;}
+.stx{display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;align-items:flex-start;gap:20px 16px;padding:12px 4px 8px;--sw:136px;}
+.stx.crowd{--sw:116px;gap:16px 12px;}
+.stk{--tilt:0deg;position:relative;width:var(--sw);border-radius:6px;transform:rotate(var(--tilt));transition:transform .25s var(--spring);-webkit-tap-highlight-color:transparent;outline:none;}
+.stk .fr,.stk .bk,.tray .ms,.fs{color:#1f2a6b;}
+.stk .fr{position:relative;z-index:2;min-height:70px;padding:10px 10px 8px;border-radius:5px;display:flex;flex-direction:column;justify-content:space-between;gap:7px;
+  background:linear-gradient(180deg,#fffdf4,#f4ead2);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 6px 12px rgba(0,0,0,.35);}
+.stk .bk{position:absolute;inset:0;z-index:1;border-radius:5px;background:linear-gradient(180deg,#fbf6e8,#efe3c6);box-shadow:0 3px 7px rgba(0,0,0,.3);
+  transform:translate(calc(var(--j) * 3px),calc(var(--j) * 4px)) rotate(var(--r));}
+.stk .tx{font-family:var(--hand);font-size:var(--tf,1.38rem);line-height:1.05;overflow-wrap:anywhere;text-wrap:balance;}
+.stk .tx.lg{font-size:calc(var(--tf,1.38rem) * .86);}.stk .tx.xl{font-size:calc(var(--tf,1.38rem) * .72);}.stk .tx.xxl{font-size:calc(var(--tf,1.38rem) * .6);}
+.stk .who{display:flex;flex-wrap:wrap;gap:3px;}
+.stk .who i{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#1b1530;font-style:normal;font-size:.62rem;font-weight:900;line-height:1;box-shadow:0 0 0 1.5px #fffdf4;}
+.stk .n{position:absolute;top:-11px;right:-10px;z-index:3;min-width:30px;height:30px;padding:0 7px;border-radius:15px;display:grid;place-items:center;
+  background:#ffd447;color:#3a2600;font-family:var(--display);font-size:1.05rem;line-height:1;box-shadow:0 3px 7px rgba(0,0,0,.4);}
+.stk.solo .n{background:#d9d2c0;color:#5b5444;}
+.stk.solo .fr{background:linear-gradient(180deg,#f8f4e8,#ebe2ca);}
+.stk.tap{cursor:pointer;}
+.stk.tap:active{transform:scale(.96);}
+.stk.sel{transform:translateY(-8px) scale(1.05);z-index:5;}
+.stk.sel .fr{box-shadow:0 0 0 3px #ffd447,0 0 22px rgba(255,212,71,.45),0 14px 24px rgba(0,0,0,.45);}
+.stx.picking .stk:not(.sel) .fr{outline:2px dashed rgba(255,212,71,.85);outline-offset:4px;animation:tgt 1.3s ease-in-out infinite;}
+@keyframes tgt{50%{outline-color:rgba(255,212,71,.3);}}
+.stk.bump{animation:bumpStk .6s var(--spring);}
+@keyframes bumpStk{35%{transform:scale(1.14) rotate(-2deg);}}
+.stk.pop{animation:popStk .55s var(--spring);}
+@keyframes popStk{from{transform:translateY(-24px) scale(.7) rotate(8deg);opacity:0;}}
+.stk.intro{animation:stIn .5s var(--spring) both;animation-delay:var(--d);}
+@keyframes stIn{from{transform:translateY(-36px) rotate(-10deg) scale(.8);opacity:0;}}
+.stk.intro .fr{animation:unfold .5s var(--ease) both;animation-delay:calc(var(--d) + .12s);transform-origin:50% 0;}
+@keyframes unfold{0%{transform:perspective(500px) rotateX(-85deg);filter:brightness(.8);}100%{transform:none;}}
+.stk.intro .bk{animation:gather .55s cubic-bezier(.3,1.25,.5,1) both;animation-delay:calc(var(--d) + .5s);}
+@keyframes gather{from{transform:translate(calc(var(--j) * 46px + 10px),calc(var(--j) * -10px)) rotate(calc(var(--r) * 4 + 10deg));opacity:.4;}}
+.stk.intro .n{animation:ta_pop .4s var(--spring) both;animation-delay:calc(var(--d) + .9s);}
+.stk.all .fr{box-shadow:0 0 0 3px #ffd447,0 0 34px rgba(255,212,71,.7),0 12px 24px rgba(0,0,0,.45);}
+.stk.all .n{background:linear-gradient(180deg,#fff3a8,#ffc83d);}
+.stk.all.scored{animation:bumpStk .8s var(--spring) .6s;}
+.stk .n .ico{width:14px;height:14px;margin-right:2px;stroke-width:2.6;}
+.stk.scored .n{animation:ta_pop .45s var(--spring) both;animation-delay:var(--d);}
+.stx .none{color:rgba(255,255,255,.7);font-weight:800;padding:20px;text-align:center;}
+.fly{position:fixed;z-index:60;pointer-events:none;margin:0;transition:transform .42s cubic-bezier(.5,0,.25,1);}
+
+/* A picked stack spread out: who wrote which slip; tap one to pull it out */
+.tray{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:2px auto 6px;padding:12px 10px;max-width:640px;border-radius:16px;background:rgba(0,0,0,.22);box-shadow:inset 0 2px 8px rgba(0,0,0,.3);animation:ta_rise .3s var(--ease);}
+@keyframes ta_rise{from{transform:translateY(8px);opacity:0;}}
+.tray .ms{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:96px;max-width:170px;padding:8px 30px 7px 9px;border:0;border-radius:4px;
+  background:linear-gradient(180deg,#fffdf4,#f4ead2);box-shadow:0 4px 9px rgba(0,0,0,.35);font:inherit;text-align:left;cursor:pointer;transform:rotate(var(--r));transition:transform .2s var(--spring);}
+.tray .ms:active{transform:scale(.95);}
+.tray .ms .mt{font-family:var(--hand);font-size:1.25rem;line-height:1.05;overflow-wrap:anywhere;}
+.tray .ms .mn{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;font-weight:900;color:#4b4536;}
+.tray .ms .mn i{width:10px;height:10px;border-radius:50%;background:var(--c);}
+.tray .ms .mo{position:absolute;right:6px;top:7px;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:#1f2a6b;color:#fff;}
+.tray .ms .mo .ico{width:12px;height:12px;}
+
+/* Buttons on the table */
+.acts{display:flex;gap:10px;justify-content:center;}
+.acts .btn{flex:1;max-width:420px;}
+.btn.ready{animation:ready 1.6s ease-in-out infinite;}
+@keyframes ready{50%{box-shadow:0 5px 0 var(--b-lip),0 0 0 6px color-mix(in srgb,var(--accent) 30%,transparent);}}
+
+/* The end: final scores and every round */
+.fin{display:flex;flex-direction:column;gap:14px;max-width:640px;width:100%;margin:0 auto;}
+.fin h2{font-family:var(--display);font-weight:400;font-size:1.9rem;text-align:center;color:#ffe08a;}
+.fin .lab{font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.6);margin:4px 2px -6px;}
+.fin .row{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 8px;border-radius:14px;background:rgba(0,0,0,.25);color:#fff;font-weight:800;}
+.fin .row .pl-n{width:22px;text-align:center;font-family:var(--display);color:rgba(255,255,255,.6);}
+.fin .row .nm{flex:1;min-width:0;overflow-wrap:anywhere;}
+.fin .row .sc{font-family:var(--display);font-size:1.3rem;color:#ffe08a;}
+.fin .rd{padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.22);color:#fff;}
+.fin .rd .rq{display:flex;justify-content:space-between;gap:10px;font-weight:900;font-size:.95rem;line-height:1.25;}
+.fin .rd .rq span:last-child{flex:none;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.55);padding-top:3px;}
+.fin .rd .tops{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.fin .rd .tops span{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 9px;border-radius:5px;background:linear-gradient(180deg,#fffdf4,#f4ead2);color:#1f2a6b;font-family:var(--hand);font-size:1.12rem;line-height:1.1;}
+.fin .rd .tops b{min-width:22px;height:22px;padding:0 5px;border-radius:11px;display:grid;place-items:center;background:#ffd447;color:#3a2600;font:400 .85rem/1 var(--display);}
+.fin .rd .none{margin-top:6px;color:rgba(255,255,255,.6);font-weight:700;font-size:.85rem;}
+.fin .acts{flex-direction:column;align-items:stretch;}
+.fin .acts .btn{max-width:none;}
+
+/* ── Bigger screens ───────────────────────────────────────────────────── */
+@media (min-width:700px){
+  .ta > .felt-in{padding:18px 20px 20px;gap:16px;}
+  .pc .q{font-size:2.1rem;}
+  .stx{--sw:156px;gap:24px 20px;}
+  .stx.crowd{--sw:132px;}
+  .stx{--tf:1.55rem;}
+  .hg svg{width:52px;height:85px;}.hg{width:56px;}
+}
+/* Sideways: what you look at (scores, the card, the bowl) on the left; what you do (your paper, the stacks) on the right */
+@media (orientation:landscape) and (min-width:600px){
+  .ta > .felt-in{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:18px;row-gap:10px;align-content:stretch;}
+  .ph-write{grid-template-areas:"sb pad" "pc pad" "st pad" "mid pad" "mid acts";grid-template-rows:auto auto auto 1fr auto;}
+  .ph-reveal,.ph-scored{grid-template-areas:"sb mid" "pc mid" "st mid" "x acts";grid-template-rows:auto auto 1fr auto;}
+  .sb{grid-area:sb;align-self:start;}.pcw{grid-area:pc;align-self:start;}.st{grid-area:st;}.mid{grid-area:mid;}.pad{grid-area:pad;align-self:center;}.acts{grid-area:acts;align-self:end;}
+  .ph-write .mid{align-self:center;}
+  .sb.many{gap:4px;}
+  .ph-reveal .mid,.ph-scored .mid{overflow-y:auto;overscroll-behavior:contain;max-height:calc(100dvh - var(--bar) - 150px - var(--safe-b));border-radius:12px;}
+  .ph-reveal .st,.ph-scored .st{align-self:start;justify-content:flex-start;text-align:left;}
+  .ta > .felt-in.ph-over{display:flex;}
+}
+/* Phones sideways: short screens, so everything a little tighter */
+@media (orientation:landscape) and (max-height:500px){
+  .ta{padding:6px;border-radius:20px;}
+  .ta > .felt-in{padding:10px 12px 10px;border-radius:15px;min-height:calc(100dvh - var(--bar) - 18px - var(--safe-b));}
+  .pc{padding:8px 12px 10px;}
+  .pc .q{font-size:1.32rem;}
+  .hg svg{width:36px;height:58px;}.hg{width:40px;}
+  .bowl{height:74px;width:min(230px,90%);}
+  .bowl::before{height:56px;}
+  .pad{padding:24px 10px 10px;}
+  .sheet{--lh:34px;}
+  .pad .fold{margin-top:8px;min-height:46px;}
+  .ph-reveal .mid,.ph-scored .mid{max-height:calc(100dvh - var(--bar) - 112px - var(--safe-b));}
+  .stx{--sw:122px;gap:16px 12px;padding-top:12px;}
+  .stx{--tf:1.25rem;}
+  .sb .pl{min-height:34px;padding:2px 10px 2px 2px;}
+  .sb .pl .avatar.sm{width:26px;height:26px;}
+  .sb.many .pl{min-height:26px;gap:5px;padding:1px 8px 1px 1px;}
+  .sb.many .pl .avatar.sm{width:22px;height:22px;font-size:.62rem;}
+  .sb.many .pl .nm{font-size:.74rem;}.sb.many .pl .pt{font-size:.92rem;}
+  .sb.many .pl .mk{width:14px;height:14px;}.sb.many .pl .mk .ico{width:9px;height:9px;}
+}
+/* iPads: a big table, so big pieces */
+@media (min-width:700px) and (min-height:900px){
+  .sb{gap:8px;}
+  .pl{min-height:50px;gap:10px;padding:5px 16px 5px 5px;}
+  .pl .avatar.sm{width:38px;height:38px;font-size:1rem;}
+  .pl .nm{font-size:1.05rem;}.pl .pt{font-size:1.55rem;}
+  .pl .mk{width:21px;height:21px;}.pl .mk .ico{width:13px;height:13px;}
+  .pc{max-width:760px;padding:16px 22px 20px;border-radius:18px;}
+  .pc .k{font-size:.8rem;}.pc .slots i{width:22px;height:15px;}
+  .pc .q{font-size:2.8rem;}
+  .hg svg{width:64px;height:105px;}.hg{width:70px;}.hg b{font-size:1.4rem;}
+  .st{font-size:1.1rem;}
+  .bowl{--k:1.6;}
+  .pad{max-width:640px;padding:36px 16px 16px;}
+  .pad .clip{width:150px;margin-left:-75px;height:38px;}
+  .sheet{--lh:56px;--ml:46px;padding-left:56px;}
+  .ln{margin-left:-48px;}.ln b{width:40px;}
+  .sheet .hd{font-size:1.6rem;}
+  .pad .stamp{width:84px;height:84px;}.pad .stamp .ico{width:46px;height:46px;}
+  .stx{--sw:200px;gap:30px 26px;}
+  .stx.crowd{--sw:170px;}
+  .stk .fr{min-height:96px;padding:14px 14px 12px;}
+  .stx{--tf:2rem;}
+  .stk .who i{width:24px;height:24px;font-size:.78rem;}
+  .stk .n{min-width:38px;height:38px;border-radius:19px;font-size:1.3rem;top:-14px;right:-13px;}
+  .tray .ms .mt{font-size:1.5rem;}.tray .ms{max-width:220px;}
+  .acts .btn{min-height:64px;font-size:1.2rem;}
+}
+@media (max-width:370px){ .stx{--sw:122px;gap:16px 10px;--tf:1.22rem;} .stx.crowd{--sw:104px;} }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  var KEY = 'thinkalike', SAVE = 'thinkalike_state', SEEN = 'thinkalike_seen', NETME = 'thinkalike_net_me';
+  var DATA = window.THINKALIKE_PROMPTS || [];
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function lsSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function cap(s) { s = String(s || '').trim(); return s.charAt(0).toUpperCase() + s.slice(1); }
+  // "Kathleen M." reads as Kathleen at a crowded table
+  function short(n) { n = String(n || ''); var m = n.match(/^(\S+)\s+[A-Za-z]\.?$/); return m ? m[1] : n; }
+  function andList(a) { return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0] || ''; }
+  function Q(sel) { return app.querySelector(sel); }
+  function onStage(on) { app.classList.toggle('stage', !!on); }
+  var coarse = (function () { try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; } })();
+
+  // ── Matching answers ──────────────────────────────────────────────────────
+  // Two answers are the same when they read the same after: lower case, accents and punctuation gone, a leading
+  // a/an/the dropped, simple plurals made singular (and "-ie" spelled "-y", so cookie and cookies meet), spaces
+  // ignored (hot dog, hotdog), and the card's own list of other ways to say each answer.
+  function sing(w) {
+    if (w.length <= 3 || /\d/.test(w)) return w;
+    if (/ies$/.test(w) && w.length > 4) return w.slice(0, -3) + 'y';
+    if (/ie$/.test(w)) return w.slice(0, -2) + 'y';
+    if (/(ches|shes|sses|xes|zzes)$/.test(w)) return w.slice(0, -2);
+    if (/oes$/.test(w) && w.length > 5) return w.slice(0, -2);
+    if (/(ss|us|is)$/.test(w)) return w;
+    if (/s$/.test(w)) return w.slice(0, -1);
+    return w;
+  }
+  function norm(s) {
+    s = String(s || '').toLowerCase();
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+    s = s.replace(/&/g, ' and ').replace(/['\u2018\u2019`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+    s = s.replace(/^(a|an|the|some)\s+/, '');
+    return s.split(' ').filter(Boolean).map(sing).join(' ');
+  }
+  var aliasCache = {};
+  function aliasMap(pi) {
+    if (aliasCache[pi]) return aliasCache[pi];
+    var m = {}, P = DATA[pi];
+    function put(s, key) { var n = norm(s); if (!n) return; if (!m[n]) m[n] = key; var c = n.replace(/ /g, ''); if (!m[c]) m[c] = key; }
+    if (P) {
+      P.a.forEach(function (r) { var key = norm(r[0]).replace(/ /g, ''); put(r[0], key); });        // every answer is its own first
+      P.a.forEach(function (r) { var key = norm(r[0]).replace(/ /g, ''); r.slice(2).forEach(function (s) { put(s, key); }); });
+    }
+    return (aliasCache[pi] = m);
+  }
+  function keyOf(pi, t) { var n = norm(t), m = aliasMap(pi); if (!n) return ''; return m[n] || m[n.replace(/ /g, '')] || n.replace(/ /g, ''); }
+
+  // ── Computer players ──────────────────────────────────────────────────────
+  // They draw from the card's answers by how often people give them (each robot a little more or less ordinary),
+  // now and then pick something off the wall, and sometimes write it another way ("bbq" for barbecue).
+  function cpuWrite(pi, n, temp) {
+    var P = DATA[pi]; if (!P) return [];
+    var pool = P.a.map(function (r, k) { return { k: k, w: Math.pow(r[1], temp || 1) }; }), out = [];
+    for (var s = 0; s < n && pool.length; s++) {
+      var pick = null;
+      if (Math.random() < 0.1) pick = pool[Math.floor(Math.random() * pool.length)];
+      else {
+        var tot = 0; pool.forEach(function (x) { tot += x.w; });
+        var x = Math.random() * tot; for (var j = 0; j < pool.length; j++) { x -= pool[j].w; if (x <= 0) { pick = pool[j]; break; } }
+        pick = pick || pool[pool.length - 1];
+      }
+      pool.splice(pool.indexOf(pick), 1);
+      var r = P.a[pick.k], alts = r.slice(2), t = r[0];
+      if (alts.length && Math.random() < 0.3) t = alts[Math.floor(Math.random() * alts.length)];
+      out.push(Math.random() < 0.6 ? cap(t) : t);
+    }
+    return out;
+  }
+
+  // ── The prompt cards for a game: ones you haven't seen lately first ──────
+  function pickDeck(n) {
+    var seen = lsGet(SEEN, []); if (!Array.isArray(seen)) seen = [];
+    var all = DATA.map(function (p, i) { return i; });
+    var fresh = all.filter(function (i) { return seen.indexOf(DATA[i].q) < 0; });
+    if (fresh.length < n) { seen = []; fresh = all; }
+    var deck = shuffle(fresh).slice(0, n);
+    lsSet(SEEN, seen.concat(deck.map(function (i) { return DATA[i].q; })).slice(-200));
+    return deck;
+  }
+
+  // ═══ The game ════════════════════════════════════════════════════════════
+  // G = {mode, players:[{name,color,cpu,pid,score,temp,gone}], rounds, timer, round, deck:[prompt index], qs, pi,
+  //      phase: write|reveal|scored|over, ans:[[text]|null per player], items:[{p,i,t,g}] (g = which stack),
+  //      pts (this round's points), log:[{q, pts, top:[{t,c}]}], deadline, cpuAt, started}
+  var G = null;
+  function prompt(g) { return DATA[g.pi] || { q: '', n: 1, a: [] }; }
+  function newGame(cfg) {
+    var g = { v: 1, mode: cfg.mode, rounds: cfg.rounds, timer: cfg.timer, round: 0, log: [], started: Date.now(), sid: 0,
+      players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu, pid: p.pid, score: 0, temp: p.cpu ? rnd(0.7, 1.15) : 1 }; }),
+      deck: pickDeck(cfg.rounds) };
+    g.qs = g.deck.map(function (i) { return DATA[i].q; });
+    startRound(g);
+    return g;
+  }
+  function startRound(g) {
+    g.round++; g.pi = g.deck[g.round - 1]; g.phase = 'write';
+    g.ans = g.players.map(function () { return null; });
+    g.items = null; g.pts = null;
+    var now = Date.now();
+    g.deadline = g.timer && g.mode !== 'pass' ? now + g.timer * 1000 : 0;
+    // when each robot finishes writing (pass and play: right away, their slips drop in one by one)
+    var hi = g.timer ? Math.max(5000, Math.min(16000, g.timer * 1000 - 5000)) : 16000, k = 0;
+    g.cpuAt = g.players.map(function (p) { return !p.cpu ? 0 : g.mode === 'pass' ? now + 700 + (k++) * 380 : now + rnd(3500, hi); });
+  }
+  function active(g) { var o = []; g.players.forEach(function (p, i) { if (!p.gone) o.push(i); }); return o; }
+  function allIn(g) { return active(g).every(function (i) { return !!g.ans[i]; }); }
+  function humansIn(g) { return active(g).every(function (i) { return g.players[i].cpu || !!g.ans[i]; }); }
+  function buildItems(g) {
+    g.items = [];
+    g.players.forEach(function (p, k) { (g.ans[k] || []).forEach(function (t, i) { if (t) g.items.push({ p: k, i: i, t: t, g: keyOf(g.pi, t) || ('#' + k + '.' + i) }); }); });
+  }
+  // the stacks: matching slips together, the biggest first
+  function groupsOf(items) {
+    var map = {}, list = [];
+    (items || []).forEach(function (it, k) {
+      var s = map[it.g]; if (!s) { s = map[it.g] = { id: it.g, items: [], ps: [], first: k }; list.push(s); }
+      s.items.push(it); if (s.ps.indexOf(it.p) < 0) s.ps.push(it.p);
+    });
+    list.sort(function (a, b) { return b.ps.length - a.ps.length || a.first - b.first; });
+    return list;
+  }
+  // a stack reads as the way most people wrote it (and in capitals if anyone wrote it that way: USA, New York)
+  function label(s) {
+    var c = {}, form = {}, best = null;
+    s.items.forEach(function (it) {
+      var t = it.t.trim(), k = t.toLowerCase(); c[k] = (c[k] || 0) + 1;
+      if (!form[k] || (t.slice(1) !== t.slice(1).toLowerCase() && form[k].slice(1) === form[k].slice(1).toLowerCase())) form[k] = t;
+      if (!best || c[k] > c[best]) best = k;
+    });
+    return best ? cap(form[best]) : '';
+  }
+  // each of your answers scores one point for every other player who wrote it too (once per stack)
+  function roundPts(g) {
+    var pts = g.players.map(function () { return 0; });
+    groupsOf(g.items).forEach(function (s) { s.ps.forEach(function (p) { pts[p] += s.ps.length - 1; }); });
+    return pts;
+  }
+  function apply(g, who, a) {
+    if (!g || !a) return false;
+    if (a.t === 'ans') {
+      if (g.phase !== 'write' || who < 0 || !g.players[who] || g.ans[who]) return false;
+      var n = prompt(g).n, list = (Array.isArray(a.a) ? a.a : []).slice(0, n).map(function (s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 40); });
+      while (list.length < n) list.push('');
+      g.ans[who] = list;
+      return true;
+    }
+    if (a.t === 'reveal') {
+      if (g.phase !== 'write') return false;
+      g.players.forEach(function (p, k) { if (!g.ans[k]) g.ans[k] = []; });
+      buildItems(g); g.phase = 'reveal'; g.deadline = 0;
+      return true;
+    }
+    if (a.t === 'merge') {
+      if (g.phase !== 'reveal' || !a.a || a.a === a.b) return false;
+      var hit = false; g.items.forEach(function (it) { if (it.g === a.a) { it.g = a.b; hit = true; } });
+      return hit && g.items.some(function (it) { return it.g === a.b; });
+    }
+    if (a.t === 'split') {
+      if (g.phase !== 'reveal') return false;
+      var it = g.items.filter(function (x) { return x.p === a.p && x.i === a.i; })[0];
+      if (!it || g.items.filter(function (x) { return x.g === it.g; }).length < 2) return false;
+      it.g = '#' + it.p + '.' + it.i + '.' + (++g.sid);
+      return true;
+    }
+    if (a.t === 'score') {
+      if (g.phase !== 'reveal') return false;
+      var pts = roundPts(g); g.pts = pts;
+      pts.forEach(function (v, k) { g.players[k].score += v; });
+      g.log.push({ q: prompt(g).q, pts: pts.slice(), top: groupsOf(g.items).filter(function (s) { return s.ps.length > 1; }).slice(0, 3).map(function (s) { return { t: label(s), c: s.ps.length }; }) });
+      g.phase = 'scored';
+      return true;
+    }
+    if (a.t === 'next') {
+      if (g.phase !== 'scored') return false;
+      if (g.round >= g.rounds) g.phase = 'over'; else startRound(g);
+      return true;
+    }
+    return false;
+  }
+
+  // ═══ Driving it: moves, robots, the sand timer, saving, undo ══════════════
+  var gen = 0, botT = 0, undoStack = [], lastCfg = null, finished = false, lastV = null;
+  var pp = { viewer: -1, busy: false, deadline: 0, restore: null };   // pass and play: who has the clipboard
+  var draft = [];   // what's on this device's paper right now
+  var ui = { sig: '', sel: null, cardRound: 0, intro: '', scored: '', flash: null, pile: '' };
+  function save() {
+    if (!G || G.mode === 'online') return;
+    if (G.phase === 'over') { clearSave(); return; }
+    lsSet(SAVE, { G: G, cfg: lastCfg });
+    Kit.resume.set('Round ' + G.round + ' of ' + G.rounds, { keys: [SAVE] });
+  }
+  function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
+  function hostIdx() { if (!G) return 0; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === 0) return i; return 0; }
+  function meIdx() { return G ? (G.mode === 'pass' ? pp.viewer : net.mode === 'host' ? hostIdx() : 0) : -1; }
+  function doAct(a) {
+    if (net.mode === 'guest') { if (net.peer) net.peer.send({ t: 'a', a: a }, true); return true; }
+    if (!G) return false;
+    var who = a.t === 'ans' ? meIdx() : -1;
+    var before = G.mode !== 'online' ? JSON.stringify(G) : null;
+    if (!apply(G, who, a)) return false;
+    if (before) { undoStack.push(before); if (undoStack.length > 60) undoStack.shift(); }
+    changed(a);
+    return true;
+  }
+  function changed(a) {
+    if (!G) return;
+    save(); netSync(); paint(a); schedule();
+    if (G.phase === 'over' && !finished) finish();
+  }
+  function undo() {
+    if (net.mode) return Kit.toast('Undo isn’t available in online games');
+    if (!G || !undoStack.length) return Kit.toast('Nothing to undo');
+    if (G.phase === 'over') return Kit.toast('The game is over');
+    var cur = G; G = JSON.parse(undoStack.pop()); gen++; clearTimeout(botT);
+    ui.sel = null; ui.sig = ''; ui.flash = null;
+    // taking back what you'd just folded in: it's back on your paper
+    var me = G.mode === 'pass' ? -1 : 0;
+    if (G.phase === 'write' && cur.phase === 'write') {
+      if (G.mode === 'pass') { for (var k = 0; k < G.players.length; k++) if (cur.ans[k] && !G.ans[k] && !G.players[k].cpu) { pp.restore = { k: k, a: cur.ans[k].slice() }; break; } }
+      else if (cur.ans[me] && !G.ans[me]) draft = cur.ans[me].slice();
+    }
+    if (G.mode === 'pass') { pp.viewer = -1; pp.busy = false; Kit.handoff.close(); }
+    if (G.deadline && G.deadline < Date.now() + 5000 && G.phase === 'write') G.deadline = Date.now() + 5000;   // (a few seconds to finish)
+    Kit.sfx('whoosh'); Kit.toast('Undone'); changed();
+  }
+  // Robots finishing, the sand running out, everyone done: the device running the game moves it along
+  function schedule() {
+    clearTimeout(botT);
+    if (!G || net.mode === 'guest' || G.phase !== 'write') return;
+    var g = G, now = Date.now(), my = gen;
+    if (allIn(g)) {
+      botT = setTimeout(function () { if (G === g && my === gen && g.phase === 'write' && allIn(g)) { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 1300);
+      return;
+    }
+    // everybody real has written: the robots don't keep you waiting
+    if (humansIn(g)) { var s = 0; g.players.forEach(function (p, k) { if (p.cpu && !g.ans[k] && g.cpuAt[k] > now + 2000) g.cpuAt[k] = now + 500 + (s++) * 450 + Math.random() * 300; }); }
+    var next = Infinity, what = null;
+    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !g.ans[k] && g.cpuAt[k] < next) { next = g.cpuAt[k]; what = k; } });
+    if (g.deadline && g.deadline <= next) { next = g.deadline; what = 'time'; }
+    if (next === Infinity) return;
+    botT = setTimeout(function () {
+      if (G !== g || my !== gen || g.phase !== 'write') return;
+      if (what === 'time') return timeUp(g);
+      apply(g, what, { t: 'ans', a: cpuWrite(g.pi, prompt(g).n, g.players[what].temp) });
+      changed({ t: 'cpu', p: what });
+    }, Math.max(0, next - Date.now()));
+  }
+  // The sand ran out: whatever is on the paper goes in
+  function timeUp(g) {
+    g.deadline = 0;
+    Kit.sfx('clash', 0.6); Kit.haptic('medium');
+    var me = meIdx();
+    if (me >= 0 && !g.ans[me] && !g.players[me].cpu) apply(g, me, { t: 'ans', a: draft });
+    g.players.forEach(function (p, k) { if (p.cpu && !p.gone && !g.ans[k]) apply(g, k, { t: 'ans', a: cpuWrite(g.pi, prompt(g).n, p.temp) }); });
+    if (net.mode === 'host' && !allIn(g)) {
+      // the others' own timers send theirs at zero; a moment's grace, then over
+      var my = gen; setTimeout(function () { if (G === g && my === gen && g.phase === 'write') { apply(g, -1, { t: 'reveal' }); changed({ t: 'reveal' }); } }, 2500);
+    }
+    changed({ t: 'time' });
+  }
+  function paint(a) {
+    if (net.mode === 'guest') { if (net.view) render(net.view, a); return; }
+    if (!G) return;
+    if (G.mode === 'pass' && G.phase !== 'write') pp.viewer = -1;
+    render(viewFor(meIdx()), a);
+    if (G.mode === 'pass') passFlow();
+  }
+  // Pass and play: once someone has folded theirs in, the clipboard goes to the next person who hasn't written
+  function passFlow() {
+    if (!G || G.mode !== 'pass' || pp.busy || G.phase !== 'write') return;
+    if (pp.viewer >= 0 && !G.ans[pp.viewer]) return;
+    var need = -1;
+    for (var k = 0; k < G.players.length; k++) { var p = G.players[k]; if (!p.cpu && !p.gone && !G.ans[k]) { need = k; break; } }
+    if (need < 0) return;
+    pp.busy = true;
+    var showing = pp.viewer >= 0; pp.viewer = -1;
+    if (showing) render(viewFor(-1));
+    var P = G.players[need], my = gen;
+    setTimeout(function () {
+      if (my !== gen || !G) { pp.busy = false; return; }
+      Kit.handoff({ name: P.name, color: P.color, what: 'paper', msg: prompt(G).q }).then(function () {
+        pp.busy = false; if (my !== gen || !G || G.phase !== 'write') return;
+        pp.viewer = need; pp.deadline = G.timer ? Date.now() + G.timer * 1000 : 0;
+        draft = pp.restore && pp.restore.k === need ? pp.restore.a : []; pp.restore = null;
+        paint();
+      });
+    }, showing ? 1000 : 450);
+  }
+
+  // What one player may see (i = -1: the table only). Nobody sees anyone's answers until they're turned over.
+  function viewFor(i) {
+    var g = G, P = prompt(g), open = g.phase === 'reveal' || g.phase === 'scored';
+    var V = { mode: g.mode, me: i, round: g.round, rounds: g.rounds, phase: g.phase, timer: g.timer,
+      left: g.phase === 'write' && g.deadline ? Math.max(0, g.deadline - Date.now()) : null,
+      q: P.q, n: P.n, boss: true, host: g.players[hostIdx()] ? g.players[hostIdx()].name : '',
+      players: g.players.map(function (p, k) { return { name: p.name, color: p.color, cpu: p.cpu, score: p.score, done: !!g.ans[k], gone: !!p.gone, gain: g.phase === 'scored' && g.pts ? g.pts[k] : null }; }),
+      mine: i >= 0 && g.ans[i] ? g.ans[i].slice() : null,
+      items: open && g.items ? g.items.map(function (it) { return { p: it.p, i: it.i, t: it.t, g: it.g }; }) : null };
+    if (g.phase === 'over') V.done = summary();
+    return V;
+  }
+  function summary() {
+    var g = G, sc = g.players.map(function (p) { return p.score; }), top = Math.max.apply(null, sc.concat([0]));
+    return { players: g.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu, color: p.color }; }),
+      winners: g.players.map(function (p, i) { return i; }).filter(function (i) { return sc[i] === top; }),
+      log: g.log, rounds: g.rounds, mode: g.mode, started: g.started };
+  }
+
+  // ═══ Drawing ═════════════════════════════════════════════════════════════
+  function render(V, a) {
+    if (V.phase === 'write') { var rk = V.round + ''; if (ui.paperRound !== rk) { ui.paperRound = rk; draft = []; } }   // a new card, a clean sheet
+    lastV = V;
+    if (V.phase === 'over') { renderOver(V); ui.sig = 'over'; return; }
+    var sig = [V.phase, V.round, V.me, V.mine ? 1 : 0, V.mode, V.players.length].join('|');
+    if (sig !== ui.sig || !Q('.ta')) build(V, a); else update(V, a);
+    ui.sig = sig;
+  }
+  function build(V, a) {
+    if (V.phase !== 'reveal') ui.sel = null;
+    onStage(false);
+    app.innerHTML = '';
+    var felt = el('div', { class: 'felt-in ph-' + V.phase });
+    felt.appendChild(el('div', { class: 'sb' }));
+    felt.appendChild(cardEl(V));
+    felt.appendChild(el('div', { class: 'st' }));
+    felt.appendChild(el('div', { class: 'mid' }));
+    if (V.phase === 'write') felt.appendChild(padEl(V));
+    felt.appendChild(el('div', { class: 'acts' }));
+    app.appendChild(el('div', { class: 'ta wood' }, [felt]));
+    update(V, a);
+    tickTimer();
+    if (V.phase === 'write' && V.me >= 0 && !V.mine && !coarse) { var f = Q('.pad input'); if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); } catch (e) {} }, 650); }
+  }
+  function update(V, a) { paintScores(V); paintStatus(V); paintMid(V, a); paintActs(V); }
+
+  // ── Scores ──
+  function paintScores(V) {
+    var box = Q('.sb'); if (!box) return;
+    var first = V.phase === 'scored' && ui.scored !== V.round + '';
+    box.innerHTML = '';
+    box.classList.toggle('many', V.players.length > 8);
+    var top = 0; V.players.forEach(function (p) { if (p.score > top) top = p.score; });
+    // the best of the round gets a glow (when it's one or two of you, not the whole table)
+    var best = V.phase === 'scored' ? Math.max.apply(null, V.players.map(function (p) { return p.gain || 0; })) : 0;
+    if (V.players.filter(function (p) { return best && p.gain === best; }).length > Math.min(2, V.players.length - 1)) best = 0;
+    V.players.forEach(function (p, k) {
+      var state = V.phase === 'write' && !p.gone ? (p.done ? 'ok' : 'wr') : '';
+      var shown = first && p.gain ? p.score - p.gain : p.score;
+      var pt = el('span', { class: 'pt', text: String(shown) });
+      var chip = el('div', { class: 'pl' + (p.gone ? ' gone' : '') + (k === V.me ? ' me' : '') + (top > 0 && p.score === top ? ' lead' : '') + (best > 0 && p.gain === best ? ' top' : ''), style: { '--c': p.color }, 'data-p': k }, [
+        el('span', { class: 'av' }, [p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color),
+          state ? el('span', { class: 'mk ' + state, html: Kit.icon(state === 'ok' ? 'check' : 'pencil') }) : null]),
+        el('span', { class: 'nm', text: short(p.name) }), pt
+      ]);
+      if (V.phase === 'scored' && p.gain != null && !p.gone) chip.appendChild(el('span', { class: 'gain' + (p.gain ? '' : ' zero'), style: { '--gd': (first ? 0.9 + k * 0.06 : 0) + 's' }, text: '+' + p.gain }));
+      box.appendChild(chip);
+      // the points land a moment after the stacks show what they're worth
+      if (first && p.gain) setTimeout(function () { if (!pt.isConnected) return; pt.textContent = String(p.score); pt.classList.add('bump'); if (k < 10) Kit.sfx('chip', 0.5); }, 1250 + k * 90);
+    });
+  }
+  // ── The card ──
+  function cardEl(V) {
+    var slots = el('span', { class: 'slots', 'aria-label': V.n + (V.n === 1 ? ' answer' : ' answers') });
+    for (var k = 0; k < V.n; k++) slots.appendChild(el('i'));
+    var card = el('div', { class: 'pc' + (ui.cardRound !== V.round ? ' deal' : '') }, [
+      el('div', { class: 'k' }, [el('span', { text: 'Round ' + V.round + ' of ' + V.rounds }), slots]),
+      el('div', { class: 'q', text: V.q })
+    ]);
+    if (ui.cardRound !== V.round) { ui.cardRound = V.round; Kit.sfx('deal'); }
+    var w = el('div', { class: 'pcw' }, [card]);
+    if (V.timer && V.phase === 'write') w.appendChild(hourglass());
+    return w;
+  }
+  function hourglass() {
+    var wood = '<rect x="3" y="2" width="38" height="8" rx="3" fill="url(#hgW)"/><rect x="3" y="62" width="38" height="8" rx="3" fill="url(#hgW)"/>' +
+      '<rect x="5" y="9" width="3.4" height="54" rx="1.7" fill="url(#hgW)"/><rect x="35.6" y="9" width="3.4" height="54" rx="1.7" fill="url(#hgW)"/>';
+    var glass = '<path d="M10 10h24c0 10-7 16-10.4 21.6L22 36l-1.6-4.4C17 26 10 20 10 10zM10 62h24c0-10-7-16-10.4-21.6L22 36l-1.6 4.4C17 46 10 52 10 62z" fill="rgba(210,235,255,.16)" stroke="rgba(235,245,255,.75)" stroke-width="1.2"/>' +
+      '<path d="M13 13c1 5 3.5 8.5 6 11.5" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.4" stroke-linecap="round"/>';
+    return el('div', { class: 'hg', 'aria-hidden': 'true' }, [el('div', { html:
+      '<svg viewBox="0 0 44 72"><defs>' +
+      '<clipPath id="hgT"><path d="M10 10h24c0 10-7 16-10.4 21.6L22 36l-1.6-4.4C17 26 10 20 10 10z"/></clipPath>' +
+      '<clipPath id="hgB"><path d="M10 62h24c0-10-7-16-10.4-21.6L22 36l-1.6 4.4C17 46 10 52 10 62z"/></clipPath>' +
+      '<linearGradient id="hgW" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#d7a86e"/><stop offset="1" stop-color="#8a5d33"/></linearGradient>' +
+      '<linearGradient id="hgS" x1="0" x2="1"><stop offset="0" stop-color="#f7dc98"/><stop offset="1" stop-color="#d9a64a"/></linearGradient></defs>' +
+      '<rect class="sT" clip-path="url(#hgT)" x="8" y="10" width="28" height="26" fill="url(#hgS)"/>' +
+      '<rect class="sB" clip-path="url(#hgB)" x="8" y="62" width="28" height="0" fill="url(#hgS)"/>' +
+      '<line class="sS" x1="22" y1="34" x2="22" y2="62" stroke="#e9c06a" stroke-width="1.4" stroke-dasharray="2 2"/>' +
+      glass + wood + '</svg>' }), el('b', { text: '' })]);
+  }
+  // ── What's going on ──
+  function paintStatus(V) {
+    var box = Q('.st'); if (!box) return;
+    box.innerHTML = '';
+    var t = '';
+    if (V.phase === 'write') {
+      var wait = V.players.filter(function (p) { return !p.done && !p.gone; }).map(function (p) { return short(p.name); });
+      var mine = V.mine || (V.mode === 'pass' && V.me < 0);
+      if (mine && wait.length) t = wait.length > 3 ? wait.length + ' still writing' : 'Waiting for ' + andList(wait);
+      else if (!wait.length) t = 'Turning them over';
+      if (t) { box.appendChild(el('span', { text: t })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
+      return;
+    }
+    if (V.phase === 'reveal') {
+      if (!V.boss) { box.appendChild(el('span', { text: short(V.host) + ' is checking the matches' })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); return; }
+      var gs = groupsOf(V.items), s = ui.sel ? gs.filter(function (x) { return x.id === ui.sel; })[0] : null;
+      if (gs.length < 2 && !(s && s.items.length > 1)) return;
+      t = !s ? 'Same thing written two ways? Tap both stacks' : s.items.length > 1 ? 'Tap the stack it matches, or a slip to pull it out' : 'Now tap the stack it matches';
+      box.appendChild(el('span', { text: t }));
+      return;
+    }
+    if (V.phase === 'scored' && !V.boss) { box.appendChild(el('span', { text: 'Waiting for ' + short(V.host) })); box.appendChild(el('span', { class: 'think', html: '<i></i><i></i><i></i>' })); }
+  }
+  // ── The middle of the table: the bowl while writing, the stacks once they're turned over ──
+  function paintMid(V, a) {
+    var box = Q('.mid'); if (!box) return;
+    if (V.phase === 'write') return paintBowl(box, V);
+    paintStacks(box, V, a);
+  }
+  function slipSpot(k, n) {
+    var ang = k * 2.4, r = Math.sqrt((k + 0.6) / Math.max(n, 1));
+    return { x: Math.round(Math.cos(ang) * r * 78), y: Math.round(Math.sin(ang) * r * 20), r: ((k * 47) % 56) - 28 };
+  }
+  function paintBowl(box, V) {
+    var key = V.round + ':' + V.players.length;
+    if (ui.pile !== key) { ui.pile = key; ui.pileSeen = {}; ui.pileInit = false; }
+    if (!box.querySelector('.bowl')) { box.innerHTML = ''; box.appendChild(el('div', { class: 'bowl', 'aria-label': 'The bowl' })); }
+    var bowl = box.querySelector('.bowl'), drops = 0;
+    V.players.forEach(function (p, k) {
+      var have = bowl.querySelector('.fs[data-p="' + k + '"]');
+      if (p.done && !have) {
+        var s = slipSpot(k, V.players.length), anim = ui.pileInit && !ui.pileSeen[k];
+        ui.pileSeen[k] = 1;
+        bowl.appendChild(el('span', { class: 'fs' + (anim ? ' drop' : ''), 'data-p': k, style: { '--c': p.color, '--x': s.x, '--y': s.y, '--r': s.r + 'deg' } }));
+        if (anim && !drops++) { Kit.sfx('deal', 0.55); Kit.haptic('light'); }
+      } else if (!p.done && have) { have.remove(); delete ui.pileSeen[k]; }
+    });
+    ui.pileInit = true;
+  }
+  function paintStacks(box, V, a) {
+    var gs = groupsOf(V.items), nAct = V.players.filter(function (p) { return !p.gone; }).length;
+    var intro = ui.intro !== V.round + '' && V.phase === 'reveal';
+    var scoredNow = V.phase === 'scored' && ui.scored !== V.round + '';
+    ui.intro = V.round + '';
+    if (ui.sel && !gs.some(function (s) { return s.id === ui.sel; })) ui.sel = null;
+    var tapOk = V.boss && V.phase === 'reveal';
+    box.innerHTML = '';
+    var sel = ui.sel ? gs.filter(function (s) { return s.id === ui.sel; })[0] : null;
+    if (sel && sel.items.length > 1 && tapOk) box.appendChild(trayEl(V, sel));
+    var wrap = el('div', { class: 'stx' + (ui.sel ? ' picking' : '') + (gs.length > 9 ? ' crowd' : '') });
+    gs.forEach(function (s, k) {
+      var cnt = s.ps.length, all = V.phase === 'scored' && nAct >= 3 && cnt >= nAct;
+      var flash = ui.flash && s.items.some(function (it) { return it.p === ui.flash.p && it.i === ui.flash.i; });
+      var b = el('div', { class: 'stk ' + (cnt > 1 ? 'm' : 'solo') + (tapOk ? ' tap' : '') + (ui.sel === s.id ? ' sel' : '') + (intro ? ' intro' : '') + (all ? ' all' : '') + (scoredNow ? ' scored' : '') + (ui.bump === s.id ? ' bump' : '') + (flash ? ' pop' : ''),
+        'data-g': s.id, role: tapOk ? 'button' : null, tabindex: tapOk ? '0' : null, 'aria-label': label(s) + ', ' + cnt + (cnt === 1 ? ' player' : ' players'),
+        style: { '--d': (Math.min(k, 14) * 0.13) + 's', '--tilt': (((k * 53) % 7) - 3) * 0.6 + 'deg' } });
+      for (var j = Math.min(s.items.length - 1, 3); j >= 1; j--) b.appendChild(el('span', { class: 'bk', style: { '--j': j, '--r': (((j * 37 + k * 13) % 9) - 4) + 'deg' } }));
+      var who = el('span', { class: 'who' });
+      s.ps.forEach(function (p) { var P = V.players[p] || {}; who.appendChild(el('i', { style: { '--c': P.color }, title: P.name, text: String(P.name || '?').charAt(0).toUpperCase() })); });
+      // (a long word eases down to fit the slip rather than breaking)
+      var lb = label(s), lw = Math.max.apply(null, lb.split(/\s+/).map(function (w) { return w.length; }));
+      b.appendChild(el('div', { class: 'fr' }, [el('span', { class: 'tx' + (lw > 16 ? ' xxl' : lw > 13 ? ' xl' : lw > 10 ? ' lg' : ''), text: lb }), who]));
+      b.appendChild(el('span', { class: 'n', html: V.phase === 'scored' ? (all ? Kit.icon('star') : '') + '+' + (cnt - 1) : String(cnt) }));
+      if (tapOk) {
+        b.addEventListener('click', function () { tapStack(V, s); });
+        b.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapStack(V, s); } });
+      }
+      wrap.appendChild(b);
+    });
+    if (!gs.length) wrap.appendChild(el('div', { class: 'none', text: 'Nobody wrote anything this round' }));
+    box.appendChild(wrap);
+    ui.bump = null; ui.flash = null;
+    if (intro) introSounds(gs);
+    if (scoredNow) { ui.scored = V.round + ''; celebrate(V, gs, nAct); }
+  }
+  // turning the slips over: a flip for each stack, a slide as the matching ones come together
+  function introSounds(gs) {
+    gs.slice(0, 14).forEach(function (s, k) {
+      setTimeout(function () { Kit.sfx('flip', 0.7); }, 120 + k * 130);
+      if (s.items.length > 1) setTimeout(function () { Kit.sfx('slide'); Kit.haptic('light'); }, 520 + k * 130);
+    });
+  }
+  function trayEl(V, s) {
+    var t = el('div', { class: 'tray' });
+    s.items.forEach(function (it, k) {
+      var P = V.players[it.p] || {};
+      t.appendChild(el('button', { type: 'button', class: 'ms', style: { '--c': P.color, '--r': (((k * 41) % 7) - 3) + 'deg' }, 'aria-label': 'Pull ' + it.t + ' by ' + P.name + ' out of the stack',
+        onclick: function (e) { e.stopPropagation(); pullOut(it); } }, [
+        el('span', { class: 'mt', text: it.t }),
+        el('span', { class: 'mn' }, [el('i'), el('span', { text: short(P.name) })]),
+        el('span', { class: 'mo', html: Kit.icon('share') })
+      ]));
+    });
+    return t;
+  }
+  function tapStack(V, s) {
+    if (!ui.sel) { ui.sel = s.id; Kit.sfx('tap'); Kit.haptic('light'); paintMid(lastV); paintStatus(lastV); return; }
+    if (ui.sel === s.id) { ui.sel = null; Kit.sfx('tap'); paintMid(lastV); paintStatus(lastV); return; }
+    var from = ui.sel; ui.sel = null;
+    slideOnto(from, s.id, function () { ui.bump = s.id; doAct({ t: 'merge', a: from, b: s.id }); Kit.sfx('pop'); Kit.sfx('good', 0.6); Kit.haptic('medium'); });
+  }
+  function pullOut(it) {
+    ui.flash = { p: it.p, i: it.i };
+    Kit.sfx('whoosh'); Kit.haptic('light');
+    if (!doAct({ t: 'split', p: it.p, i: it.i })) ui.flash = null;
+  }
+  // the picked stack slides across the table onto the one it matches
+  function slideOnto(fromId, toId, done) {
+    var a = app.querySelector('.stk[data-g="' + cssId(fromId) + '"]'), b = app.querySelector('.stk[data-g="' + cssId(toId) + '"]');
+    if (!a || !b || !a.animate) { done(); return; }
+    var ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    var c = a.cloneNode(true); c.classList.remove('sel', 'intro', 'tap'); c.classList.add('fly');
+    c.style.left = ra.left + 'px'; c.style.top = ra.top + 'px'; c.style.width = ra.width + 'px';
+    document.body.appendChild(c); a.style.visibility = 'hidden';
+    Kit.sfx('slide');
+    var dx = rb.left - ra.left + 6, dy = rb.top - ra.top + 8;
+    var an = c.animate([{ transform: 'none' }, { transform: 'translate(' + dx * 0.55 + 'px,' + (dy * 0.55 - 24) + 'px) rotate(6deg) scale(1.06)', offset: 0.55 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(-3deg) scale(.96)' }], { duration: 420, easing: 'cubic-bezier(.5,0,.3,1)', fill: 'forwards' });
+    an.onfinish = function () { c.remove(); done(); };
+  }
+  function cssId(s) { return String(s).replace(/["\\]/g, '\\$&'); }
+  // Big moments: an answer the whole table wrote, and anyone who matched nobody
+  function celebrate(V, gs, nAct) {
+    var all = gs.filter(function (s) { return nAct >= 3 && s.ps.length >= nAct; });
+    var zero = []; V.players.forEach(function (p, k) { if (!p.gone && p.gain === 0) zero.push(k); });
+    var t = 700;
+    if (all.length) {
+      setTimeout(function () { Kit.callout((all.length > 1 ? 'Everyone said ' + label(all[0]) + ' and more!' : 'Everyone said ' + label(all[0]) + '!'), '#ffe08a'); Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 80, colors: ['#ffd447', '#fffdf4', '#3ddc84', '#4da3ff', '#ff5c9a'] }); }, t);
+      t += 1700;
+    } else setTimeout(function () { Kit.sfx('good'); }, t);
+    if (zero.length && zero.length < nAct) {
+      setTimeout(function () {
+        var nm = zero.map(function (k) { return short(V.players[k].name); });
+        Kit.callout(zero.length > 3 ? zero.length + ' players matched nobody' : andList(nm) + ' matched nobody', '#ffb3b3'); Kit.sfx('bad'); Kit.haptic('error');
+        zero.forEach(function (k) { var c = app.querySelector('.pl[data-p="' + k + '"]'); if (c) { c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake'); } });
+      }, t);
+    } else if (zero.length && zero.length === nAct) setTimeout(function () { Kit.callout('No matches at all!', '#ffb3b3'); Kit.sfx('bad'); }, t);
+  }
+  // ── Buttons ──
+  function paintActs(V) {
+    var box = Q('.acts'); if (!box) return;
+    box.innerHTML = '';
+    function b(label, icon, fn, cls) { box.appendChild(el('button', { type: 'button', class: 'btn ' + (cls || 'btn-primary'), html: (icon ? Kit.icon(icon) : '') + '<span>' + esc(label) + '</span>', onclick: fn })); }
+    if (V.phase === 'reveal' && V.boss) b('Count the points', 'check', function () { ui.sel = null; Kit.sfx('pop'); doAct({ t: 'score' }); }, 'btn-primary ready');
+    if (V.phase === 'scored' && V.boss) b(V.round >= V.rounds ? 'See who won' : 'Next card', V.round >= V.rounds ? 'trophy' : 'right', function () { doAct({ t: 'next' }); });
+    if (V.phase === 'write' && net.mode === 'host' && V.mine && V.players.some(function (p) { return !p.done && !p.gone; }))
+      b('Turn them over now', 'eye', function () { Kit.confirm('Turn the answers over now?', { ok: 'Turn them over', body: 'Anyone still writing misses this card.' }).then(function (ok) { if (ok) doAct({ t: 'reveal' }); }); }, 'btn-soft');
+  }
+
+  // ── The clipboard ──
+  function padEl(V) {
+    var writing = V.me >= 0 && !V.mine;
+    var who = V.me >= 0 ? V.players[V.me] : null;
+    var sheet = el('div', { class: 'sheet' }, [el('div', { class: 'hd ink' }, [el('span', { class: 'who', text: who ? short(who.name) : '' })])]);
+    var inputs = [];
+    for (var k = 0; k < V.n; k++) {
+      (function (k) {
+        var row = el('label', { class: 'ln' }, [el('b', { class: 'ink', text: String(k + 1) })]);
+        if (writing) {
+          var inp = el('input', { type: 'text', maxlength: 32, autocomplete: 'off', autocapitalize: 'sentences', spellcheck: 'true', enterkeyhint: k < V.n - 1 ? 'next' : 'done', 'aria-label': 'Answer ' + (k + 1) });
+          inp.value = draft[k] || '';
+          var lastS = 0;
+          inp.addEventListener('input', function () {
+            draft[k] = inp.value;
+            var now = Date.now(); if (now - lastS > 90) { lastS = now; Kit.sfx('slide'); }
+            syncFold();
+          });
+          inp.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter') return; e.preventDefault();
+            if (k < V.n - 1) inputs[k + 1].focus(); else submit();
+          });
+          inputs.push(inp); row.appendChild(inp);
+        } else row.appendChild(el('span', { class: 'w ink', text: V.mine ? V.mine[k] || '' : '' }));
+        sheet.appendChild(row);
+      })(k);
+    }
+    var pad = el('div', { class: 'pad ' + (writing ? 'live' : V.mine ? 'sent' : 'idle') }, [el('div', { class: 'clip' }), sheet]);
+    if (V.mine) pad.appendChild(el('span', { class: 'stamp', html: Kit.icon('check') }));
+    if (writing) {
+      var btn = el('button', { type: 'button', class: 'btn btn-primary fold', html: Kit.icon('check') + '<span>Fold it into the bowl</span>', onclick: function () { submit(); } });
+      pad.appendChild(btn);
+    }
+    function syncFold() { var b2 = pad.querySelector('.fold'); if (b2) b2.classList.toggle('ready', draft.slice(0, V.n).filter(function (s) { return s && s.trim(); }).length >= V.n); }
+    setTimeout(syncFold, 0);
+    return pad;
+  }
+  function submit(force) {
+    var V = lastV, tag = V ? V.round + ':' + V.me : ''; if (!V || V.phase !== 'write' || V.mine || V.me < 0 || ui.sending === tag || (net.mode === 'guest' && ui.sent === tag)) return;
+    var vals = draft.slice(0, V.n);
+    if (!force && !vals.some(function (s) { return s && s.trim(); })) {
+      var p = Q('.pad'); if (p) { p.classList.remove('nudge'); void p.offsetWidth; p.classList.add('nudge'); }
+      Kit.haptic('error'); var f = Q('.pad input'); if (f) f.focus();
+      return;
+    }
+    ui.sending = V.round + ':' + V.me;
+    try { document.activeElement && document.activeElement.blur && document.activeElement.blur(); } catch (e) {}
+    foldAway();
+    Kit.sfx('whoosh'); Kit.haptic('medium');
+    var my = gen;
+    setTimeout(function () { ui.sending = ''; if (my !== gen && net.mode !== 'guest') return; if (net.mode === 'guest') ui.sent = tag; doAct({ t: 'ans', a: vals }); }, 420);
+  }
+  // the paper folds up and drops into the bowl
+  function foldAway() {
+    var s = Q('.pad .sheet'), bowl = Q('.bowl'); if (!s || !bowl) return;
+    var r = s.getBoundingClientRect(), rb = bowl.getBoundingClientRect();
+    var c = s.cloneNode(true); c.classList.add('flyfold');
+    c.style.left = r.left + 'px'; c.style.top = r.top + 'px'; c.style.width = r.width + 'px'; c.style.height = r.height + 'px';
+    document.body.appendChild(c);
+    s.style.visibility = 'hidden';
+    var dx = rb.left + rb.width / 2 - (r.left + r.width / 2), dy = rb.top + rb.height / 2 - r.top;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      c.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.12,.06) rotate(18deg)'; c.style.opacity = '.4';
+    }); });
+    setTimeout(function () { c.remove(); }, 600);
+  }
+  // ── The sand timer ──
+  var tmr = 0, lastSec = -1;
+  function deadline() {
+    var V = lastV; if (!V) return 0;
+    if (G && G.mode === 'pass') return pp.viewer >= 0 ? pp.deadline : 0;
+    if (net.mode === 'guest') return ui.gDl || 0;
+    return G ? G.deadline : 0;
+  }
+  function tickTimer() {
+    clearInterval(tmr); lastSec = -1;
+    var V = lastV; if (!V || V.phase !== 'write' || !V.timer) return;
+    function step() {
+      var hg = Q('.hg'); if (!hg || !lastV || lastV.phase !== 'write') { clearInterval(tmr); return; }
+      // (pass and play between people: a full timer waits for the next one)
+      var dl = deadline(), total = lastV.timer * 1000, between = !!(G && G.mode === 'pass' && pp.viewer < 0);
+      var left = dl ? Math.max(0, dl - Date.now()) : between ? total : 0;
+      var f = Math.max(0, Math.min(1, left / total)), sec = Math.ceil(left / 1000);
+      var sT = hg.querySelector('.sT'), sB = hg.querySelector('.sB');
+      sT.setAttribute('y', String(10 + (1 - f) * 26)); sT.setAttribute('height', String(26 * f));
+      var hb = 24 * (1 - f); sB.setAttribute('y', String(62 - hb)); sB.setAttribute('height', String(hb));
+      var running = !!dl && left > 0;
+      hg.classList.toggle('still', !running);
+      var writing = lastV.me >= 0 && !lastV.mine;
+      hg.classList.toggle('low', running && sec <= 10 && writing);
+      hg.querySelector('b').textContent = between ? String(lastV.timer) : String(sec);
+      if (running && writing && sec <= 10 && sec !== lastSec) { lastSec = sec; Kit.sfx('tick', 0.7); if (sec <= 3) Kit.haptic('tick'); }
+      // out of sand on a device that isn't running the game: send what's written
+      if (dl && left <= 0 && writing && ((G && G.mode === 'pass') || net.mode === 'guest')) { if (G && G.mode === 'pass') Kit.sfx('clash', 0.6); submit(true); }
+    }
+    tmr = setInterval(step, 200); step();
+  }
+
+  // ── The end of the game, on the table ──
+  function renderOver(V) {
+    var S = V.done; if (!S) return;
+    onStage(false);
+    app.innerHTML = '';
+    var felt = el('div', { class: 'felt-in ph-over' });
+    var fin = el('div', { class: 'fin' }, [el('h2', { text: 'Final scores' })]);
+    S.players.map(function (p, i) { return { p: p, i: i }; }).sort(function (a, b) { return b.p.score - a.p.score; }).forEach(function (x, k) {
+      fin.appendChild(el('div', { class: 'row' }, [el('span', { class: 'pl-n', text: String(k + 1) }),
+        x.p.cpu ? el('span', { class: 'avatar sm', style: { '--c': x.p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(x.p.name, 'sm', x.p.color),
+        el('span', { class: 'nm', text: x.p.name }), el('span', { class: 'sc', text: String(x.p.score) })]));
+    });
+    fin.appendChild(el('div', { class: 'lab', text: 'Every card' }));
+    (S.log || []).forEach(function (l, k) {
+      var tops = el('div', { class: 'tops' });
+      (l.top || []).forEach(function (t) { tops.appendChild(el('span', null, [el('span', { text: t.t }), el('b', { text: String(t.c) })])); });
+      fin.appendChild(el('div', { class: 'rd' }, [el('div', { class: 'rq' }, [el('span', { text: l.q }), el('span', { text: 'Round ' + (k + 1) })]),
+        (l.top || []).length ? tops : el('div', { class: 'none', text: 'Nobody matched' })]));
+    });
+    var acts = el('div', { class: 'acts' });
+    acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: net.mode ? 'Back to the table' : 'Play again', onclick: again }));
+    if (net.mode) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Leave the table', onclick: function () { leaveOnline(false); goLobby(); } }));
+    else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('sliders') + '<span>Change players</span>', onclick: showSetup }));
+    acts.appendChild(el('button', { type: 'button', class: 'btn btn-ghost', html: Kit.icon('history') + '<span>Past games</span>', onclick: pastGames }));
+    fin.appendChild(acts);
+    felt.appendChild(fin);
+    app.appendChild(el('div', { class: 'ta wood' }, [felt]));
+  }
+
+  // ═══ Finishing: history and the results card ═════════════════════════════
+  var MODE_NAME = { solo: 'Just me', cpu: 'vs Computer', pass: 'Pass & play', online: 'Online' };
+  function recordGame(S) {
+    var hl = [], best = null;
+    (S.log || []).forEach(function (l, k) {
+      var t = (l.top || [])[0];
+      if (t && t.c >= S.players.length && S.players.length >= 3) hl.push('Round ' + (k + 1) + ': everyone said ' + t.t);
+      l.pts.forEach(function (v, i) { if (!best || v > best.v) best = { v: v, i: i, k: k }; });
+    });
+    if (best && best.v > 0 && S.players[best.i]) hl.push(S.players[best.i].name + ' scored ' + best.v + ' on one card: ' + S.log[best.k].q);
+    var dt = { rs: (S.log || []).map(function (l) { return { q: String(l.q).slice(0, 90), t: (l.top || []).map(function (x) { return String(x.t).slice(0, 40) + ':' + x.c; }).join('\n') }; }) };
+    Kit.record(KEY, {
+      started: S.started, mode: MODE_NAME[S.mode] || '',
+      players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
+      winner: S.winners.length === 1 ? S.players[S.winners[0]].name : null,
+      summary: S.winners.length > 1 ? andList(S.winners.map(function (i) { return S.players[i].name; })) + ' tied' : undefined,
+      rounds: { labels: (S.log || []).map(function (l, k) { return String(k + 1); }), scores: (S.log || []).map(function (l) { return l.pts.slice(0, S.players.length); }) },
+      highlights: hl.slice(0, 6), detail: dt
+    });
+  }
+  function finish() {
+    finished = true; clearSave(); undoStack = [];
+    var S = G ? summary() : (net.view && net.view.done);
+    if (!S) return;
+    if (net.mode !== 'guest') recordGame(S);
+    showWin(S);
+  }
+  function showWin(S) {
+    var local = !net.mode && (S.mode === 'solo' || S.mode === 'cpu');
+    var meName = net.mode ? net.myName : local ? S.players[0].name : null;
+    var rank = S.players.map(function (p) { return { name: p.name, score: p.score, color: p.color, cpu: p.cpu }; }).sort(function (a, b) { return b.score - a.score; });
+    var W = S.winners.map(function (i) { return S.players[i]; }), title, lose = false, sub;
+    if (W.length > 1) { title = 'It’s a tie!'; sub = andList(W.map(function (p) { return short(p.name); })) + ' share the win'; lose = local && S.winners.indexOf(0) < 0; }
+    else { var w = W[0]; title = w.name === 'You' || (meName && w.name === meName && (local || net.mode)) ? 'You win!' : w.name + ' wins!'; sub = w.score + ' points after ' + S.rounds + ' rounds'; lose = local && S.winners[0] !== 0; }
+    setTimeout(function () {
+      Kit.win({ title: title, sub: sub, rank: rank, lose: lose, icon: lose ? 'meh' : W.length > 1 ? 'users' : 'trophy',
+        again: again, againLabel: net.mode ? 'Back to the table' : undefined,
+        look: 'Look at every card',
+        setup: net.mode ? null : showSetup,
+        closeLabel: net.mode ? 'Leave the table' : undefined, onClose: net.mode ? function () { leaveOnline(false); goLobby(); } : undefined });
+    }, 500);
+  }
+  function again() {
+    if (net.mode === 'host') { backToTable(); return; }
+    if (net.mode === 'guest') { showWait(); return; }
+    if (lastCfg) startLocal(lastCfg); else showSetup();
+  }
+  function pastGames() { Kit.history(KEY, { title: 'Think Alike: past games' }); }
+
+  // ═══ Setup ═══════════════════════════════════════════════════════════════
+  var RULES =
+    '<p class="goal">Think like everyone else. Each card asks for one to four answers: write the ones you think the others will write too. Matches score.</p>' +
+    '<h3>A round</h3><ul>' +
+    '<li>A card is dealt, like <b>Name 3 things in a junk drawer</b>. The little slips on the card show how many answers it wants.</li>' +
+    '<li>Everyone writes their answers on their own paper, in secret, and folds them into the bowl.</li>' +
+    '<li>With the <b>sand timer</b> on, whatever is on your paper when the sand runs out goes in.</li></ul>' +
+    '<h3>Turning them over</h3><ul>' +
+    '<li>All the answers are turned over and the same answers stack up together. Small differences don\'t matter: <b>Pizzas</b>, <b>a pizza</b> and <b>pizza</b> are one answer.</li>' +
+    '<li>The game can\'t always tell, so the table decides. If two stacks mean the same thing (<b>soda</b> and <b>pop</b>), tap one and then the other to put them together.</li>' +
+    '<li>If a slip doesn\'t belong in a stack, tap the stack and then tap that slip to pull it out.</li></ul>' +
+    '<h3>Scoring</h3><ul>' +
+    '<li>Each of your answers scores <b>1 point for every other player</b> who wrote it too. If four of you wrote pizza, you each get 3.</li>' +
+    '<li>An answer only you wrote scores nothing. Writing the same thing twice only counts once.</li>' +
+    '<li>After the last card, the most points wins. Ties share the win.</li></ul>' +
+    '<h3>Ways to play</h3><ul>' +
+    '<li><b>Just me</b> or <b>vs Computer</b>: computer players fill the other seats. They write what most people say, but not always.</li>' +
+    '<li><b>Pass and play</b>: one phone. Each person holds the button to see the paper, writes, folds it in, and passes it on. Then everyone looks at the answers together.</li>' +
+    '<li><b>Play online</b>: everyone writes on their own phone at the same time, up to 24 players. The host turns the answers over and fixes the matches.</li></ul>';
+
+  function showSetup() {
+    leaveOnline(false);
+    G = null; finished = false; gen++; clearTimeout(botT); undoStack = []; ui.sig = ''; ui.sel = null; lastV = null; clearInterval(tmr);
+    pp.viewer = -1; pp.busy = false; pp.restore = null; Kit.handoff.close();
+    screen = 'setup'; onStage(true);
+    window.scrollTo(0, 0);
+    Kit.setup(app, {
+      modes: Kit.modes([{ id: 'solo' }, { id: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone on their own device, up to 24' }]),
+      players: { min: 1, max: 12, count: 1, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; },
+        range: function (m) { return m === 'solo' ? [1, 1] : m === 'cpu' ? [2, 8] : m === 'pass' ? [2, 12] : [1, 1]; } },
+      options: [
+        { id: 'rounds', label: 'Rounds', value: '8', choices: [['5', '5'], ['8', '8'], ['12', '12']] },
+        { id: 'timer', label: 'Sand timer', value: '0', help: 'How long everyone has to write. When the sand runs out, whatever is on your paper goes in.', choices: [['0', 'Off'], ['60', '60 seconds'], ['90', '90 seconds']] }
+      ],
+      start: 'Deal the first card',
+      onStart: onStart
+    });
+  }
+  function onStart(cfg) {
+    var opt = { rounds: +cfg.options.rounds || 8, timer: +cfg.options.timer || 0 };
+    if (cfg.mode === 'online') {
+      var nm = (cfg.players[0] && cfg.players[0].name) || '';
+      if (/^(Player \d+|You)$/.test(nm)) nm = (function () { try { return localStorage.getItem('my_name') || ''; } catch (e) { return ''; } })();
+      if (nm) { var m = lsGet(NETME, {}) || {}; m.name = nm; lsSet(NETME, m); }
+      net.cfg = opt; goLobby(); return;
+    }
+    var players = cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: !!p.cpu }; }), mode = cfg.mode;
+    // Just me: robots fill the other seats
+    if (mode === 'solo') Kit.cpuNames(4, [players[0].name], 8).forEach(function (b, k) { players.push({ name: b, color: Kit.color(k + 1), cpu: true }); });
+    var people = players.filter(function (p) { return !p.cpu; }).length;
+    if (mode === 'pass' && people === 1) mode = 'cpu';
+    if (mode === 'cpu' && people > 1) mode = 'pass';
+    startLocal(Object.assign({ mode: mode, players: players }, opt));
+  }
+  function startLocal(cfg) {
+    if (!DATA.length) { Kit.toast('Couldn’t load the cards'); return; }
+    lastCfg = cfg; finished = false; undoStack = []; gen++; clearTimeout(botT);
+    ui.sig = ''; ui.sel = null; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; ui.pile = '';
+    draft = []; pp.viewer = -1; pp.busy = false; pp.restore = null;
+    G = newGame(cfg); screen = 'game'; ui.paperRound = '';
+    Kit.gameStart();
+    window.scrollTo(0, 0);
+    changed({ t: 'start' });
+  }
+  Kit.init({
+    id: KEY,
+    onNew: function () { showSetup(); },
+    undo: function () { undo(); },
+    menu: [
+      { icon: 'history', label: 'Past games', onClick: pastGames },
+      { icon: 'globe', label: 'Play online', sub: 'Everyone on their own device, up to 24', when: function () { return !net.mode && screen !== 'lobby'; }, onClick: function () { goLobby(); } },
+      { icon: 'logout', label: 'Leave the online game', when: function () { return !!net.mode; }, onClick: function () { leaveOnline(true); } }
+    ],
+    rules: RULES
+  });
+
+  // ═══ Online ══════════════════════════════════════════════════════════════
+  // The host's device runs the game and sends each player only their own view (their own paper, and the answers once
+  // they're turned over). Guests send back what they wrote; the host turns them over, fixes the matches, moves on.
+  var screen = 'setup';
+  var net = { mode: null, table: null, peer: null, roster: [], lobby: null, wait: null, nextPid: 1, view: null, myName: '', hostName: '', cfg: null, myPid: null };
+  function netMe() { var m = lsGet(NETME, {}) || {}; var mn = ''; try { mn = localStorage.getItem('my_name') || ''; } catch (e) {} return m.name || mn || (Kit.knownNames && Kit.knownNames()[0]) || ''; }
+  function closeLobby() { if (net.lobby) { net.lobby.close(); net.lobby = null; } }
+  function busy(text) { app.innerHTML = ''; app.appendChild(el('div', { class: 'ol' }, [el('div', { class: 'ol-row' }, [el('i', { class: 'ol-spin' }), el('div', { class: 'grow' }, [el('b', { text: text })])])])); }
+  function goLobby() {
+    leaveOnline(false); G = null; gen++; clearTimeout(botT); clearInterval(tmr); screen = 'lobby'; lastV = null; ui.sig = ''; onStage(true);
+    window.scrollTo(0, 0);
+    net.lobby = Online.lobby(app, {
+      game: KEY, title: 'Play Online', intro: 'Everyone writes on their own phone or tablet. Up to 24 players.',
+      me: { name: netMe() },
+      onName: function (n) { var m = lsGet(NETME, {}) || {}; m.name = n; lsSet(NETME, m); },
+      onHost: function (me) { return hostTable(me.name); },
+      onJoin: function (code, room, me) { return joinTable(code, me.name); },
+      onSolo: function () { showSetup(); }, solo: 'Back to setup',
+      sub: function (r) { var n = r.n || 1; return r.status === 'playing' ? n + ' playing now' : n + (n === 1 ? ' player waiting' : ' players waiting'); },
+      note: 'Each device connects straight to the host’s. If one can’t connect, try everyone on the same Wi-Fi.'
+    });
+  }
+  function hostTable(name) {
+    closeLobby(); busy('Opening your table…');
+    return Online.host({ game: KEY, name: name, max: 24, min: 2, screen: app }).then(function (table) {
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
+      if (!net.cfg) net.cfg = { rounds: 8, timer: 0 };
+      net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
+      net.roster = [{ pid: 0, name: name, host: true }];
+      table.on('peer', function (peer) {
+        var r = { pid: net.nextPid++, name: uniqueName(peer.name), peer: peer };
+        peer._pid = r.pid; net.roster.push(r);
+        peer.send({ t: 'hi', you: r.pid, name: r.name }, true);
+        Kit.toast(r.name + ' joined'); Kit.sfx('pop');
+        if (G && G.phase !== 'over') { addPlayer(G, r.name, r.pid); changed(); }
+        sendRoster();
+      });
+      table.on('leave', function (peer) {
+        var r = net.roster.filter(function (x) { return x.peer === peer; })[0]; if (!r) return;
+        net.roster = net.roster.filter(function (x) { return x !== r; });
+        Kit.toast(r.name + ' left');
+        if (G) { var i = idxOfPid(r.pid); if (i >= 0) { G.players[i].gone = true; changed(); } }
+        sendRoster();
+      });
+      table.on('msg', function (peer, m) {
+        if (m.t !== 'a' || !G || !m.a || m.a.t !== 'ans') return;   // (guests only write; the host runs the rest)
+        var i = idxOfPid(peer._pid); if (i < 0) return;
+        if (apply(G, i, m.a)) changed({ t: 'ans', p: i });
+      });
+      showWait();
+    }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
+  }
+  function addPlayer(g, name, pid) {
+    var k = g.players.length;
+    g.players.push({ name: name, color: Kit.color(k), cpu: false, pid: pid, score: 0, temp: 1 });
+    g.ans.push(g.phase === 'write' ? null : []); g.cpuAt.push(0);
+  }
+  function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
+  function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), playing: !!(G && G.phase !== 'over') }; }
+  function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster, 0)); }
+  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; }); }
+  function showWait() {
+    screen = 'wait'; lastV = null; ui.sig = ''; G = net.mode === 'host' ? null : G; finished = false; clearInterval(tmr); onStage(true);
+    window.scrollTo(0, 0);
+    if (net.mode === 'host') {
+      net.table.setStatus('open', '');
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: 2, table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+        note: 'Two or more players. People can join while you play.' });
+    } else if (net.mode === 'guest') {
+      net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
+    }
+  }
+  function hostStart() {
+    var n = net.roster.length;
+    if (n < 2) { Kit.toast('You need at least 2 players'); return Promise.resolve(); }
+    net.wait = null;
+    lastCfg = { mode: 'online', rounds: net.cfg.rounds, timer: net.cfg.timer, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; }) };
+    G = newGame(lastCfg); screen = 'game'; finished = false; ui.sig = ''; ui.paperRound = ''; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; draft = [];
+    Kit.gameStart();
+    sendRoster();
+    changed({ t: 'start' });
+    return Promise.resolve();
+  }
+  function netSync() {
+    if (net.mode !== 'host' || !G) return;
+    net.roster.forEach(function (r) { if (!r.peer) return; var i = idxOfPid(r.pid); if (i >= 0) r.peer.send({ t: 'v', v: viewFor(i) }, true); });
+    net.table.setStatus(G.phase === 'over' ? 'open' : 'playing', G.phase === 'over' ? '' : 'Card ' + G.round + ' of ' + G.rounds);
+  }
+  function backToTable() {
+    if (net.mode === 'host' && net.table && !net.table.closed) { G = null; showWait(); net.table.broadcast({ t: 'wait' }, true); sendRoster(); return; }
+    leaveOnline(false); goLobby();
+  }
+  function joinTable(code, name) {
+    closeLobby(); busy('Connecting to the table…');
+    return Online.join(code, { game: KEY, name: name, min: 2, screen: app }).then(function (peer) {
+      net.mode = 'guest'; net.peer = peer; net.hostName = peer.name; net.myName = name; net.roster = []; net.myPid = null; net.view = null;
+      peer.on('msg', guestMsg);
+      peer.on('close', function (why) {
+        if (net.peer !== peer) return;
+        net.peer = null; net.mode = null;
+        Kit.toast((net.hostName || 'The host') + (why === 'host' || why === 'left' ? ' closed the table' : '’s table lost its connection'));
+        if (screen === 'game' && net.view && net.view.phase === 'over') return;
+        goLobby();
+      });
+      showWait();
+    }).catch(function (e) {
+      var msg = e && e.nat ? e.message : Online.errText(e);
+      if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + esc(msg) + '</p>' }); else Kit.toast(msg);
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'hi') { net.myPid = m.you; if (m.name) net.myName = m.name; return; }
+    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, net.myPid)); return; }
+    if (m.t === 'wait') { net.view = null; lastV = null; finished = false; showWait(); return; }
+    if (m.t === 'v') {
+      var V = m.v; V.boss = false;
+      if (screen !== 'game') { net.wait = null; screen = 'game'; ui.sig = ''; ui.paperRound = ''; ui.sent = ''; ui.intro = ''; ui.scored = ''; ui.cardRound = 0; finished = false; draft = []; window.scrollTo(0, 0); Kit.gameStart(); }
+      // the host's sand timer, on this device's clock
+      if (V.left != null) { var dl = Date.now() + V.left; if (!ui.gDl || Math.abs(ui.gDl - dl) > 1500 || (lastV && lastV.round !== V.round)) ui.gDl = dl; } else ui.gDl = 0;
+      var prev = lastV;
+      net.view = V; render(V);
+      if (V.phase === 'write' && prev && prev.phase === 'write' && prev.round === V.round) V.players.forEach(function (p, k) { if (p.done && prev.players[k] && !prev.players[k].done && k !== V.me) Kit.sfx('deal', 0.5); });
+      if (V.phase === 'over' && !finished) { finished = true; recordGame(V.done); showWin(V.done); }
+    }
+  }
+  function leaveOnline(ask) {
+    if (!net.mode) { closeLobby(); return; }
+    if (ask) {
+      Kit.confirm(screen === 'game' ? 'Leave the game?' : 'Leave the table?', { ok: 'Leave', body: net.mode === 'host' ? 'The game ends for everyone at your table.' : 'You can join again from the list.' }).then(function (ok) { if (ok) { leaveOnline(false); goLobby(); } });
+      return;
+    }
+    if (net.table) net.table.close();
+    if (net.peer) { var p = net.peer; net.peer = null; p.close(); }
+    net.mode = null; net.table = null; net.wait = null; net.roster = []; net.view = null; ui.gDl = 0;
+    if (G && G.mode === 'online') G = null;
+    closeLobby();
+  }
+  window.addEventListener('pagehide', function () { if (net.mode) leaveOnline(false); });
+
+  // ═══ Test hooks ══════════════════════════════════════════════════════════
+  window.__ta = {
+    state: function () { return G; }, view: function () { return lastV; }, net: net, ui: ui, pp: pp,
+    norm: norm, keyOf: keyOf, cpuWrite: cpuWrite, groupsOf: groupsOf, data: DATA,
+    act: function (a) { return doAct(a); }, draft: function (a) { draft = a.slice(); }, kick: function () { changed(); },
+    host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { return hostStart(); }, lobby: goLobby,
+    local: function (cfg) { startLocal(cfg); }, setup: showSetup, submit: submit
+  };
+
+  // ═══ Boot ════════════════════════════════════════════════════════════════
+  (function () {
+    var saved = lsGet(SAVE, null);
+    if (/[?&]online=1/.test(location.search)) { goLobby(); return; }
+    if (saved && saved.G && saved.G.players && saved.G.phase && saved.G.phase !== 'over' && saved.G.mode !== 'online') {
+      var g = saved.G, ok = Array.isArray(g.deck) && Array.isArray(g.qs);
+      // the cards are found again by what they say, in case the card list has changed since
+      if (ok) g.deck = g.deck.map(function (i, k) { if (DATA[i] && DATA[i].q === g.qs[k]) return i; for (var j = 0; j < DATA.length; j++) if (DATA[j].q === g.qs[k]) return j; ok = false; return i; });
+      if (ok) {
+        g.pi = g.deck[g.round - 1];
+        G = g; lastCfg = saved.cfg || null; screen = 'game'; pp.viewer = -1;
+        changed();
+        return;
+      }
+      clearSave();
+    }
+    showSetup();
+  })();
+})();
+</script>
+</body>
+</html>

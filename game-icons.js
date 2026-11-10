@@ -250,6 +250,13 @@ var GameIcon = (function () {
         path('M12 7.8c0-2 .6-3.6 1.8-4.8', 'none', ' stroke="#5a3418" stroke-width="1.7" stroke-linecap="round"') + path('M13.4 5c1-1.9 3-2.7 5.1-2.3-.6 2.1-2.6 3.3-5.1 2.3z', G) +
         '<ellipse cx="8.3" cy="11.6" rx="1.3" ry="2.4" fill="' + W + '" opacity=".5" transform="rotate(22 8.3 11.6)"/>';
     },
+    thinkalike: function (c) {   // two answer slips, written the same: a match
+      function slip(x, y, a, f) {
+        return '<g transform="rotate(' + a + ' ' + (x + 6.5) + ' ' + (y + 5) + ')">' + rect(x, y + .8, 13, 10, 1.6, K, ' opacity=".18"') + rect(x, y, 13, 10, 1.6, f) +
+          line('M' + (x + 2.4) + ' ' + (y + 5.2) + 'c1.2-1.8 2.2 1.8 3.4 0s2.2 1.8 3.4 0', W, 1.5) + '</g>';
+      }
+      return slip(1.5, 4.5, -12, c) + slip(9.5, 9.5, 9, O);
+    },
     madlibs: function (c) { return line('M3 6h18M3 12h7M3 18h12', K, 2) + line('M12.5 12.5h8', c, 2.6) + path('M16.5 21.5l1-3.4 4.6-4.6a1.5 1.5 0 0 1 2.1 2.1l-4.6 4.6z', O); },
     riddlestories: function (c) { return circ(10, 10, 6.5, 'none', ' stroke="' + K + '" stroke-width="2.4"') + line('M15 15l6.5 6.5', K, 3) + txt('?', 9, c, 10.3, 10); },
     conversation: function (c) { return circ(5, 12, 2.6, c) + circ(12, 12, 2.6, c) + circ(19, 12, 2.6, c); },

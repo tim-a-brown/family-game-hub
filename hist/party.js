@@ -315,6 +315,35 @@
     }
     return ui.wrap(out);
   });
+  // ── Think Alike: every card, the answers people matched on, and who scored what ──
+  // dt: {rs: [{q: the card, t: 'answer:how many wrote it' per line}]}; e.rounds.scores: points per card, per player
+  R('thinkalike', function (e, ui) {
+    var el = ui.el, P = names(e), d = e.dt, rs = d ? arr(d.rs) : [];
+    if (!rs.length) return null;
+    var sc = e.rounds && e.rounds.scores ? arr(e.rounds.scores) : [];
+    var list = el('div', { class: 'ta-list' });
+    rs.forEach(function (r, i) {
+      var tops = String(r.t || '').split('\n').filter(Boolean).map(function (x) { var c = x.lastIndexOf(':'); return { t: x.slice(0, c), c: +x.slice(c + 1) }; });
+      var pts = arr(sc[i]);
+      list.appendChild(el('div', { class: 'ta-q' }, [
+        el('div', { class: 'ta-top' }, [el('span', { class: 'ta-n', text: String(i + 1) }), el('b', { text: r.q })]),
+        tops.length ? el('div', { class: 'ta-slips' }, tops.map(function (x) { return el('span', { class: 'ta-slip' }, [el('span', { text: x.t }), el('i', { text: String(x.c) })]); }))
+          : el('p', { class: 'ta-none', text: 'Nobody matched' }),
+        pts.length ? el('div', { class: 'ta-pts' }, pts.map(function (v, k) { return P[k] ? el('span', { style: { '--c': ui.color(k) } }, [el('em', { text: P[k].charAt(0).toUpperCase() }), el('span', { text: '+' + (v || 0) })]) : null; })) : null
+      ]));
+    });
+    return ui.wrap([ui.section('Every card', list, { icon: 'cards' })]);
+  });
+  HistView.css('hv-ta',
+    '.ta-list{display:flex;flex-direction:column;gap:8px;}' +
+    '.ta-q{padding:10px;border-radius:14px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;gap:8px;}' +
+    '.ta-top{display:flex;align-items:baseline;gap:8px;font-size:.88rem;line-height:1.25;}.ta-n{flex:none;font-family:var(--display);color:var(--text-3);}' +
+    '.ta-slips{display:flex;flex-wrap:wrap;gap:6px;}' +
+    '.ta-slip{display:inline-flex;align-items:center;gap:6px;padding:3px 4px 3px 9px;border-radius:5px;background:linear-gradient(180deg,#fffdf4,#f4ead2);color:#1f2a6b;font-family:var(--hand);font-size:1.08rem;line-height:1.1;}' +
+    '.ta-slip i{font-style:normal;min-width:20px;height:20px;padding:0 5px;border-radius:10px;display:grid;place-items:center;background:#ffd447;color:#3a2600;font:400 .8rem/1 var(--display);}' +
+    '.ta-none{margin:0;color:var(--text-3);font-weight:700;font-size:.82rem;}' +
+    '.ta-pts{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.78rem;font-weight:900;color:var(--text-2);}' +
+    '.ta-pts > span{display:inline-flex;align-items:center;gap:4px;}.ta-pts em{font-style:normal;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--c);color:#1b1530;font-size:.62rem;}');
   HistView.css('hv-wyr',
     '.wy-list{display:flex;flex-direction:column;gap:8px;}' +
     '.wy-q{padding:10px;border-radius:14px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;gap:7px;}' +
