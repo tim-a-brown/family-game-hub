@@ -904,6 +904,8 @@
       var still = pend.some(function (p) { return 'pend:' + p.id === x.id; });
       return [pg ? gicon(pg.id) : face('inbox'), nm + ' added a game with you', (pg ? pg.name : 'A game') + (still ? ', waiting for your OK' : ''), still ? function () { reviewSheet(); } : null];
     }
+    if (x.k === 'pct') return [el('span', { class: 'k-ib-face' }, [avEl(nm, null, 'var(--surface-3)'), el('i', { class: 'k-ib-badge ' + (x.cut ? 'red' : 'gold'), html: icon(x.cut ? 'lock' : 'clock') })]),
+      x.cut ? nm + ' turned games off' : nm + ' set a game timer', x.cut ? 'Until a parent unlocks them' : x.mins ? minsText(x.mins * 60) + ' to play' : '', null];
     if (x.k === 'kid') return [face(x.yes ? 'shield' : 'close', x.yes ? 'green' : 'red'), x.yes ? nm + ' accepted' : nm + ' said no', x.yes ? 'You’re their parent here' : 'To parent controls', null];
     return null;
   }
@@ -3261,8 +3263,35 @@
       el('button', { type: 'button', class: 'btn btn-primary', html: icon('home') + '<span>Back to games</span>', onclick: function () { location.href = rootPath() + 'index.html'; } }));
     try { window.dispatchEvent(new Event('kit:locked')); } catch (e) {}
   }
+  // A parent set a timer on this child's account: a banner drops in on whatever screen is up, once per timer on each
+  // device, and it goes in Notifications (so does turning games off, which the lock screen shows). Set while the app was closed: on the next page,
+  // if it's still running.
+  function pcTimerNews() {
+    var p = pcGet(), t = p && p.timer; if (!t || !t.end || !doc.body) return;
+    var id = String(t.start || t.end);
+    if (lsGet('gn_pct_seen_dev', '') === id) return;
+    try { LS.setItem('gn_pct_seen_dev', id); } catch (e) {}
+    if (lsGet('fgh_pc_ok', '') === id) return;   // (already lifted here with a parent's PIN)
+    var by = t.by || pcNames(p) || 'A parent', now = Date.now();
+    if (window.FGHSync && FGHSync.inboxAdd) FGHSync.inboxAdd({ id: 'pct:' + id, k: 'pct', name: by, mins: t.mins || 0, cut: !!t.cut, at: t.start || now });
+    if (t.cut || t.end <= now) return;   // (games off: the lock screen already says so)
+    var left = Math.max(1, Math.ceil((t.end - now) / 1000));
+    var title = by + ' set a game timer', sub = minsText(left) + ' to play, until ' + new Date(t.end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    var old = doc.querySelector('.k-note'); if (old) old.remove();
+    var b = el('button', { type: 'button', class: 'k-note k-pcban', role: 'status', 'aria-label': title + '. ' + sub }, [
+      el('span', { class: 'k-pcban-ic', html: icon('clock') }),
+      el('span', { class: 'grow' }, [el('b', { text: title }), el('small', { text: sub })])
+    ]);
+    function hide() { b.classList.remove('show'); setTimeout(function () { b.remove(); }, 400); }
+    b.addEventListener('click', hide);
+    doc.body.appendChild(b);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { b.classList.add('show'); }); });
+    setTimeout(function () { sfx('pop'); haptic('success'); }, 200);
+    setTimeout(hide, 6500);
+  }
   // a parent changed something: it takes effect right away (and the home screen redraws)
-  doc.addEventListener('fghpc', function () { tmLast = null; timerTick(); blockCheck(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} });
+  doc.addEventListener('fghpc', function () { tmLast = null; timerTick(); blockCheck(); try { window.dispatchEvent(new Event('kit:cats')); } catch (e) {} setTimeout(pcTimerNews, 300); });
+  window.addEventListener('load', function () { setTimeout(pcTimerNews, 1400); });
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', blockCheck); else setTimeout(blockCheck, 0);
   if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', timerTick); else setTimeout(timerTick, 0);
   // Preferences: pick how long (a preset, or Custom: a dial you spin, a full turn an hour); while it runs, a ring that
