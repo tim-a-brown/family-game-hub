@@ -507,7 +507,9 @@
         await L.count();
         await L.say('You held their Gate when the round was counted, so one of their Seals broke. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.', { at: '.an-strip.opp .st-seals' });
         await L.say('If you break all 3 of their Seals, you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
-        await L.say('It works the same way against you. One of your Seals breaks if they hold your Gate when a round is counted. An empty or tied Gate is safe.', { at: [L.row(MY_GATE), '.an-strip.me .st-seals'] });
+        await L.say('The same thing can happen to you. This is your Gate, and Copernicus is standing in it.', { at: L.row(MY_GATE), tag: 'Your Gate' });
+        await L.say('If the other player has more Might in your Gate than you do when a round is counted, one of your Seals breaks.', { at: ['.an-strip.me .st-seals', L.row(MY_GATE)] });
+        await L.say('Your Seals are safe while your Gate is empty, tied or held by you. So keep a Figure at home when their Figures come close.', { at: L.piece('copernicus') });
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One of each person, and the return', art: 'galileo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['copernicus', CROSS]] },
