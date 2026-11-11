@@ -558,6 +558,20 @@ Underlying principles for everything:
   cannot count: Genghis Khan's standard came out with eight tails every time, and the ninth was put in by hand. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
   them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
   under pieces of both players' colours, at every size, before it goes in.
+- **Looking through the table's cards** (Tim, 2026-11-11: "the eye icon to view cards is not a great mechanism for
+  seeing the cards closer. tap and hold is one. carousel on each domain with a swipe up and down to my cards at each
+  domain down to my hand (with a side map to represent which group/level of cards im scanning through might help.)
+  and need to include ways to act on cards as I scan through them in the carousel"). `scan({u} | {p} | {h})` in ui.js:
+  a hold on any card on the table (`holdToScan`; a right click with a mouse), or a tap wherever a tap used to open one
+  card, opens the table's cards in levels, top to bottom as the table lies: the five Places, each with its own card
+  first, then your Figures there, then the other player's, and your hand last. Sideways is the strip (`makeFlow`, a
+  fresh one for each level); up and down is a swipe, the wheel, the arrow keys or a tap on the map at the left, which
+  shows the five Places with how many Figures each player has there, and the hand. Under the card in front are
+  buttons for what can be done with it now (`scanActs`: Play, Play at, Move to, Jump to, Clash with, Discard, each
+  with its Spark cost where it has one); a card that needs more than one thing chosen has Choose on the table, which
+  selects it there; a card in your hand that can't be played says why. A button's move is checked against the legal
+  moves again when it is tapped. The computer does not move while cards are being read. Lessons keep the plain
+  single-card reader (`openView`). A new kind of move gets its button in `scanActs`.
 - **The computer's moves come one at a time** (Tim, 2026-11-11: "cpu moves in anoria need to be acknowledged by the
   player by default otherwise it moves too quick"). After each move the computer makes has played out, the table stops
   (`ackWait` in `robotTurn`, ui.js): the caption says what it did in a sentence ("Sprocket played Hatshepsut at Seneca

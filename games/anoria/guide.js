@@ -577,6 +577,7 @@
         if (find(V + '.view-notes .ll')) await L.say('Under the card, the same Legacy Line is drawn as the table: the Library of Alexandria on your side of the board, and Hypatia coming down from your hand. The <b>?</b> says in words what the Legacy Line does.', { at: V + '.view-notes .ll-scene' });
         else if (find(V + '.view-notes')) await L.say('Under the card, each skill is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
+        await L.say('In a game, <b>hold your finger on any card</b> to look through the cards at that Place. Swipe up and down to go from Place to Place and to your hand, and use the buttons under a card to play it or move it.', {});
         await L.say('Every card you own, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
       } }
   ];

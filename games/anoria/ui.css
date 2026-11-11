@@ -83,8 +83,8 @@
    (Tim, 2026-11-11: "the numbers in spark and shield sit too high" on his iPhone: browsers read a font's ascent and
    descent differently, so a box one line tall puts the digit in a different place in each). The box is made by a
    strut as tall as a digit standing on the baseline, so it wraps the digit's ink exactly, whatever the browser. */
-:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau) > b{line-height:0;white-space:nowrap;margin-top:-.039em;}
-:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau) > b::before{content:"";display:inline-block;width:0;height:.781em;vertical-align:baseline;}
+:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau, .sc-cost) > b{line-height:0;white-space:nowrap;margin-top:-.039em;}
+:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau, .sc-cost) > b::before{content:"";display:inline-block;width:0;height:.781em;vertical-align:baseline;}
 .ac-cost.less b{color:#1c6b2c;}
 .ac-st{position:absolute;bottom:.4em;z-index:5;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.4));}
 .ac-st.m{left:2.4em;width:4.4em;height:4em;background:url(ui/mark-might.webp) center/contain no-repeat;}
@@ -408,6 +408,53 @@
 .an-mk .mk-range::-moz-range-thumb{width:28px;height:28px;border-radius:50%;border:0;background:linear-gradient(180deg,#f8e6a8 0%,#ecd07f 30%,#dcb65a 68%,#c99c41 100%);box-shadow:0 2px 0 #7c5a1c,0 4px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,251,228,.85);}
 .an-mk .mk-range:focus-visible{outline:2px solid #fff1bf;outline-offset:2px;border-radius:8px;}
 .vf-pick{display:flex;margin:8px auto 0;min-height:40px;}
+/* Looking through the table's cards (ui.js scan): the strip of one level's cards, a map of the levels at the left, the
+   things you can do with the card in front under it */
+.view.scan{justify-content:flex-start;}
+.view.scan .vf-flow{touch-action:none;}
+.sc-body{position:relative;flex:none;width:100%;}
+.view.scan .vf-notes{flex:1 1 0;min-height:0;height:auto;}
+.view.scan .vf-head{padding:0 58px;min-height:44px;display:flex;flex-direction:column;justify-content:center;}
+.view.scan .vf-head b{font-size:1.3rem;} .view.scan .vf-head small{font-size:.86rem;}
+.sc-map{position:absolute;left:calc(6px + env(safe-area-inset-left,0px));top:50%;z-index:120;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;padding:6px 5px;border-radius:12px;background:rgba(8,10,20,.82);box-shadow:inset 0 0 0 1px rgba(233,207,134,.28),0 6px 16px rgba(0,0,0,.5);}
+.sc-lv{position:relative;width:38px;height:28px;padding:0;border:0;border-radius:5px;overflow:visible;background:#1a2036;opacity:.62;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s,transform .15s;}
+.sc-lv > :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;border-radius:5px;object-fit:cover;display:block;box-shadow:0 0 0 1px rgba(0,0,0,.7);}
+.sc-lv.on{opacity:1;transform:translateX(3px) scale(1.1);}
+.sc-lv.on::before{content:"";position:absolute;inset:-3px;border-radius:7px;box-shadow:0 0 0 2px #f6e3a1,0 0 10px rgba(246,227,161,.55);pointer-events:none;}
+.sc-lv.on::after{content:"";position:absolute;right:-9px;top:50%;margin-top:-5px;border:5px solid transparent;border-left-color:#f6e3a1;}
+.sc-pips{position:absolute;right:-5px;top:-4px;bottom:-4px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;pointer-events:none;}
+.sc-pips i{min-width:13px;height:13px;padding:0 2px;box-sizing:border-box;border-radius:7px;font:700 9px/13px var(--crim);font-style:normal;text-align:center;color:#10131c;background:var(--pc0);box-shadow:0 0 0 1px #10131c;}
+.sc-pips i.o1{background:var(--pc1);}
+.sc-lv.hand{height:34px;margin-top:4px;background:none;}
+.sc-fan{position:absolute;left:50%;top:3px;width:18px;height:24px;margin-left:-9px;}
+.sc-fan i{position:absolute;inset:0;border-radius:3px;background:#efe6d2;box-shadow:0 0 0 1px #10131c;transform-origin:50% 110%;}
+.sc-fan i:nth-child(1){transform:rotate(-20deg);} .sc-fan i:nth-child(3){transform:rotate(20deg);}
+.sc-lv.hand b{position:absolute;right:-4px;bottom:-2px;min-width:14px;height:14px;padding:0 2px;box-sizing:border-box;border-radius:7px;font:700 9px/14px var(--crim);text-align:center;color:#10131c;background:#e9c979;box-shadow:0 0 0 1px #10131c;}
+/* (whose Figure a card is: a bar in the player's colour under the card and a ring on its thumbnail) */
+.view.scan .vf-c.own::before{content:"";position:absolute;left:8%;right:8%;bottom:-7px;height:4px;border-radius:2px;background:var(--pc0);box-shadow:0 0 8px color-mix(in srgb,var(--pc0) 70%,transparent);}
+.view.scan .vf-c.own.o1::before{background:var(--pc1);box-shadow:0 0 8px color-mix(in srgb,var(--pc1) 70%,transparent);}
+.view.scan .vf-t.o0{box-shadow:0 0 0 1.5px var(--pc0);} .view.scan .vf-t.o1{box-shadow:0 0 0 1.5px var(--pc1);}
+.view.scan .vf-t.on{box-shadow:0 0 0 2px #f6e3a1,0 3px 8px rgba(0,0,0,.6);}
+.view.scan .vf-strip[hidden]{display:flex;visibility:hidden;}
+.sc-acts{flex:none;box-sizing:border-box;width:min(420px,calc(100vw - 24px));min-height:48px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 8px;}
+.sc-acts .btn{min-height:42px;padding:0 14px;gap:8px;font-size:1.02rem;}
+.sc-cost{position:relative;flex:none;width:24px;height:28px;margin-right:-4px;background:url(ui/mark-spark.webp) center/contain no-repeat;}
+.sc-cost b{position:absolute;left:49.4%;top:51.9%;transform:translate(-50%,-50%);font:400 .78rem/1 var(--slab);color:var(--an-ink);}
+.sc-note{flex:1 1 100%;margin:0;text-align:center;font:italic 400 .95rem/1.25 var(--fell);color:#cbb98a;}
+@media (max-width:359px){ .sc-lv{width:30px;height:23px;} .sc-lv.hand{height:30px;} .sc-map{padding:5px 4px;gap:4px;} }
+@media (orientation:landscape) and (max-height:560px){
+  .view.flow.scan{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
+  .view.flow.scan .sc-body{grid-column:1;grid-row:1 / 3;align-self:center;}
+  .view.flow.scan .vf-head{padding:0 56px 0 0;min-height:0;}
+  .view.flow.scan{grid-template-rows:auto auto minmax(0,1fr) auto;}
+  .view.flow.scan .sc-body{grid-row:1 / 4;} .view.flow.scan .vf-strip{grid-row:4;}
+  .view.flow.scan .sc-acts{grid-column:2;grid-row:2;justify-self:start;width:calc(100% - 20px);min-height:0;}
+  .view.flow.scan .vf-notes{flex:none;grid-row:3 / 5;}
+  .view.flow.scan .sc-map{transform:translateY(-50%);gap:3px;padding:4px;} .view.flow.scan .sc-lv{width:34px;height:24px;} .view.flow.scan .sc-lv.hand{height:30px;margin-top:2px;}
+  .view.flow.scan .sc-acts{justify-content:flex-start;}
+  .view.flow.scan .sc-note{text-align:left;}
+}
+
 @media (orientation:landscape) and (max-height:560px){ .view.flow .vf-pick{margin-left:0;} }
 @media (max-width:560px) and (orientation:portrait){ .mt-view{width:min(100%,320px);} .mt-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
 @media (orientation:landscape) and (max-height:520px){ .mt-look{gap:7px;} .mt-who .btn{min-height:36px;} .mt-view{width:min(100%,236px);padding:5px;} .mt-say{font-size:.92rem;line-height:1.2;} .mt-grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));} }

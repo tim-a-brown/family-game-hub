@@ -648,6 +648,139 @@
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
 
+  // ═══ Looking through the cards on the table ═════════════════════════════════════════════════════════════
+  // Tim, 2026-11-11: "the eye icon to view cards is not a great mechanism for seeing the cards closer. tap and hold is
+  // one. carousel on each domain with a swipe up and down to my cards at each domain down to my hand (with a side
+  // map to represent which group/level of cards im scanning through might help.) and need to include ways to act on
+  // cards as I scan through them in the carousel".
+  // scan({u} | {p} | {h}): the table's cards in levels, top to bottom as the table lies: the five Places, each with
+  // its own card first, then your Figures there, then the other player's; and your hand last. Sideways the cards of
+  // one level go by on the strip (makeFlow); up and down changes level (a swipe, the wheel, the arrow keys, or a tap
+  // on the map at the left, which shows the five Places and the hand with the level you are on lit). Under the card
+  // in front are the things you can do with it now, as buttons (Play at, Move to, Clash with, Discard), then
+  // what is written about it. A hold on any card on the table opens it there; so does a tap wherever a tap used to
+  // open a single card.
+  function scanActs(it) {
+    const out = []; if (!S || !G || G.over || G.demo || !idle()) return out;
+    const o = S.turn, P = S.P[o], hand = P.hand;
+    if (it.h != null && ui.discard) return hand[it.h] === it.key ? [{ label: 'Discard', run: () => discardOne(it.h) }] : out;
+    if (ui.discard) return out;
+    let acts, sel;
+    if (it.h != null) { if (hand[it.h] !== it.key) return out; sel = { kind: 'hand', h: it.h };
+      acts = ui.acts.filter(a => (a.h != null && hand[a.h] === it.key) || (E.fxOf(it.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === it.key)); }
+    else if (it.u != null) { const f = E.byU(S, it.u); if (!f || f.o !== o) return out; sel = { kind: 'fig', u: it.u };
+      acts = ui.acts.filter(a => a.u === it.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub')); }
+    else return out;
+    const at = p => theName('@' + S.places[p]), nm = u => { const f = E.byU(S, u); return f ? CARDS[f.c].n : ''; }, seen = {}; let table = false;
+    acts.forEach(a => {
+      let label = null;
+      if (sel.kind === 'fig') label = a.t === 'clash' ? 'Clash with ' + nm(a.v) + (a.ph && quickOf(a) ? ', with ' + CARDS[quickOf(a)].n : '') : (a.t === 'walk' ? 'Move to ' : a.t === 'antik' ? 'Jump to ' : 'Step to ') + at(a.p);
+      else if (a.t === 'fig') label = 'Play at ' + at(a.p);
+      else if (a.t === 'relic') label = 'Play';
+      else if (a.t === 'deed') { const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null); if (!n) label = 'Play'; else if (n === 1 && a.p != null) label = 'Play at ' + at(a.p); else if (n === 1 && a.u != null) label = 'Play on ' + nm(a.u); else if (n === 1 && a.v != null) label = 'Play on ' + nm(a.v); else table = true; }
+      else table = true;
+      if (!label || seen[label]) return; seen[label] = 1;
+      const cost = sel.kind === 'hand' ? E.costOf(S, o, it.key, a.t === 'fig' ? a.p : undefined) : a.ph && quickOf(a) ? E.costOf(S, o, quickOf(a)) : null;
+      out.push({ label: label, cost: cost, run: () => { if (idle() && ui.acts.indexOf(a) >= 0) doHuman(a); } });
+    });
+    // (a card that needs more than one thing chosen is chosen on the table, where its targets light up)
+    if (table) out.push({ label: out.length ? 'More: choose on the table' : 'Choose on the table', soft: out.length > 0, run: () => { if (idle()) select(sel); } });
+    // (a card in your hand that can't be played now says why)
+    if (!out.length && it.h != null) { const c = E.costOf(S, o, it.key), fig = CARDS[it.key].t === 'fig', nm0 = info(it.key).n;
+      if (fig && S.cfg.unique && S.figs.some(f => f.o === o && f.c === it.key)) out.push({ note: nm0 + ' is already in play on your side, and you can have one of each person in play at a time.' });
+      else if (c > P.spark) out.push({ note: nm0 + ' costs ' + c + ' Spark, and you have ' + P.spark + '.' });
+      else if (fig) out.push({ note: 'A Figure arrives at your Gate or at a Place where you already have a Figure, and each of those Places has ' + S.cfg.cap + ' of your Figures already.' }); }
+    return out;
+  }
+  function scan(at) {
+    at = at || {}; if (!G || !S || !V) return; closeView(); Kit.sfx('flip'); Kit.haptic('light');
+    const me = ui.view, opp = 1 - me, role = p => { const w = E.ownerOfSpoke(S, p); return w < 0 ? 'The Crossroads' : (w === me ? 'Your ' : Kit.poss(pname(w)) + ' ') + (E.isGate(S, p) ? 'Gate' : 'Outpost'); };
+    const levels = rowsOrder().map(p => { const figs = V.figs.filter(f => f.p === p), it = f => ({ key: f.c, u: f.u, o: f.o, m: f.m });
+      return { p: p, name: C.PLACES[S.places[p]].n, role: role(p), mine: figs.filter(f => f.o === me).length, theirs: figs.filter(f => f.o !== me).length,
+        items: [{ key: S.places[p], p: p }].concat(figs.filter(f => f.o === me).map(it), figs.filter(f => f.o !== me).map(it)) }; });
+    const hand = !ui.hideHand && ui.viewer >= 0 && V.P[me] ? V.P[me].hand : [];
+    if (hand.length) levels.push({ hand: true, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
+    // where to open
+    let li = 0, ii = 0;
+    if (at.h != null && hand.length) { li = levels.length - 1; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
+    else if (at.u != null) levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } }));
+    else if (at.p != null) levels.forEach((L, i) => { if (L.p === at.p) li = i; });
+    let flow = el('div', { class: 'vf-flow' }), cuPx = '';   // (each level has a strip of its own: a strip's handlers belong to its cards)
+    const under = el('div', { class: 'vf-notes' }), strip = el('div', { class: 'vf-strip' }), hb = el('b'), hs = el('small'), actRow = el('div', { class: 'sc-acts' }), body = el('div', { class: 'sc-body' });
+    const map = el('div', { class: 'sc-map', role: 'tablist', 'aria-label': 'The Places and your hand' }, levels.map((L, i) => {
+      const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : ''), role: 'tab', 'aria-label': L.name + ', ' + L.role, onclick: e => { e.stopPropagation(); if (i !== li) go(i, 0, i > li ? 1 : -1); } });
+      if (L.hand) { t.appendChild(el('span', { class: 'sc-fan', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])); t.appendChild(el('b', { text: String(L.items.length) })); }
+      else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im);
+        t.appendChild(el('span', { class: 'sc-pips' }, [L.theirs ? el('i', { class: 'o' + opp, text: String(L.theirs) }) : null, L.mine ? el('i', { class: 'o' + me, text: String(L.mine) }) : null])); }
+      return t; }));
+    const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow) closeView(); } }, [
+      el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
+      el('div', { class: 'vf-head' }, [hb, hs]), body, strip, actRow, under]);
+    body.appendChild(map); body.appendChild(flow);
+    let F = null, held = false;   // (held: an up or down swipe has just ended, and the click that ends it is not a tap)
+    function rest(i) {
+      const it = levels[li].items[i]; under.innerHTML = ''; actRow.innerHTML = ''; if (!it) return;
+      scanActs(it).forEach((a, k) => actRow.appendChild(a.note ? el('p', { class: 'sc-note', text: a.note })
+        : el('button', { type: 'button', class: 'btn btn-sm ' + (k === 0 && !a.soft ? 'btn-primary' : 'btn-soft'), onclick: e => { e.stopPropagation(); Kit.sfx('pop'); Kit.haptic('medium'); closeView(); a.run(); } },
+          [el('span', { text: a.label }), a.cost != null ? el('span', { class: 'sc-cost', role: 'img', 'aria-label': 'costs ' + a.cost + ' Spark' }, [el('b', { text: String(a.cost) })]) : null])));
+      const nt = notesFor(it.key, it.u != null ? { u: it.u } : it.p != null ? { p: it.p } : {}); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0;
+      warm(levels[li].items.slice(Math.max(0, i - 3), i + 4).map(x => x.key));
+    }
+    // another level: its name, its thumbnails, its cards; the strip comes in from the side it was swiped from
+    function go(i, j, dir) {
+      li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length;
+      hb.textContent = L.name; hs.textContent = L.role;
+      Array.prototype.forEach.call(map.children, (t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
+      if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
+      L.items.forEach((x, k) => { const c = info(x.key), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
+      strip.hidden = n < 2;
+      F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest,
+        make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null })]); } });
+      F.render(); rest(Math.round(F.pos));
+      if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translateY(' + (dir > 0 ? 46 : -46) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
+      if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); }
+    }
+    const step = d => { const t = li + d; if (t < 0 || t >= levels.length) return false; go(t, 0, d); return true; };
+    // up and down: a swipe on the cards, the wheel, the arrow keys
+    function swipes(flow) {
+      let sw = null;
+      flow.addEventListener('pointerdown', e => { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, v: false }; });
+      flow.addEventListener('pointermove', e => { if (!sw || e.pointerId !== sw.id || (F && F.moved())) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+        if (!sw.v) { if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx) * 1.2) { sw.v = true; try { flow.setPointerCapture(e.pointerId); } catch (x) {} } else return; }
+        const edge = (dy < 0 && li === levels.length - 1) || (dy > 0 && li === 0); flow.style.transform = 'translateY(' + (edge ? dy * .25 : dy * .6).toFixed(1) + 'px)'; flow.style.opacity = String(Math.max(.35, 1 - Math.abs(dy) / 320)); });
+      const endV = e => { if (!sw) return; const s0 = sw; sw = null; if (!s0.v) return; const dy = e.clientY - s0.y; flow.style.transform = ''; flow.style.opacity = ''; held = true; setTimeout(() => { held = false; }, 160);
+        if (Math.abs(dy) > 44) step(dy < 0 ? 1 : -1); };
+      flow.addEventListener('pointerup', endV); flow.addEventListener('pointercancel', endV);
+    }
+    let wt = 0; v.addEventListener('wheel', e => { if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || e.shiftKey || e.target.closest('.vf-notes')) return; e.preventDefault(); const now = performance.now(); if (now - wt < 420 || Math.abs(e.deltaY) < 12) return; wt = now; step(e.deltaY > 0 ? 1 : -1); }, { passive: false });
+    const key = e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); step(e.key === 'ArrowDown' ? 1 : -1); } else if (F) F.key(e); };
+    // (upright: the card is as big as leaves the map its place at the left and the buttons and notes theirs below; the
+    // notes take what is left and scroll. Sideways the notes have the right-hand side to themselves.)
+    function size() {
+      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560;
+      flow.style.removeProperty('--cu'); cuPx = ''; if (side) return;
+      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - 48 - 4 * 8, notes = Math.max(110, Math.round(H * .2));
+      const mapW = map.offsetWidth + 14;
+      cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
+    }
+    const resize = () => { size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
+    document.addEventListener('keydown', key); window.addEventListener('resize', resize);
+    v._off = () => { if (F) F.stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize); };
+    document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
+    size(); go(li, ii, 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
+  }
+  // A hold on a card on the table opens it in the scanner (a right click does the same with a mouse)
+  function holdToScan(box, find) {
+    let t = 0, p0 = null; const clear = () => { if (t) clearTimeout(t); t = 0; p0 = null; };
+    box.addEventListener('pointerdown', e => { clear(); if (!G || G.demo || viewEl || (e.pointerType === 'mouse' && e.button !== 0)) return; const at = find(e.target); if (!at) return; p0 = { x: e.clientX, y: e.clientY };
+      t = setTimeout(() => { t = 0; if (!p0) return; ui.held = true; setTimeout(() => { ui.held = false; }, 700); Kit.haptic('medium'); scan(at); }, 420); });
+    box.addEventListener('pointermove', e => { if (p0 && Math.hypot(e.clientX - p0.x, e.clientY - p0.y) > 10) clear(); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => box.addEventListener(n, clear));
+    box.addEventListener('contextmenu', e => { const at = !G || G.demo ? null : find(e.target); if (!at) return; e.preventDefault(); clear(); scan(at); });
+  }
+  const scanAt = n => { const fp = n.closest('.fp'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
+
   const listOf = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
   // ═══ Setup ═══════════════════════════════════════════════════════════════════════════════════════════════
   function deckFacs(cards) {
@@ -939,6 +1072,7 @@
     preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
+    holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt);
     dom.fx = el('div', { class: 'an-fx' });
     if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
     paintMats();
@@ -1068,7 +1202,7 @@
       [el('span', { class: 'n', text: String(V.round) }), el('span', { class: 'w', html: st > 1 ? LAUREL + LAUREL : LAUREL })]));
     if (ui.sel && idle()) {
       const s = ui.sel, key = s.kind === 'hand' ? s.key : E.byU(S, s.u).c, c = info(key), T = targets();
-      n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => openView(key, s.kind === 'fig' ? { u: s.u } : { list: V.P[ui.view].hand.slice(), at: s.h }) }, [
+      n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => { if (G.demo) openView(key, s.kind === 'fig' ? { u: s.u } : { list: V.P[ui.view].hand.slice(), at: s.h }); else scan(s.kind === 'fig' ? { u: s.u } : { h: s.h }); } }, [
         el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (s.kind === 'hand' ? twinNote(key) : '') + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
       if (s.kind === 'hand' && !s.picks.length && T.done.length) n.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm cap-play', text: 'Play', onclick: () => finishPick(T.done) }));
       return;
@@ -1244,7 +1378,7 @@
     Kit.sheet({ title: who + to, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
   }
   function onMapTap(e) {
-    if (!G) return;
+    if (!G) return; if (ui.held) { ui.held = false; return; }
     const fpN = e.target.closest('.fp'), row = e.target.closest('.pl'), tile = e.target.closest('.pl-tile');
     const u = fpN ? +fpN.dataset.u : 0, p = row ? +row.dataset.p : -1;
     if (idle() && !ui.discard) {
@@ -1259,15 +1393,16 @@
         }
       }
     }
-    if (fpN) { const f = V.figs.filter(x => x.u === u)[0]; if (f) openView(f.c, { u: u }); return; }
-    if (tile && row) return openView(S.places[p], { p: p });
+    if (fpN) { const f = V.figs.filter(x => x.u === u)[0]; if (f) { if (G.demo) openView(f.c, { u: u }); else scan({ u: u }); } return; }
+    if (tile && row) return G.demo ? openView(S.places[p], { p: p }) : scan({ p: p });
     clearSel();
   }
   function onHandTap(e) {
+    if (ui.held) { ui.held = false; return; }
     const b = e.target.closest('.hc'); if (!b || !G) { clearSel(); return; }
     const h = +b.dataset.h, key = V.P[ui.view].hand[h];
     if (ui.discard && idle()) return discardOne(h);
-    if (!idle()) return openView(key, { list: V.P[ui.view].hand.slice(), at: h });
+    if (!idle()) return G.demo ? openView(key, { list: V.P[ui.view].hand.slice(), at: h }) : scan({ h: h });
     const T = targets();
     if (T.hand[h]) return pick('h', h);
     if (ui.sel && ui.sel.kind === 'hand' && ui.sel.h === h) return clearSel();
@@ -1666,6 +1801,8 @@
     const my = gen, prof = E.PROF[LEVEL[G.level] || 'holder'];
     setBusy(true); await wait(500); if (gen !== my) return;
     for (let n = 0; n < 40; n++) {
+      // (the computer does not move while the player is looking at cards: the table would change under what they read)
+      while (viewEl && !ui.turbo) { await new Promise(r => setTimeout(r, 200)); if (gen !== my) return; }
       const a = E.aiPick(S, prof, Math.random); if (!a) break;
       const said = stepOn() && !ui.turbo && !G.demo ? moveSaid(a) : null;
       const ctx = await doAction(a); if (gen !== my || !ctx) return;
@@ -1788,6 +1925,9 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
+    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place, and up and down to go from Place to Place and to your hand. The little map at the left shows where you are.</li>' +
+    '<li>Under the card in front are buttons for what you can do with that card now: play it, move it, or start a clash.</li>' +
+    '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
     '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
@@ -2007,7 +2147,7 @@
   window.AnoriaUI = { lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
-  window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
