@@ -5,7 +5,10 @@
 const { PLACES, CENTER, EDGE } = cards;
 // (every card a game can hold: the set, and the cards that have left it, which a game saved with one still plays: cards.js RETIRED)
 const CARDS = Object.assign({}, cards.RETIRED || {}, cards.CARDS);
-const fxOf = ci => CARDS[ci].fx || ci;   // (a Deed's effect: its own key, unless the card says whose effect it has)
+// What a Relic or a Deed does belongs to its data, not its name: `fx` names the effect, and a card without one has the
+// effect of its own key (the first Relics and Deeds). So the Astrolabe is a Compass in effect, Night Crossing runs the
+// Trojan Horse's, and nothing below asks a card for its name.
+const fxOf = ci => CARDS[ci].fx || ci;
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
@@ -80,7 +83,16 @@ function holderM(S, i, m) {
 const holder = (S, i) => holderM(S, i, mights(S, i));
 const cnt = (S, i, o) => { let n = 0; for (const f of S.figs) if (f.p === i && f.o === o) n++; return n; };
 const room = (S, i, o) => cnt(S, i, o) < S.cfg.cap;
-const hasRelic = (p, r) => p.relics.indexOf(r) >= 0;
+const hasRelic = (p, r) => p.relics.indexOf(r) >= 0;   // (this very Relic: a Legacy Line names the card)
+// A Relic's power, whichever Relic it is. A player has two Relics in play at most, and no two with the same power
+// (actions()), so a power never counts twice: nothing here adds up.
+const hasFx = (p, fx) => p.relics.some(r => fxOf(r) === fx);
+const relicOf = (p, fx) => p.relics.find(r => fxOf(r) === fx) || null;
+// (how many times a player has a power. It is 0 or 1 in the game. cfg.relicStack, for test games only, lets two
+// different Relics with one power both be played and adds them up: scripts/anoria/relics2.js, set-150-balance.txt)
+const nFx = (S, p, fx) => (S.cfg.relicStack ? p.relics.reduce((n, r) => n + (fxOf(r) === fx ? 1 : 0), 0) : hasFx(p, fx) ? 1 : 0);
+// the Quick Deeds in a hand that add Might to a clash (Phalanx, and any card with its effect): their places in the hand
+const quicks = P => { const out = [], seen = {}; P.hand.forEach((ci, h) => { if (!seen[ci] && fxOf(ci) === 'phalanx') { seen[ci] = 1; out.push(h); } }); return out; };
 // Legacy: with lineNear, the one who inspired you has to be at the same Place or the next one over
 const near = (S, a, b) => !S.cfg.lineNear || a === b || S.adj[a].indexOf(b) >= 0 || pid(S, a) === 'silk' || pid(S, b) === 'silk';
 function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.deck.length && p.gone && p.gone.length) { p.deck = p.gone; p.gone = []; for (let j = p.deck.length - 1; j > 0; j--) { const q = (j * 7 + S.round * 3 + i) % (j + 1), x = p.deck[j]; p.deck[j] = p.deck[q]; p.deck[q] = x; } } if (p.deck.length) { p.hand.push(p.deck.pop()); p.drawn = (p.drawn || 0) + 1; if (S.ev) S.ev.push({ t: 'draw', o: o }); } } }
@@ -89,7 +101,7 @@ function walkDests(S, f, free) {
   const out = [], P = S.P[f.o];
   if (c.k.voyager && !free) { for (let i = 0; i < S.places.length; i++) if (i !== f.p && !(pid(S, i) === 'machu' && ownerOfSpoke(S, i) !== f.o) && room(S, i, f.o)) out.push(i); return out; }
   const seen = {}; seen[f.p] = 1; let fr = [f.p];
-  const steps = (hasRelic(P, 'compass') || P.guide === 'genghis') && !free ? 2 : 1;   // (Genghis Khan: his Figures walk two steps, as with the Compass)
+  const steps = free ? 1 : Math.max(1 + nFx(S, P, 'compass'), P.guide === 'genghis' ? 2 : 1);   // (Genghis Khan: his Figures walk two steps, as with the Compass)
   for (let s = 0; s < steps; s++) { const nx = []; for (const a of fr) { const ns = (pid(S, a) === 'silk') ? S.places.map((_, i) => i) : S.adj[a].concat(S.places.map((x, i) => x === 'silk' ? i : -1).filter(i => i >= 0)); for (const b of ns) if (!seen[b]) { seen[b] = 1; nx.push(b); } } fr = nx; }
   // (Machu Picchu: only its own side walks in)
   for (const i in seen) { const j = +i; if (j !== f.p && !(pid(S, j) === 'machu' && ownerOfSpoke(S, j) !== f.o) && room(S, j, f.o)) out.push(j); }
@@ -172,7 +184,7 @@ function clash(S, a, d, da, dd, bonus, raw) {
   const A = S.P[a.o], D = S.P[d.o];
   let am = might(S, a, 1, d) + (bonus || 0) + da, dm = might(S, d, 2, a) + dd;
   // the defender's Phalanx, from Spark left over last turn
-  const qi = D.hand.indexOf('phalanx'); if (qi >= 0 && D.reserve >= 1 && dm <= am && dm + 2 >= am) { D.hand.splice(qi, 1); D.reserve -= 1; dm += 2; if (S.st) S.st.played[d.o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: d.o, c: 'phalanx', u: d.u }); }
+  const qs = quicks(D), qi = qs.length ? qs[0] : -1; if (qi >= 0 && D.reserve >= 1 && dm <= am && dm + 2 >= am) { const qc = D.hand[qi]; D.hand.splice(qi, 1); D.reserve -= 1; dm += 2; if (S.st) S.st.played[d.o][qc] = 1; if (S.ev) S.ev.push({ t: 'quick', o: d.o, c: qc, u: d.u }); }
   A.uC = 1; a.rdy = 0; a.acted = 1; if (S.st) S.st.clash++;
   if (S.ev) S.ev.push({ t: 'clash', a: a.u, d: d.u, p: a.p, am: am, dm: dm, da: da, dd: dd, ra: raw ? raw.ra : da, rd: raw ? raw.rd : dd });
   const here = S.places[a.p];
@@ -190,18 +202,19 @@ function actions(S) {
     if (c.t === 'fig') { if (S.cfg.unique && mine.some(f => f.c === ci)) return;   // (one of each person on your side of the table at a time)
       for (const i of deploy) if (costOf(S, o, ci, i) <= P.spark) out.push({ t: 'fig', h, p: i }); return; }
     const x = costOf(S, o, ci); if (x > P.spark) return;
-    if (c.t === 'relic') { if (P.relics.length < 2 && !hasRelic(P, ci)) out.push({ t: 'relic', h }); return; }
-    const open = g => pid(S, g.p) !== 'petra';
-    if (ci === 'eureka' || ci === 'caravan') out.push({ t: 'deed', h });
-    else if (ci === 'decree') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }
-    else if (ci === 'eclipse') { for (let i = 0; i < np; i++) if (pid(S, i) !== 'petra' && theirs.some(g => g.p === i)) out.push({ t: 'deed', h, p: i }); }
-    else if (ci === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
-    else if (ci === 'fairwinds') { for (const f of mine) if (!CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'deed', h, u: f.u, p: i }); }
-    else if (ci === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
-    else if (fxOf(ci) === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
-    else if (ci === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !CARDS[f.c].k.monument && !CARDS[g.c].k.monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    if (c.t === 'relic') { if (P.relics.length < 2 && (S.cfg.relicStack ? !hasRelic(P, ci) : !hasFx(P, fxOf(ci)))) out.push({ t: 'relic', h }); return; }   // (two Relics, and no two with the same power)
+    const open = g => pid(S, g.p) !== 'petra', fx = fxOf(ci);
+    if (fx === 'phalanx') return;   // (a Quick Deed is played with a clash, below)
+    if (fx === 'eureka' || fx === 'caravan') out.push({ t: 'deed', h });
+    else if (fx === 'decree') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }
+    else if (fx === 'eclipse') { for (let i = 0; i < np; i++) if (pid(S, i) !== 'petra' && theirs.some(g => g.p === i)) out.push({ t: 'deed', h, p: i }); }
+    else if (fx === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
+    else if (fx === 'fairwinds') { for (const f of mine) if (!CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'deed', h, u: f.u, p: i }); }
+    else if (fx === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    else if (fx === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
+    else if (fx === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !CARDS[f.c].k.monument && !CARDS[g.c].k.monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
   });
-  const ph = P.hand.indexOf('phalanx') >= 0 && costOf(S, o, 'phalanx') <= P.spark;
+  const ph = quicks(P).filter(h => costOf(S, o, P.hand[h]) <= P.spark);   // (a.ph: a Quick Deed goes with the clash; a.hq: which one, by its place in the hand)
   for (const f of mine) {
     const can = f.rdy && (!f.arr || CARDS[f.c].k.swift), canClash = can || (S.cfg.rush && f.arr && !f.acted);
     if (can) for (const i of walkDests(S, f)) out.push({ t: 'walk', u: f.u, p: i });
@@ -209,10 +222,10 @@ function actions(S) {
       const en = theirs.filter(g => g.p === f.p);
       if (en.length && !en.some(g => CARDS[g.c].k.law)) {
         const gd = en.filter(g => CARDS[g.c].k.guard);
-        for (const g of (gd.length ? gd : en)) if (!CARDS[g.c].k.untouchable) { out.push({ t: 'clash', u: f.u, v: g.u }); if (ph) out.push({ t: 'clash', u: f.u, v: g.u, ph: 1 }); }
+        for (const g of (gd.length ? gd : en)) if (!CARDS[g.c].k.untouchable) { out.push({ t: 'clash', u: f.u, v: g.u }); for (const hq of ph) out.push({ t: 'clash', u: f.u, v: g.u, ph: 1, hq: hq }); }
       }
     }
-    if (hasRelic(P, 'antikythera') && !P.uA && !CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'antik', u: f.u, p: i });
+    if ((P.uA || 0) < nFx(S, P, 'antikythera') && !CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'antik', u: f.u, p: i });
     if (P.guide === 'tubman' && !P.uT && !f.arr) for (const i of walkDests(S, f, true)) out.push({ t: 'tub', u: f.u, p: i });
   }
   return out;
@@ -223,22 +236,22 @@ function apply(S, a, da, dd, raw) {
   if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); P.uN++; P.hand.splice(a.h, 1); putFig(S, o, ci, a.p); }
   else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
   else if (a.t === 'walk') { const f = byU(S, a.u); const far = S.adj[f.p].indexOf(a.p) < 0; moveFig(S, f, a.p, far); f.rdy = 0; }
-  else if (a.t === 'antik') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; P.uA = 1; }
+  else if (a.t === 'antik') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; P.uA = (P.uA || 0) + 1; }
   else if (a.t === 'tub') { moveFig(S, byU(S, a.u), a.p, false); P.uT = 1; }
-  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'), tsrc = threadSrc(S, o, 'phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.uN++; P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); threadPlay(S, o, 'phalanx', tsrc); } clash(S, f, g, da, dd, 0, raw); }
+  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = a.hq != null && fxOf(P.hand[a.hq]) === 'phalanx' ? a.hq : quicks(P)[0], qc = P.hand[h], tsrc = threadSrc(S, o, qc); P.spark -= costOf(S, o, qc); P.uN++; P.hand.splice(h, 1); P.uD = 1; f.tb += 2; f.tq = qc; if (S.st) S.st.played[o][qc] = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: qc, u: f.u, att: 1 }); threadPlay(S, o, qc, tsrc); } clash(S, f, g, da, dd, 0, raw); }
   else if (a.t === 'deed') {
-    const ci = P.hand[a.h], tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v }); threadPlay(S, o, ci, tsrc);
+    const ci = P.hand[a.h], fx = fxOf(ci), tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v }); threadPlay(S, o, ci, tsrc);
     let h2c = a.h2 != null ? P.hand[a.h2] : null;
     if (a.h2 != null) { P.hand.splice(Math.max(a.h, a.h2), 1); P.hand.splice(Math.min(a.h, a.h2), 1); } else P.hand.splice(a.h, 1);
-    if (ci === 'eureka') draw(S, o, 2);
-    else if (ci === 'caravan') P.spark += (S.cfg.caravan || 3);
-    else if (ci === 'decree') S.pb[a.p][o] += (S.cfg.decree || 4);
-    else if (ci === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
-    else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
-    else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
-    else if (ci === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
-    else if (fxOf(ci) === 'trojan') putFig(S, o, h2c, a.p);
-    else if (ci === 'rift') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; moveFig(S, f, g.p, true); moveFig(S, g, t, true); }
+    if (fx === 'eureka') draw(S, o, 2);
+    else if (fx === 'caravan') P.spark += (S.cfg.caravan || 3);
+    else if (fx === 'decree') S.pb[a.p][o] += (S.cfg.decree || 4);
+    else if (fx === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
+    else if (fx === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
+    else if (fx === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
+    else if (fx === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
+    else if (fx === 'trojan') putFig(S, o, h2c, a.p);
+    else if (fx === 'rift') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; moveFig(S, f, g.p, true); moveFig(S, g, t, true); }
   }
 }
 const isRoll = a => a.t === 'clash' || (a.t === 'deed' && a.isAmbush);
@@ -257,7 +270,7 @@ function evalS(S, me, prof) {
   for (const f of S.figs) { const m = might(S, f, 0); if (f.o === me) { cm++; tm += m; } else { co++; to += m; } }
   v += prof.wFig * (cm - co / (N - 1)) + 0.08 * (tm - to / (N - 1));
   v += 0.35 * Math.min(1, left / 3) * P.hand.length + prof.wLine * P.lines + 0.02 * P.spark;
-  for (const r of P.relics) v += (r === 'press' ? 0.5 : r === 'antikythera' ? 0.4 : 0.2) * (left - 1);
+  for (const r of P.relics) { const fx = fxOf(r); v += (fx === 'press' ? 0.5 : fx === 'antikythera' ? 0.4 : 0.2) * (left - 1); }
   return v;
 }
 const PROF = {
@@ -272,7 +285,7 @@ const PROF = {
   hard: { pos: [0.8, 0.8, 1, 1.4, 2.5], wRen: 1, wSeal: 5, wFig: 0.3, wLine: 0.3, noise: 0 },            // Hard (the raider, playing its best)
 };
 function valueOf(S, a, me, prof) {
-  const roll = a.t === 'clash' || (a.t === 'deed' && S.P[me].hand[a.h] === 'ambush');
+  const roll = a.t === 'clash' || (a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'ambush');
   if (!roll) { const T = clone(S); apply(T, a, 0, 0); return evalS(T, me, prof); }
   let s = 0, w = 0; for (const x of diceOdds(S.cfg)) { const T = clone(S); apply(T, a, x[0], x[1]); s += x[2] * evalS(T, me, prof); w += x[2]; } return s / w;
 }
@@ -309,7 +322,7 @@ function startTurn(S) {
   P.spark = (cfg.spark === 'round' ? Math.min(S.round + 1, cfg.sparkCap || 99) : cfg.spark === 'hold' ? 2 + held : S.round + (held >= 3 ? 1 : 0)) + P.sb; P.sb = 0; P.reserve = 0;
   if (cfg.catchup) { let mn = 1e9; for (let q = 0; q < S.N; q++) if (q !== o && S.P[q].renown < mn) mn = S.P[q].renown; if (P.renown < mn) { P.spark += 1; if (cfg.catchup === 2) draw(S, o, 1); if (cfg.catchup === 3 && mn - P.renown >= (cfg.far || 4)) P.spark += 1; } }
   if (S.ev) S.ev.push({ t: 'turn', o: o, spark: P.spark, round: S.round });
-  draw(S, o, (hasRelic(P, 'press') ? 2 : 1) + (cfg.draw2 ? 1 : 0));
+  draw(S, o, 1 + nFx(S, P, 'press') + (cfg.draw2 ? 1 : 0));
   if (P.guide === 'franklin' && P.hand.length <= 4) draw(S, o, 1);   // (Franklin: a thin hand draws one more)
 }
 function endTurn(S) {
@@ -348,5 +361,5 @@ function play(decks, guides, profs, cfg, seed) {
   return S;
 }
 return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, CARDS, PLACES };
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES };
 });
