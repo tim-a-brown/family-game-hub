@@ -266,6 +266,10 @@ Underlying principles for everything:
 - **Small cards keep their numbers off the picture**: the cost, Might and kind icon stand on a spine in the faction's
   colour down the left (`.ac.mini.sp`), and the picture beside it is shown whole. (Stacked on the picture they hid a
   third of the faces.) A card's `FY` focus also goes with its picture wherever else it is cropped (`artImg`).
+- **A small card's name is a title plate** (Tim, 2026-11-11: in the plain book face the names "look like placeholder
+  text"): the game's small capitals (`--fellsc`), centred on the paper, over a fine rule with a dot in the faction's
+  colour (`.ac.mini .ac-name`). The clash shows its two cards large enough to read and says each name once, on the
+  card. The full card keeps its large book-face name with its caption and text.
 - **A picture's subject stays in view.** A full card's picture window ends where its paper begins and shows about
   half the picture's height; `FY` in text.js says which part each card keeps (0 the top, 100 the bottom). A new or
   redrawn picture is checked on the card, full size and small, before it goes in: nothing it is about behind the
