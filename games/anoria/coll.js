@@ -22,11 +22,14 @@
 //   (pacing.js, pacing.txt).
 //   - v 2 (2026-11, a deck grew from 30 cards to 40): a collection from before is given the five new cards of its
 //     starter deck, and of any other ready deck it already owned all of, so every deck it could play it still can.
+//   - v 3 (2026-11-11, the legends left the set: cards.js RETIRED): whoever owned a retired card owns the card that has
+//     its slot instead, as many copies, and the decks they built hold it too. No pack can give a retired card, because
+//     packs only ever draw from the set (ALL). A named Thread finished before keeps its flag under its old id.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
-const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {};
+const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 2;
+const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 3;
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
@@ -44,8 +47,26 @@ function load() {
   let s = null; try { s = raw ? JSON.parse(raw) : null; } catch (e) {}
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
-  if ((cache.v || 1) < VER) { const had = !!cache.starter; grow(cache); cache.v = VER; if (had) save(cache); }
+  // (retired cards first, so that a ready deck owned whole under its old cards still counts as owned whole in grow().
+  // retire() goes by what is in the collection, not by its version: a device that has not updated yet can write the
+  // old keys back, and they are put right again here.)
+  const v = cache.v || 1, had = !!cache.starter, swapped = retire(cache);
+  if (v < 2) grow(cache);
+  if (v < VER || swapped) { cache.v = VER; if (had || swapped) save(cache); myDecks(); }   // (myDecks puts the decks they built right too)
   return cache;
+}
+// The cards that have left the set (cards.js RETIRED): each copy becomes a copy of the card that has its slot now, a
+// card that had been seen is still seen, and the new card shows as new in the Library of someone who owned the old
+// one. A named Thread that now comes whole in the starter deck is simply theirs, as it is for someone starting today.
+// Returns true if anything changed.
+function retire(s) {
+  let ch = false;
+  Object.keys(RETIRED).forEach(old => { const k = RETIRED[old].to;
+    if (s.cards && s.cards[old] != null) { if (s.cards[old] > 0) { s.cards[k] = Math.min(CAP, (s.cards[k] || 0) + s.cards[old]); s.seen[k] = 1; s.fresh[k] = 1; } delete s.cards[old]; ch = true; }
+    if (s.seen && s.seen[old] != null) { s.seen[k] = 1; delete s.seen[old]; ch = true; }
+    if (s.fresh && s.fresh[old] != null) { if (s.cards[k]) s.fresh[k] = 1; delete s.fresh[old]; ch = true; } });
+  if (ch && s.starter && ARCH[s.starter]) { const mine = ARCH[s.starter].cards; THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; }); }
+  return ch;
 }
 // A collection from when a deck was 30 cards: each ready deck gained five cards (cards.js GROWN). The starter deck's
 // five are given, two of each, and so are those of any other ready deck this collection owned every card of, so a deck
@@ -171,7 +192,11 @@ function problems(d) {
   Object.keys(n).forEach(k => { if (!CARDS[k]) out.push('A card that isn\'t in the game'); else if (n[k] > CAP) out.push('More than two of ' + CARDS[k].n); else if (n[k] > (s.cards[k] || 0)) out.push('You have ' + (s.cards[k] || 0) + ' of ' + CARDS[k].n); });
   return out;
 }
-function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} return Array.isArray(a) ? a : []; }
+function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} if (!Array.isArray(a)) return [];
+  // (a deck built with a card that has left the set holds the card that has its slot now, and is saved that way)
+  let ch = false; a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => { if (!RETIRED[k]) return k; ch = true; return RETIRED[k].to; }); });
+  if (ch) store.set(DKEY, JSON.stringify(a));
+  return a; }
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: the five ready decks (yours to play once you own all of one; your starter always is)
@@ -202,6 +227,6 @@ function finish(d) {
   return cards;
 }
 
-return { use, load, reset, grow, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
+return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
   problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL };
 });
