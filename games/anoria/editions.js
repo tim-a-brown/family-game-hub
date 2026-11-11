@@ -8,7 +8,7 @@
 //                                 shown in (o.ed names another; o.plain is Matte whatever you chose: lessons), a full
 //                                 card gets its rarity mark, and a card being read (o.tg) gets the edition button on
 //                                 the picture's lower right, opposite the picture and words button
-//   AnoriaEd.cls(key)             the class for a piece that is not a card (a Figure on the map)
+//   AnoriaEd.piece(node, key)     a piece that is not a card (a Figure on the map) takes the edition on its frame
 //   AnoriaEd.choose(button, key)  the chooser: the five editions of this very card, the ones not found yet locked. A
 //                                 tap on one you have found changes the card there and then, wherever it is drawn
 //   AnoriaEd.gem(e, off)          an edition drawn small (the Library, a pack's tags and tally)
@@ -54,6 +54,8 @@
     if (e && !o.mini) wake();
     return n;
   }
+  // a piece that is not a card (a Figure on the map): its frame takes the edition, and follows a change
+  function piece(n, key) { const c = cls(key); n.setAttribute('data-edk', key); if (c) n.classList.add(c); return n; }
   // the card is shown in another edition now: every place it is drawn follows
   function refresh(key) {
     const e = of(key);
@@ -68,6 +70,7 @@
   function choose(btn, key) {
     if (open) { const same = open.btn === btn; close(); if (same) return; }
     const have = Coll.editions(key), name = CARDS[key].n, opts = [];
+    have[0] = true;   // (Matte is how a card is printed: a card you have only seen across the table is shown in it too)
     const row = el('div', { class: 'ed-row', role: 'radiogroup', 'aria-label': 'The editions of ' + name });
     function mark() { const cur = of(key); opts.forEach((b, e) => { const on = e === cur; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); b.setAttribute('tabindex', on ? '0' : '-1'); }); }
     ED.forEach((x, e) => {
@@ -117,7 +120,8 @@
     T.raf = 0;
     const cards = front();
     T.was.forEach(n => { if (cards.indexOf(n) < 0) { n.style.removeProperty('--lx'); n.style.removeProperty('--ly'); n._lv = ''; } });
-    T.was = cards; if (!cards.length || document.hidden) return;
+    // (no foil in front: nothing to light. While cards are being read, look again shortly: the next one may be a foil.)
+    T.was = cards; if (!cards.length || document.hidden) { if (!cards.length && document.querySelector('.view, .pk-flow')) { clearTimeout(T.poll); T.poll = setTimeout(wake, 350); } return; }
     const quiet = calm();
     let tx = T.ptr ? T.x : T.tilt ? T.tilt.x : REST.x, ty = T.ptr ? T.y : T.tilt ? T.tilt.y : REST.y;
     if (!T.ptr && !quiet) { tx += Math.sin(now / 2300) * .2; ty += Math.sin(now / 3100 + 1) * .1; }
@@ -138,7 +142,7 @@
   }
   document.addEventListener('pointermove', onPtr, { passive: true }); document.addEventListener('pointerdown', onPtr, { passive: true });
   ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, e => { if (e.pointerType !== 'mouse') { T.ptr = false; wake(); } }, { passive: true }));
-  document.addEventListener('keydown', () => wake());
+  document.addEventListener('keydown', () => wake()); document.addEventListener('wheel', () => wake(), { passive: true });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   // the phone's tilt (Lorcana's way: the angle it is held at is the resting angle, and drifts slowly with the hand)
   function onOrient(e) {
@@ -165,5 +169,5 @@
     DeviceOrientationEvent.requestPermission().then(r => { lsSet('anoria_tilt_dev', r === 'granted' ? '1' : 'no'); if (r === 'granted') listenTilt(); }).catch(() => { T.asked = false; });
   });
 
-  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep };
+  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, piece: piece, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep };
 })();

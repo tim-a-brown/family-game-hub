@@ -273,6 +273,29 @@ Underlying principles for everything:
   owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
   until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **Editions** (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana"): every card is printed in five
+  finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
+  Gold foil and Rainbow foil (borderless: the picture runs to the edge, the words on a dark panel). The picture is the
+  same; an edition is the finish and the frame. The rules are in coll.js (`EDITIONS`, `ED_ODDS`): every card out of a
+  pack has an edition; a foil is always one you have not found for that card, it is the card's for good on every
+  copy, and one of a card you already have two of is an extra card in its pack, so the set takes as long as it did.
+  Once the set is complete the packs go on turning up foils until none are left. Found editions and the one each card
+  is shown in are `ed` and `look` in `anoria_coll` (v 3; an older collection has every card Matte). The looks are
+  `games/anoria/editions.css` and the rest `editions.js` (`AnoriaEd`): `cardEl` calls `AnoriaEd.dress`, a card being
+  read has the edition button on the picture's lower right, opposite the picture and words button, and its chooser
+  shows the five editions of that very card with the ones not found locked. A change shows at once wherever the card
+  is drawn (`refresh`: every `.ac[data-card]` and `[data-edk]`). Lessons stay Matte. The light on a foil follows the
+  finger, the pointer or the phone's tilt (`--lx`, `--ly`, and `--ls` from `makeFlow` as cards slide by), but only on
+  the card in front: **small cards (hand, table, Library) have a still finish, no layers, no filters, nothing moving**,
+  so the table doesn't blink. In a pack a card turns over in the edition it was found in, stamped with it; a Gold or
+  Rainbow foil stops Turn the rest and has the stage. The art proof (`?art=1`, `&only=key,key`) shows every edition
+  at every size. The Library shows each card's editions as a ladder of five under it.
+- **Rarity** (the same day: "make more powerful cards more rare to find in packs"): every card has a tier, Common,
+  Uncommon, Rare or Legendary, from its power: `node scripts/anoria/rarity.js` plays random decks and ranks the set by
+  cost and win rate (less the faction's own), and its lists are pasted into `RARE` in coll.js (`rarity.txt` has the
+  table). A pack slot is that much less likely to be a card of a higher tier (`TIER_W`). The tier is printed on a full
+  card as a small mark at the foot of its ribbon, in the edition's finish: a dot, a diamond, a four-point star, a
+  compass rose. A new set is tiered by running the script again, then `pacing.js`.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
   real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;

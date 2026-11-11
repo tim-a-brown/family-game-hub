@@ -51,3 +51,11 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   (`games/anoria/coll.js`) for someone who plays every day, checks them, and says how long the set takes (`pacing.txt`).
   It also checks that a collection and a built deck from when a deck was 30 cards still work (the five new cards of every
   ready deck that could be played are given; the old deck is kept and reads as 10 short).
+  It plays the editions too (every card out of a pack is Matte, Shiny, Silver foil, Gold foil or Rainbow foil): how often
+  a pack holds a foil, when the first of each edition is found, and how long the foils go on after the set is complete. A
+  sixth argument tries other edition odds ("0.085,0.04,0.018,0.007": Shiny, Silver foil, Gold foil, Rainbow foil).
+- `node scripts/anoria/rarity.js [games]`: how rare each card is. More powerful cards are rarer in packs, and this measures
+  power: each card's win rate in random decks, less its faction's (in the deck, and when played), together with its cost.
+  It ranks the set and cuts it into four tiers (the top 10% Legendary, then 20% Rare, 30% Uncommon, the rest Common) and
+  prints the `RARE` lists for `games/anoria/coll.js` (`rarity.txt` has the table). A new set is tiered by running it again
+  and pasting the lists; until then a card on none of them goes by its cost. Then run `pacing.js`.

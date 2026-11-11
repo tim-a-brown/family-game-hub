@@ -307,7 +307,7 @@
       function fit() {
         if (!ended && n) reserve();
         const r = field.getBoundingClientRect(); if (!r.width || !n) return;
-        const under = (n > 1 ? strip.offsetHeight + 6 : 0) + (foils ? 12 : 0);
+        const under = (n > 1 ? strip.offsetHeight + 6 : 0) + (foils ? 16 : 0);
         const cu = Math.floor(Math.max(64, Math.min(r.height - under - 16, r.width * (n > 1 ? 1.12 : 1.3), 600)));
         if (cu === lastCu) return; lastCu = cu;
         flow.style.setProperty('--cu', cu + 'px'); if (F) F.reset();
