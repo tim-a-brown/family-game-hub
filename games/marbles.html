@@ -300,7 +300,9 @@
           ['shrink', '5, 4, 3, 2, 1', 'Hands shrink: 5 cards, then 4, 3, 2 and 1. Then the deck is reshuffled, the deal passes to the next player, and it starts again at 5.']] },
         { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
       ],
-      players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; } },
+      players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; },
+        // (partners sit straight across: with four, seats 1 & 3 against 2 & 4; with six, three pairs)
+        teams: function (n, v) { return v.partners !== 'on' ? null : n === 4 ? [[0, 2], [1, 3]] : n === 6 ? [[0, 3], [1, 4], [2, 5]] : null; } },
       onStart: function (cfg) {
         var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, color: p.color }; });
         var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);

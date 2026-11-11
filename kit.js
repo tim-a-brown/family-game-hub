@@ -1881,12 +1881,36 @@
   // "Phone" in setup text reads oddly on an iPad: say what the device is
   var bigScreen = Math.min(screen.width || 0, screen.height || 0) >= 700;
   function devWord(t) { return bigScreen && typeof t === 'string' ? t.replace(/\b(the|this|one|a) phone\b/gi, function (m, a) { return a + ' iPad'; }) : t; }
+  // ── Who's playing, as chips ───────────────────────────────────────────────
+  // seats [{name, cpu, tag (a robot's skill), anon}] in seat order; teams [[seat, ...], ...] or null. Sides are joined
+  // the way people say them: partners with "&", the sides with "vs" (Jim & John vs Pete & Pam; Tim vs Huey).
+  // Without teams the chips simply follow each other. pre: the class prefix ('k' on a game's page, 'qs' on the home sheet).
+  function whoChips(seats, teams, pre) {
+    pre = pre || 'k';
+    var box = el('span', { class: pre + '-chips' + (teams ? ' teams' : '') });
+    function chip(t) { return t.cpu ? el('span', { class: pre + '-chip bot', html: icon('bot') + '<span>' + esc(t.name) + '</span>' + (t.tag ? '<i>' + esc(t.tag) + '</i>' : '') }) : el('span', { class: pre + '-chip' + (t.anon ? '' : ' who'), text: t.name }); }
+    if (!teams) { seats.forEach(function (t) { box.appendChild(chip(t)); }); return box; }
+    teams.forEach(function (side, k) {
+      var g = el('span', { class: pre + '-team' });
+      side.forEach(function (i, j) { if (!seats[i]) return; if (j) g.appendChild(el('i', { class: pre + '-amp', text: '&' })); g.appendChild(chip(seats[i])); });
+      // ("vs" goes with the side it introduces, so it never hangs at the end of a line)
+      box.appendChild(k ? el('span', { class: pre + '-team ' + pre + '-next' }, [el('i', { class: pre + '-vs', text: 'vs' }), g]) : g);
+    });
+    return box;
+  }
+  // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
+  function whoSaid(seats, teams) {
+    var nm = function (i) { return seats[i] ? seats[i].name : ''; };
+    if (!teams) return seats.map(function (t) { return t.name; }).join(', ');
+    return teams.map(function (side) { return side.map(nm).filter(Boolean).join(' and '); }).join(' against ');
+  }
+
   // ── Players sheet ─────────────────────────────────────────────────────────
   // Who's playing, all in one sheet: how many seats, who sits where (drag to reorder), which seats the computer plays
   // and how well. It works on a plain description of the table, so the home screen can show it for a game's setup
   // in its frame (kitSheet 'players'):
   //   M = {label, lo, hi, count, names[], robots{seat: true}, levels{seat: value}, bots[] (robot names, seat - 1),
-  //        cpu{count: 'mix' | 'seats' | true | false}, merged, together (the robot switches move as one),
+  //        cpu{count: 'mix' | 'seats' | true | false}, teams{count: [[seat, ...], ...] | null}, merged, together (the robot switches move as one),
   //        lv: {label, def, ch{count: [[value, text, title]]}} | null}
   // o.onChange(M) runs after every change.
   function seatIsBot(M, i) { var c = M.cpu[M.count]; return c === 'seats' ? i > 0 : c === 'mix' ? !!M.robots[i] : !!(c && i > 0); }
@@ -2017,7 +2041,12 @@
       var i = sel, next = i === M.count, cpu = next ? M.cpu[M.count + 1] : cpuNow(), bot = !next && seatIsBot(M, i);
       // the table
       var table = el('div', { class: 'k-ps-table', role: 'group', 'aria-label': 'Seats' });
-      for (var q = 0; q < M.count; q++) table.appendChild(token(q));
+      // (partners stand together and the sides face each other across a "vs", the way the Players card says them)
+      var sides = M.teams && M.teams[M.count];
+      if (sides && sides.length > 1 && sides.some(function (x) { return x.length > 1; })) {
+        table.classList.add('teams');
+        sides.forEach(function (side, k) { if (k) table.appendChild(el('i', { class: 'k-ps-vs', text: 'vs' })); table.appendChild(el('span', { class: 'k-ps-side' }, side.filter(function (q2) { return q2 < M.count; }).map(token))); });
+      } else for (var q = 0; q < M.count; q++) table.appendChild(token(q));
       if (M.count < M.hi) table.appendChild(el('button', { type: 'button', class: 'k-st add' + (next ? ' on' : ''), 'aria-label': 'Add a seat', onclick: addSeat }, [el('span', { class: 'avatar', style: { '--c': playerColor(M.count) }, html: icon('plus') }), el('b', { text: 'Add' })]));
       table.classList.toggle('many', M.count >= 5);
       box.appendChild(table);
@@ -2228,6 +2257,15 @@
     // op.when(mode, options) and op.choices(count, mode, options) can depend on the other options' values
     // op.onPick(value, options): a choice that sets other options too (a preset); it may change options in place
     function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode, state.options) : op.choices; }
+    // A setup that would not fit the screen folds its options into one-line rows (each its name and what it is set to;
+    // a tap opens its choices), the way the home screen's sheet shows them, so the start button and the Players card
+    // are in view without scrolling (Tim, 2026-11-11). Once folded it stays folded.
+    var fold = false;
+    function fitFold() {
+      if (IN_SHEET || fold || !wrap.isConnected || !(o.options || []).length) return;
+      var se = document.scrollingElement || document.documentElement;
+      if (se.scrollHeight > se.clientHeight + 4) { fold = true; wrap.classList.add('k-folded'); renderOptions(); }
+    }
     function renderOptions() {
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
@@ -2240,7 +2278,7 @@
         choices.forEach(function (c) {
           seg.appendChild(el('button', {
             type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1],
-            onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); renderOptions(); }
+            onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); if (P && typeof P.teams === 'function') renderSeats(); else renderOptions(); }
           }));
         });
         var lab = el('div', { class: 'label' }, [el('span', { text: op.label })]);
@@ -2249,7 +2287,7 @@
         var hasHelp = op.help || choices.some(function (c) { return c[2]; });
         // In the home screen's sheet each option is one row, its name and what it's set to; tap it to open its
         // choices (and what they mean), pick one and it folds back up
-        if (IN_SHEET) {
+        if (IN_SHEET || fold) {
           var openNow = scOpen === op.id;
           Array.prototype.forEach.call(seg.children, function (b) { var f = b.onclick; b.onclick = function () { scOpen = null; f.apply(this, arguments); }; });
           var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
@@ -2278,11 +2316,12 @@
     // The table as the players sheet reads it (see playersSheet): what each count allows is worked out up front
     function seatModel() {
       var r = range(), keep = state.count, cpuAt = {}, ch = {}, rb = {}, lv = {};
-      for (var n = Math.max(1, r[0]); n <= r[1]; n++) { state.count = n; cpuAt[n] = cpuFor(); if (lvOp) ch[n] = (lvChoices() || []).map(function (c) { return [c[0], c[1], c[2] || '']; }); }
+      var tm = {};
+      for (var n = Math.max(1, r[0]); n <= r[1]; n++) { state.count = n; cpuAt[n] = cpuFor(); tm[n] = teamsAt(n); if (lvOp) ch[n] = (lvChoices() || []).map(function (c) { return [c[0], c[1], c[2] || '']; }); }
       state.count = keep;
       Object.keys(robots).forEach(function (k) { if (robots[k]) rb[k] = true; }); Object.keys(levels).forEach(function (k) { lv[k] = levels[k]; });
       return { label: P.label || "Who's playing?", lo: r[0], hi: r[1], count: state.count, names: names.slice(), robots: rb, levels: lv, bots: bots.slice(),
-        cpu: cpuAt, merged: merged, together: merged && !localMix, lv: lvOp ? { label: lvOp.label || 'Computer skill', def: state.options[lvOp.id], ch: ch } : null };
+        cpu: cpuAt, teams: tm, merged: merged, together: merged && !localMix, lv: lvOp ? { label: lvOp.label || 'Computer skill', def: state.options[lvOp.id], ch: ch } : null };
     }
     function seatApply(M) {
       if (!M) return;
@@ -2310,7 +2349,16 @@
     // One tap opens the players sheet to change how many, who sits where and which seats the computer plays.
     // (on the home screen's game sheet the players are a card of the sheet's own, above these options: this tells it
     // who is seated, kitSheet 'who'; null when this setup has nobody to name)
-    function tellWho(list, one) { if (IN_SHEET) try { parent.postMessage({ kitSheet: 'who', seats: list, one: !!one }, location.origin); } catch (e) {} }
+    function tellWho(list, one, teams) { if (IN_SHEET) try { parent.postMessage({ kitSheet: 'who', seats: list, one: !!one, teams: teams || null }, location.origin); } catch (e) {} }
+    // The sides at this table: players.teams ([[seat, ...], ...], or a function of the count, the options and the mode
+    // for games where partners are a choice); two seats with no teams are simply one against the other (players.vs:
+    // false for two who play together).
+    function teamsAt(n) {
+      if (!P) return null;
+      var t = typeof P.teams === 'function' ? P.teams(n, state.options, state.mode) : P.teams;
+      if (t && t.length > 1) return t.map(function (side) { return side.filter(function (i) { return i < n; }); }).filter(function (side) { return side.length; });
+      return n === 2 && P.vs !== false ? [[0], [1]] : null;
+    }
     function renderSeats() {
       seatsBox.innerHTML = ''; seatsBox.style.display = '';
       if (!P) { renderOptions(); tellWho(null); return; }
@@ -2341,14 +2389,12 @@
         if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
         told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
       });
-      var one = r[1] <= 1 && !cpu;
-      if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one); return; }
-      // the Players card: who is already seated as chips (robots with their skill), and a tap opens the players sheet
-      var chips = el('span', { class: 'k-chips' });
-      told.forEach(function (t) {
-        chips.appendChild(t.cpu ? el('span', { class: 'k-chip bot', html: icon('bot') + '<span>' + esc(t.name) + '</span>' + (t.tag ? '<i>' + esc(t.tag) + '</i>' : '') }) : el('span', { class: 'k-chip' + (t.anon ? '' : ' who'), text: t.name }));
-      });
-      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + told.map(function (t) { return t.name; }).join(', '), onclick: openPlayers },
+      var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
+      if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one, teams); return; }
+      // the Players card: who is already seated as chips (robots with their skill; partners and sides as people say
+      // them), and a tap opens the players sheet
+      var chips = whoChips(told, teams, 'k');
+      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + whoSaid(told, teams), onclick: openPlayers },
         [el('span', { class: 'k-who-e', html: icon('users') }), el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]));
     }
     // a short line for the Game defaults list: the mode, the player count and each option shown
@@ -2419,7 +2465,9 @@
         try { parent.postMessage({ kitSheet: 'go', how: how, page: pageKey() }, location.origin); } catch (e) {}
       };
       var sDock = [el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!", onclick: function () { sheetGo('start'); } })];
-      var sAlt = o.alt ? o.alt : merged && MK.online ? { label: 'Play online', icon: 'globe', online: true } : null;
+      // (Play online: a game that lists it among its ways to play, or whose online tables are TurnNet's)
+      var sNet = !o.noOnline && ((merged && MK.online) || (window.TurnNet && !(!merged && (o.modes || []).some(function (m) { return m.kind === 'online' || /net|online/i.test(String(m.id)); }))));
+      var sAlt = o.alt ? o.alt : sNet ? { label: 'Play online', icon: 'globe', online: true } : null;
       if (sAlt) sDock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (sAlt.icon ? icon(sAlt.icon) : '') + '<span>' + esc(sAlt.label) + '</span>', onclick: function () { sheetGo(sAlt.online ? 'online' : 'alt'); } }));
       wrap.appendChild(el('div', { class: 'k-startdock' + (sAlt ? ' has-alt' : '') }, sDock));
       host.appendChild(wrap);
@@ -2496,13 +2544,44 @@
         sfx('pop'); haptic('medium');
         o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
     }
-    // Play online: any choices that only matter online come up first, in a sheet
+    // Play online takes what is chosen here to an online table. First a review (Tim, 2026-11-11: "review rules and
+    // player/ai selection before opening table"): the rules as they are set, any choice that only matters online,
+    // and who will be at the table: you, the people you seated (each joins from their own device) and the seats
+    // the computer fills. Then Open the table opens it at once, or Find a table goes to the tables already open.
+    var TN = function () { return !EDIT_DEFAULTS && window.TurnNet && TurnNet.ready && TurnNet.ready() ? TurnNet : null; };
     function goOnline() {
-      var only = (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options) && !op.when(resolved(), state.options); });
-      if (!only.length) return go(true);
-      var box = el('div', { class: 'stack' }), sh;
+      var om = MK.online || resolvedMode(), tn = TN(), info = tn && tn.info ? tn.info() : null;
+      var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options) && !op.when(resolved(), state.options); }) : [];
+      var box = el('div', { class: 'k-rev' }), sh;
+      function shown(op) { return !op.render && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options)); }
+      function valueOf(op) { var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? c[1] : ''; }
       function paint() {
         box.innerHTML = '';
+        // who will be there
+        var me = String(names[0] || lsGet('my_name', '') || '').trim(), cpuNow2 = cpuFor(), pals = [], robotsHere = 0;
+        for (var i = 1; i < state.count; i++) { var isC = cpuNow2 === 'seats' ? true : cpuNow2 === 'mix' ? !!robots[i] : !!cpuNow2; if (isC) robotsHere++; else if (isPersonName(names[i])) pals.push(String(names[i]).trim()); }
+        var who = el('div', { class: 'k-rev-sec' }, [el('div', { class: 'k-rev-h', text: 'At the table' })]);
+        var chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]);
+        pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); });
+        who.appendChild(chips);
+        var lines = [];
+        if (pals.length) lines.push(listAnd(pals) + (pals.length === 1 ? ' joins' : ' join') + ' from ' + (pals.length === 1 ? 'their own device' : 'their own devices') + ', with the table’s code or from Open tables on the home screen.');
+        else lines.push('The others join from their own devices, with the table’s code or from Open tables on their home screen.');
+        if (info) {
+          lines.push(info.min === info.max ? 'This table seats ' + info.max + ' people.' : 'A game can start with ' + info.min + ' ' + (info.min === 1 ? 'person' : 'people') + ', and the table seats up to ' + info.max + '.');
+          var filled = info.bots ? info.seats(info.min) - info.min : 0;
+          if (filled > 0) lines.push('The computer plays any seat that nobody takes.');
+        } else if (robotsHere) lines.push('Computer players are chosen at the table.');
+        lines.forEach(function (t) { who.appendChild(el('p', { class: 'k-rev-p', text: t })); });
+        box.appendChild(who);
+        // the rules as they stand
+        var rows = (o.options || []).filter(shown).map(function (op) { return [op.label, valueOf(op)]; }).filter(function (r) { return r[1]; });
+        if (rows.length) {
+          var dl = el('dl', { class: 'k-rev-dl' });
+          rows.forEach(function (r) { dl.appendChild(el('dt', { text: r[0] })); dl.appendChild(el('dd', { text: r[1] })); });
+          box.appendChild(el('div', { class: 'k-rev-sec' }, [el('div', { class: 'k-rev-h', text: 'The rules' }), dl]));
+        }
+        // choices that only matter online
         only.forEach(function (op) {
           var seg = el('div', { class: 'seg' }), choices = typeof op.choices === 'function' ? op.choices(state.count, MK.online, state.options) : op.choices;
           if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
@@ -2512,11 +2591,19 @@
         });
       }
       paint();
-      sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Play online', primary: true, onClick: function () { setTimeout(function () { go(true); }, 0); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+      // the table itself: opened here and now where the game's tables are TurnNet's, by the game's own lobby otherwise
+      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else go(true); }, 0); }
+      function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true); }, 0); }
+      sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
     }
+    function resolvedMode() { return merged ? resolved() : state.mode; }
+    function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
     // (the rules are the "? Rules" button in the bar above); the start button stays in view at the bottom whatever's above it
     // o.alt: a smaller second way to start, beside the main button (Bingo's "Call only"; Play online on a merged screen)
-    if (!o.alt && merged && MK.online) o.alt = { label: 'Play online', icon: 'globe', onClick: function () { goOnline(); }, own: true };
+    // (a game whose tables are TurnNet's has the button too, whether or not it lists online among its ways to play;
+    // not one that shows a card of its own for it, like Poker's Online table)
+    var ownNetCard = !merged && (o.modes || []).some(function (m) { return m.kind === 'online' || /net|online/i.test(String(m.id)); });
+    if (!o.alt && !o.noOnline && ((merged && MK.online) || (!ownNetCard && window.TurnNet && (!EDIT_DEFAULTS || IN_SHEET)))) o.alt = { label: 'Play online', icon: 'globe', onClick: function () { goOnline(); }, own: true };
     var dock = [startBtn];
     if (o.alt) dock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (o.alt.icon ? icon(o.alt.icon) : '') + '<span>' + esc(o.alt.label) + '</span>',
       onclick: function () {
@@ -2527,6 +2614,7 @@
     host.appendChild(wrap);
     winPeekClear();
     renderModes(); renderSeats();
+    setTimeout(fitFold, 0); setTimeout(fitFold, 400); window.addEventListener('resize', function () { setTimeout(fitFold, 60); });
     // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
     if (GO && Date.now() - GO.at < 15000) {
       var how = GO.how; GO = null;
@@ -4620,6 +4708,7 @@
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
+    whoChips: whoChips, whoSaid: whoSaid,
     titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };

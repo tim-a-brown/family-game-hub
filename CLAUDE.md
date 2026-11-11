@@ -121,6 +121,17 @@ Underlying principles for everything:
   their own kinds of play (Trivia's Buzz in, Sandlot's Derby) still show cards. Pass & play hands the device over
   with `Kit.handoff` between people only. The start button
   stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`).
+  **Sides** (Tim, 2026-11-11): the Players card and the players sheet say who is with whom the way people do:
+  partners joined by "&" and the sides by "vs" ("Tim & Jamie vs Pete & Pam"; two seats are "Tim vs Huey"). A
+  partnership game gives `players.teams` ([[seats], [seats]], or a function of the count and options when partners
+  are a choice: Dominoes, Marbles); `players.vs: false` for two who play together. `Kit.whoChips` draws them, on
+  the home sheet too. **Play online** is on every game whose tables are TurnNet's (not only ones that list online
+  among their ways to play) and takes what is chosen: a **review** first (`goOnline` in kit.js: who will be at the
+  table, the rules as set, choices that only matter online), then Open the table opens it at once
+  (`TurnNet.host`) or Find a table goes to the lobby. **A friend's open table** in a game is the first row of that
+  game's sheet on the home screen ("Join Pete's table", from `friendTables`), and the separate Play online rows
+  from games.js hide once the setup offers it. **A setup that would not fit the screen folds its options** into
+  one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
