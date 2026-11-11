@@ -676,6 +676,22 @@
   //   n: the mat's name, c: its cloth (shown until the picture has come), th: the thread its edge is bound with,
   //   d: how far the print is dimmed so the pieces stay the brightest things on it (0 to 1; .2 if not given),
   //   fill: the picture is stretched to the mat's shape, not cropped (a pattern with borders that should all show)
+  // What each mat draws was checked against a text that could be read (2026-11-11), where one could be:
+  //   genghis: the lattice of interlaced sticks, the roof poles meeting in a hoop and the felt worked with vines and
+  //     trees are William of Rubruck's account of 1253 (Rockhill's translation, 1900); the white standard with nine
+  //     tails is the Secret History, section 202 (how it was made is not recorded: the row of nine is the picture's own)
+  //   curie: the shed, the glow of the bottles and capsules at night and the piezo-electric quartz electrometer are
+  //     in her own book, Pierre Curie (1923)
+  //   lincoln: the compass and chain, the rails and the axe are in his own account of his life (1860); the telegraph
+  //     is Bates, Lincoln in the Telegraph Office (1907)
+  //   mandela: the valley, the stream, the hills, the three huts and the maize at Qunu are as Long Walk to Freedom
+  //     describes them (read in quotation only); the beadwork's white and blue and the aloes rest on memory
+  //   gandhi: the spinning wheel found at Vijapur, the slivers and khadi are his autobiography; the salt at Dandi
+  //     was read in summaries only
+  //   The first five: Franklin's kite of two cedar strips with a tail and a key is his own letter of 1752 (the kite
+  //     was silk); Tubman's North Star is Bradford (1869); Leonardo's knots, solids and red chalk are in Muntz (1898);
+  //     the lotus and papyrus are Owen Jones (1856); bamboo slips strung into books and the thunder scroll are
+  //     Bushell (1904). What rests on memory is listed in CLAUDE.md.
   const MATK = 'anoria_mat', MATSRC = 'anoria/ui/mats/';
   const MATS = {
     cleopatra: { n: 'Papyrus and lotus', c: '#113c3d', th: '#a98c4e', d: .3 },
@@ -683,6 +699,11 @@
     tubman: { n: 'The North Star', c: '#151d36', th: '#7484ab', d: .04 },
     franklin: { n: 'The printing house', c: '#33271d', th: '#a5834a', d: .1 },
     suntzu: { n: 'Bamboo slips', c: '#45401f', th: '#8d8a58', d: .22, fill: true },
+    genghis: { n: 'The felt tent', c: '#2b2520', th: '#9a8663', d: .06 },
+    curie: { n: 'The laboratory shed', c: '#1c1627', th: '#857f9c', d: 0 },
+    lincoln: { n: 'Rails and wire', c: '#172039', th: '#9a8a68', d: .08 },
+    mandela: { n: 'The valley at Qunu', c: '#12161f', th: '#9aa5bb', d: .14 },
+    gandhi: { n: 'Homespun and salt', c: '#54493b', th: '#b9aa8c', d: .34 },
     chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
   };
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
