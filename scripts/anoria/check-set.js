@@ -100,7 +100,7 @@ console.log('\nRelics and Deeds, by the card whose effect they have: ' + Object.
 const tier = [0, 0, 0, 0, 0]; NEW.forEach(k => { tier[Coll.rarity(k)]++; });
 console.log('Rarity: ' + [1, 2, 3, 4].map(t => Coll.TIERS[t] + ' ' + tier[t]).join(', ') + '.');
 console.log('Legacy Lines: ' + count(c => c.insp) + ' Figures with a Legacy (insp), ' + count(c => c.from) + ' cards with a Legacy Line from a card or a Place; ' + C.THREADS.length + ' named lines in the set, ' + C.THREADS.filter(t => t.cards.some(k => CARDS[k].pr === 3)).length + ' of them with a card of the third printing.');
-console.log('Pictures still to be made: ' + Object.keys(T.NOPIC).length + ' of ' + NEW.length + '.');
+console.log('Pictures still to be made: ' + NEW.filter(k => T.NOPIC[k]).length + ' of ' + NEW.length + ' in the third printing; ' + (C.PRINT4 || []).filter(k => T.NOPIC[k]).length + ' of ' + (C.PRINT4 || []).length + ' Domain cards; ' + Object.keys(C.PLACES).filter(k => T.NOPIC[k]).length + ' of ' + Object.keys(C.PLACES).length + ' Domains.');
 console.log('Sources (set-150.json): ' + SET.cards.filter(c => c.sure).length + ' of ' + SET.cards.length + ' cards were confirmed by a search or a full text; written from memory and not searched: ' + SET.cards.filter(c => !c.sure).map(c => c.key).join(', ') + '.');
 console.log('Still waiting for engine work, and not in the set: ' + (SET.needsEngine || []).map(x => x.n).join(', ') + '.');
 if (bad.length) { console.log('\nWRONG (' + bad.length + '):\n  ' + bad.join('\n  ')); process.exit(1); }

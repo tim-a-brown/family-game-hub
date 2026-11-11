@@ -2,6 +2,7 @@
 // plays every day, and checks those rules while it's at it.
 //   node scripts/anoria/pacing.js [players] [games a day] [chance to win a game] [cards in a daily pack] [cards in a one-time pack] [edition odds]
 //                                 [welcome packs] [pack order] [cards in an earned pack once the first series is complete]
+//                                 [chance an earned pack holds a Domain] [Domains in a welcome pack] [series the Domain cards are in]
 // (all but the first three try another economy without changing coll.js; left out or 0, they are the game's own.
 // Edition odds are the chance of Shiny, Silver foil, Gold foil and Rainbow foil for one card, as
 // "0.085,0.04,0.018,0.009". Welcome packs are their sizes, as "12,12,12,12,12". Pack order is "series" (the first
@@ -9,9 +10,12 @@
 // "mixed" (the whole set from the first pack).)
 // It also says how the editions turn up: how often a pack holds a foil, when the first of each edition is found, and
 // how long the foils go on after the set itself is complete.
+// Domains (2026-11-11): a player owns the ready stack of their starter deck and finds the other 60 Domains in packs.
+// It says how many they own along the way and when they have all 75, beside the cards, and checks the stack rules.
 const Coll = require('../../games/anoria/coll'); const { rng } = require('../../games/anoria/engine'); const { ARCH, CARDS, GROWN, RETIRED, THREADS } = require('../../games/anoria/cards');
-const T = +process.argv[2] || 400, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, DAILY = +process.argv[5] || 0, FEAT = +process.argv[6] || 0, ODDS = process.argv[7] && process.argv[7] !== '0' ? [0].concat(process.argv[7].split(',').map(Number)) : null, WELC = process.argv[8] && process.argv[8] !== '0' ? process.argv[8].split(',').map(Number) : null, ORDER = process.argv[9] && process.argv[9] !== '0' ? process.argv[9] : null, PACK2 = process.argv[10] != null ? +process.argv[10] : null;
-Coll.use(Object.assign({}, WELC ? { welcome: WELC } : {}, ORDER ? { order: ORDER } : {}, PACK2 != null ? { pack2: PACK2 } : {}));
+const T = +process.argv[2] || 400, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, DAILY = +process.argv[5] || 0, FEAT = +process.argv[6] || 0, ODDS = process.argv[7] && process.argv[7] !== '0' ? [0].concat(process.argv[7].split(',').map(Number)) : null, WELC = process.argv[8] && process.argv[8] !== '0' ? process.argv[8].split(',').map(Number) : null, ORDER = process.argv[9] && process.argv[9] !== '0' ? process.argv[9] : null, PACK2 = process.argv[10] != null && process.argv[10] !== '-' ? +process.argv[10] : null, DSLOT = process.argv[11] != null && process.argv[11] !== '-' ? +process.argv[11] : null, DWEL = process.argv[12] != null && process.argv[12] !== '-' ? +process.argv[12] : null, CSER = +process.argv[13] || 0;
+Coll.use(Object.assign({}, WELC ? { welcome: WELC } : {}, ORDER ? { order: ORDER } : {}, PACK2 != null ? { pack2: PACK2 } : {}, DSLOT != null ? { domainSlot: DSLOT } : {}, DWEL != null ? { welcomeDomains: DWEL } : {}, CSER ? { cardSeries: CSER } : {}));
+const STACKS = require('../../games/anoria/cards').STACKS, NDOM = Coll.DOMS.length, STK = Coll.STACK, dom = { d7: 0, d14: 0, d21: 0, d30: 0, s1: 0, cards: 0, all: [], wel: 0, late: 0 }, sameSet = (a, b) => a.length === b.length && a.every(x => b.indexOf(x) >= 0);
 const DECK = Coll.DECK, NE = Coll.EDITIONS.length, WEL = Coll.WELCOME.reduce((a, b) => a + b, 0), NW = Coll.WELCOME.length, S1 = Coll.S1, s1all = [], assert = (ok, m) => { if (!ok) { console.error('FAILED: ' + m); process.exit(1); } };
 const D = Object.keys(ARCH), days = [], seenAll = [], guidesAll = [], sum = { welcomeNew: 0, own3: 0, daily: 0, feat: 0, gifts: 0 }; let after7 = 0, after14 = 0, after21 = 0, own7 = 0, own14 = 0, own21 = 0;
 const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN = [0, 0, 0, 0, 0], edAll = [], mk = () => ({ packs: 0, foilPacks: 0, cards: 0, n: Coll.EDITIONS.map(() => 0), later: Coll.EDITIONS.map(() => 0), noCopy: 0, wel: 0, days: 0 }), ED1 = mk(), ED2 = mk(); let ed = ED1;
@@ -28,11 +32,18 @@ const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN 
   assert(!Coll.deck('ready:Legacy').ok && Coll.deck('ready:Legacy').own === 28, 'a ready deck it had not finished gets nothing');
   assert(GROWN.Legion.concat(GROWN.Court).every(k => Coll.copies(k) === 2) && GROWN.Legacy.every(k => Coll.copies(k) === 0), 'the new cards of those decks are given, two of each');
   assert(JSON.parse(mem.anoria_coll).v === Coll.VER && Coll.load().wins === 9, 'the collection is saved as the new version, with everything else as it was');
+  // Domains: a collection from before them is given the ready stacks of the ready decks it can play, and only those
+  assert(STACKS.Legion.concat(STACKS.Court).every(id => Coll.hasDomain(id)) && Coll.domains().length === 2 * STK && !STACKS.Legacy.some(id => Coll.hasDomain(id)), 'an older collection is given the ready stacks of its starter and of a ready deck it had finished, and no others');
+  assert(sameSet(Coll.stackFor('ready:Legion'), STACKS.Legion) && sameSet(Coll.stackFor('ready:Court'), STACKS.Court), 'each of those decks plays its own ready stack');
+  assert(Coll.stackFor('dold').length === STK && !Coll.stackProblems(Coll.stackFor('dold')).length && Coll.stackFor('ready:Legacy').length === STK, 'a deck they built, and a ready deck they have not finished, have a full stack of Domains they own');
+  assert(Coll.domains().every(id => Coll.domainFresh(id)), 'the Domains given show as new');
   assert(Coll.ALL.every(k => Coll.look(k) === 0 && Coll.editions(k).every((on, e) => on === (e === 0 && Coll.copies(k) > 0))) && Coll.edCounts().slice(1).every(n => n === 0), 'a collection from before editions has every card in Matte and nothing else found');
   assert(!Coll.setLook(built[0], 3) && Coll.look(built[0]) === 0, 'an edition that has not been found cannot be chosen');
   const d = Coll.deck('dold'); assert(d && !d.ok && d.cards.length === 30 && d.why.join() === '10 more to add', 'a 30-card deck is kept and reads as 10 short: ' + (d && d.why.join('; ')));
+  assert(!Coll.saveStack('dold', STACKS.Court).length && sameSet(Coll.stackFor('dold'), STACKS.Court), 'a stack is saved for a deck they built');
   const full = Coll.saveDeck({ id: 'dold', n: 'Old thirty', guide: 'suntzu', cards: Coll.finish({ cards: d.cards }) }); assert(full.cards.length === DECK && Coll.deck('dold').ok && built.every((k, i) => full.cards[i] === k), 'Finish it for me fills it to ' + DECK + ' and keeps its 30');
-  Coll.load(); assert(JSON.parse(mem.anoria_coll).v === Coll.VER && GROWN.Legion.every(k => Coll.copies(k) === 2), 'the gift is made once');
+  assert(sameSet(Coll.stackFor('dold'), STACKS.Court), 'and the deck keeps its stack when it is saved again');
+  Coll.load(); assert(JSON.parse(mem.anoria_coll).v === Coll.VER && GROWN.Legion.every(k => Coll.copies(k) === 2) && Coll.domains().length === 2 * STK, 'the gift is made once');
   // a collection saved after decks grew (v 2) is only stamped: it is not given the new cards a second time
   mem.anoria_coll = JSON.stringify({ v: 2, starter: 'Legion', cards: { hannibal: 2 }, guides: ['suntzu'], seen: {}, fresh: {}, packs: [], wins: 1, games: 2, day: '', feats: {}, threads: {}, opened: 0, pid: 1 });
   Coll.use({}); assert(Coll.counts().copies === 2 && Coll.load().v === Coll.VER && Coll.look('hannibal') === 0, 'a version 2 collection loads as it was, all Matte'); }
@@ -77,18 +88,26 @@ for (let t = 0; t < T; t++) {
   Coll.reset(); assert(Coll.decks().every(d => !d.ok), 'nothing is playable before a starter is chosen');
   const st = D[(R() * 5) | 0]; assert(Coll.chooseStarter(st) && !Coll.chooseStarter(D[0]), 'a starter is chosen once');
   assert(Coll.counts().copies === DECK && Coll.packs().length === NW && Coll.deck('ready:' + st).ok && Coll.deck('ready:' + st).cards.length === DECK, 'the starter is ' + DECK + ' cards, playable, with its welcome packs');
-  ed = ED1; let gifts = 0, got = 0, d = 0; const seenEd = Coll.EDITIONS.map(() => 0), seenTier = [0, 0, 0, 0, 0];
-  const open = () => { let r; while ((r = Coll.openPack())) {
+  assert(sameSet(Coll.domains(), STACKS[st]) && sameSet(Coll.stackFor('ready:' + st), STACKS[st]) && !Coll.stackProblems(STACKS[st]).length, 'the starter comes with its ready stack of ' + STK + ' Domains');
+  ed = ED1; let gifts = 0, got = 0, d = 0, domDay = 0; const seenEd = Coll.EDITIONS.map(() => 0), seenTier = [0, 0, 0, 0, 0];
+  const open = () => { let r, nb = Coll.domains().length; while ((r = Coll.openPack())) {
+    assert(r.domains.length <= (r.pack.k === 'welcome' ? Coll.WELCOME_DOMAINS : 1) && Coll.domains().length === nb + r.domains.length && new Set(Coll.domains()).size === Coll.domains().length, 'a Domain out of a pack is always one you did not have'); nb += r.domains.length; if (r.pack.k === 'welcome') dom.wel += r.domains.length;
     assert(r.cards.every(c => c.n <= 2), 'never more than two of a card'); const cp = r.cards.filter(c => c.copy).length; assert(cp === r.pack.n || r.cards.length === 2 * r.pack.n || Coll.counts().copies === 2 * Coll.ALL.length, 'a pack holds as many copies you were missing as it says, while there are copies left to find'); assert(r.cards.length <= 2 * r.pack.n, 'a pack holds at most as many extra foils as it has cards');
     r.cards.forEach(c => { got += c.copy ? 1 : 0; ed.cards++; ed.n[c.ed]++; if (r.pack.k !== 'welcome') ed.later[c.ed]++; if (!c.copy) ed.noCopy++;
       assert(c.copy || c.ed > 0, 'a card that adds no copy is a foil'); assert(!c.ed || (Coll.editions(c.c)[c.ed] && Coll.look(c.c) >= c.ed), 'a foil out of a pack is found for good, and the card is shown in it');
       if (!seenEd[c.ed]) { seenEd[c.ed] = 1; firstEd[c.ed].push(d); } const t = Coll.rarity(c.c); if (c.first && !seenTier[t]) { seenTier[t] = 1; firstTier[t] += d; tierN[t]++; } });
     ed.packs++; if (r.cards.some(c => c.ed)) ed.foilPacks++; if (r.pack.k === 'welcome') ed.wel += r.cards.filter(c => c.ed).length;
     gifts += r.threads.filter(x => x.gift).length; if (r.pack.k === 'welcome') sum.welcomeNew += r.cards.filter(c => c.first).length; } };
-  open(); sum.own3 += Coll.counts().own; assert(got === WEL && Coll.counts().copies === DECK + WEL + gifts, 'three welcome packs make ' + (DECK + WEL) + ' cards (plus any Thread gifts; a foil of a card you had two of is an extra)');
+  open(); assert(Coll.domains().length === STK + NW * Coll.WELCOME_DOMAINS, 'each welcome pack holds ' + Coll.WELCOME_DOMAINS + ' Domains'); sum.own3 += Coll.counts().own; assert(got === WEL && Coll.counts().copies === DECK + WEL + gifts, 'three welcome packs make ' + (DECK + WEL) + ' cards (plus any Thread gifts; a foil of a card you had two of is an extra)');
   // a deck you built: valid, saved, listed
   const mine = Coll.saveDeck({ n: 'Mine', guide: ARCH[st].guide, cards: Coll.finish({ cards: [] }) }); assert(Coll.deck(mine.id).ok && mine.cards.length === DECK, 'Finish it for me builds a playable deck of ' + DECK + ': ' + Coll.deck(mine.id).why.join('; '));
   assert(Coll.problems({ guide: ARCH[st].guide, cards: Coll.readyCards(st).slice(0, DECK - 1).concat(['nosuch']) }).length === 1 && Coll.problems({ guide: 'nobody', cards: [] }).length === 2, 'problems are named');
+  // stacks: the rules are named, a stack of any kinds and homes can be saved, and a deck always has a full one
+  { const mineSt = Coll.stackFor(mine.id), own = Coll.domains(), other = Coll.DOMS.filter(id => !Coll.hasDomain(id))[0];
+    assert(mineSt.length === STK && !Coll.stackProblems(mineSt).length, 'a deck you built has a full stack from the Domains you own');
+    assert(Coll.stackProblems(own.slice(0, STK - 1)).join() === '1 more to add' && Coll.stackProblems(own.slice(0, STK - 1).concat([own[0]])).length === 1 && Coll.stackProblems(own.slice(0, STK - 1).concat([other])).length === 1 && Coll.saveStack(mine.id, own.slice(0, STK - 1).concat([other])).length === 1, 'a stack is ' + STK + ' Domains you own, no two the same');
+    const pick = own.slice().reverse().slice(0, STK); assert(!Coll.saveStack(mine.id, pick).length && sameSet(Coll.stackFor(mine.id), pick) && !Coll.saveStack('ready:' + st, pick).length && sameSet(Coll.stackFor('ready:' + st), pick), 'any ' + STK + ' Domains you own can be saved as a deck\'s stack');
+    assert(!Coll.saveStack('ready:' + st, STACKS[st]).length && Coll.load().stacks['ready:' + st] == null, 'a ready deck given its own ready stack back is simply at its default'); }
   let sawAll = 0, gotGuides = 0, nd = 0, nf = 0, s1 = 0; const firstDone = () => S1.every(k => Coll.copies(k) === 2), ser = Coll.PACK_ORDER === 'series';
   if (ser && !firstDone()) assert(Coll.ALL.every(k => Coll.seriesOf(k) === 1 || !Coll.copies(k)), 'the welcome packs hold only the first series');
   while (!Coll.counts().complete && d < 2000) {
@@ -98,11 +117,12 @@ for (let t = 0; t < T; t++) {
     assert(Coll.packs().length <= 4, 'at most one daily pack a day');
     const before1 = !firstDone(), n2 = Coll.ALL.filter(k => Coll.seriesOf(k) === 2 && Coll.copies(k)).length; open();
     if (ser && before1 && !firstDone()) assert(Coll.ALL.filter(k => Coll.seriesOf(k) === 2 && Coll.copies(k)).length === n2 || Coll.threads().some(t => t.rewarded && t.cards.some(k => Coll.seriesOf(k) === 2)), 'no card of the second series comes out of a pack before the first series is complete');
-    if (!s1 && firstDone()) s1 = d;
+    if (!s1 && firstDone()) { s1 = d; dom.s1 += Coll.domains().length; } if (!domDay && Coll.counts().domsComplete) domDay = d;
+    if (d === 7) dom.d7 += Coll.domains().length; if (d === 14) dom.d14 += Coll.domains().length; if (d === 21) dom.d21 += Coll.domains().length; if (d === 30) dom.d30 += Coll.domains().length;
     const c = Coll.counts(); if (!sawAll && c.own === c.cards) sawAll = d; if (!gotGuides && c.guides === c.guidesAll) gotGuides = d;
     if (d === 7) { after7 += c.copies; own7 += c.own; } if (d === 14) { after14 += c.copies; own14 += c.own; } if (d === 21) { after21 += c.copies; own21 += c.own; }
   }
-  assert(Coll.counts().complete, 'the set can be finished'); assert(Coll.threads().every(x => x.done && x.rewarded), 'every Thread is finished by then');
+  assert(Coll.counts().complete, 'the set can be finished'); dom.cards += Coll.domains().length; assert(Coll.threads().every(x => x.done && x.rewarded), 'every Thread is finished by then');
   assert(Coll.gameOver({ win: true, cpu: false, level: 'hard' }).length === 0, 'pass and play earns nothing');
   days.push(d); seenAll.push(sawAll); guidesAll.push(gotGuides); s1all.push(s1); sum.daily += nd; sum.feat += nf; sum.gifts += gifts + Coll.threads().length - gifts;
   // the set is complete: the packs go on, and now every card in them is a finish not found before
@@ -111,9 +131,11 @@ for (let t = 0; t < T; t++) {
   while (left() && d < 3000) {
     d++; day = new Date(2027, 0, 1 + d);
     for (let g = 0; g < PER; g++) Coll.gameOver({ win: R() < PW, cpu: true, level: 'hard', built: true });
-    const before = left(), n = Coll.packs().reduce((a, x) => a + x.n, 0); open();
+    const before = left(), n = Coll.packs().reduce((a, x) => a + x.n, 0); open(); if (!domDay && Coll.counts().domsComplete) { domDay = d; dom.late++; }
     assert(before - left() === Math.min(n, before), 'once the set is complete, every card out of a pack is a finish not found before');
   }
+  while (!Coll.counts().domsComplete && Coll.DOMAINS_IN_PACKS === 'slot' && Coll.DOMAIN_SLOT > 0 && d < 6000) { d++; day = new Date(2027, 0, 1 + d); for (let g = 0; g < PER; g++) Coll.gameOver({ win: R() < PW, cpu: true, level: 'hard', built: true }); open(); if (Coll.counts().domsComplete) { domDay = d; dom.late++; } }
+  if (domDay) dom.all.push(domDay);
   assert(!left(), 'every edition of every card can be found'); edAll.push(d); ED2.days += d - d1;
   Coll.gameOver({ win: true, cpu: true, level: 'hard' }); const last = Coll.openPack(); assert(!last || last.cards.length === 0, 'with nothing left to find, a pack is empty');
 }
@@ -126,6 +148,9 @@ console.log('Cards owned (of ' + 2 * Coll.ALL.length + ') after a week: ' + (aft
 console.log('Different cards owned (of ' + Coll.ALL.length + ') after a week: ' + (own7 / T).toFixed(1) + ', two weeks: ' + (own14 / T).toFixed(1) + ', three weeks: ' + (own21 / T).toFixed(1));
 console.log('The last new card turns up after ' + avg(seenAll) + ' days; every Guide after ' + avg(guidesAll) + ' days.');
 console.log('Nothing left to collect after ' + avg(days) + ' days on average (quickest ' + days[0] + ', middle ' + q(0.5) + ', slowest ' + days[days.length - 1] + ').');
+console.log('Domains. A player starts with the ' + STK + ' of their starter deck\'s ready stack and finds the other ' + (NDOM - STK) + ' in packs: ' + Coll.WELCOME_DOMAINS + ' in each welcome pack, and one in an earned pack ' + Math.round(100 * Coll.DOMAIN_SLOT) + '% of the time.');
+console.log('  Domains owned (of ' + NDOM + ') after the welcome packs: ' + (STK + dom.wel / T).toFixed(0) + ', a week: ' + (dom.d7 / T).toFixed(1) + ', two weeks: ' + (dom.d14 / T).toFixed(1) + ', three weeks: ' + (dom.d21 / T).toFixed(1) + ', thirty days: ' + (dom.d30 / T).toFixed(1) + '; when the first series is complete: ' + (dom.s1 / T).toFixed(1) + '; when the cards are complete: ' + (dom.cards / T).toFixed(1) + '.');
+{ const a = dom.all.slice().sort((x, y) => x - y); console.log(a.length ? '  All ' + NDOM + ' Domains after ' + avg(a) + ' days on average (quickest ' + a[0] + ', middle ' + a[Math.floor(a.length / 2)] + ', slowest ' + a[a.length - 1] + '); ' + Math.round(100 * dom.late / T) + '% of players find their last Domain after their last card.' : '  Packs hold no Domains.'); }
 console.log('Along the way: ' + (sum.daily / T).toFixed(1) + ' daily packs, ' + (sum.feat / T).toFixed(1) + ' one-time packs.');
 const mid = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : '-'; }, pc = v => (100 * v).toFixed(1) + '%';
 console.log('\nRarity. The first card of each tier turns up on day (0 is the welcome packs): ' + [1, 2, 3, 4].map(t => Coll.TIERS[t] + ' ' + (tierN[t] ? (firstTier[t] / tierN[t]).toFixed(1) : '-')).join(', ') + '. A pack slot is ' + [2, 3, 4].map(t => Coll.TIER_W[t] + ' times as likely to be ' + (t === 2 ? 'an ' : 'a ') + Coll.TIERS[t]).join(', ') + ' as a Common.');

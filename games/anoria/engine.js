@@ -46,7 +46,10 @@ const FAC = { A: 'facA', D: 'facD', S: 'facS' };
 // saved before then finishes under; the page keeps each game's own target, see restore() in ui.js).
 // rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40", "First to 25").
 const OLD_TARGET = 30;
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
+// dm: the game is played with Domains (2026-11-11). It is what play() goes by when a test hands it no stacks (each
+// deck then brings its ready stack, or fifteen Domains at random: stacksFor); '{"dm":0}' plays the old fixed map.
+// newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2, dm: 1 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -592,9 +595,19 @@ function endRound(S) {
     // (Lincoln: once a game, at the start of round 5, one of his broken Seals is mended)
     if (S.round === MEND_AT) for (let o = 0; o < N; o++) { const p = S.P[o]; if (p.guide === 'lincoln' && p.seals < cfg.seals && p.seals > 0) { p.seals++; if (S.ev) S.ev.push({ t: 'mend', o: o, left: p.seals }); } } }
 }
-// stacks: each player's Domain stack. Without them the game is on the old fixed map.
+// The Domain stack a deck brings when a test names none: a ready deck's own stack (cards.js STACKS), and for any
+// other deck fifteen Domains dealt at random from all there are.
+const ALLDOM = Object.keys(PLACES).filter(id => PLACES[id].pw);
+function stacksFor(decks, R) {
+  return decks.map(d => { const set = {}; d.forEach(c => { set[c] = 1; }); const n = Object.keys(set).length;
+    for (const k in cards.ARCH) { const a = cards.ARCH[k]; if (a.stack && a.cards.length === n && a.cards.every(c => set[c])) return a.stack.slice(); }
+    return shuffle(ALLDOM.slice(), R).slice(0, cards.STACK || 15); });
+}
+// stacks: each player's Domain stack. With none, cfg.dm (the game's rules have it) deals them (stacksFor); with
+// neither, the game is on the old fixed map.
 function play(decks, guides, profs, cfg, seed, stacks) {
-  const R = rng(seed), S = newGame(decks, guides, cfg, R, stacks, { profs: profs }), N = S.N;
+  const R = rng(seed); if (!stacks && cfg.dm && cards.STACKS) stacks = stacksFor(decks, rng((seed ^ 0x5bd1e995) >>> 0));
+  const S = newGame(decks, guides, cfg, R, stacks, { profs: profs }), N = S.N;
   while (!S.over) {
     const first = firstOf(S);
     for (let k = 0; k < N && !S.over; k++) { S.turn = (first + k) % N; startTurn(S); aiTurn(S, profs[S.turn], R); endTurn(S); }
@@ -604,5 +617,5 @@ function play(decks, guides, profs, cfg, seed, stacks) {
 }
 return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES,
-  pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
+  pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
 });
