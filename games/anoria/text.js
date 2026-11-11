@@ -226,6 +226,6 @@
   // A new picture gets checked here: every card is drawn full size and looked at (the text panel must not cut its subject).
   const FY = { anansi: 20, hannibal: 34, haytham: 34, michelangelo: 55, murasaki: 55, hokusai: 62, fairwinds: 58, atalanta: 34, faraday: 34,
     cleopatra: 38, hammurabi: 12, blackbeard: 26, daedalus: 10, chingshih: 30, eclipse: 30, archimedes: 30, suntzu: 30, scheherazade: 24, beethoven: 15, aristotle: 15, ashoka: 5,
-    scipio: 0, caesar: 0, shaka: 14, theodora: 8, mencius: 10, lakshmibai: 10 };
+    scipio: 0, caesar: 0, shakespeare: 0, shaka: 14, theodora: 8, mencius: 10, lakshmibai: 10 };
   return { CARDS: T, GUIDES: GUIDES, PLACES: PLACES, LINKS: LINKS, SAY: SAY, FY: FY };
 });
