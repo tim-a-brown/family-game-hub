@@ -298,7 +298,9 @@ Underlying principles for everything:
   together among the wonders of the world, each player leads a company of them with one of the greats as a Guide, and
   a company wins Renown by holding the wonders (the Places); the first to 30 wins. `story()` in guide.js tells it in
   five full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of the quick
-  start and as chapter 1. The rules page opens with the same paragraph. Anything new that explains the game starts
+  start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your Guide
+  chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
+  against the computer, and each is a new way to play). The rules page opens with the same paragraph. Anything new that explains the game starts
   from the goal and why, then the how.
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
