@@ -1,0 +1,186 @@
+/* Anoria: how a Domain looks (domains.js): the frame of its kind, the kind's mark, its home plate, a player's
+   banner, the markers that lie on it, and the round track. Sizes hang off three variables: --db the frame's
+   thickness, --dm the size of a mark or a token, --th the track's thickness. */
+
+/* ══ The frame of a kind: one patterned band, the same on a full card and on a map tile ══════════════════ */
+.dm-fr{position:absolute;inset:0;z-index:3;pointer-events:none;box-sizing:border-box;border:var(--db,4px) solid transparent;
+  border-image-slice:12;border-image-repeat:round;clip-path:inset(0 round var(--dr,5px));}
+
+/* the kind's mark on its plate */
+.dm-k{display:block;flex:none;width:var(--dm,13px);height:var(--dm,13px);filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.dm-k svg,.dm-tok svg,.dm-ban svg{display:block;width:100%;height:100%;overflow:visible;}
+
+/* ══ Home. On a tile: a slip of the card's own paper cut to the shape of the house mark, with the region's
+   outline in it. At the foot of a full card (.row): the house mark, the outline and the region's name. ══ */
+.dm-home{display:block;flex:none;width:var(--dm,13px);height:calc(var(--dm,13px) * 1.167);filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.dm-hp{display:block;width:100%;height:100%;overflow:visible;}
+.dm-hp .hp{fill:var(--an-paper);stroke:#10131c;stroke-width:1.4;stroke-linejoin:round;transition:fill .2s;}
+.dm-home .sea{fill:#e6dabd;} .dm-home .land{fill:#5b4a2c;} .dm-home .rim{fill:none;stroke:#8a6a2a;stroke-width:1.5;}
+.dm-home.row{display:flex;align-items:center;gap:.4em;width:auto;height:auto;filter:none;}
+.dm-house{display:block;flex:none;width:1.3em;height:1.3em;stroke:#b8862d;}
+.dm-emb{display:block;flex:none;width:1.9em;height:1.9em;border-radius:50%;}
+.dm-home b{font:400 1em/1 var(--fellsc);letter-spacing:.1em;color:#5e4d34;white-space:nowrap;}
+/* lit: the Figure that has been picked up is at home here (+1 Might). The plate turns to the same gold as the
+   house a Figure standing at home wears on its piece, and beats. */
+.dm-home.lit{filter:drop-shadow(0 0 1.5px #fff6d6) drop-shadow(0 0 4px rgba(255,214,106,.95));animation:dm-lit 1s ease-in-out infinite;}
+.dm-home.lit .hp{fill:#f4c64e;} .dm-home.lit .sea{fill:#fff3c9;} .dm-home.lit .land{fill:#2a1c06;} .dm-home.lit .rim{stroke:#2a1c06;}
+.dm-home.row.lit{filter:none;animation:none;}
+@keyframes dm-lit{50%{transform:scale(1.16);}}
+.fp-home{background:linear-gradient(180deg,#fff1bf,#e9b949);box-shadow:0 0 0 1px #10131c,0 1px 2px rgba(0,0,0,.5);}
+.fp-home svg path{stroke:#2a1c06;stroke-width:1.7;}
+
+/* ══ A map tile ══════════════════════════════════════════════════════════════════════════════════════════ */
+.pl-tile.dm{overflow:visible;border-radius:5px;--db:4px;--dm:13px;--dr:5px;}
+.pl-tile.dm::after{display:none;}
+.pl-tile.dm .pl-art{inset:var(--db);border-radius:2px;}
+.pl-tile.dm .pl-plate{margin:0 var(--db) var(--db);padding-left:4px;padding-right:4px;border-radius:0 0 2px 2px;}
+.pl-tile.dm .pl-tots{left:var(--db);right:var(--db);top:var(--db);}
+/* the mark and the home plate are clasps on the frame: half on the tile, half off it, so they never lie on the
+   Might totals, the name or the rule, however tall the name plate is */
+.dm-clasp{position:absolute;top:50%;z-index:5;display:flex;flex-direction:column;align-items:center;pointer-events:none;}
+.dm-clasp.L{left:0;transform:translate(-52%,calc(var(--dm) * -.5));}
+.dm-clasp.R{right:0;transform:translate(52%,-50%);}
+/* a banner stands over its player's own corner of the tile and flies toward their side */
+.dm-ban{position:absolute;z-index:5;bottom:calc(100% - var(--db));right:-2px;width:var(--dm);height:calc(var(--dm) * 1.083);pointer-events:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.dm-ban.L{right:auto;left:-2px;transform:scaleX(-1);}
+.dm-ban .cloth{fill:var(--pc0,#f2b84b);stroke:#10131c;stroke-width:.9;stroke-linejoin:round;}
+.dm-ban.o1 .cloth{fill:var(--pc1,#8fd3f4);}
+/* tokens hang under the mark: a rule changed for a while, and the rounds that are left */
+.dm-tok{display:block;flex:none;width:var(--dm,13px);height:var(--dm,13px);margin-top:-1.5px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.dm-tok.cnt{border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 36% 30%,#fffaf0,#eadfc4 58%,#c4b38c);box-shadow:inset 0 0 0 1px #6b5b3c,inset 0 0 0 2px rgba(255,255,255,.5);}
+.dm-tok.cnt b{font:400 calc(var(--dm,13px) * .62)/1 var(--slab);color:var(--an-ink);}
+/* a rule that is silenced lies under a veil of ash: it can still be read, struck out */
+.pl-tile.sil .pl-rule,.ac.sil .ac-txt{position:relative;color:#4a4744;text-decoration:line-through;text-decoration-thickness:1px;text-decoration-color:#15120f;}
+.pl-tile.sil .pl-rule::after,.ac.sil .ac-txt::after{content:"";position:absolute;inset:-1.5px -5px -1px;border-radius:1.5px;pointer-events:none;
+  background:radial-gradient(circle at 22% 30%,rgba(255,255,255,.34) 0 .4px,transparent .8px) 0 0/9px 6px,radial-gradient(circle at 70% 68%,rgba(30,30,30,.22) 0 .4px,transparent .8px) 2px 1px/11px 7px,
+    linear-gradient(180deg,rgba(168,168,170,.46),rgba(122,122,126,.44));
+  box-shadow:0 1px 1.5px rgba(0,0,0,.5),inset 0 0 0 .5px rgba(60,60,62,.5);
+  clip-path:polygon(0 12%,2% 0,5% 14%,97% 0,100% 16%,98% 46%,100% 80%,97% 100%,4% 90%,1% 100%,0 60%);}
+.ac.sil .ac-txt::after{inset:-.2em -.5em;}
+/* a rule that is changed for now: a gilt dotted line under it, and the pen-nib token on the frame */
+.pl-tile.chg .pl-rule,.ac.chg .ac-txt{text-decoration:underline dotted #9a6a1c;text-decoration-thickness:1.5px;text-underline-offset:2px;}
+
+/* ══ A full card ═════════════════════════════════════════════════════════════════════════════════════════ */
+.ac.dm::after{display:none;}
+.ac.dm{padding:1em;}
+.ac.dm > .dm-fr{--db:1em;--dr:1.3em;z-index:7;}
+.ac.dm .ac-in > .dm-k{position:absolute;left:.7em;top:.7em;z-index:5;width:4.6em;height:4.6em;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.45));}
+.ac.dm.mini .ac-in > .dm-k{left:.6em;top:.6em;width:8.4em;height:8.4em;}
+.dm-foot{display:flex;align-items:center;gap:.8em;margin-top:.7em;min-height:1.9em;}
+.dm-foot > :first-child{flex:1;min-width:0;}
+.ac.t-place .dm-foot .ac-say{margin-top:0;}
+.dm-foot .dm-home.ac-home{position:static;}
+.ac-brief > .dm-home.row{position:absolute;right:1.2em;top:50%;transform:translateY(-36%);font-size:1.12em;}
+.ac-brief > .dm-home.row b{display:none;}
+.dm-foot .dm-home b{font-size:1em;}
+.ac.dm > .dm-ban{--dm:3.6em;--db:.5em;right:.6em;}
+.ac.dm > .dm-ban.L{right:auto;left:.6em;}
+.ac.dm > .dm-clasp{--dm:3.4em;top:38%;}
+.ac.back.dm-back .ac-in{background:#1a0c0c url(ui/card-back-place.webp) center/cover;aspect-ratio:3/2.36;}
+
+/* ══ The round track ═════════════════════════════════════════════════════════════════════════════════════ */
+.dm-track{--th:11px;position:relative;z-index:0;box-sizing:border-box;pointer-events:none;min-width:0;min-height:0;border-radius:3px;
+  background:var(--an-tooth),linear-gradient(180deg,#252d56,#131936);box-shadow:0 0 0 1px rgba(0,0,0,.75),inset 0 0 0 1px rgba(233,207,134,.55),0 2px 4px rgba(0,0,0,.5);}
+.tr-stops{position:absolute;inset:0;display:grid;grid-template-columns:repeat(var(--n,14),minmax(0,1fr));}
+.tr-s{position:relative;display:grid;place-items:center;min-width:0;min-height:0;color:#d8c794;}
+.tr-s b{font:700 calc(var(--th) * .76)/1 "Anoria Figures",var(--crim);letter-spacing:-.02em;}
+.tr-s + .tr-s::before{content:"";position:absolute;left:-.5px;top:26%;bottom:26%;width:1px;background:rgba(233,207,134,.4);}
+.tr-s.past{color:#857c5e;}
+.tr-s.past::after{content:"";position:absolute;inset:1px 0;background:rgba(233,207,134,.13);}
+.tr-s.now b{visibility:hidden;}
+/* something is due at this round: a gem in that player's colour */
+.tr-due{position:absolute;left:calc(var(--th) * .26);top:50%;width:calc(var(--th) * .36);height:calc(var(--th) * .36);transform:translateY(-50%) rotate(45deg);background:var(--pc0,#f2b84b);box-shadow:0 0 0 1px #10131c,0 0 0 1.8px rgba(233,207,134,.85);z-index:2;}
+.tr-due.o1{background:var(--pc1,#8fd3f4);}
+.tr-due + .tr-due{left:auto;right:calc(var(--th) * .26);}
+.tr-s.past .tr-due{opacity:.5;}
+/* the slide: struck brass while a round is counted, the colour of the player whose turn it is otherwise */
+.tr-cur{position:absolute;z-index:1;top:-1px;bottom:-1px;left:0;width:calc(100% / var(--n,14));transform:translateX(calc(var(--at,0) * 100%));display:grid;place-items:center;border-radius:3px;
+  background:var(--an-brush),linear-gradient(180deg,#f6e3a1,#c9992f);box-shadow:0 0 0 1px #10131c,inset 0 1px 0 rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.6),0 0 8px rgba(233,207,134,.5);transition:transform .6s cubic-bezier(.3,1.3,.5,1),background .3s;}
+.tr-cur.o0{background:linear-gradient(180deg,color-mix(in srgb,var(--pc0,#f2b84b) 80%,#fff),var(--pc0,#f2b84b));}
+.tr-cur.o1{background:linear-gradient(180deg,color-mix(in srgb,var(--pc1,#8fd3f4) 80%,#fff),var(--pc1,#8fd3f4));}
+.tr-cur b{font:400 calc(var(--th) * .84)/1 var(--slab);color:var(--an-ink);}
+/* upright on its side (the map's right-hand edge) */
+.dm-track.v .tr-stops{grid-template-columns:none;grid-template-rows:repeat(var(--n,14),minmax(0,1fr));}
+.dm-track.v .tr-s + .tr-s::before{left:26%;right:26%;top:-.5px;bottom:auto;width:auto;height:1px;}
+.dm-track.v .tr-s.past::after{inset:0 1px;}
+.dm-track.v .tr-due{left:50%;top:calc(var(--th) * .22);transform:translateX(-50%) rotate(45deg);}
+.dm-track.v .tr-due + .tr-due{left:50%;right:auto;top:auto;bottom:calc(var(--th) * .22);}
+.dm-track.v .tr-s:has(.tr-due) b{transform:translateY(22%);}
+.dm-track.v .tr-cur{top:0;bottom:auto;left:-1px;right:-1px;width:auto;height:calc(100% / var(--n,14));transform:translateY(calc(var(--at,0) * 100%));}
+
+/* On the table the track lies along the edge of the map that faces the caption: under the map when the table is
+   upright, down its right-hand side when the table is sideways. It lies in the gap there and over the mats' bound
+   edge, so the map and the hand keep every pixel they had. */
+.an-felt > .dm-track{grid-area:map;align-self:end;height:var(--th);margin:0 -3px calc(.5px - var(--th));}
+.an-felt.has-trk > .an-cap{padding-top:4px;padding-bottom:0;}
+@media (min-width:700px) and (min-height:600px){
+  .dm-track{--th:14px;}
+  .an-felt > .dm-track{margin:0 -4px calc(.5px - var(--th));}
+  .an-felt.has-trk > .an-cap{padding-top:6px;}
+  .pl-tile.dm{--db:6px;--dm:23px;--dr:7px;}
+  .pl-tile.dm .pl-plate{padding-left:6px;padding-right:6px;}
+}
+@media (orientation:landscape){
+  .an-felt > .dm-track{align-self:stretch;justify-self:end;height:auto;width:var(--th);margin:-3px calc(.5px - var(--th)) -3px 0;}
+  .an-felt > .dm-track .tr-stops{grid-template-columns:none;grid-template-rows:repeat(var(--n,14),minmax(0,1fr));}
+  .an-felt > .dm-track .tr-s + .tr-s::before{left:26%;right:26%;top:-.5px;bottom:auto;width:auto;height:1px;}
+  .an-felt > .dm-track .tr-s.past::after{inset:0 1px;}
+  .an-felt > .dm-track .tr-due{left:50%;top:calc(var(--th) * .22);transform:translateX(-50%) rotate(45deg);}
+  .an-felt > .dm-track .tr-due + .tr-due{left:50%;right:auto;top:auto;bottom:calc(var(--th) * .22);}
+  .an-felt > .dm-track .tr-s:has(.tr-due) b{transform:translateY(22%);}
+  .an-felt > .dm-track .tr-cur{top:0;bottom:auto;left:-1px;right:-1px;width:auto;height:calc(100% / var(--n,14));transform:translateY(calc(var(--at,0) * 100%));}
+  /* the room for it comes out of the right-hand column, where the hand's cards are sized by the height */
+  .an-felt.has-trk{column-gap:12px;grid-template-columns:minmax(0,1fr) clamp(246px,calc(36vw - 4px),466px);}
+  .an-felt.has-trk > .an-cap{padding-top:2px;padding-bottom:2px;}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .an-felt.has-trk{column-gap:12px;grid-template-columns:minmax(0,1fr) clamp(292px,calc(50vw - 8px),432px);}
+}
+/* an iPad on its side: the map and the hand are both as wide as they can be, so the room comes out of the felt's margin */
+@media (orientation:landscape) and (min-width:700px) and (min-height:600px){
+  .an-felt > .dm-track{margin:-4px calc(.5px - var(--th)) -4px 0;}
+  .an-felt.has-trk{column-gap:15px;padding-left:6px;padding-right:7px;grid-template-columns:minmax(0,1fr) clamp(250px,36vw,470px);}
+}
+/* a very small phone: the tile is too short for clasps (the Might totals and the name already fill it) */
+@media (max-width:340px),(orientation:portrait) and (max-height:620px){
+  .pl-tile.dm{--db:3px;--dm:10px;}
+  .pl-tile.dm > .dm-clasp{display:none;}
+  .pl-tile.dm.lit > .dm-clasp.R{display:flex;top:62%;}   /* (but a home plate that is lit is always shown) */
+}
+@media (prefers-reduced-motion:reduce){ .dm-home.lit{animation:none;} .tr-cur{transition:none;} }
+
+/* ══ The proof (anoria.html?art=1) ═══════════════════════════════════════════════════════════════════════ */
+#app.an-proof{max-width:1180px;}   /* (the proof is a sheet to look over: as wide as a desk allows) */
+.dp{--pc0:#f2b84b;--pc1:#8fd3f4;margin-top:26px;}
+.dp-note{margin:0 0 12px;max-width:760px;font:500 1rem/1.3 var(--crim);color:#c9c0a8;}
+.dp-row .ap-line{align-items:flex-start;gap:26px 44px;padding:34px 0 0 22px;}   /* (room for the banners over a card and the tokens on its edge) */
+.dp .ap-c small{max-width:300px;text-align:center;}
+.dp-mark{--dm:64px;display:block;} .dp-piece{--dm:56px;--db:0px;position:relative;display:grid;place-items:center;width:64px;height:64px;}
+.dp-veil{display:grid;place-items:center;width:auto;height:64px;padding:0 16px;background:var(--an-paper);border-radius:4px;overflow:visible;cursor:default;font-size:1.5rem;--pr:1.5rem;}
+.dp-veil::after{display:none;}
+.dp-piece .dm-ban{position:static;transform:none;} .dp-piece .dm-ban.L{transform:scaleX(-1);}
+.dp-home{--dm:44px;display:flex;align-items:center;gap:12px;font-size:15px;}
+.dp-tiles{display:flex;flex-wrap:wrap;gap:22px 30px;padding:12px 10px 4px;--mw:108px;--fw:38px;}
+.dp-tiles.big{zoom:2;gap:16px 22px;}
+.dp-t{display:flex;flex-direction:column;align-items:center;gap:9px;}
+.dp-t .pl-tile{width:108px;height:61px;align-self:auto;margin:0;}
+/* (the proof's tiles and tables are the size they are on a phone, whatever the size of the window they are looked at in) */
+.dp .dp-t .pl-tile.dm,.dp .dp-table .pl-tile.dm{--db:4px;--dm:13px;--dr:5px;}
+.dp .dp-t .pl-tile.dm .pl-plate,.dp .dp-table .pl-tile.dm .pl-plate{padding:4px 4px 2px;}
+.dp .dp-t .pl,.dp .dp-table .pl,.dp .dp-t{--pn:.74rem;--pr:.66rem;--pt:.82rem;--fl:22px;}
+.dp .dp-table .dm-track,.dp .dp-trk .dm-track{--th:11px;}
+.dp .dp-table .an-pm{--mb:3px;--mr:8px;}
+.dp-t small{font:600 .82rem var(--crim);color:#a99f86;}
+.dp-tiles.big small{font-size:.5rem;}
+.dp-table{position:relative;display:grid;grid-template:minmax(0,1fr) / minmax(0,1fr);box-sizing:border-box;width:376px;height:356px;padding:0 0 14px;--pc0:#f2b84b;--pc1:#8fd3f4;}
+.dp-table > *{grid-area:1 / 1 !important;}
+.dp-table .an-mats{margin:0;} .dp-table .an-map{margin:3px;--fw:38px;--mw:108px;--rg:5px;--sg:3px;--gp:5px;}
+.dp-table > .dm-track{align-self:end;height:var(--th);margin:0 0 calc(.5px - var(--th));}
+.dp-trk{width:376px;max-width:86vw;padding:6px 0;--pc0:#f2b84b;--pc1:#8fd3f4;} .dp-trk .dm-track{height:var(--th);}
+.dp-trk.v{width:auto;height:330px;padding:0 20px;} .dp-trk.v .dm-track{height:100%;width:var(--th);}
+.dp-sheet{display:flex;flex-direction:column;gap:14px;align-items:flex-start;}
+.dp-cards{display:flex;flex-wrap:wrap;gap:12px;} .dp-sm{font-size:calc(150px / 30);} .dp-marks{display:flex;flex-wrap:wrap;gap:14px;--dm:44px;}
+/* (a phone looking at the proof: the tables, which are a phone's map, are eased down to fit inside the page's margins) */
+@media (max-width:440px){ .dp-table,.dp-trk{zoom:.9;} .dp-trk{max-width:none;} }
+@media (max-width:360px){ .dp-table,.dp-trk{zoom:.68;} }
+.dp-grey{filter:grayscale(1);} .dp-deut{filter:url(#dp-deut);} .dp-prot{filter:url(#dp-prot);}

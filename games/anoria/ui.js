@@ -278,6 +278,8 @@
     n.appendChild(inn);
     // (its edition: the finish it is shown in, its rarity mark and the edition button, editions.js. A lesson's cards are Matte.)
     if (window.AnoriaEd) window.AnoriaEd.dress(n, key, { mini: o.mini, tg: o.tg, ed: o.ed, plain: !!(G && G.demo) });
+    // (a Place takes the frame of its kind, the kind's mark and name, and its home region at the foot: domains.js)
+    if (place && window.AnoriaDomains) window.AnoriaDomains.dress(n, key, { mini: o.mini });
     return n;
   }
 
@@ -784,7 +786,9 @@
     dom.fx = el('div', { class: 'an-fx' });
     if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
     paintMats();
-    const felt = el('div', { class: 'an-felt felt-in' }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    // (the round track lies along the edge of the map that faces the caption: domains.js)
+    dom.track = window.AnoriaDomains ? window.AnoriaDomains.track(null, { max: S.cfg.rounds }) : null;
+    const felt = el('div', { class: 'an-felt felt-in' + (dom.track ? ' has-trk' : '') }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.track, dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     app.appendChild(dom.root);
@@ -852,6 +856,12 @@
     if (window.AnoriaEd && !G.demo) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition)
     return n;
   }
+  // a Figure that is picked up (from the hand to play, on the map to walk) is at home at Places of this region
+  function homeLit(reg) {
+    const s = ui.sel; if (!s || !idle()) return false;
+    const f = s.kind === 'hand' ? null : E.byU(S, s.u), c = CARDS[s.kind === 'hand' ? s.key : f && f.c];
+    return !!c && c.t === 'fig' && (c.reg === reg || !!(c.k && c.k.voyager));
+  }
   function rowEl(i, T) {
     const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
     const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
@@ -878,6 +888,8 @@
         tile.appendChild(el('span', { class: 'pl-plate' }, [
           el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span>' : '') + esc(pi.n) }),
           RULE[pk] ? el('span', { class: 'pl-rule', text: RULE[pk] }) : null]));
+        // (the frame of the Place's kind and its home plate, lit while a Figure that is at home here is picked up: domains.js)
+        if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, { key: pk, reg: pi.reg, lit: homeLit(pi.reg) });
         row.appendChild(tile);
       }
     });
@@ -938,6 +950,8 @@
       dom.map.appendChild(el('div', { class: 'an-road' }));
       rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T)));
       capEl(); handEl();
+      // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
+      if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
     layout(); lines();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
@@ -1835,7 +1849,10 @@
       n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
       return cell(MATS[id].n, n); }))]));
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ' in every edition' : '') + ', and the play mats.' })].concat(rows)));
+    // (the Domains: the seven frames, the pieces that lie on a Domain and the round track, on every mat: domains.js.
+    // ?art=1&only=domains shows that part alone.)
+    const dp = window.AnoriaDomains && (!only || only.split(',').indexOf('domains') >= 0) ? window.AnoriaDomains.proof({ cardEl: cardEl, artImg: artImg, matFill: matFill, mats: MATS, rule: RULE }) : null;
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ' in every edition' : '') + ', and the play mats.' })].concat(rows, dp ? [dp] : [])));
   }
 
   const saved = readSave();

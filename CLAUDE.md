@@ -557,6 +557,41 @@ Underlying principles for everything:
   and check on sets nobody has looked at (the first choice made for 25 Renown overshot when it met new games).
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
+- **Domains: how they look** (Tim, 2026-11-11: "domains need to be clear in their design/border what type of domain
+  they are and geographically what "home" they represent for figures with home powers", and the game must track
+  "who played what domain", "markers for nullified/modified effects" and a "turn count tracker", each with "a
+  real-life translation"). The card at each of the map's five positions is going to be called a Domain (the game's
+  words still say Place until the rules work lands; the prototype is `scripts/anoria/places/`). The look is
+  `games/anoria/domains.js` + `domains.css` (`AnoriaDomains`), and everything in it is drawn as a piece that could
+  lie on a real table:
+  - **Seven kinds, read from the border alone.** Each kind's frame is its material, and no two share a pattern, so
+    they hold apart without colour: Commerce a twisted cord with brass seals, Industry riveted iron, Thought a ruled
+    and pricked vellum margin, Land a battlement, Culture a dog-tooth frieze on terracotta, Law a fluted marble
+    moulding, Routes a chart's neatline. Each has a mark on a plate of its own shape (coin, anvil on a bolt head,
+    open book, tower, lyre on a stele, scales on a shield, compass needle). A frame is one SVG cut in nine for
+    `border-image` (`FR`): a new kind is an entry in `KINDS`, `FR` and `MARK`. The twelve Places of today have their
+    kinds in `OF`. On a full card the ribbon takes the kind's colour and name and the mark stands where other cards
+    have their cost.
+  - **Home** is the house mark everywhere: at the foot of a Domain's full card as on a Figure's (house, the region's
+    outline drawn from land.js, its name); on a map tile a paper plate cut to the house's shape with the outline in
+    it; gold on the piece of a Figure standing at home; and the tile's plate turns the same gold while a Figure that
+    is at home there is picked up from the hand or the map (`homeLit` in ui.js; a Voyager lights them all).
+  - **A tile has no free room on a phone**, so the mark and the home plate are clasps on its left and right edges,
+    half on and half off, at the height between the Might totals and the pieces' own Might badges; tokens hang under
+    the mark; a banner stands over its player's corner, above the top edge. Nothing new may lie on a total, the name
+    or the rule: check a new piece against a two-line name with a rule under it.
+  - **Banners, markers, counters** are built and shown on the art proof, and are not on the live table until a rule
+    uses them: a player's banner (a pennant on a brass pin in their colour, the second player's swallow-tailed, on
+    their own side of the tile), a veil of ash over a silenced rule (the rule struck out, still readable), a pen-nib
+    token and a dotted line for a rule changed for a while, bone counters 1 to 5.
+  - **The round track** is on the live table: an enamel rule with the rounds engraved along it, a slide at this
+    round in the colour of whoever's turn it is (brass during the count), a gem at a round where something is due
+    (Lincoln's Seal at round 5). It lies along the edge of the map that faces the caption (under the map upright,
+    down its right side sideways), in the gap and over the mats' bound edge, so the map and the hand keep their
+    size: a change to the table's layout is checked against the map's and hand's boxes and `--fw`, `--mw`, `--hw`.
+  - The proof (`?art=1`, or `?art=1&only=domains` for this part alone) shows the seven frames as cards and as tiles
+    at a phone's size, the pieces, the track, a map with everything on it over every play mat, and the same sheet
+    without colour and as red-green colour blindness sees it.
 
 ## Rules for every change
 
