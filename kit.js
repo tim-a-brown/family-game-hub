@@ -2147,8 +2147,9 @@
     var NP = 0; try { NP = Math.min(3, parseInt(new URLSearchParams(location.search).get('np'), 10) || 0); } catch (e) {}
     if (NP && P && (!EDIT_DEFAULTS || IN_SHEET)) {
       var cpuOf = function (m) { return typeof P.cpu === 'function' ? P.cpu(m) : P.cpu; };
-      var fits = function (m, h) {   // can this mode seat h people at this device? (computer seats mean one person)
-        if (cpuOf(m)) return h === 1;
+      var fits = function (m, h) {   // can this mode seat h people at this device? (computer seats mean one person;
+        var c = cpuOf(m);            // a table that mixes people and robots seats one person, or as many as it holds)
+        if (c && (c !== 'mix' || h === 1)) return h === 1;
         var r = (typeof P.range === 'function' && P.range(m)) || [P.min || 1, P.max || P.min || 1];
         return h >= 3 ? r[1] >= 3 : h >= r[0] && h <= r[1];
       };
@@ -2156,10 +2157,17 @@
         var fit = o.modes.filter(function (m) { return !/online|real/i.test(m.id) && fits(m.id, NP); })[0];
         if (fit) state.mode = fit.id;
       }
-      if (!cpuOf(state.mode)) saved = Object.assign({}, saved, { count: NP >= 3 ? Math.max(3, saved.count || 0) : NP });
+      var npCpu = cpuOf(state.mode);
+      if (!npCpu || (npCpu === 'mix' && NP > 1 && fits(state.mode, NP))) saved = Object.assign({}, saved, { count: NP >= 3 ? Math.max(3, saved.count || 0) : NP });
     }
-    // (merged screens: one person from the home screen's filter plays the robots; two or more seats people)
-    if (NP && merged) { robots = {}; if (NP === 1 && !MK.solo && MK.cpu) for (var nj = 1; nj < 12; nj++) robots[nj] = true; }
+    // (merged screens: one person from the home screen's filter plays the robots; two or more seats people. Two
+    // people at a table that needs more seats than that, where people and robots mix: its smallest table, with
+    // robots in the other seats)
+    if (NP && merged) {
+      robots = {};
+      if (NP === 1 && !MK.solo && MK.cpu) for (var nj = 1; nj < 12; nj++) robots[nj] = true;
+      else if (NP === 2 && localMix && range()[0] > 2) { saved = Object.assign({}, saved, { count: range()[0] }); for (var nk = 2; nk < range()[0]; nk++) robots[nk] = true; }
+    }
 
     var wrap = el('div', { class: 'setup' });
     // the game's icon and its name side by side, centred (the Defaults editor keeps its stacked header)
