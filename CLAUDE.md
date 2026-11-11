@@ -96,13 +96,14 @@ Underlying principles for everything:
   taken back. The game menu always has Frequent players.
 - **Same setup, same results card, every game.** Ways to play are declared with `Kit.modes([...])` (`solo`,
   `cpu`, `local`, `online`; a game keeps its own mode ids with `kind`), but **no mode cards are shown** for these:
-  the setup shows who's playing on one line (the people who played last; seat 1 starts as the signed-in player), and a
+  the setup shows who's playing on a card (the people who played last; seat 1 starts as the signed-in player), and a
   tap opens the **players sheet** (`Kit.playersSheet`): the seats as tokens up top with one chosen, and under them what
   can sit there, the Computer switch with its skill and everyone you play with as chips (a tap seats them and moves
   to the next open seat; at a full table it adds a seat). A game never draws its own seat list; one that shows something per seat reads
-  `setup.seats()` (Axis & Allies' countries). On the home screen's game sheet the who's-playing line is not drawn among the
-  game's options: it is a **Players card** of the sheet's own above them (`.gs-who` in index.html: the people already
-  chosen as chips, a tap opens the players sheet on top; the framed setup says who is seated with `kitSheet: 'who'`). One seat is Just me, robots in
+  `setup.seats()` (Axis & Allies' countries). Who's playing is shown as a **Players card** above the game's options
+  (`.k-who`: the people already chosen as chips, robots with their skill, and a tap opens the players sheet). On the
+  home screen's game sheet the sheet draws that card itself (`.gs-who` in index.html; the framed setup says who is
+  seated with `kitSheet: 'who'` and draws none). A game's extras (Lorcana's online games) go under the options. One seat is Just me, robots in
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
   `onStart` still gets the matching mode id. Play online is a smaller button beside the start button (`Kit.setup`
   does all this itself; a game's own extra way to play, like Bingo's Call only, uses `alt`). Only games with

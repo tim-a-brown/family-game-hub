@@ -2335,20 +2335,21 @@
       }
       // Crowded tables: keep robot names short so they fit
       if (state.count >= 4) bots.forEach(function (b, k) { if (b.length > 8) bots[k] = cpuNames(1, bots, 8)[0] || b; });
-      var lvs = lvTiles() ? lvChoices() || [] : null, pills = [], told = [];
+      var lvs = lvTiles() ? lvChoices() || [] : null, told = [];
       seatList().forEach(function (st, i) {
         var c = playerColor(i), nm = st.name || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)), tag = null;
         if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
         told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
-        pills.push(el('span', { class: 'k-wp' + (st.cpu ? ' cpu' : '') + (st.name ? '' : ' anon') }, [
-          st.cpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : st.name ? avMarked(st.name, c) : seatBadge('', i, c),
-          el('span', { class: 'k-wp-n' }, [el('b', { text: nm }), tag])]));
       });
       var one = r[1] <= 1 && !cpu;
       if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one); return; }
-      seatsBox.appendChild(label);
-      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who' + (state.count > 4 ? ' many' : ''), 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + seatList().map(function (st, i) { return st.name || 'Player ' + (i + 1); }).join(', '), onclick: openPlayers },
-        [el('span', { class: 'k-who-l' }, pills), el('span', { class: 'k-who-go', html: icon('users') })]));
+      // the Players card: who is already seated as chips (robots with their skill), and a tap opens the players sheet
+      var chips = el('span', { class: 'k-chips' });
+      told.forEach(function (t) {
+        chips.appendChild(t.cpu ? el('span', { class: 'k-chip bot', html: icon('bot') + '<span>' + esc(t.name) + '</span>' + (t.tag ? '<i>' + esc(t.tag) + '</i>' : '') }) : el('span', { class: 'k-chip' + (t.anon ? '' : ' who'), text: t.name }));
+      });
+      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + told.map(function (t) { return t.name; }).join(', '), onclick: openPlayers },
+        [el('span', { class: 'k-who-e', html: icon('users') }), el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]));
     }
     // a short line for the Game defaults list: the mode, the player count and each option shown
     function summary() {
