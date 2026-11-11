@@ -310,6 +310,15 @@ Underlying principles for everything:
   that can't be read, a weapon gripped wrongly, broken objects nobody asked for, two statues of a pair facing
   different ways, a web or building that couldn't stand, and two people of one region with the same face and kit
   (give each their own age, build, dress and scene; Sun Tzu is a Bronze Age scholar in robes, not an armoured general).
+- **No rows of copies** (Tim, 2026-11-11: the people following Gandhi "look too uniform and procedurally generated"). A
+  crowd, column or line of near-identical people behind the subject is a fault, however far away. Draw a few particular
+  people instead, each with their own age, build, dress and pose (five marchers and three villagers, four Spartans
+  getting ready, three soldiers in the mist), and leave the rest out. A brief says so in words ("only three", "each
+  different", "no rows or columns of repeated figures"). A formation that is itself the history (Scipio's lanes at
+  Zama, Shaka's horns, the Phalanx) may stay, small and far off.
+- **A full card has a plate in each top corner** (the cost at the left, the kind at the right), so a brief asks for the
+  head right of centre, about a fifth of the way down, with plain sky or background in both top corners. People and
+  animals in one picture are in true proportion (a rider on a small Mongolian horse is still much smaller than the horse).
 - **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
