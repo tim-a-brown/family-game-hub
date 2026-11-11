@@ -172,7 +172,9 @@ const P3 = {
   // (Pachacuti has the first of the Domain powers since 2026-11-11, in place of "At home he has +3 Might": he looks at his
   // top three Domains and may lay one at his Gate or Outpost. With the home power he read 3.5 points over Statecraft's
   // line once players brought their own Domains; with this one he is on it: scripts/anoria/domains.txt)
-  pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 3, 1450, {}, { arr: ['scout', 3] }),
+  // k0: the skills he had before, which he keeps in a game without Domains (a game saved before them), so that game
+  // plays to its end as it began (engine.js might(), text.js tx0).
+  pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 3, 1450, {}, { arr: ['scout', 3], k0: { homeDouble: 1 } }),
   suleiman: F('Suleiman the Magnificent', 'S', 4, 4, 'MIDEAST', 4, 1530, { law: 1 }),
   akbar: F('Akbar', 'S', 4, 4, 'ASIA', 4, 1582, { orator: 1 }),
   voltaire: F('Voltaire', 'S', 3, 3, 'EUR', 5, 1759, {}, { arr: ['wits', 1] }),

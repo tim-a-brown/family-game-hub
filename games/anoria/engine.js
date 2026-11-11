@@ -255,7 +255,7 @@ function setupPick(S, o, prof, R) {
 }
 function setupAuto(S, R, profs) { for (let o = 0; o < S.N; o++) if (!S.su.lay[o]) setupLay(S, o, setupPick(S, o, profs && profs[o], R)); return setupRoll(S, R); }
 function might(S, f, mode, oth) {
-  const c = CARDS[f.c], k = c.k, pl = PLACES[S.places[f.p]]; let m = c.m + f.tb;
+  const c = CARDS[f.c], k = !S.dm && c.k0 ? c.k0 : c.k, pl = PLACES[S.places[f.p]]; let m = c.m + f.tb;   // (k0: a card whose skills changed with Domains keeps its old ones on the old map)
   if (c.reg === pl.reg || (k.voyager && S.cfg.voyHome)) m += S.cfg.home + (k.homeDouble && c.reg === pl.reg ? 2 : 0);   // (Voyagers are at home everywhere)
   let own = 0, opp = 0, insp = 0, isIns = false;
   for (const g of S.figs) {
