@@ -592,14 +592,18 @@ Underlying principles for everything:
   difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
   and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
   says why under the card when you read it (`notesFor`).
-- **Pictures still to be made**: the 150 are being painted in batches (the Relics and Deeds first). `PAINTED` in
-  text.js lists the third-printing cards whose pictures are in `art/` and `art/t/`, and every other one is in `NOPIC`: the page never asks the network
+- **Pictures of the third printing**: all 150 are painted (2026-11-11; each batch's notes, candidates and sources are in
+  the session scratchpad's `art3/`, not the repo). `PAINTED` in text.js lists the third-printing cards whose pictures
+  are in `art/` and `art/t/`, and a card added later without one is in `NOPIC`: the page never asks the network
   for such a picture (`noPic` in ui.js), and shows the card's initial as a monogram in a ring on its faction's colour
   (`.ac-noart.mono`, `mono()` for medallions, thumbnails and Relic slots), with no button to turn the card over to a
   picture. **The art pass adds a card's key to `PAINTED` as its two pictures go in**, sets `FY` if the default
   hides the subject, and puts the brief as finally used back into `art` in text.js and set-150.json (check-set.js holds
-  the two to each other). The briefs (`art`) already follow the notes above: head right of centre a fifth of the way down,
-  both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
+  the two to each other). **Wording that went wrong in briefs** (found by the batches): "a plate sits in each top
+  corner" made the picture tool hang dinner plates in the corners (say "the card's own labels cover those two corners;
+  nothing round hangs or stands there"); "a fifth of the way down" put heads under the kind plate (say three fifths of
+  the way across and a quarter of the way down); and a full card shows only about 11% to 60% of a picture's height, so a
+  brief says what must be in the upper half. The briefs (`art`) follow the notes above: both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
   memory are asked for as a respectful, recognisable portrait at a documented moment.
 - **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards"): `PACK_ORDER`
   `'series'` gives the first series (the 91 cards the ready decks are made of) until a player has two of each, and

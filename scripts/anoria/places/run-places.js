@@ -164,6 +164,14 @@ EX.moves = async () => {
   for (const r of rs) { const [k, dc] = r.label.split('|'), dr = k in MOVE ? r.drawn[k] || [0, 0] : null, pl = dr ? r.played[k] || [0, 0] : null;
     console.log(pad(dr ? MOVE[k].n + (r.label.split('|')[2] ? ' (die)' : '') + ', ' + (MOVE[k].c + (+dc)) : r.label, 30) + lpad(dr ? pc(pl[0], dr[0]) + '%' : '-', 12) + lpad(dr ? pc(dr[1], dr[0]) + '%' : '-', 18) + lpad((r.moved / r.g).toFixed(2), 13) + lpad(f1(r.rounds / r.g), 9) + lpad((r.flips / r.g).toFixed(2), 12) + lpad(f1(r.margin / r.g), 9) + lpad(pc(r.seals, r.g) + '%', 12) + '       ' + Object.keys(r.use).map(u => u + ' ' + (r.use[u] / r.g).toFixed(2)).join(', ')); }
 };
+EX.vienna = async () => {   // Congress of Vienna by two dice: what a 6 should do, and what a double should do
+  const V = [['one die names a pair (as tried before)', 1], ['a 6: nothing', 'none'], ['a 6: you take the Crossroads', 'cross'], ['a 6: you choose that Domain', 'wild'], ['a 6: take the Crossroads; a double: replaced', 'cross dbl'], ['a 6: you choose; a double: replaced', 'wild dbl']];
+  const jobs = [J('Treaty of Breda|0', REC, { pc: 2, cards: ['breda'], cardstat: 1 })]; for (const v of V) for (const c of [2, 1]) jobs.push(J(v[0] + '|' + c, Object.assign({ vdie: v[1] }, REC), { pc: 2, cards: ['vienna'], cardstat: 1, costs: { vienna: c } }));
+  const rs = await runAll(jobs);
+  console.log('CONGRESS OF VIENNA BY TWO DICE (two copies in each ready deck, ' + rs[0].g + ' games a row)\n' + pad('what the dice do, cost', 52) + 'played when drawn  wins when drawn  times a game  lead changes   what it did, a game');
+  for (const r of rs) { const [k, c] = r.label.split('|'), key = k === 'Treaty of Breda' ? 'breda' : 'vienna', dr = r.drawn[key] || [0, 0], pl = r.played[key] || [0, 0];
+    console.log(pad(k + (key === 'vienna' ? ', ' + c : ', 2'), 52) + lpad(pc(pl[0], dr[0]) + '%', 12) + lpad(pc(dr[1], dr[0]) + '%', 18) + lpad((Object.keys(r.use).filter(u => /vienna|exchange/.test(u)).reduce((n, u) => n + r.use[u], 0) / r.g).toFixed(2), 13) + lpad((r.flips / r.g).toFixed(2), 13) + '      ' + Object.keys(r.use).filter(u => /vienna|exchange/.test(u)).map(u => u.replace('vienna: ', '') + ' ' + (r.use[u] / r.g).toFixed(2)).join(', ')); }
+};
 EX.cards = async () => {
   const cost = d => { const o = {}; for (const k of NEWK) o[k] = Math.max(0, NEW[k].c + d); return o; };
   const rs = await runAll([J('printed cost', REC, { rand: 1 }), J('1 less', REC, { rand: 1, costs: cost(-1), seed: 202 }), J('1 more', REC, { rand: 1, costs: cost(1), seed: 303 })]);

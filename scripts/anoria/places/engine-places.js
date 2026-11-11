@@ -371,7 +371,18 @@ function apply(S, a, da, dd, raw) {
     else if (ci === 'breda') { const perm = S.places.map((_, i) => i); perm[a.p] = a.q; perm[a.q] = a.p; const hub = 2 * S.N, side = i => i === hub ? 'the Crossroads' : (i >> 1) === o ? 'mine' : 'theirs'; used(S, 'exchange: ' + [side(a.p), side(a.q)].sort().join(' and ')); permute(S, perm); }
     else if (ci === 'columbian') { permute(S, [2, 3, 0, 1, 4]); used(S, 'the line reversed'); }
     else if (ci === 'vienna') { const seed = S.uid * 53 + S.round * 7 + (S.rs || 0) * 977 + 1;
-      if (S.cfg.vdie) { const g = 2 * o, t = 2 * (1 - o), d = dshuf([0, 1, 2, 3, 4, 5], seed)[0], pr = [[0, 2], [1, 3], [g, g + 1], [t, t + 1], [g + 1, 4], [t + 1, 4]][d], perm = [0, 1, 2, 3, 4]; perm[pr[0]] = pr[1]; perm[pr[1]] = pr[0]; permute(S, perm); used(S, 'a die chose the two Domains'); }   // (cfg.vdie: a die picks which two Domains change places)
+      if (typeof S.cfg.vdie === 'string') {   // (two dice, one for each Domain: 1 my Gate, 2 my Outpost, 3 the Crossroads, 4 their Outpost, 5 their Gate; what a 6 does is the variant)
+        const g = 2 * o, t = 2 * (1 - o), line = [g, g + 1, 4, t + 1, t], m = S.cfg.vdie, d1 = dshuf([0, 1, 2, 3, 4, 5], seed)[0], d2 = dshuf([0, 1, 2, 3, 4, 5], seed * 31 + 7)[0], six = (d1 === 5) + (d2 === 5);
+        const sw = (x, y) => { const perm = [0, 1, 2, 3, 4]; perm[x] = y; perm[y] = x; permute(S, perm); };
+        if (!six) { if (d1 !== d2) { sw(line[d1], line[d2]); used(S, 'vienna: two Domains changed places'); }
+          else if (m.indexOf('dbl') >= 0) { const q = line[d1], w = q === 4 ? S.pown[4] : q >> 1, id = turnPlace(S, w); if (id) { setPlace(S, q, id, w); used(S, 'vienna: a double, that Domain replaced'); } else used(S, 'vienna: nothing'); }
+          else used(S, 'vienna: nothing'); }
+        else if (m.indexOf('cross') >= 0) { if (S.pown[4] !== o) { S.pown[4] = o; used(S, 'vienna: took the Crossroads'); } else used(S, 'vienna: nothing'); }
+        else if (m.indexOf('wild') >= 0) { const cand = []; if (six === 2) { for (let x = 0; x < 5; x++) for (let y = x + 1; y < 5; y++) cand.push([x, y]); } else { const fixed = line[d1 === 5 ? d2 : d1]; for (let y = 0; y < 5; y++) if (y !== fixed) cand.push([fixed, y]); }
+          let best = null, bv = -1e9; for (const c of cand) { const C = clone(S); C.ev = null; C.st = null; const perm = [0, 1, 2, 3, 4]; perm[c[0]] = c[1]; perm[c[1]] = c[0]; permute(C, perm); const v = evalS(C, o, PROF.normal); if (v > bv) { bv = v; best = c; } }
+          sw(best[0], best[1]); used(S, six === 2 ? 'vienna: two sixes, chose both' : 'vienna: a six, chose one'); }
+        else used(S, 'vienna: nothing'); }
+      else if (S.cfg.vdie) { const g = 2 * o, t = 2 * (1 - o), d = dshuf([0, 1, 2, 3, 4, 5], seed)[0], pr = [[0, 2], [1, 3], [g, g + 1], [t, t + 1], [g + 1, 4], [t + 1, 4]][d], perm = [0, 1, 2, 3, 4]; perm[pr[0]] = pr[1]; perm[pr[1]] = pr[0]; permute(S, perm); used(S, 'a die chose the two Domains'); }   // (cfg.vdie: a die picks which two Domains change places)
       else { permute(S, dshuf([0, 1, 2, 3, 4], seed)); used(S, 'the Domains shuffled'); } }
   }
 }
