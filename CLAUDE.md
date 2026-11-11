@@ -488,6 +488,15 @@ Underlying principles for everything:
   against the computer, and each is a new way to play). The rules page opens with the same story. Anything new that
   explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
   (memory, being remembered, the sphere, Gates and Seals).
+- **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
+  Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
+  about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
+  Guide's key, and is measured with `node scripts/anoria/guides.js` (every ready deck under that Guide against the
+  others under their own; a Guide worth about what the first five are sits within a few points of 0, and "none" reads
+  about -1.5). First drafts that measured out of line and were changed: Gandhi's +1 Might everywhere (+9), Lincoln's
+  fourth Seal (+5), Curie's cheaper second card (+6.5), Mandela's return to hand (worth nothing: Spark is what is
+  scarce, not cards) and his fall back to the Gate from anywhere (+6). A new Guide needs a picture, a text entry, a
+  mat (`MATS` in ui.js; without one the chart is used) and that measure.
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)

@@ -15,7 +15,7 @@
 //     that any copy you're missing is as likely as any other, so new faces keep turning up for weeks.
 //   - Your first win of the day against the computer: a pack of 2.
 //   - Once each: your first win against Normal, against Hard, and with a deck you built: a pack of 2.
-//   - A new Guide joins you at 3, 8, 15 and 25 wins.
+//   - A new Guide joins you at 3, 7, 12, 17, 23, 29, 35, 41 and 48 wins (ten Guides: the one you chose and nine more).
 //   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift. A Thread
 //     that comes whole in your starter deck gives none.
 //   Played every day at three games a day, the set (91 cards since decks grew to 40) takes about a month to finish
@@ -29,7 +29,7 @@
 'use strict';
 const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 3;
+const WELCOME = [12, 12, 12], GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 3;
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };

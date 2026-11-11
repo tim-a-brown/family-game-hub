@@ -152,7 +152,10 @@ const THREADS = [
   { id: 'pacific', n: 'The Peaceful Sea', cards: ['magellan', 'fairwinds'] },
   { id: 'elephant', n: 'The Caliph\'s Elephant', cards: ['charlemagne', 'harun'] },
 ];
-const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu' };
+// The first five each bring a ready deck (ARCH). The five after them (2026-11-11) join a player as wins against the
+// computer add up, and guide a deck the player builds.
+const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu',
+  genghis: 'Genghis Khan', curie: 'Marie Curie', lincoln: 'Abraham Lincoln', mandela: 'Nelson Mandela', gandhi: 'Gandhi' };
 const PLACES = {
   library: { n: 'Library of Alexandria', reg: 'AFR', era: 2, y: -285 }, silk: { n: 'Silk Road', reg: 'ASIA', era: 3, y: -130 },
   colosseum: { n: 'Colosseum', reg: 'MED', era: 2, y: 80 }, acropolis: { n: 'Acropolis', reg: 'MED', era: 2, y: -447 },

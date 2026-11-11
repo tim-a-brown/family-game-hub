@@ -193,7 +193,7 @@
       var p = d.pl[i], won = w === i, por = el('span', { class: 'ah-por', style: { '--c': PCOL[i] } }, [pic(ui, ART + p.g + '.webp', '')]);
       if (won) por.appendChild(el('em', { class: 'ah-won', text: 'Won' }));
       var gname = el('span', { text: cap(p.g) }); fills.push(function () { gname.textContent = nameOf(p.g); });
-      var s = '', left = Math.max(0, Math.min(3, +p.s || 0)); for (var k = 0; k < 3; k++) s += SEAL(k < left, PCOL[i]);
+      var sm = p.sm === 4 ? 4 : 3, s = '', left = Math.max(0, Math.min(sm, +p.s || 0)); for (var k = 0; k < sm; k++) s += SEAL(k < left, PCOL[i]);   // (Lincoln's company begins with four)
       return el('div', { class: 'ah-side' + (w >= 0 && !won ? ' ah-lose' : '') }, [por,
         el('div', { class: 'ah-nm', text: name(i) }),
         el('div', { class: 'ah-ren' }, [el('b', { text: String(P[i].score == null ? 0 : P[i].score) }), el('small', { text: 'Renown' })]),
@@ -204,7 +204,7 @@
     var how, sub = '';
     var L = w >= 0 ? 1 - w : -1;
     if (w < 0) how = 'The game ended level after ' + d.rounds + ' rounds.';
-    else if (d.how === 'seals') how = name(w) + ' broke all three of ' + poss(name(L)) + ' Seals in round ' + d.rounds + '.';
+    else if (d.how === 'seals') how = name(w) + ' broke all ' + (d.pl[L].sm === 4 ? 'four' : 'three') + ' of ' + poss(name(L)) + ' Seals in round ' + d.rounds + '.';
     else if ((P[w].score || 0) >= tg) how = name(w) + ' reached ' + P[w].score + ' Renown at the end of round ' + d.rounds + '.';
     else how = name(w) + ' had more Renown when round ' + d.rounds + ', the last round, ended.';
     if (e.mode) sub = /^vs Computer \((.+)\)$/.test(e.mode) ? 'The computer played at ' + RegExp.$1 + '.' : e.mode === 'Pass & play' ? 'Two people played on one device.' : '';

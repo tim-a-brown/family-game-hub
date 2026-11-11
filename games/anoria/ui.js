@@ -594,7 +594,7 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD })),
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()) };
   }
   function settle() {
@@ -724,12 +724,12 @@
   function stripEl(node, o, me) {
     const p = V.P[o], pl = G.players[o], g = TX.GUIDES[p.guide], on = V.turn === o && !G.over;
     node.className = 'an-strip ' + (me ? 'me' : 'opp') + ' p' + o + (on ? ' on' : ''); node.innerHTML = ''; node.dataset.o = o;
-    const spent = on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD));   // (a once-a-turn power, used)
+    const spent = (on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD) || (p.guide === 'curie' && p.uN >= 3 && p.uN < 9))) || (p.guide === 'mandela' && p.uM);   // (a once-a-turn power, used; Mandela's is once a round)
     const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => openView(p.guide) }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
     node.appendChild(gb);
-    const seals = el('div', { class: 'st-seals', 'aria-label': p.seals + ' of 3 Seals left' });
-    for (let i = 0; i < 3; i++) seals.appendChild(el('span', { class: 'seal' + (i >= p.seals ? ' broken' : '') + (ui.crack && ui.crack.o === o && ui.crack.i === i ? ' crack' : '') }));
+    const sm = p.sm || 3, seals = el('div', { class: 'st-seals', 'aria-label': p.seals + ' of ' + sm + ' Seals left' });   // (Lincoln begins with four)
+    for (let i = 0; i < sm; i++) seals.appendChild(el('span', { class: 'seal' + (i >= p.seals ? ' broken' : '') + (ui.crack && ui.crack.o === o && ui.crack.i === i ? ' crack' : '') }));
     const relics = el('div', { class: 'st-relics' });
     const T = me ? targets() : null;
     for (let i = 0; i < 2; i++) {
@@ -1264,6 +1264,16 @@
       V.figs = V.figs.filter(f => f.u !== ev.u); V.figs.forEach(f => { if (f.li === ev.u) f.li = 0; });
       render();
     },
+    // Mandela: once a round, a Figure of his defeated on the other player's side goes back to his Gate instead
+    async fallback(ev) {
+      V.P[ev.o].uM = 1; bump('.an-strip.p' + ev.o + ' .st-guide'); Kit.sfx('good'); Kit.haptic('light');
+      await EV.move({ t: 'move', u: ev.u, from: ev.from, to: ev.to, jump: 1 });
+    },
+    // Lincoln: once a game, at the start of round 5, one of his broken Seals is whole again
+    async mend(ev) {
+      V.P[ev.o].seals = ev.left; ui.crack = { o: ev.o, i: ev.left - 1 }; render(); ui.crack = null; bump('.an-strip.p' + ev.o + ' .st-guide');
+      Kit.callout('A Seal is mended'); Kit.sfx('good'); Kit.haptic('medium'); await wait(700);
+    },
     async renown(ev) {
       V.P[ev.o].renown += ev.n;
       const src = ev.u ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : rc(dom.map);
@@ -1446,7 +1456,7 @@
     const w = S.winner, T = G.tale, hl = [];
     // (a game begun before the history kept its details: the short notes it always had)
     if (!T) {
-      if (w >= 0) hl.push(S.how === 'seals' ? pname(w) + ' broke all three of ' + Kit.poss(pname(1 - w)) + ' Seals in round ' + S.round : pname(w) + ' reached ' + S.P[w].renown + ' Renown after ' + S.round + ' rounds');
+      if (w >= 0) hl.push(S.how === 'seals' ? pname(w) + ' broke all ' + (S.P[1 - w].sm === 4 ? 'four' : 'three') + ' of ' + Kit.poss(pname(1 - w)) + ' Seals in round ' + S.round : pname(w) + ' reached ' + S.P[w].renown + ' Renown after ' + S.round + ' rounds');
       else hl.push('A dead-level draw after ' + S.round + ' rounds');
       G.players.forEach((p, i) => { hl.push(p.name + ' played ' + p.deck + ', guided by ' + TX.GUIDES[S.P[i].guide].n); });
     }
@@ -1456,7 +1466,7 @@
         rounds: T ? null : { labels: G.hist.map((x, i) => String(i + 1)), scores: G.hist }, highlights: hl,
         detail: !T ? { how: S.how, rounds: S.round, decks: G.players.map(p => p.deck).join(', '), seals: S.P.map(p => p.seals).join(' and ') } : {
           v: 2, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w,
-          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
+          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
           rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(),
           map: MAPORD.map(i => { const m = E.mights(S, i), by = o => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(','); return [S.places[i], E.holder(S, i), m[0], m[1], by(0), by(1)].join('|'); }) } });
     } catch (e) {}
@@ -1468,7 +1478,7 @@
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
     earned.forEach(x => notes.push(x.t === 'guide' ? TX.GUIDES[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
-    notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
+    notes.push(S.how === 'seals' ? 'All ' + (S.P[1 - w].sm === 4 ? 'four' : 'three') + ' of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
@@ -1503,7 +1513,7 @@
     '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
     '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
-    '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. The other four join you as you beat the computer, one each at 3, 8, 15 and 25 wins. Each has a different power, so a new Guide is a new way to play: any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.</li>' +
+    '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ten Guides. The other nine join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
