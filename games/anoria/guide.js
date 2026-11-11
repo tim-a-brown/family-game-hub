@@ -351,7 +351,7 @@
   const QUICK = {
     id: 'quick', n: 'Quick start', auto: true,
     table: () => ({ round: 1, places: ['nineveh', 'petra', 'library', 'seneca', 'wall'],
-      me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'daedalus', 'fairwinds'] },
+      me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'earhart', 'fairwinds'] },
       them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'yisunsin', 'boudica'], draw: ['spartacus', 'saladin', 'hannibal', 'ambush'] } }),
     async run(L) {
       L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
@@ -432,21 +432,21 @@
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
         await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
       } },
-    { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'daedalus',
-      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'daedalus', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },
+    { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'marcopolo',
+      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'earhart', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_GATE, { lit: 'The number on a card’s shield is its <b>Might</b>. Copernicus has 4.', at: L.card('copernicus') });
         await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house shows that he is at home.', { at: L.piece('copernicus') });
-        await L.play('daedalus', MY_GATE);
-        await L.say('Daedalus is a <b>Voyager</b>, so he has that +1 Might at every Place. His card says 3, and here he has 4.', { at: L.piece('daedalus') });
+        await L.play('earhart', MY_GATE);
+        await L.say('Amelia Earhart is a <b>Voyager</b>, so she has that +1 Might at every Place. Her card says 3, and here she has 4.', { at: L.piece('earhart') });
         await L.say('The two numbers on a Place are each side’s total Might there: yours on the right, the other player’s on the left.', { at: L.row(MY_GATE) + ' .pl-tots' });
         await L.later('Your next turn…', S => { S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.walk('copernicus', MY_OUT);
         await L.say('Away from home, Copernicus is back to 4.', { at: L.piece('copernicus') });
-        await L.walk('daedalus', TH_OUT, { lit: 'And a Voyager can walk to any Place, not just the next one.', at: L.piece('daedalus') });
+        await L.walk('earhart', TH_OUT, { lit: 'And a Voyager can walk to any Place, not just the next one.', at: L.piece('earhart') });
       } },
     { id: 'clash', n: 'A clash', sub: 'Dice, Guards and Bounty', art: 'leonidas',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', renown: 7, hand: ['galileo', 'compass'], draw: ['eureka', 'hypatia'], figs: [['copernicus', CROSS], ['haytham', TH_OUT]] },
@@ -461,7 +461,7 @@
         await L.say('A Figure can clash the turn it arrives, but each Figure acts only once a turn.', { at: L.piece('haytham') });
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
-      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'daedalus'], figs: [['copernicus', MY_GATE]] },
+      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'earhart'], figs: [['copernicus', MY_GATE]] },
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -491,7 +491,7 @@
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.', { scene: 1 });
       } },
     { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
-      table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
+      table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'earhart'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -537,7 +537,7 @@
         await L.say('Your Seals are safe while your Gate is empty, tied or held by you. So keep a Figure at home when their Figures come close.', { at: L.piece('copernicus') });
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One copy or two, one of each person, and the return', art: 'galileo',
-      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['copernicus', CROSS]] },
+      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'earhart'], figs: [['copernicus', CROSS]] },
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);

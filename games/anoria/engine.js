@@ -2,7 +2,10 @@
 // next step by a scoring rule (a "profile"). run.js plays thousands of games with it and reports balance.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaEngine = factory(root.AnoriaCards); })(this, function (cards) {
 'use strict';
-const { CARDS, PLACES, CENTER, EDGE } = cards;
+const { PLACES, CENTER, EDGE } = cards;
+// (every card a game can hold: the set, and the cards that have left it, which a game saved with one still plays: cards.js RETIRED)
+const CARDS = Object.assign({}, cards.RETIRED || {}, cards.CARDS);
+const fxOf = ci => CARDS[ci].fx || ci;   // (a Deed's effect: its own key, unless the card says whose effect it has)
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
@@ -136,7 +139,7 @@ function arrive(S, f) {
   if (c.arr) {
     const [op, n] = c.arr, en = S.figs.filter(g => g.p === f.p && g.o !== o);
     if (op === 'spark') { P.spark += n; if (S.ev) S.ev.push({ t: 'spark', o: o, n: n }); }
-    if (op === 'wits') {   // (Anansi: Spark won by his wits, more of it where the other side holds the Place)
+    if (op === 'wits') {   // (Yaa Asantewaa, and Anansi before her: more Spark where the other side holds the Place)
        const rn = 1 + (holder(S, f.p) >= 0 && holder(S, f.p) !== o ? 1 : 0); P.spark += rn; if (S.ev) S.ev.push({ t: 'spark', o: o, n: rn }); }
     if (op === 'stun') { en.sort((a, b) => might(S, b, 0) - might(S, a, 0)); for (let i = 0; i < Math.min(n, en.length); i++) { en[i].stun = 1; if (S.ev) S.ev.push({ t: 'stun', u: en[i].u }); } }
     if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
@@ -188,7 +191,7 @@ function actions(S) {
     else if (ci === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
     else if (ci === 'fairwinds') { for (const f of mine) if (!CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'deed', h, u: f.u, p: i }); }
     else if (ci === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
-    else if (ci === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
+    else if (fxOf(ci) === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
     else if (ci === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !CARDS[f.c].k.monument && !CARDS[g.c].k.monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
   });
   const ph = P.hand.indexOf('phalanx') >= 0 && costOf(S, o, 'phalanx') <= P.spark;
@@ -227,7 +230,7 @@ function apply(S, a, da, dd, raw) {
     else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
     else if (ci === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
-    else if (ci === 'trojan') putFig(S, o, h2c, a.p);
+    else if (fxOf(ci) === 'trojan') putFig(S, o, h2c, a.p);
     else if (ci === 'rift') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; moveFig(S, f, g.p, true); moveFig(S, g, t, true); }
   }
 }
@@ -336,5 +339,5 @@ function play(decks, guides, profs, cfg, seed) {
   return S;
 }
 return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, CARDS, PLACES };
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, CARDS, PLACES };
 });

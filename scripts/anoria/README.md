@@ -2,7 +2,8 @@
 
 The whole game as code, so rules and card numbers can be tested by playing thousands of robot games.
 
-- `cards.js`: the test card pool (Figures, Relics, Deeds, Guides, Places) and five built decks.
+- `cards.js`: the test card pool (Figures, Relics, Deeds, Guides, Places) and five built decks. `RETIRED`: cards that have left
+  the set and the card that has each one's slot; the engine still plays them, for a game saved with one.
 - `sim.js`: the rules engine for 2 to 6 players, and robot players with five styles of play.
 - `run.js` + `exp2.js`: the experiments. `node run.js <name> [games]`:
   `rules`, `tension`, `tension2`, `tension3`, `length` compare core rules; `cards` measures every card, Guide,

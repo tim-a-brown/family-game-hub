@@ -4,7 +4,9 @@
 (function () {
   'use strict';
   const E = window.AnoriaEngine, C = window.AnoriaCards, TX = window.AnoriaText, LAND = window.AnoriaLand || [];
-  const CARDS = C.CARDS, el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  // (CARDS: every card the table can be asked to show, which is the set and the cards that have left it: a game saved
+  // with a retired card still plays it. The set alone is C.CARDS: the Library, the packs and the decks get that.)
+  const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
   const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
 
@@ -54,7 +56,7 @@
 
   const SAY = TX.SAY || {}, FY = TX.FY || {};
   function info(key) {
-    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TX.GUIDES[key]) { const g = TX.GUIDES[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
     if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
@@ -554,14 +556,15 @@
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
-  // (a saved game that holds a card which has left the set goes on with the card that took its place: cards.js MOVED)
-  function readSave() { let raw = lsGet(SAVE), d = null; Object.keys(C.MOVED || {}).forEach(k => { if (raw) raw = raw.split('"' + k + '"').join('"' + C.MOVED[k] + '"'); }); try { d = JSON.parse(raw); } catch (e) {} return d; }
+  // (a saved game that holds a card which has left the set is played on as it was, with that card: cards.js RETIRED)
+  function readSave() { let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {} return d; }
   function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
     stop();
     cfg.players.forEach(deckOf);
+    cfg.players.forEach(p => { p.cards = p.cards.map(C.now); });   // (Play again after an old game: a new game is dealt from the set as it is today)
     const decks = cfg.players.map(p => p.cards.slice()), guides = cfg.players.map(p => p.guide);
     S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
     S.st = null; S.ev = [];
@@ -907,11 +910,13 @@
   function selCost() { const s = ui.sel, o = S.turn; if (!s || s.kind !== 'hand') return null; const cs = s.acts.map(a => E.costOf(S, o, s.key, a.t === 'fig' ? a.p : undefined)); return cs.length ? Math.min.apply(null, cs) : E.costOf(S, o, s.key); }
   function simulate(a) { const T = E.clone(S); T.turn = S.turn; E.apply(T, a, 0, 0); return T; }
   // what a Figure landing at a Place would cost and how strong it would stand there
+  // (a Deed that brings a Figure in from the hand: Night Crossing, and the Trojan Horse in a game saved with one)
+  const carries = key => !!key && !!CARDS[key] && E.fxOf(key) === 'trojan';
   function landPreview(acts) {
     const a = acts[0], t = a.t, o = S.turn;
-    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || ui.sel.key === 'trojan'));
+    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || carries(ui.sel.key)));
     if (!moves) return null;
-    const T = simulate(a), f = t === 'fig' || ui.sel.key === 'trojan' ? E.byU(T, S.uid) : E.byU(T, a.u);
+    const T = simulate(a), f = t === 'fig' || carries(ui.sel.key) ? E.byU(T, S.uid) : E.byU(T, a.u);
     const via = acts.every(x => x.t === 'antik') ? 'antikythera' : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
     return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
   }
@@ -1201,7 +1206,7 @@
     async deed(ev, ctx) {
       const o = ev.o, a = ctx.a;
       await showCard(ev.c, o === ui.view ? 620 : 1050);
-      dropHand(o, a.h);   // (the Figure in the Trojan Horse leaves the hand as it arrives)
+      dropHand(o, a.h);   // (the Figure that a Night Crossing carries leaves the hand as it arrives)
       V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
       if (ev.c === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
       if (ev.c === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
@@ -1616,7 +1621,7 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
@@ -1626,7 +1631,7 @@
   // map. Nothing a picture is about should be cut off or sit under a number.
   function artProof() {
     stop(); G = null; S = null; V = null;
-    const keys = Object.keys(CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES));
+    const keys = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES));
     const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
     const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
     const rows = keys.map(k => {

@@ -276,13 +276,24 @@ Underlying principles for everything:
   owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
   until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
-- **No fictional, mythological or legendary characters in the new printing for now** (Tim, 2026-11-11). Sinbad the
-  Sailor and Gilgamesh were in the second printing for a day and were taken out. Zhang Qian, the Han envoy whose
-  journeys opened the routes later named the Silk Road, took Sinbad's place in Pathfinders, and Sargon of Akkad took
-  Gilgamesh's, with the same numbers and the same named Thread, The Clay Tablets (`MOVED` in cards.js carries a saved
-  Sinbad or Gilgamesh over to them). A new card is a real, well-attested person. (The decision was about the 25 new
-  cards. The legends among the first 66, Scheherazade, Anansi, Atalanta, Daedalus, Odysseus and Beowulf, are as they
-  were, captioned as legend.)
+- **No fictional, mythological or legendary characters for now** (Tim, 2026-11-11: first the new printing, then "pull
+  the six legend cards from the first printing too", then "pull the trojan horse too"). Nine cards left the set and a
+  real, well-attested person (for the Deed, a real event) has each one's slot, with the same faction, cost, Might and
+  skills, in the same ready decks: Scheherazade to Harun al-Rashid, Anansi to Yaa Asantewaa, Atalanta to Artemisia of
+  Caria, Daedalus to Amelia Earhart, Odysseus to Ferdinand Magellan, Beowulf to Alfred the Great, the Trojan Horse to
+  Night Crossing (Washington on the Delaware), Sinbad to Zhang Qian and Gilgamesh to Sargon of Akkad. A new card is
+  a real person with a record to point to, and its power is true to that person.
+- **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
+  into `RETIRED` in text.js and its link sentences into `OLD_LINKS`; its picture stays in art/). Then nobody loses
+  anything and nothing shows blank: a collection and the decks someone built hold the new card instead, as many
+  copies (`retire()` in coll.js, which goes by the keys it finds, so a device that hasn't updated can't undo it); no
+  pack, ready deck or Library holds a retired card, because they all read the set (`C.CARDS`); a game saved with a
+  retired card plays on with it to the end, because the engine and the table look a key up in the set and then in
+  `RETIRED`; an old game's history names it the same way (`card()` in hist/anoria.js); and Play again deals from
+  today's set (`C.now`). A named Legacy Line that goes with a card is removed, not reused: a finished one keeps its
+  flag in the collection under its old id. A Deed's effect belongs to its data, not its name (`fx`, read with
+  `E.fxOf`): Night Crossing runs the Trojan Horse's.
+- **Amelia Earhart is the first card after 1900**, so `ERAS` has a seventh era, The Modern World.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
   real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;
@@ -437,7 +448,8 @@ Underlying principles for everything:
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)
   and `pacing.js`. Counts everywhere come from the card list. Blackbeard (2026-11-11) is the first card outside the
-  five ready decks: he is found only in packs.
+  five ready decks: he is found only in packs. `scripts/anoria/endings.js` plays the ready decks on any set of games: tune on some sets
+  and check on sets nobody has looked at (the first choice made for 25 Renown overshot when it met new games).
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
 
