@@ -417,7 +417,7 @@
         await L.play('copernicus', MY_GATE, { lit: 'The number on a card’s shield is its <b>Might</b>. Copernicus has 4.', at: L.card('copernicus') });
         await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house shows that he is at home.', { at: L.piece('copernicus') });
         await L.play('daedalus', MY_GATE);
-        await L.say('Daedalus is a <b>Voyager</b>, so he is at home at every Place.', { at: L.piece('daedalus') });
+        await L.say('Daedalus is a <b>Voyager</b>, so he has that +1 Might at every Place. His card says 3, and here he has 4.', { at: L.piece('daedalus') });
         await L.say('The two numbers on a Place are each side’s total Might there: yours on the right, the other player’s on the left.', { at: L.row(MY_GATE) + ' .pl-tots' });
         await L.later('Your next turn…', S => { S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);

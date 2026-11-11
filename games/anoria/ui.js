@@ -20,14 +20,16 @@
     library: 'Holder draws a card', silk: 'Linked to every Place', colosseum: 'Win a clash: 1 Renown', acropolis: 'Double Renown', wall: 'Defenders +1',
     stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Arrive for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
   };
+  // What a skill word means, written out under a card that only names it (n: the card's name). Each says what
+  // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
-    voyager: ['Voyager', 'this Figure is at home at every Place and can walk to any Place.'],
-    scholar: ['Scholar', 'you draw a card when this Figure arrives.'],
-    guard: ['Guard', 'enemies here must clash with this Figure first.'],
-    steadfast: ['Steadfast', 'this Figure has +2 Might when it defends.'],
-    inspiring: ['Inspiring', 'your other Figures here get +1 Might.'],
-    swift: ['Swift', 'this Figure can walk on the turn it arrives.'],
-    raider: ['Raider', 'this Figure has +2 Might when it attacks on the other player\'s side of the map.']
+    voyager: ['Voyager', n => 'most Figures have +1 Might only in their home region, and walk one Place at a time. ' + n + ' has +1 Might at every Place and can walk to any Place.'],
+    scholar: ['Scholar', n => 'when ' + n + ' arrives on the map, you draw a card.'],
+    guard: ['Guard', n => 'enemies at the same Place as ' + n + ' have to clash with ' + n + ' before they can clash with anyone else there.'],
+    steadfast: ['Steadfast', n => n + ' has +2 Might in any clash that an enemy starts.'],
+    inspiring: ['Inspiring', n => 'each of your other Figures at the same Place as ' + n + ' has +1 Might.'],
+    swift: ['Swift', n => 'most Figures can\'t walk on the turn they arrive. ' + n + ' can.'],
+    raider: ['Raider', n => n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.']
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
@@ -238,13 +240,21 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
-    if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: if ' + esc(names(c.insp)) + ' is in play on your side when you play this card, it costs 1 less and you score 1 Renown as it arrives. A gold line joins them, and this card has +1 Might while they stand. Only one line or Thread scores in a round.' }));
+    const one = 'Only one Thread or Legacy line scores in each round.';
+    const me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
+    if (c.insp) { const who = names(c.insp);
+      notes.appendChild(el('p', { html: '<b>Legacy</b>: history ties ' + esc(c.n) + ' to ' + esc(listOf(c.insp.map(k => info(k).n), 'and')) + '. If ' + esc(who) + ' is one of your Figures on the map when you play ' + esc(c.n) + ', ' + esc(c.n) + ' costs 1 Spark less and you score 1 Renown. A gold line joins them, and ' + esc(c.n) + ' has +1 Might while both stay on the map. ' + one })); }
     if (CARDS[key] && CARDS[key].from && E.STD.threads) {
-      const src = CARDS[key].from.map(theName), fig = CARDS[key].t === 'fig';
-      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'at ' + theName(x) : 'while a Figure of yours is at ' + theName(x)) : 'while ' + theName(x) + ' is ' + (CARDS[x].t === 'relic' ? 'in play' : 'on your side'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src, 'or')) + '. It scores 1 Renown when you play it ' + esc(listOf(how, 'or')) + '. Only one line or Thread scores in a round.' }));
+      // (what the card grew from can be a Place, a Relic or a person: each is on your side in its own way)
+      const from = CARDS[key].from, fig = CARDS[key].t === 'fig', pl = from.filter(x => x[0] === '@').map(theName), rel = from.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), ppl = from.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName);
+      const how = [];
+      if (fig && pl.length) how.push('at ' + listOf(pl, 'or'));
+      if (ppl.length) how.push('while ' + listOf(ppl, 'or') + ' is one of your Figures on the map');
+      if (rel.length) how.push('while ' + listOf(rel, 'or') + ' is one of your Relics');
+      if (!fig && pl.length) how.push('while one of your Figures is at ' + listOf(pl, 'or'));
+      notes.appendChild(el('p', { html: '<b>Thread</b>: history ties ' + esc(me) + ' to ' + esc(listOf(from.map(theName), 'and')) + '. If you play ' + esc(me) + ' ' + esc(how.join(', or ')) + ', you score 1 Renown as you play the card. ' + one }));
     }
-    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1]) })); });
+    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1](c.n)) })); });
     if (c.kind === 'place') {
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
       if (o.p != null && S) {
@@ -269,13 +279,15 @@
     // (a lesson reads the card part by part: it sits under the lesson's rings and caption, with room kept for the
     // caption below it, or beside it when the screen is sideways)
     const side = o.lesson && window.innerWidth > window.innerHeight * 1.15, bar = o.lesson ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar')) || 56) : 0;
-    if (o.lesson) v.classList.add('lesson'); if (side) v.classList.add('side');
-    const vw = Math.min(side ? window.innerWidth * .34 : window.innerWidth - 36, 420), vh = window.innerHeight - (o.lesson ? 26 : 40) - bar - (side ? 0 : o.room || 0);
+    // (a phone on its side: what's written about the card goes beside it, where there is room, not under it)
+    const wide = !o.lesson && notes.childNodes.length > 0 && window.innerWidth > window.innerHeight * 1.15 && window.innerHeight <= 560;
+    if (o.lesson) v.classList.add('lesson'); if (side) v.classList.add('side'); if (wide) v.classList.add('wide');
+    const vw = Math.min(side ? window.innerWidth * .34 : wide ? window.innerWidth * .4 : window.innerWidth - 36, 420), vh = window.innerHeight - (o.lesson ? 26 : 40) - bar - (side ? 0 : o.room || 0);
     document.body.appendChild(v);
     // as big as fits: the card, then what's written under it
     let w = vw; v.style.setProperty('--vw', w + 'px');
-    const under = () => (!side && !o.lesson && notes.childNodes.length ? notes.offsetHeight + 12 : 0);
-    for (let i = 0; i < 12 && w > (o.lesson ? 150 : 200) && card.offsetHeight + under() > vh; i++) { w = Math.round(w * .92); v.style.setProperty('--vw', w + 'px'); }
+    const under = () => (!side && !wide && !o.lesson && notes.childNodes.length ? notes.offsetHeight + 12 : 0);
+    for (let i = 0; i < 14 && w > 150 && card.offsetHeight + under() > vh; i++) { w = Math.round(w * .92); v.style.setProperty('--vw', w + 'px'); }
     viewEl = v; document.addEventListener('keydown', viewKey);
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
@@ -1338,7 +1350,7 @@
     '<h3>Two of a card</h3><ul><li>A deck is 30 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
-    '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
+    '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
     '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> as you play it. That Renown is scored once, not every turn, and only one Thread or Legacy line scores in a round. Read a card to see its Thread.</li></ul>' +
