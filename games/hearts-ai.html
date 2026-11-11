@@ -145,16 +145,24 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
-      options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this score, and the lowest score wins.', value: 100, choices: [[50, '50 · quick'], [100, '100 · standard']] }],
+      options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this score, and the lowest score wins.', value: 100, choices: [[50, '50 · quick'], [100, '100 · standard']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
         S = {
-          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0],
-          players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, total: 0 }; })
+          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, level: lvName(cfg.options.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0],
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, total: 0 }; })   // (each robot its own skill at a mixed table)
         };
         undoStack = []; newHand();
       }
     });
   }
+
+  // The computer's skill. Normal is how it has always played; a game saved or opened before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Takes tricks it could have ducked and holds on to its dangerous cards.'],
+    ['normal', 'Normal', 'Ducks tricks when it can and gets rid of its dangerous cards.'],
+    ['hard', 'Hard', 'Remembers every card played and thinks each play through.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvOf(p, X) { var pl = X.players && X.players[p]; return lvName((pl && pl.level) || X.level); }
 
   // ── Card helpers ──────────────────────────────────────────────────────────
   function pts(c) { return c.s === 'h' ? 1 : (c.s === 's' && c.r === 'Q') ? 13 : 0; }
@@ -187,7 +195,7 @@
     S.hands = [[], [], [], []];
     d.forEach(function (c, i) { S.hands[i % 4].push(c); });
     S.hands.forEach(sortHand);
-    S.taken = [0, 0, 0, 0]; S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = [];
+    S.taken = [0, 0, 0, 0]; S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = []; S.vd = ['', '', '', ''];
     S.tw = [0, 0, 0, 0]; S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
     S.passDir = PASS[(S.round - 1) % 4];
     S.passSel = []; S.passes = [null, null, null, null];
@@ -197,6 +205,8 @@
   }
   function cpuPass(p, X) {
     var h = (X || S).hands[p], count = { s: 0, h: 0, d: 0, c: 0 };
+    // Easy passes its three highest cards, whatever they are
+    if (lvOf(p, X || S) === 'easy') return h.slice().sort(function (a, b) { return RANK[b.r] - RANK[a.r]; }).slice(0, 3).map(function (c) { return c.id; });
     h.forEach(function (c) { count[c.s]++; });
     var scored = h.map(function (c) {
       var v = RANK[c.r];
@@ -265,8 +275,82 @@
     } else if (S.turn >= 0 && S.turn !== ME) { gate(S.turn, next); return; }
     paintSeats(); paintHand(); paintMsg();
   }
+  // A player who can't follow suit has shown they have none of it left: X.vd[p] is the suits seat p is out of.
+  // (Anyone at the table could have noticed; only Hard keeps track.)
+  function noteVoid(X, p, card) {
+    if (!X.trick.length || card.s === X.trick[0].c.s) return;
+    if (!X.vd) X.vd = ['', '', '', ''];
+    if (X.vd[p].indexOf(X.trick[0].c.s) < 0) X.vd[p] += X.trick[0].c.s;
+  }
   function cpuChoose(p, X) {
     X = X || S;
+    var lv = lvOf(p, X);
+    return lv === 'hard' ? hardChoose(p, X) : lv === 'easy' ? easyChoose(p, X) : normalChoose(p, X);
+  }
+  // Easy: it leads its lowest card whatever the suit, it follows suit with any card at all (so it takes tricks
+  // it could have ducked), and when it can't follow it throws its highest card, which is often not the Queen of
+  // Spades or a heart.
+  function easyChoose(p, X) {
+    var opts = legal(p, X), byRank = opts.slice().sort(function (x, y) { return RANK[x.r] - RANK[y.r]; });
+    if (!X.trick.length) return byRank[0];
+    return opts[0].s === X.trick[0].c.s ? opts[Math.floor(Math.random() * opts.length)] : byRank[byRank.length - 1];
+  }
+  // Hard counts cards. It knows which cards are still out (everything it hasn't seen played and doesn't hold) and
+  // who has shown they are out of a suit. It deals the cards still out to the other three in ways that fit, plays
+  // each card it could play through to the end of the hand with everyone ducking and dumping sensibly, and keeps
+  // the card that costs it the fewest points on average.
+  var HARD_DEALS = 24, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
+  function hardChoose(p, X) {
+    var opts = legal(p, X); if (opts.length < 2) return opts[0];
+    var out = [], need = [0, 0, 0, 0], vd = X.vd || ['', '', '', ''], q, n, i;
+    for (q = 0; q < 4; q++) if (q !== p) { need[q] = X.hands[q].length; out = out.concat(X.hands[q]); }
+    var tot = opts.map(function () { return 0; });
+    var t0 = Date.now();
+    for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+      var hands = dealOut(out, need, vd); hands[p] = X.hands[p];
+      for (i = 0; i < opts.length; i++) tot[i] += playOut(X, hands, p, opts[i]);
+    }
+    var best = 0; for (i = 1; i < opts.length; i++) if (tot[i] < tot[best] - 1e-9) best = i;
+    // (cards that come out the same: play as Normal would)
+    var usual = normalChoose(p, X), u = opts.indexOf(usual);
+    return u >= 0 && tot[u] <= tot[best] + 1e-9 ? usual : opts[best];
+  }
+  // one way the cards still out could lie: shuffled, then handed round, never giving a suit to someone out of it
+  function dealOut(out, need, vd) {
+    var left = need.slice(), hands = [[], [], [], []], cards = Cards.shuffle(out.slice()), i, q;
+    // (cards only one or two seats can hold go first, so they find a seat)
+    function can(c) { var l = []; for (var q = 0; q < 4; q++) if (left[q] > 0 && vd[q].indexOf(c.s) < 0) l.push(q); return l; }
+    cards.sort(function (a, b) { return can(a).length - can(b).length; });
+    for (i = 0; i < cards.length; i++) {
+      var ok = can(cards[i]);
+      if (!ok.length) for (q = 0; q < 4; q++) if (left[q] > 0) ok.push(q);
+      q = ok[Math.floor(Math.random() * ok.length)];
+      hands[q].push(cards[i]); left[q]--;
+    }
+    return hands;
+  }
+  // the rest of the hand with seat p playing card first; returns what it costs p: its points less the others' average
+  function playOut(X, hands, p, card) {
+    var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, broken: X.broken, taken: X.taken.slice(), turn: p, level: 'normal' };
+    var c = card, s;
+    for (;;) {
+      s = Y.turn;
+      Y.hands[s].splice(Y.hands[s].indexOf(c), 1); Y.trick.push({ p: s, c: c });
+      if (c.s === 'h') Y.broken = true;
+      if (Y.trick.length === 4) {
+        var led = Y.trick[0].c.s, win = Y.trick[0], got = 0;
+        for (var k = 0; k < 4; k++) { var t = Y.trick[k]; got += pts(t.c); if (t.c.s === led && RANK[t.c.r] > RANK[win.c.r]) win = t; }
+        Y.taken[win.p] += got; Y.trick = []; Y.trickNo++; Y.turn = win.p;
+        if (Y.trickNo === 13) break;
+      } else Y.turn = (s + 1) % 4;
+      c = normalChoose(Y.turn, Y);
+    }
+    var mine = Y.taken[p], moon = Y.taken.indexOf(26);
+    if (moon === p) return -26;
+    if (moon >= 0) return 26 - 52 / 3;
+    return mine - (26 - mine) / 3;
+  }
+  function normalChoose(p, X) {
     var opts = legal(p, X), trick = X.trick;
     function hi(a) { return a.slice().sort(function (x, y) { return RANK[y.r] - RANK[x.r]; })[0]; }
     function lo(a) { return a.slice().sort(function (x, y) { return RANK[x.r] - RANK[y.r]; })[0]; }
@@ -299,6 +383,7 @@
     var i = find(S.hands[p], card.id); if (i < 0) return;
     var from = p === ME ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
+    noteVoid(S, p, card);
     S.trick.push({ p: p, c: card });
     if (card.s === 'h' && !S.broken) { S.broken = true; S.hb = S.trickNo + 1; if (S.trickNo > 0) flash('Hearts are broken!'); }
     if (isQS(card)) Kit.sfx('bad'); else Kit.sfx('flip');
@@ -566,10 +651,12 @@
   function netOpts() {
     var t = S && S.target && !NET ? S.target : 100;
     if (!(S && S.target)) { try { var o = (JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}; if (+o.target) t = +o.target; } catch (e) {} }
-    return { target: +t === 50 ? 50 : 100 };
+    var lv = S && S.level && !NET ? S.level : '';
+    if (!lv) { try { lv = ((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}).level; } catch (e) {} }
+    return { target: +t === 50 ? 50 : 100, level: lvName(lv) };
   }
   function netStart(players, opts, last) {
-    var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
+    var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, level: lvName(opts && opts.level), round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
       qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], wins: last && last.wins ? last.wins.slice() : [0, 0, 0, 0],
       players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, total: 0 }; }) };
     netDeal(st);
@@ -581,7 +668,7 @@
     st.hands = [[], [], [], []];
     d.forEach(function (c, i) { st.hands[i % 4].push(c); });
     st.hands.forEach(sortHand);
-    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = [0, 0, 0, 0]; st.hb = 0;
+    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = [0, 0, 0, 0]; st.hb = 0; st.vd = ['', '', '', ''];
     st.passDir = PASS[(st.round - 1) % 4];
     st.pass = [null, null, null, null]; st.recv = [[], [], [], []];
     if (st.passDir === 'hold') netPlayStart(st); else { st.phase = 'pass'; st.turn = -1; }
@@ -610,6 +697,7 @@
     var card = legal(seat, st).filter(function (c) { return c.id === id; })[0];
     if (!card) return null;
     st.hands[seat].splice(find(st.hands[seat], id), 1);
+    noteVoid(st, seat, card);
     st.trick.push({ p: seat, c: card });
     var mv = { t: 'play', p: seat, c: card };
     if (card.s === 'h' && !st.broken) { st.broken = true; st.hb = st.trickNo + 1; if (st.trickNo > 0) mv.broke = 1; }

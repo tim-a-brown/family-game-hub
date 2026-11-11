@@ -413,9 +413,10 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 6, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
-      options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases', 'The full game: the first to finish phase 10 wins.'], [5, 'Quick · phases 1–5', 'A shorter game: the first to finish phase 5 wins.']] }],
+      options: [{ id: 'last', label: 'Game length', value: 10, choices: [[10, 'All 10 phases', 'The full game: the first to finish phase 10 wins.'], [5, 'Quick · phases 1–5', 'A shorter game: the first to finish phase 5 wins.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.last || 10, cfg.mode);
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.last || 10, cfg.mode);   // (each robot its own skill)
         Kit.gameStart(); newHand();
       }
     });
@@ -424,7 +425,7 @@
     var n = players.length, z = function (v) { return players.map(function () { return v; }); };
     return {
       mode: mode || 'cpu', me: 0, last: last, hand: 0, dealer: n - 1, started: Date.now(), rounds: [], phRounds: [], highlights: [],
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, ph: 1, total: 0, done: false }; }),
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, ph: 1, total: 0, done: false }; }),
       stats: { skips: players.map(function () { return z(0); }), outs: z(0), streak: z(0), stuck: null, big: null, firstTurn: [], missed: z(0), finishedHand: z(0) },
       sort: 'num'
     };
@@ -548,6 +549,31 @@
   }
 
   // ── Computer players ──────────────────────────────────────────────────────
+  // Their skill. Normal is how they have always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Often misses a discard it could have used, and throws away cards that go together.'],
+    ['normal', 'Normal', 'Picks up discards that bring its phase closer and keeps cards that go together.'],
+    ['hard', 'Hard', 'Counts the cards it hasn’t seen and keeps the ones with the most chances left to finish its phase.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
+  // Hard counts cards: two of every number in every colour, 8 Wilds and 4 Skips, less its own hand, the discard
+  // pile and every card laid on the table. chances() is how many of the cards still to come would bring this
+  // hand one card closer to its phase.
+  function unseen(p) {
+    var cnt = { w: 8 }, list = [];
+    COLS.forEach(function (c) { for (var n = 1; n <= 12; n++) cnt[c + n] = 2; });
+    function see(c) { var k = isW(c) ? 'w' : isS(c) ? '' : c.c + c.n; if (cnt[k]) cnt[k]--; }
+    S.hands[p].forEach(see); S.discard.forEach(see);
+    S.laid.forEach(function (gs) { if (gs) gs.forEach(function (g) { g.cards.forEach(see); }); });
+    COLS.forEach(function (c) { for (var n = 1; n <= 12; n++) if (cnt[c + n]) list.push({ c: { id: '?', n: n, c: c }, n: cnt[c + n] }); });
+    if (cnt.w) list.push({ c: { id: '?', n: 0, c: 'w' }, n: cnt.w });
+    return list;
+  }
+  function chances(hand, ph, pool) {
+    var base = need(hand, ph), t = 0;
+    if (base <= 0) return 0;
+    pool.forEach(function (u) { if (need(hand.concat([u.c]), ph) < base) t += u.n; });
+    return t;
+  }
   function others(p) { var a = []; for (var i = 0; i < N(); i++) if (i !== p) a.push(i); return a; }
   function feeds(p, c) { // would this discard help someone who has laid down?
     return others(p).some(function (o) { return S.laid[o] && S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(c, g); }); }); });
@@ -558,7 +584,8 @@
       var take = false;
       if (top && !isS(top)) {
         if (isW(top)) take = true;
-        else if (!S.laid[p]) take = need(h.concat([top]), ph) < need(h, ph) && Math.random() < .92;
+        else if (lvOf(p) === 'easy') take = !S.laid[p] && need(h.concat([top]), ph) < need(h, ph) && Math.random() < .35;   // (Easy mostly doesn't look at the discard)
+        else if (!S.laid[p]) take = need(h.concat([top]), ph) < need(h, ph) && (lvOf(p) === 'hard' || Math.random() < .92);
         else take = S.laid.some(function (gs) { return gs && gs.some(function (g) { return canHit(top, g); }); });
       }
       draw(p, take);
@@ -599,20 +626,24 @@
     return null;
   }
   function cpuDiscard(p) {
-    var h = S.hands[p], ph = S.players[p].ph - 1;
+    var h = S.hands[p], ph = S.players[p].ph - 1, lv = lvOf(p), pool = lv === 'hard' && !S.laid[p] ? unseen(p) : null;
     var skip = h.filter(isS)[0]; if (skip && others(p).some(function (o) { return !S.skipNext[o]; })) return skip;
-    var best = null, bestScore = Infinity;
+    var best = null, bestScore = Infinity, least = Infinity;
+    // (Hard: of the cards it can throw without setting its phase back, the one that leaves the most cards that help)
+    if (pool) h.forEach(function (c) { if (!isW(c)) least = Math.min(least, need(h.filter(function (x) { return x !== c; }), ph)); });
     h.forEach(function (c) {
       var rest = h.filter(function (x) { return x !== c; }), sc;
       if (!S.laid[p]) {
         if (isW(c)) sc = 1e6;
+        else if (lv === 'easy') sc = need(rest, ph) * 100 - pts(c) / 2 + Math.random() * 70;   // (Easy doesn't see which of its loose cards go together)
+        else if (pool) { sc = need(rest, ph); sc = sc * 100 - (sc === least ? chances(rest, ph, pool) * 3 : 0) - pts(c) / 2; }
         else {
           var kin = h.filter(function (x) { return isN(x) && x !== c && (x.n === c.n || (PH[ph].req.some(function (r) { return r[0] === 'run'; }) && Math.abs(x.n - c.n) <= 2) || (PH[ph].req[0][0] === 'color' && x.c === c.c)); }).length;
           sc = need(rest, ph) * 100 + kin * 6 - pts(c) / 2;
         }
       } else sc = (isW(c) ? 1e5 : 0) - pts(c) * 2;
-      if (feeds(p, c)) sc += 40;
-      sc += Math.random() * 4;
+      if (feeds(p, c) && lv !== 'easy') sc += 40;
+      if (lv !== 'hard') sc += Math.random() * 4;
       if (sc < bestScore) { bestScore = sc; best = c; }
     });
     return best || h[0];
@@ -620,6 +651,7 @@
   function skipTarget(p) {
     var cands = others(p).filter(function (o) { return !S.skipNext[o]; });
     if (!cands.length) return -1;
+    if (lvOf(p) === 'easy') return cands[Math.floor(Math.random() * cands.length)];   // (Easy skips anyone at all)
     cands.sort(function (a, b) {
       var da = (S.laid[a] ? 50 - S.hands[a].length * 3 : 0) + S.players[a].ph * 4, db = (S.laid[b] ? 50 - S.hands[b].length * 3 : 0) + S.players[b].ph * 4;
       return db - da || Math.random() - .5;
@@ -788,7 +820,7 @@
       sub: w >= 0 ? nm(w) + ' finished phase ' + S.last + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands') : 'Tied on points after phase ' + S.last,
       rank: rank, lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () {
-        S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.last, S.mode);
+        S = freshGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }), S.last, S.mode);
         Kit.gameStart(); newHand();
       },
       look: 'Look at the table',

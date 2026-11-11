@@ -202,9 +202,10 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', { id: 'local' }]),
       players: { min: 3, max: 8, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
-      options: [{ id: 'target', label: 'Play to', help: 'The first player to reach this many points wins.', value: 200, choices: [[100, '100 · quick'], [200, '200 · standard']] }],
+      options: [{ id: 'target', label: 'Play to', help: 'The first player to reach this many points wins.', value: 200, choices: [[100, '100 · quick'], [200, '200 · standard']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 200);
+        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.target || 200);   // (each robot its own skill)
       }
     });
   }
@@ -224,7 +225,7 @@
     S = {
       target: target, round: 0, rounds: [], details: [], ev: [], started: Date.now(),
       dealer: n - 1, deck: makeDeck(), discard: [],
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0, bold: p.cpu ? 0.95 + Math.random() * 0.45 : 1 }; })
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0, bold: p.cpu ? 0.95 + Math.random() * 0.45 : 1 }; })
     };
     Kit.gameStart();
     undoStack = [];
@@ -463,11 +464,19 @@
     S.players.forEach(function (pl, q) { if (q !== p) m = Math.max(m, pl.total + shown(q)); });
     return m;
   }
+  // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  // (Two levels: Normal already counts the cards. Robots that took more or less risk on the same count were
+  // measured against it and none won more than its even share of games.)
+  var LEVELS = [['easy', 'Easy', 'Stays as soon as it has 20 points, whatever cards are left.'],
+    ['normal', 'Normal', 'Counts the cards that are left and weighs what another card could win against what it could lose.']];
+  function lvName(v) { return v === 'easy' ? v : 'normal'; }
   function cpuHit(p) {
-    var c = calc(p), s = c.pts, tot = S.players[p].total, o = odds(p);
+    var c = calc(p), s = c.pts, tot = S.players[p].total, o = odds(p), lv = lvName(S.players[p].level);
     if (s === 0 && !c.x2) return true;
     var others = bestOther(p);
     if (tot + s >= S.target && tot + s > others) return false;          // stay and win
+    // Easy doesn't count cards: it stops at 20 points (at 35 while it holds a Second Chance)
+    if (lv === 'easy') return s < (hasSC(p) ? 35 : 20);
     if (hasSC(p)) return s < 55 || c.uniq >= 6;
     var bold = S.players[p].bold * (0.9 + Math.random() * 0.2);
     if (others >= S.target - 15 && tot + s <= others) bold *= 1.6;       // must catch up
@@ -481,7 +490,8 @@
     if (ch.kind === 'sc') {    // hand it to whoever is furthest behind
       return tg.slice().sort(function (a, b) { return S.players[a].total - S.players[b].total; })[0];
     }
-    if (others.length && Math.random() < 0.12) return others[Math.floor(Math.random() * others.length)];
+    // (Easy hands a Freeze or a Flip Three to anyone at all half the time)
+    if (others.length && Math.random() < (lvName(S.players[p].level) === 'easy' ? 0.5 : 0.12)) return others[Math.floor(Math.random() * others.length)];
     if (ch.kind === 'fz') {
       var me = calc(p);
       if (tg.indexOf(p) >= 0 && me.pts >= 12 && !cpuHit(p)) return p;  // bank my points
@@ -613,7 +623,7 @@
     Kit.win({
       title: isYou(w.i) ? 'You win!' : w.cpu ? w.name + ' wins' : w.name + ' wins!', sub: w.score + ' points after ' + S.rounds.length + ' rounds',
       rank: rank, lose: !!w.cpu, icon: w.cpu ? 'bot' : 'trophy',
-      again: function () { newGame(players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), target); },
+      again: function () { newGame(players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }), target); },
       look: 'Look at the table',
       setup: function () { clearSave(); showSetup(); }
     });

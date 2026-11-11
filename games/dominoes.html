@@ -432,7 +432,8 @@
           ['long', 'Longer', '150 points (250 in All Fives).']] },
         { id: 'teams', label: 'Partners (4 players)', value: 'off', help: 'With 4 players you can team up with the player sitting across from you.', choices: [
           ['off', 'On your own', 'Each player keeps their own score.'],
-          ['on', 'Partners across', 'You and the player across share a score.']] }
+          ['on', 'Partners across', 'You and the player across share a score.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       players: {
         min: 1, max: 4, count: 2,
@@ -441,7 +442,7 @@
         teams: function (n, v) { return n === 4 && v.teams === 'on' ? [[0, 2], [1, 3]] : null; }   // (partners sit across from each other)
       },
       onStart: function (cfg) {
-        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; });   // (each robot its own skill)
         players.forEach(function (p, i) { p.color = Kit.color(i); });
         var teams = cfg.options.teams === 'on';
         if (teams && players.length !== 4) { Kit.toast('Partners need 4 players'); teams = false; }
@@ -455,7 +456,7 @@
     tok++; sel = -1; lock = false;
     S = {
       v: 1, mode: o.mode, variant: o.variant, target: o.target, teams: !!o.teams,
-      players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, color: p.color, hand: [] }; }),
+      players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level, color: p.color, hand: [] }; }),
       score: [], hand: 0, bone: [], line: null, cur: 0, viewer: 0, passes: 0, phase: 'deal',
       last: null, lacks: [], handPts: [], rounds: [], res: null, undo: null, undoBy: -1, started: Date.now(),
       hl: { dom: {}, spare: null, bigPlay: null, block: null, bigHand: null, draw: null, fives: {} }
@@ -735,7 +736,7 @@
     rank.sort(function (a, b) { return b.score - a.score; });
     var winHumans = S.players.some(function (p, i) { return !p.cpu && sideOf(i) === best; });
     var lose = humans() > 0 && !winHumans;
-    var again = { mode: S.mode, variant: S.variant, target: S.target, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    var again = { mode: S.mode, variant: S.variant, target: S.target, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) };
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: S.teams ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
@@ -776,7 +777,109 @@
     var m = cpuChoose(pi, distinct(ms));
     doPlay(pi, m.t, m.end);
   }
+  // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Plays any tile that fits, with no plan.'],
+    ['normal', 'Normal', 'Gets rid of heavy tiles, keeps its options open and blocks when it can.'],
+    ['hard', 'Hard', 'Counts the tiles it hasn’t seen and thinks each play through to the end of the hand.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
   function cpuChoose(pi, ms) {
+    var lv = lvName(S.players[pi].level);
+    if (lv === 'easy') return ms[Math.floor(Math.random() * ms.length)];
+    return lv === 'hard' ? hardChoose(pi, ms) : normalChoose(pi, ms);
+  }
+  // Hard counts tiles. The tiles it hasn't seen are in the other hands or the boneyard; it deals them out many
+  // ways (in Block, never giving a player a number they have passed on), plays each tile it could play through to
+  // the end of the hand with everyone getting rid of their heaviest useful tile, and keeps the play that leaves
+  // its side furthest ahead. For that it keeps the line as its open ends only (lite).
+  var HARD_DEALS = 80, HARD_MS = 300;   // (as many deals as fit in the time, and never fewer than 12)
+  function lite(L, fives) {
+    var a = {};
+    ['E', 'W', 'N', 'S'].forEach(function (k) { var arm = L.arms[k], t = arm.length ? last(arm).t : null; a[k] = t ? [t[1], t[0] === t[1]] : null; });
+    return { f: fives, spin: !!L.spin, r: [L.root.t[0], L.root.t[1]], a: a };
+  }
+  function liteEnds(X) {
+    var out = [['E', X.a.E ? X.a.E[0] : X.r[1]], ['W', X.a.W ? X.a.W[0] : X.r[0]]];
+    if (X.spin && X.a.E && X.a.W) { out.push(['N', X.a.N ? X.a.N[0] : X.r[0]]); out.push(['S', X.a.S ? X.a.S[0] : X.r[0]]); }
+    return out;
+  }
+  function liteScore(X) {
+    if (!X.f) return 0;
+    var c = 0, A = X.a;
+    if (X.spin) { if (!A.E || !A.W) c += X.r[0] * 2; } else { if (!A.E) c += X.r[1]; if (!A.W) c += X.r[0]; }
+    ['E', 'W', 'N', 'S'].forEach(function (k) { if (A[k]) c += A[k][1] ? A[k][0] * 2 : A[k][0]; });
+    return c > 0 && c % 5 === 0 ? c : 0;
+  }
+  function litePlace(X, t, end, v) {
+    var dbl = t[0] === t[1], A = X.a;
+    if (X.f && !X.spin && dbl) {   // (All Fives: the first double becomes the spinner, and the line is counted from it)
+      return end === 'W' ? { f: 1, spin: true, r: [t[0], t[0]], a: { E: A.E || [X.r[1], false], W: null, N: null, S: null } }
+        : { f: 1, spin: true, r: [t[0], t[0]], a: { W: A.W || [X.r[0], false], E: null, N: null, S: null } };
+    }
+    var Y = { f: X.f, spin: X.spin, r: X.r, a: { E: A.E, W: A.W, N: A.N, S: A.S } };
+    Y.a[end] = [t[0] === v ? t[1] : t[0], dbl];
+    return Y;
+  }
+  // the rest of the hand from X with seat cur to play; returns how far ahead seat pi's side comes out
+  // (pts: the All Fives points already scored in this try, by side)
+  function liteOut(X, hands, bone, cur, pi, pts) {
+    var n = hands.length, passes = 0, draw = S.variant !== 'block', ended = -1, i, k;
+    for (;;) {
+      var h = hands[cur], es = liteEnds(X), best = null, bv = -1, bi = -1;
+      for (i = 0; i < h.length; i++) for (k = 0; k < es.length; k++) {
+        var t = h[i]; if (t[0] !== es[k][1] && t[1] !== es[k][1]) continue;
+        var X2 = litePlace(X, t, es[k][0], es[k][1]), sc = liteScore(X2), v = t[0] + t[1] + (t[0] === t[1] ? 3 : 0) + sc * 2 + Math.random();
+        if (v > bv) { bv = v; best = X2; bi = i; best.sc = sc; }
+      }
+      if (!best) {
+        if (draw && bone.length) { h.push(bone.pop()); continue; }
+        if (++passes >= n) break;
+        cur = (cur + 1) % n; continue;
+      }
+      h.splice(bi, 1); X = best; passes = 0; pts[sideOf(cur)] += best.sc;
+      if (!h.length) { ended = cur; break; }
+      cur = (cur + 1) % n;
+    }
+    return liteEnd(hands, ended, pi, pts);
+  }
+  function liteEnd(hands, ended, pi, pts) {
+    var pp = hands.map(handPips), side = -1, got = 0, i, mine = sideOf(pi), rest = 0;
+    if (ended >= 0) side = sideOf(ended);
+    else {
+      var lo = Math.min.apply(null, pp), sides = [];
+      pp.forEach(function (x, q) { if (x === lo && sides.indexOf(sideOf(q)) < 0) sides.push(sideOf(q)); });
+      if (sides.length === 1) side = sides[0];
+    }
+    if (side >= 0) { for (i = 0; i < pp.length; i++) if (sideOf(i) !== side) got += pp[i]; if (S.variant === 'fives') got = round5(got); pts[side] += got; }
+    for (i = 0; i < pts.length; i++) if (i !== mine) rest += pts[i];
+    return pts[mine] - rest / Math.max(1, pts.length - 1);
+  }
+  function hardChoose(pi, ms) {
+    if (ms.length < 2) return ms[0];
+    var P = S.players[pi], n = S.players.length, known = {}, tot = ms.map(function () { return 0; }), d, i, q, t0 = Date.now();
+    onLine(S.line).concat(P.hand).forEach(function (t) { known[tid(t)] = 1; });
+    var unknown = fullSet().filter(function (t) { return !known[tid(t)]; }), X0 = lite(S.line, S.variant === 'fives');
+    var lacks = S.variant === 'block' ? S.lacks : [];
+    for (d = 0; d < HARD_DEALS && (d < 12 || Date.now() - t0 < HARD_MS); d++) {
+      var pool = shuffle(unknown.slice()), hands = [];
+      for (q = 0; q < n; q++) {
+        hands.push([]); if (q === pi) continue;
+        var need = S.players[q].hand.length, lk = lacks[q] || [];
+        for (i = pool.length - 1; i >= 0 && hands[q].length < need; i--) if (lk.indexOf(pool[i][0]) < 0 && lk.indexOf(pool[i][1]) < 0) hands[q].push(pool.splice(i, 1)[0]);
+        while (hands[q].length < need && pool.length) hands[q].push(pool.pop());   // (nothing else fits: any tile)
+      }
+      for (i = 0; i < ms.length; i++) {
+        var m = ms[i], X1 = litePlace(X0, m.t, m.end, m.v), pts = [], hs = hands.map(function (h) { return h.slice(); });
+        for (q = 0; q < nSides(); q++) pts.push(0);
+        pts[sideOf(pi)] += liteScore(X1);
+        hs[pi] = P.hand.filter(function (t) { return tid(t) !== tid(m.t); });
+        tot[i] += hs[pi].length ? liteOut(X1, hs, pool.slice(), (pi + 1) % n, pi, pts) : liteEnd(hs, pi, pi, pts);
+      }
+    }
+    var best = 0; for (i = 1; i < ms.length; i++) if (tot[i] > tot[best] + 1e-9) best = i;
+    var usual = normalChoose(pi, ms), u = ms.indexOf(usual);   // (plays that come out the same: play as Normal would)
+    return u >= 0 && tot[u] >= tot[best] - 1e-9 ? usual : ms[best];
+  }
+  function normalChoose(pi, ms) {
     var P = S.players[pi], n = S.players.length;
     var known = {}; onLine(S.line).concat(P.hand).forEach(function (t) { known[tid(t)] = 1; });
     var unknown = fullSet().filter(function (t) { return !known[tid(t)]; });

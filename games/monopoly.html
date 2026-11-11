@@ -619,19 +619,24 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
         { id: 'fp', label: 'Free Parking jackpot', value: 'off', choices: [['off', 'Off', 'The official rule: Free Parking is just a rest.'], ['on', 'On', 'House rule: taxes and fines pile up in the middle, and landing on Free Parking takes them.']] },
         { id: 'go400', label: 'Landing on Go', value: 'off', choices: [['off', '$200', 'The official rule: $200 for passing or landing on Go.'], ['on', '$400', 'House rule: landing exactly on Go pays $400.']] },
         { id: 'bots', label: 'Computer players', value: '0', when: function (m) { return m === 'online'; }, choices: [['0', 'None', 'Only the people who join play.'], ['1', '1', 'One computer player sits at the table with the people who join.'], ['2', '2', 'Two computer players sit at the table with the people who join.'], ['3', '3', 'Three computer players sit at the table with the people who join.']] },
-        { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] }
+        { id: 'speed', label: 'Computer speed', value: 'normal', when: function (m) { return m === 'cpu'; }, choices: [['normal', 'Easy to follow'], ['fast', 'Fast']] },
+        // (how each computer player plays: games/monopoly/engine.js, "The computer players")
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [
+          ['easy', 'Easy', 'Slow to build houses, and never offers a trade.'],
+          ['normal', 'Normal', 'Builds when it has cash to spare and trades for the last lot of a group.'],
+          ['hard', 'Hard', 'Builds fast, mortgaging its spare property to get three houses on every lot.']] }
       ],
       onStart: function (cfg) {
         var o = cfg.options;
         if (cfg.mode === 'cpu') { speed = o.speed === 'fast' ? 'fast' : 'normal'; lsSet('mono_speed', speed); }
-        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on' };
+        var opts = { len: o.len, noAuction: o.auction === 'off', fp: o.fp === 'on', go400: o.go400 === 'on', level: o.level === 'easy' || o.level === 'hard' ? o.level : 'normal' };
         if (cfg.mode === 'online') {
           var nm = cfg.players[0] && cfg.players[0].name, me = lsGet(NETME, {}) || {};
           opts.bots = Math.max(0, Math.min(3, +o.bots || 0)); me.opts = opts; lsSet(NETME, me);
           if (nm && nm !== 'You' && !/^Player \d+$/.test(nm)) lsSet('tn_me', { name: nm });
           TurnNet.open(); return;
         }
-        showPicker(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), opts);
+        showPicker(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? p.level || opts.level : undefined }; }), opts);   // (each robot its own skill)
       }
     });
   }
@@ -857,7 +862,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
     var P = pick;
     function go() {
       if (pick !== P) return;
-      var players = P.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, tok: P.toks[i] }; });
+      var players = P.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, level: p.level, tok: P.toks[i] }; });
       start(P.m, players, P.opts);
     }
     if (P.anim) return;
@@ -2037,7 +2042,7 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
       notes: highlights().slice(0, 4), notesTitle: 'How it went',
       again: function () {
         if (mode === 'online') { if (NET) NET.again(); return; }
-        start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu, tok: p.tok }; }), S.opts);
+        start(mode, P.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, tok: p.tok }; }), S.opts);
       },
       look: { label: 'Look at the board', onClick: function () { render(); } },
       setup: mode === 'online' ? null : function () { stopAll(); clearSave(); showSetup(); },

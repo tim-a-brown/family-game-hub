@@ -205,10 +205,12 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       options: [
         { id: 'dice', label: 'Dice', value: realLast ? 'real' : 'screen', choices: [
           ['screen', 'On screen', 'You roll the dice on this phone.'],
-          ['real', 'Real dice', 'You roll your own dice at the table and keep the score here. Computer players sit this game out.']] }
+          ['real', 'Real dice', 'You roll your own dice at the table and keep the score here. Computer players sit this game out.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       // Real dice is the score card on its own (mode 'card'): only the people at the table get a column
       onStart: function (cfg) {
+        cfg.players.forEach(function (p) { if (p.cpu) p.level = lvName(p.level || cfg.options.level); });   // (each robot its own skill)
         if (cfg.options.dice !== 'real') return start(cfg);
         start({ mode: 'card', players: cfg.players.filter(function (p) { return !p.cpu; }) });
       }
@@ -220,7 +222,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     S = {
       mode: cfg.mode, cur: 0, round: 1, rolls: 0, busy: false,
       dice: [0, 0, 0, 0, 0], held: [false, false, false, false, false],
-      players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color, card: {}, yb: 0 }; }),
+      players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, color: p.color, card: {}, yb: 0 }; }),
       started: Date.now()
     };
     save(); render(); maybeCpu();
@@ -299,7 +301,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       title: rank.length === 1 ? top.score + ' points!' : tie ? "It's a tie!" : top.name + ' wins!',
       sub: rank.length === 1 ? (top.score >= 300 ? 'Legendary game!' : top.score >= 250 ? 'Great game!' : 'Nice rolling!') : 'Final scores',
       rank: rank.length > 1 ? rank : null, lose: youLost,
-      again: function () { start({ mode: S.mode, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) }); },
+      again: function () { start({ mode: S.mode, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) }); },
       extra: [{ label: 'Change players', onClick: showSetup }]
     });
   }
@@ -345,8 +347,69 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   }
 
   // ── Computer player ───────────────────────────────────────────────────────
+  // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Keeps whichever number it has most of and takes the biggest score on offer.'],
+    ['normal', 'Normal', 'Chases straights and full houses and saves its boxes for good rolls.'],
+    ['hard', 'Hard', 'Works out the odds of every way to hold the dice before it rolls again.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
   function cpuHolds(p, d, rolls) {
     if (rolls == null) rolls = S.rolls;
+    var lv = lvName(p.level);
+    if (lv === 'hard') return hardHolds(p, d, rolls);
+    if (lv === 'easy') {
+      // Easy keeps the number it has most of (the higher one when two tie) and rolls the rest
+      var ce = counts(d), top = 0;
+      for (var f = 1; f <= 6; f++) if (ce[f] >= (ce[top] || 0) && ce[f]) top = f;
+      return d.map(function (x) { return ce[top] > 1 && x === top; });
+    }
+    return normalHolds(p, d, rolls);
+  }
+  // Hard works out the odds. For every set of dice it could hold it knows every way the rest can land and how
+  // likely each is, so with one roll left it holds what is worth most on average, and with two left it holds
+  // what is worth most given that it will choose as well again after the next roll. What five dice are worth is
+  // how far their best box comes out above par: the score a good player averages in that box (PAR), with the
+  // upper bonus counted as it is earned (three of each number makes the 63 it needs).
+  var PAR = { ones: 2.1, twos: 4.2, threes: 6.3, fours: 8.4, fives: 10.6, sixes: 12.7, k3: 21.7, k4: 13.1, fh: 22.6, ss: 29.5, ls: 32.7, ch: 22, yz: 16.9 }, HARD_UP = 0.6;
+  function hardRate(p, d) {
+    var opt = options(p, d), best = null, bestW = -1e9;
+    Object.keys(opt).forEach(function (id) {
+      var v = opt[id], c = CAT[id], w = v - (PAR[id] || 0);
+      if (c.up) w += (v - 3 * c.up) * HARD_UP;
+      if (w > bestW) { bestW = w; best = id; }
+    });
+    return { id: best, v: opt[best], w: bestW };
+  }
+  // The dice tables, built once: every five dice there can be (252, in order), every set of dice that can be
+  // held (462), where each hold can land with what chance, and which holds each five dice allow.
+  var YT = null;
+  function diceTables() {
+    if (YT) return YT;
+    function sets(n, min, cur, out) { if (cur.length === n) { out.push(cur.slice()); return out; } for (var v = min; v <= 6; v++) { cur.push(v); sets(n, v, cur, out); cur.pop(); } return out; }
+    var FACT = [1, 1, 2, 6, 24, 120], states = sets(5, 1, [], []), sIdx = {}, keeps = [], kIdx = {}, rolled = [];
+    states.forEach(function (st, i) { sIdx[st.join('')] = i; });
+    for (var n = 0; n <= 5; n++) {
+      var l = sets(n, 1, [], []);
+      rolled[n] = l.map(function (m) { var ways = FACT[n], c = counts(m); for (var v = 1; v <= 6; v++) ways /= FACT[c[v]]; return [m, ways / Math.pow(6, n)]; });
+      keeps = keeps.concat(l);
+    }
+    keeps.forEach(function (k, i) { kIdx[k.join('')] = i; });
+    var land = keeps.map(function (k) { return rolled[5 - k.length].map(function (r) { return [sIdx[k.concat(r[0]).sort().join('')], r[1]]; }); });
+    var subs = states.map(function (st) { var seen = {}, l = []; for (var m = 0; m < 32; m++) { var k = st.filter(function (x, i) { return m >> i & 1; }).join(''); if (!seen[k]) { seen[k] = 1; l.push(kIdx[k]); } } return l; });
+    return (YT = { states: states, kIdx: kIdx, land: land, subs: subs });
+  }
+  function hardHolds(p, d, rolls) {
+    var Y = diceTables(), worth = Y.states.map(function (st) { return hardRate(p, st).w; });
+    function over(vals) { return Y.land.map(function (l) { var t = 0; for (var i = 0; i < l.length; i++) t += l[i][1] * vals[l[i][0]]; return t; }); }
+    var E = over(worth);   // what each hold is worth with one roll to come
+    if (rolls < 2) E = over(Y.subs.map(function (ks) { var b = -1e9; ks.forEach(function (k) { if (E[k] > b) b = E[k]; }); return b; }));   // and with two
+    var best = 31, bestV = hardRate(p, d).w;   // (holding all five is stopping here)
+    for (var m = 30; m >= 0; m--) {
+      var v = E[Y.kIdx[d.filter(function (x, i) { return m >> i & 1; }).sort().join('')]];
+      if (v > bestV + 1e-9) { bestV = v; best = m; }
+    }
+    return [0, 1, 2, 3, 4].map(function (k) { return !!(best >> k & 1); });
+  }
+  function normalHolds(p, d, rolls) {
     var c = counts(d), open = function (id) { return p.card[id] == null; };
     // Chase straights when a run of 4 (or 3 early) is showing
     if ((open('ls') || open('ss')) && !isYahtzee(d)) {
@@ -375,6 +438,16 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     return d.map(function (x) { return x === best; });
   }
   function cpuChoose(p, d) {
+    if (lvName(p.level) === 'easy') {
+      // Easy takes the biggest score on offer; with nothing to score it crosses out its first open box
+      var oe = options(p, d), be = null;
+      CATS.forEach(function (c) { if (oe[c.id] != null && (be == null || oe[c.id] > oe[be])) be = c.id; });
+      return { id: be, v: oe[be] };
+    }
+    return lvName(p.level) === 'hard' ? hardRate(p, d) : rate(p, d);
+  }
+  // the box these dice are best scored in, what they score there (v) and what that is worth to the card (w)
+  function rate(p, d) {
     var opt = options(p, d), left = 13 - filled(p), best = null, bestV = -1e9;
     Object.keys(opt).forEach(function (id) {
       var v = opt[id], c = CAT[id], w = v;
@@ -386,7 +459,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       if ((id === 'fh' || id === 'ss' || id === 'ls') && !v) w = -25 + (id === 'ls' ? -4 : 0);
       if (w > bestV) { bestV = w; best = id; }
     });
-    return { id: best, v: opt[best] };
+    return { id: best, v: opt[best], w: bestV };
   }
   var cpuToken = 0;
   function maybeCpu() {
@@ -400,7 +473,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
         if (S.rolls > 0) {
           var h = cpuHolds(p, S.dice), ch = cpuChoose(p, S.dice);
           // Stop early on a made hand worth keeping
-          if (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v) || h.every(Boolean)) return finishCpu();
+          // (Hard has already weighed stopping against rolling: it stops when holding everything is best)
+          if (h.every(Boolean) || (p.level !== 'hard' && (ch.v >= 40 || (ch.id === 'yz' && ch.v) || (ch.id === 'fh' && ch.v)))) return finishCpu();
           S.held = h; paintDice();
         }
         setTimeout(function () { if (!alive()) return; roll(); setTimeout(go, 1000); }, 600);

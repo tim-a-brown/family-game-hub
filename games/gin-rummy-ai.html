@@ -163,17 +163,25 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
-      options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this many points; then bonuses are added.', value: 100, choices: [[100, '100 · standard'], [50, '50 · quick']] }],
+      options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this many points; then bonuses are added.', value: 100, choices: [[100, '100 · standard'], [50, '50 · quick']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.target || 100, cfg.mode);
+        S = freshGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.target || 100, cfg.mode);
         undoStack = []; Kit.gameStart(); newHand();
       }
     });
   }
+  // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  // (Two levels for now: a Hard that beats Normal needs more than sharper numbers. Knocking sooner or later, a
+  // heavier hand on what it throws you and looking one draw ahead were each tried and none of them won more.)
+  var LEVELS = [['easy', 'Easy', 'Throws its highest loose card and knocks the moment it can.'],
+    ['normal', 'Normal', 'Keeps cards that can still become melds and picks its moment to knock.']];
+  function lvName(v) { return v === 'easy' ? v : 'normal'; }
+  function lvOf(p) { var pl = S && S.players && S.players[p]; return lvName(pl && pl.level); }
   function freshGame(players, target, mode) {
     return {
       mode: mode || 'cpu', me: 0, target: target, hand: 0, dealer: Math.random() < 0.5 ? 0 : 1, sameDealer: true, rounds: [], labels: [], log: [], highlights: [], started: Date.now(),
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0, wins: 0 }; })
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0, wins: 0 }; })
     };
   }
 
@@ -396,11 +404,12 @@
   }
 
   // ── Computer player (uses only what it can see) ───────────────────────────
+  var AI = 1;   // the seat the robot is thinking for (it sits in seat 1; aiStep sets it)
   function seen() {
     var o = {};
-    S.hands[1].forEach(function (c) { o[c.r + c.s] = 1; });
+    S.hands[AI].forEach(function (c) { o[c.r + c.s] = 1; });
     S.discard.forEach(function (c) { o[c.r + c.s] = 1; });
-    S.pubTook[0].forEach(function (id) { var c = byId(S.hands[0], id); if (c) o[c.r + c.s] = 1; });
+    S.pubTook[1 - AI].forEach(function (id) { var c = byId(S.hands[1 - AI], id); if (c) o[c.r + c.s] = 1; });
     return o;
   }
   var RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
@@ -425,30 +434,32 @@
   }
   function danger(c) {
     var d = 0;
-    S.pubTook[0].forEach(function (id) {
-      var t = byId(S.hands[0], id); if (!t) return;
+    S.pubTook[1 - AI].forEach(function (id) {
+      var t = byId(S.hands[1 - AI], id); if (!t) return;
       if (t.r === c.r) d += 4;
       else if (t.s === c.s && Math.abs(RV[t.r] - RV[c.r]) <= 2) d += 3;
     });
-    S.disBy[0].forEach(function (t) {
+    S.disBy[1 - AI].forEach(function (t) {
       if (t.r === c.r) d -= 1.5;
       else if (t.s === c.s && Math.abs(RV[t.r] - RV[c.r]) === 1) d -= 0.8;
     });
     return d * (S.turnNo > 6 ? 1 : 0.6);
   }
   function aiPickDiscard(h, vis) {
-    var bestC = null, bestV = Infinity;
+    var bestC = null, bestV = Infinity, lv = lvOf(AI);
     h.forEach(function (c) {
       if (c.id === S.took) return;
       var rest = h.filter(function (x) { return x !== c; });
-      var v = handValue(rest, vis) + danger(c) + Math.random() * 0.6;
+      // Easy only counts the deadwood it would be left with, give or take: no thought for what its cards could
+      // become or for what the other player is collecting
+      var v = lv === 'easy' ? best(rest).dw + Math.random() * 4 : handValue(rest, vis) + danger(c) + Math.random() * 0.6;
       if (v < bestV) { bestV = v; bestC = c; }
     });
     return bestC;
   }
   function aiWantsTop() {
     var top = S.discard[S.discard.length - 1]; if (!top || S.stockOnly) return false;
-    var h = S.hands[1], vis = seen(), withTop = h.concat([top]);
+    var h = S.hands[AI], vis = seen(), withTop = h.concat([top]);
     var b = best(withTop);
     var inMeld = b.melds.some(function (m) { return m.indexOf(top) >= 0; });
     if (inMeld) return true;
@@ -458,19 +469,27 @@
     return val(top) <= 3 && best(h).dw - bestAfter >= 6;
   }
   function aiStep() {
-    if (S.phase === 'upcard') { if (aiWantsTop()) takeUp(1); else passUp(1); return; }
-    if (S.phase === 'draw') { draw(1, aiWantsTop() ? 'discard' : 'stock'); return; }
-    if (S.phase === 'discard') {
-      var vis = seen(), c = aiPickDiscard(S.hands[1], vis);
-      var rest = S.hands[1].filter(function (x) { return x !== c; }), dw = best(rest).dw;
-      var limit = S.turnNo < 8 ? 10 : S.turnNo < 16 ? 7 : 4;
-      if (S.pubTook[0].length >= 2) limit -= 2;
-      if (S.stock.length <= 6) limit = 10;
-      var knock = dw === 0 || (dw <= 10 && dw <= limit);
-      // Holding out for gin now and then when very close early on
-      if (knock && dw > 0 && dw <= 2 && S.turnNo < 10 && Math.random() < 0.3) knock = false;
-      discardCard(1, c.id, knock);
-    }
+    AI = S.turn;
+    var d = aiDecide();
+    if (d.k === 'take') { if (S.phase === 'upcard') takeUp(AI); else draw(AI, 'discard'); }
+    else if (d.k === 'pass') passUp(AI);
+    else if (d.k === 'stock') draw(AI, 'stock');
+    else if (d.k === 'discard') discardCard(AI, d.c.id, d.knock);
+  }
+  // what the robot in seat AI does now: {k: 'take' | 'pass' | 'stock'} or {k: 'discard', c, knock}
+  function aiDecide() {
+    if (S.phase === 'upcard') return { k: aiWantsTop() ? 'take' : 'pass' };
+    if (S.phase === 'draw') return { k: aiWantsTop() ? 'take' : 'stock' };
+    var lv = lvOf(AI), vis = seen(), c = aiPickDiscard(S.hands[AI], vis);
+    var rest = S.hands[AI].filter(function (x) { return x !== c; }), dw = best(rest).dw;
+    if (lv === 'easy') return { k: 'discard', c: c, knock: dw <= 10 };   // (Easy knocks the moment it can)
+    var limit = S.turnNo < 8 ? 10 : S.turnNo < 16 ? 7 : 4;
+    if (S.pubTook[1 - AI].length >= 2) limit -= 2;
+    if (S.stock.length <= 6) limit = 10;
+    var knock = dw === 0 || (dw <= 10 && dw <= limit);
+    // Holding out for gin now and then when very close early on
+    if (knock && dw > 0 && dw <= 2 && S.turnNo < 10 && Math.random() < 0.3) knock = false;
+    return { k: 'discard', c: c, knock: knock };
   }
 
   // ── End of a hand ─────────────────────────────────────────────────────────

@@ -367,13 +367,15 @@
     app.classList.remove('ipl');
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
-      options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] }],
+      options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       onStart: function (cfg) {
+        cfg.players.forEach(function (p) { if (p.cpu) p.level = lvName(p.level || cfg.options.level); });   // (each robot its own skill)
         S = {
           mode: cfg.mode || 'cpu', me: 0,
           len: cfg.options.len || 'quick',
-          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
+          players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }),
           scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(),
           stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] }
         };
@@ -537,6 +539,15 @@
     for (var q = 0; q < 4; q++) { S.ponds[q].forEach(function (id) { seen[kindOf(id)]++; }); S.melds[q].forEach(function (m) { m.ids.forEach(function (id) { seen[kindOf(id)]++; }); }); }
     return seen.map(function (s) { return Math.max(0, 4 - s); });
   }
+  // Their skill. Normal is how they have always played; a game saved before there were levels plays Normal.
+  // (Two levels: two kinds of Hard were built and measured against Normal over 120 full games each. One held back
+  // tiles that players close to winning could want; it threw the winning tile a little less often and scored about
+  // the same. One went for one-suit hands; it won fewer than half as many hands, bigger ones, finished first more
+  // often and last more often, and placed worse on average. Neither was a clear step up.)
+  var LEVELS = [['easy', 'Easy', 'Keeps the tiles that go together and throws the rest without counting what could still come.'],
+    ['normal', 'Normal', 'Counts the tiles that can still help and keeps the hand with the most chances.']];
+  function lvName(v) { return v === 'easy' ? v : 'normal'; }
+  function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
   function bestDiscard(p) {
     var h = S.hands[p], c = counts(h), m = S.melds[p].length, left = visibleLeft(p), seen = {};
     var cand = [], bestS = 99;
@@ -546,6 +557,11 @@
       cand.push({ k: k, s: s }); if (s < bestS) bestS = s;
     });
     cand = cand.filter(function (x) { return x.s === bestS; });
+    // Easy: any tile that doesn't set its hand back, without counting which would leave the most chances
+    if (lvOf(p) === 'easy') {
+      var ek = cand[Math.floor(Math.random() * cand.length)].k;
+      for (var e = h.length - 1; e >= 0; e--) if (kindOf(h[e]) === ek) return h[e];
+    }
     var sw = 27 + seatWind(p), rw = 27 + S.wind, discarded = counts([].concat.apply([], S.ponds));
     cand.forEach(function (x) {
       c[x.k]--;

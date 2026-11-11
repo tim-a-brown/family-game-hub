@@ -298,13 +298,14 @@
         { id: 'deal', label: 'Deal', help: 'How many cards everyone gets each hand.', value: '5', when: function () { return rulesNow() === 'cards'; }, choices: [
           ['5', '5 every hand', 'Everyone gets 5 cards every time the hands run out.'],
           ['shrink', '5, 4, 3, 2, 1', 'Hands shrink: 5 cards, then 4, 3, 2 and 1. Then the deck is reshuffled, the deal passes to the next player, and it starts again at 5.']] },
-        { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] }
+        { id: 'partners', label: 'Partners (4 or 6 players)', help: 'With 4 or 6 players, you can team up with the player straight across from you.', value: 'on', choices: [['off', 'No partners', 'Everyone plays for themselves.'], ['on', 'Partners across', 'Once your marbles are home you move your partner’s. The first team with all marbles home wins.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       players: { range: function () { return [2, 6]; }, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; },
         // (partners sit straight across: with four, seats 1 & 3 against 2 & 4; with six, three pairs)
         teams: function (n, v) { return v.partners !== 'on' ? null : n === 4 ? [[0, 2], [1, 3]] : n === 6 ? [[0, 3], [1, 4], [2, 5]] : null; } },
       onStart: function (cfg) {
-        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, color: p.color }; });
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined, color: p.color }; });   // (each robot its own skill)
         var n = players.length, teams = cfg.options.partners === 'on' && (n === 4 || n === 6);
         start({ mode: cfg.mode, rules: cfg.options.ruleset || 'cards', king: cfg.options.king || '13', jokers: cfg.options.jokers || 'on', deal: cfg.options.deal || '5', teams: teams, players: players });
       }
@@ -319,7 +320,7 @@
     S = {
       mode: o.mode, rules: o.rules, teams: !!o.teams, B: n <= 4 ? 4 : 6,
       players: o.players.map(function (p, i) {
-        return { name: p.name, cpu: !!p.cpu, color: p.color, arm: arms[i], m: [-1, -1, -1, -1], st: newStats() };
+        return { name: p.name, cpu: !!p.cpu, level: p.level, color: p.color, arm: arms[i], m: [-1, -1, -1, -1], st: newStats() };
       }),
       cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null, ml: ''
     };
@@ -518,8 +519,15 @@
     });
     return d;
   }
-  function cpuScore(m) {
-    var n = N(), s = Math.random() * 5;
+  // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Makes any move it is allowed to about half the time.'],
+    ['normal', 'Normal', 'Sends rivals home, keeps its marbles out of danger and heads for home.'],
+    ['hard', 'Hard', 'Also thinks about what its next card or roll could do after this one.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvNow() { return lvName(S.players[S.cur].level); }
+  var HARD_NEXT = 0.5;
+  function cpuScore(m, plain) {
+    var n = N(), s = plain ? 0 : Math.random() * 5;
     if (m.cap) { var vp = S.players[m.cap.pi].m[m.cap.mi]; s += 110 + (vp === CEN ? n / 2 : vp) * 1.3; }
     if (m.kind === 'out') s += 65;
     if (m.kind === 'home') s += 85 + (m.to - n) * 4;
@@ -534,9 +542,26 @@
   }
   function cpuMove() {
     var ms = legal(); if (!ms.length) { nextTurn(); return; }
-    var best = ms[0], bs = -1e9;
-    ms.forEach(function (m) { var v = cpuScore(m); if (v > bs) { bs = v; best = m; } });
+    var best = ms[0], bs = -1e9, lv = lvNow();
+    if (lv === 'easy' && Math.random() < 0.5) { doMove(ms[Math.floor(Math.random() * ms.length)], true); return; }
+    ms.forEach(function (m) {
+      var v = cpuScore(m, lv === 'hard');
+      if (lv === 'hard') v += HARD_NEXT * nextRoll(m);
+      if (v > bs) { bs = v; best = m; }
+    });
     doMove(best, true);
+  }
+  // Hard: what the next roll could do after move m, the best move's worth averaged over the six faces
+  function nextRoll(m) {
+    var owner = S.players[m.o], was = owner.m[m.mi], victim = m.cap ? S.players[m.cap.pi] : null, vwas = victim ? victim.m[m.cap.mi] : 0, tot = 0;
+    owner.m[m.mi] = m.to; if (victim) victim.m[m.cap.mi] = -1;
+    for (var d = 1; d <= 6; d++) {
+      var top = 0;
+      gen(mover(S.cur), d).forEach(function (m2) { var v = cpuScore(m2, true); if (v > top) top = v; });
+      tot += top;
+    }
+    owner.m[m.mi] = was; if (victim) victim.m[m.cap.mi] = vwas;
+    return tot / 6;
   }
 
   // ═════════════════════════════════════════════════════════════════════════
@@ -893,19 +918,38 @@
   function keepValue(c) { return { JK: 100, J: 60, '7': 50, A: 45, K: 44, '4': 40 }[c.r] || (13 - Math.min(12, +c.r || 12)); }
   function cpuCards() {
     if (!S || S.phase !== 'play' || lock || !S.players[S.cur].cpu) return;
-    var plays = allPlays(S.cur);
+    var plays = allPlays(S.cur), lv = lvNow();
     if (!plays.length) {
       var h = hand().slice().sort(function (a, b) { return keepValue(a) - keepValue(b); });
+      if (lv === 'easy' && h.length) h = [h[Math.floor(Math.random() * h.length)]];   // (Easy throws away any card)
       if (h.length) discard(h[0], { cpu: true }); else cNext();
       return;
     }
-    var base = evalPl(S.players, S.cur), best = null, bs = -1e9;
+    if (lv === 'easy' && Math.random() < 0.5) { playMove(plays[Math.floor(Math.random() * plays.length)], { cpu: true }); return; }
+    var base = evalPl(S.players, S.cur), best = null, bs = -1e9, list = [];
     plays.forEach(function (mv) {
       var pl = copyPl(S.players);
       mv.steps.forEach(function (st) { applyStep(pl, st); });
-      var v = evalPl(pl, S.cur) - base - cardCost(mv.c, mv, S.players) + Math.random() * 3;
+      var after = evalPl(pl, S.cur), v = after - base - cardCost(mv.c, mv, S.players) + (lv === 'hard' ? 0 : Math.random() * 3);
+      list.push({ mv: mv, pl: pl, after: after, v: v });
       if (v > bs) { bs = v; best = mv; }
     });
+    if (lv === 'hard') {
+      // Hard: for its better plays, what the best of its other cards could then do (as if nothing else moved)
+      var mine = hand(); bs = -1e9;
+      list.sort(function (a, b) { return b.v - a.v; }).slice(0, 12).forEach(function (x) {
+        var next = 0;
+        mine.forEach(function (c2) {
+          if (c2 === x.mv.c) return;
+          cardMoves(c2, x.pl, S.cur).forEach(function (m2) {
+            var pl2 = copyPl(x.pl); m2.steps.forEach(function (st) { applyStep(pl2, st); });
+            var g = evalPl(pl2, S.cur) - x.after - cardCost(c2, m2, x.pl); if (g > next) next = g;
+          });
+        });
+        var v = x.v + HARD_NEXT * next;
+        if (v > bs) { bs = v; best = x.mv; }
+      });
+    }
     playMove(best, { cpu: true });
   }
 
@@ -990,7 +1034,7 @@
       .sort(function (a, b) { return b.pr - a.pr; });
     var humansL = S.players.filter(function (p) { return !p.cpu; });
     var lose = humansL.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
-    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, deal: S.dealMode, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }) };
+    var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, deal: S.dealMode, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) };
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: names.length > 1 ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
