@@ -38,6 +38,7 @@ const CARDS = {
   yisunsin: F('Yi Sun-sin', 'V', 4, 5, 'ASIA', 4, 1592, { guard: 1 }),
   hannibal: F('Hannibal', 'V', 5, 4, 'AFR', 2, -218, { voyager: 1, raider: 1 }),
   sittingbull: F('Sitting Bull', 'V', 4, 4, 'AMER', 6, 1876, { homeDouble: 1 }),
+  blackbeard: F('Blackbeard', 'V', 4, 4, 'AMER', 5, 1718, { raider: 1 }, { arr: ['stun', 1] }),   // (he won by fear: the strongest enemy freezes)
   // Arts
   homer: F('Homer', 'A', 2, 2, 'MED', 1, -750, { inspiring: 1 }),
   sappho: F('Sappho', 'A', 2, 3, 'MED', 1, -600, { scholar: 1 }),
