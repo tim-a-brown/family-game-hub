@@ -572,6 +572,12 @@ Underlying principles for everything:
   selects it there; a card in your hand that can't be played says why. A button's move is checked against the legal
   moves again when it is tapped. The computer does not move while cards are being read. Lessons keep the plain
   single-card reader (`openView`). A new kind of move gets its button in `scanActs`.
+- **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
+  ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
+  played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by
+  Place, and how the game ended. `logScreen()` (the round button at the right of the caption, and Turn log in the
+  menu) shows the turns newest first in the shared frame, each in its player's colour, with every card's and Place's
+  name a button that reads the card. A new kind of engine event gets its sentence in `logEvs`.
 - **The computer's moves come one at a time** (Tim, 2026-11-11: "cpu moves in anoria need to be acknowledged by the
   player by default otherwise it moves too quick"). After each move the computer makes has played out, the table stops
   (`ackWait` in `robotTurn`, ui.js): the caption says what it did in a sentence ("Sprocket played Hatshepsut at Seneca

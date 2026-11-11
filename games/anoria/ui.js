@@ -732,7 +732,8 @@
       hb.textContent = L.name; hs.textContent = L.role;
       Array.prototype.forEach.call(map.children, (t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
       if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
-      L.items.forEach((x, k) => { const c = info(x.key), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
+      // (a card you can do something with now has a gold pip on its thumbnail: what can be played from the hand, which of your Figures can still act)
+      L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
       strip.hidden = n < 2;
       F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest,
         make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null })]); } });
@@ -1219,6 +1220,7 @@
     else if (!human(V.turn)) { txt = pname(V.turn) + ' is playing'; dim = true; }
     else txt = Kit.poss(pname(V.turn)) + ' turn';
     n.appendChild(el('div', { class: 'cap-txt' + (dim ? ' dim' : ''), text: txt }));
+    if (!G.demo) n.appendChild(el('button', { type: 'button', class: 'cap-log', 'aria-label': 'Turn log', html: Kit.icon('rows'), onclick: logScreen }));
   }
   function handEl() {
     const n = dom.hand; n.innerHTML = '';
@@ -1698,6 +1700,60 @@
   // made, the round each Seal broke, who won the most clashes, and who scored each Place every round (G.tale; a game
   // saved before this was kept has none, and its record says so by leaving those parts out)
   const MAPORD = [0, 1, 4, 3, 2];   // (the five Places as they lie: seat 1's Gate and Outpost, the Crossroads, seat 2's Outpost and Gate)
+  // ═══ The turn log ═══════════════════════════════════════════════════════════════════════════════════════
+  // Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana". Every event the engine
+  // reports becomes a sentence in G.log (kept with the saved game, the last 200): who played what where, each clash
+  // with its Might and who was knocked out, Legacy Lines, Seals, and the count Place by Place. A line is a list of
+  // words and cards ({k: key}, a Place as '@id'); logScreen() draws the cards' names as buttons that read the card.
+  const LOGMAX = 200;
+  function logEvs(evs, round) {
+    if (!G || G.demo || !evs || !evs.length) return;
+    const L = G.log || (G.log = []), who = G.who || (G.who = {});
+    S.figs.forEach(f => { if (!who[f.u]) who[f.u] = [f.c, f.o]; });
+    evs.forEach(ev => { if (ev.t === 'arrive') who[ev.u] = [ev.c, ev.o]; });
+    const nm = o => pname(o), F = u => who[u] ? { k: who[u][0] } : 'a Figure', own = u => who[u] ? Kit.poss(pname(who[u][1])) + ' ' : '', Pl = p => ({ k: '@' + S.places[p] }), K = k => ({ k: k });
+    const add = (o, x) => L.push({ o: o, x: x }), ren = n => n + ' Renown';
+    evs.forEach((ev, i) => {
+      const t = ev.t;
+      if (t === 'turn') L.push({ h: 't', r: ev.round, o: ev.o });
+      else if (t === 'arrive') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '.']);
+      else if (t === 'relic') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
+      else if (t === 'deed') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
+      else if (t === 'quick') add(ev.o, [nm(ev.o) + ' added ', K(ev.c), ' to the clash.']);
+      else if (t === 'move') add(who[ev.u] ? who[ev.u][1] : -1, ev.push ? [own(ev.u), F(ev.u), ' was pushed to ', Pl(ev.to), '.'] : [own(ev.u), F(ev.u), ev.jump ? ' jumped to ' : ' moved to ', Pl(ev.to), '.']);
+      else if (t === 'clash') { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;
+        add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' clashed with ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ' They were tied, so nobody was knocked out.')]); }
+      else if (t === 'ko') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
+      else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate.']);
+      else if (t === 'stun') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' misses the next turn.']);
+      else if (t === 'line') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', F(ev.b), ' to ', F(ev.a), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
+      else if (t === 'thread') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', !ev.src ? 'a card' : ev.src.k === 'place' ? Pl(ev.src.p) : ev.src.k === 'relic' ? K(ev.src.c) : F(ev.src.u), ' to ', K(ev.c), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
+      else if (t === 'renown') add(ev.o, ev.why === 'bounty' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' for the Bounty.'] : ev.why === 'colosseum' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', K('@colosseum'), '.'] : ev.why === 'stage' && ev.u ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' with ', F(ev.u), '.'] : [nm(ev.o) + ' scored ' + ren(ev.n) + '.']);
+      else if (t === 'hold') { if (!L.length || L[L.length - 1].h !== 'c' && !(L[L.length - 1].cnt)) L.push({ h: 'c', r: round || S.round }); L.push({ o: ev.o, cnt: 1, x: ev.o >= 0 ? [nm(ev.o) + ' held ', Pl(ev.p), ' and scored ' + ren(ev.n) + '.'] : ['Nobody held ', Pl(ev.p), '.'] }); }
+      else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + nm(ev.o) + ' has ' + ev.left + ' left.']);
+      else if (t === 'mend') add(ev.o, ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
+      else if (t === 'discard') add(ev.o, [nm(ev.o) + ' discarded ', K(ev.c), '.']);
+    });
+    if (L.length > LOGMAX) L.splice(0, L.length - LOGMAX);
+  }
+  function logEnd() { if (!G || G.demo || !G.log) return; G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : pname(S.winner) + ' won' + (S.how === 'seals' ? ' by breaking all of ' + Kit.poss(pname(1 - S.winner)) + ' Seals.' : ' with ' + S.P[S.winner].renown + ' Renown.')] }); }
+  function logScreen() {
+    if (!G || G.demo) return; Kit.sfx('tap');
+    const sc = screen({ title: 'Turn log', cls: 'an-log' }), L = G.log || [], groups = []; let cur = null;
+    L.forEach(e => { if (e.h === 't' || e.h === 'c' || e.h === 'e' || !cur) { cur = { head: e.h ? e : null, lines: [] }; groups.push(cur); if (e.h === 'e' || !e.h) cur.lines.push(e); } else cur.lines.push(e); });
+    const name = k => k[0] === '@' ? theName(k) : CARDS[k] ? (CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n) : k;
+    const line = e => el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, (e.x || []).map(x => typeof x === 'string' ? document.createTextNode(x)
+      : el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => openView(x.k.replace(/^@/, '')) })));
+    if (!groups.length) sc.body.appendChild(el('p', { class: 'lg-none', text: 'Nothing has happened yet. Every card played, every clash and every count is written here as the game goes.' }));
+    // (the newest turn first; inside a turn, things in the order they happened)
+    groups.slice().reverse().forEach(g => { const h = g.head, box = el('section', { class: 'lg-g' + (h && h.h === 'c' ? ' cnt' : h && h.h === 'e' ? ' end' : h && h.o >= 0 ? ' o' + h.o : '') });
+      if (h && h.h === 't') box.appendChild(el('h2', {}, [el('i'), el('span', { text: Kit.poss(pname(h.o)) + ' turn' }), el('small', { text: 'Round ' + h.r })]));
+      else if (h && h.h === 'c') box.appendChild(el('h2', {}, [el('span', { text: 'The count' }), el('small', { text: 'Round ' + h.r })]));
+      else if (h && h.h === 'e') box.appendChild(el('h2', {}, [el('span', { text: 'The end' })]));
+      if (!g.lines.length && h && h.h === 't') box.appendChild(el('p', { class: 'lg-l dim', text: h.o === S.turn && !G.over ? 'Nothing yet this turn.' : 'Nothing was played.' }));
+      g.lines.forEach(e => box.appendChild(line(e))); sc.body.appendChild(box); });
+  }
+
   function tally(evs) {
     const T = G.tale, r = G.hist.length + 1, cardOf = u => { const f = u && E.byU(S, u); return f ? f.c : ''; };
     let held = null;
@@ -1722,7 +1778,7 @@
     if (a.t === 'clash' && a.ph) ctx.key = quickOf(a);
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
     const roll = ctx.roll || E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
-    const evs = S.ev.splice(0); G.n++; tally(evs); save();
+    const evs = S.ev.splice(0); G.n++; tally(evs); logEvs(evs); save();
     ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash');
     const ok = await playEvents(evs, ctx);
     return ok ? ctx : null;
@@ -1765,7 +1821,7 @@
         await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to ' + S.cfg.target + ' Renown</span>' : ''));
         if (gen !== my) return;
       }
-      E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); save();
+      E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); logEvs(evs); save();
       if (!(await playEvents(evs, { o: o }))) return;
     }
     V = snap();
@@ -1802,7 +1858,7 @@
     setBusy(true); await wait(500); if (gen !== my) return;
     for (let n = 0; n < 40; n++) {
       // (the computer does not move while the player is looking at cards: the table would change under what they read)
-      while (viewEl && !ui.turbo) { await new Promise(r => setTimeout(r, 200)); if (gen !== my) return; }
+      while ((viewEl || document.querySelector('.an-screen.an-log')) && !ui.turbo) { await new Promise(r => setTimeout(r, 200)); if (gen !== my) return; }
       const a = E.aiPick(S, prof, Math.random); if (!a) break;
       const said = stepOn() && !ui.turbo && !G.demo ? moveSaid(a) : null;
       const ctx = await doAction(a); if (gen !== my || !ctx) return;
@@ -1816,7 +1872,7 @@
   }
   async function discardOne(h) {
     const my = gen, o = S.turn; setBusy(true);
-    E.discard(S, o, h); const evs = S.ev.splice(0); save();
+    E.discard(S, o, h); const evs = S.ev.splice(0); logEvs(evs); save();
     if (!(await playEvents(evs, { h: h, o: o }))) return;
     setBusy(false); V = snap();
     if (S.P[o].hand.length <= S.cfg.handMax) { ui.discard = false; if (gen === my) endTurn(); } else render();
@@ -1825,15 +1881,15 @@
     const my = gen, o = S.turn;
     if (human(o) && S.P[o].hand.length > S.cfg.handMax) { ui.sel = null; ui.discard = true; setBusy(false); legal(); render(); Kit.sfx('bad'); return; }
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true); render();
-    E.endTurn(S); const evs = S.ev.splice(0), mid = snap();
+    E.endTurn(S); const evs = S.ev.splice(0), mid = snap(); logEvs(evs);
     let evR = null; const r0 = S.P.map(p => p.renown);
     if (G.k === 0) { G.k = 1; S.turn = G.ord[1]; G.ph = 'start'; }
     else {
-      E.endRound(S); evR = S.ev.splice(0); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(MAPORD.map(i => held[i] == null ? '.' : 'ab'[held[i]]).join(''));
+      const rNow = G.hist.length + 1; E.endRound(S); evR = S.ev.splice(0); logEvs(evR, rNow); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(MAPORD.map(i => held[i] == null ? '.' : 'ab'[held[i]]).join(''));
       G.hist.push(S.P.map((p, i) => p.renown - r0[i])); if (G.tale) G.tale.tot.push(S.P.map(p => p.renown).join('-'));   // (tot: Renown so far, with what Threads and Seals gave during the round)
       if (S.over) G.over = true; else { const f = E.firstOf(S); G.ord = [f, 1 - f]; G.k = 0; S.turn = f; G.ph = 'start'; }
     }
-    if (G.over) { clearSave(); record(); } else save();
+    if (G.over) { logEnd(); clearSave(); record(); } else save();
     if (!(await playEvents(evs, { o: o }))) return;
     V = mid; render();
     if (evR) { if (!(await roundEnd(evR))) return; }
@@ -2056,6 +2112,7 @@
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep },
+      { icon: 'rows', label: 'Turn log', sub: 'Everything that has happened in this game', when: () => !!(G && S && !G.demo), onClick: logScreen },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
