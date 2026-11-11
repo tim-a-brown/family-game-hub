@@ -228,6 +228,26 @@
       const had = {}; cards.forEach(x => { had[x.c] = (had[x.c] == null ? Coll.copies(x.c) : had[x.c]) - 1; });
       res.threads.forEach(t => { if (t.gift) had[t.gift] = (had[t.gift] == null ? Coll.copies(t.gift) : had[t.gift]) - 1; });
       const shown = {}, known = k => !!shown[k] || (had[k] != null ? had[k] > 0 : Coll.copies(k) > 0);
+      // The named Legacy Line a card belongs to (Tim, 2026-11-11): shown over the cards as the line itself, the cards
+      // you have found in their places and the ones you haven't joined on but hidden. A card that completes a line
+      // has a small moment of its own, there and then.
+      const lineDone = {}; (C.THREADS || []).forEach(t => { if (t.cards.every(known)) lineDone[t.id] = 1; });
+      const lineFor = k => (C.THREADS || []).filter(t => t.cards.indexOf(k) >= 0).map(t => ({ t: t, n: t.cards.filter(c => c === k || known(c)).length })).sort((a, b) => b.n / b.t.cards.length - a.n / a.t.cards.length)[0] || null;
+      function lineEl(L, k) {
+        const t = L.t, row = el('div', { class: 'pk-ln-row', style: { '--n': t.cards.length } }); let prev = false;
+        t.cards.forEach((c, i) => { const kn = c === k || known(c);
+          if (i) row.appendChild(el('i', { class: 'pk-ln-j' + (kn && prev ? ' on' : '') }));
+          if (kn) { const m = el('span', { class: 'pk-ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) }, role: 'img', 'aria-label': CARDS[c].n }); const im = A.artImg(c, true); if (im) m.appendChild(im); row.appendChild(m); }
+          else row.appendChild(el('span', { class: 'pk-ln-m hid', role: 'img', 'aria-label': 'A card you have not found yet' }));
+          prev = kn; });
+        return el('div', { class: 'pk-p-line' + (L.n === t.cards.length ? ' full' : ''), 'data-line': t.id }, [el('div', { class: 'pk-ln-h' }, [el('b', { text: t.n }), el('span', { text: L.n + ' of ' + t.cards.length })]), row]);
+      }
+      function lineMoment(id) {
+        const ln = plate.querySelector('.pk-p-line[data-line="' + id + '"]'); if (!ln || !alive) return;
+        ln.classList.add('won'); const ct = ln.querySelector('.pk-ln-h span'); if (ct) { ct.className = 'pk-ln-stamp'; ct.textContent = 'Complete'; }
+        Kit.sfx('win', .7); Kit.haptic('success');
+        const r = ln.getBoundingClientRect(); if (!calm()) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 24, GOLD, { d: Math.max(120, r.width * .55), ms: 950 });
+      }
       let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0;
 
       // The cards stand on one strip (the same strip a bunch of cards is read on anywhere else: AnoriaUI.makeFlow).
@@ -302,7 +322,9 @@
         plate.className = 'pk-plate ' + (x.first ? 'new' : 'two'); plate.style.setProperty('--f', col(k)); plate.innerHTML = '';
         plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]), x.first ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));   // (a new card says so itself: New is stamped on it as it turns)
         plate.appendChild(el('div', { class: 'pk-p-n', text: CARDS[k].n }));
-        if (link) plate.appendChild(el('div', { class: 'pk-p-th' }, [el('span', { class: 'pk-p-who', role: 'img', 'aria-label': 'A Thread to ' + CARDS[link.other].n }, [thumb(link.other), el('i', { html: Kit.icon('link') })]), el('span', { class: 'tx', text: link.tx })]));
+        const L = lineFor(k);
+        if (L) { plate.appendChild(lineEl(L, k)); if (link) plate.appendChild(el('p', { class: 'pk-p-why', text: link.tx })); }
+        else if (link) plate.appendChild(el('div', { class: 'pk-p-th' }, [el('span', { class: 'pk-p-who', role: 'img', 'aria-label': 'A Legacy Line to ' + CARDS[link.other].n }, [thumb(link.other), el('i', { html: Kit.icon('link') })]), el('span', { class: 'tx', text: link.tx })]));
         else if (t.tx) plate.appendChild(el('div', { class: 'pk-p-cap', html: A.boldKeys(t.tx) }));
         else if (t.fact) plate.appendChild(el('div', { class: 'pk-p-cap it', text: t.fact }));
       }
@@ -315,6 +337,10 @@
         const c = cells[i]; if (!c || c.up || !alive || ended) return; o = o || {};
         const k = c.x.c, isNew = c.x.first, last = left === 1;
         c.up = true; c.at = Date.now(); left--; shown[k] = 1;
+        // (did this card complete a Legacy Line? its moment comes once the plate shows that line)
+        const fin = (C.THREADS || []).filter(t => !lineDone[t.id] && t.cards.indexOf(k) >= 0 && t.cards.every(known));
+        fin.forEach(t => { lineDone[t.id] = 1; });
+        if (fin.length) setTimeout(() => { if (alive && !ended && cells[Math.round(F ? F.pos : 0)] === c) lineMoment(fin[0].id); }, o && o.pass ? 120 : 520);
         const link = linkFor(k);
         c.el.classList.add('up', isNew ? 'new' : 'two');
         c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
@@ -399,7 +425,7 @@
         if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep full', text: 'You already have two of every card.' }));
         if (res.threads.length) {
           const gifts = res.threads.some(t => t.gift);
-          plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Thread', 'Threads') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
+          plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Legacy Line', 'Legacy Lines') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
             el('div', { class: 'pk-t-th' }, [t.gift ? el('button', { type: 'button', class: 'pk-t-gift', 'aria-label': 'Its gift: ' + CARDS[t.gift].n + '. Read it', onclick: () => A.openView(t.gift) }, [thumb(t.gift)]) : null, el('b', { text: t.n })])))));
         }
         foot.innerHTML = '';
@@ -437,9 +463,9 @@
               go.hidden = false; setTimeout(() => { try { go.focus({ preventScroll: true }); } catch (e) {} }, 500);
             });
           }
-          const many = res.threads.length > 1 ? el('div', { class: 'pk-m-dots', role: 'img', 'aria-label': 'Thread ' + (res.threads.indexOf(t) + 1) + ' of ' + res.threads.length }, res.threads.map(x => el('i', { class: x === t ? 'on' : '' }))) : null;
+          const many = res.threads.length > 1 ? el('div', { class: 'pk-m-dots', role: 'img', 'aria-label': 'Legacy Line ' + (res.threads.indexOf(t) + 1) + ' of ' + res.threads.length }, res.threads.map(x => el('i', { class: x === t ? 'on' : '' }))) : null;
           const m = el('div', { class: 'pk-moment thread' }, [el('div', { class: 'pk-m-in' }, [
-            el('div', { class: 'pk-m-a' }, [el('div', { class: 'pk-k', text: held ? 'A Thread you hold' : 'Thread finished' }), el('h2', { class: 'pk-m-t', text: t.n }), chain, many]),
+            el('div', { class: 'pk-m-a' }, [el('div', { class: 'pk-k', text: held ? 'A Legacy Line you hold' : 'Legacy Line complete' }), el('h2', { class: 'pk-m-t', text: t.n }), chain, many]),
             el('div', { class: 'pk-m-b' }, [g ? el('div', { class: 'pk-k gift', text: 'Its gift' }) : null, giftEl, g ? cap : null, go])])]);
           sc.body.appendChild(m);
           Kit.sfx('win'); Kit.haptic('success');
@@ -489,7 +515,7 @@
       info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: 'The deck' }), el('b', { text: name })]), facs]));
       info.appendChild(el('p', { class: 'pk-ch-plan', text: A.PLAN[name] }));
       info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: G.tx })]));
-      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the deck’s 30 cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(A.readyDeck(name)); } }));
+      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the deck’s ' + A.Coll.DECK + ' cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(A.readyDeck(name)); } }));
       info.classList.remove('in'); void info.offsetWidth; info.classList.add('in');
       go.textContent = 'Begin with ' + G.n;
       if (user) { Kit.sfx('flip'); Kit.haptic('light'); }

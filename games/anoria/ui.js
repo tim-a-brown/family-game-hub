@@ -219,7 +219,7 @@
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
     // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
-    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Thread from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
+    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Legacy Line from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
     if (!o.mini && !place && (c.say || fig || from)) {
       if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
       inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
@@ -260,19 +260,31 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
-    const one = 'Only one Thread or Legacy line scores in each round.';
-    const me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
-    if (c.insp) { const who = names(c.insp);
-      notes.appendChild(el('p', { html: '<b>Legacy</b>: history ties ' + esc(c.n) + ' to ' + esc(listOf(c.insp.map(k => info(k).n), 'and')) + '. If ' + esc(who) + ' is one of your Figures on the map when you play ' + esc(c.n) + ', ' + esc(c.n) + ' costs 1 Spark less and you score 1 Renown. A gold line joins them, and ' + esc(c.n) + ' has +1 Might while both stay on the map. ' + one })); }
-    if (CARDS[key] && CARDS[key].from && E.STD.threads) {
-      // (what the card grew from can be a Place, a Relic or a person: each is on your side in its own way)
-      const from = CARDS[key].from, fig = CARDS[key].t === 'fig', pl = from.filter(x => x[0] === '@').map(theName), rel = from.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), ppl = from.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName);
-      const how = [];
-      if (fig && pl.length) how.push('at ' + listOf(pl, 'or'));
-      if (ppl.length) how.push('while ' + listOf(ppl, 'or') + ' is one of your Figures on the map');
-      if (rel.length) how.push('while ' + listOf(rel, 'or') + ' is one of your Relics');
-      if (!fig && pl.length) how.push('while one of your Figures is at ' + listOf(pl, 'or'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: history ties ' + esc(me) + ' to ' + esc(listOf(from.map(theName), 'and')) + '. If you play ' + esc(me) + ' ' + esc(how.join(', or ')) + ', you score 1 Renown as you play the card. ' + one }));
+    // A card's Legacy Line, drawn rather than described (Tim, 2026-11-11: "make the connector descriptions on the cards
+    // more visual. explain through design not words where possible"): what the card grew from on the left, a gold
+    // line to the card itself, and under the line what the connection is worth as the game's own marks (Spark,
+    // Might, Renown). One short line says when it counts, and the true sentence about the two says why.
+    const srcs = (c.insp || []).concat(CARDS[key] && E.STD.threads && CARDS[key].from || []);
+    if (srcs.length) {
+      const fig = CARDS[key] && CARDS[key].t === 'fig', me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
+      const med = (k, big) => { const bare = k.replace(/^@/, ''), i2 = info(bare), m = el('button', { type: 'button', class: 'ln-m' + (k[0] === '@' ? ' pl' : '') + (big ? ' me' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c }, 'aria-label': 'Read ' + i2.n, onclick: e => { e.stopPropagation(); if (!big) openView(bare); } });
+        const im = artImg(bare, true, true); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: i2.n })]); };
+      const left = el('span', { class: 'ln-src' }); srcs.forEach((k, i) => { if (i) left.appendChild(el('i', { class: 'ln-or', text: 'or' })); left.appendChild(med(k)); });
+      const worth = el('span', { class: 'ln-worth' }, [
+        c.insp ? el('span', { class: 'ln-w sp', role: 'img', 'aria-label': 'costs 1 Spark less' }, [el('i'), el('b', { text: '−1' })]) : null,
+        c.insp ? el('span', { class: 'ln-w mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('i'), el('b', { text: '+1' })]) : null,
+        el('span', { class: 'ln-w re', role: 'img', 'aria-label': 'scores 1 Renown' }, [el('i'), el('b', { text: '+1' })])]);
+      // when it counts, the way the player meets it
+      const ppl = srcs.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName), rel = srcs.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), pl = srcs.filter(x => x[0] === '@').map(theName), when = [];
+      if (ppl.length) when.push('With ' + listOf(ppl, 'or') + ' in play on your side');
+      if (rel.length) when.push((when.length ? 'with ' : 'With ') + listOf(rel, 'or') + ' among your Relics');
+      if (pl.length) when.push(fig ? (when.length ? 'when ' : 'When ') + 'you play ' + me + ' at ' + listOf(pl, 'or') : (when.length ? 'with ' : 'With ') + 'one of your Figures at ' + listOf(pl, 'or'));
+      const why = srcs.map(k => TX.LINKS && TX.LINKS[k + '>' + key]).filter(Boolean);
+      notes.appendChild(el('div', { class: 'ln' + (srcs.length >= 3 ? ' many' : '') }, [
+        el('div', { class: 'ln-k', text: 'Legacy Line' }),
+        el('div', { class: 'ln-row' }, [left, el('span', { class: 'ln-line' }, [worth]), med(key, true)]),
+        el('p', { class: 'ln-when', text: when.join(', or ') + '.' }),
+        why.length ? el('p', { class: 'ln-why', text: why[0] }) : null]));
     }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1](c.n)) })); });
     if (c.kind === 'place') {
@@ -282,7 +294,8 @@
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
-        notes.appendChild(el('p', { html: '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' }));
+        // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
+        notes.appendChild(el('p', { html: S.cfg.ramp ? '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' : '<b>Every round</b>: whoever holds this Place when the round ends scores ' + worth + ' Renown.' }));
       }
     }
     if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
@@ -457,7 +470,7 @@
       (any ? [['D', 1], ['S', 1], ['V', 1], ['A', 1], ['W', 1]] : deckFacs(d.cards)).forEach(x => cols.appendChild(el('i', { style: { '--c': FAC[x[0]].c, '--n': x[1] } })));
       row.appendChild(el('button', { type: 'button', class: 'dk' + (value === d.id ? ' on' : '') + (d.ok ? '' : ' locked'), 'aria-pressed': String(value === d.id), 'aria-label': d.n + (d.ok ? '' : ', not yours to play yet: ' + d.why.join(', ')),
         onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (d.ok) set(d.id); else lockedDeck(d); } },
-        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own + ' of 30' : d.cards.length + ' of 30') + '</b>' })]));
+        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own : d.cards.length) + ' of ' + Coll.DECK + '</b>' })]));
     });
     if (who !== 'cpu' && window.AnoriaDecks) row.appendChild(el('button', { type: 'button', class: 'dk dk-new', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(null, showSetup); } },
       [el('span', { class: 'dk-g back plus', html: Kit.icon('plus') }), el('span', { class: 'dk-n', text: 'Build a deck' })]));
@@ -550,7 +563,9 @@
     S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
-    G = { mode: cfg.mode, level: cfg.level, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
+    // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
+    // and finishes the way it began, with Places scoring double from round 4.)
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -559,6 +574,7 @@
   }
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
+    if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     buildTable(); V = snap(); render(); beginTurn();
   }
@@ -959,7 +975,8 @@
   function roundSheet() {
     Kit.sfx('tap');
     const st = E.stake(S.cfg, S.round);
-    Kit.sheet({ title: 'Round ' + S.round, html: '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>' +
+    Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
+      : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
       '<p>The first player to reach <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
@@ -1023,7 +1040,7 @@
     const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true, true); if (im) sp.appendChild(im); return sp; };
     document.querySelectorAll('.an-story').forEach(x => x.remove());
     const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]),
-      el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Thread' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
+      el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Legacy Line' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
     // (a lesson's caption may be at the top of the screen: the story sits under it)
     const away = () => { n.classList.remove('show'); setTimeout(() => n.remove(), 260); };
     n.addEventListener('click', away); document.body.appendChild(n);
@@ -1151,7 +1168,7 @@
     },
     async line(ev) {
       const f = vfig(ev.a); if (!f) return; f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0;
-      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy line'); await wait(900);
+      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy Line'); await wait(900);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     // (how one led to the other, in a sentence, the first time each link is drawn in a game)
@@ -1413,7 +1430,8 @@
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
   const RULES =
-    '<p>Anoria is a world where all of history happens at once. The great figures of every age live there together, among the wonders of the world. You lead a company of them with one of the greats as your Guide, and so does the other player. A company wins Renown by holding the wonders.</p>' +
+    '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
+    '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
@@ -1424,19 +1442,21 @@
     '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck is 30 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> as you play it. That Renown is scored once, not every turn, and only one Thread or Legacy line scores in a round. Read a card to see its Thread.</li></ul>' +
+    '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The foot of the card names that source.</li>' +
+    '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
+    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
+    '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. The other four join you as you beat the computer, one each at 3, 8, 15 and 25 wins. Each has a different power, so a new Guide is a new way to play: any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
-    '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown as it arrives. That Renown is scored once, not every turn, and only one line or Thread scores in a round.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
-    '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
+    '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +

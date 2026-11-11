@@ -1,9 +1,9 @@
 // How many copies of one card should a deck be allowed? Two tests, each with and without "one of each person on your
 // side of the table at a time" (cfg.unique).
 //   node scripts/anoria/copies.js star [games per opponent]   one strong card at 1, 2, 3, 4 and 6 copies in its ready deck
-//   node scripts/anoria/copies.js cap  [games per opponent]   whole decks built to a cap: best 10 x3, best 7 x4, best 5 x6
+//   node scripts/anoria/copies.js cap  [games per opponent]   whole decks built to a cap: the deck's strongest cards, as many copies of each as the cap allows
 const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH, CARDS } = require('../../games/anoria/cards');
-const part = process.argv[2] || 'star', n = +process.argv[3] || 30, D = Object.keys(ARCH);
+const part = process.argv[2] || 'star', n = +process.argv[3] || 30, D = Object.keys(ARCH), DECK = require('../../games/anoria/coll').DECK;
 const style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Pathfinders: 'raider' }, base = k => ARCH[k].cards.concat(ARCH[k].cards);
 // strongest first (win rate when played, from fin-cards.txt), for choosing what a capped deck keeps
 const RANK = require('fs').readFileSync(__dirname + '/fin-cards.txt', 'utf8').split('WIN RATE WHEN THE CARD WAS PLAYED')[1].split('\n\n')[0].split('\n').map(l => l.trim().replace(/ \[.*$/, '')).filter(Boolean);
@@ -20,9 +20,9 @@ if (part === 'star') {
   const stars = { Legion: ['charlemagne', 'leonidas'], Court: ['hatshepsut', 'elizabeth'], Legacy: ['alexander', 'newton'], Explorers: ['zhenghe', 'copernicus'], Pathfinders: ['imhotep', 'beowulf'] };
   const withK = (name, x, k) => {   // k copies of x; the weakest other cards give up (or take) the room, never below one copy
     const cnt = {}; ARCH[name].cards.forEach(c => cnt[c] = 2); cnt[x] = k;
-    const others = ARCH[name].cards.filter(c => c !== x).sort((a, b) => rank(b) - rank(a)); let tot = 28 + k, i = 0;
-    while (tot > 30) { const c = others[i++ % others.length]; if (cnt[c] > 1) { cnt[c]--; tot--; } }
-    while (tot < 30) { cnt[others[others.length - 1 - (i++ % others.length)]]++; tot++; }
+    const others = ARCH[name].cards.filter(c => c !== x).sort((a, b) => rank(b) - rank(a)); let tot = DECK - 2 + k, i = 0;
+    while (tot > DECK) { const c = others[i++ % others.length]; if (cnt[c] > 1) { cnt[c]--; tot--; } }
+    while (tot < DECK) { cnt[others[others.length - 1 - (i++ % others.length)]]++; tot++; }
     const out = []; Object.keys(cnt).forEach(c => { for (let j = 0; j < cnt[c]; j++) out.push(c); }); return out;
   };
   const K = [1, 2, 3, 4, 6], sum = {}, sumU = {}; K.forEach(k => { sum[k] = [0, 0]; sumU[k] = [0, 0]; });
@@ -35,7 +35,7 @@ if (part === 'star') {
   console.log('AVERAGE'.padEnd(22) + K.map(k => (sum[k][0] / sum[k][1]).toFixed(1).padStart(8)).join('') + '   |                                 ' + [3, 4, 6].map(k => (sumU[k][0] / sumU[k][1]).toFixed(1).padStart(8)).join(''));
 }
 if (part === 'cap') {
-  const capped = (name, L) => { const cs = ARCH[name].cards.slice().sort((a, b) => rank(a) - rank(b)), out = []; for (const c of cs) for (let j = 0; j < L && out.length < 30; j++) out.push(c); return out; };
+  const capped = (name, L) => { const cs = ARCH[name].cards.slice().sort((a, b) => rank(a) - rank(b)), out = []; for (const c of cs) for (let j = 0; j < L && out.length < DECK; j++) out.push(c); return out; };
   console.log('WHOLE DECKS BUILT TO A CAP (' + (n * 4) + ' games per cell): the deck\'s strongest cards, as many copies as the cap allows\n' + 'deck'.padEnd(14) + ['2 (today)', 'cap 3', 'cap 4', 'cap 6'].map(x => x.padStart(11)).join('') + '   | one of each person:' + ['cap 3', 'cap 4', 'cap 6'].map(x => x.padStart(9)).join('') + '   | different cards played per game: 2, 3, 4, 6');
   const tot = {}, totU = {};
   for (const name of D) { let row = name.padEnd(14), rowU = '', sv = [];

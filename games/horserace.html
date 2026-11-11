@@ -1346,7 +1346,6 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
   }
   function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
-  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
     var m = Casino.mode(), p = Kit.poss(name);
@@ -1371,10 +1370,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     S = null; rail(null); app.className = 'stage hr'; moneyHome();
     Kit.setup(app, {
       intro: 'Read the program, place your bets, cheer them home',
-      modes: [
-        { id: 'solo', icon: 'user', title: 'Solo', desc: 'Bet from your casino bankroll (' + money(myBankroll()) + ')' },
-        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Everyone gets the same table money and bets in turn. Richest at the end wins.' }
-      ],
+      // one seat bets from the casino bankroll; with 2 to 6 seats everyone gets the same table money
+      modes: Kit.modes(['solo', { id: 'pass', kind: 'local' }]),
       players: { min: 1, max: 6, count: 1, range: function (m) { return m === 'pass' ? [2, 6] : [1, 1]; }, label: "Who's playing?" },
       options: [
         { id: 'field', label: 'Horses per race', value: 'mix', help: 'How many horses run in each race.',

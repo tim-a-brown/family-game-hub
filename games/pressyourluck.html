@@ -858,14 +858,17 @@ body.pyl-on{
   function showSetup() {
     stopAll(); S = null; shell = null; FORCE = [];
     document.body.classList.remove('pyl-on'); app.classList.remove('pyl');
+    // A setup saved when a Family game could seat two people: the computer that took the third podium now has that seat
+    try {
+      var sv = JSON.parse(localStorage.getItem('gn_setup_pressyourluck'));
+      if (sv && sv.mode === 'family' && sv.count === 2 && !(sv.robots || []).length) { sv.count = 3; sv.robots = [2]; localStorage.setItem('gn_setup_pressyourluck', JSON.stringify(sv)); }
+    } catch (e) {}
     Kit.setup(app, {
       title: 'Press Your Luck',
       intro: 'Earn spins with trivia, then stop the Big Board. Big bucks, no Whammies!',
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You and two computer contestants' },
-        { id: 'family', icon: 'users', title: 'Family game', desc: '2 or 3 people on this phone. With 2, a computer takes the third podium.' }
-      ],
-      players: { range: function (m) { return m === 'cpu' ? [3, 3] : [2, 3]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, count: 3 },
+      // three podiums, like the show: each one after the first is a person or a computer contestant
+      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }]),
+      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; } },
       options: [
         { id: 'earn', label: 'Earning spins', value: 'q4', help: 'Like the show: toss-up questions before each round. Buzz in first and get it right for 3 spins; everyone else can win 1 spin by picking from three.',
           choices: [['q4', '4 questions', 'Four toss-ups a round, like the show.'],

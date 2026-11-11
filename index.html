@@ -694,6 +694,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .pick-note{margin:2px 4px 0;font-size:.82rem;line-height:1.35;}
 .pick button.resume{box-shadow:inset 0 0 0 2px var(--yellow);}
 .pick button.resume .e{background:var(--yellow-fill,var(--yellow));color:#16102e;}
+.pick button.join{box-shadow:inset 0 0 0 2px var(--green,#3ddc84);}
+.pick button.join .e{background:var(--green,#3ddc84);color:#0c2416;}
 .pick .e{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:var(--w08);color:var(--text-2);flex:none;}
 .pick .e .ico{width:24px;height:24px;}
 .pick .t{font-weight:900;font-size:1.1rem;}
@@ -1079,6 +1081,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     }
     var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' });
     box.appendChild(head);
+    // a friend has a table open in this game: joining it is the first thing offered (Tim, 2026-11-11)
+    friendTables.filter(function (x) { return x.id === g.id; }).forEach(function (x) {
+      var seated = x.max > 2 ? x.n + ' of ' + x.max + ' seats are taken' : 'One seat is waiting for you';
+      var b = opt('users', 'Join ' + Kit.poss(x.who) + ' table', el('div', { class: 'd rs' }, [el('span', { text: x.live ? (x.playing ? 'They are playing now' : 'They are waiting to start') : seated }), x.live ? el('span', { class: 'ago', text: seated }) : el('span', { class: 'ago', text: 'opened ' + ago(x.at) })]),
+        function () { Kit.sfx('pop'); window.__leaving = true; location.href = x.href; }, 'resume join');
+      b.setAttribute('aria-label', 'Join ' + Kit.poss(x.who) + ' ' + g.name + ' table');
+    });
     if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [el('span', { text: live.label || 'In progress' }), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
     var chips = sp ? setupChips(g, sp) : null;
     if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
@@ -1086,7 +1095,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var board = g.cat === 'board';
     if (g.launch) g.launch.forEach(function (o) {
       if (o.tool || (sp && o.file === sp + '.html')) return;   // (playing on this device: that's the setup below)
-      opt(o.icon, o.title, o.desc, function () { go(o.file + nw, true); }, 'alt');
+      var row = opt(o.icon, o.title, o.desc, function () { go(o.file + nw, true); }, 'alt');
+      if (/[?&]online=1/.test(o.file)) row.setAttribute('data-net', '1');   // (hidden once the setup below offers Play online itself: one way in, not two)
     });
     else if (g.score) opt('pencil', board ? 'Table companion' : 'Keep score', board ? 'Playing on the real board? Track turns, money and roll the battles here' : 'Playing with real cards? Track the points here', function () { go(g.score + nw, true); }, 'alt');
     if (g.launch) g.launch.forEach(function (o) { if (o.tool) opt(o.icon, o.title, o.desc, function () { go(o.file, false); }, 'alt tool'); });
@@ -1108,14 +1118,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       GS = { frame: frame, fh: 0, start: start,
         who: function (d) {
           var seats = d.seats; whoCard.hidden = !seats || !seats.length; if (whoCard.hidden) return;
-          whoT.textContent = d.one ? 'Player' : 'Players'; whoChips.innerHTML = '';
-          seats.forEach(function (st) {
-            whoChips.appendChild(st.cpu ? el('span', { class: 'qs-chip bot', html: Kit.icon('bot') + '<span>' + Kit.esc(st.name) + '</span>' + (st.tag ? '<i>' + Kit.esc(st.tag) + '</i>' : '') }) : el('span', { class: 'qs-chip' + (st.anon ? '' : ' who'), text: st.name }));
-          });
-          whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + seats.map(function (st) { return st.name; }).join(', '));
+          whoT.textContent = d.one ? 'Player' : 'Players';
+          var chips = Kit.whoChips(seats, d.teams, 'qs'); whoChips.parentNode.replaceChild(chips, whoChips); whoChips = chips;
+          whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + Kit.whoSaid(seats, d.teams));
         },
         fit: function () { frame.style.height = Math.max(GS.fh || 360, GS.inner || 0, 8) + 'px'; },   // (as tall as the setup says: with the players on their own card, some setups have nothing else)
         dock: function (d) {
+          if (/online/i.test(d.alt || '')) [].forEach.call(box.querySelectorAll('[data-net]'), function (b) { b.hidden = true; });
           var sig = (d.start || '') + '|' + (d.alt || '') + '|' + (d.altIcon || '') + '|' + JSON.stringify(d.look || ''); if (sig === dockSig) return; dockSig = sig;
           dockEl.innerHTML = ''; dockEl.classList.toggle('has-alt', !!d.alt);
           function press(which) { return function () { frame.contentWindow.postMessage({ kitSheet: 'press', which: which }, location.origin); }; }
@@ -1694,6 +1703,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     FT.sheet = { paint: paint, close: s.close };
   }
   $('otb').addEventListener('click', function () { Kit.sfx('tap'); Kit.haptic('light'); openTablesSheet(); });
+  window.__friendTables = function (l) { friendTables = l || []; };   // (tests: tables that linked friends have open)
   $('otb-go').innerHTML = Kit.icon('right');
   $('kp-ic').innerHTML = Kit.icon('play');
 

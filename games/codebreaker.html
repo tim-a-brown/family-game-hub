@@ -228,7 +228,7 @@ button.hole{cursor:pointer;}
       '<li>One player sets the code in secret while the other looks away, then hands over the phone. Hold the button for 3 seconds to take your turn.</li>' +
       '<li>The codemaker scores <b>1 point for every guess</b> the breaker makes, plus <b>1 bonus point</b> if the code is never cracked.</li>' +
       '<li>Swap roles every round. Play 2, 4 or 6 rounds; most points wins.</li></ul>' +
-      '<h3>Computer breaks</h3><p>You set a code and watch the computer crack it, one guess at a time. It plays a clever strategy: on Classic it never needs more than 5 guesses.</p>' +
+      '<h3>Computer breaks</h3><p>When you play on your own, the setup screen asks who breaks the code. If you choose the computer, you set a code and watch the computer crack it, one guess at a time. It plays a clever strategy: on Classic it never needs more than 5 guesses.</p>' +
       '<h3>Tips</h3><ul><li>Start with something like two of one color and two of another.</li><li>Every new guess should fit all the clues so far.</li><li>Color shapes in the menu add a symbol to every peg.</li></ul>'
   });
 
@@ -258,29 +258,37 @@ button.hole{cursor:pointer;}
   function showSetup() {
     S = null; tok++; busy = false;
     app.classList.remove('ipl');
+    // A setup saved when Computer breaks was a card of its own: it is one seat with the computer breaking the code
+    try {
+      var sv = JSON.parse(localStorage.getItem('gn_setup_codebreaker'));
+      if (sv && sv.mode === 'watch') { sv.mode = 'solo'; sv.count = 1; sv.options = Object.assign({}, sv.options, { breaker: 'cpu' }); localStorage.setItem('gn_setup_codebreaker', JSON.stringify(sv)); }
+    } catch (e) {}
     Kit.setup(app, {
-      modes: Kit.modes([
-        { id: 'solo', kind: 'cpu', desc: 'The computer hides a code. Can you break it?' },
-        { id: '2p', kind: 'local', desc: 'Take turns making and breaking codes' },
-        { id: 'watch', icon: 'bot', title: 'Computer breaks', desc: 'You set a code, watch the computer crack it' }
-      ]),
+      // one seat plays the computer (who breaks the code is a choice below); two seats take turns making and breaking
+      modes: Kit.modes(['solo', { id: '2p', kind: 'local' }]),
       options: [
+        { id: 'breaker', label: 'Who breaks the code', value: 'me', when: function (m) { return m === 'solo'; }, choices: [
+          ['me', 'You', 'The computer hides a code and you try to break it.'],
+          ['cpu', 'The computer', 'You set a secret code and watch the computer crack it.']] },
         { id: 'diff', label: 'Difficulty', value: 'classic', choices: [['easy', 'Easy', '4 pegs from 6 colors, no repeats, 10 guesses.'], ['classic', 'Classic', '4 pegs from 6 colors, colors can repeat, 10 guesses. Like the real Mastermind.'], ['hard', 'Hard', '5 pegs from 8 colors, colors can repeat, 12 guesses.']] },
         { id: 'blanks', label: 'Blanks allowed in the code', help: 'A blank is an empty hole that can be part of the secret code.', value: 'no', choices: [['no', 'No', 'Every hole in the code has a colored peg.'], ['yes', 'Yes', 'The code can have empty holes too, which makes it harder to crack.']] },
         { id: 'rounds', label: 'Rounds', value: 2, choices: [[2, '2'], [4, '4'], [6, '6']], when: function (m) { return m === '2p'; } }
       ],
       players: {
         min: 1, max: 2,
-        range: function (m) { return m === 'solo' ? [1, 1] : [2, 2]; },
-        cpu: function (m) { return m === 'watch' ? 'seats' : false; }
+        range: function (m) { return m === 'solo' ? [1, 1] : [2, 2]; }
       },
       onStart: function (cfg) {
         var d = DIFF[cfg.options.diff] || DIFF.classic, blanks = cfg.options.blanks === 'yes';
+        // (the game's own modes: 'solo' you break the computer's code, 'watch' the computer breaks yours, '2p')
+        var mode = cfg.mode === '2p' ? '2p' : cfg.options.breaker === 'cpu' ? 'watch' : 'solo';
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; });
+        if (mode === 'watch') players = [players[0], { name: Kit.cpuNames(1, [players[0].name])[0] || 'Computer', cpu: true }];
         S = {
-          mode: cfg.mode, diff: cfg.options.diff in DIFF ? cfg.options.diff : 'classic', blanks: blanks,
+          mode: mode, diff: cfg.options.diff in DIFF ? cfg.options.diff : 'classic', blanks: blanks,
           P: d.pegs, C: d.colors, K: d.colors + (blanks ? 1 : 0), dup: d.dup, R: d.rows,
-          players: cfg.players.map(function (p) { return { name: cfg.mode === 'solo' && p.name === 'Player 1' ? 'You' : p.name, cpu: p.cpu }; }),
-          total: cfg.mode === '2p' ? (+cfg.options.rounds || 2) : 1,
+          players: players.map(function (p) { return { name: mode !== '2p' && p.name === 'Player 1' ? 'You' : p.name, cpu: p.cpu }; }),
+          total: mode === '2p' ? (+cfg.options.rounds || 2) : 1,
           round: 0, scores: [0, 0], log: [], started: Date.now()
         };
         Kit.gameStart();

@@ -142,6 +142,8 @@
   const tile = (k, when, i, cls) => el('figure', { class: 'sc-fig' + (cls ? ' ' + cls : ''), style: { '--i': i } }, [pic(k), el('figcaption', {}, [el('b', { text: UI().info(k).n }), when ? el('small', { text: when }) : null])]);
   const side = (label, guide, crew, i) => el('div', { class: 'sc-side', style: { '--i': i } }, [
     el('small', { text: label }), pic(guide, 'lead'), el('b', { text: UI().info(guide).n }), el('div', { class: 'sc-crew' }, crew.map(k => pic(k)))]);
+  const gateScene = broken => [el('div', { class: 'sc-gate' + (broken ? ' shut' : '') }, [el('small', { text: 'Your Gate' }), el('span', { class: 'sc-pic wide' }, [UI().artImg('globe', true)]),
+    el('div', { class: 'sc-seals', role: 'img', 'aria-label': (3 - broken) + ' of 3 Seals whole' }, [0, 1, 2].map(i => el('span', { class: 'seal' + (i < broken ? ' broken' : ''), style: { '--i': i } })))])];
   const SCENES = {
     anoria: () => [el('img', { class: 'sc-logo', src: 'anoria/ui/logo.webp', alt: 'Anoria', draggable: 'false' })],
     ages: () => [el('div', { class: 'sc-grid' }, AGES.map((a, i) => tile(a[0], a[1], i)))],
@@ -151,6 +153,10 @@
     guides: () => { const U = UI(), have = (U.Coll.load().guides || []);
       return [el('div', { class: 'sc-guides' }, Object.keys(U.C.GUIDES).map((k, i) => { const g = U.info(k), mine = have.indexOf(k) >= 0;
         return el('div', { class: 'sc-g' + (mine ? ' mine' : ''), style: { '--i': i } }, [pic(k), el('div', { class: 'sc-g-t' }, [el('b', { text: g.n }), mine ? el('i', { text: 'With you' }) : null, el('small', { text: g.tx })])]); }))]; },
+    // the great sphere at Anoria's heart (the one on the back of every card), coming full circle
+    sphere: () => [el('div', { class: 'sc-sphere' }, [el('i', { class: 'sc-orb' }), el('span', { class: 'sc-ring', html: '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47.5"/><circle class="go" cx="50" cy="50" r="47.5"/></svg>' })])],
+    // a company's Gate and the three Seals that hold it open; `shut`: the same Gate with every Seal broken
+    seals: () => gateScene(0), shut: () => gateScene(3),
     renown: () => [el('div', { class: 'sc-held' }, WONDERS.slice(0, 5).map((k, i) => el('span', { class: 'sc-pic wide', style: { '--i': i } }, [UI().artImg(k, true)]))),
       el('div', { class: 'sc-lau' }, [el('b', { text: '0' })]), el('div', { class: 'sc-of', text: 'Renown' })]
   };
@@ -161,6 +167,7 @@
     if (!name) return;
     const s = el('div', { class: 'gd-scene' + (now ? ' now' : ''), 'data-k': name }, [el('div', { class: 'sc-in' }, SCENES[name]())]);
     r.root.insertBefore(s, r.rings); r.scene = s; fitScene(r); void s.offsetWidth; s.classList.add('on');
+    if (name === 'seals' && !fast()) setTimeout(() => { if (r.scene !== s) return; const one = s.querySelector('.seal'); if (one) one.classList.add('crack', 'broken'); }, 3600);   // (one Seal breaks while you watch)
     if (name === 'renown') {   // the laurel counts up to the 30 that wins
       const b = s.querySelector('.sc-lau b'); let n = 0;
       if (fast()) b.textContent = '30';
@@ -177,6 +184,8 @@
     if (k === 'ages') { cols = land ? 6 : 3; tw = grid(cols, land ? 1 : 2, 2 / 3, 52, 150); }
     else if (k === 'wonders') { cols = land ? 3 : 2; tw = grid(cols, land ? 2 : 3, 3 / 2, 30, 230); }
     else if (k === 'anoria') tw = Math.floor(Math.min(W, H, 440));
+    else if (k === 'sphere') tw = Math.floor(Math.min(W, H, 340));
+    else if (k === 'seals' || k === 'shut') tw = Math.floor(Math.max(90, Math.min(300, W * .78, (H - 96) * 1.5)));
     else if (k === 'sides') tw = Math.floor(Math.max(40, land ? Math.min(170, (W - 70) / 4.4, (H - 28) / 1.5) : Math.min(150, (W - 56) / 2, (H - 84) / 2)));
     else if (k === 'guides') { cols = land ? 5 : 1; tw = Math.floor(land ? Math.max(30, Math.min(72, (W - 48) / 5 * .5, (H - 104) / 1.5)) : Math.max(30, Math.min(64, (H - 36) / 5 / 1.5))); }
     else if (k === 'renown') { tw = Math.floor(Math.min(112, (W - 4 * 8) / 5)); lw = Math.floor(Math.max(60, Math.min(230, W * .6, (H - tw * 2 / 3 - 64) / .77))); }
@@ -186,17 +195,30 @@
       for (let i = 0; i < 8; i++) { s.style.setProperty('--fs', fs + 'rem'); if (box.offsetHeight <= H + 1) break; fs -= .04; }   // (its own height: the rows are still sliding in)
     }
   }
+  // The story (Tim, 2026-11-11: the first one was "unimaginative and weak": it has to say how the greats come to be in
+  // one place at one time, why they want Renown, why they contest the wonders, and what the Seals are for).
+  // Anoria is the country of memory: whoever and whatever the world remembers lives there, every age at once. A great
+  // sphere turns at its heart; each full turn ends an age, and the world can't carry all it knew into the next. So the
+  // greats lead companies to keep their people remembered. The world remembers whoever stands at its wonders, which
+  // is what Renown is. A company comes in through its Gate, held open by three Seals: all three broken, it is shut out.
   async function story(L, o) {
     await L.scene('anoria', o && o.now);
-    await L.say('Anoria is a world where all of history happens at once.', { scene: 1 });
+    await L.say('What the world remembers is never quite gone. It lives on in Anoria, the country of memory.', { scene: 1 });
     await L.scene('ages');
-    await L.say('The great figures of every age live here together. Hatshepsut can meet Mozart, who was born more than three thousand years after her.', { scene: 1 });
+    await L.say('Memory keeps no calendar, so every age is there at once. Hatshepsut can meet Mozart, who was born more than three thousand years after her.', { scene: 1 });
     await L.scene('wonders');
-    await L.say('The wonders of the world stand here too, from Stonehenge to the Great Wall.', { scene: 1 });
+    await L.say('People remember places as well as names, so the wonders of the world stand in Anoria too. They are where the world’s memory is strongest.', { scene: 1 });
+    await L.scene('sphere');
+    await L.say('At the heart of Anoria turns a great sphere, the one on the back of every card. Each time it comes full circle an age ends, and the world can’t carry everything it knew into the next one.', { scene: 1 });
     await L.scene('sides');
-    await L.say('Each player leads a company of these Figures, with one of the greats as a <b>Guide</b>.', { scene: 1 });
+    await L.say('So the greats gather companies, to keep their people from being forgotten. You lead one company with one of the greats as your <b>Guide</b>, and another Guide leads the company against you.', { scene: 1 });
     await L.scene('renown');
-    await L.say('A company wins <b>Renown</b> by holding the wonders. The first player to reach 30 Renown wins the game.', { scene: 1 });
+    await L.say('The world remembers whoever stands at its wonders. Each round, the company that holds a wonder wins <b>Renown</b> there.', { scene: 1 });
+    await L.say('The first company to 30 Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
+    await L.scene('seals');
+    await L.say('Your company comes into Anoria through its <b>Gate</b>, and three <b>Seals</b> hold that Gate open. If the other company holds your Gate when a round ends, one of your Seals breaks.', { scene: 1 });
+    await L.scene('shut');
+    await L.say('When the third Seal breaks, your Gate shuts for good and your company is forgotten. So you guard your own Gate, and you try to take theirs.', { scene: 1 });
     if (!(o && o.stay)) await L.scene(null);
   }
 
@@ -359,7 +381,7 @@
     },
     end(r, o) {
       const first = !UI().Coll.load().starter;
-      return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Threads. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
+      return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Legacy Lines. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
         actions: [{ label: o.from === 'contents' ? 'Back to the guide' : first ? 'Choose your Guide' : 'Done', fn: () => leave(r) },
           { label: 'Watch the quick start again', fn: () => play(QUICK, o) },
           o.from === 'contents' ? null : { label: 'See the full guide', fn: () => { halt(); open(); } }] };
@@ -467,19 +489,19 @@
         await L.say('The others join you as you beat the computer. A new Guide arrives at 3, 8, 15 and 25 wins.', { scene: 1 });
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.', { scene: 1 });
       } },
-    { id: 'legacy', n: 'Legacy lines and Threads', sub: 'Who inspired whom', art: 'virgil',
+    { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
       table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy</b> Figure names who inspired it. Virgil modelled the Aeneid on Homer, and Homer is on your side.', at: [L.card('virgil'), L.piece('homer')] });
-        await L.say('A gold line joins them. Virgil cost 1 less, and he has +1 Might for as long as Homer stands.', { at: [L.piece('virgil'), L.piece('homer')] });
-        await L.say('Making the line also scored you 1 Renown. That happens once, as Virgil arrives, and not again on later turns.', { at: '.an-strip.me .st-ren' });
+        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modelled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
+        await L.say('Virgil cost 1 Spark less, and he has +1 Might for as long as Homer is in play, connected by a gold Legacy Line on the map.', { at: [L.piece('virgil'), L.piece('homer')] });
+        await L.say('The Legacy Line also scored you 1 Renown as Virgil arrived. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
-        await L.deed('eureka', { lit: 'A <b>Thread</b> works the same way for any card that grew out of something. Eureka! came from Archimedes.', at: [L.card('eureka'), L.piece('archimedes')] });
-        await L.say('Archimedes stands on your side, so playing Eureka! scores 1 Renown, once, as it is played.', { at: '.an-strip.me .st-ren' });
-        await L.say('Only one line or Thread scores in a round. A second one that round still joins up, but scores nothing. Read a card to see what it grew from.', { at: '.an-hand' });
+        await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The foot of Eureka! names Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });
+        await L.say('With Archimedes in play on your side, Eureka! scores 1 Renown as you play it.', { at: '.an-strip.me .st-ren' });
+        await L.say('Only one Legacy Line scores in each round. You can read any card in your hand to see the Legacy Line printed at its foot.', { at: '.an-hand' });
       } },
     { id: 'count', n: 'The count', sub: 'Who holds what, and what it scores', art: 'acropolis',
       table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', renown: 4, hand: ['galileo', 'compass'], figs: [['copernicus', MY_GATE], ['hatshepsut', MY_OUT]] },
@@ -488,11 +510,11 @@
         await L.pause(400);
         await L.say('When both players have had a turn, the round is counted, Place by Place.', { at: '.an-map' });
         await L.count();
-        await L.say('The side with more Might holds a Place. In rounds 1 to 3 each Place scores 1 Renown.', { at: L.row(MY_GATE) });
+        await L.say('The side with more Might holds a Place. You have more Might in your Gate, so you hold it, and it scored you 1 Renown.', { at: L.row(MY_GATE) });
         await L.say('When the Might is tied, nobody holds the Place.', { at: L.row(MY_OUT) });
         await L.say('An empty or tied Gate stays with its owner.', { at: L.row(TH_GATE) });
         await L.round();
-        await L.say('From round 4 every Place scores 2. The banner on a Place shows what it is worth, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
+        await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
         await L.say('If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
       } },
@@ -502,6 +524,7 @@
       async run(L) {
         await L.pause(400);
         const mt = k => UI().E.might(L.S(), L.fig(k, k === 'spartacus' ? 1 : 0), 0);
+        await L.say('Three <b>Seals</b> hold each company’s Gate open. A company with no Seals left is shut out of Anoria and forgotten.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
         await L.say('Your Figures can walk all the way to the other player’s Gate. Zheng He has done that here.', { at: L.row(TH_GATE), tag: 'Their Gate' });
         await L.say('He has ' + mt('zhenghe') + ' Might there and their Figure has ' + mt('spartacus') + ', so right now you hold their Gate.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
         await L.say('The round is about to be counted. Keep an eye on their <b>Seals</b>.', { at: '.an-strip.opp .st-seals' });
@@ -517,7 +540,7 @@
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.say('A deck is 30 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
+        await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
         await L.lift({ kind: 'hand', h: 0 }, { lit: 'Only <b>one of each person</b> can stand on your side at a time, so the second has to wait.', at: [L.card('copernicus'), L.piece('copernicus')], keep: '.an-cap' });
         UI().demo.drop();
@@ -543,7 +566,7 @@
         await L.say('This is what the card does. A skill word is in bold, and the words after it say what the skill means.', { at: V + '.ac-txt' });
         await L.say('The line in italics is a true fact about her. The fact plays no part in the game.', { at: V + '.ac-fact' });
         await L.say('This is her <b>home region</b>. A Figure has +1 Might at any Place in its home region.', { at: V + '.ac-home' });
-        await L.say('The fine print says how to pronounce the name, and gives the card’s <b>Thread</b>: what it grew from.', { at: V + '.ac-mid' });
+        await L.say('The fine print says how to pronounce the name, and names the card’s <b>Legacy Line</b>: the person, Relic or Place it grew from.', { at: V + '.ac-mid' });
         await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
         if (find(V + '.view-notes')) await L.say('Under the card, each skill and each link is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);

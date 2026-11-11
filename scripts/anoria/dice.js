@@ -4,7 +4,8 @@ const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH }
 const n = +process.argv[2] || 300, D = Object.keys(ARCH), dk = k => ARCH[k].cards.concat(ARCH[k].cards);
 console.log('die'.padEnd(18) + 'clashes/game  decided by the die  upsets  stand-offs  Normal robot beats Easy  rounds');
 for (const [label, die, dice] of [['no dice', [0]], ['0, 1, 2 faces', [0, 1, 2]], ['d6 added whole', [1, 2, 3, 4, 5, 6]], ['d6: high roll +1', [0], 'high1'], ['d6: +1, by 3: +2', [0], 'high']]) {
-  const cfg = Object.assign({}, STD, { die, dice: dice || '', unique: 0, ret: 0, log: 1 });   // (only the dice differ) let cl = 0, flip = 0, up = 0, tie = 0, w = 0, rounds = 0;
+  const cfg = Object.assign({}, STD, { die, dice: dice || '', unique: 0, ret: 0, log: 1 });   // (only the dice differ)
+  let cl = 0, flip = 0, up = 0, tie = 0, w = 0, rounds = 0;
   for (let i = 0; i < n; i++) { const a = D[i % 5], b = D[(i * 3 + 1) % 5], fl = i & 1;
     const S = play(fl ? [dk(b), dk(a)] : [dk(a), dk(b)], fl ? [ARCH[b].guide, ARCH[a].guide] : [ARCH[a].guide, ARCH[b].guide], fl ? [PROF.novice, PROF.holder] : [PROF.holder, PROF.novice], cfg, 3100 + i * 11);
     const me = fl ? 1 : 0; w += S.winner < 0 ? 0.5 : S.winner === me ? 1 : 0; rounds += S.round;

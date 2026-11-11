@@ -1,4 +1,4 @@
-// "A deck is two packs": the five ready decks as 15-card packs. A deck is any two of them shuffled together (one copy
+// "A deck is two packs": each ready deck's different cards as a pack (20 cards now; 15 when this was first run). A deck is any two of them shuffled together (one copy
 // of each card), or one pack twice (the decks the balance runs tuned). Every deck plays every other.
 //   node scripts/anoria/mash.js [games per matchup]
 const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH } = require('../../games/anoria/cards');

@@ -54,6 +54,24 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .pg-run i{font-style:normal;opacity:.5;}
 .pg-runl{margin:-2px 0 10px;font-size:.8rem;font-weight:700;color:var(--text-2);line-height:1.35;}
 .pg-runl b{color:var(--text);}
+.pg-about{display:none;}
+/* a phone too short for thirty named tiles (the kit's k-snug): six across, picture and number; the chosen level is named underneath */
+.setup.k-snug .pg-levels{grid-template-columns:repeat(6,1fr);gap:6px;}
+.setup.k-snug .pg-lt{border-radius:10px;}
+@media (orientation:landscape){.setup.k-snug .pg-levels{grid-template-columns:repeat(15,1fr);}}
+.setup.k-snug .pg-lt canvas{aspect-ratio:1/1;object-fit:cover;}
+.setup.k-snug .pg-lt .nm{display:none;}
+.setup.k-snug .pg-lt .no{left:3px;top:3px;min-width:18px;height:18px;padding:0 4px;font-size:.72rem;}
+.setup.k-snug .pg-lt.lock .lk{padding:10px 0 0;}
+.setup.k-snug .pg-lt.lock .lk svg{width:18px;height:18px;}
+.setup.k-snug .pg-lt .ck{right:3px;top:3px;width:16px;height:16px;}
+.setup.k-snug .pg-lt .ck .ico{width:10px;height:10px;}
+.setup.k-snug .pg-lt.on{box-shadow:0 0 0 2.5px var(--accent),0 6px 14px rgba(0,0,0,.45);}
+.setup.k-snug .pg-runl{margin:-4px 0 8px;}
+.setup.k-snug .pg-about{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:9px;padding:8px 12px;border-radius:12px;background:#0b0b1c;color:#fff;}
+.pg-about b{font-family:var(--display);font-weight:400;font-size:1.12rem;line-height:1.1;min-width:0;}
+.pg-about small{flex:none;font-weight:800;font-size:.76rem;color:#ffd27a;font-variant-numeric:tabular-nums;}
+.pg-about small.none{color:rgba(255,255,255,.5);}
 .pg-plate.pg-best{flex:.7;}
 .pg-plate{position:relative;display:flex;flex-direction:column;justify-content:center;min-width:0;padding:5px 11px;border-radius:14px;
   background:linear-gradient(180deg,#2a1d12 0%,#170f08 100%);
@@ -1105,7 +1123,11 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     var grid = el('div', { class: 'pg-levels' });
     var head = el('div', { class: 'pg-lvh' }, [el('div', { class: 'label', text: 'Choose a level' }), el('small', { text: Object.keys(prog.cleared).length + ' of ' + NL + ' cleared' })]);
     var tiles = [];
-    function label() { if (startBtn) startBtn.textContent = 'Play level ' + sel; }
+    // (on a phone too short for thirty named tiles the tiles keep the picture and the number, and this line under them
+    // names the level that is chosen: .k-snug in the styles)
+    var about = el('div', { class: 'pg-about' });
+    function label() { if (startBtn) startBtn.textContent = 'Play level ' + sel;
+      var b = prog.best[sel]; about.innerHTML = ''; about.appendChild(el('b', { text: LEVELS[sel - 1].name })); about.appendChild(el('small', { class: b ? '' : 'none', text: b ? 'Best ' + fmt(b) : 'Not played' })); }
     LEVELS.forEach(function (def, i) {
       var n = i + 1, locked = n > prog.unlocked;
       var cv = el('canvas', { width: 180, height: 220 });
@@ -1127,7 +1149,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     var runl = el('div', { class: 'pg-runl', html: run && run.cur > 1
       ? '<b>Full game under way:</b> level ' + run.cur + ' of ' + NL + ' is next, ' + fmt(runTotal(run)) + ' points so far. Any other level ends it.'
       : 'For a <b>Full game</b> score, start at level 1 and clear all ' + NL + ' levels in order.' });
-    var box = el('div', null, [head, runl, grid]);
+    var box = el('div', null, [head, runl, grid, about]);
     seats.parentNode.insertBefore(box, seats.nextSibling);
     label();
     window.scrollTo(0, 0);

@@ -14,7 +14,8 @@ The standard rules are `STD` at the top of `exp2.js`.
 
 ## Packs: two packs make a deck
 
-`node scripts/anoria/mash.js [games per matchup]` treats each ready deck as a 15-card pack and plays every deck you can
+`node scripts/anoria/mash.js [games per matchup]` treats each ready deck's different cards as a pack (15 when this was run,
+20 now) and plays every deck you can
 make from two of them (one of each card), plus each pack twice (the tuned decks), all against all. It is the fairness
 test for a new pack: add its 15 cards and Guide to `ARCH` and run it. First run (40 games per matchup, 560 per deck):
 mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5). Results in `mash-40.txt`.
@@ -33,6 +34,9 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
 - `node scripts/anoria/variant.js "<label>" '<json>' [games]`: the five ready decks under any rule change (`variants.txt`).
 - `node scripts/anoria/scoring.js "<label>" '<json>' [games] [copies of each card]`: the ready decks under a scoring
   rule, with how long games run, how they end, how often the lead changes hands and how often a deck runs out.
+- Scoring is flat since 2026-11-11: every Place scores 1 Renown every round, first to 30, and a deck is 40 cards (`DECK` in
+  `games/anoria/coll.js`; each ready deck is 20 different cards, two of each). `variants.txt` ("Decks of 40") has the
+  before and after. The old doubling is `{"ramp":[1,1,1,2,2,2]}` for `variant.js` and `scoring.js`.
 - The game's rules (`STD`) now have `dice: 'high'` (two ordinary dice, the higher roll adds 1 Might, 2 when higher by 3
   or more), `unique: 1` (one of each person on your side at a time) and `ret: 1` (a Figure whose other copy is in your
   discard pile costs 1 less). Earlier result files were run before these.
@@ -43,5 +47,7 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   early some of the time (`quit`), which is what makes it easy; noise alone barely did.
 - Threads (`cfg.threads`): any card can name what it grew from (`from` in cards.js). `variants.txt` has the test games
   for the three ways of rewarding it.
-- `node scripts/anoria/pacing.js [players] [games a day] [win chance]`: plays the collection's own rules
+- `node scripts/anoria/pacing.js [players] [games a day] [win chance] [cards in a daily pack] [cards in a one-time pack]`: plays the collection's own rules
   (`games/anoria/coll.js`) for someone who plays every day, checks them, and says how long the set takes (`pacing.txt`).
+  It also checks that a collection and a built deck from when a deck was 30 cards still work (the five new cards of every
+  ready deck that could be played are given; the old deck is kept and reads as 10 short).

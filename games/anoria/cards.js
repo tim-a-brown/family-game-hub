@@ -1,4 +1,4 @@
-// Anoria: the test card pool for the rules simulator (sim.js). Numbers here are what the balance runs tune.
+// Anoria: the card pool, for the page and for the rules simulator (scripts/anoria). Numbers here are what the balance runs tune.
 // Figure: f faction (D Discovery, S Statecraft, V Valor, A Arts, W Wonder), c Spark cost, m Might, reg home region,
 // era 1..6, y year (for the fun log), k keywords, arr arrive effect, insp who inspired them (Legacy)
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(); else root.AnoriaCards = factory(); })(this, function () {
@@ -64,6 +64,38 @@ const CARDS = {
   ashurbanipal: F('Ashurbanipal', 'S', 3, 3, 'MIDEAST', 1, -650, { scholar: 1 }),
   faraday: F('Michael Faraday', 'D', 4, 4, 'EUR', 6, 1831, { eureka: 1 }),
   douglass: F('Frederick Douglass', 'S', 4, 4, 'AMER', 6, 1852, {}, { arr: ['stun', 9] }),
+  // The second printing (2026-11): five more for each ready deck, when a deck grew from 30 cards to 40. All of them
+  // use skills the engine already had. Tuned with scripts/anoria (variants.txt, "Decks of 40").
+  // Explorers
+  ibnbattuta: F('Ibn Battuta', 'D', 3, 3, 'AFR', 3, 1325, { voyager: 1, swift: 1 }),
+  leif: F('Leif Erikson', 'D', 3, 4, 'EUR', 3, 1000, { voyager: 1 }),
+  sacagawea: F('Sacagawea', 'D', 2, 2, 'AMER', 6, 1805, { inspiring: 1 }),
+  shenkuo: F('Shen Kuo', 'D', 2, 3, 'ASIA', 3, 1088, { eureka: 1 }),
+  darwin: F('Charles Darwin', 'D', 4, 4, 'EUR', 6, 1835, { voyager: 1, scholar: 1 }),
+  // Legion
+  scipio: F('Scipio Africanus', 'V', 4, 5, 'MED', 2, -202, { raider: 1 }),
+  toussaint: F('Toussaint Louverture', 'V', 4, 4, 'AMER', 5, 1796, { uprising: 1 }),
+  shaka: F('Shaka', 'V', 4, 4, 'AFR', 6, 1818, { orator: 1 }),
+  lakshmibai: F('Lakshmibai', 'V', 3, 3, 'ASIA', 6, 1858, { swift: 1, steadfast: 1 }),
+  tecumseh: F('Tecumseh', 'V', 3, 3, 'AMER', 6, 1811, { inspiring: 1 }),
+  // Legacy
+  caesar: F('Julius Caesar', 'S', 5, 6, 'MED', 2, -49, { swift: 1 }, { insp: ['alexander'] }),
+  ibnsina: F('Ibn Sina', 'D', 3, 4, 'MIDEAST', 3, 1025, { scholar: 1 }, { insp: ['aristotle'] }),
+  chaucer: F('Geoffrey Chaucer', 'A', 3, 4, 'EUR', 3, 1390, { tale: 1 }, { insp: ['virgil', 'dante'] }),
+  marcus: F('Marcus Aurelius', 'S', 3, 3, 'MED', 2, 170, { guard: 1, steadfast: 1 }, { insp: ['socrates', 'plato'] }),
+  germain: F('Sophie Germain', 'D', 2, 3, 'EUR', 6, 1816, { scholar: 1 }, { insp: ['archimedes', 'newton'] }),
+  // Court
+  mencius: F('Mencius', 'S', 2, 2, 'ASIA', 2, -320, { scholar: 1 }, { insp: ['confucius'] }),
+  nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
+  hiawatha: F('Hiawatha', 'S', 3, 3, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
+  sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }),
+  theodora: F('Theodora', 'S', 3, 4, 'MED', 3, 532, { steadfast: 1 }),
+  // Pathfinders
+  sinbad: F('Sinbad the Sailor', 'W', 3, 2, 'MIDEAST', 3, 800, { voyager: 1 }, { arr: ['spark', 1] }),
+  gilgamesh: F('Gilgamesh', 'W', 4, 5, 'MIDEAST', 1, -2700, { guard: 1 }),
+  sundiata: F('Sundiata Keita', 'V', 3, 2, 'AFR', 3, 1235, { homeDouble: 1 }),
+  bolivar: F('Simón Bolívar', 'V', 4, 4, 'AMER', 6, 1819, { swift: 1, raider: 1 }),
+  khutulun: F('Khutulun', 'V', 2, 2, 'ASIA', 3, 1280, { slayer: 1 }),
   // Relics (any deck)
   press: { n: 'Printing Press', t: 'relic', f: 'N', c: 2 },
   antikythera: { n: 'Antikythera Mechanism', t: 'relic', f: 'N', c: 3 },
@@ -82,7 +114,8 @@ const CARDS = {
 };
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
-const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'odysseus': ['homer'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'trojan': ['odysseus'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'odysseus'], 'eclipse': ['antikythera']};
+const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'odysseus': ['homer'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'trojan': ['odysseus'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'odysseus'], 'eclipse': ['antikythera'],
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'sinbad': ['scheherazade'], 'gilgamesh': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // (Odysseus grew from Homer the way a Legacy Figure grows from a teacher: a line, with its +1 Might)
 CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
@@ -104,6 +137,17 @@ const THREADS = [
   { id: 'learning', n: 'Houses of Learning', cards: ['hypatia', 'mansamusa', 'ashurbanipal', 'pericles'], places: ['library', 'timbuktu', 'nineveh', 'acropolis'] },
   { id: 'shields', n: 'The Shield Wall', cards: ['leonidas', 'alexander', 'phalanx'] },
   { id: 'trap', n: 'The Trap', cards: ['hannibal', 'ambush'] },
+  // (the second printing)
+  { id: 'conquerors', n: 'The Conquerors', cards: ['alexander', 'caesar'] },
+  { id: 'zama', n: 'The Road to Zama', cards: ['hannibal', 'scipio'] },
+  { id: 'chains', n: 'Broken Chains', cards: ['spartacus', 'toussaint'] },
+  { id: 'nights', n: 'The Thousand and One Nights', cards: ['scheherazade', 'sinbad'] },
+  { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'gilgamesh'], places: ['nineveh'] },
+  { id: 'sages', n: 'The Sages', cards: ['confucius', 'mencius'] },
+  { id: 'muse', n: 'The Tenth Muse', cards: ['sappho', 'sorjuana'] },
+  { id: 'needle', n: 'The Needle', cards: ['compass', 'shenkuo'] },
+  { id: 'emperor', n: 'The Philosopher Emperor', cards: ['socrates', 'plato', 'marcus'] },
+  { id: 'circles', n: 'Circles in the Sand', cards: ['archimedes', 'germain'] },
 ];
 const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu' };
 const PLACES = {
@@ -115,7 +159,16 @@ const PLACES = {
   nineveh: { n: 'Nineveh', reg: 'MIDEAST', era: 1, y: -700 }, seneca: { n: 'Seneca Falls', reg: 'AMER', era: 6, y: 1848 },
 };
 const CENTER = ['library', 'silk', 'colosseum', 'acropolis'], EDGE = ['wall', 'stonehenge', 'globe', 'machu', 'timbuktu', 'petra', 'nineveh', 'seneca'];
-// Five built decks, each around one way to win (15 cards, two of each)
+// Five built decks, each around one way to win (20 cards, two of each). GROWN: the five cards each deck gained when a
+// deck went from 30 cards to 40; a collection from before then is given them for every ready deck it could already play
+// (coll.js), so nothing a player could play is taken away.
+const GROWN = {
+  Explorers: ['ibnbattuta', 'leif', 'sacagawea', 'shenkuo', 'darwin'],
+  Legion: ['scipio', 'toussaint', 'shaka', 'lakshmibai', 'tecumseh'],
+  Legacy: ['caesar', 'ibnsina', 'chaucer', 'marcus', 'germain'],
+  Court: ['mencius', 'nzinga', 'hiawatha', 'sorjuana', 'theodora'],
+  Pathfinders: ['sinbad', 'gilgamesh', 'sundiata', 'bolivar', 'khutulun'],
+};
 const ARCH = {
   Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'daedalus', 'odysseus', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
   Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
@@ -123,5 +176,6 @@ const ARCH = {
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
   Pathfinders: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
-return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, THREADS, ERAS };
+Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
+return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS };
 });

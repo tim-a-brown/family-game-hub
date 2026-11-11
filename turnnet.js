@@ -641,7 +641,19 @@
     ];
   }
 
+  // Open a table straight away, with the settings the game's setup has just saved (the setup's Play online: the player
+  // has looked over the rules and the seats there). Anything missing (no sign-in, no name yet) goes by way of the lobby.
+  function hostNow(o) {
+    if (!G) return false;
+    var me = meName(); if (o && o.name && !me.name) { me.name = o.name; lsP('tn_me', { name: o.name }); }
+    if (!ready() || !me.name) { lobby(); return true; }
+    ov(); host(me);
+    return true;
+  }
   window.TurnNet = {
+    host: hostNow, ready: function () { return !!G; },
+    // what the setup's review says about a table of this game: people at it, and the seats the computer fills
+    info: function () { return G ? { title: G.title, min: G.min || 2, max: G.max || 2, bots: !!G.bot, seats: function (n, opts) { try { return G.seats ? G.seats(n, opts || (G.opts ? G.opts() : {}) || {}) : n; } catch (e) { return n; } } } : null; },
     setup: setup, open: lobby, menu: menu, chips: chips, leave: leave, away: detach, again: again, poke: poke,
     on: function () { return !!T.code && !!T.d && T.d.status !== 'open'; }, net: net,
     _t: T, _store: store, _acct: acctTag

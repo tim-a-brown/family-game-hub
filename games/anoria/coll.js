@@ -6,10 +6,11 @@
 //   anoria_coll   {v, starter, cards{key: copies}, guides[], seen{key: 1}, fresh{key: 1} (not looked at yet),
 //                  packs[{id, k: 'welcome' | 'daily' | 'feat', why, n}], wins, games, day (the day of the last daily
 //                  pack), feats{normal, hard, built}, threads{id: 1} (finished and rewarded), opened}
-//   anoria_decks  [{id, n, guide, cards[30]}]   the decks you built
+//   anoria_decks  [{id, n, guide, cards[]}]   the decks you built (a deck is DECK cards: one saved when a deck was 30
+//                  is kept as it is and reads as 10 short until it is filled)
 //
 // The economy, in one place:
-//   - Choose a Guide: that Guide's ready deck (15 cards, two of each) is yours, with three welcome packs of 12.
+//   - Choose a Guide: that Guide's ready deck (20 cards, two of each) is yours, with three welcome packs of 12.
 //   - A pack never holds a card you have two of. In a welcome pack half the slots go to cards you have none of; after
 //     that any copy you're missing is as likely as any other, so new faces keep turning up for weeks.
 //   - Your first win of the day against the computer: a pack of 2.
@@ -17,21 +18,25 @@
 //   - A new Guide joins you at 3, 8, 15 and 25 wins.
 //   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift. A Thread
 //     that comes whole in your starter deck gives none.
-//   Played every day, the core set takes about a month to finish (pacing.js).
+//   Played every day at three games a day, the set (91 cards since decks grew to 40) takes about a month to finish
+//   (pacing.js, pacing.txt).
+//   - v 2 (2026-11, a deck grew from 30 cards to 40): a collection from before is given the five new cards of its
+//     starter deck, and of any other ready deck it already owned all of, so every deck it could play it still can.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
-const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS;
-const ALL = Object.keys(CARDS), CAP = 2, DECK = 30, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], DAILY = 3, FEAT = 3, GUIDE_AT = [3, 8, 15, 25];
+const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {};
+const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
+const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 2;
+let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 
 // where it's kept, the dice and the clock: the page's own unless a test hands in others (use())
 let store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 let rnd = Math.random, now = () => new Date();
-function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; cache = null; }
+function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; cache = null; }
 
-const blank = () => ({ v: 1, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1 });
+const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1 });
 let cache = null, cacheRaw = null;
 function load() {
   const raw = store.get(KEY);
@@ -39,7 +44,22 @@ function load() {
   let s = null; try { s = raw ? JSON.parse(raw) : null; } catch (e) {}
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
+  if ((cache.v || 1) < VER) { const had = !!cache.starter; grow(cache); cache.v = VER; if (had) save(cache); }
   return cache;
+}
+// A collection from when a deck was 30 cards: each ready deck gained five cards (cards.js GROWN). The starter deck's
+// five are given, two of each, and so are those of any other ready deck this collection owned every card of, so a deck
+// that could be played yesterday can be played today. They show as new in the Library. A named Thread that now comes
+// whole inside the starter deck is simply theirs, as it is for someone starting today.
+function grow(s) {
+  if (!s.starter || !ARCH[s.starter]) return;
+  Object.keys(ARCH).forEach(name => {
+    const add = GROWN[name] || [], old = ARCH[name].cards.filter(k => add.indexOf(k) < 0);
+    if (name !== s.starter && !old.every(k => (s.cards[k] || 0) >= CAP)) return;
+    add.forEach(k => { if ((s.cards[k] || 0) < CAP) { if (!s.cards[k]) s.fresh[k] = 1; s.cards[k] = CAP; s.seen[k] = 1; } });
+  });
+  const mine = ARCH[s.starter].cards;
+  THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; });
 }
 function save(s) { cacheRaw = JSON.stringify(s); cache = s; store.set(KEY, cacheRaw); return s; }
 function reset() { cache = null; store.set(KEY, JSON.stringify(blank())); store.set(DKEY, '[]'); }
@@ -155,22 +175,22 @@ function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') |
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: the five ready decks (yours to play once you own all of one; your starter always is)
-// and the decks you built. [{id, n, guide, cards, ready, starter, built, own (cards of it you own, of 30), ok, why[]}]
+// and the decks you built. [{id, n, guide, cards, ready, starter, built, own (cards of it you own, of DECK), ok, why[]}]
 function decks() {
   const s = load(), out = [];
   Object.keys(ARCH).forEach(name => { const cards = readyCards(name); let own = 0; ARCH[name].cards.forEach(k => { own += Math.min(CAP, s.cards[k] || 0); });
     const hasG = s.guides.indexOf(ARCH[name].guide) >= 0, ok = own === DECK && hasG;
-    out.push({ id: 'ready:' + name, n: name, guide: ARCH[name].guide, cards: cards, ready: true, starter: s.starter === name, own: own, ok: ok, why: ok ? [] : [own < DECK ? 'You own ' + own + ' of its 30 cards' : GUIDES[ARCH[name].guide] + ' hasn\'t joined you yet'] }); });
+    out.push({ id: 'ready:' + name, n: name, guide: ARCH[name].guide, cards: cards, ready: true, starter: s.starter === name, own: own, ok: ok, why: ok ? [] : [own < DECK ? 'You own ' + own + ' of its ' + DECK + ' cards' : GUIDES[ARCH[name].guide] + ' hasn\'t joined you yet'] }); });
   myDecks().forEach(d => { const why = problems(d); out.push({ id: d.id, n: d.n, guide: d.guide, cards: d.cards.slice(), built: true, own: d.cards.length, ok: !why.length, why: why }); });
   return out;
 }
 const deck = id => decks().filter(d => d.id === id)[0] || null;
-// Fill a deck to 30 from what you own: more of its own factions first, a sensible spread of costs, Figures over the rest
+// Fill a deck to DECK cards from what you own: more of its own factions first, a sensible spread of costs, Figures over the rest
 function finish(d) {
   const s = load(), n = {}, cards = (d.cards || []).slice(); cards.forEach(k => { n[k] = (n[k] || 0) + 1; });
   const fac = {}; cards.forEach(k => { const f = CARDS[k].f; fac[f] = (fac[f] || 0) + 1; });
   const cost = [0, 0, 0, 0, 0, 0, 0]; cards.forEach(k => { cost[Math.min(6, CARDS[k].c)]++; });
-  const want = [2, 3, 8, 8, 6, 3, 0];
+  const want = [3, 4, 11, 11, 8, 3, 0];   // (how many cards at each cost a deck of 40 wants)
   while (cards.length < DECK) {
     let best = null, bv = -1e9;
     for (const k of ALL) { const have = Math.min(CAP, s.cards[k] || 0); if ((n[k] || 0) >= have) continue; const c = CARDS[k], cc = Math.min(6, c.c);
@@ -182,6 +202,6 @@ function finish(d) {
   return cards;
 }
 
-return { use, load, reset, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
-  problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, DAILY, FEAT, GUIDE_AT, FEATS, ALL };
+return { use, load, reset, grow, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
+  problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL };
 });

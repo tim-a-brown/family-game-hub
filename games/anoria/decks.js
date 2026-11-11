@@ -1,9 +1,9 @@
 // Anoria: your decks and the deck builder.
 //   AnoriaDecks.open(id, done)   id null: the list of decks (yours, a new one, the five ready decks as recipes);
 //                                a built deck's id: that deck, open for changing. done() when the player leaves.
-// The rules of a deck (30 cards, two of a card at most, no more than you own, one Guide) live in coll.js; this file
+// The rules of a deck (40 cards, two of a card at most, no more than you own, one Guide) live in coll.js; this file
 // only draws them. The builder is two things side by side: the cards you own (tap one to add it) and the deck as it
-// stands (how many of 30, the Spark curve, the factions, the years it spans and the Threads it holds), which is
+// stands (how many of 40, the Spark curve, the factions, the years it spans and the Threads it holds), which is
 // under the cards on a phone held upright and to their left everywhere else.
 (function () {
   'use strict';
@@ -12,7 +12,7 @@
   const KINDS = [['fig', 'Figure'], ['deed', 'Deed'], ['relic', 'Relic']];
   const WORDS = [['legacy', 'Legacy'], ['voyager', 'Voyager'], ['scholar', 'Scholar'], ['guard', 'Guard'], ['steadfast', 'Steadfast'], ['inspiring', 'Inspiring'], ['swift', 'Swift'], ['raider', 'Raider']];
   const SORTS = [['cost', 'Cost'], ['time', 'Time'], ['name', 'Name']];
-  const DRAWN = 19;   // about how many of its 30 cards a deck draws in a game
+  const DRAWN = 29;   // about how many of its 40 cards a player sees in a game (scripts/anoria/variants.txt, "Decks of 40")
   const SORT_KEY = 'anoria_deck_sort';
   // a Thread: two dots joined by a line (the gold line that joins two Figures on the table)
   const THREAD = '<svg class="adk-thg" viewBox="0 0 24 12" aria-hidden="true"><path d="M4 8C9 0 15 12 20 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="8" r="2.6" fill="currentColor"/><circle cx="20" cy="4" r="2.6" fill="currentColor"/></svg>';
@@ -45,7 +45,7 @@
   // a kit sheet in Anoria's own colours (navy and gilt in every app theme)
   const sheet = o => { const sh = Kit.sheet(o); sh.el.classList.add('adk-sheet'); return sh; };
   const btn = (cls, label, icon, fn) => el('button', { type: 'button', class: 'btn ' + cls, html: (icon || '') + '<span>' + esc(label) + '</span>', onclick: fn });
-  // thirty small slots: the cards in a deck coloured by faction, the rest empty (keys = the deck's cards)
+  // one small slot for each card of a deck (40): the cards in it coloured by faction, the rest empty (keys = the deck's cards)
   function slots(keys, cls) {
     const row = el('span', { class: 'adk-slots ' + (cls || '') }), list = keys.slice().sort(byFac);
     for (let i = 0; i < DECK; i++) row.appendChild(el('i', list[i] ? { class: 'on', style: { '--c': FAC[CARDS[list[i]].f].c } } : null));
@@ -244,7 +244,7 @@
       grp('Faction', 'fac', FACS.filter(f => f !== 'N').map(f => has(k => CARDS[k].f === f) ? chip('fac', f, FAC[f].n, { cls: 'fac', c: FAC[f].c, html: '<i class="dot"></i>' }) : null));
       grp('Kind', 'kind', KINDS.map(x => has(k => CARDS[k].t === x[0]) ? chip('kind', x[0], x[1], { cls: 'kind', html: U.MARK[x[0]] }) : null));
       grp('Spark', 'cost', COSTS.map(c => has(k => CARDS[k].c === c) ? chip('cost', c, String(c), { cls: 'cost', bare: true, html: '<b>' + c + '</b>', say: c + ' Spark' }) : null));
-      grp('Keyword', 'word', WORDS.map(w => has(k => hasWord(k, w[0])) ? chip('word', w[0], w[1]) : null).concat([chip('thr', '', 'Threads with this deck', { cls: 'thr', html: THREAD })]));
+      grp('Keyword', 'word', WORDS.map(w => has(k => hasWord(k, w[0])) ? chip('word', w[0], w[1]) : null).concat([chip('thr', '', 'Legacy Lines with this deck', { cls: 'thr', html: THREAD })]));
     }
     function paintTools() {
       groupBoxes.forEach(b => { if (b.isConnected) paintGroups(b); });
@@ -262,7 +262,7 @@
       Object.keys(st.f.kind).forEach(t => off(KINDS.filter(x => x[0] === t)[0][1], () => { delete st.f.kind[t]; }));
       Object.keys(st.f.cost).forEach(c => off(c + ' Spark', () => { delete st.f.cost[c]; }));
       Object.keys(st.f.word).forEach(w => off(WORDS.filter(x => x[0] === w)[0][1], () => { delete st.f.word[w]; }));
-      if (st.f.thr) off('Threads', () => { st.f.thr = false; }, { cls: 'thr' });
+      if (st.f.thr) off('Legacy Lines', () => { st.f.thr = false; }, { cls: 'thr' });
     }
     let shownN = 0, showBtn = null;
     const showLabel = () => { if (showBtn) showBtn.textContent = shownN === 1 ? 'Show 1 card' : 'Show ' + shownN + ' cards'; };
@@ -297,7 +297,7 @@
       guideBtn.setAttribute('aria-label', g ? 'Guide: ' + g.n + '. ' + g.tx + ' Change' : 'Choose a Guide');
       guideBtn.appendChild(g ? thumb(st.guide, 'adk-gp') : el('span', { class: 'adk-gp', html: Kit.icon('plus') }));
       guideBtn.appendChild(el('span', { class: 'adk-gw' }, [el('small', { text: 'Guide' }), el('b', { text: g ? g.n : 'Choose a Guide' }), g ? el('span', { text: g.tx }) : null]));
-      // how many of 30
+      // how many of 40
       countEl.className = 'adk-count' + (tot === DECK ? ' ok' : tot > DECK ? ' over' : '');
       countEl.innerHTML = '<b>' + tot + '</b><small>of ' + DECK + '</small>';
       if (lastTotal >= 0 && lastTotal !== tot && !still()) { countEl.classList.remove('bump'); void countEl.offsetWidth; countEl.classList.add('bump'); }
@@ -306,7 +306,7 @@
       const top = Math.max(6, Math.max.apply(null, by));
       bars.forEach((b, i) => { b.fill.style.flexBasis = 'calc((100% - 14px) * ' + (by[i] / top).toFixed(3) + ')'; b.num.textContent = by[i] ? String(by[i]) : ''; });
       curveEl.setAttribute('aria-label', 'Spark curve: ' + by.map((x, i) => x + ' at ' + i).join(', '));
-      // the thirty slots, coloured by faction, and each faction's count
+      // the slots, coloured by faction, and each faction's count
       const sorted = cards.slice().sort(byFac), was = lastTotal;
       Array.prototype.forEach.call(barEl.children, (p, i) => {
         const k = sorted[i]; p.className = k ? 'on' + (owned(k) < n(k) ? ' bad' : '') : ''; if (k) p.style.setProperty('--c', FAC[CARDS[k].f].c); else p.style.removeProperty('--c');
@@ -326,10 +326,10 @@
       } else whenEl.appendChild(el('span', { class: 'adk-yrs dim' }, [el('small', { text: 'No years yet' })]));
       // the Threads it holds
       const th = held().length;
-      thrEl.className = 'adk-thr' + (th ? ' on' : ''); thrEl.innerHTML = THREAD + '<b>' + th + '</b><small>' + (th === 1 ? 'Thread' : 'Threads') + '</small>';
+      thrEl.className = 'adk-thr' + (th ? ' on' : ''); thrEl.innerHTML = THREAD + '<b>' + th + '</b><small>' + (th === 1 ? 'Legacy Line' : 'Legacy Lines') + '</small>';
       if (lastThr >= 0 && th > lastThr && !still()) { thrEl.classList.remove('glow'); void thrEl.offsetWidth; thrEl.classList.add('glow'); }
       finBtn.hidden = tot >= DECK || !pool.some(k => owned(k) > n(k));
-      // thirty and a Guide: a gleam runs along the slots
+      // a full deck and a Guide: a gleam runs along the slots
       const done = tot === DECK && !!g;
       if (done && !deckEl.classList.contains('done') && lastTotal >= 0 && !still()) { barEl.classList.remove('gleam'); void barEl.offsetWidth; barEl.classList.add('gleam'); }
       deckEl.classList.toggle('done', done);
@@ -350,12 +350,12 @@
     function paintMore(box) {
       const cards = flat(), keys = Object.keys(st.cnt).sort(byCost), top = box.scrollTop;
       box.innerHTML = '';
-      if (box !== moreEl) {   // (in the sheet: the thirty slots and each faction's count first)
+      if (box !== moreEl) {   // (in the sheet: the slots and each faction's count first)
         const b = barEl.cloneNode(true); Array.prototype.forEach.call(b.children, p => p.classList.remove('pop'));
         box.appendChild(el('div', { class: 'adk-dh' }, [b, facEl.cloneNode(true)]));
       }
       // Threads: the ones it holds, then the ones a single card away
-      const th = held(), nr = near(), sec = el('section', { class: 'adk-sec2 thr' }, [el('h3', {}, [el('span', { text: 'Threads' }), el('b', { text: String(th.length) })])]);
+      const th = held(), nr = near(), sec = el('section', { class: 'adk-sec2 thr' }, [el('h3', {}, [el('span', { text: 'Legacy Lines' }), el('b', { text: String(th.length) })])]);
       const row = (p, need) => {
         const r = el('div', { class: 'adk-th' + (need ? ' near' : ' lit') }, [
           el('span', { class: 'adk-pair' }, [thumb(p.a, 'adk-pp' + (need === p.a ? ' off' : '')), el('i'), thumb(p.b, 'adk-pp' + (need === p.b ? ' off' : ''))]),
@@ -365,8 +365,8 @@
         return r;
       };
       th.forEach(p => sec.appendChild(row(p)));
-      if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Thread' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
-      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Thread is a card together with the card it grew from. When both are in the deck and you play them together, they score Renown.' }));
+      if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Legacy Line' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
+      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Legacy Line connects a card to the card it grew from. With both cards in this deck, you can score 1 Renown by playing the second card while the first is in play.' }));
       else sec.insertBefore(el('p', { class: 'adk-hint', text: 'If you play one while the other is on your side, it scores 1 Renown.' }), sec.children[1]);
       box.appendChild(sec);
       // the cards, cheapest first

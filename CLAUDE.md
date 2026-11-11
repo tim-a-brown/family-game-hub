@@ -69,6 +69,18 @@ Underlying principles for everything:
   again"; "It arrives at your Gate" is "Hatshepsut arrives at your Gate"). Inside one sentence, "it" for a thing
   that sentence has just named is ordinary English ("Tap a Place to read it"). Never trade a natural sentence for a
   clumsier one to avoid a word. The same goes for what Claude writes to Tim in chat.
+- **Say who does what, from where the reader stands** (Tim, 2026-11-11, a second sentence shape to keep out of
+  everything Claude writes for him, on screen and in chat). Not an article, a noun, a vague verb and a pronoun ("A gold
+  line joins them"): the pronoun doesn't say who, and the verb doesn't say what happens. Name the cards and say the
+  effect, with what the player will see attached to it: "Virgil costs 1 less, and he has +1 Might for as long as Homer
+  is in play, connected by a gold Legacy Line on the board." Put the condition first, the way the player meets it:
+  "With Archimedes in play on your side, Eureka! scores 1 Renown" (not "Archimedes stands on your side, so playing
+  Eureka! scores…"). State a rule as its limit, not as a consequence to work out: "A deck is 40 cards and can hold no
+  more than two of a card"; what a player can do at a given moment is said at that moment, exactly: "You can add one
+  more of this card to your deck." Plain subject, verb, object with real names is fine ("Tim plays cards", "Cam
+  eliminates Tim"). In chat, describe things as Tim sees or does them, not as Claude observes them: "You can see it in
+  your screenshot" (not "Your screenshot shows it"); "The instructions explain that players you seat in game setup
+  don't carry into the online table, where others will join from their own devices."
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
@@ -121,6 +133,17 @@ Underlying principles for everything:
   their own kinds of play (Trivia's Buzz in, Sandlot's Derby) still show cards. Pass & play hands the device over
   with `Kit.handoff` between people only. The start button
   stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`).
+  **Sides** (Tim, 2026-11-11): the Players card and the players sheet say who is with whom the way people do:
+  partners joined by "&" and the sides by "vs" ("Tim & Jamie vs Pete & Pam"; two seats are "Tim vs Huey"). A
+  partnership game gives `players.teams` ([[seats], [seats]], or a function of the count and options when partners
+  are a choice: Dominoes, Marbles); `players.vs: false` for two who play together. `Kit.whoChips` draws them, on
+  the home sheet too. **Play online** is on every game whose tables are TurnNet's (not only ones that list online
+  among their ways to play) and takes what is chosen: a **review** first (`goOnline` in kit.js: who will be at the
+  table, the rules as set, choices that only matter online), then Open the table opens it at once
+  (`TurnNet.host`) or Find a table goes to the lobby. **A friend's open table** in a game is the first row of that
+  game's sheet on the home screen ("Join Pete's table", from `friendTables`), and the separate Play online rows
+  from games.js hide once the setup offers it. **A setup that would not fit the screen folds its options** into
+  one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
@@ -232,15 +255,23 @@ Underlying principles for everything:
   A new kind of engine event needs a handler there.
 - Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
   are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
-- The game's rules are `STD` in engine.js: clashes roll two ordinary dice (`dice: 'high'`), one of each person on your
-  side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
+- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 30 wins
+  (Tim, 2026-11-11; until then Places scored double from round 4, and a game saved under that rule finishes under it:
+  `G.sc`), a round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
+  person on your side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
 - **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
   welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
   and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a
-  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the core set
-  takes about 18 days of daily play at 3 games a day (it was about a month at 2 cards). Its screens are
+  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the 66-card
+  set took about 18 days of daily play at 3 games a day (it was about a month at 2 cards). With the second printing
+  the set is 91 cards and takes about a month again at 3 cards a pack; `pacing.txt` has what 4 and 5 would do.
+- **A deck is 40 cards** (`DECK` in coll.js; 30 until 2026-11-11): each ready deck is 20 different cards, two of each.
+  The five each one gained are `GROWN` in cards.js (the second printing: 25 Figures, all with skills the engine already
+  had). A collection from before (`v` 1) is given the five new cards of its starter deck and of any other ready deck it
+  owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
+  until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
@@ -258,10 +289,20 @@ Underlying principles for everything:
   can be read (Nineveh's gate bulls are door jambs: faces out, bodies running back down the passage, about two and
   a half times a man's height). State sizes as a ratio to a person, and choose the viewpoint that makes the true
   arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
+- **One word for a connection: Legacy Line** (Tim, 2026-11-11: of "Thread" and "Legacy line", "legacy line is the one
+  i like best"). Players read only "Legacy Line": the foot of a card ("Legacy Line from Archimedes"), the plate when
+  one is made, the named lines of the collection ("The Road to Zama", in `THREADS`), the rules and lessons. A Figure
+  with `insp` is still a "Legacy" Figure with "Legacy of Homer." in its text. In code the old names stay (`from`,
+  `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): under a card
+  being read (`notesFor` in ui.js: what the card grew from, a gold line to the card, and on the line what that is
+  worth as the game's own Spark, Might and Renown marks, then one line saying when and the true sentence); and over
+  a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
+  places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
+  moment there and then (`lineMoment`), before the gift at the end of the pack.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
-- **A card's Thread is printed on it**, in finer print under the pronunciation ("Thread from Archimedes", "Thread
-  from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
+- **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
+  "Legacy Line from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
   its rules text ("Legacy of Homer.").
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
   picture tool can't be trusted to count, so draw several, count each at full size, and pose the thing so every one
@@ -337,14 +378,21 @@ Underlying principles for everything:
   talks about something that isn't in view: Reading a card keeps the card open under the caption
   (`openView(key, {lesson: true, room})`) and rings one part at a time. One idea a caption; split a long one.
 - **The story comes before the rules** (Tim, 2026-11-11: the guide went straight into play without the goal or the
-  story behind it). Anoria is a world where all of history happens at once: the great figures of every age live there
-  together among the wonders of the world, each player leads a company of them with one of the greats as a Guide, and
-  a company wins Renown by holding the wonders (the Places); the first to 30 wins. `story()` in guide.js tells it in
-  five full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of the quick
-  start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your Guide
-  chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
-  against the computer, and each is a new way to play). The rules page opens with the same paragraph. Anything new that explains the game starts
-  from the goal and why, then the how.
+  story behind it; then, of the first story: "unimaginative and weak": it must say how the greats share one place and
+  time, why they want Renown, why they contest the wonders, and what the Seals are for). **The story**: what the world
+  remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once (memory
+  keeps no calendar) among the wonders, where the world's memory is strongest. A great sphere turns at its heart (the
+  one on every card back); each full turn ends an age, and the world can't carry all it knew into the next. So the
+  greats lead companies to keep their people from being forgotten, each player one of them with a Guide. The world
+  remembers whoever stands at its wonders, and that is Renown: the first company to 30 is the one the next age
+  remembers. A company comes into Anoria through its Gate, held open by three Seals; hold the other company's Gate
+  when a round ends and one breaks, and a company with none left is shut out and forgotten. `story()` in guide.js
+  tells it in full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of
+  the quick start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your
+  Guide chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
+  against the computer, and each is a new way to play). The rules page opens with the same story. Anything new that
+  explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
+  (memory, being remembered, the sphere, Gates and Seals).
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)
