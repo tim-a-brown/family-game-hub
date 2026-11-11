@@ -1,4 +1,4 @@
-// Anoria: how to play. The quick start (about two minutes of the game being played, shown the first time you open Anoria)
+// Anoria: how to play. The quick start (the story, then about two minutes of the game being played, shown the first time you open Anoria)
 // and the guide's chapters are all lessons: a made-up position on the real table (AnoriaUI.demo in ui.js), played
 // step by step by a script, with a caption for each moment, a ring round what it's about and a finger where the
 // tap goes. Nothing in a lesson is saved or recorded; your own game waits and comes back when the lesson closes.
@@ -47,7 +47,7 @@
   // (ui.js calls this whenever the table is torn down: the lesson's captions go with it)
   function halt() {
     const r = run; if (!r) return; run = null;
-    clearTimeout(r.timer); window.removeEventListener('resize', r.resize); document.removeEventListener('keydown', r.key);
+    clearTimeout(r.timer); clearInterval(r.cnt); window.removeEventListener('resize', r.resize); document.removeEventListener('keydown', r.key);
     document.documentElement.classList.remove('gd-on', 'gd-dim'); r.root.remove(); if (r.wake) r.wake();
   }
   function overlay(r) {
@@ -111,22 +111,82 @@
     // (sideways the table is the map on the left and everything else on the right: the caption is as wide as that right side)
     const mp = land ? document.querySelector('#app .an-map') : null, mb = mp ? mp.getBoundingClientRect() : { left: m, right: W * .56 };
     P.classList.toggle('wide', land && H < 540);
-    P.style.width = Math.round(f.clash ? Math.min(W - 2 * m, 620) : Math.min(land ? Math.max(280, Math.min(W - mb.right - 2 * m, mb.right - mb.left)) : W - 2 * m, 470)) + 'px';
+    P.style.width = Math.round(f.clash || f.scene ? Math.min(W - 2 * m, 620) : Math.min(land ? Math.max(280, Math.min(W - mb.right - 2 * m, mb.right - mb.left)) : W - 2 * m, 470)) + 'px';
     const pw = P.offsetWidth, ph = P.offsetHeight, cx = (W - pw) / 2, bot = H - ph - m - (parseFloat(cs.getPropertyValue('--safe-b')) || 0);
-    const lx = Math.max(m, mb.left), spots = f.clash ? [[cx, bot]] : land ? [[W - pw - m, bot], [lx, bot], [W - pw - m, bar], [lx, bar], [cx, bot]] : [[cx, bot], [cx, bar], [cx, (H - ph) / 2]];
+    const lx = Math.max(m, mb.left), spots = f.clash || f.scene ? [[cx, bot]] : land ? [[W - pw - m, bot], [lx, bot], [W - pw - m, bar], [lx, bar], [cx, bot]] : [[cx, bot], [cx, bar], [cx, (H - ph) / 2]];
     let best = spots[0], bv = Infinity;
     spots.forEach(s => {
       let v = 0; rs.forEach(b => { const w = Math.min(s[0] + pw, b.right) - Math.max(s[0], b.left), h = Math.min(s[1] + ph, b.bottom) - Math.max(s[1], b.top); if (w > 0 && h > 0) v += w * h; });
       if (v < bv - 1) { bv = v; best = s; }
     });
     P.style.left = Math.round(best[0]) + 'px'; P.style.top = Math.round(best[1]) + 'px';
+    if (r.scene) fitScene(r, H - best[1] + 8);
   }
   function show(r, text, o) {
     o = o || {};
-    r.txt.innerHTML = text; r.focus = { at: o.at, keep: o.keep, tag: o.tag, ring: o.ring, clash: o.clash };
+    r.txt.innerHTML = text; r.focus = { at: o.at, keep: o.keep, tag: o.tag, ring: o.ring, clash: o.clash, scene: o.scene };
     r.plate.classList.add('on'); r.plate.classList.remove('tick'); void r.plate.offsetWidth; r.plate.classList.add('tick');
     place(r);
   }
+  // ═══ The story ═══════════════════════════════════════════════════════════════════════════════════════════
+  // What Anoria is and what you are playing for, told before any card is played (Tim: the guide went straight
+  // into the game without its goal or the story behind it). A picture fills the screen behind each caption,
+  // made from the game's own art.
+  const AGES = [['hatshepsut', 'about 1470 BC'], ['confucius', 'about 500 BC'], ['hypatia', 'about AD 400'], ['murasaki', 'about 1010'], ['mansamusa', '1324'], ['mozart', '1787']];
+  const WONDERS = ['stonehenge', 'library', 'wall', 'petra', 'timbuktu', 'machu'];
+  const pic = (k, cls) => { const s = el('span', { class: 'sc-pic' + (cls ? ' ' + cls : '') }), im = UI().artImg(k, true); if (im) s.appendChild(im); return s; };
+  const tile = (k, when, i, cls) => el('figure', { class: 'sc-fig' + (cls ? ' ' + cls : ''), style: { '--i': i } }, [pic(k), el('figcaption', {}, [el('b', { text: UI().info(k).n }), when ? el('small', { text: when }) : null])]);
+  const side = (label, guide, crew, i) => el('div', { class: 'sc-side', style: { '--i': i } }, [
+    el('small', { text: label }), pic(guide, 'lead'), el('b', { text: UI().info(guide).n }), el('div', { class: 'sc-crew' }, crew.map(k => pic(k)))]);
+  const SCENES = {
+    anoria: () => [el('img', { class: 'sc-logo', src: 'anoria/ui/logo.webp', alt: 'Anoria', draggable: 'false' })],
+    ages: () => [el('div', { class: 'sc-grid' }, AGES.map((a, i) => tile(a[0], a[1], i)))],
+    wonders: () => [el('div', { class: 'sc-grid wide' }, WONDERS.map((k, i) => tile(k, null, i, 'wide')))],
+    sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'tomoe', 'joan'], 1)])],
+    renown: () => [el('div', { class: 'sc-held' }, WONDERS.slice(0, 5).map((k, i) => el('span', { class: 'sc-pic wide', style: { '--i': i } }, [UI().artImg(k, true)]))),
+      el('div', { class: 'sc-lau' }, [el('b', { text: '0' })]), el('div', { class: 'sc-of', text: 'Renown' })]
+  };
+  function setScene(r, name, now) {
+    const old = r.scene; r.scene = null;
+    if (old) { old.classList.remove('on'); setTimeout(() => old.remove(), 500); }
+    clearInterval(r.cnt);
+    if (!name) return;
+    const s = el('div', { class: 'gd-scene' + (now ? ' now' : ''), 'data-k': name }, [el('div', { class: 'sc-in' }, SCENES[name]())]);
+    r.root.insertBefore(s, r.rings); r.scene = s; fitScene(r); void s.offsetWidth; s.classList.add('on');
+    if (name === 'renown') {   // the laurel counts up to the 30 that wins
+      const b = s.querySelector('.sc-lau b'); let n = 0;
+      if (fast()) b.textContent = '30';
+      else setTimeout(() => { if (r.scene !== s) return; r.cnt = setInterval(() => { n += 1; b.textContent = String(n); if (n >= 30) { clearInterval(r.cnt); s.classList.add('won'); } }, 62); }, 1500);
+    }
+  }
+  // (sizes come from the room left above the caption, upright or sideways, so nothing is ever cut off)
+  function fitScene(r, foot) {
+    const s = r.scene; if (!s) return; if (foot) r.foot = foot;
+    const inn = s.firstChild; inn.style.bottom = (r.foot || 150) + 'px';
+    const b = inn.getBoundingClientRect(), W = b.width - 32, H = b.height - 24, land = W > H * 1.25, g = 10, k = s.getAttribute('data-k');
+    const grid = (cols, rows, ar, cap, max) => Math.floor(Math.max(30, Math.min(max, (W - (cols - 1) * g) / cols, ((H - (rows - 1) * g) / rows - cap) * ar)));
+    let tw = 0, cols = 1, lw = 0;
+    if (k === 'ages') { cols = land ? 6 : 3; tw = grid(cols, land ? 1 : 2, 2 / 3, 52, 150); }
+    else if (k === 'wonders') { cols = land ? 3 : 2; tw = grid(cols, land ? 2 : 3, 3 / 2, 30, 230); }
+    else if (k === 'anoria') tw = Math.floor(Math.min(W, H, 440));
+    else if (k === 'sides') tw = Math.floor(Math.max(40, land ? Math.min(170, (W - 70) / 4.4, (H - 28) / 1.5) : Math.min(150, (W - 56) / 2, (H - 84) / 2)));
+    else if (k === 'renown') { tw = Math.floor(Math.min(112, (W - 4 * 8) / 5)); lw = Math.floor(Math.max(60, Math.min(230, W * .6, (H - tw * 2 / 3 - 64) / .77))); }
+    s.classList.toggle('land', land); s.style.setProperty('--tw', tw + 'px'); s.style.setProperty('--cols', cols); s.style.setProperty('--lw', lw + 'px');
+  }
+  async function story(L, o) {
+    await L.scene('anoria', o && o.now);
+    await L.say('Anoria is a world where all of history happens at once.', { scene: 1 });
+    await L.scene('ages');
+    await L.say('The great figures of every age live here together. Hatshepsut can meet Mozart, who was born more than three thousand years after her.', { scene: 1 });
+    await L.scene('wonders');
+    await L.say('The wonders of the world stand here too, from Stonehenge to the Great Wall.', { scene: 1 });
+    await L.scene('sides');
+    await L.say('Each player leads a company of these Figures, with one of the greats as a <b>Guide</b>.', { scene: 1 });
+    await L.scene('renown');
+    await L.say('A company wins <b>Renown</b> by holding the wonders. The first player to reach 30 Renown wins the game.', { scene: 1 });
+    if (!(o && o.stay)) await L.scene(null);
+  }
+
   // what a lesson's script calls: every step is a promise that throws HALT if the lesson was closed meanwhile
   function helpers(r, d) {
     const my = r.my, alive = () => run === r && d.gen() === my;
@@ -156,6 +216,8 @@
       // the same, with time to read it before the table starts to move
       async tell(text, o) { L.note(text, o); await L.pause(Math.max(1500, text.replace(/<[^>]+>/g, '').length * 36)); },
       hush() { r.plate.classList.remove('on'); r.rings.innerHTML = ''; r.focus = null; },
+      // a picture that fills the screen behind the next captions (the story); null brings the table back
+      async scene(name, now) { ok(); L.hush(); setScene(r, name, now); await L.pause(name ? (now ? 900 : 700) : 600); },
       // a finger comes down where a player would tap
       async tap(t) {
         const n = find(t); if (!n) return; const b = n.getBoundingClientRect(), f = el('i', { class: 'gd-tap' });
@@ -254,9 +316,9 @@
       me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'daedalus', 'fairwinds'] },
       them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'yisunsin', 'boudica'], draw: ['spartacus', 'saladin', 'hannibal', 'ambush'] } }),
     async run(L) {
-      await L.pause(400); L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
-      if (L.first) await L.say('Welcome to Anoria. Here are about two minutes of the game being played.');
-      await L.say('Five Places lie between you and the other player. Your Gate is nearest you.', { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
+      L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
+      await story(L, { now: true });
+      await L.say('Five of the wonders lie between you and the other player. These are the <b>Places</b> you play for. Your Gate is nearest you.', { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
       await L.turn(0);
       await L.say('Each turn you draw 2 cards and gain <b>Spark</b> to spend.', { at: '.an-strip.me .st-spark', keep: '.an-hand' });
       await L.play('hatshepsut', MY_GATE, { lit: 'When you tap a Figure, the Places it can reach light up.' });
@@ -266,8 +328,6 @@
       await L.tell('When both have played, the round is counted.');
       await d_count(L);
       await L.say('Whoever has more Might at a Place holds it, and scores 1 <b>Renown</b>.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
-      await L.tell('This is round 2. Each round brings one more Spark.');
-      await L.them.turn(); await L.them.walk('spartacus', TH_OUT); await L.them.endTurn();
       await L.turn(0);
       await L.walk('hatshepsut', MY_OUT, { lit: 'A Figure can walk one step each turn.' });
       await L.later('A few rounds on…', S => {
@@ -279,10 +339,8 @@
       await L.turn(0);
       await L.clash('copernicus', 'tomoe', [5, 3], { lit: 'Two Figures at the same Place can <b>clash</b>.', at: [L.piece('copernicus'), L.piece('tomoe', 1)],
         hold: ['Both roll a die. The higher roll adds 1 Might, and the Figure with the lower total is knocked out.'] });
-      await L.tell('The Crossroads is yours.');
-      await L.endTurn(); await d_count(L);
-      await L.say('From round 4 every Place scores 2. <b>The first player to 30 Renown wins.</b>', { at: '.an-strip.me .st-ren' });
-      await L.say('You can also win by breaking all 3 of their <b>Seals</b>. One Seal breaks each time you hold their Gate when a round is counted.', { at: ['.an-strip.opp .st-seals', L.row(TH_GATE)] });
+      await L.say('Copernicus wins, so the Crossroads is yours to hold.', { at: L.row(CROSS) });
+      await L.say('There is one more way to win: break all 3 of their <b>Seals</b>. One Seal breaks each time you hold their Gate when a round is counted.', { at: ['.an-strip.opp .st-seals', L.row(TH_GATE)] });
     },
     end(r, o) {
       const first = !UI().Coll.load().starter;
@@ -296,6 +354,8 @@
   // ═══ The chapters ════════════════════════════════════════════════════════════════════════════════════════
   const PL = ['globe', 'nineveh', 'library', 'seneca', 'wall'];
   const CHAPTERS = [
+    { id: 'story', n: 'The story of Anoria', sub: 'What Anoria is, and what you are playing for', art: 'murasaki', table: () => QUICK.table(),
+      async run(L) { await story(L, { now: true, stay: true }); } },
     { id: 'map', n: 'The map and the goal', sub: 'Five Places, 30 Renown, 3 Seals', art: 'library',
       table: () => ({ round: 1, places: PL, me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'hatshepsut'] }, them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'phalanx', 'boudica'] } }),
       async run(L) {
@@ -471,10 +531,10 @@
     const b = scr.body;
     b.appendChild(el('button', { type: 'button', class: 'gd-qs', onclick: () => { Kit.sfx('tap'); play(QUICK, from); } }, [
       el('span', { class: 'gd-qs-play', html: Kit.icon('play') }),
-      el('span', { class: 'gd-qs-t' }, [el('b', { text: 'Quick start' }), el('small', { text: 'About two minutes of the game being played' })]),
+      el('span', { class: 'gd-qs-t' }, [el('b', { text: 'Quick start' }), el('small', { text: 'The story, then a short game played for you' })]),
       el('span', { class: 'gd-qs-arts' }, [art('hatshepsut'), art('copernicus'), art('tomoe')])]));
     b.appendChild(el('h2', { class: 'gd-sec', text: 'The guide' }));
-    b.appendChild(el('p', { class: 'gd-lead', text: 'Twelve short lessons, each played out on the table.' }));
+    b.appendChild(el('p', { class: 'gd-lead', text: 'The story first, then twelve short lessons played out on the table.' }));
     const list = el('div', { class: 'gd-list' });
     CHAPTERS.forEach((c, i) => list.appendChild(el('button', { type: 'button', class: 'gd-row' + (seen[c.id] ? ' seen' : ''), onclick: () => { Kit.sfx('tap'); play(c, from); } }, [
       art(c.art), el('span', { class: 'gd-n', text: String(i + 1) }), el('span', { class: 'gd-row-t' }, [el('b', { text: c.n }), el('small', { text: c.sub })]), tick(c.id)])));

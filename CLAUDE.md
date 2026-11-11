@@ -280,11 +280,18 @@ Underlying principles for everything:
   screen doesn't restyle its own buttons' colour or face; size and layout only.
 - **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
   `guide` option; the rules on one page are still `Kit.rules()`). The quick start (shown once, the first time Anoria
-  is opened: `anoria_guide`) and the twelve chapters are all **lessons**: a made-up position on the real table,
+  is opened: `anoria_guide`) and the chapters after the story are all **lessons**: a made-up position on the real table,
   played by a script through `AnoriaUI.demo` in ui.js (`G.demo`: never saved or recorded, fixed dice; your own game
   waits in its save and comes back). A lesson is `{id, n, table(), run(L)}`: `L.say` (caption, with `at` rings and
   `tag` names), `L.play/walk/clash/relic/deed` (a finger taps, as a player would), `L.them.*`, `L.count`, `L.later`.
   A rule that changes needs its chapter's script and captions changed with it; `Kit.init`'s `RULES` text too.
+- **The story comes before the rules** (Tim, 2026-11-11: the guide went straight into play without the goal or the
+  story behind it). Anoria is a world where all of history happens at once: the great figures of every age live there
+  together among the wonders of the world, each player leads a company of them with one of the greats as a Guide, and
+  a company wins Renown by holding the wonders (the Places); the first to 30 wins. `story()` in guide.js tells it in
+  five full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of the quick
+  start and as chapter 1. The rules page opens with the same paragraph. Anything new that explains the game starts
+  from the goal and why, then the how.
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)
