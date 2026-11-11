@@ -532,6 +532,7 @@
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
+    matWarm();
   }
 
   // ═══ The game: state, saving ═════════════════════════════════════════════════════════════════════════════
@@ -642,6 +643,8 @@
     }
     n.appendChild(im);
   }
+  // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
+  const matWarm = () => { const id = lsGet(MATK) || (Coll.deck(starterId()) || {}).guide; if (MATS[id] && !MATS[id].chart) matFill(el('div'), id, 0); };
   // the seat whose choice of mat is the account's own: the first person at the table
   const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
   const matPick = o => G.demo ? '' : matMine(o) ? lsGet(MATK) : G.players[o].mat;
@@ -1502,12 +1505,12 @@
       view.innerHTML = ''; view.classList.toggle('one', !live);
       if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top'));
       view.appendChild(mat(on || g, 'v0', 'bot'));
-      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost. It meets ' + other + ' mat under the Crossroads.';
+      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, and meets ' + other + ' mat under the Crossroads.';
       grid.innerHTML = '';
       const sw = (id, shown, slot, title, sub, face) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (id === on ? ' on' : ''), 'aria-pressed': String(id === on), 'aria-label': title + ', ' + sub, onclick: () => put(id) }, [
         el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
         el('b', { text: title }), el('small', { text: sub })]));
-      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'It changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
+      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
       Object.keys(MATS).forEach(id => sw(id, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world'));
     }
     paint();
@@ -1635,8 +1638,14 @@
       }
       row.appendChild(line); return row;
     });
+    // the play mats, each the size it lies on a phone, under an empty standing place and a piece of each player's colour
+    const piece = o => el('span', { class: 'fp o' + o, style: { '--f': FAC.V.c } }, [el('span', { class: 'fp-card' }, [el('span', { class: 'fp-art' })]), el('span', { class: 'fp-m' }, [el('b', { text: '4' })])]);
+    rows.push(el('div', { class: 'ap-row' }, [el('h2', { text: 'Play mats' }), el('div', { class: 'ap-line' }, Object.keys(MATS).map(id => {
+      const n = el('div', { class: 'an-pm ap-mat' }); matFill(n, id, 'proof');
+      n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
+      return cell(MATS[id].n, n); }))]));
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn.' })].concat(rows)));
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn, and the play mats.' })].concat(rows)));
   }
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
