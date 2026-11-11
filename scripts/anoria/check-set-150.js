@@ -37,7 +37,7 @@ cards.forEach(c => {
   if (names[String(c.n).toLowerCase()]) err(k, 'name is already in the game (' + names[c.n.toLowerCase()] + ')');
   if (['fig', 'relic', 'deed'].indexOf(c.t) < 0) err(k, 'unknown type ' + c.t);
   ['n', 'f', 'cap', 'tx', 'fact', 'art', 'src'].forEach(f => { if (typeof c[f] !== 'string' || (!c[f] && !(f === 'tx' && fig))) err(k, 'missing ' + f); });
-  if (typeof c.sure !== 'boolean') err(k, 'sure must be true or false');
+  if (typeof c.sure !== 'boolean') err(k, 'sure must be true or false'); else if (!c.sure && !c.check) err(k, 'not sure, and check does not say why');
   if (typeof c.c !== 'number' || c.c < 0) err(k, 'missing cost');
   if (typeof c.y !== 'number') err(k, 'missing year');
   if (!FACS[c.f]) err(k, 'unknown faction ' + c.f);
@@ -69,7 +69,7 @@ cards.forEach(c => {
   Object.keys(links).forEach(l => { const p = l.split('>'); if (p[1] !== k || srcs.indexOf(p[0]) < 0) err(k, 'stray link ' + l); });
   if ((c.insp || []).some(s => (c.from || []).indexOf(s) >= 0)) err(k, 'a source is in both insp and from');
   // writing: no dots stringing facts together, nothing cut off
-  ['n', 'cap', 'tx', 'fact', 'art', 'say'].concat(Object.keys(links).map(l => 'links.' + l)).forEach(f => { const v = f.slice(0, 6) === 'links.' ? links[f.slice(6)] : c[f]; if (typeof v !== 'string') return;
+  ['n', 'cap', 'tx', 'fact', 'art', 'say', 'check'].concat(Object.keys(links).map(l => 'links.' + l)).forEach(f => { const v = f.slice(0, 6) === 'links.' ? links[f.slice(6)] : c[f]; if (typeof v !== 'string') return;
     if (/ · |·/.test(v)) err(k, f + ' has a middle dot'); if (/…|\.\.\./.test(v)) err(k, f + ' has an ellipsis'); if (/\s\s|^\s|\s$/.test(v)) err(k, f + ' has stray spaces'); });
   if (c.fact && !/[.!?”]$/.test(c.fact)) err(k, 'fact has no full stop');
   if (c.fact && c.fact.length > 330) err(k, 'fact is ' + c.fact.length + ' letters long');
