@@ -280,23 +280,41 @@
   }
   // Pick 2 of 6 to throw: expected hand value over every possible starter,
   // plus (dealer) or minus (non-dealer) the expected crib value from sampling.
-  function cpuDiscard(hand, isDealer) {
-    var unk = unknownTo(hand), best = null;
+  // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Keeps the cards that look best and gives no thought to the crib.'],
+    ['normal', 'Normal', 'Weighs its hand against the crib and pegs carefully.'],
+    ['hard', 'Hard', 'Remembers every card played and thinks the pegging through to the last card.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvOf(p) { var pl = S && S.players && S.players[p]; return lvName((pl && pl.level) || (S && S.level)); }
+  function cpuDiscard(hand, isDealer, lv) {
+    var unk = unknownTo(hand), best = null, N = lv === 'hard' ? 250 : 70, draws = null, s, a, b, c;
+    // Hard judges every pair it could throw against the same 250 cribs, so luck in the sample doesn't pick for it
+    if (lv === 'hard') for (draws = [], s = 0; s < N; s++) {
+      a = Math.floor(Math.random() * unk.length);
+      do { b = Math.floor(Math.random() * unk.length); } while (b === a);
+      do { c = Math.floor(Math.random() * unk.length); } while (c === a || c === b);
+      draws.push([a, b, c]);
+    }
     for (var i = 0; i < 6; i++) for (var j = i + 1; j < 6; j++) {
       var keep = hand.filter(function (c, k) { return k !== i && k !== j; }), toss = [hand[i], hand[j]];
       var hv = 0; unk.forEach(function (st) { hv += handTotal(keep, st, false); }); hv /= unk.length;
-      var cv = 0, N = 70;
-      for (var s = 0; s < N; s++) {
-        var a = Math.floor(Math.random() * unk.length), b, c;
-        do { b = Math.floor(Math.random() * unk.length); } while (b === a);
-        do { c = Math.floor(Math.random() * unk.length); } while (c === a || c === b);
+      // Easy keeps the four cards that look best together, give or take, and doesn't think about the crib
+      if (lv === 'easy') { var e = hv + Math.random() * 3; if (!best || e > best.ev) best = { ev: e, ids: [hand[i].id, hand[j].id] }; continue; }
+      var cv = 0;
+      for (s = 0; s < N; s++) {
+        if (draws) { a = draws[s][0]; b = draws[s][1]; c = draws[s][2]; }
+        else {
+          a = Math.floor(Math.random() * unk.length);
+          do { b = Math.floor(Math.random() * unk.length); } while (b === a);
+          do { c = Math.floor(Math.random() * unk.length); } while (c === a || c === b);
+        }
         cv += handTotal(toss.concat([unk[a], unk[b]]), unk[c], true);
       }
       cv /= N;
       // a little pegging sense: low cards and pairs help in the play
       var pegBonus = keep.filter(function (c) { return val(c) <= 4; }).length * 0.12;
       if (!isDealer && toss.some(function (c) { return c.r === '5'; })) cv += 0.6;
-      var ev = hv + (isDealer ? cv : -cv) + pegBonus + Math.random() * 0.15;
+      var ev = hv + (isDealer ? cv : -cv) + pegBonus + (lv === 'hard' ? 0 : Math.random() * 0.15);
       if (!best || ev > best.ev) best = { ev: ev, ids: [hand[i].id, hand[j].id] };
     }
     return best.ids;
@@ -305,8 +323,15 @@
   // for the opponent (using only cards it hasn't seen).
   function cpuPeg(p) {
     var P = S.peg, hand = P.hand[p], count = P.count, pile = P.pile.map(function (x) { return x.c; });
-    var opts = hand.filter(function (c) { return count + val(c) <= 31; });
+    var opts = hand.filter(function (c) { return count + val(c) <= 31; }), lv = lvOf(p);
     if (opts.length === 1) return opts[0];
+    if (lv === 'hard') return hardPeg(p, opts);
+    if (lv === 'easy') {
+      // Easy plays the card that scores the most right now, and any card at all when none scores
+      var top = 0, pick = [];
+      opts.forEach(function (c) { var m = pegScore(pile.concat([c])).pts; if (m > top) { top = m; pick = [c]; } else if (m === top) pick.push(c); });
+      return pick[Math.floor(Math.random() * pick.length)];
+    }
     var seen = S.keep[p].concat(S.tossed[p], [S.starter], P.played.map(function (x) { return x.c; }));
     var unk = unknownTo(seen), byOrd = {};
     unk.forEach(function (c) { byOrd[ord(c)] = (byOrd[ord(c)] || 0) + 1; });
@@ -329,6 +354,42 @@
     return best.c;
   }
 
+  // Hard in the play: it knows which cards it hasn't seen, deals the other player's remaining cards from them many
+  // ways, plays every line of the rest of the play out to the last card for each (the other player answering as
+  // well as they can), and plays the card that comes out furthest ahead on average.
+  var HARD_PEG_DEALS = 40;
+  function hardPeg(p, opts) {
+    var P = S.peg, pile = P.pile.map(function (x) { return x.c; });
+    var seen = S.keep[p].concat(S.tossed[p], [S.starter], P.played.map(function (x) { return x.c; }));
+    var unk = unknownTo(seen), n = P.hand[1 - p].length, tot = opts.map(function () { return 0; }), i, d;
+    function out(h, pl, count, turn, last) {   // points p comes out ahead by from here to the last card
+      var can = h[turn].filter(function (c) { return count + val(c) <= 31; });
+      if (!can.length) {
+        if (h[1 - turn].some(function (c) { return count + val(c) <= 31; })) return out(h, pl, count, 1 - turn, last);
+        var v = count < 31 && pl.length ? (last === p ? 1 : -1) : 0;   // the go, or the last card
+        if (!h[0].length && !h[1].length) return v;
+        var nx = 1 - last; if (!h[nx].length) nx = last;
+        return v + out(h, [], 0, nx, -1);
+      }
+      var best = null;
+      can.forEach(function (c) {
+        var pl2 = pl.concat([c]), h2 = turn === 0 ? [h[0].filter(function (x) { return x !== c; }), h[1]] : [h[0], h[1].filter(function (x) { return x !== c; })];
+        var sc = pegScore(pl2), w = (turn === p ? sc.pts : -sc.pts) + out(h2, pl2, sc.count, 1 - turn, turn);
+        if (best == null || (turn === p ? w > best : w < best)) best = w;
+      });
+      return best;
+    }
+    for (d = 0; d < (n ? HARD_PEG_DEALS : 1); d++) {
+      var opp = Cards.shuffle(unk.slice()).slice(0, n);
+      for (i = 0; i < opts.length; i++) {
+        var c = opts[i], pl2 = pile.concat([c]), sc = pegScore(pl2), mine = P.hand[p].filter(function (x) { return x !== c; });
+        tot[i] += sc.pts + out(p === 0 ? [mine, opp] : [opp, mine], pl2, sc.count, 1 - p, p);
+      }
+    }
+    var b = 0; for (i = 1; i < opts.length; i++) if (tot[i] > tot[b] + 1e-9) b = i;
+    return opts[b];
+  }
+
   // ── State ───────────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [];
   function save() {
@@ -349,7 +410,8 @@
       modes: Kit.modes(['cpu', { id: 'pass', kind: 'local' }]),
       players: { min: 2, max: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
       intro: 'Peg your way to 121',
-      onStart: function (cfg) { newGame(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; })); }
+      options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
+      onStart: function (cfg) { newGame(cfg.mode, cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; })); }
     });
   }
   function newGame(mode, players) {
@@ -390,7 +452,7 @@
     S.phase = 'discard';
     undoStack = [];
     for (var p = 0; p < 2; p++) if (isCpu(p)) {
-      var ids = cpuDiscard(S.hands[p], S.dealer === p);
+      var ids = cpuDiscard(S.hands[p], S.dealer === p, lvOf(p));
       tossCards(p, ids);
     }
     if (S.mode === 'pass') S.revealed = false;
@@ -494,7 +556,7 @@
     var p = P.turn, o = other(p);
     if (canPlay(p)) {
       paintAll();
-      if (isCpu(p)) setTimeout(function () { if (t === token && S.phase === 'peg' && S.peg.turn === p) playCard(p, cpuPeg(p)); }, 650 + Math.random() * 300);
+      if (isCpu(p)) setTimeout(function () { if (t === token && S.phase === 'peg' && S.peg.turn === p && !S.peg.reset && canPlay(p)) playCard(p, cpuPeg(p)); }, 650 + Math.random() * 300);
       return;
     }
     if (canPlay(o)) {
@@ -664,7 +726,7 @@
       title: you(w) ? 'You win!' : nm(w) + ' wins!',
       sub: skunk === 2 ? 'Double skunk! ' + nm(l) + ' stayed under 61' : skunk ? 'Skunk! ' + nm(l) + " didn't reach 91" : 'Won by ' + (WIN - ls) + ' points',
       rank: rank, lose: lose, icon: lose ? 'bot' : 'trophy',
-      again: function () { newGame(S.mode, S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; })); },
+      again: function () { newGame(S.mode, S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; })); },
       look: 'Look at the table',
       setup: function () { clearSave(); showSetup(); }
     });
