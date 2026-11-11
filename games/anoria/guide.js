@@ -1,4 +1,4 @@
-// Anoria: how to play. The quick start (about a minute of the game being played, shown the first time you open Anoria)
+// Anoria: how to play. The quick start (about two minutes of the game being played, shown the first time you open Anoria)
 // and the guide's chapters are all lessons: a made-up position on the real table (AnoriaUI.demo in ui.js), played
 // step by step by a script, with a caption for each moment, a ring round what it's about and a finger where the
 // tap goes. Nothing in a lesson is saved or recorded; your own game waits and comes back when the lesson closes.
@@ -126,7 +126,8 @@
       // a caption, and wait: for a tap (a chapter) or for long enough to read it (the quick start)
       say(text, o) {
         ok(); show(r, text, o); r.plate.classList.remove('busy');
-        const ms = Math.max(2500, 1000 + text.replace(/<[^>]+>/g, '').length * 44) / (fast() ? 40 : 1);
+        // (long enough to read it and then look at what it points to: Tim found 1 s + 44 ms a letter too fast)
+        const ms = Math.max(3800, 1800 + text.replace(/<[^>]+>/g, '').length * 62) / (fast() ? 40 : 1);
         if (r.auto) { r.bar.style.animation = 'none'; void r.bar.offsetWidth; r.bar.style.animation = 'gd-fill ' + ms + 'ms linear forwards'; }
         return new Promise((res, rej) => {
           r.wake = () => { r.wake = null; clearTimeout(r.timer); r.rings.innerHTML = ''; r.focus = { keep: r.focus && r.focus.keep, clash: r.focus && r.focus.clash }; r.plate.classList.add('busy'); if (alive()) res(); else rej(HALT); };
@@ -136,6 +137,8 @@
       },
       // a caption that stays up while the next thing plays
       note(text, o) { ok(); show(r, text, o); r.plate.classList.add('busy'); if (r.auto) r.bar.style.animation = 'none'; },
+      // the same, with time to read it before the table starts to move
+      async tell(text, o) { L.note(text, o); await L.pause(Math.max(1500, text.replace(/<[^>]+>/g, '').length * 36)); },
       hush() { r.plate.classList.remove('on'); r.rings.innerHTML = ''; r.focus = null; },
       // a finger comes down where a player would tap
       async tap(t) {
@@ -235,21 +238,21 @@
       me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'daedalus', 'fairwinds'] },
       them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'yisunsin', 'boudica'], draw: ['spartacus', 'saladin', 'hannibal', 'ambush'] } }),
     async run(L) {
-      await L.pause(400);
-      if (L.first) await L.say('Welcome to Anoria. Here is about a minute of the game being played.');
+      await L.pause(400); L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
+      if (L.first) await L.say('Welcome to Anoria. Here are about two minutes of the game being played.');
       await L.say('Five Places lie between you and the other player. Your Gate is nearest you.', { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
       await L.turn(0);
       await L.say('Each turn you draw 2 cards and gain <b>Spark</b> to spend.', { at: '.an-strip.me .st-spark', keep: '.an-hand' });
       await L.play('hatshepsut', MY_GATE, { lit: 'Tap a Figure, and the Places it can reach light up.' });
       await L.say('It arrives at your Gate. The number on its shield is its <b>Might</b>.', { at: L.piece('hatshepsut') });
-      L.note('Then the other player takes a turn.');
-      await L.endTurn(); L.speed(2); await L.them.turn(); await L.them.play('spartacus', TH_GATE); await L.them.endTurn(); L.speed(1);
-      L.note('When both have played, the round is counted.');
+      await L.tell('Then the other player takes a turn.');
+      await L.endTurn(); await L.them.turn(); await L.them.play('spartacus', TH_GATE); await L.pause(900); await L.them.endTurn();
+      await L.tell('When both have played, the round is counted.');
       await d_count(L);
       await L.say('Whoever has more Might at a Place holds it, and scores 1 <b>Renown</b>.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
-      L.note('This is round 2. Each round brings one more Spark.'); L.speed(3);
+      await L.tell('This is round 2. Each round brings one more Spark.');
       await L.them.turn(); await L.them.walk('spartacus', TH_OUT); await L.them.endTurn();
-      L.speed(1); await L.turn(0);
+      await L.turn(0);
       await L.walk('hatshepsut', MY_OUT, { lit: 'A Figure can walk one step each turn.' });
       await L.later('A few rounds on…', S => {
         S.round = 4; S.P[0].renown = 6; S.P[1].renown = 6; S.P[0].spark = 0;
@@ -260,7 +263,7 @@
       await L.turn(0);
       await L.clash('copernicus', 'tomoe', [5, 3], { lit: 'Two Figures at the same Place can <b>clash</b>.', at: [L.piece('copernicus'), L.piece('tomoe', 1)],
         hold: ['Both roll a die. The higher roll adds 1 Might, and the Figure with the lower total is knocked out.'] });
-      L.note('The Crossroads is yours.');
+      await L.tell('The Crossroads is yours.');
       await L.endTurn(); await d_count(L);
       await L.say('From round 4 every Place scores 2. <b>The first player to 30 Renown wins.</b>', { at: '.an-strip.me .st-ren' });
       await L.say('Or break all 3 of their <b>Seals</b>. One Seal breaks each time you hold their Gate when a round is counted.', { at: ['.an-strip.opp .st-seals', L.row(TH_GATE)] });
@@ -452,7 +455,7 @@
     const b = scr.body;
     b.appendChild(el('button', { type: 'button', class: 'gd-qs', onclick: () => { Kit.sfx('tap'); play(QUICK, from); } }, [
       el('span', { class: 'gd-qs-play', html: Kit.icon('play') }),
-      el('span', { class: 'gd-qs-t' }, [el('b', { text: 'Quick start' }), el('small', { text: 'About a minute of the game being played' })]),
+      el('span', { class: 'gd-qs-t' }, [el('b', { text: 'Quick start' }), el('small', { text: 'About two minutes of the game being played' })]),
       el('span', { class: 'gd-qs-arts' }, [art('hatshepsut'), art('copernicus'), art('tomoe')])]));
     b.appendChild(el('h2', { class: 'gd-sec', text: 'The guide' }));
     b.appendChild(el('p', { class: 'gd-lead', text: 'Twelve short lessons, each played out on the table.' }));

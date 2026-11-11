@@ -60,18 +60,27 @@
   // ═══ Pictures: a missing one leaves the flat panel underneath showing ════════════════════════════════════
   const noArt = {}, hasArt = {};
   function artSrc(key, small) { return ART + (small ? 't/' : '') + (isPlace(key) ? 'place-' : '') + key + '.webp'; }
+  // Small pictures that have loaded once are kept in memory, and a table drawn again shows them from there. (On
+  // Tim's phone every picture went blank for a second whenever the table was redrawn: each new <img> asked the
+  // service worker again, which was busy saving the release.)
+  const kept = {};
+  function keep(src) {
+    if (src in kept || !window.fetch || !window.URL || !URL.createObjectURL) return; kept[src] = '';
+    fetch(src).then(r => (r.ok ? r.blob() : null)).then(bl => { if (bl) kept[src] = URL.createObjectURL(bl); }).catch(() => {});
+  }
   function artImg(key, small) {
     const src = artSrc(key, small); if (noArt[src]) return null;
-    const im = el('img', { src: src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
+    let mem = small && kept[src];
+    const im = el('img', { src: mem || src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
     if (FY[key] != null) im.style.objectPosition = '50% ' + FY[key] + '%';   // (which part of the picture to keep, wherever it is cropped)
-    im.onerror = function () { noArt[src] = 1; im.remove(); };
-    im.onload = function () { hasArt[src] = 1; };
+    im.onerror = function () { if (mem) { mem = ''; kept[src] = ''; im.src = src; return; } noArt[src] = 1; im.remove(); };
+    im.onload = function () { hasArt[src] = 1; if (small) keep(src); };
     return im;
   }
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
   // that is drawn again never flashes its name)
   const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
-  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
 
   // ═══ The map behind a card's text, drawn from the coastlines ═════════════════════════════════════════════
   let LB = null;
@@ -1062,7 +1071,7 @@
     evs.forEach(ev => { if (ev.t === 'hold') { cur = { p: ev.p, evs: [ev] }; groups.push(cur); } else if (ev.t === 'renown') { cur = null; tail.push(ev); } else if (cur) cur.evs.push(ev); else tail.push(ev); });
     groups.sort((a, b) => order.indexOf(a.p) - order.indexOf(b.p));
     V.turn = -1; render(); Kit.sfx('pop'); await banner('', 'The count', '<span>Round ' + V.round + '</span>'); if (gen !== my) return false;
-    const sp = speed; if (!ui.turbo) { speed = 1; document.documentElement.classList.remove('an-fast'); }   // (the count is always played at its own pace)
+    const sp = speed; if (!ui.turbo && speed > 1) { speed = 1; document.documentElement.classList.remove('an-fast'); }   // (the count is never fast-forwarded; a lesson may slow it)
     for (const g of groups) { if (!(await playEvents(g.evs, {}))) return false; }
     ui.count = -1;
     if (!(await playEvents(tail, {}))) return false;
@@ -1271,6 +1280,6 @@
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
-  else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) window.AnoriaGuide.quickStart();   // (the first time here: a minute of the game being played)
+  else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) window.AnoriaGuide.quickStart();   // (the first time here: two minutes of the game being played)
   else showSetup();
 })();
