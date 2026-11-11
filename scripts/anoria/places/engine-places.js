@@ -4,15 +4,21 @@
 // next step by a scoring rule (a "profile"). run.js plays thousands of games with it and reports balance.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards-places')); else root.AnoriaEngine = factory(root.AnoriaCards); })(this, function (cards) {
 'use strict';
-const { CARDS, PLACES, CENTER, EDGE } = cards;
+const { PLACES, CENTER, EDGE } = cards;
+// (every card a game can hold: the set, and the cards that have left it, which a game saved with one still plays: cards.js RETIRED)
+const CARDS = Object.assign({}, cards.RETIRED || {}, cards.CARDS);
+const fxOf = ci => CARDS[ci].fx || ci;   // (a Deed's effect: its own key, unless the card says whose effect it has)
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
-// Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 30 wins. (Until
+// Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 25 wins. (Until
 // then the stake doubled from round 4: ramp: [1, 1, 1, 2, 2, 2]. cfg.ramp still works, for test games and for a game
-// saved under the old rule, which finishes under it.) Flat games run about two rounds longer, which is why a deck
-// is 40 cards (coll.js). rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40").
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
+// saved under the old rule, which finishes under it.) Flat games run longer than the doubled ones did, which is why a
+// deck is 40 cards (coll.js). target: the Renown that wins, 25 since 2026-11-11 (it was 30: OLD_TARGET, which a game
+// saved before then finishes under; the page keeps each game's own target, see restore() in ui.js).
+// rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40", "First to 25").
+const OLD_TARGET = 30;
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -35,7 +41,7 @@ function newGame(decks, guides, cfg, R, stacks) {
   for (let p = 0; p < N; p++) {
     let deck = shuffle(decks[p].slice(), R), hand = deck.splice(0, cfg.hand);
     if (!hand.some(c => CARDS[c].t === 'fig' && CARDS[c].c <= 2)) { deck = shuffle(deck.concat(hand), R); hand = deck.splice(0, cfg.hand); }   // one mulligan
-    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, lines: 0 });
+    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, lines: 0 });
     for (const c of hand) S.st.seenC[p][c] = 1;
   }
   if (cfg.stacks && stacks) setupPlaces(S, stacks, R, decks);
@@ -46,6 +52,7 @@ function clone(S) {
     P: S.P.map(p => Object.assign({}, p, { deck: p.deck.slice(), hand: p.hand.slice(), relics: p.relics.slice(), gone: p.gone ? p.gone.slice() : null, pst: p.pst ? p.pst.slice() : null, pgone: p.pgone ? p.pgone.slice() : null })), over: S.over, winner: S.winner, how: S.how, st: null, ev: null };
 }
 const stake = (cfg, r) => cfg.ramp ? cfg.ramp[Math.min(r, cfg.ramp.length) - 1] : 1;
+const MEND_AT = 5;   // (Lincoln: the round at whose start one of his broken Seals is mended, once a game)
 const gateOf = o => 2 * o, ownerOfSpoke = (S, i) => i === 2 * S.N ? -1 : (i >> 1);
 const isGate = (S, i) => i < 2 * S.N && !(i & 1);
 const enemySide = (S, o, i) => { const w = ownerOfSpoke(S, i); return w >= 0 && w !== o; };
@@ -82,6 +89,7 @@ function pairOf(S, o, i) { if (holder(S, i) !== o) return 0; const d = PLACES[S.
 function dshuf(a, s) { s = (s * 2654435761) >>> 0; for (let i = a.length - 1; i > 0; i--) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; const j = (s >>> 8) % (i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 // The top card of a player's Place stack. An empty stack is made again from that player's Place discard pile.
 function popTop(S, o) { const P = S.P[o]; if (!P.pst.length) { if (!P.pgone.length) return null; P.pst = dshuf(P.pgone, S.uid * 31 + S.round); P.pgone = []; if (S.st) S.st.pout[o]++; } const id = P.pst.pop(); if (S.st && !P.pst.length) S.st.pzero[o] = 1; return id; }
+const peace = (S, i, o) => !!(S.pown && (pw(S, i) === 'peace' || (S.cfg.sealPeace && pw(S, i) === 'seal')) && !(!S.cfg.peaceSym && holder(S, i) === o));   // (the player who holds the Domain may start a clash there; cfg.peaceSym: nobody may)
 const used = (S, k) => { if (S.st) S.st.use[k] = (S.st.use[k] || 0) + 1; };
 const canTurn = (S, o) => S.P[o].pst.length + S.P[o].pgone.length > 0;
 // The next Place a player turns up: a Place that is already on the table goes to the bottom of the stack instead
@@ -94,6 +102,10 @@ function setPlace(S, i, id, o) {
   if (S.ev) S.ev.push({ t: 'place', p: i, id: id, o: o, old: old });
   if (S.st) { S.st.turned[o]++; S.st.seenP[o][id] = (S.st.seenP[o][id] || 0) + 1; if (old != null) { S.st.repl++; if (i === 2 * S.N) S.st.replHub++; } }
 }
+// Domains change positions: the Domain now at spot i is the one that was at perm[i]. The card, whose it is and Vesuvius
+// lying on it travel together. Figures, a Royal Decree and everything else belong to the position and stay.
+function permute(S, perm) { const pl = S.places.slice(), ow = S.pown.slice(), nu = S.nul.slice(); for (let i = 0; i < perm.length; i++) { S.places[i] = pl[perm[i]]; S.pown[i] = ow[perm[i]]; S.nul[i] = nu[perm[i]]; }
+  if (S.ev) S.ev.push({ t: 'domains', perm: perm.slice() }); if (S.st) S.st.moved = (S.st.moved || 0) + 1; }
 // A choice of Place waiting on a player (Pachacuti's three, Al-Idrisi's whole stack, Wren's discard pile)
 function pendActions(S) { const q = S.pend, out = [{ t: 'pp', no: 1 }], seen = {}, g = gateOf(q.o);
   for (const id of q.ids) { if (seen[id] || S.places.indexOf(id) >= 0) continue; seen[id] = 1; out.push({ t: 'pp', id: id, p: g }, { t: 'pp', id: id, p: g + 1 }); } return out; }
@@ -107,7 +119,7 @@ function pendApply(S, a) { const q = S.pend, Q = S.P[q.o]; S.pend = null;
 // Crossroads ('top3': the same with no choice, in the order they come). 'free': you choose all three from your whole stack.
 // First dibs is a roll (cfg.dibs fixes the seat). cfg.comp: what the other player gets: 'first' the first turn,
 // 'second' the second turn, 'card' a card, 'spark' 1 Spark on their first turn.
-const PV = { spark: [0, 0.8, 0.5], cheap: [0, 0.8, 0.3], forge: [0.5, 0.4, 0.3], arms: [0.3, 0.5, 0.5], draw: [1, 0.6, 0.5], line: [0.4, 0.4, 0.3], fort: [0.4, 0.7, 0.3], closed: [0.5, 0.8, 0], narrow: [0.2, 0.2, 0], crowd: [0, 0.5, 1], arena: [0, 0.3, 0.4], seal: [0, 0.8, 0.5], sanctuary: [0.1, 0.2, 0.1], link: [-0.5, 0, 0.3], road: [0.8, 0.3, 0.2] };
+const PV = { spark: [0, 0.8, 0.5], cheap: [0, 0.8, 0.3], forge: [0.5, 0.4, 0.3], arms: [0.3, 0.5, 0.5], draw: [1, 0.6, 0.5], line: [0.4, 0.4, 0.3], fort: [0.4, 0.7, 0.3], closed: [0.5, 0.8, 0], narrow: [0.2, 0.2, 0], crowd: [0, 0.5, 1], arena: [0, 0.3, 0.4], seal: [0, 0.8, 0.5], peace: [0.6, 0.6, 0.4], sanctuary: [0.1, 0.2, 0.1], link: [-0.5, 0, 0.3], road: [0.8, 0.3, 0.2] };
 function deckInfo(deck) { const reg = {}, fac = {}; let n = 0; for (const c of deck) { const x = CARDS[c]; if (x.t !== 'fig') continue; n++; if (!x.k.voyager) reg[x.reg] = (reg[x.reg] || 0) + 1; fac[x.f] = (fac[x.f] || 0) + 1; } for (const k in reg) reg[k] /= n || 1; for (const k in fac) fac[k] /= n || 1; return { reg, fac }; }
 function placeScore(id, slot, info, pvt) { const pl = PLACES[id], w = pl.pw; let v = (info.reg[pl.reg] || 0) * [1, 2, 2][slot]; if (w.slice(0, 3) === 'fac') v += (info.fac[w[3]] || 0) * [1, 2, 2][slot]; else { const t = (pvt && pvt[w]) || PV[w]; if (t) v += t[slot]; } return v; }
 function bestThree(ids, info, pvt) { let best = null, bv = -1e9; for (const a of ids) for (const b of ids) if (b !== a) for (const c of ids) if (c !== a && c !== b) { const v = placeScore(a, 0, info, pvt) + placeScore(b, 1, info, pvt) + 0.5 * placeScore(c, 2, info, pvt); if (v > bv) { bv = v; best = [a, b, c]; } } return best; }
@@ -145,8 +157,8 @@ function pval(S, me, hs) { let v = 0; const cfg = S.cfg, dm = [{}, {}], nd = [0,
   return v; }
 // A robot weighing a card that turns up a Place it can't see yet shuffles the stacks in its head (it knows what is in
 // a stack, not the order) and takes the average of a few tries.
-function hidden(S, a) { const P = S.P[S.turn]; if (a.t === 'fig') { const c = CARDS[P.hand[a.h]]; return !!(c.arr && (c.arr[0] === 'scout' || (a.x && (c.arr[0] === 'found' || c.arr[0] === 'conquer')))); } if (a.t === 'deed') { const ci = P.hand[a.h]; return ci === 'earthquake' || ci === 'caperoute'; } return false; }
-function mix(T, k) { for (let o = 0; o < T.N; o++) dshuf(T.P[o].pst, T.uid * 131 + k * 7 + o + T.round * 13 + T.P[o].pst.length); }
+function hidden(S, a) { const P = S.P[S.turn]; if (a.t === 'fig') { const c = CARDS[P.hand[a.h]]; return !!(c.arr && (c.arr[0] === 'scout' || (a.x && (c.arr[0] === 'found' || c.arr[0] === 'conquer')))); } if (a.t === 'deed') { const ci = P.hand[a.h]; return ci === 'earthquake' || ci === 'caperoute' || ci === 'vienna'; } return false; }
+function mix(T, k) { T.rs = k + 1; for (let o = 0; o < T.N; o++) dshuf(T.P[o].pst, T.uid * 131 + k * 7 + o + T.round * 13 + T.P[o].pst.length); }
 function settle(T, prof) { for (let g = 0; T.pend && g < 4; g++) { const o = T.pend.o; let best = null, bv = -1e9; for (const a of pendActions(T)) { const U = clone(T); pendApply(U, a); const v = evalS(U, o, prof); if (v > bv) { bv = v; best = a; } } pendApply(T, best); } }
 function might(S, f, mode, oth) {
   const c = CARDS[f.c], k = c.k, pl = PLACES[S.places[f.p]]; let m = c.m + f.tb;
@@ -161,7 +173,7 @@ function might(S, f, mode, oth) {
   const w = pw(S, f.p, f.o); if (w && w === FAC[c.f]) m += 1;
   if (S.pown && S.cfg.edge === 'might' && f.p === 2 * S.N && S.pown[f.p] === f.o) m += 1;   // (test rule: +1 Might at the Crossroads for the player whose Place it is)
   if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; }   // (Sun Tzu: your first clash each turn wins ties)
-  if (mode === 2) { if (k.steadfast) m += 2; if (w === 'fort') m += 1; }
+  if (mode === 2) { if (k.steadfast) m += 2; if (w === 'fort') m += S.cfg.fortN || 1; if (S.P[f.o].guide === 'gandhi' && ownerOfSpoke(S, f.p) === f.o) m += 1; }   // (Gandhi: +1 Might when an enemy starts a clash at his own Gate or Outpost)
   return m;
 }
 function mights(S, i) { const m = S.pb[i].slice(); for (const f of S.figs) if (f.p === i) m[f.o] += might(S, f, 0); return m; }
@@ -186,7 +198,7 @@ function walkDests(S, f, free) {
   const out = [], P = S.P[f.o];
   if (c.k.voyager && !free) { for (let i = 0; i < S.places.length; i++) if (i !== f.p && !(pw(S, i) === 'closed' && ownerOfSpoke(S, i) !== f.o) && room(S, i, f.o)) out.push(i); return out; }
   const seen = {}; seen[f.p] = 1; let fr = [f.p];
-  const steps = hasRelic(P, 'compass') && !free ? 2 : 1;
+  const steps = (hasRelic(P, 'compass') || P.guide === 'genghis') && !free ? 2 : 1;   // (Genghis Khan: his Figures walk two steps, as with the Compass)
   for (let s = 0; s < steps; s++) { const nx = []; for (const a of fr) { const ns = (pw(S, a, f.o) === 'link') ? S.places.map((_, i) => i) : S.adj[a].concat(S.places.map((x, i) => pw(S, i, f.o) === 'link' ? i : -1).filter(i => i >= 0)); for (const b of ns) if (!seen[b]) { seen[b] = 1; nx.push(b); } } fr = nx; }
   // (Machu Picchu: only its own side walks in)
   for (const i in seen) { const j = +i; if (j !== f.p && !(pw(S, j) === 'closed' && ownerOfSpoke(S, j) !== f.o) && room(S, j, f.o)) out.push(j); }
@@ -217,17 +229,23 @@ function threadPlay(S, o, ci, src, u, pl) {
 }
 function costOf(S, o, ci, place) {
   const c = CARDS[ci], P = S.P[o]; let x = c.c;
-  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; else if (S.cfg.threads !== 2 && threadSrc(S, o, ci, place)) x -= S.cfg.disc; if (place != null && pw(S, place, o) === 'cheap' && !(S.cfg.tame && P.uCh)) x -= S.cfg.dom === 'pair' && S.pown && pairOf(S, o, place) ? 2 : 1;
+  if (c.t === 'fig') { if (c.insp && S.figs.some(f => f.o === o && c.insp.indexOf(f.c) >= 0 && (place == null || near(S, place, f.p)))) x -= S.cfg.disc; else if (S.cfg.threads !== 2 && threadSrc(S, o, ci, place)) x -= S.cfg.disc; if (place != null && pw(S, place, o) === 'cheap' && !((S.cfg.tame || S.cfg.cheap1) && P.uCh)) x -= S.cfg.dom === 'pair' && S.pown && pairOf(S, o, place) ? 2 : 1;
     if (S.cfg.ret && P.gone && P.gone.indexOf(ci) >= 0) { x -= S.cfg.ret; if (S.st && place != null) S.st.retSeen = 1; } }   // (the return: their other copy lies in your discard pile)
   if (c.t !== 'fig' && S.cfg.threads !== 2 && threadSrc(S, o, ci)) x -= S.cfg.disc;   // (threads 2: Renown only; 3: the discount only)
   if (c.t === 'relic' && P.guide === 'leonardo') x -= 1;
   if (c.t !== 'fig' && S.pown) { const fg = holds(S, o, 'forge'); if (fg) x -= S.cfg.dom === 'pair' && pairOf(S, o, fg - 1) ? 2 : 1; }
+  if (P.guide === 'curie' && P.uN === 2) x -= 1;   // (Curie: the third card you play each turn costs 1 less)
   if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
   return Math.max(0, x);
 }
 function ko(S, f, by) {
+  // (Mandela: once a round, a Figure of his that is defeated on the other player's side goes back to his Gate instead of leaving the table)
+  if (S.P[f.o].guide === 'mandela' && !S.P[f.o].uM && enemySide(S, f.o, f.p) && room(S, gateOf(f.o), f.o)) {
+    S.P[f.o].uM = 1; if (S.ev) S.ev.push({ t: 'fallback', u: f.u, c: f.c, o: f.o, from: f.p, to: gateOf(f.o), by: by ? by.u : 0 });
+    f.p = gateOf(f.o); f.stay = 0; f.rdy = 0; f.tb = 0; if (S.st) S.st.fallbacks = (S.st.fallbacks || 0) + 1; return; }
   if (S.ev) S.ev.push({ t: 'ko', u: f.u, c: f.c, o: f.o, p: f.p, by: by ? by.u : 0 });
-  S.figs.splice(S.figs.indexOf(f), 1); if (CARDS[f.c].k.cynic) S.cyn--; (S.P[f.o].gone || (S.P[f.o].gone = [])).push(f.c);
+  S.figs.splice(S.figs.indexOf(f), 1); if (CARDS[f.c].k.cynic) S.cyn--;
+  (S.P[f.o].gone || (S.P[f.o].gone = [])).push(f.c);
   for (const g of S.figs) if (g.li === f.u) { g.li = 0; S.P[g.o].lines--; }
   if (f.li) S.P[f.o].lines--;
   if (S.st) { S.st.ko++; if (by) { const a = CARDS[by.c], b = CARDS[f.c]; if (a.m < b.m) S.st.upsets++; S.st.ev.push([by.c, f.c, S.places[f.p]]); } }
@@ -246,7 +264,7 @@ function arrive(S, f, x) {
       if (op === 'conquer' && x && enemySide(S, o, f.p) && !prot(S, f.p, o)) { const w = f.p >> 1, id = turnPlace(S, w); if (id) { setPlace(S, f.p, id, w); used(S, 'conquer'); } }
     }
     if (op === 'spark') { P.spark += n; if (S.ev) S.ev.push({ t: 'spark', o: o, n: n }); }
-    if (op === 'wits') {   // (Anansi: Spark won by his wits, more of it where the other side holds the Place)
+    if (op === 'wits') {   // (Yaa Asantewaa, and Anansi before her: more Spark where the other side holds the Place)
        const rn = 1 + (holder(S, f.p) >= 0 && holder(S, f.p) !== o ? 1 : 0); P.spark += rn; if (S.ev) S.ev.push({ t: 'spark', o: o, n: rn }); }
     if (op === 'stun') { en.sort((a, b) => might(S, b, 0) - might(S, a, 0)); for (let i = 0; i < Math.min(n, en.length); i++) { en[i].stun = 1; if (S.ev) S.ev.push({ t: 'stun', u: en[i].u }); } }
     if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
@@ -298,13 +316,15 @@ function actions(S) {
     else if (ci === 'eclipse') { for (let i = 0; i < np; i++) if (pw(S, i, (o + 1) % S.N) !== 'sanctuary' && theirs.some(g => g.p === i)) out.push({ t: 'deed', h, p: i }); }
     else if (ci === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
     else if (ci === 'fairwinds') { for (const f of mine) if (!CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o)) out.push({ t: 'deed', h, u: f.u, p: i }); }
-    else if (ci === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
-    else if (ci === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
+    else if (ci === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable && !peace(S, f.p, o)) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    else if (fxOf(ci) === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
     else if (ci === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !CARDS[f.c].k.monument && !CARDS[g.c].k.monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
     else if (!S.pown) return;
     else if (ci === 'earthquake') { for (let i = 0; i < 2 * S.N; i++) if (!prot(S, i, o) && canTurn(S, i >> 1)) out.push({ t: 'deed', h, p: i }); }
     else if (ci === 'vesuvius') { for (let i = 0; i < np; i++) if (!S.nul[i] && pw(S, i) && !prot(S, i, o)) out.push({ t: 'deed', h, p: i }); }
     else if (ci === 'caperoute') { if (canTurn(S, o)) out.push({ t: 'deed', h }); }
+    else if (ci === 'breda') { for (let i = 0; i < np; i++) for (let j = i + 1; j < np; j++) if (!prot(S, i, o) && !prot(S, j, o)) out.push({ t: 'deed', h, p: i, q: j }); }
+    else if (ci === 'columbian' || ci === 'vienna') { let ok = S.N === 2; for (let i = 0; i < 2 * S.N; i++) if (prot(S, i, o)) ok = false; if (ok) out.push({ t: 'deed', h }); }
   });
   const ph = P.hand.indexOf('phalanx') >= 0 && costOf(S, o, 'phalanx') <= P.spark;
   for (const f of mine) {
@@ -312,7 +332,7 @@ function actions(S) {
     if (can) for (const i of walkDests(S, f)) out.push({ t: 'walk', u: f.u, p: i });
     if (canClash) {
       const en = theirs.filter(g => g.p === f.p);
-      if (en.length && !en.some(g => CARDS[g.c].k.law)) {
+      if (en.length && !en.some(g => CARDS[g.c].k.law) && !peace(S, f.p, o)) {
         const gd = en.filter(g => CARDS[g.c].k.guard);
         for (const g of (gd.length ? gd : en)) if (!CARDS[g.c].k.untouchable) { out.push({ t: 'clash', u: f.u, v: g.u }); if (ph) out.push({ t: 'clash', u: f.u, v: g.u, ph: 1 }); }
       }
@@ -326,14 +346,14 @@ function moveFig(S, f, to, jump) { if (S.ev) S.ev.push({ t: 'move', u: f.u, from
 function apply(S, a, da, dd, raw) {
   const o = S.turn, P = S.P[o];
   if (a.t === 'pp') { pendApply(S, a); return; }
-  if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); if (S.pown && pw(S, a.p, o) === 'cheap') P.uCh = 1; P.hand.splice(a.h, 1); putFig(S, o, ci, a.p, a.x); }
-  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
+  if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); if (S.pown && pw(S, a.p, o) === 'cheap') P.uCh = 1; P.uN++; P.hand.splice(a.h, 1); putFig(S, o, ci, a.p, a.x); }
+  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1); }
   else if (a.t === 'walk') { const f = byU(S, a.u); const far = S.adj[f.p].indexOf(a.p) < 0; moveFig(S, f, a.p, far); f.rdy = 0; }
   else if (a.t === 'antik') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; P.uA = 1; }
   else if (a.t === 'tub') { moveFig(S, byU(S, a.u), a.p, false); P.uT = 1; }
-  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'), tsrc = threadSrc(S, o, 'phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); threadPlay(S, o, 'phalanx', tsrc); } clash(S, f, g, da, dd, 0, raw); }
+  else if (a.t === 'clash') { const f = byU(S, a.u), g = byU(S, a.v); if (a.ph) { const h = P.hand.indexOf('phalanx'), tsrc = threadSrc(S, o, 'phalanx'); P.spark -= costOf(S, o, 'phalanx'); P.uN++; P.hand.splice(h, 1); P.uD = 1; f.tb += 2; if (S.st) S.st.played[o].phalanx = 1; if (S.ev) S.ev.push({ t: 'quick', o: o, c: 'phalanx', u: f.u, att: 1 }); threadPlay(S, o, 'phalanx', tsrc); } clash(S, f, g, da, dd, 0, raw); }
   else if (a.t === 'deed') {
-    const ci = P.hand[a.h], tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v }); threadPlay(S, o, ci, tsrc);
+    const ci = P.hand[a.h], tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v }); threadPlay(S, o, ci, tsrc);
     let h2c = a.h2 != null ? P.hand[a.h2] : null;
     if (a.h2 != null) { P.hand.splice(Math.max(a.h, a.h2), 1); P.hand.splice(Math.min(a.h, a.h2), 1); } else P.hand.splice(a.h, 1);
     if (ci === 'eureka') draw(S, o, 2);
@@ -343,11 +363,16 @@ function apply(S, a, da, dd, raw) {
     else if (ci === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (ci === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
     else if (ci === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
-    else if (ci === 'trojan') putFig(S, o, h2c, a.p);
+    else if (fxOf(ci) === 'trojan') putFig(S, o, h2c, a.p);
     else if (ci === 'rift') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; moveFig(S, f, g.p, true); moveFig(S, g, t, true); }
     else if (ci === 'earthquake') { const w = a.p >> 1, id = turnPlace(S, w); if (id) { setPlace(S, a.p, id, w); used(S, w === o ? 'earthquake on their own Place' : 'earthquake on the other player\'s'); } }
     else if (ci === 'vesuvius') { S.nul[a.p] = 1; used(S, a.p === 2 * S.N ? 'vesuvius on the Crossroads' : (a.p >> 1) === o ? 'vesuvius on their own Place' : 'vesuvius on the other player\'s'); }
     else if (ci === 'caperoute') { const id = turnPlace(S, o); if (id) { setPlace(S, 2 * S.N, id, o); used(S, 'caperoute'); } }
+    else if (ci === 'breda') { const perm = S.places.map((_, i) => i); perm[a.p] = a.q; perm[a.q] = a.p; const hub = 2 * S.N, side = i => i === hub ? 'the Crossroads' : (i >> 1) === o ? 'mine' : 'theirs'; used(S, 'exchange: ' + [side(a.p), side(a.q)].sort().join(' and ')); permute(S, perm); }
+    else if (ci === 'columbian') { permute(S, [2, 3, 0, 1, 4]); used(S, 'the line reversed'); }
+    else if (ci === 'vienna') { const seed = S.uid * 53 + S.round * 7 + (S.rs || 0) * 977 + 1;
+      if (S.cfg.vdie) { const g = 2 * o, t = 2 * (1 - o), d = dshuf([0, 1, 2, 3, 4, 5], seed)[0], pr = [[0, 2], [1, 3], [g, g + 1], [t, t + 1], [g + 1, 4], [t + 1, 4]][d], perm = [0, 1, 2, 3, 4]; perm[pr[0]] = pr[1]; perm[pr[1]] = pr[0]; permute(S, perm); used(S, 'a die chose the two Domains'); }   // (cfg.vdie: a die picks which two Domains change places)
+      else { permute(S, dshuf([0, 1, 2, 3, 4], seed)); used(S, 'the Domains shuffled'); } }
   }
 }
 const isRoll = a => a.t === 'clash' || (a.t === 'deed' && a.isAmbush);
@@ -421,7 +446,7 @@ function aiTurn(S, prof, R) {
 function startTurn(S) {
   const o = S.turn, P = S.P[o], cfg = S.cfg;
   for (const f of S.figs) if (f.o === o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; }
-  P.uA = P.uT = P.uD = P.uC = 0; P.uCh = 0;
+  P.uA = P.uT = P.uD = P.uC = P.uN = 0; P.uCh = 0;
   let held = 0; if (cfg.spark !== 'round') for (let i = 0; i < S.places.length; i++) if (holder(S, i) === o) held++;
   P.spark = (cfg.spark === 'round' ? Math.min(S.round + 1, cfg.sparkCap || 99) : cfg.spark === 'hold' ? 2 + held : S.round + (held >= 3 ? 1 : 0)) + P.sb; P.sb = 0; P.reserve = 0;
   if (cfg.catchup) { let mn = 1e9; for (let q = 0; q < S.N; q++) if (q !== o && S.P[q].renown < mn) mn = S.P[q].renown; if (P.renown < mn) { P.spark += 1; if (cfg.catchup === 2) draw(S, o, 1); if (cfg.catchup === 3 && mn - P.renown >= (cfg.far || 4)) P.spark += 1; } }
@@ -430,7 +455,7 @@ function startTurn(S) {
   if (P.guide === 'franklin' && P.hand.length <= 4) draw(S, o, 1);   // (Franklin: a thin hand draws one more)
 }
 function endTurn(S) {
-  const P = S.P[S.turn]; P.reserve = Math.min(2, P.spark); P.spark = 0; for (const f of S.figs) f.tb = 0;
+  const P = S.P[S.turn]; P.reserve = Math.min(2, P.spark); P.spark = 0; P.uN = 9; for (const f of S.figs) f.tb = 0;   // (uN 9: Curie's cheaper second card is for her own turn only)
   if (S.cfg.handMax) while (P.hand.length > S.cfg.handMax) { let hi = 0; for (let i = 1; i < P.hand.length; i++) if (CARDS[P.hand[i]].c > CARDS[P.hand[hi]].c) hi = i; discard(S, S.turn, hi); }   // (over the hand limit: the dearest cards go; a screen asks the player first)
 }
 function endRound(S) {
@@ -440,13 +465,13 @@ function endRound(S) {
     if (cfg.scoring === 'round') P.renown += val; else if (last) P.renown += 3 * val;
     if (S.ev) S.ev.push({ t: 'hold', p: i, o: h, n: val });
     const w = pw(S, i, h), dbl = cfg.dom === 'pair' && S.pown && pairOf(S, h, i) ? 2 : 1; if (w === 'draw' && pays(S, i, h)) draw(S, h, dbl); if (w === 'spark' && pays(S, i, h)) P.sb += dbl;
-    if (isGate(S, i) && (i >> 1) !== h && S.P[i >> 1].seals > 0 && S.pown && (cfg.sealRule !== 'last' || S.P[i >> 1].seals === 1) && holds(S, i >> 1, 'seal')) { if (S.st) S.st.sealSaved++; }   // (a Law Place: while you hold it, your Seals cannot be broken)
+    if (isGate(S, i) && (i >> 1) !== h && S.P[i >> 1].seals > 0 && S.pown && cfg.sealPeace !== 'only' && (cfg.sealRule !== 'last' || S.P[i >> 1].seals === 1) && holds(S, i >> 1, 'seal')) { if (S.st) S.st.sealSaved++; }   // (a Law Place: while you hold it, your Seals cannot be broken)
     else if (isGate(S, i) && (i >> 1) !== h && S.P[i >> 1].seals > 0) { S.P[i >> 1].seals--; P.broke++; P.renown += cfg.sealRen; if (S.st) S.st.sealBreaks++; if (S.ev) S.ev.push({ t: 'seal', o: i >> 1, by: h, left: S.P[i >> 1].seals }); }
   }
   if (S.pown && cfg.dom && N === 2) domination(S);
   if (cfg.majority) { const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; } let mx = 0, w = -1, tie = false; for (let o = 0; o < N; o++) { if (hc[o] > mx) { mx = hc[o]; w = o; tie = false; } else if (hc[o] === mx) tie = true; } if (!tie && w >= 0) S.P[w].renown += cfg.majority * stake(cfg, S.round); }
   for (const f of S.figs) { const k = CARDS[f.c].k; if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) { S.P[f.o].renown++; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'stage', u: f.u }); } else draw(S, f.o, 1); } f.stay++; }
-  for (const b of S.pb) b.fill(0); for (const p of S.P) p.lr = 0;
+  for (const b of S.pb) b.fill(0); for (const p of S.P) { p.lr = 0; p.uM = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
   if (S.domWin != null) { S.over = true; S.winner = S.domWin; S.how = 'domains'; return; }
@@ -454,7 +479,9 @@ function endRound(S) {
   if (last) {
     S.over = true; S.how = 'renown'; const key = o => S.P[o].renown * 1e4 + S.P[o].broke * 100 + S.figs.filter(f => f.o === o).reduce((s, f) => s + might(S, f, 0), 0);
     let mx = -1, w = -1, tie = false; for (let o = 0; o < N; o++) { const k = key(o); if (k > mx) { mx = k; w = o; tie = false; } else if (k === mx) tie = true; } S.winner = tie ? -1 : w;
-  } else S.round++;
+  } else { S.round++;
+    // (Lincoln: once a game, at the start of round 5, one of his broken Seals is mended)
+    if (S.round === MEND_AT) for (let o = 0; o < N; o++) { const p = S.P[o]; if (p.guide === 'lincoln' && p.seals < cfg.seals && p.seals > 0) { p.seals++; if (S.ev) S.ev.push({ t: 'mend', o: o, left: p.seals }); } } }
 }
 function play(decks, guides, profs, cfg, seed, stacks) {
   const R = rng(seed), S = newGame(decks, guides, cfg, R, stacks), N = S.N;
@@ -465,6 +492,6 @@ function play(decks, guides, profs, cfg, seed, stacks) {
   }
   return S;
 }
-return { play, PROF, rng, shuffle, DEF, STD, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, CARDS, PLACES, pw, rv, holds, setPlace, turnPlace, placeScore, deckInfo, PV };
+return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, CARDS, PLACES, pw, rv, holds, setPlace, turnPlace, placeScore, deckInfo, PV, permute };
 });
