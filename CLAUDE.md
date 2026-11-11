@@ -345,6 +345,10 @@ Underlying principles for everything:
   set-150.json and their pictures are in `scripts/anoria/held/art/`, for a later set. People whose card is about
   something earlier but who lived on past 1926 (Einstein in 1905, Tesla in 1888, Thorpe in 1912, Amundsen in 1911)
   stay. Mandela and Gandhi leave the Guides and do not become cards. A new card is checked against this first.
+- **No one whose name and likeness are aggressively protected** (Tim, the same day: "any figures like Frida Kahlo that
+  you think are aggressively protected, you can hold them back as well"). Albert Einstein (licensed and enforced by
+  the Hebrew University of Jerusalem) and Jim Thorpe (licensed for his family by an agency) are held with the others.
+  Before a modern person goes in, check whether an estate or an agency licenses the name; when in doubt, leave them out.
 - **Bessie Coleman is one of the cards after 1900**, so `ERAS` has a seventh era, The Modern World.
 - **Editions** (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana"): every card is printed in five
   finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
@@ -437,6 +441,17 @@ Underlying principles for everything:
   that can't be read, a weapon gripped wrongly, broken objects nobody asked for, two statues of a pair facing
   different ways, a web or building that couldn't stand, and two people of one region with the same face and kit
   (give each their own age, build, dress and scene; Sun Tzu is a Bronze Age scholar in robes, not an armoured general).
+- **Nothing that could not be built, and everything in true proportion** (Tim, 2026-11-11, of Ibn Khaldun's first
+  picture: "an impossible wall with mirrored generated smoke", then "ensure no impossible geometry, like we saw with
+  the wall, and be careful with relative sizes of people near each other or interacting with other objects"). Every
+  wall, building, ship, bridge, stair, machine and piece of furniture is one solid thing in one perspective that
+  could stand; a rope is tied or held at both ends; nothing passes through anything; nothing is mirrored or repeated
+  like a stamp (smoke plumes, tents, trees, clouds). People at the same distance are the same size and people farther
+  off are smaller; a door, chair, table, tool, weapon, boat, cart or animal is the right size for the person using
+  it. Check by measuring head against head, door against person, rider against horse. A brief describes a structure
+  as one object seen from one side ("one single flat, sheer wall seen side-on, no second wall, no ledge") and gives
+  sizes as ratios. The words are in every prompt's tail and in the checklist: `scripts/anoria/art/README.md`, which
+  is the procedure every picture batch follows (with `gen.py`, `art-in.js` and `sync-json.js` beside it).
 - **No rows of copies** (Tim, 2026-11-11: the people following Gandhi "look too uniform and procedurally generated"). A
   crowd, column or line of near-identical people behind the subject is a fault, however far away. Draw a few particular
   people instead, each with their own age, build, dress and pose (five marchers and three villagers, four Spartans
@@ -610,7 +625,7 @@ Underlying principles for everything:
   add threads/legacy lines as the real history would necessitate and fits gameplay ... leave off completely fictional
   characters for now", then "shift 25-30 to deeds and relics"): 100 Figures, 20 Relics and 30 Deeds, all real, **found
   only in packs** (in no ready deck). Eleven of them left under the hundred-year rule above, so the third printing is
-  139 cards (95 Figures, 20 Relics, 24 Deeds) and the set is 230. They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
+  137 cards (93 Figures, 20 Relics, 24 Deeds) and the set is 228 (Einstein and Jim Thorpe are held too: below). They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
   `P3` in text.js. `scripts/anoria/set-150.json` keeps where each card's facts came from (`src`, `sure`, `check`), what
   was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
   Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing
@@ -640,7 +655,7 @@ Underlying principles for everything:
   the way across and a quarter of the way down); and a full card shows only about 11% to 60% of a picture's height, so a
   brief says what must be in the upper half. The briefs (`art`) follow the notes above: both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
   memory are asked for as a respectful, recognisable portrait at a documented moment.
-- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards", now 230): `PACK_ORDER`
+- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards", now 228): `PACK_ORDER`
   `'series'` gives the first series (the 91 cards the ready decks are made of) until a player has two of each, and
   then the second (the third printing), so the first month is what it was; `'mixed'` draws from the whole set at once.
   `SERIES2_PACK` is the size of an earned pack once the first series is complete (0: as any pack; pacing.txt recommends

@@ -84,8 +84,8 @@ const RARE = {
 // scripts/anoria/rarity.js 6000 3' (rarity.txt). The cards the game had before keep the tiers above, and the marks
 // printed on them: they are not ranked again against the new ones.
 const RARE3 = {
-  4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne einstein zenobia',
-  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman thorpe pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
+  4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne zenobia',
+  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
   2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning',
   1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce'
 };

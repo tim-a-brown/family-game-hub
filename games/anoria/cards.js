@@ -124,8 +124,9 @@ Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
 Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
-// (Eleven of the 150 left the same day: nothing within the past hundred years, so a card's year is 1926 or earlier.
-// They are heldForLater in scripts/anoria/set-150.json. The third printing is 139 cards and the set is 230.)
+// (Thirteen of the 150 left the same day: eleven for "nothing within the past hundred years" (a card's year is 1926 or
+// earlier) and Albert Einstein and Jim Thorpe, whose names and likenesses are licensed and enforced by their estates.
+// They are heldForLater in scripts/anoria/set-150.json. The third printing is 137 cards and the set is 228.)
 // ── The third printing (2026-11-11): 150 more cards from real history, 100 Figures, 20 Relics and 30 Deeds, found
 // only in packs (like Blackbeard, they are in no ready deck). Tim: "increase the number of possible historical cards to
 // collect outside of the base packs by 150 ... lean slightly more into more well-known historical figures but i do
@@ -158,7 +159,6 @@ const P3 = {
   pasteur: F('Louis Pasteur', 'D', 4, 4, 'EUR', 6, 1885, { steadfast: 1 }, { insp: ['jenner'] }),
   bly: F('Nellie Bly', 'D', 3, 3, 'AMER', 6, 1889, { voyager: 1, swift: 1 }),
   tesla: F('Nikola Tesla', 'D', 3, 4, 'AMER', 6, 1888, {}, { arr: ['stun', 1] }),
-  einstein: F('Albert Einstein', 'D', 5, 4, 'EUR', 7, 1905, { shoulders: 1 }, { insp: ['newton', 'faraday'] }),
   // Statecraft
   cyrus: F('Cyrus the Great', 'S', 4, 4, 'MIDEAST', 1, -550, { inspiring: 1 }),
   qinshihuang: F('Qin Shi Huang', 'S', 5, 6, 'ASIA', 2, -221, { guard: 1 }),
@@ -197,7 +197,6 @@ const P3 = {
   chiefjoseph: F('Chief Joseph', 'V', 4, 4, 'AMER', 6, 1877, { voyager: 1, steadfast: 1 }),
   menelik: F('Menelik II', 'V', 4, 3, 'AFR', 6, 1896, { homeDouble: 1 }),
   wallace: F('William Wallace', 'V', 3, 3, 'EUR', 3, 1297, { underdog: 1 }),
-  thorpe: F('Jim Thorpe', 'V', 3, 4, 'AMER', 7, 1912, { swift: 1 }),
   // Arts
   enheduanna: F('Enheduanna', 'A', 2, 2, 'MIDEAST', 1, -2270, { inspiring: 1 }),
   aeschylus: F('Aeschylus', 'A', 3, 3, 'MED', 2, -472, { steadfast: 1 }, { insp: ['homer'] }),
@@ -334,7 +333,7 @@ const THREADS = [
   { id: 'vaccine', n: 'The Vaccine', cards: ['montagu', 'jenner', 'pasteur'] },
   { id: 'figures', n: 'The Nine Figures', cards: ['brahmagupta', 'alkhwarizmi', 'fibonacci'] },
   { id: 'reason', n: 'The Age of Reason', cards: ['newton', 'duchatelet', 'voltaire', 'catherine'] },
-  { id: 'giants', n: 'The Shoulders of Giants', cards: ['newton', 'faraday', 'tesla', 'einstein'] },
+  { id: 'giants', n: 'The Shoulders of Giants', cards: ['newton', 'faraday', 'tesla'] },
   { id: 'caesars', n: 'The Caesars', cards: ['alexander', 'caesar', 'rubicon', 'testudo', 'augustus'] },
   { id: 'eagles', n: 'Against the Eagles', cards: ['vercingetorix', 'arminius', 'teutoburg', 'amanirenas'] },
   { id: 'floating', n: 'The Floating World', cards: ['hokusai', 'hiroshige', 'vangogh'] },
