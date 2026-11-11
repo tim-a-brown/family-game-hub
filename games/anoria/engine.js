@@ -71,11 +71,12 @@ function mkMap(N, R, cfg) {
 function newGame(decks, guides, cfg, R, stacks, opt) {
   cfg = Object.assign({}, DEF, cfg); const N = decks.length, M = mkMap(N, R, cfg);
   const S = { cfg, N, round: 1, turn: 0, uid: 1, places: M.ids, adj: M.adj, pb: M.ids.map(() => new Array(N).fill(0)), figs: [], P: [], over: false, winner: -1, how: '', ev: cfg.log ? [] : null,
-    st: { clash: 0, ko: 0, jump: 0, walk: 0, lines: 0, plays: 0, home: 0, lead: [], ev: [], played: decks.map(() => ({})), sealBreaks: 0, upsets: 0 } };
+    st: { clash: 0, ko: 0, jump: 0, walk: 0, lines: 0, plays: 0, home: 0, lead: [], ev: [], played: decks.map(() => ({})), seenC: decks.map(() => ({})), sealBreaks: 0, upsets: 0 } };   // (seenC: the cards each player has had in hand, for the test games)
   if (cfg.coin) S.f0 = (Math.random() * N) | 0;   // (who starts, when nobody leads)
   for (let p = 0; p < N; p++) {
     let deck = shuffle(decks[p].slice(), R), hand = deck.splice(0, cfg.hand);
     if (!hand.some(c => CARDS[c].t === 'fig' && CARDS[c].c <= 2)) { deck = shuffle(deck.concat(hand), R); hand = deck.splice(0, cfg.hand); }   // one mulligan
+    for (const c of hand) S.st.seenC[p][c] = 1;
     S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, lines: 0 });
   }
   if (stacks) { setupBegin(S, stacks, R); if (opt && opt.lay) setupFixed(S, opt.lay, opt.ban, opt.first); else if (!(opt && opt.wait)) setupAuto(S, R, opt && opt.profs); }
@@ -227,18 +228,24 @@ function setupRoll(S, R, dice) {
   if (S.st) { S.st.repl = 0; S.st.dibs = d; S.st.hub0 = hub; }
   return true;
 }
-// What a robot thinks a Domain is worth to it at [its Gate, its Outpost, the Crossroads], beyond the Might its
-// Figures get there. From the test games (scripts/anoria/places/results.txt A4, and domains.txt): Commerce pays
-// nothing at a Gate, a road or a link at your own Gate lets the other player in, a crowd wants the Crossroads.
-const LAYV = { spark: [0, 0.8, 0.5], cheap: [0, 0.8, 0.3], forge: [0.5, 0.4, 0.3], arms: [0.3, 0.5, 0.5], draw: [1, 0.6, 0.5], line: [0.4, 0.4, 0.3], fort: [0.4, 0.7, 0.3], closed: [0.5, 0.8, 0], narrow: [0.2, 0.2, 0], crowd: [0, 0.5, 1], arena: [0, 0.3, 0.4], peace: [0.6, 0.6, 0.4], sanctuary: [0.1, 0.2, 0.1], link: [-0.5, 0, 0.3], road: [0.8, 0.3, 0.2] };
+// What a robot thinks a Domain's rule is worth to it at [its Gate, its Outpost, the Crossroads], in tenths of a point
+// of win rate, beyond the Might its own Figures get there (home: how much the share of its Figures who are at home
+// counts at each). Only what the test games agree on twice is in it (the prototype's table A4 in places/results.txt
+// and "rules" in domains.txt, which lay Domains with no choice): a road or a link at your own Gate lets the other
+// player in, a market that pays Spark belongs at an Outpost, a closed Domain at your Gate, an arena not at the
+// Crossroads. The rest is too close to tell, and is left at nothing. How the three are laid is worth little to a
+// robot either way (domains.txt, "setup"): the game is decided by the play.
+const LAYV = { home: [0.5, 1, 1], spark: [0, 0.35, 0], cheap: [-0.2, 0, 0.2], forge: [0.2, 0, 0.2], arms: [0.35, 0.4, 0], draw: [0.1, 0, 0], line: [0.15, 0.1, 0.4], facD: [0, 0, 0.2], fort: [-0.15, -0.2, -0.1], closed: [0.5, 0, -0.3], narrow: [0, -0.3, 0.4],
+  crowd: [0.1, 0.2, 0], arena: [0, 0, -0.5], facA: [0.1, -0.4, 0.25], peace: [0, 0, 0], sanctuary: [0.2, 0, 0], facS: [0.15, 0, 0], link: [-0.3, 0, 0], road: [-0.5, -0.1, 0] };
 // (a deck by what it is made of: the share of its Figures from each region, Voyagers apart, and of each faction)
 function deckInfo(deck) { const reg = {}, fac = {}; let n = 0; for (const c of deck) { const x = CARDS[c]; if (!x || x.t !== 'fig') continue; n++; if (!x.k.voyager) reg[x.reg] = (reg[x.reg] || 0) + 1; fac[x.f] = (fac[x.f] || 0) + 1; } for (const k in reg) reg[k] /= n || 1; for (const k in fac) fac[k] /= n || 1; return { reg, fac }; }
-function layScore(id, slot, info) { const pl = PLACES[id], w = pl.pw || ''; let v = (info.reg[pl.reg] || 0) * [1, 2, 2][slot]; if (w.slice(0, 3) === 'fac') v += (info.fac[w[3]] || 0) * [1, 2, 2][slot]; else if (LAYV[w]) v += LAYV[w][slot]; return v; }
+// (tab: another table to try, for the test games: cfg.layv)
+function layScore(id, slot, info, tab) { const pl = PLACES[id], w = pl.pw || '', T = tab || LAYV, hw = T.home || [1, 2, 2]; let v = (info.reg[pl.reg] || 0) * hw[slot]; if (w.slice(0, 3) === 'fac') v += (info.fac[w[3]] || 0) * hw[slot]; if (T[w]) v += T[w][slot]; return v; }
 // A robot's choice at set-up: its three Domains to its Gate, its Outpost and its offer, by what suits its deck. A
 // robot that judges unclearly (prof.noise: Easy and Normal) chooses that much less surely. No prof: the best lay.
 function setupPick(S, o, prof, R) {
   const P = S.P[o], info = deckInfo(P.deck.concat(P.hand)); let best = null, bv = -1e9;
-  for (const a of setupOptions(S, o)) { let v = layScore(a.gate, 0, info) + layScore(a.out, 1, info) + 0.5 * layScore(a.offer, 2, info); if (prof && prof.noise && R) v += (R() - 0.5) * prof.noise * 0.6; if (v > bv) { bv = v; best = a; } }
+  for (const a of setupOptions(S, o)) { let v = layScore(a.gate, 0, info, S.cfg.layv) + layScore(a.out, 1, info, S.cfg.layv) + 0.5 * layScore(a.offer, 2, info, S.cfg.layv); if (prof && prof.noise && R) v += (R() - 0.5) * prof.noise * 0.6; if (v > bv) { bv = v; best = a; } }
   return best;
 }
 function setupAuto(S, R, profs) { for (let o = 0; o < S.N; o++) if (!S.su.lay[o]) setupLay(S, o, setupPick(S, o, profs && profs[o], R)); return setupRoll(S, R); }
@@ -282,7 +289,7 @@ const nFx = (S, p, fx) => (S.cfg.relicStack ? p.relics.reduce((n, r) => n + (fxO
 const quicks = P => { const out = [], seen = {}; P.hand.forEach((ci, h) => { if (!seen[ci] && fxOf(ci) === 'phalanx') { seen[ci] = 1; out.push(h); } }); return out; };
 // Legacy: with lineNear, the one who inspired you has to be at the same Place or the next one over
 const near = (S, a, b) => !S.cfg.lineNear || a === b || S.adj[a].indexOf(b) >= 0 || pw(S, a) === 'link' || pw(S, b) === 'link';
-function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.deck.length && p.gone && p.gone.length) { p.deck = p.gone; p.gone = []; for (let j = p.deck.length - 1; j > 0; j--) { const q = (j * 7 + S.round * 3 + i) % (j + 1), x = p.deck[j]; p.deck[j] = p.deck[q]; p.deck[q] = x; } } if (p.deck.length) { p.hand.push(p.deck.pop()); p.drawn = (p.drawn || 0) + 1; if (S.ev) S.ev.push({ t: 'draw', o: o }); } } }
+function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.deck.length && p.gone && p.gone.length) { p.deck = p.gone; p.gone = []; for (let j = p.deck.length - 1; j > 0; j--) { const q = (j * 7 + S.round * 3 + i) % (j + 1), x = p.deck[j]; p.deck[j] = p.deck[q]; p.deck[q] = x; } } if (p.deck.length) { const dc = p.deck.pop(); p.hand.push(dc); if (S.st) S.st.seenC[o][dc] = 1; p.drawn = (p.drawn || 0) + 1; if (S.ev) S.ev.push({ t: 'draw', o: o }); } } }
 function walkDests(S, f, free) {
   const c = CARDS[f.c]; if (c.k.monument) return [];
   const out = [], P = S.P[f.o];

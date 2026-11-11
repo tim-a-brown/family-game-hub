@@ -33,7 +33,8 @@ pays at an Outpost or at the Crossroads. It pays nothing at a Gate.
 
 You bring two stacks of cards to the table. Your deck is 40 cards with the navy back. Your Domain stack is 15 Domains
 with the same back in oxblood red, so you can tell the two stacks apart at a glance. A Domain stack can hold no more
-than one of each Domain and no more than five Domains of one home. You choose your 15 from all the Domains you own. You and the other player can both have the
+than one of each Domain. It can hold Domains of any kinds and any homes, so you can fill it with the Domains that
+suit your deck best. You choose your 15 from all the Domains you own. You and the other player can both have the
 same Domain in your stacks.
 
 ## What is in the box
@@ -69,7 +70,8 @@ The two players share:
    That player takes the first-turn marker and the first turn of the game.
 
 A Domain can lie on the table only once. If you turn up a Domain that is already on the table, put it under your
-stack and turn up the next one.
+stack and turn up the next one. If the two of you turn up the same Domain in step 4, each of you puts your copy under
+your stack and lays the next Domain of your stack in its place.
 
 ## Whose Domain is whose
 
