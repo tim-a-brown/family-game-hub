@@ -233,6 +233,11 @@ Underlying principles for everything:
   his palace reliefs, a djinn as medieval Arabic and Persian manuscripts drew them, Anansi patterned like Asante
   goldweights), as long as it isn't a caricature. Pictures stay dramatic: accuracy is not a reason to go tame. No two
   cards share a composition (two kings of one region, two commanders on a ship's deck: change the scene).
+- **As accurate as the record allows, and still striking, with no two alike** (Tim, 2026-11-11): a picture of a real
+  thing follows how it was really built, worn or used, from photographs and a museum or scholarly source where one
+  can be read (Nineveh's gate bulls are door jambs: faces out, bodies running back down the passage, about two and
+  a half times a man's height). State sizes as a ratio to a person, and choose the viewpoint that makes the true
+  arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
