@@ -224,6 +224,7 @@
     const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Legacy Line from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
     if (!o.mini && !place && (c.say || fig || from)) {
       if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
+      if (fig && c.say && from && c.say.length > 16 && from.length > 24) n.classList.add('foot4');   // (both wrap: four lines of fine print, so the paper leaves more room)
       inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
