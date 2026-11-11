@@ -187,12 +187,14 @@
       const cardBtn = el('button', { type: 'button', class: 'adk-tc' }, [face, el('span', { class: 'adk-tt', html: THREAD })]);
       const pips = el('span', { class: 'adk-tp' });
       const minus = el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) });
-      const read = el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + c.n, html: Kit.icon('eye'), onclick: () => U.openView(k) });
+      // (reading one card opens every card on this shelf as one strip to slide through)
+      const readK = () => { const p = t.parentNode, list = p ? Array.from(p.querySelectorAll('.adk-t[data-k]')).map(x => x.dataset.k) : null; U.openView(k, { list: list }); };
+      const read = el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + c.n, html: Kit.icon('eye'), onclick: readK });
       const t = el('div', { class: 'adk-t' + (have > 1 ? ' two' : ''), 'data-k': k }, [cardBtn, el('div', { class: 'adk-tf' }, [minus, pips, read])]);
       // tap adds; holding the card (or a right click) reads it full size
-      cardBtn.addEventListener('pointerdown', e => { if (e.button > 0) return; drop(); read1 = false; hold = setTimeout(() => { read1 = true; U.openView(k); }, 480); });
+      cardBtn.addEventListener('pointerdown', e => { if (e.button > 0) return; drop(); read1 = false; hold = setTimeout(() => { read1 = true; readK(); }, 480); });
       ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cardBtn.addEventListener(ev, drop));
-      cardBtn.addEventListener('contextmenu', e => { e.preventDefault(); drop(); if (!read1) { read1 = true; U.openView(k); } });
+      cardBtn.addEventListener('contextmenu', e => { e.preventDefault(); drop(); if (!read1) { read1 = true; readK(); } });
       cardBtn.addEventListener('click', () => { if (read1) { read1 = false; return; } add(k); });
       tiles[k] = { el: t, card: cardBtn, pips: pips, minus: minus };
     });

@@ -239,7 +239,9 @@
     if (isPl(id)) { U.openView(id.slice(1)); return; }
     if (Coll.cardState(id) === 'new') { mystery(b, id); return; }
     if (b.classList.contains('fresh')) { Coll.looked(id); b.classList.remove('fresh'); const t = b.querySelector('.lb-new, .tl-new'); if (t) t.remove(); }
-    U.openView(id);
+    // (every card you have found on this page, in its order, as one strip to slide through)
+    const all = Array.from(L.view.querySelectorAll('.lb-c, .tl-n')).map(x => x.dataset.k || x.dataset.id).filter(x => x && !isPl(x) && Coll.cardState(x) !== 'new');
+    U.openView(id, { list: all.filter((x, i) => all.indexOf(x) === i), counts: Coll.load().cards });
   }
   // A card never seen stays shut: it starts to turn, falls back, and gives up only its faction and its era
   let hintEl = null, hintT = 0;

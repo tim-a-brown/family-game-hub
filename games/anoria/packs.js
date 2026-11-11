@@ -359,7 +359,7 @@
       grid.addEventListener('click', e => {
         const b = e.target.closest ? e.target.closest('.pk-c') : null; if (!b) return; const i = +b.getAttribute('data-i'), c = cells[i];
         if (Date.now() - mute < 350) return;
-        if (!c.up) turn(i); else if (Date.now() - c.at > 420) A.openView(c.x.c);
+        if (!c.up) turn(i); else if (Date.now() - c.at > 420) A.openView(c.x.c, { list: cells.filter(z => z.up).map(z => z.x.c), at: cells.filter(z => z.up).indexOf(c) });   // (the cards turned so far, as one strip to slide through)
       });
       grid.addEventListener('keydown', e => {
         const d = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key]; if (!d) return;

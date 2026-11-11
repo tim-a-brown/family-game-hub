@@ -273,6 +273,12 @@ Underlying principles for everything:
   text"): the game's small capitals (`--fellsc`), centred on the paper, over a fine rule with a dot in the faction's
   colour (`.ac.mini .ac-name`). The clash shows its two cards large enough to read and says each name once, on the
   card. The full card keeps its large book-face name with its caption and text.
+- **A bunch of cards is read as one strip** (Tim, 2026-11-11: "use the lorcana carousel mechanics to scroll through
+  bunches of cards"): `AnoriaUI.browse(keys, {at, counts, title, sub})`, or `openView(key, {list})`. The mechanics are
+  Lorcana's coverflow (`makeFlow` in lorcana-play.html): a float position, the card there facing you and the others
+  fanned away, every card following the finger, a flick carrying on with momentum, thumbnails of the whole bunch,
+  and the front card's notes changing when it comes to rest. Used for a deck's cards, your hand in a game, a pack's
+  turned cards, the Library and the deck builder's shelf. A grid in a stock sheet is not how cards are shown.
 - **A card that changes a clash is shown as that card** (Tim, 2026-11-11: "Phalanx +2" as a line of small print):
   Phalanx slides in from the outer edge and tucks under the Figure it helps, its name plate showing with the Might
   it adds, and the shields count it as it lands (`aid()` in `clashShow`: before the dice for the attacker, after
