@@ -687,7 +687,8 @@
   //   mandela: the valley, the stream, the hills, the three huts and the maize at Qunu are as Long Walk to Freedom
   //     describes them (read in quotation only); the beadwork's white and blue and the aloes rest on memory
   //   gandhi: the spinning wheel found at Vijapur, the slivers and khadi are his autobiography; the salt at Dandi
-  //     was read in summaries only
+  //     was read in summaries only. The wheel is the traditional charkha: two stars of spokes with cord laced
+  //     between their tips for a rim and no solid hoop (the first picture drew a solid wooden rim, and Tim had it redrawn)
   //   The first five: Franklin's kite of two cedar strips with a tail and a key is his own letter of 1752 (the kite
   //     was silk); Tubman's North Star is Bradford (1869); Leonardo's knots, solids and red chalk are in Muntz (1898);
   //     the lotus and papyrus are Owen Jones (1856); bamboo slips strung into books and the thunder scroll are
