@@ -1129,7 +1129,7 @@
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
-    '<li>Then, in any order, play cards and act. Tap a card or one of your Figures, and everywhere it can go lights up.</li>' +
+    '<li>Then, in any order, play cards and act. When you tap a card or one of your Figures, everywhere it can go lights up.</li>' +
     '<li>A <b>Figure</b> arrives at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure that just arrived can clash but not walk.</li>' +
     '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
@@ -1141,13 +1141,13 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. Play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing) and it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
+    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built. New Guides join you at 3, 8, 15 and 25 wins.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
-    '<li>Hold the other player\'s Gate and one of their <b>Seals breaks</b>, which is 1 more Renown for you.</li>' +
+    '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>, which is 1 more Renown for you.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +

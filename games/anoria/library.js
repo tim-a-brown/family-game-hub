@@ -542,7 +542,7 @@
     const box = el('div', { class: 'lb-ths' }); let sh = null, open = openId || st.thread || null;
     function paint() {
       box.innerHTML = '';
-      box.appendChild(el('p', { class: 'th-gift', html: GIFT + '<span>Own every card on a Thread and a second copy of one of them is yours.</span>' }));
+      box.appendChild(el('p', { class: 'th-gift', html: GIFT + '<span>When you own every card on a Thread, you are given a second copy of one of them.</span>' }));
       Coll.threads().forEach(t => {
         const p = threadPlan(C.THREADS.filter(x => x.id === t.id)[0]), isOpen = open === t.id;
         const row = el('div', { class: 'th-row' + (t.done ? ' done' : '') + (isOpen ? ' open' : '') });

@@ -243,7 +243,7 @@
       await L.say('Five Places lie between you and the other player. Your Gate is nearest you.', { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
       await L.turn(0);
       await L.say('Each turn you draw 2 cards and gain <b>Spark</b> to spend.', { at: '.an-strip.me .st-spark', keep: '.an-hand' });
-      await L.play('hatshepsut', MY_GATE, { lit: 'Tap a Figure, and the Places it can reach light up.' });
+      await L.play('hatshepsut', MY_GATE, { lit: 'When you tap a Figure, the Places it can reach light up.' });
       await L.say('It arrives at your Gate. The number on its shield is its <b>Might</b>.', { at: L.piece('hatshepsut') });
       await L.tell('Then the other player takes a turn.');
       await L.endTurn(); await L.them.turn(); await L.them.play('spartacus', TH_GATE); await L.pause(900); await L.them.endTurn();
@@ -266,7 +266,7 @@
       await L.tell('The Crossroads is yours.');
       await L.endTurn(); await d_count(L);
       await L.say('From round 4 every Place scores 2. <b>The first player to 30 Renown wins.</b>', { at: '.an-strip.me .st-ren' });
-      await L.say('Or break all 3 of their <b>Seals</b>. One Seal breaks each time you hold their Gate when a round is counted.', { at: ['.an-strip.opp .st-seals', L.row(TH_GATE)] });
+      await L.say('You can also win by breaking all 3 of their <b>Seals</b>. One Seal breaks each time you hold their Gate when a round is counted.', { at: ['.an-strip.opp .st-seals', L.row(TH_GATE)] });
     },
     end(r, o) {
       const first = !UI().Coll.load().starter;
@@ -290,7 +290,7 @@
         await L.say('The far two are the other player’s side.', { at: [L.row(TH_GATE), L.row(TH_OUT)], tag: ['Their Gate', 'Their Outpost'] });
         await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
         await L.say('Hold Places to score <b>Renown</b>. The first player to reach 30 at the end of a round wins.', { at: '.an-strip.me .st-ren' });
-        await L.say('Each player has 3 <b>Seals</b>. Lose all three and the game ends at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
+        await L.say('Each player has 3 <b>Seals</b>. A player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', renown: 3, hand: ['copernicus', 'compass', 'galileo', 'zhenghe'], draw: ['hypatia', 'eureka'], figs: [['hatshepsut', MY_GATE]] },
@@ -343,7 +343,7 @@
           hold: ['Both roll a die. The higher roll adds 1 to its Figure’s Might.', 'Then the Figure with the lower total is knocked out. If the totals are tied, both stay.'] });
         await L.say('The other player was ahead on Renown, so that knock-out is a <b>Bounty</b>, worth 1 Renown.', { at: '.an-strip.me .st-ren' });
         await L.clash('haytham', 'leonidas', [6, 2], { lit: 'Leonidas is a <b>Guard</b>: enemies here must clash with him first. He is also <b>Steadfast</b>, which gives him +2 Might when he defends.', at: L.piece('leonidas', 1),
-          hold: ['If you win the roll by 3 or more, it adds 2.'] });
+          hold: ['A roll that wins by 3 or more adds 2 Might instead of 1.'] });
         await L.say('A Figure can clash the turn it arrives, but each Figure acts only once a turn.', { at: L.piece('haytham') });
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
@@ -408,8 +408,8 @@
         await L.say('Your Figures can walk all the way to the other player’s Gate.', { at: L.row(TH_GATE) });
         await L.say('Zheng He has more Might there than their Figure. Watch the count.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
         await L.count();
-        await L.say('Hold their Gate when the round is counted and one of their <b>Seals</b> breaks, for 1 more Renown.', { at: '.an-strip.opp .st-seals' });
-        await L.say('Break all 3 and you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
+        await L.say('If you hold their Gate when the round is counted, one of their <b>Seals</b> breaks and you score 1 more Renown.', { at: '.an-strip.opp .st-seals' });
+        await L.say('If you break all 3, you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
         await L.say('It works both ways. An empty Gate is safe, but a Gate with only their Figures in it is not.', { at: L.row(MY_GATE) });
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One of each person, and the return', art: 'galileo',

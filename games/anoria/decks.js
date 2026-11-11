@@ -365,7 +365,7 @@
       th.forEach(p => sec.appendChild(row(p)));
       if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Thread' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
       if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Thread is a card together with the card it grew from. When both are in the deck and you play them together, they score Renown.' }));
-      else sec.insertBefore(el('p', { class: 'adk-hint', text: 'Play one while the other is on your side and it scores 1 Renown.' }), sec.children[1]);
+      else sec.insertBefore(el('p', { class: 'adk-hint', text: 'If you play one while the other is on your side, it scores 1 Renown.' }), sec.children[1]);
       box.appendChild(sec);
       // the cards, cheapest first
       const lst = el('section', { class: 'adk-sec2 cards' }, [el('h3', {}, [el('span', { text: 'Cards' }), el('b', { text: String(cards.length) })])]);
