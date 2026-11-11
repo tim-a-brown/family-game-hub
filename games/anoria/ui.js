@@ -239,9 +239,9 @@
     }
     if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: if ' + esc(names(c.insp)) + ' is in play on your side when you play this card, it costs 1 less and you score 1 Renown as it arrives. A gold line joins them, and this card has +1 Might while they stand. Only one line or Thread scores in a round.' }));
     if (CARDS[key] && CARDS[key].from && E.STD.threads) {
-      const src = CARDS[key].from.map(x => x[0] === '@' ? C.PLACES[x.slice(1)].n : CARDS[x].n), fig = CARDS[key].t === 'fig';
-      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'at ' + C.PLACES[x.slice(1)].n : 'while a Figure of yours is at ' + C.PLACES[x.slice(1)].n) : 'while ' + CARDS[x].n + ' is ' + (CARDS[x].t === 'relic' ? 'in play' : 'on your side'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src)) + '. It scores 1 Renown when you play it ' + esc(listOf(how, 'or')) + '. Only one line or Thread scores in a round.' }));
+      const src = CARDS[key].from.map(theName), fig = CARDS[key].t === 'fig';
+      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'at ' + theName(x) : 'while a Figure of yours is at ' + theName(x)) : 'while ' + theName(x) + ' is ' + (CARDS[x].t === 'relic' ? 'in play' : 'on your side'));
+      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src, 'or')) + '. It scores 1 Renown when you play it ' + esc(listOf(how, 'or')) + '. Only one line or Thread scores in a round.' }));
     }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1]) })); });
     if (c.kind === 'place') {
@@ -258,11 +258,16 @@
     const card = cardEl(key, { might: f ? E.might(S, f, 0) : null });
     const v = el('div', { class: 'view', role: 'dialog', 'aria-modal': 'true', 'aria-label': c.n, onclick: closeView }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close') }), card, notes.childNodes.length ? notes : null]);
-    const vw = Math.min(window.innerWidth - 36, 420), vh = window.innerHeight - 40;
+    // (a lesson reads the card part by part: it sits under the lesson's rings and caption, with room kept for the
+    // caption below it, or beside it when the screen is sideways)
+    const side = o.lesson && window.innerWidth > window.innerHeight * 1.15, bar = o.lesson ? (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bar')) || 56) : 0;
+    if (o.lesson) v.classList.add('lesson'); if (side) v.classList.add('side');
+    const vw = Math.min(side ? window.innerWidth * .34 : window.innerWidth - 36, 420), vh = window.innerHeight - (o.lesson ? 26 : 40) - bar - (side ? 0 : o.room || 0);
     document.body.appendChild(v);
     // as big as fits: the card, then what's written under it
     let w = vw; v.style.setProperty('--vw', w + 'px');
-    for (let i = 0; i < 8 && w > 200 && card.offsetHeight + (notes.childNodes.length ? notes.offsetHeight + 12 : 0) > vh; i++) { w = Math.round(w * .92); v.style.setProperty('--vw', w + 'px'); }
+    const under = () => (!side && !o.lesson && notes.childNodes.length ? notes.offsetHeight + 12 : 0);
+    for (let i = 0; i < 12 && w > (o.lesson ? 150 : 200) && card.offsetHeight + under() > vh; i++) { w = Math.round(w * .92); v.style.setProperty('--vw', w + 'px'); }
     viewEl = v; document.addEventListener('keydown', viewKey);
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }

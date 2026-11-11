@@ -305,6 +305,11 @@ Underlying principles for everything:
   waits in its save and comes back). A lesson is `{id, n, table(), run(L)}`: `L.say` (caption, with `at` rings and
   `tag` names), `L.play/walk/clash/relic/deed` (a finger taps, as a player would), `L.them.*`, `L.count`, `L.later`.
   A rule that changes needs its chapter's script and captions changed with it; `Kit.init`'s `RULES` text too.
+- **A lesson's caption says what to look at and why** (Tim, 2026-11-11: "unclear instruction" on "Watch the count",
+  "It works both ways", "The card also names its home region"). Each caption rings the thing it is about, names the
+  numbers on the screen ("He has 6 Might there and their Figure has 2, so right now you hold their Gate"), and never
+  talks about something that isn't in view: Reading a card keeps the card open under the caption
+  (`openView(key, {lesson: true, room})`) and rings one part at a time. One idea a caption; split a long one.
 - **The story comes before the rules** (Tim, 2026-11-11: the guide went straight into play without the goal or the
   story behind it). Anoria is a world where all of history happens at once: the great figures of every age live there
   together among the wonders of the world, each player leads a company of them with one of the greats as a Guide, and

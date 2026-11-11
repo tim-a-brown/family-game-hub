@@ -48,7 +48,7 @@
   function halt() {
     const r = run; if (!r) return; run = null;
     clearTimeout(r.timer); clearInterval(r.cnt); window.removeEventListener('resize', r.resize); document.removeEventListener('keydown', r.key);
-    document.documentElement.classList.remove('gd-on', 'gd-dim'); r.root.remove(); if (r.wake) r.wake();
+    document.documentElement.classList.remove('gd-on', 'gd-dim'); r.root.remove(); if (UI() && document.querySelector('.view.lesson')) UI().closeView(); if (r.wake) r.wake();
   }
   function overlay(r) {
     const d = UI().demo, L = r.lesson;
@@ -93,6 +93,7 @@
       // cut across the corners and the odds)
       const big = Math.max(b.width, b.height), round = big < 70 && big / Math.min(b.width, b.height) < 1.12;
       const pad = b.width < 60 ? 5 : 3, ring = el('i', { class: 'gd-ring' + (round ? ' dot' : '') });
+      if (n.closest && n.closest('.ac-paper, .ac-foot')) ring.classList.add('ink');   // (on a card's pale paper the gold ring needs a darker edge)
       Object.assign(ring.style, { left: (b.left - pad) + 'px', top: (b.top - pad) + 'px', width: (b.width + 2 * pad) + 'px', height: (b.height + 2 * pad) + 'px' });
       r.rings.appendChild(ring);
       const tag = arr(f.tag)[i];
@@ -528,16 +529,25 @@
         await L.play('copernicus', MY_GATE, { lit: 'When one copy of a Figure is in your discard pile, the other copy costs 1 less. This is <b>the return</b>: Copernicus comes back for 2 instead of 3.', at: L.card('copernicus') });
         await L.say('So a second copy is a spare, and it makes the card more likely to turn up. A pack never gives you a third copy.', { at: L.piece('copernicus') });
       } },
-    { id: 'read', n: 'Reading a card', sub: 'Skills, home and Threads', art: 'hypatia',
-      table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', hand: ['galileo', 'compass', 'eureka'], figs: [['leonidas', MY_OUT], ['copernicus', MY_GATE]] },
+    { id: 'read', n: 'Reading a card', sub: 'Every part of a card, and what it tells you', art: 'hypatia',
+      table: () => ({ round: 3, places: ['globe', 'library', 'nineveh', 'seneca', 'wall'], me: { guide: 'leonardo', hand: ['galileo', 'compass', 'eureka'], figs: [['hypatia', MY_OUT], ['copernicus', MY_GATE]] },
         them: { guide: 'suntzu', hand: ['joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
+        const V = '.view.lesson ';
         await L.pause(400);
-        await L.say('Tap any card, Figure, Guide or Place to read it full size.', { at: L.piece('leonidas') });
-        await L.tap(L.piece('leonidas')); L.hush(); UI().openView('leonidas', { u: L.fig('leonidas').u }); await L.pause(3400); UI().closeView(); await L.pause(300);
-        await L.say('A Figure’s skills are in bold on its card, each with what it does: Guard, Steadfast, Scholar, Swift, Inspiring, Raider, Voyager.', { at: L.piece('leonidas') });
-        await L.say('The card also names its home region and any Thread, which is what it grew from or what grew from it.', { at: L.piece('leonidas') });
-        await L.say('Every card you own, and every one you have seen, is in the Library.', {});
+        await L.say('Tap any card, Figure, Guide or Place to read it full size. Here is Hypatia.', { at: L.piece('hypatia') });
+        await L.tap(L.piece('hypatia')); L.hush(); UI().openView('hypatia', { u: L.fig('hypatia').u, lesson: true, room: window.innerHeight < 700 ? 178 : 196 }); await L.pause(750);
+        await L.say('The number in the flame is what the card costs you in <b>Spark</b>.', { at: V + '.ac-cost' });
+        await L.say('The number on the shield is her <b>Might</b>.', { at: V + '.ac-st' });
+        await L.say('Under her name are where and when she lived. The dot on the little map marks the place.', { at: V + '.ac-when' });
+        await L.say('This is what the card does. A skill word is in bold, and the words after it say what the skill means.', { at: V + '.ac-txt' });
+        await L.say('The line in italics is a true fact about her. It plays no part in the game.', { at: V + '.ac-fact' });
+        await L.say('This is her <b>home region</b>. A Figure has +1 Might at any Place in its home region.', { at: V + '.ac-home' });
+        await L.say('The fine print says how to pronounce the name, and gives the card’s <b>Thread</b>: what it grew from.', { at: V + '.ac-mid' });
+        await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
+        if (find(V + '.view-notes')) await L.say('Under the card, each skill and each link is written out in full.', { at: V + '.view-notes' });
+        L.hush(); UI().closeView(); await L.pause(350);
+        await L.say('Every card you own, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
       } }
   ];
   CHAPTERS.forEach((c, i) => {
