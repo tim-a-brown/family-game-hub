@@ -116,8 +116,11 @@ const RARE3 = {
   2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley kahlo alkhwarizmi poe voltaire nanny king fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard spies pakal fuhao trung teutoburg anning',
   1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper owens emancipation turing cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush saltmarch hieroglyphs balloon wheel everest naovictoria ninth astrolabe penicillin lincolnconcert lascaux manuscripts folio truce'
 };
+// The eleven Domain cards (cards.js P4), tiered among themselves by the same measure, cost and win rate less the
+// faction's own, from "node scripts/anoria/domains.js cards" (domains.txt has the table).
+const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius' };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
-[RARE, RARE3].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
+[RARE, RARE3, RARE4].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
 const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 

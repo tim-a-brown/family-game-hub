@@ -156,7 +156,7 @@ These cards go in your deck of 40 like any other card.
 | Christopher Wren | Figure, costs 2, 3 Might | When Christopher Wren arrives, you may take a Domain from your Domain discard pile and lay it at your Gate or your Outpost in place of the Domain that is there. |
 | Constantine | Figure, costs 5, 5 Might | When Constantine arrives, you may turn up the top Domain of your stack and lay it at the Crossroads in place of the Domain that is there. |
 | William the Conqueror | Figure, costs 5, 5 Might | When William arrives at the other player's Gate or Outpost, you may have the Domain there discarded. The other player lays the top Domain of their stack in its place. |
-| Diogenes | Figure, costs 1, 2 Might | The Domain where Diogenes stands has no rule. |
+| Diogenes | Figure, costs 2, 3 Might | The Domain where Diogenes stands has no rule. |
 | Earthquake | Deed, costs 2 | Choose a Gate or an Outpost, yours or the other player's. The Domain there is discarded, and the player whose side it is on lays the top Domain of their stack in its place. |
 | Vesuvius | Deed, costs 1 | Lay Vesuvius on a Domain. That Domain has no rule for as long as Vesuvius lies on it. Vesuvius goes wherever the Domain goes, and is discarded with it. |
 | The Cape Route | Deed, costs 2 | Turn up the top Domain of your stack and lay it at the Crossroads in place of the Domain that is there. |

@@ -169,7 +169,10 @@ const P3 = {
   ibnkhaldun: F('Ibn Khaldun', 'S', 3, 4, 'AFR', 3, 1377, {}, { arr: ['stun', 1] }),
   nezahualcoyotl: F('Nezahualcoyotl', 'S', 3, 4, 'AMER', 3, 1431, { tale: 1 }),
   sejong: F('Sejong the Great', 'S', 4, 4, 'ASIA', 3, 1443, { scholar: 1, inspiring: 1 }),
-  pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 3, 1450, { homeDouble: 1 }),
+  // (Pachacuti has the first of the Domain powers since 2026-11-11, in place of "At home he has +3 Might": he looks at his
+  // top three Domains and may lay one at his Gate or Outpost. With the home power he read 3.5 points over Statecraft's
+  // line once players brought their own Domains; with this one he is on it: scripts/anoria/domains.txt)
+  pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 3, 1450, {}, { arr: ['scout', 3] }),
   suleiman: F('Suleiman the Magnificent', 'S', 4, 4, 'MIDEAST', 4, 1530, { law: 1 }),
   akbar: F('Akbar', 'S', 4, 4, 'ASIA', 4, 1582, { orator: 1 }),
   voltaire: F('Voltaire', 'S', 3, 3, 'EUR', 5, 1759, {}, { arr: ['wits', 1] }),
@@ -297,7 +300,7 @@ const P3 = {
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
 const FROM3 = {'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
-  'qinshihuang': ['@wall'], 'darius': ['cyrus'], 'pachacuti': ['@machu'], 'voltaire': ['duchatelet'], 'catherine': ['voltaire'], 'stanton': ['@seneca'], 'vercingetorix': ['caesar'],
+  'qinshihuang': ['@wall'], 'darius': ['cyrus'], 'pachacuti': ['@machu', '@qhapaq'], 'voltaire': ['duchatelet'], 'catherine': ['voltaire'], 'stanton': ['@seneca'], 'vercingetorix': ['caesar'],
   'amanirenas': ['augustus'], 'arminius': ['augustus'], 'richard': ['saladin'], 'lapulapu': ['magellan'], 'enheduanna': ['sargon'], 'seishonagon': ['murasaki'],
   'gentileschi': ['galileo'], 'grace': ['elizabeth'], 'oakley': ['sittingbull'], 'astrolabe': ['hypatia'], 'paper': ['cailun'], 'rosetta': ['napoleon'], 'teutoburg': ['arminius'],
   'testudo': ['caesar'], 'brownsbox': ['douglass'], 'beagle': ['darwin'], 'magnacarta': ['eleanor'], 'marathonmarch': ['aeschylus'], 'ninth': ['beethoven'],
@@ -323,7 +326,7 @@ PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k
 // Congress of Vienna, the thirteenth card of the prototype, is left out: see domains.txt.
 const P4 = {
   idrisi: F('Al-Idrisi', 'D', 2, 3, 'MED', 3, 1154, {}, { arr: ['survey', 1] }),
-  diogenes: F('Diogenes', 'D', 1, 2, 'MED', 2, -350, { cynic: 1 }),
+  diogenes: F('Diogenes', 'D', 2, 3, 'MED', 2, -350, { cynic: 1 }),   // (the prototype had him at 1 Spark and 2 Might: 3.6 points over Discovery's line, and the game has no Figure that costs 1)
   constantine: F('Constantine', 'S', 5, 5, 'MED', 2, 330, {}, { arr: ['found', 1], from: ['@constantinople'] }),
   william: F('William the Conqueror', 'V', 5, 5, 'EUR', 3, 1066, {}, { arr: ['conquer', 1], from: ['@winchester'] }),
   wren: F('Christopher Wren', 'A', 2, 3, 'EUR', 5, 1675, {}, { arr: ['rebuild', 1], from: ['@royalsociety'] }),
@@ -526,10 +529,12 @@ const ARCH = {
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
 // Each ready deck's Domain stack: fifteen Domains that suit it. A new player gets the stack of their starter deck.
+// (The prototype's third pass, with one swap made on this engine: Venice to Legion and Orléans to Legacy, which
+// read 51.9% and 48.7% over 8,000 games before it. scripts/anoria/domains.txt has the tables.)
 const STACKS = {
   Explorers: ['malacca', 'kilwa', 'tlatelolco', 'longjiang', 'greenwich', 'padua', 'gibraltar', 'rapanui', 'tordesillas', 'forbidden', 'silk', 'cape', 'lanse', 'dunhuang', 'magellanstrait'],
-  Legion: ['carthage', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'orleans', 'colosseum', 'olympia', 'prophetstown', 'runnymede', 'aachen', 'appian'],
-  Legacy: ['venice', 'petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'acropolis', 'globe', 'sistine', 'heian', 'forum'],
+  Legion: ['carthage', 'venice', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'colosseum', 'olympia', 'prophetstown', 'runnymede', 'aachen', 'appian'],
+  Legacy: ['petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'orleans', 'acropolis', 'globe', 'sistine', 'heian', 'forum'],
   Court: ['lisbon', 'firenze', 'timbuktu', 'jingdezhen', 'seneca', 'zimbabwe', 'wien', 'taj', 'deirelbahari', 'versailles', 'persepolis', 'babylon', 'onondaga', 'constantinople', 'grandcanal'],
   Pathfinders: ['djenne', 'benin', 'machu', 'nanmadol', 'sigiriya', 'stonehenge', 'giza', 'chichen', 'kumasi', 'independence', 'nineveh', 'winchester', 'qhapaq', 'basra', 'kittyhawk'],
 };

@@ -228,15 +228,16 @@ function setupRoll(S, R, dice) {
   if (S.st) { S.st.repl = 0; S.st.dibs = d; S.st.hub0 = hub; }
   return true;
 }
-// What a robot thinks a Domain's rule is worth to it at [its Gate, its Outpost, the Crossroads], in tenths of a point
-// of win rate, beyond the Might its own Figures get there (home: how much the share of its Figures who are at home
-// counts at each). Only what the test games agree on twice is in it (the prototype's table A4 in places/results.txt
-// and "rules" in domains.txt, which lay Domains with no choice): a road or a link at your own Gate lets the other
-// player in, a market that pays Spark belongs at an Outpost, a closed Domain at your Gate, an arena not at the
-// Crossroads. The rest is too close to tell, and is left at nothing. How the three are laid is worth little to a
-// robot either way (domains.txt, "setup"): the game is decided by the play.
-const LAYV = { home: [0.5, 1, 1], spark: [0, 0.35, 0], cheap: [-0.2, 0, 0.2], forge: [0.2, 0, 0.2], arms: [0.35, 0.4, 0], draw: [0.1, 0, 0], line: [0.15, 0.1, 0.4], facD: [0, 0, 0.2], fort: [-0.15, -0.2, -0.1], closed: [0.5, 0, -0.3], narrow: [0, -0.3, 0.4],
-  crowd: [0.1, 0.2, 0], arena: [0, 0, -0.5], facA: [0.1, -0.4, 0.25], peace: [0, 0, 0], sanctuary: [0.2, 0, 0], facS: [0.15, 0, 0], link: [-0.3, 0, 0], road: [-0.5, -0.1, 0] };
+// How a robot lays its three Domains: what each is worth to it at [its Gate, its Outpost, as its offer for the
+// Crossroads]. Rules of thumb, not a table of every rule, because that is all the test games support (domains.txt,
+// "setup": a robot choosing by a full table of measured values did no better than one laying at random, and worse
+// when it put the Domains its Figures are at home on forward):
+//   home   keep the Domain most of your Figures call home on your own side, at your Gate first: the offer is lost
+//          half the time, and every Figure you lay arrives at your Gate
+//   a Commerce Domain pays nothing at a Gate, so it goes to the Outpost; a closed Domain guards a Gate and has no rule
+//   at the Crossroads; a road or a link at your own Gate lets the other player in (46 to 47% in four sets of games)
+// The rest is left at nothing. All of it together is worth about a point to the robot that chooses.
+const LAYV = { home: [1, 0.5, -1], spark: [-0.2, 0.3, 0], cheap: [-0.2, 0.1, 0.1], closed: [0.4, 0, -0.3], link: [-0.3, 0, 0], road: [-0.4, 0, 0] };
 // (a deck by what it is made of: the share of its Figures from each region, Voyagers apart, and of each faction)
 function deckInfo(deck) { const reg = {}, fac = {}; let n = 0; for (const c of deck) { const x = CARDS[c]; if (!x || x.t !== 'fig') continue; n++; if (!x.k.voyager) reg[x.reg] = (reg[x.reg] || 0) + 1; fac[x.f] = (fac[x.f] || 0) + 1; } for (const k in reg) reg[k] /= n || 1; for (const k in fac) fac[k] /= n || 1; return { reg, fac }; }
 // (tab: another table to try, for the test games: cfg.layv)
