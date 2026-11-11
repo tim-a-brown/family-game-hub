@@ -127,9 +127,9 @@
   function newGame(players, opts) {
     opts = opts || {};
     var S = {
-      v: 1, opts: { fp: !!opts.fp, go400: !!opts.go400, noAuction: !!opts.noAuction, len: opts.len || 'all' },
+      v: 1, opts: { fp: !!opts.fp, go400: !!opts.go400, noAuction: !!opts.noAuction, len: opts.len || 'all', level: lvName(opts.level) },
       players: players.map(function (p, i) {
-        return { name: p.name, cpu: !!p.cpu, tok: p.tok || TOKENS[i % 8], cash: 1500, pos: 0, jail: false, tries: 0, cards: [], out: false, outAt: 0 };
+        return { name: p.name, cpu: !!p.cpu, level: p.level ? lvName(p.level) : undefined, tok: p.tok || TOKENS[i % 8], cash: 1500, pos: 0, jail: false, tries: 0, cards: [], out: false, outAt: 0 };
       }),
       own: fill(40, -1), hs: fill(40, 0), mort: fill(40, 0), fresh: [],
       bankH: 32, bankT: 12, deck: { ch: shuffle(range(16)), cc: shuffle(range(16)) },
@@ -812,6 +812,15 @@
   }
 
   // ═══ The computer players ════════════════════════════════════════════════
+  // Their skill: 'easy', 'normal' (how they have always played; a game saved before there were levels) or 'hard'.
+  // A player's own level comes first, then the game's (opts.level, which is what an online table's robots play at).
+  //   Easy is slow to build: it wants three times the usual cash in hand before it puts up a house, and it
+  //   never proposes a trade. (Turning property down and bidding low were tried for Easy and dropped: against
+  //   one other player a robot that lets property go to auction wins more, not less.)
+  //   Hard builds like a landlord: it keeps a fifth of the usual cushion when it builds, mortgages property
+  //   outside its complete groups to get three houses on each lot, and sits in jail once rents are dangerous.
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lv(S, p) { return lvName((S.players[p] && S.players[p].level) || (S.opts && S.opts.level)); }
   // A position's value to player p: cash, property (complete groups are worth much more), less the danger of
   // the other players' complete groups. Used for buying, bidding and trading.
   var GROUP_W = [0.8, 1.05, 1.0, 1.25, 1.2, 1.05, 0.95, 1.05];   // how good each group is to own (orange and red land most)
@@ -896,7 +905,8 @@
   }
   // building and paying off mortgages when there's money to spare
   function botManage(S, p) {
-    var me = S.players[p], res = reserve(S, p);
+    var me = S.players[p], res = reserve(S, p), L = lv(S, p);
+    if (L === 'easy') res *= 3; else if (L === 'hard') res *= 0.2;
     // pay off mortgages on complete groups first (so they can be built on)
     var best = null;
     for (var g = 0; g < 8; g++) {
@@ -910,6 +920,12 @@
       });
     }
     if (best && me.cash - SQ[best.sq].h >= res) return { t: 'build', p: p, sq: best.sq };
+    if (best && L === 'hard' && S.hs[best.sq] < 3) {
+      // Hard: three houses a lot is where the rent jumps, so property outside its complete groups is mortgaged to get there
+      var loose = []; S.own.forEach(function (o, i) { if (o === p && !S.mort[i] && !(SQ[i].k === 'st' && ownsGroup(S, p, SQ[i].g)) && !canMort(S, p, i)) loose.push(i); });
+      loose.sort(function (a, b) { return SQ[a].m - SQ[b].m; });
+      if (loose.length) return { t: 'mort', p: p, sq: loose[0] };
+    }
     if (best) return null;
     // otherwise pay off other mortgages when rich
     var mm2 = []; S.own.forEach(function (o, i) { if (o === p && S.mort[i]) mm2.push(i); });
@@ -920,6 +936,7 @@
   // A trade the computer would like to offer: get the last piece of a group, for a swap and/or cash
   function botTrade(S, p) {
     var me = S.players[p], bm = S.bm[p] = S.bm[p] || {};
+    if (lv(S, p) === 'easy') return null;
     if (bm.lt && S.turn - bm.lt < 2 * active(S).length) return null;
     bm.lt = S.turn;   // looks again in a couple of rounds, offer or not
     var base = evalP(S, p), best = null;
@@ -969,7 +986,7 @@
         var mg = botManage(S, p); if (mg) return mg;
         var tr = botTrade(S, p); if (tr) return tr;
         if (me.jail) {
-          var early = unownedLeft(S) > 8, dng = danger(S, p) > 300;
+          var early = unownedLeft(S) > 8, dng = danger(S, p) > (lv(S, p) === 'hard' ? 60 : 300);
           if (!dng || early) {
             if (me.cards.length) return { t: 'useCard', p: p };
             if (me.cash >= 50 + reserve(S, p) * 0.5 && early) return { t: 'payJail', p: p };
