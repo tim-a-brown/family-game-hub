@@ -342,6 +342,7 @@ const PRECACHE_URLS = [
   '/hist/casino.js',
   '/hist/arcade.js',
   '/hist/lorcana.js',
+  '/hist/anoria.js',
   '/hist/oregon.js',
   '/fonts/press-start-2p.woff2',
   '/games/plinko.html',

@@ -505,7 +505,7 @@
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     G = { mode: cfg.mode, level: cfg.level, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
-      stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {} };
+      stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
     Kit.gameStart(); save(); buildTable(); V = snap(); render();
@@ -1128,14 +1128,23 @@
     }
     return true;
   }
+  // What the game's history will show (hist/anoria.js): besides the counts, the Threads and Legacy lines as they were
+  // made, the round each Seal broke, who won the most clashes, and who scored each Place every round (G.tale; a game
+  // saved before this was kept has none, and its record says so by leaving those parts out)
+  const MAPORD = [0, 1, 4, 3, 2];   // (the five Places as they lie: seat 1's Gate and Outpost, the Crossroads, seat 2's Outpost and Gate)
   function tally(evs) {
+    const T = G.tale, r = G.hist.length + 1, cardOf = u => { const f = u && E.byU(S, u); return f ? f.c : ''; };
+    let held = null;
     evs.forEach(ev => {
-      if (ev.t === 'ko' && ev.by) G.stats[1 - ev.o].ko++;
-      else if (ev.t === 'line' || ev.t === 'thread') G.stats[ev.o].lines++;
+      if (ev.t === 'ko' && ev.by) { G.stats[1 - ev.o].ko++; const c = T && cardOf(ev.by); if (c) { const m = T.ko[1 - ev.o]; m[c] = (m[c] || 0) + 1; } }
+      else if (ev.t === 'line' || ev.t === 'thread') { G.stats[ev.o].lines++;
+        if (T) { const from = ev.t === 'line' ? cardOf(ev.b) : ev.src.k === 'fig' ? cardOf(ev.src.u) : ev.src.k === 'relic' ? ev.src.c : '@' + S.places[ev.src.p], to = ev.t === 'line' ? cardOf(ev.a) : ev.c;
+          if (from && to && T.links.length < 24) T.links.push([r, ev.o, from, to, ev.ren || 0, ev.t === 'line' ? 'l' : 't'].join('|')); } }
       if ((ev.t === 'arrive' || ev.t === 'relic' || ev.t === 'deed' || ev.t === 'quick') && ev.c) G.seen[ev.c] = 1;
-      else if (ev.t === 'seal') G.stats[ev.by].seals++;
-      else if (ev.t === 'hold') G.stats[ev.o].held++;
+      else if (ev.t === 'seal') { G.stats[ev.by].seals++; if (T) T.seals.push(r + '|' + ev.by); }
+      else if (ev.t === 'hold') { G.stats[ev.o].held++; (held = held || {})[ev.p] = ev.o; }
     });
+    return held;
   }
 
   // ═══ Taking turns ════════════════════════════════════════════════════════════════════════════════════════
@@ -1224,7 +1233,8 @@
     let evR = null; const r0 = S.P.map(p => p.renown);
     if (G.k === 0) { G.k = 1; S.turn = G.ord[1]; G.ph = 'start'; }
     else {
-      E.endRound(S); evR = S.ev.splice(0); tally(evR); G.hist.push(S.P.map((p, i) => p.renown - r0[i]));
+      E.endRound(S); evR = S.ev.splice(0); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(MAPORD.map(i => held[i] == null ? '.' : 'ab'[held[i]]).join(''));
+      G.hist.push(S.P.map((p, i) => p.renown - r0[i])); if (G.tale) G.tale.tot.push(S.P.map(p => p.renown).join('-'));   // (tot: Renown so far, with what Threads and Seals gave during the round)
       if (S.over) G.over = true; else { const f = E.firstOf(S); G.ord = [f, 1 - f]; G.k = 0; S.turn = f; G.ph = 'start'; }
     }
     if (G.over) { clearSave(); record(); } else save();
@@ -1264,15 +1274,22 @@
   // ═══ The end ═════════════════════════════════════════════════════════════════════════════════════════════
   function modeName() { return G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
   function record() {
-    const w = S.winner, hl = [];
-    if (w >= 0) hl.push(S.how === 'seals' ? pname(w) + ' broke all three of ' + Kit.poss(pname(1 - w)) + ' Seals in round ' + S.round : pname(w) + ' reached ' + S.P[w].renown + ' Renown after ' + S.round + ' rounds');
-    else hl.push('A dead-level draw after ' + S.round + ' rounds');
-    G.players.forEach((p, i) => { hl.push(p.name + ' played ' + p.deck + ', guided by ' + TX.GUIDES[S.P[i].guide].n); });
-    G.players.forEach((p, i) => { const s = G.stats[i]; if (s.ko >= 3) hl.push(p.name + ' won ' + s.ko + ' clashes'); if (s.lines >= 2) hl.push(p.name + ' drew ' + s.lines + ' Legacy lines'); if (s.seals && S.how !== 'seals') hl.push(p.name + ' broke ' + s.seals + (s.seals === 1 ? ' Seal' : ' Seals')); });
+    const w = S.winner, T = G.tale, hl = [];
+    // (a game begun before the history kept its details: the short notes it always had)
+    if (!T) {
+      if (w >= 0) hl.push(S.how === 'seals' ? pname(w) + ' broke all three of ' + Kit.poss(pname(1 - w)) + ' Seals in round ' + S.round : pname(w) + ' reached ' + S.P[w].renown + ' Renown after ' + S.round + ' rounds');
+      else hl.push('A dead-level draw after ' + S.round + ' rounds');
+      G.players.forEach((p, i) => { hl.push(p.name + ' played ' + p.deck + ', guided by ' + TX.GUIDES[S.P[i].guide].n); });
+    }
+    const top = m => Object.keys(m).sort((a, b) => m[b] - m[a])[0] || '';
     try {
       Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? pname(w) : null,
-        rounds: { labels: G.hist.map((x, i) => String(i + 1)), scores: G.hist }, highlights: hl,
-        detail: { how: S.how, rounds: S.round, decks: G.players.map(p => p.deck).join(', '), seals: S.P.map(p => p.seals).join(' and ') } });
+        rounds: T ? null : { labels: G.hist.map((x, i) => String(i + 1)), scores: G.hist }, highlights: hl,
+        detail: !T ? { how: S.how, rounds: S.round, decks: G.players.map(p => p.deck).join(', '), seals: S.P.map(p => p.seals).join(' and ') } : {
+          v: 2, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w,
+          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
+          rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(),
+          map: MAPORD.map(i => { const m = E.mights(S, i), by = o => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(','); return [S.places[i], E.holder(S, i), m[0], m[1], by(0), by(1)].join('|'); }) } });
     } catch (e) {}
     // the collection: cards that crossed the table are seen; a win against the computer can earn a pack or a Guide
     try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w === 0, cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
@@ -1323,14 +1340,26 @@
     '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
     '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>';
+  // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
+  // opens over whatever is on the table and leaves a game as it is; over the setup, the setup is drawn again after
+  // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
+  function tool(name) {
+    if (G && G.demo) return;
+    if (!Coll.load().starter) { Kit.toast('Choose your first deck, and the ' + (name === 'library' ? 'Library' : name === 'packs' ? 'packs' : 'decks') + ' will open.', 2600); return; }
+    const after = () => { if (!G) showSetup(); };
+    if (name === 'library' && window.AnoriaLibrary) window.AnoriaLibrary.open(after);
+    else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
+    else if (name === 'decks' && window.AnoriaDecks) window.AnoriaDecks.open(null, after);
+  }
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
     onNew: () => { if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,
     menu: [
-      { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => { if (window.AnoriaLibrary) window.AnoriaLibrary.open(); } },
-      { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
-      { icon: 'eye', label: 'Hide Anoria', sub: 'Anoria goes back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
+      { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => tool('library') },
+      { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
+      { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
+      { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
 
@@ -1449,8 +1478,11 @@
   }
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
+  const want = (/[?&](library|packs|decks|guide)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet)
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
-  else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) window.AnoriaGuide.quickStart();   // (the first time here: two minutes of the game being played)
+  else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) { window.AnoriaGuide.quickStart(); return; }   // (the first time here: two minutes of the game being played)
   else showSetup();
+  if (want === 'guide') { if (window.AnoriaGuide) window.AnoriaGuide.open(); }
+  else if (want && Coll.load().starter) tool(want);
 })();

@@ -213,10 +213,16 @@ Underlying principles for everything:
 - "Wire up the Lorcana cards in the weekly check issue": read that issue or the saved card list, extend the
   parser/engine, check new screens and animations with Tim before building them, then preview as usual.
 
-## Anoria (the hidden card game)
+## Anoria (the card game)
 
-- Found by tapping Lorcana's icon 12 times in its sheet on the home screen (`anoria_unlocked`); Anoria's own menu hides
-  it again. Its catalog entry is `hidden: true`.
+- A tile of its own under Specialty cards (Tim, 2026-11-11; it used to be hidden behind Lorcana's icon). Its sheet on
+  the home screen has Play, then Library, Packs, Decks and How to play (`launch` in games.js: `anoria.html?library=1`
+  and so on, read at the end of ui.js; each opens over the setup or a game in progress and leaves it as it is). The
+  same four are in the game's own menu (`tool()` in ui.js).
+- **Game history** is `hist/anoria.js`: the two Guides and how the game ended, the race for Renown with who scored each
+  Place every round, the map at the end, the numbers side by side, and the Threads made with their true sentences.
+  `record()` in ui.js saves what it draws (`G.tale`, kept by `tally()`); a new kind of thing worth remembering from a
+  game is added in both. The view fetches cards.js and text.js for names when it is opened away from Anoria's page.
 - `games/anoria/engine.js` is the whole rules engine, for the page and for Node (`scripts/anoria/run.js` plays thousands
   of robot games with it): rules and card numbers change only with the balance runs. `cards.js` has the numbers and the
   five built decks, `text.js` what every card says, `land.js` the coastlines for the map behind a card's text.
