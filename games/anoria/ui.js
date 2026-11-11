@@ -63,6 +63,7 @@
   function artImg(key, small) {
     const src = artSrc(key, small); if (noArt[src]) return null;
     const im = el('img', { src: src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
+    if (FY[key] != null) im.style.objectPosition = '50% ' + FY[key] + '%';   // (which part of the picture to keep, wherever it is cropped)
     im.onerror = function () { noArt[src] = 1; im.remove(); };
     im.onload = function () { hasArt[src] = 1; };
     return im;
@@ -140,7 +141,7 @@
     const c = info(key), f = FAC[c.f] || FAC.N, place = c.kind === 'place', fig = c.kind === 'fig';
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
     const label = { place: 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
-    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' : ''), style: { '--f': f.c }, 'data-card': key });
+    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
@@ -1231,8 +1232,34 @@
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
+  // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
+  // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
+  // map. Nothing a picture is about should be cut off or sit under a number.
+  function artProof() {
+    stop(); G = null; S = null; V = null;
+    const keys = Object.keys(CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES));
+    const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
+    const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
+    const rows = keys.map(k => {
+      const c = info(k), fig = c.kind === 'fig', row = el('div', { class: 'ap-row' }, [el('h2', { text: c.n })]);
+      const line = el('div', { class: 'ap-line' }, [cell('Full', sized('full', cardEl(k)))]);
+      if (c.kind !== 'place') {
+        line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true }))));
+        if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true }))])));
+      }
+      if (fig) {
+        const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
+        line.appendChild(cell('On the map', el('span', { class: 'fp o0', style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
+      }
+      row.appendChild(line); return row;
+    });
+    app.className = 'stage an-proof'; app.innerHTML = '';
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn.' })].concat(rows)));
+  }
+
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
-  if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
+  if (/[?&]art(=|&|$)/.test(location.search)) artProof();
+  else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
   else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) window.AnoriaGuide.quickStart();   // (the first time here: a minute of the game being played)
   else showSetup();
 })();

@@ -243,6 +243,11 @@ Underlying principles for everything:
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
   and the reader's glossary key off that form.
+- **Art proof**: `games/anoria.html?art=1` shows every card at every size it is drawn (full, small, smallest hand
+  card, the piece on the map). A new or changed picture is checked there, at every size, before it goes in.
+- **Small cards keep their numbers off the picture**: the cost, Might and kind icon stand on a spine in the faction's
+  colour down the left (`.ac.mini.sp`), and the picture beside it is shown whole. (Stacked on the picture they hid a
+  third of the faces.) A card's `FY` focus also goes with its picture wherever else it is cropped (`artImg`).
 - **A picture's subject stays in view.** A full card's picture window ends where its paper begins and shows about
   half the picture's height; `FY` in text.js says which part each card keeps (0 the top, 100 the bottom). A new or
   redrawn picture is checked on the card, full size and small, before it goes in: nothing it is about behind the
