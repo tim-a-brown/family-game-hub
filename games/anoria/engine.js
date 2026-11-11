@@ -39,7 +39,7 @@ function newGame(decks, guides, cfg, R) {
   for (let p = 0; p < N; p++) {
     let deck = shuffle(decks[p].slice(), R), hand = deck.splice(0, cfg.hand);
     if (!hand.some(c => CARDS[c].t === 'fig' && CARDS[c].c <= 2)) { deck = shuffle(deck.concat(hand), R); hand = deck.splice(0, cfg.hand); }   // one mulligan
-    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, uW: 0, sg: 0, lines: 0 });
+    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, uW: 0, uR: 0, sg: 0, lines: 0 });
   }
   return S;
 }
@@ -57,7 +57,7 @@ const pid = (S, i) => S.places[i];
 // The Guides who joined with the roster of twelve (2026-11-11). Each power is one test by the Guide's key, where the
 // rule it bends lives; scripts/anoria/guides.txt has what each is worth and every draft that was tried.
 //   joan       her Figures have +1 Might in a clash they start while the other player has more Renown (might)
-//   saladin    a Figure of his that wins a clash it started brings him 1 Spark (clash)
+//   saladin    the first time each turn that a Figure of his wins a clash it started, he gains 1 Spark (clash)
 //   shakespeare the first time each round that a Figure of his is defeated at the Crossroads, he scores 1 Renown (ko)
 //   wuzetian   holding more Places than the other player when a round ends gives her 1 more Spark next turn (endRound)
 //   akbar      Figures of two or more factions at the Crossroads when a round ends score him 1 Renown (endRound)
@@ -193,7 +193,7 @@ function clash(S, a, d, da, dd, bonus, raw) {
   if (S.ev) S.ev.push({ t: 'clash', a: a.u, d: d.u, p: a.p, am: am, dm: dm, da: da, dd: dd, ra: raw ? raw.ra : da, rd: raw ? raw.rd : dd });
   const here = S.places[a.p];
   const ar = A.renown, dr = D.renown;
-  if (am > dm) { ko(S, d, a); if (A.guide === 'saladin') { A.spark += 1; if (S.ev) S.ev.push({ t: 'spark', o: a.o, n: 1, why: 'ransom' }); }   // (Saladin: a Figure of his that wins a clash it started brings him 1 Spark)
+  if (am > dm) { ko(S, d, a); if (A.guide === 'saladin' && !A.uR) { A.uR = 1; A.spark += 1; if (S.ev) S.ev.push({ t: 'spark', o: a.o, n: 1, why: 'ransom' }); }   // (Saladin: the first time each turn that a Figure of his wins a clash it started, he gains 1 Spark)
     if (here === 'colosseum') { A.renown++; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && dr > ar) { A.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: S.cfg.bounty, why: 'bounty' }); } } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') { D.renown++; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && ar > dr) { D.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: S.cfg.bounty, why: 'bounty' }); } }
 }
 function byU(S, u) { for (const f of S.figs) if (f.u === u) return f; return null; }
@@ -322,7 +322,7 @@ function aiTurn(S, prof, R) {
 function startTurn(S) {
   const o = S.turn, P = S.P[o], cfg = S.cfg;
   for (const f of S.figs) if (f.o === o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; }
-  P.uA = P.uT = P.uD = P.uC = P.uN = 0;
+  P.uA = P.uT = P.uD = P.uC = P.uN = P.uR = 0;
   let held = 0; if (cfg.spark !== 'round') for (let i = 0; i < S.places.length; i++) if (holder(S, i) === o) held++;
   // (Mansa Musa: up to 2 Spark he did not spend, his reserve, are his again. Empress Wu: 1 more for the Places she held, P.sg)
   const kept = P.guide === 'mansamusa' ? P.reserve : 0;
