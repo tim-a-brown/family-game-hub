@@ -244,7 +244,7 @@
       grp('Faction', 'fac', FACS.filter(f => f !== 'N').map(f => has(k => CARDS[k].f === f) ? chip('fac', f, FAC[f].n, { cls: 'fac', c: FAC[f].c, html: '<i class="dot"></i>' }) : null));
       grp('Kind', 'kind', KINDS.map(x => has(k => CARDS[k].t === x[0]) ? chip('kind', x[0], x[1], { cls: 'kind', html: U.MARK[x[0]] }) : null));
       grp('Spark', 'cost', COSTS.map(c => has(k => CARDS[k].c === c) ? chip('cost', c, String(c), { cls: 'cost', bare: true, html: '<b>' + c + '</b>', say: c + ' Spark' }) : null));
-      grp('Keyword', 'word', WORDS.map(w => has(k => hasWord(k, w[0])) ? chip('word', w[0], w[1]) : null).concat([chip('thr', '', 'Threads with this deck', { cls: 'thr', html: THREAD })]));
+      grp('Keyword', 'word', WORDS.map(w => has(k => hasWord(k, w[0])) ? chip('word', w[0], w[1]) : null).concat([chip('thr', '', 'Legacy Lines with this deck', { cls: 'thr', html: THREAD })]));
     }
     function paintTools() {
       groupBoxes.forEach(b => { if (b.isConnected) paintGroups(b); });
@@ -262,7 +262,7 @@
       Object.keys(st.f.kind).forEach(t => off(KINDS.filter(x => x[0] === t)[0][1], () => { delete st.f.kind[t]; }));
       Object.keys(st.f.cost).forEach(c => off(c + ' Spark', () => { delete st.f.cost[c]; }));
       Object.keys(st.f.word).forEach(w => off(WORDS.filter(x => x[0] === w)[0][1], () => { delete st.f.word[w]; }));
-      if (st.f.thr) off('Threads', () => { st.f.thr = false; }, { cls: 'thr' });
+      if (st.f.thr) off('Legacy Lines', () => { st.f.thr = false; }, { cls: 'thr' });
     }
     let shownN = 0, showBtn = null;
     const showLabel = () => { if (showBtn) showBtn.textContent = shownN === 1 ? 'Show 1 card' : 'Show ' + shownN + ' cards'; };
@@ -326,7 +326,7 @@
       } else whenEl.appendChild(el('span', { class: 'adk-yrs dim' }, [el('small', { text: 'No years yet' })]));
       // the Threads it holds
       const th = held().length;
-      thrEl.className = 'adk-thr' + (th ? ' on' : ''); thrEl.innerHTML = THREAD + '<b>' + th + '</b><small>' + (th === 1 ? 'Thread' : 'Threads') + '</small>';
+      thrEl.className = 'adk-thr' + (th ? ' on' : ''); thrEl.innerHTML = THREAD + '<b>' + th + '</b><small>' + (th === 1 ? 'Legacy Line' : 'Legacy Lines') + '</small>';
       if (lastThr >= 0 && th > lastThr && !still()) { thrEl.classList.remove('glow'); void thrEl.offsetWidth; thrEl.classList.add('glow'); }
       finBtn.hidden = tot >= DECK || !pool.some(k => owned(k) > n(k));
       // a full deck and a Guide: a gleam runs along the slots
@@ -355,7 +355,7 @@
         box.appendChild(el('div', { class: 'adk-dh' }, [b, facEl.cloneNode(true)]));
       }
       // Threads: the ones it holds, then the ones a single card away
-      const th = held(), nr = near(), sec = el('section', { class: 'adk-sec2 thr' }, [el('h3', {}, [el('span', { text: 'Threads' }), el('b', { text: String(th.length) })])]);
+      const th = held(), nr = near(), sec = el('section', { class: 'adk-sec2 thr' }, [el('h3', {}, [el('span', { text: 'Legacy Lines' }), el('b', { text: String(th.length) })])]);
       const row = (p, need) => {
         const r = el('div', { class: 'adk-th' + (need ? ' near' : ' lit') }, [
           el('span', { class: 'adk-pair' }, [thumb(p.a, 'adk-pp' + (need === p.a ? ' off' : '')), el('i'), thumb(p.b, 'adk-pp' + (need === p.b ? ' off' : ''))]),
@@ -365,8 +365,8 @@
         return r;
       };
       th.forEach(p => sec.appendChild(row(p)));
-      if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Thread' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
-      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Thread is a card together with the card it grew from. When both are in the deck and you play them together, they score Renown.' }));
+      if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Legacy Line' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
+      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Legacy Line connects a card to the card it grew from. With both cards in this deck, you can score 1 Renown by playing the second card while the first is in play.' }));
       else sec.insertBefore(el('p', { class: 'adk-hint', text: 'If you play one while the other is on your side, it scores 1 Renown.' }), sec.children[1]);
       box.appendChild(sec);
       // the cards, cheapest first

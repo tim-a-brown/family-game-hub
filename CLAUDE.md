@@ -289,10 +289,20 @@ Underlying principles for everything:
   can be read (Nineveh's gate bulls are door jambs: faces out, bodies running back down the passage, about two and
   a half times a man's height). State sizes as a ratio to a person, and choose the viewpoint that makes the true
   arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
+- **One word for a connection: Legacy Line** (Tim, 2026-11-11: of "Thread" and "Legacy line", "legacy line is the one
+  i like best"). Players read only "Legacy Line": the foot of a card ("Legacy Line from Archimedes"), the plate when
+  one is made, the named lines of the collection ("The Road to Zama", in `THREADS`), the rules and lessons. A Figure
+  with `insp` is still a "Legacy" Figure with "Legacy of Homer." in its text. In code the old names stay (`from`,
+  `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): under a card
+  being read (`notesFor` in ui.js: what the card grew from, a gold line to the card, and on the line what that is
+  worth as the game's own Spark, Might and Renown marks, then one line saying when and the true sentence); and over
+  a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
+  places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
+  moment there and then (`lineMoment`), before the gift at the end of the pack.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
-- **A card's Thread is printed on it**, in finer print under the pronunciation ("Thread from Archimedes", "Thread
-  from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
+- **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
+  "Legacy Line from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
   its rules text ("Legacy of Homer.").
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
   picture tool can't be trusted to count, so draw several, count each at full size, and pose the thing so every one

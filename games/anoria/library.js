@@ -169,7 +169,7 @@
       el('div', { class: 'lb-count' + (c.own === c.cards ? ' all' : ''), 'aria-label': c.own + ' of ' + c.cards + ' cards are yours' }, [num, el('span', { html: '<em>of ' + c.cards + '</em><small>' + (c.own === c.cards ? 'the whole set' : 'cards') + '</small>' })]),
       el('div', { class: 'lb-cells' }, [
         cell('gd', 'Guides', c.guides, c.guidesAll, showGuides),
-        cell('th', 'Threads', th.filter(t => t.done).length, th.length, () => threadSheet())])]));
+        cell('th', 'Legacy Lines', th.filter(t => t.done).length, th.length, () => threadSheet())])]));
     // one bar for the whole set: both copies, one copy, seen, not found
     const none = c.cards - c.own - c.seen;
     g.appendChild(el('div', { class: 'lb-meter', 'aria-hidden': 'true' }, [['two', two], ['own', c.own - two], ['seen', c.seen], ['new', none]].map(x => x[1] ? el('i', { class: x[0], style: { 'flex-grow': x[1] } }) : null)));
@@ -206,7 +206,7 @@
     const b = L.bar; b.innerHTML = '';
     b.appendChild(el('div', { class: 'lb-seg', role: 'tablist' }, [['binder', 'Binder'], ['timeline', 'Timeline']].map(v => el('button', { type: 'button', role: 'tab', class: st.view === v[0] ? 'on' : '', 'aria-selected': String(st.view === v[0]), text: v[1], onclick: () => setView(v[0]) }))));
     if (st.view !== 'binder') { const th = Coll.threads(), got = th.filter(t => t.done).length;
-      b.appendChild(el('button', { type: 'button', class: 'lb-btn thr', 'aria-label': 'Threads: ' + got + ' of ' + th.length + ' complete', html: KNOT + '<span>Threads</span>', onclick: () => { tap(); threadSheet(); } })); return; }
+      b.appendChild(el('button', { type: 'button', class: 'lb-btn thr', 'aria-label': 'Legacy Lines: ' + got + ' of ' + th.length + ' complete', html: KNOT + '<span>Legacy Lines</span>', onclick: () => { tap(); threadSheet(); } })); return; }
     const n = filterCount(), so = SORTS.filter(x => x[0] === st.sort)[0];
     b.appendChild(el('button', { type: 'button', class: 'lb-btn flt' + (n ? ' on' : ''), 'aria-label': 'Filter' + (n ? ', ' + n + ' on' : ''), html: FUNNEL + '<span>Filter</span>' + (n ? '<b>' + n + '</b>' : ''), onclick: () => { tap(); filterSheet(); } }));
     b.appendChild(el('button', { type: 'button', class: 'lb-btn srt', 'aria-label': 'Sorted by ' + so[1].toLowerCase() + '. Change the order', html: Kit.icon('swap') + '<span>' + so[1] + '</span>',
@@ -526,7 +526,7 @@
       const go = d => { Kit.sfx('tick'); Kit.haptic('light'); T.step += d; paint(); reveal(); };
       c.appendChild(el('div', { class: 'tc-h' }, [el('b', { class: 'tc-th', text: t.n }), p.steps.length > 1 ? el('span', { class: 'tc-n', text: (T.step + 1) + ' of ' + p.steps.length }) : null]));
       if (p.steps.length > 1) { acts.appendChild(ib(Kit.icon('back'), 'The line before', () => go(-1), T.step < 1)); acts.appendChild(ib(Kit.icon('right'), 'The next line', () => go(1), T.step >= p.steps.length - 1)); }
-      acts.appendChild(ib(Kit.icon('close'), 'Leave this Thread', () => { tap(); st.thread = null; T.link = null; paint(); }));
+      acts.appendChild(ib(Kit.icon('close'), 'Leave this Legacy Line', () => { tap(); st.thread = null; T.link = null; paint(); }));
       c.appendChild(acts);
     }
     if (k) {
@@ -544,7 +544,7 @@
     const box = el('div', { class: 'lb-ths' }); let sh = null, open = openId || st.thread || null;
     function paint() {
       box.innerHTML = '';
-      box.appendChild(el('p', { class: 'th-gift', html: GIFT + '<span>When you own every card on a Thread, you are given a second copy of one of them.</span>' }));
+      box.appendChild(el('p', { class: 'th-gift', html: GIFT + '<span>When you own every card on a Legacy Line, you are given a second copy of one of those cards.</span>' }));
       Coll.threads().forEach(t => {
         const p = threadPlan(C.THREADS.filter(x => x.id === t.id)[0]), isOpen = open === t.id;
         const row = el('div', { class: 'th-row' + (t.done ? ' done' : '') + (isOpen ? ' open' : '') });
@@ -562,14 +562,14 @@
               el('button', { type: 'button', class: 'th-pic', 'aria-label': s === 'new' ? 'Not found yet' : nameOf(id), onclick: e => { if (s === 'new') mystery(e.currentTarget, id); else U.openView(keyOf(id)); } }, [thumb(id)]),
               el('div', { class: 'th-w' }, [el('b', { text: s === 'new' ? 'Not found' : nameOf(id) }), s !== 'new' && whenOf(id) != null ? el('i', { text: yearText(whenOf(id)) }) : null, tx])]));
           });
-          chain.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Show this Thread on the timeline', onclick: () => { Kit.sfx('whoosh'); Kit.haptic('medium'); st.thread = t.id; sh.close(); if (L) setView('timeline', true); } }));
+          chain.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Show this Legacy Line on the timeline', onclick: () => { Kit.sfx('whoosh'); Kit.haptic('medium'); st.thread = t.id; sh.close(); if (L) setView('timeline', true); } }));
           row.appendChild(chain);
         }
         box.appendChild(row);
       });
     }
     paint();
-    sh = Kit.sheet({ title: 'Threads', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    sh = Kit.sheet({ title: 'Legacy Lines', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
 
   window.AnoriaLibrary = { open: open };

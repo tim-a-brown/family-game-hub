@@ -381,7 +381,7 @@
     },
     end(r, o) {
       const first = !UI().Coll.load().starter;
-      return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Threads. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
+      return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Legacy Lines. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
         actions: [{ label: o.from === 'contents' ? 'Back to the guide' : first ? 'Choose your Guide' : 'Done', fn: () => leave(r) },
           { label: 'Watch the quick start again', fn: () => play(QUICK, o) },
           o.from === 'contents' ? null : { label: 'See the full guide', fn: () => { halt(); open(); } }] };
@@ -489,19 +489,19 @@
         await L.say('The others join you as you beat the computer. A new Guide arrives at 3, 8, 15 and 25 wins.', { scene: 1 });
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.', { scene: 1 });
       } },
-    { id: 'legacy', n: 'Legacy lines and Threads', sub: 'Who inspired whom', art: 'virgil',
+    { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
       table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy</b> Figure names who inspired it. Virgil modelled the Aeneid on Homer, and Homer is on your side.', at: [L.card('virgil'), L.piece('homer')] });
-        await L.say('A gold line joins them. Virgil cost 1 less, and he has +1 Might for as long as Homer stands.', { at: [L.piece('virgil'), L.piece('homer')] });
-        await L.say('Making the line also scored you 1 Renown. That happens once, as Virgil arrives, and not again on later turns.', { at: '.an-strip.me .st-ren' });
+        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modelled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
+        await L.say('Virgil cost 1 Spark less, and he has +1 Might for as long as Homer is in play, connected by a gold Legacy Line on the map.', { at: [L.piece('virgil'), L.piece('homer')] });
+        await L.say('The Legacy Line also scored you 1 Renown as Virgil arrived. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
-        await L.deed('eureka', { lit: 'A <b>Thread</b> works the same way for any card that grew out of something. Eureka! came from Archimedes.', at: [L.card('eureka'), L.piece('archimedes')] });
-        await L.say('Archimedes stands on your side, so playing Eureka! scores 1 Renown, once, as it is played.', { at: '.an-strip.me .st-ren' });
-        await L.say('Only one line or Thread scores in a round. A second one that round still joins up, but scores nothing. Read a card to see what it grew from.', { at: '.an-hand' });
+        await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The foot of Eureka! names Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });
+        await L.say('With Archimedes in play on your side, Eureka! scores 1 Renown as you play it.', { at: '.an-strip.me .st-ren' });
+        await L.say('Only one Legacy Line scores in each round. You can read any card in your hand to see the Legacy Line printed at its foot.', { at: '.an-hand' });
       } },
     { id: 'count', n: 'The count', sub: 'Who holds what, and what it scores', art: 'acropolis',
       table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', renown: 4, hand: ['galileo', 'compass'], figs: [['copernicus', MY_GATE], ['hatshepsut', MY_OUT]] },
@@ -566,7 +566,7 @@
         await L.say('This is what the card does. A skill word is in bold, and the words after it say what the skill means.', { at: V + '.ac-txt' });
         await L.say('The line in italics is a true fact about her. The fact plays no part in the game.', { at: V + '.ac-fact' });
         await L.say('This is her <b>home region</b>. A Figure has +1 Might at any Place in its home region.', { at: V + '.ac-home' });
-        await L.say('The fine print says how to pronounce the name, and gives the card’s <b>Thread</b>: what it grew from.', { at: V + '.ac-mid' });
+        await L.say('The fine print says how to pronounce the name, and names the card’s <b>Legacy Line</b>: the person, Relic or Place it grew from.', { at: V + '.ac-mid' });
         await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
         if (find(V + '.view-notes')) await L.say('Under the card, each skill and each link is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
