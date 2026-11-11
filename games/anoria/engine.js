@@ -6,7 +6,11 @@ const { CARDS, PLACES, CENTER, EDGE } = cards;
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, ramp: [1, 1, 1, 2, 2, 2], rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
+// Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 30 wins. (Until
+// then the stake doubled from round 4: ramp: [1, 1, 1, 2, 2, 2]. cfg.ramp still works, for test games and for a game
+// saved under the old rule, which finishes under it.) Flat games run about two rounds longer, which is why a deck
+// is 40 cards (coll.js). rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40").
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }

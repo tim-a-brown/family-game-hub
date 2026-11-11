@@ -282,7 +282,8 @@
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
-        notes.appendChild(el('p', { html: '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' }));
+        // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
+        notes.appendChild(el('p', { html: S.cfg.ramp ? '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' : '<b>Every round</b>: whoever holds this Place when the round ends scores ' + worth + ' Renown.' }));
       }
     }
     if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
@@ -457,7 +458,7 @@
       (any ? [['D', 1], ['S', 1], ['V', 1], ['A', 1], ['W', 1]] : deckFacs(d.cards)).forEach(x => cols.appendChild(el('i', { style: { '--c': FAC[x[0]].c, '--n': x[1] } })));
       row.appendChild(el('button', { type: 'button', class: 'dk' + (value === d.id ? ' on' : '') + (d.ok ? '' : ' locked'), 'aria-pressed': String(value === d.id), 'aria-label': d.n + (d.ok ? '' : ', not yours to play yet: ' + d.why.join(', ')),
         onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (d.ok) set(d.id); else lockedDeck(d); } },
-        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own + ' of 30' : d.cards.length + ' of 30') + '</b>' })]));
+        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own : d.cards.length) + ' of ' + Coll.DECK + '</b>' })]));
     });
     if (who !== 'cpu' && window.AnoriaDecks) row.appendChild(el('button', { type: 'button', class: 'dk dk-new', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(null, showSetup); } },
       [el('span', { class: 'dk-g back plus', html: Kit.icon('plus') }), el('span', { class: 'dk-n', text: 'Build a deck' })]));
@@ -550,7 +551,9 @@
     S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
-    G = { mode: cfg.mode, level: cfg.level, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
+    // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
+    // and finishes the way it began, with Places scoring double from round 4.)
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -559,6 +562,7 @@
   }
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
+    if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     buildTable(); V = snap(); render(); beginTurn();
   }
@@ -903,7 +907,8 @@
   function roundSheet() {
     Kit.sfx('tap');
     const st = E.stake(S.cfg, S.round);
-    Kit.sheet({ title: 'Round ' + S.round, html: '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>' +
+    Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
+      : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
       '<p>The first player to reach <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
@@ -1368,7 +1373,7 @@
     '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck is 30 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
@@ -1380,7 +1385,7 @@
     '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown as it arrives. That Renown is scored once, not every turn, and only one line or Thread scores in a round.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
-    '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
+    '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +

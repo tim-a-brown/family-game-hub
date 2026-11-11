@@ -1,4 +1,6 @@
-// Opening packs: how fast does a collection fill? Starter = one ready deck (15 cards, two of each), then packs of 12
+// (An early experiment, kept for its results in packs.txt. The collection's real rules are in games/anoria/coll.js and
+// are played by pacing.js.)
+// Opening packs: how fast does a collection fill? Starter = one ready deck (two of each of its cards), then packs of 12
 // from the 65-card core set. A pack never holds a card you already have the cap of.
 //   node scripts/anoria/packs.js [trials]
 const { CARDS, ARCH } = require('../../games/anoria/cards'); const { rng } = require('../../games/anoria/engine');

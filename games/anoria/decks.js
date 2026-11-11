@@ -1,9 +1,9 @@
 // Anoria: your decks and the deck builder.
 //   AnoriaDecks.open(id, done)   id null: the list of decks (yours, a new one, the five ready decks as recipes);
 //                                a built deck's id: that deck, open for changing. done() when the player leaves.
-// The rules of a deck (30 cards, two of a card at most, no more than you own, one Guide) live in coll.js; this file
+// The rules of a deck (40 cards, two of a card at most, no more than you own, one Guide) live in coll.js; this file
 // only draws them. The builder is two things side by side: the cards you own (tap one to add it) and the deck as it
-// stands (how many of 30, the Spark curve, the factions, the years it spans and the Threads it holds), which is
+// stands (how many of 40, the Spark curve, the factions, the years it spans and the Threads it holds), which is
 // under the cards on a phone held upright and to their left everywhere else.
 (function () {
   'use strict';
@@ -12,7 +12,7 @@
   const KINDS = [['fig', 'Figure'], ['deed', 'Deed'], ['relic', 'Relic']];
   const WORDS = [['legacy', 'Legacy'], ['voyager', 'Voyager'], ['scholar', 'Scholar'], ['guard', 'Guard'], ['steadfast', 'Steadfast'], ['inspiring', 'Inspiring'], ['swift', 'Swift'], ['raider', 'Raider']];
   const SORTS = [['cost', 'Cost'], ['time', 'Time'], ['name', 'Name']];
-  const DRAWN = 19;   // about how many of its 30 cards a deck draws in a game
+  const DRAWN = 29;   // about how many of its 40 cards a player sees in a game (scripts/anoria/variants.txt, "Decks of 40")
   const SORT_KEY = 'anoria_deck_sort';
   // a Thread: two dots joined by a line (the gold line that joins two Figures on the table)
   const THREAD = '<svg class="adk-thg" viewBox="0 0 24 12" aria-hidden="true"><path d="M4 8C9 0 15 12 20 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4" cy="8" r="2.6" fill="currentColor"/><circle cx="20" cy="4" r="2.6" fill="currentColor"/></svg>';
@@ -45,7 +45,7 @@
   // a kit sheet in Anoria's own colours (navy and gilt in every app theme)
   const sheet = o => { const sh = Kit.sheet(o); sh.el.classList.add('adk-sheet'); return sh; };
   const btn = (cls, label, icon, fn) => el('button', { type: 'button', class: 'btn ' + cls, html: (icon || '') + '<span>' + esc(label) + '</span>', onclick: fn });
-  // thirty small slots: the cards in a deck coloured by faction, the rest empty (keys = the deck's cards)
+  // one small slot for each card of a deck (40): the cards in it coloured by faction, the rest empty (keys = the deck's cards)
   function slots(keys, cls) {
     const row = el('span', { class: 'adk-slots ' + (cls || '') }), list = keys.slice().sort(byFac);
     for (let i = 0; i < DECK; i++) row.appendChild(el('i', list[i] ? { class: 'on', style: { '--c': FAC[CARDS[list[i]].f].c } } : null));
@@ -297,7 +297,7 @@
       guideBtn.setAttribute('aria-label', g ? 'Guide: ' + g.n + '. ' + g.tx + ' Change' : 'Choose a Guide');
       guideBtn.appendChild(g ? thumb(st.guide, 'adk-gp') : el('span', { class: 'adk-gp', html: Kit.icon('plus') }));
       guideBtn.appendChild(el('span', { class: 'adk-gw' }, [el('small', { text: 'Guide' }), el('b', { text: g ? g.n : 'Choose a Guide' }), g ? el('span', { text: g.tx }) : null]));
-      // how many of 30
+      // how many of 40
       countEl.className = 'adk-count' + (tot === DECK ? ' ok' : tot > DECK ? ' over' : '');
       countEl.innerHTML = '<b>' + tot + '</b><small>of ' + DECK + '</small>';
       if (lastTotal >= 0 && lastTotal !== tot && !still()) { countEl.classList.remove('bump'); void countEl.offsetWidth; countEl.classList.add('bump'); }
@@ -306,7 +306,7 @@
       const top = Math.max(6, Math.max.apply(null, by));
       bars.forEach((b, i) => { b.fill.style.flexBasis = 'calc((100% - 14px) * ' + (by[i] / top).toFixed(3) + ')'; b.num.textContent = by[i] ? String(by[i]) : ''; });
       curveEl.setAttribute('aria-label', 'Spark curve: ' + by.map((x, i) => x + ' at ' + i).join(', '));
-      // the thirty slots, coloured by faction, and each faction's count
+      // the slots, coloured by faction, and each faction's count
       const sorted = cards.slice().sort(byFac), was = lastTotal;
       Array.prototype.forEach.call(barEl.children, (p, i) => {
         const k = sorted[i]; p.className = k ? 'on' + (owned(k) < n(k) ? ' bad' : '') : ''; if (k) p.style.setProperty('--c', FAC[CARDS[k].f].c); else p.style.removeProperty('--c');
@@ -329,7 +329,7 @@
       thrEl.className = 'adk-thr' + (th ? ' on' : ''); thrEl.innerHTML = THREAD + '<b>' + th + '</b><small>' + (th === 1 ? 'Thread' : 'Threads') + '</small>';
       if (lastThr >= 0 && th > lastThr && !still()) { thrEl.classList.remove('glow'); void thrEl.offsetWidth; thrEl.classList.add('glow'); }
       finBtn.hidden = tot >= DECK || !pool.some(k => owned(k) > n(k));
-      // thirty and a Guide: a gleam runs along the slots
+      // a full deck and a Guide: a gleam runs along the slots
       const done = tot === DECK && !!g;
       if (done && !deckEl.classList.contains('done') && lastTotal >= 0 && !still()) { barEl.classList.remove('gleam'); void barEl.offsetWidth; barEl.classList.add('gleam'); }
       deckEl.classList.toggle('done', done);
@@ -350,7 +350,7 @@
     function paintMore(box) {
       const cards = flat(), keys = Object.keys(st.cnt).sort(byCost), top = box.scrollTop;
       box.innerHTML = '';
-      if (box !== moreEl) {   // (in the sheet: the thirty slots and each faction's count first)
+      if (box !== moreEl) {   // (in the sheet: the slots and each faction's count first)
         const b = barEl.cloneNode(true); Array.prototype.forEach.call(b.children, p => p.classList.remove('pop'));
         box.appendChild(el('div', { class: 'adk-dh' }, [b, facEl.cloneNode(true)]));
       }

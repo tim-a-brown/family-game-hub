@@ -232,15 +232,23 @@ Underlying principles for everything:
   A new kind of engine event needs a handler there.
 - Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
   are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
-- The game's rules are `STD` in engine.js: clashes roll two ordinary dice (`dice: 'high'`), one of each person on your
-  side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
+- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 30 wins
+  (Tim, 2026-11-11; until then Places scored double from round 4, and a game saved under that rule finishes under it:
+  `G.sc`), a round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
+  person on your side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
 - **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
   welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
   and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a
-  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the core set
-  takes about 18 days of daily play at 3 games a day (it was about a month at 2 cards). Its screens are
+  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the 66-card
+  set took about 18 days of daily play at 3 games a day (it was about a month at 2 cards). With the second printing
+  the set is 91 cards and takes about a month again at 3 cards a pack; `pacing.txt` has what 4 and 5 would do.
+- **A deck is 40 cards** (`DECK` in coll.js; 30 until 2026-11-11): each ready deck is 20 different cards, two of each.
+  The five each one gained are `GROWN` in cards.js (the second printing: 25 Figures, all with skills the engine already
+  had). A collection from before (`v` 1) is given the five new cards of its starter deck and of any other ready deck it
+  owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
+  until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
