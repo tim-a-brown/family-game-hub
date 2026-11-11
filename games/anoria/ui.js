@@ -94,19 +94,65 @@
     }
     return newImg(key, small, src);
   }
-  const loaded = {};
+  const loaded = {}, smallWait = {};
+  // (a small picture is in memory from here on: whoever was waiting for it to stand in for a full one is told)
+  function gotSmall(src, im) { if (!loaded[src]) loaded[src] = im; const w = smallWait[src]; if (w) { delete smallWait[src]; w.forEach(fn => fn()); } }
   function newImg(key, small, src) {
     let mem = small && kept[src];
     const im = el('img', { src: mem || src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
     if (FY[key] != null) im.style.objectPosition = '50% ' + FY[key] + '%';   // (which part of the picture to keep, wherever it is cropped)
     im.onerror = function () { if (mem) { mem = ''; kept[src] = ''; im.src = src; return; } noArt[src] = 1; im.remove(); };
-    im.onload = function () { hasArt[src] = 1; if (small) { keep(src); if (!loaded[src]) loaded[src] = im; } };
+    im.onload = function () { hasArt[src] = 1; if (small) { keep(src); gotSmall(src, im); } };
     return im;
   }
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
   // that is drawn again never flashes its name)
   const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
-  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); gotSmall(src, im); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+
+  // Full-size pictures, made ready ahead of the finger (Tim, 2026-11-11: "some of the art flashes into place after
+  // briefly seeing a placeholder"). warm(keys) fetches and decodes them a few at a time and says when they are all
+  // ready; a pack warms its cards the moment it is torn, a strip the cards either side of the front one, the table
+  // your hand. A full card whose picture is not ready is never a flat panel if the small picture is in memory: the
+  // small one stands in, softened (standIn), and the full one comes up over it without a pop (comeUp).
+  const full = {}, warmQ = []; let warmN = 0;
+  function pump() { while (warmN < 4 && warmQ.length) { warmN++; warmQ.shift()(); } }
+  function artReady(key) {
+    const src = artSrc(key, false); if (full[src]) return full[src].p; if (noArt[src]) return Promise.resolve(false);
+    const f = full[src] = { ok: false, im: null };
+    f.p = new Promise(res => { warmQ.push(() => {
+      const im = new Image(), done = ok => { f.ok = ok; warmN--; pump(); res(ok); }; f.im = im; im.decoding = 'async';
+      im.onload = () => { hasArt[src] = 1; (im.decode ? im.decode() : Promise.resolve()).then(() => done(true), () => done(true)); };
+      im.onerror = () => { delete full[src]; done(false); };   // (a dropped connection: it can be tried again)
+      im.src = src; }); pump(); });
+    return f.p;
+  }
+  const warm = keys => Promise.all((keys || []).filter(k => k && (CARDS[k] || TX.GUIDES[k] || C.PLACES[k])).map(artReady));
+  function standIn(key) {
+    const got = loaded[artSrc(key, true)]; if (!got || !got.complete || !got.naturalWidth) return null;
+    try { const c = el('canvas', { class: 'ac-lo', width: got.naturalWidth, height: got.naturalHeight, 'aria-hidden': 'true' }); c.getContext('2d').drawImage(got, 0, 0); if (FY[key] != null) c.style.objectPosition = '50% ' + FY[key] + '%'; return c; } catch (e) { return null; }
+  }
+  function comeUp(key, im) {
+    const f = full[artSrc(key, false)]; if (im.tagName !== 'IMG' || (f && f.ok) || (im.complete && im.naturalWidth)) return;
+    im.classList.add('ld'); const show = () => im.classList.remove('ld');
+    (im.decode ? im.decode() : Promise.reject()).then(show, () => { if (im.complete) show(); else im.addEventListener('load', show); });
+    // (no small picture in memory yet to stand in: it is asked for, and stands in as soon as it comes, if the full one still hasn't)
+    const ssrc = artSrc(key, true);
+    if (!loaded[ssrc] && !noArt[ssrc]) { (smallWait[ssrc] || (smallWait[ssrc] = [])).push(() => { if (!im.classList.contains('ld') || !im.parentNode) return; const lo = standIn(key); if (lo) im.parentNode.insertBefore(lo, im); });
+      preload([key]); }
+  }
+  // The small pictures of the whole set (about 20 KB each), warmed a few at a time once the page is idle, so that
+  // there is always one to stand in.
+  function warmSmall() {
+    const all = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES)); let i = 0;
+    const idle = fn => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 500));
+    // (it gives way to anything that is wanted now: full pictures on their way, a pack being opened, a card being read)
+    const busy = () => warmN > 0 || warmQ.length > 0 || !!document.querySelector('.pk-flow, .view');
+    const step = () => { if (i >= all.length) return; if (!busy()) preload(all.slice(i, i += 4)); setTimeout(() => idle(step), busy() ? 1200 : 350); };
+    // (not before the page itself has finished loading: a picture asked for sooner would hold that up)
+    const begin = () => setTimeout(() => idle(step), 2500);
+    if (document.readyState === 'complete') begin(); else window.addEventListener('load', begin);
+  }
 
   // ═══ The map behind a card's text, drawn from the coastlines ═════════════════════════════════════════════
   let LB = null;
@@ -195,8 +241,9 @@
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
     // (a full card shown on the table: the small picture is there at once, and the full one comes in over it)
-    if (o.now && !o.mini) { const lo = artImg(key, true, true); if (lo && lo.tagName === 'CANVAS') art.appendChild(lo); }
+    if (!o.mini) { const lo = standIn(key); if (lo) art.appendChild(lo); }
     const im = artImg(key, !!o.mini, o.now); if (im) art.appendChild(im);
+    if (im && !o.mini) comeUp(key, im);
     inn.appendChild(art);
     if (c.c != null) { const cost = o.cost != null ? o.cost : c.c; inn.appendChild(el('div', { class: 'ac-cost' + (cost < c.c ? ' less' : '') }, [el('b', { text: String(cost) })])); }
     inn.appendChild(el('div', { class: 'ac-kind', html: MARK[kind] + '<span>' + label + '</span>' }));
@@ -229,6 +276,8 @@
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
     n.appendChild(inn);
+    // (its edition: the finish it is shown in, its rarity mark and the edition button, editions.js. A lesson's cards are Matte.)
+    if (window.AnoriaEd) window.AnoriaEd.dress(n, key, { mini: o.mini, tg: o.tg, ed: o.ed, plain: !!(G && G.demo) });
     return n;
   }
 
@@ -339,6 +388,7 @@
   //   o.keep  every card stays made (a pack's cards remember whether they have been turned), not just the few
   //           on either side of the front one
   //   o.front(i, was)  another card faces you now (called as the strip moves)   o.rest(i)  it came to rest on card i
+  //   o.pose(j, p, CU, FX)  card j's own pose when it is p cards from the front ({t, z, o, dim}), or nothing for the usual one
   // Returns F: pos, items, settle(i, vel), render(), reset() after a resize, stop(), moved(), key(e)
   function makeFlow(o) {
     const n = o.n, flow = o.flow, strip = o.strip, F = { pos: Math.max(0, Math.min(n - 1, o.at || 0)), items: {}, raf: 0, at: -1 };
@@ -354,7 +404,7 @@
       if (!CU) measure();
       const lo = o.keep ? 0 : Math.max(0, Math.floor(F.pos) - 3), hi = o.keep ? n - 1 : Math.min(n - 1, Math.ceil(F.pos) + 3);
       Object.keys(F.items).forEach(k => { if (+k < lo || +k > hi) { F.items[k].remove(); delete F.items[k]; } });
-      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
+      for (let j = lo; j <= hi; j++) { const b = item(j), q = (o.pose && o.pose(j, j - F.pos, CU, FX)) || pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.style.setProperty('--ls', Math.max(-1.5, Math.min(1.5, j - F.pos)).toFixed(3)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
       const idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
       if (idx !== F.at) {
         const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
@@ -368,7 +418,7 @@
     const stop = () => { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; };
     // glide pos to a card: longer trips take a little longer, leave at the flick's own speed, ease to a stop
     function settle(target, vel, slow) {
-      target = Math.max(0, Math.min(n - 1, Math.round(target))); stop(); measure();
+      target = Math.max(0, Math.min(n - 1, Math.round(target))); stop(); measure(); F.to = target;   // (where the strip is gliding to)
       const from = F.pos, dist = target - from, t0 = performance.now(), ms = slow ? Math.max(260, Math.abs(dist) * slow) : Math.min(900, 220 + 140 * Math.pow(Math.abs(dist), .85));
       const s0 = vel && dist && (vel > 0) === (dist > 0) ? Math.min(3, Math.abs(vel) * ms / Math.abs(dist)) : 0;
       const ease = t => { const t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : slow ? t2 * (3 - 2 * t) : 1 - Math.pow(1 - t, 3); };
@@ -417,7 +467,7 @@
       o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null,
         // (o.pick = {label, fn}: the strip is for choosing one of its cards, and this button hands back the card at the front)
         o.pick ? el('button', { type: 'button', class: 'btn btn-primary btn-sm vf-pick', text: o.pick.label, onclick: e => { e.stopPropagation(); const k = keys[Math.max(0, Math.min(n - 1, Math.round(F.pos)))]; closeView(); o.pick.fn(k); } }) : null]) : null, flow, n > 1 ? strip : null, under]);
-    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
+    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; warm(keys.slice(Math.max(0, i - 3), i + 4)); }
     const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
       make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true, tg: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
     // Upright, the card is as tall as the room left once the longest of the bunch's notes has its place under it,
@@ -684,9 +734,9 @@
   // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
   // (a moment later the other Guides' mats too, for whichever one the other player turns out to have)
   const warmed = {};
-  const warm = src => { if (!warmed[src]) { warmed[src] = new Image(); warmed[src].src = src; } };
-  const matWarm = () => { const v = matMineV(), id = v || (Coll.deck(starterId()) || {}).guide; if (typeof id === 'object') warm(artSrc(id.c, false)); else if (MATS[id] && !MATS[id].chart) warm(MATSRC + id + '.webp');
-    setTimeout(() => Object.keys(MATS).forEach(k => { if (!MATS[k].chart) warm(MATSRC + k + '.webp'); }), 900); };
+  const warmSrc = src => { if (!warmed[src]) { warmed[src] = new Image(); warmed[src].src = src; } };
+  const matWarm = () => { const v = matMineV(), id = v || (Coll.deck(starterId()) || {}).guide; if (typeof id === 'object') warmSrc(artSrc(id.c, false)); else if (MATS[id] && !MATS[id].chart) warmSrc(MATSRC + id + '.webp');
+    setTimeout(() => Object.keys(MATS).forEach(k => { if (!MATS[k].chart) warmSrc(MATSRC + k + '.webp'); }), 900); };
   // the seat whose choice of mat is the account's own: the first person at the table
   const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
   const matPick = o => G.demo || G.players[o].cpu ? '' : matMine(o) ? matMineV() : matSeatV(o);
@@ -778,6 +828,7 @@
     if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
     if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
+    if (window.AnoriaEd && !G.demo) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition)
     return n;
   }
   function rowEl(i, T) {
@@ -845,6 +896,7 @@
     if (ui.hideHand || ui.viewer < 0) return;
     const o = ui.view, hand = V.P[o].hand, can = idle() && o === S.turn, T = targets();
     const picking = Object.keys(T.hand).length > 0;
+    if (!G.demo) warm(hand);   // (the full pictures of your hand are ready before you tap one to read it)
     hand.forEach((key, h) => {
       const c = CARDS[key], cost = E.costOf(S, o, key);
       const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (key === 'phalanx' && ui.acts.some(a => a.ph)));
@@ -1724,7 +1776,7 @@
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
-    cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
+    cardEl: cardEl, artImg: artImg, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
@@ -1733,21 +1785,27 @@
   // map. Nothing a picture is about should be cut off or sit under a number.
   function artProof() {
     stop(); G = null; S = null; V = null;
-    const keys = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES));
+    // (?art=1&only=hannibal,compass shows just those; a card that comes in editions has a line for each of them)
+    const only = (/[?&]only=([^&]+)/.exec(location.search) || [])[1], EDS = window.AnoriaEd ? window.AnoriaEd.ED : [{ id: 'matte', n: '' }];
+    const keys = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES)).filter(k => !only || only.split(',').indexOf(k) >= 0);
     const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
     const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
     const rows = keys.map(k => {
       const c = info(k), fig = c.kind === 'fig', row = el('div', { class: 'ap-row' }, [el('h2', { text: c.n })]);
-      const line = el('div', { class: 'ap-line' }, [cell('Full', sized('full', cardEl(k)))]);
-      if (c.kind !== 'place') {
-        line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true }))));
-        if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true }))])));
-      }
-      if (fig) {
-        const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
-        line.appendChild(cell('On the map', el('span', { class: 'fp o0', style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
-      }
-      row.appendChild(line); return row;
+      (C.CARDS[k] ? EDS : EDS.slice(0, 1)).forEach((x, e) => {
+        const line = el('div', { class: 'ap-line' }, [cell(C.CARDS[k] && x.n ? x.n : 'Full', sized('full', cardEl(k, { ed: e })))]);
+        if (C.CARDS[k] && window.AnoriaEd) { line.appendChild(cell('The picture large', sized('full an-artview', cardEl(k, { ed: e, tg: true })))); }
+        if (c.kind !== 'place') {
+          line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true, ed: e }))));
+          if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true, ed: e }))])));
+        }
+        if (fig) {
+          const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
+          line.appendChild(cell('On the map', el('span', { class: 'fp o0' + (e ? ' ed-' + x.id : ''), style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
+        }
+        row.appendChild(line);
+      });
+      return row;
     });
     // the play mats, each the size it lies on a phone, under an empty standing place and a piece of each player's colour
     const piece = o => el('span', { class: 'fp o' + o, style: { '--f': FAC.V.c } }, [el('span', { class: 'fp-card' }, [el('span', { class: 'fp-art' })]), el('span', { class: 'fp-m' }, [el('b', { text: '4' })])]);
@@ -1756,11 +1814,12 @@
       n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
       return cell(MATS[id].n, n); }))]));
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn, and the play mats.' })].concat(rows)));
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ' in every edition' : '') + ', and the play mats.' })].concat(rows)));
   }
 
   const saved = readSave();
   const want = (/[?&](library|packs|decks|guide)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet)
+  if (!/[?&]art(=|&|$)/.test(location.search)) warmSmall();   // (the proof draws every picture itself)
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
   else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) { window.AnoriaGuide.quickStart(); return; }   // (the first time here: two minutes of the game being played)

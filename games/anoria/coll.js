@@ -5,7 +5,9 @@
 // Saved under two keys that follow the account like everything else a game stores (a guest's stay on the device):
 //   anoria_coll   {v, starter, cards{key: copies}, guides[], seen{key: 1}, fresh{key: 1} (not looked at yet),
 //                  packs[{id, k: 'welcome' | 'daily' | 'feat', why, n}], wins, games, day (the day of the last daily
-//                  pack), feats{normal, hard, built}, threads{id: 1} (finished and rewarded), opened}
+//                  pack), feats{normal, hard, built}, threads{id: 1} (finished and rewarded), opened,
+//                  ed{key: bits} (the editions of a card found besides Matte: bit 1 Shiny, 2 Silver foil, 3 Gold foil,
+//                  4 Rainbow foil), look{key: 0..4} (the edition the card is shown in)}
 //   anoria_decks  [{id, n, guide, cards[]}]   the decks you built (a deck is DECK cards: one saved when a deck was 30
 //                  is kept as it is and reads as 10 short until it is filled)
 //
@@ -25,21 +27,49 @@
 //   - v 3 (2026-11-11, the legends left the set: cards.js RETIRED): whoever owned a retired card owns the card that has
 //     its slot instead, as many copies, and the decks they built hold it too. No pack can give a retired card, because
 //     packs only ever draw from the set (ALL). A named Thread finished before keeps its flag under its old id.
+//   - Editions (v 4, Tim, 2026-11-11): every card is printed in five finishes that play the same, each rarer than the
+//     one before: Matte, Shiny, Silver foil, Gold foil and Rainbow foil (EDITIONS). Every card out of a pack has one,
+//     rolled by ED_ODDS. A Matte card is a copy you are missing, as before. A foil is a card you have not found in
+//     that finish, whether or not you have two of it: it counts as a copy if you are missing one, and either way the
+//     finish is yours for that card for good, on every copy. So a pack never holds something you already have, and
+//     once you have two of every card the packs go on turning up finishes until there are none left to find. While
+//     copies are still missing, a foil of a card you have two of is an extra card in the pack, so the set takes as
+//     long to complete as it did before there were foils. A collection from before has every card in Matte, and an
+//     edition found for a card that is retired later goes to the card that takes its slot.
+//   - Rarity (the same day: "make more powerful cards more rare to find in packs"): every card has a tier from its
+//     power, 1 Common to 4 Legendary (RARE, worked out by scripts/anoria/rarity.js and written down here), and a
+//     pack slot is that much less likely to be a card of a higher tier (TIER_W).
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
 const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 3;
+const WELCOME = [12, 12, 12], GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 4;
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
+// The five editions of a card, commonest first, and the chance that a card out of a pack is each of the foils (the
+// rest are Matte). pacing.js plays these: about one pack in three holds a foil of some kind, and a Rainbow foil is
+// weeks apart.
+const EDITIONS = [{ id: 'matte', n: 'Matte' }, { id: 'shiny', n: 'Shiny' }, { id: 'silver', n: 'Silver foil' }, { id: 'gold', n: 'Gold foil' }, { id: 'rainbow', n: 'Rainbow foil' }];
+let ED_ODDS = [0, 0.085, 0.04, 0.018, 0.007];
+// Rarity. The cards of each tier, from "node scripts/anoria/rarity.js 6000" (rarity.txt has the table). A card on
+// none of the lists (a new set, before the script is run again) goes by its cost.
+const RARE = {
+  4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
+  3: 'chingshih sargon hannibal aristotle shaka beethoven mansamusa hiawatha bolivar joan darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
+  2: 'copernicus dante saladin murasaki shakespeare douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
+  1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun earhart ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
+};
+const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
+Object.keys(RARE).forEach(t => RARE[t].split(' ').forEach(k => { if (k) TIER[k] = +t; }));
+const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 
 // where it's kept, the dice and the clock: the page's own unless a test hands in others (use())
 let store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 let rnd = Math.random, now = () => new Date();
-function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; cache = null; }
+function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; if (o.odds) ED_ODDS = o.odds; cache = null; }
 
-const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1 });
+const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1, ed: {}, look: {} });
 let cache = null, cacheRaw = null;
 function load() {
   const raw = store.get(KEY);
@@ -47,9 +77,11 @@ function load() {
   let s = null; try { s = raw ? JSON.parse(raw) : null; } catch (e) {}
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
+  if (!cache.ed || typeof cache.ed !== 'object') cache.ed = {}; if (!cache.look || typeof cache.look !== 'object') cache.look = {};
   // (retired cards first, so that a ready deck owned whole under its old cards still counts as owned whole in grow().
   // retire() goes by what is in the collection, not by its version: a device that has not updated yet can write the
-  // old keys back, and they are put right again here.)
+  // old keys back, and they are put right again here. v 4 added editions: a collection from before has none found,
+  // so every card is Matte, and nothing else changes.)
   const v = cache.v || 1, had = !!cache.starter, swapped = retire(cache);
   if (v < 2) grow(cache);
   if (v < VER || swapped) { cache.v = VER; if (had || swapped) save(cache); myDecks(); }   // (myDecks puts the decks they built right too)
@@ -64,7 +96,10 @@ function retire(s) {
   Object.keys(RETIRED).forEach(old => { const k = RETIRED[old].to;
     if (s.cards && s.cards[old] != null) { if (s.cards[old] > 0) { s.cards[k] = Math.min(CAP, (s.cards[k] || 0) + s.cards[old]); s.seen[k] = 1; s.fresh[k] = 1; } delete s.cards[old]; ch = true; }
     if (s.seen && s.seen[old] != null) { s.seen[k] = 1; delete s.seen[old]; ch = true; }
-    if (s.fresh && s.fresh[old] != null) { if (s.cards[k]) s.fresh[k] = 1; delete s.fresh[old]; ch = true; } });
+    if (s.fresh && s.fresh[old] != null) { if (s.cards[k]) s.fresh[k] = 1; delete s.fresh[old]; ch = true; }
+    // (the editions found for the old card, and the one it was shown in, are the new card's)
+    if (s.ed && s.ed[old] != null) { s.ed[k] = (s.ed[k] || 0) | s.ed[old]; delete s.ed[old]; ch = true; }
+    if (s.look && s.look[old] != null) { if (s.look[old] > (s.look[k] || 0)) s.look[k] = s.look[old]; delete s.look[old]; ch = true; } });
   if (ch && s.starter && ARCH[s.starter]) { const mine = ARCH[s.starter].cards; THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; }); }
   return ch;
 }
@@ -95,6 +130,13 @@ function counts() {
   for (const k of ALL) { const n = Math.min(CAP, s.cards[k] || 0); if (n) { own++; cop += n; } else if (s.seen[k]) seen++; }
   return { own: own, copies: cop, seen: seen, cards: ALL.length, all: ALL.length * CAP, guides: s.guides.length, guidesAll: Object.keys(GUIDES).length, complete: cop === ALL.length * CAP && s.guides.length === Object.keys(GUIDES).length };
 }
+// The editions of a card: which are found ([Matte, Shiny, Silver foil, Gold foil, Rainbow foil]: Matte is found once
+// you own the card), the one it is shown in, and choosing another (only one you have found).
+function editions(k) { const s = load(), b = s.ed[k] || 0; return EDITIONS.map((x, e) => (e ? !!(b >> e & 1) : (s.cards[k] || 0) > 0)); }
+function look(k) { const s = load(), e = s.look[k] || 0; return e && (s.ed[k] || 0) >> e & 1 ? e : 0; }
+function setLook(k, e) { const s = load(); e = +e || 0; if (!CARDS[k] || look(k) === e || (e && !((s.ed[k] || 0) >> e & 1))) return false; if (e) s.look[k] = e; else delete s.look[k]; save(s); return true; }
+// how many cards have been found in each edition
+function edCounts() { const s = load(), n = EDITIONS.map(() => 0); for (const k of ALL) { if (s.cards[k]) n[0]++; const b = s.ed[k] || 0; for (let e = 1; e < n.length; e++) if (b >> e & 1) n[e]++; } return n; }
 function markSeen(keys) { const s = load(); let ch = false; (keys || []).forEach(k => { if (CARDS[k] && !s.seen[k]) { s.seen[k] = 1; ch = true; } }); if (ch) save(s); }
 function looked(k) { const s = load(); if (s.fresh[k]) { delete s.fresh[k]; save(s); } }
 // (leaving the Library: you've seen what's new there)
@@ -113,25 +155,47 @@ function chooseStarter(name) {
 
 // ── Packs ───────────────────────────────────────────────────────────────────────────────────────────────────
 // Open the pack with this id (the oldest one if none is named): its cards join the collection.
-// Returns {pack, cards: [{c, first (your first copy), n (copies you now have)}], threads: [...] (see settleThreads)}
+// Returns {pack, cards: [{c, first (your first copy), n (copies you now have), ed (the edition it came in, 0..4),
+// copy (it added a copy: a foil of a card you had two of did not)}], threads: [...] (see settleThreads)}
+// A foil of a card you already had two of comes as an extra card (the slot it turned up in still holds a copy you are
+// missing), so the foils never hold the set back: a pack of 3 can have 4 cards in it.
 function openPack(id) {
   const s = load(), i = id == null ? 0 : s.packs.findIndex(p => p.id === id); if (i < 0 || !s.packs[i]) return null;
   const pack = s.packs.splice(i, 1)[0], out = [];
-  for (let n = 0; n < pack.n; n++) {
-    const k = missing(s, FRESH[pack.k] || 0); if (!k) break;
-    const first = !s.cards[k]; s.cards[k] = (s.cards[k] || 0) + 1; s.seen[k] = 1; if (first) s.fresh[k] = 1;
-    out.push({ c: k, first: first, n: s.cards[k] });
+  for (let n = 0, extra = 0; n < pack.n; n++) {
+    const x = slot(s, FRESH[pack.k] || 0); if (!x) break;
+    const k = x.k, copy = (s.cards[k] || 0) < CAP, first = !s.cards[k];
+    if (copy) s.cards[k] = (s.cards[k] || 0) + 1; s.seen[k] = 1; if (first) s.fresh[k] = 1;
+    if (x.e) found(s, k, x.e);
+    out.push({ c: k, first: first, n: s.cards[k], ed: x.e, copy: copy });
+    if (!copy && extra < pack.n && ALL.some(c => (s.cards[c] || 0) < CAP)) { extra++; n--; }
   }
   s.opened++; save(s);
   return { pack: pack, cards: out, threads: settleThreads() };
 }
-// One copy you're missing. Each missing copy is as likely as any other (so a card you have none of is twice as
-// likely as one you have one of); fresh is the chance the slot goes straight to a card you have none of.
+// One slot of a pack: which card, in which edition. The edition is rolled first (ED_ODDS). A Matte slot is a copy
+// you are missing; a foil slot is a card you have not found in that finish. A roll with nothing left to give moves
+// up to the next edition that has (then down), so a slot is only empty when there is nothing at all left to find.
+function rollEdition() { let r = rnd(); for (let e = EDITIONS.length - 1; e > 0; e--) { if (r < ED_ODDS[e]) return e; r -= ED_ODDS[e]; } return 0; }
+function slot(s, fresh) {
+  const e0 = rollEdition(), order = []; for (let e = e0; e < EDITIONS.length; e++) order.push(e); for (let e = e0 - 1; e >= 0; e--) order.push(e);
+  for (const e of order) {
+    if (!e) { const k = missing(s, fresh); if (k) return { k: k, e: 0 }; continue; }
+    const pool = ALL.filter(k => !((s.ed[k] || 0) >> e & 1)); if (!pool.length) continue;
+    return { k: weighted(pool, k => TIER_W[rarity(k)]), e: e };
+  }
+  return null;
+}
+function weighted(pool, w) { let tot = 0; pool.forEach(k => { tot += w(k); }); let r = rnd() * tot; for (const k of pool) { r -= w(k); if (r < 0) return k; } return pool[pool.length - 1]; }
+// this edition of this card is found, for good; the card is shown in it unless it is already shown in a rarer one
+function found(s, k, e) { s.ed[k] = (s.ed[k] || 0) | (1 << e); if (e > (s.look[k] || 0)) s.look[k] = e; }
+// One copy you're missing. Each missing copy is as likely as any other of its rarity (so a card you have none of is
+// twice as likely as one you have one of, and a Common is likelier than a Legendary by TIER_W); fresh is the chance
+// the slot goes straight to a card you have none of.
 function missing(s, fresh, among) {
   const pool = (among || ALL).filter(k => (s.cards[k] || 0) < CAP); if (!pool.length) return null;
-  const none = pool.filter(k => !s.cards[k]); if (none.length && rnd() < fresh) return none[(rnd() * none.length) | 0];
-  let tot = 0; pool.forEach(k => { tot += CAP - (s.cards[k] || 0); }); let r = rnd() * tot;
-  for (const k of pool) { r -= CAP - (s.cards[k] || 0); if (r < 0) return k; } return pool[pool.length - 1];
+  const none = pool.filter(k => !s.cards[k]); if (none.length && rnd() < fresh) return weighted(none, k => TIER_W[rarity(k)]);
+  return weighted(pool, k => TIER_W[rarity(k)] * (CAP - (s.cards[k] || 0)));
 }
 const packs = () => load().packs.slice();
 function addPack(s, k, why, n) { const p = { id: s.pid++, k: k, why: why, n: n }; s.packs.push(p); return p; }
@@ -227,6 +291,6 @@ function finish(d) {
   return cards;
 }
 
-return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
+return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; }, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
   problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL };
 });

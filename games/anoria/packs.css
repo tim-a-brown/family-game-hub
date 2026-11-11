@@ -536,3 +536,59 @@
   .pk-side.f,.pk-c.up .pk-side.b{transition-delay:0s;}
   .pk-c.new::before{display:none;}
 }
+
+/* ══ A card comes to the front by tumbling over (packs.js tumble(), land()). Its leading edge is the hinge and stays
+   where it is; the rest of the card comes up toward you and over, back until it is edge-on and face after. While it
+   is face down the cell is a real card in space: two faces a card's thickness apart, an edge between them, and each
+   face dimmed by how far it still has to come. Once it has landed it is an ordinary cell of the strip again. ══ */
+.pk-fc .pk-fl{transition:none;}
+.pk-fc.up .pk-side.b,.pk-fc.up .pk-side.f{transition:none;}
+.pk-fc:not(.up) .ac-tg{pointer-events:none;}
+.pk-fc .pk-knot{top:22%;}   /* (clear of the edition button on the picture's lower right) */
+.pk-fc .pk-tag{white-space:nowrap;}   /* ("Second copy" stays on one line on a narrow card, where two lines ran off the top sideways) */
+.pk-fc.tum{transform-origin:0 50%;transform-style:preserve-3d;--ct:calc(var(--cw) * .014);}
+.pk-fc.tum::after{display:none;}
+.pk-fc.tum .pk-side{visibility:visible;}
+.pk-fc.tum .pk-side.b{transform:translateZ(calc(var(--ct) / 2));}
+.pk-fc.tum .pk-side.f{transform:rotateY(180deg) translateZ(calc(var(--ct) / 2));}
+.pk-fc.tum .pk-side::after{content:"";position:absolute;inset:0;border-radius:calc(var(--cw) * .043);background:rgba(6,8,18,.5);opacity:var(--dim,1);pointer-events:none;}
+.pk-edge{display:none;}
+.pk-fc.tum .pk-edge{display:block;position:absolute;top:2.6%;bottom:2.6%;left:100%;width:var(--ct);margin-left:calc(var(--ct) / -2);transform:rotateY(90deg);
+  background:linear-gradient(90deg,#a89a78,#efe7d2 28%,#fffaf0 50%,#e2d8be 72%,#a89a78);}
+/* its shadow on the table, under the part of the card that is over it */
+.pk-sh{position:absolute;left:50%;top:5%;width:calc(var(--cu) * .7143);height:94%;border-radius:8%;background:#01020a;filter:blur(calc(var(--cu) * .028));
+  transform-origin:0 50%;pointer-events:none;opacity:0;will-change:transform,opacity;}
+/* it lands: pressed into the table for a moment, then at rest */
+.pk-fc.land .pk-fl{animation:pk-land .44s cubic-bezier(.3,.9,.4,1);}
+@keyframes pk-land{0%{transform:rotateY(180deg) scale(1);}28%{transform:rotateY(180deg) scale(.972);}62%{transform:rotateY(180deg) scale(1.008);}100%{transform:rotateY(180deg) scale(1);}}
+/* The glow as a card lands stays round the card (Tim: the wash over the whole screen at every turn read as a flash).
+   The wash is kept for a Gold or a Rainbow foil (editions.css). */
+.pk-fc.up .pk-glow{animation:pk-soft .6s ease-out forwards;}
+.pk-fc.up.new .pk-glow{animation:pk-softNew .85s ease-out forwards;}
+@keyframes pk-soft{0%{opacity:.5;transform:scale(1);}30%{opacity:.58;transform:scale(1.06);}100%{opacity:0;transform:scale(1.12);}}
+@keyframes pk-softNew{0%{opacity:.6;transform:scale(1);}25%{opacity:.8;transform:scale(1.13);}100%{opacity:0;transform:scale(1.26);}}
+.pk-fc.new::before{width:176%;margin:-88% 0 0 -88%;animation:pk-raysSoft .9s ease-out;}
+@keyframes pk-raysSoft{0%{opacity:0;transform:scale(.4) rotate(0);}24%{opacity:.42;}100%{opacity:0;transform:scale(1) rotate(34deg);}}
+
+/* A Legacy Line between the card at the front and a card of yours, on the plate (packs.js linkEl): drawn as the
+   reader draws it (ui.css .ln): the two cards named, the gold line between them, what it is worth on the line. */
+.pk-p-th.pk-ll{display:flex;flex-direction:column;align-items:stretch;gap:6px;}
+.pk-ll .ln-k{font-size:.72rem;}
+.pk-ll .ln-row{justify-content:center;}
+.pk-ll .ln-who{width:84px;}
+.pk-ll .ln-who small{font-size:.76rem;}
+.pk-ll .ln-m{cursor:default;}
+.pk-ll .ln-m.me{box-shadow:0 0 0 1.5px #10131c,0 0 0 3px #fff1bf,0 0 12px 3px rgba(246,227,161,.8);}
+.pk-ll .ln-line{flex:1 1 0;max-width:150px;}
+.pk-ll .ln-why{margin:0;}
+@media (orientation:landscape) and (max-height:599px){.pk-ll .ln-who{width:70px;} .pk-ll .ln-m{width:38px;height:38px;} .pk-ll .ln-line{height:38px;min-width:56px;}}
+
+/* a calm screen: no tumble. A card changes face where it stands, with a plain cross-fade. */
+@media (prefers-reduced-motion:reduce){
+  .pk-fc .pk-fl{transform:none !important;animation:none !important;}
+  .pk-fc .pk-side{-webkit-backface-visibility:visible;backface-visibility:visible;visibility:visible !important;transition:opacity .3s ease !important;}
+  .pk-fc .pk-side.f{transform:none;opacity:0;}
+  .pk-fc.up .pk-side.f{opacity:1;}
+  .pk-fc.up .pk-side.b{opacity:0;}
+  .pk-fc.new::before{display:none;}
+}

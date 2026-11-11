@@ -1,0 +1,275 @@
+/* Anoria: the five editions of a card (editions.js). The picture is the same picture; an edition is the finish and the
+   frame, each rarer than the one before:
+     Matte         the card as printed (no class)
+     Shiny         .ed-shiny    a gloss over the picture that catches the light
+     Silver foil   .ed-silver   a silver frame and rules, a cool metal sheen over the picture
+     Gold foil     .ed-gold     a gilt frame, a foil-stamped title, a warm sheen
+     Rainbow foil  .ed-rainbow  no frame: the picture runs to the edge of the card, the words on a dark panel over it,
+                                under a holographic foil
+   A full card (being read, on a strip, out of a pack) carries two layers over its picture, .ed-fx.a (the foil) and
+   .ed-fx.b (the light on it). Where the light falls comes from --lx and --ly (-1..1 across and down the card: the
+   finger, the pointer or the tilt of the phone, set by editions.js on the card in front) and --ls (how far a card on
+   a strip is from the front, set by makeFlow, so the light slides over the cards as they pass). A small card (hand,
+   table, Library) has no layers and nothing that moves: its finish is drawn still, so nothing on the table blinks. */
+
+.ac{--el:clamp(-1.5,var(--lx,-.3) + var(--ls,0) * 1.25,1.5);--et:clamp(-1.2,var(--ly,-.35),1.2);
+  --px:calc(50% - var(--el) * 30%);--py:calc(50% - var(--et) * 30%);--gx:calc(50% + var(--el) * 46%);--gy:calc(50% + var(--et) * 46%);
+  --ed-silver:linear-gradient(135deg,#f4f7fb,#8c9bb1 28%,#fbfcfe 46%,#6c7a91 70%,#cdd6e2);
+  --ed-gold:linear-gradient(135deg,#f8e6a6,#b07c22 28%,#fff3c4 46%,#8f5f14 70%,#edd28a);
+  --ed-rain:linear-gradient(115deg,#ff7ad1,#ffd166 22%,#7dffc0 44%,#6fc3ff 66%,#c79bff 84%,#ff7ad1);}
+.ed-fx{position:absolute;left:0;right:0;top:0;height:100%;z-index:1;pointer-events:none;display:none;background-repeat:no-repeat;}
+
+/* ── A gem: an edition drawn small (the button on a card, the chooser, the Library, a pack's tags and tally) ── */
+.ed-gem{position:relative;display:inline-block;flex:none;width:1em;height:1em;transform:rotate(45deg) scale(.78);border-radius:20%;background:var(--eg);
+  box-shadow:0 0 0 1px rgba(8,10,18,.6),inset 0 0 0 1px rgba(255,255,255,.4);}
+.ed-gem.e0{--eg:linear-gradient(135deg,#e6dcc2,#a89a78);box-shadow:0 0 0 1px rgba(8,10,18,.6);}
+.ed-gem.e1{--eg:linear-gradient(135deg,#ffffff 0 34%,#8fd0ff 34% 46%,#eaf6ff 46% 70%,#6db6ee);}
+.ed-gem.e2{--eg:linear-gradient(135deg,#fbfcfe,#8b98ad 48%,#eef2f7 56%,#566378);}
+.ed-gem.e3{--eg:linear-gradient(135deg,#fff3bf,#d9a431 48%,#ffeeb0 56%,#8f5f14);}
+.ed-gem.e4{--eg:conic-gradient(from 200deg,#ff7ad1,#ffd166,#7dffc0,#6fc3ff,#c79bff,#ff7ad1);}
+.ed-gem.off{background:none;box-shadow:inset 0 0 0 1px rgba(233,207,134,.5);}
+
+/* ── Rarity: a small mark at the foot of a full card's ribbon, in the edition's own finish. More points, rarer:
+   a dot (Common), a diamond (Uncommon), a four-point star (Rare), a compass rose (Legendary). ── */
+.ac-rar{position:absolute;left:.35em;bottom:.55em;width:1.3em;height:1.3em;z-index:3;pointer-events:none;background:var(--rf,#f3e9d2);
+  -webkit-mask:var(--rs) center/contain no-repeat;mask:var(--rs) center/contain no-repeat;}
+.ac-paper > .ac-rar{position:absolute;z-index:3;}
+.ac-rar.r1,.ed-rar.r1{--rs:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='6' cy='6' r='3.1'/%3E%3C/svg%3E");}
+.ac-rar.r2,.ed-rar.r2{--rs:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 .9 10.3 6 6 11.1 1.7 6z'/%3E%3C/svg%3E");}
+.ac-rar.r3,.ed-rar.r3{--rs:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 .3 7.6 4.4 11.7 6 7.6 7.6 6 11.7 4.4 7.6 .3 6 4.4 4.4z'/%3E%3C/svg%3E");}
+.ac-rar.r4,.ed-rar.r4{--rs:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 0 7.2 4.8 12 6 7.2 7.2 6 12 4.8 7.2 0 6 4.8 4.8z'/%3E%3Cpath d='M2.2 2.2 6 4.4 9.8 2.2 7.6 6 9.8 9.8 6 7.6 2.2 9.8 4.4 6z'/%3E%3C/svg%3E");}
+.ac.rar:not(.mini) .ac-paper > .ac-rib{box-sizing:border-box;padding-bottom:2em;}
+.ac.mini .ac-rar{display:none;}
+.ac.ed-shiny .ac-rar{--rf:linear-gradient(135deg,#fff 0 38%,#a9dcff 38% 52%,#fff 52%);}
+.ac.ed-silver .ac-rar{--rf:var(--ed-silver);}
+.ac.ed-gold .ac-rar{--rf:var(--ed-gold);}
+.ac.ed-rainbow .ac-rar{--rf:var(--ed-rain);}
+
+/* ── The edition button: opposite the picture and words button, on the picture's lower right ── */
+.ac-ed{position:absolute;right:.9em;bottom:1.6em;z-index:3;width:3.3em;height:3.3em;padding:0;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;pointer-events:auto;font-size:1em;
+  background:rgba(16,19,28,.74);box-shadow:0 0 0 1px rgba(233,207,134,.85),0 .2em .7em rgba(0,0,0,.55);-webkit-tap-highlight-color:transparent;transition:transform .15s var(--spring),background .15s;}
+.ac-ed::before{content:"";position:absolute;inset:-.7em;}
+.ac-ed:active{transform:scale(.9);}
+.ac-ed:focus-visible{outline:2px solid #fff1bf;outline-offset:2px;}
+.ac-ed .ed-gem{font-size:1.7em;}
+.ac-ed[aria-expanded="true"]{background:rgba(16,19,28,.92);box-shadow:0 0 0 1.5px #fff1bf,0 0 .9em rgba(246,227,161,.6);}
+.an-artview .ac-ed{background:rgba(16,19,28,.86);}
+
+/* (only the front card of a strip, and a pack's card once it is turned, answer to the button) */
+.vf-c:not(.front) .ac-ed,.pk-fc:not(.up) .ac-ed{pointer-events:none;}
+/* (a finger on the card being read moves the light on it, not the page) */
+.view:not(.flow) > .ac{touch-action:none;}
+
+/* ══ Shiny: a clear gloss. The picture is a touch richer, and a band of light lies across it. ══ */
+.ac.ed-shiny:not(.mini) .ac-art :is(img,canvas){filter:saturate(1.12) contrast(1.05);}
+.ac.ed-shiny:not(.mini) .ed-fx.a{display:block;mix-blend-mode:overlay;background-image:linear-gradient(112deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.34) 42%,rgba(255,255,255,.9) 50%,rgba(255,255,255,.34) 58%,rgba(255,255,255,0) 70%);background-size:300% 300%;background-position:var(--px) var(--py);}
+.ac.ed-shiny:not(.mini) .ed-fx.b{display:block;mix-blend-mode:screen;background-image:linear-gradient(112deg,rgba(255,255,255,0) 42%,rgba(255,255,255,.2) 47.5%,rgba(255,255,255,.46) 50%,rgba(255,255,255,.16) 52.5%,rgba(255,255,255,0) 59%),linear-gradient(112deg,rgba(255,255,255,0) 62.5%,rgba(255,255,255,.17) 64.5%,rgba(255,255,255,0) 66.5%);background-size:300% 300%,300% 300%;background-position:var(--px) var(--py),var(--px) var(--py);}
+.ac.mini.ed-shiny .ac-art::after{background:linear-gradient(114deg,rgba(255,255,255,0) 22%,rgba(255,255,255,.4) 36%,rgba(255,255,255,.12) 43%,rgba(255,255,255,0) 52%),radial-gradient(120% 80% at 30% 0%,rgba(255,255,255,.2),rgba(255,255,255,0) 60%);}
+
+/* ══ Silver foil: the frame and its rules in silver, the picture under a cool brushed metal ══ */
+.ac.ed-silver{background:var(--ed-silver);box-shadow:0 1.6em 3.6em rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.55);}
+.ac.ed-silver::after{inset:.55em;border-radius:.85em;background:linear-gradient(#232b3a,#232b3a) border-box;opacity:.7;}
+.ac.ed-silver:not(.mini) .ac-art :is(img,canvas){filter:saturate(.94) contrast(1.06);}
+.ac.ed-silver .ac-when::after{background:linear-gradient(90deg,#77859b,#f4f7fb 45%,#5f6c82);}
+.ac.ed-silver .ac-kind{color:#eef2f8;}
+.ac.ed-silver .ac-kind::before{border-color:rgba(226,233,243,.8);}
+.ac.ed-silver:not(.mini) .ac-kind svg{filter:grayscale(1) brightness(1.5);}
+.ac.ed-silver:not(.mini) .ed-fx.a{display:block;mix-blend-mode:overlay;opacity:.5;
+  background-image:repeating-linear-gradient(98deg,rgba(255,255,255,.16) 0 .05em,rgba(255,255,255,0) .05em .19em),linear-gradient(118deg,#7f93b2 0%,#eef4fc 20%,#8a9cb8 36%,#ffffff 50%,#8193b0 64%,#e3ecf8 80%,#7c8fad 100%);
+  background-size:100% 100%,260% 260%;background-position:0 0,var(--px) var(--py);}
+.ac.ed-silver:not(.mini) .ed-fx.b{display:block;mix-blend-mode:color-dodge;
+  background-image:linear-gradient(112deg,rgba(190,214,255,0) 36%,rgba(196,218,255,.16) 44%,rgba(226,238,255,.34) 50%,rgba(186,210,250,.16) 56%,rgba(190,214,255,0) 64%);background-size:300% 300%;background-position:var(--px) var(--py);}
+.ac.mini.ed-silver .ac-art::after{background:linear-gradient(114deg,rgba(214,230,255,0) 16%,rgba(220,234,255,.42) 34%,rgba(255,255,255,.12) 44%,rgba(180,204,240,.26) 56%,rgba(214,230,255,0) 74%);}
+
+/* ══ Gold foil: a gilt frame, the title stamped in foil, the picture under a warm sheen ══ */
+.ac.ed-gold{background:var(--ed-gold);box-shadow:0 1.6em 3.6em rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,246,204,.6);}
+.ac.ed-gold::after{inset:.55em;border-radius:.85em;background:linear-gradient(#3a2608,#3a2608) border-box;opacity:.75;}
+.ac.ed-gold:not(.mini) .ac-art :is(img,canvas){filter:saturate(1.06) contrast(1.05);}
+.ac.ed-gold .ac-when::after{height:3px;background:linear-gradient(90deg,#8f5f14,#fff3c4 45%,#b07c22);}
+.ac.ed-gold .ac-kind{background:linear-gradient(180deg,#f3d98a,#c1902f 60%,#a87a22);color:#22180a;}
+.ac.ed-gold .ac-kind::before{border-color:rgba(58,38,8,.55);}
+.ac.ed-gold:not(.mini) .ac-kind svg{filter:brightness(0) saturate(0) opacity(.82);}
+.ac.ed-gold:not(.mini) .ac-name,.ac.ed-gold:not(.mini) .ac-brief > b{text-shadow:none;color:#6a460c;background:linear-gradient(112deg,#553607 0%,#684409 40%,#9a6f1c 47%,#b88a2c 50%,#946a1a 53%,#684409 60%,#553607 100%) var(--px) 0/320% 100% no-repeat;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.ac.ed-gold:not(.mini) .ed-fx.a{display:block;mix-blend-mode:overlay;opacity:.42;
+  background-image:repeating-linear-gradient(98deg,rgba(255,244,200,.16) 0 .05em,rgba(255,244,200,0) .05em .19em),linear-gradient(118deg,#c79a3c 0%,#ffe9a6 20%,#d2a94c 36%,#fff8dc 50%,#cda044 64%,#f6d98a 80%,#c79a3c 100%);
+  background-size:100% 100%,260% 260%;background-position:0 0,var(--px) var(--py);}
+.ac.ed-gold:not(.mini) .ed-fx.b{display:block;mix-blend-mode:color-dodge;
+  background-image:linear-gradient(112deg,rgba(255,206,110,0) 36%,rgba(255,196,96,.18) 44%,rgba(255,226,150,.38) 50%,rgba(255,190,96,.18) 56%,rgba(255,206,110,0) 64%);background-size:300% 300%;background-position:var(--px) var(--py);}
+.ac.mini.ed-gold .ac-art::after{background:linear-gradient(114deg,rgba(255,220,140,0) 16%,rgba(255,224,150,.44) 34%,rgba(255,246,214,.14) 44%,rgba(255,196,100,.28) 56%,rgba(255,220,140,0) 74%);}
+
+/* ══ Rainbow foil, borderless: the picture runs to the edge, the words on a dark panel, a holographic foil over all ══ */
+.ac.ed-rainbow{padding:0;background:#090b14;--an-paper:#0a0c16;--an-ink:#fbf4df;}
+.ac.ed-rainbow::after{inset:0;border-radius:1.3em;border-width:.14em;background:var(--ed-rain) border-box;background-size:240% 240%;background-position:var(--px) var(--py);z-index:7;opacity:.9;}
+.ac.ed-rainbow .ac-in{border-radius:1.3em;}
+.ac.ed-rainbow .ac-art{overflow:visible;}
+.ac.ed-rainbow:not(.mini) .ac-art :is(img,canvas){bottom:auto;height:42em;object-position:50% 12%;filter:saturate(1.1) contrast(1.04);}
+.ac.ed-rainbow:not(.mini) .ed-fx{height:42em;}
+.ac.ed-rainbow .ac-art::after{display:none;}
+.ac.ed-rainbow:not(.mini) .ac-paper{clip-path:none !important;margin-top:-2.6em;padding-top:3em;color:#fbf4df;
+  background:linear-gradient(180deg,rgba(8,10,18,0) 0,rgba(8,10,18,.72) 2.2em,rgba(8,10,18,.86) 4.4em,rgba(8,10,18,.92));}
+.ac.ed-rainbow .ac-paper::after{display:none;}
+.ac.ed-rainbow .ac-paper > .ac-rib,.ac.ed-rainbow .ac-brief .ac-rib{top:2.6em;border-radius:0 .5em 0 0;}
+.ac.ed-rainbow .ac-map{display:none;}
+.ac.ed-rainbow .ac-cost b,.ac.ed-rainbow .ac-st b{color:#16120e;}
+.ac.ed-rainbow .ac-cost.less b{color:#1c6b2c;}
+.ac.ed-rainbow .ac-when{color:#d9c99f;}
+.ac.ed-rainbow .ac-when::after{height:3px;background:var(--ed-rain);background-size:240% 100%;background-position:var(--px) 0;}
+.ac.ed-rainbow .ac-fact{color:#cdbf9d;border-top-color:rgba(233,207,134,.34);}
+.ac.ed-rainbow .ac-say,.ac.ed-rainbow .ac-from,.ac.ed-rainbow .ac-home{color:#cdbf9d;}
+.ac.ed-rainbow .ac-kind{top:1.6em;}
+.ac.ed-rainbow .ac-cost{left:1em;top:.9em;}
+.ac.ed-rainbow:not(.mini) .ac-st.m{left:2.8em;bottom:.9em;}
+.ac.ed-rainbow:not(.mini) .ac-foot{bottom:1.1em;right:1.6em;}
+.ac.ed-rainbow:not(.mini) .ac-paper{padding-right:1.8em;padding-bottom:1.5em;}
+.ac.ed-rainbow.hasst:not(.mini) .ac-paper{padding-bottom:4.95em;}
+.ac.ed-rainbow.hasfrom:not(.hasst):not(.mini) .ac-paper,.ac.ed-rainbow.hassay:not(.hasst):not(.mini) .ac-paper{padding-bottom:3.2em;}
+.ac.ed-rainbow.hasfrom.hassay:not(.hasst):not(.mini) .ac-paper{padding-bottom:4.4em;}
+.ac.ed-rainbow .ac-rar{bottom:1em;}
+.ac.ed-rainbow:not(.mini) .ed-fx.a{display:block;mix-blend-mode:overlay;opacity:.42;
+  background-image:repeating-linear-gradient(108deg,#ff4fc0 0%,#ffd24a 8%,#4dffb0 16%,#49b0ff 24%,#b97dff 32%,#ff4fc0 40%);background-size:340% 340%;background-position:var(--px) var(--py);}
+.ac.ed-rainbow:not(.mini) .ed-fx.b{display:block;mix-blend-mode:overlay;
+  background-image:radial-gradient(farthest-corner circle at var(--gx) var(--gy),rgba(255,255,255,.62) 0%,rgba(255,255,255,.22) 24%,rgba(255,255,255,0) 54%,rgba(0,0,10,.2) 100%);}
+.ac.ed-rainbow:not(.mini) .ed-fx.b::before{content:"";position:absolute;inset:0;mix-blend-mode:color-dodge;
+  background:linear-gradient(112deg,rgba(255,95,200,0) 36%,rgba(255,95,200,.3) 42%,rgba(255,207,92,.36) 46%,rgba(109,255,184,.36) 50%,rgba(95,184,255,.36) 54%,rgba(192,139,255,.3) 58%,rgba(192,139,255,0) 64%) var(--px) var(--py)/300% 300% no-repeat;}
+.ac.ed-rainbow:not(.mini) .ed-fx.b::after{content:"";position:absolute;inset:0;mix-blend-mode:screen;
+  background-image:radial-gradient(circle at 30% 40%,rgba(255,255,255,.95) 0 .07em,rgba(255,255,255,.22) .13em,transparent .2em),radial-gradient(circle at 70% 20%,rgba(255,236,190,.95) 0 .09em,rgba(255,236,190,.26) .15em,transparent .25em),radial-gradient(circle at 20% 75%,rgba(220,235,255,.9) 0 .06em,transparent .12em);
+  background-size:4.9em 7.1em,8.2em 6.1em,10.8em 9.4em;background-position:0 0,2.9em 1.8em,5.7em 3.9em;
+  -webkit-mask:radial-gradient(42% 34% at var(--gx) var(--gy),#000 20%,transparent 100%);mask:radial-gradient(42% 34% at var(--gx) var(--gy),#000 20%,transparent 100%);}
+/* the picture large (the art view): the strip at the foot is the same dark panel */
+.an-artview .ac.tg.ed-rainbow .ac-brief{clip-path:none !important;height:6.4em;margin-top:-2.25em;padding-top:2.5em;box-shadow:none;background:linear-gradient(180deg,rgba(8,10,18,0) 0,rgba(8,10,18,.74) 1.8em,rgba(8,10,18,.9));}
+.an-artview .ac.tg.ed-rainbow .ac-brief .ac-rib{top:1.8em;}
+.ac.ed-rainbow .ac-brief > b{color:#fbf4df;}
+.ac.ed-rainbow .ac-brief span{color:#dccfae;}
+.an-artview .ac.tg.ed-rainbow.hasst .ac-brief{padding-left:7.7em;}
+/* small: the picture to the edge beside its spine, the name on the dark panel, a still wash of the foil's colours */
+.ac.mini.ed-rainbow .ac-art,.ac.mini.ed-rainbow.hasst .ac-art{height:100%;}
+.ac.mini.ed-rainbow .ac-art::after{display:block;background:linear-gradient(116deg,rgba(255,110,205,0) 6%,rgba(255,110,205,.2) 16%,rgba(255,214,110,.2) 22%,rgba(110,255,190,.19) 28%,rgba(100,180,255,.2) 34%,rgba(196,140,255,.19) 40%,rgba(196,140,255,0) 50%),linear-gradient(118deg,rgba(255,110,205,.07),rgba(110,255,190,.05) 50%,rgba(100,180,255,.08));}
+.ac.mini.ed-rainbow .ac-paper,.ac.mini.ed-rainbow.hasst .ac-paper{clip-path:none !important;background:linear-gradient(180deg,rgba(8,10,18,0),rgba(8,10,18,.8) 34%,rgba(8,10,18,.92));padding-top:3.4em;}
+.ac.mini.ed-rainbow .ac-name{color:#fbf4df;text-shadow:0 0 .2em #090b14,0 0 .4em #090b14;}
+.ac.mini.ed-rainbow .ac-name::after{background:radial-gradient(circle,#fff1bf 0 .15em,transparent .19em),linear-gradient(90deg,transparent,#ff7ad1 22%,#ffd166 41%,transparent 41%,transparent 59%,#7dffc0 59%,#6fc3ff 78%,transparent) center/100% max(1px,.09em) no-repeat;}
+.ac.mini.ed-rainbow .ac-rib{display:none;}
+.ac.mini.ed-rainbow::after{border-width:max(1px,.22em);opacity:1;}
+/* (a small card's picture is never filtered and nothing on it moves: the table is redrawn whole on every step, and
+   anything costly to paint there shows as a blink) */
+/* small frames: the metal reads at any size */
+.ac.mini.ed-silver::after,.ac.mini.ed-gold::after{inset:.5em;opacity:.55;}
+
+/* A Figure on the map and a Relic on the strip: the frame of the piece takes the edition's metal */
+.fp.ed-shiny .fp-art::before,.fp.ed-silver .fp-art::before,.fp.ed-gold .fp-art::before,.fp.ed-rainbow .fp-art::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(114deg,rgba(255,255,255,0) 24%,rgba(255,255,255,.36) 38%,rgba(255,255,255,.1) 45%,rgba(255,255,255,0) 54%);}
+.fp.ed-silver .fp-card{background:var(--ed-silver,linear-gradient(135deg,#f4f7fb,#8c9bb1 28%,#fbfcfe 46%,#6c7a91 70%,#cdd6e2));}
+.fp.ed-gold .fp-card{background:linear-gradient(135deg,#f8e6a6,#b07c22 28%,#fff3c4 46%,#8f5f14 70%,#edd28a);}
+.fp.ed-silver .fp-art::before{background:linear-gradient(114deg,rgba(214,230,255,0) 16%,rgba(220,234,255,.4) 34%,rgba(255,255,255,.1) 44%,rgba(180,204,240,.24) 56%,rgba(214,230,255,0) 74%);}
+.fp.ed-gold .fp-art::before{background:linear-gradient(114deg,rgba(255,220,140,0) 16%,rgba(255,224,150,.42) 34%,rgba(255,246,214,.12) 44%,rgba(255,196,100,.26) 56%,rgba(255,220,140,0) 74%);}
+.fp.ed-rainbow .fp-card{background:linear-gradient(135deg,#ff7ad1,#ffd166 25%,#7dffc0 50%,#6fc3ff 75%,#c79bff);}
+.fp.ed-rainbow .fp-art{inset:calc(var(--fw) * .03);}
+.fp.ed-rainbow .fp-art::before{background:linear-gradient(116deg,rgba(255,110,205,0) 6%,rgba(255,110,205,.2) 16%,rgba(255,214,110,.2) 22%,rgba(110,255,190,.19) 28%,rgba(100,180,255,.2) 34%,rgba(196,140,255,.19) 40%,rgba(196,140,255,0) 50%);}
+
+/* ── The chooser: the five editions of this very card, side by side over the card being read ── */
+.ed-scrim{position:fixed;inset:0;z-index:470;}
+.ed-pick{position:fixed;z-index:471;box-sizing:border-box;padding:10px 10px 8px;border-radius:14px;background:linear-gradient(180deg,#1a2038,#10131c);
+  box-shadow:0 0 0 1px rgba(233,207,134,.7),0 0 0 3px #0b0d16,0 0 0 4px rgba(233,207,134,.28),0 14px 34px rgba(0,0,0,.7);opacity:0;transform:translateY(8px) scale(.96);transform-origin:var(--ox,80%) 100%;transition:opacity .16s,transform .2s var(--spring);}
+.ed-pick.show{opacity:1;transform:none;}
+.ed-pick::after{content:"";position:absolute;left:var(--ox,80%);bottom:-7px;width:12px;height:12px;margin-left:-6px;transform:rotate(45deg);background:#10131c;box-shadow:1px 1px 0 rgba(233,207,134,.7);}
+.ed-pick.below{transform-origin:var(--ox,80%) 0;}
+.ed-pick.below::after{bottom:auto;top:-7px;box-shadow:-1px -1px 0 rgba(233,207,134,.7);background:#1a2038;}
+.ed-row{display:grid;grid-template-columns:repeat(5,var(--ew,54px));gap:8px;}
+.ed-o{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;padding:0;border:0;background:none;color:#cbb98a;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.ed-o .ed-sw{position:relative;display:block;width:var(--ew,54px);height:calc(var(--ew,54px) * 1.4);font-size:calc(var(--ew,54px) / 30);border-radius:1.3em;transition:transform .16s var(--spring);}
+.ed-o .ed-sw.an-hand{min-height:0;padding:0;grid-area:auto;}
+.ed-o .ed-sw .ac{pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.6);}
+.ed-o small{font:400 .72rem/1 var(--fellsc);letter-spacing:.05em;white-space:nowrap;}
+.ed-o.on{color:#f6e3a1;}
+.ed-o.on .ed-sw{transform:translateY(-3px);box-shadow:0 0 0 2px #10131c,0 0 0 3.5px #f6e3a1,0 0 12px rgba(246,227,161,.55);}
+.ed-o:active .ed-sw{transform:scale(.95);}
+.ed-o:focus-visible{outline:none;} .ed-o:focus-visible .ed-sw{box-shadow:0 0 0 2px #10131c,0 0 0 3.5px #fff;}
+.ed-o.off{cursor:default;color:#7d8296;}
+.ed-o.off .ed-sw .ac{filter:brightness(.42) saturate(.55);}
+.ed-o .ed-lock{position:absolute;left:50%;top:calc(var(--ew,54px) * .7);transform:translate(-50%,-50%);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(10,12,22,.82);color:#e9cf86;box-shadow:0 0 0 1px rgba(233,207,134,.6);}
+.ed-o .ed-lock .ico{width:12px;height:12px;}
+.ed-o.off.nudge .ed-sw{animation:ed-no .32s ease;}
+@keyframes ed-no{25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+.ed-o.just .ed-sw{animation:ed-pop .34s var(--spring);}
+@keyframes ed-pop{40%{transform:translateY(-3px) scale(1.1);}}
+
+/* ── The Library (library.js): under each card you own, the editions of it you have found, as a ladder of five ── */
+.lb-eds{display:flex;justify-content:center;gap:3px;height:5px;margin-top:-1px;}
+.lb-eds i{width:11px;height:5px;border-radius:2.5px;background:rgba(233,207,134,.13);}
+.lb-eds i.on.e0{background:linear-gradient(180deg,#e9dfc6,#b3a584);}
+.lb-eds i.on.e1{background:linear-gradient(115deg,#ffffff 0 40%,#8fd0ff 40% 58%,#f1f9ff 58%);}
+.lb-eds i.on.e2{background:linear-gradient(115deg,#fbfcfe,#8b98ad 55%,#e6ebf2);box-shadow:0 0 4px rgba(196,207,221,.5);}
+.lb-eds i.on.e3{background:linear-gradient(115deg,#fff3bf,#d9a431 55%,#ffe9a0);box-shadow:0 0 5px rgba(246,215,122,.6);}
+.lb-eds i.on.e4{background:linear-gradient(90deg,#ff7ad1,#ffd166,#7dffc0,#6fc3ff,#c79bff);box-shadow:0 0 6px rgba(199,155,255,.7);}
+/* and in the ledger, the foils found so far */
+.lb-edrow{display:flex;align-items:center;justify-content:space-between;gap:6px 10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(233,207,134,.16);}
+.lb-edrow .lb-cap{flex:none;}
+.lb-ed{display:grid;grid-template-columns:auto auto;align-items:center;justify-content:center;column-gap:5px;row-gap:1px;min-width:0;color:var(--lb-dim,#9aa0b4);}
+.lb-ed .ed-gem{font-size:14px;}
+.lb-ed b{font:400 1.02rem/1 var(--slab);font-variant-numeric:tabular-nums;color:#7d8296;}
+.lb-ed.on b{color:var(--lb-gilt,#e9cf86);}
+.lb-ed > i:not(.ed-gem){grid-column:1 / 3;font:600 .76rem/1.05 var(--crim);font-style:normal;text-align:center;white-space:nowrap;}
+
+/* ── Out of a pack (packs.js). A card turns over in the edition it was found in. What it is to you is stamped on it:
+   New or Second copy at its head, as before, and at its foot the edition, as its gem and its name. ── */
+.pk-ed{position:absolute;left:50%;bottom:0;z-index:3;transform:translate(-50%,68%);display:flex;align-items:center;gap:5px;padding:3px 12px 4px 8px;border-radius:999px;pointer-events:none;white-space:nowrap;
+  font:400 13px/1.15 var(--slab);letter-spacing:.06em;text-transform:uppercase;color:#16120e;background:var(--eb);box-shadow:0 0 0 1.5px #10131c,0 2px 6px rgba(0,0,0,.6);animation:pk-edIn .5s var(--spring) .25s backwards;}
+.pk-ed .ed-gem{font-size:13px;}
+.pk-ed.e1,.pk-p-e.e1,.pk-t-e.e1{--eb:linear-gradient(135deg,#ffffff,#cfe9ff 55%,#f4fbff);}
+.pk-ed.e2,.pk-p-e.e2,.pk-t-e.e2{--eb:linear-gradient(135deg,#f4f7fb,#aab7ca 45%,#fbfcfe 60%,#93a2b8);}
+.pk-ed.e3,.pk-p-e.e3,.pk-t-e.e3{--eb:linear-gradient(135deg,#f8e6a6,#d2a23a 45%,#fff3c4 60%,#b8862d);}
+.pk-ed.e4,.pk-p-e.e4,.pk-t-e.e4{--eb:linear-gradient(115deg,#ffa3e0,#ffe08f 26%,#a6ffd4 50%,#9cd6ff 74%,#d9bcff);}
+@keyframes pk-edIn{0%{opacity:0;transform:translate(-50%,68%) scale(.5);}100%{opacity:1;transform:translate(-50%,68%) scale(1);}}
+.pk-fc:not(.front) .pk-ed{opacity:calc(1 - var(--dim,0) * .5);}
+.pk-field.foils .pk-strip{margin-top:16px;}
+.pk-field.foils .pk-flow{margin-bottom:0;}
+/* on the plate beside the card: the edition's name on its own metal */
+.pk-p-e{flex:none;display:inline-flex;align-items:center;gap:5px;padding:2px 10px 3px 7px;border-radius:999px;font:400 .72rem/1.25 var(--slab);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;color:#16120e;background:var(--eb);box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.pk-p-e .ed-gem{font-size:.8rem;}
+/* its thumbnail on the strip wears the metal as a ring */
+.pk-t.up.e1{box-shadow:0 0 0 1.5px #dff1ff;} .pk-t.up.e2{box-shadow:0 0 0 1.5px #c4cfdd,0 0 5px rgba(196,207,221,.7);} .pk-t.up.e3{box-shadow:0 0 0 1.5px #f6d77a,0 0 6px rgba(246,215,122,.8);}
+.pk-t.up.e4{box-shadow:0 0 0 1.5px #fff,0 0 0 3px #c79bff,0 0 8px rgba(125,255,192,.9);opacity:.9;}
+/* the glow behind a foil as it turns takes the foil's colour, and a Gold or Rainbow foil comes up off the strip */
+.pk-fc.up.foil.e1 .pk-glow{background:#e8f6ff;animation:pk-softNew .85s ease-out forwards;} .pk-fc.up.foil.e2 .pk-glow{background:#dfe7f2;animation:pk-softNew 1.1s ease-out forwards;}
+.pk-fc.up.foil.e3 .pk-glow{background:#f6d77a;animation:pk-flashNew 1.3s ease-out forwards;}
+.pk-fc.up.foil.e4 .pk-glow{background:conic-gradient(#ff7ad1,#ffd166,#7dffc0,#6fc3ff,#c79bff,#ff7ad1);animation:pk-flashNew 1.6s ease-out forwards;}
+.pk-fc.big{z-index:300 !important;perspective:900px;}
+.pk-fc.big .pk-side.b{visibility:visible;}
+.pk-fc.big .pk-fl{animation:pk-big 1.9s var(--ease) both;}
+.pk-fc.big.e4 .pk-fl{animation:pk-bigger 3s var(--ease) both;}
+/* (the card has just tumbled over and landed face up: a Gold foil comes up off the strip, a Rainbow foil comes up and turns once more) */
+@keyframes pk-big{0%{transform:rotateY(180deg) scale(1);}8%{transform:rotateY(180deg) scale(.97);}26%{transform:rotateY(180deg) scale(1.1);}70%{transform:rotateY(180deg) scale(1.07);}100%{transform:rotateY(180deg) scale(1);}}
+@keyframes pk-bigger{0%{transform:rotateY(180deg) scale(1);}6%{transform:rotateY(180deg) scale(.97);}18%{transform:rotateY(180deg) scale(1.14);}36%{transform:rotateY(540deg) scale(1.16);}78%{transform:rotateY(540deg) scale(1.1);}100%{transform:rotateY(540deg) scale(1);}}
+.pk-fc.big.e4.up .pk-fl{transform:rotateY(540deg);}
+.pk-flash.gold{background:radial-gradient(closest-side,rgba(255,240,190,.9),rgba(246,200,90,.36) 30%,rgba(246,200,90,0) 62%);}
+.pk-flash.rain{animation-duration:.85s;background:radial-gradient(closest-side,rgba(255,255,255,.92),rgba(255,160,225,.34) 22%,rgba(140,220,255,.26) 40%,rgba(160,255,200,0) 62%);}
+/* a Rainbow foil: the room dims round the card, and rays in the foil's colours turn behind it */
+.pk-stage.prism .pk-info,.pk-stage.prism .pk-foot,.pk-stage.prism .pk-strip{transition:opacity .3s;opacity:.25;}
+.pk-stage .pk-info,.pk-stage .pk-foot,.pk-stage .pk-strip{transition:opacity .6s;}
+.pk-stage.prism .pk-fc:not(.big)::after{opacity:1;}
+.pk-prism{position:absolute;left:50%;top:50%;width:330%;aspect-ratio:1;margin:-165% 0 0 -165%;border-radius:50%;pointer-events:none;z-index:-1;
+  background:repeating-conic-gradient(from 0deg,rgba(255,122,209,.5) 0 5deg,rgba(0,0,0,0) 5deg 12deg,rgba(255,209,102,.5) 12deg 17deg,rgba(0,0,0,0) 17deg 24deg,rgba(125,255,192,.46) 24deg 29deg,rgba(0,0,0,0) 29deg 36deg,rgba(111,195,255,.5) 36deg 41deg,rgba(0,0,0,0) 41deg 48deg,rgba(199,155,255,.5) 48deg 53deg,rgba(0,0,0,0) 53deg 60deg);
+  -webkit-mask:radial-gradient(closest-side,#000 18%,transparent 78%);mask:radial-gradient(closest-side,#000 18%,transparent 78%);animation:pk-prism 3.3s ease-out both;}
+@keyframes pk-prism{0%{opacity:0;transform:scale(.3) rotate(0);}14%{opacity:1;}70%{opacity:.8;}100%{opacity:0;transform:scale(1.05) rotate(150deg);}}
+/* the tally: the ladder of foils, the ones this pack held lit with how many */
+.pk-t-eds{display:flex;flex-wrap:wrap;justify-content:center;gap:8px clamp(8px,4vw,22px);padding-top:8px;border-top:1px solid rgba(233,207,134,.22);}
+.pk-t-e{flex:none;display:grid;grid-template-columns:auto auto;justify-content:center;align-items:center;column-gap:6px;row-gap:3px;min-width:52px;color:#7d8296;}
+.pk-t-e .ed-gem{font-size:17px;grid-column:1;justify-self:end;}
+.pk-t-e:not(.on) .ed-gem{grid-column:1 / 3;justify-self:center;}
+.pk-t-e b{font:400 1.3rem/1 var(--slab);color:#f6e3a1;text-shadow:0 2px 0 rgba(0,0,0,.45);}
+.pk-t-e small{grid-column:1 / 3;text-align:center;font:400 .74rem/1 var(--fellsc);letter-spacing:.06em;}
+.pk-t-e.on{color:#e6dcc2;}
+.pk-t-e.on .ed-gem{animation:pk-edGem .5s var(--spring) .35s backwards;}
+@keyframes pk-edGem{0%{transform:rotate(45deg) scale(0);}100%{transform:rotate(45deg) scale(.78);}}
+
+/* a card whose edition has just been changed: the light runs across it once */
+.ac.ed-swap .ed-fx{transition:background-position .7s cubic-bezier(.2,.7,.2,1);}
+
+@media (prefers-reduced-motion:reduce){
+  .pk-ed,.pk-fc.big .pk-fl,.pk-fc.big.e4 .pk-fl,.pk-prism,.pk-t-e.on .ed-gem{animation:none;}
+  .pk-prism{display:none;}
+  .ed-pick{transition:opacity .1s;transform:none;}
+  .ed-o.off.nudge .ed-sw,.ed-o.just .ed-sw{animation:none;}
+  .ac.ed-swap .ed-fx{transition:none;}
+}
+/* (the small picture standing in for a full one that is not ready stays soft under a foil's own picture filter) */
+.ac.rar:not(.mini) .ac-art canvas.ac-lo{filter:blur(.2em);}

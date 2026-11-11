@@ -177,6 +177,10 @@
     const n = { own: c.own, seen: c.seen, new: none };
     g.appendChild(el('div', { class: 'lb-key' }, HAVE.map(h => el('button', { type: 'button', class: 'lb-k ' + h[0] + (st.f.have.indexOf(h[0]) >= 0 ? ' on' : ''), 'aria-pressed': String(st.f.have.indexOf(h[0]) >= 0), 'aria-label': n[h[0]] + ' ' + h[1],
       onclick: () => { tap(); flip('have', h[0]); drawLedger(); drawBar(); drawView(); } }, [el('i'), el('b', { text: String(n[h[0]]) }), el('span', { text: h[1] })]))));
+    // the foils found so far, counted: one gem for each edition, with how many cards you have in it
+    if (Coll.edCounts && window.AnoriaEd) { const ed = Coll.edCounts();
+      g.appendChild(el('div', { class: 'lb-edrow', role: 'img', 'aria-label': 'Foils found: ' + Coll.EDITIONS.slice(1).map((x, i) => ed[i + 1] + ' ' + x.n).join(', ') }, [el('small', { class: 'lb-cap', text: 'Foils' })].concat(
+        Coll.EDITIONS.slice(1).map((x, i) => el('span', { class: 'lb-ed' + (ed[i + 1] ? ' on' : '') }, [window.AnoriaEd.gem(i + 1, !ed[i + 1]), el('b', { text: String(ed[i + 1]) }), el('i', { text: window.AnoriaEd.SHORT[i + 1] })]))))); }
     g.appendChild(nextRow());
     if (L.first) { countUp(num, c.own); L.ledger.classList.add('in'); }
   }
@@ -291,6 +295,9 @@
       'aria-label': s === 'new' ? 'Not found yet. ' + FAC[c.f].n + ', ' + eraName(eraOf(k)) : c.n + (s === 'own' ? (n > 1 ? ', two copies' : ', one copy') + (fresh ? ', new' : '') : ', seen, not yours') });
     b.appendChild(el('span', { class: 'lb-cf' }, [s === 'new' ? backEl(k, st.sort !== 'time') : U.cardEl(k, { mini: true })]));   // (by time, the era is the heading it sits under)
     b.appendChild(s === 'own' ? el('span', { class: 'lb-pips', html: '<i class="on"></i><i' + (n > 1 ? ' class="on"' : '') + '></i>' }) : s === 'seen' ? el('span', { class: 'lb-pips eye', html: Kit.icon('eye') }) : el('span', { class: 'lb-pips' }));
+    // the editions of the card you have found, as a ladder of five: Matte, Shiny, Silver foil, Gold foil, Rainbow foil
+    if (s === 'own' && Coll.editions) { const have = Coll.editions(k);
+      b.appendChild(el('span', { class: 'lb-eds', role: 'img', 'aria-label': 'Found in ' + U.listOf(Coll.EDITIONS.filter((x, e) => have[e]).map(x => x.n)) }, have.map((on, e) => el('i', { class: 'e' + e + (on ? ' on' : '') })))); }
     if (fresh) b.appendChild(el('span', { class: 'lb-new', text: 'New' }));
     return b;
   }

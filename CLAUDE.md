@@ -336,6 +336,30 @@ Underlying principles for everything:
   flag in the collection under its old id. A Deed's effect belongs to its data, not its name (`fx`, read with
   `E.fxOf`): Night Crossing runs the Trojan Horse's.
 - **Amelia Earhart is the first card after 1900**, so `ERAS` has a seventh era, The Modern World.
+- **Editions** (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana"): every card is printed in five
+  finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
+  Gold foil and Rainbow foil (borderless: the picture runs to the edge, the words on a dark panel). The picture is the
+  same; an edition is the finish and the frame. The rules are in coll.js (`EDITIONS`, `ED_ODDS`): every card out of a
+  pack has an edition; a foil is always one you have not found for that card, it is the card's for good on every
+  copy, and one of a card you already have two of is an extra card in its pack, so the set takes as long as it did.
+  Once the set is complete the packs go on turning up foils until none are left. Found editions and the one each card
+  is shown in are `ed` and `look` in `anoria_coll` (v 4; an older collection has every card Matte, and `retire()` hands a retired
+  card's editions to the card that has its slot). The looks are
+  `games/anoria/editions.css` and the rest `editions.js` (`AnoriaEd`): `cardEl` calls `AnoriaEd.dress`, a card being
+  read has the edition button on the picture's lower right, opposite the picture and words button, and its chooser
+  shows the five editions of that very card with the ones not found locked. A change shows at once wherever the card
+  is drawn (`refresh`: every `.ac[data-card]` and `[data-edk]`). Lessons stay Matte. The light on a foil follows the
+  finger, the pointer or the phone's tilt (`--lx`, `--ly`, and `--ls` from `makeFlow` as cards slide by), but only on
+  the card in front: **small cards (hand, table, Library) have a still finish, no layers, no filters, nothing moving**,
+  so the table doesn't blink. In a pack a card turns over in the edition it was found in, stamped with it; a Gold or
+  Rainbow foil stops Turn the rest and has the stage. The art proof (`?art=1`, `&only=key,key`) shows every edition
+  at every size. The Library shows each card's editions as a ladder of five under it.
+- **Rarity** (the same day: "make more powerful cards more rare to find in packs"): every card has a tier, Common,
+  Uncommon, Rare or Legendary, from its power: `node scripts/anoria/rarity.js` plays random decks and ranks the set by
+  cost and win rate (less the faction's own), and its lists are pasted into `RARE` in coll.js (`rarity.txt` has the
+  table). A pack slot is that much less likely to be a card of a higher tier (`TIER_W`). The tier is printed on a full
+  card as a small mark at the foot of its ribbon, in the edition's finish: a dot, a diamond, a four-point star, a
+  compass rose. A new set is tiered by running the script again, then `pacing.js`.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
   real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;
@@ -418,6 +442,27 @@ Underlying principles for everything:
   revealed"). `torn()` in packs.js: a swipe, a flick, a thumbnail, the arrow keys and Turn the rest (a riffle to the
   last card) all just move the strip, and `front()` turns whatever arrives. New is stamped on the card; upright and
   on an iPad the card is large enough to read, so the plate over it says only a Thread the card has to one of yours.
+- **A pack's card tumbles over as it comes to the front** (Tim, 2026-11-11: "the front edge kind of stopping and the
+  far edge flipping up and over the top in a 3-D animation"). A face-down card waits one slot short of the front with
+  its leading edge on the front slot's edge; as the strip brings it in that edge stays where it is and the rest of the
+  card comes up toward you and over it, back until it is edge-on, face after, and lands face up in the slot (`tumble()`
+  and `land()` in packs.js, through `makeFlow`'s `pose` option; the card has thickness, an edge and a shadow that
+  tightens, and it presses into the table as it lands). The turn follows the strip: under a finger the card comes over
+  as far as the finger has gone, and one let go short of half way (where it is edge-on) goes back down unseen. A card
+  is counted, stamped and announced when it lands, with the sound and the haptic. A card already turned never tumbles
+  again. A calm screen gets a plain cross-fade in place. A foil's moment comes after its landing, not instead of it.
+- **Pictures are ready before they are needed** (Tim: "some of the art flashes into place after briefly seeing a
+  placeholder"). `AnoriaUI.warm(keys)` fetches and decodes full-size pictures a few at a time: a pack warms all its
+  cards the moment it is torn and holds its first card until that picture is ready (2.6 s at most), a strip warms
+  the cards either side of the front one, the table warms your hand. The small pictures of the whole set are warmed
+  once the page is idle. A full card whose picture is not ready shows the small one, softened (`standIn`), and the
+  full one comes up over it (`comeUp`): never a flat panel that a picture pops into, unless there is no picture at all.
+  The plate over a pack's cards keeps room for whatever it will say (`reserve()`), so the cards don't move as it
+  changes, and the glow as a card lands stays round the card: the wash over the screen is for Gold and Rainbow foils.
+- **A Legacy Line over a pack's card is drawn** (Tim: "why does Hammurabi have an extra line at top when none of the
+  other cards do?"): under the words Legacy Line, the card the line runs from and the card it runs to as named
+  medallions joined by the gold line, with what it is worth on the line as the game's marks, then the true sentence
+  (`linkEl` in packs.js, the reader's `.ln` block made small). A card with no line shows nothing there.
 - **A card that changes a clash is shown as that card** (Tim, 2026-11-11: "Phalanx +2" as a line of small print):
   Phalanx slides in from the outer edge and tucks under the Figure it helps, its name plate showing with the Might
   it adds, and the shields count it as it lands (`aid()` in `clashShow`: before the dice for the attacker, after
