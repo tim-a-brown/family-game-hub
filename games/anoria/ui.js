@@ -191,10 +191,12 @@
   }
   const mapCache = {};
   let mapN = 0;
-  function mapSVG(ll, color) {
+  const MAPW = 284, MAPH = 196, DOT0 = { x: 227.2, y: 47, r: 9 };
+  // at: where the dot stands in the map's own box (x, y) and its ring's radius (r; 0 for the dot alone): dotSpot() below finds the place clear of the card's words
+  function mapSVG(ll, color, at) {
     if (!ll) return '';
-    const ck = ll.join(',') + color; if (mapCache[ck]) return mapCache[ck];
-    const W = 284, H = 196, k = 10.92, cx = 227.2, cy = 47, ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
+    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r; if (mapCache[ck]) return mapCache[ck];
+    const W = MAPW, H = MAPH, k = 10.92, cx = at.x, cy = at.y, ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
     const X = lon => cx + (lon - lon0) * k, Y = lat => cy - (lat - lat0) * ky;
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
     const B = landBoxes(); let d = '';
@@ -214,8 +216,46 @@
     const s = '<svg class="ac-map" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs><pattern id="' + id + '" width="5" height="3.2" patternUnits="userSpaceOnUse"><path d="M0 1.6H5" stroke="#5a6f78" stroke-width=".55"/></pattern></defs>' +
       '<g opacity=".6"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' +
       '<g fill="none" stroke="#7b6a52" stroke-width=".4" stroke-dasharray="2 3" opacity=".45">' + grat + '</g><path d="' + d + '" fill="none" stroke="#5b4a33" stroke-width=".8" stroke-linejoin="round" opacity=".55"/></g>' +
-      '<circle cx="' + cx + '" cy="' + cy + '" r="9" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/><circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></svg>';
+      (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></svg>';
     mapCache[ck] = s; return s;
+  }
+
+  // The dot on a card's map stands clear of every word on the card (Tim, 2026-11-11: "Eratosthenes' dot is under text -
+  // careful to be clear of all card text"). A card is laid out in em, so the place is found once for each card and
+  // layout, on a copy of the card set down off the screen with no transform on it: every line of text, the shield,
+  // the home plate, the ribbon and the Legacy Line are boxes the dot's ring must miss, and of the places that miss
+  // them all the one nearest the upper right of the paper is taken. A crowded card gets a smaller ring, then the dot
+  // alone. The map is then drawn round that place.
+  const dotAt = {}; let dotBox = null;
+  function dotSpot(n) {
+    if (!dotBox) { dotBox = el('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: '-4000px', top: '0', visibility: 'hidden', pointerEvents: 'none', contain: 'layout style' } }); document.body.appendChild(dotBox); }
+    const c = n.cloneNode(true); c.removeAttribute('style'); ['--lc', '--lg', '--lh'].forEach(v => { const x = n.style.getPropertyValue(v); if (x) c.style.setProperty(v, x); });
+    c.classList.remove('tg'); c.style.fontSize = '14px'; c.style.transform = 'none'; dotBox.appendChild(c);
+    let out = null;
+    try {
+      const sv = c.querySelector('.ac-map'), sr = sv && sv.getBoundingClientRect(); if (!sr || !sr.width || !sr.height) return null;
+      const sc = Math.max(sr.width / MAPW, sr.height / MAPH), em = 14, boxes = [];
+      const tw = document.createTreeWalker(c, NodeFilter.SHOW_TEXT, { acceptNode: t => t.nodeValue.trim() && !t.parentNode.closest('svg') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+      for (let t = tw.nextNode(); t; t = tw.nextNode()) { const rg = document.createRange(); rg.selectNodeContents(t); const rs = rg.getClientRects(); for (let i = 0; i < rs.length; i++) boxes.push(rs[i]); }
+      c.querySelectorAll('.ac-st, .ac-home, .ac-ll, .ac-rib, .ac-cost, .ac-kind, button, .ed-mark, .ac-rare').forEach(x => { const q = x.getBoundingClientRect(); if (q.width && q.height) boxes.push(q); });
+      const near = boxes.filter(q => q.right > sr.left - em && q.left < sr.right + em && q.bottom > sr.top - em && q.top < sr.bottom + em);
+      // the map's box is fitted to the paper's right edge and its top (xMaxYMin slice): where a point of it falls on the page
+      const PX = x => sr.right - (MAPW - x) * sc, PY = y => sr.top + y * sc, x0 = MAPW - sr.width / sc, y1 = sr.height / sc, top = 1.9 * em / sc;
+      const clear = (x, y, rad) => { const px = PX(x), py = PY(y); for (let i = 0; i < near.length; i++) { const q = near[i], dx = Math.max(q.left - px, 0, px - q.right), dy = Math.max(q.top - py, 0, py - q.bottom); if (dx * dx + dy * dy < rad * rad) return false; } return true; };
+      const tiers = [[9, .28], [6.5, .22], [0, .16]];
+      for (let ti = 0; ti < tiers.length && !out; ti++) { const r = tiers[ti][0], body = Math.max(r, 3.4), rad = body * sc + tiers[ti][1] * em; let best = 1e9;
+        for (let y = Math.max(body + 2, top); y <= y1 - body - 3; y += 2.5) for (let x = MAPW - body - 4; x >= x0 + body + 4; x -= 2.5) {
+          const d = (x - DOT0.x) * (x - DOT0.x) + 2.2 * (y - DOT0.y) * (y - DOT0.y); if (d >= best) continue; if (clear(x, y, rad)) { best = d; out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; } } }
+    } catch (e) { out = null; }
+    c.remove(); return out;
+  }
+  function placeDot(n, key, ll, color) {
+    const sig = () => key + (n.classList.contains('hasll') ? '|l' : '') + (n.classList.contains('ed-rainbow') ? '|r' : '');
+    const put = at => { const old = n.querySelector('.ac-map'); if (!old || !at) return; const t = document.createElement('div'); t.innerHTML = mapSVG(ll, color, at); old.replaceWith(t.firstChild); };
+    const go = () => { const s = sig(); if (!(s in dotAt)) dotAt[s] = dotSpot(n); put(dotAt[s]); };
+    n._dot = go;
+    // (with the faces loaded the place is found before the card is ever shown; until then it is found as soon as they are)
+    if (!document.fonts || document.fonts.status === 'loaded') go(); else { const s = sig(); if (s in dotAt) put(dotAt[s]); else { n.classList.add('dotwait'); document.fonts.ready.then(() => { go(); n.classList.remove('dotwait'); }); } }
   }
 
   // ═══ The card ════════════════════════════════════════════════════════════════════════════════════════════
@@ -283,19 +323,35 @@
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
     // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
-    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Legacy Line from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
-    if (!o.mini && !place && (c.say || fig || from)) {
-      if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
-      // (both wrap, or one of them is long enough to wrap by itself beside the other: three or four lines of fine print, so the paper leaves more room)
-      if (fig && c.say && from && ((c.say.length > 16 && from.length > 24) || c.say.length > 26 || from.length > 36)) n.classList.add('foot4');
-      inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
+    if (!o.mini && !place && (c.say || fig)) {
+      if (c.say) n.classList.add('hassay');
+      if (fig && c.say && c.say.length > 26) n.classList.add('foot4');   // (a name said in two lines of fine print: the paper leaves more room)
+      inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null]),
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
+    }
+    // A card's Legacy Line is printed on it as a line (Tim, 2026-11-11: "maybe legacy line is displayed vertically down
+    // the right side of the card"): down the right side of the paper, one gold line for each card it grows from, that
+    // card's picture at the top and its name down the line, and at the foot what the line gives as the game's marks
+    // (the laurel a line scores; a Legacy Figure's Spark and Might too). Lines that are each enough join above the marks.
+    const llSrc = !o.mini && !place && CARDS[key] && E.STD.threads ? (CARDS[key].insp || []).concat(CARDS[key].from || []) : [];
+    if (llSrc.length) {
+      const groups = []; llSrc.forEach(k => { const w = worthOf(k, key); let g = groups.filter(x => x.w === w)[0]; if (!g) groups.push(g = { w: w, ks: [] }); g.ks.push(k); });
+      const rail = el('div', { class: 'ac-ll', role: 'img', 'aria-label': lineSay(llSrc, key) }); let tall = 0;
+      groups.forEach(g => { const cols = el('div', { class: 'al-cols' + (g.ks.length > 1 ? ' join' : '') }); let nm = 0;
+        g.ks.forEach(k => { const bare = k.replace(/^@/, ''), i2 = info(bare), im = artImg(bare, true, true) || mono(bare), r = el('i', { class: 'al-m' + (k[0] === '@' ? ' pl' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c } }); if (im) r.appendChild(im);
+          cols.appendChild(el('div', { class: 'al-c' }, [r, el('span', { class: 'al-n', text: i2.n }), el('i', { class: 'al-t' })])); nm = Math.max(nm, i2.n.length); });
+        const marks = g.w === 'legacy' ? [['sp', '−1'], ['mi', '+1'], ['re', '+1']] : [['re', '+1']];
+        rail.appendChild(el('div', { class: 'al-g' }, [cols, el('div', { class: 'al-w' }, marks.map(m => el('i', { class: 'al-k ' + m[0] }, [el('b', { text: m[1] })])))]));
+        tall = Math.max(tall, 2.1 + nm * .41 + .9 + marks.length * 1.75); });
+      n.classList.add('hasll'); n.style.setProperty('--lc', llSrc.length); n.style.setProperty('--lg', groups.length); n.style.setProperty('--lh', tall.toFixed(2) + 'em');
+      const paper = inn.querySelector('.ac-paper'); (paper || inn).appendChild(rail);
     }
     n.appendChild(inn);
     // (its edition: the finish it is shown in, its rarity mark and the edition button, editions.js. A lesson's cards are Matte.)
     if (window.AnoriaEd) window.AnoriaEd.dress(n, key, { mini: o.mini, tg: o.tg, ed: o.ed, plain: !!(G && G.demo) });
     // (a Place takes the frame of its kind, the kind's mark and name, and its home region at the foot: domains.js)
     if (place && window.AnoriaDomains) window.AnoriaDomains.dress(n, key, { mini: o.mini });
+    if (!o.mini && c.ll) placeDot(n, key, c.ll, place ? '#8a6a2a' : f.c);   // (the dot on its map, clear of the card's words)
     return n;
   }
 
@@ -321,6 +377,104 @@
     const sum = out.reduce((s, x) => s + x[1], 0);
     return sum === E.might(S, f, 0) ? out : null;
   }
+  // A Legacy Line is drawn as a small scene of the table, not described (Tim, 2026-11-11: "I'd rather it be a
+  // graphical representation of how this card connects to others, rather than using words"). The pieces are the
+  // table's own: a card that is IN PLAY stands on a slab of its player's side of the board (a Figure as the piece on
+  // the map, a Relic in its slot, a Place as its tile), and the card that is BEING PLAYED is a card from the hand,
+  // lifted, that comes down. The gold line runs from the one to the other and carries what the line is worth as the
+  // game's marks. Two scenes: what this card grows from (it is the card coming down), and what grows from this card
+  // (it is the piece on the board, and the others come down along its line). Cards that can each make the line are
+  // joined by a bracket. The true sentence about the two cards is the only text; a tap on another card shows that
+  // card's sentence, and a tap on the card already chosen opens it.
+  const KIDS = {}; Object.keys(C.CARDS).forEach(k => { const c = CARDS[k]; (c.insp || []).concat(c.from || []).forEach(sk => { (KIDS[sk] = KIDS[sk] || []).push(k); }); });
+  const worthOf = (from, to) => (CARDS[to].insp || []).indexOf(from) >= 0 ? 'legacy' : 'thread';
+  function worthEl(kind) {
+    const w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
+    return el('span', { class: 'ln-worth' }, [kind === 'legacy' ? w('sp', '−1', 'costs 1 Spark less') : null, kind === 'legacy' ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')]);
+  }
+  // one card of a scene. how: 'board' (in play) or 'play' (coming down from the hand)
+  function lineNode(k, how, o) {
+    o = o || {}; const bare = k.replace(/^@/, ''), i2 = info(bare), place = k[0] === '@', kind = place ? 'place' : CARDS[bare] ? CARDS[bare].t : 'fig';
+    const n = el(o.tap ? 'button' : 'span', { class: 'll-n ' + how + ' ' + kind + (o.me ? ' me' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c }, 'data-k': k });
+    if (o.tap) { n.type = 'button'; n.setAttribute('aria-label', i2.n); }
+    const im = artImg(bare, true, true) || mono(bare); if (im) n.appendChild(el('span', { class: 'll-art' }, [im]));
+    if (place && o.guest) n.appendChild(el('i', { class: 'll-guest', 'aria-hidden': 'true' }));   // (one of your Figures standing at the Place)
+    return el('span', { class: 'll-who' + (how === 'board' ? ' onb' : '') }, [how === 'board' ? el('span', { class: 'll-slab' }, [n]) : n, o.name === false ? null : el('small', { text: i2.n })]);
+  }
+  // what the pictures say, for a screen reader (and it is the sentence the scene replaced)
+  function lineSay(srcs, key) {
+    const c = info(key), fig = CARDS[key] && CARDS[key].t === 'fig', me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
+    const ppl = srcs.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName), rel = srcs.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), pl = srcs.filter(x => x[0] === '@').map(theName), when = [];
+    if (ppl.length) when.push('With ' + listOf(ppl, 'or') + ' in play on your side');
+    if (rel.length) when.push((when.length ? 'with ' : 'With ') + listOf(rel, 'or') + ' among your Relics');
+    if (pl.length) when.push(fig ? (when.length ? 'when ' : 'When ') + 'you play ' + me + ' at ' + listOf(pl, 'or') : (when.length ? 'with ' : 'With ') + 'one of your Figures at ' + listOf(pl, 'or'));
+    if (fig && pl.length && !ppl.length && !rel.length && !c.insp) return 'When you play ' + me + ' at ' + listOf(pl, 'or') + ', you score 1 Renown.';
+    return when.join(', or ') + ', ' + me + ' ' + (c.insp ? 'costs 1 Spark less, has +1 Might and scores 1 Renown.' : 'scores 1 Renown.');
+  }
+  // is this card in play on the viewer's side right now? (only asked of a card in the viewer's hand, at the table)
+  function inPlayNow(k, forFig) {
+    if (!S || ui.view == null || !S.P[ui.view]) return false; const me = ui.view;
+    if (k[0] === '@') { const p = S.places.indexOf(k.slice(1)); return p >= 0 && (forFig || S.figs.some(f => f.o === me && f.p === p)); }
+    return CARDS[k].t === 'relic' ? S.P[me].relics.indexOf(k) >= 0 : S.figs.some(f => f.o === me && f.c === k);
+  }
+  // The scene of one line or of several that end at one card: the cards in play at the left, each on its slab with
+  // its own stretch of line and what that line is worth, a bracket where there is more than one, and the card that
+  // comes down at the right. o.small: the plate over a pack's card.
+  function lineScene(srcs, key, o) {
+    o = o || {}; const isFig = CARDS[key] && CARDS[key].t === 'fig';
+    const groups = []; srcs.forEach(k => { const w = worthOf(k, key); let g = groups.filter(x => x.w === w)[0]; if (!g) groups.push(g = { w: w, ks: [] }); g.ks.push(k); });
+    const alts = el('span', { class: 'll-alts n' + groups.length });
+    groups.forEach(g => { const row = el('span', { class: 'll-alt' }); let any = false;
+      g.ks.forEach(k => { const lit = o.state ? inPlayNow(k, isFig) : null, w = lineNode(k, 'board', { tap: o.tap, guest: !isFig }); if (lit === true) { w.classList.add('lit'); any = true; } else if (lit === false) w.classList.add('dim'); w.setAttribute('data-from', k); row.appendChild(w); });
+      if (o.state && !any) row.classList.add('dim'); row.appendChild(el('span', { class: 'll-line' }, [worthEl(g.w)])); alts.appendChild(row); });
+    const sc = el('div', { class: 'll-scene earn' + (o.small ? ' small' : '') + (srcs.length > 2 ? ' many' : '') + (o.state ? (srcs.some(k => inPlayNow(k, isFig)) ? ' on' : ' off') : ''), 'data-to': key, style: { '--n': groups.length } }, [
+      el('span', { class: 'll-sr', text: lineSay(srcs, key) }), alts, groups.length > 1 ? el('i', { class: 'll-stub', 'aria-hidden': 'true' }) : null, lineNode(key, 'play', { me: true, tap: false })]);
+    return sc;
+  }
+  // Everything a card is joined to, under the card being read. Kept plain (Tim, 2026-11-11: "legacy lines are looking
+  // jumbled ... make the benefits and connections clear visually without losing information ... maybe there's a ?
+  // tooltip on items like that which require more explanation"): the scene of what this card grows from, the true
+  // sentence, then one row of the cards that grow from it. The ? opens the same thing said in whole sentences, with
+  // this card's own names in them.
+  function lineage(key, o) {
+    o = o || {}; if (!CARDS[key] || !E.STD.threads) return null;
+    const c = CARDS[key], i0 = info(key), srcs = (c.insp || []).concat(c.from || []), kids = o.brief && (c.insp || c.from) ? [] : (KIDS[key] || []).filter(k => CARDS[k]);
+    if (!srcs.length && !kids.length) return null;
+    const inHand = !!(o.live && S && G && !G.over && !G.demo && S.P[ui.view] && S.P[ui.view].hand.indexOf(key) >= 0 && !document.querySelector('.an-screen'));
+    const box = el('div', { class: 'll' }), why = el('p', { class: 'ln-why' }); let sel = null;
+    const tx = (from, to) => (TX.LINKS && TX.LINKS[from + '>' + to]) || '';
+    function choose(from, to) { sel = from + '>' + to; why.textContent = tx(from, to); why.hidden = !why.textContent;
+      box.querySelectorAll('.ll-n.chosen').forEach(n => n.classList.remove('chosen')); const other = from === key ? to : from;
+      if (srcs.length + kids.length > 1) box.querySelectorAll('.ll-n[data-k="' + other + '"]').forEach(n => n.classList.add('chosen')); }
+    function tap(from, to) { return e => { e.stopPropagation(); if (sel === from + '>' + to || srcs.length + kids.length === 1) openView((from === key ? to : from).replace(/^@/, '')); else { Kit.sfx('tap', .4); choose(from, to); } }; }
+    // the ?: what the pictures mean, in sentences a person would say, about these very cards
+    const help = el('div', { class: 'll-help', hidden: true }), says = [];
+    if (srcs.length) { says.push(lineSay(srcs, key)); if (c.insp) says.push(i0.n + ' keeps the +1 Might for as long as the two of them are in play, joined by a gold Legacy Line on the map.'); }
+    const kidSay = []; if (kids.length) { const th = kids.filter(k => worthOf(key, k) === 'thread'), lg = kids.filter(k => worthOf(key, k) === 'legacy'), all = th.concat(lg);
+      kidSay.push('With ' + theName(key) + ' in play on your side, ' + listOf(all.map(k => CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n), 'and') + (all.length > 1 ? ' each score 1 Renown as you play them.' : ' scores 1 Renown as you play that card.'));
+      if (lg.length) kidSay.push(listOf(lg.map(k => CARDS[k].n), 'and') + (lg.length > 1 ? ' also cost 1 Spark less and have' : ' also costs 1 Spark less and has') + ' +1 Might for as long as the Legacy Line holds.'); }
+    kidSay.forEach(t => says.push(t));
+    says.push('Only one Legacy Line scores in each round. A second one made in the same round still joins the two cards, and scores nothing.');
+    says.forEach(t => help.appendChild(el('p', { text: t })));
+    const q = el('button', { type: 'button', class: 'll-q', 'aria-label': 'What a Legacy Line does', 'aria-expanded': 'false', text: '?', onclick: e => { e.stopPropagation(); help.hidden = !help.hidden; q.setAttribute('aria-expanded', String(!help.hidden)); q.classList.toggle('on', !help.hidden); Kit.sfx('tap', .4);
+      // (the words open inside the notes: if they would run off the screen the notes scroll, and the card stays where it is)
+      const vn = box.closest('.view-notes, .vf-notes'); if (!help.hidden && vn) { const r = vn.getBoundingClientRect(); if (vn.classList.contains('view-notes') && !vn.classList.contains('scroll') && r.top + vn.scrollHeight > window.innerHeight - 10) { vn.classList.add('scroll'); vn.style.maxHeight = Math.max(120, Math.round(r.height)) + 'px'; }
+        vn.scrollTop += help.getBoundingClientRect().top - vn.getBoundingClientRect().top - 46; } } });
+    box.appendChild(el('div', { class: 'll-head' }, [el('div', { class: 'ln-k', text: 'Legacy Line' }), q]));
+    if (srcs.length) { const sc = lineScene(srcs, key, { tap: true, state: inHand }); sc.querySelectorAll('.ll-who[data-from]').forEach(a => { a.querySelector('.ll-n').onclick = tap(a.getAttribute('data-from'), key); });
+      // (the card comes down once as the notes open, and again at a tap on it)
+      const me = sc.querySelector('.ll-n.me'); if (me) me.parentNode.onclick = e => { e.stopPropagation(); sc.classList.remove('go'); void sc.offsetWidth; sc.classList.add('go'); };
+      sc.classList.add('go'); box.appendChild(sc); }
+    box.appendChild(why); box.appendChild(help);
+    if (kids.length) {
+      // (what grows from this card: the cards themselves in a row on one line that starts at this card, each a tap away)
+      const rail = el('span', { class: 'll-rail' });
+      kids.forEach(k => { const w = lineNode(k, 'play', { tap: true }); w.classList.add('kid'); w.querySelector('.ll-n').onclick = tap(key, k); rail.appendChild(w); });
+      box.appendChild(el('div', { class: 'll-scene give k' + Math.min(6, kids.length) + (srcs.length ? ' also' : '') }, [el('span', { class: 'll-sr', text: kidSay.join(' ') }), lineNode(key, 'board', { me: true, tap: false, name: false }), rail]));
+    }
+    if (srcs.length) choose(srcs[0], key); else choose(key, kids[0]);
+    return box;
+  }
   // what is written under a card being read: where its Might comes from, its links and its skills, in full
   function notesFor(key, o) {
     o = o || {};
@@ -336,32 +490,8 @@
       const why = same ? 'You have ' + theName(same) + ' in play. ' + cap1(theName(key)) + ' has the same power, and your two Relics have to be Relics with different powers.' : P.relics.length >= 2 ? 'You have two Relics in play, and two is the most you can have.' : '';
       if (why) notes.appendChild(el('div', { class: 'why', text: why }));
     }
-    // A card's Legacy Line, drawn rather than described (Tim, 2026-11-11: "make the connector descriptions on the cards
-    // more visual. explain through design not words where possible"): what the card grew from on the left, a gold
-    // line to the card itself, and under the line what the connection is worth as the game's own marks (Spark,
-    // Might, Renown). One short line says when it counts, and the true sentence about the two says why.
-    const srcs = (c.insp || []).concat(CARDS[key] && E.STD.threads && CARDS[key].from || []);
-    if (srcs.length) {
-      const fig = CARDS[key] && CARDS[key].t === 'fig', me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
-      const med = (k, big) => { const bare = k.replace(/^@/, ''), i2 = info(bare), m = el('button', { type: 'button', class: 'ln-m' + (k[0] === '@' ? ' pl' : '') + (big ? ' me' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c }, 'aria-label': 'Read ' + i2.n, onclick: e => { e.stopPropagation(); if (!big) openView(bare); } });
-        const im = artImg(bare, true, true) || mono(bare); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: i2.n })]); };
-      const left = el('span', { class: 'ln-src' }); srcs.forEach((k, i) => { if (i) left.appendChild(el('i', { class: 'ln-or', text: 'or' })); left.appendChild(med(k)); });
-      const worth = el('span', { class: 'ln-worth' }, [
-        c.insp ? el('span', { class: 'ln-w sp', role: 'img', 'aria-label': 'costs 1 Spark less' }, [el('i'), el('b', { text: '−1' })]) : null,
-        c.insp ? el('span', { class: 'ln-w mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('i'), el('b', { text: '+1' })]) : null,
-        el('span', { class: 'ln-w re', role: 'img', 'aria-label': 'scores 1 Renown' }, [el('i'), el('b', { text: '+1' })])]);
-      // when it counts, the way the player meets it
-      const ppl = srcs.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName), rel = srcs.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), pl = srcs.filter(x => x[0] === '@').map(theName), when = [];
-      if (ppl.length) when.push('With ' + listOf(ppl, 'or') + ' in play on your side');
-      if (rel.length) when.push((when.length ? 'with ' : 'With ') + listOf(rel, 'or') + ' among your Relics');
-      if (pl.length) when.push(fig ? (when.length ? 'when ' : 'When ') + 'you play ' + me + ' at ' + listOf(pl, 'or') : (when.length ? 'with ' : 'With ') + 'one of your Figures at ' + listOf(pl, 'or'));
-      const why = srcs.map(k => TX.LINKS && TX.LINKS[k + '>' + key]).filter(Boolean);
-      notes.appendChild(el('div', { class: 'ln' + (srcs.length >= 3 ? ' many' : '') }, [
-        el('div', { class: 'ln-k', text: 'Legacy Line' }),
-        el('div', { class: 'ln-row' }, [left, el('span', { class: 'ln-line' }, [worth]), med(key, true)]),
-        el('p', { class: 'ln-when', text: when.join(', or ') + '.' }),
-        why.length ? el('p', { class: 'ln-why', text: why[0] }) : null]));
-    }
+    // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
+    const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1](c.n)) })); });
     if (c.kind === 'place') {
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
@@ -395,8 +525,11 @@
     document.body.appendChild(v);
     // as big as fits: the card, then what's written under it
     let w = vw; v.style.setProperty('--vw', w + 'px');
-    const under = () => (!side && !wide && !o.lesson && notes.childNodes.length ? notes.offsetHeight + 12 : 0);
+    // (the card gives way to its notes only so far: notes taller than about a third of the screen scroll under it)
+    const stacked = !side && !wide && !o.lesson && notes.childNodes.length, cap = Math.max(150, Math.round(window.innerHeight * .3));
+    const under = () => (stacked ? Math.min(notes.scrollHeight, cap) + 12 : 0);
     for (let i = 0; i < 14 && w > 150 && card.offsetHeight + under() > vh; i++) { w = Math.round(w * .92); v.style.setProperty('--vw', w + 'px'); }
+    if (stacked && card.offsetHeight + notes.scrollHeight + 12 > vh) { notes.classList.add('scroll'); notes.style.maxHeight = Math.max(90, vh - card.offsetHeight - 12) + 'px'; }
     viewEl = v; document.addEventListener('keydown', viewKey);
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
@@ -504,7 +637,7 @@
       let most = 0; const uniq = keys.filter((k, i) => keys.indexOf(k) === i);
       uniq.forEach(k => { under.innerHTML = ''; const nt = notesFor(k); while (nt.firstChild) under.appendChild(nt.firstChild); under.style.height = 'auto'; most = Math.max(most, under.scrollHeight); });
       const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (o.title ? v.querySelector('.vf-head').offsetHeight + 8 : 0) - (n > 1 ? strip.offsetHeight + 8 : 0) - 8;
-      const cu = Math.round(Math.max(H * .4, Math.min(520, W * 1.02, room - most)));
+      const cu = Math.round(Math.max(H * .4, Math.min(520, W * 1.02, room - Math.min(most, Math.max(150, H * .3)))));   // (notes taller than about a third of the screen scroll: one card with many lines doesn't make the whole strip small)
       flow.style.setProperty('--cu', cu + 'px'); under.style.height = Math.max(0, Math.min(most, room - cu)) + 'px';
     }
     const resize = () => { size(); F.reset(); rest(Math.round(F.pos)); };
@@ -1621,7 +1754,7 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The foot of the card names that source.</li>' +
+    '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
     '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
     '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
@@ -1836,7 +1969,7 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+  window.AnoriaUI = { lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };

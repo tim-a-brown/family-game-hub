@@ -377,12 +377,11 @@ Underlying principles for everything:
   a half times a man's height). State sizes as a ratio to a person, and choose the viewpoint that makes the true
   arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
 - **One word for a connection: Legacy Line** (Tim, 2026-11-11: of "Thread" and "Legacy line", "legacy line is the one
-  i like best"). Players read only "Legacy Line": the foot of a card ("Legacy Line from Archimedes"), the plate when
+  i like best"). Players read only "Legacy Line": the line down the side of a card (see below), the plate when
   one is made, the named lines of the collection ("The Road to Zama", in `THREADS`), the rules and lessons. A Figure
   with `insp` is still a "Legacy" Figure with "Legacy of Homer." in its text. In code the old names stay (`from`,
-  `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): under a card
-  being read (`notesFor` in ui.js: what the card grew from, a gold line to the card, and on the line what that is
-  worth as the game's own Spark, Might and Renown marks, then one line saying when and the true sentence); and over
+  `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): on the card
+  and under a card being read (below); and over
   a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
   places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
   moment there and then (`lineMoment`), before the gift at the end of the pack.
@@ -394,9 +393,34 @@ Underlying principles for everything:
   (`ui/card-back-place.webp`), so the two kinds of card sort apart on a real table.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
-- **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
-  "Legacy Line from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
-  its rules text ("Legacy of Homer.").
+- **A card's Legacy Line is printed on it as a line, down the right side of its paper** (Tim, 2026-11-11: the sentence
+  at the foot and the words under the card did not say what a line does: "I'd rather it be a graphical representation
+  of how this card connects to others, rather than using words", then "maybe legacy line is displayed vertically down
+  the right side of the card", "slide the geography dots/maps around underneath to avoid being covered up"). `.ac-ll`
+  in `cardEl`: one gold line for each card it grows from, that card's picture at the top and its name down the line;
+  lines that are each enough join in a bar; at the foot, what the line gives as the game's marks with the number in
+  each (the laurel a line scores; a Legacy Figure's Spark and Might too, on a line of their own when a card has both
+  kinds). The paper makes room (`--lc`, `--lg`, `--lh`), the foot is the pronunciation only, and the map behind the
+  words stops short of the lines. A Figure's own Legacy stays in its rules text as well ("Legacy of Homer.").
+- **Under a card being read, the Legacy Line is one clean scene, and a ? says it in words** (Tim, the same day: the
+  first drawing was "jumbled ... make the benefits and connections clear visually without losing information ... maybe
+  there's a ? tooltip on items like that which require more explanation"). `lineage()` and `lineScene()` in ui.js: the
+  cards it grows from stand IN PLAY on a slab of your side of the board (a Figure as the piece on the map, a Relic in
+  its slot, a Place as its tile with one of your pieces at it), the card itself is a card from your hand that comes
+  down, and the gold line between them carries the marks. Cards that are each enough stand side by side on one line;
+  a second line only where the lines are worth different things (Newton). Then the true sentence, then one row of the
+  cards that grow from this card, each a tap away. The round ? opens the rule in whole sentences with this card's own
+  names in them (`lineSay`), inside the notes, which scroll so the card stays where it is. At the table, with the
+  card in your hand, what is in play on your side now is lit and what is not is a ghost on a dashed slab. The plate
+  over a pack's card uses the same scene (`A.lineScene`). A new way to show a line starts from these two.
+- **The dot on a card's map is clear of every word** (Tim: "Eratosthenes' dot is under text - careful to be clear of
+  all card text"). `dotSpot()` in ui.js lays a copy of the card out off the screen, takes every line of text, the
+  shield, the home plate, the ribbon and the Legacy Line as boxes, and stands the dot in the clear place nearest the
+  upper right; the map is drawn round that place (`mapSVG(ll, color, at)`), found once for each card and layout.
+- **A number inside a mark is centred by its own ink** (Tim: "the numbers in spark and shield sit too high" on his
+  iPhone). Browsers read a font's ascent and descent differently, so a box one line tall puts a digit in a different
+  place in each. The rule in ui.css (after `.ac-cost b`) makes the box with a strut as tall as a digit standing on the
+  baseline, so it wraps the ink. A new number inside a flame, shield or laurel is added to that rule's list.
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
   picture tool can't be trusted to count, so draw several, count each at full size, and pose the thing so every one
   shows), a hand or head out of scale, something held

@@ -58,6 +58,7 @@
 .ac.hasst.foot4:not(.mini) .ac-paper{padding-bottom:5.5em;}
 .ac-paper::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 .8em 1em -.8em rgba(60,40,10,.35);}
 .ac-map{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;}
+.ac.dotwait .ac-map circle{opacity:0;}   /* (the dot waits for the faces to load, so it is never seen in the wrong place) */
 .ac-paper > *:not(.ac-map){position:relative;z-index:1;}
 .ac-paper > .ac-rib{position:absolute;z-index:2;left:0;top:0;bottom:0;width:2em;background:var(--f);display:flex;align-items:center;justify-content:center;}
 .ac-rib span{transform:rotate(-90deg);white-space:nowrap;font:400 1.25em var(--fellsc);letter-spacing:.14em;color:#f3e9d2;}
@@ -78,6 +79,12 @@
 .ac-cost{position:absolute;left:.6em;top:.4em;width:5em;height:6em;z-index:5;background:url(ui/mark-spark.webp) center/contain no-repeat;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.45));}
 .ac-cost b,.ac-st b{position:absolute;transform:translate(-50%,-50%);font:400 2.08em/1 var(--slab);color:var(--an-ink);}
 .ac-cost b{left:49.4%;top:51.9%;}
+/* A number inside a mark (the flame, the shield, the laurel) is centred by its own ink, not by the font's line box
+   (Tim, 2026-11-11: "the numbers in spark and shield sit too high" on his iPhone: browsers read a font's ascent and
+   descent differently, so a box one line tall puts the digit in a different place in each). The box is made by a
+   strut as tall as a digit standing on the baseline, so it wraps the digit's ink exactly, whatever the browser. */
+:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau) > b{line-height:0;white-space:nowrap;margin-top:-.039em;}
+:is(.ac-cost, .ac-st, .al-k, .st-spark, .st-ren, .fp-m, .slot .pv-m, .slot .pv-c, .cl-sum .sh, .adk-coin, .sc-lau) > b::before{content:"";display:inline-block;width:0;height:.781em;vertical-align:baseline;}
 .ac-cost.less b{color:#1c6b2c;}
 .ac-st{position:absolute;bottom:.4em;z-index:5;filter:drop-shadow(1px 2px 0 rgba(0,0,0,.4));}
 .ac-st.m{left:2.4em;width:4.4em;height:4em;background:url(ui/mark-might.webp) center/contain no-repeat;}
@@ -90,8 +97,36 @@
 .ac.hasst .ac-foot{left:7.3em;min-height:3.4em;}
 .ac-foot .ac-home{position:static;flex:none;}
 .ac-mid{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.12em;}
-.ac-from{font:italic 400 .98em/1.12 var(--fell);color:#6e5c40;text-align:center;text-wrap:balance;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
-.ac.hasfrom:not(.hasst):not(.t-place) .ac-paper{padding-bottom:2.7em;} .ac.hasfrom.hassay:not(.hasst):not(.t-place) .ac-paper{padding-bottom:3.9em;}
+/* A card's Legacy Line, printed down the right side of its paper (cardEl): for each card it grows from a gold line with
+   that card's picture at the top and its name down the line; lines that are each enough join in a bar; at the foot,
+   what the line gives as the game's marks, the number inside each. */
+.ac .ac-paper > .ac-ll{position:absolute;right:.6em;top:1.55em;bottom:.85em;z-index:2;display:flex;align-items:stretch;gap:.3em;pointer-events:none;}
+.ac.hasst .ac-paper > .ac-ll{bottom:3.3em;}
+.al-g{display:flex;flex-direction:column;align-items:center;}
+.al-cols{position:relative;flex:1;min-height:0;display:flex;align-items:stretch;gap:.2em;}
+.al-c{position:relative;width:1.95em;display:flex;flex-direction:column;align-items:center;gap:.22em;}
+.al-m{position:relative;flex:none;width:1.9em;height:1.9em;border-radius:50%;overflow:hidden;background:var(--f,#3c4a6e);box-shadow:0 0 0 .07em #4a3b22,0 0 0 .17em #d2b25c,0 .1em .2em rgba(0,0,0,.35);}
+.al-m.pl{border-radius:.36em;}
+.al-m :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;display:block;}
+.al-m.pl :is(img,canvas){object-position:50% 50%;}
+.al-n{flex:none;writing-mode:vertical-rl;font:italic 400 .9em/1 var(--fell);letter-spacing:.02em;color:#6e5c40;white-space:nowrap;}
+.al-t{flex:1;min-height:.5em;width:.13em;border-radius:1em;background:linear-gradient(180deg,#b08a35,#e2c66f,#b08a35);box-shadow:0 0 .22em rgba(226,198,111,.7);}
+.al-cols.join{padding-bottom:.3em;}
+.al-cols.join::after{content:"";position:absolute;left:.92em;right:.92em;bottom:.3em;height:.13em;border-radius:1em;background:#d2b25c;box-shadow:0 0 .22em rgba(226,198,111,.7);}
+.al-cols.join::before{content:"";position:absolute;left:50%;bottom:0;width:.13em;height:.36em;margin-left:-.065em;background:#d2b25c;}
+.al-w{flex:none;display:flex;flex-direction:column;align-items:center;gap:.12em;margin-top:.1em;}
+.al-k{position:relative;flex:none;display:block;width:1.9em;height:1.62em;background:center/contain no-repeat;filter:drop-shadow(0 .05em .05em rgba(0,0,0,.3));}
+.al-k.sp{background-image:url(ui/mark-spark.webp);} .al-k.mi{background-image:url(ui/mark-might.webp);} .al-k.re{background-image:url(ui/mark-renown.webp);}
+.al-k b{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:400 .78em/1 var(--slab);font-style:normal;color:#2b2113;white-space:nowrap;}
+.al-k.sp b{top:56%;} .al-k.mi b{top:46%;}
+/* (the paper makes room: its words stop short of the lines, and it is tall enough to hold the longest of them) */
+.ac.hasll:not(.mini) .ac-paper{padding-right:calc(1.15em + var(--lc,1) * 2.15em + (var(--lg,1) - 1) * .3em);min-height:max(11.5em,calc(var(--lh,6em) + 2.5em));}
+.ac.hasll.hasst:not(.mini) .ac-paper{min-height:max(14.5em,calc(var(--lh,6em) + 4.95em));}
+.ac.ed-rainbow .al-n{color:#cdbf9d;}
+/* (Tim: "slide the geography dots/maps around underneath to avoid being covered up": the map behind the words and its
+   dot stop short of the lines, and the map's edge there fades out) */
+.ac.hasll:not(.mini){--lw:calc(.75em + var(--lc,1) * 2.15em + (var(--lg,1) - 1) * .3em);}
+.ac.hasll:not(.mini) .ac-map{inset:0 auto 0 0;width:calc(100% - var(--lw));-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.3em),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.3em),transparent);}
 .ac-say{min-width:0;text-align:center;font:500 1.04em/1.1 var(--crim);color:#6e5c40;text-wrap:balance;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
 .ac.hassay:not(.hasst):not(.t-place) .ac-paper{padding-bottom:2.7em;}
 .ac.t-place .ac-say{margin-top:.7em;}
@@ -551,6 +586,7 @@
 /* (what's written under a card has the screen's width, not the card's: a card that shrinks to make room doesn't
    squeeze its own notes) */
 .view-notes{width:min(420px,100%);max-width:100%;display:flex;flex-direction:column;gap:5px;}
+.view-notes.scroll{overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;} .view-notes.scroll > *{flex:none;}
 .view.wide{flex-direction:row;gap:18px;}
 /* A card's Legacy Line, drawn: what it grew from, a gold line to the card, and on the line what that is worth */
 .ln{display:flex;flex-direction:column;gap:6px;padding:9px 12px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(8,10,20,.62),rgba(8,10,20,.36));box-shadow:inset 0 0 0 1px rgba(233,207,134,.38);}
@@ -576,6 +612,98 @@
 .ln-why{margin:0;font:italic 400 .86rem/1.25 var(--fell);color:#cbb98a;}
 .view-notes .ln p,.vf-notes .ln p{margin:0;}
 .ln-why{font:italic 400 .86rem/1.25 var(--fell) !important;color:#cbb98a !important;}
+/* A Legacy Line as a scene of the table (ui.js lineage, lineScene): a card in play stands on a slab of its player's
+   side of the board, the card being played is a card from the hand that comes down, the gold line between them
+   carries what the line is worth. No sentence says when a line counts. */
+.ll{--ph:54px;--pw:40px;--pch:58px;--pcw:42px;--rh:calc(var(--ph) + 40px);--mid:calc(5px + var(--ph) / 2);--pc:var(--pc0,#f2b84b);
+  display:flex;flex-direction:column;gap:7px;padding:9px 12px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(8,10,20,.62),rgba(8,10,20,.36));box-shadow:inset 0 0 0 1px rgba(233,207,134,.38);}
+.ll-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.ll-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px;}
+.ll-q{flex:none;width:26px;height:26px;margin:-4px -3px -4px 0;padding:0;border-radius:50%;border:0;background:rgba(233,207,134,.1);box-shadow:inset 0 0 0 1.25px rgba(233,207,134,.7);font:400 .95rem/1 var(--fellsc);color:#e9cf86;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.ll-q.on{background:#e9cf86;color:#10131c;}
+.ll-help{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border-radius:10px;background:rgba(233,207,134,.09);box-shadow:inset 0 0 0 1px rgba(233,207,134,.3);}
+.ll-help[hidden]{display:none;}
+.ll-help p{margin:0;font:500 .9rem/1.3 var(--crim);color:#efe6d2;}
+.ll-scene.give.also{padding-top:8px;border-top:1px solid rgba(233,207,134,.2);}
+.ll-scene{position:relative;display:flex;align-items:flex-start;--n:1;}
+.ll-alts{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.ll-alt{display:flex;align-items:flex-start;}
+.ll-alts:not(.n1) .ll-alt{height:var(--rh);}
+.ll-alt{gap:5px;}
+/* (cards that each make the same line stand side by side, joined by the thread) */
+.ll-alt > .ll-who + .ll-who::before{content:"";position:absolute;left:-5px;width:5px;top:calc(var(--mid) - 1px);height:2px;background:#e3c873;}
+.ll-who{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;}
+.ll-who small{font:500 .68rem/1.05 var(--crim);color:#efe6d2;text-align:center;text-wrap:balance;width:min-content;min-width:100%;}
+/* (the slab: one row of the board, in the colour of the player whose side it is) */
+.ll-slab{display:grid;place-items:center;padding:5px 10px 6px;border-radius:10px;background:linear-gradient(180deg,rgba(242,184,75,.16),rgba(242,184,75,.06)),repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 5px);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--pc) 20%,transparent),color-mix(in srgb,var(--pc) 7%,transparent)),repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,transparent 2px 5px);
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--pc) 78%,transparent),inset 0 -5px 8px rgba(0,0,0,.28);}
+.ll-n{position:relative;display:block;flex:none;padding:0;border:0;background:none;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;}
+button.ll-n{cursor:pointer;}
+.ll-art{position:absolute;inset:0;overflow:hidden;background:var(--f,#3c4a6e);}
+.ll-art :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 18%;display:block;}
+/* in play: a Figure is the piece on the map (its player's outline, the faction's spine), a Relic its slot, a Place its tile */
+.ll-n.board.fig,.ll-n.board.deed{width:var(--pw);height:var(--ph);}
+.ll-n.board.fig .ll-art,.ll-n.board.deed .ll-art{border-radius:4px;box-shadow:0 0 0 1.5px var(--pc),0 2px 0 1.5px rgba(0,0,0,.6),0 4px 7px rgba(0,0,0,.5);}
+.ll-n.board.fig .ll-art::after{content:"";position:absolute;left:0;top:0;bottom:0;width:10%;background:var(--f);box-shadow:1px 0 0 rgba(0,0,0,.35);}
+.ll-n.board.relic{width:calc(var(--ph) * .7);height:calc(var(--ph) * .7);margin:calc(var(--ph) * .15) 0;}
+.ll-n.board.relic .ll-art{border-radius:7px;background:#3b3324;box-shadow:0 0 0 1px var(--an-navy,#10131c),0 0 0 2.5px var(--an-gilt-2,#c9a24a),0 3px 6px rgba(0,0,0,.5);}
+.ll-n.board.place{width:calc(var(--ph) * 1.16);height:calc(var(--ph) * .78);margin:calc(var(--ph) * .11) 0;}
+.ll-n.board.place .ll-art{border-radius:7px;box-shadow:0 0 0 1px #000,0 0 0 2.5px var(--pc),0 3px 7px rgba(0,0,0,.5);}
+.ll-n.board.place .ll-art :is(img,canvas){object-position:50% 50%;}
+/* (one of your Figures standing at the Place: a blank piece in your colour) */
+.ll-guest{position:absolute;right:-7px;bottom:-5px;width:30%;height:62%;border-radius:3px;background:linear-gradient(180deg,color-mix(in srgb,var(--pc) 85%,#fff),var(--pc));box-shadow:0 0 0 1.5px #10131c,0 2px 4px rgba(0,0,0,.5);}
+.ll-guest::after{content:"";position:absolute;left:50%;top:22%;width:44%;aspect-ratio:1;margin-left:-22%;border-radius:50%;background:#10131c;box-shadow:0 .62em 0 .16em #10131c;font-size:10px;}
+/* being played: a card from the hand, lifted and tilted, that comes down */
+.ll-n.play{width:var(--pcw);height:var(--pch);border-radius:5px;background:#efe6d2;box-shadow:0 0 0 1px #10131c,0 6px 10px rgba(0,0,0,.55);transform:translateY(-7px) rotate(-7deg);transform-origin:50% 100%;}
+.ll-n.play .ll-art{inset:2.5px;border-radius:3px;}
+.ll-n.play .ll-art::after{content:"";position:absolute;left:0;top:0;bottom:0;width:11%;background:var(--f);}
+.ll-scene.earn > .ll-who{margin-top:calc(var(--mid) - var(--pch) / 2 + (var(--n) - 1) * (var(--rh) + 6px) / 2);cursor:pointer;}
+.ll-scene.earn > .ll-who small{margin-top:3px;}
+/* the line, and what it is worth on it */
+.ll-line{position:relative;flex:1;min-width:58px;height:2px;margin-top:calc(var(--mid) - 1px);background:rgba(201,162,74,.34);border-radius:2px;}
+.ll-line::after{content:"";position:absolute;inset:0;border-radius:2px;background:linear-gradient(90deg,#c9a24a,#f6e3a1,#c9a24a);box-shadow:0 0 7px rgba(246,227,161,.75);transform-origin:0 50%;}
+.ll-line .ln-worth{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;white-space:nowrap;}
+.ll-alts:not(.n1)::after{content:"";position:absolute;right:0;top:calc(var(--mid) - 1px);bottom:calc(var(--rh) - var(--mid) - 1px);width:2px;border-radius:2px;background:linear-gradient(180deg,#c9a24a,#f6e3a1,#c9a24a);box-shadow:0 0 7px rgba(246,227,161,.6);}
+.ll-stub{flex:none;width:12px;height:2px;margin-top:calc(var(--mid) - 1px + (var(--n) - 1) * (var(--rh) + 6px) / 2);background:#f6e3a1;box-shadow:0 0 7px rgba(246,227,161,.6);}
+.ll-n.chosen .ll-art{outline:2px solid #fff1bf;outline-offset:1.5px;}
+/* the card comes down, the line runs out to it, the marks land */
+.ll-scene.go .ll-n.play.me{animation:ll-drop 1.25s .45s var(--ease,ease) both;}
+.ll-scene.go .ll-line::after{animation:ll-run .45s 1.2s var(--ease,ease) both;}
+.ll-scene.go .ll-alts:not(.n1)::after,.ll-scene.go .ll-stub{animation:ll-fade .3s 1.5s ease both;}
+.ll-scene.go .ll-line .ln-worth{animation:ll-land .5s 1.55s var(--spring,ease) both;}
+@keyframes ll-drop{0%,18%{transform:translateY(-9px) rotate(-8deg);}62%{transform:translateY(1px) rotate(0);}74%{transform:translateY(0) rotate(0) scale(.97);}100%{transform:none;}}
+@keyframes ll-run{0%{transform:scaleX(0);}100%{transform:none;}}
+@keyframes ll-fade{0%{opacity:.25;}100%{opacity:1;}}
+@keyframes ll-land{0%{opacity:.45;transform:translate(-50%,-50%) scale(.9);}55%{opacity:1;transform:translate(-50%,-50%) scale(1.14);}100%{opacity:1;transform:translate(-50%,-50%);}}
+/* at the table, with the card in your hand: what is in play on your side now is lit, and what is not is a ghost on a dashed slab */
+.ll-scene.on .ll-who.lit .ll-slab{box-shadow:inset 0 0 0 1.5px var(--pc),0 0 10px 1px color-mix(in srgb,var(--pc) 60%,transparent);}
+.ll-who.dim .ll-slab{background:none;box-shadow:none;outline:1.5px dashed color-mix(in srgb,var(--pc) 55%,transparent);outline-offset:-1.5px;}
+.ll-who.dim .ll-n{filter:grayscale(.75) brightness(.62);}
+.ll-alt.dim .ll-line{background:repeating-linear-gradient(90deg,rgba(201,162,74,.5) 0 5px,transparent 5px 10px);}
+.ll-alt.dim .ll-line::after{display:none;}
+.ll-alt.dim .ln-worth{opacity:.55;}
+.ll-scene.off .ll-n.play.me{animation:none;}
+.ll-scene.off .ll-alts:not(.n1)::after,.ll-scene.off .ll-stub{opacity:.3;animation:none;}
+/* what grows from this card: it is the piece on the board, and the others hang on its line like beads */
+.ll-scene.give{gap:0;}
+.ll-rail{position:relative;flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:flex-start;gap:4px 6px;padding-right:2px;}
+.ll-rail > *::before{content:"";position:absolute;left:-7px;right:0;top:calc(var(--mid) - 1px);height:2px;background:#e3c873;box-shadow:0 0 7px rgba(246,227,161,.6);}
+.ll-rail > * > *{position:relative;} .ll-rail{padding-left:7px;}
+.ll-seg{position:relative;flex:none;display:grid;place-items:center;height:24px;margin-top:calc(var(--mid) - 12px);padding-left:8px;}
+.ll-who.kid{--pch:50px;--pcw:36px;}
+.ll-who.kid .ll-n.play{margin-top:calc(var(--mid) - var(--pch) / 2);transform:rotate(-5deg);transform-origin:50% 50%;}
+.ll-who.kid small{font-size:.64rem;margin-top:1px;}
+.ll-who.kid{min-width:calc(var(--pcw) + 6px);}
+.ll-scene.give.k4 .ll-who.kid,.ll-scene.give.k5 .ll-who.kid,.ll-scene.give.k6 .ll-who.kid{--pch:44px;--pcw:32px;}
+.ll-scene.give.k4 .ll-who.kid small,.ll-scene.give.k5 .ll-who.kid small,.ll-scene.give.k6 .ll-who.kid small{display:none;}
+.ll > .ln-why[hidden]{display:none;}
+/* (the plate over a pack's card, and a short sideways phone: a size down) */
+.ll:has(.ll-scene.many){--ph:44px;--pw:33px;--pch:48px;--pcw:35px;}
+.ll-scene.many .ll-slab{padding:5px 6px 6px;} .ll-scene.many .ll-line{min-width:50px;}
+@media (max-width:359px){.ll{--ph:44px;--pw:33px;--pch:48px;--pcw:35px;padding:8px 9px 9px;} .ll-slab{padding:5px 6px 6px;} .ll-line{min-width:50px;}}
+.ll-scene.small,.view.wide .ll{--ph:44px;--pw:33px;--pch:48px;--pcw:35px;}
+@media (prefers-reduced-motion:reduce){.ll-scene.go .ll-n.play.me,.ll-scene.go .ll-line::after,.ll-scene.go .ll-alts::after,.ll-scene.go .ll-stub,.ll-scene.go .ll-line .ln-worth{animation:none;} .ll-scene:not(.off) .ll-n.play.me{transform:none;}}
 /* (three sources on one line: everything a size down so the row still fits a narrow phone) */
 .ln.many .ln-who{width:46px;} .ln.many .ln-m{width:36px;height:36px;} .ln.many .ln-src{gap:3px;} .ln.many .ln-line{min-width:44px;height:36px;} .ln.many .ln-or{margin-top:-12px;font-size:.72rem;}
 .view.wide .view-notes{width:min(380px,42vw);}

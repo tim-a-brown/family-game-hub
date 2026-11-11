@@ -362,12 +362,9 @@
       // ui.js): under the words Legacy Line, the card it runs from and the card it runs to as named medallions joined
       // by the gold line, what the line is worth on it as the game's own marks, and the true sentence about the two.
       function linkEl(link, k) {
-        const med = c => { const m = el('span', { class: 'ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) } }); const im = A.artImg(c, true) || A.mono(c); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: CARDS[c].n })]); };
-        const legacy = (CARDS[link.to].insp || []).indexOf(link.from) >= 0, w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
-        return el('div', { class: 'pk-p-th pk-ll', 'data-to': link.to }, [
-          el('div', { class: 'ln-k', text: 'Legacy Line' }),
-          el('div', { class: 'ln-row', role: 'img', 'aria-label': 'From ' + CARDS[link.from].n + ' to ' + CARDS[link.to].n }, [med(link.from), el('span', { class: 'ln-line' }, [el('span', { class: 'ln-worth' }, [legacy ? w('sp', '−1', 'costs 1 Spark less') : null, legacy ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')])]), med(link.to)]),
-          el('p', { class: 'ln-why', text: link.tx })]);
+        // (drawn as the reader draws it: the card it grows from in play on its slab, the gold line with what it is worth, and the other coming down)
+        const sc = A.lineScene([link.from], link.to, { small: true }); sc.classList.add('go');
+        return el('div', { class: 'pk-p-th pk-ll', 'data-to': link.to }, [el('div', { class: 'ln-k', text: 'Legacy Line' }), sc, el('p', { class: 'ln-why', text: link.tx })]);
       }
       function mark() {
         const t = rest.querySelector('.pk-rest-t'); if (t) t.textContent = left === n ? 'Turn them all' : 'Turn the rest';

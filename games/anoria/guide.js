@@ -570,9 +570,12 @@
         await L.say('This is what the card does. A skill word is in bold, and the words after it say what the skill means.', { at: V + '.ac-txt' });
         await L.say('The line in italics is a true fact about her. The fact plays no part in the game.', { at: V + '.ac-fact' });
         await L.say('This is her <b>home region</b>. A Figure has +1 Might at any Place in its home region.', { at: V + '.ac-home' });
-        await L.say('The fine print says how to pronounce the name, and names the card’s <b>Legacy Line</b>: the person, Relic or Place it grew from.', { at: V + '.ac-mid' });
+        await L.say('The fine print at the foot says how to pronounce her name.', { at: V + '.ac-mid' });
+        await L.say('The gold line down the right side of the card is Hypatia’s <b>Legacy Line</b>. The picture at the top of the line is the Library of Alexandria, where she taught.', { at: V + '.ac-ll' });
+        await L.say('The laurel at the foot of the line is what the Legacy Line gives you. When you play Hypatia at the Library of Alexandria, you score 1 Renown.', { at: V + '.ac-ll .al-w' });
         await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
-        if (find(V + '.view-notes')) await L.say('Under the card, each skill and each link is written out in full.', { at: V + '.view-notes' });
+        if (find(V + '.view-notes .ll')) await L.say('Under the card, the same Legacy Line is drawn as the table: the Library of Alexandria on your side of the board, and Hypatia coming down from your hand. The <b>?</b> says in words what the Legacy Line does.', { at: V + '.view-notes .ll-scene' });
+        else if (find(V + '.view-notes')) await L.say('Under the card, each skill is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
         await L.say('Every card you own, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
       } }

@@ -59,7 +59,7 @@
   // the card is shown in another edition now: every place it is drawn follows
   function refresh(key) {
     const e = of(key);
-    document.querySelectorAll('.ac[data-card="' + key + '"]').forEach(n => { if (n.closest('.ed-pick') || n.getAttribute('data-edfix')) return; paint(n, e); });
+    document.querySelectorAll('.ac[data-card="' + key + '"]').forEach(n => { if (n.closest('.ed-pick') || n.getAttribute('data-edfix')) return; paint(n, e); if (n._dot) n._dot(); });   // (a borderless card's words lie differently: the dot on its map finds its place again)
     document.querySelectorAll('[data-edk="' + key + '"]').forEach(n => { ALLCLS.forEach(c => n.classList.remove(c)); if (e) n.classList.add('ed-' + ED[e].id); });
     wake();
   }

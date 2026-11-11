@@ -160,4 +160,5 @@ These cards go in your deck of 40 like any other card.
 | The Cape Route | Deed, costs 2 | Turn up the top Domain of your stack and lay it at the Crossroads in place of the Domain that is there. |
 | Treaty of Breda | Deed, costs 2 | Choose two Domains. They change places. |
 | The Columbian Exchange | Deed, costs 3 | The Domains at the two Gates change places, and the Domains at the two Outposts change places. |
+| Congress of Vienna | Deed, costs 1 | Roll two dice. Each die names a Domain, counted from your Gate: 1 your Gate, 2 your Outpost, 3 the Crossroads, 4 their Outpost, 5 their Gate. Those two Domains change places. A 6 names any Domain you choose. If both dice name the same Domain, that Domain is discarded and replaced from its owner's stack. |
 | Boundary Stone | Relic, costs 1 | The other player's cards cannot replace, move or silence the Domains at your Gate and your Outpost. |
