@@ -255,9 +255,12 @@ Underlying principles for everything:
   A new kind of engine event needs a handler there.
 - Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
   are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
-- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 30 wins
-  (Tim, 2026-11-11; until then Places scored double from round 4, and a game saved under that rule finishes under it:
-  `G.sc`), a round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
+- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 25 wins,
+  or whoever breaks all 3 of the other player's Seals (Tim, 2026-11-11; it was first to 30 that morning, and before
+  that Places scored double from round 4. A game saved under an older rule finishes under it: `G.sc` for the scoring,
+  `G.tg` for the Renown that wins). **The Renown that wins is never typed into a sentence**: the table, the rules
+  page (`RULES` in ui.js) and the results card read `S.cfg.target`, and the guide's captions and the story's counting
+  laurel read `WIN` in guide.js. A round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
   person on your side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
@@ -273,6 +276,24 @@ Underlying principles for everything:
   owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
   until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **No fictional, mythological or legendary characters for now** (Tim, 2026-11-11: first the new printing, then "pull
+  the six legend cards from the first printing too", then "pull the trojan horse too"). Nine cards left the set and a
+  real, well-attested person (for the Deed, a real event) has each one's slot, with the same faction, cost, Might and
+  skills, in the same ready decks: Scheherazade to Harun al-Rashid, Anansi to Yaa Asantewaa, Atalanta to Artemisia of
+  Caria, Daedalus to Amelia Earhart, Odysseus to Ferdinand Magellan, Beowulf to Alfred the Great, the Trojan Horse to
+  Night Crossing (Washington on the Delaware), Sinbad to Zhang Qian and Gilgamesh to Sargon of Akkad. A new card is
+  a real person with a record to point to, and its power is true to that person.
+- **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
+  into `RETIRED` in text.js and its link sentences into `OLD_LINKS`; its picture stays in art/). Then nobody loses
+  anything and nothing shows blank: a collection and the decks someone built hold the new card instead, as many
+  copies (`retire()` in coll.js, which goes by the keys it finds, so a device that hasn't updated can't undo it); no
+  pack, ready deck or Library holds a retired card, because they all read the set (`C.CARDS`); a game saved with a
+  retired card plays on with it to the end, because the engine and the table look a key up in the set and then in
+  `RETIRED`; an old game's history names it the same way (`card()` in hist/anoria.js); and Play again deals from
+  today's set (`C.now`). A named Legacy Line that goes with a card is removed, not reused: a finished one keeps its
+  flag in the collection under its old id. A Deed's effect belongs to its data, not its name (`fx`, read with
+  `E.fxOf`): Night Crossing runs the Trojan Horse's.
+- **Amelia Earhart is the first card after 1900**, so `ERAS` has a seventh era, The Modern World.
 - **Editions** (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana"): every card is printed in five
   finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
   Gold foil and Rainbow foil (borderless: the picture runs to the edge, the words on a dark panel). The picture is the
@@ -280,7 +301,8 @@ Underlying principles for everything:
   pack has an edition; a foil is always one you have not found for that card, it is the card's for good on every
   copy, and one of a card you already have two of is an extra card in its pack, so the set takes as long as it did.
   Once the set is complete the packs go on turning up foils until none are left. Found editions and the one each card
-  is shown in are `ed` and `look` in `anoria_coll` (v 3; an older collection has every card Matte). The looks are
+  is shown in are `ed` and `look` in `anoria_coll` (v 4; an older collection has every card Matte, and `retire()` hands a retired
+  card's editions to the card that has its slot). The looks are
   `games/anoria/editions.css` and the rest `editions.js` (`AnoriaEd`): `cardEl` calls `AnoriaEd.dress`, a card being
   read has the edition button on the picture's lower right, opposite the picture and words button, and its chooser
   shows the five editions of that very card with the ones not found locked. A change shows at once wherever the card
@@ -322,6 +344,12 @@ Underlying principles for everything:
   a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
   places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
   moment there and then (`lineMoment`), before the gift at the end of the pack.
+- **The sphere is a real object** (Tim, 2026-11-11: "make sure that all rings are realistic and don't follow any impossible
+  paths or angles"). The one on the card back (`ui/card-back.webp`) and in the logo is rendered from a three.js model
+  built like a real armillary sphere (`scripts/anoria/sphere/`: a meridian on a spindle, a cage of equator, colures,
+  ecliptic and tropics riveted where they cross, a sun on the axle), not generated as a picture. Anything new that shows
+  the sphere is rendered from that model. **Place cards have their own back**, the same design in oxblood
+  (`ui/card-back-place.webp`), so the two kinds of card sort apart on a real table.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
 - **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
@@ -333,6 +361,15 @@ Underlying principles for everything:
   that can't be read, a weapon gripped wrongly, broken objects nobody asked for, two statues of a pair facing
   different ways, a web or building that couldn't stand, and two people of one region with the same face and kit
   (give each their own age, build, dress and scene; Sun Tzu is a Bronze Age scholar in robes, not an armoured general).
+- **No rows of copies** (Tim, 2026-11-11: the people following Gandhi "look too uniform and procedurally generated"). A
+  crowd, column or line of near-identical people behind the subject is a fault, however far away. Draw a few particular
+  people instead, each with their own age, build, dress and pose (five marchers and three villagers, four Spartans
+  getting ready, three soldiers in the mist), and leave the rest out. A brief says so in words ("only three", "each
+  different", "no rows or columns of repeated figures"). A formation that is itself the history (Scipio's lanes at
+  Zama, Shaka's horns, the Phalanx) may stay, small and far off.
+- **A full card has a plate in each top corner** (the cost at the left, the kind at the right), so a brief asks for the
+  head right of centre, about a fifth of the way down, with plain sky or background in both top corners. People and
+  animals in one picture are in true proportion (a rider on a small Mongolian horse is still much smaller than the horse).
 - **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
@@ -385,6 +422,21 @@ Underlying principles for everything:
   (the other way round, every card drawn flattened the board for a moment); and a lesson's caption that has to move
   comes up in its new place, it does not slide across the table. Check with the scratchpad's `gd/film.js` (films a
   game) and `gd/blink.js` (lists anything that changes and changes back within a few frames).
+- **Play mats** (Tim, 2026-11-11: "adapt the same player mat mechanic from lorcana such that they but up against each
+  other under the cards played at the crossroads and each player gets their own stylized game mat"). Each player's side
+  of the map (their Gate, their Outpost, their half of the Crossroads) lies on a mat of their own: two `.an-pm` in
+  `.an-mats`, which takes the map's place in the table under it. The mats meet edge to edge in a seam under the
+  Crossroads, two bound and stitched edges side by side, and the other player's mat is turned to face them. A player's
+  mat is their Guide's, unless they chose another in **Play mats** in the game's menu (`matPicker` in ui.js, in the
+  shared frame `AnoriaUI.screen()`); the choice is `anoria_mat`, and the second person's choice in pass and play stays
+  with that game (`G.players[1].mat`). Lessons play on their two Guides' mats.
+  The pictures are `games/anoria/ui/mats/<guide>.webp` (1344 x 576, made like the card pictures): printed cloth in the
+  cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
+  The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
+  one line in `MATS` (ui.js) and its picture**; until a Guide has one, that Guide plays on the chart of Anoria in their
+  faction's colour. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
+  them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
+  under pieces of both players' colours, at every size, before it goes in.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.
@@ -407,7 +459,7 @@ Underlying principles for everything:
   keeps no calendar) among the wonders, where the world's memory is strongest. A great sphere turns at its heart (the
   one on every card back); each full turn ends an age, and the world can't carry all it knew into the next. So the
   greats lead companies to keep their people from being forgotten, each player one of them with a Guide. The world
-  remembers whoever stands at its wonders, and that is Renown: the first company to 30 is the one the next age
+  remembers whoever stands at its wonders, and that is Renown: the first company to 25 is the one the next age
   remembers. A company comes into Anoria through its Gate, held open by three Seals; hold the other company's Gate
   when a round ends and one breaks, and a company with none left is shut out and forgotten. `story()` in guide.js
   tells it in full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of
@@ -420,7 +472,8 @@ Underlying principles for everything:
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)
   and `pacing.js`. Counts everywhere come from the card list. Blackbeard (2026-11-11) is the first card outside the
-  five ready decks: he is found only in packs.
+  five ready decks: he is found only in packs. `scripts/anoria/endings.js` plays the ready decks on any set of games: tune on some sets
+  and check on sets nobody has looked at (the first choice made for 25 Renown overshot when it met new games).
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
 

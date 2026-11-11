@@ -9,6 +9,7 @@
   'use strict';
   const KEY = 'anoria_guide';
   const el = Kit.el, UI = () => window.AnoriaUI;
+  const WIN = window.AnoriaEngine.STD.target;   // (the Renown that wins: every caption and the story's laurel take it from the rule)
   // the Places as the engine numbers them, named from your seat
   const MY_GATE = 0, MY_OUT = 1, CROSS = 4, TH_OUT = 3, TH_GATE = 2;
   const HALT = { halt: 1 };
@@ -168,10 +169,10 @@
     const s = el('div', { class: 'gd-scene' + (now ? ' now' : ''), 'data-k': name }, [el('div', { class: 'sc-in' }, SCENES[name]())]);
     r.root.insertBefore(s, r.rings); r.scene = s; fitScene(r); void s.offsetWidth; s.classList.add('on');
     if (name === 'seals' && !fast()) setTimeout(() => { if (r.scene !== s) return; const one = s.querySelector('.seal'); if (one) one.classList.add('crack', 'broken'); }, 3600);   // (one Seal breaks while you watch)
-    if (name === 'renown') {   // the laurel counts up to the 30 that wins
+    if (name === 'renown') {   // the laurel counts up to the Renown that wins
       const b = s.querySelector('.sc-lau b'); let n = 0;
-      if (fast()) b.textContent = '30';
-      else setTimeout(() => { if (r.scene !== s) return; r.cnt = setInterval(() => { n += 1; b.textContent = String(n); if (n >= 30) { clearInterval(r.cnt); s.classList.add('won'); } }, 62); }, 1500);
+      if (fast()) b.textContent = String(WIN);
+      else setTimeout(() => { if (r.scene !== s) return; r.cnt = setInterval(() => { n += 1; b.textContent = String(n); if (n >= WIN) { clearInterval(r.cnt); s.classList.add('won'); } }, 62); }, 1500);
     }
   }
   // (sizes come from the room left above the caption, upright or sideways, so nothing is ever cut off)
@@ -214,7 +215,7 @@
     await L.say('So the greats gather companies, to keep their people from being forgotten. You lead one company with one of the greats as your <b>Guide</b>, and another Guide leads the company against you.', { scene: 1 });
     await L.scene('renown');
     await L.say('The world remembers whoever stands at its wonders. Each round, the company that holds a wonder wins <b>Renown</b> there.', { scene: 1 });
-    await L.say('The first company to 30 Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
+    await L.say('The first company to ' + WIN + ' Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
     await L.scene('seals');
     await L.say('Your company comes into Anoria through its <b>Gate</b>, and three <b>Seals</b> hold that Gate open. If the other company holds your Gate when a round ends, one of your Seals breaks.', { scene: 1 });
     await L.scene('shut');
@@ -350,7 +351,7 @@
   const QUICK = {
     id: 'quick', n: 'Quick start', auto: true,
     table: () => ({ round: 1, places: ['nineveh', 'petra', 'library', 'seneca', 'wall'],
-      me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'daedalus', 'fairwinds'] },
+      me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'earhart', 'fairwinds'] },
       them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'yisunsin', 'boudica'], draw: ['spartacus', 'saladin', 'hannibal', 'ambush'] } }),
     async run(L) {
       L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
@@ -393,7 +394,7 @@
   const CHAPTERS = [
     { id: 'story', n: 'The story of Anoria', sub: 'What Anoria is, and what you are playing for', art: 'murasaki', table: () => QUICK.table(),
       async run(L) { await story(L, { now: true, stay: true }); } },
-    { id: 'map', n: 'The map and the goal', sub: 'Five Places, 30 Renown, 3 Seals', art: 'library',
+    { id: 'map', n: 'The map and the goal', sub: 'Five Places, ' + WIN + ' Renown, 3 Seals', art: 'library',
       table: () => ({ round: 1, places: PL, me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'hatshepsut'] }, them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'phalanx', 'boudica'] } }),
       async run(L) {
         await L.pause(400);
@@ -402,7 +403,7 @@
         await L.say('The <b>Crossroads</b> in the middle is shared.', { at: L.row(CROSS), tag: 'The Crossroads' });
         await L.say('The far two are the other player’s side.', { at: [L.row(TH_GATE), L.row(TH_OUT)], tag: ['Their Gate', 'Their Outpost'] });
         await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
-        await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach 30 wins.', { at: '.an-strip.me .st-ren' });
+        await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach ' + WIN + ' wins.', { at: '.an-strip.me .st-ren' });
         await L.say('Each player has 3 <b>Seals</b>. One breaks when the other player holds your Gate at the end of a round, and a player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
@@ -431,21 +432,21 @@
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
         await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
       } },
-    { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'daedalus',
-      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'daedalus', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },
+    { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'marcopolo',
+      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'earhart', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_GATE, { lit: 'The number on a card’s shield is its <b>Might</b>. Copernicus has 4.', at: L.card('copernicus') });
         await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house shows that he is at home.', { at: L.piece('copernicus') });
-        await L.play('daedalus', MY_GATE);
-        await L.say('Daedalus is a <b>Voyager</b>, so he has that +1 Might at every Place. His card says 3, and here he has 4.', { at: L.piece('daedalus') });
+        await L.play('earhart', MY_GATE);
+        await L.say('Amelia Earhart is a <b>Voyager</b>, so she has that +1 Might at every Place. Her card says 3, and here she has 4.', { at: L.piece('earhart') });
         await L.say('The two numbers on a Place are each side’s total Might there: yours on the right, the other player’s on the left.', { at: L.row(MY_GATE) + ' .pl-tots' });
         await L.later('Your next turn…', S => { S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.walk('copernicus', MY_OUT);
         await L.say('Away from home, Copernicus is back to 4.', { at: L.piece('copernicus') });
-        await L.walk('daedalus', TH_OUT, { lit: 'And a Voyager can walk to any Place, not just the next one.', at: L.piece('daedalus') });
+        await L.walk('earhart', TH_OUT, { lit: 'And a Voyager can walk to any Place, not just the next one.', at: L.piece('earhart') });
       } },
     { id: 'clash', n: 'A clash', sub: 'Dice, Guards and Bounty', art: 'leonidas',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', renown: 7, hand: ['galileo', 'compass'], draw: ['eureka', 'hypatia'], figs: [['copernicus', CROSS], ['haytham', TH_OUT]] },
@@ -460,7 +461,7 @@
         await L.say('A Figure can clash the turn it arrives, but each Figure acts only once a turn.', { at: L.piece('haytham') });
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
-      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'daedalus'], figs: [['copernicus', MY_GATE]] },
+      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'earhart'], figs: [['copernicus', MY_GATE]] },
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -490,7 +491,7 @@
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.', { scene: 1 });
       } },
     { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
-      table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
+      table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'earhart'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -516,7 +517,7 @@
         await L.round();
         await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
-        await L.say('If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
+        await L.say('If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
       } },
     { id: 'seals', n: 'Gates and Seals', sub: 'The other way to win', art: 'wall',
       table: () => ({ round: 5, places: PL, me: { guide: 'leonardo', renown: 12, hand: ['galileo', 'compass'], figs: [['zhenghe', TH_GATE], ['copernicus', MY_GATE]] },
@@ -536,7 +537,7 @@
         await L.say('Your Seals are safe while your Gate is empty, tied or held by you. So keep a Figure at home when their Figures come close.', { at: L.piece('copernicus') });
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One copy or two, one of each person, and the return', art: 'galileo',
-      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['copernicus', CROSS]] },
+      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'earhart'], figs: [['copernicus', CROSS]] },
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);

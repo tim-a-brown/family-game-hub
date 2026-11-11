@@ -24,22 +24,26 @@
 //   (pacing.js, pacing.txt).
 //   - v 2 (2026-11, a deck grew from 30 cards to 40): a collection from before is given the five new cards of its
 //     starter deck, and of any other ready deck it already owned all of, so every deck it could play it still can.
-//   - Editions (v 3, Tim, 2026-11-11): every card is printed in five finishes that play the same, each rarer than the
+//   - v 3 (2026-11-11, the legends left the set: cards.js RETIRED): whoever owned a retired card owns the card that has
+//     its slot instead, as many copies, and the decks they built hold it too. No pack can give a retired card, because
+//     packs only ever draw from the set (ALL). A named Thread finished before keeps its flag under its old id.
+//   - Editions (v 4, Tim, 2026-11-11): every card is printed in five finishes that play the same, each rarer than the
 //     one before: Matte, Shiny, Silver foil, Gold foil and Rainbow foil (EDITIONS). Every card out of a pack has one,
 //     rolled by ED_ODDS. A Matte card is a copy you are missing, as before. A foil is a card you have not found in
 //     that finish, whether or not you have two of it: it counts as a copy if you are missing one, and either way the
 //     finish is yours for that card for good, on every copy. So a pack never holds something you already have, and
 //     once you have two of every card the packs go on turning up finishes until there are none left to find. While
 //     copies are still missing, a foil of a card you have two of is an extra card in the pack, so the set takes as
-//     long to complete as it did before there were foils. A collection from before has every card in Matte.
+//     long to complete as it did before there were foils. A collection from before has every card in Matte, and an
+//     edition found for a card that is retired later goes to the card that takes its slot.
 //   - Rarity (the same day: "make more powerful cards more rare to find in packs"): every card has a tier from its
 //     power, 1 Common to 4 Legendary (RARE, worked out by scripts/anoria/rarity.js and written down here), and a
 //     pack slot is that much less likely to be a card of a higher tier (TIER_W).
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
-const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {};
+const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 3;
+const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 4;
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 // The five editions of a card, commonest first, and the chance that a card out of a pack is each of the foils (the
@@ -50,10 +54,10 @@ let ED_ODDS = [0, 0.085, 0.04, 0.018, 0.007];
 // Rarity. The cards of each tier, from "node scripts/anoria/rarity.js 6000" (rarity.txt has the table). A card on
 // none of the lists (a new set, before the script is run again) goes by its cost.
 const RARE = {
-  4: 'charlemagne alexander zhenghe newton caesar beowulf sittingbull elizabeth bolivar',
-  3: 'beethoven hannibal chingshih aristotle yisunsin mansamusa shaka gilgamesh dante toussaint darwin hiawatha michelangelo boudica galileo chaucer douglass scipio',
-  2: 'nzinga saladin imhotep blackbeard ashoka copernicus odysseus hammurabi faraday joan antikythera shakespeare leonidas leif hokusai virgil ibnbattuta plato theodora sundiata haytham marcus atalanta trojan lakshmibai sacagawea rift',
-  1: 'murasaki mozart daedalus tecumseh tomoe socrates sorjuana homer marcopolo sappho pericles phalanx confucius sinbad press ibnsina ambush scheherazade shenkuo germain caravan hatshepsut anansi ada archimedes khutulun nostradamus eureka ashurbanipal spartacus compass hypatia fairwinds encore decree eclipse mencius'
+  4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
+  3: 'chingshih sargon hannibal aristotle shaka beethoven mansamusa hiawatha bolivar joan darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
+  2: 'copernicus dante saladin murasaki shakespeare douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
+  1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun earhart ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
 };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
 Object.keys(RARE).forEach(t => RARE[t].split(' ').forEach(k => { if (k) TIER[k] = +t; }));
@@ -74,9 +78,30 @@ function load() {
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
   if (!cache.ed || typeof cache.ed !== 'object') cache.ed = {}; if (!cache.look || typeof cache.look !== 'object') cache.look = {};
-  // (v 3 added editions: a collection from before has none found, so every card is Matte, and nothing else changes)
-  if ((cache.v || 1) < VER) { const had = !!cache.starter; if ((cache.v || 1) < 2) grow(cache); cache.v = VER; if (had) save(cache); }
+  // (retired cards first, so that a ready deck owned whole under its old cards still counts as owned whole in grow().
+  // retire() goes by what is in the collection, not by its version: a device that has not updated yet can write the
+  // old keys back, and they are put right again here. v 4 added editions: a collection from before has none found,
+  // so every card is Matte, and nothing else changes.)
+  const v = cache.v || 1, had = !!cache.starter, swapped = retire(cache);
+  if (v < 2) grow(cache);
+  if (v < VER || swapped) { cache.v = VER; if (had || swapped) save(cache); myDecks(); }   // (myDecks puts the decks they built right too)
   return cache;
+}
+// The cards that have left the set (cards.js RETIRED): each copy becomes a copy of the card that has its slot now, a
+// card that had been seen is still seen, and the new card shows as new in the Library of someone who owned the old
+// one. A named Thread that now comes whole in the starter deck is simply theirs, as it is for someone starting today.
+// Returns true if anything changed.
+function retire(s) {
+  let ch = false;
+  Object.keys(RETIRED).forEach(old => { const k = RETIRED[old].to;
+    if (s.cards && s.cards[old] != null) { if (s.cards[old] > 0) { s.cards[k] = Math.min(CAP, (s.cards[k] || 0) + s.cards[old]); s.seen[k] = 1; s.fresh[k] = 1; } delete s.cards[old]; ch = true; }
+    if (s.seen && s.seen[old] != null) { s.seen[k] = 1; delete s.seen[old]; ch = true; }
+    if (s.fresh && s.fresh[old] != null) { if (s.cards[k]) s.fresh[k] = 1; delete s.fresh[old]; ch = true; }
+    // (the editions found for the old card, and the one it was shown in, are the new card's)
+    if (s.ed && s.ed[old] != null) { s.ed[k] = (s.ed[k] || 0) | s.ed[old]; delete s.ed[old]; ch = true; }
+    if (s.look && s.look[old] != null) { if (s.look[old] > (s.look[k] || 0)) s.look[k] = s.look[old]; delete s.look[old]; ch = true; } });
+  if (ch && s.starter && ARCH[s.starter]) { const mine = ARCH[s.starter].cards; THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; }); }
+  return ch;
 }
 // A collection from when a deck was 30 cards: each ready deck gained five cards (cards.js GROWN). The starter deck's
 // five are given, two of each, and so are those of any other ready deck this collection owned every card of, so a deck
@@ -231,7 +256,11 @@ function problems(d) {
   Object.keys(n).forEach(k => { if (!CARDS[k]) out.push('A card that isn\'t in the game'); else if (n[k] > CAP) out.push('More than two of ' + CARDS[k].n); else if (n[k] > (s.cards[k] || 0)) out.push('You have ' + (s.cards[k] || 0) + ' of ' + CARDS[k].n); });
   return out;
 }
-function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} return Array.isArray(a) ? a : []; }
+function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} if (!Array.isArray(a)) return [];
+  // (a deck built with a card that has left the set holds the card that has its slot now, and is saved that way)
+  let ch = false; a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => { if (!RETIRED[k]) return k; ch = true; return RETIRED[k].to; }); });
+  if (ch) store.set(DKEY, JSON.stringify(a));
+  return a; }
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: the five ready decks (yours to play once you own all of one; your starter always is)
@@ -262,6 +291,6 @@ function finish(d) {
   return cards;
 }
 
-return { use, load, reset, grow, dayKey, copies, cardState, counts, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; }, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
+return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; }, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
   problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL };
 });

@@ -5,7 +5,7 @@
 // the chance of Shiny, Silver foil, Gold foil and Rainbow foil for one card, as "0.085,0.04,0.018,0.009")
 // It also says how the editions turn up: how often a pack holds a foil, when the first of each edition is found, and
 // how long the foils go on after the set itself is complete.
-const Coll = require('../../games/anoria/coll'); const { rng } = require('../../games/anoria/engine'); const { ARCH, CARDS, GROWN } = require('../../games/anoria/cards');
+const Coll = require('../../games/anoria/coll'); const { rng } = require('../../games/anoria/engine'); const { ARCH, CARDS, GROWN, RETIRED, THREADS } = require('../../games/anoria/cards');
 const T = +process.argv[2] || 400, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, DAILY = +process.argv[5] || 0, FEAT = +process.argv[6] || 0, ODDS = process.argv[7] ? [0].concat(process.argv[7].split(',').map(Number)) : null, DECK = Coll.DECK, NE = Coll.EDITIONS.length, WEL = Coll.WELCOME.reduce((a, b) => a + b, 0), assert = (ok, m) => { if (!ok) { console.error('FAILED: ' + m); process.exit(1); } };
 const D = Object.keys(ARCH), days = [], seenAll = [], guidesAll = [], sum = { welcomeNew: 0, own3: 0, daily: 0, feat: 0, gifts: 0 }; let after7 = 0, after14 = 0, after21 = 0, own7 = 0, own14 = 0, own21 = 0;
 const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN = [0, 0, 0, 0, 0], edAll = [], mk = () => ({ packs: 0, foilPacks: 0, cards: 0, n: Coll.EDITIONS.map(() => 0), later: Coll.EDITIONS.map(() => 0), noCopy: 0, wel: 0, days: 0 }), ED1 = mk(), ED2 = mk(); let ed = ED1;
@@ -30,6 +30,41 @@ const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN 
   // a collection saved after decks grew (v 2) is only stamped: it is not given the new cards a second time
   mem.anoria_coll = JSON.stringify({ v: 2, starter: 'Legion', cards: { hannibal: 2 }, guides: ['suntzu'], seen: {}, fresh: {}, packs: [], wins: 1, games: 2, day: '', feats: {}, threads: {}, opened: 0, pid: 1 });
   Coll.use({}); assert(Coll.counts().copies === 2 && Coll.load().v === Coll.VER && Coll.look('hannibal') === 0, 'a version 2 collection loads as it was, all Matte'); }
+// The cards that have left the set (cards.js RETIRED): a collection, a built deck and a pack from before. Nobody loses
+// a card or a deck they could play, nothing retired is left behind, and no pack gives a retired card.
+{ const was = {}; Object.keys(RETIRED).forEach(k => { was[RETIRED[k].to] = k; });   // (the card that used to have each slot)
+  const old = name => ARCH[name].cards.filter(k => GROWN[name].indexOf(k) < 0).map(k => was[k] || k), mem = {}, cards = {};
+  const set = () => Coll.use({ store: { get: k => (k in mem ? mem[k] : null), set: (k, v) => { mem[k] = v; } }, random: rng(7), now: () => new Date(2027, 0, 1) });
+  // a collection from the first printing (30-card decks): Pathfinders to start with, all of Explorers, one Beowulf short
+  old('Pathfinders').concat(old('Explorers')).forEach(k => { cards[k] = 2; }); cards.beowulf = 1;
+  assert(['scheherazade', 'anansi', 'atalanta', 'daedalus', 'odysseus', 'beowulf', 'trojan'].every(k => cards[k]), 'the old collection in this check holds all seven retired cards of the first printing');
+  const built = old('Pathfinders').concat(old('Pathfinders')); built.splice(built.indexOf('beowulf'), 1);   // (a deck they built: 29 cards, with their one Beowulf)
+  mem.anoria_coll = JSON.stringify({ v: 1, starter: 'Pathfinders', cards: cards, guides: ['tubman', 'leonardo'], seen: { homer: 1, odysseus: 1, anansi: 1 }, fresh: { atalanta: 1 }, packs: [{ id: 1, k: 'daily', why: 'Your first win today', n: 3 }], wins: 4, games: 9, day: '', feats: {}, threads: { horse: 1 }, opened: 2, pid: 2, ed: { odysseus: 8, beowulf: 2 }, look: { odysseus: 3 } });
+  mem.anoria_decks = JSON.stringify([{ id: 'dleg', n: 'Legends', guide: 'tubman', cards: built }]);
+  set(); const s = Coll.load(), raw = mem.anoria_coll + mem.anoria_decks;
+  assert(Object.keys(RETIRED).every(k => s.cards[k] == null && s.seen[k] == null && s.fresh[k] == null) && !Object.keys(RETIRED).some(k => raw.indexOf('"' + k + '"') >= 0), 'no retired card is left in the collection as it is saved');
+  assert(['harun', 'yaa', 'artemisia', 'earhart', 'magellan', 'crossing'].every(k => Coll.copies(k) === 2) && Coll.copies('alfred') === 1, 'each retired card became as many copies of the card that has its slot');
+  assert(Coll.editions('magellan')[3] && Coll.look('magellan') === 3 && Coll.editions('alfred')[1] && !Coll.editions('alfred')[3] && s.ed.odysseus == null && s.look.odysseus == null, 'an edition found for a retired card, and the one it was shown in, are the new card\'s');
+  assert(Coll.cardState('magellan') === 'own' && s.seen.yaa && s.fresh.artemisia && s.fresh.harun, 'a card that was seen is still seen, and the new cards show as new');
+  assert(Coll.deck('ready:Explorers').ok && Coll.deck('ready:Pathfinders').own === DECK - 1, 'a ready deck that was owned whole can still be played, and the starter is one Alfred short as it was one Beowulf short');
+  assert(GROWN.Pathfinders.concat(GROWN.Explorers).every(k => Coll.copies(k) === 2), 'and they were given the five cards each deck gained');
+  assert(JSON.parse(mem.anoria_coll).v === Coll.VER && Coll.load().wins === 4 && Coll.load().threads.horse === 1, 'the collection is saved as the new version with its wins and its finished Thread as they were');
+  const d = Coll.deck('dleg'); assert(d && d.cards.length === 29 && !d.cards.some(k => RETIRED[k]) && d.cards.filter(k => k === 'alfred').length === 1 && d.cards.filter(k => k === 'crossing').length === 2 && d.why.join() === '11 more to add', 'a deck they built holds the new cards in the same places: ' + (d && d.why.join('; ')));
+  assert(JSON.parse(mem.anoria_decks)[0].cards.indexOf('trojan') < 0, 'and is saved that way');
+  assert(Coll.threads().every(t => t.cards.every(k => CARDS[k])) && Coll.threads().filter(t => t.id === 'pacific')[0].done, 'the named Threads are all of cards in the set, and The Peaceful Sea is theirs');
+  let r, n = 0; while ((r = Coll.openPack())) { n += r.cards.filter(c => c.copy).length; assert(r.cards.every(c => CARDS[c.c] && !RETIRED[c.c]), 'a pack never gives a retired card'); }
+  assert(n === 3 && Coll.copies('alfred') <= 2, 'the pack they had waiting opened');
+  Coll.load(); assert(Coll.copies('harun') === 2 && Coll.copies('alfred') >= 1, 'the change is made once');
+  // an old device writes the old keys back: they are put right again
+  const back = JSON.parse(mem.anoria_coll); back.cards.daedalus = back.cards.earhart; delete back.cards.earhart; back.v = 2; mem.anoria_coll = JSON.stringify(back);
+  assert(Coll.copies('earhart') === 2 && Coll.load().cards.daedalus == null, 'old keys written back by a device that has not updated are put right');
+  // the second printing's first day: Sinbad and Gilgamesh
+  const m2 = {}, c2 = {}; ARCH.Pathfinders.cards.forEach(k => { c2[k === 'zhangqian' ? 'sinbad' : k === 'sargon' ? 'gilgamesh' : k] = 2; });
+  m2.anoria_coll = JSON.stringify({ v: 2, starter: 'Pathfinders', cards: c2, guides: ['tubman'], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: { nights: 1 }, opened: 0, pid: 1 });
+  Coll.use({ store: { get: k => (k in m2 ? m2[k] : null), set: (k, v) => { m2[k] = v; } }, random: rng(9), now: () => new Date(2027, 0, 1) });
+  assert(Coll.copies('zhangqian') === 2 && Coll.copies('sargon') === 2 && Coll.deck('ready:Pathfinders').ok && Coll.counts().copies === DECK, 'a collection with Sinbad and Gilgamesh holds Zhang Qian and Sargon of Akkad');
+  // every named Thread is made of cards in the set, and nothing in the set points at a retired card
+  assert(THREADS.every(t => t.cards.every(k => CARDS[k])) && Object.keys(CARDS).every(k => (CARDS[k].from || []).concat(CARDS[k].insp || []).every(x => x[0] === '@' || CARDS[x])), 'nothing in the set points at a retired card'); }
 for (let t = 0; t < T; t++) {
   const mem = {}, R = rng(1000 + t * 13); let day = new Date(2027, 0, 1);
   Coll.use({ store: { get: k => (k in mem ? mem[k] : null), set: (k, v) => { mem[k] = v; } }, random: R, now: () => day, daily: DAILY || Coll.DAILY, feat: FEAT || Coll.FEAT, odds: ODDS || Coll.ED_ODDS });

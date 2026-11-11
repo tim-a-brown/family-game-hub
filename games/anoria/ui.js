@@ -4,7 +4,9 @@
 (function () {
   'use strict';
   const E = window.AnoriaEngine, C = window.AnoriaCards, TX = window.AnoriaText, LAND = window.AnoriaLand || [];
-  const CARDS = C.CARDS, el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
+  // (CARDS: every card the table can be asked to show, which is the set and the cards that have left it: a game saved
+  // with a retired card still plays it. The set alone is C.CARDS: the Library, the packs and the decks get that.)
+  const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
   const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
 
@@ -54,7 +56,7 @@
 
   const SAY = TX.SAY || {}, FY = TX.FY || {};
   function info(key) {
-    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TX.GUIDES[key]) { const g = TX.GUIDES[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
     if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
@@ -104,7 +106,43 @@
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
   // that is drawn again never flashes its name)
   const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
-  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); if (!loaded[src]) loaded[src] = im; }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+
+  // Full-size pictures, made ready ahead of the finger (Tim, 2026-11-11: "some of the art flashes into place after
+  // briefly seeing a placeholder"). warm(keys) fetches and decodes them a few at a time and says when they are all
+  // ready; a pack warms its cards the moment it is torn, a strip the cards either side of the front one, the table
+  // your hand. A full card whose picture is not ready is never a flat panel if the small picture is in memory: the
+  // small one stands in, softened (standIn), and the full one comes up over it without a pop (comeUp).
+  const full = {}, warmQ = []; let warmN = 0;
+  function pump() { while (warmN < 4 && warmQ.length) { warmN++; warmQ.shift()(); } }
+  function artReady(key) {
+    const src = artSrc(key, false); if (full[src]) return full[src].p; if (noArt[src]) return Promise.resolve(false);
+    const f = full[src] = { ok: false, im: null };
+    f.p = new Promise(res => { warmQ.push(() => {
+      const im = new Image(), done = ok => { f.ok = ok; warmN--; pump(); res(ok); }; f.im = im; im.decoding = 'async';
+      im.onload = () => { hasArt[src] = 1; (im.decode ? im.decode() : Promise.resolve()).then(() => done(true), () => done(true)); };
+      im.onerror = () => { delete full[src]; done(false); };   // (a dropped connection: it can be tried again)
+      im.src = src; }); pump(); });
+    return f.p;
+  }
+  const warm = keys => Promise.all((keys || []).filter(k => k && (CARDS[k] || TX.GUIDES[k] || C.PLACES[k])).map(artReady));
+  function standIn(key) {
+    const got = loaded[artSrc(key, true)]; if (!got || !got.complete || !got.naturalWidth) return null;
+    try { const c = el('canvas', { class: 'ac-lo', width: got.naturalWidth, height: got.naturalHeight, 'aria-hidden': 'true' }); c.getContext('2d').drawImage(got, 0, 0); if (FY[key] != null) c.style.objectPosition = '50% ' + FY[key] + '%'; return c; } catch (e) { return null; }
+  }
+  function comeUp(key, im) {
+    const f = full[artSrc(key, false)]; if (im.tagName !== 'IMG' || (f && f.ok) || (im.complete && im.naturalWidth)) return;
+    im.classList.add('ld'); const show = () => im.classList.remove('ld');
+    (im.decode ? im.decode() : Promise.reject()).then(show, () => { if (im.complete) show(); else im.addEventListener('load', show); });
+  }
+  // The small pictures of the whole set (about 20 KB each), warmed a few at a time once the page is idle, so that
+  // there is always one to stand in.
+  function warmSmall() {
+    const all = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES)); let i = 0;
+    const idle = fn => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 500));
+    const step = () => { if (i >= all.length) return; preload(all.slice(i, i += 6)); setTimeout(() => idle(step), 250); };
+    setTimeout(() => idle(step), 2500);
+  }
 
   // ═══ The map behind a card's text, drawn from the coastlines ═════════════════════════════════════════════
   let LB = null;
@@ -193,8 +231,9 @@
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
     // (a full card shown on the table: the small picture is there at once, and the full one comes in over it)
-    if (o.now && !o.mini) { const lo = artImg(key, true, true); if (lo && lo.tagName === 'CANVAS') art.appendChild(lo); }
+    if (!o.mini) { const lo = standIn(key); if (lo) art.appendChild(lo); }
     const im = artImg(key, !!o.mini, o.now); if (im) art.appendChild(im);
+    if (im && !o.mini) comeUp(key, im);
     inn.appendChild(art);
     if (c.c != null) { const cost = o.cost != null ? o.cost : c.c; inn.appendChild(el('div', { class: 'ac-cost' + (cost < c.c ? ' less' : '') }, [el('b', { text: String(cost) })])); }
     inn.appendChild(el('div', { class: 'ac-kind', html: MARK[kind] + '<span>' + label + '</span>' }));
@@ -338,6 +377,7 @@
   //   o.keep  every card stays made (a pack's cards remember whether they have been turned), not just the few
   //           on either side of the front one
   //   o.front(i, was)  another card faces you now (called as the strip moves)   o.rest(i)  it came to rest on card i
+  //   o.pose(j, p, CU, FX)  card j's own pose when it is p cards from the front ({t, z, o, dim}), or nothing for the usual one
   // Returns F: pos, items, settle(i, vel), render(), reset() after a resize, stop(), moved(), key(e)
   function makeFlow(o) {
     const n = o.n, flow = o.flow, strip = o.strip, F = { pos: Math.max(0, Math.min(n - 1, o.at || 0)), items: {}, raf: 0, at: -1 };
@@ -353,7 +393,7 @@
       if (!CU) measure();
       const lo = o.keep ? 0 : Math.max(0, Math.floor(F.pos) - 3), hi = o.keep ? n - 1 : Math.min(n - 1, Math.ceil(F.pos) + 3);
       Object.keys(F.items).forEach(k => { if (+k < lo || +k > hi) { F.items[k].remove(); delete F.items[k]; } });
-      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.style.setProperty('--ls', Math.max(-1.5, Math.min(1.5, j - F.pos)).toFixed(3)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
+      for (let j = lo; j <= hi; j++) { const b = item(j), q = (o.pose && o.pose(j, j - F.pos, CU, FX)) || pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.style.setProperty('--ls', Math.max(-1.5, Math.min(1.5, j - F.pos)).toFixed(3)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
       const idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
       if (idx !== F.at) {
         const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
@@ -414,7 +454,7 @@
     const v = el('div', { class: 'view flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || 'Cards', onclick: e => { if (F.moved()) return; if (e.target === v || e.target === flow) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
       o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null]) : null, flow, n > 1 ? strip : null, under]);
-    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
+    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; warm(keys.slice(Math.max(0, i - 3), i + 4)); }
     const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
       make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true, tg: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
     // Upright, the card is as tall as the room left once the longest of the bunch's notes has its place under it,
@@ -534,6 +574,7 @@
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
+    matWarm();
   }
 
   // ═══ The game: state, saving ═════════════════════════════════════════════════════════════════════════════
@@ -555,19 +596,23 @@
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
+  // (a saved game that holds a card which has left the set is played on as it was, with that card: cards.js RETIRED)
+  function readSave() { let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {} return d; }
   function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
     stop();
     cfg.players.forEach(deckOf);
+    cfg.players.forEach(p => { p.cards = p.cards.map(C.now); });   // (Play again after an old game: a new game is dealt from the set as it is today)
     const decks = cfg.players.map(p => p.cards.slice()), guides = cfg.players.map(p => p.guide);
     S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
-    // and finishes the way it began, with Places scoring double from round 4.)
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
+    // and finishes the way it began, with Places scoring double from round 4. tg: the Renown that wins this game. A
+    // game saved when that was 30 has none, and still ends at 30.)
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -577,6 +622,7 @@
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
+    S.cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     buildTable(); V = snap(); render(); beginTurn();
   }
@@ -606,13 +652,70 @@
     try { chartURL = d ? URL.createObjectURL(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 8 320 150" preserveAspectRatio="xMidYMid slice"><path d="' + g + '" fill="none" stroke="#e9cf86" stroke-width=".25" stroke-dasharray="1.2 1.8" opacity=".5"/><path d="' + d + '" fill="#e9cf86" fill-opacity=".1" stroke="#e9cf86" stroke-width=".45" stroke-linejoin="round"/></svg>'], { type: 'image/svg+xml' })) : ''; } catch (e) { chartURL = ''; }
     return chartURL;
   }
+  // ── Play mats ──
+  // Each player's side of the map (their Gate, their Outpost and their half of the Crossroads) lies on a mat of
+  // their own, and the two mats meet edge to edge in a seam under the Crossroads, as the mats do in Lorcana. The
+  // other player's mat is turned to face them. A player's mat is their Guide's, unless they have chosen another
+  // (matPicker; the choice is anoria_mat, which follows the account).
+  // The pictures are ui/mats/<id>.webp: printed cloth in the cards' own inked style, each true to its Guide's world.
+  // A mat for a new Guide is one line here and its picture. Until a Guide has one, that Guide plays on the chart
+  // of Anoria in their own colour.
+  //   n: the mat's name, c: its cloth (shown until the picture has come), th: the thread its edge is bound with,
+  //   d: how far the print is dimmed so the pieces stay the brightest things on it (0 to 1; .2 if not given),
+  //   fill: the picture is stretched to the mat's shape, not cropped (a pattern with borders that should all show)
+  const MATK = 'anoria_mat', MATSRC = 'anoria/ui/mats/';
+  const MATS = {
+    cleopatra: { n: 'Papyrus and lotus', c: '#113c3d', th: '#a98c4e', d: .3 },
+    leonardo: { n: 'A sheet of studies', c: '#6b3122', th: '#b98a66', d: .24 },
+    tubman: { n: 'The North Star', c: '#151d36', th: '#7484ab', d: .04 },
+    franklin: { n: 'The printing house', c: '#33271d', th: '#a5834a', d: .1 },
+    suntzu: { n: 'Bamboo slips', c: '#45401f', th: '#8d8a58', d: .22, fill: true },
+    chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
+  };
+  const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
+  // lay a mat (by id: a Guide's key, 'chart', or a Guide who has no mat yet) on a node; slot says which copy of the picture
+  function matFill(n, id, slot) {
+    const m = MATS[id], g = TX.GUIDES[id], plain = !m || m.chart;
+    n.style.setProperty('--mc', m ? m.c : g ? 'color-mix(in srgb,' + FAC[g.f].c + ' 46%,#0b1124)' : MATS.chart.c);
+    n.style.setProperty('--mth', m ? m.th : MATS.chart.th); n.style.setProperty('--md', m && m.d != null ? m.d : plain ? 0 : .2);
+    n.innerHTML = '';
+    if (plain) { const i = el('i', { class: 'pm-art chart' }); if (chart()) i.style.backgroundImage = 'url("' + chart() + '")'; n.appendChild(i); return; }
+    const k = id + '/' + slot; let im = matPics[k];
+    if (!im) {
+      im = matPics[k] = el('img', { class: 'pm-art' + (m.fill ? ' fill' : ''), alt: '', draggable: 'false', decoding: 'sync' });
+      im.onerror = () => { im.remove(); delete matPics[k]; };
+      im.src = MATSRC + id + '.webp';
+      // (a picture still on its way fades in over its cloth once; one that is here already is simply there)
+      if (!(im.complete && im.naturalWidth)) { im.classList.add('wait'); im.onload = () => im.classList.remove('wait'); }
+    }
+    n.appendChild(im);
+  }
+  // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
+  const matWarm = () => { const id = lsGet(MATK) || (Coll.deck(starterId()) || {}).guide; if (MATS[id] && !MATS[id].chart) matFill(el('div'), id, 0); };
+  // the seat whose choice of mat is the account's own: the first person at the table
+  const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
+  const matPick = o => G.demo ? '' : matMine(o) ? lsGet(MATK) : G.players[o].mat;
+  // the mat a seat plays on: the one that person chose, or their Guide's
+  const matOf = o => { const pick = matPick(o); return pick && MATS[pick] ? pick : S.P[o].guide; };
+  // The two mats are part of the table that is built once: a step of the game never draws them again. Each stays
+  // with its player; when the view changes hands (pass and play) the two change places, with the board.
+  function paintMats() {
+    if (!dom.pm || !G || !S) return;
+    for (let o = 0; o < 2; o++) {
+      const n = dom.pm[o], id = matOf(o), side = o === ui.view ? 'bot' : 'top';
+      if (n.dataset.m !== id) { n.dataset.m = id; matFill(n, id, o); }
+      if (n.dataset.side !== side) { n.dataset.side = side; n.className = 'an-pm ' + side; }
+    }
+  }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
     preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     dom.fx = el('div', { class: 'an-fx' });
-    const felt = el('div', { class: 'an-felt felt-in' }, [dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
+    paintMats();
+    const felt = el('div', { class: 'an-felt felt-in' }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     app.appendChild(dom.root);
@@ -646,7 +749,7 @@
     }
     node.appendChild(el('div', { class: 'st-top' }, [
       el('div', { class: 'st-name' }, [el('i'), pl.cpu ? el('span', { class: 'bot', html: Kit.icon('bot') }) : null, el('span', { class: 'nm', text: pl.name })]),
-      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of 30' }, [el('div', { class: 'st-track', style: { '--r': Math.min(30, p.renown) } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
+      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of ' + S.cfg.target }, [el('div', { class: 'st-track', style: { '--r': Math.min(S.cfg.target, p.renown), '--tg': S.cfg.target } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
     node.appendChild(el('div', { class: 'st-bot' }, [seals, relics,
       me && !ui.hideHand ? null : el('div', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })]),
       el('span', { class: 'st-fill' }), sp]));
@@ -745,6 +848,7 @@
     if (ui.hideHand || ui.viewer < 0) return;
     const o = ui.view, hand = V.P[o].hand, can = idle() && o === S.turn, T = targets();
     const picking = Object.keys(T.hand).length > 0;
+    if (!G.demo) warm(hand);   // (the full pictures of your hand are ready before you tap one to read it)
     hand.forEach((key, h) => {
       const c = CARDS[key], cost = E.costOf(S, o, key);
       const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (key === 'phalanx' && ui.acts.some(a => a.ph)));
@@ -757,6 +861,7 @@
   function render() {
     if (!G || !V || !dom.root) return;
     const v = ui.view, T = targets();
+    paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
     try {
       stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
@@ -847,11 +952,13 @@
   function selCost() { const s = ui.sel, o = S.turn; if (!s || s.kind !== 'hand') return null; const cs = s.acts.map(a => E.costOf(S, o, s.key, a.t === 'fig' ? a.p : undefined)); return cs.length ? Math.min.apply(null, cs) : E.costOf(S, o, s.key); }
   function simulate(a) { const T = E.clone(S); T.turn = S.turn; E.apply(T, a, 0, 0); return T; }
   // what a Figure landing at a Place would cost and how strong it would stand there
+  // (a Deed that brings a Figure in from the hand: Night Crossing, and the Trojan Horse in a game saved with one)
+  const carries = key => !!key && !!CARDS[key] && E.fxOf(key) === 'trojan';
   function landPreview(acts) {
     const a = acts[0], t = a.t, o = S.turn;
-    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || ui.sel.key === 'trojan'));
+    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || carries(ui.sel.key)));
     if (!moves) return null;
-    const T = simulate(a), f = t === 'fig' || ui.sel.key === 'trojan' ? E.byU(T, S.uid) : E.byU(T, a.u);
+    const T = simulate(a), f = t === 'fig' || carries(ui.sel.key) ? E.byU(T, S.uid) : E.byU(T, a.u);
     const via = acts.every(x => x.t === 'antik') ? 'antikythera' : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
     return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
   }
@@ -924,7 +1031,7 @@
     const st = E.stake(S.cfg, S.round);
     Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
       : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
-      '<p>The first player to reach <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+      '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
   // ═══ Motion ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1141,7 +1248,7 @@
     async deed(ev, ctx) {
       const o = ev.o, a = ctx.a;
       await showCard(ev.c, o === ui.view ? 620 : 1050);
-      dropHand(o, a.h);   // (the Figure in the Trojan Horse leaves the hand as it arrives)
+      dropHand(o, a.h);   // (the Figure that a Night Crossing carries leaves the hand as it arrives)
       V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
       if (ev.c === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
       if (ev.c === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
@@ -1262,7 +1369,7 @@
         const st = E.stake(S.cfg, S.round), up = S.round > 1 && st > E.stake(S.cfg, S.round - 1);
         if (up) { Kit.sfx('win'); Kit.haptic('success'); ui.flip = 1; render(); ui.flip = 0; }
         else Kit.sfx('pop');
-        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to 30 Renown</span>' : ''));
+        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to ' + S.cfg.target + ' Renown</span>' : ''));
         if (gen !== my) return;
       }
       E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); save();
@@ -1365,7 +1472,7 @@
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
     earned.forEach(x => notes.push(x.t === 'guide' ? TX.GUIDES[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
-    notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to 30 Renown at the end of a round');
+    notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
@@ -1376,10 +1483,10 @@
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
-  const RULES =
+  const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return '' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
-    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
+    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
@@ -1406,9 +1513,9 @@
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
-    '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
+    '<li>If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
-    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>';
+    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>'; };
   // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
   // opens over whatever is on the table and leaves a game as it is; over the setup, the setup is drawn again after
   // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
@@ -1420,6 +1527,45 @@
     else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
     else if (name === 'decks' && window.AnoriaDecks) window.AnoriaDecks.open(null, after);
   }
+  // Choosing a mat (the game's menu). It opens over the setup or a game and leaves it as it is; in a game the table
+  // behind takes the new mat at once. Pass and play: each person chooses their own (the first person's choice is
+  // the account's, anoria_mat; the other person's stays with this game). What is on offer: the mat of whichever
+  // Guide you are playing (the choice until you make another), every mat in MATS, and the chart.
+  function matPicker() {
+    if (G && G.demo) return;
+    Kit.sfx('tap');
+    const live = !!(G && S && dom.pm), seats = live ? [0, 1].filter(human) : [0], two = seats.length > 1;
+    let cur = live ? (seats.indexOf(ui.view) >= 0 ? ui.view : seats[0]) : 0;
+    const guide = () => live ? S.P[cur].guide : (Coll.deck(starterId()) || {}).guide || Object.keys(TX.GUIDES)[0];
+    const chosen = () => { const p = live ? matPick(cur) : lsGet(MATK); return p && MATS[p] ? p : ''; };
+    function put(id) {
+      if (id === chosen()) return;
+      if (!live || matMine(cur)) lsSet(MATK, id || null); else { if (id) G.players[cur].mat = id; else delete G.players[cur].mat; save(); }
+      Kit.sfx('flip', .6); Kit.haptic('light'); paintMats(); paint();
+    }
+    const sc = screen({ title: 'Play mats', cls: 'an-mt' });
+    const who = el('div', { class: 'mt-who' }), view = el('div', { class: 'mt-view', 'aria-hidden': 'true' }), say = el('p', { class: 'mt-say' }), grid = el('div', { class: 'mt-grid' });
+    sc.body.appendChild(el('div', { class: 'mt' }, [el('div', { class: 'mt-look' }, [who, view, say]), grid]));
+    const mat = (id, slot, cls) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return n; };
+    function paint() {
+      const g = guide(), on = chosen(), name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
+      who.innerHTML = ''; who.hidden = !two;
+      if (two) seats.forEach(o => who.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (o === cur ? 'btn-primary' : 'btn-soft'), 'aria-pressed': String(o === cur), onclick: () => { if (o === cur) return; cur = o; Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
+        [el('i', { style: { background: PCOL[o] } }), el('span', { text: pname(o) })])));
+      // the two mats as they lie on the table: this player's nearest, the other player's turned to face them
+      view.innerHTML = ''; view.classList.toggle('one', !live);
+      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top'));
+      view.appendChild(mat(on || g, 'v0', 'bot'));
+      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, and meets ' + other + ' mat under the Crossroads.';
+      grid.innerHTML = '';
+      const sw = (id, shown, slot, title, sub, face) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (id === on ? ' on' : ''), 'aria-pressed': String(id === on), 'aria-label': title + ', ' + sub, onclick: () => put(id) }, [
+        el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
+        el('b', { text: title }), el('small', { text: sub })]));
+      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
+      Object.keys(MATS).forEach(id => sw(id, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world'));
+    }
+    paint();
+  }
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
@@ -1428,6 +1574,7 @@
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => tool('library') },
       { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
+      { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
@@ -1437,7 +1584,7 @@
   // guide.js plays its lessons and the quick start on this same table: a made-up position (never saved, never
   // recorded), with the script choosing every step and every roll. Your own game waits in its save and comes back.
   function resume() {
-    let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {}
+    const d = readSave();
     if (d && d.v === 1 && d.G && d.G.S && !d.G.over && d.G.S.figs) { try { restore(d); return; } catch (e) {} }
     showSetup();
   }
@@ -1516,10 +1663,10 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
-    cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
+  window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+    cardEl: cardEl, artImg: artImg, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
-  window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
@@ -1528,14 +1675,14 @@
     stop(); G = null; S = null; V = null;
     // (?art=1&only=hannibal,compass shows just those; a card that comes in editions has a line for each of them)
     const only = (/[?&]only=([^&]+)/.exec(location.search) || [])[1], EDS = window.AnoriaEd ? window.AnoriaEd.ED : [{ id: 'matte', n: '' }];
-    const keys = Object.keys(CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES)).filter(k => !only || only.split(',').indexOf(k) >= 0);
+    const keys = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES)).filter(k => !only || only.split(',').indexOf(k) >= 0);
     const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
     const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
     const rows = keys.map(k => {
       const c = info(k), fig = c.kind === 'fig', row = el('div', { class: 'ap-row' }, [el('h2', { text: c.n })]);
-      (CARDS[k] ? EDS : EDS.slice(0, 1)).forEach((x, e) => {
-        const line = el('div', { class: 'ap-line' }, [cell(CARDS[k] && x.n ? x.n : 'Full', sized('full', cardEl(k, { ed: e })))]);
-        if (CARDS[k] && window.AnoriaEd) { line.appendChild(cell('The picture large', sized('full an-artview', cardEl(k, { ed: e, tg: true })))); }
+      (C.CARDS[k] ? EDS : EDS.slice(0, 1)).forEach((x, e) => {
+        const line = el('div', { class: 'ap-line' }, [cell(C.CARDS[k] && x.n ? x.n : 'Full', sized('full', cardEl(k, { ed: e })))]);
+        if (C.CARDS[k] && window.AnoriaEd) { line.appendChild(cell('The picture large', sized('full an-artview', cardEl(k, { ed: e, tg: true })))); }
         if (c.kind !== 'place') {
           line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true, ed: e }))));
           if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true, ed: e }))])));
@@ -1548,12 +1695,19 @@
       });
       return row;
     });
+    // the play mats, each the size it lies on a phone, under an empty standing place and a piece of each player's colour
+    const piece = o => el('span', { class: 'fp o' + o, style: { '--f': FAC.V.c } }, [el('span', { class: 'fp-card' }, [el('span', { class: 'fp-art' })]), el('span', { class: 'fp-m' }, [el('b', { text: '4' })])]);
+    rows.push(el('div', { class: 'ap-row' }, [el('h2', { text: 'Play mats' }), el('div', { class: 'ap-line' }, Object.keys(MATS).map(id => {
+      const n = el('div', { class: 'an-pm ap-mat' }); matFill(n, id, 'proof');
+      n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
+      return cell(MATS[id].n, n); }))]));
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ', in every edition.' : '.') })].concat(rows)));
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ' in every edition' : '') + ', and the play mats.' })].concat(rows)));
   }
 
-  let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
+  const saved = readSave();
   const want = (/[?&](library|packs|decks|guide)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet)
+  if (!/[?&]art(=|&|$)/.test(location.search)) warmSmall();   // (the proof draws every picture itself)
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }
   else if (window.AnoriaGuide && window.AnoriaGuide.firstTime()) { window.AnoriaGuide.quickStart(); return; }   // (the first time here: two minutes of the game being played)

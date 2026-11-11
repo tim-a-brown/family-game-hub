@@ -1,0 +1,99 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#0b1020"><script type="module">
+// The sphere at Anoria's heart, built the way a real armillary sphere is built, so every ring is a whole circle
+// that could be made and assembled:
+//   - a meridian ring stands upright on a spindle (the stubs above and below it);
+//   - inside it, on two pivots, turns a cage of rings that all share one centre: the equator, two colures through the
+//     poles at right angles, the broad band of the ecliptic at 23.5 degrees to the equator, and the two tropics.
+//     Each sits a ring's thickness inside the one it crosses, so where two cross they lie one on the other and are
+//     riveted, as on a real instrument. None passes through another;
+//   - on the cage's axle, at the centre, a sun.
+// Orthographic camera; transparent background.
+import * as THREE from '/vendor/three/three.module.min.js';
+const Q = new URLSearchParams(location.search), N = +(Q.get('px') || 1600);
+const P = Object.assign({ yaw: 28, lat: 32, spin: 34, sun: 0, pitch: 14, zoom: 1.36 }, JSON.parse(Q.get('p') || '{}'));
+const rad = d => d * Math.PI / 180;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(N, N); renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = +(Q.get('ex') || 1.45); renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const S = P.zoom, cam = new THREE.OrthographicCamera(-S, S, S, -S, .1, 30);
+cam.position.set(0, 8 * Math.sin(rad(P.pitch)), 8 * Math.cos(rad(P.pitch))); cam.lookAt(0, 0, 0);
+
+// what the brass reflects: a warm bright ceiling, a dark band at eye level, the night-blue of the card below
+function envTex() { const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 512); sky.addColorStop(0, '#f1e2bb'); sky.addColorStop(.36, '#a88a4e'); sky.addColorStop(.54, '#2b2a33'); sky.addColorStop(.8, '#141a2e'); sky.addColorStop(1, '#8f7440'); g.fillStyle = sky; g.fillRect(0, 0, 1024, 512);
+  const blob = (x, y, rx, ry, col, a) => { g.save(); g.translate(x, y); g.scale(rx, ry); const r = g.createRadialGradient(0, 0, 0, 0, 0, 1); r.addColorStop(0, col); r.addColorStop(1, 'rgba(0,0,0,0)'); g.globalAlpha = a; g.fillStyle = r; g.beginPath(); g.arc(0, 0, 1, 0, 7); g.fill(); g.restore(); };
+  for (const dx of [-1024, 0, 1024]) { blob(600 + dx, 120, 260, 150, '#fff3d6', 1); blob(250 + dx, 170, 130, 110, '#ffe2a8', .8); blob(900 + dx, 230, 90, 120, '#ffd08a', .55); blob(120 + dx, 330, 160, 60, '#5b4424', .6); blob(760 + dx, 40, 60, 30, '#ffffff', 1); }
+  const t = new THREE.CanvasTexture(c); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace; return t; }
+const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromEquirectangular(envTex()).texture;
+const key = new THREE.DirectionalLight(0xfff0d0, 1.5); key.position.set(-3, 5, 6); scene.add(key);
+
+// a band's face: beaded rims, and between them a running scroll ('scroll'), a scale of degrees ('ticks') or nothing.
+// One drawing gives the colour and the relief.
+function bandTex(kind, rep) { const W = 4096, H = 256, mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; };
+  const col = mk(), bmp = mk(), g = col.getContext('2d'), b = bmp.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#bf9a40'); gr.addColorStop(.5, '#e6ca76'); gr.addColorStop(1, '#bf9a40'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  // (a worn, hand-made surface: fine pitting and a few darker patches)
+  let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2600; i++) { g.fillStyle = 'rgba(' + (rnd() < .5 ? '60,38,8' : '255,240,190') + ',' + (.04 + rnd() * .09) + ')'; const r = 1 + rnd() * 5; g.beginPath(); g.arc(rnd() * W, rnd() * H, r, 0, 7); g.fill(); }
+  for (let i = 0; i < 26; i++) { const x = rnd() * W, y = rnd() * H, r = 40 + rnd() * 110, q = g.createRadialGradient(x, y, 0, x, y, r); q.addColorStop(0, 'rgba(70,46,10,.2)'); q.addColorStop(1, 'rgba(70,46,10,0)'); g.fillStyle = q; g.fillRect(x - r, y - r, 2 * r, 2 * r); }
+  b.fillStyle = '#808080'; b.fillRect(0, 0, W, H);
+  const both = f => { f(g, 'rgba(52,32,6,.95)', 'rgba(255,244,200,.7)'); f(b, '#1c1c1c', '#c8c8c8'); };
+  both((x, dark, light) => { x.lineCap = 'round'; x.lineJoin = 'round';
+    for (const y of [24, H - 24]) { x.strokeStyle = dark; x.lineWidth = 8; x.beginPath(); x.moveTo(0, y); x.lineTo(W, y); x.stroke(); x.strokeStyle = light; x.lineWidth = 3; x.beginPath(); x.moveTo(0, y + (y < H / 2 ? 7 : -7)); x.lineTo(W, y + (y < H / 2 ? 7 : -7)); x.stroke(); }
+    if (kind === 'ticks') { x.strokeStyle = dark; const n = 90; for (let i = 0; i < n; i++) { const X = (i + .5) * W / n, big = i % 5 === 0; x.lineWidth = big ? 9 : 5.5; x.beginPath(); x.moveTo(X, 46); x.lineTo(X, big ? 150 : 104); x.stroke(); if (big) { x.fillStyle = dark; x.beginPath(); x.arc(X, 186, 9, 0, 7); x.fill(); } } }
+    if (kind === 'scroll') { const cells = 10, cw = W / cells;
+      for (let i = 0; i < cells; i++) { const x0 = i * cw, m = H / 2, up = i % 2 ? -1 : 1;
+        x.strokeStyle = dark; x.lineWidth = 12;
+        x.beginPath(); x.moveTo(x0, m); x.bezierCurveTo(x0 + cw * .3, m - up * 74, x0 + cw * .7, m - up * 74, x0 + cw, m); x.stroke();   // the running stem
+        x.lineWidth = 9.5; x.beginPath(); x.arc(x0 + cw * .5, m + up * 8, cw * .19, up > 0 ? Math.PI * 1.1 : Math.PI * .1, up > 0 ? Math.PI * 2.75 : Math.PI * 1.75, false); x.stroke();   // a curl in each bay
+        x.beginPath(); x.arc(x0 + cw * .5, m + up * 8, cw * .085, up > 0 ? Math.PI * .2 : Math.PI * 1.2, up > 0 ? Math.PI * 1.6 : Math.PI * 2.6, false); x.stroke();
+        x.fillStyle = dark; x.beginPath(); x.arc(x0, m + up * 46, 10, 0, 7); x.fill(); x.beginPath(); x.arc(x0 + cw * .22, m + up * 52, 7, 0, 7); x.fill(); x.beginPath(); x.arc(x0 + cw * .78, m + up * 52, 7, 0, 7); x.fill();
+        x.strokeStyle = light; x.lineWidth = 3; x.beginPath(); x.moveTo(x0, m + 9); x.bezierCurveTo(x0 + cw * .3, m - up * 74 + 9, x0 + cw * .7, m - up * 74 + 9, x0 + cw, m + 9); x.stroke(); } } });
+  const T = c => { const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.x = rep || 1; t.anisotropy = 8; return t; };
+  const cm = T(col); cm.colorSpace = THREE.SRGBColorSpace; return { map: cm, bump: T(bmp) }; }
+const GOLD = 0xe2c26a;
+const plainM = (r, c) => new THREE.MeshStandardMaterial({ color: c || GOLD, metalness: 1, roughness: r == null ? .34 : r });
+// a ring of radius R (outer), width w and thickness t, lying in the XZ plane (its axis is Y)
+function ring(R, w, t, kind) { const rep = Math.max(1, Math.round(2 * Math.PI * R / w / 16)), g = new THREE.Group(), tx = bandTex(kind, rep), ti = bandTex('plain', rep);
+  const mo = new THREE.MeshStandardMaterial({ map: tx.map, bumpMap: tx.bump, bumpScale: 2.4, metalness: 1, roughness: .34 });
+  const mi = new THREE.MeshStandardMaterial({ map: ti.map, bumpMap: ti.bump, bumpScale: 1, metalness: 1, roughness: .5, side: THREE.BackSide, color: 0xb39a68 });
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(R, R, w, 256, 1, true), mo));
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(R - t, R - t, w, 256, 1, true), mi));
+  for (const s of [1, -1]) { const m = new THREE.Mesh(new THREE.RingGeometry(R - t, R, 256), plainM(.3, 0xf0d688)); m.rotation.x = -s * Math.PI / 2; m.position.y = s * w / 2; g.add(m); }
+  return g; }
+const stud = (r) => new THREE.Mesh(new THREE.SphereGeometry(r || .03, 24, 16), plainM(.22, 0xf6e09a));
+
+const A = new THREE.Group(); A.rotation.y = rad(P.yaw); scene.add(A);
+// the meridian: upright, in the XY plane, with a scale of degrees
+const T_ = .03, RM = 1, MT = P.merT || .045, mer = P.merTorus ? new THREE.Mesh(new THREE.TorusGeometry(RM - MT / 2, MT / 2, 40, 256), plainM(.26, 0xe9cd78)) : ring(RM, P.merW || .115, MT, 'ticks'); if (!P.merTorus) mer.rotation.x = Math.PI / 2; A.add(mer);
+// the cage, turning on the polar axle, which is tilted in the meridian's plane
+const tilt = new THREE.Group(); tilt.rotation.z = -rad(P.lat); A.add(tilt);
+const cage = new THREE.Group(); cage.rotation.y = rad(P.spin); tilt.add(cage);
+const RE = .835, RQ = RE - T_, R1 = RQ - T_, R2 = R1 - T_, E = rad(23.5);
+const ecl = ring(RE, .2, T_, 'scroll'); ecl.rotation.z = E; cage.add(ecl);                      // the ecliptic, outermost
+cage.add(ring(RQ, .12, T_, 'ticks'));                                                            // the equator
+const c1 = ring(R1, .09, T_, 'plain'); c1.rotation.x = Math.PI / 2; cage.add(c1);                // the colure through the solstices (XY plane)
+const c2 = ring(R2, .09, T_, 'plain'); c2.rotation.z = Math.PI / 2; cage.add(c2);                // the colure through the equinoxes (YZ plane)
+for (const s of [1, -1]) { const tr = ring(R1 * Math.cos(E) + .004, .05, .022, 'plain'); tr.position.y = s * R1 * Math.sin(E); cage.add(tr); }   // the tropics, on the colures
+// rivets where the rings lie on one another
+const at = (x, y, z, r) => { const m = stud(r); m.position.set(x, y, z); cage.add(m); };
+for (const s of [1, -1]) { at(0, 0, s * (RE + .004), .034);                                      // the equinoxes: ecliptic on equator on colure
+  at(s * RE * Math.cos(E), s * RE * Math.sin(E), 0, .034);                                       // the solstices: ecliptic on colure
+  at(s * (RQ + .004), 0, 0, .026); }                                                             // equator on colure
+// the axle: through the poles, pinned to the meridian
+const axle = new THREE.Mesh(new THREE.CylinderGeometry(.014, .014, 2 * (RM - MT), 24), plainM(.3, 0xecd27e)); tilt.add(axle);
+for (const s of [1, -1]) for (const [y, r] of [[R1 + .012, .04], [RM - MT - .005, .034], [(R1 + RM) / 2, .022]]) { const m = stud(r); m.position.y = s * y; tilt.add(m); }
+// the sun: a rayed disc on the axle, with a polished ball at its heart
+const D = new THREE.Group(); D.rotation.y = rad(P.sun) - rad(P.spin) - rad(P.yaw); cage.add(D);
+const star = new THREE.Shape(); for (let i = 0; i < 32; i++) { const r = i % 2 ? .24 : (i % 4 ? .37 : .5), a = i / 32 * Math.PI * 2 + Math.PI / 2; star[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } star.closePath();
+const sg = new THREE.ExtrudeGeometry(star, { depth: .03, bevelEnabled: true, bevelThickness: .012, bevelSize: .012, bevelSegments: 3 }); sg.translate(0, 0, -.015);
+D.add(new THREE.Mesh(sg, plainM(.28, 0xf0d27c)));
+const rim2 = new THREE.Mesh(new THREE.TorusGeometry(.3, .014, 16, 120), plainM(.4, 0xd9b85e)); D.add(rim2);
+D.add(new THREE.Mesh(new THREE.SphereGeometry(.2, 64, 48), new THREE.MeshStandardMaterial({ color: 0xf8dc80, metalness: 1, roughness: .16 })));
+// the spindle the meridian stands on: a stub above and below
+if (Q.get('stub') !== '0') for (const s of [1, -1]) { const L = +(Q.get('stub') || .3), rod = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, L, 24), plainM(.3, 0xecd27e)); rod.position.y = s * (RM + L / 2 - .01); scene.add(rod);
+  for (const [y, r] of [[RM + .008, .045], [RM + .11, .032], [RM + .19, .024], [RM + L - .012, .03]]) { const c = stud(r); c.position.y = s * y; scene.add(c); } }
+renderer.render(scene, cam);
+window.__png = renderer.domElement.toDataURL('image/png'); window.__done = 1;
+</script>

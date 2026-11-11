@@ -17,7 +17,7 @@ function run(deck, name, cfg, seed0) {   // this deck against the four other rea
 }
 const U = Object.assign({}, STD, { unique: 1 });
 if (part === 'star') {
-  const stars = { Legion: ['charlemagne', 'leonidas'], Court: ['hatshepsut', 'elizabeth'], Legacy: ['alexander', 'newton'], Explorers: ['zhenghe', 'copernicus'], Pathfinders: ['imhotep', 'beowulf'] };
+  const stars = { Legion: ['charlemagne', 'leonidas'], Court: ['hatshepsut', 'elizabeth'], Legacy: ['alexander', 'newton'], Explorers: ['zhenghe', 'copernicus'], Pathfinders: ['imhotep', 'alfred'] };
   const withK = (name, x, k) => {   // k copies of x; the weakest other cards give up (or take) the room, never below one copy
     const cnt = {}; ARCH[name].cards.forEach(c => cnt[c] = 2); cnt[x] = k;
     const others = ARCH[name].cards.filter(c => c !== x).sort((a, b) => rank(b) - rank(a)); let tot = DECK - 2 + k, i = 0;
