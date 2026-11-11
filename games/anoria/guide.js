@@ -510,11 +510,11 @@
         await L.pause(400);
         await L.say('When both players have had a turn, the round is counted, Place by Place.', { at: '.an-map' });
         await L.count();
-        await L.say('The side with more Might holds a Place. In rounds 1 to 3 each Place scores 1 Renown.', { at: L.row(MY_GATE) });
+        await L.say('The side with more Might holds a Place. You have more Might in your Gate, so you hold it, and it scored you 1 Renown.', { at: L.row(MY_GATE) });
         await L.say('When the Might is tied, nobody holds the Place.', { at: L.row(MY_OUT) });
         await L.say('An empty or tied Gate stays with its owner.', { at: L.row(TH_GATE) });
         await L.round();
-        await L.say('From round 4 every Place scores 2. The banner on a Place shows what it is worth, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
+        await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
         await L.say('If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
       } },
@@ -540,7 +540,7 @@
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.say('A deck is 30 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
+        await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
         await L.lift({ kind: 'hand', h: 0 }, { lit: 'Only <b>one of each person</b> can stand on your side at a time, so the second has to wait.', at: [L.card('copernicus'), L.piece('copernicus')], keep: '.an-cap' });
         UI().demo.drop();

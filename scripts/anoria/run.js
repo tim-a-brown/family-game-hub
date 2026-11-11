@@ -1,10 +1,10 @@
 // Balance runs for Anoria. node run.js <experiment> [games]
 'use strict';
 const { play, PROF, rng, shuffle } = require('../../games/anoria/engine'); const { CARDS, GUIDES, PLACES, ARCH } = require('../../games/anoria/cards');
-const FACS = ['D', 'S', 'V', 'A', 'W'], GL = Object.keys(GUIDES);
+const FACS = ['D', 'S', 'V', 'A', 'W'], GL = Object.keys(GUIDES), DECK = require('../../games/anoria/coll').DECK;
 function randDeck(R) {
   for (;;) { const fs = shuffle(FACS.slice(), R).slice(0, 2), pool = []; for (const k in CARDS) { const c = CARDS[k]; if (fs.indexOf(c.f) >= 0 || c.f === 'N') pool.push(k, k); }
-    const d = shuffle(pool, R).slice(0, 30); if (d.filter(k => CARDS[k].t === 'fig').length >= 17) return d; }
+    const d = shuffle(pool, R).slice(0, DECK); if (d.filter(k => CARDS[k].t === 'fig').length >= Math.round(DECK * 17 / 30)) return d; }
 }
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) : '-';
 function batch(n, cfg, mk, seed0) {
@@ -21,7 +21,7 @@ function batch(n, cfg, mk, seed0) {
   }
   return r;
 }
-const fmt = r => `rounds ${(r.rounds / r.n).toFixed(1)} (10+: ${pct(r.long, r.n)}%)  cards seen ${(r.seen / r.n).toFixed(1)} of 30  first player ${pct(r.w[0], r.n)}%  draws ${pct(r.draw, r.n)}%  seal wins ${pct(r.seals, r.n)}%  margin ${(r.margin / r.n).toFixed(1)}  within 2: ${pct(r.close, r.n)}%  leader after r3 wins ${pct(r.lead3, r.lead3n)}%  lead changes ${(r.changes / r.n).toFixed(2)}  last-round flips ${pct(r.last, r.n)}%  clashes ${(r.clash / r.n).toFixed(1)}  KOs ${(r.ko / r.n).toFixed(1)}  jumps ${(r.jump / r.n).toFixed(1)}  walks ${(r.walk / r.n).toFixed(1)}  lines ${(r.lines / r.n).toFixed(2)}  figures ${(r.plays / r.n).toFixed(1)} (home ${pct(r.home, r.plays)}%)`;
+const fmt = r => `rounds ${(r.rounds / r.n).toFixed(1)} (10+: ${pct(r.long, r.n)}%)  cards seen ${(r.seen / r.n).toFixed(1)} of ${DECK}  first player ${pct(r.w[0], r.n)}%  draws ${pct(r.draw, r.n)}%  seal wins ${pct(r.seals, r.n)}%  margin ${(r.margin / r.n).toFixed(1)}  within 2: ${pct(r.close, r.n)}%  leader after r3 wins ${pct(r.lead3, r.lead3n)}%  lead changes ${(r.changes / r.n).toFixed(2)}  last-round flips ${pct(r.last, r.n)}%  clashes ${(r.clash / r.n).toFixed(1)}  KOs ${(r.ko / r.n).toFixed(1)}  jumps ${(r.jump / r.n).toFixed(1)}  walks ${(r.walk / r.n).toFixed(1)}  lines ${(r.lines / r.n).toFixed(2)}  figures ${(r.plays / r.n).toFixed(1)} (home ${pct(r.home, r.plays)}%)`;
 const mirror = prof => (R) => ({ decks: [randDeck(R), randDeck(R)], guides: [GL[(R() * 5) | 0], GL[(R() * 5) | 0]], profs: [prof, prof] });
 const exp = process.argv[2], n = +(process.argv[3] || 1000), EX = {};
 EX.rules = () => {
