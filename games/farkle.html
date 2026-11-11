@@ -291,7 +291,8 @@
         { id: 'scoring', label: 'Four, five, six of a kind', help: 'How much four, five or six matching dice are worth.',
           choices: [['std', '1,000 / 2,000 / 3,000', 'Four of a kind is 1,000, five is 2,000, six is 3,000. Two triplets score 2,500.'], ['dbl', 'Classic doubling', 'Each extra matching die doubles the three of a kind: four 3s = 600, five 3s = 1,200.']], value: 'std' },
         { id: 'pen', label: 'Three farkles in a row', help: 'What happens if you farkle three turns in a row.',
-          choices: [['on', 'Lose 1,000', 'Your third farkle in a row takes 1,000 points off your score.'], ['off', 'No penalty', 'Farkles only cost you the points from that turn.']], value: 'on' }
+          choices: [['on', 'Lose 1,000', 'Your third farkle in a row takes 1,000 points off your score.'], ['off', 'No penalty', 'Farkles only cost you the points from that turn.']], value: 'on' },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) { start(cfg); }
     });
@@ -304,7 +305,7 @@
       mode: cfg.mode,
       rules: { dbl: o.scoring === 'dbl', entry: Number(o.entry) || 0, target: Number(o.target) || 10000, pen: o.pen !== 'off' },
       players: cfg.players.map(function (p) {
-        return { name: p.name, cpu: p.cpu, color: p.color, score: 0, on: false, fk: 0, risk: 0.85 + Math.random() * 0.35,
+        return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || o.level) : undefined, color: p.color, score: 0, on: false, fk: 0, risk: 0.85 + Math.random() * 0.35,
           st: { farkles: 0, best: 0, hot: 0, maxHotTurn: 0, lostMax: 0, banks: 0 } };
       }),
       cur: 0, round: 1, phase: 'start', dice: freshDice(), turn: 0, sets: [], hot: 0, rolls: 0,
@@ -556,6 +557,13 @@
   }
 
   // ── Computer player ──────────────────────────────────────────────────────
+  // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  // (Two levels: a Hard that knew the exact odds of every roll was built and measured. It scored 4% more a turn
+  // than Normal and still won only 51 games in 100 against it, 27 in 100 at a table of four, because Normal
+  // already pushes when it is behind and sits tight when it is ahead, and the dice decide the rest.)
+  var LEVELS = [['easy', 'Easy', 'Keeps every scoring die and banks as soon as it has a couple of hundred points.'],
+    ['normal', 'Normal', 'Rolls on while the odds look fair, pushes when it is behind and plays safer when it is ahead.']];
+  function lvName(v) { return v === 'easy' ? v : 'normal'; }
   var CONT = { 0: 450, 1: 20, 2: 45, 3: 90, 4: 170, 5: 280 };
   function cpuDecide(p, t, left) {
     var r = left === 0 ? 6 : left, R = S.rules;
@@ -564,6 +572,8 @@
     var lead = others.length ? Math.max.apply(null, others) : 0;
     if (S.final != null) return p.score + t > lead ? 'bank' : 'roll';
     if (p.score + t >= R.target) return 'bank';
+    // Easy takes what it has as soon as that is 200 (it does roll all six again when every die has scored)
+    if (lvName(p.level) === 'easy') return left && t >= 200 ? 'bank' : 'roll';
     if (r === 6) return t >= 3000 * p.risk ? 'bank' : 'roll';
     var thr = { 1: 300, 2: 300, 3: 400, 4: 750, 5: 2000 }[r];
     var gap = lead - p.score;
@@ -584,6 +594,7 @@
       var s = scoreOf(vals, S.rules.dbl); if (s <= 0) continue;
       var left = n - pick.length, dec = cpuDecide(p, S.turn + s, left);
       var val = dec === 'bank' ? s + S.turn : s + S.turn + CONT[left] * (left ? 1 : 1);
+      if (lvName(p.level) === 'easy') val = s * 1000 + pick.length;   // (Easy sets aside every die that scores)
       val += Math.random() * 15;
       if (!best || val > best.val) best = { pick: pick, s: s, dec: dec, val: val, left: left };
     }
