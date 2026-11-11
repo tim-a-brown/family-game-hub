@@ -251,6 +251,9 @@ Underlying principles for everything:
   arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
+- **A card's Thread is printed on it**, in finer print under the pronunciation ("Thread from Archimedes", "Thread
+  from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
+  its rules text ("Legacy of Homer.").
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
   picture tool can't be trusted to count, so draw several, count each at full size, and pose the thing so every one
   shows), a hand or head out of scale, something held

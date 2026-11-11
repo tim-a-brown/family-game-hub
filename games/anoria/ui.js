@@ -163,6 +163,9 @@
   function boldKeys(tx) {
     return esc(tx).replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Quick|Eureka!)(?=[.:! ]|$)/g, '$1<b>$2</b>');
   }
+  // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
+  const THE = { library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 };
+  const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' ? 'the ' : '') + CARDS[x].n;
   // cardEl(key, {mini, cost}): the approved card. mini = a hand card (picture, name, cost, Might).
   function cardEl(key, o) {
     o = o || {};
@@ -193,9 +196,11 @@
     inn.appendChild(paper);
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
-    if (!o.mini && !place && (c.say || fig)) {
-      if (c.say) n.classList.add('hassay');
-      inn.appendChild(el('div', { class: 'ac-foot' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : el('span', { class: 'ac-say' }),
+    // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
+    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Thread from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
+    if (!o.mini && !place && (c.say || fig || from)) {
+      if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
+      inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
     n.appendChild(inn);
