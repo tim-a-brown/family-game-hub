@@ -796,14 +796,28 @@
       const dn = Kit.die(1); dn.setAttribute('data-v', plain ? face : die); dn.setAttribute('aria-label', 'Die showing ' + (plain ? face : die)); dn.tabIndex = -1; dn.style.visibility = 'hidden';
       const won = plain ? el('span', { class: 'cl-plus' + (die ? '' : ' none'), style: { visibility: 'hidden' }, text: die ? '+' + die : '' }) : null;
       const tot = el('span', { class: 'sh big', style: { visibility: 'hidden' } }, [el('b', { text: String(total) })]);
-      const extra = base - f.m, notes = [];
+      // Phalanx is not a line of small print: its card comes in under the Figure it helps (aid(), below), and the
+      // Might it adds is counted then. Until it does, the shields show the numbers without it.
+      const ph = (att && ctx.a && ctx.a.ph) || (!att && ctx.quick) ? Math.min(2, Math.max(0, base - f.m)) : 0;
+      const extra = base - f.m - ph, notes = [];
       if (att && ctx.a && ctx.a.t === 'deed') notes.push('Ambush');
-      if ((att && ctx.a && ctx.a.ph) || (!att && ctx.quick)) notes.push('Phalanx');
       const note = extra > 0 ? (notes.length ? notes.join(', ') : att ? 'Attacking' : 'Defending') + ' +' + extra : '';
+      const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - ph) })]);
+      if (ph) tot.firstChild.textContent = String(total - ph);
       const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.o === ui.view ? 'R' : 'L') }, [
         el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
-        el('div', { class: 'cl-sum' }, [el('span', { class: 'sh' }, [el('b', { text: String(base) })]), dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
-      return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note') };
+        el('div', { class: 'cl-sum' }, [bs, dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
+      return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note'), base: bs, ph: ph, b: base, t: total, shown: false };
+    }
+    // the Phalanx card slides in under its Figure, lands, and its +2 goes onto the shields
+    async function aid(X) {
+      const c = el('div', { class: 'cl-aid' }, [cardEl('phalanx', { mini: true }), el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
+      X.n.classList.add('aided'); X.n.parentNode.classList.add('aided'); X.card.appendChild(c); Kit.sfx('deal'); await wait(430);
+      Kit.sfx('clash', .6); Kit.haptic('medium'); c.classList.add('in');
+      X.base.firstChild.textContent = String(X.b); X.base.classList.remove('bump'); void X.base.offsetWidth; X.base.classList.add('bump');
+      if (X.shown) { X.tot.firstChild.textContent = String(X.t); X.tot.classList.remove('bump'); void X.tot.offsetWidth; X.tot.classList.add('bump'); Kit.sfx('good'); }
+      else X.tot.firstChild.textContent = String(X.t);
+      await wait(620);
     }
     const A = side(a, am0, ev.da, am, true, ev.ra), D = side(d, dm0, ev.dd, dm, false, ev.rd), L = a.o === ui.view ? D : A, R = a.o === ui.view ? A : D;
     const ov = el('div', { class: 'clash' }, [el('div', { class: 'cl-in' }, [L.n, el('div', { class: 'cl-vs', html: SVG.swords }), R.n, el('div', { class: 'cl-where', text: C.PLACES[S.places[ev.p]].n })])]);
@@ -812,11 +826,13 @@
     A.card.classList.add('lunge'); D.card.classList.add('lunge'); Kit.sfx('whoosh');
     await wait(230); Kit.sfx('clash'); Kit.haptic('heavy');
     await wait(380);
+    if (A.ph) await aid(A);   // (the attacker chose Phalanx before the dice)
     [A, D].forEach((x, i) => { x.die.style.visibility = ''; x.die.style.setProperty('--dx', (i ? 40 : -40) + 'px'); x.die.classList.add('rolling'); }); Kit.sfx('roll');
     await wait(760);
     if (plain) { [A, D].forEach(x => { x.won.style.visibility = ''; if (!x.won.classList.contains('none')) { x.won.classList.add('bump'); x.die.classList.add('high'); } }); if (ev.da || ev.dd) Kit.sfx('pop'); await wait(380); }
-    [A, D].forEach(x => { x.tot.style.visibility = ''; x.tot.classList.add('bump'); }); Kit.sfx('tick');
+    [A, D].forEach(x => { x.tot.style.visibility = ''; x.tot.classList.add('bump'); x.shown = true; }); Kit.sfx('tick');
     await wait(420);
+    if (D.ph) { await wait(380); await aid(D); }   // (the defender's plays itself once the dice have fallen against them)
     if (ui.clashHold) { const h = ui.clashHold; ui.clashHold = null; await h(); }   // (a lesson holds the clash here, totals showing, while its caption is read)
     if (res) {
       const W = res === 'a' ? A : D, X = res === 'a' ? D : A, lost = res === 'a' ? d : a;
@@ -917,7 +933,7 @@
     async quick(ev, ctx) {
       const o = ev.o; dropHand(o, V.P[o].hand.indexOf('phalanx')); ctx.quick = !ev.att;
       if (ev.att) V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); else V.P[o].reserve = Math.max(0, V.P[o].reserve - 1);
-      render(); Kit.sfx('clash', .6); await showCard('phalanx', 800);
+      render();   // (the card itself is shown in the clash, coming to its Figure's side)
     },
     async clash(ev, ctx) { await clashShow(ev, ctx); const a = vfig(ev.a); if (a) { a.rdy = 0; a.acted = 1; } },
     async ko(ev) {

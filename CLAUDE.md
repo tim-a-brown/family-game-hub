@@ -270,6 +270,10 @@ Underlying principles for everything:
   text"): the game's small capitals (`--fellsc`), centred on the paper, over a fine rule with a dot in the faction's
   colour (`.ac.mini .ac-name`). The clash shows its two cards large enough to read and says each name once, on the
   card. The full card keeps its large book-face name with its caption and text.
+- **A card that changes a clash is shown as that card** (Tim, 2026-11-11: "Phalanx +2" as a line of small print):
+  Phalanx slides in from the outer edge and tucks under the Figure it helps, its name plate showing with the Might
+  it adds, and the shields count it as it lands (`aid()` in `clashShow`: before the dice for the attacker, after
+  them for the defender it saves). Anything else that joins a clash later comes in the same way, not as a note.
 - **A picture's subject stays in view.** A full card's picture window ends where its paper begins and shows about
   half the picture's height; `FY` in text.js says which part each card keeps (0 the top, 100 the bottom). A new or
   redrawn picture is checked on the card, full size and small, before it goes in: nothing it is about behind the
