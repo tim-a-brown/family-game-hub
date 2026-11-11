@@ -1196,7 +1196,7 @@
     '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck holds two of each card. Only <b>one of each person</b> can stand on your side at a time.</li>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 30 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
