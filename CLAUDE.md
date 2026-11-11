@@ -14,6 +14,8 @@ Shared code:
   which file is "play" vs "keep score"). Home screen and kit both read it.
 - `sync.js` (Firestore sync, PIN sign-in), `hist.js` (game history),
   `players.js` (frequent players), `casino.js` (bankroll), `arcade-hi.js`.
+- `matkit.js` (MatKit): a play mat made from a picture, for any game that has play mats (Anoria and Lorcana use it).
+  See "Play mats made from a picture" below.
 - `sounds/`: recorded game sounds (Kenney CC0 packs) used by `Kit.sfx`, built by
   `scripts/build-sounds.py`; synthesized fallbacks live in `kit.js`.
 - Legacy: `shared.css` + `app.js` are still used by games not yet rebuilt.
@@ -226,6 +228,46 @@ Underlying principles for everything:
   headless with the house library's file). A fixed reader gets a new `rev` on the game and an entry in `HI_RESET`
   (sync.js), which drops that board's older rows on every device and in the cloud.
 
+## Play mats made from a picture (MatKit)
+
+- Tim, 2026-11-11: "allow for using card art as backdrops and positioning that card art anywhere on the mat, even if it
+  creates negative space. If it does create negative space allow for a different pattern or texture to fill that
+  negative space and for there to be a smooth transition from the art to that negative space", and then "Carry that
+  new mat rule over to Lorcana mats as well. Generally, they should have about the same engine, but the art they draw
+  from is specific to their games".
+- **One engine, `matkit.js`**, with no game's name in it. It owns the stored value, the painting and the editor; its
+  interface is at the top of the file. The value is a small object: `{k: 'art', c: the game's name for the picture, u:
+  its address (optional), w, h, cr: the part of the picture shown (optional), r: quarter turns (optional), x, y: the
+  middle of the picture as fractions of the mat, s: the picture's height as a fraction of the mat's height (0.6 to 4),
+  f: the cloth in the empty part, col: its colour, au: 1 when the colour came from the picture, d: dimming}`. Fractions
+  of the mat, so a value holds at every screen shape. `MatKit.read` returns null for anything else, so each game's
+  older plain values load through that game's own code.
+- **Painting** (`MatKit.paint(node, value, {url, turn, small})`): a `.mk-lay` in the mat with the cloth (`.mk-fill`,
+  five patterns drawn as SVG: plain weave, chart lines, quilted diamonds, woven stripes, a field of stars) and the
+  picture (`.mk-art`). Every edge of the picture that lies inside the mat fades into the cloth (a feathered mask,
+  30% of the picture's shorter side); an edge beyond the mat's edge has nothing to fade, and its feather closes as the
+  edge goes out. Sizes are in container units of the mat, so nothing is measured in JavaScript. A second `paint` on
+  the same node changes only what changed: the picture is never loaded twice, so nothing blinks.
+- **The editor** (`MatKit.edit`): the mat in its real shape; one finger drags the picture, two pinch it, the wheel and
+  a size slider do the same for a mouse, the corner handles of the dashed outline resize it, arrow keys move it. The
+  middle of the picture stays on the mat and the size stays within limits. A row of cloths, a row of colours: the
+  first colour is taken from the picture's edges (`MatKit.tone`, a canvas read once), kept dark enough to play on.
+  The game gives it its buttons' classes, its icons, its words and a class for its own look (`.an-mk` in Anoria's
+  ui.css, `.lorc-mk` in lorcana-play.html).
+- **Anoria**: Play mats has "A card's picture": the card strip (`browse` with `pick`) over the pictures you have found
+  (your Guides, your cards, the Places), full-size pictures. Stored in `anoria_mat` as the value's text; the second
+  person's in the game's save. **The other player's mat is turned to face them only in pass and play** (`matTurned`):
+  against the computer nobody sits across the device, so every mat there is upright.
+- **Lorcana**: under Card art, "Picture fills the mat" (as before) or "Picture placed by hand". The pictures are the
+  card scans the game already loads: the art window above the name on a standard card, the whole face of an Enchanted
+  or Iconic printing, a Location's picture turned upright (`placedPic`). In the game such a mat goes by its value as
+  text, like any mat's id, so seats, the saved game and online tables (`host.mat`, `guest.mat`) carry it unchanged;
+  `lorc_mat` and `lorc_mat2` store the object (`matLoad`/`matSave`). A copy of the game from before this meets such an
+  id online, does not know it and shows its plain default mat. Lorcana's own "Flip opponents' cards" setting still
+  decides which way the other mat faces.
+- A new cloth is one entry in `FILLS` and `PAT` in matkit.js; a new game needs `MatKit.paint` where it draws a mat and
+  `MatKit.edit` in its picker.
+
 ## Lorcana card updates
 
 - Every deploy (and the weekly `lorcana-check.yml` Action, Mondays) saves Lorcast's full card list to
@@ -381,10 +423,12 @@ Underlying principles for everything:
   other under the cards played at the crossroads and each player gets their own stylized game mat"). Each player's side
   of the map (their Gate, their Outpost, their half of the Crossroads) lies on a mat of their own: two `.an-pm` in
   `.an-mats`, which takes the map's place in the table under it. The mats meet edge to edge in a seam under the
-  Crossroads, two bound and stitched edges side by side, and the other player's mat is turned to face them. A player's
-  mat is their Guide's, unless they chose another in **Play mats** in the game's menu (`matPicker` in ui.js, in the
-  shared frame `AnoriaUI.screen()`); the choice is `anoria_mat`, and the second person's choice in pass and play stays
-  with that game (`G.players[1].mat`). Lessons play on their two Guides' mats.
+  Crossroads, two bound and stitched edges side by side. In pass and play the other player's mat is turned to face
+  them; against the computer it stays upright. A player's mat is their Guide's, unless they chose another in **Play
+  mats** in the game's menu (`matPicker` in ui.js, in the shared frame `AnoriaUI.screen()`): another Guide's, the
+  chart, or one made from a card's picture and placed by hand (see "Play mats made from a picture"). The choice is
+  `anoria_mat`, and the second person's choice in pass and play stays with that game (`G.players[1].mat`). The
+  computer's mat is always its Guide's. Lessons play on their two Guides' mats.
   The pictures are `games/anoria/ui/mats/<guide>.webp` (1344 x 576, made like the card pictures): printed cloth in the
   cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
   The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
