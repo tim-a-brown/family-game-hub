@@ -401,6 +401,8 @@ const PRECACHE_URLS = [
   '/games/anoria/coll.js',
   '/games/anoria/editions.js',
   '/games/anoria/editions.css',
+  '/games/anoria/domains.js',
+  '/games/anoria/domains.css',
   '/games/anoria/library.js',
   '/games/anoria/library.css',
   '/games/anoria/packs.js',
