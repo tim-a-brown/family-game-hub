@@ -4,7 +4,8 @@
 const base = require('../../../games/anoria/cards'), data = require('./places.json');
 const CARDS = {}; Object.keys(base.CARDS).forEach(k => { CARDS[k] = base.CARDS[k]; });
 const F = (n, f, c, m, reg, y, k, x) => Object.assign({ n, t: 'fig', f, c, m, reg, y, k: k || {}, pl: 1 }, x || {});
-// The ten cards that act on Places. Costs are the ones the test games settled (results.txt, "What the cards should cost").
+// The ten cards that act on Places, at the costs the test games started from. results.txt ("What the Place cards
+// should cost") says what each should cost; place-cards.json has those costs and what each card says.
 const NEW = {
   pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 1450, {}, { arr: ['scout', 3] }),          // look at your top three Places; one may go to your Gate or Outpost
   idrisi: F('Al-Idrisi', 'D', 3, 3, 'MED', 1154, {}, { arr: ['survey', 1] }),             // look through your whole stack for a Place for your Gate or Outpost

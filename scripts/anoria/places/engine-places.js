@@ -133,7 +133,7 @@ function setupPlaces(S, stacks, R, decks) {
 function domination(S) { const cfg = S.cfg, dm = [{}, {}], nd = [0, 0], all = {}; let na = 0;
   for (let i = 0; i < S.places.length; i++) { const d = PLACES[S.places[i]].d, h = holder(S, i); if (!all[d]) { all[d] = 1; na++; } if (h >= 0 && !dm[h][d]) { dm[h][d] = 1; nd[h]++; } }
   if (cfg.dom === 'three') { const k = cfg.domN || 3, r = [S.P[0].renown, S.P[1].renown]; for (let o = 0; o < 2; o++) if (nd[o] >= k) { S.P[o].renown += 1; if (S.ev) S.ev.push({ t: 'renown', o: o, n: 1, why: 'domains' }); if (S.st) { S.st.domR[o]++; if (r[o] > r[1 - o]) S.st.domAhead++; else if (r[o] < r[1 - o]) S.st.domBehind++; } } }
-  if (cfg.dom === 'all' && na >= (cfg.domMin || 1)) { const a = nd[0] === na, b = nd[1] === na; if (a !== b) S.domWin = a ? 0 : 1; }
+  if (cfg.dom === 'all' && na >= (cfg.domMin || 1)) { const a = nd[0] === na, b = nd[1] === na; if (a !== b) { S.domWin = a ? 0 : 1; if (S.st) { const r = S.P[S.domWin].renown - S.P[1 - S.domWin].renown; S.st.domWinLead = r > 0 ? 1 : r < 0 ? -1 : 0; S.st.domWinGap = r; } } }
 }
 // What the robots think Places' rules and domains are worth (on top of Might, which they already count)
 function pval(S, me, hs) { let v = 0; const cfg = S.cfg, dm = [{}, {}], nd = [0, 0], all = {}; let na = 0;

@@ -4,6 +4,8 @@ A rules test with numbers, not a build. Nothing under `games/` is changed. Every
 
 - `RULES.md`: the tabletop rules sheet for Places as recommended.
 - `results.txt`: the tables from the test games, with what each one says.
+- `place-cards.json`: the ten draft cards that act on Places: what each says, what it should cost, and the history
+  behind it.
 - `places.json`: the draft list of 60 Places (the 12 the game has, and 48 new), each with its domain, its rule, its
   region, where it is on the map and one true sentence. The seven domains and the eighteen rules are at the top.
 - `cards-places.js`: the card pool for the test games: the game's own cards (read from `games/anoria/cards.js`), the ten
@@ -18,7 +20,8 @@ A rules test with numbers, not a build. Nothing under `games/` is changed. Every
 
 Each cell is the five ready decks against each other in both seats: 20 pairings times the number you give (100 gives
 2,000 games a cell). `cards` takes a number of games instead. The experiments are listed at the top of the file:
-`base`, `setup`, `edge`, `stack`, `domin`, `powers`, `cards`, `use`. On this machine a game takes about 45 ms.
+`base`, `setup`, `edge`, `stack`, `domin`, `powers`, `cards`, `use`, and `tune` for one-off comparisons. A fourth
+argument is a json of switches added to every cell, for example `'{"dom":"all","domMin":4}'`. On this machine a game takes about 45 ms.
 
 ## The switches (cfg)
 
@@ -31,6 +34,9 @@ Each cell is the five ready decks against each other in both seats: 20 pairings 
   only for them), `'powerAll'` (every Place's rule works only for its owner).
 - `dom`: holding several domains: `'three'` (Places of `domN` different domains score 1 more Renown), `'pair'` (two
   Places of one domain pay double), `'all'` (a Place of every domain on the table wins; `domMin` domains needed).
+- `sealRule: 'last'`: a Law Place keeps only your last Seal from being broken (without it, every Seal).
+- `gatepay: 1`: Commerce Places pay at a Gate too (they don't, in the recommended rules). `tame: 1`: a rule that pays
+  whoever holds the Place pays only a player with a Figure there. Both were tried and are in `results.txt`.
 - `candTo: 'bottom'`: the Place offered for the Crossroads and not used goes under the stack, not to the discard pile.
 
 ## What the robots know

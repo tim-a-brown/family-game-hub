@@ -37,7 +37,7 @@ const bump = (m, k, w) => { const x = m[k] || (m[k] = [0, 0]); x[0]++; x[1] += w
 function cell(job) {
   const cfg = Object.assign({}, BASE, job.cfg), o = job.opt || {}, n = job.n, keep = {};
   const r = { label: job.label, g: 0, rounds: 0, rh: {}, deck: {}, seals: 0, ren: 0, cap: 0, domWins: 0, first: 0, draws: 0, ko: 0, margin: 0, flips: 0, behind3: 0, dec3: 0, dibsW: 0, hubW: 0, hubKept: 0, th: {}, pzero: 0, pout: 0, seen: 0, pg: 0,
-    repl: 0, replHub: 0, pdup: 0, sealSaved: 0, domR: 0, domAhead: 0, domBehind: 0, domDecided: 0, slot: {}, inc: {}, drawn: {}, played: {}, use: {}, picked: {}, hubD: 0, three: 0 };
+    repl: 0, replHub: 0, pdup: 0, sealSaved: 0, dwAhead: 0, dwBehind: 0, dwGap: 0, domR: 0, domAhead: 0, domBehind: 0, domDecided: 0, slot: {}, inc: {}, drawn: {}, played: {}, use: {}, picked: {}, hubD: 0, three: 0 };
   if (o.costs) for (const k in o.costs) { keep[k] = CARDS[k]; CARDS[k] = Object.assign({}, CARDS[k], { c: o.costs[k] }); }
   const one = (ka, kb, seed) => {
     const R = rng(seed * 7 + 11); let decks, guides, profs, stacks = null;
@@ -56,6 +56,7 @@ function cell(job) {
       for (let s = 0; s < 2; s++) { r.pg++; r.th[st.turned[s]] = (r.th[st.turned[s]] || 0) + 1; r.pzero += st.pzero[s]; if (st.pout[s]) r.pout++; r.seen += Object.keys(st.seenP[s]).length / stacks[s].length; }
       r.repl += st.repl; r.replHub += st.replHub; r.pdup += st.pdup; r.sealSaved += st.sealSaved; r.domR += st.domR[0] + st.domR[1]; r.domAhead += st.domAhead; r.domBehind += st.domBehind;
       if (S.how === 'renown' && w >= 0 && st.domR[w] > st.domR[1 - w] && S.P[w].renown - st.domR[w] <= S.P[1 - w].renown - st.domR[1 - w]) r.domDecided++;
+      if (S.how === 'domains') { if (st.domWinLead > 0) r.dwAhead++; else if (st.domWinLead < 0) r.dwBehind++; r.dwGap += st.domWinGap; }
       const ds = {}; S.places.forEach(x => { ds[PLACES[x].d] = 1; }); r.hubD += Object.keys(ds).length;
       if (o.track) { for (let s = 0; s < 2; s++) { bump(r.slot, PLACES[st.set[s][0]].pw + '|0', sc(s)); bump(r.slot, PLACES[st.set[s][1]].pw + '|1', sc(s)); bump(r.slot, 'home ' + PLACES[st.set[s][1]].reg + '|1', sc(s)); } bump(r.slot, PLACES[st.hub0].pw + '|2', sc(S.dibs)); }
       for (const k in st.use) r.use[k] = (r.use[k] || 0) + st.use[k]; for (const k in st.picked) r.picked[k] = (r.picked[k] || 0) + st.picked[k];
@@ -121,7 +122,7 @@ EX.domin = async () => {
   const rs = await runAll(V.map(v => J(v[0], Object.assign({}, REC, v[1]))));
   console.log('HOLDING SEVERAL DOMAINS (' + rs[0].g + ' games a row; on average ' + (rs[0].hubD / rs[0].g).toFixed(2) + ' different domains lie on the table)');
   for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 50) + game(r) + '\n' + pad('', 50) + 'decks ' + d.s + '  spread ' + f1(d.spread) +
-    (r.domR ? '  bonus Renown a game ' + (r.domR / r.g).toFixed(2) + ', ' + pc(r.domAhead, r.domR) + '% of it to the player already ahead, ' + pc(r.domBehind, r.domR) + '% to the one behind; it decided ' + pc(r.domDecided, r.g) + '% of games' : '') + (r.domWins ? '  decided ' + pc(r.domWins, r.g) + '% of games' : '')); }
+    (r.domR ? '  bonus Renown a game ' + (r.domR / r.g).toFixed(2) + ', ' + pc(r.domAhead, r.domR) + '% of it to the player already ahead, ' + pc(r.domBehind, r.domR) + '% to the one behind; it decided ' + pc(r.domDecided, r.g) + '% of games' : '') + (r.domWins ? '  decided ' + pc(r.domWins, r.g) + '% of games; the winner was already ahead on Renown in ' + pc(r.dwAhead, r.domWins) + '% of those and behind in ' + pc(r.dwBehind, r.domWins) + '%, by ' + f1(r.dwGap / r.domWins) + ' Renown on average' : '')); }
 };
 EX.powers = async () => {
   const rs = await runAll([0, 1, 2, 3].map(k => J('p' + k, { stacks: 1, setup: 'top2', sealRule: 'last' }, { rstack: 1, track: 1, seed: 20000 + k * 50000 })));
@@ -138,6 +139,9 @@ EX.cards = async () => {
   const r = rs[0], by = {}; for (const k in r.drawn) { if (NEW[k]) continue; const c = CARDS[k], key = (c.t === 'fig' ? 'Figures' : c.t === 'deed' ? 'Deeds' : 'Relics') + ' of cost ' + c.c, x = by[key] || (by[key] = [0, 0, 100, 0]); const p = 100 * r.drawn[k][1] / r.drawn[k][0]; x[0]++; x[1] += p; x[2] = Math.min(x[2], p); x[3] = Math.max(x[3], p); }
   console.log('\nThe game\'s own cards in the same games, by cost (win rate of a player who drew the card: average, lowest to highest)');
   for (const k of Object.keys(by).sort()) console.log('  ' + pad(k, 20) + f1(by[k][1] / by[k][0]) + '%  (' + f1(by[k][2]) + ' to ' + f1(by[k][3]) + ', ' + by[k][0] + ' cards)');
+  const fac = {}, FN = { D: 'Discovery', S: 'Statecraft', V: 'Valor', A: 'Arts', W: 'Wonder', N: 'any deck' };
+  for (const q of rs) for (const k in q.drawn) { if (NEW[k]) continue; const x = fac[CARDS[k].f] || (fac[CARDS[k].f] = [0, 0]); x[0] += q.drawn[k][0]; x[1] += q.drawn[k][1]; }
+  console.log('\nThe game\'s own cards by faction, all three columns together (win rate of a player who drew a card of that faction)\n  ' + Object.keys(fac).map(f => FN[f] + ' ' + pc(fac[f][1], fac[f][0]) + '%').join('   '));
   console.log('\n' + game(r));
 };
 EX.use = async () => {
@@ -148,6 +152,6 @@ EX.use = async () => {
 };
 EX.tune = async () => {   // (one-off comparisons while tuning: a json list of rule switches as the fifth argument)
   const V = JSON.parse(process.argv[5] || '[{}]'), rs = await runAll(V.map(v => J(JSON.stringify(v), Object.assign({ stacks: 1, setup: 'pick3' }, v.cfg || v), v.opt)));
-  for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 60) + 'first dibs wins ' + pc(r.dibsW, r.g - r.draws) + '%  ' + game(r) + '\n' + pad('', 60) + 'decks ' + d.s + '  spread ' + f1(d.spread) + '  Seals saved ' + (r.sealSaved / r.g).toFixed(2)); }
+  for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 60) + 'first dibs wins ' + pc(r.dibsW, r.g - r.draws) + '%  ' + game(r) + '\n' + pad('', 60) + 'decks ' + d.s + '  spread ' + f1(d.spread) + '  Seals saved ' + (r.sealSaved / r.g).toFixed(2) + (r.domWins ? '  domain wins: winner already ahead ' + pc(r.dwAhead, r.domWins) + '%, behind ' + pc(r.dwBehind, r.domWins) + '%, by ' + f1(r.dwGap / r.domWins) + ' Renown' : '')); }
 };
 if (EX[exp]) EX[exp](); else console.log('experiments: ' + Object.keys(EX).join(', '));
