@@ -379,8 +379,8 @@
         await L.say('The <b>Crossroads</b> in the middle is shared.', { at: L.row(CROSS), tag: 'The Crossroads' });
         await L.say('The far two are the other player’s side.', { at: [L.row(TH_GATE), L.row(TH_OUT)], tag: ['Their Gate', 'Their Outpost'] });
         await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
-        await L.say('Hold Places to score <b>Renown</b>. The first player to reach 30 at the end of a round wins.', { at: '.an-strip.me .st-ren' });
-        await L.say('Each player has 3 <b>Seals</b>. A player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
+        await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach 30 wins.', { at: '.an-strip.me .st-ren' });
+        await L.say('Each player has 3 <b>Seals</b>. One breaks when the other player holds your Gate at the end of a round, and a player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', renown: 3, hand: ['copernicus', 'compass', 'galileo', 'zhenghe'], draw: ['hypatia', 'eureka'], figs: [['hatshepsut', MY_GATE]] },
@@ -394,7 +394,7 @@
         await L.play('copernicus', MY_GATE);
         await L.say('Copernicus cost 3, so you have 2 left.', { at: '.an-strip.me .st-spark' });
         await L.endTurn();
-        await L.say('You keep up to 2 Spark you don’t spend through the other player’s turn. A card like Phalanx is paid for with that Spark.', { at: '.an-strip.me .st-spark' });
+        await L.say('Up to 2 Spark you don’t spend is kept for the other player’s turn. It is there to pay for Phalanx, a card that plays itself to save one of your Figures.', { at: '.an-strip.me .st-spark' });
         await L.say('You can hold 8 cards when your turn ends. If you have more, you choose which ones to discard.', { at: '.an-hand' });
       } },
     { id: 'figures', n: 'Figures', sub: 'Arriving, walking, one thing a turn', art: 'hatshepsut',
@@ -403,7 +403,7 @@
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_OUT, { lit: 'A Figure arrives at your Gate, or at any Place where you already have a Figure.', at: [L.row(MY_GATE), L.row(MY_OUT)] });
-        await L.say('A Figure that has just arrived can’t walk this turn. It can still clash.', { at: L.piece('copernicus') });
+        await L.say('A Figure that has just arrived can’t walk this turn. It can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
         await L.walk('hatshepsut', CROSS, { lit: 'Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b>.', at: L.piece('hatshepsut') });
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
         await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
@@ -417,7 +417,7 @@
         await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house shows that he is at home.', { at: L.piece('copernicus') });
         await L.play('daedalus', MY_GATE);
         await L.say('Daedalus is a <b>Voyager</b>, so he is at home at every Place.', { at: L.piece('daedalus') });
-        await L.say('The two numbers on a Place are each side’s total Might there.', { at: L.row(MY_GATE) + ' .pl-tots' });
+        await L.say('The two numbers on a Place are each side’s total Might there: yours on the right, the other player’s on the left.', { at: L.row(MY_GATE) + ' .pl-tots' });
         await L.later('Your next turn…', S => { S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.walk('copernicus', MY_OUT);
@@ -429,9 +429,9 @@
         them: { guide: 'tubman', renown: 8, hand: ['joan', 'boudica'], figs: [['tomoe', CROSS], ['leonidas', TH_OUT], ['spartacus', TH_OUT]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.clash('copernicus', 'tomoe', [4, 2], { lit: 'A Figure can clash with an enemy at the same Place. The numbers over the enemy are the Might on each side.', at: [L.piece('copernicus'), L.piece('tomoe', 1)],
+        await L.clash('copernicus', 'tomoe', [4, 2], { lit: 'A Figure can clash with an enemy at the same Place. The numbers over the enemy show your Might against theirs, before the dice.', at: [L.piece('copernicus'), L.piece('tomoe', 1)],
           hold: ['Both roll a die. The higher roll adds 1 to its Figure’s Might.', 'Then the Figure with the lower total is knocked out. If the totals are tied, both stay.'] });
-        await L.say('The other player was ahead on Renown, so that knock-out is a <b>Bounty</b>, worth 1 Renown.', { at: '.an-strip.me .st-ren' });
+        await L.say('The other player was ahead on Renown, so that knock-out earned you a <b>Bounty</b> of 1 Renown. A Bounty is only paid against a player who is ahead of you.', { at: '.an-strip.me .st-ren' });
         await L.clash('haytham', 'leonidas', [6, 2], { lit: 'Leonidas is a <b>Guard</b>: enemies here must clash with him first. He is also <b>Steadfast</b>, which gives him +2 Might when he defends.', at: L.piece('leonidas', 1),
           hold: ['A roll that wins by 3 or more adds 2 Might instead of 1.'] });
         await L.say('A Figure can clash the turn it arrives, but each Figure acts only once a turn.', { at: L.piece('haytham') });
@@ -446,9 +446,9 @@
         await L.walk('copernicus', CROSS, { lit: 'The Compass lets your Figures walk two steps.', at: [L.row(MY_OUT), L.row(CROSS)] });
         await L.deed('eureka', { lit: 'A <b>Deed</b> happens once and is gone. Eureka! draws 2 cards.', at: L.card('eureka') });
         await L.endTurn();
-        await L.say('You ended the turn with 2 Spark unspent and Phalanx in your hand.', { at: ['.an-strip.me .st-spark', L.card('phalanx')] });
+        await L.say('You ended your turn with 2 Spark unspent and Phalanx in your hand. Now the other player attacks Copernicus.', { at: ['.an-strip.me .st-spark', L.card('phalanx')] });
         await L.them.turn();
-        await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['<b>Phalanx</b> plays itself when it saves your Figure, paid for with the Spark you kept.'] });
+        await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['Tomoe Gozen’s roll would knock Copernicus out, so <b>Phalanx</b> plays itself and gives him +2 Might. It is paid for with the Spark you kept.'] });
         await L.say('You can read a Relic or a Deed the same way as any card, by tapping it.', { at: '.an-strip.me .st-relics' });
       } },
     { id: 'guide', n: 'Your Guide', sub: 'One power per deck, and how more Guides join you', art: 'leonardo',
@@ -500,12 +500,14 @@
         them: { guide: 'suntzu', renown: 13, hand: ['joan', 'phalanx'], figs: [['spartacus', TH_GATE], ['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400);
-        await L.say('Your Figures can walk all the way to the other player’s Gate.', { at: L.row(TH_GATE) });
-        await L.say('Zheng He has more Might there than their Figure. Watch the count.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
+        const mt = k => UI().E.might(L.S(), L.fig(k, k === 'spartacus' ? 1 : 0), 0);
+        await L.say('Your Figures can walk all the way to the other player’s Gate. Zheng He has done that here.', { at: L.row(TH_GATE), tag: 'Their Gate' });
+        await L.say('He has ' + mt('zhenghe') + ' Might there and their Figure has ' + mt('spartacus') + ', so right now you hold their Gate.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
+        await L.say('The round is about to be counted. Keep an eye on their <b>Seals</b>.', { at: '.an-strip.opp .st-seals' });
         await L.count();
-        await L.say('If you hold their Gate when the round is counted, one of their <b>Seals</b> breaks and you score 1 more Renown.', { at: '.an-strip.opp .st-seals' });
-        await L.say('If you break all 3, you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
-        await L.say('It works both ways. An empty Gate is safe, but a Gate with only their Figures in it is not.', { at: L.row(MY_GATE) });
+        await L.say('You held their Gate when the round was counted, so one of their Seals broke and you scored 1 more Renown.', { at: '.an-strip.opp .st-seals' });
+        await L.say('If you break all 3 of their Seals, you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
+        await L.say('It works the same way against you. One of your Seals breaks if they hold your Gate when a round is counted. An empty or tied Gate is safe.', { at: [L.row(MY_GATE), '.an-strip.me .st-seals'] });
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One of each person, and the return', art: 'galileo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'daedalus'], figs: [['copernicus', CROSS]] },
@@ -519,7 +521,7 @@
         await L.them.endTurn();
         await L.later('Your next turn…', S => { S.round = 5; });
         await L.turn(0);
-        await L.play('copernicus', MY_GATE, { lit: '<b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less. Copernicus comes back for 2.', at: L.card('copernicus') });
+        await L.play('copernicus', MY_GATE, { lit: 'When one copy of a Figure is in your discard pile, the other copy costs 1 less. This is <b>the return</b>: Copernicus comes back for 2 instead of 3.', at: L.card('copernicus') });
         await L.say('A pack never gives you a third copy of a card.', { at: L.piece('copernicus') });
       } },
     { id: 'read', n: 'Reading a card', sub: 'Skills, home and Threads', art: 'hypatia',
