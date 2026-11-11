@@ -499,7 +499,14 @@ Underlying principles for everything:
   cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
   The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
   one line in `MATS` (ui.js) and its picture**; until a Guide has one, that Guide plays on the chart of Anoria in their
-  faction's colour. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
+  faction's colour. All ten Guides have one. **What a mat draws is checked against a text that can be read** (archive.org
+  full texts are reachable; most museum sites are not): the comment over `MATS` names the source for each. Still resting
+  on memory, to be checked when a source can be read: the colours and figures of Thembu beadwork and the aloes
+  (Mandela), the shape of the Vijapur spinning wheel (Gandhi), the look of the Curies' instruments, the zigzag fence
+  and the bunting (Lincoln), how the nine-tailed standard was made (Genghis Khan), the sage and fern leaves, the press
+  and the Leyden jar (Franklin), the marsh and pines (Tubman), the wing, water and plant studies and the red-prepared
+  paper (Leonardo), the wave scroll (Cleopatra), and the number of cords on a bamboo book (Sun Tzu). The picture tool
+  cannot count: Genghis Khan's standard came out with eight tails every time, and the ninth was put in by hand. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
   them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
   under pieces of both players' colours, at every size, before it goes in.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
