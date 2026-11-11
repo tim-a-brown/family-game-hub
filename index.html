@@ -729,6 +729,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .gs-dock .gs-start{flex:1;min-width:0;margin:0;}
 .gs-dock .gs-alt{flex:none;width:auto;padding:0 14px;gap:6px;white-space:nowrap;font-size:.92rem;}
 .gs-dock .gs-alt .ico{width:18px;height:18px;}
+.pick.gsheet button.gs-who{width:calc(100% - 40px);margin:6px 20px 8px;background:var(--surface-2);box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 0 0 1.5px var(--w12);}
+.pick.gsheet button.gs-who[hidden]{display:none;}
+.gs-who .qs-chips{margin-top:5px;}
+.gs-who .qs-chip.bot i{font-style:normal;font-weight:700;color:var(--text-3);margin-left:2px;}
+.gs-who-go{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--w08);color:var(--text-2);}
+.gs-who-go .ico{width:16px;height:16px;}
 .gs-h{margin:0 20px 2px;font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);}
 .gs-fb{position:relative;}
 .gs-frame{display:block;width:100%;border:0;background:transparent;opacity:0;transition:opacity .25s;}
@@ -1041,6 +1047,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       GS.inner = d.on ? d.h : 0; GS.fit(); var dk = GS.frame.closest('.gsheet').querySelector('.gs-dock'); if (dk) dk.style.display = d.on ? 'none' : '';
       if (d.on) setTimeout(function () { try { GS.frame.scrollIntoView({ block: 'end', behavior: 'smooth' }); } catch (e) {} }, 50);
     }
+    else if (d.kitSheet === 'who') GS.who(d);
     else if (d.kitSheet === 'go') GS.start(d.how, d.page);
     else if (d.kitSheet === 'players') {   // the setup's players sheet, shown here over the game sheet; every change goes back to the frame
       var pw = GS.frame.contentWindow;
@@ -1129,13 +1136,26 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (sp) {
       var np = state.who && state.who !== 'any' ? '&np=' + state.who : '';
       var frame = el('iframe', { class: 'gs-frame', title: g.name + ' setup', src: 'games/' + sp + '.html?defaults=1&sheet=1' + np });
-      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
+      // Who's playing is a card of the sheet's own, above the game's options: the people already chosen as chips, and a
+      // tap opens the players sheet over this one (the setup in the frame says who is seated, kitSheet 'who')
+      var whoChips = el('span', { class: 'qs-chips' }), whoT = el('div', { class: 't', text: 'Players' });
+      var whoCard = el('button', { type: 'button', class: 'alt gs-who', hidden: true, onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); frame.contentWindow.postMessage({ kitSheet: 'press', which: 'who' }, location.origin); } }, [
+        el('span', { class: 'e', html: Kit.icon('users') }), el('span', { class: 'tx' }, [whoT, whoChips]), el('span', { class: 'gs-who-go', html: Kit.icon('right') })]);
+      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), whoCard, el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
       box.appendChild(fw);
       // the setup's start buttons, pinned to the bottom of the sheet (they press the frame's own)
       var dockEl = el('div', { class: 'gs-dock' }), dockSig = '';
       box.appendChild(dockEl);
       GS = { frame: frame, fh: 0, start: start,
-        fit: function () { frame.style.height = Math.max(120, GS.fh || 360, GS.inner || 0) + 'px'; },
+        who: function (d) {
+          var seats = d.seats; whoCard.hidden = !seats || !seats.length; if (whoCard.hidden) return;
+          whoT.textContent = d.one ? 'Player' : 'Players'; whoChips.innerHTML = '';
+          seats.forEach(function (st) {
+            whoChips.appendChild(st.cpu ? el('span', { class: 'qs-chip bot', html: Kit.icon('bot') + '<span>' + Kit.esc(st.name) + '</span>' + (st.tag ? '<i>' + Kit.esc(st.tag) + '</i>' : '') }) : el('span', { class: 'qs-chip' + (st.anon ? '' : ' who'), text: st.name }));
+          });
+          whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + seats.map(function (st) { return st.name; }).join(', '));
+        },
+        fit: function () { frame.style.height = Math.max(GS.fh || 360, GS.inner || 0, 8) + 'px'; },   // (as tall as the setup says: with the players on their own card, some setups have nothing else)
         dock: function (d) {
           var sig = (d.start || '') + '|' + (d.alt || '') + '|' + (d.altIcon || '') + '|' + JSON.stringify(d.look || ''); if (sig === dockSig) return; dockSig = sig;
           dockEl.innerHTML = ''; dockEl.classList.toggle('has-alt', !!d.alt);

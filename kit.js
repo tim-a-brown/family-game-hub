@@ -2301,18 +2301,25 @@
       if (IN_SHEET) { try { parent.postMessage({ kitSheet: 'players', m: seatModel() }, location.origin); } catch (e) {} return; }
       playersSheet(seatModel(), { onChange: seatApply });
     }
-    if (IN_SHEET) window.addEventListener('message', function (e) { if (e.origin === location.origin && e.data && e.data.kitSheet === 'players' && wrap.isConnected) seatApply(e.data.m); });
+    if (IN_SHEET) window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin || !e.data || !wrap.isConnected) return;
+      if (e.data.kitSheet === 'players') seatApply(e.data.m);
+      else if (e.data.kitSheet === 'press' && e.data.which === 'who') openPlayers();   // (the sheet's Players card was tapped)
+    });
     // Who's playing, at a glance: the people (and robots, with their skill) seated the way the game was last played.
     // One tap opens the players sheet to change how many, who sits where and which seats the computer plays.
+    // (on the home screen's game sheet the players are a card of the sheet's own, above these options: this tells it
+    // who is seated, kitSheet 'who'; null when this setup has nobody to name)
+    function tellWho(list, one) { if (IN_SHEET) try { parent.postMessage({ kitSheet: 'who', seats: list, one: !!one }, location.origin); } catch (e) {} }
     function renderSeats() {
-      seatsBox.innerHTML = '';
-      if (!P) { renderOptions(); return; }
+      seatsBox.innerHTML = ''; seatsBox.style.display = '';
+      if (!P) { renderOptions(); tellWho(null); return; }
       var r = range(), cpu = cpuFor();
       if (!state.count) state.count = Math.min(r[1], Math.max(r[0], saved.count || P.count || r[0]));
       state.count = Math.min(r[1], Math.max(r[0], state.count));
       if (merged) { state.mode = resolved(); if (!robotsOk(state.count)) robots = {}; cpu = cpuFor(); }
       renderOptions();
-      if (r[1] === 0) return;   // a mode with nobody to seat (Bingo's caller)
+      if (r[1] === 0) { tellWho(null); return; }   // a mode with nobody to seat (Bingo's caller)
       var label = el('div', { class: 'label grow', style: { margin: 0 }, text: P.label || "Who's playing?" });
       if (P.names === false) {   // nobody is named: just how many
         var head = el('div', { class: 'row' }, [label]);
@@ -2323,20 +2330,22 @@
           minus.disabled = state.count <= r[0]; plus.disabled = state.count >= r[1];
           head.appendChild(el('div', { class: 'stepper' }, [minus, out, plus]));
         }
-        seatsBox.appendChild(head);
+        seatsBox.appendChild(head); tellWho(null);
         return;
       }
       // Crowded tables: keep robot names short so they fit
       if (state.count >= 4) bots.forEach(function (b, k) { if (b.length > 8) bots[k] = cpuNames(1, bots, 8)[0] || b; });
-      var lvs = lvTiles() ? lvChoices() || [] : null, pills = [];
+      var lvs = lvTiles() ? lvChoices() || [] : null, pills = [], told = [];
       seatList().forEach(function (st, i) {
         var c = playerColor(i), nm = st.name || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)), tag = null;
         if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
+        told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
         pills.push(el('span', { class: 'k-wp' + (st.cpu ? ' cpu' : '') + (st.name ? '' : ' anon') }, [
           st.cpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') }) : st.name ? avMarked(st.name, c) : seatBadge('', i, c),
           el('span', { class: 'k-wp-n' }, [el('b', { text: nm }), tag])]));
       });
       var one = r[1] <= 1 && !cpu;
+      if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one); return; }
       seatsBox.appendChild(label);
       seatsBox.appendChild(el('button', { type: 'button', class: 'k-who' + (state.count > 4 ? ' many' : ''), 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + seatList().map(function (st, i) { return st.name || 'Player ' + (i + 1); }).join(', '), onclick: openPlayers },
         [el('span', { class: 'k-who-l' }, pills), el('span', { class: 'k-who-go', html: icon('users') })]));
@@ -2425,6 +2434,7 @@
       };
       window.addEventListener('message', function (e) {
         if (e.origin !== location.origin || !e.data || e.data.kitSheet !== 'press') return;
+        if (e.data.which === 'who') return;
         var b = sdock.querySelector(e.data.which === 'alt' ? '.k-start-alt' : '.k-start'); if (b) b.click();
       });
       tell(); setTimeout(tell, 0);
