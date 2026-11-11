@@ -299,10 +299,26 @@ Underlying principles for everything:
   can be read (Nineveh's gate bulls are door jambs: faces out, bodies running back down the passage, about two and
   a half times a man's height). State sizes as a ratio to a person, and choose the viewpoint that makes the true
   arrangement the natural one to draw. Accuracy is never a reason for a dull or repeated composition.
+- **One word for a connection: Legacy Line** (Tim, 2026-11-11: of "Thread" and "Legacy line", "legacy line is the one
+  i like best"). Players read only "Legacy Line": the foot of a card ("Legacy Line from Archimedes"), the plate when
+  one is made, the named lines of the collection ("The Road to Zama", in `THREADS`), the rules and lessons. A Figure
+  with `insp` is still a "Legacy" Figure with "Legacy of Homer." in its text. In code the old names stay (`from`,
+  `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): under a card
+  being read (`notesFor` in ui.js: what the card grew from, a gold line to the card, and on the line what that is
+  worth as the game's own Spark, Might and Renown marks, then one line saying when and the true sentence); and over
+  a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
+  places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
+  moment there and then (`lineMoment`), before the gift at the end of the pack.
+- **The sphere is a real object** (Tim, 2026-11-11: "make sure that all rings are realistic and don't follow any impossible
+  paths or angles"). The one on the card back (`ui/card-back.webp`) and in the logo is rendered from a three.js model
+  built like a real armillary sphere (`scripts/anoria/sphere/`: a meridian on a spindle, a cage of equator, colures,
+  ecliptic and tropics riveted where they cross, a sun on the axle), not generated as a picture. Anything new that shows
+  the sphere is rendered from that model. **Place cards have their own back**, the same design in oxblood
+  (`ui/card-back-place.webp`), so the two kinds of card sort apart on a real table.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
-- **A card's Thread is printed on it**, in finer print under the pronunciation ("Thread from Archimedes", "Thread
-  from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
+- **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
+  "Legacy Line from the Library of Alexandria": `theName` gives a name as it reads mid-sentence). A Figure's own Legacy stays in
   its rules text ("Legacy of Homer.").
 - **Drawing faults to look for in every new picture** (all found by Tim): a wrong count (Anansi has exactly eight legs: the
   picture tool can't be trusted to count, so draw several, count each at full size, and pose the thing so every one
@@ -310,6 +326,15 @@ Underlying principles for everything:
   that can't be read, a weapon gripped wrongly, broken objects nobody asked for, two statues of a pair facing
   different ways, a web or building that couldn't stand, and two people of one region with the same face and kit
   (give each their own age, build, dress and scene; Sun Tzu is a Bronze Age scholar in robes, not an armoured general).
+- **No rows of copies** (Tim, 2026-11-11: the people following Gandhi "look too uniform and procedurally generated"). A
+  crowd, column or line of near-identical people behind the subject is a fault, however far away. Draw a few particular
+  people instead, each with their own age, build, dress and pose (five marchers and three villagers, four Spartans
+  getting ready, three soldiers in the mist), and leave the rest out. A brief says so in words ("only three", "each
+  different", "no rows or columns of repeated figures"). A formation that is itself the history (Scipio's lanes at
+  Zama, Shaka's horns, the Phalanx) may stay, small and far off.
+- **A full card has a plate in each top corner** (the cost at the left, the kind at the right), so a brief asks for the
+  head right of centre, about a fifth of the way down, with plain sky or background in both top corners. People and
+  animals in one picture are in true proportion (a rider on a small Mongolian horse is still much smaller than the horse).
 - **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
@@ -362,6 +387,21 @@ Underlying principles for everything:
   (the other way round, every card drawn flattened the board for a moment); and a lesson's caption that has to move
   comes up in its new place, it does not slide across the table. Check with the scratchpad's `gd/film.js` (films a
   game) and `gd/blink.js` (lists anything that changes and changes back within a few frames).
+- **Play mats** (Tim, 2026-11-11: "adapt the same player mat mechanic from lorcana such that they but up against each
+  other under the cards played at the crossroads and each player gets their own stylized game mat"). Each player's side
+  of the map (their Gate, their Outpost, their half of the Crossroads) lies on a mat of their own: two `.an-pm` in
+  `.an-mats`, which takes the map's place in the table under it. The mats meet edge to edge in a seam under the
+  Crossroads, two bound and stitched edges side by side, and the other player's mat is turned to face them. A player's
+  mat is their Guide's, unless they chose another in **Play mats** in the game's menu (`matPicker` in ui.js, in the
+  shared frame `AnoriaUI.screen()`); the choice is `anoria_mat`, and the second person's choice in pass and play stays
+  with that game (`G.players[1].mat`). Lessons play on their two Guides' mats.
+  The pictures are `games/anoria/ui/mats/<guide>.webp` (1344 x 576, made like the card pictures): printed cloth in the
+  cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
+  The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
+  one line in `MATS` (ui.js) and its picture**; until a Guide has one, that Guide plays on the chart of Anoria in their
+  faction's colour. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
+  them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
+  under pieces of both players' colours, at every size, before it goes in.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.

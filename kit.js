@@ -2253,11 +2253,18 @@
     function renderModes() {
       if (!modesBox) return;
       modesBox.innerHTML = '';
+      modesBox.classList.toggle('k-open', foldModes && modesOpen);
+      if (foldModes) {   // (folded to fit the screen: one row that names the kind of play chosen)
+        var cm = o.modes.filter(function (m) { return m.id === state.mode; })[0] || o.modes[0], ck = MODE_KINDS[cm.kind || cm.id] || {};
+        modesBox.appendChild(el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(modesOpen), onclick: function () { modesOpen = !modesOpen; sfx('tap'); haptic('light'); renderModes(); } },
+          [el('span', { class: 'k-scl', text: o.modesLabel || 'Way to play' }), el('span', { class: 'k-scv', text: cm.title || ck.title || cm.id }), el('span', { class: 'k-scc', html: icon('down') })]));
+        if (!modesOpen) return;
+      }
       o.modes.forEach(function (m) {
         var k = MODE_KINDS[m.kind || m.id] || {};
         modesBox.appendChild(el('button', {
           type: 'button', class: 'mode' + (state.mode === m.id ? ' on' : ''),
-          onclick: function () { state.mode = m.id; sfx('tap'); haptic('light'); renderModes(); renderSeats(); }
+          onclick: function () { state.mode = m.id; modesOpen = false; sfx('tap'); haptic('light'); renderModes(); renderSeats(); }
         }, [el('span', { class: 'e', html: icon(m.icon || k.icon || 'sparkle') }), el('span', { class: 'tx' }, [el('span', { class: 't', text: m.title || k.title || m.id }), el('span', { class: 'd', text: devWord(modeDesc(m)) })]), el('span', { class: 'ok', html: icon('check') })]));
       });
     }
@@ -2268,11 +2275,18 @@
     // A setup that would not fit the screen folds its options into one-line rows (each its name and what it is set to;
     // a tap opens its choices), the way the home screen's sheet shows them, so the start button and the Players card
     // are in view without scrolling (Tim, 2026-11-11). Once folded it stays folded.
-    var fold = false;
+    // If that is not enough, the title and the Players card draw in (k-snug), and last the cards for the kinds of play
+    // fold into one row that names the chosen one (a tap opens the cards again).
+    var fold = false, snug = false, foldModes = false, modesOpen = false;
     function fitFold() {
-      if (IN_SHEET || fold || !wrap.isConnected || !(o.options || []).length) return;
+      if (IN_SHEET || !wrap.isConnected || scOpen || modesOpen) return;
       var se = document.scrollingElement || document.documentElement;
-      if (se.scrollHeight > se.clientHeight + 4) { fold = true; wrap.classList.add('k-folded'); renderOptions(); }
+      for (var i = 0; i < 3 && se.scrollHeight > se.clientHeight + 4; i++) {
+        if (!fold && (o.options || []).length) { fold = true; wrap.classList.add('k-folded'); renderOptions(); }
+        else if (!snug) { snug = true; wrap.classList.add('k-snug'); }
+        else if (!foldModes && modesBox) { foldModes = true; renderModes(); }
+        else return;
+      }
     }
     function renderOptions() {
       optsBox.innerHTML = '';

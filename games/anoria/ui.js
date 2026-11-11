@@ -219,7 +219,7 @@
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
     // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
-    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Thread from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
+    const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Legacy Line from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
     if (!o.mini && !place && (c.say || fig || from)) {
       if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
       inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
@@ -260,19 +260,31 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
-    const one = 'Only one Thread or Legacy line scores in each round.';
-    const me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
-    if (c.insp) { const who = names(c.insp);
-      notes.appendChild(el('p', { html: '<b>Legacy</b>: history ties ' + esc(c.n) + ' to ' + esc(listOf(c.insp.map(k => info(k).n), 'and')) + '. If ' + esc(who) + ' is one of your Figures on the map when you play ' + esc(c.n) + ', ' + esc(c.n) + ' costs 1 Spark less and you score 1 Renown. A gold line joins them, and ' + esc(c.n) + ' has +1 Might while both stay on the map. ' + one })); }
-    if (CARDS[key] && CARDS[key].from && E.STD.threads) {
-      // (what the card grew from can be a Place, a Relic or a person: each is on your side in its own way)
-      const from = CARDS[key].from, fig = CARDS[key].t === 'fig', pl = from.filter(x => x[0] === '@').map(theName), rel = from.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), ppl = from.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName);
-      const how = [];
-      if (fig && pl.length) how.push('at ' + listOf(pl, 'or'));
-      if (ppl.length) how.push('while ' + listOf(ppl, 'or') + ' is one of your Figures on the map');
-      if (rel.length) how.push('while ' + listOf(rel, 'or') + ' is one of your Relics');
-      if (!fig && pl.length) how.push('while one of your Figures is at ' + listOf(pl, 'or'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: history ties ' + esc(me) + ' to ' + esc(listOf(from.map(theName), 'and')) + '. If you play ' + esc(me) + ' ' + esc(how.join(', or ')) + ', you score 1 Renown as you play the card. ' + one }));
+    // A card's Legacy Line, drawn rather than described (Tim, 2026-11-11: "make the connector descriptions on the cards
+    // more visual. explain through design not words where possible"): what the card grew from on the left, a gold
+    // line to the card itself, and under the line what the connection is worth as the game's own marks (Spark,
+    // Might, Renown). One short line says when it counts, and the true sentence about the two says why.
+    const srcs = (c.insp || []).concat(CARDS[key] && E.STD.threads && CARDS[key].from || []);
+    if (srcs.length) {
+      const fig = CARDS[key] && CARDS[key].t === 'fig', me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
+      const med = (k, big) => { const bare = k.replace(/^@/, ''), i2 = info(bare), m = el('button', { type: 'button', class: 'ln-m' + (k[0] === '@' ? ' pl' : '') + (big ? ' me' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c }, 'aria-label': 'Read ' + i2.n, onclick: e => { e.stopPropagation(); if (!big) openView(bare); } });
+        const im = artImg(bare, true, true); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: i2.n })]); };
+      const left = el('span', { class: 'ln-src' }); srcs.forEach((k, i) => { if (i) left.appendChild(el('i', { class: 'ln-or', text: 'or' })); left.appendChild(med(k)); });
+      const worth = el('span', { class: 'ln-worth' }, [
+        c.insp ? el('span', { class: 'ln-w sp', role: 'img', 'aria-label': 'costs 1 Spark less' }, [el('i'), el('b', { text: '−1' })]) : null,
+        c.insp ? el('span', { class: 'ln-w mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('i'), el('b', { text: '+1' })]) : null,
+        el('span', { class: 'ln-w re', role: 'img', 'aria-label': 'scores 1 Renown' }, [el('i'), el('b', { text: '+1' })])]);
+      // when it counts, the way the player meets it
+      const ppl = srcs.filter(x => x[0] !== '@' && CARDS[x].t !== 'relic').map(theName), rel = srcs.filter(x => x[0] !== '@' && CARDS[x].t === 'relic').map(theName), pl = srcs.filter(x => x[0] === '@').map(theName), when = [];
+      if (ppl.length) when.push('With ' + listOf(ppl, 'or') + ' in play on your side');
+      if (rel.length) when.push((when.length ? 'with ' : 'With ') + listOf(rel, 'or') + ' among your Relics');
+      if (pl.length) when.push(fig ? (when.length ? 'when ' : 'When ') + 'you play ' + me + ' at ' + listOf(pl, 'or') : (when.length ? 'with ' : 'With ') + 'one of your Figures at ' + listOf(pl, 'or'));
+      const why = srcs.map(k => TX.LINKS && TX.LINKS[k + '>' + key]).filter(Boolean);
+      notes.appendChild(el('div', { class: 'ln' + (srcs.length >= 3 ? ' many' : '') }, [
+        el('div', { class: 'ln-k', text: 'Legacy Line' }),
+        el('div', { class: 'ln-row' }, [left, el('span', { class: 'ln-line' }, [worth]), med(key, true)]),
+        el('p', { class: 'ln-when', text: when.join(', or ') + '.' }),
+        why.length ? el('p', { class: 'ln-why', text: why[0] }) : null]));
     }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1](c.n)) })); });
     if (c.kind === 'place') {
@@ -520,6 +532,7 @@
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
+    matWarm();
   }
 
   // ═══ The game: state, saving ═════════════════════════════════════════════════════════════════════════════
@@ -596,13 +609,70 @@
     try { chartURL = d ? URL.createObjectURL(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 8 320 150" preserveAspectRatio="xMidYMid slice"><path d="' + g + '" fill="none" stroke="#e9cf86" stroke-width=".25" stroke-dasharray="1.2 1.8" opacity=".5"/><path d="' + d + '" fill="#e9cf86" fill-opacity=".1" stroke="#e9cf86" stroke-width=".45" stroke-linejoin="round"/></svg>'], { type: 'image/svg+xml' })) : ''; } catch (e) { chartURL = ''; }
     return chartURL;
   }
+  // ── Play mats ──
+  // Each player's side of the map (their Gate, their Outpost and their half of the Crossroads) lies on a mat of
+  // their own, and the two mats meet edge to edge in a seam under the Crossroads, as the mats do in Lorcana. The
+  // other player's mat is turned to face them. A player's mat is their Guide's, unless they have chosen another
+  // (matPicker; the choice is anoria_mat, which follows the account).
+  // The pictures are ui/mats/<id>.webp: printed cloth in the cards' own inked style, each true to its Guide's world.
+  // A mat for a new Guide is one line here and its picture. Until a Guide has one, that Guide plays on the chart
+  // of Anoria in their own colour.
+  //   n: the mat's name, c: its cloth (shown until the picture has come), th: the thread its edge is bound with,
+  //   d: how far the print is dimmed so the pieces stay the brightest things on it (0 to 1; .2 if not given),
+  //   fill: the picture is stretched to the mat's shape, not cropped (a pattern with borders that should all show)
+  const MATK = 'anoria_mat', MATSRC = 'anoria/ui/mats/';
+  const MATS = {
+    cleopatra: { n: 'Papyrus and lotus', c: '#113c3d', th: '#a98c4e', d: .3 },
+    leonardo: { n: 'A sheet of studies', c: '#6b3122', th: '#b98a66', d: .24 },
+    tubman: { n: 'The North Star', c: '#151d36', th: '#7484ab', d: .04 },
+    franklin: { n: 'The printing house', c: '#33271d', th: '#a5834a', d: .1 },
+    suntzu: { n: 'Bamboo slips', c: '#45401f', th: '#8d8a58', d: .22, fill: true },
+    chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
+  };
+  const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
+  // lay a mat (by id: a Guide's key, 'chart', or a Guide who has no mat yet) on a node; slot says which copy of the picture
+  function matFill(n, id, slot) {
+    const m = MATS[id], g = TX.GUIDES[id], plain = !m || m.chart;
+    n.style.setProperty('--mc', m ? m.c : g ? 'color-mix(in srgb,' + FAC[g.f].c + ' 46%,#0b1124)' : MATS.chart.c);
+    n.style.setProperty('--mth', m ? m.th : MATS.chart.th); n.style.setProperty('--md', m && m.d != null ? m.d : plain ? 0 : .2);
+    n.innerHTML = '';
+    if (plain) { const i = el('i', { class: 'pm-art chart' }); if (chart()) i.style.backgroundImage = 'url("' + chart() + '")'; n.appendChild(i); return; }
+    const k = id + '/' + slot; let im = matPics[k];
+    if (!im) {
+      im = matPics[k] = el('img', { class: 'pm-art' + (m.fill ? ' fill' : ''), alt: '', draggable: 'false', decoding: 'sync' });
+      im.onerror = () => { im.remove(); delete matPics[k]; };
+      im.src = MATSRC + id + '.webp';
+      // (a picture still on its way fades in over its cloth once; one that is here already is simply there)
+      if (!(im.complete && im.naturalWidth)) { im.classList.add('wait'); im.onload = () => im.classList.remove('wait'); }
+    }
+    n.appendChild(im);
+  }
+  // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
+  const matWarm = () => { const id = lsGet(MATK) || (Coll.deck(starterId()) || {}).guide; if (MATS[id] && !MATS[id].chart) matFill(el('div'), id, 0); };
+  // the seat whose choice of mat is the account's own: the first person at the table
+  const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
+  const matPick = o => G.demo ? '' : matMine(o) ? lsGet(MATK) : G.players[o].mat;
+  // the mat a seat plays on: the one that person chose, or their Guide's
+  const matOf = o => { const pick = matPick(o); return pick && MATS[pick] ? pick : S.P[o].guide; };
+  // The two mats are part of the table that is built once: a step of the game never draws them again. Each stays
+  // with its player; when the view changes hands (pass and play) the two change places, with the board.
+  function paintMats() {
+    if (!dom.pm || !G || !S) return;
+    for (let o = 0; o < 2; o++) {
+      const n = dom.pm[o], id = matOf(o), side = o === ui.view ? 'bot' : 'top';
+      if (n.dataset.m !== id) { n.dataset.m = id; matFill(n, id, o); }
+      if (n.dataset.side !== side) { n.dataset.side = side; n.className = 'an-pm ' + side; }
+    }
+  }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
     preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     dom.fx = el('div', { class: 'an-fx' });
-    const felt = el('div', { class: 'an-felt felt-in' }, [dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
+    paintMats();
+    const felt = el('div', { class: 'an-felt felt-in' }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     app.appendChild(dom.root);
@@ -746,6 +816,7 @@
   function render() {
     if (!G || !V || !dom.root) return;
     const v = ui.view, T = targets();
+    paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
     try {
       stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
@@ -976,7 +1047,7 @@
     const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true, true); if (im) sp.appendChild(im); return sp; };
     document.querySelectorAll('.an-story').forEach(x => x.remove());
     const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]),
-      el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Thread' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
+      el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Legacy Line' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
     // (a lesson's caption may be at the top of the screen: the story sits under it)
     const away = () => { n.classList.remove('show'); setTimeout(() => n.remove(), 260); };
     n.addEventListener('click', away); document.body.appendChild(n);
@@ -1104,7 +1175,7 @@
     },
     async line(ev) {
       const f = vfig(ev.a); if (!f) return; f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0;
-      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy line'); await wait(900);
+      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy Line'); await wait(900);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     // (how one led to the other, in a sentence, the first time each link is drawn in a game)
@@ -1384,11 +1455,13 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> as you play it. That Renown is scored once, not every turn, and only one Thread or Legacy line scores in a round. Read a card to see its Thread.</li></ul>' +
+    '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The foot of the card names that source.</li>' +
+    '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
+    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
+    '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. The other four join you as you beat the computer, one each at 3, 8, 15 and 25 wins. Each has a different power, so a new Guide is a new way to play: any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
-    '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown as it arrives. That Renown is scored once, not every turn, and only one line or Thread scores in a round.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
@@ -1407,6 +1480,45 @@
     else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
     else if (name === 'decks' && window.AnoriaDecks) window.AnoriaDecks.open(null, after);
   }
+  // Choosing a mat (the game's menu). It opens over the setup or a game and leaves it as it is; in a game the table
+  // behind takes the new mat at once. Pass and play: each person chooses their own (the first person's choice is
+  // the account's, anoria_mat; the other person's stays with this game). What is on offer: the mat of whichever
+  // Guide you are playing (the choice until you make another), every mat in MATS, and the chart.
+  function matPicker() {
+    if (G && G.demo) return;
+    Kit.sfx('tap');
+    const live = !!(G && S && dom.pm), seats = live ? [0, 1].filter(human) : [0], two = seats.length > 1;
+    let cur = live ? (seats.indexOf(ui.view) >= 0 ? ui.view : seats[0]) : 0;
+    const guide = () => live ? S.P[cur].guide : (Coll.deck(starterId()) || {}).guide || Object.keys(TX.GUIDES)[0];
+    const chosen = () => { const p = live ? matPick(cur) : lsGet(MATK); return p && MATS[p] ? p : ''; };
+    function put(id) {
+      if (id === chosen()) return;
+      if (!live || matMine(cur)) lsSet(MATK, id || null); else { if (id) G.players[cur].mat = id; else delete G.players[cur].mat; save(); }
+      Kit.sfx('flip', .6); Kit.haptic('light'); paintMats(); paint();
+    }
+    const sc = screen({ title: 'Play mats', cls: 'an-mt' });
+    const who = el('div', { class: 'mt-who' }), view = el('div', { class: 'mt-view', 'aria-hidden': 'true' }), say = el('p', { class: 'mt-say' }), grid = el('div', { class: 'mt-grid' });
+    sc.body.appendChild(el('div', { class: 'mt' }, [el('div', { class: 'mt-look' }, [who, view, say]), grid]));
+    const mat = (id, slot, cls) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return n; };
+    function paint() {
+      const g = guide(), on = chosen(), name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
+      who.innerHTML = ''; who.hidden = !two;
+      if (two) seats.forEach(o => who.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (o === cur ? 'btn-primary' : 'btn-soft'), 'aria-pressed': String(o === cur), onclick: () => { if (o === cur) return; cur = o; Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
+        [el('i', { style: { background: PCOL[o] } }), el('span', { text: pname(o) })])));
+      // the two mats as they lie on the table: this player's nearest, the other player's turned to face them
+      view.innerHTML = ''; view.classList.toggle('one', !live);
+      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top'));
+      view.appendChild(mat(on || g, 'v0', 'bot'));
+      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, and meets ' + other + ' mat under the Crossroads.';
+      grid.innerHTML = '';
+      const sw = (id, shown, slot, title, sub, face) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (id === on ? ' on' : ''), 'aria-pressed': String(id === on), 'aria-label': title + ', ' + sub, onclick: () => put(id) }, [
+        el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
+        el('b', { text: title }), el('small', { text: sub })]));
+      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
+      Object.keys(MATS).forEach(id => sw(id, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world'));
+    }
+    paint();
+  }
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
@@ -1415,6 +1527,7 @@
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => tool('library') },
       { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
+      { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
@@ -1506,7 +1619,7 @@
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
-  window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
@@ -1529,8 +1642,14 @@
       }
       row.appendChild(line); return row;
     });
+    // the play mats, each the size it lies on a phone, under an empty standing place and a piece of each player's colour
+    const piece = o => el('span', { class: 'fp o' + o, style: { '--f': FAC.V.c } }, [el('span', { class: 'fp-card' }, [el('span', { class: 'fp-art' })]), el('span', { class: 'fp-m' }, [el('b', { text: '4' })])]);
+    rows.push(el('div', { class: 'ap-row' }, [el('h2', { text: 'Play mats' }), el('div', { class: 'ap-line' }, Object.keys(MATS).map(id => {
+      const n = el('div', { class: 'an-pm ap-mat' }); matFill(n, id, 'proof');
+      n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
+      return cell(MATS[id].n, n); }))]));
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn.' })].concat(rows)));
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn, and the play mats.' })].concat(rows)));
   }
 
   const saved = readSave();

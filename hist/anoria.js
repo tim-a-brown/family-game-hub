@@ -314,7 +314,7 @@
       num('Clashes won', +a.ko || 0, +b.ko || 0);
       num('Times a Place scored', +a.h || 0, +b.h || 0);
       num('Seals broken', +a.sb || 0, +b.sb || 0);
-      num('Threads and Legacy lines', +a.ln || 0, +b.ln || 0);
+      num('Legacy Lines', +a.ln || 0, +b.ln || 0);
       if (a.ch || b.ch) {
         var ch = function (p) { var s = el('b', { text: p.ch ? cap(p.ch) : 'Nobody' }); if (p.ch) fills.push(function () { s.textContent = nameOf(p.ch); }); return s; };
         box.appendChild(el('div', { class: 'ah-tr ah-ch' }, [el('span', { text: 'Won the most clashes' }), ch(a), ch(b)]));
@@ -336,11 +336,11 @@
         list.appendChild(el('div', { class: 'ah-plate ah-link' }, [
           el('div', { class: 'ah-pair', 'aria-hidden': 'true' }, [th(x.from), el('u'), th(x.to)]),
           el('div', { class: 'ah-lt' }, [
-            el('div', { class: 'ah-lk' }, [el('span', { text: (x.line ? 'A Legacy line' : 'A Thread') + ' in round ' + x.r }), x.ren ? el('em', { text: '+' + x.ren + ' Renown' }) : null]),
+            el('div', { class: 'ah-lk' }, [el('span', { text: 'A Legacy Line in round ' + x.r }), x.ren ? el('em', { text: '+' + x.ren + ' Renown' }) : null]),
             title, tale,
             el('span', { class: 'ah-lw' }, [el('i', { class: 'ah-dot', style: { '--c': PCOL[x.o] } }), el('span', { text: name(x.o) + ' made this one' })])])]));
       });
-      root.appendChild(ui.section('Threads and Legacy lines', list));
+      root.appendChild(ui.section('Legacy Lines', list));
     })();
 
     data(function () { fills.forEach(function (f) { try { f(); } catch (err) {} }); });
