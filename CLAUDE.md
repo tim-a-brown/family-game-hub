@@ -571,6 +571,48 @@ Underlying principles for everything:
   and check on sets nobody has looked at (the first choice made for 25 Renown overshot when it met new games).
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
+- **The third printing** (Tim, 2026-11-11: "increase the number of possible historical cards to collect outside of the
+  base packs by 150 ... lean slightly more into more well-known historical figures but i do like learning more history.
+  add threads/legacy lines as the real history would necessitate and fits gameplay ... leave off completely fictional
+  characters for now", then "shift 25-30 to deeds and relics"): 100 Figures, 20 Relics and 30 Deeds, all real, **found
+  only in packs** (in no ready deck), so the set is 241. They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
+  `P3` in text.js. `scripts/anoria/set-150.json` keeps where each card's facts came from (`src`, `sure`, `check`), what
+  was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
+  Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing
+  (words against skills, every Legacy Line, the briefs, the game's files against the JSON). A Guide is never also a card.
+- **A Relic's or a Deed's effect belongs to its data** (`fx`, read with `E.fxOf`; a card without one has the effect of
+  its own key). The engine has three Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's)
+  and eleven Deed effects, and nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in
+  effect, Testudo a Phalanx, Mailed to Freedom runs what Night Crossing runs. A new Relic or Deed with an effect the
+  engine has is data only; its rules text is the text of the card its `fx` names (check-set.js holds it to that).
+  **Two Relics**: "You can have 2 Relics in play at a time, and they have to be Relics with different powers"
+  (`hasFx` in engine.js; RULES and the Relics lesson say it). So nothing stacks, and a Legacy Line between two Relics
+  with one power could never be made (check-set.js refuses it: the Sextant jumps so that its line from the Astrolabe
+  works). Letting a power count twice was tried (`scripts/anoria/relics2.js`, `set-150-balance.txt`): it made no
+  difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
+  and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
+  says why under the card when you read it (`notesFor`).
+- **Pictures still to be made**: the 150 have none yet. `PAINTED` in text.js lists the third-printing cards whose
+  pictures are in `art/` and `art/t/` (it is empty), and every other one is in `NOPIC`: the page never asks the network
+  for such a picture (`noPic` in ui.js), and shows the card's initial as a monogram in a ring on its faction's colour
+  (`.ac-noart.mono`, `mono()` for medallions, thumbnails and Relic slots), with no button to turn the card over to a
+  picture. **The art pass adds a card's key to `PAINTED` as its two pictures go in**, and sets `FY` if the default
+  hides the subject. The briefs (`art`) already follow the notes above: head right of centre a fifth of the way down,
+  both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
+  memory are asked for as a respectful, recognisable portrait at a documented moment.
+- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards"): `PACK_ORDER`
+  `'series'` gives the first series (the 91 cards the ready decks are made of) until a player has two of each, and
+  then the second (the 150), so the first month is what it was; `'mixed'` draws from the whole set at once.
+  `SERIES2_PACK` is the size of an earned pack once the first series is complete (0: as any pack; pacing.txt recommends
+  5; Tim's to decide). At 3 cards a pack the whole set takes about 129 days either way; `pacing.txt` has the table.
+- **A named Legacy Line the game already has is never given more cards**: it would stop being finished for someone who
+  had finished it, and one that comes whole in a starter deck would stop being theirs. New cards get lines of their
+  own (The Clockwork Heavens beside The Heavens). Links from new cards to older cards are all `from` (`FROM_MORE`), so
+  no older card changes its rules text, its cost or its Might.
+- **Balance for cards nobody meets in a ready deck**: `run.js cards 6000 [seed]` then `newcards.js` (each new card beside
+  what its faction had), and `newdecks.js` (decks built by Finish the deck for me from the third printing, in each
+  pair of factions, against the five ready decks). `endings.js` must come out exactly as before: the ready decks hold
+  none of these cards.
 
 ## Rules for every change
 

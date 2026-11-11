@@ -20,8 +20,12 @@
 //   - A new Guide joins you at 3, 7, 12, 17, 23, 29, 35, 41 and 48 wins (ten Guides: the one you chose and nine more).
 //   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift. A Thread
 //     that comes whole in your starter deck gives none.
-//   Played every day at three games a day, the set (91 cards since decks grew to 40) takes about a month to finish
-//   (pacing.js, pacing.txt).
+//   Played every day at three games a day, the first series (91 cards since decks grew to 40) takes about a month to
+//   finish (pacing.js, pacing.txt).
+//   - Two series (2026-11-11, the third printing: 150 more cards, found only in packs, so the set is 241). The first
+//     series is the 91 cards every ready deck is made of; the second is the 150. PACK_ORDER 'series': a pack holds
+//     first-series cards until you have two of each, and only then the second series, so the first month is what it
+//     was and the new cards are what comes after it. 'mixed' draws from the whole set at once. pacing.txt has both.
 //   - v 2 (2026-11, a deck grew from 30 cards to 40): a collection from before is given the five new cards of its
 //     starter deck, and of any other ready deck it already owned all of, so every deck it could play it still can.
 //   - v 3 (2026-11-11, the legends left the set: cards.js RETIRED): whoever owned a retired card owns the card that has
@@ -43,8 +47,25 @@
 'use strict';
 const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const WELCOME = [12, 12, 12], GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 4;
+const GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 4;
+let WELCOME = [12, 12, 12];   // (the welcome packs; pacing.js can try others through use())
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
+// ── How packs work with a set of 241 cards: the two lines to change ─────────────────────────────────────────
+// PACK_ORDER 'series': packs hold the first series (the 91 cards of the first two printings) until you have two of
+// each card in it, and then the second series (the 150 cards of the third printing). 'mixed': any card of the whole
+// set you are missing, from the first pack on (the ready decks then take about four months to fill, not one).
+let PACK_ORDER = 'series';
+// SERIES2_PACK: how many cards an earned pack holds once the first series is complete. 0: the same as any earned
+// pack (DAILY and FEAT, 3 today). 5 is what pacing.txt recommends, so the 150 take about two months and not three
+// and a half. Tim's to decide: it is 0 until he does.
+let SERIES2_PACK = 0;
+const seriesOf = k => (CARDS[k] && CARDS[k].pr === 3 ? 2 : 1), S1 = ALL.filter(k => seriesOf(k) === 1);
+// the first series is complete: two of every card in it
+const s1done = s => S1.every(k => (s.cards[k] || 0) >= CAP);
+// the cards a pack can hold today
+const inPacks = s => (PACK_ORDER === 'series' && !s1done(s) ? S1 : ALL);
+// how many cards an earned pack holds today
+const packSize = (s, n) => (PACK_ORDER === 'series' && SERIES2_PACK && s1done(s) ? SERIES2_PACK : n);
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
 // The five editions of a card, commonest first, and the chance that a card out of a pack is each of the foils (the
 // rest are Matte). pacing.js plays these: about one pack in three holds a foil of some kind, and a Rainbow foil is
@@ -59,15 +80,25 @@ const RARE = {
   2: 'copernicus dante saladin murasaki shakespeare douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
   1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun earhart ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
 };
+// The third printing (the 150 cards found only in packs), tiered among themselves by the same measure: 'node
+// scripts/anoria/rarity.js 6000 3' (rarity.txt). The cards the game had before keep the tiers above, and the marks
+// printed on them: they are not ranked again against the new ones.
+const RARE3 = {
+  4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne einstein zenobia',
+  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman thorpe tenzing pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
+  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley kahlo alkhwarizmi poe voltaire nanny king fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard spies pakal fuhao trung teutoburg anning',
+  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper owens emancipation turing cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush saltmarch hieroglyphs balloon wheel everest naovictoria ninth astrolabe penicillin lincolnconcert lascaux manuscripts folio truce'
+};
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
-Object.keys(RARE).forEach(t => RARE[t].split(' ').forEach(k => { if (k) TIER[k] = +t; }));
+[RARE, RARE3].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
 const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 
 // where it's kept, the dice and the clock: the page's own unless a test hands in others (use())
 let store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 let rnd = Math.random, now = () => new Date();
-function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; if (o.odds) ED_ODDS = o.odds; cache = null; }
+function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; if (o.odds) ED_ODDS = o.odds;
+  if (o.welcome) WELCOME = o.welcome; if (o.order) PACK_ORDER = o.order; if (o.pack2 != null) SERIES2_PACK = o.pack2; cache = null; }
 
 const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1, ed: {}, look: {} });
 let cache = null, cacheRaw = null;
@@ -128,7 +159,7 @@ function cardState(k) { const s = load(), n = s.cards[k] || 0; return n ? 'own' 
 function counts() {
   const s = load(); let own = 0, cop = 0, seen = 0;
   for (const k of ALL) { const n = Math.min(CAP, s.cards[k] || 0); if (n) { own++; cop += n; } else if (s.seen[k]) seen++; }
-  return { own: own, copies: cop, seen: seen, cards: ALL.length, all: ALL.length * CAP, guides: s.guides.length, guidesAll: Object.keys(GUIDES).length, complete: cop === ALL.length * CAP && s.guides.length === Object.keys(GUIDES).length };
+  return { own: own, copies: cop, seen: seen, cards: ALL.length, all: ALL.length * CAP, series: PACK_ORDER === 'series' ? (s1done(s) ? 2 : 1) : 0, guides: s.guides.length, guidesAll: Object.keys(GUIDES).length, complete: cop === ALL.length * CAP && s.guides.length === Object.keys(GUIDES).length };
 }
 // The editions of a card: which are found ([Matte, Shiny, Silver foil, Gold foil, Rainbow foil]: Matte is found once
 // you own the card), the one it is shown in, and choosing another (only one you have found).
@@ -181,7 +212,7 @@ function slot(s, fresh) {
   const e0 = rollEdition(), order = []; for (let e = e0; e < EDITIONS.length; e++) order.push(e); for (let e = e0 - 1; e >= 0; e--) order.push(e);
   for (const e of order) {
     if (!e) { const k = missing(s, fresh); if (k) return { k: k, e: 0 }; continue; }
-    const pool = ALL.filter(k => !((s.ed[k] || 0) >> e & 1)); if (!pool.length) continue;
+    const pool = inPacks(s).filter(k => !((s.ed[k] || 0) >> e & 1)); if (!pool.length) continue;   // (a foil is a card of the series the packs are on)
     return { k: weighted(pool, k => TIER_W[rarity(k)]), e: e };
   }
   return null;
@@ -193,7 +224,7 @@ function found(s, k, e) { s.ed[k] = (s.ed[k] || 0) | (1 << e); if (e > (s.look[k
 // twice as likely as one you have one of, and a Common is likelier than a Legendary by TIER_W); fresh is the chance
 // the slot goes straight to a card you have none of.
 function missing(s, fresh, among) {
-  const pool = (among || ALL).filter(k => (s.cards[k] || 0) < CAP); if (!pool.length) return null;
+  const pool = (among || inPacks(s)).filter(k => (s.cards[k] || 0) < CAP); if (!pool.length) return null;
   const none = pool.filter(k => !s.cards[k]); if (none.length && rnd() < fresh) return weighted(none, k => TIER_W[rarity(k)]);
   return weighted(pool, k => TIER_W[rarity(k)] * (CAP - (s.cards[k] || 0)));
 }
@@ -230,8 +261,8 @@ function gameOver(o) {
   if (o.win && o.cpu && s.starter) {
     s.wins++;
     const today = dayKey();
-    if (s.day !== today) { s.day = today; out.push({ t: 'pack', pack: addPack(s, 'daily', 'Your first win today', DAILY) }); }
-    const feat = (id, ok) => { if (ok && !s.feats[id]) { s.feats[id] = 1; out.push({ t: 'pack', pack: addPack(s, 'feat', FEATS[id], FEAT) }); } };
+    if (s.day !== today) { s.day = today; out.push({ t: 'pack', pack: addPack(s, 'daily', 'Your first win today', packSize(s, DAILY)) }); }
+    const feat = (id, ok) => { if (ok && !s.feats[id]) { s.feats[id] = 1; out.push({ t: 'pack', pack: addPack(s, 'feat', FEATS[id], packSize(s, FEAT)) }); } };
     feat('normal', o.level === 'normal' || o.level === 'hard'); feat('hard', o.level === 'hard'); feat('built', !!o.built);
     if (GUIDE_AT.indexOf(s.wins) >= 0) { const left = Object.keys(GUIDES).filter(g => s.guides.indexOf(g) < 0); if (left.length) { const g = left[(rnd() * left.length) | 0]; s.guides.push(g); out.push({ t: 'guide', g: g }); } }
   }
@@ -240,8 +271,8 @@ function gameOver(o) {
 // what's next to earn, for the Library to show: [{what, when}]
 function nextUp() {
   const s = load(), out = [];
-  out.push({ id: 'daily', what: 'A pack of ' + DAILY, when: s.day === dayKey() ? 'Tomorrow, for your first win' : 'Your first win today', done: s.day === dayKey() });
-  Object.keys(FEATS).forEach(id => { if (!s.feats[id]) out.push({ id: id, what: 'A pack of ' + FEAT, when: FEATS[id] }); });
+  out.push({ id: 'daily', n: packSize(s, DAILY), what: 'A pack of ' + packSize(s, DAILY), when: s.day === dayKey() ? 'Tomorrow, for your first win' : 'Your first win today', done: s.day === dayKey() });
+  Object.keys(FEATS).forEach(id => { if (!s.feats[id]) out.push({ id: id, n: packSize(s, FEAT), what: 'A pack of ' + packSize(s, FEAT), when: FEATS[id] }); });
   const at = GUIDE_AT.filter(n => n > s.wins)[0]; if (at && s.guides.length < Object.keys(GUIDES).length) out.push({ id: 'guide', what: 'A new Guide', when: 'At ' + at + ' wins', have: s.wins, need: at });
   return out;
 }
@@ -274,7 +305,11 @@ function decks() {
   return out;
 }
 const deck = id => decks().filter(d => d.id === id)[0] || null;
-// Fill a deck to DECK cards from what you own: more of its own factions first, a sensible spread of costs, Figures over the rest
+// Fill a deck to DECK cards from what you own: more of its own factions first, a sensible spread of costs, Figures over the rest.
+// Relics: a player has two in play and no two with the same power, so a deck that has fewer than two Relic cards is
+// given Relics until it has two, each with a power the deck does not hold yet, and no more after that (with 23
+// Relics to own it would otherwise fill up with cards it could never play; before, it was never given any).
+const fxOf = k => CARDS[k].fx || k;
 function finish(d) {
   const s = load(), n = {}, cards = (d.cards || []).slice(); cards.forEach(k => { n[k] = (n[k] || 0) + 1; });
   const fac = {}; cards.forEach(k => { const f = CARDS[k].f; fac[f] = (fac[f] || 0) + 1; });
@@ -283,7 +318,8 @@ function finish(d) {
   while (cards.length < DECK) {
     let best = null, bv = -1e9;
     for (const k of ALL) { const have = Math.min(CAP, s.cards[k] || 0); if ((n[k] || 0) >= have) continue; const c = CARDS[k], cc = Math.min(6, c.c);
-      const v = (fac[c.f] || 0) * 0.25 + (c.f === 'N' ? 1 : 0) + (want[cc] - cost[cc]) * 0.6 + (c.t === 'fig' ? 1.2 : 0) - (n[k] ? 0.4 : 0) + rnd() * 0.3;
+      const rel = c.t === 'relic' ? (cards.filter(x => CARDS[x].t === 'relic').length < 2 && !cards.some(x => CARDS[x].t === 'relic' && fxOf(x) === fxOf(k)) ? 3 : -9) : 0;
+      const v = (fac[c.f] || 0) * 0.25 + rel + (want[cc] - cost[cc]) * 0.6 + (c.t === 'fig' ? 1.2 : 0) - (n[k] ? 0.4 : 0) + rnd() * 0.3;
       if (v > bv) { bv = v; best = k; } }
     if (!best) break;
     cards.push(best); n[best] = (n[best] || 0) + 1; fac[CARDS[best].f] = (fac[CARDS[best].f] || 0) + 1; cost[Math.min(6, CARDS[best].c)]++;
@@ -292,5 +328,6 @@ function finish(d) {
 }
 
 return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; }, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
-  problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, WELCOME, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL };
+  problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, get WELCOME() { return WELCOME; }, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL,
+  seriesOf, S1, get PACK_ORDER() { return PACK_ORDER; }, get SERIES2_PACK() { return SERIES2_PACK; } };
 });

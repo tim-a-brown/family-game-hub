@@ -67,6 +67,11 @@
   // ═══ Pictures: a missing one leaves the flat panel underneath showing ════════════════════════════════════
   const noArt = {}, hasArt = {};
   function artSrc(key, small) { return ART + (small ? 't/' : '') + (isPlace(key) ? 'place-' : '') + key + '.webp'; }
+  // Cards whose pictures have not been made yet (text.js NOPIC: the 150 of the third printing, until the art pass).
+  // They are known to have none from the start, so nothing ever asks the network for them: not the table, not a
+  // card being read, not the warm-up of the whole set. Each shows its initial as a monogram on its faction's colour.
+  const noPic = key => !!(TX.NOPIC && TX.NOPIC[key]);
+  Object.keys(TX.NOPIC || {}).forEach(k => { noArt[ART + k + '.webp'] = noArt[ART + 't/' + k + '.webp'] = 1; });
   // Small pictures that have loaded once are kept in memory, and a table drawn again shows them from there. (On
   // Tim's phone every picture went blank for a second whenever the table was redrawn: each new <img> asked the
   // service worker again, which was busy saving the release.)
@@ -107,7 +112,12 @@
   }
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
   // that is drawn again never flashes its name)
-  const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
+  // The same initial for the small round and square pictures of a card that has none yet (a medallion on a Legacy
+  // Line, a thumbnail in a strip, a tile in the Library): drawn as SVG so that it fits whatever holds it.
+  const mono = key => noPic(key) ? el('span', { class: 'mono-i', 'aria-hidden': 'true', html: '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"><circle cx="50" cy="50" r="36"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central">' + esc(info(key).n.replace(/^The /, '').charAt(0)) + '</text></svg>' }) : null;
+  // (A card whose picture has not been made yet shows its initial as a monogram in a ring: its name is on its title
+  // plate already, and twice on one card read like a placeholder.)
+  const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : noPic(key) ? el('span', { class: cls + ' mono', 'aria-hidden': 'true' }, [el('b', { text: info(key).n.replace(/^The /, '').charAt(0) })]) : el('span', { class: cls, text: info(key).n });
   function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); gotSmall(src, im); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
 
   // Full-size pictures, made ready ahead of the finger (Tim, 2026-11-11: "some of the art flashes into place after
@@ -115,7 +125,7 @@
   // ready; a pack warms its cards the moment it is torn, a strip the cards either side of the front one, the table
   // your hand. A full card whose picture is not ready is never a flat panel if the small picture is in memory: the
   // small one stands in, softened (standIn), and the full one comes up over it without a pop (comeUp).
-  const full = {}, warmQ = []; let warmN = 0;
+  const full = {}, fails = {}, warmQ = []; let warmN = 0;
   function pump() { while (warmN < 4 && warmQ.length) { warmN++; warmQ.shift()(); } }
   function artReady(key) {
     const src = artSrc(key, false); if (full[src]) return full[src].p; if (noArt[src]) return Promise.resolve(false);
@@ -123,7 +133,9 @@
     f.p = new Promise(res => { warmQ.push(() => {
       const im = new Image(), done = ok => { f.ok = ok; warmN--; pump(); res(ok); }; f.im = im; im.decoding = 'async';
       im.onload = () => { hasArt[src] = 1; (im.decode ? im.decode() : Promise.resolve()).then(() => done(true), () => done(true)); };
-      im.onerror = () => { delete full[src]; done(false); };   // (a dropped connection: it can be tried again)
+      // (a dropped connection: it can be tried again, once. A picture that fails twice is taken to be missing, and is
+      // not asked for again while the page is open.)
+      im.onerror = () => { delete full[src]; if ((fails[src] = (fails[src] || 0) + 1) >= 2) noArt[src] = 1; done(false); };
       im.src = src; }); pump(); });
     return f.p;
   }
@@ -218,7 +230,9 @@
   }
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = { library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 };
-  const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' ? 'the ' : '') + CARDS[x].n;
+  // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
+  const NO_THE = { paper: 1, braille: 1 };
+  const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' && !NO_THE[x] ? 'the ' : '') + (CARDS[x].t === 'relic' ? CARDS[x].n.replace(/^The /, '') : CARDS[x].n);
   // cardEl(key, {mini, cost}): the approved card. mini = a hand card (picture, name, cost, Might).
   // tg: a card being read has a button on its picture (Tim, 2026-11-11) that turns every such card over to its picture:
   // the picture takes the card, and what's essential (cost, Might, name, what it does in a line) keeps to a strip at the
@@ -236,7 +250,8 @@
     const c = info(key), f = FAC[c.f] || FAC.N, place = c.kind === 'place', fig = c.kind === 'fig';
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
     const label = { place: 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
-    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (o.tg && !o.mini ? ' tg' : ''), style: { '--f': f.c }, 'data-card': key });
+    const tgPic = o.tg && !o.mini && !noPic(key);   // (a card with no picture yet has nothing to turn over to)
+    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (tgPic ? ' tg' : '') + (noPic(key) ? ' nopic' : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
@@ -259,7 +274,7 @@
       if (c.say && place) paper.appendChild(el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }));
     }
     inn.appendChild(paper);
-    if (o.tg && !o.mini) {
+    if (tgPic) {
       const on = document.documentElement.classList.contains('an-artview'), tx = briefOf(c);
       art.appendChild(el('button', { type: 'button', class: 'ac-tg', 'aria-pressed': String(on), 'aria-label': on ? 'Show the card’s words' : 'Show the picture large', html: '<span class="a">' + SVG.art + '</span><span class="t">' + SVG.words + '</span>',
         onpointerdown: e => e.stopPropagation(), onclick: e => { e.stopPropagation(); Kit.sfx('flip', .6); Kit.haptic('light'); artView(!document.documentElement.classList.contains('an-artview')); } }));
@@ -271,7 +286,8 @@
     const from = !o.mini && !place && CARDS[key] && CARDS[key].from && E.STD.threads ? 'Legacy Line from ' + listOf(CARDS[key].from.map(theName), 'or') : '';
     if (!o.mini && !place && (c.say || fig || from)) {
       if (c.say) n.classList.add('hassay'); if (from) n.classList.add('hasfrom');
-      if (fig && c.say && from && c.say.length > 16 && from.length > 24) n.classList.add('foot4');   // (both wrap: four lines of fine print, so the paper leaves more room)
+      // (both wrap, or one of them is long enough to wrap by itself beside the other: three or four lines of fine print, so the paper leaves more room)
+      if (fig && c.say && from && ((c.say.length > 16 && from.length > 24) || c.say.length > 26 || from.length > 36)) n.classList.add('foot4');
       inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null, from ? el('div', { class: 'ac-from', text: from }) : null]),
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
@@ -288,7 +304,7 @@
   function mightParts(f) {   // where a Figure's Might on the table comes from (the engine's sum, spelled out)
     const c = CARDS[f.c], k = c.k || {}, pl = C.PLACES[S.places[f.p]], out = [['On the card', c.m]];
     const home = c.reg === pl.reg, at = home || k.voyager;
-    if (f.tb) out.push(['Phalanx', f.tb]);
+    if (f.tb) out.push([f.tq && CARDS[f.tq] ? CARDS[f.tq].n : 'Phalanx', f.tb]);   // (the Quick Deed played with its clash)
     if (at) out.push([home ? 'At home' : 'Voyager, at home anywhere', 1 + (k.homeDouble && home ? 2 : 0)]);
     let own = 0, opp = 0, insp = 0;
     for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
@@ -312,6 +328,12 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
+    // A Relic in your hand that can't be played, and why: you have its power in play already, or you have two Relics.
+    if (S && G && !G.over && !G.demo && CARDS[key] && CARDS[key].t === 'relic' && S.P[ui.view] && S.P[ui.view].hand.indexOf(key) >= 0) {
+      const P = S.P[ui.view], same = E.relicOf(P, E.fxOf(key)), cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+      const why = same ? 'You have ' + theName(same) + ' in play. ' + cap1(theName(key)) + ' has the same power, and your two Relics have to be Relics with different powers.' : P.relics.length >= 2 ? 'You have two Relics in play, and two is the most you can have.' : '';
+      if (why) notes.appendChild(el('div', { class: 'why', text: why }));
+    }
     // A card's Legacy Line, drawn rather than described (Tim, 2026-11-11: "make the connector descriptions on the cards
     // more visual. explain through design not words where possible"): what the card grew from on the left, a gold
     // line to the card itself, and under the line what the connection is worth as the game's own marks (Spark,
@@ -320,7 +342,7 @@
     if (srcs.length) {
       const fig = CARDS[key] && CARDS[key].t === 'fig', me = CARDS[key] && CARDS[key].t === 'relic' ? theName(key) : c.n;
       const med = (k, big) => { const bare = k.replace(/^@/, ''), i2 = info(bare), m = el('button', { type: 'button', class: 'ln-m' + (k[0] === '@' ? ' pl' : '') + (big ? ' me' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c }, 'aria-label': 'Read ' + i2.n, onclick: e => { e.stopPropagation(); if (!big) openView(bare); } });
-        const im = artImg(bare, true, true); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: i2.n })]); };
+        const im = artImg(bare, true, true) || mono(bare); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: i2.n })]); };
       const left = el('span', { class: 'ln-src' }); srcs.forEach((k, i) => { if (i) left.appendChild(el('i', { class: 'ln-or', text: 'or' })); left.appendChild(med(k)); });
       const worth = el('span', { class: 'ln-worth' }, [
         c.insp ? el('span', { class: 'ln-w sp', role: 'img', 'aria-label': 'costs 1 Spark less' }, [el('i'), el('b', { text: '−1' })]) : null,
@@ -461,7 +483,7 @@
     o = o || {}; closeView(); if (!keys || !keys.length) return; Kit.sfx('flip'); Kit.haptic('light');
     const n = keys.length, counts = o.counts || {};
     const flow = el('div', { class: 'vf-flow' }), under = el('div', { class: 'vf-notes' });
-    const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t', 'aria-label': info(k).n, style: { '--f': (FAC[info(k).f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(i, 0); } }); const im = artImg(k, true); if (im) t.appendChild(im); return t; }));
+    const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t', 'aria-label': info(k).n, style: { '--f': (FAC[info(k).f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(i, 0); } }); const im = artImg(k, true) || mono(k); if (im) t.appendChild(im); return t; }));
     const v = el('div', { class: 'view flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || 'Cards', onclick: e => { if (F.moved()) return; if (e.target === v || e.target === flow) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
       o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null,
@@ -806,7 +828,7 @@
     const T = me ? targets() : null;
     for (let i = 0; i < 2; i++) {
       const r = p.relics[i];
-      if (r) { const b = el('button', { type: 'button', class: 'relic' + (r === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => openView(r) }); const im = artImg(r, true); if (im) b.appendChild(im); relics.appendChild(b); }
+      if (r) { const b = el('button', { type: 'button', class: 'relic' + (E.fxOf(r) === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => openView(r) }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
@@ -863,7 +885,7 @@
       let free = 3 - figs.length;
       if (tg && sd[0] === S.turn && free > 0) {
         const pv = landPreview(tg);
-        if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
+        if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
       }
       for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       row.appendChild(side);
@@ -882,7 +904,7 @@
         row.appendChild(tile);
       }
     });
-    [t, v].forEach(o => { if (V.pb[i][o]) row.appendChild(el('span', { class: 'pl-decree ' + (o === t ? 'L' : 'R'), text: '+' + V.pb[i][o], 'aria-label': 'Royal Decree, ' + V.pb[i][o] + ' more Might' })); });
+    [t, v].forEach(o => { if (V.pb[i][o]) row.appendChild(el('span', { class: 'pl-decree ' + (o === t ? 'L' : 'R'), text: '+' + V.pb[i][o], 'aria-label': V.pb[i][o] + ' more Might here until the end of the round' })); });
     return row;
   }
   // a Figure in hand whose other copy matters: standing on your side already (one of each person at a time), or
@@ -921,7 +943,7 @@
     if (!G.demo) warm(hand);   // (the full pictures of your hand are ready before you tap one to read it)
     hand.forEach((key, h) => {
       const c = CARDS[key], cost = E.costOf(S, o, key);
-      const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (key === 'phalanx' && ui.acts.some(a => a.ph)));
+      const ok = can && !ui.discard && (ui.acts.some(a => a.h != null && S.P[o].hand[a.h] === key) || (E.fxOf(key) === 'phalanx' && ui.acts.some(a => a.ph && S.P[o].hand[a.hq] === key)));
       const sel = ui.sel && ui.sel.kind === 'hand' && (ui.sel.h === h || ui.sel.picks.some(p => p.k === 'h' && p.v === h));
       const b = el('button', { type: 'button', class: 'hc' + (ui.discard ? ' toss' : !can ? '' : picking ? (T.hand[h] || sel ? '' : ' no') : ui.sel ? (ok ? '' : ' no') : ok ? ' ok' : ' no') + (sel ? ' sel' : '') + (T.hand[h] ? ' tgt' : '') + (ui.dealt && h >= ui.dealt ? ' in' : ''),
         'data-h': h, 'aria-label': c.n + ', costs ' + cost }, [cardEl(key, { mini: true, cost: cost })]);
@@ -1026,15 +1048,15 @@
   const carries = key => !!key && !!CARDS[key] && E.fxOf(key) === 'trojan';
   function landPreview(acts) {
     const a = acts[0], t = a.t, o = S.turn;
-    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && (ui.sel.key === 'fairwinds' || carries(ui.sel.key)));
+    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && ((ui.sel.key && E.fxOf(ui.sel.key) === 'fairwinds') || carries(ui.sel.key)));
     if (!moves) return null;
     const T = simulate(a), f = t === 'fig' || carries(ui.sel.key) ? E.byU(T, S.uid) : E.byU(T, a.u);
-    const via = acts.every(x => x.t === 'antik') ? 'antikythera' : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
+    const via = acts.every(x => x.t === 'antik') ? (E.relicOf(S.P[o], 'antikythera') || 'antikythera') : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
     return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
   }
   function clashPreview(acts) {
     const a = acts.filter(x => !x.ph)[0] || acts[0], s = ui.sel;
-    const fight = a.t === 'clash' || (a.t === 'deed' && s.key === 'ambush'); if (!fight) return null;
+    const fight = a.t === 'clash' || (a.t === 'deed' && !!s.key && E.fxOf(s.key) === 'ambush'); if (!fight) return null;
     const last = s.picks.length ? s.picks[s.picks.length - 1] : null;
     if (s.kind === 'hand' && !(last && last.k === 'f')) return null;   // (first pick which of yours fights)
     const f = E.byU(S, a.u), g = E.byU(S, a.v); if (!f || !g) return null;
@@ -1042,7 +1064,7 @@
   }
   function select(sel) {
     const o = S.turn, hand = S.P[o].hand;
-    if (sel.kind === 'hand') { sel.key = hand[sel.h]; sel.acts = ui.acts.filter(a => (a.h != null && hand[a.h] === sel.key) || (sel.key === 'phalanx' && a.t === 'clash' && a.ph)); }
+    if (sel.kind === 'hand') { sel.key = hand[sel.h]; sel.acts = ui.acts.filter(a => (a.h != null && hand[a.h] === sel.key) || (E.fxOf(sel.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === sel.key)); }
     else sel.acts = ui.acts.filter(a => a.u === sel.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));
     sel.picks = []; ui.sel = sel; Kit.sfx('slide'); Kit.haptic('light'); render();
   }
@@ -1052,11 +1074,13 @@
     const T = targets();
     if (T.done.length && !Object.keys(T.places).length && !Object.keys(T.figs).length && !Object.keys(T.hand).length) finishPick(T.done); else render();
   }
+  // the Quick Deed that goes with a clash (a.ph): Phalanx, or any card with its effect, by its place in the hand
+  const quickOf = a => { const P = S.P[S.turn], h = a.hq != null ? a.hq : E.quicks(P)[0]; return h != null && P.hand[h] && E.fxOf(P.hand[h]) === 'phalanx' ? P.hand[h] : null; };
   function actLabel(a) {
     if (a.t === 'walk') return { label: 'Walk', sub: 'This Figure’s move for this turn' };
     if (a.t === 'tub') return { label: 'Free step', sub: TX.GUIDES[S.P[S.turn].guide].n + ', once a turn' };
-    if (a.t === 'antik') return { label: 'Jump', sub: 'Antikythera Mechanism. Done for the turn' };
-    if (a.t === 'clash') return a.ph ? { label: 'Clash with Phalanx', sub: '+2 Might for ' + E.costOf(S, S.turn, 'phalanx') + ' Spark' } : { label: 'Clash' };
+    if (a.t === 'antik') return { label: 'Jump', sub: info(E.relicOf(S.P[S.turn], 'antikythera') || 'antikythera').n + '. Done for the turn' };
+    if (a.t === 'clash') { const qk = a.ph ? quickOf(a) : null; return qk ? { label: 'Clash with ' + CARDS[qk].n, sub: '+2 Might for ' + E.costOf(S, S.turn, qk) + ' Spark' } : { label: 'Clash' }; }
     return { label: 'Play' };
   }
   function finishPick(acts) {
@@ -1161,7 +1185,7 @@
   // never over the hand or the buttons). A tap puts it away.
   function story(key, ren, kind) {
     const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen) return false; told[key] = gen;
-    const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true, true); if (im) sp.appendChild(im); return sp; };
+    const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true, true) || mono(k); if (im) sp.appendChild(im); return sp; };
     document.querySelectorAll('.an-story').forEach(x => x.remove());
     const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]),
       el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Legacy Line' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
@@ -1193,7 +1217,7 @@
       // Might it adds is counted then. Until it does, the shields show the numbers without it.
       const ph = (att && ctx.a && ctx.a.ph) || (!att && ctx.quick) ? Math.min(2, Math.max(0, base - f.m)) : 0;
       const extra = base - f.m - ph, notes = [];
-      if (att && ctx.a && ctx.a.t === 'deed') notes.push('Ambush');
+      if (att && ctx.a && ctx.a.t === 'deed') notes.push(ctx.key && CARDS[ctx.key] ? CARDS[ctx.key].n : 'Ambush');   // (Ambush, or the Deed with its effect, by its own name)
       const note = extra > 0 ? (notes.length ? notes.join(', ') : att ? 'Attacking' : 'Defending') + ' +' + extra : '';
       const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - ph) })]);
       if (ph) tot.firstChild.textContent = String(total - ph);
@@ -1204,7 +1228,7 @@
     }
     // the Phalanx card slides in under its Figure, lands, and its +2 goes onto the shields
     async function aid(X) {
-      const c = el('div', { class: 'cl-aid' }, [cardEl('phalanx', { mini: true, now: true }), el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
+      const c = el('div', { class: 'cl-aid' }, [cardEl(ctx.qk && CARDS[ctx.qk] ? ctx.qk : 'phalanx', { mini: true, now: true }), el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
       X.n.classList.add('aided'); X.n.parentNode.classList.add('aided'); X.card.appendChild(c); Kit.sfx('deal'); await wait(430);
       Kit.sfx('clash', .6); Kit.haptic('medium'); c.classList.add('in');
       X.base.firstChild.textContent = String(X.b); X.base.classList.remove('bump'); void X.base.offsetWidth; X.base.classList.add('bump');
@@ -1320,14 +1344,15 @@
       await showCard(ev.c, o === ui.view ? 620 : 1050);
       dropHand(o, a.h);   // (the Figure that a Night Crossing carries leaves the hand as it arrives)
       V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
-      if (ev.c === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
-      if (ev.c === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
-      if (ev.c === 'eclipse') { V.figs.forEach(f => { if (f.p === ev.p && f.o !== o) { f.stun = 1; ui.fresh[f.u] = 'zap'; } }); render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('medium'); await wait(520); return; }
-      if (ev.c === 'encore') { const f = vfig(ev.u); if (f) { f.rdy = 1; f.arr = 0; ui.fresh[f.u] = 'hop'; } render(); ui.fresh = {}; Kit.sfx('good'); await wait(480); return; }
+      const fx = E.fxOf(ev.c);   // (what the Deed does, whichever Deed it is)
+      if (fx === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
+      if (fx === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
+      if (fx === 'eclipse') { V.figs.forEach(f => { if (f.p === ev.p && f.o !== o) { f.stun = 1; ui.fresh[f.u] = 'zap'; } }); render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('medium'); await wait(520); return; }
+      if (fx === 'encore') { const f = vfig(ev.u); if (f) { f.rdy = 1; f.arr = 0; ui.fresh[f.u] = 'hop'; } render(); ui.fresh = {}; Kit.sfx('good'); await wait(480); return; }
       render();
     },
     async quick(ev, ctx) {
-      const o = ev.o; dropHand(o, V.P[o].hand.indexOf('phalanx')); ctx.quick = !ev.att;
+      const o = ev.o; dropHand(o, V.P[o].hand.indexOf(ev.c)); ctx.quick = !ev.att; ctx.qk = ev.c;
       if (ev.att) V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); else V.P[o].reserve = Math.max(0, V.P[o].reserve - 1);
       render();   // (the card itself is shown in the clash, coming to its Figure's side)
     },
@@ -1405,8 +1430,8 @@
   async function doAction(a, ctx) {
     const o = S.turn, P = S.P[o];
     ctx = Object.assign({ a: a, o: o }, ctx);
-    ctx.key = a.h != null ? P.hand[a.h] : a.ph ? 'phalanx' : null; ctx.h2key = a.h2 != null ? P.hand[a.h2] : null;
-    if (a.t === 'clash' && a.ph) ctx.key = 'phalanx';
+    ctx.key = a.h != null ? P.hand[a.h] : a.ph ? quickOf(a) : null; ctx.h2key = a.h2 != null ? P.hand[a.h2] : null;
+    if (a.t === 'clash' && a.ph) ctx.key = quickOf(a);
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
     const roll = ctx.roll || E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
     const evs = S.ev.splice(0); G.n++; tally(evs); save();
@@ -1573,8 +1598,8 @@
     '<li>Then, in any order, play cards and act. When you tap a card or one of your Figures, everywhere it can go lights up.</li>' +
     '<li>A <b>Figure</b> arrives at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure that just arrived can clash but not walk.</li>' +
-    '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
-    '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
+    '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
+    '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for a <b>Quick Deed</b> such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
     '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
@@ -1798,7 +1823,7 @@
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
-    cardEl: cardEl, artImg: artImg, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
+    cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 

@@ -163,6 +163,9 @@
   ].join(''));
 
   function pic(ui, src, alt) {
+    // (a card whose picture has not been made yet, text.js NOPIC: not asked for, once the card texts are here)
+    var m = /\/t\/([a-z]+)\.webp$/.exec(src), TX = window.AnoriaText;
+    if (m && TX && TX.NOPIC && TX.NOPIC[m[1]]) return ui.el('span', { 'aria-hidden': 'true' });
     var im = ui.el('img', { src: src, alt: alt || '', loading: 'lazy' });
     im.addEventListener('error', function () { im.remove(); });   // (no picture: the flat panel in the card's colour)
     return im;
