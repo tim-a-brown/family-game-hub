@@ -289,6 +289,11 @@ Underlying principles for everything:
   and the front card's notes changing when it comes to rest. Used for a deck's cards, your hand in a game, a pack's
   turned cards, the Library and the deck builder's shelf. A grid in a stock sheet is not how cards are shown.
   The strip's mechanics are `AnoriaUI.makeFlow` (ui.js), which `browse` and the packs both use.
+- **A card being read can be turned over to its picture** (Tim, 2026-11-11): the round button on the picture's lower
+  left (`tg` in `cardEl`, on by default in `openView`, `browse` and a pack's strip; not in lessons). The picture then
+  takes 80% of the card, the same on every card, and a strip at the foot keeps the essentials: name, a Figure's Might
+  and what the card does in one line (`briefOf`: its own words if they are short, or just its skill words); cost and
+  kind stay at the top. The choice is a class on the page (`an-artview`), remembered in `anoria_artview`.
 - **A pack's cards come out on that strip, face down, and each one turns over as it reaches the front** (Tim,
   2026-11-11: "use card carousel for pack openings too with cards flipping as they scroll in first time they're
   revealed"). `torn()` in packs.js: a swipe, a flick, a thumbnail, the arrow keys and Turn the rest (a riffle to the

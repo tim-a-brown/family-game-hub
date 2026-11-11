@@ -243,7 +243,7 @@
       cards.forEach((x, i) => {
         const b = el('div', { class: 'vf-c pk-fc', 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true })])])]);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true })])])]);
         const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
         const c = { el: b, th: th, x: x, up: false, at: 0 };
         // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it

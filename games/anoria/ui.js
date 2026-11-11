@@ -45,6 +45,9 @@
     home: '<svg viewBox="0 0 12 12"><path d="M1.4 6 6 1.8 10.6 6M2.8 5.2v5h6.4v-5" fill="none" stroke="#b8862d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     arch: '<svg viewBox="0 0 12 12"><path d="M2 11V5.5a4 4 0 0 1 8 0V11M4.6 11V6.6a1.4 1.4 0 0 1 2.8 0V11" fill="none" stroke="#10131c" stroke-width="1.6" stroke-linecap="round"/></svg>',
     swords: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e9cf86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l10 10M4 3v3.4M4 3h3.4M12.2 15.8l3.6-3.6M13.4 14.6 19 20.2M17.6 21.6l2.8-2.8"/><path d="M20 3 10 13M20 3v3.4M20 3h-3.4M11.8 15.8l-3.6-3.6M10.6 14.6 5 20.2M6.4 21.6l-2.8-2.8"/></g></svg>',
+    // the two faces of a card you are reading: its picture large, or its words (the button on the picture)
+    art: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="9.6" r="1.6" fill="currentColor" stroke="none"/><path d="M4 17l5-4.6 3.4 3 3-2.8L20 16.6"/></svg>',
+    words: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M7.5 9.5h9M7.5 12.5h9M7.5 15.5h5.5"/></svg>',
     ff: '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 5l8 7-8 7zM13 5l8 7-8 7z"/></svg>'
   };
   const LAUREL = '<img src="anoria/ui/mark-renown.webp" alt="">';
@@ -169,12 +172,23 @@
   const THE = { library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 };
   const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' ? 'the ' : '') + CARDS[x].n;
   // cardEl(key, {mini, cost}): the approved card. mini = a hand card (picture, name, cost, Might).
+  // tg: a card being read has a button on its picture (Tim, 2026-11-11) that turns every such card over to its picture:
+  // the picture takes the card, and what's essential (cost, Might, name, what it does in a line) keeps to a strip at the
+  // foot, the same height on every card. The choice is remembered (anoria_artview) and held as a class on the page.
+  function artView(on) { document.documentElement.classList.toggle('an-artview', !!on); lsSet('anoria_artview', on ? '1' : null);
+    document.querySelectorAll('.ac-tg').forEach(b => { b.setAttribute('aria-pressed', String(!!on)); b.setAttribute('aria-label', on ? 'Show the card’s words' : 'Show the picture large'); }); }
+  // what a card does, short enough for one line: its own words if they are few, or just its skill words
+  function briefOf(c) {
+    const tx = c.tx || ''; if (tx.length <= 46) return boldKeys(tx);
+    const ks = []; tx.replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Quick)(?=[.:! ]|$)/g, (m, a, k) => { ks.push(k); return m; });
+    return ks.length ? '<b>' + ks.map(esc).join('.</b> <b>') + '.</b>' : '';
+  }
   function cardEl(key, o) {
     o = o || {};
     const c = info(key), f = FAC[c.f] || FAC.N, place = c.kind === 'place', fig = c.kind === 'fig';
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
     const label = { place: 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
-    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : ''), style: { '--f': f.c }, 'data-card': key });
+    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (o.tg && !o.mini ? ' tg' : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
@@ -196,6 +210,12 @@
       if (c.say && place) paper.appendChild(el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }));
     }
     inn.appendChild(paper);
+    if (o.tg && !o.mini) {
+      const on = document.documentElement.classList.contains('an-artview'), tx = briefOf(c);
+      art.appendChild(el('button', { type: 'button', class: 'ac-tg', 'aria-pressed': String(on), 'aria-label': on ? 'Show the card’s words' : 'Show the picture large', html: '<span class="a">' + SVG.art + '</span><span class="t">' + SVG.words + '</span>',
+        onpointerdown: e => e.stopPropagation(), onclick: e => { e.stopPropagation(); Kit.sfx('flip', .6); Kit.haptic('light'); artView(!document.documentElement.classList.contains('an-artview')); } }));
+      inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('b', { text: c.n }), tx ? el('span', { html: tx }) : null]));
+    }
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
     // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
@@ -273,7 +293,7 @@
     if (o.list && o.list.length > 1) return browse(o.list, Object.assign({ at: Math.max(0, o.list.indexOf(key)) }, o));
     closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const c = info(key), notes = notesFor(key, o), f = o.u != null && S ? E.byU(S, o.u) : null;
-    const card = cardEl(key, { might: f ? E.might(S, f, 0) : null });
+    const card = cardEl(key, { might: f ? E.might(S, f, 0) : null, tg: !o.lesson });
     const v = el('div', { class: 'view', role: 'dialog', 'aria-modal': 'true', 'aria-label': c.n, onclick: closeView }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close') }), card, notes.childNodes.length ? notes : null]);
     // (a lesson reads the card part by part: it sits under the lesson's rings and caption, with room kept for the
@@ -381,7 +401,7 @@
       o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null]) : null, flow, n > 1 ? strip : null, under]);
     function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
     const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
-      make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
+      make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true, tg: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
     // Upright, the card is as tall as the room left once the longest of the bunch's notes has its place under it,
     // so no card's notes are ever cut off and the strip never jumps as you go from card to card. (Sideways the notes
     // have the right-hand side to themselves.)
@@ -511,6 +531,7 @@
   const pname = o => G.players[o].name;
   const human = o => !G.players[o].cpu;
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  if (lsGet('anoria_artview') === '1') document.documentElement.classList.add('an-artview');
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   function save() {
     if (!G || !S || G.demo) return;   // (a lesson on the table is never saved: your own game is)
