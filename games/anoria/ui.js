@@ -68,13 +68,32 @@
     if (src in kept || !window.fetch || !window.URL || !URL.createObjectURL) return; kept[src] = '';
     fetch(src).then(r => (r.ok ? r.blob() : null)).then(bl => { if (bl) kept[src] = URL.createObjectURL(bl); }).catch(() => {});
   }
-  function artImg(key, small) {
+  // The table is rebuilt whole on every step, and a new <img> is blank for a frame or more (Tim: "lots of flashing
+  // throughout gameplay": every picture on the table blinked to its flat panel). So while the table is being drawn
+  // (render() opens a pass) each picture it asks for is the same element it used last time, moved into the new table.
+  const pool = {}; let pass = null;
+  function artImg(key, small, now) {
     const src = artSrc(key, small); if (noArt[src]) return null;
+    if (pass && small) {
+      const n = pass[src] = (pass[src] || 0) + 1, have = pool[src] || (pool[src] = []), old = have[n - 1];
+      if (old) return old;   // (still loading or long since drawn: either way it is the one to keep)
+      const im = newImg(key, small, src); have[n - 1] = im; return im;
+    }
+    // (anywhere else, a card in flight or in a clash: painted at once from a picture already loaded, where there is
+    // one, since a new <img> would show its flat panel for a frame first)
+    const got = now && small && loaded[src];
+    if (got && got.complete && got.naturalWidth) {
+      try { const c = el('canvas', { width: got.naturalWidth, height: got.naturalHeight, 'aria-hidden': 'true' }); c.getContext('2d').drawImage(got, 0, 0); if (FY[key] != null) c.style.objectPosition = '50% ' + FY[key] + '%'; return c; } catch (e) {}
+    }
+    return newImg(key, small, src);
+  }
+  const loaded = {};
+  function newImg(key, small, src) {
     let mem = small && kept[src];
     const im = el('img', { src: mem || src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
     if (FY[key] != null) im.style.objectPosition = '50% ' + FY[key] + '%';   // (which part of the picture to keep, wherever it is cropped)
     im.onerror = function () { if (mem) { mem = ''; kept[src] = ''; im.src = src; return; } noArt[src] = 1; im.remove(); };
-    im.onload = function () { hasArt[src] = 1; if (small) keep(src); };
+    im.onload = function () { hasArt[src] = 1; if (small) { keep(src); if (!loaded[src]) loaded[src] = im; } };
     return im;
   }
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
@@ -154,7 +173,9 @@
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
-    const im = artImg(key, !!o.mini); if (im) art.appendChild(im);
+    // (a full card shown on the table: the small picture is there at once, and the full one comes in over it)
+    if (o.now && !o.mini) { const lo = artImg(key, true, true); if (lo && lo.tagName === 'CANVAS') art.appendChild(lo); }
+    const im = artImg(key, !!o.mini, o.now); if (im) art.appendChild(im);
     inn.appendChild(art);
     if (c.c != null) { const cost = o.cost != null ? o.cost : c.c; inn.appendChild(el('div', { class: 'ac-cost' + (cost < c.c ? ' less' : '') }, [el('b', { text: String(cost) })])); }
     inn.appendChild(el('div', { class: 'ac-kind', html: MARK[kind] + '<span>' + label + '</span>' }));
@@ -557,23 +578,22 @@
   function render() {
     if (!G || !V || !dom.root) return;
     const v = ui.view, T = targets();
-    stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
-    dom.map.innerHTML = '';
-    dom.map.appendChild(el('div', { class: 'an-road' }));
-    rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T)));
-    capEl(); handEl(); layout(); lines();
+    pass = {};   // (pictures are put back, not made again: see artImg)
+    try {
+      stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
+      dom.map.innerHTML = '';
+      dom.map.appendChild(el('div', { class: 'an-road' }));
+      rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T)));
+      capEl(); handEl();
+    } finally { pass = null; }
+    layout(); lines();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
   // Sizes from the room there is
   function layout() {
     if (!dom.map) return;
-    const r = dom.map.getBoundingClientRect(); if (!r.width || !r.height) return;
-    const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
-    const rowH = (r.height - 4 * rg) / 5, mwMin = Math.max(r.width < 340 ? 84 : 98, Math.min(r.width * .27, 300));
-    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - 12 - 2 * gp - mwMin - 4 * sg) / 6, 118)));
-    const mw = Math.floor(Math.min(r.width - 12 - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
-    const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
-    dom.map.classList.toggle('tight', rowH < 74);
+    // The hand is sized first and the map measured after it. (The other way round, a hand that had just grown
+    // squeezed the map for one measurement: every card drawn made the whole board jump flat and back.)
     // the hand: side by side, never overlapping. As it fills the cards get smaller, and below a readable size
     // they drop the name (picture, cost and Might stay; tap one and the caption says what it is)
     const h = dom.hand, n = h.children.length, land = window.innerWidth > window.innerHeight, hr = h.getBoundingClientRect(), W = hr.width - 2, g = W > 600 ? 8 : 4;
@@ -598,6 +618,14 @@
     if (rows > 1) { h.classList.add('two'); h.style.setProperty('--per', per); }
     hw = Math.floor(Math.max(30, hw));
     h.style.setProperty('--hw', hw + 'px'); h.classList.toggle('small', hw < 62);
+    // the map, from the room the hand leaves it
+    const r = dom.map.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
+    const rowH = (r.height - 4 * rg) / 5, mwMin = Math.max(r.width < 340 ? 84 : 98, Math.min(r.width * .27, 300));
+    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - 12 - 2 * gp - mwMin - 4 * sg) / 6, 118)));
+    const mw = Math.floor(Math.min(r.width - 12 - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
+    const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
+    dom.map.classList.toggle('tight', rowH < 74);
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
@@ -737,7 +765,7 @@
     if (o.arc) frames.splice(1, 0, { transform: 'translate(' + (from.left + to.left) / 2 + 'px,' + (Math.min(from.top, to.top) - o.arc) + 'px) scale(' + (s0 + s1) / 2 * 1.15 + ')', opacity: 1 });
     return anim(node, frames, { duration: o.ms || 450, easing: o.ease || 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }).then(() => node.remove());
   }
-  function flyCard(key, from, to, o) { const c = cardEl(key, { mini: true }); c.style.fontSize = (from.width / 30) + 'px'; return fly(c, from, to, o); }
+  function flyCard(key, from, to, o) { const c = cardEl(key, { mini: true, now: true }); c.style.fontSize = (from.width / 30) + 'px'; return fly(c, from, to, o); }
   // "+2" drifting from where it was won to that player's wreath
   function plus(n, from, o, what) {
     const dest = rc(q('.an-strip.p' + o + (what === 'spark' ? ' .st-spark' : ' .lau'))); if (!from || !dest) return Promise.resolve();
@@ -760,7 +788,7 @@
     return Promise.all(ps);
   }
   function showCard(key, ms) {
-    const n = el('div', { class: 'show-card in' }, [cardEl(key)]); document.body.appendChild(n);
+    const n = el('div', { class: 'show-card in' }, [cardEl(key, { now: true })]); document.body.appendChild(n);
     return wait(ms).then(() => anim(n, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%,-56%) scale(.9)' }], { duration: 200, fill: 'forwards' })).then(() => n.remove());
   }
   function banner(k, t, s) {
@@ -774,14 +802,22 @@
   // The true story behind a Legacy line or a Thread, told once a game when it first forms: the two cards joined by a
   // gold thread and the sentence, on a plate of the table's own (top of the screen upright, over the map sideways:
   // never over the hand or the buttons). A tap puts it away.
-  function story(key) {
-    const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen || (G && G.demo)) return; told[key] = gen;
-    const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true); if (im) sp.appendChild(im); return sp; };
+  function story(key, ren, kind) {
+    const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen) return false; told[key] = gen;
+    const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true, true); if (im) sp.appendChild(im); return sp; };
     document.querySelectorAll('.an-story').forEach(x => x.remove());
-    const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]), el('p', { text: t })]);
+    const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]),
+      el('div', { class: 'sy-tx' }, [el('div', { class: 'sy-k' }, [el('span', { text: kind || 'A Thread' }), ren ? el('b', { text: '+' + ren + ' Renown' }) : null]), el('p', { text: t })])]);
+    // (a lesson's caption may be at the top of the screen: the story sits under it)
     const away = () => { n.classList.remove('show'); setTimeout(() => n.remove(), 260); };
     n.addEventListener('click', away); document.body.appendChild(n);
-    requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('show'))); setTimeout(away, 5200);
+    // (a lesson's caption may be where the story goes: the story sits under it, or over it if there's no room below)
+    const cap = document.querySelector('.gd-plate.on');
+    if (cap) { const cb = cap.getBoundingClientRect(), r = n.getBoundingClientRect();
+      if (Math.min(r.right, cb.right) > Math.max(r.left, cb.left) && r.top < cb.bottom + 8 && r.top + r.height + 14 > cb.top)
+        n.style.top = Math.round(cb.bottom + 8 + r.height < window.innerHeight - 8 ? cb.bottom + 8 : Math.max(0, cb.top - r.height - 8)) + 'px'; }
+    requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('show'))); setTimeout(away, 5600);
+    return true;
   }
   function dropHand(o, h) { if (h != null && h >= 0) V.P[o].hand.splice(h, 1); }
 
@@ -805,13 +841,13 @@
       const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - ph) })]);
       if (ph) tot.firstChild.textContent = String(total - ph);
       const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.o === ui.view ? 'R' : 'L') }, [
-        el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
+        el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m, now: true })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
         el('div', { class: 'cl-sum' }, [bs, dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
       return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note'), base: bs, ph: ph, b: base, t: total, shown: false };
     }
     // the Phalanx card slides in under its Figure, lands, and its +2 goes onto the shields
     async function aid(X) {
-      const c = el('div', { class: 'cl-aid' }, [cardEl('phalanx', { mini: true }), el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
+      const c = el('div', { class: 'cl-aid' }, [cardEl('phalanx', { mini: true, now: true }), el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
       X.n.classList.add('aided'); X.n.parentNode.classList.add('aided'); X.card.appendChild(c); Kit.sfx('deal'); await wait(430);
       Kit.sfx('clash', .6); Kit.haptic('medium'); c.classList.add('in');
       X.base.firstChild.textContent = String(X.b); X.base.classList.remove('bump'); void X.base.offsetWidth; X.base.classList.add('bump');
@@ -899,7 +935,7 @@
     },
     async line(ev) {
       const f = vfig(ev.a); if (!f) return; f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0;
-      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c); await wait(900);
+      Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy line'); await wait(900);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     // (how one led to the other, in a sentence, the first time each link is drawn in a game)
@@ -908,8 +944,11 @@
       const to = ev.u ? dom.map.querySelector('.fp[data-u="' + ev.u + '"]') : CARDS[ev.c].t === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.c + '"]') : q('.an-strip.p' + ev.o + ' .st-guide');
       const from = ev.src.k === 'fig' ? CARDS[(vfig(ev.src.u) || {}).c] : ev.src.k === 'relic' ? CARDS[ev.src.c] : C.PLACES[S.places[ev.src.p]];
       [src, to].forEach(n => { if (n) { n.classList.remove('thread'); void n.offsetWidth; n.classList.add('thread'); } });
-      Kit.callout((from ? from.n : 'A thread') + ' to ' + CARDS[ev.c].n); Kit.sfx('sparkle'); Kit.haptic('success');
-      story((ev.src.k === 'place' ? '@' + S.places[ev.src.p] : ev.src.k === 'relic' ? ev.src.c : (vfig(ev.src.u) || {}).c) + '>' + ev.c); await wait(950);
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      // (the link is told on its own plate, the two cards joined by a gold thread with the true sentence under them:
+      // not a banner in the site's stock lettering)
+      const shown = story((ev.src.k === 'place' ? '@' + S.places[ev.src.p] : ev.src.k === 'relic' ? ev.src.c : (vfig(ev.src.u) || {}).c) + '>' + ev.c, ev.ren);
+      await wait(shown ? 1250 : 700);
       if (ev.ren) { V.P[ev.o].renown += ev.ren; await plus(ev.ren, rc(to || src), ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     async relic(ev, ctx) {

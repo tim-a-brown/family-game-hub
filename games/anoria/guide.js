@@ -105,6 +105,7 @@
       }
     });
     arr(f.keep).forEach(t => { const n = find(t); if (n) { const b = n.getBoundingClientRect(); if (b.width) rs.push(b); } });
+    const st = document.querySelector('.an-story'); if (st) { const b = st.getBoundingClientRect(); if (b.width) rs.push(b); }   // (a Thread's story is being read: don't cover it)
     // the caption: bottom of the screen if that's clear, else wherever it covers least
     const P = r.plate, land = W > H * 1.15, m = 10, cs = getComputedStyle(document.documentElement);
     const bar = (parseFloat(cs.getPropertyValue('--bar')) || 58) + 6;
@@ -119,7 +120,9 @@
       let v = 0; rs.forEach(b => { const w = Math.min(s[0] + pw, b.right) - Math.max(s[0], b.left), h = Math.min(s[1] + ph, b.bottom) - Math.max(s[1], b.top); if (w > 0 && h > 0) v += w * h; });
       if (v < bv - 1) { bv = v; best = s; }
     });
-    P.style.left = Math.round(best[0]) + 'px'; P.style.top = Math.round(best[1]) + 'px';
+    const nx = Math.round(best[0]), ny = Math.round(best[1]), far = Math.abs(nx - (parseFloat(P.style.left) || 0)) + Math.abs(ny - (parseFloat(P.style.top) || 0)) > 6;
+    P.style.left = nx + 'px'; P.style.top = ny + 'px';
+    if (far) { P.classList.remove('moved'); void P.offsetWidth; P.classList.add('moved'); }
     if (r.scene) fitScene(r, H - best[1] + 8);
   }
   function show(r, text, o) {
@@ -241,12 +244,14 @@
       speed(n) { d.speed(fast() || n); },
       // the table dims, the position changes, the table comes back
       async later(text, fn) {
+        document.querySelectorAll('.an-story').forEach(x => x.remove());
         L.note(text, {}); document.documentElement.classList.add('gd-dim'); await L.pause(520);
         d.light(false); d.set(fn); document.documentElement.classList.remove('gd-dim'); await L.pause(700);
       },
       // your own steps, the way a player makes them: tap what to play (everywhere it can go lights up), tap where
       // o.lit: a caption to read while the lights are on
-      async lift(sel, o) { await L.tap(sel.kind === 'hand' ? '.an-hand .hc[data-h="' + sel.h + '"]' : '.fp[data-u="' + sel.u + '"]'); d.lift(sel); if (o && o.lit) await L.say(o.lit, o); else await L.pause(700); },
+      async lift(sel, o) { document.querySelectorAll('.an-story').forEach(x => x.remove());   // (the last link's story has been read)
+        await L.tap(sel.kind === 'hand' ? '.an-hand .hc[data-h="' + sel.h + '"]' : '.fp[data-u="' + sel.u + '"]'); d.lift(sel); if (o && o.lit) await L.say(o.lit, o); else await L.pause(700); },
       async play(key, p, o) {
         const h = hand(key), a = legal(x => x.t === 'fig' && x.h === h && x.p === p, key + ' to ' + p);
         await L.lift({ kind: 'hand', h: h }, o && o.lit ? Object.assign({ keep: ['.an-hand', L.row(p)] }, o) : null);

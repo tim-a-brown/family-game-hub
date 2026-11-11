@@ -283,6 +283,15 @@ Underlying principles for everything:
 - **Nothing on Anoria's page uses the site's stock pop-up look.** The story of a link is `story()`'s own plate
   (`.an-story`: the two cards joined by a gold thread, top of the screen upright, over the map sideways, never over
   the hand or buttons), and `Kit.toast` is reskinned in ui.css. New messages follow suit.
+  A Thread or a Legacy line is announced only by that plate (its kind, the Renown it scored and the true sentence),
+  in lessons too; `Kit.callout` (Bounty, a Seal breaking) is reskinned in ui.css in the game's small capitals.
+- **Nothing on the table blinks** (Tim, 2026-11-11: "lots of animation flashing throughout gameplay"). The table is
+  rebuilt whole on every step, so: `render()` opens a pass in which `artImg` hands back the same `<img>` elements as
+  last time (a new one is blank for a frame or more); a card drawn outside a redraw (in flight, in a clash, shown
+  large) is painted at once from a loaded picture (`now`); `layout()` sizes the hand before it measures the map
+  (the other way round, every card drawn flattened the board for a moment); and a lesson's caption that has to move
+  comes up in its new place, it does not slide across the table. Check with the scratchpad's `gd/film.js` (films a
+  game) and `gd/blink.js` (lists anything that changes and changes back within a few frames).
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.
