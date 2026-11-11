@@ -312,9 +312,9 @@ const FROM3 = {'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });
 // ── The Domain cards (2026-11-11, with Domains: engine.js) ───────────────────────────────────────────────────
-// Eleven cards that act on the Domains themselves, found only in packs like the third printing, but in the first
+// Twelve cards that act on the Domains themselves, found only in packs like the third printing, but in the first
 // series, so a new player meets them in their first weeks (coll.js DOMAIN_CARD_SERIES). They go in a deck of 40 like
-// any card. Pachacuti, who was already in the third printing, has the twelfth such power (above).
+// any card. Pachacuti, who was already in the third printing, has the thirteenth such power (above).
 //   arr scout n   look at the top n Domains of your stack: you may lay one at your Gate or your Outpost
 //   arr survey    look through your whole stack for one, then shuffle        arr rebuild   one from your Domain discard pile
 //   arr found     you may lay the top Domain of your stack at the Crossroads
@@ -324,8 +324,9 @@ PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k
 //   vesuvius      the card lies on a Domain, which has no rule while it does     caperoute   your next Domain to the Crossroads
 //   breda         two Domains change places     columbian   Gate for Gate, Outpost for Outpost
 //   kudurru       (a Relic) the other player's cards cannot replace, move or silence the Domains at your Gate and Outpost
+//   congress      two dice each name a Domain along the line from your Gate, and the two change places; a 6 is the
+//                 player's choice; the same Domain twice is discarded and replaced from its owner's stack
 // Costs from scripts/anoria/domains.txt (the test games on this engine) and places/results.txt B3.
-// Congress of Vienna, the thirteenth card of the prototype, is left out: see domains.txt.
 const P4 = {
   idrisi: F('Al-Idrisi', 'D', 2, 3, 'MED', 3, 1154, {}, { arr: ['survey', 1] }),
   diogenes: F('Diogenes', 'D', 2, 3, 'MED', 2, -350, { cynic: 1 }),   // (the prototype had him at 1 Spark and 2 Might: 3.6 points over Discovery's line, and the game has no Figure that costs 1)
@@ -338,6 +339,9 @@ const P4 = {
   breda: { n: 'Treaty of Breda', t: 'deed', f: 'S', c: 2, y: 1667 },
   columbian: { n: 'The Columbian Exchange', t: 'deed', f: 'D', c: 3, y: 1492 },
   kudurru: { n: 'Boundary Stone', t: 'relic', f: 'N', c: 1, y: -1200, from: ['@babylon'] },
+  // (Congress of Vienna, the owner's two-dice version, 2026-11-11: places/results.txt A8 in the main checkout and domains.txt 13.
+  // Its key is not 'vienna': that is a named Legacy Line, and the city is the Domain 'wien'.)
+  congress: { n: 'Congress of Vienna', t: 'deed', f: 'S', c: 1, y: 1815, from: ['@wien'] },
 };
 const PRINT4 = Object.keys(P4);
 PRINT4.forEach(k => { P4[k].pr = 4; CARDS[k] = P4[k]; });

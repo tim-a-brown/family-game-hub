@@ -634,7 +634,7 @@
     shahjahan: 'shah juh-HAHN', verne: 'zhool VAIRN', houdini: 'hoo-DEE-nee', tenzing: 'TEN-zing NOR-gay', astrolabe: 'AS-truh-layb', rosetta: 'roh-ZET-uh',
     balloon: 'mon-GOL-fee-ay', teutoburg: 'TOY-tuh-burg', testudo: 'tess-TOO-doh', magnacarta: 'MAG-nuh KAR-tuh', quipu: 'KEE-poo', starchart: 'doon-HWAHNG',
     braille: 'brayl', adwa: 'AH-dwah', kadesh: 'KAY-desh' });
-  // ── The Domain cards (cards.js P4): eleven cards that act on the Domains themselves. Each fact is from
+  // ── The Domain cards (cards.js P4): twelve cards that act on the Domains themselves. Each fact is from
   // scripts/anoria/places/domain-cards.json (sure: 3 well attested, 2 the usual account, 1 a story, and the sentence
   // says so). The briefs follow the same notes as the third printing's.
   var P4 = {
@@ -661,6 +661,8 @@
     kudurru: { cap: 'Babylonia, c. 1200 BC', ll: [44.42, 32.54], tx: 'The other player\'s cards cannot replace, move or silence the Domains at your Gate and your Outpost.', fact: 'In Babylonia a grant of land was carved on a stone, with curses on anyone who moved the boundary or took the land.', sure: 3,
       art: 'A Babylonian boundary stone of about 1200 BC, standing in a niche of a mud-brick temple and lit by one clay oil lamp: a smooth, dark, egg-shaped boulder of limestone about half a man\'s height. Round its top are carved the signs of the gods who guard the grant: a sun disc with wavy rays, a crescent moon, an eight-pointed star, a scorpion, and seats with horned crowns resting on them. A long snake is carved down one side from top to bottom. Below the signs the stone is covered with columns of small wedge-shaped writing. No people. Through the temple door behind it, small and bright, lies the land the stone speaks for: a barley field, a canal and a line of date palms. The top of the stone is right of centre, about a fifth of the way down the picture. No Egyptian signs, no winged bulls. Keep the top left corner and the top right corner plain, with only shadowed brick there: a plate sits in each top corner of the card.' },
   };
+  P4.congress = { cap: 'Vienna, 1814 to 1815', ll: [16.37, 48.21], tx: 'Roll two dice. Each die names a Domain, counted from your Gate: 1 your Gate, 2 your Outpost, 3 the Crossroads, 4 their Outpost, 5 their Gate. Those two Domains change places. A 6 names any Domain you choose. If both dice name the same Domain, that Domain is discarded and replaced from its owner\'s stack.', fact: 'In 1814 and 1815 the powers that had beaten Napoleon met in Vienna and redrew the borders of Europe, handing lands from one crown to another.', sure: 3,
+    art: 'The Congress of Vienna in the winter of 1814 to 1815, in a panelled room of the Austrian chancellery: a long table covered with a large map of Europe, on which the borders are being moved with pins, lengths of coloured ribbon and small wax seals. Three statesmen lean over it, each different. The Austrian minister, a slim, elegant man of forty-one with fair curled hair, in a dark court coat with a star on the breast, holds a ribbon between two pins and smiles. The French envoy, a man of sixty with powdered hair, a pale, heavy-lidded face and a high neck cloth, leans on a cane with one hand and with the other slides a seal an inch across the map. The British minister, tall, handsome and stiff in a plain dark coat, folds his arms and frowns at the place the seal has left. Through a half-open door behind them, small and bright, a ballroom with one chandelier and two dancers. The Austrian minister\'s head is right of centre, about a fifth of the way down the picture. Nobody rolls dice: the chance on the card is the game\'s, and the Congress bargained. No Napoleon, no soldiers, no modern flags. Keep the top left corner and the top right corner plain, with only dark panelling there: a plate sits in each top corner of the card.' };
   Object.keys(P4).forEach(function (k) { T[k] = P4[k]; if (P4[k].say) SAY[k] = P4[k].say; });
   Object.assign(SAY, { idrisi: 'al-ih-DREE-see', diogenes: 'dy-OJ-uh-neez', vesuvius: 'vuh-SOO-vee-us' });
   Object.assign(LINKS3, {
@@ -670,6 +672,7 @@
     "@cape>caperoute": "Vasco da Gama's ships rounded the Cape of Good Hope in November 1497 on their way to India.",
     "@lisbon>caperoute": "Da Gama's ships sailed from Lisbon in July 1497 and came home to it in 1499 with pepper and cinnamon.",
     "@qhapaq>pachacuti": "The great Inca road grew with the conquests that Pachacuti began, and it tied his new empire to Cusco.",
+    "@wien>congress": "The Congress met in Vienna from September 1814 to June 1815, and the city kept its guests busy with concerts and balls.",
     "@babylon>kudurru": "The kings of Babylon recorded their grants of land on such stones and put them under the protection of the gods."
   });
   // The Domains' own pronunciations (by Domain id)
@@ -677,7 +680,7 @@
   // Pictures still to be made. The page never asks for the picture of a card on this list: it shows the flat panel
   // in the faction's colour with the name, and nothing is fetched (ui.js noPic). The 150 cards of the third printing
   // have none yet. **The art pass adds a card's key to PAINTED as its two pictures go into art/ and art/t/.**
-  // The eleven Domain cards and 63 of the 75 Domains have none yet either (the twelve Domains that were the game's
+  // The twelve Domain cards and 63 of the 75 Domains have none yet either (the twelve Domains that were the game's
   // Places have theirs: art/place-<id>.webp). A Domain's key goes into PAINTED like a card's when its pictures go in.
   const PAINTED = '';   // (keys with a space between them)
   const PLACE_PAINTED = 'library silk colosseum acropolis wall stonehenge globe machu timbuktu petra nineveh seneca';

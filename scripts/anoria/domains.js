@@ -54,7 +54,7 @@ function cell(job) {
   if (o.over) for (const k in o.over) { keep[k] = CARDS[k]; CARDS[k] = Object.assign({}, CARDS[k], o.over[k]); }   // (CARDS is the engine's own table: other numbers on a card for this cell)
   const one = (ka, kb, seed) => {
     const R = rng(seed * 7 + 11); let decks, guides, profs, stacks = null, test = [null, null];
-    if (o.rand) { const pick = () => { const c = DC[(R() * DC.length) | 0], x = randDeck(R, CARDS[c].f); x.d.splice(0, 2, c, c); return [x, c]; }, a = pick(), b = pick(); decks = [a[0].d, b[0].d]; test = [a, b];
+    if (o.rand) { const TC = o.only || DC, pick = () => { const c = TC[(R() * TC.length) | 0], x = randDeck(R, CARDS[c].f); x.d.splice(0, 2, c, c); return [x, c]; }, a = pick(), b = pick(); decks = [a[0].d, b[0].d]; test = [a, b];
       guides = [GL[(R() * GL.length) | 0], GL[(R() * GL.length) | 0]]; profs = [PROF[PN[(R() * 4) | 0]], PROF[PN[(R() * 4) | 0]]]; stacks = [shuffle(ALLD.slice(), R).slice(0, 15), shuffle(ALLD.slice(), R).slice(0, 15)]; }
     else { decks = [mkDeck(ka, o, R), mkDeck(kb, o, R)]; guides = [ARCH[ka].guide, ARCH[kb].guide]; profs = o.profs ? o.profs.map(x => PROF[x]) : [PROF[style[ka]], PROF[style[kb]]];
       if (cfg.dm) { const SK = o.stacks || STACKS, st = k => (o.build && o.hero === k ? build(k, o.build) : o.rstack ? shuffle(ALLD.slice(), R).slice(0, 15) : SK[k].slice()); stacks = [st(ka), st(kb)]; } }
@@ -96,6 +96,7 @@ const game = r => 'rounds ' + (r.rounds / r.g).toFixed(2) + ' (most games ' + qu
   '  first turn wins ' + pc(r.first, r.g - r.draws) + '%  lead changes ' + (r.flips / r.g).toFixed(2) + '  winner behind after round 3: ' + pc(r.behind3, r.dec3) + '%  knock-outs ' + f1(r.ko / r.g) + '  margin ' + f1(r.margin / r.g) + '  at home ' + pc(r.home, r.plays) + '%';
 const n = +process.argv[3] || 50, exp = process.argv[2], XCFG = JSON.parse(process.argv[4] || '{}'), SEED = +process.argv[5] || 0;
 const J = (label, cfg, opt, seed, m) => ({ label, cfg: Object.assign({}, cfg, XCFG), opt: opt || {}, n: m || n, seed: (seed || 7000) + SEED });
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : DC;   // (ONLY=congress,breda: just those cards, for use and cards)
 const sum = (rs, f) => { const m = {}; for (const r of rs) for (const k in r[f]) { const x = m[k] || (m[k] = [0, 0]); x[0] += r[f][k][0]; x[1] += r[f][k][1]; } return m; };
 const EX = {};
 EX.base = async () => {
@@ -140,20 +141,20 @@ EX.six = async () => {
   for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 48) + 'decks ' + d.s + '  spread ' + f1(d.spread) + '  rounds ' + (r.rounds / r.g).toFixed(2) + '  Seals ' + pc(r.seals, r.g) + '%  lead changes ' + (r.flips / r.g).toFixed(2) + '  margin ' + f1(r.margin / r.g) + '  Domains replaced a game ' + (r.repl / r.g).toFixed(2) + ', moved ' + (r.moved / r.g).toFixed(2)); }
 };
 EX.use = async () => {
-  const rs = await runAll(DC.map(c => J(c, {}, { cards: [c], cardstat: 1 }, 7000, Math.max(4, Math.round(n / 4)))));
+  const rs = await runAll(ONLY.map(c => J(c, {}, { cards: [c], cardstat: 1 }, 7000, Math.max(4, Math.round(n / 4)))));
   console.log('HOW THE ROBOTS USE EACH DOMAIN CARD (two copies in each ready deck, ' + rs[0].g + ' games a card)\ncard                      played when drawn  wins when drawn  replaced a game  moved a game  what it did');
   for (const r of rs) { const c = r.label, d = r.drawn[c] || [0, 0], p = r.played[c] || [0, 0];
     console.log(pad(CARDS[c].n, 26) + lpad(pc(p[0], d[0]) + '%', 12) + lpad(pc(d[1], d[0]) + '%', 17) + lpad((r.repl / r.g).toFixed(2), 15) + lpad((r.moved / r.g).toFixed(2), 14) + '   ' + Object.keys(r.use).sort().map(k => k + ' ' + (r.use[k] / r.g).toFixed(2)).join(', ')); }
 };
 EX.cards = async () => {
   const V = JSON.parse(process.env.OVER || '{}'), names = Object.keys(V).length ? Object.keys(V) : ['as in cards.js'];
-  const jobs = []; names.forEach((nm, i) => { for (let k = 0; k < 3; k++) jobs.push(J(nm, {}, { rand: 1, over: V[nm] || null }, 101 + k * 977, Math.round(n / 3))); });
+  const jobs = []; names.forEach((nm, i) => { for (let k = 0; k < 3; k++) jobs.push(J(nm, {}, { rand: 1, over: V[nm] || null, only: process.env.ONLY ? ONLY : null }, 101 + k * 977, Math.round(n / 3))); });
   const rs = await runAll(jobs);
   console.log('THE DOMAIN CARDS IN RANDOM DECKS (two factions, 40 cards, a random Guide, style and stack of 15; each deck has two copies of one Domain card)');
   names.forEach((nm, i) => { const part = rs.slice(i * 3, i * 3 + 3), dr = sum(part, 'drawn'), pl = sum(part, 'played'), fc = sum(part, 'fac'), g = part.reduce((s, r) => s + r.g, 0);
     console.log('\n' + nm + (V[nm] ? ': ' + JSON.stringify(V[nm]) : '') + '  (' + g + ' games)\n  decks by faction: ' + FACS.map(f => f + ' ' + pc(fc[f][1], fc[f][0]) + '%').join('  ') +
       '\ncard                       cost  wins with it in the deck   wins when drawn    its faction\'s decks   played when drawn');
-    for (const c of DC) { const x = CARDS[c], o = (V[nm] || {})[c] || {}, d = dr[c] || [0, 0], p = pl[c] || [0, 0], inn = fc['in:' + c] || [0, 0], line = x.f === 'N' ? 50 : 100 * fc[x.f][1] / fc[x.f][0];
+    for (const c of ONLY) { const x = CARDS[c], o = (V[nm] || {})[c] || {}, d = dr[c] || [0, 0], p = pl[c] || [0, 0], inn = fc['in:' + c] || [0, 0], line = x.f === 'N' ? 50 : 100 * fc[x.f][1] / fc[x.f][0];
       console.log(pad(x.n, 27) + pad((o.c != null ? o.c : x.c) + (x.t === 'fig' ? '/' + (o.m != null ? o.m : x.m) : ''), 6) + lpad(pc(inn[1], inn[0]) + '% (' + inn[0] + ')', 16) + lpad(pc(d[1], d[0]) + '% (' + d[0] + ')', 24) + lpad(f1(line) + '%', 14) + lpad(pc(p[0], d[0]) + '%', 20)); } });
 };
 EX.setup = async () => {

@@ -1391,6 +1391,10 @@
       const moved = ev.perm.map((from, i) => (from !== i ? i : -1)).filter(i => i >= 0);
       Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.', 2600); await wait(900);
     },
+    // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
+    // player names: SEAM for the dice and the chooser; until then the engine chooses for the player and a line says the roll)
+    async congress(ev) { Kit.sfx('flip'); Kit.toast('The dice for the Congress of Vienna show ' + ev.dice[0] + ' and ' + ev.dice[1] + '.', 2200); await wait(900); },
+    async nothing(ev) { Kit.toast(ev.why === 'kudurru' ? 'A Boundary Stone protects that Domain, so nothing changes.' : 'There is no Domain left to lay, so nothing changes.', 2200); await wait(700); },
     async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', which has no rule while it lies there.', 2600); await wait(900); },
     async quick(ev, ctx) {
       const o = ev.o; dropHand(o, V.P[o].hand.indexOf(ev.c)); ctx.quick = !ev.att; ctx.qk = ev.c;
@@ -1479,7 +1483,7 @@
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
     const roll = ctx.roll || E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
     const evs = S.ev.splice(0); G.n++; tally(evs); save();
-    ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash' || e.t === 'domain' || e.t === 'choose' || e.t === 'dunder');   // (a card drawn, dice, a Domain turned up: not to be taken back)
+    ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash' || e.t === 'domain' || e.t === 'choose' || e.t === 'dunder' || e.t === 'congress');   // (a card drawn, dice, a Domain turned up: not to be taken back)
     const ok = await playEvents(evs, ctx);
     return ok ? ctx : null;
   }

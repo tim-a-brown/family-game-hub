@@ -53,7 +53,7 @@
 //     that suit the deck best (autoStack does the same for a deck you built). A collection from before Domains is
 //     given the ready stack of its starter deck and of every other ready deck it owned all the cards of, so every deck
 //     it could play it can still play, with the stack that deck is balanced for.
-//     The eleven Domain cards (cards.js P4) are found only in packs, in the first series (DOMAIN_CARD_SERIES).
+//     The twelve Domain cards (cards.js P4) are found only in packs, in the first series (DOMAIN_CARD_SERIES).
 //   - Rarity (the same day: "make more powerful cards more rare to find in packs"): every card has a tier from its
 //     power, 1 Common to 4 Legendary (RARE, worked out by scripts/anoria/rarity.js and written down here), and a
 //     pack slot is that much less likely to be a card of a higher tier (TIER_W).
@@ -73,7 +73,7 @@ let PACK_ORDER = 'series';
 // pack (DAILY and FEAT, 3 today). 5 is what pacing.txt recommends, so the 150 take about two months and not three
 // and a half. Tim's to decide: it is 0 until he does.
 let SERIES2_PACK = 0;
-// DOMAIN_CARD_SERIES: which series the eleven Domain cards (the fourth printing) are found in. 1: with the cards of
+// DOMAIN_CARD_SERIES: which series the twelve Domain cards (the fourth printing) are found in. 1: with the cards of
 // the ready decks, from the first welcome pack, so that Domains change hands in a new player's first weeks (the first
 // series is then 102 cards). 2: with the 150 of the third printing, after the first series is complete.
 let DOMAIN_CARD_SERIES = 1;
@@ -116,9 +116,9 @@ const RARE3 = {
   2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley kahlo alkhwarizmi poe voltaire nanny king fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard spies pakal fuhao trung teutoburg anning',
   1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper owens emancipation turing cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush saltmarch hieroglyphs balloon wheel everest naovictoria ninth astrolabe penicillin lincolnconcert lascaux manuscripts folio truce'
 };
-// The eleven Domain cards (cards.js P4), tiered among themselves by the same measure, cost and win rate less the
+// The twelve Domain cards (cards.js P4), tiered among themselves by the same measure, cost and win rate less the
 // faction's own, from "node scripts/anoria/domains.js cards" (domains.txt has the table).
-const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius' };
+const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius congress' };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
 [RARE, RARE3, RARE4].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
 const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);

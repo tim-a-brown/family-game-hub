@@ -161,18 +161,50 @@ function permute(S, perm, why) {
 // under the stack), 'survey': Al-Idrisi's whole stack (which is then shuffled), 'rebuild': Christopher Wren's discard
 // pile. The player lays one of them at their Gate or their Outpost, or none: {t: 'dom', id, p} or {t: 'dom', no: 1}.
 function pendOpen(S, k, o, ids, c) { S.pend = { k: k, o: o, ids: ids, c: c }; if (S.ev) S.ev.push({ t: 'choose', k: k, o: o, ids: ids.slice(), c: c }); }
+// k 'congress' (Congress of Vienna, when a die shows a 6): the player names the Domain a 6 stands for, by its
+// position: {t: 'dom', p, q}, the two Domains named (p is the one the other die named, when only one die is a 6).
+// Naming the same Domain twice is allowed, as two dice may: that Domain is then replaced. There is no saying no.
 function pendActions(S) {
+  if (S.pend.k === 'congress') { const q = S.pend, out = [], np = S.places.length, ok = i => !prot(S, i, q.o);
+    if (q.fixed >= 0) { for (let y = 0; y < np; y++) if (ok(y)) out.push({ t: 'dom', p: q.fixed, q: y }); }
+    else for (let x = 0; x < np; x++) for (let y = x; y < np; y++) if (ok(x) && ok(y)) out.push({ t: 'dom', p: x, q: y });
+    return out; }
   const q = S.pend, out = [{ t: 'dom', no: 1 }], seen = {}, g = gateOf(q.o);
   for (const id of q.ids) { if (seen[id] || S.places.indexOf(id) >= 0) continue; seen[id] = 1; out.push({ t: 'dom', id: id, p: g }, { t: 'dom', id: id, p: g + 1 }); }
   return out;
 }
 function pendApply(S, a) {
   const q = S.pend, Q = S.P[q.o]; S.pend = null;
+  if (q.k === 'congress') { if (S.ev) S.ev.push({ t: 'chose', k: q.k, o: q.o, p: a.no ? -1 : a.p, q: a.no ? -1 : a.q, c: q.c }); if (!a.no) congressDo(S, q.o, q.c, a.p, a.q); return; }
   if (q.k === 'scout') { let used = a.no ? 1 : 0; for (const id of q.ids) { if (!used && id === a.id) { used = 1; continue; } Q.dst.unshift(id); } }
   else if (q.k === 'survey') { if (!a.no) Q.dst.splice(Q.dst.indexOf(a.id), 1); dshuf(Q.dst, S.uid * 17 + S.round); }
   else if (q.k === 'rebuild') { if (!a.no) Q.dgone.splice(Q.dgone.indexOf(a.id), 1); }
   if (S.ev) S.ev.push({ t: 'chose', k: q.k, o: q.o, id: a.no ? null : a.id, p: a.no ? -1 : a.p, c: q.c });
   if (!a.no) { layDomain(S, a.p, a.id, q.o, q.c); if (S.st) S.st.use[q.k] = (S.st.use[q.k] || 0) + 1; }
+}
+// Congress of Vienna. Two dice, each naming a Domain counted along the line from the player's own Gate: 1 their Gate,
+// 2 their Outpost, 3 the Crossroads, 4 the other player's Outpost, 5 the other player's Gate. The two Domains named
+// change places. A 6 names any Domain the player chooses (a choice left open in S.pend). If both name the same
+// Domain, it is discarded and replaced from the stack of the player whose banner is on it. The roll is in the
+// event ({t: 'congress', o, c, dice: [a, b], p: [the position each die names, or -1 for a 6]}), so a table can
+// throw the same dice. Boundary Stone: a Domain it protects does not move and is not replaced, so a roll that names
+// one does nothing ({t: 'nothing', c, why: 'kudurru'}), and a 6 cannot name one.
+function congressDo(S, o, ci, x, y) {
+  const use = k => { if (S.st) S.st.use[k] = (S.st.use[k] || 0) + 1; };
+  if (prot(S, x, o) || prot(S, y, o)) { if (S.ev) S.ev.push({ t: 'nothing', c: ci, why: 'kudurru' }); use('congress: nothing'); return; }
+  if (x !== y) { const perm = S.places.map((_, i) => i); perm[x] = y; perm[y] = x; permute(S, perm, ci); use('congress: two Domains change places'); return; }
+  const w = S.ban[x], id = canTurn(S, w) ? turnDomain(S, w) : null;
+  if (id) { layDomain(S, x, id, w, ci); use('congress: a double, that Domain replaced'); } else { if (S.ev) S.ev.push({ t: 'nothing', c: ci, why: 'stack' }); use('congress: nothing'); }
+}
+function congress(S, o, ci, d1, d2) {
+  const g = 2 * o, t = 2 * ((o + 1) % S.N), line = [g, g + 1, 2 * S.N, t + 1, t], n1 = d1 === 6 ? -1 : line[d1 - 1], n2 = d2 === 6 ? -1 : line[d2 - 1];
+  if (S.ev) S.ev.push({ t: 'congress', o: o, c: ci, dice: [d1, d2], p: [n1, n2] });
+  if (n1 >= 0 && n2 >= 0) return congressDo(S, o, ci, n1, n2);
+  const fixed = n1 >= 0 ? n1 : n2;   // (-1: two sixes, the player names both)
+  S.pend = { k: 'congress', o: o, ids: [], c: ci, fixed: fixed };
+  if ((fixed >= 0 && prot(S, fixed, o)) || !pendActions(S).length) { S.pend = null; if (S.ev) S.ev.push({ t: 'nothing', c: ci, why: 'kudurru' }); if (S.st) S.st.use['congress: nothing'] = (S.st.use['congress: nothing'] || 0) + 1; return; }
+  if (S.ev) S.ev.push({ t: 'choose', k: 'congress', o: o, ids: [], c: ci, fixed: fixed });
+  if (S.st) S.st.use[fixed >= 0 ? 'congress: a six, one Domain chosen' : 'congress: two sixes, both chosen'] = (S.st.use[fixed >= 0 ? 'congress: a six, one Domain chosen' : 'congress: two sixes, both chosen'] || 0) + 1;
 }
 // ── Set-up ──
 // Each player shuffles their stack and draws three Domains (S.su.drew[o]). They lay one face down at their Gate and
@@ -432,6 +464,7 @@ function actions(S) {
       else if (fx === 'vesuvius') { for (let i = 0; i < np; i++) if (!S.mk[i] && !prot(S, i, o)) out.push({ t: 'deed', h, p: i }); }
       else if (fx === 'caperoute') { if (canTurn(S, o)) out.push({ t: 'deed', h }); }
       else if (fx === 'breda') { for (let i = 0; i < np; i++) for (let j = 0; j < np; j++) if (j !== i && !prot(S, i, o) && !prot(S, j, o)) out.push({ t: 'deed', h, p: i, q: j }); }   // (both orders, so a player can tap either Domain first)
+      else if (fx === 'congress') { if (S.N === 2) out.push({ t: 'deed', h }); }
       else if (fx === 'columbian') { let ok = S.N === 2; for (let i = 0; i < 2 * S.N; i++) if (prot(S, i, o)) ok = false; if (ok) out.push({ t: 'deed', h }); }
     }
   });
@@ -480,6 +513,8 @@ function apply(S, a, da, dd, raw) {
       else if (fx === 'caperoute') { const id = turnDomain(S, o); if (id) { layDomain(S, 2 * S.N, id, o, ci); use('caperoute'); } }
       else if (fx === 'breda') { const perm = S.places.map((_, i) => i); perm[a.p] = a.q; perm[a.q] = a.p; use('breda: ' + [side(a.p), side(a.q)].sort().join(' and ')); permute(S, perm, ci); }
       else if (fx === 'columbian') { permute(S, [2, 3, 0, 1, 4], ci); use('columbian'); }
+      // (Congress of Vienna: the two dice are the clash dice the caller rolled, raw.ra and raw.rd, as they fell; a caller that hands in none gets a roll made from the state)
+      else if (fx === 'congress') { const die = (v, k) => (v >= 1 && v <= 6 && v === (v | 0) ? v : 1 + dshuf([0, 1, 2, 3, 4, 5], S.uid * 53 + S.round * 7 + k)[0]); congress(S, o, ci, die(raw && raw.ra, 1), die(raw && raw.rd, 32)); }
     }
   }
 }
@@ -525,6 +560,9 @@ function mix(T, k) { for (let o = 0; o < T.N; o++) dshuf(T.P[o].dst, T.uid * 131
 function settle(T, prof) { for (let g = 0; T.pend && g < 4; g++) { const o = T.pend.o; let best = null, bv = -1e9; for (const a of pendActions(T)) { const U = clone(T); pendApply(U, a); const v = evalS(U, o, prof); if (v > bv) { bv = v; best = a; } } pendApply(T, best); } }
 function valueOf(S, a, me, prof) {
   const roll = a.t === 'clash' || (a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'ambush');
+  if (!roll && S.dm && a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'congress') {   // (Congress of Vienna: the average over the 36 ways two dice fall)
+    let s = 0; for (let d1 = 1; d1 <= 6; d1++) for (let d2 = d1; d2 <= 6; d2++) { const T = clone(S); if (d1 === d2) mix(T, d1); apply(T, a, 0, 0, { ra: d1, rd: d2 }); if (T.pend) settle(T, prof); s += (d1 === d2 ? 1 : 2) * evalS(T, me, prof); }
+    return s / 36; }
   if (!roll && S.dm) { const K = hidden(S, a) ? 3 : 1; let s = 0;
     for (let k = 0; k < K; k++) { const T = clone(S); if (K > 1) mix(T, k); apply(T, a, 0, 0); if (T.pend) settle(T, prof); s += evalS(T, me, prof); }
     return s / K; }
