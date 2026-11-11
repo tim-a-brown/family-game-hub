@@ -760,13 +760,16 @@
     epoch++; stopClock(); S = null; shell = null; undoStack = [];
     ui.solve = null; ui.vowel = false; ui.busy = false;
     app.classList.remove('wofgame');
+    // A setup saved when a Family game could seat two people: the computer that took the third podium now has that seat
+    try {
+      var sv = JSON.parse(localStorage.getItem('gn_setup_wheeloffortune'));
+      if (sv && sv.mode === 'family' && sv.count === 2 && !(sv.robots || []).length) { sv.count = 3; sv.robots = [2]; localStorage.setItem('gn_setup_wheeloffortune', JSON.stringify(sv)); }
+    } catch (e) {}
     Kit.setup(app, {
       intro: 'Spin the wheel, call letters, solve the puzzle.',
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You and two computer contestants' },
-        { id: 'family', icon: 'users', title: 'Family game', desc: '2 or 3 people take turns on this device. An empty podium gets a computer player.' }
-      ],
-      players: { range: function (m) { return m === 'cpu' ? [3, 3] : [2, 3]; }, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, count: 3 },
+      // three podiums, like the show: each one after the first is a person or a computer contestant
+      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }]),
+      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; } },
       options: [
         { id: 'rounds', label: 'Main rounds', choices: [[3, '3 rounds'], [4, '4 rounds']], value: 3 },
         { id: 'tossups', label: 'Toss-ups', help: 'Quick puzzles before each round where letters pop up one at a time and you buzz in.', choices: [['on', 'On', 'The first to solve the toss-up wins cash and starts the round.'], ['off', 'Off', 'Skip toss-ups and go straight to each round.']], value: 'on' },

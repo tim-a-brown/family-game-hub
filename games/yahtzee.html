@@ -192,18 +192,26 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
     S = null;
+    // A setup saved when Real dice was a card of its own starts on Real dice
+    var realLast = false;
+    try { var sv = JSON.parse(localStorage.getItem('gn_setup_yahtzee')) || {}; realLast = sv.mode === 'card' && !(sv.options && sv.options.dice); } catch (e) {}
     Kit.setup(app, {
-      modes: [
-        { id: 'roll', icon: 'users', title: 'Pass & play', desc: 'Take turns rolling on this phone' },
-        { id: 'cpu', icon: 'bot', title: 'vs Computer', desc: 'You against the computer' },
-        { id: 'card', icon: 'pencil', title: 'Real dice', desc: 'Roll at the table, score here' }
-      ],
+      modes: Kit.modes(['cpu', { id: 'roll', kind: 'local' }]),
       players: {
-        range: function (m) { return m === 'cpu' ? [2, 4] : [1, 8]; },
-        cpu: function (m) { return m === 'cpu' ? 'seats' : false; },
+        range: function (m) { return m === 'cpu' ? [2, 8] : [1, 8]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'roll' ? 'mix' : false; },
         count: 2
       },
-      onStart: function (cfg) { start(cfg); }
+      options: [
+        { id: 'dice', label: 'Dice', value: realLast ? 'real' : 'screen', choices: [
+          ['screen', 'On screen', 'You roll the dice on this phone.'],
+          ['real', 'Real dice', 'You roll your own dice at the table and keep the score here. Computer players sit this game out.']] }
+      ],
+      // Real dice is the score card on its own (mode 'card'): only the people at the table get a column
+      onStart: function (cfg) {
+        if (cfg.options.dice !== 'real') return start(cfg);
+        start({ mode: 'card', players: cfg.players.filter(function (p) { return !p.cpu; }) });
+      }
     });
   }
 
