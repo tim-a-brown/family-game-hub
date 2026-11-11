@@ -541,6 +541,8 @@
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
+  // (a saved game that holds a card which has left the set goes on with the card that took its place: cards.js MOVED)
+  function readSave() { let raw = lsGet(SAVE), d = null; Object.keys(C.MOVED || {}).forEach(k => { if (raw) raw = raw.split('"' + k + '"').join('"' + C.MOVED[k] + '"'); }); try { d = JSON.parse(raw); } catch (e) {} return d; }
   function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
@@ -552,8 +554,9 @@
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
-    // and finishes the way it began, with Places scoring double from round 4.)
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
+    // and finishes the way it began, with Places scoring double from round 4. tg: the Renown that wins this game. A
+    // game saved when that was 30 has none, and still ends at 30.)
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -563,6 +566,7 @@
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
+    S.cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     buildTable(); V = snap(); render(); beginTurn();
   }
@@ -632,7 +636,7 @@
     }
     node.appendChild(el('div', { class: 'st-top' }, [
       el('div', { class: 'st-name' }, [el('i'), pl.cpu ? el('span', { class: 'bot', html: Kit.icon('bot') }) : null, el('span', { class: 'nm', text: pl.name })]),
-      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of 30' }, [el('div', { class: 'st-track', style: { '--r': Math.min(30, p.renown) } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
+      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of ' + S.cfg.target }, [el('div', { class: 'st-track', style: { '--r': Math.min(S.cfg.target, p.renown), '--tg': S.cfg.target } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
     node.appendChild(el('div', { class: 'st-bot' }, [seals, relics,
       me && !ui.hideHand ? null : el('div', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })]),
       el('span', { class: 'st-fill' }), sp]));
@@ -909,7 +913,7 @@
     const st = E.stake(S.cfg, S.round);
     Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
       : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
-      '<p>The first player to reach <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+      '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
   // ═══ Motion ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -1247,7 +1251,7 @@
         const st = E.stake(S.cfg, S.round), up = S.round > 1 && st > E.stake(S.cfg, S.round - 1);
         if (up) { Kit.sfx('win'); Kit.haptic('success'); ui.flip = 1; render(); ui.flip = 0; }
         else Kit.sfx('pop');
-        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to 30 Renown</span>' : ''));
+        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to ' + S.cfg.target + ' Renown</span>' : ''));
         if (gen !== my) return;
       }
       E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); save();
@@ -1350,7 +1354,7 @@
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
     earned.forEach(x => notes.push(x.t === 'guide' ? TX.GUIDES[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
-    notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to 30 Renown at the end of a round');
+    notes.push(S.how === 'seals' ? 'All three of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
@@ -1361,10 +1365,10 @@
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
-  const RULES =
+  const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return '' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
-    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
+    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
@@ -1389,9 +1393,9 @@
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
-    '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
+    '<li>If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
-    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>';
+    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>'; };
   // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
   // opens over whatever is on the table and leaves a game as it is; over the setup, the setup is drawn again after
   // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
@@ -1420,7 +1424,7 @@
   // guide.js plays its lessons and the quick start on this same table: a made-up position (never saved, never
   // recorded), with the script choosing every step and every roll. Your own game waits in its save and comes back.
   function resume() {
-    let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {}
+    const d = readSave();
     if (d && d.v === 1 && d.G && d.G.S && !d.G.over && d.G.S.figs) { try { restore(d); return; } catch (e) {} }
     showSetup();
   }
@@ -1529,7 +1533,7 @@
     app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn.' })].concat(rows)));
   }
 
-  let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}
+  const saved = readSave();
   const want = (/[?&](library|packs|decks|guide)(=|&|$)/.exec(location.search) || [])[1];   // (a row of the home screen's sheet)
   if (/[?&]art(=|&|$)/.test(location.search)) artProof();
   else if (saved && saved.v === 1 && saved.G && saved.G.S && !saved.G.over && saved.G.S.figs) { try { restore(saved); } catch (e) { showSetup(); } }

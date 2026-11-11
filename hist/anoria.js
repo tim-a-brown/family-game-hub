@@ -180,7 +180,7 @@
     var name = function (i) { return P[i].name || 'Player ' + (i + 1); };
     var w = typeof d.w === 'number' ? d.w : P[0].name === e.winner ? 0 : P[1].name === e.winner ? 1 : -1;
     // (rt: each side's Renown at the end of every round; what a round added is the step from the round before)
-    var cum = (d.rt || []).map(function (s) { var a = String(s).split('-'); return [+a[0] || 0, +a[1] || 0]; }), n = cum.length, tg = +d.tg || 30;
+    var cum = (d.rt || []).map(function (s) { var a = String(s).split('-'); return [+a[0] || 0, +a[1] || 0]; }), n = cum.length, tg = +d.tg || 30;   // (a record with no tg is from when 30 Renown won; every game since says its own)
     var rr = cum.map(function (c, r) { return [c[0] - (r ? cum[r - 1][0] : 0), c[1] - (r ? cum[r - 1][1] : 0)]; });
     var seals = (d.sl || []).map(function (s) { var a = String(s).split('|'); return { r: +a[0], by: +a[1] }; });
     var links = [], seen = {};

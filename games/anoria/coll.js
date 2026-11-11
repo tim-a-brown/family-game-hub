@@ -24,7 +24,7 @@
 //     starter deck, and of any other ready deck it already owned all of, so every deck it could play it still can.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
-const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {};
+const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, MOVED = C.MOVED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
 const WELCOME = [12, 12, 12], GUIDE_AT = [3, 8, 15, 25], VER = 2;
 let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
@@ -44,6 +44,9 @@ function load() {
   let s = null; try { s = raw ? JSON.parse(raw) : null; } catch (e) {}
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
+  // (a card that left the set: the copies of it become copies of the card that took its place)
+  let moved = false; Object.keys(MOVED).forEach(old => { const k = MOVED[old]; ['cards', 'seen', 'fresh'].forEach(f => { const m = cache[f]; if (m && m[old] != null) { m[k] = f === 'cards' ? Math.min(CAP, (m[k] || 0) + m[old]) : 1; delete m[old]; moved = true; } }); });
+  if (moved) save(cache);
   if ((cache.v || 1) < VER) { const had = !!cache.starter; grow(cache); cache.v = VER; if (had) save(cache); }
   return cache;
 }
@@ -171,7 +174,8 @@ function problems(d) {
   Object.keys(n).forEach(k => { if (!CARDS[k]) out.push('A card that isn\'t in the game'); else if (n[k] > CAP) out.push('More than two of ' + CARDS[k].n); else if (n[k] > (s.cards[k] || 0)) out.push('You have ' + (s.cards[k] || 0) + ' of ' + CARDS[k].n); });
   return out;
 }
-function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} return Array.isArray(a) ? a : []; }
+function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} if (!Array.isArray(a)) return [];
+  a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => MOVED[k] || k); }); return a; }   // (a card that left the set: its place is taken)
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: the five ready decks (yours to play once you own all of one; your starter always is)

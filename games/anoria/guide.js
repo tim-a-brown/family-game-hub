@@ -9,6 +9,7 @@
   'use strict';
   const KEY = 'anoria_guide';
   const el = Kit.el, UI = () => window.AnoriaUI;
+  const WIN = window.AnoriaEngine.STD.target;   // (the Renown that wins: every caption and the story's laurel take it from the rule)
   // the Places as the engine numbers them, named from your seat
   const MY_GATE = 0, MY_OUT = 1, CROSS = 4, TH_OUT = 3, TH_GATE = 2;
   const HALT = { halt: 1 };
@@ -168,10 +169,10 @@
     const s = el('div', { class: 'gd-scene' + (now ? ' now' : ''), 'data-k': name }, [el('div', { class: 'sc-in' }, SCENES[name]())]);
     r.root.insertBefore(s, r.rings); r.scene = s; fitScene(r); void s.offsetWidth; s.classList.add('on');
     if (name === 'seals' && !fast()) setTimeout(() => { if (r.scene !== s) return; const one = s.querySelector('.seal'); if (one) one.classList.add('crack', 'broken'); }, 3600);   // (one Seal breaks while you watch)
-    if (name === 'renown') {   // the laurel counts up to the 30 that wins
+    if (name === 'renown') {   // the laurel counts up to the Renown that wins
       const b = s.querySelector('.sc-lau b'); let n = 0;
-      if (fast()) b.textContent = '30';
-      else setTimeout(() => { if (r.scene !== s) return; r.cnt = setInterval(() => { n += 1; b.textContent = String(n); if (n >= 30) { clearInterval(r.cnt); s.classList.add('won'); } }, 62); }, 1500);
+      if (fast()) b.textContent = String(WIN);
+      else setTimeout(() => { if (r.scene !== s) return; r.cnt = setInterval(() => { n += 1; b.textContent = String(n); if (n >= WIN) { clearInterval(r.cnt); s.classList.add('won'); } }, 62); }, 1500);
     }
   }
   // (sizes come from the room left above the caption, upright or sideways, so nothing is ever cut off)
@@ -214,7 +215,7 @@
     await L.say('So the greats gather companies, to keep their people from being forgotten. You lead one company with one of the greats as your <b>Guide</b>, and another Guide leads the company against you.', { scene: 1 });
     await L.scene('renown');
     await L.say('The world remembers whoever stands at its wonders. Each round, the company that holds a wonder wins <b>Renown</b> there.', { scene: 1 });
-    await L.say('The first company to 30 Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
+    await L.say('The first company to ' + WIN + ' Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
     await L.scene('seals');
     await L.say('Your company comes into Anoria through its <b>Gate</b>, and three <b>Seals</b> hold that Gate open. If the other company holds your Gate when a round ends, one of your Seals breaks.', { scene: 1 });
     await L.scene('shut');
@@ -393,7 +394,7 @@
   const CHAPTERS = [
     { id: 'story', n: 'The story of Anoria', sub: 'What Anoria is, and what you are playing for', art: 'murasaki', table: () => QUICK.table(),
       async run(L) { await story(L, { now: true, stay: true }); } },
-    { id: 'map', n: 'The map and the goal', sub: 'Five Places, 30 Renown, 3 Seals', art: 'library',
+    { id: 'map', n: 'The map and the goal', sub: 'Five Places, ' + WIN + ' Renown, 3 Seals', art: 'library',
       table: () => ({ round: 1, places: PL, me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'hatshepsut'] }, them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'phalanx', 'boudica'] } }),
       async run(L) {
         await L.pause(400);
@@ -402,7 +403,7 @@
         await L.say('The <b>Crossroads</b> in the middle is shared.', { at: L.row(CROSS), tag: 'The Crossroads' });
         await L.say('The far two are the other player’s side.', { at: [L.row(TH_GATE), L.row(TH_OUT)], tag: ['Their Gate', 'Their Outpost'] });
         await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
-        await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach 30 wins.', { at: '.an-strip.me .st-ren' });
+        await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach ' + WIN + ' wins.', { at: '.an-strip.me .st-ren' });
         await L.say('Each player has 3 <b>Seals</b>. One breaks when the other player holds your Gate at the end of a round, and a player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
@@ -516,7 +517,7 @@
         await L.round();
         await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
-        await L.say('If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
+        await L.say('If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: '.an-cap .cap-round' });
       } },
     { id: 'seals', n: 'Gates and Seals', sub: 'The other way to win', art: 'wall',
       table: () => ({ round: 5, places: PL, me: { guide: 'leonardo', renown: 12, hand: ['galileo', 'compass'], figs: [['zhenghe', TH_GATE], ['copernicus', MY_GATE]] },

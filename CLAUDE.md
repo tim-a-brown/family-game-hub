@@ -255,9 +255,12 @@ Underlying principles for everything:
   A new kind of engine event needs a handler there.
 - Pictures: `games/anoria/art/<key>.webp` full size (reading a card), `art/t/<key>.webp` small (table and hand); Places
   are `place-<key>`. They are not precached; a missing one shows a flat panel in the faction's colour with the name.
-- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 30 wins
-  (Tim, 2026-11-11; until then Places scored double from round 4, and a game saved under that rule finishes under it:
-  `G.sc`), a round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
+- The game's rules are `STD` in engine.js: every Place scores 1 Renown every round, all game, and the first to 25 wins,
+  or whoever breaks all 3 of the other player's Seals (Tim, 2026-11-11; it was first to 30 that morning, and before
+  that Places scored double from round 4. A game saved under an older rule finishes under it: `G.sc` for the scoring,
+  `G.tg` for the Renown that wins). **The Renown that wins is never typed into a sentence**: the table, the rules
+  page (`RULES` in ui.js) and the results card read `S.cfg.target`, and the guide's captions and the story's counting
+  laurel read `WIN` in guide.js. A round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
   person on your side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
@@ -273,6 +276,13 @@ Underlying principles for everything:
   owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
   until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
   `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **No fictional, mythological or legendary characters in the new printing for now** (Tim, 2026-11-11). Sinbad the
+  Sailor and Gilgamesh were in the second printing for a day and were taken out. Zhang Qian, the Han envoy whose
+  journeys opened the routes later named the Silk Road, took Sinbad's place in Pathfinders, and Sargon of Akkad took
+  Gilgamesh's, with the same numbers and the same named Thread, The Clay Tablets (`MOVED` in cards.js carries a saved
+  Sinbad or Gilgamesh over to them). A new card is a real, well-attested person. (The decision was about the 25 new
+  cards. The legends among the first 66, Scheherazade, Anansi, Atalanta, Daedalus, Odysseus and Beowulf, are as they
+  were, captioned as legend.)
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
   real dress, arms and objects and what to leave out (Cleopatra from her coin portraits, not the film seductress;
@@ -374,7 +384,7 @@ Underlying principles for everything:
   keeps no calendar) among the wonders, where the world's memory is strongest. A great sphere turns at its heart (the
   one on every card back); each full turn ends an age, and the world can't carry all it knew into the next. So the
   greats lead companies to keep their people from being forgotten, each player one of them with a Guide. The world
-  remembers whoever stands at its wonders, and that is Renown: the first company to 30 is the one the next age
+  remembers whoever stands at its wonders, and that is Renown: the first company to 25 is the one the next age
   remembers. A company comes into Anoria through its Gate, held open by three Seals; hold the other company's Gate
   when a round ends and one breaks, and a company with none left is shut out and forgotten. `story()` in guide.js
   tells it in full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of

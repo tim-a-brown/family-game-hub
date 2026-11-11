@@ -6,11 +6,14 @@ const { CARDS, PLACES, CENTER, EDGE } = cards;
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
 // unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
-// Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 30 wins. (Until
+// Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 25 wins. (Until
 // then the stake doubled from round 4: ramp: [1, 1, 1, 2, 2, 2]. cfg.ramp still works, for test games and for a game
-// saved under the old rule, which finishes under it.) Flat games run about two rounds longer, which is why a deck
-// is 40 cards (coll.js). rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40").
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 30, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
+// saved under the old rule, which finishes under it.) Flat games run longer than the doubled ones did, which is why a
+// deck is 40 cards (coll.js). target: the Renown that wins, 25 since 2026-11-11 (it was 30: OLD_TARGET, which a game
+// saved before then finishes under; the page keeps each game's own target, see restore() in ui.js).
+// rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40", "First to 25").
+const OLD_TARGET = 30;
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -332,6 +335,6 @@ function play(decks, guides, profs, cfg, seed) {
   }
   return S;
 }
-return { play, PROF, rng, shuffle, DEF, STD, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
+return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, CARDS, PLACES };
 });

@@ -65,7 +65,9 @@ const CARDS = {
   faraday: F('Michael Faraday', 'D', 4, 4, 'EUR', 6, 1831, { eureka: 1 }),
   douglass: F('Frederick Douglass', 'S', 4, 4, 'AMER', 6, 1852, {}, { arr: ['stun', 9] }),
   // The second printing (2026-11): five more for each ready deck, when a deck grew from 30 cards to 40. All of them
-  // use skills the engine already had. Tuned with scripts/anoria (variants.txt, "Decks of 40").
+  // use skills the engine already had. Tuned with scripts/anoria (variants.txt, "Decks of 40", "First to 25").
+  // No fictional, mythological or legendary characters in this printing for now (Tim, 2026-11-11): Sinbad the Sailor
+  // and Gilgamesh were in it for a day, and Zhang Qian and Sargon of Akkad took their places.
   // Explorers
   ibnbattuta: F('Ibn Battuta', 'D', 3, 3, 'AFR', 3, 1325, { voyager: 1, swift: 1 }),
   leif: F('Leif Erikson', 'D', 3, 4, 'EUR', 3, 1000, { voyager: 1 }),
@@ -89,10 +91,10 @@ const CARDS = {
   nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
   hiawatha: F('Hiawatha', 'S', 3, 3, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
   sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }),
-  theodora: F('Theodora', 'S', 3, 4, 'MED', 3, 532, { steadfast: 1 }),
+  theodora: F('Theodora', 'S', 3, 3, 'MED', 3, 532, { steadfast: 1 }),   // (4 Might until 25 Renown won, which suits Court: variants.txt, "First to 25")
   // Pathfinders
-  sinbad: F('Sinbad the Sailor', 'W', 3, 2, 'MIDEAST', 3, 800, { voyager: 1 }, { arr: ['spark', 1] }),
-  gilgamesh: F('Gilgamesh', 'W', 4, 5, 'MIDEAST', 1, -2700, { guard: 1 }),
+  zhangqian: F('Zhang Qian', 'D', 3, 3, 'ASIA', 2, -138, { voyager: 1 }, { arr: ['spark', 1] }),   // (the Han envoy; he took the place of Sinbad the Sailor, who was fiction: Tim, 2026-11-11. He has 3 Might where Sinbad had 2, which is what Pathfinders wanted once 25 Renown won: variants.txt, "First to 25")
+  sargon: F('Sargon of Akkad', 'V', 4, 5, 'MIDEAST', 1, -2334, { guard: 1 }),   // (he took the place of Gilgamesh, the epic's hero, with the same numbers; Valor, like the other founders by conquest, Sundiata and Shaka)
   sundiata: F('Sundiata Keita', 'V', 3, 2, 'AFR', 3, 1235, { homeDouble: 1 }),
   bolivar: F('Simón Bolívar', 'V', 4, 4, 'AMER', 6, 1819, { swift: 1, raider: 1 }),
   khutulun: F('Khutulun', 'V', 2, 2, 'ASIA', 3, 1280, { slayer: 1 }),
@@ -115,7 +117,7 @@ const CARDS = {
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
 const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'odysseus': ['homer'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'trojan': ['odysseus'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'odysseus'], 'eclipse': ['antikythera'],
-  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'sinbad': ['scheherazade'], 'gilgamesh': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo']};
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // (Odysseus grew from Homer the way a Legacy Figure grows from a teacher: a line, with its +1 Might)
 CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
@@ -141,8 +143,7 @@ const THREADS = [
   { id: 'conquerors', n: 'The Conquerors', cards: ['alexander', 'caesar'] },
   { id: 'zama', n: 'The Road to Zama', cards: ['hannibal', 'scipio'] },
   { id: 'chains', n: 'Broken Chains', cards: ['spartacus', 'toussaint'] },
-  { id: 'nights', n: 'The Thousand and One Nights', cards: ['scheherazade', 'sinbad'] },
-  { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'gilgamesh'], places: ['nineveh'] },
+  { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'sargon'], places: ['nineveh'] },
   { id: 'sages', n: 'The Sages', cards: ['confucius', 'mencius'] },
   { id: 'muse', n: 'The Tenth Muse', cards: ['sappho', 'sorjuana'] },
   { id: 'needle', n: 'The Needle', cards: ['compass', 'shenkuo'] },
@@ -167,8 +168,11 @@ const GROWN = {
   Legion: ['scipio', 'toussaint', 'shaka', 'lakshmibai', 'tecumseh'],
   Legacy: ['caesar', 'ibnsina', 'chaucer', 'marcus', 'germain'],
   Court: ['mencius', 'nzinga', 'hiawatha', 'sorjuana', 'theodora'],
-  Pathfinders: ['sinbad', 'gilgamesh', 'sundiata', 'bolivar', 'khutulun'],
+  Pathfinders: ['zhangqian', 'sargon', 'sundiata', 'bolivar', 'khutulun'],
 };
+// A card that left the set, and the card that took its place in every deck, collection and saved game that held it
+// (coll.js, ui.js). Sinbad the Sailor and Gilgamesh were in the second printing for a day before it was released.
+const MOVED = { sinbad: 'zhangqian', gilgamesh: 'sargon' };
 const ARCH = {
   Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'daedalus', 'odysseus', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
   Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
@@ -177,5 +181,5 @@ const ARCH = {
   Pathfinders: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
-return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS };
+return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, MOVED, THREADS, ERAS };
 });
