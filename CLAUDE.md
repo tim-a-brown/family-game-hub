@@ -558,6 +558,13 @@ Underlying principles for everything:
   cannot count: Genghis Khan's standard came out with eight tails every time, and the ninth was put in by hand. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
   them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
   under pieces of both players' colours, at every size, before it goes in.
+- **The computer's moves come one at a time** (Tim, 2026-11-11: "cpu moves in anoria need to be acknowledged by the
+  player by default otherwise it moves too quick"). After each move the computer makes has played out, the table stops
+  (`ackWait` in `robotTurn`, ui.js): the caption says what it did in a sentence ("Sprocket played Hatshepsut at Seneca
+  Falls.", `moveSaid`), a tap on the caption reads the card, and the player's own button, where End turn is, reads
+  Next (Enter and the space bar do the same). It is on unless the player turns off "Computer moves one at a time" in
+  the game's menu (`anoria_step` '0'); then the computer plays through and the fast-forward button is there as before.
+  Lessons and the test hook's `turbo` never wait. A new kind of move gets its sentence in `moveSaid`.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.

@@ -768,7 +768,7 @@
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
   // (a saved game that holds a card which has left the set is played on as it was, with that card: cards.js RETIRED)
   function readSave() { let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {} return d; }
-  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (ui.ackGo) { const go = ui.ackGo; ui.ack = null; ui.ackGo = null; go(); } if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
@@ -985,6 +985,7 @@
     if (me) {
       let b;
       if (G.over) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go', text: 'Results', onclick: () => showWin(true) });
+      else if (!human(S.turn) && stepOn() && !ui.turbo && !G.demo) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (ui.ack ? ' ready' : ''), text: 'Next', disabled: !ui.ack, 'aria-label': ui.ack ? 'Next: let ' + pname(S.turn) + ' make the next move' : pname(S.turn) + ' is playing', onclick: () => { Kit.sfx('pop'); Kit.haptic('light'); ackGo(); } });
       else if (!human(S.turn)) b = el('button', { type: 'button', class: 'btn btn-sm st-go ' + (speed > 1 ? 'btn-primary' : 'btn-soft'), 'aria-label': 'Fast forward', 'aria-pressed': String(speed > 1), html: SVG.ff, onclick: toggleFast });
       else {
         const can = idle() && !ui.discard, nothing = can && !ui.acts.length;
@@ -1070,6 +1071,11 @@
       n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => openView(key, s.kind === 'fig' ? { u: s.u } : { list: V.P[ui.view].hand.slice(), at: s.h }) }, [
         el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (s.kind === 'hand' ? twinNote(key) : '') + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
       if (s.kind === 'hand' && !s.picks.length && T.done.length) n.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm cap-play', text: 'Play', onclick: () => finishPick(T.done) }));
+      return;
+    }
+    if (ui.ack && !G.over) {   // (what the computer just did; a tap reads the card)
+      const k = ui.ack.key, inner = [el('span', { class: 'tx', text: ui.ack.tx }), k ? el('span', { class: 'eye', html: Kit.icon('eye') }) : null];
+      n.appendChild(k ? el('button', { type: 'button', class: 'cap-card cap-ack', 'aria-label': ui.ack.tx + ' Read ' + info(k).n, onclick: () => openView(k) }, inner) : el('div', { class: 'cap-card cap-ack' }, inner));
       return;
     }
     let txt = '', dim = false;
@@ -1607,7 +1613,7 @@
   async function beginTurn() {
     const my = gen, o = S.turn, pl = G.players[o];
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true);
-    speed = ui.turbo || (pl.cpu && lsGet(FAST) === '1' ? 4 : 1); document.documentElement.classList.toggle('an-fast', speed > 1);
+    speed = ui.turbo || (pl.cpu && !stepOn() && lsGet(FAST) === '1' ? 4 : 1); document.documentElement.classList.toggle('an-fast', speed > 1);
     if (G.mode === 'local' && ui.viewer !== o) {
       ui.hideHand = true; ui.viewer = -1; ui.view = o; V = snap(); render();
       await Kit.handoff({ name: pl.name, color: pl.color, what: 'hand' });
@@ -1632,13 +1638,41 @@
     setBusy(false); legal(); render();
     if (o === ui.view) { Kit.sfx('turn', .5); }
   }
+  // The computer's moves, one at a time (Tim, 2026-11-11: "cpu moves in anoria need to be acknowledged by the player
+  // by default otherwise it moves too quick"). After each move has played out the table stops: the caption says what
+  // the computer just did, with the card a tap away, and the player's own button, where End turn is on their turn,
+  // reads Next. A tap on it (or Enter, or the space bar) lets the computer make its next move. On unless the player
+  // turns it off in the game's menu (`anoria_step` '0'); with it off the fast-forward button is there as before.
+  const STEP = 'anoria_step', stepOn = () => lsGet(STEP) !== '0';
+  function toggleStep() { lsSet(STEP, stepOn() ? '0' : '1'); Kit.sfx('tap'); if (!stepOn() && ui.ack) ackGo(); else if (G && S) render(); }
+  // what the computer just did, as a sentence (said before the move is applied, while its card is still in its hand)
+  function moveSaid(a) {
+    const o = S.turn, P = S.P[o], who = pname(o), at = p => theName('@' + S.places[p]), fig = u => E.byU(S, u);
+    const mine = f => f && f.o === ui.view ? 'your ' : f ? Kit.poss(pname(f.o)) + ' ' : '';
+    if (a.t === 'fig') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + CARDS[k].n + ' at ' + at(a.p) + '.' }; }
+    if (a.t === 'relic') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + theName(k) + '.' }; }
+    if (a.t === 'deed') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + CARDS[k].n + '.' }; }
+    if (a.t === 'walk' || a.t === 'antik' || a.t === 'tub') { const f = fig(a.u); return f ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' to ' + at(a.p) + '.' } : null; }
+    if (a.t === 'clash') { const f = fig(a.u), g = fig(a.v), q = a.ph ? quickOf(a) : null; return f && g ? { key: f.c, tx: Kit.poss(who) + ' ' + CARDS[f.c].n + ' clashed with ' + mine(g) + CARDS[g.c].n + (q ? ', with ' + CARDS[q].n : '') + '.' } : null; }
+    return null;
+  }
+  function ackGo() { const go = ui.ackGo; ui.ack = null; ui.ackGo = null; if (go) go(); }
+  function ackKey(e) { if (!ui.ack || viewEl || document.querySelector('.k-scrim.show, .an-screen')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Kit.sfx('tap'); ackGo(); } }
+  document.addEventListener('keydown', ackKey);
+  function ackWait(said) {
+    return new Promise(ok => { ui.ack = said || { tx: pname(S.turn) + ' made a move.' }; ui.ackGo = ok; render(); });
+  }
   async function robotTurn() {
     const my = gen, prof = E.PROF[LEVEL[G.level] || 'holder'];
     setBusy(true); await wait(500); if (gen !== my) return;
     for (let n = 0; n < 40; n++) {
       const a = E.aiPick(S, prof, Math.random); if (!a) break;
+      const said = stepOn() && !ui.turbo && !G.demo ? moveSaid(a) : null;
       const ctx = await doAction(a); if (gen !== my || !ctx) return;
-      settle(); await wait(380); if (gen !== my) return;
+      settle();
+      if (stepOn() && !ui.turbo && !G.demo && !S.over) { await ackWait(said); if (gen !== my) return; render(); await wait(160); }
+      else await wait(380);
+      if (gen !== my) return;
     }
     await wait(250); if (gen !== my) return;
     endTurn();
@@ -1881,6 +1915,7 @@
       { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
+      { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
