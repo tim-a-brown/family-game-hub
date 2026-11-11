@@ -428,8 +428,8 @@
         them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_OUT]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.play('copernicus', MY_OUT, { lit: 'A Figure arrives at your Gate, or at any Place where you already have a Figure.', at: [L.row(MY_GATE), L.row(MY_OUT)] });
-        await L.say('A Figure that has just arrived can’t walk this turn, but can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
+        await L.play('copernicus', MY_OUT, { lit: 'You play a Figure at your Gate, or at any Place where you already have a Figure.', at: [L.row(MY_GATE), L.row(MY_OUT)] });
+        await L.say('A Figure you have just played can’t walk this turn, but can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
         await L.walk('hatshepsut', CROSS, { lit: 'Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b>.', at: L.piece('hatshepsut') });
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
         await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
@@ -460,7 +460,7 @@
         await L.say('The other player was ahead on Renown, so that knock-out earned you a <b>Bounty</b> of 1 Renown. A Bounty is only paid against a player who is ahead of you.', { at: '.an-strip.me .st-ren' });
         await L.clash('haytham', 'leonidas', [6, 2], { lit: 'Leonidas is a <b>Guard</b>: enemies here must clash with him first. He is also <b>Steadfast</b>, which gives him +2 Might when he defends.', at: L.piece('leonidas', 1),
           hold: ['A roll that wins by 3 or more adds 2 Might instead of 1.'] });
-        await L.say('A Figure can clash the turn it arrives, but each Figure acts only once a turn.', { at: L.piece('haytham') });
+        await L.say('A Figure can clash on the turn you play it, but each Figure acts only once a turn.', { at: L.piece('haytham') });
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'coleman'], figs: [['copernicus', MY_GATE]] },
@@ -500,7 +500,7 @@
         await L.pause(400); await L.turn(0);
         await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modelled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
         await L.say('Virgil cost 1 Spark less, and he has +1 Might for as long as Homer is in play, connected by a gold Legacy Line on the map.', { at: [L.piece('virgil'), L.piece('homer')] });
-        await L.say('The Legacy Line also scored you 1 Renown as Virgil arrived. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
+        await L.say('The Legacy Line also scored you 1 Renown when you played Virgil. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The foot of Eureka! names Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });

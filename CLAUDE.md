@@ -465,6 +465,12 @@ Underlying principles for everything:
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
   and the reader's glossary key off that form.
+- **"When you play him", not "when he arrives"** (Tim, 2026-11-11: "i keep seeing 'when he arrives' -- does that mean the
+  same as 'when this card is played'?"). It does: the power works when the Figure comes onto the map from a hand, by
+  its own cost or by a Deed like Night Crossing, and never when it walks. So a card says "When you play her, you gain
+  1 Spark", "Scholar: you draw a card when you play him", "Swift: he can walk on the turn you play him", and the
+  rules and lessons say "you play a Figure at your Gate". check-set.js holds a card with an `arr` effect to "When you
+  play him" or "her". In code the event is still `arrive`.
 - **Art proof**: `games/anoria.html?art=1` shows every card at every size it is drawn (full, small, smallest hand
   card, the piece on the map). A new or changed picture is checked there, at every size, before it goes in.
 - **Small cards keep their numbers off the picture**: the cost, Might and kind icon stand on a spine in the faction's

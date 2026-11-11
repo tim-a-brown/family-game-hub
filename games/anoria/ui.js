@@ -26,11 +26,11 @@
   // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
     voyager: ['Voyager', n => 'most Figures have +1 Might only in their home region, and walk one Place at a time. ' + n + ' has +1 Might at every Place and can walk to any Place.'],
-    scholar: ['Scholar', n => 'when ' + n + ' arrives on the map, you draw a card.'],
+    scholar: ['Scholar', n => 'you draw a card when you play ' + n + '.'],
     guard: ['Guard', n => 'enemies at the same Place as ' + n + ' have to clash with ' + n + ' before they can clash with anyone else there.'],
     steadfast: ['Steadfast', n => n + ' has +2 Might in any clash that an enemy starts.'],
     inspiring: ['Inspiring', n => 'each of your other Figures at the same Place as ' + n + ' has +1 Might.'],
-    swift: ['Swift', n => 'most Figures can\'t walk on the turn they arrive. ' + n + ' can.'],
+    swift: ['Swift', n => 'most Figures can\'t walk on the turn you play them. ' + n + ' can.'],
     raider: ['Raider', n => n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.']
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
@@ -497,7 +497,7 @@
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
       if (o.p != null && S) {
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
-        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds this Gate when a round ends, a Seal breaks.' }));
+        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
@@ -689,7 +689,7 @@
     if (!out.length && it.h != null) { const c = E.costOf(S, o, it.key), fig = CARDS[it.key].t === 'fig', nm0 = info(it.key).n;
       if (fig && S.cfg.unique && S.figs.some(f => f.o === o && f.c === it.key)) out.push({ note: nm0 + ' is already in play on your side, and you can have one of each person in play at a time.' });
       else if (c > P.spark) out.push({ note: nm0 + ' costs ' + c + ' Spark, and you have ' + P.spark + '.' });
-      else if (fig) out.push({ note: 'A Figure arrives at your Gate or at a Place where you already have a Figure, and each of those Places has ' + S.cfg.cap + ' of your Figures already.' }); }
+      else if (fig) out.push({ note: 'You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ' + S.cfg.cap + ' of your Figures already.' }); }
     return out;
   }
   function scan(at) {
@@ -1970,8 +1970,8 @@
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
     '<li>Then, in any order, play cards and act. When you tap a card or one of your Figures, everywhere it can go lights up.</li>' +
-    '<li>A <b>Figure</b> arrives at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
-    '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure that just arrived can clash but not walk.</li>' +
+    '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
+    '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure you have just played can clash but not walk.</li>' +
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for a <b>Quick Deed</b> such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +

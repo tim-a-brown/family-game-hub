@@ -39,7 +39,7 @@ NEW.forEach(k => {
     Object.keys(LEAD).forEach(w => { const has = new RegExp('(^|\\. )' + w + '[.:]').test(t.tx); if (has !== !!c.k[LEAD[w]]) err(k, 'text and skills disagree about ' + w); });
     if (/Legacy of /.test(t.tx) !== !!c.insp) err(k, 'text and insp disagree about Legacy');
     (c.insp || []).forEach(s => { const o = CARDS[s]; if (!o || o.t !== 'fig') err(k, 'Legacy source ' + s + ' is not a Figure'); else if (t.tx.indexOf(o.n) < 0) err(k, 'text does not name ' + o.n); });
-    if ((c.arr || []).length && !/On arrival, /.test(t.tx)) err(k, 'text does not give the arrival effect');
+    if ((c.arr || []).length && !/When you play (him|her), /.test(t.tx)) err(k, 'text does not give the arrival effect');
     if (!/a (fifth|quarter) of the way down|in the upper half/.test(t.art) && k !== 'houdini') err(k, 'art brief does not say where the head is (a fifth or a quarter of the way down, or in the upper half)');
   } else {
     // a Relic or a Deed has the effect, the cost and the rules text of the card its `fx` names
