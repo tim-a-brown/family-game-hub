@@ -165,20 +165,27 @@
       players: { min: 3, max: 6, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [
         { id: 'len', label: 'Game length', value: 'full', choices: [['full', 'Full · 60 ÷ players', 'Deal one more card each round until the deck runs out.'], ['half', 'Half', 'Stop halfway for a shorter game.']] },
-        { id: 'hook', label: 'Total bids', help: 'Whether everyone’s bids are allowed to add up to the number of tricks in the round.', value: 'any', choices: [['any', 'Any total (standard)', 'Bid whatever you like.'], ['no', "Can't equal tricks", 'The dealer can’t make the total match, so someone always misses their bid.']] }
+        { id: 'hook', label: 'Total bids', help: 'Whether everyone’s bids are allowed to add up to the number of tricks in the round.', value: 'any', choices: [['any', 'Any total (standard)', 'Bid whatever you like.'], ['no', "Can't equal tricks", 'The dealer can’t make the total match, so someone always misses their bid.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) { newGame(cfg.players, cfg.options, cfg.mode); }
     });
   }
+  // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Bids by guesswork and often plays the wrong card.'],
+    ['normal', 'Normal', 'Bids what its hand looks worth and plays to hit its bid.'],
+    ['hard', 'Hard', 'Remembers every card played and thinks each bid and play through.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   function newGame(players, options, mode) {
     var n = players.length, full = Math.floor(60 / n);
     S = {
-      mode: mode || 'cpu', me: 0,
+      mode: mode || 'cpu', me: 0, level: lvName(options.level),
       opts: { len: options.len || 'full', hook: options.hook || 'any' },
       nRounds: options.len === 'half' ? Math.ceil(full / 2) : full,
       round: 0, dealer: Math.floor(Math.random() * n), rounds: [], detail: [], highlights: [], started: Date.now(),
       wizPlayed: players.map(function () { return 0; }),
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; })
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, total: 0 }; })   // (each robot its own skill at a mixed table)
     };
     S.dealer = (S.dealer + n - 1) % n; // newRound moves it on one
     undoStack = []; Kit.gameStart(); newRound();
@@ -282,6 +289,7 @@
     S.bids = S.players.map(function () { return null; });
     S.taken = S.players.map(function () { return 0; });
     S.trick = []; S.trickNo = 0; S.lastWin = -1;
+    S.gone = []; S.vd = S.players.map(function () { return ''; });   // (the cards played this round, and the suits each seat has shown they are out of)
     S.turn = (S.dealer + 1) % n; S.leader = S.turn;
     S.phase = isW(S.trumpCard) ? 'trump' : 'bid';
     S.hands.forEach(sortHand);
@@ -339,6 +347,7 @@
     var i = find(S.hands[p], card.id); if (i < 0) return;
     var from = isMe(p) ? handEl.querySelector('[data-id="' + card.id + '"]') : seatEls[p].querySelector('.tag');
     S.hands[p].splice(i, 1);
+    noteVoid(S, p, card);
     S.trick.push({ p: p, c: card });
     if (isW(card)) { Kit.sfx('pop'); S.wizPlayed[p]++; } else Kit.sfx('flip');
     var node = trickCard(S.trick.length - 1);
@@ -369,6 +378,7 @@
       setTimeout(function () {
         if (t !== token) return;
         trickEl.innerHTML = '';
+        if (S.gone) S.trick.forEach(function (x) { S.gone.push(x.c.id); });
         S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
         if (S.trickNo === S.round) endRound(); else { save(); next(); }
       }, 380);
@@ -480,7 +490,7 @@
       title: tie ? (youWin && humans() < 2 ? 'Tied for the win!' : "It's a tie!") : isYou(top.i) ? 'You win!' : top.name + ' wins',
       sub: 'After ' + S.rounds.length + ' rounds', rank: rank, lose: !youWin, icon: youWin ? 'trophy' : 'bot',
       again: function () {
-        newGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), S.opts, S.mode);
+        newGame(S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level }; }), { len: S.opts.len, hook: S.opts.hook, level: S.level }, S.mode);
       },
       look: 'Look at the table',
       setup: function () { token++; clearSave(); showSetup(); }
@@ -493,7 +503,8 @@
     S.hands[p].forEach(function (c) { if (!c.k) w[c.s] += 1 + V[c.r] / 14; });
     return Object.keys(w).sort(function (a, b) { return w[b] - w[a] || Math.random() - .5; })[0];
   }
-  function cpuBid(p) {
+  function normalBid(p) { return cpuBid(p, true); }
+  function cpuBid(p, plain) {
     var h = S.hands[p], n = N(), k = h.length, est = 0;
     var crowd = Math.sqrt(4 / n), trumps = h.filter(function (c) { return !c.k && c.s === S.trump; }).length;
     h.forEach(function (c) {
@@ -505,7 +516,10 @@
       else if (c.r === 'Q') est += (S.trump ? 0.12 : 0.3) * crowd * (k > 8 ? 1.3 : 1);
       else if (c.r === 'J' && k > 8) est += (S.trump ? 0.05 : 0.15) * crowd;
     });
-    var b = Math.round(est + (Math.random() - .5) * 0.6);
+    var lv = plain ? 'normal' : lvOf(p);
+    // Easy guesses: it can be out by a trick either way. Hard tries the bids around its count and keeps the best.
+    var b = Math.round(est + (Math.random() - .5) * (lv === 'easy' ? 2.6 : 0.6));
+    if (lv === 'hard') b = hardBid(p, est);
     b = Math.max(0, Math.min(k, b));
     var f = forbiddenBid(p);
     if (b === f) b = est > b || b === 0 ? b + 1 : b - 1;
@@ -513,6 +527,98 @@
   }
   function strength(c, led) { return isW(c) ? 200 : isJ(c) ? 0 : c.s === S.trump ? 100 + V[c.r] : c.s === led ? 50 + V[c.r] : V[c.r]; }
   function cpuPlay(p) {
+    var lv = lvOf(p), o;
+    if (lv === 'hard') return hardPlay(p);
+    // Easy: one play in three is any card it is allowed to play
+    if (lv === 'easy' && Math.random() < 0.34) { o = legal(p); return o[Math.floor(Math.random() * o.length)]; }
+    return normalPlay(p);
+  }
+  // A player who plays an ordinary card of another suit has shown they are out of the suit led.
+  function noteVoid(X, p, card) {
+    var led = ledSuit(X.trick);
+    if (!led || card.k || card.s === led || !X.vd) return;
+    if (X.vd[p].indexOf(led) < 0) X.vd[p] += led;
+  }
+  // Hard counts cards. It knows which cards it hasn't seen (the other hands and the cards not dealt this round)
+  // and who has shown they are out of a suit. It deals the unseen cards out in ways that fit and plays the round
+  // through with everyone playing as Normal does: for a bid, with each bid around its own count; for a card, with
+  // each card it could play. It keeps what scores best for it, measured against what the others score.
+  var ALLW = makeDeck(), HARD_DEALS = 30, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
+  function unseen(p, X) {
+    var seen = {};
+    X.hands[p].forEach(function (c) { seen[c.id] = 1; });
+    (X.gone || []).forEach(function (id) { seen[id] = 1; });
+    X.trick.forEach(function (x) { seen[x.c.id] = 1; });
+    if (X.trumpCard) seen[X.trumpCard.id] = 1;
+    return ALLW.filter(function (c) { return !seen[c.id]; });
+  }
+  // one way the unseen cards could lie: shuffled, then handed round, never giving a suit to someone out of it
+  function dealOut(pool, need, vd) {
+    var left = need.slice(), n = need.length, hands = need.map(function () { return []; }), cards = Cards.shuffle(pool.slice()), i, q, tot = 0;
+    function can(c) { var l = []; for (var q = 0; q < n; q++) if (left[q] > 0 && (c.k || !vd[q] || vd[q].indexOf(c.s) < 0)) l.push(q); return l; }
+    need.forEach(function (x) { tot += x; });
+    cards.sort(function (a, b) { return can(a).length - can(b).length; });
+    var spare = cards.length - tot;
+    for (i = 0; i < cards.length; i++) {
+      var ok = can(cards[i]);
+      if (!ok.length || (spare > 0 && Math.random() < spare / (cards.length - i))) { if (spare > 0) { spare--; continue; } for (q = 0; q < n; q++) if (left[q] > 0) ok.push(q); if (!ok.length) continue; }
+      q = ok[Math.floor(Math.random() * ok.length)];
+      hands[q].push(cards[i]); left[q]--;
+    }
+    return hands;
+  }
+  // the rest of the round from Y (S is Y while it runs), seat p's first card given or chosen as Normal would;
+  // returns p's score for the round less the average of the others'
+  function runOut(Y, p, card) {
+    var n = Y.players.length, c = card || normalPlay(Y.turn), s;
+    for (;;) {
+      s = Y.turn;
+      Y.hands[s].splice(Y.hands[s].indexOf(c), 1); Y.trick.push({ p: s, c: c });
+      if (Y.trick.length === n) {
+        Y.taken[Y.trick[winnerIdx(Y.trick)].p]++; Y.turn = Y.trick[winnerIdx(Y.trick)].p; Y.trick = []; Y.trickNo++;
+        if (Y.trickNo === Y.round) break;
+      } else Y.turn = (s + 1) % n;
+      c = normalPlay(Y.turn);
+    }
+    var mine = score(Y.bids[p], Y.taken[p]), rest = 0;
+    for (s = 0; s < n; s++) if (s !== p) rest += score(Y.bids[s], Y.taken[s]);
+    return mine - rest / (n - 1);
+  }
+  function simOf(X, hands) {
+    return { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, taken: X.taken.slice(), bids: X.bids.slice(),
+      trump: X.trump, trumpCard: X.trumpCard, round: X.round, dealer: X.dealer, opts: X.opts, players: X.players.map(function () { return {}; }), level: 'normal' };
+  }
+  function hardPlay(p) {
+    var opts = legal(p); if (opts.length < 2) return opts[0];
+    var X = S, pool = unseen(p, X), need = X.hands.map(function (h, q) { return q === p ? 0 : h.length; }), tot = opts.map(function () { return 0; }), n, i, t0 = Date.now();
+    try {
+      for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
+        var hands = dealOut(pool, need, X.vd || []); hands[p] = X.hands[p];
+        for (i = 0; i < opts.length; i++) { var Y = simOf(X, hands); Y.turn = p; S = Y; tot[i] += runOut(Y, p, opts[i]); }
+      }
+    } finally { S = X; }
+    var best = 0; for (i = 1; i < opts.length; i++) if (tot[i] > tot[best] + 1e-9) best = i;
+    var usual = normalPlay(p), u = opts.indexOf(usual);   // (cards that come out the same: play as Normal would)
+    return u >= 0 && tot[u] >= tot[best] - 1e-9 ? usual : opts[best];
+  }
+  function hardBid(p, est) {
+    var X = S, k = X.hands[p].length, n = X.players.length, pool = unseen(p, X), need = X.hands.map(function (h, q) { return q === p ? 0 : h.length; });
+    var mid = Math.round(est), cands = [], tot = [], d, i, q, t0 = Date.now();
+    for (i = mid - 1; i <= mid + 1; i++) if (i >= 0 && i <= k && i !== forbiddenBid(p)) { cands.push(i); tot.push(0); }
+    if (cands.length < 2) return cands.length ? cands[0] : mid;
+    try {
+      for (d = 0; d < HARD_DEALS && (d < 8 || Date.now() - t0 < HARD_MS); d++) {
+        var hands = dealOut(pool, need, []); hands[p] = X.hands[p];
+        // (the seats still to bid will bid what their cards look worth)
+        var B = simOf(X, hands); S = B;
+        for (q = 0; q < n; q++) if (q !== p && B.bids[q] == null) B.bids[q] = normalBid(q);
+        for (i = 0; i < cands.length; i++) { var Y = simOf(B, hands); Y.bids[p] = cands[i]; Y.turn = (Y.dealer + 1) % n; S = Y; tot[i] += runOut(Y, p, null); }
+      }
+    } finally { S = X; }
+    var best = 0; for (i = 1; i < cands.length; i++) if (tot[i] > tot[best] + 1e-9) best = i;
+    return cands[best];
+  }
+  function normalPlay(p) {
     var opts = legal(p), need = S.bids[p] - S.taken[p], led = ledSuit(S.trick);
     function by(a, f) { return a.slice().sort(function (x, y) { return f(x) - f(y); }); }
     function st(c) { return strength(c, led || c.s); }
