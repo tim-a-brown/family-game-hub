@@ -261,6 +261,9 @@ Underlying principles for everything:
   text, and no face in the top left corner, where a small card's cost and Might sit. Briefs ask for the subject in
   the upper half, away from that corner. People in one picture share one scale (a king is not drawn as a giant among his
   subjects), and where nobody knows a face, age and build come from the record (Hammurabi old when he gave his laws).
+- **Nothing on Anoria's page uses the site's stock pop-up look.** The story of a link is `story()`'s own plate
+  (`.an-story`: the two cards joined by a gold thread, top of the screen upright, over the map sideways, never over
+  the hand or buttons), and `Kit.toast` is reskinned in ui.css. New messages follow suit.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.

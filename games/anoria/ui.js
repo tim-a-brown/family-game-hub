@@ -350,7 +350,7 @@
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
   }
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
-  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   function newGame(cfg) {
@@ -762,7 +762,18 @@
   const vfig = u => V.figs.filter(f => f.u === u)[0];
   const handRect = (o, h) => (o === ui.view && !ui.hideHand ? rc(dom.hand.querySelector('.hc[data-h="' + h + '"]')) : null) || rc(q('.an-strip.p' + o + ' .st-hand')) || rc(q('.an-strip.p' + o + ' .st-guide'));
   const told = {};
-  function story(key) { const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen || (G && G.demo)) return; told[key] = gen; Kit.toast(t, 4200); }
+  // The true story behind a Legacy line or a Thread, told once a game when it first forms: the two cards joined by a
+  // gold thread and the sentence, on a plate of the table's own (top of the screen upright, over the map sideways:
+  // never over the hand or the buttons). A tap puts it away.
+  function story(key) {
+    const t = TX.LINKS && TX.LINKS[key]; if (!t || told[key] === gen || (G && G.demo)) return; told[key] = gen;
+    const ab = key.split('>'), th = k => { const sp = el('span', { class: 'sy-th', style: { '--f': (FAC[info(k).f] || FAC.N).c } }); const im = artImg(k, true); if (im) sp.appendChild(im); return sp; };
+    document.querySelectorAll('.an-story').forEach(x => x.remove());
+    const n = el('div', { class: 'an-story', role: 'status' }, [el('div', { class: 'sy-pair', 'aria-hidden': 'true' }, [th(ab[0].replace(/^@/, '')), el('i'), th(ab[1])]), el('p', { text: t })]);
+    const away = () => { n.classList.remove('show'); setTimeout(() => n.remove(), 260); };
+    n.addEventListener('click', away); document.body.appendChild(n);
+    requestAnimationFrame(() => requestAnimationFrame(() => n.classList.add('show'))); setTimeout(away, 5200);
+  }
   function dropHand(o, h) { if (h != null && h >= 0) V.P[o].hand.splice(h, 1); }
 
   // The clash: the two lunge, both dice tumble, the totals land, the loser's card tears in half
