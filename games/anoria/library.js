@@ -90,7 +90,7 @@
   // a small picture of a spot: the card's art, a Place's art in a round frame, or the card back with its sash
   function thumb(id, cls) {
     const s = stateOf(id), p = el('span', { class: 'lb-th ' + s + (cls ? ' ' + cls : ''), style: { '--f': facOf(id).c } });
-    if (s === 'new') p.appendChild(el('i', { class: 'lb-rib' })); else { const im = U.artImg(keyOf(id), true); if (im) p.appendChild(im); }
+    if (s === 'new') p.appendChild(el('i', { class: 'lb-rib' })); else { const im = U.artImg(keyOf(id), true) || U.mono(keyOf(id)); if (im) p.appendChild(im); }
     return p;
   }
   // the card back for a card never seen: its faction's sash, and (in the binder) its era on a plate
@@ -195,7 +195,7 @@
         seal = el('span', { class: 'lb-seal guide', style: { '--p': p }, html: U.MARK.guide });
         label = x.need + ' wins'; say = 'A new Guide joins you at ' + x.need + ' wins. You have ' + x.have + '.';
       } else {
-        const n = x.id === 'daily' ? Coll.DAILY : Coll.FEAT;
+        const n = x.n || (x.id === 'daily' ? Coll.DAILY : Coll.FEAT);
         seal = el('span', { class: 'lb-seal pack', html: Kit.icon(x.done ? 'check' : 'cards') + '<b>' + n + '</b>' });
         label = x.done ? 'Won today' : EARN[x.id];
         say = (x.id === 'daily' ? (x.done ? 'Tomorrow\'s first win' : 'Your first win today') : x.when) + ' earns a pack of ' + n + '.';

@@ -40,7 +40,7 @@
   const byTime = (a, b) => (CARDS[a].y == null ? 1 : 0) - (CARDS[b].y == null ? 1 : 0) || (CARDS[a].y || 0) - (CARDS[b].y || 0) || CARDS[a].n.localeCompare(CARDS[b].n);
   const byName = (a, b) => CARDS[a].n.localeCompare(CARDS[b].n);
   const byFac = (a, b) => FACS.indexOf(CARDS[a].f) - FACS.indexOf(CARDS[b].f) || byCost(a, b);
-  const thumb = (key, cls) => { const s = el('span', { class: cls, style: { '--f': (FAC[(CARDS[key] || TX.GUIDES[key] || {}).f] || FAC.N).c } }); const im = U.artImg(key, true); if (im) s.appendChild(im); return s; };
+  const thumb = (key, cls) => { const s = el('span', { class: cls, style: { '--f': (FAC[(CARDS[key] || TX.GUIDES[key] || {}).f] || FAC.N).c } }); const im = U.artImg(key, true) || U.mono(key); if (im) s.appendChild(im); return s; };
   const coin = n => el('span', { class: 'adk-coin' }, [el('b', { text: String(n) })]);
   // a kit sheet in Anoria's own colours (navy and gilt in every app theme)
   const sheet = o => { const sh = Kit.sheet(o); sh.el.classList.add('adk-sheet'); return sh; };

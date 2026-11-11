@@ -37,7 +37,7 @@
     const a = node.animate(frames, o); if (!a.finished) a.finished = new Promise(r => { a.onfinish = r; }); return a;
   }
   // a small round picture of a card (the Thread it sits on, a gift)
-  function thumb(k, cls) { const t = el('span', { class: 'pk-th ' + (cls || ''), style: { '--f': col(k) } }); const im = U().artImg(k, true); if (im) t.appendChild(im); return t; }
+  function thumb(k, cls) { const t = el('span', { class: 'pk-th ' + (cls || ''), style: { '--f': col(k) } }); const im = U().artImg(k, true) || U().mono(k); if (im) t.appendChild(im); return t; }
 
   // ═══ The sealed pack ═════════════════════════════════════════════════════════════════════════════════════
   // what's printed on it: the crimped gilt ends, the logo, where it came from on a paper band, how many cards
@@ -256,7 +256,7 @@
         const t = L.t, row = el('div', { class: 'pk-ln-row', style: { '--n': t.cards.length } }); let prev = false;
         t.cards.forEach((c, i) => { const kn = c === k || known(c);
           if (i) row.appendChild(el('i', { class: 'pk-ln-j' + (kn && prev ? ' on' : '') }));
-          if (kn) { const m = el('span', { class: 'pk-ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) }, role: 'img', 'aria-label': CARDS[c].n }); const im = A.artImg(c, true); if (im) m.appendChild(im); row.appendChild(m); }
+          if (kn) { const m = el('span', { class: 'pk-ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) }, role: 'img', 'aria-label': CARDS[c].n }); const im = A.artImg(c, true) || A.mono(c); if (im) m.appendChild(im); row.appendChild(m); }
           else row.appendChild(el('span', { class: 'pk-ln-m hid', role: 'img', 'aria-label': 'A card you have not found yet' }));
           prev = kn; });
         return el('div', { class: 'pk-p-line' + (L.n === t.cards.length ? ' full' : ''), 'data-line': t.id }, [el('div', { class: 'pk-ln-h' }, [el('b', { text: t.n }), el('span', { text: L.n + ' of ' + t.cards.length })]), row]);
@@ -362,7 +362,7 @@
       // ui.js): under the words Legacy Line, the card it runs from and the card it runs to as named medallions joined
       // by the gold line, what the line is worth on it as the game's own marks, and the true sentence about the two.
       function linkEl(link, k) {
-        const med = c => { const m = el('span', { class: 'ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) } }); const im = A.artImg(c, true); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: CARDS[c].n })]); };
+        const med = c => { const m = el('span', { class: 'ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) } }); const im = A.artImg(c, true) || A.mono(c); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: CARDS[c].n })]); };
         const legacy = (CARDS[link.to].insp || []).indexOf(link.from) >= 0, w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
         return el('div', { class: 'pk-p-th pk-ll', 'data-to': link.to }, [
           el('div', { class: 'ln-k', text: 'Legacy Line' }),
@@ -391,7 +391,7 @@
         if (ed) c.el.appendChild(el('span', { class: 'pk-ed e' + ed }, [Ed().gem(ed), EDS[ed].n]));
         c.th.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.th.classList.add('e' + ed); c.th.style.setProperty('--f', col(k));
         c.th.setAttribute('aria-label', CARDS[k].n + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
-        const im = A.artImg(k, true); if (im) c.th.appendChild(im);
+        const im = A.artImg(k, true) || A.mono(k); if (im) c.th.appendChild(im);
         if (link) { knot(c); if (link.cell) knot(link.cell); }
         // (the sound and the tap in the hand are the card landing)
         if (ed) foilMoment(c, ed, o.pass, last);
