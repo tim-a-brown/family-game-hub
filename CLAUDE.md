@@ -69,6 +69,18 @@ Underlying principles for everything:
   again"; "It arrives at your Gate" is "Hatshepsut arrives at your Gate"). Inside one sentence, "it" for a thing
   that sentence has just named is ordinary English ("Tap a Place to read it"). Never trade a natural sentence for a
   clumsier one to avoid a word. The same goes for what Claude writes to Tim in chat.
+- **Say who does what, from where the reader stands** (Tim, 2026-11-11, a second sentence shape to keep out of
+  everything Claude writes for him, on screen and in chat). Not an article, a noun, a vague verb and a pronoun ("A gold
+  line joins them"): the pronoun doesn't say who, and the verb doesn't say what happens. Name the cards and say the
+  effect, with what the player will see attached to it: "Virgil costs 1 less, and he has +1 Might for as long as Homer
+  is in play, connected by a gold Legacy Line on the board." Put the condition first, the way the player meets it:
+  "With Archimedes in play on your side, Eureka! scores 1 Renown" (not "Archimedes stands on your side, so playing
+  Eureka! scores…"). State a rule as its limit, not as a consequence to work out: "A deck is 40 cards and can hold no
+  more than two of a card"; what a player can do at a given moment is said at that moment, exactly: "You can add one
+  more of this card to your deck." Plain subject, verb, object with real names is fine ("Tim plays cards", "Cam
+  eliminates Tim"). In chat, describe things as Tim sees or does them, not as Claude observes them: "You can see it in
+  your screenshot" (not "Your screenshot shows it"); "The instructions explain that players you seat in game setup
+  don't carry into the online table, where others will join from their own devices."
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
