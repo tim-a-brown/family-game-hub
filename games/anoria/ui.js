@@ -249,7 +249,7 @@
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
       if (o.p != null && S) {
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
-        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds it when a round ends, a Seal breaks.' }));
+        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
         notes.appendChild(el('p', { html: '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' }));
@@ -427,7 +427,7 @@
           d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])
       ]));
-    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'The game picks one of the five decks when it starts.' })]));
+    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'The game picks one of the five decks at the start.' })]));
     return box;
   }
   // a ready deck you don't own all of yet: what's missing, and where to go for it
@@ -461,7 +461,7 @@
       options: [
         { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
         { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
-        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'It stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', 'It plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'It plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', 'The computer plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
       ],
       players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
       start: 'Deal the cards',
@@ -572,7 +572,7 @@
       if (r) { const b = el('button', { type: 'button', class: 'relic' + (r === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => openView(r) }); const im = artImg(r, true); if (im) b.appendChild(im); relics.appendChild(b); }
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
-        relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play it here' : null, onclick: tg ? () => finishPick(T.done) : null }));
+        relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
       }
     }
     const spark = on ? p.spark : p.reserve;
@@ -811,7 +811,7 @@
     if (T.done.length && !Object.keys(T.places).length && !Object.keys(T.figs).length && !Object.keys(T.hand).length) finishPick(T.done); else render();
   }
   function actLabel(a) {
-    if (a.t === 'walk') return { label: 'Walk', sub: 'Its move for this turn' };
+    if (a.t === 'walk') return { label: 'Walk', sub: 'This Figure’s move for this turn' };
     if (a.t === 'tub') return { label: 'Free step', sub: TX.GUIDES[S.P[S.turn].guide].n + ', once a turn' };
     if (a.t === 'antik') return { label: 'Jump', sub: 'Antikythera Mechanism. Done for the turn' };
     if (a.t === 'clash') return a.ph ? { label: 'Clash with Phalanx', sub: '+2 Might for ' + E.costOf(S, S.turn, 'phalanx') + ' Spark' } : { label: 'Clash' };

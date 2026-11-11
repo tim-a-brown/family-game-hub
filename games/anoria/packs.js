@@ -498,7 +498,7 @@
       info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: 'The deck' }), el('b', { text: name })]), facs]));
       info.appendChild(el('p', { class: 'pk-ch-plan', text: A.PLAN[name] }));
       info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: G.tx })]));
-      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See its 30 cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(A.readyDeck(name)); } }));
+      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the deck’s 30 cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(A.readyDeck(name)); } }));
       info.classList.remove('in'); void info.offsetWidth; info.classList.add('in');
       go.textContent = 'Begin with ' + G.n;
       if (user) { Kit.sfx('flip'); Kit.haptic('light'); }

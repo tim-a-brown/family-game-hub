@@ -162,7 +162,7 @@
     const bars = COSTS.map(c => { const fill = el('i'), num = el('b'); curveEl.appendChild(el('span', { class: 'adk-cv' }, [el('span', { class: 'adk-cvb' }, [num, fill]), el('small', { text: String(c) })])); return { fill: fill, num: num }; });
     const factsBtn = el('button', { type: 'button', class: 'adk-facts', 'aria-label': 'The deck as it stands', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); details(); } }, [countEl, curveEl, whenEl, thrEl, el('i', { class: 'adk-up', html: Kit.icon('down') })]);
     const moreEl = el('div', { class: 'adk-more' });
-    const finBtn = btn('btn-soft btn-sm adk-fin', 'Finish it for me', WAND, finish);
+    const finBtn = btn('btn-soft btn-sm adk-fin', 'Finish the deck for me', WAND, finish);
     const deckEl = el('div', { class: 'adk-deckside' }, [el('div', { class: 'adk-stats' }, [guideBtn, factsBtn, el('span', { class: 'adk-barrow' }, [barEl, facEl])]), moreEl, el('div', { class: 'adk-acts' }, [finBtn, saveDock])]);
 
     // ── the cards you own ──
@@ -445,7 +445,7 @@
       }
       if (tot === DECK) {
         setTimeout(() => { Kit.sfx('good'); Kit.haptic('success'); }, 260);
-        if (!(now.length > before)) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(DECK + ' of ' + DECK, st.guide ? 'This deck is ready to play. Save it to keep it.' : 'Now choose a Guide.')], { cls: 'ok', ms: 3600 });
+        if (!(now.length > before)) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(DECK + ' of ' + DECK, st.guide ? 'This deck is ready to play. Tap Save to keep the deck.' : 'Now choose a Guide.')], { cls: 'ok', ms: 3600 });
       }
     }
     function take(k) {
@@ -462,7 +462,7 @@
       Kit.sfx('whoosh'); Kit.haptic('medium'); setTimeout(() => Kit.sfx('deal'), 140); setTimeout(() => Kit.sfx('deal'), 260);
       after();
       const added = cards.length - was;
-      say([el('span', { class: 'adk-seal', html: WAND }), line(added + (added === 1 ? ' card' : ' cards') + ' added', cards.length === DECK ? 'It\'s a full deck. Change anything you like.' : 'That\'s every card you own.')],
+      say([el('span', { class: 'adk-seal', html: WAND }), line(added + (added === 1 ? ' card' : ' cards') + ' added', cards.length === DECK ? 'The deck is full. Change anything you like.' : 'That\'s every card you own.')],
         { cls: 'ok', ms: 6000, act: ['Undo', () => { st.cnt = JSON.parse(before); Kit.sfx('slide'); after(); }] });
     }
 
@@ -472,7 +472,7 @@
       guides().forEach(g => {
         const x = TX.GUIDES[g], on = st.guide === g;
         box.appendChild(el('div', { class: 'adk-gr' + (on ? ' on' : '') }, [
-          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(x.n + ' is now the Guide', 'This deck is ready to play. Save it to keep it.')], { cls: 'ok' }); } },
+          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(x.n + ' is now the Guide', 'This deck is ready to play. Tap Save to keep the deck.')], { cls: 'ok' }); } },
             [thumb(g, 'adk-gp'), el('span', { class: 'adk-gw' }, [el('b', { text: x.n }), el('span', { text: x.tx })]), on ? el('i', { class: 'adk-seal', html: Kit.icon('check') }) : null]),
           el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + x.n, html: Kit.icon('eye'), onclick: () => U.openView(g) })]));
       });
@@ -513,7 +513,7 @@
     // a recipe you don't own all of: offer to fill the gaps from your own cards
     if (o.copy && o.short > 0) setTimeout(() => { if (!sc.el.isConnected) return; sheet({ title: (DECK - o.short) + ' of ' + o.copy + '\'s ' + DECK + ' cards are yours',
       html: '<p class="muted">They\'re in your new deck. The other ' + o.short + ' can come from the rest of your cards.</p>',
-      actions: [{ label: 'Finish it for me', primary: true, onClick: finish }, { label: 'I\'ll choose them', cls: 'btn-soft' }] }); }, 420);
+      actions: [{ label: 'Finish the deck for me', primary: true, onClick: finish }, { label: 'I\'ll choose them', cls: 'btn-soft' }] }); }, 420);
     else if (!st.guide && guides().length > 1 && !deck.id) setTimeout(() => { if (sc.el.isConnected && !document.querySelector('.k-scrim.show')) pickGuide(); }, 420);
   }
 

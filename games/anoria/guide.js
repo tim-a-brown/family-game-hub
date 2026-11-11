@@ -337,7 +337,7 @@
       await L.turn(0);
       await L.say('Each turn you draw 2 cards and gain <b>Spark</b> to spend.', { at: '.an-strip.me .st-spark', keep: '.an-hand' });
       await L.play('hatshepsut', MY_GATE, { lit: 'When you tap a Figure, the Places it can reach light up.' });
-      await L.say('It arrives at your Gate. The number on its shield is its <b>Might</b>.', { at: L.piece('hatshepsut') });
+      await L.say('Hatshepsut arrives at your Gate. The number on her shield is her <b>Might</b>.', { at: L.piece('hatshepsut') });
       await L.tell('Then the other player takes a turn.');
       await L.endTurn(); await L.them.turn(); await L.them.play('spartacus', TH_GATE); await L.pause(900); await L.them.endTurn();
       await L.tell('When both have played, the round is counted.');
@@ -361,7 +361,7 @@
       const first = !UI().Coll.load().starter;
       return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Threads. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
         actions: [{ label: o.from === 'contents' ? 'Back to the guide' : first ? 'Choose your Guide' : 'Done', fn: () => leave(r) },
-          { label: 'Watch it again', fn: () => play(QUICK, o) },
+          { label: 'Watch the quick start again', fn: () => play(QUICK, o) },
           o.from === 'contents' ? null : { label: 'See the full guide', fn: () => { halt(); open(); } }] };
     }
   };
@@ -395,7 +395,7 @@
         await L.play('copernicus', MY_GATE);
         await L.say('Copernicus cost 3, so you have 2 left.', { at: '.an-strip.me .st-spark' });
         await L.endTurn();
-        await L.say('Up to 2 Spark you don’t spend is kept for the other player’s turn. It is there to pay for Phalanx, a card that plays itself to save one of your Figures.', { at: '.an-strip.me .st-spark' });
+        await L.say('Up to 2 Spark you don’t spend is kept for the other player’s turn. That Spark is there to pay for Phalanx, a card that plays itself to save one of your Figures.', { at: '.an-strip.me .st-spark' });
         await L.say('You can hold 8 cards when your turn ends. If you have more, you choose which ones to discard.', { at: '.an-hand' });
       } },
     { id: 'figures', n: 'Figures', sub: 'Arriving, walking, one thing a turn', art: 'hatshepsut',
@@ -404,7 +404,7 @@
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_OUT, { lit: 'A Figure arrives at your Gate, or at any Place where you already have a Figure.', at: [L.row(MY_GATE), L.row(MY_OUT)] });
-        await L.say('A Figure that has just arrived can’t walk this turn. It can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
+        await L.say('A Figure that has just arrived can’t walk this turn, but can still clash with an enemy at the same Place.', { at: L.piece('copernicus') });
         await L.walk('hatshepsut', CROSS, { lit: 'Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b>.', at: L.piece('hatshepsut') });
         await L.say('A Figure that has acted goes dim until your next turn.', { at: L.piece('hatshepsut') });
         await L.say('Up to 3 of your Figures can stand at one Place.', { at: L.row(MY_OUT) + ' .pl-side.R' });
@@ -449,7 +449,7 @@
         await L.endTurn();
         await L.say('You ended your turn with 2 Spark unspent and Phalanx in your hand. Now the other player attacks Copernicus.', { at: ['.an-strip.me .st-spark', L.card('phalanx')] });
         await L.them.turn();
-        await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['Tomoe Gozen’s roll would knock Copernicus out, so <b>Phalanx</b> plays itself and gives him +2 Might. It is paid for with the Spark you kept.'] });
+        await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['Tomoe Gozen’s roll would knock Copernicus out, so <b>Phalanx</b> plays itself and gives him +2 Might. Phalanx is paid for with the Spark you kept.'] });
         await L.say('You can read a Relic or a Deed the same way as any card, by tapping it.', { at: '.an-strip.me .st-relics' });
       } },
     { id: 'guide', n: 'Your Guide', sub: 'One power per deck, and how more Guides join you', art: 'leonardo',
@@ -517,7 +517,7 @@
         them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.say('A deck is 30 cards. It can hold one copy of a card or two, so a single card from a pack can go straight in.', { at: '.an-hand' });
+        await L.say('A deck is 30 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
         await L.lift({ kind: 'hand', h: 0 }, { lit: 'Only <b>one of each person</b> can stand on your side at a time, so the second has to wait.', at: [L.card('copernicus'), L.piece('copernicus')], keep: '.an-cap' });
         UI().demo.drop();
@@ -541,7 +541,7 @@
         await L.say('The number on the shield is her <b>Might</b>.', { at: V + '.ac-st' });
         await L.say('Under her name are where and when she lived. The dot on the little map marks the place.', { at: V + '.ac-when' });
         await L.say('This is what the card does. A skill word is in bold, and the words after it say what the skill means.', { at: V + '.ac-txt' });
-        await L.say('The line in italics is a true fact about her. It plays no part in the game.', { at: V + '.ac-fact' });
+        await L.say('The line in italics is a true fact about her. The fact plays no part in the game.', { at: V + '.ac-fact' });
         await L.say('This is her <b>home region</b>. A Figure has +1 Might at any Place in its home region.', { at: V + '.ac-home' });
         await L.say('The fine print says how to pronounce the name, and gives the card’s <b>Thread</b>: what it grew from.', { at: V + '.ac-mid' });
         await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
@@ -553,7 +553,7 @@
   CHAPTERS.forEach((c, i) => {
     c.end = (r, o) => { const nx = CHAPTERS[i + 1];
       return { k: 'Chapter ' + (i + 1) + ' of ' + CHAPTERS.length, title: c.n, text: nx ? null : 'You have now seen every rule of the game. Each card says what it does, so tap any card when you want to read it.',
-        actions: [nx ? { label: 'Next: ' + nx.n, fn: () => play(nx, o) } : { label: 'Done', fn: () => leave(r) }, { label: 'Watch it again', fn: () => play(c, o) }, nx ? { label: 'All chapters', fn: () => { halt(); open(); } } : null] }; };
+        actions: [nx ? { label: 'Next: ' + nx.n, fn: () => play(nx, o) } : { label: 'Done', fn: () => leave(r) }, { label: 'Watch this lesson again', fn: () => play(c, o) }, nx ? { label: 'All chapters', fn: () => { halt(); open(); } } : null] }; };
   });
 
   // ═══ The contents ════════════════════════════════════════════════════════════════════════════════════════

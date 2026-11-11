@@ -64,8 +64,11 @@ Underlying principles for everything:
   Guide"), not rule-book shorthand ("A tie: nobody", "Level: you take turns going first": say "If the Might is tied,
   nobody holds the Place"), and not a sentence with its subject or verb left out ("Your Figures ready", "This is round
   3, so 4"). A rule is not given as a command joined to its result ("Win the roll by 3 or more and it adds 2": say
-  "A roll that wins by 3 or more adds 2 Might instead of 1", or "If you hold their Gate, one of their Seals breaks"). No single word is the problem ("it" is fine): the test is whether it sounds like a human. Never trade a
-  natural sentence for a clumsier one to avoid a word. The same goes for what Claude writes to Tim in chat.
+  "A roll that wins by 3 or more adds 2 Might instead of 1", or "If you hold their Gate, one of their Seals breaks"). A button, label or caption **names the thing** instead of leaning on "it" or "its" for something
+  the words don't say (Tim: "See its 30 cards" is "See the deck's 30 cards"; "Watch it again" is "Watch this lesson
+  again"; "It arrives at your Gate" is "Hatshepsut arrives at your Gate"). Inside one sentence, "it" for a thing
+  that sentence has just named is ordinary English ("Tap a Place to read it"). Never trade a natural sentence for a
+  clumsier one to avoid a word. The same goes for what Claude writes to Tim in chat.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,

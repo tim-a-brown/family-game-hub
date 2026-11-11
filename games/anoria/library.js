@@ -562,7 +562,7 @@
               el('button', { type: 'button', class: 'th-pic', 'aria-label': s === 'new' ? 'Not found yet' : nameOf(id), onclick: e => { if (s === 'new') mystery(e.currentTarget, id); else U.openView(keyOf(id)); } }, [thumb(id)]),
               el('div', { class: 'th-w' }, [el('b', { text: s === 'new' ? 'Not found' : nameOf(id) }), s !== 'new' && whenOf(id) != null ? el('i', { text: yearText(whenOf(id)) }) : null, tx])]));
           });
-          chain.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Show it on the timeline', onclick: () => { Kit.sfx('whoosh'); Kit.haptic('medium'); st.thread = t.id; sh.close(); if (L) setView('timeline', true); } }));
+          chain.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Show this Thread on the timeline', onclick: () => { Kit.sfx('whoosh'); Kit.haptic('medium'); st.thread = t.id; sh.close(); if (L) setView('timeline', true); } }));
           row.appendChild(chain);
         }
         box.appendChild(row);
