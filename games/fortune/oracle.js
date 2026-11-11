@@ -1171,7 +1171,7 @@ export default {
     'slows down and clicks to a stop. The fortune under the black pointer is yours. The answer window lights up ' +
     'and a printed ticket slides out of the machine.</p>' +
     '<p><b>Drop a coin:</b> tap the brass coin slot on the right of the machine, or drag the coin into it.</p>' +
-    '<p><b>Spin it by hand:</b> grab the dial and flick it. A good hard flick tells a fortune too. A gentle push just turns it.</p>' +
+    '<p><b>Spin it by hand:</b> grab the dial and flick it. A good hard flick tells a fortune too. A gentle push just turns the dial.</p>' +
     '<p><b>The ticket:</b> tap it to put it away. Tap the answer window to see it again.</p>' +
     '<p><b>New dial:</b> each dial holds 30 readings from a book of 300. Coins pick readings you have not had yet. ' +
     'When you have had all 30, the next coin loads a fresh dial. Tap New dial to change it any time.</p>',

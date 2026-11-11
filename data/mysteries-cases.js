@@ -326,7 +326,7 @@
       ]
     },
     hints: [
-      { text: 'Wet paint rubs off on whatever touches it. Look for paint, not just for green things.' },
+      { text: 'Wet paint rubs off on anything it touches. Look for paint, not just for green things.' },
       { text: 'The smudge is at elbow height. Check everyone’s arms and hands.', at: { p: 'fence.smudge', pad: 6 } }
     ],
     solution: {
@@ -935,7 +935,7 @@
       ],
       solution: {
         steps: [
-          { text: 'The mirror is on the north wall. Only the south chair faces it, with its back to the room.', marks: [{ id: 'mirrorwall' }, { id: 'chairS' }] },
+          { text: 'The mirror is on the north wall. Only the south chair faces the mirror, with its back to the room.', marks: [{ id: 'mirrorwall' }, { id: 'chairS' }] },
           { text: 'On the south chair lies a single brown glove.', marks: [{ p: 'chairS.glove', pad: 2 }] },
           { text: 'Mr. Oak wears one brown glove. His other hand is bare.', marks: [{ p: 'oak.handL', pad: 3 }, { p: 'oak.handR', pad: 3 }] }
         ],

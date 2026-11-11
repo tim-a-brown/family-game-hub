@@ -1318,7 +1318,7 @@ function makeExplain() {
     spinner: { name: "Ship's Wheel Spinner", text: '120 points every half turn, 320 in the Storm and Davy Jones. Each spin also counts a doubloon for the end-of-ball bonus.' },
     map: { name: 'M-A-P Targets', text: '750 points each. Knock all three down to light Plunder at the harbour scoop; while Plunder is already lit they pay 40,000.' },
     harbour: { name: 'The Harbour', text: '7,500 points, then it starts what is lit: Davy Jones, extra ball, or Plunder (three lit shots in 35 seconds: 40,000 each, 150,000 to plunder the port). Nothing lit? A random award.' },
-    lifeboat: { name: 'Lifeboat', text: 'The right outlane kickback: while lit, a draining ball is fired back into play. Spelling A-R-R for the second time lights it, and the harbour can too.' },
+    lifeboat: { name: 'Lifeboat', text: 'The right outlane kickback: while lit, a draining ball is fired back into play. Spelling A-R-R for the second time lights the kickback, and the harbour can too.' },
     plank: { name: 'The Plank', text: "20,000 points, and the ball rolls aboard the galleon to load the ship's cannon. A Kraken jackpot in multiball." },
     cannon: { kind: 'Cannon', name: "Ship's Cannon", text: 'Loaded by the Plank. Hold a flipper button to swing the gun, let go (or press FIRE) to shoot. A direct hit on the fort is 40,000, and a 75,000 cannon jackpot during Broadside.' },
     fort: { ids: [], at: [[158, 912, 44]], kind: 'Toy', name: 'The Fort', text: 'Three hits (3,000 each) lower the drawbridge and raise the palisade; a cannon hit counts double. Three cannon hits during Broadside take the fort: 300,000 and extra ball lit.' },

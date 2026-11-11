@@ -246,7 +246,7 @@
       await L.endTurn(); L.speed(2); await L.them.turn(); await L.them.play('spartacus', TH_GATE); await L.them.endTurn(); L.speed(1);
       L.note('When both have played, the round is counted.');
       await d_count(L);
-      await L.say('Whoever has more Might at a Place holds it, and scores 1 <b>Renown</b>.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
+      await L.say('Whoever has more Might at a Place holds that Place, and scores 1 <b>Renown</b>.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
       L.note('Round 2. Each round brings one more Spark.'); L.speed(3);
       await L.them.turn(); await L.them.walk('spartacus', TH_OUT); await L.them.endTurn();
       L.speed(1); await L.turn(0);
@@ -321,7 +321,7 @@
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_GATE, { lit: 'The number on a card’s shield is its <b>Might</b>. Copernicus has 4.', at: L.card('copernicus') });
-        await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house marks it.', { at: L.piece('copernicus') });
+        await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1, shown by the small house.', { at: L.piece('copernicus') });
         await L.play('daedalus', MY_GATE);
         await L.say('Daedalus is a <b>Voyager</b>: at home at every Place.', { at: L.piece('daedalus') });
         await L.say('The two numbers on a Place are each side’s total Might there.', { at: L.row(MY_GATE) + ' .pl-tots' });
@@ -390,7 +390,7 @@
         await L.say('When both players have had a turn, the round is counted, Place by Place.', { at: '.an-map' });
         await L.count();
         await L.say('More Might holds a Place. It scores 1 Renown in rounds 1 to 3.', { at: L.row(MY_GATE) });
-        await L.say('A tie: nobody holds it.', { at: L.row(MY_OUT) });
+        await L.say('A tied Place goes to nobody.', { at: L.row(MY_OUT) });
         await L.say('An empty or tied Gate stays with its owner.', { at: L.row(TH_GATE) });
         await L.round();
         await L.say('From round 4 every Place scores 2. The banner on a Place shows what it is worth, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });

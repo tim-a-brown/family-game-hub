@@ -507,7 +507,7 @@
   {
     id: 'stlouis', name: 'St. Louis', country: 'Missouri', year: null,
     lat: 38.63, lon: -90.20,
-    blurb: "St. Louis sits on the Mississippi River just below where the Missouri River joins it. Its Gateway Arch honors the pioneers who headed west from here.",
+    blurb: "St. Louis sits on the Mississippi River just below the mouth of the Missouri River. Its Gateway Arch honors the pioneers who headed west from here.",
     treasure: ["the keystone of the Gateway Arch", "the first ice cream cone from the 1904 World's Fair"],
     scene: { k: 'gatewayarch', sky: 'day', land: 'city', trees: 'leafy', c: '#c8ccd2' },
     clues: [

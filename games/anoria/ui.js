@@ -278,7 +278,7 @@
       const g = TX.GUIDES[d.guide];
       box.appendChild(el('div', { class: 'dk-info' }, [
         el('div', { class: 'plan', text: d.ready ? PLAN[d.n] : 'A deck you built' }),
-        el('div', { class: 'gd', html: '<b>' + esc(g.n) + '</b> guides it. ' + esc(g.tx) }),
+        el('div', { class: 'gd', html: 'Guided by <b>' + esc(g.n) + '</b>. ' + esc(g.tx) }),
         el('span', { class: 'dk-btns' }, [
           d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])

@@ -1987,7 +1987,7 @@
       '<p>On a phone or iPad the controller is drawn round the picture (turn sideways and it sits either side). Slide a finger from one button to the next, or touch between two face buttons to press both. A thumb on the D-pad keeps steering while it’s down, even if it drifts off the pad.</p>' +
       '<p>The <b>Menu</b> button on the controller opens this menu; <b>»</b> runs the game at triple speed until you tap it again.</p>' +
       ctlTable() +
-      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> remaps it; each controller keeps its own layout for each console.</p>' +
+      '<p><b>A real controller</b> (Bluetooth or USB) works too: connect it and press a button. The drawn one steps aside and the game fills the screen. <b>Home</b>, or <b>Select and Start</b> together, opens this menu. <b>Controller buttons</b> changes what each button does; each controller keeps its own layout for each console.</p>' +
       '<p><b>Two players:</b> connect a second controller and press a button on it; it becomes player 2. <b>Controller buttons</b> shows who’s who and can swap them.</p>' +
       '<p><b>Online:</b> each of you plays with your own device’s controls (drawn, keyboard or a real controller) as your own player; the host is player 1.' + (TAPS[SYS_ID] ? ' Up to four can play ' + SYS.name + ' games made for four (' + (SYS_ID === 'snes' ? 'Super Multitap games like Super Bomberman 2 and NBA Jam' : 'Team Player games') + ').' : '') + '</p>' });
   }
@@ -2030,7 +2030,7 @@
       '<li>Each game gets its own tile in Consoles on the home screen, which starts it straight away. <b>Home tiles</b> on the shelf (or <b>Edit</b> on the home screen) chooses which games have one.</li>' +
       '<li><b>Download all</b> on the shelf puts every game there on this device, so they play offline. <b>Offline</b> in the home menu does every console at once.</li>' +
       '<li>Tap a cartridge to play it. Press and hold one to rename it, hide its tile, or take it off the shelf.</li></ul>' +
-      '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard, or a real Bluetooth or USB controller (<b>Controller buttons</b> in the menu remaps it):</li></ul>' + ctlTable() + '<ul>' +
+      '<h3>Playing</h3><ul><li>Use the controller drawn on the screen, a keyboard, or a real Bluetooth or USB controller (<b>Controller buttons</b> in the menu changes what each button does):</li></ul>' + ctlTable() + '<ul>' +
       '<li>Games that save on their own (battery saves) keep them on this device.</li>' +
       '<li>Leaving a game (<b>All games</b> or <b>Change cartridge</b>) asks whether to save your place. Save it and the game waits in <b>Keep playing</b> on the home screen; next time it offers <b>Resume game</b>, straight back to that moment, or <b>New game</b>. Don’t save and it starts from the title screen next time.</li>' +
       '<li><b>Save state</b> and <b>Load state</b> in the menu keep and return to an exact moment, three slots per game.</li>' +
@@ -2052,7 +2052,7 @@
       // (a game left part-way under an older version had its score kept to file later: thrown away now)
       hiPending(); if (c) play(c); else drawShelf();
       if (/[?&]online=1/.test(location.search)) goOnline();   // from home's "open tables", or a joiner's fresh page
-    }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing blocks it).' })); });
+    }).catch(function (e) { console.warn(e); view.innerHTML = ''; view.appendChild(el('p', { class: 'empty-note', text: 'This browser can’t keep game files (private browsing won’t allow that).' })); });
   }
   // signed in: wait for the account's settings (the library key) before listing
   if (window.FGHSync && FGHSync.isPin && FGHSync.isPin() && FGHSync.onReady) { var go = false; FGHSync.onReady(function () { if (!go) { go = true; start(); } }); setTimeout(function () { if (!go) { go = true; start(); } }, 4000); }

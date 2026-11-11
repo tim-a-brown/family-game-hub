@@ -932,7 +932,7 @@ Game Shows|Come on down!|exciting loud fun
 Soap Operas|Evil twins and amnesia.|fake silly love
 Saturday Morning Cartoons|Cereal and animated chaos.|fun cozy classic
 Theme Songs|Stuck in your head all day.|music popular annoying
-Catchphrases|Say it again, everyone loves it.|funny popular
+Catchphrases|Say it again. Everyone will join in.|funny popular
 Elvis Impersonators|Thank you, thank you very much.|funny music fake
 Rock Stars|Leather pants and loud guitars.|loud cool famous music
 Pop Divas|High notes and higher demands.|famous music rich

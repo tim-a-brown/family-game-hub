@@ -88,7 +88,7 @@
       return el('div', { class: 'adk-rec' + (all ? ' all' : '') }, [
         thumb(d.guide, 'adk-dg' + (hasG ? '' : ' away')),
         el('span', { class: 'adk-dn', text: d.n }), el('span', { class: 'adk-rp', text: U.PLAN[d.n] || '' }),
-        el('span', { class: 'adk-dw' }, [hasG ? null : el('i', { html: Kit.icon('lock') }), el('span', { text: hasG ? g.n + ' guides it' : g.n + ' hasn\'t joined you yet' })]),
+        el('span', { class: 'adk-dw' }, [hasG ? null : el('i', { html: Kit.icon('lock') }), el('span', { text: hasG ? 'Guided by ' + g.n : g.n + ' hasn\'t joined you yet' })]),
         slots(own),
         el('span', { class: 'adk-ra' }, [
           el('span', { class: 'adk-rn' }, [el('b', { text: String(d.own) }), el('small', { text: 'of ' + DECK + ' are yours' })]),
@@ -470,7 +470,7 @@
       guides().forEach(g => {
         const x = TX.GUIDES[g], on = st.guide === g;
         box.appendChild(el('div', { class: 'adk-gr' + (on ? ' on' : '') }, [
-          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(x.n + ' guides it', 'This deck can be played. Save it.')], { cls: 'ok' }); } },
+          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line('Guided by ' + x.n, 'This deck can be played. Save it.')], { cls: 'ok' }); } },
             [thumb(g, 'adk-gp'), el('span', { class: 'adk-gw' }, [el('b', { text: x.n }), el('span', { text: x.tx })]), on ? el('i', { class: 'adk-seal', html: Kit.icon('check') }) : null]),
           el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + x.n, html: Kit.icon('eye'), onclick: () => U.openView(g) })]));
       });
