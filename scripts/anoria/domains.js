@@ -1,6 +1,7 @@
 // Test games for Domains on the game's own engine (games/anoria/engine.js). The prototype's tables are in
 // scripts/anoria/places/results.txt; these are the same questions asked of the real rules, and domains.txt has the answers.
 //   node scripts/anoria/domains.js <experiment> [games per pairing] ['<json of rule switches>'] [first seed]
+//   decks    the ready decks with their ready stacks on four sets of 1,000 games (SWAP=a:b tries a change to the stacks)
 //   base     the old fixed map beside Domains: length, how games end, the first turn, first dibs, the five ready decks
 //   rules    every rule at a Gate, an Outpost and the Crossroads, every kind, every home and every Domain: how often
 //            the player who laid it wins (stacks dealt from all 75 and laid with no choice, so nothing is chosen for)
@@ -103,7 +104,9 @@ EX.base = async () => {
   for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 22) + game(r) + '\n' + pad('', 22) + 'decks ' + d.s + '  spread ' + f1(d.spread) + (r.label[0] === 'D' ? '  first dibs wins ' + pc(r.dibsW, r.g - r.draws) + '%  the player whose Domain is the Crossroads at the end wins ' + pc(r.hubW, r.g - r.draws) + '%' : '')); }
 };
 EX.decks = async () => {   // (the ready decks with their ready stacks on several sets of games: the fourth pass on the stacks)
-  const seeds = [7000, 91000, 173000, 255000].slice(0, +process.env.SETS || 4), rs = await runAll(seeds.map(s => J('set ' + s, {}, {}, s)));
+  // SWAP=benin:lanse,venice:orleans tries the ready stacks with those Domains changed between the stacks they are in, without touching cards.js
+  let SK = null; if (process.env.SWAP) { SK = {}; for (const k in STACKS) SK[k] = STACKS[k].slice(); for (const pr of process.env.SWAP.split(',')) { const [x, y] = pr.split(':'); for (const k in SK) SK[k] = SK[k].map(id => (id === x ? y : id === y ? x : id)); } }
+  const seeds = [7000, 91000, 173000, 255000].slice(0, +process.env.SETS || 4), rs = await runAll(seeds.map(s => J('set ' + s, {}, SK ? { stacks: SK } : {}, s)));
   const tot = {}; for (const r of rs) { const d = decksOf(r); console.log(pad(r.label, 12) + 'decks ' + d.s + '  spread ' + f1(d.spread) + '  rounds ' + (r.rounds / r.g).toFixed(2) + '  Seals ' + pc(r.seals, r.g) + '%  first turn ' + pc(r.first, r.g - r.draws) + '%'); for (const k in r.deck) { const x = tot[k] || (tot[k] = [0, 0]); x[0] += r.deck[k][0]; x[1] += r.deck[k][1]; } }
   const w = D.map(d => 100 * tot[d][1] / tot[d][0]); console.log(pad('all ' + rs.reduce((s, r) => s + r.g, 0) + ' games', 12) + 'decks ' + D.map((d, i) => d.slice(0, 5) + ' ' + f1(w[i])).join('  ') + '  spread ' + f1(Math.max.apply(null, w) - Math.min.apply(null, w)));
 };

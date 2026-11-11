@@ -529,12 +529,13 @@ const ARCH = {
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
 // Each ready deck's Domain stack: fifteen Domains that suit it. A new player gets the stack of their starter deck.
-// (The prototype's third pass, with one swap made on this engine: Venice to Legion and Orléans to Legacy, which
-// read 51.9% and 48.7% over 8,000 games before it. scripts/anoria/domains.txt has the tables.)
+// These are the prototype's third pass, unchanged. On this engine the five decks with these stacks sit 3.2 points
+// apart over 8,000 games (the old fixed map: 6.6 on the same games), so the fourth pass the prototype asked for
+// was not needed; two sets of swaps were tried and both pulled the decks further apart (scripts/anoria/domains.txt).
 const STACKS = {
   Explorers: ['malacca', 'kilwa', 'tlatelolco', 'longjiang', 'greenwich', 'padua', 'gibraltar', 'rapanui', 'tordesillas', 'forbidden', 'silk', 'cape', 'lanse', 'dunhuang', 'magellanstrait'],
-  Legion: ['carthage', 'venice', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'colosseum', 'olympia', 'prophetstown', 'runnymede', 'aachen', 'appian'],
-  Legacy: ['petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'orleans', 'acropolis', 'globe', 'sistine', 'heian', 'forum'],
+  Legion: ['carthage', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'orleans', 'colosseum', 'olympia', 'prophetstown', 'runnymede', 'aachen', 'appian'],
+  Legacy: ['venice', 'petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'acropolis', 'globe', 'sistine', 'heian', 'forum'],
   Court: ['lisbon', 'firenze', 'timbuktu', 'jingdezhen', 'seneca', 'zimbabwe', 'wien', 'taj', 'deirelbahari', 'versailles', 'persepolis', 'babylon', 'onondaga', 'constantinople', 'grandcanal'],
   Pathfinders: ['djenne', 'benin', 'machu', 'nanmadol', 'sigiriya', 'stonehenge', 'giza', 'chichen', 'kumasi', 'independence', 'nineveh', 'winchester', 'qhapaq', 'basra', 'kittyhawk'],
 };

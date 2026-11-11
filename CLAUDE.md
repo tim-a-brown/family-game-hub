@@ -554,6 +554,25 @@ Underlying principles for everything:
   Domain each one is (a banner in the player's colour that travels with the card, since cards may swap, reverse or
   shuffle Domains), a marker for a rule that is silenced or changed, and a track for rounds and turns are all drawn
   on the device as the pieces a person would use.
+- **Domains: the engine and the data** (2026-11-11; the screens come after). A game given Domain stacks is played
+  with Domains (`S.dm` in engine.js, whose header lists the state): `S.places[i]` the Domain at each position, `S.ban[i]`
+  whose banner is on it, `S.mk[i]` the card lying across its rule (Vesuvius), `P.dst` and `P.dgone` each player's
+  Domain stack and Domain discard pile, `S.su` the set-up (drawn, laid, the dice, whose offer is the Crossroads, who
+  goes first), `S.pend` a choice of Domain still to make, `E.track(S)` the round track, `E.silenced(S, i)` what lies
+  on a rule (Diogenes's marker is wherever he stands). Set-up is three steps the page can drive (`newGame(..., stacks,
+  {wait: true})`, `setupOptions`, `setupLay`, `setupRoll`) or the engine decides (`setupAuto`, as the page does for
+  now). Events: `domain` (laid, with what it replaced), `domains` (moved), `marker`, `choose`/`chose`, `dunder`,
+  `restack`, `sroll`, `setup`. **Every rule is a word in the Domain's data** (`pw` in cards.js `PLACES`, the sentence in
+  text.js `DRULE`), never a Domain's name. **A game with no stacks is on the old fixed map** with the rules its twelve
+  Places had (`pw0`, `tx0`): a lesson's table (guide.js is unchanged) and a game saved before Domains, which finishes
+  as it began. Domination is not in the engine. The twelve cards that act on Domains are in the set (`P4` in cards.js,
+  `pr: 4`, found only in packs, in the first series; Pachacuti is the twelfth). The collection (coll.js v 5) holds
+  Domains (`doms`), a stack for every deck (`stackFor`, `saveStack`, `autoStack`: 15, no two the same, any kinds and
+  homes) and Domains in packs (`DOMAINS_IN_PACKS`, `WELCOME_DOMAINS`, `DOMAIN_SLOT`). Every script in scripts/anoria
+  plays with Domains (`dm` in `STD`; `'{"dm":0}'` is the old map); `scripts/anoria/domains.js` asks the Domain
+  questions and `domains.txt` has the answers. A Domain's picture brief is `art` in text.js with how sure it is (`bs`);
+  63 Domains and the eleven Domain cards have no picture yet (`NOPIC`). ui.js has only what keeps today's table
+  working, with each seam for the screens marked `SEAM`.
 - **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
   Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
   about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
