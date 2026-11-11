@@ -179,9 +179,15 @@
   function team(t) { return S.players[t].name + ' & ' + S.players[t + 2].name; }
   function partner(p) { return (p + 2) % 4; }
 
+  // The computer's skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Calls trump on a whim and often plays the wrong card.'],
+    ['normal', 'Normal', 'Calls trump on a good hand and keeps track of the trumps.'],
+    ['hard', 'Hard', 'Remembers every card played and thinks each call and play through.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  function lvOf(p) { var pl = S.players && S.players[p]; return lvName((pl && pl.level) || S.level); }
   function freshGame(players, o) {
     return {
-      mode: o.mode || 'cpu', me: 0, target: o.target, stick: o.stick, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
+      mode: o.mode || 'cpu', me: 0, level: o.level || 'normal', target: o.target, stick: o.stick, players: players, scores: [0, 0], dealer: Math.floor(Math.random() * 4), handNo: 0,
       rounds: [], log: [], highlights: [], started: Date.now(), throwins: 0, worst: [null, null]
     };
   }
@@ -193,11 +199,12 @@
       intro: 'You and a computer partner against two computers',
       options: [
         { id: 'target', label: 'Play to', help: 'The first team to reach this many points wins.', value: 10, choices: [[5, '5 · quick'], [10, '10 · standard']] },
-        { id: 'stick', label: 'Stick the dealer', help: 'What happens if all four players pass on picking trump twice.', value: 0, choices: [[0, 'Off · redeal', 'The cards are thrown in and the next player deals.'], [1, 'On · dealer must call', 'The dealer is stuck and has to pick a trump suit.']] }
+        { id: 'stick', label: 'Stick the dealer', help: 'What happens if all four players pass on picking trump twice.', value: 0, choices: [[0, 'Off · redeal', 'The cards are thrown in and the next player deals.'], [1, 'On · dealer must call', 'The dealer is stuck and has to pick a trump suit.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       onStart: function (cfg) {
-        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
-        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1, mode: cfg.mode });
+        var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined }; });   // (each robot its own skill at a mixed table)
+        S = freshGame(players, { target: +cfg.options.target || 10, stick: +cfg.options.stick === 1, mode: cfg.mode, level: lvName(cfg.options.level) });
         hideTeamName(); ME = 0;
         undoStack = []; Kit.gameStart(); newHand();
       }
@@ -416,8 +423,32 @@
     var hasRight = h.some(function (c) { return isRight(c, t); });
     return hv.v >= 10.2 && hv.trumps >= 3 && offLosers <= 1 && hasRight;
   }
-  function jitter() { return (Math.random() - 0.5) * 0.8; }
+  // how far a robot's reading of its hand can be out: Easy by a lot (it calls on thin hands and passes good ones),
+  // Normal by a little, Hard not at all
+  function jitter(p) { var lv = lvOf(p); return lv === 'hard' ? 0 : (Math.random() - 0.5) * (lv === 'easy' ? 5 : 0.8); }
+  // Hard decides whether to call by trying it: it deals the cards it can't see many ways, plays the hand out with
+  // itself as the maker (with a partner, and alone) and calls when that comes out well enough ahead on average.
+  var HARD_BID_DEALS = 40, HARD_CALL = [0.3, 0.2];   // (how far ahead a call has to come out: when the turned card is ordered up, when a suit is named)
+  function hardCall(p, t, round) {
+    var X = S, pool = DECK_IDS.filter(function (c) { return c.id !== X.up.id && find(X.hands[p], c.id) < 0; }), need = [5, 5, 5, 5], v = [0, 0], n, a;
+    need[p] = 0;
+    try {
+      for (n = 0; n < HARD_BID_DEALS; n++) {
+        var hands = dealOut(pool, need, [{}, {}, {}, {}], t, null, 0); hands[p] = X.hands[p];
+        for (a = 0; a < 2; a++) {
+          var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: [], trickNo: 0, played: [], tricks: [0, 0, 0, 0], voids: [{}, {}, {}, {}],
+            trump: t, maker: p, alone: !!a, out: a ? partner(p) : -1, up: X.up, picked: false, dealer: X.dealer, level: 'normal' };
+          S = Y;
+          if (round === 1 && Y.dealer !== Y.out) { Y.picked = true; Y.hands[Y.dealer].push(X.up); var dc = cpuDiscard(Y.dealer); Y.hands[Y.dealer].splice(Y.hands[Y.dealer].indexOf(dc), 1); }
+          Y.turn = nextActive(Y.dealer);
+          v[a] += runOut(Y, p, null);
+        }
+      }
+    } finally { S = X; }
+    return v[1] > v[0] + 0.15 * HARD_BID_DEALS ? { v: v[1] / HARD_BID_DEALS, alone: true } : { v: v[0] / HARD_BID_DEALS, alone: false };
+  }
   function cpuBid1(p) {
+    if (lvOf(p) === 'hard') { var hc = hardCall(p, S.up.s, 1); bid1(p, hc.v >= HARD_CALL[0], hc.alone); return; }
     var t = S.up.s, h = S.hands[p], hv;
     if (p === S.dealer) hv = bestAfterPickup(h, S.up, t);
     else {
@@ -426,19 +457,25 @@
       if (partner(p) === S.dealer) hv = { v: hv.v + 0.3 + upv * 0.35, trumps: hv.trumps };
       else hv = { v: hv.v - 0.2 - upv * 0.3, trumps: hv.trumps };
     }
-    if (hv.v + jitter() >= 6.4) {
+    if (hv.v + jitter(p) >= 6.4) {
       var own = p === S.dealer ? hv : handValue(h, t);
       bid1(p, true, wantsAlone(own, h, t));
     } else bid1(p, false);
   }
   function cpuBid2(p) {
+    if (lvOf(p) === 'hard') {
+      var hb = null;
+      ['s', 'h', 'd', 'c'].forEach(function (s) { if (s === S.up.s) return; var c = hardCall(p, s, 2); if (!hb || c.v > hb.v) hb = { v: c.v, alone: c.alone, s: s }; });
+      if ((S.stick && p === S.dealer) || hb.v >= HARD_CALL[1]) bid2(p, hb.s, hb.alone); else bid2(p, null);
+      return;
+    }
     var h = S.hands[p], best = null;
     ['s', 'h', 'd', 'c'].forEach(function (s) {
       if (s === S.up.s) return;
       var hv = handValue(h, s); if (!best || hv.v > best.v) best = { v: hv.v, trumps: hv.trumps, s: s };
     });
     var stuck = S.stick && p === S.dealer;
-    if (stuck || best.v + jitter() >= 6.6) bid2(p, best.s, wantsAlone(best, h, best.s));
+    if (stuck || best.v + jitter(p) >= 6.6) bid2(p, best.s, wantsAlone(best, h, best.s));
     else bid2(p, null);
   }
   function cpuDiscard(p) {
@@ -460,6 +497,82 @@
     return DECK_IDS.filter(function (c) { return isTrump(c, t) && !seen[c.id]; });
   }
   function cpuChoose(p) {
+    var lv = lvOf(p), opts;
+    if (lv === 'hard') return hardChoose(p);
+    // Easy: one play in three is any card it is allowed to play
+    if (lv === 'easy' && Math.random() < 0.34) { opts = legal(p); return opts[Math.floor(Math.random() * opts.length)]; }
+    return normalChoose(p);
+  }
+  // Hard counts cards. It knows which cards it hasn't seen (the other hands and the cards left face down), that the
+  // dealer holds the turned-up card they picked up, and who has shown they are out of a suit. It deals the unseen
+  // cards out in ways that fit, plays each card it could play through to the end of the hand with everyone playing
+  // as Normal does, and keeps the card that scores best for its team.
+  var HARD_DEALS = 30;
+  function hardChoose(p) {
+    var opts = legal(p); if (opts.length < 2) return opts[0];
+    var X = S, seen = {}, pool, need = [0, 0, 0, 0], q, n, i, tot = opts.map(function () { return 0; });
+    X.played.forEach(function (id) { seen[id] = 1; });
+    X.trick.forEach(function (x) { seen[x.c.id] = 1; });
+    X.hands[p].forEach(function (c) { seen[c.id] = 1; });
+    if (!X.picked) seen[X.up.id] = 1;
+    pool = DECK_IDS.filter(function (c) { return !seen[c.id]; });
+    for (q = 0; q < 4; q++) if (q !== p) need[q] = X.hands[q].length;
+    // the card the dealer picked up is in the dealer's hand until it is played
+    var held = X.picked && X.dealer !== p && !seen[X.up.id] && need[X.dealer] > 0 ? X.up.id : null;
+    try {
+      for (n = 0; n < HARD_DEALS; n++) {
+        var hands = dealOut(pool, need, X.voids || [{}, {}, {}, {}], X.trump, held, X.dealer); hands[p] = X.hands[p];
+        for (i = 0; i < opts.length; i++) tot[i] += playOut(X, hands, p, opts[i]);
+      }
+    } finally { S = X; }
+    var best = 0; for (i = 1; i < opts.length; i++) if (tot[i] > tot[best] + 1e-9) best = i;
+    var usual = normalChoose(p), u = opts.indexOf(usual);   // (cards that come out the same: play as Normal would)
+    return u >= 0 && tot[u] >= tot[best] - 1e-9 ? usual : opts[best];
+  }
+  // one way the unseen cards could lie: shuffled, then handed round, never giving a suit to someone out of it
+  // (whatever is left over is the face-down cards)
+  function dealOut(pool, need, voids, t, held, dealer) {
+    var left = need.slice(), hands = [[], [], [], []], cards = Cards.shuffle(pool.slice()), i, q;
+    function can(c) { var l = []; for (var q = 0; q < 4; q++) if (left[q] > 0 && !(voids[q] && voids[q][eff(c, t)])) l.push(q); return l; }
+    if (held) for (i = 0; i < cards.length; i++) if (cards[i].id === held) { hands[dealer].push(cards[i]); left[dealer]--; cards.splice(i, 1); break; }
+    cards.sort(function (a, b) { return can(a).length - can(b).length; });
+    var spare = cards.length - left[0] - left[1] - left[2] - left[3];
+    for (i = 0; i < cards.length; i++) {
+      var ok = can(cards[i]);
+      // (a card nobody can hold is face down; so, at random, are as many others as there are face-down cards)
+      if (!ok.length || (spare > 0 && Math.random() < spare / (cards.length - i))) { if (spare > 0) { spare--; continue; } for (q = 0; q < 4; q++) if (left[q] > 0) ok.push(q); if (!ok.length) continue; }
+      q = ok[Math.floor(Math.random() * ok.length)];
+      hands[q].push(cards[i]); left[q]--;
+    }
+    return hands;
+  }
+  // the rest of the hand with seat p playing card first; returns the points p's team comes out ahead by
+  function playOut(X, hands, p, card) {
+    var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, played: X.played.slice(), tricks: X.tricks.slice(),
+      voids: (X.voids || [{}, {}, {}, {}]).map(function (v) { var o = {}; for (var k in v) o[k] = v[k]; return o; }),
+      trump: X.trump, maker: X.maker, alone: X.alone, out: X.out, up: X.up, picked: X.picked, dealer: X.dealer, level: 'normal', turn: p };
+    S = Y;
+    return runOut(Y, p, card);
+  }
+  // (S is Y while it runs; with no card, whoever's turn it is plays as Normal does from the start)
+  function runOut(Y, p, card) {
+    var c = card || normalChoose(Y.turn), s, n = activeCount();
+    for (;;) {
+      s = Y.turn;
+      if (Y.trick.length) { var led = eff(Y.trick[0].c, Y.trump); if (eff(c, Y.trump) !== led) Y.voids[s][led] = 1; }
+      Y.hands[s].splice(Y.hands[s].indexOf(c), 1); Y.trick.push({ p: s, c: c });
+      if (Y.trick.length === n) {
+        var win = trickWinner(Y.trick, Y.trump);
+        Y.trick.forEach(function (x) { Y.played.push(x.c.id); });
+        Y.tricks[win.p]++; Y.trick = []; Y.trickNo++; Y.turn = win.p;
+        if (Y.trickNo === 5) break;
+      } else Y.turn = nextActive(s);
+      c = normalChoose(Y.turn);
+    }
+    var mt = Y.maker % 2, mk = Y.tricks[mt] + Y.tricks[mt + 2], v = mk >= 3 ? (mk === 5 ? (Y.alone ? 4 : 2) : 1) : -2;
+    return p % 2 === mt ? v : -v;
+  }
+  function normalChoose(p) {
     var t = S.trump, opts = legal(p), h = S.hands[p];
     function lo(a, led) { return a.slice().sort(function (x, y) { return power(x, t, led) - power(y, t, led); })[0]; }
     function hi(a, led) { return a.slice().sort(function (x, y) { return power(y, t, led) - power(x, t, led); })[0]; }
