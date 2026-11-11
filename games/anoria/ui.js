@@ -21,13 +21,13 @@
     stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Arrive for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
   };
   const GLOSS = {
-    voyager: ['Voyager', 'at home at every Place, and can walk to any Place.'],
-    scholar: ['Scholar', 'draw a card when this Figure arrives.'],
+    voyager: ['Voyager', 'this Figure is at home at every Place and can walk to any Place.'],
+    scholar: ['Scholar', 'you draw a card when this Figure arrives.'],
     guard: ['Guard', 'enemies here must clash with this Figure first.'],
-    steadfast: ['Steadfast', '+2 Might when defending.'],
+    steadfast: ['Steadfast', 'this Figure has +2 Might when it defends.'],
     inspiring: ['Inspiring', 'your other Figures here get +1 Might.'],
-    swift: ['Swift', 'can walk the turn it arrives.'],
-    raider: ['Raider', '+2 Might attacking on the other player\'s side of the map.']
+    swift: ['Swift', 'this Figure can walk on the turn it arrives.'],
+    raider: ['Raider', 'this Figure has +2 Might when it attacks on the other player\'s side of the map.']
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
@@ -202,11 +202,11 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
-    if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: with ' + esc(names(c.insp)) + ' in play on your side, this costs 1 less, a gold line joins them, it has +1 Might while they stand, and you score 1 Renown (once a round).' }));
+    if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: if ' + esc(names(c.insp)) + ' is in play on your side when you play this card, it costs 1 less and you score 1 Renown (once a round). A gold line joins them, and this card has +1 Might while they stand.' }));
     if (CARDS[key] && CARDS[key].from && E.STD.threads) {
       const src = CARDS[key].from.map(x => x[0] === '@' ? C.PLACES[x.slice(1)].n : CARDS[x].n), fig = CARDS[key].t === 'fig';
-      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'arriving at ' : 'with a Figure of yours at ') + C.PLACES[x.slice(1)].n : 'with ' + CARDS[x].n + (CARDS[x].t === 'relic' ? ' in play' : ' on your side'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: grew from ' + esc(listOf(src)) + '. Played ' + esc(listOf(how, 'or')) + ', it scores 1 Renown (once a round).' }));
+      const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'at ' + C.PLACES[x.slice(1)].n : 'while a Figure of yours is at ' + C.PLACES[x.slice(1)].n) : 'while ' + CARDS[x].n + ' is ' + (CARDS[x].t === 'relic' ? 'in play' : 'on your side'));
+      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src)) + '. It scores 1 Renown (once a round) when you play it ' + esc(listOf(how, 'or')) + '.' }));
     }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1]) })); });
     if (c.kind === 'place') {
@@ -214,12 +214,12 @@
       if (o.p != null && S) {
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'your' : 'their') + ' Figures arrive here. If the other side holds it when a round ends, a Seal breaks.' }));
-        else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b>, between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b>, between the Gate and the Crossroads.' }));
+        else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
-        notes.appendChild(el('p', { html: '<b>This round</b>: holding it scores ' + worth + ' Renown.' }));
+        notes.appendChild(el('p', { html: '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' }));
       }
     }
-    if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: always in play. This power is on for the whole game.' }));
+    if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
     const card = cardEl(key, { might: f ? E.might(S, f, 0) : null });
     const v = el('div', { class: 'view', role: 'dialog', 'aria-modal': 'true', 'aria-label': c.n, onclick: closeView }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close') }), card, notes.childNodes.length ? notes : null]);
@@ -278,12 +278,12 @@
       const g = TX.GUIDES[d.guide];
       box.appendChild(el('div', { class: 'dk-info' }, [
         el('div', { class: 'plan', text: d.ready ? PLAN[d.n] : 'A deck you built' }),
-        el('div', { class: 'gd', html: 'Guided by <b>' + esc(g.n) + '</b>. ' + esc(g.tx) }),
+        el('div', { class: 'gd', html: '<b>' + esc(g.n) + '</b> is this deck’s Guide. ' + esc(g.tx) }),
         el('span', { class: 'dk-btns' }, [
           d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])
       ]));
-    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'One of the five, picked when the game starts' })]));
+    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'The game picks one of the five decks when it starts.' })]));
     return box;
   }
   // a ready deck you don't own all of yet: what's missing, and where to go for it
@@ -317,7 +317,7 @@
       options: [
         { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
         { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
-        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'Stops early and misses things. A good first game.'], ['normal', 'Normal', 'Plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'Plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'It stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', 'It plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'It plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
       ],
       players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
       start: 'Deal the cards',
@@ -507,7 +507,7 @@
   // in your discard pile (it returns for less)
   function twinNote(key) {
     const c = CARDS[key], o = S.turn; if (!c || c.t !== 'fig') return '';
-    if (S.cfg.unique && S.figs.some(f => f.o === o && f.c === key)) return '<b>Already on your side.</b> One of each person at a time. ';
+    if (S.cfg.unique && S.figs.some(f => f.o === o && f.c === key)) return '<b>This person is already on your side.</b> Only one of each person can be there at a time. ';
     if (S.cfg.ret && (S.P[o].gone || []).indexOf(key) >= 0) return '<b>Returns for ' + S.cfg.ret + ' less.</b> ';
     return '';
   }
@@ -707,7 +707,7 @@
     Kit.sfx('tap');
     const st = E.stake(S.cfg, S.round);
     Kit.sheet({ title: 'Round ' + S.round, html: '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>' +
-      '<p>First to <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+      '<p>The first player to reach <b>30 Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
   // ═══ Motion ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -986,7 +986,7 @@
     if (G && G.demo) return;
     if (!G || G.over) return Kit.toast('The game is over');
     if (!idle()) return Kit.toast('Wait for your turn');
-    if (!undoStack.length) return Kit.toast('Nothing to take back: clashes and drawn cards stay');
+    if (!undoStack.length) return Kit.toast('There is nothing to take back. Clashes and drawn cards can’t be undone.');
     const d = JSON.parse(undoStack.pop()); d.cfg = cfgStd(); d.st = null; d.ev = [];
     S = G.S = d; ui.sel = null; ui.discard = false; Kit.sfx('whoosh'); save(); legal(); V = snap(); render();
   }
@@ -1116,33 +1116,33 @@
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
   const RULES =
-    '<p class="goal">Send great Figures from history to hold Places on the map. <b>First to 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
-    '<h3>The map</h3><ul><li>Five Places in a line: your <b>Gate</b> nearest you, your <b>Outpost</b>, the shared <b>Crossroads</b>, then the other player\'s Outpost and Gate.</li>' +
+    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
+    '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
-    '<h3>Your turn</h3><ul><li>Your Figures ready, you <b>draw 2 cards</b> and gain <b>Spark</b>: 2 in round 1, one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
-    '<li>Then, in any order, play cards and act. Tap a card or one of your Figures: everywhere it can go lights up.</li>' +
-    '<li>A <b>Figure</b> arrives at your Gate, or at any Place where you already have one. Up to 3 of your Figures at a Place.</li>' +
+    '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
+    '<li>Then, in any order, play cards and act. Tap a card or one of your Figures, and everywhere it can go lights up.</li>' +
+    '<li>A <b>Figure</b> arrives at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure that just arrived can clash but not walk.</li>' +
-    '<li><b>Relics</b> stay in play (up to 2). <b>Deeds</b> happen once.</li>' +
-    '<li>Up to 2 Spark you don\'t spend wait through the other player\'s turn. They pay for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
+    '<li><b>Relics</b> stay in play, and you can have 2 at a time. <b>Deeds</b> happen once and are gone.</li>' +
+    '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for <b>Phalanx</b>, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
     '<h3>Two of a card</h3><ul><li>A deck holds two of each card. Only <b>one of each person</b> can stand on your side at a time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
-    '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the lower Might is knocked out. A tie: nothing happens.</li>' +
+    '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
     '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. Play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing) and it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built. New Guides join you at 3, 8, 15 and 25 wins.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
     '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
-    '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. A tie: nobody. An empty or tied Gate stays with its owner.</li>' +
+    '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
-    '<li>Hold the other player\'s Gate and one of their <b>Seals breaks</b>: 1 more Renown for you.</li>' +
-    '<li>Whoever has more Renown goes first next round, so the player behind has the last word. Level: you take turns going first.</li>' +
-    '<li>If both pass 30 in the same round, more Renown wins. After 14 rounds the game ends and more Renown wins.</li></ul>' +
+    '<li>Hold the other player\'s Gate and one of their <b>Seals breaks</b>, which is 1 more Renown for you.</li>' +
+    '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
+    '<li>If both players pass 30 in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
-    '<li>Taking a move back: steps that drew no card and rolled no dice can be undone from the menu.</li></ul>';
+    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>';
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
@@ -1150,7 +1150,7 @@
     menu: [
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => { if (window.AnoriaLibrary) window.AnoriaLibrary.open(); } },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) },
-      { icon: 'eye', label: 'Hide Anoria', sub: 'Tucks it back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
+      { icon: 'eye', label: 'Hide Anoria', sub: 'Anoria goes back behind Lorcana’s icon', onClick: () => { lsSet('anoria_unlocked', null); Kit.home(); } }
     ]
   });
 

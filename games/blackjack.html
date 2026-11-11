@@ -248,7 +248,7 @@
       '<li><b>Insurance</b>: when the dealer shows an Ace you may bet half your bet that the dealer has blackjack. It pays 2 to 1. ' +
       'If you have blackjack yourself you can take <b>even money</b> instead: a sure 1 to 1 win right now.</li></ul>' +
       '<h3>Table rules</h3><ul><li>Cards come from a shoe of 6 decks (you can pick 1, 2, 6 or 8). When the yellow cut card comes out, the shoe is shuffled after that hand.</li>' +
-      '<li>With an Ace or 10 showing, the dealer peeks for blackjack. If the dealer has blackjack, you only lose your first bet.</li>' +
+      '<li>With an Ace or 10 showing, the dealer peeks for blackjack. If the dealer has it, you only lose your first bet.</li>' +
       '<li>Double on any first two cards, also after a split.</li>' +
       '<li>Split up to 3 times (4 hands). Split Aces get one card each and can\'t be split again. 21 after a split counts as 21, not blackjack.</li>' +
       '<li>Bets from $1 to $1,000. Odd blackjack payouts are rounded down to the dollar.</li></ul>' +
@@ -925,7 +925,7 @@
       r.moves.forEach(function (m) { out.push(moveRow(m, r, bet)); });
       var tips = [];
       if (r.moves.length > 1) { var nx = r.moves[1]; tips.push(el('li', { html: '<b>' + LONG[r.best.a] + '</b> beats <b>' + LONG[nx.a].toLowerCase() + '</b> by about <b>' + cash((r.best.ev - nx.ev) * bet).replace('+', '') + '</b> a hand on average. Small edges like this add up over hundreds of hands.' })); }
-      if (r.chart !== r.best.a) tips.push(el('li', { html: 'The basic strategy chart says <b>' + LONG[r.chart].toLowerCase() + '</b> here. ' + (r.chartCount === r.best.a ? 'The count changes the play: with this true count, <b>' + LONG[r.best.a].toLowerCase() + '</b> is the better play (a count “index play”).' : 'With this exact mix of cards left, <b>' + LONG[r.best.a].toLowerCase() + '</b> comes out slightly ahead.') }));
+      if (r.chart !== r.best.a) tips.push(el('li', { html: 'The basic strategy chart says <b>' + LONG[r.chart].toLowerCase() + '</b> here. ' + (r.chartCount === r.best.a ? 'The count changes it: with this true count, <b>' + LONG[r.best.a].toLowerCase() + '</b> is the better play (a count “index play”).' : 'With this exact mix of cards left, <b>' + LONG[r.best.a].toLowerCase() + '</b> comes out slightly ahead.') }));
       else tips.push(el('li', { html: 'This matches the <b>basic strategy</b> chart: the best play for every hand, worked out from millions of deals.' }));
       tips.push(el('li', { html: 'Dealer finishes: 17 <b>' + pct(r.D[0]) + '</b> · 18 <b>' + pct(r.D[1]) + '</b> · 19 <b>' + pct(r.D[2]) + '</b> · 20 <b>' + pct(r.D[3]) + '</b> · 21 <b>' + pct(r.D[4]) + '</b> · bust <b>' + pct(r.D[5]) + '</b>.' }));
       out.push(el('h4', { text: 'Why' }));
@@ -941,7 +941,7 @@
       el('div', null, [el('small', { text: 'True count' }), el('b', { text: fmtTc(tc) }), el('i', { text: 'running ÷ decks left' })])
     ]));
     out.push(el('ul', null, [
-      el('li', { html: '<b>Running count.</b> Every card that comes out moves the count: low cards (2 to 6) add 1, 10s, face cards and Aces take 1 away, and 7, 8 and 9 don’t count. A plus count means more low cards have already been played, so the cards still to come have more 10s and Aces in them; a minus count means the opposite.' }),
+      el('li', { html: '<b>Running count.</b> Every card that comes out changes it: low cards (2 to 6) add 1, 10s, face cards and Aces take 1 away, and 7, 8 and 9 don’t count. A plus count means more low cards have already been played, so the cards still to come have more 10s and Aces in them; a minus count means the opposite.' }),
       el('li', { html: '<b>True count.</b> The running count spread over the decks still to come: ' + sgn(S.rc) + ' ÷ ' + dl.toFixed(1) + ' = <b>' + fmtTc(tc) + '</b>. A +3 with one deck left matters far more than a +3 with six left, so this is the number to watch.' }),
       el('li', { html: '<b>Why 10s and Aces help you.</b> They make more blackjacks (which pay 3 to 2, and the dealer only gets even money), they make your doubles land on 20 and 21, and they make the dealer bust more often, since the dealer has to keep hitting 12 to 16.' })
     ]));

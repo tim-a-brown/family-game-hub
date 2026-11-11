@@ -58,10 +58,13 @@ Underlying principles for everything:
 - **No dots (·) stringing text together.** Don't join facts with " · " (or brackets) on one line. Design it: put each
   thing in its own place (a name and its amount at either end of a row, the detail on a line of its own, a small
   table to line up names and hands, a caps label over a value).
-- **Never write "<someone or something> <verb>s it."** (Tim, 2026-11-11: "Leonardo da Vinci guides it"). A short
-  sentence that ends on "it" reads clipped and vague. Name the thing or turn the sentence round: "Guided by Leonardo da
-  Vinci", "A neutral has no defenders", "The floor catches whatever you drop". This goes for every word a player can
-  read (labels, rules, captions, card text, riddles, trivia, toasts) and for what Claude writes to Tim in chat.
+- **Write the way a person talks** (Tim, 2026-11-11). Every sentence a player reads should be one a person would say
+  out loud to someone across the table: a whole sentence, in ordinary word order, that says what it is about. Not a
+  stub put together from a name and a verb ("Leonardo da Vinci guides it": say "Leonardo da Vinci is this deck's
+  Guide"), not rule-book shorthand ("A tie: nobody", "Level: you take turns going first": say "If the Might is tied,
+  nobody holds the Place"), and not a sentence with its subject or verb left out ("Your Figures ready", "This is round
+  3, so 4"). No single word is the problem ("it" is fine): the test is whether it sounds like a human. Never trade a
+  natural sentence for a clumsier one to avoid a word. The same goes for what Claude writes to Tim in chat.
 - **Nothing cut off.** No clipped or "…" text, numbers or graphics anywhere, at any screen size or orientation:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,

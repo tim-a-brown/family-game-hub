@@ -3403,11 +3403,11 @@ function showLab(settled) {
     settle(true);
   }, 950);
 }
-function buyNote(k) { return CLASSIC && k === 'bb' ? 'Sunk by one hit' : CLASSIC && k === 'tra' ? 'Carries 2, defends 1' : BUY_NOTE[k]; }
+function buyNote(k) { return CLASSIC && k === 'bb' ? 'One hit sinks it' : CLASSIC && k === 'tra' ? 'Carries 2, defends 1' : BUY_NOTE[k]; }
 var UNIT_NOTE_CLASSIC = {
   tra: 'Carries 2 infantry, or 1 tank or AA gun. Defends on 1 and is lost like any other unit (no automatic sinking).',
   sub: 'When it attacks it fires first, and what it hits can’t shoot back. Can’t hit planes, and can’t dive away.',
-  bb: 'Sunk by one hit. Can bombard a beach once when troops land from its sea zone.',
+  bb: 'One hit sinks it. Can bombard a beach once when troops land from its sea zone.',
   ic: 'Costs 15. Places as many units as you can pay for. A bombing raid on it costs you IPCs from your bank instead of damaging it.'
 };
 var BUY_NOTE = { aa: 'Shoots planes', tra: 'Carries 2', cv: 'Holds 2 fighters', bb: 'Takes 2 hits', ic: 'Builds units here' };
@@ -3789,7 +3789,7 @@ function previewCard(sh) {
   // the mission, as two cards to choose between when both are possible
   function battleBody(box) {
     var o = battleOdds(t, pv.ids);
-    if (o.empty) { box.appendChild(el('small', { text: isSea(t) ? 'No ships to fight here.' : 'No defenders here. Your units take the territory right away.' })); return; }
+    if (o.empty) { box.appendChild(el('small', { text: isSea(t) ? 'No ships to fight here.' : 'Nobody defends it. Your units take it right away.' })); return; }
     box.appendChild(el('div', { class: 'oddsbar' }, [el('i', { style: { width: pct(o.win) } })]));
     box.appendChild(el('div', { class: 'pv-odds' }, [el('b', { text: pct(o.win) }), el('span', { text: 'chance to win' })]));
     box.appendChild(el('small', { text: 'You keep about ' + Math.round(o.attLeft) + (Math.round(o.attLeft) === 1 ? ' unit' : ' units') + ' if you fight to the end' }));
@@ -4074,7 +4074,7 @@ function onTap(t) {
 function cmTapHint() {
   var tg = currentTargets(), p = cur(), ids = pickedIds(), take = 0, fight = 0;
   for (var k in tg) { var t = +k; if (tg[k].board) continue; if (freeToTake(t, p, ids)) take++; else if (enemiesAt(t, p).length || (!isSea(t) && foe(S.own[t], p))) fight++; }
-  return take && fight ? 'Tap red to attack, or gold to take it unopposed' : take ? 'Tap a gold place to take it: no defenders there' : 'Tap a red place to attack it';
+  return take && fight ? 'Tap red to attack, or gold to take it unopposed' : take ? 'Tap a gold place to take it: nobody defends it' : 'Tap a red place to attack it';
 }
 function freeToTake(t, p, ids) {
   var en = enemiesAt(t, p), us = (ids || []).map(byId).filter(Boolean);
@@ -5517,7 +5517,7 @@ var RULES =
   '<li><b>Destroyers</b> cancel all those submarine tricks.</li>' +
   '<li><b>Industrial complex:</b> 15 IPCs; build one on any territory worth 1 or more that you held all turn.</li></ul>' +
   '<h3>Bombing raids</h3><p>Bombers sent at an enemy factory are each shot at by the factory’s own anti-aircraft fire (a 1 hits). Each surviving bomber rolls one die: that much damage, up to twice the territory’s value. Damage lowers how many units the factory can place until it’s repaired.</p>' +
-  '<h3>Capitals and canals</h3><ul><li>Take an enemy capital and you seize all of its IPCs. Free a friend’s territory and it goes back to them (if their capital is free).</li><li>Ships can only use the Suez Canal if your side holds Egypt and Trans-Jordan, and the Panama Canal if your side holds Central America.</li><li>Gray striped places (Turkey, Sweden, Spain…) are neutral. Usually no one can enter or fly over them. With neutrals open (the Classic rule), land units can march into one during combat moves by paying the bank 3 IPCs; a neutral has no defenders, and once taken it’s ordinary land.</li></ul>' +
+  '<h3>Capitals and canals</h3><ul><li>Take an enemy capital and you seize all of its IPCs. Free a friend’s territory and it goes back to them (if their capital is free).</li><li>Ships can only use the Suez Canal if your side holds Egypt and Trans-Jordan, and the Panama Canal if your side holds Central America.</li><li>Gray striped places (Turkey, Sweden, Spain…) are neutral. Usually no one can enter or fly over them. With neutrals open (the Classic rule), land units can march into one during combat moves by paying the bank 3 IPCs; no one defends it, and once taken it’s ordinary land.</li></ul>' +
   '<h3>Winning</h3><ul><li><b>Standard:</b> at the end of a round the Axis need <b>9</b> of the 13 victory cities, or the Allies need <b>10</b>.</li><li><b>Quick:</b> 8 for the Axis, 9 for the Allies. <b>Total:</b> all 13. <b>Capitals:</b> the Allies win by holding Berlin and Tokyo; the Axis win by holding two of London, Moscow and Washington.</li><li>With a round limit, the side with more victory cities when time runs out wins (ties go to the bigger total income).</li></ul>' +
   '<h3>Skirmish</h3><p>A quicker game in Europe: Germany against the Soviet Union and the United Kingdom on 20 territories and 10 sea zones, with smaller armies. Same units, buying, moves, dice and income. Britain also collects 10 IPCs a turn from its empire off the map. You win by holding an enemy capital at the end of a round (Allies: Berlin; Germany: Moscow or London) or 5 of the 6 victory cities. After round 10 the side with more victory cities wins.</p>' +
   '<h3>Classic (1984)</h3><p>The original Milton Bradley game, on its own map with its own starting armies (spring 1942, five powers, the same turn order). Pick it under <b>Game</b>. What changes:</p><ul><li>Neutral countries can be invaded: march land units in during combat moves and pay the bank 3 IPCs each.</li>' +
@@ -5525,7 +5525,7 @@ var RULES =
   '<li><b>Battleships</b> sink with one hit. <b>Transports</b> carry 2 infantry, or 1 tank or AA gun, and fight like any other ship (they defend on 1).</li>' +
   '<li><b>Submarines</b> attacking fire first and their targets don’t shoot back; they can’t dive away. Planes can always hit submarines.</li>' +
   '<li><b>Factories</b> build as many units as you can pay for. A <b>bombing raid</b> costs the factory’s owner a die of IPCs per bomber, straight from the bank.</li>' +
-  '<li><b>Weapons development</b> is part of every turn: choose the weapon you want, buy research dice for 5 IPCs each, and any 6 wins the weapon. The dice are spent either way. The six weapons: jet fighters (defend on 5), rockets (AA guns hit a factory’s owner for a die of IPCs), super submarines (attack on 3), long-range aircraft (fighters fly 6, bombers 8), industrial technology (every unit costs 1 less) and heavy bombers (three dice each).</li>' +
+  '<li><b>Weapons development</b> is part of every turn: choose the weapon you want, buy research dice for 5 IPCs each, and any 6 wins it. The dice are spent either way. The six weapons: jet fighters (defend on 5), rockets (AA guns hit a factory’s owner for a die of IPCs), super submarines (attack on 3), long-range aircraft (fighters fly 6, bombers 8), industrial technology (every unit costs 1 less) and heavy bombers (three dice each).</li>' +
   '<li><b>Winning:</b> the Axis win at the end of a round holding two Allied capitals and their own, or with 84 IPCs of income between them. The Allies win holding Berlin and Tokyo.</li>' +
   '<li>Neutral countries can’t be entered. The map and setup come from the TripleA project’s World War II Classic.</li></ul>' +
   '<h3>Weapons research (optional)</h3><p>Turn it on in setup. It’s the research rule from the Anniversary Edition, played as the first part of step 1, before you shop.</p><ul><li>Buy <b>research dice</b> for 5 IPCs each. Every turn you roll all of them. Dice that don’t roll a 6 are kept for your next turn, so they add up.</li><li>Any <b>6</b> is a breakthrough (one a turn) and spends your dice. Pick one of the two charts and roll a die on it: that weapon is yours for the rest of the game, starting now. Roll one you already have and the die goes again.</li></ul>' + techTable() + '<h3>Left out</h3><p>Optional rules aren’t included, apart from weapons research: no national objectives and no starting bid. Units can’t ride on an ally’s transport. AA hits on planes are taken from the cheapest planes first.</p>' +
@@ -5648,14 +5648,14 @@ var RULE_TEXT = {
     skirm: [['su', 'Soviets first', 'Soviet Union, Germany, United Kingdom.'], ['de', 'Germany first', 'Germany, Soviet Union, United Kingdom. Gives Germany a stronger opening.']]
   },
   tech: {
-    classic: [['on', 'On', 'As printed: pick a weapon, buy dice for 5 IPCs each and roll. Any 6 wins the weapon: jet fighters, rockets, super subs, long-range aircraft, industrial technology or heavy bombers.'], ['off', 'Off', 'No weapons development.']],
+    classic: [['on', 'On', 'As printed: pick a weapon, buy dice for 5 IPCs each and roll. Any 6 wins it: jet fighters, rockets, super subs, long-range aircraft, industrial technology or heavy bombers.'], ['off', 'Off', 'No weapons development.']],
     full: [['off', 'Off', 'The 1942 Second Edition rules as printed: no research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']],
     skirm: [['off', 'Off', 'No research.'], ['on', 'Weapons research', 'The Anniversary Edition’s research: buy dice for 5 IPCs and roll for a 6 to win one of 12 breakthroughs, like jet fighters, heavy bombers and rockets.']]
   },
   neu: {
-    classic: [['on', 'Open', 'As printed: march land units into a neutral country during combat moves by paying the bank 3 IPCs. A neutral has no defenders. Planes can’t fly over one until it has been taken.'], ['off', 'Closed', 'No one can enter or fly over neutral countries.']],
-    full: [['off', 'Closed', 'As printed: no one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. A neutral has no defenders.']],
-    skirm: [['off', 'Closed', 'No one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. A neutral has no defenders.']]
+    classic: [['on', 'Open', 'As printed: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it. Planes can’t fly over a neutral until someone holds it.'], ['off', 'Closed', 'No one can enter or fly over neutral countries.']],
+    full: [['off', 'Closed', 'As printed: no one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it.']],
+    skirm: [['off', 'Closed', 'No one can enter or fly over neutral countries.'], ['on', 'Open', 'The 1984 rule: march land units into a neutral country during combat moves by paying the bank 3 IPCs. No one defends it.']]
   }
 };
 var setupObs = null;

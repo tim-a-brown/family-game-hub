@@ -88,7 +88,7 @@
       return el('div', { class: 'adk-rec' + (all ? ' all' : '') }, [
         thumb(d.guide, 'adk-dg' + (hasG ? '' : ' away')),
         el('span', { class: 'adk-dn', text: d.n }), el('span', { class: 'adk-rp', text: U.PLAN[d.n] || '' }),
-        el('span', { class: 'adk-dw' }, [hasG ? null : el('i', { html: Kit.icon('lock') }), el('span', { text: hasG ? 'Guided by ' + g.n : g.n + ' hasn\'t joined you yet' })]),
+        el('span', { class: 'adk-dw' }, [hasG ? null : el('i', { html: Kit.icon('lock') }), el('span', { text: hasG ? g.n + ' is the Guide' : g.n + ' hasn\'t joined you yet' })]),
         slots(own),
         el('span', { class: 'adk-ra' }, [
           el('span', { class: 'adk-rn' }, [el('b', { text: String(d.own) }), el('small', { text: 'of ' + DECK + ' are yours' })]),
@@ -364,7 +364,7 @@
       };
       th.forEach(p => sec.appendChild(row(p)));
       if (nr.length) { sec.appendChild(el('h4', { text: th.length ? 'One card away' : 'One card away from a Thread' })); nr.forEach(x => sec.appendChild(row(x.p, x.need))); }
-      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Thread is a card and what it grew from, both in the deck. Played together they score Renown.' }));
+      if (!th.length && !nr.length) sec.appendChild(el('p', { class: 'adk-hint', text: 'A Thread is a card together with the card it grew from. When both are in the deck and you play them together, they score Renown.' }));
       else sec.insertBefore(el('p', { class: 'adk-hint', text: 'Play one while the other is on your side and it scores 1 Renown.' }), sec.children[1]);
       box.appendChild(sec);
       // the cards, cheapest first
@@ -443,7 +443,7 @@
       }
       if (tot === DECK) {
         setTimeout(() => { Kit.sfx('good'); Kit.haptic('success'); }, 260);
-        if (!(now.length > before)) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(DECK + ' of ' + DECK, st.guide ? 'This deck can be played. Save it.' : 'Now choose a Guide.')], { cls: 'ok', ms: 3600 });
+        if (!(now.length > before)) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(DECK + ' of ' + DECK, st.guide ? 'This deck is ready to play. Save it to keep it.' : 'Now choose a Guide.')], { cls: 'ok', ms: 3600 });
       }
     }
     function take(k) {
@@ -470,7 +470,7 @@
       guides().forEach(g => {
         const x = TX.GUIDES[g], on = st.guide === g;
         box.appendChild(el('div', { class: 'adk-gr' + (on ? ' on' : '') }, [
-          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line('Guided by ' + x.n, 'This deck can be played. Save it.')], { cls: 'ok' }); } },
+          el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(x.n + ' is now the Guide', 'This deck is ready to play. Save it to keep it.')], { cls: 'ok' }); } },
             [thumb(g, 'adk-gp'), el('span', { class: 'adk-gw' }, [el('b', { text: x.n }), el('span', { text: x.tx })]), on ? el('i', { class: 'adk-seal', html: Kit.icon('check') }) : null]),
           el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + x.n, html: Kit.icon('eye'), onclick: () => U.openView(g) })]));
       });

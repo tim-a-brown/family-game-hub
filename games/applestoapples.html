@@ -954,7 +954,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     else if (V.phase === 'flip') msg = meJ ? 'You’re the ' + w.judge : passJ ? nameB(V, V.judge) + ' turns a card' : nameB(V, V.judge) + ' is the ' + w.judge;
     else if (V.phase === 'play') msg = myTurn ? (V.rules.crab ? 'Worst fit wins' : V.deck === 'cah' ? (V.pick > 1 ? 'Pick ' + V.pick + ', in order' : 'Your pick') : V.prompt ? 'Your pick' : 'Play it blind') : meJ ? 'They’re picking for you' : passJ && V.me < 0 ? 'Pass it on' : 'Picking<span class="think"><i></i><i></i><i></i></span>';
     else if (V.phase === 'judge') { var unrev = V.subs.some(function (s) { return !s.c; }); msg = canJudge ? (unrev ? 'Turn them over' : V.rules.crab ? 'Pick the worst fit' : 'Pick a winner') : nameB(V, V.judge) + ' is judging<span class="think"><i></i><i></i><i></i></span>'; }
-    else if (V.phase === 'result' && V.win) msg = V.win.p < 0 ? 'The ' + (V.deck === 'cah' ? 'Rando' : 'ghost') + ' steals the round!' : nameB(V, V.win.p) + (V.win.p === V.me && V.mode !== 'pass' ? ' win!' : ' wins!');
+    else if (V.phase === 'result' && V.win) msg = V.win.p < 0 ? 'The ' + (V.deck === 'cah' ? 'Rando' : 'ghost') + ' steals it!' : nameB(V, V.win.p) + (V.win.p === V.me && V.mode !== 'pass' ? ' win!' : ' wins!');
     felt.appendChild(el('div', { class: 'st' }, [el('div', { class: 'msg', html: msg }),
       el('span', { class: 'tag', title: 'First to ' + V.target + ' wins', html: Kit.icon('trophy') + '<span>' + V.target + '</span>' }), el('span', { class: 'tag', text: 'Round ' + V.round })]));
 
@@ -1145,7 +1145,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       if (lastV !== V) return;
       var chip = app.querySelector('.score[data-i="' + p + '"]'), pr = app.querySelectorAll('.pr-slot .ac');
       if (chip) Array.prototype.forEach.call(pr, function (n, k) { setTimeout(function () { fly(n, chip, { scale: 0.18, fade: true, spin: 0 }); n.style.opacity = '.25'; }, 350 + k * 120); });
-      if (p < 0) { Kit.callout(V.deck === 'cah' ? 'Rando wins the round!' : 'The ghost wins the round!', '#d7dbe6'); Kit.sfx('bad'); Kit.haptic('error'); return; }
+      if (p < 0) { Kit.callout(V.deck === 'cah' ? 'Rando wins it!' : 'The ghost wins it!', '#d7dbe6'); Kit.sfx('bad'); Kit.haptic('error'); return; }
       var me = p === V.me && V.mode !== 'pass', P = V.players[p];
       Kit.callout(me ? 'You win it!' : P.name + '!', P.color);
       Kit.sfx(me || V.mode !== 'solo' ? 'good' : 'chip'); Kit.haptic(me ? 'success' : 'light');
@@ -1260,7 +1260,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       '<li>The judge turns them over, reads them out loud, and picks a favorite: the best fit, the funniest, or the cleverest. Any reason counts.</li>' +
       '<li>Whoever played it keeps the green card. Everyone draws back up to 7 and the judge passes to the left.</li></ul>' +
       '<h3>Winning</h3><p>The official targets: 4 players play to 8 green cards, 5 to 7, 6 to 6, 7 to 5, and 8 to 10 players to 4 (bigger groups too). You can pick a different target in setup.</p>' +
-      '<h3>The ghost</h3><p>Good with three players: each round one random red card from the deck is played too. If the judge picks that card, nobody scores and the ghost keeps the green card. If the ghost reaches the target first, everyone loses.</p>' +
+      '<h3>The ghost</h3><p>Good with three players: each round one random red card from the deck is played too. If the judge picks it, nobody scores and the ghost keeps the green card. If the ghost reaches the target first, everyone loses.</p>' +
       '<h3>House rules (from the official rules)</h3><ul>' +
       '<li><b>Crab Apples</b>: play and pick the card that is the <b>least</b> like the green card, or its opposite.</li>' +
       '<li><b>Apple Potpourri</b>: everyone plays a red card <b>before</b> the judge turns over the green card.</li>' +
@@ -1324,7 +1324,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
       options: [
         { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },
-        { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks that card, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', '3 players'], ['on', 'Always'], ['off', 'Off']] }
+        { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', '3 players'], ['on', 'Always'], ['off', 'Off']] }
       ],
       start: 'Deal the cards',
       onStart: function (cfg) { onStart(cfg, chosen()); }

@@ -165,7 +165,7 @@
           el('div', { class: 'pk-k', text: x.starter ? 'Your Guide' : 'A new Guide joins you' }),
           el('h2', { class: 'pk-g-n', text: G.n }),
           el('p', { class: 'pk-g-pow', text: G.tx }),
-          x.starter ? el('p', { class: 'pk-g-deck' }, [el('span', { class: 'pk-k', text: 'Your deck' }), el('b', { text: x.deck || '' })]) : el('p', { class: 'pk-g-note', text: 'Ready to lead any deck you build.' }),
+          x.starter ? el('p', { class: 'pk-g-deck' }, [el('span', { class: 'pk-k', text: 'Your deck' }), el('b', { text: x.deck || '' })]) : el('p', { class: 'pk-g-note', text: 'This Guide is ready to lead any deck you build.' }),
           go])
       ]);
       stage.classList.add('moment'); stage.appendChild(m);
@@ -513,7 +513,7 @@
     }
     const root = el('div', { class: 'pk-choose' }, [
       el('div', { class: 'pk-ch-in' }, [
-        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Anoria', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each brings a deck to begin with.' })])]),
+        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Anoria', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a deck to begin with.' })])]),
         hero, el('div', { class: 'pk-ch-side' }, [row, info, el('div', { class: 'pk-ch-dock' }, [go])])
       ])
     ]);

@@ -61,7 +61,7 @@ export default [
   "The spirits recommend making your bed. It is the smallest victory, and it is yours by breakfast.",
   "Zandor foresees a lost item turning up exactly where you already looked. Look there again.",
   "You will open the fridge three times hoping for new food. The fridge cannot change. You can go shopping.",
-  "Take the trash out before it is full. Zandor has seen what happens otherwise. Zandor will not discuss the matter.",
+  "Take the trash out before it is full. Zandor has seen what happens otherwise. Zandor will not discuss it.",
   "A plant in your care is thirsty. Zandor suggests water, and possibly an encouraging word.",
   "The spirits say ten minutes of tidying beats two hours of tidying later. The spirits are very organized.",
   "Zandor foresees you finding money in an old coat. Spend it on something silly. It was free money.",
@@ -305,7 +305,7 @@ export default [
   "You will spot your own reflection and think, looking good. Zandor agrees.",
   "Zandor foresees a pancake flipped perfectly. There will be no witnesses. Zandor will know.",
   "A song will get stuck in your head this week. Zandor apologizes. It is the carnival song.",
-  "Zandor sees a spoon that makes you look upside down. Make a silly face. Science demands no less.",
+  "Zandor sees a spoon that makes you look upside down. Make a silly face. Science demands it.",
 
   // Absurd warnings
   "Beware of geese. Zandor will not explain further. Just beware of geese.",
