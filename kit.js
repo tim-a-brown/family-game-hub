@@ -2259,7 +2259,8 @@
         // choices (and what they mean), pick one and it folds back up
         if (IN_SHEET) {
           var openNow = scOpen === op.id;
-          Array.prototype.forEach.call(seg.children, function (b) { var f = b.onclick; b.onclick = function () { scOpen = null; f.apply(this, arguments); }; });
+          // (the choice's own listener has set the value and redrawn; this one folds the row)
+          Array.prototype.forEach.call(seg.children, function (b) { b.addEventListener('click', function () { scOpen = null; renderOptions(); }); });
           var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
             [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? cur[1] : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
           var scBox = el('div', { class: 'k-opt k-sc' + (openNow ? ' k-open' : '') }, [row, seg].concat(hasHelp && note ? [el('p', { class: 'k-help', text: note })] : []));
