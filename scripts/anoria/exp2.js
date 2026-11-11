@@ -18,7 +18,7 @@ module.exports = function (exp, n) {
           bump(fp, [...new Set(u.map(c => CARDS[c].f).filter(f => f !== 'N'))].sort().join(''), w);
           for (let i = 0; i < u.length; i++) for (let j = i + 1; j < u.length; j++) if (S.st.played[o][u[i]] && S.st.played[o][u[j]]) bump(pair, u[i] < u[j] ? u[i] + '+' + u[j] : u[j] + '+' + u[i], w); }
         bump(hub, S.places[4], S.how === 'seals' ? 1 : 0);
-        for (const e of S.st.ev) { const k = e.join('>'); ev[k] = (ev[k] || 0) + 1; } }; return g; }, 101);
+        for (const e of S.st.ev) { const k = e.join('>'); ev[k] = (ev[k] || 0) + 1; } }; return g; }, +process.argv[4] || 101);   // (node run.js cards <games> <seed>: another set of games)
     console.log('STANDARD RULES, ' + n + ' games:  ' + fmt(r));
     const tab = (m, min) => Object.keys(m).filter(k => m[k][0] >= (min || 0)).map(k => [k, m[k][0], 100 * m[k][1] / m[k][0]]).sort((a, b) => b[2] - a[2]);
     const show = (t, rows, nm) => console.log('\n' + t + '\n' + rows.map(x => '  ' + ((nm ? nm(x[0]) : x[0]) + '                              ').slice(0, 30) + x[2].toFixed(1) + '%  (' + x[1] + ')').join('\n'));

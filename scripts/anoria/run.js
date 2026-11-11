@@ -2,9 +2,14 @@
 'use strict';
 const { play, PROF, rng, shuffle } = require('../../games/anoria/engine'); const { CARDS, GUIDES, PLACES, ARCH } = require('../../games/anoria/cards');
 const FACS = ['D', 'S', 'V', 'A', 'W'], GL = Object.keys(GUIDES), DECK = require('../../games/anoria/coll').DECK;
+// A random deck: two factions, two copies of a card at most, mostly Figures. Relics are any deck's, and a player has
+// only two in play, so a deck holds 0 to 3 Relic cards (it was about 2 of the 6 when there were three Relics; with 23
+// in the pool a fifth of every deck would be Relics it could never play).
 function randDeck(R) {
-  for (;;) { const fs = shuffle(FACS.slice(), R).slice(0, 2), pool = []; for (const k in CARDS) { const c = CARDS[k]; if (fs.indexOf(c.f) >= 0 || c.f === 'N') pool.push(k, k); }
-    const d = shuffle(pool, R).slice(0, DECK); if (d.filter(k => CARDS[k].t === 'fig').length >= Math.round(DECK * 17 / 30)) return d; }
+  const relics = Object.keys(CARDS).filter(k => CARDS[k].t === 'relic');
+  for (;;) { const fs = shuffle(FACS.slice(), R).slice(0, 2), pool = []; for (const k in CARDS) { const c = CARDS[k]; if (fs.indexOf(c.f) >= 0) pool.push(k, k); }
+    const rel = shuffle(relics.concat(relics), R).slice(0, (R() * 4) | 0);
+    const d = rel.concat(shuffle(pool, R).slice(0, DECK - rel.length)); if (d.filter(k => CARDS[k].t === 'fig').length >= Math.round(DECK * 17 / 30)) return d; }
 }
 const pct = (a, b) => b ? (100 * a / b).toFixed(1) : '-';
 function batch(n, cfg, mk, seed0) {

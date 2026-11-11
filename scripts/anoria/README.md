@@ -53,7 +53,7 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   early some of the time (`quit`), which is what makes it easy; noise alone barely did.
 - Threads (`cfg.threads`): any card can name what it grew from (`from` in cards.js). `variants.txt` has the test games
   for the three ways of rewarding it.
-- `node scripts/anoria/pacing.js [players] [games a day] [win chance] [cards in a daily pack] [cards in a one-time pack]`: plays the collection's own rules
+- `node scripts/anoria/pacing.js [players] [games a day] [win chance] [cards in a daily pack] [cards in a one-time pack] [edition odds] [welcome packs] [pack order] [second-series pack]`: plays the collection's own rules
   (`games/anoria/coll.js`) for someone who plays every day, checks them, and says how long the set takes (`pacing.txt`).
   It also checks that a collection and a built deck from when a deck was 30 cards still work (the five new cards of every
   ready deck that could be played are given; the old deck is kept and reads as 10 short).
@@ -65,3 +65,31 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   It ranks the set and cuts it into four tiers (the top 10% Legendary, then 20% Rare, 30% Uncommon, the rest Common) and
   prints the `RARE` lists for `games/anoria/coll.js` (`rarity.txt` has the table). A new set is tiered by running it again
   and pasting the lists; until then a card on none of them goes by its cost. Then run `pacing.js`.
+
+## The third printing (150 cards found only in packs)
+
+- `set-150.json` is where the 150 came from: each card's source page, whether a search or a full text confirmed it
+  (`sure`, `check`), why a Relic's or a Deed's history suits its effect (`fit`), what was dropped, the five people held
+  aside because they are Guides, and the five cards that still need engine work (`needsEngine`). The cards themselves
+  are in `games/anoria/cards.js` (`P3`, `pr: 3`) and `text.js` (`P3`) since 2026-11-11, and those two files are what
+  the game reads.
+- `node scripts/anoria/check-set.js`: checks the third printing against the engine (skills, arrival effects, the
+  effect each Relic and Deed has), its words against its skills, every Legacy Line and its sentence, the picture
+  briefs (both top corners, the head a fifth of the way down), and the game's files against `set-150.json`.
+- A Relic's or a Deed's effect is data: `fx` names the card whose effect it has (`engine.js` `fxOf`). A player has two
+  Relics in play and no two with the same power. `node scripts/anoria/relics2.js [games]` plays that rule against
+  letting the power count twice (`set-150-balance.txt`).
+- `node scripts/anoria/run.js cards 6000 [seed] > cards.txt`, then `node scripts/anoria/newcards.js cards.txt`: every
+  card of the third printing beside the cards its faction had before (in the deck, and when played), and which are
+  outside what the faction had. A random deck now holds 0 to 3 Relic cards (`randDeck`).
+- `node scripts/anoria/newdecks.js [games] [decks per pair of factions] [seed]`: decks built by the deck builder's
+  "Finish the deck for me" from the third printing alone, and from every card, in each pair of factions, against the
+  five ready decks. It is the test that no pair of factions with the new cards runs away with it.
+- `pacing.js` takes three more arguments: the welcome packs (`12,12,12,12,12`), the pack order (`series` or `mixed`)
+  and the size of an earned pack once the first series is complete. `pacing.txt` has the table for 241 cards.
+- `set-150-balance.txt`: the results of all of these for the set as it was merged.
+- `node scripts/anoria/onecard.js <card> [games] <json of changes>`: one card measured on purpose, two copies in one
+  player's deck every game, as it is and under each change (as '[{"m":2}]'). For a card whose "played" number stands
+  out in `run.js cards`, where it rests on a few hundred games.
+- `node scripts/anoria/rarity.js 6000 3` tiers the third printing among its own cards (`RARE3` in coll.js). The cards
+  the game had before keep the tiers they had.

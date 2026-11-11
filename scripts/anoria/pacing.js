@@ -1,12 +1,18 @@
 // How long does the core set take to collect? Plays the collection's own rules (games/anoria/coll.js) for someone who
 // plays every day, and checks those rules while it's at it.
 //   node scripts/anoria/pacing.js [players] [games a day] [chance to win a game] [cards in a daily pack] [cards in a one-time pack] [edition odds]
-// (the last three try another economy without changing coll.js; left out, they are the game's own. Edition odds are
-// the chance of Shiny, Silver foil, Gold foil and Rainbow foil for one card, as "0.085,0.04,0.018,0.009")
+//                                 [welcome packs] [pack order] [cards in an earned pack once the first series is complete]
+// (all but the first three try another economy without changing coll.js; left out or 0, they are the game's own.
+// Edition odds are the chance of Shiny, Silver foil, Gold foil and Rainbow foil for one card, as
+// "0.085,0.04,0.018,0.009". Welcome packs are their sizes, as "12,12,12,12,12". Pack order is "series" (the first
+// series, the 91 cards the ready decks are made of, until it is complete, and then the 150 of the third printing) or
+// "mixed" (the whole set from the first pack).)
 // It also says how the editions turn up: how often a pack holds a foil, when the first of each edition is found, and
 // how long the foils go on after the set itself is complete.
 const Coll = require('../../games/anoria/coll'); const { rng } = require('../../games/anoria/engine'); const { ARCH, CARDS, GROWN, RETIRED, THREADS } = require('../../games/anoria/cards');
-const T = +process.argv[2] || 400, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, DAILY = +process.argv[5] || 0, FEAT = +process.argv[6] || 0, ODDS = process.argv[7] ? [0].concat(process.argv[7].split(',').map(Number)) : null, DECK = Coll.DECK, NE = Coll.EDITIONS.length, WEL = Coll.WELCOME.reduce((a, b) => a + b, 0), assert = (ok, m) => { if (!ok) { console.error('FAILED: ' + m); process.exit(1); } };
+const T = +process.argv[2] || 400, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, DAILY = +process.argv[5] || 0, FEAT = +process.argv[6] || 0, ODDS = process.argv[7] && process.argv[7] !== '0' ? [0].concat(process.argv[7].split(',').map(Number)) : null, WELC = process.argv[8] && process.argv[8] !== '0' ? process.argv[8].split(',').map(Number) : null, ORDER = process.argv[9] && process.argv[9] !== '0' ? process.argv[9] : null, PACK2 = process.argv[10] != null ? +process.argv[10] : null;
+Coll.use(Object.assign({}, WELC ? { welcome: WELC } : {}, ORDER ? { order: ORDER } : {}, PACK2 != null ? { pack2: PACK2 } : {}));
+const DECK = Coll.DECK, NE = Coll.EDITIONS.length, WEL = Coll.WELCOME.reduce((a, b) => a + b, 0), NW = Coll.WELCOME.length, S1 = Coll.S1, s1all = [], assert = (ok, m) => { if (!ok) { console.error('FAILED: ' + m); process.exit(1); } };
 const D = Object.keys(ARCH), days = [], seenAll = [], guidesAll = [], sum = { welcomeNew: 0, own3: 0, daily: 0, feat: 0, gifts: 0 }; let after7 = 0, after14 = 0, after21 = 0, own7 = 0, own14 = 0, own21 = 0;
 const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN = [0, 0, 0, 0, 0], edAll = [], mk = () => ({ packs: 0, foilPacks: 0, cards: 0, n: Coll.EDITIONS.map(() => 0), later: Coll.EDITIONS.map(() => 0), noCopy: 0, wel: 0, days: 0 }), ED1 = mk(), ED2 = mk(); let ed = ED1;
 // A collection and a built deck from when a deck was 30 cards: nothing that could be played is lost, and the old deck
@@ -70,7 +76,7 @@ for (let t = 0; t < T; t++) {
   Coll.use({ store: { get: k => (k in mem ? mem[k] : null), set: (k, v) => { mem[k] = v; } }, random: R, now: () => day, daily: DAILY || Coll.DAILY, feat: FEAT || Coll.FEAT, odds: ODDS || Coll.ED_ODDS });
   Coll.reset(); assert(Coll.decks().every(d => !d.ok), 'nothing is playable before a starter is chosen');
   const st = D[(R() * 5) | 0]; assert(Coll.chooseStarter(st) && !Coll.chooseStarter(D[0]), 'a starter is chosen once');
-  assert(Coll.counts().copies === DECK && Coll.packs().length === 3 && Coll.deck('ready:' + st).ok && Coll.deck('ready:' + st).cards.length === DECK, 'the starter is ' + DECK + ' cards, playable, with three packs');
+  assert(Coll.counts().copies === DECK && Coll.packs().length === NW && Coll.deck('ready:' + st).ok && Coll.deck('ready:' + st).cards.length === DECK, 'the starter is ' + DECK + ' cards, playable, with its welcome packs');
   ed = ED1; let gifts = 0, got = 0, d = 0; const seenEd = Coll.EDITIONS.map(() => 0), seenTier = [0, 0, 0, 0, 0];
   const open = () => { let r; while ((r = Coll.openPack())) {
     assert(r.cards.every(c => c.n <= 2), 'never more than two of a card'); const cp = r.cards.filter(c => c.copy).length; assert(cp === r.pack.n || r.cards.length === 2 * r.pack.n || Coll.counts().copies === 2 * Coll.ALL.length, 'a pack holds as many copies you were missing as it says, while there are copies left to find'); assert(r.cards.length <= 2 * r.pack.n, 'a pack holds at most as many extra foils as it has cards');
@@ -83,18 +89,22 @@ for (let t = 0; t < T; t++) {
   // a deck you built: valid, saved, listed
   const mine = Coll.saveDeck({ n: 'Mine', guide: ARCH[st].guide, cards: Coll.finish({ cards: [] }) }); assert(Coll.deck(mine.id).ok && mine.cards.length === DECK, 'Finish it for me builds a playable deck of ' + DECK + ': ' + Coll.deck(mine.id).why.join('; '));
   assert(Coll.problems({ guide: ARCH[st].guide, cards: Coll.readyCards(st).slice(0, DECK - 1).concat(['nosuch']) }).length === 1 && Coll.problems({ guide: 'nobody', cards: [] }).length === 2, 'problems are named');
-  let sawAll = 0, gotGuides = 0, nd = 0, nf = 0;
-  while (!Coll.counts().complete && d < 400) {
+  let sawAll = 0, gotGuides = 0, nd = 0, nf = 0, s1 = 0; const firstDone = () => S1.every(k => Coll.copies(k) === 2), ser = Coll.PACK_ORDER === 'series';
+  if (ser && !firstDone()) assert(Coll.ALL.every(k => Coll.seriesOf(k) === 1 || !Coll.copies(k)), 'the welcome packs hold only the first series');
+  while (!Coll.counts().complete && d < 2000) {
     d++; day = new Date(2027, 0, 1 + d);
     for (let g = 0; g < PER; g++) { const win = R() < PW, level = d > 9 ? 'hard' : 'normal', got = Coll.gameOver({ win: win, cpu: true, level: level, built: d > 4, seen: [Object.keys(CARDS)[(R() * Object.keys(CARDS).length) | 0]] });
       got.forEach(x => { if (x.t === 'pack') { if (x.pack.k === 'daily') nd++; else nf++; } }); }
-    assert(Coll.packs().length <= 4, 'at most one daily pack a day'); open();
+    assert(Coll.packs().length <= 4, 'at most one daily pack a day');
+    const before1 = !firstDone(), n2 = Coll.ALL.filter(k => Coll.seriesOf(k) === 2 && Coll.copies(k)).length; open();
+    if (ser && before1 && !firstDone()) assert(Coll.ALL.filter(k => Coll.seriesOf(k) === 2 && Coll.copies(k)).length === n2 || Coll.threads().some(t => t.rewarded && t.cards.some(k => Coll.seriesOf(k) === 2)), 'no card of the second series comes out of a pack before the first series is complete');
+    if (!s1 && firstDone()) s1 = d;
     const c = Coll.counts(); if (!sawAll && c.own === c.cards) sawAll = d; if (!gotGuides && c.guides === c.guidesAll) gotGuides = d;
     if (d === 7) { after7 += c.copies; own7 += c.own; } if (d === 14) { after14 += c.copies; own14 += c.own; } if (d === 21) { after21 += c.copies; own21 += c.own; }
   }
   assert(Coll.counts().complete, 'the set can be finished'); assert(Coll.threads().every(x => x.done && x.rewarded), 'every Thread is finished by then');
   assert(Coll.gameOver({ win: true, cpu: false, level: 'hard' }).length === 0, 'pass and play earns nothing');
-  days.push(d); seenAll.push(sawAll); guidesAll.push(gotGuides); sum.daily += nd; sum.feat += nf; sum.gifts += gifts + Coll.threads().length - gifts;
+  days.push(d); seenAll.push(sawAll); guidesAll.push(gotGuides); s1all.push(s1); sum.daily += nd; sum.feat += nf; sum.gifts += gifts + Coll.threads().length - gifts;
   // the set is complete: the packs go on, and now every card in them is a finish not found before
   ED1.days += d; ed = ED2; const d1 = d;
   const total = (NE - 1) * Coll.ALL.length, left = () => total - Coll.edCounts().slice(1).reduce((a, b) => a + b, 0);
@@ -109,7 +119,9 @@ for (let t = 0; t < T; t++) {
 }
 days.sort((a, b) => a - b); const avg = a => (a.reduce((s, x) => s + x, 0) / a.length).toFixed(1), q = p => days[Math.min(days.length - 1, Math.floor(p * days.length))];
 console.log('All checks passed. ' + T + ' players, ' + PER + ' games a day against the computer, winning ' + Math.round(PW * 100) + '% of them. A daily pack holds ' + Coll.DAILY + ' cards and a one-time pack ' + Coll.FEAT + '.');
-console.log('After the three welcome packs: ' + (sum.welcomeNew / T).toFixed(1) + ' new cards, ' + (sum.own3 / T).toFixed(1) + ' of ' + Coll.ALL.length + ' different cards owned.');
+console.log('The set is ' + Coll.ALL.length + ' cards: ' + S1.length + ' in the first series and ' + (Coll.ALL.length - S1.length) + ' in the second. Packs: ' + (Coll.PACK_ORDER === 'series' ? 'the first series until it is complete, then the second' + (Coll.SERIES2_PACK ? ', in packs of ' + Coll.SERIES2_PACK : '') : 'the whole set from the first pack') + '. Welcome packs: ' + Coll.WELCOME.join(', ') + '.');
+console.log('The first series (the ' + S1.length + ' cards the ready decks are made of) is complete after ' + avg(s1all) + ' days on average (quickest ' + Math.min.apply(null, s1all) + ', slowest ' + Math.max.apply(null, s1all) + ').');
+console.log('After the welcome packs: ' + (sum.welcomeNew / T).toFixed(1) + ' new cards, ' + (sum.own3 / T).toFixed(1) + ' of ' + Coll.ALL.length + ' different cards owned.');
 console.log('Cards owned (of ' + 2 * Coll.ALL.length + ') after a week: ' + (after7 / T).toFixed(0) + ', two weeks: ' + (after14 / T).toFixed(0) + ', three weeks: ' + (after21 / T).toFixed(0));
 console.log('Different cards owned (of ' + Coll.ALL.length + ') after a week: ' + (own7 / T).toFixed(1) + ', two weeks: ' + (own14 / T).toFixed(1) + ', three weeks: ' + (own21 / T).toFixed(1));
 console.log('The last new card turns up after ' + avg(seenAll) + ' days; every Guide after ' + avg(guidesAll) + ' days.');
