@@ -4418,8 +4418,8 @@
       // games: whole sections, or single games
       var nCat = pc.cats.length, nGame = pc.games.length;
       var gl = el('div', { class: 'k-list' }, [
-        el('button', { type: 'button', onclick: function () { kidCats(); } }, [el('span', { class: 'ic', html: icon('tiles') }), el('span', { text: 'Sections' }), el('span', { class: 'k-st', text: nCat ? nCat + ' off' : 'All on' })]),
-        el('button', { type: 'button', onclick: function () { kidGames(); } }, [el('span', { class: 'ic', html: icon('gamepad') }), el('span', { text: 'Single games' }), el('span', { class: 'k-st', text: nGame ? nGame + ' off' : 'All on' })])]);
+        el('button', { type: 'button', onclick: function () { kidCats(); } }, [el('span', { class: 'ic', html: icon('tiles') }), el('span', { text: 'Sections' }), el('span', { class: 'k-val', text: nCat ? nCat + ' off' : 'All on' })]),
+        el('button', { type: 'button', onclick: function () { kidGames(); } }, [el('span', { class: 'ic', html: icon('gamepad') }), el('span', { text: 'Single games' }), el('span', { class: 'k-val', text: nGame ? nGame + ' off' : 'All on' })])]);
       body.appendChild(card('Games', [gl]));
       body.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block kd-end', text: 'Stop being ' + poss(name) + ' parent', onclick: function () {
         confirmSheet('Stop being ' + poss(name) + ' parent?', { ok: 'Stop', danger: true, body: others.length ? andList(others) + ' still looks after ' + poss(name) + ' games.' : 'Your timer and the games you turned off for ' + name + ' are lifted.' }).then(function (ok) {
