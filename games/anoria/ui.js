@@ -285,15 +285,15 @@
   // strip. pos is a float index: the card at pos faces you, the others fan out and turn away on each side.
   // Dragging (every card follows the finger), flicking (with momentum), the thumbnails and the arrow keys all just
   // move pos, so the whole strip glides; what's written under the card changes when it comes to rest.
-  //   browse(keys, {at, counts: {key: copies}, title, sub})
-  function browse(keys, o) {
-    o = o || {}; closeView(); if (!keys || !keys.length) return; Kit.sfx('flip'); Kit.haptic('light');
-    const n = keys.length, counts = o.counts || {}, F = { pos: Math.max(0, Math.min(n - 1, o.at || 0)), items: {}, raf: 0, at: -1 };
-    const flow = el('div', { class: 'vf-flow' }), under = el('div', { class: 'vf-notes' });
-    const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t', 'aria-label': info(k).n, style: { '--f': (FAC[info(k).f] || FAC.N).c }, onclick: e => { e.stopPropagation(); settle(i, 0); } }); const im = artImg(k, true); if (im) t.appendChild(im); return t; }));
-    const v = el('div', { class: 'view flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || 'Cards', onclick: e => { if (moved) return; if (e.target === v || e.target === flow) closeView(); } }, [
-      el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
-      o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null]) : null, flow, n > 1 ? strip : null, under]);
+  // The strip's own mechanics, for browse() below and for a pack's cards as they are turned over (packs.js).
+  //   o.flow  the box the cards stand in (its height is one card's height)   o.strip  its thumbnails, or null
+  //   o.n  how many cards   o.at  where to start   o.make(j, F)  the element for card j
+  //   o.keep  every card stays made (a pack's cards remember whether they have been turned), not just the few
+  //           on either side of the front one
+  //   o.front(i, was)  another card faces you now (called as the strip moves)   o.rest(i)  it came to rest on card i
+  // Returns F: pos, items, settle(i, vel), render(), reset() after a resize, stop(), moved(), key(e)
+  function makeFlow(o) {
+    const n = o.n, flow = o.flow, strip = o.strip, F = { pos: Math.max(0, Math.min(n - 1, o.at || 0)), items: {}, raf: 0, at: -1 };
     let CU = 0, FX = .46;
     const measure = () => { CU = flow.offsetHeight || 400; FX = parseFloat(getComputedStyle(flow).getPropertyValue('--fx')) || .46; };
     function pose(p) {
@@ -301,35 +301,33 @@
       if (a <= 1) { x = a * FX; r = a * 48; sc = 1 - a * .18; } else { x = FX + (a - 1) * FX * .62; r = 48 + (a - 1) * 6; sc = Math.max(.4, .82 - (a - 1) * .12); op = Math.max(0, 1 - (a - 1) * .38); }
       return { t: 'translate3d(' + (sg * x * CU).toFixed(1) + 'px,0,0) rotateY(' + (-sg * r).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')', z: 100 - Math.round(a * 10), o: op, dim: Math.min(1, a) };
     }
-    function item(j) {
-      if (F.items[j]) return F.items[j];
-      const k = keys[j], b = el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (moved) return; if (j !== Math.round(F.pos)) settle(j, 0); } }, [cardEl(k, { now: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]);
-      flow.appendChild(b); return (F.items[j] = b);
-    }
-    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
+    function item(j) { if (F.items[j]) return F.items[j]; const b = o.make(j, F); flow.appendChild(b); return (F.items[j] = b); }
     function render() {
       if (!CU) measure();
-      const lo = Math.max(0, Math.floor(F.pos) - 3), hi = Math.min(n - 1, Math.ceil(F.pos) + 3);
+      const lo = o.keep ? 0 : Math.max(0, Math.floor(F.pos) - 3), hi = o.keep ? n - 1 : Math.min(n - 1, Math.ceil(F.pos) + 3);
       Object.keys(F.items).forEach(k => { if (+k < lo || +k > hi) { F.items[k].remove(); delete F.items[k]; } });
-      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); }
+      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
       const idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
       if (idx !== F.at) {
-        if (F.at >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
-        Array.prototype.forEach.call(strip.children, (t, k) => t.classList.toggle('on', k === idx));
-        const on = strip.children[idx]; if (on && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
+        const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
+        if (strip) {
+          Array.prototype.forEach.call(strip.children, (t, k) => t.classList.toggle('on', k === idx));
+          const on = strip.children[idx]; if (on && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
+        }
+        if (o.front) o.front(idx, was);
       }
     }
     const stop = () => { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; };
     // glide pos to a card: longer trips take a little longer, leave at the flick's own speed, ease to a stop
-    function settle(target, vel) {
+    function settle(target, vel, slow) {
       target = Math.max(0, Math.min(n - 1, Math.round(target))); stop(); measure();
-      const from = F.pos, dist = target - from, t0 = performance.now(), ms = Math.min(900, 220 + 140 * Math.pow(Math.abs(dist), .85));
+      const from = F.pos, dist = target - from, t0 = performance.now(), ms = slow ? Math.max(260, Math.abs(dist) * slow) : Math.min(900, 220 + 140 * Math.pow(Math.abs(dist), .85));
       const s0 = vel && dist && (vel > 0) === (dist > 0) ? Math.min(3, Math.abs(vel) * ms / Math.abs(dist)) : 0;
-      const ease = t => { const t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : 1 - Math.pow(1 - t, 3); };
+      const ease = t => { const t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : slow ? t2 * (3 - 2 * t) : 1 - Math.pow(1 - t, 3); };
       (function frame(now) {
         const t = Math.min(1, (now - t0) / ms); F.pos = from + dist * (dist ? ease(t) : 1); render();
         if (t < 1) { F.raf = requestAnimationFrame(frame); return; }
-        F.raf = 0; F.pos = target; render(); rest(target);
+        F.raf = 0; F.pos = target; render(); if (o.rest) o.rest(target);
       })(t0);
     }
     // dragging: every card follows your finger; the ends push back
@@ -355,8 +353,23 @@
     flow.addEventListener('pointerup', end); flow.addEventListener('pointercancel', end);
     // a trackpad's two-finger swipe, and the arrow keys
     let wt = 0;
-    v.addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0; if (!dx) return; e.preventDefault(); stop(); if (!CU) measure(); F.pos = Math.max(-.3, Math.min(n - .7, F.pos + dx / (FX * CU))); render(); clearTimeout(wt); wt = setTimeout(() => settle(F.pos, 0), 110); }, { passive: false });
-    const key = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); settle(Math.round(F.pos) + (e.key === 'ArrowRight' ? 1 : -1), 0); } };
+    (o.wheel || flow).addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0; if (!dx) return; e.preventDefault(); stop(); if (!CU) measure(); F.pos = Math.max(-.3, Math.min(n - .7, F.pos + dx / (FX * CU))); render(); clearTimeout(wt); wt = setTimeout(() => settle(F.pos, 0), 110); }, { passive: false });
+    F.key = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); settle(Math.round(F.pos) + (e.key === 'ArrowRight' ? 1 : -1), 0); } };
+    F.settle = settle; F.render = render; F.stop = stop; F.moved = () => moved; F.reset = () => { CU = 0; render(); };
+    return F;
+  }
+  //   browse(keys, {at, counts: {key: copies}, title, sub})
+  function browse(keys, o) {
+    o = o || {}; closeView(); if (!keys || !keys.length) return; Kit.sfx('flip'); Kit.haptic('light');
+    const n = keys.length, counts = o.counts || {};
+    const flow = el('div', { class: 'vf-flow' }), under = el('div', { class: 'vf-notes' });
+    const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t', 'aria-label': info(k).n, style: { '--f': (FAC[info(k).f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(i, 0); } }); const im = artImg(k, true); if (im) t.appendChild(im); return t; }));
+    const v = el('div', { class: 'view flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || 'Cards', onclick: e => { if (F.moved()) return; if (e.target === v || e.target === flow) closeView(); } }, [
+      el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
+      o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null]) : null, flow, n > 1 ? strip : null, under]);
+    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
+    const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
+      make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
     // Upright, the card is as tall as the room left once the longest of the bunch's notes has its place under it,
     // so no card's notes are ever cut off and the strip never jumps as you go from card to card. (Sideways the notes
     // have the right-hand side to themselves.)
@@ -370,11 +383,11 @@
       const cu = Math.round(Math.max(H * .4, Math.min(520, W * 1.02, room - most)));
       flow.style.setProperty('--cu', cu + 'px'); under.style.height = Math.max(0, Math.min(most, room - cu)) + 'px';
     }
-    const resize = () => { size(); CU = 0; render(); rest(Math.round(F.pos)); };
-    document.addEventListener('keydown', key); window.addEventListener('resize', resize);
-    v._off = () => { stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize); };
+    const resize = () => { size(); F.reset(); rest(Math.round(F.pos)); };
+    document.addEventListener('keydown', F.key); window.addEventListener('resize', resize);
+    v._off = () => { F.stop(); document.removeEventListener('keydown', F.key); window.removeEventListener('resize', resize); };
     document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
-    size(); render(); rest(Math.round(F.pos));
+    size(); F.render(); rest(Math.round(F.pos));
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
 
@@ -1448,7 +1461,7 @@
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
-    cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
+    cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 

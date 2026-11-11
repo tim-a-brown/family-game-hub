@@ -213,7 +213,9 @@
       setTimeout(() => { if (alive && P.el.isConnected) try { P.el.focus({ preventScroll: true }); } catch (e) {} }, 350);
     }
 
-    // ── Torn: the cards are yours from this moment. They come out face down and are turned by the player. ──
+    // ── Torn: the cards are yours from this moment. They come out face down on a strip, and each one turns over as
+    // it slides to the front (Tim, 2026-11-11: "use card carousel for pack openings too with cards flipping as they
+    // scroll in first time they're revealed"). ──
     function torn(pack, seal, mouth) {
       const res = Coll.openPack(pack.id);
       seal.classList.add('torn');
@@ -226,22 +228,31 @@
       const had = {}; cards.forEach(x => { had[x.c] = (had[x.c] == null ? Coll.copies(x.c) : had[x.c]) - 1; });
       res.threads.forEach(t => { if (t.gift) had[t.gift] = (had[t.gift] == null ? Coll.copies(t.gift) : had[t.gift]) - 1; });
       const shown = {}, known = k => !!shown[k] || (had[k] != null ? had[k] > 0 : Coll.copies(k) > 0);
-      let left = n, cols = 1, lifted = null, ended = false, sweep = null, mute = 0, turnedByHand = 0;
+      let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0;
 
+      // The cards stand on one strip (the same strip a bunch of cards is read on anywhere else: AnoriaUI.makeFlow).
+      // They come out face down; each one turns over as it slides to the front for the first time.
       const plate = el('div', { class: 'pk-plate', 'aria-live': 'polite' });
-      const grid = el('div', { class: 'pk-grid' }), lines = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); lines.setAttribute('class', 'pk-lines'); lines.setAttribute('aria-hidden', 'true');
-      const field = el('div', { class: 'pk-field' }, [grid, lines]);
+      const flow = el('div', { class: 'vf-flow pk-flow' });
+      const strip = el('div', { class: 'vf-strip pk-strip' });
+      const field = el('div', { class: 'pk-field' }, [flow, n > 1 ? strip : null]);
       const rest = el('button', { type: 'button', class: 'btn btn-soft pk-rest', onclick: () => turnRest() }, [el('span', { class: 'pk-rest-ic', html: Kit.icon('cards') }), el('span', { class: 'pk-rest-t', text: 'Turn them all' })]);
       const foot = el('div', { class: 'pk-foot' }, [n > 2 ? rest : null]);
-      // where there's room beside the cards (an iPad on its side): the card just turned, large enough to read
-      const big = el('button', { type: 'button', class: 'pk-big', 'aria-label': 'The card just turned', disabled: true }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]);
-      let bigKey = null; big.addEventListener('click', () => { if (bigKey) A.openView(bigKey); });
-      const info = el('div', { class: 'pk-info' }, [big, plate]), main = el('div', { class: 'pk-main' }, [field, foot]);
+      const info = el('div', { class: 'pk-info' }, [plate]), main = el('div', { class: 'pk-main' }, [field, foot]);
+      const turned = () => cells.filter(z => z.up);
       cards.forEach((x, i) => {
-        const b = el('button', { type: 'button', class: 'pk-c', 'data-i': String(i), style: { '--f': col(x.c) }, 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down' }, [
+        const b = el('div', { class: 'vf-c pk-fc', 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { mini: true })])])]);
-        cells.push({ el: b, x: x, up: false, at: 0 }); grid.appendChild(b);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true })])])]);
+        const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
+        const c = { el: b, th: th, x: x, up: false, at: 0 };
+        // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it
+        b.addEventListener('click', () => {
+          if (!dealt || !F || F.moved()) return;
+          if (i !== Math.round(F.pos)) { F.settle(i, 0); return; }
+          if (c.up && Date.now() - c.at > 420) A.openView(x.c, { list: turned().map(z => z.x.c), at: turned().indexOf(c) });
+        });
+        cells.push(c); strip.appendChild(th);
       });
       plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k', text: pack.why })]));
       plate.appendChild(el('div', { class: 'pk-p-n', text: n + plural(n, ' card', ' cards') }));
@@ -252,9 +263,10 @@
       // room on the plate for the longest thing it could say about any card here, so the cards never shift as they turn
       function reserve() {
         const keep = Array.from(plate.childNodes), cls = plate.className; let h = 0; plate.style.minHeight = ''; plate.setAttribute('aria-busy', 'true');
+        const here = {}; cards.forEach(x => { here[x.c] = 1; });   // (a Thread is only shown to a card you have, or one in this pack)
         cards.forEach(x => {
           const k = x.c, c = CARDS[k]; let far = null;
-          const see = (o, tx) => { if (tx && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, tx: tx }; };
+          const see = (o, tx) => { if (tx && (here[o] || known(o)) && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, tx: tx }; };
           (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@') see(s, TX.LINKS[s + '>' + k]); });
           Coll.ALL.forEach(t => { const tc = CARDS[t]; if ((tc.insp || []).concat(tc.from || []).indexOf(k) >= 0) see(t, TX.LINKS[k + '>' + t]); });
           show(k, { first: false }, far, true); h = Math.max(h, plate.offsetHeight);
@@ -263,24 +275,15 @@
         plate.className = cls; plate.innerHTML = ''; keep.forEach(c => plate.appendChild(c));
         if (h) plate.style.minHeight = h + 'px'; plate.removeAttribute('aria-busy');
       }
-      // the biggest the cards can be with all of them in view
+      // the front card as tall as the room allows, with the next one showing at each side
       function fit() {
         if (!ended && n) reserve();
         const r = field.getBoundingClientRect(); if (!r.width || !n) return;
-        const gap = r.width < 430 || r.height < 340 ? 7 : 10, top = 12, cap = n <= 2 ? 300 : n <= 4 ? 240 : 190;
-        const size = c => { const rows = Math.ceil(n / c); return Math.min((r.width - gap * (c - 1)) / c, (r.height - top - gap * (rows - 1)) / rows / 1.4, cap); };
-        let best = { w: 0, c: 1 };
-        for (let c = 1; c <= n; c++) { const w = size(c), v = w * (n % c ? .9 : 1); if (v > best.v + .25 || !best.w) best = { w: w, c: c, v: v }; }
-        if (n <= 3 && size(n) >= 120) best = { w: size(n), c: n };   // two or three sit side by side
-        if (ended && cols > 1 && cols <= n && size(cols) >= best.w * .88) best = { w: size(cols), c: cols };   // (the tally keeps the cards where they were)
-        const w = Math.max(40, Math.floor(best.w)); cols = best.c;
-        grid.style.setProperty('--cw', w + 'px'); grid.style.setProperty('--gap', gap + 'px'); grid.style.width = (cols * w + (cols - 1) * gap) + 'px';
-        grid.classList.toggle('small', w < 94); grid.style.setProperty('--lift', w >= 150 ? '1.08' : w >= 94 ? '1.26' : '1.5');
-        // a card that grows as it turns grows away from the nearest edge
-        cells.forEach((c, i) => { const cx = i % cols, cy = Math.floor(i / cols), rows = Math.ceil(n / cols); c.el.style.transformOrigin = (cols > 1 ? cx / (cols - 1) * 100 : 50) + '% ' + (rows > 1 ? cy / (rows - 1) * 100 : 50) + '%'; });
-        lines.innerHTML = '';
+        const under = n > 1 ? strip.offsetHeight + 6 : 0;
+        const cu = Math.floor(Math.max(64, Math.min(r.height - under - 16, r.width * (n > 1 ? 1.12 : 1.3), 600)));
+        if (cu === lastCu) return; lastCu = cu;
+        flow.style.setProperty('--cu', cu + 'px'); if (F) F.reset();
       }
-      fit(); listen(window, 'resize', () => { if (main.isConnected) fit(); });
 
       // a Thread between this card and one you can see: a Figure it grew from, or one that grew from it
       function linkFor(k) {
@@ -290,84 +293,69 @@
         out.forEach(l => { l.cell = cells.filter(c2 => c2.up && c2.x.c === l.other)[0] || null; });
         return out.sort((a, b) => (b.cell ? 1 : 0) - (a.cell ? 1 : 0))[0] || null;
       }
-      function knot(c) { if (!c.el.querySelector('.pk-knot')) c.el.appendChild(el('span', { class: 'pk-knot', html: Kit.icon('link') })); c.el.classList.remove('thread'); void c.el.offsetWidth; c.el.classList.add('thread'); }
-      function tie(a, b) {   // a gilt line between two cards on the table, drawn and then let go
-        if (calm()) return;
-        const f = field.getBoundingClientRect(), ra = a.el.getBoundingClientRect(), rb = b.el.getBoundingClientRect();
-        const x1 = ra.left + ra.width / 2 - f.left, y1 = ra.top + ra.height / 2 - f.top, x2 = rb.left + rb.width / 2 - f.left, y2 = rb.top + rb.height / 2 - f.top;
-        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'), bend = Math.min(40, Math.hypot(x2 - x1, y2 - y1) * .18);
-        p.setAttribute('d', 'M' + x1.toFixed(1) + ' ' + y1.toFixed(1) + 'Q' + ((x1 + x2) / 2).toFixed(1) + ' ' + ((y1 + y2) / 2 - bend).toFixed(1) + ' ' + x2.toFixed(1) + ' ' + y2.toFixed(1));
-        lines.appendChild(p); const len = p.getTotalLength ? p.getTotalLength() : 200; p.style.setProperty('--len', String(len));
-        setTimeout(() => p.remove(), 2600);
-      }
+      function knot(c) { if (!c.el.querySelector('.pk-knot')) c.el.appendChild(el('span', { class: 'pk-knot', html: Kit.icon('link') })); c.th.classList.add('knot'); c.el.classList.remove('thread'); void c.el.offsetWidth; c.el.classList.add('thread'); }
 
-      function show(k, x, link, dry) {   // the plate: what was just turned
+      // the plate: the card at the front. Upright, the card itself is large enough to read, so only a Thread it has
+      // to a card of yours is written here; sideways the card is smaller, and the plate beside it says the rest too.
+      function show(k, x, link, dry) {
         const t = TX.CARDS[k] || {};
-        if (!dry) { bigKey = k; big.disabled = false; big.setAttribute('aria-label', 'Read ' + CARDS[k].n); big.innerHTML = ''; big.appendChild(A.cardEl(k)); big.style.setProperty('--f', col(k)); big.classList.remove('in'); void big.offsetWidth; big.classList.add('in'); }
         plate.className = 'pk-plate ' + (x.first ? 'new' : 'two'); plate.style.setProperty('--f', col(k)); plate.innerHTML = '';
-        plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]), el('span', { class: 'pk-p-s', text: x.first ? 'New' : 'Second copy' })]));
+        plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]), x.first ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));   // (a new card says so itself: New is stamped on it as it turns)
         plate.appendChild(el('div', { class: 'pk-p-n', text: CARDS[k].n }));
         if (link) plate.appendChild(el('div', { class: 'pk-p-th' }, [el('span', { class: 'pk-p-who', role: 'img', 'aria-label': 'A Thread to ' + CARDS[link.other].n }, [thumb(link.other), el('i', { html: Kit.icon('link') })]), el('span', { class: 'tx', text: link.tx })]));
         else if (t.tx) plate.appendChild(el('div', { class: 'pk-p-cap', html: A.boldKeys(t.tx) }));
         else if (t.fact) plate.appendChild(el('div', { class: 'pk-p-cap it', text: t.fact }));
       }
-      function mark() {   // which face-down card asks to be turned: the first, until the player has the idea; then only the last
-        cells.forEach(c => c.el.classList.remove('next', 'last'));
-        const down = cells.filter(c => !c.up); if (!down.length) return;
-        if (down.length === 1 && n > 1) down[0].el.classList.add('last'); else if (turnedByHand < 2) down[0].el.classList.add('next');
+      function mark() {
         const t = rest.querySelector('.pk-rest-t'); if (t) t.textContent = left === n ? 'Turn them all' : 'Turn the rest';
         rest.hidden = left < 2;
       }
-      function settle(c) { if (lifted === c) lifted = null; c.el.classList.remove('lift'); }
+      // o.pass: the strip is still moving on past this card (a flick, or Turn the rest): it turns, without the fanfare
       function turn(i, o) {
         const c = cells[i]; if (!c || c.up || !alive || ended) return; o = o || {};
         const k = c.x.c, isNew = c.x.first, last = left === 1;
-        c.up = true; c.at = Date.now(); left--; shown[k] = 1; if (!o.quiet) turnedByHand++;
-        if (lifted) settle(lifted);
+        c.up = true; c.at = Date.now(); left--; shown[k] = 1;
         const link = linkFor(k);
-        c.el.classList.add('up', isNew ? 'new' : 'two'); c.el.classList.remove('next', 'last');
-        c.el.setAttribute('aria-label', CARDS[k].n + (isNew ? ', new. Read it' : ', a second copy. Read it'));
-        c.el.appendChild(isNew ? el('span', { class: 'pk-tag', text: 'New' }) : el('span', { class: 'pk-two', text: '2' }));
-        if (link) { knot(c); if (link.cell) { knot(link.cell); if (!o.quiet) tie(link.cell, c); } }
-        if (o.quiet) { Kit.sfx('flip', .7); if (isNew) Kit.haptic('light'); }
+        c.el.classList.add('up', isNew ? 'new' : 'two');
+        c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
+        c.th.classList.add('up', isNew ? 'new' : 'two'); c.th.style.setProperty('--f', col(k)); c.th.setAttribute('aria-label', CARDS[k].n + (isNew ? ', new' : ', a second copy'));
+        const im = A.artImg(k, true); if (im) c.th.appendChild(im);
+        if (link) { knot(c); if (link.cell) knot(link.cell); }
+        if (o.pass) { Kit.sfx('flip', .7); if (isNew) Kit.haptic('light'); }
         else if (isNew) {
           Kit.sfx('flip'); setTimeout(() => Kit.sfx('sparkle', last ? 1 : .8), 140); Kit.haptic('medium');
-          if (!o.swept) { c.el.classList.add('lift'); lifted = c; setTimeout(() => settle(c), 760); }   // (a card that came up would hide the next one from a passing finger)
-          const r = c.el.getBoundingClientRect(); setTimeout(() => bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: r.width * .95, ms: 700 }), 160);
+          const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: w * .95, ms: 700 }); }, 160);
         } else { Kit.sfx('flip', .8); Kit.haptic('light'); }
-        if (link && !o.quiet) setTimeout(() => Kit.sfx('good', .6), 300);
-        if (!o.quiet || o.say) show(k, c.x, link);
+        if (link && !o.pass) setTimeout(() => Kit.sfx('good', .6), 300);
         mark();
-        if (!left) setTimeout(end, o.quiet ? 500 : isNew ? 900 : 650);
+        if (!left) setTimeout(end, o.pass ? 900 : isNew ? 1300 : 1000);
+      }
+      // another card has come to the front: it turns over if it never has (and so does any card the strip flew past),
+      // and the plate says which card this is
+      function front(i) {
+        if (!dealt || ended) return;
+        clearTimeout(nudge); flow.classList.remove('nudge');
+        for (let j = 0; j < i; j++) if (!cells[j].up) turn(j, { pass: true });
+        const c = cells[i]; if (!c) return;
+        if (!c.up) turn(i, { pass: !!(F && F.raf && F.to !== i) });
+        if (!ended) show(c.x.c, c.x, linkFor(c.x.c));
       }
       function turnRest() {
-        if (ended || rest.disabled) return; rest.disabled = true; Kit.sfx('tap'); Kit.haptic('medium');
-        const down = cells.map((c, i) => i).filter(i => !cells[i].up), gapMs = calm() ? 0 : Math.max(55, Math.min(95, 700 / down.length));
-        down.forEach((i, j) => setTimeout(() => turn(i, { quiet: true, say: j === down.length - 1 }), j * gapMs));
+        if (ended || rest.disabled || !F || !dealt) return; rest.disabled = true; Kit.sfx('tap'); Kit.haptic('medium');
+        if (calm()) { cells.forEach((c, i) => { if (!c.up) turn(i, { pass: true }); }); F.settle(n - 1, 0); return; }
+        F.to = n - 1; F.settle(n - 1, 0, 240);   // (a riffle: each card turns as it passes the front)
       }
-      // a tap turns a card (a second tap reads it); a finger drawn across the cards turns each one it passes
-      const cellAt = e => { const t = document.elementFromPoint(e.clientX, e.clientY), b = t && t.closest ? t.closest('.pk-c') : null; return b && grid.contains(b) ? +b.getAttribute('data-i') : -1; };
-      grid.addEventListener('pointerdown', e => { sweep = { id: e.pointerId, from: cellAt(e), went: false }; });
-      grid.addEventListener('pointermove', e => {
-        if (!sweep || e.pointerId !== sweep.id || (e.pointerType === 'mouse' && !e.buttons)) return;
-        const i = cellAt(e); if (i < 0 || i === sweep.from && !sweep.went) return;
-        if (!sweep.went) { sweep.went = true; if (sweep.from >= 0) turn(sweep.from, { swept: true }); }
-        turn(i, { swept: true });
-      });
-      const lift = () => { if (sweep && sweep.went) mute = Date.now(); sweep = null; };
-      grid.addEventListener('pointerup', lift); grid.addEventListener('pointercancel', lift);
-      grid.addEventListener('click', e => {
-        const b = e.target.closest ? e.target.closest('.pk-c') : null; if (!b) return; const i = +b.getAttribute('data-i'), c = cells[i];
-        if (Date.now() - mute < 350) return;
-        if (!c.up) turn(i); else if (Date.now() - c.at > 420) A.openView(c.x.c, { list: cells.filter(z => z.up).map(z => z.x.c), at: cells.filter(z => z.up).indexOf(c) });   // (the cards turned so far, as one strip to slide through)
-      });
-      grid.addEventListener('keydown', e => {
-        const d = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols }[e.key]; if (!d) return;
-        const b = document.activeElement && document.activeElement.closest ? document.activeElement.closest('.pk-c') : null; if (!b) return;
-        const j = +b.getAttribute('data-i') + d; if (cells[j]) { e.preventDefault(); cells[j].el.focus(); }
-      });
+      if (n) {
+        F = A.makeFlow({ flow: flow, strip: n > 1 ? strip : null, n: n, at: 0, keep: true, wheel: field, make: j => cells[j].el, front: front });
+        const settle = F.settle; F.to = 0; F.settle = (t, v, slow) => { F.to = Math.max(0, Math.min(n - 1, Math.round(t))); settle(t, v, slow); };
+        listen(document, 'keydown', e => { if (!main.isConnected || !dealt || document.querySelector('.view.show, .pk-moment, .k-scrim.show')) return; F.key(e); });
+      }
+      fit(); listen(window, 'resize', () => { if (main.isConnected) fit(); });
+      // (the room for the cards also changes without the window changing: the tally is taller than the title was, the
+      // buttons under it can wrap)
+      if (window.ResizeObserver) { let rq = 0; const ro = new ResizeObserver(() => { cancelAnimationFrame(rq); rq = requestAnimationFrame(() => { if (alive && main.isConnected) fit(); }); }); ro.observe(field); offs.push(() => ro.disconnect()); }
 
-      // ── out of the pack and onto the table ──
+      // ── out of the pack and into your hands ──
       (async function deal() {
         const quick = calm();
         if (!quick) await wait(420);
@@ -379,25 +367,28 @@
         if (!alive) return;
         stage.classList.remove('dealing');
         if (!quick && n) {
+          // the cards come up out of the pack one behind the other and fan out along the strip
           cells.forEach((c, i) => {
-            const r = c.el.getBoundingClientRect(), ox = to.x - (r.left + r.width / 2), oy = to.y - (r.top + r.height / 2), d = i * (n > 6 ? 62 : 110);
-            anim(c.el, [{ transform: 'translate(' + ox.toFixed(1) + 'px,' + oy.toFixed(1) + 'px) scale(.35) rotate(' + ((Math.random() * 30 - 15) | 0) + 'deg)', opacity: 0 }, { opacity: 1, offset: .12 }, { transform: 'none', opacity: 1 }],
-              { duration: 520, delay: d, easing: 'cubic-bezier(.2,.85,.3,1.12)', fill: 'backwards' });
-            setTimeout(() => { if (alive) { Kit.sfx('deal', n > 6 ? .7 : 1); Kit.haptic('tick'); } }, d + 40);
+            if (i > 4) return;
+            const r = flow.getBoundingClientRect(), oy = to.y - (r.top + r.height / 2), d = i * 90, here = c.el.style.transform;
+            anim(c.el, [{ transform: 'translate3d(0,' + oy.toFixed(1) + 'px,0) scale(.3)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: here, opacity: c.el.style.opacity || 1 }],
+              { duration: 540, delay: d, easing: 'cubic-bezier(.2,.85,.3,1.08)', fill: 'backwards' });
+            setTimeout(() => { if (alive) { Kit.sfx('deal', 1); Kit.haptic('tick'); } }, d + 40);
           });
-          await wait((n - 1) * (n > 6 ? 62 : 110) + 520);
+          await wait((Math.min(n, 5) - 1) * 90 + 560);
         }
         if (!alive) return;
         if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + (dy + s.height).toFixed(1) + 'px)'; seal.style.opacity = '0'; await wait(380); }
         seal.remove(); stage.classList.add('turning'); mark();
         if (!n) { end(); return; }
-        if (alive && cells[0]) try { cells[0].el.focus({ preventScroll: true }); } catch (e) {}
+        dealt = true; front(0);
+        // (nobody has slid the strip yet: it leans over for a moment to show there is more to the side)
+        if (n > 1 && !quick) nudge = setTimeout(() => { if (alive && !ended && F && Math.round(F.pos) === 0 && left) flow.classList.add('nudge'); }, 2200);
       })();
 
       // ── every card turned: a Thread it finished, then the tally and where to go next ──
       async function end() {
-        if (ended || !alive) return; ended = true; rest.hidden = true; if (lifted) settle(lifted); lines.innerHTML = '';
-        cells.forEach(c => c.el.classList.remove('next', 'last'));
+        if (ended || !alive) return; ended = true; rest.hidden = true; clearTimeout(nudge); flow.classList.remove('nudge');
         for (const t of res.threads) { if (!alive) return; await thread(t); }
         if (!alive) return;
         const nw = cards.filter(x => x.first).length, tw = n - nw, more = waiting().length;

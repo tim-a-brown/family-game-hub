@@ -288,6 +288,12 @@ Underlying principles for everything:
   fanned away, every card following the finger, a flick carrying on with momentum, thumbnails of the whole bunch,
   and the front card's notes changing when it comes to rest. Used for a deck's cards, your hand in a game, a pack's
   turned cards, the Library and the deck builder's shelf. A grid in a stock sheet is not how cards are shown.
+  The strip's mechanics are `AnoriaUI.makeFlow` (ui.js), which `browse` and the packs both use.
+- **A pack's cards come out on that strip, face down, and each one turns over as it reaches the front** (Tim,
+  2026-11-11: "use card carousel for pack openings too with cards flipping as they scroll in first time they're
+  revealed"). `torn()` in packs.js: a swipe, a flick, a thumbnail, the arrow keys and Turn the rest (a riffle to the
+  last card) all just move the strip, and `front()` turns whatever arrives. New is stamped on the card; upright and
+  on an iPad the card is large enough to read, so the plate over it says only a Thread the card has to one of yours.
 - **A card that changes a clash is shown as that card** (Tim, 2026-11-11: "Phalanx +2" as a line of small print):
   Phalanx slides in from the outer edge and tucks under the Figure it helps, its name plate showing with the Might
   it adds, and the shields count it as it lands (`aid()` in `clashShow`: before the dice for the attacker, after
