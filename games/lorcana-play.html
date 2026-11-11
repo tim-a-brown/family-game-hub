@@ -12,6 +12,7 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../matkit.js"></script>
 <script src="lorcana-stories.js"></script>
 <style>
 @font-face{font-family:'Sofia Sans Condensed';src:url('../fonts/sofia-sans-condensed.woff2') format('woff2');font-weight:100 900;font-display:swap;}
@@ -219,6 +220,20 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 .mat-sw > i.art::before,.art-big::before{inset:calc(var(--mb,0px) * -1);filter:blur(calc(var(--mb,0px) * .3)) var(--mfx,none);}
 .mat-sw > i.art::after,.art-big::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inherit;}
 .mat-kinds{margin:6px 0 12px;}
+/* A mat made from a card's picture that the player places by hand (MatKit, ../matkit.js, the same engine as Anoria's
+   mats): the picture anywhere on the mat, its edges fading into a cloth of the player's choosing. .mkh is any element
+   such a mat is painted in; the editor (.lorc-mk) wears this game's look. */
+.mkh{position:relative;overflow:hidden;isolation:isolate;}
+.mat.flip > .mk-lay{transform:rotate(180deg);}
+.mat-how{margin:-4px 0 12px;}
+.lorc-mk{--mk-ring:var(--gilt);--mk-ink:var(--text);--mk-dim:var(--text-2);gap:10px;}
+.lorc-mk .mk-stage{padding:12px;border-radius:14px;background:var(--inset,rgba(0,0,0,.28));box-shadow:inset 0 0 0 1px var(--w08);}
+.lorc-mk .mk-mat{border-radius:12px;overflow:hidden;isolation:isolate;box-shadow:0 4px 12px rgba(0,0,0,.45);}
+.lorc-mk .mk-mat::after{content:'';position:absolute;inset:0;z-index:1;border-radius:inherit;pointer-events:none;background:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1px) 0 0/4px 4px;box-shadow:inset 0 0 0 1.5px var(--w14),inset 0 0 30px rgba(0,0,0,.45);}
+.lorc-mk .mk-lab{font-size:.74rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.lorc-mk .mk-centre{flex:none;min-width:44px;min-height:40px;padding:0 10px;}
+.lorc-mk .mk-centre svg{width:18px;height:18px;}
+.lorc-mk .mk-range{accent-color:var(--gilt);}
 .art-cur{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
 .art-frame{position:relative;}
 .art-cur .art-big{display:block;width:100%;max-height:260px;margin:0 auto;border-radius:12px;cursor:grab;touch-action:none;box-shadow:inset 0 0 0 1.5px var(--w14),inset 0 0 30px rgba(0,0,0,.45),0 4px 12px rgba(0,0,0,.45);}
@@ -7289,7 +7304,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     });
     // mats: yours for you; the computer (or a second player who hasn't picked) gets a different design
     var mine0 = myMat(), others = MATS.filter(function (m) { return m.id !== mine0 && m.g === 'Designs'; });
-    S.P.forEach(function (P, pi) { P.mat = !P.cpu && (cfg.mode !== 'pass' || pi === 0) ? mine0 : cfg.mode === 'pass' ? (lsGet(MATK + '2', '') || others[0].id) : others[Math.floor(Math.random() * others.length)].id; });
+    S.P.forEach(function (P, pi) { P.mat = !P.cpu && (cfg.mode !== 'pass' || pi === 0) ? mine0 : cfg.mode === 'pass' ? (matLoad(MATK + '2', '') || others[0].id) : others[Math.floor(Math.random() * others.length)].id; });
     S.uidN = uidN;
     var f = cfg.options && cfg.options.first;
     S.first = f === 'p1' ? 0 : f === 'p2' ? 1 : Math.random() < 0.5 ? 0 : 1;
@@ -7735,7 +7750,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (o.u === 'a' && OLDF[o.s] && !o.glit) return 'art:' + o.s + tint + fr + ':' + o.cid + ':' + o.url;
     return 'm2:' + (o.u === 't' ? 't' + o.tex : o.u) + ':' + o.s + tint + (o.glit ? '^' + o.glit : '') + (o.u === 'a' || o.u === 'v' ? fr : '') + (o.u === 'a' ? ':' + o.cid + ':' + o.url : '');
   }
-  var matsC = {};
+  var matsC = {}, placedTone = {};   // (placedTone: the cloth colour and dimming read from a card's picture, by card)
   function mkMat(o) {
     var u = /^[navt]$/.test(o.u) ? o.u : 'n', st = styleOf(o.s) || (u === 'n' ? MATS[0] : ARTF[1]);
     var sk = st.g ? (st.g === 'Felt' ? 'felt' : 'design') : 'filter';
@@ -7753,8 +7768,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     m.id = matKey({ u: u, tex: tex, s: st.id, tint: tint, glit: wg, fr: m.fr, cid: m.cid, url: m.url });
     return matsC[m.id] || (matsC[m.id] = m);
   }
+  // A mat placed by hand (MatKit's value as text): it stands in the game as card art with nothing over it, so the
+  // rest of the mat code (which player has which, the picker's tabs, sending it to an online table) treats it as any
+  // other mat. An older copy of the game that meets one online does not know it and shows its plain default.
+  function mkPlaced(v) {
+    var id = MatKit.str(v), d = DB.byId[v.c] || (S && S.defs && S.defs[v.c]) || null, st = ARTF[0];
+    return matsC[id] || (matsC[id] = { id: id, mk: v, u: 'a', tex: '', s: st.id, st: st, sk: 'filter', f: st, g: 'Filters', tint: '', wg: '', glit: '', fr: FRAME0,
+      cid: v.c, url: v.u, art: true, bg: v.col, ink: v.col, name: 'Placed by hand', uname: d ? d.n : 'Card art' });
+  }
   function matById(id) {
     id = String(id || ''); if (matsC[id]) return matsC[id];
+    if (id.charAt(0) === '{') { var pv = window.MatKit ? MatKit.read(id) : null; return pv && pv.u ? mkPlaced(pv) : null; }
     var a, o = null;
     if ((a = /^art:(\w+)(?:~([0-9a-f]{6}))?(?:@([\d.]+),([\d.]+),([\d.]+))?:([^:]+):(.+)$/i.exec(id))) o = { u: 'a', s: a[1], tint: a[2] || '', fr: a[3] ? { x: +a[3], y: +a[4], z: +a[5] } : null, cid: a[6], url: a[7] };
     else if ((a = /^m2:(n|a|v|t[a-z]):(\w+)(?:~([0-9a-f]{6}))?(?:\^([a-z]))?(?:@([\d.]+),([\d.]+),([\d.]+))?(?::([^:]+):(.+))?$/i.exec(id))) o = { u: a[1].charAt(0), tex: a[1].charAt(1), s: a[2], tint: a[3] || '', glit: a[4] || '', fr: a[5] ? { x: +a[5], y: +a[6], z: +a[7] } : null, cid: a[8], url: a[9] };
@@ -7988,6 +8012,14 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function matFill(n, m, o) {
     o = o || {}; n._mf = m.id;
     var ly = n.querySelectorAll(':scope > .m-ov, :scope > .m-gl');
+    if (m.mk) {   // a picture placed by hand: MatKit lays the cloth and the picture; only what changed is touched
+      for (var i0 = 0; i0 < ly.length; i0++) ly[i0].remove(); n._mly = '';
+      n.classList.remove('art', 'nodots'); n.classList.add('mkh'); delete n.dataset.geo; delete n.dataset.px; n.style.background = m.mk.col;
+      var u0 = o.url || m.url; if (imgIsBad(u0) && backupOf(u0)) u0 = backupOf(u0);
+      MatKit.paint(n, m.mk, { url: u0, small: !!o.still });
+      return;
+    }
+    if (n._mk) { MatKit.clear(n); n.classList.remove('mkh'); }
     if (m.u === 'n' && m.sk !== 'filter') {   // a plain felt or design, exactly as it always was
       for (var i = 0; i < ly.length; i++) ly[i].remove(); n._mly = '';
       n.classList.remove('art', 'nodots'); delete n.dataset.geo; delete n.dataset.px; n.style.background = m.bg; return;
@@ -8030,7 +8062,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function frameVars(n, fr) { n.style.setProperty('--fx', fr.x); n.style.setProperty('--fy', fr.y); n.style.setProperty('--z', fr.z); }
   // a picture that won't load is swapped for the backup copy
   function probeArt(u, again) { if (!u || imgIsBad(u)) return; var im = new Image(); im.onerror = function () { imgBad[u] = Date.now(); if (backupOf(u)) again(); }; im.src = u; }
-  function myMat() { return lsGet(MATK, 'midnight') || 'midnight'; }
+  // A mat placed by hand is stored as MatKit's small object; in the game (and in an online table) it goes by that
+  // object as text, like every other mat's id. Older plain values load as they always did.
+  function matLoad(k, d) { var v = lsGet(k, d); return v && typeof v === 'object' ? (window.MatKit && MatKit.str(v)) || d : v; }
+  function matSave(k, id) { var o = null; if (String(id).charAt(0) === '{') { try { o = JSON.parse(id); } catch (e) {} } lsSet(k, o || id); }
+  function myMat() { return matLoad(MATK, 'midnight') || 'midnight'; }
   function myName() { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } }
   // the mat on a player's side: online, what that player picked; here, what was picked for them
   function matOf(pi) {
@@ -8059,11 +8095,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function matPicker() {
     var solo = !S || ui.screen !== 'game';
     var getMat = solo ? function () { return matById(myMat()) || matById('midnight'); } : matOf;
-    var putMat = solo ? function (pi, id) { lsSet(MATK, id); Kit.sfx('tap'); } : setMat;
+    var putMat = solo ? function (pi, id) { matSave(MATK, id); Kit.sfx('tap'); } : setMat;
     var seats = solo ? [0] : S.mode === 'online' ? [NET.seat] : S.mode === 'cpu' ? [humanIx()] : [0, 1], cur = solo ? 0 : seats.indexOf(bottomPi()) >= 0 ? bottomPi() : seats[0];
     var node = el('div', { class: 'mat-pick' }), tabs = el('div', { class: 'seg mat-tabs' }), prev = el('div'), unders = el('div', { class: 'seg mat-kinds' }), body = el('div'), styles = el('div', { class: 'mat-styles' });
     var q = el('input', { class: 'input', type: 'search', placeholder: 'Search any card', 'aria-label': 'Search any card' }), found = el('div');
     var memo = {}, view = getMat(cur).u;   // the last card art / texture picked, so switching back finds it again
+    var edNow = null;   // MatKit's editor, while the mat is a picture placed by hand
     q.addEventListener('input', function () { paintFound(); });
     function who(pi) { return solo ? { name: myName() || 'You', color: Kit.color ? Kit.color(0) : '#ffc83d' } : seatWho(pi); }
     function remember(m) { if (m.u === 'a') memo.a = { cid: m.cid, url: m.url, fr: m.fr }; if (m.u === 't') memo.t = m.tex; }
@@ -8083,7 +8120,44 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (u === 'v') ch.fr = null;
       Kit.sfx('tap'); put(ch);
     }
+    // ── A picture placed by hand ──
+    // Which part of a card's scan is its picture: the window above the name on a standard card, the whole face of
+    // a full-art printing (Enchanted, Iconic), and a Location's picture turned upright (Locations are printed sideways)
+    function placedPic(d, url) {
+      var full = prSpecial(d) > 2, loc = (d.ty || []).indexOf('Location') >= 0;
+      return { c: d.id, u: url, w: 674, h: 940, cr: full ? [.03, .022, .97, .978] : loc ? [.045, .03, .47, .97] : [.042, .032, .958, .5], r: loc && !full ? 1 : 0 };
+    }
+    function matShape() { var mat = solo ? null : $(cur === bottomPi() ? '.mat-bot' : '.mat-top'); return clampN(mat && mat.offsetHeight ? mat.offsetWidth / mat.offsetHeight : 1 / .7, .9, 4); }
+    function tonePic(pic, d, done) {
+      if (placedTone[pic.c]) { done(placedTone[pic.c]); return; }
+      MatKit.tone([backupOf(pic.u), pic.u], pic.cr, function (t) { placedTone[pic.c] = t || { col: mixHex(INKC[(d && d.ink || [])[0]] || '#2f4a8f', '#000000', .64), d: .2 }; done(placedTone[pic.c]); });
+    }
+    // lay this card's picture on the mat: as MatKit first places it, or where the last picture lay
+    function placeCard(d, url) {
+      var pic = placedPic(d, url), old = getMat(cur).mk, shp = matShape();
+      tonePic(pic, d, function (t) {
+        pic.col = t.col; pic.d = t.d; var v = MatKit.make(pic, shp);
+        if (old) { v.x = old.x; v.y = old.y; v.s = old.s; v.f = old.f; if (!old.au) { v.au = 0; v.col = old.col; } }
+        remember(getMat(cur)); putMat(cur, MatKit.str(v)); paint();
+      });
+    }
+    // the editor: the mat in its own shape, the picture moved by hand; the table behind follows as it moves
+    function placer(m) {
+      var host = el('div', { class: 'art-cur' }), d = DB.byId[m.cid] || (S && S.defs && S.defs[m.cid]) || null, live = solo ? [] : [$(cur === bottomPi() ? '.mat-bot' : '.mat-top')].filter(Boolean);
+      var addr = function (v) { return imgIsBad(v.u) && backupOf(v.u) ? backupOf(v.u) : v.u; };
+      edNow = MatKit.edit({ host: host, value: m.mk, cls: 'lorc-mk', matCls: 'mkh', btn: 'btn btn-soft btn-sm', url: addr, shape: matShape, maxH: function () { return 250; },
+        thumb: function (v) { return d && d.im && d.im.s && (d.im.l || d.im.s) === v.u ? d.im.s : addr(v); }, own: function (v) { return placedTone[v.c] || null; },
+        dress: function (mat, v) { mat.style.background = v.col; },
+        onChange: function (v, settled) { live.forEach(function (n) { if (n._mk) { n.style.background = v.col; MatKit.paint(n, v, { url: addr(v) }); } }); if (settled) putMat(cur, MatKit.str(v)); },
+        icons: { hand: Kit.icon('hand'), centre: Kit.icon('target'), small: Kit.icon('search'), big: Kit.icon('search') },
+        words: { size: 'The size of the picture', centre: 'Put the picture back in the middle of the mat', cloth: 'Cloth', colour: 'Colour', fromPic: 'A cloth colour taken from the picture',
+          stage: 'The picture on the mat. Drag the picture to move it. Pinch, scroll or use the slider to change its size.' } });
+      var ed = edNow; tonePic(m.mk, d, function () { if (edNow === ed && host.isConnected) ed.set(ed.value()); });
+      host.appendChild(el('b', { text: m.uname }));
+      return host;
+    }
     function pickArt(d) {
+      if (getMat(cur).mk) { placeCard(d, d.im.l || d.im.s); return; }
       put({ u: 'a', cid: d.id, url: d.im.l || d.im.s, fr: null, s: getMat(cur).u === 'n' && getMat(cur).sk !== 'filter' ? 'dim' : getMat(cur).s });
       var pv = $('.art-cur', node); if (pv && pv.scrollIntoView) pv.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
@@ -8117,12 +8191,24 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var m = getMat(cur), W = who(cur), so = { url: swUrl(m), who: W };
       if (view !== 'a' || m.u === 'a') view = m.u;
       tabs.innerHTML = ''; if (seats.length > 1) seats.forEach(function (pi) { tabs.appendChild(el('button', { type: 'button', class: pi === cur ? 'on' : '', text: S.P[pi].name, onclick: function () { cur = pi; view = getMat(cur).u; memo = {}; paint(); } })); });
-      prev.innerHTML = ''; prev.appendChild(framer(m));
+      if (edNow) { edNow.close(); edNow = null; }
+      prev.innerHTML = ''; prev.appendChild(m.mk ? placer(m) : framer(m));
       unders.innerHTML = '';
       UNDER.forEach(function (x) { unders.appendChild(el('button', { type: 'button', class: x.u === view ? 'on' : '', 'aria-pressed': String(x.u === view), text: x.name, onclick: function () { setUnder(x.u); } })); });
       // (picking a card redraws the strips: each one stays scrolled where it was, not back at the start)
       var keepX = Array.prototype.map.call(body.querySelectorAll('.art-strip'), function (r) { return r.scrollLeft; });
       body.innerHTML = '';
+      if (view === 'a' && m.u === 'a' && window.MatKit) {   // card art either fills the mat, or is placed anywhere on it by hand
+        var how = el('div', { class: 'seg mat-how' });
+        [[false, 'Picture fills the mat'], [true, 'Picture placed by hand']].forEach(function (h) {
+          how.appendChild(el('button', { type: 'button', class: !!m.mk === h[0] ? 'on' : '', 'aria-pressed': String(!!m.mk === h[0]), text: h[1], onclick: function () {
+            if (!!m.mk === h[0]) return; Kit.sfx('tap');
+            if (h[0]) placeCard(DB.byId[m.cid] || (S && S.defs && S.defs[m.cid]) || { id: m.cid, im: { l: m.url, s: m.url } }, m.url);
+            else { putMat(cur, matById('art:dim:' + m.cid + ':' + m.url).id); paint(); }
+          } }));
+        });
+        body.appendChild(how);
+      }
       if (view === 'a') {
         body.appendChild(q); body.appendChild(found); paintFound();
         var mine = deckArt(cur);
@@ -8138,8 +8224,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
           el('span', { class: 'grow', text: avatarSrc(W).photo ? 'Drag the picture above to frame it' : 'Add a photo to see it here' }),
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: has ? 'Change' : 'Add photo', onclick: function () { Kit.avatar.edit(nm, function () { $$('.mat').forEach(function (n) { n.dataset.m = ''; }); if (S && ui.screen === 'game') render(); paint(); }); } })]));
       }
-      // the styles, each one shown over what's underneath now
-      styles.innerHTML = '';
+      // the styles, each one shown over what's underneath now (a picture placed by hand has its cloth and colour above)
+      styles.innerHTML = ''; if (m.mk) return;
       [['Felt', MATS.filter(function (x) { return x.g === 'Felt'; })], ['Designs', MATS.filter(function (x) { return x.g === 'Designs'; })], ['Filters', ARTF]].forEach(function (grp) {
         styles.appendChild(el('div', { class: 'label', text: grp[0] }));
         var row = el('div', { class: 'mat-grid art-filters' });
@@ -8233,7 +8319,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function setMat(pi, id) {
     S.P[pi].mat = id; Kit.sfx('tap');
-    if (S.mode === 'pass') lsSet(pi === 0 ? MATK : MATK + '2', id); else lsSet(MATK, id);   // remembered for the next game
+    if (S.mode === 'pass') matSave(pi === 0 ? MATK : MATK + '2', id); else matSave(MATK, id);   // remembered for the next game
     if (S.mode === 'online') { NET.mats = NET.mats || []; NET.mats[pi] = id; if (NET.ref && NET.doc) { var k = pi === 0 ? 'host' : 'guest', up = {}, me = {}, cur0 = NET.doc[k] || {}; for (var f in cur0) me[f] = cur0[f]; me.mat = id; up[k] = me; NET.ref.update(up).catch(netErr); } }
     render(); save();
   }
@@ -12657,9 +12743,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       item('check', 'Select this card and more…', function () { selStart(d); });
       item('eye', 'View card', function () { cardZoom(d, list); });
       if (d.im && (d.im.l || d.im.s)) item('sparkle', 'Use as my playmat', function () {
-        var cur = matById(lsGet(MATK, '')), keep = cur && (cur.u !== 'n' || cur.sk === 'filter');   // keep the style unless it's a plain felt or design
+        var cur = matById(matLoad(MATK, '')), keep = cur && (cur.u !== 'n' || cur.sk === 'filter');   // keep the style unless it's a plain felt or design
         var m = cur ? matWith(cur, { u: 'a', cid: d.id, url: d.im.l || d.im.s, fr: null, s: keep ? cur.s : 'dim' }) : matById('art:dim:' + d.id + ':' + (d.im.l || d.im.s));
-        lsSet(MATK, m.id); Kit.sfx('chip'); Kit.toast('Playmat set for your next game'); matPicker();
+        matSave(MATK, m.id); Kit.sfx('chip'); Kit.toast('Playmat set for your next game'); matPicker();
       });
       node.appendChild(lst);
       sh = Kit.sheet({ title: '', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });

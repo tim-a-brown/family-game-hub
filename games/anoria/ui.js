@@ -414,7 +414,9 @@
     const strip = el('div', { class: 'vf-strip' }, keys.map((k, i) => { const t = el('button', { type: 'button', class: 'vf-t', 'aria-label': info(k).n, style: { '--f': (FAC[info(k).f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(i, 0); } }); const im = artImg(k, true); if (im) t.appendChild(im); return t; }));
     const v = el('div', { class: 'view flow', role: 'dialog', 'aria-modal': 'true', 'aria-label': o.title || 'Cards', onclick: e => { if (F.moved()) return; if (e.target === v || e.target === flow) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
-      o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null]) : null, flow, n > 1 ? strip : null, under]);
+      o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null,
+        // (o.pick = {label, fn}: the strip is for choosing one of its cards, and this button hands back the card at the front)
+        o.pick ? el('button', { type: 'button', class: 'btn btn-primary btn-sm vf-pick', text: o.pick.label, onclick: e => { e.stopPropagation(); const k = keys[Math.max(0, Math.min(n - 1, Math.round(F.pos)))]; closeView(); o.pick.fn(k); } }) : null]) : null, flow, n > 1 ? strip : null, under]);
     function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; }
     const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
       make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true, tg: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
@@ -615,9 +617,9 @@
   }
   // ── Play mats ──
   // Each player's side of the map (their Gate, their Outpost and their half of the Crossroads) lies on a mat of
-  // their own, and the two mats meet edge to edge in a seam under the Crossroads, as the mats do in Lorcana. The
-  // other player's mat is turned to face them. A player's mat is their Guide's, unless they have chosen another
-  // (matPicker; the choice is anoria_mat, which follows the account).
+  // their own, and the two mats meet edge to edge in a seam under the Crossroads, as the mats do in Lorcana. In pass
+  // and play the other player's mat is turned to face them. A player's mat is their Guide's, unless they have chosen
+  // another (matPicker; the choice is anoria_mat, which follows the account).
   // The pictures are ui/mats/<id>.webp: printed cloth in the cards' own inked style, each true to its Guide's world.
   // A mat for a new Guide is one line here and its picture. Until a Guide has one, that Guide plays on the chart
   // of Anoria in their own colour.
@@ -634,8 +636,31 @@
     chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
   };
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
-  // lay a mat (by id: a Guide's key, 'chart', or a Guide who has no mat yet) on a node; slot says which copy of the picture
+  // A mat can also be made from a card's picture, placed anywhere on it by hand, with a cloth of the player's choosing
+  // in the part the picture leaves empty (matkit.js, which Lorcana's mats use too). Such a choice is MatKit's value:
+  // {k: 'art', c: the card's key, x, y, s, f, col, ...}. The picture is the card's full-size one.
+  const MK = window.MatKit;
+  const hasCard = k => !!(CARDS[k] || TX.GUIDES[k] || C.PLACES[k]);
+  // a stored choice as the table uses it: '' (the Guide's mat), a mat's id, or a picture mat
+  function matRead(raw) {
+    if (!raw) return '';
+    if (typeof raw === 'string' && MATS[raw]) return raw;
+    const v = MK ? MK.read(raw) : null;
+    return v && hasCard(v.c) ? v : '';
+  }
+  const matStore = pick => typeof pick === 'object' && pick ? MK.str(pick) : pick || '';
+  // the cloth colour and the dimming a card's picture asks for, read from the picture once
+  const toneOf = {};
+  function matTone(key, done) { if (toneOf[key]) { done(toneOf[key]); return; } MK.tone([artSrc(key, true)], null, t => { if (t) toneOf[key] = t; done(t); }); }
+  // lay a mat on a node: a Guide's key, 'chart', a Guide who has no mat yet, or a picture mat; slot says which copy of a picture
   function matFill(n, id, slot) {
+    if (typeof id === 'object' && id) {
+      Array.prototype.slice.call(n.children).forEach(c => { if (!c.classList.contains('mk-lay')) c.remove(); });
+      n.style.setProperty('--mc', id.col); n.style.setProperty('--mth', 'color-mix(in srgb,' + id.col + ' 40%,#cdbb8c)'); n.style.setProperty('--md', 0);
+      MK.paint(n, id, { url: artSrc(id.c, false), small: typeof slot === 'string' && slot.charAt(0) === 's' });
+      return;
+    }
+    if (MK) MK.clear(n);
     const m = MATS[id], g = TX.GUIDES[id], plain = !m || m.chart;
     n.style.setProperty('--mc', m ? m.c : g ? 'color-mix(in srgb,' + FAC[g.f].c + ' 46%,#0b1124)' : MATS.chart.c);
     n.style.setProperty('--mth', m ? m.th : MATS.chart.th); n.style.setProperty('--md', m && m.d != null ? m.d : plain ? 0 : .2);
@@ -651,21 +676,33 @@
     }
     n.appendChild(im);
   }
+  // The account's own choice (anoria_mat), read once and again only when the stored text has changed. While a hand
+  // is moving a picture in the editor, `live` is what the table shows; it is stored when the hand lets go.
+  const mine = { raw: undefined, v: '', live: null }, seatMat = [{}, {}];
+  function matMineV() { const raw = lsGet(MATK); if (raw !== mine.raw) { mine.raw = raw; mine.v = matRead(raw); } return mine.live || mine.v; }
+  function matSeatV(o) { const c = seatMat[o], raw = G.players[o].mat; if (c.raw !== raw) { c.raw = raw; c.v = matRead(raw); } return c.v; }
   // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
-  const matWarm = () => { const id = lsGet(MATK) || (Coll.deck(starterId()) || {}).guide; if (MATS[id] && !MATS[id].chart) matFill(el('div'), id, 0); };
+  // (a moment later the other Guides' mats too, for whichever one the other player turns out to have)
+  const warmed = {};
+  const warm = src => { if (!warmed[src]) { warmed[src] = new Image(); warmed[src].src = src; } };
+  const matWarm = () => { const v = matMineV(), id = v || (Coll.deck(starterId()) || {}).guide; if (typeof id === 'object') warm(artSrc(id.c, false)); else if (MATS[id] && !MATS[id].chart) warm(MATSRC + id + '.webp');
+    setTimeout(() => Object.keys(MATS).forEach(k => { if (!MATS[k].chart) warm(MATSRC + k + '.webp'); }), 900); };
   // the seat whose choice of mat is the account's own: the first person at the table
   const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
-  const matPick = o => G.demo ? '' : matMine(o) ? lsGet(MATK) : G.players[o].mat;
+  const matPick = o => G.demo || G.players[o].cpu ? '' : matMine(o) ? matMineV() : matSeatV(o);
   // the mat a seat plays on: the one that person chose, or their Guide's
-  const matOf = o => { const pick = matPick(o); return pick && MATS[pick] ? pick : S.P[o].guide; };
+  const matOf = o => matPick(o) || S.P[o].guide;
+  // The other player's mat is turned to face them only when two people sit at one device (pass and play). Against
+  // the computer nobody sits across the table, and a picture upside down reads badly, so that mat stays upright.
+  const matTurned = () => !!G && G.mode === 'local' && !G.demo;
   // The two mats are part of the table that is built once: a step of the game never draws them again. Each stays
   // with its player; when the view changes hands (pass and play) the two change places, with the board.
   function paintMats() {
     if (!dom.pm || !G || !S) return;
     for (let o = 0; o < 2; o++) {
-      const n = dom.pm[o], id = matOf(o), side = o === ui.view ? 'bot' : 'top';
-      if (n.dataset.m !== id) { n.dataset.m = id; matFill(n, id, o); }
-      if (n.dataset.side !== side) { n.dataset.side = side; n.className = 'an-pm ' + side; }
+      const n = dom.pm[o], pick = matOf(o), side = o === ui.view ? 'bot' : 'top', cls = 'an-pm ' + side + (side === 'top' && matTurned() ? ' turn' : '');
+      if (n._pick !== pick) { n._pick = pick; n.dataset.m = typeof pick === 'object' ? 'art:' + pick.c : pick; matFill(n, pick, o); }
+      if (n.className !== cls) n.className = cls;
     }
   }
   function buildTable() {
@@ -1489,40 +1526,94 @@
   // Choosing a mat (the game's menu). It opens over the setup or a game and leaves it as it is; in a game the table
   // behind takes the new mat at once. Pass and play: each person chooses their own (the first person's choice is
   // the account's, anoria_mat; the other person's stays with this game). What is on offer: the mat of whichever
-  // Guide you are playing (the choice until you make another), every mat in MATS, and the chart.
+  // Guide you are playing (the choice until you make another), every mat in MATS, the chart, and a mat made from
+  // the picture of any card you have found, which you then place by hand (MatKit's editor, in this game's look).
   function matPicker() {
     if (G && G.demo) return;
     Kit.sfx('tap');
     const live = !!(G && S && dom.pm), seats = live ? [0, 1].filter(human) : [0], two = seats.length > 1;
     let cur = live ? (seats.indexOf(ui.view) >= 0 ? ui.view : seats[0]) : 0;
     const guide = () => live ? S.P[cur].guide : (Coll.deck(starterId()) || {}).guide || Object.keys(TX.GUIDES)[0];
-    const chosen = () => { const p = live ? matPick(cur) : lsGet(MATK); return p && MATS[p] ? p : ''; };
-    function put(id) {
-      if (id === chosen()) return;
-      if (!live || matMine(cur)) lsSet(MATK, id || null); else { if (id) G.players[cur].mat = id; else delete G.players[cur].mat; save(); }
-      Kit.sfx('flip', .6); Kit.haptic('light'); paintMats(); paint();
+    const chosen = () => live ? matPick(cur) : matMineV();
+    const isArt = v => typeof v === 'object' && !!v;
+    // the choice is kept: the account's in anoria_mat, the other person's with this game. `settled` is false while a
+    // hand is still moving a picture: the table shows it, and it is stored when the hand lets go.
+    function keep(pick, settled) {
+      if (!live || matMine(cur)) { if (settled === false) mine.live = pick; else { mine.live = null; lsSet(MATK, matStore(pick) || null); } }
+      else { if (pick) G.players[cur].mat = pick; else delete G.players[cur].mat; if (settled !== false) save(); }
+      paintMats();
+    }
+    function put(id) { if (id === chosen()) return; keep(id); Kit.sfx('flip', .6); Kit.haptic('light'); paint(); }
+    // the shape of a mat on this table (its width over its height), or what it will be on a screen this shape
+    function shape() {
+      const n = live && dom.pm[0], w = n ? n.offsetWidth : 0, h = n ? n.offsetHeight : 0; if (w > 40 && h > 20) return w / h;
+      const W = window.innerWidth, H = window.innerHeight; return W > H ? (H >= 600 ? 1.8 : 2.57) : W >= 700 ? 2.7 : 2.2;
+    }
+    // every picture you have found: your Guides, your cards, and the Places
+    function pictures() {
+      const c = Coll.load(), ok = k => !noArt[artSrc(k, true)];
+      return (c.guides || []).filter(k => TX.GUIDES[k]).concat(Object.keys(CARDS).filter(k => (c.cards || {})[k] > 0), Object.keys(C.PLACES)).filter(ok);
+    }
+    // a new picture mat: the picture as MatKit first lays it, on a cloth of the picture's own colour. A mat that
+    // already has a picture keeps where the picture lay and how large it was.
+    function usePicture(key) {
+      matTone(key, t => {
+        const old = chosen(), fy = FY[key], place = isPlace(key);
+        const v = MK.make({ c: key, w: place ? 960 : 640, h: place ? 640 : 960, col: t ? t.col : undefined, d: t ? t.d : undefined, focus: [.5, fy != null ? fy / 100 : place ? .5 : .3] }, shape());
+        // (the part of a tall picture the card itself keeps in view, FY, is the part the mat shows first)
+        if (v.s > 1) v.y = Math.round((v.s / 2 - (v.s - 1) * (fy != null ? fy / 100 : place ? .5 : .22)) * 1000) / 1000;
+        if (isArt(old)) { v.x = old.x; v.y = old.y; v.s = old.s; v.f = old.f; if (!old.au) { v.au = 0; v.col = old.col; } }
+        keep(v); Kit.sfx('flip', .6); Kit.haptic('light'); paint();
+        if (ed) { ed.set(v); edSc.title.textContent = info(v.c).n; } else placeIt(v);
+      });
+    }
+    function choose() {
+      const keys = pictures(), on = chosen(), at = keys.indexOf(isArt(on) ? on.c : guide());
+      browse(keys, { at: Math.max(0, at), title: 'Choose a picture', sub: 'The cards you have found', pick: { label: 'Use this picture', fn: usePicture } });
+    }
+    // placing the picture: the mat in its real shape, as large as the screen allows
+    let ed = null, edSc = null;
+    function placeIt(v) {
+      matTone(v.c, () => {
+        edSc = screen({ title: info(v.c).n, cls: 'an-mt an-mte', onClose: () => { if (ed) ed.close(); ed = null; edSc = null; paint(); } });
+        edSc.tools.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); edSc.close(); } }));
+        ed = MK.edit({ host: edSc.body, value: v, cls: 'an-mk', matCls: 'an-pm', btn: 'btn btn-soft btn-sm',
+          url: x => artSrc(x.c, false), thumb: x => artSrc(x.c, true), own: x => toneOf[x.c], shape: shape, maxH: () => Math.max(150, window.innerHeight - 350),
+          dress: (mat, x) => { mat.style.setProperty('--mc', x.col); mat.style.setProperty('--mth', 'color-mix(in srgb,' + x.col + ' 40%,#cdbb8c)'); mat.style.setProperty('--md', 0); },
+          onChange: (x, settled) => keep(x, settled), another: choose,
+          icons: { hand: Kit.icon('hand'), centre: Kit.icon('target'), small: SVG.art, big: SVG.art },
+          words: { size: 'The size of the picture', centre: 'Put the picture back in the middle of the mat', cloth: 'Cloth', colour: 'Colour', fromPic: 'A cloth colour taken from the picture', another: 'Choose another card',
+            stage: 'The picture on the mat. Drag the picture to move it. Pinch, scroll or use the slider to change its size.' } });
+      });
     }
     const sc = screen({ title: 'Play mats', cls: 'an-mt' });
     const who = el('div', { class: 'mt-who' }), view = el('div', { class: 'mt-view', 'aria-hidden': 'true' }), say = el('p', { class: 'mt-say' }), grid = el('div', { class: 'mt-grid' });
     sc.body.appendChild(el('div', { class: 'mt' }, [el('div', { class: 'mt-look' }, [who, view, say]), grid]));
     const mat = (id, slot, cls) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return n; };
+    // (until a card is chosen, the swatch shows what such a mat is: this Guide's picture on a cloth of its own colour)
+    const sample = g => { const t = toneOf[g], fy = FY[g]; return MK.make({ c: g, w: 640, h: 960, col: t ? t.col : '#1b2850', d: t ? t.d : .2, f: 'quilt', focus: [.5, fy != null ? fy / 100 : .3] }, 2.33); };
     function paint() {
-      const g = guide(), on = chosen(), name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
+      if (!sc.el.isConnected) return;
+      const g = guide(), on = chosen(), art = isArt(on) ? on : null, name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
       who.innerHTML = ''; who.hidden = !two;
       if (two) seats.forEach(o => who.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (o === cur ? 'btn-primary' : 'btn-soft'), 'aria-pressed': String(o === cur), onclick: () => { if (o === cur) return; cur = o; Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
         [el('i', { style: { background: PCOL[o] } }), el('span', { text: pname(o) })])));
-      // the two mats as they lie on the table: this player's nearest, the other player's turned to face them
+      // the two mats as they lie on the table: this player's nearest, the other player's beyond it (turned to face
+      // them when two people sit at one device)
       view.innerHTML = ''; view.classList.toggle('one', !live);
-      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top'));
+      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top' + (matTurned() ? ' turn' : '')));
       view.appendChild(mat(on || g, 'v0', 'bot'));
       say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, and meets ' + other + ' mat under the Crossroads.';
       grid.innerHTML = '';
-      const sw = (id, shown, slot, title, sub, face) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (id === on ? ' on' : ''), 'aria-pressed': String(id === on), 'aria-label': title + ', ' + sub, onclick: () => put(id) }, [
+      const sw = (isOn, shown, slot, title, sub, face, fn) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (isOn ? ' on' : ''), 'aria-pressed': String(isOn), 'aria-label': title + '. ' + sub, onclick: fn }, [
         el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
         el('b', { text: title }), el('small', { text: sub })]));
-      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
-      Object.keys(MATS).forEach(id => sw(id, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world'));
+      sw(!on, g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g, () => put(''));
+      Object.keys(MATS).forEach(id => sw(id === on, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world', null, () => put(id)));
+      if (MK) sw(!!art, art || sample(g), 'sa', 'A card\'s picture', art ? 'This mat shows the picture from the ' + info(art.c).n + ' card.' : (two ? pname(cur) + ' chooses' : 'You choose') + ' a card and place its picture anywhere on the mat.', null,
+        () => { Kit.sfx('tap'); Kit.haptic('light'); if (art) placeIt(art); else choose(); });
     }
+    if (MK) matTone(guide(), paint);
     paint();
   }
   Kit.init({
