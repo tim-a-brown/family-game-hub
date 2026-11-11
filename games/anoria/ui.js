@@ -588,13 +588,68 @@
     try { chartURL = d ? URL.createObjectURL(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 8 320 150" preserveAspectRatio="xMidYMid slice"><path d="' + g + '" fill="none" stroke="#e9cf86" stroke-width=".25" stroke-dasharray="1.2 1.8" opacity=".5"/><path d="' + d + '" fill="#e9cf86" fill-opacity=".1" stroke="#e9cf86" stroke-width=".45" stroke-linejoin="round"/></svg>'], { type: 'image/svg+xml' })) : ''; } catch (e) { chartURL = ''; }
     return chartURL;
   }
+  // ── Play mats ──
+  // Each player's side of the map (their Gate, their Outpost and their half of the Crossroads) lies on a mat of
+  // their own, and the two mats meet edge to edge in a seam under the Crossroads, as the mats do in Lorcana. The
+  // other player's mat is turned to face them. A player's mat is their Guide's, unless they have chosen another
+  // (matPicker; the choice is anoria_mat, which follows the account).
+  // The pictures are ui/mats/<id>.webp: printed cloth in the cards' own inked style, each true to its Guide's world.
+  // A mat for a new Guide is one line here and its picture. Until a Guide has one, that Guide plays on the chart
+  // of Anoria in their own colour.
+  //   n: the mat's name, c: its cloth (shown until the picture has come), th: the thread its edge is bound with,
+  //   d: how far the print is dimmed so the pieces stay the brightest things on it (0 to 1; .2 if not given),
+  //   fill: the picture is stretched to the mat's shape, not cropped (a pattern with borders that should all show)
+  const MATK = 'anoria_mat', MATSRC = 'anoria/ui/mats/';
+  const MATS = {
+    cleopatra: { n: 'Papyrus and lotus', c: '#113c3d', th: '#a98c4e', d: .3 },
+    leonardo: { n: 'A sheet of studies', c: '#6b3122', th: '#b98a66', d: .24 },
+    tubman: { n: 'The North Star', c: '#151d36', th: '#7484ab', d: .04 },
+    franklin: { n: 'The printing house', c: '#33271d', th: '#a5834a', d: .1 },
+    suntzu: { n: 'Bamboo slips', c: '#45401f', th: '#8d8a58', d: .22, fill: true },
+    chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
+  };
+  const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
+  // lay a mat (by id: a Guide's key, 'chart', or a Guide who has no mat yet) on a node; slot says which copy of the picture
+  function matFill(n, id, slot) {
+    const m = MATS[id], g = TX.GUIDES[id], plain = !m || m.chart;
+    n.style.setProperty('--mc', m ? m.c : g ? 'color-mix(in srgb,' + FAC[g.f].c + ' 46%,#0b1124)' : MATS.chart.c);
+    n.style.setProperty('--mth', m ? m.th : MATS.chart.th); n.style.setProperty('--md', m && m.d != null ? m.d : plain ? 0 : .2);
+    n.innerHTML = '';
+    if (plain) { const i = el('i', { class: 'pm-art chart' }); if (chart()) i.style.backgroundImage = 'url("' + chart() + '")'; n.appendChild(i); return; }
+    const k = id + '/' + slot; let im = matPics[k];
+    if (!im) {
+      im = matPics[k] = el('img', { class: 'pm-art' + (m.fill ? ' fill' : ''), alt: '', draggable: 'false', decoding: 'sync' });
+      im.onerror = () => { im.remove(); delete matPics[k]; };
+      im.src = MATSRC + id + '.webp';
+      // (a picture still on its way fades in over its cloth once; one that is here already is simply there)
+      if (!(im.complete && im.naturalWidth)) { im.classList.add('wait'); im.onload = () => im.classList.remove('wait'); }
+    }
+    n.appendChild(im);
+  }
+  // the seat whose choice of mat is the account's own: the first person at the table
+  const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
+  const matPick = o => G.demo ? '' : matMine(o) ? lsGet(MATK) : G.players[o].mat;
+  // the mat a seat plays on: the one that person chose, or their Guide's
+  const matOf = o => { const pick = matPick(o); return pick && MATS[pick] ? pick : S.P[o].guide; };
+  // The two mats are part of the table that is built once: a step of the game never draws them again. Each stays
+  // with its player; when the view changes hands (pass and play) the two change places, with the board.
+  function paintMats() {
+    if (!dom.pm || !G || !S) return;
+    for (let o = 0; o < 2; o++) {
+      const n = dom.pm[o], id = matOf(o), side = o === ui.view ? 'bot' : 'top';
+      if (n.dataset.m !== id) { n.dataset.m = id; matFill(n, id, o); }
+      if (n.dataset.side !== side) { n.dataset.side = side; n.className = 'an-pm ' + side; }
+    }
+  }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
     preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     dom.fx = el('div', { class: 'an-fx' });
-    const felt = el('div', { class: 'an-felt felt-in' }, [dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
+    paintMats();
+    const felt = el('div', { class: 'an-felt felt-in' }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     app.appendChild(dom.root);
@@ -738,6 +793,7 @@
   function render() {
     if (!G || !V || !dom.root) return;
     const v = ui.view, T = targets();
+    paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
     try {
       stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
@@ -1397,6 +1453,45 @@
     else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
     else if (name === 'decks' && window.AnoriaDecks) window.AnoriaDecks.open(null, after);
   }
+  // Choosing a mat (the game's menu). It opens over the setup or a game and leaves it as it is; in a game the table
+  // behind takes the new mat at once. Pass and play: each person chooses their own (the first person's choice is
+  // the account's, anoria_mat; the other person's stays with this game). What is on offer: the mat of whichever
+  // Guide you are playing (the choice until you make another), every mat in MATS, and the chart.
+  function matPicker() {
+    if (G && G.demo) return;
+    Kit.sfx('tap');
+    const live = !!(G && S && dom.pm), seats = live ? [0, 1].filter(human) : [0], two = seats.length > 1;
+    let cur = live ? (seats.indexOf(ui.view) >= 0 ? ui.view : seats[0]) : 0;
+    const guide = () => live ? S.P[cur].guide : (Coll.deck(starterId()) || {}).guide || Object.keys(TX.GUIDES)[0];
+    const chosen = () => { const p = live ? matPick(cur) : lsGet(MATK); return p && MATS[p] ? p : ''; };
+    function put(id) {
+      if (id === chosen()) return;
+      if (!live || matMine(cur)) lsSet(MATK, id || null); else { if (id) G.players[cur].mat = id; else delete G.players[cur].mat; save(); }
+      Kit.sfx('flip', .6); Kit.haptic('light'); paintMats(); paint();
+    }
+    const sc = screen({ title: 'Play mats', cls: 'an-mt' });
+    const who = el('div', { class: 'mt-who' }), view = el('div', { class: 'mt-view', 'aria-hidden': 'true' }), say = el('p', { class: 'mt-say' }), grid = el('div', { class: 'mt-grid' });
+    sc.body.appendChild(el('div', { class: 'mt' }, [el('div', { class: 'mt-look' }, [who, view, say]), grid]));
+    const mat = (id, slot, cls) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return n; };
+    function paint() {
+      const g = guide(), on = chosen(), name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
+      who.innerHTML = ''; who.hidden = !two;
+      if (two) seats.forEach(o => who.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (o === cur ? 'btn-primary' : 'btn-soft'), 'aria-pressed': String(o === cur), onclick: () => { if (o === cur) return; cur = o; Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
+        [el('i', { style: { background: PCOL[o] } }), el('span', { text: pname(o) })])));
+      // the two mats as they lie on the table: this player's nearest, the other player's turned to face them
+      view.innerHTML = ''; view.classList.toggle('one', !live);
+      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top'));
+      view.appendChild(mat(on || g, 'v0', 'bot'));
+      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost. It meets ' + other + ' mat under the Crossroads.';
+      grid.innerHTML = '';
+      const sw = (id, shown, slot, title, sub, face) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (id === on ? ' on' : ''), 'aria-pressed': String(id === on), 'aria-label': title + ', ' + sub, onclick: () => put(id) }, [
+        el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
+        el('b', { text: title }), el('small', { text: sub })]));
+      sw('', g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'It changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g);
+      Object.keys(MATS).forEach(id => sw(id, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world'));
+    }
+    paint();
+  }
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
@@ -1405,6 +1500,7 @@
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => tool('library') },
       { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
+      { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
   });
@@ -1496,7 +1592,7 @@
   window.AnoriaUI = { app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
-  window.__anoria = { E: E, ui: ui, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the
