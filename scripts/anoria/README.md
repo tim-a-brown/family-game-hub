@@ -2,7 +2,8 @@
 
 The whole game as code, so rules and card numbers can be tested by playing thousands of robot games.
 
-- `cards.js`: the test card pool (Figures, Relics, Deeds, Guides, Places) and five built decks.
+- `cards.js`: the test card pool (Figures, Relics, Deeds, Guides, Places) and five built decks. `RETIRED`: cards that have left
+  the set and the card that has each one's slot; the engine still plays them, for a game saved with one.
 - `sim.js`: the rules engine for 2 to 6 players, and robot players with five styles of play.
 - `run.js` + `exp2.js`: the experiments. `node run.js <name> [games]`:
   `rules`, `tension`, `tension2`, `tension3`, `length` compare core rules; `cards` measures every card, Guide,
@@ -37,6 +38,11 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
 - Scoring is flat since 2026-11-11: every Place scores 1 Renown every round, first to 30, and a deck is 40 cards (`DECK` in
   `games/anoria/coll.js`; each ready deck is 20 different cards, two of each). `variants.txt` ("Decks of 40") has the
   before and after. The old doubling is `{"ramp":[1,1,1,2,2,2]}` for `variant.js` and `scoring.js`.
+- `node scripts/anoria/endings.js "<label>" '<json of rule changes>' [games per pair] [first seed]`: the ready decks under
+  a rule, on any set of games (the seed), with each deck's share of wins, how long games run, how they end and which decks
+  win on Seals, and how often a draw pile runs out and how many of their cards a player draws. `"cards"` in the json
+  tries other numbers on a card without touching cards.js; `"log":1` adds the round the piles ran out in. It is what
+  the "First to 25" part of `variants.txt` was made with (the target, four Seals, decks of 40 or 50).
 - The game's rules (`STD`) now have `dice: 'high'` (two ordinary dice, the higher roll adds 1 Might, 2 when higher by 3
   or more), `unique: 1` (one of each person on your side at a time) and `ret: 1` (a Figure whose other copy is in your
   discard pile costs 1 less). Earlier result files were run before these.

@@ -50,22 +50,25 @@ const CARDS = {
   mozart: F('Mozart', 'A', 3, 3, 'EUR', 5, 1785, { swift: 1, inspiring: 1 }),
   beethoven: F('Beethoven', 'A', 4, 4, 'EUR', 6, 1810, { inspiring: 1 }, { insp: ['mozart'] }),
   hokusai: F('Hokusai', 'A', 3, 4, 'ASIA', 6, 1830, {}, { arr: ['push', 1] }),
-  // Wonder
-  scheherazade: F('Scheherazade', 'W', 2, 2, 'MIDEAST', 3, 800, { untouchable: 1 }),
+  // Wonder. No fictional, mythological or legendary characters for now (Tim, 2026-11-11): the six legends of the first
+  // printing (Scheherazade, Anansi, Atalanta, Daedalus, Odysseus, Beowulf) gave their slots to real people, each with
+  // the same faction, cost, Might and skills, so the ready decks play as they did. The old cards are in RETIRED below.
+  harun: F('Harun al-Rashid', 'W', 2, 2, 'MIDEAST', 3, 786, { untouchable: 1 }),
   nostradamus: F('Nostradamus', 'W', 2, 2, 'EUR', 4, 1555, { scholar: 1 }),
   imhotep: F('Imhotep', 'W', 3, 3, 'AFR', 1, -2650, { monument: 1 }),
-  anansi: F('Anansi', 'W', 3, 3, 'AFR', 3, 1200, {}, { arr: ['wits', 1] }),
-  atalanta: F('Atalanta', 'W', 3, 3, 'MED', 1, -1300, { swift: 1, slayer: 1 }),
-  daedalus: F('Daedalus', 'W', 2, 3, 'MED', 1, -1400, { voyager: 1 }),
-  odysseus: F('Odysseus', 'W', 4, 4, 'MED', 1, -1200, { voyager: 1, steadfast: 1 }),
+  yaa: F('Yaa Asantewaa', 'W', 3, 3, 'AFR', 6, 1900, {}, { arr: ['wits', 1] }),
+  artemisia: F('Artemisia of Caria', 'W', 3, 3, 'MED', 2, -480, { swift: 1, slayer: 1 }),
+  earhart: F('Amelia Earhart', 'W', 2, 3, 'AMER', 7, 1932, { voyager: 1 }),
+  magellan: F('Ferdinand Magellan', 'W', 4, 4, 'EUR', 4, 1520, { voyager: 1, steadfast: 1 }),
   chingshih: F('Ching Shih', 'W', 4, 4, 'ASIA', 6, 1810, { voyager: 1, raider: 1 }),
-  beowulf: F('Beowulf', 'W', 5, 5, 'EUR', 3, 520, { guard: 1, inspiring: 1 }),
-  // Timeline test: the same rules from Assyria to the 1800s (nobody who died after 1900: no rights questions)
+  alfred: F('Alfred the Great', 'W', 5, 5, 'EUR', 3, 878, { guard: 1, inspiring: 1 }),
+  // Timeline test: the same rules from Assyria to the 1800s (and, since Amelia Earhart, into the 1900s)
   ashurbanipal: F('Ashurbanipal', 'S', 3, 3, 'MIDEAST', 1, -650, { scholar: 1 }),
   faraday: F('Michael Faraday', 'D', 4, 4, 'EUR', 6, 1831, { eureka: 1 }),
   douglass: F('Frederick Douglass', 'S', 4, 4, 'AMER', 6, 1852, {}, { arr: ['stun', 9] }),
   // The second printing (2026-11): five more for each ready deck, when a deck grew from 30 cards to 40. All of them
-  // use skills the engine already had. Tuned with scripts/anoria (variants.txt, "Decks of 40").
+  // use skills the engine already had. Tuned with scripts/anoria (variants.txt, "Decks of 40", "First to 25").
+  // (Sinbad the Sailor and Gilgamesh were in it for a day. Zhang Qian and Sargon of Akkad have their slots.)
   // Explorers
   ibnbattuta: F('Ibn Battuta', 'D', 3, 3, 'AFR', 3, 1325, { voyager: 1, swift: 1 }),
   leif: F('Leif Erikson', 'D', 3, 4, 'EUR', 3, 1000, { voyager: 1 }),
@@ -89,10 +92,10 @@ const CARDS = {
   nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
   hiawatha: F('Hiawatha', 'S', 3, 3, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
   sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }),
-  theodora: F('Theodora', 'S', 3, 4, 'MED', 3, 532, { steadfast: 1 }),
+  theodora: F('Theodora', 'S', 3, 3, 'MED', 3, 532, { steadfast: 1 }),   // (4 Might until 25 Renown won, which suits Court: variants.txt, "First to 25")
   // Pathfinders
-  sinbad: F('Sinbad the Sailor', 'W', 3, 2, 'MIDEAST', 3, 800, { voyager: 1 }, { arr: ['spark', 1] }),
-  gilgamesh: F('Gilgamesh', 'W', 4, 5, 'MIDEAST', 1, -2700, { guard: 1 }),
+  zhangqian: F('Zhang Qian', 'W', 3, 3, 'ASIA', 2, -138, { voyager: 1 }, { arr: ['spark', 1] }),   // (the Han envoy, in the slot Sinbad the Sailor had. He has 3 Might where Sinbad had 2, which is what Pathfinders wanted once 25 Renown won: variants.txt, "First to 25")
+  sargon: F('Sargon of Akkad', 'W', 4, 5, 'MIDEAST', 1, -2334, { guard: 1 }),   // (in the slot Gilgamesh had, with the same numbers)
   sundiata: F('Sundiata Keita', 'V', 3, 2, 'AFR', 3, 1235, { homeDouble: 1 }),
   bolivar: F('Simón Bolívar', 'V', 4, 4, 'AMER', 6, 1819, { swift: 1, raider: 1 }),
   khutulun: F('Khutulun', 'V', 2, 2, 'ASIA', 3, 1280, { slayer: 1 }),
@@ -103,7 +106,7 @@ const CARDS = {
   // Deeds
   phalanx: { n: 'Phalanx', t: 'deed', f: 'V', c: 2, quick: 1 },
   ambush: { n: 'Ambush', t: 'deed', f: 'V', c: 3 },
-  trojan: { n: 'Trojan Horse', t: 'deed', f: 'W', c: 2 },
+  crossing: { n: 'Night Crossing', t: 'deed', f: 'W', c: 2, fx: 'trojan' },   // (fx: the effect, when it is not the card's own key. This is the Trojan Horse's: a Figure costing 3 or less arrives from your hand at any Place)
   fairwinds: { n: 'Fair Winds', t: 'deed', f: 'W', c: 0 },
   rift: { n: 'Rift', t: 'deed', f: 'W', c: 2 },
   eclipse: { n: 'Eclipse', t: 'deed', f: 'W', c: 1 },
@@ -114,21 +117,18 @@ const CARDS = {
 };
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
-const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'odysseus': ['homer'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'trojan': ['odysseus'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'odysseus'], 'eclipse': ['antikythera'],
-  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'sinbad': ['scheherazade'], 'gilgamesh': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo']};
+const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'magellan'], 'eclipse': ['antikythera'],
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
-// (Odysseus grew from Homer the way a Legacy Figure grows from a teacher: a line, with its +1 Might)
-CARDS.odysseus.insp = ['homer']; delete CARDS.odysseus.from;
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
-const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, trojan: -1200, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
+const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
 Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
-const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1453 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }];
+const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1453 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }, { n: 'The Modern World', to: 2000 }];
 // Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).
 const THREADS = [
   { id: 'academy', n: 'The Academy', cards: ['socrates', 'plato', 'aristotle', 'alexander'] },
   { id: 'heavens', n: 'The Heavens', cards: ['copernicus', 'galileo', 'newton'] },
   { id: 'epic', n: 'The Epic', cards: ['homer', 'virgil', 'dante'] },
-  { id: 'horse', n: 'The Wooden Horse', cards: ['homer', 'odysseus', 'trojan', 'fairwinds'] },
   { id: 'vienna', n: 'Vienna', cards: ['mozart', 'beethoven', 'encore'] },
   { id: 'eureka', n: 'Eureka!', cards: ['archimedes', 'eureka', 'antikythera', 'eclipse'], places: ['library'] },
   { id: 'searoads', n: 'The Sea Roads', cards: ['compass', 'zhenghe', 'marcopolo', 'caravan'], places: ['silk'] },
@@ -141,13 +141,16 @@ const THREADS = [
   { id: 'conquerors', n: 'The Conquerors', cards: ['alexander', 'caesar'] },
   { id: 'zama', n: 'The Road to Zama', cards: ['hannibal', 'scipio'] },
   { id: 'chains', n: 'Broken Chains', cards: ['spartacus', 'toussaint'] },
-  { id: 'nights', n: 'The Thousand and One Nights', cards: ['scheherazade', 'sinbad'] },
-  { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'gilgamesh'], places: ['nineveh'] },
+  { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'sargon'], places: ['nineveh'] },
   { id: 'sages', n: 'The Sages', cards: ['confucius', 'mencius'] },
   { id: 'muse', n: 'The Tenth Muse', cards: ['sappho', 'sorjuana'] },
   { id: 'needle', n: 'The Needle', cards: ['compass', 'shenkuo'] },
   { id: 'emperor', n: 'The Philosopher Emperor', cards: ['socrates', 'plato', 'marcus'] },
   { id: 'circles', n: 'Circles in the Sand', cards: ['archimedes', 'germain'] },
+  // (in place of The Wooden Horse and The Thousand and One Nights, which went with the legends. A finished line keeps
+  // its flag in a collection under its old id, so these have ids of their own.)
+  { id: 'pacific', n: 'The Peaceful Sea', cards: ['magellan', 'fairwinds'] },
+  { id: 'elephant', n: 'The Caliph\'s Elephant', cards: ['charlemagne', 'harun'] },
 ];
 const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu' };
 const PLACES = {
@@ -167,15 +170,34 @@ const GROWN = {
   Legion: ['scipio', 'toussaint', 'shaka', 'lakshmibai', 'tecumseh'],
   Legacy: ['caesar', 'ibnsina', 'chaucer', 'marcus', 'germain'],
   Court: ['mencius', 'nzinga', 'hiawatha', 'sorjuana', 'theodora'],
-  Pathfinders: ['sinbad', 'gilgamesh', 'sundiata', 'bolivar', 'khutulun'],
+  Pathfinders: ['zhangqian', 'sargon', 'sundiata', 'bolivar', 'khutulun'],
 };
+// Cards that have left the set (2026-11-11: the legends, and the Trojan Horse with them), each with the card that has
+// its slot now (to). Nobody can collect one any more: it is in no pack, no ready deck and no Library. A collection or
+// a built deck that held one holds the new card instead (coll.js). The old card itself still works, so a game saved
+// with one in it plays on to the end as it was, and an old game's history still knows its name and picture: the
+// engine, the table and the history view look a key up here when it is not in CARDS. (Sinbad the Sailor and Gilgamesh
+// were only ever in the second printing's first day.)
+const RETIRED = {
+  scheherazade: F('Scheherazade', 'W', 2, 2, 'MIDEAST', 3, 800, { untouchable: 1 }, { to: 'harun' }),
+  anansi: F('Anansi', 'W', 3, 3, 'AFR', 3, 1200, {}, { arr: ['wits', 1], to: 'yaa' }),
+  atalanta: F('Atalanta', 'W', 3, 3, 'MED', 1, -1300, { swift: 1, slayer: 1 }, { to: 'artemisia' }),
+  daedalus: F('Daedalus', 'W', 2, 3, 'MED', 1, -1400, { voyager: 1 }, { to: 'earhart' }),
+  odysseus: F('Odysseus', 'W', 4, 4, 'MED', 1, -1200, { voyager: 1, steadfast: 1 }, { insp: ['homer'], to: 'magellan' }),
+  beowulf: F('Beowulf', 'W', 5, 5, 'EUR', 3, 520, { guard: 1, inspiring: 1 }, { to: 'alfred' }),
+  trojan: { n: 'Trojan Horse', t: 'deed', f: 'W', c: 2, y: -1200, fx: 'trojan', from: ['odysseus'], to: 'crossing' },
+  sinbad: F('Sinbad the Sailor', 'W', 3, 2, 'MIDEAST', 3, 800, { voyager: 1 }, { arr: ['spark', 1], from: ['scheherazade'], to: 'zhangqian' }),
+  gilgamesh: F('Gilgamesh', 'W', 4, 5, 'MIDEAST', 1, -2700, { guard: 1 }, { from: ['@nineveh', 'ashurbanipal'], to: 'sargon' }),
+};
+// a key as it stands today: the card that has a retired card's slot, or the key itself
+const now = k => RETIRED[k] ? RETIRED[k].to : k;
 const ARCH = {
-  Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'daedalus', 'odysseus', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
+  Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'earhart', 'magellan', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
   Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
   Legacy: { guide: 'franklin', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
-  Pathfinders: { guide: 'tubman', cards: ['scheherazade', 'anansi', 'atalanta', 'daedalus', 'chingshih', 'imhotep', 'beowulf', 'tomoe', 'boudica', 'hannibal', 'trojan', 'rift', 'eclipse', 'ambush', 'phalanx'] },
+  Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'earhart', 'chingshih', 'imhotep', 'alfred', 'tomoe', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
-return { CARDS, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS };
+return { CARDS, RETIRED, now, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS };
 });
