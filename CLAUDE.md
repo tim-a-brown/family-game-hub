@@ -299,6 +299,12 @@ Underlying principles for everything:
   a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
   places and the ones you haven't joined on by a dashed line but hidden). A card that completes a line has its
   moment there and then (`lineMoment`), before the gift at the end of the pack.
+- **The sphere is a real object** (Tim, 2026-11-11: "make sure that all rings are realistic and don't follow any impossible
+  paths or angles"). The one on the card back (`ui/card-back.webp`) and in the logo is rendered from a three.js model
+  built like a real armillary sphere (`scripts/anoria/sphere/`: a meridian on a spindle, a cage of equator, colures,
+  ecliptic and tropics riveted where they cross, a sun on the axle), not generated as a picture. Anything new that shows
+  the sphere is rendered from that model. **Place cards have their own back**, the same design in oxblood
+  (`ui/card-back-place.webp`), so the two kinds of card sort apart on a real table.
 - **Pronunciation** (`SAY` in text.js): fine print at the foot of a full card, a plain respelling with the stress in
   capitals, only for names a reader might stumble on. Everyday words and plain English names have none.
 - **A card's Legacy Line is printed on it**, in finer print under the pronunciation ("Legacy Line from Archimedes",
