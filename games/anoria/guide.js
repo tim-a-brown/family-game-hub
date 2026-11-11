@@ -505,7 +505,7 @@
         await L.say('He has ' + mt('zhenghe') + ' Might there and their Figure has ' + mt('spartacus') + ', so right now you hold their Gate.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
         await L.say('The round is about to be counted. Keep an eye on their <b>Seals</b>.', { at: '.an-strip.opp .st-seals' });
         await L.count();
-        await L.say('You held their Gate when the round was counted, so one of their Seals broke and you scored 1 more Renown.', { at: '.an-strip.opp .st-seals' });
+        await L.say('You held their Gate when the round was counted, so one of their Seals broke. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.', { at: '.an-strip.opp .st-seals' });
         await L.say('If you break all 3 of their Seals, you win on the spot, no matter what the Renown is.', { at: '.an-strip.opp .st-seals' });
         await L.say('It works the same way against you. One of your Seals breaks if they hold your Gate when a round is counted. An empty or tied Gate is safe.', { at: [L.row(MY_GATE), '.an-strip.me .st-seals'] });
       } },
