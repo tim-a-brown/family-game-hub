@@ -1,6 +1,7 @@
 // Checks scripts/anoria/set-150.json (150 more cards, drafted for packs) against the game's own files:
 // games/anoria/cards.js (keys, factions, regions, eras), text.js (how card text is worded) and engine.js (which
-// skills and arrival effects exist). Prints what is wrong, then the counts. Exits 1 if anything is wrong.
+// skills and arrival effects exist, and which Relics and Deeds it handles). Prints the split by kind and by faction,
+// what is wrong, and the other counts. Exits 1 if anything is wrong.
 //   node scripts/anoria/check-set-150.js
 'use strict';
 const fs = require('fs'), path = require('path');
@@ -8,7 +9,7 @@ const dir = path.join(__dirname, '../../games/anoria');
 const C = require(path.join(dir, 'cards.js')), T = require(path.join(dir, 'text.js'));
 const ENG = fs.readFileSync(path.join(dir, 'engine.js'), 'utf8');
 const SET = JSON.parse(fs.readFileSync(path.join(__dirname, 'set-150.json'), 'utf8'));
-const cards = SET.cards, bad = [], warn = [];
+const cards = SET.cards, bad = [], warn = [], late = [];
 const err = (k, m) => bad.push(k + ': ' + m);
 
 // What cards.js and engine.js know
@@ -62,6 +63,9 @@ cards.forEach(c => {
     else { if (c.c !== src.c) err(k, 'cost differs from ' + c.as); if (c.tx !== T.CARDS[c.as].tx) err(k, 'text differs from ' + c.as); if (!!c.quick !== !!src.quick) err(k, 'quick differs from ' + c.as); }
     if (c.t === 'relic' && c.f !== 'N') err(k, 'a Relic is faction N');
     if (c.t === 'relic' && !Array.isArray(c.ll)) err(k, 'missing ll');
+    if (typeof c.fit !== 'string' || !/[.!?]$/.test(c.fit)) err(k, 'fit must say in one sentence why the history suits the effect');
+    if (!/top right corner/.test(c.art || '')) err(k, 'art brief does not keep the top right corner clear');
+    if (c.y > C.ERAS[ERAS].to) late.push(k + ' (' + c.y + ')');
   }
   // links: every source exists and has its sentence, and there is no sentence without a source
   const srcs = (c.insp || []).concat(c.from || []), links = c.links || {};
@@ -69,7 +73,7 @@ cards.forEach(c => {
   Object.keys(links).forEach(l => { const p = l.split('>'); if (p[1] !== k || srcs.indexOf(p[0]) < 0) err(k, 'stray link ' + l); });
   if ((c.insp || []).some(s => (c.from || []).indexOf(s) >= 0)) err(k, 'a source is in both insp and from');
   // writing: no dots stringing facts together, nothing cut off
-  ['n', 'cap', 'tx', 'fact', 'art', 'say', 'check'].concat(Object.keys(links).map(l => 'links.' + l)).forEach(f => { const v = f.slice(0, 6) === 'links.' ? links[f.slice(6)] : c[f]; if (typeof v !== 'string') return;
+  ['n', 'cap', 'tx', 'fact', 'art', 'say', 'check', 'fit'].concat(Object.keys(links).map(l => 'links.' + l)).forEach(f => { const v = f.slice(0, 6) === 'links.' ? links[f.slice(6)] : c[f]; if (typeof v !== 'string') return;
     if (/ · |·/.test(v)) err(k, f + ' has a middle dot'); if (/…|\.\.\./.test(v)) err(k, f + ' has an ellipsis'); if (/\s\s|^\s|\s$/.test(v)) err(k, f + ' has stray spaces'); });
   if (c.fact && !/[.!?”]$/.test(c.fact)) err(k, 'fact has no full stop');
   if (c.fact && c.fact.length > 330) err(k, 'fact is ' + c.fact.length + ' letters long');
@@ -93,34 +97,59 @@ const ids = {}; (SET.threads || []).forEach(t => {
 (SET.existing || []).forEach(x => { if (!OLD[x.card]) err('existing ' + x.card, 'not a card in cards.js'); if (!NEW[x.source]) err('existing ' + x.card, 'source ' + x.source + ' is not in the set'); if (['from', 'insp'].indexOf(x.add) < 0 || !x.sentence) err('existing ' + x.card, 'needs add and sentence');
   if (x.add === 'insp' && (OLD[x.card].t !== 'fig' || NEW[x.source].t !== 'fig')) err('existing ' + x.card, 'a Legacy line joins two Figures'); });
 
+// what left the first draft, what is held for a Guide, and what needs engine work: none of them is among the 150
+(SET.dropped || []).forEach(d => { if (!d.key || !d.n || !d.why) err('dropped', 'needs key, n and why'); if (NEW[d.key]) err('dropped ' + d.key, 'is still in the set'); });
+(SET.heldForGuides || []).forEach(c => { if (NEW[c.key]) err('heldForGuides ' + c.key, 'is still in the set'); if (!(SET.dropped || []).some(d => d.key === c.key)) err('heldForGuides ' + c.key, 'is not listed in dropped'); });
+cards.forEach(c => (c.insp || []).concat(c.from || []).forEach(s => { if ((SET.dropped || []).some(d => d.key === s)) err(c.key, 'links to ' + s + ', which was dropped'); }));
+(SET.threads || []).forEach(t => t.cards.forEach(k => { if ((SET.dropped || []).some(d => d.key === k)) err('thread ' + t.id, 'names ' + k + ', which was dropped'); }));
+(SET.needsEngine || []).forEach(x => { ['n', 'effect', 'history', 'engine'].forEach(f => { if (!x[f]) err('needsEngine ' + (x.n || '?'), 'missing ' + f); }); if (['relic', 'deed'].indexOf(x.t) < 0) err('needsEngine ' + x.n, 'is a relic or a deed');
+  if (names[String(x.n).toLowerCase()] || cards.some(c => c.n === x.n)) err('needsEngine ' + x.n, 'name is already a card'); });
+
 // ── the report ──
 const pad = (s, n) => (s + '                              ').slice(0, n), num = (v, n) => ('           ' + v).slice(-n);
 function table(title, rows, cols, cell, total) {
   console.log('\n' + title);
-  console.log(pad('', 22) + cols.map(c => num(c, 9)).join('') + (total ? num('all', 7) : ''));
-  rows.forEach(r => { let sum = 0; const line = cols.map(c => { const v = cell(r[0], c); sum += v; return num(v || '.', 9); }).join(''); console.log(pad(r[1], 22) + line + (total ? num(sum, 7) : '')); });
+  console.log(pad('', 22) + cols.map(c => num(c, 10)).join('') + (total ? num('all', 7) : ''));
+  rows.forEach(r => { let sum = 0; const line = cols.map(c => { const v = cell(r[0], c); sum += v; return num(v || '.', 10); }).join(''); console.log(pad(r[1], 22) + line + (total ? num(sum, 7) : '')); });
 }
 const count = f => cards.filter(f).length;
 const FAC = [['D', 'Discovery'], ['S', 'Statecraft'], ['V', 'Valor'], ['A', 'Arts'], ['W', 'Wonder'], ['N', 'no faction (Relics)']];
 const TYPES = ['fig', 'relic', 'deed'], REG = Object.keys(REGS), figs = cards.filter(c => c.t === 'fig');
-console.log('set-150.json: ' + cards.length + ' cards (' + TYPES.map(t => count(c => c.t === t) + ' ' + t).join(', ') + ')');
-table('By faction and type', FAC, TYPES, (f, t) => count(c => c.f === f && c.t === t), true);
+const KIND = { fig: 'Figures', relic: 'Relics', deed: 'Deeds' }, oldCount = t => Object.keys(OLD).filter(k => OLD[k].t === t).length;
+console.log('set-150.json: ' + cards.length + ' cards');
+console.log('\nThe split by kind');
+console.log(pad('', 22) + num('this set', 10) + num('game now', 10) + num('together', 10));
+TYPES.forEach(t => console.log(pad(KIND[t], 22) + num(count(c => c.t === t), 10) + num(oldCount(t), 10) + num(count(c => c.t === t) + oldCount(t), 10)));
+console.log(pad('all', 22) + num(cards.length, 10) + num(Object.keys(OLD).length, 10) + num(cards.length + Object.keys(OLD).length, 10));
+table('By faction and kind (Relics have no faction in the game: any deck can play them)', FAC, TYPES, (f, t) => count(c => c.f === f && c.t === t), true);
+console.log(pad('all', 22) + TYPES.map(t => num(count(c => c.t === t), 10)).join('') + num(cards.length, 7));
+const EFF = Object.keys(OLD).filter(k => OLD[k].t === 'deed' && cards.some(c => c.as === k));
+table('Deeds by faction and the Deed whose effect they take', FAC.slice(0, 5), EFF, (f, e) => count(c => c.t === 'deed' && c.f === f && c.as === e), true);
+console.log(pad('all', 22) + EFF.map(e => num(count(c => c.as === e), 10)).join('') + num(count(c => c.t === 'deed'), 7));
+console.log('\nRelics by the Relic whose effect they take: ' + Object.keys(OLD).filter(k => OLD[k].t === 'relic').map(k => OLD[k].n + ' ' + count(c => c.as === k)).join(', '));
+// each ready deck's two main colours, and the new Deeds in them (Leonardo's deck is the Explorers, Franklin's the Legacy)
+console.log('\nNew Deeds in the colours of each ready deck (every deck can also play all ' + count(c => c.t === 'relic') + ' new Relics)');
+Object.keys(C.ARCH).forEach(name => { const n = {}; C.ARCH[name].cards.forEach(k => { const f = OLD[k].f; if (f !== 'N') n[f] = (n[f] || 0) + 1; });
+  const top = Object.keys(n).sort((a, b) => n[b] - n[a]).slice(0, 2), fn = f => FAC.filter(x => x[0] === f)[0][1];
+  console.log('  ' + pad(name + ' (' + C.GUIDES[C.ARCH[name].guide] + ')', 34) + top.map(f => fn(f) + ' ' + count(c => c.t === 'deed' && c.f === f)).join(', ')); });
 table('Figures by faction and region', FAC.slice(0, 5), REG, (f, r) => figs.filter(c => c.f === f && c.reg === r).length, true);
-console.log(pad('all', 22) + REG.map(r => num(figs.filter(c => c.reg === r).length, 9)).join('') + num(figs.length, 7));
+console.log(pad('all', 22) + REG.map(r => num(figs.filter(c => c.reg === r).length, 10)).join('') + num(figs.length, 7));
 table('Figures by faction and era', FAC.slice(0, 5), C.ERAS.slice(1).map((e, i) => i + 1), (f, e) => figs.filter(c => c.f === f && c.era === e).length, true);
-console.log(pad('all', 22) + C.ERAS.slice(1).map((e, i) => num(figs.filter(c => c.era === i + 1).length, 9)).join('') + num(figs.length, 7));
+console.log(pad('all', 22) + C.ERAS.slice(1).map((e, i) => num(figs.filter(c => c.era === i + 1).length, 10)).join('') + num(figs.length, 7));
 C.ERAS.slice(1).forEach((e, i) => console.log('  era ' + (i + 1) + ': ' + e.n + ', to ' + e.to));
 table('By faction and cost (all cards)', FAC, [0, 1, 2, 3, 4, 5], (f, n) => count(c => c.f === f && c.c === n), true);
-console.log(pad('all', 22) + [0, 1, 2, 3, 4, 5].map(n => num(count(c => c.c === n), 9)).join('') + num(cards.length, 7));
+console.log(pad('all', 22) + [0, 1, 2, 3, 4, 5].map(n => num(count(c => c.c === n), 10)).join('') + num(cards.length, 7));
 const kw = {}; figs.forEach(c => { Object.keys(c.k).forEach(w => { kw[w] = (kw[w] || 0) + 1; }); if (c.arr) { const a = c.arr[0] + ' ' + c.arr[1]; kw['arrive: ' + a] = (kw['arrive: ' + a] || 0) + 1; } if (!Object.keys(c.k).length && !c.arr) kw['(no skill)'] = (kw['(no skill)'] || 0) + 1; });
 console.log('\nSkills on Figures: ' + Object.keys(kw).sort((a, b) => kw[b] - kw[a]).map(w => w + ' ' + kw[w]).join(', '));
 const as = {}; cards.filter(c => c.as).forEach(c => { (as[c.as] = as[c.as] || []).push(c.key); });
 console.log('Relics and Deeds, by the card whose effect they take: ' + Object.keys(as).map(a => a + ' (' + as[a].join(', ') + ')').join('; '));
 const nLinks = cards.reduce((s, c) => s + Object.keys(c.links || {}).length, 0), lineCards = count(c => c.insp), threadCards = count(c => c.from);
-console.log('Links: ' + nLinks + ' sentences; ' + lineCards + ' Figures with a Legacy line, ' + threadCards + ' cards with a Thread; ' + count(c => (c.insp || []).concat(c.from || []).some(s => OLD[s] || s[0] === '@')) + ' cards link back to a card or Place already in the game');
+console.log('Links: ' + nLinks + ' sentences; ' + lineCards + ' Figures with a Legacy (insp), ' + threadCards + ' cards with a Legacy Line from a card or a Place (from); ' + count(c => (c.insp || []).concat(c.from || []).some(s => OLD[s] || s[0] === '@')) + ' cards link back to a card or Place already in the game');
 console.log('Named lines proposed: ' + (SET.threads || []).length + ' (' + (SET.threads || []).filter(t => t.cards.length >= 3).length + ' of three cards or more); new cards for ' + (SET.threadAdds || []).length + ' lines the game has');
 console.log('Women: ' + figs.filter(c => /\b(she|her)\b/i.test(c.tx + ' ' + c.fact)).length + ' of ' + figs.length + ' Figures (counted from the wording)');
 console.log('Checked this session (sure): ' + count(c => c.sure) + ' of ' + cards.length + (count(c => !c.sure) ? '; not sure: ' + cards.filter(c => !c.sure).map(c => c.key).join(', ') : ''));
 if (warn.length) console.log('After ' + C.ERAS[ERAS].to + ', so filed in era ' + ERAS + ' until cards.js has a later era: ' + warn.join(', '));
+if (late.length) console.log('Relics and Deeds after ' + C.ERAS[ERAS].to + ': ' + late.join(', '));
+console.log('Left the first draft: ' + (SET.dropped || []).length + ' (' + (SET.dropped || []).filter(d => d.t === 'fig').length + ' Figures, of which ' + (SET.heldForGuides || []).length + ' are held whole for Guides); needs engine work, not among the 150: ' + (SET.needsEngine || []).map(x => x.n).join(', '));
 console.log('\n' + (bad.length ? bad.length + ' PROBLEMS\n  ' + bad.join('\n  ') : 'All checks passed.'));
 process.exit(bad.length ? 1 : 0);
