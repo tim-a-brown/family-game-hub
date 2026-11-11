@@ -4,6 +4,8 @@
 //   node scripts/anoria/guides.js [games per pair and seat] [first seed] [guide,guide] ['<json of rule changes>']
 const { play, PROF, STD } = require('../../games/anoria/engine'); const { ARCH, GUIDES } = require('../../games/anoria/cards');
 const n = +process.argv[2] || 100, seed0 = +process.argv[3] || 5000, only = process.argv[4] ? process.argv[4].split(',') : Object.keys(GUIDES), CFG = Object.assign({}, STD, JSON.parse(process.argv[5] || '{}'));
+// (the Guides of the roster of twelve who are not in cards.js yet: they are still cards there, until the roster changes)
+const NEW = { joan: 'Joan of Arc', saladin: 'Saladin', shakespeare: 'Shakespeare', wuzetian: 'Empress Wu', akbar: 'Akbar', mansamusa: 'Mansa Musa', sorjuana: 'Sor Juana' };
 const D = Object.keys(ARCH), style = { Explorers: 'raider', Legion: 'brawler', Legacy: 'keeper', Court: 'holder', Pathfinders: 'raider' };
 const dk = k => ARCH[k].cards.concat(ARCH[k].cards);
 function rate(deck, guide) { let w = 0, g = 0, seals = 0, rounds = 0;
@@ -14,5 +16,5 @@ function rate(deck, guide) { let w = 0, g = 0, seals = 0, rounds = 0;
 const base = {}; D.forEach(d => { base[d] = rate(d, ARCH[d].guide); });
 console.log('each deck under its own Guide: ' + D.map(d => d + ' ' + base[d].w.toFixed(1)).join('  ') + '   (' + base[D[0]].g + ' games a deck, about ±' + (100 / Math.sqrt(base[D[0]].g)).toFixed(1) + ' a figure)');
 for (const gd of only) { const r = D.map(d => rate(d, gd)), dif = r.map((x, i) => x.w - base[D[i]].w), avg = dif.reduce((a, b) => a + b, 0) / D.length;
-  console.log(((GUIDES[gd] || gd) + ':').padEnd(20) + (avg >= 0 ? '+' : '') + avg.toFixed(1) + '   by deck ' + D.map((d, i) => d.slice(0, 5) + ' ' + (dif[i] >= 0 ? '+' : '') + dif[i].toFixed(1)).join('  ') +
+  console.log(((GUIDES[gd] || NEW[gd] || gd) + ':').padEnd(20) + (avg >= 0 ? '+' : '') + avg.toFixed(1) + '   by deck ' + D.map((d, i) => d.slice(0, 5) + ' ' + (dif[i] >= 0 ? '+' : '') + dif[i].toFixed(1)).join('  ') +
     '   loses on Seals ' + (r.reduce((a, x) => a + x.lostSeals, 0) / D.length).toFixed(0) + '%, rounds ' + (r.reduce((a, x) => a + x.rounds, 0) / D.length).toFixed(1)); }

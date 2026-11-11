@@ -39,7 +39,7 @@ function newGame(decks, guides, cfg, R) {
   for (let p = 0; p < N; p++) {
     let deck = shuffle(decks[p].slice(), R), hand = deck.splice(0, cfg.hand);
     if (!hand.some(c => CARDS[c].t === 'fig' && CARDS[c].c <= 2)) { deck = shuffle(deck.concat(hand), R); hand = deck.splice(0, cfg.hand); }   // one mulligan
-    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, lines: 0 });
+    S.P.push({ deck, hand, relics: [], guide: guides[p], spark: 0, reserve: 0, renown: 0, seals: cfg.seals, broke: 0, sb: 0, uA: 0, uT: 0, uD: 0, uC: 0, uN: 0, uM: 0, uW: 0, sg: 0, lines: 0 });
   }
   return S;
 }
@@ -48,11 +48,24 @@ function clone(S) {
     P: S.P.map(p => Object.assign({}, p, { deck: p.deck.slice(), hand: p.hand.slice(), relics: p.relics.slice(), gone: p.gone ? p.gone.slice() : null })), over: S.over, winner: S.winner, how: S.how, st: null, ev: null };
 }
 const stake = (cfg, r) => cfg.ramp ? cfg.ramp[Math.min(r, cfg.ramp.length) - 1] : 1;
+const COURT_W = 0.6;   // (what the robots count Akbar's court as, in Renown, while it stands: the rest of the round can still undo it. At 1 they gave up too much else for it)
 const MEND_AT = 5;   // (Lincoln: the round at whose start one of his broken Seals is mended, once a game)
 const gateOf = o => 2 * o, ownerOfSpoke = (S, i) => i === 2 * S.N ? -1 : (i >> 1);
 const isGate = (S, i) => i < 2 * S.N && !(i & 1);
 const enemySide = (S, o, i) => { const w = ownerOfSpoke(S, i); return w >= 0 && w !== o; };
 const pid = (S, i) => S.places[i];
+// The Guides who joined with the roster of twelve (2026-11-11). Each power is one test by the Guide's key, where the
+// rule it bends lives; scripts/anoria/guides.txt has what each is worth and every draft that was tried.
+//   joan       her Figures have +1 Might in a clash they start while the other player has more Renown (might)
+//   saladin    a Figure of his that wins a clash it started brings him 1 Spark (clash)
+//   shakespeare the first time each round that a Figure of his is defeated at the Crossroads, he scores 1 Renown (ko)
+//   wuzetian   holding more Places than the other player when a round ends gives her 1 more Spark next turn (endRound)
+//   akbar      Figures of two or more factions at the Crossroads when a round ends score him 1 Renown (endRound)
+//   mansamusa  up to 2 Spark he has not spent are his to spend next turn (startTurn)
+//   sorjuana   her first Deed each turn costs 1 less (costOf)
+const behind = (S, o) => S.P.some(p => p.renown > S.P[o].renown);
+// (Akbar's court: Figures of his of two or more factions standing at the Crossroads)
+const atCourt = (S, o) => { if (S.P[o].guide !== 'akbar') return false; const hub = 2 * S.N; let f0 = null; for (const g of S.figs) if (g.p === hub && g.o === o) { const x = CARDS[g.c].f; if (f0 === null) f0 = x; else if (x !== f0) return true; } return false; };
 function might(S, f, mode, oth) {
   const c = CARDS[f.c], k = c.k, pl = PLACES[S.places[f.p]]; let m = c.m + f.tb;
   if (c.reg === pl.reg || (k.voyager && S.cfg.voyHome)) m += S.cfg.home + (k.homeDouble && c.reg === pl.reg ? 2 : 0);   // (Voyagers are at home everywhere)
@@ -64,7 +77,7 @@ function might(S, f, mode, oth) {
   if (f.li) m += 1; if (isIns && S.cfg.insBonus) m += 1; m += Math.min(2, insp);
   if (k.uprising) m += own - 1; if (k.orator && own > opp) m += 2; if (k.underdog && opp > own) m += 2; if (k.monument) m += Math.min(2, f.stay); if (k.shoulders) m += Math.min(2, S.P[f.o].lines);
   if (S.places[f.p] === 'globe' && c.f === 'A') m += 1;
-  if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; }   // (Sun Tzu: your first clash each turn wins ties)
+  if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; if (S.P[f.o].guide === 'joan' && behind(S, f.o)) m += 1; }   // (Sun Tzu: your first clash each turn wins ties. Joan of Arc: +1 Might in a clash her Figure starts while the other player has more Renown)
   if (mode === 2) { if (k.steadfast) m += 2; if (S.places[f.p] === 'wall') m += 1; if (S.P[f.o].guide === 'gandhi' && ownerOfSpoke(S, f.p) === f.o) m += 1; }   // (Gandhi: +1 Might when an enemy starts a clash at his own Gate or Outpost)
   return m;
 }
@@ -125,7 +138,8 @@ function costOf(S, o, ci, place) {
   if (c.t !== 'fig' && S.cfg.threads !== 2 && threadSrc(S, o, ci)) x -= S.cfg.disc;   // (threads 2: Renown only; 3: the discount only)
   if (c.t === 'relic' && P.guide === 'leonardo') x -= 1;
   if (P.guide === 'curie' && P.uN === 2) x -= 1;   // (Curie: the third card you play each turn costs 1 less)
-  if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
+  if (c.t === 'deed') { if ((P.guide === 'franklin' || P.guide === 'sorjuana') && !P.uD) x -= 1;   // (Franklin, and Sor Juana after him: the first Deed each turn costs 1 less)
+    if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
   return Math.max(0, x);
 }
 function ko(S, f, by) {
@@ -134,6 +148,8 @@ function ko(S, f, by) {
     S.P[f.o].uM = 1; if (S.ev) S.ev.push({ t: 'fallback', u: f.u, c: f.c, o: f.o, from: f.p, to: gateOf(f.o), by: by ? by.u : 0 });
     f.p = gateOf(f.o); f.stay = 0; f.rdy = 0; f.tb = 0; if (S.st) S.st.fallbacks = (S.st.fallbacks || 0) + 1; return; }
   if (S.ev) S.ev.push({ t: 'ko', u: f.u, c: f.c, o: f.o, p: f.p, by: by ? by.u : 0 });
+  // (Shakespeare: the first time each round that a Figure of his is defeated at the Crossroads, he scores 1 Renown)
+  { const Q = S.P[f.o]; if (Q.guide === 'shakespeare' && !Q.uW && f.p === 2 * S.N) { Q.uW = 1; Q.renown += 1; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'tragedy' }); if (S.st) S.st.tragedies = (S.st.tragedies || 0) + 1; } }
   S.figs.splice(S.figs.indexOf(f), 1);
   (S.P[f.o].gone || (S.P[f.o].gone = [])).push(f.c);
   for (const g of S.figs) if (g.li === f.u) { g.li = 0; S.P[g.o].lines--; }
@@ -177,7 +193,8 @@ function clash(S, a, d, da, dd, bonus, raw) {
   if (S.ev) S.ev.push({ t: 'clash', a: a.u, d: d.u, p: a.p, am: am, dm: dm, da: da, dd: dd, ra: raw ? raw.ra : da, rd: raw ? raw.rd : dd });
   const here = S.places[a.p];
   const ar = A.renown, dr = D.renown;
-  if (am > dm) { ko(S, d, a); if (here === 'colosseum') { A.renown++; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && dr > ar) { A.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: S.cfg.bounty, why: 'bounty' }); } } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') { D.renown++; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && ar > dr) { D.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: S.cfg.bounty, why: 'bounty' }); } }
+  if (am > dm) { ko(S, d, a); if (A.guide === 'saladin') { A.spark += 1; if (S.ev) S.ev.push({ t: 'spark', o: a.o, n: 1, why: 'ransom' }); }   // (Saladin: a Figure of his that wins a clash it started brings him 1 Spark)
+    if (here === 'colosseum') { A.renown++; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && dr > ar) { A.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: a.o, n: S.cfg.bounty, why: 'bounty' }); } } else if (dm > am) { ko(S, a, d); if (here === 'colosseum') { D.renown++; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: 1, why: 'colosseum' }); } if (S.cfg.bounty && ar > dr) { D.renown += S.cfg.bounty; if (S.ev) S.ev.push({ t: 'renown', o: d.o, n: S.cfg.bounty, why: 'bounty' }); } }
 }
 function byU(S, u) { for (const f of S.figs) if (f.u === u) return f; return null; }
 // Every legal thing the player whose turn it is can do next
@@ -257,6 +274,7 @@ function evalS(S, me, prof) {
   for (const f of S.figs) { const m = might(S, f, 0); if (f.o === me) { cm++; tm += m; } else { co++; to += m; } }
   v += prof.wFig * (cm - co / (N - 1)) + 0.08 * (tm - to / (N - 1));
   v += 0.35 * Math.min(1, left / 3) * P.hand.length + prof.wLine * P.lines + 0.02 * P.spark;
+  for (let o = 0; o < N; o++) if (atCourt(S, o)) v += (o === me ? 1 : -1) * COURT_W * prof.wRen;   // (Akbar's court, as it stands)
   for (const r of P.relics) v += (r === 'press' ? 0.5 : r === 'antikythera' ? 0.4 : 0.2) * (left - 1);
   return v;
 }
@@ -306,9 +324,11 @@ function startTurn(S) {
   for (const f of S.figs) if (f.o === o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; }
   P.uA = P.uT = P.uD = P.uC = P.uN = 0;
   let held = 0; if (cfg.spark !== 'round') for (let i = 0; i < S.places.length; i++) if (holder(S, i) === o) held++;
-  P.spark = (cfg.spark === 'round' ? Math.min(S.round + 1, cfg.sparkCap || 99) : cfg.spark === 'hold' ? 2 + held : S.round + (held >= 3 ? 1 : 0)) + P.sb; P.sb = 0; P.reserve = 0;
+  // (Mansa Musa: up to 2 Spark he did not spend, his reserve, are his again. Empress Wu: 1 more for the Places she held, P.sg)
+  const kept = P.guide === 'mansamusa' ? P.reserve : 0;
+  P.spark = (cfg.spark === 'round' ? Math.min(S.round + 1, cfg.sparkCap || 99) : cfg.spark === 'hold' ? 2 + held : S.round + (held >= 3 ? 1 : 0)) + P.sb + (P.sg || 0) + kept; P.sb = 0; P.sg = 0; P.reserve = 0;
   if (cfg.catchup) { let mn = 1e9; for (let q = 0; q < S.N; q++) if (q !== o && S.P[q].renown < mn) mn = S.P[q].renown; if (P.renown < mn) { P.spark += 1; if (cfg.catchup === 2) draw(S, o, 1); if (cfg.catchup === 3 && mn - P.renown >= (cfg.far || 4)) P.spark += 1; } }
-  if (S.ev) S.ev.push({ t: 'turn', o: o, spark: P.spark, round: S.round });
+  if (S.ev) { S.ev.push({ t: 'turn', o: o, spark: P.spark - kept, round: S.round }); if (kept) S.ev.push({ t: 'spark', o: o, n: kept, why: 'kept' }); }
   draw(S, o, (hasRelic(P, 'press') ? 2 : 1) + (cfg.draw2 ? 1 : 0));
   if (P.guide === 'franklin' && P.hand.length <= 4) draw(S, o, 1);   // (Franklin: a thin hand draws one more)
 }
@@ -327,7 +347,14 @@ function endRound(S) {
   }
   if (cfg.majority) { const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; } let mx = 0, w = -1, tie = false; for (let o = 0; o < N; o++) { if (hc[o] > mx) { mx = hc[o]; w = o; tie = false; } else if (hc[o] === mx) tie = true; } if (!tie && w >= 0) S.P[w].renown += cfg.majority * stake(cfg, S.round); }
   for (const f of S.figs) { const k = CARDS[f.c].k; if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) { S.P[f.o].renown++; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'stage', u: f.u }); } else draw(S, f.o, 1); } f.stay++; }
-  for (const b of S.pb) b.fill(0); for (const p of S.P) { p.lr = 0; p.uM = 0; }
+  // (Akbar: Figures of two or more factions at the Crossroads score him 1 Renown. Empress Wu: holding more Places than
+  // the other player gives her 1 more Spark next turn, unless this round ends the game)
+  for (let o = 0; o < N; o++) { const p = S.P[o];
+    if (atCourt(S, o)) { p.renown += 1; if (S.ev) S.ev.push({ t: 'renown', o: o, n: 1, why: 'court' }); }
+    if (p.guide === 'wuzetian' && !last && !(cfg.target && S.P.some(q => q.renown >= cfg.target)) && !(N === 2 && S.P.some(q => q.seals <= 0))) {
+      const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; }
+      if (hc.every((x, q) => q === o || x < hc[o])) { p.sg = 1; if (S.ev) S.ev.push({ t: 'spark', o: o, n: 1, why: 'next' }); } } }
+  for (const b of S.pb) b.fill(0); for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
   if (N === 2) for (let o = 0; o < 2; o++) if (S.P[o].seals <= 0) { S.over = true; S.winner = 1 - o; S.how = 'seals'; return; }
