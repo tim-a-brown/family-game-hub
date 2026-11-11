@@ -9,6 +9,13 @@
 // are decided and saved by AnoriaColl.openPack at the moment of the tear, so leaving half way loses nothing.
 // A card turns over in the edition it was found in (editions.js). A foil has a moment of its own, bigger the rarer it
 // is: a Shiny glints, a Silver foil rings, a Gold foil stops the strip, and a Rainbow foil is an event.
+// How a card turns over (Tim, 2026-11-11: "the front edge kind of stopping and the far edge flipping up and over the
+// top"): a face-down card waits one slot short of the front with its leading edge on the front slot's edge. As the
+// strip brings it in, that edge stays where it is and the rest of the card comes up and over it, back until it is
+// edge-on and face after, and lands face up in the front slot (tumble() and land() in torn()). The turn follows the
+// strip: under a finger the card comes over as far as the finger has gone, and falls back if the finger lets it go
+// short of half way. Its pictures are fetched and decoded the moment the pack is torn (AnoriaUI.warm), and the first
+// card does not come out until its picture is ready.
 (function () {
   'use strict';
   const C = window.AnoriaCards, TX = window.AnoriaText, Coll = window.AnoriaColl, CARDS = C.CARDS, el = Kit.el;
@@ -229,6 +236,13 @@
       opened++;
       count(true);
       const cards = res.cards, n = cards.length, cells = [];
+      // Every picture in the pack is fetched and decoded from this moment, the first card's first. The cards wait in
+      // the pack for that one (never longer than CEIL: a dead connection cannot hang the pack).
+      const keys = cards.map(x => x.c), CEIL = 2600;
+      const firstReady = n && A.artReady ? Promise.race([A.artReady(keys[0]), wait(CEIL)]) : Promise.resolve();
+      if (A.preload) A.preload(keys);   // (the small pictures next: they are quick, and stand in for a full one that is late)
+      if (A.warm) A.warm(keys);
+      const flat = calm();   // (a calm screen: no tumble, a card changes face in place with a plain cross-fade)
       // what was yours before this pack (a Thread is only pointed out to a card you can already see)
       const had = {}; cards.forEach(x => { if (had[x.c] == null) had[x.c] = Coll.copies(x.c); if (x.copy !== false) had[x.c]--; });
       res.threads.forEach(t => { if (t.gift) had[t.gift] = (had[t.gift] == null ? Coll.copies(t.gift) : had[t.gift]) - 1; });
@@ -253,7 +267,7 @@
         Kit.sfx('win', .7); Kit.haptic('success');
         const r = ln.getBoundingClientRect(); if (!calm()) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 24, GOLD, { d: Math.max(120, r.width * .55), ms: 950 });
       }
-      let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0, halt = null;
+      let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0;
 
       // The cards stand on one strip (the same strip a bunch of cards is read on anywhere else: AnoriaUI.makeFlow).
       // They come out face down; each one turns over as it slides to the front for the first time.
@@ -267,11 +281,11 @@
       const info = el('div', { class: 'pk-info' }, [plate]), main = el('div', { class: 'pk-main' }, [field, foot]);
       const turned = () => cells.filter(z => z.up);
       cards.forEach((x, i) => {
-        const b = el('div', { class: 'vf-c pk-fc', 'data-i': String(i), style: { '--f': col(x.c) } }, [
+        const b = el('div', { class: 'vf-c pk-fc' + (flat ? '' : ' tum'), 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })])])]);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })]), el('i', { class: 'pk-edge' })])]);
         const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
-        const c = { el: b, th: th, x: x, up: false, at: 0 };
+        const c = { el: b, th: th, x: x, up: false, at: 0, landed: flat, sh: null };
         // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it
         b.addEventListener('click', () => {
           if (!dealt || !F || F.moved()) return;
@@ -294,17 +308,23 @@
         const here = {}; cards.forEach(x => { here[x.c] = 1; });   // (a Thread is only shown to a card you have, or one in this pack)
         cards.forEach(x => {
           const k = x.c, c = CARDS[k]; let far = null;
-          const see = (o, tx) => { if (tx && (here[o] || known(o)) && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, tx: tx }; };
+          const see = (o, tx, back) => { if (tx && (here[o] || known(o)) && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, from: back ? k : o, to: back ? o : k, tx: tx }; };
           (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@') see(s, TX.LINKS[s + '>' + k]); });
-          Coll.ALL.forEach(t => { const tc = CARDS[t]; if ((tc.insp || []).concat(tc.from || []).indexOf(k) >= 0) see(t, TX.LINKS[k + '>' + t]); });
+          Coll.ALL.forEach(t => { const tc = CARDS[t]; if ((tc.insp || []).concat(tc.from || []).indexOf(k) >= 0) see(t, TX.LINKS[k + '>' + t], true); });
           show(k, { first: false, ed: x.ed }, far, true); h = Math.max(h, plate.offsetHeight);
           if (far) { show(k, { first: false, ed: x.ed }, null, true); h = Math.max(h, plate.offsetHeight); }
         });
+        // (and for the tally the pack ends on, so the cards don't move when it comes: up to a fifth of the screen, which
+        // holds the counts and the foils; a tally that also lists Legacy Lines takes what more it needs when it comes)
+        tallyFill(true); h = Math.max(h, Math.min(plate.offsetHeight, Math.round(stage.clientHeight * .2)));
         plate.className = cls; plate.innerHTML = ''; keep.forEach(c => plate.appendChild(c));
         if (h) plate.style.minHeight = h + 'px'; plate.removeAttribute('aria-busy');
       }
       // the front card as tall as the room allows, with the next one showing at each side
       function fit() {
+        // (the foot keeps the height of a button whether or not one is showing: Turn the rest goes when one card is
+        // left, and the cards must not move when it does)
+        if (!ended) { const probe = el('button', { type: 'button', class: 'btn btn-primary pk-b-main', text: 'Done', style: { visibility: 'hidden' } }); foot.style.minHeight = ''; foot.appendChild(probe); const fh = foot.offsetHeight; probe.remove(); foot.style.minHeight = fh + 'px'; }
         if (!ended && n) reserve();
         const r = field.getBoundingClientRect(); if (!r.width || !n) return;
         const under = (n > 1 ? strip.offsetHeight + 6 : 0) + (foils ? 16 : 0);
@@ -316,8 +336,8 @@
       // a Thread between this card and one you can see: a Figure it grew from, or one that grew from it
       function linkFor(k) {
         const c = CARDS[k], out = [];
-        (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@' && s !== k && known(s) && TX.LINKS[s + '>' + k]) out.push({ other: s, tx: TX.LINKS[s + '>' + k] }); });
-        Coll.ALL.forEach(t => { const tc = CARDS[t]; if (t !== k && (tc.insp || []).concat(tc.from || []).indexOf(k) >= 0 && known(t) && TX.LINKS[k + '>' + t]) out.push({ other: t, tx: TX.LINKS[k + '>' + t] }); });
+        (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@' && s !== k && known(s) && TX.LINKS[s + '>' + k]) out.push({ other: s, from: s, to: k, tx: TX.LINKS[s + '>' + k] }); });
+        Coll.ALL.forEach(t => { const tc = CARDS[t]; if (t !== k && (tc.insp || []).concat(tc.from || []).indexOf(k) >= 0 && known(t) && TX.LINKS[k + '>' + t]) out.push({ other: t, from: k, to: t, tx: TX.LINKS[k + '>' + t] }); });
         out.forEach(l => { l.cell = cells.filter(c2 => c2.up && c2.x.c === l.other)[0] || null; });
         return out.sort((a, b) => (b.cell ? 1 : 0) - (a.cell ? 1 : 0))[0] || null;
       }
@@ -334,14 +354,26 @@
         plate.appendChild(el('div', { class: 'pk-p-n', text: CARDS[k].n }));
         const L = lineFor(k);
         if (L) { plate.appendChild(lineEl(L, k)); if (link) plate.appendChild(el('p', { class: 'pk-p-why', text: link.tx })); }
-        else if (link) plate.appendChild(el('div', { class: 'pk-p-th' }, [el('span', { class: 'pk-p-who', role: 'img', 'aria-label': 'A Legacy Line to ' + CARDS[link.other].n }, [thumb(link.other), el('i', { html: Kit.icon('link') })]), el('span', { class: 'tx', text: link.tx })]));
+        else if (link) plate.appendChild(linkEl(link, k));
         else if (t.tx) plate.appendChild(el('div', { class: 'pk-p-cap', html: A.boldKeys(t.tx) }));
         else if (t.fact) plate.appendChild(el('div', { class: 'pk-p-cap it', text: t.fact }));
+      }
+      // A Legacy Line between the card at the front and a card of yours, drawn the way the reader draws it (notesFor in
+      // ui.js): under the words Legacy Line, the card it runs from and the card it runs to as named medallions joined
+      // by the gold line, what the line is worth on it as the game's own marks, and the true sentence about the two.
+      function linkEl(link, k) {
+        const med = c => { const m = el('span', { class: 'ln-m' + (c === k ? ' me' : ''), style: { '--f': col(c) } }); const im = A.artImg(c, true); if (im) m.appendChild(im); return el('span', { class: 'ln-who' }, [m, el('small', { text: CARDS[c].n })]); };
+        const legacy = (CARDS[link.to].insp || []).indexOf(link.from) >= 0, w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
+        return el('div', { class: 'pk-p-th pk-ll', 'data-to': link.to }, [
+          el('div', { class: 'ln-k', text: 'Legacy Line' }),
+          el('div', { class: 'ln-row', role: 'img', 'aria-label': 'From ' + CARDS[link.from].n + ' to ' + CARDS[link.to].n }, [med(link.from), el('span', { class: 'ln-line' }, [el('span', { class: 'ln-worth' }, [legacy ? w('sp', '−1', 'costs 1 Spark less') : null, legacy ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')])]), med(link.to)]),
+          el('p', { class: 'ln-why', text: link.tx })]);
       }
       function mark() {
         const t = rest.querySelector('.pk-rest-t'); if (t) t.textContent = left === n ? 'Turn them all' : 'Turn the rest';
         rest.hidden = left < 2;
       }
+      // The card has landed face up (or, on a calm screen, changed face): it is counted, stamped and announced.
       // o.pass: the strip is still moving on past this card (a flick, or Turn the rest): it turns, without the fanfare
       function turn(i, o) {
         const c = cells[i]; if (!c || c.up || !alive || ended) return; o = o || {};
@@ -361,12 +393,13 @@
         c.th.setAttribute('aria-label', CARDS[k].n + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
         const im = A.artImg(k, true); if (im) c.th.appendChild(im);
         if (link) { knot(c); if (link.cell) knot(link.cell); }
+        // (the sound and the tap in the hand are the card landing)
         if (ed) foilMoment(c, ed, o.pass, last);
-        else if (o.pass) { Kit.sfx('flip', .7); if (isNew) Kit.haptic('light'); }
+        else if (o.pass) { Kit.sfx('deal', .8); Kit.haptic(isNew ? 'light' : 'tick'); }
         else if (isNew) {
-          Kit.sfx('flip'); setTimeout(() => Kit.sfx('sparkle', last ? 1 : .8), 140); Kit.haptic('medium');
-          const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: w * .95, ms: 700 }); }, 160);
-        } else { Kit.sfx('flip', .8); Kit.haptic('light'); }
+          Kit.sfx('deal', 1); Kit.sfx('flip', .6); setTimeout(() => Kit.sfx('sparkle', last ? 1 : .8), 120); Kit.haptic('medium');
+          const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: w * .95, ms: 700 }); }, 90);
+        } else { Kit.sfx('deal', 1); Kit.sfx('flip', .5); Kit.haptic('light'); }
         if (link && !o.pass) setTimeout(() => Kit.sfx('good', .6), 300);
         mark();
         if (!left) setTimeout(end, ed > 3 ? 3200 : ed > 2 ? 2100 : o.pass ? 900 : isNew || ed ? 1300 : 1000);
@@ -375,8 +408,8 @@
       // Silver foil rings and throws silver. A Gold foil lifts off the strip in a burst of gold. A Rainbow foil is an
       // event: the room dims, rays turn behind the card, and the colours fly.
       function foilMoment(c, ed, pass, last) {
-        if (Ed()) { Ed().wake(); if (!pass) Ed().sweep(); }
-        Kit.sfx('flip', pass ? .7 : 1);
+        if (Ed()) Ed().wake();   // (the light has just run across the foil as it came over: --ls, set by the strip)
+        Kit.sfx('deal', pass ? .8 : 1); Kit.sfx('flip', pass ? .5 : .7);
         const fr = flow.getBoundingClientRect(), w = fr.height * .7143, r = c.el.getBoundingClientRect(), cx = Math.max(fr.left, Math.min(fr.right, r.left + r.width / 2)), cy = fr.top + fr.height / 2, quick = calm();
         const later = (ms, fn) => setTimeout(() => { if (alive && !ended && c.el.isConnected) fn(); }, ms);
         if (ed === 1) { later(140, () => Kit.sfx('sparkle', pass ? .5 : .8)); Kit.haptic(pass ? 'light' : 'medium'); if (!pass) later(160, () => bits(fx, cx, cy, 12, FOIL[1], { d: w * .9, ms: 700 })); return; }
@@ -398,39 +431,67 @@
         later(950, () => bits(fx, cx, cy, 26, FOIL[4], { d: w * 1.2, ms: 1200 }));
       }
       const big = c => !c.up && (c.x.ed || 0) >= 3;
-      // another card has come to the front: it turns over if it never has (and so does any card the strip flew past),
-      // and the plate says which card this is
+      // ── The tumble. A face-down card p cards from the front (p = 1 is the slot it waits in, one short of the front):
+      // its leading edge is the hinge, on the front slot's right-hand edge, and it has come over by `th` degrees (0
+      // would be flat on its back, 90 edge-on, 180 face up in the front slot). Cards further back wait behind it,
+      // tilted the same way. The hinge does not move while p goes from 1 to 0: only the angle does, so the far edge
+      // comes up toward you and over. Half way along (p = .5) the card is edge-on, which is also where a strip let go
+      // of settles forward or back: the face is never seen on a card that then goes back down.
+      const LEAN = 48, EPS = .004;
+      function tumble(j, p, CU, FX) {
+        const c = cells[j]; if (!c || c.landed) return null;
+        if (p <= EPS && dealt && !ended) { land(j); return null; }
+        const w = CU * .7143, a = Math.max(0, p); let th, sc, tx, op = 1;
+        if (a <= 1) { th = 180 - (180 - LEAN) * Math.pow(a, .552); sc = 1 - a * .1; tx = w; }
+        else { th = LEAN + Math.min(8, (a - 1) * 5); sc = Math.max(.5, .9 - (a - 1) * .1); tx = w + (a - 1) * FX * CU * .5; op = Math.max(0, 1 - (a - 1) * .38); }
+        shadow(c, a, th, sc, w);
+        return { t: 'translate3d(' + tx.toFixed(1) + 'px,0,0) rotateY(' + (-th).toFixed(2) + 'deg) scale(' + sc.toFixed(3) + ')', z: 100 - Math.round(a * 10) + (a < .5 ? 1 : 0), o: op, dim: Math.min(1, a) };
+      }
+      // its shadow on the table: under the part of the card that is over it, soft and wide while the card is up on
+      // its edge, tighter and darker as it comes down
+      function shadow(c, a, th, sc, w) {
+        if (a > 1.25 || !dealt) { if (c.sh) c.sh.style.opacity = '0'; return; }
+        if (!c.sh) { c.sh = el('i', { class: 'pk-sh' }); flow.insertBefore(c.sh, flow.firstChild); }
+        const r = th * Math.PI / 180, foot = Math.cos(r) * w * sc, up = Math.sin(r), x0 = w / 2 + Math.min(0, foot), sx = Math.max(.05, Math.abs(foot) / w) * (1 + up * .1);
+        c.sh.style.transform = 'translate3d(' + x0.toFixed(1) + 'px,' + (up * w * .03).toFixed(1) + 'px,0) scale(' + sx.toFixed(3) + ',' + (1 + up * .06).toFixed(3) + ')';
+        c.sh.style.opacity = ((.62 - .34 * up) * Math.min(1, (1.25 - a) / .25)).toFixed(3);
+        c.sh.style.zIndex = String(100 - Math.round(a * 10) - 1);
+      }
+      // it has come all the way over: from here on it is an ordinary card on the strip, face up
+      function land(j) {
+        const c = cells[j]; if (!c || c.landed) return; c.landed = true;
+        c.el.classList.remove('tum'); if (c.sh) { c.sh.remove(); c.sh = null; }
+        const gliding = !!(F && F.raf), onward = gliding ? F.to !== j : Math.round(F.pos) !== j;
+        // (a Gold or Rainbow foil is never flown past: a strip that is gliding on, from a flick or Turn the rest, stops
+        // where it has landed, and it has everything it is due)
+        const stop = big(c) && gliding && onward;
+        if (stop) { rest.disabled = false; Promise.resolve().then(() => { if (alive && !ended && F) F.settle(j, 0); }); }
+        turn(j, { pass: onward && !stop });
+        c.el.classList.add('land'); setTimeout(() => c.el.classList.remove('land'), 460);
+        if (!ended && Math.round(F.pos) === j) show(c.x.c, c.x, linkFor(c.x.c));
+      }
+      // another card has come to the front: the plate says which, once it is face up. (On a calm screen there is no
+      // tumble: the card changes face here, and so does any card the strip went past.)
       function front(i) {
         if (!dealt || ended) return;
         clearTimeout(nudge); flow.classList.remove('nudge');
-        // A Gold or Rainbow foil is never flown past: a strip that is gliding (a flick, Turn the rest) stops on it, and
-        // it turns with everything it is due. (Under a finger the strip goes where the finger takes it.)
-        const glide = !!(F && F.raf);
-        if (halt != null) { if (glide && i !== halt) return; halt = null; }
-        if (glide) {
-          const j = cells.findIndex((c, q) => q <= i && big(c));
-          if (j >= 0 && (j < i || F.to !== i)) {
-            rest.disabled = false; if (j < i) halt = j; else F.to = i;
-            Promise.resolve().then(() => { if (alive && !ended && F) F.settle(j, 0); });   // (once this frame of the glide is done)
-            if (j < i) return;
-          }
-        }
-        for (let j = 0; j < i; j++) if (!cells[j].up) turn(j, { pass: !big(cells[j]) });
         const c = cells[i]; if (!c) return;
-        if (!c.up) turn(i, { pass: !!(F && F.raf && F.to !== i) });
-        if (!ended) show(c.x.c, c.x, linkFor(c.x.c));
+        if (flat) { for (let j = 0; j < i; j++) if (!cells[j].up) turn(j, { pass: true }); if (!c.up) turn(i, { pass: !!(F && F.raf && F.to !== i) }); }
+        if (c.up && !ended) show(c.x.c, c.x, linkFor(c.x.c));
       }
       function turnRest() {
         if (ended || rest.disabled || !F || !dealt) return; rest.disabled = true; Kit.sfx('tap'); Kit.haptic('medium');
-        if (calm()) { const stop = cells.findIndex(big); cells.forEach((c, i) => { if (!c.up && (stop < 0 || i < stop)) turn(i, { pass: true }); }); if (stop >= 0) rest.disabled = false; F.settle(stop < 0 ? n - 1 : stop, 0); return; }
-        F.to = n - 1; F.settle(n - 1, 0, 240);   // (a riffle: each card turns as it passes the front)
+        if (flat) { const stop = cells.findIndex(big); cells.forEach((c, i) => { if (!c.up && (stop < 0 || i < stop)) turn(i, { pass: true }); }); if (stop >= 0) rest.disabled = false; F.settle(stop < 0 ? n - 1 : stop, 0); return; }
+        F.settle(n - 1, 0, 260);   // (a riffle: each card tumbles over as it reaches the front)
       }
       if (n) {
-        F = A.makeFlow({ flow: flow, strip: n > 1 ? strip : null, n: n, at: 0, keep: true, wheel: field, make: j => cells[j].el, front: front });
-        const settle = F.settle; F.to = 0; F.settle = (t, v, slow) => { F.to = Math.max(0, Math.min(n - 1, Math.round(t))); settle(t, v, slow); };
+        F = A.makeFlow({ flow: flow, strip: n > 1 ? strip : null, n: n, at: 0, keep: true, wheel: field, make: j => cells[j].el, front: front, pose: flat ? null : tumble });
+        if (!flat) F.pos = -1;   // (nothing is in front yet: the first card tumbles in like the rest)
         listen(document, 'keydown', e => { if (!main.isConnected || !dealt || document.querySelector('.view.show, .pk-moment, .k-scrim.show')) return; F.key(e); });
       }
       fit(); listen(window, 'resize', () => { if (main.isConnected) fit(); });
+      // (the room kept on the plate is measured in the book faces: measured again once they have loaded)
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (alive && !ended && main.isConnected) { lastCu = 0; fit(); } });
       // (the room for the cards also changes without the window changing: the tally is taller than the title was, the
       // buttons under it can wrap)
       if (window.ResizeObserver) { let rq = 0; const ro = new ResizeObserver(() => { cancelAnimationFrame(rq); rq = requestAnimationFrame(() => { if (alive && main.isConnected) fit(); }); }); ro.observe(field); offs.push(() => ro.disconnect()); }
@@ -444,6 +505,7 @@
         const to = { x: f.left + f.width / 2, y: st.bottom - Math.min(84, st.height * .16) }, dx = to.x - mouth.x, dy = to.y - mouth.y;
         seal.classList.add('away');
         if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)'; await wait(430); }
+        await firstReady;   // (the first card's picture: it is nearly always there by now)
         if (!alive) return;
         stage.classList.remove('dealing');
         if (!quick && n) {
@@ -458,10 +520,11 @@
           await wait((Math.min(n, 5) - 1) * 90 + 560);
         }
         if (!alive) return;
-        if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + (dy + s.height).toFixed(1) + 'px)'; seal.style.opacity = '0'; await wait(380); }
-        seal.remove(); stage.classList.add('turning'); mark();
+        // (the empty pack slides away while the first card comes over)
+        if (!quick) { seal.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + (dy + s.height).toFixed(1) + 'px)'; seal.style.opacity = '0'; setTimeout(() => seal.remove(), 400); } else seal.remove();
+        stage.classList.add('turning'); mark();
         if (!n) { end(); return; }
-        dealt = true; front(0);
+        dealt = true; if (flat) front(0); else F.settle(0, 0, 560);
         // (nobody has slid the strip yet: it leans over for a moment to show there is more to the side)
         if (n > 1 && !quick) nudge = setTimeout(() => { if (alive && !ended && F && Math.round(F.pos) === 0 && left) flow.classList.add('nudge'); }, 2200);
       })();
@@ -471,9 +534,22 @@
         if (ended || !alive) return; ended = true; rest.hidden = true; clearTimeout(nudge); flow.classList.remove('nudge');
         for (const t of res.threads) { if (!alive) return; await thread(t); }
         if (!alive) return;
-        const nw = cards.filter(x => x.first).length, tw = cards.filter(x => !x.first && x.copy !== false).length, more = waiting().length;
+        const more = waiting().length;
         stage.classList.remove('turning'); stage.classList.add('tally');
-        const num = (label, v, cls) => { const b = el('b', { text: '0' }); countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
+        tallyFill(false);
+        foot.innerHTML = '';
+        const btn = (label, cls, fn, ic) => el('button', { type: 'button', class: 'btn ' + cls, html: (ic ? Kit.icon(ic) : '') + '<span>' + Kit.esc(label) + '</span>', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fn(); } });
+        if (window.AnoriaLibrary && window.AnoriaLibrary.open) foot.appendChild(btn('Library', 'btn-soft pk-b-lib', toLibrary, 'book'));
+        const fin = btn('Done', more ? 'btn-soft pk-b-done' : 'btn-primary pk-b-done pk-b-main', () => leave());
+        foot.appendChild(fin);
+        let nxt = null; if (more) { nxt = btn('Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
+        fit(); Kit.sfx('good'); Kit.haptic('success');
+        setTimeout(() => { if (alive && foot.isConnected) try { (nxt || fin).focus({ preventScroll: true }); } catch (e) {} }, 300);
+      }
+      // the tally on the plate (dry: only to measure the room it needs, before a card has been turned)
+      function tallyFill(dry) {
+        const nw = cards.filter(x => x.first).length, tw = cards.filter(x => !x.first && x.copy !== false).length;
+        const num = (label, v, cls) => { const b = el('b', { text: dry ? String(v) : '0' }); if (!dry) countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
         plate.className = 'pk-plate tally'; plate.innerHTML = '';
         plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two')]));
         // the foils in this pack, as the ladder of editions: each one found is lit, with how many
@@ -486,14 +562,6 @@
           plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Legacy Line', 'Legacy Lines') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
             el('div', { class: 'pk-t-th' }, [t.gift ? el('button', { type: 'button', class: 'pk-t-gift', 'aria-label': 'Its gift: ' + CARDS[t.gift].n + '. Read it', onclick: () => A.openView(t.gift) }, [thumb(t.gift)]) : null, el('b', { text: t.n })])))));
         }
-        foot.innerHTML = '';
-        const btn = (label, cls, fn, ic) => el('button', { type: 'button', class: 'btn ' + cls, html: (ic ? Kit.icon(ic) : '') + '<span>' + Kit.esc(label) + '</span>', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fn(); } });
-        if (window.AnoriaLibrary && window.AnoriaLibrary.open) foot.appendChild(btn('Library', 'btn-soft pk-b-lib', toLibrary, 'book'));
-        const fin = btn('Done', more ? 'btn-soft pk-b-done' : 'btn-primary pk-b-done pk-b-main', () => leave());
-        foot.appendChild(fin);
-        let nxt = null; if (more) { nxt = btn('Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
-        fit(); Kit.sfx('good'); Kit.haptic('success');
-        setTimeout(() => { if (alive && foot.isConnected) try { (nxt || fin).focus({ preventScroll: true }); } catch (e) {} }, 300);
       }
       function countUp(b, v) {
         if (calm() || v < 1) { b.textContent = String(v); return; }

@@ -94,19 +94,21 @@
     }
     return newImg(key, small, src);
   }
-  const loaded = {};
+  const loaded = {}, smallWait = {};
+  // (a small picture is in memory from here on: whoever was waiting for it to stand in for a full one is told)
+  function gotSmall(src, im) { if (!loaded[src]) loaded[src] = im; const w = smallWait[src]; if (w) { delete smallWait[src]; w.forEach(fn => fn()); } }
   function newImg(key, small, src) {
     let mem = small && kept[src];
     const im = el('img', { src: mem || src, alt: '', draggable: 'false', decoding: small ? 'sync' : 'async' });
     if (FY[key] != null) im.style.objectPosition = '50% ' + FY[key] + '%';   // (which part of the picture to keep, wherever it is cropped)
     im.onerror = function () { if (mem) { mem = ''; kept[src] = ''; im.src = src; return; } noArt[src] = 1; im.remove(); };
-    im.onload = function () { hasArt[src] = 1; if (small) { keep(src); if (!loaded[src]) loaded[src] = im; } };
+    im.onload = function () { hasArt[src] = 1; if (small) { keep(src); gotSmall(src, im); } };
     return im;
   }
   // the name shown where a picture is missing (left out once the picture is known to be there, so a piece
   // that is drawn again never flashes its name)
   const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : el('span', { class: cls, text: info(key).n });
-  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); if (!loaded[src]) loaded[src] = im; }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
+  function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); gotSmall(src, im); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
 
   // Full-size pictures, made ready ahead of the finger (Tim, 2026-11-11: "some of the art flashes into place after
   // briefly seeing a placeholder"). warm(keys) fetches and decodes them a few at a time and says when they are all
@@ -134,14 +136,22 @@
     const f = full[artSrc(key, false)]; if (im.tagName !== 'IMG' || (f && f.ok) || (im.complete && im.naturalWidth)) return;
     im.classList.add('ld'); const show = () => im.classList.remove('ld');
     (im.decode ? im.decode() : Promise.reject()).then(show, () => { if (im.complete) show(); else im.addEventListener('load', show); });
+    // (no small picture in memory yet to stand in: it is asked for, and stands in as soon as it comes, if the full one still hasn't)
+    const ssrc = artSrc(key, true);
+    if (!loaded[ssrc] && !noArt[ssrc]) { (smallWait[ssrc] || (smallWait[ssrc] = [])).push(() => { if (!im.classList.contains('ld') || !im.parentNode) return; const lo = standIn(key); if (lo) im.parentNode.insertBefore(lo, im); });
+      preload([key]); }
   }
   // The small pictures of the whole set (about 20 KB each), warmed a few at a time once the page is idle, so that
   // there is always one to stand in.
   function warmSmall() {
     const all = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES)); let i = 0;
     const idle = fn => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 500));
-    const step = () => { if (i >= all.length) return; preload(all.slice(i, i += 6)); setTimeout(() => idle(step), 250); };
-    setTimeout(() => idle(step), 2500);
+    // (it gives way to anything that is wanted now: full pictures on their way, a pack being opened, a card being read)
+    const busy = () => warmN > 0 || warmQ.length > 0 || !!document.querySelector('.pk-flow, .view');
+    const step = () => { if (i >= all.length) return; if (!busy()) preload(all.slice(i, i += 4)); setTimeout(() => idle(step), busy() ? 1200 : 350); };
+    // (not before the page itself has finished loading: a picture asked for sooner would hold that up)
+    const begin = () => setTimeout(() => idle(step), 2500);
+    if (document.readyState === 'complete') begin(); else window.addEventListener('load', begin);
   }
 
   // ═══ The map behind a card's text, drawn from the coastlines ═════════════════════════════════════════════
@@ -407,7 +417,7 @@
     const stop = () => { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; };
     // glide pos to a card: longer trips take a little longer, leave at the flick's own speed, ease to a stop
     function settle(target, vel, slow) {
-      target = Math.max(0, Math.min(n - 1, Math.round(target))); stop(); measure();
+      target = Math.max(0, Math.min(n - 1, Math.round(target))); stop(); measure(); F.to = target;   // (where the strip is gliding to)
       const from = F.pos, dist = target - from, t0 = performance.now(), ms = slow ? Math.max(260, Math.abs(dist) * slow) : Math.min(900, 220 + 140 * Math.pow(Math.abs(dist), .85));
       const s0 = vel && dist && (vel > 0) === (dist > 0) ? Math.min(3, Math.abs(vel) * ms / Math.abs(dist)) : 0;
       const ease = t => { const t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : slow ? t2 * (3 - 2 * t) : 1 - Math.pow(1 - t, 3); };

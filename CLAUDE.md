@@ -400,6 +400,27 @@ Underlying principles for everything:
   revealed"). `torn()` in packs.js: a swipe, a flick, a thumbnail, the arrow keys and Turn the rest (a riffle to the
   last card) all just move the strip, and `front()` turns whatever arrives. New is stamped on the card; upright and
   on an iPad the card is large enough to read, so the plate over it says only a Thread the card has to one of yours.
+- **A pack's card tumbles over as it comes to the front** (Tim, 2026-11-11: "the front edge kind of stopping and the
+  far edge flipping up and over the top in a 3-D animation"). A face-down card waits one slot short of the front with
+  its leading edge on the front slot's edge; as the strip brings it in that edge stays where it is and the rest of the
+  card comes up toward you and over it, back until it is edge-on, face after, and lands face up in the slot (`tumble()`
+  and `land()` in packs.js, through `makeFlow`'s `pose` option; the card has thickness, an edge and a shadow that
+  tightens, and it presses into the table as it lands). The turn follows the strip: under a finger the card comes over
+  as far as the finger has gone, and one let go short of half way (where it is edge-on) goes back down unseen. A card
+  is counted, stamped and announced when it lands, with the sound and the haptic. A card already turned never tumbles
+  again. A calm screen gets a plain cross-fade in place. A foil's moment comes after its landing, not instead of it.
+- **Pictures are ready before they are needed** (Tim: "some of the art flashes into place after briefly seeing a
+  placeholder"). `AnoriaUI.warm(keys)` fetches and decodes full-size pictures a few at a time: a pack warms all its
+  cards the moment it is torn and holds its first card until that picture is ready (2.6 s at most), a strip warms
+  the cards either side of the front one, the table warms your hand. The small pictures of the whole set are warmed
+  once the page is idle. A full card whose picture is not ready shows the small one, softened (`standIn`), and the
+  full one comes up over it (`comeUp`): never a flat panel that a picture pops into, unless there is no picture at all.
+  The plate over a pack's cards keeps room for whatever it will say (`reserve()`), so the cards don't move as it
+  changes, and the glow as a card lands stays round the card: the wash over the screen is for Gold and Rainbow foils.
+- **A Legacy Line over a pack's card is drawn** (Tim: "why does Hammurabi have an extra line at top when none of the
+  other cards do?"): under the words Legacy Line, the card the line runs from and the card it runs to as named
+  medallions joined by the gold line, with what it is worth on the line as the game's marks, then the true sentence
+  (`linkEl` in packs.js, the reader's `.ln` block made small). A card with no line shows nothing there.
 - **A card that changes a clash is shown as that card** (Tim, 2026-11-11: "Phalanx +2" as a line of small print):
   Phalanx slides in from the outer edge and tucks under the Figure it helps, its name plate showing with the Might
   it adds, and the shields count it as it lands (`aid()` in `clashShow`: before the dice for the attacker, after
