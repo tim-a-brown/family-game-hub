@@ -467,12 +467,13 @@
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy</b> Figure names who inspired it. Virgil modelled the Aeneid on Homer, and Homer is on your side.', at: [L.card('virgil'), L.piece('homer')] });
-        await L.say('A gold line joins them. Virgil cost 1 less, has +1 Might while Homer stands, and you score 1 Renown.', { at: [L.piece('virgil'), L.piece('homer')] });
+        await L.say('A gold line joins them. Virgil cost 1 less, and he has +1 Might for as long as Homer stands.', { at: [L.piece('virgil'), L.piece('homer')] });
+        await L.say('Making the line also scored you 1 Renown. That happens once, as Virgil arrives, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.deed('eureka', { lit: 'A <b>Thread</b> works the same way for any card that grew out of something. Eureka! came from Archimedes.', at: [L.card('eureka'), L.piece('archimedes')] });
-        await L.say('Archimedes stands on your side, so playing it scores 1 Renown.', { at: '.an-strip.me .st-ren' });
-        await L.say('Lines and Threads score once a round between them. Read a card to see what it grew from.', { at: '.an-hand' });
+        await L.say('Archimedes stands on your side, so playing Eureka! scores 1 Renown, once, as it is played.', { at: '.an-strip.me .st-ren' });
+        await L.say('Only one line or Thread scores in a round. A second one that round still joins up, but scores nothing. Read a card to see what it grew from.', { at: '.an-hand' });
       } },
     { id: 'count', n: 'The count', sub: 'Who holds what, and what it scores', art: 'acropolis',
       table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', renown: 4, hand: ['galileo', 'compass'], figs: [['copernicus', MY_GATE], ['hatshepsut', MY_OUT]] },

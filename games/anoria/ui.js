@@ -211,11 +211,11 @@
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
     }
-    if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: if ' + esc(names(c.insp)) + ' is in play on your side when you play this card, it costs 1 less and you score 1 Renown (once a round). A gold line joins them, and this card has +1 Might while they stand.' }));
+    if (c.insp) notes.appendChild(el('p', { html: '<b>Legacy</b>: if ' + esc(names(c.insp)) + ' is in play on your side when you play this card, it costs 1 less and you score 1 Renown as it arrives. A gold line joins them, and this card has +1 Might while they stand. Only one line or Thread scores in a round.' }));
     if (CARDS[key] && CARDS[key].from && E.STD.threads) {
       const src = CARDS[key].from.map(x => x[0] === '@' ? C.PLACES[x.slice(1)].n : CARDS[x].n), fig = CARDS[key].t === 'fig';
       const how = CARDS[key].from.map(x => x[0] === '@' ? (fig ? 'at ' + C.PLACES[x.slice(1)].n : 'while a Figure of yours is at ' + C.PLACES[x.slice(1)].n) : 'while ' + CARDS[x].n + ' is ' + (CARDS[x].t === 'relic' ? 'in play' : 'on your side'));
-      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src)) + '. It scores 1 Renown (once a round) when you play it ' + esc(listOf(how, 'or')) + '.' }));
+      notes.appendChild(el('p', { html: '<b>Thread</b>: this card grew from ' + esc(listOf(src)) + '. It scores 1 Renown when you play it ' + esc(listOf(how, 'or')) + '. Only one line or Thread scores in a round.' }));
     }
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + '(\\.|$)').test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1]) })); });
     if (c.kind === 'place') {
@@ -1158,11 +1158,11 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). Voyagers are at home everywhere and can walk to any Place.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> (once a round, shared with Legacy lines). Read a card to see its Thread.</li></ul>' +
+    '<h3>Threads</h3><ul><li>Some cards grew out of something else: a Place, a Relic or a person. If you play one while what it grew from is on your side (a Figure arriving at that Place, the Relic in play, the person standing), it scores <b>1 Renown</b> as you play it. That Renown is scored once, not every turn, and only one Thread or Legacy line scores in a round. Read a card to see its Thread.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of 3 cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. The other four join you as you beat the computer, one each at 3, 8, 15 and 25 wins. Each has a different power, so a new Guide is a new way to play: any deck you build can have them as its Guide, and the deck they bring opens once you own its cards.</li>' +
     '<li>A pack never holds a card you already have two of.</li></ul>' +
-    '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown (once a round).</li></ul>' +
+    '<h3>Legacy lines</h3><ul><li>A Legacy Figure names who inspired it. If one of them is in play on your side, it costs 1 less, a gold line joins the two, it has +1 Might while the other stands, and you score 1 Renown as it arrives. That Renown is scored once, not every turn, and only one line or Thread scores in a round.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b> in rounds 1 to 3 and <b>2 from round 4 on</b>. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>, which is 1 more Renown for you.</li>' +
