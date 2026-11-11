@@ -540,6 +540,20 @@ Underlying principles for everything:
   against the computer, and each is a new way to play). The rules page opens with the same story. Anything new that
   explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
   (memory, being remembered, the sphere, Gates and Seals).
+- **Domains** (Tim, 2026-11-11, decided on the Places prototype in `scripts/anoria/places/`; being built). The card
+  that lies at a Gate, an Outpost or the Crossroads is a **Domain**: one word, not Place, wonder or location (the
+  game's words still say Place until the build's sweep). A Domain has one **kind**, said as part of its name (a
+  Commerce, Industry, Thought, Land, Culture, Law or Routes Domain: holding the markets, workshops, schools,
+  strongholds, stages, courts and roads of an age is how people held the age, and a kind's rule pays what holding
+  that kind of place gave them) and one **home region**, the Figures' own regions; kind and home must both be plain
+  from the card's border and plates. Each player brings a **stack of 15 Domains**, no two the same, chosen from a
+  collection that can hold more. Set-up: draw three, one to your Gate, one to your Outpost, the third offered for
+  the Crossroads; each player rolls a die, the higher roll's offer is the Crossroads and the other player takes the
+  first turn. The Crossroads' owner wins ties there while they have a Figure there, and nothing more. Domination (a
+  win by holding every kind) is left out as too complicated. **The game must translate to a real table**: whose
+  Domain each one is (a banner in the player's colour that travels with the card, since cards may swap, reverse or
+  shuffle Domains), a marker for a rule that is silenced or changed, and a track for rounds and turns are all drawn
+  on the device as the pieces a person would use.
 - **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
   Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
   about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
