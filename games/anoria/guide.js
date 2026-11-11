@@ -142,6 +142,8 @@
   const tile = (k, when, i, cls) => el('figure', { class: 'sc-fig' + (cls ? ' ' + cls : ''), style: { '--i': i } }, [pic(k), el('figcaption', {}, [el('b', { text: UI().info(k).n }), when ? el('small', { text: when }) : null])]);
   const side = (label, guide, crew, i) => el('div', { class: 'sc-side', style: { '--i': i } }, [
     el('small', { text: label }), pic(guide, 'lead'), el('b', { text: UI().info(guide).n }), el('div', { class: 'sc-crew' }, crew.map(k => pic(k)))]);
+  const gateScene = broken => [el('div', { class: 'sc-gate' + (broken ? ' shut' : '') }, [el('small', { text: 'Your Gate' }), el('span', { class: 'sc-pic wide' }, [UI().artImg('globe', true)]),
+    el('div', { class: 'sc-seals', role: 'img', 'aria-label': (3 - broken) + ' of 3 Seals whole' }, [0, 1, 2].map(i => el('span', { class: 'seal' + (i < broken ? ' broken' : ''), style: { '--i': i } })))])];
   const SCENES = {
     anoria: () => [el('img', { class: 'sc-logo', src: 'anoria/ui/logo.webp', alt: 'Anoria', draggable: 'false' })],
     ages: () => [el('div', { class: 'sc-grid' }, AGES.map((a, i) => tile(a[0], a[1], i)))],
@@ -151,6 +153,10 @@
     guides: () => { const U = UI(), have = (U.Coll.load().guides || []);
       return [el('div', { class: 'sc-guides' }, Object.keys(U.C.GUIDES).map((k, i) => { const g = U.info(k), mine = have.indexOf(k) >= 0;
         return el('div', { class: 'sc-g' + (mine ? ' mine' : ''), style: { '--i': i } }, [pic(k), el('div', { class: 'sc-g-t' }, [el('b', { text: g.n }), mine ? el('i', { text: 'With you' }) : null, el('small', { text: g.tx })])]); }))]; },
+    // the great sphere at Anoria's heart (the one on the back of every card), coming full circle
+    sphere: () => [el('div', { class: 'sc-sphere' }, [el('i', { class: 'sc-orb' }), el('span', { class: 'sc-ring', html: '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47.5"/><circle class="go" cx="50" cy="50" r="47.5"/></svg>' })])],
+    // a company's Gate and the three Seals that hold it open; `shut`: the same Gate with every Seal broken
+    seals: () => gateScene(0), shut: () => gateScene(3),
     renown: () => [el('div', { class: 'sc-held' }, WONDERS.slice(0, 5).map((k, i) => el('span', { class: 'sc-pic wide', style: { '--i': i } }, [UI().artImg(k, true)]))),
       el('div', { class: 'sc-lau' }, [el('b', { text: '0' })]), el('div', { class: 'sc-of', text: 'Renown' })]
   };
@@ -161,6 +167,7 @@
     if (!name) return;
     const s = el('div', { class: 'gd-scene' + (now ? ' now' : ''), 'data-k': name }, [el('div', { class: 'sc-in' }, SCENES[name]())]);
     r.root.insertBefore(s, r.rings); r.scene = s; fitScene(r); void s.offsetWidth; s.classList.add('on');
+    if (name === 'seals' && !fast()) setTimeout(() => { if (r.scene !== s) return; const one = s.querySelector('.seal'); if (one) one.classList.add('crack', 'broken'); }, 3600);   // (one Seal breaks while you watch)
     if (name === 'renown') {   // the laurel counts up to the 30 that wins
       const b = s.querySelector('.sc-lau b'); let n = 0;
       if (fast()) b.textContent = '30';
@@ -177,6 +184,8 @@
     if (k === 'ages') { cols = land ? 6 : 3; tw = grid(cols, land ? 1 : 2, 2 / 3, 52, 150); }
     else if (k === 'wonders') { cols = land ? 3 : 2; tw = grid(cols, land ? 2 : 3, 3 / 2, 30, 230); }
     else if (k === 'anoria') tw = Math.floor(Math.min(W, H, 440));
+    else if (k === 'sphere') tw = Math.floor(Math.min(W, H, 340));
+    else if (k === 'seals' || k === 'shut') tw = Math.floor(Math.max(90, Math.min(300, W * .78, (H - 96) * 1.5)));
     else if (k === 'sides') tw = Math.floor(Math.max(40, land ? Math.min(170, (W - 70) / 4.4, (H - 28) / 1.5) : Math.min(150, (W - 56) / 2, (H - 84) / 2)));
     else if (k === 'guides') { cols = land ? 5 : 1; tw = Math.floor(land ? Math.max(30, Math.min(72, (W - 48) / 5 * .5, (H - 104) / 1.5)) : Math.max(30, Math.min(64, (H - 36) / 5 / 1.5))); }
     else if (k === 'renown') { tw = Math.floor(Math.min(112, (W - 4 * 8) / 5)); lw = Math.floor(Math.max(60, Math.min(230, W * .6, (H - tw * 2 / 3 - 64) / .77))); }
@@ -186,17 +195,30 @@
       for (let i = 0; i < 8; i++) { s.style.setProperty('--fs', fs + 'rem'); if (box.offsetHeight <= H + 1) break; fs -= .04; }   // (its own height: the rows are still sliding in)
     }
   }
+  // The story (Tim, 2026-11-11: the first one was "unimaginative and weak": it has to say how the greats come to be in
+  // one place at one time, why they want Renown, why they contest the wonders, and what the Seals are for).
+  // Anoria is the country of memory: whoever and whatever the world remembers lives there, every age at once. A great
+  // sphere turns at its heart; each full turn ends an age, and the world can't carry all it knew into the next. So the
+  // greats lead companies to keep their people remembered. The world remembers whoever stands at its wonders, which
+  // is what Renown is. A company comes in through its Gate, held open by three Seals: all three broken, it is shut out.
   async function story(L, o) {
     await L.scene('anoria', o && o.now);
-    await L.say('Anoria is a world where all of history happens at once.', { scene: 1 });
+    await L.say('What the world remembers is never quite gone. It lives on in Anoria, the country of memory.', { scene: 1 });
     await L.scene('ages');
-    await L.say('The great figures of every age live here together. Hatshepsut can meet Mozart, who was born more than three thousand years after her.', { scene: 1 });
+    await L.say('Memory keeps no calendar, so every age is there at once. Hatshepsut can meet Mozart, who was born more than three thousand years after her.', { scene: 1 });
     await L.scene('wonders');
-    await L.say('The wonders of the world stand here too, from Stonehenge to the Great Wall.', { scene: 1 });
+    await L.say('People remember places as well as names, so the wonders of the world stand in Anoria too. They are where the world’s memory is strongest.', { scene: 1 });
+    await L.scene('sphere');
+    await L.say('At the heart of Anoria turns a great sphere, the one on the back of every card. Each time it comes full circle an age ends, and the world can’t carry everything it knew into the next one.', { scene: 1 });
     await L.scene('sides');
-    await L.say('Each player leads a company of these Figures, with one of the greats as a <b>Guide</b>.', { scene: 1 });
+    await L.say('So the greats gather companies, to keep their people from being forgotten. You lead one company with one of the greats as your <b>Guide</b>, and another Guide leads the company against you.', { scene: 1 });
     await L.scene('renown');
-    await L.say('A company wins <b>Renown</b> by holding the wonders. The first player to reach 30 Renown wins the game.', { scene: 1 });
+    await L.say('The world remembers whoever stands at its wonders. Each round, the company that holds a wonder wins <b>Renown</b> there.', { scene: 1 });
+    await L.say('The first company to 30 Renown is the one the next age remembers. That is why the companies clash over every wonder.', { scene: 1 });
+    await L.scene('seals');
+    await L.say('Your company comes into Anoria through its <b>Gate</b>, and three <b>Seals</b> hold that Gate open. If the other company holds your Gate when a round ends, one of your Seals breaks.', { scene: 1 });
+    await L.scene('shut');
+    await L.say('When the third Seal breaks, your Gate shuts for good and your company is forgotten. So you guard your own Gate, and you try to take theirs.', { scene: 1 });
     if (!(o && o.stay)) await L.scene(null);
   }
 
@@ -502,6 +524,7 @@
       async run(L) {
         await L.pause(400);
         const mt = k => UI().E.might(L.S(), L.fig(k, k === 'spartacus' ? 1 : 0), 0);
+        await L.say('Three <b>Seals</b> hold each company’s Gate open. A company with no Seals left is shut out of Anoria and forgotten.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
         await L.say('Your Figures can walk all the way to the other player’s Gate. Zheng He has done that here.', { at: L.row(TH_GATE), tag: 'Their Gate' });
         await L.say('He has ' + mt('zhenghe') + ' Might there and their Figure has ' + mt('spartacus') + ', so right now you hold their Gate.', { at: [L.piece('zhenghe'), L.piece('spartacus', 1)] });
         await L.say('The round is about to be counted. Keep an eye on their <b>Seals</b>.', { at: '.an-strip.opp .st-seals' });

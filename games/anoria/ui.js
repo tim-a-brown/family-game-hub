@@ -1357,7 +1357,8 @@
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
   const RULES =
-    '<p>Anoria is a world where all of history happens at once. The great figures of every age live there together, among the wonders of the world. You lead a company of them with one of the greats as your Guide, and so does the other player. A company wins Renown by holding the wonders.</p>' +
+    '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
+    '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach 30 Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +

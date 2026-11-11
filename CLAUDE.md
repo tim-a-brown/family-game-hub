@@ -337,14 +337,21 @@ Underlying principles for everything:
   talks about something that isn't in view: Reading a card keeps the card open under the caption
   (`openView(key, {lesson: true, room})`) and rings one part at a time. One idea a caption; split a long one.
 - **The story comes before the rules** (Tim, 2026-11-11: the guide went straight into play without the goal or the
-  story behind it). Anoria is a world where all of history happens at once: the great figures of every age live there
-  together among the wonders of the world, each player leads a company of them with one of the greats as a Guide, and
-  a company wins Renown by holding the wonders (the Places); the first to 30 wins. `story()` in guide.js tells it in
-  five full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of the quick
-  start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your Guide
-  chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
-  against the computer, and each is a new way to play). The rules page opens with the same paragraph. Anything new that explains the game starts
-  from the goal and why, then the how.
+  story behind it; then, of the first story: "unimaginative and weak": it must say how the greats share one place and
+  time, why they want Renown, why they contest the wonders, and what the Seals are for). **The story**: what the world
+  remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once (memory
+  keeps no calendar) among the wonders, where the world's memory is strongest. A great sphere turns at its heart (the
+  one on every card back); each full turn ends an age, and the world can't carry all it knew into the next. So the
+  greats lead companies to keep their people from being forgotten, each player one of them with a Guide. The world
+  remembers whoever stands at its wonders, and that is Renown: the first company to 30 is the one the next age
+  remembers. A company comes into Anoria through its Gate, held open by three Seals; hold the other company's Gate
+  when a round ends and one breaks, and a company with none left is shut out and forgotten. `story()` in guide.js
+  tells it in full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of
+  the quick start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your
+  Guide chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
+  against the computer, and each is a new way to play). The rules page opens with the same story. Anything new that
+  explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
+  (memory, being remembered, the sphere, Gates and Seals).
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)
