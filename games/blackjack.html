@@ -387,11 +387,10 @@
     try { FGHSync.linkPoll(); } catch (e) {}   // fresh bankrolls for linked players (at most every 20 seconds)
     setupRef = Kit.setup(app, {
       intro: 'You play from your casino bank: ' + money(rawBank()) + '. Frequent players play from their own; anyone else gets $1,000 in play money.',
-      modes: [
-        { id: 'cpu', icon: 'bot', title: 'With computer players', desc: 'Extra seats are played by the computer' },
-        { id: 'pass', icon: 'phone', title: 'Pass and play', desc: 'Everyone takes their turn on this device' }
-      ],
-      players: { min: 1, max: 4, count: 1, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, label: 'Seats at the table' },
+      // one seat is just you and the dealer; more seats are people, computer players or both
+      modes: Kit.modes(['solo', 'cpu', { id: 'pass', kind: 'local' }]),
+      players: { min: 1, max: 4, count: 1, range: function (m) { return m === 'solo' ? [1, 1] : [2, 4]; },
+        cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pass' ? 'mix' : false; }, label: 'Seats at the table' },
       options: [
         { id: 'decks', label: 'Decks in the shoe', help: 'How many decks are shuffled together; fewer decks is a tiny bit better for you.', value: 6, choices: [[1, '1'], [2, '2'], [6, '6'], [8, '8']] },
         { id: 'soft17', label: 'Dealer on soft 17', help: 'A soft 17 is a 17 with an Ace counted as 11, like Ace and 6.', value: 's17', choices: [['s17', 'Stands', 'The dealer stops on soft 17. This is a little better for you.'], ['h17', 'Hits', 'The dealer takes another card on soft 17. This is a little better for the house.']] },
