@@ -59,11 +59,11 @@ const CARDS = {
   imhotep: F('Imhotep', 'W', 3, 3, 'AFR', 1, -2650, { monument: 1 }),
   yaa: F('Yaa Asantewaa', 'W', 3, 3, 'AFR', 6, 1900, {}, { arr: ['wits', 1] }),
   artemisia: F('Artemisia of Caria', 'W', 3, 3, 'MED', 2, -480, { swift: 1, slayer: 1 }),
-  earhart: F('Amelia Earhart', 'W', 2, 3, 'AMER', 7, 1932, { voyager: 1 }),
+  coleman: F('Bessie Coleman', 'W', 2, 3, 'AMER', 7, 1921, { voyager: 1 }),
   magellan: F('Ferdinand Magellan', 'W', 4, 4, 'EUR', 4, 1520, { voyager: 1, steadfast: 1 }),
   chingshih: F('Ching Shih', 'W', 4, 4, 'ASIA', 6, 1810, { voyager: 1, raider: 1 }),
   alfred: F('Alfred the Great', 'W', 5, 5, 'EUR', 3, 878, { guard: 1, inspiring: 1 }),
-  // Timeline test: the same rules from Assyria to the 1800s (and, since Amelia Earhart, into the 1900s)
+  // Timeline test: the same rules from Assyria to the 1800s (and, with Bessie Coleman, into the 1900s)
   ashurbanipal: F('Ashurbanipal', 'S', 3, 3, 'MIDEAST', 1, -650, { scholar: 1 }),
   faraday: F('Michael Faraday', 'D', 4, 4, 'EUR', 6, 1831, { eureka: 1 }),
   douglass: F('Frederick Douglass', 'S', 4, 4, 'AMER', 6, 1852, {}, { arr: ['stun', 9] }),
@@ -124,6 +124,8 @@ Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
 Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
+// (Eleven of the 150 left the same day: nothing within the past hundred years, so a card's year is 1926 or earlier.
+// They are heldForLater in scripts/anoria/set-150.json. The third printing is 139 cards and the set is 230.)
 // ── The third printing (2026-11-11): 150 more cards from real history, 100 Figures, 20 Relics and 30 Deeds, found
 // only in packs (like Blackbeard, they are in no ready deck). Tim: "increase the number of possible historical cards to
 // collect outside of the base packs by 150 ... lean slightly more into more well-known historical figures but i do
@@ -157,7 +159,6 @@ const P3 = {
   bly: F('Nellie Bly', 'D', 3, 3, 'AMER', 6, 1889, { voyager: 1, swift: 1 }),
   tesla: F('Nikola Tesla', 'D', 3, 4, 'AMER', 6, 1888, {}, { arr: ['stun', 1] }),
   einstein: F('Albert Einstein', 'D', 5, 4, 'EUR', 7, 1905, { shoulders: 1 }, { insp: ['newton', 'faraday'] }),
-  turing: F('Alan Turing', 'D', 3, 3, 'EUR', 7, 1936, {}, { arr: ['stun', 1], insp: ['ada'] }),
   // Statecraft
   cyrus: F('Cyrus the Great', 'S', 4, 4, 'MIDEAST', 1, -550, { inspiring: 1 }),
   qinshihuang: F('Qin Shi Huang', 'S', 5, 6, 'ASIA', 2, -221, { guard: 1 }),
@@ -179,7 +180,6 @@ const P3 = {
   stanton: F('Elizabeth Cady Stanton', 'S', 3, 3, 'AMER', 6, 1848, { inspiring: 1 }),
   thoreau: F('Henry David Thoreau', 'S', 2, 2, 'AMER', 6, 1849, { underdog: 1 }),
   anthony: F('Susan B. Anthony', 'S', 3, 3, 'AMER', 6, 1872, { steadfast: 1 }, { insp: ['stanton'] }),
-  king: F('Martin Luther King Jr.', 'S', 4, 4, 'AMER', 7, 1963, {}, { arr: ['stun', 9], insp: ['thoreau'] }),
   // Valor
   fuhao: F('Fu Hao', 'V', 3, 3, 'ASIA', 1, -1200, { orator: 1 }),
   vercingetorix: F('Vercingetorix', 'V', 3, 3, 'EUR', 2, -52, { uprising: 1 }),
@@ -198,7 +198,6 @@ const P3 = {
   menelik: F('Menelik II', 'V', 4, 3, 'AFR', 6, 1896, { homeDouble: 1 }),
   wallace: F('William Wallace', 'V', 3, 3, 'EUR', 3, 1297, { underdog: 1 }),
   thorpe: F('Jim Thorpe', 'V', 3, 4, 'AMER', 7, 1912, { swift: 1 }),
-  owens: F('Jesse Owens', 'V', 2, 2, 'AMER', 7, 1936, { swift: 1 }),
   // Arts
   enheduanna: F('Enheduanna', 'A', 2, 2, 'MIDEAST', 1, -2270, { inspiring: 1 }),
   aeschylus: F('Aeschylus', 'A', 3, 3, 'MED', 2, -472, { steadfast: 1 }, { insp: ['homer'] }),
@@ -222,7 +221,6 @@ const P3 = {
   twain: F('Mark Twain', 'A', 3, 3, 'AMER', 6, 1884, {}, { arr: ['wits', 1] }),
   vangogh: F('Vincent van Gogh', 'A', 3, 3, 'EUR', 6, 1888, { swift: 1 }, { insp: ['hiroshige'] }),
   joplin: F('Scott Joplin', 'A', 2, 2, 'AMER', 6, 1899, { swift: 1 }),
-  kahlo: F('Frida Kahlo', 'A', 3, 4, 'AMER', 7, 1939, { steadfast: 1 }),
   // Wonder
   tutankhamun: F('Tutankhamun', 'W', 2, 2, 'AFR', 1, -1330, { untouchable: 1 }),
   ramesses: F('Ramesses II', 'W', 4, 4, 'AFR', 1, -1264, { monument: 1 }),
@@ -238,7 +236,6 @@ const P3 = {
   verne: F('Jules Verne', 'W', 3, 4, 'EUR', 6, 1870, { voyager: 1 }, { insp: ['poe'] }),
   oakley: F('Annie Oakley', 'W', 2, 2, 'AMER', 6, 1885, { slayer: 1 }),
   houdini: F('Harry Houdini', 'W', 3, 2, 'AMER', 7, 1912, { swift: 1, untouchable: 1 }),
-  tenzing: F('Tenzing Norgay', 'W', 3, 4, 'ASIA', 7, 1953, { voyager: 1 }),
   // Relics (any deck). Three powers: a player has two Relics in play at most, and no two with the same power.
   // (the Compass's power)
   astrolabe: { n: 'Astrolabe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 400 },
@@ -269,13 +266,10 @@ const P3 = {
   halley: { n: 'Halley\'s Comet Returns', t: 'deed', f: 'D', c: 1, fx: 'encore', y: 1758 },
   naovictoria: { n: 'The Victoria Comes Home', t: 'deed', f: 'D', c: 1, fx: 'caravan', y: 1522 },
   syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 2, fx: 'phalanx', quick: 1, y: -213 },
-  penicillin: { n: 'Penicillin', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1928 },
   goldrush: { n: 'Gold Rush', t: 'deed', f: 'S', c: 1, fx: 'caravan', y: 1849 },
   truce: { n: 'Christmas Truce', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1914 },
   magnacarta: { n: 'Magna Carta', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1215 },
-  saltmarch: { n: 'Salt March', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1930 },
   emancipation: { n: 'Emancipation Proclamation', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1863 },
-  spies: { n: 'Bridge of Spies', t: 'deed', f: 'S', c: 2, fx: 'rift', y: 1962 },
   teutoburg: { n: 'Teutoburg Forest', t: 'deed', f: 'V', c: 3, fx: 'ambush', y: 9 },
   testudo: { n: 'Testudo', t: 'deed', f: 'V', c: 2, fx: 'phalanx', quick: 1, y: -54 },
   marathonmarch: { n: 'The March from Marathon', t: 'deed', f: 'V', c: 1, fx: 'encore', y: -490 },
@@ -286,14 +280,11 @@ const P3 = {
   folio: { n: 'The First Folio', t: 'deed', f: 'A', c: 1, fx: 'eureka', y: 1623 },
   david: { n: 'David Unveiled', t: 'deed', f: 'A', c: 1, fx: 'decree', y: 1504 },
   rite: { n: 'The Rite of Spring', t: 'deed', f: 'A', c: 1, fx: 'eclipse', y: 1913 },
-  lincolnconcert: { n: 'The Lincoln Memorial Concert', t: 'deed', f: 'A', c: 1, fx: 'encore', y: 1939 },
   pictureshow: { n: 'The First Picture Show', t: 'deed', f: 'A', c: 1, fx: 'caravan', y: 1895 },
   brownsbox: { n: 'Mailed to Freedom', t: 'deed', f: 'W', c: 2, fx: 'trojan', y: 1849 },
-  everest: { n: 'The Summit of Everest', t: 'deed', f: 'W', c: 0, fx: 'fairwinds', y: 1953 },
   kadesh: { n: 'The Treaty of Kadesh', t: 'deed', f: 'W', c: 1, fx: 'eclipse', y: -1259 },
   typhoon: { n: 'The Typhoon of 1281', t: 'deed', f: 'W', c: 1, fx: 'eclipse', y: 1281 },
   tomb: { n: 'Tutankhamun\'s Tomb Opened', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1922 },
-  lascaux: { n: 'Lascaux Found', t: 'deed', f: 'W', c: 1, fx: 'eureka', y: 1940 },
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
 const FROM3 = {'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
@@ -301,9 +292,9 @@ const FROM3 = {'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'
   'amanirenas': ['augustus'], 'arminius': ['augustus'], 'richard': ['saladin'], 'lapulapu': ['magellan'], 'enheduanna': ['sargon'], 'seishonagon': ['murasaki'],
   'gentileschi': ['galileo'], 'grace': ['elizabeth'], 'oakley': ['sittingbull'], 'astrolabe': ['hypatia'], 'paper': ['cailun'], 'rosetta': ['napoleon'], 'teutoburg': ['arminius'],
   'testudo': ['caesar'], 'brownsbox': ['douglass'], 'beagle': ['darwin'], 'magnacarta': ['eleanor'], 'marathonmarch': ['aeschylus'], 'ninth': ['beethoven'],
-  'saltmarch': ['thoreau'], 'emancipation': ['douglass'], 'sextant': ['astrolabe'], 'ropebridge': ['pachacuti'], 'starchart': ['@silk'], 'telescope': ['galileo'],
+  'emancipation': ['douglass'], 'sextant': ['astrolabe'], 'ropebridge': ['pachacuti'], 'starchart': ['@silk'], 'telescope': ['galileo'],
   'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['shakespeare', 'press'],
-  'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'everest': ['tenzing'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun']};
+  'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun']};
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });
 // Legacy Lines the new cards give to cards the game already had. All of them are lines (`from`: Renown when the
@@ -340,7 +331,6 @@ const THREADS = [
   { id: 'elephant', n: 'The Caliph\'s Elephant', cards: ['charlemagne', 'harun'] },
   // (the third printing. The lines above are left as they were: one that grew would stop being finished for
   // someone who had finished it)
-  { id: 'civil', n: 'Civil Disobedience', cards: ['thoreau', 'saltmarch', 'king'] },
   { id: 'vaccine', n: 'The Vaccine', cards: ['montagu', 'jenner', 'pasteur'] },
   { id: 'figures', n: 'The Nine Figures', cards: ['brahmagupta', 'alkhwarizmi', 'fibonacci'] },
   { id: 'reason', n: 'The Age of Reason', cards: ['newton', 'duchatelet', 'voltaire', 'catherine'] },
@@ -361,7 +351,6 @@ const THREADS = [
   { id: 'timbuktubooks', n: 'The Books of Timbuktu', cards: ['mansamusa', 'ibnbattuta', 'manuscripts'], places: ['timbuktu'] },
   { id: 'marathon', n: 'The Men of Marathon', cards: ['aeschylus', 'marathonmarch'] },
   { id: 'vindication', n: 'A Vindication', cards: ['wollstonecraft', 'shelley'] },
-  { id: 'machine', n: 'The Thinking Machine', cards: ['ada', 'turing'] },
   { id: 'sureshot', n: 'Little Sure Shot', cards: ['sittingbull', 'oakley'] },
   { id: 'shiningcourt', n: 'The Rival Courts', cards: ['murasaki', 'seishonagon'] },
   { id: 'florence', n: 'The Stars and the Brush', cards: ['galileo', 'gentileschi'] },
@@ -374,7 +363,6 @@ const THREADS = [
   { id: 'adwaroad', n: 'The Road to Adwa', cards: ['menelik', 'adwa'] },
   { id: 'giant', n: 'The Giant', cards: ['michelangelo', 'david'] },
   { id: 'kings', n: 'The King of Kings', cards: ['cyrus', 'darius'] },
-  { id: 'roof', n: 'The Roof of the World', cards: ['tenzing', 'everest'] },
   { id: 'spheres', n: 'The Clockwork Heavens', cards: ['copernicus', 'kepler', 'newton', 'halley'] },
   { id: 'moons', n: 'The Moons of Jupiter', cards: ['galileo', 'telescope'] },
   { id: 'banquet', n: 'Homer\'s Banquet', cards: ['homer', 'aeschylus', 'wheatley'] },
@@ -415,7 +403,7 @@ const RETIRED = {
   scheherazade: F('Scheherazade', 'W', 2, 2, 'MIDEAST', 3, 800, { untouchable: 1 }, { to: 'harun' }),
   anansi: F('Anansi', 'W', 3, 3, 'AFR', 3, 1200, {}, { arr: ['wits', 1], to: 'yaa' }),
   atalanta: F('Atalanta', 'W', 3, 3, 'MED', 1, -1300, { swift: 1, slayer: 1 }, { to: 'artemisia' }),
-  daedalus: F('Daedalus', 'W', 2, 3, 'MED', 1, -1400, { voyager: 1 }, { to: 'earhart' }),
+  daedalus: F('Daedalus', 'W', 2, 3, 'MED', 1, -1400, { voyager: 1 }, { to: 'coleman' }),
   odysseus: F('Odysseus', 'W', 4, 4, 'MED', 1, -1200, { voyager: 1, steadfast: 1 }, { insp: ['homer'], to: 'magellan' }),
   beowulf: F('Beowulf', 'W', 5, 5, 'EUR', 3, 520, { guard: 1, inspiring: 1 }, { to: 'alfred' }),
   trojan: { n: 'Trojan Horse', t: 'deed', f: 'W', c: 2, y: -1200, fx: 'trojan', from: ['odysseus'], to: 'crossing' },
@@ -425,11 +413,11 @@ const RETIRED = {
 // a key as it stands today: the card that has a retired card's slot, or the key itself
 const now = k => RETIRED[k] ? RETIRED[k].to : k;
 const ARCH = {
-  Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'earhart', 'magellan', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
+  Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'coleman', 'magellan', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
   Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
   Legacy: { guide: 'franklin', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
-  Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'earhart', 'chingshih', 'imhotep', 'alfred', 'tomoe', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
+  Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'coleman', 'chingshih', 'imhotep', 'alfred', 'tomoe', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
 return { CARDS, RETIRED, now, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS, PRINT3 };

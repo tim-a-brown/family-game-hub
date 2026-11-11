@@ -78,16 +78,16 @@ const RARE = {
   4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
   3: 'chingshih sargon hannibal aristotle shaka beethoven mansamusa hiawatha bolivar joan darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
   2: 'copernicus dante saladin murasaki shakespeare douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
-  1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun earhart ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
+  1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
 };
 // The third printing (the 150 cards found only in packs), tiered among themselves by the same measure: 'node
 // scripts/anoria/rarity.js 6000 3' (rarity.txt). The cards the game had before keep the tiers above, and the marks
 // printed on them: they are not ranked again against the new ones.
 const RARE3 = {
   4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne einstein zenobia',
-  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman thorpe tenzing pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
-  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley kahlo alkhwarizmi poe voltaire nanny king fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard spies pakal fuhao trung teutoburg anning',
-  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper owens emancipation turing cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush saltmarch hieroglyphs balloon wheel everest naovictoria ninth astrolabe penicillin lincolnconcert lascaux manuscripts folio truce'
+  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman thorpe pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
+  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning',
+  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce'
 };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
 [RARE, RARE3].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));

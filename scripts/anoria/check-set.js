@@ -21,7 +21,7 @@ const names = {}; Object.keys(CARDS).forEach(k => { const n = CARDS[k].n.toLower
 Object.keys(C.GUIDES).forEach(k => { if (names[C.GUIDES[k].toLowerCase()]) err(k, 'a Guide is also a card'); });
 const JS = {}; SET.cards.forEach(c => { JS[c.key] = c; });
 
-if (NEW.length !== 150) err('set', 'the third printing has ' + NEW.length + ' cards, not 150');
+if (NEW.length !== 139) err('set', 'the third printing has ' + NEW.length + ' cards, not 139');   // (150 as made; 11 whose moment is after 1926 are held for a later set: heldForLater in set-150.json)
 NEW.forEach(k => {
   const c = CARDS[k], t = T.CARDS[k], fig = c.t === 'fig';
   if (!t) return err(k, 'no words in text.js');

@@ -322,7 +322,7 @@ Underlying principles for everything:
   the six legend cards from the first printing too", then "pull the trojan horse too"). Nine cards left the set and a
   real, well-attested person (for the Deed, a real event) has each one's slot, with the same faction, cost, Might and
   skills, in the same ready decks: Scheherazade to Harun al-Rashid, Anansi to Yaa Asantewaa, Atalanta to Artemisia of
-  Caria, Daedalus to Amelia Earhart, Odysseus to Ferdinand Magellan, Beowulf to Alfred the Great, the Trojan Horse to
+  Caria, Daedalus to Bessie Coleman (first to Amelia Earhart, until the hundred-year rule below), Odysseus to Ferdinand Magellan, Beowulf to Alfred the Great, the Trojan Horse to
   Night Crossing (Washington on the Delaware), Sinbad to Zhang Qian and Gilgamesh to Sargon of Akkad. A new card is
   a real person with a record to point to, and its power is true to that person.
 - **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
@@ -335,7 +335,17 @@ Underlying principles for everything:
   today's set (`C.now`). A named Legacy Line that goes with a card is removed, not reused: a finished one keeps its
   flag in the collection under its old id. A Deed's effect belongs to its data, not its name (`fx`, read with
   `E.fxOf`): Night Crossing runs the Trojan Horse's.
-- **Amelia Earhart is the first card after 1900**, so `ERAS` has a seventh era, The Modern World.
+- **Nothing within the past hundred years** (Tim, 2026-11-11: "Martin Luther King and Nelson Mandela are too
+  contemporary. Maybe I can get them into a later set, but like we said originally, nothing within the past hundred
+  years"). A card's own moment (its year, `y` in cards.js) is 1926 or earlier, and a Guide's too. Twelve cards left
+  the set for it: Amelia Earhart (her slot went to Bessie Coleman, who earned her licence in 1921), and from the third
+  printing Alan Turing, Jesse Owens, Frida Kahlo, Tenzing Norgay, Martin Luther King, the Discovery of Penicillin, the
+  Salt March, the Lincoln Memorial concert, the finding of Lascaux, the Summit of Everest and the Bridge of Spies,
+  with the three named Legacy Lines that needed them. Their words, sources and briefs are `heldForLater` in
+  set-150.json and their pictures are in `scripts/anoria/held/art/`, for a later set. People whose card is about
+  something earlier but who lived on past 1926 (Einstein in 1905, Tesla in 1888, Thorpe in 1912, Amundsen in 1911)
+  stay. Mandela and Gandhi leave the Guides and do not become cards. A new card is checked against this first.
+- **Bessie Coleman is one of the cards after 1900**, so `ERAS` has a seventh era, The Modern World.
 - **Editions** (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana"): every card is printed in five
   finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
   Gold foil and Rainbow foil (borderless: the picture runs to the edge, the words on a dark panel). The picture is the
@@ -599,7 +609,8 @@ Underlying principles for everything:
   base packs by 150 ... lean slightly more into more well-known historical figures but i do like learning more history.
   add threads/legacy lines as the real history would necessitate and fits gameplay ... leave off completely fictional
   characters for now", then "shift 25-30 to deeds and relics"): 100 Figures, 20 Relics and 30 Deeds, all real, **found
-  only in packs** (in no ready deck), so the set is 241. They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
+  only in packs** (in no ready deck). Eleven of them left under the hundred-year rule above, so the third printing is
+  139 cards (95 Figures, 20 Relics, 24 Deeds) and the set is 230. They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
   `P3` in text.js. `scripts/anoria/set-150.json` keeps where each card's facts came from (`src`, `sure`, `check`), what
   was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
   Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing
@@ -616,7 +627,7 @@ Underlying principles for everything:
   difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
   and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
   says why under the card when you read it (`notesFor`).
-- **Pictures of the third printing**: all 150 are painted (2026-11-11; each batch's notes, candidates and sources are in
+- **Pictures of the third printing**: all of them are painted (2026-11-11; each batch's notes, candidates and sources are in
   the session scratchpad's `art3/`, not the repo). `PAINTED` in text.js lists the third-printing cards whose pictures
   are in `art/` and `art/t/`, and a card added later without one is in `NOPIC`: the page never asks the network
   for such a picture (`noPic` in ui.js), and shows the card's initial as a monogram in a ring on its faction's colour
@@ -629,9 +640,9 @@ Underlying principles for everything:
   the way across and a quarter of the way down); and a full card shows only about 11% to 60% of a picture's height, so a
   brief says what must be in the upper half. The briefs (`art`) follow the notes above: both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
   memory are asked for as a respectful, recognisable portrait at a documented moment.
-- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards"): `PACK_ORDER`
+- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards", now 230): `PACK_ORDER`
   `'series'` gives the first series (the 91 cards the ready decks are made of) until a player has two of each, and
-  then the second (the 150), so the first month is what it was; `'mixed'` draws from the whole set at once.
+  then the second (the third printing), so the first month is what it was; `'mixed'` draws from the whole set at once.
   `SERIES2_PACK` is the size of an earned pack once the first series is complete (0: as any pack; pacing.txt recommends
   5; Tim's to decide). At 3 cards a pack the whole set takes about 129 days either way; `pacing.txt` has the table.
 - **A named Legacy Line the game already has is never given more cards**: it would stop being finished for someone who

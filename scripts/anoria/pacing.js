@@ -49,7 +49,7 @@ const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN 
   mem.anoria_decks = JSON.stringify([{ id: 'dleg', n: 'Legends', guide: 'tubman', cards: built }]);
   set(); const s = Coll.load(), raw = mem.anoria_coll + mem.anoria_decks;
   assert(Object.keys(RETIRED).every(k => s.cards[k] == null && s.seen[k] == null && s.fresh[k] == null) && !Object.keys(RETIRED).some(k => raw.indexOf('"' + k + '"') >= 0), 'no retired card is left in the collection as it is saved');
-  assert(['harun', 'yaa', 'artemisia', 'earhart', 'magellan', 'crossing'].every(k => Coll.copies(k) === 2) && Coll.copies('alfred') === 1, 'each retired card became as many copies of the card that has its slot');
+  assert(['harun', 'yaa', 'artemisia', 'coleman', 'magellan', 'crossing'].every(k => Coll.copies(k) === 2) && Coll.copies('alfred') === 1, 'each retired card became as many copies of the card that has its slot');
   assert(Coll.editions('magellan')[3] && Coll.look('magellan') === 3 && Coll.editions('alfred')[1] && !Coll.editions('alfred')[3] && s.ed.odysseus == null && s.look.odysseus == null, 'an edition found for a retired card, and the one it was shown in, are the new card\'s');
   assert(Coll.cardState('magellan') === 'own' && s.seen.yaa && s.fresh.artemisia && s.fresh.harun, 'a card that was seen is still seen, and the new cards show as new');
   assert(Coll.deck('ready:Explorers').ok && Coll.deck('ready:Pathfinders').own === DECK - 1, 'a ready deck that was owned whole can still be played, and the starter is one Alfred short as it was one Beowulf short');
@@ -62,8 +62,8 @@ const firstEd = Coll.EDITIONS.map(() => []), firstTier = [0, 0, 0, 0, 0], tierN 
   assert(n === 3 && Coll.copies('alfred') <= 2, 'the pack they had waiting opened');
   Coll.load(); assert(Coll.copies('harun') === 2 && Coll.copies('alfred') >= 1, 'the change is made once');
   // an old device writes the old keys back: they are put right again
-  const back = JSON.parse(mem.anoria_coll); back.cards.daedalus = back.cards.earhart; delete back.cards.earhart; back.v = 2; mem.anoria_coll = JSON.stringify(back);
-  assert(Coll.copies('earhart') === 2 && Coll.load().cards.daedalus == null, 'old keys written back by a device that has not updated are put right');
+  const back = JSON.parse(mem.anoria_coll); back.cards.daedalus = back.cards.coleman; delete back.cards.coleman; back.v = 2; mem.anoria_coll = JSON.stringify(back);
+  assert(Coll.copies('coleman') === 2 && Coll.load().cards.daedalus == null, 'old keys written back by a device that has not updated are put right');
   // the second printing's first day: Sinbad and Gilgamesh
   const m2 = {}, c2 = {}; ARCH.Pathfinders.cards.forEach(k => { c2[k === 'zhangqian' ? 'sinbad' : k === 'sargon' ? 'gilgamesh' : k] = 2; });
   m2.anoria_coll = JSON.stringify({ v: 2, starter: 'Pathfinders', cards: c2, guides: ['tubman'], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: { nights: 1 }, opened: 0, pid: 1 });
