@@ -358,16 +358,17 @@
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       players: { min: 2, max: 7, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
-      options: [{ id: 'len', label: 'Game length', value: 11, choices: [[11, 'Full · 11 rounds', 'The full game: 3 cards in the first round up to 13 in the last.'], [6, 'Quick · 6 rounds', 'Stops after the 8-card round.']] }],
+      options: [{ id: 'len', label: 'Game length', value: 11, choices: [[11, 'Full · 11 rounds', 'The full game: 3 cards in the first round up to 13 in the last.'], [6, 'Quick · 6 rounds', 'Stops after the 8-card round.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
-        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), +cfg.options.len || 11, cfg.mode);
+        newGame(cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; }), +cfg.options.len || 11, cfg.mode);   // (each robot its own skill)
       }
     });
   }
   function newGame(players, len, mode) {
     S = {
       mode: mode || 'cpu', me: 0, len: len, round: 0, started: Date.now(), rounds: [], log: [],
-      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; })
+      players: players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0 }; })
     };
     Kit.gameStart();
     deal();
@@ -472,30 +473,95 @@
     hand.forEach(function (x) { if (x === c) return; if (x.r === c.r) n += 2; else if (x.s === c.s && Math.abs(rn(x) - rn(c)) <= 2) n += 1; });
     return n;
   }
-  function bestDiscard(hand, w, avoidId) {
+  // Its skill. Normal is how it has always played; a game saved before there were levels plays Normal.
+  var LEVELS = [['easy', 'Easy', 'Only picks up a discard when it is wild, and throws away cards that could still have made a set or a run.'],
+    ['normal', 'Normal', 'Picks up discards that help and holds on to cards that can still make a set or a run.'],
+    ['hard', 'Hard', 'Counts the cards it hasn’t seen and works out what each card it could draw next would do for its hand.']];
+  function lvName(v) { return v === 'easy' || v === 'hard' ? v : 'normal'; }
+  // Hard counts cards: two of each card and six Jokers, less its own hand and the discards it has watched go by.
+  // unseen() is what could still be drawn; ahead(hand) is what its hand would cost on average after drawing one
+  // of those and throwing its worst card (a card that fits nothing in the hand is just thrown back).
+  function unseen(hand) {
+    var cnt = { JK: 6 }, list = [];
+    SUITS.forEach(function (su) { RANKS.forEach(function (r) { cnt[r + su] = 2; }); });
+    hand.concat(S.discard).forEach(function (c) { var k = c.r === 'JK' ? 'JK' : c.r + c.s; if (cnt[k]) cnt[k]--; });
+    SUITS.forEach(function (su) { RANKS.forEach(function (r) { if (cnt[r + su]) list.push({ c: { r: r, s: su, id: '?' }, n: cnt[r + su] }); }); });
+    if (cnt.JK) list.push({ c: { r: 'JK', s: 'j', id: '?' }, n: cnt.JK });
+    return list;
+  }
+  function leastAfter(cards, w, keepId) {   // the lowest cost after throwing one card (not a wild while there is another, not keepId)
+    var best = Infinity, plain = cards.some(function (x) { return !isW(x, w); });
+    cards.forEach(function (x) {
+      if ((plain && isW(x, w)) || (x.id === keepId && cards.length > 1)) return;
+      var v = cost(cards.filter(function (y) { return y !== x; }), w); if (v < best) best = v;
+    });
+    return best;
+  }
+  function ahead(hand, w, pool) {
+    var now = cost(hand, w), tot = 0, n = 0;
+    if (!now) return 0;
+    pool.forEach(function (u) {
+      var fits = isW(u.c, w) || hand.some(function (x) { return isW(x, w) || x.r === u.c.r || (x.s === u.c.s && Math.abs(rn(x) - rn(u.c)) <= 2); });
+      tot += u.n * (fits ? Math.min(now, leastAfter(hand.concat([u.c]), w)) : now); n += u.n;
+    });
+    return n ? tot / n : now;
+  }
+  function hardDiscard(hand, w, avoidId, last) {
+    var list = [];
+    hand.forEach(function (c) {
+      if (isW(c, w) && hand.some(function (x) { return !isW(x, w); })) return;
+      if (c.id === avoidId && hand.length > 1) return;
+      var rest = hand.filter(function (x) { return x !== c; }), now = cost(rest, w);
+      list.push({ c: c, rest: rest, now: now, plain: now * 10 + partners(c, rest) * 4 - val(c, w) });
+    });
+    if (!list.length) return hand[0];
+    list.sort(function (a, b) { return a.plain - b.plain; });
+    // (going out, or the last turn of the round: what is left in the hand now is all that counts)
+    if (!list[0].now || last) return list.sort(function (a, b) { return a.now - b.now || val(b.c, w) - val(a.c, w); })[0].c;
+    var pool = unseen(hand), best = null;
+    list.slice(0, 6).forEach(function (x) { x.v = ahead(x.rest, w, pool) + x.now * 0.25; if (!best || x.v < best.v - 1e-9) best = x; });
+    return best.c;
+  }
+  function lvOf(p) { var pl = S && S.players[p]; return lvName(pl && pl.level); }
+  function bestDiscard(hand, w, avoidId, lv) {
     var best = null;
     hand.forEach(function (c) {
       if (isW(c, w) && hand.some(function (x) { return !isW(x, w); })) return;
       if (c.id === avoidId && hand.length > 1) return;
       var rest = hand.filter(function (x) { return x !== c; });
-      var score = cost(rest, w) * 10 + partners(c, rest) * 4 - val(c, w) + Math.random() * 3;
+      // (Easy gives no thought to what a loose card could become)
+      var score = cost(rest, w) * 10 + (lv === 'easy' ? 0 : partners(c, rest) * 4) - val(c, w) + Math.random() * 3;
       if (!best || score < best.score) best = { c: c, score: score };
     });
     return best ? best.c : hand[0];
   }
+  // the card the robot in seat p throws (avoidId: the discard it has just picked up)
+  function turnDiscard(p, avoidId) {
+    var lv = lvOf(p), h = S.hands[p];
+    return lv === 'hard' ? hardDiscard(h, S.wild, avoidId, S.outBy >= 0) : bestDiscard(h, S.wild, avoidId, lv);
+  }
+  // does the robot in seat p take the face-up discard?
+  function cpuTake(p) {
+    var h = S.hands[p], w = S.wild, top = S.discard[S.discard.length - 1], take = false;
+    if (top) {
+      if (isW(top, w)) take = true;
+      else if (lvOf(p) === 'hard') {
+        // Hard takes the discard when that leaves its hand better off than the average card off the stock would
+        var mine = leastAfter(h.concat([top]), w, top.id);
+        take = mine === 0 || mine < ahead(h, w, unseen(h));
+      } else if (lvOf(p) !== 'easy') {
+        var now = cost(h, w), withTop = h.concat([top]);
+        var after = cost(withTop.filter(function (x) { return x !== bestDiscard(withTop, w, top.id); }), w);
+        take = after < now - 1 || (after < now && Math.random() < .6) || (after === 0);
+        if (!take && S.round > 3 && partners(top, h) >= 2 && rn(top) <= 9 && Math.random() < .35) take = true;
+      }
+    }
+    return take;
+  }
   function cpuStep(p) {
     var h = S.hands[p], w = S.wild;
     if (S.phase === 'draw') {
-      var top = S.discard[S.discard.length - 1], take = false;
-      if (top) {
-        if (isW(top, w)) take = true;
-        else {
-          var now = cost(h, w), withTop = h.concat([top]);
-          var after = cost(withTop.filter(function (x) { return x !== bestDiscard(withTop, w, top.id); }), w);
-          take = after < now - 1 || (after < now && Math.random() < .6) || (after === 0);
-          if (!take && S.round > 3 && partners(top, h) >= 2 && rn(top) <= 9 && Math.random() < .35) take = true;
-        }
-      }
+      var take = cpuTake(p);
       var fromEl = take ? pileEl('discard') : pileEl('stock'), fromRect = fromEl ? fromEl.getBoundingClientRect() : null;
       var c = draw(p, take ? 'discard' : 'stock');
       if (!c) return;
@@ -504,7 +570,7 @@
       ghost(fromRect, seatEls[p] && seatEls[p].querySelector('.tag'), take ? c : null);
       next();
     } else {
-      var d = bestDiscard(h, w, S.drew && S.drew.from === 'discard' ? S.drew.id : null);
+      var d = turnDiscard(p, S.drew && S.drew.from === 'discard' ? S.drew.id : null);
       discard(p, d.id);
       Kit.sfx('flip');
       flyToDiscard(seatEls[p] && seatEls[p].querySelector('.tag'));
