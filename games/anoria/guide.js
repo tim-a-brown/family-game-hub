@@ -359,7 +359,7 @@
     },
     end(r, o) {
       const first = !UI().Coll.load().starter;
-      return { k: 'Quick start', title: 'That’s the game', text: 'Relics, Deeds, Guides and Threads add the twists. The guide has a short lesson on each, under the <b>?</b> at the top.',
+      return { k: 'Quick start', title: 'That’s how a game goes', text: 'There is more to learn: Relics, Deeds, Guides and Threads. The guide has a short lesson on each of them. Tap the <b>?</b> at the top to open it.',
         actions: [{ label: o.from === 'contents' ? 'Back to the guide' : first ? 'Choose your Guide' : 'Done', fn: () => leave(r) },
           { label: 'Watch it again', fn: () => play(QUICK, o) },
           o.from === 'contents' ? null : { label: 'See the full guide', fn: () => { halt(); open(); } }] };
@@ -552,7 +552,7 @@
   ];
   CHAPTERS.forEach((c, i) => {
     c.end = (r, o) => { const nx = CHAPTERS[i + 1];
-      return { k: 'Chapter ' + (i + 1) + ' of ' + CHAPTERS.length, title: c.n, text: nx ? null : 'That is every rule. The cards do the rest.',
+      return { k: 'Chapter ' + (i + 1) + ' of ' + CHAPTERS.length, title: c.n, text: nx ? null : 'You have now seen every rule of the game. Each card says what it does, so tap any card when you want to read it.',
         actions: [nx ? { label: 'Next: ' + nx.n, fn: () => play(nx, o) } : { label: 'Done', fn: () => leave(r) }, { label: 'Watch it again', fn: () => play(c, o) }, nx ? { label: 'All chapters', fn: () => { halt(); open(); } } : null] }; };
   });
 
