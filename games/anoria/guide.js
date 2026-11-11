@@ -70,13 +70,29 @@
     return d;
   }
   // rings round what the caption is about, and the caption where it covers none of it
+  // the box round an element and whatever it wears just outside its edges
+  function hull(n, b) {
+    const o = { left: b.left, top: b.top, right: b.right, bottom: b.bottom }, far = 22;
+    n.querySelectorAll('*').forEach(c => {
+      const r = c.getBoundingClientRect(); if (!r.width || !r.height || getComputedStyle(c).visibility === 'hidden') return;
+      o.left = Math.min(o.left, Math.max(r.left, b.left - far)); o.top = Math.min(o.top, Math.max(r.top, b.top - far));
+      o.right = Math.max(o.right, Math.min(r.right, b.right + far)); o.bottom = Math.max(o.bottom, Math.min(r.bottom, b.bottom + far));
+    });
+    o.width = o.right - o.left; o.height = o.bottom - o.top; return o;
+  }
   function place(r) {
     const f = r.focus || {}, W = window.innerWidth, H = window.innerHeight, rs = [];
     r.rings.innerHTML = '';
     arr(f.at).forEach((t, i) => {
-      const n = find(t); if (!n) return; const b = n.getBoundingClientRect(); if (!b.width) return; rs.push(b);
+      const n = find(t); if (!n) return; let b = n.getBoundingClientRect(); if (!b.width) return;
+      // a small piece wears things that hang off it (its shield, the odds over a target): the ring goes round the lot
+      if (b.width < 70 && b.height < 90) b = hull(n, b);
+      rs.push(b);
       if (f.ring === false) return;
-      const pad = b.width < 60 ? 5 : 3, ring = el('i', { class: 'gd-ring' + (b.width < 70 && b.height < 70 ? ' dot' : '') });
+      // (a circle only round something about as wide as it is tall: round a card-shaped piece it made an egg that
+      // cut across the corners and the odds)
+      const big = Math.max(b.width, b.height), round = big < 70 && big / Math.min(b.width, b.height) < 1.12;
+      const pad = b.width < 60 ? 5 : 3, ring = el('i', { class: 'gd-ring' + (round ? ' dot' : '') });
       Object.assign(ring.style, { left: (b.left - pad) + 'px', top: (b.top - pad) + 'px', width: (b.width + 2 * pad) + 'px', height: (b.height + 2 * pad) + 'px' });
       r.rings.appendChild(ring);
       const tag = arr(f.tag)[i];
