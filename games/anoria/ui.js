@@ -226,6 +226,8 @@
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
     n.appendChild(inn);
+    // (its edition: the finish it is shown in, its rarity mark and the edition button, editions.js. A lesson's cards are Matte.)
+    if (window.AnoriaEd) window.AnoriaEd.dress(n, key, { mini: o.mini, tg: o.tg, ed: o.ed, plain: !!(G && G.demo) });
     return n;
   }
 
@@ -351,7 +353,7 @@
       if (!CU) measure();
       const lo = o.keep ? 0 : Math.max(0, Math.floor(F.pos) - 3), hi = o.keep ? n - 1 : Math.min(n - 1, Math.ceil(F.pos) + 3);
       Object.keys(F.items).forEach(k => { if (+k < lo || +k > hi) { F.items[k].remove(); delete F.items[k]; } });
-      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
+      for (let j = lo; j <= hi; j++) { const b = item(j), q = pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.style.setProperty('--ls', Math.max(-1.5, Math.min(1.5, j - F.pos)).toFixed(3)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
       const idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
       if (idx !== F.at) {
         const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
@@ -667,8 +669,8 @@
     const sel = ui.sel && ui.sel.kind === 'fig' && ui.sel.u === f.u, tg = T.figs[f.u];
     const picked = ui.sel && ui.sel.picks.some(p => p.k === 'f' && p.v === f.u);
     const insp = ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].insp && f.o === S.turn && CARDS[ui.sel.key].insp.indexOf(f.c) >= 0;
-    const n = el('button', { type: 'button', class: 'fp o' + f.o + (can ? ' can' : '') + (done ? ' done' : '') + (f.stun ? ' stun' : '') + (sel || picked ? ' sel' : '') + (tg ? ' tgt' : '') + (insp ? ' insp' : '') + (ui.fresh[f.u] ? ' ' + ui.fresh[f.u] : ''),
-      'data-u': f.u, 'aria-label': c.n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)), style: { '--f': fac.c } });
+    const n = el('button', { type: 'button', class: 'fp o' + f.o + (can ? ' can' : '') + (done ? ' done' : '') + (f.stun ? ' stun' : '') + (sel || picked ? ' sel' : '') + (tg ? ' tgt' : '') + (insp ? ' insp' : '') + (ui.fresh[f.u] ? ' ' + ui.fresh[f.u] : '') + (window.AnoriaEd && !G.demo ? ' ' + window.AnoriaEd.cls(f.c) : ''),
+      'data-u': f.u, 'data-edk': G.demo ? null : f.c, 'aria-label': c.n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)), style: { '--f': fac.c } });
     const art = el('span', { class: 'fp-art' }, [noArtLabel(f.c, true, 'na')]); const im = artImg(f.c, true); if (im) art.appendChild(im);
     n.appendChild(el('span', { class: 'fp-card' }, [art]));
     n.appendChild(el('span', { class: 'fp-m' + (f.m > c.m ? ' up' : '') }, [el('b', { text: String(f.m) })]));
@@ -1523,24 +1525,30 @@
   // map. Nothing a picture is about should be cut off or sit under a number.
   function artProof() {
     stop(); G = null; S = null; V = null;
-    const keys = Object.keys(CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES));
+    // (?art=1&only=hannibal,compass shows just those; a card that comes in editions has a line for each of them)
+    const only = (/[?&]only=([^&]+)/.exec(location.search) || [])[1], EDS = window.AnoriaEd ? window.AnoriaEd.ED : [{ id: 'matte', n: '' }];
+    const keys = Object.keys(CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES)).filter(k => !only || only.split(',').indexOf(k) >= 0);
     const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
     const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
     const rows = keys.map(k => {
       const c = info(k), fig = c.kind === 'fig', row = el('div', { class: 'ap-row' }, [el('h2', { text: c.n })]);
-      const line = el('div', { class: 'ap-line' }, [cell('Full', sized('full', cardEl(k)))]);
-      if (c.kind !== 'place') {
-        line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true }))));
-        if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true }))])));
-      }
-      if (fig) {
-        const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
-        line.appendChild(cell('On the map', el('span', { class: 'fp o0', style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
-      }
-      row.appendChild(line); return row;
+      (CARDS[k] ? EDS : EDS.slice(0, 1)).forEach((x, e) => {
+        const line = el('div', { class: 'ap-line' }, [cell(CARDS[k] && x.n ? x.n : 'Full', sized('full', cardEl(k, { ed: e })))]);
+        if (CARDS[k] && window.AnoriaEd) { line.appendChild(cell('The picture large', sized('full an-artview', cardEl(k, { ed: e, tg: true })))); }
+        if (c.kind !== 'place') {
+          line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true, ed: e }))));
+          if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true, ed: e }))])));
+        }
+        if (fig) {
+          const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
+          line.appendChild(cell('On the map', el('span', { class: 'fp o0' + (e ? ' ed-' + x.id : ''), style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
+        }
+        row.appendChild(line);
+      });
+      return row;
     });
     app.className = 'stage an-proof'; app.innerHTML = '';
-    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn.' })].concat(rows)));
+    app.appendChild(el('div', { class: 'ap' }, [el('h1', { text: 'Art proof' }), el('p', { text: keys.length + ' cards, each at every size it is drawn' + (EDS.length > 1 ? ', in every edition.' : '.') })].concat(rows)));
   }
 
   let saved = null; try { saved = JSON.parse(lsGet(SAVE)); } catch (e) {}

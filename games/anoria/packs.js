@@ -7,11 +7,16 @@
 // Opening a pack has three beats. The sealed pack is torn across its top (a swipe the tear follows; a tap, Enter or
 // Space tears it for you). Its cards come out face down and are turned by the player. It ends on a tally. The cards
 // are decided and saved by AnoriaColl.openPack at the moment of the tear, so leaving half way loses nothing.
+// A card turns over in the edition it was found in (editions.js). A foil has a moment of its own, bigger the rarer it
+// is: a Shiny glints, a Silver foil rings, a Gold foil stops the strip, and a Rainbow foil is an event.
 (function () {
   'use strict';
   const C = window.AnoriaCards, TX = window.AnoriaText, Coll = window.AnoriaColl, CARDS = C.CARDS, el = Kit.el;
   const IMG = 'anoria/ui/', TEAR = 15;   // (the tear line: this far down the pack, in % of its height)
   const GOLD = ['#f6e3a1', '#e9cf86', '#b8862d', '#fff1bf', '#ffffff'];
+  // the colours a foil throws as it turns over, by edition (1 Shiny, 2 Silver foil, 3 Gold foil, 4 Rainbow foil)
+  const FOIL = [null, ['#ffffff', '#dff1ff', '#a9dcff'], ['#ffffff', '#dfe7f2', '#9fb1c8', '#eef3f9'], ['#fff3bf', '#f6d77a', '#d9a431', '#ffffff'], ['#ff7ad1', '#ffd166', '#7dffc0', '#6fc3ff', '#c79bff', '#ffffff']];
+  const Ed = () => window.AnoriaEd, EDS = Coll.EDITIONS;
   const U = () => window.AnoriaUI;       // what the table shares (ui.js loads after this file, so ask when needed)
   const calm = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -225,7 +230,7 @@
       count(true);
       const cards = res.cards, n = cards.length, cells = [];
       // what was yours before this pack (a Thread is only pointed out to a card you can already see)
-      const had = {}; cards.forEach(x => { had[x.c] = (had[x.c] == null ? Coll.copies(x.c) : had[x.c]) - 1; });
+      const had = {}; cards.forEach(x => { if (had[x.c] == null) had[x.c] = Coll.copies(x.c); if (x.copy !== false) had[x.c]--; });
       res.threads.forEach(t => { if (t.gift) had[t.gift] = (had[t.gift] == null ? Coll.copies(t.gift) : had[t.gift]) - 1; });
       const shown = {}, known = k => !!shown[k] || (had[k] != null ? had[k] > 0 : Coll.copies(k) > 0);
       // The named Legacy Line a card belongs to (Tim, 2026-11-11): shown over the cards as the line itself, the cards
@@ -248,14 +253,15 @@
         Kit.sfx('win', .7); Kit.haptic('success');
         const r = ln.getBoundingClientRect(); if (!calm()) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 24, GOLD, { d: Math.max(120, r.width * .55), ms: 950 });
       }
-      let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0;
+      let left = n, ended = false, dealt = false, F = null, nudge = 0, lastCu = 0, halt = null;
 
       // The cards stand on one strip (the same strip a bunch of cards is read on anywhere else: AnoriaUI.makeFlow).
       // They come out face down; each one turns over as it slides to the front for the first time.
       const plate = el('div', { class: 'pk-plate', 'aria-live': 'polite' });
       const flow = el('div', { class: 'vf-flow pk-flow' });
       const strip = el('div', { class: 'vf-strip pk-strip' });
-      const field = el('div', { class: 'pk-field' }, [flow, n > 1 ? strip : null]);
+      const foils = cards.some(x => x.ed);   // (a foil's edition is stamped across its foot: the thumbnails stand a little further down)
+      const field = el('div', { class: 'pk-field' + (foils ? ' foils' : '') }, [flow, n > 1 ? strip : null]);
       const rest = el('button', { type: 'button', class: 'btn btn-soft pk-rest', onclick: () => turnRest() }, [el('span', { class: 'pk-rest-ic', html: Kit.icon('cards') }), el('span', { class: 'pk-rest-t', text: 'Turn them all' })]);
       const foot = el('div', { class: 'pk-foot' }, [n > 2 ? rest : null]);
       const info = el('div', { class: 'pk-info' }, [plate]), main = el('div', { class: 'pk-main' }, [field, foot]);
@@ -263,7 +269,7 @@
       cards.forEach((x, i) => {
         const b = el('div', { class: 'vf-c pk-fc', 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true })])])]);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })])])]);
         const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
         const c = { el: b, th: th, x: x, up: false, at: 0 };
         // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it
@@ -274,9 +280,11 @@
         });
         cells.push(c); strip.appendChild(th);
       });
+      // (each picture is made ready while the cards are still coming out, so a card never turns over to a blank panel)
+      cells.forEach(c => { const im = c.el.querySelector('.pk-side.f .ac-art img'); if (im && im.decode) im.decode().catch(() => {}); });
       plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k', text: pack.why })]));
       plate.appendChild(el('div', { class: 'pk-p-n', text: n + plural(n, ' card', ' cards') }));
-      if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep', text: 'You already have two of every card.' }));
+      if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep', text: 'You have every card in every edition.' }));
       stage.classList.remove('sealed'); stage.classList.add('reveal', 'dealing'); if (n <= 4) stage.classList.add('few');
       stage.appendChild(info); stage.appendChild(main);
 
@@ -289,8 +297,8 @@
           const see = (o, tx) => { if (tx && (here[o] || known(o)) && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, tx: tx }; };
           (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@') see(s, TX.LINKS[s + '>' + k]); });
           Coll.ALL.forEach(t => { const tc = CARDS[t]; if ((tc.insp || []).concat(tc.from || []).indexOf(k) >= 0) see(t, TX.LINKS[k + '>' + t]); });
-          show(k, { first: false }, far, true); h = Math.max(h, plate.offsetHeight);
-          if (far) { show(k, { first: false }, null, true); h = Math.max(h, plate.offsetHeight); }
+          show(k, { first: false, ed: x.ed }, far, true); h = Math.max(h, plate.offsetHeight);
+          if (far) { show(k, { first: false, ed: x.ed }, null, true); h = Math.max(h, plate.offsetHeight); }
         });
         plate.className = cls; plate.innerHTML = ''; keep.forEach(c => plate.appendChild(c));
         if (h) plate.style.minHeight = h + 'px'; plate.removeAttribute('aria-busy');
@@ -299,7 +307,7 @@
       function fit() {
         if (!ended && n) reserve();
         const r = field.getBoundingClientRect(); if (!r.width || !n) return;
-        const under = n > 1 ? strip.offsetHeight + 6 : 0;
+        const under = (n > 1 ? strip.offsetHeight + 6 : 0) + (foils ? 12 : 0);
         const cu = Math.floor(Math.max(64, Math.min(r.height - under - 16, r.width * (n > 1 ? 1.12 : 1.3), 600)));
         if (cu === lastCu) return; lastCu = cu;
         flow.style.setProperty('--cu', cu + 'px'); if (F) F.reset();
@@ -320,7 +328,9 @@
       function show(k, x, link, dry) {
         const t = TX.CARDS[k] || {};
         plate.className = 'pk-plate ' + (x.first ? 'new' : 'two'); plate.style.setProperty('--f', col(k)); plate.innerHTML = '';
-        plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]), x.first ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));   // (a new card says so itself: New is stamped on it as it turns)
+        // (a new card says so itself: New is stamped on it as it turns. A foil says which: its gem and its name.)
+        plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]),
+          x.ed ? el('span', { class: 'pk-p-e e' + x.ed }, [Ed().gem(x.ed), EDS[x.ed].n]) : null, x.first || x.copy === false ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));
         plate.appendChild(el('div', { class: 'pk-p-n', text: CARDS[k].n }));
         const L = lineFor(k);
         if (L) { plate.appendChild(lineEl(L, k)); if (link) plate.appendChild(el('p', { class: 'pk-p-why', text: link.tx })); }
@@ -335,40 +345,84 @@
       // o.pass: the strip is still moving on past this card (a flick, or Turn the rest): it turns, without the fanfare
       function turn(i, o) {
         const c = cells[i]; if (!c || c.up || !alive || ended) return; o = o || {};
-        const k = c.x.c, isNew = c.x.first, last = left === 1;
+        const k = c.x.c, isNew = c.x.first, last = left === 1, ed = c.x.ed || 0, extra = c.x.copy === false;
         c.up = true; c.at = Date.now(); left--; shown[k] = 1;
         // (did this card complete a Legacy Line? its moment comes once the plate shows that line)
         const fin = (C.THREADS || []).filter(t => !lineDone[t.id] && t.cards.indexOf(k) >= 0 && t.cards.every(known));
         fin.forEach(t => { lineDone[t.id] = 1; });
         if (fin.length) setTimeout(() => { if (alive && !ended && cells[Math.round(F ? F.pos : 0)] === c) lineMoment(fin[0].id); }, o && o.pass ? 120 : 520);
         const link = linkFor(k);
-        c.el.classList.add('up', isNew ? 'new' : 'two');
-        c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
-        c.th.classList.add('up', isNew ? 'new' : 'two'); c.th.style.setProperty('--f', col(k)); c.th.setAttribute('aria-label', CARDS[k].n + (isNew ? ', new' : ', a second copy'));
+        c.el.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.el.classList.add('foil', 'e' + ed);
+        // what it is to you, stamped on the card: New or Second copy at its head (a foil of a card you had two of adds
+        // no copy, and says neither), and at its foot the edition it came in, as its gem and its name
+        if (!extra) c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
+        if (ed) c.el.appendChild(el('span', { class: 'pk-ed e' + ed }, [Ed().gem(ed), EDS[ed].n]));
+        c.th.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.th.classList.add('e' + ed); c.th.style.setProperty('--f', col(k));
+        c.th.setAttribute('aria-label', CARDS[k].n + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
         const im = A.artImg(k, true); if (im) c.th.appendChild(im);
         if (link) { knot(c); if (link.cell) knot(link.cell); }
-        if (o.pass) { Kit.sfx('flip', .7); if (isNew) Kit.haptic('light'); }
+        if (ed) foilMoment(c, ed, o.pass, last);
+        else if (o.pass) { Kit.sfx('flip', .7); if (isNew) Kit.haptic('light'); }
         else if (isNew) {
           Kit.sfx('flip'); setTimeout(() => Kit.sfx('sparkle', last ? 1 : .8), 140); Kit.haptic('medium');
           const r = flow.getBoundingClientRect(), w = r.height * .7143; setTimeout(() => { if (alive) bits(fx, r.left + r.width / 2, r.top + r.height / 2, 14, [col(k), '#fff1bf', '#e9cf86'], { d: w * .95, ms: 700 }); }, 160);
         } else { Kit.sfx('flip', .8); Kit.haptic('light'); }
         if (link && !o.pass) setTimeout(() => Kit.sfx('good', .6), 300);
         mark();
-        if (!left) setTimeout(end, o.pass ? 900 : isNew ? 1300 : 1000);
+        if (!left) setTimeout(end, ed > 3 ? 3200 : ed > 2 ? 2100 : o.pass ? 900 : isNew || ed ? 1300 : 1000);
       }
+      // A foil turns over: the light runs across it, and the rarer it is the more is made of it. A Shiny glints. A
+      // Silver foil rings and throws silver. A Gold foil lifts off the strip in a burst of gold. A Rainbow foil is an
+      // event: the room dims, rays turn behind the card, and the colours fly.
+      function foilMoment(c, ed, pass, last) {
+        if (Ed()) { Ed().wake(); if (!pass) Ed().sweep(); }
+        Kit.sfx('flip', pass ? .7 : 1);
+        const fr = flow.getBoundingClientRect(), w = fr.height * .7143, r = c.el.getBoundingClientRect(), cx = Math.max(fr.left, Math.min(fr.right, r.left + r.width / 2)), cy = fr.top + fr.height / 2, quick = calm();
+        const later = (ms, fn) => setTimeout(() => { if (alive && !ended && c.el.isConnected) fn(); }, ms);
+        if (ed === 1) { later(140, () => Kit.sfx('sparkle', pass ? .5 : .8)); Kit.haptic(pass ? 'light' : 'medium'); if (!pass) later(160, () => bits(fx, cx, cy, 12, FOIL[1], { d: w * .9, ms: 700 })); return; }
+        if (ed === 2) { later(140, () => Kit.sfx('sparkle', .9)); if (!pass) later(330, () => Kit.sfx('good', .7)); Kit.haptic('medium'); later(160, () => bits(fx, cx, cy, pass ? 10 : 22, FOIL[2], { d: w * 1.05, ms: 850 })); return; }
+        // Gold and Rainbow: the strip has stopped here (front()), and the card has the stage
+        c.el.classList.add('big'); later(ed > 3 ? 3000 : 1900, () => c.el.classList.remove('big'));
+        if (ed === 3) {
+          later(140, () => Kit.sfx('sparkle', 1)); later(320, () => Kit.sfx('win', .75)); Kit.haptic('heavy'); later(380, () => Kit.haptic('success'));
+          later(170, () => { bits(fx, cx, cy, 34, FOIL[3], { d: w * 1.3, ms: 1100 }); if (!quick) { const f = el('i', { class: 'pk-flash gold', style: { left: cx + 'px', top: cy + 'px' } }); fx.appendChild(f); setTimeout(() => f.remove(), 700); } });
+          return;
+        }
+        stage.classList.add('prism'); later(3000, () => stage.classList.remove('prism'));
+        const rays = el('i', { class: 'pk-prism' }); c.el.insertBefore(rays, c.el.firstChild); setTimeout(() => rays.remove(), 3400);
+        Kit.haptic('heavy'); later(150, () => Kit.sfx('sparkle', 1)); later(360, () => { Kit.sfx('win', 1); Kit.haptic('success'); }); later(900, () => Kit.sfx('sparkle', .9)); later(1500, () => { Kit.sfx('good', .8); Kit.haptic('medium'); });
+        later(170, () => {
+          bits(fx, cx, cy, 44, FOIL[4], { d: w * 1.5, ms: 1300 });
+          if (!quick) { const f = el('i', { class: 'pk-flash rain', style: { left: cx + 'px', top: cy + 'px' } }); fx.appendChild(f); setTimeout(() => f.remove(), 900); Kit.confetti({ colors: FOIL[4], count: 170 }); }
+        });
+        later(950, () => bits(fx, cx, cy, 26, FOIL[4], { d: w * 1.2, ms: 1200 }));
+      }
+      const big = c => !c.up && (c.x.ed || 0) >= 3;
       // another card has come to the front: it turns over if it never has (and so does any card the strip flew past),
       // and the plate says which card this is
       function front(i) {
         if (!dealt || ended) return;
         clearTimeout(nudge); flow.classList.remove('nudge');
-        for (let j = 0; j < i; j++) if (!cells[j].up) turn(j, { pass: true });
+        // A Gold or Rainbow foil is never flown past: a strip that is gliding (a flick, Turn the rest) stops on it, and
+        // it turns with everything it is due. (Under a finger the strip goes where the finger takes it.)
+        const glide = !!(F && F.raf);
+        if (halt != null) { if (glide && i !== halt) return; halt = null; }
+        if (glide) {
+          const j = cells.findIndex((c, q) => q <= i && big(c));
+          if (j >= 0 && (j < i || F.to !== i)) {
+            rest.disabled = false; if (j < i) halt = j; else F.to = i;
+            Promise.resolve().then(() => { if (alive && !ended && F) F.settle(j, 0); });   // (once this frame of the glide is done)
+            if (j < i) return;
+          }
+        }
+        for (let j = 0; j < i; j++) if (!cells[j].up) turn(j, { pass: !big(cells[j]) });
         const c = cells[i]; if (!c) return;
         if (!c.up) turn(i, { pass: !!(F && F.raf && F.to !== i) });
         if (!ended) show(c.x.c, c.x, linkFor(c.x.c));
       }
       function turnRest() {
         if (ended || rest.disabled || !F || !dealt) return; rest.disabled = true; Kit.sfx('tap'); Kit.haptic('medium');
-        if (calm()) { cells.forEach((c, i) => { if (!c.up) turn(i, { pass: true }); }); F.settle(n - 1, 0); return; }
+        if (calm()) { const stop = cells.findIndex(big); cells.forEach((c, i) => { if (!c.up && (stop < 0 || i < stop)) turn(i, { pass: true }); }); if (stop >= 0) rest.disabled = false; F.settle(stop < 0 ? n - 1 : stop, 0); return; }
         F.to = n - 1; F.settle(n - 1, 0, 240);   // (a riffle: each card turns as it passes the front)
       }
       if (n) {
@@ -417,12 +471,16 @@
         if (ended || !alive) return; ended = true; rest.hidden = true; clearTimeout(nudge); flow.classList.remove('nudge');
         for (const t of res.threads) { if (!alive) return; await thread(t); }
         if (!alive) return;
-        const nw = cards.filter(x => x.first).length, tw = n - nw, more = waiting().length;
+        const nw = cards.filter(x => x.first).length, tw = cards.filter(x => !x.first && x.copy !== false).length, more = waiting().length;
         stage.classList.remove('turning'); stage.classList.add('tally');
         const num = (label, v, cls) => { const b = el('b', { text: '0' }); countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
         plate.className = 'pk-plate tally'; plate.innerHTML = '';
         plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two')]));
-        if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep full', text: 'You already have two of every card.' }));
+        // the foils in this pack, as the ladder of editions: each one found is lit, with how many
+        const eds = EDS.map((x, e) => cards.filter(y => (y.ed || 0) === e).length);
+        if (eds.slice(1).some(v => v)) plate.appendChild(el('div', { class: 'pk-t-eds', role: 'img', 'aria-label': EDS.slice(1).map((x, i) => eds[i + 1] ? eds[i + 1] + ' ' + x.n : '').filter(Boolean).join(', ') },
+          EDS.slice(1).map((x, i) => el('span', { class: 'pk-t-e e' + (i + 1) + (eds[i + 1] ? ' on' : '') }, [Ed().gem(i + 1, !eds[i + 1]), eds[i + 1] ? el('b', { text: String(eds[i + 1]) }) : null, el('small', { text: Ed().SHORT[i + 1] })]))));
+        if (!n) plate.appendChild(el('div', { class: 'pk-p-cap keep full', text: 'You have every card in every edition.' }));
         if (res.threads.length) {
           const gifts = res.threads.some(t => t.gift);
           plate.appendChild(el('div', { class: 'pk-t-ths' }, [el('span', { class: 'pk-k', text: plural(res.threads.length, 'A Legacy Line', 'Legacy Lines') + (gifts ? plural(res.threads.length, ', and its gift', ', and their gifts') : '') })].concat(res.threads.map(t =>
