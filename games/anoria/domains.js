@@ -1,5 +1,5 @@
-// Anoria: how a Domain looks. (A Domain is the card that lies at each of the map's five positions. The game's words
-// still call it a Place: that changes with the rules work that follows this.)
+// Anoria: how a Domain looks. (A Domain is the card that lies at each of the map's five positions. The live table lays
+// the pieces a rule uses now on a tile's lower edge: ui.js domTokens.)
 // Tim, 2026-11-11: "domains need to be clear in their design/border what type of domain they are and geographically
 // what "home" they represent for figures with home powers", and "things the game needs to track: 1- who played what
 // domain. easy on device but needs a real-life translation since there could be effects that reverse the domains or
