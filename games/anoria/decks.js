@@ -187,6 +187,7 @@
     pool.forEach(k => {
       const c = CARDS[k], have = owned(k), face = el('span', { class: 'adk-face' }, [U.cardEl(k, { mini: true })]);
       const cardBtn = el('button', { type: 'button', class: 'adk-tc' }, [face, el('span', { class: 'adk-tt', html: THREAD })]);
+      face.appendChild(el('span', { class: 'adk-tplus', 'aria-hidden': 'true', html: Kit.icon('plus') }));   // (a tap on the card adds one: the plus over the minus says so)
       const pips = el('span', { class: 'adk-tp' });
       const minus = el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) });
       // (reading one card opens every card on this shelf as one strip to slide through)
