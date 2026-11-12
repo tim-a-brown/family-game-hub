@@ -783,15 +783,17 @@ function evalS(S, me, prof) {
   for (let o = 0; o < N; o++) if (atCourt(S, o)) v += (o === me ? 1 : -1) * COURT_W * prof.wRen;   // (Akbar's court, as it stands)
   for (const r of P.relics) { const fx = fxOf(r); v += (fx === 'press' ? 0.5 : fx === 'antikythera' ? 0.4 : 0.2) * (left - 1); }
   // (Spark kept for a Quick Deed that plays itself on the other player's turn: the Defence of Syracuse, the Tribune's Veto)
-  let need = 0; for (const c of P.hand) { const fx = fxOf(c); if (fx === 'syracuse' || fx === 'veto') need = Math.max(need, Math.min(2, costOf(S, me, c))); }
-  if (need) v += (cfg.keepW != null ? cfg.keepW : KEEP_W) * Math.min(P.spark, need);
+  const kw = cfg.keepW != null ? cfg.keepW : KEEP_W;
+  if (kw) { let need = 0; for (const c of P.hand) { const fx = fxOf(c); if (fx === 'syracuse' || fx === 'veto') need = Math.max(need, Math.min(2, costOf(S, me, c))); } if (need) v += kw * Math.min(P.spark, need); }
   return v;
 }
 // What the robots count for a Domain that a Deed doubles this round: the Renown it adds at the count, all of it on the
-// last turn before the count, less while the other player still has a turn to take it back. KEEP_W: a Spark kept for a Quick Deed that plays itself on the
-// other player's turn. WALLS_W: a Seal from the Theodosian Walls, beyond the Seal itself, by the Seals the robot has (a
-// Seal is worth more to a player who is down to one).
-const DBL_EARLY = 0.6, KEEP_W = 0, WALLS_W = [0, 2, 0.8, -2, 0];   // (test games try others: cfg.dblEarly, cfg.keepW, cfg.wallsW)
+// last turn before the count, and 0.3 of it while the other player still has a turn to take it back. KEEP_W: a Spark
+// kept for a Quick Deed that plays itself on the other player's turn (0: keeping Spark for one cost the robots more
+// than it saved, 0.45 lost about 3 points with the Tribune's Veto). WALLS_W: a Seal from the Theodosian Walls, beyond
+// the 3 the robots count a Seal at, by the Seals the robot has: more to a player down to one, and a fourth Seal less
+// than a broken one (0 there lost about 1.7 points). All measured in scripts/anoria/deeds-2026-11-12.txt.
+const DBL_EARLY = 0.3, KEEP_W = 0, WALLS_W = [0, 2, 0.8, -2, 0];   // (test games try others: cfg.dblEarly, cfg.keepW, cfg.wallsW)
 const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 0 : (x - 1) * ((S.tr || 0) >= S.N ? 1 : S.cfg.dblEarly != null ? S.cfg.dblEarly : DBL_EARLY); };
 // What a Domain's power is worth to the robots as they judge the table, on top of the Renown it scores, for the power
 // that pays its holder or the players there later (they look one move ahead, so what comes at the count, next turn

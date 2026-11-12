@@ -114,11 +114,14 @@ const RARE = {
 // list, were tiered by the same run among the 150, and only their own tiers were taken, so no older card's mark moved.
 // The Great Exhibition is Common, as every Deed with the Trade Caravan's effect is: the run put it at Legendary on the
 // strength of 34 games in which it was played.)
+// The seven of 2026-11-12, at the end of each list, the same way (rarity.js 6000 3, deeds-2026-11-12.txt). The Tribune's
+// Veto is Common: the run put it at Legendary on the strength of the 2 games in which it played itself. Testudo and the
+// Defence of Syracuse keep the tier they had, though their powers changed that day, so no printed mark moved.
 const RARE3 = {
   4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne zenobia shackleton nebuchadnezzar',
-  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi cyruscylinder themistocles mehmed',
-  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning thutmose jaisingh khayyam afonso',
-  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce paiza rubaiyat declaration exhibition'
+  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi cyruscylinder themistocles mehmed holyyear',
+  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning thutmose jaisingh khayyam afonso medici',
+  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce paiza rubaiyat declaration exhibition leo hansa walls triumph veto'
 };
 // The twelve Domain cards (cards.js P4), tiered among themselves by the same measure, cost and win rate less the
 // faction's own, from "node scripts/anoria/domains.js cards" (domains.txt has the table).

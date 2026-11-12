@@ -1,0 +1,101 @@
+Seven new cards and two new Quick powers (2026-11-12)
+=====================================================
+
+Tim approved seven cards, found only in packs (the third printing, pr 3, in no ready deck), and a Quick power of its
+own for Testudo and for the Defence of Syracuse, which had shared Phalanx's (Phalanx itself is unchanged):
+
+  The Roman Triumph        Deed, Valor       a Domain where you have a Figure scores you double at this round's count
+  Medici Patronage         Deed, Arts        every Culture Domain you hold scores double at this round's count
+  The Hanseatic League     Deed, Statecraft  every Commerce Domain you hold scores double (Medici's effect, dk Commerce)
+  The Jubilee of 1300      Deed, Wonder      every Domain you hold scores double at this round's count
+  The Tribune's Veto       Quick Deed, Statecraft   cancels a Deed the other player plays that would score Renown or
+                           move, stun or knock out one of your Figures; that Deed goes to their discard pile
+  Pope Leo I               Figure, Statecraft, Ward: the other player's Deeds have no effect on your Figures where he
+                           stands, and the Domain's power there works for them only where it helps them
+  The Theodosian Walls     Deed, Valor       a Seal while you have fewer than 4 (a broken one mended, or a fourth)
+  Testudo (new power)      Quick: a Figure of yours that loses a clash it started on the other player's side falls
+                           back to your Gate instead of being knocked out
+  The Defence of Syracuse  Quick: an enemy Figure that would win a clash it started at your Gate or Outpost is driven
+  (new power)              back to its own Gate, and nobody is knocked out
+
+The engine: S.dbl (the doubled counts, emptied at the count, a Domain doubled once however many Deeds double it),
+LASTING (the four lie on the table in S.dip until the count), wardAt, vetoable, handFx, the two reactions at the end of
+clash(), WALL_MAX and P.sm. scripts/anoria/deeds-test.js checks every card against its words (66 positions).
+
+How they were measured
+----------------------
+  node scripts/anoria/run.js cards 6000            random decks of two factions, every card; newcards.js beside the
+                                                   older cards of each faction (cardsvar.js in the session scratchpad
+                                                   ran the same games with other numbers on a card)
+  node scripts/anoria/twocopies.js <card> 60       each ready deck with none, one and two copies of a card
+  node scripts/anoria/newdecks.js                  built decks against the ready decks
+  node scripts/anoria/endings.js "after" '{}' 200 91000   the ready decks: must come out exactly as before
+  node scripts/anoria/rarity.js 6000 3             the tiers, of which only the seven's were taken
+
+A card's win rate over about 1,700 games wanders by about 1.2 points from one set of games to another (the same
+numbers with seed 202 in place of 101 moved single cards by up to 3 points: F and F2 below).
+
+1. The cards as approved (Triumph 2, Medici 3, Hansa 3, Jubilee 5, Veto 2, Leo 3/3, Walls 4, Testudo 2, Syracuse 2),
+   with the robots' first worths (run A). Win rate with the card in the deck, and its distance from its faction's
+   older cards:
+     Hanseatic League 52.5 (-1.7)  Pope Leo I 52.2 (-2.0)  Tribune's Veto 51.1 (-3.1)  Theodosian Walls 51.4 (-1.9)
+     Testudo 50.9 (-2.4)  Roman Triumph 50.4 (-2.9)  Jubilee 47.7 (-3.3)  Medici 45.4 (-0.9)  Syracuse 43.1 (-2.9)
+   The three Quick Deeds were played in 5 (the Veto), 50 (Testudo) and 24 (Syracuse) of about 1,700 games: they were
+   blanks. The robots peek at the hand they play against (as they do with Phalanx), so they don't play a Deed into a
+   Veto, and the 2 Spark kept that each needed was seldom there.
+
+2. The robots' worths, each tried on its own:
+   - Spark kept for the Veto or Syracuse (KEEP_W, per Spark up to the card's cost): 0.45 put the Veto at 51.1, 0 at
+     53.9 (runs B and C, the same games). Keeping Spark cost more than the card saved: 0.
+   - A doubled Domain counted as the Renown it adds at the count (wRen x the extra Renown), and not as a doubled
+     position, which counted the Domain's place on the map twice over: Medici 43.7 -> 45.9 (C -> D).
+   - That Renown while the other player still has a turn this round (DBL_EARLY): 0.6 (D) against 0.3 (F, F2):
+     Triumph 51.0 / 52.1, Jubilee 47.5 / 48.3, Medici 45.9 / 46.3. 0.3.
+   - A fourth Seal from the Walls (WALLS_W beside the 3 the robots count any Seal at), ready decks with one copy
+     against none (twocopies.js walls 60): 0 there, -0.4 points; -2 there, +1.3. -2 (and +2 at one Seal, +0.8 at two).
+
+3. Costs. The Quick Deeds are paid for as Phalanx is on the other player's turn, with 1 Spark kept (Testudo with 1 of
+   the Spark of your own turn): Veto 2 -> 1, Testudo 2 -> 1, Syracuse 2 -> 1. Cheaper doubles were tried and made no
+   difference beyond the noise (run E: Medici and Hansa at 2, Jubilee at 3; runs F against G: Triumph 1 or 2, Jubilee
+   4 or 5), so they keep the costs Tim approved.
+
+4. The Walls, ready decks with none, one and two copies (twocopies.js walls 60 52000, all five decks):
+                                     none    one     two    one-none  two-one
+     cost 4, first worth             48.6    48.2    46.8     -0.4     -1.4
+     cost 4, final worth             48.6    49.9    49.5     +1.3     -0.4
+     cost 5, final worth             48.6    50.3    49.4     +1.7     -0.9
+     cost 4, once a game a player    48.6    49.9    49.6     +1.3     -0.4
+   A second copy adds nothing (it can only mend a broken Seal, never pass 4), cost 4 and 5 can't be told apart, and
+   "once a game" changes nothing because the robots almost never play the second copy. The simplest rule holds:
+   cost 4, no "once a game".
+
+5. The cards as they are now (node scripts/anoria/run.js cards 6000, then newcards.js): win rate with the card in the
+   deck, beside the older cards of its faction (Statecraft 55.5, Valor 52.8, Wonder 50.1, Discovery 46.2, Arts 45.4):
+     card                     cost  Might  in the deck   from its faction   tier
+     The Tribune's Veto       1 (Quick)    54.9%        -0.6               Common
+     Pope Leo I               3     3      54.4%        -1.1               Common
+     The Hanseatic League     3            53.2%        -2.3               Common
+     The Roman Triumph        2            50.9%        -1.9               Common
+     Testudo                  1 (Quick)    50.3%        -2.5               Uncommon (kept)
+     The Theodosian Walls     4            50.3%        -2.5               Common
+     The Jubilee of 1300      5            49.9%        -0.2               Rare
+     The Defence of Syracuse  1 (Quick)    47.1%        +0.9               Uncommon (kept)
+     Medici Patronage         3            46.1%        +0.7               Uncommon
+   Every one is inside what its faction's older cards span, or within a point of its lowest; newcards.js finds none
+   outside by more than 2 points. Robot worths in engine.js: DBL_EARLY 0.3, KEEP_W 0, WALLS_W [0, 2, 0.8, -2, 0].
+   The Veto still plays itself seldom against the robots, which see the hand it is in and don't play a Deed into it:
+   its worth to them is the Deeds it stops. Tiers: rarity.js 6000 3, only the seven's taken; it put the Veto at
+   Legendary on the strength of the 2 games in which it played itself, so it is Common, as its cost and win rate say.
+   Testudo and Syracuse keep their printed marks (Uncommon).
+
+6. The ready decks (endings.js "after" '{}' 200 91000) come out exactly as before the cards went in, line for line:
+     decks: Explorers 49.2  Legion 49.4  Legacy 51.5  Court 52.3  Pathfinders 47.6  spread 4.7  (seat 1 wins 46.7%)
+     ends: 69.3% on Renown, 30.7% on Seals, 0.0% at the round limit
+   Phalanx is untouched; the ready decks hold none of the new cards.
+
+7. Built decks against the ready decks (newdecks.js, 6000 games, seed 7000): from the third printing only 37.8% (its
+   pairs 26.7% to 50.0%, spread 23.3); from every card of two factions 40.6% (spread 12.7). The same games with the
+   seven left out of the set: 37.5% (spread 22.3) and 40.0% (spread 15.3). The seven change neither.
+
+8. Collecting (pacing.js, pacing.txt): with the seven the set is 260 cards and nothing is left to collect after 85.6
+   days of 3 games a day (83.0 without them).
