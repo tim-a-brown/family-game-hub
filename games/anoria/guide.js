@@ -611,6 +611,7 @@
         await L.say('The gold line down the right side of the card is Hypatia’s <b>Legacy Line</b>. The picture at the top of the line is the Library of Alexandria, where she taught.', { at: V + '.ac-ll' });
         await L.say('The laurel at the foot of the line is what the Legacy Line gives you. When you play Hypatia at the Library of Alexandria, you score 1 Renown.', { at: V + '.ac-ll .al-w' });
         await L.say('The band down the side names her faction, Discovery. The corner says what kind of card this is: a Figure, a Relic or a Deed.', { at: [V + '.ac-rib', V + '.ac-kind'] });
+        await L.say('The small mark at the foot of the band is how rare the card is in packs: a dot for Common, a triangle for Uncommon, a four-point star for Rare and a compass rose for Legendary. Rarity plays no part in a game.', { at: V + '.ac-paper > .ac-rar' });
         if (find(V + '.view-notes .ll')) await L.say('Under the card, the same Legacy Line is drawn as the table: the Library of Alexandria on your side of the board, and Hypatia coming down from your hand. The <b>?</b> says in words what the Legacy Line does.', { at: V + '.view-notes .ll-scene' });
         else if (find(V + '.view-notes')) await L.say('Under the card, each skill is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
