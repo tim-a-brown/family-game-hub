@@ -15,7 +15,7 @@
 (function () {
   'use strict';
   let U = null, C, TX, Coll, CARDS, FAC, REG, ERAS, el, esc;
-  const SORTS = [['time', 'Time'], ['cost', 'Cost'], ['name', 'Name'], ['newest', 'Newest']];
+  const SORTS = [['time', 'Time'], ['cost', 'Cost'], ['might', 'Might'], ['reg', 'Region'], ['name', 'Name'], ['newest', 'Newest']];
   const HAVE = [['own', 'Yours'], ['seen', 'Seen'], ['new', 'Not found']];
   const KINDS = [['fig', 'Figure'], ['deed', 'Deed'], ['relic', 'Relic']];
   const WORDS = [['legacy', 'Legacy'], ['voyager', 'Voyager'], ['scholar', 'Scholar'], ['guard', 'Guard'], ['steadfast', 'Steadfast'], ['inspiring', 'Inspiring'], ['swift', 'Swift'], ['raider', 'Raider']];
@@ -23,7 +23,7 @@
   const EARN = { daily: 'Win today', normal: 'Beat Normal', hard: 'Beat Hard', built: 'Your own deck' };
   const GIFT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5h16V20H4zM3 7.5h18v4H3zM12 7.5V20M12 7.5c-1.4-4-6.6-3.6-5.4-.6.5 1 2.4.6 5.4.6ZM12 7.5c1.4-4 6.6-3.6 5.4-.6-.5 1-2.4.6-5.4.6Z"/></svg>';
   const ARROW = '<svg class="ar" viewBox="0 0 28 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h24M20.5 1.5 25.5 6l-5 4.5"/></svg>';
-  const blankF = () => ({ have: [], fac: [], kind: [], cost: [], era: [], reg: [], key: [] });
+  const blankF = () => ({ have: [], fac: [], kind: [], cost: [], might: [], era: [], reg: [], key: [] });
   // what the Library remembers while the page stays open
   const st = { view: 'binder', sort: 'time', f: blankF(), thread: null };
   const calm = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
@@ -272,8 +272,9 @@
     f = f || st.f;
     const c = CARDS[k], s = Coll.cardState(k), has = (g, v) => !f[g].length || f[g].indexOf(v) >= 0;
     if (!has('have', s) || !has('fac', c.f) || !has('era', eraOf(k))) return false;
-    if (s === 'new') return !(f.cost.length || f.reg.length || f.key.length) && (!f.kind.length || (c.f === 'N' && f.kind.indexOf('relic') >= 0));
+    if (s === 'new') return !(f.cost.length || f.might.length || f.reg.length || f.key.length) && (!f.kind.length || (c.f === 'N' && f.kind.indexOf('relic') >= 0));
     if (!has('kind', c.t) || !has('cost', c.c) || (f.reg.length && f.reg.indexOf(c.reg) < 0)) return false;
+    if (f.might.length && (c.t !== 'fig' || f.might.indexOf(c.m) < 0)) return false;   // (Might: Figures only)
     return !f.key.length || f.key.some(w => w === 'legacy' ? !!c.insp : !!(c.k && c.k[w]));
   }
   // By time: as the timeline has them. By cost or name: the ones never seen go last (neither is known). Newest: not
@@ -281,6 +282,9 @@
   function sortKeys(keys) {
     const nm = (a, b) => CARDS[a].n < CARDS[b].n ? -1 : CARDS[a].n > CARDS[b].n ? 1 : 0, time = (a, b) => IDX[a] - IDX[b], un = k => Coll.cardState(k) === 'new' ? 1 : 0;
     if (st.sort === 'cost') keys.sort((a, b) => un(a) - un(b) || (un(a) ? time(a, b) : CARDS[a].c - CARDS[b].c || nm(a, b)));
+    // (by Might: Figures strongest first, then the other cards; by region: grouped as the map's regions, Figures and Domains with a home first)
+    else if (st.sort === 'might') { const mt = k => CARDS[k].t === 'fig' ? CARDS[k].m : -1; keys.sort((a, b) => un(a) - un(b) || (un(a) ? time(a, b) : mt(b) - mt(a) || nm(a, b))); }
+    else if (st.sort === 'reg') { const RO = Object.keys(REG), rg = k => CARDS[k].reg ? RO.indexOf(CARDS[k].reg) : 99; keys.sort((a, b) => un(a) - un(b) || (un(a) ? time(a, b) : rg(a) - rg(b) || nm(a, b))); }
     else if (st.sort === 'name') keys.sort((a, b) => un(a) - un(b) || (un(a) ? time(a, b) : nm(a, b)));
     else if (st.sort === 'newest') {
       const s = Coll.load(), at = {}; Object.keys(s.cards).forEach((k, i) => { at[k] = i; });
@@ -331,6 +335,7 @@
     ['fac', 'Faction', ['D', 'S', 'V', 'A', 'W'].map(f => [f, FAC[f].n, FAC[f].c])],
     ['kind', 'Kind', KINDS],
     ['cost', 'Spark cost', [0, 1, 2, 3, 4, 5].map(n => [n, String(n)])],
+    ['might', 'Might', [2, 3, 4, 5, 6].map(n => [n, String(n)])],
     ['era', 'Era', ERAS.map((e, i) => i ? [i, e.n] : null).filter(Boolean)],
     ['reg', 'Home region', Object.keys(REG).map(r => [r, REG[r]])],
     ['key', 'Keyword', WORDS]
@@ -342,7 +347,7 @@
       box.innerHTML = '';
       groups().forEach(g => {
         box.appendChild(el('div', { class: 'label', text: g[1] }));
-        box.appendChild(el('div', { class: 'lb-chips' + (g[0] === 'cost' ? ' nums' : '') }, g[2].map(o => { const on = st.f[g[0]].indexOf(o[0]) >= 0;
+        box.appendChild(el('div', { class: 'lb-chips' + (g[0] === 'cost' || g[0] === 'might' ? ' nums' : '') }, g[2].map(o => { const on = st.f[g[0]].indexOf(o[0]) >= 0;
           return el('button', { type: 'button', class: 'lb-chip' + (on ? ' on' : ''), 'aria-pressed': String(on), style: o[2] ? { '--f': o[2] } : null, html: (o[2] ? '<i></i>' : '') + '<span>' + esc(o[1]) + '</span>', onclick: () => { tap(); flip(g[0], o[0]); paint(); } }); })));
       });
       const go = sh && sh.el.querySelector('.k-acts .btn-primary'), n = count(); if (go) go.textContent = n === 1 ? 'Show 1 card' : 'Show ' + n + ' cards';
