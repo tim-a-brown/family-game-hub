@@ -213,6 +213,7 @@
     n.appendChild(frame(kind));
     if (rib) rib.textContent = K.n;
     if (inn) inn.appendChild(mark(kind));
+    if (inn && o.mini) inn.appendChild(el('span', { class: 'dm-mh' }, [home(p.reg)]));   // (a small Domain shows its home under its kind's mark: Tim, 2026-11-12)
     if (paper && !o.mini) {
       const say = paper.querySelector('.ac-say'), h = window.AnoriaUI && window.AnoriaUI.homeFoot ? window.AnoriaUI.homeFoot(p.reg) : home(p.reg, { name: true }); h.classList.add('ac-home');
       paper.appendChild(el('div', { class: 'dm-foot' }, [say || el('span'), h]));
@@ -331,5 +332,7 @@
     ]);
   }
 
-  window.AnoriaDomains = { KINDS: KINDS, ORDER: ORDER, OF: OF, REG: REG, kindOf: kindOf, frame: frame, mark: mark, home: home, emblem: emblemSVG, banner: banner, token: token, tile: tile, dress: dress, track: track, proof: proof };
+  // (each home region's colour, as domains.css gives the land in its house: the card's map washes its land with it)
+  const REGCOL = { MED: '#5d909c', EUR: '#62345b', AFR: '#425d96', MIDEAST: '#a7595c', ASIA: '#2e5225', AMER: '#9e8530', OCE: '#8670c0' };
+  window.AnoriaDomains = { REGCOL: REGCOL, KINDS: KINDS, ORDER: ORDER, OF: OF, REG: REG, kindOf: kindOf, frame: frame, mark: mark, home: home, emblem: emblemSVG, banner: banner, token: token, tile: tile, dress: dress, track: track, proof: proof };
 })();

@@ -238,9 +238,10 @@
   let mapN = 0;
   const MAPW = 284, MAPH = 196, DOT0 = { x: 227.2, y: 47, r: 9 };
   // at: where the dot stands in the map's own box (x, y) and its ring's radius (r; 0 for the dot alone): dotSpot() below finds the place clear of the card's words
-  function mapSVG(ll, color, at) {
+  function mapSVG(ll, color, at, reg) {
     if (!ll) return '';
-    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r; if (mapCache[ck]) return mapCache[ck];
+    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
+    const tint = reg && window.AnoriaDomains && window.AnoriaDomains.REGCOL ? window.AnoriaDomains.REGCOL[reg] : null;   // (the land in a faint wash of the home region's colour: Tim, 2026-11-12)
     const W = MAPW, H = MAPH, k = 10.92, cx = at.x, cy = at.y, ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
     const X = lon => cx + (lon - lon0) * k, Y = lat => cy - (lat - lat0) * ky;
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
@@ -259,7 +260,7 @@
     for (let lo = Math.ceil(lonA / 5) * 5; lo <= lonB; lo += 5) grat += '<path d="M' + X(lo).toFixed(1) + ' 0V' + H + '"/>';
     const id = 'anh' + (++mapN);
     const s = '<svg class="ac-map" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs><pattern id="' + id + '" width="5" height="3.2" patternUnits="userSpaceOnUse"><path d="M0 1.6H5" stroke="#5a6f78" stroke-width=".55"/></pattern></defs>' +
-      '<g opacity=".6"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' +
+      '<g opacity=".6"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' + (tint ? '<path d="' + d + '" fill="' + tint + '" opacity=".16"/>' : '') +
       '<g fill="none" stroke="#7b6a52" stroke-width=".4" stroke-dasharray="2 3" opacity=".45">' + grat + '</g><path d="' + d + '" fill="none" stroke="#5b4a33" stroke-width=".8" stroke-linejoin="round" opacity=".55"/></g>' +
       '<g opacity=".5">' + (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></g></svg>';   // (the dot and its ring half see-through: Tim, 2026-11-12)
     mapCache[ck] = s; return s;
@@ -296,7 +297,7 @@
   }
   function placeDot(n, key, ll, color) {
     const sig = () => key + (n.classList.contains('hasll') ? '|l' : '') + (n.classList.contains('ed-rainbow') ? '|r' : '');
-    const put = at => { const old = n.querySelector('.ac-map'); if (!old || !at) return; const t = document.createElement('div'); t.innerHTML = mapSVG(ll, color, at); old.replaceWith(t.firstChild); };
+    const put = at => { const old = n.querySelector('.ac-map'); if (!old || !at) return; const t = document.createElement('div'); t.innerHTML = mapSVG(ll, color, at, n.dataset.reg); old.replaceWith(t.firstChild); };
     const go = () => { const s = sig(); if (!(s in dotAt)) dotAt[s] = dotSpot(n); put(dotAt[s]); };
     n._dot = go;
     // (with the faces loaded the place is found before the card is ever shown; until then it is found as soon as they are)
@@ -341,7 +342,7 @@
     o = o || {};
     const c = info(key), f = FAC[c.f] || FAC.N, place = c.kind === 'place', fig = c.kind === 'fig';
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
-    const label = { place: C.DM_LIVE ? 'Domain' : 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: 'Deed' }[kind];   // (a Quick Deed is a Deed with the power Quick: Tim, 2026-11-12)
+    const label = { place: C.DM_LIVE ? 'Domain' : 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Figure', relic: 'Relic', deed: 'Deed' }[kind];   // (a Legacy Figure is a Figure: its label wears both marks, Tim 2026-11-12)   // (a Quick Deed is a Deed with the power Quick: Tim, 2026-11-12)
     const tgPic = o.tg && !o.mini && !noPic(key);   // (a card with no picture yet has nothing to turn over to)
     const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (tgPic ? ' tg' : '') + (noPic(key) ? ' nopic' : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
@@ -353,11 +354,13 @@
     if (im && !o.mini) comeUp(key, im);
     inn.appendChild(art);
     if (c.c != null) { const cost = o.cost != null ? o.cost : c.c; inn.appendChild(el('div', { class: 'ac-cost' + (cost < c.c ? ' less' : '') }, [el('b', { text: String(cost) })])); }
-    inn.appendChild(el('div', { class: 'ac-kind', html: MARK[kind] + '<span>' + label + '</span>' }));
+    inn.appendChild(el('div', { class: 'ac-kind', html: (kind === 'legacy' ? MARK.legacy + MARK.fig : MARK[kind]) + '<span>' + label + '</span>' }));
     const paper = el('div', { class: 'ac-paper', style: { 'clip-path': tear(key) } });
-    if (!o.mini && c.ll) paper.innerHTML = mapSVG(c.ll, place ? '#8a6a2a' : f.c);
+    if (!o.mini && c.ll) { paper.innerHTML = mapSVG(c.ll, place ? '#8a6a2a' : f.c, null, c.reg); if (c.reg) n.dataset.reg = c.reg; }
     paper.appendChild(el('div', { class: 'ac-rib' }, [el('span', { text: place ? REG[c.reg] : f.n })]));
     paper.appendChild(el('div', { class: 'ac-name', text: c.n }));
+    // (a small Domain says its power in the few words its tile has: Tim, 2026-11-12)
+    if (o.mini && place && C.PLACES[key]) { const w = C.DM_LIVE ? C.PLACES[key].pw : C.PLACES[key].pw0; if (w && DSHORT[w]) paper.appendChild(el('div', { class: 'ac-pw', text: DSHORT[w] })); }
     if (!o.mini) {
       paper.appendChild(el('div', { class: 'ac-when', text: c.cap }));
       paper.appendChild(el('div', { class: 'ac-txt', html: boldKeys(c.tx) }));
@@ -1543,6 +1546,13 @@
   // the height the tallest needs (Tim: "these domains aren't the same size and they should be, even though the
   // pyramid text is the one going an extra line"). Only on a tile too short for a name and a rule at the smallest
   // size (a 320-wide phone) does the rule leave the tile (f4); it is read where the tile is tapped.
+  // (a tile as wide as an iPad's has room inside its paper: the kind's mark and the home go in at its left and right,
+  // not half off its edges. Tim, 2026-11-12)
+  function roomy(t) {
+    const p = t.querySelector('.pl-plate'); if (!p || !t.classList.contains('dm')) return;
+    const on = t.getBoundingClientRect().width >= 170; t.classList.toggle('roomy', on);
+    if (on) t.querySelectorAll(':scope > .dm-clasp').forEach(c => p.appendChild(c));
+  }
   function fitPlates() {
     if (!dom.map) return;
     const tiles = Array.prototype.filter.call(dom.map.querySelectorAll('.pl-tile'), t => t.querySelector('.pl-plate'));
@@ -1556,7 +1566,7 @@
       const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
       return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
     };
-    tiles.forEach(t => { plate(t).style.minHeight = ''; });
+    tiles.forEach(t => { plate(t).style.minHeight = ''; roomy(t); });   // (the mark and home go into a roomy tile's paper before its words are measured)
     let k = 0; for (; k <= 3; k++) { tiles.forEach(t => set(t, k)); if (!tiles.some(bad)) break; }
     if (k > 3) tiles.forEach(t => { set(t, 3); if (bad(t)) set(t, 4); });
     // the same paper on every tile: the tallest one's height, the words centred on it
@@ -2729,6 +2739,7 @@
           // (as it lies on a phone's map and on an iPad's: the phone's tile has its words eased down as fitPlates does there)
           const onMap = (cls, f) => { const t = suTile(k); if (f) t.classList.add(f); return el('div', { class: 'an-map ap-tile ' + cls }, [el('div', { class: 'pl su' }, [el('div', { class: 'pl-side L' }), t, el('div', { class: 'pl-side R' })])]); };
           line.appendChild(cell('On a phone\u2019s map', onMap('phone', 'f3'))); line.appendChild(cell('On an iPad\u2019s map', onMap('pad')));
+          setTimeout(() => line.querySelectorAll('.ap-tile.pad .pl-tile').forEach(roomy), 0);
         }
         if (c.kind !== 'place') {
           line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true, ed: e }))));
