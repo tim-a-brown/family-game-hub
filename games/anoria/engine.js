@@ -104,7 +104,7 @@ const onTable = (S, w) => !!S.dm && S.places.some(id => PLACES[id] && PLACES[id]
 const posOf = (S, w) => { for (let i = 0; i < S.places.length; i++) if (pw(S, i) === w) return i; return -1; };
 // The standard rules, as the test games settled them (see scripts/anoria and the design doc)
 // dice 'high': a clash is two ordinary dice, the higher roll adds 1 Might (2 when higher by 3 or more).
-// unique: one of each person on your side of the table at a time. ret: a Figure whose other copy is in your discard pile costs this much less.
+// unique: one of each person on your side of the table at a time (the rule until 2026-11-12, when Tim let two of a person stand: 0 now). inspEach: a Legacy Figure has +1 Might for each person it names who is in play on its side. ret: a Figure whose other copy is in your discard pile costs this much less.
 // Scoring is flat (Tim, 2026-11): every Place scores 1 Renown every round, all game, and the first to 25 wins. (Until
 // then the stake doubled from round 4: ramp: [1, 1, 1, 2, 2, 2]. cfg.ramp still works, for test games and for a game
 // saved under the old rule, which finishes under it.) Flat games run longer than the doubled ones did, which is why a
@@ -115,7 +115,7 @@ const OLD_TARGET = 30;
 // dm: the game is played with Domains (2026-11-11). It is what play() goes by when a test hands it no stacks (each
 // deck then brings its ready stack, or fifteen Domains at random: stacksFor); '{"dm":0}' plays the old fixed map.
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 1, ret: 1, threads: 2, dm: 1 };
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 0, inspEach: 1, ret: 1, threads: 2, dm: 1 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -894,6 +894,7 @@ function endRound(S) {
       if (hc.every((x, q) => q === o || x < hc[o])) { p.sg = 1; if (S.ev) S.ev.push({ t: 'spark', o: o, n: 1, why: 'next' }); } } }
   for (const b of S.pb) b.fill(0); for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
+  if (S.st) for (const f of S.figs) if (f.li && (CARDS[f.c].insp || []).filter(n => S.figs.some(g => g.o === f.o && g !== f && g.c === n)).length > 1) S.st.dbl = (S.st.dbl || 0) + 1;   // (the test games: Figures holding a doubled Legacy at a round's end)
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
   if (N === 2) for (let o = 0; o < 2; o++) if (S.P[o].seals <= 0) { S.over = true; S.winner = 1 - o; S.how = 'seals'; return; }
   if (last) {

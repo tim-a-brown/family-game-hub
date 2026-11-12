@@ -378,7 +378,7 @@
         const c = CARDS[k], x = st.cnt[k], bad = x > owned(k), two = x > 1 && c.t === 'fig'; if (two) spare = true;
         lst.appendChild(el('div', { class: 'adk-li' + (bad ? ' bad' : '') }, [
           el('button', { type: 'button', class: 'adk-lr', 'aria-label': 'Read ' + c.n, onclick: () => U.openView(k) }, [coin(c.c), thumb(k, 'adk-lp'), el('span', { class: 'adk-ln' }, [el('b', { text: c.n }), bad ? el('small', { text: 'You have ' + owned(k) }) : null])]),
-          two ? el('span', { class: 'adk-spare', 'aria-label': 'The second is a spare. It returns for ' + Math.max(0, c.c - 1) + ' Spark', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]) : null,
+          two ? el('span', { class: 'adk-spare', 'aria-label': 'Once one has fallen, the second returns for ' + Math.max(0, c.c - 1) + ' Spark', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]) : null,
           el('span', { class: 'adk-lx', text: x > 1 ? 'x' + x : '' }),
           el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) })]));
       });
@@ -386,7 +386,7 @@
       box.appendChild(lst);
       // two rules of play a builder should know
       const notes = el('section', { class: 'adk-sec2 notes' });
-      if (spare) notes.appendChild(el('div', { class: 'adk-note side' }, [el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin('-1')]), el('p', { text: 'Only one of each person stands on your side at a time. The second copy is a spare: once the first has fallen it returns for 1 Spark less.' })]));
+      if (spare) notes.appendChild(el('div', { class: 'adk-note side' }, [el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin('-1')]), el('p', { text: 'Both copies of a person can stand on your side at once. Once one copy has fallen, the other returns for 1 Spark less.' })]));
       const drawn = el('span', { class: 'adk-slots draw' }); for (let i = 0; i < DECK; i++) drawn.appendChild(el('i', i < DRAWN ? { class: 'on' } : null));
       notes.appendChild(el('div', { class: 'adk-note' }, [drawn, el('p', { text: 'A game draws about ' + DRAWN + ' of a deck\'s ' + DECK + ' cards. Two copies of a card make it far more likely to turn up.' })]));
       box.appendChild(notes);
@@ -443,7 +443,7 @@
         say([el('span', { class: 'adk-pair' }, [thumb(p.a, 'adk-pp'), el('i'), thumb(p.b, 'adk-pp')]), line(CARDS[p.a].n + ' to ' + CARDS[p.b].n, p.t, 'thr')], { cls: 'thr', ms: 5200 });
         [p.a, p.b].forEach(x => { const t = tiles[x]; if (t && !still()) { t.el.classList.remove('tie'); void t.el.offsetWidth; t.el.classList.add('tie'); } });
       } else if (st.cnt[k] === 2 && c.t === 'fig') {
-        say([el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]), line('A spare ' + c.n, 'Only one stands on your side at a time. Once the first has fallen, the spare returns for ' + Math.max(0, c.c - 1) + ' Spark.')], { ms: 5200 });
+        say([el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]), line('A second ' + c.n, 'Both can stand on your side at once. Once one has fallen, the other returns for ' + Math.max(0, c.c - 1) + ' Spark.')], { ms: 5200 });
       }
       if (tot === DECK) {
         setTimeout(() => { Kit.sfx('good'); Kit.haptic('success'); }, 260);

@@ -75,10 +75,10 @@ const CARDS = {
   leif: F('Leif Erikson', 'D', 3, 4, 'EUR', 3, 1000, { voyager: 1 }),
   sacagawea: F('Sacagawea', 'D', 2, 2, 'AMER', 6, 1805, { inspiring: 1 }),
   shenkuo: F('Shen Kuo', 'D', 2, 3, 'ASIA', 3, 1088, { eureka: 1 }),
-  darwin: F('Charles Darwin', 'D', 4, 4, 'EUR', 6, 1835, { voyager: 1, scholar: 1 }),
+  darwin: F('Charles Darwin', 'D', 4, 4, 'EUR', 6, 1835, { voyager: 1, scholar: 1 }, { insp: ['humboldt'] }),
   // Legion
-  scipio: F('Scipio Africanus', 'V', 4, 5, 'MED', 2, -202, { raider: 1 }),
-  toussaint: F('Toussaint Louverture', 'V', 4, 4, 'AMER', 5, 1796, { uprising: 1 }),
+  scipio: F('Scipio Africanus', 'V', 4, 5, 'MED', 2, -202, { raider: 1 }, { insp: ['hannibal'] }),
+  toussaint: F('Toussaint Louverture', 'V', 4, 4, 'AMER', 5, 1796, { uprising: 1 }, { insp: ['spartacus'] }),
   shaka: F('Shaka', 'V', 4, 4, 'AFR', 6, 1818, { orator: 1 }),
   lakshmibai: F('Lakshmibai', 'V', 3, 3, 'ASIA', 6, 1858, { swift: 1, steadfast: 1 }),
   tecumseh: F('Tecumseh', 'V', 3, 3, 'AMER', 6, 1811, { inspiring: 1 }),
@@ -98,7 +98,7 @@ const CARDS = {
   zhangqian: F('Zhang Qian', 'W', 3, 3, 'ASIA', 2, -138, { voyager: 1 }, { arr: ['spark', 1] }),   // (the Han envoy, in the slot Sinbad the Sailor had. He has 3 Might where Sinbad had 2, which is what Pathfinders wanted once 25 Renown won: variants.txt, "First to 25")
   sargon: F('Sargon of Akkad', 'W', 4, 5, 'MIDEAST', 1, -2334, { guard: 1 }),   // (in the slot Gilgamesh had, with the same numbers)
   sundiata: F('Sundiata Keita', 'V', 3, 2, 'AFR', 3, 1235, { homeDouble: 1 }),
-  bolivar: F('Simón Bolívar', 'V', 4, 4, 'AMER', 6, 1819, { swift: 1, raider: 1 }),
+  bolivar: F('Simón Bolívar', 'V', 4, 4, 'AMER', 6, 1819, { swift: 1, raider: 1 }, { insp: ['washington', 'napoleon'] }),
   khutulun: F('Khutulun', 'V', 2, 2, 'ASIA', 3, 1280, { slayer: 1 }),
   // Relics (any deck)
   press: { n: 'Printing Press', t: 'relic', f: 'N', c: 2 },
@@ -119,7 +119,7 @@ const CARDS = {
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
 const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'askia': ['@timbuktu'], 'pericles': ['@acropolis'], 'moliere': ['press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['askia', 'marcopolo', '@silk'], 'encore': ['moliere', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'magellan'], 'eclipse': ['antikythera'],
-  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'christine': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'christine': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
@@ -163,7 +163,7 @@ const P3 = {
   // Statecraft
   cyrus: F('Cyrus the Great', 'S', 4, 4, 'MIDEAST', 1, -550, { inspiring: 1 }),
   qinshihuang: F('Qin Shi Huang', 'S', 5, 6, 'ASIA', 2, -221, { guard: 1 }),
-  augustus: F('Augustus', 'S', 5, 6, 'MED', 2, -27, {}, { arr: ['stun', 9], insp: ['caesar'] }),
+  augustus: F('Augustus', 'S', 5, 6, 'MED', 2, -27, {}, { arr: ['stun', 9], insp: ['caesar', 'alexander'] }),
   franklin: F('Benjamin Franklin', 'S', 4, 5, 'AMER', 5, 1778, {}, { arr: ['stun', 1] }),
   darius: F('Darius the Great', 'S', 3, 3, 'MIDEAST', 2, -515, {}, { arr: ['spark', 1] }),
   eleanor: F('Eleanor of Aquitaine', 'S', 3, 4, 'EUR', 3, 1152, { voyager: 1 }),
@@ -224,7 +224,7 @@ const P3 = {
   tolstoy: F('Leo Tolstoy', 'A', 4, 4, 'EUR', 6, 1869, { inspiring: 1 }),
   tchaikovsky: F('Pyotr Tchaikovsky', 'A', 3, 4, 'EUR', 6, 1877, {}, { insp: ['mozart'] }),
   twain: F('Mark Twain', 'A', 3, 3, 'AMER', 6, 1884, {}, { arr: ['wits', 1] }),
-  vangogh: F('Vincent van Gogh', 'A', 3, 3, 'EUR', 6, 1888, { swift: 1 }, { insp: ['hiroshige'] }),
+  vangogh: F('Vincent van Gogh', 'A', 3, 3, 'EUR', 6, 1888, { swift: 1 }, { insp: ['hiroshige', 'hokusai'] }),
   joplin: F('Scott Joplin', 'A', 2, 2, 'AMER', 6, 1899, { swift: 1 }),
   // Wonder
   tutankhamun: F('Tutankhamun', 'W', 2, 2, 'AFR', 1, -1330, { untouchable: 1 }),
@@ -294,7 +294,7 @@ const P3 = {
   thutmose: F('Thutmose III', 'V', 4, 4, 'AFR', 1, -1457, { raider: 1 }),
   themistocles: F('Themistocles', 'V', 3, 3, 'MED', 2, -480, { slayer: 1 }),
   mehmed: F('Mehmed II', 'V', 5, 5, 'MIDEAST', 3, 1453, {}, { arr: ['push', 1], insp: ['alexander'] }),
-  khayyam: F('Omar Khayyam', 'W', 3, 4, 'MIDEAST', 3, 1079, { scholar: 1 }, { insp: ['ibnsina'] }),
+  khayyam: F('Omar Khayyam', 'W', 3, 4, 'MIDEAST', 3, 1079, { scholar: 1 }, { insp: ['ibnsina', 'alkhwarizmi'] }),
   nebuchadnezzar: F('Nebuchadnezzar II', 'W', 4, 4, 'MIDEAST', 1, -575, { monument: 1 }),
   jaisingh: F('Jai Singh II', 'W', 3, 3, 'ASIA', 5, 1734, { monument: 1 }),
   afonso: F('Afonso I of Kongo', 'S', 3, 4, 'AFR', 4, 1526, { scholar: 1 }),   // (at 3/3, the numbers of Ashurbanipal, he won 2 to 3 points less than Ashurbanipal does: onecard.js)
@@ -357,7 +357,7 @@ const DM_LIVE = (() => { if (typeof window === 'undefined') return true; try { r
 PRINT4.forEach(k => { P4[k].pr = 4; if (DM_LIVE) CARDS[k] = P4[k]; });
 // Legacy Lines the new cards give to cards the game already had. All of them are lines (`from`: Renown when the
 // card is played with its source on your side), so no older card changes its rules text, its cost or its Might.
-const FROM_MORE = { darwin: ['humboldt'], bolivar: ['humboldt'], marcopolo: ['kublai'], newton: ['kepler'], mozart: ['bach'], plato: ['pythagoras'] };
+const FROM_MORE = { bolivar: ['humboldt'], marcopolo: ['kublai'], newton: ['kepler'], mozart: ['bach'], plato: ['pythagoras'] };
 Object.keys(FROM_MORE).forEach(k => { CARDS[k].from = (CARDS[k].from || []).concat(FROM_MORE[k]); });
 const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1453 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }, { n: 'The Modern World', to: 2000 }];
 // Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).

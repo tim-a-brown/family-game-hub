@@ -393,7 +393,9 @@
       groups.forEach(g => { const cols = el('div', { class: 'al-cols' + (g.ks.length > 1 ? ' join' : '') }); let nm = 0;
         g.ks.forEach(k => { const bare = k.replace(/^@/, ''), i2 = info(bare), im = artImg(bare, true, true) || mono(bare), r = el('i', { class: 'al-m' + (k[0] === '@' ? ' pl' : ''), style: { '--f': (FAC[i2.f] || FAC.P).c } }); if (im) r.appendChild(im);
           cols.appendChild(el('div', { class: 'al-c' }, [r, el('span', { class: 'al-n', text: i2.n }), el('i', { class: 'al-t' })])); nm = Math.max(nm, i2.n.length); });
-        const marks = g.w === 'legacy' ? [['sp', '−1'], ['mi', '+1'], ['re', '+1']] : [['re', '+1']];
+        const each = g.w === 'legacy' && g.ks.length > 1 && !!E.STD.inspEach;   // (+1 Might for each person it names: the Might on each person's own line)
+        if (each) cols.querySelectorAll('.al-c').forEach(cn => cn.appendChild(el('i', { class: 'al-k mi' }, [el('b', { text: '+1' })])));
+        const marks = g.w === 'legacy' ? (each ? [['sp', '−1'], ['re', '+1']] : [['sp', '−1'], ['mi', '+1'], ['re', '+1']]) : [['re', '+1']];
         rail.appendChild(el('div', { class: 'al-g' }, [cols, el('div', { class: 'al-w' }, marks.map(m => el('i', { class: 'al-k ' + m[0] }, [el('b', { text: m[1] })])))]));
         tall = Math.max(tall, 2.1 + nm * .41 + .9 + marks.length * 1.75 + (g.w === 'legacy' ? .45 : 0)); });   // (the Spark flame stands a little taller)
       n.classList.add('hasll'); n.style.setProperty('--lc', llSrc.length); n.style.setProperty('--lg', groups.length); n.style.setProperty('--lh', tall.toFixed(2) + 'em');
@@ -421,7 +423,7 @@
     if (f.vic) out.push(['Olympic victor', f.vic]);
     let own = 0, opp = 0, insp = 0;
     for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
-    if (f.li) out.push(['Legacy line', w === 'pupils' ? 2 : 1]);
+    if (f.li) { const nI = (c.insp || []).filter(x => S.figs.some(g => g.o === f.o && g !== f && g.c === x)).length; out.push(['Legacy line', (S.cfg.inspEach ? Math.max(1, nI) : 1) + (w === 'pupils' ? 1 : 0)]); }   // (+1 for each person it names in play: engine.js might())
     if (insp) out.push(['Inspired', Math.min(2, insp)]);
     if (k.uprising && own > 1) out.push(['Others here', own - 1]);
     if (k.orator && own > opp) out.push(['More of you here', 2]);
@@ -444,9 +446,12 @@
   // card's sentence, and a tap on the card already chosen opens it.
   const KIDS = {}; Object.keys(C.CARDS).forEach(k => { const c = CARDS[k]; (c.insp || []).concat(c.from || []).forEach(sk => { (KIDS[sk] = KIDS[sk] || []).push(k); }); });
   const worthOf = (from, to) => (CARDS[to].insp || []).indexOf(from) >= 0 ? 'legacy' : 'thread';
-  function worthEl(kind) {
+  // each: a Legacy Figure that names two people has +1 Might for each of them in play, so that Might is drawn on each
+  // person's own stretch of line (llMi), and the shared line carries the Spark and the Renown
+  const llMi = () => el('span', { class: 'ln-worth ll-mi' }, [el('span', { class: 'ln-w mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('i'), el('b', { text: '+1' })])]);
+  function worthEl(kind, each) {
     const w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
-    return el('span', { class: 'ln-worth' }, [kind === 'legacy' ? w('sp', '−1', 'costs 1 Spark less') : null, kind === 'legacy' ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')]);
+    return el('span', { class: 'ln-worth' }, [kind === 'legacy' ? w('sp', '−1', 'costs 1 Spark less') : null, kind === 'legacy' && !each ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')]);
   }
   // one card of a scene. how: 'board' (in play) or 'play' (coming down from the hand)
   function lineNode(k, how, o) {
@@ -465,7 +470,7 @@
     if (rel.length) when.push((when.length ? 'with ' : 'With ') + listOf(rel, 'or') + ' among your Relics');
     if (pl.length) when.push(fig ? (when.length ? 'when ' : 'When ') + 'you play ' + me + ' at ' + listOf(pl, 'or') : (when.length ? 'with ' : 'With ') + 'one of your Figures at ' + listOf(pl, 'or'));
     if (fig && pl.length && !ppl.length && !rel.length && !c.insp) return 'When you play ' + me + ' at ' + listOf(pl, 'or') + ', you score 1 Renown.';
-    return when.join(', or ') + ', ' + me + ' ' + (c.insp ? 'costs 1 Spark less, has +1 Might and scores 1 Renown.' : 'scores 1 Renown.');
+    return when.join(', or ') + ', ' + me + ' ' + (c.insp ? (c.insp.length > 1 && E.STD.inspEach ? 'costs 1 Spark less, scores 1 Renown, and has +1 Might for each of them in play.' : 'costs 1 Spark less, has +1 Might and scores 1 Renown.') : 'scores 1 Renown.');
   }
   // is this card in play on the viewer's side right now? (only asked of a card in the viewer's hand, at the table)
   function inPlayNow(k, forFig) {
@@ -480,9 +485,9 @@
     o = o || {}; const isFig = CARDS[key] && CARDS[key].t === 'fig';
     const groups = []; srcs.forEach(k => { const w = worthOf(k, key); let g = groups.filter(x => x.w === w)[0]; if (!g) groups.push(g = { w: w, ks: [] }); g.ks.push(k); });
     const alts = el('span', { class: 'll-alts n' + groups.length });
-    groups.forEach(g => { const row = el('span', { class: 'll-alt' }); let any = false;
-      g.ks.forEach(k => { const lit = o.state ? inPlayNow(k, isFig) : null, w = lineNode(k, 'board', { tap: o.tap, guest: !isFig }); if (lit === true) { w.classList.add('lit'); any = true; } else if (lit === false) w.classList.add('dim'); w.setAttribute('data-from', k); row.appendChild(w); });
-      if (o.state && !any) row.classList.add('dim'); row.appendChild(el('span', { class: 'll-line' }, [worthEl(g.w)])); alts.appendChild(row); });
+    groups.forEach(g => { const row = el('span', { class: 'll-alt' }); let any = false, each = g.w === 'legacy' && g.ks.length > 1 && !!E.STD.inspEach;
+      g.ks.forEach(k => { const lit = o.state ? inPlayNow(k, isFig) : null, w = lineNode(k, 'board', { tap: o.tap, guest: !isFig }); if (lit === true) { w.classList.add('lit'); any = true; } else if (lit === false) w.classList.add('dim'); w.setAttribute('data-from', k); if (each) (w.querySelector('.ll-slab') || w).appendChild(llMi()); row.appendChild(w); });
+      if (o.state && !any) row.classList.add('dim'); row.appendChild(el('span', { class: 'll-line' }, [worthEl(g.w, each)])); alts.appendChild(row); });
     const sc = el('div', { class: 'll-scene earn' + (o.small ? ' small' : '') + (srcs.length > 2 ? ' many' : '') + (o.state ? (srcs.some(k => inPlayNow(k, isFig)) ? ' on' : ' off') : ''), 'data-to': key, style: { '--n': groups.length } }, [
       el('span', { class: 'll-sr', text: lineSay(srcs, key) }), alts, groups.length > 1 ? el('i', { class: 'll-stub', 'aria-hidden': 'true' }) : null, lineNode(key, 'play', { me: true, tap: false })]);
     return sc;
@@ -505,7 +510,7 @@
     function tap(from, to) { return e => { e.stopPropagation(); if (sel === from + '>' + to || srcs.length + kids.length === 1) openView((from === key ? to : from).replace(/^@/, '')); else { Kit.sfx('tap', .4); choose(from, to); } }; }
     // the ?: what the pictures mean, in sentences a person would say, about these very cards
     const help = el('div', { class: 'll-help', hidden: true }), says = [];
-    if (srcs.length) { says.push(lineSay(srcs, key)); if (c.insp) says.push(c.insp.length > 1 ? i0.n + ' keeps the +1 Might for as long as ' + listOf(c.insp.map(k => info(k).n), 'or') + ' is in play on your side, joined to each of them in play by a gold Legacy Line on the map.' : i0.n + ' keeps the +1 Might for as long as ' + info(c.insp[0]).n + ' is in play on your side, joined by a gold Legacy Line on the map.'); }
+    if (srcs.length) { says.push(lineSay(srcs, key)); if (c.insp) says.push(c.insp.length > 1 ? 'With both ' + listOf(c.insp.map(k => info(k).n), 'and') + ' in play on your side, ' + i0.n + ' has +2 Might, and a gold Legacy Line on the map runs from ' + i0.n + ' to each of them.' : i0.n + ' keeps the +1 Might for as long as ' + info(c.insp[0]).n + ' is in play on your side, joined by a gold Legacy Line on the map.'); }
     const kidSay = []; if (kids.length) { const th = kids.filter(k => worthOf(key, k) === 'thread'), lg = kids.filter(k => worthOf(key, k) === 'legacy'), all = th.concat(lg);
       kidSay.push('With ' + theName(key) + ' in play on your side, ' + listOf(all.map(k => CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n), 'and') + (all.length > 1 ? ' each score 1 Renown as you play them.' : ' scores 1 Renown as you play that card.'));
       if (lg.length) kidSay.push(listOf(lg.map(k => CARDS[k].n), 'and') + (lg.length > 1 ? ' also cost 1 Spark less and have' : ' also costs 1 Spark less and has') + ' +1 Might for as long as the Legacy Line holds.'); }
@@ -731,18 +736,21 @@
     if (it.h != null) { if (hand[it.h] !== it.key) return out; sel = { kind: 'hand', h: it.h };
       acts = ui.acts.filter(a => (a.h != null && hand[a.h] === it.key) || (E.fxOf(it.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === it.key)); }
     else if (it.u != null) { const f = E.byU(S, it.u); if (!f || f.o !== o) return out; sel = { kind: 'fig', u: it.u };
-      acts = ui.acts.filter(a => a.u === it.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub')); }
+      acts = ui.acts.filter(a => (a.u === it.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub' || a.t === 'relay')) || (a.t === 'relay' && a.v === it.u)); }
+    else if (it.p != null && S.dm) { sel = { kind: 'dom', p: it.p }; acts = ui.acts.filter(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === it.p); }   // (what a Domain lets you do: Florence lends, Timbuktu sells a card, Carthage hires Might)
     else return out;
     const at = p => theName('@' + S.places[p]), nm = u => { const f = E.byU(S, u); return f ? CARDS[f.c].n : ''; }, seen = {}; let table = false;
     acts.forEach(a => {
       let label = null;
-      if (sel.kind === 'fig') label = a.t === 'clash' ? 'Clash with ' + nm(a.v) + (a.ph && quickOf(a) ? ', with ' + CARDS[quickOf(a)].n : '') : (a.t === 'walk' ? 'Move to ' : a.t === 'antik' ? 'Jump to ' : 'Step to ') + at(a.p);
+      if (sel.kind === 'dom') label = a.t === 'loan' ? 'Borrow 2 Spark, paid back next turn' : a.t === 'buy' ? 'Buy a card' : 'Hire 2 Might here this round';
+      else if (a.t === 'relay') label = 'Change places with ' + nm(a.u === it.u ? a.v : a.u);   // (the Qhapaq Ñan: a Figure there and one of yours elsewhere change places)
+      else if (sel.kind === 'fig') label = a.t === 'clash' ? 'Clash with ' + nm(a.v) + (a.ph && quickOf(a) ? ', with ' + CARDS[quickOf(a)].n : '') : (a.t === 'walk' ? 'Move to ' : a.t === 'antik' ? 'Jump to ' : 'Step to ') + at(a.p);
       else if (a.t === 'fig') label = 'Play at ' + at(a.p);
       else if (a.t === 'relic') label = 'Play';
       else if (a.t === 'deed') { const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null); if (!n) label = 'Play'; else if (n === 1 && a.p != null) label = 'Play at ' + at(a.p); else if (n === 1 && a.u != null) label = 'Play on ' + nm(a.u); else if (n === 1 && a.v != null) label = 'Play on ' + nm(a.v); else table = true; }
       else table = true;
       if (!label || seen[label]) return; seen[label] = 1;
-      const cost = sel.kind === 'hand' ? E.costOf(S, o, it.key, a.t === 'fig' ? a.p : undefined) : a.ph && quickOf(a) ? E.costOf(S, o, quickOf(a)) : null;
+      const cost = a.t === 'buy' || a.t === 'hire' ? 1 : sel.kind === 'hand' ? E.costOf(S, o, it.key, a.t === 'fig' ? a.p : undefined) : a.ph && quickOf(a) ? E.costOf(S, o, quickOf(a)) : null;
       out.push({ label: label, cost: cost, run: () => { if (idle() && ui.acts.indexOf(a) >= 0) doHuman(a); } });
     });
     // (a card that needs more than one thing chosen is chosen on the table, where its targets light up)
@@ -1426,7 +1434,8 @@
       row.appendChild(side);
       if (sd[1] === 'L') {
         const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
-        const tile = el('button', { type: 'button', class: 'pl-tile', 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
+        const tAct = S.dm && human(S.turn) && idle() && (ui.acts || []).some(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === i);   // (a Domain that offers something to do now is lit, like a Figure that can act)
+        const tile = el('button', { type: 'button', class: 'pl-tile' + (tAct ? ' can' : ''), style: tAct ? { '--pc': 'var(--pc' + S.turn + ')' } : null, 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
         const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im);
         tile.appendChild(art);
         tile.appendChild(el('span', { class: 'pl-tots' }, [
@@ -2447,7 +2456,7 @@
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for a <b>Quick Deed</b> such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Only <b>one of each person</b> can stand on your side at a time.</li>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li>' +
     '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
@@ -2458,7 +2467,7 @@
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
-    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure that names two people keeps the +1 Might while either of them is in play, with a gold line to each one in play.</li>' +
+    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure that names two people has +1 Might for each of them in play on your side, so +2 with both, and a gold line to each one in play. Two copies of the person it names count once.</li>' +
     '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of ' + ((window.AnoriaColl && AnoriaColl.DAILY) || 5) + ' cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +

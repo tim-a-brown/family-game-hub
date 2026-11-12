@@ -543,15 +543,14 @@
         await L.say('If the other player has more Might in your Gate than you do when a round is counted, one of your Seals breaks.', { at: ['.an-strip.me .st-seals', L.row(MY_GATE)] });
         await L.say('Your Seals are safe while your Gate is empty, tied or held by you. So keep a Figure at home when their Figures come close.', { at: L.piece('copernicus') });
       } },
-    { id: 'twins', n: 'Two of a card', sub: 'One copy or two, one of each person, and the return', art: 'galileo',
+    { id: 'twins', n: 'Two of a card', sub: 'One copy or two, and the return', art: 'galileo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'coleman'], figs: [['copernicus', CROSS]] },
         them: { guide: 'tubman', hand: ['genghis', 'boudica'], draw: ['baibars', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
-        await L.lift({ kind: 'hand', h: 0 }, { lit: 'Only <b>one of each person</b> can stand on your side at a time, so the second has to wait.', at: [L.card('copernicus'), L.piece('copernicus')], keep: '.an-cap' });
-        UI().demo.drop();
+        await L.say('Both copies of a person can stand on your side at the same time. You keep this one back for now, because it will cost less later.', { at: [L.card('copernicus'), L.piece('copernicus')] });
         await L.endTurn(); await L.them.turn();
         await L.them.clash('charlemagne', 'copernicus', [4, 4]);
         await L.them.endTurn();
