@@ -53,7 +53,9 @@
   const ORDER = ['COM', 'IND', 'THO', 'LAND', 'CUL', 'LAW', 'ROU'];
   // The twelve Domains of today's game (scripts/anoria/places/places.json, where Thought is still called Ideas)
   const OF = { library: 'THO', silk: 'ROU', colosseum: 'CUL', acropolis: 'CUL', wall: 'LAND', stonehenge: 'CUL', globe: 'CUL', machu: 'LAND', timbuktu: 'COM', petra: 'COM', nineveh: 'LAW', seneca: 'THO' };
-  const kindOf = key => OF[key] || null;
+  // (a Domain's kind is in its data, cards.js PLACES d, by name; the twelve first Places also have theirs in OF)
+  const BYNAME = { Commerce: 'COM', Industry: 'IND', Thought: 'THO', Land: 'LAND', Culture: 'CUL', Law: 'LAW', Routes: 'ROU' };
+  const kindOf = key => { const p = C && C.PLACES[key]; return (p && BYNAME[p.d]) || OF[key] || null; };
   const REG = { MED: 'Mediterranean', AFR: 'Africa', ASIA: 'Asia', EUR: 'Europe', MIDEAST: 'Middle East', AMER: 'Americas', OCE: 'Oceania' };
 
   // ═══ The seven frames ════════════════════════════════════════════════════════════════════════════════════

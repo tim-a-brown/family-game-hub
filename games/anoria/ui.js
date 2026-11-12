@@ -25,6 +25,10 @@
     library: 'Holder draws a card', silk: 'Linked to every Place', colosseum: 'Win a clash: 1 Renown', acropolis: 'Double Renown', wall: 'Defenders +1',
     stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Arrive for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
   };
+  // A Domain's rule in a few words on its tile, by the rule's word (cards.js DRULES; the whole sentence is text.js DRULE)
+  const DSHORT = { spark: 'Holder: +1 Spark', cheap: 'Lay here for 1 less', forge: 'Relics, Deeds 1 less', arms: 'Arrive: +1 Might', draw: 'Holder draws a card',
+    line: 'Legacy Lines +1 Renown', facD: 'Discovery +1', fort: 'Defenders +1', closed: 'Own side only', narrow: 'Two each at most', crowd: 'Two here: 2 Renown',
+    arena: 'Win a clash: 1 Renown', facA: 'Arts +1', peace: 'Only the holder clashes', sanctuary: 'Safe from Deeds', facS: 'Statecraft +1', link: 'Linked to every Domain', road: 'Walk on arrival' };
   // What a skill word means, written out under a card that only names it (n: the card's name). Each says what
   // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
@@ -1246,9 +1250,15 @@
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
           el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span>' : '') + esc(pi.n) }),
-          RULE[pk] ? el('span', { class: 'pl-rule', text: RULE[pk] }) : null]));
-        // (the frame of the Place's kind and its home plate, lit while a Figure that is at home here is picked up: domains.js)
-        if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, { key: pk, reg: pi.reg, lit: homeLit(pi.reg) });
+          (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : RULE[pk] }) : null]));
+        // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
+        // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
+        // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
+        const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) };
+        if (S.dm) { if (S.ban[i] >= 0) { dmo.owner = S.ban[i]; dmo.side = S.ban[i] === t ? 'L' : 'R'; } if (E.silenced(S, i)) dmo.silenced = true; }
+        if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
+        if (S.dm && pi.pw && !dmo.silenced && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
+        if (S.dm && !im) art.style.setProperty('--kc', (window.AnoriaDomains && window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
         row.appendChild(tile);
       }
     });
