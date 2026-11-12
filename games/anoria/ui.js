@@ -1461,10 +1461,11 @@
         tile.appendChild(el('span', { class: 'pl-tots' }, [
           el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero'), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
           el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero'), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
+        if (gate) tile.appendChild(el('span', { class: 'pl-gate pl-gatem ' + (own === v ? 'out-b' : 'out-t'), style: { '--gc': 'var(--pc' + own + ')' }, 'aria-hidden': 'true', html: SVG.arch }));   // (a Gate's arch on the tile's outward border, the side facing its player, in that player's color: Tim, 2026-11-12)
         (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: MARK.deed })));   // (a Deed in play on this Domain)
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
-          el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : '') + (gate ? ' g' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span><span class="pl-nt">' + esc(pi.n) + '</span>' : esc(pi.n)) }),
+          el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }),
           (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : DW(RULE[pk]) }) : null]));
         // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
         // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
