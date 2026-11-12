@@ -1040,8 +1040,8 @@
         const id = shown ? S.places[i] : o === v ? put[k] : null;
         if (id) mid = suTile(id, shown ? 'flip' : o === v ? 'placed' : '', k);
         else if (su.lay[o] && o !== v) { mid = el('span', { class: 'pl-tile su-slot face' }, [suBack('tile')]); }
-        else if (o === v && me) mid = el('button', { type: 'button', class: 'pl-tile su-slot' + (sel ? ' lit' : ''), 'data-slot': k, 'aria-label': said }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + esc(said) })]);
-        else mid = el('span', { class: 'pl-tile su-slot dim' }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + esc(said) })]);
+        else if (o === v && me) mid = el('button', { type: 'button', class: 'pl-tile su-slot' + (sel ? ' lit' : ''), 'data-slot': k, 'aria-label': said }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + '<span class="su-lt">' + esc(said) + '</span>' })]);
+        else mid = el('span', { class: 'pl-tile su-slot dim' }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + '<span class="su-lt">' + esc(said) + '</span>' })]);
       }
       row.appendChild(L); row.appendChild(mid); row.appendChild(R);
       dom.map.appendChild(row);
@@ -1469,7 +1469,7 @@
     try {
       stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
       dom.map.innerHTML = '';
-      dom.map.appendChild(el('div', { class: 'an-road' }));
+      if (G.ph !== 'setup') dom.map.appendChild(el('div', { class: 'an-road' }));   // (the set-up's slots are empty: no road runs under them)
       if (G.ph === 'setup') suDraw();
       else { rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T))); capEl(); handEl(); }
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
@@ -1480,16 +1480,20 @@
   }
   // A tile's name and rule stay on the paper, clear of the Might totals above it and the frame below. Fonts are
   // drawn taller on some devices (Tim's iPhone), so this is measured, not assumed: a plate that doesn't fit steps
-  // its words down a size (f1), then another (f2).
+  // its words down a size (f1), then another (f2, f3); on a tile too short for both lines (a 320-wide phone) the
+  // rule leaves the tile (f4) and is read where the tile is tapped.
   function fitPlates() {
     if (!dom.map) return;
     dom.map.querySelectorAll('.pl-tile').forEach(t => {
       const p = t.querySelector('.pl-plate'); if (!p) return;
-      t.classList.remove('f1', 'f2');
+      t.classList.remove('f1', 'f2', 'f3', 'f4');
       const bad = () => { const tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), top = tt ? tt.getBoundingClientRect().bottom : tr.top;
-        const nm = p.querySelector('.pl-name');
-        return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || p.scrollHeight > p.clientHeight + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1); };
-      if (bad()) { t.classList.add('f1'); if (bad()) { t.classList.remove('f1'); t.classList.add('f2'); } }
+        const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
+        // (the name's box is its capitals' own height: it must also stay clear of the banner and the two Might totals)
+        const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
+        const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
+        return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits; };
+      if (bad()) { t.classList.add('f1'); if (bad()) { t.classList.replace('f1', 'f2'); if (bad()) { t.classList.replace('f2', 'f3'); if (bad()) t.classList.add('f4'); } } }
     });
   }
   // Sizes from the room there is
