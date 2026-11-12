@@ -349,8 +349,29 @@
     while (x < 96) { x += 3 + R() * 3.4; if (x >= 99) break; out.push(x.toFixed(1) + '% ' + (R() * .68).toFixed(2) + 'em'); }
     out.push('100% .2em', '100% 100%', '0 100%'); return 'polygon(' + out.join(',') + ')';
   }
+  // Each skill word wears its own small mark in the text (Tim, 2026-11-12: "use icons in text for (chevrons) Legacy of..
+  // and Guard/Steadfast, etc"): the Legacy chevrons, a shield for Guard, a mountain for Steadfast, a wing for Swift, a
+  // book for Scholar, a globe for Voyager, a sun for Inspiring, a sword for Raider, a law stone for Law, a dome for
+  // Ward and Quick's bolt. The mark and the word never part at a line's end.
+  const KW = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">';
+  const KEYI = {
+    legacy: KW + '<path d="M2 7 6 3.2 10 7M2 10.6 6 6.8l4 3.8" stroke-width="1.8"/></svg>',
+    voyager: KW + '<circle cx="6" cy="6" r="4.6" stroke-width="1.3"/><ellipse cx="6" cy="6" rx="2" ry="4.6" stroke-width="1.1"/><path d="M1.4 6h9.2" stroke-width="1.1"/></svg>',
+    scholar: KW + '<path d="M6 3.2C4.6 2.2 2.8 2 1.2 2.4v7.2c1.6-.4 3.4-.2 4.8.8 1.4-1 3.2-1.2 4.8-.8V2.4C9.2 2 7.4 2.2 6 3.2zM6 3.2v7.2" stroke-width="1.15"/></svg>',
+    guard: KW + '<path d="M6 1.2 10.4 2.8V6c0 2.6-1.9 4.2-4.4 5-2.5-.8-4.4-2.4-4.4-5V2.8z" fill="currentColor" stroke="none"/></svg>',
+    steadfast: KW + '<path d="M.6 10.8 4.4 3.8l1.9 3.2 1.7-2.5 3.4 6.3z" fill="currentColor" stroke="none"/></svg>',
+    inspiring: KW + '<circle cx="6" cy="6" r="2.2" fill="currentColor" stroke="none"/><path d="M6 .8v1.6M6 9.6v1.6M.8 6h1.6M9.6 6h1.6M2.3 2.3l1.1 1.1M8.6 8.6l1.1 1.1M2.3 9.7l1.1-1.1M8.6 3.4l1.1-1.1" stroke-width="1.15"/></svg>',
+    swift: KW + '<path d="M1 9.6C2.4 6 5.6 3 11.2 1.6 10.2 3.2 9.2 4 7.8 4.6c1.4 0 2.4-.3 3.2-.7C10.2 5.4 9 6.2 7.4 6.6c.9 0 1.7-.2 2.4-.5C8.4 8.2 6 9.6 1 9.6z" fill="currentColor" stroke="none"/></svg>',
+    raider: KW + '<path d="M6 .4 7.1 2v5.6H4.9V2z" fill="currentColor" stroke="none"/><path d="M2.9 8h6.2M6 8.2v2" stroke-width="1.7"/><circle cx="6" cy="11" r="1" fill="currentColor" stroke="none"/></svg>',
+    law: KW + '<path d="M3 11V4.2a3 3 0 0 1 6 0V11z" stroke-width="1.2"/><path d="M4.6 5.4h2.8M4.6 7.2h2.8M4.6 9h2.8" stroke-width=".9"/></svg>',
+    ward: KW + '<path d="M1.4 9.6a4.6 4.6 0 0 1 9.2 0" stroke-width="1.4"/><path d="M.8 10.6h10.4" stroke-width="1.2"/><circle cx="6" cy="8.1" r="1.2" fill="currentColor" stroke="none"/></svg>',
+    quick: MARK.quick
+  };
+  const keyMark = k => { const w = /^Legacy/.test(k) ? 'legacy' : k.toLowerCase(), ic = KEYI[w]; if (!ic) return '<b>' + k + '</b>';
+    const sp = k.indexOf(' '), first = sp < 0 ? k : k.slice(0, sp), rest = sp < 0 ? '' : k.slice(sp);
+    return '<b class="kq"><span class="kq-n"><i class="kq-i">' + ic + '</i>' + first + '</span>' + rest + '</b>'; };
   function boldKeys(tx) {
-    return esc(tx).replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick|Eureka!)(?=[.:! ]|$)/g, (m, a, k) => a + (k === 'Quick' ? '<b class="kq"><i class="kq-i">' + MARK.quick + '</i>Quick</b>' : '<b>' + k + '</b>'));   // (Quick wears the lightning bolt)
+    return esc(tx).replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick|Eureka!)(?=[.:! ]|$)/g, (m, a, k) => a + keyMark(k));   // (Quick wears the lightning bolt)
   }
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
@@ -374,7 +395,7 @@
   function briefOf(c) {
     const tx = c.tx || ''; if (tx.length <= 46) return boldKeys(tx);
     const ks = []; tx.replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick)(?=[.:! ]|$)/g, (m, a, k) => { ks.push(k); return m; });
-    return ks.length ? '<b>' + ks.map(esc).join('.</b> <b>') + '.</b>' : '';
+    return ks.length ? ks.map(k => keyMark(esc(k))).join('. ') + '.' : '';
   }
   function cardEl(key, o) {
     o = o || {};
@@ -595,7 +616,7 @@
     }
     // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
     const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
-    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: '<b>' + GLOSS[k][0] + '</b>: ' + esc(GLOSS[k][1](c.n)) })); });
+    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + esc(GLOSS[k][1](c.n)) })); });
     if (c.kind === 'place') {
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
       if (o.p != null && S) {
