@@ -1441,10 +1441,19 @@
     const f = s.kind === 'hand' ? null : E.byU(S, s.u), c = CARDS[s.kind === 'hand' ? s.key : f && f.c];
     return !!c && c.t === 'fig' && (c.reg === reg || !!(c.k && c.k.voyager));
   }
+  function banAv(o) {
+    const pl = G.players[o] || {}, n = el('span', { class: 'pl-av', style: { '--pc': 'var(--pc' + o + ')' }, 'aria-label': Kit.poss(pname(o)) + ' Domain' });
+    n.appendChild(pl.cpu ? el('span', { class: 'avatar', html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, null, 'var(--pc' + o + ')'));
+    return n;
+  }
   function rowEl(i, T) {
     const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
     const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
     if (S.dm) { const sil = E.silenced(S, i); row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.k === 'card' ? sil.c : CARDS[E.byU(S, sil.u).c] ? E.byU(S, sil.u).c : ''; }
+    // (what this place is, printed faintly on the table in the row's gutter: a Gate's arch, an Outpost's tower or the
+    // Crossroads' signpost, in the color of the player whose place it is. At the left, and on an iPad at the right too.)
+    { const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut', st0 = own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null;
+      row.appendChild(el('i', { class: 'pl-pos L', style: st0, html: SVG[kind] })); row.appendChild(el('i', { class: 'pl-pos R', style: st0, html: SVG[kind] })); }
     [[t, 'L'], [v, 'R']].forEach(sd => {
       const side = el('div', { class: 'pl-side ' + sd[1] });
       const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
@@ -1455,12 +1464,6 @@
         if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
       }
       for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
-      // (what this place is, printed faintly on the table at the row's outer end, under the outermost spot: a Gate's arch,
-      // an Outpost's tower or the Crossroads' signpost, in the color of the player whose place it is. A Figure played
-      // there covers it, as a card covers a board's printing.)
-      const outer = side.lastChild; if (outer && outer.classList.contains('slot') && !outer.classList.contains('land')) {
-        const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut';
-        outer.appendChild(el('i', { class: 'pl-pos', style: own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null, html: SVG[kind] })); }
       row.appendChild(side);
       if (sd[1] === 'L') {
         const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
@@ -1469,8 +1472,10 @@
         const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im);
         tile.appendChild(art);
         tile.appendChild(el('span', { class: 'pl-tots' }, [
-          el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero'), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
-          el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero'), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
+          // (the total of whoever holds the Domain is lit and the other dimmed, so a tie settled by a banner or a power
+          // reads as plainly as a higher number. Tim, 2026-11-12)
+          el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero') + (hold === t ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
+          el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero') + (hold === v ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
         // (a Gate is marked on the table at the row's ends: .pl-pos)
         (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: MARK.deed })));   // (a Deed in play on this Domain)
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
@@ -1481,8 +1486,11 @@
         // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
         // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
         const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) };
-        if (S.dm) { if (S.ban[i] >= 0) { dmo.owner = S.ban[i]; dmo.side = S.ban[i] === t ? 'L' : 'R'; } if (E.silenced(S, i)) dmo.silenced = true; }
+        if (S.dm) { if (E.silenced(S, i)) dmo.silenced = true; }   // (whose Domain it is: the player's avatar on its bottom border, below, not a pennant)
         if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
+        // (whose Domain this is: that player's avatar in a ring of their color, in the middle of the tile's bottom border.
+        // Tim, 2026-11-12, in place of the pennants)
+        if (S.dm && S.ban[i] >= 0) tile.appendChild(banAv(S.ban[i]));
         if (S.dm && pi.pw && !dmo.silenced && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
         if (S.dm && !im) art.style.setProperty('--kc', (window.AnoriaDomains && window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
         row.appendChild(tile);
@@ -1622,11 +1630,15 @@
     hw = Math.floor(Math.max(30, hw));
     h.style.setProperty('--hw', hw + 'px'); h.classList.toggle('small', hw < 62);
     // the map, from the room the hand leaves it
-    const r = dom.map.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const r0 = dom.map.getBoundingClientRect(); if (!r0.width || !r0.height) return; const mcs = getComputedStyle(dom.map), r = { width: r0.width, height: r0.height - (parseFloat(mcs.paddingTop) || 0) - (parseFloat(mcs.paddingBottom) || 0), left: r0.left, top: r0.top, right: r0.right, bottom: r0.bottom };   // (the rows share the map's height less its padding)
     const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
+    // (a gutter at the row's outer end for the place marks, the Gate's arch, the Outpost's tower and the Crossroads' sign:
+    // on a phone at the left only, on an iPad at both ends. Tim, 2026-11-12)
+    const pos2 = r.width >= 560, pgL = pos2 ? 24 : r.width < 330 ? 6 : 17, pgR = pos2 ? 24 : 6, padX = pgL + pgR;
+    dom.map.classList.toggle('pos2', pos2); dom.map.style.setProperty('--pgL', pgL + 'px'); dom.map.style.setProperty('--pgR', pgR + 'px');
     const rowH = (r.height - 4 * rg) / 5, mwMin = Math.max(r.width < 340 ? 84 : 98, Math.min(r.width * .27, 300));
-    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - 12 - 2 * gp - mwMin - 4 * sg) / 6, 118)));
-    const mw = Math.floor(Math.min(r.width - 12 - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
+    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - padX - 2 * gp - mwMin - 4 * sg) / 6, 118)));
+    const mw = Math.floor(Math.min(r.width - padX - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
     const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
     dom.map.classList.toggle('tight', rowH < 74);
   }

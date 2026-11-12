@@ -564,8 +564,10 @@
           const chain = el('div', { class: 'th-chain' });
           p.order.forEach(id => {
             const s = stateOf(id), ins = p.links.filter(l => l.b === id), tx = el('div', { class: 'th-tx' });
-            ins.forEach(l => { tx.appendChild(el('small', { text: 'from ' + (known(l.a) ? nameOf(l.a) : 'a card not found') })); tx.appendChild(el('p', { class: linkKnown(l) ? (linkLit(l) ? 'lit' : '') : 'hush', text: linkKnown(l) ? l.tx : 'A link still to be found.' })); });
-            chain.appendChild(el('div', { class: 'th-n ' + s + (ins.length ? '' : ' root') }, [
+            // (the line between the pictures says where a link runs from, so each card shows only the true sentence of a
+            // link it has found: Tim, 2026-11-12, "a link still to be found" and "from X" were saying it twice)
+            ins.forEach(l => { if (linkKnown(l)) tx.appendChild(el('p', { class: linkLit(l) ? 'lit' : '', text: l.tx })); });
+            chain.appendChild(el('div', { class: 'th-n ' + s + (ins.length ? '' : ' root') + (s === 'new' ? ' nf' : '') }, [
               el('button', { type: 'button', class: 'th-pic', 'aria-label': s === 'new' ? 'Not found yet' : nameOf(id), onclick: e => { if (s === 'new') mystery(e.currentTarget, id); else U.openView(keyOf(id)); } }, [thumb(id)]),
               el('div', { class: 'th-w' }, [el('b', { text: s === 'new' ? 'Not found' : nameOf(id) }), s !== 'new' && whenOf(id) != null ? el('i', { text: yearText(whenOf(id)) }) : null, tx])]));
           });
@@ -579,5 +581,5 @@
     sh = Kit.sheet({ title: 'Legacy Lines', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
   }
 
-  window.AnoriaLibrary = { open: open };
+  window.AnoriaLibrary = { open: open, lines: threadSheet };
 })();
