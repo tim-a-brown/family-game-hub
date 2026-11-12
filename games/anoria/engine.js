@@ -770,8 +770,9 @@ function evalS(S, me, prof) {
   for (let i = 0; i < S.places.length; i++) {
     const m = mights(S, i), h = holderM(S, i, m); let ob = 0; for (let o = 0; o < N; o++) if (o !== me && m[o] > ob) ob = m[o];
     const w = ownerOfSpoke(S, i), kind = w < 0 ? 2 : w === me ? (isGate(S, i) ? 0 : 1) : (isGate(S, i) ? 4 : 3), rw = pw(S, i);
-    const val = (h >= 0 ? rv(S, i, h, 1) * dblW(S, i, h) : rw === 'double' ? 2 : 1) * prof.pos[kind] * stake(cfg, S.round), d = m[me] - ob;
+    const val = (h >= 0 ? rv(S, i, h, 1) : rw === 'double' ? 2 : 1) * prof.pos[kind] * stake(cfg, S.round), d = m[me] - ob;
     v += val * (h === me ? 1 : h >= 0 ? -1 : 0) + val * 0.25 * Math.max(-4, Math.min(4, d));
+    if (h >= 0 && S.dbl && S.dbl.length) v += (h === me ? 1 : -1) * prof.wRen * dblW(S, i, h) * rv(S, i, h, 1) * stake(cfg, S.round);   // (a Deed doubling it: the Renown it adds at this count)
     if (kind === 0 && h !== me) v -= 2.5; if (kind === 4 && h === me) v += prof.wSeal * 0.6;
     if (S.dm && rw) v += domWorth(S, i, rw, h, me);
   }
@@ -786,12 +787,12 @@ function evalS(S, me, prof) {
   if (need) v += (cfg.keepW != null ? cfg.keepW : KEEP_W) * Math.min(P.spark, need);
   return v;
 }
-// What the robots count for a Domain that a Deed doubles this round: all of it on the last turn before the count, less
-// while the other player still has a turn to take it back. KEEP_W: a Spark kept for a Quick Deed that plays itself on the
+// What the robots count for a Domain that a Deed doubles this round: the Renown it adds at the count, all of it on the
+// last turn before the count, less while the other player still has a turn to take it back. KEEP_W: a Spark kept for a Quick Deed that plays itself on the
 // other player's turn. WALLS_W: a Seal from the Theodosian Walls, beyond the Seal itself, by the Seals the robot has (a
 // Seal is worth more to a player who is down to one).
-const DBL_EARLY = 0.6, KEEP_W = 0.45, WALLS_W = [0, 2, 0.8, -2, 0];   // (test games try others: cfg.dblEarly, cfg.keepW, cfg.wallsW)
-const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 1 : 1 + (x - 1) * ((S.tr || 0) >= S.N ? 1 : S.cfg.dblEarly != null ? S.cfg.dblEarly : DBL_EARLY); };
+const DBL_EARLY = 0.6, KEEP_W = 0, WALLS_W = [0, 2, 0.8, -2, 0];   // (test games try others: cfg.dblEarly, cfg.keepW, cfg.wallsW)
+const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 0 : (x - 1) * ((S.tr || 0) >= S.N ? 1 : S.cfg.dblEarly != null ? S.cfg.dblEarly : DBL_EARLY); };
 // What a Domain's power is worth to the robots as they judge the table, on top of the Renown it scores, for the power
 // that pays its holder or the players there later (they look one move ahead, so what comes at the count, next turn
 // or next round has to be counted here or they misplay it). In the units evalS uses: 1 Renown is about 1.

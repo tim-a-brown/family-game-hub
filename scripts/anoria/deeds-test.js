@@ -43,13 +43,13 @@ const kind = (S, i) => C.PLACES[S.places[i]].d;
   ok('jubilee: not for the other player', E.rv(S, 3, 1) === 1);
   const r0 = S.P[0].renown, r1 = S.P[1].renown; E.endRound(S); ok('jubilee count: 2 + 2', S.P[0].renown - r0 === 4 && S.P[1].renown - r1 === 2, [S.P[0].renown - r0, S.P[1].renown - r1]); }
 // ── The Tribune's Veto ──
-function vetoGame(deed, setup) { const S = game(); setup(S); S.P[0].hand = [deed]; S.P[1].hand = ['veto']; S.P[1].reserve = 2; return S; }
+function vetoGame(deed, setup) { const S = game(); setup(S); S.P[0].hand = [deed]; S.P[1].hand = ['veto']; S.P[1].reserve = 1; return S; }
 { const S = vetoGame('ambush', S => { fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); });
   const a = deeds(S, 'ambush')[0]; E.apply(S, a, 2, 0); ok('veto: ambush cancelled, nobody knocked out', S.figs.length === 2 && !S.ev.some(e => e.t === 'clash'));
   ok('veto: both cards to their discard piles', S.P[0].gone.indexOf('ambush') >= 0 && S.P[1].gone.indexOf('veto') >= 0 && !S.P[1].hand.length);
-  ok('veto: paid with 2 kept Spark, and the Deed was paid for', S.P[1].reserve === 0 && S.P[0].spark === 2); ok('veto: event', S.ev.some(e => e.t === 'veto' && e.o === 1 && e.d === 'ambush' && e.by === 0)); }
-{ const S = vetoGame('ambush', S => { fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); }); S.P[1].reserve = 1;
-  E.apply(S, deeds(S, 'ambush')[0], 3, 0); ok('veto: 1 kept Spark is not enough', S.ev.some(e => e.t === 'clash') && S.P[1].hand.length === 1); }
+  ok('veto: paid with 1 kept Spark, and the Deed was paid for', S.P[1].reserve === 0 && S.P[0].spark === 2); ok('veto: event', S.ev.some(e => e.t === 'veto' && e.o === 1 && e.d === 'ambush' && e.by === 0)); }
+{ const S = vetoGame('ambush', S => { fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); }); S.P[1].reserve = 0;
+  E.apply(S, deeds(S, 'ambush')[0], 3, 0); ok('veto: no Spark kept, no Veto', S.ev.some(e => e.t === 'clash') && S.P[1].hand.length === 1); }
 { const S = vetoGame('eclipse', S => { fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); fig(S, 'spartacus', 1, 3); });
   E.apply(S, deeds(S, 'eclipse').find(a => a.p === 3)); ok('veto: eclipse on your Figures', !S.figs.some(f => f.stun) && S.P[1].hand.length === 0); }
 { const S = vetoGame('rift', S => { fig(S, 'leonidas', 0, 1); fig(S, 'hammurabi', 1, 3); });
@@ -85,21 +85,21 @@ function vetoGame(deed, setup) { const S = game(); setup(S); S.P[0].hand = [deed
 { const S = game(); S.P[0].seals = 4; S.P[0].sm = 4; fig(S, 'leonidas', 1, 0); E.endRound(S); ok('walls: a fourth Seal breaks like any', S.P[0].seals === 3); }
 // ── Testudo: a Figure that loses a clash it started on the other player's side falls back to its Gate ──
 function tGame(at, lay) { const S = game(lay); const a = fig(S, 'spartacus', 0, at), d = fig(S, 'charlemagne', 1, at); S.P[0].hand = ['testudo']; S.P[0].spark = 3; return { S, a, d }; }
-{ const { S, a, d } = tGame(3); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: back to the Gate', E.byU(S, a.u) && E.byU(S, a.u).p === 0 && S.P[0].spark === 1 && S.P[0].gone.indexOf('testudo') >= 0, [E.byU(S, a.u), S.P[0].spark]);
+{ const { S, a, d } = tGame(3); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: back to the Gate', E.byU(S, a.u) && E.byU(S, a.u).p === 0 && S.P[0].spark === 2 && S.P[0].gone.indexOf('testudo') >= 0, [E.byU(S, a.u), S.P[0].spark]);
   ok('testudo: the event', S.ev.some(e => e.t === 'clash' && e.tq === 'testudo') && S.ev.some(e => e.t === 'fallback' && e.why === 'testudo')); }
 { const { S, a, d } = tGame(4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not at the Crossroads', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(1); S.figs.splice(S.figs.indexOf(a), 1); S.figs.splice(S.figs.indexOf(d), 1); const a2 = fig(S, 'spartacus', 0, 1), d2 = fig(S, 'charlemagne', 1, 1); E.apply(S, { t: 'clash', u: a2.u, v: d2.u }, 0, 0); ok('testudo: not on your own side', !E.byU(S, a2.u)); }
-{ const { S, a, d } = tGame(3); S.P[0].spark = 1; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not without 2 Spark', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
+{ const { S, a, d } = tGame(3); S.P[0].spark = 0; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not without Spark', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'tomoe', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not with no room at the Gate', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3, [null, null, null, 'runnymede']); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: kept where Runnymede sends the Figure back anyway', E.byU(S, a.u).p === 0 && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3); S.figs.splice(S.figs.indexOf(d), 1); const w = fig(S, 'socrates', 1, 3); a.tb = 3; E.apply(S, { t: 'clash', u: a.u, v: w.u }, 0, 0); ok('testudo: not when the clash is won', !E.byU(S, w.u) && S.P[0].hand.length === 1); }
 // ── The Defence of Syracuse: an enemy that would win a clash it started at your Gate or Outpost is driven back ──
-function sGame(at) { const S = game(); const a = fig(S, 'charlemagne', 0, at), d = fig(S, 'socrates', 1, at); S.P[1].hand = ['syracuse']; S.P[1].reserve = 2; return { S, a, d }; }
+function sGame(at) { const S = game(); const a = fig(S, 'charlemagne', 0, at), d = fig(S, 'socrates', 1, at); S.P[1].hand = ['syracuse']; S.P[1].reserve = 1; return { S, a, d }; }
 { const { S, a, d } = sGame(3); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: driven back, nobody knocked out', E.byU(S, a.u).p === 0 && !!E.byU(S, d.u) && S.P[1].reserve === 0 && S.P[1].gone.indexOf('syracuse') >= 0);
   ok('syracuse: the attacker has acted', !E.byU(S, a.u).rdy && S.P[0].uC === 1); ok('syracuse: no Bounty', S.P[0].renown === 0); }
 { const { S, a, d } = sGame(2); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: at the Gate too', E.byU(S, a.u).p === 0 && !!E.byU(S, d.u)); }
 { const { S, a, d } = sGame(4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: not at the Crossroads', !E.byU(S, d.u) && S.P[1].hand.length === 1); }
-{ const { S, a, d } = sGame(3); S.P[1].reserve = 1; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: not with 1 kept Spark', !E.byU(S, d.u)); }
+{ const { S, a, d } = sGame(3); S.P[1].reserve = 0; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: not without Spark kept', !E.byU(S, d.u)); }
 { const { S, a, d } = sGame(3); fig(S, 'leo', 0, 3, { rdy: 0 }); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('syracuse: not against a Figure with a Ward', !E.byU(S, d.u) && S.P[1].hand.length === 1); }
 { const { S, a, d } = sGame(3); S.figs.splice(S.figs.indexOf(a), 1); const w = fig(S, 'spartacus', 0, 3); S.figs.splice(S.figs.indexOf(d), 1); const dd = fig(S, 'charlemagne', 1, 3); E.apply(S, { t: 'clash', u: w.u, v: dd.u }, 0, 0); ok('syracuse: not when the defender wins anyway', !E.byU(S, w.u) && S.P[1].hand.length === 1); }
 { const S = game(); S.P[0].hand = ['testudo', 'syracuse']; S.P[0].spark = 5; fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); ok('testudo and syracuse are never played by hand, nor added to a clash', !E.actions(S).some(a => a.t === 'deed' || a.ph)); }

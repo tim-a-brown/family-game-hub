@@ -270,13 +270,13 @@ const P3 = {
   hieroglyphs: { n: 'The Hieroglyphs Read', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1822 },
   halley: { n: 'Halley\'s Comet Returns', t: 'deed', f: 'D', c: 1, fx: 'encore', y: 1758 },
   naovictoria: { n: 'The Victoria Comes Home', t: 'deed', f: 'D', c: 1, fx: 'caravan', y: 1522 },
-  syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 2, quick: 1, y: -213 },   // (2026-11-12: a Quick power of its own, which it had shared with Phalanx: engine.js clash())
+  syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 1, quick: 1, y: -213 },   // (2026-11-12: a Quick power of its own, which it had shared with Phalanx: engine.js clash())
   goldrush: { n: 'Gold Rush', t: 'deed', f: 'S', c: 1, fx: 'caravan', y: 1849 },
   truce: { n: 'Christmas Truce', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1914 },
   magnacarta: { n: 'Magna Carta', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1215 },
   emancipation: { n: 'Emancipation Proclamation', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1863 },
   teutoburg: { n: 'Teutoburg Forest', t: 'deed', f: 'V', c: 3, fx: 'ambush', y: 9 },
-  testudo: { n: 'Testudo', t: 'deed', f: 'V', c: 2, quick: 1, y: -54 },   // (2026-11-12: a Quick power of its own, as the Defence of Syracuse has)
+  testudo: { n: 'Testudo', t: 'deed', f: 'V', c: 1, quick: 1, y: -54 },   // (2026-11-12: a Quick power of its own, as the Defence of Syracuse has)
   marathonmarch: { n: 'The March from Marathon', t: 'deed', f: 'V', c: 1, fx: 'encore', y: -490 },
   planter: { n: 'Taking the Planter', t: 'deed', f: 'V', c: 0, fx: 'fairwinds', y: 1862 },
   rubicon: { n: 'Crossing the Rubicon', t: 'deed', f: 'V', c: 0, fx: 'fairwinds', y: -49 },
@@ -312,7 +312,7 @@ const P3 = {
   medici: { n: 'Medici Patronage', t: 'deed', f: 'A', c: 3, dk: 'Culture', y: 1490 },
   hansa: { n: 'The Hanseatic League', t: 'deed', f: 'S', c: 3, fx: 'medici', dk: 'Commerce', y: 1370 },
   holyyear: { n: 'The Jubilee of 1300', t: 'deed', f: 'W', c: 5, y: 1300 },
-  veto: { n: 'The Tribune\'s Veto', t: 'deed', f: 'S', c: 2, quick: 1, y: -133 },
+  veto: { n: 'The Tribune\'s Veto', t: 'deed', f: 'S', c: 1, quick: 1, y: -133 },
   leo: F('Pope Leo I', 'S', 3, 3, 'MED', 3, 452, { ward: 1 }),
   walls: { n: 'The Theodosian Walls', t: 'deed', f: 'V', c: 4, y: 413 },
 };
@@ -436,6 +436,10 @@ const THREADS = [
   { id: 'akkad', n: 'The House of Akkad', cards: ['sargon', 'enheduanna', 'tablet'] },
   // (2026-11-12, with the thirteen that made the third printing 150: Ibn Sina, Omar Khayyam, who called him his teacher, and FitzGerald's Rubáiyát)
   { id: 'tentmaker', n: 'The Tentmaker', cards: ['ibnsina', 'khayyam', 'rubaiyat'] },
+  // (2026-11-12, with the seven: lines of their own, as no named line the game already has grows)
+  { id: 'vidi', n: 'I Came, I Saw', cards: ['caesar', 'triumph'] },
+  { id: 'medicigarden', n: 'The Medici Garden', cards: ['michelangelo', 'medici'] },
+  { id: 'pilgrims', n: 'The Pilgrims\' Bridge', cards: ['dante', 'holyyear'] },
 ];
 // The first five each bring a ready deck (ARCH). The seven after them join a player as wins against the computer add
 // up, and guide a deck the player builds. The roster of twelve (Tim, 2026-11-12): Joan of Arc, Saladin, Shakespeare,

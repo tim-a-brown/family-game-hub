@@ -1859,11 +1859,11 @@
     await wait(1100);
     await anim(n, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%,-30%) scale(.7) rotate(-6deg)' }], { duration: 300, fill: 'forwards' }); n.remove();
   }
-  // x2 stamped on the banner of each Domain a Deed doubles
-  async function doubled(ps) {
+  // x2 stamped, in the player's colour, on the banner of each Domain a Deed doubles for them
+  async function doubled(ps, o) {
     Kit.sfx('sparkle'); Kit.haptic('medium');
     ps.forEach((p, k) => { const t = dom.map.querySelector('.pl[data-p="' + p + '"] .pl-tile'); if (!t) return; t.classList.remove('dbl'); void t.offsetWidth; t.classList.add('dbl');
-      const r = rc(t.querySelector('.pl-flag') || t); if (!r) return; const x = el('div', { class: 'dbl-x', text: '\u00d72', style: { left: (r.left + r.width / 2) + 'px', top: (r.top + r.height / 2) + 'px', animationDelay: (k * 90) + 'ms' } }); dom.fx.appendChild(x); setTimeout(() => x.remove(), 1500 + k * 90); });
+      const r = rc(t.querySelector('.pl-flag') || t); if (!r) return; const x = el('div', { class: 'dbl-x', text: '\u00d72', style: { left: (r.left + r.width / 2) + 'px', top: (r.top + r.height / 2) + 'px', animationDelay: (k * 90) + 'ms', color: (G.players[o] && G.players[o].color) || PCOL[o] } }); dom.fx.appendChild(x); setTimeout(() => x.remove(), 1500 + k * 90); });
     await wait(1100);
   }
   function banner(k, t, s) {
@@ -2065,7 +2065,7 @@
       if (fx === 'eclipse') { V.figs.forEach(f => { if (f.p === ev.p && f.o !== o) { f.stun = 1; ui.fresh[f.u] = 'zap'; } }); render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('medium'); await wait(520); return; }
       if (fx === 'encore') { const f = vfig(ev.u); if (f) { f.rdy = 1; f.arr = 0; ui.fresh[f.u] = 'hop'; } render(); ui.fresh = {}; Kit.sfx('good'); await wait(480); return; }
       // (the four Deeds that double a count: the Domains they double are marked x2 on their banners, which now show what each will score)
-      if (fx === 'triumph' || fx === 'medici' || fx === 'holyyear') { render(); await doubled(fx === 'triumph' ? [ev.p] : S.places.map((id, i) => i).filter(i => fx === 'holyyear' || C.PLACES[S.places[i]].d === CARDS[ev.c].dk)); return; }
+      if (fx === 'triumph' || fx === 'medici' || fx === 'holyyear') { render(); await doubled(fx === 'triumph' ? [ev.p] : S.places.map((id, i) => i).filter(i => fx === 'holyyear' || C.PLACES[S.places[i]].d === CARDS[ev.c].dk), o); return; }
       render();
     },
     // ── Domains ── A Domain is laid (ev.old: the one it replaces, which goes to ev.was's Domain discard pile), Domains
@@ -2186,7 +2186,7 @@
     S.figs.forEach(f => { if (!who[f.u]) who[f.u] = [f.c, f.o]; });
     evs.forEach(ev => { if (ev.t === 'arrive') who[ev.u] = [ev.c, ev.o]; });
     const nm = o => pname(o), F = u => who[u] ? { k: who[u][0] } : 'a Figure', own = u => who[u] ? Kit.poss(pname(who[u][1])) + ' ' : '', Pl = p => ({ k: '@' + S.places[p] }), K = k => ({ k: k });
-    const add = (o, x) => L.push({ o: o, x: x }), ren = n => n + ' Renown', obj = o => (nm(o) === 'You' ? 'you' : nm(o));
+    const add = (o, x) => L.push({ o: o, x: x }), ren = n => n + ' Renown', obj = o => (nm(o) === 'You' ? 'you' : nm(o)), pos = o => (nm(o) === 'You' ? 'your' : Kit.poss(nm(o)));   // (mid-sentence)
     evs.forEach((ev, i) => {
       const t = ev.t;
       if (t === 'turn') L.push({ h: 't', r: ev.round, o: ev.o });
@@ -2199,8 +2199,8 @@
       else if (t === 'clash') { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;
         add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' clashed with ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ' They were tied, so nobody was knocked out.')]); }
       else if (t === 'ko') add(ev.o, ev.top ? [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out at ', Pl(ev.p), ' and went on top of ' + Kit.poss(nm(ev.o)) + ' deck.'] : [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
-      else if (t === 'fallback' && ev.why === 'syracuse') add(1 - ev.o, [K(ev.card), ' played itself for ' + obj(1 - ev.o) + ', and ' + Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was driven back to ' + Kit.poss(nm(ev.o)) + ' Gate. Nobody was knocked out.']);
-      else if (t === 'fallback' && ev.why === 'testudo') add(ev.o, [K(ev.card), ' played itself for ' + obj(ev.o) + ', and ', K(ev.c), ' fell back to ' + Kit.poss(nm(ev.o)) + ' Gate instead of being knocked out.']);
+      else if (t === 'fallback' && ev.why === 'syracuse') add(1 - ev.o, [K(ev.card), ' played itself for ' + obj(1 - ev.o) + ', and ' + Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was driven back to ' + pos(ev.o) + ' Gate. Nobody was knocked out.']);
+      else if (t === 'fallback' && ev.why === 'testudo') add(ev.o, [K(ev.card), ' played itself for ' + obj(ev.o) + ', and ', K(ev.c), ' fell back to ' + pos(ev.o) + ' Gate instead of being knocked out.']);
       else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate' + (ev.why === 'charter' ? ', as the charter of ' : '.'), ev.why === 'charter' ? K('@runnymede') : '', ev.why === 'charter' ? ' says.' : '']);
       else if (t === 'veto') add(ev.o, [K(ev.c), ' played itself for ' + obj(ev.o) + ', and ', K(ev.d), ', which ' + obj(ev.by) + ' played, did nothing.']);
       else if (t === 'stun') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' misses the next turn.']);

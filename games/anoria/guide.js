@@ -513,7 +513,7 @@
         await L.say('You ended your turn with 2 Spark unspent and Phalanx in your hand. Now the other player attacks Copernicus.', { at: ['.an-strip.me .st-spark', L.card('phalanx')] });
         await L.them.turn();
         await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['Tomoe Gozen’s roll would knock Copernicus out, so <b>Phalanx</b> plays itself and gives him +2 Might. Phalanx is paid for with the Spark you kept.'] });
-        await L.say('The <b>Tribune’s Veto</b> is Quick as well. If the other player plays a Deed that would score Renown or move, stun or knock out one of your Figures, the Veto plays itself with 2 Spark you kept, and their Deed does nothing.', { at: L.card('veto') });
+        await L.say('The <b>Tribune’s Veto</b> is Quick as well. If the other player plays a Deed that would score Renown or move, stun or knock out one of your Figures, the Veto plays itself with 1 Spark you kept, and their Deed does nothing.', { at: L.card('veto') });
         await L.say('You can read a Relic or a Deed the same way as any card, by tapping it.', { at: '.an-strip.me .st-relics' });
       } },
     { id: 'guide', n: 'Your Guide', sub: 'One power per deck, and how more Guides join you', art: 'leonardo',
