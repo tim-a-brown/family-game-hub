@@ -24,7 +24,7 @@ keys.forEach(k => { let b = briefs[k]; if (b && typeof b === 'object') b = b.bri
 const pm = /const PAINTED = '([^']*)'/.exec(src); const have = pm[1].split(' ').filter(Boolean); keys.forEach(k => { if (have.indexOf(k) < 0) have.push(k); });
 src = src.replace(pm[0], "const PAINTED = '" + have.join(' ') + "'");
 // 4. FY
-let nf = 0; Object.keys(fy).forEach(k => { if (keys.indexOf(k) < 0) return; const v = +(typeof fy[k] === 'object' ? fy[k].fy : fy[k]); if (!(v >= 0)) return;
+let nf = 0; Object.keys(fy).forEach(k => { if (keys.indexOf(k) < 0) return; if (fy[k] == null) return; const v = +(typeof fy[k] === 'object' ? fy[k].fy : fy[k]); if (!(v >= 0)) return;
   const re = new RegExp('([{ ,]\\s*)' + k + ': \\d+'); const s0 = src.indexOf('const FY = {'), s1 = src.indexOf('};', s0); let seg = src.slice(s0, s1);
   if (re.test(seg)) seg = seg.replace(re, '$1' + k + ': ' + v); else seg = seg.replace(/\s*$/, '') + ', ' + k + ': ' + v + ' ';
   src = src.slice(0, s0) + seg + src.slice(s1); nf++; });
