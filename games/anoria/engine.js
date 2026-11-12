@@ -969,6 +969,14 @@ function endRound(S) {
   }
   if (cfg.majority) { const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; } let mx = 0, w = -1, tie = false; for (let o = 0; o < N; o++) { if (hc[o] > mx) { mx = hc[o]; w = o; tie = false; } else if (hc[o] === mx) tie = true; } if (!tie && w >= 0) S.P[w].renown += cfg.majority * stake(cfg, S.round); }
   for (const f of S.figs) { const k = CARDS[f.c].k; if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) { S.P[f.o].renown++; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'stage', u: f.u }); } else draw(S, f.o, 1); } f.stay++; }
+  // (lineEach: every Legacy Line still standing on a player's side scores that much Renown at the count: a Legacy
+  // Figure joined to the person it names, and a Figure or Relic whose Legacy Line runs from a card or Domain still in
+  // play there. A test of Tim's question, 2026-11-12: 0 in the game's rules until it is measured.)
+  if (cfg.lineEach) for (let o = 0; o < N; o++) { const p = S.P[o]; let n = p.lines || 0;
+    for (const f of S.figs) if (f.o === o && !f.li && threadSrc(S, o, f.c, f.p)) n++;
+    for (const r of p.relics || []) if (threadSrc(S, o, r)) n++;
+    if (cfg.lineEachCap) n = Math.min(n, cfg.lineEachCap);
+    if (n) { p.renown += n * cfg.lineEach; if (S.ev) S.ev.push({ t: 'renown', o: o, n: n * cfg.lineEach, why: 'lines' }); } }
   // (Akbar: Figures of two or more factions at the Crossroads score him 1 Renown. Empress Wu: holding more Places than
   // the other player gives her 1 more Spark next turn, unless this round ends the game)
   for (let o = 0; o < N; o++) { const p = S.P[o];
