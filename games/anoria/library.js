@@ -421,7 +421,7 @@
     NODES.concat(loose).forEach(id => {
       const n = node[id], s = stateOf(id), pl = s === 'place', fresh = s === 'own' && !!Coll.load().fresh[id], cop = pl ? 0 : Coll.copies(id);
       const b = el('button', { type: 'button', class: 'tl-n ' + s + ' s' + n.side + (fresh ? ' fresh' : ''), 'data-id': id, style: { '--f': facOf(id).c },
-        'aria-label': s === 'new' ? 'Not found yet. ' + facOf(id).n + ', ' + eraName(eraOf(id)) : nameOf(id) + (whenOf(id) != null ? ', ' + yearText(whenOf(id)) : '') + (pl ? ', a Place' : s === 'own' ? (cop > 1 ? ', two copies' : ', one copy') : ', seen, not yours') });
+        'aria-label': s === 'new' ? 'Not found yet. ' + facOf(id).n + ', ' + eraName(eraOf(id)) : nameOf(id) + (whenOf(id) != null ? ', ' + yearText(whenOf(id)) : '') + (pl ? (C.DM_LIVE ? ', a Domain' : ', a Place') : s === 'own' ? (cop > 1 ? ', two copies' : ', one copy') : ', seen, not yours') });
       const pic = thumb(id, 'tl-p');
       if (s === 'own') pic.appendChild(el('span', { class: 'tl-pips', html: '<i></i>' + (cop > 1 ? '<i></i>' : '') }));
       if (fresh) pic.appendChild(el('span', { class: 'tl-new', html: Kit.icon('sparkle') }));

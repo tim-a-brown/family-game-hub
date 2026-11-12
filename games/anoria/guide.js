@@ -7,6 +7,8 @@
 //   AnoriaGuide.firstTime()   true until the quick start has been shown once on this account
 (function () {
   'use strict';
+  // (once Domains are on, the five cards on the map are Domains in every word: ui.js DW)
+  const DW = x => (window.AnoriaUI && window.AnoriaUI.DW ? window.AnoriaUI.DW(x) : x);
   const NUM = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen'][n] || String(n);
   const KEY = 'anoria_guide';
   const el = Kit.el, UI = () => window.AnoriaUI;
@@ -240,7 +242,7 @@
       pause: ms => d.wait(ms / (fast() || 1)).then(ok),
       // a caption, and wait: for a tap (a chapter) or for long enough to read it (the quick start)
       say(text, o) {
-        ok(); show(r, text, o); r.plate.classList.remove('busy');
+        text = DW(text); ok(); show(r, text, o); r.plate.classList.remove('busy');
         // (long enough to read it and then look at what it points to: Tim found 1 s + 44 ms a letter too fast)
         const ms = Math.max(3800, 1800 + text.replace(/<[^>]+>/g, '').length * 62) / (fast() ? 40 : 1);
         if (r.auto) { r.bar.style.animation = 'none'; void r.bar.offsetWidth; r.bar.style.animation = 'gd-fill ' + ms + 'ms linear forwards'; }
@@ -605,7 +607,7 @@
     b.appendChild(el('p', { class: 'gd-lead', text: 'The story first, then twelve short lessons played out on the table.' }));
     const list = el('div', { class: 'gd-list' });
     CHAPTERS.forEach((c, i) => list.appendChild(el('button', { type: 'button', class: 'gd-row' + (seen[c.id] ? ' seen' : ''), onclick: () => { Kit.sfx('tap'); play(c, from); } }, [
-      art(c.art), el('span', { class: 'gd-n', text: String(i + 1) }), el('span', { class: 'gd-row-t' }, [el('b', { text: c.n }), el('small', { text: c.sub })]), tick(c.id)])));
+      art(c.art), el('span', { class: 'gd-n', text: String(i + 1) }), el('span', { class: 'gd-row-t' }, [el('b', { text: DW(c.n) }), el('small', { text: DW(c.sub) })]), tick(c.id)])));
     b.appendChild(list);
     b.appendChild(el('button', { type: 'button', class: 'gd-all', onclick: () => Kit.rules() }, [el('span', { class: 'gd-all-i', html: Kit.icon('book') }), el('span', { class: 'gd-row-t' }, [el('b', { text: 'Every rule on one page' }), el('small', { text: 'To look something up' })])]));
   }

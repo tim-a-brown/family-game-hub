@@ -4,6 +4,8 @@
 // made, each with its true sentence. (The record's detail is written by record() in games/anoria/ui.js.)
 (function () {
   if (!window.HistView) return;
+  // (once Domains are on, the five cards on the map are Domains in every word: cards.js DM_LIVE)
+  var DW = function (x) { return window.AnoriaCards && window.AnoriaCards.DM_LIVE ? x.replace(/\bPlace(s?)\b/g, 'Domain$1') : x; };
   var base = (function () { try { var s = document.querySelector('script[src*="hist-view.js"]'); return new URL('games/', s.src).href; } catch (e) { return ''; } })();
   var ART = base + 'anoria/art/t/', FONTS = (function () { try { return new URL('../fonts/', base).href; } catch (e) { return ''; } })();
   var PCOL = ['#f2b84b', '#8fd3f4'];   // (the two seats' colours on Anoria's table)
@@ -274,7 +276,7 @@
       if (seals.length) key.appendChild(el('span', null, [el('i', { class: 'ah-dia', style: { '--c': '#f3e9d2' } }), el('span', { text: 'A Seal broke' })]));
       var grid = el('div', { class: 'ah-grid' }, [labs, cols]); cols.style.setProperty('--n', n);
       var box = el('div', { class: 'ah-plate ah-race' }, [key, grid,
-        hold.length === n && pk.length === 5 ? el('p', { class: 'ah-cap', text: 'Under the lines, each square is a Place in one round, in the colour of whoever held it.' }) : null, read]);
+        hold.length === n && pk.length === 5 ? el('p', { class: 'ah-cap', text: DW('Under the lines, each square is a Place in one round, in the colour of whoever held it.') }) : null, read]);
       pick(n);
       root.appendChild(ui.section('Renown, round by round', box));
     })();
@@ -296,14 +298,14 @@
             figs.appendChild(el('span', { class: 'ah-fig' }, [th, nm]));
           });
           return el('div', { class: 'ah-ms' + (i === 0 ? ' ah-l' : '') }, [
-            el('b', { class: 'ah-mi' + (x.h === i ? ' ah-hold' : ''), style: { '--c': PCOL[i] }, 'aria-label': x.m[i] + ' Might' + (x.h === i ? ', holding the Place' : ''), text: String(x.m[i]) }), figs]);
+            el('b', { class: 'ah-mi' + (x.h === i ? ' ah-hold' : ''), style: { '--c': PCOL[i] }, 'aria-label': x.m[i] + ' Might' + (x.h === i ? DW(', holding the Place') : ''), text: String(x.m[i]) }), figs]);
         };
         var nm = el('b', { text: cap(x.k) }); fills.push(function () { nm.textContent = placeName(x.k); });
         box.appendChild(el('div', { class: 'ah-mr' }, [half(0),
           el('div', { class: 'ah-mp' }, [el('span', { class: 'ah-mp-pic', style: x.h >= 0 ? { '--h': PCOL[x.h] } : null }, [pic(ui, ART + 'place-' + x.k + '.webp', '')]), el('div', { class: 'ah-mp-t' }, [nm, el('small', { text: role[ri] })])]),
           half(1)]));
       });
-      root.appendChild(ui.section('The map at the end', [box, el('p', { class: 'ah-cap', style: { 'padding-left': '0' }, text: 'The numbers are each side’s Might at the Place. A filled number held the Place.' })]));
+      root.appendChild(ui.section('The map at the end', [box, el('p', { class: 'ah-cap', style: { 'padding-left': '0' }, text: DW('The numbers are each side’s Might at the Place. A filled number held the Place.') })]));
     })();
 
     // ── The numbers, side by side ──
@@ -315,7 +317,7 @@
         box.appendChild(el('div', { class: 'ah-tr' }, [el('b', { class: x > y ? 'ah-up' : '', style: { '--c': PCOL[0] }, text: String(x) }), el('span', { text: label }), el('b', { class: y > x ? 'ah-up' : '', style: { '--c': PCOL[1] }, text: String(y) })]));
       };
       num('Clashes won', +a.ko || 0, +b.ko || 0);
-      num('Times a Place scored', +a.h || 0, +b.h || 0);
+      num(DW('Times a Place scored'), +a.h || 0, +b.h || 0);
       num('Seals broken', +a.sb || 0, +b.sb || 0);
       num('Legacy Lines', +a.ln || 0, +b.ln || 0);
       if (a.ch || b.ch) {

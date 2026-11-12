@@ -12,6 +12,10 @@
   const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
   const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
+  // Domains: once they are on (C.DM_LIVE), the five cards on the map are Domains in every word a player reads (Tim:
+  // one word, not Place). The cards' and Guides' own words are changed here once; the table's own words go through DW.
+  const DW = s => (C.DM_LIVE && typeof s === 'string' ? s.replace(/\bPlace(s?)\b/g, 'Domain$1') : s);
+  if (C.DM_LIVE) [TX.CARDS, TX.GUIDES, TX.OLD_GUIDES || {}, TX.RETIRED || {}].forEach(T => Object.keys(T).forEach(k => { if (T[k] && T[k].tx) T[k].tx = DW(T[k].tx); }));
 
   // ═══ What things are called ═════════════════════════════════════════════════════════════════════════════
   const FAC = {
@@ -32,13 +36,13 @@
   // What a skill word means, written out under a card that only names it (n: the card's name). Each says what
   // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
-    voyager: ['Voyager', n => 'most Figures have +1 Might only in their home region, and walk one Place at a time. ' + n + ' has +1 Might at every Place and can walk to any Place.'],
-    scholar: ['Scholar', n => 'you draw a card when you play ' + n + '.'],
-    guard: ['Guard', n => 'enemies at the same Place as ' + n + ' have to clash with ' + n + ' before they can clash with anyone else there.'],
-    steadfast: ['Steadfast', n => n + ' has +2 Might in any clash that an enemy starts.'],
-    inspiring: ['Inspiring', n => 'each of your other Figures at the same Place as ' + n + ' has +1 Might.'],
-    swift: ['Swift', n => 'most Figures can\'t walk on the turn you play them. ' + n + ' can.'],
-    raider: ['Raider', n => n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.']
+    voyager: ['Voyager', n => DW('most Figures have +1 Might only in their home region, and walk one Place at a time. ' + n + ' has +1 Might at every Place and can walk to any Place.')],
+    scholar: ['Scholar', n => DW('you draw a card when you play ' + n + '.')],
+    guard: ['Guard', n => DW('enemies at the same Place as ' + n + ' have to clash with ' + n + ' before they can clash with anyone else there.')],
+    steadfast: ['Steadfast', n => DW(n + ' has +2 Might in any clash that an enemy starts.')],
+    inspiring: ['Inspiring', n => DW('each of your other Figures at the same Place as ' + n + ' has +1 Might.')],
+    swift: ['Swift', n => DW('most Figures can\'t walk on the turn you play them. ' + n + ' can.')],
+    raider: ['Raider', n => DW(n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.')]
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
@@ -65,10 +69,10 @@
   function info(key) {
     // (a Guide first: the seven Guides of the roster of twelve were cards before, and their old cards are still in RETIRED)
     if (CARDS[key] && !(TX.GUIDES[key] && !C.CARDS[key])) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}, old = !!(c.k0 && (!C.DM_LIVE || (S && !S.dm)));   // (old: a card whose power changed with Domains, in a game on the old map)
-      return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: (old ? c.k0 : c.k) || {}, quick: c.quick, tx: (old && t.tx0 != null ? t.tx0 : t.tx) || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+      return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: (old ? c.k0 : c.k) || {}, quick: c.quick, tx: DW((old && t.tx0 != null ? t.tx0 : t.tx) || ''), cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TXG[key]) { const g = TXG[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
     if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}, old = !!(t.tx0 != null && (!C.DM_LIVE || (S && !S.dm)));   // (old: the rule it had as a Place on the old fixed map)
-      return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, d: p.d, pw: old ? p.pw0 : p.pw, k: {}, tx: (old ? t.tx0 : (TX.DRULE || {})[p.pw]) || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+      return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, d: p.d, pw: old ? p.pw0 : p.pw, k: {}, tx: DW((old ? t.tx0 : (TX.DRULE || {})[p.pw]) || ''), cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
   }
   const isPlace = key => !CARDS[key] && !TXG[key] && !!C.PLACES[key];
@@ -519,7 +523,7 @@
           notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
           if (sil) notes.appendChild(el('p', { html: '<b>No rule</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' stands on this Domain') + ', so its rule does not work.' })); }
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
-        notes.appendChild(el('p', { html: S.cfg.ramp ? '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' : '<b>Every round</b>: whoever holds this Place when the round ends scores ' + worth + ' Renown.' }));
+        notes.appendChild(el('p', { html: S.cfg.ramp ? DW('<b>This round</b>: holding this Place scores ') + worth + ' Renown.' : DW('<b>Every round</b>: whoever holds this Place when the round ends scores ') + worth + ' Renown.' }));
       }
     }
     if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
@@ -709,7 +713,7 @@
     if (!out.length && it.h != null) { const c = E.costOf(S, o, it.key), fig = CARDS[it.key].t === 'fig', nm0 = info(it.key).n;
       if (fig && S.cfg.unique && S.figs.some(f => f.o === o && f.c === it.key)) out.push({ note: nm0 + ' is already in play on your side, and you can have one of each person in play at a time.' });
       else if (c > P.spark) out.push({ note: nm0 + ' costs ' + c + ' Spark, and you have ' + P.spark + '.' });
-      else if (fig) out.push({ note: 'You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ' + S.cfg.cap + ' of your Figures already.' }); }
+      else if (fig) out.push({ note: DW('You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ') + S.cfg.cap + ' of your Figures already.' }); }
     return out;
   }
   function scan(at) {
@@ -904,7 +908,7 @@
       options: [
         { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
         { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
-        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', 'The computer plays to hold Places, with the odd slip.'], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
       ],
       players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
       start: 'Deal the cards',
@@ -1391,7 +1395,7 @@
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
           el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span>' : '') + esc(pi.n) }),
-          (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : RULE[pk] }) : null]));
+          (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : DW(RULE[pk]) }) : null]));
         // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
         // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
         // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
@@ -1418,7 +1422,7 @@
     const n = dom.cap; n.innerHTML = '';
     if (ui.pend) return pendCap(n);
     const st = E.stake(S.cfg, V.round);
-    n.appendChild(el('button', { type: 'button', class: 'cap-round' + (ui.flip ? ' flip' : ''), 'aria-label': 'Round ' + V.round + ', Places score ' + st, onclick: roundSheet },
+    n.appendChild(el('button', { type: 'button', class: 'cap-round' + (ui.flip ? ' flip' : ''), 'aria-label': 'Round ' + V.round + DW(', Places score ') + st, onclick: roundSheet },
       [el('span', { class: 'n', text: String(V.round) }), el('span', { class: 'w', html: st > 1 ? LAUREL + LAUREL : LAUREL })]));
     if (ui.sel && idle()) {
       const s = ui.sel, key = s.kind === 'hand' ? s.key : E.byU(S, s.u).c, c = info(key), T = targets();
@@ -1694,9 +1698,9 @@
   function roundSheet() {
     Kit.sfx('tap');
     const st = E.stake(S.cfg, S.round);
-    Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
+    Kit.sheet({ title: 'Round ' + S.round, html: DW((S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
       : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (!S.dm && S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
-      '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+      '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>'), actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
   // ═══ Motion ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -2548,7 +2552,7 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+  window.AnoriaUI = { DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
