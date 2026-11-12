@@ -3079,7 +3079,7 @@
   }
   function colorWheel(start, done) {
     var hsv = hexHsv(start), S = 240, R = S / 2, s;
-    var cv = el('canvas', { width: S * 2, height: S * 2, class: 'cw-wheel', 'aria-label': 'Colour wheel' });
+    var cv = el('canvas', { width: S * 2, height: S * 2, class: 'cw-wheel', 'aria-label': 'Color wheel' });
     var knob = el('span', { class: 'cw-knob' }), dark = el('input', { type: 'range', min: '15', max: '100', class: 'cw-dark', 'aria-label': 'Brightness' });
     var prev = el('span', { class: 'avatar xl cw-prev' }), hexT = el('b', { class: 'cw-hex' });
     function drawWheel() {
@@ -3113,7 +3113,7 @@
     dark.addEventListener('input', function () { hsv.v = dark.value / 100; drawWheel(); paintCw(); });
     var node = el('div', { class: 'cw' }, [el('div', { class: 'cw-top' }, [prev, hexT]), wrap, dark]);
     drawWheel(); paintCw();
-    s = sheet({ title: 'Any colour', node: node, actions: [{ label: 'Use this colour', primary: true, onClick: function () { done(hsvHex(hsv.h, hsv.s, hsv.v)); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
+    s = sheet({ title: 'Any color', node: node, actions: [{ label: 'Use this color', primary: true, onClick: function () { done(hsvHex(hsv.h, hsv.s, hsv.v)); } }, { label: 'Cancel', cls: 'btn-ghost' }] });
   }
 
   // The avatar editor: a big preview, the marks and colours, and your photos (upload, or tap an old one)
@@ -3167,7 +3167,7 @@
       });
       // any colour: the rainbow dot opens a colour wheel
       var custom = AV_COLORS.indexOf(cur.c) < 0;
-      cr.appendChild(el('button', { type: 'button', class: 'av-col av-rb' + (custom ? ' on' : ''), 'aria-label': 'Any colour', style: custom ? { '--cc': cur.c } : null, onclick: function () {
+      cr.appendChild(el('button', { type: 'button', class: 'av-col av-rb' + (custom ? ' on' : ''), 'aria-label': 'Any color', style: custom ? { '--cc': cur.c } : null, onclick: function () {
         colorWheel(cur.c, function (c) { cur.c = c; if (cur.k === 'photo') cur = { k: 'letter', c: c }; sfx('tap'); paint(); });
       } }));
       body.appendChild(cr);
@@ -3223,7 +3223,7 @@
       // still waiting: the request can be taken back
       s = sheet({ title: name, node: node, actions: [
         { label: 'Done', primary: true },
-        { label: 'Cancel request', cls: 'btn-ghost', onClick: function () { FGHSync.linkCancel(name); sfx('tap'); toast('Request to ' + name + ' cancelled'); avRefresh(); if (onDone) onDone(); } }] });
+        { label: 'Cancel request', cls: 'btn-ghost', onClick: function () { FGHSync.linkCancel(name); sfx('tap'); toast('Request to ' + name + ' canceled'); avRefresh(); if (onDone) onDone(); } }] });
       return;
     }
     if (r) {

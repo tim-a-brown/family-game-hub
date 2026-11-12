@@ -345,7 +345,7 @@ var MazeCore = (function () {
     var dead = (dt.dx || []).filter(function (c) { return c >= 0 && c < m.n; });
     var box = ui.el('div', { class: 'hv-maze', html: svgOf(m, pathTo(m, head), { exit: solved, dead: dead, ghost: !solved }) });
     var kids = [box];
-    if (dead.length || !solved) kids.push(ui.el('p', { class: 'hv-pz-note', text: 'Red: ' + (dt.m === 'tilt' ? 'where the ball got to' : 'your line') + (dead.length ? ' · Grey: dead ends you tried' : '') + (!solved ? ' · Dashed blue: the way out' : '') }));
+    if (dead.length || !solved) kids.push(ui.el('p', { class: 'hv-pz-note', text: 'Red: ' + (dt.m === 'tilt' ? 'where the ball got to' : 'your line') + (dead.length ? ' · Gray: dead ends you tried' : '') + (!solved ? ' · Dashed blue: the way out' : '') }));
     var pb = dt.pb, t = dt.t;
     if (ui.stats) {
       var st = ui.stats([['Time', t != null ? clock(t) : null, t == null || pb == null || pb < 0 ? (dt.pn ? 'with ' + dt.pn + 's for hints' : '') : !pb ? 'first solve at this size' : t < pb ? 'new best (was ' + clock(pb) + ')' : 'best ' + clock(pb)],

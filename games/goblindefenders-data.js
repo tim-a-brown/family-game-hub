@@ -17,7 +17,7 @@
     poison: { name: 'Acid Barrel', icon: 'poison', cost: 25, up: [35, 60], dmg: [3, 6, 11], dps: [6, 13, 24], cloudT: 3, rate: [.42, .46, .5], range: [2.3, 2.5, 2.75], splash: [.8, .9, 1.02], proj: 'acid', speed: 6, arc: .7,
       what: 'Splashes acid that eats away at everyone standing in it.' },
     claw: { name: 'Heavy Claw', icon: 'claw', cost: 30, up: [45, 80], dmg: [36, 85, 170], rate: [.34, .37, .41], range: [3.4, 3.8, 4.25], splash: [.35, .4, .45], pierce: true, proj: 'rock', speed: 7.5, arc: .6,
-      what: 'Long range boulders that crush armour.' },
+      what: 'Long range boulders that crush armor.' },
     tesla: { name: 'Tesla Coil', icon: 'tesla', cost: 40, up: [55, 95], dmg: [14, 30, 55], rate: [.8, .9, 1.02], range: [2.2, 2.45, 2.7], chain: [3, 4, 6], air: true, zap: true, unlock: 'tesla',
       what: 'Lightning that jumps from enemy to enemy. Hits flyers.' },
     mortar: { name: 'Mortar', icon: 'shell', cost: 45, up: [60, 110], dmg: [30, 70, 140], rate: [.25, .27, .3], range: [4.6, 5.1, 5.6], minRange: 1.4, splash: [1.1, 1.25, 1.42], proj: 'shell', speed: 4.2, arc: 1.6, unlock: 'mortar',

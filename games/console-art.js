@@ -117,7 +117,7 @@ var ConsoleArt = (function () {
 
   // ── The label ──
   var W = 360, H = 270;
-  function cover(c, im, w, h, cy) {   // draw an image to fill w x h, cropping (cy: where to centre vertically, 0-1)
+  function cover(c, im, w, h, cy) {   // draw an image to fill w x h, cropping (cy: where to center vertically, 0-1)
     var s = Math.max(w / im.width, h / im.height), dw = im.width * s, dh = im.height * s;
     c.drawImage(im, (w - dw) / 2, (h - dh) * (cy == null ? .5 : cy), dw, dh);
   }

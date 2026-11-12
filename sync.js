@@ -264,7 +264,7 @@
       return fb.auth.signInWithPopup(prov).then(function(r){ return r.user; }, function(e){
         var c = e && e.code;
         if(c === 'auth/popup-blocked' || c === 'auth/operation-not-supported-in-this-environment') return viaPage();
-        if(c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request' || c === 'auth/user-cancelled') throw Object.assign(new Error('Google sign-in was cancelled'), { code: 'cancelled' });
+        if(c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request' || c === 'auth/user-cancelled') throw Object.assign(new Error('Google sign-in was canceled'), { code: 'cancelled' });
         throw e;
       });
     });
@@ -276,7 +276,7 @@
     if(!x){ LS.removeItem(INTENT_KEY); return Promise.resolve(null); }
     return loadFirebase().then(function(fb){ return fb.auth.getRedirectResult(); }).then(function(r){
       LS.removeItem(INTENT_KEY);
-      var u = r && r.user; if(!u) throw Object.assign(new Error('Google sign-in was cancelled'), { code: 'cancelled' });
+      var u = r && r.user; if(!u) throw Object.assign(new Error('Google sign-in was canceled'), { code: 'cancelled' });
       if(x.go === 'move') return moveFinish(x.pin, u, onStep).then(function(res){ res.go = 'move'; return res; });
       return googleEnter(u).then(function(res){ res.go = 'signin'; return res; });
     }, function(e){ LS.removeItem(INTENT_KEY); throw e; });

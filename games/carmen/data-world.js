@@ -94,7 +94,7 @@
       ["money", "{S} changed {P} money into rubles."],
       ["flag", "{S} asked about a flag with horizontal stripes of white, blue and red."],
       ["lang", "{S} was learning to read the Cyrillic alphabet to speak Russian."],
-      ["sight", "{S} wanted to see the colourful onion domes of St Basil's Cathedral."],
+      ["sight", "{S} wanted to see the colorful onion domes of St Basil's Cathedral."],
       ["sight", "{S} asked about the red walls of the Kremlin on Red Square."],
       ["geo", "{S} said {s} was going to a city on the Moskva River."],
       ["hist", "{S} was reading about Napoleon's army retreating from a burning city in 1812."],
@@ -281,7 +281,7 @@
     scene: { k: "tablemtn", sky: "day", land: "sea", trees: "none", c: "#6a6a5a" },
     clues: [
       ["money", "{S} changed {P} money into rand."],
-      ["flag", "{S} asked about a flag with a sideways Y shape in six colours."],
+      ["flag", "{S} asked about a flag with a sideways Y shape in six colors."],
       ["lang", "{S} was learning Afrikaans and the clicks of isiXhosa."],
       ["sight", "{S} wanted to ride the cable car up a mountain with a flat top."],
       ["geo", "{S} said {s} was going near the Cape of Good Hope, where ships round the tip of Africa."],
@@ -297,7 +297,7 @@
   {
     id: "timbuktu", name: "Timbuktu", country: "Mali", year: null,
     lat: 16.77, lon: -3.01,
-    blurb: "Timbuktu, in Mali, sits at the edge of the Sahara near the Niger River. It grew rich from salt and gold caravans and became a great centre of learning.",
+    blurb: "Timbuktu, in Mali, sits at the edge of the Sahara near the Niger River. It grew rich from salt and gold caravans and became a great center of learning.",
     treasure: ["a 700-year-old manuscript on astronomy", "a slab of salt from a camel caravan"],
     scene: { k: "mudmosque", sky: "day", land: "desert", trees: "none", c: "#b98a5a" },
     clues: [
@@ -310,7 +310,7 @@
       ["people", "{S} was reading about Mansa Musa, the emperor who carried so much gold to Mecca in 1324 that its price fell."],
       ["people", "{S} was reading the travels of Ibn Battuta, who visited in 1353."],
       ["nature", "{S} said {s} was going to ride a camel into the desert."],
-      ["culture", "{S} wanted to meet Tuareg travellers in indigo-blue robes."],
+      ["culture", "{S} wanted to meet Tuareg travelers in indigo-blue robes."],
       ["nature", "{S} asked about the yearly flood of the Niger that once brought boats to the edge of town."],
       ["geo", "{S} said {s} was going to a landlocked West African country across the Sahel."]
     ]
@@ -339,7 +339,7 @@
   {
     id: "beijing", name: "Beijing", country: "China", year: null,
     lat: 39.90, lon: 116.41,
-    blurb: "Beijing, the capital of China, has been the seat of emperors for more than 700 years. The Forbidden City sits at its centre and the Great Wall winds over the hills to the north.",
+    blurb: "Beijing, the capital of China, has been the seat of emperors for more than 700 years. The Forbidden City sits at its center and the Great Wall winds over the hills to the north.",
     treasure: ["the Dragon Throne from the Forbidden City", "a brick from the Great Wall"],
     scene: { k: "wall", sky: "day", land: "grass", trees: "leafy", c: "#a08a6a" },
     clues: [
@@ -370,7 +370,7 @@
       ["sight", "{S} wanted to see the Emerald Buddha in the Grand Palace."],
       ["sight", "{S} wanted to climb Wat Arun, the Temple of Dawn."],
       ["geo", "{S} said {s} was going to a city on the Chao Phraya River."],
-      ["hist", "{S} was reading about a kingdom in Southeast Asia that was never colonised by Europeans."],
+      ["hist", "{S} was reading about a kingdom in Southeast Asia that was never colonized by Europeans."],
       ["culture", "{S} wanted to shop at a floating market from a boat."],
       ["culture", "{S} wanted to see a Muay Thai kickboxing match."],
       ["culture", "{S} was getting ready for the Songkran water festival in April."],
@@ -389,7 +389,7 @@
       ["flag", "{S} asked about a saffron, white and green flag with a blue wheel of 24 spokes."],
       ["lang", "{S} was learning Hindi."],
       ["sight", "{S} wanted to see the Red Fort built by the emperor Shah Jahan."],
-      ["sight", "{S} wanted to climb the Qutub Minar, a brick tower over 70 metres tall."],
+      ["sight", "{S} wanted to climb the Qutub Minar, a brick tower over 70 meters tall."],
       ["sight", "{S} wanted to see the Lotus Temple, shaped like a white flower."],
       ["geo", "{S} said {s} was going to a capital on the Yamuna River."],
       ["hist", "{S} was reading about Edwin Lutyens, who designed the new capital in the 1910s and 1920s."],
@@ -402,7 +402,7 @@
   {
     id: "baghdad", name: "Baghdad", country: "Iraq", year: null,
     lat: 33.31, lon: 44.37,
-    blurb: "Baghdad, the capital of Iraq, stands on the Tigris River in the ancient land of Mesopotamia. It was founded as a round city in 762 and became one of the great centres of learning in the world.",
+    blurb: "Baghdad, the capital of Iraq, stands on the Tigris River in the ancient land of Mesopotamia. It was founded as a round city in 762 and became one of the great centers of learning in the world.",
     treasure: ["a lamp from the tales of the Thousand and One Nights", "a scroll from the House of Wisdom"],
     scene: { k: "mosque", sky: "dusk", land: "desert", trees: "palm", c: "#d4a83a", c2: "#2a7a8a" },
     clues: [
@@ -435,7 +435,7 @@
       ["geo", "{S} said {s} was going to a valley capital in the Himalayas."],
       ["geo", "{S} said {s} was going to fly on to the foot of the highest mountain in the world."],
       ["people", "{S} was reading about Tenzing Norgay, who reached the top of Everest in 1953."],
-      ["culture", "{S} wanted to see the Kumari, a girl honoured as a living goddess."],
+      ["culture", "{S} wanted to see the Kumari, a girl honored as a living goddess."],
       ["culture", "{S} was hungry for momo dumplings."],
       ["nature", "{S} asked about the red rhododendron, the national flower."],
       ["nature", "{S} wanted to see yaks carrying loads up mountain trails."]
@@ -456,7 +456,7 @@
       ["geo", "{S} said {s} was going to an island city-state just north of the equator."],
       ["geo", "{S} said {s} would look across the Strait of Johor to Malaysia."],
       ["hist", "{S} was reading about Stamford Raffles, who set up a trading post there in 1819."],
-      ["culture", "{S} was hungry for chili crab at a hawker centre."],
+      ["culture", "{S} was hungry for chili crab at a hawker center."],
       ["nature", "{S} wanted to see the orchid called Vanda Miss Joaquim, the national flower."],
       ["nature", "{S} wanted to go on the Night Safari to see animals after dark."],
       ["sight", "{S} wanted to watch ships waiting to enter one of the world's busiest ports."]
@@ -486,7 +486,7 @@
   {
     id: "newyork", name: "New York", country: "United States", year: null,
     lat: 40.71, lon: -74.01,
-    blurb: "New York, the biggest city in the United States, stands where the Hudson River meets the Atlantic. The Statue of Liberty has welcomed ships to its harbour since 1886.",
+    blurb: "New York, the biggest city in the United States, stands where the Hudson River meets the Atlantic. The Statue of Liberty has welcomed ships to its harbor since 1886.",
     treasure: ["the torch of the Statue of Liberty", "the spire of the Empire State Building"],
     scene: { k: "statue", sky: "day", land: "sea", trees: "none", c: "#6fae9a" },
     clues: [
@@ -562,7 +562,7 @@
       ["hist", "{S} was reading about Francisco Pizarro, who founded the City of Kings in 1535."],
       ["hist", "{S} was reading about the old empire of the Incas and its road through the Andes."],
       ["culture", "{S} was hungry for ceviche, raw fish in lime juice."],
-      ["nature", "{S} asked about the grey sea mist called garua that covers the city in winter."],
+      ["nature", "{S} asked about the gray sea mist called garua that covers the city in winter."],
       ["nature", "{S} wanted to see the vicuna, the animal on the national coat of arms."],
       ["culture", "{S} wanted to paraglide off the cliffs of Miraflores."]
     ]
@@ -602,7 +602,7 @@
       ["sight", "{S} wanted to cross the Avenida 9 de Julio, one of the widest avenues in the world."],
       ["sight", "{S} had tickets for the opera at the Teatro Colon."],
       ["geo", "{S} said {s} was going to a capital on the Rio de la Plata."],
-      ["culture", "{S} wanted to see tango dancers in the colourful street called Caminito."],
+      ["culture", "{S} wanted to see tango dancers in the colorful street called Caminito."],
       ["people", "{S} wanted to see the tomb of Eva Peron in Recoleta Cemetery."],
       ["people", "{S} wanted to see where Diego Maradona played for Boca Juniors."],
       ["culture", "{S} was sipping mate tea and eating dulce de leche."],
@@ -612,7 +612,7 @@
   {
     id: "havana", name: "Havana", country: "Cuba", year: null,
     lat: 23.11, lon: -82.37,
-    blurb: "Havana, the capital of Cuba, was founded by the Spanish in 1519 on a sheltered harbour. Old fortresses guard its entrance and 1950s cars still roll along its seafront.",
+    blurb: "Havana, the capital of Cuba, was founded by the Spanish in 1519 on a sheltered harbor. Old fortresses guard its entrance and 1950s cars still roll along its seafront.",
     treasure: ["the diamond set in the floor of El Capitolio", "a 1957 convertible from the Malecon"],
     scene: { k: "capitol", sky: "day", land: "city", trees: "palm", c: "#e8e0cc" },
     clues: [
@@ -621,7 +621,7 @@
       ["lang", "{S} was practising Spanish and learning the steps of the son and salsa."],
       ["sight", "{S} wanted to see El Capitolio, a domed building that looks like the one in Washington."],
       ["sight", "{S} wanted to walk the Malecon, a long seawall where waves crash over the road."],
-      ["sight", "{S} wanted to see Morro Castle guarding the harbour entrance."],
+      ["sight", "{S} wanted to see Morro Castle guarding the harbor entrance."],
       ["geo", "{S} said {s} was going to the largest island in the Caribbean, across the Straits of Florida."],
       ["hist", "{S} was reading about a city founded by the Spanish in 1519."],
       ["people", "{S} wanted to visit Finca Vigia, the house where Ernest Hemingway wrote."],
@@ -633,7 +633,7 @@
   {
     id: "sydney", name: "Sydney", country: "Australia", year: null,
     lat: -33.87, lon: 151.21,
-    blurb: "Sydney, Australia's biggest city, wraps around one of the world's great natural harbours. Its Opera House has roofs shaped like white sails.",
+    blurb: "Sydney, Australia's biggest city, wraps around one of the world's great natural harbors. Its Opera House has roofs shaped like white sails.",
     treasure: ["a sail from the Opera House roof", "a koala from Taronga Zoo"],
     scene: { k: "opera", sky: "day", land: "sea", trees: "none", c: "#f4f0e8" },
     clues: [
@@ -646,7 +646,7 @@
       ["hist", "{S} was reading about the First Fleet that arrived in 1788."],
       ["people", "{S} was reading about Jorn Utzon, the Danish architect of a famous opera house."],
       ["culture", "{S} wanted to surf at Bondi Beach."],
-      ["culture", "{S} wanted to see the New Year's Eve fireworks over the harbour."],
+      ["culture", "{S} wanted to see the New Year's Eve fireworks over the harbor."],
       ["nature", "{S} wanted to see kangaroos and koalas."],
       ["nature", "{S} said {s} would hike in the Blue Mountains, named for the haze from eucalyptus trees."]
     ]
@@ -654,7 +654,7 @@
   {
     id: "auckland", name: "Auckland", country: "New Zealand", year: null,
     lat: -36.85, lon: 174.76,
-    blurb: "Auckland, New Zealand's biggest city, is built on a narrow neck of land between two harbours and dozens of old volcanoes. So many boats sail there that it is called the City of Sails.",
+    blurb: "Auckland, New Zealand's biggest city, is built on a narrow neck of land between two harbors and dozens of old volcanoes. So many boats sail there that it is called the City of Sails.",
     treasure: ["the top of the Sky Tower", "a carved Maori waka canoe"],
     scene: { k: "needle", sky: "dusk", land: "sea", trees: "none", c: "#c8c8c8" },
     clues: [
@@ -662,7 +662,7 @@
       ["flag", "{S} asked about a blue flag with the Union Jack and four red stars outlined in white."],
       ["lang", "{S} was learning te reo Maori greetings like kia ora."],
       ["sight", "{S} wanted to jump off the Sky Tower on a wire."],
-      ["geo", "{S} said {s} was going to a city built on about 50 old volcanoes, between two harbours."],
+      ["geo", "{S} said {s} was going to a city built on about 50 old volcanoes, between two harbors."],
       ["geo", "{S} wanted to take a ferry to Rangitoto Island in the Hauraki Gulf."],
       ["hist", "{S} was reading about the great voyaging canoes of the Polynesian navigators."],
       ["people", "{S} was reading about Edmund Hillary, born there, who climbed Everest in 1953."],

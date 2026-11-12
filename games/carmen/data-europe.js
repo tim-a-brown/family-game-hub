@@ -68,7 +68,7 @@
       ['hist', "{S} was reading about the storming of the Bastille on 14 July 1789."],
       ['culture', "{S} said {s} wanted to watch the last stage of a great cycling race finish on the Champs-Elysees."],
       ['culture', "{S} wanted fresh croissants and a walk up the hill of Montmartre."],
-      ['people', "{S} was reading the plays of Moliere and wanted to see the theatre company he founded."],
+      ['people', "{S} was reading the plays of Moliere and wanted to see the theater company he founded."],
       ['nature', "{S} wanted to see the gardens and greenhouses of the Jardin des Plantes beside the Seine."]
     ]
   },
@@ -91,7 +91,7 @@
       ['geo', "{S} wanted to look out over the Ligurian Sea from a principality surrounded by France on three sides."],
       ['hist', "{S} was reading how a Grimaldi disguised as a monk captured the fortress on the Rock in 1297."],
       ['culture', "{S} said {s} wanted to watch Formula One cars race through narrow streets and a tunnel."],
-      ['culture', "{S} wanted to see a yacht show in Port Hercule, the harbour below the old town."],
+      ['culture', "{S} wanted to see a yacht show in Port Hercule, the harbor below the old town."],
       ['people', "{S} was watching old films of Grace Kelly, the actress who became a princess there."],
       ['nature', "{S} wanted to see the cacti and succulents of the Exotic Garden on the cliffside."]
     ]
@@ -111,8 +111,8 @@
       ['lang', "{S} was practising Castilian Spanish."],
       ['sight', "{S} wanted to see paintings by Velazquez and Goya at the Prado Museum."],
       ['sight', "{S} wanted to row a boat on the lake in Retiro Park and visit its Crystal Palace."],
-      ['geo', "{S} said {s} was going to a city on the Manzanares River, near the centre of the Iberian Peninsula."],
-      ['geo', "{S} said {s} was heading for the highest capital in the European Union, about 650 metres up."],
+      ['geo', "{S} said {s} was going to a city on the Manzanares River, near the center of the Iberian Peninsula."],
+      ['geo', "{S} said {s} was heading for the highest capital in the European Union, about 650 meters up."],
       ['hist', "{S} was reading about King Philip II, who moved his royal court to a small town on the meseta in 1561."],
       ['culture', "{S} wanted churros dipped in thick hot chocolate in the Plaza Mayor."],
       ['culture', "{S} hoped to see a match at the Santiago Bernabeu stadium, home of a club with a record number of European Cups."],
@@ -150,7 +150,7 @@
     country: 'Italy',
     year: null,
     lat: 41.90, lon: 12.50,
-    blurb: 'Rome, the capital of Italy, was the centre of the ancient Roman Empire. It is built on seven hills along the River Tiber.',
+    blurb: 'Rome, the capital of Italy, was the center of the ancient Roman Empire. It is built on seven hills along the River Tiber.',
     treasure: ['the coins from the bottom of the Trevi Fountain', 'the bronze she-wolf of the Capitoline'],
     scene: { k: 'colosseum', sky: 'day', land: 'city', trees: 'pine', c: '#c9a679' },
     clues: [
@@ -174,7 +174,7 @@
     country: 'Malta',
     year: null,
     lat: 35.90, lon: 14.51,
-    blurb: 'Valletta, the capital of Malta, is a fortified city on a peninsula between two harbours. The Knights of Saint John built it after holding off the Ottoman Great Siege of 1565.',
+    blurb: 'Valletta, the capital of Malta, is a fortified city on a peninsula between two harbors. The Knights of Saint John built it after holding off the Ottoman Great Siege of 1565.',
     treasure: ["Caravaggio's Beheading of Saint John", 'a cannon from the Saluting Battery'],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'palm', c: '#e3c98f', c2: '#b03a2e' },
     clues: [
@@ -270,7 +270,7 @@
     country: 'Switzerland',
     year: null,
     lat: 46.95, lon: 7.45,
-    blurb: 'Bern, the federal city of Switzerland, sits in a tight loop of the River Aare. Its old town has about six kilometres of covered stone arcades.',
+    blurb: 'Bern, the federal city of Switzerland, sits in a tight loop of the River Aare. Its old town has about six kilometers of covered stone arcades.',
     treasure: ['the golden rooster from the Zytglogge clock', 'the Swiss patent office desk where Einstein worked'],
     scene: { k: 'clocktower', sky: 'day', land: 'city', trees: 'pine', c: '#b9864f', c2: '#3b3b3b' },
     clues: [
@@ -366,19 +366,19 @@
     country: 'Denmark',
     year: null,
     lat: 55.68, lon: 12.57,
-    blurb: 'Copenhagen, the capital of Denmark, stands on the islands of Zealand and Amager beside the Oresund strait. It is known for its harbour, its bicycles and the Little Mermaid statue.',
+    blurb: 'Copenhagen, the capital of Denmark, stands on the islands of Zealand and Amager beside the Oresund strait. It is known for its harbor, its bicycles and the Little Mermaid statue.',
     treasure: ['the Little Mermaid statue', 'the oldest roller coaster in Tivoli Gardens'],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'none', c: '#d9822b', c2: '#2b6cb0' },
     clues: [
       ['money', "{S} changed {P} money into kroner and asked the way to Tivoli Gardens."],
       ['flag', "{S} asked about the oldest national flag still in use: a white Nordic cross on red."],
       ['lang', "{S} was learning Danish."],
-      ['sight', "{S} wanted to see the bronze Little Mermaid sitting on a rock by the harbour."],
+      ['sight', "{S} wanted to see the bronze Little Mermaid sitting on a rock by the harbor."],
       ['sight', "{S} wanted to ride the old wooden roller coaster at Tivoli Gardens, opened in 1843."],
       ['geo', "{S} said {s} was going to a city on the Oresund, the strait between the Baltic and the Kattegat."],
       ['geo', "{S} wanted to cross the Oresund Bridge to Malmo in Sweden."],
       ['hist', "{S} was reading about the royal guards at Amalienborg Palace, four palaces around one square."],
-      ['culture', "{S} wanted open sandwiches called smorrebrod and a seat by the coloured houses of Nyhavn."],
+      ['culture', "{S} wanted open sandwiches called smorrebrod and a seat by the colored houses of Nyhavn."],
       ['culture', "{S} wanted to walk up the spiral ramp of the Round Tower, built as an observatory."],
       ['people', "{S} was reading the fairy tales of Hans Christian Andersen, who lived in the Nyhavn houses."],
       ['nature', "{S} wanted to see the wild deer in the royal Deer Park north of the city."]
@@ -448,10 +448,10 @@
       ['sight', "{S} wanted to climb the steps of the white cathedral above Senate Square."],
       ['sight', "{S} wanted to see the Sibelius Monument, made of more than 600 steel pipes."],
       ['geo', "{S} said {s} was going to a city on the northern shore of a Baltic gulf, facing Tallinn."],
-      ['geo', "{S} wanted to take a ferry out to Suomenlinna, a sea fortress built on a group of islands off the harbour."],
+      ['geo', "{S} wanted to take a ferry out to Suomenlinna, a sea fortress built on a group of islands off the harbor."],
       ['hist', "{S} was reading about the 1952 Summer Olympics, held in the city's stadium."],
       ['culture', "{S} said {s} wanted to sit in a sauna, then jump into the icy sea."],
-      ['culture', "{S} wanted to eat salmon soup at the old market hall on the harbour."],
+      ['culture', "{S} wanted to eat salmon soup at the old market hall on the harbor."],
       ['people', "{S} was reading about Tove Jansson, the author of the Moomins, who was born there."],
       ['nature', "{S} wanted to see flying squirrels in the forests of Nuuksio National Park."]
     ]
@@ -486,7 +486,7 @@
     country: 'Estonia',
     year: null,
     lat: 59.44, lon: 24.75,
-    blurb: 'Tallinn, the capital of Estonia, has one of the best-preserved medieval old towns in Europe. It lies on the Gulf of Finland, about 80 kilometres south of Helsinki.',
+    blurb: 'Tallinn, the capital of Estonia, has one of the best-preserved medieval old towns in Europe. It lies on the Gulf of Finland, about 80 kilometers south of Helsinki.',
     treasure: ['Old Thomas, the weathervane on the Town Hall', 'a jar from the medieval Town Hall Pharmacy'],
     scene: { k: 'castle', sky: 'overcast', land: 'city', trees: 'pine', c: '#a8988a', c2: '#b0412b' },
     clues: [
@@ -636,7 +636,7 @@
     clues: [
       ['money', "{S} changed {P} money into forint."],
       ['flag', "{S} asked about a flag with horizontal red, white and green stripes."],
-      ['lang', "{S} was learning Magyar, a language not related to its neighbours."],
+      ['lang', "{S} was learning Magyar, a language not related to its neighbors."],
       ['sight', "{S} wanted to see the huge gothic Parliament building with its tall dome on the riverbank."],
       ['sight', "{S} wanted to soak in the Szechenyi thermal baths."],
       ['geo', "{S} said {s} was going to a city formed when Buda and Pest joined across the Danube in 1873."],
@@ -654,7 +654,7 @@
     country: 'Slovenia',
     year: null,
     lat: 46.06, lon: 14.51,
-    blurb: 'Ljubljana, the capital of Slovenia, lies on the little River Ljubljanica beneath a castle hill. Much of its centre was designed by the architect Joze Plecnik.',
+    blurb: 'Ljubljana, the capital of Slovenia, lies on the little River Ljubljanica beneath a castle hill. Much of its center was designed by the architect Joze Plecnik.',
     treasure: ['a dragon from the Dragon Bridge', 'the statue of the poet Preseren'],
     scene: { k: 'castle', sky: 'day', land: 'grass', trees: 'leafy', c: '#d8c9a3', c2: '#3a6a3a' },
     clues: [
@@ -688,7 +688,7 @@
       ['sight', "{S} wanted to see Saint Mark's Church, whose tiled roof shows two coats of arms."],
       ['sight', "{S} wanted to see the cathedral with twin neo-gothic spires over the Kaptol hill."],
       ['geo', "{S} said {s} was going to a city on the River Sava below Medvednica mountain."],
-      ['geo', "{S} wanted to ride a funicular only 66 metres long between the Upper and Lower Towns."],
+      ['geo', "{S} wanted to ride a funicular only 66 meters long between the Upper and Lower Towns."],
       ['hist', "{S} was reading how the necktie, or cravat, came from the scarves worn by soldiers from there in the 1600s."],
       ['culture', "{S} wanted to visit the Museum of Broken Relationships."],
       ['culture', "{S} wanted to buy fruit at Dolac market under the red umbrellas."],
@@ -785,7 +785,7 @@
       ['sight', "{S} wanted to see the 13th-century frescoes in Boyana Church."],
       ['geo', "{S} said {s} was going to a city at the foot of Vitosha mountain."],
       ['geo', "{S} said {s} would visit a capital that joined the euro on 1 January 2026."],
-      ['hist', "{S} was reading about Serdica, the Roman town whose ruins lie under the city centre."],
+      ['hist', "{S} was reading about Serdica, the Roman town whose ruins lie under the city center."],
       ['culture', "{S} wanted banitsa pastry and yogurt made with a bacteria named after the country."],
       ['culture', "{S} said there, a nod of the head means no and a shake means yes."],
       ['people', "{S} asked about Saint Ivan of Rila, the hermit shown on the one-euro coin there."],
@@ -798,7 +798,7 @@
     country: 'Ukraine',
     year: null,
     lat: 50.45, lon: 30.52,
-    blurb: 'Kyiv, the capital of Ukraine, stands on hills above the River Dnipro. It was the centre of Kyivan Rus more than a thousand years ago.',
+    blurb: 'Kyiv, the capital of Ukraine, stands on hills above the River Dnipro. It was the center of Kyivan Rus more than a thousand years ago.',
     treasure: ['a gold dome from the Pechersk Lavra', 'a mosaic from Saint Sophia Cathedral'],
     scene: { k: 'onion', sky: 'day', land: 'city', trees: 'leafy', c: '#d4a82a', c2: '#f0ebe0' },
     clues: [

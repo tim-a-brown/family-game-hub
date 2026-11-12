@@ -79,7 +79,7 @@
       ['nature', "{S} wanted to paddle the Buffalo, the first river named a national river."],
       ['people', "{S} talked about Johnny Cash, the Man in Black, who grew up on a cotton farm there."],
       ['people', "{S} was reading a book by Maya Angelou, who grew up in the town of Stamps."],
-      ['culture', "{S} practised calling the hogs with the Razorbacks fans: Woo Pig Sooie!"],
+      ['culture', "{S} practiced calling the hogs with the Razorbacks fans: Woo Pig Sooie!"],
       ['culture', "{S} said {s} wanted to see where the very first Walmart opened in 1962."],
       ['geo', "{S} said {s} would hike the Ozark and Ouachita mountains."]
     ]
@@ -643,7 +643,7 @@
       ['capital', "{S} said {s} was going to the oldest state capital in the country, founded around 1610."],
       ['sight', "{S} wanted to see the round capitol shaped like the Zia sun."],
       ['lang', "{S} was learning Spanish and the history of the Pueblo peoples."],
-      ['culture', "{S} practised answering the state question: Red or green?"],
+      ['culture', "{S} practiced answering the state question: Red or green?"],
       ['hist', "{S} talked about the scientists at Los Alamos and the first atomic test in 1945."],
       ['people', "{S} wanted to see the museum of the painter Georgia O'Keeffe."],
       ['sight', "{S} wanted to visit Carlsbad Caverns and the dunes of White Sands."],

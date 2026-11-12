@@ -11,7 +11,7 @@
     clues: [
       ['money', "{S} changed {P} money into dollars with a loon on the one-dollar coin and asked where Parliament Hill was."],
       ['flag', "{S} asked about a flag with two red side bands and a red maple leaf in the white square, flying over a Peace Tower."],
-      ['lang', "{S} practised both English and French, because {s} was going to a bilingual capital that faces Quebec across a river."],
+      ['lang', "{S} practiced both English and French, because {s} was going to a bilingual capital that faces Quebec across a river."],
       ['sight', "{S} wanted to skate the Rideau Canal, which turns into one of the longest skating rinks in the world each winter."],
       ['sight', "{S} wanted to hear the carillon in a Gothic clock tower that rises over a national Parliament on a hill."],
       ['geo', "{S} said {s} was going to a capital where the Rideau and Gatineau rivers flow into a bigger river on the Ontario-Quebec border."],
@@ -219,7 +219,7 @@
       ['money', "{S} changed {P} money into US dollars, which this Central American country has used since 2001, and asked for pupusas."],
       ['flag', "{S} asked about a blue, white and blue flag with a triangle, five volcanoes and the words DIOS UNION LIBERTAD."],
       ['lang', "{S} was learning Spanish and a few words of Nawat, the old language of the Pipil people."],
-      ['sight', "{S} wanted to see the Monument to the Divine Saviour of the World, a statue of Christ standing on a globe."],
+      ['sight', "{S} wanted to see the Monument to the Divine Savior of the World, a statue of Christ standing on a globe."],
       ['sight', "{S} wanted to hike to the Boqueron crater of the volcano above the capital."],
       ['geo', "{S} said {s} was going to the smallest country in Central America, the only one with no Caribbean coast."],
       ['hist', "{S} wanted to visit Joya de Ceren, a farming village buried by volcanic ash 1,400 years ago."],
@@ -269,7 +269,7 @@
       ['sight', "{S} wanted to cross the Bridge of the Americas, the bridge over the Pacific end of the canal."],
       ['geo', "{S} said {s} was going to the narrow isthmus joining Central and South America."],
       ['hist', "{S} read that a canal opened here in 1914 and was handed over by the United States in 1999."],
-      ['culture', "{S} wanted to see the colourful Biomuseo designed by Frank Gehry."],
+      ['culture', "{S} wanted to see the colorful Biomuseo designed by Frank Gehry."],
       ['culture', "{S} wanted to buy a mola, a cloth panel sewn by Guna women."],
       ['nature', "{S} hoped to see a harpy eagle, the national bird, and the golden frog."],
       ['geo', "{S} said {s} could watch the sun rise over the Pacific there, because of how the isthmus bends."],
@@ -291,7 +291,7 @@
       ['sight', "{S} wanted to see El Capitolio, a domed capitol building finished in 1929."],
       ['sight', "{S} wanted to walk the Malecon, a seawall along the shore that runs for about five miles."],
       ['geo', "{S} said {s} was going to the largest island in the Caribbean, ninety miles from Florida."],
-      ['hist', "{S} wanted to see Morro Castle, built by the Spanish to guard the harbour entrance."],
+      ['hist', "{S} wanted to see Morro Castle, built by the Spanish to guard the harbor entrance."],
       ['culture', "{S} wanted to dance salsa and hear the Buena Vista Social Club."],
       ['people', "{S} wanted to visit Finca Vigia, the house where Ernest Hemingway wrote The Old Man and the Sea."],
       ['people', "{S} read poems by Jose Marti, the national hero whose verses became the words of Guantanamera."],
@@ -304,7 +304,7 @@
     name: 'Kingston',
     country: 'Jamaica',
     lat: 17.97, lon: -76.79,
-    blurb: 'Kingston is the capital of Jamaica, on one of the largest natural harbours in the world. The Blue Mountains rise behind the city, and it is the home of reggae.',
+    blurb: 'Kingston is the capital of Jamaica, on one of the largest natural harbors in the world. The Blue Mountains rise behind the city, and it is the home of reggae.',
     treasure: ['a sack of Blue Mountain coffee beans', 'Bob Marley\'s first guitar'],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'palm', c: '#3a8a3a', c2: '#f2c200' },
     clues: [
@@ -316,7 +316,7 @@
       ['geo', "{S} said {s} was going to an island south of Cuba, the third largest in the Caribbean."],
       ['hist', "{S} read about Port Royal, the pirate town that sank into the sea in the 1692 earthquake."],
       ['culture', "{S} wanted ackee and saltfish, the national dish, and some spicy jerk chicken."],
-      ['people', "{S} wanted to see where Usain Bolt trained, the sprinter who set the 100 metre world record."],
+      ['people', "{S} wanted to see where Usain Bolt trained, the sprinter who set the 100 meter world record."],
       ['nature', "{S} hoped to see the doctor bird, a hummingbird with long streamer tail feathers."],
       ['culture', "{S} wanted to visit Trench Town, where reggae music grew up."],
       ['hist', "{S} said {s} was going to the island whose bobsled team raced at the 1988 Winter Olympics."]
@@ -357,7 +357,7 @@
       ['money', "{S} changed {P} money into US dollars and asked how to get to the fort called El Morro."],
       ['flag', "{S} asked about a flag with three red and two white stripes and a blue triangle with one white star."],
       ['lang', "{S} said both Spanish and English are official on the island {s} was going to."],
-      ['sight', "{S} wanted to explore Castillo San Felipe del Morro, a Spanish fort on a headland at the harbour mouth."],
+      ['sight', "{S} wanted to explore Castillo San Felipe del Morro, a Spanish fort on a headland at the harbor mouth."],
       ['sight', "{S} wanted to walk the blue cobblestone streets of the old walled city."],
       ['geo', "{S} said {s} was going to the smallest of the Greater Antilles, a US territory east of Hispaniola."],
       ['hist', "{S} read that this island became part of the United States after the war with Spain in 1898."],
@@ -377,7 +377,7 @@
     treasure: ['a hand-tuned steelpan', 'a bucket of tar from the Pitch Lake'],
     scene: { k: 'beach', sky: 'dusk', land: 'sea', trees: 'palm', c: '#c8102e', c2: '#111111' },
     clues: [
-      ['money', "{S} changed {P} money into dollars and asked where to hear steel bands practise for Carnival."],
+      ['money', "{S} changed {P} money into dollars and asked where to hear steel bands practice for Carnival."],
       ['flag', "{S} asked about a red flag with a black diagonal band edged in white."],
       ['lang', "{S} was learning to speak English with a Trini lilt and asked about calypso lyrics."],
       ['sight', "{S} wanted to walk on the Pitch Lake, the largest natural lake of asphalt in the world."],
@@ -396,14 +396,14 @@
     name: 'Bridgetown',
     country: 'Barbados',
     lat: 13.10, lon: -59.61,
-    blurb: 'Bridgetown is the capital of Barbados, the easternmost island of the Caribbean. Its historic centre and old British Garrison are a World Heritage Site.',
+    blurb: 'Bridgetown is the capital of Barbados, the easternmost island of the Caribbean. Its historic center and old British Garrison are a World Heritage Site.',
     treasure: ['a whole flying fish supper', 'the cannon collection from the Garrison'],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'palm', c: '#00267f', c2: '#ffc726' },
     clues: [
       ['money', "{S} changed {P} money into dollars and asked where the fishing boats tie up in the Careenage."],
       ['flag', "{S} asked about a flag of blue, gold and blue stripes with a broken black trident in the middle."],
       ['lang', "{S} was learning Bajan, the English Creole of the easternmost Caribbean island."],
-      ['sight', "{S} wanted to see the Careenage, a harbour inlet in the middle of the capital."],
+      ['sight', "{S} wanted to see the Careenage, a harbor inlet in the middle of the capital."],
       ['sight', "{S} wanted to ride a tram through Harrison's Cave, full of stalactites."],
       ['geo', "{S} said {s} was going to the easternmost island in the Caribbean, out in the Atlantic."],
       ['hist', "{S} read that this island became a republic in 2021, after almost 400 years linked to Britain."],
@@ -419,7 +419,7 @@
     name: 'Bogota',
     country: 'Colombia',
     lat: 4.71, lon: -74.07,
-    blurb: 'Bogota is the capital of Colombia, high on a plateau in the Andes at about 2,640 metres. Its Gold Museum holds the largest collection of pre-Hispanic gold work in the world.',
+    blurb: 'Bogota is the capital of Colombia, high on a plateau in the Andes at about 2,640 meters. Its Gold Museum holds the largest collection of pre-Hispanic gold work in the world.',
     treasure: ['the golden raft of El Dorado from the Gold Museum', 'a basket of Muzo emeralds'],
     scene: { k: 'mountain', sky: 'overcast', land: 'city', trees: 'leafy', c: '#5a7a5a', c2: '#f2f2f2' },
     clues: [
@@ -454,7 +454,7 @@
       ['geo', "{S} said {s} was going to a country where the Orinoco River flows to the Atlantic."],
       ['people', "{S} wanted to visit the house where Simon Bolivar, the Liberator, was born in 1783."],
       ['culture', "{S} was hungry for arepas, corn cakes stuffed with cheese and black beans."],
-      ['culture', "{S} wanted to hear El Sistema, the youth orchestra programme started there in 1975."],
+      ['culture', "{S} wanted to hear El Sistema, the youth orchestra program started there in 1975."],
       ['nature', "{S} hoped to see tepuis, flat-topped mountains rising out of the rainforest."],
       ['geo', "{S} said {s} was heading to the country with the largest proven oil reserves in the world."],
       ['nature', "{S} wanted to see Lake Maracaibo, where lightning flashes almost every night."]
@@ -465,7 +465,7 @@
     name: 'Quito',
     country: 'Ecuador',
     lat: -0.18, lon: -78.47,
-    blurb: 'Quito, the capital of Ecuador, sits 2,850 metres up in the Andes, just south of the equator. Its colonial old town was one of the first two places named a World Heritage Site, in 1978.',
+    blurb: 'Quito, the capital of Ecuador, sits 2,850 meters up in the Andes, just south of the equator. Its colonial old town was one of the first two places named a World Heritage Site, in 1978.',
     treasure: ['the equator line from the Middle of the World monument', 'an iguana gargoyle from the Basilica del Voto Nacional'],
     scene: { k: 'volcano', sky: 'day', land: 'grass', trees: 'none', c: '#e8eef2', c2: '#6c7a5a' },
     clues: [
@@ -479,7 +479,7 @@
       ['culture', "{S} wanted to buy a toquilla straw hat, the kind the world wrongly calls a Panama hat."],
       ['nature', "{S} wanted to take a boat out to the Galapagos Islands to see giant tortoises."],
       ['people', "{S} read that Charles Darwin's visit to that country's islands in 1835 helped him think up evolution."],
-      ['geo', "{S} said {s} would see the peak of Chimborazo, the point on Earth farthest from its centre."],
+      ['geo', "{S} said {s} would see the peak of Chimborazo, the point on Earth farthest from its center."],
       ['nature', "{S} hoped to see blue-footed boobies dance."]
     ]
   },
@@ -497,7 +497,7 @@
       ['lang', "{S} was learning Spanish to order food in a desert capital that almost never sees rain."],
       ['sight', "{S} wanted to see the catacombs under the Monastery of San Francisco."],
       ['sight', "{S} wanted to see Huaca Pucllana, an adobe pyramid in the middle of the Miraflores district."],
-      ['geo', "{S} said {s} was going to a capital on Pacific cliffs, under a grey coastal fog called the garua."],
+      ['geo', "{S} said {s} was going to a capital on Pacific cliffs, under a gray coastal fog called the garua."],
       ['hist', "{S} read that Francisco Pizarro founded the City of Kings there in 1535."],
       ['culture', "{S} wanted ceviche, raw fish cured in lime juice, and a pisco sour."],
       ['culture', "{S} wanted to paraglide off the cliffs of Miraflores over the beach."],
@@ -520,7 +520,7 @@
       ['lang', "{S} was learning Quechua, the language of the Inca Empire."],
       ['sight', "{S} wanted to see Machu Picchu, the Inca citadel on a mountain ridge above the Urubamba River."],
       ['sight', "{S} wanted to see Sacsayhuaman, a fortress with giant stones that fit together without mortar."],
-      ['geo', "{S} said {s} was going to a city 3,400 metres up in the Andes, near the Sacred Valley."],
+      ['geo', "{S} said {s} was going to a city 3,400 meters up in the Andes, near the Sacred Valley."],
       ['hist', "{S} read that Hiram Bingham brought Machu Picchu to the world's attention in 1911."],
       ['culture', "{S} wanted to see Inti Raymi, the Inca festival of the sun every 24 June."],
       ['nature', "{S} hoped to pet a llama and buy a sweater of alpaca wool."],
@@ -534,7 +534,7 @@
     name: 'La Paz',
     country: 'Bolivia',
     lat: -16.50, lon: -68.15,
-    blurb: 'La Paz is the seat of government of Bolivia, the highest in the world at about 3,600 metres. Bolivia has two capitals: Sucre is the constitutional capital.',
+    blurb: 'La Paz is the seat of government of Bolivia, the highest in the world at about 3,600 meters. Bolivia has two capitals: Sucre is the constitutional capital.',
     treasure: ['a gondola from Mi Teleferico', 'a block of salt from the Salar de Uyuni'],
     scene: { k: 'mountain', sky: 'day', land: 'rock', trees: 'none', c: '#f2f4f7', c2: '#a0522d' },
     clues: [
@@ -557,7 +557,7 @@
     name: 'Santiago',
     country: 'Chile',
     lat: -33.45, lon: -70.67,
-    blurb: 'Santiago is the capital of Chile, in a valley with the snowy Andes rising right behind it. Chile stretches about 4,300 kilometres down the Pacific coast but averages only about 175 kilometres wide.',
+    blurb: 'Santiago is the capital of Chile, in a valley with the snowy Andes rising right behind it. Chile stretches about 4,300 kilometers down the Pacific coast but averages only about 175 kilometers wide.',
     treasure: ['the top floor of the Gran Torre Santiago', 'Pablo Neruda\'s seashell collection'],
     scene: { k: 'skyline', sky: 'day', land: 'snow', trees: 'leafy', c: '#8aa0b4', c2: '#ffffff' },
     clues: [
@@ -584,7 +584,7 @@
     treasure: ['a red stone topknot from a moai', 'a rongorongo tablet nobody can read'],
     scene: { k: 'moai', sky: 'dusk', land: 'grass', trees: 'none', c: '#6b5a4a', c2: '#2a6f9a' },
     clues: [
-      ['money', "{S} changed {P} money into pesos for a flight 3,700 kilometres out into the Pacific."],
+      ['money', "{S} changed {P} money into pesos for a flight 3,700 kilometers out into the Pacific."],
       ['flag', "{S} asked about a white flag with a red reimiro, a curved wooden chest ornament."],
       ['lang', "{S} was learning Rapa Nui, a Polynesian language."],
       ['sight', "{S} wanted to see the fifteen moai standing in a row at Ahu Tongariki."],
@@ -641,7 +641,7 @@
       ['culture', "{S} was hungry for centolla, the giant king crab caught in the Beagle Channel."],
       ['nature', "{S} wanted to see Magellanic and gentoo penguins on Martillo Island."],
       ['nature', "{S} wanted to see sea lions in the channel and beech forests bent by the wind."],
-      ['geo', "{S} said {s} was heading to a port about 1,000 kilometres from Antarctica."]
+      ['geo', "{S} said {s} was heading to a port about 1,000 kilometers from Antarctica."]
     ]
   },
   {
@@ -649,7 +649,7 @@
     name: 'Montevideo',
     country: 'Uruguay',
     lat: -34.90, lon: -56.16,
-    blurb: 'Montevideo, the capital of Uruguay, is the southernmost capital in the Americas, on the Rio de la Plata. Its long seaside walk, the Rambla, runs for about 22 kilometres.',
+    blurb: 'Montevideo, the capital of Uruguay, is the southernmost capital in the Americas, on the Rio de la Plata. Its long seaside walk, the Rambla, runs for about 22 kilometers.',
     treasure: ['the tower of the Palacio Salvo', 'the first World Cup trophy\'s winning ball'],
     scene: { k: 'clocktower', sky: 'dusk', land: 'sea', trees: 'leafy', c: '#c9b99a', c2: '#0038a8' },
     clues: [
@@ -679,7 +679,7 @@
       ['money', "{S} changed {P} money into guaranies and asked for the Pantheon of the Heroes."],
       ['flag', "{S} asked about a red, white and blue flag with a different emblem on each side."],
       ['lang', "{S} was learning Guarani, spoken by most people there alongside Spanish."],
-      ['sight', "{S} wanted to see the National Pantheon of the Heroes, a domed building modelled on Les Invalides in Paris."],
+      ['sight', "{S} wanted to see the National Pantheon of the Heroes, a domed building modeled on Les Invalides in Paris."],
       ['sight', "{S} wanted to visit the Itaipu Dam, one of the largest hydroelectric dams in the world."],
       ['geo', "{S} said {s} was going to a landlocked capital on a river of the same name as its country, with the Gran Chaco to the west."],
       ['hist', "{S} wanted to see the ruins of the Jesuit missions of Trinidad and Jesus."],
@@ -719,13 +719,13 @@
     country: 'Brazil',
     lat: -3.12, lon: -60.02,
     blurb: 'Manaus is a big city in the middle of the Amazon rainforest in Brazil, where the Rio Negro meets the Solimoes. It grew rich in the rubber boom and built a grand opera house.',
-    treasure: ['the coloured tile dome of the Teatro Amazonas', 'a giant Victoria water lily leaf'],
+    treasure: ['the colored tile dome of the Teatro Amazonas', 'a giant Victoria water lily leaf'],
     scene: { k: 'jungle', sky: 'dawn', land: 'jungle', trees: 'palm', c: '#2f6b3a', c2: '#8a5a2a' },
     clues: [
       ['money', "{S} changed {P} money into reais and asked for a riverboat on the Rio Negro."],
       ['flag', "{S} asked about a green and yellow flag with the words ORDEM E PROGRESSO, and a ticket to the opera in the rainforest."],
       ['lang', "{S} was learning Portuguese and some words of Nheengatu, a language of the Amazon."],
-      ['sight', "{S} wanted to see the Teatro Amazonas, an opera house with a dome of coloured tiles, opened in 1896."],
+      ['sight', "{S} wanted to see the Teatro Amazonas, an opera house with a dome of colored tiles, opened in 1896."],
       ['sight', "{S} wanted to see the Meeting of the Waters, where dark and sandy rivers run side by side without mixing."],
       ['geo', "{S} said {s} was going to a city in the middle of the Amazon rainforest, where the Rio Negro meets the Solimoes."],
       ['hist', "{S} read that this jungle city grew rich in the rubber boom of the late 1800s."],
@@ -733,7 +733,7 @@
       ['nature', "{S} hoped to see pink river dolphins."],
       ['nature', "{S} wanted to go piranha fishing and look for anacondas in the flooded forest."],
       ['nature', "{S} said {s} was going to the largest rainforest on Earth."],
-      ['geo', "{S} said {s} was going to a river port about 1,500 kilometres from the sea that ocean ships can still reach."]
+      ['geo', "{S} said {s} was going to a river port about 1,500 kilometers from the sea that ocean ships can still reach."]
     ]
   },
   {
@@ -748,7 +748,7 @@
       ['money', "{S} changed {P} money into dollars and asked how to fly to Kaieteur Falls."],
       ['flag', "{S} asked about the Golden Arrowhead: a green flag with a yellow triangle and a red triangle."],
       ['lang', "{S} said English is the official language where {s} was going, the only such country in South America."],
-      ['sight', "{S} wanted to see Kaieteur Falls, a single drop of about 226 metres, one of the most powerful waterfalls on Earth."],
+      ['sight', "{S} wanted to see Kaieteur Falls, a single drop of about 226 meters, one of the most powerful waterfalls on Earth."],
       ['sight', "{S} wanted to see St. George's Cathedral, one of the tallest wooden churches in the world."],
       ['geo', "{S} said {s} was going to a capital at the mouth of the Demerara River, below sea level and protected by a sea wall."],
       ['hist', "{S} read that this country was British Guiana until independence in 1966."],
@@ -764,7 +764,7 @@
     name: 'Paramaribo',
     country: 'Suriname',
     lat: 5.85, lon: -55.20,
-    blurb: 'Paramaribo is the capital of Suriname, on the Suriname River near the Atlantic. Its old centre of white wooden houses from the Dutch colonial days is a World Heritage Site.',
+    blurb: 'Paramaribo is the capital of Suriname, on the Suriname River near the Atlantic. Its old center of white wooden houses from the Dutch colonial days is a World Heritage Site.',
     treasure: ['the wooden doors of the Cathedral of Saints Peter and Paul', 'a cannon from Fort Zeelandia'],
     scene: { k: 'canal', sky: 'day', land: 'city', trees: 'palm', c: '#f4f1ea', c2: '#377e3f' },
     clues: [

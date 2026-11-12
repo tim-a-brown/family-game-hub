@@ -17,7 +17,7 @@
       ['geo', "{S} said {s} was heading to the biggest city on the Nile, right where the river splits into its delta."],
       ['hist', "{S} asked about a city founded by the Fatimids in 969 whose Arabic name means 'the Victorious'."],
       ['culture', "{S} was craving koshari, a street dish of rice, lentils, pasta and spicy tomato sauce."],
-      ['culture', "{S} asked where to watch a Tanoura show, where dancers spin in huge colourful skirts."],
+      ['culture', "{S} asked where to watch a Tanoura show, where dancers spin in huge colorful skirts."],
       ['people', "{S} was reading Naguib Mahfouz, the Nobel Prize-winning novelist who wrote about the alleys of his home city's old quarter."],
       ['nature', "{S} asked about the hot, dusty khamsin wind that blows in from the desert each spring."]
     ]
@@ -37,7 +37,7 @@
       ['sight', "{S} wanted a photo with the Colossi of Memnon, two giant seated statues of a pharaoh."],
       ['geo', "{S} said {s} was going far up the Nile, where desert cliffs on the west bank hide royal tombs."],
       ['hist', "{S} asked about the capital of the New Kingdom pharaohs, home of the great temple of the god Amun."],
-      ['hist', "{S} was reading about the avenue of sphinxes, almost three kilometres long, that links two great temples."],
+      ['hist', "{S} was reading about the avenue of sphinxes, almost three kilometers long, that links two great temples."],
       ['culture', "{S} wanted to float over ancient temples at sunrise in a hot-air balloon."],
       ['people', "{S} was reading about Queen Hatshepsut and her terraced temple at Deir el-Bahari."],
       ['nature', "{S} asked about a stretch of the Nile lined with sugar cane fields and date palms below bare desert cliffs."]
@@ -46,7 +46,7 @@
   {
     id: 'marrakesh', name: 'Marrakesh', country: 'Morocco', year: null,
     lat: 31.63, lon: -7.99,
-    blurb: "Marrakesh, the 'Red City' of Morocco, sits on a plain below the snowy High Atlas mountains. Its walled medina centres on the bustling square of Jemaa el-Fnaa.",
+    blurb: "Marrakesh, the 'Red City' of Morocco, sits on a plain below the snowy High Atlas mountains. Its walled medina centers on the bustling square of Jemaa el-Fnaa.",
     treasure: ["the copper globes from the top of the Koutoubia minaret", "a bucket of cobalt-blue paint from the Majorelle Garden"],
     scene: { k: 'mosque', sky: 'dusk', land: 'desert', trees: 'palm', c: '#c46a45' },
     clues: [
@@ -95,12 +95,12 @@
       ['money', "{S} changed {P} money into dinars and asked the way up to the Martyrs' Memorial."],
       ['flag', "{S} asked about a flag split into green and white halves with a red crescent and star."],
       ['lang', "{S} was learning Kabyle, a Berber language from the mountains east of the capital."],
-      ['sight', "{S} wanted to see the world's tallest minaret, 265 metres high, at the Great Mosque on the bay."],
-      ['sight', "{S} wanted to explore the Casbah, a steep maze of lanes and stairways above the harbour."],
+      ['sight', "{S} wanted to see the world's tallest minaret, 265 meters high, at the Great Mosque on the bay."],
+      ['sight', "{S} wanted to explore the Casbah, a steep maze of lanes and stairways above the harbor."],
       ['sight', "{S} wanted to visit the basilica of Notre-Dame d'Afrique on its cliff above the sea."],
       ['geo', "{S} said {s} was going to the capital of Africa's largest country by area."],
       ['hist', "{S} asked about the war of independence from France that ended in 1962."],
-      ['hist', "{S} was reading about Barbary corsairs who sailed from this harbour under the Ottoman deys."],
+      ['hist', "{S} was reading about Barbary corsairs who sailed from this harbor under the Ottoman deys."],
       ['people', "{S} was reading The Plague by Albert Camus, who grew up in the city's Belcourt district."],
       ['culture', "{S} wanted to watch a match of the Fennecs, the national football team named after the desert fox."],
       ['nature', "{S} asked about the volcanic Hoggar mountains, deep in the Sahara in the far south of the country."]
@@ -145,7 +145,7 @@
       ['hist', "{S} was reading about the famous desert car rally that once started in Paris and finished on this coast."],
       ['people', "{S} was reading poems by Leopold Sedar Senghor, the poet who became the country's first president."],
       ['culture', "{S} was craving thieboudienne, fish and rice in tomato sauce, the national dish."],
-      ['culture', "{S} asked where to see a laamb wrestling match, the country's favourite sport."],
+      ['culture', "{S} asked where to see a laamb wrestling match, the country's favorite sport."],
       ['culture', "{S} said {s} was going to the 2026 Youth Olympic Games, the first Olympic event ever held in Africa."],
       ['nature', "{S} wanted to see Lake Retba, a lake turned pink by salt-loving algae."]
     ]
@@ -153,7 +153,7 @@
   {
     id: 'timbuktu', name: 'Timbuktu', country: 'Mali', year: null,
     lat: 16.77, lon: -3.01,
-    blurb: "Timbuktu, in Mali, grew rich on the trans-Saharan trade, where camel caravans met boats on the Niger River. Its mud-brick mosques and ancient manuscripts made it a great centre of Islamic learning.",
+    blurb: "Timbuktu, in Mali, grew rich on the trans-Saharan trade, where camel caravans met boats on the Niger River. Its mud-brick mosques and ancient manuscripts made it a great center of Islamic learning.",
     treasure: ["a 600-year-old manuscript from the Sankore library", "a slab of salt carried by caravan from Taoudenni"],
     scene: { k: 'mudmosque', sky: 'day', land: 'desert', trees: 'none', c: '#b98a5a' },
     clues: [
@@ -179,7 +179,7 @@
     scene: { k: 'arch', sky: 'day', land: 'city', trees: 'palm', c: '#e8e2d0', c2: '#111111' },
     clues: [
       ['money', "{S} changed {P} money into cedis and pesewas."],
-      ['flag', "{S} asked about a red, gold and green striped flag with a black star in the centre."],
+      ['flag', "{S} asked about a red, gold and green striped flag with a black star in the center."],
       ['lang', "{S} was learning greetings in Twi and Ga."],
       ['sight', "{S} wanted to stand under the Black Star Gate on Independence Square."],
       ['sight', "{S} wanted to visit the coastal mausoleum of Kwame Nkrumah, the country's first leader after independence."],
@@ -227,7 +227,7 @@
       ['sight', "{S} wanted to cross the lagoon to the skyscrapers called the 'Manhattan of the tropics'."],
       ['geo', "{S} said {s} was going to the biggest city of the world's top cocoa-growing country."],
       ['hist', "{S} asked about a city that was the capital until 1983, when the role moved to the first president's home village."],
-      ['hist', "{S} asked about the huge Basilica of Our Lady of Peace upcountry, modelled on St Peter's in Rome."],
+      ['hist', "{S} asked about the huge Basilica of Our Lady of Peace upcountry, modeled on St Peter's in Rome."],
       ['culture', "{S} was dancing to coupe-decale music."],
       ['culture', "{S} was hungry for attieke, grated cassava served with grilled fish."],
       ['people', "{S} was a fan of Didier Drogba, the football star who scored for Chelsea."],
@@ -237,7 +237,7 @@
   {
     id: 'freetown', name: 'Freetown', country: 'Sierra Leone', year: null,
     lat: 8.48, lon: -13.23,
-    blurb: "Freetown, the capital of Sierra Leone, was founded in 1792 as a home for freed slaves. It sits on green hills above one of the largest natural harbours in the world.",
+    blurb: "Freetown, the capital of Sierra Leone, was founded in 1792 as a home for freed slaves. It sits on green hills above one of the largest natural harbors in the world.",
     treasure: ["a seed of the old Cotton Tree", "the first diploma from Fourah Bay College"],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'palm' },
     clues: [
@@ -245,7 +245,7 @@
       ['flag', "{S} asked about a flag of green, white and blue horizontal stripes."],
       ['lang', "{S} was learning Krio, the English-based language spoken across the country."],
       ['sight', "{S} wanted to see where the giant Cotton Tree stood for centuries until a storm toppled it in 2023."],
-      ['geo', "{S} said {s} was going to a capital on a mountainous peninsula beside one of the biggest natural harbours on Earth."],
+      ['geo', "{S} said {s} was going to a capital on a mountainous peninsula beside one of the biggest natural harbors on Earth."],
       ['hist', "{S} was reading about Black Loyalists from Nova Scotia who sailed to this coast in 1792 to found a free settlement."],
       ['hist', "{S} wanted to visit Fourah Bay College, founded in 1827, the oldest Western-style university in West Africa."],
       ['hist', "{S} asked about Bunce Island, an old slave fort up the river."],
@@ -273,7 +273,7 @@
       ['people', "{S} was reading about Joseph Jenkins Roberts, the Virginia-born first president of the country."],
       ['culture', "{S} was hungry for palm butter soup and rice."],
       ['nature', "{S} wanted to see pygmy hippos in Sapo National Park."],
-      ['nature', "{S} asked about the huge rubber plantation a tyre company started inland in 1926."]
+      ['nature', "{S} asked about the huge rubber plantation a tire company started inland in 1926."]
     ]
   },
   {
@@ -286,7 +286,7 @@
       ['flag', "{S} asked about a flag with a red band over a green one and a yellow star in the middle."],
       ['lang', "{S} was learning to greet people in Moore, the language of the Mossi."],
       ['sight', "{S} wanted to see the Laongo sculpture park, where artists carve giant granite boulders."],
-      ['geo', "{S} said {s} was going to a landlocked capital on the Sahel plateau, in a country with six neighbours."],
+      ['geo', "{S} said {s} was going to a landlocked capital on the Sahel plateau, in a country with six neighbors."],
       ['hist', "{S} asked about a country that changed its name from Upper Volta in 1984."],
       ['hist', "{S} asked about a country whose name means 'land of upright people'."],
       ['people', "{S} was reading about Thomas Sankara, the young revolutionary leader of the 1980s, at his memorial."],
@@ -352,7 +352,7 @@
       ['flag', "{S} asked about a flag with green, yellow and blue horizontal stripes."],
       ['lang', "{S} was brushing up on French and learning some Fang."],
       ['sight', "{S} wanted to see the Church of Saint-Michel, with wooden columns carved with Bible stories."],
-      ['geo', "{S} said {s} was going to a capital on the Komo estuary, about 40 kilometres north of the equator."],
+      ['geo', "{S} said {s} was going to a capital on the Komo estuary, about 40 kilometers north of the equator."],
       ['hist', "{S} asked about a city founded in 1849 by Africans freed from a captured slave ship."],
       ['people', "{S} was reading about Albert Schweitzer, the doctor who ran a jungle hospital upriver at Lambarene."],
       ['culture', "{S} was hungry for poulet nyembwe, chicken in palm-nut sauce."],
@@ -367,7 +367,7 @@
   {
     id: 'addisababa', name: 'Addis Ababa', country: 'Ethiopia', year: null,
     lat: 9.03, lon: 38.74,
-    blurb: "Addis Ababa, the capital of Ethiopia, sits at about 2,350 metres in the highlands. Its name means 'new flower' in Amharic, and it is home to the headquarters of the African Union.",
+    blurb: "Addis Ababa, the capital of Ethiopia, sits at about 2,350 meters in the highlands. Its name means 'new flower' in Amharic, and it is home to the headquarters of the African Union.",
     treasure: ["the bones of Lucy, the 3.2-million-year-old human ancestor", "a clay jebena coffee pot"],
     scene: { k: 'palace', sky: 'day', land: 'grass', trees: 'leafy', c: '#d7c9a3' },
     clues: [
@@ -397,7 +397,7 @@
       ['lang', "{S} was practising Swahili and some Sheng, the city's street slang."],
       ['sight', "{S} wanted to see lions and rhinos in a national park on the edge of a capital city."],
       ['sight', "{S} wanted to hand-feed giraffes at the Giraffe Centre."],
-      ['sight', "{S} wanted the view from the roof of the round convention centre tower named after the country's first president."],
+      ['sight', "{S} wanted the view from the roof of the round convention center tower named after the country's first president."],
       ['hist', "{S} asked about a city that began as a railway camp in 1899."],
       ['people', "{S} was reading about Wangari Maathai, the Nobel Prize winner who planted millions of trees."],
       ['people', "{S} wanted to visit the farmhouse of Karen Blixen, who wrote Out of Africa."],
@@ -410,11 +410,11 @@
     id: 'kampala', name: 'Kampala', country: 'Uganda', year: null,
     lat: 0.35, lon: 32.58,
     blurb: "Kampala, the capital of Uganda, was built on hills near the northern shore of Lake Victoria. It grew up around the royal court of the Buganda kingdom.",
-    treasure: ["a royal drum from the Kasubi Tombs", "a grey crowned crane's golden crest"],
+    treasure: ["a royal drum from the Kasubi Tombs", "a gray crowned crane's golden crest"],
     scene: { k: 'mosque', sky: 'day', land: 'grass', trees: 'palm', c: '#f0ece0' },
     clues: [
       ['money', "{S} changed {P} money into shillings and asked for a boda-boda ride to the Kasubi Tombs."],
-      ['flag', "{S} asked about a flag of black, yellow and red stripes with a grey crowned crane in a white circle."],
+      ['flag', "{S} asked about a flag of black, yellow and red stripes with a gray crowned crane in a white circle."],
       ['lang', "{S} was learning Luganda, the language of the Buganda kingdom."],
       ['sight', "{S} wanted to see the Kasubi Tombs, the great thatched burial house of the kings of Buganda."],
       ['sight', "{S} wanted to climb the minaret of the national mosque that was paid for by Libya."],
@@ -434,10 +434,10 @@
     treasure: ["an agaseke basket with a pointed lid", "the list of names from the gorilla-naming ceremony"],
     scene: { k: 'dome', sky: 'night', land: 'grass', trees: 'leafy', c: '#c9a0dc' },
     clues: [
-      ['money', "{S} changed {P} money into francs and asked about the glowing dome of the convention centre."],
+      ['money', "{S} changed {P} money into francs and asked about the glowing dome of the convention center."],
       ['flag', "{S} asked about a flag of blue, yellow and green bands with a golden sun in the top corner."],
       ['lang', "{S} was learning Kinyarwanda, spoken by nearly everyone in the country."],
-      ['sight', "{S} wanted to see the convention centre whose dome lights up in colours at night."],
+      ['sight', "{S} wanted to see the convention center whose dome lights up in colors at night."],
       ['geo', "{S} said {s} was going to the capital of the 'land of a thousand hills'."],
       ['hist', "{S} wanted to pay respects at the national memorial to the victims of the 1994 genocide."],
       ['hist', "{S} asked about a country that banned plastic bags back in 2008."],
@@ -514,7 +514,7 @@
   {
     id: 'asmara', name: 'Asmara', country: 'Eritrea', year: null,
     lat: 15.32, lon: 38.93,
-    blurb: "Asmara, the capital of Eritrea, sits on a high plateau at about 2,300 metres above the Red Sea. Built up by Italy in the 1930s, its modernist buildings made it a UNESCO World Heritage Site in 2017.",
+    blurb: "Asmara, the capital of Eritrea, sits on a high plateau at about 2,300 meters above the Red Sea. Built up by Italy in the 1930s, its modernist buildings made it a UNESCO World Heritage Site in 2017.",
     treasure: ["a wing from the Fiat Tagliero service station", "the steam whistle from the mountain railway"],
     scene: { k: 'cathedral', sky: 'day', land: 'city', trees: 'palm', c: '#a84a32' },
     clues: [
@@ -527,7 +527,7 @@
       ['geo', "{S} said {s} was going to a highland capital above the Red Sea coast."],
       ['hist', "{S} asked about a city listed by UNESCO in 2017 as 'a modernist city of Africa'."],
       ['hist', "{S} asked about a country that won its independence in 1993 after a 30-year war."],
-      ['culture', "{S} wanted to watch a bicycle race, the country's favourite sport."],
+      ['culture', "{S} wanted to watch a bicycle race, the country's favorite sport."],
       ['culture', "{S} wanted to stroll the palm-lined Harnet Avenue in the evening."],
       ['nature', "{S} asked about the coral reefs of the Dahlak islands in the Red Sea."]
     ]
@@ -609,7 +609,7 @@
       ['lang', "{S} was learning greetings in Shona and Ndebele, and asked about the Tonga language of the Zambezi valley."],
       ['sight', "{S} wanted to feel the spray of 'the smoke that thunders'."],
       ['sight', "{S} wanted to bungee jump off the 1905 railway bridge over the Zambezi gorge."],
-      ['geo', "{S} said {s} was going to where the Zambezi plunges more than 100 metres into a narrow gorge."],
+      ['geo', "{S} said {s} was going to where the Zambezi plunges more than 100 meters into a narrow gorge."],
       ['geo', "{S} asked about the widest single sheet of falling water on Earth, on the border between two countries."],
       ['hist', "{S} asked about the great stone city whose ruins gave the country its name."],
       ['people', "{S} was reading about David Livingstone, who named the falls after his queen in 1855."],
@@ -652,7 +652,7 @@
       ['sight', "{S} wanted to see the Rova, the hilltop palace of the Merina kings and queens."],
       ['geo', "{S} said {s} was going to a highland capital on the world's fourth-largest island."],
       ['hist', "{S} asked about Queen Ranavalona I, who ruled the Merina kingdom from 1828."],
-      ['culture', "{S} asked about famadihana, the 'turning of the bones' festival that honours ancestors."],
+      ['culture', "{S} asked about famadihana, the 'turning of the bones' festival that honors ancestors."],
       ['culture', "{S} was hungry for romazava, a beef and leafy greens stew served over rice."],
       ['culture', "{S} wanted to see herds of humped zebu cattle at the market."],
       ['nature', "{S} wanted to see lemurs, which live wild nowhere else on Earth."],
@@ -663,7 +663,7 @@
   {
     id: 'portlouis', name: 'Port Louis', country: 'Mauritius', year: null,
     lat: -20.16, lon: 57.50,
-    blurb: "Port Louis, the capital of Mauritius, is a harbour city on the island's northwest coast, ringed by mountains. Mauritius was the only home of the dodo, which died out in the 1600s.",
+    blurb: "Port Louis, the capital of Mauritius, is a harbor city on the island's northwest coast, ringed by mountains. Mauritius was the only home of the dodo, which died out in the 1600s.",
     treasure: ["the last dodo egg", "a Blue Penny stamp from 1847"],
     scene: { k: 'harbor', sky: 'day', land: 'sea', trees: 'palm' },
     clues: [
@@ -671,14 +671,14 @@
       ['flag', "{S} asked about a flag of four horizontal stripes: red, blue, yellow and green."],
       ['lang', "{S} was learning Kreol, the French-based language most people speak at home."],
       ['sight', "{S} wanted to visit Aapravasi Ghat, where indentured workers from India first landed."],
-      ['sight', "{S} wanted to stroll the Caudan Waterfront by the harbour."],
+      ['sight', "{S} wanted to stroll the Caudan Waterfront by the harbor."],
       ['geo', "{S} said {s} was going to an island capital in the Indian Ocean, east of Madagascar."],
       ['hist', "{S} asked about the Blue Penny and Red Penny, rare stamps printed on the island in 1847."],
       ['culture', "{S} wanted to watch horse racing at the Champ de Mars, a racecourse opened in 1812."],
       ['culture', "{S} wanted to dance the sega on the beach."],
       ['nature', "{S} wanted to see a dodo skeleton in the natural history museum."],
       ['nature', "{S} wanted to see the giant water lilies in the Pamplemousses botanical garden."],
-      ['nature', "{S} asked about the Seven Coloured Earths of Chamarel."]
+      ['nature', "{S} asked about the Seven Colored Earths of Chamarel."]
     ]
   }
 ];

@@ -30,7 +30,7 @@
     clues: [
       ['sight', "{S} wanted to see a ring of huge standing stones topped with stone lintels."],
       ['geo', "{S} said {s} was heading to a wide chalk plain in the south of a rainy island."],
-      ['hist', "{S} said the smaller bluestones there had been brought from the Preseli Hills, more than 200 kilometres away."],
+      ['hist', "{S} said the smaller bluestones there had been brought from the Preseli Hills, more than 200 kilometers away."],
       ['nature', "{S} said {s} wanted to watch the midsummer sun rise over the Heel Stone."],
       ['era', "{S} said the people there farm with polished stone axes, and hardly anyone has seen metal."],
       ['invention', "{S} wondered how sledges and ropes could move sarsen stones weighing around 25 tonnes."],
@@ -73,7 +73,7 @@
       ['sight', "{S} wanted to see the brand-new marble temple to Athena on top of the Acropolis."],
       ['people', "{S} asked where to find Pericles, the general who leads the assembly."],
       ['people', "{S} wanted to argue in the marketplace with Socrates, who asks everyone too many questions."],
-      ['culture', "{S} had a seat for a new tragedy by Sophocles in the theatre of Dionysus."],
+      ['culture', "{S} had a seat for a new tragedy by Sophocles in the theater of Dionysus."],
       ['money', "{S} paid with silver drachmas stamped with an owl."],
       ['hist', "{S} said every male citizen could vote in the assembly on the Pnyx hill."],
       ['era', "{S} said everyone feared that war with Sparta was coming."],
@@ -91,7 +91,7 @@
     treasure: ['the great mirror from the top of the lighthouse', 'a scroll borrowed from the Great Library and never returned'],
     scene: { k: 'lighthouse', sky: 'day', land: 'sea', trees: 'palm' },
     clues: [
-      ['sight', "{S} wanted to see a lighthouse over a hundred metres tall with a fire burning at the top."],
+      ['sight', "{S} wanted to see a lighthouse over a hundred meters tall with a fire burning at the top."],
       ['people', "{S} asked for an audience with King Ptolemy II, who collects every book he can find."],
       ['hist', "{S} said ships arriving there have their books seized and copied for the library."],
       ['people', "{S} wanted to study geometry with the pupils of Euclid."],
@@ -99,7 +99,7 @@
       ['lang', "{S} was polishing {P} Greek to talk with the scholars at the palace."],
       ['hist', "{S} wanted to visit the tomb where the body of Alexander the Great lies."],
       ['culture', "{S} said the scholars there work in the Mouseion, a temple to the Muses."],
-      ['geo', "{S} said {s} was going to a harbour city at the western edge of the Nile Delta."],
+      ['geo', "{S} said {s} was going to a harbor city at the western edge of the Nile Delta."],
       ['era', "{S} said scholars there were translating the Hebrew scriptures into Greek."],
       ['money', "{S} paid with silver coins showing an eagle and the portrait of the first King Ptolemy."],
       ['nature', "{S} said papyrus reeds from the delta marshes are made into the library's scrolls."]
@@ -137,7 +137,7 @@
       ['hist', "{S} said a group of senators led by Brutus and Cassius were plotting something."],
       ['sight', "{S} wanted to see the Forum, where the speakers' platform is decorated with the bronze rams of captured ships."],
       ['invention', "{S} said a new calendar of 365 days, with a leap year every four years, had just begun."],
-      ['era', "{S} heard the month Quintilis was being renamed in honour of the dictator."],
+      ['era', "{S} heard the month Quintilis was being renamed in honor of the dictator."],
       ['money', "{S} paid with a silver denarius showing the dictator's own face."],
       ['people', "{S} wanted to hear Cicero make a speech in the Senate."],
       ['lang', "{S} was practising Latin, the language of the Senate."],
@@ -201,7 +201,7 @@
       ['sight', "{S} wanted to see the Big Wild Goose Pagoda, built for scriptures brought back from India."],
       ['hist', "{S} said the city's streets are laid out in a perfect grid of walled wards."],
       ['geo', "{S} said {s} was going to the eastern end of the Silk Road."],
-      ['culture', "{S} wanted to play polo, the favourite sport of the court."],
+      ['culture', "{S} wanted to play polo, the favorite sport of the court."],
       ['money', "{S} paid with Kaiyuan Tongbao bronze coins."],
       ['invention', "{S} said printers there carve whole pages onto wooden blocks to print prayers."],
       ['era', "{S} said Sogdian merchants and Persian traders crowd the West Market."],
@@ -226,9 +226,9 @@
       ['lang', "{S} was translating the works of Aristotle into Arabic."],
       ['money', "{S} paid with gold dinars and silver dirhams."],
       ['geo', "{S} said {s} was going to a city on the Tigris, where it runs closest to the Euphrates."],
-      ['culture', "{S} wanted to play chess, a favourite game at the caliph's court."],
+      ['culture', "{S} wanted to play chess, a favorite game at the caliph's court."],
       ['invention', "{S} wanted to buy paper from the city's new paper mills."],
-      ['sight', "{S} wanted to see the green dome above the palace at the centre of the circle."]
+      ['sight', "{S} wanted to see the green dome above the palace at the center of the circle."]
     ]
   },
   {
@@ -243,7 +243,7 @@
       ['people', "{S} was quoting the witty lists in Sei Shonagon's Pillow Book."],
       ['lang', "{S} was practising kana, the flowing script that court ladies write in."],
       ['culture', "{S} wanted to answer a love letter with a short waka poem."],
-      ['culture', "{S} was choosing the colours for a robe of twelve silk layers."],
+      ['culture', "{S} was choosing the colors for a robe of twelve silk layers."],
       ['hist', "{S} said the capital was laid out on a grid copied from the great capital of the Tang."],
       ['geo', "{S} said {s} was going to a capital in a basin ringed by mountains, beside the Kamo River."],
       ['sight', "{S} wanted to visit the temples of Mount Hiei, above the city."],
@@ -304,7 +304,7 @@
       ['sight', "{S} wanted to see a silver tree with spouts pouring mare's milk, wine and mead."],
       ['people', "{S} asked about Guillaume Boucher, a goldsmith from Paris who was captured and brought east."],
       ['people', "{S} wanted an audience with Mongke Khan, grandson of Genghis."],
-      ['people', "{S} was travelling with William of Rubruck, a friar sent by the King of France."],
+      ['people', "{S} was traveling with William of Rubruck, a friar sent by the King of France."],
       ['hist', "{S} said the khan was holding a debate between Christians, Muslims and Buddhists."],
       ['geo', "{S} said {s} was going to a walled town in the Orkhon Valley."],
       ['culture', "{S} wanted to drink fermented mare's milk inside a felt tent."],
@@ -343,7 +343,7 @@
     treasure: ['a soapstone bird from the hilltop palace', 'a piece of Chinese porcelain that came all the way by sea'],
     scene: { k: 'castle', sky: 'dusk', land: 'savanna', trees: 'none', c: '#9a8a70' },
     clues: [
-      ['sight', "{S} wanted to see a curving stone wall over 250 metres around, built without mortar."],
+      ['sight', "{S} wanted to see a curving stone wall over 250 meters around, built without mortar."],
       ['sight', "{S} asked about a solid cone-shaped stone tower inside the great enclosure."],
       ['culture', "{S} wanted to see birds carved from soapstone on top of tall pillars."],
       ['hist', "{S} said gold from the plateau is carried to the port of Sofala and on to Kilwa."],
@@ -444,7 +444,7 @@
   {
     id: 'cusco', name: 'Cusco', country: 'Inca Empire', year: 1500,
     lat: -13.53, lon: -71.97,
-    blurb: "It is 1500 in Cusco, high in the Andes, capital of the Inca Empire. Roads run from here to every corner of an empire thousands of kilometres long.",
+    blurb: "It is 1500 in Cusco, high in the Andes, capital of the Inca Empire. Roads run from here to every corner of an empire thousands of kilometers long.",
     treasure: ['a golden panel from the walls of the Temple of the Sun', "a knotted quipu counting the empire's llamas"],
     scene: { k: 'terraces', sky: 'day', land: 'rock', trees: 'none' },
     clues: [
@@ -457,7 +457,7 @@
       ['money', "{S} said people there pay their taxes with work, not money."],
       ['nature', "{S} said trains of llamas carry goods along the mountain roads."],
       ['culture', "{S} wanted to join the festival of the Sun at the June solstice."],
-      ['geo', "{S} said {s} was going to a mountain capital more than 3,000 metres high."],
+      ['geo', "{S} said {s} was going to a mountain capital more than 3,000 meters high."],
       ['hist', "{S} said the city was laid out in the shape of a puma."],
       ['era', "{S} said the ruler's grandfather Pachacuti had built a royal estate on a ridge above the Urubamba."]
     ]
@@ -513,7 +513,7 @@
     clues: [
       ['sight', "{S} wanted to see a new round wooden playhouse on the south bank of the Thames."],
       ['people', "{S} wanted to see William Shakespeare's new play about the murder of Julius Caesar."],
-      ['hist', "{S} said the actors had pulled down their old theatre and carried its timbers across the river."],
+      ['hist', "{S} said the actors had pulled down their old theater and carried its timbers across the river."],
       ['people', "{S} hoped for a glimpse of Queen Elizabeth, the Virgin Queen."],
       ['era', "{S} said the Earl of Essex had marched off with an army to fight in Ireland."],
       ['sight', "{S} wanted to cross a bridge lined with houses and shops."],
@@ -576,7 +576,7 @@
     clues: [
       ['hist', "{S} said eleven ships had sailed for eight months from Portsmouth with convicts aboard."],
       ['people', "{S} asked for Captain Arthur Phillip, the colony's first governor."],
-      ['geo', "{S} said {s} was heading for a cove in a deep harbour called Port Jackson."],
+      ['geo', "{S} said {s} was heading for a cove in a deep harbor called Port Jackson."],
       ['hist', "{S} said the fleet had found Botany Bay too open and swampy and moved north."],
       ['people', "{S} said French ships under La Perouse had turned up just days after the fleet."],
       ['nature', "{S} wanted to see kangaroos hopping through the gum trees."],
@@ -654,7 +654,7 @@
   {
     id: 'rio', name: 'Rio de Janeiro', country: 'Brazil', year: 1931,
     lat: -22.91, lon: -43.17,
-    blurb: "It is 1931 in Rio de Janeiro, then the capital of Brazil, and the giant statue of Christ the Redeemer is unveiled on Corcovado mountain. It stands 30 metres tall, with arms stretched wide over the bay.",
+    blurb: "It is 1931 in Rio de Janeiro, then the capital of Brazil, and the giant statue of Christ the Redeemer is unveiled on Corcovado mountain. It stands 30 meters tall, with arms stretched wide over the bay.",
     treasure: ['a soapstone tile from Christ the Redeemer', 'a feathered costume from the Carnival parade'],
     scene: { k: 'redeemer', sky: 'day', land: 'sea', trees: 'palm' },
     clues: [

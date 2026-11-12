@@ -35,7 +35,7 @@
     { id: 'stripe', n: 'Woven stripes' }, { id: 'stars', n: 'A field of stars' }
   ];
   var COLS = [['#1b2850', 'Midnight blue'], ['#4a1820', 'Oxblood'], ['#12403a', 'Forest green'], ['#3a2a1c', 'Walnut'], ['#26282e', 'Charcoal'], ['#3b2350', 'Plum']];
-  var WORDS = { size: 'Size of the picture', centre: 'Put the picture back in the middle', cloth: 'Cloth', colour: 'Colour', fromPic: 'A colour from the picture', another: 'Choose another picture', stage: 'The picture on the mat. Drag to move it, pinch or scroll to change its size.' };
+  var WORDS = { size: 'Size of the picture', centre: 'Put the picture back in the middle', cloth: 'Cloth', colour: 'Colour', fromPic: 'A color from the picture', another: 'Choose another picture', stage: 'The picture on the mat. Drag to move it, pinch or scroll to change its size.' };
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function num(v, d) { v = Number(v); return isFinite(v) ? v : d; }
