@@ -322,7 +322,8 @@
       // gilded rule under it taken together ("align it vertically with the text+gilded divider height combined")
       const wh = c.querySelector('.ac-when');
       if (wh && wh.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(wh); const rs = rg.getClientRects(), q = rs[rs.length - 1];
-        if (q) for (const [r, pad] of [[9, .28], [6.5, .22], [0, .16]]) { const body = Math.max(r, 3.4), x = MAPW - (sr.right - (q.right + .45 * em + body * sc)) / sc, y = ((q.top + wh.getBoundingClientRect().bottom) / 2 - sr.top) / sc;
+        // (every card's ring the same size, Newton's: Tim, 2026-11-12)
+        if (q) for (const [r, pad] of [[6.5, .22], [6.5, .08]]) { const body = Math.max(r, 3.4), x = MAPW - (sr.right - (q.right + .45 * em + body * sc)) / sc, y = ((q.top + wh.getBoundingClientRect().bottom) / 2 - sr.top) / sc;
           if (x <= MAPW - body - 4 && y >= body + 2 && clear(x, y, body * sc + pad * em)) { out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; break; } } }
       const tiers = out ? [] : [[9, .28], [6.5, .22], [0, .16]];
       for (let ti = 0; ti < tiers.length && !out; ti++) { const r = tiers[ti][0], body = Math.max(r, 3.4), rad = body * sc + tiers[ti][1] * em; let best = 1e9;
