@@ -1478,23 +1478,31 @@
     layout(); lines(); fitPlates();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
-  // A tile's name and rule stay on the paper, clear of the Might totals above it and the frame below. Fonts are
-  // drawn taller on some devices (Tim's iPhone), so this is measured, not assumed: a plate that doesn't fit steps
-  // its words down a size (f1), then another (f2, f3); on a tile too short for both lines (a 320-wide phone) the
-  // rule leaves the tile (f4) and is read where the tile is tapped.
+  // A tile's name and rule stay on the paper, clear of the Might totals and the banner above it and the frame below.
+  // Fonts are drawn taller on some devices (Tim's iPhone), so this is measured, not assumed. Every tile on the map
+  // takes the same size of words (f1 to f3, the smallest step at which all of them fit) and the same height of paper,
+  // the height the tallest needs (Tim: "these domains aren't the same size and they should be, even though the
+  // pyramid text is the one going an extra line"). Only on a tile too short for a name and a rule at the smallest
+  // size (a 320-wide phone) does the rule leave the tile (f4); it is read where the tile is tapped.
   function fitPlates() {
     if (!dom.map) return;
-    dom.map.querySelectorAll('.pl-tile').forEach(t => {
-      const p = t.querySelector('.pl-plate'); if (!p) return;
-      t.classList.remove('f1', 'f2', 'f3', 'f4');
-      const bad = () => { const tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), top = tt ? tt.getBoundingClientRect().bottom : tr.top;
-        const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
-        // (the name's box is its capitals' own height: it must also stay clear of the banner and the two Might totals)
-        const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
-        const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
-        return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits; };
-      if (bad()) { t.classList.add('f1'); if (bad()) { t.classList.replace('f1', 'f2'); if (bad()) { t.classList.replace('f2', 'f3'); if (bad()) t.classList.add('f4'); } } }
-    });
+    const tiles = Array.prototype.filter.call(dom.map.querySelectorAll('.pl-tile'), t => t.querySelector('.pl-plate'));
+    if (!tiles.length) return;
+    const plate = t => t.querySelector('.pl-plate');
+    const set = (t, k) => { t.classList.remove('f1', 'f2', 'f3', 'f4'); if (k) t.classList.add('f' + Math.min(k, 3)); if (k > 3) t.classList.add('f4'); };
+    const bad = t => {
+      const p = plate(t), tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), top = tt ? tt.getBoundingClientRect().bottom : tr.top;
+      const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
+      const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
+      const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
+      return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
+    };
+    tiles.forEach(t => { plate(t).style.minHeight = ''; });
+    let k = 0; for (; k <= 3; k++) { tiles.forEach(t => set(t, k)); if (!tiles.some(bad)) break; }
+    if (k > 3) tiles.forEach(t => { set(t, 3); if (bad(t)) set(t, 4); });
+    // the same paper on every tile: the tallest one's height, the words centred on it
+    const H = Math.max.apply(null, tiles.map(t => plate(t).getBoundingClientRect().height));
+    tiles.forEach(t => { plate(t).style.minHeight = H + 'px'; });
   }
   // Sizes from the room there is
   function layout() {
