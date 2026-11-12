@@ -450,7 +450,7 @@
   const worthOf = (from, to) => (CARDS[to].insp || []).indexOf(from) >= 0 ? 'legacy' : 'thread';
   // each: a Legacy Figure that names two people has +1 Might for each of them in play, so that Might is drawn on each
   // person's own stretch of line (llMi), and the shared line carries the Spark and the Renown
-  const llMi = () => el('span', { class: 'ln-worth ll-mi' }, [el('span', { class: 'ln-w mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('i'), el('b', { text: '+1' })])]);
+  const llMi = () => el('i', { class: 'al-k mi ll-mi', role: 'img', 'aria-label': 'plus 1 Might' }, [el('b', { text: '+1' })]);
   function worthEl(kind, each) {
     const w = (cls, tx, say) => el('span', { class: 'ln-w ' + cls, role: 'img', 'aria-label': say }, [el('i'), el('b', { text: tx })]);
     return el('span', { class: 'ln-worth' }, [kind === 'legacy' ? w('sp', '−1', 'costs 1 Spark less') : null, kind === 'legacy' && !each ? w('mi', '+1', 'plus 1 Might') : null, w('re', '+1', 'scores 1 Renown')]);
