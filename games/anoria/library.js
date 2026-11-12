@@ -71,9 +71,9 @@
   // what a line has to say: its sentence, or (while one end is still undiscovered) only that it's there
   function linkText(l) {
     if (linkKnown(l)) return l.tx;
-    if (known(l.a)) return 'A thread runs on from ' + nameOf(l.a) + ' to a card you haven\'t found.';
+    if (known(l.a)) return 'A Legacy Line runs on from ' + nameOf(l.a) + ' to a card you haven\'t found.';
     if (known(l.b)) return nameOf(l.b) + ' grew from a card you haven\'t found.';
-    return 'A thread between two cards you haven\'t found.';
+    return 'A Legacy Line runs between two cards you haven\'t found.';
   }
   // A named Thread laid out to read: its cards in the order cards.js gives them, each Place just ahead of the card
   // that grew from it, and the lines among them in that order
@@ -509,11 +509,14 @@
   function paint() {
     if (!T) return;
     const p = plan(), hot = {}, on = {}; let cur = T.link;
-    if (p) { p.order.forEach(id => { hot[id] = 1; }); p.links.forEach(l => { on[l.id] = 1; }); T.step = Math.max(0, Math.min(p.steps.length - 1, T.step)); const s = p.steps[T.step]; cur = s ? T.links.filter(k => k.l === s)[0] : null; T.link = cur; }
-    else if (cur) { hot[cur.l.a] = 1; hot[cur.l.b] = 1; on[cur.l.id] = 1; }
+    // (a named Legacy Line is walked card by card, in its order: Tim, 2026-11-12, "shouldn't the focus move from card to
+    // card as I cycle between one and four". The card in front is T.at; the line that arrives at it is drawn flowing.)
+    if (p) { p.order.forEach(id => { hot[id] = 1; }); p.links.forEach(l => { on[l.id] = 1; }); T.step = Math.max(0, Math.min(p.order.length - 1, T.step)); T.at = p.order[T.step];
+      const arr = T.links.filter(k => k.l.b === T.at && on[k.l.id]); cur = arr.filter(k => k.lit)[0] || arr.filter(k => k.known)[0] || arr[0] || null; T.link = cur; }
+    else { T.at = null; if (cur) { hot[cur.l.a] = 1; hot[cur.l.b] = 1; on[cur.l.id] = 1; } }
     const focus = !!p || (!!cur && !T.soft);
     T.inn.classList.toggle('focus', focus);
-    Object.keys(T.node).forEach(id => { const c = T.node[id].el.classList; c.toggle('hot', focus && !!hot[id]); c.toggle('end', !!cur && (cur.l.a === id || cur.l.b === id)); });
+    Object.keys(T.node).forEach(id => { const c = T.node[id].el.classList; c.toggle('hot', focus && !!hot[id]); c.toggle('end', p ? id === T.at : !!cur && (cur.l.a === id || cur.l.b === id)); });
     T.svg.querySelectorAll('[data-l]').forEach(n => { n.classList.toggle('on', focus && !!on[T.links[+n.dataset.l].l.id]); });
     T.svg.querySelector('.flow').setAttribute('d', cur ? cur.d : ''); T.svg.querySelector('.flow-g').setAttribute('d', cur ? cur.d : '');
     T.svg.classList.toggle('lit-flow', !!cur && cur.lit);
@@ -521,8 +524,8 @@
   }
   // bring the chosen line's far end to the middle of the screen
   function reveal() {
-    if (!T || !T.link) return;
-    const n = T.node[T.link.l.b].el, sc = L.scroll, r = n.getBoundingClientRect(), s = sc.getBoundingClientRect(), how = calm() ? 'auto' : 'smooth';
+    const at = T && (T.at || (T.link && T.link.l.b)); if (!at || !T.node[at]) return;
+    const n = T.node[at].el, sc = L.scroll, r = n.getBoundingClientRect(), s = sc.getBoundingClientRect(), how = calm() ? 'auto' : 'smooth';
     if (T.across) sc.scrollTo({ left: sc.scrollLeft + r.left - s.left - (s.width - r.width) / 2, behavior: how });
     else { const head = L.bar.offsetHeight + T.inn.querySelector('.tl-eh').offsetHeight;   // (the switch and the era's name cover the top)
       sc.scrollTo({ top: sc.scrollTop + r.top - s.top - head - (s.height - head - r.height) / 2, behavior: how }); }
@@ -536,17 +539,22 @@
     if (p) {
       const t = Coll.threads().filter(x => x.id === st.thread)[0], acts = el('div', { class: 'tc-a' });
       const go = d => { Kit.sfx('tick'); Kit.haptic('light'); T.step += d; paint(); reveal(); };
-      c.appendChild(el('div', { class: 'tc-h' }, [el('b', { class: 'tc-th', text: t.n }), p.steps.length > 1 ? el('span', { class: 'tc-n', text: (T.step + 1) + ' of ' + p.steps.length }) : null]));
-      if (p.steps.length > 1) { acts.appendChild(ib(Kit.icon('back'), 'The line before', () => go(-1), T.step < 1)); acts.appendChild(ib(Kit.icon('right'), 'The next line', () => go(1), T.step >= p.steps.length - 1)); }
+      const N = p.order.length;
+      c.appendChild(el('div', { class: 'tc-h' }, [el('b', { class: 'tc-th', text: t.n }), N > 1 ? el('span', { class: 'tc-n', text: (T.step + 1) + ' of ' + N }) : null]));
+      if (N > 1) { acts.appendChild(ib(Kit.icon('back'), 'The card before', () => go(-1), T.step < 1)); acts.appendChild(ib(Kit.icon('right'), 'The next card', () => go(1), T.step >= N - 1)); }
       acts.appendChild(ib(Kit.icon('close'), 'Leave this Legacy Line', () => { tap(); st.thread = null; T.link = null; paint(); }));
       c.appendChild(acts);
     }
-    if (k) {
-      const end = id => el('span', { class: 'tc-e ' + stateOf(id) }, [thumb(id), el('b', { text: known(id) ? nameOf(id) : 'Not found' })]);
+    const end = id => el('span', { class: 'tc-e ' + stateOf(id) }, [thumb(id), el('b', { text: known(id) ? nameOf(id) : 'Not found' })]);
+    if (p && T.at && !k) {   // (the first card of the line: nothing arrives at it)
+      c.appendChild(el('div', { class: 'tc-pair' }, [end(T.at)]));
+      c.appendChild(el('p', { class: 'tc-tx' + (known(T.at) ? '' : ' hush'), text: known(T.at) ? t0(p) + ' begins with ' + nameOf(T.at) + '.' : t0(p) + ' begins with a card you haven\u2019t found.' }));
+    } else if (k) {
       c.appendChild(el('div', { class: 'tc-pair' + (k.lit ? ' lit' : '') }, [end(k.l.a), el('span', { class: 'tc-to' }, [el('span', { class: 'tc-ar', html: ARROW }), end(k.l.b)])]));
       c.appendChild(el('p', { class: 'tc-tx' + (k.known ? '' : ' hush'), text: linkText(k.l) }));
     } else c.appendChild(el('p', { class: 'tc-tx hush', text: p ? 'These stand together, with no line between them.' : 'Every line is something true.' }));
   }
+  const t0 = p => { const t = Coll.threads().filter(x => x.id === st.thread)[0]; return t ? t.n : 'This Legacy Line'; };
   const KNOT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M7.2 6H13a3 3 0 0 1 3 3v6.8"/></svg>';
 
   // ═══ The named Threads ════════════════════════════════════════════════════════════════════════════════════
