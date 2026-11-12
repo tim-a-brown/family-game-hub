@@ -27,10 +27,12 @@
   const U = () => window.AnoriaUI;       // what the table shares (ui.js loads after this file, so ask when needed)
   const calm = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
   const wait = ms => new Promise(r => setTimeout(r, ms));
-  const facOf = k => CARDS[k] ? CARDS[k].f : TX.GUIDES[k] ? TX.GUIDES[k].f : 'N';
+  const facOf = k => CARDS[k] ? CARDS[k].f : TX.GUIDES[k] ? TX.GUIDES[k].f : C.PLACES[k] ? 'P' : 'N';
+  // (a Domain from a pack: its name, and its kind as a Domain, "a Commerce Domain")
+  const isDom = k => !CARDS[k] && !!C.PLACES[k], nameOf = k => (isDom(k) ? C.PLACES[k].n : CARDS[k].n);
   const col = k => U().FAC[facOf(k)].c;
   const plural = (n, one, many) => n === 1 ? one : many;
-  const kindOf = k => { const c = CARDS[k], kind = c.t === 'fig' ? 'Figure' : c.t === 'relic' ? 'Relic' : c.quick ? 'Quick Deed' : 'Deed'; return c.f === 'N' ? kind : U().FAC[c.f].n + ' ' + kind; };
+  const kindOf = k => { if (isDom(k)) { const D = window.AnoriaDomains, kd = D && D.kindOf(k); return (kd ? D.KINDS[kd].n + ' ' : '') + 'Domain'; } const c = CARDS[k], kind = c.t === 'fig' ? 'Figure' : c.t === 'relic' ? 'Relic' : c.quick ? 'Quick Deed' : 'Deed'; return c.f === 'N' ? kind : U().FAC[c.f].n + ' ' + kind; };
   function anim(node, frames, o) {   // one movement; a calm screen gets where it's going straight away
     if (!node.animate) return { finished: Promise.resolve() };
     if (calm()) { o = Object.assign({}, o, { duration: 1, delay: 0 }); }
@@ -235,7 +237,8 @@
       if (!res) { next(); return; }   // (it was opened somewhere else in the meantime)
       opened++;
       count(true);
-      const cards = res.cards, n = cards.length, cells = [];
+      // (the pack's Domain, when it has one, comes out last, on the same strip, with the Domains' own back)
+      const cards = res.cards.concat((res.domains || []).map(d => ({ c: d.id, first: true, dom: true }))), n = cards.length, cells = [];
       // Every picture in the pack is fetched and decoded from this moment, the first card's first. The cards wait in
       // the pack for that one (never longer than CEIL: a dead connection cannot hang the pack).
       const keys = cards.map(x => x.c), CEIL = 2600;
@@ -283,7 +286,7 @@
       cards.forEach((x, i) => {
         const b = el('div', { class: 'vf-c pk-fc' + (flat ? '' : ' tum'), 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })]), el('i', { class: 'pk-edge' })])]);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' + (x.dom ? ' dm-back' : '') }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })]), el('i', { class: 'pk-edge' })])]);
         const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
         const c = { el: b, th: th, x: x, up: false, at: 0, landed: flat, sh: null };
         // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it
@@ -307,7 +310,7 @@
         const keep = Array.from(plate.childNodes), cls = plate.className; let h = 0; plate.style.minHeight = ''; plate.setAttribute('aria-busy', 'true');
         const here = {}; cards.forEach(x => { here[x.c] = 1; });   // (a Thread is only shown to a card you have, or one in this pack)
         cards.forEach(x => {
-          const k = x.c, c = CARDS[k]; let far = null;
+          const k = x.c, c = CARDS[k] || {}; let far = null;
           const see = (o, tx, back) => { if (tx && (here[o] || known(o)) && (!far || tx.length + CARDS[o].n.length > far.tx.length + CARDS[far.other].n.length)) far = { other: o, from: back ? k : o, to: back ? o : k, tx: tx }; };
           (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@') see(s, TX.LINKS[s + '>' + k]); });
           Coll.ALL.forEach(t => { const tc = CARDS[t]; if ((tc.insp || []).concat(tc.from || []).indexOf(k) >= 0) see(t, TX.LINKS[k + '>' + t], true); });
@@ -335,7 +338,7 @@
 
       // a Thread between this card and one you can see: a Figure it grew from, or one that grew from it
       function linkFor(k) {
-        const c = CARDS[k], out = [];
+        const c = CARDS[k] || {}, out = [];
         (c.insp || []).concat(c.from || []).forEach(s => { if (s[0] !== '@' && s !== k && known(s) && TX.LINKS[s + '>' + k]) out.push({ other: s, from: s, to: k, tx: TX.LINKS[s + '>' + k] }); });
         Coll.ALL.forEach(t => { const tc = CARDS[t]; if (t !== k && (tc.insp || []).concat(tc.from || []).indexOf(k) >= 0 && known(t) && TX.LINKS[k + '>' + t]) out.push({ other: t, from: k, to: t, tx: TX.LINKS[k + '>' + t] }); });
         out.forEach(l => { l.cell = cells.filter(c2 => c2.up && c2.x.c === l.other)[0] || null; });
@@ -346,12 +349,12 @@
       // the plate: the card at the front. Upright, the card itself is large enough to read, so only a Thread it has
       // to a card of yours is written here; sideways the card is smaller, and the plate beside it says the rest too.
       function show(k, x, link, dry) {
-        const t = TX.CARDS[k] || {};
+        const t = TX.CARDS[k] || (isDom(k) ? { tx: (TX.DRULE || {})[C.PLACES[k].pw] } : {});
         plate.className = 'pk-plate ' + (x.first ? 'new' : 'two'); plate.style.setProperty('--f', col(k)); plate.innerHTML = '';
         // (a new card says so itself: New is stamped on it as it turns. A foil says which: its gem and its name.)
         plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]),
           x.ed ? el('span', { class: 'pk-p-e e' + x.ed }, [Ed().gem(x.ed), EDS[x.ed].n]) : null, x.first || x.copy === false ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));
-        plate.appendChild(el('div', { class: 'pk-p-n', text: CARDS[k].n }));
+        plate.appendChild(el('div', { class: 'pk-p-n', text: nameOf(k) }));
         const L = lineFor(k);
         if (L) { plate.appendChild(lineEl(L, k)); if (link) plate.appendChild(el('p', { class: 'pk-p-why', text: link.tx })); }
         else if (link) plate.appendChild(linkEl(link, k));
@@ -387,7 +390,7 @@
         if (!extra) c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
         if (ed) c.el.appendChild(el('span', { class: 'pk-ed e' + ed }, [Ed().gem(ed), EDS[ed].n]));
         c.th.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.th.classList.add('e' + ed); c.th.style.setProperty('--f', col(k));
-        c.th.setAttribute('aria-label', CARDS[k].n + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
+        c.th.setAttribute('aria-label', nameOf(k) + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
         const im = A.artImg(k, true) || A.mono(k); if (im) c.th.appendChild(im);
         if (link) { knot(c); if (link.cell) knot(link.cell); }
         // (the sound and the tap in the hand are the card landing)
@@ -545,10 +548,10 @@
       }
       // the tally on the plate (dry: only to measure the room it needs, before a card has been turned)
       function tallyFill(dry) {
-        const nw = cards.filter(x => x.first).length, tw = cards.filter(x => !x.first && x.copy !== false).length;
+        const nw = cards.filter(x => x.first && !x.dom).length, tw = cards.filter(x => !x.first && x.copy !== false).length, nd = cards.filter(x => x.dom).length;
         const num = (label, v, cls) => { const b = el('b', { text: dry ? String(v) : '0' }); if (!dry) countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
         plate.className = 'pk-plate tally'; plate.innerHTML = '';
-        plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two')]));
+        plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two'), nd ? num(plural(nd, 'Domain', 'Domains'), nd, 'new') : null]));
         // the foils in this pack, as the ladder of editions: each one found is lit, with how many
         const eds = EDS.map((x, e) => cards.filter(y => (y.ed || 0) === e).length);
         if (eds.slice(1).some(v => v)) plate.appendChild(el('div', { class: 'pk-t-eds', role: 'img', 'aria-label': EDS.slice(1).map((x, i) => eds[i + 1] ? eds[i + 1] + ' ' + x.n : '').filter(Boolean).join(', ') },
