@@ -214,7 +214,7 @@
     if (rib) rib.textContent = K.n;
     if (inn) inn.appendChild(mark(kind));
     if (paper && !o.mini) {
-      const say = paper.querySelector('.ac-say'), h = home(p.reg, { name: true }); h.classList.add('ac-home');
+      const say = paper.querySelector('.ac-say'), h = window.AnoriaUI && window.AnoriaUI.homeFoot ? window.AnoriaUI.homeFoot(p.reg) : home(p.reg, { name: true }); h.classList.add('ac-home');
       paper.appendChild(el('div', { class: 'dm-foot' }, [say || el('span'), h]));
       // (turned over to its picture, the card keeps its home on the strip at the foot)
       const brief = n.querySelector('.ac-brief'); if (brief) { brief.querySelectorAll('.dm-home').forEach(x => x.remove()); brief.appendChild(home(p.reg, { name: true })); }
