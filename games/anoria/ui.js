@@ -2341,13 +2341,18 @@
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
+  // The key to the marks on the map's tiles, drawn with the marks themselves (rules page)
+  function kindKey() { const D = window.AnoriaDomains; if (!D) return ''; return '<span class="rk-keys">' + D.ORDER.map(k => '<span class="rk-k">' + D.mark(k).outerHTML + '<b>' + D.KINDS[k].n + '</b></span>').join('') + '</span>'; }
+  function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
   const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return ('' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li>' +
-    (C.DM_LIVE ? '<li>The border of each Domain shows its kind: Commerce, Industry, Thought, Land, Culture, Law or Routes. The house at its foot shows its home region.</li></ul>' +
+    '<li>The mark on the left edge of a Place shows its kind:' + kindKey() + '</li>' +
+    '<li>The house on the right edge shows the Place\'s home region, with the region\'s outline inside it.' + homeKey() + 'A Figure from that region has +1 Might there, and while you hold such a Figure in your hand or move one on the map, the houses where it would be at home light up gold.</li>' +
+    (C.DM_LIVE ? '<li>The border of each Domain is the material of its kind, as well: a cord with seals for Commerce, riveted iron for Industry, a ruled margin for Thought, a battlement for Land, a dog-tooth frieze for Culture, a marble moulding for Law and a chart\'s border for Routes.</li></ul>' +
     '<h3>Domains</h3><ul><li>Each deck brings a <b>stack of ' + Coll.STACK + ' Domains</b>, no two the same. You choose them under Decks.</li>' +
     '<li>Before the first round, each player draws three Domains, lays one at their Gate and one at their Outpost, and offers the third for the Crossroads.</li>' +
     '<li>Then each player rolls a die. The higher roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the other player takes the first turn.</li>' +
