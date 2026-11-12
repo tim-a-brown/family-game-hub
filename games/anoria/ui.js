@@ -1374,6 +1374,11 @@
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
       }
     }
+    // the Deeds this player has in play until the count, after the Relics: each its picture with the Deed's scroll on it
+    // (Tim, 2026-11-12: "we might also need board space for deeds in play")
+    const dips = (V.dip || []).filter(d => d.o === o), dipEl = dips.length ? el('div', { class: 'st-dip', 'aria-label': dips.length + (dips.length > 1 ? ' Deeds' : ' Deed') + ' in play until the count' }, dips.map(d => {
+      const b = el('button', { type: 'button', class: 'relic dip', 'aria-label': info(d.c).n + ', in play until the count', 'data-dip': d.c, onclick: () => openView(d.c) }); const im = artImg(d.c, true); if (im) b.appendChild(im);
+      b.appendChild(el('i', { class: 'dip-m', html: MARK.deed })); return b; })) : null;
     const spark = on ? p.spark : p.reserve + (p.sg || 0);   // (not their turn: the Spark held back, and the 1 Empress Wu has coming)
     const sp = el('div', { class: 'st-spark' + (spark ? '' : ' zero'), 'aria-label': spark + ' Spark' }, [el('b', { text: String(spark) })]);
     if (me && ui.sel && ui.sel.kind === 'hand' && idle()) {
@@ -1382,7 +1387,7 @@
     node.appendChild(el('div', { class: 'st-top' }, [
       el('div', { class: 'st-name' }, [el('i'), pl.cpu ? el('span', { class: 'bot', html: Kit.icon('bot') }) : null, el('span', { class: 'nm', text: pl.name })]),
       el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of ' + S.cfg.target }, [el('div', { class: 'st-track', style: { '--r': Math.min(S.cfg.target, p.renown), '--tg': S.cfg.target } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
-    node.appendChild(el('div', { class: 'st-bot' }, [seals, relics,
+    node.appendChild(el('div', { class: 'st-bot' }, [seals, relics, dipEl,
       me && !ui.hideHand ? null : el('div', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })]),
       el('span', { class: 'st-fill' }), sp]));
     if (me) {
@@ -1454,6 +1459,7 @@
         tile.appendChild(el('span', { class: 'pl-tots' }, [
           el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero'), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
           el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero'), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
+        (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: MARK.deed })));   // (a Deed in play on this Domain)
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
           el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : '') + (gate ? ' g' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span><span class="pl-nt">' + esc(pi.n) + '</span>' : esc(pi.n)) }),
