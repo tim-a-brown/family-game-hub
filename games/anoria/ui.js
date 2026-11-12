@@ -2302,12 +2302,19 @@
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
-  const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return '' +
+  const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return ('' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. Breaking all <b>3 of the other player\'s Seals</b> wins on the spot.</p>' +
     '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
-    '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li></ul>' +
+    '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li>' +
+    (C.DM_LIVE ? '<li>The border of each Domain shows its kind: Commerce, Industry, Thought, Land, Culture, Law or Routes. The house at its foot shows its home region.</li></ul>' +
+    '<h3>Domains</h3><ul><li>Each deck brings a <b>stack of ' + Coll.STACK + ' Domains</b>, no two the same. You choose them under Decks.</li>' +
+    '<li>Before the first round, each player draws three Domains, lays one at their Gate and one at their Outpost, and offers the third for the Crossroads.</li>' +
+    '<li>Then each player rolls a die. The higher roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the other player takes the first turn.</li>' +
+    '<li>If the Might at the Crossroads is tied, the player whose banner is on it holds it, as long as they have a Figure there.</li>' +
+    '<li>A Commerce Domain pays nothing at a Gate. Its rule works at an Outpost or the Crossroads.</li>' +
+    '<li>Some cards lay a new Domain, move Domains or cover a Domain\'s rule. The turn log says what changed.</li></ul>' : '</ul>') +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
     '<li>Then, in any order, play cards and act. When you tap a card or one of your Figures, everywhere it can go lights up.</li>' +
     '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
@@ -2337,7 +2344,7 @@
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
-    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>'; };
+    '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>').replace(/\bPlace(s?)\b/g, (m, x) => (C.DM_LIVE ? 'Domain' + x : m)); };
   // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
   // opens over whatever is on the table and leaves a game as it is; over the setup, the setup is drawn again after
   // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
