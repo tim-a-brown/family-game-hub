@@ -48,7 +48,7 @@
       const paper = n.querySelector('.ac-paper'), brief = n.querySelector('.ac-brief'), art = n.querySelector('.ac-art');
       if (paper) paper.appendChild(mark()); if (brief) brief.appendChild(mark());
       if (o.tg && art) art.appendChild(el('button', { type: 'button', class: 'ac-ed', 'aria-haspopup': 'dialog', 'aria-expanded': 'false',
-        onpointerdown: ev => ev.stopPropagation(), onclick: function (ev) { ev.stopPropagation(); choose(this, key); } }, [gem(e)]));
+        onpointerdown: ev => ev.stopPropagation(), onclick: function (ev) { ev.stopPropagation(); choose(this, key); } }, [el('i', { class: 'ed-ver', 'aria-hidden': 'true' }, [gem(e)])]));   // (the editions button: a stack of cards with this one's gem on the front, so it reads as 'versions', not as a Relic's diamond)
     }
     paint(n, e);
     if (e && !o.mini) wake();

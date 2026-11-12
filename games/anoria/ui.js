@@ -1423,7 +1423,9 @@
     const art = el('span', { class: 'fp-art' }, [noArtLabel(f.c, true, 'na')]); const im = artImg(f.c, true); if (im) art.appendChild(im);
     n.appendChild(el('span', { class: 'fp-card' }, [art]));
     n.appendChild(el('span', { class: 'fp-m' + (f.m > c.m ? ' up' : '') }, [el('b', { text: String(f.m) })]));
-    if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
+    // (the piece's home region in its lower right corner, as on the cards: gold while it stands at home. Tim, 2026-11-12)
+    if (c.reg && window.AnoriaDomains) n.appendChild(el('span', { class: 'fp-home' + (c.reg === pl.reg ? ' at' : '') }, [window.AnoriaDomains.home(c.reg, { lit: c.reg === pl.reg })]));
+    else if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
     if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
     if (window.AnoriaEd && !G.demo) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition)
@@ -2753,7 +2755,7 @@
         }
         if (fig) {
           const art = el('span', { class: 'fp-art' }), im = artImg(k, true); if (im) art.appendChild(im);
-          line.appendChild(cell('On the map', el('span', { class: 'fp o0' + (e ? ' ed-' + x.id : ''), style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })])])));
+          line.appendChild(cell('On the map', el('span', { class: 'fp o0' + (e ? ' ed-' + x.id : ''), style: { '--f': (FAC[c.f] || FAC.N).c, '--fw': '62px' } }, [el('span', { class: 'fp-card' }, [art]), el('span', { class: 'fp-m' }, [el('b', { text: String(c.m) })]), c.reg && window.AnoriaDomains ? el('span', { class: 'fp-home' }, [window.AnoriaDomains.home(c.reg)]) : null])));
         }
         row.appendChild(line);
       });
