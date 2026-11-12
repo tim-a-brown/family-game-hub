@@ -681,7 +681,26 @@ Underlying principles for everything:
   {wait: true})`, `setupOptions`, `setupLay`, `setupRoll`) or the engine decides (`setupAuto`, as the page does for
   now). Events: `domain` (laid, with what it replaced), `domains` (moved), `marker`, `choose`/`chose`, `dunder`,
   `restack`, `sroll`, `setup`. **Every rule is a word in the Domain's data** (`pw` in cards.js `PLACES`, the sentence in
-  text.js `DRULE`), never a Domain's name. **A game with no stacks is on the old fixed map** with the rules its twelve
+  text.js `DRULE`), never a Domain's name.
+  **Every Domain has a power of its own** (Tim, 2026-11-12: "domain powers list is approved"): 75 words, one for each
+  Domain and no two alike, each true to what the place was known for. The list of what each does, and the state they
+  need (`S.lh` who held each Domain at the last count, `S.gw` Greenwich's last turn, `P.debt` Florence's loan, `P.lau`
+  and `P.ks` Laurion and Kumasi once a game, `f.vic` an Olympic victor), is at the top of engine.js; each word's test
+  lives where that kind of rule lives (`might`, `walkDests`, `costOf`, `clash`, `ko`, `holderM`, `rv`, `endRound`), and
+  the numbers are `DV`. A tile's few words are `DSHORT` in ui.js (22 characters at most). Where a power works is part
+  of its sentence: a Commerce Domain and Greenwich do nothing at a Gate, Lisbon works only at the Crossroads, Citadelle
+  Laferrière only at an Outpost, Machu Picchu not at the Crossroads; Stonehenge, the Grand Canal, Dunhuang and L'Anse
+  aux Meadows work for the player whose banner is on them. Four are a player's choice, each once a turn, as actions:
+  `{t: 'loan', p}` (Florence), `{t: 'buy', p}` (Timbuktu), `{t: 'hire', p}` (Carthage), `{t: 'relay', u, v}` (the
+  Qhapaq Ñan); their buttons belong in `scanActs`. New events: `toll`, `loan`, `debt`, `buy`, `hire`, `relay` (its
+  `move`s carry `relay`), `recall`, `victor`, `dpow` (a Domain drew a card or gave the last turn), `spark` with `w` and
+  `p` (Spark for the next turn), `renown` with `why` `punt`, `ballcourt` or `treaty`, `mend` with `why: 'stool'`,
+  `fallback` with `why: 'charter'`, `ko` with `top`; each has its sentence in `logEvs`. The robots weigh the powers
+  that pay later (`domWorth`), Florence's debt and the Spark to come, and lay by `LAYV`. `node scripts/anoria/
+  powers-test.js` checks every power against its sentence; `node scripts/anoria/domains.js each` measures every power
+  at every position, and `domains.txt` section 14 has the numbers (every Domain between 47 and 53 overall), the nine
+  powers changed from the approved list and why, and the ready stacks' five swaps. A changed power is measured there
+  again, and its sentence, label and robots' worth change with it. **A game with no stacks is on the old fixed map** with the rules its twelve
   Places had (`pw0`, `tx0`): a lesson's table (guide.js is unchanged) and a game saved before Domains, which finishes
   as it began. Domination is not in the engine. The thirteen cards that act on Domains are in the set (`P4` in cards.js,
   `pr: 4`, found only in packs, from the whole set like every card; Pachacuti is the thirteenth; Congress of Vienna is the one with dice, whose roll is the `congress` event). The collection (coll.js v 5) holds

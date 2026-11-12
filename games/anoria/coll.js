@@ -382,7 +382,12 @@ function stackProblems(st) {
 // How well a Domain suits a deck: mostly how many of the deck's Figures are at home there (worth about 5 points of
 // win rate to a stack chosen that way: scripts/anoria/domains.txt), then its faction's Domains, then a little for
 // the rules that play well at a Gate or an Outpost.
-const RULEV = { spark: 0.8, cheap: 0.8, forge: 0.5, arms: 0.5, draw: 1, line: 0.4, fort: 0.7, closed: 0.8, narrow: 0.2, crowd: 0.5, arena: 0.3, peace: 0.6, sanctuary: 0.2, link: 0, road: 0.8 };
+const RULEV = { spark: 0.8, cheap: 0.8, forge: 0.5, arms: 0.5, draw: 1, line: 0.4, fort: 0.7, closed: 0.8, narrow: 0.2, crowd: 0.5, arena: 0.3, peace: 0.6, sanctuary: 0.2, link: 0, road: 0.8,
+  // (the 75 powers, 2026-11-12: by how the Domain read at a Gate or an Outpost in scripts/anoria/domains.txt section 14)
+  harbour: 0.3, league: 0.8, monopoly: 0.2, hire: 0.3, loan: 0.4, books: 0.4, toll: 0, fair: 0.7, ships: 0.7, strike: 0.6, print: 0.6, kiln: 0.6, stay: 0.4, clock: 0.4, school: 0.4,
+  recall: 0.3, study: 0.3, equal: 0.5, siege: 0.4, maze: 0.3, citadel: 0.5, relief: 0.5, engines: 0.6, heartland: 0.1, islets: 0.1, rock: 0.7, ancestors: 0.2, victor: 0.4,
+  confederacy: 0.2, pupils: 0.4, patron: 0.7, memorial: 0.7, court: 0.4, punt: 0.1, rank: 0.2, gathering: 0.5, ballcourt: 0.1, stool: 0.1, treaty: 0.5, charter: 0, vote: 0.6,
+  declare: 0.1, tribute: 0.2, code: 0.8, treeofpeace: 0.1, throne: 0.2, wergild: 0.4, searoad: 0.5, landing: 0.2, garrison: 0.5, passage: 0.6, canal: 0.1, relay: 0.7, port: 0.4, flight: 0.6 };
 function suits(cards) {
   const reg = {}, fac = {}; let n = 0; (cards || []).forEach(k => { const c = CARDS[k]; if (!c || c.t !== 'fig') return; n++; if (!(c.k && c.k.voyager)) reg[c.reg] = (reg[c.reg] || 0) + 1; fac[c.f] = (fac[c.f] || 0) + 1; });
   return id => { const pl = PLACES[id], w = pl.pw || ''; return 10 * (reg[pl.reg] || 0) / (n || 1) + (w.slice(0, 3) === 'fac' ? 2 * (fac[w[3]] || 0) / (n || 1) : (RULEV[w] || 0) * 0.1); };

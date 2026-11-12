@@ -452,60 +452,68 @@ const DKINDS = {
   Culture: { what: 'theatres, temples, monuments and games', pays: 'Renown' }, Law: { what: 'capitals, courts and council fires', pays: 'order' },
   Routes: { what: 'roads, straits and sea lanes', pays: 'movement' },
 };
-// The eighteen rules, each with its kind (the sentence a player reads is text.js DRULE)
-const DRULES = { spark: 'Commerce', cheap: 'Commerce', forge: 'Industry', arms: 'Industry', draw: 'Thought', line: 'Thought', facD: 'Thought', fort: 'Land', closed: 'Land', narrow: 'Land',
-  crowd: 'Culture', arena: 'Culture', facA: 'Culture', peace: 'Law', sanctuary: 'Law', facS: 'Law', link: 'Routes', road: 'Routes' };
+// The 75 powers, one for each Domain, each with its kind (the sentence a player reads is text.js DRULE, the tile's label
+// ui.js DSHORT, and what each does is listed at the top of engine.js)
+const DRULES = {
+  spark: 'Commerce', cheap: 'Commerce', harbour: 'Commerce', toll: 'Commerce', monopoly: 'Commerce', loan: 'Commerce', books: 'Commerce', hire: 'Commerce', league: 'Commerce', fair: 'Commerce',
+  forge: 'Industry', arms: 'Industry', facV: 'Industry', print: 'Industry', kiln: 'Industry', strike: 'Industry', ships: 'Industry', stay: 'Industry',
+  draw: 'Thought', line: 'Thought', facD: 'Thought', clock: 'Thought', recall: 'Thought', study: 'Thought', school: 'Thought', equal: 'Thought',
+  fort: 'Land', closed: 'Land', narrow: 'Land', maze: 'Land', siege: 'Land', citadel: 'Land', relief: 'Land', engines: 'Land', heartland: 'Land', islets: 'Land', rock: 'Land',
+  arena: 'Culture', crowd: 'Culture', facA: 'Culture', patron: 'Culture', court: 'Culture', pupils: 'Culture', memorial: 'Culture', facW: 'Culture', gathering: 'Culture', victor: 'Culture', confederacy: 'Culture', punt: 'Culture', rank: 'Culture', ballcourt: 'Culture', stool: 'Culture', ancestors: 'Culture',
+  peace: 'Law', sanctuary: 'Law', facS: 'Law', vote: 'Law', declare: 'Law', tribute: 'Law', code: 'Law', treeofpeace: 'Law', throne: 'Law', treaty: 'Law', charter: 'Law', wergild: 'Law',
+  link: 'Routes', road: 'Routes', landing: 'Routes', garrison: 'Routes', relay: 'Routes', canal: 'Routes', port: 'Routes', passage: 'Routes', searoad: 'Routes', flight: 'Routes',
+};
 const PLACES = {
   // Commerce: markets, ports and caravan cities
-  malacca: { n: 'Malacca', reg: 'ASIA', era: 3, y: 1400, d: 'Commerce', pw: 'cheap' }, kilwa: { n: 'Kilwa Kisiwani', reg: 'AFR', era: 3, y: 1300, d: 'Commerce', pw: 'spark' },
-  venice: { n: 'Venice', reg: 'MED', era: 3, y: 1100, d: 'Commerce', pw: 'spark' }, lisbon: { n: 'Lisbon', reg: 'EUR', era: 4, y: 1500, d: 'Commerce', pw: 'spark' },
-  carthage: { n: 'Carthage', reg: 'AFR', era: 1, y: -814, d: 'Commerce', pw: 'spark' }, firenze: { n: 'Florence', reg: 'MED', era: 3, y: 1252, d: 'Commerce', pw: 'spark' },
-  timbuktu: { n: 'Timbuktu', reg: 'AFR', era: 3, y: 1327, d: 'Commerce', pw: 'cheap', pw0: 'cheap' },
-  tlatelolco: { n: 'Market of Tlatelolco', reg: 'AMER', era: 3, y: 1337, d: 'Commerce', pw: 'spark' },
-  petra: { n: 'Petra', reg: 'MIDEAST', era: 2, y: -300, d: 'Commerce', pw: 'spark', pw0: 'sanctuary' }, djenne: { n: 'Djenné', reg: 'AFR', era: 3, y: 800, d: 'Commerce', pw: 'cheap' },
+  malacca: { n: 'Malacca', reg: 'ASIA', era: 3, y: 1400, d: 'Commerce', pw: 'harbour' }, kilwa: { n: 'Kilwa Kisiwani', reg: 'AFR', era: 3, y: 1300, d: 'Commerce', pw: 'spark' },
+  venice: { n: 'Venice', reg: 'MED', era: 3, y: 1100, d: 'Commerce', pw: 'league' }, lisbon: { n: 'Lisbon', reg: 'EUR', era: 4, y: 1500, d: 'Commerce', pw: 'monopoly' },
+  carthage: { n: 'Carthage', reg: 'AFR', era: 1, y: -814, d: 'Commerce', pw: 'hire' }, firenze: { n: 'Florence', reg: 'MED', era: 3, y: 1252, d: 'Commerce', pw: 'loan' },
+  timbuktu: { n: 'Timbuktu', reg: 'AFR', era: 3, y: 1327, d: 'Commerce', pw: 'books', pw0: 'cheap' },
+  tlatelolco: { n: 'Market of Tlatelolco', reg: 'AMER', era: 3, y: 1337, d: 'Commerce', pw: 'cheap' },
+  petra: { n: 'Petra', reg: 'MIDEAST', era: 2, y: -300, d: 'Commerce', pw: 'toll', pw0: 'sanctuary' }, djenne: { n: 'Djenné', reg: 'AFR', era: 3, y: 800, d: 'Commerce', pw: 'fair' },
   // Industry: workshops, shipyards, mines and kilns
-  longjiang: { n: 'Treasure Shipyard, Nanjing', reg: 'ASIA', era: 3, y: 1405, d: 'Industry', pw: 'forge' },
-  laurion: { n: 'Silver Mines of Laurion', reg: 'MED', era: 2, y: -483, d: 'Industry', pw: 'forge' }, damascus: { n: 'Damascus', reg: 'MIDEAST', era: 3, y: 900, d: 'Industry', pw: 'arms' },
-  meroe: { n: 'Meroë', reg: 'AFR', era: 2, y: -300, d: 'Industry', pw: 'arms' }, mainz: { n: 'Gutenberg\'s Workshop', reg: 'EUR', era: 3, y: 1450, d: 'Industry', pw: 'forge' },
-  ironbridge: { n: 'Ironbridge', reg: 'EUR', era: 5, y: 1709, d: 'Industry', pw: 'forge' }, jingdezhen: { n: 'Jingdezhen', reg: 'ASIA', era: 3, y: 1004, d: 'Industry', pw: 'forge' },
-  benin: { n: 'Benin City', reg: 'AFR', era: 3, y: 1300, d: 'Industry', pw: 'forge' },
+  longjiang: { n: 'Treasure Shipyard, Nanjing', reg: 'ASIA', era: 3, y: 1405, d: 'Industry', pw: 'ships' },
+  laurion: { n: 'Silver Mines of Laurion', reg: 'MED', era: 2, y: -483, d: 'Industry', pw: 'strike' }, damascus: { n: 'Damascus', reg: 'MIDEAST', era: 3, y: 900, d: 'Industry', pw: 'facV' },
+  meroe: { n: 'Meroë', reg: 'AFR', era: 2, y: -300, d: 'Industry', pw: 'arms' }, mainz: { n: 'Gutenberg\'s Workshop', reg: 'EUR', era: 3, y: 1450, d: 'Industry', pw: 'print' },
+  ironbridge: { n: 'Ironbridge', reg: 'EUR', era: 5, y: 1709, d: 'Industry', pw: 'forge' }, jingdezhen: { n: 'Jingdezhen', reg: 'ASIA', era: 3, y: 1004, d: 'Industry', pw: 'kiln' },
+  benin: { n: 'Benin City', reg: 'AFR', era: 3, y: 1300, d: 'Industry', pw: 'stay' },
   // Thought: libraries, schools and observatories
   library: { n: 'Library of Alexandria', reg: 'AFR', era: 2, y: -285, d: 'Thought', pw: 'draw', pw0: 'draw' },
-  greenwich: { n: 'Royal Observatory, Greenwich', reg: 'EUR', era: 5, y: 1675, d: 'Thought', pw: 'facD' },
-  akademeia: { n: 'Plato\'s Academy', reg: 'MED', era: 2, y: -387, d: 'Thought', pw: 'line' }, padua: { n: 'University of Padua', reg: 'MED', era: 3, y: 1222, d: 'Thought', pw: 'line' },
-  wisdom: { n: 'House of Wisdom', reg: 'MIDEAST', era: 3, y: 830, d: 'Thought', pw: 'facD' }, nalanda: { n: 'Nalanda', reg: 'ASIA', era: 2, y: 427, d: 'Thought', pw: 'draw' },
-  royalsociety: { n: 'Royal Society', reg: 'EUR', era: 5, y: 1660, d: 'Thought', pw: 'draw' }, seneca: { n: 'Seneca Falls', reg: 'AMER', era: 6, y: 1848, d: 'Thought', pw: 'line', pw0: '' },
+  greenwich: { n: 'Royal Observatory, Greenwich', reg: 'EUR', era: 5, y: 1675, d: 'Thought', pw: 'clock' },
+  akademeia: { n: 'Plato\'s Academy', reg: 'MED', era: 2, y: -387, d: 'Thought', pw: 'line' }, padua: { n: 'University of Padua', reg: 'MED', era: 3, y: 1222, d: 'Thought', pw: 'school' },
+  wisdom: { n: 'House of Wisdom', reg: 'MIDEAST', era: 3, y: 830, d: 'Thought', pw: 'recall' }, nalanda: { n: 'Nalanda', reg: 'ASIA', era: 2, y: 427, d: 'Thought', pw: 'study' },
+  royalsociety: { n: 'Royal Society', reg: 'EUR', era: 5, y: 1660, d: 'Thought', pw: 'facD' }, seneca: { n: 'Seneca Falls', reg: 'AMER', era: 6, y: 1848, d: 'Thought', pw: 'equal', pw0: '' },
   // Land: walls, fortresses and passes
-  gibraltar: { n: 'Rock of Gibraltar', reg: 'MED', era: 3, y: 711, d: 'Land', pw: 'fort' }, wall: { n: 'Great Wall', reg: 'ASIA', era: 2, y: -214, d: 'Land', pw: 'fort', pw0: 'fort' },
-  thermopylae: { n: 'Thermopylae', reg: 'MED', era: 2, y: -480, d: 'Land', pw: 'narrow' }, himeji: { n: 'Himeji Castle', reg: 'ASIA', era: 4, y: 1609, d: 'Land', pw: 'closed' },
-  laferriere: { n: 'Citadelle Laferrière', reg: 'AMER', era: 6, y: 1820, d: 'Land', pw: 'fort' }, orleans: { n: 'Orléans', reg: 'EUR', era: 3, y: 1429, d: 'Land', pw: 'fort' },
-  siracusa: { n: 'Syracuse', reg: 'MED', era: 2, y: -213, d: 'Land', pw: 'fort' }, zimbabwe: { n: 'Great Zimbabwe', reg: 'AFR', era: 3, y: 1250, d: 'Land', pw: 'fort' },
-  machu: { n: 'Machu Picchu', reg: 'AMER', era: 4, y: 1450, d: 'Land', pw: 'closed', pw0: 'closed' }, nanmadol: { n: 'Nan Madol', reg: 'OCE', era: 3, y: 1180, d: 'Land', pw: 'fort' },
-  sigiriya: { n: 'Sigiriya', reg: 'ASIA', era: 3, y: 477, d: 'Land', pw: 'fort' },
+  gibraltar: { n: 'Rock of Gibraltar', reg: 'MED', era: 3, y: 711, d: 'Land', pw: 'siege' }, wall: { n: 'Great Wall', reg: 'ASIA', era: 2, y: -214, d: 'Land', pw: 'fort', pw0: 'fort' },
+  thermopylae: { n: 'Thermopylae', reg: 'MED', era: 2, y: -480, d: 'Land', pw: 'narrow' }, himeji: { n: 'Himeji Castle', reg: 'ASIA', era: 4, y: 1609, d: 'Land', pw: 'maze' },
+  laferriere: { n: 'Citadelle Laferrière', reg: 'AMER', era: 6, y: 1820, d: 'Land', pw: 'citadel' }, orleans: { n: 'Orléans', reg: 'EUR', era: 3, y: 1429, d: 'Land', pw: 'relief' },
+  siracusa: { n: 'Syracuse', reg: 'MED', era: 2, y: -213, d: 'Land', pw: 'engines' }, zimbabwe: { n: 'Great Zimbabwe', reg: 'AFR', era: 3, y: 1250, d: 'Land', pw: 'heartland' },
+  machu: { n: 'Machu Picchu', reg: 'AMER', era: 4, y: 1450, d: 'Land', pw: 'closed', pw0: 'closed' }, nanmadol: { n: 'Nan Madol', reg: 'OCE', era: 3, y: 1180, d: 'Land', pw: 'islets' },
+  sigiriya: { n: 'Sigiriya', reg: 'ASIA', era: 3, y: 477, d: 'Land', pw: 'rock' },
   // Culture: theatres, temples, monuments and games
-  rapanui: { n: 'Rapa Nui', reg: 'OCE', era: 3, y: 1200, d: 'Culture', pw: 'crowd' }, colosseum: { n: 'Colosseum', reg: 'MED', era: 2, y: 80, d: 'Culture', pw: 'arena', pw0: 'arena' },
-  olympia: { n: 'Olympia', reg: 'MED', era: 1, y: -776, d: 'Culture', pw: 'crowd' }, prophetstown: { n: 'Prophetstown', reg: 'AMER', era: 6, y: 1808, d: 'Culture', pw: 'crowd' },
+  rapanui: { n: 'Rapa Nui', reg: 'OCE', era: 3, y: 1200, d: 'Culture', pw: 'ancestors' }, colosseum: { n: 'Colosseum', reg: 'MED', era: 2, y: 80, d: 'Culture', pw: 'arena', pw0: 'arena' },
+  olympia: { n: 'Olympia', reg: 'MED', era: 1, y: -776, d: 'Culture', pw: 'victor' }, prophetstown: { n: 'Prophetstown', reg: 'AMER', era: 6, y: 1808, d: 'Culture', pw: 'confederacy' },
   acropolis: { n: 'Acropolis', reg: 'MED', era: 2, y: -447, d: 'Culture', pw: 'crowd', pw0: 'double' },
-  globe: { n: 'Globe Theatre', reg: 'EUR', era: 4, y: 1599, d: 'Culture', pw: 'facA', pw0: 'facA' }, wien: { n: 'Vienna', reg: 'EUR', era: 5, y: 1780, d: 'Culture', pw: 'crowd' },
-  sistine: { n: 'Sistine Chapel', reg: 'MED', era: 4, y: 1512, d: 'Culture', pw: 'facA' }, taj: { n: 'Taj Mahal', reg: 'ASIA', era: 5, y: 1653, d: 'Culture', pw: 'crowd' },
-  heian: { n: 'Heian-kyō', reg: 'ASIA', era: 3, y: 794, d: 'Culture', pw: 'facA' }, deirelbahari: { n: 'Deir el-Bahari', reg: 'AFR', era: 1, y: -1470, d: 'Culture', pw: 'crowd' },
-  versailles: { n: 'Versailles', reg: 'EUR', era: 5, y: 1682, d: 'Culture', pw: 'facA' },
-  stonehenge: { n: 'Stonehenge', reg: 'EUR', era: 1, y: -2500, d: 'Culture', pw: 'crowd', pw0: 'spark' },
-  giza: { n: 'Great Pyramid of Giza', reg: 'AFR', era: 1, y: -2560, d: 'Culture', pw: 'crowd' }, chichen: { n: 'Chichén Itzá', reg: 'AMER', era: 3, y: 900, d: 'Culture', pw: 'arena' },
-  kumasi: { n: 'Kumasi', reg: 'AFR', era: 5, y: 1700, d: 'Culture', pw: 'crowd' },
+  globe: { n: 'Globe Theatre', reg: 'EUR', era: 4, y: 1599, d: 'Culture', pw: 'facA', pw0: 'facA' }, wien: { n: 'Vienna', reg: 'EUR', era: 5, y: 1780, d: 'Culture', pw: 'pupils' },
+  sistine: { n: 'Sistine Chapel', reg: 'MED', era: 4, y: 1512, d: 'Culture', pw: 'patron' }, taj: { n: 'Taj Mahal', reg: 'ASIA', era: 5, y: 1653, d: 'Culture', pw: 'memorial' },
+  heian: { n: 'Heian-kyō', reg: 'ASIA', era: 3, y: 794, d: 'Culture', pw: 'court' }, deirelbahari: { n: 'Deir el-Bahari', reg: 'AFR', era: 1, y: -1470, d: 'Culture', pw: 'punt' },
+  versailles: { n: 'Versailles', reg: 'EUR', era: 5, y: 1682, d: 'Culture', pw: 'rank' },
+  stonehenge: { n: 'Stonehenge', reg: 'EUR', era: 1, y: -2500, d: 'Culture', pw: 'gathering', pw0: 'spark' },
+  giza: { n: 'Great Pyramid of Giza', reg: 'AFR', era: 1, y: -2560, d: 'Culture', pw: 'facW' }, chichen: { n: 'Chichén Itzá', reg: 'AMER', era: 3, y: 900, d: 'Culture', pw: 'ballcourt' },
+  kumasi: { n: 'Kumasi', reg: 'AFR', era: 5, y: 1700, d: 'Culture', pw: 'stool' },
   // Law: capitals, courts and council fires
-  tordesillas: { n: 'Tordesillas', reg: 'EUR', era: 4, y: 1494, d: 'Law', pw: 'sanctuary' }, runnymede: { n: 'Runnymede', reg: 'EUR', era: 3, y: 1215, d: 'Law', pw: 'peace' },
-  aachen: { n: 'Aachen', reg: 'EUR', era: 3, y: 800, d: 'Law', pw: 'facS' }, forum: { n: 'Roman Forum', reg: 'MED', era: 2, y: -500, d: 'Law', pw: 'facS' },
-  independence: { n: 'Independence Hall', reg: 'AMER', era: 5, y: 1776, d: 'Law', pw: 'peace' }, persepolis: { n: 'Persepolis', reg: 'MIDEAST', era: 2, y: -518, d: 'Law', pw: 'facS' },
-  babylon: { n: 'Babylon', reg: 'MIDEAST', era: 1, y: -1754, d: 'Law', pw: 'sanctuary' }, forbidden: { n: 'Forbidden City', reg: 'ASIA', era: 3, y: 1420, d: 'Law', pw: 'peace' },
-  onondaga: { n: 'Onondaga', reg: 'AMER', era: 3, y: 1450, d: 'Law', pw: 'sanctuary' }, constantinople: { n: 'Constantinople', reg: 'MED', era: 2, y: 330, d: 'Law', pw: 'peace' },
-  nineveh: { n: 'Nineveh', reg: 'MIDEAST', era: 1, y: -700, d: 'Law', pw: 'peace', pw0: '' }, winchester: { n: 'Winchester', reg: 'EUR', era: 3, y: 871, d: 'Law', pw: 'sanctuary' },
+  tordesillas: { n: 'Tordesillas', reg: 'EUR', era: 4, y: 1494, d: 'Law', pw: 'treaty' }, runnymede: { n: 'Runnymede', reg: 'EUR', era: 3, y: 1215, d: 'Law', pw: 'charter' },
+  aachen: { n: 'Aachen', reg: 'EUR', era: 3, y: 800, d: 'Law', pw: 'facS' }, forum: { n: 'Roman Forum', reg: 'MED', era: 2, y: -500, d: 'Law', pw: 'vote' },
+  independence: { n: 'Independence Hall', reg: 'AMER', era: 5, y: 1776, d: 'Law', pw: 'declare' }, persepolis: { n: 'Persepolis', reg: 'MIDEAST', era: 2, y: -518, d: 'Law', pw: 'tribute' },
+  babylon: { n: 'Babylon', reg: 'MIDEAST', era: 1, y: -1754, d: 'Law', pw: 'code' }, forbidden: { n: 'Forbidden City', reg: 'ASIA', era: 3, y: 1420, d: 'Law', pw: 'sanctuary' },
+  onondaga: { n: 'Onondaga', reg: 'AMER', era: 3, y: 1450, d: 'Law', pw: 'treeofpeace' }, constantinople: { n: 'Constantinople', reg: 'MED', era: 2, y: 330, d: 'Law', pw: 'throne' },
+  nineveh: { n: 'Nineveh', reg: 'MIDEAST', era: 1, y: -700, d: 'Law', pw: 'peace', pw0: '' }, winchester: { n: 'Winchester', reg: 'EUR', era: 3, y: 871, d: 'Law', pw: 'wergild' },
   // Routes: roads, straits and sea lanes
-  silk: { n: 'Silk Road', reg: 'ASIA', era: 3, y: -130, d: 'Routes', pw: 'link', pw0: 'link' }, cape: { n: 'Cape of Good Hope', reg: 'AFR', era: 4, y: 1488, d: 'Routes', pw: 'link' },
-  lanse: { n: 'L\'Anse aux Meadows', reg: 'AMER', era: 3, y: 1021, d: 'Routes', pw: 'road' }, dunhuang: { n: 'Dunhuang', reg: 'ASIA', era: 2, y: -111, d: 'Routes', pw: 'road' },
-  magellanstrait: { n: 'Strait of Magellan', reg: 'AMER', era: 4, y: 1520, d: 'Routes', pw: 'road' }, appian: { n: 'Appian Way', reg: 'MED', era: 2, y: -312, d: 'Routes', pw: 'road' },
-  grandcanal: { n: 'Grand Canal', reg: 'ASIA', era: 3, y: 609, d: 'Routes', pw: 'link' }, qhapaq: { n: 'Qhapaq Ñan', reg: 'AMER', era: 3, y: 1450, d: 'Routes', pw: 'link' },
-  basra: { n: 'Basra', reg: 'MIDEAST', era: 3, y: 636, d: 'Routes', pw: 'road' }, kittyhawk: { n: 'Kitty Hawk', reg: 'AMER', era: 7, y: 1903, d: 'Routes', pw: 'road' },
+  silk: { n: 'Silk Road', reg: 'ASIA', era: 3, y: -130, d: 'Routes', pw: 'link', pw0: 'link' }, cape: { n: 'Cape of Good Hope', reg: 'AFR', era: 4, y: 1488, d: 'Routes', pw: 'searoad' },
+  lanse: { n: 'L\'Anse aux Meadows', reg: 'AMER', era: 3, y: 1021, d: 'Routes', pw: 'landing' }, dunhuang: { n: 'Dunhuang', reg: 'ASIA', era: 2, y: -111, d: 'Routes', pw: 'garrison' },
+  magellanstrait: { n: 'Strait of Magellan', reg: 'AMER', era: 4, y: 1520, d: 'Routes', pw: 'passage' }, appian: { n: 'Appian Way', reg: 'MED', era: 2, y: -312, d: 'Routes', pw: 'road' },
+  grandcanal: { n: 'Grand Canal', reg: 'ASIA', era: 3, y: 609, d: 'Routes', pw: 'canal' }, qhapaq: { n: 'Qhapaq Ñan', reg: 'AMER', era: 3, y: 1450, d: 'Routes', pw: 'relay' },
+  basra: { n: 'Basra', reg: 'MIDEAST', era: 3, y: 636, d: 'Routes', pw: 'port' }, kittyhawk: { n: 'Kitty Hawk', reg: 'AMER', era: 7, y: 1903, d: 'Routes', pw: 'flight' },
 };
 // (the old fixed map: one of CENTER at the Crossroads, the Gates and Outposts dealt from EDGE. Lessons and old saves.)
 const CENTER = ['library', 'silk', 'colosseum', 'acropolis'], EDGE = ['wall', 'stonehenge', 'globe', 'machu', 'timbuktu', 'petra', 'nineveh', 'seneca'];
@@ -557,15 +565,17 @@ const ARCH = {
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
 // Each ready deck's Domain stack: fifteen Domains that suit it. A new player gets the stack of their starter deck.
-// These are the prototype's third pass, unchanged. On this engine the five decks with these stacks sit 3.2 points
-// apart over 8,000 games (the old fixed map: 6.6 on the same games), so the fourth pass the prototype asked for
-// was not needed; two sets of swaps were tried and both pulled the decks further apart (scripts/anoria/domains.txt).
+// The prototype's third pass, with five Domains changed between stacks when every Domain got a power of its own
+// (2026-11-12): Lisbon and Venice, Onondaga and the Sistine Chapel, the Grand Canal and Heian-kyō (Legacy and Court),
+// Machu Picchu and Deir el-Bahari (Court and Pathfinders), Runnymede and Sigiriya (Pathfinders and Legion). The five
+// decks sit 5.2 points apart over 8,000 games with them (9.2 before the powers, 13.4 with the powers and the old
+// stacks): scripts/anoria/domains.txt section 14.
 const STACKS = {
   Explorers: ['malacca', 'kilwa', 'tlatelolco', 'longjiang', 'greenwich', 'padua', 'gibraltar', 'rapanui', 'tordesillas', 'forbidden', 'silk', 'cape', 'lanse', 'dunhuang', 'magellanstrait'],
-  Legion: ['carthage', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'orleans', 'colosseum', 'olympia', 'prophetstown', 'runnymede', 'aachen', 'appian'],
-  Legacy: ['venice', 'petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'acropolis', 'globe', 'sistine', 'heian', 'forum'],
-  Court: ['lisbon', 'firenze', 'timbuktu', 'jingdezhen', 'seneca', 'zimbabwe', 'wien', 'taj', 'deirelbahari', 'versailles', 'persepolis', 'babylon', 'onondaga', 'constantinople', 'grandcanal'],
-  Pathfinders: ['djenne', 'benin', 'machu', 'nanmadol', 'sigiriya', 'stonehenge', 'giza', 'chichen', 'kumasi', 'independence', 'nineveh', 'winchester', 'qhapaq', 'basra', 'kittyhawk'],
+  Legion: ['carthage', 'laurion', 'damascus', 'ironbridge', 'wall', 'thermopylae', 'himeji', 'laferriere', 'orleans', 'colosseum', 'olympia', 'prophetstown', 'sigiriya', 'aachen', 'appian'],
+  Legacy: ['lisbon', 'petra', 'meroe', 'mainz', 'library', 'akademeia', 'wisdom', 'nalanda', 'royalsociety', 'siracusa', 'acropolis', 'globe', 'onondaga', 'grandcanal', 'forum'],
+  Court: ['venice', 'firenze', 'timbuktu', 'jingdezhen', 'seneca', 'zimbabwe', 'wien', 'taj', 'machu', 'versailles', 'persepolis', 'babylon', 'sistine', 'constantinople', 'heian'],
+  Pathfinders: ['djenne', 'benin', 'deirelbahari', 'nanmadol', 'runnymede', 'stonehenge', 'giza', 'chichen', 'kumasi', 'independence', 'nineveh', 'winchester', 'qhapaq', 'basra', 'kittyhawk'],
 };
 const STACK = 15;   // (Domains in a stack)
 Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
