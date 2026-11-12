@@ -8,8 +8,12 @@
 //                  pack), feats{normal, hard, built}, threads{id: 1} (finished and rewarded), opened,
 //                  ed{key: bits} (the editions of a card found besides Matte: bit 1 Shiny, 2 Silver foil, 3 Gold foil,
 //                  4 Rainbow foil), look{key: 0..4} (the edition the card is shown in)}
-//   anoria_decks  [{id, n, guide, cards[]}]   the decks you built (a deck is DECK cards: one saved when a deck was 30
-//                  is kept as it is and reads as 10 short until it is filled)
+//                  doms{id: 1} (the Domains you own: one of each is all a stack can hold), dnew{id: 1} (Domains not
+//                  looked at yet), stacks{'ready:Name': [ids]} (the Domain stack you chose for a ready deck, when it
+//                  is not the deck's own ready stack)
+//   anoria_decks  [{id, n, guide, cards[], stack[]}]   the decks you built (a deck is DECK cards: one saved when a
+//                  deck was 30 is kept as it is and reads as 10 short until it is filled), each with the Domain
+//                  stack saved for it, if one was
 //
 // The economy, in one place:
 //   - Choose a Guide: that Guide's ready deck (20 cards, two of each) is yours, with three welcome packs of 12.
@@ -41,6 +45,16 @@
 //     copies are still missing, a foil of a card you have two of is an extra card in the pack, so the set takes as
 //     long to complete as it did before there were foils. A collection from before has every card in Matte, and an
 //     edition found for a card that is retired later goes to the card that takes its slot.
+//   - Domains (v 5, Tim, 2026-11-11: engine.js, cards.js PLACES). A player brings a stack of STACK (15) Domains to a
+//     game, no two the same, of any kinds and homes, chosen from the Domains they own. Domains are collected like
+//     cards, one of each. Choosing a Guide gives that Guide's ready stack with the ready deck; the other 60 come in
+//     packs: each welcome pack holds WELCOME_DOMAINS Domains, and an earned pack holds one more often than not
+//     (DOMAIN_SLOT), always one you do not have. Every deck has a stack: the one saved for it (stackFor), and until
+//     one is saved a ready deck plays its own ready stack as far as you own it, filled up with the Domains you own
+//     that suit the deck best (autoStack does the same for a deck you built). A collection from before Domains is
+//     given the ready stack of its starter deck and of every other ready deck it owned all the cards of, so every deck
+//     it could play it can still play, with the stack that deck is balanced for.
+//     The twelve Domain cards (cards.js P4) are found only in packs, in the first series (DOMAIN_CARD_SERIES).
 //   - Rarity (the same day: "make more powerful cards more rare to find in packs"): every card has a tier from its
 //     power, 1 Common to 4 Legendary (RARE, worked out by scripts/anoria/rarity.js and written down here), and a
 //     pack slot is that much less likely to be a card of a higher tier (TIER_W).
@@ -48,7 +62,7 @@
 'use strict';
 const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, OLD_GUIDES = C.OLD_GUIDES || {}, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const GUIDE_AT = [3, 6, 10, 14, 18, 23, 28, 33, 38, 43, 48], VER = 4;   // (eleven steps since the roster of twelve, 2026-11-12: the last still at 48 wins)
+const GUIDE_AT = [3, 6, 10, 14, 18, 23, 28, 33, 38, 43, 48], VER = 5;   // (eleven steps since the roster of twelve, 2026-11-12: the last still at 48 wins)
 let WELCOME = [12, 12, 12];   // (the welcome packs; pacing.js can try others through use())
 let DAILY = 5, FEAT = 5;   // (cards in an earned pack, 5 since 2026-11-12, Tim: "do 5 cards"; pacing.js can try other sizes through use())
 // ── How packs work with a set of 241 cards: the two lines to change ─────────────────────────────────────────
@@ -60,7 +74,11 @@ let PACK_ORDER = 'mixed';   // (Tim, 2026-11-12: "all series should be available
 // pack (DAILY and FEAT, 3 today). 5 is what pacing.txt recommends, so the 150 take about two months and not three
 // and a half. Tim's to decide: it is 0 until he does.
 let SERIES2_PACK = 0;
-const seriesOf = k => (CARDS[k] && CARDS[k].pr === 3 ? 2 : 1), S1 = ALL.filter(k => seriesOf(k) === 1);
+// DOMAIN_CARD_SERIES: which series the twelve Domain cards (the fourth printing) are found in. 1: with the cards of
+// the ready decks, from the first welcome pack, so that Domains change hands in a new player's first weeks (the first
+// series is then 102 cards). 2: with the 150 of the third printing, after the first series is complete.
+let DOMAIN_CARD_SERIES = 1;
+const seriesOf = k => (!CARDS[k] ? 1 : CARDS[k].pr === 3 ? 2 : CARDS[k].pr === 4 ? DOMAIN_CARD_SERIES : 1), S1 = ALL.filter(k => seriesOf(k) === 1);
 // the first series is complete: two of every card in it
 const s1done = s => S1.every(k => (s.cards[k] || 0) >= CAP);
 // the cards a pack can hold today
@@ -68,6 +86,15 @@ const inPacks = s => (PACK_ORDER === 'series' && !s1done(s) ? S1 : ALL);
 // how many cards an earned pack holds today
 const packSize = (s, n) => (PACK_ORDER === 'series' && SERIES2_PACK && s1done(s) ? SERIES2_PACK : n);
 const KEY = 'anoria_coll', DKEY = 'anoria_decks';
+// ── How Domains come to a player: the lines to change (pacing.js plays them, pacing.txt has the table) ─────────
+// DOMAINS_IN_PACKS 'slot': a pack has a place of its own for a Domain, beside its cards. 'none': packs hold no
+// Domains (a test, or if Domains are ever given their own packs: addPack(s, 'domain', why, n) with openPack reading
+// pack.k is where that would go). WELCOME_DOMAINS: Domains in each welcome pack. DOMAIN_SLOT: the chance that an
+// earned pack holds a Domain. A Domain out of a pack is always one you do not have, each as likely as another.
+// With 2 and 0.5 a new player has 21 Domains to choose 15 from on the first day, and all 75 at about the time the
+// 241 cards are complete; 1 would give all 75 in about two months.
+let DOMAINS_IN_PACKS = C.DM_LIVE === false ? 'none' : 'slot', WELCOME_DOMAINS = 2, DOMAIN_SLOT = 0.5;   // (no Domains in packs until Domains are live on the page: cards.js DM_LIVE)
+const PLACES = C.PLACES || {}, DOMS = Object.keys(PLACES).filter(id => PLACES[id].pw), STACK = C.STACK || 15, STACKS = C.STACKS || {};
 // The five editions of a card, commonest first, and the chance that a card out of a pack is each of the foils (the
 // rest are Matte). pacing.js plays these: about one pack in three holds a foil of some kind, and a Rainbow foil is
 // weeks apart.
@@ -90,8 +117,11 @@ const RARE3 = {
   2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning',
   1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce'
 };
+// The twelve Domain cards (cards.js P4), tiered among themselves by the same measure, cost and win rate less the
+// faction's own, from "node scripts/anoria/domains.js cards" (domains.txt has the table).
+const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius congress' };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
-[RARE, RARE3].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
+[RARE, RARE3, RARE4].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
 const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);
 const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 
@@ -99,9 +129,11 @@ const FEATS = { normal: 'Your first win against Normal', hard: 'Your first win a
 let store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 let rnd = Math.random, now = () => new Date();
 function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if (o.now) now = o.now; if (o.daily) DAILY = o.daily; if (o.feat) FEAT = o.feat; if (o.odds) ED_ODDS = o.odds;
-  if (o.welcome) WELCOME = o.welcome; if (o.order) PACK_ORDER = o.order; if (o.pack2 != null) SERIES2_PACK = o.pack2; cache = null; }
+  if (o.welcome) WELCOME = o.welcome; if (o.order) PACK_ORDER = o.order; if (o.pack2 != null) SERIES2_PACK = o.pack2;
+  if (o.domains) DOMAINS_IN_PACKS = o.domains; if (o.welcomeDomains != null) WELCOME_DOMAINS = o.welcomeDomains; if (o.domainSlot != null) DOMAIN_SLOT = o.domainSlot;
+  if (o.cardSeries) { DOMAIN_CARD_SERIES = o.cardSeries; S1.length = 0; ALL.forEach(k => { if (seriesOf(k) === 1) S1.push(k); }); } cache = null; }
 
-const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1, ed: {}, look: {} });
+const blank = () => ({ v: VER, starter: null, cards: {}, guides: [], seen: {}, fresh: {}, packs: [], wins: 0, games: 0, day: '', feats: {}, threads: {}, opened: 0, pid: 1, ed: {}, look: {}, doms: {}, dnew: {}, stacks: {} });
 let cache = null, cacheRaw = null;
 function load() {
   const raw = store.get(KEY);
@@ -110,12 +142,16 @@ function load() {
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = raw;
   if (cache.starter === 'Tricksters') cache.starter = 'Pathfinders';   // (the deck's first name, before it was renamed)
   if (!cache.ed || typeof cache.ed !== 'object') cache.ed = {}; if (!cache.look || typeof cache.look !== 'object') cache.look = {};
+  ['doms', 'dnew', 'stacks'].forEach(k => { if (!cache[k] || typeof cache[k] !== 'object') cache[k] = {}; });
   // (retired cards first, so that a ready deck owned whole under its old cards still counts as owned whole in grow().
   // retire() goes by what is in the collection, not by its version: a device that has not updated yet can write the
   // old keys back, and they are put right again here. v 4 added editions: a collection from before has none found,
   // so every card is Matte, and nothing else changes.)
   const v = cache.v || 1, had = !!cache.starter, swapped = retire(cache);
   if (v < 2) grow(cache);
+  // (v 5, Domains: a collection from before is given the ready stacks of the ready decks it can play. After grow()
+  // and retire(), so that a ready deck owned whole under its old cards counts.)
+  if (v < 5) grantStacks(cache);
   if (v < VER || swapped) { cache.v = VER; if (had || swapped) save(cache); myDecks(); }   // (myDecks puts the decks they built right too)
   return cache;
 }
@@ -151,6 +187,16 @@ function grow(s) {
   const mine = ARCH[s.starter].cards;
   THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; });
 }
+// A collection from before Domains (v 5): the ready stack of its starter deck is given, and that of every other
+// ready deck it owns every card of, so each of those decks is played with the stack it is balanced for. The Domains
+// show as new. Nothing is taken: a device that has not updated ignores the new fields.
+function grantStacks(s) {
+  if (!s.starter || !ARCH[s.starter]) return;
+  Object.keys(ARCH).forEach(name => {
+    if (name !== s.starter && !ARCH[name].cards.every(k => (s.cards[k] || 0) >= CAP)) return;
+    (STACKS[name] || []).forEach(id => { if (!s.doms[id]) { s.doms[id] = 1; s.dnew[id] = 1; } });
+  });
+}
 function save(s) { cacheRaw = JSON.stringify(s); cache = s; store.set(KEY, cacheRaw); return s; }
 function reset() { cache = null; store.set(KEY, JSON.stringify(blank())); store.set(DKEY, '[]'); }
 const dayKey = d => { d = d || now(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
@@ -162,7 +208,8 @@ function cardState(k) { const s = load(), n = s.cards[k] || 0; return n ? 'own' 
 function counts() {
   const s = load(); let own = 0, cop = 0, seen = 0;
   for (const k of ALL) { const n = Math.min(CAP, s.cards[k] || 0); if (n) { own++; cop += n; } else if (s.seen[k]) seen++; }
-  return { own: own, copies: cop, seen: seen, cards: ALL.length, all: ALL.length * CAP, series: PACK_ORDER === 'series' ? (s1done(s) ? 2 : 1) : 0, guides: s.guides.length, guidesAll: Object.keys(GUIDES).length, complete: cop === ALL.length * CAP && s.guides.length === Object.keys(GUIDES).length };
+  const dom = DOMS.filter(id => s.doms[id]).length;
+  return { own: own, copies: cop, seen: seen, cards: ALL.length, all: ALL.length * CAP, doms: dom, domsAll: DOMS.length, domsComplete: dom === DOMS.length, series: PACK_ORDER === 'series' ? (s1done(s) ? 2 : 1) : 0, guides: s.guides.length, guidesAll: Object.keys(GUIDES).length, complete: cop === ALL.length * CAP && s.guides.length === Object.keys(GUIDES).length };
 }
 // The editions of a card: which are found ([Matte, Shiny, Silver foil, Gold foil, Rainbow foil]: Matte is found once
 // you own the card), the one it is shown in, and choosing another (only one you have found).
@@ -181,6 +228,7 @@ function chooseStarter(name) {
   const s = load(); if (s.starter || !ARCH[name]) return false;
   s.starter = name; ARCH[name].cards.forEach(k => { s.cards[k] = CAP; s.seen[k] = 1; });
   s.guides = [ARCH[name].guide];
+  (STACKS[name] || []).forEach(id => { s.doms[id] = 1; });   // (the ready stack that goes with the deck)
   // (a Thread that comes whole in the starter is simply yours: gifts are for the ones you finish by collecting)
   THREADS.forEach(t => { if (t.cards.every(k => s.cards[k])) s.threads[t.id] = 1; });
   WELCOME.forEach(n => s.packs.push({ id: s.pid++, k: 'welcome', why: 'A welcome pack', n: n }));
@@ -204,8 +252,12 @@ function openPack(id) {
     out.push({ c: k, first: first, n: s.cards[k], ed: x.e, copy: copy });
     if (!copy && extra < pack.n && ALL.some(c => (s.cards[c] || 0) < CAP)) { extra++; n--; }
   }
+  // (the pack's own place for a Domain: always one you do not have. domains: [{id, first: true}])
+  const dom = [];
+  if (DOMAINS_IN_PACKS === 'slot') { const n = pack.k === 'welcome' ? WELCOME_DOMAINS : rnd() < DOMAIN_SLOT ? 1 : 0;
+    for (let i = 0; i < n; i++) { const left = DOMS.filter(id => !s.doms[id]); if (!left.length) break; const id = left[(rnd() * left.length) | 0]; s.doms[id] = 1; s.dnew[id] = 1; dom.push({ id: id, first: true }); } }
   s.opened++; save(s);
-  return { pack: pack, cards: out, threads: settleThreads() };
+  return { pack: pack, cards: out, domains: dom, threads: settleThreads() };
 }
 // One slot of a pack: which card, in which edition. The edition is rolled first (ED_ODDS). A Matte slot is a copy
 // you are missing; a foil slot is a card you have not found in that finish. A roll with nothing left to give moves
@@ -295,7 +347,7 @@ function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') |
   let ch = false; a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => { if (!RETIRED[k]) return k; ch = true; return RETIRED[k].to; }); if (d && OLD_GUIDES[d.guide]) { d.guide = OLD_GUIDES[d.guide].to; ch = true; } });
   if (ch) store.set(DKEY, JSON.stringify(a));
   return a; }
-function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
+function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; const st = d.stack || (i >= 0 ? a[i].stack : null); if (st) rec.stack = st.slice(); if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: the five ready decks (yours to play once you own all of one; your starter always is)
 // and the decks you built. [{id, n, guide, cards, ready, starter, built, own (cards of it you own, of DECK), ok, why[]}]
@@ -308,6 +360,55 @@ function decks() {
   return out;
 }
 const deck = id => decks().filter(d => d.id === id)[0] || null;
+
+// ── Domains and stacks ──────────────────────────────────────────────────────────────────────────────────────
+const hasDomain = id => !!load().doms[id];
+const domains = () => { const s = load(); return DOMS.filter(id => s.doms[id]); };
+// 'own' or 'new' (not yours yet); and whether it is one you have not looked at since it came
+const domainState = id => (load().doms[id] ? 'own' : 'new');
+const domainFresh = id => !!load().dnew[id];
+function domainLooked(id) { const s = load(); if (id == null ? Object.keys(s.dnew).length : s.dnew[id]) { if (id == null) s.dnew = {}; else delete s.dnew[id]; save(s); } }
+// what is wrong with a stack, in words ([] when it can be played): STACK Domains you own, no two the same.
+// There is no limit on kinds or homes (Tim: a player can stack with Domains that give their cards more of an edge).
+function stackProblems(st) {
+  const s = load(), out = [], seen = {}; st = st || [];
+  if (st.length !== STACK) out.push(st.length < STACK ? (STACK - st.length) + ' more to add' : (st.length - STACK) + ' too many');
+  st.forEach(id => { if (!PLACES[id]) out.push('A Domain that isn\'t in the game'); else if (seen[id]) out.push('More than one ' + PLACES[id].n); else if (!s.doms[id]) out.push(PLACES[id].n + ' isn\'t yours yet'); seen[id] = 1; });
+  return out;
+}
+// How well a Domain suits a deck: mostly how many of the deck's Figures are at home there (worth about 5 points of
+// win rate to a stack chosen that way: scripts/anoria/domains.txt), then its faction's Domains, then a little for
+// the rules that play well at a Gate or an Outpost.
+const RULEV = { spark: 0.8, cheap: 0.8, forge: 0.5, arms: 0.5, draw: 1, line: 0.4, fort: 0.7, closed: 0.8, narrow: 0.2, crowd: 0.5, arena: 0.3, peace: 0.6, sanctuary: 0.2, link: 0, road: 0.8 };
+function suits(cards) {
+  const reg = {}, fac = {}; let n = 0; (cards || []).forEach(k => { const c = CARDS[k]; if (!c || c.t !== 'fig') return; n++; if (!(c.k && c.k.voyager)) reg[c.reg] = (reg[c.reg] || 0) + 1; fac[c.f] = (fac[c.f] || 0) + 1; });
+  return id => { const pl = PLACES[id], w = pl.pw || ''; return 10 * (reg[pl.reg] || 0) / (n || 1) + (w.slice(0, 3) === 'fac' ? 2 * (fac[w[3]] || 0) / (n || 1) : (RULEV[w] || 0) * 0.1); };
+}
+// Fill a stack to STACK from the Domains you own: the ones given first (keep), then the ones that suit these cards best
+function autoStack(cards, keep) {
+  const s = load(), out = []; (keep || []).forEach(id => { if (PLACES[id] && s.doms[id] && out.indexOf(id) < 0 && out.length < STACK) out.push(id); });
+  const v = suits(cards), rest = DOMS.filter(id => s.doms[id] && out.indexOf(id) < 0).sort((a, b) => v(b) - v(a) || (a < b ? -1 : 1));
+  return out.concat(rest.slice(0, STACK - out.length));
+}
+// The stack a deck is played with (deck id as decks() gives it): the one saved for it, if it can still be played;
+// otherwise, for a ready deck, its own ready stack as far as you own it, and for any deck the Domains you own that
+// suit it best. Anyone who has chosen a Guide owns at least STACK Domains, so this is always a full stack.
+function stackFor(id) {
+  const s = load(), ready = String(id).indexOf('ready:') === 0 ? id.slice(6) : null, d = ready ? null : myDecks().filter(x => x.id === id)[0];
+  const saved = ready ? s.stacks[id] : d && d.stack;
+  if (saved && !stackProblems(saved).length) return saved.slice();
+  const cards = ready && ARCH[ready] ? ARCH[ready].cards : d ? d.cards : [];
+  return autoStack(cards, (saved || []).concat(ready ? STACKS[ready] || [] : []));
+}
+// Save a stack for a deck (a ready deck's goes in the collection, a built deck's with the deck). Returns the
+// problems ([] if it was saved). A ready deck's stack saved as its own ready stack is simply the default again.
+function saveStack(id, st) {
+  const why = stackProblems(st); if (why.length) return why;
+  const s = load(), ready = String(id).indexOf('ready:') === 0 ? id.slice(6) : null;
+  if (ready) { if (!ARCH[ready]) return ['No such deck']; const own = STACKS[ready] || []; if (own.length === st.length && own.every(x => st.indexOf(x) >= 0)) delete s.stacks[id]; else s.stacks[id] = st.slice(); save(s); return []; }
+  const a = myDecks(), i = a.findIndex(x => x.id === id); if (i < 0) return ['No such deck'];
+  a[i].stack = st.slice(); store.set(DKEY, JSON.stringify(a)); return [];
+}
 // Fill a deck to DECK cards from what you own: more of its own factions first, a sensible spread of costs, Figures over the rest.
 // Relics: a player has two in play and no two with the same power, so a deck that has fewer than two Relic cards is
 // given Relics until it has two, each with a power the deck does not hold yet, and no more after that (with 23
@@ -332,5 +433,7 @@ function finish(d) {
 
 return { use, load, reset, grow, retire, dayKey, copies, cardState, counts, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; }, markSeen, looked, lookedAll, chooseStarter, packs, openPack, threads, settleThreads, gameOver, nextUp,
   problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, readyCards, CAP, DECK, get WELCOME() { return WELCOME; }, get DAILY() { return DAILY; }, get FEAT() { return FEAT; }, GUIDE_AT, FEATS, ALL,
-  seriesOf, S1, get PACK_ORDER() { return PACK_ORDER; }, get SERIES2_PACK() { return SERIES2_PACK; } };
+  seriesOf, S1, get PACK_ORDER() { return PACK_ORDER; }, get SERIES2_PACK() { return SERIES2_PACK; },
+  DOMS, STACK, hasDomain, domains, domainState, domainFresh, domainLooked, stackProblems, autoStack, stackFor, saveStack, grantStacks, get DOMAIN_CARD_SERIES() { return DOMAIN_CARD_SERIES; },
+  get DOMAINS_IN_PACKS() { return DOMAINS_IN_PACKS; }, get WELCOME_DOMAINS() { return WELCOME_DOMAINS; }, get DOMAIN_SLOT() { return DOMAIN_SLOT; } };
 });

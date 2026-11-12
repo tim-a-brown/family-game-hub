@@ -60,13 +60,18 @@
   const SAY = TX.SAY || {}, FY = TX.FY || {};
   function info(key) {
     // (a Guide first: the seven Guides of the roster of twelve were cards before, and their old cards are still in RETIRED)
-    if (CARDS[key] && !(TX.GUIDES[key] && !C.CARDS[key])) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+    if (CARDS[key] && !(TX.GUIDES[key] && !C.CARDS[key])) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}, old = !!(c.k0 && (!C.DM_LIVE || (S && !S.dm)));   // (old: a card whose power changed with Domains, in a game on the old map)
+      return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: (old ? c.k0 : c.k) || {}, quick: c.quick, tx: (old && t.tx0 != null ? t.tx0 : t.tx) || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TXG[key]) { const g = TXG[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
-    if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+    if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}, old = !!(t.tx0 != null && (!C.DM_LIVE || (S && !S.dm)));   // (old: the rule it had as a Place on the old fixed map)
+      return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, d: p.d, pw: old ? p.pw0 : p.pw, k: {}, tx: (old ? t.tx0 : (TX.DRULE || {})[p.pw]) || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
   }
   const isPlace = key => !CARDS[key] && !TXG[key] && !!C.PLACES[key];
   const names = list => list.map(k => info(k).n).join(' or ');
+  const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+  // a position on the table, as a sentence says it to the player looking at the table
+  const posName = i => { const w = E.ownerOfSpoke(S, i); return w < 0 ? 'the Crossroads' : (w === ui.view && human(w) ? 'your' : Kit.poss(pname(w))) + (E.isGate(S, i) ? ' Gate' : ' Outpost'); };
 
   // ═══ Pictures: a missing one leaves the flat panel underneath showing ════════════════════════════════════
   const noArt = {}, hasArt = {};
@@ -75,7 +80,7 @@
   // They are known to have none from the start, so nothing ever asks the network for them: not the table, not a
   // card being read, not the warm-up of the whole set. Each shows its initial as a monogram on its faction's colour.
   const noPic = key => !!(TX.NOPIC && TX.NOPIC[key]);
-  Object.keys(TX.NOPIC || {}).forEach(k => { noArt[ART + k + '.webp'] = noArt[ART + 't/' + k + '.webp'] = 1; });
+  Object.keys(TX.NOPIC || {}).forEach(k => { noArt[artSrc(k, false)] = noArt[artSrc(k, true)] = 1; });
   // Small pictures that have loaded once are kept in memory, and a table drawn again shows them from there. (On
   // Tim's phone every picture went blank for a second whenever the table was redrawn: each new <img> asked the
   // service worker again, which was busy saving the release.)
@@ -273,7 +278,7 @@
     return esc(tx).replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Quick|Eureka!)(?=[.:! ]|$)/g, '$1<b>$2</b>');
   }
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
-  const THE = { library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 };
+  const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
   // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
   const NO_THE = { paper: 1, braille: 1 };
   const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' && !NO_THE[x] ? 'the ' : '') + (CARDS[x].t === 'relic' ? CARDS[x].n.replace(/^The /, '') : CARDS[x].n);
@@ -364,9 +369,10 @@
   function closeView() { if (!viewEl) return; const v = viewEl; viewEl = null; v.classList.remove('show'); document.removeEventListener('keydown', viewKey); if (v._off) v._off(); setTimeout(() => v.remove(), 220); }
   function viewKey(e) { if (e.key === 'Escape') closeView(); }
   function mightParts(f) {   // where a Figure's Might on the table comes from (the engine's sum, spelled out)
-    const c = CARDS[f.c], k = c.k || {}, pl = C.PLACES[S.places[f.p]], out = [['On the card', c.m]];
+    const c = CARDS[f.c], k = (!S.dm && c.k0) || c.k || {}, pl = C.PLACES[S.places[f.p]], out = [['On the card', c.m]];
     const home = c.reg === pl.reg, at = home || k.voyager;
-    if (f.tb) out.push([f.tq && CARDS[f.tq] ? CARDS[f.tq].n : 'Phalanx', f.tb]);   // (the Quick Deed played with its clash)
+    if (f.ta) out.push([pl.n + ', this turn', f.ta]);   // (an Industry Domain that arms a Figure on the turn it arrives)
+    if (f.tb - (f.ta || 0)) out.push([f.tq && CARDS[f.tq] ? CARDS[f.tq].n : 'Phalanx', f.tb - (f.ta || 0)]);   // (the Quick Deed played with its clash)
     if (at) out.push([home ? 'At home' : 'Voyager, at home anywhere', 1 + (k.homeDouble && home ? 2 : 0)]);
     let own = 0, opp = 0, insp = 0;
     for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
@@ -377,7 +383,7 @@
     if (k.underdog && opp > own) out.push(['Outnumbered', 2]);
     if (k.monument && f.stay) out.push(['Rounds stayed', Math.min(2, f.stay)]);
     if (k.shoulders && S.P[f.o].lines) out.push(['Legacy lines', Math.min(2, S.P[f.o].lines)]);
-    if (S.places[f.p] === 'globe' && c.f === 'A') out.push(['Globe Theatre', 1]);
+    if (E.pw(S, f.p) === 'fac' + c.f) out.push([pl.n, 1]);   // (a theatre for Arts Figures, an observatory for Discovery, a capital for Statecraft)
     const sum = out.reduce((s, x) => s + x[1], 0);
     return sum === E.might(S, f, 0) ? out : null;
   }
@@ -503,7 +509,11 @@
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
-        const worth = (S.places[o.p] === 'acropolis' ? 2 : 1) * E.stake(S.cfg, S.round);
+        const hd = E.holder(S, o.p), worth = (hd >= 0 ? E.rv(S, o.p, hd) : E.pw(S, o.p) === 'double' ? 2 : 1) * E.stake(S.cfg, S.round);
+        // (Domains: whose banner is on it, and what lies across its rule. Until the banners and markers are drawn on the table, the card says so.)
+        if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
+          notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
+          if (sil) notes.appendChild(el('p', { html: '<b>No rule</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' stands on this Domain') + ', so its rule does not work.' })); }
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
         notes.appendChild(el('p', { html: S.cfg.ramp ? '<b>This round</b>: holding this Place scores ' + worth + ' Renown.' : '<b>Every round</b>: whoever holds this Place when the round ends scores ' + worth + ' Renown.' }));
       }
@@ -929,12 +939,29 @@
   function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (ui.ackGo) { const go = ui.ackGo; ui.ack = null; ui.ackGo = null; go(); } if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
+  // A player's Domain stack: the one that came with the game's set-up, or the one saved with their deck (a ready
+  // deck's ready stack unless they chose another), with any Domain that is no longer in the game left out.
+  function stackOf(p) {
+    let st = Array.isArray(p.stack) && p.stack.length ? p.stack : null;
+    if (!st && !p.cpu && Coll.stackFor) st = Coll.stackFor(p.deckId || ('ready:' + p.deck));
+    if (!st) st = (C.ARCH[p.deck] || {}).stack || C.STACKS[(C.ARCH[Coll.load().starter] ? Coll.load().starter : 'Explorers')];
+    st = st.filter((id, i) => C.PLACES[id] && st.indexOf(id) === i);
+    return st.length >= 5 ? st : C.STACKS.Explorers.slice();
+  }
   function newGame(cfg) {
     stop();
     cfg.players.forEach(deckOf);
     cfg.players.forEach(p => { p.cards = p.cards.map(C.now); });   // (Play again after an old game: a new game is dealt from the set as it is today)
     const decks = cfg.players.map(p => p.cards.slice()), guides = cfg.players.map(p => p.guide);
-    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0));
+    // Domains: each player brings a stack of 15 (the stack saved with their deck: coll.js). Set-up is decided by the
+    // engine for now (E.setupAuto: a person's three Domains are laid as a robot playing its best would lay them, and
+    // the dice are rolled unseen). SEAM for the set-up screen: pass {wait: true} and drive E.setupOptions, E.setupLay
+    // and E.setupRoll from it; S.su holds what was drawn, laid and rolled either way.
+    // (Until the Domain screens are built, a new game on the page is played on the old fixed map, as before: the
+    // engine's Domains are on for the test games and for a page opened with ?domains=1, or anoria_dm '1' on the device.)
+    const dmOn = !!C.DM_LIVE;
+    cfg.players.forEach(p => { p.stack = dmOn ? stackOf(p) : null; });
+    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { profs: cfg.players.map(p => (p.cpu ? E.PROF[LEVEL[cfg.level] || 'holder'] : null)) });
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
@@ -1196,11 +1223,12 @@
   function rowEl(i, T) {
     const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
     const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
+    if (S.dm) { const sil = E.silenced(S, i); row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.k === 'card' ? sil.c : CARDS[E.byU(S, sil.u).c] ? E.byU(S, sil.u).c : ''; }
     [[t, 'L'], [v, 'R']].forEach(sd => {
       const side = el('div', { class: 'pl-side ' + sd[1] });
       const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
       figs.forEach(f => side.appendChild(figEl(f, T)));
-      let free = 3 - figs.length;
+      let free = E.capAt(S, i) - figs.length;
       if (tg && sd[0] === S.turn && free > 0) {
         const pv = landPreview(tg);
         if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
@@ -1208,7 +1236,7 @@
       for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       row.appendChild(side);
       if (sd[1] === 'L') {
-        const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (pk === 'acropolis' ? 2 : 1) * E.stake(S.cfg, V.round);
+        const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
         const tile = el('button', { type: 'button', class: 'pl-tile', 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
         const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im);
         tile.appendChild(art);
@@ -1355,7 +1383,7 @@
     if (s.kind === 'fig') { q.push(a.t === 'clash' ? ['f', a.v] : ['p', a.p]); return q; }
     if (a.t === 'fig') q.push(['p', a.p]);
     else if (a.t === 'clash') { q.push(['f', a.u]); q.push(['f', a.v]); }
-    else if (a.t === 'deed') { if (a.h2 != null) q.push(['h', a.h2]); if (a.u != null) q.push(['f', a.u]); if (a.v != null) q.push(['f', a.v]); if (a.p != null) q.push(['p', a.p]); }
+    else if (a.t === 'deed') { if (a.h2 != null) q.push(['h', a.h2]); if (a.u != null) q.push(['f', a.u]); if (a.v != null) q.push(['f', a.v]); if (a.p != null) q.push(['p', a.p]); if (a.q != null) q.push(['p', a.q]); }
     return q;
   }
   const NOT = { places: {}, figs: {}, hand: {}, done: [] };
@@ -1370,7 +1398,7 @@
     return out;
   }
   function selCost() { const s = ui.sel, o = S.turn; if (!s || s.kind !== 'hand') return null; const cs = s.acts.map(a => E.costOf(S, o, s.key, a.t === 'fig' ? a.p : undefined)); return cs.length ? Math.min.apply(null, cs) : E.costOf(S, o, s.key); }
-  function simulate(a) { const T = E.clone(S); T.turn = S.turn; E.apply(T, a, 0, 0); return T; }
+  function simulate(a) { const T = E.clone(S); T.turn = S.turn; E.apply(T, a.x ? Object.assign({}, a, { x: 0 }) : a, 0, 0); return T; }   // (a.x would turn up a Domain nobody has seen yet)
   // what a Figure landing at a Place would cost and how strong it would stand there
   // (a Deed that brings a Figure in from the hand: Night Crossing, and the Trojan Horse in a game saved with one)
   const carries = key => !!key && !!CARDS[key] && E.fxOf(key) === 'trojan';
@@ -1409,12 +1437,14 @@
     if (a.t === 'tub') return { label: 'Free step', sub: TXG[S.P[S.turn].guide].n + ', once a turn' };
     if (a.t === 'antik') return { label: 'Jump', sub: info(E.relicOf(S.P[S.turn], 'antikythera') || 'antikythera').n + '. Done for the turn' };
     if (a.t === 'clash') { const qk = a.ph ? quickOf(a) : null; return qk ? { label: 'Clash with ' + CARDS[qk].n, sub: '+2 Might for ' + E.costOf(S, S.turn, qk) + ' Spark' } : { label: 'Clash' }; }
+    if (a.t === 'fig' && a.x) { const arr = (CARDS[S.P[S.turn].hand[a.h]].arr || [])[0];   // (Constantine, William the Conqueror: the "you may" on the card)
+      return { label: 'Play, and change the Domain', sub: arr === 'found' ? 'The top Domain of your stack is laid at the Crossroads.' : 'The Domain here is discarded, and ' + pname(a.p >> 1) + ' lays the top Domain of their stack.' }; }
     return { label: 'Play' };
   }
   function finishPick(acts) {
     if (acts.length === 1) return doHuman(acts[0]);
     const s = ui.sel, who = info(s.kind === 'hand' ? s.key : E.byU(S, s.u).c).n, rank = { walk: 0, tub: 1, antik: 2, clash: 0 };
-    acts = acts.slice().sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0));
+    acts = acts.slice().sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0) || (x.x ? 1 : 0) - (y.x ? 1 : 0));
     const to = acts[0].p != null && acts[0].t !== 'clash' ? ' to ' + (/^(The|the) /.test(C.PLACES[S.places[acts[0].p]].n) ? '' : /^(Great Wall|Colosseum|Acropolis|Silk Road|Globe Theatre|Library)/.test(C.PLACES[S.places[acts[0].p]].n) ? 'the ' : '') + C.PLACES[S.places[acts[0].p]].n : '';
     Kit.sheet({ title: who + to, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
   }
@@ -1453,7 +1483,7 @@
     Kit.sfx('tap');
     const st = E.stake(S.cfg, S.round);
     Kit.sheet({ title: 'Round ' + S.round, html: (S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
-      : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
+      : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (!S.dm && S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
       '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>', actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
@@ -1683,6 +1713,24 @@
       if (fx === 'encore') { const f = vfig(ev.u); if (f) { f.rdy = 1; f.arr = 0; ui.fresh[f.u] = 'hop'; } render(); ui.fresh = {}; Kit.sfx('good'); await wait(480); return; }
       render();
     },
+    // ── Domains ── A Domain is laid (ev.old: the one it replaces, which goes to ev.was's Domain discard pile), Domains
+    // change places (ev.perm), Vesuvius is laid on one (marker), a player has chosen one (chose). The rows read the
+    // engine's state, so drawing the table again shows them where they now lie.
+    async domain(ev) {
+      if (ev.why === 'setup') return;
+      V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('flip'); Kit.haptic('medium');
+      Kit.toast((ev.old != null ? cap1(theName('@' + ev.old)) + ' is discarded, and ' + theName('@' + ev.id) + ' is laid' : cap1(theName('@' + ev.id)) + ' is laid') + ' at ' + posName(ev.p) + '.', 2600); await wait(900);
+    },
+    async domains(ev) {
+      V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('whoosh'); Kit.haptic('medium');
+      const moved = ev.perm.map((from, i) => (from !== i ? i : -1)).filter(i => i >= 0);
+      Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.', 2600); await wait(900);
+    },
+    // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
+    // player names: SEAM for the dice and the chooser; until then the engine chooses for the player and a line says the roll)
+    async congress(ev) { Kit.sfx('flip'); Kit.toast('The dice for the Congress of Vienna show ' + ev.dice[0] + ' and ' + ev.dice[1] + '.', 2200); await wait(900); },
+    async nothing(ev) { Kit.toast(ev.why === 'kudurru' ? 'A Boundary Stone protects that Domain, so nothing changes.' : 'There is no Domain left to lay, so nothing changes.', 2200); await wait(700); },
+    async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', which has no rule while it lies there.', 2600); await wait(900); },
     async quick(ev, ctx) {
       const o = ev.o; dropHand(o, V.P[o].hand.indexOf(ev.c)); ctx.quick = !ev.att; ctx.qk = ev.c;
       if (ev.att) V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0)); else V.P[o].reserve = Math.max(0, V.P[o].reserve - 1);
@@ -1814,6 +1862,9 @@
       if ((ev.t === 'arrive' || ev.t === 'relic' || ev.t === 'deed' || ev.t === 'quick') && ev.c) G.seen[ev.c] = 1;
       else if (ev.t === 'seal') { G.stats[ev.by].seals++; if (T) T.seals.push(r + '|' + ev.by); }
       else if (ev.t === 'hold') { G.stats[ev.o].held++; (held = held || {})[ev.p] = ev.o; }
+      // (Domains that changed during the game, for its history: round | position as the map lies | the Domain laid | whose banner | the Domain it replaced | the card that did it; and 'round|m|perm' when Domains changed places)
+      else if (ev.t === 'domain' && ev.why !== 'setup' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, MAPORD.indexOf(ev.p), ev.id, ev.o, ev.old || '', ev.why].join('|')); }
+      else if (ev.t === 'domains' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, 'm', MAPORD.map(i => MAPORD.indexOf(ev.perm[i])).join(''), ev.why].join('|')); }
     });
     return held;
   }
@@ -1828,7 +1879,7 @@
     ctx.cost = ctx.key ? E.costOf(S, o, ctx.key, a.t === 'fig' ? a.p : undefined) : 0;
     const roll = ctx.roll || E.rollClash(S.cfg); E.apply(S, a, roll.da, roll.dd, roll);
     const evs = S.ev.splice(0); G.n++; tally(evs); logEvs(evs); save();
-    ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash');
+    ctx.random = evs.some(e => e.t === 'draw' || e.t === 'clash' || e.t === 'domain' || e.t === 'choose' || e.t === 'dunder' || e.t === 'congress');   // (a card drawn, dice, a Domain turned up: not to be taken back)
     const ok = await playEvents(evs, ctx);
     return ok ? ctx : null;
   }
@@ -1837,6 +1888,10 @@
     const my = gen, snapS = JSON.stringify(Object.assign({}, S, { cfg: null, st: null, ev: null }));
     ui.sel = null; setBusy(true); render();
     const ctx = await doAction(a); if (gen !== my || !ctx) return;
+    // SEAM for the Domain chooser: Pachacuti, Al-Idrisi and Christopher Wren leave a choice of Domain open (S.pend:
+    // which Domains, and E.pendActions(S) for what can be done with them). Until there is a screen to ask with, the
+    // engine chooses for the player as a robot playing its best would (E.pendPick).
+    while (S.pend) { const c2 = await doAction(E.pendPick(S)); if (gen !== my || !c2) return; }
     if (ctx.random) undoStack = []; else undoStack.push(snapS);
     setBusy(false); legal(); settle();
   }
@@ -1990,6 +2045,8 @@
           v: 2, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w,
           pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
           rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(),
+          // (a game played with Domains: whose banner is on each of the five as the map lies, whose offer was the Crossroads, who took the first turn, the Domains each player laid at set-up as 'gate,outpost,offer', and the changes during the game)
+          dm: S.dm ? { ban: MAPORD.map(i => S.ban[i]).join(''), dibs: S.su ? S.su.dibs : -1, first: S.f0 || 0, lay: S.su && S.su.lay ? S.su.lay.map(l => (l ? [l.gate, l.out, l.offer].join(',') : '')) : [], ch: (T.dom || []).slice() } : null,
           map: MAPORD.map(i => { const m = E.mights(S, i), by = o => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(','); return [S.places[i], E.holder(S, i), m[0], m[1], by(0), by(1)].join('|'); }) } });
     } catch (e) {}
     // the collection: cards that crossed the table are seen; a win against the computer can earn a pack or a Guide

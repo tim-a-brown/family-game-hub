@@ -672,6 +672,38 @@ Underlying principles for everything:
   `node scripts/anoria/guides.js` (every ready deck under that Guide against the others under their own); the record
   of every draft and its figure is `scripts/anoria/guides.txt`. A new Guide needs a picture, a text entry, a mat
   (`MATS` in ui.js; without one the chart is used) and that measure.
+- **Domains: the engine and the data** (2026-11-11; the screens come after). A game given Domain stacks is played
+  with Domains (`S.dm` in engine.js, whose header lists the state): `S.places[i]` the Domain at each position, `S.ban[i]`
+  whose banner is on it, `S.mk[i]` the card lying across its rule (Vesuvius), `P.dst` and `P.dgone` each player's
+  Domain stack and Domain discard pile, `S.su` the set-up (drawn, laid, the dice, whose offer is the Crossroads, who
+  goes first), `S.pend` a choice of Domain still to make, `E.track(S)` the round track, `E.silenced(S, i)` what lies
+  on a rule (Diogenes's marker is wherever he stands). Set-up is three steps the page can drive (`newGame(..., stacks,
+  {wait: true})`, `setupOptions`, `setupLay`, `setupRoll`) or the engine decides (`setupAuto`, as the page does for
+  now). Events: `domain` (laid, with what it replaced), `domains` (moved), `marker`, `choose`/`chose`, `dunder`,
+  `restack`, `sroll`, `setup`. **Every rule is a word in the Domain's data** (`pw` in cards.js `PLACES`, the sentence in
+  text.js `DRULE`), never a Domain's name. **A game with no stacks is on the old fixed map** with the rules its twelve
+  Places had (`pw0`, `tx0`): a lesson's table (guide.js is unchanged) and a game saved before Domains, which finishes
+  as it began. Domination is not in the engine. The thirteen cards that act on Domains are in the set (`P4` in cards.js,
+  `pr: 4`, found only in packs, from the whole set like every card; Pachacuti is the thirteenth; Congress of Vienna is the one with dice, whose roll is the `congress` event). The collection (coll.js v 5) holds
+  Domains (`doms`), a stack for every deck (`stackFor`, `saveStack`, `autoStack`: 15, no two the same, any kinds and
+  homes) and Domains in packs (`DOMAINS_IN_PACKS`, `WELCOME_DOMAINS`, `DOMAIN_SLOT`). Every script in scripts/anoria
+  plays with Domains (`dm` in `STD`; `'{"dm":0}'` is the old map); `scripts/anoria/domains.js` asks the Domain
+  questions and `domains.txt` has the answers. A Domain's picture brief is `art` in text.js with how sure it is (`bs`);
+  63 Domains and the twelve Domain cards have no picture yet (`NOPIC`). ui.js has only what keeps today's table
+  working, with each seam for the screens marked `SEAM`.
+  **Domains are off on the page until their screens are built** (`DM_LIVE` in cards.js): the page's new games are on
+  the old fixed map, the Domain cards are not in its set, packs hold no Domains and cards read their old-map words
+  (`k0`, `tx0`). The scripts always have everything; a page opened with `?domains=1`, or with `anoria_dm` '1' on the
+  device, plays with Domains. Turning Domains on for everyone is `DM_LIVE` returning true.
+- **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
+  Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
+  about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
+  Guide's key, and is measured with `node scripts/anoria/guides.js` (every ready deck under that Guide against the
+  others under their own; a Guide worth about what the first five are sits within a few points of 0, and "none" reads
+  about -1.5). First drafts that measured out of line and were changed: Gandhi's +1 Might everywhere (+9), Lincoln's
+  fourth Seal (+5), Curie's cheaper second card (+6.5), Mandela's return to hand (worth nothing: Spark is what is
+  scarce, not cards) and his fall back to the Gate from anywhere (+6). A new Guide needs a picture, a text entry, a
+  mat (`MATS` in ui.js; without one the chart is used) and that measure.
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)

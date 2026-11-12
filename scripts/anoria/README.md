@@ -93,3 +93,19 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   out in `run.js cards`, where it rests on a few hundred games.
 - `node scripts/anoria/rarity.js 6000 3` tiers the third printing among its own cards (`RARE3` in coll.js). The cards
   the game had before keep the tiers they had.
+
+## Domains (each player's own stack of 15)
+
+- The rules are in `games/anoria/engine.js` since 2026-11-11 (a game given stacks has `S.dm`), the 75 Domains and the
+  five ready stacks in `cards.js` (`PLACES`, `STACKS`), their words in `text.js`. `places/RULES.md` is the sheet a
+  person reads at a table, and `places/` is the prototype it was settled on (its own fork of the engine: history now).
+- **Every script here now plays with Domains.** `play()` in engine.js deals each ready deck its ready stack, and any
+  other deck fifteen Domains at random, whenever the rules have `dm` (`STD` does). `'{"dm":0}'` as the json of rule
+  changes plays the old fixed map of twelve Places: `node scripts/anoria/endings.js "the old map" '{"dm":0}' 100`.
+- `node scripts/anoria/domains.js <experiment> [games per pairing] ['<json>'] [seed]`: the Domain questions on the
+  real engine: `base` (the old map beside Domains), `decks` (the ready decks with their ready stacks on four sets of
+  games), `rules` (every rule at every position, every kind, home and Domain), `law`, `built` (a stack chosen for the
+  deck against the ready stacks), `six` (Domain cards in the ready decks), `use` and `cards` (the Domain cards),
+  `setup` (how well each robot lays its three Domains). `domains.txt` has the tables and what each one says.
+- `pacing.js` takes three more arguments again: the chance an earned pack holds a Domain, the Domains in a welcome
+  pack, and the series the Domain cards are found in. `pacing.txt` has the table.
