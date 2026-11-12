@@ -717,7 +717,10 @@ Underlying principles for everything:
   add threads/legacy lines as the real history would necessitate and fits gameplay ... leave off completely fictional
   characters for now", then "shift 25-30 to deeds and relics"): 100 Figures, 20 Relics and 30 Deeds, all real, **found
   only in packs** (in no ready deck). Eleven of them left under the hundred-year rule above, so the third printing is
-  137 cards (93 Figures, 20 Relics, 24 Deeds) and the set is 228 (Einstein and Jim Thorpe are held too: below). They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
+  137 cards; thirteen more were added the next day (Tim's choice: Thutmose III, Themistocles, Mehmed II, Omar Khayyam,
+  Nebuchadnezzar II, Jai Singh II, Afonso I of Kongo, Ernest Shackleton, the Paiza, the Cyrus Cylinder, the Great Exhibition,
+  the Declaration of Independence and the Rubáiyát, with a new named line, The Tentmaker), so the third printing is 150
+  again (101 Figures, 22 Relics, 27 Deeds) and the set is 241 (Einstein and Jim Thorpe are held too: below). They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
   `P3` in text.js. `scripts/anoria/set-150.json` keeps where each card's facts came from (`src`, `sure`, `check`), what
   was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
   Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing

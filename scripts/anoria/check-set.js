@@ -21,7 +21,7 @@ const names = {}; Object.keys(CARDS).forEach(k => { const n = CARDS[k].n.toLower
 Object.keys(C.GUIDES).forEach(k => { if (names[C.GUIDES[k].toLowerCase()]) err(k, 'a Guide is also a card'); });
 const JS = {}; SET.cards.forEach(c => { JS[c.key] = c; });
 
-if (NEW.length !== 137) err('set', 'the third printing has ' + NEW.length + ' cards, not 137');   // (150 as made; 13 are held for a later set: heldForLater in set-150.json)
+if (NEW.length !== 150) err('set', 'the third printing has ' + NEW.length + ' cards, not 150');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), and 13 more took their places on 2026-11-12)
 NEW.forEach(k => {
   const c = CARDS[k], t = T.CARDS[k], fig = c.t === 'fig';
   if (!t) return err(k, 'no words in text.js');
