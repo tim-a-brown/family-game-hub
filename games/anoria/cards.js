@@ -126,7 +126,8 @@ const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, amb
 Object.keys(WHEN).forEach(k => { CARDS[k].y = WHEN[k]; });
 // (Thirteen of the 150 left the same day: eleven for "nothing within the past hundred years" (a card's year is 1926 or
 // earlier) and Albert Einstein and Jim Thorpe, whose names and likenesses are licensed and enforced by their estates.
-// They are heldForLater in scripts/anoria/set-150.json. The third printing is 137 cards and the set is 228.)
+// They are heldForLater in scripts/anoria/set-150.json. The third printing was 137 cards, and on 2026-11-12 thirteen more
+// real people and events, chosen where the set was thinnest, brought it back to 150: the set is 241.)
 // ── The third printing (2026-11-11): 150 more cards from real history, 100 Figures, 20 Relics and 30 Deeds, found
 // only in packs (like Blackbeard, they are in no ready deck). Tim: "increase the number of possible historical cards to
 // collect outside of the base packs by 150 ... lean slightly more into more well-known historical figures but i do
@@ -284,6 +285,20 @@ const P3 = {
   kadesh: { n: 'The Treaty of Kadesh', t: 'deed', f: 'W', c: 1, fx: 'eclipse', y: -1259 },
   typhoon: { n: 'The Typhoon of 1281', t: 'deed', f: 'W', c: 1, fx: 'eclipse', y: 1281 },
   tomb: { n: 'Tutankhamun\'s Tomb Opened', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1922 },
+  // (2026-11-12: thirteen more, which bring the third printing from 137 cards to 150. Sources in set-150.json.)
+  thutmose: F('Thutmose III', 'V', 4, 4, 'AFR', 1, -1457, { raider: 1 }),
+  themistocles: F('Themistocles', 'V', 3, 3, 'MED', 2, -480, { slayer: 1 }),
+  mehmed: F('Mehmed II', 'V', 5, 5, 'MIDEAST', 3, 1453, {}, { arr: ['push', 1], insp: ['alexander'] }),
+  khayyam: F('Omar Khayyam', 'W', 3, 4, 'MIDEAST', 3, 1079, { scholar: 1 }, { insp: ['ibnsina'] }),
+  nebuchadnezzar: F('Nebuchadnezzar II', 'W', 4, 4, 'MIDEAST', 1, -575, { monument: 1 }),
+  jaisingh: F('Jai Singh II', 'W', 3, 3, 'ASIA', 5, 1734, { monument: 1 }),
+  afonso: F('Afonso I of Kongo', 'S', 3, 4, 'AFR', 4, 1526, { scholar: 1 }),   // (at 3/3, the numbers of Ashurbanipal, he won 2 to 3 points less than Ashurbanipal does: onecard.js)
+  shackleton: F('Ernest Shackleton', 'D', 4, 4, 'EUR', 7, 1916, { voyager: 1, inspiring: 1 }),
+  paiza: { n: 'Paiza', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1266 },
+  cyruscylinder: { n: 'Cyrus Cylinder', t: 'relic', f: 'N', c: 1, fx: 'compass', y: -539 },
+  exhibition: { n: 'The Great Exhibition', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1851 },
+  declaration: { n: 'The Declaration of Independence', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1776 },
+  rubaiyat: { n: 'The Rubáiyát', t: 'deed', f: 'A', c: 1, fx: 'encore', y: 1859 },
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
 const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
@@ -293,7 +308,8 @@ const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@libr
   'testudo': ['caesar'], 'brownsbox': ['douglass'], 'beagle': ['darwin'], 'magnacarta': ['eleanor'], 'marathonmarch': ['aeschylus'], 'ninth': ['beethoven'],
   'emancipation': ['douglass'], 'sextant': ['astrolabe'], 'ropebridge': ['pachacuti'], 'starchart': ['@silk'], 'telescope': ['galileo'],
   'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['press'],
-  'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun']};
+  'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun'],
+  'thutmose': ['hatshepsut'], 'themistocles': ['leonidas'], 'shackleton': ['amundsen'], 'paiza': ['kublai'], 'cyruscylinder': ['cyrus'], 'exhibition': ['victoria'], 'declaration': ['franklin'], 'rubaiyat': ['khayyam']};
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });
 // Legacy Lines the new cards give to cards the game already had. All of them are lines (`from`: Renown when the
@@ -364,6 +380,8 @@ const THREADS = [
   { id: 'banquet', n: 'Homer\'s Banquet', cards: ['homer', 'aeschylus', 'wheatley'] },
   { id: 'walls', n: 'The Walls of Syracuse', cards: ['archimedes', 'syracuse'] },
   { id: 'akkad', n: 'The House of Akkad', cards: ['sargon', 'enheduanna', 'tablet'] },
+  // (2026-11-12, with the thirteen that made the third printing 150: Ibn Sina, Omar Khayyam, who called him his teacher, and FitzGerald's Rubáiyát)
+  { id: 'tentmaker', n: 'The Tentmaker', cards: ['ibnsina', 'khayyam', 'rubaiyat'] },
 ];
 // The first five each bring a ready deck (ARCH). The seven after them join a player as wins against the computer add
 // up, and guide a deck the player builds. The roster of twelve (Tim, 2026-11-12): Joan of Arc, Saladin, Shakespeare,
