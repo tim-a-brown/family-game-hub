@@ -84,6 +84,10 @@
   };
   const SVG = {
     home: '<svg viewBox="0 0 12 12"><path d="M1.4 6 6 1.8 10.6 6M2.8 5.2v5h6.4v-5" fill="none" stroke="#b8862d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    // (the marks printed on the table at the outer end of each row: what that place is. Tim, 2026-11-12)
+    posGate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V11a8 8 0 0 1 16 0v10M9 21v-8a3 3 0 0 1 6 0v8M3 21h18"/></svg>',
+    posOut: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V10h10v11M5 10V5h2.5v2h2.5V5h4v2h2.5V5H19v5M10.5 21v-4a1.5 1.5 0 0 1 3 0v4M4 21h16"/></svg>',
+    posCross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M12 5.5h6.5l2 2-2 2H12M12 12H5.5l-2 2 2 2H12M8.5 21h7"/></svg>',
     arch: '<svg viewBox="0 0 12 12"><path d="M2 11V5.5a4 4 0 0 1 8 0V11M4.6 11V6.6a1.4 1.4 0 0 1 2.8 0V11" fill="none" stroke="#10131c" stroke-width="1.6" stroke-linecap="round"/></svg>',
     swords: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e9cf86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l10 10M4 3v3.4M4 3h3.4M12.2 15.8l3.6-3.6M13.4 14.6 19 20.2M17.6 21.6l2.8-2.8"/><path d="M20 3 10 13M20 3v3.4M20 3h-3.4M11.8 15.8l-3.6-3.6M10.6 14.6 5 20.2M6.4 21.6l-2.8-2.8"/></g></svg>',
     // the two faces of a card you are reading: its picture large, or its words (the button on the picture)
@@ -1451,6 +1455,12 @@
         if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
       }
       for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
+      // (what this place is, printed faintly on the table at the row's outer end, under the outermost spot: a Gate's arch,
+      // an Outpost's tower or the Crossroads' signpost, in the color of the player whose place it is. A Figure played
+      // there covers it, as a card covers a board's printing.)
+      const outer = side.lastChild; if (outer && outer.classList.contains('slot') && !outer.classList.contains('land')) {
+        const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut';
+        outer.appendChild(el('i', { class: 'pl-pos', style: own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null, html: SVG[kind] })); }
       row.appendChild(side);
       if (sd[1] === 'L') {
         const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
@@ -1461,7 +1471,7 @@
         tile.appendChild(el('span', { class: 'pl-tots' }, [
           el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero'), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
           el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero'), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
-        if (gate) tile.appendChild(el('span', { class: 'pl-gate pl-gatem ' + (own === v ? 'out-b' : 'out-t'), style: { '--gc': 'var(--pc' + own + ')' }, 'aria-hidden': 'true', html: SVG.arch }));   // (a Gate's arch on the tile's outward border, the side facing its player, in that player's color: Tim, 2026-11-12)
+        // (a Gate is marked on the table at the row's ends: .pl-pos)
         (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: MARK.deed })));   // (a Deed in play on this Domain)
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
