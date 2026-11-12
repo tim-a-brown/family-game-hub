@@ -397,7 +397,11 @@ function ko(S, f, by) {
   { const Q = S.P[f.o]; if (Q.guide === 'shakespeare' && !Q.uW && f.p === 2 * S.N) { Q.uW = 1; Q.renown += 1; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'tragedy' }); if (S.st) S.st.tragedies = (S.st.tragedies || 0) + 1; } }
   S.figs.splice(S.figs.indexOf(f), 1); if (S.dm && CARDS[f.c].k.cynic) S.cyn--;
   (S.P[f.o].gone || (S.P[f.o].gone = [])).push(f.c);
-  for (const g of S.figs) if (g.li === f.u) { g.li = 0; S.P[g.o].lines--; }
+  // (a Legacy Figure keeps its line, and its +1 Might, for as long as any person it names is in play on its side: Tim,
+  // "make it either". When the one it is joined to falls, the line moves to another of them, and breaks only when
+  // none is left: the 'relink' event)
+  for (const g of S.figs) if (g.li === f.u) { const ns = CARDS[g.c].insp || [], alt = S.figs.find(h => h.o === g.o && h !== g && ns.indexOf(h.c) >= 0);
+    if (alt) { g.li = alt.u; if (S.ev) S.ev.push({ t: 'relink', a: g.u, b: alt.u, o: g.o }); } else { g.li = 0; S.P[g.o].lines--; } }
   if (f.li) S.P[f.o].lines--;
   if (S.st) { S.st.ko++; if (by) { const a = CARDS[by.c], b = CARDS[f.c]; if (a.m < b.m) S.st.upsets++; S.st.ev.push([by.c, f.c, S.places[f.p]]); } }
 }
@@ -692,7 +696,7 @@ function play(decks, guides, profs, cfg, seed, stacks) {
   }
   return S;
 }
-return { play, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
+return { play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES,
   pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
 });

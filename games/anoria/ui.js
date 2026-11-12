@@ -470,7 +470,7 @@
     function tap(from, to) { return e => { e.stopPropagation(); if (sel === from + '>' + to || srcs.length + kids.length === 1) openView((from === key ? to : from).replace(/^@/, '')); else { Kit.sfx('tap', .4); choose(from, to); } }; }
     // the ?: what the pictures mean, in sentences a person would say, about these very cards
     const help = el('div', { class: 'll-help', hidden: true }), says = [];
-    if (srcs.length) { says.push(lineSay(srcs, key)); if (c.insp) says.push(i0.n + ' keeps the +1 Might for as long as the two of them are in play, joined by a gold Legacy Line on the map.'); }
+    if (srcs.length) { says.push(lineSay(srcs, key)); if (c.insp) says.push(c.insp.length > 1 ? i0.n + ' keeps the +1 Might for as long as ' + listOf(c.insp.map(k => info(k).n), 'or') + ' is in play on your side, joined to each of them in play by a gold Legacy Line on the map.' : i0.n + ' keeps the +1 Might for as long as ' + info(c.insp[0]).n + ' is in play on your side, joined by a gold Legacy Line on the map.'); }
     const kidSay = []; if (kids.length) { const th = kids.filter(k => worthOf(key, k) === 'thread'), lg = kids.filter(k => worthOf(key, k) === 'legacy'), all = th.concat(lg);
       kidSay.push('With ' + theName(key) + ' in play on your side, ' + listOf(all.map(k => CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n), 'and') + (all.length > 1 ? ' each score 1 Renown as you play them.' : ' scores 1 Renown as you play that card.'));
       if (lg.length) kidSay.push(listOf(lg.map(k => CARDS[k].n), 'and') + (lg.length > 1 ? ' also cost 1 Spark less and have' : ' also costs 1 Spark less and has') + ' +1 Might for as long as the Legacy Line holds.'); }
@@ -1548,7 +1548,11 @@
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
     const old = dom.map.querySelector('.an-line'); if (old) old.remove();
-    const ls = V.figs.filter(f => f.li && V.figs.some(g => g.u === f.li)); if (!ls.length) return;
+    // (a Legacy Figure joined to its line is drawn to every person it names who is in play on its side: Tim, "draw the
+    // gold line to both if both are in play")
+    const ls = []; V.figs.forEach(f => { if (!f.li || !V.figs.some(g => g.u === f.li)) return; const ns = CARDS[f.c].insp || [];
+      V.figs.forEach(g => { if (g.o === f.o && g !== f && (g.u === f.li || ns.indexOf(g.c) >= 0)) ls.push({ u: f.u, li: g.u }); }); });
+    if (!ls.length) return;
     const mr = dom.map.getBoundingClientRect(); let h = '<defs><linearGradient id="an-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a1"/><stop offset=".5" stop-color="#fff1bf"/><stop offset="1" stop-color="#b8862d"/></linearGradient></defs>';
     ls.forEach(f => {
       const a = dom.map.querySelector('.fp[data-u="' + f.u + '"]'), b = dom.map.querySelector('.fp[data-u="' + f.li + '"]'); if (!a || !b) return;
@@ -1975,6 +1979,7 @@
     },
     // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
     // player names: SEAM for the dice and the chooser; until then the engine chooses for the player and a line says the roll)
+    async relink(ev) { const f = vfig(ev.a); if (f) f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0; Kit.sfx('sparkle', .6); await wait(500); },
     // Congress of Vienna: the Domains are numbered 1 to 5 from the roller's own Gate, the two dice tumble over the map,
     // and the numbers they show light up with their Domains (a 6 is the roller's choice, made next)
     async congress(ev) {
@@ -1999,7 +2004,7 @@
     async ko(ev) {
       const n = dom.map.querySelector('.fp[data-u="' + ev.u + '"]');
       if (n) await anim(n, [{ transform: 'none', opacity: 1 }, { transform: 'rotate(' + (ev.o === ui.view ? 24 : -24) + 'deg) translateY(30%) scale(.7)', opacity: 0 }], { duration: 360, easing: 'ease-in', fill: 'forwards' });
-      V.figs = V.figs.filter(f => f.u !== ev.u); V.figs.forEach(f => { if (f.li === ev.u) f.li = 0; });
+      V.figs = V.figs.filter(f => f.u !== ev.u); V.figs.forEach(f => { if (f.li === ev.u) { const g = S.figs.find(x => x.u === f.u); f.li = g ? g.li : 0; } });   // (a line that moves to another source: 'relink')
       render();
     },
     // Mandela: once a round, a Figure of his defeated on the other player's side goes back to his Gate instead
@@ -2089,6 +2094,7 @@
       else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + nm(ev.o) + ' has ' + ev.left + ' left.']);
       else if (t === 'mend') add(ev.o, ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
       else if (t === 'discard') add(ev.o, [nm(ev.o) + ' discarded ', K(ev.c), '.']);
+      else if (t === 'relink') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', F(ev.a), '’s Legacy Line now runs to ', F(ev.b), ', so ', F(ev.a), ' keeps the +1 Might.']);
       // Domains: laid in another's place, moved, covered, and the Congress of Vienna's dice
       else if (t === 'domain' && ev.why !== 'setup') { const w = E.ownerOfSpoke(S, ev.p), at = w < 0 ? 'the Crossroads' : Kit.poss(nm(w)) + (E.isGate(S, ev.p) ? ' Gate' : ' Outpost');
         add(ev.o, ev.old ? [{ k: '@' + ev.old }, ' was discarded, and ', { k: '@' + ev.id }, ' was laid at ' + at + '.'] : [{ k: '@' + ev.id }, ' was laid at ' + at + '.']); }
@@ -2366,7 +2372,7 @@
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
-    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as both are in play, connected by a gold Legacy Line on the map.</li>' +
+    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure that names two people keeps the +1 Might while either of them is in play, with a gold line to each one in play.</li>' +
     '<li>Only one Legacy Line scores in each round. A second Legacy Line made in the same round still connects the two cards, and scores nothing.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of ' + ((window.AnoriaColl && AnoriaColl.DAILY) || 5) + ' cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +
