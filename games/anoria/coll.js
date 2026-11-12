@@ -49,12 +49,12 @@ const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GR
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
 const GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 4;
 let WELCOME = [12, 12, 12];   // (the welcome packs; pacing.js can try others through use())
-let DAILY = 3, FEAT = 3;   // (cards in an earned pack; pacing.js can try other sizes through use())
+let DAILY = 5, FEAT = 5;   // (cards in an earned pack, 5 since 2026-11-12, Tim: "do 5 cards"; pacing.js can try other sizes through use())
 // ── How packs work with a set of 241 cards: the two lines to change ─────────────────────────────────────────
 // PACK_ORDER 'series': packs hold the first series (the 91 cards of the first two printings) until you have two of
 // each card in it, and then the second series (the 150 cards of the third printing). 'mixed': any card of the whole
 // set you are missing, from the first pack on (the ready decks then take about four months to fill, not one).
-let PACK_ORDER = 'series';
+let PACK_ORDER = 'mixed';   // (Tim, 2026-11-12: "all series should be available in packs, no requirement to have both of every card first, until we have special sets in the future")
 // SERIES2_PACK: how many cards an earned pack holds once the first series is complete. 0: the same as any earned
 // pack (DAILY and FEAT, 3 today). 5 is what pacing.txt recommends, so the 150 take about two months and not three
 // and a half. Tim's to decide: it is 0 until he does.

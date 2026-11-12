@@ -705,11 +705,13 @@ Underlying principles for everything:
   the way across and a quarter of the way down); and a full card shows only about 11% to 60% of a picture's height, so a
   brief says what must be in the upper half. The briefs (`art`) follow the notes above: both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
   memory are asked for as a respectful, recognisable portrait at a documented moment.
-- **Two series of packs** (coll.js, the two lines under "How packs work with a set of 241 cards", now 228): `PACK_ORDER`
-  `'series'` gives the first series (the 91 cards the ready decks are made of) until a player has two of each, and
-  then the second (the third printing), so the first month is what it was; `'mixed'` draws from the whole set at once.
-  `SERIES2_PACK` is the size of an earned pack once the first series is complete (0: as any pack; pacing.txt recommends
-  5; Tim's to decide). At 3 cards a pack the whole set takes about 129 days either way; `pacing.txt` has the table.
+- **Packs draw from the whole set, 5 cards each** (Tim, 2026-11-12: "all series should be available in packs, no
+  requirement to have both of every card first, until we have special sets in the future - do 5 cards. keep allowing a
+  player to collect cards until they've covered all the different styles too. the player can only put two in a deck
+  though"). `PACK_ORDER` is `'mixed'` and `DAILY`/`FEAT` are 5 in coll.js; the series code stays for special sets
+  later. Every card is collected to two copies, and the packs go on turning up finishes (editions) until every card
+  has all five. A deck holds no more than two of a card. At 3 games a day the whole set takes about 71 days.
+  Domains (when they go in) come in half of the earned packs (`DOMAIN_SLOT` 0.5, Tim's choice the same day).
 - **A named Legacy Line the game already has is never given more cards**: it would stop being finished for someone who
   had finished it, and one that comes whole in a starter deck would stop being theirs. New cards get lines of their
   own (The Clockwork Heavens beside The Heavens). Links from new cards to older cards are all `from` (`FROM_MORE`), so
