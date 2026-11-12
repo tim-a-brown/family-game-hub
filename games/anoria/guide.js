@@ -488,7 +488,7 @@
         await L.walk('coleman', TH_OUT, { lit: 'And a Voyager can walk to any Place, not just the next one.', at: L.piece('coleman') });
       } },
     { id: 'clash', n: 'A clash', sub: 'Dice, Guards and Bounty', art: 'leonidas',
-      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', renown: 7, hand: ['galileo', 'compass'], draw: ['eureka', 'hypatia'], figs: [['copernicus', CROSS], ['haytham', TH_OUT]] },
+      table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', renown: 7, hand: ['galileo', 'compass', 'testudo'], draw: ['eureka', 'hypatia'], figs: [['copernicus', CROSS], ['haytham', TH_OUT]] },
         them: { guide: 'tubman', renown: 8, hand: ['genghis', 'boudica'], figs: [['tomoe', CROSS], ['leonidas', TH_OUT], ['spartacus', TH_OUT]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -498,9 +498,10 @@
         await L.clash('haytham', 'leonidas', [6, 2], { lit: 'Leonidas is a <b>Guard</b>: enemies here must clash with him first. He is also <b>Steadfast</b>, which gives him +2 Might when he defends.', at: L.piece('leonidas', 1),
           hold: ['A roll that wins by 3 or more adds 2 Might instead of 1.'] });
         await L.say('A Figure can clash on the turn you play it, but each Figure acts only once a turn.', { at: L.piece('haytham') });
+        await L.say('<b>Testudo</b> in your hand is a Quick Deed. If a Figure of yours loses a clash it started on the other player’s side, Testudo plays itself, and that Figure goes back to your Gate instead of being knocked out.', { at: L.card('testudo') });
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
-      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'coleman'], figs: [['copernicus', MY_GATE]] },
+      table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'veto', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'coleman'], figs: [['copernicus', MY_GATE]] },
         them: { guide: 'tubman', hand: ['genghis', 'boudica'], draw: ['baibars', 'ambush'], figs: [['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
@@ -512,6 +513,7 @@
         await L.say('You ended your turn with 2 Spark unspent and Phalanx in your hand. Now the other player attacks Copernicus.', { at: ['.an-strip.me .st-spark', L.card('phalanx')] });
         await L.them.turn();
         await L.them.clash('tomoe', 'copernicus', [4, 2], { hold: ['Tomoe Gozen’s roll would knock Copernicus out, so <b>Phalanx</b> plays itself and gives him +2 Might. Phalanx is paid for with the Spark you kept.'] });
+        await L.say('The <b>Tribune’s Veto</b> is Quick as well. If the other player plays a Deed that would score Renown or move, stun or knock out one of your Figures, the Veto plays itself with 2 Spark you kept, and their Deed does nothing.', { at: L.card('veto') });
         await L.say('You can read a Relic or a Deed the same way as any card, by tapping it.', { at: '.an-strip.me .st-relics' });
       } },
     { id: 'guide', n: 'Your Guide', sub: 'One power per deck, and how more Guides join you', art: 'leonardo',

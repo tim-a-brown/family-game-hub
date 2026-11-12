@@ -270,13 +270,13 @@ const P3 = {
   hieroglyphs: { n: 'The Hieroglyphs Read', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1822 },
   halley: { n: 'Halley\'s Comet Returns', t: 'deed', f: 'D', c: 1, fx: 'encore', y: 1758 },
   naovictoria: { n: 'The Victoria Comes Home', t: 'deed', f: 'D', c: 1, fx: 'caravan', y: 1522 },
-  syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 2, fx: 'phalanx', quick: 1, y: -213 },
+  syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 2, quick: 1, y: -213 },   // (2026-11-12: a Quick power of its own, which it had shared with Phalanx: engine.js clash())
   goldrush: { n: 'Gold Rush', t: 'deed', f: 'S', c: 1, fx: 'caravan', y: 1849 },
   truce: { n: 'Christmas Truce', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1914 },
   magnacarta: { n: 'Magna Carta', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1215 },
   emancipation: { n: 'Emancipation Proclamation', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1863 },
   teutoburg: { n: 'Teutoburg Forest', t: 'deed', f: 'V', c: 3, fx: 'ambush', y: 9 },
-  testudo: { n: 'Testudo', t: 'deed', f: 'V', c: 2, fx: 'phalanx', quick: 1, y: -54 },
+  testudo: { n: 'Testudo', t: 'deed', f: 'V', c: 2, quick: 1, y: -54 },   // (2026-11-12: a Quick power of its own, as the Defence of Syracuse has)
   marathonmarch: { n: 'The March from Marathon', t: 'deed', f: 'V', c: 1, fx: 'encore', y: -490 },
   planter: { n: 'Taking the Planter', t: 'deed', f: 'V', c: 0, fx: 'fairwinds', y: 1862 },
   rubicon: { n: 'Crossing the Rubicon', t: 'deed', f: 'V', c: 0, fx: 'fairwinds', y: -49 },
@@ -304,6 +304,17 @@ const P3 = {
   exhibition: { n: 'The Great Exhibition', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1851 },
   declaration: { n: 'The Declaration of Independence', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1776 },
   rubaiyat: { n: 'The Rubáiyát', t: 'deed', f: 'A', c: 1, fx: 'encore', y: 1859 },
+  // (2026-11-12, Tim: seven more, each with a power of its own: four Deeds that double what Domains score at the count
+  // (S.dbl in engine.js; the Hanseatic League has Medici Patronage's effect for another kind, dk), a Quick Deed that
+  // cancels the other player's Deed, a Figure with a Ward, and a Deed that gives a Seal. Sources in set-150.json;
+  // numbers from deeds-2026-11-12.txt.)
+  triumph: { n: 'The Roman Triumph', t: 'deed', f: 'V', c: 2, y: -46 },
+  medici: { n: 'Medici Patronage', t: 'deed', f: 'A', c: 3, dk: 'Culture', y: 1490 },
+  hansa: { n: 'The Hanseatic League', t: 'deed', f: 'S', c: 3, fx: 'medici', dk: 'Commerce', y: 1370 },
+  holyyear: { n: 'The Jubilee of 1300', t: 'deed', f: 'W', c: 5, y: 1300 },
+  veto: { n: 'The Tribune\'s Veto', t: 'deed', f: 'S', c: 2, quick: 1, y: -133 },
+  leo: F('Pope Leo I', 'S', 3, 3, 'MED', 3, 452, { ward: 1 }),
+  walls: { n: 'The Theodosian Walls', t: 'deed', f: 'V', c: 4, y: 413 },
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
 const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
@@ -314,6 +325,7 @@ const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@libr
   'emancipation': ['douglass'], 'sextant': ['astrolabe'], 'ropebridge': ['pachacuti'], 'starchart': ['@silk'], 'telescope': ['galileo'],
   'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['press'],
   'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun'],
+  'triumph': ['caesar', 'augustus'], 'medici': ['michelangelo'], 'holyyear': ['dante'], 'walls': ['@constantinople'],
   'thutmose': ['hatshepsut'], 'themistocles': ['leonidas'], 'shackleton': ['amundsen'], 'paiza': ['kublai'], 'cyruscylinder': ['cyrus'], 'exhibition': ['victoria'], 'declaration': ['franklin'], 'rubaiyat': ['khayyam']};
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });
