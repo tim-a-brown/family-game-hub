@@ -386,7 +386,7 @@
     machu: 'MAH-choo PEEK-choo', timbuktu: 'tim-buk-TOO', petra: 'PET-ruh', nineveh: 'NIN-uh-vuh',
     ibnbattuta: 'IB-un bat-TOO-tah', leif: 'layf AIR-ik-sun', sacagawea: 'sah-KAH-gah-wee-ah', shenkuo: 'shun kwoh',
     scipio: 'SIP-ee-oh af-rih-KAH-nus', toussaint: 'too-SAN loo-vair-TOOR', shaka: 'SHAH-kah', lakshmibai: 'LUCK-shmee-by', tecumseh: 'tuh-KUM-suh',
-    caesar: 'JOOL-yus SEE-zur', ibnsina: 'IB-un SEE-nah', chaucer: 'CHAW-sur', marcus: 'MAR-kus aw-REE-lee-us', germain: 'so-FEE zhair-MAN',
+    caesar: 'JOOL-yus SEE-zur', ibnsina: 'IB-un SEE-nah', chaucer: 'JEF-ree CHAW-sur', marcus: 'MAR-kus aw-REE-lee-us', germain: 'so-FEE zhair-MAN',
     mencius: 'MEN-shee-us', nzinga: 'un-ZING-gah', hiawatha: 'hy-uh-WAH-thuh', sorjuana: 'sor HWAH-nah', theodora: 'thee-uh-DOR-uh',
     zhangqian: 'jahng chyen', sargon: 'SAR-gon', harun: 'hah-ROON ar-rah-SHEED', yaa: 'yah ah-SAHN-teh-wah', artemisia: 'ar-tih-MIZ-ee-uh', magellan: 'muh-JEL-un', gilgamesh: 'GIL-guh-mesh', sundiata: 'soon-JAH-tah KAY-tah', bolivar: 'see-MOHN boh-LEE-var', khutulun: 'KHOO-too-loon',
     
