@@ -132,28 +132,95 @@
     gandhi: { n: 'Gandhi', f: 'S', cap: 'India, 1869 to 1948', ll: [72.6, 23], tx: 'Your Figures have +1 Might when an enemy starts a clash with them at your Gate or your Outpost.', fact: 'In 1930 he walked 240 miles to the sea to make salt in defiance of a British law, and millions followed his example.', art: 'Mohandas Gandhi on the Salt March of 1930, aged sixty: a small, thin, sun-browned man with a bald head, large ears, a grey moustache and round wire spectacles, smiling slightly, wearing a white homespun cotton dhoti and a white shawl over his shoulders, and plain sandals. He strides briskly along a dusty country road in Gujarat toward the viewer with a long bamboo walking staff in his right hand, leaning into the walk, lean, wiry and determined, not frail. His head is three fifths of the way across the picture and a quarter of the way down. Close behind him, only one pace back, walk only five of the marchers, each one a different, particular person drawn as carefully as he is: a tall bony man of fifty with a white beard carrying a rolled bedding bundle on his shoulder; a round-faced student of twenty in spectacles, laughing, with a cloth bag slung across his chest; a broad, dark, serious farmer wiping his brow with the end of his shawl; a slight grey-haired man reading from a small notebook as he walks; and a boy of sixteen hurrying to keep up with a brass water pot. Get the scale right: Gandhi is a small man, shorter than most of the men who walk with him, and they are right at his shoulder, so he is not drawn bigger than they are. The heads of the five marchers are the same size in the picture as Gandhi\'s head; the tall bearded man\'s head is higher than Gandhi\'s; the boy of sixteen is nearly as tall as Gandhi. Nobody is a giant and nobody is a doll. They walk in a loose, uneven group, at different angles, some talking, no two in the same pose, in white homespun of different cuts, some bareheaded and some in white caps. At the roadside villagers have come out to watch: an old woman in a faded red sari shading her eyes, a mother with a child on her hip, a man leaning on a bullock cart whose wheel is as high as his waist. Behind them the rest of the march is not drawn as people at all, only a low haze of dust along the road between fields and a few palms, with the Arabian Sea a flat blue band in the far distance. No rows of identical people, no repeated figures, no crowd of small heads. No halo, no glow, no spinning wheel, no flag, no writing. Keep the top left corner and the top right corner of the picture plain: the card\'s own labels cover those two corners. Nothing round hangs or stands in those corners: no plates, dishes, bowls or medallions.' }
   };
   // ── Domains (cards.js PLACES: in code a Domain is still a "place") ─────────────────────────────────────────
-  // A Domain's rule is one of eighteen, and the sentence a player reads for each is here once (DRULE, by the rule's
-  // word in cards.js). Written to read as a card's own text: "this Domain", "here".
+  // Every Domain has a power of its own (Tim, 2026-11-12), one word in cards.js PLACES[id].pw, and the sentence a player
+  // reads for it is here (DRULE, by that word). Each names its Domain, as a card's text does. The tile's few words are
+  // ui.js DSHORT; what each does in the engine is listed at the top of engine.js.
   var DRULE = {
-    spark: 'At an Outpost or the Crossroads, whoever holds this Domain gets 1 more Spark on their next turn.',
-    cheap: 'At an Outpost or the Crossroads, the first Figure each player plays here on a turn costs 1 less.',
-    forge: 'Relics and Deeds cost 1 less for the player who holds this Domain.',
-    arms: 'A Figure has +1 Might on the turn you play it here.',
-    draw: 'Whoever holds this Domain draws a card each round.',
-    line: 'A Legacy Line made by a Figure you play here scores 1 more Renown.',
-    facD: 'Discovery Figures have +1 Might here.',
-    fort: 'Figures defending here have +1 Might.',
-    closed: 'At a Gate or an Outpost, only the player whose side this Domain is on can walk Figures in.',
-    narrow: 'Each player can have no more than two Figures here.',
-    crowd: 'This Domain scores 2 Renown for a player who holds it with two or more Figures.',
-    arena: 'Winning a clash here scores 1 Renown.',
-    facA: 'Arts Figures have +1 Might here.',
-    peace: 'Only the player who holds this Domain can start a clash here.',
-    sanctuary: 'Figures here can\'t be targeted by the other player\'s Deeds.',
-    facS: 'Statecraft Figures have +1 Might here.',
-    link: 'A Figure can walk between this Domain and any other Domain.',
-    road: 'A Figure you play here can walk on the turn you play it.'
+    // Commerce
+    spark: 'At an Outpost or the Crossroads, whoever holds Kilwa Kisiwani when a round ends gets 1 more Spark on their next turn.',
+    cheap: 'At an Outpost or the Crossroads, the first Figure each player plays at Tlatelolco on a turn costs 1 less.',
+    harbour: 'At an Outpost or the Crossroads, every Figure is at home at Malacca, whatever region it comes from.',
+    toll: 'At an Outpost or the Crossroads, a player who does not hold Petra pays 1 Spark for each Figure they walk into Petra.',
+    monopoly: 'At the Crossroads, if only one player has Figures at Lisbon when a round ends, that player gets 2 more Spark on their next turn.',
+    loan: 'At an Outpost or the Crossroads, whoever holds Florence can borrow 2 Spark once a turn, and then starts their next turn with 2 Spark less.',
+    books: 'At an Outpost or the Crossroads, whoever holds Timbuktu can pay 1 Spark once a turn to draw a card.',
+    hire: 'At an Outpost or the Crossroads, a player with a Figure at Carthage can pay 1 Spark once a turn to count 2 more Might there until the end of the round.',
+    league: 'At an Outpost or the Crossroads, whoever holds Venice when a round ends gets 1 more Spark on their next turn for each Commerce Domain they hold, Venice included.',
+    fair: 'At an Outpost or the Crossroads, each player who has a Figure at Djenné when a round ends gets 1 more Spark on their next turn.',
+    // Industry
+    forge: 'Relics and Deeds cost 1 less for the player who holds Ironbridge.',
+    arms: 'A Figure you play at Meroë has +1 Might on the turn you play it.',
+    facV: 'Valor Figures have +1 Might at Damascus.',
+    print: 'The first time on a turn that the player who holds Gutenberg\'s Workshop plays a Relic or a Deed, they draw a card.',
+    kiln: 'Whoever holds Jingdezhen when a round ends gets 1 more Spark on their next turn for each Relic they have in play.',
+    strike: 'The first time each player holds Laurion when a round ends, they get 2 more Spark on their next turn.',
+    ships: 'Voyager Figures cost 1 less for the player who holds the Treasure Shipyard.',
+    stay: 'A Figure that has stood at Benin City since the last round ended has +1 Might there.',
+    // Thought
+    draw: 'Whoever holds the Library of Alexandria when a round ends draws a card.',
+    line: 'A Legacy Line made by a Figure you play at Plato\'s Academy scores 1 more Renown.',
+    facD: 'Discovery Figures have +1 Might at the Royal Society.',
+    clock: 'At an Outpost or the Crossroads, whoever holds Greenwich when a round ends takes the last turn of the next round.',
+    recall: 'Whoever holds the House of Wisdom when a round ends takes the top card of their discard pile back into their hand.',
+    study: 'Each player who has a Figure at Nalanda when a round ends draws a card.',
+    school: 'The first time on a turn that you play a Figure at the University of Padua, you draw a card.',
+    equal: 'At Seneca Falls every Figure starts from 3 Might, whatever its card shows, and anything that adds Might adds to that.',
+    // Land
+    fort: 'Figures defending in a clash at the Great Wall have +1 Might.',
+    closed: 'At a Gate or an Outpost, only the player whose side Machu Picchu is on can walk Figures in.',
+    narrow: 'Each player can have no more than two Figures at Thermopylae.',
+    maze: 'When a clash at Himeji Castle ends in a tie, the Figure that started the clash is knocked out.',
+    siege: 'When a player has fewer Figures at the Rock of Gibraltar than the other player, their Figures defending in a clash there have +2 Might.',
+    citadel: 'At an Outpost, the Figures of the player whose side Citadelle Laferrière is on have +1 Might there.',
+    relief: 'While the other player holds Orléans, a Figure of yours that starts a clash there has +2 Might.',
+    engines: 'A Figure defending in a clash at Syracuse has +1 Might for each Relic its player has in play.',
+    heartland: 'A Figure from Africa has +2 Might at Great Zimbabwe instead of the usual +1 for being at home.',
+    islets: 'While a player holds Nan Madol, the other player can\'t walk Figures out of it.',
+    rock: 'A Figure can come to Sigiriya only by being played there or by walking from a Domain next to it.',
+    // Culture
+    arena: 'Winning a clash at the Colosseum scores 1 Renown.',
+    crowd: 'The Acropolis scores 2 Renown for a player who holds it with two or more Figures.',
+    facA: 'Arts Figures have +1 Might at the Globe Theatre.',
+    patron: 'Arts Figures cost 1 less to play at the Sistine Chapel.',
+    court: 'Heian-kyō scores 2 Renown for a player who holds it with an Arts Figure there.',
+    pupils: 'At Vienna, a Figure on a Legacy Line has +2 Might from the Line instead of +1.',
+    memorial: 'The Taj Mahal scores 1 more Renown for a player who also held it when the last round ended.',
+    facW: 'Wonder Figures have +1 Might at the Great Pyramid of Giza.',
+    gathering: 'If your banner is on Stonehenge, your Figures can walk to it from any Domain.',
+    victor: 'A Figure that wins a clash at Olympia keeps +1 Might for as long as it is in play.',
+    confederacy: 'A Figure at Prophetstown has +1 Might while its player has another Figure there too.',
+    punt: 'Whoever holds Deir el-Bahari scores 1 Renown each time they play a Relic.',
+    rank: 'Whoever has the costliest Figure at Versailles holds it. If both players\' costliest Figures there cost the same, Might decides as usual.',
+    ballcourt: 'Winning a clash at Chichén Itzá by 3 or more Might scores 2 Renown.',
+    stool: 'When a round ends, a player who holds Kumasi mends one of their broken Seals. Each player can mend only one Seal this way in a game.',
+    ancestors: 'A Figure knocked out at Rapa Nui goes on top of its player\'s deck instead of into the discard pile.',
+    // Law
+    peace: 'Only the player who holds Nineveh can start a clash there.',
+    sanctuary: 'Figures at the Forbidden City can\'t be targeted by the other player\'s Deeds.',
+    facS: 'Statecraft Figures have +1 Might at Aachen.',
+    vote: 'Whoever has more Figures at the Roman Forum holds it. If both players have as many, Might decides as usual.',
+    declare: 'When a player who has less Renown than the other player holds Independence Hall, it scores 2 Renown for them.',
+    tribute: 'When a round ends with both players\' Figures at Persepolis, the player who holds Persepolis takes 1 Spark from the other player\'s next turn.',
+    code: 'Every Figure played at Babylon costs 3 Spark, whatever its card says, and anything that makes a Figure cheaper still counts.',
+    treeofpeace: 'Nobody can start a clash at Onondaga.',
+    throne: 'When the Might at Constantinople is tied, the player who held it when the last round ended holds it.',
+    treaty: 'When the Might at Tordesillas is tied and both players have Figures there, Tordesillas scores 1 Renown for each of them.',
+    charter: 'A Figure that loses a clash at Runnymede goes back to its player\'s Gate instead of being knocked out, if that Gate has room.',
+    wergild: 'When a Figure is knocked out at Winchester, its player gets 1 more Spark on their next turn.',
+    // Routes
+    link: 'A Figure can walk between the Silk Road and any other Domain.',
+    road: 'A Figure you play on the Appian Way can walk on the turn you play it.',
+    landing: 'If your banner is on L\'Anse aux Meadows and it lies away from your side, you can play Figures there even when you have no Figure there.',
+    garrison: 'If your banner is on Dunhuang, a Figure of yours that walks there can start a clash on the same turn.',
+    relay: 'Once a turn, one of your Figures on the Qhapaq Ñan can swap places with another of your Figures anywhere on the table.',
+    canal: 'If your banner is on the Grand Canal, your Figures can walk between it and your Gate.',
+    port: 'A Figure can walk between Basra and any Commerce Domain.',
+    passage: 'One of your Figures at the Strait of Magellan can walk from there straight to the other player\'s Outpost.',
+    searoad: 'A Figure that walks from the Cape of Good Hope can walk two steps.',
+    flight: 'A Figure can walk from Kitty Hawk to any Domain except the other player\'s Gate.'
   };
+
+
   // What each kind of Domain was, for the line under its name ("A Commerce Domain: ...").
   var DKIND = {
     Commerce: 'Markets, ports and caravan cities. Whoever held the market was paid by everyone who used it.',

@@ -11,6 +11,11 @@
 //   use      how the robots use each Domain card (two copies in each ready deck)
 //   cards    the Domain cards in random decks of two factions beside their factions' cards   [games, not per pairing]
 //   setup    how well each robot lays its three Domains (a robot that chooses against one that lays at random)
+//   each     every Domain's power at every position (2026-11-12, the 75 powers): the five Domains of each game are laid
+//            by hand from a schedule that gives every Domain its turn, and a Domain's figure is how often the player
+//            whose banner is on it wins, at a Gate, an Outpost and the Crossroads. ONLY=babylon,seneca: just those
+//            Domains, each a third of its games at each position (the other four Domains of the game at random).
+//            [games per pairing, as for the others; '{"dv":{"code":4}}' tries other numbers for the powers]
 // Every cell but "cards" is the five ready decks against each other in both seats (20 pairings x the games asked
 // for), each deck in its own style and with its own ready stack, first to 25 Renown or three Seals. Three at a time.
 'use strict';
@@ -24,6 +29,14 @@ const bump = (m, k, w) => { const x = m[k] || (m[k] = [0, 0]); x[0]++; x[1] += w
 function playG(decks, guides, profs, cfg, seed, stacks, o) {
   const R = rng(seed), S = E.newGame(decks, guides, cfg, R, stacks, stacks ? { wait: true } : null), N = 2;
   if (stacks) { for (let p = 0; p < N; p++) { const rl = o.rlay === 1 || o.rlay === 'p' + p; E.setupLay(S, p, rl ? E.setupOptions(S, p)[(R() * 6) | 0] : E.setupPick(S, p, profs[p], R)); } E.setupRoll(S, R); }
+  while (!S.over) { const first = E.firstOf(S);
+    for (let k = 0; k < N && !S.over; k++) { S.turn = (first + k) % N; E.startTurn(S); E.aiTurn(S, profs[S.turn], R); E.endTurn(S); }
+    if (!S.over) E.endRound(S); }
+  return S;
+}
+// one game with its five Domains laid by hand (the "each" experiment): the player without the Crossroads goes first
+function playFixed(decks, guides, profs, cfg, seed, stacks, ea) {
+  const R = rng(seed), ban = [0, 0, 1, 1, ea.hubBan], S = E.newGame(decks, guides, cfg, R, stacks, { lay: ea.lay, ban: ban, first: 1 - ea.hubBan }), N = 2;
   while (!S.over) { const first = E.firstOf(S);
     for (let k = 0; k < N && !S.over; k++) { S.turn = (first + k) % N; E.startTurn(S); E.aiTurn(S, profs[S.turn], R); E.endTurn(S); }
     if (!S.over) E.endRound(S); }
@@ -47,18 +60,30 @@ function randDeck(R, must) {
     const rel = shuffle(Object.keys(C.CARDS).filter(k => CARDS[k].t === 'relic' && CARDS[k].pr !== 4), R).slice(0, (R() * 3) | 0);
     const d = rel.concat(shuffle(pool, R).slice(0, 40 - rel.length)); if (d.filter(k => CARDS[k].t === 'fig').length >= 23) return { d, fs }; }
 }
+// the five Domains of a game laid by hand ("each"): [player 0's Gate, their Outpost, player 1's Gate, their Outpost,
+// the Crossroads], whose banner is on the Crossroads, and the subject Domain when ONLY names some
+function eachLay(o, gi, R) {
+  if (o.only) { const subj = o.only[gi % o.only.length], k = Math.floor(gi / o.only.length), slot = k % 3, side = Math.floor(k / 3) % 2;
+    const rest = shuffle(ALLD.filter(x => x !== subj), R).slice(0, 4), lay = new Array(5), at = slot === 2 ? 4 : 2 * side + slot; lay[at] = subj; let j = 0; for (let i = 0; i < 5; i++) if (!lay[i]) lay[i] = rest[j++];
+    return { lay, hubBan: slot === 2 ? side : (R() < 0.5 ? 0 : 1), subj }; }
+  const blk = Math.floor(gi / 15), perm = shuffle(ALLD.slice(), rng(o.eachSeed * 7919 + blk * 104729)), g = gi % 15;
+  return { lay: perm.slice(5 * g, 5 * g + 5), hubBan: R() < 0.5 ? 0 : 1 };
+}
 function cell(job) {
   const cfg = Object.assign({}, STD, job.cfg), o = job.opt || {}, n = job.n, keep = {};
   const r = { label: job.label, g: 0, rounds: 0, rh: {}, deck: {}, seals: 0, ren: 0, cap: 0, first: 0, draws: 0, ko: 0, margin: 0, flips: 0, behind3: 0, dec3: 0, dibsW: 0, hubW: 0, heroW: 0, heroBy: {}, home: 0, plays: 0, repl: 0, moved: 0,
-    slot: {}, dom: {}, kind: {}, hm: {}, drawn: {}, played: {}, fac: {}, use: {}, laid: 0, seat0: 0 };
+    slot: {}, dom: {}, kind: {}, hm: {}, drawn: {}, played: {}, fac: {}, use: {}, laid: 0, seat0: 0, each: {} };
   if (o.over) for (const k in o.over) { keep[k] = CARDS[k]; CARDS[k] = Object.assign({}, CARDS[k], o.over[k]); }   // (CARDS is the engine's own table: other numbers on a card for this cell)
-  const one = (ka, kb, seed) => {
-    const R = rng(seed * 7 + 11); let decks, guides, profs, stacks = null, test = [null, null];
+  const one = (ka, kb, seed, gi) => {
+    const R = rng(seed * 7 + 11); let decks, guides, profs, stacks = null, test = [null, null], ea = null;
     if (o.rand) { const TC = o.only || DC, pick = () => { const c = TC[(R() * TC.length) | 0], x = randDeck(R, CARDS[c].f); x.d.splice(0, 2, c, c); return [x, c]; }, a = pick(), b = pick(); decks = [a[0].d, b[0].d]; test = [a, b];
       guides = [GL[(R() * GL.length) | 0], GL[(R() * GL.length) | 0]]; profs = [PROF[PN[(R() * 4) | 0]], PROF[PN[(R() * 4) | 0]]]; stacks = [shuffle(ALLD.slice(), R).slice(0, 15), shuffle(ALLD.slice(), R).slice(0, 15)]; }
     else { decks = [mkDeck(ka, o, R), mkDeck(kb, o, R)]; guides = [ARCH[ka].guide, ARCH[kb].guide]; profs = o.profs ? o.profs.map(x => PROF[x]) : [PROF[style[ka]], PROF[style[kb]]];
       if (cfg.dm) { const SK = o.stacks || STACKS, st = k => (o.build && o.hero === k ? build(k, o.build) : o.rstack ? shuffle(ALLD.slice(), R).slice(0, 15) : SK[k].slice()); stacks = [st(ka), st(kb)]; } }
-    const S = playG(decks, guides, profs, cfg, seed, stacks, o), st = S.st, w = S.winner, sc = s => (w < 0 ? 0.5 : w === s ? 1 : 0);
+    if (o.each) { ea = eachLay(o, gi, R); const rest = shuffle(ALLD.filter(x => ea.lay.indexOf(x) < 0), R); stacks = [ea.lay.slice(0, 2).concat(rest.slice(0, 13)), ea.lay.slice(2, 4).concat(rest.slice(13, 26))]; }
+    let S; try { S = ea ? playFixed(decks, guides, profs, cfg, seed, stacks, ea) : playG(decks, guides, profs, cfg, seed, stacks, o); } catch (e) { e.message += ' (game ' + JSON.stringify({ ka, kb, seed, gi, ea, stacks }) + ')'; throw e; }
+    const st = S.st, w = S.winner, sc = s => (w < 0 ? 0.5 : w === s ? 1 : 0);
+    if (ea) for (let i = 0; i < 5; i++) { const id = ea.lay[i]; if (ea.subj && id !== ea.subj) continue; const b = i === 4 ? ea.hubBan : i >> 1; bump(r.each, id + '|' + (i === 4 ? 2 : i & 1), sc(b)); }
     r.g++; r.rounds += S.round; r.rh[S.round] = (r.rh[S.round] || 0) + 1; if (w === 0) r.seat0++;
     if (!o.rand) { bump(r.deck, ka, sc(0)); bump(r.deck, kb, sc(1)); }
     const top = Math.max(S.P[0].renown, S.P[1].renown);
@@ -76,7 +101,7 @@ function cell(job) {
       else for (const c of DC) { if (st.seenC[s][c]) bump(r.drawn, c, sc(s)); if (st.played[s][c]) bump(r.played, c, sc(s)); } }
   };
   if (o.rand) for (let i = 0; i < n; i++) one(null, null, (job.seed || 101) * 31 + i);
-  else { let gi = 0; for (const a of D) for (const b of D) { if (a === b) continue; if (o.build) o.hero = a; for (let i = 0; i < n; i++, gi++) { const fl = i & 1; one(fl ? b : a, fl ? a : b, (job.seed || 7000) + gi * 3); } } }
+  else { let gi = 0; for (const a of D) for (const b of D) { if (a === b) continue; if (o.build) o.hero = a; for (let i = 0; i < n; i++, gi++) { const fl = i & 1; one(fl ? b : a, fl ? a : b, (job.seed || 7000) + gi * 3, gi); } } }
   for (const k in keep) CARDS[k] = keep[k];
   return r;
 }
@@ -163,5 +188,17 @@ EX.setup = async () => {
   const rs = await runAll(jobs);
   console.log('HOW WELL EACH ROBOT LAYS ITS THREE DOMAINS (both seats the same robot; one chooses, the other lays its three at random; ' + 2 * rs[0].g + ' games a robot)');
   (process.env.ROBOTS ? process.env.ROBOTS.split(',') : P).forEach((p, i) => { const a = rs[2 * i], b = rs[2 * i + 1], w = a.seat0 + (b.g - b.seat0 - b.draws) + (a.draws + b.draws) / 2; console.log(pad(({ novice: 'Easy', normal: 'Normal', hard: 'Hard' })[p], 8) + 'the robot that chooses wins ' + pc(w, a.g + b.g) + '%'); });
+};
+EX.each = async () => {   // (every Domain's power at every position: the player whose banner is on it, how often they win)
+  const only = process.env.ONLY ? process.env.ONLY.split(',') : null; if (only && only.some(id => ALLD.indexOf(id) < 0)) return console.log('not a Domain: ' + only.filter(id => ALLD.indexOf(id) < 0).join(', '));
+  const jobs = (process.env.SEEDS || '1,2,3').split(',').map(k => J('e' + k, {}, { each: 1, eachSeed: +k, only: only }, 40000 + k * 61000));
+  const rs = await runAll(jobs), m = sum(rs, 'each'), g = rs.reduce((s2, r) => s2 + r.g, 0), use = {}; rs.forEach(r => { for (const k in r.use) use[k] = (use[k] || 0) + r.use[k]; });
+  const cellOf = (id, s2) => m[id + '|' + s2] || [0, 0], all = id => [0, 1, 2].reduce((t, s2) => [t[0] + cellOf(id, s2)[0], t[1] + cellOf(id, s2)[1]], [0, 0]);
+  const fmt = x => x[0] ? lpad(pc(x[1], x[0]) + '%', 6) + lpad('(' + x[0] + ')', 7) + (Math.abs(100 * x[1] / x[0] - 50) > 4 ? ' *' : '  ') : pad('  -', 15);
+  console.log('EVERY DOMAIN AT EVERY POSITION (' + g + ' games' + (XCFG.dv ? ', ' + JSON.stringify(XCFG.dv) : '') + '): how often the player whose banner is on it wins. * outside 46 to 54');
+  console.log(pad('Domain', 30) + pad('power', 12) + pad('at their Gate', 17) + pad('at their Outpost', 17) + pad('at the Crossroads', 17) + 'all');
+  const ids = (only || ALLD).slice().sort((a, b) => (C.DKINDS ? Object.keys(C.DKINDS).indexOf(PLACES[a].d) - Object.keys(C.DKINDS).indexOf(PLACES[b].d) : 0));
+  for (const id of ids) console.log(pad(PLACES[id].n, 30) + pad(PLACES[id].pw, 12) + [0, 1, 2].map(s2 => pad(fmt(cellOf(id, s2)), 17)).join('') + fmt(all(id)));
+  console.log('rounds ' + (rs.reduce((t, r) => t + r.rounds, 0) / g).toFixed(2) + '  ends on Seals ' + pc(rs.reduce((t, r) => t + r.seals, 0), g) + '%  the four choices, a game: ' + ['loan', 'buy', 'hire', 'relay'].map(k => k + ' ' + ((use[k] || 0) / g).toFixed(2)).join(', '));
 };
 if (EX[exp]) EX[exp](); else console.log('experiments: ' + Object.keys(EX).join(', '));

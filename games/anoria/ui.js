@@ -29,10 +29,36 @@
     library: 'Holder draws a card', silk: 'Linked to every Place', colosseum: 'Win a clash: 1 Renown', acropolis: 'Double Renown', wall: 'Defenders +1',
     stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Play here for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
   };
-  // A Domain's rule in a few words on its tile, by the rule's word (cards.js DRULES; the whole sentence is text.js DRULE)
-  const DSHORT = { spark: 'Holder: +1 Spark', cheap: 'Play here for 1 less', forge: 'Relics, Deeds 1 less', arms: 'Played here: +1 Might', draw: 'Holder draws a card',
-    line: 'Legacy Lines +1 Renown', facD: 'Discovery +1', fort: 'Defenders +1', closed: 'Own side only', narrow: 'Two each at most', crowd: 'Two here: 2 Renown',
-    arena: 'Win a clash: 1 Renown', facA: 'Arts +1', peace: 'Only the holder clashes', sanctuary: 'Safe from Deeds', facS: 'Statecraft +1', link: 'Linked to every Domain', road: 'Walk when played' };
+  // A Domain's power in a few words on its tile (22 characters at most), by the power's word (cards.js DRULES; the whole
+  // sentence is text.js DRULE). Every Domain has its own.
+  const DSHORT = {
+    spark: 'Holder: +1 Spark', cheap: 'Play here for 1 less', harbour: 'Every Figure at home',
+    toll: 'Walk in: pay 1 Spark', monopoly: 'Held alone: +2 Spark', loan: 'Borrow 2 Spark',
+    books: '1 Spark buys a card', hire: '1 Spark: +2 Might here', league: '+1 Spark per Commerce',
+    fair: 'All here: +1 Spark',
+    forge: 'Relics, Deeds 1 less', arms: 'Played here: +1 Might', facV: 'Valor +1', print: 'Relic or Deed: draw 1',
+    kiln: '+1 Spark per Relic', strike: 'First hold: +2 Spark', ships: 'Voyagers cost 1 less',
+    stay: 'Stayed here: +1 Might',
+    draw: 'Holder draws a card', line: 'Legacy Lines +1 Renown', facD: 'Discovery +1',
+    clock: 'Holder takes last turn', recall: 'Discard back to hand', study: 'All here draw a card',
+    school: 'First played: draw 1', equal: 'All Figures start at 3',
+    fort: 'Defenders +1', closed: 'Own side only', narrow: 'Two each at most', maze: 'Tied attacker falls',
+    siege: 'Few defenders +2', citadel: 'Own side\'s Figures +1', relief: 'Attack the holder: +2',
+    engines: 'Defenders +1 per Relic', heartland: 'At home: +2 Might', islets: 'Theirs can\'t walk out',
+    rock: 'No jumping in',
+    arena: 'Win a clash: 1 Renown', crowd: 'Two here: 2 Renown', facA: 'Arts +1', patron: 'Arts cost 1 less here',
+    court: 'Arts here: 2 Renown', pupils: 'Legacy Lines +2 Might', memorial: 'Held again: +1 Renown',
+    facW: 'Wonder +1', gathering: 'Owner walks in freely', victor: 'Victors keep +1 Might',
+    confederacy: 'Two together: +1 each', punt: 'Play a Relic: 1 Renown', rank: 'Costliest Figure holds',
+    ballcourt: 'Win by 3+: 2 Renown', stool: 'Mend a Seal, once', ancestors: 'Fallen return to deck',
+    peace: 'Only holder clashes', sanctuary: 'Safe from Deeds', facS: 'Statecraft +1', vote: 'Holder: most Figures',
+    declare: 'Behind: 2 Renown', tribute: 'Tribute: take 1 Spark', code: 'Figures here cost 3',
+    treeofpeace: 'No clashes here', throne: 'Ties: last holder', treaty: 'Tied: both score',
+    charter: 'Losers back to Gate', wergild: 'Knocked out: +1 Spark',
+    link: 'Linked to every Domain', road: 'Walk when played', landing: 'Owner can land here',
+    garrison: 'Owner: walk and clash', relay: 'Relay: swap Figures', canal: 'Linked to owner\'s Gate',
+    port: 'Linked to Commerce', passage: 'Walk to their Outpost', searoad: 'Walk 2 steps from here',
+    flight: 'To anywhere but a Gate' };
   // What a skill word means, written out under a card that only names it (n: the card's name). Each says what
   // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
@@ -377,21 +403,23 @@
   function closeView() { if (!viewEl) return; const v = viewEl; viewEl = null; v.classList.remove('show'); document.removeEventListener('keydown', viewKey); if (v._off) v._off(); setTimeout(() => v.remove(), 220); }
   function viewKey(e) { if (e.key === 'Escape') closeView(); }
   function mightParts(f) {   // where a Figure's Might on the table comes from (the engine's sum, spelled out)
-    const c = CARDS[f.c], k = (!S.dm && c.k0) || c.k || {}, pl = C.PLACES[S.places[f.p]], out = [['On the card', c.m]];
-    const home = c.reg === pl.reg, at = home || k.voyager;
+    const c = CARDS[f.c], k = (!S.dm && c.k0) || c.k || {}, pl = C.PLACES[S.places[f.p]], w = E.pw(S, f.p), out = [w === 'equal' ? [pl.n, 3] : ['On the card', c.m]];   // (Seneca Falls: every Figure starts from 3)
+    const home = c.reg === pl.reg, at = home || k.voyager || w === 'harbour';
     if (f.ta) out.push([pl.n + ', this turn', f.ta]);   // (an Industry Domain that arms a Figure on the turn it arrives)
     if (f.tb - (f.ta || 0)) out.push([f.tq && CARDS[f.tq] ? CARDS[f.tq].n : 'Phalanx', f.tb - (f.ta || 0)]);   // (the Quick Deed played with its clash)
-    if (at) out.push([home ? 'At home' : 'Voyager, at home anywhere', 1 + (k.homeDouble && home ? 2 : 0)]);
+    if (at) out.push([home ? 'At home' : k.voyager ? 'Voyager, at home anywhere' : 'At home at ' + pl.n, 1 + (k.homeDouble && home ? 2 : 0) + (w === 'heartland' && home ? 1 : 0)]);
+    if (f.vic) out.push(['Olympic victor', f.vic]);
     let own = 0, opp = 0, insp = 0;
     for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
-    if (f.li) out.push(['Legacy line', 1]);
+    if (f.li) out.push(['Legacy line', w === 'pupils' ? 2 : 1]);
     if (insp) out.push(['Inspired', Math.min(2, insp)]);
     if (k.uprising && own > 1) out.push(['Others here', own - 1]);
     if (k.orator && own > opp) out.push(['More of you here', 2]);
     if (k.underdog && opp > own) out.push(['Outnumbered', 2]);
     if (k.monument && f.stay) out.push(['Rounds stayed', Math.min(2, f.stay)]);
     if (k.shoulders && S.P[f.o].lines) out.push(['Legacy lines', Math.min(2, S.P[f.o].lines)]);
-    if (E.pw(S, f.p) === 'fac' + c.f) out.push([pl.n, 1]);   // (a theatre for Arts Figures, an observatory for Discovery, a capital for Statecraft)
+    if (w === 'fac' + c.f) out.push([pl.n, 1]);   // (a theatre for Arts Figures, an observatory for Discovery, a capital for Statecraft, a forge for Valor, a wonder for Wonder)
+    if ((w === 'stay' && f.stay >= 1) || (w === 'citadel' && E.ownerOfSpoke(S, f.p) === f.o) || (w === 'confederacy' && own >= 2)) out.push([pl.n, 1]);   // (Benin City, Citadelle Laferrière, Prophetstown)
     const sum = out.reduce((s, x) => s + x[1], 0);
     return sum === E.might(S, f, 0) ? out : null;
   }
@@ -1014,7 +1042,9 @@
     tile.appendChild(art);
     tile.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }), DSHORT[pi.pw] ? el('span', { class: 'pl-rule', text: DSHORT[pi.pw] }) : null]));
     if (AD) AD.tile(tile, { key: pk, reg: pi.reg });
-    if (at === 'gate' && (pi.pw === 'spark' || pi.pw === 'cheap')) tile.classList.add('idle');   // (Commerce pays nothing at a Gate: E.pw)
+    // (a power that does nothing where it is laid looks idle: Commerce and Greenwich at a Gate, Lisbon away from the
+    // Crossroads, Citadelle Laferrière at a Gate, L'Anse aux Meadows on its own side: E.pw, and actions() for L'Anse)
+    if ((at === 'gate' && (pi.d === 'Commerce' || pi.pw === 'clock' || pi.pw === 'citadel')) || ((at === 'gate' || at === 'out') && (pi.pw === 'monopoly' || pi.pw === 'landing'))) tile.classList.add('idle');
     return tile;
   }
   const suBack = cls => el('span', { class: 'su-back' + (cls ? ' ' + cls : ''), 'aria-label': 'A Domain laid face down' });
@@ -1127,7 +1157,7 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: p.sg || 0 })),
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: (p.sg || 0) + Math.max(0, p.sb || 0) })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()) };
   }
   function settle() {
@@ -1895,9 +1925,19 @@
       Kit.sfx('deal'); Kit.sfx('tap'); Kit.haptic('medium'); await wait(380);
     },
     async spark(ev) {
-      if (ev.why === 'next') V.P[ev.o].sg = (V.P[ev.o].sg || 0) + ev.n; else V.P[ev.o].spark += ev.n;   // (next: Empress Wu's, for her next turn; it waits on her strip)
+      if (ev.why === 'next') V.P[ev.o].sg = Math.max(0, (V.P[ev.o].sg || 0) + ev.n); else V.P[ev.o].spark += ev.n;   // (next: Empress Wu's, or a Domain's, for the next turn; it waits on the strip)
       if (ev.why === 'ransom') V.P[ev.o].uR = 1;   // (Saladin's, once a turn: his portrait takes the used mark)
-      const src = rc(q('.an-strip.p' + ev.o + ' .st-guide')); if (ev.why) bump('.an-strip.p' + ev.o + ' .st-guide'); render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, src, ev.o, 'spark'); },
+      const tile = ev.p != null ? dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile') : null;   // (a Domain's Spark comes from its tile)
+      const src = rc(tile || q('.an-strip.p' + ev.o + ' .st-guide')); if (ev.why && !tile) bump('.an-strip.p' + ev.o + ' .st-guide');
+      render(); Kit.sfx(ev.n < 0 ? 'bad' : 'chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); if (ev.n > 0) await plus(ev.n, src, ev.o, 'spark'); else await wait(300); },
+    // ── Domain powers ── Spark paid at Petra, lent at Florence, a card bought at Timbuktu (the draw follows), Might hired
+    // at Carthage, a card back from the discard pile at the House of Wisdom, an Olympic victor
+    async toll(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - ev.n); render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('chip'); await wait(260); },
+    async loan(ev) { V.P[ev.o].spark += ev.n; render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')), ev.o, 'spark'); },
+    async buy(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - 1); render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('chip'); await wait(200); },
+    async hire(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - 1); V.pb[ev.p][ev.o] += ev.n; V.tot[ev.p][ev.o] += ev.n; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); },
+    async recall(ev) { V.P[ev.o].hand.push(ev.c); render(); bump('.an-strip.p' + ev.o + ' .st-hand b'); Kit.sfx('deal'); await wait(260); },
+    async victor(ev) { const f = vfig(ev.u), g = E.byU(S, ev.u); if (f && g) f.m = E.might(S, g, 0); ui.fresh[ev.u] = 'hop'; render(); ui.fresh = {}; Kit.sfx('good'); await wait(380); },
     async stun(ev) { const f = vfig(ev.u); if (!f) return; f.stun = 1; ui.fresh[ev.u] = 'zap'; render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('light'); await wait(480); },
     async move(ev) {
       const f = vfig(ev.u); if (!f) return;
@@ -1997,16 +2037,17 @@
       const n = dom.map.querySelector('.fp[data-u="' + ev.u + '"]');
       if (n) await anim(n, [{ transform: 'none', opacity: 1 }, { transform: 'rotate(' + (ev.o === ui.view ? 24 : -24) + 'deg) translateY(30%) scale(.7)', opacity: 0 }], { duration: 360, easing: 'ease-in', fill: 'forwards' });
       V.figs = V.figs.filter(f => f.u !== ev.u); V.figs.forEach(f => { if (f.li === ev.u) f.li = 0; });
+      if (ev.top) V.P[ev.o].deck++;   // (Rapa Nui: on top of its player's deck)
       render();
     },
     // Mandela: once a round, a Figure of his defeated on the other player's side goes back to his Gate instead
     async fallback(ev) {
-      V.P[ev.o].uM = 1; bump('.an-strip.p' + ev.o + ' .st-guide'); Kit.sfx('good'); Kit.haptic('light');
+      if (ev.why !== 'charter') { V.P[ev.o].uM = 1; bump('.an-strip.p' + ev.o + ' .st-guide'); } Kit.sfx('good'); Kit.haptic('light');   // (charter: Runnymede's, not Mandela's)
       await EV.move({ t: 'move', u: ev.u, from: ev.from, to: ev.to, jump: 1 });
     },
     // Lincoln: once a game, at the start of round 5, one of his broken Seals is whole again
     async mend(ev) {
-      V.P[ev.o].seals = ev.left; ui.crack = { o: ev.o, i: ev.left - 1 }; render(); ui.crack = null; bump('.an-strip.p' + ev.o + ' .st-guide');
+      V.P[ev.o].seals = ev.left; ui.crack = { o: ev.o, i: ev.left - 1 }; render(); ui.crack = null; if (ev.why !== 'stool') bump('.an-strip.p' + ev.o + ' .st-guide');   // (stool: Kumasi's, not Lincoln's)
       Kit.callout('A Seal is mended'); Kit.sfx('good'); Kit.haptic('medium'); await wait(700);
     },
     async renown(ev) {
@@ -2016,7 +2057,7 @@
       V.P[ev.o].renown += ev.n;
       const guide = ev.why === 'tragedy' || ev.why === 'court', hub = guide ? dom.map.querySelector('.pl[data-p="' + (S.places.length - 1) + '"] .pl-tile') : null;
       if (guide) { bump('.an-strip.p' + ev.o + ' .st-guide'); if (hub) { hub.classList.remove('thread'); void hub.offsetWidth; hub.classList.add('thread'); } Kit.haptic('light'); }
-      const src = guide ? rc(hub) || rc(q('.an-strip.p' + ev.o + ' .st-guide')) : ev.u ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : rc(dom.map);
+      const src = guide ? rc(hub) || rc(q('.an-strip.p' + ev.o + ' .st-guide')) : ev.u && dom.map.querySelector('.fp[data-u="' + ev.u + '"]') ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : ev.p != null ? rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')) : rc(dom.map);
       if (ev.why === 'bounty') Kit.callout('Bounty');
       Kit.sfx('good'); await plus(ev.n, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b');
     },
@@ -2071,20 +2112,33 @@
       else if (t === 'relic') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
       else if (t === 'deed') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
       else if (t === 'quick') add(ev.o, [nm(ev.o) + ' added ', K(ev.c), ' to the clash.']);
+      else if (t === 'move' && ev.relay) return;   // (said once, by the relay)
       else if (t === 'move') add(who[ev.u] ? who[ev.u][1] : -1, ev.push ? [own(ev.u), F(ev.u), ' was pushed to ', Pl(ev.to), '.'] : [own(ev.u), F(ev.u), ev.jump ? ' jumped to ' : ' moved to ', Pl(ev.to), '.']);
       else if (t === 'clash') { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;
         add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' clashed with ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ' They were tied, so nobody was knocked out.')]); }
-      else if (t === 'ko') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
-      else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate.']);
+      else if (t === 'ko') add(ev.o, ev.top ? [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out at ', Pl(ev.p), ' and went on top of ' + Kit.poss(nm(ev.o)) + ' deck.'] : [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
+      else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate' + (ev.why === 'charter' ? ', as the charter of ' : '.'), ev.why === 'charter' ? K('@runnymede') : '', ev.why === 'charter' ? ' says.' : '']);
       else if (t === 'stun') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' misses the next turn.']);
       else if (t === 'line') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', F(ev.b), ' to ', F(ev.a), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
       else if (t === 'thread') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', !ev.src ? 'a card' : ev.src.k === 'place' ? Pl(ev.src.p) : ev.src.k === 'relic' ? K(ev.src.c) : F(ev.src.u), ' to ', K(ev.c), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
       else if (t === 'renown' && (ev.why === 'tragedy' || ev.why === 'court')) add(ev.o, [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', Pl(S.places.length - 1), ev.why === 'tragedy' ? ', because Shakespeare turns a defeat there into a tragedy.' : ', because Akbar\'s court there holds Figures of more than one faction.']);
+      else if (t === 'spark' && ev.w) add(ev.o, sparkSaid(ev, nm, Pl));   // (Spark a Domain gives for the next turn)
       else if (t === 'spark' && (ev.why === 'ransom' || ev.why === 'kept' || ev.why === 'next')) add(ev.o, [ev.why === 'ransom' ? nm(ev.o) + ' gained ' + ev.n + ' Spark from Saladin for winning the clash.' : ev.why === 'kept' ? nm(ev.o) + ' kept ' + ev.n + ' Spark from the turn before, through Mansa Musa.' : nm(ev.o) + ' will have ' + ev.n + ' more Spark next turn, through Empress Wu, for holding more Places.']);
+      else if (t === 'renown' && ev.p != null && (ev.why === 'punt' || ev.why === 'ballcourt' || ev.why === 'treaty')) add(ev.o, [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', Pl(ev.p), ev.why === 'punt' ? ' for playing a Relic.' : ev.why === 'ballcourt' ? ' for winning the clash there by 3 or more.' : ', because the Might there was tied.']);
       else if (t === 'renown') add(ev.o, ev.why === 'bounty' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' for the Bounty.'] : ev.why === 'colosseum' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', K('@colosseum'), '.'] : ev.why === 'stage' && ev.u ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' with ', F(ev.u), '.'] : [nm(ev.o) + ' scored ' + ren(ev.n) + '.']);
       else if (t === 'hold') { if (!L.length || L[L.length - 1].h !== 'c' && !(L[L.length - 1].cnt)) L.push({ h: 'c', r: round || S.round }); L.push({ o: ev.o, cnt: 1, x: ev.o >= 0 ? [nm(ev.o) + ' held ', Pl(ev.p), ' and scored ' + ren(ev.n) + '.'] : ['Nobody held ', Pl(ev.p), '.'] }); }
-      else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + nm(ev.o) + ' has ' + ev.left + ' left.']);
-      else if (t === 'mend') add(ev.o, ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
+      else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + (nm(ev.o) === 'You' ? 'You have ' : nm(ev.o) + ' has ') + ev.left + ' left.']);
+      else if (t === 'mend') add(ev.o, ev.why === 'stool' ? [nm(ev.o) + ' held ', Pl(ev.p), ', and one of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.'] : ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
+      // Domain powers
+      else if (t === 'toll') add(ev.o, [nm(ev.o) + ' paid ' + ev.n + ' Spark to walk into ', Pl(ev.p), '.']);
+      else if (t === 'loan') add(ev.o, [nm(ev.o) + ' borrowed ' + ev.n + ' Spark at ', Pl(ev.p), ' and will start the next turn with ' + ev.n + ' Spark less.']);
+      else if (t === 'debt') add(ev.o, [nm(ev.o) + ' paid back the ' + ev.n + ' Spark borrowed at ', K('@firenze'), '.']);
+      else if (t === 'buy') add(ev.o, [nm(ev.o) + ' paid 1 Spark at ', Pl(ev.p), ' to draw a card.']);
+      else if (t === 'hire') add(ev.o, [nm(ev.o) + ' paid 1 Spark at ', Pl(ev.p), ' for ' + ev.n + ' more Might there until the round ends.']);
+      else if (t === 'relay') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', F(ev.u), ' and ', F(ev.v), ' changed places along ', Pl(ev.p), '.']);
+      else if (t === 'recall') add(ev.o, [nm(ev.o) + ' held ', Pl(ev.p), ' and took ', K(ev.c), ' back from the discard pile.']);
+      else if (t === 'victor') add(ev.o, [own(ev.u), F(ev.u), ' won at ', Pl(ev.p), ' and keeps 1 more Might while in play.']);
+      else if (t === 'dpow') add(ev.o, dpowSaid(ev, nm, Pl));
       else if (t === 'discard') add(ev.o, [nm(ev.o) + ' discarded ', K(ev.c), '.']);
       // Domains: laid in another's place, moved, covered, and the Congress of Vienna's dice
       else if (t === 'domain' && ev.why !== 'setup') { const w = E.ownerOfSpoke(S, ev.p), at = w < 0 ? 'the Crossroads' : Kit.poss(nm(w)) + (E.isGate(S, ev.p) ? ' Gate' : ' Outpost');
@@ -2096,6 +2150,22 @@
       else if (t === 'nothing' && ev.why === 'kudurru') add(-1, ['A Boundary Stone protected that Domain, so nothing changed.']);
     });
     if (L.length > LOGMAX) L.splice(0, L.length - LOGMAX);
+  }
+  // what a Domain's power did, as a line of the turn log (w: the power's word)
+  function sparkSaid(ev, nm, Pl) {
+    const P = Pl(ev.p), n = Math.abs(ev.n);
+    if (ev.n < 0) return [nm(ev.o) + ' will have ' + n + ' less Spark next turn, taken as tribute at ', P, '.'];
+    const why = { spark: ['held ', P, ''], monopoly: ['was the only player with Figures at ', P, ''], league: ['held ', P, ', ' + ev.n + (ev.n === 1 ? ' Commerce Domain' : ' Commerce Domains') + ' in all'], fair: ['had a Figure at ', P, ''],
+      kiln: ['held ', P, ' with ' + ev.n + (ev.n === 1 ? ' Relic' : ' Relics') + ' in play'], strike: ['held ', P, ' for the first time'], tribute: ['held ', P, ' and took tribute there'], wergild: ['lost a Figure at ', P, ''] }[ev.w] || ['held ', P, ''];
+    return [nm(ev.o) + ' ' + why[0], why[1], why[2] + (why[2] ? ',' : '') + ' and will have ' + n + ' more Spark next turn.'];
+  }
+  function dpowSaid(ev, nm, Pl) {
+    const P = Pl(ev.p);
+    if (ev.w === 'clock') return [nm(ev.o) + ' held ', P, ' and will take the last turn of the next round.'];
+    if (ev.w === 'study') return [nm(ev.o) + ' had a Figure at ', P, ' and drew a card.'];
+    if (ev.w === 'school') return [nm(ev.o) + ' drew a card for playing a Figure at ', P, '.'];
+    if (ev.w === 'print') return [nm(ev.o) + ' drew a card at ', P, ' for playing a Relic or a Deed.'];
+    return [nm(ev.o) + ' held ', P, ' and drew a card.'];
   }
   function logEnd() { if (!G || G.demo || !G.log) return; G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : pname(S.winner) + ' won' + (S.how === 'seals' ? ' by breaking all of ' + Kit.poss(pname(1 - S.winner)) + ' Seals.' : ' with ' + S.P[S.winner].renown + ' Renown.')] }); }
   function logScreen() {
@@ -2211,6 +2281,10 @@
     if (a.t === 'relic') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + theName(k) + '.' }; }
     if (a.t === 'deed') { const k = P.hand[a.h]; return { key: k, tx: who + ' played ' + CARDS[k].n + '.' }; }
     if (a.t === 'walk' || a.t === 'antik' || a.t === 'tub') { const f = fig(a.u); return f ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' to ' + at(a.p) + '.' } : null; }
+    if (a.t === 'loan') return { key: S.places[a.p], tx: who + ' borrowed ' + 2 + ' Spark at ' + at(a.p) + '.' };
+    if (a.t === 'buy') return { key: S.places[a.p], tx: who + ' paid 1 Spark at ' + at(a.p) + ' to draw a card.' };
+    if (a.t === 'hire') return { key: S.places[a.p], tx: who + ' paid 1 Spark at ' + at(a.p) + ' for more Might there.' };
+    if (a.t === 'relay') { const f = fig(a.u), g = fig(a.v); return f && g ? { key: f.c, tx: Kit.poss(who) + ' ' + CARDS[f.c].n + ' and ' + CARDS[g.c].n + ' changed places along the Qhapaq Ñan.' } : null; }
     if (a.t === 'clash') { const f = fig(a.u), g = fig(a.v), q = a.ph ? quickOf(a) : null; return f && g ? { key: f.c, tx: Kit.poss(who) + ' ' + CARDS[f.c].n + ' clashed with ' + mine(g) + CARDS[g.c].n + (q ? ', with ' + CARDS[q].n : '') + '.' } : null; }
     return null;
   }
