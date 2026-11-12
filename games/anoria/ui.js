@@ -243,11 +243,30 @@
   let mapN = 0;
   const MAPW = 284, MAPH = 196, DOT0 = { x: 227.2, y: 47, r: 9 };
   // at: where the dot stands in the map's own box (x, y) and its ring's radius (r; 0 for the dot alone): dotSpot() below finds the place clear of the card's words
+  // how close a card's map is drawn: 10.92 to the degree, or less until some coastline (a vertex of LAND) stands well
+  // inside the map's box
+  const zoomAt = {};
+  function mapZoom(ll, cx, cy) {
+    const zk = ll.join(',') + '|' + cx + ',' + cy; if (zoomAt[zk]) return zoomAt[zk];
+    const B = landBoxes(), m = 14; let k = 10.92;
+    for (let step = 0; step < 6; step++) {
+      const ky = k / Math.cos(ll[1] * Math.PI / 180), lonA = ll[0] - (cx - m) / k, lonB = ll[0] + (MAPW - cx - m) / k, latA = ll[1] - (MAPH - cy - m) / ky, latB = ll[1] + (cy - m) / ky;
+      let seen = false;
+      for (let i = 0; i < LAND.length && !seen; i++) {
+        const b = B[i]; if (b[2] < lonA || b[0] > lonB || b[3] < latA || b[1] > latB) continue;
+        const r = LAND[i]; for (let j = 0; j < r.length; j += 2) if (r[j] > lonA && r[j] < lonB && r[j + 1] > latA && r[j + 1] < latB) { seen = true; break; }
+      }
+      if (seen) break; k /= 1.45;
+    }
+    return (zoomAt[zk] = k);
+  }
   function mapSVG(ll, color, at, reg) {
     if (!ll) return '';
     at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
     const tint = reg && window.AnoriaDomains && window.AnoriaDomains.REGCOL ? window.AnoriaDomains.REGCOL[reg] : null;   // (the land in a faint wash of the home region's colour: Tim, 2026-11-12)
-    const W = MAPW, H = MAPH, k = 10.92, cx = at.x, cy = at.y, ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
+    // (a place far from any coast, like Sitting Bull's plains, would show a blank map: the map draws back, step by step,
+    // until a coastline is in view to give a bearing, and the dot stays the same size: Tim, 2026-11-12)
+    const W = MAPW, H = MAPH, cx = at.x, cy = at.y, k = mapZoom(ll, cx, cy), ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
     const X = lon => cx + (lon - lon0) * k, Y = lat => cy - (lat - lat0) * ky;
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
     const B = landBoxes(); let d = '';
@@ -261,8 +280,9 @@
       d += 'Z';
     }
     let grat = '';
-    for (let la = Math.ceil(latA / 5) * 5; la <= latB; la += 5) grat += '<path d="M0 ' + Y(la).toFixed(1) + 'H' + W + '"/>';
-    for (let lo = Math.ceil(lonA / 5) * 5; lo <= lonB; lo += 5) grat += '<path d="M' + X(lo).toFixed(1) + ' 0V' + H + '"/>';
+    const gs = k < 6 ? 10 : 5;   // (a map drawn further back keeps its lines of latitude and longitude about as far apart)
+    for (let la = Math.ceil(latA / gs) * gs; la <= latB; la += gs) grat += '<path d="M0 ' + Y(la).toFixed(1) + 'H' + W + '"/>';
+    for (let lo = Math.ceil(lonA / gs) * gs; lo <= lonB; lo += gs) grat += '<path d="M' + X(lo).toFixed(1) + ' 0V' + H + '"/>';
     const id = 'anh' + (++mapN);
     const s = '<svg class="ac-map" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs><pattern id="' + id + '" width="5" height="3.2" patternUnits="userSpaceOnUse"><path d="M0 1.6H5" stroke="#5a6f78" stroke-width=".55"/></pattern></defs>' +
       '<g opacity=".3"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' + (tint ? '<path d="' + d + '" fill="' + tint + '" opacity=".16"/>' : '') +
@@ -271,8 +291,11 @@
     mapCache[ck] = s; return s;
   }
 
-  // The dot on a card's map stands clear of every word on the card (Tim, 2026-11-11: "Eratosthenes' dot is under text -
-  // careful to be clear of all card text"). A card is laid out in em, so the place is found once for each card and
+  // The dot on a card's map stands just to the right of the card's "Place, years" line, level with the middle of that line
+  // and its gilded rule (Tim, 2026-11-12:
+  // "place the map dot just to the right of the "Location, Date to Date" text"), and clear of every word on the card
+  // (Tim, 2026-11-11: "Eratosthenes' dot is under text - careful to be clear of all card text"); where that line runs too
+  // far right for it, the search below finds the clear place nearest the upper right. A card is laid out in em, so the place is found once for each card and
   // layout, on a copy of the card set down off the screen with no transform on it: every line of text, the shield,
   // the home plate, the ribbon and the Legacy Line are boxes the dot's ring must miss, and of the places that miss
   // them all the one nearest the upper right of the paper is taken. A crowded card gets a smaller ring, then the dot
@@ -293,7 +316,13 @@
       // the map's box is fitted to the paper's right edge and its top (xMaxYMin slice): where a point of it falls on the page
       const PX = x => sr.right - (MAPW - x) * sc, PY = y => sr.top + y * sc, x0 = MAPW - sr.width / sc, y1 = sr.height / sc, top = 1.9 * em / sc;
       const clear = (x, y, rad) => { const px = PX(x), py = PY(y); for (let i = 0; i < near.length; i++) { const q = near[i], dx = Math.max(q.left - px, 0, px - q.right), dy = Math.max(q.top - py, 0, py - q.bottom); if (dx * dx + dy * dy < rad * rad) return false; } return true; };
-      const tiers = [[9, .28], [6.5, .22], [0, .16]];
+      // first choice (Tim, 2026-11-12): just to the right of the "Place, years" line, at the middle of that line and the
+      // gilded rule under it taken together ("align it vertically with the text+gilded divider height combined")
+      const wh = c.querySelector('.ac-when');
+      if (wh && wh.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(wh); const rs = rg.getClientRects(), q = rs[rs.length - 1];
+        if (q) for (const [r, pad] of [[9, .28], [6.5, .22], [0, .16]]) { const body = Math.max(r, 3.4), x = MAPW - (sr.right - (q.right + .45 * em + body * sc)) / sc, y = ((q.top + wh.getBoundingClientRect().bottom) / 2 - sr.top) / sc;
+          if (x <= MAPW - body - 4 && y >= body + 2 && clear(x, y, body * sc + pad * em)) { out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; break; } } }
+      const tiers = out ? [] : [[9, .28], [6.5, .22], [0, .16]];
       for (let ti = 0; ti < tiers.length && !out; ti++) { const r = tiers[ti][0], body = Math.max(r, 3.4), rad = body * sc + tiers[ti][1] * em; let best = 1e9;
         for (let y = Math.max(body + 2, top); y <= y1 - body - 3; y += 2.5) for (let x = MAPW - body - 4; x >= x0 + body + 4; x -= 2.5) {
           const d = (x - DOT0.x) * (x - DOT0.x) + 2.2 * (y - DOT0.y) * (y - DOT0.y); if (d >= best) continue; if (clear(x, y, rad)) { best = d; out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; } } }
