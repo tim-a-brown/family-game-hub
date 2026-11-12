@@ -264,9 +264,9 @@
     for (let lo = Math.ceil(lonA / 5) * 5; lo <= lonB; lo += 5) grat += '<path d="M' + X(lo).toFixed(1) + ' 0V' + H + '"/>';
     const id = 'anh' + (++mapN);
     const s = '<svg class="ac-map" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs><pattern id="' + id + '" width="5" height="3.2" patternUnits="userSpaceOnUse"><path d="M0 1.6H5" stroke="#5a6f78" stroke-width=".55"/></pattern></defs>' +
-      '<g opacity=".6"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' + (tint ? '<path d="' + d + '" fill="' + tint + '" opacity=".16"/>' : '') +
+      '<g opacity=".3"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' + (tint ? '<path d="' + d + '" fill="' + tint + '" opacity=".16"/>' : '') +
       '<g fill="none" stroke="#7b6a52" stroke-width=".4" stroke-dasharray="2 3" opacity=".45">' + grat + '</g><path d="' + d + '" fill="none" stroke="#5b4a33" stroke-width=".8" stroke-linejoin="round" opacity=".55"/></g>' +
-      '<g opacity=".5">' + (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></g></svg>';   // (the dot and its ring half see-through: Tim, 2026-11-12)
+      '<g opacity=".25">' + (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></g></svg>';   // (the map at .3 and the dot and its ring at .25: Tim, 2026-11-12, "make the map background and dot 50% more transparent")
     mapCache[ck] = s; return s;
   }
 
