@@ -410,21 +410,34 @@
 .vf-pick{display:flex;margin:8px auto 0;min-height:40px;}
 /* Looking through the table's cards (ui.js scan): the strip of one level's cards, a map of the levels at the left, the
    things you can do with the card in front under it */
-.view.scan{justify-content:flex-start;}
+.view.scan{justify-content:flex-start;--pc0:#f2b84b;--pc1:#8fd3f4;}   /* (the view is outside the table, so it is given the players' colours again) */
 .view.scan .vf-flow{touch-action:none;}
 .sc-body{position:relative;flex:none;width:100%;}
 .view.scan .vf-notes{flex:1 1 0;min-height:0;height:auto;}
 .view.scan .vf-head{padding:0 58px;min-height:44px;display:flex;flex-direction:column;justify-content:center;}
 .view.scan .vf-head b{font-size:1.3rem;} .view.scan .vf-head small{font-size:.86rem;}
-.sc-map{position:absolute;left:calc(6px + env(safe-area-inset-left,0px));top:50%;z-index:120;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;padding:6px 5px;border-radius:12px;background:rgba(8,10,20,.82);box-shadow:inset 0 0 0 1px rgba(233,207,134,.28),0 6px 16px rgba(0,0,0,.5);}
-.sc-lv{position:relative;width:38px;height:28px;padding:0;border:0;border-radius:5px;overflow:visible;background:#1a2036;opacity:.62;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s,transform .15s;}
+.sc-map{position:absolute;left:calc(6px + env(safe-area-inset-left,0px));top:50%;z-index:120;transform:translateY(-50%);display:flex;flex-direction:column;gap:6px;padding:7px 7px;border-radius:12px;background:rgba(8,10,20,.82);box-shadow:inset 0 0 0 1px rgba(233,207,134,.28),0 6px 16px rgba(0,0,0,.5);}
+.sc-lv{position:relative;width:38px;height:30px;padding:0;border:0;border-radius:5px;overflow:visible;background:#1a2036;opacity:.62;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s,transform .15s;}
 .sc-lv > :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;border-radius:5px;object-fit:cover;display:block;box-shadow:0 0 0 1px rgba(0,0,0,.7);}
 .sc-lv.on{opacity:1;transform:translateX(3px) scale(1.1);}
 .sc-lv.on::before{content:"";position:absolute;inset:-3px;border-radius:7px;box-shadow:0 0 0 2px #f6e3a1,0 0 10px rgba(246,227,161,.55);pointer-events:none;}
 .sc-lv.on::after{content:"";position:absolute;right:-9px;top:50%;margin-top:-5px;border:5px solid transparent;border-left-color:#f6e3a1;}
-.sc-pips{position:absolute;right:-5px;top:-4px;bottom:-4px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;pointer-events:none;}
-.sc-pips i{min-width:13px;height:13px;padding:0 2px;box-sizing:border-box;border-radius:7px;font:700 9px/13px var(--crim);font-style:normal;text-align:center;color:#10131c;background:var(--pc0);box-shadow:0 0 0 1px #10131c;}
-.sc-pips i.o1{background:var(--pc1);}
+/* what each player has at a Place: a dot for each Figure and their Might there, theirs top left, yours bottom right */
+.sc-row{--pc:var(--pc0);position:absolute;display:flex;align-items:center;gap:1.5px;height:11px;padding:0 3px 0 2.5px;border-radius:6px;background:rgba(8,10,20,.86);box-shadow:0 0 0 1px var(--pc);pointer-events:none;}
+.sc-row.o1{--pc:var(--pc1);} .sc-row.them{left:-3px;top:-3px;} .sc-row.me{right:-3px;bottom:-3px;}
+.sc-row i{width:4.5px;height:4.5px;border-radius:50%;background:var(--pc);}
+.sc-row b{margin-left:2px;font:700 9.5px/11px var(--crim);color:var(--pc);}
+/* a player's side: their Guide in a ring of their colour, their Relics as brass diamonds, and on the other player's the cards in their hand */
+.sc-lv.side{--pc:var(--pc0);height:26px;background:none;} .sc-lv.side.o1{--pc:var(--pc1);}
+.sc-g{position:absolute;left:1px;top:1px;width:24px;height:24px;border-radius:50%;overflow:hidden;background:var(--f,#333);box-shadow:0 0 0 1.5px var(--pc),0 0 0 2.5px #10131c;}
+.sc-g > :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
+.sc-rel{position:absolute;left:1px;bottom:-4px;width:24px;display:flex;justify-content:center;gap:3px;}
+.sc-rel i{width:5px;height:5px;transform:rotate(45deg);background:#e9c979;box-shadow:0 0 0 1px #10131c;}
+.sc-back{position:absolute;right:-2px;top:2px;width:15px;height:21px;border-radius:2.5px;background:#1b2748;box-shadow:inset 0 0 0 1px #c9a85a,0 0 0 1px #10131c;display:grid;place-items:center;}
+.sc-back b{font:700 10px/1 var(--crim);color:#f0d893;}
+.view.scan .vf-head small.own{--pc:var(--pc0);color:var(--pc);} .view.scan .vf-head small.own.o1{--pc:var(--pc1);}
+.view.scan .vf-head small.own::before{content:"";display:inline-block;width:.5em;height:.5em;margin-right:.45em;border-radius:50%;background:var(--pc);vertical-align:.08em;}
+.view.scan .vf-t.mid{margin:0 6px;}
 .sc-lv.hand{height:34px;margin-top:4px;background:none;}
 .sc-fan{position:absolute;left:50%;top:3px;width:18px;height:24px;margin-left:-9px;}
 .sc-fan i{position:absolute;inset:0;border-radius:3px;background:#efe6d2;box-shadow:0 0 0 1px #10131c;transform-origin:50% 110%;}
@@ -443,7 +456,7 @@
 .sc-cost{position:relative;flex:none;width:24px;height:28px;margin-right:-4px;background:url(ui/mark-spark.webp) center/contain no-repeat;}
 .sc-cost b{position:absolute;left:49.4%;top:51.9%;transform:translate(-50%,-50%);font:400 .78rem/1 var(--slab);color:var(--an-ink);}
 .sc-note{flex:1 1 100%;margin:0;text-align:center;font:italic 400 .95rem/1.25 var(--fell);color:#cbb98a;}
-@media (max-width:359px){ .sc-lv{width:30px;height:23px;} .sc-lv.hand{height:30px;} .sc-map{padding:5px 4px;gap:4px;} }
+@media (max-width:359px){ .sc-lv{width:32px;height:25px;} .sc-lv.hand{height:28px;} .sc-lv.side{height:22px;} .sc-g{width:20px;height:20px;} .sc-rel{width:20px;} .sc-back{width:13px;height:18px;top:1px;} .sc-map{padding:5px 5px;gap:5px;} }
 @media (orientation:landscape) and (max-height:560px){
   .view.flow.scan{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
   .view.flow.scan .sc-body{grid-column:1;grid-row:1 / 3;align-self:center;}
@@ -452,7 +465,7 @@
   .view.flow.scan .sc-body{grid-row:1 / 4;} .view.flow.scan .vf-strip{grid-row:4;}
   .view.flow.scan .sc-acts{grid-column:2;grid-row:2;justify-self:start;width:calc(100% - 20px);min-height:0;}
   .view.flow.scan .vf-notes{flex:none;grid-row:3 / 5;}
-  .view.flow.scan .sc-map{transform:translateY(-50%);gap:3px;padding:4px;} .view.flow.scan .sc-lv{width:34px;height:24px;} .view.flow.scan .sc-lv.hand{height:30px;margin-top:2px;}
+  .view.flow.scan .sc-map{transform:translateY(-50%);gap:3px;padding:4px;} .view.flow.scan .sc-lv{width:36px;height:26px;} .view.flow.scan .sc-lv.hand{height:28px;margin-top:2px;} .view.flow.scan .sc-lv.side{height:22px;} .view.flow.scan .sc-g{width:20px;height:20px;} .view.flow.scan .sc-rel{width:20px;} .view.flow.scan .sc-back{width:13px;height:18px;top:1px;}
   .view.flow.scan .sc-acts{justify-content:flex-start;}
   .view.flow.scan .sc-note{text-align:left;}
 }
@@ -530,8 +543,6 @@
 @media (prefers-reduced-motion:reduce){.cap-ack .tx{animation:none;}}
 .cap-card .tx{flex:1;min-width:0;font:500 .9rem/1.18 var(--crim);color:#efe6d2;}
 .cap-card .tx b{font-weight:700;color:#fff;}
-.cap-card .eye{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(233,207,134,.14);box-shadow:inset 0 0 0 1px rgba(233,207,134,.5);color:var(--an-gilt);}
-.cap-card .eye .ico{width:17px;height:17px;}
 .cap-play{flex:none;min-height:36px;}
 
 /* ── Your hand ── */

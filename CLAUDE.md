@@ -569,10 +569,17 @@ Underlying principles for everything:
   domain down to my hand (with a side map to represent which group/level of cards im scanning through might help.)
   and need to include ways to act on cards as I scan through them in the carousel"). `scan({u} | {p} | {h})` in ui.js:
   a hold on any card on the table (`holdToScan`; a right click with a mouse), or a tap wherever a tap used to open one
-  card, opens the table's cards in levels, top to bottom as the table lies: the five Places, each with its own card
-  first, then your Figures there, then the other player's, and your hand last. Sideways is the strip (`makeFlow`, a
-  fresh one for each level); up and down is a swipe, the wheel, the arrow keys or a tap on the map at the left, which
-  shows the five Places with how many Figures each player has there, and the hand. Under the card in front are
+  card, opens the table's cards in levels, top to bottom as the table lies: the other player's Guide and Relics, the five
+  Places, your Guide and Relics, and your hand last. Sideways is the strip (`makeFlow`, a fresh one for each level);
+  up and down is a swipe, the wheel, the arrow keys or a tap on the map at the left. **What the other player has is
+  in view at every level** (Tim, the next day: "it's also good to know what opponents have at each level too"): a
+  Place's level opens on the Place's own card with the other player's Figures to its left and yours to its right, as
+  they lie on the table; each thumbnail is ringed in its player's colour, and the line under the Place's name says
+  whose card is in front, in that colour. The map is the table made small: on each Place a dot for each Figure and
+  the Might they have there, the other player's at the top left and yours at the bottom right; each Guide in a ring
+  of its player's colour with brass diamonds for Relics, and the other player's hand as a card's back with the count.
+  A tap on a Guide or a Relic on a player's strip opens that level. **The caption has no eye button** (Tim: "remove
+  the eye icon if its function is covered elsewhere"): a hold on the card does that. Under the card in front are
   buttons for what can be done with it now (`scanActs`: Play, Play at, Move to, Jump to, Clash with, Discard, each
   with its Spark cost where it has one); a card that needs more than one thing chosen has Choose on the table, which
   selects it there; a card in your hand that can't be played says why. A button's move is checked against the legal

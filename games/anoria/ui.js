@@ -653,8 +653,10 @@
   // one. carousel on each domain with a swipe up and down to my cards at each domain down to my hand (with a side
   // map to represent which group/level of cards im scanning through might help.) and need to include ways to act on
   // cards as I scan through them in the carousel".
-  // scan({u} | {p} | {h}): the table's cards in levels, top to bottom as the table lies: the five Places, each with
-  // its own card first, then your Figures there, then the other player's; and your hand last. Sideways the cards of
+  // scan({u} | {p} | {h} | {side, key}): the table's cards in levels, top to bottom as the table lies: the other
+  // player's Guide and Relics, the five Places (the other player's Figures, the Place's own card, your Figures), your
+  // Guide and Relics, and your hand last. (Tim, the next day: "in the carousel view it's also good to know what
+  // opponents have at each level too".) Sideways the cards of
   // one level go by on the strip (makeFlow); up and down changes level (a swipe, the wheel, the arrow keys, or a tap
   // on the map at the left, which shows the five Places and the hand with the level you are on lit). Under the card
   // in front are the things you can do with it now, as buttons (Play at, Move to, Clash with, Discard), then
@@ -695,23 +697,39 @@
   function scan(at) {
     at = at || {}; if (!G || !S || !V) return; closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const me = ui.view, opp = 1 - me, role = p => { const w = E.ownerOfSpoke(S, p); return w < 0 ? 'The Crossroads' : (w === me ? 'Your ' : Kit.poss(pname(w)) + ' ') + (E.isGate(S, p) ? 'Gate' : 'Outpost'); };
-    const levels = rowsOrder().map(p => { const figs = V.figs.filter(f => f.p === p), it = f => ({ key: f.c, u: f.u, o: f.o, m: f.m });
-      return { p: p, name: C.PLACES[S.places[p]].n, role: role(p), mine: figs.filter(f => f.o === me).length, theirs: figs.filter(f => f.o !== me).length,
-        items: [{ key: S.places[p], p: p }].concat(figs.filter(f => f.o === me).map(it), figs.filter(f => f.o !== me).map(it)) }; });
+    // (a Place's cards lie as they do on the table: the other player's Figures to the left of the Place's own card,
+    // yours to the right, and the level opens on the Place's card with both in view)
+    const sideOf = o => { const P = V.P[o]; return { side: o, at0: 0, name: o === me ? 'Your side' : Kit.poss(pname(o)) + ' side', role: '', cards: P.hand.length, relics: P.relics.length,
+      items: [{ key: P.guide, g: 1, o: o }].concat(P.relics.map(r => ({ key: r, r: 1, o: o }))) }; };
+    const levels = [sideOf(opp)].concat(rowsOrder().map(p => { const figs = V.figs.filter(f => f.p === p), it = f => ({ key: f.c, u: f.u, o: f.o, m: f.m }), th = figs.filter(f => f.o !== me), mi = figs.filter(f => f.o === me);
+      return { p: p, name: C.PLACES[S.places[p]].n, role: role(p), mine: mi.length, theirs: th.length, at0: th.length,
+        items: th.map(it).concat([{ key: S.places[p], p: p }], mi.map(it)) }; }), [sideOf(me)]);
     const hand = !ui.hideHand && ui.viewer >= 0 && V.P[me] ? V.P[me].hand : [];
-    if (hand.length) levels.push({ hand: true, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
+    if (hand.length) levels.push({ hand: true, at0: 0, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
     // where to open
-    let li = 0, ii = 0;
+    let li = 1, ii = -1;
     if (at.h != null && hand.length) { li = levels.length - 1; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
     else if (at.u != null) levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } }));
     else if (at.p != null) levels.forEach((L, i) => { if (L.p === at.p) li = i; });
+    else if (at.side != null) levels.forEach((L, i) => { if (L.side === at.side) { li = i; L.items.forEach((x, j) => { if (x.key === at.key) ii = j; }); } });
+    if (ii < 0) ii = levels[li].at0;
     let flow = el('div', { class: 'vf-flow' }), cuPx = '';   // (each level has a strip of its own: a strip's handlers belong to its cards)
     const under = el('div', { class: 'vf-notes' }), strip = el('div', { class: 'vf-strip' }), hb = el('b'), hs = el('small'), actRow = el('div', { class: 'sc-acts' }), body = el('div', { class: 'sc-body' });
-    const map = el('div', { class: 'sc-map', role: 'tablist', 'aria-label': 'The Places and your hand' }, levels.map((L, i) => {
-      const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : ''), role: 'tab', 'aria-label': L.name + ', ' + L.role, onclick: e => { e.stopPropagation(); if (i !== li) go(i, 0, i > li ? 1 : -1); } });
+    // (the map is the table made small: on each Place, a dot for each Figure and the Might they have there, the
+    // other player's at the top left in their colour and yours at the bottom right in yours; a player's Guide with
+    // their Relics as brass diamonds, and on the other player's the cards in their hand as a card's back)
+    const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+    const tally = (L, o, cls) => { const n = o === me ? L.mine : L.theirs; if (!n) return null; const r = el('span', { class: 'sc-row ' + cls + ' o' + o }); for (let k = 0; k < n; k++) r.appendChild(el('i')); r.appendChild(el('b', { text: String(V.tot[L.p][o]) })); return r; };
+    const said = L => L.hand ? L.name + ', ' + L.role
+      : L.side != null ? (L.side === me ? 'Your Guide' : Kit.poss(pname(L.side)) + ' Guide') + (L.relics ? ' and ' + plural(L.relics, 'Relic') : '') + (L.side === me ? '' : ', and ' + plural(L.cards, 'card') + ' in their hand')
+        : L.name + ', ' + L.role + '. ' + pname(opp) + ' has ' + plural(L.theirs, 'Figure') + ' here and you have ' + L.mine + '.';
+    const map = el('div', { class: 'sc-map', role: 'tablist', 'aria-label': 'The table from the other side to your hand' }, levels.map((L, i) => {
+      const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : L.side != null ? ' side o' + L.side : ''), role: 'tab', 'aria-label': said(L), onclick: e => { e.stopPropagation(); if (i !== li) go(i, L.at0, i > li ? 1 : -1); } });
       if (L.hand) { t.appendChild(el('span', { class: 'sc-fan', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])); t.appendChild(el('b', { text: String(L.items.length) })); }
-      else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im);
-        t.appendChild(el('span', { class: 'sc-pips' }, [L.theirs ? el('i', { class: 'o' + opp, text: String(L.theirs) }) : null, L.mine ? el('i', { class: 'o' + me, text: String(L.mine) }) : null])); }
+      else if (L.side != null) { const g = el('span', { class: 'sc-g', style: { '--f': (FAC[TX.GUIDES[L.items[0].key].f] || FAC.N).c } }), im = artImg(L.items[0].key, true, true); if (im) g.appendChild(im); t.appendChild(g);
+        if (L.relics) { const r = el('span', { class: 'sc-rel' }); for (let k = 0; k < L.relics; k++) r.appendChild(el('i')); t.appendChild(r); }
+        if (L.side !== me) t.appendChild(el('span', { class: 'sc-back' }, [el('b', { text: String(L.cards) })])); }
+      else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im); const a = tally(L, opp, 'them'), b = tally(L, me, 'me'); if (a) t.appendChild(a); if (b) t.appendChild(b); }
       return t; }));
     const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
@@ -720,6 +738,8 @@
     let F = null, held = false;   // (held: an up or down swipe has just ended, and the click that ends it is not a tap)
     function rest(i) {
       const it = levels[li].items[i]; under.innerHTML = ''; actRow.innerHTML = ''; if (!it) return;
+      const kind = it.u != null ? 'Figure' : it.g ? 'Guide' : it.r ? 'Relic' : '';
+      hs.textContent = kind ? (it.o === me ? 'Your ' : Kit.poss(pname(it.o)) + ' ') + kind : levels[li].role; hs.className = kind ? 'own o' + it.o : '';
       scanActs(it).forEach((a, k) => actRow.appendChild(a.note ? el('p', { class: 'sc-note', text: a.note })
         : el('button', { type: 'button', class: 'btn btn-sm ' + (k === 0 && !a.soft ? 'btn-primary' : 'btn-soft'), onclick: e => { e.stopPropagation(); Kit.sfx('pop'); Kit.haptic('medium'); closeView(); a.run(); } },
           [el('span', { text: a.label }), a.cost != null ? el('span', { class: 'sc-cost', role: 'img', 'aria-label': 'costs ' + a.cost + ' Spark' }, [el('b', { text: String(a.cost) })]) : null])));
@@ -729,11 +749,11 @@
     // another level: its name, its thumbnails, its cards; the strip comes in from the side it was swiped from
     function go(i, j, dir) {
       li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length;
-      hb.textContent = L.name; hs.textContent = L.role;
+      hb.textContent = L.name;
       Array.prototype.forEach.call(map.children, (t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
       if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
       // (a card you can do something with now has a gold pip on its thumbnail: what can be played from the hand, which of your Figures can still act)
-      L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
+      L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
       strip.hidden = n < 2;
       F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest,
         make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null })]); } });
@@ -741,7 +761,7 @@
       if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translateY(' + (dir > 0 ? 46 : -46) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
       if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); }
     }
-    const step = d => { const t = li + d; if (t < 0 || t >= levels.length) return false; go(t, 0, d); return true; };
+    const step = d => { const t = li + d; if (t < 0 || t >= levels.length) return false; go(t, levels[t].at0, d); return true; };
     // up and down: a swipe on the cards, the wheel, the arrow keys
     function swipes(flow) {
       let sw = null;
@@ -1091,7 +1111,7 @@
     const p = V.P[o], pl = G.players[o], g = TX.GUIDES[p.guide], on = V.turn === o && !G.over;
     node.className = 'an-strip ' + (me ? 'me' : 'opp') + ' p' + o + (on ? ' on' : ''); node.innerHTML = ''; node.dataset.o = o;
     const spent = (on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD) || (p.guide === 'curie' && p.uN >= 3 && p.uN < 9))) || (p.guide === 'mandela' && p.uM);   // (a once-a-turn power, used; Mandela's is once a round)
-    const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => openView(p.guide) }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
+    const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => { if (G.demo) openView(p.guide); else scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
     node.appendChild(gb);
     const sm = p.sm || 3, seals = el('div', { class: 'st-seals', 'aria-label': p.seals + ' of ' + sm + ' Seals left' });   // (Lincoln begins with four)
@@ -1100,7 +1120,7 @@
     const T = me ? targets() : null;
     for (let i = 0; i < 2; i++) {
       const r = p.relics[i];
-      if (r) { const b = el('button', { type: 'button', class: 'relic' + (E.fxOf(r) === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => openView(r) }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
+      if (r) { const b = el('button', { type: 'button', class: 'relic' + (E.fxOf(r) === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => { if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
@@ -1204,12 +1224,12 @@
     if (ui.sel && idle()) {
       const s = ui.sel, key = s.kind === 'hand' ? s.key : E.byU(S, s.u).c, c = info(key), T = targets();
       n.appendChild(el('button', { type: 'button', class: 'cap-card', 'aria-label': 'Read ' + c.n, onclick: () => { if (G.demo) openView(key, s.kind === 'fig' ? { u: s.u } : { list: V.P[ui.view].hand.slice(), at: s.h }); else scan(s.kind === 'fig' ? { u: s.u } : { h: s.h }); } }, [
-        el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (s.kind === 'hand' ? twinNote(key) : '') + (boldKeys(c.tx) || esc(c.cap)) }), el('span', { class: 'eye', html: Kit.icon('eye') })]));
+        el('span', { class: 'tx', html: '<span class="who">' + esc(c.n) + '</span> ' + (s.kind === 'hand' ? twinNote(key) : '') + (boldKeys(c.tx) || esc(c.cap)) })]));
       if (s.kind === 'hand' && !s.picks.length && T.done.length) n.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm cap-play', text: 'Play', onclick: () => finishPick(T.done) }));
       return;
     }
     if (ui.ack && !G.over) {   // (what the computer just did; a tap reads the card)
-      const k = ui.ack.key, inner = [el('span', { class: 'tx', text: ui.ack.tx }), k ? el('span', { class: 'eye', html: Kit.icon('eye') }) : null];
+      const k = ui.ack.key, inner = [el('span', { class: 'tx', text: ui.ack.tx })];
       n.appendChild(k ? el('button', { type: 'button', class: 'cap-card cap-ack', 'aria-label': ui.ack.tx + ' Read ' + info(k).n, onclick: () => openView(k) }, inner) : el('div', { class: 'cap-card cap-ack' }, inner));
       return;
     }
@@ -1981,7 +2001,7 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place, and up and down to go from Place to Place and to your hand. The little map at the left shows where you are.</li>' +
+    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place: the other player’s Figures are to the left of the Place’s card and yours are to the right. Swipe up and down to go from Place to Place, to each player’s Guide and Relics, and to your hand. The little map at the left shows where you are, and how many Figures and how much Might each of you has at every Place.</li>' +
     '<li>Under the card in front are buttons for what you can do with that card now: play it, move it, or start a clash.</li>' +
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
