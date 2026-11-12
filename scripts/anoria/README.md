@@ -106,6 +106,10 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   real engine: `base` (the old map beside Domains), `decks` (the ready decks with their ready stacks on four sets of
   games), `rules` (every rule at every position, every kind, home and Domain), `law`, `built` (a stack chosen for the
   deck against the ready stacks), `six` (Domain cards in the ready decks), `use` and `cards` (the Domain cards),
-  `setup` (how well each robot lays its three Domains). `domains.txt` has the tables and what each one says.
+  `setup` (how well each robot lays its three Domains), `each` (every Domain's power at every position: the five
+  Domains of each game laid by hand from a schedule; `ONLY=a,b` for a few, `'{"dv":{...}}'` for other numbers or
+  `'{"dv":{"off":["word"]}}'` to switch a power off as a control). `domains.txt` has the tables and what each one says.
+- Every Domain has a power of its own (2026-11-12): `node scripts/anoria/powers-test.js` lays a table by hand for each
+  and checks it against its sentence. Run it after any change to a power.
 - `pacing.js` takes three more arguments again: the chance an earned pack holds a Domain, the Domains in a welcome
   pack, and the series the Domain cards are found in. `pacing.txt` has the table.
