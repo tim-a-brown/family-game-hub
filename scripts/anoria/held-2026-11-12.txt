@@ -1,0 +1,104 @@
+The five held cards and the Walk to Canossa (2026-11-12)
+=========================================================
+
+Tim: "finish the unfinished stuff", and he accepted "a card that switches off an enemy Figure's skill, like Guard or
+Steadfast". set-150.json held five cards of the third printing back for want of an effect (needsEngine; they are
+needsEngineBuilt now, with what was built). Each has an effect of its own, found only in packs (pr 3, in no ready deck):
+
+  Damascus Steel           Relic, 2   Your Figures have +1 Might when attacking.                       (as written)
+  Abacus                   Relic, 2   Your Deeds cost 1 less.                                          (as written)
+  The Peace of Westphalia  Deed S, 1  Choose a Domain. Nobody can start a clash there until this round ends.
+  The Lisbon Earthquake    Deed W, 1  Choose a Domain. Every Figure there, yours and the other player's, misses its
+                                      next turn.                                                       (as written)
+  The Edict of Milan       Deed S, 2  Choose a Domain where you have a Figure. Until this round ends, the other player
+                                      can't start a clash with your Figures there.
+  The Walk to Canossa      Deed S, 1  Choose an enemy Figure. Until this round ends, the skills and powers on its card
+                                      don't work.                                                      (new: Henry IV, 1077)
+
+Adapted to today's rules: "one Place" is a Domain. The Peace and the Edict lie on the Domain until the count (S.dip,
+as the Roman Triumph does), so the protection belongs to the position: a Figure that walks in is covered and one that
+walks out is not. Canossa lies on its Figure (f.hush) and lifts at the count, after the count's own tests (a humbled
+Shakespeare scores no Stage that round).
+
+The engine
+----------
+  kOf(S, f)      every test of a Figure's skill on the table (guard, steadfast, law, ward, untouchable, swift, voyager,
+                 monument, inspiring, uprising, cynic and the rest) reads it here, not from the card, so Canossa takes
+                 them all away at once: a humbled Diogenes's Silence lifts, a humbled Imhotep can be moved, a humbled
+                 Leo gives no Ward. A card not yet in play (costs, scholar on arrival) is read from the card.
+  noClash        the Peace of Westphalia (truceOn): nobody starts a clash there, Ambush included
+  clashable      the Edict of Milan (edictOn) and untouchable: who an enemy may start a clash with
+  might          Damascus Steel: +1 in mode 1 (attacking)
+  costOf         Abacus: Deeds 1 less, adding with Ada Lovelace / Al-Khwarizmi and Ironbridge, never below 0 (a
+                 Tribune's Veto then costs 0 and plays itself with no Spark kept)
+  Ward and the Forbidden City keep the other player's Peace, Earthquake and Canossa off their Figures. The Tribune's
+  Veto cancels the Lisbon Earthquake where it would stop one of your Figures (as it does Eclipse), and not the Peace,
+  the Edict or Canossa (none moves, stuns or knocks out your Figures).
+  New events: quake {o, c, p, us} (its stun events follow), hush {u, c, o}. Each has its EV moment, its logEvs
+  sentence and its moveSaid sentence.
+  The robots (HW in engine.js): dipWorth counts a Peace at TRUCE_W 0.5 of the Domain's worth to whoever holds it, and
+  an Edict at 0.5 of it (0.3 while its player doesn't hold it) plus 0.06 for each Might it shelters, only while the
+  other player still has a turn this round and has Figures there; quakeWorth counts 0.12 a Might plus 0.25 a Figure
+  stopped, for or against; Canossa looks one clash ahead, as Florence's loan does. All are 0 unless one of the six is
+  in play, so the ready decks' games are untouched.
+
+On the table
+------------
+  Damascus Steel comes into a clash as its card under the attacker, as Phalanx does, with its +1 (aid(); its name
+  plate keeps clear of the number). The Abacus's slot bumps when its player's Deed is played. The Peace and the Edict
+  are stamped onto the Domain (a disc in the player's colour) and stay as its tile mark until the count: sheathed
+  swords under a bar, a shield; the Edict's Figures hop. The Lisbon Earthquake shakes the Domain's row, then each
+  Figure it stops is marked. Canossa: the piece's first skill mark, struck through in red on a dark disc at its top
+  left, the piece dimmed, the card's powers struck through when it is read, and a sentence under it saying so.
+  Played with the page's test hook at 402x874, 874x402, 768x1024 and 320x568 (scratchpad held5/moments.js and
+  games.js): every moment filmed, whole games with the six on top of both draw piles at each size, no page errors,
+  nothing clipped (the one hit, .ll-sr, is the Legacy Line's screen-reader text, hidden on purpose).
+
+Tests: node scripts/anoria/deeds-test.js, 67 more positions (133 in all), each card against its sentence, its limits,
+Ward, the Forbidden City, the Veto, Diogenes, Imhotep, Swift, the count, a copy of the table, and robot games.
+check-set.js: nothing wrong (163 cards in the third printing). powers-test.js: 96 passed.
+
+Numbers
+-------
+node scripts/anoria/run.js cards 6000, then newcards.js: win rate with the card in the deck, beside the older cards
+of its faction (Statecraft 56.2, range 53.9 to 60.5; Wonder 50.1, 47.3 to 52.1; Relics 49.9, 47.9 to 53.1):
+  card                     cost   in the deck (games)   from its faction   played (games)   tier
+  The Peace of Westphalia  1      56.0% (1659)          -0.2               59.8% (721)      Uncommon
+  The Walk to Canossa      1      55.5% (1655)          -0.7               53.2% (1016)     Common
+  The Edict of Milan       2      54.8% (1679)          -1.4               59.1% (839)      Common
+  The Lisbon Earthquake    1      51.3% (1803)          +1.2               49.4% (1164)     Uncommon
+  Abacus                   2      49.1% (645)           -0.8               45.1% (133)      Common
+  Damascus Steel           2      48.0% (616)           -1.9               52.1% (144)      Common
+Every one is inside what its faction's older cards span; none needed another cost. (A Relic's win rate over about 600
+games wanders by about 2 points.) newcards.js names nothing of the six outside its faction.
+
+node scripts/anoria/rarity.js 6000 3: the tiers above, only the six's taken (RARE3 in coll.js); no older card's mark moved.
+
+node scripts/anoria/endings.js "after" '{}' 200 91000: line for line the same as the branch before the six went in:
+  decks: Explorers 47.0  Legion 52.0  Legacy 49.8  Court 51.5  Pathfinders 49.7  spread 5.1  (seat 1 wins 47.3%)
+  ends: 68.2% on Renown, 31.8% on Seals, 0.0% at the round limit
+
+node scripts/anoria/newdecks.js (6000 games, seed 7000): built from the third printing only 37.1% against the ready
+decks (pairs spread 20.3); from every card of two factions 44.9% (spread 16.3). (Not run without the six on this
+branch; the seven's figures on the morning's branch were 37.8 and 40.6.)
+
+node scripts/anoria/pacing.js 400 3 0.5 (pacing.txt): the set is 266 cards; nothing is left to collect after 88.5 days
+of 3 games a day (85.6 before the six).
+
+Sources and pictures
+--------------------
+set-150.json has each card's src and check. Read in full on archive.org: Lactantius, Of the Manner in Which the
+Persecutors Died, ch. 45 and 48 (the Milan meeting, Licinius's wedding there, the letter of 13 June 313 and the
+restoring of the Christians' places); Henderson, Select Historical Documents of the Middle Ages (Gregory VII's
+deposition of Henry IV, "I absolve all Christians from the bonds of the oath", and Gregory's own letter on Canossa:
+"with bare feet and clad in wool, he continued for three days to stand before the gate of the castle"). From web
+search only: the Lisbon earthquake (date, wave, five days of fire, Pombal's grid and quake-proof buildings), the
+Peace of Westphalia and ter Borch's painting, Damascus steel (sure: false) and Cheng Dawei's Suanfa tongzong of 1592
+(sure: false; the number of chapters differs between sources, so the card leaves it out).
+Legacy Lines: Damascus Steel from Damascus (the Domain), the Lisbon Earthquake from Lisbon, the Edict of Milan from
+Constantine. The Abacus, the Peace and Canossa have none: no card in the set is part of their history.
+Pictures (scratchpad held5/: out, out2, out3, final): westphalia and lisbonquake took round 1; dsteel round 2 (round 1
+drew a kitchen knife); milan round 2 (round 1's guard wore segmented plate and a crest); canossa round 2 (round 1's
+Henry looked like a picture of Christ, and the watchers sat in the top right corner); abacus round 3 (rounds 1 and 2
+had rods with six beads below the bar; the final has seven rods, two beads above and five below on each, counted).
+FY dsteel 24.

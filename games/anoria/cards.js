@@ -315,6 +315,15 @@ const P3 = {
   veto: { n: 'The Tribune\'s Veto', t: 'deed', f: 'S', c: 1, quick: 1, y: -133 },
   leo: F('Pope Leo I', 'S', 3, 3, 'MED', 3, 452, { ward: 1 }),
   walls: { n: 'The Theodosian Walls', t: 'deed', f: 'V', c: 4, y: 413 },
+  // (2026-11-12, Tim: "finish the unfinished stuff". The five cards set-150.json held back for want of an effect, each
+  // with one of its own now, and a sixth that switches off an enemy Figure's skills. Sources in set-150.json; numbers
+  // from held-2026-11-12.txt.)
+  dsteel: { n: 'Damascus Steel', t: 'relic', f: 'N', c: 2, y: 1100 },
+  abacus: { n: 'Abacus', t: 'relic', f: 'N', c: 2, y: 1592 },
+  westphalia: { n: 'The Peace of Westphalia', t: 'deed', f: 'S', c: 1, y: 1648 },
+  lisbonquake: { n: 'The Lisbon Earthquake', t: 'deed', f: 'W', c: 1, y: 1755 },
+  milan: { n: 'The Edict of Milan', t: 'deed', f: 'S', c: 2, y: 313 },
+  canossa: { n: 'The Walk to Canossa', t: 'deed', f: 'S', c: 1, y: 1077 },
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
 const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
@@ -326,6 +335,7 @@ const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@libr
   'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['press'],
   'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun'],
   'triumph': ['caesar', 'augustus'], 'medici': ['michelangelo'], 'holyyear': ['dante'], 'walls': ['@constantinople'],
+  'dsteel': ['@damascus'], 'lisbonquake': ['@lisbon'], 'milan': ['constantine'],
   'thutmose': ['hatshepsut'], 'themistocles': ['leonidas'], 'shackleton': ['amundsen'], 'paiza': ['kublai'], 'cyruscylinder': ['cyrus'], 'exhibition': ['victoria'], 'declaration': ['franklin'], 'rubaiyat': ['khayyam']};
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });

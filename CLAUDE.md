@@ -787,8 +787,8 @@ Underlying principles for everything:
   the Declaration of Independence and the Rubáiyát, with a new named line, The Tentmaker), so the third printing is 150
   again (101 Figures, 22 Relics, 27 Deeds) and the set is 241 (Einstein and Jim Thorpe are held too: below). They are `P3` in cards.js (`pr: 3`, listed in `PRINT3`) and
   `P3` in text.js. `scripts/anoria/set-150.json` keeps where each card's facts came from (`src`, `sure`, `check`), what
-  was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
-  Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing
+  was dropped and why, and the five cards that were held for engine work until 2026-11-12 (`needsEngineBuilt`: below).
+  `node scripts/anoria/check-set.js` checks the whole printing
   (words against skills, every Legacy Line, the briefs, the game's files against the JSON). A Guide is never also a card.
 - **Seven cards of 2026-11-12** (`scripts/anoria/deeds-2026-11-12.txt` has the numbers): the Roman Triumph, Medici
   Patronage, the Hanseatic League and the Jubilee of 1300 double Renown at this round's count (one Domain, a kind of
@@ -799,8 +799,24 @@ Underlying principles for everything:
   powers now (Testudo: a Figure losing a clash it started on their side falls back to your Gate; Syracuse: an enemy
   winning a clash it started at your Gate or Outpost is driven back to its own Gate), each for 1 Spark you kept.
   `scripts/anoria/deeds-test.js` holds each to its sentence.
+- **The five held cards and the Walk to Canossa** (2026-11-12, Tim: "finish the unfinished stuff", and "a card that
+  switches off an enemy Figure's skill, like Guard or Steadfast"; `scripts/anoria/held-2026-11-12.txt` has the numbers).
+  Each has an effect of its own (`fx`): **Damascus Steel** (Relic) "Your Figures have +1 Might when attacking"; the
+  **Abacus** (Relic) "Your Deeds cost 1 less"; the **Peace of Westphalia** "Choose a Domain. Nobody can start a clash
+  there until this round ends"; the **Lisbon Earthquake** "Choose a Domain. Every Figure there, yours and the other
+  player's, misses its next turn" (the Veto cancels it where it stops yours); the **Edict of Milan** "Choose a Domain
+  where you have a Figure. Until this round ends, the other player can't start a clash with your Figures there"; and
+  the **Walk to Canossa** (Henry IV, 1077) "Choose an enemy Figure. Until this round ends, the skills and powers on its
+  card don't work". The Peace and the Edict lie on their Domain until the count (`S.dip`, its mark on the tile: sheathed
+  swords, a shield), Canossa on its Figure (`f.hush`, a struck skill mark on the piece and the card's powers struck
+  through when it is read). **Every test of a skill on the table goes through `kOf(S, f)`** in engine.js, never
+  `CARDS[x].k`, so a humbled Figure loses Guard, Steadfast, Law, Ward, Diogenes's Silence and the rest at once; a
+  new skill word is read the same way (check-set.js reads skills from `kOf` too). A Ward or the Forbidden City keeps
+  the other player's Peace, Earthquake and Canossa off its Figures. Damascus Steel comes into a clash as its card,
+  as Phalanx does. The robots weigh them with `HW` (dipWorth, quakeWorth, and Canossa looks one clash ahead).
 - **A Relic's or a Deed's effect belongs to its data** (`fx`, read with `E.fxOf`; a card without one has the effect of
-  its own key). The engine has three Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's)
+  its own key). The engine has five Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's, Damascus
+  Steel's and the Abacus's)
   and eleven Deed effects, and nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in
   effect, Testudo a Phalanx, Mailed to Freedom runs what Night Crossing runs. A new Relic or Deed with an effect the
   engine has is data only; its rules text is the text of the card its `fx` names (check-set.js holds it to that).
