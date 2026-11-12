@@ -351,7 +351,7 @@
   }
   // Each skill word wears its own small mark in the text (Tim, 2026-11-12: "use icons in text for (chevrons) Legacy of..
   // and Guard/Steadfast, etc"): the Legacy chevrons, a shield for Guard, a mountain for Steadfast, a wing for Swift, a
-  // book for Scholar, a globe for Voyager, a sun for Inspiring, a sword for Raider, a law stone for Law, a dome for
+  // book for Scholar, a globe for Voyager, a sun for Inspiring, a scimitar for Raider, a law stone for Law, a dome for
   // Ward and Quick's bolt. The mark and the word never part at a line's end.
   const KW = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">';
   const KEYI = {
@@ -362,7 +362,7 @@
     steadfast: KW + '<path d="M.6 10.8 4.4 3.8l1.9 3.2 1.7-2.5 3.4 6.3z" fill="currentColor" stroke="none"/></svg>',
     inspiring: KW + '<circle cx="6" cy="6" r="2.2" fill="currentColor" stroke="none"/><path d="M6 .8v1.6M6 9.6v1.6M.8 6h1.6M9.6 6h1.6M2.3 2.3l1.1 1.1M8.6 8.6l1.1 1.1M2.3 9.7l1.1-1.1M8.6 3.4l1.1-1.1" stroke-width="1.15"/></svg>',
     swift: KW + '<path d="M1 9.6C2.4 6 5.6 3 11.2 1.6 10.2 3.2 9.2 4 7.8 4.6c1.4 0 2.4-.3 3.2-.7C10.2 5.4 9 6.2 7.4 6.6c.9 0 1.7-.2 2.4-.5C8.4 8.2 6 9.6 1 9.6z" fill="currentColor" stroke="none"/></svg>',
-    raider: KW + '<path d="M6 .4 7.1 2v5.6H4.9V2z" fill="currentColor" stroke="none"/><path d="M2.9 8h6.2M6 8.2v2" stroke-width="1.7"/><circle cx="6" cy="11" r="1" fill="currentColor" stroke="none"/></svg>',
+    raider: KW + '<path d="M3.2 8.4C6.2 7.6 9.2 5.2 11 1c.5 3.6-1.8 7-6.6 8.9z" fill="currentColor" stroke="none"/><path d="M1.9 7.2l2.9 2.9" stroke-width="1.5"/><path d="M3 9.4 1.2 11.2" stroke-width="1.6"/></svg>',
     law: KW + '<path d="M3 11V4.2a3 3 0 0 1 6 0V11z" stroke-width="1.2"/><path d="M4.6 5.4h2.8M4.6 7.2h2.8M4.6 9h2.8" stroke-width=".9"/></svg>',
     ward: KW + '<path d="M1.4 9.6a4.6 4.6 0 0 1 9.2 0" stroke-width="1.4"/><path d="M.8 10.6h10.4" stroke-width="1.2"/><circle cx="6" cy="8.1" r="1.2" fill="currentColor" stroke="none"/></svg>',
     quick: MARK.quick
