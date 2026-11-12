@@ -35,11 +35,14 @@ NEW.forEach(k => {
     Object.keys(c.k).forEach(w => { if (!KEYWORDS[w]) err(k, 'engine.js has no skill ' + w); });
     if (c.arr && (!ARRS[c.arr[0]] || typeof c.arr[1] !== 'number')) err(k, 'engine.js has no arrival effect ' + c.arr);
     if (!Array.isArray(t.ll) || t.ll.length !== 2 || Math.abs(t.ll[0]) > 180 || Math.abs(t.ll[1]) > 90) err(k, 'bad ll');
-    // the text leads with a skill word exactly when the card has that skill, and names its Legacy
-    Object.keys(LEAD).forEach(w => { const has = new RegExp('(^|\\. )' + w + '[.:]').test(t.tx); if (has !== !!c.k[LEAD[w]]) err(k, 'text and skills disagree about ' + w); });
-    if (/Legacy of /.test(t.tx) !== !!c.insp) err(k, 'text and insp disagree about Legacy');
-    (c.insp || []).forEach(s => { const o = CARDS[s]; if (!o || o.t !== 'fig') err(k, 'Legacy source ' + s + ' is not a Figure'); else if (t.tx.indexOf(o.n) < 0) err(k, 'text does not name ' + o.n); });
-    if ((c.arr || []).length && !/When you play (him|her), /.test(t.tx)) err(k, 'text does not give the arrival effect');
+    // the text leads with a skill word exactly when the card has that skill, and says what the skill does (Tim,
+    // 2026-11-12: "Steadfast: +2 Might when defending.", never a bare "Steadfast.")
+    Object.keys(LEAD).forEach(w => { const has = new RegExp('(^|\\. )' + w + '[.:]').test(t.tx); if (has !== !!c.k[LEAD[w]]) err(k, 'text and skills disagree about ' + w);
+      if (new RegExp('(^|\\. )' + w + '\\.').test(t.tx)) err(k, w + ' is bare: it needs its explanation after a colon'); });
+    // a Legacy is not written on the card: the Legacy Line down its side shows it (Tim, 2026-11-12)
+    if (/Legacy of /.test(t.tx)) err(k, 'text says "Legacy of": the Legacy Line down the card shows it');
+    (c.insp || []).forEach(s => { const o = CARDS[s]; if (!o || o.t !== 'fig') err(k, 'Legacy source ' + s + ' is not a Figure'); });
+    if ((c.arr || []).length && !/When you play this Figure[ ,]/.test(t.tx)) err(k, 'text does not give the arrival effect');
     if (!/a (fifth|quarter) of the way down|in the upper half/.test(t.art) && k !== 'houdini') err(k, 'art brief does not say where the head is (a fifth or a quarter of the way down, or in the upper half)');
   } else {
     // a Relic or a Deed has the effect, the cost and the rules text of the card its `fx` names (with its own kind of
@@ -59,6 +62,8 @@ NEW.forEach(k => {
     // (a line between two Relics with the same power could never be made: a player has no two such Relics in play)
     if (o && o.t === 'relic' && c.t === 'relic' && E.fxOf(s) === E.fxOf(k)) err(k, 'its Legacy Line is from a Relic with the same power'); });
   if ((c.insp || []).some(s => (c.from || []).indexOf(s) >= 0)) err(k, 'a source is in both insp and from');
+  // a power is said without he or she (Tim, 2026-11-12: "she has +2 might" -> "has +2 [might shield]")
+  if (/\b(he|she|him|her|his)\b/i.test(t.tx)) err(k, 'tx says he or she: ' + t.tx);
   // writing: no dots stringing facts together, nothing cut off, nothing about a card that has left the set
   ['cap', 'tx', 'fact', 'art'].forEach(f => { const v = t[f]; if (typeof v !== 'string') return;
     if (/·/.test(v)) err(k, f + ' has a middle dot'); if (/…|\.\.\./.test(v)) err(k, f + ' has an ellipsis'); if (/\s\s|^\s|\s$/.test(v)) err(k, f + ' has stray spaces');
@@ -69,7 +74,7 @@ NEW.forEach(k => {
   if (!T.NOPIC[k] && !fs.existsSync(path.join(dir, 'art', k + '.webp'))) err(k, 'is listed as painted but has no picture in art/');
   if (!Coll.rarity(k)) err(k, 'has no rarity');
   // the record of sources
-  const j = JS[k]; if (!j) err(k, 'is not in set-150.json'); else { if (j.n !== c.n) err(k, 'name differs from set-150.json'); if (j.fact !== t.fact) err(k, 'fact differs from set-150.json'); if (j.art !== t.art) err(k, 'art brief differs from set-150.json'); if (j.c !== c.c || (fig && j.m !== c.m)) err(k, 'numbers differ from set-150.json'); if (!/^(https:\/\/|[A-Z])/.test(j.src || '')) err(k, 'no source'); }
+  const j = JS[k]; if (!j) err(k, 'is not in set-150.json'); else { if (j.n !== c.n) err(k, 'name differs from set-150.json'); if (j.tx !== t.tx) err(k, 'rules text differs from set-150.json'); if (j.fact !== t.fact) err(k, 'fact differs from set-150.json'); if (j.art !== t.art) err(k, 'art brief differs from set-150.json'); if (j.c !== c.c || (fig && j.m !== c.m)) err(k, 'numbers differ from set-150.json'); if (!/^(https:\/\/|[A-Z])/.test(j.src || '')) err(k, 'no source'); }
 });
 SET.cards.forEach(c => { if (!CARDS[c.key]) err(c.key, 'is in set-150.json and not in the game'); });
 // older cards given a Legacy Line by the third printing

@@ -543,7 +543,7 @@
         await L.say('The Legacy Line also scored you 1 Renown when you played Virgil. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
-        await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The foot of Eureka! names Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });
+        await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The Legacy Line down the side of Eureka! runs to Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });
         await L.say('With Archimedes in play on your side, Eureka! scores 1 Renown as you play it.', { at: '.an-strip.me .st-ren' });
         await L.say('Every Legacy Line you make scores, however many you make in a round. You can read any card in your hand to see the Legacy Line printed down its side.', { at: '.an-hand' });
       } },

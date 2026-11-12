@@ -69,7 +69,7 @@
     inspiring: ['Inspiring', n => DW('each of your other Figures at the same Place as ' + n + ' has +1 Might.')],
     swift: ['Swift', n => DW('most Figures can\'t walk on the turn you play them. ' + n + ' can.')],
     raider: ['Raider', n => DW(n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.')],
-    ward: ['Ward', n => 'Eclipse, Ambush, Rift and the Defense of Syracuse, played by the other player, can\'t touch your Figures at the same Domain as ' + n + '. There, Seneca Falls does not lower their Might, a tie at Himeji Castle does not knock them out, Nan Madol does not keep them from walking out, and Nineveh does not stop them starting a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
+    ward: ['Ward', n => 'The other player\'s Deeds can\'t make your Figures at the same Domain as ' + n + ' miss a turn, move them or start a clash with them, and the Defense of Syracuse can\'t drive them back. That Domain\'s power can\'t work against them either: at Seneca Falls they keep their own Might when it is more than 3, at Himeji Castle a tie doesn\'t knock them out, at Nan Madol they can always walk out, and at Nineveh they can start a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
@@ -350,12 +350,12 @@
     out.push('100% .2em', '100% 100%', '0 100%'); return 'polygon(' + out.join(',') + ')';
   }
   // Each skill word wears its own small mark in the text (Tim, 2026-11-12: "use icons in text for (chevrons) Legacy of..
-  // and Guard/Steadfast, etc"): the Legacy chevrons, a shield for Guard, a mountain for Steadfast, a wing for Swift, a
-  // book for Scholar, a globe for Voyager, a sun for Inspiring, a scimitar for Raider, a law stone for Law, a dome for
-  // Ward and Quick's bolt. The mark and the word never part at a line's end.
+  // and Guard/Steadfast, etc"): a shield for Guard, a mountain for Steadfast, a wing for Swift, a book for Scholar, a
+  // globe for Voyager, a sun for Inspiring, a scimitar for Raider, a law stone for Law, a dome for Ward and Quick's bolt.
+  // The mark and the word never part at a line's end. (A card's text no longer says "Legacy of": the Legacy Line drawn
+  // down its side shows it. Tim, 2026-11-12: "remove 'Legacy of' text from descriptions (redundant with diagram)".)
   const KW = '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">';
   const KEYI = {
-    legacy: KW + '<path d="M2 7 6 3.2 10 7M2 10.6 6 6.8l4 3.8" stroke-width="1.8"/></svg>',
     voyager: KW + '<circle cx="6" cy="6" r="4.6" stroke-width="1.3"/><ellipse cx="6" cy="6" rx="2" ry="4.6" stroke-width="1.1"/><path d="M1.4 6h9.2" stroke-width="1.1"/></svg>',
     scholar: KW + '<path d="M6 3.2C4.6 2.2 2.8 2 1.2 2.4v7.2c1.6-.4 3.4-.2 4.8.8 1.4-1 3.2-1.2 4.8-.8V2.4C9.2 2 7.4 2.2 6 3.2zM6 3.2v7.2" stroke-width="1.15"/></svg>',
     guard: KW + '<path d="M6 1.2 10.4 2.8V6c0 2.6-1.9 4.2-4.4 5-2.5-.8-4.4-2.4-4.4-5V2.8z" fill="currentColor" stroke="none"/></svg>',
@@ -367,11 +367,16 @@
     ward: KW + '<path d="M1.4 9.6a4.6 4.6 0 0 1 9.2 0" stroke-width="1.4"/><path d="M.8 10.6h10.4" stroke-width="1.2"/><circle cx="6" cy="8.1" r="1.2" fill="currentColor" stroke="none"/></svg>',
     quick: MARK.quick
   };
-  const keyMark = k => { const w = /^Legacy/.test(k) ? 'legacy' : k.toLowerCase(), ic = KEYI[w]; if (!ic) return '<b>' + k + '</b>';
+  const keyMark = k => { const w = k.toLowerCase(), ic = KEYI[w]; if (!ic) return '<b>' + k + '</b>';
     const sp = k.indexOf(' '), first = sp < 0 ? k : k.slice(0, sp), rest = sp < 0 ? '' : k.slice(sp);
     return '<b class="kq"><span class="kq-n"><i class="kq-i">' + ic + '</i>' + first + '</span>' + rest + '</b>'; };
+  // "+2 Might" in a card's words is the number and the game's Might shield (Tim, 2026-11-12: "she has +2 might" ->
+  // "has +2 [might shield]"), the same mark as on the cards, at the size of the text and named Might for a screen
+  // reader. Only what is drawn changes: text.js keeps the word, so the rules checks, the log and the history read it.
+  const mightMarks = h => h.replace(/([+\u2212-]\d+) Might\b/g, '<i class="mi">$1<i class="mi-t" role="img" aria-label="Might"></i></i>');
+  const SKILL = /(^|\. )(Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick|Eureka!)(?=[.:! ]|$)/g;
   function boldKeys(tx) {
-    return esc(tx).replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick|Eureka!)(?=[.:! ]|$)/g, (m, a, k) => a + keyMark(k));   // (Quick wears the lightning bolt)
+    return mightMarks(esc(tx)).replace(SKILL, (m, a, k) => a + keyMark(k));   // (Quick wears the lightning bolt)
   }
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
@@ -391,11 +396,13 @@
   // foot, the same height on every card. The choice is remembered (anoria_artview) and held as a class on the page.
   function artView(on) { document.documentElement.classList.toggle('an-artview', !!on); lsSet('anoria_artview', on ? '1' : null);
     document.querySelectorAll('.ac-tg').forEach(b => { b.setAttribute('aria-pressed', String(!!on)); b.setAttribute('aria-label', on ? 'Show the card’s words' : 'Show the picture large'); }); }
-  // what a card does, short enough for one line: its own words if they are few, or just its skill words
+  // what a card does, short enough for the strip: its own words if they are few, or just its skill words, or, for a
+  // power with no skill word, its own words in two lines when they fit there (the plain short powers of 2026-11-12:
+  // "+2 Might while outnumbered here."). A Legacy Figure with no other power has no words: its strip shows its name.
   function briefOf(c) {
     const tx = c.tx || ''; if (tx.length <= 46) return boldKeys(tx);
-    const ks = []; tx.replace(/(^|\. )(Legacy of [^.]+|Voyager|Scholar|Guard|Steadfast|Inspiring|Swift|Raider|Law|Ward|Quick)(?=[.:! ]|$)/g, (m, a, k) => { ks.push(k); return m; });
-    return ks.length ? ks.map(k => keyMark(esc(k))).join('. ') + '.' : '';
+    const ks = []; tx.replace(SKILL, (m, a, k) => { if (k !== 'Eureka!') ks.push(k); return m; });
+    return ks.length ? ks.map(k => keyMark(esc(k))).join('. ') + '.' : tx.length <= 80 ? boldKeys(tx) : '';
   }
   function cardEl(key, o) {
     o = o || {};
@@ -616,9 +623,9 @@
     }
     // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
     const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
-    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + esc(GLOSS[k][1](c.n)) })); });
+    Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + mightMarks(esc(GLOSS[k][1](c.n))) })); });
     if (c.kind === 'place') {
-      notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + ' Figures have +1 Might here.' }));
+      notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + mightMarks(' Figures have +1 Might here.') }));
       if (o.p != null && S) {
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If the other side holds this Gate when a round ends, a Seal breaks.' }));
@@ -2629,7 +2636,7 @@
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
-    '<li>A <b>Legacy Figure</b> names the person who inspired that Figure. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure that names two people has +1 Might for each of them in play on your side, so +2 with both, and a gold line to each one in play. Two copies of the person it names count once.</li>' +
+    '<li>A <b>Legacy Figure</b> has a Legacy Line to the person who inspired that Figure, drawn down the side of its card. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure with lines to two people has +1 Might for each of them in play on your side, so +2 with both, and a gold line to each one in play. Two copies of one of those people count once.</li>' +
     '<li>Every Legacy Line you make scores its Renown, however many you make in a round.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of ' + ((window.AnoriaColl && AnoriaColl.DAILY) || 5) + ' cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +
