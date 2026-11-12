@@ -577,21 +577,15 @@
         await L.say('If the other player has more Might in your Gate than you do when a round is counted, one of your Seals breaks.', { at: ['.an-strip.me .st-seals', L.row(MY_GATE)] });
         await L.say('Your Seals are safe while your Gate is empty, tied or held by you. So keep a Figure at home when their Figures come close.', { at: L.piece('copernicus') });
       } },
-    { id: 'twins', n: 'Two of a card', sub: 'One copy or two, and the return', art: 'galileo',
+    { id: 'twins', n: 'Two of a card', sub: 'One copy or two, and both on your side', art: 'galileo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'coleman'], figs: [['copernicus', CROSS]] },
         them: { guide: 'tubman', hand: ['genghis', 'boudica'], draw: ['baibars', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
-        await L.say('Both copies of a person can stand on your side at the same time. You keep this one back for now, because it will cost less later.', { at: [L.card('copernicus'), L.piece('copernicus')] });
-        await L.endTurn(); await L.them.turn();
-        await L.them.clash('charlemagne', 'copernicus', [4, 4]);
-        await L.them.endTurn();
-        await L.later('Your next turn…', S => { S.round = 5; });
-        await L.turn(0);
-        await L.play('copernicus', MY_GATE, { lit: 'When one copy of a Figure is in your discard pile, the other copy costs 1 less. This is <b>the return</b>: Copernicus comes back for 2 instead of 3.', at: L.card('copernicus') });
-        await L.say('So a second copy is a spare, and it makes the card more likely to turn up. A pack never gives you a third copy.', { at: L.piece('copernicus') });
+        await L.play('copernicus', MY_GATE, { lit: 'Both copies of a person can stand on your side at the same time, so the second Copernicus comes into play at your Gate.', at: L.card('copernicus') });
+        await L.say('A second copy makes the card twice as likely to turn up. A pack never gives you a third copy.', { at: L.piece('copernicus') });
       } },
     { id: 'read', n: 'Reading a card', sub: 'Every part of a card, and what it tells you', art: 'hypatia',
       table: () => ({ round: 3, places: ['globe', 'library', 'nineveh', 'seneca', 'wall'], me: { guide: 'leonardo', hand: ['galileo', 'compass', 'eureka'], figs: [['hypatia', MY_OUT], ['copernicus', MY_GATE]] },

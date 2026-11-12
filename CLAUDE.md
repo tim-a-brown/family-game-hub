@@ -308,9 +308,14 @@ Underlying principles for everything:
   page (`RULES` in ui.js) and the results card read `S.cfg.target`, and the guide's captions and the story's counting
   laurel read `WIN` in guide.js. A round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), both copies
   of a person can stand on your side at once (`unique: 0`, Tim, 2026-11-12; it was one of each), a Legacy Figure has +1 Might for each
-  person it names who is in play on its side (`inspEach`; two copies of one person count once), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
+  person it names who is in play on its side (`inspEach`; two copies of one person count once), the second copy costs the same as the first (`ret: 0`, Tim, 2026-11-12: "remove that discount rule"; it returned for 1 less), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
+- **The Library and the deck builder sort and filter cards the same way** (Tim, 2026-11-12: "keep library and deck
+  filters/sorts in sync"). Sorts: Cost, Might, Time, Region, Name and Newest (`SORTS` in library.js and decks.js);
+  filters: faction, kind, Spark, Might, era, home region and keyword (`groups()` in library.js, `paintGroups` in
+  decks.js). Only what belongs to one screen is its own: the Library's "In your collection", the builder's "In the deck"
+  and "Legacy Lines with this deck". A new sort or filter goes into both.
 - **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
   welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
   and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a

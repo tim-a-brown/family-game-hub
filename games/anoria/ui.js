@@ -2512,8 +2512,7 @@
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li>' +
-    '<li><b>The return</b>: a Figure whose other copy is in your discard pile costs 1 less.</li></ul>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li></ul>' +
     '<h3>Collecting</h3><ul><li>The small mark at the foot of the band down a card\'s left side is how rare the card is in packs: <span class="rr-i r1"></span>a dot is Common, <span class="rr-i r2"></span>a triangle Uncommon, <span class="rr-i r3"></span>a four-point star Rare and <span class="rr-i r4"></span>a compass rose Legendary. The cards that do the most are the rarest. Rarity plays no part in a game.</li>' +
     '<li>Every card comes in five <b>editions</b>: Matte, Shiny, Silver foil, Gold foil and Rainbow foil, each rarer than the one before. An edition is only the card\'s finish and frame, and all five play the same. When you read a card you own, the round button with the stack of cards on its picture shows that card\'s editions and lets you choose which one you see.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +

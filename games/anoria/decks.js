@@ -11,7 +11,7 @@
   const FACS = ['D', 'S', 'V', 'A', 'W', 'N'];
   const KINDS = [['fig', 'Figure'], ['deed', 'Deed'], ['relic', 'Relic']];
   const WORDS = [['legacy', 'Legacy'], ['voyager', 'Voyager'], ['scholar', 'Scholar'], ['guard', 'Guard'], ['steadfast', 'Steadfast'], ['inspiring', 'Inspiring'], ['swift', 'Swift'], ['raider', 'Raider']];
-  const SORTS = [['cost', 'Cost'], ['time', 'Time'], ['name', 'Name']];
+  const SORTS = [['cost', 'Cost'], ['might', 'Might'], ['time', 'Time'], ['reg', 'Region'], ['name', 'Name'], ['newest', 'Newest']];   // (the Library's sorts, in the order a builder reaches for them: keep the two in step)
   const DRAWN = 29;   // about how many of its 40 cards a player sees in a game (scripts/anoria/variants.txt, "Decks of 40")
   const SORT_KEY = 'anoria_deck_sort';
   // a Thread: two dots joined by a line (the gold line that joins two Figures on the table)
@@ -37,11 +37,21 @@
   function whenX(y) { const i = eraOf(y), lo = i > 1 ? C.ERAS[i - 1].to : -2700, hi = C.ERAS[i].to; return (i - 1 + Math.max(0, Math.min(1, (y - lo) / (hi - lo)))) / (C.ERAS.length - 1); }
   const hasWord = (k, w) => w === 'legacy' ? !!CARDS[k].insp : !!(CARDS[k].k && CARDS[k].k[w]);
   const byCost = (a, b) => CARDS[a].c - CARDS[b].c || (CARDS[a].t === 'fig' ? 0 : 1) - (CARDS[b].t === 'fig' ? 0 : 1) || CARDS[a].n.localeCompare(CARDS[b].n);
+  // (Might: the strongest Figures first; Relics and Deeds after them, by cost)
+  const byMight = (a, b) => { const m = k => CARDS[k].t === 'fig' ? CARDS[k].m : -1; return m(b) - m(a) || byCost(a, b); };
+  // (by region: as the map's regions, cards with no home last; newest: the latest to join your collection first)
+  const byReg = (a, b) => { const RO = Object.keys(U.REG), r = k => CARDS[k].reg ? RO.indexOf(CARDS[k].reg) : 99; return r(a) - r(b) || byCost(a, b); };
+  const byNew = () => { const s = Coll.load(), at = {}; Object.keys(s.cards).forEach((k, i) => { at[k] = i; }); return (a, b) => (s.fresh[b] ? 1 : 0) - (s.fresh[a] ? 1 : 0) || (at[b] || 0) - (at[a] || 0) || byCost(a, b); };
   const byTime = (a, b) => (CARDS[a].y == null ? 1 : 0) - (CARDS[b].y == null ? 1 : 0) || (CARDS[a].y || 0) - (CARDS[b].y || 0) || CARDS[a].n.localeCompare(CARDS[b].n);
   const byName = (a, b) => CARDS[a].n.localeCompare(CARDS[b].n);
   const byFac = (a, b) => FACS.indexOf(CARDS[a].f) - FACS.indexOf(CARDS[b].f) || byCost(a, b);
   const thumb = (key, cls) => { const s = el('span', { class: cls, style: { '--f': (FAC[(CARDS[key] || TX.GUIDES[key] || {}).f] || FAC.N).c } }); const im = U.artImg(key, true) || U.mono(key); if (im) s.appendChild(im); return s; };
   const coin = n => el('span', { class: 'adk-coin' }, [el('b', { text: String(n) })]);
+  // (a Figure's Might on its shield; any other card keeps the shield's room empty, so the pictures and names line up)
+  const might = m => m != null ? el('span', { class: 'adk-mi', 'aria-label': m + ' Might' }, [el('b', { text: String(m) })]) : el('span', { class: 'adk-mi none', 'aria-hidden': 'true' });
+  // (the card's kind as it is on the small card's spine: its mark in white on the faction's color)
+  const kindTab = k => { const c = CARDS[k], kd = c.t === 'fig' ? (c.insp ? 'legacy' : 'fig') : c.t, M = U.MARK;
+    return el('span', { class: 'adk-kd', style: { '--f': (FAC[c.f] || FAC.N).c }, 'aria-label': { fig: 'Figure', legacy: 'Legacy Figure', relic: 'Relic', deed: 'Deed' }[kd] || '', html: kd === 'legacy' ? M.legacy + M.fig : M[kd] || '' }); };
   // a kit sheet in Anoria's own colours (navy and gilt in every app theme)
   const sheet = o => { const sh = Kit.sheet(o); sh.el.classList.add('adk-sheet'); return sh; };
   const btn = (cls, label, icon, fn) => el('button', { type: 'button', class: 'btn ' + cls, html: (icon || '') + '<span>' + esc(label) + '</span>', onclick: fn });
@@ -123,7 +133,7 @@
     const guides = () => Coll.load().guides.filter(g => TX.GUIDES[g]);
     const owned = k => Math.min(CAP, Coll.copies(k));
     const st = { id: deck.id || null, n: deck.n || 'My deck', guide: guides().indexOf(deck.guide) >= 0 ? deck.guide : '', cnt: {}, sort: 'cost',
-      f: { fac: {}, kind: {}, cost: {}, word: {}, mine: false, thr: false } };
+      f: { fac: {}, kind: {}, cost: {}, might: {}, era: {}, reg: {}, word: {}, mine: false, thr: false } };
     (deck.cards || []).forEach(k => { if (CARDS[k]) st.cnt[k] = (st.cnt[k] || 0) + 1; });
     if (!st.guide && !deck.guide && guides().length === 1) st.guide = guides()[0];
     const sv = lsGet(SORT_KEY); if (SORTS.some(s => s[0] === sv)) st.sort = sv;
@@ -247,18 +257,21 @@
 
     // ── filters and sorts ──
     const anyF = g => Object.keys(st.f[g]).length > 0;
-    const activeN = () => ['fac', 'kind', 'cost', 'word'].reduce((s, g) => s + Object.keys(st.f[g]).length, 0) + (st.f.thr ? 1 : 0);
+    const activeN = () => ['fac', 'kind', 'cost', 'might', 'era', 'reg', 'word'].reduce((s, g) => s + Object.keys(st.f[g]).length, 0) + (st.f.thr ? 1 : 0);
     function shows(k) {
       const c = CARDS[k], f = st.f;
       if (f.mine && !n(k)) return false;
       if (anyF('fac') && !f.fac[c.f]) return false;
       if (anyF('kind') && !f.kind[c.t]) return false;
       if (anyF('cost') && !f.cost[c.c]) return false;
+      if (anyF('might') && (c.t !== 'fig' || !f.might[c.m])) return false;   // (Might: Figures only)
+      if (anyF('era') && !f.era[c.y == null ? 0 : eraOf(c.y)]) return false;
+      if (anyF('reg') && !f.reg[c.reg]) return false;
       if (anyF('word') && !Object.keys(f.word).some(w => hasWord(k, w))) return false;
       if (f.thr && !PAIRS.some(p => (p.a === k && n(p.b)) || (p.b === k && n(p.a)))) return false;
       return true;
     }
-    function clearF() { st.f.fac = {}; st.f.kind = {}; st.f.cost = {}; st.f.word = {}; st.f.thr = false; }
+    function clearF() { st.f.fac = {}; st.f.kind = {}; st.f.cost = {}; st.f.might = {}; st.f.era = {}; st.f.reg = {}; st.f.word = {}; st.f.thr = false; }
     function refilter() { paintTools(); paintGrid(); grid.scrollTop = 0; }
     // the chips, by group: only what's in your cards. Painted inline where there's room and in the Filter sheet.
     const groupBoxes = [];
@@ -275,6 +288,11 @@
       grp('Faction', 'fac', FACS.filter(f => f !== 'N').map(f => has(k => CARDS[k].f === f) ? chip('fac', f, FAC[f].n, { cls: 'fac', c: FAC[f].c, html: '<i class="dot"></i>' }) : null));
       grp('Kind', 'kind', KINDS.map(x => has(k => CARDS[k].t === x[0]) ? chip('kind', x[0], x[1], { cls: 'kind', html: U.MARK[x[0]] }) : null));
       grp('Spark', 'cost', COSTS.map(c => has(k => CARDS[k].c === c) ? chip('cost', c, String(c), { cls: 'cost', bare: true, html: '<b>' + c + '</b>', say: c + ' Spark' }) : null));
+      const MIGHTS = []; pool.forEach(k => { const c = CARDS[k]; if (c.t === 'fig' && MIGHTS.indexOf(c.m) < 0) MIGHTS.push(c.m); }); MIGHTS.sort((a, b) => a - b);
+      grp('Might', 'might', MIGHTS.map(m => chip('might', m, String(m), { cls: 'cost might', bare: true, html: '<b>' + m + '</b>', say: m + ' Might' })));
+      const ERS = []; pool.forEach(k => { const y = CARDS[k].y, e = y == null ? 0 : eraOf(y); if (e && ERS.indexOf(e) < 0) ERS.push(e); }); ERS.sort((a, b) => a - b);
+      grp('Era', 'era', ERS.map(e => chip('era', e, C.ERAS[e].n)));
+      grp('Home region', 'reg', Object.keys(U.REG).map(r => has(k => CARDS[k].reg === r) ? chip('reg', r, U.REG[r]) : null));
       grp('Keyword', 'word', WORDS.map(w => has(k => hasWord(k, w[0])) ? chip('word', w[0], w[1]) : null).concat([chip('thr', '', 'Legacy Lines with this deck', { cls: 'thr', html: THREAD })]));
     }
     function paintTools() {
@@ -304,13 +322,17 @@
       showBtn = sh.el.querySelector('.k-acts .btn-primary'); showLabel();
     }
     function paintGrid(deal) {
-      const cmp = st.sort === 'time' ? byTime : st.sort === 'name' ? byName : byCost, keys = pool.filter(shows).sort(cmp);
+      const cmp = st.sort === 'time' ? byTime : st.sort === 'name' ? byName : st.sort === 'might' ? byMight : st.sort === 'reg' ? byReg : st.sort === 'newest' ? byNew() : byCost, keys = pool.filter(shows).sort(cmp);
       shownN = keys.length; showLabel();
       while (grid.firstChild) grid.removeChild(grid.firstChild);
-      let era = -1, i = 0;
+      let era = -1, mg = null, i = 0;
       keys.forEach(k => {
         // by time: the cards sit under the name of their age
         if (st.sort === 'time') { const y = CARDS[k].y, e = y == null ? 0 : eraOf(y); if (e !== era) { era = e; grid.appendChild(el('div', { class: 'adk-era' }, [el('b', { text: e ? C.ERAS[e].n : 'Out of time' }), e ? el('small', { text: (e > 1 ? year(C.ERAS[e - 1].to) + ' to ' : 'To ') + year(C.ERAS[e].to) }) : null])); } }
+        // by region: the cards under their home region, then the ones with no home
+        if (st.sort === 'reg') { const r = CARDS[k].reg || ''; if (r !== mg) { mg = r; grid.appendChild(el('div', { class: 'adk-era' }, [el('b', { text: r ? U.REG[r] : 'No home region' })])); } }
+        // by Might: the Figures under their Might, then the Relics and Deeds
+        if (st.sort === 'might') { const c = CARDS[k], m = c.t === 'fig' ? c.m : -1; if (m !== mg) { mg = m; grid.appendChild(el('div', { class: 'adk-era' }, [el('b', { text: m >= 0 ? 'Figures with ' + m + ' Might' : 'Relics and Deeds' })])); } }
         const t = tiles[k].el; t.classList.toggle('deal', !!deal); if (deal) t.style.setProperty('--i', String(Math.min(i++, 14)));
         grid.appendChild(t);
       });
@@ -406,8 +428,7 @@
       keys.forEach(k => {
         const c = CARDS[k], x = st.cnt[k], bad = x > owned(k), two = x > 1 && c.t === 'fig'; if (two) spare = true;
         lst.appendChild(el('div', { class: 'adk-li' + (bad ? ' bad' : '') }, [
-          el('button', { type: 'button', class: 'adk-lr', 'aria-label': 'Read ' + c.n, onclick: () => U.openView(k) }, [coin(c.c), thumb(k, 'adk-lp'), el('span', { class: 'adk-ln' }, [el('b', { text: c.n }), bad ? el('small', { text: 'You have ' + owned(k) }) : null])]),
-          two ? el('span', { class: 'adk-spare', 'aria-label': 'Once one has fallen, the second returns for ' + Math.max(0, c.c - 1) + ' Spark', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]) : null,
+          el('button', { type: 'button', class: 'adk-lr', 'aria-label': 'Read ' + c.n, onclick: () => U.openView(k) }, [coin(c.c), might(c.m), thumb(k, 'adk-lp'), kindTab(k), el('span', { class: 'adk-ln' }, [el('b', { text: c.n }), bad ? el('small', { text: 'You have ' + owned(k) }) : null])]),
           el('span', { class: 'adk-lx', text: x > 1 ? 'x' + x : '' }),
           el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) })]));
       });
@@ -415,7 +436,7 @@
       box.appendChild(lst);
       // two rules of play a builder should know
       const notes = el('section', { class: 'adk-sec2 notes' });
-      if (spare) notes.appendChild(el('div', { class: 'adk-note side' }, [el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin('-1')]), el('p', { text: 'Both copies of a person can stand on your side at once. Once one copy has fallen, the other returns for 1 Spark less.' })]));
+      if (spare) notes.appendChild(el('div', { class: 'adk-note side' }, [el('span', { class: 'adk-tp' }, [el('i', { class: 'on' }), el('i', { class: 'on' })]), el('p', { text: 'Both copies of a person can stand on your side at the same time.' })]));
       const drawn = el('span', { class: 'adk-slots draw' }); for (let i = 0; i < DECK; i++) drawn.appendChild(el('i', i < DRAWN ? { class: 'on' } : null));
       notes.appendChild(el('div', { class: 'adk-note' }, [drawn, el('p', { text: 'A game draws about ' + DRAWN + ' of a deck\'s ' + DECK + ' cards. Two copies of a card make it far more likely to turn up.' })]));
       box.appendChild(notes);
@@ -472,7 +493,7 @@
         say([el('span', { class: 'adk-pair' }, [thumb(p.a, 'adk-pp'), el('i'), thumb(p.b, 'adk-pp')]), line(CARDS[p.a].n + ' to ' + CARDS[p.b].n, p.t, 'thr')], { cls: 'thr', ms: 5200 });
         [p.a, p.b].forEach(x => { const t = tiles[x]; if (t && !still()) { t.el.classList.remove('tie'); void t.el.offsetWidth; t.el.classList.add('tie'); } });
       } else if (st.cnt[k] === 2 && c.t === 'fig') {
-        say([el('span', { class: 'adk-spare', html: Kit.icon('undo') }, [coin(Math.max(0, c.c - 1))]), line('A second ' + c.n, 'Both can stand on your side at once. Once one has fallen, the other returns for ' + Math.max(0, c.c - 1) + ' Spark.')], { ms: 5200 });
+        say([el('span', { class: 'adk-tp' }, [el('i', { class: 'on' }), el('i', { class: 'on' })]), line('A second ' + c.n, 'Both copies can stand on your side at the same time.')], { ms: 4200 });
       }
       if (tot === DECK) {
         setTimeout(() => { Kit.sfx('good'); Kit.haptic('success'); }, 260);
