@@ -307,7 +307,9 @@ function might(S, f, mode, oth) {
     if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
     if (g.li === f.u) isIns = true;
   }
-  if (f.li) m += 1; if (isIns && S.cfg.insBonus) m += 1; m += Math.min(2, insp);
+  if (f.li) m += S.cfg.inspEach ? Math.max(1, S.figs.filter(g => g.o === f.o && g !== f && (c.insp || []).indexOf(g.c) >= 0).length) : 1;   // (cfg.inspEach, a test: +1 Might for each person it names in play)
+  if (S.cfg.inspEach === 2 && (c.insp || []).length > 1) m -= 1;   // (the test's balanced form: a card naming two people prints 1 less Might)
+  if (isIns && S.cfg.insBonus) m += 1; m += Math.min(2, insp);
   if (k.uprising) m += own - 1; if (k.orator && own > opp) m += 2; if (k.underdog && opp > own) m += 2; if (k.monument) m += Math.min(2, f.stay); if (k.shoulders) m += Math.min(2, S.P[f.o].lines);
   const w = pw(S, f.p); if (w && w === FAC[c.f]) m += 1;   // (a theatre for Arts Figures, an observatory for Discovery, a capital for Statecraft)
   if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; if (S.P[f.o].guide === 'joan' && behind(S, f.o)) m += 1; }   // (Sun Tzu: your first clash each turn wins ties. Joan of Arc: +1 Might in a clash her Figures start while she is behind)
