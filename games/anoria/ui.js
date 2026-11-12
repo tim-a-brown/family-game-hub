@@ -1394,7 +1394,7 @@
           el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero'), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
-          el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span>' : '') + esc(pi.n) }),
+          el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : '') + (gate ? ' g' : ''), html: (gate ? '<span class="pl-gate" style="--gc:var(--pc' + own + ')">' + SVG.arch + '</span><span class="pl-nt">' + esc(pi.n) + '</span>' : esc(pi.n)) }),
           (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : DW(RULE[pk]) }) : null]));
         // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
         // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
@@ -1475,8 +1475,22 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    layout(); lines();
+    layout(); lines(); fitPlates();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
+  }
+  // A tile's name and rule stay on the paper, clear of the Might totals above it and the frame below. Fonts are
+  // drawn taller on some devices (Tim's iPhone), so this is measured, not assumed: a plate that doesn't fit steps
+  // its words down a size (f1), then another (f2).
+  function fitPlates() {
+    if (!dom.map) return;
+    dom.map.querySelectorAll('.pl-tile').forEach(t => {
+      const p = t.querySelector('.pl-plate'); if (!p) return;
+      t.classList.remove('f1', 'f2');
+      const bad = () => { const tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), top = tt ? tt.getBoundingClientRect().bottom : tr.top;
+        const nm = p.querySelector('.pl-name');
+        return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || p.scrollHeight > p.clientHeight + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1); };
+      if (bad()) { t.classList.add('f1'); if (bad()) { t.classList.remove('f1'); t.classList.add('f2'); } }
+    });
   }
   // Sizes from the room there is
   function layout() {
