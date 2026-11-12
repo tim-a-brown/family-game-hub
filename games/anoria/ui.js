@@ -627,7 +627,7 @@
         // (Domains: whose banner is on it, and what lies across its rule. Until the banners and markers are drawn on the table, the card says so.)
         if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
           notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
-          if (sil) notes.appendChild(el('p', { html: '<b>No rule</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' stands on this Domain') + ', so its rule does not work.' })); }
+          if (sil) notes.appendChild(el('p', { html: '<b>Power switched off</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' is at this Domain') + ', so its power does nothing for now.' })); }
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
         notes.appendChild(el('p', { html: S.cfg.ramp ? DW('<b>This round</b>: holding this Place scores ') + worth + ' Renown.' : DW('<b>Every round</b>: whoever holds this Place when the round ends scores ') + worth + ' Renown.' }));
       }
@@ -2190,7 +2190,7 @@
       tray.remove(); tags.forEach(x => { x[0].classList.remove('pk'); x[1].remove(); });
     },
     async nothing(ev) { Kit.toast(ev.why === 'kudurru' ? 'A Boundary Stone protects that Domain, so nothing changes.' : 'There is no Domain left to lay, so nothing changes.', 2200); await wait(700); },
-    async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', which has no rule while it lies there.', 2600); await wait(900); },
+    async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', so its power does nothing while it lies there.', 2600); await wait(900); },
     // The Tribune's Veto: the Deed's card was held up (deed, above); the Veto's player's hand and kept Spark catch up
     async veto(ev) { dropHand(ev.o, V.P[ev.o].hand.indexOf(ev.c)); V.P[ev.o].reserve = S.P[ev.o].reserve; render(); await wait(120); },
     async quick(ev, ctx) {
@@ -2322,7 +2322,7 @@
         add(ev.o, ev.old ? [{ k: '@' + ev.old }, ' was discarded, and ', { k: '@' + ev.id }, ' was laid at ' + at + '.'] : [{ k: '@' + ev.id }, ' was laid at ' + at + '.']); }
       else if (t === 'domains') { const mv = ev.perm.map((f, j) => (f !== j ? j : -1)).filter(j => j >= 0);
         add(-1, mv.length === 2 ? [{ k: '@' + S.places[mv[0]] }, ' and ', { k: '@' + S.places[mv[1]] }, ' changed places.'] : ['The Domains at the two Gates changed places, and so did the Domains at the two Outposts.']); }
-      else if (t === 'marker') add(-1, [K(ev.c), ' lies on ', { k: '@' + S.places[ev.p] }, ', which has no rule while it lies there.']);
+      else if (t === 'marker') add(-1, [K(ev.c), ' lies on ', { k: '@' + S.places[ev.p] }, ', so its power does nothing while it lies there.']);
       else if (t === 'congress') add(ev.o, ['The dice for ', K(ev.c), ' showed ' + ev.dice[0] + ' and ' + ev.dice[1] + '.']);
       else if (t === 'nothing' && ev.why === 'kudurru') add(-1, ['A Boundary Stone protected that Domain, so nothing changed.']);
     });
