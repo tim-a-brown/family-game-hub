@@ -187,13 +187,38 @@
     pool.forEach(k => {
       const c = CARDS[k], have = owned(k), face = el('span', { class: 'adk-face' }, [U.cardEl(k, { mini: true })]);
       const readK = () => { const p = t.parentNode, list = p ? Array.from(p.querySelectorAll('.adk-t[data-k]')).map(x => x.dataset.k) : [k]; U.browse(list, { at: Math.max(0, list.indexOf(k)), bar: bar }); };
-      const cardBtn = el('button', { type: 'button', class: 'adk-tc', 'aria-label': 'Read ' + c.n, onclick: readK }, [face, el('span', { class: 'adk-tt', html: THREAD })]);
+      const cardBtn = el('button', { type: 'button', class: 'adk-tc', 'aria-label': 'Read ' + c.n, onclick: readK }, [face]);
+      // (the Legacy Line mark, where the eye was: a tap shows this card's own lines, and nothing else)
+      const lines = PAIRS.some(p => p.a === k || p.b === k) ? el('button', { type: 'button', class: 'adk-tt', 'aria-label': Kit.poss(c.n) + ' Legacy Lines', html: THREAD, onclick: () => linesOf(k) }) : el('span');
       const plus = el('button', { type: 'button', class: 'adk-tplus', 'aria-label': 'Add one ' + c.n + ' to the deck', html: Kit.icon('plus'), onclick: () => add(k) });
       const pips = el('span', { class: 'adk-tp' });
       const minus = el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) });
-      const t = el('div', { class: 'adk-t' + (have > 1 ? ' two' : ''), 'data-k': k }, [cardBtn, plus, el('div', { class: 'adk-tf' }, [minus, pips, el('span')])]);
+      const t = el('div', { class: 'adk-t' + (have > 1 ? ' two' : ''), 'data-k': k }, [cardBtn, plus, el('div', { class: 'adk-tf' }, [minus, pips, lines])]);
       tiles[k] = { el: t, card: cardBtn, pips: pips, minus: minus, plus: plus };
     });
+    // one card's Legacy Lines: the ones in the deck now, then the ones a card away, then the rest (a card not found yet
+    // shows as a dim picture with no name and no sentence)
+    function linesOf(k) {
+      Kit.sfx('tap'); Kit.haptic('light');
+      const box = el('div', { class: 'adk-lines' });
+      function paint() {
+        box.innerHTML = '';
+        const ps = PAIRS.filter(p => p.a === k || p.b === k), rank = p => (n(p.a) && n(p.b) ? 0 : (n(p.a) || n(p.b)) && owned(p.a) && owned(p.b) ? 1 : 2);
+        ps.sort((x, y) => rank(x) - rank(y));
+        box.appendChild(el('p', { class: 'adk-hint', text: 'With both cards of a Legacy Line in the deck, playing the second while the first is on your side scores 1 Renown.' }));
+        ps.forEach(p => {
+          const lost = [p.a, p.b].filter(x => !owned(x))[0], both = n(p.a) && n(p.b), need = [p.a, p.b].filter(x => owned(x) && n(x) < owned(x) && !n(x))[0];
+          const nm = x => x === lost ? el('b', { class: 'off', text: 'Not found' }) : el('b', { text: CARDS[x].n });
+          box.appendChild(el('div', { class: 'adk-th' + (both ? ' lit' : ' near') + (lost ? ' lost' : '') }, [
+            el('span', { class: 'adk-pair' }, [thumb(p.a, 'adk-pp' + (n(p.a) ? '' : ' off')), el('i'), thumb(p.b, 'adk-pp' + (n(p.b) ? '' : ' off'))]),
+            el('span', { class: 'adk-tn' }, [nm(p.a), el('small', { text: 'to' }), nm(p.b)]),
+            !lost && need && total() < DECK ? btn('btn-soft btn-sm adk-add', 'Add ' + CARDS[need].n, Kit.icon('plus'), () => { add(need); paint(); }) : null,
+            lost ? null : el('p', { text: p.t })]));
+        });
+      }
+      paint();
+      sheet({ title: Kit.poss(CARDS[k].n) + ' Legacy Lines', node: box, actions: [{ label: 'Done', cls: 'btn-soft' }] });
+    }
     // under the card in the strip: take one out, the copies (the shelf's own marks), add one
     function bar(k, redo) {
       const have = owned(k), inn = n(k), c = CARDS[k], pp = el('span', { class: 'adk-tp vf-tp', 'aria-label': inn + ' of your ' + have + ' in the deck' });
