@@ -653,15 +653,25 @@ Underlying principles for everything:
   Domain each one is (a banner in the player's colour that travels with the card, since cards may swap, reverse or
   shuffle Domains), a marker for a rule that is silenced or changed, and a track for rounds and turns are all drawn
   on the device as the pieces a person would use.
-- **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
-  Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
-  about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
-  Guide's key, and is measured with `node scripts/anoria/guides.js` (every ready deck under that Guide against the
-  others under their own; a Guide worth about what the first five are sits within a few points of 0, and "none" reads
-  about -1.5). First drafts that measured out of line and were changed: Gandhi's +1 Might everywhere (+9), Lincoln's
-  fourth Seal (+5), Curie's cheaper second card (+6.5), Mandela's return to hand (worth nothing: Spark is what is
-  scarce, not cards) and his fall back to the Gate from anywhere (+6). A new Guide needs a picture, a text entry, a
-  mat (`MATS` in ui.js; without one the chart is used) and that measure.
+- **Twelve Guides** (the roster of twelve, Tim, 2026-11-12). The first five each bring a ready deck: Cleopatra (Court),
+  Leonardo (Explorers), Tubman (Pathfinders), Sun Tzu (Legion) and Shakespeare (Legacy, which was Franklin's). Marie
+  Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana join as wins against the computer add up
+  (`GUIDE_AT` in coll.js: eleven steps, the last at 48 wins) and guide a deck the player builds. Their powers, as a
+  player reads them, are in `GUIDES` in text.js; Sor Juana's is "Your Scholar Figures cost 1 less" (Tim's choice: her
+  first draft was Franklin's cheaper Deed). **A Guide is never also a card**, so the seven left the set as cards
+  (`RETIRED`, with `to`) and five people took their slots in the ready decks with the same faction, cost, Might and
+  skills (Tim's choice): Joan's slot is Genghis Khan's, Saladin's Baibars', Shakespeare's Molière's, Mansa Musa's Askia
+  the Great's and Sor Juana's Christine de Pizan's; Benjamin Franklin and Abraham Lincoln became cards of the third
+  printing in Wu Zetian's and Akbar's slots. **Legacy Lines moved to the new cards where the history allows** (Tim's
+  choice): Timbuktu and the Trade Caravan to Askia, Encore and Goethe's Legacy to Molière, Sappho to Christine; The
+  Stage, The Bard, The Lionheart and The Tenth Muse could not move and were removed. **A Guide who leaves the roster**
+  goes into `OLD_GUIDES` (cards.js, with `to`; their words in text.js): whoever had Franklin, Genghis Khan, Lincoln,
+  Mandela or Gandhi has Shakespeare, Joan, Saladin, Empress Wu or Akbar instead (`retire()` and `myDecks()` in coll.js),
+  a game saved with one plays on with that Guide's power (engine.js keeps every power by key), and the table and the
+  history show them through `TXG` (ui.js) and `card()` (hist/anoria.js). A Guide's power is measured with
+  `node scripts/anoria/guides.js` (every ready deck under that Guide against the others under their own); the record
+  of every draft and its figure is `scripts/anoria/guides.txt`. A new Guide needs a picture, a text entry, a mat
+  (`MATS` in ui.js; without one the chart is used) and that measure.
 - **Adding a card to the set**: an entry in cards.js (existing keywords and `arr` effects need no engine work), one in
   text.js (`cap`, `ll` as [lon, lat], `tx`, `fact`, `art` brief; `SAY`/`FY` if needed), its picture through
   `scripts/anoria/pack-art.sh`, then `node scripts/anoria/run.js cards 6000` (its win rate beside cards of its cost)

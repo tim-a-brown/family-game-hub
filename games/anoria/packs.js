@@ -603,7 +603,7 @@
   }
 
   // ═══ The very first time: choose a Guide ═════════════════════════════════════════════════════════════════
-  const SHORT = { leonardo: 'Leonardo', tubman: 'Tubman', franklin: 'Franklin' };
+  const SHORT = { leonardo: 'Leonardo', tubman: 'Tubman', shakespeare: 'Shakespeare' };
   function chooseStarter(app, done) {
     const A = U(), DECKS = A.DECKS, tiles = [];
     let cur = -1, busy = false;

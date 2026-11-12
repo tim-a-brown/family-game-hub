@@ -65,7 +65,7 @@ const pid = (S, i) => S.places[i];
 //   wuzetian   holding more Places than the other player when a round ends gives her 1 more Spark next turn (endRound)
 //   akbar      Figures of two or more factions at the Crossroads when a round ends score him 1 Renown (endRound)
 //   mansamusa  up to 2 Spark he has not spent are his to spend next turn (startTurn)
-//   sorjuana   her first Deed each turn costs 1 less (costOf)
+//   sorjuana   her Scholar Figures cost 1 less (costOf; Tim, 2026-11-12: her first draft, a cheaper first Deed, was Franklin's)
 const behind = (S, o) => S.P.some(p => p.renown > S.P[o].renown);
 // (Akbar's court: Figures of his of two or more factions standing at the Crossroads)
 const atCourt = (S, o) => { if (S.P[o].guide !== 'akbar') return false; const hub = 2 * S.N; let f0 = null; for (const g of S.figs) if (g.p === hub && g.o === o) { const x = CARDS[g.c].f; if (f0 === null) f0 = x; else if (x !== f0) return true; } return false; };
@@ -150,7 +150,8 @@ function costOf(S, o, ci, place) {
   if (c.t !== 'fig' && S.cfg.threads !== 2 && threadSrc(S, o, ci)) x -= S.cfg.disc;   // (threads 2: Renown only; 3: the discount only)
   if (c.t === 'relic' && P.guide === 'leonardo') x -= 1;
   if (P.guide === 'curie' && P.uN === 2) x -= 1;   // (Curie: the third card you play each turn costs 1 less)
-  if (c.t === 'deed') { if ((P.guide === 'franklin' || P.guide === 'sorjuana') && !P.uD) x -= 1;   // (Franklin, and Sor Juana after him: the first Deed each turn costs 1 less)
+  if (c.t === 'fig' && P.guide === 'sorjuana' && c.k.scholar) x -= 1;   // (Sor Juana: her Scholar Figures cost 1 less)
+  if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1;   // (Franklin: the first Deed each turn costs 1 less)
     if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
   return Math.max(0, x);
 }

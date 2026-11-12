@@ -17,7 +17,8 @@
 //     that any copy you're missing is as likely as any other, so new faces keep turning up for weeks.
 //   - Your first win of the day against the computer: a pack of 2.
 //   - Once each: your first win against Normal, against Hard, and with a deck you built: a pack of 2.
-//   - A new Guide joins you at 3, 7, 12, 17, 23, 29, 35, 41 and 48 wins (ten Guides: the one you chose and nine more).
+//   - A new Guide joins you at 3, 6, 10, 14, 18, 23, 28, 33, 38, 43 and 48 wins (twelve Guides: the one you chose and
+//     eleven more; a Guide who has left the roster is the Guide who took the place, cards.js OLD_GUIDES).
 //   - Finishing a named Thread (owning every card on it): a second copy of one of its cards, as a gift. A Thread
 //     that comes whole in your starter deck gives none.
 //   Played every day at three games a day, the first series (91 cards since decks grew to 40) takes about a month to
@@ -45,9 +46,9 @@
 //     pack slot is that much less likely to be a card of a higher tier (TIER_W).
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaColl = factory(root.AnoriaCards); })(this, function (C) {
 'use strict';
-const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
+const CARDS = C.CARDS, ARCH = C.ARCH, GUIDES = C.GUIDES, OLD_GUIDES = C.OLD_GUIDES || {}, THREADS = C.THREADS, GROWN = C.GROWN || {}, RETIRED = C.RETIRED || {};
 const ALL = Object.keys(CARDS), CAP = 2, DECK = 40, FRESH = { welcome: 0.5 };
-const GUIDE_AT = [3, 7, 12, 17, 23, 29, 35, 41, 48], VER = 4;
+const GUIDE_AT = [3, 6, 10, 14, 18, 23, 28, 33, 38, 43, 48], VER = 4;   // (eleven steps since the roster of twelve, 2026-11-12: the last still at 48 wins)
 let WELCOME = [12, 12, 12];   // (the welcome packs; pacing.js can try others through use())
 let DAILY = 5, FEAT = 5;   // (cards in an earned pack, 5 since 2026-11-12, Tim: "do 5 cards"; pacing.js can try other sizes through use())
 // ── How packs work with a set of 241 cards: the two lines to change ─────────────────────────────────────────
@@ -76,9 +77,9 @@ let ED_ODDS = [0, 0.085, 0.04, 0.018, 0.007];
 // none of the lists (a new set, before the script is run again) goes by its cost.
 const RARE = {
   4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
-  3: 'chingshih sargon hannibal aristotle shaka beethoven mansamusa hiawatha bolivar joan darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
-  2: 'copernicus dante saladin murasaki shakespeare douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
-  1: 'faraday hokusai tomoe plato sorjuana germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
+  3: 'chingshih sargon hannibal aristotle shaka beethoven askia hiawatha bolivar genghis darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
+  2: 'copernicus dante baibars murasaki moliere douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
+  1: 'faraday hokusai tomoe plato christine germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
 };
 // The third printing (the 150 cards found only in packs), tiered among themselves by the same measure: 'node
 // scripts/anoria/rarity.js 6000 3' (rarity.txt). The cards the game had before keep the tiers above, and the marks
@@ -86,7 +87,7 @@ const RARE = {
 const RARE3 = {
   4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne zenobia',
   3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi',
-  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai wuzetian akbar stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning',
+  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning',
   1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce'
 };
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
@@ -131,6 +132,8 @@ function retire(s) {
     // (the editions found for the old card, and the one it was shown in, are the new card's)
     if (s.ed && s.ed[old] != null) { s.ed[k] = (s.ed[k] || 0) | s.ed[old]; delete s.ed[old]; ch = true; }
     if (s.look && s.look[old] != null) { if (s.look[old] > (s.look[k] || 0)) s.look[k] = s.look[old]; delete s.look[old]; ch = true; } });
+  // (a Guide who has left the roster, cards.js OLD_GUIDES: whoever had one has the Guide who took the place, once)
+  if (Array.isArray(s.guides) && s.guides.some(g => OLD_GUIDES[g])) { const out = []; s.guides.forEach(g => { const n = OLD_GUIDES[g] ? OLD_GUIDES[g].to : g; if (GUIDES[n] && out.indexOf(n) < 0) out.push(n); }); s.guides = out; ch = true; }
   if (ch && s.starter && ARCH[s.starter]) { const mine = ARCH[s.starter].cards; THREADS.forEach(t => { if (!s.threads[t.id] && t.cards.every(k => mine.indexOf(k) >= 0)) s.threads[t.id] = 1; }); }
   return ch;
 }
@@ -289,7 +292,7 @@ function problems(d) {
 }
 function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} if (!Array.isArray(a)) return [];
   // (a deck built with a card that has left the set holds the card that has its slot now, and is saved that way)
-  let ch = false; a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => { if (!RETIRED[k]) return k; ch = true; return RETIRED[k].to; }); });
+  let ch = false; a.forEach(d => { if (d && Array.isArray(d.cards)) d.cards = d.cards.map(k => { if (!RETIRED[k]) return k; ch = true; return RETIRED[k].to; }); if (d && OLD_GUIDES[d.guide]) { d.guide = OLD_GUIDES[d.guide].to; ch = true; } });
   if (ch) store.set(DKEY, JSON.stringify(a));
   return a; }
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }

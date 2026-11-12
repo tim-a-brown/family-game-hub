@@ -286,7 +286,7 @@
       const pm = [el('div', { class: 'an-pm top' }), el('div', { class: 'an-pm bot' })]; ctx.matFill(pm[0], top, 'dp' + (cls || '')); ctx.matFill(pm[1], bot, 'dp' + (cls || ''));
       const m = el('div', { class: 'an-map tight' }, [el('div', { class: 'an-road' }),
         rowEl('nineveh', { owner: 1, side: 'L', hold: 1, tot: [4, 0], L: [fig('hammurabi', 1, 4, true)], rule: 'Your last Seal holds' }),
-        rowEl('colosseum', { owner: 0, side: 'R', silenced: true, counter: 2, tot: [3, 3], L: [fig('saladin', 1, 3)], R: [fig('leonidas', 0, 3, true)] }),
+        rowEl('colosseum', { owner: 0, side: 'R', silenced: true, counter: 2, tot: [3, 3], L: [fig('baibars', 1, 3)], R: [fig('leonidas', 0, 3, true)] }),
         rowEl('silk', { owner: 1, side: 'L', hold: 0, tot: [0, 5], R: [fig('zhenghe', 0, 5, true)] }),
         rowEl('library', { owner: 1, side: 'L', changed: true, counter: 3, hold: 0, lit: true, tot: [0, 3], R: [fig('hypatia', 0, 3, true)] }),
         rowEl('petra', { owner: 0, side: 'R', hold: 0, tot: [0, 4], R: [fig('tomoe', 0, 4)] })]);

@@ -25,7 +25,7 @@ const CARDS = {
   pericles: F('Pericles', 'S', 3, 3, 'MED', 2, -450, { orator: 1 }),
   ashoka: F('Ashoka', 'S', 4, 5, 'ASIA', 2, -260, {}, { arr: ['stun', 9] }),
   confucius: F('Confucius', 'S', 3, 3, 'ASIA', 2, -500, { inspiring: 1 }),
-  mansamusa: F('Mansa Musa', 'S', 4, 3, 'AFR', 3, 1324, {}, { arr: ['spark', 2] }),
+  askia: F('Askia the Great', 'S', 4, 3, 'AFR', 4, 1497, {}, { arr: ['spark', 2] }),
   charlemagne: F('Charlemagne', 'S', 5, 6, 'EUR', 3, 800, { guard: 1 }),
   elizabeth: F('Elizabeth I', 'S', 5, 5, 'EUR', 4, 1588, { inspiring: 1 }),
   alexander: F('Alexander the Great', 'S', 5, 6, 'MED', 2, -330, { swift: 1 }, { insp: ['aristotle'] }),
@@ -34,8 +34,8 @@ const CARDS = {
   leonidas: F('Leonidas', 'V', 3, 3, 'MED', 2, -480, { guard: 1, steadfast: 1 }),
   boudica: F('Boudica', 'V', 3, 3, 'EUR', 2, 60, { raider: 1 }),
   tomoe: F('Tomoe Gozen', 'V', 3, 4, 'ASIA', 3, 1184, { swift: 1 }),
-  joan: F('Joan of Arc', 'V', 4, 4, 'EUR', 3, 1429, { underdog: 1 }),
-  saladin: F('Saladin', 'V', 4, 4, 'MIDEAST', 3, 1187, { steadfast: 1 }),
+  genghis: F('Genghis Khan', 'V', 4, 4, 'ASIA', 3, 1206, { underdog: 1 }),
+  baibars: F('Baibars', 'V', 4, 4, 'MIDEAST', 3, 1260, { steadfast: 1 }),
   yisunsin: F('Yi Sun-sin', 'V', 4, 5, 'ASIA', 4, 1592, { guard: 1 }),
   hannibal: F('Hannibal', 'V', 5, 4, 'AFR', 2, -218, { voyager: 1, raider: 1 }),
   sittingbull: F('Sitting Bull', 'V', 4, 4, 'AMER', 6, 1876, { homeDouble: 1 }),
@@ -46,7 +46,7 @@ const CARDS = {
   virgil: F('Virgil', 'A', 3, 4, 'MED', 2, -20, {}, { insp: ['homer'] }),
   dante: F('Dante', 'A', 4, 4, 'MED', 3, 1310, { scholar: 1 }, { insp: ['virgil'] }),
   murasaki: F('Murasaki Shikibu', 'A', 3, 4, 'ASIA', 3, 1010, { tale: 1 }),
-  shakespeare: F('Shakespeare', 'A', 4, 4, 'EUR', 4, 1600, { stage: 1 }),
+  moliere: F('Molière', 'A', 4, 4, 'EUR', 5, 1664, { stage: 1 }),
   michelangelo: F('Michelangelo', 'A', 4, 5, 'MED', 4, 1510, { masterpiece: 1 }),
   mozart: F('Mozart', 'A', 3, 3, 'EUR', 5, 1785, { swift: 1, inspiring: 1 }),
   beethoven: F('Beethoven', 'A', 4, 4, 'EUR', 6, 1810, { inspiring: 1 }, { insp: ['mozart'] }),
@@ -92,7 +92,7 @@ const CARDS = {
   mencius: F('Mencius', 'S', 2, 2, 'ASIA', 2, -320, { scholar: 1 }, { insp: ['confucius'] }),
   nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
   hiawatha: F('Hiawatha', 'S', 3, 3, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
-  sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }),
+  christine: F('Christine de Pizan', 'A', 3, 4, 'EUR', 3, 1405, { scholar: 1 }),
   theodora: F('Theodora', 'S', 3, 3, 'MED', 3, 532, { steadfast: 1 }),   // (4 Might until 25 Renown won, which suits Court: variants.txt, "First to 25")
   // Pathfinders
   zhangqian: F('Zhang Qian', 'W', 3, 3, 'ASIA', 2, -138, { voyager: 1 }, { arr: ['spark', 1] }),   // (the Han envoy, in the slot Sinbad the Sailor had. He has 3 Might where Sinbad had 2, which is what Pathfinders wanted once 25 Renown won: variants.txt, "First to 25")
@@ -118,8 +118,8 @@ const CARDS = {
 };
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
-const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'mansamusa': ['@timbuktu'], 'pericles': ['@acropolis'], 'shakespeare': ['@globe', 'press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['mansamusa', 'marcopolo', '@silk'], 'encore': ['shakespeare', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'magellan'], 'eclipse': ['antikythera'],
-  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'sorjuana': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
+const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'askia': ['@timbuktu'], 'pericles': ['@acropolis'], 'moliere': ['press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['askia', 'marcopolo', '@silk'], 'encore': ['moliere', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'magellan'], 'eclipse': ['antikythera'],
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'scipio': ['hannibal'], 'toussaint': ['spartacus'], 'christine': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };
@@ -163,7 +163,7 @@ const P3 = {
   cyrus: F('Cyrus the Great', 'S', 4, 4, 'MIDEAST', 1, -550, { inspiring: 1 }),
   qinshihuang: F('Qin Shi Huang', 'S', 5, 6, 'ASIA', 2, -221, { guard: 1 }),
   augustus: F('Augustus', 'S', 5, 6, 'MED', 2, -27, {}, { arr: ['stun', 9], insp: ['caesar'] }),
-  wuzetian: F('Wu Zetian', 'S', 4, 5, 'ASIA', 3, 690, {}, { arr: ['stun', 1] }),
+  franklin: F('Benjamin Franklin', 'S', 4, 5, 'AMER', 5, 1778, {}, { arr: ['stun', 1] }),
   darius: F('Darius the Great', 'S', 3, 3, 'MIDEAST', 2, -515, {}, { arr: ['spark', 1] }),
   eleanor: F('Eleanor of Aquitaine', 'S', 3, 4, 'EUR', 3, 1152, { voyager: 1 }),
   kublai: F('Kublai Khan', 'S', 4, 5, 'ASIA', 3, 1271, {}, { arr: ['spark', 1] }),
@@ -172,7 +172,7 @@ const P3 = {
   sejong: F('Sejong the Great', 'S', 4, 4, 'ASIA', 3, 1443, { scholar: 1, inspiring: 1 }),
   pachacuti: F('Pachacuti', 'S', 4, 4, 'AMER', 3, 1450, { homeDouble: 1 }),
   suleiman: F('Suleiman the Magnificent', 'S', 4, 4, 'MIDEAST', 4, 1530, { law: 1 }),
-  akbar: F('Akbar', 'S', 4, 4, 'ASIA', 4, 1582, { orator: 1 }),
+  lincoln: F('Abraham Lincoln', 'S', 4, 4, 'AMER', 6, 1863, { orator: 1 }),
   voltaire: F('Voltaire', 'S', 3, 3, 'EUR', 5, 1759, {}, { arr: ['wits', 1] }),
   catherine: F('Catherine the Great', 'S', 4, 5, 'EUR', 5, 1762, {}, { arr: ['push', 1] }),
   wollstonecraft: F('Mary Wollstonecraft', 'S', 2, 2, 'EUR', 5, 1792, {}, { arr: ['stun', 1] }),
@@ -213,7 +213,7 @@ const P3 = {
   austen: F('Jane Austen', 'A', 2, 3, 'EUR', 6, 1813, { scholar: 1 }),
   sequoyah: F('Sequoyah', 'A', 2, 2, 'AMER', 6, 1821, { tale: 1 }),
   hiroshige: F('Hiroshige', 'A', 3, 4, 'ASIA', 6, 1833, {}, { insp: ['hokusai'] }),
-  goethe: F('Goethe', 'A', 4, 4, 'EUR', 6, 1808, { scholar: 1 }, { insp: ['shakespeare'] }),
+  goethe: F('Goethe', 'A', 4, 4, 'EUR', 6, 1808, { scholar: 1 }, { insp: ['moliere'] }),
   dickinson: F('Emily Dickinson', 'A', 2, 2, 'AMER', 6, 1862, { untouchable: 1 }),
   tolstoy: F('Leo Tolstoy', 'A', 4, 4, 'EUR', 6, 1869, { inspiring: 1 }),
   tchaikovsky: F('Pyotr Tchaikovsky', 'A', 3, 4, 'EUR', 6, 1877, {}, { insp: ['mozart'] }),
@@ -286,13 +286,13 @@ const P3 = {
   tomb: { n: 'Tutankhamun\'s Tomb Opened', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1922 },
 };
 // their Legacy Lines (what each grew from: a Figure, a Relic or a Place), as FROM above
-const FROM3 = {'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
+const FROM3 = {'franklin': ['press'], 'lincoln': ['douglass'], 'euclid': ['@library'], 'eratosthenes': ['@library', 'archimedes'], 'gutenberg': ['press', 'paper'], 'champollion': ['rosetta'], 'bly': ['verne'], 'tesla': ['faraday'],
   'qinshihuang': ['@wall'], 'darius': ['cyrus'], 'pachacuti': ['@machu'], 'voltaire': ['duchatelet'], 'catherine': ['voltaire'], 'stanton': ['@seneca'], 'vercingetorix': ['caesar'],
-  'amanirenas': ['augustus'], 'arminius': ['augustus'], 'richard': ['saladin'], 'lapulapu': ['magellan'], 'enheduanna': ['sargon'], 'seishonagon': ['murasaki'],
+  'amanirenas': ['augustus'], 'arminius': ['augustus'], 'lapulapu': ['magellan'], 'enheduanna': ['sargon'], 'seishonagon': ['murasaki'],
   'gentileschi': ['galileo'], 'grace': ['elizabeth'], 'oakley': ['sittingbull'], 'astrolabe': ['hypatia'], 'paper': ['cailun'], 'rosetta': ['napoleon'], 'teutoburg': ['arminius'],
   'testudo': ['caesar'], 'brownsbox': ['douglass'], 'beagle': ['darwin'], 'magnacarta': ['eleanor'], 'marathonmarch': ['aeschylus'], 'ninth': ['beethoven'],
   'emancipation': ['douglass'], 'sextant': ['astrolabe'], 'ropebridge': ['pachacuti'], 'starchart': ['@silk'], 'telescope': ['galileo'],
-  'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['shakespeare', 'press'],
+  'manuscripts': ['@timbuktu'], 'hieroglyphs': ['champollion', 'rosetta'], 'halley': ['newton'], 'naovictoria': ['magellan'], 'syracuse': ['archimedes'], 'folio': ['press'],
   'david': ['michelangelo'], 'rubicon': ['caesar'], 'adwa': ['menelik'], 'kadesh': ['ramesses'], 'typhoon': ['kublai'], 'tomb': ['tutankhamun']};
 const PRINT3 = Object.keys(P3);
 PRINT3.forEach(k => { P3[k].pr = 3; if (FROM3[k]) P3[k].from = FROM3[k]; CARDS[k] = P3[k]; });
@@ -310,8 +310,7 @@ const THREADS = [
   { id: 'eureka', n: 'Eureka!', cards: ['archimedes', 'eureka', 'antikythera', 'eclipse'], places: ['library'] },
   { id: 'searoads', n: 'The Sea Roads', cards: ['compass', 'zhenghe', 'marcopolo', 'caravan'], places: ['silk'] },
   { id: 'law', n: 'The Law', cards: ['hammurabi', 'ashoka', 'decree'] },
-  { id: 'stage', n: 'The Stage', cards: ['press', 'shakespeare', 'nostradamus'], places: ['globe'] },
-  { id: 'learning', n: 'Houses of Learning', cards: ['hypatia', 'mansamusa', 'ashurbanipal', 'pericles'], places: ['library', 'timbuktu', 'nineveh', 'acropolis'] },
+  { id: 'learning', n: 'Houses of Learning', cards: ['hypatia', 'askia', 'ashurbanipal', 'pericles'], places: ['library', 'timbuktu', 'nineveh', 'acropolis'] },
   { id: 'shields', n: 'The Shield Wall', cards: ['leonidas', 'alexander', 'phalanx'] },
   { id: 'trap', n: 'The Trap', cards: ['hannibal', 'ambush'] },
   // (the second printing)
@@ -320,7 +319,6 @@ const THREADS = [
   { id: 'chains', n: 'Broken Chains', cards: ['spartacus', 'toussaint'] },
   { id: 'tablets', n: 'The Clay Tablets', cards: ['ashurbanipal', 'sargon'], places: ['nineveh'] },
   { id: 'sages', n: 'The Sages', cards: ['confucius', 'mencius'] },
-  { id: 'muse', n: 'The Tenth Muse', cards: ['sappho', 'sorjuana'] },
   { id: 'needle', n: 'The Needle', cards: ['compass', 'shenkuo'] },
   { id: 'emperor', n: 'The Philosopher Emperor', cards: ['socrates', 'plato', 'marcus'] },
   { id: 'circles', n: 'Circles in the Sand', cards: ['archimedes', 'germain'] },
@@ -340,14 +338,13 @@ const THREADS = [
   { id: 'narrowroad', n: 'The Narrow Road', cards: ['libai', 'basho'] },
   { id: 'eightydays', n: 'Eighty Days', cards: ['poe', 'verne', 'bly'] },
   { id: 'khans', n: 'The Great Khan', cards: ['kublai', 'typhoon', 'marcopolo', 'khutulun'] },
-  { id: 'lionheart', n: 'The Lionheart', cards: ['eleanor', 'richard', 'saladin', 'magnacarta'] },
   { id: 'jubilee', n: 'Day of Jubilee', cards: ['douglass', 'emancipation', 'brownsbox'] },
   { id: 'votes', n: 'Votes for Women', cards: ['douglass', 'stanton', 'anthony'], places: ['seneca'] },
   { id: 'threescripts', n: 'The Three Scripts', cards: ['napoleon', 'rosetta', 'champollion', 'hieroglyphs'] },
   { id: 'printed', n: 'The Printed Word', cards: ['cailun', 'paper', 'press', 'gutenberg'] },
   { id: 'measure', n: 'The Measure of the World', cards: ['euclid', 'eratosthenes', 'hypatia', 'astrolabe', 'sextant'], places: ['library'] },
   { id: 'spice', n: 'The Spice Islands', cards: ['magellan', 'lapulapu', 'naovictoria'] },
-  { id: 'timbuktubooks', n: 'The Books of Timbuktu', cards: ['mansamusa', 'ibnbattuta', 'manuscripts'], places: ['timbuktu'] },
+  { id: 'timbuktubooks', n: 'The Books of Timbuktu', cards: ['askia', 'ibnbattuta', 'manuscripts'], places: ['timbuktu'] },
   { id: 'marathon', n: 'The Men of Marathon', cards: ['aeschylus', 'marathonmarch'] },
   { id: 'vindication', n: 'A Vindication', cards: ['wollstonecraft', 'shelley'] },
   { id: 'sureshot', n: 'Little Sure Shot', cards: ['sittingbull', 'oakley'] },
@@ -365,14 +362,20 @@ const THREADS = [
   { id: 'spheres', n: 'The Clockwork Heavens', cards: ['copernicus', 'kepler', 'newton', 'halley'] },
   { id: 'moons', n: 'The Moons of Jupiter', cards: ['galileo', 'telescope'] },
   { id: 'banquet', n: 'Homer\'s Banquet', cards: ['homer', 'aeschylus', 'wheatley'] },
-  { id: 'bard', n: 'The Bard', cards: ['shakespeare', 'folio', 'goethe'] },
   { id: 'walls', n: 'The Walls of Syracuse', cards: ['archimedes', 'syracuse'] },
   { id: 'akkad', n: 'The House of Akkad', cards: ['sargon', 'enheduanna', 'tablet'] },
 ];
-// The first five each bring a ready deck (ARCH). The five after them (2026-11-11) join a player as wins against the
-// computer add up, and guide a deck the player builds.
-const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', franklin: 'Benjamin Franklin', suntzu: 'Sun Tzu',
-  genghis: 'Genghis Khan', curie: 'Marie Curie', lincoln: 'Abraham Lincoln', mandela: 'Nelson Mandela', gandhi: 'Gandhi' };
+// The first five each bring a ready deck (ARCH). The seven after them join a player as wins against the computer add
+// up, and guide a deck the player builds. The roster of twelve (Tim, 2026-11-12): Joan of Arc, Saladin, Shakespeare,
+// Empress Wu, Akbar, Mansa Musa and Sor Juana joined; Shakespeare took the Legacy deck from Franklin. A Guide is never
+// also a card, so their cards left the set (RETIRED, below) and five people took their slots in the ready decks.
+const GUIDES = { cleopatra: 'Cleopatra', leonardo: 'Leonardo da Vinci', tubman: 'Harriet Tubman', shakespeare: 'Shakespeare', suntzu: 'Sun Tzu',
+  curie: 'Marie Curie', joan: 'Joan of Arc', saladin: 'Saladin', wuzetian: 'Empress Wu', akbar: 'Akbar', mansamusa: 'Mansa Musa', sorjuana: 'Sor Juana' };
+// Guides who have left (2026-11-12), each with the Guide who has their place (to): whoever had one has the other, and a
+// game saved with one plays on with that Guide's power (engine.js keeps them all). Franklin, Genghis Khan and Lincoln
+// became cards; Mandela and Gandhi are held for a later set (nothing within the past hundred years).
+const OLD_GUIDES = { franklin: { n: 'Benjamin Franklin', to: 'shakespeare' }, genghis: { n: 'Genghis Khan', to: 'joan' }, lincoln: { n: 'Abraham Lincoln', to: 'saladin' },
+  mandela: { n: 'Nelson Mandela', to: 'wuzetian' }, gandhi: { n: 'Gandhi', to: 'akbar' } };
 const PLACES = {
   library: { n: 'Library of Alexandria', reg: 'AFR', era: 2, y: -285 }, silk: { n: 'Silk Road', reg: 'ASIA', era: 3, y: -130 },
   colosseum: { n: 'Colosseum', reg: 'MED', era: 2, y: 80 }, acropolis: { n: 'Acropolis', reg: 'MED', era: 2, y: -447 },
@@ -389,7 +392,7 @@ const GROWN = {
   Explorers: ['ibnbattuta', 'leif', 'sacagawea', 'shenkuo', 'darwin'],
   Legion: ['scipio', 'toussaint', 'shaka', 'lakshmibai', 'tecumseh'],
   Legacy: ['caesar', 'ibnsina', 'chaucer', 'marcus', 'germain'],
-  Court: ['mencius', 'nzinga', 'hiawatha', 'sorjuana', 'theodora'],
+  Court: ['mencius', 'nzinga', 'hiawatha', 'christine', 'theodora'],
   Pathfinders: ['zhangqian', 'sargon', 'sundiata', 'bolivar', 'khutulun'],
 };
 // Cards that have left the set (2026-11-11: the legends, and the Trojan Horse with them), each with the card that has
@@ -408,16 +411,26 @@ const RETIRED = {
   trojan: { n: 'Trojan Horse', t: 'deed', f: 'W', c: 2, y: -1200, fx: 'trojan', from: ['odysseus'], to: 'crossing' },
   sinbad: F('Sinbad the Sailor', 'W', 3, 2, 'MIDEAST', 3, 800, { voyager: 1 }, { arr: ['spark', 1], from: ['scheherazade'], to: 'zhangqian' }),
   gilgamesh: F('Gilgamesh', 'W', 4, 5, 'MIDEAST', 1, -2700, { guard: 1 }, { from: ['@nineveh', 'ashurbanipal'], to: 'sargon' }),
+  // (2026-11-12, the roster of twelve: these seven became Guides, and a Guide is never also a card. Their Legacy Lines
+  // moved with them where the history allows: Timbuktu and the Trade Caravan to Askia, Encore to Molière, Sappho to
+  // Christine de Pizan. The Stage, The Bard, The Lionheart and The Tenth Muse could not move and were removed.)
+  joan: F('Joan of Arc', 'V', 4, 4, 'EUR', 3, 1429, { underdog: 1 }, { to: 'genghis' }),
+  saladin: F('Saladin', 'V', 4, 4, 'MIDEAST', 3, 1187, { steadfast: 1 }, { to: 'baibars' }),
+  shakespeare: F('Shakespeare', 'A', 4, 4, 'EUR', 4, 1600, { stage: 1 }, { from: ['@globe', 'press'], to: 'moliere' }),
+  mansamusa: F('Mansa Musa', 'S', 4, 3, 'AFR', 3, 1324, {}, { arr: ['spark', 2], from: ['@timbuktu'], to: 'askia' }),
+  sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }, { from: ['sappho'], to: 'christine' }),
+  wuzetian: F('Wu Zetian', 'S', 4, 5, 'ASIA', 3, 690, {}, { arr: ['stun', 1], pr: 3, to: 'franklin' }),
+  akbar: F('Akbar', 'S', 4, 4, 'ASIA', 4, 1582, { orator: 1 }, { pr: 3, to: 'lincoln' }),
 };
 // a key as it stands today: the card that has a retired card's slot, or the key itself
 const now = k => RETIRED[k] ? RETIRED[k].to : k;
 const ARCH = {
   Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'coleman', 'magellan', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
-  Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'joan', 'saladin', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
-  Legacy: { guide: 'franklin', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
-  Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'mansamusa', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'shakespeare', 'hokusai', 'decree', 'caravan'] },
+  Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'genghis', 'baibars', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
+  Legacy: { guide: 'shakespeare', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
+  Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'askia', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'moliere', 'hokusai', 'decree', 'caravan'] },
   Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'coleman', 'chingshih', 'imhotep', 'alfred', 'tomoe', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
-return { CARDS, RETIRED, now, GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS, PRINT3 };
+return { CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, CENTER, EDGE, ARCH, GROWN, THREADS, ERAS, PRINT3 };
 });

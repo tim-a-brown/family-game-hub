@@ -24,7 +24,7 @@
     }
     waiting.push(then);
   }
-  function card(k) { var C = window.AnoriaCards; return (C && (C.CARDS[k] || (C.RETIRED || {})[k] || (C.GUIDES[k] ? { n: C.GUIDES[k], f: ((window.AnoriaText || {}).GUIDES || {})[k] ? window.AnoriaText.GUIDES[k].f : 'N' } : null))) || null; }
+  function card(k) { var C = window.AnoriaCards; return (C && (C.CARDS[k] || (C.RETIRED || {})[k] || (C.GUIDES[k] ? { n: C.GUIDES[k], f: ((window.AnoriaText || {}).GUIDES || {})[k] ? window.AnoriaText.GUIDES[k].f : 'N' } : (C.OLD_GUIDES || {})[k] ? { n: C.OLD_GUIDES[k].n, f: (((window.AnoriaText || {}).OLD_GUIDES || {})[k] || {}).f || 'N' } : null))) || null; }
   function placeName(k) { var C = window.AnoriaCards; return C && C.PLACES[k] ? C.PLACES[k].n : cap(k); }
   function cap(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
   function nameOf(k) { if (k.charAt(0) === '@') return placeName(k.slice(1)); var c = card(k); return c ? c.n : cap(k); }

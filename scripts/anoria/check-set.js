@@ -61,7 +61,7 @@ NEW.forEach(k => {
   // writing: no dots stringing facts together, nothing cut off, nothing about a card that has left the set
   ['cap', 'tx', 'fact', 'art'].forEach(f => { const v = t[f]; if (typeof v !== 'string') return;
     if (/·/.test(v)) err(k, f + ' has a middle dot'); if (/…|\.\.\./.test(v)) err(k, f + ' has an ellipsis'); if (/\s\s|^\s|\s$/.test(v)) err(k, f + ' has stray spaces');
-    Object.keys(C.RETIRED).forEach(r => { if (v.indexOf(C.RETIRED[r].n) >= 0) err(k, f + ' names ' + C.RETIRED[r].n + ', which has left the set'); }); });
+    Object.keys(C.RETIRED).forEach(r => { if (v.indexOf(C.RETIRED[r].n) >= 0 && !C.GUIDES[r]) err(k, f + ' names ' + C.RETIRED[r].n + ', which has left the set'); }); });
   if (!/[.!?”]$/.test(t.fact)) err(k, 'fact has no full stop');
   if (t.fact.length > 330) err(k, 'fact is ' + t.fact.length + ' letters long');
   if (!/top left corner/.test(t.art) || !/top right corner/.test(t.art)) err(k, 'art brief does not keep both top corners clear');

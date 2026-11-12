@@ -7,6 +7,7 @@
 //   AnoriaGuide.firstTime()   true until the quick start has been shown once on this account
 (function () {
   'use strict';
+  const NUM = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen'][n] || String(n);
   const KEY = 'anoria_guide';
   const el = Kit.el, UI = () => window.AnoriaUI;
   const WIN = window.AnoriaEngine.STD.target;   // (the Renown that wins: every caption and the story's laurel take it from the rule)
@@ -149,7 +150,7 @@
     anoria: () => [el('img', { class: 'sc-logo', src: 'anoria/ui/logo.webp', alt: 'Anoria', draggable: 'false' })],
     ages: () => [el('div', { class: 'sc-grid' }, AGES.map((a, i) => tile(a[0], a[1], i)))],
     wonders: () => [el('div', { class: 'sc-grid wide' }, WONDERS.map((k, i) => tile(k, null, i, 'wide')))],
-    sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'tomoe', 'joan'], 1)])],
+    sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'tomoe', 'genghis'], 1)])],
     // every Guide with their power, the ones who have joined you marked
     // (five to a scene: the Guides who each bring a ready deck, then the five who join later)
     guides: () => SCENES.guideRow(0), guides2: () => SCENES.guideRow(5),
@@ -354,7 +355,7 @@
     id: 'quick', n: 'Quick start', auto: true,
     table: () => ({ round: 1, places: ['nineveh', 'petra', 'library', 'seneca', 'wall'],
       me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'zhenghe'], draw: ['hatshepsut', 'marcopolo', 'hypatia', 'press', 'coleman', 'fairwinds'] },
-      them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'yisunsin', 'boudica'], draw: ['spartacus', 'saladin', 'hannibal', 'ambush'] } }),
+      them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'genghis', 'yisunsin', 'boudica'], draw: ['spartacus', 'baibars', 'hannibal', 'ambush'] } }),
     async run(L) {
       L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
       await story(L, { now: true });
@@ -397,7 +398,7 @@
     { id: 'story', n: 'The story of Anoria', sub: 'What Anoria is, and what you are playing for', art: 'murasaki', table: () => QUICK.table(),
       async run(L) { await story(L, { now: true, stay: true }); } },
     { id: 'map', n: 'The map and the goal', sub: 'Five Places, ' + WIN + ' Renown, 3 Seals', art: 'library',
-      table: () => ({ round: 1, places: PL, me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'hatshepsut'] }, them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'joan', 'phalanx', 'boudica'] } }),
+      table: () => ({ round: 1, places: PL, me: { guide: 'leonardo', hand: ['copernicus', 'galileo', 'compass', 'eureka', 'hatshepsut'] }, them: { guide: 'suntzu', hand: ['leonidas', 'tomoe', 'genghis', 'phalanx', 'boudica'] } }),
       async run(L) {
         await L.pause(400);
         await L.say('Five Places lie in a line between you and the other player.', { at: '.an-map' });
@@ -410,7 +411,7 @@
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', renown: 3, hand: ['copernicus', 'compass', 'galileo', 'zhenghe'], draw: ['hypatia', 'eureka'], figs: [['hatshepsut', MY_GATE]] },
-        them: { guide: 'suntzu', renown: 5, hand: ['leonidas', 'joan', 'phalanx', 'boudica'], figs: [['tomoe', TH_GATE]] } }),
+        them: { guide: 'suntzu', renown: 5, hand: ['leonidas', 'genghis', 'phalanx', 'boudica'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.say('Your turn starts the same way every time. Your Figures are ready to act again, and you draw 2 cards.', { at: [L.card('hypatia'), L.card('eureka')] });
@@ -425,7 +426,7 @@
       } },
     { id: 'figures', n: 'Figures', sub: 'Arriving, walking, one thing a turn', art: 'hatshepsut',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'compass'], draw: ['eureka', 'hypatia'], figs: [['hatshepsut', MY_OUT]] },
-        them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_OUT]] } }),
+        them: { guide: 'suntzu', hand: ['leonidas', 'genghis', 'phalanx'], figs: [['tomoe', TH_OUT]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_OUT, { lit: 'You play a Figure at your Gate, or at any Place where you already have a Figure.', at: [L.row(MY_GATE), L.row(MY_OUT)] });
@@ -436,7 +437,7 @@
       } },
     { id: 'might', n: 'Might, home and away', sub: 'Shields, home regions and Voyagers', art: 'marcopolo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'coleman', 'galileo'], draw: ['eureka', 'hypatia', 'compass', 'press'] },
-        them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
+        them: { guide: 'suntzu', hand: ['leonidas', 'genghis', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('copernicus', MY_GATE, { lit: 'The number on a card’s shield is its <b>Might</b>. Copernicus has 4.', at: L.card('copernicus') });
@@ -452,7 +453,7 @@
       } },
     { id: 'clash', n: 'A clash', sub: 'Dice, Guards and Bounty', art: 'leonidas',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', renown: 7, hand: ['galileo', 'compass'], draw: ['eureka', 'hypatia'], figs: [['copernicus', CROSS], ['haytham', TH_OUT]] },
-        them: { guide: 'tubman', renown: 8, hand: ['joan', 'boudica'], figs: [['tomoe', CROSS], ['leonidas', TH_OUT], ['spartacus', TH_OUT]] } }),
+        them: { guide: 'tubman', renown: 8, hand: ['genghis', 'boudica'], figs: [['tomoe', CROSS], ['leonidas', TH_OUT], ['spartacus', TH_OUT]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.clash('copernicus', 'tomoe', [4, 2], { lit: 'A Figure can clash with an enemy at the same Place. The numbers over the enemy show your Might against theirs, before the dice.', at: [L.piece('copernicus'), L.piece('tomoe', 1)],
@@ -464,7 +465,7 @@
       } },
     { id: 'relics', n: 'Relics and Deeds', sub: 'Cards that stay, cards that happen once', art: 'compass',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', hand: ['compass', 'eureka', 'phalanx', 'galileo'], draw: ['hypatia', 'zhenghe', 'press', 'coleman'], figs: [['copernicus', MY_GATE]] },
-        them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['tomoe', CROSS]] } }),
+        them: { guide: 'tubman', hand: ['genghis', 'boudica'], draw: ['baibars', 'ambush'], figs: [['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.relic('compass', { lit: 'A <b>Relic</b> goes beside your Guide and stays in play.', at: '.an-strip.me .st-relics' });
@@ -479,7 +480,7 @@
       } },
     { id: 'guide', n: 'Your Guide', sub: 'One power per deck, and how more Guides join you', art: 'leonardo',
       table: () => ({ round: 2, places: PL, me: { guide: 'leonardo', hand: ['press', 'copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass'] },
-        them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
+        them: { guide: 'suntzu', hand: ['leonidas', 'genghis', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400);
         await L.say('Your <b>Guide</b> stands beside you all game. Their power is always on.', { at: '.an-strip.me .st-guide' });
@@ -488,14 +489,14 @@
         await L.say('The other player has a Guide too. Tap either one to read it.', { at: '.an-strip.opp .st-guide' });
         await L.say('A deck has one Guide. You never play two at once.', { at: '.an-strip.me .st-guide' });
         await L.scene('guides');
-        await L.say('There are ten Guides, and each has a different power. These five each bring a ready deck, and you start with the one you chose.', { scene: 1 });
+        await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. These five each bring a ready deck, and you start with the one you chose.', { scene: 1 });
         await L.scene('guides2');
-        await L.say('The other nine join you one at a time as you beat the computer. The first arrives at ' + UI().Coll.GUIDE_AT[0] + ' wins and the last at ' + UI().Coll.GUIDE_AT.slice(-1)[0] + '.', { scene: 1 });
+        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you one at a time as you beat the computer. The first arrives at ' + UI().Coll.GUIDE_AT[0] + ' wins and the last at ' + UI().Coll.GUIDE_AT.slice(-1)[0] + '.', { scene: 1 });
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide.', { scene: 1 });
       } },
     { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
       table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'coleman'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
-        them: { guide: 'suntzu', hand: ['leonidas', 'joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
+        them: { guide: 'suntzu', hand: ['leonidas', 'genghis', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modelled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
@@ -509,7 +510,7 @@
       } },
     { id: 'count', n: 'The count', sub: 'Who holds what, and what it scores', art: 'acropolis',
       table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', renown: 4, hand: ['galileo', 'compass'], figs: [['copernicus', MY_GATE], ['hatshepsut', MY_OUT]] },
-        them: { guide: 'suntzu', renown: 5, hand: ['joan', 'phalanx'], figs: [['leonidas', MY_OUT], ['tomoe', CROSS]] } }),
+        them: { guide: 'suntzu', renown: 5, hand: ['genghis', 'phalanx'], figs: [['leonidas', MY_OUT], ['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400);
         await L.say('When both players have had a turn, the round is counted, Place by Place.', { at: '.an-map' });
@@ -524,7 +525,7 @@
       } },
     { id: 'seals', n: 'Gates and Seals', sub: 'The other way to win', art: 'wall',
       table: () => ({ round: 5, places: PL, me: { guide: 'leonardo', renown: 12, hand: ['galileo', 'compass'], figs: [['zhenghe', TH_GATE], ['copernicus', MY_GATE]] },
-        them: { guide: 'suntzu', renown: 13, hand: ['joan', 'phalanx'], figs: [['spartacus', TH_GATE], ['tomoe', CROSS]] } }),
+        them: { guide: 'suntzu', renown: 13, hand: ['genghis', 'phalanx'], figs: [['spartacus', TH_GATE], ['tomoe', CROSS]] } }),
       async run(L) {
         await L.pause(400);
         const mt = k => UI().E.might(L.S(), L.fig(k, k === 'spartacus' ? 1 : 0), 0);
@@ -541,7 +542,7 @@
       } },
     { id: 'twins', n: 'Two of a card', sub: 'One copy or two, one of each person, and the return', art: 'galileo',
       table: () => ({ round: 4, places: PL, me: { guide: 'cleopatra', hand: ['copernicus', 'galileo', 'eureka'], draw: ['hypatia', 'compass', 'press', 'coleman'], figs: [['copernicus', CROSS]] },
-        them: { guide: 'tubman', hand: ['joan', 'boudica'], draw: ['saladin', 'ambush'], figs: [['charlemagne', CROSS]] } }),
+        them: { guide: 'tubman', hand: ['genghis', 'boudica'], draw: ['baibars', 'ambush'], figs: [['charlemagne', CROSS]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
         await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
@@ -558,7 +559,7 @@
       } },
     { id: 'read', n: 'Reading a card', sub: 'Every part of a card, and what it tells you', art: 'hypatia',
       table: () => ({ round: 3, places: ['globe', 'library', 'nineveh', 'seneca', 'wall'], me: { guide: 'leonardo', hand: ['galileo', 'compass', 'eureka'], figs: [['hypatia', MY_OUT], ['copernicus', MY_GATE]] },
-        them: { guide: 'suntzu', hand: ['joan', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
+        them: { guide: 'suntzu', hand: ['genghis', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         const V = '.view.lesson ';
         await L.pause(400);
