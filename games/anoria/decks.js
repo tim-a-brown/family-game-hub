@@ -179,28 +179,31 @@
     const poolEl = el('div', { class: 'adk-pool' }, [tools, grid, sayEl]);
     sc.body.appendChild(deckEl); sc.body.appendChild(poolEl);
 
-    // ── a card in the pool: the card (tap to add), and under it take one out, the copies you have, and read ──
+    // ── a card in the pool: the card (a tap reads it in the strip of this shelf, with Take one out and Add to the
+    //    deck under it), the plus on its lower left that adds one, and under it take one out and the copies you have ──
+    // (Tim, 2026-11-12: "the eye icon should be gone and tapping a card there should bring it into full carousel view
+    // with the action buttons present")
     const tiles = {};
-    let hold = 0, read1 = false;   // (the hold that reads a card, and whether it just did)
-    const drop = () => { clearTimeout(hold); hold = 0; };
-    grid.addEventListener('scroll', drop, { passive: true });
     pool.forEach(k => {
       const c = CARDS[k], have = owned(k), face = el('span', { class: 'adk-face' }, [U.cardEl(k, { mini: true })]);
-      const cardBtn = el('button', { type: 'button', class: 'adk-tc' }, [face, el('span', { class: 'adk-tt', html: THREAD })]);
-      face.appendChild(el('span', { class: 'adk-tplus', 'aria-hidden': 'true', html: Kit.icon('plus') }));   // (a tap on the card adds one: the plus over the minus says so)
+      const readK = () => { const p = t.parentNode, list = p ? Array.from(p.querySelectorAll('.adk-t[data-k]')).map(x => x.dataset.k) : [k]; U.browse(list, { at: Math.max(0, list.indexOf(k)), bar: bar }); };
+      const cardBtn = el('button', { type: 'button', class: 'adk-tc', 'aria-label': 'Read ' + c.n, onclick: readK }, [face, el('span', { class: 'adk-tt', html: THREAD })]);
+      const plus = el('button', { type: 'button', class: 'adk-tplus', 'aria-label': 'Add one ' + c.n + ' to the deck', html: Kit.icon('plus'), onclick: () => add(k) });
       const pips = el('span', { class: 'adk-tp' });
       const minus = el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) });
-      // (reading one card opens every card on this shelf as one strip to slide through)
-      const readK = () => { const p = t.parentNode, list = p ? Array.from(p.querySelectorAll('.adk-t[data-k]')).map(x => x.dataset.k) : null; U.openView(k, { list: list }); };
-      const read = el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + c.n, html: Kit.icon('eye'), onclick: readK });
-      const t = el('div', { class: 'adk-t' + (have > 1 ? ' two' : ''), 'data-k': k }, [cardBtn, el('div', { class: 'adk-tf' }, [minus, pips, read])]);
-      // tap adds; holding the card (or a right click) reads it full size
-      cardBtn.addEventListener('pointerdown', e => { if (e.button > 0) return; drop(); read1 = false; hold = setTimeout(() => { read1 = true; readK(); }, 480); });
-      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => cardBtn.addEventListener(ev, drop));
-      cardBtn.addEventListener('contextmenu', e => { e.preventDefault(); drop(); if (!read1) { read1 = true; readK(); } });
-      cardBtn.addEventListener('click', () => { if (read1) { read1 = false; return; } add(k); });
-      tiles[k] = { el: t, card: cardBtn, pips: pips, minus: minus };
+      const t = el('div', { class: 'adk-t' + (have > 1 ? ' two' : ''), 'data-k': k }, [cardBtn, plus, el('div', { class: 'adk-tf' }, [minus, pips, el('span')])]);
+      tiles[k] = { el: t, card: cardBtn, pips: pips, minus: minus, plus: plus };
     });
+    // under the card in the strip: take one out, the copies (the shelf's own marks), add one
+    function bar(k, redo) {
+      const have = owned(k), inn = n(k), c = CARDS[k], pp = el('span', { class: 'adk-tp vf-tp', 'aria-label': inn + ' of your ' + have + ' in the deck' });
+      for (let i = 0; i < Math.max(have, inn); i++) pp.appendChild(el('i', { class: (i < inn ? 'on' : '') + (i >= have ? ' no' : '') }));
+      const full = total() >= DECK && inn < have, out = [
+        el('button', { type: 'button', class: 'btn btn-soft btn-sm', disabled: !inn, html: Kit.icon('minus') + '<span>Take one out</span>', onclick: () => { take(k); redo(); } }), pp,
+        el('button', { type: 'button', class: 'btn btn-primary btn-sm', disabled: inn >= have || full, html: Kit.icon('plus') + '<span>Add to the deck</span>', onclick: () => { add(k); redo(); } })];
+      if (full) out.push(el('p', { class: 'sc-note', text: 'The deck has ' + DECK + ' cards, so take one out to make room for ' + c.n + '.' }));
+      return out;
+    }
     function syncTile(k, lit, reach) {
       const t = tiles[k]; if (!t) return;
       const have = owned(k), inn = n(k), c = CARDS[k];
@@ -208,8 +211,8 @@
       t.el.classList.toggle('lit', !!lit[k]); t.el.classList.toggle('near', !lit[k] && !!reach[k]);
       t.pips.innerHTML = '';
       for (let i = 0; i < Math.max(have, inn); i++) t.pips.appendChild(el('i', { class: (i < inn ? 'on' : '') + (i >= have ? ' no' : '') }));
-      t.minus.disabled = !inn; t.minus.tabIndex = inn ? 0 : -1;
-      t.card.setAttribute('aria-label', c.n + ', ' + c.c + ' Spark. You have ' + have + ', ' + inn + ' in the deck' + (inn > have ? ', more than you own' : inn >= have ? '' : '. Add one'));
+      t.minus.disabled = !inn; t.minus.tabIndex = inn ? 0 : -1; t.plus.disabled = inn >= have || total() >= DECK; t.plus.tabIndex = t.plus.disabled ? -1 : 0;
+      t.card.setAttribute('aria-label', 'Read ' + c.n + ', ' + c.c + ' Spark. You have ' + have + ', ' + inn + ' in the deck' + (inn > have ? ', more than you own' : ''));
     }
     function syncTiles() {
       const lit = {}, reach = {}; held().forEach(p => { lit[p.a] = lit[p.b] = 1; }); near().forEach(x => { reach[x.need] = 1; });

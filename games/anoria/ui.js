@@ -686,7 +686,9 @@
     F.settle = settle; F.render = render; F.stop = stop; F.moved = () => moved; F.reset = () => { CU = 0; render(); };
     return F;
   }
-  //   browse(keys, {at, counts: {key: copies}, title, sub})
+  //   browse(keys, {at, counts: {key: copies}, title, sub, bar})
+  //   o.bar(key, redo): what can be done with the card in front, as buttons under the strip (the deck builder's Take
+  //   one out and Add to the deck); redo() draws them again after one is used
   function browse(keys, o) {
     o = o || {}; closeView(); if (!keys || !keys.length) return; Kit.sfx('flip'); Kit.haptic('light');
     const n = keys.length, counts = o.counts || {};
@@ -697,7 +699,10 @@
       o.title ? el('div', { class: 'vf-head' }, [el('b', { text: o.title }), o.sub ? el('small', { text: o.sub }) : null,
         // (o.pick = {label, fn}: the strip is for choosing one of its cards, and this button hands back the card at the front)
         o.pick ? el('button', { type: 'button', class: 'btn btn-primary btn-sm vf-pick', text: o.pick.label, onclick: e => { e.stopPropagation(); const k = keys[Math.max(0, Math.min(n - 1, Math.round(F.pos)))]; closeView(); o.pick.fn(k); } }) : null]) : null, flow, n > 1 ? strip : null, under]);
-    function rest(i) { under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; warm(keys.slice(Math.max(0, i - 3), i + 4)); }
+    const actRow = o.bar ? el('div', { class: 'sc-acts vf-acts', onclick: e => e.stopPropagation() }) : null;
+    if (actRow) { v.classList.add('acts'); v.insertBefore(actRow, under); }
+    const fillBar = i => { if (!actRow) return; actRow.innerHTML = ''; [].concat(o.bar(keys[i], () => fillBar(Math.round(F.pos))) || []).forEach(x => { if (x) actRow.appendChild(x); }); };
+    function rest(i) { fillBar(i); under.innerHTML = ''; const nt = notesFor(keys[i]); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0; warm(keys.slice(Math.max(0, i - 3), i + 4)); }
     const F = makeFlow({ flow: flow, strip: strip, n: n, at: o.at, wheel: v, rest: rest,
       make: j => { const k = keys[j]; return el('div', { class: 'vf-c', onclick: e => { e.stopPropagation(); if (F.moved()) return; if (j !== Math.round(F.pos)) F.settle(j, 0); } }, [cardEl(k, { now: true, tg: true }), counts[k] > 1 ? el('span', { class: 'hc-n vf-n', 'aria-label': counts[k] + ' copies', text: String(counts[k]) }) : null]); } });
     // Upright, the card is as tall as the room left once the longest of the bunch's notes has its place under it,
@@ -709,7 +714,7 @@
       if (side) return;
       let most = 0; const uniq = keys.filter((k, i) => keys.indexOf(k) === i);
       uniq.forEach(k => { under.innerHTML = ''; const nt = notesFor(k); while (nt.firstChild) under.appendChild(nt.firstChild); under.style.height = 'auto'; most = Math.max(most, under.scrollHeight); });
-      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (o.title ? v.querySelector('.vf-head').offsetHeight + 8 : 0) - (n > 1 ? strip.offsetHeight + 8 : 0) - 8;
+      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (o.title ? v.querySelector('.vf-head').offsetHeight + 8 : 0) - (n > 1 ? strip.offsetHeight + 8 : 0) - (actRow ? (fillBar(Math.round(F.pos)), actRow.offsetHeight + 8) : 0) - 8;
       const cu = Math.round(Math.max(H * .4, Math.min(520, W * 1.02, room - Math.min(most, Math.max(150, H * .3)))));   // (notes taller than about a third of the screen scroll: one card with many lines doesn't make the whole strip small)
       flow.style.setProperty('--cu', cu + 'px'); under.style.height = Math.max(0, Math.min(most, room - cu)) + 'px';
     }
