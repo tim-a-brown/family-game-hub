@@ -93,6 +93,7 @@
         el('span', { class: 'adk-ra' }, [
           el('span', { class: 'adk-rn' }, [el('b', { text: String(d.own) }), el('small', { text: 'of ' + DECK + ' are yours' })]),
           btn('btn-soft btn-sm', 'Cards', '', () => { Kit.sfx('tap'); U.deckSheet(d); }),
+          C.DM_LIVE ? btn('btn-soft btn-sm', 'Domains', '', () => { Kit.sfx('tap'); stack(d.id, d.cards, d.n, paint); }) : null,
           btn('btn-primary btn-sm', 'Copy', Kit.icon('plus'), () => { Kit.sfx('tap'); Kit.haptic('light'); copy(d); })])
       ]);
     }
@@ -163,7 +164,8 @@
     const factsBtn = el('button', { type: 'button', class: 'adk-facts', 'aria-label': 'The deck as it stands', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); details(); } }, [countEl, curveEl, whenEl, thrEl, el('i', { class: 'adk-up', html: Kit.icon('down') })]);
     const moreEl = el('div', { class: 'adk-more' });
     const finBtn = btn('btn-soft btn-sm adk-fin', 'Finish the deck for me', WAND, finish);
-    const deckEl = el('div', { class: 'adk-deckside' }, [el('div', { class: 'adk-stats' }, [guideBtn, factsBtn, el('span', { class: 'adk-barrow' }, [barEl, facEl])]), moreEl, el('div', { class: 'adk-acts' }, [finBtn, saveDock])]);
+    const domBtn = C.DM_LIVE ? btn('btn-soft btn-sm adk-fin', 'Domains', '', () => { Kit.sfx('tap'); if (!st.id) { Kit.toast('Save the deck first, and then choose its Domains.'); return; } stack(st.id, flat(), st.n.trim() || 'this deck'); }) : null;
+    const deckEl = el('div', { class: 'adk-deckside' }, [el('div', { class: 'adk-stats' }, [guideBtn, factsBtn, el('span', { class: 'adk-barrow' }, [barEl, facEl])]), moreEl, el('div', { class: 'adk-acts' }, [finBtn, domBtn, saveDock])]);
 
     // ── the cards you own ──
     const grid = el('div', { class: 'adk-grid' }), sayEl = el('div', { class: 'adk-say', role: 'status' });
@@ -517,5 +519,51 @@
     else if (!st.guide && guides().length > 1 && !deck.id) setTimeout(() => { if (sc.el.isConnected && !document.querySelector('.k-scrim.show')) pickGuide(); }, 420);
   }
 
-  window.AnoriaDecks = { open: open };
+  // ═══ A deck's Domains: its stack of 15 ═══════════════════════════════════════════════════════════════════
+  // Each game a player draws three Domains from their deck's stack (one for their Gate, one for their Outpost, one
+  // offered for the Crossroads). The stack is 15 Domains you own, no two the same, and any kinds and homes. Each
+  // Domain shows its kind, its home and, on its house, how many of this deck's Figures are at home there, which is
+  // what makes a Domain good for a deck. A tap moves a Domain into the stack or out of it; a hold reads it. A full
+  // stack is saved as it is made (Coll.saveStack); Choose for me fills it with the Domains that suit the deck best.
+  function stack(id, cards, name, done) {
+    boot();
+    const D = window.AnoriaDomains, P = C.PLACES, N = Coll.STACK, SH = U.DSHORT || {};
+    let cur = Coll.stackFor(id).slice();
+    const home = {}; (cards || []).forEach(k => { const c = CARDS[k]; if (c && c.t === 'fig' && !(c.k && c.k.voyager)) home[c.reg] = (home[c.reg] || 0) + 1; });
+    const sc = U.screen({ title: 'Domains for ' + name, cls: 'an-adk adk-dom', onClose: () => { if (done) done(); } });
+    const auto = btn('btn-soft btn-sm', 'Choose for me', WAND, () => { Kit.sfx('tap'); Kit.haptic('light'); cur = Coll.autoStack(cards, []); keep(); paint(); });
+    function keep() { if (cur.length === N) Coll.saveStack(id, cur); }
+    function tile(pid, inS) {
+      const pl = P[pid], kd = D ? D.kindOf(pid) : null, k = kd && D.KINDS[kd], n = home[pl.reg] || 0;
+      const pic = el('span', { class: 'dsk-p', style: { '--kc': k ? k.c : '#223' } }); const im = U.noPic(pid) ? null : U.artImg(pid, true); if (im) pic.appendChild(im); else if (D && kd) pic.appendChild(D.mark(kd));
+      pic.appendChild(el('span', { class: 'dsk-at' + (n ? ' on' : ''), 'aria-label': n + ' of this deck’s Figures are at home here' }, [el('i', { html: U.SVG.home }), el('b', { text: String(n) })]));
+      const b = el('button', { type: 'button', class: 'dsk-t' + (inS ? ' in' : ''), 'data-d': pid, 'aria-label': pl.n + (inS ? ', in the stack' : '') }, [pic,
+        el('span', { class: 'dsk-n', text: pl.n }),
+        el('span', { class: 'dsk-k' }, [D && kd ? D.mark(kd) : null, el('span', { text: k ? k.n : '' })]),
+        SH[pl.pw] ? el('span', { class: 'dsk-r', text: SH[pl.pw] }) : null,
+        el('span', { class: 'dsk-h' }, [el('i', { html: U.SVG.home }), el('span', { text: U.REG[pl.reg] || '' })])]);
+      let hold = 0, read = false;
+      b.addEventListener('pointerdown', e => { if (e.button > 0) return; read = false; hold = setTimeout(() => { read = true; U.openView(pid); }, 480); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(x => b.addEventListener(x, () => clearTimeout(hold)));
+      b.addEventListener('contextmenu', e => { e.preventDefault(); clearTimeout(hold); read = true; U.openView(pid); });
+      b.addEventListener('click', () => {
+        if (read) { read = false; return; }
+        if (inS) cur = cur.filter(x => x !== pid); else if (cur.length < N) cur.push(pid); else { Kit.toast('The stack is full. Take a Domain out first.'); return; }
+        Kit.sfx(inS ? 'tap' : 'deal'); Kit.haptic('light'); keep(); paint();
+      });
+      return b;
+    }
+    const byHome = (a, b) => (home[P[b].reg] || 0) - (home[P[a].reg] || 0) || P[a].n.localeCompare(P[b].n);
+    function paint() {
+      const top = sc.body.scrollTop; sc.body.innerHTML = '';
+      const rest = Coll.domains().filter(x => cur.indexOf(x) < 0).sort(byHome), full = cur.length === N;
+      sc.body.appendChild(el('p', { class: 'adk-lead', text: 'Each game you draw three Domains from this stack. A stack is ' + N + ' Domains, no two the same. The number on a Domain’s house is how many of this deck’s Figures are at home there.' }));
+      sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { class: 'dsk-h2' }, [el('span', { text: 'In the stack' }), el('span', { class: 'dsk-c' + (full ? ' ok' : ''), html: full ? Kit.icon('check') + '<b>' + N + ' of ' + N + '</b>' : '<b>' + cur.length + ' of ' + N + '</b>' }), auto]),
+        el('div', { class: 'dsk-g' }, cur.slice().sort(byHome).map(x => tile(x, true)))]));
+      sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: rest.length ? 'Your other Domains' : 'All your Domains are in the stack' }), el('div', { class: 'dsk-g' }, rest.map(x => tile(x, false)))]));
+      sc.body.scrollTop = top;
+    }
+    paint();
+  }
+  window.AnoriaDecks = { open: open, stack: stack };
 })();
