@@ -153,9 +153,9 @@
     sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'tomoe', 'genghis'], 1)])],
     // every Guide with their power, the ones who have joined you marked
     // (five to a scene: the Guides who each bring a ready deck, then the five who join later)
-    guides: () => SCENES.guideRow(0), guides2: () => SCENES.guideRow(5),
-    guideRow: from => { const U = UI(), have = (U.Coll.load().guides || []);
-      return [el('div', { class: 'sc-guides' }, Object.keys(U.C.GUIDES).slice(from, from + 5).map((k, i) => { const g = U.info(k), mine = have.indexOf(k) >= 0;
+    guides: () => SCENES.guideRow(0), guides2: () => SCENES.guideRow(5, 4), guides3: () => SCENES.guideRow(9, 3),
+    guideRow: (from, n) => { const U = UI(), have = (U.Coll.load().guides || []);
+      return [el('div', { class: 'sc-guides' }, Object.keys(U.C.GUIDES).slice(from, from + (n || 5)).map((k, i) => { const g = U.info(k), mine = have.indexOf(k) >= 0;
         return el('div', { class: 'sc-g' + (mine ? ' mine' : ''), style: { '--i': i } }, [pic(k), el('div', { class: 'sc-g-t' }, [el('b', { text: g.n }), mine ? el('i', { text: 'With you' }) : null, el('small', { text: g.tx })])]); }))]; },
     // the great sphere at Anoria's heart (the one on the back of every card), coming full circle
     sphere: () => [el('div', { class: 'sc-sphere' }, [el('i', { class: 'sc-orb' }), el('span', { class: 'sc-ring', html: '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="47.5"/><circle class="go" cx="50" cy="50" r="47.5"/></svg>' })])],
@@ -191,10 +191,10 @@
     else if (k === 'sphere') tw = Math.floor(Math.min(W, H, 340));
     else if (k === 'seals' || k === 'shut') tw = Math.floor(Math.max(90, Math.min(300, W * .78, (H - 96) * 1.5)));
     else if (k === 'sides') tw = Math.floor(Math.max(40, land ? Math.min(170, (W - 70) / 4.4, (H - 28) / 1.5) : Math.min(150, (W - 56) / 2, (H - 84) / 2)));
-    else if (k === 'guides' || k === 'guides2') { cols = land ? 5 : 1; tw = Math.floor(land ? Math.max(30, Math.min(72, (W - 48) / 5 * .5, (H - 104) / 1.5)) : Math.max(30, Math.min(64, (H - 36) / 5 / 1.5))); }
+    else if (k === 'guides' || k === 'guides2' || k === 'guides3') { cols = land ? s.querySelectorAll('.sc-g').length || 5 : 1; tw = Math.floor(land ? Math.max(30, Math.min(72, (W - 48) / 5 * .5, (H - 104) / 1.5)) : Math.max(30, Math.min(64, (H - 36) / 5 / 1.5))); }
     else if (k === 'renown') { tw = Math.floor(Math.min(112, (W - 4 * 8) / 5)); lw = Math.floor(Math.max(60, Math.min(230, W * .6, (H - tw * 2 / 3 - 64) / .77))); }
     s.classList.toggle('land', land); s.style.setProperty('--tw', tw + 'px'); s.style.setProperty('--cols', cols); s.style.setProperty('--lw', lw + 'px');
-    if (k === 'guides' || k === 'guides2') {   // (five powers of very different lengths: the lettering eases down until they all fit)
+    if (k === 'guides' || k === 'guides2' || k === 'guides3') {   // (five powers of very different lengths: the lettering eases down until they all fit)
       const box = inn.firstChild; let fs = land ? .86 : tw < 48 ? .88 : 1;
       for (let i = 0; i < 8; i++) { s.style.setProperty('--fs', fs + 'rem'); if (box.offsetHeight <= H + 1) break; fs -= .04; }   // (its own height: the rows are still sliding in)
     }
@@ -492,6 +492,7 @@
         await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. These five each bring a ready deck, and you start with the one you chose.', { scene: 1 });
         await L.scene('guides2');
         await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you one at a time as you beat the computer. The first arrives at ' + UI().Coll.GUIDE_AT[0] + ' wins and the last at ' + UI().Coll.GUIDE_AT.slice(-1)[0] + '.', { scene: 1 });
+        await L.scene('guides3');
         await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide.', { scene: 1 });
       } },
     { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',

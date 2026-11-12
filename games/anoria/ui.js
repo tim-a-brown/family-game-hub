@@ -59,7 +59,8 @@
 
   const SAY = TX.SAY || {}, FY = TX.FY || {};
   function info(key) {
-    if (CARDS[key]) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+    // (a Guide first: the seven Guides of the roster of twelve were cards before, and their old cards are still in RETIRED)
+    if (CARDS[key] && !(TX.GUIDES[key] && !C.CARDS[key])) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}; return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: c.k || {}, quick: c.quick, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TXG[key]) { const g = TXG[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
     if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}; return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, k: {}, tx: t.tx || '', cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     return { key: key, kind: 'fig', n: key, f: 'N', k: {}, tx: '', cap: '', fact: '' };
@@ -729,7 +730,7 @@
     const map = el('div', { class: 'sc-map', role: 'tablist', 'aria-label': 'The table from the other side to your hand' }, levels.map((L, i) => {
       const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : L.side != null ? ' side o' + L.side : ''), role: 'tab', 'aria-label': said(L), onclick: e => { e.stopPropagation(); if (i !== li) go(i, L.at0, i > li ? 1 : -1); } });
       if (L.hand) { t.appendChild(el('span', { class: 'sc-fan', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])); t.appendChild(el('b', { text: String(L.items.length) })); }
-      else if (L.side != null) { const g = el('span', { class: 'sc-g', style: { '--f': (FAC[TXG[L.items[0].key].f] || FAC.N).c } }), im = artImg(L.items[0].key, true, true); if (im) g.appendChild(im); t.appendChild(g);
+      else if (L.side != null) { const g = el('span', { class: 'sc-gd', style: { '--f': (FAC[TXG[L.items[0].key].f] || FAC.N).c } }), im = artImg(L.items[0].key, true, true); if (im) g.appendChild(im); t.appendChild(g);
         if (L.relics) { const r = el('span', { class: 'sc-rel' }); for (let k = 0; k < L.relics; k++) r.appendChild(el('i')); t.appendChild(r); }
         if (L.side !== me) t.appendChild(el('span', { class: 'sc-back' }, [el('b', { text: String(L.cards) })])); }
       else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im); const a = tally(L, opp, 'them'), b = tally(L, me, 'me'); if (a) t.appendChild(a); if (b) t.appendChild(b); }
@@ -1007,6 +1008,14 @@
   //     was silk); Tubman's North Star is Bradford (1869); Leonardo's knots, solids and red chalk are in Muntz (1898);
   //     the lotus and papyrus are Owen Jones (1856); bamboo slips strung into books and the thunder scroll are
   //     Bushell (1904). What rests on memory is listed in CLAUDE.md.
+  //   The seven of the roster of twelve (2026-11-12), what each draws and where it can be read:
+  //   shakespeare: Shakespeare's England (Oxford, 1917), vol. 1, Agriculture and Gardening: the 'curious-knotted garden' (Love's Labour's Lost I.i) of box-edged beds laid out with mathematical precision, with Thomas Hill's 'proper knotte'; honeysuckle and 'pansies, that's for thoughts' in its list of Shakespeare's flowers; Desdemona's handkerchief embroidered with strawberries (Othello III.iii). The acorn-and-leaf border as a printer's woodcut ornament rests on memory.
+  //   joan: Murray, Jeanne d'Arc, Maid of Orleans (1902), the trial record: 'a banner of which the field was sprinkled with lilies ... it was white, of the white cloth called boccassin ... fringed with silk'; the arms granted to her brothers: 'a shield azure, two fleurs-de-lys of gold, and a sword betwixt', the sword argent, point upward, surmounted by a gilded crown. Left out on purpose: the world, the two angels and 'Jhesus Maria' she also described on it (no figures, no lettering). The swallow-tailed shape of the standard and the lily-powdered ground rest on memory.
+  //   saladin: Lane-Poole, Saladin and the Fall of the Kingdom of Jerusalem (1898): Saladin brought to the Aqsa Mosque 'an exquisite carved pulpit which Nur-ed-din had caused to be designed at Aleppo', and built the Citadel of Cairo on the westernmost spur of the Mukattam. The pulpit's star-and-polygon strapwork and the citadel tower's look (round, bossed limestone, arrow slits, crenellations) rest on memory; the tower reads somewhat generic.
+  //   wuzetian: Stein, Innermost Asia (1928), vol. 1: silks of the sixth to eighth centuries framing animals, 'single or in pairs, within medallion borders decorated with discs', pairs of confronting creatures woven by turning the pattern over, and a tree between the pair; earlier Chinese silks with a pair of phoenixes. That the phoenix was Wu Zetian's emblem, and the flower rosette, rest on memory.
+  //   akbar: Smith, The Moghul Architecture of Fathpur-Sikri (Archaeological Survey of India, 1894), the Turkish Sultana's house: carved red sandstone dado panels, one 'a garden walk ... in the centre is the cypress partly hidden by the branches of an almond tree', another with the pomegranate; and the 'red sandstone jali windows' and pierced stone screens. The exact lattice of the jali is the picture's own.
+  //   mansamusa: Dubois, Timbuctoo the Mysterious (1896, trans. 1897): Kankan Musa 'presented the Cathedral Mosque with a minaret of pyramidal form' (the minarets look like 'abbreviated pyramids'); native gold 'in rings', gold-dust, and the salt of Taghaza traded for gold. The wooden toron in the minaret rest on memory (Dubois does not mention them).
+  //   sorjuana: Her own Respuesta a Sor Filotea (1691), printed in Fama y obras posthumas (Madrid, 1700): she watched girls spin a top, had flour brought and sifted, and found that the top traced 'not perfect circles but spiral lines'. The tiles: Barber, The Maiolica of Mexico (1908), Puebla maiolica of 1650 to 1700 painted in blue, the 'white medallion variety with conventionalized floral decorations', used for convent dados. The quill and book are general.
   const MATK = 'anoria_mat', MATSRC = 'anoria/ui/mats/';
   const MATS = {
     cleopatra: { n: 'Papyrus and lotus', c: '#113c3d', th: '#a98c4e', d: .3 },
@@ -1019,6 +1028,13 @@
     lincoln: { n: 'Rails and wire', c: '#172039', th: '#9a8a68', d: .08 },
     mandela: { n: 'The valley at Qunu', c: '#12161f', th: '#9aa5bb', d: .14 },
     gandhi: { n: 'Homespun and salt', c: '#54493b', th: '#b9aa8c', d: .34 },
+    shakespeare: { n: 'The knot garden', c: '#1c2219', th: '#8f8a5c', d: 0.18 },
+    joan: { n: 'The Maid\'s standard', c: '#0e1821', th: '#a8894a', d: 0.3 },
+    saladin: { n: 'Cedar and citadel', c: '#2e2716', th: '#a68a4c', d: 0.2 },
+    wuzetian: { n: 'Phoenix silk', c: '#341112', th: '#a9804e', d: 0.05 },
+    akbar: { n: 'Red sandstone', c: '#401e1b', th: '#b08a6a', d: 0.04 },
+    mansamusa: { n: 'Gold and salt', c: '#372717', th: '#b08d4a', d: 0.12 },
+    sorjuana: { n: 'The top in the flour', c: '#151d28', th: '#8c97ad', d: 0.35 },
     chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
   };
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)

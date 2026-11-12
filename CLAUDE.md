@@ -564,7 +564,7 @@ Underlying principles for everything:
   cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
   The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
   one line in `MATS` (ui.js) and its picture**; until a Guide has one, that Guide plays on the chart of Anoria in their
-  faction's colour. All ten Guides have one. **What a mat draws is checked against a text that can be read** (archive.org
+  faction's colour. All twelve Guides have one (the roster of twelve's seven, 2026-11-12, with their sources in the comment over `MATS`; resting on memory there: the knot garden's acorn border, how Saladin's carved panel and the Citadel's tower looked, the phoenix as Empress Wu's emblem, Timbuktu's toron beams). The mats of Guides who left stay in `MATS` for saved games, and the picker offers only today's Guides' mats and the chart. **What a mat draws is checked against a text that can be read** (archive.org
   full texts are reachable; most museum sites are not): the comment over `MATS` names the source for each. Still resting
   on memory, to be checked when a source can be read: the colours and figures of Thembu beadwork and the aloes
   (Mandela), the shape of the Vijapur spinning wheel (Gandhi), the look of the Curies' instruments, the zigzag fence
