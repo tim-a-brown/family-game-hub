@@ -111,5 +111,10 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   `'{"dv":{"off":["word"]}}'` to switch a power off as a control). `domains.txt` has the tables and what each one says.
 - Every Domain has a power of its own (2026-11-12): `node scripts/anoria/powers-test.js` lays a table by hand for each
   and checks it against its sentence. Run it after any change to a power.
+- The seven cards of 2026-11-12 (the Roman Triumph, Medici Patronage, the Hanseatic League, the Jubilee of 1300, the
+  Tribune's Veto, Pope Leo I, the Theodosian Walls) and the Quick powers Testudo and the Defence of Syracuse were given
+  that day: `node scripts/anoria/deeds-test.js` checks each against its card, limits included (Ward, what the Veto can
+  cancel, the 4 Seals). `node scripts/anoria/twocopies.js <card> [games] [seed] ['<json>']` plays each ready deck with
+  none, one and two copies of a card, to see whether a second copy adds much. `deeds-2026-11-12.txt` has the numbers.
 - `pacing.js` takes three more arguments again: the chance an earned pack holds a Domain, the Domains in a welcome
   pack, and the series the Domain cards are found in. `pacing.txt` has the table.

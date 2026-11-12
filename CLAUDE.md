@@ -760,6 +760,15 @@ Underlying principles for everything:
   was dropped and why, and five cards that still need engine work (`needsEngine`: Damascus Steel, Abacus, The Peace of
   Westphalia, The Lisbon Earthquake, The Edict of Milan). `node scripts/anoria/check-set.js` checks the whole printing
   (words against skills, every Legacy Line, the briefs, the game's files against the JSON). A Guide is never also a card.
+- **Seven cards of 2026-11-12** (`scripts/anoria/deeds-2026-11-12.txt` has the numbers): the Roman Triumph, Medici
+  Patronage, the Hanseatic League and the Jubilee of 1300 double Renown at this round's count (one Domain, a kind of
+  Domain by `dk`, or all you hold; a Domain is doubled once however many say so: `S.dbl`, and they lie in `S.dip` until
+  the count); the Tribune's Veto (Quick) cancels a Deed aimed at your Figures or a doubling; Pope Leo I has **Ward**
+  (the other player's Deeds and the Domain powers that hurt don't reach your Figures at his Domain); the Theodosian Walls
+  mend or add a Seal, to 4 at most (`P.sm`). Phalanx, Testudo and the Defense of Syracuse are three different Quick
+  powers now (Testudo: a Figure losing a clash it started on their side falls back to your Gate; Syracuse: an enemy
+  winning a clash it started at your Gate or Outpost is driven back to its own Gate), each for 1 Spark you kept.
+  `scripts/anoria/deeds-test.js` holds each to its sentence.
 - **A Relic's or a Deed's effect belongs to its data** (`fx`, read with `E.fxOf`; a card without one has the effect of
   its own key). The engine has three Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's)
   and eleven Deed effects, and nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in

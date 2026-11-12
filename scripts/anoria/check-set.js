@@ -13,15 +13,15 @@ const CARDS = C.CARDS, NEW = C.PRINT3, bad = [], err = (k, m) => bad.push(k + ':
 const ERAS = C.ERAS.length - 1, eraOf = y => { for (let e = 1; e <= ERAS; e++) if (y <= C.ERAS[e].to) return e; return ERAS; };
 const KEYWORDS = {}; ENG.replace(/\bk\.([A-Za-z]+)/g, (m, w) => { KEYWORDS[w] = 1; return m; });
 const ARRS = {}; ENG.replace(/op === '([a-z]+)'/g, (m, w) => { ARRS[w] = 1; return m; });
-const FX = {}; ENG.replace(/fx === '([a-z]+)'|(?:hasFx|nFx)\((?:S, )?P, '([a-z]+)'\)/g, (m, a, b) => { FX[a || b] = 1; return m; });
+const FX = {}; ENG.replace(/fx === '([a-z]+)'|(?:hasFx|nFx)\((?:S, )?P, '([a-z]+)'\)|handFx\([A-Z], '([a-z]+)'\)/g, (m, a, b, c) => { FX[a || b || c] = 1; return m; });
 // The skill words a card's text leads with, and the keyword each one stands for
-const LEAD = { Voyager: 'voyager', Scholar: 'scholar', Guard: 'guard', Steadfast: 'steadfast', Inspiring: 'inspiring', Swift: 'swift', Raider: 'raider', Law: 'law' };
+const LEAD = { Voyager: 'voyager', Scholar: 'scholar', Guard: 'guard', Steadfast: 'steadfast', Inspiring: 'inspiring', Swift: 'swift', Raider: 'raider', Law: 'law', Ward: 'ward' };
 const REGS = {}; Object.keys(C.PLACES).forEach(k => { REGS[C.PLACES[k].reg] = 1; });
 const names = {}; Object.keys(CARDS).forEach(k => { const n = CARDS[k].n.toLowerCase(); if (names[n]) err(k, 'has the same name as ' + names[n]); names[n] = k; });
 Object.keys(C.GUIDES).forEach(k => { if (names[C.GUIDES[k].toLowerCase()]) err(k, 'a Guide is also a card'); });
 const JS = {}; SET.cards.forEach(c => { JS[c.key] = c; });
 
-if (NEW.length !== 150) err('set', 'the third printing has ' + NEW.length + ' cards, not 150');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), and 13 more took their places on 2026-11-12)
+if (NEW.length !== 157) err('set', 'the third printing has ' + NEW.length + ' cards, not 157');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), 13 more took their places on 2026-11-12, and 7 more with powers of their own came the same day)
 NEW.forEach(k => {
   const c = CARDS[k], t = T.CARDS[k], fig = c.t === 'fig';
   if (!t) return err(k, 'no words in text.js');
@@ -42,11 +42,12 @@ NEW.forEach(k => {
     if ((c.arr || []).length && !/When you play (him|her), /.test(t.tx)) err(k, 'text does not give the arrival effect');
     if (!/a (fifth|quarter) of the way down|in the upper half/.test(t.art) && k !== 'houdini') err(k, 'art brief does not say where the head is (a fifth or a quarter of the way down, or in the upper half)');
   } else {
-    // a Relic or a Deed has the effect, the cost and the rules text of the card its `fx` names
+    // a Relic or a Deed has the effect, the cost and the rules text of the card its `fx` names (with its own kind of
+    // Domain where the effect names one, dk: the Hanseatic League has Medici Patronage's effect for Commerce)
     const fx = E.fxOf(k), src = CARDS[fx] || C.RETIRED[fx], st = T.CARDS[fx] || T.RETIRED[fx];
     if (!FX[fx]) err(k, 'engine.js has no effect ' + fx);
     else if (!src || src.t !== c.t) err(k, 'fx must name a ' + c.t);
-    else { if (c.c !== src.c) err(k, 'cost differs from ' + fx); if (t.tx !== st.tx) err(k, 'text differs from ' + fx); if (!!c.quick !== !!src.quick) err(k, 'quick differs from ' + fx); }
+    else { if (c.c !== src.c) err(k, 'cost differs from ' + fx); if (t.tx !== (src.dk && c.dk ? st.tx.split(src.dk).join(c.dk) : st.tx)) err(k, 'text differs from ' + fx); if (!!c.quick !== !!src.quick) err(k, 'quick differs from ' + fx); }
     if (c.t === 'relic' && c.f !== 'N') err(k, 'a Relic is faction N');
     if (c.t === 'relic' && !Array.isArray(t.ll)) err(k, 'missing ll');
     if (c.m != null || c.k || c.arr || c.insp) err(k, 'only Figures have m, k, arr or insp');
