@@ -474,8 +474,11 @@ Underlying principles for everything:
 - **A card's story is three or four lines at most** (Tim, 2026-11-12: "This is a history learning game, but it doesn't
   have to tell the whole story on the card. Generally that text shouldn't go beyond 3 to 4 lines", and when the story
   is what pushes the text box past half the card, "tell the story more concisely or omit a few unimportant details").
-  The italic `fact` keeps the one or two things worth knowing and leaves the rest out; it is shortened by cutting,
-  never by adding something unchecked. A new card's story is measured on the card (the scratchpad's
+  A long story is **said more concisely, not cut down** (Tim, the same day, of Richard the Lionheart cut to one
+  sentence: "removing crucial details that make his story unique. When you revise stories don't cut that much out,
+  just say it more concisely"): every detail that makes the story that person's own stays (Richard turning back a
+  day from Jerusalem, Kepler's planets going faster near the Sun, the football in the Christmas Truce), and the
+  words around it get shorter. Only a minor aside may go. Nothing unchecked is added. A new card's story is measured on the card (the scratchpad's
   `hist2/factfit.js` counts the lines and how much of the card the paper takes): no more than four lines, and a
   paper of half the card or less unless the card's own rules or its Legacy Line make it taller.
 - **Art proof**: `games/anoria.html?art=1` shows every card at every size it is drawn (full, small, smallest hand
