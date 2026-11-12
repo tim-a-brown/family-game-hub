@@ -388,6 +388,10 @@ function setupPick(S, o, prof, R) {
   for (const a of setupOptions(S, o)) { let v = layScore(a.gate, 0, info, S.cfg.layv) + layScore(a.out, 1, info, S.cfg.layv) + 0.5 * layScore(a.offer, 2, info, S.cfg.layv); if (prof && prof.noise && R) v += (R() - 0.5) * prof.noise * 0.6; if (v > bv) { bv = v; best = a; } }
   return best;
 }
+// Deeds in play: a Deed whose effect lasts until the round's count lies on the table until then, so both players can
+// see it (Tim, 2026-11-12: "we might also need board space for deeds in play"). S.dip = [{c: the card, o: who played it,
+// p: the Domain it lies on, or -1 for one that acts on several}], emptied at the count. A new lasting effect is a key here.
+const LASTING = { decree: 1 };
 function setupAuto(S, R, profs) { for (let o = 0; o < S.N; o++) if (!S.su.lay[o]) setupLay(S, o, setupPick(S, o, profs && profs[o], R)); return setupRoll(S, R); }
 function might(S, f, mode, oth) {
   const c = CARDS[f.c], k = !S.dm && c.k0 ? c.k0 : c.k, pl = PLACES[S.places[f.p]], w = pw(S, f.p), home = c.reg === pl.reg;   // (k0: a card whose skills changed with Domains keeps its old ones on the old map)
@@ -686,6 +690,7 @@ function apply(S, a, da, dd, raw) {
     if (fx === 'eureka') draw(S, o, 2);
     else if (fx === 'caravan') P.spark += (S.cfg.caravan || 3);
     else if (fx === 'decree') S.pb[a.p][o] += (S.cfg.decree || 4);
+    if (LASTING[fx]) (S.dip || (S.dip = [])).push({ c: ci, o: o, p: a.p != null ? a.p : -1 });   // (a Deed whose effect lasts until the count lies on the table till then: S.dip)
     else if (fx === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o) g.stun = 1; }
     else if (fx === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (fx === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
@@ -896,7 +901,8 @@ function endRound(S) {
     if (p.guide === 'wuzetian' && !last && !(cfg.target && S.P.some(q => q.renown >= cfg.target)) && !(N === 2 && S.P.some(q => q.seals <= 0))) {
       const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; }
       if (hc.every((x, q) => q === o || x < hc[o])) { p.sg = 1; if (S.ev) S.ev.push({ t: 'spark', o: o, n: 1, why: 'next' }); } } }
-  for (const b of S.pb) b.fill(0); for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
+  // (the Deeds that lasted until the count leave the table: S.dip)
+  for (const b of S.pb) b.fill(0); S.dip = []; for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (S.st) for (const f of S.figs) if (f.li && (CARDS[f.c].insp || []).filter(n => S.figs.some(g => g.o === f.o && g !== f && g.c === n)).length > 1) S.st.dbl = (S.st.dbl || 0) + 1;   // (the test games: Figures holding a doubled Legacy at a round's end)
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
