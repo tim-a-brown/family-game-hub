@@ -259,7 +259,7 @@
     const s = '<svg class="ac-map" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs><pattern id="' + id + '" width="5" height="3.2" patternUnits="userSpaceOnUse"><path d="M0 1.6H5" stroke="#5a6f78" stroke-width=".55"/></pattern></defs>' +
       '<g opacity=".6"><rect width="' + W + '" height="' + H + '" fill="url(#' + id + ')" opacity=".22"/><path d="' + d + '" fill="#f8f5ee"/><path d="' + d + '" fill="#efe6d2" opacity=".55"/>' +
       '<g fill="none" stroke="#7b6a52" stroke-width=".4" stroke-dasharray="2 3" opacity=".45">' + grat + '</g><path d="' + d + '" fill="none" stroke="#5b4a33" stroke-width=".8" stroke-linejoin="round" opacity=".55"/></g>' +
-      (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></svg>';
+      '<g opacity=".5">' + (at.r ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + at.r + '" fill="none" stroke="' + color + '" stroke-width="1.2" opacity=".55"/>' : '') + '<circle cx="' + cx + '" cy="' + cy + '" r="3.4" fill="' + color + '"/></g></svg>';   // (the dot and its ring half see-through: Tim, 2026-11-12)
     mapCache[ck] = s; return s;
   }
 
@@ -368,7 +368,7 @@
       const on = document.documentElement.classList.contains('an-artview'), tx = briefOf(c);
       art.appendChild(el('button', { type: 'button', class: 'ac-tg', 'aria-pressed': String(on), 'aria-label': on ? 'Show the card’s words' : 'Show the picture large', html: '<span class="a">' + SVG.art + '</span><span class="t">' + SVG.words + '</span>',
         onpointerdown: e => e.stopPropagation(), onclick: e => { e.stopPropagation(); Kit.sfx('flip', .6); Kit.haptic('light'); artView(!document.documentElement.classList.contains('an-artview')); } }));
-      inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('b', { text: c.n, class: c.n.length > 21 ? 'long' : null }), tx ? el('span', { html: tx, class: tx.replace(/<[^>]+>/g, '').length > 38 ? 'two' : null }) : null]));   // (two: too long for one line, so it takes two, a little smaller: nothing is cut off)
+      inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('div', { class: 'ac-bn' }, [el('b', { text: c.n, class: c.n.length > 21 ? 'long' : null }), c.reg && window.AnoriaDomains ? window.AnoriaDomains.home(c.reg) : null]), tx ? el('span', { html: tx, class: tx.replace(/<[^>]+>/g, '').length > 38 ? 'two' : null }) : null]));   // (two: too long for one line, so it takes two, a little smaller: nothing is cut off)
     }
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // (a small card's home region: the house plate under the Might on its spine, as on the map's tiles. Tim, 2026-11-12)
@@ -1136,11 +1136,11 @@
   }
   async function suRoll() {
     const my = gen, su = S.su;
-    if (!E.setupRoll(S, Math.random)) return;
+    if (!E.setupRoll(S, Math.random, G.demo && G.suDice ? G.suDice : undefined)) return;   // (a lesson rolls the dice it wants)
     const evs = S.ev.splice(0), first = su.first, dibs = su.dibs;
     G.ord = [first, 1 - first]; G.k = 0; S.turn = first;
     G.log = G.log || []; G.log.push({ o: dibs, x: [Kit.poss(pname(dibs)) + ' offer, ', { k: '@' + S.places[2 * S.N] }, ', is the Crossroads, and ' + (pname(first) === 'You' ? 'you take' : pname(first) + ' takes') + ' the first turn.'] });
-    if (ui.turbo || G.demo) { G.ph = 'start'; save(); ui.su = null; V = snap(); render(); return beginTurn(); }
+    if (ui.turbo || (G.demo && !G.suShow)) { G.ph = 'start'; save(); ui.su = null; V = snap(); render(); return beginTurn(); }   // (G.suShow: the Domains lesson shows the dice)
     setBusy(true); ui.su = null; if (G.mode === 'local') { ui.view = 0; ui.viewer = -1; ui.hideHand = false; }
     render(); Kit.sfx('flip'); Kit.haptic('medium'); await wait(900); if (gen !== my) return;
     // the dice: each offer with a die under it, rolled again while they tie
@@ -1168,6 +1168,7 @@
     G.ph = 'start'; save(); V = snap(); render();
     const hub = dom.map.querySelector('.pl[data-p="' + 2 * S.N + '"] .pl-tile'); if (hub) hub.classList.add('su-land');
     Kit.sfx('deal'); await wait(700); if (gen !== my) return;
+    if (G.demo) { setBusy(false); V = snap(); V.turn = -1; render(); const k = G.suDone; G.suDone = null; if (k) k(); return; }   // (a still table: nobody's turn has begun)   // (the lesson goes on from here, not into a turn)
     setBusy(false); beginTurn();
   }
   function restore(d) {
@@ -2624,6 +2625,17 @@
       ui.view = 0; ui.viewer = 0; ui.hideHand = false; ui.banner = S.round; ui.count = -1;
       buildTable(); V = snap(); V.turn = -1; render(); return gen;
     },
+    // the set-up with Domains (the Domains lesson): o = {S at its set-up (newGame with stacks and {wait}), players,
+    // dice: [[yours, theirs], ...]}. You lay yours as at a real set-up, by taps the lesson makes; the other player's are
+    // laid already. done() resolves when the dice have decided the Crossroads.
+    setup(o) {
+      stop(); S = o.S; S.st = null; S.ev = []; speed = 1; ui.clashHold = null;
+      G = { demo: 1, mode: 'cpu', level: 'normal', players: o.players, S: S, ord: [0, 1], k: 0, ph: 'setup', started: Date.now(), n: 0, suShow: 1, suDice: o.dice,
+        stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {} };
+      ui.view = 0; ui.viewer = 0; ui.hideHand = false; ui.su = { o: 0, put: {}, sel: null }; ui.banner = 0; ui.count = -1;
+      buildTable(); V = snap(); render(); setBusy(false); return gen;
+    },
+    suDone: () => new Promise(res => { G.suDone = res; }),
     // the start of o's turn: Figures ready, Spark, two cards
     async turn(o) {
       const my = gen; S.turn = o; ui.sel = null; ui.demoIdle = false; setBusy(true);

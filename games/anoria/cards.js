@@ -350,10 +350,9 @@ const P4 = {
   congress: { n: 'Congress of Vienna', t: 'deed', f: 'S', c: 1, y: 1815, from: ['@wien'] },
 };
 const PRINT4 = Object.keys(P4);
-// (Domains are live on the page once their screens are built. Until then the page plays the old fixed map and the
-// Domain cards are not in its set, so no pack or Library holds them; the scripts, and a page opened with ?domains=1
-// or with anoria_dm '1' on the device, have everything.)
-const DM_LIVE = (() => { if (typeof window === 'undefined') return true; try { return /[?&]domains=1/.test(location.search) || localStorage.getItem('anoria_dm') === '1'; } catch (e) { return false; } })();
+// (Domains are live on the page: every new game is laid from the players' Domain stacks, the Domain cards are in the
+// set and packs hold Domains. A game saved on the old fixed map finishes on it.)
+const DM_LIVE = (() => { if (typeof window === 'undefined') return true; try { return !(/[?&]domains=0/.test(location.search) || localStorage.getItem('anoria_dm') === '0'); } catch (e) { return true; } })();   // (on for everyone since 2026-11-12, Tim; ?domains=0 or anoria_dm '0' plays the old fixed map)
 PRINT4.forEach(k => { P4[k].pr = 4; if (DM_LIVE) CARDS[k] = P4[k]; });
 // Legacy Lines the new cards give to cards the game already had. All of them are lines (`from`: Renown when the
 // card is played with its source on your side), so no older card changes its rules text, its cost or its Might.

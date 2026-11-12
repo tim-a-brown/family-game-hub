@@ -38,6 +38,16 @@
     });
     return S;
   }
+  // the set-up with Domains, for the Domains lesson: o = {me: {guide}, them: {guide}, drew: your four Domains,
+  // themDrew: theirs, themLay: {gate, out, offer} (laid face down already), dice}. Each player's stack is their deck's.
+  function suTable(o) {
+    const U = UI(), E = U.E, C = U.C, cfg = Object.assign({}, E.DEF, { log: 1 }, E.STD);
+    const pad = [C.ARCH.Explorers.cards, C.ARCH.Legion.cards], st = [C.STACKS.Explorers.slice(), C.STACKS.Legion.slice()];
+    const S = E.newGame([pad[0].concat(pad[0]), pad[1].concat(pad[1])], [o.me.guide, o.them.guide], cfg, E.rng(11), st, { wait: true });
+    [o.drew, o.themDrew].forEach((d, i) => { S.P[i].dst = st[i].filter(x => d.indexOf(x) < 0); S.su.drew[i] = d.slice(); });
+    E.setupLay(S, 1, o.themLay);
+    return S;
+  }
   function seats(o) {
     const U = UI(), all = x => (x.hand || []).concat(x.draw || [], (x.figs || []).map(f => f[0]), x.relics || []);
     return [{ name: myName(), cpu: false, color: U.PCOL[0], deck: 'Explorers', guide: o.me.guide, cards: all(o.me) },
@@ -260,6 +270,8 @@
       // a picture that fills the screen behind the next captions (the story); null brings the table back
       async scene(name, now) { ok(); L.hush(); setScene(r, name, now); await L.pause(name ? (now ? 900 : 700) : 600); },
       // a finger comes down where a player would tap
+      // a tap the player would make, made: the finger, then the tap itself on what is there
+      async press(t) { await L.tap(t); const n = find(t); if (n) n.click(); await L.pause(380); },
       async tap(t) {
         const n = find(t); if (!n) return; const b = n.getBoundingClientRect(), f = el('i', { class: 'gd-tap' });
         f.style.left = (b.left + b.width / 2) + 'px'; f.style.top = (b.top + b.height * .56) + 'px'; r.root.appendChild(f); setTimeout(() => f.remove(), 900);
@@ -335,7 +347,7 @@
     o = o || {}; halt(); if (scr) { opening = true; scr.close(); opening = false; }
     const U = UI(), d = U.demo, spec = L.table();
     const r = { lesson: L, auto: !!L.auto, o: o };
-    r.my = d.begin({ S: table(spec), players: seats(spec) });
+    r.my = L.su ? d.setup({ S: suTable(spec), players: seats(spec), dice: spec.dice }) : d.begin({ S: table(spec), players: seats(spec) });
     run = r; overlay(r);
     if (fast()) d.speed(fast());
     try {
@@ -410,6 +422,28 @@
         await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
         await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach ' + WIN + ' wins.', { at: '.an-strip.me .st-ren' });
         await L.say('Each player has 3 <b>Seals</b>. One breaks when the other player holds your Gate at the end of a round, and a player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
+      } },
+    { id: 'domains', n: 'Laying the map', sub: 'Four Domains drawn, three laid, and a roll for the Crossroads', art: 'silk', su: 1,
+      table: () => ({ me: { guide: 'leonardo' }, them: { guide: 'suntzu' }, drew: ['padua', 'kilwa', 'silk', 'greenwich'],
+        themDrew: ['wall', 'colosseum', 'thermopylae', 'aachen'], themLay: { gate: 'wall', out: 'colosseum', offer: 'thermopylae' }, dice: [[5, 2]] }),
+      async run(L) {
+        const card = k => '.an-hand .hc[data-su="' + k + '"]', slot = k => '[data-slot="' + k + '"]', tile = p => '.pl[data-p="' + p + '"] .pl-tile';
+        await L.pause(500);
+        await L.say('Before the first round the map is empty. Each player brings a stack of 15 Domains and lays their own side of the map from it.', { at: '.an-map' });
+        await L.say('You have drawn four Domains from your stack. You lay three of them on the map, and the fourth goes back under your stack.', { at: '.an-hand' });
+        await L.say('Kilwa Kisiwani is a Commerce Domain, and a Commerce Domain does nothing at a Gate. So Kilwa goes to your Outpost, where it pays Spark.', { at: card('kilwa') });
+        await L.press(card('kilwa')); await L.press(slot('out'));
+        await L.say('The University of Padua’s home is the Mediterranean, where Archimedes and Galileo in your deck come from. You lay Padua at your Gate.', { at: card('padua') });
+        await L.press(card('padua')); await L.press(slot('gate'));
+        await L.say('On the map, the mark on the left of a Domain is its kind, and the house on the right is its home region. Figures from that region have +1 Might there.', { at: [tile(MY_GATE) + ' .dm-clasp.L', tile(MY_GATE) + ' .dm-clasp.R'] });
+        await L.say('The Silk Road is joined to every Domain on the map, so it makes a strong offer for the Crossroads in the middle.', { at: card('silk') });
+        await L.press(card('silk')); await L.press(slot('offer'));
+        await L.say('Greenwich is the one left over. It turns face down and goes under your stack, so it can still come up later in the game.', { at: '.an-hand' });
+        await L.say('Sprocket has laid three Domains face down too. Now both of you roll a die, and the higher roll’s offer is laid at the Crossroads.', { at: '.an-strip.me .st-go' });
+        L.hush(); const fin = UI().demo.suDone(); await L.press('.an-strip.me .st-go'); await fin; await L.pause(300);
+        await L.say('Your roll was higher, so the Silk Road lies at the Crossroads with your banner on it. Sprocket takes the first turn.', { at: tile(CROSS) });
+        await L.say('Sprocket’s offer, Thermopylae, goes to their Domain discard pile, and Sprocket’s Gate and Outpost turn face up.', { at: [tile(TH_GATE), tile(TH_OUT)] });
+        await L.say('Your banner on the Crossroads means you win ties there for as long as you have a Figure there.', { at: tile(CROSS) });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', renown: 3, hand: ['copernicus', 'compass', 'galileo', 'zhenghe'], draw: ['hypatia', 'eureka'], figs: [['hatshepsut', MY_GATE]] },

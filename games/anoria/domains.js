@@ -217,7 +217,7 @@
       const say = paper.querySelector('.ac-say'), h = window.AnoriaUI && window.AnoriaUI.homeFoot ? window.AnoriaUI.homeFoot(p.reg) : home(p.reg, { name: true }); h.classList.add('ac-home');
       paper.appendChild(el('div', { class: 'dm-foot' }, [say || el('span'), h]));
       // (turned over to its picture, the card keeps its home on the strip at the foot)
-      const brief = n.querySelector('.ac-brief'); if (brief) { brief.querySelectorAll('.dm-home').forEach(x => x.remove()); brief.appendChild(home(p.reg, { name: true })); }
+      // (a Domain's picture view has its home on the name line, as every card's has: ui.js cardEl)
     }
     if (o.silenced) n.classList.add('sil'); if (o.changed) n.classList.add('chg');
     if (!o.mini && (o.changed || o.counter)) { const t = el('span', { class: 'dm-clasp L' }); if (o.changed) t.appendChild(token('changed')); if (o.counter) t.appendChild(token('counter', o.counter)); n.appendChild(t); }

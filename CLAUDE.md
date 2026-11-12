@@ -712,10 +712,11 @@ Underlying principles for everything:
   questions and `domains.txt` has the answers. A Domain's picture brief is `art` in text.js with how sure it is (`bs`);
   Every Domain and Domain card has its pictures (2026-11-12, the batch's notes in the session scratchpad's `domains-art/`). ui.js has only what keeps today's table
   working, with each seam for the screens marked `SEAM`.
-  **Domains are off on the page until their screens are built** (`DM_LIVE` in cards.js): the page's new games are on
-  the old fixed map, the Domain cards are not in its set, packs hold no Domains and cards read their old-map words
-  (`k0`, `tx0`). The scripts always have everything; a page opened with `?domains=1`, or with `anoria_dm` '1' on the
-  device, plays with Domains. Turning Domains on for everyone is `DM_LIVE` returning true.
+  **Domains are on for everyone** (Tim, 2026-11-12; `DM_LIVE` in cards.js): every new game is laid from the players'
+  Domain stacks, the Domain cards are in the set and packs hold Domains. A game saved on the old fixed map finishes on
+  it, and a page opened with `?domains=0` (or `anoria_dm` '0' on the device) plays the old fixed map. The guide's
+  chapter Laying the map (`domains` in guide.js) is the set-up played as a lesson: `AnoriaUI.demo.setup` and
+  `suTable` deal real stacks, `L.press` taps as a player would, and the dice are the lesson's (`G.suDice`).
 - **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
   Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
   about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
