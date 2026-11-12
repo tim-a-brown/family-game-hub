@@ -374,6 +374,8 @@
       inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('b', { text: c.n }), tx ? el('span', { html: tx }) : null]));
     }
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
+    // (a small card's home region: the house plate under the Might on its spine, as on the map's tiles. Tim, 2026-11-12)
+    if (fig && o.mini && c.c != null && c.reg && window.AnoriaDomains) inn.appendChild(el('div', { class: 'ac-mh' }, [window.AnoriaDomains.home(c.reg)]));
     // the foot of a full card: how the name is said, between a Figure's Might and its home
     // and under that, in finer print, the Thread: what this card grew from (Tim: the link belongs on the card)
     if (!o.mini && !place && (c.say || fig)) {
