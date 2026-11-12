@@ -672,8 +672,11 @@ Underlying principles for everything:
   explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
   (memory, being remembered, the sphere, Gates and Seals).
 - **Domains** (Tim, 2026-11-11, decided on the Places prototype in `scripts/anoria/places/`; being built). The card
-  that lies at a Gate, an Outpost or the Crossroads is a **Domain**: one word, not Place, wonder or location (the
-  game's words still say Place until the build's sweep). A Domain has one **kind**, said as part of its name (a
+  that lies at a Gate, an Outpost or the Crossroads is a **Domain**: one word, not Place, wonder or location. Every
+  word a player reads says Domain (2026-11-12): the data in text.js and the older strings in ui.js and guide.js keep
+  "Place", and `DW()` in ui.js (hist/anoria.js and guide.js call it too) turns it into "Domain" wherever it is shown,
+  in card text, the rules, the table, the turn log, the lessons and the game history; a new string a player reads
+  says Domain, or goes through `DW`. A Domain has one **kind**, said as part of its name (a
   Commerce, Industry, Thought, Land, Culture, Law or Routes Domain: holding the markets, workshops, schools,
   strongholds, stages, courts and roads of an age is how people held the age, and a kind's rule pays what holding
   that kind of place gave them) and one **home region**, the Figures' own regions; kind and home must both be plain
@@ -830,8 +833,8 @@ Underlying principles for everything:
 - **Domains: how they look** (Tim, 2026-11-11: "domains need to be clear in their design/border what type of domain
   they are and geographically what "home" they represent for figures with home powers", and the game must track
   "who played what domain", "markers for nullified/modified effects" and a "turn count tracker", each with "a
-  real-life translation"). The card at each of the map's five positions is going to be called a Domain (the game's
-  words still say Place until the rules work lands; the prototype is `scripts/anoria/places/`). The look is
+  real-life translation"). The card at each of the map's five positions is a Domain (the prototype is
+  `scripts/anoria/places/`). The look is
   `games/anoria/domains.js` + `domains.css` (`AnoriaDomains`), and everything in it is drawn as a piece that could
   lie on a real table:
   - **Seven kinds, read from the border alone.** Each kind's frame is its material, and no two share a pattern, so
@@ -850,10 +853,20 @@ Underlying principles for everything:
     half on and half off, at the height between the Might totals and the pieces' own Might badges; tokens hang under
     the mark; a banner stands over its player's corner, above the top edge. Nothing new may lie on a total, the name
     or the rule: check a new piece against a two-line name with a rule under it.
-  - **Banners, markers, counters** are built and shown on the art proof, and are not on the live table until a rule
-    uses them: a player's banner (a pennant on a brass pin in their colour, the second player's swallow-tailed, on
-    their own side of the tile), a veil of ash over a silenced rule (the rule struck out, still readable), a pen-nib
-    token and a dotted line for a rule changed for a while, bone counters 1 to 5.
+  - **Banners, markers, counters** are built and shown on the art proof: a player's banner (a pennant on a brass pin
+    in their colour, the second player's swallow-tailed, on their own side of the tile), a veil of ash over a silenced
+    rule (the rule struck out, still readable), a pen-nib token and a dotted line for a rule changed for a while,
+    bone counters 1 to 5. **On the live table** (2026-11-12) whose Domain it is shows as the player's avatar on the
+    tile's bottom border (Tim's choice over the pennants), and the pieces a rule uses now lie half on that border either
+    side of the avatar (`domTokens` in ui.js, `.pl-toks` in domains.css), clear of the totals, the flag and the words:
+    at its left, the card that switches the power off (Vesuvius as a small card laid slightly turned; Diogenes's
+    Silence marker as his portrait on a square token edged in his player's colour) over the veil of ash, and the
+    pen-nib token with the dotted line while a Ward (Pope Leo I) changes what Seneca Falls, Himeji, Nan Madol or
+    Nineveh do; at its right, a bone counter in a player's colour for the Spark they owe Florence until their next
+    turn. The table reads them from the playback's own moment (`V.mk`, `V.figs`, `V.P[o].debt`), so a piece lands
+    with the move that lays it. Counts already on the table (a Figure's Might from Imhotep's rounds, Benin City or
+    an Olympic win, a stun, Seals) get no counter. A new piece goes in `domTokens` and is measured at the five sizes
+    against a two-line name, the next row's flag and the round track.
   - **The round track** is on the live table: an enamel rule with the rounds engraved along it, a slide at this
     round in the colour of whoever's turn it is (brass during the count), a gem at a round where something is due
     (Lincoln's Seal at round 5). It lies along the edge of the map that faces the caption (under the map upright,

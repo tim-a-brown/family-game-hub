@@ -631,7 +631,7 @@
         if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If the other side holds this Gate when a round ends, a Seal breaks.' }));
         else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
         const hd = E.holder(S, o.p), worth = (hd >= 0 ? E.rv(S, o.p, hd) : E.pw(S, o.p) === 'double' ? 2 : 1) * E.stake(S.cfg, S.round);
-        // (Domains: whose banner is on it, and what lies across its rule. Until the banners and markers are drawn on the table, the card says so.)
+        // (Domains: whose banner is on it, and what lies across its rule, said in words beside the pieces on the tile)
         if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
           notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
           if (sil) notes.appendChild(el('p', { html: '<b>Power switched off</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' is at this Domain') + ', so its power does nothing for now.' })); }
@@ -1261,8 +1261,8 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: (p.sg || 0) + Math.max(0, p.sb || 0) })),
-      tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()), dip: (S.dip || []).map(d => Object.assign({}, d)) };
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: (p.sg || 0) + Math.max(0, p.sb || 0), debt: p.debt || 0 })),
+      tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()), dip: (S.dip || []).map(d => Object.assign({}, d)), mk: S.mk ? S.mk.slice() : null };
   }
   function settle() {
     const old = V; V = snap(); render();
@@ -1515,10 +1515,39 @@
     n.appendChild(pl.cpu ? el('span', { class: 'avatar', html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, null, 'var(--pc' + o + ')'));
     return n;
   }
+  // What lies across a Domain's power as the table shows it at this moment of the playback (V): Vesuvius, or Diogenes
+  // standing there (E.silenced says the same of the engine's state, which can be a few moves ahead)
+  function vSil(i) {
+    if (!S.dm) return null; const mk = (V.mk || S.mk)[i]; if (mk) return { k: 'card', c: mk };
+    const f = V.figs.filter(g => g.p === i && (CARDS[g.c].k || {}).cynic && !E.prot(S, i, g.o))[0];
+    return f ? { k: 'fig', c: f.c, o: f.o } : null;
+  }
+  // Pope Leo I's Ward changes what these Domain powers do while he stands there: they don't reach his side's Figures
+  const WARDED = { equal: 1, maze: 1, islets: 1, peace: 1 };
+  const wardHere = i => (WARDED[E.pw(S, i)] && V.figs.filter(f => f.p === i && (CARDS[f.c].k || {}).ward)[0]) || null;
+  // The pieces a real table lays on a Domain (the looks are domains.js's and domains.css's), half on the tile's lower
+  // edge beside its owner's avatar, clear of the Might totals, the flag and the words. At the avatar's left: the card
+  // that switches its power off (Vesuvius lies across it as a small card; Diogenes's marker is his portrait on a
+  // square token edged in his player's colour), and the pen-nib token while a Ward (Pope Leo I's) changes what its
+  // power does, with a dotted line under the power (.chg). At its right: a bone counter in a player's colour for the
+  // Spark they borrowed at Florence and pay back when their next turn starts.
+  function domTokens(i, sil) {
+    const out = [], D = window.AnoriaDomains, pk = S.places[i];
+    const wd = wardHere(i); if (D && wd) { const t = D.token('changed'); t.setAttribute('aria-label', 'While ' + CARDS[wd.c].n + ' is here, this Domain\'s power can\'t hurt the Figures on ' + Kit.poss(pname(wd.o)) + ' side'); t.dataset.sd = 'L'; out.push(t); }
+    if (sil) {
+      const fig = sil.k === 'fig', t = el('span', { class: 'dm-tok ' + (fig ? 'who' : 'crd') + (ui.mkNew === i ? ' drop' : ''), role: 'img', style: fig ? { '--pc': 'var(--pc' + sil.o + ')' } : null,
+        'aria-label': fig ? CARDS[sil.c].n + ' is at this Domain, so its power is switched off while ' + CARDS[sil.c].n + ' stays' : CARDS[sil.c].n + ' lies on this Domain, so its power is switched off' });
+      const im = artImg(sil.c, true) || mono(sil.c); if (im) t.appendChild(im); t.dataset.sd = 'L'; out.push(t);
+    }
+    if (D && C.PLACES[pk] && C.PLACES[pk].pw === 'loan') V.P.forEach((p, o) => { if (p.debt > 0) { const t = D.token('counter', p.debt); t.classList.add('owe'); t.style.setProperty('--pc', 'var(--pc' + o + ')');
+      t.setAttribute('aria-label', pname(o) + ' borrowed ' + p.debt + ' Spark here and pays it back at the start of their next turn'); t.dataset.sd = 'R'; out.push(t); } });
+    return out;
+  }
   function rowEl(i, T) {
     const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
     const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
-    if (S.dm) { const sil = E.silenced(S, i); row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.k === 'card' ? sil.c : CARDS[E.byU(S, sil.u).c] ? E.byU(S, sil.u).c : ''; }
+    const sil = vSil(i);
+    if (S.dm) { row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.c; }
     // (what this place is, printed faintly on the table in the row's gutter: a Gate's arch, an Outpost's tower or the
     // Crossroads' signpost, in the color of the player whose place it is. At the left, and on an iPad at the right too.)
     { const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut', st0 = own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null;
@@ -1555,12 +1584,13 @@
         // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
         // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
         const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) };
-        if (S.dm) { if (E.silenced(S, i)) dmo.silenced = true; }   // (whose Domain it is: the player's avatar on its bottom border, below, not a pennant)
+        if (S.dm && sil) dmo.silenced = true;   // (whose Domain it is: the player's avatar on its bottom border, below, not a pennant)
         if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
+        if (S.dm) { const tk = domTokens(i, sil); ['L', 'R'].forEach(sd => { const k = tk.filter(t => t.dataset.sd === sd); if (k.length) tile.appendChild(el('span', { class: 'pl-toks ' + sd }, k)); }); if (wardHere(i)) tile.classList.add('chg'); }   // (the pieces lying on it, beside the flag)
         // (whose Domain this is: that player's avatar in a ring of their color, in the middle of the tile's bottom border.
         // Tim, 2026-11-12, in place of the pennants)
         if (S.dm && S.ban[i] >= 0) tile.appendChild(banAv(S.ban[i]));
-        if (S.dm && pi.pw && !dmo.silenced && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
+        if (S.dm && pi.pw && !dmo.silenced && !E.silenced(S, i) && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
         if (S.dm && !im) art.style.setProperty('--kc', (window.AnoriaDomains && window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
         row.appendChild(tile);
       }
@@ -2066,7 +2096,7 @@
   // Each kind of event in the engine's log: move what's on screen along by one step
   const EV = {
     async turn(ev) {
-      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].sg = 0; V.P[ev.o].uA = V.P[ev.o].uT = V.P[ev.o].uC = V.P[ev.o].uD = V.P[ev.o].uR = 0;
+      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].sg = 0; V.P[ev.o].debt = 0; V.P[ev.o].uA = V.P[ev.o].uT = V.P[ev.o].uC = V.P[ev.o].uD = V.P[ev.o].uR = 0;
       V.figs.forEach(f => { if (f.o === ev.o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; } });
       render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('sparkle'); await wait(420);
     },
@@ -2099,7 +2129,7 @@
     // ── Domain powers ── Spark paid at Petra, lent at Florence, a card bought at Timbuktu (the draw follows), Might hired
     // at Carthage, a card back from the discard pile at the House of Wisdom, an Olympic victor
     async toll(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - ev.n); render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('chip'); await wait(260); },
-    async loan(ev) { V.P[ev.o].spark += ev.n; render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')), ev.o, 'spark'); },
+    async loan(ev) { V.P[ev.o].spark += ev.n; V.P[ev.o].debt = (V.P[ev.o].debt || 0) + ev.n; render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')), ev.o, 'spark'); },
     async buy(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - 1); render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('chip'); await wait(200); },
     async hire(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - 1); V.pb[ev.p][ev.o] += ev.n; V.tot[ev.p][ev.o] += ev.n; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); },
     async recall(ev) { V.P[ev.o].hand.push(ev.c); render(); bump('.an-strip.p' + ev.o + ' .st-hand b'); Kit.sfx('deal'); await wait(260); },
@@ -2170,12 +2200,12 @@
     // engine's state, so drawing the table again shows them where they now lie.
     async domain(ev) {
       if (ev.why === 'setup') return;
-      V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('flip'); Kit.haptic('medium');
+      V.mk = S.mk.slice(); V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('flip'); Kit.haptic('medium');
       const tl = dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile'); if (tl) tl.classList.add('flip');   // (the new Domain turns over onto the table)
       Kit.toast((ev.old != null ? cap1(theName('@' + ev.old)) + ' is discarded, and ' + theName('@' + ev.id) + ' is laid' : cap1(theName('@' + ev.id)) + ' is laid') + ' at ' + posName(ev.p) + '.', 2600); await wait(900);
     },
     async domains(ev) {
-      V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('whoosh'); Kit.haptic('medium');
+      V.mk = S.mk.slice(); V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('whoosh'); Kit.haptic('medium');
       const moved = ev.perm.map((from, i) => (from !== i ? i : -1)).filter(i => i >= 0);
       moved.forEach(i => { const tl = dom.map.querySelector('.pl[data-p="' + i + '"] .pl-tile'); if (tl) tl.classList.add('su-land'); });
       Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.', 2600); await wait(900);
@@ -2197,7 +2227,7 @@
       tray.remove(); tags.forEach(x => { x[0].classList.remove('pk'); x[1].remove(); });
     },
     async nothing(ev) { Kit.toast(ev.why === 'kudurru' ? 'A Boundary Stone protects that Domain, so nothing changes.' : 'There is no Domain left to lay, so nothing changes.', 2200); await wait(700); },
-    async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', so its power does nothing while it lies there.', 2600); await wait(900); },
+    async marker(ev) { if (V.mk) V.mk[ev.p] = ev.c; ui.mkNew = ev.p; render(); ui.mkNew = -1; Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', so its power does nothing while it lies there.', 2600); await wait(900); },
     // The Tribune's Veto: the Deed's card was held up (deed, above); the Veto's player's hand and kept Spark catch up
     async veto(ev) { dropHand(ev.o, V.P[ev.o].hand.indexOf(ev.c)); V.P[ev.o].reserve = S.P[ev.o].reserve; render(); await wait(120); },
     async quick(ev, ctx) {
@@ -2357,7 +2387,7 @@
     const sc = screen({ title: 'Turn log', cls: 'an-log' }), L = G.log || [], groups = []; let cur = null;
     L.forEach(e => { if (e.h === 't' || e.h === 'c' || e.h === 'e' || !cur) { cur = { head: e.h ? e : null, lines: [] }; groups.push(cur); if (e.h === 'e' || !e.h) cur.lines.push(e); } else cur.lines.push(e); });
     const name = k => k[0] === '@' ? theName(k) : CARDS[k] ? (CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n) : k;
-    const line = e => el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, (e.x || []).map(x => typeof x === 'string' ? document.createTextNode(x)
+    const line = e => el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, (e.x || []).map(x => typeof x === 'string' ? document.createTextNode(DW(x))
       : el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => openView(x.k.replace(/^@/, '')) })));
     if (!groups.length) sc.body.appendChild(el('p', { class: 'lg-none', text: 'Nothing has happened yet. Every card played, every clash and every count is written here as the game goes.' }));
     // (the newest turn first; inside a turn, things in the order they happened)
