@@ -713,6 +713,7 @@
     return out;
   }
   function scan(at) {
+    if (at && at.su) return openView(at.su);   // (a Domain at the set-up: read it on its own)
     at = at || {}; if (!G || !S || !V) return; closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const me = ui.view, opp = 1 - me, role = p => { const w = E.ownerOfSpoke(S, p); return w < 0 ? 'The Crossroads' : (w === me ? 'Your ' : Kit.poss(pname(w)) + ' ') + (E.isGate(S, p) ? 'Gate' : 'Outpost'); };
     // (a Place's cards lie as they do on the table: the other player's Figures to the left of the Place's own card,
@@ -818,7 +819,7 @@
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => box.addEventListener(n, clear));
     box.addEventListener('contextmenu', e => { const at = !G || G.demo ? null : find(e.target); if (!at) return; e.preventDefault(); clear(); scan(at); });
   }
-  const scanAt = n => { const fp = n.closest('.fp'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
+  const scanAt = n => { if (G && G.ph === 'setup') { const d = n.closest('[data-su]'); return d ? { su: d.dataset.su } : null; } const fp = n.closest('.fp'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
 
   const listOf = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
   // ═══ Setup ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -965,7 +966,7 @@
     // engine's Domains are on for the test games and for a page opened with ?domains=1, or anoria_dm '1' on the device.)
     const dmOn = !!C.DM_LIVE;
     cfg.players.forEach(p => { p.stack = dmOn ? stackOf(p) : null; });
-    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { profs: cfg.players.map(p => (p.cpu ? E.PROF[LEVEL[cfg.level] || 'holder'] : null)) });
+    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { wait: dmOn, profs: cfg.players.map(p => (p.cpu ? E.PROF[LEVEL[cfg.level] || 'holder'] : null)) });
     S.st = null; S.ev = [];
     const first = E.firstOf(S);
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
@@ -975,15 +976,147 @@
       stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
     S.turn = first;
     ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
+    if (S.su && S.su.step !== 'done') { G.ph = 'setup'; cfg.players.forEach((p, o) => { if (p.cpu) E.setupLay(S, o, E.setupPick(S, o, E.PROF[LEVEL[cfg.level] || 'holder'], Math.random)); }); }
     Kit.gameStart(); save(); buildTable(); V = snap(); render();
-    beginTurn();
+    if (G.ph === 'setup') suBegin(); else beginTurn();
+  }
+  // ═══ Domains: the set-up (S.su) ═══
+  // Each player draws three Domains, lays one face down at their Gate and one at their Outpost, and keeps the third as
+  // their offer for the Crossroads. Then the four turn up, each player rolls a die, the higher roll's offer is laid at
+  // the Crossroads, and the other player takes the first turn. All of it happens on the table: the map's five rows
+  // hold the slots, the hand holds the Domains drawn, and the two offers wait on either side of the Crossroads. A tap
+  // picks a Domain up and a tap on a slot lays it (the last one lays itself); a tap on a laid one picks it up again,
+  // and a second tap on one in the hand, or a hold, reads it. The engine's E.setupLay and E.setupRoll do the rest.
+  const SU_SLOT = { gate: 0, out: 1 };
+  function suBegin() {
+    if (!G || G.ph !== 'setup') return;
+    const my = gen, todo = G.players.map((p, o) => (!p.cpu && !S.su.lay[o] ? o : -1)).filter(o => o >= 0);
+    if (ui.turbo || G.demo) { todo.forEach(o => E.setupLay(S, o, E.setupPick(S, o, null, Math.random))); return suRoll(); }
+    if (!todo.length) return suRoll();
+    const o = todo[0];
+    ui.su = { o: o, put: {}, sel: null }; ui.view = o; setBusy(false);
+    if (G.mode === 'local' && ui.viewer !== o) {
+      ui.hideHand = true; ui.viewer = -1; render();
+      Kit.handoff({ name: G.players[o].name, color: G.players[o].color, what: 'hand' }).then(() => { if (gen !== my) return; ui.hideHand = false; ui.viewer = o; render(); });
+      return;
+    }
+    ui.hideHand = false; if (G.mode !== 'cpu') ui.viewer = o; render();
+  }
+  // a Domain as it lies on the map, with no Figures yet: its picture, its name and rule, its kind's frame and home
+  function suTile(pk, cls, at) {
+    const pi = C.PLACES[pk], AD = window.AnoriaDomains;
+    const tile = el('button', { type: 'button', class: 'pl-tile su-t' + (cls ? ' ' + cls : ''), 'data-su': pk, 'aria-label': pi.n });
+    const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im); else art.style.setProperty('--kc', (AD && AD.KINDS[AD.kindOf(pk)] || {}).c || '#223');
+    tile.appendChild(art);
+    tile.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }), DSHORT[pi.pw] ? el('span', { class: 'pl-rule', text: DSHORT[pi.pw] }) : null]));
+    if (AD) AD.tile(tile, { key: pk, reg: pi.reg });
+    if (at === 'gate' && (pi.pw === 'spark' || pi.pw === 'cheap')) tile.classList.add('idle');   // (Commerce pays nothing at a Gate: E.pw)
+    return tile;
+  }
+  const suBack = cls => el('span', { class: 'su-back' + (cls ? ' ' + cls : ''), 'aria-label': 'A Domain laid face down' });
+  function suDraw() {
+    const v = ui.view, t = 1 - v, su = S.su, me = ui.su && ui.su.o === v && !ui.hideHand ? ui.su : null, put = me ? me.put : {}, sel = me ? me.sel : null;
+    const shown = su.step === 'done';   // (turned up: the dice are rolling)
+    rowsOrder().forEach(i => {
+      const row = el('div', { class: 'pl su', 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
+      const L = el('div', { class: 'pl-side L' }), R = el('div', { class: 'pl-side R' });
+      let mid;
+      if (i === 2 * S.N) {   // the Crossroads, with the two offers beside it
+        mid = el('span', { class: 'pl-tile su-slot hub', 'aria-label': 'The Crossroads' }, [el('span', { class: 'su-lbl', text: 'The Crossroads' })]);
+        const off = (o, side) => {
+          const id = shown ? su.lay[o].offer : o === v ? put.offer : null;
+          if (id) return el('span', { class: 'su-off', 'data-su': o === v && !shown ? id : null, style: { '--oc': 'var(--pc' + o + ')' } }, [cardEl(id, { mini: true, now: true })]);
+          if (su.lay[o] && o !== v) return el('span', { class: 'su-off' }, [suBack()]);
+          if (o === v && me) return el('button', { type: 'button', class: 'su-off empty' + (sel ? ' lit' : ''), 'data-slot': 'offer', 'aria-label': 'Your offer for the Crossroads' }, [el('span', { class: 'su-lbl', text: 'Your offer' })]);
+          return el('span', { class: 'su-off empty dim' }, [el('span', { class: 'su-lbl', text: Kit.poss(pname(o)) + ' offer' })]);
+        };
+        L.appendChild(off(t, 'L')); R.appendChild(off(v, 'R'));
+      } else {
+        const o = i >> 1, k = i & 1 ? 'out' : 'gate', said = (o === v ? 'Your ' : Kit.poss(pname(o)) + ' ') + (k === 'gate' ? 'Gate' : 'Outpost');
+        const id = shown ? S.places[i] : o === v ? put[k] : null;
+        if (id) mid = suTile(id, shown ? 'flip' : o === v ? 'placed' : '', k);
+        else if (su.lay[o] && o !== v) { mid = el('span', { class: 'pl-tile su-slot face' }, [suBack('tile')]); }
+        else if (o === v && me) mid = el('button', { type: 'button', class: 'pl-tile su-slot' + (sel ? ' lit' : ''), 'data-slot': k, 'aria-label': said }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + esc(said) })]);
+        else mid = el('span', { class: 'pl-tile su-slot dim' }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + esc(said) })]);
+      }
+      row.appendChild(L); row.appendChild(mid); row.appendChild(R);
+      dom.map.appendChild(row);
+    });
+    // the caption: what is being laid, and the button once all three are
+    const n = dom.cap; n.innerHTML = '';
+    const full = me && put.gate && put.out && put.offer, next = G.players.some((p, o) => o !== v && !p.cpu && !su.lay[o]);
+    n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? 'Your Domains lie face down until both of you have laid yours.' : 'The higher roll’s offer is the Crossroads.') : 'Lay your three Domains.' }));
+    // the hand: the Domains drawn and not yet laid
+    const h = dom.hand; h.innerHTML = '';
+    if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
+      h.appendChild(el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [cardEl(id, { mini: true })]));
+    });
+  }
+  function suTap(e) {
+    const me = ui.su; if (!me || ui.busy || ui.hideHand || G.ph !== 'setup' || S.su.step === 'done') return;
+    const slot = e.target.closest('[data-slot]'), d = e.target.closest('[data-su]');
+    if (slot && me.sel) {
+      const k = slot.dataset.slot; me.put[k] = me.sel; me.sel = null;
+      const left = S.su.drew[me.o].filter(id => id !== me.put.gate && id !== me.put.out && id !== me.put.offer), free = ['gate', 'out', 'offer'].filter(x => !me.put[x]);
+      if (left.length === 1 && free.length === 1) me.put[free[0]] = left[0];   // (the last one lays itself)
+      Kit.sfx('deal'); Kit.haptic('light'); render();
+      const land = dom.root.querySelector('.pl-tile.placed[data-su="' + me.put[k] + '"], .su-off[data-su="' + me.put[k] + '"]'); if (land) land.classList.add('in');
+      return;
+    }
+    if (!d) { if (me.sel) { me.sel = null; render(); } return; }
+    const id = d.dataset.su, inHand = !!d.closest('.an-hand');
+    if (inHand) { if (me.sel === id) { openView(id); return; } me.sel = id; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
+    for (const k in me.put) if (me.put[k] === id) delete me.put[k];   // (a laid one is picked up again)
+    me.sel = id; Kit.sfx('tap'); render();
+  }
+  function suDone() {
+    const me = ui.su; if (!me || ui.busy) return;
+    if (!E.setupLay(S, me.o, { gate: me.put.gate, out: me.put.out, offer: me.put.offer })) return;
+    ui.su = null; save(); Kit.sfx('flip'); Kit.haptic('medium');
+    suBegin();
+  }
+  async function suRoll() {
+    const my = gen, su = S.su;
+    if (!E.setupRoll(S, Math.random)) return;
+    const evs = S.ev.splice(0), first = su.first, dibs = su.dibs;
+    G.ord = [first, 1 - first]; G.k = 0; S.turn = first;
+    G.log = G.log || []; G.log.push({ o: dibs, x: [Kit.poss(pname(dibs)) + ' offer, ', { k: '@' + S.places[2 * S.N] }, ', is the Crossroads, and ' + (pname(first) === 'You' ? 'you take' : pname(first) + ' takes') + ' the first turn.'] });
+    if (ui.turbo || G.demo) { G.ph = 'start'; save(); ui.su = null; V = snap(); render(); return beginTurn(); }
+    setBusy(true); ui.su = null; if (G.mode === 'local') { ui.view = 0; ui.viewer = -1; ui.hideHand = false; }
+    render(); Kit.sfx('flip'); Kit.haptic('medium'); await wait(900); if (gen !== my) return;
+    // the dice: each offer with a die under it, rolled again while they tie
+    const dup = evs.filter(e => e.t === 'dunder');
+    if (dup.length) { Kit.toast('You both turned up ' + C.PLACES[dup[0].id].n + ', so each of you lays the next Domain from your stack instead.', 2600); await wait(1200); }
+    const sideOf = o => {
+      const dn = Kit.die(1); dn.tabIndex = -1; dn.style.visibility = 'hidden';
+      const n = el('div', { class: 'cl-side o' + o + ' ' + (o === ui.view ? 'R' : 'L') }, [el('div', { class: 'cl-card' }, [cardEl(su.lay[o].offer, { mini: true, now: true })]), el('div', { class: 'cl-nm', text: Kit.poss(pname(o)) + ' offer' }), el('div', { class: 'cl-sum' }, [dn]), el('div', { class: 'cl-note' })]);
+      return { n: n, die: dn, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note') };
+    };
+    const X = [sideOf(0), sideOf(1)], Lx = X[1 - ui.view], Rx = X[ui.view], where = el('div', { class: 'cl-where', text: 'The Crossroads' });
+    const ov = el('div', { class: 'clash su-roll' }, [el('div', { class: 'cl-in' }, [Lx.n, el('div', { class: 'cl-vs' }), Rx.n, where])]);
+    document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show'); await wait(500);
+    for (let r = 0; r < su.rolls.length; r++) {
+      const roll = su.rolls[r];
+      X.forEach((x, o) => { x.die.setAttribute('data-v', roll[o]); x.die.setAttribute('aria-label', 'Die showing ' + roll[o]); x.die.style.visibility = ''; x.die.classList.remove('rolling'); void x.die.offsetWidth; x.die.style.setProperty('--dx', (o === ui.view ? 40 : -40) + 'px'); x.die.classList.add('rolling'); x.note.textContent = ''; });
+      Kit.sfx('roll'); Kit.haptic('light'); await wait(900); if (gen !== my) return ov.remove();
+      if (r < su.rolls.length - 1) { X.forEach(x => { x.note.textContent = 'A tie, so you both roll again'; }); Kit.sfx('tap'); await wait(1100); if (gen !== my) return ov.remove(); }
+    }
+    X[dibs].card.classList.add('win'); X[dibs].note.textContent = 'This is the Crossroads';
+    X[1 - dibs].note.textContent = (pname(first) === 'You' ? 'You take' : pname(first) + ' takes') + ' the first turn';
+    if (S.places[2 * S.N] !== su.lay[dibs].offer) where.textContent = C.PLACES[S.places[2 * S.N]].n + ' is laid instead, because ' + C.PLACES[su.lay[dibs].offer].n + ' is already on the table';
+    Kit.sfx('good'); Kit.haptic('success'); await wait(1900); if (gen !== my) return ov.remove();
+    ov.classList.remove('show'); await wait(260); ov.remove();
+    G.ph = 'start'; save(); V = snap(); render();
+    const hub = dom.map.querySelector('.pl[data-p="' + 2 * S.N + '"] .pl-tile'); if (hub) hub.classList.add('su-land');
+    Kit.sfx('deal'); await wait(700); if (gen !== my) return;
+    setBusy(false); beginTurn();
   }
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
     S.cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
     ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
-    buildTable(); V = snap(); render(); beginTurn();
+    buildTable(); V = snap(); render(); if (G.ph === 'setup') suBegin(); else beginTurn();
   }
   // What's on the table right now, as the screen shows it. Playing back the engine's log moves this along
   // one event at a time; settle() brings it level with the engine again.
@@ -1140,7 +1273,7 @@
   }
   function buildTable() {
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
-    preload(S.places.concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
+    preload(S.places.concat(S.su ? [].concat.apply([], S.su.drew) : []).filter(x => x).concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt);
@@ -1190,6 +1323,10 @@
     if (me) {
       let b;
       if (G.over) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go', text: 'Results', onclick: () => showWin(true) });
+      else if (G.ph === 'setup') {   // (the set-up: once all three Domains are laid, the dice, or the device to the next player)
+        const su = ui.su, full = su && su.o === o && su.put.gate && su.put.out && su.put.offer, next = G.players.some((q, x) => x !== o && !q.cpu && !S.su.lay[x]);
+        b = S.su.step === 'done' || !su ? el('span', { class: 'st-go-none' }) : el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go st-su' + (full ? ' ready' : ''), text: next ? 'Hand over' : 'Roll the dice', disabled: !full, onclick: suDone });
+      }
       else if (!human(S.turn) && stepOn() && !ui.turbo && !G.demo) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (ui.ack ? ' ready' : ''), text: 'Next', disabled: !ui.ack, 'aria-label': ui.ack ? 'Next: let ' + pname(S.turn) + ' make the next move' : pname(S.turn) + ' is playing', onclick: () => { Kit.sfx('pop'); Kit.haptic('light'); ackGo(); } });
       else if (!human(S.turn)) b = el('button', { type: 'button', class: 'btn btn-sm st-go ' + (speed > 1 ? 'btn-primary' : 'btn-soft'), 'aria-label': 'Fast forward', 'aria-pressed': String(speed > 1), html: SVG.ff, onclick: toggleFast });
       else {
@@ -1323,8 +1460,8 @@
       stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
       dom.map.innerHTML = '';
       dom.map.appendChild(el('div', { class: 'an-road' }));
-      rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T)));
-      capEl(); handEl();
+      if (G.ph === 'setup') suDraw();
+      else { rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T))); capEl(); handEl(); }
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
@@ -1460,6 +1597,7 @@
   }
   function onMapTap(e) {
     if (!G) return; if (ui.held) { ui.held = false; return; }
+    if (G.ph === 'setup') return suTap(e);
     const fpN = e.target.closest('.fp'), row = e.target.closest('.pl'), tile = e.target.closest('.pl-tile');
     const u = fpN ? +fpN.dataset.u : 0, p = row ? +row.dataset.p : -1;
     if (idle() && !ui.discard) {
@@ -1480,6 +1618,7 @@
   }
   function onHandTap(e) {
     if (ui.held) { ui.held = false; return; }
+    if (G && G.ph === 'setup') return suTap(e);
     const b = e.target.closest('.hc'); if (!b || !G) { clearSel(); return; }
     const h = +b.dataset.h, key = V.P[ui.view].hand[h];
     if (ui.discard && idle()) return discardOne(h);
@@ -2032,6 +2171,7 @@
     if (!G || !S || ++slips > 5) return;
     try { document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); dom.fx.innerHTML = ''; ui.sel = null; ui.count = -1; V = snap(); setBusy(false); legal(); render(); } catch (e2) {}
     if (G.over) setTimeout(() => showWin(true), 300);
+    else if (G.ph === 'setup') setTimeout(() => { if (G && !G.over) suBegin(); }, 400);
     else if (G.ph === 'start' || !human(S.turn)) setTimeout(() => { if (G && !G.over) beginTurn(); }, 400);
   }
   const guard = fn => function () { const my = gen; return fn.apply(null, arguments).catch(e => { if (gen === my) recover(e); }); };
