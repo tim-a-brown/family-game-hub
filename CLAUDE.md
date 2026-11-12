@@ -478,7 +478,10 @@ Underlying principles for everything:
 - **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
   she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
   other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
-  and the reader's glossary key off that form.
+  and the reader's glossary key off that form. **A skill word is never left bare on a card** (Tim, 2026-11-12: "guard and steadfast (all powers)
+  should be explained like swift and raider"): every one is followed by its short explanation in that person's
+  pronoun ("Steadfast: she has +2 Might when she defends.", "Voyager: he can walk to any Place."). A Legacy Figure's
+  "Legacy of Homer." stays as it is: the Legacy Line down the card's side shows what it gives.
 - **"When you play him", not "when he arrives"** (Tim, 2026-11-11: "i keep seeing 'when he arrives' -- does that mean the
   same as 'when this card is played'?"). It does: the power works when the Figure comes onto the map from a hand, by
   its own cost or by a Deed like Night Crossing, and never when it walks. So a card says "When you play her, you gain
