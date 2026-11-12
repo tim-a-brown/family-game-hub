@@ -1103,10 +1103,15 @@
     // the hand: the Domains drawn and not yet laid
     const h = dom.hand; h.innerHTML = '';
     if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
-      const c = el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok') + (full ? ' su-under' : ''), 'data-su': id, 'aria-label': C.PLACES[id].n + (full ? ', going under your stack' : '') }, [cardEl(id, { mini: true })]);
-      // (once three are laid, the one left over is tucked under a card back: it goes under the stack. It can still be
-      // picked up and laid in place of another)
-      h.appendChild(full ? el('span', { class: 'su-stack' }, [c, suBack('stk')]) : c);
+      // (once three are laid, the one left over turns face down and is tucked under a card back that stands for the stack:
+      // it goes under the stack. Tim: "animate the unchosen domain card to flip face down as it is tucked under". It can
+      // still be picked up, face up again, and laid in place of another)
+      const tuck = full && sel !== id;
+      if (!tuck) { h.appendChild(el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [cardEl(id, { mini: true })])); return; }
+      const go = me.tucked !== id; me.tucked = id;
+      const c = el('button', { type: 'button', class: 'hc su-under', 'data-su': id, 'aria-label': C.PLACES[id].n + ', going under your stack' }, [el('span', { class: 'su-tk' }, [el('span', { class: 'su-tf' }, [cardEl(id, { mini: true })]), el('span', { class: 'su-tb' }, [suBack()])])]);
+      h.appendChild(el('span', { class: 'su-stack' + (go ? ' go' : '') }, [c, suBack('stk')]));
+      if (go) { setTimeout(() => Kit.sfx('flip', .5), 380); setTimeout(() => { Kit.sfx('deal', .5); Kit.haptic('light'); }, 820); }
     });
   }
   function suTap(e) {
