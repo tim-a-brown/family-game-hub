@@ -11,7 +11,7 @@ const ENG = fs.readFileSync(path.join(dir, 'engine.js'), 'utf8');
 const SET = JSON.parse(fs.readFileSync(path.join(__dirname, 'set-150.json'), 'utf8'));
 const CARDS = C.CARDS, NEW = C.PRINT3, bad = [], err = (k, m) => bad.push(k + ': ' + m);
 const ERAS = C.ERAS.length - 1, eraOf = y => { for (let e = 1; e <= ERAS; e++) if (y <= C.ERAS[e].to) return e; return ERAS; };
-const KEYWORDS = {}; ENG.replace(/\bk\.([A-Za-z]+)/g, (m, w) => { KEYWORDS[w] = 1; return m; });
+const KEYWORDS = {}; ENG.replace(/(?:\bk|kOf\(S, [a-z]+\))\.([A-Za-z]+)/g, (m, w) => { KEYWORDS[w] = 1; return m; });   // (a skill in play is read through kOf: the Walk to Canossa)
 const ARRS = {}; ENG.replace(/op === '([a-z]+)'/g, (m, w) => { ARRS[w] = 1; return m; });
 const FX = {}; ENG.replace(/fx === '([a-z]+)'|(?:hasFx|nFx)\((?:S, )?P, '([a-z]+)'\)|handFx\([A-Z], '([a-z]+)'\)/g, (m, a, b, c) => { FX[a || b || c] = 1; return m; });
 // The skill words a card's text leads with, and the keyword each one stands for
@@ -21,7 +21,7 @@ const names = {}; Object.keys(CARDS).forEach(k => { const n = CARDS[k].n.toLower
 Object.keys(C.GUIDES).forEach(k => { if (names[C.GUIDES[k].toLowerCase()]) err(k, 'a Guide is also a card'); });
 const JS = {}; SET.cards.forEach(c => { JS[c.key] = c; });
 
-if (NEW.length !== 157) err('set', 'the third printing has ' + NEW.length + ' cards, not 157');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), 13 more took their places on 2026-11-12, and 7 more with powers of their own came the same day)
+if (NEW.length !== 163) err('set', 'the third printing has ' + NEW.length + ' cards, not 163');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), 13 more took their places on 2026-11-12, 7 more with powers of their own came the same day, and then the 5 held for want of an effect (needsEngine) and the Walk to Canossa)
 NEW.forEach(k => {
   const c = CARDS[k], t = T.CARDS[k], fig = c.t === 'fig';
   if (!t) return err(k, 'no words in text.js');
@@ -108,6 +108,6 @@ console.log('Rarity: ' + [1, 2, 3, 4].map(t => Coll.TIERS[t] + ' ' + tier[t]).jo
 console.log('Legacy Lines: ' + count(c => c.insp) + ' Figures with a Legacy (insp), ' + count(c => c.from) + ' cards with a Legacy Line from a card or a Place; ' + C.THREADS.length + ' named lines in the set, ' + C.THREADS.filter(t => t.cards.some(k => CARDS[k].pr === 3)).length + ' of them with a card of the third printing.');
 console.log('Pictures still to be made: ' + NEW.filter(k => T.NOPIC[k]).length + ' of ' + NEW.length + ' in the third printing; ' + (C.PRINT4 || []).filter(k => T.NOPIC[k]).length + ' of ' + (C.PRINT4 || []).length + ' Domain cards; ' + Object.keys(C.PLACES).filter(k => T.NOPIC[k]).length + ' of ' + Object.keys(C.PLACES).length + ' Domains.');
 console.log('Sources (set-150.json): ' + SET.cards.filter(c => c.sure).length + ' of ' + SET.cards.length + ' cards were confirmed by a search or a full text; written from memory and not searched: ' + SET.cards.filter(c => !c.sure).map(c => c.key).join(', ') + '.');
-console.log('Still waiting for engine work, and not in the set: ' + (SET.needsEngine || []).map(x => x.n).join(', ') + '.');
+console.log('Still waiting for engine work, and not in the set: ' + ((SET.needsEngine || []).map(x => x.n).join(', ') || 'none') + '.');
 if (bad.length) { console.log('\nWRONG (' + bad.length + '):\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log('\nNothing wrong.');

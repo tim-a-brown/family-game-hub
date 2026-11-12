@@ -69,7 +69,7 @@
     inspiring: ['Inspiring', n => DW('each of your other Figures at the same Place as ' + n + ' has +1 Might.')],
     swift: ['Swift', n => DW('most Figures can\'t walk on the turn you play them. ' + n + ' can.')],
     raider: ['Raider', n => DW(n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.')],
-    ward: ['Ward', n => 'The other player\'s Deeds can\'t make your Figures at the same Domain as ' + n + ' miss a turn, move them or start a clash with them, and the Defense of Syracuse can\'t drive them back. That Domain\'s power can\'t work against them either: at Seneca Falls they keep their own Might when it is more than 3, at Himeji Castle a tie doesn\'t knock them out, at Nan Madol they can always walk out, and at Nineveh they can start a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
+    ward: ['Ward', n => 'The other player\'s Deeds can\'t make your Figures at the same Domain as ' + n + ' miss a turn, move them, start a clash with them, stop them starting one or switch off their skills, and the Defense of Syracuse can\'t drive them back. That Domain\'s power can\'t work against them either: at Seneca Falls they keep their own Might when it is more than 3, at Himeji Castle a tie doesn\'t knock them out, at Nan Madol they can always walk out, and at Nineveh they can start a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   const PCOL = ['#f2b84b', '#8fd3f4'];
@@ -82,6 +82,12 @@
     deed: '<svg viewBox="0 0 12 12"><path d="M3.4 1.2h6a1.5 1.5 0 0 1 0 3H8.7v5.1a1.5 1.5 0 0 1-1.5 1.5H2.6a1.5 1.5 0 0 1 0-3h.8z" fill="#e8b04a"/><path d="M4.6 4.4h2.6M4.6 6.2h2.6" stroke="#10131c" stroke-width=".8" stroke-linecap="round"/></svg>',
     quick: '<svg viewBox="0 0 12 12"><path d="M7.2.6 2.2 6.8h3.1l-.8 4.6 5.3-6.4H6.6z" fill="currentColor"/></svg>',
     place: '<svg viewBox="0 0 12 12"><path d="M1.2 4.8 6 1.4l4.8 3.4z" fill="#e8b04a"/><path d="M1.6 10.8h8.8M2.8 10.4V5.4M6 10.4V5.4M9.2 10.4V5.4" stroke="#e8b04a" stroke-width="1.4" stroke-linecap="round"/></svg>'
+  };
+  // (the marks of the Deeds that lie on a Domain until the count and keep clashes off it: the Peace of Westphalia,
+  // two swords crossed under a bar; the Edict of Milan, a shield)
+  const DIPI = {
+    westphalia: '<svg viewBox="0 0 12 12"><path d="M2.4 2.4l7.2 7.2M9.6 2.4 2.4 9.6" stroke="#e8b04a" stroke-width="1.5" stroke-linecap="round"/><path d="M1.2 6h9.6" stroke="#f3ead2" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    milan: '<svg viewBox="0 0 12 12"><path d="M6 1 10.6 2.7v3.2c0 2.6-1.9 4.2-4.6 5.1C3.3 10.1 1.4 8.5 1.4 5.9V2.7z" fill="#e8b04a"/><path d="M6 3v6M3.8 5.2h4.4" stroke="#10131c" stroke-width="1.1" stroke-linecap="round"/></svg>'
   };
   const SVG = {
     home: '<svg viewBox="0 0 12 12"><path d="M1.4 6 6 1.8 10.6 6M2.8 5.2v5h6.4v-5" fill="none" stroke="#b8862d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -381,7 +387,7 @@
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
   // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
-  const NO_THE = { paper: 1, braille: 1 };
+  const NO_THE = { paper: 1, braille: 1, dsteel: 1 };
   // Where a card is at home, at the foot of a full card: the same house plate with the region's outline in it that the
   // map's tiles wear (domains.js home), and the region's name beside it, centred on the plate by its capitals (Tim)
   const homeFoot = reg => { const D = window.AnoriaDomains, n = el('div', { class: 'ac-home' + (D ? ' plate' : ''), 'aria-label': 'Home region: ' + (REG[reg] || '') });
@@ -410,7 +416,7 @@
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
     const label = { place: C.DM_LIVE ? 'Domain' : 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Figure', relic: 'Relic', deed: 'Deed' }[kind];   // (a Legacy Figure is a Figure: its label wears both marks, Tim 2026-11-12)   // (a Quick Deed is a Deed with the power Quick: Tim, 2026-11-12)
     const tgPic = o.tg && !o.mini && !noPic(key);   // (a card with no picture yet has nothing to turn over to)
-    const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (tgPic ? ' tg' : '') + (noPic(key) ? ' nopic' : ''), style: { '--f': f.c }, 'data-card': key });
+    const n = el('div', { class: 'ac t-' + kind + (fig && o.hush ? ' hush' : '') + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (tgPic ? ' tg' : '') + (noPic(key) ? ' nopic' : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
     const inn = el('div', { class: 'ac-in' });
     const art = el('div', { class: 'ac-art' }, [noArtLabel(key, !!o.mini, 'ac-noart')]);
@@ -485,14 +491,14 @@
   function closeView() { if (!viewEl) return; const v = viewEl; viewEl = null; v.classList.remove('show'); document.removeEventListener('keydown', viewKey); if (v._off) v._off(); setTimeout(() => v.remove(), 220); }
   function viewKey(e) { if (e.key === 'Escape') closeView(); }
   function mightParts(f) {   // where a Figure's Might on the table comes from (the engine's sum, spelled out)
-    const c = CARDS[f.c], k = (!S.dm && c.k0) || c.k || {}, pl = C.PLACES[S.places[f.p]], w = E.pw(S, f.p), out = [w === 'equal' ? [pl.n, 3] : ['On the card', c.m]];   // (Seneca Falls: every Figure starts from 3)
+    const c = CARDS[f.c], k = E.kOf(S, f), pl = C.PLACES[S.places[f.p]], w = E.pw(S, f.p), out = [w === 'equal' ? [pl.n, 3] : ['On the card', c.m]];   // (Seneca Falls: every Figure starts from 3)
     const home = c.reg === pl.reg, at = home || k.voyager || w === 'harbour';
     if (f.ta) out.push([pl.n + ', this turn', f.ta]);   // (an Industry Domain that arms a Figure on the turn it arrives)
     if (f.tb - (f.ta || 0)) out.push([f.tq && CARDS[f.tq] ? CARDS[f.tq].n : 'Phalanx', f.tb - (f.ta || 0)]);   // (the Quick Deed played with its clash)
     if (at) out.push([home ? 'At home' : k.voyager ? 'Voyager, at home anywhere' : 'At home at ' + pl.n, 1 + (k.homeDouble && home ? 2 : 0) + (w === 'heartland' && home ? 1 : 0)]);
     if (f.vic) out.push(['Olympic victor', f.vic]);
     let own = 0, opp = 0, insp = 0;
-    for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
+    for (const g of S.figs) if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && E.kOf(S, g).inspiring) insp++; } else opp++; }
     if (f.li) { const nI = (c.insp || []).filter(x => S.figs.some(g => g.o === f.o && g !== f && g.c === x)).length; out.push(['Legacy line', (S.cfg.inspEach ? Math.max(1, nI) : 1) + (w === 'pupils' ? 1 : 0)]); }   // (+1 for each person it names in play: engine.js might())
     if (insp) out.push(['Inspired', Math.min(2, insp)]);
     if (k.uprising && own > 1) out.push(['Others here', own - 1]);
@@ -614,6 +620,7 @@
     if (f) {
       const parts = mightParts(f);
       if (parts && parts.length > 1) notes.appendChild(el('div', { class: 'mt' }, parts.map(p => el('span', { html: esc(p[0]) + ' <b>' + (p === parts[0] ? '' : '+') + p[1] + '</b>' }))));
+      lyingNotes(notes, f.p, f);
     }
     // A Relic in your hand that can't be played, and why: you have its power in play already, or you have two Relics.
     if (S && G && !G.over && !G.demo && CARDS[key] && CARDS[key].t === 'relic' && S.P[ui.view] && S.P[ui.view].hand.indexOf(key) >= 0) {
@@ -635,6 +642,7 @@
         if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
           notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
           if (sil) notes.appendChild(el('p', { html: '<b>Power switched off</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' is at this Domain') + ', so its power does nothing for now.' })); }
+        lyingNotes(notes, o.p, null);
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
         notes.appendChild(el('p', { html: S.cfg.ramp ? DW('<b>This round</b>: holding this Place scores ') + worth + ' Renown.' : DW('<b>Every round</b>: whoever holds this Place when the round ends scores ') + worth + ' Renown.' }));
       }
@@ -642,12 +650,21 @@
     if (c.kind === 'guide') notes.appendChild(el('p', { html: '<b>Guide</b>: a Guide is always in play, so this power is on for the whole game.' }));
     return notes;
   }
+  // What lies on a Domain or a Figure until the count, said under it: the Peace of Westphalia, the Edict of Milan, the
+  // Walk to Canossa (2026-11-12)
+  function lyingNotes(notes, p, f) {
+    const yours = o => o === ui.view && human(o), poss = o => (yours(o) ? 'your' : Kit.poss(pname(o)));
+    (S.dip || []).forEach(d => { const fx = E.fxOf(d.c), n = CARDS[d.c].n;
+      if (fx === 'westphalia' && d.p === p) notes.appendChild(el('p', { html: '<b>' + esc(n) + '</b> lies on this Domain until the count: nobody can start a clash here until this round ends.' }));
+      if (fx === 'milan' && d.p === p && (!f || f.o === d.o)) notes.appendChild(el('p', { html: '<b>' + esc(n) + '</b> lies on this Domain until the count: until this round ends, ' + (yours(d.o) ? 'the other player' : human(1 - d.o) ? 'you' : esc(pname(1 - d.o))) + ' can\'t start a clash with ' + esc(poss(d.o)) + ' Figures here.' })); });
+    if (f && f.hush) notes.appendChild(el('p', { class: 'hush-n', html: '<b>' + esc(CARDS[(S.dip || []).find(d => d.u === f.u) ? S.dip.find(d => d.u === f.u).c : 'canossa'].n) + '</b> lies on this Figure: until this round ends, the skills and powers on ' + esc(Kit.poss(CARDS[f.c].n)) + ' card don\'t work.' }));
+  }
   function openView(key, o) {
     o = o || {};
     if (o.list && o.list.length > 1) return browse(o.list, Object.assign({ at: Math.max(0, o.list.indexOf(key)) }, o));
     closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const c = info(key), notes = notesFor(key, o), f = o.u != null && S ? E.byU(S, o.u) : null;
-    const card = cardEl(key, { might: f ? E.might(S, f, 0) : null, tg: !o.lesson });
+    const card = cardEl(key, { might: f ? E.might(S, f, 0) : null, tg: !o.lesson, hush: !!(f && f.hush) });
     const v = el('div', { class: 'view', role: 'dialog', 'aria-modal': 'true', 'aria-label': c.n, onclick: closeView }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close') }), card, notes.childNodes.length ? notes : null]);
     // (a lesson reads the card part by part: it sits under the lesson's rings and caption, with room kept for the
@@ -834,6 +851,8 @@
     if (!out.length && it.h != null) { const c = E.costOf(S, o, it.key), fig = CARDS[it.key].t === 'fig', nm0 = info(it.key).n;
       if (CARDS[it.key].quick && E.fxOf(it.key) !== 'phalanx') out.push({ note: info(it.key).n + ' plays itself when its moment comes, so it stays in your hand until then.' });   // (Testudo, the Defence of Syracuse, the Tribune's Veto)
       else if (E.fxOf(it.key) === 'walls' && P.seals >= 4) out.push({ note: 'You have 4 Seals, and no player can have more.' });
+      else if (E.fxOf(it.key) === 'canossa' && c <= P.spark) out.push({ note: 'No enemy Figure on the table has a skill or a power that ' + nm0 + ' can switch off right now.' });
+      else if (E.fxOf(it.key) === 'milan' && c <= P.spark) out.push({ note: nm0 + ' goes on a Domain where you have a Figure.' });
       else if (fig && S.cfg.unique && S.figs.some(f => f.o === o && f.c === it.key)) out.push({ note: nm0 + ' is already in play on your side, and you can have one of each person in play at a time.' });
       else if (c > P.spark) out.push({ note: nm0 + ' costs ' + c + ' Spark, and you have ' + P.spark + '.' });
       else if (fig) out.push({ note: DW('You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ') + S.cfg.cap + ' of your Figures already.' }); }
@@ -902,7 +921,7 @@
       L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
       strip.hidden = n < 2;
       F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest,
-        make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null })]); } });
+        make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null, hush: x.u != null && !!(E.byU(S, x.u) || {}).hush })]); } });
       F.render(); rest(Math.round(F.pos));
       if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translateY(' + (dir > 0 ? 46 : -46) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
       if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); }
@@ -1260,7 +1279,7 @@
   // one event at a time; settle() brings it level with the engine again.
   function snap() {
     return { round: S.round, turn: S.turn,
-      figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
+      figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, hush: f.hush || 0, li: f.li, m: E.might(S, f, 0) })),
       P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: (p.sg || 0) + Math.max(0, p.sb || 0) })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()), dip: (S.dip || []).map(d => Object.assign({}, d)) };
   }
@@ -1500,9 +1519,16 @@
     if (c.reg && window.AnoriaDomains) n.appendChild(el('span', { class: 'fp-home' + (c.reg === pl.reg ? ' at' : '') }, [window.AnoriaDomains.home(c.reg, { lit: c.reg === pl.reg })]));
     else if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
+    if (f.hush) n.appendChild(hushMark(f.c, ui.fresh[f.u] === 'hushin'));   // (the Walk to Canossa: its skills switched off until the count)
     if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
     if (window.AnoriaEd && !G.demo) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition)
     return n;
+  }
+  // The Walk to Canossa's mark on a piece: the card's first skill mark (or a plain star for a power with no skill
+  // word), struck through in red, on a dark disc at the piece's top left, until the count. Its card lies on the piece.
+  function hushMark(key, fresh) {
+    const k = CARDS[key].k || {}, w = Object.keys(k).find(x => KEYI[x]);
+    return el('span', { class: 'fp-hush' + (fresh ? ' in' : ''), 'aria-label': 'Skills switched off until the count', html: (w ? KEYI[w] : KW + '<path d="M6 1.2 7.3 4.7 10.8 6 7.3 7.3 6 10.8 4.7 7.3 1.2 6 4.7 4.7z" fill="currentColor" stroke="none"/></svg>') + '<i></i>' });
   }
   // a Figure that is picked up (from the hand to play, on the map to walk) is at home at Places of this region
   function homeLit(reg) {
@@ -1546,7 +1572,7 @@
           el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero') + (hold === t ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
           el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero') + (hold === v ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
         // (a Gate is marked on the table at the row's ends: .pl-pos)
-        (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: MARK.deed })));   // (a Deed in play on this Domain)
+        (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: DIPI[E.fxOf(d.c)] || MARK.deed })));   // (a Deed in play on this Domain)
         tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
         tile.appendChild(el('span', { class: 'pl-plate' }, [
           el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }),
@@ -1956,6 +1982,14 @@
     await wait(1100);
     await anim(n, [{ opacity: 1 }, { opacity: 0, transform: 'translate(-50%,-30%) scale(.7) rotate(-6deg)' }], { duration: 300, fill: 'forwards' }); n.remove();
   }
+  // A Deed's mark pressed onto a Domain's tile: it comes down large over the tile and settles where it lies until the
+  // count (the Peace of Westphalia, the Edict of Milan)
+  async function stampTile(p, html, o) {
+    const t = dom.map.querySelector('.pl[data-p="' + p + '"] .pl-tile'); Kit.sfx('pop'); Kit.haptic('medium'); if (!t) { await wait(500); return; }
+    t.classList.remove('dbl'); void t.offsetWidth; t.classList.add('dbl'); const r = rc(t); if (!r) return;
+    const x = el('div', { class: 'tile-stamp', html: html, style: { left: (r.left + r.width / 2) + 'px', top: (r.top + r.height / 2) + 'px', '--pc': 'var(--pc' + o + ')' } }); dom.fx.appendChild(x);
+    await wait(1100); x.remove();
+  }
   // x2 stamped, in the player's colour, on the banner of each Domain a Deed doubles for them
   async function doubled(ps, o) {
     Kit.sfx('sparkle'); Kit.haptic('medium');
@@ -2007,27 +2041,33 @@
       // Phalanx is not a line of small print: its card comes in under the Figure it helps (aid(), below), and the
       // Might it adds is counted then. Until it does, the shields show the numbers without it.
       const ph = (att && ctx.a && ctx.a.ph) || (!att && ctx.quick) ? Math.min(2, Math.max(0, base - f.m)) : 0;
-      const extra = base - f.m - ph, notes = [];
+      const st = att && stK ? 1 : 0, hold = ph + st;   // (Damascus Steel's +1 is held back until its card comes in)
+      const extra = base - f.m - hold, notes = [];
       if (att && ctx.a && ctx.a.t === 'deed') notes.push(ctx.key && CARDS[ctx.key] ? CARDS[ctx.key].n : 'Ambush');   // (Ambush, or the Deed with its effect, by its own name)
       const note = extra > 0 ? (notes.length ? notes.join(', ') : att ? 'Attacking' : 'Defending') + ' +' + extra : '';
-      const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - ph) })]);
-      if (ph) tot.firstChild.textContent = String(total - ph);
+      const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - hold) })]);
+      if (hold) tot.firstChild.textContent = String(total - hold);
       const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.o === ui.view ? 'R' : 'L') }, [
         el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m, now: true })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
         el('div', { class: 'cl-sum' }, [bs, dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
-      return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note'), base: bs, ph: ph, b: base, t: total, shown: false };
+      return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note'), base: bs, ph: ph, st: st, hold: hold, b: base, t: total, shown: false };
     }
     // the Phalanx card slides in under its Figure, lands, and its +2 goes onto the shields
-    // (key: the Defence of Syracuse or Testudo, which come in the same way and add no Might: no number on them)
-    async function aid(X, key) {
-      const c = el('div', { class: 'cl-aid' }, [cardEl(key || (ctx.qk && CARDS[ctx.qk] ? ctx.qk : 'phalanx'), { mini: true, now: true }), key ? null : el('b', { class: 'cl-aid-n', text: '+' + X.ph })]);
+    // (key: the Defence of Syracuse or Testudo, which come in the same way and add no Might: no number on them.
+    // n: what it adds, when that is not Phalanx's: Damascus Steel's +1, which comes in before the dice, in a second slot
+    // when Phalanx comes too)
+    async function aid(X, key, n) {
+      const add = n != null ? n : key ? 0 : X.ph;
+      const c = el('div', { class: 'cl-aid' + (X.n.querySelectorAll('.cl-aid').length ? ' two' : '') + (key && add ? ' hi' : '') }, [cardEl(key || (ctx.qk && CARDS[ctx.qk] ? ctx.qk : 'phalanx'), { mini: true, now: true }), add ? el('b', { class: 'cl-aid-n', text: '+' + add }) : null]);
       X.n.classList.add('aided'); X.n.parentNode.classList.add('aided'); X.card.appendChild(c); Kit.sfx('deal'); await wait(430);
       Kit.sfx('clash', .6); Kit.haptic('medium'); c.classList.add('in');
-      X.base.firstChild.textContent = String(X.b); X.base.classList.remove('bump'); void X.base.offsetWidth; X.base.classList.add('bump');
-      if (X.shown) { X.tot.firstChild.textContent = String(X.t); X.tot.classList.remove('bump'); void X.tot.offsetWidth; X.tot.classList.add('bump'); Kit.sfx('good'); }
-      else X.tot.firstChild.textContent = String(X.t);
+      X.hold = Math.max(0, X.hold - add);
+      X.base.firstChild.textContent = String(X.b - X.hold); X.base.classList.remove('bump'); void X.base.offsetWidth; X.base.classList.add('bump');
+      if (X.shown) { X.tot.firstChild.textContent = String(X.t - X.hold); X.tot.classList.remove('bump'); void X.tot.offsetWidth; X.tot.classList.add('bump'); Kit.sfx('good'); }
+      else X.tot.firstChild.textContent = String(X.t - X.hold);
       await wait(620);
     }
+    const stK = (V.P[a.o].relics || []).find(r => E.fxOf(r) === 'dsteel') || null;   // (Damascus Steel: the attacker's player's Relic)
     const A = side(a, am0, ev.da, am, true, ev.ra), D = side(d, dm0, ev.dd, dm, false, ev.rd), L = a.o === ui.view ? D : A, R = a.o === ui.view ? A : D;
     const ov = el('div', { class: 'clash' }, [el('div', { class: 'cl-in' }, [L.n, el('div', { class: 'cl-vs', html: SVG.swords }), R.n, el('div', { class: 'cl-where', text: C.PLACES[S.places[ev.p]].n })])]);
     document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show');
@@ -2035,6 +2075,7 @@
     A.card.classList.add('lunge'); D.card.classList.add('lunge'); Kit.sfx('whoosh');
     await wait(230); Kit.sfx('clash'); Kit.haptic('heavy');
     await wait(380);
+    if (A.st) await aid(A, stK, 1);   // (Damascus Steel's blade comes in under the attacker: +1 Might when attacking)
     if (A.ph) await aid(A);   // (the attacker chose Phalanx before the dice)
     [A, D].forEach((x, i) => { x.die.style.visibility = ''; x.die.style.setProperty('--dx', (i ? 40 : -40) + 'px'); x.die.classList.add('rolling'); }); Kit.sfx('roll');
     await wait(760);
@@ -2046,8 +2087,8 @@
     // The Defence of Syracuse comes to the defender's side and the attacker is driven back, whole; Testudo comes to a
     // beaten attacker's side and it draws back under the shields, whole. Nobody's card is torn.
     const back = X => { X.card.classList.add('driven'); Kit.sfx('whoosh'); Kit.haptic('medium'); };
-    if (ev.rep) { await wait(300); await aid(D, ev.rep); D.card.classList.add('win'); back(A); await wait(900); }
-    else if (ev.tq && res === 'd') { D.card.classList.add('win'); await wait(200); await aid(A, ev.tq); back(A); await wait(900); }
+    if (ev.rep) { await wait(300); await aid(D, ev.rep, 0); D.card.classList.add('win'); back(A); await wait(900); }
+    else if (ev.tq && res === 'd') { D.card.classList.add('win'); await wait(200); await aid(A, ev.tq, 0); back(A); await wait(900); }
     else if (res) {
       const W = res === 'a' ? A : D, X = res === 'a' ? D : A, lost = res === 'a' ? d : a;
       if (am === dm) W.note.textContent = 'Sun Tzu wins the tie';
@@ -2104,6 +2145,17 @@
     async hire(ev) { V.P[ev.o].spark = Math.max(0, V.P[ev.o].spark - 1); V.pb[ev.p][ev.o] += ev.n; V.tot[ev.p][ev.o] += ev.n; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); },
     async recall(ev) { V.P[ev.o].hand.push(ev.c); render(); bump('.an-strip.p' + ev.o + ' .st-hand b'); Kit.sfx('deal'); await wait(260); },
     async victor(ev) { const f = vfig(ev.u), g = E.byU(S, ev.u); if (f && g) f.m = E.might(S, g, 0); ui.fresh[ev.u] = 'hop'; render(); ui.fresh = {}; Kit.sfx('good'); await wait(380); },
+    // The Lisbon Earthquake: the Domain's row shakes, then every Figure it stops is marked (the stun events after it)
+    async quake(ev) {
+      const row = dom.map.querySelector('.pl[data-p="' + ev.p + '"]'); Kit.sfx('boom'); Kit.haptic('heavy');
+      if (row) { row.classList.remove('quake'); void row.offsetWidth; row.classList.add('quake'); }
+      await wait(760); if (row) row.classList.remove('quake');
+    },
+    // The Walk to Canossa: its card lies on the piece, and the piece's skill mark is struck through until the count
+    async hush(ev) {
+      const f = vfig(ev.u); if (!f) return; f.hush = 1; V.dip = (S.dip || []).map(d => Object.assign({}, d)); ui.fresh[ev.u] = 'hushin'; render(); ui.fresh = {};
+      Kit.sfx('bad'); Kit.haptic('medium'); await wait(820);
+    },
     async stun(ev) { const f = vfig(ev.u); if (!f) return; f.stun = 1; ui.fresh[ev.u] = 'zap'; render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('light'); await wait(480); },
     async move(ev) {
       const f = vfig(ev.u); if (!f) return;
@@ -2157,10 +2209,17 @@
       dropHand(o, a.h);   // (the Figure that a Night Crossing carries leaves the hand as it arrives)
       V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
       const fx = E.fxOf(ev.c);   // (what the Deed does, whichever Deed it is)
+      { const ab = (V.P[o].relics || []).find(r => E.fxOf(r) === 'abacus'); if (ab) bump('.an-strip.p' + o + ' .relic[data-relic="' + ab + '"]'); }   // (the Abacus made it cheaper)
       if (fx === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
       if (fx === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
       if (fx === 'eclipse') { V.figs.forEach(f => { if (f.p === ev.p && f.o !== o) { f.stun = 1; ui.fresh[f.u] = 'zap'; } }); render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('medium'); await wait(520); return; }
       if (fx === 'encore') { const f = vfig(ev.u); if (f) { f.rdy = 1; f.arr = 0; ui.fresh[f.u] = 'hop'; } render(); ui.fresh = {}; Kit.sfx('good'); await wait(480); return; }
+      // (the Peace of Westphalia and the Edict of Milan: the card's mark is pressed onto the Domain it lies on until the
+      // count, the Peace's sheathed swords, the Edict's shield over the player's Figures there, which lift)
+      if (fx === 'westphalia' || fx === 'milan') { V.dip = (S.dip || []).map(d => Object.assign({}, d));
+        if (fx === 'milan') V.figs.forEach(f => { if (f.p === ev.p && f.o === o) ui.fresh[f.u] = 'hop'; });
+        render(); ui.fresh = {}; await stampTile(ev.p, DIPI[fx], o); return; }
+      if (fx === 'lisbonquake' || fx === 'canossa') { render(); return; }   // (their moments are their own events: quake, hush)
       // (the four Deeds that double a count: the Domains they double are marked x2 on their banners, which now show what each will score)
       if (fx === 'triumph' || fx === 'medici' || fx === 'holyyear') { render(); await doubled(fx === 'triumph' ? [ev.p] : S.places.map((id, i) => i).filter(i => fx === 'holyyear' || C.PLACES[S.places[i]].d === CARDS[ev.c].dk), o); return; }
       render();
@@ -2289,7 +2348,14 @@
       if (t === 'turn') L.push({ h: 't', r: ev.round, o: ev.o });
       else if (t === 'arrive') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '.']);
       else if (t === 'relic') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
-      else if (t === 'deed') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
+      else if (t === 'deed') { const fx = E.fxOf(ev.c), oth = 1 - ev.o;
+        if (fx === 'westphalia') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Nobody can start a clash there until this round ends.']);
+        else if (fx === 'milan') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Until this round ends, ' + (nm(oth) === 'You' ? 'you' : nm(oth)) + ' can\'t start a clash with ' + pos(ev.o) + ' Figures there.']);
+        else if (fx === 'lisbonquake') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '.']);
+        else if (fx === 'canossa') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' on ', who[ev.v] ? pos(who[ev.v][1]) + ' ' : '', F(ev.v), '.']);   // (pos: "your" mid-sentence)
+        else add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']); }
+      else if (t === 'quake') { if (!ev.us.length) add(ev.o, ['The earthquake at ', Pl(ev.p), ' stopped no Figure.']); }   // (each Figure it stops has its own line: stun)
+      else if (t === 'hush') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), '\'s skills and powers don\'t work until this round ends.']);
       else if (t === 'quick') add(ev.o, [nm(ev.o) + ' added ', K(ev.c), ' to the clash.']);
       else if (t === 'move' && ev.relay) return;   // (said once, by the relay)
       else if (t === 'move') add(who[ev.u] ? who[ev.u][1] : -1, ev.push ? [own(ev.u), F(ev.u), ' was pushed to ', Pl(ev.to), '.'] : [own(ev.u), F(ev.u), ev.jump ? ' jumped to ' : ' moved to ', Pl(ev.to), '.']);
@@ -2470,6 +2536,11 @@
       if (fx === 'medici') return { key: k, tx: who + ' played ' + n + '. Every ' + CARDS[k].dk + ' Domain ' + who + ' holds at this round\'s count scores double.' };
       if (fx === 'holyyear') return { key: k, tx: who + ' played ' + n + '. Every Domain ' + who + ' holds at this round\'s count scores double.' };
       if (fx === 'walls') return { key: k, tx: who + ' played ' + n + ' and' + has + Math.min(4, P.seals + 1) + ' Seals now.' };
+      // (the five held cards and Canossa, 2026-11-12)
+      if (fx === 'westphalia') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Nobody can start a clash there until this round ends.' };
+      if (fx === 'milan') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Until this round ends, ' + (o === ui.view ? 'the other player' : 'you') + ' can\'t start a clash with ' + (o === ui.view ? 'your' : Kit.poss(who)) + ' Figures there.' };
+      if (fx === 'lisbonquake') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Every Figure there misses its next turn.' };
+      if (fx === 'canossa') { const g = fig(a.v); return { key: k, tx: who + ' played ' + n + ' on ' + mine(g) + (g ? CARDS[g.c].n : 'a Figure') + '. Until this round ends, the skills and powers on ' + (g ? Kit.poss(CARDS[g.c].n) : 'its') + ' card don\'t work.' }; }
       return { key: k, tx: who + ' played ' + n + '.' }; }
     if (a.t === 'walk' || a.t === 'antik' || a.t === 'tub') { const f = fig(a.u); return f ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' to ' + at(a.p) + '.' } : null; }
     if (a.t === 'loan') return { key: S.places[a.p], tx: who + ' borrowed ' + 2 + ' Spark at ' + at(a.p) + '.' };
@@ -2646,6 +2717,7 @@
     '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>The <b>Theodosian Walls</b> give you a Seal: they mend a broken one, or add a fourth. No player can have more than 4 Seals.</li>' +
     '<li>Some Deeds make a Place score <b>double</b> at this round\'s count, and its banner shows the doubled number until then. A Place scores double only once, however many Deeds double it.</li>' +
+    '<li>Some Deeds last until the count, and their card lies on the table until then: on a Domain, like the <b>Peace of Westphalia</b>, which stops every clash there, or on a Figure, like the <b>Walk to Canossa</b>, which switches off the skills and powers on its card.</li>' +
     '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +

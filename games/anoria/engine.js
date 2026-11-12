@@ -9,6 +9,12 @@ const CARDS = Object.assign({}, cards.RETIRED || {}, cards.CARDS);
 // effect of its own key (the first Relics and Deeds). So the Astrolabe is a Compass in effect, Night Crossing runs the
 // Trojan Horse's, and nothing below asks a card for its name.
 const fxOf = ci => CARDS[ci].fx || ci;
+// The skills and powers on a Figure's card as they work now, for a Figure in play (f): none while the Walk to Canossa
+// lies on it (f.hush, until the round ends). Every test of a Figure's skill on the table asks this, never the card, so
+// a Figure humbled by Canossa is a Figure with no skills everywhere at once. (k0: a card whose skills changed with
+// Domains keeps its old ones on the old map.) A card not yet in play (a cost, a hand) is read from the card itself.
+const NOK = Object.freeze({});
+const kOf = (S, f) => { if (f.hush) return NOK; const c = CARDS[f.c]; return (!S.dm && c.k0 ? c.k0 : c.k) || NOK; };
 // ── Domains (Tim, 2026-11-11; the sheet a person reads at a table is scripts/anoria/places/RULES.md) ──────────
 // The card that lies at a Gate, an Outpost or the Crossroads is a Domain. Each player brings a stack of 15 of them.
 // A game played with Domains has S.dm, and its state says exactly what the pieces on a real table say:
@@ -153,7 +159,7 @@ function newGame(decks, guides, cfg, R, stacks, opt) {
 function clone(S) {
   const T = { cfg: S.cfg, N: S.N, round: S.round, turn: S.turn, uid: S.uid, places: S.places, adj: S.adj, pb: S.pb.map(x => x.slice()), figs: S.figs.map(f => Object.assign({}, f)),
     P: S.P.map(p => Object.assign({}, p, { deck: p.deck.slice(), hand: p.hand.slice(), relics: p.relics.slice(), gone: p.gone ? p.gone.slice() : null })), over: S.over, winner: S.winner, how: S.how, st: null, ev: null };
-  if (S.dbl && S.dbl.length) T.dbl = S.dbl.slice(); if (S.tr) { T.tr = S.tr; T.trR = S.trR; }
+  if (S.dbl && S.dbl.length) T.dbl = S.dbl.slice(); if (S.dip && S.dip.length) T.dip = S.dip.slice(); if (S.tr) { T.tr = S.tr; T.trR = S.trR; }
   if (S.dm) { T.dm = S.dm; T.f0 = S.f0; T.places = S.places.slice(); T.ban = S.ban.slice(); T.mk = S.mk.slice(); T.cyn = S.cyn; T.pend = S.pend; T.gw = S.gw; if (S.lh) T.lh = Object.assign({}, S.lh); for (let o = 0; o < S.N; o++) { T.P[o].dst = S.P[o].dst.slice(); T.P[o].dgone = S.P[o].dgone.slice(); } }
   else if (S.f0 != null) T.f0 = S.f0;
   return T;
@@ -183,7 +189,7 @@ const prot = (S, i, by) => { const w = ownerOfSpoke(S, i); return !!S.dm && w >=
 // there ({k: 'fig', u}: Diogenes; it goes when he goes, and covers whatever Domain lies under him)
 function silenced(S, i) {
   if (!S.dm) return null; if (S.mk[i]) return { k: 'card', c: S.mk[i] };
-  if (S.cyn) for (const f of S.figs) if (f.p === i && CARDS[f.c].k.cynic && !prot(S, i, f.o)) return { k: 'fig', u: f.u };
+  if (S.cyn) for (const f of S.figs) if (f.p === i && kOf(S, f).cynic && !prot(S, i, f.o)) return { k: 'fig', u: f.u };
   return null;
 }
 // A Domain's rule where it lies now, as a word ('' when it has none there, or something lies across it)
@@ -197,7 +203,7 @@ function pw(S, i) {
   if (p === 'monopoly' && i !== 2 * S.N) return '';                               // (Lisbon: only at the Crossroads)
   if ((pl.d === 'Commerce' || p === 'clock') && i < 2 * S.N && !(i & 1)) return '';   // (a Commerce Domain does nothing at a Gate, and nor does Greenwich)
   if (S.mk[i]) return '';
-  if (S.cyn) for (const f of S.figs) if (f.p === i && CARDS[f.c].k.cynic && !prot(S, i, f.o)) return '';
+  if (S.cyn) for (const f of S.figs) if (f.p === i && kOf(S, f).cynic && !prot(S, i, f.o)) return '';
   return p;
 }
 // The Renown a Domain scores for the player who holds it (one: without the Deeds that double it this round)
@@ -212,7 +218,15 @@ function rv(S, i, h, one) {
 function nHeld(S, o, w) { let n = 0; for (let i = 0; i < S.places.length; i++) if (pw(S, i) === w && holder(S, i) === o) n++; return n; }
 // At a Law Domain only the player who holds it can start a clash (Nineveh); at Onondaga nobody can. (cfg.peaceSym, for test games: nobody can at Nineveh either.)
 // (a Figure f can start a clash where it stands: Nineveh does not stop a Figure with a Ward)
-const noClash = (S, f) => peace(S, f.p, f.o) && !(pw(S, f.p) === 'peace' && wardAt(S, f));
+const noClash = (S, f) => (peace(S, f.p, f.o) && !(pw(S, f.p) === 'peace' && wardAt(S, f))) || truceOn(S, f);
+// The Peace of Westphalia: nobody can start a clash at the Domain it lies on until the round ends (S.dip). A Figure the
+// other player's Deeds can't touch there (a Ward, the Forbidden City) is not held by a Peace that player made.
+const lies = (S, i, fx) => !!S.dip && S.dip.some(d => d.p === i && fxOf(d.c) === fx);
+const truceOn = (S, f) => !!S.dip && S.dip.some(d => d.p === f.p && fxOf(d.c) === 'westphalia' && (d.o === f.o || !(wardAt(S, f) || pw(S, f.p) === 'sanctuary')));
+// The Edict of Milan: until the round ends, nobody can start a clash with its player's Figures at the Domain it lies on
+const edictOn = (S, g) => !!S.dip && S.dip.some(d => d.p === g.p && d.o === g.o && fxOf(d.c) === 'milan');
+// (a Figure an enemy can start a clash with, when it stands where they can: not untouchable, not under an Edict)
+const clashable = (S, g) => !kOf(S, g).untouchable && !edictOn(S, g);
 const peace = (S, i, o) => { if (!S.dm) return false; const w = pw(S, i); return w === 'treeofpeace' || (w === 'peace' && (S.cfg.peaceSym || holder(S, i) !== o)); };
 // how many Figures a player can have at a position
 const capAt = (S, i) => S.dm && pw(S, i) === 'narrow' ? Math.min(2, S.cfg.cap) : S.cfg.cap;
@@ -396,7 +410,7 @@ function setupPick(S, o, prof, R) {
 // Deeds in play: a Deed whose effect lasts until the round's count lies on the table until then, so both players can
 // see it (Tim, 2026-11-12: "we might also need board space for deeds in play"). S.dip = [{c: the card, o: who played it,
 // p: the Domain it lies on, or -1 for one that acts on several}], emptied at the count. A new lasting effect is a key here.
-const LASTING = { decree: 1, triumph: 1, medici: 1, holyyear: 1 };
+const LASTING = { decree: 1, triumph: 1, medici: 1, holyyear: 1, westphalia: 1, milan: 1, canossa: 1 };   // (the Walk to Canossa lies on a Figure: p is -1, u the Figure)
 // Deeds that double what Domains score at this round's count (2026-11-12): S.dbl = [{o: the player, p: a position
 // (the Roman Triumph), or k: a kind (Medici Patronage and the Hanseatic League, the kind in the card's data, dk), or
 // all: 1 (the Jubilee of 1300)}], emptied at the count. A Domain scores double only once, however many Deeds double it.
@@ -408,7 +422,7 @@ const WALL_MAX = 4;
 // effect on them (Eclipse, Ambush, Rift, the Defence of Syracuse), and the Domain's power there works for them only
 // where it helps them: Seneca Falls never lowers their Might, Himeji's tie does not knock them out, Nan Madol does not
 // keep them from walking out, and Nineveh does not stop them starting a clash.
-const wardAt = (S, f) => S.figs.some(g => g.p === f.p && g.o === f.o && CARDS[g.c].k.ward);
+const wardAt = (S, f) => S.figs.some(g => g.p === f.p && g.o === f.o && kOf(S, g).ward);
 // (where a Quick Deed with this effect is in a hand, or -1)
 const handFx = (P, want) => P.hand.findIndex(c => fxOf(c) === want);
 // The Tribune's Veto: the Deeds it cancels, played by player o against player q (a.p, a.u, a.v as in actions()):
@@ -417,17 +431,18 @@ function vetoable(S, o, q, a, fx) {
   if (fx === 'triumph' || fx === 'medici' || fx === 'holyyear') return true;
   if (fx === 'ambush') { const g = byU(S, a.v); return !!g && g.o === q; }
   if (fx === 'eclipse') return S.figs.some(g => g.p === a.p && g.o === q && !wardAt(S, g));
+  if (fx === 'lisbonquake') return S.figs.some(g => g.p === a.p && g.o === q && !wardAt(S, g) && pw(S, g.p) !== 'sanctuary');   // (it makes their Figures there miss a turn)
   if (fx === 'rift') return [a.u, a.v].some(u => { const g = byU(S, u); return !!g && g.o === q; });
   return false;
 }
 function setupAuto(S, R, profs) { for (let o = 0; o < S.N; o++) if (!S.su.lay[o]) setupLay(S, o, setupPick(S, o, profs && profs[o], R)); return setupRoll(S, R); }
 function might(S, f, mode, oth) {
-  const c = CARDS[f.c], k = !S.dm && c.k0 ? c.k0 : c.k, pl = PLACES[S.places[f.p]], w = pw(S, f.p), home = c.reg === pl.reg;   // (k0: a card whose skills changed with Domains keeps its old ones on the old map)
+  const c = CARDS[f.c], k = kOf(S, f), pl = PLACES[S.places[f.p]], w = pw(S, f.p), home = c.reg === pl.reg;   // (k0: a card whose skills changed with Domains keeps its old ones on the old map)
   let m = (w === 'equal' ? (c.m > dv(S, 'equal') && wardAt(S, f) ? c.m : dv(S, 'equal')) : c.m) + f.tb + (f.vic || 0);   // (Seneca Falls: every Figure there starts from 3, unless a Ward keeps a stronger one's own. An Olympic victor keeps +1)
   if (home || (k.voyager && S.cfg.voyHome) || w === 'harbour') m += S.cfg.home + (k.homeDouble && home ? 2 : 0) + (w === 'heartland' && home ? dv(S, 'heartland') : 0);   // (Voyagers are at home everywhere, and everyone is at Malacca; Great Zimbabwe's own +2)
   let own = 0, opp = 0, insp = 0, isIns = false;
   for (const g of S.figs) {
-    if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && CARDS[g.c].k.inspiring) insp++; } else opp++; }
+    if (g.p === f.p) { if (g.o === f.o) { own++; if (g !== f && kOf(S, g).inspiring) insp++; } else opp++; }
     if (g.li === f.u) isIns = true;
   }
   if (f.li) m += (S.cfg.inspEach ? Math.max(1, (c.insp || []).filter(n => S.figs.some(g => g.o === f.o && g !== f && g.c === n)).length) : 1) + (w === 'pupils' ? 1 : 0);   // (inspEach, the rule since 2026-11-12: +1 Might for each person it names who is in play on its side, two of one person counting once. Vienna: 1 more)
@@ -438,7 +453,8 @@ function might(S, f, mode, oth) {
   if (w === 'stay' && f.stay >= 1) m += dv(S, 'stay');   // (Benin City: a Figure that has stood there since the last count)
   else if (w === 'citadel' && ownerOfSpoke(S, f.p) === f.o) m += dv(S, 'citadel');   // (Citadelle Laferrière: its own side's Figures)
   else if (w === 'confederacy' && own >= 2) m += dv(S, 'confed');   // (Prophetstown: while another of its player's Figures is there too)
-  if (mode === 1) { if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; if (S.P[f.o].guide === 'joan' && behind(S, f.o)) m += 1;   // (Sun Tzu: your first clash each turn wins ties. Joan of Arc: +1 Might in a clash her Figures start while she is behind)
+  if (mode === 1) { { const P = S.P[f.o]; if (hasFx(P, 'dsteel')) m += 1; }   // (Damascus Steel: its player's Figures have +1 Might when attacking)
+    if (k.raider && enemySide(S, f.o, f.p)) m += 2; if (k.slayer && oth && CARDS[oth.c].m > c.m) m += 2; if (S.P[f.o].guide === 'suntzu' && !S.P[f.o].uC) m += 0.5; if (S.P[f.o].guide === 'joan' && behind(S, f.o)) m += 1;   // (Sun Tzu: your first clash each turn wins ties. Joan of Arc: +1 Might in a clash her Figures start while she is behind)
     if (w === 'relief') { const h = holder(S, f.p); if (h >= 0 && h !== f.o) m += dv(S, 'relief'); } }   // (Orléans: a Figure that starts a clash there while the other player holds it)
   if (mode === 2) { if (k.steadfast) m += 2; if (S.P[f.o].guide === 'gandhi' && ownerOfSpoke(S, f.p) === f.o) m += 1;   // (Gandhi: +1 Might when an enemy starts a clash at his own Gate or Outpost)
     if (w === 'fort') m += dv(S, 'fort'); else if (w === 'siege' && own < opp) m += dv(S, 'siege'); else if (w === 'engines') m += S.P[f.o].relics.length; }   // (the Great Wall; Gibraltar, while outnumbered there; Syracuse, for each Relic)
@@ -480,13 +496,13 @@ function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.
 // (Sigiriya: nothing comes there but a Figure played there or one walking a single step from next to it)
 const rockAt = (S, i) => !!S.dm && pw(S, i) === 'rock';
 function walkDests(S, f, free) {
-  const c = CARDS[f.c]; if (c.k.monument) return [];
+  const c = CARDS[f.c], k = kOf(S, f); if (k.monument) return [];
   const out = [], P = S.P[f.o], np = S.places.length, W = S.places.map((_, i) => pw(S, i));
   if (W[f.p] === 'islets' && !wardAt(S, f)) { const h = holder(S, f.p); if (h >= 0 && h !== f.o) return []; }   // (Nan Madol: the other player's Figures can't walk out while one player holds it, unless a Ward is with them)
   // where a Figure can walk in: a closed Domain (Machu Picchu) only on its own side; Sigiriya only one step from next
   // to it; Petra only by paying 1 Spark, for a player who doesn't hold it
   const ok = j => j !== f.p && !(W[j] === 'closed' && ownerOfSpoke(S, j) !== f.o) && room(S, j, f.o) && (W[j] !== 'rock' || S.adj[f.p].indexOf(j) >= 0) && (W[j] !== 'toll' || P.spark >= 1 || holder(S, j) === f.o);
-  if (c.k.voyager && !free) { for (let i = 0; i < np; i++) if (ok(i)) out.push(i); return out; }
+  if (k.voyager && !free) { for (let i = 0; i < np; i++) if (ok(i)) out.push(i); return out; }
   const seen = {}; seen[f.p] = 1; let fr = [f.p];
   let steps = free ? 1 : Math.max(1 + nFx(S, P, 'compass'), P.guide === 'genghis' ? 2 : 1);   // (Genghis Khan: his Figures walk two steps, as with the Compass)
   if (!free && W[f.p] === 'searoad') steps = Math.max(steps, 2);   // (the Cape of Good Hope: a walk from there can be two steps)
@@ -544,7 +560,8 @@ function costOf(S, o, ci, place) {
   if (P.guide === 'curie' && P.uN === 2) x -= 1;   // (Curie: the third card you play each turn costs 1 less)
   if (c.t === 'fig' && P.guide === 'sorjuana' && c.k.scholar) x -= 1;   // (Sor Juana: her Scholar Figures cost 1 less)
   if (c.t === 'deed') { if (P.guide === 'franklin' && !P.uD) x -= 1;   // (Franklin: the first Deed each turn costs 1 less)
-    if (S.figs.some(f => f.o === o && CARDS[f.c].k.deedsLess)) x -= 1; }
+    if (S.figs.some(f => f.o === o && kOf(S, f).deedsLess)) x -= 1;
+    if (hasFx(P, 'abacus')) x -= 1; }   // (the Abacus: its player's Deeds cost 1 less)
   return Math.max(0, x);
 }
 function ko(S, f, by) {
@@ -591,9 +608,9 @@ function arrive(S, f, x) {
     if (op === 'wits') {   // (Yaa Asantewaa, and Anansi before her: more Spark where the other side holds the Place)
        const rn = 1 + (holder(S, f.p) >= 0 && holder(S, f.p) !== o ? 1 : 0); P.spark += rn; if (S.ev) S.ev.push({ t: 'spark', o: o, n: rn }); }
     if (op === 'stun') { en.sort((a, b) => might(S, b, 0) - might(S, a, 0)); for (let i = 0; i < Math.min(n, en.length); i++) { en[i].stun = 1; if (S.ev) S.ev.push({ t: 'stun', u: en[i].u }); } }
-    if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
+    if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!kOf(S, g).monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
   }
-  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; const lren = P.lr && S.cfg.lineCap !== 0 ? 0 : S.cfg.lineRen + (S.dm && pw(S, f.p) === 'line' ? 1 : 0); if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: lren }); if (lren) { P.renown += lren; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
+  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; const lren = P.lr && S.cfg.lineCap !== 0 ? 0 : S.cfg.lineRen + (S.dm && pw(S, f.p) === 'line' ? 1 : 0); if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: lren }); if (lren) { P.renown += lren; P.lr = 1; } if (S.figs.some(g => g.o === o && kOf(S, g).masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
   if (!f.li) threadPlay(S, o, f.c, threadSrc(S, o, f.c, f.p), f.u, f.p);
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
@@ -661,14 +678,18 @@ function actions(S) {
     if (c.quick) return;   // (a Quick Deed is played with a clash (Phalanx, below), or plays itself (Testudo, the Defence of Syracuse, the Tribune's Veto))
     if (fx === 'eureka' || fx === 'caravan' || fx === 'medici' || fx === 'holyyear') out.push({ t: 'deed', h });
     else if (fx === 'triumph') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }   // (the Roman Triumph: a Domain where you have a Figure)
+    else if (fx === 'westphalia') { for (let i = 0; i < np; i++) if (!lies(S, i, 'westphalia')) out.push({ t: 'deed', h, p: i }); }   // (the Peace of Westphalia: any Domain)
+    else if (fx === 'milan') { for (let i = 0; i < np; i++) if (cnt(S, i, o) && !(S.dip || []).some(d => d.p === i && d.o === o && fxOf(d.c) === 'milan')) out.push({ t: 'deed', h, p: i }); }   // (the Edict of Milan: a Domain where you have a Figure)
+    else if (fx === 'lisbonquake') { for (let i = 0; i < np; i++) if (S.figs.some(g => g.p === i)) out.push({ t: 'deed', h, p: i }); }   // (the Lisbon Earthquake: a Domain where a Figure stands)
+    else if (fx === 'canossa') { for (const g of theirs) if (open(g) && !g.hush && Object.keys(CARDS[g.c].k || {}).length) out.push({ t: 'deed', h, v: g.u }); }   // (the Walk to Canossa: an enemy Figure with a skill or a power on its card)
     else if (fx === 'walls') { if (P.seals > 0 && P.seals < WALL_MAX && !(S.cfg.wallsOnce && P.uWl)) out.push({ t: 'deed', h }); }   // (the Theodosian Walls: a Seal, while you have fewer than 4. cfg.wallsOnce, for test games: once a game for each player)
     else if (fx === 'decree') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }
     else if (fx === 'eclipse') { for (let i = 0; i < np; i++) if (pw(S, i) !== 'sanctuary' && theirs.some(g => g.p === i && open(g))) out.push({ t: 'deed', h, p: i }); }
     else if (fx === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
-    else if (fx === 'fairwinds') { for (const f of mine) if (!CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o) && !rk(i)) out.push({ t: 'deed', h, u: f.u, p: i }); }
-    else if (fx === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && !CARDS[g.c].k.untouchable && !noClash(S, f)) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    else if (fx === 'fairwinds') { for (const f of mine) if (!kOf(S, f).monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o) && !rk(i)) out.push({ t: 'deed', h, u: f.u, p: i }); }
+    else if (fx === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && clashable(S, g) && !noClash(S, f)) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
     else if (fx === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
-    else if (fx === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !rk(f.p) && !rk(g.p) && !CARDS[f.c].k.monument && !CARDS[g.c].k.monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    else if (fx === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !rk(f.p) && !rk(g.p) && !kOf(S, f).monument && !kOf(S, g).monument && (g.o === o ? g.u > f.u : open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
     else if (S.dm) {   // (the Deeds that act on Domains: a.p, a.q are positions)
       if (fx === 'earthquake') { for (let i = 0; i < 2 * S.N; i++) if (!prot(S, i, o) && canTurn(S, i >> 1)) out.push({ t: 'deed', h, p: i }); }
       else if (fx === 'vesuvius') { for (let i = 0; i < np; i++) if (!S.mk[i] && !prot(S, i, o)) out.push({ t: 'deed', h, p: i }); }
@@ -680,16 +701,16 @@ function actions(S) {
   });
   const ph = quicks(P).filter(h => costOf(S, o, P.hand[h]) <= P.spark);   // (a.ph: a Quick Deed goes with the clash; a.hq: which one, by its place in the hand)
   for (const f of mine) {
-    const can = f.rdy && (!f.arr || CARDS[f.c].k.swift || f.sw), canClash = can || (S.cfg.rush && f.arr && !f.acted) || (f.gar && !f.acted);   // (gar: it walked into Dunhuang this turn)
+    const can = f.rdy && (!f.arr || kOf(S, f).swift || f.sw), canClash = can || (S.cfg.rush && f.arr && !f.acted) || (f.gar && !f.acted);   // (gar: it walked into Dunhuang this turn)
     if (can) for (const i of walkDests(S, f)) out.push({ t: 'walk', u: f.u, p: i });
     if (canClash) {
       const en = theirs.filter(g => g.p === f.p);
-      if (en.length && !en.some(g => CARDS[g.c].k.law) && !noClash(S, f)) {
-        const gd = en.filter(g => CARDS[g.c].k.guard);
-        for (const g of (gd.length ? gd : en)) if (!CARDS[g.c].k.untouchable) { out.push({ t: 'clash', u: f.u, v: g.u }); for (const hq of ph) out.push({ t: 'clash', u: f.u, v: g.u, ph: 1, hq: hq }); }
+      if (en.length && !en.some(g => kOf(S, g).law) && !noClash(S, f)) {
+        const gd = en.filter(g => kOf(S, g).guard);
+        for (const g of (gd.length ? gd : en)) if (clashable(S, g)) { out.push({ t: 'clash', u: f.u, v: g.u }); for (const hq of ph) out.push({ t: 'clash', u: f.u, v: g.u, ph: 1, hq: hq }); }
       }
     }
-    if ((P.uA || 0) < nFx(S, P, 'antikythera') && !CARDS[f.c].k.monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o) && !rk(i)) out.push({ t: 'antik', u: f.u, p: i });
+    if ((P.uA || 0) < nFx(S, P, 'antikythera') && !kOf(S, f).monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o) && !rk(i)) out.push({ t: 'antik', u: f.u, p: i });
     if (P.guide === 'tubman' && !P.uT && !f.arr) for (const i of walkDests(S, f, true)) out.push({ t: 'tub', u: f.u, p: i });
   }
   // The four Domain powers a player chooses to use, each once a turn (the page's buttons are in scanActs, ui.js):
@@ -702,7 +723,7 @@ function actions(S) {
     if (w === 'loan') { if (!P.uL && holder(S, i) === o) out.push({ t: 'loan', p: i }); }
     else if (w === 'books') { if (!P.uB && P.spark >= 1 && (P.deck.length || (P.gone && P.gone.length)) && holder(S, i) === o) out.push({ t: 'buy', p: i }); }
     else if (w === 'hire') { if (!P.uH && P.spark >= 1 && cnt(S, i, o) > 0) out.push({ t: 'hire', p: i }); }
-    else if (w === 'relay' && !P.uRl) { for (const f of mine) if (f.p === i && !CARDS[f.c].k.monument) for (const g of mine) if (g.p !== i && !CARDS[g.c].k.monument && !rk(g.p)) out.push({ t: 'relay', u: f.u, v: g.u }); }
+    else if (w === 'relay' && !P.uRl) { for (const f of mine) if (f.p === i && !kOf(S, f).monument) for (const g of mine) if (g.p !== i && !kOf(S, g).monument && !rk(g.p)) out.push({ t: 'relay', u: f.u, v: g.u }); }
   }
   return out;
 }
@@ -724,7 +745,7 @@ function apply(S, a, da, dd, raw) {
   if (a.t === 'relay') { const f = byU(S, a.u), g = byU(S, a.v), t = f.p; P.uRl = 1; if (S.ev) S.ev.push({ t: 'relay', o: o, u: f.u, v: g.u, p: f.p, q: g.p }); moveFig(S, f, g.p, true, 1); moveFig(S, g, t, true, 1); if (S.st) S.st.use.relay = (S.st.use.relay || 0) + 1; return; }
   const prt = S.dm && (a.t === 'relic' || a.t === 'deed' || (a.t === 'clash' && a.ph)) && !P.uP && onTable(S, 'print') ? nHeld(S, o, 'print') : 0;
   if (a.t === 'fig') { const ci = P.hand[a.h]; P.spark -= costOf(S, o, ci, a.p); if (S.dm && pw(S, a.p) === 'cheap') P.uCh = (P.uCh || 0) | (1 << a.p); P.uN++; P.hand.splice(a.h, 1); putFig(S, o, ci, a.p, a.x); }
-  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci), pt = S.dm && onTable(S, 'punt') ? posOf(S, 'punt') : -1, punt = pt >= 0 && holder(S, pt) === o; P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && CARDS[f.c].k.eureka)) draw(S, o, 1);
+  else if (a.t === 'relic') { const ci = P.hand[a.h], src = threadSrc(S, o, ci), pt = S.dm && onTable(S, 'punt') ? posOf(S, 'punt') : -1, punt = pt >= 0 && holder(S, pt) === o; P.spark -= costOf(S, o, ci); P.uN++; P.hand.splice(a.h, 1); P.relics.push(ci); if (S.ev) S.ev.push({ t: 'relic', o: o, c: ci }); threadPlay(S, o, ci, src); if (S.st) S.st.played[o][ci] = 1; if (S.figs.some(f => f.o === o && kOf(S, f).eureka)) draw(S, o, 1);
     if (punt) { P.renown += dv(S, 'punt'); if (S.ev) S.ev.push({ t: 'renown', o: o, n: dv(S, 'punt'), why: 'punt', p: pt }); }   // (Deir el-Bahari: its holder scores for each Relic they play)
     printed(S, o, prt); }
   else if (a.t === 'walk') { const f = byU(S, a.u); const far = S.adj[f.p].indexOf(a.p) < 0; walked(S, o, f, a.p, far); f.rdy = 0; }
@@ -748,8 +769,12 @@ function apply(S, a, da, dd, raw) {
     else if (fx === 'medici') (S.dbl || (S.dbl = [])).push({ o: o, k: CARDS[ci].dk });   // (every Domain of the card's kind that you hold)
     else if (fx === 'holyyear') (S.dbl || (S.dbl = [])).push({ o: o, all: 1 });   // (every Domain you hold)
     else if (fx === 'walls') { P.uWl = 1; P.seals = Math.min(WALL_MAX, P.seals + 1); P.sm = Math.max(P.sm || S.cfg.seals, P.seals); if (S.ev) S.ev.push({ t: 'mend', o: o, left: P.seals, sm: P.sm, why: 'walls', c: ci }); }
-    if (LASTING[fx]) (S.dip || (S.dip = [])).push({ c: ci, o: o, p: a.p != null ? a.p : -1 });   // (a Deed whose effect lasts until the count lies on the table till then: S.dip)
+    else if (fx === 'canossa') { const g = byU(S, a.v); g.hush = 1; if (S.ev) S.ev.push({ t: 'hush', u: g.u, c: ci, o: o }); }   // (the Walk to Canossa: its skills and powers stop until the round ends)
+    if (LASTING[fx]) (S.dip || (S.dip = [])).push(fx === 'canossa' ? { c: ci, o: o, p: -1, u: a.v } : { c: ci, o: o, p: a.p != null ? a.p : -1 });   // (a Deed whose effect lasts until the count lies on the table till then: S.dip)
     else if (fx === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o && !wardAt(S, g)) g.stun = 1; }
+    else if (fx === 'lisbonquake') {   // (the Lisbon Earthquake: every Figure there misses its next turn, yours as well, unless the other player's Deeds can't touch it)
+      const hit = S.figs.filter(g => g.p === a.p && (g.o === o || (pw(S, g.p) !== 'sanctuary' && !wardAt(S, g))));
+      if (S.ev) S.ev.push({ t: 'quake', o: o, c: ci, p: a.p, us: hit.map(g => g.u) }); for (const g of hit) { g.stun = 1; if (S.ev) S.ev.push({ t: 'stun', u: g.u }); } }
     else if (fx === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
     else if (fx === 'fairwinds') { const f = byU(S, a.u); moveFig(S, f, a.p, true); f.rdy = 0; }
     else if (fx === 'ambush') { const f = byU(S, a.u), g = byU(S, a.v), r = f.rdy; clash(S, f, g, da, dd, 1, raw); if (byU(S, a.u)) f.rdy = r; }
@@ -780,6 +805,7 @@ function evalS(S, me, prof) {
     if (h >= 0 && S.dbl && S.dbl.length) v += (h === me ? 1 : -1) * prof.wRen * dblW(S, i, h) * rv(S, i, h, 1) * stake(cfg, S.round);   // (a Deed doubling it: the Renown it adds at this count)
     if (kind === 0 && h !== me) v -= 2.5; if (kind === 4 && h === me) v += prof.wSeal * 0.6;
     if (S.dm && rw) v += domWorth(S, i, rw, h, me);
+    if (S.dip && S.dip.length) v += dipWorth(S, i, h, me, val);   // (a Peace of Westphalia or an Edict of Milan lying there)
   }
   if (S.dm) { v -= DEBT_W * (P.debt || 0); for (let o = 0; o < N; o++) v += (o === me ? 1 : -1 / (N - 1)) * SPARK_W * (S.P[o].sb || 0); }   // (Florence's debt; Spark a Domain has given for the next turn)
   for (const f of S.figs) { const m = might(S, f, 0); if (f.o === me) { cm++; tm += m; } else { co++; to += m; } }
@@ -804,6 +830,24 @@ const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 0 : (x - 
 // that pays its holder or the players there later (they look one move ahead, so what comes at the count, next turn
 // or next round has to be counted here or they misplay it). In the units evalS uses: 1 Renown is about 1.
 const SPARK_W = 0.5, DEBT_W = 0.55;   // (a Spark next turn; a Spark of Florence's debt)
+// The Deeds that last until the count and keep clashes away (2026-11-12, held-2026-11-12.txt). They are worth something
+// only while the other player still has a turn this round (S.tr), and only where the other side has Figures that could
+// clash: TRUCE_W of the Domain's worth to whoever holds it under a Peace of Westphalia, EDICT_W of it to the Edict of
+// Milan's player while they hold it (less while they don't), and EDICT_M for each Might the Edict keeps from a clash.
+// For the Lisbon Earthquake, QUAKE_W for each Might of a Figure that misses its next turn (plus QUAKE_F a Figure), for
+// it if the Figure is the other player's and against it if it is the robot's own. Test games try others: cfg.hw.
+const HW = { truce: 0.5, edict: 0.5, edictM: 0.06, quake: 0.12, quakeF: 0.25 };
+const hw = (S, k) => (S.cfg.hw && S.cfg.hw[k] != null ? S.cfg.hw[k] : HW[k]);
+function dipWorth(S, i, h, me, val) {
+  if ((S.tr || 0) >= S.N) return 0; let w = 0;
+  for (const d of S.dip) { if (d.p !== i) continue; const fx = fxOf(d.c);
+    if (fx === 'westphalia') { if (h >= 0 && S.figs.some(g => g.p === i && g.o !== h)) w += (h === me ? 1 : -1) * hw(S, 'truce') * val; }
+    else if (fx === 'milan') { if (!S.figs.some(g => g.p === i && g.o !== d.o)) continue; let m = 0; for (const g of S.figs) if (g.p === i && g.o === d.o) m += might(S, g, 0);
+      w += (d.o === me ? 1 : -1) * (hw(S, 'edict') * val * (h === d.o ? 1 : 0.3) + hw(S, 'edictM') * m); } }
+  return w;
+}
+// (the Lisbon Earthquake: what the Figures it stops are worth to the robot)
+function quakeWorth(S, p, me) { let w = 0; for (const g of S.figs) if (g.p === p && (g.o === me || (pw(S, p) !== 'sanctuary' && !wardAt(S, g)))) w += (g.o === me ? -1 : 1) * (hw(S, 'quake') * might(S, g, 0) + hw(S, 'quakeF')); return w; }
 function domWorth(S, i, w, h, me) {
   const s = h === me ? 1 : h >= 0 ? -1 : 0, Q = h >= 0 ? S.P[h] : null, N = S.N, here = o => cnt(S, i, o) > 0;
   switch (w) {
@@ -850,12 +894,17 @@ function mix(T, k) { for (let o = 0; o < T.N; o++) dshuf(T.P[o].dst, T.uid * 131
 function settle(T, prof) { for (let g = 0; T.pend && g < 4; g++) { const o = T.pend.o; let best = null, bv = -1e9; for (const a of pendActions(T)) { const U = clone(T); pendApply(U, a); const v = evalS(U, o, prof); if (v > bv) { bv = v; best = a; } } pendApply(T, best); } }
 function valueOf(S, a, me, prof) {
   const v = valueOf0(S, a, me, prof);
+  if (a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'lisbonquake') return v + quakeWorth(S, a.p, me);
   return a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'walls' ? v + ((S.cfg.wallsW || WALLS_W)[S.P[me].seals] || 0) : v;   // (cfg.wallsW: another table, for test games)
 }
 function valueOf0(S, a, me, prof) {
   // (Florence's loan is worth only what it lets the robot play now that it couldn't before, less the debt: it looks one play further)
   if (a.t === 'loan') { const T = clone(S); apply(T, a, 0, 0); let best = evalS(T, me, prof); const sp = S.P[me].spark;
     for (const b of actions(T)) if ((b.t === 'fig' || b.t === 'relic' || b.t === 'deed') && costOf(T, me, T.P[me].hand[b.h], b.t === 'fig' ? b.p : undefined) > sp) { const v = valueOf(T, b, me, prof); if (v > best) best = v; }
+    return best; }
+  // (the Walk to Canossa is worth what it lets the robot do next: the clashes it opens or makes better, as the loan)
+  if (a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'canossa') { const T = clone(S); apply(T, a, 0, 0); let best = evalS(T, me, prof);
+    for (const b of actions(T)) if (b.t === 'clash' && !b.ph) { const v = valueOf(T, b, me, prof); if (v > best) best = v; }
     return best; }
   const roll = a.t === 'clash' || (a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'ambush');
   if (!roll && S.dm && a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'congress') {   // (Congress of Vienna: the average over the 36 ways two dice fall)
@@ -968,7 +1017,7 @@ function endRound(S) {
     S.lh = {}; for (let i = 0; i < np; i++) if (hs[i] >= 0) S.lh[S.places[i]] = hs[i];   // (who held each Domain at this count: the Taj Mahal and Constantinople ask)
   }
   if (cfg.majority) { const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; } let mx = 0, w = -1, tie = false; for (let o = 0; o < N; o++) { if (hc[o] > mx) { mx = hc[o]; w = o; tie = false; } else if (hc[o] === mx) tie = true; } if (!tie && w >= 0) S.P[w].renown += cfg.majority * stake(cfg, S.round); }
-  for (const f of S.figs) { const k = CARDS[f.c].k; if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) { S.P[f.o].renown++; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'stage', u: f.u }); } else draw(S, f.o, 1); } f.stay++; }
+  for (const f of S.figs) { const k = kOf(S, f); if ((k.stage || k.tale) && holder(S, f.p) === f.o) { if (k.stage) { S.P[f.o].renown++; if (S.ev) S.ev.push({ t: 'renown', o: f.o, n: 1, why: 'stage', u: f.u }); } else draw(S, f.o, 1); } f.stay++; }
   // (Akbar: Figures of two or more factions at the Crossroads score him 1 Renown. Empress Wu: holding more Places than
   // the other player gives her 1 more Spark next turn, unless this round ends the game)
   for (let o = 0; o < N; o++) { const p = S.P[o];
@@ -977,7 +1026,7 @@ function endRound(S) {
       const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; }
       if (hc.every((x, q) => q === o || x < hc[o])) { p.sg = 1; if (S.ev) S.ev.push({ t: 'spark', o: o, n: 1, why: 'next' }); } } }
   // (the Deeds that lasted until the count leave the table: S.dip)
-  for (const b of S.pb) b.fill(0); S.dip = []; S.dbl = []; for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
+  for (const b of S.pb) b.fill(0); S.dip = []; S.dbl = []; for (const f of S.figs) if (f.hush) f.hush = 0; for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (S.st) for (const f of S.figs) if (f.li && (CARDS[f.c].insp || []).filter(n => S.figs.some(g => g.o === f.o && g !== f && g.c === n)).length > 1) S.st.dbl = (S.st.dbl || 0) + 1;   // (the test games: Figures holding a doubled Legacy at a round's end)
   if (cfg.target && S.P.some(p => p.renown >= cfg.target)) last = true;
@@ -1009,7 +1058,7 @@ function play(decks, guides, profs, cfg, seed, stacks) {
   }
   return S;
 }
-return { play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
+return { kOf, noClash, clashable, play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES,
   pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
 });
