@@ -569,5 +569,8 @@ const STACKS = {
 };
 const STACK = 15;   // (Domains in a stack)
 Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
-return { DM_LIVE, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4 };
+// The Domains a player can see in the Library and the art proof: all of them once Domains are on, and until then
+// the twelve Places of today's fixed map (the ones with an old-map rule, pw0)
+const SHOWN = Object.keys(PLACES).filter(k => DM_LIVE || 'pw0' in PLACES[k]);
+return { DM_LIVE, SHOWN, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4 };
 });

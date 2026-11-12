@@ -2377,8 +2377,8 @@
     }
     // every picture you have found: your Guides, your cards, and the Places
     function pictures() {
-      const c = Coll.load(), ok = k => !noArt[artSrc(k, true)];
-      return (c.guides || []).filter(k => TX.GUIDES[k]).concat(Object.keys(CARDS).filter(k => (c.cards || {})[k] > 0), Object.keys(C.PLACES)).filter(ok);
+      const c = Coll.load(), ok = k => !noPic(k) && !noArt[artSrc(k, true)];
+      return (c.guides || []).filter(k => TX.GUIDES[k]).concat(Object.keys(CARDS).filter(k => (c.cards || {})[k] > 0), C.SHOWN || Object.keys(C.PLACES)).filter(ok);
     }
     // a new picture mat: the picture as MatKit first lays it, on a cloth of the picture's own colour. A mat that
     // already has a picture keeps where the picture lay and how large it was.

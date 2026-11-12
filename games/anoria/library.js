@@ -52,7 +52,7 @@
     ALL = Object.keys(CARDS);
     const rank = { place: 0, fig: 1, relic: 2, deed: 3 };
     NODES = ALL.filter(k => CARDS[k].y != null).map(k => ({ id: k, y: CARDS[k].y, r: rank[CARDS[k].t] }))
-      .concat(Object.keys(C.PLACES).map(p => ({ id: '@' + p, y: C.PLACES[p].y, r: 0 })))
+      .concat((C.SHOWN || Object.keys(C.PLACES)).map(p => ({ id: '@' + p, y: C.PLACES[p].y, r: 0 })))
       .sort((a, b) => a.y - b.y || a.r - b.r || (a.id < b.id ? -1 : 1)).map(n => n.id);
     IDX = {}; NODES.forEach((id, i) => { IDX[id] = i; });
     ALL.filter(k => CARDS[k].y == null).forEach((k, i) => { IDX[k] = NODES.length + i; });
