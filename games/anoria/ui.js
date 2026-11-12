@@ -12,9 +12,6 @@
   const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
   const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
-  // A draft to compare (Tim: "an option where the geographic regions have color on the lands"): each region's land in
-  // its own muted ink, on with ?regcol=1 or anoria_regcol '1' on the device (domains.css, .an-regcol)
-  try { if (/[?&]regcol=1/.test(location.search)) localStorage.setItem('anoria_regcol', '1'); if (/[?&]regcol=0/.test(location.search)) localStorage.removeItem('anoria_regcol'); if (localStorage.getItem('anoria_regcol') === '1') document.documentElement.classList.add('an-regcol'); } catch (e) {}
   // Domains: once they are on (C.DM_LIVE), the five cards on the map are Domains in every word a player reads (Tim:
   // one word, not Place). The cards' and Guides' own words are changed here once; the table's own words go through DW.
   const DW = s => (C.DM_LIVE && typeof s === 'string' ? s.replace(/\bPlace(s?)\b/g, 'Domain$1') : s);
@@ -371,7 +368,7 @@
       const on = document.documentElement.classList.contains('an-artview'), tx = briefOf(c);
       art.appendChild(el('button', { type: 'button', class: 'ac-tg', 'aria-pressed': String(on), 'aria-label': on ? 'Show the card’s words' : 'Show the picture large', html: '<span class="a">' + SVG.art + '</span><span class="t">' + SVG.words + '</span>',
         onpointerdown: e => e.stopPropagation(), onclick: e => { e.stopPropagation(); Kit.sfx('flip', .6); Kit.haptic('light'); artView(!document.documentElement.classList.contains('an-artview')); } }));
-      inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('b', { text: c.n }), tx ? el('span', { html: tx }) : null]));
+      inn.appendChild(el('div', { class: 'ac-brief', style: { 'clip-path': tear(key) } }, [el('i', { class: 'ac-rib' }), el('b', { text: c.n, class: c.n.length > 21 ? 'long' : null }), tx ? el('span', { html: tx, class: tx.replace(/<[^>]+>/g, '').length > 38 ? 'two' : null }) : null]));   // (two: too long for one line, so it takes two, a little smaller: nothing is cut off)
     }
     if (fig) inn.appendChild(el('div', { class: 'ac-st m' }, [el('b', { text: String(o.might != null ? o.might : c.m) })]));
     // (a small card's home region: the house plate under the Might on its spine, as on the map's tiles. Tim, 2026-11-12)
@@ -2703,7 +2700,8 @@
   function artProof() {
     stop(); G = null; S = null; V = null;
     // (?art=1&only=hannibal,compass shows just those; a card that comes in editions has a line for each of them)
-    const only = (/[?&]only=([^&]+)/.exec(location.search) || [])[1], EDS = window.AnoriaEd ? window.AnoriaEd.ED : [{ id: 'matte', n: '' }];
+    // (&matte=1: a contact sheet, each card once in its plain finish with no play mats)
+    const only = (/[?&]only=([^&]+)/.exec(location.search) || [])[1], sheet = /[?&]matte=1/.test(location.search), EDS = window.AnoriaEd && !sheet ? window.AnoriaEd.ED : [{ id: 'matte', n: '' }];
     const keys = Object.keys(C.CARDS).concat(Object.keys(TX.GUIDES), Object.keys(C.PLACES)).filter(k => !only || only.split(',').indexOf(k) >= 0);
     const cell = (label, node) => el('div', { class: 'ap-c' }, [node, el('small', { text: label })]);
     const sized = (cls, n) => el('div', { class: 'ap-s ' + cls }, [n]);
@@ -2712,6 +2710,12 @@
       (C.CARDS[k] ? EDS : EDS.slice(0, 1)).forEach((x, e) => {
         const line = el('div', { class: 'ap-line' }, [cell(C.CARDS[k] && x.n ? x.n : 'Full', sized('full', cardEl(k, { ed: e })))]);
         if (C.CARDS[k] && window.AnoriaEd) { line.appendChild(cell('The picture large', sized('full an-artview', cardEl(k, { ed: e, tg: true })))); }
+        if (c.kind === 'place' && C.DM_LIVE) {   // (a Domain: small in a hand at the set-up, and as it lies on the map)
+          line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true }))));
+          // (as it lies on a phone's map and on an iPad's: the phone's tile has its words eased down as fitPlates does there)
+          const onMap = (cls, f) => { const t = suTile(k); if (f) t.classList.add(f); return el('div', { class: 'an-map ap-tile ' + cls }, [el('div', { class: 'pl su' }, [el('div', { class: 'pl-side L' }), t, el('div', { class: 'pl-side R' })])]); };
+          line.appendChild(cell('On a phone\u2019s map', onMap('phone', 'f3'))); line.appendChild(cell('On an iPad\u2019s map', onMap('pad')));
+        }
         if (c.kind !== 'place') {
           line.appendChild(cell('Small', sized('mini', cardEl(k, { mini: true, ed: e }))));
           if (c.c != null) line.appendChild(cell('Smallest', el('div', { class: 'an-hand small' }, [sized('tiny', cardEl(k, { mini: true, ed: e }))])));
@@ -2726,7 +2730,7 @@
     });
     // the play mats, each the size it lies on a phone, under an empty standing place and a piece of each player's colour
     const piece = o => el('span', { class: 'fp o' + o, style: { '--f': FAC.V.c } }, [el('span', { class: 'fp-card' }, [el('span', { class: 'fp-art' })]), el('span', { class: 'fp-m' }, [el('b', { text: '4' })])]);
-    rows.push(el('div', { class: 'ap-row' }, [el('h2', { text: 'Play mats' }), el('div', { class: 'ap-line' }, Object.keys(MATS).map(id => {
+    if (!sheet) rows.push(el('div', { class: 'ap-row' }, [el('h2', { text: 'Play mats' }), el('div', { class: 'ap-line' }, Object.keys(MATS).map(id => {
       const n = el('div', { class: 'an-pm ap-mat' }); matFill(n, id, 'proof');
       n.appendChild(el('div', { class: 'an-map ap-on', style: { '--fw': '38px' } }, [el('span', { class: 'slot' }), piece(0), piece(1), el('span', { class: 'slot' })]));
       return cell(MATS[id].n, n); }))]));
