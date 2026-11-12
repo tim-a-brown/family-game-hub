@@ -289,6 +289,9 @@
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
   // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
   const NO_THE = { paper: 1, braille: 1 };
+  // A name's pronunciation breaks only between its words, never at a hyphen inside one (Tim: "MAR-kus aw- / REE-lee-us"
+  // is "MAR-kus / aw-REE-lee-us")
+  const sayHTML = t => String(t).split(' ').map(w => '<span class="say-w">' + esc(w) + '</span>').join(' ');
   const theName = x => x[0] === '@' ? (THE[x.slice(1)] ? 'the ' : '') + C.PLACES[x.slice(1)].n : (CARDS[x].t === 'relic' && !NO_THE[x] ? 'the ' : '') + (CARDS[x].t === 'relic' ? CARDS[x].n.replace(/^The /, '') : CARDS[x].n);
   // cardEl(key, {mini, cost}): the approved card. mini = a hand card (picture, name, cost, Might).
   // tg: a card being read has a button on its picture (Tim, 2026-11-11) that turns every such card over to its picture:
@@ -328,7 +331,7 @@
       paper.appendChild(el('div', { class: 'ac-txt', html: boldKeys(c.tx) }));
       if (c.fact) paper.appendChild(el('div', { class: 'ac-fact', text: c.fact }));
       // (how the name is said, as fine print at the foot: a Place's paper is as tall as its words, so it goes last in it)
-      if (c.say && place) paper.appendChild(el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }));
+      if (c.say && place) paper.appendChild(el('div', { class: 'ac-say', html: sayHTML(c.say), 'aria-label': 'Said ' + c.say }));
     }
     inn.appendChild(paper);
     if (tgPic) {
@@ -343,7 +346,7 @@
     if (!o.mini && !place && (c.say || fig)) {
       if (c.say) n.classList.add('hassay');
       if (fig && c.say && c.say.length > 26) n.classList.add('foot4');   // (a name said in two lines of fine print: the paper leaves more room)
-      inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', text: c.say, 'aria-label': 'Said ' + c.say }) : null]),
+      inn.appendChild(el('div', { class: 'ac-foot' }, [el('div', { class: 'ac-mid' }, [c.say ? el('div', { class: 'ac-say', html: sayHTML(c.say), 'aria-label': 'Said ' + c.say }) : null]),
         fig ? el('div', { class: 'ac-home', html: SVG.home + '<span>' + esc(REG[c.reg] || '') + '</span>' }) : null]));
     }
     // A card's Legacy Line is printed on it as a line (Tim, 2026-11-11: "maybe legacy line is displayed vertically down
