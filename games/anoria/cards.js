@@ -77,7 +77,7 @@ const CARDS = {
   shenkuo: F('Shen Kuo', 'D', 2, 3, 'ASIA', 3, 1088, { eureka: 1 }),
   darwin: F('Charles Darwin', 'D', 4, 4, 'EUR', 6, 1835, { voyager: 1, scholar: 1 }, { insp: ['humboldt'] }),
   // Legion
-  scipio: F('Scipio Africanus', 'V', 4, 5, 'MED', 2, -202, { raider: 1 }, { insp: ['hannibal'] }),
+  scipio: F('Scipio Africanus', 'V', 4, 4, 'MED', 2, -202, { raider: 1 }, { insp: ['hannibal'] }),
   toussaint: F('Toussaint Louverture', 'V', 4, 4, 'AMER', 5, 1796, { uprising: 1 }, { insp: ['spartacus'] }),
   shaka: F('Shaka', 'V', 4, 4, 'AFR', 6, 1818, { orator: 1 }),
   lakshmibai: F('Lakshmibai', 'V', 3, 3, 'ASIA', 6, 1858, { swift: 1, steadfast: 1 }),
@@ -87,13 +87,13 @@ const CARDS = {
   ibnsina: F('Ibn Sina', 'D', 3, 4, 'MIDEAST', 3, 1025, { scholar: 1 }, { insp: ['aristotle'] }),
   chaucer: F('Geoffrey Chaucer', 'A', 3, 4, 'EUR', 3, 1390, { tale: 1 }, { insp: ['virgil', 'dante'] }),
   marcus: F('Marcus Aurelius', 'S', 3, 3, 'MED', 2, 170, { guard: 1, steadfast: 1 }, { insp: ['socrates', 'plato'] }),
-  germain: F('Sophie Germain', 'D', 2, 3, 'EUR', 6, 1816, { scholar: 1 }, { insp: ['archimedes', 'newton'] }),
+  germain: F('Sophie Germain', 'D', 2, 2, 'EUR', 6, 1816, { scholar: 1 }, { insp: ['archimedes', 'newton'] }),
   // Court
   mencius: F('Mencius', 'S', 2, 2, 'ASIA', 2, -320, { scholar: 1 }, { insp: ['confucius'] }),
   nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
-  hiawatha: F('Hiawatha', 'S', 3, 3, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
-  christine: F('Christine de Pizan', 'A', 3, 4, 'EUR', 3, 1405, { scholar: 1 }),
-  theodora: F('Theodora', 'S', 3, 3, 'MED', 3, 532, { steadfast: 1 }),   // (4 Might until 25 Renown won, which suits Court: variants.txt, "First to 25")
+  hiawatha: F('Hiawatha', 'S', 3, 4, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
+  christine: F('Christine de Pizan', 'A', 3, 4, 'EUR', 3, 1405, { scholar: 1 }, { insp: ['sappho'] }),
+  theodora: F('Theodora', 'S', 3, 4, 'MED', 3, 532, { steadfast: 1 }),   // (3 Might from 25 Renown won (variants.txt, "First to 25"), and 4 again when two of a person came in: legacy-rules.txt)
   // Pathfinders
   zhangqian: F('Zhang Qian', 'W', 3, 3, 'ASIA', 2, -138, { voyager: 1 }, { arr: ['spark', 1] }),   // (the Han envoy, in the slot Sinbad the Sailor had. He has 3 Might where Sinbad had 2, which is what Pathfinders wanted once 25 Renown won: variants.txt, "First to 25")
   sargon: F('Sargon of Akkad', 'W', 4, 5, 'MIDEAST', 1, -2334, { guard: 1 }),   // (in the slot Gilgamesh had, with the same numbers)
@@ -119,7 +119,7 @@ const CARDS = {
 // Threads: what a card grew from, beyond a Figure's own Legacy line (insp). A Figure standing on your side, a Relic you
 // have in play, or a Place ('@id'). The engine reads c.from (see threadSrc); the Library draws these on its timeline.
 const FROM = {'hypatia': ['@library'], 'archimedes': ['@library'], 'askia': ['@timbuktu'], 'pericles': ['@acropolis'], 'moliere': ['press'], 'ashurbanipal': ['@nineveh'], 'douglass': ['@seneca'], 'marcopolo': ['@silk'], 'zhenghe': ['compass'], 'nostradamus': ['press'], 'antikythera': ['archimedes'], 'eureka': ['archimedes'], 'phalanx': ['leonidas', 'alexander'], 'ambush': ['hannibal'], 'decree': ['hammurabi', 'ashoka'], 'caravan': ['askia', 'marcopolo', '@silk'], 'encore': ['moliere', 'mozart', '@globe'], 'fairwinds': ['zhenghe', 'magellan'], 'eclipse': ['antikythera'],
-  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'christine': ['sappho'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
+  'ibnbattuta': ['@timbuktu'], 'shenkuo': ['compass'], 'zhangqian': ['@silk'], 'sargon': ['@nineveh', 'ashurbanipal'], 'khutulun': ['marcopolo'], 'harun': ['charlemagne']};
 Object.keys(FROM).forEach(k => { CARDS[k].from = FROM[k]; });
 // A year for every card and Place that has one (the Library's timeline). Rift has none.
 const WHEN = { press: 1450, antikythera: -100, compass: 1100, phalanx: -650, ambush: -217, crossing: 1776, fairwinds: 1405, eclipse: -585, eureka: -250, caravan: 1324, decree: -1754, encore: 1600 };

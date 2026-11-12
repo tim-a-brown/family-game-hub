@@ -302,8 +302,9 @@ Underlying principles for everything:
   that Places scored double from round 4. A game saved under an older rule finishes under it: `G.sc` for the scoring,
   `G.tg` for the Renown that wins). **The Renown that wins is never typed into a sentence**: the table, the rules
   page (`RULES` in ui.js) and the results card read `S.cfg.target`, and the guide's captions and the story's counting
-  laurel read `WIN` in guide.js. A round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), one of each
-  person on your side at a time (`unique`), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
+  laurel read `WIN` in guide.js. A round limit of 14 that only a stand-off reaches, clashes roll two ordinary dice (`dice: 'high'`), both copies
+  of a person can stand on your side at once (`unique: 0`, Tim, 2026-11-12; it was one of each), a Legacy Figure has +1 Might for each
+  person it names who is in play on its side (`inspEach`; two copies of one person count once), the second copy returns for 1 less (`ret`), and Threads (`threads`): any card can name what
   it grew from in cards.js (`from`: a Figure, a Relic or `'@place'`; a Figure's own Legacy is `insp`), with a true
   sentence for each link in `text.js` (`LINKS`). The robots are `PROF.novice` (Easy), `normal` and `hard`.
 - **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
