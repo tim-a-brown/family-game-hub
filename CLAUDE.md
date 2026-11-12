@@ -35,6 +35,10 @@ any game's storage key loses that saved data on every device.
 Tim plans and requests changes in chat, proofs them on a preview URL, then says
 "ship it". Keep explanations short and plain.
 
+**American English** (Tim, 2026-11-12): everything Claude writes to Tim in chat, and every word a player reads in
+the games, uses American spelling: "centered", "color", "recognize", "gray", not "centred", "colour",
+"recognise", "grey".
+
 1. **Build** on the session's working branch.
 2. **Preview**: commit, push the branch, then run `scripts/preview.sh` and give Tim
    the preview URL it prints. Tell him to test in **guest mode**, because preview
