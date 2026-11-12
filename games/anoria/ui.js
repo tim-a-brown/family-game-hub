@@ -23,12 +23,12 @@
   const DECKS = Object.keys(C.ARCH);
   const RULE = {
     library: 'Holder draws a card', silk: 'Linked to every Place', colosseum: 'Win a clash: 1 Renown', acropolis: 'Double Renown', wall: 'Defenders +1',
-    stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Arrive for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
+    stonehenge: 'Holder: +1 Spark', globe: 'Arts +1', machu: 'Own side only', timbuktu: 'Play here for 1 less', petra: 'Safe from Deeds', nineveh: '', seneca: ''
   };
   // A Domain's rule in a few words on its tile, by the rule's word (cards.js DRULES; the whole sentence is text.js DRULE)
-  const DSHORT = { spark: 'Holder: +1 Spark', cheap: 'Lay here for 1 less', forge: 'Relics, Deeds 1 less', arms: 'Arrive: +1 Might', draw: 'Holder draws a card',
+  const DSHORT = { spark: 'Holder: +1 Spark', cheap: 'Play here for 1 less', forge: 'Relics, Deeds 1 less', arms: 'Played here: +1 Might', draw: 'Holder draws a card',
     line: 'Legacy Lines +1 Renown', facD: 'Discovery +1', fort: 'Defenders +1', closed: 'Own side only', narrow: 'Two each at most', crowd: 'Two here: 2 Renown',
-    arena: 'Win a clash: 1 Renown', facA: 'Arts +1', peace: 'Only the holder clashes', sanctuary: 'Safe from Deeds', facS: 'Statecraft +1', link: 'Linked to every Domain', road: 'Walk on arrival' };
+    arena: 'Win a clash: 1 Renown', facA: 'Arts +1', peace: 'Only the holder clashes', sanctuary: 'Safe from Deeds', facS: 'Statecraft +1', link: 'Linked to every Domain', road: 'Walk when played' };
   // What a skill word means, written out under a card that only names it (n: the card's name). Each says what
   // happens in the game's own terms, and where it helps, what the ordinary rule is that the skill changes.
   const GLOSS = {
@@ -302,7 +302,7 @@
     o = o || {};
     const c = info(key), f = FAC[c.f] || FAC.N, place = c.kind === 'place', fig = c.kind === 'fig';
     const kind = place ? 'place' : c.kind === 'guide' ? 'guide' : fig ? (c.insp ? 'legacy' : 'fig') : c.kind;
-    const label = { place: 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
+    const label = { place: C.DM_LIVE ? 'Domain' : 'Place', guide: 'Guide', fig: 'Figure', legacy: 'Legacy', relic: 'Relic', deed: c.quick ? 'Quick Deed' : 'Deed' }[kind];
     const tgPic = o.tg && !o.mini && !noPic(key);   // (a card with no picture yet has nothing to turn over to)
     const n = el('div', { class: 'ac t-' + kind + (fig ? ' hasst' : '') + (o.mini ? ' mini' + (c.c != null ? ' sp' : '') : '') + (tgPic ? ' tg' : '') + (noPic(key) ? ' nopic' : ''), style: { '--f': f.c }, 'data-card': key });
     if (c.fy != null) n.style.setProperty('--fy', c.fy + '%');   // (which part of its picture this card keeps in view)
@@ -1323,6 +1323,10 @@
     if (me) {
       let b;
       if (G.over) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go', text: 'Results', onclick: () => showWin(true) });
+      else if (ui.pend) {   // (a choice of Domain: the button lays none, where the choice allows it)
+        const P = ui.pend, can = P.acts.some(a => a.no);
+        b = can ? el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go st-su', text: 'Lay no Domain', onclick: () => { Kit.sfx('tap'); setBusy(true); P.res({ t: 'dom', no: 1 }); } }) : el('span', { class: 'st-go-none' });
+      }
       else if (G.ph === 'setup') {   // (the set-up: once all three Domains are laid, the dice, or the device to the next player)
         const su = ui.su, full = su && su.o === o && su.put.gate && su.put.out && su.put.offer, next = G.players.some((q, x) => x !== o && !q.cpu && !S.su.lay[x]);
         b = S.su.step === 'done' || !su ? el('span', { class: 'st-go-none' }) : el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go st-su' + (full ? ' ready' : ''), text: next ? 'Hand over' : 'Roll the dice', disabled: !full, onclick: suDone });
@@ -1363,7 +1367,7 @@
   }
   function rowEl(i, T) {
     const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
-    const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
+    const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
     if (S.dm) { const sil = E.silenced(S, i); row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.k === 'card' ? sil.c : CARDS[E.byU(S, sil.u).c] ? E.byU(S, sil.u).c : ''; }
     [[t, 'L'], [v, 'R']].forEach(sd => {
       const side = el('div', { class: 'pl-side ' + sd[1] });
@@ -1412,6 +1416,7 @@
   }
   function capEl() {
     const n = dom.cap; n.innerHTML = '';
+    if (ui.pend) return pendCap(n);
     const st = E.stake(S.cfg, V.round);
     n.appendChild(el('button', { type: 'button', class: 'cap-round' + (ui.flip ? ' flip' : ''), 'aria-label': 'Round ' + V.round + ', Places score ' + st, onclick: roundSheet },
       [el('span', { class: 'n', text: String(V.round) }), el('span', { class: 'w', html: st > 1 ? LAUREL + LAUREL : LAUREL })]));
@@ -1438,6 +1443,7 @@
   }
   function handEl() {
     const n = dom.hand; n.innerHTML = '';
+    if (ui.pend) return pendHand(n);
     if (ui.hideHand || ui.viewer < 0) return;
     const o = ui.view, hand = V.P[o].hand, can = idle() && o === S.turn, T = targets();
     const picking = Object.keys(T.hand).length > 0;
@@ -1535,6 +1541,7 @@
   }
   const NOT = { places: {}, figs: {}, hand: {}, done: [] };
   function targets() {
+    if (ui.pend) return pendTargets();
     const s = ui.sel; if (!s || !idle()) return NOT;
     const out = { places: {}, figs: {}, hand: {}, done: [] }, n = s.picks.length;
     s.acts.forEach(a => {
@@ -1595,9 +1602,64 @@
     const to = acts[0].p != null && acts[0].t !== 'clash' ? ' to ' + (/^(The|the) /.test(C.PLACES[S.places[acts[0].p]].n) ? '' : /^(Great Wall|Colosseum|Acropolis|Silk Road|Globe Theatre|Library)/.test(C.PLACES[S.places[acts[0].p]].n) ? 'the ' : '') + C.PLACES[S.places[acts[0].p]].n : '';
     Kit.sheet({ title: who + to, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
   }
+  // ═══ A choice of Domain (S.pend) ═══
+  // Pachacuti (the top three of your stack), Al-Idrisi (your whole stack) and Christopher Wren (your Domain discard
+  // pile) let you lay one Domain at your Gate or your Outpost: the Domains on offer take the hand's place, a tap picks
+  // one up and your Gate and Outpost light; a tap on one lays it there. The button where End turn is lays none. A 6 on
+  // the Congress of Vienna's dice names the Domain you choose: the Domains it can name light on the map.
+  function askPend() {
+    return new Promise(res => {
+      const q = S.pend, acts = E.pendActions(S);
+      ui.pend = { q: q, acts: acts, sel: q.k === 'congress' ? null : (acts.filter(a => a.id).length && new Set(acts.filter(a => a.id).map(a => a.id)).size === 1 ? acts.filter(a => a.id)[0].id : null), x: -1, res: a => { ui.pend = null; res(a); } };
+      setBusy(false); Kit.sfx('flip'); render();
+    });
+  }
+  function pendTargets() {
+    const P = ui.pend, out = { places: {}, figs: {}, hand: {}, done: [] };
+    if (P.q.k === 'congress') {
+      if (P.q.fixed >= 0) P.acts.forEach(a => { (out.places[a.q] = out.places[a.q] || []).push(a); });
+      else if (P.x < 0) P.acts.forEach(a => { out.places[a.p] = out.places[a.p] || [a]; out.places[a.q] = out.places[a.q] || [a]; });
+      else P.acts.forEach(a => { const y = a.p === P.x ? a.q : a.q === P.x ? a.p : -1; if (y >= 0) (out.places[y] = out.places[y] || []).push(a); });
+      return out;
+    }
+    if (P.sel) P.acts.forEach(a => { if (a.id === P.sel) (out.places[a.p] = out.places[a.p] || []).push(a); });
+    return out;
+  }
+  function pendHand(n) {
+    const P = ui.pend; if (P.q.k === 'congress') return;
+    const ids = []; P.acts.forEach(a => { if (a.id && ids.indexOf(a.id) < 0) ids.push(a.id); });
+    warm(ids);
+    ids.forEach(id => n.appendChild(el('button', { type: 'button', class: 'hc' + (P.sel === id ? ' sel' : ' ok'), 'data-pd': id, 'aria-label': C.PLACES[id].n }, [cardEl(id, { mini: true })])));
+  }
+  function pendCap(n) {
+    const P = ui.pend, q = P.q, who = CARDS[q.c] ? CARDS[q.c].n : '', dn = i => theName('@' + S.places[i]);
+    let txt;
+    if (q.k === 'congress') txt = q.fixed >= 0 ? 'A die shows a 6, so you choose the Domain that changes places with ' + dn(q.fixed) + '. Choosing ' + dn(q.fixed) + ' itself replaces it.'
+      : P.x < 0 ? 'Both dice show a 6, so you choose the two Domains that change places.' : 'Now choose the Domain that changes places with ' + dn(P.x) + '. Choosing ' + dn(P.x) + ' again replaces it.';
+    else if (q.k === 'scout') txt = who + ' lets you lay one of the top three Domains of your stack at your Gate or your Outpost.';
+    else if (q.k === 'survey') txt = who + ' lets you lay any Domain from your stack at your Gate or your Outpost.';
+    else txt = who + ' lets you lay a Domain from your discard pile at your Gate or your Outpost.';
+    n.appendChild(el('div', { class: 'cap-txt', text: txt }));
+  }
+  function pendTap(e) {
+    const P = ui.pend; if (!P) return;
+    const card = e.target.closest('[data-pd]');
+    if (card) {
+      const id = card.dataset.pd, ids = []; P.acts.forEach(a => { if (a.id && ids.indexOf(a.id) < 0) ids.push(a.id); });
+      // (a whole stack is too many to read in the hand: a tap opens them on the strip, and its button chooses the one in front)
+      if (ids.length > 6 && P.sel !== id) { browse(ids, { at: ids.indexOf(id), title: P.q.k === 'survey' ? 'Your Domain stack' : 'Your Domain discard pile', pick: { label: 'Lay this Domain', fn: k => { if (ui.pend !== P) return; P.sel = k; Kit.sfx('tap'); render(); } } }); return; }
+      if (P.sel === id) { openView(id); return; } P.sel = id; Kit.sfx('tap'); Kit.haptic('light'); render(); return;
+    }
+    const row = e.target.closest('.pl'); if (!row) return;
+    const p = +row.dataset.p, T = pendTargets(), acts = T.places[p];
+    if (!acts) { if (P.q.k === 'congress' && P.x >= 0 && p === P.x) { P.x = -1; render(); } return; }
+    if (P.q.k === 'congress' && P.q.fixed < 0 && P.x < 0) { P.x = p; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
+    Kit.sfx('deal'); Kit.haptic('medium'); setBusy(true); P.res(acts[0]);
+  }
   function onMapTap(e) {
     if (!G) return; if (ui.held) { ui.held = false; return; }
     if (G.ph === 'setup') return suTap(e);
+    if (ui.pend) return pendTap(e);
     const fpN = e.target.closest('.fp'), row = e.target.closest('.pl'), tile = e.target.closest('.pl-tile');
     const u = fpN ? +fpN.dataset.u : 0, p = row ? +row.dataset.p : -1;
     if (idle() && !ui.discard) {
@@ -1619,6 +1681,7 @@
   function onHandTap(e) {
     if (ui.held) { ui.held = false; return; }
     if (G && G.ph === 'setup') return suTap(e);
+    if (ui.pend) return pendTap(e);
     const b = e.target.closest('.hc'); if (!b || !G) { clearSel(); return; }
     const h = +b.dataset.h, key = V.P[ui.view].hand[h];
     if (ui.discard && idle()) return discardOne(h);
@@ -1877,7 +1940,19 @@
     },
     // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
     // player names: SEAM for the dice and the chooser; until then the engine chooses for the player and a line says the roll)
-    async congress(ev) { Kit.sfx('flip'); Kit.toast('The dice for the Congress of Vienna show ' + ev.dice[0] + ' and ' + ev.dice[1] + '.', 2200); await wait(900); },
+    // Congress of Vienna: the Domains are numbered 1 to 5 from the roller's own Gate, the two dice tumble over the map,
+    // and the numbers they show light up with their Domains (a 6 is the roller's choice, made next)
+    async congress(ev) {
+      const g = 2 * ev.o, t = 2 * ((ev.o + 1) % S.N), line = [g, g + 1, 2 * S.N, t + 1, t], tags = [];
+      line.forEach((p, k) => { const r = dom.map.querySelector('.pl[data-p="' + p + '"]'); if (r) { const b = el('span', { class: 'cg-n', text: String(k + 1) }); r.appendChild(b); tags.push([r, b, k + 1]); } });
+      const mr = dom.map.getBoundingClientRect(), dice = ev.dice.map((v, i) => { const d = Kit.die(1); d.setAttribute('data-v', v); d.setAttribute('aria-label', 'Die showing ' + v); d.style.setProperty('--dx', (i ? 40 : -40) + 'px'); return d; });
+      const tray = el('div', { class: 'cg-tray', style: { left: (mr.left + mr.width / 2) + 'px', top: (mr.top + mr.height / 2) + 'px' } }, dice);
+      dom.fx.appendChild(tray); await wait(200); dice.forEach(d => d.classList.add('rolling')); Kit.sfx('roll'); Kit.haptic('light'); await wait(900);
+      tags.forEach(x => { if (ev.dice.indexOf(x[2]) >= 0) { x[0].classList.add('pk'); x[1].classList.add('on'); } });
+      if (ev.dice.indexOf(6) >= 0) tray.appendChild(el('div', { class: 'cg-six', text: Kit.poss(pname(ev.o)) + ' choice' }));
+      Kit.sfx('pop'); await wait(1500);
+      tray.remove(); tags.forEach(x => { x[0].classList.remove('pk'); x[1].remove(); });
+    },
     async nothing(ev) { Kit.toast(ev.why === 'kudurru' ? 'A Boundary Stone protects that Domain, so nothing changes.' : 'There is no Domain left to lay, so nothing changes.', 2200); await wait(700); },
     async marker(ev) { render(); Kit.sfx('bad'); Kit.toast(CARDS[ev.c].n + ' lies on ' + theName('@' + S.places[ev.p]) + ', which has no rule while it lies there.', 2600); await wait(900); },
     async quick(ev, ctx) {
@@ -2037,10 +2112,9 @@
     const my = gen, snapS = JSON.stringify(Object.assign({}, S, { cfg: null, st: null, ev: null }));
     ui.sel = null; setBusy(true); render();
     const ctx = await doAction(a); if (gen !== my || !ctx) return;
-    // SEAM for the Domain chooser: Pachacuti, Al-Idrisi and Christopher Wren leave a choice of Domain open (S.pend:
-    // which Domains, and E.pendActions(S) for what can be done with them). Until there is a screen to ask with, the
-    // engine chooses for the player as a robot playing its best would (E.pendPick).
-    while (S.pend) { const c2 = await doAction(E.pendPick(S)); if (gen !== my || !c2) return; }
+    // A choice of Domain left open (Pachacuti, Al-Idrisi, Christopher Wren, a 6 for the Congress of Vienna): the
+    // player makes it on the table (askPend). A lesson or a test game lets the engine choose (E.pendPick).
+    while (S.pend) { const a2 = G.demo || ui.turbo ? E.pendPick(S) : await askPend(); if (gen !== my) return; const c2 = await doAction(a2); if (gen !== my || !c2) return; }
     if (ctx.random) undoStack = []; else undoStack.push(snapS);
     setBusy(false); legal(); settle();
   }
