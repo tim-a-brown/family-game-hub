@@ -32,7 +32,7 @@
   const isDom = k => !CARDS[k] && !!C.PLACES[k], nameOf = k => (isDom(k) ? C.PLACES[k].n : CARDS[k].n);
   const col = k => U().FAC[facOf(k)].c;
   const plural = (n, one, many) => n === 1 ? one : many;
-  const kindOf = k => { if (isDom(k)) { const D = window.AnoriaDomains, kd = D && D.kindOf(k); return (kd ? D.KINDS[kd].n + ' ' : '') + 'Domain'; } const c = CARDS[k], kind = c.t === 'fig' ? 'Figure' : c.t === 'relic' ? 'Relic' : c.quick ? 'Quick Deed' : 'Deed'; return c.f === 'N' ? kind : U().FAC[c.f].n + ' ' + kind; };
+  const kindOf = k => { if (isDom(k)) { const D = window.AnoriaDomains, kd = D && D.kindOf(k); return (kd ? D.KINDS[kd].n + ' ' : '') + 'Domain'; } const c = CARDS[k], kind = c.t === 'fig' ? 'Figure' : c.t === 'relic' ? 'Relic' : 'Deed'; return c.f === 'N' ? kind : U().FAC[c.f].n + ' ' + kind; };
   function anim(node, frames, o) {   // one movement; a calm screen gets where it's going straight away
     if (!node.animate) return { finished: Promise.resolve() };
     if (calm()) { o = Object.assign({}, o, { duration: 1, delay: 0 }); }
