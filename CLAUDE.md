@@ -91,6 +91,10 @@ Underlying principles for everything:
   wrap, shorten smartly ("Kathleen M." → "Kathleen"), or ease the size down instead. Ellipsis is a last resort only
   for user-typed text that can be any length. Check by measuring (scrollWidth > clientWidth on clipped elements,
   anything past the screen edge) at phone upright/sideways and iPad sizes, not just by eye.
+- **Nothing you tap sits in a rounded screen corner** (Tim, 2026-11-12: the deck builder's Saved button ran into his iPhone's
+  corner). A bottom dock pads at least 18px from the bottom and 17px from each side even when the browser reports no safe
+  area (`max(calc(var(--safe-b) + 10px), 18px)`), since Safari with its bar tucked away reports none. The scratchpad's
+  `cs/corner.js` checks every Anoria screen against a 62 pt corner (iPhone 17 Pro) and 19 pt (iPad mini).
 - **Screenshots are taken at Tim's devices**, upright and sideways: iPhone 17 Pro (402 x 874 CSS px, scale 3) and iPad
   mini 5th generation (768 x 1024 CSS px, scale 2). Design is judged at those. Measuring for cut-off things still
   covers smaller phones too (320 wide).
