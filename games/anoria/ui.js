@@ -359,7 +359,7 @@
           cols.appendChild(el('div', { class: 'al-c' }, [r, el('span', { class: 'al-n', text: i2.n }), el('i', { class: 'al-t' })])); nm = Math.max(nm, i2.n.length); });
         const marks = g.w === 'legacy' ? [['sp', '−1'], ['mi', '+1'], ['re', '+1']] : [['re', '+1']];
         rail.appendChild(el('div', { class: 'al-g' }, [cols, el('div', { class: 'al-w' }, marks.map(m => el('i', { class: 'al-k ' + m[0] }, [el('b', { text: m[1] })])))]));
-        tall = Math.max(tall, 2.1 + nm * .41 + .9 + marks.length * 1.75); });
+        tall = Math.max(tall, 2.1 + nm * .41 + .9 + marks.length * 1.75 + (g.w === 'legacy' ? .45 : 0)); });   // (the Spark flame stands a little taller)
       n.classList.add('hasll'); n.style.setProperty('--lc', llSrc.length); n.style.setProperty('--lg', groups.length); n.style.setProperty('--lh', tall.toFixed(2) + 'em');
       const paper = inn.querySelector('.ac-paper'); (paper || inn).appendChild(rail);
     }
