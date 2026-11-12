@@ -596,13 +596,22 @@ Underlying principles for everything:
   cards' inked style, true to the Guide's own world, dark and close in tone, with no people, no faces and no lettering.
   The Place tiles cover the middle third, so what is worth seeing sits left and right of it. **A mat for a new Guide is
   one line in `MATS` (ui.js) and its picture**; until a Guide has one, that Guide plays on the chart of Anoria in their
-  faction's colour. All twelve Guides have one (the roster of twelve's seven, 2026-11-12, with their sources in the comment over `MATS`; resting on memory there: the knot garden's acorn border, how Saladin's carved panel and the Citadel's tower looked, the phoenix as Empress Wu's emblem, Timbuktu's toron beams). The mats of Guides who left stay in `MATS` for saved games, and the picker offers only today's Guides' mats and the chart. **What a mat draws is checked against a text that can be read** (archive.org
-  full texts are reachable; most museum sites are not): the comment over `MATS` names the source for each. Still resting
-  on memory, to be checked when a source can be read: the colours and figures of Thembu beadwork and the aloes
-  (Mandela), the shape of the Vijapur spinning wheel (Gandhi), the look of the Curies' instruments, the zigzag fence
-  and the bunting (Lincoln), how the nine-tailed standard was made (Genghis Khan), the sage and fern leaves, the press
-  and the Leyden jar (Franklin), the marsh and pines (Tubman), the wing, water and plant studies and the red-prepared
-  paper (Leonardo), the wave scroll (Cleopatra), and the number of cords on a bamboo book (Sun Tzu). The picture tool
+  faction's colour. All twelve Guides have one (the roster of twelve's seven, 2026-11-12, with their sources in the comment over `MATS`; resting on memory there: Wu's flower rosette and Timbuktu's toron beams, which no text that could be read mentions). The mats of Guides who left stay in `MATS` for saved games, and the picker offers only today's Guides' mats and the chart. **What a mat draws is checked against a text that can be read** (archive.org
+  full texts are reachable, and archive.org's full-text search finds the passage; most museum sites are not): the
+  comment over `MATS` names the source for each. Checked on 2026-11-12, for today's Guides: the marsh and pines
+  (Tubman), Leonardo's water and red paper, the wave scroll (Cleopatra), the two cords of a bamboo book (Sun Tzu),
+  the Curies' instruments, the acorn border (Shakespeare), Saladin's pulpit, the phoenix as Wu's emblem and the forked
+  end of Joan's standard (how it has been drawn since; her own words give no shape). **Two mats were redrawn for it**:
+  Curie's, whose radium glowed green (Eve Curie saw "phosphorescent bluish outlines"; green is later radium paint) and
+  whose quartz balance had its weighing pan standing on the base, so it could not have worked (the pan now hangs from
+  the quartz, beside a Curie electrometer and a two-plate ionization chamber, the set-up her own book names); and
+  Leonardo's, whose water was breaking waves with clawed foam crests like a Japanese print (it is now his own kind of
+  study, a stream falling into a pool and curling into eddies "like hair", as he wrote). Both were repainted only where
+  they were wrong (an image edit with a mask), so the rest of each mat is as it was. Still resting on memory: Leonardo's
+  wing and plant studies, and for the Guides who left (not checked: their mats are only for saved games) the colours
+  and figures of Thembu beadwork and the aloes (Mandela), the shape of the Vijapur spinning wheel (Gandhi), the zigzag
+  fence and the bunting (Lincoln), how the nine-tailed standard was made (Genghis Khan), and the sage and fern leaves,
+  the press and the Leyden jar (Franklin). The picture tool
   cannot count: Genghis Khan's standard came out with eight tails every time, and the ninth was put in by hand. The mats are built once and stay with their players (`paintMats`): no step of the game redraws
   them, and in pass and play they change places with the board at the hand-over. A new mat is checked on the table
   under pieces of both players' colours, at every size, before it goes in.
