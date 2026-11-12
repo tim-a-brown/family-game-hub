@@ -247,20 +247,20 @@
     const all = Array.from(L.view.querySelectorAll('.lb-c, .tl-n')).map(x => x.dataset.k || x.dataset.id).filter(x => x && !isPl(x) && Coll.cardState(x) !== 'new');
     U.openView(id, { list: all.filter((x, i) => all.indexOf(x) === i), counts: Coll.load().cards });
   }
-  // A card never seen stays shut: it starts to turn, falls back, and gives up only its faction and its era
-  let hintEl = null, hintT = 0;
-  function hideHint() { if (!hintEl) return; const h = hintEl; hintEl = null; clearTimeout(hintT); h.classList.remove('show'); setTimeout(() => h.remove(), 200); }
+  // A card never seen stays shut: it starts to turn, falls back, and gives up only its faction and its era. The plate
+  // that says so stands in one place, low in the middle of the screen, whichever card was tapped (Tim: "the callout
+  // location shouldn't be based on where i tap"); the card itself shows which one it is about by turning. A tap on
+  // another card changes the plate's words where it stands, with no flash, and a second tap on the same card hides it.
+  let hintEl = null, hintT = 0, hintK = null;
+  function hideHint() { if (!hintEl) return; const h = hintEl; hintEl = null; hintK = null; clearTimeout(hintT); h.classList.remove('show'); setTimeout(() => h.remove(), 200); }
   function mystery(b, k) {
+    if (hintEl && hintK === k) { Kit.sfx('tap'); hideHint(); return; }
     Kit.sfx('tick'); Kit.haptic('light');
     b.classList.remove('peek'); void b.offsetWidth; b.classList.add('peek');
-    hideHint();
-    const f = FAC[CARDS[k].f], h = el('div', { class: 'lb-hint', role: 'status', style: { '--f': f.c } }, [el('i'), el('b', { text: f.n }), el('span', { text: eraName(eraOf(k)) })]);
-    document.body.appendChild(h);
-    const r = (b.querySelector('.lb-cf, .lb-th') || b).getBoundingClientRect(), w = h.offsetWidth, hh = h.offsetHeight, x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
-    let y = r.top - hh - 10; const under = y < 64; if (under) y = Math.min(window.innerHeight - hh - 8, r.bottom + 10);
-    h.style.left = x + 'px'; h.style.top = y + 'px'; h.style.setProperty('--ax', Math.max(14, Math.min(w - 14, r.left + r.width / 2 - x)) + 'px'); if (under) h.classList.add('under');
-    requestAnimationFrame(() => h.classList.add('show'));
-    hintEl = h; hintT = setTimeout(hideHint, 2600);
+    const f = FAC[CARDS[k].f], kids = [el('i'), el('b', { text: f.n }), el('span', { text: eraName(eraOf(k)) })];
+    if (hintEl) { hintEl.innerHTML = ''; kids.forEach(x => hintEl.appendChild(x)); hintEl.style.setProperty('--f', f.c); }
+    else { hintEl = el('div', { class: 'lb-hint', role: 'status', style: { '--f': f.c } }, kids); document.body.appendChild(hintEl); const h = hintEl; requestAnimationFrame(() => h.classList.add('show')); }
+    hintK = k; clearTimeout(hintT); hintT = setTimeout(hideHint, 3200);
   }
 
   // ═══ The binder ═══════════════════════════════════════════════════════════════════════════════════════════
