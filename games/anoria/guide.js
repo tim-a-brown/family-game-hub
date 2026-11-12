@@ -545,7 +545,7 @@
         await L.turn(0);
         await L.deed('eureka', { lit: 'Any kind of card can have a Legacy Line. The foot of Eureka! names Archimedes, who is in play on your side.', at: [L.card('eureka'), L.piece('archimedes')] });
         await L.say('With Archimedes in play on your side, Eureka! scores 1 Renown as you play it.', { at: '.an-strip.me .st-ren' });
-        await L.say('Only one Legacy Line scores in each round. You can read any card in your hand to see the Legacy Line printed at its foot.', { at: '.an-hand' });
+        await L.say('Every Legacy Line you make scores, however many you make in a round. You can read any card in your hand to see the Legacy Line printed down its side.', { at: '.an-hand' });
       } },
     { id: 'count', n: 'The count', sub: 'Who holds what, and what it scores', art: 'acropolis',
       table: () => ({ round: 3, places: PL, me: { guide: 'leonardo', renown: 4, hand: ['galileo', 'compass'], figs: [['copernicus', MY_GATE], ['hatshepsut', MY_OUT]] },

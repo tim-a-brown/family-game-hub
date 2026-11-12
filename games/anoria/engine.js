@@ -117,7 +117,7 @@ const OLD_TARGET = 30;
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
 // ret: a Figure whose other copy is in your discard pile costs this much less (the return; 1 until 2026-11-12, when Tim
 // removed it: 0 now). A game saved under the return finishes with it (S.cfg).
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, dm: 1 };
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, lineCap: 0, dm: 1 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -505,6 +505,9 @@ function walkDests(S, f, free) {
   for (const i in seen) { const j = +i; if (ok(j) && !(fly && isGate(S, j) && j !== gate && S.adj[f.p].indexOf(j) < 0)) out.push(j); }
   return out;
 }
+// lineCap: 0, every Legacy Line scores its Renown (Tim, 2026-11-12: "i look at legacy lines as powerups for making
+// historical connections"); 1 was the old rule, only the first line a player made in a round scored. A game saved
+// under it finishes with it.
 // Threads: a card can name what it grew from (c.from): a Figure standing on your side, a Relic you have in play, or a
 // Place ('@library': for a Figure, the Place it arrives at; for a Relic or a Deed, a Place where you have a Figure).
 // A card played along a thread scores the Legacy Renown (once a round, shared with Legacy lines). A Figure's own
@@ -524,7 +527,7 @@ function threadSrc(S, o, ci, place) {
 }
 function threadPlay(S, o, ci, src, u, at) {
   const P = S.P[o]; if (!src) return;
-  let ren = S.cfg.threads === 3 || P.lr ? 0 : S.cfg.lineRen; if (ren && at != null && S.dm && pw(S, at) === 'line') ren += 1;   // (a Legacy Line made by a Figure arriving at a school scores 1 more)
+  let ren = S.cfg.threads === 3 || (P.lr && S.cfg.lineCap !== 0) ? 0 : S.cfg.lineRen; if (ren && at != null && S.dm && pw(S, at) === 'line') ren += 1;   // (a Legacy Line made by a Figure arriving at a school scores 1 more)
   if (S.ev) S.ev.push({ t: 'thread', o: o, c: ci, u: u || 0, src: src, ren: ren });
   if (ren) { P.renown += ren; P.lr = 1; } if (S.st) S.st.threads = (S.st.threads || 0) + 1;
 }
@@ -590,7 +593,7 @@ function arrive(S, f, x) {
     if (op === 'stun') { en.sort((a, b) => might(S, b, 0) - might(S, a, 0)); for (let i = 0; i < Math.min(n, en.length); i++) { en[i].stun = 1; if (S.ev) S.ev.push({ t: 'stun', u: en[i].u }); } }
     if (op === 'push' && en.length) { en.sort((a, b) => might(S, a, 0) - might(S, b, 0)); const g = en[0]; if (!CARDS[g.c].k.monument && g.p !== gateOf(g.o)) { const to = stepHome(S, g); if (to >= 0 && room(S, to, g.o)) { if (S.ev) S.ev.push({ t: 'move', u: g.u, from: g.p, to: to, push: 1 }); g.p = to; g.stay = 0; } } }
   }
-  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; const lren = P.lr ? 0 : S.cfg.lineRen + (S.dm && pw(S, f.p) === 'line' ? 1 : 0); if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: lren }); if (!P.lr) { P.renown += lren; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
+  if (c.insp) { const ins = S.figs.find(g => g.o === o && g !== f && c.insp.indexOf(g.c) >= 0 && near(S, f.p, g.p)); if (ins) { f.li = ins.u; P.lines++; const lren = P.lr && S.cfg.lineCap !== 0 ? 0 : S.cfg.lineRen + (S.dm && pw(S, f.p) === 'line' ? 1 : 0); if (S.ev) S.ev.push({ t: 'line', a: f.u, b: ins.u, o: o, ren: lren }); if (lren) { P.renown += lren; P.lr = 1; } if (S.figs.some(g => g.o === o && CARDS[g.c].k.masterpiece)) draw(S, o, 1); if (S.st) S.st.lines++; } }   // (a line scores once a round; Michelangelo draws)
   if (!f.li) threadPlay(S, o, f.c, threadSrc(S, o, f.c, f.p), f.u, f.p);
 }
 function stepHome(S, g) { const N = S.N, gate = gateOf(g.o), near = gate + 1; if (g.p === near) return gate; if (g.p === 2 * N) return near; if (S.adj[g.p].indexOf(near) >= 0) return near; return 2 * N; }
