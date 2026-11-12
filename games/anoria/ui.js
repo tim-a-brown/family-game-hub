@@ -12,6 +12,9 @@
   const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
   const KEY = 'anoria', SAVE = 'anoria_save', FAST = 'anoria_fast', ART = 'anoria/art/';
   const Coll = window.AnoriaColl;   // your collection (coll.js): what you own, your decks, what a game earns
+  // A draft to compare (Tim: "an option where the geographic regions have color on the lands"): each region's land in
+  // its own muted ink, on with ?regcol=1 or anoria_regcol '1' on the device (domains.css, .an-regcol)
+  try { if (/[?&]regcol=1/.test(location.search)) localStorage.setItem('anoria_regcol', '1'); if (/[?&]regcol=0/.test(location.search)) localStorage.removeItem('anoria_regcol'); if (localStorage.getItem('anoria_regcol') === '1') document.documentElement.classList.add('an-regcol'); } catch (e) {}
   // Domains: once they are on (C.DM_LIVE), the five cards on the map are Domains in every word a player reads (Tim:
   // one word, not Place). The cards' and Guides' own words are changed here once; the table's own words go through DW.
   const DW = s => (C.DM_LIVE && typeof s === 'string' ? s.replace(/\bPlace(s?)\b/g, 'Domain$1') : s);

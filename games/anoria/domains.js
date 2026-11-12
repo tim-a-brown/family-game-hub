@@ -161,8 +161,8 @@
   const homes = {};
   function home(reg, o) {
     o = o || {}; const label = 'Home region: ' + (REG[reg] || reg), k = reg + (o.name ? '/row' : ''); clipReady();
-    if (!homes[k]) homes[k] = o.name ? el('span', { class: 'dm-home row', role: 'img', 'aria-label': label, html: HOUSE + emblemSVG(reg) + '<b>' + Kit.esc(REG[reg] || '') + '</b>' })
-      : el('span', { class: 'dm-home', role: 'img', 'aria-label': label,
+    if (!homes[k]) homes[k] = o.name ? el('span', { class: 'dm-home row r-' + reg, role: 'img', 'aria-label': label, html: HOUSE + emblemSVG(reg) + '<b>' + Kit.esc(REG[reg] || '') + '</b>' })
+      : el('span', { class: 'dm-home r-' + reg, role: 'img', 'aria-label': label,
         html: '<svg class="dm-hp" viewBox="0 0 24 28" aria-hidden="true"><path class="hp" d="M12 1.3 22.8 10.6V26.7H1.2V10.6z"/><g transform="translate(3.9 7.7) scale(.675)">' + emblem(reg) + '</g></svg>' });
     const n = homes[k].cloneNode(true); if (o.lit) n.classList.add('lit'); return n;
   }
