@@ -689,7 +689,7 @@ Underlying principles for everything:
   homes) and Domains in packs (`DOMAINS_IN_PACKS`, `WELCOME_DOMAINS`, `DOMAIN_SLOT`). Every script in scripts/anoria
   plays with Domains (`dm` in `STD`; `'{"dm":0}'` is the old map); `scripts/anoria/domains.js` asks the Domain
   questions and `domains.txt` has the answers. A Domain's picture brief is `art` in text.js with how sure it is (`bs`);
-  63 Domains and the twelve Domain cards have no picture yet (`NOPIC`). ui.js has only what keeps today's table
+  Every Domain and Domain card has its pictures (2026-11-12, the batch's notes in the session scratchpad's `domains-art/`). ui.js has only what keeps today's table
   working, with each seam for the screens marked `SEAM`.
   **Domains are off on the page until their screens are built** (`DM_LIVE` in cards.js): the page's new games are on
   the old fixed map, the Domain cards are not in its set, packs hold no Domains and cards read their old-map words
