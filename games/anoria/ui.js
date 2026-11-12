@@ -1931,11 +1931,13 @@
     async domain(ev) {
       if (ev.why === 'setup') return;
       V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('flip'); Kit.haptic('medium');
+      const tl = dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile'); if (tl) tl.classList.add('flip');   // (the new Domain turns over onto the table)
       Kit.toast((ev.old != null ? cap1(theName('@' + ev.old)) + ' is discarded, and ' + theName('@' + ev.id) + ' is laid' : cap1(theName('@' + ev.id)) + ' is laid') + ' at ' + posName(ev.p) + '.', 2600); await wait(900);
     },
     async domains(ev) {
       V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('whoosh'); Kit.haptic('medium');
       const moved = ev.perm.map((from, i) => (from !== i ? i : -1)).filter(i => i >= 0);
+      moved.forEach(i => { const tl = dom.map.querySelector('.pl[data-p="' + i + '"] .pl-tile'); if (tl) tl.classList.add('su-land'); });
       Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.', 2600); await wait(900);
     },
     // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
@@ -2054,6 +2056,14 @@
       else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + nm(ev.o) + ' has ' + ev.left + ' left.']);
       else if (t === 'mend') add(ev.o, ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
       else if (t === 'discard') add(ev.o, [nm(ev.o) + ' discarded ', K(ev.c), '.']);
+      // Domains: laid in another's place, moved, covered, and the Congress of Vienna's dice
+      else if (t === 'domain' && ev.why !== 'setup') { const w = E.ownerOfSpoke(S, ev.p), at = w < 0 ? 'the Crossroads' : Kit.poss(nm(w)) + (E.isGate(S, ev.p) ? ' Gate' : ' Outpost');
+        add(ev.o, ev.old ? [{ k: '@' + ev.old }, ' was discarded, and ', { k: '@' + ev.id }, ' was laid at ' + at + '.'] : [{ k: '@' + ev.id }, ' was laid at ' + at + '.']); }
+      else if (t === 'domains') { const mv = ev.perm.map((f, j) => (f !== j ? j : -1)).filter(j => j >= 0);
+        add(-1, mv.length === 2 ? [{ k: '@' + S.places[mv[0]] }, ' and ', { k: '@' + S.places[mv[1]] }, ' changed places.'] : ['The Domains at the two Gates changed places, and so did the Domains at the two Outposts.']); }
+      else if (t === 'marker') add(-1, [K(ev.c), ' lies on ', { k: '@' + S.places[ev.p] }, ', which has no rule while it lies there.']);
+      else if (t === 'congress') add(ev.o, ['The dice for ', K(ev.c), ' showed ' + ev.dice[0] + ' and ' + ev.dice[1] + '.']);
+      else if (t === 'nothing' && ev.why === 'kudurru') add(-1, ['A Boundary Stone protected that Domain, so nothing changed.']);
     });
     if (L.length > LOGMAX) L.splice(0, L.length - LOGMAX);
   }
