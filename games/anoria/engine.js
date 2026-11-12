@@ -656,7 +656,7 @@ function actions(S) {
     if (c.quick) return;   // (a Quick Deed is played with a clash (Phalanx, below), or plays itself (Testudo, the Defence of Syracuse, the Tribune's Veto))
     if (fx === 'eureka' || fx === 'caravan' || fx === 'medici' || fx === 'holyyear') out.push({ t: 'deed', h });
     else if (fx === 'triumph') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }   // (the Roman Triumph: a Domain where you have a Figure)
-    else if (fx === 'walls') { if (P.seals > 0 && P.seals < WALL_MAX) out.push({ t: 'deed', h }); }   // (the Theodosian Walls: a Seal, while you have fewer than 4)
+    else if (fx === 'walls') { if (P.seals > 0 && P.seals < WALL_MAX && !(S.cfg.wallsOnce && P.uWl)) out.push({ t: 'deed', h }); }   // (the Theodosian Walls: a Seal, while you have fewer than 4. cfg.wallsOnce, for test games: once a game for each player)
     else if (fx === 'decree') { for (let i = 0; i < np; i++) if (cnt(S, i, o)) out.push({ t: 'deed', h, p: i }); }
     else if (fx === 'eclipse') { for (let i = 0; i < np; i++) if (pw(S, i) !== 'sanctuary' && theirs.some(g => g.p === i && open(g))) out.push({ t: 'deed', h, p: i }); }
     else if (fx === 'encore') { for (const f of mine) if (!f.rdy) out.push({ t: 'deed', h, u: f.u }); }
@@ -742,7 +742,7 @@ function apply(S, a, da, dd, raw) {
     else if (fx === 'triumph') (S.dbl || (S.dbl = [])).push({ o: o, p: a.p });   // (the Roman Triumph: that Domain scores double for you at the count)
     else if (fx === 'medici') (S.dbl || (S.dbl = [])).push({ o: o, k: CARDS[ci].dk });   // (every Domain of the card's kind that you hold)
     else if (fx === 'holyyear') (S.dbl || (S.dbl = [])).push({ o: o, all: 1 });   // (every Domain you hold)
-    else if (fx === 'walls') { P.seals = Math.min(WALL_MAX, P.seals + 1); P.sm = Math.max(P.sm || S.cfg.seals, P.seals); if (S.ev) S.ev.push({ t: 'mend', o: o, left: P.seals, sm: P.sm, why: 'walls', c: ci }); }
+    else if (fx === 'walls') { P.uWl = 1; P.seals = Math.min(WALL_MAX, P.seals + 1); P.sm = Math.max(P.sm || S.cfg.seals, P.seals); if (S.ev) S.ev.push({ t: 'mend', o: o, left: P.seals, sm: P.sm, why: 'walls', c: ci }); }
     if (LASTING[fx]) (S.dip || (S.dip = [])).push({ c: ci, o: o, p: a.p != null ? a.p : -1 });   // (a Deed whose effect lasts until the count lies on the table till then: S.dip)
     else if (fx === 'eclipse') { for (const g of S.figs) if (g.p === a.p && g.o !== o && !wardAt(S, g)) g.stun = 1; }
     else if (fx === 'encore') { const f = byU(S, a.u); f.rdy = 1; f.arr = 0; }
@@ -783,15 +783,15 @@ function evalS(S, me, prof) {
   for (const r of P.relics) { const fx = fxOf(r); v += (fx === 'press' ? 0.5 : fx === 'antikythera' ? 0.4 : 0.2) * (left - 1); }
   // (Spark kept for a Quick Deed that plays itself on the other player's turn: the Defence of Syracuse, the Tribune's Veto)
   let need = 0; for (const c of P.hand) { const fx = fxOf(c); if (fx === 'syracuse' || fx === 'veto') need = Math.max(need, Math.min(2, costOf(S, me, c))); }
-  if (need) v += KEEP_W * Math.min(P.spark, need);
+  if (need) v += (cfg.keepW != null ? cfg.keepW : KEEP_W) * Math.min(P.spark, need);
   return v;
 }
 // What the robots count for a Domain that a Deed doubles this round: all of it on the last turn before the count, less
 // while the other player still has a turn to take it back. KEEP_W: a Spark kept for a Quick Deed that plays itself on the
 // other player's turn. WALLS_W: a Seal from the Theodosian Walls, beyond the Seal itself, by the Seals the robot has (a
 // Seal is worth more to a player who is down to one).
-const DBL_EARLY = 0.6, KEEP_W = 0.45, WALLS_W = [0, 2, 0.8, 0, 0];
-const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 1 : 1 + (x - 1) * ((S.tr || 0) >= S.N ? 1 : DBL_EARLY); };
+const DBL_EARLY = 0.6, KEEP_W = 0.45, WALLS_W = [0, 2, 0.8, -2, 0];   // (test games try others: cfg.dblEarly, cfg.keepW, cfg.wallsW)
+const dblW = (S, i, h) => { const x = dblOf(S, i, h); return x === 1 ? 1 : 1 + (x - 1) * ((S.tr || 0) >= S.N ? 1 : S.cfg.dblEarly != null ? S.cfg.dblEarly : DBL_EARLY); };
 // What a Domain's power is worth to the robots as they judge the table, on top of the Renown it scores, for the power
 // that pays its holder or the players there later (they look one move ahead, so what comes at the count, next turn
 // or next round has to be counted here or they misplay it). In the units evalS uses: 1 Renown is about 1.
@@ -842,7 +842,7 @@ function mix(T, k) { for (let o = 0; o < T.N; o++) dshuf(T.P[o].dst, T.uid * 131
 function settle(T, prof) { for (let g = 0; T.pend && g < 4; g++) { const o = T.pend.o; let best = null, bv = -1e9; for (const a of pendActions(T)) { const U = clone(T); pendApply(U, a); const v = evalS(U, o, prof); if (v > bv) { bv = v; best = a; } } pendApply(T, best); } }
 function valueOf(S, a, me, prof) {
   const v = valueOf0(S, a, me, prof);
-  return a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'walls' ? v + (WALLS_W[S.P[me].seals] || 0) : v;
+  return a.t === 'deed' && fxOf(S.P[me].hand[a.h]) === 'walls' ? v + ((S.cfg.wallsW || WALLS_W)[S.P[me].seals] || 0) : v;   // (cfg.wallsW: another table, for test games)
 }
 function valueOf0(S, a, me, prof) {
   // (Florence's loan is worth only what it lets the robot play now that it couldn't before, less the debt: it looks one play further)
