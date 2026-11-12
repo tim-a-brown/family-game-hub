@@ -520,7 +520,7 @@
   }
 
   // ═══ A deck's Domains: its stack of 15 ═══════════════════════════════════════════════════════════════════
-  // Each game a player draws three Domains from their deck's stack (one for their Gate, one for their Outpost, one
+  // Each game a player draws four Domains from their deck's stack and lays three (one for their Gate, one for their Outpost, one
   // offered for the Crossroads). The stack is 15 Domains you own, no two the same, and any kinds and homes. Each
   // Domain shows its kind, its home and, on its house, how many of this deck's Figures are at home there, which is
   // what makes a Domain good for a deck. A tap moves a Domain into the stack or out of it; a hold reads it. A full
@@ -557,7 +557,7 @@
     function paint() {
       const top = sc.body.scrollTop; sc.body.innerHTML = '';
       const rest = Coll.domains().filter(x => cur.indexOf(x) < 0).sort(byHome), full = cur.length === N;
-      sc.body.appendChild(el('p', { class: 'adk-lead', text: 'Each game you draw three Domains from this stack. A stack is ' + N + ' Domains, no two the same. The number on a Domain’s house is how many of this deck’s Figures are at home there.' }));
+      sc.body.appendChild(el('p', { class: 'adk-lead', text: 'Each game you draw four Domains from this stack and lay three. A stack is ' + N + ' Domains, no two the same. The number on a Domain’s house is how many of this deck’s Figures are at home there.' }));
       sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { class: 'dsk-h2' }, [el('span', { text: 'In the stack' }), el('span', { class: 'dsk-c' + (full ? ' ok' : ''), html: full ? Kit.icon('check') + '<b>' + N + ' of ' + N + '</b>' : '<b>' + cur.length + ' of ' + N + '</b>' }), auto]),
         el('div', { class: 'dsk-g' }, cur.slice().sort(byHome).map(x => tile(x, true)))]));
       sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: rest.length ? 'Your other Domains' : 'All your Domains are in the stack' }), el('div', { class: 'dsk-g' }, rest.map(x => tile(x, false)))]));

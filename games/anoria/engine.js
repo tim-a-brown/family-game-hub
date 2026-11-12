@@ -115,7 +115,7 @@ const OLD_TARGET = 30;
 // dm: the game is played with Domains (2026-11-11). It is what play() goes by when a test hands it no stacks (each
 // deck then brings its ready stack, or fifteen Domains at random: stacksFor); '{"dm":0}' plays the old fixed map.
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', unique: 0, inspEach: 1, ret: 1, threads: 2, dm: 1 };
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 1, threads: 2, dm: 1 };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -296,9 +296,10 @@ function congress(S, o, ci, d1, d2) {
   if (S.st) S.st.use[fixed >= 0 ? 'congress: a six, one Domain chosen' : 'congress: two sixes, both chosen'] = (S.st.use[fixed >= 0 ? 'congress: a six, one Domain chosen' : 'congress: two sixes, both chosen'] || 0) + 1;
 }
 // ── Set-up ──
-// Each player shuffles their stack and draws three Domains (S.su.drew[o]). They lay one face down at their Gate and
-// one at their Outpost and keep the third as their offer for the Crossroads: setupOptions(S, o) lists the six ways,
-// setupLay(S, o, {gate, out, offer}) lays one. When both have laid, setupRoll turns the four up, each player rolls
+// Each player shuffles their stack and draws four Domains (S.su.drew[o]; cfg.suDraw, Tim 2026-11-12: it was three, and a
+// fourth lets a player keep a Domain whose power does nothing at a Gate away from it). They lay one face down at their
+// Gate and one at their Outpost, keep one as their offer for the Crossroads, and put the rest under their stack:
+// setupOptions(S, o) lists the ways, setupLay(S, o, {gate, out, offer}) lays one. When both have laid, setupRoll turns the four up, each player rolls
 // a die (again if the dice match), the higher roll's offer is laid at the Crossroads with that player's banner, the
 // other player's offer starts their Domain discard pile, and that other player takes the first turn of the game.
 // If the two players turn up the same Domain, each puts their copy under their stack and lays the next Domain of
@@ -309,7 +310,7 @@ function setupBegin(S, stacks, R) {
   const N = S.N, np = 2 * N + 1;
   S.dm = 1; S.places = new Array(np).fill(null); S.ban = new Array(np).fill(-1); S.mk = new Array(np).fill(0); S.cyn = 0; S.pend = null;
   S.su = { step: 'lay', drew: [], lay: [], rolls: [], dibs: -1, first: -1 };
-  for (let o = 0; o < N; o++) { const P = S.P[o]; P.dst = shuffle(stacks[o].slice(), R); P.dgone = []; S.su.drew[o] = [P.dst.pop(), P.dst.pop(), P.dst.pop()]; S.su.lay[o] = null; }
+  for (let o = 0; o < N; o++) { const P = S.P[o]; P.dst = shuffle(stacks[o].slice(), R); P.dgone = []; S.su.drew[o] = []; for (let k = 0; k < (S.cfg.suDraw || 3) && P.dst.length; k++) S.su.drew[o].push(P.dst.pop()); S.su.lay[o] = null; }
   if (S.st) { S.st.laid = []; S.st.use = {}; }
 }
 // A table laid by hand, for a lesson or a test: lay = the five Domains [player 0's Gate, their Outpost, player 1's
@@ -322,11 +323,14 @@ function setupFixed(S, lay, ban, first) {
   S.su = { step: 'done', drew: S.P.map(() => []), lay: S.P.map(() => null), rolls: [], dibs: ban[2 * N], first: first || 0 }; S.f0 = first || 0; if (S.st) S.st.repl = 0;
   return true;
 }
-function setupOptions(S, o) { const d = S.su.drew[o], out = []; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) if (b !== a) out.push({ gate: d[a], out: d[b], offer: d[3 - a - b] }); return out; }
+function setupOptions(S, o) { const d = S.su.drew[o], n = d.length, out = []; for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) for (let c = 0; c < n; c++) if (a !== b && a !== c && b !== c) out.push({ gate: d[a], out: d[b], offer: d[c] }); return out; }
 function setupLay(S, o, a) {
   const su = S.su; if (!su || su.step !== 'lay' || su.lay[o]) return false;
   if (!setupOptions(S, o).some(x => x.gate === a.gate && x.out === a.out && x.offer === a.offer)) return false;
-  su.lay[o] = { gate: a.gate, out: a.out, offer: a.offer }; if (su.lay.every(x => x)) su.step = 'roll';
+  su.lay[o] = { gate: a.gate, out: a.out, offer: a.offer };
+  // (the Domains drawn and not laid go under the stack, in the order drawn)
+  const under = su.drew[o].filter(id => id !== a.gate && id !== a.out && id !== a.offer); if (under.length) { S.P[o].dst.unshift.apply(S.P[o].dst, under); su.lay[o].under = under; }
+  if (su.lay.every(x => x)) su.step = 'roll';
   return true;
 }
 // dice: the rolls to use ([[a, b], ...], for a page that lets the players throw them); without it the engine rolls
@@ -349,7 +353,7 @@ function setupRoll(S, R, dice) {
   if (S.st) { S.st.repl = 0; S.st.dibs = d; S.st.hub0 = hub; }
   return true;
 }
-// How a robot lays its three Domains: what a Domain's rule is worth to it at [its Gate, its Outpost, as its offer for
+// How a robot lays its Domains: what a Domain's rule is worth to it at [its Gate, its Outpost, as its offer for
 // the Crossroads], in tenths of a point of win rate, beyond the Might its own Figures get there (home: how much the
 // share of its Figures who are at home on the Domain counts at each). Only what two sets of test games agree on is
 // in it (the prototype's table A4 in places/results.txt, and "rules" in domains.txt, which lay Domains with no
@@ -377,7 +381,7 @@ const LAYV = { home: [0.5, 1, 1], spark: [0, 0.35, 0], cheap: [-0.2, 0, 0.2], fo
 function deckInfo(deck) { const reg = {}, fac = {}; let n = 0; for (const c of deck) { const x = CARDS[c]; if (!x || x.t !== 'fig') continue; n++; if (!x.k.voyager) reg[x.reg] = (reg[x.reg] || 0) + 1; fac[x.f] = (fac[x.f] || 0) + 1; } for (const k in reg) reg[k] /= n || 1; for (const k in fac) fac[k] /= n || 1; return { reg, fac }; }
 // (tab: another table to try, for the test games: cfg.layv)
 function layScore(id, slot, info, tab) { const pl = PLACES[id], w = pl.pw || '', T = tab || LAYV, hw = T.home || [1, 2, 2]; let v = (info.reg[pl.reg] || 0) * hw[slot]; if (w.slice(0, 3) === 'fac') v += (info.fac[w[3]] || 0) * hw[slot]; if (T[w]) v += T[w][slot]; return v; }
-// A robot's choice at set-up: its three Domains to its Gate, its Outpost and its offer, by what suits its deck. A
+// A robot's choice at set-up: three of the Domains it drew to its Gate, its Outpost and its offer, by what suits its deck. A
 // robot that judges unclearly (prof.noise: Easy and Normal) chooses that much less surely. No prof: the best lay.
 function setupPick(S, o, prof, R) {
   const P = S.P[o], info = deckInfo(P.deck.concat(P.hand)); let best = null, bv = -1e9;

@@ -85,7 +85,7 @@ const CARDS = {
   // Legacy
   caesar: F('Julius Caesar', 'S', 5, 6, 'MED', 2, -49, { swift: 1 }, { insp: ['alexander'] }),
   ibnsina: F('Ibn Sina', 'D', 3, 4, 'MIDEAST', 3, 1025, { scholar: 1 }, { insp: ['aristotle'] }),
-  chaucer: F('Geoffrey Chaucer', 'A', 3, 4, 'EUR', 3, 1390, { tale: 1 }, { insp: ['virgil', 'dante'] }),
+  chaucer: F('Geoffrey Chaucer', 'A', 3, 3, 'EUR', 3, 1390, { tale: 1 }, { insp: ['virgil', 'dante'] }),
   marcus: F('Marcus Aurelius', 'S', 3, 3, 'MED', 2, 170, { guard: 1, steadfast: 1 }, { insp: ['socrates', 'plato'] }),
   germain: F('Sophie Germain', 'D', 2, 2, 'EUR', 6, 1816, { scholar: 1 }, { insp: ['archimedes', 'newton'] }),
   // Court

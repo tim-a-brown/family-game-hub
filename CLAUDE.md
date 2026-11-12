@@ -647,7 +647,8 @@ Underlying principles for everything:
   strongholds, stages, courts and roads of an age is how people held the age, and a kind's rule pays what holding
   that kind of place gave them) and one **home region**, the Figures' own regions; kind and home must both be plain
   from the card's border and plates. Each player brings a **stack of 15 Domains**, no two the same, chosen from a
-  collection that can hold more. Set-up: draw three, one to your Gate, one to your Outpost, the third offered for
+  collection that can hold more. Set-up: draw four (`suDraw`; three until Tim's choice on 2026-11-12), one to your Gate, one to your Outpost, one under your
+  stack, and one offered for
   the Crossroads; each player rolls a die, the higher roll's offer is the Crossroads and the other player takes the
   first turn. The Crossroads' owner wins ties there while they have a Figure there, and nothing more. Domination (a
   win by holding every kind) is left out as too complicated. **The game must translate to a real table**: whose

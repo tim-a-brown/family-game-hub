@@ -1033,8 +1033,8 @@
     if (G.ph === 'setup') suBegin(); else beginTurn();
   }
   // ═══ Domains: the set-up (S.su) ═══
-  // Each player draws three Domains, lays one face down at their Gate and one at their Outpost, and keeps the third as
-  // their offer for the Crossroads. Then the four turn up, each player rolls a die, the higher roll's offer is laid at
+  // Each player draws four Domains, lays one face down at their Gate and one at their Outpost, keeps one as their offer
+  // for the Crossroads, and puts the one left over under their stack (shown tucked under a card back once three are laid). Then the four turn up, each player rolls a die, the higher roll's offer is laid at
   // the Crossroads, and the other player takes the first turn. All of it happens on the table: the map's five rows
   // hold the slots, the hand holds the Domains drawn, and the two offers wait on either side of the Crossroads. A tap
   // picks a Domain up and a tap on a slot lays it (the last one lays itself); a tap on a laid one picks it up again,
@@ -1099,11 +1099,14 @@
     // the caption: what is being laid, and the button once all three are
     const n = dom.cap; n.innerHTML = '';
     const full = me && put.gate && put.out && put.offer, next = G.players.some((p, o) => o !== v && !p.cpu && !su.lay[o]);
-    n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? 'Your Domains lie face down until both of you have laid yours.' : 'The higher roll’s offer is the Crossroads.') : 'Lay your three Domains.' }));
+    n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? 'Your Domains lie face down until both of you have laid yours.' : 'The higher roll’s offer is the Crossroads.') : 'Lay three of your ' + ['', 'one', 'two', 'three', 'four', 'five'][su.drew[v].length] + ' Domains.' }));
     // the hand: the Domains drawn and not yet laid
     const h = dom.hand; h.innerHTML = '';
     if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
-      h.appendChild(el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [cardEl(id, { mini: true })]));
+      const c = el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok') + (full ? ' su-under' : ''), 'data-su': id, 'aria-label': C.PLACES[id].n + (full ? ', going under your stack' : '') }, [cardEl(id, { mini: true })]);
+      // (once three are laid, the one left over is tucked under a card back: it goes under the stack. It can still be
+      // picked up and laid in place of another)
+      h.appendChild(full ? el('span', { class: 'su-stack' }, [c, suBack('stk')]) : c);
     });
   }
   function suTap(e) {
@@ -2446,7 +2449,7 @@
     '<li>The house on the right edge shows the Place\'s home region, with the region\'s outline inside it.' + homeKey() + 'A Figure from that region has +1 Might there, and while you hold such a Figure in your hand or move one on the map, the houses where it would be at home light up gold.</li>' +
     (C.DM_LIVE ? '<li>The border of each Domain is the material of its kind, as well: a cord with seals for Commerce, riveted iron for Industry, a ruled margin for Thought, a battlement for Land, a dog-tooth frieze for Culture, a marble moulding for Law and a chart\'s border for Routes.</li></ul>' +
     '<h3>Domains</h3><ul><li>Each deck brings a <b>stack of ' + Coll.STACK + ' Domains</b>, no two the same. You choose them under Decks.</li>' +
-    '<li>Before the first round, each player draws three Domains, lays one at their Gate and one at their Outpost, and offers the third for the Crossroads.</li>' +
+    '<li>Before the first round, each player draws four Domains, lays one at their Gate and one at their Outpost, offers one for the Crossroads, and puts the fourth under their stack.</li>' +
     '<li>Then each player rolls a die. The higher roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the other player takes the first turn.</li>' +
     '<li>If the Might at the Crossroads is tied, the player whose banner is on it holds it, as long as they have a Figure there.</li>' +
     '<li>A Commerce Domain pays nothing at a Gate. Its rule works at an Outpost or the Crossroads.</li>' +
