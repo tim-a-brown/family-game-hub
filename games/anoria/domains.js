@@ -326,7 +326,7 @@
         cell('Sideways, round 5', trk(5, 0, [{ r: 5, o: 1 }], true))]),
       row('The map on every play mat', pairs.map(pr => cell((typeof pr[0] === 'object' ? 'A picture mat' : ctx.mats[pr[0]].n) + ' over ' + ctx.mats[pr[1]].n, map(pr[0], pr[1]))),
         'Banners of both players, the Colosseum silenced for 2 more rounds, the Library changed for 3, Hypatia at home at the Library with its home plate lit, Tomoe Gozen away from home at Petra. The second player\'s Outpost and the Crossroads are both the second player\'s.'),
-      el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Without colour' }), el('div', { class: 'dp-grey' }, [sheet()])]),
+      el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Without color' }), el('div', { class: 'dp-grey' }, [sheet()])]),
       el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Red and green alike (deuteranopia)' }), el('div', { class: 'dp-deut' }, [sheet()])]),
       el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Red and green alike (protanopia)' }), el('div', { class: 'dp-prot' }, [sheet()])])
     ]);

@@ -270,7 +270,7 @@ const P3 = {
   hieroglyphs: { n: 'The Hieroglyphs Read', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1822 },
   halley: { n: 'Halley\'s Comet Returns', t: 'deed', f: 'D', c: 1, fx: 'encore', y: 1758 },
   naovictoria: { n: 'The Victoria Comes Home', t: 'deed', f: 'D', c: 1, fx: 'caravan', y: 1522 },
-  syracuse: { n: 'The Defence of Syracuse', t: 'deed', f: 'D', c: 2, fx: 'phalanx', quick: 1, y: -213 },
+  syracuse: { n: 'The Defense of Syracuse', t: 'deed', f: 'D', c: 2, fx: 'phalanx', quick: 1, y: -213 },
   goldrush: { n: 'Gold Rush', t: 'deed', f: 'S', c: 1, fx: 'caravan', y: 1849 },
   truce: { n: 'Christmas Truce', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1914 },
   magnacarta: { n: 'Magna Carta', t: 'deed', f: 'S', c: 1, fx: 'eclipse', y: 1215 },
@@ -448,7 +448,7 @@ const OLD_GUIDES = { franklin: { n: 'Benjamin Franklin', to: 'shakespeare' }, ge
 const DKINDS = {
   Commerce: { what: 'markets, ports and caravan cities', pays: 'Spark' }, Industry: { what: 'workshops, shipyards, mines and kilns', pays: 'made things' },
   Thought: { what: 'libraries, schools and observatories', pays: 'cards' }, Land: { what: 'walls, fortresses and passes', pays: 'safe ground' },
-  Culture: { what: 'theatres, temples, monuments and games', pays: 'Renown' }, Law: { what: 'capitals, courts and council fires', pays: 'order' },
+  Culture: { what: 'theaters, temples, monuments and games', pays: 'Renown' }, Law: { what: 'capitals, courts and council fires', pays: 'order' },
   Routes: { what: 'roads, straits and sea lanes', pays: 'movement' },
 };
 // The 75 powers, one for each Domain, each with its kind (the sentence a player reads is text.js DRULE, the tile's label

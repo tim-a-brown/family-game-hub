@@ -2579,7 +2579,7 @@
           dress: (mat, x) => { mat.style.setProperty('--mc', x.col); mat.style.setProperty('--mth', 'color-mix(in srgb,' + x.col + ' 40%,#cdbb8c)'); mat.style.setProperty('--md', 0); },
           onChange: (x, settled) => keep(x, settled), another: choose,
           icons: { hand: Kit.icon('hand'), centre: Kit.icon('target'), small: SVG.art, big: SVG.art },
-          words: { size: 'The size of the picture', centre: 'Put the picture back in the middle of the mat', cloth: 'Cloth', colour: 'Colour', fromPic: 'A cloth colour taken from the picture', another: 'Choose another card',
+          words: { size: 'The size of the picture', centre: 'Put the picture back in the middle of the mat', cloth: 'Cloth', colour: 'Colour', fromPic: 'A cloth color taken from the picture', another: 'Choose another card',
             stage: 'The picture on the mat. Drag the picture to move it. Pinch, scroll or use the slider to change its size.' } });
       });
     }

@@ -536,7 +536,7 @@
         them: { guide: 'suntzu', hand: ['leonidas', 'genghis', 'phalanx'], figs: [['tomoe', TH_GATE]] } }),
       async run(L) {
         await L.pause(400); await L.turn(0);
-        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modelled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
+        await L.play('virgil', MY_GATE, { lit: 'A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from. Virgil modeled the Aeneid on Homer, and Homer is in play on your side.', at: [L.card('virgil'), L.piece('homer')] });
         await L.say('Virgil cost 1 Spark less, and he has +1 Might for as long as Homer is in play, connected by a gold Legacy Line on the map.', { at: [L.piece('virgil'), L.piece('homer')] });
         await L.say('The Legacy Line also scored you 1 Renown when you played Virgil. A Legacy Line scores once, and not again on later turns.', { at: '.an-strip.me .st-ren' });
         await L.later('The next round…', S => { S.round = 4; S.P[0].lr = 0; S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
@@ -556,7 +556,7 @@
         await L.say('When the Might is tied, nobody holds the Place.', { at: L.row(MY_OUT) });
         await L.say('An empty or tied Gate stays with its owner.', { at: L.row(TH_GATE) });
         await L.round();
-        await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the colour of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
+        await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the color of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
         await L.say('If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: document.querySelector('.an-felt > .dm-track') ? '.an-felt > .dm-track' : '.an-cap .cap-round' });
       } },

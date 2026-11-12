@@ -276,7 +276,7 @@
       if (seals.length) key.appendChild(el('span', null, [el('i', { class: 'ah-dia', style: { '--c': '#f3e9d2' } }), el('span', { text: 'A Seal broke' })]));
       var grid = el('div', { class: 'ah-grid' }, [labs, cols]); cols.style.setProperty('--n', n);
       var box = el('div', { class: 'ah-plate ah-race' }, [key, grid,
-        hold.length === n && pk.length === 5 ? el('p', { class: 'ah-cap', text: DW('Under the lines, each square is a Place in one round, in the colour of whoever held it.') }) : null, read]);
+        hold.length === n && pk.length === 5 ? el('p', { class: 'ah-cap', text: DW('Under the lines, each square is a Place in one round, in the color of whoever held it.') }) : null, read]);
       pick(n);
       root.appendChild(ui.section('Renown, round by round', box));
     })();
