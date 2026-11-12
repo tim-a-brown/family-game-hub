@@ -244,29 +244,31 @@
   const MAPW = 284, MAPH = 196, DOT0 = { x: 227.2, y: 47, r: 9 };
   // at: where the dot stands in the map's own box (x, y) and its ring's radius (r; 0 for the dot alone): dotSpot() below finds the place clear of the card's words
   // how close a card's map is drawn: 10.92 to the degree, or less until some coastline (a vertex of LAND) stands well
-  // inside the map's box
+  // inside the part of the map the card shows, not at its rim (x0: its left edge, y1: its foot; the card crops the map's box to fit
+  // the paper), from the dot's line down to two thirds of the way, below the name and clear of the shield and plates
   const zoomAt = {};
-  function mapZoom(ll, cx, cy) {
-    const zk = ll.join(',') + '|' + cx + ',' + cy; if (zoomAt[zk]) return zoomAt[zk];
+  function mapZoom(ll, cx, cy, x0, y1) {
+    x0 = x0 || 0; y1 = Math.min(MAPH, y1 || MAPH);
+    const zk = ll.join(',') + '|' + cx + ',' + cy + ',' + x0 + ',' + y1; if (zoomAt[zk]) return zoomAt[zk];
     const B = landBoxes(), m = 14; let k = 10.92;
-    for (let step = 0; step < 6; step++) {
-      const ky = k / Math.cos(ll[1] * Math.PI / 180), lonA = ll[0] - (cx - m) / k, lonB = ll[0] + (MAPW - cx - m) / k, latA = ll[1] - (MAPH - cy - m) / ky, latB = ll[1] + (cy - m) / ky;
-      let seen = false;
-      for (let i = 0; i < LAND.length && !seen; i++) {
+    for (let step = 0; step < 7; step++) {
+      const ky = k / Math.cos(ll[1] * Math.PI / 180), mx = Math.max(m, (MAPW - x0) * .18), lonA = ll[0] - (cx - x0 - mx) / k, lonB = ll[0] + (MAPW - cx - mx) / k, latA = ll[1] - (y1 * .66 - cy) / ky, latB = ll[1] + Math.min(cy - m, 8) / ky;
+      let seen = 0;   // (points of coastline in view: a stretch of coast, not one tip of a bay at the edge)
+      for (let i = 0; i < LAND.length && seen < 25; i++) {
         const b = B[i]; if (b[2] < lonA || b[0] > lonB || b[3] < latA || b[1] > latB) continue;
-        const r = LAND[i]; for (let j = 0; j < r.length; j += 2) if (r[j] > lonA && r[j] < lonB && r[j + 1] > latA && r[j + 1] < latB) { seen = true; break; }
+        const r = LAND[i]; for (let j = 0; j < r.length && seen < 25; j += 2) if (r[j] > lonA && r[j] < lonB && r[j + 1] > latA && r[j + 1] < latB) seen++;
       }
-      if (seen) break; k /= 1.45;
+      if (seen >= 25) break; k /= 1.45;
     }
     return (zoomAt[zk] = k);
   }
   function mapSVG(ll, color, at, reg) {
     if (!ll) return '';
-    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
+    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + ',' + (at.x0 || 0) + ',' + (at.y1 || 0) + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
     const tint = reg && window.AnoriaDomains && window.AnoriaDomains.REGCOL ? window.AnoriaDomains.REGCOL[reg] : null;   // (the land in a faint wash of the home region's colour: Tim, 2026-11-12)
     // (a place far from any coast, like Sitting Bull's plains, would show a blank map: the map draws back, step by step,
     // until a coastline is in view to give a bearing, and the dot stays the same size: Tim, 2026-11-12)
-    const W = MAPW, H = MAPH, cx = at.x, cy = at.y, k = mapZoom(ll, cx, cy), ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
+    const W = MAPW, H = MAPH, cx = at.x, cy = at.y, k = mapZoom(ll, cx, cy, at.x0, at.y1), ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
     const X = lon => cx + (lon - lon0) * k, Y = lat => cy - (lat - lat0) * ky;
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
     const B = landBoxes(); let d = '';
@@ -326,6 +328,7 @@
       for (let ti = 0; ti < tiers.length && !out; ti++) { const r = tiers[ti][0], body = Math.max(r, 3.4), rad = body * sc + tiers[ti][1] * em; let best = 1e9;
         for (let y = Math.max(body + 2, top); y <= y1 - body - 3; y += 2.5) for (let x = MAPW - body - 4; x >= x0 + body + 4; x -= 2.5) {
           const d = (x - DOT0.x) * (x - DOT0.x) + 2.2 * (y - DOT0.y) * (y - DOT0.y); if (d >= best) continue; if (clear(x, y, rad)) { best = d; out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; } } }
+      if (out) { out.x0 = Math.max(0, Math.round(x0)); out.y1 = Math.round(y1); }
     } catch (e) { out = null; }
     c.remove(); return out;
   }
