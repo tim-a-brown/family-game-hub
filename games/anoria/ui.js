@@ -955,7 +955,7 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM })),
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: p.sg || 0 })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()) };
   }
   function settle() {
@@ -1110,7 +1110,7 @@
   function stripEl(node, o, me) {
     const p = V.P[o], pl = G.players[o], g = TX.GUIDES[p.guide], on = V.turn === o && !G.over;
     node.className = 'an-strip ' + (me ? 'me' : 'opp') + ' p' + o + (on ? ' on' : ''); node.innerHTML = ''; node.dataset.o = o;
-    const spent = (on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || (p.guide === 'franklin' && p.uD) || (p.guide === 'curie' && p.uN >= 3 && p.uN < 9))) || (p.guide === 'mandela' && p.uM);   // (a once-a-turn power, used; Mandela's is once a round)
+    const spent = (on && ((p.guide === 'tubman' && p.uT) || (p.guide === 'suntzu' && p.uC) || ((p.guide === 'franklin' || p.guide === 'sorjuana') && p.uD) || (p.guide === 'saladin' && p.uR) || (p.guide === 'curie' && p.uN >= 3 && p.uN < 9))) || (p.guide === 'mandela' && p.uM) || (p.guide === 'shakespeare' && p.uW);   // (a once-a-turn power, used; Mandela's and Shakespeare's are once a round)
     const gb = el('button', { type: 'button', class: 'st-guide' + (spent ? ' used' : ''), 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: () => { if (G.demo) openView(p.guide); else scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
     node.appendChild(gb);
@@ -1126,7 +1126,7 @@
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
       }
     }
-    const spark = on ? p.spark : p.reserve;
+    const spark = on ? p.spark : p.reserve + (p.sg || 0);   // (not their turn: the Spark held back, and the 1 Empress Wu has coming)
     const sp = el('div', { class: 'st-spark' + (spark ? '' : ' zero'), 'aria-label': spark + ' Spark' }, [el('b', { text: String(spark) })]);
     if (me && ui.sel && ui.sel.kind === 'hand' && idle()) {
       const cost = selCost(); if (cost != null) sp.appendChild(el('span', { class: 'pay' + (cost > p.spark ? ' no' : ''), text: '−' + cost }));
@@ -1579,7 +1579,7 @@
   // Each kind of event in the engine's log: move what's on screen along by one step
   const EV = {
     async turn(ev) {
-      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].uA = V.P[ev.o].uT = V.P[ev.o].uC = V.P[ev.o].uD = 0;
+      V.turn = ev.o; V.round = ev.round; V.P[ev.o].spark = ev.spark; V.P[ev.o].reserve = 0; V.P[ev.o].sg = 0; V.P[ev.o].uA = V.P[ev.o].uT = V.P[ev.o].uC = V.P[ev.o].uD = V.P[ev.o].uR = 0;
       V.figs.forEach(f => { if (f.o === ev.o) { f.rdy = f.stun ? 0 : 1; f.stun = 0; f.arr = 0; f.acted = 0; } });
       render(); bump('.an-strip.p' + ev.o + ' .st-spark'); Kit.sfx('sparkle'); await wait(420);
     },
@@ -1603,7 +1603,10 @@
       if (n) { n.classList.add('arrive'); }
       Kit.sfx('deal'); Kit.sfx('tap'); Kit.haptic('medium'); await wait(380);
     },
-    async spark(ev) { V.P[ev.o].spark += ev.n; const src = rc(q('.an-strip.p' + ev.o + ' .st-guide')); render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, src, ev.o, 'spark'); },
+    async spark(ev) {
+      if (ev.why === 'next') V.P[ev.o].sg = (V.P[ev.o].sg || 0) + ev.n; else V.P[ev.o].spark += ev.n;   // (next: Empress Wu's, for her next turn; it waits on her strip)
+      if (ev.why === 'ransom') V.P[ev.o].uR = 1;   // (Saladin's, once a turn: his portrait takes the used mark)
+      const src = rc(q('.an-strip.p' + ev.o + ' .st-guide')); if (ev.why) bump('.an-strip.p' + ev.o + ' .st-guide'); render(); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, src, ev.o, 'spark'); },
     async stun(ev) { const f = vfig(ev.u); if (!f) return; f.stun = 1; ui.fresh[ev.u] = 'zap'; render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('light'); await wait(480); },
     async move(ev) {
       const f = vfig(ev.u); if (!f) return;
@@ -1684,8 +1687,13 @@
       Kit.callout('A Seal is mended'); Kit.sfx('good'); Kit.haptic('medium'); await wait(700);
     },
     async renown(ev) {
+      // (a Guide's own Renown comes from the Crossroads, where it was won, and the Guide's portrait answers: Shakespeare's
+      // for a Figure of his defeated there, his portrait marked used for the rest of the round; Akbar's for his court)
+      if (ev.why === 'tragedy') { V.P[ev.o].uW = 1; render(); }
       V.P[ev.o].renown += ev.n;
-      const src = ev.u ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : rc(dom.map);
+      const guide = ev.why === 'tragedy' || ev.why === 'court', hub = guide ? dom.map.querySelector('.pl[data-p="' + (S.places.length - 1) + '"] .pl-tile') : null;
+      if (guide) { bump('.an-strip.p' + ev.o + ' .st-guide'); if (hub) { hub.classList.remove('thread'); void hub.offsetWidth; hub.classList.add('thread'); } Kit.haptic('light'); }
+      const src = guide ? rc(hub) || rc(q('.an-strip.p' + ev.o + ' .st-guide')) : ev.u ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : rc(dom.map);
       if (ev.why === 'bounty') Kit.callout('Bounty');
       Kit.sfx('good'); await plus(ev.n, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b');
     },
@@ -1919,7 +1927,7 @@
   // The count: Place by Place down the map, the banner drops in the holder's colour and their Renown ticks up
   async function roundEnd(evs) {
     const my = gen, order = rowsOrder(), groups = [], tail = []; let cur = null;
-    evs.forEach(ev => { if (ev.t === 'hold') { cur = { p: ev.p, evs: [ev] }; groups.push(cur); } else if (ev.t === 'renown') { cur = null; tail.push(ev); } else if (cur) cur.evs.push(ev); else tail.push(ev); });
+    evs.forEach(ev => { if (ev.t === 'hold') { cur = { p: ev.p, evs: [ev] }; groups.push(cur); } else if (ev.t === 'renown' || ev.t === 'spark') { cur = null; tail.push(ev); } else if (cur) cur.evs.push(ev); else tail.push(ev); });
     groups.sort((a, b) => order.indexOf(a.p) - order.indexOf(b.p));
     V.turn = -1; render(); Kit.sfx('pop'); await banner('', 'The count', '<span>Round ' + V.round + '</span>'); if (gen !== my) return false;
     const sp = speed; if (!ui.turbo && speed > 1) { speed = 1; document.documentElement.classList.remove('an-fast'); }   // (the count is never fast-forwarded; a lesson may slow it)
