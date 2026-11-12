@@ -407,7 +407,8 @@ Underlying principles for everything:
 - **One word for a connection: Legacy Line** (Tim, 2026-11-11: of "Thread" and "Legacy line", "legacy line is the one
   i like best"). Players read only "Legacy Line": the line down the side of a card (see below), the plate when
   one is made, the named lines of the collection ("The Road to Zama", in `THREADS`), the rules and lessons. A Figure
-  with `insp` is still a "Legacy" Figure with "Legacy of Homer." in its text. In code the old names stay (`from`,
+  with `insp` is still a "Legacy" Figure, and its card shows that by its Legacy Line alone (no "Legacy of Homer." in
+  its text since 2026-11-12). In code the old names stay (`from`,
   `insp`, `threads`). **A Legacy Line is drawn, not described** ("explain through design not words"): on the card
   and under a card being read (below); and over
   a pack's cards (`lineEl` in packs.js: the named line the turned card belongs to, the cards you have found in their
@@ -429,7 +430,9 @@ Underlying principles for everything:
   lines that are each enough join in a bar; at the foot, what the line gives as the game's marks with the number in
   each (the laurel a line scores; a Legacy Figure's Spark and Might too, on a line of their own when a card has both
   kinds). The paper makes room (`--lc`, `--lg`, `--lh`), the foot is the pronunciation only, and the map behind the
-  words stops short of the lines. A Figure's own Legacy stays in its rules text as well ("Legacy of Homer.").
+  words stops short of the lines. A Figure's own Legacy is not written in its rules text (Tim, 2026-11-12: "remove
+  'Legacy of' text from descriptions (redundant with diagram)"); a card whose only power is its Legacy has no rules
+  text, and its paper closes up round the story.
 - **Under a card being read, the Legacy Line is one clean scene, and a ? says it in words** (Tim, the same day: the
   first drawing was "jumbled ... make the benefits and connections clear visually without losing information ... maybe
   there's a ? tooltip on items like that which require more explanation"). `lineage()` and `lineScene()` in ui.js: the
@@ -475,19 +478,31 @@ Underlying principles for everything:
 - **A full card has a plate in each top corner** (the cost at the left, the kind at the right), so a brief asks for the
   head right of centre, about a fifth of the way down, with plain sky or background in both top corners. People and
   animals in one picture are in true proportion (a rider on a small Mongolian horse is still much smaller than the horse).
-- **Card text reads like normal English** (Tim, 2026-11-10): whole sentences with a subject ("She has +2 Might while
-  she is outnumbered here", not "+2 Might while outnumbered here"), and a fact's two sentences follow one from the
-  other. Skill words stay as bold lead-ins ("Swift.", "Guard: enemies here must clash with him first."): `boldKeys`
-  and the reader's glossary key off that form. **A skill word is never left bare on a card** (Tim, 2026-11-12: "guard and steadfast (all powers)
-  should be explained like swift and raider"): every one is followed by its short explanation in that person's
-  pronoun ("Steadfast: she has +2 Might when she defends.", "Voyager: he can walk to any Place."). A Legacy Figure's
-  "Legacy of Homer." stays as it is: the Legacy Line down the card's side shows what it gives.
-- **"When you play him", not "when he arrives"** (Tim, 2026-11-11: "i keep seeing 'when he arrives' -- does that mean the
+- **A card's powers are said in plain, short game words, with no he or she** (Tim, 2026-11-12: "i want a plain speech
+  pass on all card actions. power descriptions can skip the pronouns "she has +2 might" -> "has +2 [might shield]" and
+  be shorter e.g. "he has +2 Might when he defends" -> "+2 [might shield] when defending". remove "Legacy of" text
+  from descriptions (redundant with diagram)"; and of Diogenes the same day, "write rules in more gameplay
+  plainspeak"). A power says what happens in what a player sees at the table (Spark, Might, Renown, Seals, your Gate,
+  a Domain's power, draw, discard, play, walk, clash): "+2 Might while outnumbered here.", "Can't be moved. +1 Might
+  for each round this Figure stays, up to +2.", "When you play this Figure, you gain 1 Spark." (This replaces the
+  rule of 2026-11-10 that every power was a whole sentence with "she" or "he" as its subject.) "+N Might" in a card's
+  words is drawn as the number and the Might shield (`mightMarks` in `boldKeys`, ui.js; text.js keeps the word, so
+  every other reader of the data is unaffected). A fact's two sentences still follow one from the other.
+  **A skill word is never left bare on a card** (Tim, 2026-11-12: "guard and steadfast (all powers) should be
+  explained like swift and raider"): it is a bold lead-in followed by its short explanation, the same on every card:
+  "Steadfast: +2 Might when defending.", "Raider: +2 Might when attacking on the other player's side.", "Guard:
+  enemies here must clash with this Figure first.", "Swift: can walk on the turn it's played.", "Scholar: draw a card
+  when this Figure is played.", "Voyager: can walk to any Place.", "Inspiring: your other Figures here get +1 Might.",
+  "Law: enemy Figures here can't clash.", "Ward: ..." (Pope Leo I's, with the full rule under the card in `GLOSS`).
+  `boldKeys` and the reader's glossary key off that form, and check-set.js holds the third printing to it (no bare
+  skill word, no "Legacy of", no he or she). Every changed text of the pass is in
+  `scripts/anoria/plainspeak-2026-11-12.txt`.
+- **"When you play this Figure", not "when he arrives"** (Tim, 2026-11-11: "i keep seeing 'when he arrives' -- does that mean the
   same as 'when this card is played'?"). It does: the power works when the Figure comes onto the map from a hand, by
-  its own cost or by a Deed like Night Crossing, and never when it walks. So a card says "When you play her, you gain
-  1 Spark", "Scholar: you draw a card when you play him", "Swift: he can walk on the turn you play him", and the
-  rules and lessons say "you play a Figure at your Gate". check-set.js holds a card with an `arr` effect to "When you
-  play him" or "her". In code the event is still `arrive`.
+  its own cost or by a Deed like Night Crossing, and never when it walks. So a card says "When you play this Figure, you gain
+  1 Spark", "Scholar: draw a card when this Figure is played", "Swift: can walk on the turn it's played" (2026-11-12:
+  no he or she, above), and the rules and lessons say "you play a Figure at your Gate". check-set.js holds a card
+  with an `arr` effect to "When you play this Figure". In code the event is still `arrive`.
 - **A card's story is three or four lines at most** (Tim, 2026-11-12: "This is a history learning game, but it doesn't
   have to tell the whole story on the card. Generally that text shouldn't go beyond 3 to 4 lines", and when the story
   is what pushes the text box past half the card, "tell the story more concisely or omit a few unimportant details").
