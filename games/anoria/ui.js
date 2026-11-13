@@ -68,11 +68,33 @@
     steadfast: ['Steadfast', n => DW(n + ' has +2 Might in any clash that an enemy starts.')],
     inspiring: ['Inspiring', n => DW('each of your other Figures at the same Place as ' + n + ' has +1 Might.')],
     swift: ['Swift', n => DW('most Figures can\'t walk on the turn you play them. ' + n + ' can.')],
-    raider: ['Raider', n => DW(n + ' has +2 Might in a clash that ' + n + ' starts at the other player\'s Gate or Outpost.')],
-    ward: ['Ward', n => 'The other player\'s Deeds can\'t make your Figures at the same Domain as ' + n + ' miss a turn, move them, start a clash with them, stop them starting one or switch off their skills, and the Defense of Syracuse can\'t drive them back. That Domain\'s power can\'t work against them either: at Seneca Falls they keep their own Might when it is more than 3, at Himeji Castle a tie doesn\'t knock them out, at Nan Madol they can always walk out, and at Nineveh they can start a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
+    raider: ['Raider', n => DW(n + ' has +2 Might in a clash that ' + n + ' starts at an opponent\'s Gate or Outpost.')],
+    ward: ['Ward', n => 'Opponents\' Deeds can\'t make your Figures at the same Domain as ' + n + ' miss a turn, move them, start a clash with them, stop them starting one or switch off their skills, and the Defense of Syracuse can\'t drive them back. That Domain\'s power can\'t work against them either: at Seneca Falls they keep their own Might when it is more than 3, at Himeji Castle a tie doesn\'t knock them out, at Nan Madol they can always walk out, and at Nineveh they can start a clash.', 1]   // (1: written out even under a card that says what it does, which can only say it in general)
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
-  const PCOL = ['#f2b84b', '#8fd3f4'];
+  // The players' colours. Two players are gold and sky, as always. With more, each seat has a colour of its own, chosen
+  // to read apart from every other one on the dark table and in red-green colour blindness (the nearest two still
+  // differ by a clear step of lightness or hue: scratchpad np/cvd.py). With teams, each team is one family of colours
+  // (golds, blues, pinks) and the team's own colour is its first player's (TCOL).
+  const PCOL = ['#f2b84b', '#8fd3f4', '#ee7fc0', '#8a83f0', '#f4efe2', '#d9622b'];
+  const TCOL = [['#f2b84b', '#e07a2e', '#f6e3a0'], ['#8fd3f4', '#5f7bea', '#c4ecff'], ['#ee7fc0', '#c05aa6', '#f4bfe6']];
+  function seatColors(n, teams) { const c = PCOL.slice(0, n); if (teams) teams.forEach((t, k) => t.forEach((o, j) => { c[o] = TCOL[k % 3][j % 3]; })); return c; }
+  // Who plays together, from the setup's Teams choice: teammates sit on alternating spokes (players-2026-11-13.txt):
+  // 2 against 2 is seats 1 and 3 against 2 and 4, 3 against 3 is 1, 3, 5 against 2, 4, 6, and three teams of two are
+  // 1 and 4, 2 and 5, 3 and 6.
+  function teamsFor(n, v) {
+    if (n === 4 && v === 'two') return [[0, 2], [1, 3]];
+    if (n === 6 && v === 'three') return [[0, 2, 4], [1, 3, 5]];
+    if (n === 6 && v === 'two') return [[0, 3], [1, 4], [2, 5]];
+    return null;
+  }
+  // The seats' colours as --pc0 to --pc5, on the page (for what opens over the table: the scan, the clash, the log)
+  // and on the table itself. Two players keep the stylesheet's gold and sky. (null: back to the stylesheet's)
+  function setCols(cols) {
+    const R = document.documentElement.style;
+    for (let o = 0; o < 6; o++) { const c = cols && cols[o]; if (c) R.setProperty('--pc' + o, c); else R.removeProperty('--pc' + o); }
+    if (dom.root) for (let o = 0; o < 6; o++) { const c = cols && cols[o]; if (c) dom.root.style.setProperty('--pc' + o, c); else dom.root.style.removeProperty('--pc' + o); }
+  }
   const MARK = {
     fig: '<svg viewBox="0 0 12 12"><circle cx="6" cy="4" r="2.4" fill="#e8b04a"/><path d="M1.6 11.2c.4-3 2.3-4.3 4.4-4.3s4 1.3 4.4 4.3Z" fill="#e8b04a"/></svg>',
     legacy: '<svg viewBox="0 0 12 12"><path d="M2 7 6 3.2 10 7M2 10.6 6 6.8l4 3.8" fill="none" stroke="#e8b04a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -656,7 +678,7 @@
     const yours = o => o === ui.view && human(o), poss = o => (yours(o) ? 'your' : Kit.poss(pname(o)));
     (S.dip || []).forEach(d => { const fx = E.fxOf(d.c), n = CARDS[d.c].n;
       if (fx === 'westphalia' && d.p === p) notes.appendChild(el('p', { html: '<b>' + esc(n) + '</b> lies on this Domain until the count: nobody can start a clash here until this round ends.' }));
-      if (fx === 'milan' && d.p === p && (!f || f.o === d.o)) notes.appendChild(el('p', { html: '<b>' + esc(n) + '</b> lies on this Domain until the count: until this round ends, ' + (yours(d.o) ? 'the other player' : human(1 - d.o) ? 'you' : esc(pname(1 - d.o))) + ' can\'t start a clash with ' + esc(poss(d.o)) + ' Figures here.' })); });
+      if (fx === 'milan' && d.p === p && (!f || f.o === d.o)) notes.appendChild(el('p', { html: '<b>' + esc(n) + '</b> lies on this Domain until the count: until this round ends, ' + (S.N > 2 ? (yours(d.o) ? 'your opponents' : esc(Kit.poss(pname(d.o))) + ' opponents') : yours(d.o) ? 'the other player' : human(1 - d.o) ? 'you' : esc(pname(1 - d.o))) + ' can\'t start a clash with ' + esc(poss(d.o)) + ' Figures here.' })); });
     if (f && f.hush) notes.appendChild(el('p', { class: 'hush-n', html: '<b>' + esc(CARDS[(S.dip || []).find(d => d.u === f.u) ? S.dip.find(d => d.u === f.u).c : 'canossa'].n) + '</b> lies on this Figure: until this round ends, the skills and powers on ' + esc(Kit.poss(CARDS[f.c].n)) + ' card don\'t work.' }));
   }
   function openView(key, o) {
@@ -839,6 +861,7 @@
       else if (sel.kind === 'fig') label = a.t === 'clash' ? 'Clash with ' + nm(a.v) + (a.ph && quickOf(a) ? ', with ' + CARDS[quickOf(a)].n : '') : (a.t === 'walk' ? 'Move to ' : a.t === 'antik' ? 'Jump to ' : 'Step to ') + at(a.p);
       else if (a.t === 'fig') label = 'Play at ' + at(a.p);
       else if (a.t === 'relic') label = 'Play';
+      else if (a.t === 'deed' && a.w != null) label = 'Trade Gates and Outposts with ' + pname(a.w);   // (the Columbian Exchange, with more players: whose)
       else if (a.t === 'deed') { const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null); if (!n) label = 'Play'; else if (n === 1 && a.p != null) label = 'Play at ' + at(a.p); else if (n === 1 && a.u != null) label = 'Play on ' + nm(a.u); else if (n === 1 && a.v != null) label = 'Play on ' + nm(a.v); else table = true; }
       else table = true;
       if (!label || seen[label]) return; seen[label] = 1;
@@ -866,13 +889,18 @@
     // yours to the right, and the level opens on the Place's card with both in view)
     const sideOf = o => { const P = V.P[o]; return { side: o, at0: 0, name: o === me ? 'Your side' : Kit.poss(pname(o)) + ' side', role: '', cards: P.hand.length, relics: P.relics.length,
       items: [{ key: P.guide, g: 1, o: o }].concat(P.relics.map(r => ({ key: r, r: 1, o: o }))) }; };
-    const levels = [sideOf(opp)].concat(rowsOrder().map(p => { const figs = V.figs.filter(f => f.p === p), it = f => ({ key: f.c, u: f.u, o: f.o, m: f.m }), th = figs.filter(f => f.o !== me), mi = figs.filter(f => f.o === me);
+    // (more players: everyone else's Figures to the left, in seat order from your left, each ringed in their colour;
+    // the levels go round the rim, each player's Guide, Gate and Outpost, then your three Domains, your side, your hand)
+    const sOrd = S.N > 2 ? seatsFrom(me) : [me, opp], rk = o => (sOrd.indexOf(o) + S.N - 1) % S.N;
+    const domLv = p => { const figs = V.figs.filter(f => f.p === p), it = f => ({ key: f.c, u: f.u, o: f.o, m: f.m }), th = figs.filter(f => f.o !== me).sort((a, b) => rk(a.o) - rk(b.o) || a.u - b.u), mi = figs.filter(f => f.o === me);
       return { p: p, name: C.PLACES[S.places[p]].n, role: role(p), mine: mi.length, theirs: th.length, at0: th.length,
-        items: th.map(it).concat([{ key: S.places[p], p: p }], mi.map(it)) }; }), [sideOf(me)]);
+        items: th.map(it).concat([{ key: S.places[p], p: p }], mi.map(it)) }; };
+    const levels = S.N > 2 ? seatsFrom(me).slice(1).reduce((a, o) => a.concat([sideOf(o), domLv(2 * o), domLv(2 * o + 1)]), []).concat([domLv(2 * S.N), domLv(2 * me + 1), domLv(2 * me), sideOf(me)])
+      : [sideOf(opp)].concat(rowsOrder().map(domLv), [sideOf(me)]);
     const hand = !ui.hideHand && ui.viewer >= 0 && V.P[me] ? V.P[me].hand : [];
     if (hand.length) levels.push({ hand: true, at0: 0, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
     // where to open
-    let li = 1, ii = -1;
+    let li = S.N > 2 ? levels.length - 4 : 1, ii = -1;
     if (at.h != null && hand.length) { li = levels.length - 1; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
     else if (at.u != null) levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } }));
     else if (at.p != null) levels.forEach((L, i) => { if (L.p === at.p) li = i; });
@@ -887,15 +915,21 @@
     const tally = (L, o, cls) => { const n = o === me ? L.mine : L.theirs; if (!n) return null; const r = el('span', { class: 'sc-row ' + cls + ' o' + o }); for (let k = 0; k < n; k++) r.appendChild(el('i')); r.appendChild(el('b', { text: String(V.tot[L.p][o]) })); return r; };
     const said = L => L.hand ? L.name + ', ' + L.role
       : L.side != null ? (L.side === me ? 'Your Guide' : Kit.poss(pname(L.side)) + ' Guide') + (L.relics ? ' and ' + plural(L.relics, 'Relic') : '') + (L.side === me ? '' : ', and ' + plural(L.cards, 'card') + ' in their hand')
+        : S.N > 2 ? L.name + ', ' + L.role + '. ' + (L.items.length > 1 ? listOf(sOrd.filter(o => L.items.some(x => x.o === o)).map(o => (o === me ? 'you have ' : pname(o) + ' has ') + plural(L.items.filter(x => x.o === o).length, 'Figure'))) + ' here.' : 'Nobody has a Figure here.')
         : L.name + ', ' + L.role + '. ' + pname(opp) + ' has ' + plural(L.theirs, 'Figure') + ' here and you have ' + L.mine + '.';
-    const map = el('div', { class: 'sc-map', role: 'tablist', 'aria-label': 'The table from the other side to your hand' }, levels.map((L, i) => {
+    const tabs = levels.map((L, i) => {
       const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : L.side != null ? ' side o' + L.side : ''), role: 'tab', 'aria-label': said(L), onclick: e => { e.stopPropagation(); if (i !== li) go(i, L.at0, i > li ? 1 : -1); } });
       if (L.hand) { t.appendChild(el('span', { class: 'sc-fan', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])); t.appendChild(el('b', { text: String(L.items.length) })); }
       else if (L.side != null) { const g = el('span', { class: 'sc-gd', style: { '--f': (FAC[TXG[L.items[0].key].f] || FAC.N).c } }), im = artImg(L.items[0].key, true, true); if (im) g.appendChild(im); t.appendChild(g);
         if (L.relics) { const r = el('span', { class: 'sc-rel' }); for (let k = 0; k < L.relics; k++) r.appendChild(el('i')); t.appendChild(r); }
         if (L.side !== me) t.appendChild(el('span', { class: 'sc-back' }, [el('b', { text: String(L.cards) })])); }
-      else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im); const a = tally(L, opp, 'them'), b = tally(L, me, 'me'); if (a) t.appendChild(a); if (b) t.appendChild(b); }
-      return t; }));
+      else { const im = artImg(S.places[L.p], true, true); if (im) t.appendChild(im);
+        if (S.N > 2) { const d = el('span', { class: 'sc-dots' }); sOrd.forEach(o => { if (L.items.some(x => x.o === o)) d.appendChild(el('i', { style: { background: 'var(--pc' + o + ')' } })); }); if (d.firstChild) t.appendChild(d); }
+        else { const a = tally(L, opp, 'them'), b = tally(L, me, 'me'); if (a) t.appendChild(a); if (b) t.appendChild(b); } }
+      return t; });
+    // (more players: each other player's Guide, Gate and Outpost side by side on a line of the map, then yours down it)
+    const map = el('div', { class: 'sc-map' + (S.N > 2 ? ' n' : ''), role: 'tablist', 'aria-label': 'The table from the other side to your hand' },
+      S.N > 2 ? Array.from({ length: S.N - 1 }, (x, k) => el('div', { class: 'sc-grp' }, tabs.slice(3 * k, 3 * k + 3))).concat(tabs.slice(3 * (S.N - 1))) : tabs);
     const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
       el('div', { class: 'vf-head' }, [hb, hs]), body, strip, actRow, under]);
@@ -915,7 +949,7 @@
     function go(i, j, dir) {
       li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length;
       hb.textContent = L.name;
-      Array.prototype.forEach.call(map.children, (t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
+      tabs.forEach((t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
       if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
       // (a card you can do something with now has a gold pip on its thumbnail: what can be played from the hand, which of your Figures can still act)
       L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
@@ -965,7 +999,7 @@
     ['pointerup', 'pointercancel', 'pointerleave'].forEach(n => box.addEventListener(n, clear));
     box.addEventListener('contextmenu', e => { const at = !G || G.demo ? null : find(e.target); if (!at) return; e.preventDefault(); clear(); scan(at); });
   }
-  const scanAt = n => { if (G && G.ph === 'setup') { const d = n.closest('[data-su]'); return d ? { su: d.dataset.su } : null; } const fp = n.closest('.fp'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
+  const scanAt = n => { if (G && G.ph === 'setup') { const d = n.closest('[data-su]'); return d ? { su: d.dataset.su } : null; } const fp = n.closest('.fp, .stk'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
 
   const listOf = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
   // ═══ Setup ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -988,7 +1022,7 @@
     if (who === 'cpu') { const n = String(v || '').replace(/^ready:/, ''); return C.ARCH[n] ? 'ready:' + n : 'any'; }
     const d = Coll.deck(String(v || '')) || Coll.deck('ready:' + v); return d && d.ok ? d.id : starterId();
   }
-  function deckPicker(label, value, set, who) {
+  function deckPicker(label, value, set, who, many) {
     value = deckChoice(value, who);
     const box = el('div', { class: 'k-opt dk-pick' }, [el('div', { class: 'label' }, [el('span', { text: label })])]);
     const row = el('div', { class: 'dk-row' });
@@ -1016,7 +1050,7 @@
           d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])
       ]));
-    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: 'The game picks one of the five decks at the start.' })]));
+    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: many ? 'The game picks one of the five decks for each computer player at the start, a different one for each while there are enough.' : 'The game picks one of the five decks at the start.' })]));
     return box;
   }
   // a ready deck you don't own all of yet: what's missing, and where to go for it
@@ -1038,28 +1072,45 @@
     return row;
   }
   let curMode = 'cpu';
+  // Who's playing goes through the kit's players sheet like every game: 2 to 6 seats, people and the computer in any
+  // seat after the first (vs Computer is everyone else a robot; Pass & play is two or more people, with robots in any
+  // other seats). Each person chooses their deck as the two-player setup always had it; the computer players share one
+  // choice (one deck for all of them, or a different surprise for each), so a table of six stays one screen. At 4 and 6
+  // seats a Teams choice joins them: 2 against 2, 3 against 3, or three teams of 2 (teamsFor).
   function showSetup() {
-    stop(); G = null; S = null; V = null; clearSave();
+    stop(); G = null; S = null; V = null; clearSave(); setCols(null);
     app.className = 'stage'; app.innerHTML = ''; window.scrollTo(0, 0);
     // the first time: choose your Guide (their deck is your starter) and open your welcome packs
     if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
-    const who = i => (i === 1 && curMode === 'cpu' ? 'cpu' : 'me');
+    const none = () => el('span', { style: { display: 'none' } });
+    const seat = (i, ctx) => (ctx && ctx.seats ? ctx.seats[i] : null);
+    const people = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => !s.cpu).length : 1), bots = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => s.cpu).length : 1);
+    // (a person's deck: "Your deck" while one person plays, else the deck of that person by name)
+    const label = (i, ctx) => { if (people(ctx) <= 1) return 'Your deck'; const s = seat(i, ctx), n = s && s.name ? s.name : ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][i] + ' player'; return Kit.poss(n) + ' deck'; };
+    const deckOpt = i => ({ id: 'deck' + i, value: starterId(), when: (m, v, n) => { if (!i) curMode = m; return (n || 2) > i; },
+      render: (v, set, ctx) => (seat(i, ctx) ? !seat(i, ctx).cpu : !i) ? deckPicker(label(i, ctx), v, set, 'me') : none(),
+      summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } });
     // (the computer starts on Easy until you've won a game: a first game is for learning)
     const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
-      options: [
-        { id: 'deck0', value: starterId(), when: m => { curMode = m; return true; }, render: (v, set) => deckPicker(curMode === 'cpu' ? 'Your deck' : 'First player\'s deck', v, set, 'me'), summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } },
-        { id: 'deck1', value: 'any', render: (v, set) => deckPicker(curMode === 'cpu' ? 'The computer\'s deck' : 'Second player\'s deck', v, set, who(1)) },
-        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']], when: m => m === 'cpu' }
-      ],
-      players: { min: 2, max: 2, cpu: m => m === 'cpu' ? 'seats' : false },
+      options: [0, 1, 2, 3, 4, 5].map(deckOpt).concat([
+        { id: 'decks', value: 'any', render: (v, set, ctx) => bots(ctx) ? deckPicker(bots(ctx) > 1 ? 'The computer players\' decks' : 'The computer\'s deck', v, set, 'cpu', bots(ctx) > 1) : none() },
+        { id: 'teams', label: 'Teams', value: 'off', when: (m, v, n) => n === 4 || n === 6,
+          help: 'Teammates sit with an opponent between them. They add their Renown together and their Might together, and they can\'t clash with each other.',
+          choices: n => n === 6 ? [['off', 'No teams', 'Each player plays for themselves, and the first to 25 Renown wins.'], ['three', '3 against 3', 'Two teams of three. The first team to 65 Renown between them wins.'], ['two', 'Three teams of 2', 'Three teams of two. The first team to 45 Renown between them wins.']]
+            : [['off', 'No teams', 'Each player plays for themselves, and the first to 25 Renown wins.'], ['two', '2 against 2', 'Two teams of two. The first team to 45 Renown between them wins.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']] }
+      ]),
+      players: { range: () => [2, 6], count: 2, cpu: m => m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false, teams: (n, v) => teamsFor(n, v.teams) },
       start: 'Deal the cards',
       onStart: cfg => {
-        const cpu = cfg.players.some(p => p.cpu);
-        const theirs = v => { const id = deckChoice(v, 'cpu'); return readyDeck(id === 'any' ? DECKS[(Math.random() * DECKS.length) | 0] : id.slice(6)); };
-        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal',
-          players: cfg.players.map((p, i) => { const d = p.cpu ? theirs(cfg.options.deck1) : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
-            return { name: p.name, cpu: !!p.cpu, color: PCOL[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }; }) });
+        const n = cfg.players.length, teams = teamsFor(n, cfg.options.teams), cols = seatColors(n, teams), cpu = cfg.players.every((p, i) => !i || p.cpu);
+        // (the computer players' decks: the one chosen for all of them, or a different ready deck for each while there are enough)
+        const pool = E.shuffle(DECKS.slice(), Math.random); let k = 0;
+        const theirs = () => { const id = deckChoice(cfg.options.decks, 'cpu'); return readyDeck(id === 'any' ? pool[(k++) % pool.length] : id.slice(6)); };
+        newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams,
+          players: cfg.players.map((p, i) => { const d = p.cpu ? theirs() : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
+            return { name: p.name, cpu: !!p.cpu, level: p.cpu && LEVEL[p.level] ? p.level : undefined, color: cols[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }; }) });
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
@@ -1075,6 +1126,12 @@
   const cfgStd = () => Object.assign({}, E.DEF, { log: 1, coin: 1 }, E.STD);
   const pname = o => G.players[o].name;
   const human = o => !G.players[o].cpu;
+  // (the first person at the table: the seat whose side of the table is drawn large when the computer is playing)
+  const firstHuman = () => { for (let o = 0; o < G.players.length; o++) if (human(o)) return o; return 0; };
+  // (a game of three to six players: the table is drawn as spokes round the Crossroads, the others round the rim)
+  const many = () => !!S && S.N > 2;
+  // (a robot's way of playing: its own skill, or the table's)
+  const profOf = (p, lv) => E.PROF[LEVEL[(p && p.level) || lv] || 'holder'];
   const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   if (lsGet('anoria_artview') === '1') document.documentElement.classList.add('an-artview');
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
@@ -1112,17 +1169,21 @@
     // engine's Domains are on for the test games and for a page opened with ?domains=1, or anoria_dm '1' on the device.)
     const dmOn = !!C.DM_LIVE;
     cfg.players.forEach(p => { p.stack = dmOn ? stackOf(p) : null; });
-    S = E.newGame(decks, guides, cfgStd(), E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { wait: dmOn, profs: cfg.players.map(p => (p.cpu ? E.PROF[LEVEL[cfg.level] || 'holder'] : null)) });
+    // (teams: who plays together, and the Renown a team needs, 20 for each player on it and 5 more: engine.js targetFor.
+    // Everything else about a game of more players, the engine's rules give it: cfgStd)
+    const ecfg = cfgStd(); if (cfg.teams) { ecfg.teams = cfg.teams; ecfg.target = E.targetFor(cfg.teams); }
+    S = E.newGame(decks, guides, ecfg, E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { wait: dmOn, profs: cfg.players.map(p => (p.cpu ? profOf(p, cfg.level) : null)) });
     S.st = null; S.ev = [];
-    const first = E.firstOf(S);
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
     // and finishes the way it began, with Places scoring double from round 4. tg: the Renown that wins this game. A
-    // game saved when that was 30 has none, and still ends at 30.)
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, players: cfg.players, S: S, ord: [first, 1 - first], k: 0, ph: 'start', started: Date.now(), n: 0,
-      stats: [{ ko: 0, lines: 0, seals: 0, held: 0 }, { ko: 0, lines: 0, seals: 0, held: 0 }], hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: [{}, {}] } };
-    S.turn = first;
-    ui.view = G.mode === 'cpu' ? 0 : first; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
-    if (S.su && S.su.step !== 'done') { G.ph = 'setup'; cfg.players.forEach((p, o) => { if (p.cpu) E.setupLay(S, o, E.setupPick(S, o, E.PROF[LEVEL[cfg.level] || 'holder'], Math.random)); }); }
+    // game saved when that was 30 has none, and still ends at 30. teams: who plays together, or none.)
+    // (ord: the turns of this round in order, E.order(S); k: whose turn it is among them)
+    const N = cfg.players.length, seats = () => cfg.players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
+      stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] } };
+    S.turn = G.ord[0]; setCols(N > 2 || cfg.teams ? cfg.players.map(p => p.color) : null);
+    ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
+    if (S.su && S.su.step !== 'done') { G.ph = 'setup'; cfg.players.forEach((p, o) => { if (p.cpu) E.setupLay(S, o, E.setupPick(S, o, profOf(p, cfg.level), Math.random)); }); }
     Kit.gameStart(); save(); buildTable(); V = snap(); render();
     if (G.ph === 'setup') suBegin(); else beginTurn();
   }
@@ -1162,11 +1223,29 @@
     return tile;
   }
   const suBack = cls => el('span', { class: 'su-back' + (cls ? ' ' + cls : ''), 'aria-label': 'A Domain laid face down' });
-  function suDraw() {
-    const v = ui.view, t = 1 - v, su = S.su, me = ui.su && ui.su.o === v && !ui.hideHand ? ui.su : null, put = me ? me.put : {}, sel = me ? me.sel : null;
-    const shown = su.step === 'done';   // (turned up: the dice are rolling)
-    rowsOrder().forEach(i => {
-      const row = el('div', { class: 'pl su', 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
+  // what the set-up shows the player whose side this is: what they have laid (put), what they have picked up (sel)
+  function suCtx() {
+    const v = ui.view, su = S.su, me = ui.su && ui.su.o === v && !ui.hideHand ? ui.su : null;
+    return { v: v, su: su, me: me, put: me ? me.put : {}, sel: me ? me.sel : null, shown: su.step === 'done' };   // (shown: turned up, the dice are rolling)
+  }
+  function suDraw() { const X = suCtx(); rowsOrder().forEach(i => dom.map.appendChild(suRow(i, X))); suCapHand(X); }
+  const suDrawN = () => suCapHand(suCtx());
+  // (more players: the set-up on the table of spokes, drawN's layout with the set-up's slots in it)
+  const suBoardN = T => drawN(T, suCtx());
+  // A Domain's place at the set-up, on the rim: face down once its player has laid it, turned up with the dice
+  function suRim(i, X, w, h) {
+    const o = i >> 1, k = i & 1 ? 'Outpost' : 'Gate', wrap = el('div', { class: 'pl wn-t su', 'data-p': i });
+    if (X.shown) return rimTile(i, NOT, w, h);
+    wrap.appendChild(X.su.lay[o] ? el('span', { class: 'pl-tile su-slot face wn-small' }, [suBack('tile')])
+      : el('span', { class: 'pl-tile su-slot dim wn-small', 'aria-label': Kit.poss(pname(o)) + ' ' + k }, [el('span', { class: 'su-lbl', html: k === 'Gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '' })]));
+    return wrap;
+  }
+  // one of the set-up's rows: a place to lay a Domain, or the Crossroads with the offers beside it (yours on the right;
+  // with more players, everyone else's on the left)
+  function suRow(i, X) {
+    const v = X.v, t = many() ? (v + 1) % S.N : 1 - v, su = X.su, me = X.me, put = X.put, sel = X.sel, shown = X.shown;
+    {
+      const row = el('div', { class: 'pl su' + (many() ? ' wn-row' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
       const L = el('div', { class: 'pl-side L' }), R = el('div', { class: 'pl-side R' });
       let mid;
       if (i === 2 * S.N) {   // the Crossroads, with the two offers beside it
@@ -1178,7 +1257,8 @@
           if (o === v && me) return el('button', { type: 'button', class: 'su-off empty' + (sel ? ' lit' : ''), 'data-slot': 'offer', 'aria-label': 'Your offer for the Crossroads' }, [el('span', { class: 'su-lbl', text: 'Your offer' })]);
           return el('span', { class: 'su-off empty dim' }, [el('span', { class: 'su-lbl', text: Kit.poss(pname(o)) + ' offer' })]);
         };
-        L.appendChild(off(t, 'L')); R.appendChild(off(v, 'R'));
+        if (many()) seatsFrom(v).slice(1).forEach(o => L.appendChild(off(o, 'L'))); else L.appendChild(off(t, 'L'));
+        R.appendChild(off(v, 'R'));
       } else {
         const o = i >> 1, k = i & 1 ? 'out' : 'gate', said = (o === v ? 'Your ' : Kit.poss(pname(o)) + ' ') + (k === 'gate' ? 'Gate' : 'Outpost');
         const id = shown ? S.places[i] : o === v ? put[k] : null;
@@ -1188,12 +1268,15 @@
         else mid = el('span', { class: 'pl-tile su-slot dim' }, [el('span', { class: 'su-lbl', html: (k === 'gate' ? '<span class="pl-gate" style="--gc:var(--pc' + o + ')">' + SVG.arch + '</span>' : '') + '<span class="su-lt">' + esc(said) + '</span>' })]);
       }
       row.appendChild(L); row.appendChild(mid); row.appendChild(R);
-      dom.map.appendChild(row);
-    });
-    // the caption: what is being laid, and the button once all three are
+      return row;
+    }
+  }
+  // the set-up's caption (what is being laid, and the button once all three are) and its hand (the Domains drawn)
+  function suCapHand(X) {
+    const v = X.v, su = X.su, me = X.me, put = X.put, sel = X.sel, shown = X.shown;
     const n = dom.cap; n.innerHTML = '';
-    const full = me && put.gate && put.out && put.offer, next = G.players.some((p, o) => o !== v && !p.cpu && !su.lay[o]);
-    n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? 'Your Domains lie face down until both of you have laid yours.' : 'The higher roll’s offer is the Crossroads.') : 'Lay three of your ' + ['', 'one', 'two', 'three', 'four', 'five'][su.drew[v].length] + ' Domains.' }));
+    const full = me && put.gate && put.out && put.offer, next = G.players.some((p, o) => o !== v && !p.cpu && !su.lay[o]), N = S.N;
+    n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? (N > 2 ? 'Your Domains lie face down until everyone has laid theirs.' : 'Your Domains lie face down until both of you have laid yours.') : (N > 2 ? 'The highest roll’s offer is the Crossroads.' : 'The higher roll’s offer is the Crossroads.')) : 'Lay three of your ' + ['', 'one', 'two', 'three', 'four', 'five'][su.drew[v].length] + ' Domains.' }));
     // the hand: the Domains drawn and not yet laid
     const h = dom.hand; h.innerHTML = '';
     if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
@@ -1235,14 +1318,17 @@
     const my = gen, su = S.su;
     if (!E.setupRoll(S, Math.random, G.demo && G.suDice ? G.suDice : undefined)) return;   // (a lesson rolls the dice it wants)
     const evs = S.ev.splice(0), first = su.first, dibs = su.dibs;
-    G.ord = [first, 1 - first]; G.k = 0; S.turn = first;
+    G.ord = S.N > 2 ? E.order(S) : [first, 1 - first]; G.k = 0; S.turn = G.ord[0];
     G.log = G.log || []; G.log.push({ o: dibs, x: [Kit.poss(pname(dibs)) + ' offer, ', { k: '@' + S.places[2 * S.N] }, ', is the Crossroads, and ' + (pname(first) === 'You' ? 'you take' : pname(first) + ' takes') + ' the first turn.'] });
     if (ui.turbo || (G.demo && !G.suShow)) { G.ph = 'start'; save(); ui.su = null; V = snap(); render(); return beginTurn(); }   // (G.suShow: the Domains lesson shows the dice)
     setBusy(true); ui.su = null; if (G.mode === 'local') { ui.view = 0; ui.viewer = -1; ui.hideHand = false; }
     render(); Kit.sfx('flip'); Kit.haptic('medium'); await wait(900); if (gen !== my) return;
     // the dice: each offer with a die under it, rolled again while they tie
     const dup = evs.filter(e => e.t === 'dunder');
-    if (dup.length) { Kit.toast('You both turned up ' + C.PLACES[dup[0].id].n + ', so each of you lays the next Domain from your stack instead.', 2600); await wait(1200); }
+    if (dup.length) { const ws = dup.filter(e => e.id === dup[0].id).map(e => (pname(e.o) === 'You' ? 'You' : pname(e.o)));
+      Kit.toast(S.N > 2 ? listOf(ws) + ' turned up ' + C.PLACES[dup[0].id].n + ', so each of them lays the next Domain from their stack instead.' : 'You both turned up ' + C.PLACES[dup[0].id].n + ', so each of you lays the next Domain from your stack instead.', 2600); await wait(1200); }
+    if (S.N > 2) { if (!(await suDiceN(su, first, dibs))) return; }
+    else {
     const sideOf = o => {
       const dn = Kit.die(1); dn.tabIndex = -1; dn.style.visibility = 'hidden';
       const n = el('div', { class: 'cl-side o' + o + ' ' + (o === ui.view ? 'R' : 'L') }, [el('div', { class: 'cl-card' }, [cardEl(su.lay[o].offer, { mini: true, now: true })]), el('div', { class: 'cl-nm', text: Kit.poss(pname(o)) + ' offer' }), el('div', { class: 'cl-sum' }, [dn]), el('div', { class: 'cl-note' })]);
@@ -1262,17 +1348,52 @@
     if (S.places[2 * S.N] !== su.lay[dibs].offer) where.textContent = C.PLACES[S.places[2 * S.N]].n + ' is laid instead, because ' + C.PLACES[su.lay[dibs].offer].n + ' is already on the table';
     Kit.sfx('good'); Kit.haptic('success'); await wait(1900); if (gen !== my) return ov.remove();
     ov.classList.remove('show'); await wait(260); ov.remove();
+    }
     G.ph = 'start'; save(); V = snap(); render();
     const hub = dom.map.querySelector('.pl[data-p="' + 2 * S.N + '"] .pl-tile'); if (hub) hub.classList.add('su-land');
     Kit.sfx('deal'); await wait(700); if (gen !== my) return;
     if (G.demo) { setBusy(false); V = snap(); V.turn = -1; render(); const k = G.suDone; G.suDone = null; if (k) k(); return; }   // (a still table: nobody's turn has begun)   // (the lesson goes on from here, not into a turn)
     setBusy(false); beginTurn();
   }
+  // The dice for the Crossroads with three or more players: everyone's offer with a die under it, in seat order from
+  // your left with yours last; on a tie for the highest roll only those in the tie roll again (the others' dice stay
+  // where they fell, dimmed), until one roll is highest. That offer is the Crossroads, and the player on its owner's
+  // left takes the first turn.
+  async function suDiceN(su, first, dibs) {
+    const my = gen, seats = seatsFrom(ui.view).slice(1).concat([ui.view]);
+    const cell = o => {
+      const dn = Kit.die(1); dn.tabIndex = -1; dn.style.visibility = 'hidden';
+      const n = el('div', { class: 'cl-side su-c o' + o, style: { '--pc': 'var(--pc' + o + ')' } }, [el('div', { class: 'cl-card' }, [cardEl(su.lay[o].offer, { mini: true, now: true })]), el('div', { class: 'su-nm', text: o === ui.view && human(o) ? 'Your offer' : Kit.poss(pname(o)) + ' offer' }), el('div', { class: 'cl-sum' }, [dn]), el('div', { class: 'cl-note' })]);
+      return { o: o, n: n, die: dn, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note') };
+    };
+    const X = seats.map(cell), at = {}; X.forEach(x => { at[x.o] = x; });
+    const where = el('div', { class: 'cl-where', text: 'The Crossroads' });
+    const ov = el('div', { class: 'clash su-roll su-n n' + S.N }, [el('div', { class: 'cl-in' }, [where].concat(X.map(x => x.n)))]);
+    document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show'); await wait(500);
+    for (let r = 0; r < su.rolls.length; r++) {
+      const roll = su.rolls[r];
+      X.forEach(x => { const d = roll[x.o]; x.note.textContent = ''; if (!d) { x.n.classList.add('out'); return; }
+        x.die.setAttribute('data-v', d); x.die.setAttribute('aria-label', 'Die showing ' + d); x.die.style.visibility = ''; x.die.classList.remove('rolling'); void x.die.offsetWidth; x.die.style.setProperty('--dx', '30px'); x.die.classList.add('rolling'); });
+      Kit.sfx('roll'); Kit.haptic('light'); await wait(900); if (gen !== my) { ov.remove(); return false; }
+      if (r < su.rolls.length - 1) { const nx = su.rolls[r + 1], tied = X.filter(x => nx[x.o]);
+        tied.forEach(x => { x.note.textContent = 'A tie for the highest, so roll again'; }); Kit.sfx('tap'); await wait(1200); if (gen !== my) { ov.remove(); return false; } }
+    }
+    X.forEach(x => { if (x.o !== dibs) x.n.classList.add('out'); });
+    at[dibs].n.classList.remove('out'); at[dibs].card.classList.add('win'); at[dibs].note.textContent = 'This is the Crossroads';
+    where.textContent = (pname(first) === 'You' ? 'You take' : pname(first) + ' takes') + ' the first turn';
+    if (S.places[2 * S.N] !== su.lay[dibs].offer) where.textContent = C.PLACES[S.places[2 * S.N]].n + ' is laid instead, because ' + C.PLACES[su.lay[dibs].offer].n + ' is already on the table';
+    Kit.sfx('good'); Kit.haptic('success'); await wait(1900); if (gen !== my) { ov.remove(); return false; }
+    ov.classList.remove('show'); await wait(260); ov.remove();
+    return true;
+  }
   function restore(d) {
     stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
     S.cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
-    ui.view = G.mode === 'cpu' ? 0 : S.turn; ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
+    if (G.teams) S.cfg.teams = G.teams;                  // (who plays together: S.tm came back with the state)
+    if (!Array.isArray(G.ord) || !G.ord.length) G.ord = E.order(S);
+    ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
+    setCols(S.N > 2 || G.teams ? G.players.map(p => p.color) : null);
     buildTable(); V = snap(); render(); if (G.ph === 'setup') suBegin(); else beginTurn();
   }
   // What's on the table right now, as the screen shows it. Playing back the engine's log moves this along
@@ -1452,12 +1573,13 @@
     holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt);
     dom.fx = el('div', { class: 'an-fx' });
     if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
-    paintMats();
+    if (!many()) paintMats();   // (with more players each spoke lies on its player's mat: matN)
     // (the round track lies along the edge of the map that faces the caption: domains.js)
     dom.track = window.AnoriaDomains ? window.AnoriaDomains.track(null, { max: S.cfg.rounds }) : null;
-    const felt = el('div', { class: 'an-felt felt-in' + (dom.track ? ' has-trk' : '') }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.track, dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    const felt = el('div', { class: 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (many() ? ' many' + (G.teams ? ' teams' : '') : '') }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.track, dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
+    if (many() || G.teams) G.players.forEach((p, o) => { if (p.color) dom.root.style.setProperty('--pc' + o, p.color); });   // (each seat's colour: setCols)
     app.appendChild(dom.root);
   }
   const rowsOrder = () => { const v = ui.view, t = 1 - v; return [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
@@ -1585,60 +1707,76 @@
       t.setAttribute('aria-label', pname(o) + ' borrowed ' + p.debt + ' Spark here and pays it back at the start of their next turn'); t.dataset.sd = 'R'; out.push(t); } });
     return out;
   }
-  function rowEl(i, T) {
-    const v = ui.view, t = 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
-    const row = el('div', { class: 'pl' + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
+  // One row of the map: the Domain's tile in the middle, the Figures of the player across the table on its left and
+  // yours on its right (two players). With more players (o.many) the row is one of your three, drawn large: everyone
+  // else's Figures there stand on its left as stacks, one for each player in seat order from your left (stackEl), and
+  // the totals on the tile are your side's and the strongest other side's.
+  function rowEl(i, T, o) {
+    o = o || {};
+    const v = ui.view, M = !!o.many, t = M ? rivalAt(i) : 1 - v, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i];
+    const row = el('div', { class: 'pl' + (M ? ' wn-row' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: { '--pcL': 'var(--pc' + t + ')', '--pcR': 'var(--pc' + v + ')' } });
     const sil = vSil(i);
     if (S.dm) { row.dataset.ban = S.ban[i]; row.dataset.kind = pi.d; row.dataset.rule = E.pw(S, i); if (sil) row.dataset.silenced = sil.c; }
     // (what this place is, printed faintly on the table in the row's gutter: a Gate's arch, an Outpost's tower or the
     // Crossroads' signpost, in the color of the player whose place it is. At the left, and on an iPad at the right too.)
-    { const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut', st0 = own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null;
+    if (!M) { const own0 = E.ownerOfSpoke(S, i), kind = own0 < 0 ? 'posCross' : E.isGate(S, i) ? 'posGate' : 'posOut', st0 = own0 >= 0 ? { '--pc': 'var(--pc' + own0 + ')' } : null;
       row.appendChild(el('i', { class: 'pl-pos L', style: st0, html: SVG[kind] })); row.appendChild(el('i', { class: 'pl-pos R', style: st0, html: SVG[kind] })); }
     [[t, 'L'], [v, 'R']].forEach(sd => {
       const side = el('div', { class: 'pl-side ' + sd[1] });
-      const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
-      figs.forEach(f => side.appendChild(figEl(f, T)));
-      let free = E.capAt(S, i) - figs.length;
-      if (tg && sd[0] === S.turn && free > 0) {
-        const pv = landPreview(tg);
-        if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
+      if (M && sd[1] === 'L') {   // (everyone else's Figures here: a stack for each player, in seat order from your left)
+        seatsFrom(v).slice(1).forEach(q => { const fs = V.figs.filter(f => f.p === i && f.o === q); if (fs.length) side.appendChild(stackEl(q, i, fs, T)); });
+      } else {
+        const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
+        figs.forEach(f => side.appendChild(figEl(f, T)));
+        let free = Math.min(E.capAt(S, i), o.slots || 9) - figs.length;
+        if (tg && sd[0] === S.turn && free > 0) {
+          const pv = landPreview(tg);
+          if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
+        }
+        for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       }
-      for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       row.appendChild(side);
-      if (sd[1] === 'L') {
-        const gate = E.isGate(S, i), own = E.ownerOfSpoke(S, i), worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
-        const tAct = S.dm && human(S.turn) && idle() && (ui.acts || []).some(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === i);   // (a Domain that offers something to do now is lit, like a Figure that can act)
-        const tile = el('button', { type: 'button', class: 'pl-tile' + (tAct ? ' can' : ''), style: tAct ? { '--pc': 'var(--pc' + S.turn + ')' } : null, 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
-        const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im);
-        tile.appendChild(art);
-        tile.appendChild(el('span', { class: 'pl-tots' }, [
-          // (the total of whoever holds the Domain is lit and the other dimmed, so a tie settled by a banner or a power
-          // reads as plainly as a higher number. Tim, 2026-11-12)
-          el('span', { class: 'pl-tot L' + (V.tot[i][t] ? '' : ' zero') + (hold === t ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + t + ')' }, text: String(V.tot[i][t]) }),
-          el('span', { class: 'pl-tot R' + (V.tot[i][v] ? '' : ' zero') + (hold === v ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + v + ')' }, text: String(V.tot[i][v]) })]));
-        // (a Gate is marked on the table at the row's ends: .pl-pos)
-        (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: DIPI[E.fxOf(d.c)] || MARK.deed })));   // (a Deed in play on this Domain)
-        tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
-        tile.appendChild(el('span', { class: 'pl-plate' }, [
-          el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }),
-          (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : DW(RULE[pk]) }) : null]));
-        // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
-        // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
-        // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
-        const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) };
-        if (S.dm && sil) dmo.silenced = true;   // (whose Domain it is: the player's avatar on its bottom border, below, not a pennant)
-        if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
-        if (S.dm) { const tk = domTokens(i, sil); ['L', 'R'].forEach(sd => { const k = tk.filter(t => t.dataset.sd === sd); if (k.length) tile.appendChild(el('span', { class: 'pl-toks ' + sd }, k)); }); if (wardHere(i)) tile.classList.add('chg'); }   // (the pieces lying on it, beside the flag)
-        // (whose Domain this is: that player's avatar in a ring of their color, in the middle of the tile's bottom border.
-        // Tim, 2026-11-12, in place of the pennants)
-        if (S.dm && S.ban[i] >= 0) tile.appendChild(banAv(S.ban[i]));
-        if (S.dm && pi.pw && !dmo.silenced && !E.silenced(S, i) && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
-        if (S.dm && !im) art.style.setProperty('--kc', (window.AnoriaDomains && window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
-        row.appendChild(tile);
-      }
+      if (sd[1] === 'L') row.appendChild(tileEl(i, T, M ? { o: t, n: sideTot(i, t) } : { o: t, n: V.tot[i][t] }, M ? { o: v, n: sideTot(i, v) } : { o: v, n: V.tot[i][v] }, sil));
     });
-    [t, v].forEach(o => { if (V.pb[i][o]) row.appendChild(el('span', { class: 'pl-decree ' + (o === t ? 'L' : 'R'), text: '+' + V.pb[i][o], 'aria-label': V.pb[i][o] + ' more Might here until the end of the round' })); });
+    if (!M) [t, v].forEach(o => { if (V.pb[i][o]) row.appendChild(el('span', { class: 'pl-decree ' + (o === t ? 'L' : 'R'), text: '+' + V.pb[i][o], 'aria-label': V.pb[i][o] + ' more Might here until the end of the round' })); });
+    else if (V.pb[i][v]) row.appendChild(el('span', { class: 'pl-decree R', text: '+' + V.pb[i][v], 'aria-label': V.pb[i][v] + ' more Might here until the end of the round' }));
     return row;
+  }
+  // A Domain's tile as the map shows it full size: its picture, both totals (L and R: {o: the player, n: the Might},
+  // the one that holds it lit), the Deeds lying on it, the banner with what it scores, its name and power, its kind's
+  // frame and home plate, the pieces a power uses, and whose Domain it is
+  function tileEl(i, T, L, R, sil) {
+    const v = ui.view, pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i];
+    const worth = (hold >= 0 ? E.rv(S, i, hold) : E.pw(S, i) === 'double' ? 2 : 1) * E.stake(S.cfg, V.round);
+    const tAct = S.dm && human(S.turn) && idle() && (ui.acts || []).some(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === i);   // (a Domain that offers something to do now is lit, like a Figure that can act)
+    const tile = el('button', { type: 'button', class: 'pl-tile' + (tAct ? ' can' : ''), style: tAct ? { '--pc': 'var(--pc' + S.turn + ')' } : null, 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
+    const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im);
+    tile.appendChild(art);
+    const won = o => hold >= 0 && (hold === o || E.ally(S, hold, o));
+    tile.appendChild(el('span', { class: 'pl-tots' }, [
+      // (the total of whoever holds the Domain is lit and the other dimmed, so a tie settled by a banner or a power
+      // reads as plainly as a higher number. Tim, 2026-11-12)
+      el('span', { class: 'pl-tot L' + (L.n ? '' : ' zero') + (won(L.o) ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + L.o + ')' }, text: String(L.n) }),
+      el('span', { class: 'pl-tot R' + (R.n ? '' : ' zero') + (won(R.o) ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + R.o + ')' }, text: String(R.n) })]));
+    // (a Gate is marked on the table at the row's ends: .pl-pos)
+    (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip ' + (d.o === v ? 'R' : 'L'), style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: DIPI[E.fxOf(d.c)] || MARK.deed })));   // (a Deed in play on this Domain)
+    tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
+    tile.appendChild(el('span', { class: 'pl-plate' }, [
+      el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }),
+      (S.dm ? DSHORT[pi.pw] : RULE[pk]) ? el('span', { class: 'pl-rule', text: S.dm ? DSHORT[pi.pw] : DW(RULE[pk]) }) : null]));
+    // (the frame of the Domain's kind and its home plate, lit while a Figure that is at home here is picked up; with
+    // Domains, the banner of the player who brought it on that player's side of the tile, and a rule that is
+    // silenced under its veil of ash, or one that does nothing at this position shown struck through: domains.js)
+    const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) };
+    if (S.dm && sil) dmo.silenced = true;   // (whose Domain it is: the player's avatar on its bottom border, below, not a pennant)
+    if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
+    if (S.dm) { const tk = domTokens(i, sil); ['L', 'R'].forEach(sd => { const k = tk.filter(t => t.dataset.sd === sd); if (k.length) tile.appendChild(el('span', { class: 'pl-toks ' + sd }, k)); }); if (wardHere(i)) tile.classList.add('chg'); }   // (the pieces lying on it, beside the flag)
+    // (whose Domain this is: that player's avatar in a ring of their color, in the middle of the tile's bottom border.
+    // Tim, 2026-11-12, in place of the pennants)
+    if (S.dm && S.ban[i] >= 0) tile.appendChild(banAv(S.ban[i]));
+    if (S.dm && pi.pw && !dmo.silenced && !E.silenced(S, i) && !E.pw(S, i)) tile.classList.add('idle');   // (a rule that does nothing where it lies, like Commerce at a Gate)
+    if (S.dm && !im) art.style.setProperty('--kc', (window.AnoriaDomains && window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
+    return tile;
   }
   // a Figure in hand whose other copy matters: standing on your side already (one of each person at a time), or
   // in your discard pile (it returns for less)
@@ -1693,19 +1831,28 @@
   }
   function render() {
     if (!G || !V || !dom.root) return;
-    const v = ui.view, T = targets();
-    paintMats();   // (only when a mat has been changed, or the view has changed hands)
+    const v = ui.view, T = targets(), M = many();
+    if (!M) paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
     try {
-      stripEl(dom.opp, 1 - v, false); stripEl(dom.me, v, true);
+      // (more players: the other players' plates are on the rim, so where the other player's strip is with two there
+      // is the teams' bar in a team game, and nothing otherwise)
+      if (!M) stripEl(dom.opp, 1 - v, false); else if (G.teams) sidesEl(dom.opp); else { dom.opp.className = 'an-strip opp wn-none'; dom.opp.innerHTML = ''; }
+      stripEl(dom.me, v, true);
       dom.map.innerHTML = '';
-      if (G.ph !== 'setup') dom.map.appendChild(el('div', { class: 'an-road' }));   // (the set-up's slots are empty: no road runs under them)
-      if (G.ph === 'setup') suDraw();
+      if (M) {   // (the hand is sized first, then the table is laid out in the room it leaves: drawN)
+        if (dom.map.className !== 'an-map wn') dom.map.className = 'an-map wn';
+        if (G.ph === 'setup') { suDrawN(); layoutHand(); suBoardN(T); }
+        else { capEl(); handEl(); layoutHand(); drawN(T); }
+      }
+      else if (G.ph !== 'setup') dom.map.appendChild(el('div', { class: 'an-road' }));   // (the set-up's slots are empty: no road runs under them)
+      if (M) {}
+      else if (G.ph === 'setup') suDraw();
       else { rowsOrder().forEach(i => dom.map.appendChild(rowEl(i, T))); capEl(); handEl(); }
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    layout(); lines(); fitPlates();
+    if (!M) layout(); lines(); fitPlates(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
   // A tile's name and rule stay on the paper, clear of the Might totals and the banner above it and the frame below.
@@ -1723,7 +1870,7 @@
   }
   function fitPlates() {
     if (!dom.map) return;
-    const tiles = Array.prototype.filter.call(dom.map.querySelectorAll('.pl-tile'), t => t.querySelector('.pl-plate'));
+    const tiles = Array.prototype.filter.call(dom.map.querySelectorAll('.pl-tile:not(.wn-small)'), t => t.querySelector('.pl-plate'));
     if (!tiles.length) return;
     const plate = t => t.querySelector('.pl-plate');
     const set = (t, k) => { t.classList.remove('f1', 'f2', 'f3', 'f4'); if (k) t.classList.add('f' + Math.min(k, 3)); if (k > 3) t.classList.add('f4'); };
@@ -1742,7 +1889,8 @@
     tiles.forEach(t => { plate(t).style.minHeight = H + 'px'; });
   }
   // Sizes from the room there is
-  function layout() {
+  function layout() { if (!dom.map) return; layoutHand(); layoutMap(); }
+  function layoutHand() {
     if (!dom.map) return;
     // The hand is sized first and the map measured after it. (The other way round, a hand that had just grown
     // squeezed the map for one measurement: every card drawn made the whole board jump flat and back.)
@@ -1766,10 +1914,20 @@
       hw = Math.min((W - (per - 1) * g) / per, cap);
       h.style.minHeight = phone ? Math.ceil(2 * Math.floor(hw4) * 1.4 + 6 + 8) + 'px' : '';
       if (n <= per) rows = 1;
+      // (more players: the table needs the height, so the hand keeps the room of one row of five cards; more cards than
+      // that go smaller, in one row or in two, whichever leaves them bigger)
+      if (many()) {
+        const h5 = Math.floor(Math.max(30, Math.min((W - 4 * g) / 5, cap))), room = h5 * 1.4 + 2;
+        per = Math.max(n, 5); rows = 1; hw = Math.min((W - (per - 1) * g) / per, cap);
+        if (n > 5) { const p2 = Math.ceil(n / 2), w2 = Math.min((W - (p2 - 1) * g) / p2, (room - 6) / 2 / 1.4); if (w2 > hw) { hw = w2; rows = 2; per = p2; } }
+        h.style.minHeight = Math.ceil(room + 6) + 'px';
+      }
     }
     if (rows > 1) { h.classList.add('two'); h.style.setProperty('--per', per); }
     hw = Math.floor(Math.max(30, hw));
     h.style.setProperty('--hw', hw + 'px'); h.classList.toggle('small', hw < 62);
+  }
+  function layoutMap() {
     // the map, from the room the hand leaves it
     const r0 = dom.map.getBoundingClientRect(); if (!r0.width || !r0.height) return; const mcs = getComputedStyle(dom.map), r = { width: r0.width, height: r0.height - (parseFloat(mcs.paddingTop) || 0) - (parseFloat(mcs.paddingBottom) || 0), left: r0.left, top: r0.top, right: r0.right, bottom: r0.bottom };   // (the rows share the map's height less its padding)
     const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
@@ -1793,7 +1951,7 @@
     if (!ls.length) return;
     const mr = dom.map.getBoundingClientRect(); let h = '<defs><linearGradient id="an-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a1"/><stop offset=".5" stop-color="#fff1bf"/><stop offset="1" stop-color="#b8862d"/></linearGradient></defs>';
     ls.forEach(f => {
-      const a = dom.map.querySelector('.fp[data-u="' + f.u + '"]'), b = dom.map.querySelector('.fp[data-u="' + f.li + '"]'); if (!a || !b) return;
+      const a = figN(f.u), b = figN(f.li); if (!a || !b || a === b) return;   // (two Figures in one stack: the stack is the line)
       const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
       const x1 = ra.left + ra.width / 2 - mr.left, y1 = ra.top + ra.height * .3 - mr.top, x2 = rb.left + rb.width / 2 - mr.left, y2 = rb.top + rb.height * .3 - mr.top;
       const mx = (x1 + x2) / 2 + (y2 - y1) * .18, my = (y1 + y2) / 2 - Math.abs(x2 - x1) * .25 - 8, len = Math.hypot(x2 - x1, y2 - y1) * 1.25 + 20;
@@ -1802,7 +1960,229 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'an-line'); svg.innerHTML = h; dom.map.appendChild(svg);
   }
   let rsT = 0;
-  window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (G && dom.root && dom.root.isConnected) { layout(); lines(); } }, 80); });
+  window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (G && dom.root && dom.root.isConnected) { if (many()) render(); else { layout(); lines(); } } }, 80); });
+
+  // ═══ The table for three to six players ══════════════════════════════════════════════════════════════════
+  // Tim, 2026-11-13, layout C of the mockups: "your spoke large, the others round the rim". The player whose side of
+  // the table this is (ui.view) has their three Domains drawn large, as the two-player rows are: the Crossroads, their
+  // Outpost and their Gate, with their Figures as cards on the right and everyone else's Figures there as stacks on the
+  // left. Every other player's spoke is a column on their own mat along the top (a row down the left, sideways): their
+  // plate, their Gate and their Outpost, with the dotted roads into the Crossroads and, round the ring, from your two
+  // neighbours' Outposts to yours. The rim goes round the table to the left: the player on your left is the first
+  // column (the first row sideways), the player on your right the last, so "the player on your left" (the Congress of
+  // Vienna, nextLive) is the column at the left. A short phone folds each column to its plate and two small tokens.
+  // A player's Figures at one Domain away from your rows are one stack (stackEl): the strongest on top, the others'
+  // edges under it, the total Might on the shield, edged in the player's colour. A tap reads the stack in the scan,
+  // or picks up the Figure in it that is yours to move or the one a picked-up card can reach.
+  // The table is drawn from the room the map has (drawN, after the hand is sized), as absolutely placed pieces, every
+  // time it is drawn, like the two-player rows; the mats are built once and only moved (matN).
+  const seatsFrom = o => { const out = []; for (let k = 0; k < S.N; k++) out.push((o + k) % S.N); return out; };
+  // (a side's Might at a Domain as holding it counts it: with teams that add their Might, the team's together)
+  const sideTot = (i, o) => { if (!S.tm) return V.tot[i][o]; const add = S.cfg.tmight === 'add'; let n = 0; for (let q = 0; q < S.N; q++) if (E.ally(S, q, o)) n = add ? n + V.tot[i][q] : Math.max(n, V.tot[i][q]); return n; };
+  // (the side across from yours at a Domain, for its total on the tile: whoever holds it if that is not your side, or
+  // the strongest other side there; shown in the colour of that side's strongest player there)
+  function rivalAt(i) {
+    const v = ui.view, h = V.hold[i]; let best = -1, bn = -1;
+    if (h >= 0 && !E.ally(S, h, v)) best = h;
+    else for (let q = 0; q < S.N; q++) { if (E.ally(S, q, v)) continue; const n = sideTot(i, q); if (n > bn || (n === bn && V.tot[i][q] > V.tot[i][best])) { bn = n; best = q; } }
+    if (best >= 0 && S.tm) { let b2 = best; for (let q = 0; q < S.N; q++) if (E.ally(S, q, best) && V.tot[i][q] > V.tot[i][b2]) b2 = q; best = b2; }
+    return best < 0 ? (v + 1) % S.N : best;
+  }
+  // a Figure's piece on the table, wherever it is drawn: its card in your rows, or the stack it is in
+  const figN = u => dom.map ? dom.map.querySelector('.fp[data-u="' + u + '"]') || dom.map.querySelector('.stk[data-us~="' + u + '"]') : null;
+  // the stack of a player's Figures at one Domain (w: its width, when it is placed by hand)
+  function stackEl(q, i, fs, T, w) {
+    fs = fs.slice().sort((a, b) => b.m - a.m || a.u - b.u); const top = fs[0], c = CARDS[top.c], mineQ = q === S.turn, us = fs.map(f => f.u);
+    const acts = a => a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub';
+    const can = idle() && mineQ && !ui.sel && fs.some(f => ui.acts.some(a => a.u === f.u && acts(a)));
+    const done = mineQ && !G.over && fs.every(f => !f.rdy && !(f.arr && !f.acted));
+    const sel = ui.sel && ((ui.sel.kind === 'fig' && us.indexOf(ui.sel.u) >= 0) || ui.sel.picks.some(p => p.k === 'f' && us.indexOf(p.v) >= 0));
+    const tg = us.some(u => T.figs[u]), fresh = us.map(u => ui.fresh[u]).filter(Boolean)[0];
+    const m = fs.reduce((a, f) => a + f.m, 0), n = el('button', { type: 'button', class: 'stk o' + q + (fs.length > 1 ? ' many' : '') + (can ? ' can' : '') + (done ? ' done' : '') + (sel ? ' sel' : '') + (tg ? ' tgt' : '') + (top.stun ? ' stun' : '') + (fresh ? ' ' + fresh : ''),
+      'data-o': q, 'data-p': i, 'data-u': top.u, 'data-us': us.join(' '), style: { '--pc': 'var(--pc' + q + ')', '--f': (FAC[c.f] || FAC.N).c, '--w': w ? w + 'px' : null },
+      'aria-label': (q === ui.view ? 'Your ' : Kit.poss(pname(q)) + ' ') + (fs.length > 1 ? fs.length + ' Figures, ' + listOf(fs.map(f => CARDS[f.c].n)) : CARDS[top.c].n) + ', ' + m + ' Might' });
+    for (let k = Math.min(3, fs.length - 1); k >= 1; k--) n.appendChild(el('i', { class: 'e', style: { '--k': k } }));
+    const card = el('span', { class: 'c' }, [noArtLabel(top.c, true, 'na')]); const im = artImg(top.c, true); if (im) card.appendChild(im); n.appendChild(card);
+    if (fs.some(f => f.hush)) n.appendChild(el('span', { class: 'stk-x' }));
+    n.appendChild(el('span', { class: 'm' }, [el('b', { text: String(m) })]));
+    return n;
+  }
+  // A player's plate on the rim: their Guide, name, Renown, Seals and the cards in their hand (and their team's
+  // diamond). It is a strip in small (an-strip pN), so everything that flies to a player's strip finds it.
+  function plateEl(o, f) {
+    const p = V.P[o], pl = G.players[o], g = TXG[p.guide], on = V.turn === o && !G.over, out = !!S.P[o].out, sm = p.sm || 3;
+    const n = el('div', { class: 'an-strip wn-plate p' + o + (on ? ' on' : '') + (out ? ' out' : '') + (f ? ' ' + f : ''), 'data-o': o, style: { '--pc': 'var(--pc' + o + ')' } });
+    const gb = el('button', { type: 'button', class: 'st-guide', 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: e => { e.stopPropagation(); scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
+    const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
+    const seals = el('span', { class: 'st-seals', 'aria-label': p.seals + ' of ' + sm + ' Seals left' });
+    for (let i = 0; i < sm; i++) seals.appendChild(el('span', { class: 'seal' + (i >= p.seals ? ' broken' : '') + (ui.crack && ui.crack.o === o && ui.crack.i === i ? ' crack' : '') + (ui.press && ui.press.o === o && ui.press.i === i ? ' press' : '') }));
+    n.appendChild(gb);
+    n.appendChild(el('span', { class: 'st-name' }, [pl.cpu ? el('span', { class: 'bot', html: Kit.icon('bot') }) : null, el('span', { class: 'nm', text: pl.name })]));
+    n.appendChild(el('span', { class: 'st-ren', 'aria-label': p.renown + ' Renown' }, [el('span', { class: 'lau' }, [el('b', { text: String(p.renown) })])]));
+    n.appendChild(el('span', { class: 'st-bot' }, [seals, el('span', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })])]));
+    if (S.tm) n.appendChild(el('i', { class: 'wn-tm', style: { '--tc': teamCol(o) }, 'aria-label': 'Team ' + teamName(o) }));
+    if (out) n.appendChild(el('span', { class: 'wn-out', text: 'Out' }));
+    return n;
+  }
+  // (a team's colour is its first player's, and its name is its players' names joined the way people say them)
+  const teamOf = o => (G.teams || []).filter(t => t.indexOf(o) >= 0)[0] || [o];
+  const teamCol = o => (G.players[teamOf(o)[0]] || {}).color || PCOL[0];
+  const teamName = o => teamOf(o).map(pname).join(' & ');
+  // The sides in a team game, where the other player's strip is with two: "Tim & Jamie vs Pete & Pam", each team's
+  // diamond in its colour and the Renown it has together. When the names don't fit on one line, the bar keeps the
+  // diamonds and the Renown (the plates carry the same diamonds, so who is on which team still reads).
+  function sidesEl(node) {
+    node.className = 'wn-sides'; node.innerHTML = ''; node.dataset.o = '';
+    (G.teams || []).forEach((t, k) => {
+      if (k) node.appendChild(el('span', { class: 'vs', text: 'vs' }));
+      const r = t.reduce((a, o) => a + V.P[o].renown, 0), lead = t.indexOf(V.turn) >= 0 && !G.over;
+      node.appendChild(el('span', { class: 'side' + (lead ? ' on' : ''), style: { '--tc': G.players[t[0]].color }, 'aria-label': t.map(pname).join(' and ') + ', ' + r + ' Renown of ' + S.cfg.target }, [
+        el('i'), el('span', { class: 'n', text: t.map(pname).join(' & ') }), el('span', { class: 'rn' }, [el('b', { text: String(r) })])]));
+    });
+  }
+  const fitSides = () => { const n = dom.opp; if (!n || !n.classList.contains('wn-sides')) return; n.classList.remove('tight'); if (n.scrollWidth > n.clientWidth + 1 || n.getBoundingClientRect().height > 40) n.classList.add('tight'); };
+  // each player's mat on this table, made once and moved to wherever their spoke lies
+  function matN(o) {
+    dom.nm = dom.nm || [];
+    let n = dom.nm[o]; if (!n) n = dom.nm[o] = el('div', { class: 'an-pm', 'aria-hidden': 'true' });
+    const pick = matOf(o); if (n._pick !== pick) { n._pick = pick; n.dataset.m = typeof pick === 'object' ? 'art:' + pick.c : pick; matFill(n, pick, 'n' + o); }
+    return n;
+  }
+  // A Domain on the rim: its picture in its kind's frame, the kind's mark and its home on the clasps, the holder's flag
+  // with what it scores, and its name on a paper slip when the tile is big enough for a name you can read (9px and up);
+  // a smaller tile is its picture, and a tap reads it. (pip: the token a short phone shows instead, no frame)
+  // (the size a name can take on a rim tile w by h: its words wrapped on the paper slip, no more than about a third of
+  // the tile high; 0 when it would be under 9px. Every rim tile on a table takes the same size, the smallest that fits
+  // all of them, so the names read as one set: nameFs)
+  function nameFit(n, w, h) {
+    const room = w - 2 * Math.max(3, Math.round(w * .045)) - 6, words = n.split(/\s+/);
+    for (let fs = 14; fs >= 9; fs -= .5) {
+      const cw = fs * .64; if (Math.max.apply(null, words.map(x => x.length)) * cw > room) continue;
+      let lines = 1, at = 0; words.forEach(x => { const l = x.length * cw; if (at && at + cw + l > room) { lines++; at = l; } else at += (at ? cw : 0) + l; });
+      if (lines * fs * 1.06 + fs * .4 <= h * .4) return fs;
+    }
+    return 0;
+  }
+  const nameFs = (w, h) => Math.min.apply(null, seatsFrom(ui.view).slice(1).reduce((a, o) => a.concat([2 * o, 2 * o + 1]), []).map(i => (S.places[i] ? nameFit(C.PLACES[S.places[i]].n, w, h) : 14)));
+  function rimTile(i, T, w, h, pip) {
+    const pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i], sil = vSil(i);
+    const wrap = el('div', { class: 'pl wn-t' + (pip ? ' pip' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null });
+    const tile = el('button', { type: 'button', class: 'pl-tile wn-small', 'aria-label': pi.n + (hold >= 0 ? ', held by ' + pname(hold) : '') });
+    const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im); else if (window.AnoriaDomains) art.style.setProperty('--kc', (window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
+    tile.appendChild(art);
+    const worth = (hold >= 0 ? E.rv(S, i, hold) : 1) * E.stake(S.cfg, V.round);
+    if (pip) {   // (who is there: a dot in each player's colour; the holder's Might on a tab in theirs)
+      const dots = el('span', { class: 'wn-dots' }); seatsFrom(ui.view).forEach(q => { if (V.figs.some(f => f.p === i && f.o === q)) dots.appendChild(el('i', { style: { background: 'var(--pc' + q + ')' } })); });
+      tile.appendChild(dots); if (hold >= 0) tile.appendChild(el('b', { class: 'wn-hm', text: String(V.tot[i][hold]) }));
+      wrap.appendChild(tile); return wrap;
+    }
+    tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
+    const db = Math.max(3, Math.round(w * .045)), fs = nameFs(w, h);
+    if (fs >= 9) tile.appendChild(el('span', { class: 'pl-plate wn-nm' }, [el('span', { class: 'pl-name', text: pi.n, style: { fontSize: fs.toFixed(1) + 'px' } })]));
+    else tile.classList.add('bare');
+    tile.style.setProperty('--db', db + 'px'); tile.style.setProperty('--dm', Math.max(10, Math.min(16, Math.round(w * .15))) + 'px'); tile.style.setProperty('--fl', Math.max(15, Math.min(26, Math.round(w * .2))) + 'px');
+    (V.dip || []).filter(d => d.p === i).forEach((d, n) => tile.appendChild(el('span', { class: 'pl-dip L', style: { '--pc': 'var(--pc' + d.o + ')', '--n': n }, 'aria-label': info(d.c).n + ' lies here until the count', html: DIPI[E.fxOf(d.c)] || MARK.deed })));
+    const dmo = { key: pk, reg: pi.reg, lit: homeLit(pi.reg) }; if (S.dm && sil) dmo.silenced = true;
+    if (window.AnoriaDomains) window.AnoriaDomains.tile(tile, dmo);
+    if (S.dm && S.ban[i] >= 0 && S.ban[i] !== E.ownerOfSpoke(S, i)) tile.appendChild(banAv(S.ban[i]));   // (whose Domain it is, when it is not the spoke's own player's)
+    wrap.appendChild(tile);
+    return wrap;
+  }
+  // Lay the table out in the map's room and draw it
+  function drawN(T, X) {
+    const M = dom.map, mr = M.getBoundingClientRect(), W = Math.floor(mr.width), H = Math.floor(mr.height); if (W < 60 || H < 60) return;
+    const N = S.N, v = ui.view, rim = seatsFrom(v).slice(1), R = rim.length, land = window.innerWidth > window.innerHeight && W > H * 1.15;
+    const put = (n, x, y, w, h) => { n.style.left = Math.round(x) + 'px'; n.style.top = Math.round(y) + 'px'; if (w != null) n.style.width = Math.round(w) + 'px'; if (h != null) n.style.height = Math.round(h) + 'px'; M.appendChild(n); return n; };
+    const here = (i, q) => V.figs.filter(f => f.p === i && f.o === q);
+    const tileAt = (i, w, h, pip) => (X ? suRim(i, X, w, h) : rimTile(i, T, w, h, pip));
+    const who = i => seatsFrom(ui.view).filter(q => V.figs.some(f => f.p === i && f.o === q));
+    M.dataset.lay = land ? 'side' : 'up';
+    let mine, compact = false;
+    // (the stacks round a rim tile: beside it in two rows ('r'), or in a row under it ('b'))
+    const stacks = (i, x, y, tw, th, ps, dir, own) => {
+      if (X) return;
+      const qs = who(i).sort((a, b) => (a === own ? -1 : b === own ? 1 : 0));
+      qs.forEach((q, j) => { const n = stackEl(q, i, here(i, q), T, ps);
+        if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = qs.length > 1; put(n, x + tw + 4 + cc * (ps + 4), y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
+        else { const tot = qs.length * (ps + 4) - 4; put(n, x + tw / 2 - tot / 2 + j * (ps + 4), y + th + 4); } });
+    };
+    if (!land) {
+      compact = H < 380;
+      const rimH = compact ? Math.round(Math.min(104, H * .32)) : Math.round(Math.min(H * (N <= 3 ? .42 : .4), 300));
+      mine = { x: 0, y: rimH + 6, w: W, h: H - rimH - 6 };
+      const colW = W / R;
+      rim.forEach((o, k) => {
+        const x0 = k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
+        const ph = compact ? Math.round(rimH * .44) : Math.round(Math.max(46, Math.min(60, rimH * .25))), pl = plateEl(o, colW < 96 ? 'f' : 'w');
+        pl.style.fontSize = Math.max(9, Math.min(14, ph * .24, colW * .13)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
+        if (compact) {   // a short phone: the Gate and Outpost as two tokens side by side
+          const pz = Math.round(Math.min((colW - 14) / 2, (rimH - ph - 14) / .8, 40)), y = ph + 8;
+          [2 * o, 2 * o + 1].forEach((i, j) => { put(tileAt(i, pz, Math.round(pz * .8), true), x0 + colW / 2 + (j ? 2 : -pz - 2), y, pz, Math.round(pz * .8)); });
+          return;
+        }
+        // (the tiles at their biggest: stacks beside them, or under them, whichever leaves the tiles bigger)
+        const avail = rimH - ph - 12, twA = Math.min(colW * .58, avail / 2 / .74 - 4);
+        let twB = Math.round(colW - 10), psB = 18; for (; twB > 30; twB--) { psB = Math.max(16, Math.min(26, twB * .3)); if (2 * twB * .74 + 2 * (psB * 1.36 + 6) + 6 <= avail) break; }
+        const wide = twA >= twB, tw = Math.round(wide ? twA : twB), th = Math.round(tw * .74);
+        const ps = Math.round(wide ? Math.max(16, Math.min(tw * .42, (colW - tw) / 2 - 6)) : psB);
+        const tx = x0 + colW / 2 - tw / 2 - (wide ? ps * .55 : 0), y1 = ph + 8, gap = wide ? (avail - 2 * th) / 2 : (avail - 2 * th - 2 * (ps * 1.36 + 4)) / 2;
+        const yG = y1 + Math.max(2, gap * .5), yO = yG + th + (wide ? Math.max(6, gap) : ps * 1.36 + 8 + Math.max(0, gap));
+        [[2 * o, yG], [2 * o + 1, yO]].forEach(x => { put(tileAt(x[0], tw, th), tx, x[1], tw, th); stacks(x[0], tx, x[1], tw, th, ps, wide ? 'r' : 'b', o); });
+      });
+    } else {
+      const rimW = Math.round(W * (N <= 3 ? .5 : .53)); mine = { x: rimW + 6, y: 0, w: W - rimW - 6, h: H };
+      const rowH = H / R, pw = Math.round(Math.min(rimW * .3, 150));
+      rim.forEach((o, k) => {
+        const y0 = k * rowH, col = matN(o); col.className = 'an-pm wn-col wn-lane' + (V.turn === o && !G.over ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, 0, y0 + 1, rimW, rowH - 2);
+        const pl = plateEl(o, rowH > 50 ? 'l' : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, pw * .12)).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
+        const cellW = (rimW - pw) / 2; let th = Math.round(Math.min(rowH - 10, 110)), tw = Math.round(th / .74), ps = Math.round(Math.max(16, Math.min(th * .44, 30)));
+        if (tw + ps + 12 > cellW) { tw = Math.round(cellW - ps - 12); th = Math.round(tw * .74); }
+        [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o); });
+      });
+    }
+    // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
+    const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : .36), 280, (rh - 6) / .62)), bh = Math.round(Math.min(rh - 8, mw * .64));
+    // (your Figures as cards: as big as the row and the room beside the tile allow for the most you have in one row, two
+    // at least; the engraved places for the rest of the three are drawn where they fit)
+    const sideW = (mine.w - mw) / 2 - 10, most = Math.max(2, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0))));
+    const fw = Math.floor(Math.max(24, Math.min((rh - 10) / 1.36, sideW / (most * 1.1), 96))), slots = Math.max(most, Math.min(3, Math.floor((sideW + 4) / (fw * 1.1))));
+    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
+    [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
+      const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots });
+      row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');
+      put(row, mine.x, mine.y + r * rh + (rh - bh) / 2, mine.w, bh);
+    });
+    if (!X) roadsN(land);
+  }
+  // The roads, drawn from where the tiles lie: each spoke's Gate to its Outpost, each Outpost to the Crossroads, and
+  // round the ring from Outpost to Outpost; lit gold where the Figure picked up can walk.
+  function roadsN(land) {
+    const M = dom.map, mr = M.getBoundingClientRect(), N = S.N, v = ui.view, box = {};
+    M.querySelectorAll('.pl[data-p]').forEach(n => { const t = n.querySelector('.pl-tile') || n, r = t.getBoundingClientRect(); box[n.dataset.p] = { x: r.left - mr.left, y: r.top - mr.top, w: r.width, h: r.height, cx: r.left - mr.left + r.width / 2, cy: r.top - mr.top + r.height / 2 }; });
+    const sel = ui.sel && ui.sel.kind === 'fig' && idle() ? E.byU(S, ui.sel.u) : null, from = sel ? sel.p : -1, T = sel ? targets() : null;
+    const X = box[2 * N], O = box[2 * v + 1]; if (!X || !O) return;
+    let d = '', lit = '', d2 = '', ringD = '';
+    const seg = (a, b, path) => { const on = from >= 0 && ((a === from && T.places[b]) || (b === from && T.places[a])); if (on) lit += path; else d += path; };
+    for (let o = 0; o < N; o++) {
+      const g = box[2 * o], u = box[2 * o + 1]; if (!g || !u) continue;
+      if (o === v) { seg(2 * o, 2 * o + 1, 'M' + u.cx + ' ' + (u.y + u.h) + 'V' + g.y); seg(2 * o + 1, 2 * N, 'M' + u.cx + ' ' + u.y + 'V' + (X.y + X.h)); continue; }
+      seg(2 * o, 2 * o + 1, land ? 'M' + (g.x + g.w) + ' ' + g.cy + 'H' + u.x : 'M' + g.cx + ' ' + (g.y + g.h) + 'V' + u.y);
+      seg(2 * o + 1, 2 * N, land ? 'M' + (u.x + u.w) + ' ' + u.cy + 'Q' + (X.x - 16) + ' ' + u.cy + ' ' + X.x + ' ' + (X.cy + (u.cy - X.cy) * .25) : 'M' + u.cx + ' ' + (u.y + u.h) + 'Q' + u.cx + ' ' + (X.y - 10) + ' ' + (X.cx + (u.cx - X.cx) * .2) + ' ' + X.y);
+    }
+    // round the ring: between neighbours on the rim straight across, and from your two neighbours round to your Outpost
+    if (N >= 3) for (let o = 0; o < N; o++) {
+      const q = (o + 1) % N, a = box[2 * o + 1], b = box[2 * q + 1]; if (!a || !b) continue; let path;
+      if (o === v || q === v) { const w = o === v ? b : a, side = (o === v ? 1 : -1);   // (the player on your left is at the left)
+        path = land ? 'M' + (w.x + w.w / 2) + ' ' + (w.y + (w.cy < O.cy ? w.h : 0)) + 'C' + (w.x + w.w / 2) + ' ' + O.cy + ' ' + (O.x - 30) + ' ' + O.cy + ' ' + O.x + ' ' + O.cy
+          : 'M' + w.cx + ' ' + (w.y + w.h) + 'C' + (side < 0 ? 4 : mr.width - 4) + ' ' + (w.y + w.h + 40) + ' ' + (side < 0 ? 4 : mr.width - 4) + ' ' + O.cy + ' ' + (side < 0 ? O.x : O.x + O.w) + ' ' + O.cy;}
+      else path = land ? 'M' + a.cx + ' ' + (a.y + a.h) + 'L' + b.cx + ' ' + b.y : 'M' + (a.x + a.w) + ' ' + a.cy + 'L' + b.x + ' ' + b.cy;
+      const on = from >= 0 && ((2 * o + 1 === from && T.places[2 * q + 1]) || (2 * q + 1 === from && T.places[2 * o + 1]));
+      if (on) lit += path; else if (o === v || q === v) ringD += path; else d2 += path;
+    }
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'wn-roads'); svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<path class="rd" d="' + d + '"/>' + (d2 ? '<path class="rd ring" d="' + d2 + '"/>' : '') + (ringD ? '<path class="rd ring" d="' + ringD + '"/>' : '') + (lit ? '<path class="rd lit" d="' + lit + '"/>' : '');
+    M.insertBefore(svg, M.firstChild);
+  }
 
   // ═══ Picking things up: what can this card or Figure do? ══════════════════════════════════════════════════
   function legal() { ui.acts = idle() ? E.actions(S) : []; }
@@ -1811,7 +2191,7 @@
     if (s.kind === 'fig') { q.push(a.t === 'clash' ? ['f', a.v] : ['p', a.p]); return q; }
     if (a.t === 'fig') q.push(['p', a.p]);
     else if (a.t === 'clash') { q.push(['f', a.u]); q.push(['f', a.v]); }
-    else if (a.t === 'deed') { if (a.h2 != null) q.push(['h', a.h2]); if (a.u != null) q.push(['f', a.u]); if (a.v != null) q.push(['f', a.v]); if (a.p != null) q.push(['p', a.p]); if (a.q != null) q.push(['p', a.q]); }
+    else if (a.t === 'deed') { if (a.w != null) q.push(['p', 2 * a.w]); if (a.h2 != null) q.push(['h', a.h2]); if (a.u != null) q.push(['f', a.u]); if (a.v != null) q.push(['f', a.v]); if (a.p != null) q.push(['p', a.p]); if (a.q != null) q.push(['p', a.q]); }
     return q;
   }
   const NOT = { places: {}, figs: {}, hand: {}, done: [] };
@@ -1931,10 +2311,28 @@
     if (P.q.k === 'congress' && P.q.fixed < 0 && P.x < 0) { P.x = p; Kit.sfx('tap'); Kit.haptic('light'); render(); return; }
     Kit.sfx('deal'); Kit.haptic('medium'); setBusy(true); P.res(acts[0]);
   }
+  // A tap on a stack (more players): the Figure in it that a picked-up card or Figure can reach, or the Domain it
+  // stands on when that is where it can go; your own Figure in it that can still act; otherwise the stack is read in
+  // the scan. When more than one Figure in it could be meant, a sheet asks which.
+  function stackTap(stk) {
+    const us = stk.dataset.us.split(' ').map(Number), sp = +stk.dataset.p, nm = x => { const f = E.byU(S, x); return f ? CARDS[f.c].n : ''; };
+    const which = (xs, title, fn) => Kit.sheet({ title: title, actions: xs.map(x => { const f = E.byU(S, x); return { label: nm(x), sub: f ? E.might(S, f, 0) + ' Might' : '', onClick: () => fn(x) }; }).concat([{ label: 'Cancel', cls: 'btn-soft' }]) });
+    if (idle() && !ui.discard) {
+      const T = targets(), tg = us.filter(x => T.figs[x]);
+      if (tg.length === 1) return pick('f', tg[0]);
+      if (tg.length > 1) return which(tg, 'Which Figure in ' + Kit.poss(pname(+stk.dataset.o)) + ' stack?', x => pick('f', x));
+      if (T.places[sp]) return pick('p', sp);
+      const mv = us.filter(x => { const f = E.byU(S, x); return f && f.o === S.turn && ui.acts.some(a => a.u === x && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub')); });
+      if (mv.length === 1) { if (ui.sel && ui.sel.kind === 'fig' && ui.sel.u === mv[0]) return clearSel(); return select({ kind: 'fig', u: mv[0] }); }
+      if (mv.length > 1) return which(mv, 'Which of your Figures?', x => select({ kind: 'fig', u: x }));
+    }
+    return G.demo ? openView(CARDS[(vfig(us[0]) || {}).c] ? vfig(us[0]).c : S.places[sp]) : scan({ u: us[0] });
+  }
   function onMapTap(e) {
     if (!G) return; if (ui.held) { ui.held = false; return; }
     if (G.ph === 'setup') return suTap(e);
     if (ui.pend) return pendTap(e);
+    const stk = e.target.closest('.stk'); if (stk) return stackTap(stk);
     const fpN = e.target.closest('.fp'), row = e.target.closest('.pl'), tile = e.target.closest('.pl-tile');
     const u = fpN ? +fpN.dataset.u : 0, p = row ? +row.dataset.p : -1;
     if (idle() && !ui.discard) {
@@ -1971,7 +2369,8 @@
     const st = E.stake(S.cfg, S.round);
     Kit.sheet({ title: 'Round ' + S.round, html: DW((S.cfg.ramp ? '<p>Each Place you hold when the round ends scores <b>' + st + ' Renown</b>' + (st > 1 ? '.' : ' (2 from round 4 on).') + ' The number on a Place\'s banner is what it scores.</p>'
       : '<p>Each Place you hold when the round ends scores <b>1 Renown</b>' + (!S.dm && S.places.indexOf('acropolis') >= 0 ? ', and the Acropolis scores 2' : '') + '. A Place scores the same in every round of the game, and the number on its banner is what it scores.</p>') +
-      '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>'), actions: [{ label: 'Got it', cls: 'btn-soft' }] });
+      (S.N > 2 ? '<p>The first ' + (G.teams ? 'team' : 'player') + ' to reach <b>' + S.cfg.target + ' Renown</b>' + (G.teams ? ' between them' : '') + ' at the end of a round wins. Whoever has the most Renown goes first, and the turns go round the table to the left. This round the turns go ' + esc(listOf((G.ord || E.order(S)).map(o => (o === ui.view && human(o) && G.mode === 'cpu' ? 'you' : pname(o))), 'then')) + '.</p>'
+        : '<p>The first player to reach <b>' + S.cfg.target + ' Renown</b> at the end of a round wins. Whoever has more Renown goes first, so the player behind has the last word.</p>')), actions: [{ label: 'Got it', cls: 'btn-soft' }] });
   }
 
   // ═══ Motion ══════════════════════════════════════════════════════════════════════════════════════════════
@@ -2002,10 +2401,19 @@
   }
   function bump(sel) { const n = q(sel); if (n) { n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); } }
   // re-draw, sliding every Figure that changed place from where it stood
-  function renderFlip(ms) {
+  // (only: the Figures that moved; one that leaves or joins a stack, with more players, goes as a card flying from
+  // where it was to where it is now, over the stack it joins)
+  function renderFlip(ms, only) {
     const before = {}; dom.map.querySelectorAll('.fp').forEach(n => { before[n.dataset.u] = n.getBoundingClientRect(); });
+    const sb = {}; dom.map.querySelectorAll('.stk').forEach(n => { const r = n.getBoundingClientRect(); n.dataset.us.split(' ').forEach(u => { sb[u] = r; }); });
     render();
     const ps = [];
+    (only || []).forEach(u => {
+      const a = before[u] || sb[u], n = figN(u), f = vfig(u); if (!a || !n || !f || (before[u] && n.classList.contains('fp'))) return;
+      const b = n.getBoundingClientRect(); if (Math.abs(a.left - b.left) + Math.abs(a.top - b.top) < 2) return;
+      const fp = n.classList.contains('fp'); if (fp) n.style.visibility = 'hidden';
+      ps.push(flyCard(f.c, a, b, { ms: ms || 420, arc: 22 }).then(() => { if (fp) n.style.visibility = ''; else { n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); } }));
+    });
     dom.map.querySelectorAll('.fp').forEach(n => {
       const b = before[n.dataset.u]; if (!b) return; const a = n.getBoundingClientRect(), dx = b.left - a.left, dy = b.top - a.top;
       if (Math.abs(dx) + Math.abs(dy) < 2) return;
@@ -2076,6 +2484,7 @@
   // The clash: the two lunge, both dice tumble, the totals land, the loser's card tears in half
   async function clashShow(ev, ctx) {
     const a = vfig(ev.a), d = vfig(ev.d); if (!a || !d) return;
+    const rU = a.o === ui.view ? a.u : d.u;   // (on the right: your Figure; between two other players, the one attacked)
     const am0 = Math.floor(ev.am - ev.da), dm0 = Math.floor(ev.dm - ev.dd), am = Math.floor(ev.am), dm = Math.floor(ev.dm);
     const res = ev.am > ev.dm ? 'a' : ev.dm > ev.am ? 'd' : '';
     // (plain dice: the face rolled, then what it was worth, +1 or +2 for the higher roll. Older games: a die of 0, 1, 2)
@@ -2093,7 +2502,7 @@
       const note = extra > 0 ? (notes.length ? notes.join(', ') : att ? 'Attacking' : 'Defending') + ' +' + extra : '';
       const bs = el('span', { class: 'sh' }, [el('b', { text: String(base - hold) })]);
       if (hold) tot.firstChild.textContent = String(total - hold);
-      const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.o === ui.view ? 'R' : 'L') }, [
+      const n = el('div', { class: 'cl-side o' + f.o + ' ' + (f.u === rU ? 'R' : 'L') }, [
         el('div', { class: 'cl-card' }, [cardEl(f.c, { mini: true, might: f.m, now: true })]), el('div', { class: 'cl-nm', text: CARDS[f.c].n }),
         el('div', { class: 'cl-sum' }, [bs, dn, won, tot]), el('div', { class: 'cl-note', text: note })]);
       return { n: n, die: dn, tot: tot, won: won, card: n.querySelector('.cl-card'), note: n.querySelector('.cl-note'), base: bs, ph: ph, st: st, hold: hold, b: base, t: total, shown: false };
@@ -2172,8 +2581,8 @@
       V.figs.push({ u: ev.u, c: ev.c, o: o, p: ev.p, rdy: f0 && f0.rdy ? 1 : 0, arr: 1, acted: 0, stun: 0, li: 0, m: f0 ? E.might(S, f0, 0) : CARDS[ev.c].m });
       V.tot[ev.p][o] += CARDS[ev.c].m;
       render();
-      const n = dom.map.querySelector('.fp[data-u="' + ev.u + '"]');
-      if (n && from) { n.style.visibility = 'hidden'; Kit.sfx('whoosh'); await flyCard(ev.c, from, rc(n), { ms: 480, arc: 30 }); n.style.visibility = ''; }
+      const n = figN(ev.u);
+      if (n && from) { const fp = n.classList.contains('fp'); if (fp) n.style.visibility = 'hidden'; Kit.sfx('whoosh'); await flyCard(ev.c, from, rc(n), { ms: 480, arc: 30 }); if (fp) n.style.visibility = ''; }
       if (n) { n.classList.add('arrive'); }
       Kit.sfx('deal'); Kit.sfx('tap'); Kit.haptic('medium'); await wait(380);
     },
@@ -2205,32 +2614,32 @@
     async stun(ev) { const f = vfig(ev.u); if (!f) return; f.stun = 1; ui.fresh[ev.u] = 'zap'; render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('light'); await wait(480); },
     async move(ev) {
       const f = vfig(ev.u); if (!f) return;
-      const n0 = dom.map.querySelector('.fp[data-u="' + ev.u + '"]'), r0 = rc(n0);
+      const n0 = figN(ev.u), r0 = rc(n0);
       f.p = ev.to; f.rdy = 0;
       if (ev.jump && r0) {
         // a jump: a streak of gold across the map
-        if (n0) await anim(n0, [{ transform: 'none', opacity: 1 }, { transform: 'scale(.2)', opacity: 0 }], { duration: 160, fill: 'forwards' });
+        if (n0 && n0.classList.contains('fp')) await anim(n0, [{ transform: 'none', opacity: 1 }, { transform: 'scale(.2)', opacity: 0 }], { duration: 160, fill: 'forwards' });
         render();
-        const n1 = dom.map.querySelector('.fp[data-u="' + ev.u + '"]'), r1 = rc(n1); if (n1) n1.style.visibility = 'hidden';
+        const n1 = figN(ev.u), r1 = rc(n1), hid = n1 && n1.classList.contains('fp'); if (hid) n1.style.visibility = 'hidden'; if (!r1) return;
         const x0 = r0.left + r0.width / 2, y0 = r0.top + r0.height / 2, x1 = r1.left + r1.width / 2, y1 = r1.top + r1.height / 2, len = Math.hypot(x1 - x0, y1 - y0), ang = Math.atan2(y1 - y0, x1 - x0);
         const st = el('div', { class: 'streak', style: { width: len + 'px' } }); dom.fx.appendChild(st);
         const tf = 'translate(' + x0 + 'px,' + y0 + 'px) rotate(' + ang + 'rad) ';
         Kit.sfx('whoosh'); Kit.sfx('sparkle', .6);
         await anim(st, [{ transform: tf + 'scaleX(0)', opacity: 1 }, { transform: tf + 'scaleX(1)', opacity: 1, offset: .6 }, { transform: tf + 'translateX(' + len + 'px) scaleX(0)', opacity: 0 }], { duration: 430, easing: 'ease-in', fill: 'forwards' });
-        st.remove(); if (n1) { n1.style.visibility = ''; n1.classList.add('arrive'); } Kit.sfx('tap'); Kit.haptic('medium'); await wait(300);
+        st.remove(); if (n1) { if (hid) n1.style.visibility = ''; n1.classList.add('arrive'); } Kit.sfx('tap'); Kit.haptic('medium'); await wait(300);
       } else {
-        Kit.sfx(ev.push ? 'whoosh' : 'slide'); await renderFlip(ev.push ? 380 : 440); Kit.sfx('tap'); Kit.haptic('light'); await wait(90);
+        Kit.sfx(ev.push ? 'whoosh' : 'slide'); await renderFlip(ev.push ? 380 : 440, [ev.u]); Kit.sfx('tap'); Kit.haptic('light'); await wait(90);
       }
     },
     async line(ev) {
       const f = vfig(ev.a); if (!f) return; f.li = ev.b; ui.newLine = ev.a; render(); ui.newLine = 0;
       Kit.sfx('sparkle'); Kit.haptic('success'); story(((vfig(ev.b) || {}).c) + '>' + f.c, ev.ren, 'A Legacy Line'); await wait(900);
-      if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(dom.map.querySelector('.fp[data-u="' + ev.a + '"]')); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
+      if (ev.ren) { V.P[ev.o].renown += ev.ren; const src = rc(figN(ev.a)); await plus(ev.ren, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b'); Kit.sfx('good'); }
     },
     // (how one led to the other, in a sentence, the first time each link is drawn in a game)
     async thread(ev) {
-      const src = ev.src.k === 'fig' ? dom.map.querySelector('.fp[data-u="' + ev.src.u + '"]') : ev.src.k === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.src.c + '"]') : dom.map.querySelector('.pl[data-p="' + ev.src.p + '"] .pl-tile');
-      const to = ev.u ? dom.map.querySelector('.fp[data-u="' + ev.u + '"]') : CARDS[ev.c].t === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.c + '"]') : q('.an-strip.p' + ev.o + ' .st-guide');
+      const src = ev.src.k === 'fig' ? figN(ev.src.u) : ev.src.k === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.src.c + '"]') : dom.map.querySelector('.pl[data-p="' + ev.src.p + '"] .pl-tile');
+      const to = ev.u ? figN(ev.u) : CARDS[ev.c].t === 'relic' ? q('.an-strip.p' + ev.o + ' .relic[data-relic="' + ev.c + '"]') : q('.an-strip.p' + ev.o + ' .st-guide');
       const from = ev.src.k === 'fig' ? CARDS[(vfig(ev.src.u) || {}).c] : ev.src.k === 'relic' ? CARDS[ev.src.c] : C.PLACES[S.places[ev.src.p]];
       [src, to].forEach(n => { if (n) { n.classList.remove('thread'); void n.offsetWidth; n.classList.add('thread'); } });
       Kit.sfx('sparkle'); Kit.haptic('success');
@@ -2283,7 +2692,7 @@
       V.mk = S.mk.slice(); V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i)); render(); Kit.sfx('whoosh'); Kit.haptic('medium');
       const moved = ev.perm.map((from, i) => (from !== i ? i : -1)).filter(i => i >= 0);
       moved.forEach(i => { const tl = dom.map.querySelector('.pl[data-p="' + i + '"] .pl-tile'); if (tl) tl.classList.add('su-land'); });
-      Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.', 2600); await wait(900);
+      Kit.toast(moved.length === 2 ? cap1(theName('@' + S.places[moved[0]])) + ' and ' + theName('@' + S.places[moved[1]]) + ' change places.' : swapSaid(moved), 2600); await wait(900);
     },
     // Congress of Vienna: the two dice as they fell (ev.dice), and what each names (ev.p: a position, or -1 for a 6, which the
     // player names: SEAM for the dice and the chooser; until then the engine chooses for the player and a line says the roll)
@@ -2291,7 +2700,7 @@
     // Congress of Vienna: the Domains are numbered 1 to 5 from the roller's own Gate, the two dice tumble over the map,
     // and the numbers they show light up with their Domains (a 6 is the roller's choice, made next)
     async congress(ev) {
-      const g = 2 * ev.o, t = 2 * ((ev.o + 1) % S.N), line = [g, g + 1, 2 * S.N, t + 1, t], tags = [];
+      const g = 2 * ev.o, t = 2 * E.nextLive(S, ev.o), line = [g, g + 1, 2 * S.N, t + 1, t], tags = [];
       line.forEach((p, k) => { const r = dom.map.querySelector('.pl[data-p="' + p + '"]'); if (r) { const b = el('span', { class: 'cg-n', text: String(k + 1) }); r.appendChild(b); tags.push([r, b, k + 1]); } });
       const mr = dom.map.getBoundingClientRect(), dice = ev.dice.map((v, i) => { const d = Kit.die(1); d.setAttribute('data-v', v); d.setAttribute('aria-label', 'Die showing ' + v); d.style.setProperty('--dx', (i ? 40 : -40) + 'px'); return d; });
       const tray = el('div', { class: 'cg-tray', style: { left: (mr.left + mr.width / 2) + 'px', top: (mr.top + mr.height / 2) + 'px' } }, dice);
@@ -2315,8 +2724,10 @@
       if (ev.rep || ev.tq) { const k = ev.rep || ev.tq, f = vfig(ev.rep ? ev.d : ev.a), o = f ? f.o : -1; if (o >= 0) { dropHand(o, V.P[o].hand.indexOf(k)); if (ev.rep) V.P[o].reserve = S.P[o].reserve; else V.P[o].spark = S.P[o].spark; render(); } }
       await clashShow(ev, ctx); const a = vfig(ev.a); if (a) { a.rdy = 0; a.acted = 1; } },
     async ko(ev) {
-      const n = dom.map.querySelector('.fp[data-u="' + ev.u + '"]');
-      if (n) await anim(n, [{ transform: 'none', opacity: 1 }, { transform: 'rotate(' + (ev.o === ui.view ? 24 : -24) + 'deg) translateY(30%) scale(.7)', opacity: 0 }], { duration: 360, easing: 'ease-in', fill: 'forwards' });
+      const n = figN(ev.u), f0 = vfig(ev.u);
+      // (from a stack that keeps other Figures, the card falls away from it and the stack stays)
+      if (n && f0 && n.classList.contains('stk') && n.dataset.us.indexOf(' ') > 0) { const r = rc(n); await flyCard(f0.c, r, { left: r.left + (ev.o === ui.view ? 10 : -10), top: r.top + r.height * .5, width: r.width * .7 }, { ms: 380, o1: 0, ease: 'ease-in' }); }
+      else if (n) await anim(n, [{ transform: 'none', opacity: 1 }, { transform: 'rotate(' + (ev.o === ui.view ? 24 : -24) + 'deg) translateY(30%) scale(.7)', opacity: 0 }], { duration: 360, easing: 'ease-in', fill: 'forwards' });
       V.figs = V.figs.filter(f => f.u !== ev.u); V.figs.forEach(f => { if (f.li === ev.u) { const g = S.figs.find(x => x.u === f.u); f.li = g ? g.li : 0; } });   // (a line that moves to another source: 'relink')
       if (ev.top) V.P[ev.o].deck++;   // (Rapa Nui: on top of its player's deck)
       render();
@@ -2341,7 +2752,7 @@
       V.P[ev.o].renown += ev.n;
       const guide = ev.why === 'tragedy' || ev.why === 'court', hub = guide ? dom.map.querySelector('.pl[data-p="' + (S.places.length - 1) + '"] .pl-tile') : null;
       if (guide) { bump('.an-strip.p' + ev.o + ' .st-guide'); if (hub) { hub.classList.remove('thread'); void hub.offsetWidth; hub.classList.add('thread'); } Kit.haptic('light'); }
-      const src = guide ? rc(hub) || rc(q('.an-strip.p' + ev.o + ' .st-guide')) : ev.u && dom.map.querySelector('.fp[data-u="' + ev.u + '"]') ? rc(dom.map.querySelector('.fp[data-u="' + ev.u + '"]')) : ev.p != null ? rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')) : rc(dom.map);
+      const src = guide ? rc(hub) || rc(q('.an-strip.p' + ev.o + ' .st-guide')) : ev.u && figN(ev.u) ? rc(figN(ev.u)) : ev.p != null ? rc(dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile')) : rc(dom.map);
       if (ev.why === 'bounty') Kit.callout('Bounty');
       Kit.sfx('good'); await plus(ev.n, src, ev.o); render(); bump('.an-strip.p' + ev.o + ' .lau b');
     },
@@ -2356,6 +2767,15 @@
       Kit.sfx('boom'); Kit.sfx('clash', .7); Kit.haptic('heavy'); Kit.callout(ev.left ? 'Seal broken' : 'The last Seal breaks');
       await wait(900);
       V.P[ev.by].renown += S.cfg.sealRen; await plus(S.cfg.sealRen, rc(q('.an-strip.p' + ev.o + ' .st-seals')), ev.by); render(); bump('.an-strip.p' + ev.by + ' .lau b'); Kit.sfx('good'); await wait(200);
+    },
+    // A player with no Seals left is out of the game (three or more players): their Figures leave the map for their
+    // discard pile, their plate goes dark with the word Out on it, and the table says so
+    async out(ev) {
+      const ns = []; ev.us.forEach(u => { const n = figN(u); if (n && ns.indexOf(n) < 0) ns.push(n); });
+      Kit.sfx('boom'); Kit.haptic('heavy');
+      await Promise.all(ns.map(n => anim(n, [{ transform: 'none', opacity: 1 }, { transform: 'translateY(30%) scale(.6)', opacity: 0 }], { duration: 420, easing: 'ease-in', fill: 'forwards' })));
+      V.figs = V.figs.filter(f => ev.us.indexOf(f.u) < 0); V.tot = S.places.map((x, i) => E.mights(S, i)); V.hold = S.places.map((x, i) => E.holder(S, i));
+      render(); Kit.callout(pname(ev.o) === 'You' ? 'You are out' : pname(ev.o) + ' is out'); await wait(1300);
     },
     async discard(ev, ctx) {
       const o = ev.o, h = ctx.h != null ? ctx.h : V.P[o].hand.indexOf(ev.c), from = o === ui.view && !ui.hideHand ? rc(dom.hand.querySelector('.hc[data-h="' + h + '"]')) : null;
@@ -2375,7 +2795,11 @@
   // What the game's history will show (hist/anoria.js): besides the counts, the Threads and Legacy lines as they were
   // made, the round each Seal broke, who won the most clashes, and who scored each Place every round (G.tale; a game
   // saved before this was kept has none, and its record says so by leaving those parts out)
-  const MAPORD = [0, 1, 4, 3, 2];   // (the five Places as they lie: seat 1's Gate and Outpost, the Crossroads, seat 2's Outpost and Gate)
+  const MAPORD = [0, 1, 4, 3, 2];
+  // (with more players, the Domains as the history keeps them: in the engine's order, each seat's Gate and Outpost and the Crossroads last)
+  const posOrder = () => (S.N > 2 ? S.places.map((x, i) => i) : MAPORD);
+  // (the Domains as the table shows them from where you sit: the rim from your left, then your three rows)
+  const mapOrder = () => { const out = []; seatsFrom(ui.view).slice(1).forEach(o => out.push(2 * o, 2 * o + 1)); out.push(2 * S.N, 2 * ui.view + 1, 2 * ui.view); return out; };   // (the five Places as they lie: seat 1's Gate and Outpost, the Crossroads, seat 2's Outpost and Gate)
   // ═══ The turn log ═══════════════════════════════════════════════════════════════════════════════════════
   // Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana". Every event the engine
   // reports becomes a sentence in G.log (kept with the saved game, the last 200): who played what where, each clash
@@ -2396,7 +2820,8 @@
       else if (t === 'relic') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']);
       else if (t === 'deed') { const fx = E.fxOf(ev.c), oth = 1 - ev.o;
         if (fx === 'westphalia') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Nobody can start a clash there until this round ends.']);
-        else if (fx === 'milan') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Until this round ends, ' + (nm(oth) === 'You' ? 'you' : nm(oth)) + ' can\'t start a clash with ' + pos(ev.o) + ' Figures there.']);
+        else if (fx === 'milan') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '. Until this round ends, ' + (S.N > 2 ? Kit.poss(nm(ev.o)) + ' opponents' : nm(oth) === 'You' ? 'you' : nm(oth)) + ' can\'t start a clash with ' + pos(ev.o) + ' Figures there.']);
+        else if (ev.w != null) add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' with ' + obj(ev.w) + '.']);
         else if (fx === 'lisbonquake') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' at ', Pl(ev.p), '.']);
         else if (fx === 'canossa') add(ev.o, [nm(ev.o) + ' played ', K(ev.c), ' on ', who[ev.v] ? pos(who[ev.v][1]) + ' ' : '', F(ev.v), '.']);   // (pos: "your" mid-sentence)
         else add(ev.o, [nm(ev.o) + ' played ', K(ev.c), '.']); }
@@ -2408,7 +2833,7 @@
       else if (t === 'clash') { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;
         add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' clashed with ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ' They were tied, so nobody was knocked out.')]); }
       else if (t === 'ko') add(ev.o, ev.top ? [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out at ', Pl(ev.p), ' and went on top of ' + Kit.poss(nm(ev.o)) + ' deck.'] : [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
-      else if (t === 'fallback' && ev.why === 'syracuse') add(1 - ev.o, [K(ev.card), ' played itself for ' + obj(1 - ev.o) + ', and ' + Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was driven back to ' + pos(ev.o) + ' Gate. Nobody was knocked out.']);
+      else if (t === 'fallback' && ev.why === 'syracuse') add(who[ev.by] ? who[ev.by][1] : 1 - ev.o, [K(ev.card), ' played itself for ' + obj(who[ev.by] ? who[ev.by][1] : 1 - ev.o) + ', and ' + Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was driven back to ' + pos(ev.o) + ' Gate. Nobody was knocked out.']);
       else if (t === 'fallback' && ev.why === 'testudo') add(ev.o, [K(ev.card), ' played itself for ' + obj(ev.o) + ', and ', K(ev.c), ' fell back to ' + pos(ev.o) + ' Gate instead of being knocked out.']);
       else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate' + (ev.why === 'charter' ? ', as the charter of ' : '.'), ev.why === 'charter' ? K('@runnymede') : '', ev.why === 'charter' ? ' says.' : '']);
       else if (t === 'veto') add(ev.o, [K(ev.c), ' played itself for ' + obj(ev.o) + ', and ', K(ev.d), ', which ' + obj(ev.by) + ' played, did nothing.']);
@@ -2421,6 +2846,7 @@
       else if (t === 'renown' && ev.p != null && (ev.why === 'punt' || ev.why === 'ballcourt' || ev.why === 'treaty')) add(ev.o, [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', Pl(ev.p), ev.why === 'punt' ? ' for playing a Relic.' : ev.why === 'ballcourt' ? ' for winning the clash there by 3 or more.' : ', because the Might there was tied.']);
       else if (t === 'renown') add(ev.o, ev.why === 'bounty' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' for the Bounty.'] : ev.why === 'colosseum' ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', K('@colosseum'), '.'] : ev.why === 'stage' && ev.u ? [nm(ev.o) + ' scored ' + ren(ev.n) + ' with ', F(ev.u), '.'] : [nm(ev.o) + ' scored ' + ren(ev.n) + '.']);
       else if (t === 'hold') { if (!L.length || L[L.length - 1].h !== 'c' && !(L[L.length - 1].cnt)) L.push({ h: 'c', r: round || S.round }); L.push({ o: ev.o, cnt: 1, x: ev.o >= 0 ? [nm(ev.o) + ' held ', Pl(ev.p), ' and scored ' + ren(ev.n) + '.'] : ['Nobody held ', Pl(ev.p), '.'] }); }
+      else if (t === 'out') add(ev.o, [(nm(ev.o) === 'You' ? 'You have' : nm(ev.o) + ' has') + ' no Seals left and ' + (nm(ev.o) === 'You' ? 'are' : 'is') + ' out of the game' + (ev.us.length ? ', and ' + (nm(ev.o) === 'You' ? 'your' : Kit.poss(nm(ev.o))) + ' Figures have left the map.' : '.')]);
       else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + (nm(ev.o) === 'You' ? 'You have ' : nm(ev.o) + ' has ') + ev.left + ' left.']);
       else if (t === 'mend' && ev.why === 'walls') add(ev.o, [nm(ev.o) + (nm(ev.o) === 'You' ? ' have ' : ' has ') + ev.left + ' Seals now, after ', K(ev.c), '.']);
       else if (t === 'mend') add(ev.o, ev.why === 'stool' ? [nm(ev.o) + ' held ', Pl(ev.p), ', and one of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.'] : ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
@@ -2440,12 +2866,19 @@
       else if (t === 'domain' && ev.why !== 'setup') { const w = E.ownerOfSpoke(S, ev.p), at = w < 0 ? 'the Crossroads' : Kit.poss(nm(w)) + (E.isGate(S, ev.p) ? ' Gate' : ' Outpost');
         add(ev.o, ev.old ? [{ k: '@' + ev.old }, ' was discarded, and ', { k: '@' + ev.id }, ' was laid at ' + at + '.'] : [{ k: '@' + ev.id }, ' was laid at ' + at + '.']); }
       else if (t === 'domains') { const mv = ev.perm.map((f, j) => (f !== j ? j : -1)).filter(j => j >= 0);
-        add(-1, mv.length === 2 ? [{ k: '@' + S.places[mv[0]] }, ' and ', { k: '@' + S.places[mv[1]] }, ' changed places.'] : ['The Domains at the two Gates changed places, and so did the Domains at the two Outposts.']); }
+        add(-1, mv.length === 2 ? [{ k: '@' + S.places[mv[0]] }, ' and ', { k: '@' + S.places[mv[1]] }, ' changed places.'] : [swapSaid(mv, true)]); }
       else if (t === 'marker') add(-1, [K(ev.c), ' lies on ', { k: '@' + S.places[ev.p] }, ', so its power does nothing while it lies there.']);
       else if (t === 'congress') add(ev.o, ['The dice for ', K(ev.c), ' showed ' + ev.dice[0] + ' and ' + ev.dice[1] + '.']);
       else if (t === 'nothing' && ev.why === 'kudurru') add(-1, ['A Boundary Stone protected that Domain, so nothing changed.']);
     });
     if (L.length > LOGMAX) L.splice(0, L.length - LOGMAX);
+  }
+  // (two players' Gates and Outposts trading places, as a sentence: the Columbian Exchange, the Cape Route)
+  function swapSaid(mv, past) {
+    const ws = []; mv.forEach(i => { const w = i >> 1; if (i < 2 * S.N && ws.indexOf(w) < 0) ws.push(w); });
+    if (S.N === 2 || ws.length !== 2) return past ? 'The Domains at the two Gates changed places, and so did the Domains at the two Outposts.' : 'The Domains at the two Gates change places, and so do the Domains at the two Outposts.';
+    const a = ws[0] === ui.view && human(ws[0]) ? 'your' : Kit.poss(pname(ws[0])), b = ws[1] === ui.view && human(ws[1]) ? 'your' : Kit.poss(pname(ws[1]));
+    return 'The Domains at ' + a + ' Gate and ' + b + ' Gate ' + (past ? 'changed' : 'change') + ' places, and so ' + (past ? 'did' : 'do') + ' their Outposts.';
   }
   // what a Domain's power did, as a line of the turn log (w: the power's word)
   function sparkSaid(ev, nm, Pl) {
@@ -2463,7 +2896,7 @@
     if (ev.w === 'print') return [nm(ev.o) + ' drew a card at ', P, ' for playing a Relic or a Deed.'];
     return [nm(ev.o) + ' held ', P, ' and drew a card.'];
   }
-  function logEnd() { if (!G || G.demo || !G.log) return; G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : pname(S.winner) + ' won' + (S.how === 'seals' ? ' by breaking all of ' + Kit.poss(pname(1 - S.winner)) + ' Seals.' : ' with ' + S.P[S.winner].renown + ' Renown.')] }); }
+  function logEnd() { if (!G || G.demo || !G.log) return; if (S.N > 2) { G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : endSaid()] }); return; } G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : pname(S.winner) + ' won' + (S.how === 'seals' ? ' by breaking all of ' + Kit.poss(pname(1 - S.winner)) + ' Seals.' : ' with ' + S.P[S.winner].renown + ' Renown.')] }); }
   function logScreen() {
     if (!G || G.demo) return; Kit.sfx('tap');
     const sc = screen({ title: 'Turn log', cls: 'an-log' }), L = G.log || [], groups = []; let cur = null;
@@ -2481,20 +2914,23 @@
       g.lines.forEach(e => box.appendChild(line(e))); sc.body.appendChild(box); });
   }
 
+  // (whose Figure knocked one out: the knocker's player, from the table, or from who the log has seen play it)
+  const byOf = ev => { const f = E.byU(S, ev.by); if (f) return f.o; const w = G.who && G.who[ev.by]; return w ? w[1] : S.N === 2 ? 1 - ev.o : -1; };
   function tally(evs) {
     const T = G.tale, r = G.hist.length + 1, cardOf = u => { const f = u && E.byU(S, u); return f ? f.c : ''; };
     let held = null;
     evs.forEach(ev => {
-      if (ev.t === 'ko' && ev.by) { G.stats[1 - ev.o].ko++; const c = T && cardOf(ev.by); if (c) { const m = T.ko[1 - ev.o]; m[c] = (m[c] || 0) + 1; } }
+      if (ev.t === 'ko' && ev.by) { const w = byOf(ev); if (w >= 0 && G.stats[w]) { G.stats[w].ko++; const c = T && cardOf(ev.by); if (c && T.ko[w]) { const m = T.ko[w]; m[c] = (m[c] || 0) + 1; } } }
       else if (ev.t === 'line' || ev.t === 'thread') { G.stats[ev.o].lines++;
         if (T) { const from = ev.t === 'line' ? cardOf(ev.b) : ev.src.k === 'fig' ? cardOf(ev.src.u) : ev.src.k === 'relic' ? ev.src.c : '@' + S.places[ev.src.p], to = ev.t === 'line' ? cardOf(ev.a) : ev.c;
           if (from && to && T.links.length < 24) T.links.push([r, ev.o, from, to, ev.ren || 0, ev.t === 'line' ? 'l' : 't'].join('|')); } }
       if ((ev.t === 'arrive' || ev.t === 'relic' || ev.t === 'deed' || ev.t === 'quick') && ev.c) G.seen[ev.c] = 1;
-      else if (ev.t === 'seal') { G.stats[ev.by].seals++; if (T) T.seals.push(r + '|' + ev.by); }
+      else if (ev.t === 'seal') { G.stats[ev.by].seals++; if (T) T.seals.push(r + '|' + ev.by + (S.N > 2 ? '|' + ev.o : '')); }
+      else if (ev.t === 'out' && T) (T.outs = T.outs || []).push(r + '|' + ev.o);
       else if (ev.t === 'hold') { G.stats[ev.o].held++; (held = held || {})[ev.p] = ev.o; }
       // (Domains that changed during the game, for its history: round | position as the map lies | the Domain laid | whose banner | the Domain it replaced | the card that did it; and 'round|m|perm' when Domains changed places)
-      else if (ev.t === 'domain' && ev.why !== 'setup' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, MAPORD.indexOf(ev.p), ev.id, ev.o, ev.old || '', ev.why].join('|')); }
-      else if (ev.t === 'domains' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, 'm', MAPORD.map(i => MAPORD.indexOf(ev.perm[i])).join(''), ev.why].join('|')); }
+      else if (ev.t === 'domain' && ev.why !== 'setup' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, posOrder().indexOf(ev.p), ev.id, ev.o, ev.old || '', ev.why].join('|')); }
+      else if (ev.t === 'domains' && T) { if (!T.dom) T.dom = []; if (T.dom.length < 24) T.dom.push([r, 'm', posOrder().map(i => posOrder().indexOf(ev.perm[i])).join(S.N > 2 ? ',' : ''), ev.why].join('|')); }
     });
     return held;
   }
@@ -2539,7 +2975,9 @@
     const my = gen, o = S.turn, pl = G.players[o];
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true);
     speed = ui.turbo || (pl.cpu && !stepOn() && lsGet(FAST) === '1' ? 4 : 1); document.documentElement.classList.toggle('an-fast', speed > 1);
-    if (G.mode === 'local' && ui.viewer !== o) {
+    // (pass and play: the device goes to the person whose turn it is, and their side of the table comes to the front;
+    // the computer's turns don't take the device from whoever has it)
+    if (G.mode === 'local' && !pl.cpu && ui.viewer !== o) {
       ui.hideHand = true; ui.viewer = -1; ui.view = o; V = snap(); render();
       await Kit.handoff({ name: pl.name, color: pl.color, what: 'hand' });
       if (gen !== my) return;
@@ -2552,7 +2990,7 @@
         const st = E.stake(S.cfg, S.round), up = S.round > 1 && st > E.stake(S.cfg, S.round - 1);
         if (up) { Kit.sfx('win'); Kit.haptic('success'); ui.flip = 1; render(); ui.flip = 0; }
         else Kit.sfx('pop');
-        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>First to ' + S.cfg.target + ' Renown</span>' : ''));
+        await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>' + (G.teams ? 'The first team to ' : 'First to ') + S.cfg.target + ' Renown</span>' : ''));
         if (gen !== my) return;
       }
       E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); logEvs(evs); save();
@@ -2584,7 +3022,8 @@
       if (fx === 'walls') return { key: k, tx: who + ' played ' + n + ' and' + has + Math.min(4, P.seals + 1) + ' Seals now.' };
       // (the five held cards and Canossa, 2026-11-12)
       if (fx === 'westphalia') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Nobody can start a clash there until this round ends.' };
-      if (fx === 'milan') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Until this round ends, ' + (o === ui.view ? 'the other player' : 'you') + ' can\'t start a clash with ' + (o === ui.view ? 'your' : Kit.poss(who)) + ' Figures there.' };
+      if (fx === 'milan') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Until this round ends, ' + (S.N > 2 ? (o === ui.view ? 'your opponents' : Kit.poss(who) + ' opponents') : o === ui.view ? 'the other player' : 'you') + ' can\'t start a clash with ' + (o === ui.view ? 'your' : Kit.poss(who)) + ' Figures there.' };
+      if (a.w != null) return { key: k, tx: who + ' played ' + n + ' with ' + (a.w === ui.view && human(a.w) ? 'you' : pname(a.w)) + '. Their Gates change places, and so do their Outposts.' };
       if (fx === 'lisbonquake') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Every Figure there misses its next turn.' };
       if (fx === 'canossa') { const g = fig(a.v); return { key: k, tx: who + ' played ' + n + ' on ' + mine(g) + (g ? CARDS[g.c].n : 'a Figure') + '. Until this round ends, the skills and powers on ' + (g ? Kit.poss(CARDS[g.c].n) : 'its') + ' card don\'t work.' }; }
       return { key: k, tx: who + ' played ' + n + '.' }; }
@@ -2603,7 +3042,7 @@
     return new Promise(ok => { ui.ack = said || { tx: pname(S.turn) + ' made a move.' }; ui.ackGo = ok; render(); });
   }
   async function robotTurn() {
-    const my = gen, prof = E.PROF[LEVEL[G.level] || 'holder'];
+    const my = gen, prof = profOf(G.players[S.turn], G.level);
     setBusy(true); await wait(500); if (gen !== my) return;
     for (let n = 0; n < 40; n++) {
       // (the computer does not move while the player is looking at cards: the table would change under what they read)
@@ -2633,11 +3072,11 @@
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true); render();
     E.endTurn(S); const evs = S.ev.splice(0), mid = snap(); logEvs(evs);
     let evR = null; const r0 = S.P.map(p => p.renown);
-    if (G.k === 0) { G.k = 1; S.turn = G.ord[1]; G.ph = 'start'; }
+    if (G.k < G.ord.length - 1) { G.k++; S.turn = G.ord[G.k]; G.ph = 'start'; }   // (the next player this round: G.ord, E.order)
     else {
-      const rNow = G.hist.length + 1; E.endRound(S); evR = S.ev.splice(0); logEvs(evR, rNow); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(MAPORD.map(i => held[i] == null ? '.' : 'ab'[held[i]]).join(''));
+      const rNow = G.hist.length + 1; E.endRound(S); evR = S.ev.splice(0); logEvs(evR, rNow); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(posOrder().map(i => held[i] == null ? '.' : 'abcdef'[held[i]]).join(''));
       G.hist.push(S.P.map((p, i) => p.renown - r0[i])); if (G.tale) G.tale.tot.push(S.P.map(p => p.renown).join('-'));   // (tot: Renown so far, with what Threads and Seals gave during the round)
-      if (S.over) G.over = true; else { const f = E.firstOf(S); G.ord = [f, 1 - f]; G.k = 0; S.turn = f; G.ph = 'start'; }
+      if (S.over) G.over = true; else { G.ord = E.order(S); G.k = 0; S.turn = G.ord[0]; G.ph = 'start'; }
     }
     if (G.over) { logEnd(); clearSave(); record(); } else save();
     if (!(await playEvents(evs, { o: o }))) return;
@@ -2648,7 +3087,7 @@
   }
   // The count: Place by Place down the map, the banner drops in the holder's colour and their Renown ticks up
   async function roundEnd(evs) {
-    const my = gen, order = rowsOrder(), groups = [], tail = []; let cur = null;
+    const my = gen, order = many() ? mapOrder() : rowsOrder(), groups = [], tail = []; let cur = null;
     evs.forEach(ev => { if (ev.t === 'hold') { cur = { p: ev.p, evs: [ev] }; groups.push(cur); } else if (ev.t === 'renown' || ev.t === 'spark') { cur = null; tail.push(ev); } else if (cur) cur.evs.push(ev); else tail.push(ev); });
     groups.sort((a, b) => order.indexOf(a.p) - order.indexOf(b.p));
     V.turn = -1; render(); Kit.sfx('pop'); await banner('', 'The count', '<span>Round ' + V.round + '</span>'); if (gen !== my) return false;
@@ -2675,8 +3114,20 @@
   beginTurn = guard(beginTurn); robotTurn = guard(robotTurn); endTurn = guard(endTurn); doHuman = guard(doHuman); discardOne = guard(discardOne);
 
   // ═══ The end ═════════════════════════════════════════════════════════════════════════════════════════════
+  // How a game of three or more players ended, said as a sentence: the count that put a company out (the game ends
+  // there, and the side still in with the most Renown wins: cfg.outEnds), the last side left, or the Renown
+  const winName = w => (G.teams ? teamName(w) : pname(w));
+  function endSaid() {
+    const w = S.winner, W = winName(w), outs = S.P.map((p, o) => (p.out ? o : -1)).filter(o => o >= 0), tm = !!G.teams;
+    if (w < 0) return 'The game ended level on Renown, Seals and Might.';
+    if (S.how === 'seals' && outs.length && E.liveSides(S).length > 1) return listOf(outs.map(pname)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + S.round + ', and that ends the game. ' + W + ' had the most Renown of the ' + (tm ? 'teams' : 'players') + ' still in, with ' + E.sren(S, w) + '.';
+    if (S.how === 'seals') return W + (tm ? ' were' : ' was') + ' the last ' + (tm ? 'team' : 'player') + ' left with Seals.';
+    if (E.sren(S, w) >= S.cfg.target) return W + ' reached ' + E.sren(S, w) + ' Renown' + (tm ? ' together' : '') + ' at the end of round ' + S.round + '.';
+    return W + ' had the most Renown when the last round ended.';
+  }
   function modeName() { return G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
   function record() {
+    if (S.N > 2) return recordN();
     const w = S.winner, T = G.tale, hl = [];
     // (a game begun before the history kept its details: the short notes it always had)
     if (!T) {
@@ -2699,8 +3150,42 @@
     // the collection: cards that crossed the table are seen; a win against the computer can earn a pack or a Guide
     try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w === 0, cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
   }
+  // The record of a game of three or more players for its history (hist/anoria.js reads it: v 3). Each player's
+  // numbers as with two; rt, each round's Renown so far for every player; hold, who held each Domain at each count,
+  // a letter a to f for each seat, in the engine's order of the Domains (each seat's Gate and Outpost, the Crossroads
+  // last); sl, 'round|by|whose' for each Seal; outs, 'round|who'; tm, the teams; map, each Domain at the end.
+  function recordN() {
+    const w = S.winner, T = G.tale || { tot: [], hold: [], links: [], seals: [], ko: G.players.map(() => ({})) }, top = m => Object.keys(m || {}).sort((a, b) => m[b] - m[a])[0] || '';
+    try {
+      Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? winName(w) : null, highlights: [],
+        detail: { v: 3, n: S.N, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w, tm: G.teams || null, out: S.P.map(p => (p.out ? 1 : 0)),
+          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
+          rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice(),
+          map: posOrder().map(i => [S.places[i], E.holder(S, i), E.mights(S, i).join(','), G.players.map((p, o) => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(',')).join('/')].join('|')) } });
+    } catch (e) {}
+    // (a win against the computer: your own, or your team's)
+    try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w >= 0 && E.ally(S, 0, w), cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
+  }
+  // The results card for three or more players: everyone in order (or every team, with its Renown together), the
+  // winner first and anyone who was put out last, and how it ended in a sentence
+  function showWinN(quiet) {
+    const w = S.winner, T = G.teams, win = w < 0 ? [] : T ? teamOf(w) : [w], people = G.players.some((p, o) => human(o));
+    const lose = w >= 0 && people && !win.some(human), mine = G.mode === 'cpu' && win.indexOf(0) >= 0;
+    const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
+    earned.forEach(x => notes.push(x.t === 'guide' ? TXG[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
+    notes.push(endSaid());
+    S.P.forEach((p, o) => { if (p.out) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left'); });
+    const rank = T ? T.map(t => t[0]).sort((a, b) => (E.ally(S, b, w) ? 1 : 0) - (E.ally(S, a, w) ? 1 : 0) || E.sren(S, b) - E.sren(S, a)).map(o => ({ name: teamName(o), score: E.sren(S, o), color: teamCol(o), cpu: !teamOf(o).some(human) }))
+      : S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown).map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
+    Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
+      title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
+      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), notes: notes, notesTitle: 'How it ended', rank: rank,
+      again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
+      extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+  }
   const earnedLabel = x => x.t === 'guide' ? 'Meet your new Guide' : 'Open your pack';
   function showWin(quiet) {
+    if (S.N > 2) return showWinN(quiet);
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
     earned.forEach(x => notes.push(x.t === 'guide' ? TXG[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
@@ -2718,18 +3203,18 @@
   // The key to the marks on the map's tiles, drawn with the marks themselves (rules page)
   function kindKey() { const D = window.AnoriaDomains; if (!D) return ''; return '<span class="rk-keys">' + D.ORDER.map(k => '<span class="rk-k">' + D.mark(k).outerHTML + '<b>' + D.KINDS[k].n + '</b></span>').join('') + '</span>'; }
   function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
-  const RULES = () => { const WIN = (G && S && !G.demo && S.cfg && S.cfg.target) || E.STD.target; return ('' +
+  const RULES = () => { const WIN = (G && S && !G.demo && !G.teams && S.cfg && S.cfg.target) || E.STD.target, RC = (G && S && !G.demo && S.N > 2 && S.cfg) || E.STD; return ('' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
-    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. Breaking all of the other player\'s Seals wins on the spot. Each player starts with <b>3 Seals</b>.</p>' +
-    '<h3>The map</h3><ul><li>Five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
+    '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. With two players, breaking all of the other player\'s Seals wins on the spot. Each player starts with <b>3 Seals</b>.</p>' +
+    '<h3>The map</h3><ul><li>With two players, five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li>' +
     '<li>The mark on the left edge of a Place shows its kind:' + kindKey() + '</li>' +
     '<li>The house on the right edge shows the Place\'s home region, with the region\'s outline inside it.' + homeKey() + 'A Figure from that region has +1 Might there, and while you hold such a Figure in your hand or move one on the map, the houses where it would be at home light up gold.</li>' +
     (C.DM_LIVE ? '<li>The border of each Domain is the material of its kind, as well: a cord with seals for Commerce, riveted iron for Industry, a ruled margin for Thought, a battlement for Land, a dog-tooth frieze for Culture, a marble moulding for Law and a chart\'s border for Routes.</li></ul>' +
     '<h3>Domains</h3><ul><li>Each deck brings a <b>stack of ' + Coll.STACK + ' Domains</b>, no two the same. You choose them under Decks.</li>' +
     '<li>Before the first round, each player draws four Domains, lays one at their Gate and one at their Outpost, offers one for the Crossroads, and puts the fourth under their stack.</li>' +
-    '<li>Then each player rolls a die. The higher roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the other player takes the first turn.</li>' +
+    '<li>Then each player rolls a die. The highest roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the next player round the table takes the first turn. If the highest roll is tied, the players in the tie roll again.</li>' +
     '<li>If the Might at the Crossroads is tied, the player whose banner is on it holds it, as long as they have a Figure there.</li>' +
     '<li>A Commerce Domain pays nothing at a Gate. Its rule works at an Outpost or the Crossroads.</li>' +
     '<li>Some cards lay a new Domain, move Domains or cover a Domain\'s rule. The turn log says what changed.</li></ul>' : '</ul>') +
@@ -2738,8 +3223,8 @@
     '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure you have just played can clash but not walk.</li>' +
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
-    '<li>You keep up to 2 Spark you don\'t spend through the other player\'s turn. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
-    '<li>Three Quick Deeds only ever play themselves, each at the moment its card names. <b>Testudo</b> pulls back a Figure of yours that loses a clash it started on the other player\'s side, so it goes back to your Gate instead of being knocked out. The <b>Defense of Syracuse</b> drives back to its own Gate an enemy Figure that would win a clash it started at your Gate or your Outpost. The <b>Tribune\'s Veto</b> cancels a Deed the other player plays that would score Renown or move, stun or knock out one of your Figures. Testudo is paid for with the Spark of your own turn, and the other two with Spark you kept.</li>' +
+    '<li>You keep up to 2 Spark you don\'t spend through the other players\' turns. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
+    '<li>Three Quick Deeds only ever play themselves, each at the moment its card names. <b>Testudo</b> pulls back a Figure of yours that loses a clash it started on an opponent\'s side, so it goes back to your Gate instead of being knocked out. The <b>Defense of Syracuse</b> drives back to its own Gate an enemy Figure that would win a clash it started at your Gate or your Outpost. The <b>Tribune\'s Veto</b> cancels a Deed an opponent plays that would score Renown or move, stun or knock out one of your Figures. Testudo is paid for with the Spark of your own turn, and the other two with Spark you kept.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
     '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li></ul>' +
     '<h3>Collecting</h3><ul><li>The small mark at the foot of the band down a card\'s left side is how rare the card is in packs: <span class="rr-i r1"></span>a dot is Common, <span class="rr-i r2"></span>a triangle Uncommon, <span class="rr-i r3"></span>a four-point star Rare and <span class="rr-i r4"></span>a compass rose Legendary. The cards that do the most are the rarest. Rarity plays no part in a game.</li>' +
@@ -2748,7 +3233,7 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place: the other player’s Figures are to the left of the Place’s card and yours are to the right. Swipe up and down to go from Place to Place, to each player’s Guide and Relics, and to your hand. The little map at the left shows where you are, and how many Figures and how much Might each of you has at every Place.</li>' +
+    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place: everyone else’s Figures are to the left of the Place’s card and yours are to the right. Swipe up and down to go from Place to Place, to each player’s Guide and Relics, and to your hand. The little map at the left shows where you are, and how many Figures and how much Might each of you has at every Place.</li>' +
     '<li>Under the card in front are buttons for what you can do with that card now: play it, move it, or start a clash.</li>' +
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
@@ -2758,14 +3243,22 @@
     '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of ' + ((window.AnoriaColl && AnoriaColl.DAILY) || 5) + ' cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
     '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +
     '<li>A pack holds cards from the whole set. Each card in it is one you are missing, or a finish of a card you haven\'t found yet, so you go on collecting Shiny, Silver, Gold and Rainbow cards after you own every card. A deck can still hold no more than two of a card.</li></ul>' +
-    '<h3>The end of a round</h3><ul><li>When both players have had a turn, each Place goes to the side with <b>more Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
+    '<h3>The end of a round</h3><ul><li>When every player has had a turn, each Place goes to the side with <b>the most Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
-    '<li>If you hold the other player\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
+    '<li>If you hold an opponent\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>The <b>Theodosian Walls</b> give you a Seal: they mend a broken one, or add a fourth. No player can have more than 4 Seals.</li>' +
     '<li>Some Deeds make a Place score <b>double</b> at this round\'s count, and its banner shows the doubled number until then. A Place scores double only once, however many Deeds double it.</li>' +
     '<li>Some Deeds last until the count, and their card lies on the table until then: on a Domain, like the <b>Peace of Westphalia</b>, which stops every clash there, or on a Figure, like the <b>Walk to Canossa</b>, which switches off the skills and powers on its card.</li>' +
-    '<li>Whoever has more Renown goes first next round, so the player behind has the last word. If you are level, you take turns going first.</li>' +
-    '<li>If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.</li></ul>' +
+    '<li>Whoever has the most Renown goes first next round, so whoever is behind has the last word. If you are level, you take turns going first.</li>' +
+    '<li>If more than one player passes ' + WIN + ' in the same round, whoever has the most Renown wins. The game also ends after 14 rounds, and again whoever has the most Renown wins.</li></ul>' +
+    '<h3>Three to six players</h3><ul><li>Each player\'s Gate and Outpost are a spoke off the Crossroads, and each Outpost is also joined by a road to the Outposts on either side. Your spoke is drawn large in the middle of the table, and everyone else\'s spoke is round the edge, starting with the player on your left.</li>' +
+    '<li>A player\'s Figures at a Place away from your spoke stand as one stack, the strongest on top, with their Might added up on its shield. Tap a stack to read every card in it.</li>' +
+    '<li>Each round, whoever has the most Renown goes first, and the turns go round the table to the left.</li>' +
+    '<li>A player who loses their last Seal is out of the game. ' + (RC.outEnds ? 'The count that puts a player out ends the game, and whoever has the most Renown of the players still in wins.' : 'Their Figures leave the map, and the game goes on without them until one player is left or someone reaches ' + E.STD.target + ' Renown.') + '</li>' +
+    '<li>A card that says <b>an opponent</b> means any other player. The Congress of Vienna counts 4 and 5 on the spoke of the player on your left. With the Columbian Exchange you choose whose Gate and Outpost trade places with yours, by tapping that player\'s Gate.</li></ul>' +
+    '<h3>Teams</h3><ul><li>With 4 or 6 players you can play in teams: 2 against 2, 3 against 3, or three teams of 2. Teammates sit with an opponent between them, and each team has a color of its own and a diamond on its players\' plates.</li>' +
+    '<li>A team\'s Renown is its players\' Renown added together. The first team to reach 20 Renown for each player on it, and 5 more, wins: 45 Renown for a team of two, and 65 for a team of three.</li>' +
+    '<li>' + (RC.tmight === 'add' ? 'Teammates add their Might together to hold a Place. ' : '') + 'Teammates can\'t clash with each other, no card hurts a teammate, and holding a teammate\'s Gate breaks none of their Seals.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
     '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>').replace(/\bPlace(s?)\b/g, (m, x) => (C.DM_LIVE ? 'Domain' + x : m)); };
   // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
@@ -2985,7 +3478,7 @@
   window.AnoriaUI = { homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
-  window.__anoria = { scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
+  window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
   // picture can be checked in one look: the full card, the small card, the smallest hand card and the piece on the

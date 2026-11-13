@@ -1182,3 +1182,166 @@ button.ll-n{cursor:pointer;}
 .ll-q{width:34px;height:34px;font-size:1.15em;}
 .sc-acts .btn{min-height:52px;}
 .vf-t{width:30px;height:42px;}
+
+/* ══ The table for three to six players (ui.js drawN, Tim's layout C of 2026-11-13): your spoke large, the others round
+   the rim. Every seat has its colour as --pc0 to --pc5 (setCols), so a piece in seat n's colour is .oN / .pN. ══ */
+.fp.o2,.an-strip.p2,.cl-side.o2,.sc-row.o2,.stk.o2,.sc-lv.side.o2,.view.scan .vf-head small.own.o2,.lg-g.o2{--pc:var(--pc2,#ee7fc0);}
+.fp.o3,.an-strip.p3,.cl-side.o3,.sc-row.o3,.stk.o3,.sc-lv.side.o3,.view.scan .vf-head small.own.o3,.lg-g.o3{--pc:var(--pc3,#8a83f0);}
+.fp.o4,.an-strip.p4,.cl-side.o4,.sc-row.o4,.stk.o4,.sc-lv.side.o4,.view.scan .vf-head small.own.o4,.lg-g.o4{--pc:var(--pc4,#f4efe2);}
+.fp.o5,.an-strip.p5,.cl-side.o5,.sc-row.o5,.stk.o5,.sc-lv.side.o5,.view.scan .vf-head small.own.o5,.lg-g.o5{--pc:var(--pc5,#d9622b);}
+.stk.o0{--pc:var(--pc0);} .stk.o1{--pc:var(--pc1);}
+.view.scan .vf-c.own.o2::before,.view.scan .vf-c.own.o3::before,.view.scan .vf-c.own.o4::before,.view.scan .vf-c.own.o5::before{background:var(--pc);box-shadow:0 0 8px color-mix(in srgb,var(--pc) 70%,transparent);}
+.view.scan .vf-c.own.o2{--pc:var(--pc2);} .view.scan .vf-c.own.o3{--pc:var(--pc3);} .view.scan .vf-c.own.o4{--pc:var(--pc4);} .view.scan .vf-c.own.o5{--pc:var(--pc5);}
+.view.scan .vf-t.o2{box-shadow:0 0 0 1.5px var(--pc2);} .view.scan .vf-t.o3{box-shadow:0 0 0 1.5px var(--pc3);} .view.scan .vf-t.o4{box-shadow:0 0 0 1.5px var(--pc4);} .view.scan .vf-t.o5{box-shadow:0 0 0 1.5px var(--pc5);}
+.pl.held2 .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px var(--pc2),0 4px 10px rgba(0,0,0,.55);}
+.pl.held3 .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px var(--pc3),0 4px 10px rgba(0,0,0,.55);}
+.pl.held4 .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px var(--pc4),0 4px 10px rgba(0,0,0,.55);}
+.pl.held5 .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px var(--pc5),0 4px 10px rgba(0,0,0,.55);}
+
+.an-felt.many > .an-mats{display:none;}
+.an-felt.many > .an-strip.opp.wn-none{display:none;}
+.an-felt.many:not(.teams){grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"map" "cap" "me" "hand";}
+@media (orientation:landscape){ .an-felt.many:not(.teams){grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"map cap" "map hand" "map me";} }
+.an-map.wn{display:block;position:relative;}
+.an-map.wn > *{position:absolute;}
+.an-map.wn > .an-line{position:absolute;}
+
+/* the teams: "Tim & Jamie vs Pete & Pam", each team's diamond and the Renown it has together */
+.wn-sides{grid-area:opp;display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;gap:4px 8px;min-width:0;padding:3px 8px;border-radius:10px;overflow:hidden;
+  background:linear-gradient(180deg,rgba(8,10,20,.5),rgba(8,10,20,.3));box-shadow:inset 0 0 0 1px rgba(233,207,134,.22);}
+.wn-sides .side{display:flex;align-items:center;gap:6px;min-width:0;font:400 .95rem/1 var(--fellsc);letter-spacing:.04em;color:#f3e9d2;white-space:nowrap;padding:2px 4px;border-radius:7px;}
+.wn-sides .side.on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tc) 70%,transparent);background:color-mix(in srgb,var(--tc) 12%,transparent);}
+.wn-sides .side > i{flex:none;width:10px;height:10px;border-radius:2px;background:var(--tc);transform:rotate(45deg);box-shadow:0 0 0 1.5px rgba(0,0,0,.45);}
+.wn-sides .rn{position:relative;flex:none;width:30px;height:23px;background:url(ui/mark-renown.webp) center/contain no-repeat;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.4));}
+.wn-sides .rn b{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);font:400 .72rem/1 var(--slab);color:var(--an-ink);}
+.wn-sides .vs{flex:none;font:italic 400 .9rem/1 var(--fell);color:#cbb98a;}
+.wn-sides.tight .side .n{display:none;}
+@media (max-width:440px){ .wn-sides{gap:2px 6px;padding:2px 4px;} .wn-sides .side{font-size:.8rem;gap:4px;} .wn-sides .rn{width:26px;height:20px;} .wn-sides .rn b{font-size:.64rem;} .wn-sides .vs{font-size:.78rem;} }
+
+/* each player's mat under their spoke: the column (upright) or the lane (sideways), lit in their colour on their turn */
+.an-pm.wn-col{position:absolute;z-index:0;--mb:3px;--mr:9px;box-shadow:0 0 0 1px rgba(0,0,0,.55),0 2px 5px rgba(0,0,0,.5);}
+.an-pm.wn-col.on{box-shadow:0 0 0 1.5px var(--pc),0 0 14px color-mix(in srgb,var(--pc) 45%,transparent),0 2px 5px rgba(0,0,0,.5);}
+.an-pm.wn-col.out > .pm-art,.an-pm.wn-col.out > .mk-lay{filter:grayscale(.9) brightness(.55);}
+.an-pm.wn-mine{z-index:0;}
+
+/* the roads: dotted spokes, the dashed ring, gold where a picked-up Figure can walk */
+.wn-roads{position:absolute;left:0;top:0;width:100%;height:100%;z-index:2;pointer-events:none;overflow:visible;}
+.wn-roads .rd{fill:none;stroke:rgba(233,207,134,.72);stroke-width:2.2;stroke-dasharray:.5 5.5;stroke-linecap:round;}
+.wn-roads .rd.ring{stroke:rgba(233,207,134,.55);stroke-dasharray:7 5;stroke-linecap:butt;stroke-width:2;}
+.wn-roads .rd.lit{stroke:#ffd76a;stroke-width:3.5;stroke-dasharray:none;filter:drop-shadow(0 0 4px rgba(255,214,106,.95));}
+
+/* a player's plate on the rim: a strip in small, sized from its font size (set by the layout) */
+.an-map .an-strip.wn-plate{z-index:8;box-sizing:border-box;display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"g nm rn" "g bt rn";
+  align-items:center;column-gap:.4em;row-gap:0;padding:.25em .35em .25em .25em;border-radius:.55em;background:linear-gradient(180deg,rgba(12,15,30,.94),rgba(10,13,26,.86));
+  box-shadow:inset 0 0 0 1px rgba(233,207,134,.3),0 0 0 2px var(--pc),0 4px 10px rgba(0,0,0,.55);}
+.an-map .an-strip.wn-plate.on{box-shadow:inset 0 0 0 1px rgba(233,207,134,.45),0 0 0 2.5px var(--pc),0 0 16px 2px color-mix(in srgb,var(--pc) 60%,transparent),0 4px 10px rgba(0,0,0,.55);}
+.wn-plate .st-guide{grid-area:g;height:100%;width:auto;aspect-ratio:5/6.2;max-width:2.6em;border-radius:.3em;box-shadow:0 0 0 1.5px var(--pc);}
+.wn-plate .st-name{grid-area:nm;align-self:end;max-width:none;font-size:1.05em;line-height:1.05;gap:.25em;}
+.wn-plate .st-name .ico{width:1em;height:1em;}
+.wn-plate .st-ren{grid-area:rn;flex:none;min-width:0;}
+.wn-plate .st-ren .lau{width:2.5em;height:1.95em;}
+.wn-plate .st-ren b{font-size:.82em;}
+.wn-plate .st-bot{grid-area:bt;align-self:start;display:flex;align-items:center;gap:.45em;}
+.wn-plate .st-seals{gap:.16em;}
+.wn-plate .seal{width:.95em;height:.95em;}
+.wn-plate .st-hand{width:.8em;height:1.1em;margin-right:.9em;}
+.wn-plate .st-hand b{min-width:1.15em;height:1.15em;padding:0 .2em;font-size:.68em;line-height:1.15em;right:-1.25em;bottom:-.25em;border-radius:.6em;}
+.wn-plate.out{filter:saturate(.3) brightness(.7);}
+.wn-plate .wn-out{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);padding:.05em .5em;border-radius:.3em;font:400 1em/1.2 var(--fellsc);letter-spacing:.12em;color:#f3e9d2;background:#7a1f1a;box-shadow:0 0 0 1px #10131c;}
+.wn-plate .wn-tm{position:absolute;right:.4em;top:-.42em;width:.8em;height:.8em;transform:rotate(45deg);background:var(--tc);border-radius:2px;box-shadow:0 0 0 1.5px #0a0d17;}
+/* (a narrow column: the name over the Guide, with the Renown, Seals and hand beside it) */
+.an-map .an-strip.wn-plate.f{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"nm nm" "g rn" "g bt";row-gap:.12em;align-content:center;padding:.25em .3em;}
+.wn-plate.f .st-name{justify-self:center;align-self:center;}
+.wn-plate.f .st-guide{height:auto;width:1.9em;align-self:center;}
+.wn-plate.f .st-ren{justify-self:start;} .wn-plate.f .st-ren .lau{width:2.2em;height:1.7em;}
+.wn-plate.f .st-bot{gap:.25em;} .wn-plate.f .st-seals{gap:.08em;} .wn-plate.f .seal{width:.8em;height:.8em;}
+.wn-plate.w .st-ren .lau{width:2.1em;height:1.6em;}
+.an-map .an-strip.wn-plate.l{grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"g nm" "g rn" "g bt";align-content:center;row-gap:.1em;padding:.3em .3em .3em .25em;}
+.wn-plate.l .st-guide{height:auto;width:2.4em;align-self:center;}
+.wn-plate.l .st-ren{justify-self:start;}
+
+/* a Domain on the rim */
+.an-map.wn > .pl.wn-t{display:block;padding:0;border-radius:6px;z-index:4;}
+.pl.wn-t .pl-tile{position:absolute;inset:0;margin:0;width:100%;height:100%;}
+.pl.wn-t .pl-tile.wn-small{border-radius:5px;}
+.pl.wn-t.held .pl-tile,.pl.wn-t[class*=" held"] .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px var(--hc,transparent),0 4px 10px rgba(0,0,0,.55);}
+.pl.wn-t.tgt{cursor:pointer;}
+.pl.wn-t.tgt .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 3px #ffd76a,0 0 16px 4px rgba(255,214,106,.75);animation:an-pulse 1s infinite;}
+.pl.wn-t.count .pl-tile{box-shadow:0 0 0 2px var(--an-gilt),0 0 18px rgba(233,207,134,.6);}
+.pl.wn-t.pk .pl-tile{box-shadow:0 0 0 2px #fff1bf,0 0 18px rgba(255,241,191,.8);}
+.pl-tile.wn-small .wn-nm{position:absolute;left:var(--db,3px);right:var(--db,3px);bottom:var(--db,3px);margin:0;padding:.22em .15em .12em;display:block;text-align:center;clip-path:none;border-radius:0 0 2px 2px;}
+.pl-tile.wn-small .wn-nm .pl-name{display:block;line-height:1.02;letter-spacing:.02em;}
+.pl-tile.wn-small .pl-flag{--fl:20px;}
+.pl-tile.wn-small .pl-av{--av:14px;}
+.pl-tile.wn-small.bare .pl-art{bottom:var(--db,3px);}
+.pl.wn-t.pip .pl-tile{border-radius:4px;overflow:visible;}
+.pl.wn-t.pip .pl-art{inset:0;border-radius:4px;}
+.pl.wn-t.pip:not([class*=" held"]) .pl-tile{box-shadow:0 0 0 1px #000,0 0 0 2px rgba(233,207,134,.5),0 2px 5px rgba(0,0,0,.6);}
+.wn-dots{position:absolute;left:50%;top:calc(100% + 4px);transform:translateX(-50%);display:flex;gap:2px;}
+.wn-dots i{width:6px;height:6px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.7);}
+.wn-hm{position:absolute;left:50%;top:-7px;transform:translateX(-50%);z-index:2;min-width:13px;padding:0 2px;box-sizing:border-box;border-radius:3px;background:var(--hc);font:400 .55rem/12px var(--slab);color:var(--an-ink);text-align:center;}
+
+/* your rows, large: the two-player row drawn in the room drawN gives it */
+.an-map.wn > .pl.wn-row{display:grid;grid-template-columns:minmax(0,1fr) var(--mw,110px) minmax(0,1fr);gap:8px;padding:0 4px;z-index:3;}
+.pl.wn-row .pl-tile{align-self:stretch;}
+.pl.wn-row .pl-side.L{flex-wrap:wrap;flex-direction:row;justify-content:flex-end;align-content:center;row-gap:calc(var(--sw) * .3);column-gap:calc(var(--sw) * .22);}
+.pl.wn-row .pl-side.R{flex-wrap:nowrap;}
+.pl.wn-row.tgt{background:linear-gradient(90deg,transparent 30%,rgba(233,207,134,.2));box-shadow:inset 0 0 0 1.5px rgba(233,207,134,.75);}
+.pl.wn-row .pl-decree.R{left:calc(50% + var(--mw,110px) / 2 - 6px);}
+
+/* a player's stack of Figures: the strongest on top, the others' edges under it, the total Might on the shield */
+.stk{position:relative;flex:none;width:var(--w,var(--sw,30px));height:calc(var(--w,var(--sw,30px)) * 1.36);border:0;padding:0;background:none;cursor:pointer;z-index:7;font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;transition:transform .2s var(--spring);}
+.an-map.wn > .stk{position:absolute;}
+.stk .c,.stk .e{position:absolute;inset:0;border-radius:calc(var(--w,var(--sw,30px)) * .12);}
+.stk .e{background:linear-gradient(180deg,#2a3048,#151a2a);box-shadow:0 0 0 1.5px var(--pc),0 0 0 2.5px rgba(0,0,0,.7);transform:translate(calc(var(--k) * var(--w,var(--sw,30px)) * .13),calc(var(--k) * var(--w,var(--sw,30px)) * -.1)) rotate(calc(var(--k) * 5deg));}
+.stk .c{overflow:hidden;background:var(--f);box-shadow:0 0 0 2px var(--pc),0 0 0 3px rgba(0,0,0,.75),0 3px 6px rgba(0,0,0,.6);}
+.stk .c img{position:absolute;left:7%;top:5%;width:86%;height:90%;object-fit:cover;object-position:50% 18%;border-radius:calc(var(--w,var(--sw,30px)) * .06);}
+.stk .c .na{position:absolute;inset:0;display:grid;place-items:center;font:400 calc(var(--w,var(--sw,30px)) * .4)/1 var(--fellsc);color:#f3e9d2;}
+.stk .m{position:absolute;z-index:2;left:-16%;bottom:-12%;width:64%;aspect-ratio:44/40;background:url(ui/mark-might.webp) center/contain no-repeat;filter:drop-shadow(1px 1px 0 rgba(0,0,0,.55));}
+.stk .m b{position:absolute;left:50.5%;top:46%;transform:translate(-50%,-50%);font:400 calc(var(--w,var(--sw,30px)) * .34)/1 var(--slab);color:var(--an-ink);}
+.stk.can .c{box-shadow:0 0 0 2px var(--pc),0 0 10px 1px color-mix(in srgb,var(--pc) 75%,transparent),0 3px 6px rgba(0,0,0,.6);}
+.stk.done .c{filter:saturate(.35) brightness(.72);}
+.stk.stun .c{filter:grayscale(.7) brightness(.8);}
+.stk.sel{transform:translateY(-12%) scale(1.12);z-index:9;}
+.stk.sel .c{box-shadow:0 0 0 2.5px #fff,0 0 14px 3px var(--pc),0 8px 12px rgba(0,0,0,.6);}
+.stk.tgt .c{box-shadow:0 0 0 2.5px var(--an-gilt),0 0 16px 3px rgba(233,207,134,.8);animation:an-pulse 1s infinite;}
+.stk.arrive{animation:an-arrive .5s cubic-bezier(.3,1.5,.5,1);}
+.stk.bump{animation:an-bump .45s var(--spring);}
+.stk.zap{animation:an-zap .5s;} .stk.hop{animation:an-hop .5s var(--ease);}
+.stk-x{position:absolute;z-index:3;right:-10%;top:-8%;width:42%;aspect-ratio:1;border-radius:50%;background:#7a1f1a;box-shadow:0 0 0 1.5px #10131c;}
+.stk-x::after{content:"";position:absolute;left:18%;right:18%;top:50%;height:2px;margin-top:-1px;background:#f3e9d2;transform:rotate(-45deg);}
+@media (prefers-reduced-motion:reduce){ .stk.tgt .c,.pl.wn-t.tgt .pl-tile{animation:none;} }
+
+/* the set-up: the dice for the Crossroads, with everyone's offer */
+.clash.su-n .cl-in{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;width:min(100%,560px);--cw:clamp(64px,min(24vw,16vh),130px);}
+.clash.su-n.n4 .cl-in{grid-template-columns:repeat(2,minmax(0,1fr));--cw:clamp(64px,min(30vw,17vh),130px);}
+.clash.su-n .cl-where{grid-column:1/-1;}
+.clash.su-n .su-c{transition:opacity .3s,filter .3s;}
+.clash.su-n .su-c.out{opacity:.4;filter:saturate(.5);}
+.su-nm{font:400 .95rem/1.1 var(--fellsc);letter-spacing:.04em;color:#f3e9d2;text-align:center;}
+@media (orientation:landscape) and (max-height:560px){ .clash.su-n .cl-in,.clash.su-n.n4 .cl-in{grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));--cw:clamp(52px,20vh,96px);gap:6px 10px;} .clash.su-n.n4 .cl-in{--cols:4;} .clash.su-n.n5 .cl-in,.clash.su-n.n6 .cl-in{--cols:6;} }
+.pl.wn-t.su .su-slot{position:absolute;inset:0;}
+@media (orientation:portrait){ .an-felt.many .an-hand{align-items:center;padding-top:4px;} }
+.an-map .an-strip.wn-plate.w{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"g nm nm" "g bt rn";}
+.wn-plate.w .st-ren{align-self:start;margin-top:-.15em;}
+/* a phone on its side with more players: the right-hand column gives the table its room, and the strip goes back to two lines */
+@media (orientation:landscape) and (max-height:520px){
+  .an-felt.many,.an-felt.many.has-trk{grid-template-columns:minmax(0,1fr) 300px;}
+  .an-felt.many .an-strip.me{grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:auto auto;--gw:34px;}
+  .an-felt.many .an-strip.me .st-guide{grid-row:1/3;aspect-ratio:5/6.4;}
+  .an-felt.many .an-strip.me .st-top{grid-column:2;grid-row:1;} .an-felt.many .an-strip.me .st-bot{grid-column:2;grid-row:2;justify-content:flex-start;}
+  .an-felt.many .an-strip.me .st-go{grid-column:3;grid-row:1/3;min-width:84px;}
+  .an-felt.many .cap-txt{font-size:.92rem;}
+}
+.an-map .an-strip.wn-plate.l .seal{width:.8em;height:.8em;} .an-map .an-strip.wn-plate.l .st-seals{gap:.08em;} .an-map .an-strip.wn-plate.l .st-bot{gap:.3em;}
+/* the scan's map with more players: each other player's Guide, Gate and Outpost on a line, then yours down it */
+.sc-map.n{gap:4px;padding:6px;}
+.sc-map.n .sc-grp{display:flex;gap:3px;align-items:center;}
+.sc-map.n .sc-lv{width:26px;height:20px;}
+.sc-map.n .sc-lv.side{height:20px;}
+.sc-map.n > .sc-lv{align-self:flex-end;width:38px;height:28px;}
+.sc-map.n > .sc-lv.side{height:24px;} .sc-map.n > .sc-lv.hand{height:30px;margin-top:2px;}
+.sc-map.n .sc-grp .sc-gd{width:18px;height:18px;} .sc-map.n .sc-grp .sc-back,.sc-map.n .sc-grp .sc-rel{display:none;}
+.sc-map.n .sc-lv.on{transform:scale(1.12);} .sc-map.n .sc-lv.on::after{display:none;}
+.sc-dots{position:absolute;left:1px;right:1px;bottom:-3px;display:flex;justify-content:center;gap:1.5px;pointer-events:none;}
+.sc-dots i{width:5px;height:5px;border-radius:50%;box-shadow:0 0 0 1px rgba(8,10,20,.9);}

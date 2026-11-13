@@ -1867,11 +1867,11 @@
   //            The setup shows who's playing on one line (the people from last time); a tap opens the players
   //            sheet (playersSheet) for how many, who sits where, robots and their skill. The returned
   //            object's seats() gives [{name, cpu}] as it stands, for a game that shows something per seat
-  //   options: [{id, label, choices:[[value,label],...], value, help, when:(mode, options)=>bool}]  segmented pickers
+  //   options: [{id, label, choices:[[value,label],...], value, help, when:(mode, options, count)=>bool}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
-  //            Or {id, value, render:(value, set)=>node, summary:(value)=>text}: the game draws its own picker.
+  //            Or {id, value, render:(value, set, {count, seats})=>node, summary:(value)=>text}: the game draws its own picker.
   //            onPick:(value, options) runs when a choice is tapped and may set other options too (a preset).
   //   intro:   (no longer shown: the setup screen shows just the game's name)
   //   start:   button label
@@ -2269,7 +2269,7 @@
       });
     }
     // op.choices can be a function of (player count, mode), e.g. "who goes first" offering each seat
-    // op.when(mode, options) and op.choices(count, mode, options) can depend on the other options' values
+    // op.when(mode, options, count) and op.choices(count, mode, options) can depend on the other options' values
     // op.onPick(value, options): a choice that sets other options too (a preset); it may change options in place
     function choicesOf(op) { return typeof op.choices === 'function' ? op.choices(state.count, state.mode, state.options) : op.choices; }
     // A setup that would not fit the screen folds its options into one-line rows (each its name and what it is set to;
@@ -2291,10 +2291,10 @@
     function renderOptions() {
       optsBox.innerHTML = '';
       (o.options || []).forEach(function (op) {
-        if (op.when && !op.when(state.mode, state.options)) return;
+        if (op.when && !op.when(state.mode, state.options, state.count)) return;
         if (op.robot && lvTiles()) return;   // (each robot's tile carries it)
         // op.render(value, set): the game draws its own picker (a value it keeps in the options like any other)
-        if (op.render) { optsBox.appendChild(op.render(state.options[op.id], function (v) { state.options[op.id] = v; renderOptions(); })); return; }
+        if (op.render) { optsBox.appendChild(op.render(state.options[op.id], function (v) { state.options[op.id] = v; renderOptions(); }, { count: state.count, seats: P ? seatList() : [] })); return; }
         var seg = el('div', { class: 'seg' }), choices = choicesOf(op);
         if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
         choices.forEach(function (c) {
@@ -2426,7 +2426,7 @@
       if (o.modes && o.modes.length > 1) { var m = o.modes.filter(function (x) { return x.id === state.mode; })[0]; if (m) bits.push(m.title); }
       if (P) { var r = range(); if (r[1] > r[0]) bits.push(state.count + (state.count === 1 ? ' player' : ' players')); }
       (o.options || []).forEach(function (op) {
-        if (op.when && !op.when(state.mode, state.options)) return;
+        if (op.when && !op.when(state.mode, state.options, state.count)) return;
         if (op.render) { if (op.summary) bits.push(op.summary(state.options[op.id])); return; }
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
         if (c) bits.push(c[1]);
@@ -2447,7 +2447,7 @@
       }
       if (o.modes && o.modes.length > 1 && !merged) { var m = o.modes.filter(function (x) { return x.id === state.mode; })[0]; if (m) mt = m.title || ''; }
       (o.options || []).forEach(function (op) {
-        if (top.length >= 2 || op.render || op.robot || (op.when && !op.when(state.mode, state.options))) return;
+        if (top.length >= 2 || op.render || op.robot || (op.when && !op.when(state.mode, state.options, state.count))) return;
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
         if (c) top.push([op.label, c[1]]);
       });
@@ -2574,9 +2574,9 @@
     var TN = function () { return !EDIT_DEFAULTS && window.TurnNet && TurnNet.ready && TurnNet.ready() ? TurnNet : null; };
     function goOnline() {
       var om = MK.online || resolvedMode(), tn = TN(), info = tn && tn.info ? tn.info() : null;
-      var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options) && !op.when(resolved(), state.options); }) : [];
+      var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
-      function shown(op) { return !op.render && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options)); }
+      function shown(op) { return !op.render && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
       function valueOf(op) { var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? c[1] : ''; }
       function paint() {
         box.innerHTML = '';
