@@ -14,7 +14,7 @@ for (let i = 0; i < N_ADD; i++) C.CARDS['zz' + i] = { n: 'Card ' + i, t: i % 5 =
 const Coll = require('../../games/anoria/coll'), { rng } = require('../../games/anoria/engine');
 const T = +process.argv[2] || 300, PER = +process.argv[3] || 3, PW = +process.argv[4] || 0.5, OV = JSON.parse(process.argv[5] || '{}');
 // how often each calling's measure happens in a game: node scripts/anoria/calls.js (calls.txt)
-const RATES = { hold4: 0.33, relics2: 0.40, sealsWin: 0.07, noSealLost: 0.19, lines: 1.3, play3: 2.9, behindWin: 0.22, clash3: 0.8, most: 2.6, facs5: 0.55, scholars3: 0.45 };
+const RATES = { hold4: 0.381, relics2: 0.51, sealsWin: 0.095, noSealLost: 0.235, lines: 1.62, play3: 3.271, behindWin: 0.358, clash3: 0.821, most: 2.825, facs5: 0.663, scholars3: 0.619 }, RATE_WIN = 0.425;   // (calls.txt, 2026-11-13: 1500 games; the robot won 42.5%)
 const COUNTED = { lines: 1, play3: 1, most: 1 };
 let bad = 0; const assert = (ok, m) => { if (!ok) { bad++; console.error('FAIL: ' + m); } };
 const GK = Object.keys(C.GUIDES), ALL = Coll.ALL, NE = Coll.EDITIONS.length;
@@ -96,7 +96,8 @@ for (let t = 0; t < T; t++) {
     d++; clock = new Date(2027, 0, d, 12);
     for (let i = 0; i < PER; i++) {
       const win = R() < PW, m = {};
-      Object.keys(RATES).forEach(k => { m[k] = COUNTED[k] ? pois(R, RATES[k]) : R() < RATES[k] / (k === 'sealsWin' || k === 'noSealLost' || k === 'behindWin' ? 0.5 : 1) * (k === 'sealsWin' || k === 'noSealLost' || k === 'behindWin' ? (win ? 1 : 0) : 1); });
+      // (a measure that needs a win happens in a won game as often as calls.txt says it happens in a game, over how often the robot won)
+      Object.keys(RATES).forEach(k => { const w = k === 'sealsWin' || k === 'noSealLost' || k === 'behindWin'; m[k] = COUNTED[k] ? pois(R, RATES[k]) : w ? win && R() < RATES[k] / RATE_WIN : R() < RATES[k]; });
       const r = Coll.gameOver({ win: win, how: m.sealsWin ? 'seals' : 'renown', level: d < 3 ? 'easy' : d < 20 ? 'normal' : 'hard', built: d > 10 && win, m: m }); games++;
       r.list.forEach(x => { if (x.t === 'guide' && x.why === 'call') calls++; });
       packs += open();
