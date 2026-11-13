@@ -376,7 +376,7 @@ Underlying principles for everything:
   sun tzu and homer in"). A person known only from an epic, a saga or oral tradition, with no record from their own
   time, waits for that set: in `RETIRED` with `lore: 1`. Tomoe Gozen (only in The Tale of the Heike) has her slot taken
   by Minamoto no Yoshitsune (Ichi-no-Tani, 1184), and Hiawatha (Haudenosaunee tradition) by Canasatego (the
-  Lancaster treaty, 1744); the two new cards have no pictures yet (`SLOTS` in text.js). Homer and Sun Tzu stay,
+  Lancaster treaty, 1744); both are painted (2026-11-13; the batch's notes are in the session scratchpad's `lore-art/`). Homer and Sun Tzu stay,
   though scholars debate both. A collection that held a held card holds the card in its slot (`load` and `myDecks` in
   coll.js). The lessons use Arminius where Tomoe Gozen stood. A new card is checked against this too.
 - **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
