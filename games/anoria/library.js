@@ -1,5 +1,5 @@
-// Anoria: the Library. Every card in the set has a spot: yours in full colour (with a pip for each copy), the ones
-// you've only met across the table in grey, and the ones you've never seen as the card back with nothing showing
+// Anoria: the Library. Every card in the set has a spot: yours in full colour (with the ladder of its finishes), the
+// ones you've only met across the table in grey, and the ones you've never seen as the card back with nothing showing
 // but a sash in its faction's colour and where it sits in time.
 //
 // Two ways to look at it:
@@ -162,17 +162,16 @@
   // ── The ledger: how much of the set is yours, and what's next to earn ───────────────────────────────────────
   function drawLedger() {
     const c = Coll.counts(), th = Coll.threads(), g = el('div', { class: 'lb-li' }); L.ledger.innerHTML = ''; L.ledger.appendChild(g);
-    let two = 0; ALL.forEach(k => { if (Coll.copies(k) > 1) two++; });
     const num = el('b', { text: String(c.own) });
     const cell = (cls, label, a, b, fn) => el('button', { type: 'button', class: 'lb-cell ' + cls, 'aria-label': label + ': ' + a + ' of ' + b, onclick: () => { tap(); fn(); } }, [el('small', { text: label }), el('span', { html: '<b>' + a + '</b> of ' + b })]);
     g.appendChild(el('div', { class: 'lb-top' }, [
       el('div', { class: 'lb-count' + (c.own === c.cards ? ' all' : ''), 'aria-label': c.own + ' of ' + c.cards + ' cards are yours' }, [num, el('span', { html: '<em>of ' + c.cards + '</em><small>' + (c.own === c.cards ? 'the whole set' : 'cards') + '</small>' })]),
       el('div', { class: 'lb-cells' }, [
-        cell('gd', 'Guides', c.guides, c.guidesAll, showGuides),
+        cell('gd', 'Guides', c.guides, c.guidesAll, () => { if (window.AnoriaRewards) window.AnoriaRewards.collection(() => refresh()); else showGuides(); }),
         cell('th', 'Legacy Lines', th.filter(t => t.done).length, th.length, () => threadSheet())])]));
-    // one bar for the whole set: both copies, one copy, seen, not found
+    // one bar for the whole set: yours, seen, not found
     const none = c.cards - c.own - c.seen;
-    g.appendChild(el('div', { class: 'lb-meter', 'aria-hidden': 'true' }, [['two', two], ['own', c.own - two], ['seen', c.seen], ['new', none]].map(x => x[1] ? el('i', { class: x[0], style: { 'flex-grow': x[1] } }) : null)));
+    g.appendChild(el('div', { class: 'lb-meter', 'aria-hidden': 'true' }, [['two', c.own], ['seen', c.seen], ['new', none]].map(x => x[1] ? el('i', { class: x[0], style: { 'flex-grow': x[1] } }) : null)));
     // the three kinds of spot, counted. Each one is also a switch: show only those.
     const n = { own: c.own, seen: c.seen, new: none };
     g.appendChild(el('div', { class: 'lb-key' }, HAVE.map(h => el('button', { type: 'button', class: 'lb-k ' + h[0] + (st.f.have.indexOf(h[0]) >= 0 ? ' on' : ''), 'aria-pressed': String(st.f.have.indexOf(h[0]) >= 0), 'aria-label': n[h[0]] + ' ' + h[1],
@@ -184,18 +183,23 @@
     g.appendChild(nextRow());
     if (L.first) { countUp(num, c.own); L.ledger.classList.add('in'); }
   }
-  // What's next to earn: a seal for each reward (cards for a pack with how many, a flag for a Guide with a ring
-  // filling as the wins come) over the few words that say how
+  // What's next to earn: the sphere with its signs lit, how many more bring it round, and how many turns of it to the
+  // next Guide. A tap opens the sphere's screen, with every calling.
   function nextRow() {
+    const R = window.AnoriaRewards; if (!R) return nextRow0();
+    const sp = Coll.sphere(), left = sp.of - sp.lit;
+    return el('button', { type: 'button', class: 'lb-next lb-sph', 'aria-label': sp.lit + ' of ' + sp.of + ' signs on the sphere are lit. Open the sphere', onclick: () => { tap(); R.path(() => refresh()); } }, [
+      R.sphere({ lit: sp.lit, size: 58 }),
+      el('span', { class: 'lb-sph-w' }, [el('small', { class: 'lb-cap', text: 'The sphere' }), el('b', { text: sp.lit + ' of ' + sp.of + ' signs' }),
+        el('span', { text: left + (left === 1 ? ' more sign brings a pack.' : ' more signs bring a pack.') + (sp.toGuide ? ' A new Guide joins you in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn.' : ' turns.') : '') })])]);
+  }
+  function nextRow0() {
     const row = el('div', { class: 'lb-next' }, [el('small', { class: 'lb-cap', text: 'Next to earn' })]), seals = el('div', { class: 'lb-seals' });
     Coll.nextUp().forEach(x => {
       let seal, label, say;
-      if (x.id === 'guide') {
-        const from = Coll.GUIDE_AT.filter(n => n <= x.have).pop() || 0, p = Math.max(0, Math.min(1, (x.have - from) / (x.need - from)));
-        seal = el('span', { class: 'lb-seal guide', style: { '--p': p }, html: U.MARK.guide });
-        label = x.need + ' wins'; say = 'A new Guide joins you at ' + x.need + ' wins. You have ' + x.have + '.';
-      } else {
-        const n = x.n || (x.id === 'daily' ? Coll.DAILY : Coll.FEAT);
+      if (x.id === 'guide' || x.id === 'sphere') return;
+      {
+        const n = x.n || Coll.PACK;
         seal = el('span', { class: 'lb-seal pack', html: Kit.icon(x.done ? 'check' : 'cards') + '<b>' + n + '</b>' });
         label = x.done ? 'Won today' : EARN[x.id];
         say = (x.id === 'daily' ? (x.done ? 'Tomorrow\'s first win' : 'Your first win today') : x.when) + ' earns a pack of ' + n + '.';
@@ -294,11 +298,11 @@
     return keys;
   }
   function cardTile(k, i) {
-    const s = Coll.cardState(k), c = CARDS[k], n = Coll.copies(k), fresh = s === 'own' && !!Coll.load().fresh[k];
+    const s = Coll.cardState(k), c = CARDS[k], fresh = s === 'own' && !!Coll.load().fresh[k];
     const b = el('button', { type: 'button', class: 'lb-c ' + s + (fresh ? ' fresh' : ''), 'data-k': k, style: { '--i': Math.min(i, 17) },
-      'aria-label': s === 'new' ? 'Not found yet. ' + FAC[c.f].n + ', ' + eraName(eraOf(k)) : c.n + (s === 'own' ? (n > 1 ? ', two copies' : ', one copy') + (fresh ? ', new' : '') : ', seen, not yours') });
+      'aria-label': s === 'new' ? 'Not found yet. ' + FAC[c.f].n + ', ' + eraName(eraOf(k)) : c.n + (s === 'own' ? (fresh ? ', new' : '') : ', seen, not yours') });
     b.appendChild(el('span', { class: 'lb-cf' }, [s === 'new' ? backEl(k, st.sort !== 'time') : U.cardEl(k, { mini: true })]));   // (by time, the era is the heading it sits under)
-    b.appendChild(s === 'own' ? el('span', { class: 'lb-pips', html: '<i class="on"></i><i' + (n > 1 ? ' class="on"' : '') + '></i>' }) : s === 'seen' ? el('span', { class: 'lb-pips eye', html: Kit.icon('eye') }) : el('span', { class: 'lb-pips' }));
+    b.appendChild(s === 'seen' ? el('span', { class: 'lb-pips eye', html: Kit.icon('eye') }) : el('span', { class: 'lb-pips' }));
     // the editions of the card you have found, as a ladder of five: Matte, Shiny, Silver foil, Gold foil, Rainbow foil
     if (s === 'own' && Coll.editions) { const have = Coll.editions(k);
       b.appendChild(el('span', { class: 'lb-eds', role: 'img', 'aria-label': 'Found in ' + U.listOf(Coll.EDITIONS.filter((x, e) => have[e]).map(x => x.n)) }, have.map((on, e) => el('i', { class: 'e' + e + (on ? ' on' : '') })))); }
@@ -355,20 +359,11 @@
     sh = Kit.sheet({ title: 'Filter', node: box, actions: [{ label: 'Show cards', primary: true }, { label: 'Clear', cls: 'btn-ghost', keep: true, onClick: () => { st.f = blankF(); paint(); } }], onClose: () => { if (L) { drawLedger(); drawBar(); drawView(); } } });
     paint();
   }
-  // The Guides: the ones with you in colour, the rest waiting in grey behind a lock, over the wins that bring each
-  // new one (which Guide comes next is the luck of the day, so the wins are marked on a track, not on the Guides)
+  // The Guides: the ones with you in colour, the rest waiting in grey behind a lock (the sphere and their callings bring
+  // them: the sphere's screen, from the ledger)
   function guideShelf() {
     const s = Coll.load(), all = Object.keys(C.GUIDES), mine = s.guides.filter(g => C.GUIDES[g]), rest = all.filter(g => mine.indexOf(g) < 0);
     const box = el('section', { class: 'lb-guides' }, [el('h2', { class: 'lb-era' }, [el('b', { text: 'Guides' }), el('i', { text: mine.length + ' of ' + all.length + ' with you' })])]);
-    if (rest.length) {
-      const at = Coll.GUIDE_AT, next = at.filter(n => n > s.wins)[0], track = el('div', { class: 'lb-track', 'aria-label': 'A new Guide joins you at ' + at.join(', ').replace(/, (\d+)$/, ' and $1') + ' wins. You have ' + s.wins + '.' });
-      track.appendChild(el('div', { class: 'lb-wins' }, [el('small', { text: 'Your wins' }), el('b', { text: String(s.wins) })]));
-      const line = el('div', { class: 'lb-miles' });
-      at.forEach((n, i) => { const from = i ? at[i - 1] : 0, p = Math.max(0, Math.min(1, (s.wins - from) / (n - from)));
-        line.appendChild(el('i', { class: 'seg', style: { '--p': p } }));
-        line.appendChild(el('span', { class: 'mile' + (s.wins >= n ? ' got' : n === next ? ' next' : ''), html: U.MARK.guide + '<b>' + n + '</b>' })); });
-      track.appendChild(line); box.appendChild(track);
-    }
     const grid = el('div', { class: 'lb-grid' });
     mine.concat(rest).forEach((g, i) => { const have = i < mine.length;
       grid.appendChild(el('button', { type: 'button', class: 'lb-c guide ' + (have ? 'own' : 'locked'), 'data-g': g, style: { '--i': i }, 'aria-label': C.GUIDES[g] + (have ? ', your Guide' : ', a Guide who hasn\'t joined you yet') },
@@ -424,11 +419,11 @@
     });
     // the spots
     NODES.concat(loose).forEach(id => {
-      const n = node[id], s = stateOf(id), pl = s === 'place', fresh = s === 'own' && !!Coll.load().fresh[id], cop = pl ? 0 : Coll.copies(id);
+      const n = node[id], s = stateOf(id), pl = s === 'place', fresh = s === 'own' && !!Coll.load().fresh[id];
       const b = el('button', { type: 'button', class: 'tl-n ' + s + ' s' + n.side + (fresh ? ' fresh' : ''), 'data-id': id, style: { '--f': facOf(id).c },
-        'aria-label': s === 'new' ? 'Not found yet. ' + facOf(id).n + ', ' + eraName(eraOf(id)) : nameOf(id) + (whenOf(id) != null ? ', ' + yearText(whenOf(id)) : '') + (pl ? (C.DM_LIVE ? ', a Domain' : ', a Place') : s === 'own' ? (cop > 1 ? ', two copies' : ', one copy') : ', seen, not yours') });
+        'aria-label': s === 'new' ? 'Not found yet. ' + facOf(id).n + ', ' + eraName(eraOf(id)) : nameOf(id) + (whenOf(id) != null ? ', ' + yearText(whenOf(id)) : '') + (pl ? (C.DM_LIVE ? ', a Domain' : ', a Place') : s === 'own' ? ', yours' : ', seen, not yours') });
       const pic = thumb(id, 'tl-p');
-      if (s === 'own') pic.appendChild(el('span', { class: 'tl-pips', html: '<i></i>' + (cop > 1 ? '<i></i>' : '') }));
+
       if (fresh) pic.appendChild(el('span', { class: 'tl-new', html: Kit.icon('sparkle') }));
       b.appendChild(pic);
       b.appendChild(el('span', { class: 'tl-t' }, s === 'new' ? [el('i', { class: 'tl-blank' })] : [el('b', { class: 'tl-nm', text: nameOf(id) }), whenOf(id) != null ? el('i', { class: 'tl-y', text: yearText(whenOf(id)) }) : null]));
@@ -564,7 +559,7 @@
     const box = el('div', { class: 'lb-ths' }); let sh = null, open = openId || st.thread || null;
     function paint() {
       box.innerHTML = '';
-      box.appendChild(el('p', { class: 'th-gift', html: GIFT + '<span>When you own every card on a Legacy Line, you are given a second copy of one of those cards.</span>' }));
+      box.appendChild(el('p', { class: 'th-gift', html: '<span>A named Legacy Line is complete when every card on it is yours.</span>' }));
       Coll.threads().forEach(t => {
         const p = threadPlan(C.THREADS.filter(x => x.id === t.id)[0]), isOpen = open === t.id;
         const row = el('div', { class: 'th-row' + (t.done ? ' done' : '') + (isOpen ? ' open' : '') });

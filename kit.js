@@ -2660,6 +2660,7 @@
   //                      the bottom of the page to bring the card back. true, a label ('Look at the table')
   //                      or {label, onClick}. Kit.setup, Kit.gameStart or the next Kit.win clear the button
   //   extra              the game's own buttons [{label, onClick}] (See every word, Box score)
+  //   show               a Node the game draws under the scores: what the game earned (Anoria's sphere), never buttons
   //   setup              Change players: back to the setup screen (setupLabel: 'Change settings', 'Choose a level')
   //   scores             High scores        stats   Statistics
   //   close              Back to games (closeLabel/onClose: 'Leave the table' for an online game)
@@ -2686,6 +2687,7 @@
       });
       card.appendChild(rk);
     }
+    if (o.show) { try { var sh = typeof o.show === 'function' ? o.show(o.quiet) : o.show; if (sh) { sh.classList.add('k-win-show'); card.appendChild(sh); } } catch (err) {} }
     var acts = el('div', { class: 'k-acts' });
     var ov = el('div', { class: 'k-win', role: 'dialog', 'aria-modal': 'true' }, [card]);
     function close() { ov.classList.remove('show'); setTimeout(function () { ov.remove(); }, 300); }

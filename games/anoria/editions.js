@@ -162,12 +162,15 @@
     if (ask && lsGet('anoria_tilt_dev') !== '1') return;
     T.listening = true; window.addEventListener('deviceorientation', onOrient);
   }
-  // An iPhone asks before it shares its tilt, and only from a tap: asked once, the first time a foil is in front
-  document.addEventListener('click', () => {
-    if (T.asked || T.listening || calm() || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function' || lsGet('anoria_tilt_dev') || !front().length) return;
+  // An iPhone asks before it shares its tilt, and only from a tap. It is asked on the tap that tears a pack (packs.js
+  // calls ask()), or on the first tap while a foil is in front. A yes is remembered (anoria_tilt_dev); a no is not, so
+  // the page asks again the next time it is opened, as Lorcana's does.
+  function ask() {
+    if (T.asked || T.listening || calm() || typeof DeviceOrientationEvent === 'undefined' || typeof DeviceOrientationEvent.requestPermission !== 'function') { listenTilt(); return; }
     T.asked = true;
-    DeviceOrientationEvent.requestPermission().then(r => { lsSet('anoria_tilt_dev', r === 'granted' ? '1' : 'no'); if (r === 'granted') listenTilt(); }).catch(() => { T.asked = false; });
-  });
+    DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') { lsSet('anoria_tilt_dev', '1'); listenTilt(); } }).catch(() => { T.asked = false; });
+  }
+  document.addEventListener('click', () => { if (front().length) ask(); });
 
-  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, piece: piece, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep };
+  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, piece: piece, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep, ask: ask };
 })();

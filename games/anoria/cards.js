@@ -604,8 +604,47 @@ const STACKS = {
 };
 const STACK = 15;   // (Domains in a stack)
 Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
+// ── The sets (Tim, 2026-11-13: "the starter pack should have 20 different cards + 8 domains, same with the guide packs
+// that each have 8 domains"). Every company has the base set (BASE, and DSET.base for its Domains); each of the twelve
+// Guides brings a set of 20 different cards and 8 Domains (GSET, DSET), which is theirs from the moment they join you.
+// A Guide's deck is the base set and their set, one of each: 40 cards, balanced against every other Guide's deck by
+// the robots (scripts/anoria/sets.js, sets.txt). No card is in two sets. A card in no set is found only in packs
+// (coll.js POOL), so a card added to the game later joins those by itself. There are 75 Domains and 104 places for
+// them, so some Domains are in two Guides' sets.
+// ==SETS==
+const BASE = 'hypatia archimedes euclid socrates pericles boudica spartacus homer sappho coleman magellan pythagoras sacagawea andersen compass tablet eureka eclipse marathonmarch veto'.split(' ');
+const GSET = {
+  cleopatra: 'tutankhamun hatshepsut thutmose hammurabi theodora caesar augustus ramesses constantine marcus rosetta decree kadesh tomb triumph hieroglyphs virgil eratosthenes charlemagne milan'.split(' '),
+  leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer voyagingcanoe fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
+  tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius hiawatha nanny'.split(' '),
+  suntzu: 'leonidas tomoe genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
+  shakespeare: 'plato aristotle moliere dante chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
+  curie: 'hippocrates kepler nightingale tesla faraday darwin pasteur newton jenner montagu anning ada germain champollion telegraph locomotive balloon beagle halley humboldt'.split(' '),
+  joan: 'wallace vercingetorix zumbi tecumseh toussaint napoleon washington franklin wollstonecraft william catherine declaration congress truce canossa breda westphalia leo alfred nostradamus'.split(' '),
+  saladin: 'richard baibars mehmed haytham ibnsina alkhwarizmi harun fibonacci eleanor ibnkhaldun rumi idrisi dsteel astrolabe sextant magnacarta walls lisbonquake earthquake zenobia'.split(' '),
+  wuzetian: 'mencius cailun seishonagon libai zhangheng sejong trung confucius murasaki basho shenkuo zhangqian fuhao chingshih paper paiza starchart typhoon brahmagupta qinshihuang'.split(' '),
+  akbar: 'lakshmibai darius ashoka suleiman cyrus shahjahan nebuchadnezzar jaisingh sargon enheduanna ashurbanipal victoria khayyam ferdowsi cyruscylinder kudurru wheel exhibition rubaiyat kublai'.split(' '),
+  mansamusa: 'sundiata ibnbattuta shaka lalibela hannibal nzinga askia yaa afonso amanirenas menelik equiano manuscripts abacus caravan adwa goldrush hansa columbian imhotep'.split(' '),
+  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe joplin pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
+};
+const DSET = {
+  base: 'library silk colosseum acropolis wall stonehenge machu nineveh'.split(' '),
+  cleopatra: 'babylon deirelbahari constantinople aachen persepolis versailles venice heian'.split(' '),
+  leonardo: 'firenze padua longjiang magellanstrait greenwich lanse cape malacca'.split(' '),
+  tubman: 'kumasi winchester giza basra independence djenne qhapaq kittyhawk'.split(' '),
+  suntzu: 'thermopylae himeji carthage appian sigiriya gibraltar laferriere olympia'.split(' '),
+  shakespeare: 'globe akademeia sistine wien forum lisbon mainz siracusa'.split(' '),
+  curie: 'royalsociety greenwich ironbridge wisdom padua mainz siracusa seneca'.split(' '),
+  joan: 'orleans laferriere prophetstown runnymede winchester gibraltar olympia independence'.split(' '),
+  saladin: 'damascus meroe petra laurion basra dunhuang carthage sigiriya'.split(' '),
+  wuzetian: 'forbidden grandcanal jingdezhen heian dunhuang longjiang nalanda himeji'.split(' '),
+  akbar: 'taj persepolis nalanda malacca wisdom lisbon venice tordesillas'.split(' '),
+  mansamusa: 'timbuktu djenne kilwa zimbabwe benin kumasi cape meroe'.split(' '),
+  sorjuana: 'tlatelolco chichen mainz seneca onondaga qhapaq rapanui nanmadol'.split(' ')
+};
+// ==/SETS==
 // The Domains a player can see in the Library and the art proof: all of them once Domains are on, and until then
 // the twelve Places of today's fixed map (the ones with an old-map rule, pw0)
 const SHOWN = Object.keys(PLACES).filter(k => DM_LIVE || 'pw0' in PLACES[k]);
-return { DM_LIVE, SHOWN, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4 };
+return { DM_LIVE, SHOWN, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4, BASE, GSET, DSET };
 });
