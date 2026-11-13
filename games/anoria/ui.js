@@ -1071,7 +1071,6 @@
     if (window.AnoriaDecks) row.appendChild(tile('dk', Kit.icon('cards'), 'Decks', mine ? mine + ' you built' : 'Build your own', false, () => window.AnoriaDecks.open(null, showSetup)));
     return row;
   }
-  let curMode = 'cpu';
   // Who's playing goes through the kit's players sheet like every game: 2 to 6 seats, people and the computer in any
   // seat after the first (vs Computer is everyone else a robot; Pass & play is two or more people, with robots in any
   // other seats). Each person chooses their deck as the two-player setup always had it; the computer players share one
@@ -1087,7 +1086,7 @@
     const people = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => !s.cpu).length : 1), bots = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => s.cpu).length : 1);
     // (a person's deck: "Your deck" while one person plays, else the deck of that person by name)
     const label = (i, ctx) => { if (people(ctx) <= 1) return 'Your deck'; const s = seat(i, ctx), n = s && s.name ? s.name : ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'][i] + ' player'; return Kit.poss(n) + ' deck'; };
-    const deckOpt = i => ({ id: 'deck' + i, value: starterId(), when: (m, v, n) => { if (!i) curMode = m; return (n || 2) > i; },
+    const deckOpt = i => ({ id: 'deck' + i, value: starterId(), when: (m, v, n) => (n || 2) > i,
       render: (v, set, ctx) => (seat(i, ctx) ? !seat(i, ctx).cpu : !i) ? deckPicker(label(i, ctx), v, set, 'me') : none(),
       summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } });
     // (the computer starts on Easy until you've won a game: a first game is for learning)

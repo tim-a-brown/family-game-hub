@@ -163,7 +163,8 @@
     '.ah-nt th{padding:6px 4px;font:400 .62rem/1.15 var(--sc);letter-spacing:.08em;color:var(--gold);text-transform:uppercase;text-align:center;vertical-align:bottom;}',
     '.ah-nt td{padding:6px 4px;text-align:center;border-top:1px solid rgba(217,180,90,.2);}',
     '.ah-nt td:first-child{text-align:left;}',
-    '.ah-ntn{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;}',
+    '.ah-ntn{display:inline-flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;}',
+    '.ah-nt th{letter-spacing:.04em;font-size:.58rem;}',
     '.ah-how{margin:0;padding-top:9px;text-align:center;font:500 .95rem/1.3 var(--bk);color:var(--ink);text-wrap:balance;background:radial-gradient(closest-side,rgba(217,180,90,.55),transparent) top center/82% 1px no-repeat;}',
     '.ah-how small{display:block;margin-top:2px;font:500 .8rem/1.3 var(--bk);color:var(--dim);}',
     // the race, and who scored each Place every round
