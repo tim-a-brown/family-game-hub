@@ -36,6 +36,92 @@
   function poss(n) { return n === 'You' ? 'your' : n + (/s$/i.test(n) ? '’' : '’s'); }
   function Poss(n) { return n === 'You' ? 'Your' : poss(n); }
 
+  // A game of three to six players, or teams (record v 3, written by recordN in games/anoria/ui.js): who led each
+  // company, in seat order, grouped by team, and how it ended; the race for Renown, one line for each player (or each
+  // team); the numbers side by side in a small table; and the Legacy Lines that were made.
+  function viewN(e, ui, d) {
+    var el = ui.el, N = d.pl.length, P = (e.players || []).slice(0, N); if (P.length !== N) return null;
+    var name = function (i) { return P[i].name || 'Player ' + (i + 1); }, col = function (i) { return d.pl[i].c || PCOL[i] || '#f2b84b'; };
+    var teams = Array.isArray(d.tm) && d.tm.length ? d.tm : null, teamOf = function (i) { return teams ? teams.filter(function (t) { return t.indexOf(i) >= 0; })[0] || [i] : [i]; };
+    var side = function (i) { return teamOf(i).map(name).join(' & '); };
+    var w = typeof d.w === 'number' ? d.w : -1, won = function (i) { return w >= 0 && teamOf(w).indexOf(i) >= 0; }, tg = +d.tg || 25;
+    var cum = (d.rt || []).map(function (s) { return String(s).split('-').map(Number); }), n = cum.length;
+    var root = el('div', { class: 'ah' }), fills = [];
+    // ── who led each company ──
+    var card = function (i) {
+      var p = d.pl[i], por = el('span', { class: 'ah-por', style: { '--c': col(i) } }, [pic(ui, ART + p.g + '.webp', '')]);
+      if (won(i)) por.appendChild(el('em', { class: 'ah-won', text: 'Won' }));
+      var gname = el('span', { text: cap(p.g) }); fills.push(function () { gname.textContent = nameOf(p.g); });
+      var sm = p.sm === 4 ? 4 : 3, s = '', left = Math.max(0, Math.min(sm, +p.s || 0)); for (var k = 0; k < sm; k++) s += SEAL(k < left, col(i));
+      return el('div', { class: 'ah-side' + (w >= 0 && !won(i) ? ' ah-lose' : '') }, [por,
+        el('div', { class: 'ah-nm', text: name(i) }),
+        el('div', { class: 'ah-ren' }, [el('b', { text: String(P[i].score == null ? 0 : P[i].score) }), el('small', { text: 'Renown' })]),
+        el('div', { class: 'ah-fact' }, [el('small', { text: 'Guide' }), gname]),
+        el('div', { class: 'ah-fact' }, [el('small', { text: p.b ? 'Built deck' : 'Deck' }), el('span', { text: p.d || '' })]),
+        el('div', { class: 'ah-seals', role: 'img', 'aria-label': left + (left === 1 ? ' Seal' : ' Seals') + ' left', html: s }), p.o ? el('div', { class: 'ah-outn', text: 'Out' }) : null]);
+    };
+    var groups = teams || d.pl.map(function (x, i) { return [i]; });
+    var top = el('div', { class: 'ah-plate ah-top' });
+    var grid = el('div', { class: 'ah-many' + (teams ? ' ah-tms' : '') });
+    groups.forEach(function (t) {
+      if (teams) { var tot = t.reduce(function (a, i) { return a + (P[i].score || 0); }, 0);
+        grid.appendChild(el('div', { class: 'ah-team', style: { '--c': col(t[0]) } }, [el('div', { class: 'ah-th2' }, [el('i', { class: 'ah-dia', style: { '--c': col(t[0]) } }), el('span', { text: t.map(name).join(' & ') }), el('b', { text: tot + ' Renown' })]), el('div', { class: 'ah-tgr' }, t.map(card))])); }
+      else grid.appendChild(card(t[0]));
+    });
+    top.appendChild(grid);
+    var outs = (d.out || []).map(function (x, i) { return x ? i : -1; }).filter(function (i) { return i >= 0; }), how;
+    var list = function (a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; };
+    if (w < 0) how = 'The game ended level after ' + d.rounds + ' rounds.';
+    else if (d.how === 'seals' && outs.length) how = list(outs.map(name)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + d.rounds + ', which ended the game, and ' + side(w) + ' had the most Renown of ' + (teams ? 'the teams' : 'the players') + ' still in.';
+    else if (d.how === 'seals') how = side(w) + (teams ? ' were' : ' was') + ' the last ' + (teams ? 'team' : 'player') + ' left with Seals.';
+    else how = side(w) + ' reached ' + tg + ' Renown' + (teams ? ' together' : '') + ' first, at the end of round ' + d.rounds + '.';
+    var sub = e.mode ? (/^vs Computer \((.+)\)$/.test(e.mode) ? 'The computer played at ' + RegExp.$1 + '.' : e.mode === 'Pass & play' ? N + ' players shared one device.' : '') : '';
+    top.appendChild(el('p', { class: 'ah-how' }, [el('span', { text: how }), sub ? el('small', { text: sub }) : null]));
+    root.appendChild(top);
+    // ── the race: one line for each player, or each team's Renown together ──
+    if (n >= 1) (function () {
+      var lines = teams ? teams.map(function (t) { return { c: col(t[0]), nm: t.map(name).join(' & '), v: cum.map(function (r) { return t.reduce(function (a, i) { return a + (r[i] || 0); }, 0); }) }; })
+        : d.pl.map(function (x, i) { return { c: col(i), nm: name(i), v: cum.map(function (r) { return r[i] || 0; }) }; });
+      var topv = Math.max.apply(null, [tg].concat(lines.map(function (l) { return l.v[n - 1]; }))), step = topv > 40 ? 20 : 10, max = Math.ceil((topv + 1) / 5) * 5;
+      var X = function (r) { return (r - 0.5) / n * 100; }, Y = function (v) { return (1 - v / max) * 100; };
+      var plot = el('div', { class: 'ah-plot' }), y = el('div', { class: 'ah-y' });
+      for (var v = 0; v <= max; v += step) if (v !== tg) { if (v) plot.appendChild(el('i', { class: 'ah-gl', style: { top: Y(v) + '%' } })); if (Math.abs(v - tg) >= step * 0.6 || v === 0) y.appendChild(el('span', { text: String(v), style: { bottom: (v / max * 100) + '%' } })); }
+      plot.appendChild(el('i', { class: 'ah-gl ah-tg', style: { top: Y(tg) + '%' } })); y.appendChild(el('span', { class: 'ah-tg', text: String(tg), style: { bottom: (tg / max * 100) + '%' } }));
+      var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">';
+      lines.slice().reverse().forEach(function (l) { svg += '<polyline points="' + ['0,100'].concat(l.v.map(function (x, r) { return X(r + 1).toFixed(2) + ',' + Y(x).toFixed(2); })).join(' ') + '" fill="none" stroke="' + l.c + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>'; });
+      plot.insertAdjacentHTML('beforeend', svg + '</svg>');
+      lines.forEach(function (l) { plot.appendChild(el('i', { class: 'ah-pt', style: { left: X(n) + '%', top: Y(l.v[n - 1]) + '%', '--c': l.c } })); });
+      var rn = el('div', { class: 'ah-rn' }); for (var r = 1; r <= n; r++) rn.appendChild(el('span', { text: String(r) }));
+      var cols = el('div', { class: 'ah-cols' }, [plot, rn]); cols.style.setProperty('--n', n);
+      var key = el('div', { class: 'ah-key' }, lines.map(function (l) { return el('span', null, [el('i', { class: 'ah-dot', style: { '--c': l.c } }), el('span', { text: l.nm })]); }));
+      root.appendChild(ui.section('Renown, round by round', el('div', { class: 'ah-plate ah-race' }, [key, el('div', { class: 'ah-grid' }, [el('div', { class: 'ah-labs' }, [y]), cols])])));
+    })();
+    // ── the numbers, a row for each player ──
+    (function () {
+      var heads = ['Clashes won', 'Domains scored', 'Seals broken', 'Legacy Lines'], keys = ['ko', 'h', 'sb', 'ln'];
+      var t = el('table', { class: 'ah-nt' }, [el('tr', null, [el('th', { text: '' })].concat(heads.map(function (h) { return el('th', { text: h }); })))]);
+      d.pl.forEach(function (p, i) { t.appendChild(el('tr', null, [el('td', null, [el('span', { class: 'ah-ntn' }, [el('i', { class: 'ah-dot', style: { '--c': col(i) } }), el('span', { text: name(i) })])])].concat(keys.map(function (k) { return el('td', { text: String(+p[k] || 0) }); })))); });
+      root.appendChild(ui.section('Side by side', el('div', { class: 'ah-plate ah-tape' }, [t])));
+    })();
+    // ── the Legacy Lines that were made ──
+    var links = [], seen = {};
+    (d.links || []).forEach(function (s) { var a = String(s).split('|'), k = a[2] + '>' + a[3]; if (seen[k + a[1]]) return; seen[k + a[1]] = 1; links.push({ r: +a[0], o: +a[1], from: a[2], to: a[3], ren: +a[4] || 0, line: a[5] === 'l', key: k }); });
+    if (links.length) {
+      var box = el('div', { class: 'ah-links' });
+      links.forEach(function (x) {
+        var th = function (k) { var bare = k.replace(/^@/, ''), s = el('span', { class: 'ah-th' }, [pic(ui, ART + (k.charAt(0) === '@' ? 'place-' : '') + bare + '.webp', '')]); fills.push(function () { s.style.setProperty('--f', facOf(k)); }); return s; };
+        var title = el('b', { text: cap(x.from.replace(/^@/, '')) + ' and ' + cap(x.to) }), tale = el('p', { text: '' });
+        fills.push(function () { var from = nameOf(x.from), to = nameOf(x.to), T = (window.AnoriaText || {}).LINKS || {}; title.textContent = from + ' and ' + to; tale.textContent = T[x.key] || (x.line ? to + ' followed ' + theName(x.from) + '.' : to + ' grew from ' + theName(x.from) + '.'); });
+        box.appendChild(el('div', { class: 'ah-plate ah-link' }, [el('div', { class: 'ah-pair', 'aria-hidden': 'true' }, [th(x.from), el('u'), th(x.to)]),
+          el('div', { class: 'ah-lt' }, [el('div', { class: 'ah-lk' }, [el('span', { text: 'A Legacy Line in round ' + x.r }), x.ren ? el('em', { text: '+' + x.ren + ' Renown' }) : null]), title, tale,
+            el('span', { class: 'ah-lw' }, [el('i', { class: 'ah-dot', style: { '--c': col(x.o) } }), el('span', { text: name(x.o) + ' made this one' })])])]));
+      });
+      root.appendChild(ui.section('Legacy Lines', box));
+    }
+    data(function () { fills.forEach(function (f) { try { f(); } catch (err) {} }); });
+    return root;
+  }
+
   HistView.css('hv-anoria', [
     '@font-face{font-family:"Crimson Pro";src:url("' + FONTS + 'crimson-pro.woff2") format("woff2");font-weight:200 900;font-display:swap;}',
     '@font-face{font-family:"IM Fell English SC";src:url("' + FONTS + 'im-fell-english-sc.woff2") format("woff2");font-display:swap;}',
@@ -59,6 +145,19 @@
     '.ah-fact span{font:500 .9rem/1.2 var(--bk);color:var(--ink);overflow-wrap:break-word;text-wrap:balance;}',
     '.ah-seals{display:flex;gap:4px;justify-content:center;}',
     '.ah-seal{width:15px;height:17px;display:block;}',
+    '.ah-many{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr));gap:14px 10px;}',
+    '.ah-many.ah-tms{grid-template-columns:minmax(0,1fr);gap:12px;}',
+    '.ah-team{display:flex;flex-direction:column;gap:8px;padding:8px 6px 10px;border-radius:12px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent);}',
+    '.ah-th2{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 10px;font:400 .95rem/1.15 var(--sc);letter-spacing:.04em;color:var(--ink);text-align:center;}',
+    '.ah-th2 b{font:500 .85rem/1.2 var(--bk);color:var(--gold);}',
+    '.ah-tgr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,118px),1fr));gap:12px 8px;}',
+    '.ah-many .ah-por{width:60px;height:60px;}',
+    '.ah-outn{margin-top:2px;padding:0 8px;border-radius:999px;font:400 .66rem/1.5 var(--sc);letter-spacing:.14em;color:#f3e9d2;background:#7a1f1a;}',
+    '.ah-nt{width:100%;border-collapse:collapse;font:500 .9rem/1.2 var(--bk);color:var(--ink);}',
+    '.ah-nt th{padding:6px 4px;font:400 .62rem/1.15 var(--sc);letter-spacing:.08em;color:var(--gold);text-transform:uppercase;text-align:center;vertical-align:bottom;}',
+    '.ah-nt td{padding:6px 4px;text-align:center;border-top:1px solid rgba(217,180,90,.2);}',
+    '.ah-nt td:first-child{text-align:left;}',
+    '.ah-ntn{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow-wrap:anywhere;}',
     '.ah-how{margin:0;padding-top:9px;text-align:center;font:500 .95rem/1.3 var(--bk);color:var(--ink);text-wrap:balance;background:radial-gradient(closest-side,rgba(217,180,90,.55),transparent) top center/82% 1px no-repeat;}',
     '.ah-how small{display:block;margin-top:2px;font:500 .8rem/1.3 var(--bk);color:var(--dim);}',
     // the race, and who scored each Place every round
@@ -180,6 +279,7 @@
 
   HistView.register('anoria', function (e, ui) {
     var d = e.dt, el = ui.el;
+    if (d && d.v === 3 && Array.isArray(d.pl)) return viewN(e, ui, d);
     if (!d || d.v !== 2 || !Array.isArray(d.pl) || d.pl.length !== 2) return null;   // (a game from before the details were kept)
     var P = (e.players || []).slice(0, 2); if (P.length !== 2) return null;
     var name = function (i) { return P[i].name || 'Player ' + (i + 1); };

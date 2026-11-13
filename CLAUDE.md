@@ -698,6 +698,26 @@ Underlying principles for everything:
   Domain each one is (a banner in the player's colour that travels with the card, since cards may swap, reverse or
   shuffle Domains), a marker for a rule that is silenced or changed, and a track for rounds and turns are all drawn
   on the device as the pieces a person would use.
+- **The table for 3 to 6 players and teams** (Tim, 2026-11-13: layout C, "your spoke large, the others round the
+  rim"; the rules are the engine's, read through `cfg`: `outEnds`, `tmight`, `teams`, `target`). A two-player game is
+  drawn exactly as before (`rowEl` rows, `stripEl` strips); `many()` (S.N > 2) switches ui.js to `drawN`: your three
+  Domains (Crossroads, Outpost, Gate) are the two-player rows (`rowEl(i, T, {many})`) with everyone else's Figures there
+  as stacks on the left (`stackEl`, seat order from your left), and each other spoke is a column on its player's mat
+  (`matN`, built once and moved) along the top, a row down the left sideways: a plate (`plateEl`, a strip in small, so
+  every `.an-strip.pN` selector finds it), the Gate and Outpost (`rimTile`; a name only where it can be 9px or more, the
+  same size on every rim tile, `nameFs`; a short phone folds to tokens) and their stacks. The rim starts with the
+  player on your left (`seatsFrom`, `nextLive`), so the Congress of Vienna's "on your left" is the column at the left.
+  Roads are drawn from where the tiles lie (`roadsN`). A Figure's piece is `figN(u)`: its card in your rows or the
+  stack it is in; every EV handler aims there, and a Figure joining or leaving a stack flies as a card (`renderFlip`
+  with `only`). A tap on a stack picks the Figure in it that can be reached or moved (a sheet asks which when several
+  could), otherwise opens the scan. Seat colors are `--pc0` to `--pc5` (`PCOL`, `TCOL` team families, `setCols`; a
+  new piece in a seat's color needs `.oN` rules for 2 to 5 in ui.css's "three to six players" block). Teams: the bar
+  where the other player's strip is (`sidesEl`, "Tim & Jamie vs Pete & Pam", narrowing to diamonds when the names
+  don't fit), a diamond on each plate, `teamsFor` from the setup's Teams choice. Turns are `G.ord` (E.order) and `G.k`.
+  Set-up at more players: `suBoardN`, `suRim`, the dice `suDiceN`. Pass and play hands over to people only; the
+  person whose turn it is has their spoke drawn large, and robots' turns leave it with whoever has the device.
+  Results `showWinN`, history `recordN` (v 3) and `viewN` in hist/anoria.js. A new piece on the table needs a place in
+  both `rowEl` (big rows) and `rimTile`/`stackEl` (the rim), and checking at 3 to 6 players and 320 wide.
 - **Twelve Guides** (the roster of twelve, Tim, 2026-11-12). The first five each bring a ready deck: Cleopatra (Court),
   Leonardo (Explorers), Tubman (Pathfinders), Sun Tzu (Legion) and Shakespeare (Legacy, which was Franklin's). Marie
   Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana join as wins against the computer add up

@@ -657,8 +657,8 @@
       notes.appendChild(el('p', { html: '<b>Home ground</b>: ' + esc(REG[c.reg]) + mightMarks(' Figures have +1 Might here.') }));
       if (o.p != null && S) {
         const own = E.ownerOfSpoke(S, o.p), gate = E.isGate(S, o.p);
-        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If the other side holds this Gate when a round ends, a Seal breaks.' }));
-        else notes.appendChild(el('p', { html: own < 0 ? '<b>The Crossroads</b> lies between the two Outposts.' : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads.' }));
+        if (gate) notes.appendChild(el('p', { html: '<b>' + esc(Kit.poss(pname(own))) + ' Gate</b>: ' + (own === ui.view ? 'You play your Figures here.' : 'Their Figures are played here.') + ' If an opponent holds this Gate when a round ends, one of ' + (own === ui.view ? 'your' : 'their') + ' Seals breaks.' }));
+        else notes.appendChild(el('p', { html: own < 0 ? (S.N > 2 ? '<b>The Crossroads</b> lies in the middle of the table, with a road to every Outpost.' : '<b>The Crossroads</b> lies between the two Outposts.') : '<b>' + esc(Kit.poss(pname(own))) + ' Outpost</b> lies between the Gate and the Crossroads' + (S.N > 2 ? ', with a road to the Outposts on either side.' : '.') }));
         const hd = E.holder(S, o.p), worth = (hd >= 0 ? E.rv(S, o.p, hd) : E.pw(S, o.p) === 'double' ? 2 : 1) * E.stake(S.cfg, S.round);
         // (Domains: whose banner is on it, and what lies across its rule, said in words beside the pieces on the tile)
         if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
@@ -1538,7 +1538,7 @@
   }
   // The account's own choice (anoria_mat), read once and again only when the stored text has changed. While a hand
   // is moving a picture in the editor, `live` is what the table shows; it is stored when the hand lets go.
-  const mine = { raw: undefined, v: '', live: null }, seatMat = [{}, {}];
+  const mine = { raw: undefined, v: '', live: null }, seatMat = [{}, {}, {}, {}, {}, {}];
   function matMineV() { const raw = lsGet(MATK); if (raw !== mine.raw) { mine.raw = raw; mine.v = matRead(raw); } return mine.live || mine.v; }
   function matSeatV(o) { const c = seatMat[o], raw = G.players[o].mat; if (c.raw !== raw) { c.raw = raw; c.v = matRead(raw); } return c.v; }
   // (at the setup: your own mat's picture is fetched ahead, so it is there when the cards are dealt)
@@ -1559,6 +1559,7 @@
   // with its player; when the view changes hands (pass and play) the two change places, with the board.
   function paintMats() {
     if (!dom.pm || !G || !S) return;
+    if (many()) { (dom.nm || []).forEach((n, o) => { if (n && o < S.N) matN(o); }); return; }   // (more players: each spoke's own mat, matN)
     for (let o = 0; o < 2; o++) {
       const n = dom.pm[o], pick = matOf(o), side = o === ui.view ? 'bot' : 'top', cls = 'an-pm ' + side + (side === 'top' && matTurned() ? ' turn' : '');
       if (n._pick !== pick) { n._pick = pick; n.dataset.m = typeof pick === 'object' ? 'art:' + pick.c : pick; matFill(n, pick, o); }
@@ -1616,7 +1617,9 @@
     }
     node.appendChild(el('div', { class: 'st-top' }, [
       el('div', { class: 'st-name' }, [el('i'), pl.cpu ? el('span', { class: 'bot', html: Kit.icon('bot') }) : null, el('span', { class: 'nm', text: pl.name })]),
-      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown of ' + S.cfg.target }, [el('div', { class: 'st-track', style: { '--r': Math.min(S.cfg.target, p.renown), '--tg': S.cfg.target } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
+      // (in a team game the track is the team's Renown together, toward the team's target; the wreath is the player's own)
+      el('div', { class: 'st-ren', 'aria-label': p.renown + ' Renown' + (G.teams ? ', and ' + tren(o) + ' for the team, of ' : ' of ') + S.cfg.target }, [el('div', { class: 'st-track', style: { '--r': Math.min(S.cfg.target, G.teams ? tren(o) : p.renown), '--tg': S.cfg.target } }, [el('i')]), el('div', { class: 'lau' }, [el('b', { text: String(p.renown) })])])]));
+    if (G.teams) node.appendChild(el('i', { class: 'wn-tm', style: { '--tc': teamCol(o) }, 'aria-label': 'Team ' + teamName(o) }));
     node.appendChild(el('div', { class: 'st-bot' }, [seals, relics, dipEl,
       me && !ui.hideHand ? null : el('div', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })]),
       el('span', { class: 'st-fill' }), sp]));
@@ -2010,7 +2013,7 @@
   // A player's plate on the rim: their Guide, name, Renown, Seals and the cards in their hand (and their team's
   // diamond). It is a strip in small (an-strip pN), so everything that flies to a player's strip finds it.
   function plateEl(o, f) {
-    const p = V.P[o], pl = G.players[o], g = TXG[p.guide], on = V.turn === o && !G.over, out = !!S.P[o].out, sm = p.sm || 3;
+    const p = V.P[o], pl = G.players[o], g = TXG[p.guide], on = V.turn === o && !G.over && G.ph !== 'setup', out = !!S.P[o].out, sm = p.sm || 3;
     const n = el('div', { class: 'an-strip wn-plate p' + o + (on ? ' on' : '') + (out ? ' out' : '') + (f ? ' ' + f : ''), 'data-o': o, style: { '--pc': 'var(--pc' + o + ')' } });
     const gb = el('button', { type: 'button', class: 'st-guide', 'aria-label': g.n + ', ' + Kit.poss(pl.name) + ' Guide', style: { '--f': FAC[g.f].c }, onclick: e => { e.stopPropagation(); scan({ side: o, key: p.guide }); } }, [el('span', { class: 'na', text: g.n.charAt(0) })]);
     const gi = artImg(p.guide, true); if (gi) gb.appendChild(gi);
@@ -2021,6 +2024,8 @@
     n.appendChild(el('span', { class: 'st-ren', 'aria-label': p.renown + ' Renown' }, [el('span', { class: 'lau' }, [el('b', { text: String(p.renown) })])]));
     n.appendChild(el('span', { class: 'st-bot' }, [seals, el('span', { class: 'st-hand', 'aria-label': p.hand.length + ' cards in hand' }, [el('b', { text: String(p.hand.length) })])]));
     if (S.tm) n.appendChild(el('i', { class: 'wn-tm', style: { '--tc': teamCol(o) }, 'aria-label': 'Team ' + teamName(o) }));
+    // (their Relics in play, as brass diamonds on the plate's lower edge; a tap on the Guide reads them in the scan)
+    if (p.relics.length) n.appendChild(el('span', { class: 'wn-rel', 'aria-label': p.relics.length + (p.relics.length > 1 ? ' Relics' : ' Relic') + ' in play' }, p.relics.map(r => el('i', { class: 'relic', 'data-relic': r }))));
     if (out) n.appendChild(el('span', { class: 'wn-out', text: 'Out' }));
     return n;
   }
@@ -2028,6 +2033,7 @@
   const teamOf = o => (G.teams || []).filter(t => t.indexOf(o) >= 0)[0] || [o];
   const teamCol = o => (G.players[teamOf(o)[0]] || {}).color || PCOL[0];
   const teamName = o => teamOf(o).map(pname).join(' & ');
+  const tren = o => teamOf(o).reduce((a, q) => a + V.P[q].renown, 0);   // (a team's Renown together, as the table shows it now)
   // The sides in a team game, where the other player's strip is with two: "Tim & Jamie vs Pete & Pam", each team's
   // diamond in its colour and the Renown it has together. When the names don't fit on one line, the bar keeps the
   // diamonds and the Renown (the plates carry the same diamonds, so who is on which team still reads).
@@ -2035,7 +2041,7 @@
     node.className = 'wn-sides'; node.innerHTML = ''; node.dataset.o = '';
     (G.teams || []).forEach((t, k) => {
       if (k) node.appendChild(el('span', { class: 'vs', text: 'vs' }));
-      const r = t.reduce((a, o) => a + V.P[o].renown, 0), lead = t.indexOf(V.turn) >= 0 && !G.over;
+      const r = t.reduce((a, o) => a + V.P[o].renown, 0), lead = t.indexOf(V.turn) >= 0 && !G.over && G.ph !== 'setup';
       node.appendChild(el('span', { class: 'side' + (lead ? ' on' : ''), style: { '--tc': G.players[t[0]].color }, 'aria-label': t.map(pname).join(' and ') + ', ' + r + ' Renown of ' + S.cfg.target }, [
         el('i'), el('span', { class: 'n', text: t.map(pname).join(' & ') }), el('span', { class: 'rn' }, [el('b', { text: String(r) })])]));
     });
@@ -2059,7 +2065,7 @@
     for (let fs = 14; fs >= 9; fs -= .5) {
       const cw = fs * .64; if (Math.max.apply(null, words.map(x => x.length)) * cw > room) continue;
       let lines = 1, at = 0; words.forEach(x => { const l = x.length * cw; if (at && at + cw + l > room) { lines++; at = l; } else at += (at ? cw : 0) + l; });
-      if (lines * fs * 1.06 + fs * .4 <= h * .4) return fs;
+      if (lines * fs * 1.06 + fs * .4 <= h * .46) return fs;
     }
     return 0;
   }
@@ -2112,7 +2118,7 @@
       mine = { x: 0, y: rimH + 6, w: W, h: H - rimH - 6 };
       const colW = W / R;
       rim.forEach((o, k) => {
-        const x0 = k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
+        const x0 = k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
         const ph = compact ? Math.round(rimH * .44) : Math.round(Math.max(46, Math.min(60, rimH * .25))), pl = plateEl(o, colW < 96 ? 'f' : 'w');
         pl.style.fontSize = Math.max(9, Math.min(14, ph * .24, colW * .13)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
         if (compact) {   // a short phone: the Gate and Outpost as two tokens side by side
@@ -2133,7 +2139,7 @@
       const rimW = Math.round(W * (N <= 3 ? .5 : .53)); mine = { x: rimW + 6, y: 0, w: W - rimW - 6, h: H };
       const rowH = H / R, pw = Math.round(Math.min(rimW * .3, 150));
       rim.forEach((o, k) => {
-        const y0 = k * rowH, col = matN(o); col.className = 'an-pm wn-col wn-lane' + (V.turn === o && !G.over ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, 0, y0 + 1, rimW, rowH - 2);
+        const y0 = k * rowH, col = matN(o); col.className = 'an-pm wn-col wn-lane' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, 0, y0 + 1, rimW, rowH - 2);
         const pl = plateEl(o, rowH > 50 ? 'l' : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, pw * .12)).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
         const cellW = (rimW - pw) / 2; let th = Math.round(Math.min(rowH - 10, 110)), tw = Math.round(th / .74), ps = Math.round(Math.max(16, Math.min(th * .44, 30)));
         if (tw + ps + 12 > cellW) { tw = Math.round(cellW - ps - 12); th = Math.round(tw * .74); }
@@ -2146,7 +2152,7 @@
     // at least; the engraved places for the rest of the three are drawn where they fit)
     const sideW = (mine.w - mw) / 2 - 10, most = Math.max(2, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0))));
     const fw = Math.floor(Math.max(24, Math.min((rh - 10) / 1.36, sideW / (most * 1.1), 96))), slots = Math.max(most, Math.min(3, Math.floor((sideW + 4) / (fw * 1.1))));
-    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
+    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
     [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
       const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots });
       row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');
@@ -3153,15 +3159,14 @@
   // The record of a game of three or more players for its history (hist/anoria.js reads it: v 3). Each player's
   // numbers as with two; rt, each round's Renown so far for every player; hold, who held each Domain at each count,
   // a letter a to f for each seat, in the engine's order of the Domains (each seat's Gate and Outpost, the Crossroads
-  // last); sl, 'round|by|whose' for each Seal; outs, 'round|who'; tm, the teams; map, each Domain at the end.
+  // last); sl, 'round|by|whose' for each Seal; outs, 'round|who'; tm, the teams.
   function recordN() {
     const w = S.winner, T = G.tale || { tot: [], hold: [], links: [], seals: [], ko: G.players.map(() => ({})) }, top = m => Object.keys(m || {}).sort((a, b) => m[b] - m[a])[0] || '';
     try {
       Kit.record(KEY, { started: G.started, mode: modeName(), players: G.players.map((p, i) => ({ name: p.name, score: S.P[i].renown, cpu: p.cpu })), winner: w >= 0 ? winName(w) : null, highlights: [],
         detail: { v: 3, n: S.N, how: S.how, rounds: G.hist.length, tg: S.cfg.target, w: w, tm: G.teams || null, out: S.P.map(p => (p.out ? 1 : 0)),
-          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0 }; }),
-          rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice(),
-          map: posOrder().map(i => [S.places[i], E.holder(S, i), E.mights(S, i).join(','), G.players.map((p, o) => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(',')).join('/')].join('|')) } });
+          pl: G.players.map((p, i) => { const st = G.stats[i], c = top(T.ko[i]); return { g: S.P[i].guide, d: p.deck, b: p.built ? 1 : 0, s: S.P[i].seals, sm: S.P[i].sm || 3, ko: st.ko, ln: st.lines, sb: st.seals, h: st.held, ch: c, cn: c ? T.ko[i][c] : 0, c: p.color, o: S.P[i].out ? 1 : 0 }; }),
+          rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice() } });
     } catch (e) {}
     // (a win against the computer: your own, or your team's)
     try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w >= 0 && E.ally(S, 0, w), cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
@@ -3280,7 +3285,7 @@
   function matPicker() {
     if (G && G.demo) return;
     Kit.sfx('tap');
-    const live = !!(G && S && dom.pm), seats = live ? [0, 1].filter(human) : [0], two = seats.length > 1;
+    const live = !!(G && S && dom.pm), seats = live ? G.players.map((p, o) => o).filter(human) : [0], two = seats.length > 1, N = live ? S.N : 2;
     let cur = live ? (seats.indexOf(ui.view) >= 0 ? ui.view : seats[0]) : 0;
     const guide = () => live ? S.P[cur].guide : (Coll.deck(starterId()) || {}).guide || Object.keys(TX.GUIDES)[0];
     const chosen = () => live ? matPick(cur) : matMineV();
@@ -3295,7 +3300,7 @@
     function put(id) { if (id === chosen()) return; keep(id); Kit.sfx('flip', .6); Kit.haptic('light'); paint(); }
     // the shape of a mat on this table (its width over its height), or what it will be on a screen this shape
     function shape() {
-      const n = live && dom.pm[0], w = n ? n.offsetWidth : 0, h = n ? n.offsetHeight : 0; if (w > 40 && h > 20) return w / h;
+      const n = live && (N > 2 ? (dom.nm || [])[cur] : dom.pm[0]), w = n ? n.offsetWidth : 0, h = n ? n.offsetHeight : 0; if (w > 40 && h > 20) return w / h;
       const W = window.innerWidth, H = window.innerHeight; return W > H ? (H >= 600 ? 1.8 : 2.57) : W >= 700 ? 2.7 : 2.2;
     }
     // every picture you have found: your Guides, your cards, and the Places
@@ -3343,16 +3348,16 @@
     const sample = g => { const t = toneOf[g], fy = FY[g]; return MK.make({ c: g, w: 640, h: 960, col: t ? t.col : '#1b2850', d: t ? t.d : .2, f: 'quilt', focus: [.5, fy != null ? fy / 100 : .3] }, 2.33); };
     function paint() {
       if (!sc.el.isConnected) return;
-      const g = guide(), on = chosen(), art = isArt(on) ? on : null, name = two ? Kit.poss(pname(cur)) : 'Your', other = live ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
+      const g = guide(), on = chosen(), art = isArt(on) ? on : null, name = two ? Kit.poss(pname(cur)) : 'Your', other = live && N === 2 ? Kit.poss(pname(1 - cur)) : 'the other player\'s';
       who.innerHTML = ''; who.hidden = !two;
       if (two) seats.forEach(o => who.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (o === cur ? 'btn-primary' : 'btn-soft'), 'aria-pressed': String(o === cur), onclick: () => { if (o === cur) return; cur = o; Kit.sfx('tap'); Kit.haptic('light'); paint(); } },
-        [el('i', { style: { background: PCOL[o] } }), el('span', { text: pname(o) })])));
+        [el('i', { style: { background: G.players[o].color || PCOL[o] } }), el('span', { text: pname(o) })])));
       // the two mats as they lie on the table: this player's nearest, the other player's beyond it (turned to face
       // them when two people sit at one device)
-      view.innerHTML = ''; view.classList.toggle('one', !live);
-      if (live) view.appendChild(mat(matOf(1 - cur), 'v1', 'top' + (matTurned() ? ' turn' : '')));
+      view.innerHTML = ''; view.classList.toggle('one', !live || N > 2);
+      if (live && N === 2) view.appendChild(mat(matOf(1 - cur), 'v1', 'top' + (matTurned() ? ' turn' : '')));
       view.appendChild(mat(on || g, 'v0', 'bot'));
-      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, and meets ' + other + ' mat under the Crossroads.';
+      say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, ' + (N > 2 ? 'and every other player\'s mat lies under their own Gate and Outpost round the table.' : 'and meets ' + other + ' mat under the Crossroads.');
       grid.innerHTML = '';
       const sw = (isOn, shown, slot, title, sub, face, fn) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (isOn ? ' on' : ''), 'aria-pressed': String(isOn), 'aria-label': title + '. ' + sub, onclick: fn }, [
         el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
