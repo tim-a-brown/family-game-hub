@@ -956,12 +956,263 @@
       else if (fig) out.push({ note: DW('You play a Figure at your Gate or at a Place where you already have a Figure, and each of those Places has ') + S.cfg.cap + ' of your Figures already.' }); }
     return out;
   }
+  // ═══ The road under the card ═════════════════════════════════════════════════════════════════════════════
+  // Tim approved on 2026-11-13 ("keep going with face off, carousel and the rest"): no stack of buttons under the card
+  // in front, but the road itself, the table's Domains as small tiles in the order they lie, always in the same place,
+  // so the card and its notes never move. The Domains a card can go to light up, each with the two Might totals there
+  // (yours as it would be after the move) and what the move does ("Play", "Take it", "Walk"); a tap there makes it.
+  // A Figure's clashes, a Deed's chosen Figure or player, a Domain's own power and a Relic are chips and buttons on the
+  // line under the road. A card that can't be played dims the road, and a plate on the card says why (its cost against
+  // your Spark, or the reason). roadOf(it) works out what the road shows; paintRoad draws it.
+  // (a Domain's name the way people say it, for a small tile: "Padua", "Greenwich")
+  const domShort = n => n.replace(/^The /, '').replace(/^.*, /, '').replace(/^(University|Silver Mines|Library|Market|Rock) of /, '').replace(/^Great Pyramid of Giza$/, 'Great Pyramid').replace(/^Kilwa Kisiwani$/, 'Kilwa').replace(/^Citadelle /, '');
+  const roadOrd = () => (many() ? mapOrder() : rowsOrder());
+  // a Domain as a small tile: its picture, its kind's frame and its name (o.rule: its power's few words too)
+  function miniTile(i, o) {
+    o = o || {}; const pk = S.places[i], pi = C.PLACES[pk];
+    const t = el('span', { class: 'pl-tile rd-tile' + (o.cls ? ' ' + o.cls : '') });
+    const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true, true); if (im) art.appendChild(im); t.appendChild(art);
+    const rule = o.rule && S.dm ? DSHORT[pi.pw] : o.rule ? DW(RULE[pk] || '') : '';
+    t.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name', text: o.full ? pi.n : domShort(pi.n) }), rule ? el('span', { class: 'pl-rule', text: rule }) : null]));
+    if (window.AnoriaDomains) window.AnoriaDomains.tile(t, { key: pk, reg: pi.reg, silenced: !!(S.dm && vSil(i)) });
+    if (!im && window.AnoriaDomains) art.style.setProperty('--kc', (window.AnoriaDomains.KINDS[window.AnoriaDomains.kindOf(pk)] || {}).c || '#223');
+    return t;
+  }
+  // the legal move that matches one worked out earlier (the moves are worked out again after every step)
+  const reAct = a => { const s = JSON.stringify(a); return ui.acts.filter(x => JSON.stringify(x) === s)[0] || null; };
+  function runActs(acts, title) {
+    if (!idle()) return; acts = acts.map(reAct).filter(x => x); if (!acts.length) return;
+    closeView(); Kit.sfx('pop'); Kit.haptic('medium');
+    if (acts.length === 1) return doHuman(acts[0]);
+    const rank = { walk: 0, tub: 1, antik: 2, clash: 0 };
+    acts.sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0) || (x.x ? 1 : 0) - (y.x ? 1 : 0));
+    Kit.sheet({ title: title, actions: acts.map((a, k) => Object.assign(actLabel(a), { primary: !k, onClick: () => { const b = reAct(a); if (b && idle()) doHuman(b); } })) });
+  }
+  // the Might a clash would start with: the attacker's (with Phalanx or an Ambush where it adds) and the defender's
+  function clashMights(u, v, add) { const f = E.byU(S, u), g = E.byU(S, v); if (!f || !g) return null; return [Math.floor(E.might(S, f, 1, g) + (add || 0)), Math.floor(E.might(S, g, 2, f))]; }
+  // the totals at a Domain: [the strongest other side's, yours] (Ms: E.mights of some state)
+  const sidesOf = (Ms, o) => { let t = 0; Ms.forEach((m, q) => { if (q !== o && !E.ally(S, q, o)) t = Math.max(t, m); }); return [t, Ms[o]]; };
+  function roadOf(it) {
+    const R = { lit: {}, here: -1, chips: [], btns: [], plate: null, off: false, after: {} };
+    if (!S || !G || !V || G.demo) return R;
+    if (it.u != null) { const f = vfig(it.u); if (f) R.here = f.p; } else if (it.p != null) R.here = it.p;
+    if (G.over || !idle()) return R;
+    const o = S.turn, P = S.P[o], hand = P.hand, nm = u => { const f = E.byU(S, u); return f ? CARDS[f.c].n : ''; };
+    if (ui.discard) { if (it.h != null && hand[it.h] === it.key) R.btns.push({ label: 'Discard ' + info(it.key).n, main: true, run: () => discardOne(it.h) }); R.off = true; return R; }
+    let acts, sel;
+    if (it.h != null) { if (hand[it.h] !== it.key) return R; sel = { kind: 'hand', h: it.h };
+      acts = ui.acts.filter(a => (a.h != null && hand[a.h] === it.key) || (E.fxOf(it.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === it.key)); }
+    else if (it.u != null) { const f = E.byU(S, it.u); if (!f || f.o !== o) return R; sel = { kind: 'fig', u: it.u };
+      acts = ui.acts.filter(a => (a.u === it.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub' || a.t === 'relay')) || (a.t === 'relay' && a.v === it.u)); }
+    else if (it.p != null && S.dm) acts = ui.acts.filter(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === it.p);
+    else return R;
+    const key = it.h != null ? it.key : null, cost = a => (key ? E.costOf(S, o, key, a.t === 'fig' ? a.p : undefined) : null);
+    const chip = {}, order = []; let table = false;
+    const addChip = (k, c, a) => { if (!chip[k]) { chip[k] = Object.assign({ acts: [] }, c); order.push(k); } chip[k].acts.push(a); };
+    acts.forEach(a => {
+      const t = a.t;
+      if (t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub') { (R.lit[a.p] = R.lit[a.p] || []).push(a); return; }
+      if (t === 'clash') { addChip('x' + a.u + '-' + a.v, { kind: 'clash', u: a.u, v: a.v, pair: !!key }, a); return; }
+      if (t === 'relay') { const w = a.u === it.u ? a.v : a.u; addChip('r' + w, { kind: 'fig', v: w, label: 'Change places with ' + nm(w) }, a); return; }
+      if (t === 'loan') { R.btns.push({ label: 'Borrow 2 Spark, paid back next turn', acts: [a] }); return; }
+      if (t === 'buy') { R.btns.push({ label: 'Buy a card', cost: 1, acts: [a] }); return; }
+      if (t === 'hire') { R.btns.push({ label: 'Hire 2 Might here this round', cost: 1, acts: [a] }); return; }
+      if (t === 'relic') { R.btns.push({ label: 'Play ' + theName(key), cost: cost(a), main: true, acts: [a] }); return; }
+      if (t === 'deed') {
+        const n = (a.h2 != null) + (a.u != null) + (a.v != null) + (a.p != null) + (a.q != null) + (a.w != null);
+        if (!n) R.btns.push({ label: 'Play ' + theName(key), cost: cost(a), main: true, acts: [a] });
+        else if (n === 1 && a.p != null) (R.lit[a.p] = R.lit[a.p] || []).push(a);
+        else if (n === 1 && (a.u != null || a.v != null)) { const w = a.u != null ? a.u : a.v; addChip('f' + w, { kind: 'fig', v: w, label: nm(w) }, a); }
+        else if (n === 1 && a.w != null) addChip('w' + a.w, { kind: 'who', o: a.w, label: 'Trade with ' + pname(a.w) }, a);
+        else if (n === 2 && a.u != null && a.v != null && E.fxOf(key) === 'ambush') addChip('x' + a.u + '-' + a.v, { kind: 'clash', u: a.u, v: a.v, pair: true, add: 1 }, a);
+        else table = true;
+        return;
+      }
+      table = true;
+    });
+    order.forEach(k => { const c = chip[k]; if (c.kind === 'clash') { const plain = c.acts.some(a => !a.ph); c.m = clashMights(c.u, c.v, (c.add || 0) + (plain ? 0 : 2)); } R.chips.push(c); });
+    // (what each lit Domain would look like after the move: your total there, and whether you would hold it)
+    const cs = {};
+    Object.keys(R.lit).forEach(p => { const a = R.lit[p][0], i = +p; let Ms = V.tot[i], h = V.hold[i];
+      if (a.t !== 'deed') { const T = simulate(a); Ms = E.mights(T, i); h = E.holder(T, i); }
+      const sd = sidesOf(Ms, o), take = (h === o || (h >= 0 && E.ally(S, h, o))) && !(V.hold[i] === o || (V.hold[i] >= 0 && E.ally(S, V.hold[i], o)));
+      const verb = a.t === 'walk' ? 'Walk' : a.t === 'antik' ? 'Jump' : a.t === 'tub' ? 'Step' : 'Play';
+      R.after[i] = { m: sd, word: take ? 'Take it' : verb, take: take, cost: cost(a) }; if (cost(a) != null) cs[cost(a)] = 1; });
+    R.costly = Object.keys(cs).length > 1;   // (a Domain where the card costs less, Timbuktu: each lit tile says its cost)
+    if (table) R.btns.push({ label: R.btns.length || R.chips.length || Object.keys(R.lit).length ? 'More: choose on the table' : 'Choose on the table', soft: true, run: () => { if (idle()) { closeView(); select(sel); } } });
+    if (!R.btns.length && !R.chips.length && !Object.keys(R.lit).length) {
+      R.off = true;
+      if (it.h != null) { const c = E.costOf(S, o, it.key); if (c > P.spark) R.plate = { cost: c, have: P.spark }; else { const n = scanActs(it).filter(x => x.note)[0]; if (n) R.plate = { note: n.note }; } }
+      else if (it.u != null) { const f = E.byU(S, it.u), n = CARDS[f.c].n;
+        if (f.arr && !f.acted) R.plate = { note: n + ' came into play this turn, so ' + n + ' can walk on your next turn.' };
+        else if (!f.rdy) R.plate = { note: n + ' has already moved this turn.' }; }
+    }
+    return R;
+  }
+  const canDo = it => { const R = roadOf(it); return !!(Object.keys(R.lit).length || R.chips.length || R.btns.some(b => !b.soft || b.run)); };
+  // How big the road's tiles are at this screen size: as wide as the room for one row of them allows
+  function roadDims(box) {
+    const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560, n = S ? roadOrd().length : 5, per = n > 7 ? Math.ceil(n / 2) : n;
+    const w = box && box.clientWidth ? box.clientWidth : side ? (W - 16) / 2.15 - 20 : Math.min(W - 24, 640), gap = W < 500 ? 5 : 8;
+    const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = W < 500 || side ? 40 : 46;
+    return { rw: rw, rh: rh, gap: gap, per: per, h: rows * (rh + 22) + (rows - 1) * 4 + 8 + chips, chips: chips };
+  }
+  function paintRoad(box, R, it) {
+    box.innerHTML = ''; const D = roadDims(box), o = S.turn, me = ui.view;
+    box.className = 'sc-road' + (R.off ? ' off' : ''); box.style.setProperty('--rw', D.rw + 'px'); box.style.setProperty('--rh', D.rh + 'px'); box.style.setProperty('--rg', D.gap + 'px'); box.style.setProperty('--rc', D.chips + 'px'); box.style.height = D.h + 'px';
+    const ord = roadOrd(), rows = el('div', { class: 'rd-rows' }); let row = null;
+    ord.forEach((p, k) => {
+      if (k % D.per === 0) { row = el('div', { class: 'rd-row' }); rows.appendChild(row); }
+      const lit = R.lit[p], here = R.here === p, af = R.after[p], m = af ? af.m : sidesOf(V.tot[p], me), hold = V.hold[p];
+      const b = el(lit ? 'button' : 'span', { class: 'rd-t' + (lit ? ' lit' : '') + (here ? ' here' : '') + (af && af.take ? ' take' : '') + (hold >= 0 ? ' held' : ''), 'data-p': p, type: lit ? 'button' : null, style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null,
+        'aria-label': C.PLACES[S.places[p]].n + (lit ? ': ' + af.word + (af.cost != null && R.costly ? ', for ' + af.cost + ' Spark' : '') + ', your Might there ' + m[1] + ' against ' + m[0] : here ? ', where this card is' : '') });
+      b.appendChild(miniTile(p));
+      b.appendChild(el('span', { class: 'rd-m L' + (m[0] ? '' : ' zero'), style: { '--tc': 'var(--pc' + (many() ? (rivalAt(p) >= 0 ? rivalAt(p) : 1 - me) : 1 - me) + ')' } }, [el('b', { text: String(m[0]) })]));
+      b.appendChild(el('span', { class: 'rd-m R' + (m[1] ? '' : ' zero') + (af ? ' up' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(m[1]) })]));
+      if (lit) { b.appendChild(el('span', { class: 'rd-g' }, [el('span', { text: af.word }), af.cost != null && R.costly ? el('span', { class: 'sc-cost' }, [el('b', { text: String(af.cost) })]) : null]));
+        b.addEventListener('click', e => { e.stopPropagation(); runActs(lit, info(it.key).n + ' to ' + theName('@' + S.places[p])); }); }
+      else if (here) b.appendChild(el('span', { class: 'rd-g here', text: 'Here' }));
+      row.appendChild(b);
+    });
+    box.appendChild(rows);
+    const line = el('div', { class: 'rd-chips' });
+    R.chips.forEach(c => {
+      const pic = k => { const s = el('span', { class: 'rd-pic' }), im = artImg(k, true, true) || mono(k); if (im) s.appendChild(im); return s; };
+      let b;
+      if (c.kind === 'clash') { const f = E.byU(S, c.u), g = E.byU(S, c.v);
+        b = el('button', { type: 'button', class: 'rd-c clash', 'aria-label': 'Clash: ' + CARDS[f.c].n + ' with ' + c.m[0] + ' Might against ' + CARDS[g.c].n + ' with ' + c.m[1] },
+          [c.pair ? pic(f.c) : null, el('span', { class: 'rd-x', html: SVG.swords }), pic(g.c), el('b', { text: c.m[0] + ' vs ' + c.m[1] })]); }
+      else if (c.kind === 'who') b = el('button', { type: 'button', class: 'rd-c who', style: { '--pc': 'var(--pc' + c.o + ')' } }, [el('i', { class: 'rd-dot' }), el('span', { text: c.label })]);
+      else { const f = E.byU(S, c.v); b = el('button', { type: 'button', class: 'rd-c fig' }, [f ? pic(f.c) : null, el('span', { text: c.label })]); }
+      b.addEventListener('click', e => { e.stopPropagation(); runActs(c.acts, info(it.key).n); });
+      line.appendChild(b);
+    });
+    R.btns.forEach(x => line.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (x.main ? 'btn-primary' : 'btn-soft') + ' rd-b', onclick: e => { e.stopPropagation(); if (x.run) { Kit.sfx('pop'); Kit.haptic('medium'); closeView(); x.run(); } else runActs(x.acts, info(it.key).n); } },
+      [el('span', { text: x.label }), x.cost != null ? el('span', { class: 'sc-cost', role: 'img', 'aria-label': 'costs ' + x.cost + ' Spark' }, [el('b', { text: String(x.cost) })]) : null])));
+    box.appendChild(line);
+  }
+  // the plate on a card that can't be played: its cost against your Spark, or the reason in a sentence
+  function lockPlate(R) {
+    if (!R.plate) return null;
+    if (R.plate.cost != null) return el('div', { class: 'sc-lock' }, [el('span', { class: 'sc-cost big' }, [el('b', { text: String(R.plate.cost) })]), el('span', {}, [document.createTextNode('You have '), el('b', { text: String(R.plate.have) }), document.createTextNode(' Spark.')])]);
+    return el('div', { class: 'sc-lock note' }, [el('span', { text: R.plate.note })]);
+  }
+
+  // ═══ The face-off ════════════════════════════════════════════════════════════════════════════════════════
+  // A Domain's level in the scan (Tim approved, 2026-11-13): the two sides face each other across the Domain, every
+  // card large enough to read. Sideways the other player's Figures stand to its left and yours to its right; upright
+  // theirs are above and yours below. In the middle: both totals on shields, a balance beam tipped toward whoever
+  // holds it, and a sentence that says who holds it and what that is worth when the round ends. Under each of your
+  // Figures, what it can do from here: Clash, and a walk toward the Domain on either side along the road. A tap on a
+  // card reads it on the strip (the carousel of this Domain's cards); a swipe, the arrow keys or the side map walks on.
+  // what the middle of a face-off says: who holds this Domain and what it is worth when the round ends, with the
+  // reason when a tie is settled by a rule
+  function holdSay(p) {
+    const me = ui.view, h = V.hold[p], t = V.tot[p], nm = theName('@' + S.places[p]), you = o => o === me && human(me);
+    const mx = Math.max.apply(null, t), tied = t.filter(x => x === mx).length > 1, any = V.figs.some(f => f.p === p), own = E.ownerOfSpoke(S, p), gate = E.isGate(S, p);
+    const ren = n => n + ' Renown', who = o => (you(o) ? 'you' : pname(o)), whose = o => (you(o) ? 'your' : Kit.poss(pname(o)));
+    let pre = '';
+    if (h >= 0 && (tied || !any)) {
+      if (!any || mx === 0) pre = 'Nobody has a Figure here, and a Gate with nobody at it is held by its owner. ';
+      else if (p === 2 * S.N && S.dm && S.ban[p] === h) pre = 'The Might is tied at ' + mx + ', and ' + who(h) + (you(h) ? ' win' : ' wins') + ' a tie at the Crossroads, because ' + who(h) + ' laid it and ' + (you(h) ? 'have' : 'has') + ' a Figure here. ';
+      else if (gate && own === h) pre = 'The Might is tied at ' + mx + ', and a tie at a Gate goes to the Gate’s owner. ';
+      else pre = 'The Might is tied at ' + mx + ', and ' + who(h) + (you(h) ? ' win' : ' wins') + ' the tie here. ';
+      pre = cap1(pre);
+    }
+    if (h >= 0) {
+      const w = E.rv(S, p, h) * E.stake(S.cfg, V.round);
+      if (gate && own >= 0 && own !== h && !E.ally(S, own, h)) return pre + cap1(who(h)) + (you(h) ? ' hold ' : ' holds ') + nm + ', which is ' + whose(own) + ' Gate, so ' + who(h) + (you(h) ? ' score ' : ' scores ') + ren(w) + ' and one of ' + whose(own) + ' Seals breaks when the round ends.';
+      return pre + cap1(who(h)) + (you(h) ? ' hold ' : ' holds ') + nm + ', and ' + (you(h) ? 'score ' : 'scores ') + ren(w) + ' when the round ends.';
+    }
+    if (!any) return 'Nobody has a Figure here, so nobody holds ' + nm + '.';
+    if (tied && S.dm && E.pw(S, p) === 'treaty') { const ts = []; t.forEach((x, o) => { if (x === mx && V.figs.some(f => f.p === p && f.o === o)) ts.push(o); }); if (ts.length > 1) return 'The Might is tied at ' + mx + ', so ' + listOf(ts.map(who)) + ' each score 1 Renown here when the round ends.'; }
+    if (tied) return 'The Might is tied at ' + mx + ', so nobody holds ' + nm + '.';
+    return 'Nobody holds ' + nm + '.';
+  }
+  // Build a face-off for the Domain level L. at: {u} the card in front. h: {cards(k) read card k of the level on the
+  // strip, step(d) the next Domain along the road, armed} (armed: your Figure whose Clash chip was tapped)
+  function faceOffEl(L, at, h) {
+    const p = L.p, me = ui.view, M = many(), riv = M ? (rivalAt(p) >= 0 ? rivalAt(p) : seatsFrom(me)[1]) : 1 - me;
+    const box = el('div', { class: 'fo' }), sOrd = seatsFrom(me), rk = o => (sOrd.indexOf(o) + S.N - 1) % S.N;
+    const bg = el('div', { class: 'fo-bg', 'aria-hidden': 'true' }, [riv, me].map((o, k) => { const n = el('div', { class: 'an-pm fo-pm ' + (k ? 'me' : 'them') }); try { matFill(n, matOf(o), 'fo' + o); } catch (e) {} return n; }));
+    box.appendChild(bg);
+    const th = V.figs.filter(f => f.p === p && f.o !== me).sort((a, b) => rk(a.o) - rk(b.o) || a.u - b.u), mi = V.figs.filter(f => f.p === p && f.o === me).sort((a, b) => a.u - b.u);
+    const ix = u => L.items.findIndex(x => x.u === u), on = idle() && !G.over && S.turn === me;
+    const ord = roadOrd(), k0 = ord.indexOf(p), prev = ord[k0 - 1], next = ord[k0 + 1];
+    // (your Figure's moves from here: a clash with one of theirs, a walk to the Domain on either side; the rest are on its road)
+    const moves = u => ui.acts.filter(a => a.u === u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub' || a.t === 'relay') || (a.t === 'relay' && a.v === u));
+    const cardB = f => {
+      const b = el('button', { type: 'button', class: 'fo-c o' + f.o + (at && at.u === f.u ? ' front' : ''), 'data-u': f.u, style: { '--pc': 'var(--pc' + f.o + ')' }, 'aria-label': CARDS[f.c].n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)) },
+        [cardEl(f.c, { mini: true, now: true, might: f.m, hush: !!f.hush })]);
+      b.addEventListener('click', e => { e.stopPropagation(); h.cards(ix(f.u)); });
+      return b;
+    };
+    const chipsFor = f => {
+      if (!on) return null; const ms = moves(f.u); if (!ms.length) return null;
+      const n = el('div', { class: 'fo-chips' }), cl = ms.filter(a => a.t === 'clash'), foes = cl.map(a => a.v).filter((v, k, s) => s.indexOf(v) === k);
+      if (foes.length === 1) { const m = clashMights(f.u, foes[0]);
+        n.appendChild(el('button', { type: 'button', class: 'rd-c clash', 'aria-label': 'Clash with ' + CARDS[E.byU(S, foes[0]).c].n + ', ' + m[0] + ' against ' + m[1], onclick: e => { e.stopPropagation(); runActs(cl, CARDS[f.c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: m[0] + ' vs ' + m[1] })])); }
+      else if (foes.length > 1) n.appendChild(el('button', { type: 'button', class: 'rd-c clash' + (h.armed === f.u ? ' on' : ''), 'aria-pressed': String(h.armed === f.u), onclick: e => { e.stopPropagation(); Kit.sfx('tap'); h.arm(h.armed === f.u ? null : f.u); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: 'Clash' })]));
+      const walk = q => { for (const t of ['walk', 'tub', 'antik']) { const as = ms.filter(a => a.p === q && a.t === t); if (as.length) return as; } return null; };   // (a plain walk first; a Jump to the same place is on the Figure's road)
+      const wp = prev != null ? walk(prev) : null, wn = next != null ? walk(next) : null;
+      if (wp) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', onclick: e => { e.stopPropagation(); runActs(wp, CARDS[f.c].n + ' to ' + theName('@' + S.places[prev])); } }, [el('span', { class: 'ar', text: '←' }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
+      if (wn) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', onclick: e => { e.stopPropagation(); runActs(wn, CARDS[f.c].n + ' to ' + theName('@' + S.places[next])); } }, [el('span', { text: domShort(C.PLACES[S.places[next]].n) }), el('span', { class: 'ar', text: '→' })]));
+      if (ms.some(a => a.t === 'relay' || (a.t !== 'clash' && ((wp || []).indexOf(a) < 0 && (wn || []).indexOf(a) < 0)))) n.appendChild(el('button', { type: 'button', class: 'rd-c more', onclick: e => { e.stopPropagation(); h.cards(ix(f.u)); } }, [el('span', { text: 'More moves' })]));
+      return n.childNodes.length ? n : null;
+    };
+    const side = (figs, who) => {
+      const s = el('div', { class: 'fo-side ' + who });
+      if (!figs.length) s.appendChild(el('p', { class: 'fo-none', text: who === 'me' ? 'You have no Figures here.' : M ? 'Nobody else has a Figure here.' : pname(riv) + ' has no Figures here.' }));
+      figs.forEach(f => {
+        const cell = el('div', { class: 'fo-f' }, [cardB(f)]);
+        if (who === 'me') { const c = chipsFor(f); if (c) cell.appendChild(c); }
+        else if (h.armed != null) { const a = ui.acts.filter(x => x.t === 'clash' && x.u === h.armed && x.v === f.u);
+          if (a.length) { cell.classList.add('tgt'); const m = clashMights(h.armed, f.u);
+            cell.appendChild(el('div', { class: 'fo-chips' }, [el('button', { type: 'button', class: 'rd-c clash', onclick: e => { e.stopPropagation(); runActs(a, CARDS[E.byU(S, h.armed).c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: m[0] + ' vs ' + m[1] })])])); } }
+        s.appendChild(cell);
+      });
+      return s;
+    };
+    // the middle: the Domain, the two totals on a balance, the sentence, the Domain's own power, the road on either side
+    const hold = V.hold[p], sd = sidesOf(V.tot[p], me), mid = el('div', { class: 'fo-mid' });
+    const tb = el('button', { type: 'button', class: 'fo-tile' + (hold >= 0 ? ' held' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null, 'aria-label': 'Read ' + C.PLACES[S.places[p]].n, onclick: e => { e.stopPropagation(); h.cards(L.items.findIndex(x => x.p === p && x.u == null)); } }, [miniTile(p, { full: true, rule: true })]);
+    mid.appendChild(tb);
+    const wonL = hold >= 0 && hold !== me && !E.ally(S, hold, me), wonR = hold >= 0 && !wonL, sum = Math.max(1, sd[0] + sd[1]);
+    mid.appendChild(el('div', { class: 'fo-bal' + (wonL ? ' l' : wonR ? ' r' : ''), role: 'img', 'aria-label': (M ? 'The strongest other side has ' : pname(riv) + ' has ') + sd[0] + ' Might here, and you have ' + sd[1] }, [
+      el('span', { class: 'fo-sh' + (wonL ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + riv + ')' } }, [el('b', { text: String(sd[0]) })]),
+      el('span', { class: 'fo-beam' }, [el('span', { class: 'fo-arm' }, [el('i', { style: { flex: String(sd[0] || .001), background: 'var(--pc' + riv + ')' } }), el('i', { style: { flex: String(sd[1] || .001), background: 'var(--pc' + me + ')' } })]), el('span', { class: 'fo-pivot' })]),
+      el('span', { class: 'fo-sh' + (wonR ? ' win' : hold >= 0 ? ' lose' : ''), style: { '--tc': 'var(--pc' + me + ')' } }, [el('b', { text: String(sd[1]) })])]));
+    mid.appendChild(el('p', { class: 'fo-who', text: DW(holdSay(p)) }));
+    if (on) { const R = roadOf({ p: p, key: S.places[p] }); if (R.btns.length) mid.appendChild(el('div', { class: 'fo-pw' }, R.btns.map(x => el('button', { type: 'button', class: 'btn btn-sm btn-soft rd-b', onclick: e => { e.stopPropagation(); runActs(x.acts, C.PLACES[S.places[p]].n); } },
+      [el('span', { text: x.label }), x.cost != null ? el('span', { class: 'sc-cost' }, [el('b', { text: String(x.cost) })]) : null])))); }
+    const nav = el('div', { class: 'fo-nav' });
+    if (prev != null) nav.appendChild(el('button', { type: 'button', class: 'fo-go', 'aria-label': 'The next Domain along the road: ' + C.PLACES[S.places[prev]].n, onclick: e => { e.stopPropagation(); h.step(-1); } }, [el('span', { class: 'ar', text: '←' }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
+    if (next != null) nav.appendChild(el('button', { type: 'button', class: 'fo-go', 'aria-label': 'The next Domain along the road: ' + C.PLACES[S.places[next]].n, onclick: e => { e.stopPropagation(); h.step(1); } }, [el('span', { text: domShort(C.PLACES[S.places[next]].n) }), el('span', { class: 'ar', text: '→' })]));
+    mid.appendChild(nav);
+    box.appendChild(side(th, 'them')); box.appendChild(mid); box.appendChild(side(mi, 'me'));
+    return box;
+  }
+  // Size a face-off to its box: the cards as large as both sides allow, the same size on both, nothing cut off
+  function fitFaceOff(box) {
+    const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
+    const hz = W > H * 1.05; box.classList.toggle('hz', hz); box.classList.toggle('vt', !hz);
+    const sides = box.querySelectorAll('.fo-side'), n = Math.max(1, ...Array.prototype.map.call(sides, s => s.querySelectorAll('.fo-f').length));
+    const mw = hz ? Math.round(Math.max(200, Math.min(360, W * .32))) : W, tw = hz ? mw - 16 : Math.round(Math.min(W * .66, 400));
+    box.style.setProperty('--mw', mw + 'px'); box.style.setProperty('--tw', tw + 'px'); box.style.setProperty('--th', Math.round(tw * .56) + 'px');
+    const mid = box.querySelector('.fo-mid'), midH = hz ? 0 : mid.offsetHeight, sw = hz ? (W - mw - 24) / 2 : W - 12, shH = hz ? H - 12 : (H - midH - 24) / 2;
+    let best = 0; for (let r = 1; r <= 3; r++) { const cols = Math.ceil(n / r); best = Math.max(best, Math.min((sw - (cols - 1) * 10) / cols, ((shH - (r - 1) * 10) / r - (hz ? 40 : 34)) / 1.4)); }
+    let cw = Math.round(Math.max(54, Math.min(180, best))); box.style.setProperty('--cw', cw + 'px');
+    const over = () => Array.prototype.some.call(sides, s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1) || mid.scrollHeight > mid.clientHeight + 1;
+    for (let i = 0; i < 24 && cw > 48 && over(); i++) { cw = Math.round(cw * .94); box.style.setProperty('--cw', cw + 'px'); }
+    // (a phone: a tile shorter, then smaller words, when the middle is still too tall)
+    for (let i = 0; i < 6 && mid.scrollHeight > mid.clientHeight + 1; i++) { const t = Math.round(parseFloat(box.style.getPropertyValue('--tw')) * .9); box.style.setProperty('--tw', t + 'px'); box.style.setProperty('--th', Math.round(t * .56) + 'px'); }
+  }
   function scan(at) {
     if (at && at.su) return openView(at.su);   // (a Domain at the set-up: read it on its own)
     at = at || {}; if (!G || !S || !V) return; closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const me = ui.view, opp = 1 - me, role = p => { const w = E.ownerOfSpoke(S, p); return w < 0 ? 'The Crossroads' : (w === me ? 'Your ' : Kit.poss(pname(w)) + ' ') + (E.isGate(S, p) ? 'Gate' : 'Outpost'); };
-    // (a Place's cards lie as they do on the table: the other player's Figures to the left of the Place's own card,
-    // yours to the right, and the level opens on the Place's card with both in view)
+    // (a Domain's cards lie as they do on the table: the other player's Figures, the Domain's own card, yours. A
+    // Domain's level opens as the face-off; a tap on a card there reads the level's cards on the strip)
     const sideOf = o => { const P = V.P[o]; return { side: o, at0: 0, name: o === me ? 'Your side' : Kit.poss(pname(o)) + ' side', role: '', cards: P.hand.length, relics: P.relics.length,
       items: [{ key: P.guide, g: 1, o: o }].concat(P.relics.map(r => ({ key: r, r: 1, o: o }))) }; };
     // (more players: everyone else's Figures to the left, in seat order from your left, each ringed in their colour;
@@ -975,14 +1226,15 @@
     const hand = !ui.hideHand && ui.viewer >= 0 && V.P[me] ? V.P[me].hand : [];
     if (hand.length) levels.push({ hand: true, at0: 0, name: 'Your hand', role: hand.length + (hand.length === 1 ? ' card' : ' cards'), items: hand.map((k, h) => ({ key: k, h: h })) });
     // where to open
-    let li = S.N > 2 ? levels.length - 4 : 1, ii = -1;
+    let li = S.N > 2 ? levels.length - 4 : 1, ii = -1, front = null;
     if (at.h != null && hand.length) { li = levels.length - 1; ii = Math.max(0, Math.min(hand.length - 1, at.h)); }
-    else if (at.u != null) levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } }));
+    else if (at.u != null) { levels.forEach((L, i) => L.items.forEach((x, j) => { if (x.u === at.u) { li = i; ii = j; } })); front = { u: at.u }; }
     else if (at.p != null) levels.forEach((L, i) => { if (L.p === at.p) li = i; });
     else if (at.side != null) levels.forEach((L, i) => { if (L.side === at.side) { li = i; L.items.forEach((x, j) => { if (x.key === at.key) ii = j; }); } });
     if (ii < 0) ii = levels[li].at0;
-    let flow = el('div', { class: 'vf-flow' }), cuPx = '';   // (each level has a strip of its own: a strip's handlers belong to its cards)
-    const under = el('div', { class: 'vf-notes' }), strip = el('div', { class: 'vf-strip' }), hb = el('b'), hs = el('small'), actRow = el('div', { class: 'sc-acts' }), body = el('div', { class: 'sc-body' });
+    let flow = el('div', { class: 'vf-flow' }), cuPx = '', mode = '';   // (each level has a strip of its own: a strip's handlers belong to its cards; mode: 'fo' a face-off, 'cards' a Domain's cards on the strip)
+    const under = el('div', { class: 'vf-notes' }), strip = el('div', { class: 'vf-strip' }), hb = el('b'), hs = el('small'), road = el('div', { class: 'sc-road' }), body = el('div', { class: 'sc-body' });
+    const both = el('button', { type: 'button', class: 'btn btn-sm btn-soft sc-both', text: 'See both sides', onclick: e => { e.stopPropagation(); Kit.sfx('tap'); go(li, 0, 0, 'fo'); } });
     // (the map is the table made small: on each Place, a dot for each Figure and the Might they have there, the
     // other player's at the top left in their colour and yours at the bottom right in yours; a player's Guide with
     // their Relics as brass diamonds, and on the other player's the cards in their hand as a card's back)
@@ -993,7 +1245,7 @@
         : S.N > 2 ? L.name + ', ' + L.role + '. ' + (L.items.length > 1 ? listOf(sOrd.filter(o => L.items.some(x => x.o === o)).map(o => (o === me ? 'you have ' : pname(o) + ' has ') + plural(L.items.filter(x => x.o === o).length, 'Figure'))) + ' here.' : 'Nobody has a Figure here.')
         : L.name + ', ' + L.role + '. ' + pname(opp) + ' has ' + plural(L.theirs, 'Figure') + ' here and you have ' + L.mine + '.';
     const tabs = levels.map((L, i) => {
-      const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : L.side != null ? ' side o' + L.side : ''), role: 'tab', 'aria-label': said(L), onclick: e => { e.stopPropagation(); if (i !== li) go(i, L.at0, i > li ? 1 : -1); } });
+      const t = el('button', { type: 'button', class: 'sc-lv' + (L.hand ? ' hand' : L.side != null ? ' side o' + L.side : ''), role: 'tab', 'aria-label': said(L), onclick: e => { e.stopPropagation(); if (i !== li || mode === 'cards') go(i, L.at0, i > li ? 1 : i < li ? -1 : 0); } });
       if (L.hand) { t.appendChild(el('span', { class: 'sc-fan', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])); t.appendChild(el('b', { text: String(L.items.length) })); }
       else if (L.side != null) { const g = el('span', { class: 'sc-gd', style: { '--f': (FAC[TXG[L.items[0].key].f] || FAC.N).c } }), im = artImg(L.items[0].key, true, true); if (im) g.appendChild(im); t.appendChild(g);
         if (L.relics) { const r = el('span', { class: 'sc-rel' }); for (let k = 0; k < L.relics; k++) r.appendChild(el('i')); t.appendChild(r); }
@@ -1005,37 +1257,52 @@
     // (more players: each other player's Guide, Gate and Outpost side by side on a line of the map, then yours down it)
     const map = el('div', { class: 'sc-map' + (S.N > 2 ? ' n' : ''), role: 'tablist', 'aria-label': 'The table from the other side to your hand' },
       S.N > 2 ? Array.from({ length: S.N - 1 }, (x, k) => el('div', { class: 'sc-grp' }, tabs.slice(3 * k, 3 * k + 3))).concat(tabs.slice(3 * (S.N - 1))) : tabs);
-    const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow) closeView(); } }, [
+    const v = el('div', { class: 'view flow scan', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The cards on the table', onclick: e => { if ((F && F.moved()) || held) return; if (e.target === v || e.target === flow || e.target === body) closeView(); } }, [
       el('button', { type: 'button', class: 'icon-btn view-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: closeView }),
-      el('div', { class: 'vf-head' }, [hb, hs]), body, strip, actRow, under]);
+      el('div', { class: 'vf-head' }, [hb, hs, both]), body, strip, road, under]);
     body.appendChild(map); body.appendChild(flow);
-    let F = null, held = false;   // (held: an up or down swipe has just ended, and the click that ends it is not a tap)
+    let F = null, held = false, armed = null;   // (held: a swipe has just ended, and the click that ends it is not a tap)
+    const clearLock = () => flow.querySelectorAll('.sc-lock').forEach(n => n.remove());
     function rest(i) {
-      const it = levels[li].items[i]; under.innerHTML = ''; actRow.innerHTML = ''; if (!it) return;
+      const it = levels[li].items[i]; under.innerHTML = ''; clearLock(); if (!it) return;
       const kind = it.u != null ? 'Figure' : it.g ? 'Guide' : it.r ? 'Relic' : '';
       hs.textContent = kind ? (it.o === me ? 'Your ' : Kit.poss(pname(it.o)) + ' ') + kind : levels[li].role; hs.className = kind ? 'own o' + it.o : '';
-      scanActs(it).forEach((a, k) => actRow.appendChild(a.note ? el('p', { class: 'sc-note', text: a.note })
-        : el('button', { type: 'button', class: 'btn btn-sm ' + (k === 0 && !a.soft ? 'btn-primary' : 'btn-soft'), onclick: e => { e.stopPropagation(); Kit.sfx('pop'); Kit.haptic('medium'); closeView(); a.run(); } },
-          [el('span', { text: a.label }), a.cost != null ? el('span', { class: 'sc-cost', role: 'img', 'aria-label': 'costs ' + a.cost + ' Spark' }, [el('b', { text: String(a.cost) })]) : null])));
+      // (the road under the card: where it can go, what it can do; a card that can't be played says why on the card)
+      const R = roadOf(it); paintRoad(road, R, it);
+      const lk = lockPlate(R), b = F && F.items[i]; if (lk && b) b.appendChild(lk);
       const nt = notesFor(it.key, it.u != null ? { u: it.u } : it.p != null ? { p: it.p } : {}); while (nt.firstChild) under.appendChild(nt.firstChild); under.scrollTop = 0;
       warm(levels[li].items.slice(Math.max(0, i - 3), i + 4).map(x => x.key));
     }
+    // a Domain's face-off, drawn again where it stands (a Clash chip armed, the table moved on)
+    function drawFo(dir) {
+      const L = levels[li], node = faceOffEl(L, front, { armed: armed, arm: u => { armed = u; drawFo(0); }, step: roadStep, cards: k => { if (k >= 0) go(li, k, 0, 'cards'); } });
+      if (F) { F.stop(); F = null; } const old = flow; flow = node; old.parentNode.replaceChild(flow, old); foGest(flow);
+      fitFaceOff(flow);
+      if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translate' + (Math.abs(dir) > 1 ? 'X(' + (dir > 0 ? 46 : -46) : 'Y(' + (dir > 0 ? 46 : -46)) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
+    }
     // another level: its name, its thumbnails, its cards; the strip comes in from the side it was swiped from
-    function go(i, j, dir) {
+    // (m: 'cards' reads a Domain's cards on the strip; a Domain's level otherwise opens as its face-off)
+    function go(i, j, dir, m) {
       li = Math.max(0, Math.min(levels.length - 1, i)); const L = levels[li], n = L.items.length;
+      mode = L.p != null ? (m === 'cards' ? 'cards' : 'fo') : ''; if (mode !== 'fo' || m !== 'keep') armed = null;
+      v.classList.toggle('fo-on', mode === 'fo'); v.classList.toggle('fo-cards', mode === 'cards');
       hb.textContent = L.name;
       tabs.forEach((t, k) => { t.classList.toggle('on', k === li); t.setAttribute('aria-selected', String(k === li)); });
+      if (mode === 'fo') { hs.textContent = L.role; hs.className = ''; strip.innerHTML = ''; road.innerHTML = ''; under.innerHTML = ''; drawFo(dir); if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); } return; }
       if (F) F.stop(); const old = flow; flow = el('div', { class: 'vf-flow' }); if (cuPx) flow.style.setProperty('--cu', cuPx); old.parentNode.replaceChild(flow, old); swipes(flow); strip.innerHTML = '';
       // (a card you can do something with now has a gold pip on its thumbnail: what can be played from the hand, which of your Figures can still act)
-      L.items.forEach((x, k) => { const c = info(x.key), can = scanActs(x).some(a => !a.note), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
+      L.items.forEach((x, k) => { const c = info(x.key), can = canDo(x), t = el('button', { type: 'button', class: 'vf-t' + (x.o != null ? ' o' + x.o : '') + (x.p != null && n > 1 ? ' mid' : '') + (can ? ' can' : ''), 'aria-label': c.n, style: { '--f': (FAC[c.f] || FAC.N).c }, onclick: e => { e.stopPropagation(); F.settle(k, 0); } }); const im = artImg(x.key, true) || mono(x.key); if (im) t.appendChild(im); strip.appendChild(t); });
       strip.hidden = n < 2;
-      F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest,
-        make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null, hush: x.u != null && !!(E.byU(S, x.u) || {}).hush })]); } });
+      size();
+      F = makeFlow({ flow: flow, strip: strip, n: n, at: j || 0, rest: rest, front: clearLock,
+        make: k => { const x = L.items[k]; return el('div', { class: 'vf-c' + (x.o != null ? ' own o' + x.o : ''), onclick: e => { e.stopPropagation(); if (F.moved()) return; if (k !== Math.round(F.pos)) F.settle(k, 0); } }, [cardEl(x.key, { now: true, tg: true, might: x.m != null ? x.m : null, cost: x.h != null && S ? E.costOf(S, me, x.key) : null, hush: x.u != null && !!(E.byU(S, x.u) || {}).hush })]); } });
       F.render(); rest(Math.round(F.pos));
       if (dir && flow.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) flow.animate([{ transform: 'translateY(' + (dir > 0 ? 46 : -46) + 'px)', opacity: .15 }, { transform: 'none', opacity: 1 }], { duration: 240, easing: 'cubic-bezier(.22,1,.36,1)' });
       if (dir) { Kit.sfx('slide', .6); Kit.haptic('light'); }
     }
     const step = d => { const t = li + d; if (t < 0 || t >= levels.length) return false; go(t, levels[t].at0, d); return true; };
+    // along the road from a Domain: the next Domain level that way (a swipe sideways, the arrow keys, the face-off's arrows)
+    function roadStep(d) { for (let t = li + d; t >= 0 && t < levels.length; t += d) if (levels[t].p != null) { front = null; go(t, levels[t].at0, 2 * d); return true; } return false; }
     // up and down: a swipe on the cards, the wheel, the arrow keys
     function swipes(flow) {
       let sw = null;
@@ -1047,23 +1314,36 @@
         if (Math.abs(dy) > 44) step(dy < 0 ? 1 : -1); };
       flow.addEventListener('pointerup', endV); flow.addEventListener('pointercancel', endV);
     }
+    // a face-off: a swipe sideways walks along the road, up and down changes level, as on the strip
+    function foGest(n) {
+      let sw = null;
+      n.addEventListener('pointerdown', e => { sw = { x: e.clientX, y: e.clientY, id: e.pointerId, d: 0 }; });
+      n.addEventListener('pointermove', e => { if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
+        if (!sw.d) { if (Math.hypot(dx, dy) < 12) return; sw.d = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : Math.abs(dy) > Math.abs(dx) * 1.2 ? 'v' : 0; if (!sw.d) return; try { n.setPointerCapture(e.pointerId); } catch (x) {} }
+        n.style.transform = sw.d === 'h' ? 'translateX(' + (dx * .5).toFixed(1) + 'px)' : 'translateY(' + (dy * .5).toFixed(1) + 'px)'; n.style.opacity = String(Math.max(.4, 1 - Math.abs(sw.d === 'h' ? dx : dy) / 360)); });
+      const end = e => { if (!sw) return; const s0 = sw; sw = null; if (!s0.d) return; const dx = e.clientX - s0.x, dy = e.clientY - s0.y; n.style.transform = ''; n.style.opacity = ''; held = true; setTimeout(() => { held = false; }, 160);
+        if (s0.d === 'h' && Math.abs(dx) > 50) roadStep(dx < 0 ? 1 : -1); else if (s0.d === 'v' && Math.abs(dy) > 50) step(dy < 0 ? 1 : -1); };
+      n.addEventListener('pointerup', end); n.addEventListener('pointercancel', end);
+      // (the click that ends a swipe is not a tap on the card under it)
+      n.addEventListener('click', e => { if (held) { e.stopPropagation(); e.preventDefault(); } }, true);
+    }
     let wt = 0; v.addEventListener('wheel', e => { if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || e.shiftKey || e.target.closest('.vf-notes')) return; e.preventDefault(); const now = performance.now(); if (now - wt < 420 || Math.abs(e.deltaY) < 12) return; wt = now; step(e.deltaY > 0 ? 1 : -1); }, { passive: false });
-    const key = e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); step(e.key === 'ArrowDown' ? 1 : -1); } else if (F) F.key(e); };
-    // (upright: the card is as big as leaves the map its place at the left and the buttons and notes theirs below; the
-    // notes take what is left and scroll. Sideways the notes have the right-hand side to themselves.)
+    const key = e => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); step(e.key === 'ArrowDown' ? 1 : -1); } else if (mode === 'fo' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); roadStep(e.key === 'ArrowRight' ? 1 : -1); } else if (F) F.key(e); };
+    // (upright: the card is as big as leaves the map its place at the left and the road and notes theirs below; the
+    // notes take what is left and scroll. Sideways on a phone the road and notes have the right-hand side to themselves.)
     function size() {
       const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560;
-      flow.style.removeProperty('--cu'); cuPx = ''; if (side) return;
-      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - 48 - 4 * 8, notes = Math.max(110, Math.round(H * .2));
+      flow.style.removeProperty('--cu'); cuPx = ''; if (side || mode === 'fo') return;
+      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - roadDims().h - 4 * 8, notes = Math.max(96, Math.round(H * .16));
       const mapW = map.offsetWidth + 14;
       cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
     }
-    const resize = () => { size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
+    const resize = () => { if (mode === 'fo') { fitFaceOff(flow); return; } size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
     const resize2 = () => { resize(); setTimeout(() => { if (v.isConnected) resize(); }, 350); };
     document.addEventListener('keydown', key); window.addEventListener('resize', resize2); window.addEventListener('orientationchange', resize2);
     v._off = () => { if (F) F.stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize2); window.removeEventListener('orientationchange', resize2); };
     document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
-    size(); go(li, ii, 0);
+    go(li, ii, 0);
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
   // A hold on a card on the table opens it in the scanner (a right click does the same with a mouse)
