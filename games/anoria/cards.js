@@ -722,7 +722,9 @@ Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
 // A Guide's deck is the base set and their set, one of each: 40 cards, balanced against every other Guide's deck by
 // the robots (scripts/anoria/sets.js, sets.txt). No card is in two sets. A card in no set is found only in packs
 // (coll.js POOL), so a card added to the game later joins those by itself. There are 75 Domains and 104 places for
-// them, so some Domains are in two Guides' sets.
+// them, so some Domains are in two Guides' sets. (2026-11-13: Dante went to Sor Juana's writers and scholars and Scott
+// Joplin to Shakespeare's poets, players and composers: her deck won 42.4% under the Normal robot, 46.2% after, and
+// his 52.1% and then 48.0%; the spread between Guides fell from 13.8 points to 9.2. sets.txt.)
 // ==SETS==
 const BASE = 'hypatia archimedes euclid socrates pericles boudica spartacus homer sappho coleman magellan pythagoras sacagawea andersen compass tablet eureka eclipse marathonmarch veto'.split(' ');
 const GSET = {
@@ -730,14 +732,14 @@ const GSET = {
   leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer voyagingcanoe fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
   tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius canasatego nanny'.split(' '),
   suntzu: 'leonidas yoshitsune genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
-  shakespeare: 'plato aristotle moliere dante chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
+  shakespeare: 'plato aristotle moliere joplin chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
   curie: 'hippocrates kepler nightingale tesla faraday darwin pasteur newton jenner montagu anning ada germain champollion telegraph locomotive balloon beagle halley humboldt'.split(' '),
   joan: 'wallace vercingetorix zumbi tecumseh toussaint napoleon washington franklin wollstonecraft william catherine declaration congress truce canossa breda westphalia leo alfred nostradamus'.split(' '),
   saladin: 'richard baibars mehmed haytham ibnsina alkhwarizmi harun fibonacci eleanor ibnkhaldun rumi idrisi dsteel astrolabe sextant magnacarta walls lisbonquake earthquake zenobia'.split(' '),
   wuzetian: 'mencius cailun seishonagon libai zhangheng sejong trung confucius murasaki basho shenkuo zhangqian fuhao chingshih paper paiza starchart typhoon brahmagupta qinshihuang'.split(' '),
   akbar: 'lakshmibai darius ashoka suleiman cyrus shahjahan nebuchadnezzar jaisingh sargon enheduanna ashurbanipal victoria khayyam ferdowsi cyruscylinder kudurru wheel exhibition rubaiyat kublai'.split(' '),
   mansamusa: 'sundiata ibnbattuta shaka lalibela hannibal nzinga askia yaa afonso amanirenas menelik equiano manuscripts abacus caravan adwa goldrush hansa columbian imhotep'.split(' '),
-  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe joplin pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
+  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe dante pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
 };
 const DSET = {
   base: 'library silk colosseum acropolis wall stonehenge machu nineveh'.split(' '),

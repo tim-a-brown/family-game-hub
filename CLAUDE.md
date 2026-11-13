@@ -342,8 +342,11 @@ Underlying principles for everything:
   - **A Guide's deck is the base set and that Guide's set, one of each card** (`guideDeck`), with that Guide's own
     stack, the 15 of its 16 Domains that suit it best (`guideStack`; the computer plays these too). Tim's rule for
     choosing the sets: "the base 20 plus each Guide's 20 must make a balanced 40-card deck, true to the Guide's world and
-    faction". `node scripts/anoria/sets.js` plays every Guide's deck against every other (`sets.txt`): 5.5 points apart
-    with each deck's own robot, against 9.6 for the five ready decks of before. A changed set is measured again.
+    faction". `node scripts/anoria/sets.js` plays every Guide's deck against every other (`sets.txt`): 4.8 points apart
+    with each deck's own robot, against 9.6 for the five ready decks of before. A changed set is measured again
+    (`SWAP='a:b'` tries two cards changing places first). Sor Juana's deck won only 42.4% under the plain Normal robot,
+    so Dante went to her writers and scholars and Scott Joplin to Shakespeare's composers (2026-11-13): 46.2% and
+    48.0% after, the Normal spread 13.8 points down to 9.2.
   - **The sphere** (`SIGNS` 12): a finished game lights 1 sign, a win 2 and your first win of the day 3 (`LIGHT`),
     however the game is played ("a game earns the same however it's played", Tim). A full turn gives a pack of `PACK`
     (5), and on the turns in `GUIDE_TURNS` a Guide you don't have joins you with their set.
@@ -358,9 +361,10 @@ Underlying principles for everything:
     first win, against Normal, against Hard, with a deck you built).
   - Pace at 3 games a day (pacing.txt; Tim: "same pace is fine"): Guides join on turns 1, 2, 4, 6, 9, 12, 15, 18, 21,
     24 and 27 of the sphere, and with the callings (about 5 of the 11 come that way) all twelve are with you in about
-    29 days, as the design had it; every card comes with them, since only 6 cards are found only in packs today. With a
-    printing of about 60 pack-only cards, every one of them takes about 47 days at packs of 5; packs of 3 would make it
-    about 69, the design's 68. Every finish of every card: about 500 days.
+    29 days, as the design had it. Since the 68 cards of 2026-11-13, 74 cards are found only in packs, and every card
+    takes about 52 days (middle 52, slowest tenth 56); every finish of every card about 640 days. **Packs stay at 5**
+    (Tim, 2026-11-13: "packs of 5 is still fine"; packs of 3 would make every card take about 76 days, against the design's
+    68, and pacing.txt keeps that run for comparison).
   - **v 6 is a clean start** (Tim: "you can wipe any existing collections and start over too. i'm the only one that's
     played so far"): an older `anoria_coll` or `anoria_decks` becomes the first run, and a game in progress finishes and
     earns nothing (`G.cv`). Nothing of the old economy is left: no copies, no ready decks to unlock, no wins counted
