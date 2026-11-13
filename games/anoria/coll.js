@@ -105,8 +105,17 @@ const RARE3 = {
 };
 // The twelve Domain cards (cards.js P4), tiered among themselves ("node scripts/anoria/domains.js cards")
 const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius congress' };
+// ==P5==
+// The newest cards of the prime set (cards.js P5), tiered among themselves ('node scripts/anoria/rarity.js 6000 5')
+const RARE5 = {
+  4: 'cook peter tranhungdao babur tagore zubaidah rockets',
+  3: 'solon abbas ieyasu piye zapata augustine rembrandt liliuokalani sinan hasekura tupaia chronometer transit banzhao',
+  2: 'biruni alrazi ulughbeg tycho ezana kamehameha wells aethelflaed tupacamaru garibaldi hafez zeami vivaldi bachdang thousand gitanjali panama revere fadlan larrey',
+  1: 'bassi banneker mendeleev ramanujan moshoeshoe cuauhtemoc qiujin garcilaso asmau nefertiti sixsky leoafricanus seondeok greekfire stickchart raingauge codex ether periodic paddle malta fourseasons nightwatch krakatoa hunayn cherschel synesius'
+};
+// ==/P5==
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};
-[RARE, RARE3, RARE4].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
+[RARE, RARE3, RARE4, RARE5].forEach(L => Object.keys(L).forEach(t => L[t].split(' ').forEach(k => { if (k) TIER[k] = +t; })));
 const rarity = k => TIER[k] || (!CARDS[k] ? 1 : CARDS[k].c >= 5 ? 3 : CARDS[k].c >= 4 ? 2 : 1);
 
 // where it's kept, the dice and the clock: the page's own unless a test hands in others (use())

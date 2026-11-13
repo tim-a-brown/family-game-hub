@@ -288,8 +288,10 @@ const lies = (S, i, fx) => !!S.dip && S.dip.some(d => d.p === i && fxOf(d.c) ===
 const truceOn = (S, f) => !!S.dip && S.dip.some(d => d.p === f.p && fxOf(d.c) === 'westphalia' && (ally(S, d.o, f.o) || !(wardAt(S, f) || pw(S, f.p) === 'sanctuary')));
 // The Edict of Milan: until the round ends, nobody can start a clash with its player's Figures at the Domain it lies on
 const edictOn = (S, g) => !!S.dip && S.dip.some(d => d.p === g.p && d.o === g.o && fxOf(d.c) === 'milan');
-// (a Figure an enemy can start a clash with, when it stands where they can: not untouchable, not under an Edict)
-const clashable = (S, g) => !kOf(S, g).untouchable && !edictOn(S, g);
+// (a Figure an enemy can start a clash with, when it stands where they can: not untouchable, not under an Edict, and not
+// sheltered: a Figure with shelter (Larrey, 2026-11-13) can't be clashed while a Figure of its own player with more Might
+// stands at the same Domain)
+const clashable = (S, g) => !kOf(S, g).untouchable && !edictOn(S, g) && !(kOf(S, g).shelter && S.figs.some(h => h.o === g.o && h !== g && h.p === g.p && might(S, h, 0) > might(S, g, 0)));
 const peace = (S, i, o) => { if (!S.dm) return false; const w = pw(S, i); return w === 'treeofpeace' || (w === 'peace' && (S.cfg.peaceSym || holder(S, i) !== o)); };
 // how many Figures a player can have at a position
 const capAt = (S, i) => S.dm && pw(S, i) === 'narrow' ? Math.min(2, S.cfg.cap) : S.cfg.cap;

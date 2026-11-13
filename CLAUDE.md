@@ -288,6 +288,14 @@ Underlying principles for everything:
 
 ## Anoria (the card game)
 
+- **Every card is part of the prime set until launch** (Tim, 2026-11-13: "right now, we're still on the 1st printing
+  beyond starter and guide decks as far as i'm concerned. i'm still testing the game and tweaking rules so anoria is
+  still in beta and any cards we add for balance/interest/fun/unexpectedness going forward until we agree we're at
+  launch are all part of the initial printing (the prime set)", and "one printing is fine"). Until Tim agrees the game
+  is at launch, every card, old or new, is part of the prime set. The `pr` numbers (3, 4, 5) and the names P3, P4, P5,
+  PRINT3, RARE3 and the like in code only keep track of when cards were added; no word a player reads says printing or
+  series in that sense (an edition is a card's finish, which is a different thing and stays). A set made after launch
+  gets a name of its own.
 - A tile of its own under Specialty cards (Tim, 2026-11-11; it used to be hidden behind Lorcana's icon). Its sheet on
   the home screen has Play, then Library, Packs, Decks and How to play (`launch` in games.js: `anoria.html?library=1`
   and so on, read at the end of ui.js; each opens over the setup or a game in progress and leaves it as it is). The
@@ -920,6 +928,13 @@ Underlying principles for everything:
   and `pacing.js`. Counts everywhere come from the card list. Blackbeard (2026-11-11) is the first card outside the
   five ready decks: he is found only in packs. `scripts/anoria/endings.js` plays the ready decks on any set of games: tune on some sets
   and check on sets nobody has looked at (the first choice made for 25 Renown overshot when it met new games).
+  A batch of new cards goes in the way the cards of 2026-11-13 did (below): a block of its own in cards.js and text.js
+  with its `pr` number, a JSON of sources beside set-150.json that check-set.js reads (its `GROUPS`), every key in
+  `NOPIC` until the art pass (a monogram shows), `node scripts/anoria/rarity.js 6000 <pr>` pasted into coll.js as its own
+  RARE list, and `pacing.js`. A card in no set is found only in packs by itself (coll.js `POOL`). **A Figure can cost
+  1 Spark** (the seven of 2026-11-13, all 1/1: `scripts/anoria/spark1.js` measures one beside its faction's 2-Spark
+  Figures, and whether cheap bodies change games; spark1-2026-11-13.txt). A Figure's home region is any of `REG` in
+  ui.js; Oceania (`OCE`) has Figures since 2026-11-13, so the Library and the home key list it.
 - A rule or number change is tested first: `scripts/anoria/variant.js` (the ready decks under a change), `skill.js`
   (the robots), `dice.js`, `copies.js`; see `scripts/anoria/README.md`.
 - **The third printing** (Tim, 2026-11-11: "increase the number of possible historical cards to collect outside of the
@@ -935,6 +950,21 @@ Underlying principles for everything:
   was dropped and why, and the five cards that were held for engine work until 2026-11-12 (`needsEngineBuilt`: below).
   `node scripts/anoria/check-set.js` checks the whole printing
   (words against skills, every Legacy Line, the briefs, the game's files against the JSON). A Guide is never also a card.
+- **The cards of 2026-11-13** (`pr: 5`, P5 in cards.js and text.js, sources in `scripts/anoria/set-p5.json`; part of the
+  prime set like every card, found only in packs): 68 cards, 50 Figures, 6 Relics and 12 Deeds, chosen where the set was
+  thinnest (the Middle East, the first Figures from Oceania, the Americas between 1453 and 1650, the 1900s), with ten
+  named Legacy Lines of their own (The Endeavour, The West-Eastern Divan, The Bronze Horseman and the rest) and lines
+  to five older cards through `FROM_MORE` (Goethe, Catherine, Bach, Kepler, Jai Singh II), so no older card's words,
+  cost or Might changed. Seven of them are **the first Figures that cost 1 Spark**, people whose importance wasn't
+  force: Hunayn ibn Ishaq, Caroline Herschel, Synesius of Cyrene, Paul Revere, Dominique-Jean Larrey, Ban Zhao and Ibn
+  Fadlan (spark1-2026-11-13.txt). Larrey's power is the one new skill, `shelter`: enemies can't clash with him while a
+  stronger Figure of his player's stands at his Domain (engine.js `clashable`). Every Relic and Deed borrows an effect
+  the engine has (`fx`); the Great Siege of Malta's Quick text names itself where the Defense of Syracuse's names
+  Syracuse (check-set.js allows that for a Quick Deed). Every card's facts were checked by a search on 2026-11-13
+  (`check` says what each search confirmed and what changed: Fort Saint Elmo fell, so Malta's forts did not all hold;
+  Inca Garcilaso's line to Pachacuti no longer rests on his mother's contested descent). Every story fits four lines
+  (the scratchpad's `hist2/factfit.js`). Measured with `run.js cards 6000` on two seeds and `newcards.js <file> 5`: -0.3
+  and -0.4 points from their factions, none outside them; tiers from `rarity.js 6000 5` (`RARE5`, rarity-p5.txt).
 - **Seven cards of 2026-11-12** (`scripts/anoria/deeds-2026-11-12.txt` has the numbers): the Roman Triumph, Medici
   Patronage, the Hanseatic League and the Jubilee of 1300 double Renown at this round's count (one Domain, a kind of
   Domain by `dk`, or all you hold; a Domain is doubled once however many say so: `S.dbl`, and they lie in `S.dip` until
