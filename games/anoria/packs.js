@@ -286,7 +286,7 @@
       cards.forEach((x, i) => {
         const b = el('div', { class: 'vf-c pk-fc' + (flat ? '' : ' tum'), 'data-i': String(i), style: { '--f': col(x.c) } }, [
           el('span', { class: 'pk-glow' }),
-          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' + (x.dom ? ' dm-back' : '') }, [el('div', { class: 'ac-in' })])]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 })]), el('i', { class: 'pk-edge' })])]);
+          el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' + (x.dom ? ' dm-back' : '') }, [el('div', { class: 'ac-in' })]), el('i', { class: 'pk-dim' })]), el('span', { class: 'pk-side f' }, [A.cardEl(x.c, { now: true, tg: true, ed: x.ed || 0 }), el('i', { class: 'pk-dim' })]), el('i', { class: 'pk-edge' })])]);
         const th = el('button', { type: 'button', class: 'vf-t pk-t', 'aria-label': 'Card ' + (i + 1) + ' of ' + n + ', face down', onclick: () => { if (!dealt || !F) return; Kit.sfx('tap'); F.settle(i, 0); } });
         const c = { el: b, th: th, x: x, up: false, at: 0, landed: flat, sh: null };
         // a tap on a card at the side brings it to the front; a tap on the front card, once it is turned, reads it
@@ -485,7 +485,7 @@
         F.settle(n - 1, 0, 260);   // (a riffle: each card tumbles over as it reaches the front)
       }
       if (n) {
-        F = A.makeFlow({ flow: flow, strip: n > 1 ? strip : null, n: n, at: 0, keep: true, wheel: field, make: j => cells[j].el, front: front, pose: flat ? null : tumble });
+        F = A.makeFlow({ flow: flow, strip: n > 1 ? strip : null, n: n, at: 0, keep: true, dimVar: '.pk-dim, .pk-ed', wheel: field, make: j => cells[j].el, front: front, pose: flat ? null : tumble });
         if (!flat) F.pos = -1;   // (nothing is in front yet: the first card tumbles in like the rest)
         listen(document, 'keydown', e => { if (!main.isConnected || !dealt || document.querySelector('.view.show, .pk-moment, .k-scrim.show')) return; F.key(e); });
       }
