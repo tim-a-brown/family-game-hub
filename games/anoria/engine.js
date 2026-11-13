@@ -155,12 +155,16 @@ const OLD_TARGET = 30;
 // target; a team of two: 45; a team of three: 65. Each keeps a game near the 7 to 8 rounds two players take today.
 // The page passes it as cfg.target (teams: the size of the teams, which are all one size).
 const targetFor = (teams) => 20 * (teams && teams.length ? teams[0].length : 1) + 5;
+// outEnds (Tim, 2026-11-13: "end the game when seals run out"): with any number of players, the count that leaves a
+// company with no Seals ends the game, and the company still in with the most Renown wins (two players: as always).
+// 25 Renown and 3 Seals at every count (Tim: "i kinda like this as it is"; scratchpad runs of 4 Seals and of 30 and 35
+// Renown are in players-2026-11-13.txt). tmight 'add' (Tim, the same day): teammates' Might at a Domain adds up.
 // dm: the game is played with Domains (2026-11-11). It is what play() goes by when a test hands it no stacks (each
 // deck then brings its ready stack, or fifteen Domains at random: stacksFor); '{"dm":0}' plays the old fixed map.
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
 // ret: a Figure whose other copy is in your discard pile costs this much less (the return; 1 until 2026-11-12, when Tim
 // removed it: 0 now). A game saved under the return finishes with it (S.cfg).
-const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, lineCap: 0, dm: 1 };
+const STD = { spark: 'round', scoring: 'round', order: 'trail', catchup: 1, rush: 1, target: 25, rounds: 14, sparkCap: 7, draw2: 1, bounty: 1, handMax: 8, dice: 'high', suDraw: 4, unique: 0, inspEach: 1, ret: 0, threads: 2, lineCap: 0, dm: 1, outEnds: 1, tmight: 'add' };
 const DEF = { rounds: 6, cap: 3, seals: 3, spark: 'round', scoring: 'round', order: 'alt', hand: 5, die: [0, 1, 2], disc: 1, home: 1, lineRen: 1, voyHome: 1, insBonus: 0, sealRen: 1, extraEdge: [] };
 function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 function shuffle(a, R) { for (let i = a.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0, t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
