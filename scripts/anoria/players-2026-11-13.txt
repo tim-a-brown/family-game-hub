@@ -1,0 +1,619 @@
+Anoria for three to six players, and in teams (2026-11-13)
+==========================================================
+
+Tim, 2026-11-11: "i originally wanted anoria to be playable for up to 6 players -- either everyone for themselves or in
+teams of up to two or three people. Would it be possible to adapt the map such that each new player is a spoke off of
+the crossroads?" And 2026-11-13: "start on 3 to 6 players and teams".
+
+This is the rules engine side (games/anoria/engine.js and the scripts here). The table on the page is being built
+separately; the page still plays two players, exactly as before.
+
+How these were measured: node scripts/anoria/players.js <shape> [games] [seed] ['<json>']. The five ready decks are
+dealt round the table in a fresh order every game (six players: one deck twice), each with the robot style
+endings.js gives it (Explorers and Pathfinders raid, Legion brawls, Legacy keeps, Court holds), with Domains, on the
+game's rules (STD). Seats are counted from the player who took the first turn of the game (seat 1) round the table to
+the left; in a team game, each team, from the first player's team. 600 games a line unless it says otherwise: a seat's
+share moves by about 2 points between two sets of 600 games, so a spread of 4 or 5 is noise.
+
+
+1. What the engine does now (the rules, as a player would read them)
+--------------------------------------------------------------------
+The map. Each player's Gate and Outpost are a spoke off the Crossroads; with three or more players, each Outpost is
+also joined to the Outposts on either side. Set-up is as for two: everyone draws four Domains, lays one at their Gate
+and one at their Outpost, offers one for the Crossroads and puts the last under their stack. Everyone rolls a die; on a
+tie for the highest roll, only the players in the tie roll again. The highest roll's offer goes to the Crossroads, the
+other offers go to their players' discard piles, and the player on the left of the highest roll takes the first turn.
+
+Turns. Each round the side with the most Renown goes first and play goes round the table to the left (level: it goes
+round by rounds from whoever took the first turn of the game). Greenwich's holder still takes the last turn. In a
+team game the leading team's players take that first turn by rounds.
+
+Seals and being put out. Holding a player's Gate when a round ends breaks one of their Seals, as now. A player with no
+Seals left is out of the game: their Figures leave the map for their discard pile, they take no more turns and can't
+win. The Domains they brought stay where they lie, with their banners; their Gate and Outpost are Domains like any
+other (anyone can hold them and they score, and holding them breaks nothing, since there is no Seal left). With two
+players this is exactly today's Seal ending. The game ends when one side is left (it wins), or at the count where a
+side reaches the target (of the sides still in, the most Renown wins).
+
+Teams. Teammates sit on alternating spokes (2 against 2: seats 1 and 3 against 2 and 4; 3 against 3: 1, 3, 5 against
+2, 4, 6; three teams of two: 1 and 4, 2 and 5, 3 and 6). Teammates can't clash with each other, nothing that hits an
+enemy hits a teammate, and holding a teammate's Gate breaks none of their Seals. Each player keeps their own Renown,
+and a team's Renown is its players' together: the team reaches the target together and wins together. A team is out
+when all its players are out. Legacy Lines stay each player's own.
+Holding a Domain in a team game: teammates' Might doesn't add up. A team's Might at a Domain is its strongest
+player's there, so a teammate standing with you never takes a Domain from you, and a team holds it as a player would.
+For a power that pays "its holder", the teammate with the most Might there is the holder. Every tie rule (your own
+Gate, the Crossroads banner, Constantinople, Cleopatra) works side for side.
+
+Targets. 25 Renown for a player on their own at any count (as today); a team: 20 for each player on it and 5 more,
+so 45 for a team of two and 65 for a team of three (engine.js targetFor).
+
+Cards whose meaning had to be decided for more players:
+  - Columbian Exchange: you choose another player still in the game; your Gate and Outpost change places with theirs.
+  - Congress of Vienna: 4 and 5 are the Outpost and Gate of the player on your left. (It could not be played with more
+    than two players before.)
+  - "Than the other player" counts (Pericles' kind, Gibraltar): every enemy Figure there together.
+  - Persepolis takes 1 Spark from each opponent who has Figures there. Lisbon still needs exactly one player there.
+  - The Tribune's Veto: a Deed aimed at a Figure can be stopped only by the player whose Figure it is; one that
+    doubles Renown by any opponent (the first round the table from the Deed's player's left who has the Veto and
+    the Spark kept). A teammate's Veto never plays.
+  - Lisbon Earthquake hits every Figure there, teammates' too; Eclipse, Ambush, Canossa and the Figures that stop or
+    push "enemy Figures" never reach a teammate's. The Rift can swap with a teammate's Figure.
+  - Joan of Arc, Independence Hall, catching up (+1 Spark when behind) and the Bounty compare sides' Renown, and only
+    players still in the game. Empress Wu needs more Domains than anyone else.
+  - Machu Picchu on the side of a player who is out lets anyone in. The empty Gate of a player who is out is nobody's.
+  - The Boundary Stone stops opponents' cards, not a teammate's.
+
+The robots. With two players they judge exactly as before. With more (evalM in engine.js) they weigh each opponent by
+how close their side is to the lead (an opponent 8 Renown behind the leading opponent counts a quarter as much), so
+they go after the leader; a teammate counts as themselves; a Gate whose player is down to the last Seal counts three
+times as much to defend and twice as much to take. Measured against robots that weigh every opponent alike
+(mw gap 1000000): the leader after round 4 goes on to win less often (4 players 34.7% against 39.0%; 5 players 25.3%
+against 30.3%; 3 players level), and nothing else moves beyond noise.
+
+
+2. The balance table (the rules above, target 25 on your own, 45 / 65 for teams; 600 games each)
+-----------------------------------------------------------------------------------------------
+                 seats from the first player (fair)        rounds (most)   ends: Renown / Seals   put out a game,
+                                                                                                  sitting out
+  2 players      49.6 (seat 1 of 2000, endings.js)         7.68 (6-9)      70% / 30%              -
+  3 players      32.5 35.5 31.8 (33.3)                     7.51 (6-9)      76% / 24%              0.95, 0.8 rounds
+  4 players      22.3 27.5 24.8 25.3 (25)                  7.55 (7-8)      92% / 8%               1.40, 1.3 rounds
+  5 players      19.7 20.5 17.0 22.2 20.7 (20)             7.43 (7-8)      97% / 3%               1.90, 1.5 rounds
+  6 players      18.8 15.3 14.2 16.5 15.8 19.2 (16.7)      7.40 (7-8)      99% / 1%               2.40, 1.5 rounds
+  2 v 2 (45)     teams 54.2 45.8 (50)                      7.78 (7-9)      89% / 11%              1.07, 1.7 rounds
+  2 v 2 v 2 (45) teams 34.8 32.0 33.2 (33.3)               7.56 (7-8)      97% / 3%               2.26, 1.6 rounds
+  3 v 3 (65)     teams 53.0 47.0 (50)                      7.74 (7-8)      96% / 4%               1.82, 1.8 rounds
+  No game reached the round limit at any count. Two players today: 7.68 rounds (endings.js).
+
+Seats: no seat at any count is outside what two sets of 600 games differ by (the biggest gap from fair is 2.7 points,
+at 3 players' seat 2 and 6 players' seat 3, and they move from set to set: an earlier set of 400 three-player
+games had seat 3 ahead and seat 1 behind). No seat needs compensating. Turns from the most Renown to the least (order 'rank') were no
+fairer (spreads 1.3, 3.7, 2.2, 5.0 against 3.7, 5.2, 5.2, 5.0) and break the round-the-table order a table is used
+to, so they are not recommended. The first team of 2 v 2 wins 52 to 54% at targets of 40 to 50 (51% at 35, 50% at 25):
+probably a small real edge for the team that moves first, like seat 1's in two players.
+
+The target. With 25, games with everyone for themselves last 7.4 to 7.5 rounds at every count, as two players do now
+(each player holds about as much of the bigger map as two players do of theirs). A team's target was measured at
+25, 35, 40, 45, 50 (teams of two) and 25, 45, 55, 65, 75 (teams of three):
+                          25      35      40      45      50      55      65      75
+  2 v 2       rounds     5.24    6.57    7.17    7.78    8.31
+  2 v 2 v 2   rounds     5.09    6.38    7.00    7.56    8.11
+  3 v 3       rounds     4.08            6.01 (45)       6.88    7.74    8.54
+So 45 and 65 (20 a player and 5 more) give teams the same length of game. One sentence covers every game: "The
+target is 20 Renown for each player on a side, and 5 more" (25 on your own).
+
+The same with every seat played by Normal, the robot people play against (400 games, another set):
+                 seats (fair)                              rounds   ends Renown / Seals   put out a game, sitting out
+  3 players      32.5 35.5 32.0 (33.3)                     7.90     87% / 13%            0.66, 0.7 rounds
+  4 players      22.5 24.0 27.3 26.3 (25)                  7.76     97% / 3%             0.94, 0.9 rounds
+  5 players      21.5 22.0 15.0 20.0 21.5 (20)             7.71     98% / 2%             1.42, 1.0 rounds
+  6 players      16.0 12.0 17.5 18.8 17.0 18.8 (16.7)      7.63     100% / 0%            1.65, 1.1 rounds
+  2 v 2 (45)     teams 48.5 51.5                           7.79     94% / 6%             0.76, 1.2 rounds
+  2 v 2 v 2 (45) teams 35.8 30.3 34.0                      7.75     100% / 0%            1.52, 1.1 rounds
+  3 v 3 (65)     teams 48.0 52.0                           7.83     99% / 1%             1.23, 1.2 rounds
+(The low seats at 5 and 6, 15.0 and 12.0, are single seats in 400 games, and a different seat is low in each set.
+With Normal the first team of 2 v 2 is behind, not ahead: the 54.2 above is noise or the deck styles.)
+
+Each turn with more players is a longer wait: a round of 6 is three times the turns of a round of 2, for the same
+number of rounds.
+
+
+3. What changes with more players, and what to decide
+------------------------------------------------------
+3a. Being put out leaves people watching. With the rules as accepted, a player is put out in 70% of 3-player games
+and almost every game of 5 or 6, the first in round 5 or 6, and a player put out sits out 0.8 rounds (3 players) to
+1.5 rounds (5 and 6 players) of a 7.5-round game: at six players that is about 13 turns of other people's. Measured:
+                       put out a game, sitting out              Seals end it    rounds
+  4 players  3 Seals   1.40, 1.3 rounds                         8%              7.55
+             4 Seals   0.88, 0.9 rounds                         3%              7.67
+             ends at the first out (outEnds)   nobody sits out  84%             6.08 (4 to 8)
+  6 players  3 Seals   2.40, 1.5 rounds                         1%              7.40
+             4 Seals   1.54, 1.0 rounds                         1%              7.47
+             outEnds                           nobody sits out  97%             5.25 (4 to 7)
+  4 players  4 Seals and 3 Renown for breaking a last Seal
+                       0.85, 0.7 rounds                         2%              7.45
+  6 players  the same  1.45, 0.8 rounds                         0%              7.25
+  4 players  outEnds, every seat Normal   nobody sits out           69%             6.98 (winner 23.2 Renown)
+  6 players  outEnds, every seat Normal   nobody sits out           87%             6.34 (winner 21.1 Renown)
+  Teams with 4 Seals: 2 v 2 0.61 put out a game (against 1.07), 2 v 2 v 2 1.36 (2.26), 3 v 3 1.07 (1.82); teams
+  48.7 / 51.3, 32.7 / 33.7 / 33.7, 46.7 / 53.3; rounds 7.75, 7.60, 7.69.
+"outEnds": the count that puts a company out ends the game, and the company still in with the most Renown wins (with
+two players that is today's rule word for word). Games are shorter and the winner has less Renown (19.6 at 4
+players, 16.9 at 6), and the leader after round 4 wins more often (44% and 50%, against 35% and 25%): the game becomes
+a race to be ahead when somebody falls. It also brings the raiding decks back (3b).
+
+3b. The raiding decks are weak with more players. Breaking Seals wins a two-player game, but with more players it
+only puts one opponent out and the rest play on, so the decks that win by raiding fall behind (wins of the games each
+deck played; fair is 1 in the number of players):
+                    fair   Legacy  Court  Legion  Explorers  Pathfinders
+  2 players (2000)  50     50.9    53.2   50.9    44.4       50.7      (endings.js)
+  3 players         33.3   48.2    44.3   33.6    24.8       15.6
+  4 players         25     42.9    32.4   29.6    13.7        6.8
+  5 players         20     36.7    29.8   16.3    10.3        6.8
+  6 players         16.7   33.6    25.0   12.6     7.8        4.0
+  4 players outEnds 25     32.9    28.5   19.5    26.8       17.5
+  6 players outEnds 16.7   22.5    18.2    9.2    20.7       12.1
+  4 players, Renown for breaking a last Seal (outRen 3)
+                    25     35.4    33.0   26.7    18.9       11.3
+  6 players outRen 3 16.7  26.4    23.3   11.3    14.0        8.1
+  4 players 4 Seals and outRen 3
+                    25     33.8    33.8   24.1    17.6       15.3
+  6 players the same 16.7  27.1    19.6   10.8    16.6        9.4
+  4 players sealRen 2 (2 Renown a Seal, not 1)
+                    25     38.1    35.4   26.1    14.9       10.9
+It is the decks, not only the robots' style: with every seat on the same robot (Normal, Hard or the holder) the order
+holds at 4 players (Normal: Legacy 41.0, Court 31.6, Explorers 22.2, Legion 15.6, Pathfinders 14.9). The ready decks
+were balanced for two players; a game of more players may need its own pass over the decks, or a rule that pays for
+breaking Seals. Of the rules tried, ending the game at the first out does most for the raiding decks.
+
+3c. Teams and Might. Teammates' Might adding up ('add') against not adding up ('own', the rule): at 2 v 2 (45) teams
+51.0 / 49.0 against 54.2 / 45.8, 7.72 rounds against 7.78, 1.10 players put out a game against 1.07;
+at 3 v 3 (65) 50.0 / 50.0 against 53.0 / 47.0. Neither is out of line. 'own' is one sentence ("your Might and your
+teammate's don't add up; whoever of you has more there holds it for your team") and keeps two teammates from stacking
+six Figures on one Domain; 'add' reads as "a team holds a Domain with its Might together". Tim's call.
+
+
+4. Decisions for Tim
+--------------------
+  1. Being put out (3a): (a) as accepted: out of the game, the others play on; (b) four Seals with three or more
+     players; (c) the game ends at the count that puts a company out, and the company still in with the most Renown
+     wins. Recommendation: (c) for 5 and 6 players at least, where (a) has someone sitting out in most games (with
+     Normal robots 1.4 to 1.7 players a game, for about a round each: 5 or 6 other people's turns); it is also the rule
+     that keeps the raiding decks in the game (3b), and with two players it is today's rule. If Tim keeps (a), (b)
+     cuts the waiting by about a third.
+  2. What an eliminated player's Domains do (built as recommended): they stay where they lie with their banners, and
+     their Gate and Outpost are Domains anyone can hold, that score and break nothing. Removing a spoke would reshape
+     the map mid-game and strand Figures standing there.
+  3. The target: 25 on your own at every count, 45 for a team of two, 65 for a team of three (20 a player and 5 more).
+     Recommendation: as measured; games last as long as two-player games do now.
+  4. Teams' Might at a Domain (3c): recommendation 'own' (doesn't add up), the rule built.
+  5. Turn order: the leader first and round the table to the left (built). No seat needs a Spark or any other help.
+  6. The raiding decks with more players (3b): a deck pass for games of more players, Renown for putting a company out
+     (outRen 3 took Pathfinders from 6.8 to 11.3 at 4 players), or decision 1 (c).
+  7. The card words in section 5 (they read right at every count and say exactly what two players play today).
+
+
+5. Card and Domain words that would mislead with more players
+--------------------------------------------------------------
+The engine already plays each of these the way the new words say (and the new words say exactly what a two-player
+game does today, so they could go in now). "Opponent" is a player who isn't you or your teammate; the game's word for
+their Figures stays "enemy Figures". Nothing here is changed in text.js yet: these are proposals.
+
+Skills, on every card that has them
+  Raider (Boudica, Hannibal, Blackbeard, Ching Shih, Scipio, Bolívar, Amanirenas, Zenobia, Richard, Nanny, Grace
+  O'Malley, Thutmose III)
+    now:  Raider: +2 Might when attacking on the other player's side.
+    new:  Raider: +2 Might when attacking on an opponent's side.
+  Pericles, Shaka, Abraham Lincoln, Fu Hao, Napoleon (and the retired Akbar card)
+    now:  +2 Might while you have more Figures here than the other player.
+    new:  +2 Might while your Figures here outnumber enemy Figures.
+          (the engine counts every enemy Figure there together; a teammate's Figures count for neither side)
+  Yaa Asantewaa, Voltaire, Mark Twain (and the retired Anansi)
+    now:  When you play this Figure, you gain 1 Spark, or 2 if the other player holds this Place.
+    new:  When you play this Figure, you gain 1 Spark, or 2 if an opponent holds this Place.
+
+Deeds and Relics
+  Phalanx      now:  ... On the other player's turn, Phalanx plays itself when the +2 would save your Figure ...
+               new:  ... On an opponent's turn, Phalanx plays itself when the +2 would save your Figure ...
+  Testudo      now:  ... loses a clash it started on the other player's side ...
+               new:  ... loses a clash it started on an opponent's side ...
+  Tribune's Veto  now:  When the other player plays a Deed that ...
+                  new:  When an opponent plays a Deed that ... (a Deed aimed at a Figure can be stopped only by
+                        the player whose Figure it is; one that doubles Renown by any opponent, the first round the
+                        table from its player's left who has the Veto and the Spark kept)
+  Pope Leo I   now:  Ward: the other player's Deeds have no effect on your Figures here, ...
+               new:  Ward: opponents' Deeds have no effect on your Figures here, ...
+  Lisbon Earthquake  now:  Every Figure there, yours and the other player's, misses its next turn.
+                     new:  Every Figure there, on every side, misses its next turn.
+  Edict of Milan     now:  Until this round ends, the other player can't start a clash with your Figures there.
+                     new:  Until this round ends, no opponent can start a clash with your Figures there.
+  William the Conqueror  now:  When you play this Figure at the other player's Gate or Outpost, you may discard the
+                               Domain there. The other player lays the top Domain of their stack in its place.
+                         new:  When you play this Figure at an opponent's Gate or Outpost, you may discard the Domain
+                               there. That player lays the top Domain of their stack in its place.
+  Earthquake of Rhodes   now:  Choose a Gate or an Outpost, yours or the other player's. ...
+                         new:  Choose any player's Gate or Outpost, yours included. ...
+  Boundary Stone   now:  The other player's cards can't replace or move the Domains at your Gate and your Outpost, ...
+                   new:  Opponents' cards can't replace or move the Domains at your Gate and your Outpost, ...
+  Congress of Vienna  now:  ... 4 their Outpost and 5 their Gate ...
+                      new:  ... 4 the Outpost of the player on your left and 5 their Gate ...
+  The Columbian Exchange  now:  The Domains at the two Gates change places, and the Domains at the two Outposts
+                                change places. ...
+                          new:  Choose another player. The Domains at your Gate and theirs change places, and so do the
+                                Domains at your Outpost and theirs. ...
+  Rift: unchanged ("At least one must be yours": the other can be anyone's, a teammate's too).
+
+Guides
+  Joan of Arc  now:  While the other player has more Renown than you, ...
+               new:  While an opponent has more Renown than you, ...
+  Empress Wu   now:  If you hold more Places than the other player when a round ends, ...
+               new:  If you hold more Places than anyone else when a round ends, ...
+  (Mandela, who has left the roster: "defeated on an opponent's side")
+
+Domain powers (text.js DRULE)
+  Gibraltar     new:  When enemy Figures at the Rock of Gibraltar outnumber a player's Figures there, that player's
+                      Figures defending in a clash there have +2 Might.
+  Orléans       new:  While an opponent holds Orléans, a Figure of yours that starts a clash there has +2 Might.
+  Nan Madol     new:  While a player holds Nan Madol, their opponents can't walk Figures out of it.
+  Versailles    new:  Whoever has the costliest Figure at Versailles holds it. If there is a tie for the costliest
+                      Figure there, Might decides as usual.
+  Roman Forum   new:  Whoever has the most Figures at the Roman Forum holds it. If there is a tie for the most,
+                      Might decides as usual.
+  Forbidden City  new:  Opponents' Deeds have no effect on your Figures at the Forbidden City.
+  Independence Hall  new:  When the player who holds Independence Hall has less Renown than an opponent, it scores
+                           2 Renown for them.
+  Persepolis    new:  When a round ends, the player who holds Persepolis takes 1 Spark from the next turn of each
+                      opponent who has Figures there.
+  Tordesillas   new:  When the Might at Tordesillas is tied and every player in the tie has Figures there,
+                      Tordesillas scores 1 Renown for each of them.
+  Strait of Magellan  new:  ... can walk from there straight to another player's Outpost.
+  Kitty Hawk    new:  A Figure can walk from Kitty Hawk to any Domain except another player's Gate.
+  Machu Picchu  new:  At a Gate or an Outpost, only the player whose side Machu Picchu is on can walk Figures in,
+                      while that player is still in the game.
+  The rest already read right at any count ("each player who", "only one player", "whoever holds").
+
+For the rules page (RULES in ui.js) and the guide, with teams: "Your teammate is not your opponent: you can't clash
+with each other, nothing that hits an opponent or an enemy Figure hits your teammate, and holding your teammate's Gate
+breaks none of their Seals. Your team's Renown is your Renown and your teammates' together."
+
+
+6. Appendix: every run as players.js printed it
+------------------------------------------------
+The deck styles of endings.js, seed 2000 (the target is 25 unless a line says so). In an outEnds line, "the last
+player left after Seals" counts the games that ended at the count that put a player out.
+
+2v2 (teams)  600 games, first seed 2000, {"target":25}, first to 25, 153 ms a game
+  teams (the first player's team first): 1: 50.3  2: 49.7  (fair 50.0, spread 0.7)  draws 0.0
+  rounds: average 5.24, most games 5 to 6, longest 7
+  ends: 99.5% on Renown, 0.5% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.41 a game, in 35.3% of games, the first in round 4.6 on average, and a player put out sits out 0.6 rounds; the winner has 28.3 Renown, ahead of the next by 4.9
+2v2v2 (teams)  600 games, first seed 2000, {"target":25}, first to 25, 336 ms a game
+  teams (the first player's team first): 1: 33.8  2: 32.8  3: 33.2  (fair 33.3, spread 1.0)  draws 0.2
+  rounds: average 5.09, most games 5 to 6, longest 6
+  ends: 99.8% on Renown, 0.2% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.83 a game, in 57.8% of games, the first in round 4.5 on average, and a player put out sits out 0.6 rounds; the winner has 28.4 Renown, ahead of the next by 3.7
+2v2 (teams)  600 games, first seed 2000, {"target":35}, first to 35, 318 ms a game
+  teams (the first player's team first): 1: 51.0  2: 49.0  (fair 50.0, spread 2.0)  draws 0.0
+  rounds: average 6.57, most games 6 to 7, longest 8
+  ends: 97.0% on Renown, 3.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.77 a game, in 60.8% of games, the first in round 5.3 on average, and a player put out sits out 1.2 rounds; the winner has 38.8 Renown, ahead of the next by 7.0
+2v2v2 (teams)  600 games, first seed 2000, {"target":35}, first to 35, 714 ms a game
+  teams (the first player's team first): 1: 33.8  2: 35.2  3: 31.0  (fair 33.3, spread 4.2)  draws 0.0
+  rounds: average 6.38, most games 6 to 7, longest 8
+  ends: 99.3% on Renown, 0.7% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.63 a game, in 87.3% of games, the first in round 5.0 on average, and a player put out sits out 1.1 rounds; the winner has 39.0 Renown, ahead of the next by 5.1
+2v2 (teams)  600 games, first seed 2000, {"target":40}, first to 40, 319 ms a game
+  teams (the first player's team first): 1: 52.5  2: 47.5  (fair 50.0, spread 5.0)  draws 0.0
+  rounds: average 7.17, most games 7 to 8, longest 9
+  ends: 94.0% on Renown, 6.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.92 a game, in 69.8% of games, the first in round 5.6 on average, and a player put out sits out 1.4 rounds; the winner has 43.6 Renown, ahead of the next by 8.0
+2v2v2 (teams)  600 games, first seed 2000, {"target":40}, first to 40, 855 ms a game
+  teams (the first player's team first): 1: 34.0  2: 34.2  3: 31.8  (fair 33.3, spread 2.3)  draws 0.0
+  rounds: average 7.00, most games 6 to 8, longest 9
+  ends: 98.2% on Renown, 1.8% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.99 a game, in 94.3% of games, the first in round 5.2 on average, and a player put out sits out 1.3 rounds; the winner has 44.4 Renown, ahead of the next by 6.2
+2v2 (teams)  600 games, first seed 2000, {"target":45}, first to 45, 461 ms a game
+  teams (the first player's team first): 1: 54.2  2: 45.8  (fair 50.0, spread 8.3)  draws 0.0
+  rounds: average 7.78, most games 7 to 9, longest 9
+  ends: 89.3% on Renown, 10.7% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.07 a game, in 75.5% of games, the first in round 5.8 on average, and a player put out sits out 1.7 rounds; the winner has 48.5 Renown, ahead of the next by 9.4
+2v2v2 (teams)  600 games, first seed 2000, {"target":45}, first to 45, 1041 ms a game
+  teams (the first player's team first): 1: 34.8  2: 32.0  3: 33.2  (fair 33.3, spread 2.8)  draws 0.0
+  rounds: average 7.56, most games 7 to 8, longest 10
+  ends: 96.5% on Renown, 3.5% the last team left after Seals, 0.0% at the round limit
+  players put out: 2.26 a game, in 96.7% of games, the first in round 5.2 on average, and a player put out sits out 1.6 rounds; the winner has 49.1 Renown, ahead of the next by 7.3
+2v2 (teams)  600 games, first seed 2000, {"target":50}, first to 50, 472 ms a game
+  teams (the first player's team first): 1: 52.3  2: 47.7  (fair 50.0, spread 4.7)  draws 0.0
+  rounds: average 8.31, most games 7 to 9, longest 10
+  ends: 85.5% on Renown, 14.5% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.22 a game, in 82.0% of games, the first in round 6.0 on average, and a player put out sits out 1.9 rounds; the winner has 52.6 Renown, ahead of the next by 10.4
+2v2v2 (teams)  600 games, first seed 2000, {"target":50}, first to 50, 1121 ms a game
+  teams (the first player's team first): 1: 35.3  2: 35.2  3: 29.5  (fair 33.3, spread 5.8)  draws 0.0
+  rounds: average 8.11, most games 7 to 9, longest 10
+  ends: 95.5% on Renown, 4.5% the last team left after Seals, 0.0% at the round limit
+  players put out: 2.45 a game, in 97.8% of games, the first in round 5.3 on average, and a player put out sits out 2.0 rounds; the winner has 54.0 Renown, ahead of the next by 8.7
+3v3 (teams)  600 games, first seed 2000, {"target":25}, first to 25, 122 ms a game
+  teams (the first player's team first): 1: 49.3  2: 50.7  (fair 50.0, spread 1.3)  draws 0.0
+  rounds: average 4.08, most games 4 to 4, longest 5
+  ends: 100.0% on Renown, 0.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.35 a game, in 30.0% of games, the first in round 3.8 on average, and a player put out sits out 0.2 rounds; the winner has 29.0 Renown, ahead of the next by 4.4
+3v3 (teams)  600 games, first seed 2000, {"target":45}, first to 45, 420 ms a game
+  teams (the first player's team first): 1: 49.8  2: 50.2  (fair 50.0, spread 0.3)  draws 0.0
+  rounds: average 6.01, most games 6 to 6, longest 7
+  ends: 99.8% on Renown, 0.2% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.10 a game, in 75.2% of games, the first in round 4.9 on average, and a player put out sits out 1.0 rounds; the winner has 50.6 Renown, ahead of the next by 8.1
+3v3 (teams)  600 games, first seed 2000, {"target":55}, first to 55, 609 ms a game
+  teams (the first player's team first): 1: 49.0  2: 51.0  (fair 50.0, spread 2.0)  draws 0.0
+  rounds: average 6.88, most games 6 to 7, longest 8
+  ends: 98.8% on Renown, 1.2% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.47 a game, in 86.2% of games, the first in round 5.2 on average, and a player put out sits out 1.4 rounds; the winner has 60.6 Renown, ahead of the next by 10.2
+3v3 (teams)  600 games, first seed 2000, {"target":65}, first to 65, 845 ms a game
+  teams (the first player's team first): 1: 53.0  2: 47.0  (fair 50.0, spread 6.0)  draws 0.0
+  rounds: average 7.74, most games 7 to 8, longest 9
+  ends: 96.2% on Renown, 3.8% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.82 a game, in 93.5% of games, the first in round 5.4 on average, and a player put out sits out 1.8 rounds; the winner has 70.8 Renown, ahead of the next by 13.0
+3v3 (teams)  600 games, first seed 2000, {"target":75}, first to 75, 1016 ms a game
+  teams (the first player's team first): 1: 51.7  2: 48.3  (fair 50.0, spread 3.3)  draws 0.0
+  rounds: average 8.54, most games 8 to 9, longest 11
+  ends: 93.0% on Renown, 7.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 2.08 a game, in 96.3% of games, the first in round 5.5 on average, and a player put out sits out 2.2 rounds; the winner has 80.0 Renown, ahead of the next by 15.8
+2v2 (teams)  600 games, first seed 2000, {"target":45,"tmight":"add"}, first to 45, 388 ms a game
+  teams (the first player's team first): 1: 51.0  2: 49.0  (fair 50.0, spread 2.0)  draws 0.0
+  rounds: average 7.72, most games 7 to 9, longest 9
+  ends: 89.0% on Renown, 11.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.10 a game, in 78.8% of games, the first in round 5.9 on average, and a player put out sits out 1.5 rounds; the winner has 48.6 Renown, ahead of the next by 9.9
+3v3 (teams)  600 games, first seed 2000, {"target":65,"tmight":"add"}, first to 65, 978 ms a game
+  teams (the first player's team first): 1: 50.0  2: 50.0  (fair 50.0, spread 0.0)  draws 0.0
+  rounds: average 7.67, most games 7 to 8, longest 9
+  ends: 94.7% on Renown, 5.3% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.82 a game, in 92.8% of games, the first in round 5.3 on average, and a player put out sits out 1.7 rounds; the winner has 70.9 Renown, ahead of the next by 14.4
+3 players  600 games, first seed 2000, first to 25, 173 ms a game
+  seats (from the first player): 1: 32.5  2: 35.5  3: 31.8  (fair 33.3, spread 3.7)  draws 0.2
+  decks (wins of games played, fair 33.3): Legion 33.6  Legacy 48.2  Explorers 24.8  Pathfinders 15.6  Court 44.3
+  rounds: average 7.51, most games 6 to 9, longest 10
+  ends: 75.7% on Renown, 24.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.95 a game, in 69.7% of games, the first in round 6.3 on average, and a player put out sits out 0.8 rounds; the winner has 25.7 Renown, ahead of the next by 3.3; the leader after round 4 wins 40.4%
+3 players  600 games, first seed 2000, {"seals":4}, first to 25, 213 ms a game
+  seats (from the first player): 1: 33.5  2: 33.0  3: 33.5  (fair 33.3, spread 0.5)  draws 0.0
+  decks (wins of games played, fair 33.3): Legion 36.1  Legacy 47.9  Explorers 22.3  Pathfinders 16.5  Court 44.0
+  rounds: average 7.79, most games 7 to 9, longest 10
+  ends: 88.8% on Renown, 11.2% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.56 a game, in 43.8% of games, the first in round 7.0 on average, and a player put out sits out 0.6 rounds; the winner has 26.7 Renown, ahead of the next by 3.3; the leader after round 4 wins 40.0%
+3 players  600 games, first seed 2000, {"outEnds":1}, first to 25, 155 ms a game
+  seats (from the first player): 1: 30.8  2: 37.8  3: 31.3  (fair 33.3, spread 7.0)  draws 0.0
+  decks (wins of games played, fair 33.3): Legion 27.0  Legacy 45.7  Explorers 33.9  Pathfinders 22.1  Court 38.1
+  rounds: average 6.75, most games 5 to 8, longest 10
+  ends: 30.3% on Renown, 69.7% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.81 a game, in 69.7% of games, the first in round 6.3 on average, and a player put out sits out 0.0 rounds; the winner has 21.9 Renown, ahead of the next by 2.6; the leader after round 4 wins 42.2%
+3 players  600 games, first seed 2000, {"order":"rank"}, first to 25, 179 ms a game
+  seats (from the first player): 1: 33.0  2: 34.2  3: 32.8  (fair 33.3, spread 1.3)  draws 0.0
+  decks (wins of games played, fair 33.3): Legion 33.1  Legacy 47.9  Explorers 25.1  Pathfinders 16.5  Court 44.3
+  rounds: average 7.56, most games 6 to 9, longest 10
+  ends: 73.7% on Renown, 26.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.92 a game, in 64.7% of games, the first in round 6.3 on average, and a player put out sits out 0.8 rounds; the winner has 25.6 Renown, ahead of the next by 3.3; the leader after round 4 wins 38.5%
+3 players  600 games, first seed 2000, {"sealRen":2}, first to 25, 159 ms a game
+  seats (from the first player): 1: 32.2  2: 34.3  3: 33.5  (fair 33.3, spread 2.2)  draws 0.0
+  decks (wins of games played, fair 33.3): Legion 36.1  Legacy 50.4  Explorers 21.5  Pathfinders 15.4  Court 43.4
+  rounds: average 7.18, most games 6 to 8, longest 10
+  ends: 79.3% on Renown, 20.7% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.77 a game, in 55.7% of games, the first in round 6.1 on average, and a player put out sits out 0.7 rounds; the winner has 26.1 Renown, ahead of the next by 3.7; the leader after round 4 wins 36.7%
+3 players  600 games, first seed 2000, {"outRen":3}, first to 25, 171 ms a game
+  seats (from the first player): 1: 31.3  2: 35.2  3: 33.3  (fair 33.3, spread 3.8)  draws 0.2
+  decks (wins of games played, fair 33.3): Legion 32.8  Legacy 41.5  Explorers 29.5  Pathfinders 19.3  Court 43.4
+  rounds: average 7.34, most games 6 to 8, longest 10
+  ends: 78.7% on Renown, 21.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.92 a game, in 69.7% of games, the first in round 6.3 on average, and a player put out sits out 0.6 rounds; the winner has 26.6 Renown, ahead of the next by 4.0; the leader after round 4 wins 36.5%
+3 players  600 games, first seed 2000, {"mw":{"gap":1000000}}, first to 25, 173 ms a game
+  seats (from the first player): 1: 31.0  2: 38.2  3: 30.8  (fair 33.3, spread 7.3)  draws 0.0
+  decks (wins of games played, fair 33.3): Legion 31.7  Legacy 49.0  Explorers 24.2  Pathfinders 16.5  Court 45.4
+  rounds: average 7.53, most games 6 to 9, longest 10
+  ends: 75.0% on Renown, 25.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.96 a game, in 69.8% of games, the first in round 6.2 on average, and a player put out sits out 0.9 rounds; the winner has 25.9 Renown, ahead of the next by 3.5; the leader after round 4 wins 40.6%
+4 players  600 games, first seed 2000, first to 25, 304 ms a game
+  seats (from the first player): 1: 22.3  2: 27.5  3: 24.8  4: 25.3  (fair 25.0, spread 5.2)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 29.6  Legacy 42.9  Explorers 13.7  Court 32.4  Pathfinders 6.8
+  rounds: average 7.55, most games 7 to 8, longest 10
+  ends: 92.0% on Renown, 8.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.40 a game, in 84.0% of games, the first in round 5.8 on average, and a player put out sits out 1.3 rounds; the winner has 27.1 Renown, ahead of the next by 3.3; the leader after round 4 wins 34.7%
+4 players  600 games, first seed 2000, {"seals":4}, first to 25, 382 ms a game
+  seats (from the first player): 1: 22.3  2: 28.8  3: 24.7  4: 24.2  (fair 25.0, spread 6.5)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 24.6  Legacy 43.9  Explorers 15.8  Court 31.3  Pathfinders 9.7
+  rounds: average 7.67, most games 7 to 9, longest 10
+  ends: 96.7% on Renown, 3.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.88 a game, in 61.8% of games, the first in round 6.7 on average, and a player put out sits out 0.9 rounds; the winner has 27.3 Renown, ahead of the next by 3.1; the leader after round 4 wins 35.3%
+4 players  600 games, first seed 2000, {"outEnds":1}, first to 25, 229 ms a game
+  seats (from the first player): 1: 23.0  2: 26.8  3: 23.5  4: 26.7  (fair 25.0, spread 3.8)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 19.5  Legacy 32.9  Explorers 26.8  Court 28.5  Pathfinders 17.5
+  rounds: average 6.08, most games 4 to 8, longest 9
+  ends: 16.0% on Renown, 84.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.01 a game, in 84.0% of games, the first in round 5.8 on average, and a player put out sits out 0.0 rounds; the winner has 19.6 Renown, ahead of the next by 2.0; the leader after round 4 wins 44.2%
+4 players  600 games, first seed 2000, {"order":"rank"}, first to 25, 327 ms a game
+  seats (from the first player): 1: 24.5  2: 26.7  3: 25.8  4: 23.0  (fair 25.0, spread 3.7)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 26.9  Legacy 42.2  Explorers 11.4  Court 37.1  Pathfinders 7.8
+  rounds: average 7.68, most games 7 to 8, longest 10
+  ends: 92.2% on Renown, 7.8% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.37 a game, in 81.2% of games, the first in round 6.1 on average, and a player put out sits out 1.3 rounds; the winner has 27.1 Renown, ahead of the next by 3.2; the leader after round 4 wins 32.2%
+4 players  600 games, first seed 2000, {"sealRen":2}, first to 25, 274 ms a game
+  seats (from the first player): 1: 25.3  2: 25.5  3: 26.5  4: 22.7  (fair 25.0, spread 3.8)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 26.1  Legacy 38.1  Explorers 14.9  Court 35.4  Pathfinders 10.9
+  rounds: average 7.21, most games 6 to 8, longest 9
+  ends: 94.8% on Renown, 5.2% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.25 a game, in 78.5% of games, the first in round 5.8 on average, and a player put out sits out 1.2 rounds; the winner has 27.5 Renown, ahead of the next by 3.5; the leader after round 4 wins 27.5%
+4 players  600 games, first seed 2000, {"outRen":3}, first to 25, 295 ms a game
+  seats (from the first player): 1: 23.5  2: 26.3  3: 24.7  4: 25.5  (fair 25.0, spread 2.8)  draws 0.0
+  decks (wins of games played, fair 25.0): Legion 26.7  Legacy 35.4  Explorers 18.9  Court 33.0  Pathfinders 11.3
+  rounds: average 7.28, most games 6 to 8, longest 9
+  ends: 94.7% on Renown, 5.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.34 a game, in 84.0% of games, the first in round 5.8 on average, and a player put out sits out 1.1 rounds; the winner has 27.6 Renown, ahead of the next by 3.9; the leader after round 4 wins 33.3%
+4 players  600 games, first seed 2000, {"mw":{"gap":1000000}}, first to 25, 316 ms a game
+  seats (from the first player): 1: 22.3  2: 28.0  3: 26.2  4: 23.3  (fair 25.0, spread 5.7)  draws 0.2
+  decks (wins of games played, fair 25.0): Legion 21.9  Legacy 45.5  Explorers 14.9  Court 32.6  Pathfinders 10.1
+  rounds: average 7.48, most games 7 to 8, longest 9
+  ends: 92.0% on Renown, 8.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.41 a game, in 85.3% of games, the first in round 5.8 on average, and a player put out sits out 1.3 rounds; the winner has 27.1 Renown, ahead of the next by 3.5; the leader after round 4 wins 39.0%
+5 players  600 games, first seed 2000, first to 25, 444 ms a game
+  seats (from the first player): 1: 19.7  2: 20.5  3: 17.0  4: 22.2  5: 20.7  (fair 20.0, spread 5.2)  draws 0.0
+  decks (wins of games played, fair 20.0): Legion 16.3  Legacy 36.7  Explorers 10.3  Court 29.8  Pathfinders 6.8
+  rounds: average 7.43, most games 7 to 8, longest 9
+  ends: 96.8% on Renown, 3.2% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.90 a game, in 96.0% of games, the first in round 5.4 on average, and a player put out sits out 1.5 rounds; the winner has 27.2 Renown, ahead of the next by 2.7; the leader after round 4 wins 25.3%
+5 players  600 games, first seed 2000, {"seals":4}, first to 25, 598 ms a game
+  seats (from the first player): 1: 19.8  2: 19.5  3: 19.5  4: 21.2  5: 19.7  (fair 20.0, spread 1.7)  draws 0.3
+  decks (wins of games played, fair 20.0): Legion 13.3  Legacy 39.5  Explorers 12.2  Court 28.7  Pathfinders 6.0
+  rounds: average 7.55, most games 7 to 8, longest 9
+  ends: 99.8% on Renown, 0.2% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.21 a game, in 81.0% of games, the first in round 6.5 on average, and a player put out sits out 1.0 rounds; the winner has 27.3 Renown, ahead of the next by 2.8; the leader after round 4 wins 30.0%
+5 players  600 games, first seed 2000, {"outEnds":1}, first to 25, 261 ms a game
+  seats (from the first player): 1: 19.5  2: 19.5  3: 19.7  4: 21.8  5: 18.8  (fair 20.0, spread 3.0)  draws 0.7
+  decks (wins of games played, fair 20.0): Legion 10.7  Legacy 25.8  Explorers 23.0  Court 26.0  Pathfinders 13.8
+  rounds: average 5.48, most games 4 to 7, longest 9
+  ends: 4.0% on Renown, 96.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.21 a game, in 96.0% of games, the first in round 5.4 on average, and a player put out sits out 0.0 rounds; the winner has 17.8 Renown, ahead of the next by 1.7; the leader after round 4 wins 48.1%
+5 players  600 games, first seed 2000, {"order":"rank"}, first to 25, 508 ms a game
+  seats (from the first player): 1: 20.7  2: 18.5  3: 20.3  4: 19.7  5: 20.7  (fair 20.0, spread 2.2)  draws 0.2
+  decks (wins of games played, fair 20.0): Legion 17.8  Legacy 39.0  Explorers 8.8  Court 29.8  Pathfinders 4.3
+  rounds: average 7.62, most games 7 to 8, longest 9
+  ends: 98.3% on Renown, 1.7% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.93 a game, in 95.8% of games, the first in round 5.6 on average, and a player put out sits out 1.5 rounds; the winner has 27.4 Renown, ahead of the next by 3.0; the leader after round 4 wins 26.6%
+5 players  600 games, first seed 2000, {"sealRen":2}, first to 25, 401 ms a game
+  seats (from the first player): 1: 20.0  2: 14.3  3: 24.7  4: 22.2  5: 18.7  (fair 20.0, spread 10.3)  draws 0.2
+  decks (wins of games played, fair 20.0): Legion 18.0  Legacy 31.0  Explorers 13.0  Court 29.7  Pathfinders 8.2
+  rounds: average 7.07, most games 6 to 8, longest 9
+  ends: 99.0% on Renown, 1.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.63 a game, in 93.5% of games, the first in round 5.5 on average, and a player put out sits out 1.3 rounds; the winner has 27.5 Renown, ahead of the next by 3.1; the leader after round 4 wins 21.1%
+5 players  600 games, first seed 2000, {"outRen":3}, first to 25, 416 ms a game
+  seats (from the first player): 1: 18.2  2: 18.8  3: 19.5  4: 20.7  5: 22.8  (fair 20.0, spread 4.7)  draws 0.0
+  decks (wins of games played, fair 20.0): Legion 19.0  Legacy 27.0  Explorers 16.2  Court 29.0  Pathfinders 8.8
+  rounds: average 7.10, most games 6 to 8, longest 9
+  ends: 98.3% on Renown, 1.7% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.81 a game, in 96.0% of games, the first in round 5.4 on average, and a player put out sits out 1.2 rounds; the winner has 27.6 Renown, ahead of the next by 3.4; the leader after round 4 wins 24.7%
+5 players  600 games, first seed 2000, {"mw":{"gap":1000000}}, first to 25, 439 ms a game
+  seats (from the first player): 1: 22.3  2: 19.2  3: 18.0  4: 20.8  5: 19.7  (fair 20.0, spread 4.3)  draws 0.0
+  decks (wins of games played, fair 20.0): Legion 14.8  Legacy 36.8  Explorers 12.3  Court 29.8  Pathfinders 6.2
+  rounds: average 7.37, most games 7 to 8, longest 9
+  ends: 96.7% on Renown, 3.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.93 a game, in 96.7% of games, the first in round 5.3 on average, and a player put out sits out 1.5 rounds; the winner has 27.3 Renown, ahead of the next by 2.9; the leader after round 4 wins 30.3%
+6 players  600 games, first seed 2000, first to 25, 667 ms a game
+  seats (from the first player): 1: 18.8  2: 15.3  3: 14.2  4: 16.5  5: 15.8  6: 19.2  (fair 16.7, spread 5.0)  draws 0.2
+  decks (wins of games played, fair 16.7): Legion 12.6  Legacy 33.6  Explorers 7.8  Court 25.0  Pathfinders 4.0
+  rounds: average 7.40, most games 7 to 8, longest 9
+  ends: 99.2% on Renown, 0.8% the last player left after Seals, 0.0% at the round limit
+  players put out: 2.40 a game, in 97.0% of games, the first in round 5.2 on average, and a player put out sits out 1.5 rounds; the winner has 27.5 Renown, ahead of the next by 2.7; the leader after round 4 wins 24.5%
+6 players  600 games, first seed 2000, {"seals":4}, first to 25, 897 ms a game
+  seats (from the first player): 1: 18.8  2: 14.3  3: 14.7  4: 15.8  5: 17.2  6: 19.2  (fair 16.7, spread 4.8)  draws 0.0
+  decks (wins of games played, fair 16.7): Legion 11.3  Legacy 33.2  Explorers 11.7  Court 21.6  Pathfinders 5.4
+  rounds: average 7.47, most games 7 to 8, longest 9
+  ends: 99.5% on Renown, 0.5% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.54 a game, in 84.2% of games, the first in round 6.2 on average, and a player put out sits out 1.0 rounds; the winner has 27.3 Renown, ahead of the next by 2.4; the leader after round 4 wins 27.3%
+6 players  600 games, first seed 2000, {"outEnds":1}, first to 25, 331 ms a game
+  seats (from the first player): 1: 14.3  2: 19.5  3: 16.7  4: 18.0  5: 14.2  6: 16.7  (fair 16.7, spread 5.3)  draws 0.7
+  decks (wins of games played, fair 16.7): Legion 9.2  Legacy 22.5  Explorers 20.7  Court 18.2  Pathfinders 12.1
+  rounds: average 5.25, most games 4 to 7, longest 9
+  ends: 3.0% on Renown, 97.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.31 a game, in 97.0% of games, the first in round 5.2 on average, and a player put out sits out 0.0 rounds; the winner has 16.9 Renown, ahead of the next by 1.4; the leader after round 4 wins 50.2%
+6 players  600 games, first seed 2000, {"order":"rank"}, first to 25, 739 ms a game
+  seats (from the first player): 1: 18.2  2: 16.8  3: 14.0  4: 14.5  5: 19.0  6: 17.5  (fair 16.7, spread 5.0)  draws 0.0
+  decks (wins of games played, fair 16.7): Legion 14.4  Legacy 35.1  Explorers 6.9  Court 22.6  Pathfinders 4.3
+  rounds: average 7.61, most games 7 to 8, longest 9
+  ends: 99.7% on Renown, 0.3% the last player left after Seals, 0.0% at the round limit
+  players put out: 2.26 a game, in 96.5% of games, the first in round 5.4 on average, and a player put out sits out 1.6 rounds; the winner has 27.5 Renown, ahead of the next by 2.7; the leader after round 4 wins 23.1%
+6 players  600 games, first seed 2000, {"sealRen":2}, first to 25, 574 ms a game
+  seats (from the first player): 1: 17.8  2: 16.0  3: 13.8  4: 16.5  5: 15.7  6: 20.0  (fair 16.7, spread 6.2)  draws 0.2
+  decks (wins of games played, fair 16.7): Legion 10.9  Legacy 28.3  Explorers 13.7  Court 22.4  Pathfinders 7.7
+  rounds: average 7.00, most games 6 to 8, longest 9
+  ends: 100.0% on Renown, 0.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 2.06 a game, in 95.2% of games, the first in round 5.2 on average, and a player put out sits out 1.3 rounds; the winner has 27.5 Renown, ahead of the next by 2.8; the leader after round 4 wins 16.8%
+6 players  600 games, first seed 2000, {"outRen":3}, first to 25, 624 ms a game
+  seats (from the first player): 1: 16.2  2: 15.7  3: 16.5  4: 18.7  5: 14.5  6: 18.3  (fair 16.7, spread 4.2)  draws 0.2
+  decks (wins of games played, fair 16.7): Legion 11.3  Legacy 26.4  Explorers 14.0  Court 23.3  Pathfinders 8.1
+  rounds: average 7.06, most games 6 to 8, longest 9
+  ends: 99.3% on Renown, 0.7% the last player left after Seals, 0.0% at the round limit
+  players put out: 2.22 a game, in 97.0% of games, the first in round 5.2 on average, and a player put out sits out 1.3 rounds; the winner has 27.7 Renown, ahead of the next by 3.2; the leader after round 4 wins 20.7%
+6 players  600 games, first seed 2000, {"mw":{"gap":1000000}}, first to 25, 615 ms a game
+  seats (from the first player): 1: 17.7  2: 13.3  3: 15.0  4: 18.5  5: 16.7  6: 18.7  (fair 16.7, spread 5.3)  draws 0.2
+  decks (wins of games played, fair 16.7): Legion 11.2  Legacy 35.6  Explorers 9.8  Court 21.9  Pathfinders 4.7
+  rounds: average 7.26, most games 6 to 8, longest 9
+  ends: 99.2% on Renown, 0.8% the last player left after Seals, 0.0% at the round limit
+  players put out: 2.33 a game, in 98.0% of games, the first in round 5.0 on average, and a player put out sits out 1.5 rounds; the winner has 27.5 Renown, ahead of the next by 3.1; the leader after round 4 wins 25.2%
+
+Seed 3000: every seat Normal ("prof":"normal"), and the combined rules:
+
+3 players  400 games, first seed 3000, {"prof":"normal"}, first to 25, 234 ms a game
+  seats (from the first player): 1: 32.5  2: 35.5  3: 32.0  (fair 33.3, spread 3.5)  draws 0.0
+  decks (wins of games played, fair 33.3): Explorers 26.6  Pathfinders 18.3  Legion 30.3  Legacy 47.9  Court 44.2
+  rounds: average 7.90, most games 7 to 9, longest 11
+  ends: 87.3% on Renown, 12.8% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.66 a game, in 52.3% of games, the first in round 7.0 on average, and a player put out sits out 0.7 rounds; the winner has 26.7 Renown, ahead of the next by 3.4; the leader after round 4 wins 38.3%
+4 players  400 games, first seed 3000, {"prof":"normal"}, first to 25, 402 ms a game
+  seats (from the first player): 1: 22.5  2: 24.0  3: 27.3  4: 26.3  (fair 25.0, spread 4.8)  draws 0.0
+  decks (wins of games played, fair 25.0): Explorers 20.3  Pathfinders 14.6  Legion 20.3  Court 33.7  Legacy 35.5
+  rounds: average 7.76, most games 7 to 9, longest 10
+  ends: 97.0% on Renown, 3.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.94 a game, in 69.0% of games, the first in round 6.7 on average, and a player put out sits out 0.9 rounds; the winner has 27.0 Renown, ahead of the next by 3.0; the leader after round 4 wins 29.4%
+5 players  400 games, first seed 3000, {"prof":"normal"}, first to 25, 633 ms a game
+  seats (from the first player): 1: 21.5  2: 22.0  3: 15.0  4: 20.0  5: 21.5  (fair 20.0, spread 7.0)  draws 0.0
+  decks (wins of games played, fair 20.0): Explorers 17.8  Pathfinders 9.5  Legion 11.0  Court 28.8  Legacy 33.0
+  rounds: average 7.71, most games 7 to 8, longest 10
+  ends: 98.3% on Renown, 1.8% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.42 a game, in 85.0% of games, the first in round 6.4 on average, and a player put out sits out 1.0 rounds; the winner has 27.2 Renown, ahead of the next by 2.7; the leader after round 4 wins 24.8%
+6 players  400 games, first seed 3000, {"prof":"normal"}, first to 25, 895 ms a game
+  seats (from the first player): 1: 16.0  2: 12.0  3: 17.5  4: 18.8  5: 17.0  6: 18.8  (fair 16.7, spread 6.8)  draws 0.0
+  decks (wins of games played, fair 16.7): Explorers 14.7  Pathfinders 10.4  Legion 5.2  Court 18.9  Legacy 34.4
+  rounds: average 7.63, most games 7 to 8, longest 9
+  ends: 99.5% on Renown, 0.5% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.65 a game, in 86.5% of games, the first in round 6.2 on average, and a player put out sits out 1.1 rounds; the winner has 27.4 Renown, ahead of the next by 2.8; the leader after round 4 wins 23.4%
+2v2 (teams)  400 games, first seed 3000, {"prof":"normal"}, first to 45, 404 ms a game
+  teams (the first player's team first): 1: 48.5  2: 51.5  (fair 50.0, spread 3.0)  draws 0.0
+  rounds: average 7.79, most games 7 to 9, longest 10
+  ends: 93.5% on Renown, 6.5% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.76 a game, in 60.8% of games, the first in round 6.4 on average, and a player put out sits out 1.2 rounds; the winner has 48.7 Renown, ahead of the next by 9.1
+2v2v2 (teams)  400 games, first seed 3000, {"prof":"normal"}, first to 45, 1025 ms a game
+  teams (the first player's team first): 1: 35.8  2: 30.3  3: 34.0  (fair 33.3, spread 5.5)  draws 0.0
+  rounds: average 7.75, most games 7 to 8, longest 10
+  ends: 99.8% on Renown, 0.3% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.52 a game, in 84.8% of games, the first in round 6.3 on average, and a player put out sits out 1.1 rounds; the winner has 49.2 Renown, ahead of the next by 6.1
+3v3 (teams)  400 games, first seed 3000, {"prof":"normal"}, first to 65, 1044 ms a game
+  teams (the first player's team first): 1: 48.0  2: 52.0  (fair 50.0, spread 4.0)  draws 0.0
+  rounds: average 7.83, most games 7 to 8, longest 9
+  ends: 99.0% on Renown, 1.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.23 a game, in 77.3% of games, the first in round 6.3 on average, and a player put out sits out 1.2 rounds; the winner has 71.0 Renown, ahead of the next by 10.2
+4 players  400 games, first seed 3000, {"prof":"normal","outEnds":1}, first to 25, 346 ms a game
+  seats (from the first player): 1: 22.5  2: 26.8  3: 24.3  4: 26.5  (fair 25.0, spread 4.3)  draws 0.0
+  decks (wins of games played, fair 25.0): Explorers 24.8  Pathfinders 17.4  Legion 15.4  Court 32.5  Legacy 34.3
+  rounds: average 6.98, most games 6 to 8, longest 10
+  ends: 31.0% on Renown, 69.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.77 a game, in 69.0% of games, the first in round 6.7 on average, and a player put out sits out 0.0 rounds; the winner has 23.2 Renown, ahead of the next by 2.5; the leader after round 4 wins 35.4%
+4 players  600 games, first seed 3000, {"seals":4,"outRen":3}, first to 25, 345 ms a game
+  seats (from the first player): 1: 25.2  2: 24.0  3: 28.5  4: 22.3  (fair 25.0, spread 6.2)  draws 0.0
+  decks (wins of games played, fair 25.0): Explorers 17.6  Pathfinders 15.3  Legion 24.1  Court 33.8  Legacy 33.8
+  rounds: average 7.45, most games 7 to 8, longest 10
+  ends: 98.0% on Renown, 2.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 0.85 a game, in 63.0% of games, the first in round 6.6 on average, and a player put out sits out 0.7 rounds; the winner has 27.4 Renown, ahead of the next by 3.4; the leader after round 4 wins 30.3%
+6 players  400 games, first seed 3000, {"prof":"normal","outEnds":1}, first to 25, 633 ms a game
+  seats (from the first player): 1: 16.0  2: 14.8  3: 15.8  4: 19.8  5: 17.3  6: 16.5  (fair 16.7, spread 5.0)  draws 0.0
+  decks (wins of games played, fair 16.7): Explorers 21.3  Pathfinders 12.7  Legion 5.4  Court 17.2  Legacy 26.9
+  rounds: average 6.34, most games 5 to 8, longest 9
+  ends: 13.5% on Renown, 86.5% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.04 a game, in 86.5% of games, the first in round 6.2 on average, and a player put out sits out 0.0 rounds; the winner has 21.1 Renown, ahead of the next by 1.9; the leader after round 4 wins 29.6%
+6 players  600 games, first seed 3000, {"seals":4,"outRen":3}, first to 25, 804 ms a game
+  seats (from the first player): 1: 18.2  2: 16.5  3: 13.5  4: 16.3  5: 18.7  6: 16.8  (fair 16.7, spread 5.2)  draws 0.0
+  decks (wins of games played, fair 16.7): Explorers 16.6  Pathfinders 9.4  Legion 10.8  Court 19.6  Legacy 27.1
+  rounds: average 7.25, most games 7 to 8, longest 9
+  ends: 100.0% on Renown, 0.0% the last player left after Seals, 0.0% at the round limit
+  players put out: 1.45 a game, in 86.3% of games, the first in round 6.2 on average, and a player put out sits out 0.8 rounds; the winner has 27.6 Renown, ahead of the next by 2.9; the leader after round 4 wins 22.9%
+2v2 (teams)  600 games, first seed 3000, {"seals":4}, first to 45, 359 ms a game
+  teams (the first player's team first): 1: 48.7  2: 51.3  (fair 50.0, spread 2.7)  draws 0.0
+  rounds: average 7.75, most games 7 to 8, longest 10
+  ends: 98.0% on Renown, 2.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 0.61 a game, in 50.3% of games, the first in round 6.7 on average, and a player put out sits out 1.0 rounds; the winner has 48.9 Renown, ahead of the next by 8.0
+2v2v2 (teams)  600 games, first seed 3000, {"seals":4}, first to 45, 929 ms a game
+  teams (the first player's team first): 1: 32.7  2: 33.7  3: 33.7  (fair 33.3, spread 1.0)  draws 0.0
+  rounds: average 7.60, most games 7 to 8, longest 9
+  ends: 99.8% on Renown, 0.2% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.36 a game, in 81.8% of games, the first in round 6.3 on average, and a player put out sits out 1.1 rounds; the winner has 49.4 Renown, ahead of the next by 5.9
+3v3 (teams)  600 games, first seed 3000, {"seals":4}, first to 65, 955 ms a game
+  teams (the first player's team first): 1: 46.7  2: 53.3  (fair 50.0, spread 6.7)  draws 0.0
+  rounds: average 7.69, most games 7 to 8, longest 9
+  ends: 100.0% on Renown, 0.0% the last team left after Seals, 0.0% at the round limit
+  players put out: 1.07 a game, in 75.0% of games, the first in round 6.4 on average, and a player put out sits out 1.1 rounds; the winner has 71.0 Renown, ahead of the next by 9.6
