@@ -22,11 +22,11 @@ let U = 1000;
 const fig = (S, c, o, p, x) => { const f = Object.assign({ u: U++, c, o, p, rdy: 1, arr: 0, tb: 0, stun: 0, stay: 0, li: 0, acted: 0 }, x || {}); S.figs.push(f); return f; };
 
 // ── Everyone for themselves: a player with no Seals left is out ──
-{ const S = game(3); S.P[2].seals = 1; fig(S, 'leonidas', 0, 4); const g = fig(S, 'spartacus', 2, 5); E.endRound(S);
+{ const S = game(3, [], { cfg: { outEnds: 0 } }); S.P[2].seals = 1; fig(S, 'leonidas', 0, 4); const g = fig(S, 'spartacus', 2, 5); E.endRound(S);
   ok('3: the last Seal breaks: out', S.P[2].out === 1 && S.P[2].seals === 0, S.P.map(p => [p.out, p.seals]));
   ok('3: their Figures leave the map', !S.figs.some(f => f.o === 2) && S.P[2].gone.indexOf('spartacus') >= 0);
   const ev = S.ev.find(e => e.t === 'out'); ok('3: the out event', ev && ev.o === 2 && ev.us[0] === g.u && JSON.stringify(ev.left) === '[0,1]', ev);
-  ok('3: the game goes on with two', !S.over && S.round === 2);
+  ok('3 (outEnds 0, a test): the game goes on with two', !S.over && S.round === 2);
   ok('3: turns leave out a player who is out', E.order(S).indexOf(2) < 0 && E.order(S).length === 2, E.order(S));
   ok('3: their Domains stay, with their banners', S.places[4] && S.ban[4] === 2 && S.ban[5] === 2);
   // (the Gate of a player who is out: anyone holds it, it scores, and nothing breaks)
@@ -76,18 +76,18 @@ const T2 = [[0, 2], [1, 3]];
   ok('2v2: teammates are allies', E.ally(S, 0, 2) && !E.ally(S, 0, 1)); }
 { const S = game(4, [], { cfg: { teams: T2 } }); fig(S, 'leonidas', 2, 0); const b = S.P[0].seals; E.endRound(S);
   ok('2v2: a teammate holding your Gate breaks nothing', S.P[0].seals === b && S.P[2].broke === 0); }
-{ const S = game(4, [], { cfg: { teams: T2 } }); fig(S, 'leonidas', 0, 3); fig(S, 'leonidas', 2, 3); fig(S, 'napoleon', 1, 3);
-  ok('2v2: teammates\' Might doesn\'t add up: 3 and 3 lose to 5', E.holder(S, 3) === 1, [E.mights(S, 3), E.holder(S, 3)]);
+{ const S = game(4, [], { cfg: { teams: T2, tmight: 'own' } }); fig(S, 'leonidas', 0, 3); fig(S, 'leonidas', 2, 3); fig(S, 'napoleon', 1, 3);
+  ok('2v2 own (a test): teammates\' Might doesn\'t add up: 3 and 3 lose to 5', E.holder(S, 3) === 1, [E.mights(S, 3), E.holder(S, 3)]);
   const A = game(4, [], { cfg: { teams: T2, tmight: 'add' } }); fig(A, 'leonidas', 0, 3); fig(A, 'leonidas', 2, 3); fig(A, 'napoleon', 1, 3);
-  ok('2v2 add (a test): 3 and 3 beat 5', E.holder(A, 3) === 0, [E.mights(A, 3), E.holder(A, 3)]);
+  ok('2v2 (the rule: teammates\' Might adds up): 3 and 3 beat 5', E.holder(A, 3) === 0, [E.mights(A, 3), E.holder(A, 3)]);
   const L = game(4, [], { cfg: { teams: T2 } }); fig(L, 'leonidas', 0, 8); fig(L, 'leonidas', 2, 8); fig(L, 'spartacus', 1, 8);
   ok('2v2: teammates level at the top: the team holds it, the first in seat order', E.holder(L, 8) === 0, E.holder(L, 8));
   const M = game(4, [], { cfg: { teams: T2 } }); fig(M, 'leonidas', 0, 8); fig(M, 'spartacus', 2, 8); fig(M, 'spartacus', 1, 8);
   ok('2v2: a teammate standing there doesn\'t take it from you', E.holder(M, 8) === 0, E.holder(M, 8)); }
 { const S = game(4, [], { cfg: { teams: T2 } }); S.P[0].renown = 12; S.P[2].renown = 12; fig(S, 'leonidas', 0, 0); E.endRound(S);
   ok('2v2: a team\'s Renown is its players\' together, and it wins together', S.over && S.how === 'renown' && S.wt === 0 && S.winner === 0, [S.over, S.wt, S.winner]); }
-{ const S = game(4, [], { cfg: { teams: T2 } }); S.P[0].seals = 1; fig(S, 'leonidas', 1, 0); E.endRound(S);
-  ok('2v2: a player is out, the team plays on', S.P[0].out && !S.over && JSON.stringify(E.order(S).sort()) === '[1,2,3]', E.order(S));
+{ const S = game(4, [], { cfg: { teams: T2, outEnds: 0 } }); S.P[0].seals = 1; fig(S, 'leonidas', 1, 0); E.endRound(S);
+  ok('2v2 (outEnds 0, a test): a player is out, the team plays on', S.P[0].out && !S.over && JSON.stringify(E.order(S).sort()) === '[1,2,3]', E.order(S));
   S.figs = []; S.P[2].seals = 1; fig(S, 'leonidas', 1, 4); E.endRound(S);
   ok('2v2: the team is out when both are out', S.over && S.how === 'seals' && S.wt === 1, [S.over, S.wt]); }
 { const S = game(4, [], { cfg: { teams: T2 } }); fig(S, 'leonidas', 0, 3); const m = fig(S, 'leonidas', 2, 3), e = fig(S, 'hammurabi', 1, 3); S.P[0].hand = ['eclipse']; E.apply(S, E.actions(S).find(a => a.t === 'deed' && a.p === 3));
