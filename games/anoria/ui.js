@@ -3827,11 +3827,32 @@
       : S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown).map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
-      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), notes: notes, notesTitle: 'How it ended', rank: rank,
+      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), show: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
   }
   const earnedLabel = x => x.t === 'guide' ? 'Meet your new Guide' : 'Open your pack';
+  // The game on its results card (the audit of 2026-11-13, #7.3: the card showed nothing of the game it ends): the
+  // winner's Guide, and the race for Renown drawn as a line for each player, round by round from 0, with the Renown
+  // that wins ruled across the top. Kit.win shows it under the title (its show slot).
+  function racePic() {
+    if (!G || !S || !G.tale || G.demo) return null;
+    const rows = [S.P.map(() => 0)].concat((G.tale.tot || []).map(t => String(t).split('-').map(Number)));
+    const now = S.P.map(p => p.renown); if (rows[rows.length - 1].join() !== now.join()) rows.push(now);   // (an end by Seals comes before the count)
+    if (rows.length < 2) return null;
+    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 300, H = 96, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
+    const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')';
+    const lines = S.P.map((p, o) => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
+      '<circle cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="4" style="fill:' + col(o) + '"/>').join('');
+    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 15) + '">' + i + '</text>' : '')).join('');
+    const svg = '<svg viewBox="-10 -14 ' + (W + 34) + ' ' + (H + 32) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
+      '<line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 6) + '" y="' + (y(goal) + 4).toFixed(1) + '">' + goal + '</text>' +
+      '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/>' + lines + ticks + '</svg>';
+    const g = w >= 0 && !G.teams ? S.P[w].guide : null, gi = g ? artImg(g, true, true) : null;
+    return el('div', { class: 'an-race' }, [
+      g ? el('div', { class: 'rc-g', style: { '--pc': col(w) } }, [el('span', { class: 'rc-pt' }, gi ? [gi] : []), el('b', { text: TXG[g].n }), el('small', { text: Kit.poss(pname(w)) + ' Guide' })]) : null,
+      el('div', { class: 'rc-ch' }, [el('div', { class: 'rc-k', text: 'The race for Renown, round by round' }), el('div', { class: 'rc-svg', html: svg })])]);
+  }
   function showWin(quiet) {
     if (S.N > 2) return showWinN(quiet);
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
@@ -3841,7 +3862,7 @@
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
-      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), notes: notes, notesTitle: 'How it ended',
+      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), show: racePic(), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });

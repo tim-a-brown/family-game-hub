@@ -2662,6 +2662,7 @@
   //   extra              the game's own buttons [{label, onClick}] (See every word, Box score)
   //   setup              Change players: back to the setup screen (setupLabel: 'Change settings', 'Choose a level')
   //   scores             High scores        stats   Statistics
+  //   show               a picture of the game, under the title (an element the game draws: Anoria's race for Renown)
   //   close              Back to games (closeLabel/onClose: 'Leave the table' for an online game)
   var peek = null;
   function winPeekClear() { if (peek) { peek.remove(); peek = null; } }
@@ -2672,6 +2673,7 @@
     card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
     if (o.sub) card.appendChild(el('div', { class: 'sub', text: o.sub }));
+    if (o.show) card.appendChild(o.show);   // (show: the game's own picture of how it went, an element: Anoria's race for Renown)
     // notes: how it ended (the last moves), so a sudden win makes sense
     if (o.notes && o.notes.length) card.appendChild(el('div', { class: 'k-win-notes' }, [el('b', { text: o.notesTitle || 'How it ended' })].concat(o.notes.map(function (t) { return el('div', { text: t }); }))));
     if (o.rank && o.rank.length) {
