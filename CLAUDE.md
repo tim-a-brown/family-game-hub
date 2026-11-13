@@ -620,7 +620,7 @@ Underlying principles for everything:
   board cards are 11px or more. Everything is worked out from the window each time the table is drawn, and a turn of
   the device redraws it. This is how the table meets the Landscape rule: the taps go to the line itself and to the
   hand and button in the dock under it, so the line runs the full width. (The 3 to 6 player table, `drawN`, keeps its
-  own layout until it moves to this one.)
+  own layout on phones; on an iPad held sideways it is the battle line too: below.)
 - **Play mats** (Tim, 2026-11-11: "adapt the same player mat mechanic from lorcana such that they but up against each
   other under the cards played at the crossroads and each player gets their own stylized game mat"). Each player's side
   of the map (their Gate, their Outpost, their half of the Crossroads) lies on a mat of their own: two `.an-pm` in
@@ -670,12 +670,53 @@ Underlying principles for everything:
   the Might they have there, the other player's at the top left and yours at the bottom right; each Guide in a ring
   of its player's colour with brass diamonds for Relics, and the other player's hand as a card's back with the count.
   A tap on a Guide or a Relic on a player's strip opens that level. **The caption has no eye button** (Tim: "remove
-  the eye icon if its function is covered elsewhere"): a hold on the card does that. Under the card in front are
-  buttons for what can be done with it now (`scanActs`: Play, Play at, Move to, Jump to, Clash with, Discard, each
-  with its Spark cost where it has one); a card that needs more than one thing chosen has Choose on the table, which
-  selects it there; a card in your hand that can't be played says why. A button's move is checked against the legal
-  moves again when it is tapped. The computer does not move while cards are being read. Lessons keep the plain
-  single-card reader (`openView`). A new kind of move gets its button in `scanActs`.
+  the eye icon if its function is covered elsewhere"): a hold on the card does that. The computer does not move while
+  cards are being read. Lessons keep the plain single-card reader (`openView`).
+  **The road under the card** (Tim approved the plan on 2026-11-13: "keep going with face off, carousel and the rest";
+  it replaced a stack of buttons that pushed the notes off the screen). Under the card in front lie the table's
+  Domains as small tiles in the order they lie on the table (`roadOf`, `paintRoad`, `miniTile` in ui.js), always in
+  the same place, so the card and its notes never move. The tiles the card can go to are lit, each with both totals
+  on Might shields (yours as the move would leave it) and what the move does on a pill under it: Play, Take it, Walk,
+  Jump, Step; a tap there makes the move (two kinds of move to one place, a walk and a Jump, ask which in a sheet).
+  The Domain a Figure stands on says Here. On the line under the road: a Figure's clashes as chips with the two
+  Mights ("3 vs 5"), the Qhapaq Ñan's change of places, a Deed's chosen Figure or player (Canossa, Encore, the
+  Columbian Exchange with more players), a Domain's own power (Florence's loan, Timbuktu's card, Carthage's hire), a
+  Relic's or a target-free Deed's Play, Discard over the hand limit, and Choose on the table for a card that needs two
+  things chosen (Breda, Fair Winds, Night Crossing). A card that can't be played dims the road, and a plate on the card
+  says why: its cost on a Spark flame against "You have 5 Spark.", or the reason as a sentence (`lockPlate`, the
+  reasons from `scanActs`). Every move is checked against the legal moves again when it is tapped (`reAct`,
+  `runActs`). A new kind of move gets its place in `roadOf`.
+  **The face-off** (the same day): a Domain's level is not a strip but the two sides facing each other across the
+  Domain (`faceOffEl`, `fitFaceOff`), on the two players' mats, every card large enough to read. Sideways the other
+  player's Figures stand to the left of the Domain and yours to the right; upright theirs are above and yours below.
+  The middle has the Domain's tile with its name and power, both totals on big shields with a balance beam tipped
+  toward whoever holds it, and a sentence (`holdSay`, through `DW`): "Jamie holds the University of Padua, and scores
+  1 Renown when the round ends.", with the reason first when a tie is settled (a Gate's owner, the Crossroads' banner
+  with a Figure there), a Gate held by the other side ("..., which is your Gate, so Jamie scores 1 Renown and one of
+  your Seals breaks"), Tordesillas's tie, or nobody. Under each of your Figures: Clash ("3 vs 5" with one enemy there;
+  with several, Clash marks each enemy with its own chip), a walk chip toward the Domain on either side along the road,
+  and More moves for the rest (the strip with the road). A Domain's power is a button under the sentence. A swipe
+  sideways, the arrow keys or the arrows under the sentence walk along the road; up and down still changes level. A
+  tap on a card reads that Domain's cards on the strip, with See both sides to come back. A tap or hold on a board
+  card, or a stack on a phone held sideways, opens the face-off at its Domain with that card raised in front: on a
+  phone this is how the board's small cards are read.
+  **Drag to play** (the same day): a card from your hand dragged onto the board lights the Domains it can go to and
+  dims the rest, and the Domain under your finger shows your total there after the move and what it does ("You take
+  it", "You keep it", "Jamie keeps it"); letting go plays it, letting go anywhere else sends it back. A Figure is
+  dragged the same way to a Domain to walk, or onto an enemy to clash ("3 vs 5"); a Relic or a Deed with nothing to
+  choose is played by letting go over the table (`dragDown`, `dragMove`, `dragEnd`). A drag is the same pick as a tap
+  (`select`, `pick`), so tap then tap works as before and the lessons, which play the engine's moves, never meet it.
+  It starts at 12 px, after the hold that opens the scan has given up (10 px); the card and Figure carry
+  `touch-action: none` so no scroll can take the finger.
+  **Beside the table** (the same day; the audit's #6: every way of looking closer covered the table): on an iPad held
+  sideways (`sideFits`: wider than tall, 960 wide and 600 tall at least) a card read on its own (`openView`) and the
+  turn log open in a panel at the right (`sidePanel`, `sideRead`), and the table steps aside into the room left, still
+  in play. A card name tapped in the log opens in the same panel with the way back to the log. Turning the iPad upright
+  closes it; a phone and an upright iPad keep the sheets.
+- **The results card shows the game** (the audit of 2026-11-13, #7.3; Tim approved the plan the same day): the winner's
+  Guide stands where the trophy was, and the race for Renown is drawn as a line for each player, round by round from
+  0, with the Renown that wins ruled across the top (`racePic` in ui.js, from `G.tale.tot`), in `Kit.win`'s `show`
+  slot (a picture of the game under the title, any game can give one).
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
   played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by
@@ -762,6 +803,16 @@ Underlying principles for everything:
   person whose turn it is has their spoke drawn large, and robots' turns leave it with whoever has the device.
   Results `showWinN`, history `recordN` (v 3) and `viewN` in hist/anoria.js. A new piece on the table needs a place in
   both `rowEl` (big rows) and `rimTile`/`stackEl` (the rim), and checking at 3 to 6 players and 320 wide.
+- **The battle line with three to six players** (A3four, Tim approved 2026-11-13: "keep going with face off, carousel
+  and the rest"). On an iPad held sideways (`nblFits`: 900 wide and 600 tall at least) a game of more players is
+  drawn the two-player way: the dock along the bottom with the round track, your hand in one row and the button for
+  the turn (`ui.lay.nbl`, the felt's `many bl`); your Gate, your Outpost and the Crossroads lie in a row across your mat
+  at the left (`mineLine`), each a column as the two-player table's are, everyone else's Figures there above the line
+  as stacks (one for each player, in seat order from your left) and yours below it as cards, the totals on shields at
+  the tile's top and bottom (the strongest other side's and yours); your bar rides your mat's lower left. Each other
+  player is a column on their own mat at the right (`rimCols`, the rim's columns): their plate, their Gate and their
+  Outpost, with the stacks under them. Phones and an upright iPad keep layout C above. A new piece on the table needs
+  its place in `mineLine`'s columns (`.pl.wn-bl` in ui.css) as well.
 - **Twelve Guides** (the roster of twelve, Tim, 2026-11-12). The first five each bring a ready deck: Cleopatra (Court),
   Leonardo (Explorers), Tubman (Pathfinders), Sun Tzu (Legion) and Shakespeare (Legacy, which was Franklin's). Marie
   Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana join as wins against the computer add up

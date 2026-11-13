@@ -951,9 +951,9 @@
   // opponents have at each level too".) Sideways the cards of
   // one level go by on the strip (makeFlow); up and down changes level (a swipe, the wheel, the arrow keys, or a tap
   // on the map at the left, which shows the five Places and the hand with the level you are on lit). Under the card
-  // in front are the things you can do with it now, as buttons (Play at, Move to, Clash with, Discard), then
-  // what is written about it. A hold on any card on the table opens it there; so does a tap wherever a tap used to
-  // open a single card.
+  // in front is the road (roadOf, paintRoad: where it can go and what it can do), then what is written about it; a
+  // Domain's level is its face-off (faceOffEl). A hold on any card on the table opens it there; so does a tap
+  // wherever a tap used to open a single card. scanActs below is now only asked why a card in hand can't be played.
   function scanActs(it) {
     const out = []; if (!S || !G || G.over || G.demo || !idle()) return out;
     const o = S.turn, P = S.P[o], hand = P.hand;
@@ -2071,6 +2071,7 @@
   // A phone held upright stands the line on its end, their Gate at the top (rows). Upright on an iPad the Figures
   // overlap down the table in cascades (up); sideways on a phone each side's Figures at a Domain are one stack (short).
   // Decided from the window every time the table is drawn, so a turned iPad redraws in its new shape.
+  const nblFits = () => window.innerWidth > window.innerHeight && window.innerWidth >= 900 && window.innerHeight >= 600;
   function layMode() {
     const W = window.innerWidth, H = window.innerHeight;
     if (W <= H && Math.min(W, H) < 600) return { rows: true, phone: true };
@@ -2134,7 +2135,7 @@
         b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (nothing ? ' ready' : ''), text: 'End turn', disabled: !can, onclick: () => { Kit.sfx('pop'); Kit.haptic('medium'); endTurn(); } });
       }
       // (two players: in the dock, beside the caption; with more players it stays at the end of the strip)
-      if (many() || !dom.go) node.appendChild(b); else { dom.go.innerHTML = ''; dom.go.appendChild(b); }
+      if ((many() && !(ui.lay && ui.lay.nbl)) || !dom.go) node.appendChild(b); else { dom.go.innerHTML = ''; dom.go.appendChild(b); }
     }
   }
 
@@ -2236,13 +2237,13 @@
         // (two players: the cards themselves, no engraved places for the ones not there; a phone on its side has the
         // room for one stack a side, its top card, how many and their Might together, which a tap reads in the scan)
         if (!M && ui.lay && ui.lay.short) { if (figs.length) side.appendChild(stackEl(sd[0], i, figs, T, 0, true)); }
-        else figs.forEach(f => side.appendChild(figEl(f, T, !M)));
-        let free = M ? Math.min(E.capAt(S, i), o.slots || 9) - figs.length : figs.length < E.capAt(S, i) ? 1 : 0;
+        else figs.forEach(f => side.appendChild(figEl(f, T, !M || !!o.bl)));
+        let free = M && !o.bl ? Math.min(E.capAt(S, i), o.slots || 9) - figs.length : figs.length < E.capAt(S, i) ? 1 : 0;
         if (tg && sd[0] === S.turn && free > 0) {
           const pv = landPreview(tg);
           if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
         }
-        if (M) for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
+        if (M && !o.bl) for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       }
       row.appendChild(side);
       if (sd[1] === 'L') row.appendChild(tileEl(i, T, M ? { o: t, n: sideTot(i, t) } : { o: t, n: V.tot[i][t] }, M ? { o: v, n: sideTot(i, v) } : { o: v, n: V.tot[i][v] }, sil));
@@ -2341,12 +2342,13 @@
   function render() {
     if (!G || !V || !dom.root) return;
     const v = ui.view, M = many();
-    ui.lay = M ? {} : layMode();
+    // (more players on an iPad held sideways: the battle line, its dock along the bottom as with two: nblFits)
+    ui.lay = M ? (nblFits() ? { ln: true, nbl: true } : {}) : layMode();
     // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
     // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
-    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want; }
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') + (L.nbl ? ' bl' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want; }
     document.documentElement.classList.toggle('an-low', !!(ui.lay.short && dom.root && dom.root.isConnected));
-    if (M && dom.go && dom.go.firstChild) dom.go.innerHTML = '';
+    if (M && !ui.lay.nbl && dom.go && dom.go.firstChild) dom.go.innerHTML = '';
     const T = targets();
     if (!M) paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
@@ -2422,7 +2424,7 @@
     let hw, rows = 1, per = n;
     const cap = Math.min(132, Math.max(window.innerHeight, window.innerWidth) * .098);
     h.style.minHeight = '';
-    if (!many() && ui.lay && ui.lay.ln) {
+    if (ui.lay && ui.lay.ln) {
       // The battle line: the hand is one row of whole cards along the dock, as big as eight of them side by side allow;
       // its room is kept at that size, so the table never jumps as cards come and go. More than fit at a readable size
       // overlap, as cards held in a hand do, each with its spine and number showing.
@@ -2723,7 +2725,6 @@
     const here = (i, q) => V.figs.filter(f => f.p === i && f.o === q);
     const tileAt = (i, w, h, pip) => (X ? suRim(i, X, w, h) : rimTile(i, T, w, h, pip));
     const who = i => seatsFrom(ui.view).filter(q => V.figs.some(f => f.p === i && f.o === q));
-    M.dataset.lay = land ? 'side' : 'up';
     let mine, compact = false;
     // (the stacks round a rim tile: beside it in two rows ('r'), or in a row under it ('b'))
     // (xl, xr: the room the column or lane gives them; with more players there than fit, the stacks get smaller)
@@ -2740,15 +2741,18 @@
         if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; if (step < ps + 4) nd.classList.add('fan'); put(nd, x + tw + 4 + cc * step, y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
         else { const tot = n * (ps + 4) - 4; put(nd, Math.max(xl, Math.min(xr - tot, x + tw / 2 - tot / 2)) + j * (ps + 4), y + th + 4); } });
     };
-    if (!land) {
-      compact = H < 380;
-      const rimH = compact ? Math.round(Math.min(104, H * .32)) : Math.round(Math.min(H * (N <= 3 ? .42 : N >= 5 && W < 560 ? .45 : .4), 300));
-      mine = { x: 0, y: rimH + 6, w: W, h: H - rimH - 6 };
-      const colW = W / R;
+    // (an iPad held sideways, the table playing: the battle line (A3four, Tim 2026-11-13). Your Gate, Outpost and the
+    // Crossroads lie in a row across your mat at the left, everyone else's Figures there above the line as stacks and
+    // yours below it as cards; each other player's Gate and Outpost stand in a column of their own on their mat at the right)
+    const bl = !X && !!(ui.lay && ui.lay.nbl);
+    M.dataset.lay = bl ? 'bl' : land ? 'side' : 'up';
+    // (the other players' columns: x the left edge of the first, cw the room for all of them, rimH their height)
+    const rimCols = (bx, bw, rimH) => {
+      const colW = bw / R;
       rim.forEach((o, k) => {
-        const x0 = k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
-        const ph = compact ? Math.round(rimH * .44) : Math.round(Math.max(46, Math.min(60, rimH * .25))), pl = plateEl(o, colW < 96 ? 'f' : 'w');
-        pl.style.fontSize = Math.max(9, Math.min(14, ph * .24, colW < 96 ? colW * .13 : (colW - 8) / 11.5)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
+        const x0 = bx + k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
+        const fm = colW < 96 || (bl && colW < 180), ph = compact ? Math.round(rimH * .44) : bl && fm ? 78 : Math.round(Math.max(46, Math.min(60, rimH * .25))), pl = plateEl(o, fm ? 'f' : 'w');   // (the battle line's columns are narrow and tall: the name over the Guide and the marks)
+        pl.style.fontSize = Math.max(9, Math.min(14, ph * (fm && bl ? .19 : .24), fm ? (bl ? colW * .12 : colW * .13) : (colW - 8) / 11.5)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
         if (compact) {   // a short phone: the Gate and Outpost as two tokens side by side
           const pz = Math.round(Math.min((colW - 14) / 2, (rimH - ph - 14) / .8, 40)), y = ph + 8;
           [2 * o, 2 * o + 1].forEach((i, j) => { put(tileAt(i, pz, Math.round(pz * .8), true), x0 + colW / 2 + (j ? 2 : -pz - 2), y, pz, Math.round(pz * .8)); });
@@ -2763,6 +2767,15 @@
         const yG = y1 + Math.max(2, gap * .5), yO = yG + th + (wide ? Math.max(6, gap) : ps * 1.36 + 8 + Math.max(0, gap));
         [[2 * o, yG], [2 * o + 1, yO]].forEach(x => { put(tileAt(x[0], tw, th), tx, x[1], tw, th); stacks(x[0], tx, x[1], tw, th, ps, wide ? 'r' : 'b', o, x0 + 5, x0 + colW - 5); });
       });
+    };
+    if (bl) {
+      const rimW = Math.round(W * (R <= 2 ? .42 : R === 3 ? .48 : .54)); mine = { x: 0, y: 0, w: W - rimW - 8, h: H };
+      rimCols(W - rimW, rimW, H);
+    } else if (!land) {
+      compact = H < 380;
+      const rimH = compact ? Math.round(Math.min(104, H * .32)) : Math.round(Math.min(H * (N <= 3 ? .42 : N >= 5 && W < 560 ? .45 : .4), 300));
+      mine = { x: 0, y: rimH + 6, w: W, h: H - rimH - 6 };
+      rimCols(0, W, rimH);
     } else {
       const rimW = Math.round(W * (N <= 3 ? .5 : .53)); mine = { x: rimW + 6, y: 0, w: W - rimW - 6, h: H };
       const rowH = H / R, pw = Math.round(Math.min(rimW * .3, 150));
@@ -2774,6 +2787,7 @@
         [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o, x, pw + (j + 1) * cellW - 2); });
       });
     }
+    if (bl) { mineLine(T, mine, put); fitRim(); roadsN(land); return; }
     // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
     // (the tiles as wide as the two-player rows' where the room allows: on an iPad wide and low as there, on a phone taller)
     const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
@@ -2789,6 +2803,24 @@
     });
     fitRim();
     if (!X) roadsN(land);
+  }
+  // Your spoke on the battle line (drawN, an iPad sideways): your Gate, your Outpost and the Crossroads side by side
+  // across your mat, each a column like the two-player table's: everyone else's Figures there above the Domain as
+  // stacks, one for each player in seat order from your left, and yours below it as cards; the totals on the shields
+  // at the tile's top and bottom edges are the strongest other side's and yours.
+  function mineLine(T, mine, put) {
+    const N = S.N, v = ui.view, cg = 12, colW = (mine.w - 2 * cg) / 3, topR = G.teams && dom.opp ? dom.opp.offsetHeight + 6 : 0, H = mine.h - (dom.me ? dom.me.offsetHeight + 8 : 0) - topR;
+    const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y, mine.w, mine.h);
+    const tw = Math.floor(colW - 14), sh = Math.round(Math.max(30, Math.min(44, tw * .21))), th = Math.floor(Math.min(tw * .62, H * .3)), bg = Math.round(sh * .62 + 3), band = (H - th - 2 * bg) / 2;
+    const others = N - 1, perRow = Math.min(3, others), rowsL = Math.ceil(others / perRow);
+    const sw = Math.floor(Math.max(26, Math.min(64, (colW - 10) / perRow - 6, (band - 8) / rowsL / 1.36 - 4)));
+    [2 * v, 2 * v + 1, 2 * N].forEach((i, k) => {
+      const row = rowEl(i, T, { many: true, bl: true }); row.classList.remove('wn-row'); row.classList.add('wn-bl');
+      const mine0 = V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] && S.turn === v ? 1 : 0);
+      const fw = Math.floor(Math.max(30, Math.min((colW - 6) / 2, (band - 10) / 1.4, 124))), n = Math.max(1, mine0), ov = n * fw + (n - 1) * 6 > colW - 4 ? -((n * fw - (colW - 4)) / Math.max(1, n - 1)) : 6;
+      [['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--ov', ov]].forEach(x => row.style.setProperty(x[0], Math.round(x[1] * 10) / 10 + 'px'));
+      put(row, mine.x + k * (colW + cg), mine.y + topR, colW, H);
+    });
   }
   function fitRim() {
     // (a plate's words and marks fit inside it: its size steps down until nothing runs over its edge)
