@@ -1,6 +1,7 @@
-// Checks the third printing (the 150 cards found only in packs: `pr: 3` in games/anoria/cards.js, their words in
-// text.js) against the game's own files and against scripts/anoria/set-150.json, which keeps where each card's
-// facts came from. Prints the split by kind, faction, region, era and cost, what is wrong, and exits 1 if anything is.
+// Checks the cards found only in packs that were added in batches (bookkeeping names: the third printing, `pr: 3` in
+// games/anoria/cards.js, and the newest cards of the prime set, `pr: 5`; their words in text.js) against the game's own
+// files and against the records that keep where each card's facts came from: scripts/anoria/set-150.json for pr 3 and
+// set-p5.json for pr 5. Prints the split by kind, faction, region, era and cost, what is wrong, and exits 1 if anything is.
 //   node scripts/anoria/check-set.js
 // (It took the place of check-set-150.js, which checked the draft before it was merged.)
 'use strict';
@@ -19,14 +20,19 @@ const LEAD = { Voyager: 'voyager', Scholar: 'scholar', Guard: 'guard', Steadfast
 const REGS = {}; Object.keys(C.PLACES).forEach(k => { REGS[C.PLACES[k].reg] = 1; });
 const names = {}; Object.keys(CARDS).forEach(k => { const n = CARDS[k].n.toLowerCase(); if (names[n]) err(k, 'has the same name as ' + names[n]); names[n] = k; });
 Object.keys(C.GUIDES).forEach(k => { if (names[C.GUIDES[k].toLowerCase()]) err(k, 'a Guide is also a card'); });
-const JS = {}; SET.cards.forEach(c => { JS[c.key] = c; });
+const SET5 = JSON.parse(fs.readFileSync(path.join(__dirname, 'set-p5.json'), 'utf8'));
+const byKey = set => { const o = {}; set.cards.forEach(c => { o[c.key] = c; }); return o; };
+// (pr 5: the 2026-11-13 cards, among them the first Figures that cost 1 Spark (spark1-2026-11-13.txt))
+const GROUPS = [{ pr: 3, keys: C.PRINT3, js: byKey(SET), file: 'set-150.json', set: SET }, { pr: 5, keys: C.PRINT5 || [], js: byKey(SET5), file: 'set-p5.json', set: SET5 }];
 
-if (NEW.length !== 163) err('set', 'the third printing has ' + NEW.length + ' cards, not 163');   // (150 as made; 13 were held for a later set (heldForLater in set-150.json), 13 more took their places on 2026-11-12, 7 more with powers of their own came the same day, and then the 5 held for want of an effect (needsEngine) and the Walk to Canossa)
+if (NEW.length !== 163) err('set', 'the third printing has ' + NEW.length + ' cards, not 163');
+GROUPS.forEach(g => { const NEW = g.keys, JS = g.js;
+if (g.pr === 5 && NEW.length !== g.set.cards.length) err('set', 'pr 5 has ' + NEW.length + ' cards, and set-p5.json ' + g.set.cards.length);
 NEW.forEach(k => {
   const c = CARDS[k], t = T.CARDS[k], fig = c.t === 'fig';
   if (!t) return err(k, 'no words in text.js');
-  if (c.pr !== 3) err(k, 'not marked pr 3');
-  if (Object.keys(C.ARCH).some(d => C.ARCH[d].cards.indexOf(k) >= 0)) err(k, 'is in a ready deck (the third printing is found only in packs)');
+  if (c.pr !== g.pr) err(k, 'not marked pr ' + g.pr);
+  if (Object.keys(C.ARCH).some(d => C.ARCH[d].cards.indexOf(k) >= 0)) err(k, 'is in a ready deck (these cards are found only in packs)');
   ['cap', 'fact', 'art'].forEach(f => { if (typeof t[f] !== 'string' || !t[f]) err(k, 'missing ' + f); });
   if (typeof c.y !== 'number') err(k, 'missing year');
   if (fig) {
@@ -50,7 +56,7 @@ NEW.forEach(k => {
     const fx = E.fxOf(k), src = CARDS[fx] || C.RETIRED[fx], st = T.CARDS[fx] || T.RETIRED[fx];
     if (!FX[fx]) err(k, 'engine.js has no effect ' + fx);
     else if (!src || src.t !== c.t) err(k, 'fx must name a ' + c.t);
-    else { if (c.c !== src.c) err(k, 'cost differs from ' + fx); if (t.tx !== (src.dk && c.dk ? st.tx.split(src.dk).join(c.dk) : st.tx)) err(k, 'text differs from ' + fx); if (!!c.quick !== !!src.quick) err(k, 'quick differs from ' + fx); }
+    else { if (c.c !== src.c) err(k, 'cost differs from ' + fx); const want = src.dk && c.dk ? st.tx.split(src.dk).join(c.dk) : st.tx, own = want.split(src.n.replace(/^The /, '')).join(c.n.replace(/^The /, '')); if (t.tx !== want && !(c.quick && t.tx === own)) err(k, 'text differs from ' + fx); if (!!c.quick !== !!src.quick) err(k, 'quick differs from ' + fx); }   // (a Quick Deed may name itself where its source names itself: the Great Siege of Malta)
     if (c.t === 'relic' && c.f !== 'N') err(k, 'a Relic is faction N');
     if (c.t === 'relic' && !Array.isArray(t.ll)) err(k, 'missing ll');
     if (c.m != null || c.k || c.arr || c.insp) err(k, 'only Figures have m, k, arr or insp');
@@ -74,11 +80,12 @@ NEW.forEach(k => {
   if (!T.NOPIC[k] && !fs.existsSync(path.join(dir, 'art', k + '.webp'))) err(k, 'is listed as painted but has no picture in art/');
   if (!Coll.rarity(k)) err(k, 'has no rarity');
   // the record of sources
-  const j = JS[k]; if (!j) err(k, 'is not in set-150.json'); else { if (j.n !== c.n) err(k, 'name differs from set-150.json'); if (j.tx !== t.tx) err(k, 'rules text differs from set-150.json'); if (j.fact !== t.fact) err(k, 'fact differs from set-150.json'); if (j.art !== t.art) err(k, 'art brief differs from set-150.json'); if (j.c !== c.c || (fig && j.m !== c.m)) err(k, 'numbers differ from set-150.json'); if (!/^(https:\/\/|[A-Z])/.test(j.src || '')) err(k, 'no source'); }
+  const j = JS[k]; if (!j) err(k, 'is not in ' + g.file); else { if (j.n !== c.n) err(k, 'name differs from ' + g.file); if (j.tx !== t.tx) err(k, 'rules text differs from ' + g.file); if (j.fact !== t.fact) err(k, 'fact differs from ' + g.file); if (j.art !== t.art) err(k, 'art brief differs from ' + g.file); if (j.c !== c.c || (fig && j.m !== c.m)) err(k, 'numbers differ from ' + g.file); if (!/^(https:\/\/|[A-Z])/.test(j.src || '')) err(k, 'no source'); }
 });
-SET.cards.forEach(c => { if (!CARDS[c.key]) err(c.key, 'is in set-150.json and not in the game'); });
+});
+GROUPS.forEach(g => g.set.cards.forEach(c => { if (!CARDS[c.key]) err(c.key, 'is in ' + g.file + ' and not in the game'); }));
 // older cards given a Legacy Line by the third printing
-Object.keys(CARDS).forEach(k => { if (CARDS[k].pr === 3) return; (CARDS[k].from || []).concat(CARDS[k].insp || []).forEach(s => { if (s[0] !== '@' && !CARDS[s]) err(k, 'links to ' + s + ', which is not in the set'); if (!T.LINKS[s + '>' + k]) err(k, 'no sentence for ' + s + '>' + k); }); });
+Object.keys(CARDS).forEach(k => { if (CARDS[k].pr === 3 || CARDS[k].pr === 5) return; (CARDS[k].from || []).concat(CARDS[k].insp || []).forEach(s => { if (s[0] !== '@' && !CARDS[s]) err(k, 'links to ' + s + ', which is not in the set'); if (!T.LINKS[s + '>' + k]) err(k, 'no sentence for ' + s + '>' + k); }); });
 // named lines
 const ids = {}; C.THREADS.forEach(t => { if (ids[t.id] || t.id === 'horse' || t.id === 'nights') err('line ' + t.id, 'id already used'); ids[t.id] = 1;
   if (!t.n || t.cards.length < 2) err('line ' + t.id, 'needs a name and two cards or more'); t.cards.forEach(k => { if (!CARDS[k]) err('line ' + t.id, 'unknown card ' + k); }); (t.places || []).forEach(p => { if (!C.PLACES[p]) err('line ' + t.id, 'unknown Place ' + p); });
@@ -109,5 +116,10 @@ console.log('Legacy Lines: ' + count(c => c.insp) + ' Figures with a Legacy (ins
 console.log('Pictures still to be made: ' + NEW.filter(k => T.NOPIC[k]).length + ' of ' + NEW.length + ' in the third printing; ' + (C.PRINT4 || []).filter(k => T.NOPIC[k]).length + ' of ' + (C.PRINT4 || []).length + ' Domain cards; ' + Object.keys(C.PLACES).filter(k => T.NOPIC[k]).length + ' of ' + Object.keys(C.PLACES).length + ' Domains.');
 console.log('Sources (set-150.json): ' + SET.cards.filter(c => c.sure).length + ' of ' + SET.cards.length + ' cards were confirmed by a search or a full text; written from memory and not searched: ' + SET.cards.filter(c => !c.sure).map(c => c.key).join(', ') + '.');
 console.log('Still waiting for engine work, and not in the set: ' + ((SET.needsEngine || []).map(x => x.n).join(', ') || 'none') + '.');
+{ const P5 = C.PRINT5 || [], n5 = f => P5.filter(k => f(CARDS[k], k)).length, t5 = [0, 0, 0, 0, 0]; P5.forEach(k => { t5[Coll.rarity(k)]++; });
+  console.log('\nThe newest cards of the prime set (pr 5): ' + P5.length + ': ' + TYPES.map(t => n5(c => c.t === t) + ' ' + KIND[t]).join(', ') + '; ' + n5(c => c.t === 'fig' && c.c === 1) + ' Figures that cost 1 Spark (' + P5.filter(k => CARDS[k].t === 'fig' && CARDS[k].c === 1).map(k => CARDS[k].n).join(', ') + ').');
+  table('pr 5 Figures by faction and region', FAC.slice(0, 5), Object.keys(REGS), (f, r) => n5(c => c.t === 'fig' && c.f === f && c.reg === r));
+  console.log('Rarity: ' + [1, 2, 3, 4].map(t => Coll.TIERS[t] + ' ' + t5[t]).join(', ') + '. Pictures still to be made: ' + P5.filter(k => T.NOPIC[k]).length + ' of ' + P5.length + '. Named lines with a pr 5 card: ' + C.THREADS.filter(t => t.cards.some(k => CARDS[k].pr === 5)).length + '.');
+  console.log('Sources (set-p5.json): ' + SET5.cards.filter(c => c.sure).length + ' of ' + SET5.cards.length + ' confirmed by a search or a full text' + (SET5.cards.some(c => !c.sure) ? '; not yet: ' + SET5.cards.filter(c => !c.sure).map(c => c.key).join(', ') : '') + '.'); }
 if (bad.length) { console.log('\nWRONG (' + bad.length + '):\n  ' + bad.join('\n  ')); process.exit(1); }
 console.log('\nNothing wrong.');

@@ -132,3 +132,11 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   who wins, turn order, set-up rolls, teams, and the cards whose meaning changes with more players).
 - `players-2026-11-13.txt` has the numbers and what they say.
 - A two-player game is untouched: `endings.js` gives the same results line for line.
+
+## The first Figures that cost 1 Spark
+
+- `node scripts/anoria/spark1.js one <card> [games] ['<json of changes>'] [extra card]`: one card two copies in a deck in
+  every game (as `onecard.js`), with an extra card's two copies too if given (a Legacy Figure with its source).
+- `node scripts/anoria/spark1.js games [games] [seed]`: the same random decks with and without the 1-Spark Figures of
+  their factions: game length, Renown from Domains held unopposed, the outnumbering cards and Domains, and one deck
+  against itself without them. Results in `spark1-2026-11-13.txt`.

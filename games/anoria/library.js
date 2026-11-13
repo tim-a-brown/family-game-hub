@@ -339,7 +339,7 @@
     ['fac', 'Faction', ['D', 'S', 'V', 'A', 'W'].map(f => [f, FAC[f].n, FAC[f].c])],
     ['kind', 'Kind', KINDS],
     ['cost', 'Spark cost', [0, 1, 2, 3, 4, 5].map(n => [n, String(n)])],
-    ['might', 'Might', [2, 3, 4, 5, 6].map(n => [n, String(n)])],
+    ['might', 'Might', [...new Set(Object.keys(CARDS).filter(k => CARDS[k].t === 'fig').map(k => CARDS[k].m))].sort((a, b) => a - b).map(n => [n, String(n)])],   // (every Might a Figure has: the 1-Spark Figures brought 1)
     ['era', 'Era', ERAS.map((e, i) => i ? [i, e.n] : null).filter(Boolean)],
     ['reg', 'Home region', Object.keys(REG).map(r => [r, REG[r]])],
     ['key', 'Keyword', WORDS]

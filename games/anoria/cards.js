@@ -376,9 +376,115 @@ const PRINT4 = Object.keys(P4);
 // set and packs hold Domains. A game saved on the old fixed map finishes on it.)
 const DM_LIVE = (() => { if (typeof window === 'undefined') return true; try { return !(/[?&]domains=0/.test(location.search) || localStorage.getItem('anoria_dm') === '0'); } catch (e) { return true; } })();   // (on for everyone since 2026-11-12, Tim; ?domains=0 or anoria_dm '0' plays the old fixed map)
 PRINT4.forEach(k => { P4[k].pr = 4; if (DM_LIVE) CARDS[k] = P4[k]; });
+// ==P5==
+// ── The newest cards of the prime set (2026-11-13). Tim: "anoria is still in beta and any cards we add for
+// balance/interest/fun/unexpectedness going forward until we agree we're at launch are all part of the initial
+// printing (the prime set)". In code they are `pr: 5` (P5, PRINT5): bookkeeping only, as P3 and P4 are; a player never
+// reads a printing. 68 cards, found only in packs (they are in no set: coll.js POOL), chosen where the set was
+// thinnest (the Middle East, Oceania, the Americas between 1453 and 1650, the 1900s), and the first Figures that cost
+// 1 Spark: people whose importance wasn't force (a translator, an astronomer, a student, a messenger, a teacher, a
+// traveler, a surgeon), measured in scripts/anoria/spark1-2026-11-13.txt. Every card uses a skill or an effect the
+// engine has, except Larrey's shelter (engine.js clashable). Sources in scripts/anoria/set-p5.json; check-set.js
+// checks them.
+const P5 = {
+  // Discovery
+  biruni: F('Al-Biruni', 'D', 3, 3, 'MIDEAST', 3, 1020, { eureka: 1 }),
+  alrazi: F('Al-Razi', 'D', 3, 3, 'MIDEAST', 3, 910, { steadfast: 1 }),
+  ulughbeg: F('Ulugh Beg', 'D', 3, 3, 'ASIA', 3, 1437, { scholar: 1 }),
+  tycho: F('Tycho Brahe', 'D', 3, 3, 'EUR', 4, 1576, {}, { arr: ['spark', 1] }),
+  bassi: F('Laura Bassi', 'D', 2, 2, 'MED', 5, 1732, { scholar: 1 }, { insp: ['newton'] }),
+  cook: F('James Cook', 'D', 4, 4, 'EUR', 5, 1770, { voyager: 1, steadfast: 1 }),
+  banneker: F('Benjamin Banneker', 'D', 2, 2, 'AMER', 5, 1791, { deedsLess: 1 }),
+  mendeleev: F('Dmitri Mendeleev', 'D', 3, 3, 'EUR', 6, 1869, { masterpiece: 1 }),
+  ramanujan: F('Srinivasa Ramanujan', 'D', 2, 3, 'ASIA', 7, 1913, { underdog: 1 }),
+  transit: { n: 'The Transit of Venus', t: 'deed', f: 'D', c: 0, fx: 'fairwinds', y: 1769 },
+  ether: { n: 'Ether Day', t: 'deed', f: 'D', c: 1, fx: 'eclipse', y: 1846 },
+  periodic: { n: 'The Periodic Table', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1869 },
+  hunayn: F('Hunayn ibn Ishaq', 'D', 1, 1, 'MIDEAST', 3, 860, { scholar: 1 }),
+  cherschel: F('Caroline Herschel', 'D', 1, 1, 'EUR', 5, 1787, {}, { arr: ['spark', 1] }),
+  // Statecraft
+  solon: F('Solon', 'S', 3, 3, 'MED', 1, -594, { law: 1 }),
+  ezana: F('Ezana of Aksum', 'S', 3, 3, 'AFR', 2, 340, {}, { arr: ['spark', 1] }),
+  abbas: F('Shah Abbas the Great', 'S', 4, 3, 'MIDEAST', 4, 1598, {}, { arr: ['spark', 2] }),
+  ieyasu: F('Tokugawa Ieyasu', 'S', 5, 5, 'ASIA', 4, 1600, { guard: 1, steadfast: 1 }),
+  peter: F('Peter the Great', 'S', 5, 4, 'EUR', 5, 1703, { voyager: 1, inspiring: 1 }),
+  moshoeshoe: F('Moshoeshoe', 'S', 3, 3, 'AFR', 6, 1824, { guard: 1, steadfast: 1 }),
+  kamehameha: F('Kamehameha', 'S', 4, 4, 'OCE', 6, 1810, { orator: 1 }),
+  wells: F('Ida B. Wells', 'S', 3, 3, 'AMER', 6, 1892, {}, { arr: ['stun', 1] }),
+  paddle: { n: 'The Law of the Splintered Paddle', t: 'deed', f: 'S', c: 2, fx: 'milan', y: 1797 },
+  synesius: F('Synesius of Cyrene', 'S', 1, 1, 'AFR', 2, 400, {}, { insp: ['hypatia'] }),
+  revere: F('Paul Revere', 'S', 1, 1, 'AMER', 5, 1775, { swift: 1 }),
+  // Valor
+  piye: F('Piye', 'V', 3, 4, 'AFR', 1, -728, { swift: 1 }),
+  aethelflaed: F('Æthelflæd', 'V', 3, 3, 'EUR', 3, 917, { guard: 1 }, { insp: ['alfred'] }),
+  tranhungdao: F('Trần Hưng Đạo', 'V', 4, 4, 'ASIA', 3, 1288, { slayer: 1 }),
+  babur: F('Babur', 'V', 4, 4, 'ASIA', 4, 1526, { underdog: 1 }),
+  cuauhtemoc: F('Cuauhtémoc', 'V', 3, 3, 'AMER', 4, 1521, { steadfast: 1 }),
+  tupacamaru: F('Túpac Amaru II', 'V', 3, 3, 'AMER', 5, 1780, { uprising: 1 }),
+  garibaldi: F('Giuseppe Garibaldi', 'V', 4, 4, 'MED', 6, 1860, { swift: 1, inspiring: 1 }),
+  qiujin: F('Qiu Jin', 'V', 2, 2, 'ASIA', 7, 1907, { swift: 1 }),
+  zapata: F('Emiliano Zapata', 'V', 3, 3, 'AMER', 7, 1911, { homeDouble: 1 }),
+  bachdang: { n: 'The Battle of Bạch Đằng', t: 'deed', f: 'V', c: 3, fx: 'ambush', y: 1288 },
+  malta: { n: 'The Great Siege of Malta', t: 'deed', f: 'V', c: 1, quick: 1, fx: 'syracuse', y: 1565 },
+  thousand: { n: 'The Expedition of the Thousand', t: 'deed', f: 'V', c: 2, fx: 'trojan', y: 1860 },
+  larrey: F('Dominique-Jean Larrey', 'V', 1, 1, 'EUR', 5, 1797, { shelter: 1 }),
+  // Arts
+  augustine: F('Augustine of Hippo', 'A', 3, 3, 'AFR', 2, 397, { tale: 1 }),
+  hafez: F('Hafez', 'A', 3, 3, 'MIDEAST', 3, 1370, {}, { arr: ['wits', 1] }),
+  zeami: F('Zeami', 'A', 3, 3, 'ASIA', 3, 1400, { stage: 1 }),
+  garcilaso: F('Inca Garcilaso', 'A', 3, 3, 'AMER', 4, 1609, { scholar: 1 }),
+  rembrandt: F('Rembrandt', 'A', 4, 4, 'EUR', 4, 1642, { inspiring: 1 }),
+  vivaldi: F('Antonio Vivaldi', 'A', 3, 3, 'MED', 5, 1725, { swift: 1 }),
+  liliuokalani: F('Liliʻuokalani', 'A', 3, 3, 'OCE', 6, 1893, { steadfast: 1 }),
+  asmau: F('Nana Asma\'u', 'A', 2, 3, 'AFR', 6, 1830, { scholar: 1 }),
+  tagore: F('Rabindranath Tagore', 'A', 4, 4, 'ASIA', 7, 1913, { scholar: 1, inspiring: 1 }),
+  fourseasons: { n: 'The Four Seasons', t: 'deed', f: 'A', c: 1, fx: 'encore', y: 1725 },
+  nightwatch: { n: 'The Night Watch', t: 'deed', f: 'A', c: 1, fx: 'decree', y: 1642 },
+  gitanjali: { n: 'Gitanjali', t: 'deed', f: 'A', c: 1, fx: 'caravan', y: 1913 },
+  banzhao: F('Ban Zhao', 'A', 1, 1, 'ASIA', 2, 106, { inspiring: 1 }),
+  // Wonder
+  nefertiti: F('Nefertiti', 'W', 3, 3, 'AFR', 1, -1345, { inspiring: 1 }),
+  sixsky: F('Lady Six Sky', 'W', 3, 3, 'AMER', 3, 682, { raider: 1 }),
+  zubaidah: F('Zubaidah', 'W', 3, 3, 'MIDEAST', 3, 800, { monument: 1 }),
+  sinan: F('Mimar Sinan', 'W', 4, 4, 'MIDEAST', 4, 1557, { monument: 1 }),
+  leoafricanus: F('Leo Africanus', 'W', 3, 3, 'AFR', 4, 1526, { voyager: 1, scholar: 1 }),
+  hasekura: F('Hasekura Tsunenaga', 'W', 3, 3, 'ASIA', 4, 1615, { voyager: 1 }, { arr: ['spark', 1] }),
+  tupaia: F('Tupaia', 'W', 2, 3, 'OCE', 5, 1769, { voyager: 1 }),
+  seondeok: F('Queen Seondeok', 'W', 3, 4, 'ASIA', 3, 634, { scholar: 1 }),
+  krakatoa: { n: 'The Eruption of Krakatoa', t: 'deed', f: 'W', c: 1, fx: 'lisbonquake', y: 1883 },
+  panama: { n: 'The Panama Canal', t: 'deed', f: 'W', c: 2, fx: 'rift', y: 1914 },
+  fadlan: F('Ibn Fadlan', 'W', 1, 1, 'MIDEAST', 3, 922, { voyager: 1 }),
+  // Relics
+  greekfire: { n: 'Greek Fire', t: 'relic', f: 'N', c: 2, fx: 'dsteel', y: 672 },
+  rockets: { n: 'Mysore Rockets', t: 'relic', f: 'N', c: 2, fx: 'dsteel', y: 1780 },
+  chronometer: { n: 'Harrison\'s Watch', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1761 },
+  stickchart: { n: 'Stick Chart', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1862 },
+  raingauge: { n: 'Rain Gauge', t: 'relic', f: 'N', c: 2, fx: 'abacus', y: 1441 },
+  codex: { n: 'Dresden Codex', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1200 },
+};
+const FROM5 = {'biruni': ['astrolabe'], 'cook': ['tupaia','chronometer'], 'wells': ['douglass'], 'tranhungdao': ['kublai'], 'babur': ['genghis'], 'augustine': ['virgil'], 'garcilaso': ['pachacuti'], 'zubaidah': ['harun'], 'sinan': ['suleiman'], 'leoafricanus': ['@timbuktu'], 'greekfire': ['@constantinople'], 'raingauge': ['sejong'], 'transit': ['cook'], 'periodic': ['mendeleev'], 'paddle': ['kamehameha'], 'bachdang': ['tranhungdao'], 'thousand': ['garibaldi'], 'fourseasons': ['vivaldi'], 'nightwatch': ['rembrandt'], 'gitanjali': ['tagore'], 'hunayn': ['hippocrates'], 'larrey': ['napoleon']};
+// (the lines they give to cards the game already had: all `from`, added to FROM_MORE below, so no older card changes
+// its words, its cost or its Might)
+const FROM_MORE5 = { goethe: ['hafez'], catherine: ['peter'], bach: ['vivaldi'], kepler: ['tycho'], jaisingh: ['ulughbeg'] };
+// (named Legacy Lines of their own: no named line the game already had gains a card)
+const THREADS5 = [
+  { id: 'endeavour', n: 'The Endeavour', cards: ['tupaia','cook','transit'] },
+  { id: 'divan', n: 'The West-Eastern Divan', cards: ['hafez','goethe'] },
+  { id: 'horseman', n: 'The Bronze Horseman', cards: ['peter','catherine'] },
+  { id: 'stakes', n: 'The Stakes in the River', cards: ['kublai','tranhungdao','bachdang'] },
+  { id: 'redshirts', n: 'The Red Shirts', cards: ['garibaldi','thousand'] },
+  { id: 'redpriest', n: 'The Red Priest', cards: ['vivaldi','fourseasons','bach'] },
+  { id: 'paddle', n: 'The Splintered Paddle', cards: ['kamehameha','paddle'] },
+  { id: 'rudolphine', n: 'The Rudolphine Tables', cards: ['tycho','kepler'] },
+  { id: 'samarkand', n: 'The Stars of Samarkand', cards: ['ulughbeg','jaisingh'] },
+  { id: 'mercians', n: 'The Lady of the Mercians', cards: ['alfred','aethelflaed'] },
+];
+const PRINT5 = Object.keys(P5);
+PRINT5.forEach(k => { P5[k].pr = 5; if (FROM5[k]) P5[k].from = FROM5[k]; CARDS[k] = P5[k]; });
+// ==/P5==
 // Legacy Lines the new cards give to cards the game already had. All of them are lines (`from`: Renown when the
 // card is played with its source on your side), so no older card changes its rules text, its cost or its Might.
-const FROM_MORE = { bolivar: ['humboldt'], marcopolo: ['kublai'], newton: ['kepler'], mozart: ['bach'], plato: ['pythagoras'] };
+const FROM_MORE = Object.assign({ bolivar: ['humboldt'], marcopolo: ['kublai'], newton: ['kepler'], mozart: ['bach'], plato: ['pythagoras'] }, FROM_MORE5);
 Object.keys(FROM_MORE).forEach(k => { CARDS[k].from = (CARDS[k].from || []).concat(FROM_MORE[k]); });
 const ERAS = [null, { n: 'The First Cities', to: -550 }, { n: 'The Classical World', to: 450 }, { n: 'The Middle Ages', to: 1453 }, { n: 'The Renaissance', to: 1650 }, { n: 'The Enlightenment', to: 1800 }, { n: 'The Age of Steam', to: 1900 }, { n: 'The Modern World', to: 2000 }];
 // Named Threads: chains to collect. Owning every card of one completes it (Places are part of the story, not owned).
@@ -451,6 +557,7 @@ const THREADS = [
   { id: 'medicigarden', n: 'The Medici Garden', cards: ['michelangelo', 'medici'] },
   { id: 'pilgrims', n: 'The Pilgrims\' Bridge', cards: ['dante', 'holyyear'] },
 ];
+THREADS.push.apply(THREADS, THREADS5);   // (the newest cards' own named lines, P5 above)
 // The first five each bring a ready deck (ARCH). The seven after them join a player as wins against the computer add
 // up, and guide a deck the player builds. The roster of twelve (Tim, 2026-11-12): Joan of Arc, Saladin, Shakespeare,
 // Empress Wu, Akbar, Mansa Musa and Sor Juana joined; Shakespeare took the Legacy deck from Franklin. A Guide is never
@@ -615,7 +722,9 @@ Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
 // A Guide's deck is the base set and their set, one of each: 40 cards, balanced against every other Guide's deck by
 // the robots (scripts/anoria/sets.js, sets.txt). No card is in two sets. A card in no set is found only in packs
 // (coll.js POOL), so a card added to the game later joins those by itself. There are 75 Domains and 104 places for
-// them, so some Domains are in two Guides' sets.
+// them, so some Domains are in two Guides' sets. (2026-11-13: Dante went to Sor Juana's writers and scholars and Scott
+// Joplin to Shakespeare's poets, players and composers: her deck won 42.4% under the Normal robot, 46.2% after, and
+// his 52.1% and then 48.0%; the spread between Guides fell from 13.8 points to 9.2. sets.txt.)
 // ==SETS==
 const BASE = 'hypatia archimedes euclid socrates pericles boudica spartacus homer sappho coleman magellan pythagoras sacagawea andersen compass tablet eureka eclipse marathonmarch veto'.split(' ');
 const GSET = {
@@ -623,14 +732,14 @@ const GSET = {
   leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer voyagingcanoe fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
   tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius canasatego nanny'.split(' '),
   suntzu: 'leonidas yoshitsune genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
-  shakespeare: 'plato aristotle moliere dante chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
+  shakespeare: 'plato aristotle moliere joplin chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
   curie: 'hippocrates kepler nightingale tesla faraday darwin pasteur newton jenner montagu anning ada germain champollion telegraph locomotive balloon beagle halley humboldt'.split(' '),
   joan: 'wallace vercingetorix zumbi tecumseh toussaint napoleon washington franklin wollstonecraft william catherine declaration congress truce canossa breda westphalia leo alfred nostradamus'.split(' '),
   saladin: 'richard baibars mehmed haytham ibnsina alkhwarizmi harun fibonacci eleanor ibnkhaldun rumi idrisi dsteel astrolabe sextant magnacarta walls lisbonquake earthquake zenobia'.split(' '),
   wuzetian: 'mencius cailun seishonagon libai zhangheng sejong trung confucius murasaki basho shenkuo zhangqian fuhao chingshih paper paiza starchart typhoon brahmagupta qinshihuang'.split(' '),
   akbar: 'lakshmibai darius ashoka suleiman cyrus shahjahan nebuchadnezzar jaisingh sargon enheduanna ashurbanipal victoria khayyam ferdowsi cyruscylinder kudurru wheel exhibition rubaiyat kublai'.split(' '),
   mansamusa: 'sundiata ibnbattuta shaka lalibela hannibal nzinga askia yaa afonso amanirenas menelik equiano manuscripts abacus caravan adwa goldrush hansa columbian imhotep'.split(' '),
-  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe joplin pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
+  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe dante pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
 };
 const DSET = {
   base: 'library silk colosseum acropolis wall stonehenge machu nineveh'.split(' '),
@@ -651,5 +760,5 @@ const DSET = {
 // The Domains a player can see in the Library and the art proof: all of them once Domains are on, and until then
 // the twelve Places of today's fixed map (the ones with an old-map rule, pw0)
 const SHOWN = Object.keys(PLACES).filter(k => DM_LIVE || 'pw0' in PLACES[k]);
-return { DM_LIVE, SHOWN, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4, BASE, GSET, DSET };
+return { DM_LIVE, SHOWN, CARDS, RETIRED, now, GUIDES, OLD_GUIDES, PLACES, DKINDS, DRULES, CENTER, EDGE, ARCH, GROWN, STACKS, STACK, THREADS, ERAS, PRINT3, PRINT4, PRINT5, BASE, GSET, DSET };
 });

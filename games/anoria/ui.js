@@ -23,7 +23,7 @@
     D: { n: 'Discovery', c: '#1d4f9c' }, S: { n: 'Statecraft', c: '#1f6f6a' }, V: { n: 'Valor', c: '#a3262b' },
     A: { n: 'Arts', c: '#b5672a' }, W: { n: 'Wonder', c: '#6a3a72' }, N: { n: 'Relic', c: '#6b5a36' }, P: { n: 'Place', c: '#3c4a6e' }
   };
-  const REG = { MED: 'Mediterranean', AFR: 'Africa', ASIA: 'Asia', EUR: 'Europe', MIDEAST: 'Middle East', AMER: 'Americas' };
+  const REG = { MED: 'Mediterranean', AFR: 'Africa', ASIA: 'Asia', EUR: 'Europe', MIDEAST: 'Middle East', AMER: 'Americas', OCE: 'Oceania' };
   const PLAN = { Explorers: 'Go anywhere', Legion: 'Big Might, hold the middle', Legacy: 'Chains of influence', Court: 'Control and steady Renown', Pathfinders: 'Hidden roads, swaps and sudden arrivals' };
   const DECKS = Object.keys(C.ARCH);
   const RULE = {
@@ -410,7 +410,7 @@
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
   // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
-  const NO_THE = { paper: 1, braille: 1, dsteel: 1 };
+  const NO_THE = { paper: 1, braille: 1, dsteel: 1, greekfire: 1, chronometer: 1 };   // (Greek Fire, Harrison's Watch: no "the")
   // Where a card is at home, at the foot of a full card: the same house plate with the region's outline in it that the
   // map's tiles wear (domains.js home), and the region's name beside it, centred on the plate by its capitals (Tim)
   const homeFoot = reg => { const D = window.AnoriaDomains, n = el('div', { class: 'ac-home' + (D ? ' plate' : ''), 'aria-label': 'Home region: ' + (REG[reg] || '') });
@@ -3919,7 +3919,7 @@
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
   // The key to the marks on the map's tiles, drawn with the marks themselves (rules page)
   function kindKey() { const D = window.AnoriaDomains; if (!D) return ''; return '<span class="rk-keys">' + D.ORDER.map(k => '<span class="rk-k">' + D.mark(k).outerHTML + '<b>' + D.KINDS[k].n + '</b></span>').join('') + '</span>'; }
-  function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
+  function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER', 'OCE']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
   const RULES = () => { const WIN = (G && S && !G.demo && !G.teams && S.cfg && S.cfg.target) || E.STD.target, RC = (G && S && !G.demo && S.N > 2 && S.cfg) || E.STD; return ('' +
     '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
