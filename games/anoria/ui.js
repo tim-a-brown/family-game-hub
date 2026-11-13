@@ -820,8 +820,9 @@
       flow.style.setProperty('--cu', cu + 'px'); under.style.height = Math.max(0, Math.min(most, room - cu)) + 'px';
     }
     const resize = () => { size(); F.reset(); rest(Math.round(F.pos)); };
-    document.addEventListener('keydown', F.key); window.addEventListener('resize', resize);
-    v._off = () => { F.stop(); document.removeEventListener('keydown', F.key); window.removeEventListener('resize', resize); };
+    const resize2 = () => { resize(); setTimeout(() => { if (v.isConnected) resize(); }, 350); };
+    document.addEventListener('keydown', F.key); window.addEventListener('resize', resize2); window.addEventListener('orientationchange', resize2);
+    v._off = () => { F.stop(); document.removeEventListener('keydown', F.key); window.removeEventListener('resize', resize2); window.removeEventListener('orientationchange', resize2); };
     document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
     size(); F.render(); rest(Math.round(F.pos));
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
@@ -984,8 +985,9 @@
       cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
     }
     const resize = () => { size(); if (F) { F.reset(); rest(Math.round(F.pos)); } };
-    document.addEventListener('keydown', key); window.addEventListener('resize', resize);
-    v._off = () => { if (F) F.stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize); };
+    const resize2 = () => { resize(); setTimeout(() => { if (v.isConnected) resize(); }, 350); };
+    document.addEventListener('keydown', key); window.addEventListener('resize', resize2); window.addEventListener('orientationchange', resize2);
+    v._off = () => { if (F) F.stop(); document.removeEventListener('keydown', key); window.removeEventListener('resize', resize2); window.removeEventListener('orientationchange', resize2); };
     document.body.appendChild(v); viewEl = v; document.addEventListener('keydown', viewKey);
     size(); go(li, ii, 0);
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
@@ -1869,6 +1871,7 @@
     const p = t.querySelector('.pl-plate'); if (!p || !t.classList.contains('dm')) return;
     const on = t.getBoundingClientRect().width >= 170; t.classList.toggle('roomy', on);
     if (on) t.querySelectorAll(':scope > .dm-clasp').forEach(c => p.appendChild(c));
+    else p.querySelectorAll(':scope > .dm-clasp').forEach(c => t.appendChild(c));   // (and back out when the tile narrows: an iPad turned upright)
   }
   function fitPlates() {
     if (!dom.map) return;
@@ -1975,7 +1978,14 @@
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'an-line'); svg.innerHTML = h; dom.map.appendChild(svg);
   }
   let rsT = 0;
-  window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => { if (G && dom.root && dom.root.isConnected) { if (many()) render(); else { layout(); lines(); } } }, 80); });
+  // A new size redraws the whole table (render, which also fits the Domains' paper again: fitPlates, roomy). Only laying
+  // it out again left every tile with its old paper height after an iPad turned (Tim, 2026-11-13: "trying to rotate
+  // between the orientations messed up the cards fully"). Safari can report the old size when the event fires, so the
+  // table is drawn once more a moment later.
+  const reTable = () => { if (G && dom.root && dom.root.isConnected) render(); };
+  const onSize = () => { clearTimeout(rsT); rsT = setTimeout(() => { reTable(); clearTimeout(rsT2); rsT2 = setTimeout(reTable, 350); }, 80); };
+  let rsT2 = 0; window.addEventListener('resize', onSize); window.addEventListener('orientationchange', onSize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', onSize);
 
   // ═══ The table for three to six players ══════════════════════════════════════════════════════════════════
   // Tim, 2026-11-13, layout C of the mockups: "your spoke large, the others round the rim". The player whose side of
