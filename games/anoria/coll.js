@@ -91,9 +91,9 @@ const FIRSTS = { win: 'Your first win', normal: 'Your first win against Normal',
 // none of the lists (a new set, before the script is run again) goes by its cost.
 const RARE = {
   4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
-  3: 'chingshih sargon hannibal aristotle shaka beethoven askia hiawatha bolivar genghis darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
+  3: 'chingshih sargon hannibal aristotle shaka beethoven askia canasatego bolivar genghis darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
   2: 'copernicus dante baibars murasaki moliere douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
-  1: 'faraday hokusai tomoe plato christine germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
+  1: 'faraday hokusai yoshitsune plato christine germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
 };
 // The third printing, tiered among themselves by the same measure ('node scripts/anoria/rarity.js 6000 3'), and the
 // cards added after it at the end of each list, each by its own run, so that no older card's printed mark moved.
@@ -127,6 +127,14 @@ function load() {
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = store.get(KEY);
   ['cards', 'seen', 'fresh', 'ed', 'look', 'doms', 'dnew', 'firsts', 'calls', 'threads', 'stacks'].forEach(k => { if (!cache[k] || typeof cache[k] !== 'object') cache[k] = {}; });
   if (!Array.isArray(cache.guides)) cache.guides = []; if (!Array.isArray(cache.packs)) cache.packs = [];
+  // a card that has left the set since v 6 (Tomoe Gozen and Hiawatha, 2026-11-13) is the card that has its slot now,
+  // with its finishes and the one it is shown in
+  const R = C.RETIRED || {}; let moved = false;
+  ['cards', 'seen', 'fresh', 'ed', 'look'].forEach(f => Object.keys(cache[f]).forEach(k => {
+    const t = R[k] && R[k].to; if (!t || !CARDS[t]) return;
+    if (f === 'ed') cache.ed[t] = (cache.ed[t] || 0) | cache.ed[k]; else if (!cache[f][t]) cache[f][t] = cache[f][k];
+    delete cache[f][k]; moved = true; }));
+  if (moved) save(cache);
   return cache;
 }
 function save(s) { cacheRaw = JSON.stringify(s); cache = s; store.set(KEY, cacheRaw); return s; }
@@ -327,7 +335,7 @@ function problems(d) {
   Object.keys(n).forEach(k => { if (!CARDS[k]) out.push('A card that isn\'t in the game'); else if (n[k] > CAP) out.push('More than two of ' + CARDS[k].n); else if (!s.cards[k]) out.push(CARDS[k].n + ' isn\'t yours yet'); });
   return out;
 }
-function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} return Array.isArray(a) ? a.filter(d => d && Array.isArray(d.cards)) : []; }
+function myDecks() { let a = []; try { a = JSON.parse(store.get(DKEY) || '[]') || []; } catch (e) {} return Array.isArray(a) ? a.filter(d => d && Array.isArray(d.cards)).map(d => Object.assign(d, { cards: d.cards.map(C.now) })) : []; }
 function saveDeck(d) { const a = myDecks(); if (!d.id) d.id = 'd' + Date.now().toString(36) + ((rnd() * 1296) | 0).toString(36); const i = a.findIndex(x => x.id === d.id); const rec = { id: d.id, n: String(d.n || 'My deck').slice(0, 24), guide: d.guide || '', cards: (d.cards || []).slice() }; const st = d.stack || (i >= 0 ? a[i].stack : null); if (st) rec.stack = st.slice(); if (i >= 0) a[i] = rec; else a.push(rec); store.set(DKEY, JSON.stringify(a)); return rec; }
 function deleteDeck(id) { store.set(DKEY, JSON.stringify(myDecks().filter(d => d.id !== id))); }
 // Every deck there is to play: each Guide's deck you have (the Guide you began with first) and the decks you built.

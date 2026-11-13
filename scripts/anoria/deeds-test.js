@@ -91,7 +91,7 @@ function tGame(at, lay) { const S = game(lay); const a = fig(S, 'spartacus', 0, 
 { const { S, a, d } = tGame(4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not at the Crossroads', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(1); S.figs.splice(S.figs.indexOf(a), 1); S.figs.splice(S.figs.indexOf(d), 1); const a2 = fig(S, 'spartacus', 0, 1), d2 = fig(S, 'charlemagne', 1, 1); E.apply(S, { t: 'clash', u: a2.u, v: d2.u }, 0, 0); ok('testudo: not on your own side', !E.byU(S, a2.u)); }
 { const { S, a, d } = tGame(3); S.P[0].spark = 0; E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not without Spark', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
-{ const { S, a, d } = tGame(3); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'tomoe', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not with no room at the Gate', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
+{ const { S, a, d } = tGame(3); fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); fig(S, 'yoshitsune', 0, 0); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: not with no room at the Gate', !E.byU(S, a.u) && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3, [null, null, null, 'runnymede']); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 0, 0); ok('testudo: kept where Runnymede sends the Figure back anyway', E.byU(S, a.u).p === 0 && S.P[0].hand.length === 1); }
 { const { S, a, d } = tGame(3); S.figs.splice(S.figs.indexOf(d), 1); const w = fig(S, 'socrates', 1, 3); a.tb = 3; E.apply(S, { t: 'clash', u: a.u, v: w.u }, 0, 0); ok('testudo: not when the clash is won', !E.byU(S, w.u) && S.P[0].hand.length === 1); }
 // ── The Defence of Syracuse: an enemy that would win a clash it started at your Gate or Outpost is driven back ──
@@ -108,7 +108,7 @@ function sGame(at) { const S = game(); const a = fig(S, 'charlemagne', 0, at), d
 const clashes = S => E.actions(S).filter(a => a.t === 'clash' && !a.ph);
 const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].hand[a.h] === k);
 // ── Damascus Steel: your Figures have +1 Might when attacking ──
-{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'tomoe', 1, 4); S.P[0].hand = ['dsteel'];
+{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4); S.P[0].hand = ['dsteel'];
   const m1 = E.might(S, a, 1, d), m0 = E.might(S, a, 0), m2 = E.might(S, a, 2, d);
   S.P[0].guide = 'cleopatra'; ok('dsteel: 2 Spark', E.costOf(S, 0, 'dsteel') === 2); E.apply(S, relic(S, 'dsteel'));
   ok('dsteel: +1 when attacking', E.might(S, a, 1, d) === m1 + 1, [m1, E.might(S, a, 1, d)]);
@@ -127,7 +127,7 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
 { const S = game(); fig(S, 'leonidas', 0, 4); fig(S, 'hammurabi', 1, 4); S.P[0].hand = ['ambush']; S.P[1].hand = ['veto']; S.P[1].relics = ['abacus']; S.P[1].reserve = 0;
   E.apply(S, deeds(S, 'ambush')[0], 0, 0); ok('abacus: a Tribune\'s Veto at 0 plays itself with no Spark kept', S.ev.some(e => e.t === 'veto')); }
 // ── The Peace of Westphalia: nobody can start a clash at one Domain until this round ends ──
-{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'tomoe', 1, 4); fig(S, 'leonidas', 0, 1); fig(S, 'charlemagne', 1, 1); S.P[0].hand = ['westphalia'];
+{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4); fig(S, 'leonidas', 0, 1); fig(S, 'charlemagne', 1, 1); S.P[0].hand = ['westphalia'];
   ok('westphalia: 1 Spark, any Domain', E.costOf(S, 0, 'westphalia') === 1 && deeds(S, 'westphalia').length === 5);
   E.apply(S, deeds(S, 'westphalia').find(x => x.p === 4)); ok('westphalia lies on the Domain until the count', S.dip.some(x => x.c === 'westphalia' && x.p === 4 && x.o === 0));
   ok('westphalia: no clash there for you', !clashes(S).some(x => x.u === a.u) && clashes(S).some(x => x.p === undefined && E.byU(S, x.u).p === 1));
@@ -135,30 +135,30 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
   S.P[1].hand = ['ambush']; ok('westphalia: no Ambush there either', !deeds(S, 'ambush').some(x => x.u === d.u));
   S.P[1].hand = ['westphalia']; ok('westphalia: not twice on one Domain', !deeds(S, 'westphalia').some(x => x.p === 4));
   E.endRound(S); S.turn = 0; E.startTurn(S); ok('westphalia: gone at the count', !(S.dip || []).length && clashes(S).some(x => x.u === a.u)); }
-{ const S = game(); fig(S, 'boudica', 0, 4); const d = fig(S, 'tomoe', 1, 4); fig(S, 'leo', 1, 4, { rdy: 0 }); S.P[0].hand = ['westphalia'];
+{ const S = game(); fig(S, 'boudica', 0, 4); const d = fig(S, 'yoshitsune', 1, 4); fig(S, 'leo', 1, 4, { rdy: 0 }); S.P[0].hand = ['westphalia'];
   E.apply(S, deeds(S, 'westphalia').find(x => x.p === 4)); S.turn = 1; E.startTurn(S); ok('westphalia: a Ward keeps the other player\'s Peace off its side', clashes(S).some(x => x.u === d.u)); }
-{ const S = game(['forbidden']); fig(S, 'boudica', 0, 0); const d = fig(S, 'tomoe', 1, 0); S.P[0].hand = ['westphalia'];
+{ const S = game(['forbidden']); fig(S, 'boudica', 0, 0); const d = fig(S, 'yoshitsune', 1, 0); S.P[0].hand = ['westphalia'];
   E.apply(S, deeds(S, 'westphalia').find(x => x.p === 0)); S.turn = 1; E.startTurn(S); ok('westphalia: nor at the Forbidden City', clashes(S).some(x => x.u === d.u)); }
-{ const S = game(); fig(S, 'boudica', 0, 4); fig(S, 'tomoe', 1, 4); S.P[0].hand = ['westphalia']; S.P[1].hand = ['veto']; S.P[1].reserve = 1;
+{ const S = game(); fig(S, 'boudica', 0, 4); fig(S, 'yoshitsune', 1, 4); S.P[0].hand = ['westphalia']; S.P[1].hand = ['veto']; S.P[1].reserve = 1;
   E.apply(S, deeds(S, 'westphalia')[0]); ok('westphalia: the Veto does not cancel a Peace', !S.ev.some(e => e.t === 'veto') && S.P[1].hand.length === 1); }
 // ── The Lisbon Earthquake: every Figure at one Domain, yours and theirs, misses its next turn ──
-{ const S = game(); const a = fig(S, 'boudica', 0, 4), b = fig(S, 'leonidas', 0, 4), d = fig(S, 'tomoe', 1, 4), x = fig(S, 'charlemagne', 1, 3); S.P[0].hand = ['lisbonquake'];
+{ const S = game(); const a = fig(S, 'boudica', 0, 4), b = fig(S, 'leonidas', 0, 4), d = fig(S, 'yoshitsune', 1, 4), x = fig(S, 'charlemagne', 1, 3); S.P[0].hand = ['lisbonquake'];
   ok('lisbon: 1 Spark, only where a Figure stands', E.costOf(S, 0, 'lisbonquake') === 1 && deeds(S, 'lisbonquake').map(q => q.p).sort().join() === '3,4');
   E.apply(S, deeds(S, 'lisbonquake').find(q => q.p === 4)); ok('lisbon: everyone there', a.stun && b.stun && d.stun && !x.stun);
   ok('lisbon: the event', S.ev.some(e => e.t === 'quake' && e.p === 4 && e.us.length === 3));
   ok('lisbon: yours can still act this turn', clashes(S).some(q => q.u === a.u));
   S.turn = 1; E.startTurn(S); ok('lisbon: theirs miss their next turn', !d.rdy && !clashes(S).some(q => q.u === d.u) && x.rdy);
   E.endTurn(S); S.turn = 0; E.startTurn(S); ok('lisbon: yours miss your next turn', !a.rdy && !b.rdy && !E.actions(S).some(q => q.u === a.u || q.u === b.u)); }
-{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'tomoe', 1, 4), l = fig(S, 'leo', 1, 4); S.P[0].hand = ['lisbonquake'];
+{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4), l = fig(S, 'leo', 1, 4); S.P[0].hand = ['lisbonquake'];
   E.apply(S, deeds(S, 'lisbonquake').find(q => q.p === 4)); ok('lisbon: a Ward keeps it off the other side', a.stun && !d.stun && !l.stun); }
-{ const S = game(['forbidden']); const a = fig(S, 'boudica', 0, 0), d = fig(S, 'tomoe', 1, 0); S.P[0].hand = ['lisbonquake'];
+{ const S = game(['forbidden']); const a = fig(S, 'boudica', 0, 0), d = fig(S, 'yoshitsune', 1, 0); S.P[0].hand = ['lisbonquake'];
   E.apply(S, deeds(S, 'lisbonquake').find(q => q.p === 0)); ok('lisbon: the Forbidden City keeps it off the other side', a.stun && !d.stun); }
-{ const S = vetoGame('lisbonquake', S => { fig(S, 'boudica', 0, 4); fig(S, 'tomoe', 1, 4); }); E.apply(S, deeds(S, 'lisbonquake')[0]);
+{ const S = vetoGame('lisbonquake', S => { fig(S, 'boudica', 0, 4); fig(S, 'yoshitsune', 1, 4); }); E.apply(S, deeds(S, 'lisbonquake')[0]);
   ok('lisbon: the Veto cancels it', S.ev.some(e => e.t === 'veto') && !S.figs.some(f => f.stun)); }
-{ const S = vetoGame('lisbonquake', S => { fig(S, 'boudica', 0, 3); fig(S, 'tomoe', 1, 4); }); E.apply(S, deeds(S, 'lisbonquake').find(q => q.p === 3));
+{ const S = vetoGame('lisbonquake', S => { fig(S, 'boudica', 0, 3); fig(S, 'yoshitsune', 1, 4); }); E.apply(S, deeds(S, 'lisbonquake').find(q => q.p === 3));
   ok('lisbon: no Veto where none of yours stands', !S.ev.some(e => e.t === 'veto') && S.figs[0].stun); }
 // ── The Edict of Milan: until this round ends, the other player can't start a clash with your Figures at one Domain ──
-{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'tomoe', 1, 4), e = fig(S, 'leonidas', 1, 1); fig(S, 'spartacus', 0, 1); S.P[1].hand = ['milan']; S.turn = 1;
+{ const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4), e = fig(S, 'leonidas', 1, 1); fig(S, 'spartacus', 0, 1); S.P[1].hand = ['milan']; S.turn = 1;
   ok('milan: 2 Spark, only where you have a Figure', E.costOf(S, 1, 'milan') === 2 && deeds(S, 'milan').map(q => q.p).sort().join() === '1,4');
   E.apply(S, deeds(S, 'milan').find(q => q.p === 4)); ok('milan lies on the Domain until the count', S.dip.some(x => x.c === 'milan' && x.p === 4 && x.o === 1));
   ok('milan: your Figure can still start a clash', clashes(S).some(q => q.u === d.u));
@@ -167,10 +167,10 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
   const n = fig(S, 'charlemagne', 1, 4); ok('milan: a Figure that comes later is sheltered too', !clashes(S).some(q => q.v === n.u));
   S.P[0].hand = ['eclipse']; ok('milan: a Deed that is not a clash still reaches them', deeds(S, 'eclipse').some(q => q.p === 4));
   E.endRound(S); S.turn = 0; E.startTurn(S); ok('milan: gone at the count', clashes(S).some(q => q.v === n.u)); }
-{ const S = game(); const d = fig(S, 'tomoe', 1, 4); const a = fig(S, 'boudica', 0, 4); S.P[1].hand = ['milan']; S.turn = 1; E.apply(S, deeds(S, 'milan')[0]);
-  S.figs.splice(S.figs.indexOf(d), 1); const d2 = fig(S, 'tomoe', 1, 3); S.turn = 0; E.startTurn(S); fig(S, 'leonidas', 0, 3);
+{ const S = game(); const d = fig(S, 'yoshitsune', 1, 4); const a = fig(S, 'boudica', 0, 4); S.P[1].hand = ['milan']; S.turn = 1; E.apply(S, deeds(S, 'milan')[0]);
+  S.figs.splice(S.figs.indexOf(d), 1); const d2 = fig(S, 'yoshitsune', 1, 3); S.turn = 0; E.startTurn(S); fig(S, 'leonidas', 0, 3);
   ok('milan: a Figure that walks out is not sheltered', clashes(S).some(q => q.v === d2.u)); }
-{ const S = vetoGame('milan', S => { fig(S, 'boudica', 0, 4); fig(S, 'tomoe', 1, 4); }); E.apply(S, deeds(S, 'milan')[0]); ok('milan: the Veto does not cancel it', !S.ev.some(e => e.t === 'veto')); }
+{ const S = vetoGame('milan', S => { fig(S, 'boudica', 0, 4); fig(S, 'yoshitsune', 1, 4); }); E.apply(S, deeds(S, 'milan')[0]); ok('milan: the Veto does not cancel it', !S.ev.some(e => e.t === 'veto')); }
 // ── The Walk to Canossa: an enemy Figure's skills and powers don't work until this round ends ──
 { const S = game(); const a = fig(S, 'boudica', 0, 4), g = fig(S, 'leonidas', 1, 4), h = fig(S, 'hammurabi', 1, 4); S.P[0].hand = ['canossa'];
   ok('canossa: 1 Spark, an enemy Figure with a skill', E.costOf(S, 0, 'canossa') === 1 && deeds(S, 'canossa').map(q => q.v).sort().join() === [g.u, h.u].sort().join());
@@ -192,11 +192,11 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
 { const S = game(['forbidden']); fig(S, 'leonidas', 1, 0); const y = fig(S, 'boudica', 1, 3); S.P[0].hand = ['canossa']; ok('canossa: not at the Forbidden City', deeds(S, 'canossa').map(q => q.v).join() === String(y.u)); }
 { const S = game(); const i = fig(S, 'imhotep', 1, 3), f = fig(S, 'boudica', 0, 4); S.P[0].hand = ['canossa', 'rift'];
   ok('Imhotep can\'t be moved', !deeds(S, 'rift').some(q => q.v === i.u)); E.apply(S, deeds(S, 'canossa').find(q => q.v === i.u)); ok('canossa: Imhotep can be moved', deeds(S, 'rift').some(q => q.v === i.u)); }
-{ const S = game(); const t = fig(S, 'tomoe', 1, 3, { rdy: 1, arr: 1 }); fig(S, 'boudica', 0, 3); S.P[0].hand = ['canossa']; E.apply(S, deeds(S, 'canossa')[0]);
+{ const S = game(); const t = fig(S, 'yoshitsune', 1, 3, { rdy: 1, arr: 1 }); fig(S, 'boudica', 0, 3); S.P[0].hand = ['canossa']; E.apply(S, deeds(S, 'canossa')[0]);
   S.turn = 1; ok('canossa: Swift silenced', !E.actions(S).some(q => q.t === 'walk' && q.u === t.u)); }
 { const S = game([null, null, null, null, 'seneca']); const dg = fig(S, 'diogenes', 1, 4); S.cyn = 1; fig(S, 'boudica', 0, 4); ok('Diogenes silences Seneca Falls', !E.pw(S, 4) && E.silenced(S, 4));
   S.P[0].hand = ['canossa']; E.apply(S, deeds(S, 'canossa').find(q => q.v === dg.u)); ok('canossa: Diogenes humbled, Seneca Falls works again', E.pw(S, 4) === 'equal' && !E.silenced(S, 4)); }
-{ const S = game(); const l = fig(S, 'leo', 0, 4), w = fig(S, 'boudica', 0, 4); fig(S, 'tomoe', 1, 4); S.turn = 1; S.P[1].hand = ['canossa', 'eclipse'];
+{ const S = game(); const l = fig(S, 'leo', 0, 4), w = fig(S, 'boudica', 0, 4); fig(S, 'yoshitsune', 1, 4); S.turn = 1; S.P[1].hand = ['canossa', 'eclipse'];
   ok('canossa: Leo\'s side can\'t be chosen', !deeds(S, 'canossa').length); }
 { const S = vetoGame('canossa', S => { fig(S, 'boudica', 0, 4); fig(S, 'leonidas', 1, 4); }); E.apply(S, deeds(S, 'canossa')[0]); ok('canossa: the Veto does not cancel it', !S.ev.some(e => e.t === 'veto') && S.figs[1].hush); }
 { const S = game(); const g = fig(S, 'leonidas', 1, 4); fig(S, 'boudica', 0, 4); S.P[0].hand = ['canossa']; E.apply(S, deeds(S, 'canossa')[0]);

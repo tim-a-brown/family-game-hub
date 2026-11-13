@@ -284,7 +284,7 @@
     }
     // five Domains with everything on them: both players' banners (the second player's Outpost has changed places
     // with the Crossroads, and the Crossroads is the second player's), one silenced, one changed for 3 more rounds,
-    // Hypatia at home at the Library and Tomoe Gozen away from home at Petra
+    // Hypatia at home at the Library and Arminius away from home at Petra
     function map(top, bot, cls) {
       const pm = [el('div', { class: 'an-pm top' }), el('div', { class: 'an-pm bot' })]; ctx.matFill(pm[0], top, 'dp' + (cls || '')); ctx.matFill(pm[1], bot, 'dp' + (cls || ''));
       const m = el('div', { class: 'an-map tight' }, [el('div', { class: 'an-road' }),
@@ -292,7 +292,7 @@
         rowEl('colosseum', { owner: 0, side: 'R', silenced: true, counter: 2, tot: [3, 3], L: [fig('baibars', 1, 3)], R: [fig('leonidas', 0, 3, true)] }),
         rowEl('silk', { owner: 1, side: 'L', hold: 0, tot: [0, 5], R: [fig('zhenghe', 0, 5, true)] }),
         rowEl('library', { owner: 1, side: 'L', changed: true, counter: 3, hold: 0, lit: true, tot: [0, 3], R: [fig('hypatia', 0, 3, true)] }),
-        rowEl('petra', { owner: 0, side: 'R', hold: 0, tot: [0, 4], R: [fig('tomoe', 0, 4)] })]);
+        rowEl('petra', { owner: 0, side: 'R', hold: 0, tot: [0, 4], R: [fig('arminius', 0, 4)] })]);
       return el('div', { class: 'dp-table ' + (cls || '') }, [el('div', { class: 'an-mats' }, pm), m, track(track(null, { max: 14 }), { round: 5, turn: 0, due: [{ r: 5, o: 1 }, { r: 9, o: 0 }] })]);
     }
     const mats = Object.keys(ctx.mats), pic = window.MatKit ? window.MatKit.make({ c: 'colosseum', w: 960, h: 640, col: '#2b1c16', d: .2 }, 1.75) : 'chart';
@@ -325,7 +325,7 @@
       row('The round track', [cell('Round 1, the first player\'s turn', trk(1, 0, [{ r: 5, o: 1 }])), cell('Round 5, the second player\'s turn, with something due this round and at round 9', trk(5, 1, [{ r: 5, o: 1 }, { r: 9, o: 0 }])), cell('Round 14, the count', trk(14, -1, [{ r: 5, o: 1 }])),
         cell('Sideways, round 5', trk(5, 0, [{ r: 5, o: 1 }], true))]),
       row('The map on every play mat', pairs.map(pr => cell((typeof pr[0] === 'object' ? 'A picture mat' : ctx.mats[pr[0]].n) + ' over ' + ctx.mats[pr[1]].n, map(pr[0], pr[1]))),
-        'Banners of both players, the Colosseum silenced for 2 more rounds, the Library changed for 3, Hypatia at home at the Library with its home plate lit, Tomoe Gozen away from home at Petra. The second player\'s Outpost and the Crossroads are both the second player\'s.'),
+        'Banners of both players, the Colosseum silenced for 2 more rounds, the Library changed for 3, Hypatia at home at the Library with its home plate lit, Arminius away from home at Petra. The second player\'s Outpost and the Crossroads are both the second player\'s.'),
       el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Without color' }), el('div', { class: 'dp-grey' }, [sheet()])]),
       el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Red and green alike (deuteranopia)' }), el('div', { class: 'dp-deut' }, [sheet()])]),
       el('div', { class: 'ap-row dp-row' }, [el('h2', { text: 'Red and green alike (protanopia)' }), el('div', { class: 'dp-prot' }, [sheet()])])

@@ -371,6 +371,14 @@ Underlying principles for everything:
   Caria, Daedalus to Bessie Coleman (first to Amelia Earhart, until the hundred-year rule below), Odysseus to Ferdinand Magellan, Beowulf to Alfred the Great, the Trojan Horse to
   Night Crossing (Washington on the Delaware), Sinbad to Zhang Qian and Gilgamesh to Sargon of Akkad. A new card is
   a real person with a record to point to, and its power is true to that person.
+- **Legends of Lore** (Tim, 2026-11-13: "are there any fictional characters in the decks at this point? they should be
+  held out for a future legends of lore set", then "hold tomoe gozen and hiawatha for the legends of lore set but keep
+  sun tzu and homer in"). A person known only from an epic, a saga or oral tradition, with no record from their own
+  time, waits for that set: in `RETIRED` with `lore: 1`. Tomoe Gozen (only in The Tale of the Heike) has her slot taken
+  by Minamoto no Yoshitsune (Ichi-no-Tani, 1184), and Hiawatha (Haudenosaunee tradition) by Canasatego (the
+  Lancaster treaty, 1744); the two new cards have no pictures yet (`SLOTS` in text.js). Homer and Sun Tzu stay,
+  though scholars debate both. A collection that held a held card holds the card in its slot (`load` and `myDecks` in
+  coll.js). The lessons use Arminius where Tomoe Gozen stood. A new card is checked against this too.
 - **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
   into `RETIRED` in text.js and its link sentences into `OLD_LINKS`; its picture stays in art/). Then nobody loses
   anything and nothing shows blank: (since the clean start of v 6 no collection holds a retired card; one retired from
