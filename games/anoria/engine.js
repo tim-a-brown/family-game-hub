@@ -583,6 +583,12 @@ const relicOf = (p, fx) => p.relics.find(r => fxOf(r) === fx) || null;
 // (how many times a player has a power. It is 0 or 1 in the game. cfg.relicStack, for test games only, lets two
 // different Relics with one power both be played and adds them up: scripts/anoria/relics2.js, set-150-balance.txt)
 const nFx = (S, p, fx) => (S.cfg.relicStack ? p.relics.reduce((n, r) => n + (fxOf(r) === fx ? 1 : 0), 0) : hasFx(p, fx) ? 1 : 0);
+// The hand limit: how many cards player o can hold when their turn ends (0: no limit). It is the rules' handMax (8), or
+// HOLD with the Timbuktu Manuscripts' power in play (Tim, 2026-11-13: "You can hold 10 cards in your hand"; the Quipu
+// has it too). cfg.hold tries another number in test games (relics-2026-11-13.txt). Every reader of the limit asks
+// this, the page's discard screen included, never cfg.handMax.
+const HOLD = 10;
+const handMax = (S, o) => { const b = S.cfg.handMax || 0, P = S.P[o]; return b && hasFx(P, 'manuscripts') ? Math.max(b, S.cfg.hold || HOLD) : b; };
 // the Quick Deeds in a hand that add Might to a clash (Phalanx, and any card with its effect): their places in the hand
 const quicks = P => { const out = [], seen = {}; P.hand.forEach((ci, h) => { if (!seen[ci] && fxOf(ci) === 'phalanx') { seen[ci] = 1; out.push(h); } }); return out; };
 // Legacy: with lineNear, the one who inspired you has to be at the same Place or the next one over
@@ -911,7 +917,7 @@ function evalS(S, me, prof) {
   v += prof.wFig * (cm - co / (N - 1)) + 0.08 * (tm - to / (N - 1));
   v += 0.35 * Math.min(1, left / 3) * P.hand.length + prof.wLine * P.lines + 0.02 * P.spark;
   for (let o = 0; o < N; o++) if (atCourt(S, o)) v += (o === me ? 1 : -1) * COURT_W * prof.wRen;   // (Akbar's court, as it stands)
-  for (const r of P.relics) { const fx = fxOf(r); v += (fx === 'press' ? 0.5 : fx === 'antikythera' ? 0.4 : 0.2) * (left - 1); }
+  v += relicWorth(S, me, left);
   // (Spark kept for a Quick Deed that plays itself on the other player's turn: the Defence of Syracuse, the Tribune's Veto)
   const kw = cfg.keepW != null ? cfg.keepW : KEEP_W;
   if (kw) { let need = 0; for (const c of P.hand) { const fx = fxOf(c); if (fx === 'syracuse' || fx === 'veto') need = Math.max(need, Math.min(2, costOf(S, me, c))); } if (need) v += kw * Math.min(P.spark, need); }
@@ -953,9 +959,19 @@ function evalM(S, me, prof) {
   v += prof.wFig * (cm - co * nA / Math.max(1, nE)) + 0.08 * (tm - to * nA / Math.max(1, nE));
   v += 0.35 * Math.min(1, left / 3) * P.hand.length + prof.wLine * P.lines + 0.02 * P.spark;
   for (let o = 0; o < N; o++) if (live(o) && atCourt(S, o)) v += W[o] * COURT_W * prof.wRen;
-  for (const r of P.relics) { const fx = fxOf(r); v += (fx === 'press' ? 0.5 : fx === 'antikythera' ? 0.4 : 0.2) * (left - 1); }
+  v += relicWorth(S, me, left);
   const kw = cfg.keepW != null ? cfg.keepW : KEEP_W;
   if (kw) { let need = 0; for (const c of P.hand) { const fx = fxOf(c); if (fx === 'syracuse' || fx === 'veto') need = Math.max(need, Math.min(2, costOf(S, me, c))); } if (need) v += kw * Math.min(P.spark, need); }
+  return v;
+}
+// What the robots count for a player's Relics in play, for each round still to come (left - 1), by the Relic's power
+// (RW0 for one not listed). Test games try others: cfg.rw, e.g. '{"rw":{"manuscripts":0.3}}' (relics-2026-11-13.txt).
+// (The Timbuktu Manuscripts' worth is flat, not counted from the hand: a worth that grew with the hand would pay the
+// robot for keeping cards it could play.)
+const RW = { press: 0.5, antikythera: 0.4, manuscripts: 0.2 }, RW0 = 0.2;
+function relicWorth(S, me, left) {
+  const T = S.cfg.rw; let v = 0;
+  for (const r of S.P[me].relics) { const fx = fxOf(r); v += (T && T[fx] != null ? T[fx] : RW[fx] != null ? RW[fx] : RW0) * (left - 1); }
   return v;
 }
 // What the robots count for a Domain that a Deed doubles this round: the Renown it adds at the count, all of it on the
@@ -1137,7 +1153,7 @@ function startTurn(S) {
 function endTurn(S) {
   if (S.pend) pendApply(S, { t: 'dom', no: 1 });   // (a choice of Domain left open is a no)
   const P = S.P[S.turn]; P.reserve = Math.min(2, P.spark); P.spark = 0; P.uN = 9; for (const f of S.figs) { f.tb = 0; if (f.ta) f.ta = 0; if (f.gar) f.gar = 0; }   // (uN 9: Curie's cheaper second card is for her own turn only)
-  if (S.cfg.handMax) while (P.hand.length > S.cfg.handMax) { let hi = 0; for (let i = 1; i < P.hand.length; i++) if (CARDS[P.hand[i]].c > CARDS[P.hand[hi]].c) hi = i; discard(S, S.turn, hi); }   // (over the hand limit: the dearest cards go; a screen asks the player first)
+  const hm = handMax(S, S.turn); if (hm) while (P.hand.length > hm) { let hi = 0; for (let i = 1; i < P.hand.length; i++) if (CARDS[P.hand[i]].c > CARDS[P.hand[hi]].c) hi = i; discard(S, S.turn, hi); }   // (over the hand limit: the dearest cards go; a screen asks the player first)
 }
 // Tordesillas: the players tied on Might there, when every one of them has a Figure there (null: no such tie)
 function treatyTie(S, i) {
@@ -1267,7 +1283,7 @@ function play(decks, guides, profs, cfg, seed, stacks) {
   return S;
 }
 return { kOf, noClash, clashable, play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
-  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES,
+  startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, handMax, HOLD, quicks, CARDS, PLACES,
   targetFor, ally, sideOf, sren, liveSides, nextLive, order, nLive, MW,
   pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
 });

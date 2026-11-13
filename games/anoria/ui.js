@@ -651,6 +651,8 @@
       const why = same ? 'You have ' + theName(same) + ' in play. ' + cap1(theName(key)) + ' has the same power, and your two Relics have to be Relics with different powers.' : P.relics.length >= 2 ? 'You have two Relics in play, and two is the most you can have.' : '';
       if (why) notes.appendChild(el('div', { class: 'why', text: why }));
     }
+    // (a Relic that raises the hand limit says what the limit is without it)
+    if (CARDS[key] && CARDS[key].t === 'relic' && E.fxOf(key) === 'manuscripts') notes.appendChild(el('p', { text: 'Without ' + theName(key) + ', you can hold ' + ((S && S.cfg.handMax) || E.STD.handMax) + ' cards when your turn ends.' }));
     // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
     const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + mightMarks(esc(GLOSS[k][1](c.n))) })); });
@@ -2327,7 +2329,7 @@
     }
     let txt = '', dim = false;
     if (G.over) txt = S.winner < 0 ? 'A draw' : G.teams ? winName(S.winner) + ' win' : pname(S.winner) === 'You' ? 'You win' : pname(S.winner) + ' wins';
-    else if (ui.discard) { const k = S.P[S.turn].hand.length - S.cfg.handMax; txt = 'Hand limit ' + S.cfg.handMax + ': discard ' + k; }
+    else if (ui.discard) { const hm = E.handMax(S, S.turn), k = S.P[S.turn].hand.length - hm; txt = 'Hand limit ' + hm + ': discard ' + k; }   // (a player's own limit: 10 with the Timbuktu Manuscripts' power)
     else if (V.turn < 0) { txt = G.demo && !ui.counting ? '' : 'The count'; dim = true; }
     else if (!human(V.turn)) { txt = pname(V.turn) + ' is playing'; dim = true; }
     else txt = Kit.poss(pname(V.turn)) + ' turn';
@@ -3758,11 +3760,11 @@
     E.discard(S, o, h); const evs = S.ev.splice(0); logEvs(evs); save();
     if (!(await playEvents(evs, { h: h, o: o }))) return;
     setBusy(false); V = snap();
-    if (S.P[o].hand.length <= S.cfg.handMax) { ui.discard = false; if (gen === my) endTurn(); } else render();
+    if (S.P[o].hand.length <= E.handMax(S, o)) { ui.discard = false; if (gen === my) endTurn(); } else render();
   }
   async function endTurn() {
     const my = gen, o = S.turn;
-    if (human(o) && S.P[o].hand.length > S.cfg.handMax) { ui.sel = null; ui.discard = true; setBusy(false); legal(); render(); Kit.sfx('bad'); return; }
+    if (human(o) && S.P[o].hand.length > E.handMax(S, o)) { ui.sel = null; ui.discard = true; setBusy(false); legal(); render(); Kit.sfx('bad'); return; }
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true); render();
     E.endTurn(S); const evs = S.ev.splice(0), mid = snap(); logEvs(evs);
     let evR = null; const r0 = S.P.map(p => p.renown);
@@ -3942,7 +3944,7 @@
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
     '<li>You keep up to 2 Spark you don\'t spend through the other players\' turns. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>Three Quick Deeds only ever play themselves, each at the moment its card names. <b>Testudo</b> pulls back a Figure of yours that loses a clash it started on an opponent\'s side, so it goes back to your Gate instead of being knocked out. The <b>Defense of Syracuse</b> drives back to its own Gate an enemy Figure that would win a clash it started at your Gate or your Outpost. The <b>Tribune\'s Veto</b> cancels a Deed an opponent plays that would score Renown or move, stun or knock out one of your Figures. Testudo is paid for with the Spark of your own turn, and the other two with Spark you kept.</li>' +
-    '<li>You can hold 8 cards when your turn ends.</li></ul>' +
+    '<li>You can hold 8 cards when your turn ends, or 10 with the Timbuktu Manuscripts or the Quipu in play.</li></ul>' +
     '<h3>Two of a card</h3><ul><li>A deck is 40 cards and can hold no more than two of a card. Any card you have can go in a deck twice, so a card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li></ul>' +
     '<h3>Collecting</h3><ul><li>The small mark at the foot of the band down a card\'s left side is how rare the card is in packs: <span class="rr-i r1"></span>a dot is Common, <span class="rr-i r2"></span>a triangle Uncommon, <span class="rr-i r3"></span>a four-point star Rare and <span class="rr-i r4"></span>a compass rose Legendary. The cards that do the most are the rarest. Rarity plays no part in a game.</li>' +
     '<li>Every card comes in five <b>editions</b>: Matte, Shiny, Silver foil, Gold foil and Rainbow foil, each rarer than the one before. An edition is only the card\'s finish and frame, and all five play the same. When you read a card you own, the round button with the stack of cards on its picture shows that card\'s editions and lets you choose which one you see.</li></ul>' +

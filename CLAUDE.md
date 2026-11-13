@@ -1002,8 +1002,8 @@ Underlying principles for everything:
   the other player's Peace, Earthquake and Canossa off its Figures. Damascus Steel comes into a clash as its card,
   as Phalanx does. The robots weigh them with `HW` (dipWorth, quakeWorth, and Canossa looks one clash ahead).
 - **A Relic's or a Deed's effect belongs to its data** (`fx`, read with `E.fxOf`; a card without one has the effect of
-  its own key). The engine has five Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's, Damascus
-  Steel's and the Abacus's)
+  its own key). The engine has seven Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's, Damascus
+  Steel's, the Abacus's, the Boundary Stone's and the Timbuktu Manuscripts')
   and eleven Deed effects, and nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in
   effect, Testudo a Phalanx, Mailed to Freedom runs what Night Crossing runs. A new Relic or Deed with an effect the
   engine has is data only; its rules text is the text of the card its `fx` names (check-set.js holds it to that).
@@ -1014,6 +1014,12 @@ Underlying principles for everything:
   difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
   and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
   says why under the card when you read it (`notesFor`).
+- **The hand limit is each player's own** (Tim, 2026-11-13: "there are a lot of draw opportunities, but having to keep
+  the hand at 8 or less is a consistent constraint"): 8 (`handMax` in `STD`), or 10 with the Timbuktu Manuscripts' power
+  ("You can hold 10 cards in your hand"; the Quipu has it too). Every reader of the limit asks `E.handMax(S, o)`, never
+  `cfg.handMax`: the end of a turn, the page's discard screen and its caption. `scripts/anoria/relicfx.js` measures
+  every Relic power on the same games (`relics-2026-11-13.txt`). A wider spread of Relic powers is proposed in
+  `scripts/anoria/relics-proposal.md`, not built.
 - **Pictures of the third printing**: all of them are painted (2026-11-11; each batch's notes, candidates and sources are in
   the session scratchpad's `art3/`, not the repo). `PAINTED` in text.js lists the third-printing cards whose pictures
   are in `art/` and `art/t/`, and a card added later without one is in `NOPIC`: the page never asks the network

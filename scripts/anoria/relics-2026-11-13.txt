@@ -1,0 +1,67 @@
+The Timbuktu Manuscripts' power: "You can hold 10 cards in your hand" (2026-11-13)
+=================================================================================
+
+Tim: "any relics exist that allow a player to hold more cards in their hand? there are a lot of draw opportunities, but
+having to keep the hand at 8 or less is a consistent constraint", then "yes - that's fine".
+
+The Timbuktu Manuscripts and the Quipu leave the Printing Press's power (draw one more card each turn) for a power of
+their own: "You can hold 10 cards in your hand." The Manuscripts are the card the power is named for (no fx), the Quipu
+has fx 'manuscripts'. Both still cost 2. The Printing Press's power keeps nine Relics.
+
+The engine and the page
+-----------------------
+  engine.js  handMax(S, o): a player's own limit, the rules' handMax (8), or HOLD (10) with the power in play (cfg.hold
+             tries another number in test games). endTurn reads it. Exported as E.handMax.
+  ui.js      the discard screen (endTurn, discardOne) and the caption "Hand limit 10: discard 1" read E.handMax; the
+             reader says under such a Relic "Without the Quipu, you can hold 8 cards when your turn ends."; RULES:
+             "You can hold 8 cards when your turn ends, or 10 with the Timbuktu Manuscripts or the Quipu in play."
+  Robots     the Relic worth table RW (relicWorth, shared by evalS and evalM): the power counts 0.2 a round still to come,
+             as any Relic with no table entry did. Counting it from the hand was rejected (a worth that grew with the hand
+             pays the robot for keeping cards it could play); a higher worth (0.4) made the robots play it twice as often
+             and win no more (below).
+  Lessons    none names the Manuscripts or the Quipu. "Your turn" says "You can hold 8 cards when your turn ends", which
+             is true on its table (no such Relic); the Relics lesson plays the Compass and the Printing Press, unchanged.
+  Legacy     the Manuscripts' line runs from Timbuktu (a Domain); the Quipu has none; no Relic's line runs from either.
+             check-set.js: no Legacy Line joins two Relics with one power.
+  Tests      deeds-test.js: 13 more (the words, the power, the cost, 10 for its player and 8 for the other, 11 keep 10,
+             10 kept with the Quipu, the Quipu not beside the Manuscripts, the Manuscripts beside the Printing Press,
+             cfg.hold, a copy of the table, robots in whole games). check-set.js nothing wrong; powers-test.js 96 passed;
+             deeds-test.js 149 passed; players-test.js 55 passed.
+
+How full hands get (robot games, Normal against Normal, 100 games, before the change): 26% of turns end over 8 cards,
+and 6.3 cards a game are discarded to the limit (both players). With 10, 2.3% of turns would still end over it.
+
+Numbers
+-------
+node scripts/anoria/relicfx.js 2000 61000 (new: every Relic power on the same 2,000 games, two copies in player A's deck
+of random cards with no other Relics, against a deck with none; 50% is two ordinary cards; ± one standard error):
+  no Relic                                49.0% ±1.1
+  Printing Press (press, 2)               50.4% ±1.1   played in 72% of games
+  Compass (compass, 1)                    52.1% ±1.1   played in 66%
+  Antikythera Mechanism (antikythera, 3)  51.6% ±1.1   played in 49%
+  Damascus Steel (dsteel, 2)              55.0% ±1.1   played in 38%
+  Abacus (abacus, 2)                      48.9% ±1.1   played in 35%
+  Boundary Stone (kudurru, 1)             48.6% ±1.1   played in 67%
+  Timbuktu Manuscripts (manuscripts, 2)   49.8% ±1.1   played in 36%     <- hold 10
+  the same, '{"hold":9}'                  49.1% ±1.1   played in 36%     <- hold 9
+  the same, robots' worth 0.4             49.5% ±1.1   played in 67%
+Hold 10 sits among the Relics (48.6 to 55.0), 0.6 under the Printing Press it replaces. 9 measures no better than 10, so
+10 stays. To the robots the power is worth about what the Abacus and the Boundary Stone are: little. They discard the
+dearest cards when over the limit and never plan a hand, so a player who chooses what to keep should get more from it.
+
+node scripts/anoria/run.js cards 6000, then newcards.js (the way the third printing and the held cards were measured;
+a Relic's line rests on about 500 games and wanders by 2 to 3 points: the nine Relics with the Printing Press's
+power in this very run go from 48.7 to 55.0):
+  When the card is in the deck: the Relics the game had before 50.5% (44.8 to 55.6)
+    Timbuktu Manuscripts 47.1% (503 games), Quipu 45.8% (485 games): -3.4 and -4.7 from the Relics, inside their range
+    (Rain Gauge 44.8, Sextant 45.6). newcards.js lists neither outside what the Relics had.
+  When the card was played: Timbuktu Manuscripts 40.6% (106 games), Quipu 42.2% (90 games), the lowest Relics; the
+    robots play it in a fifth of the games they have it, mostly late, when a full hand is already a sign of trouble.
+  Elsewhere in the same run: Mysore Rockets 55.6% and Birchbark Canoe 55.5% top the Relics; Rain Gauge 44.8% is the
+    lowest. Damascus Steel's power is the strongest in relicfx.js too (55.0%): the relics proposal flags it.
+
+The Guides' decks (the Manuscripts are in Mansa Musa's set, the Quipu in Sor Juana's):
+node scripts/anoria/sets.js 60 91000 style, the same games as "After" in sets.txt:
+  Mansa Musa 48.8% -> 47.7%, Sor Juana 48.0% -> 48.8%; spread 4.8 -> 4.8 points (the others moved by 0.8 or less:
+  Saladin 52.5, Empress Wu 52.0, Leonardo 51.3, Cleopatra 51.2, Joan 50.6, Shakespeare 50.6, Akbar 49.4, Sun Tzu 49.2,
+  Tubman 48.8, Curie 48.1). Inside what 120 games a pair wanders by.

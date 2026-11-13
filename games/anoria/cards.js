@@ -241,7 +241,8 @@ const P3 = {
   verne: F('Jules Verne', 'W', 3, 4, 'EUR', 6, 1870, { voyager: 1 }, { insp: ['poe'] }),
   oakley: F('Annie Oakley', 'W', 2, 2, 'AMER', 6, 1885, { slayer: 1 }),
   houdini: F('Harry Houdini', 'W', 3, 2, 'AMER', 7, 1912, { swift: 1, untouchable: 1 }),
-  // Relics (any deck). Three powers: a player has two Relics in play at most, and no two with the same power.
+  // Relics (any deck). Each has a power, the card's own or the one its fx names: a player has two Relics in play at most,
+  // and no two with the same power.
   // (the Compass's power)
   astrolabe: { n: 'Astrolabe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 400 },
   locomotive: { n: 'Steam Locomotive', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1829 },
@@ -249,13 +250,14 @@ const P3 = {
   birchbark: { n: 'Birchbark Canoe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1600 },
   ropebridge: { n: 'Inca Rope Bridge', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1450 },
   wheel: { n: 'The Wheel', t: 'relic', f: 'N', c: 1, fx: 'compass', y: -3150 },
-  // (the Printing Press's power)
+  // (the Printing Press's power; the Quipu and the Timbuktu Manuscripts have had the Manuscripts' own since 2026-11-13:
+  // You can hold 10 cards in your hand. engine.js handMax)
   paper: { n: 'Paper', t: 'relic', f: 'N', c: 2, fx: 'press', y: 105 },
   rosetta: { n: 'Rosetta Stone', t: 'relic', f: 'N', c: 2, fx: 'press', y: -196 },
-  quipu: { n: 'Quipu', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1450 },
+  quipu: { n: 'Quipu', t: 'relic', f: 'N', c: 2, fx: 'manuscripts', y: 1450 },
   starchart: { n: 'Dunhuang Star Chart', t: 'relic', f: 'N', c: 2, fx: 'press', y: 670 },
   telescope: { n: 'Telescope', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1609 },
-  manuscripts: { n: 'Timbuktu Manuscripts', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1500 },
+  manuscripts: { n: 'Timbuktu Manuscripts', t: 'relic', f: 'N', c: 2, y: 1500 },
   telegraph: { n: 'Telegraph', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1844 },
   braille: { n: 'Braille', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1824 },
   tablet: { n: 'Clay Tablet', t: 'relic', f: 'N', c: 2, fx: 'press', y: -3200 },
