@@ -1808,7 +1808,7 @@
       return;
     }
     let txt = '', dim = false;
-    if (G.over) txt = S.winner < 0 ? 'A draw' : pname(S.winner) === 'You' ? 'You win' : pname(S.winner) + ' wins';
+    if (G.over) txt = S.winner < 0 ? 'A draw' : G.teams ? winName(S.winner) + ' win' : pname(S.winner) === 'You' ? 'You win' : pname(S.winner) + ' wins';
     else if (ui.discard) { const k = S.P[S.turn].hand.length - S.cfg.handMax; txt = 'Hand limit ' + S.cfg.handMax + ': discard ' + k; }
     else if (V.turn < 0) { txt = G.demo && !ui.counting ? '' : 'The count'; dim = true; }
     else if (!human(V.turn)) { txt = pname(V.turn) + ' is playing'; dim = true; }
@@ -2105,12 +2105,15 @@
     M.dataset.lay = land ? 'side' : 'up';
     let mine, compact = false;
     // (the stacks round a rim tile: beside it in two rows ('r'), or in a row under it ('b'))
-    const stacks = (i, x, y, tw, th, ps, dir, own) => {
+    // (xl, xr: the room the column or lane gives them; with more players there than fit, the stacks get smaller)
+    const stacks = (i, x, y, tw, th, ps, dir, own, xl, xr) => {
       if (X) return;
-      const qs = who(i).sort((a, b) => (a === own ? -1 : b === own ? 1 : 0));
-      qs.forEach((q, j) => { const n = stackEl(q, i, here(i, q), T, ps);
-        if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = qs.length > 1; put(n, x + tw + 4 + cc * (ps + 4), y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
-        else { const tot = qs.length * (ps + 4) - 4; put(n, x + tw / 2 - tot / 2 + j * (ps + 4), y + th + 4); } });
+      const qs = who(i).sort((a, b) => (a === own ? -1 : b === own ? 1 : 0)), n = qs.length;
+      if (dir === 'r') ps = Math.max(14, Math.min(ps, (xr - x - tw - 4) / Math.ceil(n / 2) - 4));
+      else ps = Math.max(14, Math.min(ps, (xr - xl) / n - 4));
+      qs.forEach((q, j) => { const nd = stackEl(q, i, here(i, q), T, Math.floor(ps));
+        if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; put(nd, x + tw + 4 + cc * (ps + 4), y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
+        else { const tot = n * (ps + 4) - 4; put(nd, Math.max(xl, Math.min(xr - tot, x + tw / 2 - tot / 2)) + j * (ps + 4), y + th + 4); } });
     };
     if (!land) {
       compact = H < 380;
@@ -2120,7 +2123,7 @@
       rim.forEach((o, k) => {
         const x0 = k * colW, col = matN(o); col.className = 'an-pm wn-col' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, x0 + 2, 0, colW - 4, rimH);
         const ph = compact ? Math.round(rimH * .44) : Math.round(Math.max(46, Math.min(60, rimH * .25))), pl = plateEl(o, colW < 96 ? 'f' : 'w');
-        pl.style.fontSize = Math.max(9, Math.min(14, ph * .24, colW * .13)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
+        pl.style.fontSize = Math.max(9, Math.min(14, ph * .24, colW < 96 ? colW * .13 : (colW - 8) / 11.5)).toFixed(1) + 'px'; put(pl, x0 + 4, 3, colW - 8, ph);
         if (compact) {   // a short phone: the Gate and Outpost as two tokens side by side
           const pz = Math.round(Math.min((colW - 14) / 2, (rimH - ph - 14) / .8, 40)), y = ph + 8;
           [2 * o, 2 * o + 1].forEach((i, j) => { put(tileAt(i, pz, Math.round(pz * .8), true), x0 + colW / 2 + (j ? 2 : -pz - 2), y, pz, Math.round(pz * .8)); });
@@ -2133,17 +2136,17 @@
         const ps = Math.round(wide ? Math.max(16, Math.min(tw * .42, (colW - tw) / 2 - 6)) : psB);
         const tx = x0 + colW / 2 - tw / 2 - (wide ? ps * .55 : 0), y1 = ph + 8, gap = wide ? (avail - 2 * th) / 2 : (avail - 2 * th - 2 * (ps * 1.36 + 4)) / 2;
         const yG = y1 + Math.max(2, gap * .5), yO = yG + th + (wide ? Math.max(6, gap) : ps * 1.36 + 8 + Math.max(0, gap));
-        [[2 * o, yG], [2 * o + 1, yO]].forEach(x => { put(tileAt(x[0], tw, th), tx, x[1], tw, th); stacks(x[0], tx, x[1], tw, th, ps, wide ? 'r' : 'b', o); });
+        [[2 * o, yG], [2 * o + 1, yO]].forEach(x => { put(tileAt(x[0], tw, th), tx, x[1], tw, th); stacks(x[0], tx, x[1], tw, th, ps, wide ? 'r' : 'b', o, x0 + 5, x0 + colW - 5); });
       });
     } else {
       const rimW = Math.round(W * (N <= 3 ? .5 : .53)); mine = { x: rimW + 6, y: 0, w: W - rimW - 6, h: H };
       const rowH = H / R, pw = Math.round(Math.min(rimW * .3, 150));
       rim.forEach((o, k) => {
         const y0 = k * rowH, col = matN(o); col.className = 'an-pm wn-col wn-lane' + (V.turn === o && !G.over && G.ph !== 'setup' ? ' on' : '') + (S.P[o].out ? ' out' : ''); col.style.setProperty('--pc', 'var(--pc' + o + ')'); put(col, 0, y0 + 1, rimW, rowH - 2);
-        const pl = plateEl(o, rowH > 50 ? 'l' : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, pw * .12)).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
+        const pl = plateEl(o, rowH > 50 ? 'l' : 'w'); pl.style.fontSize = Math.max(9, Math.min(14, rowH * .2, (pw - 4) / (rowH > 50 ? 9 : 11.5))).toFixed(1) + 'px'; put(pl, 3, y0 + 3, pw - 4, rowH - 6);
         const cellW = (rimW - pw) / 2; let th = Math.round(Math.min(rowH - 10, 110)), tw = Math.round(th / .74), ps = Math.round(Math.max(16, Math.min(th * .44, 30)));
         if (tw + ps + 12 > cellW) { tw = Math.round(cellW - ps - 12); th = Math.round(tw * .74); }
-        [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o); });
+        [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o, x, pw + (j + 1) * cellW - 2); });
       });
     }
     // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
@@ -2155,10 +2158,22 @@
     const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
     [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
       const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots });
-      row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');
+      row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, X ? (sideW - 4) / (N - 1) - 10 : (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');   // (the set-up: everyone else's offers in one line)
       put(row, mine.x, mine.y + r * rh + (rh - bh) / 2, mine.w, bh);
     });
+    fitRim();
     if (!X) roadsN(land);
+  }
+  function fitRim() {
+    // (a plate's words and marks fit inside it: its size steps down until nothing runs over its edge)
+    dom.map.querySelectorAll('.wn-plate').forEach(pl => { let fs = parseFloat(pl.style.fontSize) || 12; const r = pl.getBoundingClientRect();
+      const over = () => pl.scrollWidth > pl.clientWidth + 1 || Array.prototype.some.call(pl.querySelectorAll('.st-name, .st-ren, .st-bot, .st-guide'), c => { const b = c.getBoundingClientRect(); return b.right > r.right + 1 || b.bottom > r.bottom + 1; }) || (() => { const bt = pl.querySelector('.st-hand'), rn = pl.querySelector('.lau'); if (!bt || !rn) return false; const a = bt.getBoundingClientRect(), b = rn.getBoundingClientRect(); return a.right + a.width * .9 > b.left && a.bottom > b.top && a.top < b.bottom; })();
+      while (over() && fs > 8) { fs -= .5; pl.style.fontSize = fs + 'px'; } });
+    const ns = Array.prototype.slice.call(dom.map.querySelectorAll('.wn-nm .pl-name')); if (!ns.length) return;
+    const bad = () => ns.some(n => { const t = n.closest('.pl-tile'), sl = n.parentNode; return n.scrollWidth > n.clientWidth + 1 || sl.getBoundingClientRect().height > t.getBoundingClientRect().height * .5; });
+    let fs = parseFloat(ns[0].style.fontSize) || 12;
+    while (bad() && fs > 9) { fs -= .5; ns.forEach(n => { n.style.fontSize = fs + 'px'; }); }
+    if (bad()) ns.forEach(n => { const t = n.closest('.pl-tile'); n.parentNode.remove(); t.classList.add('bare'); });
   }
   // The roads, drawn from where the tiles lie: each spoke's Gate to its Outpost, each Outpost to the Crossroads, and
   // round the ring from Outpost to Outpost; lit gold where the Figure picked up can walk.

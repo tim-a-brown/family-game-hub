@@ -48,17 +48,15 @@
     var cum = (d.rt || []).map(function (s) { return String(s).split('-').map(Number); }), n = cum.length;
     var root = el('div', { class: 'ah' }), fills = [];
     // ── who led each company ──
+    // (a row for each player: their Guide's portrait, their name with their Guide and deck under it, their Renown and Seals)
     var card = function (i) {
       var p = d.pl[i], por = el('span', { class: 'ah-por', style: { '--c': col(i) } }, [pic(ui, ART + p.g + '.webp', '')]);
-      if (won(i)) por.appendChild(el('em', { class: 'ah-won', text: 'Won' }));
       var gname = el('span', { text: cap(p.g) }); fills.push(function () { gname.textContent = nameOf(p.g); });
       var sm = p.sm === 4 ? 4 : 3, s = '', left = Math.max(0, Math.min(sm, +p.s || 0)); for (var k = 0; k < sm; k++) s += SEAL(k < left, col(i));
-      return el('div', { class: 'ah-side' + (w >= 0 && !won(i) ? ' ah-lose' : '') }, [por,
-        el('div', { class: 'ah-nm', text: name(i) }),
-        el('div', { class: 'ah-ren' }, [el('b', { text: String(P[i].score == null ? 0 : P[i].score) }), el('small', { text: 'Renown' })]),
-        el('div', { class: 'ah-fact' }, [el('small', { text: 'Guide' }), gname]),
-        el('div', { class: 'ah-fact' }, [el('small', { text: p.b ? 'Built deck' : 'Deck' }), el('span', { text: p.d || '' })]),
-        el('div', { class: 'ah-seals', role: 'img', 'aria-label': left + (left === 1 ? ' Seal' : ' Seals') + ' left', html: s }), p.o ? el('div', { class: 'ah-outn', text: 'Out' }) : null]);
+      return el('div', { class: 'ah-pr' + (w >= 0 && !won(i) ? ' ah-lose' : '') }, [por,
+        el('div', { class: 'ah-pt2' }, [el('div', { class: 'ah-pn2' }, [el('span', { text: name(i) }), won(i) ? el('em', { class: 'ah-won2', text: 'Won' }) : null, p.o ? el('em', { class: 'ah-outn', text: 'Out' }) : null]),
+          el('div', { class: 'ah-gd' }, [gname]), el('div', { class: 'ah-gd' }, [el('span', { text: (p.d || '') + (p.b ? ', a deck ' + name(i) + ' built' : ' deck') })])]),
+        el('div', { class: 'ah-pr-r' }, [el('b', { text: String(P[i].score == null ? 0 : P[i].score) }), el('div', { class: 'ah-seals', role: 'img', 'aria-label': left + (left === 1 ? ' Seal' : ' Seals') + ' left', html: s })])]);
     };
     var groups = teams || d.pl.map(function (x, i) { return [i]; });
     var top = el('div', { class: 'ah-plate ah-top' });
@@ -145,14 +143,22 @@
     '.ah-fact span{font:500 .9rem/1.2 var(--bk);color:var(--ink);overflow-wrap:break-word;text-wrap:balance;}',
     '.ah-seals{display:flex;gap:4px;justify-content:center;}',
     '.ah-seal{width:15px;height:17px;display:block;}',
-    '.ah-many{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr));gap:14px 10px;}',
-    '.ah-many.ah-tms{grid-template-columns:minmax(0,1fr);gap:12px;}',
+    '.ah-many{display:flex;flex-direction:column;gap:8px;}',
+    '.ah-pr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;}',
+    '.ah-pr .ah-por{width:46px;height:46px;}',
+    '.ah-pr.ah-lose .ah-por{filter:saturate(.75) brightness(.85);}',
+    '.ah-pt2{display:flex;flex-direction:column;gap:1px;min-width:0;}',
+    '.ah-pn2{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font:400 1.02rem/1.15 var(--sc);letter-spacing:.04em;color:var(--ink);}',
+    '.ah-gd{font:500 .84rem/1.2 var(--bk);color:var(--dim);overflow-wrap:break-word;}',
+    '.ah-pr-r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}',
+    '.ah-pr-r b{font:600 1.5rem/1 var(--bk);color:var(--ink);}',
+    '.ah-pr.ah-lose .ah-pr-r b{color:var(--dim);font-weight:500;}',
+    '.ah-won2{font-style:normal;padding:0 8px;border-radius:999px;font:400 .66rem/1.5 var(--sc);letter-spacing:.14em;color:#1b1407;background:linear-gradient(180deg,#f5dc97,#c9a24a);}',
     '.ah-team{display:flex;flex-direction:column;gap:8px;padding:8px 6px 10px;border-radius:12px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,transparent);}',
     '.ah-th2{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 10px;font:400 .95rem/1.15 var(--sc);letter-spacing:.04em;color:var(--ink);text-align:center;}',
     '.ah-th2 b{font:500 .85rem/1.2 var(--bk);color:var(--gold);}',
-    '.ah-tgr{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,118px),1fr));gap:12px 8px;}',
-    '.ah-many .ah-por{width:60px;height:60px;}',
-    '.ah-outn{margin-top:2px;padding:0 8px;border-radius:999px;font:400 .66rem/1.5 var(--sc);letter-spacing:.14em;color:#f3e9d2;background:#7a1f1a;}',
+    '.ah-tgr{display:flex;flex-direction:column;gap:8px;}',
+    '.ah-outn{font-style:normal;padding:0 8px;border-radius:999px;font:400 .66rem/1.5 var(--sc);letter-spacing:.14em;color:#f3e9d2;background:#7a1f1a;}',
     '.ah-nt{width:100%;border-collapse:collapse;font:500 .9rem/1.2 var(--bk);color:var(--ink);}',
     '.ah-nt th{padding:6px 4px;font:400 .62rem/1.15 var(--sc);letter-spacing:.08em;color:var(--gold);text-transform:uppercase;text-align:center;vertical-align:bottom;}',
     '.ah-nt td{padding:6px 4px;text-align:center;border-top:1px solid rgba(217,180,90,.2);}',
