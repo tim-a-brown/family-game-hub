@@ -55,8 +55,8 @@ var GAMES = [
     ] },
   { id: 'anoria',      name: 'Anoria',       color: '#c9a24a', cat: 'specialty', min: 1, max: 6, tag: 'The great figures of every age hold the wonders of the world', play: 'anoria',
     launch: [
-      { icon: 'book', title: 'Library', desc: 'Every card in the set, and the ones you own', file: 'anoria.html?library=1', tool: true },
-      { icon: 'sparkle', title: 'Packs', desc: 'Open the packs you have won', file: 'anoria.html?packs=1', tool: true },
+      { icon: 'book', title: 'Library', desc: 'Every card in the set, and the ones you have', file: 'anoria.html?library=1', tool: true },
+      { icon: 'sparkle', title: 'Packs', desc: 'Open your packs, and see the sphere and the callings', file: 'anoria.html?packs=1', tool: true },
       { icon: 'cards', title: 'Decks', desc: 'Build a deck of your own from your cards', file: 'anoria.html?decks=1', tool: true },
       { icon: 'help', title: 'How to play', desc: 'The story of Anoria, then every rule shown on the table', file: 'anoria.html?guide=1', tool: true }
     ] },

@@ -320,18 +320,50 @@ Underlying principles for everything:
   filters: faction, kind, Spark, Might, era, home region and keyword (`groups()` in library.js, `paintGroups` in
   decks.js). Only what belongs to one screen is its own: the Library's "In your collection", the builder's "In the deck"
   and "Legacy Lines with this deck". A new sort or filter goes into both.
-- **The collection** is `games/anoria/coll.js` (`AnoriaColl`): the one place its rules live (starter deck by Guide,
-  welcome packs, what a pack can hold, what a game earns, decks you build, finished Threads), saved in `anoria_coll`
-  and `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a
-  change to the economy is made there and re-run. Earned packs hold 3 cards (Tim's choice, 2026-11-10): the 66-card
-  set took about 18 days of daily play at 3 games a day (it was about a month at 2 cards). With the second printing
-  the set is 91 cards and takes about a month again at 3 cards a pack; `pacing.txt` has what 4 and 5 would do.
-- **A deck is 40 cards** (`DECK` in coll.js; 30 until 2026-11-11): each ready deck is 20 different cards, two of each.
-  The five each one gained are `GROWN` in cards.js (the second printing: 25 Figures, all with skills the engine already
-  had). A collection from before (`v` 1) is given the five new cards of its starter deck and of any other ready deck it
-  owned all of, so nothing it could play is lost; a 30-card deck someone built is kept as it is and reads as 10 short
-  until it is filled (Finish the deck for me does that). Counts on screen come from `DECK` and the card list. Its screens are
-  `library.js`, `packs.js` and `decks.js`, each in the shared frame `AnoriaUI.screen()`.
+- **The collection** (Tim, 2026-11-13: "the starter pack should have 20 different cards + 8 domains, same with the guide
+  packs that each have 8 domains"; extra copies of a card are never awarded: you uncover a card or a finish, never
+  multiples) is `games/anoria/coll.js` (`AnoriaColl`), the one place its rules live, saved in `anoria_coll` and
+  `anoria_decks`, which follow the account. `scripts/anoria/pacing.js` plays those same rules and checks them: a change
+  to the economy is made there and re-run (`pacing.txt` has the numbers).
+  - **The sets** are in cards.js (`BASE`, `GSET` by Guide, `DSET` for their Domains, between the `==SETS==` markers):
+    the base set, 20 different cards and 8 Domains that every company has, and a set of 20 different cards and 8
+    Domains for each of the twelve Guides. A new player chooses one of all twelve Guides and has the base set and that
+    Guide's set. No card is in two sets (13 sets of 20 take 260 of the 266 cards); the 75 Domains fill 104 places, so
+    some Guides share Domains. **The cards in no set are found only in packs** (`POOL`): a card added to the game later
+    joins them by itself. A Guide's Domain you already have gives nothing extra.
+  - **A Guide's deck is the base set and that Guide's set, one of each card** (`guideDeck`), with that Guide's own
+    stack, the 15 of its 16 Domains that suit it best (`guideStack`; the computer plays these too). Tim's rule for
+    choosing the sets: "the base 20 plus each Guide's 20 must make a balanced 40-card deck, true to the Guide's world and
+    faction". `node scripts/anoria/sets.js` plays every Guide's deck against every other (`sets.txt`): 5.5 points apart
+    with each deck's own robot, against 9.6 for the five ready decks of before. A changed set is measured again.
+  - **The sphere** (`SIGNS` 12): a finished game lights 1 sign, a win 2 and your first win of the day 3 (`LIGHT`),
+    however the game is played ("a game earns the same however it's played", Tim). A full turn gives a pack of `PACK`
+    (5), and on the turns in `GUIDE_TURNS` a Guide you don't have joins you with their set.
+  - **Callings** (`CALLS`): each Guide has one, something done in games that brings that Guide sooner ("Win 20 games in
+    which you were behind when a round ended"). The table counts what a game did with `track()` (ui.js `callTrack`,
+    from the engine's events, for the first player, whoever holds the device) and `gameOver` adds it up. How often each
+    happens is `scripts/anoria/calls.js` (`calls.txt`); the needs are set so a calling is met about when the sphere
+    would bring that Guide.
+  - **Packs**: every slot is a card you don't have or a finish you don't have, the finish rolled first (`ED_ODDS`), the
+    card weighted by its tier (`TIER_W`); packs draw the cards of Guides who haven't joined you too, and never hold a
+    Domain. Two welcome packs come with the first Guide (`WELCOME`), and four firsts give a pack each (`FIRSTS`: your
+    first win, against Normal, against Hard, with a deck you built).
+  - Pace at 3 games a day (pacing.txt; Tim: "same pace is fine"): Guides join on turns 1, 2, 4, 6, 9, 12, 15, 18, 21,
+    24 and 27 of the sphere, and with the callings (about 5 of the 11 come that way) all twelve are with you in about
+    29 days, as the design had it; every card comes with them, since only 6 cards are found only in packs today. With a
+    printing of about 60 pack-only cards, every one of them takes about 47 days at packs of 5; packs of 3 would make it
+    about 69, the design's 68. Every finish of every card: about 500 days.
+  - **v 6 is a clean start** (Tim: "you can wipe any existing collections and start over too. i'm the only one that's
+    played so far"): an older `anoria_coll` or `anoria_decks` becomes the first run, and a game in progress finishes and
+    earns nothing (`G.cv`). Nothing of the old economy is left: no copies, no ready decks to unlock, no wins counted
+    for Guides.
+  - The screens: `packs.js` (choosing one of the twelve Guides, the first deck forming, packs where a new finish lands
+    on top of the card as you had it, a Guide joining with their set), `library.js`, `decks.js`, and `rewards.js`
+    (`AnoriaRewards`: the sphere, its screen with the callings, the collection's rings, and the results card's panel
+    in Kit.win's `show` slot), each in the shared frame `AnoriaUI.screen()`.
+- **A deck is 40 cards and can hold no more than two of a card** (`DECK`, `CAP` in coll.js): any card you have can go in
+  a deck twice at once. The five ready decks of before (`ARCH`, `STACKS`, `GROWN` in cards.js) stay only for the balance
+  scripts, the lessons and games saved with them; no player plays one.
 - **No fictional, mythological or legendary characters for now** (Tim, 2026-11-11: first the new printing, then "pull
   the six legend cards from the first printing too", then "pull the trojan horse too"). Nine cards left the set and a
   real, well-attested person (for the Deed, a real event) has each one's slot, with the same faction, cost, Might and
@@ -341,9 +373,9 @@ Underlying principles for everything:
   a real person with a record to point to, and its power is true to that person.
 - **A card that leaves the set goes into `RETIRED`** (cards.js, with `to`: the card that has its slot; its words go
   into `RETIRED` in text.js and its link sentences into `OLD_LINKS`; its picture stays in art/). Then nobody loses
-  anything and nothing shows blank: a collection and the decks someone built hold the new card instead, as many
-  copies (`retire()` in coll.js, which goes by the keys it finds, so a device that hasn't updated can't undo it); no
-  pack, ready deck or Library holds a retired card, because they all read the set (`C.CARDS`); a game saved with a
+  anything and nothing shows blank: (since the clean start of v 6 no collection holds a retired card; one retired from
+  now on is taken out of the set it is in, with the card that has its slot put in its place) no pack, set or Library
+  holds a retired card, because they all read the set (`C.CARDS`); a game saved with a
   retired card plays on with it to the end, because the engine and the table look a key up in the set and then in
   `RETIRED`; an old game's history names it the same way (`card()` in hist/anoria.js); and Play again deals from
   today's set (`C.now`). A named Legacy Line that goes with a card is removed, not reused: a finished one keeps its
@@ -368,11 +400,10 @@ Underlying principles for everything:
   finishes that play the same, each rarer than the one before: Matte (the card as it always was), Shiny, Silver foil,
   Gold foil and Rainbow foil (borderless: the picture runs to the edge, the words on a dark panel). The picture is the
   same; an edition is the finish and the frame. The rules are in coll.js (`EDITIONS`, `ED_ODDS`): every card out of a
-  pack has an edition; a foil is always one you have not found for that card, it is the card's for good on every
-  copy, and one of a card you already have two of is an extra card in its pack, so the set takes as long as it did.
-  Once the set is complete the packs go on turning up foils until none are left. Found editions and the one each card
-  is shown in are `ed` and `look` in `anoria_coll` (v 4; an older collection has every card Matte, and `retire()` hands a retired
-  card's editions to the card that has its slot). The looks are
+  pack has an edition; a foil is always one you have not found for that card, and it is the card's for good. Once the
+  set is complete the packs go on turning up foils until none are left. Found editions and the one each card is shown
+  in are `ed` and `look` in `anoria_coll`. The tilt that lights a foil is asked for on the tap that tears a pack
+  (`AnoriaEd.ask`); a yes is remembered, a no is asked again next time, as Lorcana's page does. The looks are
   `games/anoria/editions.css` and the rest `editions.js` (`AnoriaEd`): `cardEl` calls `AnoriaEd.dress`, a card being
   read has the edition button on the picture's lower right, opposite the picture and words button, and its chooser
   shows the five editions of that very card with the ones not found locked. A change shows at once wherever the card
@@ -762,10 +793,10 @@ Underlying principles for everything:
   person whose turn it is has their spoke drawn large, and robots' turns leave it with whoever has the device.
   Results `showWinN`, history `recordN` (v 3) and `viewN` in hist/anoria.js. A new piece on the table needs a place in
   both `rowEl` (big rows) and `rimTile`/`stackEl` (the rim), and checking at 3 to 6 players and 320 wide.
-- **Twelve Guides** (the roster of twelve, Tim, 2026-11-12). The first five each bring a ready deck: Cleopatra (Court),
-  Leonardo (Explorers), Tubman (Pathfinders), Sun Tzu (Legion) and Shakespeare (Legacy, which was Franklin's). Marie
-  Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana join as wins against the computer add up
-  (`GUIDE_AT` in coll.js: eleven steps, the last at 48 wins) and guide a deck the player builds. Their powers, as a
+- **Twelve Guides** (the roster of twelve, Tim, 2026-11-12): Cleopatra, Leonardo, Tubman, Sun Tzu, Shakespeare, Marie
+  Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana. Since 2026-11-13 a new player chooses any
+  of the twelve, and the others join with their sets as the sphere turns or their callings are met (The collection,
+  above). Their powers, as a
   player reads them, are in `GUIDES` in text.js; Sor Juana's is "Your Scholar Figures cost 1 less" (Tim's choice: her
   first draft was Franklin's cheaper Deed). **A Guide is never also a card**, so the seven left the set as cards
   (`RETIRED`, with `to`) and five people took their slots in the ready decks with the same faction, cost, Might and
@@ -775,12 +806,13 @@ Underlying principles for everything:
   choice): Timbuktu and the Trade Caravan to Askia, Encore and Goethe's Legacy to Molière, Sappho to Christine; The
   Stage, The Bard, The Lionheart and The Tenth Muse could not move and were removed. **A Guide who leaves the roster**
   goes into `OLD_GUIDES` (cards.js, with `to`; their words in text.js): whoever had Franklin, Genghis Khan, Lincoln,
-  Mandela or Gandhi has Shakespeare, Joan, Saladin, Empress Wu or Akbar instead (`retire()` and `myDecks()` in coll.js),
+  Mandela or Gandhi had Shakespeare, Joan, Saladin, Empress Wu or Akbar instead (until the clean start of v 6),
   a game saved with one plays on with that Guide's power (engine.js keeps every power by key), and the table and the
   history show them through `TXG` (ui.js) and `card()` (hist/anoria.js). A Guide's power is measured with
   `node scripts/anoria/guides.js` (every ready deck under that Guide against the others under their own); the record
   of every draft and its figure is `scripts/anoria/guides.txt`. A new Guide needs a picture, a text entry, a mat
-  (`MATS` in ui.js; without one the chart is used) and that measure.
+  (`MATS` in ui.js; without one the chart is used), that measure, a set of 20 cards and 8 Domains (cards.js `GSET`,
+  `DSET`, measured with `scripts/anoria/sets.js`) and a calling (coll.js `CALLS`).
 - **Domains: the engine and the data** (2026-11-11; the screens come after). A game given Domain stacks is played
   with Domains (`S.dm` in engine.js, whose header lists the state): `S.places[i]` the Domain at each position, `S.ban[i]`
   whose banner is on it, `S.mk[i]` the card lying across its rule (Vesuvius), `P.dst` and `P.dgone` each player's
@@ -812,9 +844,9 @@ Underlying principles for everything:
   again, and its sentence, label and robots' worth change with it. **A game with no stacks is on the old fixed map** with the rules its twelve
   Places had (`pw0`, `tx0`): a lesson's table (guide.js is unchanged) and a game saved before Domains, which finishes
   as it began. Domination is not in the engine. The thirteen cards that act on Domains are in the set (`P4` in cards.js,
-  `pr: 4`, found only in packs, from the whole set like every card; Pachacuti is the thirteenth; Congress of Vienna is the one with dice, whose roll is the `congress` event). The collection (coll.js v 5) holds
+  `pr: 4`, found only in packs, from the whole set like every card; Pachacuti is the thirteenth; Congress of Vienna is the one with dice, whose roll is the `congress` event). The collection holds
   Domains (`doms`), a stack for every deck (`stackFor`, `saveStack`, `autoStack`: 15, no two the same, any kinds and
-  homes) and Domains in packs (`DOMAINS_IN_PACKS`, `WELCOME_DOMAINS`, `DOMAIN_SLOT`). Every script in scripts/anoria
+  homes); since 2026-11-13 Domains come only with the sets (`DSET`), never in packs. Every script in scripts/anoria
   plays with Domains (`dm` in `STD`; `'{"dm":0}'` is the old map); `scripts/anoria/domains.js` asks the Domain
   questions and `domains.txt` has the answers. A Domain's picture brief is `art` in text.js with how sure it is (`bs`);
   Every Domain and Domain card has its pictures (2026-11-12, the batch's notes in the session scratchpad's `domains-art/`). ui.js has only what keeps today's table
@@ -824,9 +856,7 @@ Underlying principles for everything:
   it, and a page opened with `?domains=0` (or `anoria_dm` '0' on the device) plays the old fixed map. The guide's
   chapter Laying the map (`domains` in guide.js) is the set-up played as a lesson: `AnoriaUI.demo.setup` and
   `suTable` deal real stacks, `L.press` taps as a player would, and the dice are the lesson's (`G.suDice`).
-- **Ten Guides** (2026-11-11). The first five each bring a ready deck; Genghis Khan, Marie Curie, Abraham Lincoln,
-  Nelson Mandela and Gandhi join as wins against the computer add up (`GUIDE_AT` in coll.js: nine steps, the last at
-  about the time the card set completes) and guide a deck the player builds. A Guide's power lives in engine.js by the
+- **Ten Guides** (2026-11-11, before the roster of twelve and the sets). A Guide's power lives in engine.js by the
   Guide's key, and is measured with `node scripts/anoria/guides.js` (every ready deck under that Guide against the
   others under their own; a Guide worth about what the first five are sits within a few points of 0, and "none" reads
   about -1.5). First drafts that measured out of line and were changed: Gandhi's +1 Might everywhere (+9), Lincoln's
@@ -904,13 +934,11 @@ Underlying principles for everything:
   the way across and a quarter of the way down); and a full card shows only about 11% to 60% of a picture's height, so a
   brief says what must be in the upper half. The briefs (`art`) follow the notes above: both top corners plain, a few particular people, sizes as ratios, what to leave out; people who died within living
   memory are asked for as a respectful, recognisable portrait at a documented moment.
-- **Packs draw from the whole set, 5 cards each** (Tim, 2026-11-12: "all series should be available in packs, no
-  requirement to have both of every card first, until we have special sets in the future - do 5 cards. keep allowing a
-  player to collect cards until they've covered all the different styles too. the player can only put two in a deck
-  though"). `PACK_ORDER` is `'mixed'` and `DAILY`/`FEAT` are 5 in coll.js; the series code stays for special sets
-  later. Every card is collected to two copies, and the packs go on turning up finishes (editions) until every card
-  has all five. A deck holds no more than two of a card. At 3 games a day the whole set takes about 71 days.
-  Domains (when they go in) come in half of the earned packs (`DOMAIN_SLOT` 0.5, Tim's choice the same day).
+- **Packs draw from the whole set, 5 cards each** (Tim, 2026-11-12: "all series should be available in packs ... do 5
+  cards. keep allowing a player to collect cards until they've covered all the different styles too. the player can
+  only put two in a deck though"; and 2026-11-13: "Packs also draw locked Guides' cards: yes"). Every slot is a card you
+  don't have or a finish you don't have, so the packs go on turning up finishes until every card has all five
+  (The collection, above). Domains come only with the sets.
 - **A named Legacy Line the game already has is never given more cards**: it would stop being finished for someone who
   had finished it, and one that comes whole in a starter deck would stop being theirs. New cards get lines of their
   own (The Clockwork Heavens beside The Heavens). Links from new cards to older cards are all `from` (`FROM_MORE`), so

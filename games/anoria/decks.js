@@ -1,7 +1,8 @@
 // Anoria: your decks and the deck builder.
-//   AnoriaDecks.open(id, done)   id null: the list of decks (yours, a new one, the five ready decks as recipes);
-//                                a built deck's id: that deck, open for changing. done() when the player leaves.
-// The rules of a deck (40 cards, two of a card at most, no more than you own, one Guide) live in coll.js; this file
+//   AnoriaDecks.open(id, done)   id null: the list of decks (yours, a new one, and each of your Guides' decks as a
+//                                recipe); a built deck's id: that deck, open for changing. done() when the player leaves.
+// The rules of a deck (40 cards, two of a card at most, only cards you have, one Guide) live in coll.js; any card you
+// have can go in twice (Tim, 2026-11-13: you uncover a card, never copies of it). This file
 // only draws them. The builder is two things side by side: the cards you own (tap one to add it) and the deck as it
 // stands (how many of 40, the Spark curve, the factions, the years it spans and the Threads it holds), which is
 // under the cards on a phone held upright and to their left everywhere else.
@@ -68,7 +69,7 @@
     if (d) edit(d, done); else list(done);
   }
 
-  // ═══ The list: your decks, a new one, and the five ready decks to copy ═══════════════════════════════════
+  // ═══ The list: your decks, a new one, and your Guides' decks to copy ═════════════════════════════════════
   function list(done) {
     const sc = U.screen({ title: 'Decks', cls: 'an-adk adk-home', onClose: () => { if (done) done(); } });
     const guideOf = g => TX.GUIDES[g] ? TX.GUIDES[g].n : '';
@@ -77,7 +78,7 @@
       const names = Coll.myDecks().map(d => d.n); let n = 'My deck', i = 2; while (names.indexOf(n) >= 0) n = 'My deck ' + (i++);
       start({ n: n, guide: '', cards: [] });
     }
-    // a ready deck as a recipe: the cards of it you own go into a deck of your own
+    // a Guide's deck as a recipe: its cards go into a deck of your own
     function copy(d) {
       const have = {}, cards = []; d.cards.forEach(k => { have[k] = (have[k] || 0) + 1; if (have[k] <= Math.min(CAP, Coll.copies(k))) cards.push(k); });
       const names = Coll.myDecks().map(x => x.n); let n = 'My ' + d.n, i = 2; while (names.indexOf(n) >= 0) n = 'My ' + d.n + ' ' + (i++);
@@ -93,15 +94,14 @@
         slots(d.cards.filter(k => CARDS[k])), state]);
     }
     function recipe(d) {
-      const g = TX.GUIDES[d.guide], hasG = Coll.load().guides.indexOf(d.guide) >= 0, all = d.own === DECK;
-      const own = []; const have = {}; d.cards.forEach(k => { have[k] = (have[k] || 0) + 1; if (have[k] <= Math.min(CAP, Coll.copies(k))) own.push(k); });
-      return el('div', { class: 'adk-rec' + (all ? ' all' : '') }, [
-        thumb(d.guide, 'adk-dg' + (hasG ? '' : ' away')),
-        el('span', { class: 'adk-dn', text: d.n }), el('span', { class: 'adk-rp', text: U.PLAN[d.n] || '' }),
-        el('span', { class: 'adk-dw' }, [hasG ? null : el('i', { html: Kit.icon('lock') }), el('span', { text: hasG ? g.n + ' is the Guide' : g.n + ' hasn\'t joined you yet' })]),
+      const g = TX.GUIDES[d.guide], own = d.cards.filter(k => Coll.owns(k));
+      return el('div', { class: 'adk-rec all' }, [
+        thumb(d.guide, 'adk-dg'),
+        el('span', { class: 'adk-dn', text: d.n }), el('span', { class: 'adk-rp', text: 'The base set and ' + Kit.poss(g.n) + ' set' }),
+        el('span', { class: 'adk-dw' }, [el('span', { text: g.n + ' is the Guide' })]),
         slots(own),
         el('span', { class: 'adk-ra' }, [
-          el('span', { class: 'adk-rn' }, [el('b', { text: String(d.own) }), el('small', { text: 'of ' + DECK + ' are yours' })]),
+          el('span', { class: 'adk-rn' }, [el('b', { text: String(own.length) }), el('small', { text: 'cards, one of each' })]),
           btn('btn-soft btn-sm', 'Cards', '', () => { Kit.sfx('tap'); U.deckSheet(d); }),
           C.DM_LIVE ? btn('btn-soft btn-sm', 'Domains', '', () => { Kit.sfx('tap'); stack(d.id, d.cards, d.n, paint); }) : null,
           btn('btn-primary btn-sm', 'Copy', Kit.icon('plus'), () => { Kit.sfx('tap'); Kit.haptic('light'); copy(d); })])
@@ -115,12 +115,12 @@
       const grid = el('div', { class: 'adk-decks' }, [
         el('button', { type: 'button', class: 'adk-deck adk-new', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fresh(); } }, [
           el('span', { class: 'adk-dg none', html: Kit.icon('plus') }), el('span', { class: 'adk-dn', text: 'Build a new deck' }),
-          el('span', { class: 'adk-dw', text: built.length ? DECK + ' cards and a Guide' : 'From the cards you own: ' + DECK + ' and a Guide' }),
+          el('span', { class: 'adk-dw', text: built.length ? DECK + ' cards and a Guide' : 'From the cards you have: ' + DECK + ' and a Guide' }),
           pack ? el('span', { class: 'adk-ds gift', html: Kit.icon('sparkle') }, [el('b', { text: pack.what }), el('small', { text: pack.when })]) : null])
       ].concat(built.map(mine)));
       sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: 'Your decks' }), grid]));
-      sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: 'Ready decks' }), el('p', { class: 'adk-lead', text: 'Five ways to play. Copy one and make it your own.' }),
-        el('div', { class: 'adk-recs' }, ready.sort((a, b) => b.own - a.own).map(recipe))]));
+      sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: 'Your Guides\' decks' }), el('p', { class: 'adk-lead', text: 'Each Guide\'s deck is the base set and that Guide\'s set, one of each card. Copy one and make it your own: any card you have can go in twice.' }),
+        el('div', { class: 'adk-recs' }, ready.map(recipe))]));
       sc.body.scrollTop = top;
     }
     paint();

@@ -166,7 +166,7 @@
     wonders: () => [el('div', { class: 'sc-grid wide' }, WONDERS.map((k, i) => tile(k, null, i, 'wide')))],
     sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'tomoe', 'genghis'], 1)])],
     // every Guide with their power, the ones who have joined you marked
-    // (five to a scene: the Guides who each bring a ready deck, then the five who join later)
+    // (the twelve, five, four and three to a scene)
     guides: () => SCENES.guideRow(0), guides2: () => SCENES.guideRow(5, 4), guides3: () => SCENES.guideRow(9, 3),
     guideRow: (from, n) => { const U = UI(), have = (U.Coll.load().guides || []);
       return [el('div', { class: 'sc-guides' }, Object.keys(U.C.GUIDES).slice(from, from + (n || 5)).map((k, i) => { const g = U.info(k), mine = have.indexOf(k) >= 0;
@@ -529,11 +529,11 @@
         await L.say('The other player has a Guide too. Tap either one to read it.', { at: '.an-strip.opp .st-guide' });
         await L.say('A deck has one Guide. You never play two at once.', { at: '.an-strip.me .st-guide' });
         await L.scene('guides');
-        await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. These five each bring a ready deck, and you start with the one you chose.', { scene: 1 });
+        await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. You start with the one you chose, and with that Guide\'s set of ' + UI().Coll.GSET.cleopatra.length + ' cards.', { scene: 1 });
         await L.scene('guides2');
-        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you one at a time as you beat the computer. The first arrives at ' + UI().Coll.GUIDE_AT[0] + ' wins and the last at ' + UI().Coll.GUIDE_AT.slice(-1)[0] + '.', { scene: 1 });
+        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you as you play. Every game you finish lights signs on a great sphere, and each time the sphere comes round it brings a pack, and on some turns a new Guide with their set.', { scene: 1 });
         await L.scene('guides3');
-        await L.say('A new Guide is a new way to play. Any deck you build can have them as its Guide.', { scene: 1 });
+        await L.say('A new Guide is a new way to play. Each Guide also has a calling, something to do in your games that brings that Guide sooner.', { scene: 1 });
       } },
     { id: 'legacy', n: 'Legacy Lines', sub: 'What a card grew from, and what that is worth', art: 'virgil',
       table: () => ({ round: 3, places: ['petra', 'nineveh', 'library', 'seneca', 'wall'], me: { guide: 'cleopatra', hand: ['virgil', 'eureka', 'galileo'], draw: ['hypatia', 'compass', 'press', 'coleman'], figs: [['homer', MY_OUT], ['archimedes', CROSS]] },
@@ -614,7 +614,7 @@
         else if (find(V + '.view-notes')) await L.say('Under the card, each skill is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
         await L.say('In a game, <b>hold your finger on any card</b> to look through the cards at that Place. Swipe up and down to go from Place to Place and to your hand, and use the buttons under a card to play it or move it.', {});
-        await L.say('Every card you own, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
+        await L.say('Every card you have, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
       } }
   ];
   CHAPTERS.forEach((c, i) => {

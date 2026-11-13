@@ -1,9 +1,11 @@
-// Anoria: choosing your starter and opening packs.
-//   AnoriaPacks.chooseStarter(app, done)  the first time: the five Guides side by side; the one you choose brings
-//                                         their deck, then your welcome packs are opened
-//   AnoriaPacks.open(done)                open the packs that are waiting (none waiting: what earns the next one)
-//   AnoriaPacks.earned(list, done)        after a won game ([{t:'pack', pack} | {t:'guide', g}]): a new Guide joins
-//                                         first, then the packs are opened
+// Anoria: choosing your Guide and opening packs (Tim, 2026-11-13: you uncover a card or a finish, never a copy).
+//   AnoriaPacks.chooseStarter(app, done)  the first time: all twelve Guides; the one you choose brings their set, your
+//                                         first deck forms from the base set and theirs, then the welcome packs
+//   AnoriaPacks.open(done)                open the packs that are waiting (none waiting: the sphere's screen)
+//   AnoriaPacks.earned(list, done)        after a game ([{t:'pack', pack} | {t:'guide', g, why}]): a new Guide joins
+//                                         first, with their set, then the packs are opened
+// A card in a pack is new to you, or a card you have in a finish you haven't found: then the new finish lands on top
+// of the card as you had it.
 // Opening a pack has three beats. The sealed pack is torn across its top (a swipe the tear follows; a tap, Enter or
 // Space tears it for you). Its cards come out face down and are turned by the player. It ends on a tally. The cards
 // are decided and saved by AnoriaColl.openPack at the moment of the tear, so leaving half way loses nothing.
@@ -112,6 +114,8 @@
         if (v > target) target = v > .95 ? 1 : v;
         go();
       });
+      const ask = () => { if (window.AnoriaEd && window.AnoriaEd.ask) window.AnoriaEd.ask(); };
+      area.addEventListener('touchend', ask); area.addEventListener('click', ask);
       const up = e => { if (!drag) return; const d = drag; drag = null; node.classList.remove('held'); if (torn1 || e.type === 'pointercancel') return; if (d.moved ? target >= .4 : d.on) tearAll(); else if (target > 0) node.classList.add('part'); };
       area.addEventListener('pointerup', up); area.addEventListener('pointercancel', up);
     }
@@ -162,25 +166,28 @@
       stage.className = 'pk-stage'; stage.innerHTML = ''; sc.title.textContent = '';
       if (guides.length) return guide(guides.shift());
       if (waiting().length) return sealed();
-      if (!opened && !hadGuide) return nothing();
+      if (!opened && !hadGuide) { if (window.AnoriaRewards) { leave(() => window.AnoriaRewards.path(done)); return; } return nothing(); }
       leave();
     }
 
     // ── A Guide steps forward: the one you chose to begin with, or one who joins after a win ──
     function guide(x) {
-      const g = x.g, G = TX.GUIDES[g], packs = waiting().length;
+      const g = x.g, G = TX.GUIDES[g], packs = waiting().length, set = Coll.setCards(g);
       dots.innerHTML = ''; dots.removeAttribute('aria-label');
       const card = el('button', { type: 'button', class: 'pk-g-card', 'aria-label': 'Read ' + G.n + '\'s card', onclick: () => A.openView(g) }, [A.cardEl(g)]);
-      const label = guides.length ? 'Next' : packs ? (x.starter ? 'Open your welcome packs' : plural(packs, 'Open your pack', 'Open your packs')) : 'Done';
-      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: label, onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); next(); } });
-      const m = el('div', { class: 'pk-moment guide', style: { '--f': col(g) } }, [
+      const label = x.starter ? 'See your first deck' : guides.length ? 'Meet ' + TX.GUIDES[guides[0].g].n : packs ? plural(packs, 'Open your pack', 'Open your packs') : 'Done';
+      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: label, onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (x.starter) formDeck(g); else next(); } });
+      // (a Guide who joins later: the set that comes with them, as a row of its cards, a tap away from reading)
+      const doms = (x.doms || []).length;
+      const strip = x.starter ? null : el('button', { type: 'button', class: 'pk-g-set', 'aria-label': 'Read the ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set', onclick: () => { Kit.sfx('tap'); A.browse(set, { title: Kit.poss(G.n) + ' set', sub: set.length + ' cards' }); } }, set.map(k => A.cardEl(k, { mini: true })));
+      const m = el('div', { class: 'pk-moment guide' + (x.starter ? '' : ' join'), style: { '--f': col(g) } }, [
         el('div', { class: 'pk-g-show' }, [el('i', { class: 'pk-rays' }), el('i', { class: 'pk-halo' }), card]),
         el('div', { class: 'pk-g-txt' }, [
-          el('div', { class: 'pk-k', text: x.starter ? 'Your Guide' : 'A new Guide joins you' }),
+          el('div', { class: 'pk-k', text: x.starter ? 'Your Guide' : x.why === 'call' ? 'A calling is met' : 'A new Guide joins you' }),
           el('h2', { class: 'pk-g-n', text: G.n }),
-          el('p', { class: 'pk-g-pow', text: G.tx }),
-          x.starter ? el('p', { class: 'pk-g-deck' }, [el('span', { class: 'pk-k', text: 'Your deck' }), el('b', { text: x.deck || '' })]) : el('p', { class: 'pk-g-note', text: 'This Guide is ready to lead any deck you build.' }),
-          go])
+          el('p', { class: 'pk-g-pow', text: A.DW(G.tx) }),
+          x.starter ? null : el('p', { class: 'pk-g-note', text: 'The ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set are yours' + (doms ? ', with ' + doms + (doms === 1 ? ' Domain' : ' Domains') : '') + '. ' + G.n + ' can lead any deck you build.' }),
+          strip, go])
       ]);
       stage.classList.add('moment'); stage.appendChild(m);
       Kit.sfx('win'); Kit.haptic('success');
@@ -188,6 +195,32 @@
         setTimeout(() => { if (alive && m.isConnected) Kit.confetti({ colors: GOLD.concat([col(g)]), count: 150 }); }, 380);
         setTimeout(() => { if (!alive || !m.isConnected) return; const r = card.getBoundingClientRect(); Kit.sfx('sparkle'); bits(fx, r.left + r.width / 2, r.top + r.height / 2, 30, GOLD.concat([col(g)]), { d: r.width * .9, ms: 1000 }); }, 620);
       }
+      setTimeout(() => { if (alive && m.isConnected) try { go.focus({ preventScroll: true }); } catch (e) {} }, 900);
+    }
+
+    // ── Your first deck forms: the base set and your Guide's set come together, one of each card, with their Domains ──
+    function formDeck(g) {
+      if (!alive) return;
+      stage.className = 'pk-stage'; stage.innerHTML = '';
+      const G = TX.GUIDES[g], d = Coll.guideDeck(g), st = Coll.stackFor(d.id), mine = Coll.DSET.base.concat(Coll.DSET[g].filter(id => Coll.DSET.base.indexOf(id) < 0));
+      const band = (cls, head, n, keys, i) => el('button', { type: 'button', class: 'pk-f-band ' + cls, style: { '--i': i }, 'aria-label': 'Read the ' + keys.length + ' cards of ' + head, onclick: () => { Kit.sfx('tap'); A.browse(keys, { title: head, sub: keys.length + ' cards' }); } }, [
+        el('span', { class: 'pk-f-hd' }, [cls === 'g' ? A.artImg(g, true) || el('i') : el('img', { src: IMG + 'logo.webp', alt: '' }), el('b', { text: head }), el('em', { text: n + ' cards' })]),
+        el('span', { class: 'pk-f-row' }, keys.map((k, j) => { const c = A.cardEl(k, { mini: true }); c.style.setProperty('--j', j); return c; }))]);
+      const count = el('b', { class: 'pk-f-n', text: '0' });
+      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: waiting().length ? 'Open your welcome packs' : 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); next(); } });
+      const m = el('div', { class: 'pk-moment form', style: { '--f': col(g) } }, [el('div', { class: 'pk-f-in' }, [
+        el('div', { class: 'pk-k', text: 'Your first deck' }),
+        band('', 'The base set', Coll.BASE.length, Coll.BASE, 0),
+        band('g', Kit.poss(G.n) + ' set', Coll.GSET[g].length, Coll.GSET[g], 1),
+        el('div', { class: 'pk-f-merge' }, [el('i'), el('span', { class: 'pk-f-box' }, [el('span', { class: 'pk-f-stack' }), el('span', { class: 'pk-f-say' }, [count, el('span', { text: 'cards in your deck, one of each. Any card you have can go in a deck twice.' })])]), el('i')]),
+        el('div', { class: 'pk-k', text: 'Your Domains' }),
+        el('div', { class: 'pk-f-doms' }, mine.map((id, j) => { const t = el('span', { class: 'pk-f-dom' + (st.indexOf(id) < 0 ? ' out' : ''), style: { '--j': j }, title: C.PLACES[id].n }); const im = A.artImg(id, true); if (im) t.appendChild(im); return t; })),
+        el('p', { class: 'pk-f-note', text: 'You bring ' + st.length + ' of your ' + mine.length + ' Domains to a game. The faded one stays home until you change your stack under Decks.' }),
+        go])]);
+      stage.classList.add('moment'); stage.appendChild(m);
+      let i = 0; const to = d.cards.length, up = () => { if (!count.isConnected) return; i = Math.min(to, i + 2); count.textContent = String(i); if (i < to) setTimeout(up, 28); else { count.classList.add('pop'); Kit.sfx('good'); Kit.haptic('success'); } };
+      if (calm()) count.textContent = String(to); else setTimeout(up, 900);
+      Kit.sfx('deal');
       setTimeout(() => { if (alive && m.isConnected) try { go.focus({ preventScroll: true }); } catch (e) {} }, 900);
     }
 
@@ -235,10 +268,10 @@
       seal.classList.add('torn');
       if (!alive) return;
       if (!res) { next(); return; }   // (it was opened somewhere else in the meantime)
+      (res.guides || []).forEach(x => guides.push({ g: x.g, why: x.why, doms: x.doms }));   // (a calling met by opening packs: the Guide comes after this pack)
       opened++;
       count(true);
-      // (the pack's Domain, when it has one, comes out last, on the same strip, with the Domains' own back)
-      const cards = res.cards.concat((res.domains || []).map(d => ({ c: d.id, first: true, dom: true }))), n = cards.length, cells = [];
+      const cards = res.cards, n = cards.length, cells = [];
       // Every picture in the pack is fetched and decoded from this moment, the first card's first. The cards wait in
       // the pack for that one (never longer than CEIL: a dead connection cannot hang the pack).
       const keys = cards.map(x => x.c), CEIL = 2600;
@@ -247,9 +280,8 @@
       if (A.warm) A.warm(keys);
       const flat = calm();   // (a calm screen: no tumble, a card changes face in place with a plain cross-fade)
       // what was yours before this pack (a Thread is only pointed out to a card you can already see)
-      const had = {}; cards.forEach(x => { if (had[x.c] == null) had[x.c] = Coll.copies(x.c); if (x.copy !== false) had[x.c]--; });
-      res.threads.forEach(t => { if (t.gift) had[t.gift] = (had[t.gift] == null ? Coll.copies(t.gift) : had[t.gift]) - 1; });
-      const shown = {}, known = k => !!shown[k] || (had[k] != null ? had[k] > 0 : Coll.copies(k) > 0);
+      const had = {}; cards.forEach(x => { had[x.c] = x.first ? 0 : 1; });
+      const shown = {}, known = k => !!shown[k] || (had[k] != null ? had[k] > 0 : Coll.owns(k));
       // The named Legacy Line a card belongs to (Tim, 2026-11-11): shown over the cards as the line itself, the cards
       // you have found in their places and the ones you haven't joined on but hidden. A card that completes a line
       // has a small moment of its own, there and then.
@@ -353,7 +385,7 @@
         plate.className = 'pk-plate ' + (x.first ? 'new' : 'two'); plate.style.setProperty('--f', col(k)); plate.innerHTML = '';
         // (a new card says so itself: New is stamped on it as it turns. A foil says which: its gem and its name.)
         plate.appendChild(el('div', { class: 'pk-p-top' }, [el('span', { class: 'pk-p-k' }, [el('i'), kindOf(k)]),
-          x.ed ? el('span', { class: 'pk-p-e e' + x.ed }, [Ed().gem(x.ed), EDS[x.ed].n]) : null, x.first || x.copy === false ? null : el('span', { class: 'pk-p-s', text: 'Second copy' })]));
+          x.ed ? el('span', { class: 'pk-p-e e' + x.ed }, [Ed().gem(x.ed), EDS[x.ed].n]) : null]));
         plate.appendChild(el('div', { class: 'pk-p-n', text: nameOf(k) }));
         const L = lineFor(k);
         if (L) { plate.appendChild(lineEl(L, k)); if (link) plate.appendChild(el('p', { class: 'pk-p-why', text: link.tx })); }
@@ -377,7 +409,7 @@
       // o.pass: the strip is still moving on past this card (a flick, or Turn the rest): it turns, without the fanfare
       function turn(i, o) {
         const c = cells[i]; if (!c || c.up || !alive || ended) return; o = o || {};
-        const k = c.x.c, isNew = c.x.first, last = left === 1, ed = c.x.ed || 0, extra = c.x.copy === false;
+        const k = c.x.c, isNew = c.x.first, last = left === 1, ed = c.x.ed || 0;
         c.up = true; c.at = Date.now(); left--; shown[k] = 1;
         // (did this card complete a Legacy Line? its moment comes once the plate shows that line)
         const fin = (C.THREADS || []).filter(t => !lineDone[t.id] && t.cards.indexOf(k) >= 0 && t.cards.every(known));
@@ -385,12 +417,14 @@
         if (fin.length) setTimeout(() => { if (alive && !ended && cells[Math.round(F ? F.pos : 0)] === c) lineMoment(fin[0].id); }, o && o.pass ? 120 : 520);
         const link = linkFor(k);
         c.el.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.el.classList.add('foil', 'e' + ed);
-        // what it is to you, stamped on the card: New or Second copy at its head (a foil of a card you had two of adds
-        // no copy, and says neither), and at its foot the edition it came in, as its gem and its name
-        if (!extra) c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'Second copy' }));
+        // what it is to you, stamped on the card: New at its head for a card new to you, New finish for a card you had,
+        // and at its foot the finish it came in, as its gem and its name. A new finish lands on top of the card as you
+        // had it, which slides out from under it.
+        c.el.appendChild(el('span', { class: 'pk-tag' + (isNew ? '' : ' two'), text: isNew ? 'New' : 'New finish' }));
         if (ed) c.el.appendChild(el('span', { class: 'pk-ed e' + ed }, [Ed().gem(ed), EDS[ed].n]));
+        if (!isNew && !c.el.querySelector('.pk-old')) { const old = el('span', { class: 'pk-old', 'aria-hidden': 'true' }, [A.cardEl(k, { now: true, ed: Math.max(0, c.x.was || 0) })]); c.el.insertBefore(old, c.el.firstChild); }
         c.th.classList.add('up', isNew ? 'new' : 'two'); if (ed) c.th.classList.add('e' + ed); c.th.style.setProperty('--f', col(k));
-        c.th.setAttribute('aria-label', nameOf(k) + (ed ? ', ' + EDS[ed].n : '') + (extra ? '' : isNew ? ', new' : ', a second copy'));
+        c.th.setAttribute('aria-label', nameOf(k) + (ed ? ', ' + EDS[ed].n : '') + (isNew ? ', new' : ', a new finish'));
         const im = A.artImg(k, true) || A.mono(k); if (im) c.th.appendChild(im);
         if (link) { knot(c); if (link.cell) knot(link.cell); }
         // (the sound and the tap in the hand are the card landing)
@@ -534,7 +568,7 @@
         if (ended || !alive) return; ended = true; rest.hidden = true; clearTimeout(nudge); flow.classList.remove('nudge');
         for (const t of res.threads) { if (!alive) return; await thread(t); }
         if (!alive) return;
-        const more = waiting().length;
+        const more = waiting().length + guides.length;
         stage.classList.remove('turning'); stage.classList.add('tally');
         tallyFill(false);
         foot.innerHTML = '';
@@ -542,16 +576,16 @@
         if (window.AnoriaLibrary && window.AnoriaLibrary.open) foot.appendChild(btn('Library', 'btn-soft pk-b-lib', toLibrary, 'book'));
         const fin = btn('Done', more ? 'btn-soft pk-b-done' : 'btn-primary pk-b-done pk-b-main', () => leave());
         foot.appendChild(fin);
-        let nxt = null; if (more) { nxt = btn('Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
+        let nxt = null; if (more) { nxt = btn(guides.length ? 'Meet ' + TX.GUIDES[guides[0].g].n : 'Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
         fit(); Kit.sfx('good'); Kit.haptic('success');
         setTimeout(() => { if (alive && foot.isConnected) try { (nxt || fin).focus({ preventScroll: true }); } catch (e) {} }, 300);
       }
       // the tally on the plate (dry: only to measure the room it needs, before a card has been turned)
       function tallyFill(dry) {
-        const nw = cards.filter(x => x.first && !x.dom).length, tw = cards.filter(x => !x.first && x.copy !== false).length, nd = cards.filter(x => x.dom).length;
+        const nw = cards.filter(x => x.first).length, tw = cards.filter(x => !x.first).length;
         const num = (label, v, cls) => { const b = el('b', { text: dry ? String(v) : '0' }); if (!dry) countUp(b, v); return el('div', { class: 'pk-t-n ' + cls + (v ? '' : ' zero') }, [el('span', { class: 'pk-k', text: label }), b]); };
         plate.className = 'pk-plate tally'; plate.innerHTML = '';
-        plate.appendChild(el('div', { class: 'pk-t-row' }, [num('New', nw, 'new'), num(plural(tw, 'Second copy', 'Second copies'), tw, 'two'), nd ? num(plural(nd, 'Domain', 'Domains'), nd, 'new') : null]));
+        plate.appendChild(el('div', { class: 'pk-t-row' }, [num(plural(nw, 'New card', 'New cards'), nw, 'new'), num(plural(tw, 'New finish', 'New finishes'), tw, 'two')]));
         // the foils in this pack, as the ladder of editions: each one found is lit, with how many
         const eds = EDS.map((x, e) => cards.filter(y => (y.ed || 0) === e).length);
         if (eds.slice(1).some(v => v)) plate.appendChild(el('div', { class: 'pk-t-eds', role: 'img', 'aria-label': EDS.slice(1).map((x, i) => eds[i + 1] ? eds[i + 1] + ' ' + x.n : '').filter(Boolean).join(', ') },
@@ -605,20 +639,23 @@
     return sc;
   }
 
-  // ═══ The very first time: choose a Guide ═════════════════════════════════════════════════════════════════
-  const SHORT = { leonardo: 'Leonardo', tubman: 'Tubman', shakespeare: 'Shakespeare' };
+  // ═══ The very first time: choose a Guide, any of the twelve ═══════════════════════════════════════════════
+  const SHORT = { leonardo: 'Leonardo', tubman: 'Tubman', shakespeare: 'Shakespeare', suntzu: 'Sun Tzu', curie: 'Curie', joan: 'Joan', saladin: 'Saladin', wuzetian: 'Empress Wu', akbar: 'Akbar', mansamusa: 'Mansa Musa', sorjuana: 'Sor Juana', cleopatra: 'Cleopatra' };
+  // what each Guide's set is made of, in a few words
+  const WORLD = { cleopatra: 'Rulers of the ancient Mediterranean', leonardo: 'Inventors and explorers', tubman: 'The road to freedom in the Americas', shakespeare: 'Poets, players and composers', suntzu: 'Generals and strategists',
+    curie: 'Scientists and healers', joan: 'Rebels and revolutions', saladin: 'The Crusades and the golden age of Islam', wuzetian: 'The courts of China, Japan and Korea', akbar: 'The empires of Persia and India', mansamusa: 'The kingdoms and trade of Africa', sorjuana: 'Writers and scholars' };
   function chooseStarter(app, done) {
-    const A = U(), DECKS = A.DECKS, tiles = [];
+    const A = U(), DECKS = Object.keys(C.GUIDES), tiles = [];
     let cur = -1, busy = false;
     const hero = el('div', { class: 'pk-ch-hero' }, [el('i', { class: 'pk-ch-glow' })]);
     const info = el('div', { class: 'pk-ch-info', 'aria-live': 'polite' });
-    const row = el('div', { class: 'pk-ch-row', role: 'radiogroup', 'aria-label': 'The five Guides' });
+    const row = el('div', { class: 'pk-ch-row', role: 'radiogroup', 'aria-label': 'The twelve Guides' });
     const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block pk-ch-go', onclick: commit });
-    DECKS.forEach((name, i) => {
-      const g = C.ARCH[name].guide, G = TX.GUIDES[g], pic = el('span', { class: 'pic' }), im = A.artImg(g, true), bar = el('span', { class: 'bar' });
+    DECKS.forEach((g, i) => {
+      const G = TX.GUIDES[g], pic = el('span', { class: 'pic' }), im = A.artImg(g, true), bar = el('span', { class: 'bar' });
       if (im) pic.appendChild(im);
-      A.deckFacs(C.ARCH[name].cards).forEach(x => bar.appendChild(el('i', { style: { '--c': A.FAC[x[0]].c, '--n': x[1] } })));
-      const t = el('button', { type: 'button', class: 'pk-ch-t', role: 'radio', 'aria-checked': 'false', tabindex: '-1', 'aria-label': G.n + ', the ' + name + ' deck', style: { '--f': A.FAC[G.f].c, '--i': i }, onclick: () => pick(i, true) }, [pic, el('b', { text: SHORT[g] || G.n }), bar]);
+      A.deckFacs(Coll.GSET[g]).forEach(x => bar.appendChild(el('i', { style: { '--c': A.FAC[x[0]].c, '--n': x[1] } })));
+      const t = el('button', { type: 'button', class: 'pk-ch-t', role: 'radio', 'aria-checked': 'false', tabindex: '-1', 'aria-label': G.n + ': ' + WORLD[g], style: { '--f': A.FAC[G.f].c, '--i': i }, onclick: () => pick(i, true) }, [pic, el('b', { text: SHORT[g] || G.n }), bar]);
       tiles.push(t); row.appendChild(t);
     });
     row.addEventListener('keydown', e => { const d = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key]; if (!d) return; e.preventDefault(); const j = (cur + d + DECKS.length) % DECKS.length; pick(j, true); tiles[j].focus(); });
@@ -630,33 +667,32 @@
     function pick(i, user) {
       if (busy || i === cur) return;
       const fromRight = i > cur; cur = i;
-      const name = DECKS[i], g = C.ARCH[name].guide, G = TX.GUIDES[g];
+      const g = DECKS[i], G = TX.GUIDES[g], d = Coll.guideDeck(g);
       tiles.forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-checked', String(j === i)); t.setAttribute('tabindex', j === i ? '0' : '-1'); });
       // the Guide steps forward, and the one who was there steps back
       hero.querySelectorAll('.pk-ch-card').forEach(old => { old.classList.add('out'); old.disabled = true; setTimeout(() => old.remove(), calm() ? 0 : 260); });
       const card = el('button', { type: 'button', class: 'pk-ch-card' + (user ? (fromRight ? ' r' : ' l') : ''), 'aria-label': 'Read ' + G.n + '\'s card', onclick: () => { if (Date.now() - (+hero.getAttribute('data-swiped') || 0) > 400) A.openView(g); } }, [A.cardEl(g)]);
       hero.style.setProperty('--f', A.FAC[G.f].c); hero.appendChild(card);
-      const facs = el('div', { class: 'pk-ch-facs' }); A.deckFacs(C.ARCH[name].cards).forEach(x => facs.appendChild(el('span', { style: { '--c': A.FAC[x[0]].c } }, [el('i'), A.FAC[x[0]].n])));
+      const facs = el('div', { class: 'pk-ch-facs' }); A.deckFacs(Coll.GSET[g]).forEach(x => facs.appendChild(el('span', { style: { '--c': A.FAC[x[0]].c } }, [el('i'), A.FAC[x[0]].n])));
       info.innerHTML = '';
-      info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: 'The deck' }), el('b', { text: name })]), facs]));
-      info.appendChild(el('p', { class: 'pk-ch-plan', text: A.PLAN[name] }));
-      info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: G.tx })]));
-      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the deck’s ' + A.Coll.DECK + ' cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(A.readyDeck(name)); } }));
+      info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' set' }), el('b', { text: WORLD[g] })]), facs]));
+      info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: A.DW(G.tx) })]));
+      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the ' + d.cards.length + ' cards of the first deck</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(d); } }));
       info.classList.remove('in'); void info.offsetWidth; info.classList.add('in');
       go.textContent = 'Begin with ' + G.n;
       if (user) { Kit.sfx('flip'); Kit.haptic('light'); }
     }
     function commit() {
       if (busy || cur < 0) return; busy = true;
-      const name = DECKS[cur], g = C.ARCH[name].guide;
+      const g = DECKS[cur];
       Kit.sfx('tap'); Kit.haptic('medium');
-      if (!Coll.chooseStarter(name)) { if (done) done(); return; }   // (already chosen, on another device)
+      if (!Coll.chooseGuide(g)) { if (done) done(); return; }   // (already chosen, on another device)
       root.classList.add('gone');
-      run({ guides: [{ g: g, starter: true, deck: name }] }, done);
+      run({ guides: [{ g: g, starter: true }] }, done);
     }
     const root = el('div', { class: 'pk-choose' }, [
       el('div', { class: 'pk-ch-in' }, [
-        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Anoria', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a deck to begin with.' })])]),
+        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Anoria', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a set of 20 cards.' })])]),
         hero, el('div', { class: 'pk-ch-side' }, [row, info, el('div', { class: 'pk-ch-dock' }, [go])])
       ])
     ]);
@@ -665,13 +701,14 @@
     if (!calm() && !(window.AnoriaGuide && window.AnoriaGuide.justRan())) { const sp = el('div', { class: 'pk-ch-splash' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
     pick(0, false);
   }
+  // (a guide object from AnoriaColl.gameOver keeps why it joined, so the moment can say so)
 
   window.AnoriaPacks = {
     chooseStarter: chooseStarter,
     open: function (done) { run({}, done); },
     earned: function (list, done) {
       list = list || [];
-      run({ guides: list.filter(x => x && x.t === 'guide' && TX.GUIDES[x.g]).map(x => ({ g: x.g })), first: list.filter(x => x && x.t === 'pack' && x.pack).map(x => x.pack.id) }, done);
+      run({ guides: list.filter(x => x && x.t === 'guide' && TX.GUIDES[x.g]).map(x => ({ g: x.g, why: x.why, doms: x.doms })), first: list.filter(x => x && x.t === 'pack' && x.pack).map(x => x.pack.id) }, done);
     }
   };
 })();

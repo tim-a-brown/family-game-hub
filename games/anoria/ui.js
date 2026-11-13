@@ -7,6 +7,7 @@
   // (every Guide a game can hold: today's, and those who have left the roster, whom a game saved with one still shows)
   const TXG = Object.assign({}, TX.OLD_GUIDES || {}, TX.GUIDES);
   const NUM = n => ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen'][n] || String(n);
+  const ORD = n => ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth', 'eighteenth', 'nineteenth', 'twentieth', 'twenty-first', 'twenty-second', 'twenty-third', 'twenty-fourth', 'twenty-fifth', 'twenty-sixth', 'twenty-seventh', 'twenty-eighth', 'twenty-ninth', 'thirtieth'][n] || n + 'th';
   // (CARDS: every card the table can be asked to show, which is the set and the cards that have left it: a game saved
   // with a retired card still plays it. The set alone is C.CARDS: the Library, the packs and the decks get that.)
   const CARDS = Object.assign({}, C.RETIRED || {}, C.CARDS), el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
@@ -1089,20 +1090,21 @@
     const keys = (d.guide ? [d.guide] : []).concat(Object.keys(n).sort((a, b) => (CARDS[a].t === 'fig' ? 0 : 1) - (CARDS[b].t === 'fig' ? 0 : 1) || CARDS[a].c - CARDS[b].c));
     browse(keys, { counts: n, title: d.n, sub: d.cards.length + ' cards' });
   }
-  // The decks a seat can choose. A person: the decks they can play (their starter, any ready deck they own all of,
-  // the decks they built), then the ready decks still locked, with how much of each they own, and Build a deck.
-  // The computer: any of the five ready decks, or a surprise.
-  const readyDeck = name => ({ id: 'ready:' + name, n: name, guide: C.ARCH[name].guide, cards: C.ARCH[name].cards.concat(C.ARCH[name].cards), ready: true, ok: true });
-  const starterId = () => 'ready:' + (Coll.load().starter || DECKS[0]);
+  // The decks a seat can choose. A person: the deck of each Guide with them (the base set and that Guide's set, one
+  // of each card; the Guide they began with first), the decks they built, and Build a deck. The computer: the deck of
+  // any of the twelve Guides, or a surprise. (A Guide's key gives that Guide's deck; a name from before gives the
+  // ready deck of then, which only an old saved game or a test still asks for.)
+  const readyDeck = name => { if (C.GUIDES[name]) { const d = Coll.guideDeck(name); d.ok = true; return d; } return { id: 'ready:' + name, n: name, guide: C.ARCH[name].guide, cards: C.ARCH[name].cards.concat(C.ARCH[name].cards), ready: true, ok: true }; };
+  const starterId = () => 'guide:' + (C.GUIDES[Coll.load().starter] ? Coll.load().starter : Object.keys(C.GUIDES)[0]);
   function deckChoice(v, who) {   // the choice as it stands: a deck this seat can play
-    if (who === 'cpu') { const n = String(v || '').replace(/^ready:/, ''); return C.ARCH[n] ? 'ready:' + n : 'any'; }
-    const d = Coll.deck(String(v || '')) || Coll.deck('ready:' + v); return d && d.ok ? d.id : starterId();
+    if (who === 'cpu') { const g = String(v || '').replace(/^guide:/, ''); return C.GUIDES[g] ? 'guide:' + g : 'any'; }
+    const d = Coll.deck(String(v || '')); return d && d.ok ? d.id : starterId();
   }
   function deckPicker(label, value, set, who, many) {
     value = deckChoice(value, who);
-    const box = el('div', { class: 'k-opt dk-pick' }, [el('div', { class: 'label' }, [el('span', { text: label })])]);
+    const box = el('div', { class: 'k-opt dk-pick' + (who === 'cpu' ? ' cpu' : '') }, [el('div', { class: 'label' }, [el('span', { text: label })])]);
     const row = el('div', { class: 'dk-row' });
-    const all = who === 'cpu' ? [{ id: 'any', n: 'Surprise me', ok: true }].concat(DECKS.map(readyDeck)) : Coll.decks().sort((a, b) => (b.ok ? 1 : 0) - (a.ok ? 1 : 0));
+    const all = who === 'cpu' ? [{ id: 'any', n: 'Surprise me', ok: true }].concat(Object.keys(C.GUIDES).map(readyDeck)) : Coll.decks().sort((a, b) => (b.ok ? 1 : 0) - (a.ok ? 1 : 0));
     all.forEach(d => {
       const any = d.id === 'any', g = any ? null : d.guide;
       const pic = el('span', { class: 'dk-g' + (any || !g ? ' back' : ''), style: any || !g ? null : { '--f': FAC[TXG[g].f].c } });
@@ -1111,7 +1113,7 @@
       (any ? [['D', 1], ['S', 1], ['V', 1], ['A', 1], ['W', 1]] : deckFacs(d.cards)).forEach(x => cols.appendChild(el('i', { style: { '--c': FAC[x[0]].c, '--n': x[1] } })));
       row.appendChild(el('button', { type: 'button', class: 'dk' + (value === d.id ? ' on' : '') + (d.ok ? '' : ' locked'), 'aria-pressed': String(value === d.id), 'aria-label': d.n + (d.ok ? '' : ', not yours to play yet: ' + d.why.join(', ')),
         onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (d.ok) set(d.id); else lockedDeck(d); } },
-        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + (d.ready ? d.own : d.cards.length) + ' of ' + Coll.DECK + '</b>' })]));
+        [pic, el('span', { class: 'dk-n', text: d.n }), d.ok ? cols : el('span', { class: 'dk-own', html: Kit.icon('lock') + '<b>' + d.cards.length + ' of ' + Coll.DECK + '</b>' })]));
     });
     if (who !== 'cpu' && window.AnoriaDecks) row.appendChild(el('button', { type: 'button', class: 'dk dk-new', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(null, showSetup); } },
       [el('span', { class: 'dk-g back plus', html: Kit.icon('plus') }), el('span', { class: 'dk-n', text: 'Build a deck' })]));
@@ -1120,21 +1122,20 @@
     if (d) {
       const g = TXG[d.guide];
       box.appendChild(el('div', { class: 'dk-info' }, [
-        el('div', { class: 'plan', text: d.ready ? PLAN[d.n] : 'A deck you built' }),
+        el('div', { class: 'plan', text: d.built ? 'A deck you built' : 'The base set and ' + Kit.poss(g.n) + ' set, one of each card' }),
         el('div', { class: 'gd', html: '<b>' + esc(g.n) + '</b> is this deck’s Guide. ' + esc(g.tx) }),
         el('span', { class: 'dk-btns' }, [
           d.built && window.AnoriaDecks ? el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: () => { Kit.sfx('tap'); window.AnoriaDecks.open(d.id, showSetup); } }) : null,
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Cards', onclick: () => { Kit.sfx('tap'); deckSheet(d); } })])
       ]));
-    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: many ? 'The game picks one of the five decks for each computer player at the start, a different one for each while there are enough.' : 'The game picks one of the five decks at the start.' })]));
+    } else box.appendChild(el('div', { class: 'dk-info' }, [el('div', { class: 'plan', text: many ? 'The game picks one of the twelve Guides\' decks for each computer player at the start, a different one for each while there are enough.' : 'The computer plays the deck of one of the twelve Guides, picked at the start.' })]));
     return box;
   }
-  // a ready deck you don't own all of yet: what's missing, and where to go for it
+  // a deck you built that can't be played yet: what's wrong, and the way to put it right
   function lockedDeck(d) {
     const acts = [{ label: 'OK', cls: 'btn-soft' }];
-    if (d.ready && window.AnoriaLibrary) acts.unshift({ label: 'Open the Library', primary: true, onClick: () => window.AnoriaLibrary.open(showSetup) });
     if (d.built && window.AnoriaDecks) acts.unshift({ label: 'Change this deck', primary: true, onClick: () => window.AnoriaDecks.open(d.id, showSetup) });
-    Kit.sheet({ title: d.n, html: '<p>' + esc(d.why.join('. ')) + '.</p>' + (d.ready ? '<p class="muted">A ready deck is yours to play once you own every card in it. New cards come in packs.</p>' : ''), actions: acts });
+    Kit.sheet({ title: d.n, html: '<p>' + esc(d.why.join('. ')) + '.</p>', actions: acts });
   }
   // The way into your collection, under who's playing: the Library (how much of it is yours), the packs waiting to
   // be opened (or what earns the next one), and your decks
@@ -1143,7 +1144,7 @@
     const tile = (cls, ic, name, sub, on, fn) => el('button', { type: 'button', class: 'an-hub-t ' + cls + (on ? ' on' : ''), onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fn(); } },
       [el('span', { class: 'ic', html: ic }), el('b', { text: name }), el('small', { text: sub })]);
     if (window.AnoriaLibrary) row.appendChild(tile('lib', Kit.icon('book'), 'Library', c.own + ' of ' + c.cards, false, () => window.AnoriaLibrary.open(showSetup)));
-    if (window.AnoriaPacks) row.appendChild(tile('pk', Kit.icon('sparkle'), 'Packs', packs.length ? packs.length + ' to open' : next && next.done ? 'Next one tomorrow' : 'Win today for one', packs.length > 0, () => window.AnoriaPacks.open(showSetup)));
+    if (window.AnoriaPacks) row.appendChild(tile('pk', Kit.icon('sparkle'), 'Packs', packs.length ? packs.length + ' to open' : next ? next.have + ' of ' + next.need + ' signs' : '', packs.length > 0, () => window.AnoriaPacks.open(showSetup)));
     if (window.AnoriaDecks) row.appendChild(tile('dk', Kit.icon('cards'), 'Decks', mine ? mine + ' you built' : 'Build your own', false, () => window.AnoriaDecks.open(null, showSetup)));
     return row;
   }
@@ -1181,11 +1182,11 @@
       onStart: cfg => {
         const n = cfg.players.length, teams = teamsFor(n, cfg.options.teams), cols = seatColors(n, teams), cpu = cfg.players.every((p, i) => !i || p.cpu);
         // (the computer players' decks: the one chosen for all of them, or a different ready deck for each while there are enough)
-        const pool = E.shuffle(DECKS.slice(), Math.random); let k = 0;
+        const pool = E.shuffle(Object.keys(C.GUIDES), Math.random); let k = 0;
         const theirs = () => { const id = deckChoice(cfg.options.decks, 'cpu'); return readyDeck(id === 'any' ? pool[(k++) % pool.length] : id.slice(6)); };
         newGame({ mode: cpu ? 'cpu' : 'local', level: LEVEL[cfg.options.level] ? cfg.options.level : 'normal', teams: teams,
           players: cfg.players.map((p, i) => { const d = p.cpu ? theirs() : Coll.deck(deckChoice(cfg.options['deck' + i], 'me'));
-            return { name: p.name, cpu: !!p.cpu, level: p.cpu && LEVEL[p.level] ? p.level : undefined, color: cols[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }; }) });
+            return Object.assign({ name: p.name, cpu: !!p.cpu, level: p.cpu && LEVEL[p.level] ? p.level : undefined, color: cols[i], deck: d.n, deckId: d.id, built: !!d.built, guide: d.guide, cards: d.cards.slice() }, p.cpu ? { stack: Coll.guideStack(d.guide) } : {}); }) });
       }
     });
     const seats = st && st.el && st.el.querySelector('.k-seats'); if (seats) seats.parentNode.insertBefore(hubRow(), seats.nextSibling);
@@ -1255,7 +1256,7 @@
     // (ord: the turns of this round in order, E.order(S); k: whose turn it is among them)
     const N = cfg.players.length, seats = () => cfg.players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
     G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
-      stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] } };
+      stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] }, cl: Coll.trackStart(), cv: Coll.VER };   // (cl: what the game did, for the callings)
     S.turn = G.ord[0]; setCols(N > 2 || cfg.teams ? cfg.players.map(p => p.color) : null);
     ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
     if (S.su && S.su.step !== 'done') { G.ph = 'setup'; cfg.players.forEach((p, o) => { if (p.cpu) E.setupLay(S, o, E.setupPick(S, o, profOf(p, cfg.level), Math.random)); }); }
@@ -3159,9 +3160,11 @@
 
   // (whose Figure knocked one out: the knocker's player, from the table, or from who the log has seen play it)
   const byOf = ev => { const f = E.byU(S, ev.by); if (f) return f.o; const w = G.who && G.who[ev.by]; return w ? w[1] : S.N === 2 ? 1 - ev.o : -1; };
+  // what the game did, for the callings (coll.js track: the first player's, whoever holds the device)
+  const callTrack = evs => { if (G && G.cl && !G.demo) evs.forEach(ev => Coll.track(G.cl, ev, 0)); };
   function tally(evs) {
     const T = G.tale, r = G.hist.length + 1, cardOf = u => { const f = u && E.byU(S, u); return f ? f.c : ''; };
-    let held = null;
+    let held = null; callTrack(evs);
     evs.forEach(ev => {
       if (ev.t === 'ko' && ev.by) { const w = byOf(ev); if (w >= 0 && G.stats[w]) { G.stats[w].ko++; const c = T && cardOf(ev.by); if (c && T.ko[w]) { const m = T.ko[w]; m[c] = (m[c] || 0) + 1; } } }
       else if (ev.t === 'line' || ev.t === 'thread') { G.stats[ev.o].lines++;
@@ -3236,7 +3239,7 @@
         await banner(up ? 'Round ' + S.round : '', up ? 'The stakes double' : 'Round ' + S.round, up ? LAUREL + LAUREL + '<span>Every Place now scores 2 Renown</span>' : (S.round === 1 ? '<span>' + (G.teams ? 'The first team to ' : 'First to ') + S.cfg.target + ' Renown</span>' : ''));
         if (gen !== my) return;
       }
-      E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); logEvs(evs); save();
+      E.startTurn(S); G.ph = 'play'; const evs = S.ev.splice(0); logEvs(evs); callTrack(evs); save();
       if (!(await playEvents(evs, { o: o }))) return;
     }
     V = snap();
@@ -3317,7 +3320,7 @@
     let evR = null; const r0 = S.P.map(p => p.renown);
     if (G.k < G.ord.length - 1) { G.k++; S.turn = G.ord[G.k]; G.ph = 'start'; }   // (the next player this round: G.ord, E.order)
     else {
-      const rNow = G.hist.length + 1; E.endRound(S); evR = S.ev.splice(0); logEvs(evR, rNow); const held = tally(evR) || {}; if (G.tale) G.tale.hold.push(posOrder().map(i => held[i] == null ? '.' : 'abcdef'[held[i]]).join(''));
+      const rNow = G.hist.length + 1; E.endRound(S); evR = S.ev.splice(0); logEvs(evR, rNow); const held = tally(evR) || {}; callTrack([{ t: 'count', ren: S.P.map(p => p.renown) }]); if (G.tale) G.tale.hold.push(posOrder().map(i => held[i] == null ? '.' : 'abcdef'[held[i]]).join(''));
       G.hist.push(S.P.map((p, i) => p.renown - r0[i])); if (G.tale) G.tale.tot.push(S.P.map(p => p.renown).join('-'));   // (tot: Renown so far, with what Threads and Seals gave during the round)
       if (S.over) G.over = true; else { G.ord = E.order(S); G.k = 0; S.turn = G.ord[0]; G.ph = 'start'; }
     }
@@ -3390,8 +3393,10 @@
           dm: S.dm ? { ban: MAPORD.map(i => S.ban[i]).join(''), dibs: S.su ? S.su.dibs : -1, first: S.f0 || 0, lay: S.su && S.su.lay ? S.su.lay.map(l => (l ? [l.gate, l.out, l.offer].join(',') : '')) : [], ch: (T.dom || []).slice() } : null,
           map: MAPORD.map(i => { const m = E.mights(S, i), by = o => S.figs.filter(f => f.p === i && f.o === o).map(f => f.c).join(','); return [S.places[i], E.holder(S, i), m[0], m[1], by(0), by(1)].join('|'); }) } });
     } catch (e) {}
-    // the collection: cards that crossed the table are seen; a win against the computer can earn a pack or a Guide
-    try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w === 0, cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
+    // The collection (Tim, 2026-11-13: "a game earns the same however it's played"): the cards that crossed the table are
+    // seen, and the game lights signs on the sphere for the first player, whoever holds the device. A game begun under an
+    // older collection finishes and earns nothing.
+    try { const win = w === 0; G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[0].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }
   }
   // The record of a game of three or more players for its history (hist/anoria.js reads it: v 3). Each player's
   // numbers as with two; rt, each round's Renown so far for every player; hold, who held each Domain at each count,
@@ -3406,15 +3411,14 @@
           rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice() } });
     } catch (e) {}
     // (a win against the computer: your own, or your team's)
-    try { G.rew = Coll.gameOver({ win: G.mode === 'cpu' && w >= 0 && E.ally(S, 0, w), cpu: G.mode === 'cpu', level: G.level, built: !!G.players[0].built, seen: Object.keys(G.seen || {}) }); } catch (e) { G.rew = []; }
+    try { const win = w >= 0 && E.ally(S, 0, w); G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[0].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }
   }
   // The results card for three or more players: everyone in order (or every team, with its Renown together), the
   // winner first and anyone who was put out last, and how it ended in a sentence
   function showWinN(quiet) {
     const w = S.winner, T = G.teams, win = w < 0 ? [] : T ? teamOf(w) : [w], people = G.players.some((p, o) => human(o));
     const lose = w >= 0 && people && !win.some(human), mine = G.mode === 'cpu' && win.indexOf(0) >= 0;
-    const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
-    earned.forEach(x => notes.push(x.t === 'guide' ? TXG[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
+    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
     const said = endSaid(); notes.push(said);
     S.P.forEach((p, o) => { if (p.out && !/ lost (the last Seal|their last Seals) /.test(said)) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left'); });
     const rank = T ? T.map(t => t[0]).sort((a, b) => (E.ally(S, b, w) ? 1 : 0) - (E.ally(S, a, w) ? 1 : 0) || E.sren(S, b) - E.sren(S, a)).map(o => ({ name: teamName(o), score: E.sren(S, o), color: teamCol(o), cpu: !teamOf(o).some(human) }))
@@ -3423,14 +3427,15 @@
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+      show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
   }
-  const earnedLabel = x => x.t === 'guide' ? 'Meet your new Guide' : 'Open your pack';
+  function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g;
+    return g && p ? 'See what you earned' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
   function showWin(quiet) {
     if (S.N > 2) return showWinN(quiet);
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
-    const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
-    earned.forEach(x => notes.push(x.t === 'guide' ? TXG[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
+    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
     notes.push(S.how === 'seals' ? 'All ' + (S.P[1 - w].sm === 4 ? 'four' : 'three') + ' of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
     G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
@@ -3438,7 +3443,8 @@
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      extra: earned.length ? [{ label: earned.length === 1 ? earnedLabel(earned[0]) : 'See what you earned', onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+      show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -3468,7 +3474,7 @@
     '<li>You keep up to 2 Spark you don\'t spend through the other players\' turns. That Spark pays for a Deed with <b>Quick</b>, such as Phalanx, which plays itself when it saves your Figure.</li>' +
     '<li>Three Quick Deeds only ever play themselves, each at the moment its card names. <b>Testudo</b> pulls back a Figure of yours that loses a clash it started on an opponent\'s side, so it goes back to your Gate instead of being knocked out. The <b>Defense of Syracuse</b> drives back to its own Gate an enemy Figure that would win a clash it started at your Gate or your Outpost. The <b>Tribune\'s Veto</b> cancels a Deed an opponent plays that would score Renown or move, stun or knock out one of your Figures. Testudo is paid for with the Spark of your own turn, and the other two with Spark you kept.</li>' +
     '<li>You can hold 8 cards when your turn ends.</li></ul>' +
-    '<h3>Two of a card</h3><ul><li>A deck is 40 cards, with one or two copies of each card, so a single card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li></ul>' +
+    '<h3>Two of a card</h3><ul><li>A deck is 40 cards and can hold no more than two of a card. Any card you have can go in a deck twice, so a card from a pack can go straight in. Both copies of a person can stand on your side at the same time.</li></ul>' +
     '<h3>Collecting</h3><ul><li>The small mark at the foot of the band down a card\'s left side is how rare the card is in packs: <span class="rr-i r1"></span>a dot is Common, <span class="rr-i r2"></span>a triangle Uncommon, <span class="rr-i r3"></span>a four-point star Rare and <span class="rr-i r4"></span>a compass rose Legendary. The cards that do the most are the rarest. Rarity plays no part in a game.</li>' +
     '<li>Every card comes in five <b>editions</b>: Matte, Shiny, Silver foil, Gold foil and Rainbow foil, each rarer than the one before. An edition is only the card\'s finish and frame, and all five play the same. When you read a card you own, the round button with the stack of cards on its picture shows that card\'s editions and lets you choose which one you see.</li></ul>' +
     '<h3>Might, home and away</h3><ul><li>The number on the shield is a Figure\'s <b>Might</b>.</li>' +
@@ -3482,9 +3488,11 @@
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
     '<li>A <b>Legacy Figure</b> has a Legacy Line to the person who inspired that Figure, drawn down the side of its card. With that person in play on your side, the Legacy Figure also costs 1 Spark less, and has +1 Might for as long as that person is in play on your side, connected by a gold Legacy Line on the map. A Legacy Figure with lines to two people has +1 Might for each of them in play on your side, so +2 with both, and a gold line to each one in play. Two copies of one of those people count once.</li>' +
     '<li>Every Legacy Line you make scores its Renown, however many you make in a round.</li></ul>' +
-    '<h3>Your collection</h3><ul><li>Your first win of the day against the computer earns a pack of ' + ((window.AnoriaColl && AnoriaColl.DAILY) || 5) + ' cards. So do your first win against Normal, against Hard, and with a deck you built.</li>' +
-    '<li>A deck has one <b>Guide</b>, and you never play two at once. You start with the Guide you chose. There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you one at a time as you beat the computer: the first at ' + Coll.GUIDE_AT[0] + ' wins and the last at ' + Coll.GUIDE_AT.slice(-1)[0] + '. Each has a different power, so a new Guide is a new way to play, and any deck you build can have them as its Guide. Five of the Guides each bring a ready deck, which opens once you own its cards.</li>' +
-    '<li>A pack holds cards from the whole set. Each card in it is one you are missing, or a finish of a card you haven\'t found yet, so you go on collecting Shiny, Silver, Gold and Rainbow cards after you own every card. A deck can still hold no more than two of a card.</li></ul>' +
+    '<h3>Your collection</h3><ul><li>Every company has the <b>base set</b>: ' + Coll.BASE.length + ' cards and ' + Coll.DSET.base.length + ' Domains. Each <b>Guide</b> brings a set of their own, ' + Coll.GSET.cleopatra.length + ' cards and ' + Coll.DSET.cleopatra.length + ' Domains, and a Guide\'s deck is the base set and that Guide\'s set, one of each card. You begin with the Guide you chose.</li>' +
+    '<li>A great <b>sphere</b> with ' + NUM(Coll.SIGNS) + ' signs turns as you play. A finished game lights one sign, a win lights two, and your first win of the day lights three, however the game is played. Each time the sphere comes full circle you have a pack of ' + Coll.PACK + ' cards.</li>' +
+    '<li>There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides, and a deck has one. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you as the sphere turns, each with their set: the first the first time it comes round, and the last on its ' + ORD(Coll.GUIDE_TURNS.slice(-1)[0]) + ' turn. Each Guide also has a <b>calling</b>, something to do in your games that brings that Guide sooner. The sphere\'s screen, under Packs, shows how far along each calling is.</li>' +
+    '<li>Your first win, your first win against Normal, your first against Hard and your first with a deck you built each give a pack too.</li>' +
+    '<li>Every card in a pack is a card you don\'t have yet, or a finish of a card you haven\'t found yet, so you go on collecting Shiny, Silver, Gold and Rainbow cards after you have every card. Packs draw from the whole set, the sets of Guides who haven\'t joined you yet included, and some cards are found only in packs. Domains come only with the sets.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When every player has had a turn, each Place goes to the side with <b>the most Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
     '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
     '<li>If you hold an opponent\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
@@ -3508,7 +3516,7 @@
   // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
   function tool(name) {
     if (G && G.demo) return;
-    if (!Coll.load().starter) { Kit.toast('Choose your first deck, and the ' + (name === 'library' ? 'Library' : name === 'packs' ? 'packs' : 'decks') + ' will open.', 2600); return; }
+    if (!Coll.load().starter) { Kit.toast('Choose your Guide first, and the ' + (name === 'library' ? 'Library' : name === 'packs' ? 'packs' : 'decks') + ' will open.', 2600); return; }
     const after = () => { if (!G) showSetup(); };
     if (name === 'library' && window.AnoriaLibrary) window.AnoriaLibrary.open(after);
     else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
@@ -3612,8 +3620,8 @@
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
     onNew: () => { if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,
     menu: [
-      { icon: 'book', label: 'Library', sub: 'Every card, and the ones you own', onClick: () => tool('library') },
-      { icon: 'sparkle', label: 'Packs', sub: 'Open the packs you have won', onClick: () => tool('packs') },
+      { icon: 'book', label: 'Library', sub: 'Every card, and the ones you have', onClick: () => tool('library') },
+      { icon: 'sparkle', label: 'Packs', sub: 'Open your packs, and see the sphere and the callings', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep },
