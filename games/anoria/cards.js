@@ -33,7 +33,7 @@ const CARDS = {
   spartacus: F('Spartacus', 'V', 2, 2, 'MED', 2, -72, { uprising: 1 }),
   leonidas: F('Leonidas', 'V', 3, 3, 'MED', 2, -480, { guard: 1, steadfast: 1 }),
   boudica: F('Boudica', 'V', 3, 3, 'EUR', 2, 60, { raider: 1 }),
-  tomoe: F('Tomoe Gozen', 'V', 3, 4, 'ASIA', 3, 1184, { swift: 1 }),
+  yoshitsune: F('Yoshitsune', 'V', 3, 4, 'ASIA', 3, 1184, { swift: 1 }),
   genghis: F('Genghis Khan', 'V', 4, 4, 'ASIA', 3, 1206, { underdog: 1 }),
   baibars: F('Baibars', 'V', 4, 4, 'MIDEAST', 3, 1260, { steadfast: 1 }),
   yisunsin: F('Yi Sun-sin', 'V', 4, 5, 'ASIA', 4, 1592, { guard: 1 }),
@@ -91,7 +91,7 @@ const CARDS = {
   // Court
   mencius: F('Mencius', 'S', 2, 2, 'ASIA', 2, -320, { scholar: 1 }, { insp: ['confucius'] }),
   nzinga: F('Nzinga', 'S', 4, 4, 'AFR', 4, 1626, { steadfast: 1 }, { arr: ['stun', 1] }),
-  hiawatha: F('Hiawatha', 'S', 3, 4, 'AMER', 3, 1450, { law: 1, inspiring: 1 }),
+  canasatego: F('Canasatego', 'S', 3, 4, 'AMER', 5, 1744, { law: 1, inspiring: 1 }),
   christine: F('Christine de Pizan', 'A', 3, 4, 'EUR', 3, 1405, { scholar: 1 }, { insp: ['sappho'] }),
   theodora: F('Theodora', 'S', 3, 4, 'MED', 3, 532, { steadfast: 1 }),   // (3 Might from 25 Renown won (variants.txt, "First to 25"), and 4 again when two of a person came in: legacy-rules.txt)
   // Pathfinders
@@ -656,7 +656,7 @@ const GROWN = {
   Explorers: ['ibnbattuta', 'leif', 'sacagawea', 'shenkuo', 'darwin'],
   Legion: ['scipio', 'toussaint', 'shaka', 'lakshmibai', 'tecumseh'],
   Legacy: ['caesar', 'ibnsina', 'chaucer', 'marcus', 'germain'],
-  Court: ['mencius', 'nzinga', 'hiawatha', 'christine', 'theodora'],
+  Court: ['mencius', 'nzinga', 'canasatego', 'christine', 'theodora'],
   Pathfinders: ['zhangqian', 'sargon', 'sundiata', 'bolivar', 'khutulun'],
 };
 // Cards that have left the set (2026-11-11: the legends, and the Trojan Horse with them), each with the card that has
@@ -685,15 +685,20 @@ const RETIRED = {
   sorjuana: F('Sor Juana', 'A', 3, 4, 'AMER', 5, 1689, { scholar: 1 }, { from: ['sappho'], to: 'christine' }),
   wuzetian: F('Wu Zetian', 'S', 4, 5, 'ASIA', 3, 690, {}, { arr: ['stun', 1], pr: 3, to: 'franklin' }),
   akbar: F('Akbar', 'S', 4, 4, 'ASIA', 4, 1582, { orator: 1 }, { pr: 3, to: 'lincoln' }),
+  // (2026-11-13, Tim: "hold tomoe gozen and hiawatha for the legends of lore set". Neither has a record from their own
+  // time: Tomoe Gozen is known only from The Tale of the Heike, a war epic, and Hiawatha from Haudenosaunee oral
+  // tradition. They wait here for a future Legends of Lore set (lore: 1); a real person has each one's slot.)
+  tomoe: F('Tomoe Gozen', 'V', 3, 4, 'ASIA', 3, 1184, { swift: 1 }, { lore: 1, to: 'yoshitsune' }),
+  hiawatha: F('Hiawatha', 'S', 3, 4, 'AMER', 3, 1450, { law: 1, inspiring: 1 }, { lore: 1, to: 'canasatego' }),
 };
 // a key as it stands today: the card that has a retired card's slot, or the key itself
 const now = k => RETIRED[k] ? RETIRED[k].to : k;
 const ARCH = {
   Explorers: { guide: 'leonardo', cards: ['zhenghe', 'marcopolo', 'coleman', 'magellan', 'chingshih', 'hypatia', 'archimedes', 'copernicus', 'galileo', 'nostradamus', 'antikythera', 'compass', 'press', 'fairwinds', 'eureka'] },
-  Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'tomoe', 'genghis', 'baibars', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
+  Legion: { guide: 'suntzu', cards: ['spartacus', 'leonidas', 'boudica', 'yoshitsune', 'genghis', 'baibars', 'yisunsin', 'hannibal', 'charlemagne', 'hatshepsut', 'pericles', 'elizabeth', 'phalanx', 'ambush', 'decree'] },
   Legacy: { guide: 'shakespeare', cards: ['socrates', 'plato', 'aristotle', 'alexander', 'archimedes', 'copernicus', 'galileo', 'newton', 'homer', 'virgil', 'dante', 'mozart', 'beethoven', 'michelangelo', 'eureka'] },
   Court: { guide: 'cleopatra', cards: ['hammurabi', 'hatshepsut', 'pericles', 'ashoka', 'confucius', 'askia', 'elizabeth', 'charlemagne', 'homer', 'sappho', 'murasaki', 'moliere', 'hokusai', 'decree', 'caravan'] },
-  Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'coleman', 'chingshih', 'imhotep', 'alfred', 'tomoe', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
+  Pathfinders: { guide: 'tubman', cards: ['harun', 'yaa', 'artemisia', 'coleman', 'chingshih', 'imhotep', 'alfred', 'yoshitsune', 'boudica', 'hannibal', 'crossing', 'rift', 'eclipse', 'ambush', 'phalanx'] },
 };
 Object.keys(ARCH).forEach(k => { ARCH[k].cards = ARCH[k].cards.concat(GROWN[k]); });
 // Each ready deck's Domain stack: fifteen Domains that suit it. A new player gets the stack of their starter deck.
@@ -723,8 +728,8 @@ const BASE = 'hypatia archimedes euclid socrates pericles boudica spartacus home
 const GSET = {
   cleopatra: 'tutankhamun hatshepsut thutmose hammurabi theodora caesar augustus ramesses constantine marcus rosetta decree kadesh tomb triumph hieroglyphs virgil eratosthenes charlemagne milan'.split(' '),
   leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer voyagingcanoe fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
-  tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius hiawatha nanny'.split(' '),
-  suntzu: 'leonidas tomoe genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
+  tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius canasatego nanny'.split(' '),
+  suntzu: 'leonidas yoshitsune genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
   shakespeare: 'plato aristotle moliere dante chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
   curie: 'hippocrates kepler nightingale tesla faraday darwin pasteur newton jenner montagu anning ada germain champollion telegraph locomotive balloon beagle halley humboldt'.split(' '),
   joan: 'wallace vercingetorix zumbi tecumseh toussaint napoleon washington franklin wollstonecraft william catherine declaration congress truce canossa breda westphalia leo alfred nostradamus'.split(' '),
