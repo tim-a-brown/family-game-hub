@@ -1234,14 +1234,24 @@
   function fitFaceOff(box) {
     const W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
     const hz = W > H * 1.05; box.classList.toggle('hz', hz); box.classList.toggle('vt', !hz);
-    const sides = box.querySelectorAll('.fo-side'), n = Math.max(1, ...Array.prototype.map.call(sides, s => s.querySelectorAll('.fo-f').length));
-    const mw = hz ? Math.round(Math.max(200, Math.min(360, W * .32))) : W, tw = hz ? mw - 16 : Math.round(Math.min(W * .66, 400));
+    const sides = box.querySelectorAll('.fo-side');
+    const tight = !hz && (W < 330 || H < 600); box.classList.toggle('tight', tight);   // (a 320-wide phone: a smaller Domain, the road's arrows left to the swipe and the side map, the chips beside each card)
+    const mw = hz ? Math.round(H < 400 ? Math.max(220, Math.min(290, W * .3)) : Math.max(200, Math.min(360, W * .32))) : W, tw = hz ? mw - 16 : Math.round(Math.min(W * (tight ? .56 : .66), tight ? 200 : 400));
     box.style.setProperty('--mw', mw + 'px'); box.style.setProperty('--tw', tw + 'px'); box.style.setProperty('--th', Math.round(tw * .56) + 'px');
     const mid = box.querySelector('.fo-mid'), midH = hz ? 0 : mid.offsetHeight, sw = hz ? (W - mw - 24) / 2 : W - 12, shH = hz ? H - 12 : (H - midH - 24) / 2;
-    let best = 0; for (let r = 1; r <= 3; r++) { const cols = Math.ceil(n / r); best = Math.max(best, Math.min((sw - (cols - 1) * 10) / cols, ((shH - (r - 1) * 10) / r - (hz ? 40 : 34)) / 1.4)); }
-    let cw = Math.round(Math.max(54, Math.min(180, best))); box.style.setProperty('--cw', cw + 'px');
-    const over = () => Array.prototype.some.call(sides, s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1) || mid.scrollHeight > mid.clientHeight + 1;
+    // (each side as large as its own cards allow, in one, two or three rows: a side with chips under its cards keeps room
+    // for them; both sides take the smaller size, so the two face each other as equals)
+    // (a phone on its side has no height to spare: there the chips stand beside each card, not under it)
+    const low = (hz && H < 400) || tight; box.classList.toggle('low', low);
+    // (a side with nobody there gives most of its room to the other: upright, its row is a third as tall)
+    sides.forEach(s => box.classList.toggle('e-' + (s.classList.contains('me') ? 'me' : 'them'), !s.querySelector('.fo-f')));
+    const best = s => { const k = s.querySelectorAll('.fo-f').length, ch = s.querySelector('.fo-chips'), chip = ch && !low ? (hz ? 44 : 40) : 0, cx = ch && low ? ch.offsetWidth + 6 : 0; if (!k) return 999; let b = 0;
+      const w = s.clientWidth - 8 || sw, h = s.clientHeight - 8 || shH;   // (the room the grid gives this side)
+      for (let r = 1; r <= 3; r++) { const cols = Math.ceil(k / r); b = Math.max(b, Math.min((w - (cols - 1) * 10) / cols - cx, ((h - (r - 1) * 10) / r - chip) / 1.4)); } return b; };
+    let cw = Math.round(Math.max(54, Math.min(180, Math.min.apply(null, Array.prototype.map.call(sides, best))))); box.style.setProperty('--cw', cw + 'px');
+    const over = () => Array.prototype.some.call(sides, s => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1);
     for (let i = 0; i < 24 && cw > 48 && over(); i++) { cw = Math.round(cw * .94); box.style.setProperty('--cw', cw + 'px'); }
+    sides.forEach(s => s.classList.toggle('scroll', s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1));   // (still too many to show: that side scrolls, nothing is out of reach)
     // (a phone: a tile shorter, then smaller words, when the middle is still too tall)
     for (let i = 0; i < 6 && mid.scrollHeight > mid.clientHeight + 1; i++) { const t = Math.round(parseFloat(box.style.getPropertyValue('--tw')) * .9); box.style.setProperty('--tw', t + 'px'); box.style.setProperty('--th', Math.round(t * .56) + 'px'); }
   }
