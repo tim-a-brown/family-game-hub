@@ -1,7 +1,8 @@
 // node scripts/anoria/deeds-test.js: the seven cards of 2026-11-12 (the Roman Triumph, Medici Patronage, the Hanseatic
 // League, the Jubilee of 1300, the Tribune's Veto, Pope Leo I, the Theodosian Walls), the Quick powers Testudo and
 // the Defence of Syracuse were given the same day, and the six that came after them (Damascus Steel, the Abacus, the
-// Peace of Westphalia, the Lisbon Earthquake, the Edict of Milan, the Walk to Canossa: held-2026-11-12.txt), each on
+// Peace of Westphalia, the Lisbon Earthquake, the Edict of Milan, the Walk to Canossa: held-2026-11-12.txt), and the
+// Timbuktu Manuscripts' power of 2026-11-13 (relics-2026-11-13.txt), each on
 // a table laid by hand and checked against what its card says (text.js), limits included. Prints what failed and the count; exits 1 if anything failed.
 'use strict';
 const repo = require('path').join(__dirname, '../..');
@@ -206,5 +207,24 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
   let err = null, used = {}; for (let s = 1; s <= 20 && !err; s++) { try { const S = E.play([decks[0].concat(decks[0]), decks[1].concat(decks[1])], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD, {}), s); Object.keys(S.st.played[0]).concat(Object.keys(S.st.played[1])).forEach(k => { used[k] = 1; }); } catch (e) { err = e; } }
   ok('robots play whole games with the six', !err, err && err.stack);
   ok('robots play each of the six', ['dsteel', 'abacus', 'westphalia', 'lisbonquake', 'milan', 'canossa'].every(k => used[k]), Object.keys(used).filter(k => ['dsteel', 'abacus', 'westphalia', 'lisbonquake', 'milan', 'canossa'].indexOf(k) >= 0)); }
+// ── The Timbuktu Manuscripts and the Quipu (2026-11-13): you can hold 10 cards in your hand ──
+const T10 = require(repo + '/games/anoria/text.js');
+ok('manuscripts: the card says so', T10.CARDS.manuscripts.tx === 'You can hold 10 cards in your hand.' && T10.CARDS.quipu.tx === T10.CARDS.manuscripts.tx);
+ok('manuscripts: its own power, and the Quipu has it', E.fxOf('manuscripts') === 'manuscripts' && E.fxOf('quipu') === 'manuscripts' && C.CARDS.quipu.c === C.CARDS.manuscripts.c);
+const eleven = ['leonidas', 'hammurabi', 'spartacus', 'charlemagne', 'socrates', 'boudica', 'eureka', 'ambush', 'eclipse', 'triumph', 'walls'];
+{ const S = game(); S.P[0].guide = 'cleopatra'; S.P[0].hand = ['manuscripts']; ok('manuscripts: 2 Spark', E.costOf(S, 0, 'manuscripts') === 2);
+  ok('the plain limit is 8', E.handMax(S, 0) === 8 && E.handMax(S, 1) === 8); E.apply(S, relic(S, 'manuscripts'));
+  ok('manuscripts: 10 for its player', E.handMax(S, 0) === 10); ok('manuscripts: 8 for the other player', E.handMax(S, 1) === 8);
+  S.P[0].hand = eleven.slice(); E.endTurn(S); ok('manuscripts: 11 cards keep 10 when the turn ends', S.P[0].hand.length === 10 && S.P[0].gone.length === 1, S.P[0].hand.length);
+  S.turn = 1; S.P[1].hand = eleven.slice(); E.endTurn(S); ok('the other player keeps 8', S.P[1].hand.length === 8, S.P[1].hand.length); }
+{ const S = game(); S.P[0].relics = ['quipu']; S.P[0].hand = eleven.slice(0, 10); E.endTurn(S); ok('quipu: 10 cards are kept', S.P[0].hand.length === 10 && !S.P[0].gone.length); }
+{ const S = game(); S.P[0].hand = eleven.slice(0, 9); E.endTurn(S); ok('without it, 9 cards keep 8', S.P[0].hand.length === 8); }
+{ const S = game(); S.P[0].relics = ['manuscripts']; S.P[0].hand = ['quipu']; ok('quipu: not beside the Manuscripts, the same power', !relic(S, 'quipu'));
+  S.P[0].relics = ['press']; S.P[0].hand = ['manuscripts']; ok('manuscripts: beside the Printing Press, another power', !!relic(S, 'manuscripts')); }
+{ const S = game(); S.cfg = Object.assign({}, S.cfg, { hold: 9 }); S.P[0].relics = ['manuscripts']; ok('cfg.hold: a test game tries 9', E.handMax(S, 0) === 9); }
+{ const S = game(); S.P[0].relics = ['manuscripts']; const T = E.clone(S); ok('manuscripts: a copy of the table keeps it', E.handMax(T, 0) === 10); }
+{ const d = C.ARCH.Legion.cards.slice(0, 18).concat(['manuscripts', 'quipu']); let err = null, used = 0, kept = 0;
+  for (let s = 1; s <= 20 && !err; s++) { try { const S = E.play([d.concat(d), d.concat(d)], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD), 100 + s); for (let o = 0; o < 2; o++) if (S.st.played[o].manuscripts || S.st.played[o].quipu) used++; } catch (e) { err = e; } }
+  ok('robots play whole games with the Manuscripts and the Quipu', !err, err && err.stack); ok('robots play them', used > 10, used); }
 console.log((fails ? fails + ' failed, ' : '') + oks + ' passed');
 process.exit(fails ? 1 : 0);
