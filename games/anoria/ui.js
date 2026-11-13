@@ -1154,7 +1154,7 @@
   // seats a Teams choice joins them: 2 against 2, 3 against 3, or three teams of 2 (teamsFor).
   function showSetup() {
     stop(); G = null; S = null; V = null; clearSave(); setCols(null);
-    app.className = 'stage'; app.innerHTML = ''; window.scrollTo(0, 0);
+    app.className = 'stage'; app.innerHTML = ''; document.documentElement.classList.remove('an-low'); window.scrollTo(0, 0);
     // the first time: choose your Guide (their deck is your starter) and open your welcome packs
     if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
     const none = () => el('span', { style: { display: 'none' } });
@@ -1652,13 +1652,27 @@
     if (!many()) paintMats();   // (with more players each spoke lies on its player's mat: matN)
     // (the round track lies along the edge of the map that faces the caption: domains.js)
     dom.track = window.AnoriaDomains ? window.AnoriaDomains.track(null, { max: S.cfg.rounds }) : null;
-    const felt = el('div', { class: 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (many() ? ' many' + (G.teams ? ' teams' : '') : '') }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.track, dom.opp, dom.map, dom.cap, dom.me, dom.hand]);
+    // (two players: the button for the turn, End turn, Next, Roll the dice, stands in the dock beside the caption: .an-go)
+    dom.go = el('div', { class: 'an-go' });
+    const felt = el('div', { class: 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (many() ? ' many' + (G.teams ? ' teams' : '') : '') }, [el('div', { class: 'an-mats', 'aria-hidden': 'true' }, dom.pm), dom.track, dom.opp, dom.map, dom.cap, dom.go, dom.me, dom.hand]);
+    dom.felt = felt;
     if (chart()) felt.style.setProperty('--chart', 'url("' + chart() + '")');
     dom.root = el('div', { class: 'an k-hold' }, [el('div', { class: 'an-mat wood' }, [felt]), dom.fx]);
     if (many() || G.teams) G.players.forEach((p, o) => { if (p.color) dom.root.style.setProperty('--pc' + o, p.color); });   // (each seat's colour: setCols)
     app.appendChild(dom.root);
   }
-  const rowsOrder = () => { const v = ui.view, t = 1 - v; return [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
+  // The two-player table, A3 "the battle line" (Tim, 2026-11-13): on an iPad, or any screen wider than tall, the five
+  // Domains lie in a row across the table, your Gate at the far left and the other player's at the far right, with
+  // your mat under the left half and theirs under the right; their Figures stand above the line, yours below it.
+  // A phone held upright stands the line on its end, their Gate at the top (rows). Upright on an iPad the Figures
+  // overlap down the table in cascades (up); sideways on a phone each side's Figures at a Domain are one stack (short).
+  // Decided from the window every time the table is drawn, so a turned iPad redraws in its new shape.
+  function layMode() {
+    const W = window.innerWidth, H = window.innerHeight;
+    if (W <= H && Math.min(W, H) < 600) return { rows: true, phone: true };
+    return { ln: true, up: W <= H, short: H < 520 };
+  }
+  const rowsOrder = () => { const v = ui.view, t = 1 - v; return ui.lay && ui.lay.ln ? [2 * v, 2 * v + 1, 4, 2 * t + 1, 2 * t] : [2 * t, 2 * t + 1, 4, 2 * v + 1, 2 * v]; };
   const idle = () => !!G && !G.over && !ui.busy && G.ph === 'play' && human(S.turn) && ui.viewer === S.turn && !ui.hideHand && (!G.demo || ui.demoIdle);
 
   function stripEl(node, o, me) {
@@ -1715,11 +1729,15 @@
         const can = idle() && !ui.discard, nothing = can && !ui.acts.length;
         b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (nothing ? ' ready' : ''), text: 'End turn', disabled: !can, onclick: () => { Kit.sfx('pop'); Kit.haptic('medium'); endTurn(); } });
       }
-      node.appendChild(b);
+      // (two players: in the dock, beside the caption; with more players it stays at the end of the strip)
+      if (many() || !dom.go) node.appendChild(b); else { dom.go.innerHTML = ''; dom.go.appendChild(b); }
     }
   }
 
-  function figEl(f, T) {
+  // A Figure on the map. With two players it is the card itself (Tim, 2026-11-13, A3: "real readable cards"), edged in
+  // its player's colour, with a tab on the side that faces the line, since the mat no longer says whose it is; its
+  // Might as it stands now is on its spine. With more players your rows keep the pieces (picture and Might).
+  function figEl(f, T, asCard) {
     const c = CARDS[f.c], fac = FAC[c.f], mine = f.o === V.turn, pl = C.PLACES[S.places[f.p]];
     const can = idle() && mine && !ui.sel && ui.acts.some(a => a.u === f.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));   // (while something is picked up, only where it can go is lit)
     const done = mine && !G.over && !f.rdy && !(f.arr && !f.acted);
@@ -1728,16 +1746,22 @@
     const insp = ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].insp && f.o === S.turn && CARDS[ui.sel.key].insp.indexOf(f.c) >= 0;
     const n = el('button', { type: 'button', class: 'fp o' + f.o + (can ? ' can' : '') + (done ? ' done' : '') + (f.stun ? ' stun' : '') + (sel || picked ? ' sel' : '') + (tg ? ' tgt' : '') + (insp ? ' insp' : '') + (ui.fresh[f.u] ? ' ' + ui.fresh[f.u] : ''),
       'data-u': f.u, 'aria-label': c.n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)), style: { '--f': fac.c } });
+    if (asCard) {
+      n.classList.add('card'); if (c.reg === pl.reg) n.classList.add('home');
+      const cd = cardEl(f.c, { mini: true, now: true, might: f.m }); if (f.m > c.m) cd.classList.add('m-up'); else if (f.m < c.m) cd.classList.add('m-dn');
+      n.appendChild(cd); n.appendChild(el('i', { class: 'fp-tab' }));
+    } else {
     const art = el('span', { class: 'fp-art' }, [noArtLabel(f.c, true, 'na')]); const im = artImg(f.c, true); if (im) art.appendChild(im);
     n.appendChild(el('span', { class: 'fp-card' }, [art]));
     n.appendChild(el('span', { class: 'fp-m' + (f.m > c.m ? ' up' : '') }, [el('b', { text: String(f.m) })]));
     // (the piece's home region in its lower right corner, as on the cards: gold while it stands at home. Tim, 2026-11-12)
     if (c.reg && window.AnoriaDomains) n.appendChild(el('span', { class: 'fp-home' + (c.reg === pl.reg ? ' at' : '') }, [window.AnoriaDomains.home(c.reg, { lit: c.reg === pl.reg })]));
     else if (c.reg === pl.reg) n.appendChild(el('span', { class: 'fp-home', html: SVG.home }));
+    }
     if (f.stun) n.appendChild(el('span', { class: 'fp-stun' }));
     if (f.hush) n.appendChild(hushMark(f.c, ui.fresh[f.u] === 'hushin'));   // (the Walk to Canossa: its skills switched off until the count)
     if (tg) { const pv = clashPreview(tg); if (pv) n.appendChild(el('span', { class: 'pv-x', html: '<span class="a">' + pv[0] + '</span><i>v</i><span>' + pv[1] + '</span>', 'aria-label': 'Your ' + pv[0] + ' against ' + pv[1] })); }
-    if (window.AnoriaEd && !G.demo) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition)
+    if (window.AnoriaEd && !G.demo && !asCard) window.AnoriaEd.piece(n, f.c);   // (the piece's frame takes the card's edition; a card wears its own)
     return n;
   }
   // The Walk to Canossa's mark on a piece: the card's first skill mark (or a plain star for a power with no skill
@@ -1805,13 +1829,16 @@
         seatsFrom(v).slice(1).forEach(q => { const fs = V.figs.filter(f => f.p === i && f.o === q); if (fs.length) side.appendChild(stackEl(q, i, fs, T)); });
       } else {
         const figs = V.figs.filter(f => f.p === i && f.o === sd[0]).sort((a, b) => a.u - b.u);
-        figs.forEach(f => side.appendChild(figEl(f, T)));
-        let free = Math.min(E.capAt(S, i), o.slots || 9) - figs.length;
+        // (two players: the cards themselves, no engraved places for the ones not there; a phone on its side has the
+        // room for one stack a side, its top card, how many and their Might together, which a tap reads in the scan)
+        if (!M && ui.lay && ui.lay.short) { if (figs.length) side.appendChild(stackEl(sd[0], i, figs, T, 0, true)); }
+        else figs.forEach(f => side.appendChild(figEl(f, T, !M)));
+        let free = M ? Math.min(E.capAt(S, i), o.slots || 9) - figs.length : figs.length < E.capAt(S, i) ? 1 : 0;
         if (tg && sd[0] === S.turn && free > 0) {
           const pv = landPreview(tg);
           if (pv) { const s = el('span', { class: 'slot land' }); if (pv.cost != null) s.appendChild(el('span', { class: 'pv-c' }, [el('b', { text: String(pv.cost) })])); if (pv.m != null) s.appendChild(el('span', { class: 'pv-m' }, [el('b', { text: String(pv.m) })])); if (pv.via) { const vi = el('span', { class: 'pv-v' }); const im = artImg(pv.via, true) || mono(pv.via); if (im) vi.appendChild(im); s.appendChild(vi); } side.appendChild(s); free--; }
         }
-        for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
+        if (M) for (let k = 0; k < free; k++) side.appendChild(el('span', { class: 'slot' }));
       }
       row.appendChild(side);
       if (sd[1] === 'L') row.appendChild(tileEl(i, T, M ? { o: t, n: sideTot(i, t) } : { o: t, n: V.tot[i][t] }, M ? { o: v, n: sideTot(i, v) } : { o: v, n: V.tot[i][v] }, sil));
@@ -1909,7 +1936,14 @@
   }
   function render() {
     if (!G || !V || !dom.root) return;
-    const v = ui.view, T = targets(), M = many();
+    const v = ui.view, M = many();
+    ui.lay = M ? {} : layMode();
+    // (the shape of the two-player table, for the style sheet: ln the battle line, up and short its upright and low
+    // forms, rw the rows of a phone held upright; and the game bar folds down while a phone on its side plays)
+    if (dom.felt) { const L = ui.lay, want = 'an-felt felt-in' + (dom.track ? ' has-trk' : '') + (M ? ' many' + (G.teams ? ' teams' : '') : L.ln ? ' bl' + (L.up ? ' up' : '') + (L.short ? ' short' : '') : ' rw'); if (dom.felt.className !== want) dom.felt.className = want; }
+    document.documentElement.classList.toggle('an-low', !!(ui.lay.short && dom.root && dom.root.isConnected));
+    if (M && dom.go && dom.go.firstChild) dom.go.innerHTML = '';
+    const T = targets();
     if (!M) paintMats();   // (only when a mat has been changed, or the view has changed hands)
     pass = {};   // (pictures are put back, not made again: see artImg)
     try {
@@ -1930,7 +1964,7 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    if (!M) layout(); lines(); fitPlates(); fitSides();
+    if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
   // A tile's name and rule stay on the paper, clear of the Might totals and the banner above it and the frame below.
@@ -1954,11 +1988,14 @@
     const plate = t => t.querySelector('.pl-plate');
     const set = (t, k) => { t.classList.remove('f1', 'f2', 'f3', 'f4'); if (k) t.classList.add('f' + Math.min(k, 3)); if (k > 3) t.classList.add('f4'); };
     const bad = t => {
-      const p = plate(t), tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), top = tt ? tt.getBoundingClientRect().bottom : tr.top;
+      // (the paper starts below the Might totals; on the battle line they are shields standing on the tile's top and
+      // bottom edges, so only the top one counts)
+      const p = plate(t), tr = t.getBoundingClientRect(), pr = p.getBoundingClientRect(), tt = t.querySelector('.pl-tots'), ln = !!t.closest('.an-map.bl');
+      const top = ln ? Math.max(tr.top, ...Array.prototype.map.call(t.querySelectorAll('.pl-tot.L'), x => x.getBoundingClientRect().bottom)) : tt ? tt.getBoundingClientRect().bottom : tr.top;
       const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
       const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
       const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
-      return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
+      return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (ln && !(ui.lay || {}).short && pr.height > tr.height * .62) || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
     };
     tiles.forEach(t => { plate(t).style.minHeight = ''; roomy(t); });   // (the mark and home go into a roomy tile's paper before its words are measured)
     let k = 0; for (; k <= 3; k++) { tiles.forEach(t => set(t, k)); if (!tiles.some(bad)) break; }
@@ -1980,6 +2017,21 @@
     h.style.setProperty('--ho', g + 'px'); h.style.paddingBottom = '';
     let hw, rows = 1, per = n;
     const cap = Math.min(132, Math.max(window.innerHeight, window.innerWidth) * .098);
+    h.style.minHeight = '';
+    if (!many() && ui.lay && ui.lay.ln) {
+      // The battle line: the hand is one row of whole cards along the dock, as big as eight of them side by side allow;
+      // its room is kept at that size, so the table never jumps as cards come and go. More than fit at a readable size
+      // overlap, as cards held in a hand do, each with its spine and number showing.
+      const L = ui.lay, big = L.short ? 66 : 132, least = L.short ? 50 : 78;
+      const hw8 = Math.floor(Math.min(big, (W - 7 * g) / 8, L.short ? (window.innerHeight * .222) / 1.4 : 999)), fit = n ? (W - (n - 1) * g) / n : hw8;
+      hw = Math.floor(Math.min(hw8, Math.max(fit, Math.min(hw8, least))));
+      const ov = n > 1 && n * hw + (n - 1) * g > W ? (W - n * hw) / (n - 1) : g;
+      h.style.setProperty('--ho', ov.toFixed(1) + 'px'); h.classList.toggle('over', ov < 0);
+      h.style.minHeight = Math.ceil(hw8 * 1.4 + (L.short ? 2 : 8)) + 'px';
+      h.style.setProperty('--hw', hw + 'px'); h.classList.toggle('small', hw < 62);
+      return;
+    }
+    h.classList.remove('over');
     if (land) {
       // beside the map: one, two or three rows, whichever gives the bigger cards
       const room = Math.max(60, hr.height - 6), fit = (rw, pr) => Math.min((room - (rw - 1) * 6) / rw / 1.4, (W - (pr - 1) * g) / pr, cap);
@@ -1999,7 +2051,7 @@
       // A phone: two rows of five as there, with room kept for both so the table never jumps; an iPad: one row, as
       // there, and the room for it kept at the size of eight cards; a short phone: the room of one row of five, the
       // cards in one row or in two, whichever leaves them bigger)
-      if (many()) {
+      if (many() || (ui.lay && ui.lay.rows)) {
         if (phone) {
           const hw5 = Math.floor(Math.min((W - 4 * g) / 5, cap)); per = Math.max(5, Math.ceil(n / 2)); rows = n > per ? 2 : 1;
           hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 18) + 'px'; h.style.paddingBottom = '10px';   // (the last row clear of the screen's rounded corners)
@@ -2021,6 +2073,9 @@
   }
   function layoutMap() {
     // the map, from the room the hand leaves it
+    const LN = !many() && ui.lay && ui.lay.ln; dom.map.classList.toggle('bl', !!LN); dom.map.classList.toggle('rw', !many() && !LN);
+    if (LN) return layoutLine();
+    dom.map.style.paddingTop = dom.map.style.paddingBottom = dom.map.style.paddingLeft = dom.map.style.paddingRight = '';
     const r0 = dom.map.getBoundingClientRect(); if (!r0.width || !r0.height) return; const mcs = getComputedStyle(dom.map), r = { width: r0.width, height: r0.height - (parseFloat(mcs.paddingTop) || 0) - (parseFloat(mcs.paddingBottom) || 0), left: r0.left, top: r0.top, right: r0.right, bottom: r0.bottom };   // (the rows share the map's height less its padding)
     const rg = r.height > 640 ? 9 : r.height > 420 ? 5 : 3, sg = r.width > 700 ? 7 : 3, gp = r.width >= 690 ? 10 : 5;
     // (a gutter at the row's outer end for the place marks, the Gate's arch, the Outpost's tower and the Crossroads' sign:
@@ -2028,10 +2083,72 @@
     const pos2 = r.width >= 560, pgL = pos2 ? 24 : r.width < 330 ? 6 : 17, pgR = pos2 ? 24 : 6, padX = pgL + pgR;
     dom.map.classList.toggle('pos2', pos2); dom.map.style.setProperty('--pgL', pgL + 'px'); dom.map.style.setProperty('--pgR', pgR + 'px');
     const rowH = (r.height - 4 * rg) / 5, mwMin = Math.max(r.width < 340 ? 84 : 98, Math.min(r.width * .27, 300));
-    const fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - padX - 2 * gp - mwMin - 4 * sg) / 6, 118)));
-    const mw = Math.floor(Math.min(r.width - padX - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
+    let fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - padX - 2 * gp - mwMin - 4 * sg) / 6, 118)));
+    let mw = Math.floor(Math.min(r.width - padX - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
+    if (!many()) {   // (two players, a phone upright: the Figures are cards, as tall as the row allows, beside a tile a third of the width)
+      mw = Math.floor(Math.max(mwMin, Math.min(rowH * 1.7, r.width * .37)));
+      const sideW = (r.width - padX - 2 * gp - mw) / 2; fw = Math.floor(Math.max(26, Math.min((rowH - 4) / 1.4, sideW * .6, 118)));
+      dom.map.style.setProperty('--sdw', Math.floor(sideW) + 'px');
+    }
     const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
     dom.map.classList.toggle('tight', rowH < 74);
+  }
+  // The battle line's sizes, from the room between the two players' bars: five columns, one for each Domain, the
+  // tile across the middle of each, the other player's Figures in the band above it and yours in the band below.
+  function layoutLine() {
+    const M = dom.map, L = ui.lay, st = M.style;
+    // (the bars ride the mats' far corners, theirs at the top right and yours at the bottom left: the bands start
+    // below the one and end above the other)
+    // (a phone on its side has no height to spare: there the bars stand on end at the table's two ends, yours at the
+    // left and theirs at the right, and the map keeps its full height)
+    // (a bar that stands on end and is taller than the table steps down: smaller marks, then the name left to the
+    // portrait, whose ring and aria name say whose bar it is)
+    [dom.opp, dom.me].forEach(b => { b.classList.remove('t1', 't2'); if (!L.short) return; const room = M.getBoundingClientRect().height;
+      if (b.offsetHeight > room) b.classList.add('t1'); if (b.offsetHeight > room) b.classList.add('t2'); });
+    const oh = L.short ? 0 : dom.opp.offsetHeight, mh = L.short ? 0 : dom.me.offsetHeight, gapB = L.short ? 2 : 6;
+    const ow = L.short ? dom.opp.offsetWidth + 6 : 0, mw = L.short ? dom.me.offsetWidth + 6 : 0;
+    st.paddingTop = (oh + gapB) + 'px'; st.paddingBottom = (mh + gapB) + 'px'; st.paddingLeft = mw + 'px'; st.paddingRight = ow + 'px';
+    const r0 = M.getBoundingClientRect(); if (!r0.width || !r0.height) return;
+    const W = r0.width - ow - mw, H = r0.height - oh - mh - 2 * gapB;
+    const cg = L.short ? 14 : W > 900 ? 12 : 8, colW = (W - 4 * cg) / 5;
+    const tw = Math.floor(colW - (L.up ? 30 : L.short ? 4 : 12)), sh = Math.round(L.short ? 24 : Math.max(30, Math.min(44, tw * .21)));
+    const th = Math.floor(Math.min(tw * (L.short ? .5 : L.up ? .86 : .62), H * (L.short ? .3 : L.up ? .2 : .32)));
+    const bg = Math.round(sh * .62 + (L.short ? 1 : 3)), band = (H - th - 2 * bg) / 2;
+    // (the cards: two side by side in a column on the iPad sideways; one a column wide, overlapping down the table, upright)
+    const fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.62 / 1.4, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
+    const sw = Math.floor(Math.max(22, Math.min((band - 4) / 1.36, colW * .4, 60)));
+    const pn = Math.max(11, Math.min(15, tw * .075)), pr = Math.max(10, Math.min(13.5, tw * .064));
+    [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', Math.round(Math.max(18, Math.min(32, tw * .16)))]].forEach(x => st.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
+    M.classList.remove('tight', 'pos2');
+  }
+  // A card's name on the board or in the hand is set as large as reads at arm's length (11px on an iPad), and a name
+  // with a word too long for its card at that size steps down until the word fits: nothing is broken or cut off.
+  function fitNames() {
+    if (!dom.map || !(ui.lay && (ui.lay.ln || ui.lay.rows))) return;
+    dom.root.querySelectorAll('.an-map .fp.card .ac-name, .an-hand .hc .ac-name').forEach(n => {
+      n.style.fontSize = ''; if (n.scrollWidth <= n.clientWidth + 1) return;
+      let fs = parseFloat(getComputedStyle(n).fontSize); while (n.scrollWidth > n.clientWidth + 1 && fs > 6) { fs -= .5; n.style.fontSize = fs + 'px'; }
+    });
+  }
+  // The Figures at each Domain lie as a pile: side by side while they fit, else overlapping, the newest on top, every
+  // name still showing; upright on an iPad they overlap down the table like a column of patience, each card's name
+  // showing under the next. (Measured after the tiles' words are fitted, so a pile never runs over its neighbour.)
+  function piles() {
+    if (!dom.map || many()) return;
+    const L = ui.lay || {};
+    dom.map.querySelectorAll('.pl-side').forEach(sd => {
+      const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), n = ks.length;
+      ks.forEach(k => { k.style.zIndex = ''; });
+      if (n < 2) { sd.style.removeProperty('--ov'); return; }
+      const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
+      if (L.ln && L.up) {
+        const ch = b.height, step = Math.min(ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows)
+        if (sd.classList.contains('R')) ks.forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(n - j + 1); });   // (yours: each card over the next, so the names below show)
+        return;
+      }
+      const w = b.width, room = r.width - 2, fit = n * w + (n - 1) * gap;
+      sd.style.setProperty('--ov', (fit <= room ? gap : (room - n * w) / (n - 1)).toFixed(1) + 'px');
+    });
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
@@ -2090,7 +2207,7 @@
   // a Figure's piece on the table, wherever it is drawn: its card in your rows, or the stack it is in
   const figN = u => dom.map ? dom.map.querySelector('.fp[data-u="' + u + '"]') || dom.map.querySelector('.stk[data-us~="' + u + '"]') : null;
   // the stack of a player's Figures at one Domain (w: its width, when it is placed by hand)
-  function stackEl(q, i, fs, T, w) {
+  function stackEl(q, i, fs, T, w, count) {
     fs = fs.slice().sort((a, b) => b.m - a.m || a.u - b.u); const top = fs[0], c = CARDS[top.c], mineQ = q === S.turn, us = fs.map(f => f.u);
     const acts = a => a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub';
     const can = idle() && mineQ && !ui.sel && fs.some(f => ui.acts.some(a => a.u === f.u && acts(a)));
@@ -2104,6 +2221,7 @@
     const card = el('span', { class: 'c' }, [noArtLabel(top.c, true, 'na')]); const im = artImg(top.c, true); if (im) card.appendChild(im); n.appendChild(card);
     if (fs.some(f => f.hush)) n.appendChild(el('span', { class: 'stk-x' }));
     n.appendChild(el('span', { class: 'm' }, [el('b', { text: String(m) })]));
+    if (count && fs.length > 1) n.appendChild(el('span', { class: 'stk-n', text: String(fs.length) }));   // (how many cards are in it)
     return n;
   }
   // A player's plate on the rim: their Guide, name, Renown, Seals and the cards in their hand (and their team's
@@ -2448,7 +2566,8 @@
       if (T.places[sp]) return pick('p', sp);
       const mv = us.filter(x => { const f = E.byU(S, x); return f && f.o === S.turn && ui.acts.some(a => a.u === x && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub')); });
       if (mv.length === 1) { if (ui.sel && ui.sel.kind === 'fig' && ui.sel.u === mv[0]) return clearSel(); return select({ kind: 'fig', u: mv[0] }); }
-      if (mv.length > 1) return which(mv, 'Which of your Figures?', x => select({ kind: 'fig', u: x }));
+      // (two players, a phone on its side: the stack opens in the scan at its Domain, each card there with what it can do)
+      if (mv.length > 1) return many() ? which(mv, 'Which of your Figures?', x => select({ kind: 'fig', u: x })) : scan({ u: mv[0] });
     }
     return G.demo ? openView(CARDS[(vfig(us[0]) || {}).c] ? vfig(us[0]).c : S.places[sp]) : scan({ u: us[0] });
   }
@@ -3598,7 +3717,7 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+  window.AnoriaUI = { line: () => !!(ui.lay && ui.lay.ln), homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };

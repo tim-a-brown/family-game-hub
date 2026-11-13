@@ -595,11 +595,38 @@ Underlying principles for everything:
   (the other way round, every card drawn flattened the board for a moment); and a lesson's caption that has to move
   comes up in its new place, it does not slide across the table. Check with the scratchpad's `gd/film.js` (films a
   game) and `gd/blink.js` (lists anything that changes and changes back within a few frames).
+- **The two-player table is the battle line** (A3, Tim, 2026-11-13: "in the battle line layout, try putting my mat on
+  the left side, opponent's on the right and moving the opponent's scorebar to the right corner as well ... i still
+  wanted the domains horizontal. switching the mat layout would better denote which gate/outpost belongs to whom",
+  then "yes" to build it). On an iPad and any screen wider than tall (`layMode` in ui.js; the felt's class `bl`) the
+  five Domains lie in a row across the table: your Gate at the far left, your Outpost, the Crossroads, their Outpost,
+  their Gate at the far right (`rowsOrder`). Your mat covers the left half and theirs the right, meeting in a seam down
+  the Crossroads, so each Gate and Outpost lies on its owner's cloth. Their Figures stand above the line and yours
+  below it, as the cards themselves (`figEl(f, T, true)`: the mini card with its Might as it stands now, an edge in its
+  player's colour and a tab on the side facing the line), in piles side by side or overlapping (`piles()`); there are
+  no empty slots. The Might totals stand on shields at the middle of each tile's top and bottom edge, theirs above and
+  yours below, the one ahead glowing; so the holder's flag hangs at the tile's top right and whose Domain it is (the
+  avatar, with the pieces its power uses either side) sits on the bottom edge at the left. Their bar (Guide, Renown,
+  Seals, Relics, hand, Spark) rides the top right corner of their mat, yours the bottom left of yours, each one line;
+  the bands of cards start below the one and end above the other (`layoutLine`). The dock along the bottom holds the
+  round track, your hand in one row of whole cards (kept at the size of eight, so the table never jumps; more overlap
+  like a held hand), the caption and the button for the turn (`.an-go`: End turn, Next, Roll the dice, Hand over).
+  Upright on an iPad (`up`) the cards overlap down the table in cascades, every name showing; sideways on a phone
+  (`short`) each side's cards at a Domain are one stack (`stackEl`: its top card, how many, a tap reads them in the
+  scan) and the two bars stand on end at the table's two ends, yours at the left; the game bar slims to its buttons
+  there (`html.an-low`: the kit keeps iOS's top edge clear, so it folds no further). A phone held upright (`rw`) keeps
+  the line on its end, their Gate at the top on their mat and yours at the bottom on yours, their cards to the left of
+  each Domain and yours to the right, the two bars as thin strips at the top and above the dock. Names on the iPad's
+  board cards are 11px or more. Everything is worked out from the window each time the table is drawn, and a turn of
+  the device redraws it. This is how the table meets the Landscape rule: the taps go to the line itself and to the
+  hand and button in the dock under it, so the line runs the full width. (The 3 to 6 player table, `drawN`, keeps its
+  own layout until it moves to this one.)
 - **Play mats** (Tim, 2026-11-11: "adapt the same player mat mechanic from lorcana such that they but up against each
   other under the cards played at the crossroads and each player gets their own stylized game mat"). Each player's side
   of the map (their Gate, their Outpost, their half of the Crossroads) lies on a mat of their own: two `.an-pm` in
-  `.an-mats`, which takes the map's place in the table under it. The mats meet edge to edge in a seam under the
-  Crossroads, two bound and stitched edges side by side. In pass and play the other player's mat is turned to face
+  `.an-mats`, which takes the map's place in the table under it. On the battle line yours lies under the left half and
+  theirs under the right, meeting in a seam down the Crossroads, two bound and stitched edges side by side; on a phone
+  held upright theirs is the top half and yours the bottom. In pass and play the other player's mat is turned to face
   them; against the computer it stays upright. A player's mat is their Guide's, unless they chose another in **Play
   mats** in the game's menu (`matPicker` in ui.js, in the shared frame `AnoriaUI.screen()`): another Guide's, the
   chart, or one made from a card's picture and placed by hand (see "Play mats made from a picture"). The choice is
@@ -931,9 +958,10 @@ Underlying principles for everything:
     against a two-line name, the next row's flag and the round track.
   - **The round track** is on the live table: an enamel rule with the rounds engraved along it, a slide at this
     round in the colour of whoever's turn it is (brass during the count), a gem at a round where something is due
-    (Lincoln's Seal at round 5). It lies along the edge of the map that faces the caption (under the map upright,
-    down its right side sideways), in the gap and over the mats' bound edge, so the map and the hand keep their
-    size: a change to the table's layout is checked against the map's and hand's boxes and `--fw`, `--mw`, `--hw`.
+    (Lincoln's Seal at round 5). On the battle line it lies across the whole table at the top of the dock, under the
+    mats; on a phone held upright it lies along the map's lower edge, in the gap and over the mats' bound edge; with
+    more players, down the map's right side sideways. A change to the table's layout is checked against the map's
+    and hand's boxes and `--fw`, `--tw`, `--th`, `--hw`.
   - The proof (`?art=1`, or `?art=1&only=domains` for this part alone) shows the seven frames as cards and as tiles
     at a phone's size, the pieces, the track, a map with everything on it over every play mat, and the same sheet
     without colour and as red-green colour blindness sees it.

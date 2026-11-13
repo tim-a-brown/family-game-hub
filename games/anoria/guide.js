@@ -127,9 +127,11 @@
     // (sideways the table is the map on the left and everything else on the right: the caption is as wide as that right side)
     const mp = land ? document.querySelector('#app .an-map') : null, mb = mp ? mp.getBoundingClientRect() : { left: m, right: W * .56 };
     P.classList.toggle('wide', land && H < 540);
-    P.style.width = Math.round(f.clash || f.scene ? Math.min(W - 2 * m, 620) : Math.min(land ? Math.max(280, Math.min(W - mb.right - 2 * m, mb.right - mb.left)) : W - 2 * m, 470)) + 'px';
+    // (on the battle line the table runs the full width: the caption is half of it, over the dock or the bars' far corners)
+    const line = !!(UI() && UI().line && UI().line());
+    P.style.width = Math.round(f.clash || f.scene ? Math.min(W - 2 * m, 620) : line ? Math.min(W * .5, 540) : Math.min(land ? Math.max(280, Math.min(W - mb.right - 2 * m, mb.right - mb.left)) : W - 2 * m, 470)) + 'px';
     const pw = P.offsetWidth, ph = P.offsetHeight, cx = (W - pw) / 2, bot = H - ph - m - (parseFloat(cs.getPropertyValue('--safe-b')) || 0);
-    const lx = Math.max(m, mb.left), spots = f.clash || f.scene ? [[cx, bot]] : land ? [[W - pw - m, bot], [lx, bot], [W - pw - m, bar], [lx, bar], [cx, bot]] : [[cx, bot], [cx, bar], [cx, (H - ph) / 2]];
+    const lx = line ? m : Math.max(m, mb.left), spots = f.clash || f.scene ? [[cx, bot]] : land || line ? [[W - pw - m, bot], [lx, bot], [W - pw - m, bar], [lx, bar], [cx, bot]] : [[cx, bot], [cx, bar], [cx, (H - ph) / 2]];
     let best = spots[0], bv = Infinity;
     spots.forEach(s => {
       let v = 0; rs.forEach(b => { const w = Math.min(s[0] + pw, b.right) - Math.max(s[0], b.left), h = Math.min(s[1] + ph, b.bottom) - Math.max(s[1], b.top); if (w > 0 && h > 0) v += w * h; });
@@ -278,7 +280,7 @@
         await L.pause(460); Kit.haptic('light');
       },
       async turn(o) { ok(await d.turn(o || 0)); },
-      async endTurn(o) { if (!o) { await L.tap('.an-strip.me .st-go'); Kit.sfx('pop'); } ok(await d.endTurn()); },
+      async endTurn(o) { if (!o) { await L.tap('.an .st-go'); Kit.sfx('pop'); } ok(await d.endTurn()); },
       async count(keep) { if (!keep) L.hush(); ok(await d.count()); },
       async round() { L.hush(); ok(await d.round()); },
       set(fn) { ok(); d.set(fn); },
@@ -373,7 +375,7 @@
     async run(L) {
       L.speed(.8);   // (a learner's pace: the table moves a little slower than in a real game)
       await story(L, { now: true });
-      await L.say('Five of the wonders lie between you and the other player. These are the <b>Places</b> you play for. Your Gate is nearest you.', { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
+      await L.say('Five of the wonders lie between you and the other player. These are the <b>Places</b> you play for. Your Gate is ' + (UI().line() ? 'at the left end, on your mat.' : 'nearest you.'), { at: [L.row(MY_GATE), L.row(TH_GATE)], tag: ['Your Gate', 'Their Gate'], keep: '.an-map' });
       await L.turn(0);
       await L.say('Each turn you draw 2 cards and gain <b>Spark</b> to spend.', { at: '.an-strip.me .st-spark', keep: '.an-hand' });
       await L.play('hatshepsut', MY_GATE, { lit: 'When you tap a Figure, the Places it can reach light up.' });
@@ -439,8 +441,8 @@
         await L.say('The Silk Road is joined to every Domain on the map, so it makes a strong offer for the Crossroads in the middle.', { at: card('silk') });
         await L.press(card('silk')); await L.press(slot('offer'));
         await L.say('Greenwich is the one left over. It turns face down and goes under your stack, so it can still come up later in the game.', { at: '.an-hand' });
-        await L.say('Sprocket has laid three Domains face down too. Now both of you roll a die, and the higher roll’s offer is laid at the Crossroads.', { at: '.an-strip.me .st-go' });
-        L.hush(); const fin = UI().demo.suDone(); await L.press('.an-strip.me .st-go'); await fin; await L.pause(300);
+        await L.say('Sprocket has laid three Domains face down too. Now both of you roll a die, and the higher roll’s offer is laid at the Crossroads.', { at: '.an .st-go' });
+        L.hush(); const fin = UI().demo.suDone(); await L.press('.an .st-go'); await fin; await L.pause(300);
         await L.say('Your roll was higher, so the Silk Road lies at the Crossroads with your banner on it. Sprocket takes the first turn.', { at: tile(CROSS) });
         await L.say('Sprocket’s offer, Thermopylae, goes to their Domain discard pile, and Sprocket’s Gate and Outpost turn face up.', { at: [tile(TH_GATE), tile(TH_OUT)] });
         await L.say('Your banner on the Crossroads means you win ties there for as long as you have a Figure there.', { at: tile(CROSS) });
@@ -480,7 +482,7 @@
         await L.say('Here he has 5. The Globe Theatre is in Europe, his <b>home region</b>, and a Figure at home has +1. The small house shows that he is at home.', { at: L.piece('copernicus') });
         await L.play('coleman', MY_GATE);
         await L.say('Bessie Coleman is a <b>Voyager</b>, so she has that +1 Might at every Place. Her card says 3, and here she has 4.', { at: L.piece('coleman') });
-        await L.say('The two numbers on a Place are each side’s total Might there: yours on the right, the other player’s on the left.', { at: L.row(MY_GATE) + ' .pl-tots' });
+        await L.say('The two numbers on a Place are each side’s total Might there: ' + (UI().line() ? 'yours on the shield under it, the other player’s on the shield over it.' : 'yours on the right, the other player’s on the left.'), { at: UI().line() ? [L.row(MY_GATE) + ' .pl-tot.R', L.row(MY_GATE) + ' .pl-tot.L'] : L.row(MY_GATE) + ' .pl-tots' });
         await L.later('Your next turn…', S => { S.figs.forEach(f => { f.rdy = 1; f.arr = 0; f.acted = 0; }); });
         await L.turn(0);
         await L.walk('copernicus', MY_OUT);
