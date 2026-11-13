@@ -1002,9 +1002,8 @@ Underlying principles for everything:
   the other player's Peace, Earthquake and Canossa off its Figures. Damascus Steel comes into a clash as its card,
   as Phalanx does. The robots weigh them with `HW` (dipWorth, quakeWorth, and Canossa looks one clash ahead).
 - **A Relic's or a Deed's effect belongs to its data** (`fx`, read with `E.fxOf`; a card without one has the effect of
-  its own key). The engine has seven Relic powers (the Compass's, the Printing Press's, the Antikythera Mechanism's, Damascus
-  Steel's, the Abacus's, the Boundary Stone's and the Timbuktu Manuscripts')
-  and eleven Deed effects, and nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in
+  its own key). The engine has 22 Relic powers (below: the Relic powers of 2026-11-13) and eleven Deed effects, and
+  nothing in engine.js or ui.js asks a card for its name: the Astrolabe is a Compass in
   effect, Testudo a Phalanx, Mailed to Freedom runs what Night Crossing runs. A new Relic or Deed with an effect the
   engine has is data only; its rules text is the text of the card its `fx` names (check-set.js holds it to that).
   **Two Relics**: "You can have 2 Relics in play at a time, and they have to be Relics with different powers"
@@ -1014,6 +1013,39 @@ Underlying principles for everything:
   difference the robots could measure, so the rule is the one that is a single sentence and has nothing to add up,
   and it is what the game already did with a second copy of one Relic. A Relic in your hand that can't be played
   says why under the card when you read it (`notesFor`).
+- **The Relic powers of 2026-11-13** (Tim: "I'd like to see a lot more variation on what relics can do to minimize overlap
+  and create new possibilities"; the proposal is `scripts/anoria/relics-proposal.md`, and of it Tim said "far sight seems
+  like a lot -- maybe they just reveal the first of the two cards they draw each turn while in play? and stores - maybe
+  limit it to being active only while not leading in renown? the other decisions are fine"). 22 powers for 34 Relics,
+  no power on more than 4, each read through `hasFx(S, P, power)` where its kind of rule lives; the numbers are in
+  `scripts/anoria/relics-2026-11-13b.txt`. The key of a power is the card it is named for (`fx` on the others):
+  Compass (Compass, Astrolabe, Birchbark Canoe, Stick Chart; 1 Spark), the jump (`balloon`: Montgolfier Balloon, Wright
+  Flyer, Sextant, Harrison's Watch; 3), Printing Press (Press, Paper, Telegraph; 2), Manuscripts (2), Abacus (Abacus,
+  Rain Gauge; 2), Damascus Steel (alone, 3 since this day), Boundary Stone (1), and fifteen new ones:
+  **Foresight** (`codex`: the Dresden Codex and the Antikythera Mechanism, 2; the top 3 of the draw pile put back in any
+  order before the draw: a person on two trays over the table, `askFore`; the robots put the dearest card they can pay
+  for on top, `foreOrder`), **Landing** (`longship`: the Viking Longship and the Voyaging Canoe, 2; Figures played at the
+  Crossroads), **Convoy** (The Wheel, 1; a second Figure at the same Domain walks with one that walks, `a.w2`),
+  **Railway** (Steam Locomotive, 1; once a turn, Gate to any Domain where you have a Figure, `{t: 'rail'}`), **Charge**
+  (Stirrup, 1; a Figure that walked can still clash, `f.gar`), **Rebuilding** (Inca Rope Bridge, 2; once a game at the
+  count), **Homecoming** (Cyrus Cylinder, 1; once a round, a knocked-out Figure back into the hand; with Rapa Nui as well
+  "the Figure's owner chooses", `S.pend` k `home`, and the robots take the hand), **Bastion** (Greek Fire, 2; +1 Might
+  defending at your Gate or Outpost), **Volley** (Mysore Rockets, 2; once a turn a clash with an enemy at the next Domain
+  along the roads, `a.rk`: fought at the target's Domain, by its rules and its home region, and "the attacker cannot be
+  knocked out by it ... if the attacker loses, nothing happens to it"; `E.clashM` gives the two Mights the road and a drag
+  show), **Decipher** (Rosetta Stone, 2; each Legacy Line scores 1 more), **Far sight** (Telescope, 1; "Each opponent shows
+  you the first card they draw each turn": Tim, the same day, "the drawn card is shown briefly, then held normally". The
+  card rises from their hand face up for a moment, turns over to its back and goes back; nothing in the state remembers
+  it, and the turn log names it; the robots see every hand already, so it does nothing for them),
+  **Reading** (Braille, 2; a Scholar draws one more), **Stores** (Clay Tablet, 2; "while you are not ahead in Renown",
+  ahead meaning more than every other side, 1 more Spark at the start of a turn; at 3 Spark it measured under a plain
+  card), **Library Cave** (Dunhuang Star Chart, 2; once a turn 1 Spark for a card from the discard pile, chosen on the
+  strip from the Relic's road, `caveChoose`), **Safe conduct** (Paiza, 1; your Figures never miss a turn).
+  Each power has a reader note (`RNOTE` in ui.js), a sentence in `logEvs` and `moveSaid` for its events, a worth for the
+  robots (`RW`), and tests in `deeds-test.js`. **A game keeps the Relic powers it began with** (as `G.sc` and `G.tg`):
+  `cfg.rfx` is 2 for a game begun under these powers (`STD`; the page keeps it as `G.rfx`, `cfgOf` in ui.js), and a game
+  without it reads each Relic's old power from `RFX1` in engine.js by today's keys, so a saved game's Antikythera
+  Mechanism still jumps and its Telescope still draws; `info()` shows such a Relic with its old words. Costs are today's.
 - **The hand limit is each player's own** (Tim, 2026-11-13: "there are a lot of draw opportunities, but having to keep
   the hand at 8 or less is a consistent constraint"): 8 (`handMax` in `STD`), or 10 with the Timbuktu Manuscripts' power
   ("You can hold 10 cards in your hand"; the Quipu has it too). Every reader of the limit asks `E.handMax(S, o)`, never

@@ -82,7 +82,9 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
 - `node scripts/anoria/relicfx.js [games] [seed] ['<json>'] [relic,relic,...]`: every Relic power on the same games (two
   copies in one player's deck of random cards with no other Relics, against a deck with none), so the lines differ only
   by the Relic. It is how the Timbuktu Manuscripts' power (hold 10 cards) was measured (`relics-2026-11-13.txt`), and
-  what the proposal for more Relic powers was measured with (`relics-proposal.md`).
+  what the proposal for more Relic powers was measured with (`relics-proposal.md`). The fifteen new powers were built on
+  2026-11-13 with Tim's decisions, and measured again with it (`relics-2026-11-13b.txt`); `'{"cards":{"tablet":{"c":3}}}'`
+  tries a Relic at another cost. `deeds-test.js` holds every Relic power to its card.
 - `node scripts/anoria/run.js cards 6000 [seed] > cards.txt`, then `node scripts/anoria/newcards.js cards.txt`: every
   card of the third printing beside the cards its faction had before (in the deck, and when played), and which are
   outside what the faction had. A random deck now holds 0 to 3 Relic cards (`randDeck`).

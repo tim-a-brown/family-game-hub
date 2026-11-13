@@ -89,29 +89,31 @@ const CALLS = {
 const FIRSTS = { win: 'Your first win', normal: 'Your first win against Normal', hard: 'Your first win against Hard', built: 'Your first win with a deck you built' };
 // Rarity. The cards of each tier, from "node scripts/anoria/rarity.js 6000" (rarity.txt has the table). A card on
 // none of the lists (a new set, before the script is run again) goes by its cost.
+// (The Relics whose power or cost changed on 2026-11-13 were tiered again by the same runs, each in its own list, and
+// moved to the end of their new tier: scripts/anoria/relics-2026-11-13b.txt)
 const RARE = {
   4: 'zhenghe newton alexander charlemagne elizabeth sittingbull caesar scipio alfred',
   3: 'chingshih sargon hannibal aristotle shaka beethoven askia canasatego bolivar genghis darwin toussaint chaucer michelangelo yisunsin virgil imhotep hammurabi',
-  2: 'copernicus dante baibars murasaki moliere douglass sundiata blackbeard galileo leonidas antikythera ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
-  1: 'faraday hokusai yoshitsune plato christine germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree'
+  2: 'copernicus dante baibars murasaki moliere douglass sundiata blackbeard galileo leonidas ashoka sacagawea magellan homer leif theodora zhangqian nzinga lakshmibai mozart marcopolo haytham artemisia marcus yaa tecumseh',
+  1: 'faraday hokusai yoshitsune plato christine germain confucius boudica harun coleman ibnbattuta ibnsina hatshepsut rift shenkuo archimedes pericles ambush press khutulun ada crossing phalanx caravan socrates ashurbanipal nostradamus compass sappho hypatia spartacus mencius eureka eclipse fairwinds encore decree antikythera'
 };
 // The third printing, tiered among themselves by the same measure ('node scripts/anoria/rarity.js 6000 3'), and the
 // cards added after it at the end of each list, each by its own run, so that no older card's printed mark moved.
 const RARE3 = {
-  4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne zenobia shackleton nebuchadnezzar',
-  3: 'menelik vercingetorix lalibela telescope rosetta tchaikovsky braille zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu ropebridge catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus stirrup tesla ferdowsi cyruscylinder themistocles mehmed holyyear',
-  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci locomotive rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning thutmose jaisingh khayyam afonso medici westphalia lisbonquake',
-  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun voyagingcanoe longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley tablet magnacarta goldrush hieroglyphs balloon wheel naovictoria ninth astrolabe manuscripts folio truce paiza rubaiyat declaration exhibition leo hansa walls triumph veto milan canossa dsteel abacus'
+  4: 'humboldt augustus napoleon victoria qinshihuang washington amundsen hippocrates pasteur bach cyrus eleanor verne zenobia shackleton nebuchadnezzar wheel',
+  3: 'menelik vercingetorix lalibela tchaikovsky zumbi goethe sextant cervantes tolstoy suleiman pachacuti starchart lapulapu catherine equiano hiroshige nezahualcoyotl bly darius musashi aeschylus tesla ferdowsi themistocles mehmed holyyear tablet',
+  2: 'amanirenas pythagoras vangogh nightingale testudo gutenberg arminius libai franklin lincoln stanton andersen chiefjoseph sejong halley alkhwarizmi poe voltaire nanny fibonacci rumi shelley oakley enheduanna ramesses brownsbox gentileschi wrightflyer jenner kepler syracuse kublai richard basho montagu hildegard pakal fuhao trung teutoburg anning thutmose jaisingh khayyam afonso medici westphalia lisbonquake cyruscylinder voyagingcanoe dsteel telescope',
+  1: 'dickinson duchatelet sequoyah wollstonecraft shahjahan beagle ibnkhaldun seishonagon anthony marathonmarch planter zhangheng tutankhamun longship joplin champollion paper emancipation cailun tomb quipu houdini birchbark austen typhoon grace adwa david rubicon euclid eratosthenes rite kadesh brahmagupta twain pictureshow telegraph thoreau wallace wheatley magnacarta goldrush hieroglyphs balloon naovictoria ninth astrolabe manuscripts folio truce paiza rubaiyat declaration exhibition leo hansa walls triumph veto milan canossa abacus ropebridge rosetta braille stirrup locomotive'
 };
 // The twelve Domain cards (cards.js P4), tiered among themselves ("node scripts/anoria/domains.js cards")
 const RARE4 = { 4: 'william', 3: 'constantine wren', 2: 'diogenes breda kudurru', 1: 'earthquake columbian idrisi caperoute vesuvius congress' };
 // ==P5==
 // The newest cards of the prime set (cards.js P5), tiered among themselves ('node scripts/anoria/rarity.js 6000 5')
 const RARE5 = {
-  4: 'cook peter tranhungdao babur tagore zubaidah rockets',
+  4: 'cook peter tranhungdao babur tagore zubaidah rockets codex',
   3: 'solon abbas ieyasu piye zapata augustine rembrandt liliuokalani sinan hasekura tupaia chronometer transit banzhao',
   2: 'biruni alrazi ulughbeg tycho ezana kamehameha wells aethelflaed tupacamaru garibaldi hafez zeami vivaldi bachdang thousand gitanjali panama revere fadlan larrey',
-  1: 'bassi banneker mendeleev ramanujan moshoeshoe cuauhtemoc qiujin garcilaso asmau nefertiti sixsky leoafricanus seondeok greekfire stickchart raingauge codex ether periodic paddle malta fourseasons nightwatch krakatoa hunayn cherschel synesius'
+  1: 'bassi banneker mendeleev ramanujan moshoeshoe cuauhtemoc qiujin garcilaso asmau nefertiti sixsky leoafricanus seondeok greekfire stickchart raingauge ether periodic paddle malta fourseasons nightwatch krakatoa hunayn cherschel synesius'
 };
 // ==/P5==
 const TIERS = ['', 'Common', 'Uncommon', 'Rare', 'Legendary'], TIER_W = [0, 1, 0.6, 0.35, 0.2], TIER = {};

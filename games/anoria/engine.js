@@ -209,7 +209,7 @@ function newGame(decks, guides, cfg, R, stacks, opt) {
 }
 function clone(S) {
   const T = { cfg: S.cfg, N: S.N, round: S.round, turn: S.turn, uid: S.uid, places: S.places, adj: S.adj, pb: S.pb.map(x => x.slice()), figs: S.figs.map(f => Object.assign({}, f)),
-    P: S.P.map(p => Object.assign({}, p, { deck: p.deck.slice(), hand: p.hand.slice(), relics: p.relics.slice(), gone: p.gone ? p.gone.slice() : null, shown: p.shown ? p.shown.slice() : undefined })), over: S.over, winner: S.winner, how: S.how, st: null, ev: null };
+    P: S.P.map(p => Object.assign({}, p, { deck: p.deck.slice(), hand: p.hand.slice(), relics: p.relics.slice(), gone: p.gone ? p.gone.slice() : null })), over: S.over, winner: S.winner, how: S.how, st: null, ev: null };
   if (S.tm) T.tm = S.tm;
   if (S.dbl && S.dbl.length) T.dbl = S.dbl.slice(); if (S.dip && S.dip.length) T.dip = S.dip.slice(); if (S.tr) { T.tr = S.tr; T.trR = S.trR; }
   if (S.dm) { T.dm = S.dm; T.f0 = S.f0; T.places = S.places.slice(); T.ban = S.ban.slice(); T.mk = S.mk.slice(); T.cyn = S.cyn; T.pend = S.pend; T.gw = S.gw; if (S.lh) T.lh = Object.assign({}, S.lh); for (let o = 0; o < S.N; o++) { T.P[o].dst = S.P[o].dst.slice(); T.P[o].dgone = S.P[o].dgone.slice(); } }
@@ -606,7 +606,7 @@ const handMax = (S, o) => { const b = S.cfg.handMax || 0, P = S.P[o]; return b &
 const quicks = P => { const out = [], seen = {}; P.hand.forEach((ci, h) => { if (!seen[ci] && fxOf(ci) === 'phalanx') { seen[ci] = 1; out.push(h); } }); return out; };
 // Legacy: with lineNear, the one who inspired you has to be at the same Place or the next one over
 const near = (S, a, b) => !S.cfg.lineNear || a === b || S.adj[a].indexOf(b) >= 0 || pw(S, a) === 'link' || pw(S, b) === 'link';
-function draw(S, o, n) { const p = S.P[o]; if (p.shown && p.shown.length) known(S); for (let i = 0; i < n; i++) { if (!p.deck.length && p.gone && p.gone.length) { p.deck = p.gone; p.gone = []; for (let j = p.deck.length - 1; j > 0; j--) { const q = (j * 7 + S.round * 3 + i) % (j + 1), x = p.deck[j]; p.deck[j] = p.deck[q]; p.deck[q] = x; } } if (p.deck.length) { const dc = p.deck.pop(); p.hand.push(dc); if (S.st) S.st.seenC[o][dc] = 1; p.drawn = (p.drawn || 0) + 1; if (S.ev) S.ev.push({ t: 'draw', o: o }); } } }
+function draw(S, o, n) { const p = S.P[o]; for (let i = 0; i < n; i++) { if (!p.deck.length && p.gone && p.gone.length) { p.deck = p.gone; p.gone = []; for (let j = p.deck.length - 1; j > 0; j--) { const q = (j * 7 + S.round * 3 + i) % (j + 1), x = p.deck[j]; p.deck[j] = p.deck[q]; p.deck[q] = x; } } if (p.deck.length) { const dc = p.deck.pop(); p.hand.push(dc); if (S.st) S.st.seenC[o][dc] = 1; p.drawn = (p.drawn || 0) + 1; if (S.ev) S.ev.push({ t: 'draw', o: o }); } } }
 // (Sigiriya: nothing comes there but a Figure played there or one walking a single step from next to it)
 const rockAt = (S, i) => !!S.dm && pw(S, i) === 'rock';
 // (can Figure f walk into position j, as far as j is concerned: Machu Picchu only on its own side, Sigiriya only one step
@@ -896,9 +896,7 @@ function walked(S, o, f, to, far, x) {
 }
 // Gutenberg's Workshop: its holder draws a card the first time each turn they play a Relic or a Deed (h: they held it as they played)
 function printed(S, o, h) { const P = S.P[o]; if (!h || P.uP) return; P.uP = 1; if (S.ev) S.ev.push({ t: 'dpow', w: 'print', o: o, p: posOf(S, 'print') }); draw(S, o, 1); }
-// (a step of the game: apply0, then the known cards of every hand, the Telescope's, are brought level with the hands)
-function apply(S, a, da, dd, raw) { apply0(S, a, da, dd, raw); known(S); }
-function apply0(S, a, da, dd, raw) {
+function apply(S, a, da, dd, raw) {
   const o = S.turn, P = S.P[o];
   if (a.t === 'dom') { pendApply(S, a); return; }
   if (a.t === 'loan') { const n = dv(S, 'loan'); P.spark += n; P.debt = (P.debt || 0) + n; P.uL = 1; if (S.ev) S.ev.push({ t: 'loan', o: o, p: a.p, n: n }); if (S.st) S.st.use.loan = (S.st.use.loan || 0) + 1; return; }
@@ -1181,7 +1179,7 @@ function firstN(S) {
 }
 // (cfg.order 'rank': the players still in, from the most Renown to the least; level, in seat order from the rotation)
 function rankOrder(S) { const N = S.N, r0 = ((S.f0 || 0) + S.round - 1) % N, ps = []; for (let k = 0; k < N; k++) { const o = (r0 + k) % N; if (!S.P[o].out) ps.push(o); } const at = ps.slice(); return ps.sort((a, b) => S.P[b].renown - S.P[a].renown || at.indexOf(a) - at.indexOf(b)); }
-function discard(S, o, h) { const P = S.P[o], c = P.hand.splice(h, 1)[0]; (P.gone || (P.gone = [])).push(c); if (S.ev) S.ev.push({ t: 'discard', o: o, c: c }); known(S); }
+function discard(S, o, h) { const P = S.P[o], c = P.hand.splice(h, 1)[0]; (P.gone || (P.gone = [])).push(c); if (S.ev) S.ev.push({ t: 'discard', o: o, c: c }); }
 function aiTurn(S, prof, R) {
   const me = S.turn, D = S.cfg.die;
   for (let n = 0; n < 40; n++) {
@@ -1211,19 +1209,18 @@ function foreOrder(S, o, ids) { const sp = S.P[o].spark, sc = c => { const x = C
 const topOf = (P, k) => P.deck.slice(Math.max(0, P.deck.length - k)).reverse();
 const FORE = 3;
 // The draw at the start of a turn: 2 cards (draw2), 1 more with the Printing Press's power, Franklin's for a thin hand.
-// The Telescope, Far sight (Tim, 2026-11-13: "maybe they just reveal the first of the two cards they draw each turn"):
-// while an opponent has it in play, the first card a player draws each turn is shown to everyone, and stays known in
-// their hand until it leaves the hand (P.shown, the known cards of a hand: an event {t: 'shown', o, c, by, r})
+// The Telescope, Far sight (Tim, 2026-11-13: "maybe they just reveal the first of the two cards they draw each turn",
+// and then: the card is shown for a moment and held as any other card): while an opponent has it in play, the first
+// card a player draws each turn is shown to them, an event {t: 'shown', o, c, by: [who has a Telescope], r}. Nothing
+// stays in the state: the robots see every hand already, and a person remembers it as they would at a table.
 function turnDraw(S, o) {
   const P = S.P[o], cfg = S.cfg, n = 1 + nFx(S, P, 'press') + (cfg.draw2 ? 1 : 0), h0 = P.hand.length;
   draw(S, o, 1);
   if (P.hand.length > h0) { const by = []; for (let q = 0; q < S.N; q++) if (!ally(S, q, o) && !S.P[q].out && hasFx(S, S.P[q], 'telescope')) by.push(q);
-    if (by.length) { const c = P.hand[h0]; (P.shown || (P.shown = [])).push(c); if (S.ev) S.ev.push({ t: 'shown', o: o, c: c, by: by, r: relicOf(S, S.P[by[0]], 'telescope') }); } }
+    if (by.length && S.ev) S.ev.push({ t: 'shown', o: o, c: P.hand[h0], by: by, r: relicOf(S, S.P[by[0]], 'telescope') }); }
   draw(S, o, n - 1);
   if (P.guide === 'franklin' && P.hand.length <= 4) draw(S, o, 1);   // (Franklin: a thin hand draws one more)
 }
-// (P.shown holds only cards still in the hand: a known card that is played or discarded is known no longer)
-function known(S) { for (const P of S.P) if (P.shown && P.shown.length) { const left = P.hand.slice(), keep = []; for (const c of P.shown) { const i = left.indexOf(c); if (i >= 0) { left.splice(i, 1); keep.push(c); } } P.shown = keep; } }
 // opt.ask: a person is taking this turn, so a choice it opens (Foresight's order) waits for them in S.pend (k 'fore')
 // and the draw comes after it (pendApply); without it the player chooses as the robots do
 function startTurn(S, opt) {
@@ -1253,7 +1250,6 @@ function endTurn(S) {
   if (S.pend) pendApply(S, { t: 'dom', no: 1 });   // (a choice of Domain left open is a no)
   const P = S.P[S.turn]; P.reserve = Math.min(2, P.spark); P.spark = 0; P.uN = 9; for (const f of S.figs) { f.tb = 0; if (f.ta) f.ta = 0; if (f.gar) f.gar = 0; }   // (uN 9: Curie's cheaper second card is for her own turn only)
   const hm = handMax(S, S.turn); if (hm) while (P.hand.length > hm) { let hi = 0; for (let i = 1; i < P.hand.length; i++) if (CARDS[P.hand[i]].c > CARDS[P.hand[hi]].c) hi = i; discard(S, S.turn, hi); }   // (over the hand limit: the dearest cards go; a screen asks the player first)
-  known(S);
 }
 // Tordesillas: the players tied on Might there, when every one of them has a Figure there (null: no such tie)
 function treatyTie(S, i) {
@@ -1320,7 +1316,7 @@ function endRound(S) {
       const hc = new Array(N).fill(0); for (let i = 0; i < S.places.length; i++) { const h = holder(S, i); if (h >= 0) hc[h]++; }
       if (hc.every((x, q) => q === o || x < hc[o])) { p.sg = 1; if (S.ev) S.ev.push({ t: 'spark', o: o, n: 1, why: 'next' }); } } }
   // (the Deeds that lasted until the count leave the table: S.dip)
-  for (const b of S.pb) b.fill(0); S.dip = []; S.dbl = []; for (const f of S.figs) if (f.hush) f.hush = 0; for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; p.uCy = 0; } known(S);
+  for (const b of S.pb) b.fill(0); S.dip = []; S.dbl = []; for (const f of S.figs) if (f.hush) f.hush = 0; for (const p of S.P) { p.lr = 0; p.uM = 0; p.uW = 0; p.uCy = 0; }
   if (S.st) { let l = -1, mx = -1, tie = false; for (let o = 0; o < N; o++) { if (S.P[o].renown > mx) { mx = S.P[o].renown; l = o; tie = false; } else if (S.P[o].renown === mx) tie = true; } S.st.lead.push(tie ? -1 : l); }
   if (S.st) for (const f of S.figs) if (f.li && (CARDS[f.c].insp || []).filter(n => S.figs.some(g => g.o === f.o && g !== f && g.c === n)).length > 1) S.st.dbl = (S.st.dbl || 0) + 1;   // (the test games: Figures holding a doubled Legacy at a round's end)
   if (two) {

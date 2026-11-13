@@ -317,13 +317,13 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
   for (const on of [0, 1]) { const S = game(); if (on) S.P[0].relics = ['rosetta']; fig(S, 'socrates', 0, 0); S.P[0].hand = ['plato']; const r0 = S.P[0].renown;
     E.apply(S, acts(S, 'fig').find(x => x.p === 0)); ok(on ? 'decipher: a Legacy Line scores 1 more' : 'a Legacy Line scores 1', S.P[0].renown - r0 === 1 + on, S.P[0].renown - r0); } }
 // Far sight: the Telescope (2 Spark to 1)
-{ says('telescope', 'Each opponent shows the first card they draw each turn.'); power('telescope', 'telescope', 1);
+{ says('telescope', 'Each opponent shows you the first card they draw each turn.'); power('telescope', 'telescope', 1);
   const S = turnGame(); S.P[1].relics = ['telescope']; S.P[0].hand = [];
-  E.startTurn(S); ok('far sight: the first card drawn is shown', S.P[0].shown && S.P[0].shown.length === 1 && S.P[0].shown[0] === 'leonidas' && S.ev.some(e => e.t === 'shown' && e.o === 0 && e.c === 'leonidas' && e.by[0] === 1), [S.P[0].shown, S.P[0].hand]);
-  ok('far sight: only the first', S.P[0].hand.length === 2 && S.P[0].shown.length === 1);
-  const T = E.clone(S); ok('far sight: a copy of the table keeps it', T.P[0].shown.join() === 'leonidas' && T.P[0].shown !== S.P[0].shown);
-  S.P[0].spark = 5; E.apply(S, acts(S, 'fig').find(x => S.P[0].hand[x.h] === 'leonidas')); ok('far sight: a known card that leaves the hand is known no longer', !S.P[0].shown.length);
-  const U = turnGame(); U.P[0].relics = ['telescope']; E.startTurn(U); ok('far sight: not for its own player', !(U.P[0].shown || []).length); }
+  E.startTurn(S); const sh = S.ev.filter(e => e.t === 'shown');
+  ok('far sight: the first card drawn is shown to the Telescope\'s player', sh.length === 1 && sh[0].o === 0 && sh[0].c === 'leonidas' && sh[0].c === S.P[0].hand[0] && sh[0].by.join() === '1' && sh[0].r === 'telescope', sh);
+  ok('far sight: only the first, and then held as any card (nothing kept in the state)', S.P[0].hand.length === 2 && S.P[0].shown === undefined);
+  const U = turnGame(); U.P[0].relics = ['telescope']; E.startTurn(U); ok('far sight: not for its own player', !U.ev.some(e => e.t === 'shown'));
+  const V = turnGame(); V.P[1].relics = ['telescope']; V.turn = 1; E.startTurn(V); ok('far sight: not the Telescope\'s player\'s own draw', !V.ev.some(e => e.t === 'shown')); }
 // Reading: Braille
 { says('braille', 'When you play a Scholar Figure, you draw one more card.'); power('braille', 'braille', 2);
   for (const on of [0, 1]) { const S = turnGame(); if (on) S.P[0].relics = ['braille']; S.P[0].hand = ['galileo', 'spartacus']; S.P[0].spark = 5;
