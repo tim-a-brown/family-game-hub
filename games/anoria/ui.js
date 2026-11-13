@@ -2027,6 +2027,10 @@
     // below the one and end above the other)
     // (a phone on its side has no height to spare: there the bars stand on end at the table's two ends, yours at the
     // left and theirs at the right, and the map keeps its full height)
+    // (a bar that stands on end and is taller than the table steps down: smaller marks, then the name left to the
+    // portrait, whose ring and aria name say whose bar it is)
+    [dom.opp, dom.me].forEach(b => { b.classList.remove('t1', 't2'); if (!L.short) return; const room = M.getBoundingClientRect().height;
+      if (b.offsetHeight > room) b.classList.add('t1'); if (b.offsetHeight > room) b.classList.add('t2'); });
     const oh = L.short ? 0 : dom.opp.offsetHeight, mh = L.short ? 0 : dom.me.offsetHeight, gapB = L.short ? 2 : 6;
     const ow = L.short ? dom.opp.offsetWidth + 6 : 0, mw = L.short ? dom.me.offsetWidth + 6 : 0;
     st.paddingTop = (oh + gapB) + 'px'; st.paddingBottom = (mh + gapB) + 'px'; st.paddingLeft = mw + 'px'; st.paddingRight = ow + 'px';
