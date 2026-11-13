@@ -1977,7 +1977,7 @@
       // A phone: two rows of five as there, with room kept for both so the table never jumps; an iPad: one row, as
       // there, and the room for it kept at the size of eight cards; a short phone: the room of one row of five, the
       // cards in one row or in two, whichever leaves them bigger)
-      if (many() || (phone && ui.lay && ui.lay.rows)) {
+      if (many() || (ui.lay && ui.lay.rows)) {
         if (phone) {
           const hw5 = Math.floor(Math.min((W - 4 * g) / 5, cap)); per = Math.max(5, Math.ceil(n / 2)); rows = n > per ? 2 : 1;
           hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 18) + 'px'; h.style.paddingBottom = '10px';   // (the last row clear of the screen's rounded corners)
