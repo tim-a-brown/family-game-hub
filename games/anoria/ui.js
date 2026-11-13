@@ -131,7 +131,9 @@
   function info(key) {
     // (a Guide first: the seven Guides of the roster of twelve were cards before, and their old cards are still in RETIRED)
     if (CARDS[key] && !(TX.GUIDES[key] && !C.CARDS[key])) { const c = CARDS[key], t = TX.CARDS[key] || (TX.RETIRED || {})[key] || {}, old = !!(c.k0 && (!C.DM_LIVE || (S && !S.dm)));   // (old: a card whose power changed with Domains, in a game on the old map)
-      return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: (old ? c.k0 : c.k) || {}, quick: c.quick, tx: DW((old && t.tx0 != null ? t.tx0 : t.tx) || ''), cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
+      // (a Relic in a game begun before the Relic powers of 2026-11-13 reads as the power it has in that game: engine.js RFX1)
+      const rf = c.t === 'relic' && S && S.cfg && !S.cfg.rfx && E.RFX1[key] && E.RFX1[key] !== E.fxOf(key) ? (TX.CARDS[E.RFX1[key]] || {}).tx : null;
+      return { key: key, kind: c.t, n: c.n, f: c.f, c: c.c, m: c.m, reg: c.reg, insp: c.insp, k: (old ? c.k0 : c.k) || {}, quick: c.quick, tx: DW(rf || (old && t.tx0 != null ? t.tx0 : t.tx) || ''), cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
     if (TXG[key]) { const g = TXG[key]; return { key: key, kind: 'guide', n: g.n, f: g.f, k: {}, tx: g.tx, cap: g.cap, fact: g.fact, ll: g.ll, say: SAY[key], fy: FY[key] }; }
     if (C.PLACES[key]) { const p = C.PLACES[key], t = TX.PLACES[key] || {}, old = !!(t.tx0 != null && (!C.DM_LIVE || (S && !S.dm)));   // (old: the rule it had as a Place on the old fixed map)
       return { key: key, kind: 'place', n: p.n, f: 'P', reg: p.reg, era: p.era, d: p.d, pw: old ? p.pw0 : p.pw, k: {}, tx: DW((old ? t.tx0 : (TX.DRULE || {})[p.pw]) || ''), cap: t.cap || '', fact: t.fact || '', ll: t.ll, say: SAY[key], fy: FY[key] }; }
@@ -410,7 +412,7 @@
   // a card's or a Place's name as it reads in the middle of a sentence ("the Library of Alexandria", "Timbuktu")
   const THE = Object.assign({ library: 1, silk: 1, acropolis: 1, globe: 1, colosseum: 1, wall: 1 }, TX.THE || {});   // (Domains whose names take "the" mid-sentence)
   // (a Relic takes "the": the Astrolabe, the Wheel for The Wheel. Paper and Braille are not things one has one of.)
-  const NO_THE = { paper: 1, braille: 1, dsteel: 1, greekfire: 1, chronometer: 1 };   // (Greek Fire, Harrison's Watch: no "the")
+  const NO_THE = { paper: 1, braille: 1, dsteel: 1, greekfire: 1, chronometer: 1, rockets: 1 };   // (Greek Fire, Harrison's Watch: no "the")
   // Where a card is at home, at the foot of a full card: the same house plate with the region's outline in it that the
   // map's tiles wear (domains.js home), and the region's name beside it, centred on the plate by its capitals (Tim)
   const homeFoot = reg => { const D = window.AnoriaDomains, n = el('div', { class: 'ac-home' + (D ? ' plate' : ''), 'aria-label': 'Home region: ' + (REG[reg] || '') });
@@ -647,12 +649,14 @@
     }
     // A Relic in your hand that can't be played, and why: you have its power in play already, or you have two Relics.
     if (S && G && !G.over && !G.demo && CARDS[key] && CARDS[key].t === 'relic' && S.P[ui.view] && S.P[ui.view].hand.indexOf(key) >= 0) {
-      const P = S.P[ui.view], same = E.relicOf(P, E.fxOf(key)), cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
+      const P = S.P[ui.view], same = E.relicOf(S, P, E.fxOf(key, S)), cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
       const why = same ? 'You have ' + theName(same) + ' in play. ' + cap1(theName(key)) + ' has the same power, and your two Relics have to be Relics with different powers.' : P.relics.length >= 2 ? 'You have two Relics in play, and two is the most you can have.' : '';
       if (why) notes.appendChild(el('div', { class: 'why', text: why }));
     }
+    // (a Relic's power: what it leans on, in whole sentences)
+    if (CARDS[key] && CARDS[key].t === 'relic' && RNOTE[E.fxOf(key, S)]) notes.appendChild(el('p', { html: mightMarks(esc(RNOTE[E.fxOf(key, S)](theName(key)))) }));
     // (a Relic that raises the hand limit says what the limit is without it)
-    if (CARDS[key] && CARDS[key].t === 'relic' && E.fxOf(key) === 'manuscripts') notes.appendChild(el('p', { text: 'Without ' + theName(key) + ', you can hold ' + ((S && S.cfg.handMax) || E.STD.handMax) + ' cards when your turn ends.' }));
+    if (CARDS[key] && CARDS[key].t === 'relic' && E.fxOf(key, S) === 'manuscripts') notes.appendChild(el('p', { text: 'Without ' + theName(key) + ', you can hold ' + ((S && S.cfg.handMax) || E.STD.handMax) + ' cards when your turn ends.' }));
     // A card's Legacy Lines, drawn as the table (lineage(), below): no sentence says when a line counts.
     const ll = lineage(key, { live: !o.lesson, brief: !!o.lesson }); if (ll) notes.appendChild(ll);   // (a lesson shows only what the card grows from: its caption needs the room)
     Object.keys(GLOSS).forEach(k => { if (c.k[k] && new RegExp(GLOSS[k][0] + (GLOSS[k][2] ? '[.:]' : '(\\.|$)')).test(c.tx)) notes.appendChild(el('p', { html: keyMark(GLOSS[k][0]) + ': ' + mightMarks(esc(GLOSS[k][1](c.n))) })); });
@@ -966,7 +970,7 @@
     if (it.h != null) { if (hand[it.h] !== it.key) return out; sel = { kind: 'hand', h: it.h };
       acts = ui.acts.filter(a => (a.h != null && hand[a.h] === it.key) || (E.fxOf(it.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === it.key)); }
     else if (it.u != null) { const f = E.byU(S, it.u); if (!f || f.o !== o) return out; sel = { kind: 'fig', u: it.u };
-      acts = ui.acts.filter(a => (a.u === it.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub' || a.t === 'relay')) || (a.t === 'relay' && a.v === it.u)); }
+      acts = ui.acts.filter(a => (a.u === it.u && (FIGMOVE[a.t] || a.t === 'relay')) || (a.t === 'relay' && a.v === it.u)); }
     else if (it.p != null && S.dm) { sel = { kind: 'dom', p: it.p }; acts = ui.acts.filter(a => (a.t === 'loan' || a.t === 'buy' || a.t === 'hire') && a.p === it.p); }   // (what a Domain lets you do: Florence lends, Timbuktu sells a card, Carthage hires Might)
     else return out;
     const at = p => theName('@' + S.places[p]), nm = u => { const f = E.byU(S, u); return f ? CARDS[f.c].n : ''; }, seen = {}; let table = false;
@@ -1025,7 +1029,7 @@
     if (!idle()) return; acts = acts.map(reAct).filter(x => x); if (!acts.length) return;
     closeView(); Kit.sfx('pop'); Kit.haptic('medium');
     if (acts.length === 1) return doHuman(acts[0]);
-    const rank = { walk: 0, tub: 1, antik: 2, clash: 0 };
+    const rank = { walk: 0, rail: 1, tub: 1, antik: 2, clash: 0 };
     acts.sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0) || (x.x ? 1 : 0) - (y.x ? 1 : 0));
     Kit.sheet({ title: title, actions: acts.map((a, k) => Object.assign(actLabel(a), { primary: !k, onClick: () => { const b = reAct(a); if (b && idle()) doHuman(b); } })) });
   }
@@ -1034,7 +1038,7 @@
   // the totals at a Domain: [the strongest other side's, yours] (Ms: E.mights of some state)
   const sidesOf = (Ms, o) => { let t = 0; Ms.forEach((m, q) => { if (q !== o && !E.ally(S, q, o)) t = Math.max(t, m); }); return [t, Ms[o]]; };
   function roadOf(it) {
-    const R = { lit: {}, here: -1, chips: [], btns: [], plate: null, off: false, after: {} };
+    const R = { lit: {}, here: -1, chips: [], btns: [], plate: null, off: false, after: {}, aim: {} };
     if (!S || !G || !V || G.demo) return R;
     if (it.u != null) { const f = vfig(it.u); if (f) R.here = f.p; } else if (it.p != null) R.here = it.p;
     if (G.over || !idle()) return R;
@@ -1077,7 +1081,7 @@
     Object.keys(R.lit).forEach(p => { const a = R.lit[p][0], i = +p; let Ms = V.tot[i], h = V.hold[i];
       if (a.t !== 'deed') { const T = simulate(a); Ms = E.mights(T, i); h = E.holder(T, i); }
       const sd = sidesOf(Ms, o), take = (h === o || (h >= 0 && E.ally(S, h, o))) && !(V.hold[i] === o || (V.hold[i] >= 0 && E.ally(S, V.hold[i], o)));
-      const verb = a.t === 'walk' ? 'Walk' : a.t === 'antik' ? 'Jump' : a.t === 'tub' ? 'Step' : 'Play';
+      const verb = a.t === 'walk' || a.t === 'rail' ? 'Walk' : a.t === 'antik' ? 'Jump' : a.t === 'tub' ? 'Step' : 'Play';
       R.after[i] = { m: sd, word: take ? 'Take it' : verb, take: take, cost: cost(a) }; if (cost(a) != null) cs[cost(a)] = 1; });
     R.costly = Object.keys(cs).length > 1;   // (a Domain where the card costs less, Timbuktu: each lit tile says its cost)
     if (table) R.btns.push({ label: R.btns.length || R.chips.length || Object.keys(R.lit).length ? 'More: choose on the table' : 'Choose on the table', soft: true, run: () => { if (idle()) { closeView(); select(sel); } } });
@@ -1181,7 +1185,7 @@
     const ix = u => L.items.findIndex(x => x.u === u), on = idle() && !G.over && S.turn === me;
     const ord = roadOrd(), k0 = ord.indexOf(p), prev = ord[k0 - 1], next = ord[k0 + 1];
     // (your Figure's moves from here: a clash with one of theirs, a walk to the Domain on either side; the rest are on its road)
-    const moves = u => ui.acts.filter(a => a.u === u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub' || a.t === 'relay') || (a.t === 'relay' && a.v === u));
+    const moves = u => ui.acts.filter(a => a.u === u && (FIGMOVE[a.t] || a.t === 'relay') || (a.t === 'relay' && a.v === u));
     const cardB = f => {
       const b = el('button', { type: 'button', class: 'fo-c o' + f.o + (at && at.u === f.u ? ' front' : ''), 'data-u': f.u, style: { '--pc': 'var(--pc' + f.o + ')' }, 'aria-label': CARDS[f.c].n + ', Might ' + f.m + ', ' + Kit.poss(pname(f.o)) },
         [cardEl(f.c, { mini: true, now: true, might: f.m, hush: !!f.hush })]);
@@ -1207,7 +1211,7 @@
       figs.forEach(f => {
         const cell = el('div', { class: 'fo-f' }, [cardB(f)]);
         if (who === 'me') { const c = chipsFor(f); if (c) cell.appendChild(c); }
-        else if (h.armed != null) { const a = ui.acts.filter(x => x.t === 'clash' && x.u === h.armed && x.v === f.u);
+        else if (h.armed != null) { const a = ui.acts.filter(x => x.t === 'clash' && !x.rk && x.u === h.armed && x.v === f.u);
           if (a.length) { cell.classList.add('tgt'); const m = clashMights(h.armed, f.u);
             cell.appendChild(el('div', { class: 'fo-chips' }, [el('button', { type: 'button', class: 'rd-c clash', onclick: e => { e.stopPropagation(); runActs(a, CARDS[E.byU(S, h.armed).c].n); } }, [el('span', { class: 'rd-x', html: SVG.swords }), el('b', { text: m[0] + ' vs ' + m[1] })])])); } }
         s.appendChild(cell);
@@ -1422,7 +1426,7 @@
     const hc = e.target.closest('.an-hand .hc'), fp = e.target.closest('.an-map .fp'), o = S.turn, hand = S.P[o].hand;
     let sel = null, key = null, m = null;
     if (hc && hc.dataset.h != null) { const h = +hc.dataset.h; key = hand[h]; if (key == null || !ui.acts.some(a => (a.h != null && hand[a.h] === key) || (E.fxOf(key) === 'phalanx' && a.ph && hand[a.hq] === key))) return; sel = { kind: 'hand', h: h }; }
-    else if (fp) { const u = +fp.dataset.u, f = E.byU(S, u); if (!f || f.o !== o || !ui.acts.some(a => a.u === u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'))) return; sel = { kind: 'fig', u: u }; key = f.c; m = E.might(S, f, 0); }
+    else if (fp) { const u = +fp.dataset.u, f = E.byU(S, u); if (!f || f.o !== o || !ui.acts.some(a => a.u === u && FIGMOVE[a.t])) return; sel = { kind: 'fig', u: u }; key = f.c; m = E.might(S, f, 0); }
     else return;
     const r = (hc || fp).getBoundingClientRect();
     drag = { x: e.clientX, y: e.clientY, id: e.pointerId, sel: sel, key: key, m: m, w: Math.max(54, Math.min(120, (hc || fp).querySelector('.ac') ? (hc || fp).querySelector('.ac').getBoundingClientRect().width : r.width)), from: r, on: false, at: null };
@@ -1458,7 +1462,7 @@
     const o = S.turn, me = o;
     if (t.k === 'f') { const pv = clashPreview(t.acts); return pv ? { m: pv[0] + ' vs ' + pv[1], tx: pv[0] > pv[1] ? 'You are stronger' : pv[0] < pv[1] ? 'They are stronger' : 'Even' } : { tx: 'Clash' }; }
     if (t.k === 'done') return { tx: 'Play ' + theName(drag.key) };
-    const a = t.acts[0], moves = a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub';
+    const a = t.acts[0], moves = a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub' || a.t === 'rail';
     if (!moves) return { tx: 'Play here' };
     const T2 = simulate(a), sd = sidesOf(E.mights(T2, t.v), me), h = E.holder(T2, t.v), was = V.hold[t.v], mine = q => q >= 0 && (q === me || E.ally(S, q, me));
     return { m: sd[1], tx: mine(h) ? (mine(was) ? 'You keep it' : 'You take it') : h < 0 ? (sd[0] === sd[1] && sd[1] ? 'Tied' : 'Nobody holds it') : pname(h) + (mine(was) ? ' takes it' : ' keeps it') };
@@ -1666,12 +1670,14 @@
     const ecfg = cfgStd(); if (cfg.teams) { ecfg.teams = cfg.teams; ecfg.target = E.targetFor(cfg.teams); }
     S = E.newGame(decks, guides, ecfg, E.rng((Math.random() * 4294967296) >>> 0), dmOn ? cfg.players.map(p => p.stack.slice()) : null, { wait: dmOn, profs: cfg.players.map(p => (p.cpu ? profOf(p, cfg.level) : null)) });
     S.st = null; S.ev = [];
+    // (rfx: the Relic powers this game is played under, 2 since 2026-11-13: a game saved before then has none and keeps the
+    // powers its Relics had, engine.js RFX1)
     // (sc: the scoring this game is played under. 2: every Place scores 1 all game. A game saved before that has none,
     // and finishes the way it began, with Places scoring double from round 4. tg: the Renown that wins this game. A
     // game saved when that was 30 has none, and still ends at 30. teams: who plays together, or none.)
     // (ord: the turns of this round in order, E.order(S); k: whose turn it is among them)
     const N = cfg.players.length, seats = () => cfg.players.map(() => ({ ko: 0, lines: 0, seals: 0, held: 0 }));
-    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
+    G = { mode: cfg.mode, level: cfg.level, sc: 2, tg: S.cfg.target, rfx: S.cfg.rfx, teams: cfg.teams || null, players: cfg.players, S: S, ord: E.order(S), k: 0, ph: 'start', started: Date.now(), n: 0,
       stats: seats(), hist: [], seen: {}, tale: { links: [], seals: [], hold: [], tot: [], ko: cfg.players.map(() => ({})), outs: [] }, cl: Coll.trackStart(), cv: Coll.VER };   // (cl: what the game did, for the callings)
     S.turn = G.ord[0]; setCols(N > 2 || cfg.teams ? cfg.players.map(p => p.color) : null);
     ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = 0;
@@ -1878,11 +1884,17 @@
     ov.classList.remove('show'); await wait(260); ov.remove();
     return true;
   }
+  // The rules a saved game is played under: today's, and what the game began with where that has changed since
+  function cfgOf(G) {
+    const cfg = cfgStd();
+    if (!(G.sc >= 2)) cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
+    cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
+    if (G.teams) cfg.teams = G.teams;                  // (who plays together: S.tm came back with the state)
+    if (!(G.rfx >= 2)) cfg.rfx = 0;                    // (and its Relics keep the powers they had when it began: engine.js RFX1)
+    return cfg;
+  }
   function restore(d) {
-    stop(); G = d.G; S = G.S; S.cfg = cfgStd(); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
-    if (!(G.sc >= 2)) S.cfg.ramp = [1, 1, 1, 2, 2, 2];   // (a game begun under the old scoring keeps it to the end)
-    S.cfg.target = G.tg || E.OLD_TARGET;                 // (and it ends at the Renown it was begun under: 30 before 2026-11-11)
-    if (G.teams) S.cfg.teams = G.teams;                  // (who plays together: S.tm came back with the state)
+    stop(); G = d.G; S = G.S; S.cfg = cfgOf(G); S.st = null; S.ev = []; G.players.forEach(deckOf); G.seen = G.seen || {};
     if (!Array.isArray(G.ord) || !G.ord.length) G.ord = E.order(S);
     ui.view = G.mode === 'cpu' ? 0 : human(S.turn) ? S.turn : firstHuman(); ui.viewer = G.mode === 'cpu' ? 0 : -1; ui.banner = S.round;
     setCols(S.N > 2 || G.teams ? G.players.map(p => p.color) : null);
@@ -1893,7 +1905,7 @@
   function snap() {
     return { round: S.round, turn: S.turn,
       figs: S.figs.map(f => ({ u: f.u, c: f.c, o: f.o, p: f.p, rdy: f.rdy, arr: f.arr, acted: f.acted, stun: f.stun, hush: f.hush || 0, li: f.li, m: E.might(S, f, 0) })),
-      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, sg: (p.sg || 0) + Math.max(0, p.sb || 0), debt: p.debt || 0 })),
+      P: S.P.map(p => ({ hand: p.hand.slice(), deck: p.deck.length, relics: p.relics.slice(), guide: p.guide, spark: p.spark, reserve: p.reserve, renown: p.renown, seals: p.seals, sm: p.sm || 3, uA: p.uA, uT: p.uT, uC: p.uC, uD: p.uD, uN: p.uN, uM: p.uM, uW: p.uW, uR: p.uR, uRw: p.uRw, uRk: p.uRk, uLc: p.uLc, uCy: p.uCy, rb: p.rb, shown: (p.shown || []).slice(), sg: (p.sg || 0) + Math.max(0, p.sb || 0), debt: p.debt || 0 })),
       tot: S.places.map((x, i) => E.mights(S, i)), hold: S.places.map((x, i) => E.holder(S, i)), pb: S.pb.map(x => x.slice()), dip: (S.dip || []).map(d => Object.assign({}, d)), mk: S.mk ? S.mk.slice() : null };
   }
   function settle() {
@@ -2106,7 +2118,7 @@
     const T = me ? targets() : null;
     for (let i = 0; i < 2; i++) {
       const r = p.relics[i];
-      if (r) { const b = el('button', { type: 'button', class: 'relic' + (E.fxOf(r) === 'antikythera' && p.uA && on ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => { if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
+      if (r) { const b = el('button', { type: 'button', class: 'relic' + (relicUsed(r, p, on) ? ' used' : ''), 'aria-label': info(r).n, 'data-relic': r, onclick: () => { if (G.demo) openView(r); else scan({ side: o, key: r }); } }); const im = artImg(r, true); if (im) b.appendChild(im); else b.appendChild(el('span', { class: 'relic-nm', 'aria-hidden': 'true', text: info(r).n.replace(/^The /, '').charAt(0) })); relics.appendChild(b); }   // (a Relic with no picture yet shows its initial)
       else {
         const tg = me && T.done.length && ui.sel && ui.sel.kind === 'hand' && CARDS[ui.sel.key].t === 'relic' && i === p.relics.length;
         relics.appendChild(el(tg ? 'button' : 'span', { class: 'relic empty' + (tg ? ' tgt' : ''), 'data-slot': i, type: tg ? 'button' : null, 'aria-label': tg ? 'Play the Relic here' : null, onclick: tg ? () => finishPick(T.done) : null }));
@@ -2157,7 +2169,7 @@
   // Might as it stands now is on its spine. With more players your rows keep the pieces (picture and Might).
   function figEl(f, T, asCard) {
     const c = CARDS[f.c], fac = FAC[c.f], mine = f.o === V.turn, pl = C.PLACES[S.places[f.p]];
-    const can = idle() && mine && !ui.sel && ui.acts.some(a => a.u === f.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));   // (while something is picked up, only where it can go is lit)
+    const can = idle() && mine && !ui.sel && ui.acts.some(a => a.u === f.u && FIGMOVE[a.t]);   // (while something is picked up, only where it can go is lit)
     const done = mine && !G.over && !f.rdy && !(f.arr && !f.acted);
     const sel = ui.sel && ui.sel.kind === 'fig' && ui.sel.u === f.u, tg = T.figs[f.u];
     const picked = ui.sel && ui.sel.picks.some(p => p.k === 'f' && p.v === f.u);
@@ -2629,7 +2641,7 @@
   // the stack of a player's Figures at one Domain (w: its width, when it is placed by hand)
   function stackEl(q, i, fs, T, w, count) {
     fs = fs.slice().sort((a, b) => b.m - a.m || a.u - b.u); const top = fs[0], c = CARDS[top.c], mineQ = q === S.turn, us = fs.map(f => f.u);
-    const acts = a => a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub';
+    const acts = a => !!FIGMOVE[a.t];
     const can = idle() && mineQ && !ui.sel && fs.some(f => ui.acts.some(a => a.u === f.u && acts(a)));
     const done = mineQ && !G.over && fs.every(f => !f.rdy && !(f.arr && !f.acted));
     const sel = ui.sel && ((ui.sel.kind === 'fig' && us.indexOf(ui.sel.u) >= 0) || ui.sel.picks.some(p => p.k === 'f' && us.indexOf(p.v) >= 0));
@@ -2905,10 +2917,10 @@
   const carries = key => !!key && !!CARDS[key] && E.fxOf(key) === 'trojan';
   function landPreview(acts) {
     const a = acts[0], t = a.t, o = S.turn;
-    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || (t === 'deed' && ((ui.sel.key && E.fxOf(ui.sel.key) === 'fairwinds') || carries(ui.sel.key)));
+    const moves = t === 'fig' || t === 'walk' || t === 'antik' || t === 'tub' || t === 'rail' || (t === 'deed' && ((ui.sel.key && E.fxOf(ui.sel.key) === 'fairwinds') || carries(ui.sel.key)));
     if (!moves) return null;
     const T = simulate(a), f = t === 'fig' || carries(ui.sel.key) ? E.byU(T, S.uid) : E.byU(T, a.u);
-    const via = acts.every(x => x.t === 'antik') ? (E.relicOf(S.P[o], 'antikythera') || 'antikythera') : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
+    const via = acts.every(x => x.t === 'antik') ? (E.relicOf(S, S.P[o], 'balloon') || 'balloon') : acts.every(x => x.t === 'rail') ? (E.relicOf(S, S.P[o], 'locomotive') || 'locomotive') : acts.every(x => x.t === 'tub') ? S.P[o].guide : null;
     return { cost: t === 'fig' ? E.costOf(S, o, ui.sel.key, a.p) : null, m: f ? E.might(T, f, 0) : null, via: via };
   }
   function clashPreview(acts) {
@@ -2922,7 +2934,7 @@
   function select(sel) {
     const o = S.turn, hand = S.P[o].hand;
     if (sel.kind === 'hand') { sel.key = hand[sel.h]; sel.acts = ui.acts.filter(a => (a.h != null && hand[a.h] === sel.key) || (E.fxOf(sel.key) === 'phalanx' && a.t === 'clash' && a.ph && hand[a.hq] === sel.key)); }
-    else sel.acts = ui.acts.filter(a => a.u === sel.u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'));
+    else sel.acts = ui.acts.filter(a => a.u === sel.u && FIGMOVE[a.t]);
     sel.picks = []; ui.sel = sel; Kit.sfx('slide'); Kit.haptic('light'); render();
   }
   function clearSel() { if (ui.sel) { ui.sel = null; render(); } }
@@ -2934,9 +2946,11 @@
   // the Quick Deed that goes with a clash (a.ph): Phalanx, or any card with its effect, by its place in the hand
   const quickOf = a => { const P = S.P[S.turn], h = a.hq != null ? a.hq : E.quicks(P)[0]; return h != null && P.hand[h] && E.fxOf(P.hand[h]) === 'phalanx' ? P.hand[h] : null; };
   function actLabel(a) {
+    if (a.t === 'walk' && a.w2) { const g = E.byU(S, a.w2); return { label: 'Walk with ' + (g ? CARDS[g.c].n : 'another Figure'), sub: cap1(theName(E.relicOf(S, S.P[S.turn], 'wheel') || 'wheel')) + ': both walk' }; }
     if (a.t === 'walk') return { label: 'Walk', sub: 'This Figure’s move for this turn' };
+    if (a.t === 'rail') return { label: 'Walk by rail', sub: cap1(theName(E.relicOf(S, S.P[S.turn], 'locomotive') || 'locomotive')) + ', once a turn' };
     if (a.t === 'tub') return { label: 'Free step', sub: TXG[S.P[S.turn].guide].n + ', once a turn' };
-    if (a.t === 'antik') return { label: 'Jump', sub: info(E.relicOf(S.P[S.turn], 'antikythera') || 'antikythera').n + '. Done for the turn' };
+    if (a.t === 'antik') return { label: 'Jump', sub: info(E.relicOf(S, S.P[S.turn], 'balloon') || 'balloon').n + '. Done for the turn' };
     if (a.t === 'clash') { const qk = a.ph ? quickOf(a) : null; return qk ? { label: 'Clash with ' + CARDS[qk].n, sub: '+2 Might for ' + E.costOf(S, S.turn, qk) + ' Spark' } : { label: 'Clash' }; }
     if (a.t === 'fig' && a.x) { const arr = (CARDS[S.P[S.turn].hand[a.h]].arr || [])[0];   // (Constantine, William the Conqueror: the "you may" on the card)
       return { label: 'Play, and change the Domain', sub: arr === 'found' ? 'The top Domain of your stack is laid at the Crossroads.' : 'The Domain here is discarded, and ' + pname(a.p >> 1) + ' lays the top Domain of their stack.' }; }
@@ -2944,7 +2958,7 @@
   }
   function finishPick(acts) {
     if (acts.length === 1) return doHuman(acts[0]);
-    const s = ui.sel, who = info(s.kind === 'hand' ? s.key : E.byU(S, s.u).c).n, rank = { walk: 0, tub: 1, antik: 2, clash: 0 };
+    const s = ui.sel, who = info(s.kind === 'hand' ? s.key : E.byU(S, s.u).c).n, rank = { walk: 0, rail: 1, tub: 1, antik: 2, clash: 0 };
     acts = acts.slice().sort((x, y) => (rank[x.t] || 0) - (rank[y.t] || 0) || (x.ph ? 1 : 0) - (y.ph ? 1 : 0) || (x.x ? 1 : 0) - (y.x ? 1 : 0));
     const to = acts[0].p != null && acts[0].t !== 'clash' ? ' to ' + (/^(The|the) /.test(C.PLACES[S.places[acts[0].p]].n) ? '' : /^(Great Wall|Colosseum|Acropolis|Silk Road|Globe Theatre|Library)/.test(C.PLACES[S.places[acts[0].p]].n) ? 'the ' : '') + C.PLACES[S.places[acts[0].p]].n : '';
     Kit.sheet({ title: who + to, actions: acts.map(a => Object.assign(actLabel(a), { primary: a === acts[0], onClick: () => doHuman(a) })), onCancel: () => { if (ui.sel) { ui.sel.picks.pop(); render(); } } });
@@ -2955,10 +2969,63 @@
   // one up and your Gate and Outpost light; a tap on one lays it there. The button where End turn is lays none. A 6 on
   // the Congress of Vienna's dice names the Domain you choose: the Domains it can name light on the map.
   function askPend() {
+    if (S.pend && S.pend.k === 'home') return askHome();
+    if (S.pend && S.pend.k === 'fore') return askFore();
     return new Promise(res => {
       const q = S.pend, acts = E.pendActions(S);
       ui.pend = { q: q, acts: acts, sel: q.k === 'congress' ? null : (acts.filter(a => a.id).length && new Set(acts.filter(a => a.id).map(a => a.id)).size === 1 ? acts.filter(a => a.id)[0].id : null), x: -1, res: a => { ui.pend = null; res(a); } };
       setBusy(false); Kit.sfx('flip'); render();
+    });
+  }
+  // Foresight (the Antikythera Mechanism, the Dresden Codex): at the start of the turn the top 3 cards of the draw pile lie
+  // face up on two trays, the cards that come into the hand now and the cards left on top of the pile, in the order they
+  // will be drawn. A tap lifts a card and a tap on another swaps the two; a second tap on a lifted card reads it. The
+  // button draws, and the cards that stay are turned face down onto the pile.
+  function askFore() {
+    return new Promise(res => {
+      const q = S.pend, o = q.o, P = S.P[o], ord = q.ids.slice(), r = q.c || 'codex';
+      const nNow = Math.min(ord.length, 1 + (E.hasFx(S, P, 'press') ? 1 : 0) + (S.cfg.draw2 ? 1 : 0));
+      let sel = -1;
+      const inner = el('div', { class: 'fr-in' }), ov = el('div', { class: 'clash an-fore', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'The top ' + ord.length + ' cards of your draw pile' }, [inner]);
+      const cardB = i => { const b = el('button', { type: 'button', class: 'fr-c' + (sel === i ? ' up' : sel >= 0 ? ' to' : ''), 'aria-label': CARDS[ord[i]].n + (sel === i ? ', lifted: tap another card to swap them, or this one again to read it' : sel >= 0 ? ': swap with ' + CARDS[ord[sel]].n : ''), 'data-i': i }, [cardEl(ord[i], { mini: true, now: true, cost: E.costOf(S, o, ord[i]) })]);
+        b.addEventListener('click', e => { e.stopPropagation(); tap(i); }); return b; };
+      const tray = (cls, label, a, z) => el('div', { class: 'fr-tray ' + cls }, [el('span', { class: 'fr-lab', text: label }), el('div', { class: 'fr-cards' }, ord.slice(a, z).map((k, j) => cardB(a + j)))]);
+      function paint(swap) {
+        inner.innerHTML = '';
+        const head = el('div', { class: 'fr-head' }, [el('span', { class: 'fr-rel' }, [artImg(r, true, true) || mono(r)].filter(x => x)), el('span', { class: 'fr-t', text: cap1(theName(r)) })]);
+        inner.appendChild(head);
+        inner.appendChild(el('div', { class: 'fr-row' }, [tray('now', 'Into your hand now', 0, nNow), nNow < ord.length ? tray('later', ord.length - nNow === 1 ? 'Left on top of your pile' : 'Left on your pile, top first', nNow, ord.length) : null].filter(x => x)));
+        inner.appendChild(el('button', { type: 'button', class: 'btn btn-primary fr-go', text: nNow === 1 ? 'Draw 1 card' : 'Draw ' + nNow + ' cards', onclick: e => { e.stopPropagation(); Kit.sfx('deal'); Kit.haptic('medium'); ov.classList.remove('show'); setTimeout(() => ov.remove(), 240); res({ t: 'dom', ord: ord.slice() }); } }));
+        if (swap) swap.forEach(i => { const n = inner.querySelector('.fr-c[data-i="' + i + '"]'); if (n && n.animate) n.animate([{ transform: 'translateY(-14%) scale(1.04)', opacity: .5 }, { transform: 'none', opacity: 1 }], { duration: 260, easing: 'cubic-bezier(.22,1,.36,1)' }); });
+      }
+      function tap(i) {
+        if (sel < 0) { sel = i; Kit.sfx('tap'); Kit.haptic('light'); paint(); return; }
+        if (sel === i) { sel = -1; paint(); openView(ord[i], { room: 1 }); return; }
+        const t = ord[sel]; ord[sel] = ord[i]; ord[i] = t; const sw = [sel, i]; sel = -1; Kit.sfx('slide'); Kit.haptic('light'); paint(sw);
+      }
+      ov.addEventListener('click', () => { if (sel >= 0) { sel = -1; paint(); } });
+      paint(); document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show');
+    });
+  }
+  // The Dunhuang Star Chart, Library Cave: the discard pile on the strip, dearest first; its button takes the card in front
+  function caveChoose() {
+    if (!idle()) return; const acts = ui.acts.filter(a => a.t === 'cave'); if (!acts.length) return;
+    browse(acts.map(a => a.c), { title: 'Your discard pile', sub: '1 Spark for the card you take', pick: { label: 'Take this card', fn: k => { const a = reAct(acts.find(x => x.c === k)); if (a && idle()) doHuman(a); } } });
+  }
+  // The Cyrus Cylinder at Rapa Nui (Tim, 2026-11-13: "the Figure's owner chooses"): the knocked-out card, and where it goes
+  function askHome() {
+    return new Promise(res => {
+      const q = S.pend, o = q.o, you = human(o) && (o === ui.view || G.mode === 'cpu'), r = E.relicOf(S, S.P[o], 'cyruscylinder') || 'cyruscylinder', n = CARDS[q.c].n, whose = you ? 'your' : Kit.poss(pname(o));
+      // (the game's own plate, as Foresight's: the card that was knocked out between Rapa Nui and the Cylinder, and the two places it can go)
+      const pic = k => { const s0 = el('span', { class: 'fr-rel' }), im = artImg(k, true, true) || mono(k); if (im) s0.appendChild(im); return s0; };
+      const done = a => { Kit.sfx('deal'); Kit.haptic('medium'); ov.classList.remove('show'); setTimeout(() => ov.remove(), 240); res(a); };
+      const ov = el('div', { class: 'clash an-fore an-home', role: 'dialog', 'aria-modal': 'true', 'aria-label': n + ' was knocked out at Rapa Nui' }, [el('div', { class: 'fr-in' }, [
+        el('div', { class: 'fr-head' }, [pic('rapanui'), el('span', { class: 'fr-t', text: (you ? n : Kit.poss(pname(o)) + ' ' + n) + ' was knocked out at ' + theName('@rapanui') }), pic(r)]),
+        el('div', { class: 'fr-c' }, [cardEl(q.c, { mini: true, now: true })]),
+        el('div', { class: 'hm-acts' }, [
+          el('button', { type: 'button', class: 'btn btn-primary k-two', html: esc('Back into ' + whose + ' hand') + '<small>' + esc(cap1(theName(r)) + ' is used for this round') + '</small>', onclick: () => done({ t: 'dom', home: 'hand' }) }),
+          el('button', { type: 'button', class: 'btn btn-soft k-two', html: esc('On top of ' + whose + ' draw pile') + '<small>' + esc(cap1(theName(r)) + ' is kept for this round') + '</small>', onclick: () => done({ t: 'dom', home: 'top' }) })])])]);
+      document.body.appendChild(ov); void ov.offsetWidth; ov.classList.add('show'); Kit.sfx('flip');
     });
   }
   function pendTargets() {
@@ -3014,7 +3081,7 @@
       if (tg.length === 1) return pick('f', tg[0]);
       if (tg.length > 1) return which(tg, 'Which Figure in ' + Kit.poss(pname(+stk.dataset.o)) + ' stack?', x => pick('f', x));
       if (T.places[sp]) return pick('p', sp);
-      const mv = us.filter(x => { const f = E.byU(S, x); return f && f.o === S.turn && ui.acts.some(a => a.u === x && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub')); });
+      const mv = us.filter(x => { const f = E.byU(S, x); return f && f.o === S.turn && ui.acts.some(a => a.u === x && FIGMOVE[a.t]); });
       if (mv.length === 1) { if (ui.sel && ui.sel.kind === 'fig' && ui.sel.u === mv[0]) return clearSel(); return select({ kind: 'fig', u: mv[0] }); }
       // (two players, a phone on its side: the stack opens in the scan at its Domain, each card there with what it can do)
       if (mv.length > 1) return many() ? which(mv, 'Which of your Figures?', x => select({ kind: 'fig', u: x })) : scan({ u: mv[0] });
@@ -3034,7 +3101,7 @@
       if (row && T.places[p]) return pick('p', p);
       if (fpN) {
         const f = E.byU(S, u);
-        if (f && f.o === S.turn && ui.acts.some(a => a.u === u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'))) {
+        if (f && f.o === S.turn && ui.acts.some(a => a.u === u && FIGMOVE[a.t])) {
           if (ui.sel && ui.sel.kind === 'fig' && ui.sel.u === u) return clearSel();
           return select({ kind: 'fig', u: u });
         }
@@ -3280,6 +3347,7 @@
       Kit.sfx('deal'); Kit.sfx('tap'); Kit.haptic('medium'); await wait(380);
     },
     async spark(ev) {
+      if (ev.why === 'relic') { V.P[ev.o].spark += ev.n; render(); const rn = relicN(ev.o, ev.r); bump(relicSel(ev.o, ev.r)); Kit.sfx('chip'); bump('.an-strip.p' + ev.o + ' .st-spark'); await plus(ev.n, rc(rn || q('.an-strip.p' + ev.o + ' .st-guide')), ev.o, 'spark'); return; }   // (the Clay Tablet: its Spark comes from the Relic)
       if (ev.why === 'next') V.P[ev.o].sg = Math.max(0, (V.P[ev.o].sg || 0) + ev.n); else V.P[ev.o].spark += ev.n;   // (next: Empress Wu's, or a Domain's, for the next turn; it waits on the strip)
       if (ev.why === 'ransom') V.P[ev.o].uR = 1;   // (Saladin's, once a turn: his portrait takes the used mark)
       const tile = ev.p != null ? dom.map.querySelector('.pl[data-p="' + ev.p + '"] .pl-tile') : null;   // (a Domain's Spark comes from its tile)
@@ -3357,7 +3425,7 @@
       dropHand(o, a.h);   // (the Figure that a Night Crossing carries leaves the hand as it arrives)
       V.P[o].spark = Math.max(0, V.P[o].spark - (ctx.cost || 0));
       const fx = E.fxOf(ev.c);   // (what the Deed does, whichever Deed it is)
-      { const ab = (V.P[o].relics || []).find(r => E.fxOf(r) === 'abacus'); if (ab) bump('.an-strip.p' + o + ' .relic[data-relic="' + ab + '"]'); }   // (the Abacus made it cheaper)
+      { const ab = (V.P[o].relics || []).find(r => E.fxOf(r, S) === 'abacus'); if (ab) bump('.an-strip.p' + o + ' .relic[data-relic="' + ab + '"]'); }   // (the Abacus made it cheaper)
       if (fx === 'caravan') { V.P[o].spark += 3; render(); Kit.sfx('chip'); bump('.an-strip.p' + o + ' .st-spark'); await plus(3, rc(q('.an-strip.p' + o + ' .st-guide')), o, 'spark'); return; }
       if (fx === 'decree') { V.pb[ev.p][o] += 4; V.tot[ev.p][o] += 4; V.hold[ev.p] = E.holder(S, ev.p); render(); Kit.sfx('pop'); Kit.haptic('medium'); await wait(420); return; }
       if (fx === 'eclipse') { V.figs.forEach(f => { if (f.p === ev.p && f.o !== o) { f.stun = 1; ui.fresh[f.u] = 'zap'; } }); render(); ui.fresh = {}; Kit.sfx('bad'); Kit.haptic('medium'); await wait(520); return; }
@@ -3435,7 +3503,7 @@
       if (ev.why === 'walls') {   // (the Theodosian Walls: a Seal is pressed into its place on the strip, a fourth one where there were three)
         V.P[ev.o].seals = ev.left; V.P[ev.o].sm = ev.sm; ui.press = { o: ev.o, i: ev.left - 1 }; render(); ui.press = null;
         Kit.sfx('deal'); await wait(330); Kit.sfx('boom', .55); Kit.haptic('heavy'); await wait(700); return; }
-      V.P[ev.o].seals = ev.left; ui.crack = { o: ev.o, i: ev.left - 1 }; render(); ui.crack = null; if (ev.why !== 'stool') bump('.an-strip.p' + ev.o + ' .st-guide');   // (stool: Kumasi's, not Lincoln's)
+      V.P[ev.o].seals = ev.left; if (ev.why === 'ropebridge') V.P[ev.o].rb = 1; ui.crack = { o: ev.o, i: ev.left - 1 }; render(); ui.crack = null; if (ev.why === 'ropebridge') bump(relicSel(ev.o, ev.r)); else if (ev.why !== 'stool') bump('.an-strip.p' + ev.o + ' .st-guide');   // (stool: Kumasi's; ropebridge: the Inca Rope Bridge's; neither is Lincoln's)
       Kit.callout('A Seal is mended'); Kit.sfx('good'); Kit.haptic('medium'); await wait(700);
     },
     async renown(ev) {
@@ -3476,6 +3544,8 @@
       if (from) await flyCard(ev.c, from, { left: from.left, top: from.top + 90, width: from.width * .8 }, { ms: 320, o1: 0, ease: 'ease-in' }); else await wait(160);
     }
   };
+  // (a player's Relic on their strip: its selector, and the node)
+  const relicSel = (o, r) => '.an-strip.p' + o + ' .relic[data-relic="' + r + '"]', relicN = (o, r) => (r ? q(relicSel(o, r)) : null);
   async function playEvents(evs, ctx) {
     const my = gen; ctx = ctx || {};
     for (let i = 0; i < evs.length; i++) {
@@ -3522,7 +3592,11 @@
       else if (t === 'hush') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), '\'s skills and powers don\'t work until this round ends.']);
       else if (t === 'quick') add(ev.o, [nm(ev.o) + ' added ', K(ev.c), ' to the clash.']);
       else if (t === 'move' && ev.relay) return;   // (said once, by the relay)
+      else if (t === 'move' && ev.with) add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' walked to ', Pl(ev.to), ' with ', F(ev.with), '.']);   // (The Wheel, Convoy: the Figure that went along)
+      else if (t === 'move' && ev.rail) add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' went by rail from ', Pl(ev.from), ' to ', Pl(ev.to), ' with ', K(relicAt(who[ev.u] ? who[ev.u][1] : -1, 'locomotive')), '.']);   // (the Steam Locomotive, Railway)
       else if (t === 'move') add(who[ev.u] ? who[ev.u][1] : -1, ev.push ? [own(ev.u), F(ev.u), ' was pushed to ', Pl(ev.to), '.'] : [own(ev.u), F(ev.u), ev.jump ? ' jumped to ' : ' moved to ', Pl(ev.to), '.']);
+      else if (t === 'clash' && ev.rk) { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;   // (Mysore Rockets, Volley: from the Domain next to it)
+        add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' fired ', K(ev.r || 'rockets'), ' from ', Pl(ev.from), ' at ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ev.dm > ev.am ? ' The rockets fire from afar, so nothing happened to the Figure that fired.' : ' They were tied, so nobody was knocked out.')]); }
       else if (t === 'clash') { let out = false; for (let j = i + 1; j < evs.length && evs[j].t !== 'clash'; j++) if ((evs[j].t === 'ko' || evs[j].t === 'fallback') && (evs[j].u === ev.a || evs[j].u === ev.d)) out = true;
         add(who[ev.a] ? who[ev.a][1] : -1, [own(ev.a), F(ev.a), ' clashed with ', own(ev.d), F(ev.d), ' at ', Pl(ev.p), ', ' + Math.floor(ev.am) + ' Might against ' + Math.floor(ev.dm) + '.' + (out ? '' : ' They were tied, so nobody was knocked out.')]); }
       else if (t === 'ko') add(ev.o, ev.top ? [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out at ', Pl(ev.p), ' and went on top of ' + Kit.poss(nm(ev.o)) + ' deck.'] : [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was knocked out.']);
@@ -3531,8 +3605,8 @@
       else if (t === 'fallback') add(ev.o, [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' was defeated and went back to ' + Kit.poss(nm(ev.o)) + ' Gate' + (ev.why === 'charter' ? ', as the charter of ' : '.'), ev.why === 'charter' ? K('@runnymede') : '', ev.why === 'charter' ? ' says.' : '']);
       else if (t === 'veto') add(ev.o, [K(ev.c), ' played itself for ' + obj(ev.o) + ', and ', K(ev.d), ', which ' + obj(ev.by) + ' played, did nothing.']);
       else if (t === 'stun') add(who[ev.u] ? who[ev.u][1] : -1, [own(ev.u), F(ev.u), ' misses the next turn.']);
-      else if (t === 'line') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', F(ev.b), ' to ', F(ev.a), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
-      else if (t === 'thread') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', !ev.src ? 'a card' : ev.src.k === 'place' ? Pl(ev.src.p) : ev.src.k === 'relic' ? K(ev.src.c) : F(ev.src.u), ' to ', K(ev.c), ev.ren ? ' and scored ' + ren(ev.ren) + '.' : '.']);
+      else if (t === 'line') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', F(ev.b), ' to ', F(ev.a)].concat(lineRen(ev, ren, K)));
+      else if (t === 'thread') add(ev.o, [nm(ev.o) + ' made the Legacy Line from ', !ev.src ? 'a card' : ev.src.k === 'place' ? Pl(ev.src.p) : ev.src.k === 'relic' ? K(ev.src.c) : F(ev.src.u), ' to ', K(ev.c)].concat(lineRen(ev, ren, K)));
       else if (t === 'renown' && (ev.why === 'tragedy' || ev.why === 'court')) add(ev.o, [nm(ev.o) + ' scored ' + ren(ev.n) + ' at ', Pl(S.places.length - 1), ev.why === 'tragedy' ? ', because Shakespeare turns a defeat there into a tragedy.' : ', because Akbar\'s court there holds Figures of more than one faction.']);
       else if (t === 'spark' && ev.w) add(ev.o, sparkSaid(ev, nm, Pl));   // (Spark a Domain gives for the next turn)
       else if (t === 'spark' && (ev.why === 'ransom' || ev.why === 'kept' || ev.why === 'next')) add(ev.o, [ev.why === 'ransom' ? nm(ev.o) + ' gained ' + ev.n + ' Spark from Saladin for winning the clash.' : ev.why === 'kept' ? nm(ev.o) + ' kept ' + ev.n + ' Spark from the turn before, through Mansa Musa.' : nm(ev.o) + ' will have ' + ev.n + ' more Spark next turn, through Empress Wu, for holding more Places.']);
@@ -3541,6 +3615,13 @@
       else if (t === 'hold') { if (!L.length || L[L.length - 1].h !== 'c' && !(L[L.length - 1].cnt)) L.push({ h: 'c', r: round || S.round }); L.push({ o: ev.o, cnt: 1, x: ev.o >= 0 ? [nm(ev.o) + ' held ', Pl(ev.p), ' and scored ' + ren(ev.n) + '.'] : ['Nobody held ', Pl(ev.p), '.'] }); }
       else if (t === 'out') add(ev.o, [(nm(ev.o) === 'You' ? 'You have' : nm(ev.o) + ' has') + ' no Seals left and ' + (nm(ev.o) === 'You' ? 'are' : 'is') + ' out of the game' + (ev.us.length ? ', and ' + (nm(ev.o) === 'You' ? 'your' : Kit.poss(nm(ev.o))) + ' Figures have left the map.' : '.')]);
       else if (t === 'seal') add(ev.by, [nm(ev.by) + ' held ' + Kit.poss(nm(ev.o)) + ' Gate, and one of ' + Kit.poss(nm(ev.o)) + ' Seals broke. ' + (nm(ev.o) === 'You' ? 'You have ' : nm(ev.o) + ' has ') + ev.left + ' left.']);
+      else if (t === 'mend' && ev.why === 'ropebridge') add(ev.o, [nm(ev.o) + ' mended one of ' + pos(ev.o) + ' broken Seals with ', K(ev.r || 'ropebridge'), ' as the round ended.']);
+      else if (t === 'home') add(ev.o, ev.to === 'top' ? [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' went on top of ' + pos(ev.o) + ' deck, as ', K('@rapanui'), ' says.'] : [Kit.poss(nm(ev.o)) + ' ', K(ev.c), ' went back into ' + pos(ev.o) + ' hand, with ', K(ev.r || 'cyruscylinder'), '.']);
+      else if (t === 'spark' && ev.why === 'relic') add(ev.o, [nm(ev.o) + (nm(ev.o) === 'You' ? ' are' : ' is') + ' not ahead in Renown, so ', K(ev.r || 'tablet'), ' gave ' + obj(ev.o) + ' 1 more Spark.']);
+      else if (t === 'rfx' && ev.fx === 'braille') add(ev.o, [nm(ev.o) + ' drew one more card for playing a Scholar Figure, with ', K(ev.r || 'braille'), '.']);
+      else if (t === 'rfx' && ev.fx === 'codex') add(ev.o, [nm(ev.o) + ' looked at the top ' + ev.n + ' cards of ' + pos(ev.o) + ' draw pile with ', K(ev.r || 'codex'), ' and put them back in the order ' + (nm(ev.o) === 'You' ? 'you' : 'they') + ' chose.']);
+      else if (t === 'shown') add(ev.o, [nm(ev.o) + ' drew ', K(ev.c), ' first and showed it to everyone, because ' + listOf(ev.by.map(nm)) + (ev.by.length > 1 || nm(ev.by[0]) === 'You' ? ' have ' : ' has '), K(ev.r || 'telescope'), ' in play.']);
+      else if (t === 'cave') add(ev.o, [nm(ev.o) + ' paid 1 Spark to take ', K(ev.c), ' back from the discard pile, with ', K(ev.r || 'starchart'), '.']);
       else if (t === 'mend' && ev.why === 'walls') add(ev.o, [nm(ev.o) + (nm(ev.o) === 'You' ? ' have ' : ' has ') + ev.left + ' Seals now, after ', K(ev.c), '.']);
       else if (t === 'mend') add(ev.o, ev.why === 'stool' ? [nm(ev.o) + ' held ', Pl(ev.p), ', and one of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.'] : ['One of ' + Kit.poss(nm(ev.o)) + ' broken Seals was mended.']);
       // Domain powers
@@ -3566,6 +3647,10 @@
     });
     if (L.length > LOGMAX) L.splice(0, L.length - LOGMAX);
   }
+  // (what a Legacy Line scored, as the end of its sentence: the Rosetta Stone's 1 more is said by name)
+  const lineRen = (ev, ren, K) => (!ev.ren ? ['.'] : ev.rz ? [' and scored ' + ren(ev.ren) + ', 1 of it from ', K(ev.rz), '.'] : [' and scored ' + ren(ev.ren) + '.']);
+  // (the Relic with a power that a player has in play, for a sentence that names it)
+  const relicAt = (o, fx) => (o >= 0 && E.relicOf(S, S.P[o], fx)) || fx;
   // (two players' Gates and Outposts trading places, as a sentence: the Columbian Exchange, the Cape Route)
   function swapSaid(mv, past) {
     const ws = []; mv.forEach(i => { const w = i >> 1; if (i < 2 * S.N && ws.indexOf(w) < 0) ws.push(w); });
@@ -3653,7 +3738,7 @@
     const ctx = await doAction(a); if (gen !== my || !ctx) return;
     // A choice of Domain left open (Pachacuti, Al-Idrisi, Christopher Wren, a 6 for the Congress of Vienna): the
     // player makes it on the table (askPend). A lesson or a test game lets the engine choose (E.pendPick).
-    while (S.pend) { const a2 = G.demo || ui.turbo ? E.pendPick(S) : await askPend(); if (gen !== my) return; const c2 = await doAction(a2); if (gen !== my || !c2) return; }
+    while (S.pend) { const a2 = G.demo || ui.turbo ? E.pendPick(S) : !human(S.pend.o) ? E.pendPick(S, profOf(G.players[S.pend.o], G.level), Math.random) : await askPend(); if (gen !== my) return; const c2 = await doAction(a2); if (gen !== my || !c2) return; }   // (a choice is its own player's: the Cyrus Cylinder's may be the other player's)
     if (ctx.random) undoStack = []; else undoStack.push(snapS);
     setBusy(false); legal(); settle();
   }
@@ -3662,7 +3747,7 @@
     if (!G || G.over) return Kit.toast('The game is over');
     if (!idle()) return Kit.toast('Wait for your turn');
     if (!undoStack.length) return Kit.toast('There is nothing to take back. Clashes and drawn cards can’t be undone.');
-    const d = JSON.parse(undoStack.pop()); d.cfg = cfgStd(); d.st = null; d.ev = [];
+    const d = JSON.parse(undoStack.pop()); d.cfg = cfgOf(G); d.st = null; d.ev = [];
     S = G.S = d; ui.sel = null; ui.discard = false; Kit.sfx('whoosh'); save(); legal(); V = snap(); render();
   }
   function toggleFast() { speed = speed > 1 ? 1 : 4; lsSet(FAST, speed > 1 ? '1' : null); document.documentElement.classList.toggle('an-fast', speed > 1); Kit.sfx('tap'); Kit.haptic('light'); render(); }
@@ -3723,6 +3808,10 @@
       if (fx === 'lisbonquake') return { key: k, tx: who + ' played ' + n + ' at ' + at(a.p) + '. Every Figure there misses its next turn.' };
       if (fx === 'canossa') { const g = fig(a.v); return { key: k, tx: who + ' played ' + n + ' on ' + mine(g) + (g ? CARDS[g.c].n : 'a Figure') + '. Until this round ends, the skills and powers on ' + (g ? Kit.poss(CARDS[g.c].n) : 'its') + ' card don\'t work.' }; }
       return { key: k, tx: who + ' played ' + n + '.' }; }
+    if (a.t === 'walk' && a.w2) { const f = fig(a.u), g = fig(a.w2); return f && g ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' and ' + CARDS[g.c].n + ' to ' + at(a.p) + ' together.' } : null; }   // (The Wheel, Convoy)
+    if (a.t === 'rail') { const f = fig(a.u); return f ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' by rail from ' + at(f.p) + ' to ' + at(a.p) + '.' } : null; }   // (the Steam Locomotive, Railway)
+    if (a.t === 'cave') return { key: a.c, tx: who + ' paid 1 Spark to take ' + CARDS[a.c].n + ' back from the discard pile.' };   // (the Dunhuang Star Chart, Library Cave)
+    if (a.t === 'clash' && a.rk) { const f = fig(a.u), g = fig(a.v); return f && g ? { key: f.c, tx: Kit.poss(who) + ' ' + CARDS[f.c].n + ' fired ' + theName(E.relicOf(S, P, 'rockets') || 'rockets') + ' from ' + at(f.p) + ' at ' + mine(g) + CARDS[g.c].n + ' at ' + at(g.p) + '.' } : null; }   // (Mysore Rockets, Volley)
     if (a.t === 'walk' || a.t === 'antik' || a.t === 'tub') { const f = fig(a.u); return f ? { key: f.c, tx: who + ' moved ' + CARDS[f.c].n + ' to ' + at(a.p) + '.' } : null; }
     if (a.t === 'loan') return { key: S.places[a.p], tx: who + ' borrowed ' + 2 + ' Spark at ' + at(a.p) + '.' };
     if (a.t === 'buy') return { key: S.places[a.p], tx: who + ' paid 1 Spark at ' + at(a.p) + ' to draw a card.' };
@@ -3743,6 +3832,8 @@
     for (let n = 0; n < 40; n++) {
       // (the computer does not move while the player is looking at cards: the table would change under what they read)
       while ((viewEl || document.querySelector('.an-screen.an-log')) && !ui.turbo) { await new Promise(r => setTimeout(r, 200)); if (gen !== my) return; }
+      // (a choice open for a person, made on the computer's turn: the Cyrus Cylinder at Rapa Nui)
+      if (S.pend && human(S.pend.o) && !ui.turbo && !G.demo) { const a2 = await askPend(); if (gen !== my) return; if (!(await doAction(a2))) return; settle(); continue; }
       const a = E.aiPick(S, prof, Math.random); if (!a) break;
       const said = stepOn() && !ui.turbo && !G.demo ? moveSaid(a) : null;
       const ctx = await doAction(a); if (gen !== my || !ctx) return;

@@ -5,6 +5,8 @@
 //   node scripts/anoria/relicfx.js [games for each line] [seed] ['<json of rule changes>'] [relic,relic,...]
 //   e.g. node scripts/anoria/relicfx.js 3000 61000 '{"hold":9}' manuscripts,press
 // The default relics are one of each power. "none" is the line with no Relic (A's deck as it was: about 50%).
+// "cards" in the json tries other numbers on a card without touching cards.js: '{"cards":{"tablet":{"c":3}}}' (the Clay
+// Tablet at 3 Spark: relics-2026-11-13b.txt).
 // ± is one standard error of A's share. Seats swap every game; the robots and Guides are drawn at random.
 'use strict';
 const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
@@ -20,13 +22,15 @@ function game(i, seed, relic, cfg) {
   const S = E.play(fl ? [b, a] : [a, b], fl ? [gb, ga] : [ga, gb], fl ? [pb, pa] : [pa, pb], Object.assign({}, E.STD, cfg), seed + i), me = fl ? 1 : 0;
   return { x: S.winner === me ? 1 : S.winner < 0 ? 0.5 : 0, pl: relic !== 'none' && !!S.st.played[me][relic], r: S.round };
 }
+const withCards = cfg => { cfg = Object.assign({}, cfg); if (cfg.cards) { Object.keys(cfg.cards).forEach(k => Object.assign(CARDS[k], cfg.cards[k])); delete cfg.cards; } return cfg; };
 if (!isMainThread) {
-  const { lo, hi, seed, relic, cfg } = workerData; let w = 0, pl = 0, pw = 0, n = 0, rounds = 0;
+  const { lo, hi, seed, relic } = workerData, cfg = withCards(workerData.cfg); let w = 0, pl = 0, pw = 0, n = 0, rounds = 0;
   for (let i = lo; i < hi; i++) { const g = game(i, seed, relic, cfg); n++; w += g.x; rounds += g.r; if (g.pl) { pl++; pw += g.x; } }
   parentPort.postMessage({ w, pl, pw, n, rounds });
 } else {
   const n = +process.argv[2] || 2000, seed = +process.argv[3] || 61000, cfg = JSON.parse(process.argv[4] || '{}');
-  const keys = (process.argv[5] || 'none,press,compass,antikythera,dsteel,abacus,kudurru,manuscripts').split(',');
+  const keys = (process.argv[5] || 'none,press,compass,balloon,dsteel,abacus,kudurru,manuscripts,codex,longship,wheel,locomotive,stirrup,ropebridge,cyruscylinder,greekfire,rockets,rosetta,telescope,braille,tablet,starchart,paiza').split(',');
+  withCards(cfg);   // (so the names and costs printed are the ones played)
   keys.forEach(k => { if (k !== 'none' && (!CARDS[k] || CARDS[k].t !== 'relic')) { console.error('no Relic ' + k); process.exit(1); } });
   const cpus = Math.max(1, require('os').cpus().length), t0 = Date.now();
   console.log('Each Relic power, two copies in player A\'s deck, ' + n + ' games a line, seed ' + seed + (Object.keys(cfg).length ? ', rules ' + JSON.stringify(cfg) : '') + '. 50% is two ordinary cards.');

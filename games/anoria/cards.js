@@ -102,7 +102,7 @@ const CARDS = {
   khutulun: F('Khutulun', 'V', 2, 2, 'ASIA', 3, 1280, { slayer: 1 }),
   // Relics (any deck)
   press: { n: 'Printing Press', t: 'relic', f: 'N', c: 2 },
-  antikythera: { n: 'Antikythera Mechanism', t: 'relic', f: 'N', c: 3 },
+  antikythera: { n: 'Antikythera Mechanism', t: 'relic', f: 'N', c: 2, fx: 'codex' },
   compass: { n: 'Compass', t: 'relic', f: 'N', c: 1 },
   // Deeds
   phalanx: { n: 'Phalanx', t: 'deed', f: 'V', c: 2, quick: 1 },
@@ -245,28 +245,28 @@ const P3 = {
   // and no two with the same power.
   // (the Compass's power)
   astrolabe: { n: 'Astrolabe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 400 },
-  locomotive: { n: 'Steam Locomotive', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1829 },
-  stirrup: { n: 'Stirrup', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 415 },
+  locomotive: { n: 'Steam Locomotive', t: 'relic', f: 'N', c: 1, y: 1829 },
+  stirrup: { n: 'Stirrup', t: 'relic', f: 'N', c: 1, y: 415 },
   birchbark: { n: 'Birchbark Canoe', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1600 },
-  ropebridge: { n: 'Inca Rope Bridge', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1450 },
-  wheel: { n: 'The Wheel', t: 'relic', f: 'N', c: 1, fx: 'compass', y: -3150 },
+  ropebridge: { n: 'Inca Rope Bridge', t: 'relic', f: 'N', c: 2, y: 1450 },
+  wheel: { n: 'The Wheel', t: 'relic', f: 'N', c: 1, y: -3150 },
   // (the Printing Press's power; the Quipu and the Timbuktu Manuscripts have had the Manuscripts' own since 2026-11-13:
   // You can hold 10 cards in your hand. engine.js handMax)
   paper: { n: 'Paper', t: 'relic', f: 'N', c: 2, fx: 'press', y: 105 },
-  rosetta: { n: 'Rosetta Stone', t: 'relic', f: 'N', c: 2, fx: 'press', y: -196 },
+  rosetta: { n: 'Rosetta Stone', t: 'relic', f: 'N', c: 2, y: -196 },
   quipu: { n: 'Quipu', t: 'relic', f: 'N', c: 2, fx: 'manuscripts', y: 1450 },
-  starchart: { n: 'Dunhuang Star Chart', t: 'relic', f: 'N', c: 2, fx: 'press', y: 670 },
-  telescope: { n: 'Telescope', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1609 },
+  starchart: { n: 'Dunhuang Star Chart', t: 'relic', f: 'N', c: 2, y: 670 },
+  telescope: { n: 'Telescope', t: 'relic', f: 'N', c: 1, y: 1609 },
   manuscripts: { n: 'Timbuktu Manuscripts', t: 'relic', f: 'N', c: 2, y: 1500 },
   telegraph: { n: 'Telegraph', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1844 },
-  braille: { n: 'Braille', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1824 },
-  tablet: { n: 'Clay Tablet', t: 'relic', f: 'N', c: 2, fx: 'press', y: -3200 },
+  braille: { n: 'Braille', t: 'relic', f: 'N', c: 2, y: 1824 },
+  tablet: { n: 'Clay Tablet', t: 'relic', f: 'N', c: 2, y: -3200 },
   // (the Antikythera Mechanism's power)
-  balloon: { n: 'Montgolfier Balloon', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1783 },
-  wrightflyer: { n: 'Wright Flyer', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1903 },
-  sextant: { n: 'Sextant', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1757 },
-  voyagingcanoe: { n: 'Voyaging Canoe', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1000 },
-  longship: { n: 'Viking Longship', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 890 },
+  balloon: { n: 'Montgolfier Balloon', t: 'relic', f: 'N', c: 3, y: 1783 },
+  wrightflyer: { n: 'Wright Flyer', t: 'relic', f: 'N', c: 3, fx: 'balloon', y: 1903 },
+  sextant: { n: 'Sextant', t: 'relic', f: 'N', c: 3, fx: 'balloon', y: 1757 },
+  voyagingcanoe: { n: 'Voyaging Canoe', t: 'relic', f: 'N', c: 2, fx: 'longship', y: 1000 },
+  longship: { n: 'Viking Longship', t: 'relic', f: 'N', c: 2, y: 890 },
   // Deeds, six in each faction
   beagle: { n: 'Voyage of the Beagle', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1831 },
   hieroglyphs: { n: 'The Hieroglyphs Read', t: 'deed', f: 'D', c: 1, fx: 'eureka', y: 1822 },
@@ -301,8 +301,8 @@ const P3 = {
   jaisingh: F('Jai Singh II', 'W', 3, 3, 'ASIA', 5, 1734, { monument: 1 }),
   afonso: F('Afonso I of Kongo', 'S', 3, 4, 'AFR', 4, 1526, { scholar: 1 }),   // (at 3/3, the numbers of Ashurbanipal, he won 2 to 3 points less than Ashurbanipal does: onecard.js)
   shackleton: F('Ernest Shackleton', 'D', 4, 4, 'EUR', 7, 1916, { voyager: 1, inspiring: 1 }),
-  paiza: { n: 'Paiza', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1266 },
-  cyruscylinder: { n: 'Cyrus Cylinder', t: 'relic', f: 'N', c: 1, fx: 'compass', y: -539 },
+  paiza: { n: 'Paiza', t: 'relic', f: 'N', c: 1, y: 1266 },
+  cyruscylinder: { n: 'Cyrus Cylinder', t: 'relic', f: 'N', c: 1, y: -539 },
   exhibition: { n: 'The Great Exhibition', t: 'deed', f: 'W', c: 1, fx: 'caravan', y: 1851 },
   declaration: { n: 'The Declaration of Independence', t: 'deed', f: 'S', c: 1, fx: 'decree', y: 1776 },
   rubaiyat: { n: 'The Rubáiyát', t: 'deed', f: 'A', c: 1, fx: 'encore', y: 1859 },
@@ -320,7 +320,7 @@ const P3 = {
   // (2026-11-12, Tim: "finish the unfinished stuff". The five cards set-150.json held back for want of an effect, each
   // with one of its own now, and a sixth that switches off an enemy Figure's skills. Sources in set-150.json; numbers
   // from held-2026-11-12.txt.)
-  dsteel: { n: 'Damascus Steel', t: 'relic', f: 'N', c: 2, y: 1100 },
+  dsteel: { n: 'Damascus Steel', t: 'relic', f: 'N', c: 3, y: 1100 },
   abacus: { n: 'Abacus', t: 'relic', f: 'N', c: 2, y: 1592 },
   westphalia: { n: 'The Peace of Westphalia', t: 'deed', f: 'S', c: 1, y: 1648 },
   lisbonquake: { n: 'The Lisbon Earthquake', t: 'deed', f: 'W', c: 1, y: 1755 },
@@ -457,12 +457,12 @@ const P5 = {
   panama: { n: 'The Panama Canal', t: 'deed', f: 'W', c: 2, fx: 'rift', y: 1914 },
   fadlan: F('Ibn Fadlan', 'W', 1, 1, 'MIDEAST', 3, 922, { voyager: 1 }),
   // Relics
-  greekfire: { n: 'Greek Fire', t: 'relic', f: 'N', c: 2, fx: 'dsteel', y: 672 },
-  rockets: { n: 'Mysore Rockets', t: 'relic', f: 'N', c: 2, fx: 'dsteel', y: 1780 },
-  chronometer: { n: 'Harrison\'s Watch', t: 'relic', f: 'N', c: 3, fx: 'antikythera', y: 1761 },
+  greekfire: { n: 'Greek Fire', t: 'relic', f: 'N', c: 2, y: 672 },
+  rockets: { n: 'Mysore Rockets', t: 'relic', f: 'N', c: 2, y: 1780 },
+  chronometer: { n: 'Harrison\'s Watch', t: 'relic', f: 'N', c: 3, fx: 'balloon', y: 1761 },
   stickchart: { n: 'Stick Chart', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1862 },
   raingauge: { n: 'Rain Gauge', t: 'relic', f: 'N', c: 2, fx: 'abacus', y: 1441 },
-  codex: { n: 'Dresden Codex', t: 'relic', f: 'N', c: 2, fx: 'press', y: 1200 },
+  codex: { n: 'Dresden Codex', t: 'relic', f: 'N', c: 2, y: 1200 },
 };
 const FROM5 = {'biruni': ['astrolabe'], 'cook': ['tupaia','chronometer'], 'wells': ['douglass'], 'tranhungdao': ['kublai'], 'babur': ['genghis'], 'augustine': ['virgil'], 'garcilaso': ['pachacuti'], 'zubaidah': ['harun'], 'sinan': ['suleiman'], 'leoafricanus': ['@timbuktu'], 'greekfire': ['@constantinople'], 'raingauge': ['sejong'], 'transit': ['cook'], 'periodic': ['mendeleev'], 'paddle': ['kamehameha'], 'bachdang': ['tranhungdao'], 'thousand': ['garibaldi'], 'fourseasons': ['vivaldi'], 'nightwatch': ['rembrandt'], 'gitanjali': ['tagore'], 'hunayn': ['hippocrates'], 'larrey': ['napoleon']};
 // (the lines they give to cards the game already had: all `from`, added to FROM_MORE below, so no older card changes

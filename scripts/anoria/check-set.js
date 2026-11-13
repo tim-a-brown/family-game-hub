@@ -14,7 +14,7 @@ const CARDS = C.CARDS, NEW = C.PRINT3, bad = [], err = (k, m) => bad.push(k + ':
 const ERAS = C.ERAS.length - 1, eraOf = y => { for (let e = 1; e <= ERAS; e++) if (y <= C.ERAS[e].to) return e; return ERAS; };
 const KEYWORDS = {}; ENG.replace(/(?:\bk|kOf\(S, [a-z]+\))\.([A-Za-z]+)/g, (m, w) => { KEYWORDS[w] = 1; return m; });   // (a skill in play is read through kOf: the Walk to Canossa)
 const ARRS = {}; ENG.replace(/op === '([a-z]+)'/g, (m, w) => { ARRS[w] = 1; return m; });
-const FX = {}; ENG.replace(/fx === '([a-z]+)'|(?:hasFx|nFx)\((?:S, )?P, '([a-z]+)'\)|handFx\([A-Z], '([a-z]+)'\)/g, (m, a, b, c) => { FX[a || b || c] = 1; return m; });
+const FX = {}; ENG.replace(/fx === '([a-z]+)'|(?:hasFx|nFx|relicOf)\(S, [A-Za-z0-9.[\]]+, '([a-z]+)'\)|handFx\([A-Z], '([a-z]+)'\)/g, (m, a, b, c) => { FX[a || b || c] = 1; return m; });   // (a Relic's power is read as hasFx(S, a player, 'power'))
 // The skill words a card's text leads with, and the keyword each one stands for
 const LEAD = { Voyager: 'voyager', Scholar: 'scholar', Guard: 'guard', Steadfast: 'steadfast', Inspiring: 'inspiring', Swift: 'swift', Raider: 'raider', Law: 'law', Ward: 'ward' };
 const REGS = {}; Object.keys(C.PLACES).forEach(k => { REGS[C.PLACES[k].reg] = 1; });
@@ -86,6 +86,9 @@ NEW.forEach(k => {
 GROUPS.forEach(g => g.set.cards.forEach(c => { if (!CARDS[c.key]) err(c.key, 'is in ' + g.file + ' and not in the game'); }));
 // older cards given a Legacy Line by the third printing
 Object.keys(CARDS).forEach(k => { if (CARDS[k].pr === 3 || CARDS[k].pr === 5) return; (CARDS[k].from || []).concat(CARDS[k].insp || []).forEach(s => { if (s[0] !== '@' && !CARDS[s]) err(k, 'links to ' + s + ', which is not in the set'); if (!T.LINKS[s + '>' + k]) err(k, 'no sentence for ' + s + '>' + k); }); });
+// no Legacy Line anywhere in the set joins two Relics with one power (2026-11-13: the Relic powers changed, so every
+// card is checked, not only the printings above), whichever Relic the line runs from
+Object.keys(CARDS).forEach(k => { if (CARDS[k].t !== 'relic') return; (CARDS[k].from || []).forEach(s => { const o = CARDS[s]; if (o && o.t === 'relic' && E.fxOf(s) === E.fxOf(k)) err(k, 'its Legacy Line is from ' + s + ', a Relic with the same power'); }); });
 // named lines
 const ids = {}; C.THREADS.forEach(t => { if (ids[t.id] || t.id === 'horse' || t.id === 'nights') err('line ' + t.id, 'id already used'); ids[t.id] = 1;
   if (!t.n || t.cards.length < 2) err('line ' + t.id, 'needs a name and two cards or more'); t.cards.forEach(k => { if (!CARDS[k]) err('line ' + t.id, 'unknown card ' + k); }); (t.places || []).forEach(p => { if (!C.PLACES[p]) err('line ' + t.id, 'unknown Place ' + p); });

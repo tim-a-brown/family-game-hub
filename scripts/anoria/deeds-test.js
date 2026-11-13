@@ -111,7 +111,7 @@ const relic = (S, k) => E.actions(S).find(a => a.t === 'relic' && S.P[S.turn].ha
 // ── Damascus Steel: your Figures have +1 Might when attacking ──
 { const S = game(); const a = fig(S, 'boudica', 0, 4), d = fig(S, 'yoshitsune', 1, 4); S.P[0].hand = ['dsteel'];
   const m1 = E.might(S, a, 1, d), m0 = E.might(S, a, 0), m2 = E.might(S, a, 2, d);
-  S.P[0].guide = 'cleopatra'; ok('dsteel: 2 Spark', E.costOf(S, 0, 'dsteel') === 2); E.apply(S, relic(S, 'dsteel'));
+  S.P[0].guide = 'cleopatra'; ok('dsteel: 3 Spark (Tim, 2026-11-13)', E.costOf(S, 0, 'dsteel') === 3); E.apply(S, relic(S, 'dsteel'));
   ok('dsteel: +1 when attacking', E.might(S, a, 1, d) === m1 + 1, [m1, E.might(S, a, 1, d)]);
   ok('dsteel: nothing when holding or defending', E.might(S, a, 0) === m0 && E.might(S, a, 2, d) === m2);
   ok('dsteel: not for the other player', E.might(S, d, 1, a) === E.might(S, d, 1, a) && !S.P[1].relics.length);
@@ -226,5 +226,147 @@ const eleven = ['leonidas', 'hammurabi', 'spartacus', 'charlemagne', 'socrates',
 { const d = C.ARCH.Legion.cards.slice(0, 18).concat(['manuscripts', 'quipu']); let err = null, used = 0, kept = 0;
   for (let s = 1; s <= 20 && !err; s++) { try { const S = E.play([d.concat(d), d.concat(d)], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD), 100 + s); for (let o = 0; o < 2; o++) if (S.st.played[o].manuscripts || S.st.played[o].quipu) used++; } catch (e) { err = e; } }
   ok('robots play whole games with the Manuscripts and the Quipu', !err, err && err.stack); ok('robots play them', used > 10, used); }
+// ── The Relic powers of 2026-11-13 (relics-proposal.md with Tim's decisions: relics-2026-11-13b.txt), each held to
+// the sentence on its card, its cost and its limits ──
+const TXC = require(repo + '/games/anoria/text.js').CARDS;
+const says = (k, tx) => ok(k + ': the card says "' + tx + '"', TXC[k].tx === tx, TXC[k].tx);
+const power = (k, fx, c) => ok(k + ': ' + fx + '\'s power, ' + c + ' Spark', E.fxOf(k) === fx && C.CARDS[k].c === c, [E.fxOf(k), C.CARDS[k].c]);
+const acts = (S, t) => E.actions(S).filter(a => a.t === t);
+// (a game whose turn is starting: the draw pile known, nobody ahead)
+const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['spartacus', 'socrates', 'eureka', 'hammurabi', 'leonidas']; p.renown = 0; }); return S; };
+// Foresight: the Antikythera Mechanism (from 3 Spark to 2) and the Dresden Codex
+{ const FS = 'At the start of your turn, before you draw, look at the top 3 cards of your draw pile and put them back in any order.';
+  says('codex', FS); says('antikythera', FS); power('codex', 'codex', 2); power('antikythera', 'codex', 2);
+  { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].deck = ['eureka', 'galileo', 'spartacus', 'charlemagne']; S.P[0].hand = [];
+    E.startTurn(S); ok('foresight: the robots put the dearest card they can pay for on top', S.P[0].hand[0] === 'spartacus' && S.P[0].hand[1] === 'charlemagne' && S.P[0].deck[S.P[0].deck.length - 1] === 'galileo', [S.P[0].hand, S.P[0].deck]);
+    ok('foresight: said in an event', S.ev.some(e => e.t === 'rfx' && e.fx === 'codex' && e.n === 3)); }
+  { const S = turnGame(); S.P[0].relics = ['antikythera']; S.P[0].deck = ['eureka', 'galileo', 'spartacus', 'charlemagne']; S.P[0].hand = [];
+    E.startTurn(S, { ask: true }); ok('foresight: a person chooses before drawing', S.pend && S.pend.k === 'fore' && !S.P[0].hand.length && S.pend.ids.join() === 'charlemagne,spartacus,galileo', S.pend);
+    const os = E.actions(S); ok('foresight: every order of the three', os.length === 6 && os.every(a => a.t === 'dom' && a.ord.length === 3), os.length);
+    E.apply(S, os.find(a => a.ord.join() === 'galileo,eureka,charlemagne') || { t: 'dom', ord: ['galileo', 'spartacus', 'charlemagne'] });
+    ok('foresight: put back in the order chosen, then drawn', !S.pend && S.P[0].hand.join() === 'galileo,spartacus' && S.P[0].deck[S.P[0].deck.length - 1] === 'charlemagne', [S.P[0].hand, S.P[0].deck]); }
+  { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].deck = ['galileo']; S.P[0].hand = []; E.startTurn(S, { ask: true }); ok('foresight: nothing to order in a pile of 1', !S.pend && S.P[0].hand.length === 1); }
+  { const S = turnGame(); S.P[0].relics = ['codex']; S.P[0].hand = ['antikythera']; ok('foresight: the Antikythera not beside the Codex, the same power', !relic(S, 'antikythera')); } }
+// Landing: the Viking Longship and the Voyaging Canoe (3 Spark to 2)
+{ says('longship', 'You can play your Figures at the Crossroads.'); says('voyagingcanoe', 'You can play your Figures at the Crossroads.'); power('longship', 'longship', 2); power('voyagingcanoe', 'longship', 2);
+  const S = game(); S.P[0].hand = ['spartacus']; const at = () => acts(S, 'fig').map(a => a.p).sort().join();
+  ok('landing: without it, only at your Gate', at() === '0', at()); S.P[0].relics = ['voyagingcanoe']; ok('landing: at the Crossroads too', at() === '0,4', at());
+  fig(S, 'leonidas', 0, 4); fig(S, 'boudica', 0, 4); fig(S, 'socrates', 0, 4); ok('landing: not where you have 3 Figures already', at() === '0', at()); }
+// Convoy: The Wheel
+{ says('wheel', 'When one of your Figures walks, one other Figure of yours at the same Domain can walk with it.'); power('wheel', 'wheel', 1);
+  const S = game(); const a = fig(S, 'leonidas', 0, 0), b = fig(S, 'boudica', 0, 0), c = fig(S, 'spartacus', 0, 0, { rdy: 0 });
+  ok('convoy: not without it', !acts(S, 'walk').some(x => x.w2)); S.P[0].relics = ['wheel'];
+  const w = acts(S, 'walk').filter(x => x.u === a.u && x.w2); ok('convoy: one other Figure there walks with it', w.length && w.every(x => x.w2 === b.u), w);
+  ok('convoy: not a Figure that has moved this turn', !acts(S, 'walk').some(x => x.w2 === c.u));
+  E.apply(S, w.find(x => x.p === 1)); ok('convoy: both walk', a.p === 1 && b.p === 1 && !a.rdy && !b.rdy);
+  ok('convoy: said as walking with it', S.ev.some(e => e.t === 'move' && e.u === b.u && e.with === a.u));
+  const T = game(); T.P[0].relics = ['wheel']; const d = fig(T, 'leonidas', 0, 0), e = fig(T, 'boudica', 0, 0); fig(T, 'spartacus', 0, 1);
+  ok('convoy: not into a Domain with room for one (Thermopylae holds two)', acts(T, 'walk').some(x => x.u === d.u && x.p === 1) && !acts(T, 'walk').some(x => x.p === 1 && x.w2)); }
+// Railway: the Steam Locomotive
+{ says('locomotive', 'Once a turn, one of your Figures at your Gate can walk to any Domain where you have another Figure.'); power('locomotive', 'locomotive', 1);
+  const S = game(); S.P[0].relics = ['locomotive']; const a = fig(S, 'leonidas', 0, 0), b = fig(S, 'boudica', 0, 0); fig(S, 'spartacus', 0, 3); const c = fig(S, 'socrates', 0, 1);
+  const r = acts(S, 'rail'); ok('railway: from your Gate to a Domain where you have a Figure', r.some(x => x.u === a.u && x.p === 3) && r.every(x => x.p === 3) && !r.some(x => x.u === c.u), r);
+  E.apply(S, r.find(x => x.u === a.u)); ok('railway: it walked there', a.p === 3 && !a.rdy && S.ev.some(e => e.t === 'move' && e.rail));
+  ok('railway: once a turn', !acts(S, 'rail').length); S.P[0].uRw = 0; S.P[0].relics = []; ok('railway: not without it', !acts(S, 'rail').length); }
+// Charge: the Stirrup
+{ says('stirrup', 'Your Figures can start a clash on a turn they walk.'); power('stirrup', 'stirrup', 1);
+  for (const on of [0, 1]) { const S = game(); if (on) S.P[0].relics = ['stirrup']; const a = fig(S, 'boudica', 0, 1); const d = fig(S, 'spartacus', 1, 4);
+    E.apply(S, acts(S, 'walk').find(x => x.u === a.u && x.p === 4)); const cl = acts(S, 'clash').some(x => x.u === a.u && x.v === d.u);
+    ok(on ? 'charge: a Figure that walked can still start a clash' : 'charge: without it, a Figure that walked can\'t', cl === !!on); } }
+// Rebuilding: the Inca Rope Bridge (1 Spark to 2)
+{ says('ropebridge', 'Once a game, when a round ends, mend one of your broken Seals.'); power('ropebridge', 'ropebridge', 2);
+  const S = game(); S.P[0].relics = ['ropebridge']; E.endRound(S); ok('rebuilding: nothing to mend, nothing used', S.P[0].seals === 3 && !S.P[0].rb);
+  S.P[0].seals = 2; E.endRound(S); ok('rebuilding: a broken Seal mended at the count', S.P[0].seals === 3 && S.P[0].rb === 1 && S.ev.some(e => e.t === 'mend' && e.why === 'ropebridge' && e.r === 'ropebridge'));
+  S.P[0].seals = 2; E.endRound(S); ok('rebuilding: once a game', S.P[0].seals === 2);
+  const T = game(); T.P[1].relics = ['ropebridge']; fig(T, 'charlemagne', 0, 2); E.endRound(T); ok('rebuilding: after the Seal that breaks at the same count', T.P[1].seals === 3 && T.P[1].rb === 1, T.P[1].seals); }
+// Homecoming: the Cyrus Cylinder, and Rapa Nui
+{ says('cyruscylinder', 'Once a round, when one of your Figures is knocked out, it goes back into your hand.'); power('cyruscylinder', 'cyruscylinder', 1);
+  const S = game(); S.P[1].relics = ['cyruscylinder']; let a = fig(S, 'charlemagne', 0, 4), d = fig(S, 'spartacus', 1, 4);
+  E.apply(S, { t: 'clash', u: a.u, v: d.u }, 2, 0); ok('homecoming: the Figure goes back into its player\'s hand', S.P[1].hand.indexOf('spartacus') >= 0 && S.P[1].gone.indexOf('spartacus') < 0 && S.ev.some(e => e.t === 'home' && e.to === 'hand'));
+  a.rdy = 1; a.acted = 0; S.P[0].uC = 0; d = fig(S, 'socrates', 1, 4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 2, 0); ok('homecoming: once a round', S.P[1].gone.indexOf('socrates') >= 0);
+  E.endRound(S); a.rdy = 1; a.acted = 0; d = fig(S, 'boudica', 1, 4); E.apply(S, { t: 'clash', u: a.u, v: d.u }, 2, 0); ok('homecoming: again the next round', S.P[1].hand.indexOf('boudica') >= 0);
+  const R = game([null, null, null, null, 'rapanui']); R.P[1].relics = ['cyruscylinder']; const b = fig(R, 'charlemagne', 0, 4), e = fig(R, 'spartacus', 1, 4);
+  E.apply(R, { t: 'clash', u: b.u, v: e.u }, 2, 0); ok('homecoming at Rapa Nui: its player chooses', R.pend && R.pend.k === 'home' && R.pend.o === 1 && E.actions(R).length === 2);
+  ok('homecoming at Rapa Nui: the robots choose the hand', (E.aiPick(R, E.PROF.normal, E.rng(3)) || {}).home === 'hand');
+  E.apply(R, E.actions(R).find(x => x.home === 'top')); ok('homecoming at Rapa Nui: on top of the deck, and the Cylinder kept for the round', R.P[1].deck[R.P[1].deck.length - 1] === 'spartacus' && !R.P[1].uCy && !R.pend);
+  const R2 = game([null, null, null, null, 'rapanui']); const b2 = fig(R2, 'charlemagne', 0, 4), e2 = fig(R2, 'spartacus', 1, 4); E.apply(R2, { t: 'clash', u: b2.u, v: e2.u }, 2, 0); ok('Rapa Nui without the Cylinder: on top of the deck, no choice', !R2.pend && R2.P[1].deck[R2.P[1].deck.length - 1] === 'spartacus'); }
+// Bastion: Greek Fire
+{ says('greekfire', 'Your Figures have +1 Might when defending at your Gate or your Outpost.'); power('greekfire', 'greekfire', 2);
+  const S = game(); const a = fig(S, 'spartacus', 0, 0), b = fig(S, 'boudica', 0, 1), c = fig(S, 'socrates', 0, 4), en = fig(S, 'leonidas', 1, 4);
+  const before = [a, b, c].map(f => [E.might(S, f, 2, en), E.might(S, f, 1, en), E.might(S, f, 0)]); S.P[0].relics = ['greekfire']; const after = [a, b, c].map(f => [E.might(S, f, 2, en), E.might(S, f, 1, en), E.might(S, f, 0)]);
+  ok('bastion: +1 defending at your Gate and your Outpost', after[0][0] === before[0][0] + 1 && after[1][0] === before[1][0] + 1);
+  ok('bastion: not at the Crossroads, not attacking or holding', after[2][0] === before[2][0] && after[0][1] === before[0][1] && after[0][2] === before[0][2]); }
+// Volley: Mysore Rockets
+{ says('rockets', 'Once a turn, one of your Figures can start a clash with an enemy Figure at the next Domain, without moving. If your Figure loses, nothing happens to it.'); power('rockets', 'rockets', 2);
+  const S = game(); S.P[0].relics = ['rockets']; const a = fig(S, 'boudica', 0, 1), d = fig(S, 'spartacus', 1, 4), far = fig(S, 'socrates', 1, 3);
+  const v = acts(S, 'clash').filter(x => x.rk); ok('volley: at the next Domain only', v.length && v.every(x => x.v === d.u), v);
+  E.apply(S, v.find(x => !x.ph), 0, 6); ok('volley: losing does nothing to the Figure that fired, and it stays', E.byU(S, a.u) && a.p === 1 && E.byU(S, d.u));
+  const ce = S.ev.find(e => e.t === 'clash'); ok('volley: the clash is at the target\'s Domain', ce && ce.p === 4 && ce.rk && ce.from === 1, ce);
+  ok('volley: once a turn', !acts(S, 'clash').some(x => x.rk));
+  const T = game(); T.P[0].relics = ['rockets']; const a2 = fig(T, 'charlemagne', 0, 1), d2 = fig(T, 'spartacus', 1, 4); E.apply(T, acts(T, 'clash').find(x => x.rk), 3, 0);
+  ok('volley: winning knocks the target out, and the Figure that fired stays', !E.byU(T, d2.u) && a2.p === 1);
+  ok('volley: not without it', (() => { const U = game(); fig(U, 'boudica', 0, 1); fig(U, 'spartacus', 1, 4); return !acts(U, 'clash').length; })());
+  const P = game([null, null, null, null, 'onondaga']); P.P[0].relics = ['rockets']; fig(P, 'boudica', 0, 1); fig(P, 'spartacus', 1, 4); ok('volley: the target\'s Domain\'s rules apply (Onondaga: no clash starts there)', !acts(P, 'clash').length);
+  const L = game(); L.P[0].relics = ['rockets']; fig(L, 'boudica', 0, 1); fig(L, 'hammurabi', 1, 4); ok('volley: Law at the target\'s Domain stops it', !acts(L, 'clash').length);
+  const M = game([null, null, null, null, 'colosseum']); M.P[0].relics = ['rockets']; const a3 = fig(M, 'spartacus', 0, 1), d3 = fig(M, 'charlemagne', 1, 4); const r1 = M.P[1].renown;
+  { const H = game([null, null, null, null, 'mainz']); const ah = fig(H, 'boudica', 0, 1), dh = fig(H, 'spartacus', 1, 4);   // (Boudica is at home in Europe: at Mainz, not at Thermopylae)
+    ok('volley: the Might is reckoned at the target\'s Domain (home there)', E.clashM(H, ah, dh, 1)[0] === E.clashM(H, ah, dh, 0)[0] + 1 && ah.p === 1, [E.clashM(H, ah, dh, 1), E.clashM(H, ah, dh, 0)]); }
+  E.apply(M, acts(M, 'clash').find(x => x.rk), 0, 0); ok('volley at the Colosseum: the defender who wins scores there', M.P[1].renown === r1 + 1 && E.byU(M, a3.u)); }
+// Decipher: the Rosetta Stone
+{ says('rosetta', 'Each Legacy Line you make scores 1 more Renown.'); power('rosetta', 'rosetta', 2);
+  for (const on of [0, 1]) { const S = game(); if (on) S.P[0].relics = ['rosetta']; fig(S, 'socrates', 0, 0); S.P[0].hand = ['plato']; const r0 = S.P[0].renown;
+    E.apply(S, acts(S, 'fig').find(x => x.p === 0)); ok(on ? 'decipher: a Legacy Line scores 1 more' : 'a Legacy Line scores 1', S.P[0].renown - r0 === 1 + on, S.P[0].renown - r0); } }
+// Far sight: the Telescope (2 Spark to 1)
+{ says('telescope', 'Each opponent shows the first card they draw each turn.'); power('telescope', 'telescope', 1);
+  const S = turnGame(); S.P[1].relics = ['telescope']; S.P[0].hand = [];
+  E.startTurn(S); ok('far sight: the first card drawn is shown', S.P[0].shown && S.P[0].shown.length === 1 && S.P[0].shown[0] === 'leonidas' && S.ev.some(e => e.t === 'shown' && e.o === 0 && e.c === 'leonidas' && e.by[0] === 1), [S.P[0].shown, S.P[0].hand]);
+  ok('far sight: only the first', S.P[0].hand.length === 2 && S.P[0].shown.length === 1);
+  const T = E.clone(S); ok('far sight: a copy of the table keeps it', T.P[0].shown.join() === 'leonidas' && T.P[0].shown !== S.P[0].shown);
+  S.P[0].spark = 5; E.apply(S, acts(S, 'fig').find(x => S.P[0].hand[x.h] === 'leonidas')); ok('far sight: a known card that leaves the hand is known no longer', !S.P[0].shown.length);
+  const U = turnGame(); U.P[0].relics = ['telescope']; E.startTurn(U); ok('far sight: not for its own player', !(U.P[0].shown || []).length); }
+// Reading: Braille
+{ says('braille', 'When you play a Scholar Figure, you draw one more card.'); power('braille', 'braille', 2);
+  for (const on of [0, 1]) { const S = turnGame(); if (on) S.P[0].relics = ['braille']; S.P[0].hand = ['galileo', 'spartacus']; S.P[0].spark = 5;
+    E.apply(S, acts(S, 'fig').find(x => S.P[0].hand[x.h] === 'galileo')); ok(on ? 'reading: a Scholar draws 2' : 'a Scholar draws 1', S.P[0].hand.length === 2 + on, S.P[0].hand.length); }
+  const S = turnGame(); S.P[0].relics = ['braille']; S.P[0].hand = ['spartacus']; E.apply(S, acts(S, 'fig')[0]); ok('reading: not for a Figure that is not a Scholar', !S.P[0].hand.length); }
+// Stores: the Clay Tablet
+{ says('tablet', 'While you are not ahead in Renown, you gain 1 more Spark at the start of each turn.');
+  ok('stores: ' + C.CARDS.tablet.c + ' Spark, its own power', E.fxOf('tablet') === 'tablet');
+  const sp = (r0, r1, on) => { const S = turnGame(); S.round = 3; if (on) S.P[0].relics = ['tablet']; S.P[0].renown = r0; S.P[1].renown = r1; S.cfg = Object.assign({}, S.cfg, { catchup: 0 }); E.startTurn(S); return S.P[0].spark; };
+  ok('stores: +1 when level', sp(4, 4, 1) === sp(4, 4, 0) + 1); ok('stores: +1 when behind', sp(2, 4, 1) === sp(2, 4, 0) + 1); ok('stores: nothing when ahead', sp(5, 4, 1) === sp(5, 4, 0));
+  const S = turnGame(); S.P[0].relics = ['tablet']; E.startTurn(S); ok('stores: said in an event', S.ev.some(e => e.t === 'spark' && e.why === 'relic' && e.r === 'tablet')); }
+// Library Cave: the Dunhuang Star Chart
+{ says('starchart', 'Once a turn, you can pay 1 Spark to take a card from your discard pile into your hand.'); power('starchart', 'starchart', 2);
+  const S = game(); S.P[0].gone = ['spartacus', 'charlemagne', 'spartacus']; ok('library cave: not without it', !acts(S, 'cave').length); S.P[0].relics = ['starchart'];
+  const cs = acts(S, 'cave'); ok('library cave: one move for each card, the dearest first', cs.map(a => a.c).join() === 'charlemagne,spartacus', cs);
+  E.apply(S, cs[1]); ok('library cave: 1 Spark, the card into the hand', S.P[0].spark === 4 && S.P[0].hand.join() === 'spartacus' && S.P[0].gone.join() === 'spartacus,charlemagne' && S.ev.some(e => e.t === 'cave' && e.c === 'spartacus'));
+  ok('library cave: once a turn', !acts(S, 'cave').length); const T = game(); T.P[0].relics = ['starchart']; T.P[0].gone = ['spartacus']; T.P[0].spark = 0; ok('library cave: needs 1 Spark', !acts(T, 'cave').length); }
+// Safe conduct: the Paiza (3 Spark to 1)
+{ says('paiza', 'Your Figures never miss a turn.'); power('paiza', 'paiza', 1);
+  const S = game(); S.P[1].relics = ['paiza']; const g = fig(S, 'charlemagne', 1, 0); S.P[0].hand = ['socrates', 'eclipse']; S.P[0].spark = 5;
+  ok('safe conduct: no Eclipse where every enemy Figure has it', !deeds(S, 'eclipse').length);
+  E.apply(S, acts(S, 'fig').find(x => S.P[0].hand[x.h] === 'socrates')); ok('safe conduct: a Figure that stuns does nothing', !g.stun);
+  const Q = game(); Q.P[0].relics = ['paiza']; const m = fig(Q, 'leonidas', 0, 4); fig(Q, 'charlemagne', 1, 4); Q.P[0].hand = ['lisbonquake']; Q.P[0].spark = 5;
+  E.apply(Q, deeds(Q, 'lisbonquake').find(x => x.p === 4)); ok('safe conduct: the Lisbon Earthquake does not stop its player\'s Figures', !m.stun && Q.figs.find(f => f.o === 1).stun === 1);
+  const R = game(); R.P[0].relics = ['paiza']; const n = fig(R, 'leonidas', 0, 1, { stun: 1 }); R.P[0].deck = ['spartacus', 'socrates']; E.startTurn(R); ok('safe conduct: a Figure with a stun on it still takes its turn', n.rdy === 1); }
+// The jump keeps its power under the Montgolfier Balloon's key
+{ power('balloon', 'balloon', 3); power('sextant', 'balloon', 3); power('chronometer', 'balloon', 3);
+  const S = game(); S.P[0].relics = ['wrightflyer']; fig(S, 'leonidas', 0, 1); ok('the jump: the Wright Flyer jumps', acts(S, 'antik').length > 0); }
+// Damascus Steel keeps its power alone, at 3 Spark; Greek Fire and the Rockets have their own
+{ ok('Damascus Steel is the only Relic with its power', Object.keys(C.CARDS).filter(k => C.CARDS[k].t === 'relic' && E.fxOf(k) === 'dsteel').join() === 'dsteel');
+  const S = game(); S.P[0].relics = ['dsteel', 'greekfire']; ok('Greek Fire beside Damascus Steel: two powers', !!S); S.P[0].relics = ['rockets']; S.P[0].hand = ['dsteel']; ok('Damascus Steel beside the Rockets', !!relic(S, 'dsteel')); }
+// A game saved before 2026-11-13 keeps the powers its Relics had (cfg.rfx)
+{ const old = S => { S.cfg = Object.assign({}, S.cfg); delete S.cfg.rfx; return S; };
+  { const S = old(game()); S.P[0].relics = ['antikythera']; fig(S, 'leonidas', 0, 1); ok('an old game: the Antikythera Mechanism still jumps', acts(S, 'antik').length > 0 && E.fxOf('antikythera', S) === 'balloon'); }
+  { const S = old(turnGame()); S.P[0].relics = ['telescope']; S.P[0].hand = []; E.startTurn(S); ok('an old game: the Telescope still draws one more card', S.P[0].hand.length === 3 && !S.pend); }
+  { const S = old(game()); S.P[0].relics = ['rockets']; const a = fig(S, 'boudica', 0, 4), d = fig(S, 'spartacus', 1, 4); const m = E.might(S, a, 1, d); S.P[0].relics = []; ok('an old game: Mysore Rockets still give +1 Might when attacking', m === E.might(S, a, 1, d) + 1); }
+  { const S = old(game()); S.P[0].relics = ['wheel']; fig(S, 'leonidas', 0, 0); fig(S, 'boudica', 0, 0); ok('an old game: The Wheel still walks two steps, and no Convoy', acts(S, 'walk').some(x => x.p === 4) && !acts(S, 'walk').some(x => x.w2)); }
+  { const S = old(game()); S.P[0].relics = ['codex']; S.P[0].hand = ['telescope']; ok('an old game: two Relics with one old power still can\'t both be in play', !relic(S, 'telescope')); } }
+// Every Relic: robots in whole games with the new powers, no throw, each played
+{ const NEWR = ['codex', 'antikythera', 'longship', 'wheel', 'locomotive', 'stirrup', 'ropebridge', 'cyruscylinder', 'greekfire', 'rockets', 'rosetta', 'telescope', 'braille', 'tablet', 'starchart', 'paiza'];
+  let err = null; const used = {};
+  for (let s = 1; s <= 40 && !err; s++) { const k = s % 8, rs = NEWR.slice(2 * k, 2 * k + 2), d = C.ARCH.Legion.cards.slice(0, 16).concat(rs, rs), e = C.ARCH.Court.cards.slice(0, 16).concat(NEWR.slice((2 * k + 4) % 16, (2 * k + 4) % 16 + 2)).concat(['cyruscylinder', 'telescope']);
+    try { const S = E.play([d.concat(d.slice(0, 20)), e.concat(e)], ['leonardo', 'suntzu'], [E.PROF.normal, E.PROF.hard], Object.assign({}, E.STD), 300 + s); for (let o = 0; o < 2; o++) Object.keys(S.st.played[o]).forEach(c => { used[c] = 1; }); } catch (x) { err = x; } }
+  ok('robots play whole games with the new Relic powers', !err, err && err.stack); ok('robots play every one of them', NEWR.every(k => used[k]), NEWR.filter(k => !used[k])); }
 console.log((fails ? fails + ' failed, ' : '') + oks + ' passed');
 process.exit(fails ? 1 : 0);
