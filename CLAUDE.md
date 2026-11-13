@@ -1053,8 +1053,8 @@ Underlying principles for everything:
   the hand at 8 or less is a consistent constraint"): 8 (`handMax` in `STD`), or 10 with the Timbuktu Manuscripts' power
   ("You can hold 10 cards in your hand"; the Quipu has it too). Every reader of the limit asks `E.handMax(S, o)`, never
   `cfg.handMax`: the end of a turn, the page's discard screen and its caption. `scripts/anoria/relicfx.js` measures
-  every Relic power on the same games (`relics-2026-11-13.txt`). A wider spread of Relic powers is proposed in
-  `scripts/anoria/relics-proposal.md`, not built.
+  every Relic power on the same games (`relics-2026-11-13.txt`). The wider spread of Relic powers proposed in
+  `scripts/anoria/relics-proposal.md` is built (below).
 - **Pictures of the third printing**: all of them are painted (2026-11-11; each batch's notes, candidates and sources are in
   the session scratchpad's `art3/`, not the repo). `PAINTED` in text.js lists the third-printing cards whose pictures
   are in `art/` and `art/t/`, and a card added later without one is in `NOPIC`: the page never asks the network
