@@ -529,6 +529,19 @@ Underlying principles for everything:
   and the front card's notes changing when it comes to rest. Used for a deck's cards, your hand in a game, a pack's
   turned cards, the Library and the deck builder's shelf. A grid in a stock sheet is not how cards are shown.
   The strip's mechanics are `AnoriaUI.makeFlow` (ui.js), which `browse` and the packs both use.
+  **What keeps it smooth** (Tim, 2026-11-13: "it doesn't feel smooth and responsive to scrub through"; measured with
+  the CPU slowed 4x for the iPad mini, the slower device, and 2x for the phone: the scratchpad's `cf/perf.js`): an
+  input event only moves `pos`, and the cards are moved once a frame in requestAnimationFrame (writing to the page
+  inside a pointermove made the kit's touchmove guard and the foil light work out every style at once, 20 ms a move);
+  a frame writes only transform, opacity and z-index, and only when they change; the shade over a card is its own
+  layer (`.vf-dim`, opacity set), and no custom property is set on a card's root while it moves (a custom property is
+  inherited, so setting one recalculated all 300 elements of every card each frame): a foil's `--ls`, and the light's
+  `--lx` and `--ly` from editions.js, go only on the few elements the light falls on (`AnoriaEd.lights`), and a pack's
+  `--dim` only on its small leaves (`o.dimVar`); `.vf-c` has `will-change: transform, opacity` but a tumbling pack card
+  only `transform` (opacity would flatten it, and its face would never show); only cards on the
+  screen are in the page, the ones that leave are kept made, and the neighbors of the card at rest are made ahead
+  while nothing moves; `o.rest` (the notes) runs after the frame where the strip stops. A change to the strip keeps
+  all of these, and is measured again with that script.
 - **A card being read can be turned over to its picture** (Tim, 2026-11-11): the round button on the picture's lower
   left (`tg` in `cardEl`, on by default in `openView`, `browse` and a pack's strip; not in lessons). The picture then
   takes 80% of the card, the same on every card, and a strip at the foot keeps the essentials: name, a Figure's Might

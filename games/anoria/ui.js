@@ -698,31 +698,102 @@
   //           on either side of the front one
   //   o.front(i, was)  another card faces you now (called as the strip moves)   o.rest(i)  it came to rest on card i
   //   o.pose(j, p, CU, FX)  card j's own pose when it is p cards from the front ({t, z, o, dim}), or nothing for the usual one
+  //   o.dimVar  a selector: those elements inside each card also carry its shade as --dim (a pack's tumbling sides and
+  //           stamps). Small leaves only: --dim set on a card's root would recalculate every element of the card.
   // Returns F: pos, items, settle(i, vel), render(), reset() after a resize, stop(), moved(), key(e)
+  // What keeps the strip smooth (Tim, 2026-11-13: "make the carousel more efficient -- it doesn't feel smooth and
+  // responsive to scrub through"). Measured with the CPU slowed 4x for the iPad mini and 2x for the phone:
+  //   - A finger, the wheel and the keys only move pos; the cards are moved once a frame (requestAnimationFrame).
+  //     Nothing is written to the page inside an input event, so what reads the page there (the kit's touchmove guard,
+  //     the foil light) never makes the browser work the styles out early.
+  //   - A frame writes only what changed, and only transform, opacity and z-index on a card: z-index changes only where
+  //     two cards change places, and the shade over a card is a layer of its own (.vf-dim) whose opacity is set. No
+  //     custom property is set on a card's root while it moves (one is inherited by every element of the card, so
+  //     setting it recalculates them all): a foil's --ls goes only on the few elements its light falls on
+  //     (AnoriaEd.lights), and --dim only on the leaves o.dimVar names.
+  //   - Only cards that are on the screen are in the page. A card that goes off it is kept, made, for when it comes
+  //     back (the last 24), and the cards either side of the one at rest are made ahead while nothing moves.
+  //   - What the host writes under the card (o.rest) waits until the frame where the strip stops has been drawn.
   function makeFlow(o) {
     const n = o.n, flow = o.flow, strip = o.strip, F = { pos: Math.max(0, Math.min(n - 1, o.at || 0)), items: {}, raf: 0, at: -1 };
-    let CU = 0, FX = .46;
-    const measure = () => { CU = flow.offsetHeight || 400; FX = parseFloat(getComputedStyle(flow).getPropertyValue('--fx')) || .46; };
+    let CU = 0, FX = .46, RL = 0, RR = 0, q = 0, pre = 0, restT = 0, tick = 0;
+    const made = {}, used = {}, KEEP = 24;
+    const measure = () => {
+      CU = flow.offsetHeight || 400; const cs = getComputedStyle(flow); FX = parseFloat(cs.getPropertyValue('--fx')) || .46;
+      // (how far the screen reaches either side of the strip's middle: the strip's own edges where it clips its cards)
+      const r = flow.getBoundingClientRect(), mid = r.left + r.width / 2, clip = cs.overflowX !== 'visible';
+      RL = mid - (clip ? r.left : 0); RR = (clip ? r.right : window.innerWidth) - mid; if (!r.width) { RL = RR = 1e5; }
+    };
+    // (z-index by rank: the card nearer the front is on top, and it changes only where two cards change places; a
+    // strip with poses of its own, a pack's, keeps the finer steps those poses are drawn against)
     function pose(p) {
       const a = Math.abs(p), sg = p < 0 ? -1 : 1; let x, r, sc, op = 1;
       if (a <= 1) { x = a * FX; r = a * 48; sc = 1 - a * .18; } else { x = FX + (a - 1) * FX * .62; r = 48 + (a - 1) * 6; sc = Math.max(.4, .82 - (a - 1) * .12); op = Math.max(0, 1 - (a - 1) * .38); }
-      return { t: 'translate3d(' + (sg * x * CU).toFixed(1) + 'px,0,0) rotateY(' + (-sg * r).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')', z: 100 - Math.round(a * 10), o: op, dim: Math.min(1, a) };
+      return { t: 'translate3d(' + (sg * x * CU).toFixed(1) + 'px,0,0) rotateY(' + (-sg * r).toFixed(1) + 'deg) scale(' + sc.toFixed(3) + ')', z: o.pose ? 100 - Math.round(a * 10) : 100 - 2 * Math.floor(a + .5) - (p > 0 ? 1 : 0), o: op, dim: Math.min(1, a) };
     }
-    function item(j) { if (F.items[j]) return F.items[j]; const b = o.make(j, F); flow.appendChild(b); return (F.items[j] = b); }
+    // is a card p cards from the front on the screen at all? (its inner edge, unturned, inside the screen with room to spare)
+    function seen(p) {
+      const a = Math.abs(p); if (a <= 1.5) return true; if (a >= 1 + 1 / .38) return false;
+      const x = (FX + (a - 1) * FX * .62) * CU, half = .3572 * CU * Math.max(.4, .82 - (a - 1) * .12);
+      return x - half < (p < 0 ? RL : RR) + 24;
+    }
+    function make(j) {
+      const b = o.make(j, F); b._s = {}; b._ac = b.querySelector('.ac[data-ed]');
+      b._dim = el('i', { class: 'vf-dim', 'aria-hidden': 'true' }); b.appendChild(b._dim);
+      made[j] = b; used[j] = ++tick;
+      // (no more than KEEP cards kept off the strip: the ones seen longest ago go)
+      const ks = Object.keys(made); if (ks.length > KEEP + 10) ks.filter(k => !F.items[k]).sort((x, y) => used[x] - used[y]).slice(0, ks.length - KEEP).forEach(k => { delete made[k]; delete used[k]; });
+      return b;
+    }
+    // (a card kept off the strip may have been shown in another edition meanwhile)
+    function fresh(b) {
+      const Ed = window.AnoriaEd; if (!Ed) return;
+      b.querySelectorAll('.ac[data-card]:not([data-edfix])').forEach(ac => { const e = Ed.of(ac.getAttribute('data-card')); if (String(e) !== ac.getAttribute('data-ed')) { Ed.paint(ac, e); if (ac._dot) ac._dot(); } });
+    }
+    function item(j) {
+      let b = F.items[j]; if (b) return b;
+      b = made[j]; if (b) fresh(b); else b = make(j);
+      used[j] = ++tick; flow.appendChild(b); return (F.items[j] = b);
+    }
     function render() {
+      if (q) { cancelAnimationFrame(q); q = 0; }
       if (!CU) measure();
       const lo = o.keep ? 0 : Math.max(0, Math.floor(F.pos) - 3), hi = o.keep ? n - 1 : Math.min(n - 1, Math.ceil(F.pos) + 3);
-      Object.keys(F.items).forEach(k => { if (+k < lo || +k > hi) { F.items[k].remove(); delete F.items[k]; } });
-      for (let j = lo; j <= hi; j++) { const b = item(j), q = (o.pose && o.pose(j, j - F.pos, CU, FX)) || pose(j - F.pos); b.style.transform = q.t; b.style.zIndex = q.z; b.style.opacity = q.o; b.style.setProperty('--dim', q.dim.toFixed(2)); b.style.setProperty('--ls', Math.max(-1.5, Math.min(1.5, j - F.pos)).toFixed(3)); b.classList.toggle('front', Math.abs(j - F.pos) < .5); if (o.keep) b.style.visibility = q.o ? '' : 'hidden'; }
+      for (const k in F.items) { const j = +k; if (j < lo || j > hi || (!o.keep && !seen(j - F.pos))) { F.items[k].remove(); delete F.items[k]; } }
+      for (let j = lo; j <= hi; j++) {
+        const p = j - F.pos; if (!o.keep && !seen(p)) continue;
+        const b = item(j), w = (o.pose && o.pose(j, p, CU, FX)) || pose(p), s = b._s, st = b.style, d = w.dim.toFixed(2);
+        if (s.t !== w.t) st.transform = s.t = w.t;
+        if (s.z !== w.z) st.zIndex = s.z = w.z;
+        if (s.o !== w.o) st.opacity = s.o = w.o;
+        if (s.d !== d) { s.d = d; b._dim.style.opacity = d; }
+        if (o.dimVar) b.querySelectorAll(o.dimVar).forEach(x => { if (x.style.getPropertyValue('--dim') !== d) x.style.setProperty('--dim', d); });   // (a stamp put on later gets it too)
+        // (the light on a foil slides over it as it passes: only a foil has any use for --ls, and it is set only on what
+        // the light falls on, AnoriaEd.lights)
+        const foil = !!b._ac && +b._ac.getAttribute('data-ed') > 0, ls = foil ? Math.max(-1.5, Math.min(1.5, p)).toFixed(3) : '';
+        if (s.ls !== ls) { s.ls = ls; const lit = foil && window.AnoriaEd ? AnoriaEd.lights(b._ac) : [];
+          (b._lit || []).forEach(x => { if (lit.indexOf(x) < 0) x.style.removeProperty('--ls'); }); lit.forEach(x => x.style.setProperty('--ls', ls)); b._lit = lit; }
+        const fr = Math.abs(p) < .5; if (s.f !== fr) { s.f = fr; b.classList.toggle('front', fr); }
+        if (o.keep) { const v = w.o ? '' : 'hidden'; if (s.v !== v) st.visibility = s.v = v; }
+      }
       const idx = Math.max(0, Math.min(n - 1, Math.round(F.pos)));
       if (idx !== F.at) {
         const was = F.at; if (was >= 0) { Kit.sfx('slide'); Kit.haptic('light'); } F.at = idx;
         if (strip) {
-          Array.prototype.forEach.call(strip.children, (t, k) => t.classList.toggle('on', k === idx));
-          const on = strip.children[idx]; if (on && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
+          const old = strip.children[was], on = strip.children[idx]; if (old) old.classList.remove('on'); if (on) on.classList.add('on');
+          if (on && strip.scrollWidth > strip.clientWidth) strip.scrollTo({ left: on.offsetLeft - strip.clientWidth / 2 + on.offsetWidth / 2, behavior: 'smooth' });
         }
         if (o.front) o.front(idx, was);
       }
+      if (!F.begun) { F.begun = true; ahead(idx); }
+    }
+    const queue = () => { if (!q) q = requestAnimationFrame(render); };
+    // the cards either side of the one at rest, made one at a time while nothing moves
+    function ahead(i) {
+      clearTimeout(pre); if (o.keep) return;
+      const want = []; for (let d = 1; d <= 3; d++) [i + d, i - d].forEach(j => { if (j >= 0 && j < n && !made[j]) want.push(j); });
+      const step = () => { if (!flow.isConnected) return; if (F.raf || sw) { pre = setTimeout(step, 300); return; } const j = want.shift(); if (j == null) return; if (!made[j]) make(j); pre = setTimeout(step, 40); };
+      pre = setTimeout(step, 160);
     }
     const stop = () => { if (F.raf) cancelAnimationFrame(F.raf); F.raf = 0; };
     // glide pos to a card: longer trips take a little longer, leave at the flick's own speed, ease to a stop
@@ -732,9 +803,11 @@
       const s0 = vel && dist && (vel > 0) === (dist > 0) ? Math.min(3, Math.abs(vel) * ms / Math.abs(dist)) : 0;
       const ease = t => { const t2 = t * t, t3 = t2 * t; return s0 ? s0 * (t3 - 2 * t2 + t) + 3 * t2 - 2 * t3 : slow ? t2 * (3 - 2 * t) : 1 - Math.pow(1 - t, 3); };
       (function frame(now) {
-        const t = Math.min(1, (now - t0) / ms); F.pos = from + dist * (dist ? ease(t) : 1); render();
+        const t = Math.min(1, Math.max(0, now - t0) / ms); F.pos = from + dist * (dist ? ease(t) : 1); render();
         if (t < 1) { F.raf = requestAnimationFrame(frame); return; }
-        F.raf = 0; F.pos = target; render(); if (o.rest) o.rest(target);
+        F.raf = 0; F.pos = target; render();
+        // (the notes under the card, once this frame is on the screen)
+        clearTimeout(restT); restT = setTimeout(() => { if (F.raf) return; if (o.rest) o.rest(target); ahead(target); }, 0);
       })(t0);
     }
     // dragging: every card follows your finger; the ends push back
@@ -742,15 +815,16 @@
     flow.addEventListener('pointerdown', e => { stop(); moved = false; sw = { x: e.clientX, y: e.clientY, id: e.pointerId, h: false, p0: F.pos, pts: [] }; });
     flow.addEventListener('pointermove', e => {
       if (!sw || e.pointerId !== sw.id) return; const dx = e.clientX - sw.x, dy = e.clientY - sw.y;
-      if (!sw.h) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; moved = true; measure(); try { flow.setPointerCapture(e.pointerId); } catch (x) {} } else return; }
-      sw.pts.push({ x: e.clientX, t: performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
+      if (!sw.h) { if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.2) { sw.h = true; moved = true; clearTimeout(restT); measure(); try { flow.setPointerCapture(e.pointerId); } catch (x) {} } else return; }
+      // (the event's own time: when the page is busy, moves arrive late and together, and the flick's speed must not suffer)
+      sw.pts.push({ x: e.clientX, t: e.timeStamp || performance.now() }); if (sw.pts.length > 8) sw.pts.shift();
       let p = sw.p0 - dx / (FX * CU); if (p < 0) p *= .3; else if (p > n - 1) p = n - 1 + (p - (n - 1)) * .3;
-      F.pos = p; render();
+      F.pos = p; queue();
     });
-    const end = () => {
+    const end = e => {
       if (!sw) return; const s = sw; sw = null; if (!s.h) return; setTimeout(() => { moved = false; }, 120);   // (the click that ends a drag is not a tap)
       // speed at release, in cards a millisecond; momentum carries it on, and a flick always moves at least one card
-      let vel = 0, first = null; const now = performance.now(), pts = s.pts;
+      let vel = 0, first = null; const pts = s.pts, now = Math.max(e && e.timeStamp || 0, pts.length ? pts[pts.length - 1].t : 0) || performance.now();
       for (let i = pts.length - 1; i >= 0; i--) { if (now - pts[i].t > 90) break; first = pts[i]; }
       if (first && pts.length && now - first.t > 6) vel = -(pts[pts.length - 1].x - first.x) / (now - first.t) / (FX * CU);
       let target = F.pos + vel * 320;
@@ -760,9 +834,9 @@
     flow.addEventListener('pointerup', end); flow.addEventListener('pointercancel', end);
     // a trackpad's two-finger swipe, and the arrow keys
     let wt = 0;
-    (o.wheel || flow).addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0; if (!dx) return; e.preventDefault(); stop(); if (!CU) measure(); F.pos = Math.max(-.3, Math.min(n - .7, F.pos + dx / (FX * CU))); render(); clearTimeout(wt); wt = setTimeout(() => settle(F.pos, 0), 110); }, { passive: false });
+    (o.wheel || flow).addEventListener('wheel', e => { const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0; if (!dx) return; e.preventDefault(); stop(); clearTimeout(restT); if (!CU) measure(); F.pos = Math.max(-.3, Math.min(n - .7, F.pos + dx / (FX * CU))); queue(); clearTimeout(wt); wt = setTimeout(() => settle(F.pos, 0), 110); }, { passive: false });
     F.key = e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); settle(Math.round(F.pos) + (e.key === 'ArrowRight' ? 1 : -1), 0); } };
-    F.settle = settle; F.render = render; F.stop = stop; F.moved = () => moved; F.reset = () => { CU = 0; render(); };
+    F.settle = settle; F.render = render; F.stop = () => { stop(); clearTimeout(pre); clearTimeout(restT); }; F.moved = () => moved; F.reset = () => { CU = 0; render(); };
     return F;
   }
   //   browse(keys, {at, counts: {key: copies}, title, sub, bar})

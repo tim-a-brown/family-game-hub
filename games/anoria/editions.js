@@ -115,11 +115,13 @@
   // never quite still. Cards that aren't in front keep the light where the page left it (editions.css: its rest).
   const REST = { x: -.3, y: -.35 };
   const T = { x: REST.x, y: REST.y, cx: REST.x, cy: REST.y, raf: 0, ptr: false, tilt: null, base: null, prev: null, sweep: 0, was: [], listening: false, asked: false };
+  // the elements the light falls on (editions.css): set --lx, --ly and --ls on these, never on the whole card
+  const lights = n => { const a = Array.prototype.slice.call(n.querySelectorAll('.ed-fx, .ac-name, .ac-brief > b, .ac-when')); if (n.classList.contains('ed-rainbow')) a.push(n); return a; };
   const front = () => Array.prototype.filter.call(document.querySelectorAll('.view:not(.flow):not(.lesson) > .ac, .vf-c.front .ac:not(.back)'), n => n.getAttribute('data-ed') > 0);
   function frame(now) {
     T.raf = 0;
     const cards = front();
-    T.was.forEach(n => { if (cards.indexOf(n) < 0) { n.style.removeProperty('--lx'); n.style.removeProperty('--ly'); n._lv = ''; } });
+    T.was.forEach(n => { if (cards.indexOf(n) < 0) { (n._lit || []).concat(n).forEach(x => { x.style.removeProperty('--lx'); x.style.removeProperty('--ly'); }); n._lv = ''; n._lit = null; } });
     // (no foil in front: nothing to light. While cards are being read, look again shortly: the next one may be a foil.)
     T.was = cards; if (!cards.length || document.hidden) { if (!cards.length && document.querySelector('.view, .pk-flow')) { clearTimeout(T.poll); T.poll = setTimeout(wake, 350); } return; }
     const quiet = calm();
@@ -128,7 +130,9 @@
     if (quiet) { T.cx = REST.x; T.cy = REST.y; } else { T.cx += (tx - T.cx) * .12; T.cy += (ty - T.cy) * .12; }
     let x = T.cx; if (T.sweep && !quiet) { const p = (now - T.sweep) / 800; if (p >= 1) T.sweep = 0; else { const e2 = p * p * (3 - 2 * p); x = -1.5 + 3 * e2; T.cx = x; } }
     const v = x.toFixed(3) + ' ' + T.cy.toFixed(3);
-    cards.forEach(n => { if (n._lv === v) return; n._lv = v; n.style.setProperty('--lx', x.toFixed(3)); n.style.setProperty('--ly', T.cy.toFixed(3)); });
+    cards.forEach(n => { const lit = lights(n), same = n._lit && n._lit.length === lit.length && lit.every((e, i) => e === n._lit[i]); if (same && n._lv === v) return;
+      if (n._lit) n._lit.forEach(e => { if (lit.indexOf(e) < 0) { e.style.removeProperty('--lx'); e.style.removeProperty('--ly'); } });   // (another edition: its layers are new)
+      n._lv = v; n._lit = lit; lit.forEach(e => { e.style.setProperty('--lx', x.toFixed(3)); e.style.setProperty('--ly', T.cy.toFixed(3)); }); });
     if (!quiet) T.raf = requestAnimationFrame(frame);
   }
   function wake() { if (!T.raf) T.raf = requestAnimationFrame(frame); listenTilt(); }
@@ -169,5 +173,5 @@
     DeviceOrientationEvent.requestPermission().then(r => { lsSet('anoria_tilt_dev', r === 'granted' ? '1' : 'no'); if (r === 'granted') listenTilt(); }).catch(() => { T.asked = false; });
   });
 
-  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, piece: piece, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep };
+  window.AnoriaEd = { ED: ED, SHORT: SHORT, of: of, cls: cls, gem: gem, piece: piece, dress: dress, paint: paint, refresh: refresh, choose: choose, close: close, wake: wake, sweep: sweep, lights: lights };
 })();
