@@ -1900,7 +1900,7 @@
     // they drop the name (picture, cost and Might stay; tap one and the caption says what it is)
     const h = dom.hand, n = h.children.length, land = window.innerWidth > window.innerHeight, hr = h.getBoundingClientRect(), W = hr.width - 2, g = W > 600 ? 8 : 4;
     h.classList.remove('two'); Array.prototype.forEach.call(h.children, c => c.classList.remove('r0'));
-    h.style.setProperty('--ho', g + 'px');
+    h.style.setProperty('--ho', g + 'px'); h.style.paddingBottom = '';
     let hw, rows = 1, per = n;
     const cap = Math.min(132, Math.max(window.innerHeight, window.innerWidth) * .098);
     if (land) {
@@ -1918,11 +1918,24 @@
       if (n <= per) rows = 1;
       // (more players: the table needs the height, so the hand keeps the room of one row of five cards; more cards than
       // that go smaller, in one row or in two, whichever leaves them bigger)
+      // (more players, Tim, 2026-11-13: the hand as big as the two-player table gives it, so its names and numbers read.
+      // A phone: two rows of five as there, with room kept for both so the table never jumps; an iPad: one row, as
+      // there, and the room for it kept at the size of eight cards; a short phone: the room of one row of five, the
+      // cards in one row or in two, whichever leaves them bigger)
       if (many()) {
-        const h5 = Math.floor(Math.max(30, Math.min((W - 4 * g) / 5, cap))), room = h5 * 1.4 + 2;
-        per = Math.max(n, 5); rows = 1; hw = Math.min((W - (per - 1) * g) / per, cap);
-        if (n > 5) { const p2 = Math.ceil(n / 2), w2 = Math.min((W - (p2 - 1) * g) / p2, (room - 6) / 2 / 1.4); if (w2 > hw) { hw = w2; rows = 2; per = p2; } }
-        h.style.minHeight = Math.ceil(room + 6) + 'px';
+        if (phone) {
+          const hw5 = Math.floor(Math.min((W - 4 * g) / 5, cap)); per = Math.max(5, Math.ceil(n / 2)); rows = n > per ? 2 : 1;
+          hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 18) + 'px'; h.style.paddingBottom = '10px';   // (the last row clear of the screen's rounded corners)
+        }
+        else if (window.innerHeight >= 740) {
+          const hr8 = Math.floor(Math.min((W - 7 * g) / 8, cap)); per = Math.max(n, 5); rows = 1;
+          hw = Math.min((W - (per - 1) * g) / per, hr8); h.style.minHeight = Math.ceil(hr8 * 1.4 + 8) + 'px';
+        } else {
+          const h5 = Math.floor(Math.max(30, Math.min((W - 4 * g) / 5, cap))), room = h5 * 1.4 + 2;
+          per = Math.max(n, 5); rows = 1; hw = Math.min((W - (per - 1) * g) / per, cap);
+          if (n > 5) { const p2 = Math.ceil(n / 2), w2 = Math.min((W - (p2 - 1) * g) / p2, (room - 6) / 2 / 1.4); if (w2 > hw) { hw = w2; rows = 2; per = p2; } }
+          h.style.minHeight = Math.ceil(room + 6) + 'px';
+        }
       }
     }
     if (rows > 1) { h.classList.add('two'); h.style.setProperty('--per', per); }
@@ -2068,7 +2081,9 @@
     }
     return 0;
   }
-  const nameFs = (w, h) => Math.min.apply(null, seatsFrom(ui.view).slice(1).reduce((a, o) => a.concat([2 * o, 2 * o + 1]), []).map(i => (S.places[i] ? nameFit(C.PLACES[S.places[i]].n, w, h) : 14)));
+  // (a name that can't be set at 9px on its tile leaves that tile a picture, and the rest keep their names: Tim, "text
+  // first for finding things")
+  const nameFs = (w, h, own) => { if (!own) return 0; const fs = seatsFrom(ui.view).slice(1).reduce((a, o) => a.concat([2 * o, 2 * o + 1]), []).map(i => (S.places[i] ? nameFit(C.PLACES[S.places[i]].n, w, h) : 14)).filter(x => x >= 9); return fs.length ? Math.min.apply(null, fs) : 0; };
   function rimTile(i, T, w, h, pip) {
     const pk = S.places[i], pi = C.PLACES[pk], hold = V.hold[i], tg = T.places[i], sil = vSil(i);
     const wrap = el('div', { class: 'pl wn-t' + (pip ? ' pip' : '') + (hold >= 0 ? ' held' + hold : '') + (tg ? ' tgt' : '') + (ui.count === i ? ' count' : '') + (ui.pend && ui.pend.x === i ? ' pk' : ''), 'data-p': i, style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null });
@@ -2082,7 +2097,7 @@
       wrap.appendChild(tile); return wrap;
     }
     tile.appendChild(el('span', { class: 'pl-flag' + (hold >= 0 ? '' : ' none') + (ui.drop[i] ? ' drop' : ''), style: hold >= 0 ? { '--hc': 'var(--pc' + hold + ')' } : null }, [el('b', { text: String(worth) })]));
-    const db = Math.max(3, Math.round(w * .045)), fs = nameFs(w, h);
+    const db = Math.max(3, Math.round(w * .045)), fs = nameFs(w, h, nameFit(pi.n, w, h));
     if (fs >= 9) tile.appendChild(el('span', { class: 'pl-plate wn-nm' }, [el('span', { class: 'pl-name', text: pi.n, style: { fontSize: fs.toFixed(1) + 'px' } })]));
     else tile.classList.add('bare');
     tile.style.setProperty('--db', db + 'px'); tile.style.setProperty('--dm', Math.max(10, Math.min(16, Math.round(w * .15))) + 'px'); tile.style.setProperty('--fl', Math.max(15, Math.min(26, Math.round(w * .2))) + 'px');
@@ -2108,15 +2123,19 @@
     const stacks = (i, x, y, tw, th, ps, dir, own, xl, xr) => {
       if (X) return;
       const qs = who(i).sort((a, b) => (a === own ? -1 : b === own ? 1 : 0)), n = qs.length;
-      if (dir === 'r') ps = Math.max(14, Math.min(ps, (xr - x - tw - 4) / Math.ceil(n / 2) - 4, n > 1 ? (th + 4) / 2.72 - 1 : ps));   // (two rows stay within the tile's height)
+      // (beside the tile: two rows within its height; a third or fourth player there fans over the first two, like cards
+      // in a hand, so the stacks never cross into the next player's column)
+      const cols = Math.ceil(n / 2), room = xr - x - tw - 4;
+      if (dir === 'r') ps = Math.max(14, Math.min(Math.max(16, Math.min(ps, room / cols - 4)), n > 1 ? (th + 4) / 2.72 - 1 : ps, room - 6 * (cols - 1)));
       else ps = Math.max(14, Math.min(ps, (xr - xl) / n - 4));
+      const step = cols > 1 ? Math.min(ps + 4, Math.max(6, (room - ps) / (cols - 1))) : 0;
       qs.forEach((q, j) => { const nd = stackEl(q, i, here(i, q), T, Math.floor(ps));
-        if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; put(nd, x + tw + 4 + cc * (ps + 4), y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
+        if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; if (step < ps + 4) nd.classList.add('fan'); put(nd, x + tw + 4 + cc * step, y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
         else { const tot = n * (ps + 4) - 4; put(nd, Math.max(xl, Math.min(xr - tot, x + tw / 2 - tot / 2)) + j * (ps + 4), y + th + 4); } });
     };
     if (!land) {
       compact = H < 380;
-      const rimH = compact ? Math.round(Math.min(104, H * .32)) : Math.round(Math.min(H * (N <= 3 ? .42 : .4), 300));
+      const rimH = compact ? Math.round(Math.min(104, H * .32)) : Math.round(Math.min(H * (N <= 3 ? .42 : N >= 5 && W < 560 ? .45 : .4), 300));
       mine = { x: 0, y: rimH + 6, w: W, h: H - rimH - 6 };
       const colW = W / R;
       rim.forEach((o, k) => {
@@ -2149,7 +2168,8 @@
       });
     }
     // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
-    const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : .36), 280, (rh - 6) / .62)), bh = Math.round(Math.min(rh - 8, mw * .64));
+    // (the tiles as wide as the two-player rows' where the room allows: on an iPad wide and low as there, on a phone taller)
+    const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
     // (your Figures as cards: as big as the row and the room beside the tile allow for the most you have in one row, two
     // at least; the engraved places for the rest of the three are drawn where they fit)
     const sideW = (mine.w - mw) / 2 - 10, most = Math.max(2, Math.max.apply(null, [2 * N, 2 * v + 1, 2 * v].map(i => V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] ? 1 : 0))));
@@ -2172,7 +2192,7 @@
     const bad = () => ns.some(n => { const t = n.closest('.pl-tile'), sl = n.parentNode; return n.scrollWidth > n.clientWidth + 1 || sl.getBoundingClientRect().height > t.getBoundingClientRect().height * .5; });
     let fs = parseFloat(ns[0].style.fontSize) || 12;
     while (bad() && fs > 9) { fs -= .5; ns.forEach(n => { n.style.fontSize = fs + 'px'; }); }
-    if (bad()) ns.forEach(n => { const t = n.closest('.pl-tile'); n.parentNode.remove(); t.classList.add('bare'); });
+    ns.forEach(n => { const t = n.closest('.pl-tile'), sl = n.parentNode; if (n.scrollWidth > n.clientWidth + 1 || sl.getBoundingClientRect().height > t.getBoundingClientRect().height * .5) { sl.remove(); t.classList.add('bare'); } });
   }
   // The roads, drawn from where the tiles lie: each spoke's Gate to its Outpost, each Outpost to the Crossroads, and
   // round the ring from Outpost to Outpost; lit gold where the Figure picked up can walk.

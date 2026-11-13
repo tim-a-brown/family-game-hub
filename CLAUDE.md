@@ -704,8 +704,12 @@ Underlying principles for everything:
   Domains (Crossroads, Outpost, Gate) are the two-player rows (`rowEl(i, T, {many})`) with everyone else's Figures there
   as stacks on the left (`stackEl`, seat order from your left), and each other spoke is a column on its player's mat
   (`matN`, built once and moved) along the top, a row down the left sideways: a plate (`plateEl`, a strip in small, so
-  every `.an-strip.pN` selector finds it), the Gate and Outpost (`rimTile`; a name only where it can be 9px or more, the
-  same size on every rim tile, `nameFs`; a short phone folds to tokens) and their stacks. The rim starts with the
+  every `.an-strip.pN` selector finds it), the Gate and Outpost (`rimTile`; a name on every tile where it can be 9px or
+  more, all at one size, `nameFs`, and only a tile whose name can't fit is its picture alone; a short phone folds to
+  tokens) and their stacks (a third or fourth player's at one Domain fans over the first two, so a stack never crosses
+  into the next column). The hand is the two-player table's size (Tim: names and numbers that read): two rows of five
+  on a phone, one row on an iPad, with room kept so the table doesn't jump; your spoke's tiles are as wide as the
+  two-player rows' where the room allows. The rim starts with the
   player on your left (`seatsFrom`, `nextLive`), so the Congress of Vienna's "on your left" is the column at the left.
   Roads are drawn from where the tiles lie (`roadsN`). A Figure's piece is `figN(u)`: its card in your rows or the
   stack it is in; every EV handler aims there, and a Figure joining or leaving a stack flies as a card (`renderFlip`
