@@ -346,7 +346,10 @@ Underlying principles for everything:
     with each deck's own robot, against 9.6 for the five ready decks of before. A changed set is measured again
     (`SWAP='a:b'` tries two cards changing places first). Sor Juana's deck won only 42.4% under the plain Normal robot,
     so Dante went to her writers and scholars and Scott Joplin to Shakespeare's composers (2026-11-13): 46.2% and
-    48.0% after, the Normal spread 13.8 points down to 9.2.
+    48.0% after, the Normal spread 13.8 points down to 9.2. The Relic powers of 2026-11-13 took Sor Juana to 45.0 and Leonardo to 49.2 (Tim: "tweak sor juana and
+    leonardo to balance"): Rabindranath Tagore took Christopher Wren's place and the Stick Chart the Inca Rope Bridge's in
+    hers, and Captain Cook the Voyaging Canoe's in his (the three that left are found only in packs): 48.3 and 50.4, the
+    spread 8.5 points down to 6.5 (relics-2026-11-13b.txt).
   - **The sphere** (`SIGNS` 12): a finished game lights 1 sign, a win 2 and your first win of the day 3 (`LIGHT`),
     however the game is played ("a game earns the same however it's played", Tim). A full turn gives a pack of `PACK`
     (5), and on the turns in `GUIDE_TURNS` a Guide you don't have joins you with their set.
@@ -1030,7 +1033,7 @@ Underlying principles for everything:
   (Stirrup, 1; a Figure that walked can still clash, `f.gar`), **Rebuilding** (Inca Rope Bridge, 2; once a game at the
   count), **Homecoming** (Cyrus Cylinder, 1; once a round, a knocked-out Figure back into the hand; with Rapa Nui as well
   "the Figure's owner chooses", `S.pend` k `home`, and the robots take the hand), **Bastion** (Greek Fire, 2; +1 Might
-  defending at your Gate or Outpost), **Volley** (Mysore Rockets, 2; once a turn a clash with an enemy at the next Domain
+  defending at your Gate or Outpost), **Volley** (Mysore Rockets, 3 since Tim's choice the same day: 53.1% at 2, 50.1% at 3; once a turn a clash with an enemy at the next Domain
   along the roads, `a.rk`: fought at the target's Domain, by its rules and its home region, and "the attacker cannot be
   knocked out by it ... if the attacker loses, nothing happens to it"; `E.clashM` gives the two Mights the road and a drag
   show), **Decipher** (Rosetta Stone, 2; each Legacy Line scores 1 more), **Far sight** (Telescope, 1; "Each opponent shows

@@ -297,7 +297,7 @@ const turnGame = (lay) => { const S = game(lay); S.P.forEach(p => { p.deck = ['s
   ok('bastion: +1 defending at your Gate and your Outpost', after[0][0] === before[0][0] + 1 && after[1][0] === before[1][0] + 1);
   ok('bastion: not at the Crossroads, not attacking or holding', after[2][0] === before[2][0] && after[0][1] === before[0][1] && after[0][2] === before[0][2]); }
 // Volley: Mysore Rockets
-{ says('rockets', 'Once a turn, one of your Figures can start a clash with an enemy Figure at the next Domain, without moving. If your Figure loses, nothing happens to it.'); power('rockets', 'rockets', 2);
+{ says('rockets', 'Once a turn, one of your Figures can start a clash with an enemy Figure at the next Domain, without moving. If your Figure loses, nothing happens to it.'); power('rockets', 'rockets', 3);
   const S = game(); S.P[0].relics = ['rockets']; const a = fig(S, 'boudica', 0, 1), d = fig(S, 'spartacus', 1, 4), far = fig(S, 'socrates', 1, 3);
   const v = acts(S, 'clash').filter(x => x.rk); ok('volley: at the next Domain only', v.length && v.every(x => x.v === d.u), v);
   E.apply(S, v.find(x => !x.ph), 0, 6); ok('volley: losing does nothing to the Figure that fired, and it stays', E.byU(S, a.u) && a.p === 1 && E.byU(S, d.u));

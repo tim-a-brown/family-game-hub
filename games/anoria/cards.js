@@ -458,7 +458,7 @@ const P5 = {
   fadlan: F('Ibn Fadlan', 'W', 1, 1, 'MIDEAST', 3, 922, { voyager: 1 }),
   // Relics
   greekfire: { n: 'Greek Fire', t: 'relic', f: 'N', c: 2, y: 672 },
-  rockets: { n: 'Mysore Rockets', t: 'relic', f: 'N', c: 2, y: 1780 },
+  rockets: { n: 'Mysore Rockets', t: 'relic', f: 'N', c: 3, y: 1780 },
   chronometer: { n: 'Harrison\'s Watch', t: 'relic', f: 'N', c: 3, fx: 'balloon', y: 1761 },
   stickchart: { n: 'Stick Chart', t: 'relic', f: 'N', c: 1, fx: 'compass', y: 1862 },
   raingauge: { n: 'Rain Gauge', t: 'relic', f: 'N', c: 2, fx: 'abacus', y: 1441 },
@@ -731,7 +731,7 @@ Object.keys(ARCH).forEach(k => { ARCH[k].stack = STACKS[k]; });
 const BASE = 'hypatia archimedes euclid socrates pericles boudica spartacus homer sappho coleman magellan pythagoras sacagawea andersen compass tablet eureka eclipse marathonmarch veto'.split(' ');
 const GSET = {
   cleopatra: 'tutankhamun hatshepsut thutmose hammurabi theodora caesar augustus ramesses constantine marcus rosetta decree kadesh tomb triumph hieroglyphs virgil eratosthenes charlemagne milan'.split(' '),
-  leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer voyagingcanoe fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
+  leonardo: 'zhenghe marcopolo copernicus galileo leif bly gutenberg michelangelo antikythera press longship wrightflyer cook fairwinds medici david naovictoria caperoute telescope verne'.split(' '),
   tubman: 'sittingbull artemisia douglass bolivar lincoln anthony stanton thoreau chiefjoseph oakley houdini twain birchbark brownsbox emancipation planter crossing vesuvius canasatego nanny'.split(' '),
   suntzu: 'leonidas yoshitsune genghis yisunsin lapulapu scipio arminius alexander themistocles musashi blackbeard grace stirrup phalanx ambush testudo rubicon teutoburg syracuse khutulun'.split(' '),
   shakespeare: 'plato aristotle moliere joplin chaucer mozart beethoven hokusai bach tchaikovsky aeschylus vangogh hiroshige tolstoy encore folio ninth holyyear rite elizabeth'.split(' '),
@@ -741,7 +741,7 @@ const GSET = {
   wuzetian: 'mencius cailun seishonagon libai zhangheng sejong trung confucius murasaki basho shenkuo zhangqian fuhao chingshih paper paiza starchart typhoon brahmagupta qinshihuang'.split(' '),
   akbar: 'lakshmibai darius ashoka suleiman cyrus shahjahan nebuchadnezzar jaisingh sargon enheduanna ashurbanipal victoria khayyam ferdowsi cyruscylinder kudurru wheel exhibition rubaiyat kublai'.split(' '),
   mansamusa: 'sundiata ibnbattuta shaka lalibela hannibal nzinga askia yaa afonso amanirenas menelik equiano manuscripts abacus caravan adwa goldrush hansa columbian imhotep'.split(' '),
-  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe dante pachacuti ropebridge quipu wren pictureshow sequoyah voltaire'.split(' ')
+  sorjuana: 'wheatley austen christine duchatelet hildegard nezahualcoyotl cervantes goethe shelley gentileschi dickinson poe dante pachacuti stickchart quipu tagore pictureshow sequoyah voltaire'.split(' ')
 };
 const DSET = {
   base: 'library silk colosseum acropolis wall stonehenge machu nineveh'.split(' '),
