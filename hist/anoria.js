@@ -70,7 +70,7 @@
     var outs = (d.out || []).map(function (x, i) { return x ? i : -1; }).filter(function (i) { return i >= 0; }), how;
     var list = function (a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; };
     if (w < 0) how = 'The game ended level after ' + d.rounds + ' rounds.';
-    else if (d.how === 'seals' && outs.length) how = list(outs.map(name)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + d.rounds + ', which ended the game, and ' + side(w) + ' had the most Renown of ' + (teams ? 'the teams' : 'the players') + ' still in.';
+    else if (d.how === 'seals' && outs.length) how = list(outs.map(name)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + d.rounds + ', which ended the game, and ' + side(w) + (teams ? ' had the most Renown.' : ' had the most Renown of the players still in.');
     else if (d.how === 'seals') how = side(w) + (teams ? ' were' : ' was') + ' the last ' + (teams ? 'team' : 'player') + ' left with Seals.';
     else how = side(w) + ' reached ' + tg + ' Renown' + (teams ? ' together' : '') + ' first, at the end of round ' + d.rounds + '.';
     var sub = e.mode ? (/^vs Computer \((.+)\)$/.test(e.mode) ? 'The computer played at ' + RegExp.$1 + '.' : e.mode === 'Pass & play' ? N + ' players shared one device.' : '') : '';

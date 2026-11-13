@@ -2108,7 +2108,7 @@
     const stacks = (i, x, y, tw, th, ps, dir, own, xl, xr) => {
       if (X) return;
       const qs = who(i).sort((a, b) => (a === own ? -1 : b === own ? 1 : 0)), n = qs.length;
-      if (dir === 'r') ps = Math.max(14, Math.min(ps, (xr - x - tw - 4) / Math.ceil(n / 2) - 4));
+      if (dir === 'r') ps = Math.max(14, Math.min(ps, (xr - x - tw - 4) / Math.ceil(n / 2) - 4, n > 1 ? (th + 4) / 2.72 - 1 : ps));   // (two rows stay within the tile's height)
       else ps = Math.max(14, Math.min(ps, (xr - xl) / n - 4));
       qs.forEach((q, j) => { const nd = stackEl(q, i, here(i, q), T, Math.floor(ps));
         if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; put(nd, x + tw + 4 + cc * (ps + 4), y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
@@ -3140,7 +3140,7 @@
   function endSaid() {
     const w = S.winner, W = winName(w), outs = S.P.map((p, o) => (p.out ? o : -1)).filter(o => o >= 0), tm = !!G.teams;
     if (w < 0) return 'The game ended level on Renown, Seals and Might.';
-    if (S.how === 'seals' && outs.length && E.liveSides(S).length > 1) return listOf(outs.map(pname)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + S.round + ', and that ends the game. ' + W + ' had the most Renown of the ' + (tm ? 'teams' : 'players') + ' still in, with ' + E.sren(S, w) + '.';
+    if (S.how === 'seals' && outs.length && E.liveSides(S).length > 1) return listOf(outs.map(pname)) + (outs.length > 1 ? ' lost their last Seals' : ' lost the last Seal') + ' in round ' + S.round + ', and that ends the game. ' + W + (tm ? ' had the most Renown, with ' : ' had the most Renown of the players still in, with ') + E.sren(S, w) + '.';
     if (S.how === 'seals') return W + (tm ? ' were' : ' was') + ' the last ' + (tm ? 'team' : 'player') + ' left with Seals.';
     if (E.sren(S, w) >= S.cfg.target) return W + ' reached ' + E.sren(S, w) + ' Renown' + (tm ? ' together' : '') + ' at the end of round ' + S.round + '.';
     return W + ' had the most Renown when the last round ended.';
@@ -3192,8 +3192,8 @@
     const lose = w >= 0 && people && !win.some(human), mine = G.mode === 'cpu' && win.indexOf(0) >= 0;
     const notes = [], earned = (G.rew || []).filter(x => window.AnoriaPacks);
     earned.forEach(x => notes.push(x.t === 'guide' ? TXG[x.g].n + ' joins you as a Guide' : 'A pack of ' + x.pack.n + ': ' + x.pack.why.charAt(0).toLowerCase() + x.pack.why.slice(1)));
-    notes.push(endSaid());
-    S.P.forEach((p, o) => { if (p.out) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left'); });
+    const said = endSaid(); notes.push(said);
+    S.P.forEach((p, o) => { if (p.out && !/ lost (the last Seal|their last Seals) /.test(said)) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left'); });
     const rank = T ? T.map(t => t[0]).sort((a, b) => (E.ally(S, b, w) ? 1 : 0) - (E.ally(S, a, w) ? 1 : 0) || E.sren(S, b) - E.sren(S, a)).map(o => ({ name: teamName(o), score: E.sren(S, o), color: teamCol(o), cpu: !teamOf(o).some(human) }))
       : S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown).map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
