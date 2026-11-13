@@ -2037,7 +2037,7 @@
     const th = Math.floor(Math.min(tw * (L.short ? .5 : L.up ? .86 : .62), H * (L.short ? .3 : L.up ? .2 : .32)));
     const bg = Math.round(sh * .62 + (L.short ? 1 : 3)), band = (H - th - 2 * bg) / 2;
     // (the cards: two side by side in a column on the iPad sideways; one a column wide, overlapping down the table, upright)
-    const fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.4 * .74, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
+    const fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.62 / 1.4, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
     const sw = Math.floor(Math.max(22, Math.min((band - 4) / 1.36, colW * .4, 60)));
     const pn = Math.max(11, Math.min(15, tw * .075)), pr = Math.max(10, Math.min(13.5, tw * .064));
     [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', Math.round(Math.max(18, Math.min(32, tw * .16)))]].forEach(x => st.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
@@ -2064,7 +2064,7 @@
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
       const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
       if (L.ln && L.up) {
-        const ch = b.height, step = Math.min(ch * .58, (r.height - ch) / (n - 1)); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');
+        const ch = b.height, step = Math.min(ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows)
         if (sd.classList.contains('R')) ks.forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(n - j + 1); });   // (yours: each card over the next, so the names below show)
         return;
       }
