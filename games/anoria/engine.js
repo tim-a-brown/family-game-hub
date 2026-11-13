@@ -150,6 +150,11 @@ const posOf = (S, w) => { for (let i = 0; i < S.places.length; i++) if (pw(S, i)
 // saved before then finishes under; the page keeps each game's own target, see restore() in ui.js).
 // rounds: the round limit, see scripts/anoria/variants.txt ("Decks of 40", "First to 25").
 const OLD_TARGET = 30;
+// The Renown that wins by the size of a side (2026-11-13, scripts/anoria/players-2026-11-13.txt): 20 for each player on
+// the side, and 5 more. A player on their own (two players, or everyone for themselves at any count): 25, the game's
+// target; a team of two: 45; a team of three: 65. Each keeps a game near the 7 to 8 rounds two players take today.
+// The page passes it as cfg.target (teams: the size of the teams, which are all one size).
+const targetFor = (teams) => 20 * (teams && teams.length ? teams[0].length : 1) + 5;
 // dm: the game is played with Domains (2026-11-11). It is what play() goes by when a test hands it no stacks (each
 // deck then brings its ready stack, or fifteen Domains at random: stacksFor); '{"dm":0}' plays the old fixed map.
 // newGame() goes only by the stacks it is given, so a lesson's table and a game saved before Domains are untouched.
@@ -841,7 +846,8 @@ function apply(S, a, da, dd, raw) {
   else if (a.t === 'deed') {
     const ci = P.hand[a.h], fx = fxOf(ci), tsrc = threadSrc(S, o, ci); P.spark -= costOf(S, o, ci); P.uN++; P.uD = 1; if (S.st) S.st.played[o][ci] = 1; if (S.ev) S.ev.push({ t: 'deed', o: o, c: ci, p: a.p, u: a.u, v: a.v, w: a.w });
     // The Tribune's Veto plays itself, paid for with Spark its player kept: the Deed does nothing and goes to the discard pile
-    for (let q = 0; q < S.N; q++) { if (ally(S, q, o) || S.P[q].out) continue; const Q = S.P[q], vh = handFx(Q, 'veto'); if (vh < 0 || !vetoable(S, o, q, a, fx)) continue; const vc = Q.hand[vh], vx = costOf(S, q, vc); if (Q.reserve < vx) continue;
+    for (let k = 1; k < S.N; k++) { const q = (o + k) % S.N; if (ally(S, q, o) || S.P[q].out) continue; const Q = S.P[q], vh = handFx(Q, 'veto');   // (from the player's left round the table: the first opponent who can stop it does)
+      if (vh < 0 || !vetoable(S, o, q, a, fx)) continue; const vc = Q.hand[vh], vx = costOf(S, q, vc); if (Q.reserve < vx) continue;
       Q.reserve -= vx; Q.hand.splice(vh, 1); (Q.gone || (Q.gone = [])).push(vc); P.hand.splice(a.h, 1); (P.gone || (P.gone = [])).push(ci);
       if (S.ev) S.ev.push({ t: 'veto', o: q, c: vc, d: ci, by: o }); if (S.st) { S.st.played[q][vc] = 1; S.st.use = S.st.use || {}; S.st.use.veto = (S.st.use.veto || 0) + 1; }
       threadPlay(S, q, vc, threadSrc(S, q, vc)); printed(S, o, prt); return; }
@@ -1256,6 +1262,6 @@ function play(decks, guides, profs, cfg, seed, stacks) {
 }
 return { kOf, noClash, clashable, play, ko, PROF, rng, shuffle, DEF, STD, OLD_TARGET, newGame, clone, actions, apply, evalS, mights, holder, holderM, might, costOf, walkDests, cnt, room, stake, gateOf, isGate, ownerOfSpoke, enemySide, byU,
   startTurn, endTurn, endRound, firstOf, aiPick, aiTurn, discard, diceOdds, rollClash, threadSrc, fxOf, hasFx, relicOf, quicks, CARDS, PLACES,
-  ally, sideOf, sren, liveSides, nextLive, order, nLive, MW,
+  targetFor, ally, sideOf, sren, liveSides, nextLive, order, nLive, MW,
   pw, rv, silenced, prot, capAt, track, setupOptions, setupLay, setupRoll, setupAuto, setupPick, setupFixed, stacksFor, pendActions, pendPick, layDomain, turnDomain, permute, deckInfo, layScore, LAYV };
 });
