@@ -684,6 +684,7 @@
   function openView(key, o) {
     o = o || {};
     if (o.list && o.list.length > 1) return browse(o.list, Object.assign({ at: Math.max(0, o.list.indexOf(key)) }, o));
+    if (!o.lesson && !o.room && sideFits()) { closeView(); return sideRead(key, o); }   // (an iPad sideways: beside the table)
     closeView(); Kit.sfx('flip'); Kit.haptic('light');
     const c = info(key), notes = notesFor(key, o), f = o.u != null && S ? E.byU(S, o.u) : null;
     const card = cardEl(key, { might: f ? E.might(S, f, 0) : null, tg: !o.lesson, hush: !!(f && f.hush) });
@@ -708,6 +709,43 @@
     requestAnimationFrame(() => requestAnimationFrame(() => v.classList.add('show')));
   }
 
+  // ═══ Beside the table: the reader and the turn log on an iPad held sideways ═════════════════════════════════
+  // (the audit of 2026-11-13, #3.4 and #6.1: every way of looking closer covered the table.) On a screen wide enough
+  // and tall enough (an iPad sideways) a card read on its own and the turn log open in a panel at the right, and the
+  // table steps aside into the room left, still in play: the board, the hand and End turn stay where a tap reaches them.
+  // A card name tapped in the log opens the card in the same panel, with the way back to the log above it.
+  const sideFits = () => !!(G && !G.demo && S && dom.root && dom.root.isConnected && window.innerWidth > window.innerHeight && window.innerWidth >= 960 && window.innerHeight > 600);
+  let sideEl = null;
+  function closeSide(quiet) {
+    if (!sideEl) return; const n = sideEl; sideEl = null; n.classList.remove('show'); setTimeout(() => n.remove(), 240);
+    if (dom.root) { dom.root.classList.remove('side-on'); if (!quiet && G && dom.root.isConnected) render(); }
+  }
+  function sidePanel(title, back) {
+    const w = Math.round(Math.min(420, Math.max(300, window.innerWidth * .3)));
+    if (!sideEl) {
+      sideEl = el('aside', { class: 'an-side', role: 'complementary' });
+      document.body.appendChild(sideEl); requestAnimationFrame(() => requestAnimationFrame(() => { if (sideEl) sideEl.classList.add('show'); }));
+      dom.root.classList.add('side-on');
+    }
+    document.documentElement.style.setProperty('--sidew', w + 'px');
+    sideEl.innerHTML = ''; sideEl.setAttribute('aria-label', title);
+    const body = el('div', { class: 'sd-b' });
+    sideEl.appendChild(el('header', { class: 'sd-h' }, [back ? el('button', { type: 'button', class: 'icon-btn sd-back', 'aria-label': back.label, html: Kit.icon('back'), onclick: () => { Kit.sfx('tap'); back.fn(); } }) : null,
+      el('h2', { text: title }), el('button', { type: 'button', class: 'icon-btn sd-x', 'aria-label': 'Close', html: Kit.icon('close'), onclick: () => { Kit.sfx('tap'); closeSide(); } })]));
+    sideEl.appendChild(body);
+    render();
+    return body;
+  }
+  // a card read on its own, in the panel: the card as wide as the panel, what is written about it under it
+  function sideRead(key, o) {
+    o = o || {}; Kit.sfx('flip'); Kit.haptic('light');
+    const f = o.u != null && S ? E.byU(S, o.u) : null, back = o.back;
+    const body = sidePanel(info(key).n, back), w = Math.min(380, (parseFloat(document.documentElement.style.getPropertyValue('--sidew')) || 400) - 40);
+    const card = cardEl(key, { might: f ? E.might(S, f, 0) : null, tg: true, hush: !!(f && f.hush) }); card.style.fontSize = (w / 30) + 'px';
+    body.appendChild(el('div', { class: 'sd-card' }, [card]));
+    const nt = notesFor(key, o); nt.classList.add('sd-notes'); body.appendChild(nt);
+    body.scrollTop = 0;
+  }
   // ═══ A bunch of cards to read ════════════════════════════════════════════════════════════════════════════
   // Tim: "use the lorcana carousel mechanics to scroll through bunches of cards". Every card has a spot on one
   // strip. pos is a float index: the card at pos faces you, the others fan out and turn away on each side.
@@ -1585,7 +1623,7 @@
   function clearSave() { lsSet(SAVE, null); Kit.resume.clear(); }
   // (a saved game that holds a card which has left the set is played on as it was, with that card: cards.js RETIRED)
   function readSave() { let d = null; try { d = JSON.parse(lsGet(SAVE)); } catch (e) {} return d; }
-  function stop() { gen++; ui.demoIdle = false; ui.clashHold = null; if (ui.ackGo) { const go = ui.ackGo; ui.ack = null; ui.ackGo = null; go(); } if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
+  function stop() { closeSide(true); gen++; ui.demoIdle = false; ui.clashHold = null; if (ui.ackGo) { const go = ui.ackGo; ui.ack = null; ui.ackGo = null; go(); } if (window.AnoriaGuide) window.AnoriaGuide.halt(); document.documentElement.classList.remove('an-fast'); ui.sel = null; ui.busy = false; ui.discard = false; undoStack = []; closeView(); try { Kit.handoff.close(); } catch (e) {} document.querySelectorAll('.clash,.show-card,.an-banner,.an-story').forEach(n => n.remove()); if (dom.fx) dom.fx.innerHTML = ''; }
   // (a player from before decks could be built: their ready deck by name)
   function deckOf(p) { if (!p.cards) { const A = C.ARCH[p.deck] || C.ARCH.Explorers; p.cards = A.cards.concat(A.cards); p.guide = A.guide; } return p; }
   // A player's Domain stack: the one that came with the game's set-up, or the one saved with their deck (a ready
@@ -2539,7 +2577,8 @@
   // it out again left every tile with its old paper height after an iPad turned (Tim, 2026-11-13: "trying to rotate
   // between the orientations messed up the cards fully"). Safari can report the old size when the event fires, so the
   // table is drawn once more a moment later.
-  const reTable = () => { if (G && dom.root && dom.root.isConnected) render(); };
+  const reTable = () => { if (sideEl && !sideFits()) closeSide(true); if (G && dom.root && dom.root.isConnected) render(); };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && sideEl && !viewEl && !document.querySelector('.k-scrim.show, .an-screen')) closeSide(); });
   const onSize = () => { clearTimeout(rsT); rsT = setTimeout(() => { reTable(); clearTimeout(rsT2); rsT2 = setTimeout(reTable, 350); }, 80); };
   let rsT2 = 0; window.addEventListener('resize', onSize); window.addEventListener('orientationchange', onSize);
   if (window.visualViewport) window.visualViewport.addEventListener('resize', onSize);
@@ -3508,11 +3547,12 @@
   function logEnd() { if (!G || G.demo || !G.log) return; if (S.N > 2) { G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : endSaid()] }); return; } G.log.push({ h: 'e', x: [S.winner < 0 ? 'The game was a draw.' : pname(S.winner) + ' won' + (S.how === 'seals' ? ' by breaking all of ' + Kit.poss(pname(1 - S.winner)) + ' Seals.' : ' with ' + S.P[S.winner].renown + ' Renown.')] }); }
   function logScreen() {
     if (!G || G.demo) return; Kit.sfx('tap');
-    const sc = screen({ title: 'Turn log', cls: 'an-log' }), L = G.log || [], groups = []; let cur = null;
+    const beside = sideFits(), sc = beside ? { body: sidePanel('Turn log') } : screen({ title: 'Turn log', cls: 'an-log' }), L = G.log || [], groups = []; let cur = null;
+    if (beside) sideEl.classList.add('log');
     L.forEach(e => { if (e.h === 't' || e.h === 'c' || e.h === 'e' || !cur) { cur = { head: e.h ? e : null, lines: [] }; groups.push(cur); if (e.h === 'e' || !e.h) cur.lines.push(e); } else cur.lines.push(e); });
     const name = k => k[0] === '@' ? theName(k) : CARDS[k] ? (CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n) : k;
     const line = e => el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, (e.x || []).map(x => typeof x === 'string' ? document.createTextNode(DW(x))
-      : el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => openView(x.k.replace(/^@/, '')) })));
+      : el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => (beside && sideEl ? sideRead(x.k.replace(/^@/, ''), { back: { label: 'Back to the turn log', fn: logScreen } }) : openView(x.k.replace(/^@/, ''))) })));
     if (!groups.length) sc.body.appendChild(el('p', { class: 'lg-none', text: 'Nothing has happened yet. Every card played, every clash and every count is written here as the game goes.' }));
     // (the newest turn first; inside a turn, things in the order they happened)
     groups.slice().reverse().forEach(g => { const h = g.head, box = el('section', { class: 'lg-g' + (h && h.h === 'c' ? ' cnt' : h && h.h === 'e' ? ' end' : h && h.o >= 0 ? ' o' + h.o : '') });
