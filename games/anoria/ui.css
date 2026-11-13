@@ -1353,3 +1353,157 @@ button.ll-n{cursor:pointer;}
 .pl.wn-t .cg-n{left:0;top:0;z-index:8;transform:translate(-35%,-35%);width:22px;height:22px;font-size:.8rem;} .pl.wn-t .cg-n.on{transform:translate(-35%,-35%) scale(1.15);}
 /* (a third or fourth player's stack at one rim Domain fans over the first two, with a shadow on its left edge) */
 .an-map > .stk.fan{filter:drop-shadow(-2px 0 2px rgba(0,0,0,.7));}
+
+/* ══ The two-player table: A3, the battle line (Tim, 2026-11-13: "in the battle line layout, try putting my mat on
+   the left side, opponent's on the right and moving the opponent's scorebar to the right corner as well ... i still
+   wanted the domains horizontal. switching the mat layout would better denote which gate/outpost belongs to whom").
+   On an iPad and any screen wider than tall (.bl) the five Domains lie in a row across the table, your Gate at the
+   far left and theirs at the far right; your mat lies under the left half and theirs under the right, meeting in a
+   seam down the Crossroads. Their Figures stand above the line and yours below, as the cards themselves. Their bar
+   rides the top right corner of their mat and yours the bottom left of yours; the dock along the bottom holds the
+   round track, your hand in one row, the caption and the button for the turn. Upright on an iPad (.up) the cards
+   overlap down the table; sideways on a phone (.short) each side's cards at a Domain are one stack. A phone held
+   upright (.rw) keeps the line on its end, their Gate at the top. ui.js layMode, layoutLine and piles. ══ */
+.an .an-felt.bl{--aw:clamp(236px,27vw,320px);grid-template-columns:minmax(0,1fr) var(--aw);grid-template-rows:minmax(0,1fr) auto auto auto;grid-template-areas:"map map" "trk trk" "hand cap" "hand go";column-gap:18px;row-gap:6px;}
+.an .an-felt.bl.up{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map map" "trk trk" "cap go" "hand hand";row-gap:8px;}
+.an .an-felt.bl.short{--aw:clamp(210px,30vw,290px);row-gap:2px;column-gap:12px;padding:3px 6px 4px;}
+.an .an-felt.bl > .an-mats{grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+.an .an-felt.bl .an-pm.top{grid-row:1;grid-column:2;} .an .an-felt.bl .an-pm.bot{grid-row:1;grid-column:1;}
+.an .an-felt.bl > .an-cap{grid-area:cap;align-self:end;flex-wrap:nowrap;align-content:flex-end;row-gap:6px;padding:0 2px;}
+.an .an-felt.bl:not(.up) > .an-cap:has(> .cap-card) > .cap-round{display:none;}   /* (a card picked up: its words have the room; the round is on the track) */
+.an-felt.bl > .an-cap .cap-card .tx{font-size:1rem;}
+.an-felt.bl.up > .an-cap{align-self:center;}
+.an-felt.bl .an-hand .ac.mini .ac-name{font-size:clamp(3.2em,11px,4.2em);overflow-wrap:normal;}
+.an .an-felt.bl > .an-go{grid-area:go;display:flex;align-items:stretch;min-width:0;}
+.an .an-felt.bl > .an-go .st-go{flex:1;min-height:54px;margin:0 0 3px;font-size:1.3rem;}
+.an .an-felt.bl.up > .an-go .st-go{min-width:180px;min-height:54px;}
+.an .an-felt.bl.short > .an-go .st-go{min-height:42px;font-size:1.05rem;}
+.an .an-felt.bl > .an-hand{grid-area:hand;align-items:center;align-content:center;padding:4px 0 0;}
+.an .an-felt.bl.short > .an-hand{padding:2px 0 0;}
+.an-go:empty{display:none;}
+.an-hand.over .hc{filter:drop-shadow(-3px 0 4px rgba(0,0,0,.45));}
+/* the bars: one line each, riding the far corners of the mats (theirs top right, yours bottom left) */
+.an .an-felt:is(.bl,.rw) > .an-strip{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:12px;--gw:34px;
+  background:rgba(12,16,32,.86);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--pc) 60%,transparent),0 6px 14px rgba(0,0,0,.45);}
+.an .an-felt:is(.bl,.rw) > .an-strip.on{box-shadow:0 0 0 2px var(--pc),0 0 16px color-mix(in srgb,var(--pc) 45%,transparent),0 6px 14px rgba(0,0,0,.45);}
+.an .an-felt.bl > .an-strip{grid-area:map;z-index:4;width:max-content;max-width:calc(100% - 12px);box-sizing:border-box;}
+.an .an-felt.bl > .an-strip.opp{align-self:start;justify-self:end;margin:2px 2px 0 0;}
+.an .an-felt.bl > .an-strip.me{align-self:end;justify-self:start;margin:0 0 2px 2px;}
+.an-felt:is(.bl,.rw) .an-strip .st-guide{grid-row:auto;flex:none;width:var(--gw);aspect-ratio:5/6.2;}
+.an-felt:is(.bl,.rw) .an-strip :is(.st-top,.st-bot){display:flex;align-items:center;gap:9px;min-width:0;flex:none;}
+.an-felt:is(.bl,.rw) .an-strip .st-track,.an-felt.bl .an-strip .st-fill{display:none;}
+.an-felt:is(.bl,.rw) .an-strip .st-ren{flex:none;min-width:0;}
+.an-felt:is(.bl,.rw) .an-strip .st-name{max-width:none;font-size:1.2rem;}
+.an-felt:is(.bl,.rw) .an-strip .seal{width:22px;height:22px;} .an-felt:is(.bl,.rw) .an-strip .relic{width:30px;height:30px;}
+.an-felt:is(.bl,.rw) .an-strip .st-ren .lau{width:42px;height:32px;} .an-felt:is(.bl,.rw) .an-strip .st-ren b{font-size:.95rem;}
+.an-felt:is(.bl,.rw) .an-strip .st-spark{width:32px;height:38px;} .an-felt:is(.bl,.rw) .an-strip .st-spark b{font-size:1rem;}
+.an-felt:is(.bl,.rw) .an-strip .st-hand{width:22px;height:30px;}
+.an .an-felt.bl.short > .an-strip,.an .an-felt.rw > .an-strip{gap:7px;padding:3px 9px 3px 3px;border-radius:9px;--gw:24px;}
+.an .an-felt.bl.short > .an-strip{flex-direction:column;justify-content:flex-start;gap:5px;padding:3px 3px 5px;width:auto;max-width:none;max-height:100%;--gw:30px;overflow:hidden;}
+.an .an-felt.bl.short > .an-strip.opp{align-self:start;margin:1px 1px 0 0;} .an .an-felt.bl.short > .an-strip.me{align-self:end;margin:0 0 1px 1px;}
+.an-felt.bl.short .an-strip :is(.st-top,.st-bot){flex-direction:column;gap:5px;}
+.an-felt.bl.short .an-strip .st-name{writing-mode:vertical-rl;transform:rotate(180deg);font-size:.86rem;letter-spacing:.04em;}
+.an-felt.bl.short .an-strip .st-name i{display:none;}
+.an-felt.bl.short .an-strip .st-seals{gap:1px;} .an-felt.bl.short .an-strip .seal{width:13px;height:13px;}
+.an-felt.bl.short .an-strip :is(.st-relics,.st-dip){padding:6px 0 0;} .an-felt.bl.short .an-strip :is(.st-relics,.st-dip)::before{left:12%;right:12%;top:0;bottom:auto;width:auto;height:1px;background:linear-gradient(90deg,transparent,rgba(233,207,134,.45),transparent);}
+.an-felt.bl.short .an-strip .st-hand{margin:0 4px 2px 0;}
+.an-felt.bl.short .an-map.bl .stk .m{display:none;}   /* (the total is on the line's shield) */
+.an:has(> .an-mat > .an-felt.bl.short){padding-top:1px;} .an-mat:has(> .an-felt.bl.short){padding:3px;}
+.an-felt:is(.short,.rw) .an-strip :is(.st-top,.st-bot){gap:6px;}
+.an-felt:is(.short,.rw) .an-strip .st-name{font-size:.95rem;gap:4px;}
+.an-felt:is(.short,.rw) .an-strip .st-name i{width:7px;height:7px;}
+.an-felt:is(.short,.rw) .an-strip .seal{width:15px;height:15px;} .an-felt:is(.short,.rw) .an-strip .relic{width:21px;height:21px;}
+.an-felt:is(.short,.rw) .an-strip .st-seals,.an-felt:is(.short,.rw) .an-strip .st-relics{gap:2px;}
+.an-felt:is(.short,.rw) .an-strip .st-ren .lau{width:31px;height:24px;} .an-felt:is(.short,.rw) .an-strip .st-ren b{font-size:.74rem;}
+.an-felt:is(.short,.rw) .an-strip .st-spark{width:22px;height:27px;} .an-felt:is(.short,.rw) .an-strip .st-spark b{font-size:.78rem;}
+.an-felt:is(.short,.rw) .an-strip .st-hand{width:16px;height:22px;} .an-felt:is(.short,.rw) .an-strip .st-hand b{font-size:.58rem;min-width:14px;height:14px;line-height:14px;}
+.an-felt:is(.short,.rw) .an-strip .st-spark .pay{top:-8px;font-size:.6rem;}
+/* a phone held upright: their bar across the top, yours above the dock, the caption and the button side by side */
+.an .an-felt.rw{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto auto auto;grid-template-areas:"opp opp" "map map" "me me" "cap go" "hand hand";column-gap:8px;}
+.an .an-felt.rw > .an-strip .st-fill{display:block;flex:1;}
+.an .an-felt.rw > .an-strip .st-bot{flex:1;}
+.an .an-felt.rw > .an-go{grid-area:go;display:flex;align-items:center;}
+.an .an-felt.rw > .an-go .st-go{min-height:44px;min-width:104px;margin:0 0 3px;padding:0 12px;font-size:1.05rem;}
+.an .an-felt.rw > .an-hand{padding-left:8px;padding-right:8px;}
+.an .an-felt.rw.has-trk > .an-strip.me{margin-top:12px;}   /* (clear of the round track under the map) */
+
+/* the map as a line: five columns, the other player's band above each tile and yours below it */
+.an-map.bl{grid-template-rows:minmax(0,1fr);grid-template-columns:repeat(5,minmax(0,1fr));gap:0 var(--cg,8px);box-sizing:border-box;}
+.an-map.bl .an-road{left:calc(var(--colw) / 2);right:calc(var(--colw) / 2);top:var(--ry,50%);bottom:auto;width:auto;height:0;border-left:0;border-top:2px dotted rgba(233,207,134,.6);transform:translateY(-1px);}
+.an-map.bl .pl{align-items:stretch;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) var(--th) minmax(0,1fr);row-gap:var(--bg);padding:0;border-radius:12px;min-width:0;}
+.an-map.bl .pl-side{height:auto;min-height:0;min-width:0;justify-content:center;gap:0;}
+.an-map.bl .pl-side.L{grid-row:1;flex-direction:row;align-items:flex-end;}
+.an-map.bl .pl-side.R{grid-row:3;flex-direction:row;align-items:flex-start;}
+.an-map.bl .pl-side > * + *{margin-left:var(--ov,6px);}
+.an-felt.up .an-map.bl .pl-side.L{flex-direction:column-reverse;align-items:center;justify-content:flex-start;}
+.an-felt.up .an-map.bl .pl-side.R{flex-direction:column;align-items:center;justify-content:flex-start;}
+.an-felt.up .an-map.bl .pl-side.L > * + *{margin-left:0;margin-bottom:var(--ov,6px);}
+.an-felt.up .an-map.bl .pl-side.R > * + *{margin-left:0;margin-top:var(--ov,6px);}
+.an-map.bl .pl-tile{grid-row:2;grid-column:1;justify-self:center;align-self:stretch;width:var(--tw);margin:0;overflow:visible;}
+.an-map.bl .pl.tgt{background:linear-gradient(180deg,rgba(233,207,134,.08),rgba(233,207,134,.18) 50%,rgba(233,207,134,.08));box-shadow:inset 0 0 0 1.5px rgba(233,207,134,.7);}
+.an-map.bl .pl.tgt .pl-tile{box-shadow:0 0 0 2px #fff3c4,0 0 22px 5px rgba(255,214,120,.7),0 6px 14px rgba(0,0,0,.55);animation:an-pulse 1.2s infinite;}
+.an-map.bl .pl-pos.R{display:none;}
+.an-map.bl .pl-pos.L{left:calc(50% - var(--tw) / 2 + 3px);top:calc(var(--band) + var(--bg) + 3px);width:20px;height:20px;padding:3px;box-sizing:border-box;transform:translate(-50%,-50%);border-radius:50%;background:#10142a;box-shadow:0 0 0 1.5px currentColor;opacity:1;z-index:8;}
+.an-felt.short .an-map.bl .pl-pos.L{width:15px;height:15px;padding:2px;}
+/* (a decree's +Might rides its side's shield like a seal on a ribbon: at the top shield's upper right, the bottom one's lower right) */
+.an-map.bl .pl-decree{z-index:8;width:calc(var(--sh) * .6);font-size:calc(var(--sh) * .28);transform:none;translate:-50% -50%;}
+.an-map.bl .pl-decree.L{right:auto;left:calc(50% + var(--sh) * .46);top:calc(var(--band) + var(--bg) - var(--sh) * .58);}
+.an-map.bl .pl-decree.R{left:calc(50% + var(--sh) * .46);top:calc(var(--band) + var(--bg) + var(--th) + var(--sh) * .9);}
+.an-map.bl .cg-n{top:calc(var(--band) + var(--bg) + var(--th) / 2);transform:translate(calc(-50% - var(--tw) / 2),-50%);}
+.an-map.bl .cg-n.on{transform:translate(calc(-50% - var(--tw) / 2),-50%) scale(1.15);}
+/* the Might totals on the game's shields, theirs above the tile and yours below; the one ahead glows */
+.an-map.bl .pl-tots{inset:0;left:0;right:0;top:0;display:block;z-index:7;}
+.an-map.bl .pl-tile .pl-tot{position:absolute;left:50%;width:var(--sh);height:calc(var(--sh) * .91);min-width:0;padding:0 0 calc(var(--sh) * .1);box-sizing:border-box;border-radius:0;display:grid;place-items:center;
+  background:url(ui/mark-might.webp) center/contain no-repeat;box-shadow:none;font:400 calc(var(--sh) * .46)/1 var(--slab);color:var(--an-ink);transform:none;opacity:1;
+  filter:drop-shadow(0 0 1.2px var(--tc)) drop-shadow(0 2px 2px rgba(0,0,0,.6));transition:scale .2s,filter .2s;}
+.an-map.bl .pl-tile .pl-tot.L{top:0;translate:-50% -64%;}
+.an-map.bl .pl-tile .pl-tot.R{top:auto;bottom:0;translate:-50% 76%;}
+.an-map.bl .pl-tile .pl-tot.win{scale:1.17;filter:drop-shadow(0 0 2px var(--tc)) drop-shadow(0 0 7px var(--tc)) drop-shadow(0 2px 2px rgba(0,0,0,.6));}
+.an-map.bl .pl-tile .pl-tot.lose,.an-map.bl .pl-tile .pl-tot.zero{filter:grayscale(.75) brightness(.72) drop-shadow(0 2px 2px rgba(0,0,0,.6));display:grid;}
+.an-map.bl .pl-tile .pl-flag{left:auto;right:9%;transform:none;}
+.an-map.bl .pl-tile .pl-flag.drop{animation-name:an-dropln;}
+@keyframes an-dropln{0%{transform:translateY(-110%);}100%{transform:none;}}
+
+/* a Figure on the map as its card: its player's colour round its edge, and a tab on the side that faces the line */
+.fp.card{width:var(--fw);height:calc(var(--fw) * 1.4);}
+.fp.card > .ac{position:absolute;left:0;top:0;font-size:calc(var(--fw) / 30);pointer-events:none;box-shadow:0 0 0 .07em #0a0d17,0 0 0 calc(2px + .06em) var(--pc),0 .5em 1.2em rgba(0,0,0,.55);transition:box-shadow .2s,filter .2s;}
+.fp.card > .ac .ac-name{font-size:3.7em;}
+.an-map.bl .fp.card > .ac .ac-name{font-size:clamp(3.4em,11.5px,4.3em);line-height:.98;overflow-wrap:normal;}
+.an-felt.up .an-map.bl .pl-side > .fp + .fp .fp-tab{display:none;}   /* (in a cascade only the card nearest the line shows its tab: the others' would lie on the names) */
+.fp.card > .ac.m-up .ac-st b{color:#1c6b2c;} .fp.card > .ac.m-dn .ac-st b{color:#a3201d;}
+.fp.card.home > .ac .ac-mh .hp{fill:#f4c64e;} .fp.card.home > .ac .ac-mh .dm-home{filter:drop-shadow(0 0 2px rgba(255,214,106,.95));}
+.fp-tab{position:absolute;z-index:1;left:50%;width:36%;height:8px;translate:-50% 0;border-radius:0 0 5px 5px;background:var(--pc);box-shadow:0 0 0 1px rgba(0,0,0,.55);pointer-events:none;}
+.an-map.bl .pl-side.L .fp-tab{bottom:-6px;}
+.an-map.bl .pl-side.R .fp-tab{top:-6px;border-radius:5px 5px 0 0;}
+.an-map.rw .pl-side .fp-tab{left:auto;top:50%;width:8px;height:34%;translate:0 -50%;}
+.an-map.rw .pl-side.L .fp-tab{right:-6px;border-radius:0 5px 5px 0;} .an-map.rw .pl-side.R .fp-tab{left:-6px;border-radius:5px 0 0 5px;}
+.fp.card.can > .ac{box-shadow:0 0 0 .07em #0a0d17,0 0 0 calc(2.5px + .06em) var(--pc),0 0 14px 3px color-mix(in srgb,var(--pc) 70%,transparent);}
+.fp.card.sel{transform:translateY(-6%) scale(1.06);z-index:20 !important;}
+.an-map.bl .pl-side.L .fp.card.sel{transform:translateY(6%) scale(1.06);}
+.fp.card.sel > .ac{box-shadow:0 0 0 2.5px #fff,0 0 18px 4px var(--pc),0 10px 16px rgba(0,0,0,.55);}
+.fp.card.tgt > .ac{box-shadow:0 0 0 2.5px var(--an-gilt),0 0 18px 4px rgba(233,207,134,.85);animation:an-pulse 1s infinite;}
+.fp.card.insp > .ac{box-shadow:0 0 0 2px var(--an-gilt),0 0 12px 2px rgba(233,207,134,.7);}
+.fp.card.done > .ac{filter:saturate(.55) brightness(.8);}
+.fp.card.stun > .ac{filter:grayscale(.7) brightness(.8);}
+.fp.card:has(.fp-hush) > .ac{filter:saturate(.45) brightness(.86);}
+.fp.card .fp-stun,.fp.card .fp-hush{width:30%;}
+.fp.card .pv-x{top:-9%;z-index:4;}
+.an-map:is(.bl,.rw) .slot{width:var(--fw);height:calc(var(--fw) * 1.4);flex:none;}
+.an-map:is(.bl,.rw) .slot .pv-m{width:46%;} .an-map:is(.bl,.rw) .slot .pv-c{width:38%;}
+.an-felt.short .an-map.bl .slot{width:var(--sw);height:calc(var(--sw) * 1.36);}
+.an-felt.short .an-map.bl .stk{width:var(--sw);--w:var(--sw);}
+.stk-n{position:absolute;z-index:3;right:-14%;top:-10%;min-width:1.25em;height:1.25em;padding:0 .2em;box-sizing:border-box;border-radius:.65em;display:grid;place-items:center;
+  font:400 calc(var(--w,var(--sw,30px)) * .3)/1 var(--slab);color:var(--an-ink);background:#f3e9d2;box-shadow:0 0 0 1.5px var(--pc),0 1px 3px rgba(0,0,0,.6);}
+.an-map.bl .pl-side.L .stk-n{top:auto;bottom:-6%;}
+/* a phone held upright: the cards beside each tile, overlapping when more than fit */
+.an-map.rw .pl-side{gap:0;}
+.an-map.rw .pl-side.R > * + *{margin-left:var(--ov,3px);}
+.an-map.rw .pl-side.L > * + *{margin-right:var(--ov,3px);}
+.an-map.rw .fp.card > .ac .ac-name{font-size:clamp(3.5em,8px,4.7em);overflow-wrap:normal;line-height:.98;}
+
+/* a phone on its side: the game bar folds down to its buttons while a two-player game is on the table */
+html.an-low .gbar{padding-top:calc(var(--safe-t) + 2px);padding-bottom:2px;}
+html.an-low .gbar .icon-btn,html.an-low .gbar.k-tight .k-home{width:38px;height:38px;}
+html.an-low .gbar .icon-btn svg{width:21px;height:21px;}
+html.an-low .gbar .k-home{height:38px;} html.an-low .gbar .k-home .k-home-logo,html.an-low .gbar .k-home .k-home-logo svg{width:26px;height:26px;}
+html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:26px;height:26px;}
