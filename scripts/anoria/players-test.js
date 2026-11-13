@@ -32,6 +32,9 @@ const fig = (S, c, o, p, x) => { const f = Object.assign({ u: U++, c, o, p, rdy:
   // (the Gate of a player who is out: anyone holds it, it scores, and nothing breaks)
   S.figs = []; fig(S, 'leonidas', 1, 4); const r = S.P[1].renown, b = S.P[1].broke; E.endRound(S);
   ok('3: a Gate of a player who is out scores, and breaks nothing', S.P[1].renown === r + 2 && S.P[1].broke === b, [S.P[1].renown, r]); }
+{ const S = game(3); S.P[2].out = 1; S.P[2].seals = 0; ok('3: the empty Gate of a player who is out is nobody\'s', E.holder(S, 4) === -1 && E.holder(S, 0) === 0, [E.holder(S, 4), E.holder(S, 0)]);
+  const T = game(4, [], { cfg: { teams: [[0, 2], [1, 3]] } }); ok('2v2: an empty Gate is its own player\'s', E.holder(T, 2) === 1 && E.holder(T, 4) === 2, [E.holder(T, 2), E.holder(T, 4)]);
+  T.P[2].out = 1; ok('2v2: the empty Gate of a player who is out is nobody\'s, not their teammate\'s', E.holder(T, 4) === -1, E.holder(T, 4)); }
 { const S = game(3); S.P[1].seals = 1; S.P[2].seals = 0; S.P[2].out = 1; fig(S, 'leonidas', 0, 2); E.endRound(S);
   ok('3: one player left wins on Seals', S.over && S.how === 'seals' && S.winner === 0, [S.over, S.how, S.winner]); }
 { const S = game(3); S.P.forEach(p => { p.seals = 1; }); fig(S, 'leonidas', 0, 2); fig(S, 'leonidas', 1, 4); fig(S, 'leonidas', 2, 0); S.P[1].renown = 9; S.P[0].renown = 4;

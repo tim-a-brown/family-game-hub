@@ -118,3 +118,17 @@ mixed decks 50.2% on average (43.2 to 57.1), one pack twice 49.7% (44.3 to 52.5)
   none, one and two copies of a card, to see whether a second copy adds much. `deeds-2026-11-12.txt` has the numbers.
 - `pacing.js` takes three more arguments again: the chance an earned pack holds a Domain, the Domains in a welcome
   pack, and the series the Domain cards are found in. `pacing.txt` has the table.
+
+## Three to six players, and teams (2026-11-13)
+
+- The engine plays 2 to 6 players, everyone for themselves or in teams (`cfg.teams`, teammates on alternating spokes);
+  the header of `games/anoria/engine.js` lists what a game of more players adds to the state and the events.
+- `node scripts/anoria/players.js <shape> [games] [first seed] ['<json>']`: the five ready decks round the table, each
+  with its own robot style, on four threads. Shapes `2` to `6`, `2v2`, `3v3`, `2v2v2`. It says how often each seat
+  wins counted from the first player (each team, from the first player's team), each deck's share, how long games run,
+  how they end and how many players are put out and when. `"prof":"normal"` plays every seat with one robot;
+  `"byN":{"4":{...}}` gives rules to one shape only.
+- `node scripts/anoria/players-test.js`: the rules for more players and teams on tables laid by hand (who is put out,
+  who wins, turn order, set-up rolls, teams, and the cards whose meaning changes with more players).
+- `players-2026-11-13.txt` has the numbers and what they say.
+- A two-player game is untouched: `endings.js` gives the same results line for line.

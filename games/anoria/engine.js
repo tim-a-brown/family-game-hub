@@ -35,6 +35,38 @@ const kOf = (S, f) => { if (f.hush) return NOK; const c = CARDS[f.c]; return (!S
 //   f.vic         an Olympic victor (+1 Might while in play: a marker on the Figure). f.gar: walked into Dunhuang this
 //                 turn, so it can still start a clash there.
 // Diogenes's Silence marker is not kept: it lies on whatever Domain he stands on (silenced(S, i) says what lies on a rule).
+// ── Three to six players, and teams (Tim, 2026-11-11 and 2026-11-13; the numbers: scripts/anoria/players-2026-11-13.txt) ──
+// The map is spokes off the Crossroads (mkMap): player o's Gate is 2o and their Outpost 2o + 1, the Crossroads 2N, and
+// with three or more players each Outpost is linked to the Outposts on either side. newGame takes N decks (2 to 6).
+// What a game of three or more players, or a team game, adds to the state (a two-player game has none of it, and plays
+// exactly as it always has):
+//   cfg.teams     [[seats], [seats], ...]: who plays together (teammates on alternating spokes: 2 against 2 is
+//                 [[0, 2], [1, 3]], 3 against 3 [[0, 2, 4], [1, 3, 5]], three teams of 2 [[0, 3], [1, 4], [2, 5]]).
+//   S.tm          each player's team, from cfg.teams (null without teams). ally(S, a, b): one side (the same player, or
+//                 teammates). sideOf(S, o): the team, or the player. Teammates can't clash, nothing that hits an enemy
+//                 hits a teammate, and a teammate holding your Gate breaks no Seal.
+//   sren(S, o)    a side's Renown, what counts toward the target: a team's is its players' Renown together (each player
+//                 still keeps their own P.renown, and every 'renown' and 'hold' event names the player).
+//   holding       in a team game a team holds a Domain (holderT); teammates' Might doesn't add up (cfg.tmight 'add' is a
+//                 test), and the holder for a power that pays "its holder" is the teammate with the most Might there.
+//   P.out         1: the player has no Seals left and is out of the game (knockOut, at the count). Their Figures have left
+//                 the map; they take no turns, can't win, hold nothing, and their Quick Deeds don't play themselves.
+//                 Their Domains stay where they lie with their banners, and their Gate and Outpost are Domains anyone
+//                 can hold (holding them breaks nothing).
+//   S.winner      the winning player; in a team game S.wt is the winning team and S.winner its first player in seat
+//                 order. S.how 'seals': the last side left after Seals; 'renown': first to the target, or most at the
+//                 round limit, of the players still in.
+//   order(S)      the turns of this round, in order, leaving out players who are out (firstOf(S) is the first of them).
+//                 The leading side goes first (in a team, its players take that turn by rounds) and play goes round
+//                 the table to the left. Greenwich's holder at the last count goes last. nextLive(S, o): the player on
+//                 o's left who is still in. liveSides(S): the sides still in. track(S) adds order, out, teams, renown.
+//   Columbian Exchange  with three or more players the action names whose Gate and Outpost swap with yours: a.w.
+//   Congress of Vienna  4 and 5 are the Outpost and Gate of the player on your left (nextLive).
+// New events:
+//   {t: 'out', o, us: [uids of the Figures that left the map], cs: [their cards], left: [the sides still in]}
+//   {t: 'sroll', dice}: as before, with 0 for a player who did not roll again after a tie
+//   {t: 'deed', ..., w}: the Columbian Exchange's other player, with three or more players
+//   {t: 'renown', o, n, why: 'out', p}: Renown for breaking a player's last Seal (cfg.outRen, off unless the rules have it)
 // A game without S.dm is on the fixed map of the twelve Places the game had before Domains: a lesson's table
 // (guide.js), a test game with no stacks, and a game saved before Domains, which finishes under the rules it began
 // with. There each Place has the rule it had then (PLACES[id].pw0), and nothing that belongs to Domains happens.
@@ -206,7 +238,7 @@ const behind = (S, o) => { if (S.N === 2 && !S.tm) return S.P.some(p => p.renown
 // (Akbar's court: Figures of his of two or more factions standing at the Crossroads)
 const atCourt = (S, o) => { if (S.P[o].guide !== 'akbar') return false; const hub = 2 * S.N; let f0 = null; for (const g of S.figs) if (g.p === hub && g.o === o) { const x = CARDS[g.c].f; if (f0 === null) f0 = x; else if (x !== f0) return true; } return false; };
 // Boundary Stone: the other player's cards cannot replace, move or silence the Domains at your Gate and your Outpost
-const prot = (S, i, by) => { const w = ownerOfSpoke(S, i); return !!S.dm && w >= 0 && w !== by && hasFx(S.P[w], 'kudurru'); };
+const prot = (S, i, by) => { const w = ownerOfSpoke(S, i); return !!S.dm && w >= 0 && !ally(S, w, by) && hasFx(S.P[w], 'kudurru'); };   // (a teammate's cards are not stopped)
 // What lies across a Domain's rule, if anything: Vesuvius ({k: 'card', c}), or the Silence marker of a Figure standing
 // there ({k: 'fig', u}: Diogenes; it goes when he goes, and covers whatever Domain lies under him)
 function silenced(S, i) {
@@ -340,13 +372,15 @@ function congress(S, o, ci, d1, d2) {
 // Each player shuffles their stack and draws four Domains (S.su.drew[o]; cfg.suDraw, Tim 2026-11-12: it was three, and a
 // fourth lets a player keep a Domain whose power does nothing at a Gate away from it). They lay one face down at their
 // Gate and one at their Outpost, keep one as their offer for the Crossroads, and put the rest under their stack:
-// setupOptions(S, o) lists the ways, setupLay(S, o, {gate, out, offer}) lays one. When both have laid, setupRoll turns the four up, each player rolls
-// a die (again if the dice match), the higher roll's offer is laid at the Crossroads with that player's banner, the
-// other player's offer starts their Domain discard pile, and that other player takes the first turn of the game.
-// If the two players turn up the same Domain, each puts their copy under their stack and lays the next Domain of
+// setupOptions(S, o) lists the ways, setupLay(S, o, {gate, out, offer}) lays one. When everyone has laid, setupRoll turns
+// them up and each player rolls a die (on a tie for the highest roll, only the players in the tie roll again), the
+// highest roll's offer is laid at the Crossroads with that player's banner, every other player's offer starts their
+// Domain discard pile, and the player after the highest roll (on their left) takes the first turn of the game.
+// If two players turn up the same Domain, each puts their copy under their stack and lays the next Domain of
 // their stack in its place: a Domain lies on the table only once.
-// S.su = {step: 'lay' | 'roll' | 'done', drew: [[3 ids], [3 ids]], lay: [{gate, out, offer} | null, ...],
-//         rolls: [[die of player 0, die of player 1], ...], dibs: whose offer is the Crossroads, first: who goes first}
+// S.su = {step: 'lay' | 'roll' | 'done', drew: [[4 ids] for each player], lay: [{gate, out, offer} | null, ...],
+//         rolls: [[each player's die, 0 for a player who didn't roll again], ...], dibs: whose offer is the
+//         Crossroads, first: who goes first}
 function setupBegin(S, stacks, R) {
   const N = S.N, np = 2 * N + 1;
   S.dm = 1; S.places = new Array(np).fill(null); S.ban = new Array(np).fill(-1); S.mk = new Array(np).fill(0); S.cyn = 0; S.pend = null;
@@ -739,7 +773,7 @@ function actions(S) {
     else if (fx === 'fairwinds') { for (const f of mine) if (!kOf(S, f).monument) for (let i = 0; i < np; i++) if (i !== f.p && room(S, i, o) && !rk(i)) out.push({ t: 'deed', h, u: f.u, p: i }); }
     else if (fx === 'ambush') { for (const f of mine) for (const g of theirs) if (g.p === f.p && open(g) && clashable(S, g) && !noClash(S, f)) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
     else if (fx === 'trojan') { P.hand.forEach((cj, h2) => { if (h2 !== h && CARDS[cj].t === 'fig' && CARDS[cj].c <= 3) for (let i = 0; i < np; i++) if (room(S, i, o)) out.push({ t: 'deed', h, h2, p: i }); }); }
-    else if (fx === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !rk(f.p) && !rk(g.p) && !kOf(S, f).monument && !kOf(S, g).monument && (g.o === o ? g.u > f.u : open(g) && !ally(S, g.o, o)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
+    else if (fx === 'rift') { for (const f of mine) for (const g of S.figs) if (g.p !== f.p && g.u !== f.u && !rk(f.p) && !rk(g.p) && !kOf(S, f).monument && !kOf(S, g).monument && (g.o === o ? g.u > f.u : ally(S, g.o, o) || open(g)) && (g.o === o || (room(S, g.p, o) && room(S, f.p, g.o)))) out.push({ t: 'deed', h, u: f.u, v: g.u }); }
     else if (S.dm) {   // (the Deeds that act on Domains: a.p, a.q are positions)
       if (fx === 'earthquake') { for (let i = 0; i < 2 * S.N; i++) if (!prot(S, i, o) && canTurn(S, i >> 1)) out.push({ t: 'deed', h, p: i }); }
       else if (fx === 'vesuvius') { for (let i = 0; i < np; i++) if (!S.mk[i] && !prot(S, i, o)) out.push({ t: 'deed', h, p: i }); }
@@ -1118,7 +1152,8 @@ function endRound(S) {
     if (!tie) { if (cfg.scoring === 'round') P.renown += val; else if (last) P.renown += 3 * val;
       if (S.ev) S.ev.push({ t: 'hold', p: i, o: h, n: val }); }
     if (w === 'draw') { if (S.ev && S.dm) S.ev.push({ t: 'dpow', w: w, o: h, p: i }); draw(S, h, 1); } if (w === 'spark') pay(h, 1, w, i);   // (a rule that pays at the end of the round pays for the Domain lying there now)
-    if (isGate(S, i) && !ally(S, i >> 1, h) && S.P[i >> 1].seals > 0) { S.P[i >> 1].seals--; P.broke++; P.renown += cfg.sealRen; if (S.st) S.st.sealBreaks++; if (S.ev) S.ev.push({ t: 'seal', o: i >> 1, by: h, left: S.P[i >> 1].seals }); }
+    if (isGate(S, i) && !ally(S, i >> 1, h) && S.P[i >> 1].seals > 0) { S.P[i >> 1].seals--; P.broke++; P.renown += cfg.sealRen; if (S.st) S.st.sealBreaks++; if (S.ev) S.ev.push({ t: 'seal', o: i >> 1, by: h, left: S.P[i >> 1].seals });
+      if (!two && cfg.outRen && !S.P[i >> 1].seals) { P.renown += cfg.outRen; if (S.ev) S.ev.push({ t: 'renown', o: h, n: cfg.outRen, why: 'out', p: i }); } }   // (cfg.outRen, a test: Renown for breaking a player's last Seal, with three or more players)
   }
   // (what the other Domains give as the round ends, each for the Domain lying there now)
   if (S.dm) {
