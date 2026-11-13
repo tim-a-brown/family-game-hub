@@ -1900,7 +1900,7 @@
     // they drop the name (picture, cost and Might stay; tap one and the caption says what it is)
     const h = dom.hand, n = h.children.length, land = window.innerWidth > window.innerHeight, hr = h.getBoundingClientRect(), W = hr.width - 2, g = W > 600 ? 8 : 4;
     h.classList.remove('two'); Array.prototype.forEach.call(h.children, c => c.classList.remove('r0'));
-    h.style.setProperty('--ho', g + 'px');
+    h.style.setProperty('--ho', g + 'px'); h.style.paddingBottom = '';
     let hw, rows = 1, per = n;
     const cap = Math.min(132, Math.max(window.innerHeight, window.innerWidth) * .098);
     if (land) {
@@ -1925,7 +1925,7 @@
       if (many()) {
         if (phone) {
           const hw5 = Math.floor(Math.min((W - 4 * g) / 5, cap)); per = Math.max(5, Math.ceil(n / 2)); rows = n > per ? 2 : 1;
-          hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 8) + 'px';
+          hw = Math.min((W - (per - 1) * g) / per, cap); h.style.minHeight = Math.ceil(2 * hw5 * 1.4 + g + 18) + 'px'; h.style.paddingBottom = '10px';   // (the last row clear of the screen's rounded corners)
         }
         else if (window.innerHeight >= 740) {
           const hr8 = Math.floor(Math.min((W - 7 * g) / 8, cap)); per = Math.max(n, 5); rows = 1;
