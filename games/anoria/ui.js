@@ -1357,6 +1357,92 @@
   }
   const scanAt = n => { if (G && G.ph === 'setup') { const d = n.closest('[data-su]'); return d ? { su: d.dataset.su } : null; } const fp = n.closest('.fp, .stk'), row = n.closest('.pl'), hc = n.closest('.hc'); return fp ? { u: +fp.dataset.u } : hc ? (ui.hideHand ? null : { h: +hc.dataset.h }) : row && n.closest('.pl-tile') ? { p: +row.dataset.p } : null; };
 
+  // ═══ Drag to play ════════════════════════════════════════════════════════════════════════════════════════
+  // Tim approved, 2026-11-13 ("keep going with face off, carousel and the rest"): a card from your hand can be dragged
+  // onto the board. The Domains it can go to glow and the others dim, and the one under your finger shows your total
+  // there after the move and what it does ("You take it"); letting go there plays it. A Figure on the board is dragged
+  // the same way to a Domain to walk, or onto an enemy Figure to clash. A drag is the same pick as a tap (select, pick),
+  // so tap-then-tap works as before, and the lessons, which pick with the engine's moves, never see it. A drag starts
+  // only once the finger has moved 12 px, after the hold that opens the scan has been let go (it gives up at 10 px).
+  let drag = null;
+  function dragDown(e) {
+    drag = null;
+    if (!G || G.demo || viewEl || !idle() || ui.discard || ui.pend || G.ph !== 'play' || ui.view !== S.turn || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const hc = e.target.closest('.an-hand .hc'), fp = e.target.closest('.an-map .fp'), o = S.turn, hand = S.P[o].hand;
+    let sel = null, key = null, m = null;
+    if (hc && hc.dataset.h != null) { const h = +hc.dataset.h; key = hand[h]; if (key == null || !ui.acts.some(a => (a.h != null && hand[a.h] === key) || (E.fxOf(key) === 'phalanx' && a.ph && hand[a.hq] === key))) return; sel = { kind: 'hand', h: h }; }
+    else if (fp) { const u = +fp.dataset.u, f = E.byU(S, u); if (!f || f.o !== o || !ui.acts.some(a => a.u === u && (a.t === 'walk' || a.t === 'clash' || a.t === 'antik' || a.t === 'tub'))) return; sel = { kind: 'fig', u: u }; key = f.c; m = E.might(S, f, 0); }
+    else return;
+    const r = (hc || fp).getBoundingClientRect();
+    drag = { x: e.clientX, y: e.clientY, id: e.pointerId, sel: sel, key: key, m: m, w: Math.max(54, Math.min(120, (hc || fp).querySelector('.ac') ? (hc || fp).querySelector('.ac').getBoundingClientRect().width : r.width)), from: r, on: false, at: null };
+  }
+  function dragBegin() {
+    const d = drag; d.on = true; ui.held = true;
+    if (!(ui.sel && ui.sel.kind === d.sel.kind && (ui.sel.h === d.sel.h && ui.sel.u === d.sel.u) && !ui.sel.picks.length)) select(d.sel); else render();
+    dom.felt.classList.add('dragging');
+    lift(true);
+    const c = cardEl(d.key, { mini: true, now: true, might: d.m != null ? d.m : undefined }); c.style.fontSize = (d.w / 30) + 'px';
+    d.pv = el('div', { class: 'an-drag-pv' }); d.g = el('div', { class: 'an-drag', style: { width: d.w + 'px' } }, [c, d.pv]);
+    document.body.appendChild(d.g); Kit.sfx('slide'); Kit.haptic('light');
+  }
+  // the card or Figure that is being dragged stays where it was, faint, until it lands
+  function lift(on) {
+    const d = drag; if (!d || !dom.root) return;
+    dom.root.querySelectorAll('.an-lifted').forEach(n => n.classList.remove('an-lifted'));
+    if (!on) return;
+    const n = d.sel.kind === 'hand' ? dom.hand.querySelector('.hc[data-h="' + d.sel.h + '"]') : dom.map.querySelector('.fp[data-u="' + d.sel.u + '"]'); if (n) n.classList.add('an-lifted');
+  }
+  // what is under the finger: a Domain the card can go to, an enemy Figure it can clash with, or the table (a Relic, a Deed with nothing to choose)
+  function dragAt(x, y) {
+    const T = targets(), n = document.elementFromPoint(x, y); if (!n || !dom.root.contains(n)) return null;
+    const fp = n.closest('.fp'), stk = n.closest('.stk'), row = n.closest('.pl[data-p]');
+    if (fp && T.figs[+fp.dataset.u]) return { k: 'f', v: +fp.dataset.u, n: fp, acts: T.figs[+fp.dataset.u] };
+    if (stk) { const u = stk.dataset.us.split(' ').map(Number).filter(x => T.figs[x])[0]; if (u != null) return { k: 'f', v: u, n: stk, acts: T.figs[u] }; }
+    if (row && T.places[+row.dataset.p]) return { k: 'p', v: +row.dataset.p, n: row, acts: T.places[+row.dataset.p] };
+    if (T.done.length && !Object.keys(T.places).length && !Object.keys(T.figs).length && !Object.keys(T.hand).length && !n.closest('.an-hand')) return { k: 'done', n: n.closest('.an-map, .an-strip.me') || dom.map, acts: T.done };
+    return null;
+  }
+  // what letting go there would do, in a few words and a number: your total there after it, or the clash's two Mights
+  function dragSay(t) {
+    const o = S.turn, me = o;
+    if (t.k === 'f') { const pv = clashPreview(t.acts); return pv ? { m: pv[0] + ' vs ' + pv[1], tx: pv[0] > pv[1] ? 'You are stronger' : pv[0] < pv[1] ? 'They are stronger' : 'Even' } : { tx: 'Clash' }; }
+    if (t.k === 'done') return { tx: 'Play ' + theName(drag.key) };
+    const a = t.acts[0], moves = a.t === 'fig' || a.t === 'walk' || a.t === 'antik' || a.t === 'tub';
+    if (!moves) return { tx: 'Play here' };
+    const T2 = simulate(a), sd = sidesOf(E.mights(T2, t.v), me), h = E.holder(T2, t.v), was = V.hold[t.v], mine = q => q >= 0 && (q === me || E.ally(S, q, me));
+    return { m: sd[1], tx: mine(h) ? (mine(was) ? 'You keep it' : 'You take it') : h < 0 ? (sd[0] === sd[1] && sd[1] ? 'Tied' : 'Nobody holds it') : pname(h) + (mine(was) ? ' takes it' : ' keeps it') };
+  }
+  function dragMove(e) {
+    const d = drag; if (!d || e.pointerId !== d.id) return;
+    if (viewEl || !G || !idle()) { dragEnd(null); return; }
+    if (!d.on) { if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 12) return; dragBegin(); }
+    d.g.style.left = e.clientX + 'px'; d.g.style.top = (e.clientY - d.w * .55) + 'px';
+    const t = dragAt(e.clientX, e.clientY), was = d.at;
+    if ((t && t.n) !== (was && was.n) || (t && was && t.v !== was.v)) {
+      if (was && was.n) was.n.classList.remove('an-dhov');
+      d.at = t; d.pv.innerHTML = '';
+      if (t) { t.n.classList.add('an-dhov'); Kit.haptic('light'); const s = dragSay(t);
+        if (s.m != null) d.pv.appendChild(el('span', { class: 'sh' + (typeof s.m === 'string' ? ' vs' : '') }, [el('b', { text: String(s.m) })]));
+        d.pv.appendChild(el('span', { class: 'tx', text: s.tx })); d.g.classList.add('over'); }
+      else d.g.classList.remove('over');
+    }
+  }
+  function dragEnd(e) {
+    const d = drag; drag = null; if (!d || !d.on) return;
+    if (e && e.pointerId !== d.id) { drag = d; return; }
+    setTimeout(() => { ui.held = false; }, 400);   // (the click that ends a drag is not a tap)
+    dom.felt && dom.felt.classList.remove('dragging'); if (d.at && d.at.n) d.at.n.classList.remove('an-dhov');
+    const t = e && G && idle() ? dragAt(e.clientX, e.clientY) : null;
+    const gone = () => { d.g.remove(); dom.root && dom.root.querySelectorAll('.an-lifted').forEach(n => n.classList.remove('an-lifted')); };
+    if (t) { gone(); Kit.haptic('medium'); if (t.k === 'done') finishPick(t.acts); else pick(t.k, t.v); return; }
+    // (let go anywhere else: the card goes back where it came from, and nothing is picked up)
+    const g = d.g.getBoundingClientRect(), fr = d.from;
+    if (d.g.animate) d.g.animate([{ transform: 'none' }, { transform: 'translate(' + (fr.left + fr.width / 2 - (g.left + g.width / 2)) + 'px,' + (fr.top + fr.height / 2 - (g.top + g.height / 2)) + 'px) scale(.9)', opacity: .4 }], { duration: 220, easing: 'cubic-bezier(.3,.8,.4,1)' }).onfinish = gone; else gone();
+    Kit.sfx('slide', .5); clearSel();
+  }
+  window.addEventListener('pointermove', dragMove, { passive: true });
+  window.addEventListener('pointerup', dragEnd); window.addEventListener('pointercancel', e => { if (drag && drag.on) dragEnd(null); else drag = null; });
+
   const listOf = (a, w) => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' ' + (w || 'and') + ' ' + a[a.length - 1];
   // ═══ Setup ═══════════════════════════════════════════════════════════════════════════════════════════════
   function deckFacs(cards) {
@@ -1926,7 +2012,7 @@
     preload(S.places.concat(S.su ? [].concat.apply([], S.su.drew) : []).filter(x => x).concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
     dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
-    holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt);
+    holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt); dom.map.addEventListener('pointerdown', dragDown); dom.hand.addEventListener('pointerdown', dragDown);
     dom.fx = el('div', { class: 'an-fx' });
     if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
     if (!many()) paintMats();   // (with more players each spoke lies on its player's mat: matN)
