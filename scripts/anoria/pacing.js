@@ -66,10 +66,19 @@ const useWith = (o, seed) => { const st = mkStore(); Coll.use(Object.assign({ st
   assert(lit(Coll.gameOver({ win: false, level: 'easy' })) === 1, 'a game lights one');
   let R = null; for (let i = 0; i < 6; i++) R = Coll.gameOver({ win: false }); assert(Coll.load().turns === 1 && Coll.load().signs === 0 && R.turns === 1, 'twelve signs turn the sphere once');
   assert(R.list.some(x => x.t === 'pack' && x.pack.k === 'sphere'), 'a turn of the sphere gives a pack');
-  assert(Coll.GUIDE_TURNS.indexOf(1) < 0 || R.list.some(x => x.t === 'guide' && x.why === 'sphere'), 'the first turn of the sphere brings a Guide');
+  assert(Coll.GUIDE_TURNS.indexOf(1) < 0 || R.list.some(x => x.t === 'guide' && x.why === 'sphere' && x.pick && !x.g), 'the first turn of the sphere brings a Guide, for you to choose');
+  // the sphere's Guide waits for your choice, kept in the collection (a page closed before choosing asks again)
+  if (Coll.GUIDE_TURNS.indexOf(1) >= 0) {
+    assert(Coll.pending().n === 1 && Coll.load().guides.length === 1, 'the sphere\'s Guide waits to be chosen');
+    Coll.use({ store: st.store }); assert(Coll.pending().n === 1 && Coll.pending().from.indexOf('akbar') < 0, 'the choice waits after the page is closed, among the Guides you don\'t have');
+    assert(!Coll.join('akbar') && !Coll.join('nobody'), 'a Guide you have, or no Guide, can\'t be chosen');
+    const pk = Coll.pending().from[3], j = Coll.join(pk);
+    assert(j && j.g === pk && Coll.pending().n === 0 && Coll.load().guides.indexOf(pk) >= 0 && !Coll.join(Coll.pending().from[0]), 'the Guide you choose joins you, once');
+    assert(j.doms.every(d => Coll.DSET.base.indexOf(d) < 0 && Coll.DSET.akbar.indexOf(d) < 0), 'a Domain you had came again');
+  }
   // a Guide who joins: their set, and only the Domains you did not have
   const g = Coll.load().guides.slice(-1)[0]; assert(Coll.setCards(g).every(k => Coll.owns(k)), 'a Guide who joins brings their set');
-  const x = R.list.filter(y => y.t === 'guide')[0]; if (x) assert(x.doms.every(d => Coll.DSET.base.indexOf(d) < 0 && Coll.DSET.akbar.indexOf(d) < 0), 'a Domain you had came again');
+  assert(Coll.DSET[g].every(d => Coll.hasDomain(d)), 'a Guide who joins brings their Domains');
   // a calling met brings its Guide
   s = Coll.load(); const left = GK.filter(k => s.guides.indexOf(k) < 0 && Coll.CALLS[k].per === 'game')[0]; s.calls[left] = Coll.CALLS[left].need - 1; st.store.set('anoria_coll', JSON.stringify(s));
   const mm = {}; mm[Coll.CALLS[left].m] = true; R = Coll.gameOver({ win: true, m: mm });
@@ -100,6 +109,7 @@ for (let t = 0; t < T; t++) {
       Object.keys(RATES).forEach(k => { const w = k === 'sealsWin' || k === 'noSealLost' || k === 'behindWin'; m[k] = COUNTED[k] ? pois(R, RATES[k]) : w ? win && R() < RATES[k] / RATE_WIN : R() < RATES[k]; });
       const r = Coll.gameOver({ win: win, how: m.sealsWin ? 'seals' : 'renown', level: d < 3 ? 'easy' : d < 20 ? 'normal' : 'hard', built: d > 10 && win, m: m }); games++;
       r.list.forEach(x => { if (x.t === 'guide' && x.why === 'call') calls++; });
+      while (Coll.pending().n) Coll.join(null);   // (the sphere's Guide: chosen at random here, as the sphere chose before)
       packs += open();
     }
     const s = Coll.load(), nG = s.guides.length, nC = Object.keys(s.cards).length, nP = Coll.POOL.filter(k => s.cards[k]).length;

@@ -70,8 +70,12 @@
       : (N - R.signs) + ' more ' + ((N - R.signs) === 1 ? 'sign brings' : 'signs bring') + ' the sphere round.';
     const top = el('div', { class: 'rw-e-top' }, [sp, el('div', { class: 'rw-e-say' }, [el('span', { class: 'rw-k', text: 'This game lit ' + signs(total) }), lit, el('p', { class: 'rw-e-p' + (round ? ' gold' : ''), text: say })])]);
     const box = el('div', { class: 'rw-end' + (round ? ' round' : '') }, [top]);
-    // a Guide who joined: by the sphere or by their calling
-    R.list.filter(x => x.t === 'guide').forEach(x => {
+    // a Guide who joined: by the sphere (chosen by you) or by their calling; the sphere's choice if it is still to make
+    R.list.filter(x => x.t === 'guide' && !x.g).slice(0, 1).forEach(() => {
+      box.appendChild(el('div', { class: 'rw-e-row join' }, [el('span', { class: 'rw-face lit mk', html: U().MARK.guide }), el('div', { class: 'rw-e-w' }, [
+        el('b', { text: 'The sphere brings a new Guide' }), el('span', { text: 'Choose who joins your company.' })])]));
+    });
+    R.list.filter(x => x.t === 'guide' && x.g).forEach(x => {
       const set = Coll.setCards(x.g).length, doms = (x.doms || []).length;
       box.appendChild(el('div', { class: 'rw-e-row join' }, [face(x.g, 'lit'), el('div', { class: 'rw-e-w' }, [
         el('b', { text: NAME(x.g) + ' joins your company' }),
@@ -83,7 +87,7 @@
         el('b', { text: x.pack.why }), el('span', { text: 'A pack of\u00a0' + x.pack.n + ' is waiting for you.' })])]));
     });
     // the calling this game moved nearest to its end (one row: the others are on the sphere's screen)
-    const joined = R.list.filter(x => x.t === 'guide').map(x => x.g), c = R.calls.filter(x => joined.indexOf(x.g) < 0).sort((a, b) => b.have / b.need - a.have / a.need)[0];
+    const joined = R.list.filter(x => x.t === 'guide' && x.g).map(x => x.g), c = R.calls.filter(x => joined.indexOf(x.g) < 0).sort((a, b) => b.have / b.need - a.have / a.need)[0];
     if (c) {
       const bar = el('span', { class: 'rw-bar' }, [el('i', { style: { width: (100 * c.was / c.need).toFixed(1) + '%' } })]);
       box.appendChild(el('div', { class: 'rw-e-row call' }, [face(c.g), el('div', { class: 'rw-e-w' }, [
@@ -104,6 +108,8 @@
     const big = sphere({ lit: sp.lit, cls: 'big' });
     big.appendChild(el('div', { class: 'rw-mid' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of })]));
     L.appendChild(big);
+    if (Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary shine rw-pick', html: A.MARK.guide + '<span>Choose your new Guide</span>',
+      onclick: () => { tap(); sc.close(); window.AnoriaPacks.pending(() => path(done)); } }));
     if (sp.next) {
       const tr = el('div', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
       for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(t === sp.toGuide ? el('span', { class: 'rw-t g', html: A.MARK.guide }) : el('span', { class: 'rw-t' }, [packFace()]));

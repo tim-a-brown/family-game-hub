@@ -730,7 +730,7 @@
         const hd = E.holder(S, o.p), worth = (hd >= 0 ? E.rv(S, o.p, hd) : E.pw(S, o.p) === 'double' ? 2 : 1) * E.stake(S.cfg, S.round);
         // (Domains: whose banner is on it, and what lies across its rule, said in words beside the pieces on the tile)
         if (S.dm) { const sil = E.silenced(S, o.p), who = S.ban[o.p];
-          notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your' : esc(Kit.poss(pname(who)))) + ' banner</b> is on this Domain: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table.' }));
+          notes.appendChild(el('p', { html: '<b>' + (who === ui.view && human(who) ? 'Your Domain' : esc(Kit.poss(pname(who))) + ' Domain') + '</b>: ' + (who === ui.view && human(who) ? 'you' : esc(pname(who))) + ' brought it to the table, and ' + (who === ui.view && human(who) ? 'your' : 'their') + ' avatar is on its lower edge.' }));
           if (sil) notes.appendChild(el('p', { html: '<b>Power switched off</b>: ' + esc(sil.k === 'card' ? CARDS[sil.c].n + ' lies on this Domain' : CARDS[E.byU(S, sil.u).c].n + ' is at this Domain') + ', so its power does nothing for now.' })); }
         lyingNotes(notes, o.p, null);
         // (a game saved under the old rule, when Places scored double from round 4, finishes under it)
@@ -1650,6 +1650,8 @@
     app.className = 'stage'; app.innerHTML = ''; document.documentElement.classList.remove('an-low'); window.scrollTo(0, 0);
     // the first time: choose your Guide (their deck is your starter) and open your welcome packs
     if (!Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, showSetup); return; }
+    // a Guide the sphere brought who wasn't chosen yet (the page was closed first): asked once each visit, over the setup
+    if (!pickAsked && Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending && !/[?&](library|packs|decks|guide|art)(=|&|$)/.test(location.search)) { pickAsked = true; setTimeout(() => window.AnoriaPacks.pending(showSetup), 0); }
     const none = () => el('span', { style: { display: 'none' } });
     const seat = (i, ctx) => (ctx && ctx.seats ? ctx.seats[i] : null);
     const people = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => !s.cpu).length : 1), bots = ctx => (ctx && ctx.seats ? ctx.seats.filter(s => s.cpu).length : 1);
@@ -2179,7 +2181,10 @@
   // A phone held upright stands the line on its end, their Gate at the top (rows). Upright on an iPad the Figures
   // overlap down the table in cascades (up); sideways on a phone each side's Figures at a Domain are one stack (short).
   // Decided from the window every time the table is drawn, so a turned iPad redraws in its new shape.
-  const nblFits = () => window.innerWidth > window.innerHeight && window.innerWidth >= 900 && window.innerHeight >= 600;
+  // (the room the table has: with the reader or the turn log open beside it, the panel's width less. Four players' battle
+  // line in the 700 or so left beside the panel had your bar running over the first rival's column and the Domains'
+  // names under their shields, so the table lays out as on an upright iPad there instead)
+  const nblFits = () => { const W = window.innerWidth - (sideEl ? (parseFloat(document.documentElement.style.getPropertyValue('--sidew')) || 0) : 0); return window.innerWidth > window.innerHeight && W >= 900 && window.innerHeight >= 600; };
   function layMode() {
     const W = window.innerWidth, H = window.innerHeight;
     if (W <= H && Math.min(W, H) < 600) return { rows: true, phone: true };
@@ -2548,7 +2553,7 @@
     tiles.forEach(t => { t.style.removeProperty('--pt'); const nm = t.querySelector('.pl-plate .pl-name'), tots = t.querySelectorAll('.pl-tot'); if (!nm || !tots.length || t.closest('.an-map.bl, .pl.wn-bl')) return;
       const hit = () => { const rg = document.createRange(); rg.selectNodeContents(nm); const ls = Array.prototype.filter.call(rg.getClientRects(), r => r.width > .5);
         return Array.prototype.some.call(tots, x => { const r = x.getBoundingClientRect(); return ls.some(a => a.top < r.bottom - .5 && a.bottom > r.top && a.left < r.right && a.right > r.left); }); };
-      let pt = parseFloat(getComputedStyle(tots[0]).fontSize); while (hit() && pt > 7.5) { pt -= .5; t.style.setProperty('--pt', pt + 'px'); } });
+      let pt = parseFloat(getComputedStyle(tots[0]).fontSize); while (hit() && pt > 8) { pt -= .5; t.style.setProperty('--pt', pt + 'px'); } });
   }
   // Sizes from the room there is
   function layout() { if (!dom.map) return; layoutHand(); layoutMap(); }
@@ -4135,7 +4140,7 @@
     if (!(await playEvents(evs, { o: o }))) return;
     V = mid; render();
     if (evR) { if (!(await roundEnd(evR))) return; }
-    if (G.over) { V = snap(); ui.count = -1; setBusy(false); render(); await wait(500); if (gen === my) showWin(false); return; }
+    if (G.over) { V = snap(); ui.count = -1; setBusy(false); render(); await wait(500); if (gen === my) endShow(); return; }
     beginTurn();
   }
   // The count: Place by Place down the map, the banner drops in the holder's colour and their Renown ticks up
@@ -4225,7 +4230,7 @@
   function showWinN(quiet) {
     const w = S.winner, T = G.teams, win = w < 0 ? [] : T ? teamOf(w) : [w], people = G.players.some((p, o) => human(o));
     const lose = w >= 0 && people && !win.some(human), mine = G.mode === 'cpu' && win.indexOf(0) >= 0;
-    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
+    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? unmet(R) : [];
     const said = endSaid(); notes.push(said);
     S.P.forEach((p, o) => { if (p.out && !/ lost (the last Seal|their last Seals) /.test(said)) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left.'); });
     const order = S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown);
@@ -4236,8 +4241,19 @@
       sub: guideSaid(w) || 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(T ? null : order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
-      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null });
   }
+  // A Guide who joins in this game (the sphere's, chosen first, or one a calling brought) has their moment before the
+  // results card (packs.js arrive); the results card's panel keeps their row. A lesson earns nothing, so never has one.
+  let pickAsked = false;   // (the sphere's choice is offered once per visit: a page opened again asks again)
+  function endShow() {
+    const R = G && !G.demo ? G.rew : null, gj = R && R.list ? R.list.filter(x => x.t === 'guide' && !x.met) : [];
+    if (!gj.length || !window.AnoriaPacks || !window.AnoriaPacks.arrive) return showWin(false);
+    if (gj.some(x => x.pick)) pickAsked = true;
+    const g0 = G; window.AnoriaPacks.arrive(gj, () => { if (G === g0 && G.over) showWin(false); });
+  }
+  // what the results card's button still has to show: the packs, and a Guide not met yet (a choice left for later)
+  const unmet = R => (R && R.list ? R.list.filter(x => !(x.t === 'guide' && x.met)) : []);
   // Whose Guide stood with the winner, said under the title: "Leonardo da Vinci was Tim's Guide."
   function guideSaid(w) {
     if (w < 0 || G.teams || !S.P[w]) return '';
@@ -4278,7 +4294,7 @@
         if (soft.length) { const grp = el('div', { class: 'aw-grp' }); acts.insertBefore(grp, soft[0]); soft.forEach(b => grp.appendChild(b)); }
         soft.forEach(b => {
           if (!b.querySelector('svg, .aw-ic')) {
-            const gj = (earned || []).filter(x => x.t === 'guide'), ic = gj.length && gj.length === earned.length ? el('span', { class: 'aw-ic face' }, [artImg(gj[0].g, true, true)].filter(Boolean)) : el('span', { class: 'aw-ic' }, [packMini()]);
+            const gj = (earned || []).filter(x => x.t === 'guide'), ic = gj.length && gj.length === earned.length && gj[0].g ? el('span', { class: 'aw-ic face' }, [artImg(gj[0].g, true, true)].filter(Boolean)) : el('span', { class: 'aw-ic' }, [packMini()]);
             b.insertBefore(ic, b.firstChild);
           }
           b.appendChild(el('span', { class: 'aw-go', 'aria-hidden': 'true', html: Kit.icon('right') }));
@@ -4296,8 +4312,8 @@
   }
   // a sealed pack the size of an icon: the crimped gilt ends, the foil and the sphere of the logo (packs.css .pk-art)
   function packMini() { return el('span', { class: 'aw-pk' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('img', { class: 'pk-logo', src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })])]); }
-  function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g;
-    return g && p ? 'See what you earned' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
+  function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g, pick = list.some(x => x.t === 'guide' && !x.g);
+    return g && p ? 'See what you earned' : pick ? 'Choose your new Guide' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
   // The race for Renown on the results card (Kit.win's pic slot, under the title): a line for each player, round by
   // round from 0, with the Renown that wins ruled across in gilt.
   function racePic() {
@@ -4305,7 +4321,7 @@
     const rows = [S.P.map(() => 0)].concat((G.tale.tot || []).map(t => String(t).split('-').map(Number)));
     const now = S.P.map(p => p.renown); if (rows[rows.length - 1].join() !== now.join()) rows.push(now);   // (an end by Seals comes before the count)
     if (rows.length < 2) return null;
-    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 330, H = 62, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
+    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 330, H = 54, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
     const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')', ord = S.P.map((p, o) => o).sort((a, b) => (a === w) - (b === w));   // (the winner's line drawn last, on top)
     const lines = ord.map(o => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
       '<circle class="end' + (o === w ? ' w' : '') + '" cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="' + (o === w ? 4.6 : 3.6) + '" style="fill:' + col(o) + '"/>').join('');
@@ -4318,7 +4334,7 @@
   function showWin(quiet) {
     if (S.N > 2) return showWinN(quiet);
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
-    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
+    const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? unmet(R) : [];
     const W = w >= 0 ? pname(w) : '', L = w >= 0 ? pname(1 - w) : '';
     notes.push(w < 0 ? 'The game ended level on Renown, Seals and Might after round ' + S.round + '.'
       : S.how === 'seals' ? 'The last of ' + (L === 'You' ? 'your' : Kit.poss(L)) + (S.P[1 - w].sm === 4 ? ' four' : ' three') + ' Seals broke in round ' + S.round + '.'
@@ -4330,7 +4346,7 @@
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
-      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null });
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -4341,19 +4357,21 @@
     '<p>What the world remembers is never quite gone: it lives on in Arvela, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
     '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Arvela through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. With two players, breaking all of the other player\'s Seals wins on the spot. Each player starts with <b>3 Seals</b>.</p>' +
-    '<h3>The map</h3><ul><li>With two players, five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
-    '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li>' +
+    '<h3>The map</h3><ul><li>With two players, five Places lie in a line: your <b>Gate</b>, your <b>Outpost</b>, the shared <b>Crossroads</b> in the middle, then the other player\'s Outpost and Gate. Your Gate and Outpost lie on your play mat, and theirs on theirs.</li>' +
+    '<li>On an iPad, and on a phone held sideways, the line runs across the table with your Gate at the left. On a phone held upright it runs up the screen, with your Gate at the bottom.</li>' +
+    '<li>Each Place has a power of its own, printed on it. Tap a Place to see it face to face: its card in the middle, the other side\'s Figures facing yours across it, each side\'s Might on a shield, and a sentence that says who holds it and what that scores.</li>' +
     '<li>The mark on the left edge of a Place shows its kind:' + kindKey() + '</li>' +
     '<li>The house on the right edge shows the Place\'s home region, with the region\'s outline inside it.' + homeKey() + 'A Figure from that region has +1 Might there, and while you hold such a Figure in your hand or move one on the map, the houses where it would be at home light up gold.</li>' +
-    (C.DM_LIVE ? '<li>The border of each Domain is the material of its kind, as well: a cord with seals for Commerce, riveted iron for Industry, a ruled margin for Thought, a battlement for Land, a dog-tooth frieze for Culture, a marble moulding for Law and a chart\'s border for Routes.</li></ul>' +
+    (C.DM_LIVE ? '<li>The border of each Domain is the material of its kind, as well: a cord with seals for Commerce, riveted iron for Industry, a ruled margin for Thought, a battlement for Land, a dog-tooth frieze for Culture, a marble molding for Law and a chart\'s border for Routes.</li></ul>' +
     '<h3>Domains</h3><ul><li>Each deck brings a <b>stack of ' + Coll.STACK + ' Domains</b>, no two the same. You choose them under Decks.</li>' +
     '<li>Before the first round, each player draws four Domains, lays one at their Gate and one at their Outpost, offers one for the Crossroads, and puts the fourth under their stack.</li>' +
-    '<li>Then each player rolls a die. The highest roll\'s offer is laid at the Crossroads with that player\'s banner on it, and the next player round the table takes the first turn. If the highest roll is tied, the players in the tie roll again.</li>' +
-    '<li>If the Might at the Crossroads is tied, the player whose banner is on it holds it, as long as they have a Figure there.</li>' +
-    '<li>A Commerce Domain pays nothing at a Gate. Its rule works at an Outpost or the Crossroads.</li>' +
-    '<li>Some cards lay a new Domain, move Domains or cover a Domain\'s rule. The turn log says what changed.</li></ul>' : '</ul>') +
+    '<li>Then each player rolls a die. The highest roll\'s offer is laid at the Crossroads as that player\'s Domain, and the next player round the table takes the first turn. If the highest roll is tied, the players in the tie roll again.</li>' +
+    '<li>Every Domain has the avatar of the player who brought it on its lower edge.</li>' +
+    '<li>If the Might at the Crossroads is tied, the player whose Domain it is holds it, as long as they have a Figure there.</li>' +
+    '<li>A Commerce Domain does nothing at a Gate. Its power works at an Outpost or the Crossroads.</li>' +
+    '<li>Some cards lay a new Domain, move Domains or switch off a Domain\'s power. The turn log says what changed.</li></ul>' : '</ul>') +
     '<h3>Your turn</h3><ul><li>Your Figures are ready to act again, you <b>draw 2 cards</b> and you gain <b>Spark</b>: 2 in round 1 and one more each round, up to 7. If you\'re behind on Renown you get 1 extra.</li>' +
-    '<li>Then, in any order, play cards and act. When you tap a card or one of your Figures, everywhere it can go lights up.</li>' +
+    '<li>Then, in any order, play cards and act. When you pick up a card from your hand or one of your Figures, every Place it can go to lights up. Tap one of them, or drag the card there and let go. While you drag, the Place under your finger shows what your Might there would be.</li>' +
     '<li>You play a <b>Figure</b> at your Gate, or at any Place where you already have one. Up to 3 of your Figures can stand at one Place.</li>' +
     '<li>Each Figure does one thing a turn: <b>walk</b> one step to the next Place, or <b>clash</b> with an enemy Figure where it stands. A Figure you have just played can clash but not walk.</li>' +
     '<li><b>Relics</b> stay in play. You can have 2 Relics in play at a time, and they have to be Relics with different powers. <b>Deeds</b> happen once and are gone.</li>' +
@@ -4367,8 +4385,11 @@
     '<li>A Figure has <b>+1 Might at a Place in its home region</b> (the small house on it). A Voyager has that +1 Might at every Place, and can walk to any Place in one move.</li></ul>' +
     '<h3>A clash</h3><ul><li>Both sides roll a die. The <b>higher roll adds 1</b> to its Figure\'s Might, or <b>2 if it is higher by 3 or more</b>. Then the Figure with the lower Might is knocked out. If they are tied, nothing happens.</li>' +
     '<li><b>Bounty</b>: knocking out a Figure of a player who is ahead of you on Renown scores 1 Renown.</li></ul>' +
-    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the map, to read it large. Swipe sideways to go through the cards at that Place: everyone else’s Figures are to the left of the Place’s card and yours are to the right. Swipe up and down to go from Place to Place, to each player’s Guide and Relics, and to your hand. The little map at the left shows where you are, and how many Figures and how much Might each of you has at every Place.</li>' +
-    '<li>Under the card in front are buttons for what you can do with that card now: play it, move it, or start a clash.</li>' +
+    '<h3>Looking at cards</h3><ul><li><b>Hold your finger on any card</b>, in your hand or on the table, to look closer. The table\'s cards open in levels, the way they lie: the other player\'s Guide and Relics, each Place, your Guide and Relics, and your hand. Swipe up and down, or tap the small map at the side, to go from level to level.</li>' +
+    '<li>At a Place, the two sides face each other across its card, each side\'s Might on a shield and a beam tipped toward whoever holds it. Under each of your Figures are its moves: <b>Clash</b>, with both Mights, and a walk to the Place on either side. Swipe sideways to go along the line from Place to Place, and tap a card to read it large.</li>' +
+    '<li>Under a card you read large, the Places lie as small tiles, in the order they lie on the table. The ones the card can go to are lit, each with both Mights as the move would leave them and what the move does: <b>Play</b>, <b>Walk</b>, <b>Jump</b>, or <b>Take it</b> when the move wins you the Place. Tap a tile to make that move. A card you can\'t play yet says why.</li>' +
+    '<li>On an iPad held sideways, a card you read and the turn log open in a panel at the right, and the table stays in play beside it.</li>' +
+    '<li>The round button at the right of the caption opens the <b>turn log</b>, every move of the game with the newest first. Tap a card\'s name there to read it.</li>' +
     '<li>The computer makes one move at a time and waits for you to tap <b>Next</b>. You can turn that off in the menu.</li></ul>' +
     '<h3>Legacy Lines</h3><ul><li>A <b>Legacy Line</b> connects a card to the person, Relic or Place it grew from in history. The gold line down the right side of the card shows that source, and at the foot of the line what the Legacy Line gives you.</li>' +
     '<li>With the source in play on your side, the card scores <b>1 Renown</b> as you play it. A Figure scores the same way when you play that Figure at the Place named on the card.</li>' +
@@ -4376,18 +4397,19 @@
     '<li>Every Legacy Line you make scores its Renown, however many you make in a round.</li></ul>' +
     '<h3>Your collection</h3><ul><li>Every company has the <b>base set</b>: ' + Coll.BASE.length + ' cards and ' + Coll.DSET.base.length + ' Domains. Each <b>Guide</b> brings a set of their own, ' + Coll.GSET.cleopatra.length + ' cards and ' + Coll.DSET.cleopatra.length + ' Domains, and a Guide\'s deck is the base set and that Guide\'s set, one of each card. You begin with the Guide you chose.</li>' +
     '<li>A great <b>sphere</b> with ' + NUM(Coll.SIGNS) + ' signs turns as you play. A finished game lights one sign, a win lights two, and your first win of the day lights three, however the game is played. Each time the sphere comes full circle you have a pack of ' + Coll.PACK + ' cards.</li>' +
-    '<li>There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides, and a deck has one. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you as the sphere turns, each with their set: the first the first time it comes round, and the last on its ' + ORD(Coll.GUIDE_TURNS.slice(-1)[0]) + ' turn. Each Guide also has a <b>calling</b>, something to do in your games that brings that Guide sooner. The sphere\'s screen, under Packs, shows how far along each calling is.</li>' +
+    '<li>There are ' + NUM(Object.keys(C.GUIDES).length) + ' Guides, and a deck has one. The other ' + NUM(Object.keys(C.GUIDES).length - 1) + ' join you as the sphere turns, each with their set. The first time the sphere comes round, and on some of its later turns up to the ' + ORD(Coll.GUIDE_TURNS.slice(-1)[0]) + ', <b>you choose</b> which of the Guides who haven\'t joined you comes next. Each Guide also has a <b>calling</b>, something to do in your games that brings that Guide sooner. The sphere\'s screen, under Packs, shows how far along each calling is.</li>' +
     '<li>Your first win, your first win against Normal, your first against Hard and your first with a deck you built each give a pack too.</li>' +
     '<li>Every card in a pack is a card you don\'t have yet, or a finish of a card you haven\'t found yet, so you go on collecting Shiny, Silver, Gold and Rainbow cards after you have every card. Packs draw from the whole set, the sets of Guides who haven\'t joined you yet included, and some cards are found only in packs. Domains come only with the sets.</li></ul>' +
     '<h3>The end of a round</h3><ul><li>When every player has had a turn, each Place goes to the side with <b>the most Might</b> there. If the Might is tied, nobody holds the Place. An empty or tied Gate stays with its owner.</li>' +
-    '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The banner on a Place shows what it scores and who holds it right now.</li>' +
+    '<li>Each Place you hold scores <b>1 Renown</b>, and a Place scores the same in every round of the game. The flag on a Place shows what it scores, in the color of whoever holds it right now.</li>' +
     '<li>If you hold an opponent\'s Gate, one of their <b>Seals breaks</b>. Breaking a Seal scores you 1 Renown, on top of what the Place itself scores.</li>' +
     '<li>The <b>Theodosian Walls</b> give you a Seal: they mend a broken one, or add a fourth. No player can have more than 4 Seals.</li>' +
-    '<li>Some Deeds make a Place score <b>double</b> at this round\'s count, and its banner shows the doubled number until then. A Place scores double only once, however many Deeds double it.</li>' +
+    '<li>Some Deeds make a Place score <b>double</b> at this round\'s count, and its flag shows the doubled number until then. A Place scores double only once, however many Deeds double it.</li>' +
     '<li>Some Deeds last until the count, and their card lies on the table until then: on a Domain, like the <b>Peace of Westphalia</b>, which stops every clash there, or on a Figure, like the <b>Walk to Canossa</b>, which switches off the skills and powers on its card.</li>' +
     '<li>Whoever has the most Renown goes first next round, so whoever is behind has the last word. If you are level, you take turns going first.</li>' +
     '<li>If more than one player passes ' + WIN + ' in the same round, whoever has the most Renown wins. The game also ends after 14 rounds, and again whoever has the most Renown wins.</li></ul>' +
-    '<h3>Three to six players</h3><ul><li>Each player\'s Gate and Outpost are a spoke off the Crossroads, and each Outpost is also joined by a road to the Outposts on either side. Your spoke is drawn large in the middle of the table, and everyone else\'s spoke is round the edge, starting with the player on your left.</li>' +
+    '<h3>Three to six players</h3><ul><li>Each player\'s Gate and Outpost are a spoke off the Crossroads, and each Outpost is also joined by a road to the Outposts on either side.</li>' +
+    '<li>On an iPad held sideways, your Gate, your Outpost and the Crossroads lie in a row on your mat at the left, and each other player is a column on their own mat at the right. On a phone, and on an iPad held upright, your spoke is drawn large and everyone else\'s spoke is round the edge. Either way the others start with the player on your left.</li>' +
     '<li>A player\'s Figures at a Place away from your spoke stand as one stack, the strongest on top, with their Might added up on its shield. Tap a stack to read every card in it.</li>' +
     '<li>Each round, whoever has the most Renown goes first, and the turns go round the table to the left.</li>' +
     '<li>A player who loses their last Seal is out of the game. ' + (RC.outEnds ? 'The count that puts a player out ends the game, and whoever has the most Renown of the players still in wins.' : 'Their Figures leave the map, and the game goes on without them until one player is left or someone reaches ' + E.STD.target + ' Renown.') + '</li>' +
@@ -4395,7 +4417,7 @@
     '<h3>Teams</h3><ul><li>With 4 or 6 players you can play in teams: 2 against 2, 3 against 3, or three teams of 2. Teammates sit with an opponent between them, and each team has a color of its own and a diamond on its players\' plates.</li>' +
     '<li>A team\'s Renown is its players\' Renown added together. The first team to reach ' + E.targetFor([[0, 1]]) + ' Renown wins if it has two players, and ' + E.targetFor([[0, 1, 2]]) + ' Renown if it has three.</li>' +
     '<li>' + (RC.tmight === 'add' ? 'Teammates add their Might together to hold a Place. ' : '') + 'Teammates can\'t clash with each other, no card hurts a teammate, and holding a teammate\'s Gate breaks none of their Seals.</li></ul>' +
-    '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
+    '<h3>Tips</h3><ul><li>Hold your finger on any card to read it large, and tap a Place to see both sides of it.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
     '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>').replace(/\bPlace(s?)\b/g, (m, x) => (C.DM_LIVE ? 'Domain' + x : m)); };
   // The Library, Packs and Decks, from the menu or from the home screen's sheet (anoria.html?library=1 and so on): each
   // opens over whatever is on the table and leaves a game as it is; over the setup, the setup is drawn again after
@@ -4613,7 +4635,7 @@
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
   window.AnoriaUI = { line: () => !!(ui.lay && ui.lay.ln), homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
-    showSetup: showSetup, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
+    showSetup: showSetup, matFill: matFill, MATS: MATS, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed

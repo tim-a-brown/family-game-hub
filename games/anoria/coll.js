@@ -12,7 +12,8 @@
 //                  day (the day of your last first win of the day), signs (signs lit on the sphere now, 0 to 11),
 //                  turns (full turns of the sphere), firsts{id: 1}, calls{guide: progress}, threads{id: 1} (the named
 //                  Legacy Lines you have every card of), stacks{'guide:key': [ids]} (the Domain stack chosen for a
-//                  Guide's deck, when it is not the deck's own)}
+//                  Guide's deck, when it is not the deck's own), pick (the Guides the sphere has brought that you
+//                  haven't chosen yet: a closed page asks again the next time Arvela opens)}
 //   anoria_decks  [{id, n, guide, cards[], stack[]}]   the decks you built, each with the Domain stack saved for it
 //
 // The economy, in one place (Tim, 2026-11-13: "the starter pack should have 20 different cards + 8 domains, same with
@@ -27,7 +28,8 @@
 //   - The sphere has twelve signs (SIGNS). A finished game lights 1, a win lights 2 and your first win of the day 3
 //     (LIGHT). However a game is played (against the computer or pass and play) it lights the same. Each time the
 //     sphere comes full circle you have a pack of PACK cards, and on the turns in GUIDE_TURNS a Guide you don't have
-//     yet joins you too, with their set.
+//     yet joins you too, with their set. You choose which one (pending(), join(); Tim asked for the new Guide's moment
+//     on 2026-11-14, and choosing gives that turn of the sphere a decision): until you have, the Guide waits in `pick`.
 //   - Each Guide also has a calling (CALLS): something done in games, which brings that Guide sooner. A Guide's
 //     Domains you already have give nothing extra.
 //   - Four firsts give a pack each (FIRSTS): your first win, your first against Normal and against Hard, and your
@@ -127,7 +129,7 @@ function use(o) { if (o.store) store = o.store; if (o.random) rnd = o.random; if
   if (o.welcome) WELCOME = o.welcome; if (o.light) LIGHT = Object.assign({}, LIGHT, o.light); if (o.guideTurns) GUIDE_TURNS = o.guideTurns;
   if (o.needs) Object.keys(o.needs).forEach(g => { if (CALLS[g]) CALLS[g].need = o.needs[g]; }); cache = null; }
 
-const blank = () => ({ v: VER, starter: null, guides: [], cards: {}, seen: {}, fresh: {}, ed: {}, look: {}, doms: {}, dnew: {}, packs: [], pid: 1, opened: 0, games: 0, wins: 0, day: '', signs: 0, turns: 0, firsts: {}, calls: {}, threads: {}, stacks: {} });
+const blank = () => ({ v: VER, starter: null, guides: [], cards: {}, seen: {}, fresh: {}, ed: {}, look: {}, doms: {}, dnew: {}, packs: [], pid: 1, opened: 0, games: 0, wins: 0, day: '', signs: 0, turns: 0, firsts: {}, calls: {}, threads: {}, stacks: {}, pick: 0 });
 let cache = null, cacheRaw = null;
 function load() {
   const raw = store.get(KEY);
@@ -137,7 +139,7 @@ function load() {
   if (s && typeof s === 'object' && (s.v || 1) < VER) { s = null; store.set(DKEY, '[]'); store.set(KEY, JSON.stringify(blank())); }
   cache = Object.assign(blank(), s && typeof s === 'object' ? s : {}); cacheRaw = store.get(KEY);
   ['cards', 'seen', 'fresh', 'ed', 'look', 'doms', 'dnew', 'firsts', 'calls', 'threads', 'stacks'].forEach(k => { if (!cache[k] || typeof cache[k] !== 'object') cache[k] = {}; });
-  if (!Array.isArray(cache.guides)) cache.guides = []; if (!Array.isArray(cache.packs)) cache.packs = [];
+  if (!Array.isArray(cache.guides)) cache.guides = []; if (!Array.isArray(cache.packs)) cache.packs = []; cache.pick = Math.max(0, +cache.pick || 0);
   // a card that has left the set since v 6 (Tomoe Gozen and Hiawatha, 2026-11-13) is the card that has its slot now,
   // with its finishes and the one it is shown in
   const R = C.RETIRED || {}; let moved = false;
@@ -317,16 +319,33 @@ function gameOver(o) {
   while (s.signs >= SIGNS) {
     s.signs -= SIGNS; s.turns++; R.turns++;
     R.list.push({ t: 'pack', pack: addPack(s, 'sphere', 'The sphere came round', PACK) });
-    if (GUIDE_TURNS.indexOf(s.turns) >= 0) { const left = GKEYS.filter(g => s.guides.indexOf(g) < 0); if (left.length) { const g = left[(rnd() * left.length) | 0]; const x = giveSet(s, g); R.list.unshift({ t: 'guide', g: g, why: 'sphere', cards: x.cards, doms: x.doms }); } }
+    // (a Guide the sphere brings waits for you to choose them: a guide entry with pick and no g yet, which join() fills)
+    if (GUIDE_TURNS.indexOf(s.turns) >= 0 && leftOf(s).length > s.pick) { s.pick++; R.list.unshift({ t: 'guide', g: null, why: 'sphere', pick: true }); }
   }
   callsCheck(s).forEach(x => R.list.unshift({ t: 'guide', g: x.g, why: 'call', cards: x.cards, doms: x.doms }));
+  s.pick = Math.min(s.pick, leftOf(s).length);   // (a calling may have brought the last Guide the sphere's choice had)
   R.signs = s.signs;
   save(s); settleThreads();
   return R;
 }
+// The Guides who haven't joined you yet
+const leftOf = s => GKEYS.filter(g => s.guides.indexOf(g) < 0);
+// The sphere's Guides still to be chosen: {n (how many), from: [the Guides you can choose among]}
+function pending() { const s = load(), left = leftOf(s); return { n: s.starter ? Math.min(s.pick, left.length) : 0, from: left }; }
+// Choose the Guide the sphere brings (g, or one at random when g is null: the pacing script). Their set is yours.
+// Returns {g, cards: [keys new to you], doms: [ids new to you]}, or null when no choice is waiting or g has joined.
+function join(g) {
+  const s = load(), left = leftOf(s);
+  if (!s.starter || s.pick < 1 || !left.length) return null;
+  if (g == null) g = left[(rnd() * left.length) | 0];
+  if (left.indexOf(g) < 0) return null;
+  s.pick--; const x = giveSet(s, g); s.pick = Math.min(s.pick, leftOf(s).length);
+  save(s); settleThreads();
+  return { g: g, cards: x.cards, doms: x.doms };
+}
 // The sphere as it stands: {lit (signs lit now), of (SIGNS), turns (full turns so far), next (the turn that brings the
 // next Guide, or 0), toGuide (turns from now to it)}
-function sphere() { const s = load(), next = GUIDE_TURNS.filter(t => t > s.turns)[0] || 0, left = GKEYS.some(g => s.guides.indexOf(g) < 0);
+function sphere() { const s = load(), next = GUIDE_TURNS.filter(t => t > s.turns)[0] || 0, left = leftOf(s).length > s.pick;   // (a Guide still to be chosen is not one to come)
   return { lit: s.signs, of: SIGNS, turns: s.turns, next: left ? next : 0, toGuide: left && next ? next - s.turns : 0, guideSay: left && next ? guideWhen(next - s.turns) : '', light: Object.assign({}, LIGHT), today: s.day === dayKey() }; }
 // when the sphere brings the next Guide, as a sentence (a calling met can bring one sooner)
 const MORE = ['', '', 'twice more', 'three more times', 'four more times', 'five more times', 'six more times'];
@@ -440,7 +459,7 @@ function finish(d) {
 
 return { use, load, reset, dayKey, owns, copies, cardState, counts, setsProgress, poolProgress, editions, look, setLook, edCounts, rarity, EDITIONS, TIERS, TIER_W, VER, get ED_ODDS() { return ED_ODDS; },
   markSeen, looked, lookedAll, chooseGuide, chooseStarter: chooseGuide, guideDeck, guideStack, packs, openPack, threads, settleThreads, gameOver, nextUp, sphere, callings, trackStart, track, trackEnd,
-  problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, CAP, DECK, ALL, BASE, GSET, DSET, POOL, setOf, setCards, CALLS, FIRSTS, SIGNS,
+  pending, join, problems, myDecks, saveDeck, deleteDeck, decks, deck, finish, CAP, DECK, ALL, BASE, GSET, DSET, POOL, setOf, setCards, CALLS, FIRSTS, SIGNS,
   get LIGHT() { return LIGHT; }, get PACK() { return PACK; }, get WELCOME() { return WELCOME; }, get GUIDE_TURNS() { return GUIDE_TURNS; },
   DOMS, STACK, hasDomain, domains, domainState, domainFresh, domainLooked, stackProblems, autoStack, stackFor, saveStack };
 });
