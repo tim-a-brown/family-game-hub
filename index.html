@@ -876,6 +876,26 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .search svg{z-index:1;}
 :root:not(.ng-x) .surprise{border-radius:16px;}
 :root:not(.ng-x) .chips .chip{font-weight:650;}
+/* Players and Games: two dropdowns; Games takes the rest of the row and says what is shown */
+:root:not(.ng-x) .chips .chip.kinds{flex:1 1 auto;min-width:0;justify-content:flex-start;}
+:root:not(.ng-x) .chips .chip.kinds .kl{min-width:0;overflow-wrap:anywhere;line-height:1.15;text-align:left;white-space:normal;}
+:root:not(.ng-x) .chips .chip.kinds > span:last-child{margin-left:auto;}
+:root:not(.ng-x) .chips .chip:is(.kinds,.who).set{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
+:root:not(.ng-x) .chips .chip:is(.kinds,.who).set .ico{color:var(--lit-ink);}
+/* the Which games? sheet: a row for each kind, its icon in the kind's color, how many games, and a tick at the right */
+:root:not(.ng-x) .kpick{gap:6px;}
+:root:not(.ng-x) .kpick .kr{gap:12px;padding:8px 12px 8px 8px;min-height:58px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
+:root:not(.ng-x) .kpick .kr:active{transform:scale(.985);box-shadow:inset 0 0 0 1px var(--gl-line);}
+:root:not(.ng-x) .kpick .kr .e{width:40px;height:40px;border-radius:12px;background:color-mix(in srgb,var(--kc) 18%,transparent);color:var(--kc);}
+:root:not(.ng-x) .kpick .kr .e .ico{width:21px;height:21px;}
+:root:not(.ng-x) .kpick .kt{flex:1;min-width:0;display:flex;flex-direction:column;}
+:root:not(.ng-x) .kpick .kt .t{font-weight:750;font-size:1rem;}
+:root:not(.ng-x) .kpick .kt small{font-size:.8rem;color:var(--text-2);font-weight:500;}
+:root:not(.ng-x) .kpick .ck{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;box-shadow:inset 0 0 0 1.5px var(--gl-line);color:transparent;transition:background .15s,color .15s,box-shadow .15s;}
+:root:not(.ng-x) .kpick .ck .ico{width:16px;height:16px;stroke-width:3;}
+:root:not(.ng-x) .kpick .kr.on{background:linear-gradient(160deg,color-mix(in srgb,var(--kc) 14%,transparent),var(--gl) 70%);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6);}
+:root:not(.ng-x) .kpick .kr.on .ck{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:0 0 12px rgba(255,190,60,.4);}
+
 :root:not(.ng-x) .chips .chip .n{color:var(--text-3);font-weight:600;}
 :root:not(.ng-x) .chips .chip.on .n{color:inherit;opacity:.75;}
 :root:not(.ng-x) .dlbtn{--dh:hsl(205 78% 62%);border-radius:20px;font-weight:700;
@@ -899,9 +919,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   :root:not(.ng-x) .dlbtn .ct{font-size:.84rem;color:var(--text-2);}
   :root:not(.ng-x) .dlbtn .bar{grid-column:1/-1;width:100%;}
   /* the chips in one row that slides sideways, fading at the edge where there are more */
-  :root:not(.ng-x) .filters .chips{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;margin:10px -16px 0;padding:2px 16px 4px;
-    -webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 30px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 30px),transparent);}
-  :root:not(.ng-x) .filters .chips .chip{flex:none;}
+  :root:not(.ng-x) .filters .chips{flex-wrap:nowrap;}
 }
 @media (max-width:719px){
   :root:not(.ng-x) .filters .chips{grid-column:1/-1;}
@@ -1127,7 +1145,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function get(k, d) { try { var v = LS.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
   function set(k, v) { try { LS.setItem(k, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }
 
-  var state = { cat: get('gn_home_cat', 'all'), who: get('gn_home_who', 'any'), q: '' };
+  var state = { cats: readCats(), who: get('gn_home_who', 'any'), q: '' };
+  // the kinds of games shown (Tim, 2026-11-14: "a multi-select dropdown since there's so much to scroll"): category ids
+  // and 'fav'; none chosen is every game. The one kind chosen before (gn_home_cat) carries over once.
+  function readCats() {
+    try { var a = JSON.parse(get('gn_home_cats', 'null')); if (Array.isArray(a)) return a.filter(function (x) { return typeof x === 'string'; }); } catch (e) {}
+    var o = get('gn_home_cat', 'all'); return o && o !== 'all' ? [o] : [];
+  }
+  function saveCats() { set('gn_home_cats', JSON.stringify(state.cats)); }
+  function inCats(g) { return !state.cats.length || state.cats.some(function (id) { return id === 'fav' ? isFav(g) : g.cat === id; }); }
 
   // ── Favourites (hrefs like "games/hearts-ai.html", shared with sync) ──────
   function favList() { try { var a = JSON.parse(get('fav_games', '[]')); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
@@ -1472,24 +1498,63 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function renderChips() {
     renderDaily();
     var vis = visibleGames(), favCount = vis.filter(isFav).length;
-    var items = [{ id: 'all', label: 'All', n: vis.length, ic: 'tiles', cls: 'all' }];
-    if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount, ic: 'star', cls: 'fav' });
+    var items = [];
+    if (favCount) items.push({ id: 'fav', label: 'Favorites', n: favCount, ic: 'star', color: 'var(--lit)' });
     Kit.cats().forEach(function (c) {
       var n = vis.filter(function (g) { return g.cat === c.id; }).length;
-      if (n) items.push({ id: c.id, label: c.name, n: n, ic: c.id, color: c.color });
+      if (n) items.push({ id: c.id, label: c.name, n: n, ic: c.id, color: 'hsl(' + c.hue + ' ' + c.sat + '% 58%)' });
     });
-    if (!items.some(function (i) { return i.id === state.cat; })) state.cat = 'all';
+    // a kind that has gone (switched off, or no favorites left) drops out of the choice
+    var ids = items.map(function (i) { return i.id; }), kept = state.cats.filter(function (id) { return ids.indexOf(id) >= 0; });
+    if (kept.length !== state.cats.length) { state.cats = kept; saveCats(); }
     var box = $('chips'); box.innerHTML = '';
     box.appendChild(whoChip());
-    items.forEach(function (i) {
-      var b = el('button', { type: 'button', class: 'chip' + (i.cls ? ' ' + i.cls : '') + (i.id === state.cat ? ' on' : ''), role: 'tab', 'aria-selected': String(i.id === state.cat), style: i.color ? { '--cc': i.color } : null },
-        [el('span', { html: Kit.icon(i.ic) }), el('span', { text: i.label }), el('span', { class: 'n', text: String(i.n) })]);
-      b.addEventListener('click', function () {
-        state.cat = i.id; set('gn_home_cat', i.id); Kit.sfx('tap'); render();
-        var f = $('filters'); if (window.scrollY > f.offsetTop) window.scrollTo({ top: f.offsetTop, behavior: 'smooth' });
-      });
-      box.appendChild(b);
+    box.appendChild(kindsChip(items, vis.length));
+  }
+  // Games: one button that says what is shown ("All games", "Classic Cards", "Classic Cards and Dice & Luck", "4 kinds of
+  // games") and opens a sheet where any number of kinds are ticked; the list behind changes with each tick
+  function kindsSaid(items) {
+    var ch = items.filter(function (i) { return state.cats.indexOf(i.id) >= 0; });
+    if (!ch.length) return 'All games';
+    if (ch.length === 1) return ch[0].label;
+    if (ch.length === 2) return ch[0].label + ' and ' + ch[1].label;
+    return ch.length + ' kinds of games';
+  }
+  function kindsChip(items, nAll) {
+    var said = kindsSaid(items), set1 = state.cats.length > 0;
+    var b = el('button', { type: 'button', class: 'chip kinds' + (set1 ? ' set' : ''), 'aria-label': 'Games shown: ' + said, 'aria-haspopup': 'dialog' },
+      [el('span', { html: Kit.icon(set1 && state.cats.length === 1 ? (state.cats[0] === 'fav' ? 'star' : state.cats[0]) : 'tiles') }), el('span', { class: 'kl', text: said }), el('span', { html: Kit.icon('down') })]);
+    b.addEventListener('click', function () {
+      Kit.sfx('pop');
+      var box = el('div', { class: 'pick kpick' }), s, rows = {}, wrap = el('div', null, [box]);
+      function paint() {
+        var all = !state.cats.length;
+        rows.all.classList.toggle('on', all); rows.all.setAttribute('aria-checked', String(all));
+        items.forEach(function (i) { var on = state.cats.indexOf(i.id) >= 0; rows[i.id].classList.toggle('on', on); rows[i.id].setAttribute('aria-checked', String(on)); });
+        done.textContent = all ? 'Show all ' + nAll + ' games' : 'Show ' + shownCount() + (shownCount() === 1 ? ' game' : ' games');
+      }
+      function shownCount() { return visibleGames().filter(inCats).length; }
+      function row(id, label, n, ic, color) {
+        var r = el('button', { type: 'button', role: 'checkbox', class: 'kr', style: color ? { '--kc': color } : null }, [
+          el('span', { class: 'e', html: Kit.icon(ic) }), el('span', { class: 'kt' }, [el('span', { class: 't', text: label }), el('small', { text: n === 1 ? '1 game' : n + ' games' })]),
+          el('span', { class: 'ck', html: Kit.icon('check') })]);
+        r.addEventListener('click', function () {
+          if (id === 'all') state.cats = [];
+          else { var k = state.cats.indexOf(id); if (k >= 0) state.cats.splice(k, 1); else state.cats.push(id); }
+          // (kept in the list's own order, so the sections and the button's words read the same way)
+          var order = items.map(function (i) { return i.id; }); state.cats.sort(function (a, c) { return order.indexOf(a) - order.indexOf(c); });
+          saveCats(); Kit.sfx('tap'); Kit.haptic('light'); paint(); render();
+        });
+        rows[id] = r; box.appendChild(r);
+      }
+      row('all', 'All games', nAll, 'tiles', 'var(--text-2)');
+      items.forEach(function (i) { row(i.id, i.label, i.n, i.ic, i.color); });
+      var done = el('button', { type: 'button', class: 'btn btn-primary btn-block kdone', onclick: function () { s.close(); var f = $('filters'); if (window.scrollY > f.offsetTop) window.scrollTo({ top: f.offsetTop, behavior: 'smooth' }); } });
+      wrap.appendChild(el('div', { class: 'k-acts' }, [done]));
+      paint();
+      s = Kit.sheet({ title: 'Which games?', node: wrap });
     });
+    return b;
   }
 
   function section(title, ic, games, extra, favs) {
@@ -2036,8 +2101,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // every game with a Resume tag is here too; a category or a search narrows this to its own games, but online games
     // against someone (your move or theirs) stay at the top whatever you're looking at (friends' open tables are the
     // banner above the search)
-    var narrowed = !!state.q || state.cat !== 'all', vis = narrowed ? visibleGames() : null;
-    var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && (state.cat === 'all' || (state.cat === 'fav' ? isFav(x.g) : x.g.cat === state.cat))); });
+    var narrowed = !!state.q || state.cats.length > 0, vis = narrowed ? visibleGames() : null;
+    var items = currentItems().filter(function (x) { return !narrowed || (vis.indexOf(x.g) >= 0 && inCats(x.g)); });
     railItems = items;
     refreshBadges();
     if (!items.length) editing = false;
@@ -2119,20 +2184,15 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     renderRail();
     var list = $('list'); list.innerHTML = '';
     var vis = visibleGames();
-    if (state.cat === 'all') {
-      var favs = vis.filter(isFav);
-      if (favs.length && !state.q) list.appendChild(section('Favorites', 'star', favs, null, true));
-      Kit.cats().forEach(function (c) {
-        var gs = vis.filter(function (g) { return g.cat === c.id; });
-        // Consoles stays even with everything hidden, so its Edit button can bring things back
-        if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
-      });
-    } else if (state.cat === 'fav') {
-      list.appendChild(section('Favorites', 'star', vis.filter(isFav), null, true));
-    } else {
-      var c = GAME_CATS.filter(function (x) { return x.id === state.cat; })[0];
-      list.appendChild(section(c.name, c.id, vis.filter(function (g) { return g.cat === c.id; }), secExtra(c.id)));
-    }
+    var all = !state.cats.length, on = function (id) { return all || state.cats.indexOf(id) >= 0; };
+    var favs = vis.filter(isFav);
+    if (favs.length && (all ? !state.q : on('fav'))) list.appendChild(section('Favorites', 'star', favs, null, true));
+    Kit.cats().forEach(function (c) {
+      if (!on(c.id)) return;
+      var gs = vis.filter(function (g) { return g.cat === c.id; });
+      // Consoles stays even with everything hidden, so its Edit button can bring things back
+      if (gs.length || (c.id === 'console' && !state.q && (!Kit.catOn || Kit.catOn('console')))) list.appendChild(section(c.name, c.id, gs, secExtra(c.id)));
+    });
     $('empty').classList.toggle('show', !vis.length);
     markWraps();
   }
