@@ -928,6 +928,11 @@
     // they bid last: compete, double, or let them have it
     if (theirLast) {
       var tl = lvOf(a.last), tst = stOf(a.last);
+      // partner doubled them for penalty: leave it in
+      if (a.dbl === 1 && side(a.dblBy) === side(me) && a.dblBy === X.pd) {
+        var dr = ruleAt(X, X.calls.lastIndexOf('X'));
+        if (!(dr && (dr.tko || dr.conv))) return { c: 'P', say: 'Leaves partner\'s penalty double in: their contract should go down.' };
+      }
       var defense = qt(h) + (h.len[suitOfSt(tst)] >= 4 && tst < 4 ? Math.min(2, top5(h, suitOfSt(tst))) : 0) + pdLo / 5;
       var needSet = 8 - tl;
       if (X.can('X') && a.dbl === 0 && h.lv !== 'easy' && tl >= 2 && defense >= needSet + 0.5 && totLo >= 20) return { c: 'X', say: 'Penalty double: this side has the strength to beat their contract.' };

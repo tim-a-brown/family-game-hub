@@ -1104,7 +1104,7 @@
     Kit.win({
       title: title,
       sub: w < 0 ? 'Both sides finished on ' + T[0] : 'By ' + Math.abs(T[0] - T[1]) + ' points · ' + (S.fmt === 'chicago' ? 'four deals' : 'won ' + Math.max(S.pad.games[0], S.pad.games[1]) + ' games to ' + Math.min(S.pad.games[0], S.pad.games[1])),
-      rank: (w === 1 ? [1, 0] : [0, 1]).map(function (t) { return { name: sideNames(t), score: T[t], color: Kit.color(t), me: onePerson() && t === w0 }; }),
+      rank: (w === 1 ? [1, 0] : [0, 1]).map(function (t) { return { name: sideNames(t), score: T[t], color: Kit.color(t), me: onePerson() && t === w0, cpu: S.players[t].cpu && S.players[t + 2].cpu }; }),
       lose: lose, icon: lose ? 'meh' : 'trophy',
       again: function () { S = fresh(players, opts); LME = 0; Kit.gameStart(); undoStack = []; startDeal(S); afterDeal(); },
       look: { label: 'Look at the score pad', onClick: function () { padSheet(); } },
