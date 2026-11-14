@@ -147,6 +147,8 @@
     // (a rocket in flight, for Mysore Rockets' Volley; an open eye, on a card the Telescope shows)
     rocket: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e9cf86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 3.5 9 15M20.5 3.5l-1 5.5M20.5 3.5l-5.5 1"/><path d="M9 15l-2.2.4M9 15l-.4 2.2"/><path d="M5.8 17.2c-1 .6-2 1.6-2.3 3.3 1.7-.3 2.7-1.3 3.3-2.3" stroke-width="1.5"/></g></svg>',
     eye: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#2a1d08" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12c2.6-4.4 5.8-6.5 9.5-6.5s6.9 2.1 9.5 6.5c-2.6 4.4-5.8 6.5-9.5 6.5S5.1 16.4 2.5 12z"/><circle cx="12" cy="12" r="2.8" fill="#2a1d08"/></g></svg>',
+    // (footprints: a walk, on the face-off's walk chips, so they never look like the arrows that only page along the road)
+    steps: '<svg viewBox="0 0 24 24"><g fill="currentColor"><ellipse cx="8" cy="8.5" rx="2.6" ry="4" transform="rotate(-12 8 8.5)"/><circle cx="7" cy="14.6" r="1.7"/><ellipse cx="16" cy="12.5" rx="2.6" ry="4" transform="rotate(12 16 12.5)"/><circle cx="17" cy="18.6" r="1.7"/></g></svg>',
     swords: '<svg viewBox="0 0 24 24"><g fill="none" stroke="#e9cf86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l10 10M4 3v3.4M4 3h3.4M12.2 15.8l3.6-3.6M13.4 14.6 19 20.2M17.6 21.6l2.8-2.8"/><path d="M20 3 10 13M20 3v3.4M20 3h-3.4M11.8 15.8l-3.6-3.6M10.6 14.6 5 20.2M6.4 21.6l-2.8-2.8"/></g></svg>',
     // the two faces of a card you are reading: its picture large, or its words (the button on the picture)
     art: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="9.6" r="1.6" fill="currentColor" stroke="none"/><path d="M4 17l5-4.6 3.4 3 3-2.8L20 16.6"/></svg>',
@@ -1127,8 +1129,10 @@
   }
   const canDo = it => { const R = roadOf(it); return !!(Object.keys(R.lit).length || R.chips.length || R.btns.some(b => !b.soft || b.run)); };
   // How big the road's tiles are at this screen size: as wide as the room for one row of them allows
+  // (an iPad held sideways: the strip at the left and the road and notes in a column at the right, as on a phone on its side)
+  const scanWide = () => window.innerWidth > window.innerHeight * 1.15 && window.innerWidth >= 960 && window.innerHeight > 560;
   function roadDims(box) {
-    const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560, n = S ? roadOrd().length : 5, per = n > 7 ? Math.ceil(n / 2) : n;
+    const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && (H <= 560 || W >= 960), n = S ? roadOrd().length : 5, per = n > 7 ? Math.ceil(n / 2) : n;
     const w = box && box.clientWidth ? box.clientWidth : side ? (W - 16) / 2.15 - 20 : Math.min(W - 24, 640), gap = W < 500 ? 5 : 8;
     const rw = Math.max(40, Math.min(side ? 84 : 124, Math.floor((w - (per - 1) * gap) / per))), rh = Math.round(rw * .62), rows = Math.ceil(n / per), chips = W < 500 || side ? 40 : 46;
     return { rw: rw, rh: rh, gap: gap, per: per, h: rows * (rh + 22) + (rows - 1) * 4 + 8 + chips, chips: chips };
@@ -1237,8 +1241,8 @@
           [el('span', { class: 'rd-x', html: SVG.rocket }), s0, el('b', { text: m[0] + ' vs ' + m[1] }), el('span', { class: 'rd-far', text: 'at ' + domShort(C.PLACES[S.places[g.p]].n) })])); });
       const walk = q => { for (const t of ['walk', 'rail', 'tub', 'antik']) { const as = ms.filter(a => a.p === q && a.t === t); if (as.length) return as; } return null; };   // (a plain walk first; a Jump to the same place is on the Figure's road)
       const wp = prev != null ? walk(prev) : null, wn = next != null ? walk(next) : null;
-      if (wp) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', onclick: e => { e.stopPropagation(); runActs(wp, CARDS[f.c].n + ' to ' + theName('@' + S.places[prev])); } }, [el('span', { class: 'ar', text: '←' }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
-      if (wn) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', onclick: e => { e.stopPropagation(); runActs(wn, CARDS[f.c].n + ' to ' + theName('@' + S.places[next])); } }, [el('span', { text: domShort(C.PLACES[S.places[next]].n) }), el('span', { class: 'ar', text: '→' })]));
+      if (wp) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', 'aria-label': 'Walk ' + CARDS[f.c].n + ' to ' + theName('@' + S.places[prev]), onclick: e => { e.stopPropagation(); runActs(wp, CARDS[f.c].n + ' to ' + theName('@' + S.places[prev])); } }, [el('span', { class: 'ar', text: '←' }), el('span', { class: 'rd-st', html: SVG.steps }), el('span', { text: domShort(C.PLACES[S.places[prev]].n) })]));
+      if (wn) n.appendChild(el('button', { type: 'button', class: 'rd-c mv', 'aria-label': 'Walk ' + CARDS[f.c].n + ' to ' + theName('@' + S.places[next]), onclick: e => { e.stopPropagation(); runActs(wn, CARDS[f.c].n + ' to ' + theName('@' + S.places[next])); } }, [el('span', { class: 'rd-st', html: SVG.steps }), el('span', { text: domShort(C.PLACES[S.places[next]].n) }), el('span', { class: 'ar', text: '→' })]));
       if (ms.some(a => a.t === 'relay' || (a.t !== 'clash' && ((wp || []).indexOf(a) < 0 && (wn || []).indexOf(a) < 0)))) n.appendChild(el('button', { type: 'button', class: 'rd-c more', onclick: e => { e.stopPropagation(); h.cards(ix(f.u)); } }, [el('span', { text: 'More moves' })]));
       return n.childNodes.length ? n : null;
     };
@@ -1424,8 +1428,8 @@
     // (upright: the card is as big as leaves the map its place at the left and the road and notes theirs below; the
     // notes take what is left and scroll. Sideways on a phone the road and notes have the right-hand side to themselves.)
     function size() {
-      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560;
-      flow.style.removeProperty('--cu'); cuPx = ''; if (side || mode === 'fo') return;
+      const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide());
+      flow.style.removeProperty('--cu'); cuPx = ''; if (side || scanWide() || mode === 'fo') return;
       const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - roadDims().h - 4 * 8, notes = Math.max(96, Math.round(H * .16));
       const mapW = map.offsetWidth + 14;
       cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
@@ -2434,7 +2438,7 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    fitStrips(); if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } lines(); fitSides();
+    fitStrips(); if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } coverNames(); lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
   // A player's bar keeps everything on it inside its own edge (a 320-wide phone held upright: the other player's name,
@@ -2619,17 +2623,56 @@
     const L = ui.lay || {};
     dom.map.querySelectorAll('.pl-side').forEach(sd => {
       const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), n = ks.length;
-      ks.forEach(k => { k.style.zIndex = ''; });
+      ks.forEach(k => { k.style.zIndex = ''; }); sd.classList.remove('ovl');
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
       const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
       if (L.ln && L.up) {
         const ch = b.height, step = Math.min(ch * .58, Math.max(ch * .3, (r.height - ch) / (n - 1))); sd.style.setProperty('--ov', (step - ch).toFixed(1) + 'px');   // (a third of a card at least: its name shows)
         if (sd.classList.contains('R')) ks.forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(n - j + 1); });   // (yours: each card over the next, so the names below show)
+        // (theirs: the card farther from the line over the one nearer it, as they lie. Every card gets its own z-index so
+        // it is a layer of its own: without one, the cost and Might marks of the card underneath came up through the
+        // card over it and lay on its name)
+        else ks.forEach(k => { if (!k.classList.contains('sel')) { const t = k.getBoundingClientRect().top; k.style.zIndex = String(2 + ks.filter(o => o.getBoundingClientRect().top > t + 1).length); } });
         return;
       }
       const w = b.width, room = r.width - 2, fit = n * w + (n - 1) * gap;
       sd.style.setProperty('--ov', (fit <= room ? gap : (room - n * w) / (n - 1)).toFixed(1) + 'px');
+      // (overlapping: the card farther right lies over the one at its left, on either side of the line, so what shows of
+      // each card is its left part, with its cost and Might on the spine; coverNames keeps its name there)
+      sd.classList.toggle('ovl', fit > room);
+      if (fit > room) ks.slice().sort((a, b2) => a.getBoundingClientRect().left - b2.getBoundingClientRect().left).forEach((k, j) => { if (!k.classList.contains('sel')) k.style.zIndex = String(2 + j); });
     });
+  }
+  // A card overlapped by the next one in a row (a pile at a Domain, a hand of more than eight) keeps its name in the
+  // part that shows (Tim's "nothing cut off": the next card used to lie over the end of every name, "Archimede",
+  // "Lei Erik"). A little overlap: the name moves to the left of the card and wraps there, at the size the other
+  // names have. More: the name is printed down the edge of the part that shows, as on a book's spine, and the name at
+  // the card's foot (under the next card) is hidden.
+  function coverNames() {
+    if (!dom.root) return;
+    dom.root.querySelectorAll('.cv-v').forEach(n => n.remove());
+    dom.root.querySelectorAll('.cv').forEach(k => { k.classList.remove('cv', 'cvv'); const n = k.querySelector('.ac-name'); if (n) { n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0 || ''; delete n.dataset.fs0; } });
+    const rows = [];
+    if (dom.hand && dom.hand.classList.contains('over')) rows.push(Array.prototype.filter.call(dom.hand.children, c => c.matches('.hc')));
+    if (dom.map && !(ui.lay && ui.lay.ln && ui.lay.up)) dom.map.querySelectorAll('.pl-side').forEach(sd => { if (parseFloat(sd.style.getPropertyValue('--ov')) < 0) rows.push(Array.prototype.filter.call(sd.children, c => c.matches('.fp.card'))); });
+    rows.forEach(ks => { ks = ks.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left); ks.forEach((k, j) => {
+      const nx = ks[j + 1], n = k.querySelector('.ac-name'); if (!nx || !n || k.classList.contains('sel') || nx.classList.contains('sel')) return;
+      const kr = k.getBoundingClientRect(), xr = nx.getBoundingClientRect(), cover = kr.right - xr.left; if (cover < 1.5 || xr.left < kr.left) return;
+      const nr = n.getBoundingClientRect(), fs0 = parseFloat(getComputedStyle(n).fontSize), vis = kr.width - cover;
+      k.classList.add('cv'); n.dataset.fs0 = n.style.fontSize || '';
+      // (the words of the name, each inside the part that shows?)
+      const fits = () => { const right = kr.left + vis - 2, t = n.firstChild; if (!t || t.nodeType !== 3) return false; let ok = true, at = 0;   // (every word on one line, none broken at its hyphen, inside the part that shows)
+        t.textContent.split(' ').forEach(w => { const rg = document.createRange(); rg.setStart(t, at); rg.setEnd(t, at + w.length); at += w.length + 1; const rs = Array.prototype.filter.call(rg.getClientRects(), r => r.width > .5); if (rs.length > 1 || rs.some(r => r.right > right + .5)) ok = false; }); return ok; };
+      n.style.textAlign = 'left'; n.style.paddingRight = Math.max(0, nr.right - (kr.left + vis) + 2) + 'px';
+      let fs = fs0; while (!fits() && fs > fs0 * .9) { fs -= .5; n.style.fontSize = fs + 'px'; }
+      if (fits() && n.getBoundingClientRect().bottom <= kr.bottom + 1) return;
+      // (the spine: down the right edge of the part that shows, at the names' own size, smaller only if it must be)
+      n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0;
+      k.classList.add('cvv');
+      const sp = el('span', { class: 'cv-v', 'aria-hidden': 'true', text: n.textContent }); k.appendChild(sp);
+      const ac = k.querySelector('.ac'); if (ac) sp.style.setProperty('--f', ac.style.getPropertyValue('--f')); sp.style.fontSize = fs0 + 'px'; sp.style.right = (cover + 1) + 'px'; sp.style.maxWidth = Math.max(10, vis * .62) + 'px';
+      let f = fs0; while ((sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1) && f > 7) { f -= .5; sp.style.fontSize = f + 'px'; }
+    }); });
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
@@ -3769,8 +3812,14 @@
     if (beside) sideEl.classList.add('log');
     L.forEach(e => { if (e.h === 't' || e.h === 'c' || e.h === 'e' || !cur) { cur = { head: e.h ? e : null, lines: [] }; groups.push(cur); if (e.h === 'e' || !e.h) cur.lines.push(e); } else cur.lines.push(e); });
     const name = k => k[0] === '@' ? theName(k) : CARDS[k] ? (CARDS[k].t === 'relic' ? theName(k) : CARDS[k].n) : k;
-    const line = e => el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, (e.x || []).map(x => typeof x === 'string' ? document.createTextNode(DW(x))
-      : el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => (beside && sideEl ? sideRead(x.k.replace(/^@/, ''), { back: { label: 'Back to the turn log', fn: logScreen } }) : openView(x.k.replace(/^@/, ''))) })));
+    // (a button is one box to the line breaker, so the stop or comma after a name is kept with it in a span that
+    // doesn't wrap: otherwise "Stonehenge" ended one line and its full stop began the next)
+    const line = e => { const xs = (e.x || []).slice(), out = [];
+      xs.forEach((x, i) => { if (typeof x === 'string') { out.push(document.createTextNode(DW(x))); return; }
+        const b = el('button', { type: 'button', class: 'lg-c', text: name(x.k), onclick: () => (beside && sideEl ? sideRead(x.k.replace(/^@/, ''), { back: { label: 'Back to the turn log', fn: logScreen } }) : openView(x.k.replace(/^@/, ''))) });
+        const nx = xs[i + 1], m = typeof nx === 'string' && /^[.,;:!?’)]+/.exec(nx);
+        if (m) { xs[i + 1] = nx.slice(m[0].length); out.push(el('span', { class: 'lg-nw' }, [b, document.createTextNode(m[0])])); } else out.push(b); });
+      return el('p', { class: 'lg-l' + (e.o >= 0 ? ' o' + e.o : '') }, out); };
     if (!groups.length) sc.body.appendChild(el('p', { class: 'lg-none', text: 'Nothing has happened yet. Every card played, every clash and every count is written here as the game goes.' }));
     // (the newest turn first; inside a turn, things in the order they happened)
     groups.slice().reverse().forEach(g => { const h = g.head, box = el('section', { class: 'lg-g' + (h && h.h === 'c' ? ' cnt' : h && h.h === 'e' ? ' end' : h && h.o >= 0 ? ' o' + h.o : '') });
@@ -4061,6 +4110,7 @@
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+    winCols();
   }
   function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g;
     return g && p ? 'See what you earned' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
@@ -4076,14 +4126,23 @@
     const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')';
     const lines = S.P.map((p, o) => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
       '<circle cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="4" style="fill:' + col(o) + '"/>').join('');
-    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 15) + '">' + i + '</text>' : '')).join('');
-    const svg = '<svg viewBox="-10 -14 ' + (W + 34) + ' ' + (H + 32) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
-      '<line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 6) + '" y="' + (y(goal) + 4).toFixed(1) + '">' + goal + '</text>' +
+    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 20) + '">' + i + '</text>' : '')).join('');
+    const svg = '<svg viewBox="-10 -14 ' + (W + 46) + ' ' + (H + 38) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
+      '<line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 6) + '" y="' + (y(goal) + 5).toFixed(1) + '">' + goal + '</text>' +
       '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/>' + lines + ticks + '</svg>';
     const g = w >= 0 && !G.teams ? S.P[w].guide : null, gi = g ? artImg(g, true, true) : null;
     return el('div', { class: 'an-race' }, [
       g ? el('div', { class: 'rc-g', style: { '--pc': col(w) } }, [el('span', { class: 'rc-pt' }, gi ? [gi] : []), el('b', { text: TXG[g].n }), el('small', { text: Kit.poss(pname(w)) + ' Guide' })]) : null,
       el('div', { class: 'rc-ch' }, [el('div', { class: 'rc-k', text: 'The race for Renown, round by round' }), el('div', { class: 'rc-svg', html: svg })])]);
+  }
+  // The results card in two columns where the screen is wide enough (an iPad either way, a phone on its side): the game
+  // at the left (who won, the race, how it ended, the scores), what it earned and the buttons at the right, so the
+  // buttons are in view without scrolling (on an iPad held sideways they were all under the card's edge)
+  function winCols() {
+    const ws = document.querySelectorAll('.k-win'), card = ws.length && ws[ws.length - 1].querySelector('.card'); if (!card || card.classList.contains('an-win')) return;
+    const l = el('div', { class: 'an-win-l' }), r = el('div', { class: 'an-win-r' });
+    Array.prototype.slice.call(card.children).forEach(c => (c.matches('.k-win-show, .k-acts') ? r : l).appendChild(c));
+    card.appendChild(l); card.appendChild(r); card.classList.add('an-win');
   }
   function showWin(quiet) {
     if (S.N > 2) return showWinN(quiet);
@@ -4098,6 +4157,7 @@
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+    winCols();
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -4277,7 +4337,7 @@
       { icon: 'sparkle', label: 'Packs', sub: 'Open your packs, and see the sphere and the callings', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
-      { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep },
+      { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep, when: () => !(G && S && !G.demo && !G.players.some(p => p.cpu)) },   // (not in a game of people only: there is no computer to wait for)
       { icon: 'rows', label: 'Turn log', sub: 'Everything that has happened in this game', when: () => !!(G && S && !G.demo), onClick: logScreen },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
     ]
