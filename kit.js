@@ -1867,6 +1867,7 @@
   //            The setup shows who's playing on one line (the people from last time); a tap opens the players
   //            sheet (playersSheet) for how many, who sits where, robots and their skill. The returned
   //            object's seats() gives [{name, cpu}] as it stands, for a game that shows something per seat
+  //            (and redraw() draws the Players card again, for a game whose sides change outside the setup: Axis & Allies)
   //   options: [{id, label, choices:[[value,label],...], value, help, when:(mode, options, count)=>bool}]  segmented pickers
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
@@ -1892,7 +1893,8 @@
     if (!teams) { seats.forEach(function (t) { box.appendChild(chip(t)); }); return box; }
     teams.forEach(function (side, k) {
       var g = el('span', { class: pre + '-team' });
-      side.forEach(function (i, j) { if (!seats[i]) return; if (j) g.appendChild(el('i', { class: pre + '-amp', text: '&' })); g.appendChild(chip(seats[i])); });
+      // ("&" goes with the partner it introduces, so it never hangs at the end of a line either)
+      side.forEach(function (i, j) { if (!seats[i]) return; g.appendChild(j ? el('span', { class: pre + '-pair' }, [el('i', { class: pre + '-amp', text: '&' }), chip(seats[i])]) : chip(seats[i])); });
       // ("vs" goes with the side it introduces, so it never hangs at the end of a line)
       box.appendChild(k ? el('span', { class: pre + '-team ' + pre + '-next' }, [el('i', { class: pre + '-vs', text: 'vs' }), g]) : g);
     });
@@ -2113,6 +2115,63 @@
     return sh;
   }
 
+  // ── A friend's open table ─────────────────────────────────────────────────
+  // friendTables(gameId, cb): the tables the people you're linked with have open in this game that still have a seat,
+  // read once (the home screen keeps its own live list). cb([{who, href, live, playing, n, max}]), newest first; [] when
+  // signed out or nothing is open. A table carries its host's link tag (lk), a hash of their link code.
+  var LKT = {};
+  function linkTag(code) {
+    code = String(code || ''); var c = window.crypto && window.crypto.subtle, m = {};
+    try { m = JSON.parse(lsGet('lorc_lktag', '{}')) || {}; } catch (e) {}
+    if (m[code]) return Promise.resolve(m[code]);
+    if (!code || !c || typeof TextEncoder === 'undefined') return Promise.resolve(null);
+    if (LKT[code]) return LKT[code];
+    var enc = new TextEncoder();
+    return (LKT[code] = c.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']).then(function (k) {
+      return c.deriveBits({ name: 'PBKDF2', salt: enc.encode('fgh-lorcana-table'), iterations: 100000, hash: 'SHA-256' }, k, 64);
+    }).then(function (b) {
+      var t = Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''), mm = {};
+      try { mm = JSON.parse(lsGet('lorc_lktag', '{}')) || {}; } catch (e) {} mm[code] = t; try { LS.setItem('lorc_lktag', JSON.stringify(mm)); } catch (e) {}
+      return t;
+    }).catch(function () { return null; }));
+  }
+  function friendTables(gid, cb) {
+    var S2 = window.FGHSync;
+    if (EDIT_DEFAULTS || !S2 || !S2.isPin || !S2.isPin() || !S2.links || !S2.restQuery) return;
+    var page = location.pathname.replace(/^.*\//, '');
+    var col = gid === 'chess' ? 'chessRooms' : gid === 'lorcana' ? 'lorcanaRooms' : window.TurnNet ? 'turnRooms' : window.Online ? 'arcadeRooms' : null;
+    if (!col) return;
+    var others = (S2.links() || {}).others || {}, ppl = Object.keys(others).map(function (k) { return others[k]; }).filter(function (r) { return r && !r.off && !r.gone && r.code && r.hs; });
+    if (!ppl.length) return;
+    Promise.all(ppl.map(function (p) { return linkTag(p.code); })).then(function (tags) {
+      var who = {}; tags.forEach(function (t, i) { if (t) who[t] = ppl[i].name; });
+      var keys = Object.keys(who).slice(0, 10); if (!keys.length) return [];
+      return S2.restQuery(col, col === 'turnRooms' ? 'lk' : 'host.lk', keys, 20).then(function (rows) {
+        var now = Date.now(), out = [], myDev = null; try { myDev = JSON.parse(lsGet('online_dev', 'null')); } catch (e) {}
+        rows.forEach(function (x) {
+          var d = x.data || {}, h = d.host || {};
+          if (col === 'turnRooms') {
+            var hs = (d.seats || [])[0] || {}, n = (d.seats || []).filter(function (st) { return st && !st.bot; }).length;
+            if (d.game !== gid || d.status !== 'open' || hs.dev === myDev || n >= (d.max || 2) || !who[d.lk] || now - (d.at || 0) > 7 * 864e5) return;
+            out.push({ who: who[d.lk], at: d.at || 0, live: false, n: n, max: d.max || 2, href: page + '?join=' + x.id });
+          } else if (col === 'arcadeRooms') {
+            if (d.game !== gid || (d.status !== 'open' && d.status !== 'playing') || h.dev === myDev || (d.n || 1) >= (d.max || 2) || now - (d.at || 0) > 90000 || !who[h.lk]) return;
+            out.push({ who: who[h.lk], at: d.at || 0, live: true, playing: d.status === 'playing', n: d.n || 1, max: d.max || 2, href: page + '?online=1&join=' + x.id });
+          } else {
+            if (d.status !== 'waiting' || d.guest || h.dev === myDev || !who[h.lk] || now - (d.at || 0) > 30 * 864e5) return;
+            out.push({ who: who[h.lk], at: d.at || 0, live: false, n: 1, max: 2, href: page + '?online=1' });
+          }
+        });
+        out.sort(function (a, b) { return b.at - a.at; });
+        return out;
+      });
+    }).then(function (out) { if (out && out.length) cb(out); }, function (e) { try { console.warn('[kit] open tables', (e && e.message) || e); } catch (er) {} });
+  }
+  // A choice's label can have a second line ('10\nStandard'): the button shows it small under the first (no " · "
+  // strung between them); a one-line place (a folded row, the review, a summary) says the first line alone.
+  function chText(c) { return String(c[1]).split('\n')[0]; }
+  function chSub(c) { return String(c[1]).split('\n')[1] || ''; }
+  function chHtml(c) { var s2 = chSub(c); return esc(chText(c)) + (s2 ? '<small>' + esc(s2) + '</small>' : ''); }
   function setup(host, o) {
     o = o || {};
     host.innerHTML = '';
@@ -2131,7 +2190,10 @@
       if (names.some(function (n) { return n && avKey(n) === avKey(me); })) return;
       names[0] = me;
     })();
-    var bots = cpuNames(8);
+    // The computer players' names stay as they were last time, so the robots named on the home screen's sheet are the
+    // ones that sit down when the game starts there
+    var bots = (saved.bots || []).filter(function (b) { return typeof b === 'string' && CPU_NAMES.indexOf(b) >= 0; }).slice(0, 8);
+    bots = bots.concat(cpuNames(8 - bots.length, bots));
     // cpu:'mix' tables: which seats (after the first) are robots, remembered with the names
     var robots = {}; (saved.robots || []).forEach(function (i) { if (i > 0) robots[i] = true; });
     // The computer's skill ({robot: true} on that option): each robot seat carries its own, shown on its tile
@@ -2141,21 +2203,23 @@
     // One table, no mode cards: when a game's ways to play are the standard Just me / vs Computer / Pass & play
     // (plus Play online), the seats say it all. One seat is Just me, robots in every other seat is vs Computer,
     // people (and robots, where the game mixes them) is Pass & play, and Play online is a smaller button beside
-    // the start button. The game still gets the same mode ids in onStart.
+    // the start button. The game still gets the same mode ids in onStart. A game with no pass and play (just you, or
+    // you and the computer, plus online: Centipede, TetriNET) is one table too: its other seats are the computer's.
     var MK = {}, merged = false;
     if (o.modes && o.modes.length > 1 && P && !o.noMerge && (!EDIT_DEFAULTS || IN_SHEET)) {
       o.modes.forEach(function (m) { if (m.kind && !MK[m.kind]) MK[m.kind] = m.id; });
-      merged = o.modes.every(function (m) { return /^(solo|cpu|local|online)$/.test(m.kind || ''); }) && !!MK.local && !!(MK.cpu || MK.solo);
+      merged = o.modes.every(function (m) { return /^(solo|cpu|local|online)$/.test(m.kind || ''); }) && !!(MK.local || MK.online) && !!(MK.cpu || MK.solo);
     }
     function modeCpu(m) { return typeof P.cpu === 'function' ? P.cpu(m) : P.cpu; }
     function modeRange(m) { var r = typeof P.range === 'function' ? P.range(m) : null; return r || [P.min || 1, P.max || P.min || 1]; }
     function inRange(m, n) { var r = modeRange(m); return n >= r[0] && n <= r[1]; }
-    var localMix = merged && modeCpu(MK.local) === 'mix';
+    var localMix = merged && !!MK.local && modeCpu(MK.local) === 'mix';
     function robotsOk(n) { return !!(MK.cpu && inRange(MK.cpu, n)) || localMix; }
     // the mode the seats add up to
     function resolved() {
       var n = state.count, others = 0, bot = 0;
       if (MK.solo && n === 1) return MK.solo;
+      if (!MK.local) return MK.cpu || MK.solo;
       for (var j = 1; j < n; j++) { others++; if (robots[j]) bot++; }
       if (MK.cpu && others && bot === others && inRange(MK.cpu, n)) return MK.cpu;
       if (MK.cpu && !inRange(MK.local, n)) return MK.cpu;
@@ -2220,6 +2284,7 @@
     wrap.appendChild(optsBox);
 
     function cpuFor() {
+      if (merged && !MK.local) return MK.cpu && inRange(MK.cpu, state.count) ? 'seats' : false;   // (no pass and play: every other seat is the computer's)
       if (merged) return robotsOk(state.count) ? 'mix' : false;
       return P && typeof P.cpu === 'function' ? P.cpu(state.mode) : (P && P.cpu) || false;
     }
@@ -2299,7 +2364,7 @@
         if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
         choices.forEach(function (c) {
           seg.appendChild(el('button', {
-            type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1],
+            type: 'button', class: (String(state.options[op.id]) === String(c[0]) ? 'on' : '') + (chSub(c) ? ' k-two' : ''), html: chHtml(c),
             onclick: function () { state.options[op.id] = c[0]; if (op.onPick) op.onPick(c[0], state.options); sfx('tap'); if (P && typeof P.teams === 'function') renderSeats(); else renderOptions(); }
           }));
         });
@@ -2314,7 +2379,7 @@
           // (the choice's own listener has set the value and redrawn; this one folds the row)
           Array.prototype.forEach.call(seg.children, function (b) { b.addEventListener('click', function () { scOpen = null; renderOptions(); }); });
           var row = el('button', { type: 'button', class: 'k-scrow', 'aria-expanded': String(openNow), onclick: function () { scOpen = openNow ? null : op.id; sfx('tap'); haptic('light'); renderOptions(); } },
-            [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? cur[1] : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
+            [el('span', { class: 'k-scl', text: op.label }), el('span', { class: 'k-scv', text: cur ? chText(cur) : '' }), el('span', { class: 'k-scc', html: icon('down') })]);
           var scBox = el('div', { class: 'k-opt k-sc' + (openNow ? ' k-open' : '') }, [row, seg].concat(hasHelp && note ? [el('p', { class: 'k-help', text: note })] : []));
           optsBox.appendChild(scBox);
           if (openNow) setTimeout(function () { try { scBox.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }, 30);
@@ -2429,7 +2494,7 @@
         if (op.when && !op.when(state.mode, state.options, state.count)) return;
         if (op.render) { if (op.summary) bits.push(op.summary(state.options[op.id])); return; }
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
-        if (c) bits.push(c[1]);
+        if (c) bits.push(chText(c));
       });
       return bits.join(' · ');
     }
@@ -2449,13 +2514,13 @@
       (o.options || []).forEach(function (op) {
         if (top.length >= 2 || op.render || op.robot || (op.when && !op.when(state.mode, state.options, state.count))) return;
         var c = (choicesOf(op) || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0];
-        if (c) top.push([op.label, c[1]]);
+        if (c) top.push([op.label, chText(c)]);
       });
       return { who: who, top: top, mt: mt };
     }
     function saveSetup() {
       var q = quickInfo();
-      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, sum: summary(), who: q.who, top: q.top, mt: q.mt }));
+      lsSet('gn_setup_' + (game ? game.id : pageKey()), JSON.stringify({ mode: state.mode, count: state.count, options: state.options, names: names.map(function (n) { return isPersonName(n) ? n : ''; }), robots: Object.keys(robots).filter(function (k) { return robots[k]; }).map(Number), levels: levels, bots: bots.slice(0, 8), sum: summary(), who: q.who, top: q.top, mt: q.mt }));
     }
     // In the home screen's sheet: the same start buttons, but the game starts on its own page (sheetGo)
     if (IN_SHEET) {
@@ -2511,7 +2576,7 @@
       });
       tell(); setTimeout(tell, 0);
       try { new ResizeObserver(tell).observe(wrap); new MutationObserver(tell).observe(sdock, { childList: true, characterData: true, subtree: true }); } catch (e) { setInterval(tell, 500); }
-      return { el: wrap, state: state, seats: seatList };
+      return { el: wrap, state: state, seats: seatList, redraw: renderSeats };
     }
     if (EDIT_DEFAULTS) {
       var saveBtn = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: 'Save defaults', onclick: function () {
@@ -2524,7 +2589,7 @@
       wrap.appendChild(el('div', { class: 'k-startdock' }, [saveBtn]));
       host.appendChild(wrap);
       renderModes(); renderSeats();
-      return { el: wrap, state: state, seats: seatList };
+      return { el: wrap, state: state, seats: seatList, redraw: renderSeats };
     }
     var startBtn = el('button', {
       type: 'button', class: 'btn btn-primary btn-lg btn-block k-start', text: o.start || "Let's play!",
@@ -2577,7 +2642,7 @@
       var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
       function shown(op) { return !op.render && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
-      function valueOf(op) { var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? c[1] : ''; }
+      function valueOf(op) { var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? chText(c) : ''; }
       function paint() {
         box.innerHTML = '';
         // who will be there
@@ -2608,7 +2673,7 @@
         only.forEach(function (op) {
           var seg = el('div', { class: 'seg' }), choices = typeof op.choices === 'function' ? op.choices(state.count, MK.online, state.options) : op.choices;
           if (!choices.some(function (c) { return String(c[0]) === String(state.options[op.id]); })) state.options[op.id] = op.value;
-          choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: String(state.options[op.id]) === String(c[0]) ? 'on' : '', text: c[1], onclick: function () { state.options[op.id] = c[0]; sfx('tap'); paint(); } })); });
+          choices.forEach(function (c) { seg.appendChild(el('button', { type: 'button', class: (String(state.options[op.id]) === String(c[0]) ? 'on' : '') + (chSub(c) ? ' k-two' : ''), html: chHtml(c), onclick: function () { state.options[op.id] = c[0]; sfx('tap'); paint(); } })); });
           var cur = choices.filter(function (c) { return String(c[0]) === String(state.options[op.id]); })[0];
           box.appendChild(el('div', { class: 'k-opt' }, [el('div', { class: 'label' }, [el('span', { text: op.label })]), seg, cur && cur[2] ? el('p', { class: 'k-help', style: { display: 'block' }, text: cur[2] }) : null]));
         });
@@ -2637,7 +2702,41 @@
     host.appendChild(wrap);
     winPeekClear();
     renderModes(); renderSeats();
-    setTimeout(fitFold, 0); setTimeout(fitFold, 400); window.addEventListener('resize', function () { setTimeout(fitFold, 60); });
+    // A friend has a table open in this game: joining it is the first thing on the setup, above the Players card,
+    // the way it is the first row of the game's sheet on the home screen
+    var joinBox = el('div', { class: 'k-joins' });
+    wrap.insertBefore(joinBox, seatsBox);
+    function showJoins() {
+      if (!wrap.isConnected || !game) return;
+      friendTables(game.id, function (list) {
+        joinBox.innerHTML = '';
+        list.slice(0, 2).forEach(function (x) {
+          var seated = x.max > 2 ? x.n + ' of ' + x.max + ' seats are taken' : 'One seat is waiting for you';
+          joinBox.appendChild(el('button', { type: 'button', class: 'k-join', 'aria-label': 'Join ' + poss(x.who) + ' table', onclick: function () { sfx('pop'); haptic('medium'); location.href = x.href; } }, [
+            avMarked(x.who, 'var(--accent)'),
+            el('span', { class: 'k-join-tx' }, [el('b', { text: 'Join ' + poss(x.who) + ' table' }), el('small', { text: x.live ? (x.playing ? 'They are playing now' : 'They are waiting to start') : seated })]),
+            el('span', { class: 'k-who-go', html: icon('right') })]));
+        });
+        if (list.length) setTimeout(fitFold, 30);
+      });
+    }
+    showJoins();
+    doc.addEventListener('visibilitychange', function onVis() { if (!wrap.isConnected) doc.removeEventListener('visibilitychange', onVis); else if (doc.visibilityState === 'visible') showJoins(); });
+    // Nothing you tap in a rounded screen corner: the start buttons sit at least 17px in from each side of the screen,
+    // whatever padding the game's page has (the dock reaches out to the page's edges for its fade)
+    function dockInset() {
+      var d = wrap.querySelector('.k-startdock'); if (!d || !wrap.isConnected) return;
+      // (a game page whose own frame has no padding, Press Your Luck's: the setup keeps 16px off the screen's edges)
+      var hl = parseFloat(getComputedStyle(host).paddingLeft) || 0, wl = wrap.getBoundingClientRect().left;
+      wrap.classList.toggle('k-pad', hl < 8 && wl < 8);
+      d.style.paddingLeft = d.style.paddingRight = '';
+      var r = d.getBoundingClientRect(), cs = getComputedStyle(d), W = doc.documentElement.clientWidth || innerWidth;
+      var l = r.left + parseFloat(cs.paddingLeft), rt = W - (r.right - parseFloat(cs.paddingRight));
+      if (l < 17) d.style.paddingLeft = (parseFloat(cs.paddingLeft) + 17 - l) + 'px';
+      if (rt < 17) d.style.paddingRight = (parseFloat(cs.paddingRight) + 17 - rt) + 'px';
+    }
+    setTimeout(fitFold, 0); setTimeout(fitFold, 400); setTimeout(dockInset, 0); setTimeout(dockInset, 400);
+    window.addEventListener('resize', function () { setTimeout(fitFold, 60); setTimeout(dockInset, 60); });
     // started from the home screen's sheet: press start (or Play online) once the game has added its own parts
     if (GO && Date.now() - GO.at < 15000) {
       var how = GO.how; GO = null;
@@ -2647,7 +2746,7 @@
         if (b && wrap.isConnected) b.click();
       }, 0);
     }
-    return { el: wrap, state: state, seats: seatList };
+    return { el: wrap, state: state, seats: seatList, redraw: renderSeats };
   }
 
   // ── Win / results ─────────────────────────────────────────────────────────
@@ -3806,7 +3905,7 @@
   // The list (profile menu) opens a game's page with ?defaults=1: its normal setup screen, saving instead of
   // starting (see EDIT_DEFAULTS at the top). The choices land in gn_setup_<id>, the same place a game remembers
   // its last setup, with a short summary (sum) for the list. SETUP_PAGES: the pages that call Kit.setup.
-  var SETUP_PAGES = ['applestoapples', 'asteroids','axisallies-score', 'axisallies', 'baccarat', 'backgammon', 'battleship', 'bingo', 'blackjack', 'boggle', 'breakout', 'candymatch', 'carmen', 'centipede', 'checkers', 'chess', 'chinesecheckers', 'codebreaker', 'connectfour', 'conversation', 'craps', 'crazytower', 'cribbage', 'crossyroad', 'cubehopper', 'dealornodeal', 'dominoes', 'dotsboxes', 'euchre-ai', 'euchre', 'farkle', 'five-crowns', 'fivecrownss-ai', 'flappybird', 'flip7-ai', 'flip7', 'galaga', 'goblindefenders', 'gin-rummy-ai', 'junglehunt', 'gin-rummy', 'go', 'hangman', 'hearts-ai', 'hearts', 'horserace', 'hotdogstand', 'invaders', 'lorcana-play', 'lorcana', 'lrc', 'madlibs', 'mahjong', 'mahjong4', 'mancala', 'marbles', 'marblesolitaire', 'mathpuzzles', 'mazes', 'mysteries', 'oregon', 'logicgrid', 'truthlies', 'ciphers', 'riddles', 'memorymatch', 'minesweeper', 'minigolf', 'othello', 'pacman', 'paddleball', 'paigow', 'peggle', 'phase10-ai', 'phase10', 'pinball', 'plinko', 'poker', 'pokersquares', 'pressyourluck', 'riddlestories', 'rook-ai', 'rook', 'roulette', 'sandlot', 'scorecard', 'scrabble', 'shellgame', 'slidepuzzle', 'slots', 'snake', 'solitaire', 'spades-ai', 'spades', 'sudoku', 'tetris', 'mindmeld', 'threecardpoker', 'tictactoe', 'trivia', 'wheeloffortune', 'willycrash', 'wizard-ai', 'wizard', 'wordscramble', 'wordsearch', 'wouldyourather', 'yahtzee'];
+  var SETUP_PAGES = ['applestoapples', 'asteroids','axisallies-score', 'axisallies', 'baccarat', 'backgammon', 'battleship', 'bingo', 'blackjack', 'boggle', 'breakout', 'candymatch', 'carmen', 'centipede', 'checkers', 'chess', 'chinesecheckers', 'codebreaker', 'connectfour', 'conversation', 'craps', 'crazytower', 'cribbage', 'crossyroad', 'cubehopper', 'dealornodeal', 'dominoes', 'dotsboxes', 'euchre-ai', 'euchre', 'farkle', 'five-crowns', 'fivecrownss-ai', 'flappybird', 'flip7-ai', 'flip7', 'galaga', 'goblindefenders', 'gin-rummy-ai', 'junglehunt', 'gin-rummy', 'go', 'hangman', 'hearts-ai', 'hearts', 'horserace', 'hotdogstand', 'invaders', 'lorcana-play', 'lorcana', 'lrc', 'madlibs', 'mahjong', 'mahjong4', 'mancala', 'marbles', 'marblesolitaire', 'mathpuzzles', 'mazes', 'mysteries', 'oregon', 'logicgrid', 'truthlies', 'ciphers', 'riddles', 'memorymatch', 'minesweeper', 'minigolf', 'othello', 'pacman', 'paddleball', 'paigow', 'peggle', 'phase10-ai', 'phase10', 'pinball', 'plinko', 'poker', 'pokersquares', 'pressyourluck', 'riddlestories', 'rook-ai', 'rook', 'roulette', 'sandlot', 'scorecard', 'scrabble', 'shellgame', 'slidepuzzle', 'slots', 'snake', 'solitaire', 'spades-ai', 'spades', 'sudoku', 'tetris', 'mindmeld', 'monopoly', 'tetrinet', 'donkeykong', 'threecardpoker', 'tictactoe', 'trivia', 'wheeloffortune', 'willycrash', 'wizard-ai', 'wizard', 'wordscramble', 'wordsearch', 'wouldyourather', 'yahtzee'];
   function setupPageOf(g) {
     if (g.play && SETUP_PAGES.indexOf(g.play) >= 0) return g.play;
     if (g.score && SETUP_PAGES.indexOf(g.score) >= 0) return g.score;
@@ -3889,7 +3988,8 @@
           var sv = setupSaved(g.id), sum = sv && sv.sum ? sv.sum : sv ? 'Last game’s setup' : 'Not set yet';
           box.appendChild(el('button', { type: 'button', onclick: function () { location.href = rootPath() + 'games/' + setupPageOf(g) + '.html?defaults=1'; } }, [
             el('span', { class: 'ic gic', html: window.GameIcon ? GameIcon(g.id) : '' }),
-            el('span', { class: 'grow' }, [el('b', { text: g.name }), el('small', { text: sum })]),
+            // (each choice its own small tag, not strung together with dots; the saved summary keeps " · " between them)
+            el('span', { class: 'grow' }, [el('b', { text: g.name }), sv && sv.sum ? el('small', { class: 'k-defsum' }, sv.sum.split(' · ').map(function (x) { return el('span', { text: x }); })) : el('small', { text: sum })]),
             el('span', { class: 'chev', html: icon('right') })]));
         });
       });

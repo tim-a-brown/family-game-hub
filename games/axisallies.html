@@ -5694,7 +5694,14 @@ function showSetup() {
       { id: 'speed', label: 'Computer speed', value: 'normal', help: 'How fast computer generals move and roll.', choices: [['normal', 'Normal', 'Easy to follow along: each computer battle waits for you at the end, and each computer turn ends with a summary of what it did.'], ['fast', 'Fast', 'Quick moves and dice, no stops.']] },
       { id: 'guide', label: 'First turn', value: (function () { try { return localStorage.getItem('aa_guide_seen') ? 'off' : 'on'; } catch (e) { return 'on'; } })(), help: 'Short pointers through the six steps of your first turn. They switch off by themselves once you have played a turn.', choices: [['on', 'Guided', 'One pointer per step, the first time through.'], ['off', 'No pointers', 'You know the game.']] }
     ],
-    players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; } },
+    // (the sides: generals whose countries are on one side are partners, "Tim & Jamie vs Pete & Pam"; the side seat 1 is on comes first)
+    players: { range: function () { return [2, 5]; }, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'mix' ? 'mix' : false; },
+      teams: function (n, o) {
+        var g = seatGroups((o && o.map) || 'full', n), side = { A: [], X: [] };
+        g.forEach(function (pw, i) { side[PW[pw[0]].side].push(i); });
+        var first = g[0] ? PW[g[0][0]].side : 'X';
+        return [side[first], side[first === 'A' ? 'X' : 'A']].filter(function (x) { return x.length; });
+      } },
     start: 'Start the war',
     onStart: function (cfg) {
       if (setupObs) { setupObs.disconnect(); setupObs = null; }
@@ -5740,7 +5747,7 @@ function showSetup() {
         el('small', { text: mine ? 'This seat' : seatName(who) })]);
       b.onclick = function () {
         if (!mine) { a[who] = a[i]; a[i] = j; asgSave(map, n, a); Kit.sfx('tap'); Kit.haptic('light'); }
-        sh.close(); captions();
+        sh.close(); if (!mine && st.redraw) st.redraw(); captions();   // (the sides on the Players card follow the countries)
       };
       box.appendChild(b);
     });

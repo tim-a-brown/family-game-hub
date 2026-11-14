@@ -63,7 +63,9 @@ Underlying principles for everything:
 - **Text first for finding things.** Game names must be readable at a glance.
 - **No dots (·) stringing text together.** Don't join facts with " · " (or brackets) on one line. Design it: put each
   thing in its own place (a name and its amount at either end of a row, the detail on a line of its own, a small
-  table to line up names and hands, a caps label over a value).
+  table to line up names and hands, a caps label over a value). A setup choice with a second part ("10" and
+  "Standard") has it on a second line in its button: the label is `'10\nStandard'`, and a folded row, the online
+  review and the Game defaults line say the first line alone (`chText` in kit.js).
 - **Write the way a person talks** (Tim, 2026-11-11). Every sentence a player reads should be one a person would say
   out loud to someone across the table: a whole sentence, in ordinary word order, that says what it is about. Not a
   stub put together from a name and a verb ("Leonardo da Vinci guides it": say "Leonardo da Vinci is this deck's
@@ -140,19 +142,29 @@ Underlying principles for everything:
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and
   `onStart` still gets the matching mode id. Play online is a smaller button beside the start button (`Kit.setup`
   does all this itself; a game's own extra way to play, like Bingo's Call only, uses `alt`). Only games with
-  their own kinds of play (Trivia's Buzz in, Sandlot's Derby) still show cards. Pass & play hands the device over
+  their own kinds of play (Trivia's Buzz in, Sandlot's Derby) still show cards. A game with no pass and play (Just me
+  or vs Computer, and online: Centipede, TetriNET) is one table too, its other seats the computer's. The robots keep
+  their names from one setup to the next (`bots` in `gn_setup_*`), so the robots named on the home sheet are the ones
+  that sit down. Every page that calls `Kit.setup` is in `SETUP_PAGES` (kit.js), or its home sheet has no setup in
+  it. Pass & play hands the device over
   with `Kit.handoff` between people only. The start button
-  stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`).
+  stays in view (the kit's `.k-startdock`; insert game extras before the dock, not before `.k-start`), 18px off the
+  bottom and at least 17px in from each side of the screen whatever the page's own padding (`dockInset`).
   **Sides** (Tim, 2026-11-11): the Players card and the players sheet say who is with whom the way people do:
   partners joined by "&" and the sides by "vs" ("Tim & Jamie vs Pete & Pam"; two seats are "Tim vs Huey"). A
   partnership game gives `players.teams` ([[seats], [seats]], or a function of the count and options when partners
-  are a choice: Dominoes, Marbles); `players.vs: false` for two who play together. `Kit.whoChips` draws them, on
+  are a choice: Dominoes, Marbles, or of what the setup shows: Axis & Allies' sides follow the countries each seat
+  commands, and `setup.redraw()` draws the card again when they change); `players.vs: false` for people who play
+  together (Mad Libs, Would You Rather). A partner's "&" stays on the line with that partner. `Kit.whoChips` draws them, on
   the home sheet too. **Play online** is on every game whose tables are TurnNet's (not only ones that list online
   among their ways to play) and takes what is chosen: a **review** first (`goOnline` in kit.js: who will be at the
   table, the rules as set, choices that only matter online), then Open the table opens it at once
-  (`TurnNet.host`) or Find a table goes to the lobby. **A friend's open table** in a game is the first row of that
-  game's sheet on the home screen ("Join Pete's table", from `friendTables`), and the separate Play online rows
-  from games.js hide once the setup offers it. **A setup that would not fit the screen folds its options** into
+  (`TurnNet.host`) or Find a table goes to the lobby; a game on `online.js` (Centipede, TetriNET, Mind Meld, Apples
+  to Apples) gets the same review, and both buttons open its lobby. **A friend's open table** in a game is the first
+  row of that game's sheet on the home screen ("Join Pete's table", from `friendTables` in index.html), and the
+  separate Play online rows from games.js hide once the setup offers it. The game's own setup shows it too, as a card
+  above the Players card (`friendTables` in kit.js reads the linked people's tables once when the setup opens and
+  again when the page comes back into view: TurnNet's, `online.js`'s, Chess's and Lorcana's). **A setup that would not fit the screen folds its options** into
   one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
