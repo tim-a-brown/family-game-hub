@@ -2432,8 +2432,19 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } lines(); fitSides();
+    fitStrips(); if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
+  }
+  // A player's bar keeps everything on it inside its own edge (a 320-wide phone held upright: the other player's name,
+  // Seals, Relics, hand and Spark did not fit, and the Spark ran off the screen). It steps down, n1 to n3 (t1 and t2 are the
+  // bars on end of a phone on its side, layoutLine), only as
+  // far as it has to: smaller gaps and marks first, then smaller words, then the colour dot goes (the bar is in that colour).
+  function fitStrips() {
+    [dom.opp, dom.me].forEach(s => {
+      if (!s || !s.isConnected) return; s.classList.remove('n1', 'n2', 'n3'); if ((ui.lay || {}).short) return;   // (a phone on its side stands the bars on end, with a layout of their own)
+      const over = () => { const r = s.getBoundingClientRect(); return r.width > 0 && Array.prototype.some.call(s.querySelectorAll(':scope > *, .st-top > *, .st-bot > *'), c => { const b = c.getBoundingClientRect(); return b.width > 0 && b.right > r.right - 1; }); };
+      ['n1', 'n2', 'n3'].forEach(k => { if (over()) s.classList.add(k); });
+    });
   }
   // A tile's name and rule stay on the paper, clear of the Might totals and the banner above it and the frame below.
   // Fonts are drawn taller on some devices (Tim's iPhone), so this is measured, not assumed. Every tile on the map
