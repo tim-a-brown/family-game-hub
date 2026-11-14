@@ -34,19 +34,23 @@
     w.insertAdjacentHTML('beforeend', s + '</svg>');
     return w;
   }
-  // the signs from `from` lit one after another (a calm screen: all at once). A sphere that comes round flashes.
-  function lightUp(w, from, n, round) {
+  // the signs from `from` lit one after another, n of them (a calm screen: all at once). Each time the twelfth is lit the
+  // sphere comes round: it flashes, and the signs still to light start again from the first.
+  function lightUp(w, from, n) {
     const gs = w.querySelectorAll('.rw-sg'), N = gs.length, quick = calm();
-    gs.forEach((g, i) => { g.classList.toggle('on', i < from); g.classList.remove('nw'); });
+    const set = upTo => gs.forEach((g, i) => { g.classList.toggle('on', i < upTo); g.classList.remove('nw'); });
+    if (quick) { const end = (from + n) % N, wraps = from + n >= N; set(end); for (let i = 0; i < end; i++) if (i >= (wraps ? 0 : from)) gs[i].classList.add('nw'); if (wraps) { w.classList.add('round'); Kit.sfx('win', .7); } return; }
+    set(from);
     let i = 0;
     const step = () => {
       if (!w.isConnected && i) return;
-      if (i >= n) { if (round) { w.classList.add('round'); Kit.sfx('win', .7); Kit.haptic('success'); setTimeout(() => w.classList.remove('round'), 1400); } return; }
-      const at = (from + i) % N; if (at === 0 && i) gs.forEach(g => g.classList.remove('on', 'nw'));
+      if (i >= n) { if ((from + n) % N === 0) set(0); return; }   // (it came round on the last sign: the ring starts again empty)
+      const at = (from + i) % N; if (at === 0 && i) set(0);
       gs[at].classList.add('on', 'nw'); Kit.sfx('chip', .6); Kit.haptic('tick'); i++;
-      setTimeout(step, quick ? 0 : 260);
+      if (at === N - 1) { setTimeout(() => { if (!w.isConnected) return; w.classList.add('round'); Kit.sfx('win', .7); Kit.haptic('success'); setTimeout(() => w.classList.remove('round'), 1400); }, 200); setTimeout(step, 1300); }
+      else setTimeout(step, 260);
     };
-    setTimeout(step, quick ? 0 : 650);
+    setTimeout(step, 650);
   }
 
   // ═══ The results card: one panel ═══════════════════════════════════════════════════════════════════════════
@@ -55,11 +59,11 @@
   function endPanel(R, quiet) {
     if (!R || !R.lit || !R.lit.length) return null;
     const total = R.lit.reduce((a, x) => a + x.n, 0), N = Coll.SIGNS, round = R.turns > 0;
-    const sp = sphere({ lit: round ? R.signs : R.from + total, fresh: quiet ? 0 : Math.min(total, round ? R.signs : total), size: 92 });
+    const sp = sphere({ lit: quiet ? (round ? R.signs : R.from + total) : R.from, size: 92 });
     const WHY = { game: 'for the game', win: 'for the win', daily: 'for today\'s first win' };
     const lit = el('ul', { class: 'rw-e-lit' }, R.lit.map(x => el('li', {}, [el('b', { text: '+' + x.n }), el('span', { text: WHY[x.why] })])));
     const packsNow = R.list.filter(x => x.t === 'pack' && x.pack.k === 'sphere').length;
-    const say = round ? (packsNow > 1 ? 'The sphere came round ' + WORD[packsNow] + ' times. A pack is waiting for each turn.' : 'The sphere came round, and a pack of\u00a0' + Coll.PACK + ' is waiting for you.')
+    const say = round ? (packsNow > 1 ? 'The sphere came round ' + WORD[packsNow] + ' times, and a pack is waiting for each time.' : 'The sphere came round, and a pack of\u00a0' + Coll.PACK + ' is waiting for you.')
       : (N - R.signs) + ' more ' + ((N - R.signs) === 1 ? 'sign brings' : 'signs bring') + ' the sphere round.';
     const top = el('div', { class: 'rw-e-top' }, [sp, el('div', { class: 'rw-e-say' }, [el('span', { class: 'rw-k', text: 'This game lit ' + signs(total) }), lit, el('p', { class: 'rw-e-p' + (round ? ' gold' : ''), text: say })])]);
     const box = el('div', { class: 'rw-end' + (round ? ' round' : '') }, [top]);
@@ -70,6 +74,11 @@
         el('b', { text: NAME(x.g) + ' joins your company' }),
         el('span', { text: (x.why === 'call' ? 'The calling is met. ' : '') + 'The ' + set + ' cards of ' + Kit.poss(NAME(x.g)) + ' set are yours' + (doms ? ', with ' + doms + (doms === 1 ? ' Domain' : ' Domains') + '.' : '.') })])]));
     });
+    // a first (your first win, against Normal, against Hard, with a deck you built): a pack of its own
+    R.list.filter(x => x.t === 'pack' && x.pack.k === 'first').forEach(x => {
+      box.appendChild(el('div', { class: 'rw-e-row first' }, [el('span', { class: 'rw-e-pk' }, [el('i', { class: 'pk-mini' })]), el('div', { class: 'rw-e-w' }, [
+        el('b', { text: x.pack.why }), el('span', { text: 'A pack of\u00a0' + x.pack.n + ' is waiting for you.' })])]));
+    });
     // the calling this game moved nearest to its end (one row: the others are on the sphere's screen)
     const joined = R.list.filter(x => x.t === 'guide').map(x => x.g), c = R.calls.filter(x => joined.indexOf(x.g) < 0).sort((a, b) => b.have / b.need - a.have / a.need)[0];
     if (c) {
@@ -78,7 +87,7 @@
         el('div', { class: 'rw-e-h' }, [el('b', { text: NAME(c.g) }), el('span', { class: 'rw-of', text: c.have + ' of ' + c.need })]), bar, el('small', { text: c.say })])]));
       setTimeout(() => { const i = bar.firstChild; if (i) i.style.width = (100 * c.have / c.need).toFixed(1) + '%'; }, quiet || calm() ? 0 : 900);
     }
-    if (!quiet) lightUp(sp, round ? 0 : R.from, round ? R.signs : total, round);
+    if (!quiet) lightUp(sp, R.from, total);
     return box;
   }
 
@@ -96,7 +105,7 @@
       const tr = el('div', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
       for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(t === sp.toGuide ? el('span', { class: 'rw-t g', html: A.MARK.guide }) : el('i', { class: 'pk-mini rw-t' }));
       L.appendChild(tr);
-      L.appendChild(el('p', { class: 'rw-say c', text: sp.toGuide === 1 ? 'The next time the sphere comes round, it brings a pack and a new Guide.' : 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards. A new Guide joins you on the ' + ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth'][sp.toGuide] + ' turn from now.' }));
+      L.appendChild(el('p', { class: 'rw-say c', text: sp.toGuide === 1 ? 'The next time the sphere comes round, it brings a pack and a new Guide.' : 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards. ' + sp.guideSay }));
     } else L.appendChild(el('p', { class: 'rw-say c', text: 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards.' }));
     // how a sign is lit
     const LG = [[sp.light.game, 'A finished game lights one sign.'], [sp.light.game + sp.light.win, 'A win lights two.'], [sp.light.game + sp.light.win + sp.light.daily, 'Your first win of the day lights three.']];

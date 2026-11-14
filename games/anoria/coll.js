@@ -327,13 +327,16 @@ function gameOver(o) {
 // The sphere as it stands: {lit (signs lit now), of (SIGNS), turns (full turns so far), next (the turn that brings the
 // next Guide, or 0), toGuide (turns from now to it)}
 function sphere() { const s = load(), next = GUIDE_TURNS.filter(t => t > s.turns)[0] || 0, left = GKEYS.some(g => s.guides.indexOf(g) < 0);
-  return { lit: s.signs, of: SIGNS, turns: s.turns, next: left ? next : 0, toGuide: left && next ? next - s.turns : 0, light: Object.assign({}, LIGHT), today: s.day === dayKey() }; }
+  return { lit: s.signs, of: SIGNS, turns: s.turns, next: left ? next : 0, toGuide: left && next ? next - s.turns : 0, guideSay: left && next ? guideWhen(next - s.turns) : '', light: Object.assign({}, LIGHT), today: s.day === dayKey() }; }
+// when the sphere brings the next Guide, as a sentence (a calling met can bring one sooner)
+const MORE = ['', '', 'twice more', 'three more times', 'four more times', 'five more times', 'six more times'];
+const guideWhen = n => (n === 1 ? 'The next time the sphere comes round, a new Guide comes with it.' : 'A new Guide joins you once the sphere has come round ' + (MORE[n] || n + ' more times') + '.');
 // what's next to earn, for the screens to show: the next turn of the sphere and the firsts not had yet
 function nextUp() {
   const s = load(), sp = sphere(), out = [];
   out.push({ id: 'sphere', n: PACK, what: 'A pack of ' + PACK, have: s.signs, need: SIGNS });
   Object.keys(FIRSTS).forEach(id => { if (!s.firsts[id]) out.push({ id: id, n: PACK, what: 'A pack of ' + PACK, when: FIRSTS[id] }); });
-  if (sp.next) out.push({ id: 'guide', what: 'A new Guide', turns: sp.toGuide });
+  if (sp.next) out.push({ id: 'guide', what: 'A new Guide', turns: sp.toGuide, when: guideWhen(sp.toGuide) });
   return out;
 }
 

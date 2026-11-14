@@ -3819,7 +3819,7 @@
   }
   async function doHuman(a) {
     if (!idle()) return;
-    const my = gen, snapS = JSON.stringify(Object.assign({}, S, { cfg: null, st: null, ev: null }));
+    const my = gen, snapS = JSON.stringify(Object.assign({}, S, { cfg: null, st: null, ev: null, cl0: G.cl || null }));   // (cl0: what the game had done for the callings, so a move taken back is not counted)
     ui.sel = null; setBusy(true); render();
     const ctx = await doAction(a); if (gen !== my || !ctx) return;
     // A choice of Domain left open (Pachacuti, Al-Idrisi, Christopher Wren, a 6 for the Congress of Vienna): the
@@ -3833,7 +3833,7 @@
     if (!G || G.over) return Kit.toast('The game is over');
     if (!idle()) return Kit.toast('Wait for your turn');
     if (!undoStack.length) return Kit.toast('There is nothing to take back. Clashes and drawn cards can’t be undone.');
-    const d = JSON.parse(undoStack.pop()); d.cfg = cfgOf(G); d.st = null; d.ev = [];
+    const d = JSON.parse(undoStack.pop()); d.cfg = cfgOf(G); d.st = null; d.ev = []; if (d.cl0) G.cl = d.cl0; delete d.cl0;
     S = G.S = d; ui.sel = null; ui.discard = false; Kit.sfx('whoosh'); save(); legal(); V = snap(); render();
   }
   function toggleFast() { speed = speed > 1 ? 1 : 4; lsSet(FAST, speed > 1 ? '1' : null); document.documentElement.classList.toggle('an-fast', speed > 1); Kit.sfx('tap'); Kit.haptic('light'); render(); }
@@ -4167,7 +4167,7 @@
   // (a new deck, a pack opened). Someone who has not chosen a first deck yet has nothing to show there.
   function tool(name) {
     if (G && G.demo) return;
-    if (!Coll.load().starter) { Kit.toast('Choose your Guide first, and the ' + (name === 'library' ? 'Library' : name === 'packs' ? 'packs' : 'decks') + ' will open.', 2600); return; }
+    if (!Coll.load().starter) { Kit.toast('Choose your Guide first. ' + (name === 'library' ? 'Your Library starts with their set and the base set.' : name === 'packs' ? 'Two welcome packs come with them.' : 'Their deck is your first.'), 2600); return; }
     const after = () => { if (!G) showSetup(); };
     if (name === 'library' && window.AnoriaLibrary) window.AnoriaLibrary.open(after);
     else if (name === 'packs' && window.AnoriaPacks) window.AnoriaPacks.open(after);
