@@ -31,6 +31,8 @@
 //     start(players, opts, last) -> state   a new game: players [{name, bot}] in seat order (last: the game just
 //                          finished at this table, for a rematch: series scores, who goes first)
 //     turn(state) -> [seat]           whose move it is ([] when over)
+//     free(state, seat) -> true       optional: this seat may move now although it isn't its turn (a casino seat out of
+//                                     chips buying back in)
 //     over(state) -> null | {win: [seats], text}
 //     bot(state, seat) -> {state, mv} | Promise   a computer seat's move (needed when seats() adds any)
 //     show(net, info)      draw the table: called at the start and after every move (info: {prev, mv, by, mine,
@@ -157,6 +159,7 @@
   }
   function humans(d) { return (d.seats || []).filter(function (s) { return s && !s.bot; }); }
   function turnOf(st) { try { return (G.turn(st) || []).slice(); } catch (e) { return []; } }
+  function freeOf(st, s) { try { return !!(G.free && G.free(st, s)); } catch (e) { return false; } }
   function overOf(st) { try { return G.over(st) || null; } catch (e) { return null; } }
 
   // ── The table on screen ──
@@ -179,7 +182,7 @@
   function act(fn, as, pre) {
     if (!T.d || T.d.status !== 'playing' || T.busy && as === T.seat) return Promise.resolve(false);
     var code = T.code, base = T.seq, prev = T.st, res;
-    if (turnOf(prev).indexOf(as) < 0) return Promise.resolve(false);
+    if (turnOf(prev).indexOf(as) < 0 && !freeOf(prev, as)) return Promise.resolve(false);
     try { res = pre || fn(clone(prev)); } catch (e) { console.warn(e); return Promise.resolve(false); }
     if (!res || !res.state) return Promise.resolve(false);
     var mine = as === T.seat;
@@ -192,7 +195,7 @@
         if (!fn) throw new Error('stale');
         T.local = -1;   // (built again on the newer table: the server's copy is the one to show)   // a computer move made on an older table: the next look makes it again
         var cur = JSON.parse(d.st);
-        if (turnOf(cur).indexOf(as) < 0) throw new Error('It’s not your turn any more');
+        if (turnOf(cur).indexOf(as) < 0 && !freeOf(cur, as)) throw new Error('It’s not your turn any more');
         r = fn(clone(cur)); if (!r || !r.state) throw new Error('That move can’t be made now');
       }
       res = r;

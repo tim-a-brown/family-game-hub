@@ -1314,7 +1314,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the running order on the strip below it, and the little map of the oval. On a phone, turn it sideways to watch the whole field at once. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
       '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races. Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
       '<p><b>Pass and play</b>: everyone starts with the same <b>table money</b> (pick $100, $250 or $500 in setup). Nobody\'s casino bankroll changes. Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>' +
-      '<p><b>Play online</b>: everyone bets on the same races from their own phone or tablet, with the same table money as pass and play. You all bet at the same time, and the horses go to the gate when the last bets are in; everyone watches the race on their own screen. Whoever has the most money after the last race wins.</p>'
+      '<p><b>Play online</b>: everyone bets on the same races from their own phone or tablet. The host chooses the money. With <b>Bankrolls</b>, everyone buys in from their own casino bankroll, and what they win or lose goes back to it when the session ends or they leave. With <b>Table money</b>, everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out sits out until they buy back in for the same amount; with Bankrolls, someone whose bankroll can’t cover that can reset it to $1,000 first. You all bet at the same time, and the horses go to the gate when the last bets are in; everyone watches the race on their own screen. Whoever has the most money after the last race wins, less anything they bought back in for.</p>'
   });
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -1621,6 +1621,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function paintPickIn(box) {
     var p = S.pick, need = NEED[p.type];
     box.innerHTML = '';
+    if (netLocked() && netBust()) { box.appendChild(el('span', { class: 'grow', text: 'You’re out of money and sitting this race out.' })); box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: Kit.icon('plus') + '<span>Buy back in</span>', onclick: netOffer })); return; }
     if (netLocked()) { box.appendChild(el('span', { class: 'grow', text: netWaitMsg() })); return; }
     if (!solo()) { var pl = S.players[S.turn]; box.appendChild(el('span', { class: 'av', style: { '--c': pl.color }, text: pl.name.charAt(0).toUpperCase() })); }
     if (p.sel.length < need) {
@@ -2237,6 +2238,15 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       st.phase = 'over'; st.endBy = seat;
       return { state: st, mv: { t: 'end', s: seat } };
     }
+    // (out of money: buy back in for the starting amount; filed, what this device already took to its bankroll when it
+    // reset it first. Tim, 2026-11-14: "give players an opportunity to reset their bankroll and buy back in if they bust")
+    if (m.t === 'rebuy') {
+      var bp = st.players[seat];
+      if (!bp || bp.out || st.phase !== 'bet' || bp.stack >= 1 || st.tickets.some(function (k) { return k.p === seat; })) return null;
+      bp.stack += st.opt.stake; bp.rebuys = (bp.rebuys || 0) + 1; if (m.filed) bp.filed = (bp.filed || 0) + Math.round(+m.filed || 0);
+      st.ready[seat] = false;
+      return { state: st, mv: { t: 'rebuy', s: seat } };
+    }
     if (m.t !== 'bet' || st.phase !== 'bet' || st.ready[seat] || st.players[seat].out) return null;
     var F = st.field, t = 0, ok = true, tks = (m.tk || []).map(function (k) {
       var sel = (k.sel || []).map(Number), amt = Math.round(+k.amt || 0);
@@ -2267,13 +2277,14 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     if (st.prev && NETR && st.prev.raceNo >= NETR && !hold) { playRace(st); return; }
     if (hold) { if (S && S.phase === 'result' && R.goB && st.phase === 'over') rail('result'); return; }   // (the race or its results are up: they stay)
     if (st.phase === 'over') { netFinal(); return; }
-    if (info.fresh || info.again || !S || !S.online || S.raceNo !== st.raceNo) { S = betView(st); NETR = st.raceNo; Kit.gameStart(); render(); return; }
+    if (info.fresh || info.again || !S || !S.online || S.raceNo !== st.raceNo) { S = betView(st); NETR = st.raceNo; Kit.gameStart(); render(); bustOnce(); return; }
     // anyone else's bets: their money and checks change; yours stay as you are making them
     var me = Math.max(0, net.seat);
-    st.players.forEach(function (p, i) { if (i !== me || amIn()) S.players[i] = JSON.parse(JSON.stringify(p)); });
+    var back = info.mv && info.mv.t === 'rebuy' && info.mv.s === me;   // (you bought back in: your money is the table's)
+    st.players.forEach(function (p, i) { if (i !== me || amIn() || back) S.players[i] = JSON.parse(JSON.stringify(p)); });
     if (amIn()) S.tickets = JSON.parse(JSON.stringify(st.tickets));
     S.ready = st.ready.slice();
-    paintBank(); paintRail(); paintPick(); paintSlip();
+    paintBank(); paintRail(); paintPick(); paintSlip(); bustOnce();
     if (info.mv && !info.mine && net.myTurn()) Kit.haptic('light');
   }
   // the race the table just ran, on this track: the field, your tickets and everyone's money as they went to the gate
@@ -2288,11 +2299,12 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     window.scrollTo({ top: 0, behavior: 'smooth' });
     render();
   }
+  function bustOnce() { if (!netBust()) return; var k = NET.code + ':' + NET.state.started + ':' + (NET.state.players[NET.seat].rebuys || 0); if (hrOffered[k]) return; hrOffered[k] = 1; setTimeout(function () { if (!hold) netOffer(); }, 900); }
   function netNext() {
     hold = false;
     var st = NET.state;
     if (st.phase === 'over') { netFinal(); return; }
-    S = betView(st); NETR = st.raceNo; render();
+    S = betView(st); NETR = st.raceNo; render(); bustOnce();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   function netBet() {
@@ -2313,10 +2325,10 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     hold = false;
     S = JSON.parse(JSON.stringify(st)); S.turn = Math.max(0, me); S.pick = { type: 'W', sel: [] }; S.undo = []; S.phase = 'result';
     if (S.log.length && CasinoNet.once('horserace:' + NET.code + ':' + st.started)) recordSession();
-    var bk = st.money === 'bank' && me >= 0 && st.phase === 'over' && !!netOf(st, me);
-    if (bk) CasinoNet.settle(st, me, NET.code, netOf(st, me), 'horserace');
+    var due = me >= 0 ? netOf(st, me) - (st.players[me].filed || 0) : 0, bk = st.money === 'bank' && me >= 0 && st.phase === 'over' && !!(due || st.players[me].filed);
+    if (bk && due) CasinoNet.settle(st, me, NET.code, due, 'horserace');
     if (RV) RV.stop(); app.innerHTML = ''; rail(null);
-    var ranked = st.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: money(p.stack), color: p.color, v: p.stack, i: i }; }).sort(function (a, b) { return b.v - a.v; });
+    var ranked = st.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: money(standing(st, i)), color: p.color, v: standing(st, i), i: i }; }).sort(function (a, b) { return b.v - a.v; });
     var tie = ranked.length > 1 && ranked[0].v === ranked[1].v;
     if (winRef) winRef.close();
     winRef = Kit.win({
@@ -2329,9 +2341,18 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     });
   }
   // a seat's result for the session: its money and its tickets on the race still to run, less what it started with
-  function netOf(st, i) { var t = (st.tickets || []).reduce(function (a, k) { return a + (k.p === i ? +k.amt || 0 : 0); }, 0); return st.players[i].stack + t - st.opt.stake; }
+  function netOf(st, i) { var t = (st.tickets || []).reduce(function (a, k) { return a + (k.p === i ? +k.amt || 0 : 0); }, 0); return st.players[i].stack + t - st.opt.stake * (1 + (st.players[i].rebuys || 0)); }
+  // what decides the standings: the money each player has, less what they bought back in for
+  function standing(st, i) { return st.players[i].stack - st.opt.stake * (st.players[i].rebuys || 0); }
+  function netBust() { var st = NET && NET.state, p = st && NET.seat >= 0 ? st.players[NET.seat] : null; return !!p && !p.out && st.phase === 'bet' && p.stack < 1 && !st.tickets.some(function (k) { return k.p === NET.seat; }); }
+  var hrOffered = {};
+  function netOffer() {
+    if (!netBust()) return; var st = NET.state, me = NET.seat, p = st.players[me];
+    CasinoNet.offerFor({ stake: st.opt.stake, money: st.money, owed: netOf(st, me) - (p.filed || 0), game: 'horserace', name: 'Horse Race online', table: Kit.poss(st.players[0].name) + ' table',
+      gid: 'tbl:horserace:' + NET.code + ':' + st.started + ':' + me + ':b' + (p.rebuys || 0), buy: function (filed) { NET.act(function (t) { return moveOn(t, me, { t: 'rebuy', filed: filed }); }); } });
+  }
   function netLeave() {
-    if (NET && NET.state && NET.seat >= 0) CasinoNet.settle(NET.state, NET.seat, NET.code, netOf(NET.state, NET.seat), 'horserace');   // (Bankrolls: whoever leaves takes their result as it stands)
+    if (NET && NET.state && NET.seat >= 0) CasinoNet.settle(NET.state, NET.seat, NET.code, netOf(NET.state, NET.seat) - (NET.state.players[NET.seat].filed || 0), 'horserace');   // (Bankrolls: whoever leaves takes their result as it stands)
     NET = null; hold = false; NETR = 0;
     if (winRef) { winRef.close(); winRef = null; }
     if (RV) RV.stop();
@@ -2342,10 +2363,11 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     game: 'horserace', title: 'Horse Race', min: 2, max: 6,
     opts: netOpts, start: netStart,
     turn: function (st) { return stillToBet(st); },
+    free: function (st, s) { var p = st && st.players[s]; return !!(p && !p.out && st.phase === 'bet' && p.stack < 1); },
     over: function (st) {
       if (st.phase !== 'over') return null;
-      var hi = Math.max.apply(null, st.players.map(function (p) { return p.stack; })), win = [];
-      st.players.forEach(function (p, i) { if (p.stack === hi) win.push(i); });
+      var hi = Math.max.apply(null, st.players.map(function (p, i) { return standing(st, i); })), win = [];
+      st.players.forEach(function (p, i) { if (standing(st, i) === hi) win.push(i); });
       return { win: win, text: 'Richest after ' + st.log.length + ' race' + (st.log.length === 1 ? '' : 's') };
     },
     // someone who leaves: their tickets on this race still run, and they sit out the races after it

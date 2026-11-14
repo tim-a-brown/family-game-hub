@@ -665,12 +665,27 @@ var CasinoNet = (function () {
     return CFG.turn ? CFG.turn(st) : [];
   }
   function left(st) { return turnOf(st).map(function (i) { return st.seats[i].name; }); }
-  // a new round of betting: anyone out of money (with nothing on the table) buys back in for the starting amount
+  // a new round of betting. Anyone out of money (with nothing on the table) sits out, as a seat that has left does
+  // (s.out, with s.bust), until they choose to buy back in (a 'rebuy' move: Tim, 2026-11-14, "give players an
+  // opportunity to reset their bankroll and buy back in if they bust"); a seat that bought back in during another phase
+  // comes back now (s.back)
   function next(st) {
     st.round++; st.phase = 'bet';
-    st.seats.forEach(function (s, i) { if (!s.out && s.bank < 1 && onT(st, i) < 1) { s.bank += st.stake; s.rebuys = (s.rebuys || 0) + 1; s.rebuy = st.round; } });
+    st.seats.forEach(function (s, i) {
+      if (s.back) { s.out = false; s.back = false; }
+      if (!s.out && s.bank < 1 && onT(st, i) < 1) { s.out = true; s.bust = st.round; if (CFG.sitOut) CFG.sitOut(st, i); }
+    });
     st.ready = st.seats.map(function (s) { return !!s.out; });
     if (CFG.next) CFG.next(st);
+  }
+  // a seat that ran out buys back in for the starting amount (filed: what this device has already taken to its bankroll,
+  // when its bankroll was reset first)
+  function rebuy(st, i, m) {
+    var s = st.seats[i]; if (!s || !s.bust || st.phase === 'over') return false;
+    s.bank += st.stake; s.rebuys = (s.rebuys || 0) + 1; s.rebuy = st.round; s.bust = 0;
+    if (m && m.filed) s.filed = (s.filed || 0) + Math.round(+m.filed || 0);
+    if (st.phase === 'bet') { s.out = false; st.ready[i] = false; } else s.back = true;
+    return true;
   }
   function settle(st) {
     CFG.resolve(st);
@@ -678,11 +693,49 @@ var CasinoNet = (function () {
   }
   // Bankrolls: a seat's result for the table goes to this device's own casino bankroll, once (the ledger's gid keeps it to
   // one entry however often it is called), as a session at the host's table. Table money: nothing.
-  function bankSettle(st, seat, code, net, game) {
+  function bankSettle(st, seat, code, net, game, part) {
     if (!st || st.money !== 'bank' || seat == null || seat < 0 || !Math.round(net || 0) || typeof Casino === 'undefined' || !Casino.applyRemote) return false;
     var who = st.seats || st.players, host = who && who[0] && who[0].name;
     return Casino.applyRemote(Math.round(net), { game: game || (CFG && CFG.game) || '', name: ((CFG && CFG.title) || 'Casino') + ' online',
-      table: host ? Kit.poss(host) + ' table' : 'Online table', gid: 'tbl:' + (game || (CFG && CFG.game)) + ':' + code + ':' + st.started + ':' + seat });
+      table: host ? Kit.poss(host) + ' table' : 'Online table', gid: 'tbl:' + (game || (CFG && CFG.game)) + ':' + code + ':' + st.started + ':' + seat + (part || '') });
+  }
+  // ── Out of chips: the offer to buy back in ──
+  // A seat that has run out sits out until its player buys back in. The offer comes up once when it happens, and the
+  // strip keeps a Buy back in button under the seats for later. With Bankrolls the buy-back comes out of the player's
+  // casino bankroll; one that can't cover it is offered a reset to $1,000 first: what the table has cost so far is
+  // filed to the bankroll now, the bankroll is reset (its history shows both), and the table goes on from there.
+  var OFFERED = {};
+  function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
+  function bustCheck(net) {
+    var st = net && net.state, me = net && net.seat, s = st && me >= 0 ? st.seats[me] : null;
+    if (!s || !s.bust || st.phase === 'over') return;
+    var k = net.code + ':' + st.started + ':' + (s.rebuys || 0);
+    if (OFFERED[k]) return; OFFERED[k] = 1;
+    setTimeout(function () { if (LAST && LAST.state && LAST.state.seats[LAST.seat] && LAST.state.seats[LAST.seat].bust) offer(LAST); }, 1800);   // (after the round's result has played out)
+  }
+  // o: {stake, money: 'bank'|'table', owed: the seat's result not yet in the bankroll, game, buy(filed) -> sends the move,
+  //     gid: a key for the filing}
+  function offerFor(o) {
+    var st = o.stake, bank = o.money === 'bank', left = bank ? myBankroll() + o.owed : 0, reset = bank && left < st;
+    var body = !bank ? 'You can buy back in for ' + money(st) + ' of table money, or sit out and watch the others play.'
+      : !reset ? 'Counting what you’ve won and lost at this table, your bankroll has ' + money(left) + '. You can buy back in for ' + money(st) + ' from it, or sit out and watch the others play.'
+      : 'Counting what you’ve lost at this table, your bankroll has ' + money(Math.max(0, left)) + ', which isn’t enough for another ' + money(st) + '. You can reset it to ' + money(1000) + ' and buy back in, or sit out and watch the others play.';
+    Kit.sheet({ title: 'You’re out of chips', html: '<p class="muted">' + Kit.esc(body) + '</p>',
+      actions: [{ label: reset ? 'Reset my bankroll and buy back in' : 'Buy back in for ' + money(st), primary: true, onClick: function () {
+        var filed = 0;
+        if (reset && typeof Casino !== 'undefined' && Casino.applyRemote) {
+          if (o.owed) { Casino.applyRemote(o.owed, { game: o.game, name: o.name, table: o.table, gid: o.gid + ':p' }); filed = o.owed; }
+          var b = myBankroll(); if (b !== 1000) Casino.applyRemote(1000 - b, { game: o.game, name: o.name, table: o.table, gid: o.gid + ':reset', reset: true });
+        }
+        Kit.sfx('chip'); o.buy(filed);
+      } }, { label: 'Sit out for now', cls: 'btn-ghost' }] });
+  }
+  function offer(net) {
+    var st = net.state, me = net.seat, s = st.seats[me]; if (!s || !s.bust) return;
+    var who = st.seats[0] && st.seats[0].name;
+    offerFor({ stake: st.stake, money: st.money, owed: nets(st)[me] - (s.filed || 0), game: CFG.game, name: (CFG.title || 'Casino') + ' online', table: who ? Kit.poss(who) + ' table' : 'Online table',
+      gid: 'tbl:' + CFG.game + ':' + net.code + ':' + st.started + ':' + me + ':b' + (s.rebuys || 0),
+      buy: function (filed) { net.act(function (t) { var T = JSON.parse(JSON.stringify(t)); return rebuy(T, me, { filed: filed }) ? { state: T, mv: { t: 'rebuy', s: me } } : null; }); } });
   }
   function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_' + CFG.game)) || {}; } catch (e) { return {}; } }
   function table(cfg) {
@@ -701,6 +754,7 @@ var CasinoNet = (function () {
         st.phase = 'over'; st.endBy = i;
         return { state: st, mv: { t: 'end', s: i } };
       }
+      if (m.t === 'rebuy') return rebuy(st, i, m) ? { state: st, mv: { t: 'rebuy', s: i } } : null;
       if (m.t === 'bet') {
         if (st.phase !== 'bet' || st.ready[i] || !st.seats[i] || st.seats[i].out) return null;
         if (cfg.take(st, i, m) === false) return null;
@@ -726,6 +780,7 @@ var CasinoNet = (function () {
       },
       start: start,
       turn: turnOf,
+      free: function (st, i) { return !!(st && st.phase !== 'over' && st.seats[i] && st.seats[i].bust); },
       over: function (st) {
         if (st.phase !== 'over') return null;
         var n = nets(st), hi = Math.max.apply(null, n), win = [];
@@ -734,15 +789,20 @@ var CasinoNet = (function () {
       },
       // someone who leaves sits out: their seat stays with its money, and the others play on
       resign: function (st, i) {
-        st.seats[i].out = true;
+        st.seats[i].out = true; st.seats[i].bust = 0; st.seats[i].back = false;
         if (cfg.sitOut) cfg.sitOut(st, i);
         if (st.phase === 'bet') { st.ready[i] = true; if (allIn(st)) settle(st); }
         return { state: st };
       },
       leaveNote: function (st) { return st && st.money === 'bank' ? 'The others play on without you. What you have won or lost so far goes to your bankroll.' : 'The others play on without you, and your money stays at the table.'; },
       // (Bankrolls: whoever leaves takes their result to their bankroll as it stands when they go)
-      show: function (net, info) { LAST = net; return cfg.show(net, info); },
-      leave: function () { var n = LAST; LAST = null; if (n && n.state && n.seat >= 0) bankSettle(n.state, n.seat, n.code, nets(n.state)[n.seat], cfg.game); return cfg.leave && cfg.leave.apply(this, arguments); }
+      show: function (net, info) {
+        LAST = net;
+        // (you just bought back in: the game draws your seat afresh, as when you sit down, so your chips are the table's)
+        if (info && info.mv && info.mv.t === 'rebuy' && info.mv.s === net.seat) info = Object.assign({}, info, { fresh: true, mv: null });
+        var r = cfg.show(net, info); bustCheck(net); return r;
+      },
+      leave: function () { var n = LAST; LAST = null; if (n && n.state && n.seat >= 0) bankSettle(n.state, n.seat, n.code, nets(n.state)[n.seat] - (n.state.seats[n.seat].filed || 0), cfg.game); return cfg.leave && cfg.leave.apply(this, arguments); }
     });
     return { move: moveOn };
   }
@@ -758,7 +818,8 @@ var CasinoNet = (function () {
     '.cz-net .czs.me:not(.up){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}' +
     '.cz-net .czs.out{opacity:.45;}' +
     '.cz-net .czs .mk{display:inline-flex;width:16px;height:16px;margin-right:-2px;color:#f6d77b;flex:none;}.cz-net .czs .mk svg{width:16px;height:16px;}' +
-    '.cz-net .czs .d{font-size:.74rem;font-weight:900;}.cz-net .czs .d.pos{color:#3ddc84;}.cz-net .czs .d.neg{color:#ff8a8a;}';
+    '.cz-net .czs .d{font-size:.74rem;font-weight:900;}.cz-net .czs .d.pos{color:#3ddc84;}.cz-net .czs .d.neg{color:#ff8a8a;}' +
+    '.cz-net .cz-back{flex-basis:100%;max-width:280px;margin:4px auto 0;}';
   function css() { if (document.getElementById('cz-net-css')) return; var s = document.createElement('style'); s.id = 'cz-net-css'; s.textContent = CSS; document.head.appendChild(s); }
   function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString(); }
   // o: {st: the table as this device shows it (default the table), amount(i) -> $ (default the seat's money),
@@ -773,12 +834,16 @@ var CasinoNet = (function () {
       var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.out ? s.name + ' left the table' : '' }, [
         Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) }),
         Kit.el('span', { text: i === me ? 'You' : s.name }), Kit.el('b', { text: money(amt) })]);
+      if (s.bust) c.title = (i === me ? 'You are' : s.name + ' is') + ' out of chips';
       var mk = o.mark ? o.mark(i) : null;
       if (mk) c.insertBefore(Kit.el('span', { class: 'mk', title: mk.title || '', html: Kit.icon(mk.icon || mk) }), c.children[1]);
       if (d) c.appendChild(Kit.el('span', { class: 'd ' + (d > 0 ? 'pos' : 'neg'), text: (d > 0 ? '+' : '−') + '$' + Math.abs(Math.round(d)).toLocaleString() }));
       else if (inn && o.check !== false) c.appendChild(Kit.el('span', { class: 'ck', html: Kit.icon('check') }));
       box.appendChild(c);
     });
+    // (yours, out of chips: the way back in)
+    var mine = me >= 0 && net.state.seats[me];
+    if (mine && mine.bust && net.state.phase !== 'over') box.appendChild(Kit.el('button', { type: 'button', class: 'btn btn-primary btn-sm cz-back', html: Kit.icon('plus') + '<span>Buy back in</span>', onclick: function () { offer(net); } }));
     return box;
   }
   // The results card when the table cashes out: everyone's result for the session, best first. o: {unit}
@@ -788,8 +853,8 @@ var CasinoNet = (function () {
     var st = net.state, res = net.result, left = !!(res && res.left != null), me = net.seat, n = nets(st), played = st.round - 1;
     var rank = st.seats.map(function (s, i) { return { name: i === me ? 'You' : s.name, score: (n[i] > 0 ? '+' : n[i] < 0 ? '−' : '') + '$' + Math.abs(n[i]).toLocaleString(), n: n[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
     var top = rank[0], tie = rank[1] && rank[1].n === top.n;
-    var bk = st.money === 'bank' && me >= 0 && n[me] && st.phase === 'over';
-    if (bk) bankSettle(st, me, net.code, n[me]);
+    var due = me >= 0 ? n[me] - (st.seats[me].filed || 0) : 0, bk = st.money === 'bank' && me >= 0 && st.phase === 'over' && (due || st.seats[me].filed);
+    if (bk && due) bankSettle(st, me, net.code, due);
     if (winRef) winRef.close();
     var by = st.endBy != null && st.seats[st.endBy] ? (st.endBy === me ? 'You' : st.seats[st.endBy].name) + ' cashed out the table after ' : 'The table cashed out after ';
     winRef = Kit.win({
@@ -824,5 +889,5 @@ var CasinoNet = (function () {
       choices: STAKES.map(function (v) { return [v, money(v)]; }) };
   }
   return { wallet: wallet, quiet: quiet, table: table, next: next, nets: nets, left: left, turn: turnOf, allIn: allIn,
-    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, moneyOption: moneyOption, settle: bankSettle, STAKES: STAKES };
+    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, moneyOption: moneyOption, settle: bankSettle, offerFor: offerFor, myBankroll: myBankroll, STAKES: STAKES };
 })();

@@ -198,7 +198,11 @@ Underlying principles for everything:
   to pick buy in with bankrolls or play money"; the review's Money, `CasinoNet.moneyOption`, Blackjack's `netmoney`):
   Bankrolls, where each device takes its own seat's result to its own `casino_bank` once (`CasinoNet.settle`, through
   `Casino.applyRemote` with a gid, so the ledger shows it as a session at the host's table) when the table cashes out or
-  it leaves, or Table money, where no bankroll changes. Either way everyone starts with the same amount, and everyone bets at once (TurnNet's turn holds every seat still to bet), and the last
+  it leaves, or Table money, where no bankroll changes. **Someone who runs out sits out until they buy back in** (Tim, 2026-11-14: "give
+  players an opportunity to reset their bankroll and buy back in if they bust"): an offer comes up once and a Buy back in
+  button stays (the strip, Blackjack's controls, Horse Race's pick bar); with Bankrolls, a bankroll that can't cover the
+  buy-in can be reset to $1,000 first, and what the table had cost is filed to the bankroll before the reset (`filed` on
+  the seat, taken off the final result). The 'rebuy' move is made off-turn through TurnNet's `free(state, seat)`. Either way everyone starts with the same amount, and everyone bets at once (TurnNet's turn holds every seat still to bet), and the last
   bet in settles the round for every seat inside its transaction; each device plays the result out with the game's
   own animation. Each seat keeps the game's own state in the table, and settling runs the game's own code with saves
   and drawing switched off. Craps passes the dice on a seven-out; Horse Race uses its pass-and-play state. People only:
