@@ -111,15 +111,25 @@ Underlying principles for everything:
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
-- **A moment on the table is the edge-lit acrylic strip** (Tim, 2026-11-14, after calling the old rounded colored box
-  "quick AI solution, not thoughtful": he picked it from twelve blends of a Swiss poster, a broadcast strip and a glowing
-  display). `Kit.moment({title, line, chip | icon, pts, color, tone: 'bad', big, at, ms})`: a strip of smoked acrylic
-  you see the table through, lit along its top edge; the contract or what happened on a tinted square at the left, the
-  sentence in Schibsted Grotesk, the points glowing in Doto's dots at the right (counted up), `at` the table element so
-  it lies across the table's lower edge. `Kit.callout(text, color)` is a short one in the middle of the screen (a number
-  alone glows). Arvela keeps its own callout (`k-own-callout` on its `<html>`). Not a box made of nothing: no rounded
-  candy card, no tracked caps label, no flat two-color gradient. Big moments use the strip's `big` size until Tim picks
-  a big-moment design.
+- **The look is Night glass in color** (Tim, 2026-11-14, chosen from eight directions drawn on 37 screens; "fun but
+  still elegant, colorful but not cartoony, info-dense but designed for touchscreens and spacious"). The last section of
+  kit.css builds it for the default Night theme (`:root:not([data-theme])`); the other themes keep their old look until
+  Tim decides about them. Frosted glass panels (`--gl`, `--gl-2`, `--gl-line`) on a night sky; **each category has its
+  own color** (`--h`, set before first paint by `catHue` in kit.js from GAME_CATS), and that color tints the page's sky,
+  the game's home row, its setup's Players card, its results card, and its table: a game's felt is its own shade of the
+  category color (`applyTheme`; THEMES' felts are for the other themes). **Gold is the one light** for what is yours or
+  happening now: the main button (`--gold-hi`/`--gold-lo`), a chosen option, your turn, your score (`--lit`,
+  `--lit-ink`). Type is Schibsted Grotesk; titles are its static 800 cut (`--display`, "GN Display", so a title set at
+  any weight comes out the same); no Lilita, Bungee or tracked capitals on chrome (labels are sentence case). Corners
+  are rounded (13 to 28px), buttons have no lip and press with a small sink. The home screen is one row per game
+  (icon, name, players, a live line at the right, gold when it is something for you to do), sections marked by a bar
+  in the category's color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+- **A moment on the table** (`Kit.moment({title, line, chip | icon, pts, color, tone: 'bad', big, at, ms})`) is a
+  strip of rounded navy glass lit along its top edge in gold: the contract or what happened on a rounded tile at the
+  left, the sentence in Schibsted Grotesk, the points glowing in Doto's dots at the right (counted up), `at` the table
+  element so it lies across the table's lower edge. `big` opens the lit edge into a tall rounded panel with the moment's
+  pieces inside (`cards`, `dice`). `Kit.callout(text, color)` is a short one in the middle of the screen (a number
+  alone glows). Arvela keeps its own callout (`k-own-callout` on its `<html>`).
 - **New games: the bar is very high.** Tim expects high-end design polish, effects, sound and
   interactivity in every new game: real materials and pieces, motion on every action, sounds and haptics,
   big moments for big plays. Screenshot every phase and critique it before calling it done.

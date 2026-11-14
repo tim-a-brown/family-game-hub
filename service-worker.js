@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v762-2026-11-14-moment-strip';
+const CACHE_VERSION = 'v763-2026-11-14-night-glass';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -40,6 +40,7 @@ const PRECACHE_URLS = [
   '/fonts/patrick-hand.woff2',
   '/fonts/great-vibes.woff2',
   '/fonts/schibsted-grotesk.woff2',
+  '/fonts/schibsted-800.woff2',
   '/fonts/doto-900.woff2',
   '/fonts/cinzel-700.woff2',
   '/fonts/arvela-text.woff2',
