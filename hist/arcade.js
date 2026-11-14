@@ -6,42 +6,44 @@
   if (!window.HistView) return;
   var R = HistView.register;
 
+  // Night glass (Tim, 2026-11-14): a glass panel tinted at its corner with the game's own color; the pictures of the run
+  // stay as the game drew them, set into the glass; the run's score in the display face, a gold light for a new high score
   HistView.css('hv-arcade', [
-    '.ar-scr{position:relative;border-radius:16px;padding:14px 14px 12px;background:#07080f;color:#e9ecff;overflow:hidden;',
-    'box-shadow:inset 0 0 0 2px #1b1f33,inset 0 0 0 5px #0c0e18,inset 0 0 40px rgba(80,120,255,.10),0 8px 20px -10px rgba(0,0,0,.8);',
-    'font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;display:flex;flex-direction:column;gap:12px;}',
-    '.ar-scr::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;',
-    'background:repeating-linear-gradient(180deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);}',
+    '.ar-scr{position:relative;border-radius:20px;padding:14px 14px 13px;color:var(--text);overflow:hidden;font-family:var(--font);',
+    'background:linear-gradient(160deg,color-mix(in srgb,var(--ac,#ffd84a) 15%,transparent),transparent 58%),var(--gl);',
+    'box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,255,255,.08),0 10px 24px -16px rgba(0,0,0,.9);display:flex;flex-direction:column;gap:12px;}',
     '.ar-top{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap;}',
-    '.ar-ttl{font-size:.72rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ac,#ffd84a);}',
-    '.ar-score{font-size:2rem;font-weight:900;line-height:1;letter-spacing:.04em;color:#fff;font-variant-numeric:tabular-nums;',
-    'text-shadow:0 0 10px color-mix(in srgb,var(--ac,#ffd84a) 70%,transparent);}',
-    '.ar-score small{font-size:.7rem;letter-spacing:.14em;color:rgba(233,236,255,.55);margin-left:6px;font-weight:800;}',
-    '.ar-rank{font-size:.68rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;border-radius:6px;',
-    'border:1.5px solid rgba(233,236,255,.25);color:rgba(233,236,255,.8);white-space:nowrap;}',
-    '.ar-rank.new{border-color:#ffd84a;color:#ffd84a;box-shadow:0 0 12px rgba(255,216,74,.35);}',
+    '.ar-ttl{display:flex;flex-direction:column;font-size:.86rem;font-weight:700;color:var(--text-2);line-height:1.3;padding-left:11px;position:relative;}',
+    '.ar-ttl::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:4px;border-radius:2px;background:var(--ac,#ffd84a);box-shadow:0 0 10px color-mix(in srgb,var(--ac,#ffd84a) 60%,transparent);}',
+    '.ar-ttl .k-fact{font-weight:600;color:var(--text-3);}',
+    '.ar-score{font-family:var(--display);font-size:2.3rem;font-weight:800;line-height:1;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums;margin-top:4px;}',
+    '.ar-score small{font-family:var(--font);font-size:.86rem;letter-spacing:0;color:var(--text-3);margin-left:6px;font-weight:650;}',
+    '.ar-rank{font-size:.8rem;font-weight:700;padding:6px 11px;border-radius:12px;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);white-space:nowrap;}',
+    '.ar-rank.new{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.25);}',
     '.ar-body{display:flex;flex-direction:column;gap:12px;align-items:center;}',
     '.ar-body.side{flex-direction:row;align-items:flex-start;}',
     '.ar-pic{line-height:0;width:100%;}',
-    '.ar-pic svg{width:100%;height:auto;display:block;border-radius:6px;}',
+    '.ar-pic svg{width:100%;height:auto;display:block;border-radius:12px;box-shadow:0 0 0 1px var(--gl-line);}',
     '.ar-body.side .ar-pic{flex:0 0 44%;}',
-    '.ar-st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 10px;width:100%;}',
-    '.ar-body.side .ar-st{grid-template-columns:1fr;gap:7px;flex:1;min-width:0;}',
+    '.ar-st{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;}',
+    '.ar-body.side .ar-st{grid-template-columns:1fr;gap:8px;flex:1;min-width:0;}',
     '.ar-s{display:flex;flex-direction:column;gap:1px;min-width:0;}',
-    '.ar-s b{font-size:1.02rem;font-weight:900;color:#fff;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px;overflow-wrap:anywhere;}',
-    '.ar-s small{font-size:.6rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(233,236,255,.5);}',
-    '.ar-s i{font-style:normal;font-size:.68rem;color:rgba(233,236,255,.6);}',
-    '.ar-dot{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:inset 0 -2px 0 rgba(0,0,0,.3),0 0 0 1.5px rgba(255,255,255,.35);}',
-    '.ar-foot{font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#ff6b7a;text-align:center;}',
-    '.ar-foot.ok{color:#7dff9a;}',
-    '.ar-sub{font-size:.7rem;color:rgba(233,236,255,.55);letter-spacing:.08em;text-transform:uppercase;font-weight:800;}',
-    '.ar-kz{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;font-size:.64rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(233,236,255,.6);}',
+    '.ar-s b{font-family:var(--display);font-size:1.1rem;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:6px;overflow-wrap:anywhere;}',
+    '.ar-s small{order:-1;font-size:.76rem;font-weight:600;color:var(--text-3);}',
+    '.ar-s i{font-style:normal;font-size:.76rem;font-weight:550;color:var(--text-2);}',
+    '.ar-dot{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 0 1.5px var(--gl-line);}',
+    '.ar-foot{font-size:.86rem;font-weight:700;color:var(--bad-ink,#ff8a8a);text-align:center;}',
+    '.ar-foot.ok{color:color-mix(in srgb,var(--green,#3ddc84) 80%,var(--text));}',
+    '.ar-sub{font-size:.8rem;color:var(--text-3);font-weight:600;}',
+    '.ar-kz{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:center;font-size:.76rem;font-weight:600;color:var(--text-2);}',
     '.ar-kz span{display:inline-flex;align-items:center;gap:5px;}',
-    '.ar-kz span i{width:10px;height:10px;border-radius:2px;display:inline-block;}'
+    '.ar-kz span i{width:10px;height:10px;border-radius:3px;display:inline-block;}'
   ].join(''));
 
   // ── shared pieces ──
   function n(v) { return (Number(v) || 0).toLocaleString('en-US'); }
+  // a line under a stat starts with a capital, like the facts the history view splits off after it
+  function cap(s) { s = String(s); return /^[a-z]/.test(s) ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
   function plural(k, one, many) { return n(k) + ' ' + (k === 1 ? one : many || one + 's'); }
   function mmss(sec) { sec = Math.round(Number(sec) || 0); var m = Math.floor(sec / 60), s = sec % 60; return m + ':' + (s < 10 ? '0' : '') + s; }
   function myScore(e) { var p = (e.players || [])[0]; return p && typeof p.score === 'number' ? p.score : 0; }
@@ -64,7 +66,7 @@
     var st = el('div', { class: 'ar-st' });
     (o.stats || []).forEach(function (x) {
       if (!x || x[1] == null || x[1] === '' || x[1] === false) return;
-      st.appendChild(el('div', { class: 'ar-s' }, [el('b', null, [x[3] ? el('span', { class: 'ar-dot', style: { background: x[3] } }) : null, el('span', { text: String(x[1]) })]), el('small', { text: x[0] }), x[2] ? el('i', { text: x[2] }) : null]));
+      st.appendChild(el('div', { class: 'ar-s' }, [el('b', null, [x[3] ? el('span', { class: 'ar-dot', style: { background: x[3] } }) : null, el('span', { text: String(x[1]) })]), el('small', { text: x[0] }), x[2] ? el('i', { text: cap(x[2]) }) : null]));
     });
     box.appendChild(el('div', { class: 'ar-body' + (o.side ? ' side' : '') }, [o.pic ? el('div', { class: 'ar-pic', style: o.picMax ? { 'max-width': o.picMax + 'px' } : null, html: o.pic }) : null, st]));
     (o.extra || []).forEach(function (x) { if (x) box.appendChild(x); });
@@ -726,24 +728,25 @@
   // where the site's files are (for fonts and the Carmen maps), from this file's own address
   var ROOT = (function () { try { var s = document.currentScript && document.currentScript.src; if (s) return s.replace(/hist\/arcade\.js(\?.*)?$/, ''); } catch (e) {} return ''; })();
   HistView.css('hv-arcade2', [
-    '.ar-road{display:flex;flex-wrap:wrap;gap:4px;}',
-    '.ar-rb{appearance:none;border:0;cursor:pointer;min-width:27px;height:27px;padding:0 6px;border-radius:6px;font:900 .68rem/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;',
-    'color:#fff;background:var(--rc,#3a3f5c);box-shadow:inset 0 -2px 0 rgba(0,0,0,.28);transition:transform .12s;}',
+    '.ar-road{display:flex;flex-wrap:wrap;gap:5px;}',
+    '.ar-rb{appearance:none;border:0;cursor:pointer;min-width:30px;height:30px;padding:0 7px;border-radius:10px;font:800 .74rem/1 var(--font);font-variant-numeric:tabular-nums;',
+    'color:#fff;background:var(--rc,#3a3f5c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .12s,box-shadow .15s;touch-action:manipulation;}',
+    '.ar-rb:active{transform:translateY(1px) scale(.95);}',
     '.ar-rb.ink{color:#141414;}',
-    '.ar-rb.on{outline:2.5px solid var(--ro,#fff);outline-offset:1.5px;transform:translateY(-1px);}',
+    '.ar-rb.on{outline:2.5px solid var(--ro,var(--lit));outline-offset:2px;transform:translateY(-1px);box-shadow:inset 0 0 0 1px rgba(0,0,0,.18),0 0 14px var(--litg);}',
     '.ar-card{display:flex;flex-direction:column;gap:10px;}',
     '.ar-two{display:flex;gap:12px;align-items:flex-start;}',
     '.ar-two>.ar-pic{flex:0 0 40%;}',
     '.ar-two>.ar-st{flex:1;min-width:0;grid-template-columns:1fr;gap:7px;}',
-    '.ar-line{font-size:.78rem;font-weight:700;color:rgba(233,236,255,.82);line-height:1.45;}',
-    '.ar-line b{color:#fff;}',
+    '.ar-line{font-size:.86rem;font-weight:600;color:var(--text-2);line-height:1.45;}',
+    '.ar-line b{color:var(--text);}',
     '.ar-lg{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;}',
-    '.ar-lg li{display:flex;gap:8px;align-items:baseline;font-size:.76rem;font-weight:700;color:rgba(233,236,255,.86);line-height:1.35;}',
-    '.ar-lg li b{flex:none;min-width:36px;color:rgba(233,236,255,.5);font-variant-numeric:tabular-nums;}',
-    '.ar-lg li i{flex:none;width:9px;height:9px;border-radius:2px;align-self:flex-start;margin-top:.3em;}',
-    '.ar-chips{display:flex;flex-wrap:wrap;gap:4px;}',
-    '.ar-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 7px;border-radius:5px;font-size:.66rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;',
-    'background:color-mix(in srgb,var(--cc,#888) 22%,transparent);color:color-mix(in srgb,var(--cc,#888) 55%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc,#888) 45%,transparent);}'
+    '.ar-lg li{display:flex;gap:8px;align-items:baseline;font-size:.84rem;font-weight:600;color:var(--text-2);line-height:1.35;}',
+    '.ar-lg li b{flex:none;min-width:36px;color:var(--text-3);font-variant-numeric:tabular-nums;}',
+    '.ar-lg li i{flex:none;width:9px;height:9px;border-radius:3px;align-self:flex-start;margin-top:.3em;}',
+    '.ar-chips{display:flex;flex-wrap:wrap;gap:5px;}',
+    '.ar-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:10px;font-size:.76rem;font-weight:700;',
+    'background:color-mix(in srgb,var(--cc,#888) 20%,transparent);color:color-mix(in srgb,var(--cc,#888) 50%,var(--text));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc,#888) 45%,transparent);}'
   ].join(''));
   // a strip of small buttons, one per hand/level/event; tapping one shows it. items: [{t, c (colour), title, ink (dark text)}]
   function strip(ui, items, start, show, o) {
@@ -1261,7 +1264,7 @@
   HistView.css('hv-hotdog', [
     '.hds-board{border-radius:16px;padding:12px;background:linear-gradient(#141218,#0b0a0e);box-shadow:inset 0 0 0 3px #2a2630,inset 0 2px 12px rgba(0,0,0,.9),0 8px 18px -10px rgba(0,0,0,.8);color:#ffd54a;display:flex;flex-direction:column;gap:10px;}',
     '.hds-top{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap;}',
-    '.hds-top small{display:block;font-size:.64rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#8d8678;}',
+    '.hds-top small{display:block;font-size:.78rem;font-weight:650;color:#a39b8a;}',
     '.hds-top b{display:block;font:400 2.1rem/1 var(--display);color:#7ef0b0;text-shadow:0 0 12px rgba(80,255,160,.35);font-variant-numeric:tabular-nums;}',
     '.hds-top b.short{color:#ffd54a;text-shadow:0 0 12px rgba(255,213,74,.3);}',
     '.hds-badge{font:400 .95rem/1 var(--display);letter-spacing:.04em;padding:6px 10px;border-radius:8px;border:2px solid currentColor;color:#ffd54a;transform:rotate(-3deg);}',
@@ -1494,6 +1497,6 @@
   // one stat tile (the arcade screen's)
   function stat(ui, label, value, sub, dot) {
     if (value == null || value === '') return null;
-    return ui.el('div', { class: 'ar-s' }, [ui.el('b', null, [dot ? ui.el('span', { class: 'ar-dot', style: { background: dot } }) : null, ui.el('span', { text: String(value) })]), ui.el('small', { text: label }), sub ? ui.el('i', { text: sub }) : null]);
+    return ui.el('div', { class: 'ar-s' }, [ui.el('b', null, [dot ? ui.el('span', { class: 'ar-dot', style: { background: dot } }) : null, ui.el('span', { text: String(value) })]), ui.el('small', { text: label }), sub ? ui.el('i', { text: cap(sub) }) : null]);
   }
 })();
