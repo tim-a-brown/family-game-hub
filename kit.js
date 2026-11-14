@@ -76,7 +76,7 @@
   }
   // ── App theme (colours only). Set on <html> before first paint; Kit.theme has the list and picker.
   var THEME_LIST = [
-    { id: 'night', name: 'Night', bg: '#0e0f1b', bar: '#171a30', s: '#30355c', t: '#f3f1fb', a: '#ffd34d', light: false },
+    { id: 'night', name: 'Night glass', bg: '#0e0f1b', bar: '#171a30', s: '#30355c', t: '#f3f1fb', a: '#ffd34d', light: false },
     { id: 'light', name: 'Light', bg: '#f3f1f9', s: '#dcd8ec', t: '#1b1733', a: '#ff5c9a', light: true },
     { id: 'dark', name: 'Dark', bg: '#0b0b0f', s: '#2f2f39', t: '#f4f4f7', a: '#4da3ff', light: false },
     { id: 'midnight', name: 'Midnight', bg: 'linear-gradient(180deg,#123a7c,#050a18)', bar: '#123a7c', s: '#1f376f', t: '#f1f5ff', a: '#ffc83d', light: false },
@@ -105,6 +105,10 @@
   }
   function themeSet(id) { lsSet('fgh_theme', themeRec(id).id); themeApply(id); }
   meta('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+  // Night glass in color became the default on 2026-11-14 and every device's chosen theme went back to it once (Tim:
+  // "night glass is default (and reset any set defaults at this point)"); the mark syncs with the account, so a theme
+  // chosen after that stays chosen
+  if (lsGet('fgh_theme_ng', '') !== '1') { lsSet('fgh_theme', 'night'); lsSet('fgh_theme_ng', '1'); }
   themeApply(themeGet());
   catHue();
   meta('apple-mobile-web-app-capable', 'yes');
@@ -1483,9 +1487,9 @@
     var t = THEMES[id] || (findGameSafe(id) ? {} : null); if (!t) return;
     function set(k, v) { if (v) root.style.setProperty(k, v); }
     // Night glass in color: the felt is the game's own shade of its category's color (games.js), deepened toward the
-    // night, so the color that sorts a game on the home screen is the table it is played on. Other themes keep THEMES.
+    // night, so the color that sorts a game on the home screen is the table it is played on (in every theme).
     var g = findGameSafe(id);
-    if (!root.hasAttribute('data-theme') && g && /^#[0-9a-f]{6}$/i.test(g.color || '') && id !== '_custom') {
+    if (g && /^#[0-9a-f]{6}$/i.test(g.color || '') && id !== '_custom') {
       set('--felt-a', 'color-mix(in oklab,' + g.color + ' 60%,#0b0c18)'); set('--felt-b', 'color-mix(in oklab,' + g.color + ' 44%,#0b0c18)'); set('--felt-c', 'color-mix(in oklab,' + g.color + ' 32%,#0b0c18)');
     } else if (t.felt) { set('--felt-a', t.felt[0]); set('--felt-b', t.felt[1]); set('--felt-c', t.felt[2]); }
     if (t.back) { set('--back-a', t.back[0]); set('--back-b', t.back[1]); set('--back-edge', t.back[2]); }

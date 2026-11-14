@@ -113,8 +113,12 @@ Underlying principles for everything:
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
 - **The look is Night glass in color** (Tim, 2026-11-14, chosen from eight directions drawn on 37 screens; "fun but
   still elegant, colorful but not cartoony, info-dense but designed for touchscreens and spacious"). The last section of
-  kit.css builds it for the default Night theme (`:root:not([data-theme])`); the other themes keep their old look until
-  Tim decides about them. Frosted glass panels (`--gl`, `--gl-2`, `--gl-line`) on a night sky; **each category has its
+  kit.css builds it (its rules are scoped `:root:not(.ng-x)`, a no-op that keeps their weight); every theme is Night
+  glass on its own sky (Tim, the same day: "bring the themes into night glass but night glass is default"): each theme
+  sets the glass tokens (`--gl`, `--gl-3`, `--gl-line`, `--sheet-bg`, `--sheet-solid`, `--toast-bg`, `--well`,
+  `--lit-ink`, `--page-bg`) at the end of that section, the two light themes with frosted white glass and a deeper gold.
+  Night glass is the default, and every device's theme went back to it once (`fgh_theme_ng`, which syncs, so a theme
+  chosen since stays chosen). Frosted glass panels (`--gl`, `--gl-2`, `--gl-line`) on a night sky; **each category has its
   own color** (`--h`, set before first paint by `catHue` in kit.js from GAME_CATS), and that color tints the page's sky,
   the game's home row, its setup's Players card, its results card, and its table: a game's felt is its own shade of the
   category color (`applyTheme`; THEMES' felts are for the other themes). **Gold is the one light** for what is yours or
