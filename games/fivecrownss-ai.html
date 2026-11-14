@@ -12,6 +12,8 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 8px);}
 /* ── Five Crowns cards ───────────────────────────────────────────────── */
@@ -321,8 +323,10 @@
 
   // ── Setup & state ─────────────────────────────────────────────────────────
   var S = null, token = 0, undoStack = [];
+  var NET = null;   // the online table (turnnet.js), while at one: S is then the table's game, S.me your seat
   function roundName(k) { return 'the ' + ({ 11: 'Kings', 10: 'Queens', 9: 'Jacks' }[k] || LABELS[k - 1]) + ' round'; }
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Round ' + S.round + ' of ' + S.len + ' · ' + PLURAL[S.round - 1].toLowerCase() + ' wild');
   }
@@ -330,12 +334,12 @@
 
   Kit.init({
     id: 'five-crowns',
-    onNew: function () { token++; clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } token++; clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'chart', label: 'Scores so far', onClick: function () { if (S && S.players) showScores(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { keys: [PAD_KEY], title: 'Five Crowns: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Eleven rounds. Each round, try to get rid of all your cards by putting them into groups. After the last round, the <b>lowest total score wins</b>.</p>' +
       '<h3>The cards</h3><p>Five suits: <b>stars, hearts, clubs, spades and diamonds</b>, with cards 3 to King. There are two of every card, plus 6 Jokers.</p>' +
@@ -349,7 +353,11 @@
       '<li>The game sorts your hand into groups for you. Green groups are done.</li></ul>' +
       '<h3>Going out</h3><p>If every card left in your hand is in a group after you discard, you <b>go out</b>! Everyone else gets <b>one more turn</b>, then lays down what they can.</p>' +
       '<h3>Scoring</h3><p>Cards left over (not in a group) count against you: <b>3 to 10</b> = their number, <b>Jack 11, Queen 12, King 13</b>, a <b>wild card 20</b> and a <b>Joker 50</b>. Going out scores 0.</p>' +
-      '<h3>Tip</h3><p>Hang on to wild cards and Jokers. They are worth a lot if you get caught with them, but they fit in any group.</p>'
+      '<h3>Tip</h3><p>Hang on to wild cards and Jokers. They are worth a lot if you get caught with them, but they fit in any group.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> beside the start button: open a table and up to 6 others join on their own devices. The computer plays any seat that nobody takes.</li>' +
+      '<li>Each of you sees only your own hand. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
+      '<li>When a round ends, the next one is dealt at once, and everyone sees how the round was counted.</li>' +
+      '<li>Moves can’t be taken back online.</li></ul>'
   });
 
   function showSetup() {
@@ -375,6 +383,15 @@
   }
 
   function deal() {
+    dealRound();
+    undoStack = [];
+    save(); render();
+    Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal'); }, 120);
+    dealAnim();
+    next();
+  }
+  // the deal itself (the rules only: online tables deal with it too)
+  function dealRound() {
     var n = S.players.length;
     S.round++;
     S.wild = S.round + 2;
@@ -388,11 +405,6 @@
     S.phase = 'draw';
     S.outBy = -1; S.turns = S.players.map(function () { return 0; });
     S.sel = null; S.drew = null;
-    undoStack = [];
-    save(); render();
-    Kit.sfx('deal'); setTimeout(function () { Kit.sfx('deal'); }, 120);
-    dealAnim();
-    next();
   }
 
   // ── Viewer seat (pass & play) ─────────────────────────────────────────────
@@ -401,7 +413,7 @@
   function person(p) { return !!(S && S.players[p] && !S.players[p].cpu); }
   function humans() { return S ? S.players.filter(function (p) { return !p.cpu; }).length : 1; }
   function isMe(p) { return p === S.me; }
-  function isYou(p) { return isMe(p) && humans() < 2; }
+  function isYou(p) { return isMe(p) && (!!NET || humans() < 2); }
   function nm(p) { return isYou(p) ? 'You' : S.players[p].name; }
   function gate(p) {
     var t = ++token;
@@ -423,12 +435,13 @@
       setTimeout(function () { if (t === token && S && S.turn === p) cpuStep(p); }, S.phase === 'draw' ? 700 : 650);
     } else if (!isMe(p) && !S.cover) gate(p);
   }
-  function refillStock() {
-    if (S.stock.length) return;
+  function refillStock(quiet) {
+    if (S.stock.length) return false;
     var top = S.discard.pop();
     S.stock = Cards.shuffle(S.discard);
     S.discard = [top];
-    flash('Discards shuffled into a new stock');
+    if (!quiet) flash('Discards shuffled into a new stock');
+    return true;
   }
   function draw(p, from) {
     if (S.phase !== 'draw' || S.turn !== p) return null;
@@ -580,6 +593,7 @@
   // ── You ───────────────────────────────────────────────────────────────────
   function youDraw(from) {
     if (!S || S.cover || S.turn !== S.me || S.phase !== 'draw') return;
+    if (NET) { NETFLY = rectOfPile(from); netYou({ t: 'draw', f: from === 'discard' ? 'discard' : 'stock' }); return; }
     snapshot();
     var src = pileEl(from), rect = src ? src.getBoundingClientRect() : null;
     var c = draw(S.me, from);
@@ -600,6 +614,7 @@
   function youDiscard() {
     if (!S || S.cover || S.turn !== S.me || S.phase !== 'discard' || !S.sel) return;
     var node = handEl.querySelector('[data-id="' + S.sel + '"]'), rect = node ? node.getBoundingClientRect() : null;
+    if (NET) { NETFLY = rect; var id = S.sel; S.sel = null; netYou({ t: 'disc', id: id }); return; }
     snapshot();
     discard(S.me, S.sel);
     Kit.sfx('flip');
@@ -609,6 +624,18 @@
   // ── End of round & game ───────────────────────────────────────────────────
   function endRound() {
     token++;
+    var pts = countRound();
+    undoStack = [];
+    save(); paint();
+    var me = pts[S.me];
+    if (S.outBy === S.me || me === 0) Kit.sfx('good'); else if (me >= 50) { Kit.sfx('bad'); Kit.haptic('error'); }
+    setTimeout(function () {
+      if (S.phase === 'over') finish();
+      else showRound();
+    }, 900);
+  }
+  // the count at the end of a round (the rules only: online tables count with it too)
+  function countRound() {
     var w = S.wild, res = S.players.map(function (pl, p) {
       var a = arrange(S.hands[p], w);
       return { pts: p === S.outBy ? 0 : a.cost, groups: a.groups, left: a.left };
@@ -620,24 +647,17 @@
     function cc(c) { return c.r === 'JK' ? 'JK' : c.r + c.s; }
     S.rounds[S.rounds.length - 1].h = S.last.map(function (r) { return r.groups.map(function (g) { return g.map(cc).join(' '); }).join('|') + '/' + r.left.map(cc).join(' '); });
     S.phase = S.round >= S.len ? 'over' : 'roundover';
-    undoStack = [];
-    save(); paint();
-    var me = pts[S.me];
-    if (S.outBy === S.me || me === 0) Kit.sfx('good'); else if (me >= 50) { Kit.sfx('bad'); Kit.haptic('error'); }
-    setTimeout(function () {
-      if (S.phase === 'over') finish();
-      else showRound();
-    }, 900);
+    return pts;
   }
-  function summaryNode() {
+  function summaryNode(rd) {
     var box = el('div', { class: 'fc-sum' });
     var o = S.rounds[S.rounds.length - 1].out;
-    box.appendChild(el('p', { class: 'note', text: (isYou(o) ? 'You went out' : S.players[o].name + ' went out') + ' in ' + roundName(S.round) + '. Leftover cards count against you.' }));
+    box.appendChild(el('p', { class: 'note', text: (isYou(o) ? 'You went out' : S.players[o].name + ' went out') + ' in ' + roundName(rd || S.round) + '. Leftover cards count against you.' }));
     S.players.forEach(function (pl, p) {
       var r = S.last[p];
       var row = el('div', { class: 'fc-sr' + (p === o ? ' out' : '') }, [
         el('div', { class: 'hd' }, [
-          el('span', { class: 'avatar sm', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
+          el('span', { class: 'avatar sm', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
           el('span', { class: 'grow', text: nm(p) }),
           el('span', { class: 'rp' + (r.pts ? '' : ' z'), text: p === o ? 'Out!' : r.pts ? '+' + r.pts : 'All down' }),
           el('span', { class: 'tt', text: String(pl.total) })
@@ -650,6 +670,10 @@
       box.appendChild(row);
     });
     return box;
+  }
+  // online: the round just played (the next one is already dealt, so the sheet just closes)
+  function netRoundSheet(rd) {
+    return Kit.sheet({ title: 'Round ' + rd + ' done', node: summaryNode(rd), actions: [{ label: 'Play round ' + (rd + 1) + ', ' + PLURAL[rd].toLowerCase() + ' wild', primary: true }] });
   }
   function showRound() {
     if (!S || S.phase !== 'roundover') return;
@@ -704,8 +728,9 @@
     S.phase = 'over';
     var rank = S.players.map(function (p, i) { return { name: p.name, score: p.total, cpu: p.cpu, color: Kit.color(i), i: i }; }).sort(function (a, b) { return a.score - b.score; });
     var tie = rank.length > 1 && rank[1].score === rank[0].score;
-    Kit.record(KEY, {
-      started: S.started, mode: (S.mode === 'local' ? 'Pass & play' : 'vs Computer') + (S.len < 11 ? ' · quick' : ''), lowWins: true,
+    var recKey = NET ? NET.code + ':' + S.started : null;
+    if (!NET || (NET.seat >= 0 && !NETREC[recKey])) { if (NET) NETREC[recKey] = 1; Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online' : S.mode === 'local' ? 'Pass & play' : 'vs Computer') + (S.len < 11 ? ' · quick' : ''), lowWins: true,
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rounds.map(function (r, i) { return LABELS[i]; }), scores: S.rounds.map(function (r) { return r.pts; }) },
@@ -721,7 +746,24 @@
           fin: (S.last || []).map(function (r) { return { p: r.pts, g: r.groups.map(function (g) { return g.map(cc).join(' '); }).join('|'), l: r.left.map(cc).join(' ') }; })
         };
       })()
-    });
+    }); }
+    if (NET) {
+      var lows = rank.filter(function (r) { return r.score === rank[0].score; }), iWin = lows.some(function (r) { return r.i === NET.seat; }), res = NET.result, left = res && res.left != null;
+      var sheet = Kit.sheet({
+        title: 'Final round done', node: summaryNode(),
+        actions: [{ label: 'See who won', primary: true }],
+        onClose: function () {
+          NETWIN = Kit.win({
+            title: left ? res.text : tie ? (iWin ? 'You tied for the win!' : "It's a tie!") : iWin ? 'You win!' : rank[0].name + ' wins',
+            sub: 'Lowest score wins', rank: rank, lose: !iWin && !left, icon: iWin ? 'trophy' : 'users',
+            againLabel: left ? 'Back to the lobby' : 'Play again',
+            again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+            look: 'Look at the table', closeLabel: 'Back to games'
+          });
+        }
+      });
+      return sheet;
+    }
     clearSave();
     var players = S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), len = S.len, mode = S.mode;
     var top = rank[0], youWin = humans() < 2 ? top.i === 0 : !top.cpu;
@@ -795,13 +837,15 @@
     barEl = el('div', { class: 'cbar' });
     app.appendChild(barEl);
     paint();
-    if (S.phase === 'roundover') setTimeout(showRound, 250);
-    if (S.phase === 'over') setTimeout(finish, 250);
+    if (!NET && S.phase === 'roundover') setTimeout(showRound, 250);
+    if (!NET && S.phase === 'over') setTimeout(finish, 250);
   }
   function paint() { if (!S || !feltEl) return; paintSeats(); paintCenter(); paintHand(); }
+  // a computer player (online: also a seat the computer took over when its player left)
+  function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
   function avatar(p) {
     var pl = S.players[p];
-    return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) });
+    return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) });
   }
   function playing() { return S.phase === 'draw' || S.phase === 'discard'; }
   function paintSeats() {
@@ -1000,6 +1044,169 @@
   }
   function flash(t) { Kit.toast(t); }
 
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The table holds the whole game. Each device draws its own seat at the bottom (S.me) with only that hand face up.
+  // A move is a draw or a discard. The discard that brings the turn back round to whoever went out counts the round
+  // and deals the next one, so everyone sees how the round was counted while the next is already under way.
+  var NETQ = [], NETBUSY = false, NETFLY = null, NETREC = {}, NETSHEET = null, NETWIN = null, NETSEEN = {};
+  function withS(st, f) { var k = S; S = st; try { return f(); } finally { S = k; } }
+  function rectOfPile(which) { var e = pileEl(which); return e ? e.getBoundingClientRect() : null; }
+  function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_five-crowns') || '{}') || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var c = netSetup(), o = c.options || {};
+    return { len: +o.len === 6 ? 6 : 11, level: lvName(o.level), seats: Math.max(2, Math.min(7, +c.count || 2)) };
+  }
+  function netStart(players, opts) {
+    var st = { mode: 'online', me: 0, len: +opts.len === 6 ? 6 : 11, round: 0, started: Date.now(), rounds: [], log: [],
+      players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? lvName(opts.level) : undefined, total: 0 }; }) };
+    withS(st, dealRound);
+    return st;
+  }
+  function netTurn(st) { return st && (st.phase === 'draw' || st.phase === 'discard') ? [st.turn] : []; }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var lo = Math.min.apply(null, st.players.map(function (p) { return p.total; })), w = [];
+    st.players.forEach(function (p, i) { if (p.total === lo) w.push(i); });
+    return { win: w, text: w.map(function (i) { return st.players[i].name; }).join(' and ') + (w.length > 1 ? ' tie' : ' wins') + ' with ' + lo };
+  }
+  // one move of seat p, on the table's own copy: {state, mv}, or null when it can't be made
+  function netApply(st, p, a) {
+    if (!st || st.turn !== p || !a) return null;
+    return withS(st, function () {
+      var mv = { t: a.t, p: p, r: S.round };
+      if (a.t === 'draw') {
+        if (S.phase !== 'draw') return null;
+        var c;
+        if (a.f === 'discard' && S.discard.length) { c = S.discard.pop(); mv.c = c; mv.f = 'discard'; }
+        else { mv.rs = refillStock(true) ? 1 : 0; c = S.stock.pop(); mv.f = 'stock'; }
+        if (!c) return null;
+        S.hands[p].push(c); S.drew = { id: c.id, from: mv.f }; S.phase = 'discard';
+        mv.id = c.id;
+        return { state: S, mv: mv };
+      }
+      if (a.t === 'disc') {
+        if (S.phase !== 'discard') return null;
+        var h = S.hands[p], i = -1;
+        for (var k = 0; k < h.length; k++) if (h[k].id === a.id) i = k;
+        if (i < 0) return null;
+        var dc = h.splice(i, 1)[0];
+        S.discard.push(dc); S.turns[p]++; S.drew = null; mv.c = dc;
+        if (S.outBy < 0 && cost(h, S.wild) === 0) {
+          S.outBy = p; S.outTurn = S.turns[p]; mv.out = 1;
+          if (S.outTurn === 1 && S.round >= 4) S.log.push(S.players[p].name + ' went out on the very first turn in ' + roundName(S.round));
+        } else if (S.outBy >= 0 && p !== S.outBy && cost(h, S.wild) === 0) mv.all = 1;
+        S.turn = (p + 1) % S.players.length; S.phase = 'draw';
+        if (S.outBy >= 0 && S.turn === S.outBy) {
+          countRound(); mv.end = 1;
+          S.lastRound = S.round;
+          if (S.phase !== 'over') dealRound();
+        }
+        return { state: S, mv: mv };
+      }
+      return null;
+    });
+  }
+  // a computer seat: a draw, then a discard, as a person would
+  function netBot(st, p) {
+    if (!st || st.turn !== p) return null;
+    var a = withS(st, function () {
+      if (S.phase === 'draw') return { t: 'draw', f: cpuTake(p) ? 'discard' : 'stock' };
+      return { t: 'disc', id: turnDiscard(p, S.drew && S.drew.from === 'discard' ? S.drew.id : null).id };
+    });
+    return netApply(st, p, a);
+  }
+  function netYou(a) {
+    if (!NET) return;
+    if (!NET.myTurn()) { Kit.toast('Wait for your turn'); Kit.haptic('error'); return; }
+    var seat = NET.seat;
+    NET.act(function (st) { return netApply(st, seat, a); });
+  }
+
+  // Drawing the table: each move as it comes, with the same motion as on one device. A backlog is caught up quickly.
+  function netShow(net, info) {
+    info = info || {};
+    NET = net;
+    var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { token++; NETBUSY = false; } netCloseOv(); }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    if (!NET) { NETQ = []; NETBUSY = false; return; }
+    var e = NETQ.shift();
+    if (!e) { NETBUSY = false; return; }
+    NETBUSY = true;
+    netDraw(e.st, e.info, NETQ.length > 2 || document.hidden, netNext);
+  }
+  // the table as this device shows it (the card picked to throw stays picked)
+  function netView(st) {
+    var old = S && S.hands ? S : null, me = Math.max(0, NET.seat);
+    st.me = me; st.cover = false; st.sel = null;
+    if (old && old.sel && old.round === st.round && st.turn === me && st.phase === 'discard' && st.hands[me].some(function (c) { return c.id === old.sel; })) st.sel = old.sel;
+    S = st;
+  }
+  function netDraw(st, info, quick, done) {
+    var mv = info.mv, t = ++token, mine = !!mv && mv.p === NET.seat;
+    function later(ms, f) { setTimeout(function () { if (t === token && NET) f(); }, ms); }
+    var tagEl = mv && seatEls[mv.p] ? seatEls[mv.p].querySelector('.tag') : null, tagR = tagEl ? tagEl.getBoundingClientRect() : null;
+    var pileR = mv && mv.t === 'draw' ? rectOfPile(mv.f) : null, fromR = mine ? NETFLY : tagR; NETFLY = null;
+    var newRound = !feltEl || !feltEl.isConnected || !S || !S.hands || S.round !== st.round || S.players.length !== st.players.length;
+    netView(st);
+    if (newRound || info.fresh || info.again) render(); else paint();
+    if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+    if (quick || info.fresh || info.again || !mv) {
+      if (st.phase === 'over') later(info.fresh ? 300 : 600, netEnd);
+      else if (newRound) dealAnim();
+      done(); return;
+    }
+    if (mv.t === 'draw') {
+      Kit.sfx(mv.f === 'discard' ? 'flip' : 'deal');
+      if (mv.rs) flash('Discards shuffled into a new stock');
+      if (mine) { var node = handEl.querySelector('[data-id="' + mv.id + '"]'); if (node && pileR) flyFrom(node, pileR); if (node) node.classList.add('fresh'); Kit.haptic('light'); }
+      else { ghost(pileR, seatEls[mv.p] && seatEls[mv.p].querySelector('.tag'), mv.f === 'discard' ? mv.c : null); if (mv.f === 'discard' && isW(mv.c, st.wild)) seatSay(mv.p, 'Wild!'); }
+      later(420, done); return;
+    }
+    // a discard: the card lands on the pile (at the end of a round the next round is already dealt: the count comes first)
+    Kit.sfx('flip');
+    if (!mv.end) { var top = discardTopEl(); if (top && fromR) flyFrom(top, fromR, 420); }
+    if (mv.out) {
+      Kit.callout(mine ? 'You went out!' : S.players[mv.p].name + ' went out!');
+      Kit.sfx('good'); Kit.haptic(mine ? 'success' : 'medium');
+      seatSay(mv.p, 'Out!');
+    } else if (mv.all) seatSay(mv.p, 'All down!');
+    if (!mv.end) { later(mv.out ? 900 : 420, done); return; }
+    later(700, function () {
+      if (S.phase === 'over') { netEnd(); done(); return; }
+      var me = S.rounds[S.rounds.length - 1].pts[NET.seat];
+      if (NET.seat >= 0 && me === 0) Kit.sfx('good'); else if (me >= 50) { Kit.sfx('bad'); Kit.haptic('error'); }
+      Kit.sfx('deal'); dealAnim();
+      netRoundNote();
+      done();
+    });
+  }
+  function netCloseOv() { if (NETSHEET) { try { NETSHEET.close(); } catch (e) {} NETSHEET = null; } if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  function netRoundNote() {
+    var rd = S.lastRound; if (!NET || !rd || rd !== S.round - 1) return;
+    var key = NET.code + ':' + S.started + ':' + rd;
+    if (NETSEEN[key]) return; NETSEEN[key] = 1;
+    if (NETSHEET) try { NETSHEET.close(); } catch (e) {}
+    NETSHEET = netRoundSheet(rd);
+  }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over') return;
+    var key = NET.code + ':' + S.started;
+    if (NETSEEN[key]) return; NETSEEN[key] = 1;
+    netCloseOv();
+    NETSHEET = finish();
+  }
+  function netLeave() {
+    NET = null; NETQ = []; NETBUSY = false; token++;
+    netCloseOv();
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.hands) { S = sv; if (S.me == null) S.me = 0; S.cover = false; render(); next(); }
+    else showSetup();
+  }
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.hands) {
@@ -1009,6 +1216,14 @@
 
   // test hook (harmless): lets the test harness inspect the solver
   window.__fc = { solve: solve, arrange: arrange, state: function () { return S; } };
+
+  // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'five-crowns', title: 'Five Crowns', min: 2, max: 7, botMs: 800,
+    seats: function (n, o) { return Math.max(n, Math.min(7, +(o && o.seats) || n)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

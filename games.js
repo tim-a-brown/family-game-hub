@@ -81,7 +81,11 @@ var GAMES = [
   { id: 'battleship',  name: 'Battleship',   color: '#0369a1', cat: 'board', min: 1, max: 2, tag: 'Hunt down the hidden fleet', play: 'battleship' },
   { id: 'dotsboxes',   name: 'Dots & Boxes', color: '#ec4899', cat: 'board', min: 1, max: 4, tag: 'Close the most boxes', play: 'dotsboxes' },
   { id: 'mancala',     name: 'Mancala',      color: '#a16207', cat: 'board', min: 1, max: 2, tag: 'Sow stones, fill your store', play: 'mancala' },
+<<<<<<< HEAD
   { id: 'mahjong4',    name: 'Mahjong',      color: '#b91c1c', cat: 'board', min: 1, max: 4, tag: 'Four-player Mahjong, against the computer or each other', play: 'mahjong4' },
+=======
+  { id: 'mahjong4',    name: 'Mahjong',      color: '#b91c1c', cat: 'board', min: 1, max: 4, tag: 'Four-player Mahjong with the computer or friends', play: 'mahjong4' },
+>>>>>>> worktree-agent-a9462cf30a4a4df81
   { id: 'monopoly',    name: 'Monopoly',     color: '#c8102e', cat: 'board', min: 1, max: 8, tag: 'Buy, build and bankrupt, vs computer, pass and play, or online', play: 'monopoly',
     launch: [
       { icon: 'phone', title: 'Play on this device', desc: 'Against the computer or pass and play', file: 'monopoly.html' },

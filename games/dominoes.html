@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* ── Page frame: one screen, no scrolling during play ─────────────────── */
 #app.stage.dmapp{max-width:none;padding:0 12px calc(var(--safe-b) + 8px);}
@@ -49,6 +51,7 @@
 .rk-say{top:auto;bottom:calc(100% + 8px);}
 @keyframes say{0%{opacity:0;transform:translate(-50%,6px) scale(.7);}12%{opacity:1;transform:translate(-50%,0) scale(1.05);}20%{transform:translate(-50%,0) scale(1);}82%{opacity:1;}100%{opacity:0;}}
 .think{display:inline-flex;gap:2px;margin-left:2px;}
+.pq .think{position:absolute;right:-4px;top:-7px;margin:0;padding:4px 5px;border-radius:999px;background:var(--c);box-shadow:0 1px 3px rgba(0,0,0,.4);}
 .think i{width:4px!important;height:4px!important;border-radius:50%;background:#fff!important;animation:th 1s infinite;}
 .think i:nth-child(2){animation-delay:.15s}.think i:nth-child(3){animation-delay:.3s}
 @keyframes th{50%{opacity:.2;transform:translateY(-2px);}}
@@ -203,8 +206,9 @@
   //   cur, viewer, passes, phase:'deal'|'play'|'handend'|'over', last:{p,id,pts}, lacks:[[values]..],
   //   handPts:[per side], rounds:[[per side]..], res:{..hand result}, undo, undoBy, hl:{..}, started}
   var S = null, SPD = 1, tok = 0, lock = false, sel = -1, done = false;   // done: this turn's move is made
+  var NET = null, NETBUSY = false;   // the online table (turnnet.js), while at one: S is the table's game, S.viewer your seat
   function save() {
-    if (!S) return;
+    if (!S || NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S.phase !== 'over') Kit.resume.set('Hand ' + S.hand + ' · ' + S.score.join('–'), { keys: [SAVE] });
   }
@@ -216,6 +220,8 @@
     if (!S.teams) return S.players[s].name;
     return S.players.filter(function (p, i) { return i % 2 === s; }).map(function (p) { return p.name; }).join(' & ');
   }
+  // a computer player (online: also a seat the computer took over when its player left)
+  function isCpu(i) { return NET ? !!(NET.seats[tbl(S, i)] && NET.seats[tbl(S, i)].bot) : !!S.players[i].cpu; }
   function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
   function firstHuman() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return 0; }
   function who(i) { return S.players[i].name; }
@@ -388,9 +394,9 @@
   Kit.init({
     id: 'dominoes',
     theme: { felt: ['#1b7a52', '#0f5638', '#0a4129'], wood: ['#7b4a26', '#4b2a13'] },
-    onNew: function () { tok++; clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dominoes: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Tiles can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dominoes: past games' }); } }]),
     rules:
       '<p class="goal">Match the dots on your tiles to the open ends of the line. Get rid of all your tiles first to win the hand, and score the dots left in everyone else\'s hands.</p>' +
       '<h3>The tiles</h3><ul><li>A double-six set has 28 tiles. Each tile has two ends with 0 (blank) to 6 dots.</li>' +
@@ -414,7 +420,11 @@
       '<h3>The match</h3><ul><li>Keep dealing new hands until someone reaches the target: 100 or 150 points (All Fives: 150 or 250).</li>' +
       '<li><b>Partners</b> (4 players): you team up with the player across from you and share a score. When either of you dominoes, your team scores both opponents\' dots.</li></ul>' +
       '<h3>Pass and play</h3><p>Your tiles are secret. Between turns a screen asks you to pass the device. The next player holds the button for 3 seconds to see their tiles.</p>' +
-      '<h3>Undo</h3><p>Undo takes back the tile you just played, as long as the next player hasn\'t moved yet.</p>'
+      '<h3>Undo</h3><p>Undo takes back the tile you just played, as long as the next player hasn\'t moved yet.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> beside the start button: open a table and up to 3 others join on their own devices. The computer plays any seat that nobody takes.</li>' +
+      '<li>With partners, the people you seated in the setup sit where you put them, so your partner is still across from you.</li>' +
+      '<li>Each of you sees only your own tiles. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
+      '<li>When a hand ends, the next one is dealt at once, and everyone sees how the hand was counted. Tiles can’t be taken back online.</li></ul>'
   });
 
   function showSetup() {
@@ -472,6 +482,14 @@
   // Hand flow
   // ═════════════════════════════════════════════════════════════════════════
   function deal() {
+    dealCore();
+    save(); paint({ deal: true });
+    Kit.sfx('deal');
+    later(function () { Kit.sfx('deal'); }, 160);
+    later(lead, 950);
+  }
+  // the deal itself (the rules only: online tables deal with it too)
+  function dealCore() {
     var n = S.players.length, per = n === 2 ? 7 : 5, set = shuffle(fullSet());
     S.hand++; S.line = null; S.passes = 0; S.last = null; S.res = null; S.undo = null; S.undoBy = -1; sel = -1;
     S.pl = '';   // this hand, move by move, for the history replay (see domDetail)
@@ -484,10 +502,6 @@
     S.lacks = S.players.map(function () { return []; });
     S.handPts = []; for (var i = 0; i < nSides(); i++) S.handPts.push(0);
     S.phase = 'deal';
-    save(); paint({ deal: true });
-    Kit.sfx('deal');
-    later(function () { Kit.sfx('deal'); }, 160);
-    later(lead, 950);
   }
   function lead() {
     var best = null;
@@ -635,6 +649,16 @@
   }
   function endHand(kind, wi) {
     if (!S || S.phase !== 'play') return;
+    var r = endHandCore(kind, wi);
+    save(); paint();
+    if (kind === 'domino') {
+      Kit.callout('Domino!', S.players[wi].color); Kit.sfx('good'); Kit.haptic('success');
+      if (!S.players[wi].cpu || (S.teams && S.players.some(function (p, i) { return !p.cpu && sideOf(i) === r.side; }))) Kit.confetti({ count: 90 });
+    } else { Kit.callout('Blocked!'); Kit.sfx('bad'); }
+    later(showHandSheet, 1500);
+  }
+  // the count at the end of a hand (the rules only: online tables count with it too)
+  function endHandCore(kind, wi) {
     var r = handResult(kind, wi);
     S.res = r; S.phase = 'handend'; S.undo = null; S.undoBy = -1;
     if (r.side >= 0 && r.pts) { S.score[r.side] += r.pts; S.handPts[r.side] += r.pts; }
@@ -646,18 +670,15 @@
       if (spare < 99 && (!S.hl.spare || spare > S.hl.spare.n)) S.hl.spare = { name: who(wi), n: spare, hand: S.hand };
     } else if (r.side >= 0 && (!S.hl.block || r.low < S.hl.block.pips)) S.hl.block = { name: who(r.wi), pips: r.low, hand: S.hand };
     if (r.side >= 0 && (!S.hl.bigHand || r.pts > S.hl.bigHand.pts)) S.hl.bigHand = { name: sideName(r.side), pts: r.pts, hand: S.hand };
-    save(); paint();
-    if (kind === 'domino') {
-      Kit.callout('Domino!', S.players[wi].color); Kit.sfx('good'); Kit.haptic('success');
-      if (!S.players[wi].cpu || (S.teams && S.players.some(function (p, i) { return !p.cpu && sideOf(i) === r.side; }))) Kit.confetti({ count: 90 });
-    } else { Kit.callout('Blocked!'); Kit.sfx('bad'); }
-    later(showHandSheet, 1500);
+    return r;
   }
   var handSheet = null;
-  function showHandSheet() {
-    if (!S || S.phase !== 'handend' || !S.res) return;
+  // X (online): the hand just counted ({res, score, handPts, hand}); the next hand is already dealt, so the sheet just closes
+  function showHandSheet(X) {
+    if (!X && (!S || S.phase !== 'handend' || !S.res)) return;
     if (handSheet) return;
-    var r = S.res, over = S.score.some(function (x) { return x >= S.target; });
+    X = X || { res: S.res, score: S.score, handPts: S.handPts, hand: S.hand };
+    var r = X.res, over = X.score.some(function (x) { return x >= S.target; });
     var box = el('div', { class: 'hres' });
     var head;
     if (r.kind === 'domino') head = '<b>' + Kit.esc(who(r.wi)) + '</b> ' + (who(r.wi) === 'You' ? 'domino' : 'dominoes') + (r.pts ? ' and ' + (S.teams ? 'the team scores ' : 'scores ') + '<b>' + r.pts + '</b>' : '');
@@ -675,13 +696,14 @@
     });
     var tot = el('div', { class: 'tot' });
     for (var s = 0; s < nSides(); s++) {
-      tot.appendChild(el('div', null, [el('div', { class: 'n', text: sideName(s) }), el('div', { class: 'v', text: String(S.score[s]) }),
-        el('div', { class: 'g', text: S.handPts[s] ? '+' + S.handPts[s] + ' this hand' : ' ' })]));
+      tot.appendChild(el('div', null, [el('div', { class: 'n', text: sideName(s) }), el('div', { class: 'v', text: String(X.score[s]) }),
+        el('div', { class: 'g', text: X.handPts[s] ? '+' + X.handPts[s] + ' this hand' : ' ' })]));
     }
     box.appendChild(tot);
     box.appendChild(el('p', { class: 'muted', style: { 'text-align': 'center', 'margin-top': '10px', 'font-size': '.85rem' }, text: over ? 'The match is over.' : 'First to ' + S.target + ' wins the match.' }));
     var title = r.kind === 'domino' ? 'Domino!' : 'Blocked game';
     var t = tok, go = false;
+    if (NET) { handSheet = Kit.sheet({ title: 'Hand ' + X.hand + ': ' + title, node: box, actions: [{ label: 'Play hand ' + (X.hand + 1), primary: true }], onClose: function () { handSheet = null; } }); return handSheet; }
     function proceed() { handSheet = null; if (go || t !== tok) return; go = true; if (over) finishMatch(); else deal(); }
     handSheet = Kit.sheet({ title: 'Hand ' + S.hand + ': ' + title, node: box, actions: [{ label: over ? 'See the results' : 'Deal the next hand', primary: true, onClick: proceed }], onClose: function () { setTimeout(proceed, 0); } });
     if (!humans()) later(function () { if (handSheet) handSheet.close(); }, 1800);
@@ -723,13 +745,30 @@
     }
     hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).sort(function (a, b) { return b - a; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
     var players = S.players.map(function (p, i) { return { name: p.name, score: S.score[sideOf(i)], cpu: p.cpu }; });
-    var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : S.players.some(function (p) { return p.cpu; }) ? ', with computers' : '');
-    Kit.record(KEY, {
+    var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (NET ? ', online' : S.mode === 'cpu' ? ', vs computer' : S.players.some(function (p) { return p.cpu; }) ? ', with computers' : '');
+    var recKey = NET ? NET.code + ':' + S.started : null;
+    if (!NET || (NET.seat >= 0 && !NETREC[recKey])) { if (NET) NETREC[recKey] = 1; Kit.record(KEY, {
       started: S.started, mode: modeName, players: players, winner: wname,
       summary: wname + ' won · ' + VNAME[S.variant],
       rounds: { labels: S.rounds.map(function (r, i) { return 'Hand ' + (i + 1); }), scores: S.rounds.map(function (r) { return S.players.map(function (p, i) { return r[sideOf(i)]; }); }) },
       highlights: hl.slice(0, 6), detail: domDetail()
-    });
+    }); }
+    if (NET) {
+      paint();
+      var rk = [];
+      for (s = 0; s < nSides(); s++) rk.push({ name: sideName(s), score: S.score[s], color: S.players[s].color });
+      rk.sort(function (a, b) { return b.score - a.score; });
+      var mine = S.viewer >= 0 && sideOf(S.viewer) === best, res = NET.result, left = res && res.left != null;
+      return Kit.win({
+        icon: mine ? 'trophy' : 'users',
+        title: left ? res.text : mine ? 'You win!' : S.teams ? wname + ' win!' : wname + ' wins!',
+        sub: VNAME[S.variant] + ' to ' + S.target + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'),
+        rank: rk, lose: !mine && !left,
+        againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+        look: 'Look at the table', closeLabel: 'Back to games'
+      });
+    }
     clearSave(); paint();
     var rank = [];
     for (s = 0; s < nSides(); s++) rank.push({ name: sideName(s), score: S.score[s], color: S.players[s].color });
@@ -1011,7 +1050,7 @@
       var cnt = p.hand.length, show = Math.min(cnt, 9);
       for (var j = 0; j < show; j++) { var b = back('mini'); if (o.deal) { b.classList.add('pop'); b.style.animationDelay = (j * 60 + i * 20) + 'ms'; } bk.appendChild(b); }
       bk.appendChild(el('b', { text: String(cnt) }));
-      var nm = el('div', { class: 'nm', html: '<i></i>' + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' + (on && p.cpu ? '<span class="think"><i></i><i></i><i></i></span>' : '') });
+      var nm = el('div', { class: 'nm', html: '<i></i>' + (isCpu(i) ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' + (on && (isCpu(i) || NET) ? '<span class="think"><i></i><i></i><i></i></span>' : '') });
       var q = el('div', { class: 'pq' + (on ? ' on' : ''), style: { '--c': p.color } }, [nm, bk]);
       plqNodes[i] = q;
       slots[map[k]].appendChild(q);
@@ -1031,7 +1070,7 @@
     var n = el('div', { class: cls, text: b.text }); n.style.animationDelay = (-age) + 'ms';
     host.appendChild(n); setTimeout(function () { n.remove(); }, 1700 - age);
   }
-  function myTurn() { return S && S.phase === 'play' && !S.players[S.cur].cpu && S.viewer === S.cur && !lock && !done; }
+  function myTurn() { return S && S.phase === 'play' && !S.players[S.cur].cpu && S.viewer === S.cur && !lock && !done && (!NET || (!NETBUSY && NET.myTurn())); }
   function paintStatus() {
     msgEl.innerHTML = ''; actsEl.innerHTML = '';
     var cur = S.players[S.cur], line = '', sub = '', col = cur.color;
@@ -1040,15 +1079,15 @@
       var r = S.res; line = r && r.kind === 'domino' ? who(r.wi) + (who(r.wi) === 'You' ? ' domino!' : ' dominoes!') : r && r.kind === 'match' ? sideName(r.side) + ' reached ' + S.target + '!' : 'Blocked!';
       sub = S.phase === 'over' ? 'Match over' : 'Counting the dots…';
       if (r && r.side >= 0) col = S.players[r.side].color;
-    } else if (cur.cpu) {
+    } else if (cur.cpu || (NET && S.viewer !== S.cur)) {
       if (lock && S.last && S.last.p === S.cur && !S.last.pass) { line = lastLine().replace(/\.$/, ''); sub = S.players[S.cur].hand.length + ' tiles left'; }
-      else { line = cur.name + ' is thinking'; sub = S.last && S.last.p !== S.cur ? lastLine() : ''; }
+      else { line = NET && !isCpu(S.cur) ? Kit.poss(cur.name) + ' turn' : cur.name + ' is thinking'; sub = S.last && S.last.p !== S.cur ? lastLine() : ''; }
     } else if (S.viewer !== S.cur) {
       line = 'Pass to ' + cur.name; sub = 'Their tiles stay hidden until they hold the button';
     } else {
       var ms = legalFor(S.cur);
       if (ms.length) {
-        line = cur.name === 'You' || humans() === 1 ? 'Your turn' : Kit.poss(cur.name) + ' turn';
+        line = cur.name === 'You' || humans() === 1 || NET ? 'Your turn' : Kit.poss(cur.name) + ' turn';
         sub = sel >= 0 ? 'Tap a glowing spot to place it' : 'Tap a tile to play it';
         if (S.variant === 'fives' && S.line) sub += ' · ends total ' + endCount(S.line);
       } else if (canDraw()) {
@@ -1056,10 +1095,10 @@
         actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('plus') + '<span>Draw</span>', onclick: function () { humanDraw(); } }));
       } else {
         line = 'Nothing fits'; sub = S.variant === 'block' ? 'In Block you pass' : 'Boneyard empty: you pass';
-        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('right') + '<span>Pass</span>', onclick: function () { if (myTurn()) pass(S.cur); } }));
+        actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary', html: Kit.icon('right') + '<span>Pass</span>', onclick: humanPass }));
       }
     }
-    if (S.undo && S.phase === 'play' && !lock && S.last && S.last.p === S.undoBy && S.viewer === S.undoBy) {
+    if (!NET && S.undo && S.phase === 'play' && !lock && S.last && S.last.p === S.undoBy && S.viewer === S.undoBy) {
       actsEl.insertBefore(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('undo') + '<span>Undo</span>', onclick: function () { undo(); } }), actsEl.firstChild);
     }
     msgEl.style.setProperty('--c', col);
@@ -1082,7 +1121,7 @@
     rackEl.style.setProperty('--c', P.color);
     var sz = rackSize(Math.max(P.hand.length, S.players.length === 2 ? 7 : 5));
     rackEl.style.minHeight = (sz.tw * 2 * sz.rows + (sz.rows - 1) * 8 + 26) + 'px';
-    rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : (P.name === 'You' || humans() <= 1 ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles') }));
+    rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : (P.name === 'You' || humans() <= 1 || NET ? 'Your tiles' : '<b>' + Kit.esc(P.name) + '</b>’s tiles') }));
     var ms = turn && !lock ? legalFor(v) : [];
     var fit = {}; ms.forEach(function (m) { fit[tid(m.t)] = 1; });
     if (!P.hand.length) rackEl.appendChild(el('div', { class: 'empty', text: 'No tiles left' }));
@@ -1261,12 +1300,19 @@
   // ── Input ────────────────────────────────────────────────────────────────
   function humanPlay(mv) {
     if (!myTurn()) return;
+    if (NET) { NETFLY = sourceRect(S.cur, tid(mv.t)); done = true; sel = -1; netYou({ t: 'play', id: tid(mv.t), end: mv.end }); return; }
     S.players[S.cur].drewTurn = 0;
     doPlay(S.cur, mv.t, mv.end);
   }
   function humanDraw() {
     if (!myTurn() || legalFor(S.cur).length || !canDraw()) return;
+    if (NET) { done = true; netYou({ t: 'draw' }); return; }
     drawOne(S.cur);
+  }
+  function humanPass() {
+    if (!myTurn()) return;
+    if (NET) { if (legalFor(S.cur).length || canDraw()) return; done = true; netYou({ t: 'pass' }); return; }
+    pass(S.cur);
   }
   function tapTile(t, d) {
     if (!myTurn()) { if (S && S.phase === 'play' && S.players[S.cur].cpu) Kit.toast('Wait for ' + who(S.cur)); return; }
@@ -1354,7 +1400,7 @@
     state: function () { return S; }, legal: function () { return S ? distinct(legalFor(S.cur)) : []; }, lock: function () { return lock; },
     speed: function (x) { SPD = x; },
     play: function (i) { var m = distinct(legalFor(S.cur))[i]; if (m && myTurn()) { humanPlay(m); return true; } return false; },
-    draw: humanDraw, pass: function () { if (myTurn()) pass(S.cur); },
+    draw: humanDraw, pass: humanPass,
     allCpu: function () { S.players.forEach(function (p) { p.cpu = true; }); tok++; lock = false; save(); buildUI(); resumeFlow(); },
     load: function (st) { tok++; lock = false; sel = -1; S = st; buildUI(); resumeFlow(); },
     layout: function (L, W, H, r) { return layout(L, W, H, r || 0); }, ends: ends, endCount: endCount, place: function (L, t, e) { return place(L, t, e); }
@@ -1372,10 +1418,256 @@
     else if (S.phase === 'handend') { if (S.res && S.res.kind === 'match') finishMatch(); else showHandSheet(); }
   }
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // Online (turnnet.js)
+  // ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game. Each device draws its own seat as the rack at the bottom (S.viewer) and only
+  // its own tiles face up. A move is a tile played, a tile drawn or a pass; the move that ends a hand counts it,
+  // deals the next and leads it, so everyone sees the count while the next hand is already under way.
+  // Partners: the players are kept in table order (partners across, play going round), and st.ps maps each place at
+  // the table to its TurnNet seat. It is built at the start from the setup: the people seated there sit where the
+  // setup put them (by name), so the partners are the ones the setup chose.
+  var NETQ = [], NETFLY = null, NETREC = {}, NETWIN = null;
+  function tbl(st, p) { return st && st.ps ? st.ps[p] : p; }
+  function posOf(st, seat) { return st && st.ps ? st.ps.indexOf(seat) : seat; }
+  function withS(st, f) { var k = S; S = st; try { return f(); } finally { S = k; } }
+  function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_dominoes') || '{}') || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var c = netSetup(), o = c.options || {}, n = Math.max(2, Math.min(4, +c.count || 2)), robots = c.robots || [];
+    var v = o.variant === 'block' || o.variant === 'fives' ? o.variant : 'draw', teams = o.teams === 'on' && n === 4;
+    // who sits where in the setup: a person's name, or '' for the computer
+    var names = []; for (var i = 0; i < n; i++) names.push(robots.indexOf(i) >= 0 ? '' : String((c.names || [])[i] || '').trim());
+    return { variant: v, target: o.target === 'long' ? 'long' : 'short', teams: teams, level: lvName(o.level), seats: n, names: names };
+  }
+  function netStart(players, opts) {
+    var n = players.length, teams = !!opts.teams && n === 4, ps = [], i;
+    if (teams) {
+      var names = opts.names || [], free = players.map(function (p, j) { return j; }), lc = function (x) { return String(x || '').toLowerCase(); };
+      for (i = 0; i < 4; i++) {
+        var k = free.filter(function (j) { return !players[j].bot && names[i] && lc(players[j].name) === lc(names[i]); })[0];
+        if (k != null) { ps[i] = k; free.splice(free.indexOf(k), 1); }
+      }
+      // then everyone else: people to the places the setup gave people, the computer to the rest
+      var people = free.filter(function (j) { return !players[j].bot; }), bots = free.filter(function (j) { return players[j].bot; });
+      for (i = 0; i < 4; i++) if (ps[i] == null && names[i]) ps[i] = people.length ? people.shift() : bots.shift();
+      for (i = 0; i < 4; i++) if (ps[i] == null) ps[i] = people.length ? people.shift() : bots.shift();
+    } else for (i = 0; i < n; i++) ps.push(i);
+    var v = opts.variant === 'block' || opts.variant === 'fives' ? opts.variant : 'draw';
+    var st = {
+      v: 1, mode: 'online', variant: v, target: TARGETS[v][opts.target === 'long' ? 'long' : 'short'], teams: teams, ps: ps,
+      players: ps.map(function (j, pos) { var x = players[j]; return { name: x.name, cpu: !!x.bot, level: x.bot ? lvName(opts.level) : undefined, color: Kit.color(pos), hand: [] }; }),
+      score: [], hand: 0, bone: [], line: null, cur: 0, viewer: -1, passes: 0, phase: 'deal',
+      last: null, lacks: [], handPts: [], rounds: [], res: null, undo: null, undoBy: -1, started: Date.now(),
+      hl: { dom: {}, spare: null, bigPlay: null, block: null, bigHand: null, draw: null, fives: {} }
+    };
+    withS(st, function () { for (var s = 0; s < nSides(); s++) S.score.push(0); nDeal(); });
+    return st;
+  }
+  // (inside withS) a new hand: dealt, and the highest double (or the heaviest tile) led
+  function nDeal() {
+    dealCore();
+    var best = null;
+    S.players.forEach(function (p, pi) { p.hand.forEach(function (t) { var k = isDbl(t) ? 100 + t[0] : pips(t) + Math.max(t[0], t[1]) * 0.01; if (!best || k > best.k) best = { k: k, pi: pi, t: t }; }); });
+    S.cur = best.pi; S.phase = 'play';
+    S.leadSay = { p: best.pi, t: isDbl(best.t) ? cap(tname(best.t)) : 'No doubles: ' + tname(best.t), h: S.hand };
+    nPlay(best.pi, best.t, null, true);
+  }
+  // (inside withS) a tile played: {pts, ended}
+  function nPlay(pi, t, end, lead) {
+    var P = S.players[pi], hi = -1;
+    P.hand.forEach(function (h, k) { if (tid(h) === tid(t)) hi = k; });
+    P.hand.splice(hi, 1);
+    S.line = place(S.line, t, end);
+    S.passes = 0;
+    var pts = lead && S.variant === 'fives' ? (pips(t) % 5 === 0 && pips(t) > 0 ? pips(t) : 0) : playScore(S.line);
+    if (pts) {
+      S.score[sideOf(pi)] += pts; S.handPts[sideOf(pi)] += pts;
+      S.hl.fives[pi] = (S.hl.fives[pi] || 0) + pts;
+      if (!S.hl.bigPlay || pts > S.hl.bigPlay.pts) S.hl.bigPlay = { name: who(pi), pts: pts, hand: S.hand };
+    }
+    S.last = { p: pi, id: tid(t), t: t, pts: pts };
+    if (S.pl != null) S.pl += (S.pl ? ' ' : '') + pi + t[0] + t[1] + (lead ? 'L' : end) + (pts || '');
+    P.drewTurn = 0;
+    if (S.score[sideOf(pi)] >= S.target) {   // reached the target in play (All Fives): the match is over at once
+      S.prev = { line: S.line, res: handResult('match', pi), score: S.score.slice(), handPts: S.handPts.slice(), hand: S.hand, last: S.last };
+      S.res = S.prev.res; S.phase = 'over';
+      return { pts: pts, ended: 1 };
+    }
+    if (!P.hand.length) { nEndHand('domino', pi); return { pts: pts, ended: 1 }; }
+    S.cur = (pi + 1) % S.players.length;
+    return { pts: pts };
+  }
+  function nEndHand(kind, wi) {
+    var line = S.line, last = S.last, r = endHandCore(kind, wi);
+    S.prev = { line: line, res: r, score: S.score.slice(), handPts: S.handPts.slice(), hand: S.hand, last: last };
+    if (S.score.some(function (x) { return x >= S.target; })) { S.phase = 'over'; return; }
+    nDeal();
+  }
+  function netTurn(st) { return st && st.phase === 'play' ? [tbl(st, st.cur)] : []; }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var best = 0; for (var s = 1; s < st.score.length; s++) if (st.score[s] > st.score[best]) best = s;
+    var win = []; st.players.forEach(function (p, i) { if ((st.teams ? i % 2 : i) === best) win.push(tbl(st, i)); });
+    return { win: win, text: withS(st, function () { return sideName(best); }) + (st.teams ? ' win ' : ' wins ') + st.score[best] + ' to ' + st.score.filter(function (x, i) { return i !== best; }).sort(function (a, b) { return b - a; }).join(' to ') };
+  }
+  // seat's move, on the table's own copy: {state, mv}, or null when it can't be made
+  function netApply(st, seat, a) {
+    var p = posOf(st, seat);
+    if (!st || !a || st.phase !== 'play' || p < 0 || st.cur !== p) return null;
+    return withS(st, function () {
+      var mv = { t: a.t, p: p }, r;
+      if (a.t === 'play') {
+        var t = S.players[p].hand.filter(function (h) { return tid(h) === a.id; })[0];
+        if (!t || (S.line && !ends(S.line).some(function (e) { return e.end === a.end && (t[0] === e.v || t[1] === e.v); }))) return null;
+        r = nPlay(p, t, a.end); mv.id = a.id; mv.pts = r.pts; if (r.ended) mv.hand = 1;
+      } else if (a.t === 'draw') {
+        if (legalFor(p).length || !canDraw()) return null;
+        var P = S.players[p];
+        if (!P.drewTurn) noteLacks(p);
+        P.drewTurn = (P.drewTurn || 0) + 1;
+        var dt = S.bone.pop(); P.hand.push(dt); P.drew = (P.drew || 0) + 1;
+        if (S.pl != null) S.pl += ' ' + p + 'd';
+        if (!S.hl.draw || P.drewTurn > S.hl.draw.n) S.hl.draw = { name: who(p), n: P.drewTurn, hand: S.hand };
+        mv.id = tid(dt);
+      } else if (a.t === 'pass') {
+        if (legalFor(p).length || canDraw()) return null;
+        noteLacks(p);
+        S.passes++; S.last = { p: p, pass: true };
+        if (S.pl != null) S.pl += ' ' + p + 'x';
+        S.players[p].drewTurn = 0;
+        if (S.passes >= S.players.length) { nEndHand('block', -1); mv.hand = 1; }
+        else S.cur = (p + 1) % S.players.length;
+      } else return null;
+      return { state: S, mv: mv };
+    });
+  }
+  function netBot(st, seat) {
+    var p = posOf(st, seat);
+    if (!st || st.phase !== 'play' || st.cur !== p) return null;
+    var a = withS(st, function () {
+      var ms = legalFor(p);
+      if (!ms.length) return { t: canDraw() ? 'draw' : 'pass' };
+      S.players[p].drewTurn = 0;
+      var m = cpuChoose(p, distinct(ms));
+      return { t: 'play', id: tid(m.t), end: m.end };
+    });
+    return netApply(st, seat, a);
+  }
+  function netYou(a) {
+    if (!NET) return;
+    if (!NET.myTurn()) { done = false; Kit.toast('Wait for your turn'); Kit.haptic('error'); return; }
+    var seat = NET.seat;
+    NET.act(function (st) { return netApply(st, seat, a); }).then(function (ok) { if (!ok && NET) { done = false; if (S) paint(); } });
+  }
+
+  // Drawing the table: each move as it comes, with the same motion as on one device. A backlog is caught up quickly.
+  function netShow(net, info) {
+    info = info || {};
+    NET = net;
+    var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { tok++; NETBUSY = false; } netCloseOv(); }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    if (!NET) { NETQ = []; NETBUSY = false; return; }
+    var e = NETQ.shift();
+    if (!e) { NETBUSY = false; if (S && dw) paint(); return; }
+    NETBUSY = true;
+    netDraw(e.st, e.info, NETQ.length > 2 || document.hidden, netNext);
+  }
+  function netView(st) { st.viewer = Math.max(-1, posOf(st, NET.seat)); S = st; sel = -1; done = false; lock = false; return st; }
+  // the table as the hand ended (the next hand is already dealt in st)
+  function handEndView(st) {
+    var v = JSON.parse(JSON.stringify(st)), P = st.prev;
+    v.line = P.line; v.players.forEach(function (pl, i) { pl.hand = P.res.hands[i].slice(); });
+    v.phase = 'handend'; v.res = P.res; v.score = P.score; v.handPts = P.handPts; v.hand = P.hand; v.last = P.last;
+    if (P.last) v.cur = P.last.p;
+    return netView(v);
+  }
+  function netDraw(st, info, quick, next2) {
+    var mv = info.mv;
+    if (!dw || !dw.isConnected || info.fresh || info.again || quick || !mv) {
+      netView(st); buildUI(); paint({ deal: !!info.again });
+      if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+      if (st.phase === 'over') later(netEnd, info.fresh ? 300 : 700);
+      next2(); return;
+    }
+    var p = mv.p, mine = tbl(st, p) === NET.seat;
+    if (mv.t === 'play') {
+      var from = mine && NETFLY ? NETFLY : sourceRect(p, mv.id); NETFLY = null;
+      if (mv.hand) handEndView(st); else netView(st);
+      lock = true; paint({ fly: { id: mv.id, from: from, cpu: !mine } });
+      later(function () {
+        clack(); if (mine) Kit.haptic('light'); bump();
+        if (mv.pts) later(function () {
+          Kit.callout('+' + mv.pts + '!', S.players[p].color); Kit.sfx('good'); if (mine) Kit.haptic('medium'); say(p, '+' + mv.pts);
+          var es = document.querySelector('.ends'); if (es) { es.classList.remove('hit'); void es.offsetWidth; es.classList.add('hit'); }
+        }, 120);
+      }, 430);
+      later(function () { lock = false; if (mv.hand) netHandEnd(st, next2); else { paint(); next2(); } }, mv.pts ? 1150 : 560);
+      return;
+    }
+    if (mv.t === 'draw') {
+      var bfrom = boneRect();
+      netView(st); lock = true;
+      paint(mine ? { drawn: mv.id, drawer: p } : {});
+      Kit.sfx('flip');
+      flyBack(bfrom, destRect(p, mv.id), function () { lock = false; paint(mine ? { drawn: mv.id, drawer: p, reveal: true } : {}); later(next2, 140); });
+      return;
+    }
+    // a pass
+    if (mv.hand) handEndView(st); else netView(st);
+    paint(); say(p, 'Pass'); Kit.sfx('tap');
+    later(function () { if (mv.hand) netHandEnd(st, next2); else next2(); }, 650);
+  }
+  // the end of a hand: Domino! or Blocked!, then the count, with the next hand dealt underneath
+  function netHandEnd(st, next2) {
+    var r = st.prev.res, mySide = S.viewer >= 0 ? sideOf(S.viewer) : -2;
+    if (r.kind === 'domino') {
+      Kit.callout('Domino!', S.players[r.wi].color); Kit.sfx('good');
+      if (r.side === mySide) { Kit.haptic('success'); Kit.confetti({ count: 90 }); }
+    } else if (r.kind === 'block') { Kit.callout('Blocked!'); Kit.sfx('bad'); }
+    later(function () {
+      if (st.phase === 'over') { netView(st); paint(); netEnd(); next2(); return; }
+      netView(st); buildUI(); paint({ deal: true });
+      Kit.sfx('deal');
+      if (st.leadSay && st.leadSay.h === st.hand) later(function () { say(st.leadSay.p, st.leadSay.t); }, 500);
+      if (handSheet) try { handSheet.close(); } catch (e) {}
+      handSheet = null; showHandSheet(st.prev);
+      next2();
+    }, 1500);
+  }
+  function netCloseOv() { if (handSheet) { try { handSheet.close(); } catch (e) {} handSheet = null; } if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over') return;
+    var key = NET.code + ':' + S.started;
+    if (NETWIN && NETWIN.key === key) return;
+    netCloseOv();
+    S.phase = 'handend';   // (finishMatch closes the match itself)
+    NETWIN = finishMatch() || null;
+    if (NETWIN) NETWIN.key = key;
+  }
+  function netLeave() {
+    NET = null; NETQ = []; NETBUSY = false; tok++; lock = false; done = false; sel = -1;
+    netCloseOv();
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.players.length && sv.phase !== 'over') { S = sv; buildUI(); resumeFlow(); }
+    else showSetup();
+  }
+
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.players.length && saved.phase !== 'over') { S = saved; buildUI(); resumeFlow(); }
   else showSetup();
+
+  // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'dominoes', title: 'Dominoes', min: 2, max: 4, botMs: 900,
+    seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || n)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
