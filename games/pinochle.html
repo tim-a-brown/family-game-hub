@@ -19,21 +19,85 @@
 /* ── The page is laid out to the screen: four shapes (phone and iPad, upright and sideways), set by fit() ── */
 .pn{position:relative;display:grid;gap:8px;padding:4px 8px 0;box-sizing:border-box;margin:0 auto;width:100%;
   height:var(--ph,calc(100dvh - var(--bar,64px)));padding-bottom:max(calc(var(--safe-b) + 6px),12px);}
-.pn.L-pu,.pn.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "tbl" "act" "hand";}
+.pn.L-pu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "tbl" "act" "hand";}
+.pn.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"top" "info" "tbl" "act" "hand";}
 .pn.L-tu{max-width:860px;padding-left:14px;padding-right:14px;gap:10px;}
-.pn.L-ps{grid-template-columns:minmax(0,1fr) var(--side,400px);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"tbl top" "tbl act" "tbl hand";column-gap:10px;row-gap:6px;
+.pn.L-ps{grid-template-columns:minmax(0,1fr) var(--side,400px);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"tbl top" "tbl info" "tbl act" "tbl hand";column-gap:10px;row-gap:6px;
   padding-left:max(var(--safe-l,0px),10px);padding-right:max(var(--safe-r,0px),14px);}
-.pn.L-ts{grid-template-columns:minmax(0,1fr) var(--side,380px);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"tbl top" "tbl pad" "tbl act" "hand hand";column-gap:14px;row-gap:8px;padding-left:16px;padding-right:18px;}
+.pn.L-ts{grid-template-columns:minmax(0,1fr) var(--side,380px);grid-template-rows:auto auto minmax(0,1fr) auto auto;grid-template-areas:"tbl top" "tbl info" "tbl pad" "tbl act" "hand hand";column-gap:14px;row-gap:8px;padding-left:16px;padding-right:18px;}
 .pn > .tblbg,.pn > .tbl{grid-area:tbl;min-height:0;min-width:0;}
 .pn > .top{grid-area:top;min-width:0;}
 .pn > .act{grid-area:act;min-width:0;}
 .pn > .hand{grid-area:hand;min-width:0;}
 .pn > .lpad{display:none;}
+/* An iPad held sideways: the setup in two columns, the players beside the options, a little larger */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .stage:has(> .setup){max-width:min(1000px,94vw);display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - var(--bar,64px) - 30px);}
+  .stage > .setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:32px;row-gap:22px;align-items:start;zoom:1.22;}
+  .stage > .setup > .setup-hero,.stage > .setup > .k-joins,.stage > .setup > .k-startdock{grid-column:1 / -1;}
+  .stage > .setup > .k-seats{grid-column:1;}
+  .stage > .setup > .k-opts{grid-column:2;}
+}
+/* The side panel (iPads, and a phone held sideways when there is room): the bidding by seat while it goes on, then
+   the last trick and everyone's meld as it was laid (cards since played are dimmed) */
+.pn > .info{display:none;}
+.pn.L-ts > .info,.pn.L-tu > .info,.pn.L-ps > .info{display:flex;grid-area:info;min-height:0;min-width:0;}
+.pn.L-ts > .info{max-height:calc(var(--ph,700px) * .56);}
+/* with two things to show the panel has the column (the score pad is a tap on the score strip away) */
+.pn.L-ts.nopad{grid-template-rows:auto minmax(0,1fr) 0 auto auto;}
+.pn.L-ts.nopad > .lpad{display:none;}
+.pn.L-ts.nopad > .info{max-height:none;justify-content:space-around;}
+.info{flex-direction:column;gap:10px;padding:10px 12px;border-radius:16px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);color:#fff;overflow:hidden;transform-origin:0 0;}
+.info:empty{display:none !important;}
+.pn.L-tu > .info{flex-direction:row;align-items:stretch;gap:16px;}
+.pn.L-tu > .info > .ib{flex:1 1 0;min-width:0;}
+.pn.L-tu > .info > .ib:has(.ib-ml){flex:3 1 0;}
+.pn.L-tu .ib-ml,.pn.L-ps .ib-ml{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px 16px;}
+.pn.L-ps .ib-ml{gap:3px 10px;} .pn.L-ps .ib-ml .r .nm{width:4.2em;font-size:.64rem;} .pn.L-ps .ib-h{font-size:.6rem;} .pn.L-ps .ib-ml .r .t{font-size:.8rem;}
+.pn.L-ps > .info{padding:4px 8px;gap:4px;}
+.pn.L-ps > .info .ib{gap:3px;}
+.pn.L-ps > .info .ib-h{display:none;}
+.pn.L-ps .ib-lt{justify-content:center;gap:10px;}
+.pn.L-ps .ib-lt .w1 small{font-size:.58rem;}
+.ib{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.ib-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.68rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.62);}
+.ib-h b{font-family:var(--display);font-weight:400;font-size:1.05rem;letter-spacing:0;color:#ffd166;text-transform:none;}
+.ib-auc{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;table-layout:fixed;}
+.ib-auc th{font-size:.72rem;font-weight:900;padding:2px 2px 4px;border-bottom:1px solid rgba(255,255,255,.14);line-height:1.1;overflow-wrap:anywhere;}
+.ib-auc th.on{color:#ffd166;}
+.ib-auc td{text-align:center;padding:3px 2px;font-weight:900;font-size:.95rem;}
+.ib-auc td.p{color:rgba(255,255,255,.4);font-size:.78rem;}
+.ib-auc td.w{color:#2b1a00;background:#ffd166;border-radius:7px;}
+.ib-auc td.new{animation:pnpop .35s var(--spring);}
+.ib-su{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
+.ib-su .c{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 2px 5px;border-radius:12px;background:rgba(255,250,235,.08);}
+.ib-su .c.best{background:rgba(255,209,102,.16);box-shadow:inset 0 0 0 1.5px #ffd166;}
+.ib-su .c .g{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#fffaf0;color:#1b1b22;font-size:19px;line-height:1;font-family:Georgia,serif;}
+.ib-su .c .g.red{color:#d81e3a;}
+.ib-su .c b{font-family:var(--display);font-weight:400;font-size:1.25rem;line-height:1.1;color:#fff;font-variant-numeric:tabular-nums;}
+.ib-su .c.best b{color:#ffd166;}
+.ib-su .c small{font-size:.66rem;font-weight:800;color:rgba(255,255,255,.6);}
+.pn.L-ps .ib-su .c{padding:3px 2px;} .pn.L-ps .ib-su .c .g{width:20px;height:20px;font-size:14px;} .pn.L-ps .ib-su .c b{font-size:1rem;}
+.ib-lt{display:flex;gap:6px;--cw:var(--icw,42px);}
+.ib-lt .w1{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;}
+.ib-lt .w1 small{font-size:.66rem;font-weight:800;color:rgba(255,255,255,.75);max-width:calc(var(--cw) + 14px);text-align:center;line-height:1.1;overflow-wrap:anywhere;}
+.ib-lt .w1.win .pcard{box-shadow:0 0 0 2px #ffd166,0 0 12px rgba(255,209,102,.6);}
+.ib-lt .w1.win small{color:#ffd166;}
+.ib-ml{display:flex;flex-direction:column;gap:5px;}
+.ib-ml .r{display:flex;align-items:center;gap:8px;min-width:0;}
+.ib-ml .r .nm{flex:none;display:flex;align-items:center;gap:4px;width:5.6em;font-size:.72rem;font-weight:900;line-height:1.1;overflow-wrap:anywhere;color:rgba(255,255,255,.85);}
+.ib-ml .r .nm i{flex:none;display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sc);}
+.ib-ml .r .gs{display:flex;flex-wrap:wrap;gap:3px 7px;min-width:0;flex:1;--cw:var(--imw,18px);}
+.ib-ml .r .g{display:flex;}
+.ib-ml .r .g .pcard+.pcard{margin-left:calc(var(--cw) * -.45);}
+.ib-ml .r .g .pcard.gone{filter:brightness(.45) saturate(.4);}
+.ib-ml .r .t{flex:none;font-family:var(--display);font-size:.95rem;color:#ffd166;}
+.ib-ml .r .none{font-size:.72rem;font-weight:800;color:rgba(255,255,255,.45);}
 .pn.L-ts > .lpad{display:block;grid-area:pad;min-height:0;overflow:auto;border-radius:6px 6px 14px 14px;-webkit-overflow-scrolling:touch;}
 .lpad .spad{box-shadow:0 8px 20px rgba(0,0,0,.4);}
 .lpad .spad th,.lpad .spad td{height:34px;} .lpad .spad td{font-size:1.2rem;} .lpad .spad tfoot td{font-size:1.5rem;height:42px;} .lpad .spad-h h2{font-size:1.2rem;} .lpad .spad-h{padding:8px 12px 6px;}
 .pn.L-ps > .act,.pn.L-ts > .act{align-self:end;}
-.pn.L-pu > .act{min-height:96px;} .pn.L-tu > .act{min-height:112px;}
+.pn.L-pu > .act{min-height:96px;} .pn.L-tu > .act{min-height:96px;}
 
 /* ── The table: wood and felt behind (its own layer, so it can glide when the shape changes), the play area over it ── */
 .tblbg{position:relative;border-radius:26px;padding:8px;z-index:0;transform-origin:0 0;}
@@ -222,7 +286,7 @@
 /* phone sideways: a slimmer score strip and bar */
 .pn.L-ps .sd{padding:3px 8px 4px;} .pn.L-ps .sd .tot{font-size:1.35rem;}
 .pn.L-ps .tp{min-width:64px;padding:2px 6px;} .pn.L-ps .tp .su{width:26px;height:26px;font-size:18px;}
-.pn.L-ps .act{min-height:46px;gap:4px;} .pn.L-ps .act .hint{font-size:.88rem;}
+.pn.L-ps .act{min-height:34px;gap:4px;} .pn.L-ps .act .hint{font-size:.88rem;} .pn.L-ps .act .sub{display:none;}
 .pn.L-ps .bidbar .amt{min-height:46px;} .pn.L-ps .bidbar .amt button{width:38px;height:38px;}
 .pn.L-ps .trumps button{min-height:50px;}
 .pn.L-ps .hand{padding-top:16px;}
@@ -370,7 +434,7 @@
   }
 
   // ═══ Layout: four shapes, measured from the screen, and a glide between them ═══════════════════════
-  var LAY = '', padEl, topEl, tblBg, tbl, actEl, handEl, seatEls = [], trkEl, ctrEl, pileEls = [], mbEl, stockEl, wmEl;
+  var LAY = '', padEl, infoEl, topEl, tblBg, tbl, actEl, handEl, seatEls = [], trkEl, ctrEl, pileEls = [], mbEl, stockEl, wmEl;
   function layoutFor() {
     var w = innerWidth, h = innerHeight, big = Math.min(w, h) >= 600;
     if (w > h * 1.05) return big ? 'L-ts' : 'L-ps';
@@ -385,6 +449,8 @@
     actEl = el('div', { class: 'act', 'data-flip': '1' });
     handEl = el('div', { class: 'hand' });
     padEl = el('div', { class: 'lpad', 'data-flip': '1' });
+    infoEl = el('div', { class: 'info', 'data-flip': '1' });
+    app.appendChild(infoEl);
     app.appendChild(padEl);
     app.appendChild(topEl); app.appendChild(tblBg); app.appendChild(tbl); app.appendChild(actEl); app.appendChild(handEl);
     wmEl = el('div', { class: 'wm' }); tbl.appendChild(wmEl);
@@ -415,13 +481,13 @@
     var sh = seatEls[0] ? seatEls[0].offsetHeight : 60; tbl.style.setProperty('--sh', sh + 'px');
     var nn = seatEls.filter(function (s) { return s.classList.contains('p-n'); })[0]; if (nn) tbl.style.setProperty('--nh', nn.offsetHeight + 'px');
     var ww = seatEls.filter(function (s) { return s.classList.contains('p-w'); })[0]; if (ww) tbl.style.setProperty('--wh', Math.round(ww.offsetHeight / 2 + 4) + 'px');
-    fitMeld();
+    fitMeld(); fitInfo();
   }
   function fitHand() {
     if (!handEl) return;
     var cards = handEl.querySelectorAll('.pcard'), n = Math.max(cards.length, S && S.kind === 'cut' ? 15 : 12);
     var W = handEl.clientWidth - 12, H = innerHeight;
-    var capH = LAY === 'L-pu' ? H * 0.112 : LAY === 'L-tu' ? H * 0.15 : LAY === 'L-ps' ? H * 0.22 : H * 0.18;
+    var capH = LAY === 'L-pu' ? H * 0.112 : LAY === 'L-tu' ? H * 0.15 : LAY === 'L-ps' ? H * 0.2 : H * 0.18;
     var cw = Math.max(44, Math.min(156, capH, W / (n * 0.3 + 0.7)));
     handEl.style.setProperty('--cw', Math.round(cw) + 'px');
     var k = cards.length, ov = k > 1 ? Math.min(6, (W - cw) / (k - 1) - cw) : 0;
@@ -458,7 +524,7 @@
     var before = nodes.map(function (n) { return snap.get(n) || null; });
     SNAP = null;
     var next = layoutFor();
-    if (next !== LAY) { app.classList.remove(LAY); LAY = next; app.classList.add(LAY); paintPad(); }
+    if (next !== LAY) { app.classList.remove(LAY); LAY = next; app.classList.add(LAY); paintPad(); paintInfo(); }
     fit();
     nodes.forEach(function (n, i) {
       if (!n.isConnected) return;
@@ -485,8 +551,83 @@
     paintAll();
     requestAnimationFrame(fit); fit();
   }
-  function paintAll() { paintPad(); paintTop(); paintSeats(); paintCenter(); paintTrick(); paintPiles(); paintMeld(); paintStock(); paintHand(); paintAct(); }
+  function paintAll() { paintInfo(); paintPad(); paintTop(); paintSeats(); paintCenter(); paintTrick(); paintPiles(); paintMeld(); paintStock(); paintHand(); paintAct(); }
   function paintPad() { if (!padEl) return; padEl.innerHTML = ''; if (LAY === 'L-ts' && S.hx) { padEl.appendChild(padTable(S, true)); padEl.scrollTop = padEl.scrollHeight; } }
+  // The side panel: the bidding by seat (while it goes on and until the play starts), then the last trick and the meld
+  function paintInfo() {
+    if (!infoEl) return;
+    infoEl.innerHTML = '';
+    if (LAY === 'L-pu' || !S) return;
+    var auc = S.kind !== 'two' && S.auction && S.auction.length && (S.phase === 'bid' || S.phase === 'trump' || S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury' || S.phase === 'meld');
+    var ps = LAY === 'L-ps';   // (a phone on its side has room for one thing: your meld by suit, then the last trick)
+    if ((S.kind !== 'two' && S.phase === 'bid' || auc) && !ps) infoEl.appendChild(aucBlock());
+    if (S.kind !== 'two' && (S.phase === 'bid' || S.phase === 'trump' && S.bidder === me()) && !BLIND && me() >= 0 && !(NET && MYSEAT < 0)) infoEl.appendChild(suitBlock());
+    if (S.phase === 'play' || S.phase === 'stock' || S.phase === 'smeld') {
+      if (S.lastTrick && S.lastTrick.cards) infoEl.appendChild(lastBlock());
+      var mb = ps && S.lastTrick ? null : meldBlock(); if (mb) infoEl.appendChild(mb);
+    }
+    app.classList.toggle('nopad', LAY === 'L-ts' && infoEl.children.length > 1);
+    fitInfo();
+  }
+  function aucBlock() {
+    var n = S.n, ord = []; for (var q = 1; q <= n; q++) ord.push((S.dealer + q) % n);
+    var rows = [], row = null, col = -1, tp = S.phase === 'bid' ? Core.turn(S) : -1;
+    S.auction.forEach(function (x) { var c = ord.indexOf(x.p); if (!row || c <= col) { row = ord.map(function () { return null; }); rows.push(row); } row[c] = x; col = c; });
+    var t = el('table', { class: 'ib-auc' }, [el('tr', null, ord.map(function (p) { return el('th', { class: p === tp ? 'on' : '', text: fshort(p), style: { color: p === tp ? null : seatColor(p) } }); }))]);
+    rows.forEach(function (rw, ri) {
+      t.appendChild(el('tr', null, rw.map(function (x) {
+        var win = x && x.b && x.p === S.bidder && x.b === S.high && S.phase !== 'bid';
+        return el('td', { class: !x ? '' : (x.b ? (win ? 'w' : '') : 'p') + (ri === rows.length - 1 && x === S.auction[S.auction.length - 1] ? ' new' : ''), text: !x ? '' : x.b ? String(x.b) : 'Pass' });
+      })));
+    });
+    if (!rows.length) t.appendChild(el('tr', null, ord.map(function () { return el('td', { class: 'p', text: '' }); })));
+    return el('div', { class: 'ib' }, [el('div', { class: 'ib-h' }, [el('span', { text: 'The bidding' }), S.high ? el('b', { text: String(S.high) }) : null]), t]);
+  }
+  // your hand as each suit would make it: the meld and how many trumps (what a player works out before bidding)
+  function suitBlock() {
+    var h = S.hands[me()].concat(S.kind === 'cut' && S.phase === 'trump' ? S.widow : []), best = Core.bestTrump(h, 'normal').s;
+    var t = el('div', { class: 'ib-su' });
+    Core.SUITS.forEach(function (su) {
+      var mp = Core.meldOf(h, su).pts, n = h.filter(function (c) { return c.s === su; }).length;
+      t.appendChild(el('div', { class: 'c' + (su === best ? ' best' : '') }, [el('span', { class: 'g' + (su === 'h' || su === 'd' ? ' red' : ''), text: GL[su] }), el('b', { text: String(mp) }), el('small', { text: n + (n === 1 ? ' card' : ' cards') })]));
+    });
+    return el('div', { class: 'ib' }, [el('div', { class: 'ib-h' }, [el('span', { text: 'Your meld with each suit as trump' })]), t]);
+  }
+  function lastBlock() {
+    var L = S.lastTrick, row = el('div', { class: 'ib-lt' }), pts = 0;
+    L.cards.forEach(function (x) { pts += Core.cval(x.c); row.appendChild(el('div', { class: 'w1' + (x.p === L.w ? ' win' : '') }, [Cards.el(x.c), el('small', { text: fshort(x.p) })])); });
+    return el('div', { class: 'ib' }, [el('div', { class: 'ib-h' }, [el('span', { text: 'Last trick' }), el('b', { text: pts ? '+' + pts : '' })]), row]);
+  }
+  function meldBlock() {
+    if (!S.melds) return null;
+    var gone = {}; S.gone.forEach(function (id) { gone[id] = 1; }); S.trick.forEach(function (x) { gone[x.c.id] = 1; });
+    var box = el('div', { class: 'ib-ml' }), any = false;
+    for (var k = 0; k < S.n; k++) {
+      var p = (me() + k) % S.n, m = S.melds[p], gs = el('div', { class: 'gs' });
+      if (m.groups.length) any = true;
+      m.groups.forEach(function (g) {
+        var gg = el('div', { class: 'g', title: meldLabel(g) });
+        g.ids.forEach(function (id) { var cd = Core.codeOfId(S, id), c = Kit.card(cd.charAt(0) === 'T' ? '10' : cd.charAt(0), cd.charAt(1)); if (gone[id]) c.classList.add('gone'); gg.appendChild(c); });
+        gs.appendChild(gg);
+      });
+      if (!m.groups.length) gs.appendChild(el('span', { class: 'none', text: 'No meld' }));
+      box.appendChild(el('div', { class: 'r', style: { '--sc': seatColor(p) } }, [el('span', { class: 'nm', html: '<i></i>' + Kit.esc(fshort(p)) }), gs, el('span', { class: 't', text: String(m.pts) })]));
+    }
+    return el('div', { class: 'ib' }, [el('div', { class: 'ib-h' }, [el('span', { text: S.kind === 'two' ? 'Meld laid' : 'The meld as it was laid' })]), box]);
+  }
+  // the panel's cards as large as its room allows; a phone on its side shows it only when it fits
+  function fitInfo() {
+    if (!infoEl || !infoEl.children.length) return;
+    infoEl.style.visibility = '';
+    var w = infoEl.clientWidth, cw = Math.max(26, Math.min(LAY === 'L-ps' ? 38 : 60, (w - 40) / (S.n * 1.2))), mw = Math.max(11, Math.min(LAY === 'L-ps' ? 17 : LAY === 'L-ts' ? 40 : 32, w / (LAY === 'L-tu' ? 26 : 11)));
+    for (var i = 0; i < 18; i++) {
+      infoEl.style.setProperty('--icw', cw.toFixed(1) + 'px'); infoEl.style.setProperty('--imw', mw.toFixed(1) + 'px');
+      if (infoEl.scrollHeight <= infoEl.clientHeight + 1) break;
+      if (mw > 16) mw *= 0.88; else cw *= 0.9;   // (the meld's cards give way first, then the last trick's)
+    }
+    // a phone on its side: what doesn't fit is left out, the last block first
+    while (LAY === 'L-ps' && infoEl.children.length && infoEl.scrollHeight > infoEl.clientHeight + 1) infoEl.removeChild(infoEl.lastChild);
+  }
   function sideOrder() { var a = []; for (var s = 0; s < sideCount(); s++) a.push(s); var m = MS(); if (S.kind === 'cut') return [m, (m + 1) % 3, (m + 2) % 3]; return m ? [1, 0] : [0, 1]; }
   function paintTop() {
     topEl.innerHTML = '';
