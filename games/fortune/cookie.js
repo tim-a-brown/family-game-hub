@@ -2020,7 +2020,7 @@ function mount(stage, api) {
   resetBtn.addEventListener('click', () => { stopPour(); resetTable(); });
   function moreLabel() {
     const n = total(), full = n >= MAX;
-    moreBtn.innerHTML = (Kit ? Kit.icon('plus') : '') + '<span class="t"><span class="l">' + (full ? 'Table is full' : 'Add a cookie') + '</span><span class="s">' + n + ' of ' + MAX + ' on the table' + (full ? '' : ' · hold for more') + '</span></span>';
+    moreBtn.innerHTML = (Kit ? Kit.icon('plus') : '') + '<span class="t"><span class="l">' + (full ? 'Table is full' : 'Add a cookie') + '</span><span class="s">' + n + ' of ' + MAX + ' on the table' + (full ? '' : '. Hold for more.') + '</span></span>';
     moreBtn.disabled = full;
     moreBtn.setAttribute('aria-label', full ? 'The table is full: ' + n + ' cookies' : 'Add a cookie. ' + n + ' of ' + MAX + ' on the table');
     resetBtn.hidden = extra <= 0;

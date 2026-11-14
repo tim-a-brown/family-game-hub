@@ -400,7 +400,7 @@ function wideCab(g, L, F) {
   const cx = x0 + W / 2;
   const fs = Math.min(sp.h * 0.5, sp.w / 9);
   giltText(g, 'THE GREAT ZANDOR', cx, sp.y + sp.h * 0.42, fs, fs + 'px ' + F.bungee, { spacing: fs * 0.04, depth: fs * 0.08, maxW: sp.w * 0.88 });
-  giltText(g, '·  HE SEES ALL  ·', cx, sp.y + sp.h * 0.8, fs * 0.36, '700 ' + (fs * 0.36) + 'px ' + F.cinzel, { spacing: fs * 0.08, depth: 0, fill: [[0, '#fff8de'], [1, '#e8c77a']], shine: false });
+  giltText(g, 'HE SEES ALL', cx, sp.y + sp.h * 0.8, fs * 0.36, '700 ' + (fs * 0.36) + 'px ' + F.cinzel, { spacing: fs * 0.08, depth: 0, fill: [[0, '#fff8de'], [1, '#e8c77a']], shine: false });
   scroll(g, sp.x - H * 0.03, crest.y + crest.h * 0.7, H * 0.026, -1, -0.2);
   scroll(g, sp.x + sp.w + H * 0.03, crest.y + crest.h * 0.7, H * 0.026, 1, -0.2);
   goldFrame(g, open, H * 0.026, true);

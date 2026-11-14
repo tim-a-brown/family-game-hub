@@ -104,7 +104,7 @@ export function paintCard(c, px, f, F) {
   rg.fillText('ZANDOR', W / 2 + 1.5, 216);
   if ('letterSpacing' in rg) rg.letterSpacing = '0px';
   ng.font = '700 13px ' + F.cinzel; if ('letterSpacing' in ng) ng.letterSpacing = '4px';
-  ng.fillText('HE SEES ALL  ·  HE KNOWS ALL', W / 2 + 2, 242);
+  ng.fillText('HE SEES ALL, HE KNOWS ALL', W / 2 + 2, 242);
   if ('letterSpacing' in ng) ng.letterSpacing = '0px';
   ng.lineWidth = 1.4; diamondRule(ng, W / 2, 262, 150);
 
