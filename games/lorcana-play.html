@@ -393,6 +393,7 @@ b.lroll.dn s{animation-name:lrOutD;}b.lroll.dn span{animation-name:lrInD;}
 /* Wet ink as a liquid: the shapes run through a goo filter (blurred, then the edge sharpened again) so a bead and its
    run neck and merge like real ink, then lit from the top left for a wet gloss (lzInk, in inkDefs) */
 .drips svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible;}
+.drips canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}   /* (the drips as drawn now: Drip, in the script; the battery saver and reduced motion hold them still there) */
 .drips .dg{filter:url(#lzInk);}
 .drips .dr-run,.drips .dr-bead{transform-box:fill-box;}
 .drips .dr-run{transform-origin:50% 0;transform:scaleY(0);animation:drRun var(--dd) cubic-bezier(.45,0,.6,1) var(--dl) infinite;}
@@ -8665,7 +8666,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (node._h !== h) { node._ovs.innerHTML = h; node._h = h; }
     // the drips are drawn once and left running: redrawing them each time the table updates (online, every move the
     // other player makes) restarted the ink and made it stutter
-    var drp = node._ovs.querySelector('.drips'); if (drp && !drp.firstChild) drp.innerHTML = dripsSVG(u);
+    var drp = node._ovs.querySelector('.drips'); if (drp && !drp.firstChild) { drp.innerHTML = dripsSVG(u); Drip.wake(drp); }
     if (board) node.setAttribute('aria-label', d.full + (c.at && S.cards[c.at] ? ', at ' + DD(c.at).full : ''));
     node.title = d.t === 'character' && board && !c.dry && S.phase === 'play' ? 'Ink still drying: can’t quest, challenge or sing until its owner’s next turn' + (hasKw(u, 'rush') ? ' (Rush: can challenge now)' : '') : '';
     var und = node.querySelector(':scope > .under');
@@ -10787,22 +10788,105 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       '</filter></defs>';
     document.body.appendChild(s);
   }
-  function dripsSVG(u) {
-    inkDefs();
-    var h = 0, k = String(u || ''); for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
-    var rnd = function () { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
-    var lip = '<rect x="-30" y="-40" width="780" height="50"/>';
-    for (var x = 15; x < 720; x += 42 + rnd() * 24) lip += '<circle cx="' + x.toFixed(0) + '" cy="' + (4 + rnd() * 8).toFixed(1) + '" r="' + (12 + rnd() * 11).toFixed(1) + '"/>';
-    var runs = '', now = Date.now() / 1000;
-    [[100, 240], [380, 540], [600, 680]].forEach(function (span, j) {
-      var x = span[0] + rnd() * (span[1] - span[0]), w = 23 + rnd() * 14, L = 160 + rnd() * 160, dd = 4.6 + rnd() * 1.8;
-      var dl = -(((now / dd) + j / 3 + rnd() * .12) % 1) * dd;   // a third of a drip apart
-      var st = ' style="--dd:' + dd.toFixed(2) + 's;--dl:' + dl.toFixed(2) + 's;--L:' + L.toFixed(0) + '"';
-      runs += '<rect class="dr-run"' + st + ' x="' + (x - w / 2).toFixed(1) + '" y="0" width="' + w.toFixed(1) + '" height="' + L.toFixed(0) + '" rx="' + (w / 2).toFixed(1) + '"/>' +
-        '<circle class="dr-bead"' + st + ' cx="' + x.toFixed(1) + '" cy="12" r="' + (w * .78).toFixed(1) + '"/>';
-    });
-    return '<svg viewBox="0 0 720 1000" preserveAspectRatio="none" fill="currentColor"><g class="dg"><g class="dr-lip">' + lip + '</g>' + runs + '</g></svg>';
-  }
+  // Wet-ink drips drawn on a small canvas each frame, then scaled up to the card (the browser scales a canvas cheaply).
+  // Same shapes, timings and look as the old SVG goo filter (blur, harden the edge, light from the top left, drop
+  // shadow), but worked out at a fraction of the card's pixels, so a big card on a high-resolution screen stays smooth.
+  var Drip = (function () {
+    function bez(x1, y1, x2, y2) {
+      return function (x) { if (x <= 0) return 0; if (x >= 1) return 1; var t = x;
+        for (var i = 0; i < 8; i++) { var cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx, xt = ((ax * t + bx) * t + cx) * t - x, d = (3 * ax * t + 2 * bx) * t + cx; if (Math.abs(xt) < 1e-5) break; if (Math.abs(d) < 1e-6) break; t -= xt / d; }
+        var cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by; return ((ay * t + by) * t + cy) * t; };
+    }
+    var EZ = bez(.45, 0, .6, 1), IO = bez(.42, 0, .58, 1);
+    // keyframes per property: [offset, value]; each interval eased, as CSS does
+    function kf(list, p) { for (var i = 1; i < list.length; i++) if (p <= list[i][0]) { var a = list[i - 1], b = list[i], u = EZ((p - a[0]) / (b[0] - a[0] || 1)); return a[1] + (b[1] - a[1]) * u; } return list[list.length - 1][1]; }
+    var RUN_S = [[0, 0], [.12, .04], [.58, .7], [.82, .9], [.88, .84], [1, .8]], OP = [[0, 1], [.88, 1], [1, 0]];
+    var BD_T = [[0, 0], [.12, .04], [.58, .7], [.82, .9], [.88, 1.3], [1, 2.6]], BD_X = [[0, .35], [.12, 1], [.58, 1], [.82, 1.06], [.88, .92], [1, .8]], BD_Y = [[0, .35], [.12, 1], [.58, 1], [.82, 1.18], [.88, 1.25], [1, 1.1]];
+    function params(u) {
+      var h = 0, k = String(u || ''); for (var i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+      var rnd = function () { h = (h * 1103515245 + 12345) >>> 0; return (h >>> 8) / 16777216; };
+      var lip = [];   // (the same draws in the same order as the SVG drips of before, so each card drips as it did)
+      for (var x = 15; x < 720; x += 42 + rnd() * 24) { var cy = 4 + rnd() * 8, r = 12 + rnd() * 11; lip.push([x, cy, r]); }
+      var runs = [[100, 240], [380, 540], [600, 680]].map(function (span, j) {
+        var x = span[0] + rnd() * (span[1] - span[0]), w = 23 + rnd() * 14, L = 160 + rnd() * 160, dd = 4.6 + rnd() * 1.8, ph = j / 3 + rnd() * .12;
+        return { x: x, w: w, L: L, dd: dd, ph: ph };
+      });
+      return { lip: lip, runs: runs };
+    }
+    // three box blurs make a Gaussian; in place on a Float32Array of w*h, radius from sigma
+    function boxes(sig) { var n = 3, wI = Math.floor(Math.sqrt(12 * sig * sig / n + 1)); if (wI % 2 === 0) wI--; var wu = wI + 2, m = Math.round((12 * sig * sig - n * wI * wI - 4 * n * wI - 3 * n) / (-4 * wI - 4)), out = []; for (var i = 0; i < n; i++) out.push(((i < m ? wI : wu) - 1) / 2); return out; }
+    function blurH(s, t, w, h, r) { if (r < 1) { t.set(s); return; } var iarr = 1 / (r + r + 1); for (var y = 0; y < h; y++) { var o = y * w, acc = 0; for (var x = -r - 1; x < r; x++) acc += s[o + Math.min(w - 1, Math.max(0, x))];
+        for (x = 0; x < w; x++) { acc += s[o + Math.min(w - 1, x + r)] - s[o + Math.max(0, x - r - 1)]; t[o + x] = acc * iarr; } } }
+    function blurV(s, t, w, h, r) { if (r < 1) { t.set(s); return; } var iarr = 1 / (r + r + 1); for (var x = 0; x < w; x++) { var acc = 0; for (var y = -r - 1; y < r; y++) acc += s[Math.min(h - 1, Math.max(0, y)) * w + x];
+        for (y = 0; y < h; y++) { acc += s[Math.min(h - 1, y + r) * w + x] - s[Math.max(0, y - r - 1) * w + x]; t[y * w + x] = acc * iarr; } } }
+    function gauss(a, tmp, w, h, sx, sy) { var bx = boxes(sx), by = boxes(sy); for (var i = 0; i < 3; i++) { blurH(a, tmp, w, h, Math.round(bx[i])); blurV(tmp, a, w, h, Math.round(by[i])); } }
+    function hex(c) { var m = /rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/.exec(c || ''); return m ? [+m[1], +m[2], +m[3]] : [227, 189, 98]; }
+    var items = [], raf = 0, still = false;
+    function draw(it, T) {
+      var cv = it.cv, cw = cv.clientWidth, ch = cv.clientHeight; if (!cw || !ch) return;
+      // work at about half the screen's pixels on a small card, and no more than 360 across on a big one
+      var dpr = window.devicePixelRatio || 1, W = Math.max(48, Math.min(360, Math.round(cw * dpr * .5))), H = Math.max(48, Math.round(W * ch / cw));
+      if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; it.sh = null; }
+      if (!it.sh) { it.sh = document.createElement('canvas'); it.sh.width = W; it.sh.height = H; it.sx = it.sh.getContext('2d', { willReadFrequently: true });
+        it.A = new Float32Array(W * H); it.G = new Float32Array(W * H); it.Hh = new Float32Array(W * H); it.Sd = new Float32Array(W * H); it.tmp = new Float32Array(W * H); it.img = it.ctx.createImageData(W, H); it.col = hex(getComputedStyle(cv).color); }
+      var sx = W / 720, sy = H / 1000, g = it.sx, P = it.p;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H); g.fillStyle = '#fff'; g.setTransform(sx, 0, 0, sy, 0, 0);
+      // the wet lip along the top, swelling and settling (3.6 s each way)
+      var lc = (T / 3.6) % 2, lk = 1 + .18 * IO(lc < 1 ? lc : 2 - lc);
+      g.save(); g.translate(0, -40); g.scale(1, lk); g.translate(0, 40); g.globalAlpha = 1; g.beginPath(); g.rect(-30, -40, 780, 50);
+      P.lip.forEach(function (c) { g.moveTo(c[0] + c[2], c[1]); g.arc(c[0], c[1], c[2], 0, 6.2832); }); g.fill(); g.restore();
+      var low = 60;
+      P.runs.forEach(function (r) {
+        var p = ((T / r.dd) + r.ph) % 1, op = kf(OP, p), s = kf(RUN_S, p);
+        low = Math.max(low, r.L * s, 12 + r.L * kf(BD_T, p) + r.w * .78 * kf(BD_Y, p));
+        g.globalAlpha = op; g.save(); g.scale(1, s || 1e-4); g.beginPath(); g.roundRect ? g.roundRect(r.x - r.w / 2, 0, r.w, r.L, r.w / 2) : g.rect(r.x - r.w / 2, 0, r.w, r.L); g.fill(); g.restore();
+        var rr = r.w * .78; g.beginPath(); g.ellipse(r.x, 12 + r.L * kf(BD_T, p), rr * kf(BD_X, p), rr * kf(BD_Y, p), 0, 0, 6.2832); g.fill(); g.globalAlpha = 1;
+      });
+      // (only the rows the ink can reach: below them there is nothing to blur or light; the rows drawn last frame are cleared)
+      var Hc = Math.min(H, Math.ceil((low + 95) * sy)), o = it.img.data;
+      if (it.lastHc > Hc) o.fill(0, Hc * W * 4, it.lastHc * W * 4); it.lastHc = Hc;
+      var d = g.getImageData(0, 0, W, Hc).data, n = W * Hc, A = it.A, G = it.G, Hh = it.Hh, Sd = it.Sd, tmp = it.tmp, i;
+      for (i = 0; i < n; i++) A[i] = d[i * 4 + 3] / 255;
+      gauss(A, tmp, W, Hc, 11.5 * sx, 11.5 * sy);
+      // the goo: the blur's edge hardened again (a narrow ramp, a little wider than one pixel here so it scales up smooth)
+      for (i = 0; i < n; i++) { var v = (A[i] - .4375) * 16 + .5; G[i] = v < 0 ? 0 : v > 1 ? 1 : v; Hh[i] = G[i]; }
+      gauss(Hh, tmp, W, Hc, 9 * sx, 9 * sy);
+      // its shadow: 5 down, softened
+      Sd.fill(0, 0, n); var off = Math.round(5 * sy) * W; for (i = off; i < n; i++) Sd[i] = G[i - off]; gauss(Sd, tmp, W, Hc, 4.5 * sx, 4.5 * sy);
+      var c = it.col, lx = -240, ly = -360, lz = 600, ss = 12;
+      for (var y = 0; y < Hc; y++) for (var x = 0; x < W; x++) {
+        i = y * W + x; var ga = G[i], sa = Sd[i] * .5, a, r0 = 0, g0 = 0, b0 = 0;
+        if (ga > 0) {
+          var hl = Hh[y * W + Math.max(0, x - 1)], hr = Hh[y * W + Math.min(W - 1, x + 1)], hu = Hh[Math.max(0, y - 1) * W + x], hd = Hh[Math.min(Hc - 1, y + 1) * W + x];
+          var nx = -ss * (hr - hl) * sx / 2, ny = -ss * (hd - hu) * sy / 2, nz = 1, nl = Math.sqrt(nx * nx + ny * ny + 1); nx /= nl; ny /= nl; nz /= nl;
+          var ux = x / sx, uy = y / sy, Lx = lx - ux, Ly = ly - uy, Lz = lz - 9 * Hh[i], ll = Math.sqrt(Lx * Lx + Ly * Ly + Lz * Lz); Lx /= ll; Ly /= ll; Lz = Lz / ll + 1;
+          var hh = Math.sqrt(Lx * Lx + Ly * Ly + Lz * Lz), nh = (nx * Lx + ny * Ly + nz * Lz) / hh, sp = nh > .8 ? Math.min(1, 1.5 * Math.pow(nh, 30)) : 0;   // (below .8 the shine is under 2%: not worth the power)
+          var la = Math.min(1, ga * (1 + .9 * sp));   // the lit ink, premultiplied
+          r0 = Math.min(255, c[0] * .901 * ga + 255 * .9 * sp * ga); g0 = Math.min(255, c[1] * .901 * ga + 255 * .9 * sp * ga); b0 = Math.min(255, c[2] * .901 * ga + 255 * .9 * sp * ga);
+          a = la + sa * (1 - la);
+        } else a = sa;
+        var j = i * 4; if (a > .002) { o[j] = r0 / a; o[j + 1] = g0 / a; o[j + 2] = b0 / a; o[j + 3] = a * 255; } else { o[j + 3] = 0; }
+      }
+      it.ctx.putImageData(it.img, 0, 0);
+    }
+    function tick() {
+      raf = 0; var T = Date.now() / 1000;
+      items = items.filter(function (it) { return it.cv.isConnected; });
+      var hold = still || document.documentElement.classList.contains('lorc-saver') || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      items.forEach(function (it) { if (!hold || !it.drawn) { draw(it, T); it.drawn = 1; } });
+      if (items.length && !document.hidden) raf = requestAnimationFrame(tick);
+    }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && items.length && !raf) raf = requestAnimationFrame(tick); });
+    return {
+      html: function (u) { return '<canvas data-du="' + String(u || '').replace(/"/g, '') + '"></canvas>'; },
+      // take up every new drip canvas under root
+      wake: function (root) { (root || document).querySelectorAll('.drips canvas:not([data-dok])').forEach(function (cv) { cv.setAttribute('data-dok', '1'); items.push({ cv: cv, ctx: cv.getContext('2d'), p: params(cv.getAttribute('data-du')) }); }); if (items.length && !raf) raf = requestAnimationFrame(tick); },
+      params: params, draw: draw
+    };
+  })();
+  // (Tim, 2026-11-13: the drips stuttered on a MacBook. The SVG goo filter of before was worked out again over every pixel
+  // of the card each frame, and a big card on a high-resolution screen could not keep up; this draws the same ink small)
+  function dripsSVG(u) { return Drip.html(u); }
   // A card's details panel, as the card view shows it (used to measure how tall it will be)
   function infoOf(x) { var dx = DD(x), zx = zoneOf(x); return headHTML(dx) + defMeta(dx, x) + statusHTML(x, zx) + '<div class="rtext">' + rulesHTML(dx) + kwHelpHTML(dx, zx && zx.z === 'board' ? x : null) + '</div>'; }
   // A character still drying on the table: its big card and carousel card get the wet ink and drips too
@@ -10814,7 +10898,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var z = zoneOf(u); if (!z || z.z !== 'board') return;
     node.classList.add('wet'); node.style.setProperty('--inkc', inkColor(u));
     node.appendChild(el('span', { class: 'wetfx', 'aria-hidden': 'true' }));
-    node.appendChild(el('span', { class: 'drips', 'aria-hidden': 'true', html: dripsSVG(u) }));
+    var dsp = el('span', { class: 'drips', 'aria-hidden': 'true', html: dripsSVG(u) }); node.appendChild(dsp); Drip.wake(dsp);
   }
   function openZoom(u, dir) {
     if (ui.cp && !ui.cp.fin) { Kit.sfx('tap'); ui.cp.show(); return; }
