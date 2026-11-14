@@ -170,6 +170,15 @@ Underlying principles for everything:
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.
 
+## Player counts added 2026-11-14 (Tim: "add missing game modes")
+
+- **Hearts** plays 3 to 6 (`COUNTS` in hearts-ai.html: the cards taken out, the club that leads, the pass cycle; 3 and 5
+  pass left, right, no pass; 6 passes across to the seat opposite).
+- **Cribbage** plays 2 to 4: three deal one card from the deck to the crib, four are two partnerships across the table
+  pegging on one track (`players.teams`); the player on the dealer's left cuts, leads and counts first.
+- **Apples to Apples** mixes robots with people (`cpu: 'mix'`), in pass and play and online (the host's device plays them).
+- **Space Invaders** stays two players at most (Tim: "online game requires two humans on different devices").
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable

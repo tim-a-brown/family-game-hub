@@ -193,7 +193,7 @@
           if (pg && pg.length) kids.push(K().el('div', { class: 'hvc-pair' }, [grp('Passed', row(po, { w: 32 })), grp('Got', row(pg, { w: 32 }))]));
         }
         var qc = h.qc ? codes2(h.qc) : last && d.q && d.q.c && h.q === d.q.w ? d.q.c : null, ql = h.qc ? h.ql : d.q ? d.q.l : 0, qn = h.qc ? h.qn : d.q ? d.q.n : '';
-        if (qc && qc.length === 4 && h.q >= 0) kids.push(grp('The Queen of Spades trick', trick(qc, ql || 0, h.q, nm, n, ['Qs']), 'Trick ' + qn + ' · ' + nm[h.q] + ' took it'));
+        if (qc && qc.length === n && h.q >= 0) kids.push(grp('The Queen of Spades trick', trick(qc, ql || 0, h.q, nm, n, ['Qs']), 'Trick ' + qn + ' · ' + nm[h.q] + ' took it'));
         if (h.b) kids.push(K().el('div', { class: 'hvc-mini', text: h.b === 1 ? 'Hearts were broken on the first trick.' : 'Hearts were broken on trick ' + h.b + '.' }));
         panel.innerHTML = ''; panel.appendChild(felt('hearts', kids));
       };
@@ -339,31 +339,38 @@
   });
 
   // ── Cribbage: the peg race, best hands with their cards, and the last show ──
+  // Two players, three each for themselves, or four as two partnerships (d.sides names the tracks; a partnership's
+  // points are on one track, d.n is how many played). Per-player stats (best, peg, show, heels, zero) are by seat.
   R('cribbage', function (e, ui) {
     var d = e.dt; if (!d) return null;
     var nm = names(e), out = [], fin = (e.players || []).map(function (p) { return p.score; });
-    var bestP = d.best ? [0, 1].filter(function (p) { return d.best[p]; }).sort(function (a, b) { return d.best[b].pts - d.best[a].pts; })[0] : null;
-    out.push(ui.stats([fin.length === 2 ? ['Won by', Math.abs(fin[0] - fin[1]), d.skunk === 2 ? 'a double skunk' : d.skunk ? 'a skunk' : 'points'] : null,
+    var n = d.n || nm.length || 2, tm = n === 4, side = function (p) { return tm ? p % 2 : p; };
+    var sn = d.sides || nm.slice(0, 2), NK = sn.length, seats = []; for (var q0 = 0; q0 < n; q0++) seats.push(q0);
+    var ss = sn.map(function (x, k) { return fin[k]; });   // (a partnership's score is on both partners; seats 0 and 1 are the two sides)
+    var sorted = ss.slice().sort(function (a, b) { return b - a; });
+    var bestP = d.best ? seats.filter(function (p) { return d.best[p]; }).sort(function (a, b) { return d.best[b].pts - d.best[a].pts; })[0] : null;
+    out.push(ui.stats([ss.length >= 2 && ss[0] != null ? ['Won by', sorted[0] - sorted[1], NK > 2 ? 'points' : d.skunk === 2 ? 'a double skunk' : d.skunk ? 'a skunk' : 'points'] : null,
       bestP != null ? ['Best count', d.best[bestP].pts, first(nm[bestP]) + "'s " + (d.best[bestP].crib ? 'crib' : 'hand')] : null,
       d.big && d.big.pts >= 3 ? ['Biggest peg', d.big.pts, first(nm[d.big.p])] : null]));
     if (d.tr) {
-      var sc = [0, 0], pts = [[0], [0]], marks = [], i = 0, n = 0;
+      var sc = sn.map(function () { return 0; }), pts = sn.map(function () { return [0]; }), marks = [], i = 0, cnt = 0;
       var tr = String(d.tr);
       while (i < tr.length) {
         var ch = tr.charAt(i);
-        if (ch === '|') { marks.push(n); i++; continue; }
-        var p = ch === '0' || ch === 'a' ? 0 : 1, v = parseInt(tr.charAt(i + 1), 36) || 0; i += 2;
-        sc[p] = Math.min(121, sc[p] + v); n++;
-        pts[0].push(sc[0]); pts[1].push(sc[1]);
+        if (ch === '|') { marks.push(cnt); i++; continue; }
+        var k = Math.max(0, '012'.indexOf(ch) >= 0 ? '012'.indexOf(ch) : 'abc'.indexOf(ch)), v = parseInt(tr.charAt(i + 1), 36) || 0; i += 2;
+        if (k >= NK) continue;
+        sc[k] = Math.min(121, sc[k] + v); cnt++;
+        pts.forEach(function (l, j) { l.push(sc[j]); });
       }
-      var svg = chart([{ pts: pts[0], color: ui.color(0), step: true }, { pts: pts[1], color: ui.color(1), step: true }],
+      var svg = chart(pts.map(function (l, k) { return { pts: l, color: ui.color(k), step: true }; }),
         { max: 121, h: 170, xmarks: marks, aria: 'Peg race', lines: [{ y: 121, label: '121', c: 'rgba(255,209,102,.55)' }, { y: 91, label: '91' }, { y: 61, label: '61' }], xlabel: 'every score, hand by hand' });
-      out.push(ui.section('The peg race', [ui.chips(nm.map(function (n, p) { return { t: n + ' · ' + sc[p], c: ui.color(p), on: true }; })), ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
+      out.push(ui.section('The peg race', [ui.chips(sn.map(function (x, k) { return { t: x + ' · ' + sc[k], c: ui.color(k), on: true }; })), ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
     }
     if (d.best) {
       var bk = [];
       var HOW = { '15': 'Fifteens', pair: 'Pair', royal: 'Three of a kind', double: 'Four of a kind', run: 'Runs', flush: 'Flush', nobs: 'His nobs' };
-      [0, 1].forEach(function (p) {
+      seats.forEach(function (p) {
         var b = d.best[p]; if (!b || !b.c) return;
         var parts = b.how ? Object.keys(b.how).filter(function (k) { return b.how[k] > 0; }).map(function (k) { return (HOW[k] || k) + ' ' + b.how[k]; }).join(' · ') : '';
         bk.push(grp(nm[p] + ' · best ' + (b.crib ? 'crib' : 'hand') + ': ' + b.pts, K().el('div', { class: 'hvc-pair' }, [row(b.c, { w: 38 }), b.st ? row([b.st], { w: 38, hl: [b.st] }) : null]),
@@ -371,38 +378,45 @@
       });
       if (bk.length) out.push(ui.section('Best hands', felt('cribbage', bk)));
     }
+    // a hand's points by side: each player's count, the pegging, and the crib for the dealer's side
+    function gotOf(h) {
+      var hs = h.h ? String(h.h).split('.').map(Number) : null, g = h.g ? String(h.g).split('.').map(Number) : null;
+      if (!hs) return { got: String(h.p || sn.map(function () { return 0; }).join('.')).split('.').map(Number), hs: null, g: null };
+      var got = sn.map(function (x, k) { var t = g[k] || 0; seats.forEach(function (p) { if (side(p) === k) t += hs[p] || 0; }); if (side(h.d) === k) t += h.c; return t; });
+      return { got: got, hs: hs, g: g };
+    }
+    function handOf(h, p) { return h.hh ? codes2(h.hh[p]) : codes2(p ? h.h1 : h.h0); }
     if (d.hx && d.hx.length) {
       var hx = d.hx, panel = K().el('div', { class: 'hv' }), off = Math.max(0, scoresOf(e).length - hx.length);
       var show = function (i) {
-        var h = hx[i], kids = [], hs = h.h ? String(h.h).split('.').map(Number) : null, g = h.g ? String(h.g).split('.').map(Number) : null;
-        var got = hs ? [0, 1].map(function (p) { return hs[p] + g[p] + (p === h.d ? h.c : 0); }) : String(h.p || '0.0').split('.').map(Number);
+        var h = hx[i], kids = [], r = gotOf(h), got = r.got, hs = r.hs, g = r.g, top = Math.max.apply(null, got);
         kids.push(head('<b>Hand ' + (off + i + 1) + '</b> · ' + K().esc(first(nm[h.d])) + "'s crib", h.x ? 'The game ended here' : null, h.x ? 'big' : ''));
-        kids.push(plates([0, 1].map(function (p) { return { n: first(nm[p]), v: '+' + got[p], s: hs ? 'peg ' + g[p] + ' · hand ' + hs[p] : '', s2: hs && p === h.d ? 'crib ' + h.c : '', c: ui.color(p), cls: got[p] > got[1 - p] ? 'good' : '' }; })));
-        [1 - h.d, h.d].forEach(function (p) { var cs = codes2(p ? h.h1 : h.h0); if (cs.length) kids.push(grp(nm[p] + (hs ? ' · ' + hs[p] : ''), K().el('div', { class: 'hvc-pair' }, [row(cs, { w: 36 }), h.st ? row([h.st], { w: 36, hl: [h.st] }) : null]))); });
+        kids.push(plates(sn.map(function (x, k) { return { n: tm ? x : first(x), v: '+' + got[k], s: hs ? 'peg ' + g[k] + (tm ? '' : ' · hand ' + hs[k]) : '', s2: hs && side(h.d) === k ? 'crib ' + h.c : '', c: ui.color(k), cls: got[k] === top && got.filter(function (v) { return v === top; }).length === 1 ? 'good' : '' }; })));
+        for (var j = 1; j <= n; j++) { var p = (h.d + j) % n, cs = handOf(h, p); if (cs.length) kids.push(grp(nm[p] + (hs ? ' · ' + hs[p] : ''), K().el('div', { class: 'hvc-pair' }, [row(cs, { w: 36 }), h.st ? row([h.st], { w: 36, hl: [h.st] }) : null]))); }
         if (h.cr) kids.push(grp('Crib (' + first(nm[h.d]) + ')' + (hs ? ' · ' + h.c : ''), K().el('div', { class: 'hvc-pair' }, [row(codes2(h.cr), { w: 36 }), h.st ? row([h.st], { w: 36, hl: [h.st] }) : null]), h.st ? 'Ringed: the starter card, shared by every count' : ''));
         panel.innerHTML = ''; panel.appendChild(felt('cribbage', kids));
       };
       var items = hx.map(function (h, i) {
-        var hs = h.h ? String(h.h).split('.').map(Number) : null, g = h.g ? String(h.g).split('.').map(Number) : null;
-        var got = hs ? [0, 1].map(function (p) { return hs[p] + g[p] + (p === h.d ? h.c : 0); }) : String(h.p || '0.0').split('.').map(Number);
-        var big = hs && Math.max(hs[0], hs[1], h.c) >= 16;
-        return { t: String(off + i + 1), c: got[0] === got[1] ? null : ui.color(got[0] > got[1] ? 0 : 1), ring: big, title: 'Hand ' + (off + i + 1) + ': ' + got.join(' – ') };
+        var r = gotOf(h), got = r.got, top = Math.max.apply(null, got), lead = got.filter(function (v) { return v === top; }).length === 1 ? got.indexOf(top) : -1;
+        var big = r.hs && Math.max.apply(null, r.hs.concat([h.c])) >= 16;
+        return { t: String(off + i + 1), c: lead < 0 ? null : ui.color(lead), ring: big, title: 'Hand ' + (off + i + 1) + ': ' + got.join(' – ') };
       });
-      out.push(ui.section('Every hand', [road(items, hx.length - 1, show), panel, key([['More points: ' + first(nm[0]), ui.color(0)], ['More points: ' + first(nm[1]), ui.color(1)], ['A count of 16+', 'ring']])], { icon: 'cards' }));
+      out.push(ui.section('Every hand', [road(items, hx.length - 1, show), panel, key(sn.map(function (x, k) { return ['More points: ' + (tm ? x : first(x)), ui.color(k)]; }).concat([['A count of 16+', 'ring']]))], { icon: 'cards' }));
     } else if (d.last && d.last.h0) {
       var L = d.last, kids = [];
-      [0, 1].forEach(function (p) { var h = p ? L.h1 : L.h0; if (h && h.length) kids.push(grp(nm[p] + (L.d === p ? ' (dealer)' : ''), row(h, { w: 36 }))); });
+      seats.forEach(function (p) { var h = L.hh ? L.hh[p] : p ? L.h1 : L.h0; if (h && h.length) kids.push(grp(nm[p] + (L.d === p ? ' (dealer)' : ''), row(h, { w: 36 }))); });
       kids.push(K().el('div', { class: 'hvc-pair' }, [L.cr && L.cr.length ? grp('Crib (' + first(nm[L.d]) + ')', row(L.cr, { w: 36 })) : null, L.st ? grp('Starter', row([L.st], { w: 36 })) : null]));
       out.push(ui.section('Last hand (hand ' + L.n + ')', felt('cribbage', kids)));
     }
-    if (d.peg && d.show) out.push(ui.table(['', first(nm[0]), first(nm[1])], [['Pegging', d.peg[0], d.peg[1]], ['Hands & crib', d.show[0], d.show[1]],
-      d.heels && (d.heels[0] || d.heels[1]) ? ['His heels', d.heels[0], d.heels[1]] : null, d.zero ? ['Zero hands', d.zero[0], d.zero[1]] : null].filter(Boolean), { headColors: [null, ui.color(0), ui.color(1)] }));
+    if (d.peg && d.show) out.push(ui.table([''].concat(seats.map(function (p) { return first(nm[p]); })), [['Pegging'].concat(seats.map(function (p) { return d.peg[p]; })), ['Hands & crib'].concat(seats.map(function (p) { return d.show[p]; })),
+      d.heels && d.heels.some(Boolean) ? ['His heels'].concat(seats.map(function (p) { return d.heels[p]; })) : null, d.zero ? ['Zero hands'].concat(seats.map(function (p) { return d.zero[p]; })) : null].filter(Boolean), { headColors: [null].concat(seats.map(function (p) { return ui.color(side(p)); })) }));
     if (d.big && d.big.pts >= 3) out.push(ui.facts([['Biggest peg', d.big.pts + ' for ' + String(d.big.text || '').replace(/ for \d+/g, '').replace(/, /g, ' + ') + ' (' + nm[d.big.p] + ')']]));
-    if (fin.length === 2 && fin[0] != null) {
-      var w = fin[0] > fin[1] ? 0 : 1, lh = d.hx && d.hx[d.hx.length - 1];
-      var why = nm[w] + ' reached 121' + (lh && lh.x ? ' during hand ' + scoresOf(e).length : '') + ', ' + (fin[w] - fin[1 - w]) + ' points ahead.';
-      if (d.skunk) why += ' ' + nm[1 - w] + (d.skunk === 2 ? ' never reached 61: a double skunk.' : ' never reached 91: a skunk.');
-      else if (d.peg && d.peg[w] > d.peg[1 - w] + 5) why += ' Pegging made the difference: ' + d.peg[w] + ' to ' + d.peg[1 - w] + '.';
+    if (ss.length >= 2 && ss[0] != null) {
+      var w = ss.indexOf(sorted[0]), lh = d.hx && d.hx[d.hx.length - 1], los = sn.map(function (x, k) { return k; }).filter(function (k) { return k !== w; });
+      var why = sn[w] + ' reached 121' + (lh && lh.x ? ' during hand ' + scoresOf(e).length : '') + ', ' + (sorted[0] - sorted[1]) + ' points ahead.';
+      var sk = los.filter(function (k) { return ss[k] < 91; });
+      if (d.skunk) why += ' ' + sk.map(function (k) { return sn[k]; }).join(' and ') + (sk.some(function (k) { return ss[k] < 61; }) ? ' never reached 61: a double skunk.' : ' never reached 91: a skunk.');
+      else if (d.peg && NK === 2 && !tm && d.peg[w] > d.peg[1 - w] + 5) why += ' Pegging made the difference: ' + d.peg[w] + ' to ' + d.peg[1 - w] + '.';
       out.push(foot(why, 'flag'));
     }
     return ui.wrap(out);
