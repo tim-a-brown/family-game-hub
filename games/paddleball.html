@@ -52,6 +52,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
    so it never covers the paddle, and the court sits up off the screen's edge. A lit bar on the strip follows the
    paddle above it, so the strip shows by itself what it does. */
 .ar-wrap.thumbs{flex-direction:column;gap:0;}
+/* sideways: the strips stand beside the court, the near end's at the left where its paddle is (Tim: "add the side strip
+   to landscape for consistency") */
+.ar-wrap.thumbs.side{flex-direction:row;}
+.ar-wrap.thumbs.side .ar-thumb.near{order:-1;}
 .ar-thumb{flex:none;position:relative;display:flex;align-items:center;justify-content:center;}
 .ar-thumb .tr{position:relative;width:100%;height:30px;border-radius:15px;background:rgba(255,255,255,.05);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 2px 6px rgba(0,0,0,.45);}
@@ -60,6 +64,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-thumb .kn::before,.ar-thumb .kn::after{content:"";position:absolute;top:50%;width:6px;height:6px;margin-top:-3px;border-top:2px solid rgba(6,16,28,.55);border-left:2px solid rgba(6,16,28,.55);}
 .ar-thumb .kn::before{left:8px;transform:rotate(-45deg);}
 .ar-thumb .kn::after{right:8px;transform:rotate(135deg);}
+.ar-wrap.side .ar-thumb .tr{width:30px;height:100%;}
+.ar-wrap.side .ar-thumb .kn{top:0;bottom:auto;left:5px;right:5px;}
+.ar-wrap.side .ar-thumb .kn::before,.ar-wrap.side .ar-thumb .kn::after{left:50%;margin:0 0 0 -3px;}
+.ar-wrap.side .ar-thumb .kn::before{top:8px;transform:rotate(45deg);}
+.ar-wrap.side .ar-thumb .kn::after{top:auto;right:auto;bottom:8px;transform:rotate(-135deg);}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;
   background:rgba(6,10,22,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
@@ -442,7 +451,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ],
     rules:
       '<p class="goal">Bounce the ball past the other player\'s paddle to score. First to 11 points wins, but you have to win by 2.</p>' +
-      '<h3>Moving your paddle</h3><ul><li><b>Phone or tablet:</b> slide a finger along the strip under the court, or anywhere on your half of the court. The paddle follows your finger, and with your thumb on the strip it never covers the paddle.</li>' +
+      '<h3>Moving your paddle</h3><ul><li><b>Phone or tablet:</b> slide a finger along the strip at your end of the court (under it when the screen is upright, beside it when it\'s sideways), or anywhere on your half of the court. The paddle follows your finger, and with your thumb on the strip it never covers the paddle.</li>' +
       '<li><b>2 players on one screen:</b> lay the phone or tablet flat between you. One player\'s paddle is at the bottom, the other\'s at the top. You can both play at once.</li>' +
       '<li><b>Computer:</b> W and S (or A and D) for the first player, the arrow keys for the second. Against the computer you can also use the mouse. P pauses.</li></ul>' +
       '<h3>Serving</h3><p>The serve switches sides after every point. The ball waits on the server\'s paddle: tap (or press Space) to serve. It goes on its own after a few seconds.</p>' +
@@ -516,7 +525,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     cv = el('canvas', { 'aria-label': 'Pong court' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
-    thumbs = [0, 1].map(function () { var kn = el('i', { class: 'kn' }), t = el('div', { class: 'ar-thumb', hidden: '' }, [el('div', { class: 'tr' }, [kn])]); t._kn = kn; t._x = null; return t; });
+    thumbs = [0, 1].map(function (i) { var kn = el('i', { class: 'kn' }), t = el('div', { class: 'ar-thumb' + (i ? '' : ' near'), hidden: '' }, [el('div', { class: 'tr' }, [kn])]); t._kn = kn; t._x = null; return t; });
     wrapEl = el('div', { class: 'ar-wrap' }, [thumbs[1], cabEl, thumbs[0]]);
     hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'net' ? 'Move with the mouse or the arrow keys, and press Space to serve' : G.mode === 'two' ? 'The left player moves with W and S and the right player with the arrow keys. Space serves, and P pauses.' : 'Move with the mouse, W and S or the arrow keys. Space or a click serves, and P pauses.' });
     app.appendChild(hudEl); app.appendChild(wrapEl); if (!TOUCH) app.appendChild(hintEl);
@@ -539,18 +548,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (!wrapEl) return;
     var aw = wrapEl.clientWidth - 14, ah = wrapEl.clientHeight - 14;
     var land = aw / ah > 1.15;
-    // portrait on a touch screen: room for the slide strip beyond each person's end (both ends when two share the screen)
-    var nt = !land && TOUCH ? (G && G.mode === 'two' ? 2 : 1) : 0, tz = nt ? Math.round(Math.max(56, Math.min(92, ah * 0.11))) : 0;
-    ah -= nt * tz;
+    // on a touch screen: room for the slide strip beyond each person's end (both ends when two share the screen), below
+    // the court upright and beside it sideways
+    var nt = TOUCH ? (G && G.mode === 'two' ? 2 : 1) : 0, tz = nt ? Math.round(Math.max(56, Math.min(92, (land ? aw * 0.08 : ah * 0.11)))) : 0;
+    if (land) aw -= nt * tz; else ah -= nt * tz;
     var fw = land ? FL : FC, fh = land ? FC : FL;
     var s = Math.min(aw / fw, ah / fh, 2.2); s = Math.max(0.3, s);
     var w = Math.round(fw * s), h = Math.round(fh * s);
     if (w === cssW && h === cssH && land === LAND && tz === TZ && cv.width) return;
     TZ = tz;
-    wrapEl.classList.toggle('thumbs', nt > 0);
+    wrapEl.classList.toggle('thumbs', nt > 0); wrapEl.classList.toggle('side', nt > 0 && land);
     thumbs.forEach(function (t, i) {
       var on = nt > 0 && (i === 0 || nt === 2);
-      t.hidden = !on; t.style.height = tz + 'px'; t.style.width = (w + 14) + 'px'; t.style.padding = '0 7px'; t._x = null;
+      t.hidden = !on; t._x = null;
+      if (land) { t.style.width = tz + 'px'; t.style.height = (h + 14) + 'px'; t.style.padding = '7px 0'; }
+      else { t.style.height = tz + 'px'; t.style.width = (w + 14) + 'px'; t.style.padding = '0 7px'; }
     });
     LAND = land; FW = fw; FH = fh; cssW = w; cssH = h; S = w / FW;
     DPR = Math.min(window.devicePixelRatio || 1, 3);
@@ -830,14 +842,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function rotFor(p) { return !LAND && G.mode === 'two' && p === 1 ? Math.PI : 0; }
   // the lit bar on each slide strip follows the paddle at that end of the court
   function drawThumbs() {
-    if (!TZ || LAND) return;
+    if (!TZ) return;
     for (var i = 0; i < 2; i++) {
       var t = thumbs[i]; if (t.hidden) continue;
       var p = FLIP ? 1 - i : i, pd = pads[p]; if (!pd) continue;
       var x = (FLIP ? FC - pd.c : pd.c) * S, wpx = 2 * pd.hw * S;
       if (t._x === x && t._w === wpx) continue;
       t._x = x; t._w = wpx; t.style.setProperty('--pc', PC[p]);
-      t._kn.style.width = wpx + 'px'; t._kn.style.transform = 'translateX(' + (x - wpx / 2).toFixed(1) + 'px)';
+      if (LAND) { t._kn.style.width = ''; t._kn.style.height = wpx + 'px'; t._kn.style.transform = 'translateY(' + (x - wpx / 2).toFixed(1) + 'px)'; }
+      else { t._kn.style.height = ''; t._kn.style.width = wpx + 'px'; t._kn.style.transform = 'translateX(' + (x - wpx / 2).toFixed(1) + 'px)'; }
     }
   }
   function draw() {
