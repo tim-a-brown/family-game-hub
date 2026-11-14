@@ -531,6 +531,11 @@ Underlying principles for everything:
   an island in mid-ocean is drawn at the step that came closest. The map and its dot stay hidden until the faces have
   loaded (`.dotwait`), so a card never shows a map that then moves. The scratchpad's `maps/audit.js` measures every
   card's visible coast (the coast painted in one color, so the words and plates hide it as they do).
+  An island's map draws back until a mainland is in view for reference (Tim, the same day, of Tupaia and Kamehameha:
+  "islands need to zoom out far enough to see a nearby mainland for reference"): a ring more than `MAPBIG` degrees wide
+  or tall counts as a landmass, and `MAPBIGLEN` units of its coast must be in the clear part; a ring is drawn on the
+  side of the date line nearer the place (`wrapAt`), so Hawaii's map reaches Asia to its west. Mainland cards meet it
+  at once and are unchanged.
 - **A number inside a mark is centred by its own ink** (Tim: "the numbers in spark and shield sit too high" on his
   iPhone). Browsers read a font's ascent and descent differently, so a box one line tall puts a digit in a different
   place in each. The rule in ui.css (after `.ac-cost b`) makes the box with a strut as tall as a digit standing on the

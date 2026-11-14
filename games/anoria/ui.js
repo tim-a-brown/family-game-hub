@@ -317,27 +317,34 @@
   // (It was 10.92 to the degree, about 26 degrees across, or less until 25 points of coastline stood in a window under
   // the name: often a close-up of one bay that nobody could place.)
   const zoomAt = {}, MAPDEG = 36, MAPLEN = 70, MAPRUN = 40, MAPSPAN = 30;
+  // (Tim, 2026-11-14, of Tupaia and Kamehameha: "islands need to zoom out far enough to see a nearby mainland for
+  // reference". A ring wider or taller than MAPBIG degrees counts as a landmass; until one is in the clear part of the
+  // map with MAPBIGLEN units of coast, the map draws back. A ring is drawn on whichever side of the date line is nearer
+  // the card's place (wrapAt), so Hawaii's map can reach Japan to its west.)
+  const MAPBIG = 8, MAPBIGLEN = 30;
+  const wrapAt = (b, lon0) => { const c = (b[0] + b[2]) / 2 - lon0; return c > 180 ? -360 : c < -180 ? 360 : 0; };
+  const bigRing = b => Math.max((b[2] - b[0]) * Math.cos(((b[1] + b[3]) / 2) * Math.PI / 180), b[3] - b[1]) >= MAPBIG;
   function mapZoom(ll, at) {
     const cx = at.x, cy = at.y, x0 = at.x0 || 0, y1 = Math.min(MAPH, at.y1 || MAPH), tx = at.tx || [];
     const zk = ll.join(',') + '|' + cx + ',' + cy + ',' + x0 + ',' + y1 + '|' + tx.join(','); if (zoomAt[zk]) return zoomAt[zk];
     const B = landBoxes(), m = 8, cosl = Math.cos(ll[1] * Math.PI / 180), wx0 = x0 + m, wx1 = MAPW - m, wy0 = m, wy1 = y1 - m;
     const clearAt = (x, y) => { if (x < wx0 || x > wx1 || y < wy0 || y > wy1) return false; for (let i = 0; i < tx.length; i += 4) if (x > tx[i] - 2 && x < tx[i + 2] + 2 && y > tx[i + 1] - 1.5 && y < tx[i + 3] + 1.5) return false; return true; };
     const k0 = Math.min(10.92, (MAPW - x0) / MAPDEG); let k = k0, bestK = k0, bestS = -1;
-    for (let step = 0; step < 16; step++) {
+    for (let step = 0; step < 20; step++) {
       k = step === 0 ? k0 : step === 1 ? k0 * 1.2 : k0 / Math.pow(1.15, step - 1);
       const ky = k / cosl, lonA = ll[0] + (wx0 - cx) / k, lonB = ll[0] + (wx1 - cx) / k, latA = ll[1] - (wy1 - cy) / ky, latB = ll[1] + (cy - wy0) / ky;
-      let len = 0, run = 0, ext = 0;
+      let len = 0, run = 0, ext = 0, big = 0;
       for (let i = 0; i < LAND.length; i++) {
-        const b = B[i]; if (b[2] < lonA || b[0] > lonB || b[3] < latA || b[1] > latB) continue;
-        const r = LAND[i]; let go = 0, ax = 1e9, ay = 1e9, bx = -1e9, by = -1e9;
+        const b = B[i], w = wrapAt(b, ll[0]); if (b[2] + w < lonA || b[0] + w > lonB || b[3] < latA || b[1] > latB) continue;
+        const r = LAND[i], isBig = bigRing(b); let go = 0, ax = 1e9, ay = 1e9, bx = -1e9, by = -1e9;
         for (let j = 0; j < r.length; j += 2) {
-          const j2 = (j + 2) % r.length, x = cx + ((r[j] + r[j2]) / 2 - ll[0]) * k, y = cy - ((r[j + 1] + r[j2 + 1]) / 2 - ll[1]) * ky;
+          const j2 = (j + 2) % r.length, x = cx + ((r[j] + r[j2]) / 2 + w - ll[0]) * k, y = cy - ((r[j + 1] + r[j2 + 1]) / 2 - ll[1]) * ky;
           if (!clearAt(x, y)) { go = 0; ax = ay = 1e9; bx = by = -1e9; continue; }   // (a stretch is broken where the coast goes under the words)
-          const d = Math.hypot((r[j2] - r[j]) * k, (r[j2 + 1] - r[j + 1]) * ky); len += d; go += d; if (go > run) run = go;
+          const d = Math.hypot((r[j2] - r[j]) * k, (r[j2 + 1] - r[j + 1]) * ky); len += d; go += d; if (go > run) run = go; if (isBig) big += d;
           if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y; const e = Math.hypot(bx - ax, by - ay); if (e > ext) ext = e;
         }
       }
-      const sc = Math.min(len / MAPLEN, run / MAPRUN, ext / MAPSPAN); if (sc >= 1) { bestK = k; break; }
+      const sc = Math.min(len / MAPLEN, run / MAPRUN, ext / MAPSPAN, big / MAPBIGLEN); if (sc >= 1) { bestK = k; break; }
       if (sc > bestS) { bestS = sc; bestK = k; }
     }
     k = bestK;
@@ -354,9 +361,9 @@
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
     const B = landBoxes(); let d = '';
     for (let i = 0; i < LAND.length; i++) {
-      const b = B[i]; if (b[2] < lonA || b[0] > lonB || b[3] < latA || b[1] > latB) continue;
+      const b = B[i], w = wrapAt(b, lon0); if (b[2] + w < lonA || b[0] + w > lonB || b[3] < latA || b[1] > latB) continue;
       const r = LAND[i], pts = new Array(r.length);
-      for (let j = 0; j < r.length; j += 2) { pts[j] = X(r[j]); pts[j + 1] = Y(r[j + 1]); }
+      for (let j = 0; j < r.length; j += 2) { pts[j] = X(r[j] + w); pts[j + 1] = Y(r[j + 1]); }
       const c = clipRing(pts, -pad, -pad, W + pad, H + pad); if (c.length < 6) continue;
       d += 'M' + c[0].toFixed(1) + ' ' + c[1].toFixed(1);
       for (let j = 2; j < c.length; j += 2) d += 'L' + c[j].toFixed(1) + ' ' + c[j + 1].toFixed(1);
