@@ -13,6 +13,8 @@
 <script src="../players.js"></script>
 <script src="pressyourluck/art.js"></script>
 <script src="pressyourluck/sound.js"></script>
+<script src="../online.js"></script>
+<script src="liveshow.js"></script>
 <style>
 @font-face{font-family:"Bungee";src:url("../fonts/bungee.woff2") format("woff2");font-display:swap;}
 @font-face{font-family:"Jersey 10";src:url("../fonts/jersey-10.woff2") format("woff2");font-display:swap;}
@@ -127,6 +129,7 @@ body.pyl-on{
 @keyframes chant{0%{opacity:1;transform:scale(1.08);}33%,100%{opacity:0;}}
 .fx{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;}
 .fx > *{grid-area:1/1;}
+.pan.qhold .qt,.pan.qhold .qo{visibility:hidden;}
 .fx-big{display:flex;flex-direction:column;align-items:center;gap:3cqh;animation:fxIn .45s var(--spring);}
 .fx-big b{font-family:"Bungee",var(--display);font-weight:400;font-size:min(19cqw,17cqh);color:#ffe14d;line-height:1;text-shadow:0 .07em 0 #7a3d00, 0 0 .4em rgba(255,200,40,.6);white-space:nowrap;}
 .fx-big i{font-style:normal;font-family:"Bungee",var(--display);font-size:min(9cqw,8cqh);color:#06301a;background:linear-gradient(#8bffb0,#3fe07a);padding:.15em .6em;border-radius:99px;box-shadow:0 .1em 0 #0c6a33;}
@@ -678,7 +681,9 @@ body.pyl-on{
 (function () {
   'use strict';
   var el = Kit.el, esc = Kit.esc, app = document.getElementById('app');
-  var SND = PYLSound, ART = PYLArt;
+  var SND = PYLSound, ART = PYLArt, SND0 = Object.assign({}, PYLSound);
+  // (an online show's host plays each sound on every device; the Big Board's hops click on each device's own board)
+  Object.keys(SND0).forEach(function (k) { if (typeof SND0[k] === 'function' && k !== 'hop') SND[k] = function () { var a = [].slice.call(arguments); bc('snd', [k, a]); return SND0[k].apply(SND0, a); }; });
   var HKEY = 'pressyourluck', SAVE = 'pyl_state', SEEN = 'pyl_seen';
   var CANCEL = { cancel: true }, epoch = 0, speed = 1;
   var NAMES = { 1: 'Round one', 2: 'Round two' };
@@ -807,7 +812,7 @@ body.pyl-on{
   function acc() { return S && S.phase === 'bonus' ? S.bonus : cur(); }
   function active() { return S.players.filter(function (p) { return !p.out; }); }
   function save() {
-    if (!S) return;
+    if (!S || S.net) return;   // (an online show isn't saved: it lives on the host's device while it runs)
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var p = cur();
     Kit.resume.set(NAMES[S.round || 1] + (S.phase === 'quiz' ? ': spin questions' : p && S.phase === 'board' ? ': ' + Kit.poss(p.name) + ' turn' : ''));
@@ -840,14 +845,16 @@ body.pyl-on{
     '<li>After a level, <b>stop and keep</b> your bonus money, or press on to the next level.</li>' +
     '<li>A Whammy takes your bonus money (your game winnings are safe). <b>Four Whammies</b> end the bonus round with nothing.</li>' +
     '<li>Get the bonus bank to <b>$500,000</b> and your total becomes <b>$1,000,000</b>.</li></ul>' +
-    '<p>(Turn the bonus round off in setup if you like.)</p>';
+    '<p>(Turn the bonus round off in setup if you like.)</p>' +
+    '<h3>Playing online</h3><p>Tap <b>Play online</b> beside Start the show. One of you opens a table and the others join it, each on their own phone or tablet, and each plays their own podium: buzz in, answer, spin and stop the board, and pass. The computer plays any podium nobody takes. The host\'s device runs the show, and everyone sees the questions and the Big Board at the same moment. A buzz, or a stop of the board, counts from the moment you pressed on your own device, even when your link is slower. Picks from three stay secret on each device. If your device drops out, the computer stands in at your podium until you join the table again.</p>';
 
   Kit.init({
     id: 'pressyourluck', title: 'Press Your Luck', orient: 'portrait',
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { if (NET && NET.mode) { NET.leave(true); return; } clearSave(); showSetup(); },
     undo: function () { undo(); },
     rules: RULES,
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Press Your Luck: past games' }); } }]
+    menu: [{ icon: 'logout', label: 'Leave the online show', when: function () { return !!(NET && NET.mode); }, onClick: function () { NET.leave(true); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Press Your Luck: past games' }); } }]
   });
 
   // ── Setup ─────────────────────────────────────────────────────────────────
@@ -856,7 +863,8 @@ body.pyl-on{
     epoch++; T.running = false; T.frozen = false; clearTimeout(T.hopT); SND.chant(false); ui.await = null; ui.busy = false;
   }
   function showSetup() {
-    stopAll(); S = null; shell = null; FORCE = [];
+    if (NET && NET.mode) NET.leave(false);
+    stopAll(); S = null; shell = null; FORCE = []; netReset();
     document.body.classList.remove('pyl-on'); app.classList.remove('pyl');
     // A setup saved when a Family game could seat two people: the computer that took the third podium now has that seat
     try {
@@ -866,9 +874,10 @@ body.pyl-on{
     Kit.setup(app, {
       title: 'Press Your Luck',
       intro: 'Earn spins with trivia, then stop the Big Board. Big bucks, no Whammies!',
-      // three podiums, like the show: each one after the first is a person or a computer contestant
-      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }]),
-      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; } },
+      // three podiums, like the show: each one after the first is a person or a computer contestant; or a live
+      // show online, each contestant at their own podium on their own device (Play online, beside Start the show)
+      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }, 'online']),
+      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [3, 3]; } },
       options: [
         { id: 'earn', label: 'Earning spins', value: 'q4', help: 'Like the show: toss-up questions before each round. Buzz in first and get it right for 3 spins; everyone else can win 1 spin by picking from three.',
           choices: [['q4', '4 questions', 'Four toss-ups a round, like the show.'],
@@ -880,7 +889,15 @@ body.pyl-on{
           choices: [['on', 'On', 'Five levels of bigger money. Stop after any level and keep it, or reach $500,000 for $1,000,000.'], ['off', 'Off', 'The game ends after round two.']] }
       ],
       start: 'Start the show',
-      onStart: start
+      onStart: function (cfg) {
+        if (cfg.mode === 'online') {   // Play online's review: Open the table, or Find a table to join
+          NETOPTS = cfg.options || {};
+          var me = (cfg.players[0] && cfg.players[0].name) || '';
+          if (cfg.net === 'find') NET.lobby(); else NET.host(me);
+          return;
+        }
+        start(cfg);
+      }
     });
     loadQuestions();
   }
@@ -891,7 +908,7 @@ body.pyl-on{
     // three podiums, like the show: with two people, a computer contestant takes the third
     if (players.length < 3) Kit.cpuNames(3 - players.length, players.map(function (p) { return p.name; })).forEach(function (n) { players.push({ name: n, cpu: true }); });
     S = {
-      v: 1, started: Date.now(), mode: cfg.mode,
+      v: 1, started: Date.now(), mode: cfg.mode, net: cfg.mode === 'online',
       cfg: { mode: cfg.mode, players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu, color: p.color }; }), options: o },
       opts: { earn: o.earn || 'q4', level: o.level || 'mixed', bonus: o.bonus === 'off' ? 'off' : 'on' },
       players: players.map(function (p, i) {
@@ -901,7 +918,9 @@ body.pyl-on{
       log: { best: null, prizes: [], wh: [], outs: [], passes: [], dbl: [] }
     };
     if (Kit.gameStart) Kit.gameStart();
+    if (S.net) S.players.forEach(function (p, i) { p.dev = cfg.players[i] && cfg.players[i].dev || null; });
     buildShell();
+    netInit();
     beginRound(1);
   }
 
@@ -946,8 +965,17 @@ body.pyl-on{
     shell = { stage: stage, bwrap: bwrap, board: board, bulbs: bulbs, sbulbs: sbulbs, sqs: sqs, screen: screen, scr: scr, st: st, fx: fx, pods: podEls, hint: hint, dome: dome, passb: passb, ctl: ctl, buzz: buzz, pan: null };
     T.show = []; T.next = []; T.lit = -1;
     for (var k = 0; k < 18; k++) { T.show.push(rnd(3)); T.next.push(0); }
+    // online: a guest's taps on the host's buttons go to the host
+    bwrap.addEventListener('click', function (e) {
+      if (!GUEST()) return;
+      var b = e.target.closest && e.target.closest('[data-act]');
+      if (!b || b.disabled) return;
+      NET.send({ t: 'act', a: b.getAttribute('data-act') }); Kit.sfx('tap');
+      b.setAttribute('data-off', '1'); b.disabled = true; b.classList.add('pick');
+    });
     fit();
     startTicker();
+    netShell();
   }
   function svgEl(cls) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('class', cls); s.setAttribute('aria-hidden', 'true'); return s; }
   // chaser bulbs around a rounded rectangle, clockwise
@@ -974,7 +1002,7 @@ body.pyl-on{
       if (bh > bw * 0.95) bh = bw * 0.95;
       if (bh < bw * 0.76) bw = bh / 0.76;
     } else {
-      var reserve = W >= 600 ? 340 : 256;
+      var reserve = W >= 600 ? 372 : 256;   // (the podiums and the buzzer or SPIN button below the board, whole)
       bw = W; bh = Math.min(H - reserve, bw * 1.3);
       if (bh < bw * 0.86) { bh = Math.max(bh, 300); bw = Math.min(W, bh / 0.86); }
     }
@@ -1002,12 +1030,12 @@ body.pyl-on{
     f.innerHTML = slideHTML(S.board[i][T.show[i]], i);
     if (anim) f.firstChild.classList.add('in');
   }
-  function paintBoard() { for (var i = 0; i < 18; i++) paintSq(i, false); }
+  function paintBoard() { bc('pbd'); for (var i = 0; i < 18; i++) paintSq(i, false); }
   function period() { return (T.running ? 650 + rnd(800) : 1500 + rnd(1700)) / speed; }
   function startTicker() {
     clearInterval(T.tick);
     T.tick = setInterval(function () {
-      if (!S || !shell || !S.board || T.frozen || document.hidden) return;
+      if (!S || !shell || !S.board || T.frozen || document.hidden || S.net) return;   // (online, the board follows the shared timeline)
       if (S.phase !== 'board' && S.phase !== 'intro') return;
       var now = performance.now();
       for (var i = 0; i < 18; i++) {
@@ -1016,14 +1044,15 @@ body.pyl-on{
       }
     }, 70);
   }
-  function setLit(i) {
+  function setLit(i) { bc('lit', [i, T.show]); setLit0(i); }
+  function setLit0(i) {
     if (!shell) return;
     if (T.lit >= 0 && shell.sqs[T.lit]) shell.sqs[T.lit].classList.remove('lit');
     T.lit = i;
     if (i >= 0) shell.sqs[i].classList.add('lit');
   }
   function hopLoop() {
-    if (!T.running) return;
+    if (!T.running || (S && S.net)) return;
     var j; do { j = rnd(18); } while (j === T.lit);
     setLit(j); SND.hop();
     T.hopT = setTimeout(hopLoop, (105 + rnd(85)) / speed);
@@ -1036,6 +1065,7 @@ body.pyl-on{
   }
   function renderPods(gain) {
     if (!shell) return;
+    bc('rp', [gain]);
     S.players.forEach(function (p, i) {
       var d = shell.pods[i]; if (!d) return;
       d.n.textContent = p.name;
@@ -1051,7 +1081,7 @@ body.pyl-on{
     });
   }
   function renderScreen(msg) {
-    if (!shell) return;
+    if (!shell || GUEST()) return;   // (a guest's screen is the host's, copied)
     var p = cur(), st = shell.st;
     if (p && S.phase === 'bonus' && S.bonus) return renderBonusScreen(msg);
     if (!p || S.phase !== 'board') {
@@ -1096,21 +1126,22 @@ body.pyl-on{
   }
   function renderCtl() {
     if (!shell) return;
+    bc('rc');
     var p = cur(), dome = shell.dome, cap = dome.firstChild, pb = shell.passb, hint = shell.hint;
     var bonus = S.phase === 'bonus';
-    var human = p && !p.cpu && (S.phase === 'board' || bonus);
+    var human = p && mine(S.cur) && (S.phase === 'board' || bonus);
     var lbl = ui.await === 'stop' || (T.running) ? 'STOP' : 'SPIN';
     cap.firstChild.textContent = lbl;
     cap.lastChild.textContent = lbl === 'STOP' ? 'Big bucks!' : 'Press your luck';
     dome.setAttribute('aria-label', lbl === 'STOP' ? 'Stop the board' : 'Press your luck: spin');
-    dome.disabled = !(human && (ui.await === 'decide' || ui.await === 'stop'));
+    dome.disabled = !(human && (ui.await === 'decide' || ui.await === 'stop') && !(ui.await === 'decide' && busyNow()));
     dome.classList.toggle('go', ui.await === 'stop');
     hint.style.setProperty('--pc', p ? pc(S.cur) : '#ffd23d');
     var rec = p ? receivers(p) : [];
     var noOne = p && !p.out && p.passed === 0 && p.earned > 0 && !rec.length;
     if (bonus && p) {
       pb.classList.add('hide');
-      hint.innerHTML = '<b>' + esc(p.name) + '</b>' + (ui.await === 'stop' || T.running ? (p.cpu ? 'Big bucks, no Whammies…' : 'Tap STOP!')
+      hint.innerHTML = '<b>' + esc(p.name) + '</b>' + (ui.await === 'stop' || T.running ? (!mine(S.cur) ? 'Big bucks, no Whammies…' : 'Tap STOP!')
         : shell.pan || !S.bonus.level ? 'Bonus round' : plural(S.bonus.earned, 'spin') + ' left in level ' + S.bonus.level);
       return;
     }
@@ -1123,22 +1154,27 @@ body.pyl-on{
       pb.firstChild.textContent = 'Pass';
       pb.lastChild.textContent = p.passed ? 'Passed spins must be played' : p.earned ? plural(p.earned, 'spin') + (rec.length === 1 ? ' to ' + S.players[rec[0]].name : ': tied, you pick') : 'No spins to pass';
     }
-    pb.disabled = !(human && ui.await === 'decide' && (canPass(p) || noOne));
+    pb.disabled = !(human && ui.await === 'decide' && (canPass(p) || noOne) && !busyNow());
     var h = '<b>' + esc(p.name) + '</b>';
-    if (p.cpu) h += ui.await === 'stop' || T.running ? 'Big bucks, no Whammies…' : 'is deciding…';
+    if (!mine(S.cur)) h += ui.await === 'stop' || T.running ? 'Big bucks, no Whammies…' : 'is deciding…';
     else if (ui.await === 'stop') h += 'Tap STOP!';
     else if (ui.await === 'decide') h += p.passed ? 'Play your passed ' + (p.passed === 1 ? 'spin' : 'spins') : canPass(p) ? 'Press your luck or pass?' : 'Press your luck!';
     else h += T.frozen ? 'Big bucks…' : '';
     hint.innerHTML = h;
   }
   function renderAll(msg) { renderPods(); renderScreen(msg); renderCtl(); }
+  var fxK = 0;
   function fxShow(html, cls) {
     if (!shell) return null;
     shell.fx.innerHTML = '';
-    var n = el('div', { class: cls || 'fx-big', html: html });
+    var n = el('div', { class: cls || 'fx-big', html: html, 'data-k': String(++fxK) });
     shell.fx.appendChild(n); shell.st.classList.add('hide');
     return n;
   }
+  // online: the Whammy's scene on every device, drawn for each one's own screen
+  function whScene(v, lost, cap) { bc('wo', ['s', v, lost, cap]); return whammyOver(ART.scene(v, lost, { dir: shell.stage.classList.contains('land') ? 'rt' : 'dn' }), cap); }
+  function whOut(name, cap) { bc('wo', ['o', name, '', cap]); return whammyOver(ART.outScene(name), cap, 'out'); }
+  function dropOv(ov) { bc('wox'); if (ov) ov.remove(); }
   function whammyOver(svg, cap, cls) {
     var ov = el('div', { class: 'wover' + (cls ? ' ' + cls : ''), html: svg + '<div class="wcap">' + cap + '</div>' });
     shell.bwrap.appendChild(ov);
@@ -1241,17 +1277,18 @@ body.pyl-on{
   // ── Panels over the board ─────────────────────────────────────────────────
   function panel(cls, kids) {
     closePanel();
-    var pan = el('div', { class: 'pan' }), b = svgEl('bulbs'); pan.appendChild(b);
+    var pan = el('div', { class: 'pan', 'data-k': String(++panK) }), b = svgEl('bulbs'); pan.appendChild(b);
     var inner = el('div', { class: 'pan-in ' + (cls || '') }, kids);
     pan.appendChild(inner);
     shell.bwrap.appendChild(pan); shell.pan = pan;
+    watchPan();
     if (S && S.phase === 'bonus') renderCtl();
     var w = shell.bwrap.clientWidth, h = shell.bwrap.clientHeight, pad = parseFloat(shell.stage.style.getPropertyValue('--pad')) || 12;
     drawBulbs(b, w, h, pad / 2, pad * 1.15, Math.max(1.8, pad * 0.2));
     inner.classList.toggle('wide', w >= 560);
     return inner;
   }
-  function closePanel() { if (shell && shell.pan) { shell.pan.remove(); shell.pan = null; } }
+  function closePanel() { if (shell && shell.pan) { shell.pan.remove(); shell.pan = null; panSent = ''; bc('pan', [null]); } }
 
   // ── Rounds ────────────────────────────────────────────────────────────────
   function beginRound(r) {
@@ -1266,10 +1303,10 @@ body.pyl-on{
     var kids = r === 1 ? [el('div', { class: 'logo', html: '<span>Press</span><span>your</span><span>luck</span>' }), el('div', { class: 'rnd', text: NAMES[r] })]
       : [el('div', { class: 'rnd big', text: NAMES[r] }), standings(), el('p', { html: 'Bigger money, bigger prizes and <b>more Whammies</b>. Banks carry over.' })];
     kids.push(el('p', { html: quiz ? (r === 1 ? n + ' toss-up questions. Buzz in first and get it right: <b>3 spins</b>. Everyone else picks from three: <b>1 spin</b>.' : n + ' more toss-ups for your spins.') : 'Everyone starts with <b>5 spins</b>.' }));
-    kids.push(el('button', { type: 'button', class: 'gobtn', text: quiz ? 'Toss-up questions' : 'Light up the board', onclick: function () {
+    kids.push(actBtn('go', 'any', { class: 'gobtn', text: quiz ? 'Toss-up questions' : 'Light up the board' }, function () {
       if (ui.busy) return; ui.busy = true; Kit.sfx('tap');
       run(function () { return loadQuestions().then(function () { ui.busy = false; if (quiz) startQuiz(); else { active().forEach(function (p) { p.earned = 5; }); return startBoard(); } }); });
-    } }));
+    }));
     panel('intro', kids);
   }
   function standings() {
@@ -1338,7 +1375,8 @@ body.pyl-on{
     ]);
     renderPods(); updateBuzzers();
     SND.turn();
-    openBuzz();
+    // online, the question shows on every device at the same moment of the host's clock, a little ahead of now
+    openBuzz(S.net ? NET.now() + NET.lead() : 0);
   }
   function setMsg(html, color) { if (Z && Z.ui.msg) { Z.ui.msg.innerHTML = html; Z.ui.msg.style.setProperty('--pc', color || '#fff'); } }
   function bulbs(frac, cls) {
@@ -1347,8 +1385,9 @@ body.pyl-on{
     u.bulbs.classList.toggle('ans', cls === 'ans');
     return off;
   }
-  function openBuzz() {
-    Z.phase = 'buzz'; Z.t0 = performance.now(); Z.lastOff = -1;
+  function openBuzz(at) {
+    Z.phase = 'buzz'; Z.t0 = S.net ? Math.max(at || 0, NET.now()) : performance.now(); Z.lastOff = -1;
+    if (at && shell.pan) { shell.pan.querySelector('.pan-in').setAttribute('data-show', String(Math.round(at))); holdQ(shell.pan); }
     Z.ui.opts.innerHTML = ''; Z.ui.ql.className = 'ql';
     setMsg(Z.used ? 'Still open: buzz in!' : 'Buzz in when you know it!');
     updateBuzzers(); renderPods();
@@ -1356,26 +1395,40 @@ body.pyl-on{
   }
   function tickBuzz() {
     if (!Z || Z.e !== epoch || Z.phase !== 'buzz') { if (Z) clearInterval(Z.timer); return; }
-    var t = Z.used + (performance.now() - Z.t0) * speed, W = buzzWindow();
+    var t = Z.used + Math.max(0, (clk() - Z.t0) * speed), W = buzzWindow();
     var off = bulbs(t / W);
     if (off !== Z.lastOff && Z.lastOff >= 0 && off < NB) SND.bulbOff();
     Z.lastOff = off;
     Z.ui.ql.textContent = 'Buzz in: 3 spins · ' + Math.max(0, Math.ceil((W - t) / 1000));
-    for (var i in Z.plans) { var pl = Z.plans[i]; if (pl.at != null && t >= pl.at && eligible(+i)) { buzzIn(+i); return; } }
-    if (t >= W) { clearInterval(Z.timer); run(noBuzz); }
+    for (var i in Z.plans) {
+      var pl = Z.plans[i];
+      if (pl.at != null && t >= pl.at && eligible(+i)) {
+        // online, a computer's buzz is judged with everyone's, at the very moment it planned
+        if (S.net) { if (!pl.rang) { pl.rang = 1; qPress(+i, Z.t0 + (pl.at - Z.used) / speed); } continue; }
+        buzzIn(+i); return;
+      }
+    }
+    if (t >= W && !(qJ && qJ.open)) { clearInterval(Z.timer); run(noBuzz); }
   }
+  function clk() { return S && S.net ? NET.now() : performance.now(); }
   // someone hit their buzzer
-  function buzzIn(i) {
+  function buzzIn(i, at) {
+    if (GUEST()) {   // pressed on this device, at this moment of the host's clock
+      if (U.zp !== 'buzz' || !eligible(i) || NET.now() < (U.zt || 0)) return;
+      NET.send({ t: 'qbuzz', at: NET.now() }); Kit.haptic('heavy');
+      return;
+    }
+    if (S.net && at == null) { if (Z && Z.phase === 'buzz' && clk() >= Z.t0) qPress(i, NET.now()); return; }
     if (!Z || Z.phase !== 'buzz' || !eligible(i)) return;
     clearInterval(Z.timer);
-    Z.used += (performance.now() - Z.t0) * speed; Z.phase = 'answer';
+    Z.used += Math.max(0, ((at != null ? at : performance.now()) - Z.t0) * speed); Z.phase = 'answer';
     var cu = S.quiz.cur, p = S.players[i], q = Z.q; cu.buzz = i; S.cur = i;
-    SND.buzz(i); Kit.haptic('heavy');
+    SND.buzz(i); hap('heavy', i);
     updateBuzzers(); renderPods();
-    setMsg('<b>' + esc(p.name) + '</b> buzzed in!' + (p.cpu ? '' : ' Pick your answer.'), pc(i));
+    setMsg('<b>' + esc(p.name) + '</b> buzzed in!' + (p.cpu || S.net ? '' : ' Pick your answer.'), pc(i));
     Z.ui.ql.className = 'ql ans';
     var btns = cu.ch.map(function (txt, k) {
-      return el('button', { type: 'button', html: '<b>' + 'ABCD'.charAt(k) + '</b><span>' + esc(txt) + '</span>', disabled: p.cpu, onclick: function () { if (!p.cpu) buzzAnswer(k); } });
+      return actBtn('ans' + k, i, { html: '<b>' + 'ABCD'.charAt(k) + '</b><span>' + esc(txt) + '</span>' }, function () { if (!S.players[i].cpu) buzzAnswer(k); }, p.cpu);
     });
     Z.ui.opts.innerHTML = ''; btns.forEach(function (b) { Z.ui.opts.appendChild(b); }); Z.btns = btns;
     Z.a0 = performance.now();
@@ -1397,7 +1450,7 @@ body.pyl-on{
   async function buzzTimeout() {
     var cu = S.quiz.cur, i = cu.buzz; if (i < 0) return;
     cu.locked.push(i); cu.buzz = -1; S.cur = -1; Z.phase = 'lock';
-    SND.wrong(); Kit.haptic('error');
+    SND.wrong(); hap('error', i);
     setMsg('<b>' + esc(S.players[i].name) + '</b> ran out of time: locked out', pc(i));
     Z.ui.opts.innerHTML = '';
     updateBuzzers(); renderPods(); save();
@@ -1411,7 +1464,7 @@ body.pyl-on{
     clearInterval(Z.timer); Z.phase = 'locked';
     var cu = S.quiz.cur, q = Z.q, i = cu.buzz;
     cu.bAns = k; cu.aw[i] = cu.ch[k] === q.c ? 3 : 0;
-    Z.btns.forEach(function (b, j) { b.disabled = true; b.classList.toggle('pick', j === k); b.classList.toggle('dim', j !== k); });
+    Z.btns.forEach(function (b, j) { b.disabled = true; b.setAttribute('data-off', '1'); b.classList.toggle('pick', j === k); b.classList.toggle('dim', j !== k); });
     SND.lock();
     setMsg('<b>' + esc(S.players[i].name) + '</b> says “' + esc(cu.ch[k]) + '”', pc(i));
     var wrong = shuffle(cu.ch.filter(function (x) { return x !== q.c && x !== cu.ch[k]; }));
@@ -1442,6 +1495,7 @@ body.pyl-on{
       cu.picks[i] = pl.know ? cu.mc.indexOf(q.c) : rnd(3);
     });
     var hum = pickers.filter(function (i) { return !S.players[i].cpu; }), priv = hum.length >= 2;
+    if (S.net) return netPicks(hum);
     for (var n = 0; n < hum.length; n++) {
       var h = hum[n];
       if (priv) {
@@ -1458,10 +1512,10 @@ body.pyl-on{
   }
   function humanPick(h, priv) {
     var cu = S.quiz.cur, p = S.players[h];
-    setMsg('<b>' + esc(p.name) + '</b>: pick one of these three' + (cu.nob ? '' : ' for 1 spin'), pc(h));
+    if (!S.net) setMsg('<b>' + esc(p.name) + '</b>: pick one of these three' + (cu.nob ? '' : ' for 1 spin'), pc(h));
     return new Promise(function (res) {
       var btns = cu.mc.map(function (txt, k) {
-        return el('button', { type: 'button', html: '<b>' + (k + 1) + '</b><span>' + esc(txt) + '</span>', onclick: function () { done(k); } });
+        return el('button', { type: 'button', 'data-pick': String(k), html: '<b>' + (k + 1) + '</b><span>' + esc(txt) + '</span>', onclick: function () { done(k); } });
       });
       Z.ui.opts.innerHTML = ''; btns.forEach(function (b) { Z.ui.opts.appendChild(b); });
       Z.pick = { seat: h, done: done };
@@ -1485,6 +1539,7 @@ body.pyl-on{
       cu.done = true; save();
     }
     // the right answer lit (and a wrong buzz-in answer marked)
+    Z.ui.opts.removeAttribute('data-nm'); Z.pick = null; Z.mcw = null;
     Z.ui.opts.innerHTML = '';
     if (shell.pan) shell.pan.querySelector('.pan-in').classList.add('rev');
     cu.ch.forEach(function (txt, k) {
@@ -1507,18 +1562,19 @@ body.pyl-on{
     setMsg(cu.buzz >= 0 ? (cu.aw[cu.buzz] ? '<b>' + esc(P[cu.buzz].name) + '</b> got it!' : 'The answer is…') : 'The answer is…', cu.buzz >= 0 ? pc(cu.buzz) : '#fff');
     Z.ui.foot.textContent = q.e || '';
     Z.ui.bulbs.classList.add('allon'); Z.ui.ql.textContent = '';
-    if (gain) { SND.right(); if (gain === 3) setTimeout(function () { SND.spin(); }, 250); Kit.callout(P[best].name + ' +' + plural(gain, 'spin').toUpperCase(), pc(best)); Kit.haptic('success'); }
+    if (gain) { SND.right(); if (gain === 3) setTimeout(function () { SND.spin(); }, 250); callout(P[best].name + ' +' + plural(gain, 'spin').toUpperCase(), pc(best)); P.forEach(function (q, k) { if (cu.aw[k]) hap('success', k); }); }
     else SND.wrong();
     updateBuzzers(); renderPods();
     var last = S.quiz.i + 1 >= S.quiz.n, e = epoch;
-    Z.ui.foot.appendChild(el('button', { type: 'button', class: 'gobtn sm', text: last ? 'Spins earned' : 'Next question', onclick: function () { Kit.sfx('tap'); if (e === epoch) nextToss(); } }));
+    Z.ui.foot.appendChild(actBtn('next', 'any', { class: 'gobtn sm', text: last ? 'Spins earned' : 'Next question' }, function () { Kit.sfx('tap'); if (e === epoch && Z && Z.phase === 'reveal') nextToss(); }));
     sleep(6000).then(function () { if (e === epoch && S.phase === 'quiz' && Z && Z.phase === 'reveal' && S.quiz.cur === cu) nextToss(); }).catch(function () {});
   }
   // the buzzers: one big button per person, in their colour, along the bottom edge (multi-touch: everyone can mash)
   function buildBuzzers() {
     if (!shell) return;
+    bc('bb');
     var box = shell.buzz; box.innerHTML = '';
-    var hum = S.players.map(function (p, i) { return i; }).filter(function (i) { return !S.players[i].cpu && !S.players[i].out; });
+    var hum = S.players.map(function (p, i) { return i; }).filter(function (i) { return mine(i) && !S.players[i].out; });
     box.className = 'buzzers n' + hum.length;
     hum.forEach(function (i, k) {
       var b = el('button', { type: 'button', class: 'bz', 'data-seat': i, style: { '--pc': pc(i) }, 'aria-label': S.players[i].name + ': buzz in' }, [
@@ -1534,18 +1590,19 @@ body.pyl-on{
   }
   function updateBuzzers() {
     if (!shell) return;
+    bc('ub');
     var on = S && S.phase === 'quiz';
     shell.ctl.style.display = on ? 'none' : '';
     shell.buzz.style.display = on ? '' : 'none';
     if (!on) return;
     if (!shell.buzz.childElementCount) buildBuzzers();
-    var cu = S.quiz && S.quiz.cur;
+    var cu = S.quiz && S.quiz.cur, zp = zPhase();
     Array.prototype.forEach.call(shell.buzz.children, function (b) {
       var i = +b.getAttribute('data-seat');
-      b.classList.toggle('open', !!Z && Z.phase === 'buzz' && eligible(i));
+      b.classList.toggle('open', zp === 'buzz' && eligible(i));
       b.classList.toggle('won', !!cu && cu.buzz === i);
       b.classList.toggle('lock', !!cu && cu.locked.indexOf(i) >= 0);
-      b.classList.toggle('dim', !Z || (Z.phase !== 'buzz' && !(cu && cu.buzz === i)));
+      b.classList.toggle('dim', !zp || (zp !== 'buzz' && !(cu && cu.buzz === i)));
     });
   }
   function quizDone() {
@@ -1562,7 +1619,7 @@ body.pyl-on{
     SND.round(S.round);
     panel('sum', [el('div', { class: 'rnd', text: 'Spins earned' }), box, note ? el('p', { text: note }) : null,
       el('p', { html: 'Fewest spins goes first. <b>Big bucks, no Whammies!</b>' }),
-      el('button', { type: 'button', class: 'gobtn', text: 'Light up the board', onclick: function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return startBoard(); }); } })]);
+      actBtn('go', 'any', { class: 'gobtn', text: 'Light up the board' }, function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return startBoard(); }); })]);
   }
 
   // ── The board round ───────────────────────────────────────────────────────
@@ -1619,17 +1676,19 @@ body.pyl-on{
       return stopHere();
     }
   }
-  function pressDome() { if (!shell) return; shell.dome.classList.add('press'); setTimeout(function () { if (shell) shell.dome.classList.remove('press'); }, 160); }
+  function pressDome() { bc('dome'); pressDome0(); }
+  function pressDome0() { if (!shell) return; shell.dome.classList.add('press'); setTimeout(function () { if (shell) shell.dome.classList.remove('press'); }, 160); }
   async function spinBoard() {
     var p = cur(), a = acc(); if (!p || !a || !spins(a)) return;
     ui.await = null; S.undo = null;
-    T.running = true; T.frozen = false;
+    T.running = true; T.frozen = false; T.spinAt = S.net ? NET.now() + NET.lead() : 0;
     shell.board.classList.add('run'); shell.board.classList.remove('dim');
     for (var i = 0; i < 18; i++) T.next[i] = performance.now() + rnd(300);
+    if (S.net) { tlTick(); }
     if (!p.cpu) SND.chant(true);
     renderScreen('chant'); renderCtl();
     hopLoop();
-    Kit.haptic('light');
+    hap('light');
     if (p.cpu) {
       await sleep(1400 + rnd(2200));
       pressDome();
@@ -1656,14 +1715,17 @@ body.pyl-on{
     if (slot != null) { T.show[sq] = slot; paintSq(sq, false); }
     return sq;
   }
-  async function stopBoard() {
+  // at: online, the moment the player pressed STOP (the host's clock); the board stops as it stood then.
+  // seen: the square their own board had lit at that moment
+  async function stopBoard(at, seen) {
     if (!T.running) return;
     ui.await = null;
+    if (S.net) tlStop(at == null ? NET.now() : Math.max(T.spinAt || 0, at), seen);
     T.running = false; clearTimeout(T.hopT); T.frozen = true; SND.chant(false);
     var a = acc(), i = takeForce(T.lit < 0 ? rnd(18) : T.lit, false);
     setLit(i);
     shell.board.classList.remove('run'); shell.board.classList.add('dim');
-    SND.stop(); Kit.haptic('heavy');
+    SND.stop(); hap('heavy');
     renderCtl();
     // the spin is used now; passed spins are played first
     var fromPassed = a.passed > 0;
@@ -1688,7 +1750,7 @@ body.pyl-on{
     if ((sl.t !== 'move' && sl.t !== 'back' && sl.t !== 'big') || chain >= 4) return { i: i, sl: sl };
     var to = sl.t === 'move' ? (i + 1) % 18 : sl.t === 'back' ? (i + 16) % 18 : TOP;
     if (sl.t === 'big') {
-      fxShow('<b>Big Bucks!</b><small>To the top of the board</small>', 'fx-big sp gold'); SND.bigBucks(); Kit.haptic('medium');
+      fxShow('<b>Big Bucks!</b><small>To the top of the board</small>', 'fx-big sp gold'); SND.bigBucks(); hap('medium');
       await sleep(700);
       var k = i; while (k !== TOP) { k = (k + 1) % 18; setLit(k); SND.hop(); await sleep(55); }
     } else {
@@ -1718,23 +1780,23 @@ body.pyl-on{
       if (!bonus) noteBest(pi, sl.v, sl);
       fxShow('<b>+' + money(sl.v) + '</b>' + (sl.s ? '<i>+ One spin</i>' : ''));
       SND.cash(sl.v); if (sl.s) setTimeout(function () { SND.spin(); }, 380);
-      Kit.haptic('success');
+      hap('success');
       renderPods(pi); await sleep(1700);
     } else if (sl.t === 'prize') {
       a.bank += sl.v; if (sl.s) a.earned++;
       a.prizes.push({ k: sl.k, n: sl.n, v: sl.v });
       if (!bonus) { S.log.prizes.push({ p: pi, n: sl.n, v: sl.v, r: S.round }); noteBest(pi, sl.v, sl); }
       fxShow('<div class="win">' + ART.prize(sl.k) + '</div><div class="nm">' + esc(sl.n) + '</div><div class="vl">' + money(sl.v) + '</div>' + (sl.s ? '<i>+ One spin</i>' : ''), 'przc');
-      SND.prize(); Kit.haptic('success');
+      SND.prize(); hap('success');
       // a prize can only be won once: a cash value takes its place on the board
       S.board[i][T.show[i]] = c(bonus ? 2500 * BLEVELS[S.bonus.level].mult : S.round === 1 ? 1000 : 2500, sl.s);
       renderPods(pi); await sleep(2400);
-      paintSq(i, true);
+      paintSq(i, true); bc('ps', [i]);
     } else if (sl.t === 'dbl') {
       var before = a.bank; a.bank *= 2;
       if (!bonus) { noteBest(pi, before, sl); S.log.dbl.push({ p: pi, from: before }); }
       fxShow('<b>Double<br>your $$</b><small>' + money(before) + ' becomes ' + money(a.bank) + '</small>', 'fx-big sp gold');
-      SND.doubled(); Kit.haptic('success'); shell.board.classList.add('flash');
+      SND.doubled(); hap('success'); shell.board.classList.add('flash');
       renderPods(pi); await sleep(2000); shell.board.classList.remove('flash');
     } else if (sl.t === 'wh') {
       var lost = a.bank, lostPrizes = a.prizes.length;
@@ -1746,21 +1808,21 @@ body.pyl-on{
       shell.board.classList.add('red');
       var cap = lost > 0 ? '<b>&minus;' + money(lost) + '</b>' + esc(p.name) + (bonus ? ' loses the bonus money' : ' loses it all') + (lostPrizes ? '<small>' + plural(lostPrizes, 'prize') + ' gone too</small>' : '')
         : '<b>Whammy!</b>' + esc(p.name) + (a.wh < 4 ? '<small>' + (a.wh === 3 ? 'Three Whammies. One more and ' + (bonus ? 'the bonus is over' : 'you\'re out') : plural(a.wh, 'Whammy').replace('Whammys', 'Whammies') + ' so far') + '</small>' : '');
-      var ov = whammyOver(ART.scene(v, money(lost), { dir: shell.stage.classList.contains('land') ? 'rt' : 'dn' }), cap);
-      if (onPod) podWhammy(v, pi, money(lost));
-      SND.whammy(v); Kit.haptic('error');
+      var ov = whScene(v, money(lost), cap);
+      if (onPod) { bc('pw', [v, pi, money(lost)]); podWhammy(v, pi, money(lost)); }
+      SND.whammy(v); hap('error');
       renderPods(); await sleep(3600);
       if (a.wh >= 4) {
         a.out = true; a.earned = 0; a.passed = 0;
         if (!bonus) S.log.outs.push({ p: pi, r: S.round });
-        ov.remove();
-        ov = whammyOver(ART.outScene(p.name), bonus ? '<b>Game over!</b>' + esc(p.name) + '<small>Four Whammies end the bonus round</small>' : '<b>Out!</b>' + esc(p.name) + '<small>is out of the game</small>', 'out');
+        dropOv(ov);
+        ov = whOut(p.name, bonus ? '<b>Game over!</b>' + esc(p.name) + '<small>Four Whammies end the bonus round</small>' : '<b>Out!</b>' + esc(p.name) + '<small>is out of the game</small>');
         SND.out4();
         renderPods(); await sleep(3000);
       }
-      ov.remove();
+      dropOv(ov);
       shell.board.classList.remove('red');
-      if (!bonus && !p.out && fromPassed && spins(p) && p.earned && !p.cpu) {
+      if (!bonus && !p.out && fromPassed && spins(p) && p.earned && mine(pi)) {
         fxShow('<b>' + plural(p.wh, 'Whammy').replace('Whammys', 'Whammies') + '</b><small>Your leftover passed spins are yours now. You can pass them.</small>', 'fx-big red sp');
         await sleep(2000);
       }
@@ -1787,23 +1849,35 @@ body.pyl-on{
     return beginTurn(n);
   }
   function passTap() {
-    var p = cur(); if (!p || p.cpu || ui.await !== 'decide' || ui.busy) return;
+    var p = cur(); if (!p || !mine(S.cur) || ui.await !== 'decide' || busyNow()) return;
+    if (GUEST()) {
+      var rec = receivers(p);
+      if (canPass(p) && rec.length > 1) { pickTo(rec).then(function (to) { if (to >= 0) { NET.send({ t: 'pass', to: to }); pend(); renderCtl(); } }); return; }
+      if (canPass(p) || (p.passed === 0 && p.earned > 0 && !rec.length)) { NET.send({ t: 'pass' }); pend(); renderCtl(); }
+      return;
+    }
     if (canPass(p)) run(doPass);
     else if (p.passed === 0 && p.earned > 0 && !receivers(p).length) run(stopHere);
   }
-  async function doPass() {
+  // tied for the lead: the passer chooses who gets the spins
+  function pickTo(rec) {
+    return new Promise(function (res) {
+      var box = el('div', { class: 'k-list' }), done = false;
+      var s = Kit.sheet({ title: 'Pass to who?', html: '<p class="muted">They\'re tied for the lead, so you choose.</p>', node: box, onCancel: function () { if (!done) res(-1); } });
+      rec.forEach(function (j) { box.appendChild(el('button', { type: 'button', onclick: function () { done = true; s.close(); res(j); } }, [el('span', { class: 'lbl' }, [el('span', { text: S.players[j].name + ' · ' + money(S.players[j].bank) })])])); });
+    });
+  }
+  // to: online, who a guest chose when the lead is tied
+  async function doPass(to0) {
     var p = cur(), rec = receivers(p);
     if (!canPass(p)) return;
     ui.await = null; renderCtl();
     var to = rec[0];
     if (rec.length > 1) {
-      if (p.cpu) to = rec[rnd(rec.length)];
+      if (to0 != null && rec.indexOf(to0) >= 0) to = to0;
+      else if (p.cpu || !mine(S.cur)) to = rec[rnd(rec.length)];
       else {
-        to = await new Promise(function (res) {
-          var box = el('div', { class: 'k-list' });
-          var s = Kit.sheet({ title: 'Pass to who?', html: '<p class="muted">They\'re tied for the lead, so you choose.</p>', node: box, onCancel: function () { res(-1); } });
-          rec.forEach(function (j) { box.appendChild(el('button', { type: 'button', onclick: function () { s.close(); res(j); } }, [el('span', { class: 'lbl' }, [el('span', { text: S.players[j].name + ' · ' + money(S.players[j].bank) })])])); });
-        });
+        to = await pickTo(rec);
         if (to < 0) { ui.await = 'decide'; renderCtl(); return; }
       }
     }
@@ -1811,7 +1885,7 @@ body.pyl-on{
     var n = p.earned, q = S.players[to];
     p.earned = 0; q.passed += n;
     S.log.passes.push({ f: S.cur, t: to, n: n, r: S.round });
-    SND.pass(); Kit.haptic('medium');
+    SND.pass(); hap('medium');
     renderPods();
     fxShow('<b>Pass!</b><small>' + esc(p.name) + ' passes ' + plural(n, 'spin') + ' to ' + esc(q.name) + '</small>', 'fx-big sp gold');
     save();
@@ -1829,20 +1903,29 @@ body.pyl-on{
   }
   function domeTap() {
     if (!S || !shell || (S.phase !== 'board' && S.phase !== 'bonus') || ui.busy) return;
-    var p = cur(); if (!p || p.cpu) return;
-    if (ui.await === 'stop') { ui.await = null; pressDome(); run(stopBoard); }
+    var p = cur(); if (!p || !mine(S.cur)) return;
+    if (GUEST()) {
+      // STOP: the board stops on this device at once, as it stood at this moment, and the host stops it there too
+      if (ui.await === 'stop') {
+        var at = NET.now(); if (at < (U.sa || 0) || T.lit < 0) return;   // (the light hasn't started yet)
+        TL.hold = at; ui.await = null; STOPS.push({ at: at, lit: T.lit, here: 1 }); pressDome0(); NET.send({ t: 'stop', at: at, lit: T.lit }); Kit.haptic('heavy'); renderCtl();
+      }
+      else if (ui.await === 'decide' && !busyNow()) { pressDome0(); Kit.sfx('tap'); NET.send({ t: 'spin' }); pend(); renderCtl(); }
+      return;
+    }
+    if (ui.await === 'stop') { if (S.net && NET.now() < (T.spinAt || 0)) return; ui.await = null; pressDome(); run(stopBoard); }
     else if (ui.await === 'decide') { ui.await = null; Kit.sfx('tap'); run(spinBoard); }
   }
   document.addEventListener('keydown', function (e) {
     if (!S || !shell || e.repeat || document.querySelector('.k-scrim, .k-win, .k-ho')) return;
-    if (S.phase === 'quiz' && Z) {
-      var k = e.key.toLowerCase(), hum = S.players.map(function (p, i) { return i; }).filter(function (i) { return !S.players[i].cpu && !S.players[i].out; });
-      if (Z.phase === 'buzz') {
+    if (S.phase === 'quiz' && (Z || GUEST())) {
+      var k = e.key.toLowerCase(), hum = S.players.map(function (p, i) { return i; }).filter(function (i) { return mine(i) && !S.players[i].out; }), zp = zPhase();
+      if (zp === 'buzz') {
         var j = hum.length === 1 && (k === ' ' || k === 'enter') ? 0 : KEYS.indexOf(k);
         if (j >= 0 && hum[j] != null) { e.preventDefault(); buzzIn(hum[j]); }
-      } else if (Z.phase === 'answer' && !S.players[S.quiz.cur.buzz].cpu && /^[1-4a-d]$/.test(k) && !(hum.length > 1 && KEYS.indexOf(k) >= 0)) {
-        e.preventDefault(); buzzAnswer(/[1-4]/.test(k) ? +k - 1 : 'abcd'.indexOf(k));
-      } else if (Z.pick && /^[1-3]$/.test(k)) { e.preventDefault(); Z.pick.done(+k - 1); }
+      } else if (zp === 'answer' && mine(S.quiz.cur.buzz) && /^[1-4a-d]$/.test(k) && !(hum.length > 1 && KEYS.indexOf(k) >= 0)) {
+        e.preventDefault(); var ab = shell.pan && shell.pan.querySelector('[data-act="ans' + (/[1-4]/.test(k) ? +k - 1 : 'abcd'.indexOf(k)) + '"]'); if (ab && !ab.disabled) ab.click();
+      } else if (/^[1-3]$/.test(k)) { var pb2 = shell.pan && shell.pan.querySelectorAll('.qo [data-pick]')[+k - 1]; if (Z && Z.pick && !S.net) { e.preventDefault(); Z.pick.done(+k - 1); } else if (pb2 && !pb2.disabled) { e.preventDefault(); pb2.click(); } }
       return;
     }
     if (e.key === ' ' || e.key === 'Enter') { if ((S.phase === 'board' || S.phase === 'bonus') && (ui.await === 'stop' || ui.await === 'decide')) { e.preventDefault(); domeTap(); } }
@@ -1934,9 +2017,9 @@ body.pyl-on{
   function finishGame() {
     S.phase = 'over'; ui.await = null; S.cur = -1;
     var rank = rankList(), tie = rank[1] && rank[1].t === rank[0].t, B = S.bonus;
-    Kit.record(HKEY, {
-      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Family game') + (B && B.result ? ' · bonus round' : ''),
-      players: S.players.map(function (p, i) { return { name: p.name, score: home(i), cpu: p.cpu }; }),
+    var rec = {
+      started: S.started, mode: (S.net ? 'Online show' : S.mode === 'cpu' ? 'vs Computer' : 'Family game') + (B && B.result ? ' · bonus round' : ''),
+      players: S.players.map(function (p, i) { return { name: p.name, score: home(i), cpu: !!p.cpu && !p.dev }; }),
       winner: tie ? null : rank[0].name,
       rounds: { labels: S.rows.map(function (r) { return r.label; }), scores: S.rows.map(function (r) { return r.sc; }) },
       highlights: highlights(),
@@ -1945,10 +2028,13 @@ body.pyl-on{
         bonus: B && B.result ? { p: B.p, r: B.result, lv: B.level, k: B.kept || 0, w: B.wh } : null, st: (S.log.st || []).slice(-90).join(' ') },
       summary: (tie ? 'Tie' : rank[0].name + ' won') + ' · ' + money(rank[0].h),
       badge: money(rank[0].h)
-    });
+    };
+    Kit.record(HKEY, rec);
+    bc('rec', [rec]);   // (every podium's device keeps the show in its own past games)
     clearSave();
     closePanel(); shell.board.classList.remove('bonus');
     renderAll();
+    bc('res');
     showResults();
   }
   function showResults() {
@@ -1963,8 +2049,9 @@ body.pyl-on{
       title: tie ? "It's a tie!" : w.name === 'You' ? 'You win!' : w.name + ' wins!',
       sub: sub, rank: rank, lose: S.mode === 'cpu' && (w.cpu || tie),
       notes: highlights().slice(0, 4), notesTitle: 'Highlights',
-      again: function () { start(cfg); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      again: S.net ? function () { NET.backToTable(); } : function () { start(cfg); },
+      againLabel: S.net ? (NET.mode === 'host' ? 'Back to your table' : 'Back to the table') : undefined,
+      extra: S.net ? [{ label: 'Leave the table', onClick: function () { NET.leave(false); showSetup(); } }] : [{ label: 'Change players', onClick: showSetup }]
     });
   }
 
@@ -2015,7 +2102,7 @@ body.pyl-on{
     shell.board.classList.add('bonus');
     renderAll();
     SND.bonus();
-    var go = el('button', { type: 'button', class: 'gobtn', text: p.cpu ? 'Watch ' + p.name + ' play' : 'Face the Whammy', onclick: function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusLevel(); }); } });
+    var go = actBtn('go', B.p, { class: 'gobtn', text: p.cpu ? 'Watch ' + p.name + ' play' : !mine(B.p) ? p.name + ' faces the Whammy' : 'Face the Whammy' }, function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusLevel(); }); });
     panel('bonusin', [
       el('div', { class: 'rnd big', text: 'Bonus round' }),
       el('div', { class: 'vs', style: { '--pc': pc(B.p) }, html: '<b>' + esc(p.name) + '</b><i>vs</i><svg viewBox="-50 -48 100 80" aria-hidden="true">' + ART.head() + '</svg>' }),
@@ -2026,7 +2113,7 @@ body.pyl-on{
         '<li>A Whammy takes your bonus money (your ' + money(p.bank) + ' is safe). <b>Four Whammies</b> and it\'s over.</li>' }),
       go
     ]);
-    if (p.cpu) sleep(4500).then(function () { if (e === epoch && S.phase === 'bonus' && S.bonus.level === 0 && go.isConnected) go.click(); }).catch(function () {});
+    if (p.cpu) sleep(4500).then(function () { if (e === epoch && S.phase === 'bonus' && S.bonus.level === 0 && go.isConnected) fire(go); }).catch(function () {});
   }
   async function bonusLevel() {
     var B = S.bonus, p = S.players[B.p], e = epoch;
@@ -2035,7 +2122,7 @@ body.pyl-on{
     S.board = makeBonusBoard(B.level); B.earned = L.spins;
     save(); paintBoard(); renderAll();
     SND.round(B.level > 2 ? 2 : 1);
-    var go = el('button', { type: 'button', class: 'gobtn', text: 'Light it up', onclick: function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusPlay(); }); } });
+    var go = actBtn('go', B.p, { class: 'gobtn', text: 'Light it up' }, function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusPlay(); }); });
     panel('lvl', [
       el('div', { class: 'rnd', text: 'Bonus round' }),
       el('div', { class: 'rnd big', text: 'Level ' + B.level }),
@@ -2043,7 +2130,7 @@ body.pyl-on{
       B.bank ? el('p', { html: 'Bonus bank: <b>' + money(B.bank) + '</b>' }) : null,
       go
     ]);
-    if (p.cpu) sleep(2600).then(function () { if (e === epoch && go.isConnected) go.click(); }).catch(function () {});
+    if (p.cpu) sleep(2600).then(function () { if (e === epoch && go.isConnected) fire(go); }).catch(function () {});
   }
   async function bonusPlay() {
     closePanel();
@@ -2065,8 +2152,8 @@ body.pyl-on{
       return bonusLevel();
     }
     var n = BLEVELS[B.level + 1];
-    var keep = el('button', { type: 'button', class: 'gobtn', text: 'Stop and keep ' + money(B.bank), onclick: function () { if (ui.busy) return; Kit.sfx('tap'); run(function () { return bonusEnd('keep'); }); } });
-    var more = el('button', { type: 'button', class: 'gobtn alt', text: 'Press on to level ' + (B.level + 1), onclick: function () { if (ui.busy) return; Kit.sfx('tap'); run(bonusLevel); } });
+    var keep = actBtn('keep', B.p, { class: 'gobtn', text: 'Stop and keep ' + money(B.bank) }, function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusEnd('keep'); }); });
+    var more = actBtn('more', B.p, { class: 'gobtn alt', text: 'Press on to level ' + (B.level + 1) }, function () { if (ui.busy) return; ui.busy = true; Kit.sfx('tap'); run(function () { ui.busy = false; return bonusLevel(); }); });
     panel('lvl', [
       el('div', { class: 'rnd', text: 'End of level ' + B.level }),
       el('div', { class: 'bbank', text: money(B.bank) }),
@@ -2077,7 +2164,7 @@ body.pyl-on{
     if (p.cpu) {
       await sleep(2600);
       if (e !== epoch || !keep.isConnected) return;
-      (cpuBonusGo() ? more : keep).click();
+      fire(cpuBonusGo() ? more : keep);
     }
   }
   function cpuBonusGo() {
@@ -2094,11 +2181,11 @@ body.pyl-on{
     save();
     if (B.result === 'jackpot') {
       shell.board.classList.add('flash'); SND.finale(); setTimeout(function () { SND.bigBucks(); }, 1200);
-      Kit.confetti({ count: 260 }); Kit.haptic('success');
+      confetti(260); hap('success');
       fxShow('<b>Jackpot!</b><small>' + esc(p.name) + ' wins ' + money(JACKPOT) + '</small>', 'fx-big sp gold');
       await sleep(4200);
     } else if (B.result === 'keep') {
-      SND.prize(); Kit.haptic('success');
+      SND.prize(); hap('success');
       fxShow('<b>' + money(B.kept) + '</b><small>' + esc(p.name) + ' stops and keeps it</small>', 'fx-big sp gold');
       await sleep(2800);
     } else {
@@ -2111,6 +2198,7 @@ body.pyl-on{
 
   // ── Undo: take back a pass, until the next spin ───────────────────────────
   function undo() {
+    if (S && S.net) { Kit.toast('Moves can’t be taken back in an online show'); return; }
     if (!S || !S.undo || S.phase !== 'board' || T.running) {
       Kit.toast(S && S.phase === 'board' ? 'You can undo a pass until the next spin. Spins can\'t be taken back.' : 'Nothing to undo');
       return;
@@ -2123,6 +2211,370 @@ body.pyl-on{
     Kit.toast('Took back the pass');
     run(decide);
   }
+
+  // ═══ Online: a live show, each contestant at their own podium on their own device (liveshow.js) ═══════
+  // The host's device runs the show (the game above, and the computer at any podium nobody took) and sends
+  // what everyone sees and hears as it happens: sounds, the podiums, the big screen and the panels over the
+  // board (copied as they are drawn, LiveShow.morph keeping what stays the same), the Whammy, and a copy of the
+  // state when it has changed (pub: another contestant's secret pick from three stays out of it until the
+  // answer is shown). Each guest draws its own podium's controls: the buzzer, the answers when it buzzed in, its
+  // own picks from three, SPIN, STOP and Pass on its turn, and the bonus round's buttons when it's the
+  // champion. A tap goes to the host, which checks it and plays it (netIn).
+  // The Big Board is a timeline: the host writes where the light hops and what each square shows a little
+  // ahead of now (tlTick), every device plays it on the host's clock (tlRun), so every board shows the same
+  // square at the same moment. STOP counts from the moment it was pressed on the player's own device: the host
+  // stops the board as it stood then (tlStop), even if its own board has hopped on since. A toss-up's question
+  // shows everywhere at the same moment, and a buzz is judged by when it was pressed (qPress).
+  var NETOPTS = null, NET = null, U = {};
+  var EVQ = [], evT = 0, lastS = '', lastU = '', panK = 0, panSent = '', scrSent = '', ACT = {}, STOPS = [];
+  var TL = { q: [], log: [], gen: null, hold: 0, iv: 0, gv: 0 };
+  var obs = [], panObs = null, qJ = null, lastJudge = null, GOV = null;
+  function GUEST() { return !!(NET && NET.mode === 'guest'); }
+  function mine(i) { var p = S && S.players[i]; if (!p) return false; if (S.net && NET && NET.mode) return i === NET.seat; return !p.cpu; }
+  function zPhase() { return GUEST() ? U.zp || null : Z && Z.phase || null; }
+  function busyNow() { return ui.busy || (!!ui.pend && performance.now() - ui.pend < 1500); }
+  function pend() { ui.pend = performance.now(); clearTimeout(pend.t); pend.t = setTimeout(function () { ui.pend = 0; if (shell && S) renderCtl(); }, 1550); }
+  function hap(k, seat) { if (seat == null) seat = S ? S.cur : -1; bc('hap', [k, seat]); if (!S || !S.net || mine(seat)) Kit.haptic(k); }
+  function callout(t, c) { bc('co', [t, c]); Kit.callout(t, c); }
+  function confetti(n) { bc('cf', [n]); Kit.confetti({ count: n }); }
+  // a button a guest can press too: named, and marked with whose it is ('any', or a podium)
+  function actBtn(name, who, attrs, fn, off) {
+    var b = el('button', Object.assign({ type: 'button', 'data-act': name, 'data-who': String(who) }, attrs));
+    if (off) b.setAttribute('data-off', '1');
+    ACT[name] = { who: who, fn: fn, b: b };
+    b.addEventListener('click', function () { if (!b.disabled && !GUEST()) fn(); });
+    gateBtn(b);
+    return b;
+  }
+  function gateBtn(b) { var w = b.getAttribute('data-who'); b.disabled = b.hasAttribute('data-off') || !(!S || !S.net || w === 'any' || mine(+w)); }
+  function fire(b) { var a = b && ACT[b.getAttribute('data-act')]; if (a && a.b === b && b.isConnected) a.fn(); }
+  // what every device may know of the show right now
+  function pub() {
+    var cu = S.quiz && S.quiz.cur, B = S.bonus;
+    return { v: 1, net: 1, started: S.started, mode: S.mode, opts: S.opts, round: S.round, phase: S.phase, cur: S.cur, board: S.board, used: [], rows: S.rows, undo: null,
+      players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, seat: p.seat, bank: p.bank, earned: p.earned, passed: p.passed, wh: p.wh, out: p.out, prizes: p.prizes, rStart: p.rStart, away: !!p.away }; }),
+      quiz: S.quiz ? { n: S.quiz.n, i: S.quiz.i, cur: cu ? { id: cu.id, ch: cu.ch, locked: cu.locked, buzz: cu.buzz, bAns: cu.bAns, mc: cu.mc, nob: cu.nob, done: cu.done, picks: cu.done ? cu.picks : {}, aw: cu.done ? cu.aw : {} } : null } : null,
+      bonus: B ? { p: B.p, level: B.level, bank: B.bank, earned: B.earned, passed: B.passed, wh: B.wh, prizes: B.prizes, out: B.out, kept: B.kept, result: B.result, atEnd: B.atEnd, best: B.best } : null,
+      log: S.log };
+  }
+  function pubU() { return { aw: ui.await, b: ui.busy ? 1 : 0, run: T.running ? 1 : 0, fz: T.frozen ? 1 : 0, zp: Z && Z.phase || null, zt: Z ? Math.round(Z.t0) : 0, sa: Math.round(T.spinAt || 0) }; }
+  function bc(k, a) {
+    if (!NET || NET.mode !== 'host' || !S || !S.net) return;
+    var e = { k: k, a: a || [] }, s = JSON.stringify(pub()), u = JSON.stringify(pubU());
+    if (s !== lastS) { e.s = s; lastS = s; }
+    if (u !== lastU) { e.u = JSON.parse(u); lastU = u; }
+    EVQ.push(e);
+    if (!evT) evT = setTimeout(flushEv, 0);
+  }
+  function flushEv() { clearTimeout(evT); evT = 0; if (EVQ.length && NET && NET.mode === 'host') NET.cast({ t: 'ev', ev: EVQ }); EVQ = []; }
+  function panHTML() {
+    if (!shell || !shell.pan) return null;
+    var inn = shell.pan.querySelector('.pan-in').cloneNode(true); inn.classList.remove('wide');
+    // (what's drawn only for this device's own player, like a secret pick from three, stays here)
+    Array.prototype.forEach.call(inn.querySelectorAll('[data-nm]'), function (n) { n.innerHTML = ''; });
+    return { k: shell.pan.getAttribute('data-k'), html: inn.outerHTML };
+  }
+  function sqCls(i) { return shell.sqs[i].className.replace(/\s*\blit\b/, ''); }
+  function initMsg() {
+    flushEv(); lastS = JSON.stringify(pub()); lastU = JSON.stringify(pubU());
+    return { t: 'init', s: lastS, u: JSON.parse(lastU), show: T.show, lit: T.lit, bcl: shell.board.className, sq: shell.sqs.map(function (q, i) { return sqCls(i); }),
+      scr: shell.scr.innerHTML, pan: panHTML(), tl: TL.q };
+  }
+  function netInit() { if (S && S.net && NET && NET.mode === 'host') NET.cast(initMsg()); }
+  function netReset() {
+    clearInterval(TL.iv); clearInterval(TL.gv); TL.q = []; TL.log = []; TL.gen = null; TL.hold = 0;
+    obs.forEach(function (o) { o.disconnect(); }); obs = []; if (panObs) panObs.disconnect(); panObs = null;
+    EVQ = []; clearTimeout(evT); evT = 0; qJ = null; ACT = {}; panSent = ''; scrSent = ''; U = {}; GOV = null;
+  }
+  // the shell is up: online, the board's timeline starts, and the host watches what it draws to copy it
+  function netShell() {
+    if (!S || !S.net || !NET || !NET.mode) return;
+    clearInterval(TL.iv); TL.iv = setInterval(tlRun, 16);
+    if (NET.mode !== 'host') return;
+    clearInterval(TL.gv); TL.gv = setInterval(tlTick, 60);
+    obs.forEach(function (o) { o.disconnect(); }); obs = [];
+    var o1 = new MutationObserver(function () { bc('bcl', [shell.board.className]); });
+    o1.observe(shell.board, { attributes: true, attributeFilter: ['class'] }); obs.push(o1);
+    var sent = shell.sqs.map(function (q, i) { return sqCls(i); });
+    var o2 = new MutationObserver(function (ms) {
+      ms.forEach(function (m) { var i = +m.target.getAttribute('data-i'), c = sqCls(i); if (c !== sent[i]) { sent[i] = c; bc('sqc', [i, c]); } });
+    });
+    shell.sqs.forEach(function (q) { o2.observe(q, { attributes: true, attributeFilter: ['class'] }); }); obs.push(o2);
+    var o3 = new MutationObserver(function () { var h = shell.scr.innerHTML; if (h !== scrSent) { scrSent = h; bc('scr', [h]); } });
+    o3.observe(shell.scr, { subtree: true, childList: true, attributes: true, characterData: true }); obs.push(o3);
+  }
+  function watchPan() {
+    if (!S || !S.net || !NET || NET.mode !== 'host' || !shell.pan) return;
+    if (panObs) panObs.disconnect();
+    panObs = new MutationObserver(sendPan);
+    panObs.observe(shell.pan.querySelector('.pan-in'), { subtree: true, childList: true, attributes: true, characterData: true });
+    Promise.resolve().then(sendPan);
+  }
+  function sendPan() { var d = panHTML(); if (!d) return; var j = JSON.stringify(d); if (j !== panSent) { panSent = j; bc('pan', [d]); } }
+  // a toss-up's question waits, on every device, for the moment it shows
+  function holdQ(pan) {
+    var inn = pan && pan.querySelector('.pan-in'), t = inn && +inn.getAttribute('data-show');
+    if (!t || pan._held === t || NET.now() >= t) return;
+    pan._held = t; pan.classList.add('qhold');
+    NET.at(t, function () { pan.classList.remove('qhold'); });
+  }
+  function netOpts() {
+    if (NETOPTS) return NETOPTS;
+    var s0 = null; try { s0 = JSON.parse(localStorage.getItem('gn_setup_pressyourluck') || 'null'); } catch (e) {}
+    return (s0 && s0.options) || {};
+  }
+  function noteLine() {
+    var o = netOpts(), n = o.earn === 's5' ? 0 : o.earn === 'q6' ? 6 : 4;
+    return (n ? 'Each round starts with ' + n + ' toss-up questions' : 'Everyone starts each round with 5 spins') + (o.bonus === 'off' ? ', and there is no bonus round.' : ', and the winner plays the bonus round.');
+  }
+  function stopView() {
+    stopAll(); netReset(); S = null; shell = null; Z = null;
+    document.body.classList.remove('pyl-on'); app.classList.remove('pyl'); app.innerHTML = '';
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win, .wpod'), function (n) { n.remove(); });
+  }
+
+  // ── The Big Board's timeline ──
+  function tlTick() {   // the host writes the board's next moments, the same for every device
+    if (!S || !S.board || !shell || T.frozen || (S.phase !== 'board' && S.phase !== 'intro' && S.phase !== 'bonus')) return;
+    var now = NET.now(), end = now + NET.lead() + 220, out = [], g = TL.gen, i;
+    if (!g) g = TL.gen = { sl: [], hop: 0, run: false, lit: T.lit, show: T.show.slice() };
+    for (i = 0; i < 18; i++) {
+      if (!g.sl[i]) g.sl[i] = now + NET.lead() + period();
+      while (g.sl[i] <= end) { g.show[i] = (g.show[i] + 1) % 3; out.push({ at: Math.round(g.sl[i]), k: 's', i: i, v: g.show[i] }); g.sl[i] += period(); }
+    }
+    if (T.running) {
+      if (!g.run) { g.run = true; g.hop = Math.max(now + NET.lead(), T.spinAt || 0); for (i = 0; i < 18; i++) g.sl[i] = Math.min(g.sl[i], g.hop + rnd(300)); }
+      while (g.hop <= end) { var j; do { j = rnd(18); } while (j === g.lit); g.lit = j; out.push({ at: Math.round(g.hop), k: 'h', i: j }); g.hop += (105 + rnd(85)) / speed; }
+    } else g.run = false;
+    if (!out.length) return;
+    out.sort(function (a, b) { return a.at - b.at; });
+    TL.q = TL.q.concat(out).sort(function (a, b) { return a.at - b.at; });
+    bc('tl', [out]);
+  }
+  function tlRun() {
+    if (!shell || !S || !TL.q.length) return;
+    var now = NET.now();
+    while (TL.q.length && TL.q[0].at <= now && !(TL.hold && TL.q[0].at > TL.hold)) tlApply(TL.q.shift());
+  }
+  function tlApply(e) {
+    var host = NET.mode === 'host';
+    if (e.k === 's') { if (host) TL.log.push({ at: e.at, k: 's', i: e.i, prev: T.show[e.i] }); T.show[e.i] = e.v; paintSq(e.i, true); }
+    else { if (host) TL.log.push({ at: e.at, k: 'h', i: e.i, prev: T.lit }); setLit0(e.i); SND0.hop(); }
+    if (host && TL.log.length > 400) TL.log = TL.log.slice(-300);
+  }
+  // STOP at p: the board as it stood at that moment, whatever has shown since
+  function tlStop(p, seen) {
+    var p0 = p;
+    // a board running a moment behind (a busy phone) still stops on the square its player saw lit, if the light
+    // was really there in the last quarter second
+    if (seen != null && seen >= 0) {
+      var all = TL.log.concat(TL.q).filter(function (e) { return e.k === 'h'; }), hit = -1;
+      all.forEach(function (e, k) { if (e.i === seen && e.at <= p + 30 && e.at >= p - 250) hit = k; });
+      if (hit >= 0) { var nx = all[hit + 1]; p = Math.max(all[hit].at, Math.min(p, nx ? nx.at - 1 : p)); }
+    }
+    while (TL.q.length && TL.q[0].at <= p) tlApply(TL.q.shift());
+    TL.q = [];
+    for (var k = TL.log.length - 1; k >= 0 && TL.log[k].at > p; k--) { var l = TL.log[k]; if (l.k === 's') { T.show[l.i] = l.prev; paintSq(l.i, false); } else setLit0(l.prev); }
+    TL.log = []; TL.gen = null;
+    STOPS.push({ at: p0, used: p, lit: T.lit, now: NET.now(), slide: S.board[T.lit] ? S.board[T.lit][T.show[T.lit]] : null });
+    bc('tls', [p, T.lit, T.show.slice()]);
+  }
+  // ── Toss-up buzzers online: the first press by the shared clock wins ──
+  function qPress(i, at, remote) {
+    if (!Z || Z.phase !== 'buzz' || !(at >= Z.t0 - 5)) return;
+    if (!qJ) qJ = NET.judge({ eligible: function (j) { return !!Z && Z.phase === 'buzz' && eligible(j); }, decide: qDecide });
+    if (remote) qJ.remote(i, at); else qJ.press(i, at);
+  }
+  function qDecide(c, all) {
+    lastJudge = { win: c, all: all, at: NET.now() };
+    if (!c || !Z || Z.phase !== 'buzz') return;
+    buzzIn(c.seat, c.at);
+  }
+  // everyone else picks from three, each on their own device, all at once
+  function netPicks(hum) {
+    var e = epoch;
+    Z.ui.opts.setAttribute('data-nm', '1'); Z.ui.opts.innerHTML = '';
+    setMsg(hum.length ? 'Everyone else picks from three, in secret' : '');
+    bc('mcp', [hum]);
+    var done = new Promise(function (res) { Z.mcw = { need: hum.slice(), res: res }; });
+    var h = hum.filter(mine)[0];
+    if (h != null) humanPick(h, true).then(mcCheck);
+    mcCheck();
+    // a pick that never comes (a device gone quiet) doesn't hold up the show
+    var to = setTimeout(function () { if (Z && Z.mcw) { Z.mcw.need = []; mcCheck(); } }, 30000 / speed);
+    return done.then(function () { clearTimeout(to); if (e !== epoch) throw CANCEL; return reveal(); });
+  }
+  function mcCheck() {
+    var w = Z && Z.mcw; if (!w) return;
+    var cu = S.quiz.cur;
+    if (w.need.every(function (i) { return cu.picks[i] != null || S.players[i].cpu; })) { Z.mcw = null; setTimeout(w.res, 500 / speed); }
+  }
+  // a guest's own three choices, drawn on its own device
+  function guestPicks(hum) {
+    var cu = S.quiz && S.quiz.cur, box = shell.pan && shell.pan.querySelector('.qo');
+    if (!cu || !cu.mc || !box || hum.indexOf(NET.seat) < 0) return;
+    box.setAttribute('data-nm', '1'); box.innerHTML = '';
+    var btns = cu.mc.map(function (txt, k) {
+      return el('button', { type: 'button', 'data-pick': String(k), html: '<b>' + (k + 1) + '</b><span>' + esc(txt) + '</span>', onclick: function () {
+        NET.send({ t: 'pick', k: k }); SND0.lock(); Kit.haptic('light');
+        btns.forEach(function (b, j) { b.disabled = true; b.classList.toggle('pick', j === k); b.classList.toggle('dim', j !== k); });
+      } });
+    });
+    btns.forEach(function (b) { box.appendChild(b); });
+  }
+
+  // ── The host: what a contestant at another device does ──
+  function netIn(i, m) {
+    if (!S || !S.net || !shell || !m) return;
+    var p = S.players[i]; if (!p || p.cpu) return;
+    var turn = S.cur === i && (S.phase === 'board' || S.phase === 'bonus');
+    switch (m.t) {
+      case 'act': var a = ACT[m.a]; if (a && a.b.isConnected && !a.b.hasAttribute('data-off') && (a.who === 'any' || +a.who === i)) a.fn(); return;
+      case 'qbuzz': qPress(i, +m.at, true); return;
+      case 'pick':
+        var cu = S.quiz && S.quiz.cur, k = +m.k;
+        if (!Z || !Z.mcw || Z.mcw.need.indexOf(i) < 0 || !cu || cu.picks[i] != null || !(k >= 0 && k <= 2)) return;
+        cu.picks[i] = k; SND.lock(); setMsg('<b>' + esc(p.name) + '</b> is locked in', pc(i)); mcCheck();
+        return;
+      case 'spin': if (turn && ui.await === 'decide' && !ui.busy) { ui.await = null; pressDome(); run(spinBoard); } return;
+      case 'stop':
+        if (!(turn && ui.await === 'stop' && T.running)) return;
+        var n = NET.now(), at = +m.at;
+        if (!isFinite(at) || at > n) at = n;
+        at = Math.max(at, n - 2 * NET.ow(i) - 250);
+        ui.await = null; pressDome(); run(function () { return stopBoard(at, m.lit == null ? null : +m.lit); });
+        return;
+      case 'pass':
+        if (!(turn && S.phase === 'board' && ui.await === 'decide' && !ui.busy)) return;
+        if (canPass(p)) run(function () { return doPass(m.to); });
+        else if (p.passed === 0 && p.earned > 0 && !receivers(p).length) run(stopHere);
+        return;
+    }
+  }
+  // a contestant's device dropped out: the computer plays their podium until they're back
+  function seatLeft(i) {
+    if (!S || !S.net) return;
+    var p = S.players[i]; if (!p) return;
+    p.cpu = true; p.away = true;
+    Kit.toast(Kit.poss(p.name) + ' device dropped out. The computer plays for ' + p.name + ' until ' + p.name + ' is back.'); bc('to', [Kit.poss(p.name) + ' device dropped out. The computer plays for ' + p.name + ' until ' + p.name + ' is back.']);
+    if (S.phase === 'quiz' && Z && Z.mcw) mcCheck();
+    if ((S.phase === 'board' || S.phase === 'bonus') && S.cur === i) {
+      if (ui.await === 'decide') { ui.await = null; run(decide); }
+      else if (ui.await === 'stop' && T.running) setTimeout(function () { if (ui.await === 'stop' && T.running && S && S.players[i].cpu && S.cur === i) { ui.await = null; pressDome(); run(stopBoard); } }, 1500);
+    }
+    if (S.phase === 'bonus' && S.bonus && S.bonus.p === i) setTimeout(function () {
+      if (!S || !S.players[i].cpu) return;
+      if (ACT.keep && ACT.keep.b.isConnected) fire(cpuBonusGo() ? ACT.more.b : ACT.keep.b);
+      else if (ACT.go && ACT.go.b.isConnected && +ACT.go.who === i) fire(ACT.go.b);
+    }, 2000);
+    renderPods(); renderCtl();
+  }
+  function seatBack(i) {
+    if (!S || !S.net) return;
+    var p = S.players[i]; if (!p) return;
+    p.cpu = false; p.away = false;
+    NET.to(i, initMsg());
+    Kit.toast(p.name + ' is back'); bc('to', [p.name + ' is back']);
+    renderPods(); renderCtl();
+  }
+
+  // ── A guest: the host's show, drawn here ──
+  function applyU(u) { if (!u) return; U = u; ui.await = u.aw; ui.busy = !!u.b; T.running = !!u.run; T.frozen = !!u.fz; }
+  function applyPan(d) {
+    if (!d) { if (shell.pan) { shell.pan.remove(); shell.pan = null; } return; }
+    var tmp = document.createElement('div'); tmp.innerHTML = d.html; var inn = tmp.firstChild;
+    if (!shell.pan || shell.pan.getAttribute('data-k') !== String(d.k)) {
+      if (shell.pan) shell.pan.remove();
+      var pan = el('div', { class: 'pan', 'data-k': String(d.k) }), b = svgEl('bulbs'); pan.appendChild(b); pan.appendChild(inn);
+      shell.bwrap.appendChild(pan); shell.pan = pan;
+      var w = shell.bwrap.clientWidth, h = shell.bwrap.clientHeight, pad = parseFloat(shell.stage.style.getPropertyValue('--pad')) || 12;
+      drawBulbs(b, w, h, pad / 2, pad * 1.15, Math.max(1.8, pad * 0.2));
+    } else LiveShow.morph(shell.pan.querySelector('.pan-in'), inn);
+    shell.pan.querySelector('.pan-in').classList.toggle('wide', shell.bwrap.clientWidth >= 560);
+    Array.prototype.forEach.call(shell.pan.querySelectorAll('[data-act]'), gateBtn);
+    holdQ(shell.pan);
+  }
+  function setShow(show) { if (!show) return; for (var i = 0; i < 18; i++) if (T.show[i] !== show[i]) { T.show[i] = show[i]; paintSq(i, false); } }
+  function guestIn(m) {
+    if (m.t === 'init') return guestInit(m);
+    if (m.t !== 'ev' || !shell || !S) return;
+    m.ev.forEach(applyEv);
+  }
+  function guestInit(m) {
+    stopAll(); netReset(); closeWin();
+    S = JSON.parse(m.s); applyU(m.u); Z = null;
+    buildShell();
+    applyU(m.u);
+    T.show = m.show.slice(); paintBoard(); setLit0(m.lit);
+    shell.board.className = m.bcl; (m.sq || []).forEach(function (c, i) { shell.sqs[i].className = c + (T.lit === i ? ' lit' : ''); });
+    morphIn(shell.scr, m.scr);
+    applyPan(m.pan); TL.q = (m.tl || []).slice();
+    renderPods(); renderCtl(); updateBuzzers();
+    window.scrollTo(0, 0);
+  }
+  // the host's copy of what's inside node, brought in without touching node itself
+  function morphIn(node, html) { var d = node.cloneNode(false); d.innerHTML = html; LiveShow.morph(node, d); }
+  function closeWin() { Array.prototype.forEach.call(document.querySelectorAll('.k-win, .wpod'), function (n) { n.remove(); }); }
+  function noop() {}
+  function applyEv(e) {
+    if (!shell) return;
+    if (e.s) S = JSON.parse(e.s);
+    if (e.u) applyU(e.u);
+    var a = e.a || [];
+    switch (e.k) {
+      case 'snd': if (SND0[a[0]]) SND0[a[0]].apply(SND0, a[1] || []); break;
+      case 'rp': renderPods(a[0]); updateBuzzers(); break;
+      case 'rc': renderCtl(); break;
+      case 'ub': updateBuzzers(); break;
+      case 'bb': buildBuzzers(); updateBuzzers(); break;
+      case 'scr': morphIn(shell.scr, a[0]); break;
+      case 'pan': applyPan(a[0]); if (S.phase === 'bonus') renderCtl(); break;
+      case 'bcl': shell.board.className = a[0]; break;
+      case 'sqc': shell.sqs[a[0]].className = a[1] + (T.lit === a[0] ? ' lit' : ''); break;
+      case 'lit': setShow(a[1]); setLit0(a[0]); break;
+      case 'ps': paintSq(a[0], true); break;
+      case 'pbd': paintBoard(); break;
+      case 'tl': TL.q = TL.q.concat(a[0]).sort(function (x, y) { return x.at - y.at; }); break;
+      case 'tls': TL.q = []; TL.hold = 0; setShow(a[2]); setLit0(a[1]); break;
+      case 'dome': pressDome0(); break;
+      case 'wo': if (GOV) GOV.remove(); GOV = a[0] === 's' ? whammyOver(ART.scene(a[1], a[2], { dir: shell.stage.classList.contains('land') ? 'rt' : 'dn' }), a[3]) : whammyOver(ART.outScene(a[1]), a[3], 'out'); break;
+      case 'wox': if (GOV) GOV.remove(); GOV = null; break;
+      case 'pw': if (podReady(a[1])) podWhammy(a[0], a[1], a[2]); break;
+      case 'hap': if (mine(a[1])) Kit.haptic(a[0]); break;
+      case 'co': Kit.callout(a[0], a[1]); break;
+      case 'cf': Kit.confetti({ count: a[0] }); break;
+      case 'to': Kit.toast(a[0]); break;
+      case 'mcp': guestPicks(a[0]); break;
+      case 'rec': Kit.record(HKEY, a[0]); break;
+      case 'res': showResults(); break;
+    }
+  }
+  function netEnded(why, code) {
+    var hn = NET.hostName || 'The host', onCard = !!document.querySelector('.k-win');
+    if (why === 'lost') {
+      stopView();
+      var done = false;
+      Kit.sheet({ title: 'The link to the show dropped', html: '<p>The computer stands in at your podium until you join ' + esc(Kit.poss(hn)) + ' table again.</p>',
+        actions: [{ label: 'Join again', primary: true, onClick: function () { done = true; NET.rejoin(code); } }, { label: 'Leave the show', cls: 'btn-soft', onClick: function () { done = true; showSetup(); } }],
+        onCancel: function () { if (!done) showSetup(); } });
+      return;
+    }
+    Kit.toast(hn + ' closed the table, so the show is over.');
+    if (!onCard) { stopView(); showSetup(); }
+  }
+  NET = LiveShow({
+    game: 'pressyourluck', title: 'Press Your Luck online', app: app, max: 3, colors: PCOL,
+    intro: 'Up to three contestants, each at their own podium on their own phone or tablet.',
+    note: noteLine,
+    hostStart: function (seats) {
+      var taken = seats.filter(Boolean).map(function (x) { return x.name; }), bots = Kit.cpuNames(3, taken), k = 0;
+      var players = [0, 1, 2].map(function (i) { return seats[i] ? { name: seats[i].name, cpu: false, dev: seats[i].dev } : { name: bots[k++], cpu: true }; });
+      loadQuestions().then(function () { start({ mode: 'online', players: players, options: netOpts() }); });
+    },
+    seatMsg: netIn, seatLeft: seatLeft, seatBack: seatBack,
+    hostMsg: guestIn, ended: netEnded,
+    toSetup: showSetup, stopView: stopView
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   function resume() {
@@ -2148,6 +2600,7 @@ body.pyl-on{
   if (saved && saved.v === 1 && saved.players && saved.phase && saved.phase !== 'over' && saved.board) {
     S = saved; loadQuestions(); resume();
   } else showSetup();
+  if (/[?&]online=1/.test(location.search)) NET.lobby();
 
   // ── Test hooks ────────────────────────────────────────────────────────────
   window.__pyl = {
@@ -2175,7 +2628,12 @@ body.pyl-on{
     pressOn: function () { var b = document.querySelector('.pan .two .gobtn.alt'); if (b) b.click(); return !!b; },
     clickGo: function () { var b = document.querySelector('.pan .gobtn'); if (b) b.click(); return !!b; },
     loaded: function () { return loadQuestions().then(function () { return QB.length; }); },
-    boards: BOARDS, receivers: function (i) { return receivers(S.players[i]); }, cpuWantsSpin: function (i) { return cpuWantsSpin(S.players[i]); }
+    boards: BOARDS, receivers: function (i) { return receivers(S.players[i]); }, cpuWantsSpin: function (i) { return cpuWantsSpin(S.players[i]); },
+    // online: the live show; act(name) taps a named button on this device; pick(k) picks from three; judged: the last buzz decision
+    net: NET, act: function (n) { var b = shell && shell.pan && shell.pan.querySelector('[data-act="' + n + '"]'); if (b && !b.disabled) { b.click(); return true; } return false; },
+    pick: function (k) { var b = shell && shell.pan && shell.pan.querySelectorAll('.qo [data-pick]')[k]; if (b && !b.disabled) { b.click(); return true; } return false; },
+    netui: function () { return { await: ui.await, busy: busyNow(), zp: zPhase(), lit: T.lit, show: T.show.slice(), q: TL.q.length, hold: TL.hold }; },
+    judged: function () { return lastJudge; }, stops: function () { return STOPS; }
   };
 })();
 </script>
