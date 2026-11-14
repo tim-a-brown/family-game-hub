@@ -122,7 +122,9 @@ Underlying principles for everything:
   - **A layout for each shape**: iPhone upright and sideways, iPad upright and sideways (402x874, 874x402, 768x1024,
     1024x768), each designed for that shape and using the screen fully: the board, cards and pieces as large as the
     room allows, no dead bands or empty margins, nothing scrolling that could fit. Not one layout stretched; measure the
-    empty share of the screen, not just by eye.
+    empty share of the screen, not just by eye. **Turning the device mid-game moves everything smoothly to the new shape** (Tim, the same
+    day: "the layout shapes must transition smoothly if it changes midgame"): at any moment, mid-animation too, the
+    pieces glide to their new places with no jump, no flash and no lost state, and the game carries on where it was.
   - **Pleasant, rewarding interaction**: every press answers at once (motion, sound, haptic), every good move gets a
     small reward (a trick swept in, a point counted up, a meter filling), so playing feels good from move to move.
   - **Special moments for uncommon events and accomplishments**, each built into the play where it happens (a slam, a
