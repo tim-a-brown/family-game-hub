@@ -384,6 +384,12 @@
       '.an-nd .nd-chip b{display:block;font-weight:600;line-height:1.15;}' +
       '.an-nd .nd-chip.ok{box-shadow:inset 0 0 0 1px rgba(217,180,90,.7);}' +
       '.an-nd .k-startdock{padding-left:max(17px,16px);padding-right:max(17px,16px);}' +
+      '.an-nd .nd-l,.an-nd .nd-r{display:flex;flex-direction:column;gap:16px;min-width:0;}' +
+      // (a phone on its side: what the table is on the left, the decks and the button on the right, all in view)
+      '@media (orientation:landscape) and (max-height:540px){.an-nd{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:22px;align-items:start;padding-top:0;}' +
+      '.an-nd .nd-l{position:sticky;top:6px;}.an-nd .setup-hero h1{font-size:2rem;margin:0;}.an-nd .nd-r{gap:10px;}.an-nd .nd-r .k-startdock{position:sticky;bottom:0;margin:0;padding:10px 0 max(calc(var(--safe-b, 0px) + 10px),18px);}' +
+      '.an-nd .dk-info .plan{font-size:.9rem;}.an-nd .dk-info .gd{font-size:.8rem;line-height:1.2;}.an-nd .dk-pick{gap:6px;}' +
+      '.an-nd .nd-wait{padding:8px 0;}}' +
       '.an-nd .nd-wait{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 0 12px;}' +
       '.an-nd .nd-dots{display:flex;gap:7px;}.an-nd .nd-dots i{width:8px;height:8px;border-radius:50%;background:#d9b45a;opacity:.35;animation:ndp 1.2s infinite ease-in-out;}' +
       '.an-nd .nd-dots i:nth-child(2){animation-delay:.2s}.an-nd .nd-dots i:nth-child(3){animation-delay:.4s}' +
@@ -398,10 +404,11 @@
     app.className = 'stage'; app.innerHTML = ''; window.scrollTo(0, 0);
     if (mine && !Coll.load().starter && window.AnoriaPacks) { window.AnoriaPacks.chooseStarter(app, () => { if (L.st === st) deckScreen(st); }); return; }
     const host = st.pl[0] ? st.pl[0].name : '';
-    const wrap = el('div', { class: 'setup an-nd' });
-    wrap.appendChild(el('div', { class: 'setup-hero' }, [el('h1', { text: mine ? 'Your deck' : 'Choosing decks' })]));
+    const wrap = el('div', { class: 'setup an-nd' }), lw = el('div', { class: 'nd-l' }), rw = el('div', { class: 'nd-r' });
+    wrap.appendChild(lw); wrap.appendChild(rw);
+    lw.appendChild(el('div', { class: 'setup-hero' }, [el('h1', { text: mine ? 'Your deck' : 'Choosing decks' })]));
     const waiting = st.pl.filter(p => !p.d && !p.cpu).map(p => p.name);
-    wrap.appendChild(el('p', { class: 'nd-p', text: (mine ? (me === 0 ? 'Choose the deck you bring to the table. Its Guide is your Guide for this game.' : 'Choose the deck you bring to ' + Kit.poss(host) + ' table. Its Guide is your Guide for this game.')
+    lw.appendChild(el('p', { class: 'nd-p', text: (mine ? (me === 0 ? 'Choose the deck you bring to the table. Its Guide is your Guide for this game.' : 'Choose the deck you bring to ' + Kit.poss(host) + ' table. Its Guide is your Guide for this game.')
       : waiting.length ? 'The game begins when ' + listAnd(waiting) + (waiting.length > 1 ? ' have' : ' has') + ' chosen a deck.' : 'The game is about to begin.').replace(/'/g, '\u2019') }));
     // who is at the table, and whose deck is ready
     const who = el('div', { class: 'nd-who' });
@@ -409,7 +416,7 @@
       const g = p.d ? TXG[p.d.guide] : null, av = Kit.avatar && Kit.avatar.el ? Kit.avatar.el(p.name, null, Kit.color ? Kit.color(o) : null) : el('span', { class: 'avatar', text: p.name.charAt(0) });
       who.appendChild(el('span', { class: 'nd-chip' + (p.d ? ' ok' : '') }, [av, el('span', {}, [el('b', { text: o === me ? 'You' : p.name }), el('small', { text: p.d ? (g ? g.n : p.d.n) : p.cpu ? 'The computer' : 'Choosing a deck' })])]));
     });
-    wrap.appendChild(who);
+    lw.appendChild(who);
     if (mine) {
       const pick = { v: H.starterId() };
       try { const sv = lsJ('gn_setup_anoria', {}); if (sv && sv.options && sv.options.deck0) pick.v = sv.options.deck0; } catch (e) {}
@@ -422,7 +429,7 @@
         p.querySelectorAll('.dk-btns .btn').forEach(b => { if (/^Change$/.test(b.textContent.trim())) b.remove(); });
         box.appendChild(p);
       };
-      paint(); wrap.appendChild(box);
+      paint(); rw.appendChild(box);
       const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block k-start shine', text: 'Bring this deck', onclick: () => {
         const d = Coll.deck(H.deckChoice(pick.v, 'me')); if (!d || !d.ok) { Kit.toast('That deck can’t be played yet'); return; }
         const stack = H.stackOf({ deckId: d.id, deck: d.n, cpu: false });
@@ -430,16 +437,15 @@
         Kit.sfx('pop'); Kit.haptic('medium'); go.disabled = true;
         L.net.act(s => step(s, me, { k: 'deck', d: { n: d.n, id: d.id, guide: d.guide, cards: d.cards.slice(), stack: stack, built: !!d.built, mat: mat } })).then(ok => { if (!ok) go.disabled = false; });
       } });
-      wrap.appendChild(el('div', { class: 'k-startdock' }, [go]));
+      rw.appendChild(el('div', { class: 'k-startdock' }, [go]));
     } else {
-      wrap.appendChild(el('div', { class: 'nd-wait' }, [el('div', { class: 'nd-dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])]));
-      wrap.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Leave the table', onclick: leaveAsk }));
+      rw.appendChild(el('div', { class: 'nd-wait' }, [el('div', { class: 'nd-dots', 'aria-hidden': 'true' }, [el('i'), el('i'), el('i')])]));
+      rw.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Leave the table', onclick: leaveAsk }));
     }
     app.appendChild(wrap);
   }
   function leaveAsk() {
-    const two = L.st && L.st.pl && L.st.pl.length === 2;
-    Kit.confirm('Leave the online game?', { ok: 'Leave', danger: true, body: two ? 'The game ends, and the other player wins.' : 'The computer takes your seat, and the others play on.' }).then(ok => { if (ok) TurnNet.leave(); });
+    Kit.confirm('Leave the online game?', { ok: 'Leave', danger: true, body: CFG.leaveNote(L.st, L.seat) }).then(ok => { if (ok) TurnNet.leave(); });
   }
 
   // ═══ The end ═══
@@ -469,13 +475,17 @@
       o.lose = !ours; o.icon = ours ? 'trophy' : 'users';
       if (ours) o.title = T ? 'Your team wins!' : 'You win!';
       if (ours && !T && TXG[S.P[w].guide]) o.sub = (TXG[S.P[w].guide].n + ' was your Guide').replace(/'/g, '’');
+      // (how it ended, from where you sit: "You were first to 25 Renown", "The last of your three Seals broke")
+      const nm = g.players[me].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (o.notes && S.N === 2 && !T) o.notes = o.notes.map(t => String(t).replace(new RegExp('^' + nm + ' was '), 'You were ').replace(new RegExp('of ' + nm + '[\'’]s '), 'of your '));
     }
     if (S.how === 'left' && g.left != null) {
       const nm = g.players[g.left].name;
       o.notes = [(nm + ' left the game, so ' + (ours ? 'you win.' : g.players[w].name + ' wins.')).replace(/'/g, '’')];
-      o.sub = 'In round ' + S.round;
     }
-    o.again = () => { if (L.net) L.net.again(); }; o.againLabel = 'Play again';
+    // (the other player has gone: another game is found in the lobby, as at any TurnNet table)
+    if (S.how === 'left') { o.again = () => { TurnNet.leave(); setTimeout(() => TurnNet.open(), 300); }; o.againLabel = 'Find another table'; }
+    else { o.again = () => { if (L.net) L.net.again(); }; o.againLabel = 'Play again'; }
     o.setup = () => TurnNet.leave(); o.setupLabel = 'Leave the table';
     const R = g.rew && g.rew.list && window.AnoriaPacks ? g.rew.list : null;
     if (R && R.length && o.extra && o.extra.length) { const lb = o.extra[0].label; o.extra = [{ label: lb, onClick: () => { window.AnoriaPacks.earned(R, () => { if (L.st) load(L.st); else H.showSetup(); }); } }]; }
@@ -539,7 +549,7 @@
     game: KEY, title: 'Arvela', min: 2, get max() { return seatsWanted(); }, botMs: 1300,
     seats: (n, o) => Math.max(n, (o && o.n) || seatsWanted()),
     opts: opts, start: start, turn: turnOf, over: overOf, bot: bot, resign: resign,
-    leaveNote: st => (st && st.pl && st.pl.length === 2 ? 'The game ends, and the other player wins.' : 'The computer takes your seat, and the others play on.'),
+    leaveNote: (st, s) => (st && st.pl && st.pl.length === 2 ? 'The game ends, and ' + (st.pl[1 - s] ? st.pl[1 - s].name : 'the other player') + ' wins.' : 'The computer takes your seat, and the others play on.'),
     show: (net, info) => { if (net.code) remember(net.code); show(net, info); },
     leave: leave
   };
