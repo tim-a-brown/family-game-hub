@@ -1514,7 +1514,7 @@
   // the arrow alone (gbar.k-tight) so the name wins
   function fitBar() {
     if (!gbarEl) return;
-    gbarEl.classList.remove('k-tight', 'k-noic');
+    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
     if (!t) return;
     t.style.fontSize = '';
@@ -1525,6 +1525,8 @@
     while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.84) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
     if (t.scrollWidth > t.clientWidth + 0.5 && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
     while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+    // (a long name on a 320-wide phone, "Wheel of Fortune": two lines, at the size the eased name had first)
+    if (t.scrollWidth > t.clientWidth + 0.5) { gbarEl.classList.add('k-wrap'); t.style.fontSize = Math.round(fs0 * 0.84) + 'px'; }
   }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;

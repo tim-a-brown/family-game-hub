@@ -488,7 +488,7 @@ body.pyl-on{
 .pyls.land .pods{flex-direction:column;gap:10px;}
 .pod{flex:1 1 0;min-width:0;position:relative;border-radius:14px;overflow:hidden;text-align:center;
   background:linear-gradient(180deg,#3c2b92 0%,#22166a 55%,#150d48 100%);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12), 0 4px 0 #0a0628, 0 8px 18px rgba(0,0,0,.4);transition:transform .25s var(--spring), box-shadow .25s;}
-.pod .pn{background:linear-gradient(180deg,color-mix(in srgb,var(--pc) 80%,#fff),var(--pc));color:#1a1033;font-family:"Bungee",var(--display);font-size:13px;line-height:1;padding:5px 6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pod .pn{background:linear-gradient(180deg,color-mix(in srgb,var(--pc) 80%,#fff),var(--pc));color:#1a1033;font-family:"Bungee",var(--display);font-size:13px;line-height:1.05;padding:5px 6px 4px;text-wrap:balance;}   /* (a long name takes two lines: "Optimus / Prime") */
 .pod .pb{font-family:"Jersey 10",var(--mono);font-size:30px;line-height:.85;color:#ffd23d;margin-top:5px;text-shadow:0 0 8px rgba(255,200,40,.55);font-variant-numeric:tabular-nums;}
 .pod .ps{font-family:"Sofia Sans Condensed",var(--font);font-weight:800;font-size:12.5px;color:#d6dcff;text-transform:uppercase;letter-spacing:.03em;margin-top:2px;white-space:nowrap;}
 .pod .ps b{color:#7dff9e;font-weight:900;}
@@ -572,11 +572,15 @@ body.pyl-on{
 .qh .who{font-family:"Bungee",var(--display);font-size:17px;color:#1a1033;background:var(--pc);padding:4px 10px 3px;border-radius:99px;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .qh .qn,.qh .cat{font-family:"Sofia Sans Condensed",var(--font);font-weight:800;font-size:13.5px;text-transform:uppercase;letter-spacing:.05em;color:#bcc8ff;}
 .qh .cat{color:#ffe14d;}
-.qclock{display:flex;align-items:center;gap:8px;}
-.qbulbs{display:flex;gap:4px;}
-.qbulbs i{width:12px;height:12px;border-radius:50%;background:#fff6c6;box-shadow:0 0 6px 2px rgba(255,210,61,.8), inset 0 -2px 0 #e6b400;transition:all .2s;}
+/* (the bulbs shrink and the words drop under them before anything leaves the screen: a 320-wide phone) */
+.qclock{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;row-gap:4px;column-gap:8px;max-width:100%;}
+.qbulbs{display:flex;gap:clamp(2px,1vw,4px);min-width:0;max-width:100%;}
+.qbulbs i{flex:0 1 12px;min-width:7px;height:auto;aspect-ratio:1;border-radius:50%;background:#fff6c6;box-shadow:0 0 6px 2px rgba(255,210,61,.8), inset 0 -2px 0 #e6b400;transition:all .2s;}
 .qbulbs i.off{background:#3c2a10;box-shadow:inset 0 1px 2px #000;}
-.ql{font-family:"Bungee",var(--display);font-size:14px;color:#7dff9e;white-space:nowrap;min-width:5.6em;text-align:left;}
+.ql{display:inline-flex;align-items:center;gap:7px;font-family:"Bungee",var(--display);font-size:14px;color:#7dff9e;white-space:nowrap;text-align:left;}
+.ql b{display:inline-grid;place-items:center;min-width:1.9em;padding:1px 5px 0;border-radius:7px;background:#0b0630;box-shadow:inset 0 0 0 1.5px currentColor;
+  font-family:"Jersey 10",var(--mono);font-weight:400;font-size:22px;line-height:1.05;font-variant-numeric:tabular-nums;}
+.ql b:empty{display:none;}
 .ql.one{color:#ffb35c;}
 .qt{font-family:"Sofia Sans Condensed",var(--font);font-weight:800;font-size:clamp(19px,5.2vw,28px);line-height:1.15;color:#fff;text-wrap:balance;padding:2px 4px;}
 .qo{width:100%;display:grid;grid-template-columns:1fr;gap:8px;max-width:560px;}
@@ -673,6 +677,16 @@ body.pyl-on{
   .buzzers{--bz:clamp(110px,20vw,170px);} .bz .nm{font-size:18px;}
 }
 @media (prefers-reduced-motion:reduce){ .bulbs circle{animation:none;} .sl.in{animation:none;} }
+/* A small phone upright (320 x 568): the button and podiums step down, and a question's answers sit two by two */
+@media (orientation:portrait) and (max-height:640px){
+  .pan-in{gap:8px;padding:10px 10px;} .pan-in p{font-size:15px;line-height:1.25;margin:0;}
+  .logo{font-size:27px;} .rnd{font-size:18px;} .gobtn{font-size:16px;padding:10px 20px 9px;}
+  .ctl{--dome:92px;} .buzzers{--bz:80px;min-height:calc(var(--bz) + 22px);} .pod .pw{padding:2px 0 4px;} .pod .pb{font-size:27px;}
+  .q{gap:6px;padding:10px 8px;} .qt{font-size:18px;} .qh .tu{font-size:14px;}
+  .qo{grid-template-columns:1fr 1fr;gap:6px;}
+  .qo button{min-height:42px;padding:6px 8px;gap:6px;font-size:15px;}
+  .qo button b{width:22px;height:22px;font-size:12px;}
+}
 </style>
 </head>
 <body>
@@ -1002,9 +1016,9 @@ body.pyl-on{
       if (bh > bw * 0.95) bh = bw * 0.95;
       if (bh < bw * 0.76) bw = bh / 0.76;
     } else {
-      var reserve = W >= 600 ? 372 : 256;   // (the podiums and the buzzer or SPIN button below the board, whole)
+      var small = H < 520, reserve = W >= 600 ? 372 : small ? 240 : 256;   // (the podiums and the buzzer or SPIN button below the board, whole)
       bw = W; bh = Math.min(H - reserve, bw * 1.3);
-      if (bh < bw * 0.86) { bh = Math.max(bh, 300); bw = Math.min(W, bh / 0.86); }
+      if (bh < bw * 0.86) { bh = Math.max(bh, small ? 245 : 300); bw = Math.min(W, bh / 0.86); }
     }
     bw = Math.floor(bw); bh = Math.floor(bh);
     var pad = Math.round(Math.max(10, Math.min(22, bw * 0.034))), gap = Math.max(4, Math.round(bw * 0.012));
@@ -1302,7 +1316,7 @@ body.pyl-on{
     var r = S.round, quiz = S.opts.earn !== 's5', n = quiz ? +String(S.opts.earn).slice(1) || 4 : 5;
     var kids = r === 1 ? [el('div', { class: 'logo', html: '<span>Press</span><span>your</span><span>luck</span>' }), el('div', { class: 'rnd', text: NAMES[r] })]
       : [el('div', { class: 'rnd big', text: NAMES[r] }), standings(), el('p', { html: 'Bigger money, bigger prizes and <b>more Whammies</b>. Banks carry over.' })];
-    kids.push(el('p', { html: quiz ? (r === 1 ? n + ' toss-up questions. Buzz in first and get it right: <b>3 spins</b>. Everyone else picks from three: <b>1 spin</b>.' : n + ' more toss-ups for your spins.') : 'Everyone starts with <b>5 spins</b>.' }));
+    kids.push(el('p', { html: quiz ? (r === 1 ? 'There are ' + n + ' toss-up questions. Buzz in first with the right answer for <b>3 spins</b>, or pick the right one of three for <b>1 spin</b>.' : n + ' more toss-ups for your spins.') : 'Everyone starts with <b>5 spins</b>.' }));
     kids.push(actBtn('go', 'any', { class: 'gobtn', text: quiz ? 'Toss-up questions' : 'Light up the board' }, function () {
       if (ui.busy) return; ui.busy = true; Kit.sfx('tap');
       run(function () { return loadQuestions().then(function () { ui.busy = false; if (quiz) startQuiz(); else { active().forEach(function (p) { p.earned = 5; }); return startBoard(); } }); });
@@ -1329,6 +1343,8 @@ body.pyl-on{
   // Everyone else then picks privately from three: the buzzer's answer plus two more, always including the right
   // one (right = 1 spin). If nobody buzzes in while the lights are on, everyone picks from three for 1 spin.
   var NB = 12, KEYS = ['a', 'l', 'b'];
+  // the clock's words, and the seconds left in a counter of their own beside them
+  function qlSet(t, n) { var q = Z && Z.ui.ql; if (!q) return; if (q._t !== t || !q.lastChild || q.lastChild.tagName !== 'B') { q._t = t; q.innerHTML = '<span></span><b></b>'; q.firstChild.textContent = t; } q.lastChild.textContent = String(n); }
   function buzzWindow() { return S.opts.level === 'easy' ? 15000 : 12000; }
   function answerTime() { return S.opts.level === 'easy' ? 12000 : 9000; }
   var Z = null, FPLAN = {};   // Z: the live toss-up (timers, the computers' plans). S.quiz.cur holds what's saved
@@ -1365,7 +1381,7 @@ body.pyl-on{
     FPLAN = {};
     var u = Z.ui, qz = S.quiz;
     u.bulbs = el('div', { class: 'qbulbs' }); for (var k = 0; k < NB; k++) u.bulbs.appendChild(el('i'));
-    u.ql = el('b', { class: 'ql', text: 'Buzz in: 3 spins' });
+    u.ql = el('b', { class: 'ql', text: 'Buzz in for 3 spins' });
     u.msg = el('div', { class: 'qmsg' }); u.opts = el('div', { class: 'qo' }); u.res = el('div', { class: 'qres' }); u.foot = el('div', { class: 'qf' });
     panel('q toss', [
       el('div', { class: 'qh' }, [el('span', { class: 'tu', text: 'Toss-up' }), el('span', { class: 'qn', text: (qz.i + 1) + ' of ' + qz.n }), el('span', { class: 'cat', text: q.cat })]),
@@ -1399,7 +1415,7 @@ body.pyl-on{
     var off = bulbs(t / W);
     if (off !== Z.lastOff && Z.lastOff >= 0 && off < NB) SND.bulbOff();
     Z.lastOff = off;
-    Z.ui.ql.textContent = 'Buzz in: 3 spins · ' + Math.max(0, Math.ceil((W - t) / 1000));
+    qlSet('Buzz in for 3 spins', Math.max(0, Math.ceil((W - t) / 1000)));
     for (var i in Z.plans) {
       var pl = Z.plans[i];
       if (pl.at != null && t >= pl.at && eligible(+i)) {
@@ -1436,7 +1452,7 @@ body.pyl-on{
       if (!Z || Z.e !== epoch || Z.phase !== 'answer') return;
       var t = (performance.now() - Z.a0) * speed, A = answerTime();
       bulbs(t / A, 'ans');
-      Z.ui.ql.textContent = 'Time left · ' + Math.max(0, Math.ceil((A - t) / 1000));
+      qlSet('Time to answer', Math.max(0, Math.ceil((A - t) / 1000)));
       if (t >= A) { clearInterval(Z.timer); run(buzzTimeout); }
     }, 80);
     if (p.cpu) {

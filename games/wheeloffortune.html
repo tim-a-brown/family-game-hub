@@ -192,6 +192,24 @@
 .show.desk .key{min-height:46px;}
 .show.desk .cat{font-size:.95rem;}
 @media (min-width:700px) and (max-width:959px){ .key{min-height:52px;font-size:1.3rem;} }
+/* ── A phone on its side: the studio (board and wheel) at the left, the podiums, host and keys at the right ── */
+#app.wofgame.short{padding:0 max(17px, calc(var(--corner-x) + 6px)) max(calc(var(--safe-b) + 8px), 14px);}
+.show.short{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
+.show.short .side{gap:6px;}
+.show.short .pods{padding-top:10px;}
+.show.short .pbank{font-size:1.25rem;}
+.show.short .host{min-height:2.4em;font-size:.86rem;}
+.show.short .acts,.show.short .acts .btn,.show.short .info,.show.short .clock{min-height:44px;}
+.show.short .kb{gap:4px;padding:0;}
+.show.short .key{min-height:34px;font-size:1rem;}
+.show.short .kb .r,.show.short .kb .kr{--kg:4px;}
+/* a small phone upright (320 x 568): the keys and buttons step down so the board keeps its room */
+@media (orientation:portrait) and (max-height:640px){
+  .show:not(.desk) .key{min-height:36px;} .show:not(.desk) .kb{gap:4px;}
+  .show:not(.desk) .acts,.show:not(.desk) .acts .btn,.show:not(.desk) .info,.show:not(.desk) .clock{min-height:44px;}
+  .show:not(.desk) .host{min-height:2.3em;font-size:.86rem;}
+  .show:not(.desk) .pbank{font-size:1.25rem;}
+}
 
 /* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
 .kb .r,.kb .kr{--kg:5px;gap:var(--kg);justify-content:center;}
@@ -874,11 +892,12 @@
     layoutStage();
     requestAnimationFrame(layoutStage);
   }
-  var mq = window.matchMedia('(min-width: 960px)');
+  var mq = window.matchMedia('(min-width: 960px)'), mqShort = window.matchMedia('(orientation: landscape) and (max-height: 500px)');
   function layoutStage() {
     if (!shell) return;
-    var desk = mq.matches;
+    var desk = mq.matches && !mqShort.matches, short = mqShort.matches;
     shell.show.classList.toggle('desk', desk);
+    shell.show.classList.toggle('short', short); app.classList.toggle('short', short);
     if (desk) { if (shell.boardcam.parentNode !== shell.bwrap) shell.bwrap.appendChild(shell.boardcam); }
     else if (shell.boardcam.parentNode !== shell.studio) shell.studio.insertBefore(shell.boardcam, shell.studio.firstChild);
     var W = shell.studio.clientWidth || 360, H, C;
@@ -886,9 +905,11 @@
     else {
       // Fill the phone screen: the studio takes whatever the podiums, host line and keys leave over
       var bar = document.querySelector('.gbar'), barH = bar ? bar.offsetHeight : 58;
-      var avail = (window.innerHeight || 760) - barH - shell.side.offsetHeight - 9 - 18;
+      // (a phone on its side: the studio stands beside the rest and takes the height)
+      var avail = (window.innerHeight || 760) - barH - (short ? 0 : shell.side.offsetHeight + 9) - 18;
+      if (short) { H = Math.max(200, Math.round(avail)); C = Math.min(H, W); }
       // (a tall tablet upright: the studio gives up what the keys need, so the last row of keys stays on the screen)
-      H = Math.round(clamp(avail, Math.min(W * 0.82, Math.max(avail, W * 0.6)), Math.min(W * 1.1, 820))); C = Math.min(H, W);
+      else { H = Math.round(clamp(avail, Math.min(W * 0.82, Math.max(avail, W * 0.6)), Math.min(W * 1.1, 820))); C = Math.min(H, W); }
     }
     shell.studio.style.height = H + 'px';
     var bh = desk ? 0 : shell.boardcam.offsetHeight;
