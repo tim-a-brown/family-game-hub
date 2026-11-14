@@ -405,7 +405,17 @@ Underlying principles for everything:
     spread 8.5 points down to 6.5 (relics-2026-11-13b.txt).
   - **The sphere** (`SIGNS` 12): a finished game lights 1 sign, a win 2 and your first win of the day 3 (`LIGHT`),
     however the game is played ("a game earns the same however it's played", Tim). A full turn gives a pack of `PACK`
-    (5), and on the turns in `GUIDE_TURNS` a Guide you don't have joins you with their set.
+    (5), and on the turns in `GUIDE_TURNS` you choose which Guide you don't have joins you (Tim, 2026-11-14), and
+    they come with their set. Until you choose, the choice waits in `anoria_coll` as `pick` (`Coll.pending()`,
+    `Coll.join(g)`): the setup asks once a visit, the sphere's screen and the results card offer it, and a calling
+    still brings its own Guide. pacing.js chooses at random (the same pace: all twelve on day 29).
+  - **A new Guide's moment** (Tim, 2026-11-14: "new guide moment? yes definitely"): a Guide who joins in a finished
+    game arrives before the results card (`AnoriaPacks.arrive`, `arrival()` in packs.js): their card rises in the
+    light, then the name, the power and, for a calling, the calling under its label; their set is dealt from the card
+    onto their own play mat, the 20 cards fanned and the Domains under them, counted as they land, with the mat's name.
+    A tap finishes the dealing. The sphere's choice (`chooser()`, shared with the first choice of a Guide) comes first.
+    Two Guides come one after the other, a lesson never has one, and the results card keeps the Guide's row while its
+    button leaves out Guides already met.
   - **Callings** (`CALLS`): each Guide has one, something done in games that brings that Guide sooner ("Win 20 games in
     which you were behind when a round ended"). The table counts what a game did with `track()` (ui.js `callTrack`,
     from the engine's events, for the first player, whoever holds the device) and `gameOver` adds it up. How often each
@@ -500,7 +510,7 @@ Underlying principles for everything:
   Uncommon, Rare or Legendary, from its power: `node scripts/anoria/rarity.js` plays random decks and ranks the set by
   cost and win rate (less the faction's own), and its lists are pasted into `RARE` in coll.js (`rarity.txt` has the
   table). A pack slot is that much less likely to be a card of a higher tier (`TIER_W`). The tier is printed on a full
-  card as a small mark at the foot of its ribbon, in the edition's finish: a dot, a diamond, a four-point star, a
+  card as a small mark at the foot of its ribbon, in the edition's finish: a dot, a triangle, a four-point star, a
   compass rose. A new set is tiered by running the script again, then `pacing.js`.
 - **True to history, no stereotypes** (Tim, 2026-11-10): every power, name, fact and picture is checked against the
   person's or the culture's own record before it goes in. A picture's brief (`art` in text.js) names the period's
@@ -754,7 +764,9 @@ Underlying principles for everything:
   the line on its end, their Gate at the top on their mat and yours at the bottom on yours, their cards to the left of
   each Domain and yours to the right, the two bars as thin strips at the top and above the dock; a Figure there is
   about 50 px wide, so it shows its Might at the top of its spine at a small hand card's size, and not its cost, which
-  is paid. Names on the iPad's board cards are 11px or more. When no size fits every tile's name and rule, the rules
+  is paid. Names on the iPad's board cards are 11px or more. **Nothing on the table reads under 8px** (2026-11-14):
+  tile names and powers, the round track, small cards' numbers, and the 3 to 6 player plates, stacks and totals have
+  floors. When no size fits every tile's name and rule, the rules
   go (a tap reads them) and the names take the largest size that fits (`fitTiles`). **A 320-wide phone held upright**
   (audit, 2026-11-14): a board card under 40px wide is its picture and its Might on a shield, 9px or more (`.mini` from
   `layoutMap`; its name and cost were 3 to 4px); the tiles are a third of the map wide; the hand is one row of cards the
@@ -868,7 +880,8 @@ Underlying principles for everything:
   ended as one italic sentence; the standings as a ledger with Seals (red wax, broken ones gray and split) and Renown
   columns, the winner's row lit. Then the gilt plate (Play again), Kit.win's other buttons as one panel of rows with a
   gilt icon and a chevron (Open your pack shows the real small sealed pack), and Back to games. Upright on a phone the
-  buttons are a dock that never leaves the card and the game above it scrolls; from 700 wide it is two columns; a
+  buttons are a dock that never leaves the card (the compact layout covers upright screens up to 900 tall, so an
+  iPhone's 874 needs no scroll, and at Safari's shorter heights the game above the dock scrolls); from 700 wide it is two columns; a
   phone on its side has three. Kit.win's buttons and their order are unchanged; kit.js is unchanged.
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
@@ -925,8 +938,8 @@ Underlying principles for everything:
   when a round ends and one breaks, and a company with none left is shut out and forgotten. `story()` in guide.js
   tells it in full-screen scenes made from the game's own pictures (`SCENES`, sized by `fitScene`), at the start of
   the quick start and as chapter 1. A lesson can put any scene behind its captions with `L.scene(name)` (the Your
-  Guide chapter shows all five Guides with their powers: one Guide per deck, the others join at 3, 8, 15 and 25 wins
-  against the computer, and each is a new way to play). The rules page opens with the same story. Anything new that
+  Guide chapter shows the Guides with their powers; the others join as the sphere turns or their callings are met,
+  and each is a new way to play). The rules page opens with the same story. Anything new that
   explains the game starts from the goal and why, then the how, and new cards, powers and screens keep to this story
   (memory, being remembered, the sphere, Gates and Seals).
 - **Domains** (Tim, 2026-11-11, decided on the Places prototype in `scripts/anoria/places/`; being built). The card
@@ -975,7 +988,8 @@ Underlying principles for everything:
   Results `showWinN`, history `recordN` (v 3) and `viewN` in hist/anoria.js. A new piece on the table needs a place in
   both `rowEl` (big rows) and `rimTile`/`stackEl` (the rim), and checking at 3 to 6 players and 320 wide.
 - **The battle line with three to six players** (A3four, Tim approved 2026-11-13: "keep going with face off, carousel
-  and the rest"). On an iPad held sideways (`nblFits`: 900 wide and 600 tall at least) a game of more players is
+  and the rest"). On an iPad held sideways (`nblFits`: 900 wide and 600 tall at least, measured beside the side panel when the
+  reader or the log is open, so with it open the table lays out as on an upright iPad) a game of more players is
   drawn the two-player way: the dock along the bottom with the round track, your hand in one row and the button for
   the turn (`ui.lay.nbl`, the felt's `many bl`); your Gate, your Outpost and the Crossroads lie in a row across your mat
   at the left (`mineLine`), each a column as the two-player table's are, everyone else's Figures there above the line
