@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v755-2026-11-14-casino-buyback';
+const CACHE_VERSION = 'v756-2026-11-14-live-shows';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -179,6 +179,7 @@ const PRECACHE_URLS = [
   '/games/mazes.html',
   '/games/mazes/maze-core.js',
   '/online.js',
+  '/games/liveshow.js',
   '/turnnet.js',
   '/games/dealornodeal.html',
   '/games/dice-roller.html',

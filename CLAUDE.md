@@ -207,6 +207,12 @@ Underlying principles for everything:
   own animation. Each seat keeps the game's own state in the table, and settling runs the game's own code with saves
   and drawing switched off. Craps passes the dice on a seven-out; Horse Race uses its pass-and-play state. People only:
   against the house a computer gambler adds nothing.
+- **Wheel of Fortune and Press Your Luck play online as live shows** (Tim, 2026-11-14: "live show") through
+  `games/liveshow.js`, a layer on online.js shared by both: the host's device runs the show and copies what it draws and
+  plays to the others; each contestant has only their own podium's controls; a shared clock (pings every 1.5 s) lets a
+  buzz, a STOP and a solve be judged by when it was pressed on the player's own device, not when it arrived. Guests
+  never receive a puzzle's answer. The computer plays any podium nobody takes, and one whose device drops out until it
+  joins again.
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in

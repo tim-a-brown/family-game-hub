@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="liveshow.js"></script>
 <style>
 #app.wofgame{max-width:1180px;padding:0 10px calc(var(--safe-b) + 14px);}
 .show{display:flex;flex-direction:column;gap:9px;}
@@ -216,7 +218,8 @@
   var TOP = [0, 2500, 3500, 5000, 5000];
   var ENVELOPES = [[40000, 7], [45000, 6], [50000, 5], [75000, 3], [100000, 2]];
   function money(n) { return '$' + Math.round(n).toLocaleString('en-US'); }
-  function isL(c) { return c >= 'A' && c <= 'Z'; }
+  // (an online guest's copy of the puzzle has _ for each letter not yet shown)
+  function isL(c) { return (c >= 'A' && c <= 'Z') || c === '_'; }
   function rnd(n) { return Math.floor(Math.random() * n); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = rnd(i + 1), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -225,7 +228,7 @@
   function topPick(list) { var w = [50, 25, 13, 7, 5]; return wpick(list.slice(0, 5).map(function (x, i) { return [x, w[i]]; })); }
 
   // ── Sound: show-style effects, synthesized (respects the kit sound switch) ──
-  var snd = (function () {
+  var snd0 = (function () {
     var ac = null;
     function on() { try { return localStorage.getItem('gn_sound') !== '0'; } catch (e) { return true; } }
     function A() { if (!ac) { var C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); } if (ac.state === 'suspended') ac.resume(); return ac; }
@@ -263,6 +266,8 @@
     };
     return function (n, a) { if (!on()) return; try { FX[n](a); } catch (e) {} };
   })();
+  // (an online show's host plays each sound on every device; the wheel's pegs click on each device's own wheel)
+  function snd(n, a) { if (n !== 'peg') bc('snd', [n, a]); snd0(n, a); }
 
   // ── Puzzles (family-friendly, real show categories) ─────────────────────
   var BANK = {
@@ -675,6 +680,8 @@
     }
     return {
       mount: mount, resize: resize, setWedges: setWedges, setAngle: setAngle, spin: spin,
+      // an online spin starts from exactly where the host's wheel was, so every device's wheel lands alike
+      setState: function (th, b, bv) { st.th = +th || 0; st.b = +b || 0; st.bv = +bv || 0; st.om = 0; st.touch = false; glow = -1; draw(); },
       wedge: function (i) { return wedges[i]; }, angle: function () { return st.th; },
       power: function (p) { power = p == null ? null : clamp(p, 0, 1); kick(); if (power === null) draw(); },
       flapper: function () { return { b: st.b, bv: st.bv, om: st.om, th: st.th, touch: st.touch }; },
@@ -686,7 +693,7 @@
   var S = null, shell = null, undoStack = [];
   var ui = { cam: 'wide', vowel: false, solve: null, busy: false, blank: false, hide: {}, disp: [], clock: null };
   function save() {
-    if (!S) return;
+    if (!S || S.net) return;   // (an online show isn't saved: it lives on the host's device while it runs)
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     Kit.resume.set(S.phase.indexOf('bonus') === 0 ? 'Bonus round' : 'Round ' + S.round + ' of ' + S.opts.rounds);
   }
@@ -699,8 +706,8 @@
   function letterIdx() { var t = S.pz.text, out = []; for (var i = 0; i < t.length; i++) if (isL(t[i])) out.push(i); return out; }
   function blankIdx() { return letterIdx().filter(function (i) { return !S.rev[i]; }); }
   function knownFrac() { var l = letterIdx(); return l.length ? l.filter(function (i) { return S.rev[i]; }).length / l.length : 1; }
-  function consLeft() { return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) < 0; }); }
-  function vowelsLeft() { return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) >= 0; }); }
+  function consLeft() { if (GUEST()) return !!S.cl; return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) < 0; }); }
+  function vowelsLeft() { if (GUEST()) return !!S.vl; return blankIdx().some(function (i) { return VOW.indexOf(S.pz.text[i]) >= 0; }); }
   function vowelCost(p) { return !consLeft() && p.bank < 250 ? 0 : 250; }
   function canBuy(p) { return vowelsLeft() && p.bank >= vowelCost(p); }
   function newPuzzle(p) { S.pz = { cat: p.cat, text: p.text }; S.rev = p.text.split('').map(function (c) { return !isL(c); }); S.used = ''; }
@@ -745,19 +752,22 @@
     '<li>The top-dollar wedge grows each round: $2,500, then $3,500, then $5,000.</li></ul>' +
     '<h3>Winning a round</h3><p>Only the player who solves keeps their money from that round, and always at least $1,000. Everyone else\'s round money is lost. When only vowels are left the wheel is off: buy a vowel or solve (vowels are free if you can\'t afford one).</p>' +
     '<h3>Toss-ups</h3><p>Letters pop up one at a time. Buzz in when you know it. Right: you win the cash and start the round. Wrong: you\'re out of that toss-up.</p>' +
-    '<h3>Bonus Round</h3><p>The player with the most money spins for a secret prize envelope. R, S, T, L, N and E are shown free. Pick 3 more consonants and 1 vowel, then you have 10 seconds. Tap <b>Solve</b> the moment you know it (the clock stops) and fill it in. If it\'s wrong the clock keeps going.</p>';
+    '<h3>Bonus Round</h3><p>The player with the most money spins for a secret prize envelope. R, S, T, L, N and E are shown free. Pick 3 more consonants and 1 vowel, then you have 10 seconds. Tap <b>Solve</b> the moment you know it (the clock stops) and fill it in. If it\'s wrong the clock keeps going.</p>' +
+    '<h3>Playing online</h3><p>Tap <b>Play online</b> beside Start the show. One of you opens a table and the others join it, each on their own phone or tablet, and each plays their own podium: spin, call letters, buy vowels and solve right there. The computer plays any podium nobody takes. The host\'s device runs the show, and everyone sees it at the same moment. A toss-up buzz goes to whoever pressed first on their own device, even when their link is slower. If your device drops out, the computer stands in at your podium until you join the table again.</p>';
 
   Kit.init({
     id: 'wheeloffortune',
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { if (NET && NET.mode) { NET.leave(true); return; } clearSave(); showSetup(); },
     undo: function () { undo(); },
     rules: RULES,
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Wheel of Fortune: past games' }); } }]
+    menu: [{ icon: 'logout', label: 'Leave the online show', when: function () { return !!(NET && NET.mode); }, onClick: function () { NET.leave(true); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Wheel of Fortune: past games' }); } }]
   });
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   function showSetup() {
-    epoch++; stopClock(); S = null; shell = null; undoStack = [];
+    if (NET && NET.mode) NET.leave(false);
+    epoch++; stopClock(); S = null; shell = null; undoStack = []; closeOverlays();
     ui.solve = null; ui.vowel = false; ui.busy = false;
     app.classList.remove('wofgame');
     // A setup saved when a Family game could seat two people: the computer that took the third podium now has that seat
@@ -767,20 +777,29 @@
     } catch (e) {}
     Kit.setup(app, {
       intro: 'Spin the wheel, call letters, solve the puzzle.',
-      // three podiums, like the show: each one after the first is a person or a computer contestant
-      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }]),
-      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; } },
+      // three podiums, like the show: each one after the first is a person or a computer contestant; or a live
+      // show online, each contestant at their own podium on their own device (Play online, beside Start the show)
+      modes: Kit.modes(['cpu', { id: 'family', kind: 'local' }, 'online']),
+      players: { min: 3, max: 3, count: 3, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'family' ? 'mix' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [3, 3]; } },
       options: [
         { id: 'rounds', label: 'Main rounds', choices: [[3, '3 rounds'], [4, '4 rounds']], value: 3 },
         { id: 'tossups', label: 'Toss-ups', help: 'Quick puzzles before each round where letters pop up one at a time and you buzz in.', choices: [['on', 'On', 'The first to solve the toss-up wins cash and starts the round.'], ['off', 'Off', 'Skip toss-ups and go straight to each round.']], value: 'on' },
         { id: 'clock', label: 'Bonus round clock', help: 'How long the winner gets to solve the final bonus puzzle. The TV show uses 10 seconds.', choices: [[10, '10 sec'], [20, '20 sec'], [30, '30 sec']], value: 10 }
       ],
       start: 'Start the show',
-      onStart: start
+      onStart: function (cfg) {
+        if (cfg.mode === 'online') {   // Play online's review: Open the table, or Find a table to join
+          NETOPTS = cfg.options || {};
+          var me = (cfg.players[0] && cfg.players[0].name) || '';
+          if (cfg.net === 'find') NET.lobby(); else NET.host(me);
+          return;
+        }
+        start(cfg);
+      }
     });
   }
   function start(cfg) {
-    epoch++; stopClock();
+    epoch++; stopClock(); closeOverlays();
     var players = cfg.players.slice(0, 3).map(function (p) { return { name: p.name, cpu: !!p.cpu }; });
     if (players.length < 3) {
       var taken = players.map(function (p) { return p.name; });
@@ -788,7 +807,7 @@
     }
     var o = cfg.options || {};
     S = {
-      v: 1, started: Date.now(), mode: cfg.mode, cfg: { mode: cfg.mode, players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: o },
+      v: 1, started: Date.now(), mode: cfg.mode, net: cfg.mode === 'online', sol: null, cfg: { mode: cfg.mode, players: cfg.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), options: o },
       opts: { rounds: +o.rounds === 4 ? 4 : 3, tossups: o.tossups !== 'off', clock: +o.clock || 10 },
       players: players.map(function (p) { return { name: p.name, cpu: p.cpu, bank: 0, total: 0, tu: 0, skill: 0.85 + Math.random() * 0.3 }; }),
       round: 0, phase: 'intro', cur: 0, pz: null, rev: [], used: '', wedge: null, angle: Math.random() * Math.PI * 2,
@@ -798,6 +817,8 @@
     if (Kit.gameStart) Kit.gameStart();
     buildShell();
     Wheel.setAngle(S.angle);
+    if (S.net) S.players.forEach(function (p, i) { p.dev = cfg.players[i] && cfg.players[i].dev || null; });
+    netInit();
     beginRound(1);
   }
 
@@ -848,7 +869,7 @@
       canFlick: function () { return !!canFlick(); },
       onGrab: function () { setCam('wheel'); },
       onFlick: onFlick,
-      haptics: function () { return S && S.players[S.cur] && !S.players[S.cur].cpu; }
+      haptics: function () { return S && S.players[S.cur] && mine(S.cur); }
     });
     layoutStage();
     requestAnimationFrame(layoutStage);
@@ -866,7 +887,8 @@
       // Fill the phone screen: the studio takes whatever the podiums, host line and keys leave over
       var bar = document.querySelector('.gbar'), barH = bar ? bar.offsetHeight : 58;
       var avail = (window.innerHeight || 760) - barH - shell.side.offsetHeight - 9 - 18;
-      H = Math.round(clamp(avail, W * 0.82, Math.min(W * 1.1, 820))); C = Math.min(H, W);
+      // (a tall tablet upright: the studio gives up what the keys need, so the last row of keys stays on the screen)
+      H = Math.round(clamp(avail, Math.min(W * 0.82, Math.max(avail, W * 0.6)), Math.min(W * 1.1, 820))); C = Math.min(H, W);
     }
     shell.studio.style.height = H + 'px';
     var bh = desk ? 0 : shell.boardcam.offsetHeight;
@@ -879,14 +901,16 @@
   }
   var rsT = 0;
   window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(layoutStage, 120); });
-  function setCam(c) {
+  function setCam(c) { bc('cam', [c]); setCam0(c); }
+  function setCam0(c) {
     ui.cam = c; if (!shell) return;
     shell.studio.setAttribute('data-cam', c);
     if (c === 'wide' && !mq.matches) shell.readout.classList.remove('go');
   }
 
   // ── Painting ──────────────────────────────────────────────────────────────
-  function paintBoard() {
+  function paintBoard() { bc('pb'); paintBoard0(); }
+  function paintBoard0() {
     if (!shell || !S || !S.pz) return;
     var L = lay(), t = S.pz.text, sv = ui.solve;
     shell.cat.textContent = S.pz.cat;
@@ -911,9 +935,10 @@
     var d = shell.pods[i], v = ui.disp[i];
     d.bank.textContent = money(v.bank); d.tot.textContent = 'Total ' + money(v.total);
   }
-  function paintPodiums() {
+  function paintPodiums() { bc('pp'); paintPodiums0(); }
+  function paintPodiums0() {
     if (!shell) return;
-    var active = ['turn', 'call', 'roundEnd', 'tuwon', 'bonusIntro', 'bonusPick', 'bonusReady'].indexOf(S.phase) >= 0 || (S.phase === 'tossup' && S.cur >= 0 && ui.busy) || (ui.solve && ui.solve.ctx === 'tossup');
+    var active = ['turn', 'call', 'roundEnd', 'tuwon', 'bonusIntro', 'bonusPick', 'bonusReady'].indexOf(S.phase) >= 0 || (S.phase === 'tossup' && S.cur >= 0 && ui.busy) || (ui.solve && ui.solve.ctx === 'tossup') || (S.sol && S.sol.ctx === 'tossup');
     S.players.forEach(function (p, i) {
       var d = shell.pods[i];
       d.root.classList.toggle('on', active && i === S.cur);
@@ -923,33 +948,43 @@
       paintMoney(i);
     });
   }
-  function host(html) { if (shell) shell.host.innerHTML = '<span>' + (html || '') + '</span>'; }
+  function host(html) { bc('h', [html]); host0(html); }
+  function host0(html) { if (shell) shell.host.innerHTML = '<span>' + (html || '') + '</span>'; }
+  // the host's line as each device says it ("Your turn" on your own device, "Sam is up." on the others)
+  function hostT() { bc('ht'); host0(hostText()); }
   function nm(i) { return esc(S.players[i].name); }
   // "Sam spins" but "You spin"
   function vb(name, s3, s2) { return name === 'You' ? 'You ' + s2 : esc(name) + ' ' + s3; }
   function hostText() {
     var p = S.players[S.cur], n = p ? esc(p.name) : '';
+    if (ui.solve) return 'Type the missing letters. Tap a tile to move the cursor.';
     switch (S.phase) {
       case 'turn':
-        if (p.cpu) return n + ' is up.';
+        if (!mine(S.cur)) return solving(S.cur) ? n + ' is solving…' : n + ' is up.';
         if (!consLeft()) return 'Only vowels remain. Buy a vowel or solve.';
         if (ui.vowel) return 'Pick a vowel.';
         return Kit.poss(p.name) + ' turn: spin, buy a vowel, or solve.';
       case 'call':
         if (S.wedge.t === 'free') return 'Free Play! Consonants pay <b>$500</b> each, vowels are free, and a miss costs nothing.';
-        return p.cpu ? n + ' is calling a letter for <b>' + money(S.wedge.v) + '</b>.' : 'Call a consonant for <b>' + money(S.wedge.v) + '</b> each.';
-      case 'tossup': return 'Toss-up for <b>' + money(S.tu.prize) + '</b>. Buzz in when you know it!';
+        if (solving(S.cur) && !mine(S.cur)) return n + ' is solving…';
+        return !mine(S.cur) ? n + ' is calling a letter for <b>' + money(S.wedge.v) + '</b>.' : 'Call a consonant for <b>' + money(S.wedge.v) + '</b> each.';
+      case 'tossup':
+        if (S.sol && !mine(S.sol.who)) return vb(S.players[S.sol.who].name, 'buzzed', 'buzzed') + ' in and ' + (S.players[S.sol.who].name === 'You' ? 'are' : 'is') + ' solving…';
+        return 'Toss-up for <b>' + money(S.tu.prize) + '</b>. Buzz in when you know it!';
       case 'roundEnd': return S.lastWin ? vb(S.players[S.lastWin.p].name, 'wins', 'win') + ' round ' + S.round + (S.players[S.lastWin.p].name === 'You' ? ' and bank <b>' : ' and banks <b>') + money(S.lastWin.amt) + '</b>!' : '';
       case 'bonusIntro': return vb(p.name, 'is', 'are') + ' in the Bonus Round! Spin for a prize envelope.';
-      case 'bonusPick': return 'R, S, T, L, N and E are free. ' + (p.cpu ? n + ' is choosing letters…' : 'Pick 3 more consonants and 1 vowel.');
-      case 'bonusReady': return p.cpu ? n + ' has ' + S.opts.clock + ' seconds…' : ui.clock ? 'Tap <b>Solve!</b> the moment you know it.' : 'You get <b>' + S.opts.clock + ' seconds</b>. Ready?';
+      case 'bonusPick': return 'R, S, T, L, N and E are free. ' + (!mine(S.cur) ? n + ' is choosing letters…' : 'Pick 3 more consonants and 1 vowel.');
+      case 'bonusReady':
+        if (!mine(S.cur)) return solving(S.cur) ? n + ' is solving…' : ui.clock || p.cpu ? n + ' has ' + S.opts.clock + ' seconds…' : n + ' gets <b>' + S.opts.clock + ' seconds</b>.';
+        return ui.clock ? 'Tap <b>Solve!</b> the moment you know it.' : 'You get <b>' + S.opts.clock + ' seconds</b>. Ready?';
       case 'over': return 'Thanks for playing!';
     }
     return '';
   }
-  function renderAll() {
+  function renderAll() { if (!shell || !S) return; ui.hide = {}; bc('ra'); renderAll0(); }
+  function renderAll0() {
     if (!shell || !S) return;
-    ui.hide = {}; syncDisp(); paintBoard(); paintPodiums(); paintDeck(); host(hostText());
+    ui.hide = {}; syncDisp(); paintBoard0(); paintPodiums0(); paintDeck0(); host0(hostText());
   }
 
   function btn(label, cls, fn, dis) {
@@ -1001,10 +1036,11 @@
     b.addEventListener('click', function () { if (viaPointer) { viaPointer = false; return; } if (!b.disabled) go(0.6); });
     return b;
   }
-  function paintDeck() {
+  function paintDeck() { bc('pd'); paintDeck0(); }
+  function paintDeck0() {
     if (!shell || !S) return;
     var A = shell.acts; A.innerHTML = '';
-    var p = S.players[S.cur], human = p && !p.cpu, busy = ui.busy;
+    var p = S.players[S.cur], human = p && mine(S.cur), busy = busyNow();
     if (ui.solve) {
       var s = ui.solve, full = blankIdx().every(function (i) { return s.fill[i]; });
       A.appendChild(btn(s.ctx === 'main' ? 'Cancel' : s.ctx === 'tossup' ? 'Pass' : 'Keep thinking', 'btn-soft', cancelSolve, busy));
@@ -1012,9 +1048,9 @@
     } else switch (S.phase) {
       case 'turn':
         var can = human && !busy;
-        A.appendChild(spinButton('SPIN', can && consLeft() && !ui.vowel, function (pw) { run(function () { return doSpin(pw); }); }));
-        if (ui.vowel) A.appendChild(btn('Cancel', 'btn-soft', function () { ui.vowel = false; paintDeck(); host(hostText()); }));
-        else A.appendChild(btn('<span class="two">Buy a vowel<small>' + (p && vowelCost(p) === 0 ? 'free' : '$250') + '</small></span>', 'btn-blue', function () { ui.vowel = true; snd('pop'); paintDeck(); host(hostText()); }, !(can && canBuy(p))));
+        A.appendChild(spinButton('SPIN', can && consLeft() && !ui.vowel, function (pw) { spinGo('main', pw); }));
+        if (ui.vowel) A.appendChild(btn('Cancel', 'btn-soft', function () { ui.vowel = false; paintDeck0(); host0(hostText()); }));
+        else A.appendChild(btn('<span class="two">Buy a vowel<small>' + (p && vowelCost(p) === 0 ? 'free' : '$250') + '</small></span>', 'btn-blue', function () { ui.vowel = true; snd0('pop'); paintDeck0(); host0(hostText()); }, !(can && canBuy(p))));
         A.appendChild(btn('Solve', 'btn-green', function () { openSolve(S.cur, 'main'); }, !can || ui.vowel));
         break;
       case 'call':
@@ -1024,34 +1060,36 @@
         } else A.appendChild(info((human ? 'Call a consonant' : esc(p.name)) + ' · <b>' + money(S.wedge.v) + '</b>'));
         break;
       case 'tossup':
-        var hs = S.tu.elig.filter(function (i) { return !S.players[i].cpu; });
-        if (!hs.length) A.appendChild(info('Watching the tiebreaker…'));
+        var hs = S.tu.elig.filter(function (i) { return mine(i); });
+        if (!hs.length) A.appendChild(info(S.tu.purpose === 'tie' ? 'Watching the tiebreaker…' : 'Watching the toss-up…'));
         hs.forEach(function (i) {
-          var b = btn(hs.length === 1 ? 'Buzz in!' : 'Buzz: ' + nm(i), 'btn-red buzz', function () { humanBuzz(i); }, busy || S.tu.locked.indexOf(i) >= 0);
+          var b = btn(hs.length === 1 ? 'Buzz in!' : 'Buzz: ' + nm(i), 'btn-red buzz', function () { humanBuzz(i); }, busy || S.tu.locked.indexOf(i) >= 0 || !!S.sol);
           b.style.setProperty('--b', PODS[i].c); b.style.setProperty('--b-ink', i === 1 ? '#2a1c00' : '#fff'); b.style.setProperty('--b-lip', 'color-mix(in srgb,' + PODS[i].c + ' 55%,#000)');
           A.appendChild(b);
         });
         break;
       case 'tuwon': A.appendChild(info('Get ready…')); break;
       case 'roundEnd':
-        A.appendChild(btn(S.round < S.opts.rounds ? 'Next: Round ' + (S.round + 1) : 'On to the Bonus Round', 'btn-primary', nextRound, busy));
+        // (online, anyone at a podium can move the show on)
+        A.appendChild(btn(S.round < S.opts.rounds ? 'Next: Round ' + (S.round + 1) : 'On to the Bonus Round', 'btn-primary', function () { if (GUEST()) { NET.send({ t: 'next' }); pend(); } else nextRound(); }, busy));
         break;
       case 'bonusIntro':
-        if (human) A.appendChild(spinButton('SPIN FOR AN ENVELOPE', !busy, function (pw) { run(function () { return bonusSpin(pw); }); }));
+        if (human) A.appendChild(spinButton('SPIN FOR AN ENVELOPE', !busy, function (pw) { spinGo('bonus', pw); }));
         else A.appendChild(info(esc(p.name) + ' spins for an envelope…'));
         break;
       case 'bonusPick': A.appendChild(slotsEl()); break;
       case 'bonusReady':
         if (ui.clock) {
           A.appendChild(clockEl());
-          if (human) A.appendChild(btn('Solve!', 'btn-green', function () { if (ui.clock) ui.clock.paused = true; openSolve(S.cur, 'bonus'); }, busy));
-        } else if (human) A.appendChild(btn('Start the clock', 'btn-primary', function () { startClock(null); }, busy));
+          if (human) A.appendChild(btn('Solve!', 'btn-green', function () { if (ui.clock && !GUEST()) ui.clock.paused = true; openSolve(S.cur, 'bonus'); }, busy));
+        } else if (human) A.appendChild(btn('Start the clock', 'btn-primary', function () { if (GUEST()) { NET.send({ t: 'clock' }); pend(); } else startClock(null); }, busy));
+        else if (solving(S.cur)) A.appendChild(info(esc(p.name) + ' is solving…'));
         else A.appendChild(info('…'));
         break;
       case 'over': A.appendChild(btn('See results', 'btn-primary', showResults, busy)); break;
       default: A.appendChild(info('')); break;
     }
-    paintKeys();
+    paintKeys0();
     shell.cv.classList.toggle('flick', !!canFlick());
   }
   function slotsEl() {
@@ -1064,19 +1102,21 @@
   }
   function clockEl() {
     var c = el('div', { class: 'clock' }, [el('i'), el('span')]);
-    ui.clockEl = c; paintClock(); return c;
+    ui.clockEl = c; paintClock0(); return c;
   }
-  function paintClock() {
+  function paintClock() { bc('ck'); paintClock0(); }
+  function paintClock0() {
     if (!ui.clock || !ui.clockEl) return;
     var left = Math.max(0, ui.clock.left), tot = S.opts.clock * 1000;
     ui.clockEl.firstChild.style.transform = 'scaleX(' + (left / tot) + ')';
     ui.clockEl.lastChild.textContent = Math.ceil(left / 1000) + (ui.clock.paused ? ' · stopped' : '');
   }
-  function paintKeys() {
-    var p = S.players[S.cur], human = p && !p.cpu && !ui.busy, s = ui.solve;
+  function paintKeys() { bc('pk'); paintKeys0(); }
+  function paintKeys0() {
+    var p = S.players[S.cur], human = p && mine(S.cur) && !busyNow(), s = ui.solve;
     Object.keys(shell.keys).forEach(function (L) {
       var k = shell.keys[L], used = S.used.indexOf(L) >= 0, isV = VOW.indexOf(L) >= 0, on = false;
-      if (s) on = !ui.busy;
+      if (s) on = !busyNow();
       else if (human) {
         if (S.phase === 'call') on = !used && (!isV || S.wedge.t === 'free');
         else if (S.phase === 'turn' && ui.vowel) on = isV && !used;
@@ -1094,12 +1134,13 @@
     });
     // Delete is always on the keyboard; it works while solving and while picking bonus letters
     var canPickBack = S.phase === 'bonusPick' && human && S.bonus.picks.length > 0;
-    shell.bs.disabled = !((s && !ui.busy) || canPickBack);
+    shell.bs.disabled = !((s && !busyNow()) || canPickBack);
   }
 
   // ── Show effects ──────────────────────────────────────────────────────────
   var tw = {};
-  function tweenMoney(i, key, to, ms) {
+  function tweenMoney(i, key, to, ms) { bc('tw', [i, key, to, ms]); tweenMoney0(i, key, to, ms); }
+  function tweenMoney0(i, key, to, ms) {
     var from = ui.disp[i][key], id = i + key, t0 = performance.now(); ms = (ms || 700) * SPD;
     cancelAnimationFrame(tw[id]);
     function f(now) {
@@ -1109,14 +1150,21 @@
     }
     tw[id] = requestAnimationFrame(f);
   }
-  function say(i, text) {
+  function say(i, text) { bc('say', [i, text]); say0(i, text); }
+  function say0(i, text) {
     var b = shell.pods[i].say; b.textContent = text;
     b.classList.remove('go'); void b.offsetWidth; b.classList.add('go');
   }
-  function readout(text) { var r = shell.readout; r.textContent = text; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); }
-  function band(kind, text) { var b = shell.band; b.className = 'band ' + kind; b.textContent = text; void b.offsetWidth; b.classList.add('go'); }
+  function readout(text) { bc('ro', [text]); readout0(text); }
+  function readout0(text) { var r = shell.readout; r.textContent = text; r.classList.remove('go'); void r.offsetWidth; r.classList.add('go'); }
+  function band(kind, text) { bc('bd', [kind, text]); band0(kind, text); }
+  function band0(kind, text) { var b = shell.band; b.className = 'band ' + kind; b.textContent = text; void b.offsetWidth; b.classList.add('go'); }
+  // a show effect on a part of the studio named so every device finds its own: studio, board, pod0-2, keyA-Z
+  function fxOn(name, cls, ms) { bc('fx', [name, cls, ms]); var n = fxNode(name); if (n) fx(n, cls, ms); }
+  function fxNode(name) { if (!shell) return null; if (name === 'studio' || name === 'board') return shell[name]; if (/^pod\d$/.test(name)) return shell.pods[+name.slice(3)].root; if (/^key[A-Z]$/.test(name)) return shell.keys[name.slice(3)]; return null; }
   function fx(node, cls, ms) { node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls); setTimeout(function () { node.classList.remove(cls); }, ms || 900); }
-  function floatMoney(i, amt) {
+  function floatMoney(i, amt) { bc('fm', [i, amt]); floatMoney0(i, amt); }
+  function floatMoney0(i, amt) {
     var from = shell.board.getBoundingClientRect(), to = shell.pods[i].bank.getBoundingClientRect();
     if (!from.width || !to.width) return;
     var f = el('div', { class: 'mfloat' + (amt < 0 ? ' neg' : ''), text: (amt < 0 ? '−' : '+') + money(Math.abs(amt)) });
@@ -1133,49 +1181,55 @@
     a.onfinish = function () { f.remove(); };
     setTimeout(function () { f.remove(); }, 1500);
   }
-  function titleCard(title, sub) {
+  function titleCard(title, sub) { bc('tc', [title, sub]); return titleCard0(title, sub); }
+  function titleCard0(title, sub) {
     var c = el('div', { class: 'tcard' }, [el('div', { class: 'in' }, [el('h2', { text: title }), sub ? el('p', { text: sub }) : null])]);
-    document.body.appendChild(c); snd('chime');
+    document.body.appendChild(c); snd0('chime');
     setTimeout(function () { c.remove(); }, 1900 * SPD + 50);
     return wait(1750);
   }
-  async function boardIntro() {
-    ui.blank = false; paintBoard();
+  function boardIntro() { ui.blank = false; bc('bi'); return boardIntro0(); }
+  async function boardIntro0() {
+    ui.blank = false; paintBoard0();
     var n = 0;
     shell.tiles.forEach(function (t) { if (t.classList.contains('on')) { t.classList.add('in'); t.style.animationDelay = (n++ * 30 * SPD) + 'ms'; } });
-    for (var i = 0; i < 4; i++) setTimeout(function () { snd('blip'); }, i * 120 * SPD);
+    for (var i = 0; i < 4; i++) setTimeout(function () { snd0('blip'); }, i * 120 * SPD);
     await wait(400 + n * 30);
     shell.tiles.forEach(function (t) { t.classList.remove('in'); t.style.animationDelay = ''; });
   }
-  async function revealLetters(idxs, o) {
+  function revealLetters(idxs, o) { idxs.forEach(function (i) { ui.hide[i] = 1; }); bc('rl', [idxs, o]); return revealLetters0(idxs, o); }
+  async function revealLetters0(idxs, o) {
     o = o || {};
     idxs = idxs.slice().sort(function (a, b) { return a - b; });
-    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard();
-    var i, k;
-    if (o.together) { idxs.forEach(function (i) { tileOf(i).classList.add('lit'); }); snd('ding'); await wait(950); }
-    else for (k = 0; k < idxs.length; k++) { tileOf(idxs[k]).classList.add('lit'); snd('ding'); await wait(o.quick ? 260 : 480); }
+    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard0();
+    var i, k, txt = S.pz.text;
+    if (o.together) { idxs.forEach(function (i) { tileOf(i).classList.add('lit'); }); snd0('ding'); await wait(950); }
+    else for (k = 0; k < idxs.length; k++) { tileOf(idxs[k]).classList.add('lit'); snd0('ding'); await wait(o.quick ? 260 : 480); }
     await wait(380);
     for (k = 0; k < idxs.length; k++) {
       i = idxs[k]; delete ui.hide[i];
-      var e = tileOf(i); e.textContent = S.pz.text[i]; e.className = 'tile on rev flip'; snd('touch');
+      var e = tileOf(i); e.textContent = txt[i]; e.className = 'tile on rev flip'; snd0('touch');
       await wait(o.together ? 110 : 230);
     }
     await wait(260);
   }
-  async function revealWave(idxs) {
+  function revealWave(idxs) { if (!idxs.length) return Promise.resolve(); idxs.forEach(function (i) { ui.hide[i] = 1; }); bc('rw', [idxs]); return revealWave0(idxs); }
+  async function revealWave0(idxs) {
     if (!idxs.length) return;
-    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard();
+    idxs.forEach(function (i) { ui.hide[i] = 1; }); paintBoard0();
     idxs.forEach(function (i) { tileOf(i).classList.add('lit'); });
-    snd('ding'); await wait(450);
+    snd0('ding'); await wait(450);
+    var txt = S.pz.text;
     for (var k = 0; k < idxs.length; k++) {
       var i = idxs[k]; delete ui.hide[i];
-      var e = tileOf(i); e.textContent = S.pz.text[i]; e.className = 'tile on rev flip';
-      if (k % 3 === 0) snd('touch');
+      var e = tileOf(i); e.textContent = txt[i]; e.className = 'tile on rev flip';
+      if (k % 3 === 0) snd0('touch');
       await wait(55);
     }
     await wait(400);
   }
-  async function showWrong(s) {
+  function showWrong(s) { bc('sw', [s.fill]); return showWrong0(s); }
+  async function showWrong0(s) {
     blankIdx().forEach(function (i) { var t = tileOf(i); if (s.fill[i]) { t.textContent = s.fill[i]; t.className = 'tile on slot typed bad'; } });
     fx(shell.board, 'shake', 500);
     await wait(900);
@@ -1202,7 +1256,7 @@
   function beginRound(r) {
     epoch++; undoStack = [];
     S.round = r; S.players.forEach(function (p) { p.bank = 0; }); S.row = [0, 0, 0]; S.wedge = null; S.lastWin = null;
-    Wheel.setWedges(wedgesFor(r));
+    wedges('r');
     if (S.opts.tossups) beginTossup(r === 1 ? 1000 : 2000, [0, 1, 2], 'round');
     else beginMain((r - 1) % 3);
   }
@@ -1219,8 +1273,8 @@
     });
   }
   function canFlick() {
-    if (!S || ui.busy || ui.solve || Wheel.busy()) return false;
-    var p = S.players[S.cur]; if (!p || p.cpu) return false;
+    if (!S || busyNow() || ui.solve || Wheel.busy()) return false;
+    var p = S.players[S.cur]; if (!p || !mine(S.cur)) return false;
     if (S.phase === 'turn' && consLeft() && !ui.vowel) return 'main';
     if (S.phase === 'bonusIntro') return 'bonus';
     return false;
@@ -1235,15 +1289,37 @@
     }
     // Flick speed sets the spin: a lazy flick still makes a full turn, a hard one is a big spin
     var w0 = (om > 0 ? 1 : -1) * clamp(Math.abs(om) * 0.7, W_MIN, W_MAX * 1.05) * (0.97 + Math.random() * 0.06);
-    if (m === 'main') run(function () { return doSpin(null, w0); }); else run(function () { return bonusSpin(null, w0); });
+    spinGo(m, null, w0);
   }
+  // a spin from this device: played here, or (an online guest) spun here at once and sent to the host, whose wheel
+  // spins it from exactly the same place
+  var mySpin = 0, nextSid = 0;
+  function spinGo(m, power, w0) {
+    if (GUEST()) {
+      if (!canFlick()) return;
+      w0 = w0 || omegaFor(power);
+      var f = Wheel.flapper(), sid = mySpin = 1 + rnd(1e9);
+      NET.send({ t: 'spin', m: m, w0: w0, th: f.th, b: f.b, bv: f.bv, sid: sid });
+      pend(); ui.vowel = false; paintDeck0(); setCam0('wheel');
+      Wheel.spin(w0).catch(function () {});
+      return;
+    }
+    if (m === 'main') run(function () { return doSpin(power, w0); }); else run(function () { return bonusSpin(power, w0); });
+  }
+  // the wheel spins on every device from the host's wheel's state at this moment
+  function spinW(w0) {
+    var f = Wheel.flapper();
+    bc('spin', [f.th, f.b, f.bv, w0, nextSid]); nextSid = 0;
+    return Wheel.spin(w0);
+  }
+  function wedges(k) { bc('wd', [k, S.round]); Wheel.setWedges(k === 'env' ? ENV_WEDGES : wedgesFor(S.round)); }
   async function doSpin(power, w0) {
     var me = S.cur, p = S.players[me];
     ui.busy = true; ui.vowel = false; paintDeck();
     setCam('wheel'); host(vb(p.name, 'spins…', 'spin…'));
-    if (!p.cpu) Kit.haptic('medium');
-    await wait(p.cpu ? 650 : 200);
-    var idx = await Wheel.spin(w0 || omegaFor(power));
+    hap(me, 'medium');
+    await wait(p.cpu ? 650 : nextSid ? 0 : 200);   // (a guest's wheel is already turning on their own device)
+    var idx = await spinW(w0 || omegaFor(power));
     await landed(idx);
   }
   async function landed(idx) {
@@ -1255,22 +1331,22 @@
       if (w.t === 'free') { band('free', 'FREE PLAY'); snd('chime'); host('Free Play!'); }
       else {
         readout(money(w.v)); snd('pop'); host(vb(p.name, 'lands', 'land') + ' on <b>' + money(w.v) + '</b>.');
-        if (w.top) { snd('chime'); setTimeout(function () { Kit.callout(money(w.v) + '!'); }, 250); }
+        if (w.top) { snd('chime'); setTimeout(function () { callout(money(w.v) + '!'); }, 250); }
       }
       await wait(w.t === 'free' ? 1800 : 1300);
     } else if (w.t === 'bk') {
       var lost = p.bank;
       S.log.bk.push({ p: me, amt: lost, r: S.round }); ev(me + '!' + lost);
       p.bank = 0; nextPlayer(); save();
-      band('bk', 'BANKRUPT'); snd('bankrupt'); fx(shell.studio, 'shake', 500); fx(shell.studio, 'flash', 950); fx(shell.pods[me].root, 'bk', 1600);
-      if (!p.cpu) Kit.haptic('error');
+      band('bk', 'BANKRUPT'); snd('bankrupt'); fxOn('studio', 'shake', 500); fxOn('studio', 'flash', 950); fxOn('pod' + me, 'bk', 1600);
+      hap(me, 'error');
       host(lost ? vb(p.name, 'loses', 'lose') + ' <b>' + money(lost) + '</b>!' : vb(p.name, 'hits', 'hit') + ' BANKRUPT.');
       await wait(450); tweenMoney(me, 'bank', 0, 1000);
       await wait(1900);
     } else {
       ev(me + '/'); nextPlayer(); save();
       band('lose', 'LOSE A TURN'); snd('lose'); host(vb(p.name, 'loses', 'lose') + ' a turn.');
-      if (!p.cpu) Kit.haptic('error');
+      hap(me, 'error');
       await wait(2000);
     }
     setCam('wide'); await wait(450);
@@ -1308,18 +1384,18 @@
       await revealLetters(idxs, { quick: n > 3 });
       if (per) {
         floatMoney(me, n * per); tweenMoney(me, 'bank', before - cost + n * per, 800); snd('cash');
-        if (n * per >= 2500) setTimeout(function () { Kit.callout(money(n * per)); }, 200);
+        if (n * per >= 2500) setTimeout(function () { callout(money(n * per)); }, 200);
       }
-      if (!p.cpu) Kit.haptic('success');
+      hap(me, 'success');
       paintKeys();
       await wait(700);
     } else {
-      host('Sorry, no ' + L + '.'); snd('buzz'); paintKeys(); fx(shell.keys[L], 'shake', 450);
-      if (!p.cpu) Kit.haptic('error');
+      host('Sorry, no ' + L + '.'); snd('buzz'); paintKeys(); fxOn('key' + L, 'shake', 450);
+      hap(me, 'error');
       await wait(1400);
     }
-    if (!done && hadCons && !consLeft()) { host('<b>Only vowels remain!</b> The wheel is off.'); Kit.toast('Only vowels remain'); await wait(1300); }
-    else if (!done && hadVow && !vowelsLeft()) { host('<b>No more vowels!</b>'); Kit.toast('No more vowels'); await wait(1100); }
+    if (!done && hadCons && !consLeft()) { host('<b>Only vowels remain!</b> The wheel is off.'); toastAll('Only vowels remain'); await wait(1300); }
+    else if (!done && hadVow && !vowelsLeft()) { host('<b>No more vowels!</b>'); toastAll('No more vowels'); await wait(1100); }
     if (winInfo) return winSequence(me, winInfo);
     ui.busy = false; proceed();
   }
@@ -1342,8 +1418,9 @@
     ui.busy = true; paintDeck();
     var p = S.players[me];
     if (info.hidden.length) await revealWave(info.hidden);
-    snd('solve'); Kit.callout('SOLVED!');
-    if (!p.cpu) { Kit.confetti({ count: 90 }); Kit.haptic('success'); }
+    snd('solve'); callout('SOLVED!');
+    if (!p.cpu) confetti(90);
+    hap(me, 'success');
     host(vb(p.name, 'wins', 'win') + ' round ' + S.round + (p.name === 'You' ? ' and bank <b>' : ' and banks <b>') + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
     await wait(800);
     tweenMoney(me, 'bank', info.amt, 400);
@@ -1367,6 +1444,16 @@
   function openSolve(who, ctx) {
     if (!S) return;
     var b = blankIdx();
+    if (GUEST()) {
+      // an online guest fills in the board on their own device only; the host checks the answer once it's sent
+      if (!b.length) { NET.send({ t: 'solve', ctx: ctx, fill: {} }); pend(); return; }
+      ui.solve = { who: who, ctx: ctx, fill: {}, cur: b[0], t0: performance.now() };
+      if (ctx !== 'tossup') NET.send({ t: 'sol', ctx: ctx, on: 1, at: NET.now() });
+      ui.vowel = false; setCam0('wide'); snd0('pop');
+      paintBoard0(); paintPodiums0(); paintDeck0();
+      host0('Type the missing letters. Tap a tile to move the cursor.');
+      return;
+    }
     if (!b.length) {
       // Every letter is already showing (e.g. the bonus picks filled the puzzle):
       // tapping Solve simply solves it instead of opening an empty board.
@@ -1377,58 +1464,70 @@
       return;
     }
     ui.solve = { who: who, ctx: ctx, fill: {}, cur: b[0] };
+    // (online, the others see that this podium is solving, never the letters typed)
+    if (S.net) { S.sol = { who: who, ctx: ctx }; bc('pp'); bc('pd'); bc('ht'); }
     ui.vowel = false; setCam('wide');
-    snd('pop');
-    paintBoard(); paintPodiums(); paintDeck();
-    host('Type the missing letters. Tap a tile to move the cursor.');
+    snd0('pop');
+    paintBoard0(); paintPodiums0(); paintDeck0();
+    host0('Type the missing letters. Tap a tile to move the cursor.');
   }
   function typeFill(L) {
-    var s = ui.solve; if (!s || ui.busy || s.cur == null) return;
-    s.fill[s.cur] = L; snd('blip');
+    var s = ui.solve; if (!s || busyNow() || s.cur == null) return;
+    s.fill[s.cur] = L; snd0('blip');
     var b = blankIdx(), k = b.indexOf(s.cur);
     if (k < b.length - 1) s.cur = b[k + 1];
-    paintBoard(); paintDeck();
+    paintBoard0(); paintDeck0();
   }
   function backspace() {
     var p0 = S.players[S.cur];
-    if (!ui.solve && S.phase === 'bonusPick' && p0 && !p0.cpu && !ui.busy && S.bonus.picks.length) {
+    if (!ui.solve && S.phase === 'bonusPick' && p0 && mine(S.cur) && !busyNow() && S.bonus.picks.length) {
+      if (GUEST()) { NET.send({ t: 'bs' }); pend(); paintDeck0(); return; }
       S.bonus.picks = S.bonus.picks.slice(0, -1); snd('blip'); save(); paintDeck(); return;
     }
-    var s = ui.solve; if (!s || ui.busy) return;
+    var s = ui.solve; if (!s || busyNow()) return;
     var b = blankIdx(), k = b.indexOf(s.cur);
     if (s.fill[s.cur]) delete s.fill[s.cur];
     else if (k > 0) { s.cur = b[k - 1]; delete s.fill[s.cur]; }
-    snd('blip');
-    paintBoard(); paintDeck();
+    snd0('blip');
+    paintBoard0(); paintDeck0();
   }
   function tileTap(k) {
     var s = ui.solve; if (!s || !S) return;
     var ci = lay().cell[k];
-    if (ci >= 0 && isL(S.pz.text[ci]) && !S.rev[ci]) { s.cur = ci; paintBoard(); }
+    if (ci >= 0 && isL(S.pz.text[ci]) && !S.rev[ci]) { s.cur = ci; paintBoard0(); }
   }
   function cancelSolve() {
     var s = ui.solve; if (!s) return;
-    if (s.ctx === 'tossup') { ui.solve = null; run(function () { return tossupAnswer(s.who, false, null); }); return; }
     ui.solve = null;
+    if (GUEST()) {
+      if (s.ctx === 'tossup') NET.send({ t: 'solve', ctx: 'tossup', pass: 1 }); else NET.send({ t: 'sol', ctx: s.ctx, on: 0 });
+      pend(); renderAll0(); return;
+    }
+    if (S.net) S.sol = null;
+    if (s.ctx === 'tossup') { run(function () { return tossupAnswer(s.who, false, null); }); return; }
     if (s.ctx === 'bonus' && ui.clock) ui.clock.paused = false;
     renderAll();
   }
   function submitSolve() {
-    var s = ui.solve; if (!s || ui.busy) return;
+    var s = ui.solve; if (!s || busyNow()) return;
     var b = blankIdx();
     if (b.some(function (i) { return !s.fill[i]; })) { Kit.toast('Fill in every blank first'); return; }
-    var ok = b.every(function (i) { return s.fill[i] === S.pz.text[i]; });
-    if (s.ctx === 'main') snapshot();
+    if (GUEST()) { s.sent = true; NET.send({ t: 'solve', ctx: s.ctx, fill: s.fill }); paintDeck0(); return; }
     ui.solve = null;
-    if (s.ctx === 'main') run(function () { return humanSolved(s.who, ok, s); });
-    else if (s.ctx === 'tossup') run(function () { return tossupAnswer(s.who, ok, s); });
+    if (S.net) S.sol = null;
+    judgeSolve(s.who, s.ctx, s.fill);
+  }
+  function judgeSolve(who, ctx, fill) {
+    var s = { fill: fill || {} }, ok = blankIdx().every(function (i) { return s.fill[i] === S.pz.text[i]; });
+    if (ctx === 'main') { snapshot(); run(function () { return humanSolved(who, ok, s); }); }
+    else if (ctx === 'tossup') run(function () { return tossupAnswer(who, ok, s); });
     else run(function () { return bonusAnswer(ok, s); });
   }
   async function humanSolved(me, ok, s) {
     ui.busy = true; paintDeck();
     if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
     ev(me + '?');
-    await showWrong(s); snd('buzz'); Kit.haptic('error');
+    await showWrong(s); snd('buzz'); hap(me, 'error');
     var free = S.wedge && S.wedge.t === 'free';
     if (free) { S.phase = 'turn'; S.wedge = null; } else nextPlayer();
     save(); renderAll();
@@ -1467,7 +1566,7 @@
     say(me, "I'd like to solve!"); host(esc(p.name) + ' wants to solve…');
     await wait(1400);
     if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
-    ev(me + '?'); snd('buzz'); say(me, 'Hmm… no?'); fx(shell.board, 'shake', 500);
+    ev(me + '?'); snd('buzz'); say(me, 'Hmm… no?'); fxOn('board', 'shake', 500);
     host("That's not it. " + esc(p.name) + "'s turn is over.");
     nextPlayer(); save();
     await wait(1500);
@@ -1496,17 +1595,33 @@
       if (tu.step >= tu.order.length) {
         await wait(1600);
         var cs = tu.elig.filter(function (i) { return S.players[i].cpu && !tuOut(i); });
-        if (cs.length) return cpuBuzz(cs[rnd(cs.length)], true);
+        if (cs.length) return cpuRing(cs[rnd(cs.length)], true);
         await wait(3500);
         return tossupNobody();
       }
       await wait(1000);
-      var i = tu.order[tu.step++]; S.rev[i] = true; save();
-      var t = tileOf(i); t.textContent = S.pz.text[i]; t.className = 'tile on rev pop'; snd('blip');
+      var i = tu.order[tu.step++];
+      if (S.net) {
+        // online, the letter shows on every device at the same moment, a little ahead of now: the host's clock,
+        // which every guest keeps
+        var at = NET.now() + NET.lead();
+        S.rev[i] = true; ui.hide[i] = 1; (tu.at = tu.at || {})[i] = at;
+        bc('tp', [i, at]);
+        await waitTo(at);
+        delete ui.hide[i];
+      } else { S.rev[i] = true; save(); }
+      tpop0(i);
       var k = knownFrac();
       var ready = tu.elig.filter(function (j) { return S.players[j].cpu && !tuOut(j) && k >= tu.thr[j]; });
-      if (ready.length) { await wait(250 + Math.random() * 650); return cpuBuzz(ready[rnd(ready.length)], false); }
+      if (ready.length) { await wait(250 + Math.random() * 650); return cpuRing(ready[rnd(ready.length)], false); }
     }
+  }
+  function tpop0(i) { if (!shell) return; var t = tileOf(i); t.textContent = S.pz.text[i]; t.className = 'tile on rev pop'; snd0('blip'); if (window.__wofPops) window.__wofPops.push([i, performance.timeOrigin + performance.now()]); }
+  function waitTo(t) { var e = epoch; return new Promise(function (res, rej) { setTimeout(function () { if (e === epoch) res(); else rej(CANCEL); }, Math.max(0, t - NET.now())); }); }
+  // a computer contestant rings in: online its buzz is judged with everyone else's
+  function cpuRing(i, sure) {
+    if (S.net) { tuPress(i, NET.now(), { sure: sure }); return; }
+    return cpuBuzz(i, sure);
   }
   async function cpuBuzz(i, sure) {
     ui.busy = true; S.cur = i;
@@ -1519,10 +1634,39 @@
     return tossupAnswer(i, false, null);
   }
   function humanBuzz(i) {
-    if (!S || S.phase !== 'tossup' || ui.solve || ui.busy || tuOut(i)) return;
+    if (!S || S.phase !== 'tossup' || ui.solve || busyNow() || tuOut(i) || S.sol) return;
+    if (GUEST()) {   // pressed on this device, at this moment of the host's clock
+      NET.send({ t: 'buzz', at: NET.now() }); Kit.haptic('medium'); pend(); paintDeck0();
+      return;
+    }
+    if (S.net) { Kit.haptic('medium'); tuPress(i, NET.now()); return; }
     epoch++;                       // stops the letters
     snd('buzzin'); Kit.haptic('medium'); S.cur = i; say(i, 'Buzz!');
     openSolve(i, 'tossup');
+  }
+  // Online toss-up buzzers: the first press by the shared clock wins, after a short wait for presses still on their way
+  var tuJ = null;
+  function tuPress(i, at, x) {
+    if (!tuJ) tuJ = NET.judge({ eligible: function (j) { return !!S && S.phase === 'tossup' && !tuOut(j) && !S.sol && !ui.busy; }, decide: tuDecide });
+    if (!tuJ.open && !(!!S && S.phase === 'tossup' && !tuOut(i) && !S.sol && !ui.busy)) return;
+    if (!tuJ.open) epoch++;        // the letters stop, and any computer about to ring in waits
+    if (x && x.remote) tuJ.remote(i, at, x); else tuJ.press(i, at, x);
+  }
+  var lastJudge = null;
+  function tuDecide(c, all) {
+    lastJudge = { win: c, all: all, at: NET.now() };
+    if (!S || S.phase !== 'tossup' || !c) return;
+    var tu = S.tu, i = c.seat, back = [];
+    // a letter that came up after the winning press goes back down: the board stopped when they pressed
+    Object.keys(tu.at || {}).forEach(function (k) { if (tu.at[k] > c.at && S.rev[k]) { S.rev[k] = false; back.push(+k); delete tu.at[k]; } });
+    if (back.length) tu.step = Math.max(0, tu.step - back.length);
+    ui.hide = {}; paintBoard();
+    if (S.players[i].cpu) { run(function () { return cpuBuzz(i, !!(c.x && c.x.sure)); }); return; }
+    snd('buzzin'); hap(i, 'medium'); S.cur = i; say(i, 'Buzz!');
+    S.sol = { who: i, ctx: 'tossup' };
+    if (mine(i)) { openSolve(i, 'tossup'); return; }
+    bc('bw', [i]);
+    paintPodiums(); paintDeck(); hostT();
   }
   async function tossupAnswer(i, ok, s) {
     if (ok) return tossupWon(i);
@@ -1535,7 +1679,7 @@
     await wait(1300);
     ui.busy = false;
     if (S.tu.elig.every(tuOut)) return tossupNobody();
-    paintPodiums(); paintDeck(); host(hostText());
+    paintPodiums(); paintDeck(); hostT();
     return tossupLoop();
   }
   async function tossupWon(i) {
@@ -1550,10 +1694,11 @@
     S.cur = i; S.phase = 'tuwon'; save();
     ui.busy = true; paintPodiums(); paintDeck();
     await revealWave(hidden);
-    snd('solve'); say(i, 'Got it!'); Kit.callout(money(tu.prize));
+    snd('solve'); say(i, 'Got it!'); callout(money(tu.prize));
     host(vb(p.name, 'wins', 'win') + ' the toss-up: <b>' + money(tu.prize) + '</b>!');
     tweenMoney(i, 'total', p.total, 1000);
-    if (!p.cpu) { Kit.confetti({ count: 60 }); Kit.haptic('success'); }
+    if (!p.cpu) confetti(60);
+    hap(i, 'success');
     await wait(2400);
     ui.busy = false; continueAfterTossup();
   }
@@ -1583,7 +1728,7 @@
     newPuzzle(pickPuzzle(bonusOK)); track('b');
     S.bonus = { who: who, env: null, picks: '', solved: null };
     S.cur = who; S.phase = 'bonusIntro'; S.wedge = null; S.tu = null; S.next = null; save();
-    Wheel.setWedges(ENV_WEDGES);
+    wedges('env');
     run(async function () {
       ui.busy = true; ui.blank = true; setCam('wide'); renderAll();
       await titleCard('Bonus Round', S.players[who].name);
@@ -1594,8 +1739,8 @@
   async function bonusSpin(power, w0) {
     ui.busy = true; paintDeck(); setCam('wheel');
     host(vb(S.players[S.cur].name, 'spins', 'spin') + ' for an envelope…');
-    await wait(300);
-    await Wheel.spin(w0 || omegaFor(power));
+    await wait(nextSid ? 0 : 300);
+    await spinW(w0 || omegaFor(power));
     S.angle = Wheel.angle();
     var R = 'RSTLNE', idxs = letterIdx().filter(function (i) { return R.indexOf(S.pz.text[i]) >= 0; });
     S.bonus.env = wpick(ENVELOPES); S.used = R; idxs.forEach(function (i) { S.rev[i] = true; });
@@ -1646,7 +1791,7 @@
   function startClock(plan) {
     if (ui.clock) return;
     var c = ui.clock = { left: S.opts.clock * 1000, paused: false, done: false };
-    paintDeck(); host(hostText()); snd('pop');
+    paintDeck(); hostT(); snd('pop');
     run(async function () {
       var elapsed = 0, lastSec = Math.ceil(c.left / 1000);
       while (!c.done) {
@@ -1677,7 +1822,7 @@
   }
   async function bonusEnd(ok) {
     if (!S || S.phase !== 'bonusReady') return;
-    ui.solve = null;
+    ui.solve = null; S.sol = null;
     if (ui.clock) ui.clock.done = true;
     ui.busy = true;
     var b = S.bonus, p = S.players[b.who], hidden = blankIdx();
@@ -1690,12 +1835,14 @@
     paintDeck(); paintPodiums();
     if (!ok) { snd('horn'); host("Time's up!"); }
     await revealWave(hidden);
-    if (ok) { snd('solve'); Kit.callout('SOLVED!'); host(vb(p.name, 'solves', 'solve') + ' the Bonus Round!'); }
+    if (ok) { snd('solve'); callout('SOLVED!'); host(vb(p.name, 'solves', 'solve') + ' the Bonus Round!'); }
     else host('The answer was <b>' + esc(S.pz.text) + '</b>.');
     await wait(1000);
+    bc('env', [b.env, ok, p.name]);
     await openEnvelope(b.env, ok, p);
     if (ok) { ui.disp[b.who].total = p.total - b.env; tweenMoney(b.who, 'total', p.total, 1000); }
-    stopClock(); ui.busy = false; paintDeck(); host(hostText());
+    stopClock(); ui.busy = false; paintDeck(); hostT();
+    bc('res');
     showResults();
   }
   function openEnvelope(env, ok, p) {
@@ -1707,8 +1854,8 @@
     function close() { o.classList.remove('show'); setTimeout(function () { o.remove(); }, 350); }
     o.addEventListener('click', close);
     requestAnimationFrame(function () { requestAnimationFrame(function () { o.classList.add('show'); }); });
-    setTimeout(function () { o.classList.add('open'); snd(ok ? 'cash' : 'pop'); }, 700 * SPD);
-    setTimeout(function () { if (ok) snd('chime'); }, 1500 * SPD);
+    setTimeout(function () { o.classList.add('open'); snd0(ok ? 'cash' : 'pop'); }, 700 * SPD);
+    setTimeout(function () { if (ok) snd0('chime'); }, 1500 * SPD);
     setTimeout(close, 4200 * SPD + 100);
     return new Promise(function (res) { setTimeout(res, 4500 * SPD + 150); });
   }
@@ -1733,16 +1880,18 @@
     var P = S.players;
     var ranked = P.slice().sort(function (a, b) { return b.total - a.total; });
     var tie = ranked[1] && ranked[1].total === ranked[0].total;
-    Kit.record(HKEY, {
-      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Family game') + ' · ' + S.opts.rounds + ' rounds',
-      players: P.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
+    var rec = {
+      started: S.started, mode: (S.net ? 'Online show' : S.mode === 'cpu' ? 'vs Computer' : 'Family game') + ' · ' + S.opts.rounds + ' rounds',
+      players: P.map(function (p) { return { name: p.name, score: p.total, cpu: !!p.cpu && !p.dev }; }),
       winner: tie ? null : ranked[0].name,
       rounds: { labels: S.rows.map(function (r) { return r.label; }), scores: S.rows.map(function (r) { return r.sc; }) },
       highlights: highlights(),
       detail: { pz: (S.log.pz || []).filter(function (z) { return z.m; }), b: S.bonus ? { w: S.bonus.who, env: S.bonus.env, pk: S.bonus.picks, ok: !!S.bonus.solved } : null },
       summary: (tie ? 'Tie' : ranked[0].name + ' won') + ' · ' + money(ranked[0].total),
       badge: money(ranked[0].total)
-    });
+    };
+    Kit.record(HKEY, rec);
+    bc('rec', [rec]);   // (every podium's device keeps the show in its own past games)
     clearSave();
   }
   function showResults() {
@@ -1754,8 +1903,9 @@
       title: tie ? "It's a tie!" : rank[0].name === 'You' ? 'You win!' : rank[0].name + ' wins!',
       sub: money(rank[0].t) + ' in cash and prizes',
       rank: rank, lose: S.mode === 'cpu' && rank[0].cpu,
-      again: function () { start(cfg); },
-      extra: [{ label: 'Change players', onClick: showSetup }]
+      again: S.net ? function () { NET.backToTable(); } : function () { start(cfg); },
+      againLabel: S.net ? (NET.mode === 'host' ? 'Back to your table' : 'Back to the table') : undefined,
+      extra: S.net ? [{ label: 'Leave the table', onClick: function () { NET.leave(false); showSetup(); } }] : [{ label: 'Change players', onClick: showSetup }]
     });
   }
 
@@ -1763,19 +1913,35 @@
   function pressKey(L) {
     if (!S || !shell) return;
     if (ui.solve) return typeFill(L);
-    if (ui.busy) return;
-    var p = S.players[S.cur]; if (!p || p.cpu) return;
-    var isV = VOW.indexOf(L) >= 0;
-    if (S.phase === 'bonusPick') return bonusPickKey(L);
-    if (S.used.indexOf(L) >= 0) return;
+    if (busyNow()) return;
+    if (!mine(S.cur)) return;
+    if (!keyCheck(S.cur, L, false)) return;
+    if (GUEST()) { NET.send({ t: 'key', L: L }); pend(); snd0('pop'); paintDeck0(); return; }
+    doKey(L);
+  }
+  // whether letter L does something for the player at the podium now (quiet: no word to them about why not)
+  function keyCheck(i, L, quiet) {
+    var p = S.players[i], isV = VOW.indexOf(L) >= 0;
+    if (S.phase === 'bonusPick') {
+      var pk = S.bonus.picks, nv = pk.split('').filter(function (c) { return VOW.indexOf(c) >= 0; }).length, nc = pk.length - nv;
+      if (S.used.indexOf(L) >= 0 || pk.indexOf(L) >= 0 || pk.length >= 4) return false;
+      if (isV ? nv >= 1 : nc >= 3) { if (!quiet) Kit.toast(isV ? 'Just one vowel' : 'Three consonants max'); return false; }
+      return true;
+    }
+    if (S.used.indexOf(L) >= 0) return false;
     if (S.phase === 'call') {
-      if (isV && S.wedge.t !== 'free') { Kit.toast('Call a consonant. Vowels are bought before you spin.'); return; }
-      run(function () { return callLetter(L); }); return;
+      if (isV && S.wedge.t !== 'free') { if (!quiet) Kit.toast('Call a consonant. Vowels are bought before you spin.'); return false; }
+      return true;
     }
     if (S.phase === 'turn' && isV) {
-      if (!canBuy(p)) { Kit.toast(vowelsLeft() ? 'You need $250 to buy a vowel' : 'No more vowels'); return; }
-      run(function () { return callLetter(L); });
+      if (!canBuy(p)) { if (!quiet) Kit.toast(vowelsLeft() ? 'You need $250 to buy a vowel' : 'No more vowels'); return false; }
+      return true;
     }
+    return false;
+  }
+  function doKey(L) {
+    if (S.phase === 'bonusPick') return bonusPickKey(L);
+    run(function () { return callLetter(L); });
   }
   document.addEventListener('keydown', function (e) {
     if (!S || !shell || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -1788,12 +1954,13 @@
     else if (k === ' ') {
       e.preventDefault();
       var m = canFlick();
-      if (m && !e.repeat && !hold.on) holdStart(function (pw) { if (canFlick() !== m) return; run(function () { return m === 'main' ? doSpin(pw) : bonusSpin(pw); }); });
+      if (m && !e.repeat && !hold.on) holdStart(function (pw) { if (canFlick() !== m) return; spinGo(m, pw); });
     }
   });
   document.addEventListener('keyup', function (e) { if (e.key === ' ' && hold.on) { e.preventDefault(); holdEnd(false); } });
 
   function undo() {
+    if (S && S.net) { Kit.toast('Moves can’t be taken back in an online show'); return; }
     if (!S || !undoStack.length) {
       Kit.toast(S && S.phase.indexOf('bonus') === 0 ? 'Nothing to undo in the Bonus Round' : "Nothing to undo. Spins can't be taken back.");
       return;
@@ -1806,6 +1973,236 @@
     proceed();
   }
 
+  // ═══ Online: a live show, each contestant at their own podium on their own device (liveshow.js) ═══════
+  // The host's device runs the show (the game above, unchanged, and the computer at any podium nobody took) and
+  // sends what everyone sees and hears as it happens: every paint, sound and effect is a small event (bc), with a
+  // copy of the state at that moment when it has changed (pub: the puzzle with _ for each letter not yet shown,
+  // so no device ever holds the answer). A guest draws the same events from its own copy, from its own podium's
+  // side: its buttons are its own podium's, and what it does goes to the host (netIn), which checks it and plays
+  // it as if it had been done on the host's device. A guest's spin starts on its own wheel at once, and the host's
+  // wheel and everyone else's start from exactly the same place. Typing a solve stays on the solver's device.
+  // Toss-up letters show on every device at the same moment of the host's clock, and a buzz is judged by when
+  // it was pressed (tuPress). A device that drops out leaves its podium to the computer until it joins again.
+  var NETOPTS = null, NET = null;
+  var EVQ = [], evT = 0, lastS = '', lastU = '';
+  function GUEST() { return !!(NET && NET.mode === 'guest'); }
+  function mine(i) { var p = S && S.players[i]; if (!p) return false; if (S.net && NET && NET.mode) return i === NET.seat; return !p.cpu; }
+  function solving(i) { return !!(S && S.sol && S.sol.who === i); }
+  // a guest's own tap waits a moment for the host to answer (its buttons don't take a second tap meanwhile)
+  function busyNow() { return ui.busy || (!!ui.pend && performance.now() - ui.pend < 1500) || !!(ui.solve && ui.solve.sent); }
+  function pend() { ui.pend = performance.now(); clearTimeout(pend.t); pend.t = setTimeout(function () { ui.pend = 0; if (shell && S) paintDeck0(); }, 1550); }
+  function hap(i, k) { bc('hap', [i, k]); if (mine(i)) Kit.haptic(k); }
+  function callout(t) { bc('co', [t]); Kit.callout(t); }
+  function confetti(n) { bc('cf', [n]); Kit.confetti({ count: n }); }
+  function toastAll(t) { bc('to', [t]); Kit.toast(t); }
+  function closeOverlays() { Array.prototype.forEach.call(document.querySelectorAll('.tcard, .envo, .mfloat'), function (n) { n.remove(); }); }
+  // what every device may know of the show right now
+  function pub() {
+    var t = S.pz ? S.pz.text.split('').map(function (c, i) { return isL(c) && !S.rev[i] ? '_' : c; }).join('') : '';
+    return { v: 1, net: 1, started: S.started, mode: S.mode, opts: S.opts, round: S.round, phase: S.phase, cur: S.cur,
+      players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, bank: p.bank, total: p.total, tu: p.tu || 0, away: !!p.away }; }),
+      pz: S.pz ? { cat: S.pz.cat, text: t } : null, rev: S.rev, used: S.used, wedge: S.wedge, angle: S.angle, rows: S.rows, row: S.row,
+      tu: S.tu ? { prize: S.tu.prize, elig: S.tu.elig, purpose: S.tu.purpose, locked: S.tu.locked } : null,
+      bonus: S.bonus ? { who: S.bonus.who, picks: S.bonus.picks, solved: S.bonus.solved } : null,
+      lastWin: S.lastWin, sol: S.sol || null, cl: S.pz ? consLeft() : false, vl: S.pz ? vowelsLeft() : false, log: { bk: [], solves: [], best: null } };
+  }
+  function pubU() { return { b: ui.busy ? 1 : 0, bl: ui.blank ? 1 : 0, h: ui.hide, ck: ui.clock ? [ui.clock.left, ui.clock.paused ? 1 : 0] : null }; }
+  function bc(k, a) {
+    if (!NET || NET.mode !== 'host' || !S || !S.net) return;
+    var e = { k: k, a: a || [] }, s = JSON.stringify(pub()), u = JSON.stringify(pubU());
+    if (s !== lastS) { e.s = s; lastS = s; }
+    if (u !== lastU) { e.u = JSON.parse(u); lastU = u; }
+    EVQ.push(e);
+    if (!evT) evT = setTimeout(flushEv, 0);
+  }
+  function flushEv() { clearTimeout(evT); evT = 0; if (EVQ.length && NET && NET.mode === 'host') NET.cast({ t: 'ev', ev: EVQ }); EVQ = []; }
+  function initMsg() {
+    flushEv(); lastS = JSON.stringify(pub()); lastU = JSON.stringify(pubU());
+    return { t: 'init', s: lastS, u: JSON.parse(lastU), wd: S.phase.indexOf('bonus') === 0 ? 'env' : 'r', ang: Wheel.angle(), cam: ui.cam };
+  }
+  function netInit() { if (S && S.net && NET && NET.mode === 'host') NET.cast(initMsg()); }
+  function netOpts() {
+    if (NETOPTS) return NETOPTS;
+    var s0 = null; try { s0 = JSON.parse(localStorage.getItem('gn_setup_wheeloffortune') || 'null'); } catch (e) {}
+    return (s0 && s0.options) || {};
+  }
+  function noteLine() {
+    var o = netOpts(), r = +o.rounds === 4 ? 4 : 3, c = +o.clock || 10;
+    return 'The show has ' + r + ' main rounds' + (o.tossups === 'off' ? ' and no toss-ups' : ' with toss-ups') + ', and the Bonus Round clock gives ' + c + ' seconds.';
+  }
+  function stopView() {
+    epoch++; stopClock(); S = null; shell = null; tuJ = null; EVQ = []; clearTimeout(evT); evT = 0;
+    ui.solve = null; ui.busy = false; ui.pend = 0; ui.vowel = false;
+    app.classList.remove('wofgame'); app.innerHTML = ''; closeOverlays();
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+  }
+
+  // ── The host: what a contestant at another device does ──
+  function netIn(i, m) {
+    if (!S || !S.net || !shell || !m) return;
+    var p = S.players[i]; if (!p || p.cpu) return;
+    var myTurn = S.cur === i && !ui.busy, free = S.phase === 'call' && S.wedge && S.wedge.t === 'free';
+    switch (m.t) {
+      case 'spin':
+        var w0 = +m.w0;
+        if (!isFinite(w0) || Math.abs(w0) < 2 || Math.abs(w0) > W_MAX * 1.2 || !myTurn || S.sol || Wheel.busy()) return;
+        if (m.m === 'main' ? !(S.phase === 'turn' && consLeft()) : S.phase !== 'bonusIntro') return;
+        Wheel.setState(m.th, m.b, m.bv); nextSid = m.sid || 0;
+        if (m.m === 'main') run(function () { return doSpin(null, w0); }); else run(function () { return bonusSpin(null, w0); });
+        return;
+      case 'key':
+        if (!myTurn || S.sol || typeof m.L !== 'string' || !/^[A-Z]$/.test(m.L) || !keyCheck(i, m.L, true)) return;
+        doKey(m.L); return;
+      case 'bs': if (myTurn && S.phase === 'bonusPick' && S.bonus.picks.length) { S.bonus.picks = S.bonus.picks.slice(0, -1); snd('blip'); paintDeck(); } return;
+      case 'buzz': tuPress(i, m.at, { remote: 1 }); return;
+      case 'next': if (S.phase === 'roundEnd' && !ui.busy) nextRound(); return;
+      case 'clock': if (myTurn && S.phase === 'bonusReady' && !ui.clock) startClock(null); return;
+      case 'sol':
+        if (m.ctx === 'main') {
+          if (m.on) { if (myTurn && !S.sol && (S.phase === 'turn' || free)) { S.sol = { who: i, ctx: 'main' }; paintPodiums(); paintDeck(); hostT(); } }
+          else if (solving(i)) { S.sol = null; renderAll(); }
+        } else if (m.ctx === 'bonus' && S.phase === 'bonusReady' && S.cur === i) {
+          if (m.on && ui.clock && !ui.clock.done && !S.sol) {
+            // the clock stopped when they tapped Solve! on their own device: they get back the time it took to arrive
+            ui.clock.paused = true; ui.clock.left = Math.min(S.opts.clock * 1000, ui.clock.left + clamp(NET.now() - (+m.at || NET.now()), 0, 600));
+            S.sol = { who: i, ctx: 'bonus' }; paintClock(); paintPodiums(); paintDeck(); hostT();
+          } else if (!m.on && solving(i)) { S.sol = null; if (ui.clock) ui.clock.paused = false; renderAll(); }
+        }
+        return;
+      case 'solve':
+        var fill = {};
+        Object.keys(m.fill || {}).forEach(function (k) { var v = String(m.fill[k] || ''); if (/^\d+$/.test(k) && /^[A-Z]$/.test(v)) fill[k] = v; });
+        if (m.ctx === 'tossup') {
+          if (!(S.phase === 'tossup' && solving(i))) return;
+          S.sol = null;
+          if (m.pass) run(function () { return tossupAnswer(i, false, null); }); else judgeSolve(i, 'tossup', fill);
+          return;
+        }
+        if (m.ctx === 'main') { if (!(solving(i) || (myTurn && !S.sol && (S.phase === 'turn' || free)))) return; }
+        else if (m.ctx === 'bonus') { if (!(S.phase === 'bonusReady' && S.cur === i && (solving(i) || (ui.clock && !ui.clock.done && !S.sol)))) return; if (ui.clock) ui.clock.paused = true; }
+        else return;
+        S.sol = null; judgeSolve(i, m.ctx, fill);
+        return;
+    }
+  }
+  // a contestant's device dropped out: the computer plays their podium until they're back
+  function seatLeft(i) {
+    if (!S || !S.net) return;
+    var p = S.players[i]; if (!p) return;
+    p.cpu = true; p.away = true;
+    toastAll(Kit.poss(p.name) + ' device dropped out. The computer plays for ' + p.name + ' until ' + p.name + ' is back.');
+    if (S.sol && S.sol.who === i) {
+      var c = S.sol.ctx; S.sol = null;
+      if (c === 'tossup') { run(function () { return tossupAnswer(i, false, null); }); return; }
+      if (c === 'bonus' && ui.clock) ui.clock.paused = false;
+      renderAll();
+    } else paintPodiums();
+    if (!ui.busy && S.cur === i && ['turn', 'call', 'bonusIntro', 'bonusPick', 'bonusReady'].indexOf(S.phase) >= 0 && !(S.phase === 'bonusReady' && ui.clock)) proceed();
+  }
+  function seatBack(i) {
+    if (!S || !S.net) return;
+    var p = S.players[i]; if (!p) return;
+    p.cpu = false; p.away = false;
+    NET.to(i, initMsg());
+    toastAll(p.name + ' is back');
+    paintPodiums();
+  }
+
+  // ── A guest: the host's show, drawn here ──
+  function applyU(u) {
+    if (!u) return;
+    ui.busy = !!u.b; ui.blank = !!u.bl; ui.hide = Object.assign({}, u.h || {});
+    if (u.ck) { if (!ui.clock) ui.clock = { done: false }; ui.clock.left = u.ck[0]; ui.clock.paused = !!u.ck[1]; } else { ui.clock = null; ui.clockEl = null; }
+  }
+  function guestIn(m) {
+    if (m.t === 'init') return guestInit(m);
+    if (m.t !== 'ev' || !shell || !S) return;
+    m.ev.forEach(applyEv);
+  }
+  function guestInit(m) {
+    epoch++; stopClock(); closeOverlays();
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+    S = JSON.parse(m.s); ui.solve = null; ui.vowel = false; ui.pend = 0; mySpin = 0;
+    buildShell();
+    Wheel.setWedges(m.wd === 'env' ? ENV_WEDGES : wedgesFor(S.round || 1));
+    Wheel.setAngle(m.ang || 0); setCam0(m.cam || 'wide');
+    renderAll0(); applyU(m.u); paintBoard0(); paintDeck0();
+    window.scrollTo(0, 0);
+  }
+  function noop() {}
+  function applyEv(e) {
+    if (!shell) return;
+    if (e.s) S = JSON.parse(e.s);
+    if (e.u) applyU(e.u);
+    // this device's solve closes once the host has taken it (or never took it)
+    if (ui.solve && !solving(NET.seat) && (ui.solve.sent || performance.now() - (ui.solve.t0 || 0) > 2500)) { ui.solve = null; paintBoard0(); paintDeck0(); }
+    var a = e.a || [];
+    switch (e.k) {
+      case 'snd': snd0(a[0], a[1]); break;
+      case 'pb': paintBoard0(); break;
+      case 'pp': paintPodiums0(); break;
+      case 'pd': paintDeck0(); break;
+      case 'pk': paintKeys0(); break;
+      case 'h': host0(a[0]); break;
+      case 'ht': host0(hostText()); break;
+      case 'ra': renderAll0(); break;
+      case 'cam': setCam0(a[0]); break;
+      case 'say': say0(a[0], a[1]); break;
+      case 'ro': readout0(a[0]); break;
+      case 'bd': band0(a[0], a[1]); break;
+      case 'fx': var n = fxNode(a[0]); if (n) fx(n, a[1], a[2]); break;
+      case 'fm': floatMoney0(a[0], a[1]); break;
+      case 'tw': tweenMoney0(a[0], a[1], a[2], a[3]); break;
+      case 'tc': titleCard0(a[0], a[1]).catch(noop); break;
+      case 'bi': run(boardIntro0); break;
+      case 'rl': run(function () { return revealLetters0(a[0], a[1]); }); break;
+      case 'rw': run(function () { return revealWave0(a[0]); }); break;
+      case 'sw': run(function () { return showWrong0({ fill: a[0] || {} }); }); break;
+      case 'tp':   // a toss-up letter: up on this device at the same moment as everywhere else
+        paintBoard0();
+        NET.at(a[1], function () { if (!S || !shell || S.phase !== 'tossup' || !S.rev[a[0]]) return; delete ui.hide[a[0]]; tpop0(a[0]); });
+        break;
+      case 'bw': if (mine(a[0])) { snd0('pop'); openSolve(a[0], 'tossup'); } else { paintPodiums0(); paintDeck0(); host0(hostText()); } break;
+      case 'spin': if (a[4] && a[4] === mySpin) { mySpin = 0; break; } Wheel.setState(a[0], a[1], a[2]); Wheel.spin(a[3]).catch(noop); break;
+      case 'wd': Wheel.setWedges(a[0] === 'env' ? ENV_WEDGES : wedgesFor(a[1])); break;
+      case 'ck': paintClock0(); break;
+      case 'hap': if (mine(a[0])) Kit.haptic(a[1]); break;
+      case 'co': Kit.callout(a[0]); break;
+      case 'cf': Kit.confetti({ count: a[0] }); break;
+      case 'to': Kit.toast(a[0]); break;
+      case 'env': openEnvelope(a[0], a[1], { name: a[2] }).catch(noop); break;
+      case 'rec': Kit.record(HKEY, a[0]); break;
+      case 'res': showResults(); break;
+    }
+  }
+  function netEnded(why, code) {
+    var hn = NET.hostName || 'The host', onCard = !!document.querySelector('.k-win');
+    if (why === 'lost') {
+      stopView();
+      var done = false;
+      Kit.sheet({ title: 'The link to the show dropped', html: '<p>The computer stands in at your podium until you join ' + esc(Kit.poss(hn)) + ' table again.</p>',
+        actions: [{ label: 'Join again', primary: true, onClick: function () { done = true; NET.rejoin(code); } }, { label: 'Leave the show', cls: 'btn-soft', onClick: function () { done = true; showSetup(); } }],
+        onCancel: function () { if (!done) showSetup(); } });
+      return;
+    }
+    Kit.toast(hn + ' closed the table, so the show is over.');
+    if (!onCard) { stopView(); showSetup(); }
+  }
+  NET = LiveShow({
+    game: 'wheeloffortune', title: 'Wheel of Fortune online', app: app, max: 3, colors: PODS.map(function (p) { return p.c; }),
+    intro: 'Up to three contestants, each at their own podium on their own phone or tablet.',
+    note: noteLine,
+    hostStart: function (seats) {
+      var taken = seats.filter(Boolean).map(function (x) { return x.name; }), bots = Kit.cpuNames(3, taken), k = 0;
+      var players = [0, 1, 2].map(function (i) { return seats[i] ? { name: seats[i].name, cpu: false, dev: seats[i].dev } : { name: bots[k++], cpu: true }; });
+      tuJ = null;
+      start({ mode: 'online', players: players, options: netOpts() });
+    },
+    seatMsg: netIn, seatLeft: seatLeft, seatBack: seatBack,
+    hostMsg: guestIn, ended: netEnded,
+    toSetup: showSetup, stopView: stopView
+  });
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = load();
   if (saved && saved.players && saved.pz && saved.phase && saved.phase !== 'over' && saved.phase !== 'intro') {
@@ -1814,6 +2211,7 @@
     Wheel.setAngle(S.angle);
     proceed();
   } else showSetup();
+  if (/[?&]online=1/.test(location.search)) NET.lobby();
 
   // Test hook: run one spin headlessly with the same physics the wheel uses
   window.__wofSim = function (o) {
@@ -1824,7 +2222,17 @@
     return { idx: sm.index(), t: sm.s.t, gap: sm.pegGap(), rot: (sm.s.th - th0) / (Math.PI * 2), settled: settled, touch: sm.s.touch, hits: hits, maxB: maxB, w0: w0 };
   };
   window.__wofSim.params = { W_MIN: W_MIN, W_MAX: W_MAX, H: SIM_H, wedgeHalf: Math.PI / 24 };
-  window.__wof = { wheel: Wheel, state: function () { return S; }, layout: layoutPuzzle, puzzles: PUZZLES, bonusOK: bonusOK };
+  window.__wof = { wheel: Wheel, state: function () { return S; }, layout: layoutPuzzle, puzzles: PUZZLES, bonusOK: bonusOK,
+    // online: the live show; ui (busy, solving); key(L) / buzz() / spin(power) / openSolve / fill / submit as this device's player
+    net: NET, ui: function () { return { busy: busyNow(), solve: ui.solve && { ctx: ui.solve.ctx, who: ui.solve.who }, clock: ui.clock && ui.clock.left, cam: ui.cam, hide: Object.keys(ui.hide) }; },
+    key: function (L) { pressKey(L); }, buzz: function () { var i = S && S.tu ? S.tu.elig.filter(mine)[0] : -1; if (i != null && i >= 0) humanBuzz(i); },
+    spin: function (pw) { var m = canFlick(); if (m) spinGo(m, pw == null ? 0.5 : pw); return m; },
+    openSolve: function () { if (S) openSolve(S.cur, S.phase === 'bonusReady' ? 'bonus' : 'main'); },
+    fill: function (txt) { if (!ui.solve) return; blankIdx().forEach(function (i) { ui.solve.fill[i] = txt[i]; }); paintBoard0(); paintDeck0(); },
+    submit: function () { submitSolve(); }, pass: function () { cancelSolve(); },
+    next: function () { var b = shell && shell.acts.querySelector('.btn-primary'); if (b && !b.disabled) b.click(); return !!b; },
+    startClock: function () { var b = shell && Array.prototype.filter.call(shell.acts.querySelectorAll('button'), function (x) { return /Start the clock/.test(x.textContent); })[0]; if (b && !b.disabled) b.click(); return !!b; },
+    answer: function () { return GUEST() ? null : S && S.pz && S.pz.text; }, judged: function () { return lastJudge; } };
 })();
 </script>
 </body>
