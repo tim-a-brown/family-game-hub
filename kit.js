@@ -2100,7 +2100,8 @@
       var c = playerColor(i), av = t.cpu ? botFace(t.tag, c)
         : t.anon ? el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, text: String(i + 1) }) : avMarked(t.name, c);
       // (a robot's skill is in its face, with the words kept for screen readers)
-      return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
+      var nl = String(t.name || '').length;
+        return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { class: nl >= 11 ? 'l2' : nl >= 8 ? 'l1' : null, text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
     if (!teams) { seats.forEach(function (t, i) { box.appendChild(seat(t, i)); }); return box; }
     teams.forEach(function (side, k) {
