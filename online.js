@@ -620,7 +620,7 @@
   // ── Screens ─────────────────────────────────────────────────────────────
   var CSS = '.ol{max-width:620px;margin:0 auto;padding:4px 16px calc(var(--safe-b,0px) + 24px);display:flex;flex-direction:column;gap:12px;}' +
     '.ol h1{font-family:var(--display);font-weight:400;font-size:2rem;margin:4px 0 0;text-align:center;}' +
-    '.ol-h{font-size:.78rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin:10px 2px -2px;}' +
+    '.ol-h{font-size:.84rem;font-weight:700;color:var(--text-2);margin:10px 2px -2px;}' +
     '.ol-note{color:var(--text-3);font-size:.9rem;margin:0;font-weight:600;}' +
     '.ol-row{display:flex;align-items:center;gap:12px;padding:12px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow-sm);}' +
     '.ol-row .grow{flex:1;min-width:0;}.ol-row b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
@@ -630,7 +630,7 @@
     '.ol-code{font-family:var(--display);font-size:2.8rem;letter-spacing:.2em;color:var(--accent);text-align:center;margin:0;}' +
     '.ol-join{display:flex;gap:8px;}.ol-join .input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.12em;font-weight:800;}' +
     '.ol-spin{width:18px;height:18px;flex:none;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);animation:olspin 1s linear infinite;}' +
-    '@keyframes olspin{to{transform:rotate(360deg)}}.ol-seat .tag{font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}' +
+    '@keyframes olspin{to{transform:rotate(360deg)}}.ol-seat .tag{font-size:.7rem;font-weight:700;color:var(--text-3);}' +
     '.btn.ol-busy:disabled{opacity:.85;filter:none;cursor:progress;}' +
     '.ol-bspin{width:1em;height:1em;flex:none;border-radius:50%;border:.17em solid currentColor;border-right-color:transparent;animation:olspin .8s linear infinite;}';
   function css() { if (document.getElementById('ol-css')) return; var s = document.createElement('style'); s.id = 'ol-css'; s.textContent = CSS; document.head.appendChild(s); }
@@ -804,7 +804,7 @@
     '.olt-tbl{position:relative;flex:none;width:min(100%,300px);aspect-ratio:1;margin:0 auto;}' +
     '.olt-top.side .olt-tbl{width:min(56%,300px);}' +
     '.olt-mid{position:absolute;inset:30%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}' +
-    '.olt-mid small{font-size:calc(var(--tw,300px) * .034);font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;}' +
+    '.olt-mid small{font-size:calc(var(--tw,300px) * .034);font-weight:700;color:var(--text-3);white-space:nowrap;}' +
     '.olt-code{font-family:var(--display);font-size:calc(var(--tw,300px) * .1);letter-spacing:.18em;margin-right:-.18em;line-height:1.05;color:var(--accent);}' +
     '.olt-code.pend{opacity:.35;}' +
     '.olt-p{position:absolute;inset:0;pointer-events:none;transition:transform .8s cubic-bezier(.3,1.25,.5,1),opacity .4s;}' +
