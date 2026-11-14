@@ -874,7 +874,7 @@
     caps.forEach(function (v) { if (prev && v !== prev) tray.appendChild(el('span', { class: 'gap' })); prev = v; tray.insertAdjacentHTML('beforeend', pieceSvg(v * -side)); });
     if (adv > 0) tray.appendChild(el('span', { class: 'adv', text: '+' + adv }));
     var away = online() && !p.me && !S.over && netAway();
-    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : sideName(side) + (away ? ' · away' : on ? (E.inCheck(S.pos, side) ? ' · in check!' : ' · to move') : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : (away ? sideName(side) + ', away right now' : on ? sideName(side) + (E.inCheck(S.pos, side) ? ' is in check!' : ' to move') : sideName(side));
     if (away) node.className += ' away';
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok', html: pieceSvg(6 * side) }));
@@ -896,7 +896,7 @@
     turnEl.appendChild(el('span', { class: 'dot' }));
     if (online()) {
       var mine = pos.turn === mySide(), aw = netAway(), seen = netSeen();
-      turnEl.appendChild(el('span', { html: (chk ? 'Check! ' : '') + (mine ? 'Your move' : aw ? Kit.esc(Kit.poss(p.name)) + ' move · ' + (seen ? 'last here ' + agoText(seen) : 'not here right now') : '<span class="think">' + Kit.esc(Kit.poss(p.name)) + ' move <i></i><i></i><i></i></span>') }));
+      turnEl.appendChild(el('span', { html: (chk ? 'Check! ' : '') + (mine ? 'Your move' : aw ? Kit.esc(Kit.poss(p.name)) + ' move. ' + (seen ? Kit.esc(p.name) + ' was last here ' + agoText(seen) + '.' : Kit.esc(p.name) + ' isn’t here right now.') : '<span class="think">' + Kit.esc(Kit.poss(p.name)) + ' move <i></i><i></i><i></i></span>') }));
       return;
     }
     turnEl.appendChild(el('span', { text: (chk ? 'Check! ' : '') + (p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' move') }));
@@ -1613,14 +1613,14 @@
     if (r.wait) {
       return el('button', { type: 'button', class: 'cn-room cn-mine', onclick: go }, [
         el('span', { class: 'cn-ic', html: Kit.icon('globe') }),
-        el('div', { class: 'grow' }, [el('b', { text: 'Your table · code ' + r.code }), el('small', { text: 'Waiting for someone to join · opened ' + agoText(r.when) })]),
+        el('div', { class: 'grow' }, [el('b', { text: 'Your table' }), Kit.facts(el('small'), 'Code ' + r.code + ' \u00b7 Waiting for someone to join \u00b7 Opened ' + agoText(r.when))]),   // (each fact on a line of its own)
         el('span', { class: 'cn-chev', html: Kit.icon('right') })]);
     }
     var nm = r.who ? r.who.name : r.opp.name || 'Someone';
     return el('button', { type: 'button', class: 'cn-room cn-mine' + (r.mine ? ' cn-turn' : ''), onclick: go }, [
       Kit.avatar.el(nm, null, Kit.color(1)),
       el('div', { class: 'grow' }, [el('b', { text: 'vs ' + nm }),
-        el('small', { html: (r.mine ? '<span class="cn-yours">Your move</span>' : Kit.esc('Waiting for ' + nm)) + ' · ' + Kit.esc((r.n ? 'last move ' : 'started ') + agoText(r.when)) })]),
+        el('small', { html: (r.mine ? '<span class="cn-yours">Your move</span>' : Kit.esc('Waiting for ' + nm)) + '<span class="k-fact">' + Kit.esc((r.n ? 'Last move ' : 'Started ') + agoText(r.when)) + '</span>' })]),
       el('span', { class: 'cn-chev', html: Kit.icon('right') })]);
   }
   // Fill a box with your games (nothing at all when there are none)
@@ -1677,7 +1677,7 @@
     wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function (e) { var b = e.currentTarget; netAct(b, 'Joining…', function () { return netJoin(code.value, me); }); } })]));
     function fail(e) { box.innerHTML = ''; box.appendChild(el('p', { class: 'cn-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); }
     var myAcct = null; acctTag().then(function (t) { myAcct = t; });
-    var yoursNote = function (h) { return h.acct && h.acct === myAcct ? ' · opened with your PIN' : ''; };
+    var yoursNote = function (h) { return h.acct && h.acct === myAcct ? ' \u00b7 Opened with your PIN' : ''; };
     NET.lobbyOff = rooms().open(function (list) {
       if (!box.isConnected) { lobbyOff(); return; }
       // still waiting for a player (the query asks for that; a closed, finished or deleted table drops out), not
@@ -1696,12 +1696,12 @@
             var nm = r.who.name;
             box.appendChild(el('div', { class: 'cn-room cn-pal' }, [
               Kit.avatar.el(nm, null, Kit.color(1)),
-              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(nm) + ' table' }), el('small', { text: colourLine(h, nm) + ' · code ' + r.code + yoursNote(h) })]),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(nm) + ' table' }), Kit.facts(el('small'), colourLine(h, nm) + ' \u00b7 Code ' + r.code + yoursNote(h))]),
               el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block cn-go', html: Kit.icon('play') + '<span>' + Kit.esc('Join ' + Kit.poss(nm) + ' table') + '</span>', onclick: go })]));
           } else {
             box.appendChild(el('div', { class: 'cn-room' }, [
               Kit.avatar.el(h.name || '?', null, Kit.color(1)),
-              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(h.name || 'Someone') + ' table' }), el('small', { text: colourLine(h, h.name || 'They') + ' · code ' + r.code + yoursNote(h) })]),
+              el('div', { class: 'grow' }, [el('b', { text: Kit.poss(h.name || 'Someone') + ' table' }), Kit.facts(el('small'), colourLine(h, h.name || 'They') + ' \u00b7 Code ' + r.code + yoursNote(h))]),
               el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: go })]));
           }
         });

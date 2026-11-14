@@ -2967,7 +2967,7 @@
     if (window.HistView) { var gv = HistView.render(e, o.game || e.game); if (gv) box.appendChild(gv); }
     if (n.highlights.length) {
       var hl = el('ul', { class: 'k-hd-hl' });
-      n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + esc(h) + '</span>' })); });
+      n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + factHtml(esc(h)) + '</span>' })); });   // (a highlight's separate facts, a line each)
       box.appendChild(hl);
     }
     if (n.rounds && n.players.length) {

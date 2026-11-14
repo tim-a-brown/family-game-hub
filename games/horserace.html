@@ -111,6 +111,7 @@
 .hn{min-width:0;}
 .hn b{display:block;font:400 1.08rem/1.15 var(--display);color:#1d1a2e;white-space:nowrap;overflow:hidden;}
 .hn small{display:block;font-size:.74rem;color:#5a5670;font-weight:800;white-space:nowrap;overflow:hidden;}
+.hn small .jk{margin-right:8px;}   /* (the jockey, then the form: each in its own place) */
 .hn .tg{display:inline-block;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:999px;background:rgba(60,50,90,.1);color:#4a4560;margin-right:4px;vertical-align:1px;}
 .ml{text-align:right;}
 .ml b{display:block;font:400 1.4rem/1 var(--display);color:#1f2a6b;}
@@ -820,7 +821,9 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
         g.fillStyle = '#1b2a1c'; g.fillRect(s0 - 3, by + bh, 4, top - by - bh - Hh * 0.04); g.fillRect(s0 + bw - 4, by + bh, 4, top - by - bh - Hh * 0.04);
         g.fillStyle = '#121216'; g.fillRect(s0 - 6, by, bw + 6, bh);
         g.fillStyle = '#ffd54a'; g.font = '700 ' + Math.max(7, bh * 0.38) + 'px system-ui,sans-serif'; g.textBaseline = 'middle';
-        g.fillText(race ? 'RACE ' + (S ? S.raceNo : '') + '  ·  ' + (race.clockTxt || '') : 'POST TIME', s0 + 2, by + bh / 2);
+        // (the race at the left of the board and its clock at the right, each in its own place)
+        if (race) { g.textAlign = 'left'; g.fillText('RACE ' + (S ? S.raceNo : ''), s0 + 2, by + bh / 2); g.textAlign = 'right'; g.fillText(race.clockTxt || '', s0 + bw - 8, by + bh / 2); g.textAlign = 'left'; }
+        else g.fillText('POST TIME', s0 + 2, by + bh / 2);
       });
       // Track surface
       var surf = F ? F.surface : 'Dirt';
@@ -1327,7 +1330,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     S.last = Date.now();
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var lbl = 'Race ' + S.raceNo + (S.mode === 'pass' ? ' of ' + S.opt.races : '');
-    if (S.mode === 'solo' && S.log.length) lbl += ' · ' + signed(S.players[0].net);
+    if (S.mode === 'solo' && S.log.length) lbl += ' \u00b7 ' + signed(S.players[0].net);   // (Keep playing shows each fact on a line of its own)
     Kit.resume.set(lbl);
   }
   function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.field ? s : null; } catch (e) { return null; } }
@@ -1520,7 +1523,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     var F = S.field;
     R.hud.innerHTML = '';
     R.hud.appendChild(el('span', { html: 'Race <b>' + S.raceNo + '</b>' + (solo() ? '' : ' of ' + S.opt.races) }));
-    R.hud.appendChild(el('span', { text: '6 furlongs · ' + F.surface + ', ' + F.cond.toLowerCase() + ' · ' + F.n + ' runners' }));
+    R.hud.appendChild(el('span', { text: '6 furlongs on ' + F.cond.toLowerCase() + ' ' + F.surface.toLowerCase() }));
+    R.hud.appendChild(el('span', { text: F.n + ' runners' }));
   }
   function paintBank() {
     R.bank.innerHTML = '';
@@ -1582,7 +1586,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     var F = S.field;
     R.prog.innerHTML = '';
     R.prog.appendChild(el('div', { class: 'ph' }, [el('h3', { text: 'Race ' + S.raceNo + ' program' }), el('span', { class: 'tap', text: 'Tap a horse to pick it' }),
-      el('span', { class: 'cond', text: '6 furlongs · ' + F.surface + ', ' + F.cond.toLowerCase() })]));
+      el('span', { class: 'cond', text: '6 furlongs on ' + F.cond.toLowerCase() + ' ' + F.surface.toLowerCase() })]));
     var mine = {};
     S.tickets.forEach(function (k) { if (k.p === S.turn) k.sel.forEach(function (i) { mine[i] = 1; }); });
     F.horses.forEach(function (h, i) {
@@ -1591,7 +1595,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
         'aria-label': h.post + ' ' + h.name + ', odds ' + mlText(h.ml) }, [
         el('span', { class: 'cloth', style: { background: CLOTH[i % 8][0], color: CLOTH[i % 8][1] }, text: String(h.post) }),
         el('span', { html: silkSvg(h.silk) }),
-        el('span', { class: 'hn' }, [el('b', { text: h.name }), el('small', { html: 'Form <b class="fm">' + h.form.join('-') + '</b> · ' + esc(h.jockey) })]),
+        el('span', { class: 'hn' }, [el('b', { text: h.name }), el('small', { html: '<span class="jk">' + esc(h.jockey) + '</span>Form <b class="fm">' + h.form.join('-') + '</b>' })]),
         el('span', { class: 'ml' }, [el('b', { text: mlText(h.ml) }), el('small', { class: 'tg', text: PACE[h.pace] })])
       ]);
       if (at >= 0 && ex) row.appendChild(el('span', { class: 'bdg', text: ord(at + 1) }));
@@ -1626,8 +1630,9 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     if (!solo()) { var pl = S.players[S.turn]; box.appendChild(el('span', { class: 'av', style: { '--c': pl.color }, text: pl.name.charAt(0).toUpperCase() })); }
     if (p.sel.length < need) {
       var left = need - p.sel.length;
-      box.appendChild(el('span', { class: 'grow muted', html: '<b style="color:var(--text)">' + BT[p.type] + '</b> · ' + (p.sel.length ? selText(p.type, p.sel) + ' · ' : '') +
-        (need === 1 ? 'pick a horse in the program' : 'pick ' + (p.sel.length ? left + ' more' : need + ' horses') + (p.type === 'QU' ? '' : ' in order')) }));
+      // (the kind of bet, what is picked so far and what to do next, each on a line of its own)
+      box.appendChild(el('span', { class: 'grow muted', html: '<b style="color:var(--text)">' + BT[p.type] + (p.sel.length ? ' ' + selText(p.type, p.sel) : '') + '</b>' +
+        '<span class="k-fact">' + (need === 1 ? 'Pick a horse in the program' : 'Pick ' + (p.sel.length ? left + ' more' : need + ' horses') + (p.type === 'QU' ? '' : ' in order')) + '</span>' }));
     } else {
       var k = keyOf(S.turn, p.type, p.sel), tk = findTk(k);
       box.appendChild(el('span', { class: 'grow', html: '<b>' + BT[p.type] + '</b> ' + selText(p.type, p.sel) }));
@@ -1644,7 +1649,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     mine.forEach(function (k) {
       var row = el('div', { class: 'tk' + (k === lastAdded ? ' drop' : '') }, [
         stackEl(k.amt, 26),
-        el('div', { class: 'tx' }, [el('b', { html: BT[k.type] + ' ' + selText(k.type, k.sel) }), el('small', { text: (k.type === 'W' ? mlText(S.field.horses[k.sel[0]].ml) + ' odds' : fmtOdds(k.m)) + (NEED[k.type] === 1 ? '' : ' · ' + k.sel.map(function (i) { return S.field.horses[i].name; }).join(', ')) })]),
+        el('div', { class: 'tx' }, [el('b', { html: BT[k.type] + ' ' + selText(k.type, k.sel) }), Kit.facts(el('small'), (k.type === 'W' ? mlText(S.field.horses[k.sel[0]].ml) + ' odds' : fmtOdds(k.m)) + (NEED[k.type] === 1 ? '' : ' \u00b7 ' + k.sel.map(function (i) { return S.field.horses[i].name; }).join(', ')))]),
         el('div', { class: 'am' }, [el('span', { text: money(k.amt) }), el('small', { text: 'pays ' + money(payout(k.amt, k.m)) })]),
         netLocked() ? null : el('button', { type: 'button', class: 'x', 'aria-label': 'Take back this ticket', html: Kit.icon('close'), onclick: function () { removeTicket(k.k); } })
       ]);
@@ -1781,8 +1786,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     R.undoB.disabled = !mineUndo || netLocked(); R.clrB.disabled = !staked(S.turn) || netLocked();
     var nx = nextBettor(), t = staked(S.turn);
     if (NET) { R.goB.disabled = netLocked(); R.goB.innerHTML = netLocked() ? '<span>Your bets are in</span>' : Kit.icon('play') + '<span>' + (t ? 'Bet ' + money(t) : 'Just watch this race') + '</span>'; if (netLocked()) R.tray.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); }
-    else if (solo()) R.goB.innerHTML = Kit.icon('play') + '<span>' + (t ? 'Race · ' + money(t) : 'Watch race') + '</span>';
-    else if (nx >= 0) R.goB.innerHTML = '<span>' + (t ? 'Done' : 'Pass') + ' · ' + esc(S.players[nx].name) + ' next</span>';
+    else if (solo()) R.goB.innerHTML = Kit.icon('play') + '<span>' + (t ? 'Race for ' + money(t) : 'Watch race') + '</span>';
+    else if (nx >= 0) R.goB.innerHTML = '<span>' + (t ? 'Done' : 'Pass') + ', and ' + esc(S.players[nx].name) + ' is next</span>';
     else R.goB.innerHTML = Kit.icon('play') + '<span>Start the race</span>';
   }
   function turnCallout() {
@@ -1982,7 +1987,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     var F = S.field, rc = S.race, o = rc.order, H = F.horses;
     R.tote.innerHTML = '';
     var bd = el('div', { class: 'bd' });
-    bd.appendChild(el('div', { class: 'top' }, [el('span', { text: 'Official · Race ' + S.raceNo }), el('span', { text: '$2 payouts' })]));
+    bd.appendChild(el('div', { class: 'top' }, [el('span', { text: 'Race ' + S.raceNo + ' is official' }), el('span', { text: '$2 payouts' })]));
     var tb = el('table');
     tb.appendChild(el('tr', null, [el('th', { text: '' }), el('th', { text: '' }), el('th', { text: 'Win' }), el('th', { text: 'Place' }), el('th', { text: 'Show' })]));
     for (var r = 0; r < 3 && r < o.length; r++) {
