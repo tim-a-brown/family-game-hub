@@ -164,6 +164,9 @@ p{margin:0;}
   color:var(--text-2);font-weight:800;font-size:.95rem;transition:background .2s, color .2s, transform .15s var(--spring);
 }
 .seg > button{min-width:max-content;padding-inline:8px;}
+/* a choice with a second line ('10' over 'Standard'): the word small under the number */
+.seg > button.k-two{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1;padding-block:5px;}
+.seg > button.k-two small{font-size:.72rem;font-weight:700;letter-spacing:.01em;opacity:.78;margin-top:1px;}
 .seg > button:active{transform:scale(.95);}
 .seg > button.on,.seg > button[aria-pressed="true"]{background:var(--surface-3);color:var(--text);box-shadow:var(--shadow-sm);}
 /* Light themes: the picked choice is a bright raised pill with an accent ring, so it reads at a glance against the tan or lilac track */
@@ -753,6 +756,18 @@ html.k-insheet .k-opt.k-sc{display:flex;flex-direction:column;gap:8px;}
 .k-opt.k-sc.k-open > .k-help{display:block;margin:0 4px;}
 .k-opt.k-sc.k-open > .seg{animation:kScIn .22s var(--ease);}
 @keyframes kScIn{from{opacity:0;transform:translateY(-4px);}}
+/* A friend's open table in this game (Kit.setup, friendTables): above the Players card, ringed in the game's colour */
+.k-joins{display:flex;flex-direction:column;gap:8px;}
+.k-joins:empty{display:none;}
+.k-join{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px 11px 12px;border:0;border-radius:var(--r-lg);background:var(--surface-2);color:var(--text);
+  font:inherit;text-align:left;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 0 0 2px var(--accent);transition:transform .08s ease,box-shadow .08s ease;animation:k-join-in .35s var(--spring) both;}
+.k-join:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3),inset 0 0 0 2px var(--accent);}
+.k-join .avatar{flex:none;width:46px;height:46px;font-size:1.1rem;}
+.k-join-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.k-join-tx b{font-weight:900;font-size:1.08rem;line-height:1.2;overflow-wrap:anywhere;}
+.k-join-tx small{color:var(--text-2);font-weight:700;font-size:.86rem;line-height:1.25;}
+@keyframes k-join-in{from{opacity:0;transform:translateY(-6px);}}
+@media (prefers-reduced-motion:reduce){.k-join{animation:none;}}
 /* Who's playing: a card above the game's options. The people and robots already seated show as chips, and a tap opens
    the players sheet. (The home screen's game sheet draws the same card itself, .gs-who in index.html.) */
 .k-who{display:flex;align-items:center;gap:14px;width:100%;padding:13px 12px 13px 14px;border:0;border-radius:var(--r-lg);background:var(--surface-2);color:var(--text);
@@ -782,6 +797,7 @@ html.k-insheet .k-opt.k-sc{display:flex;flex-direction:column;gap:8px;}
 .k-chips.teams,.qs-chips.teams{align-items:center;gap:6px 8px;}
 .k-team,.qs-team{display:inline-flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0;}
 .k-amp,.qs-amp{font-style:normal;font-weight:900;font-size:.86rem;color:var(--text-3);}
+.k-pair,.qs-pair{display:inline-flex;align-items:center;gap:5px;min-width:0;max-width:100%;}
 .k-vs,.qs-vs{font-style:normal;font-weight:900;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);padding:0 1px;}
 
 .k-who-go{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--w08);color:var(--text-2);}
@@ -896,9 +912,13 @@ html.k-insheet .setup .mode:not(.on) .d{display:none;}
 /* started from that sheet: the setup stays out of sight while it presses its own start button */
 html.k-going .setup{visibility:hidden;}
 /* The start button stays in view at the bottom of the setup, whatever is above it */
-.setup .k-startdock{position:sticky;bottom:0;z-index:6;margin:-10px -16px calc(-16px - var(--safe-b));padding:18px 16px calc(var(--safe-b) + 14px);
+.setup .k-startdock{position:sticky;bottom:0;z-index:6;margin:-10px -16px calc(-16px - var(--safe-b));padding:18px 16px max(calc(var(--safe-b) + 14px), 18px);   /* (18px off the bottom even with no safe area: Safari with its bar tucked away; the sides are set to 17px from the screen's edge in kit.js, dockInset) */
   background:linear-gradient(rgba(0,0,0,0),var(--bg) 60%);}
 .setup .k-startdock .k-start{margin:0;}
+.setup.k-pad{padding-left:16px;padding-right:16px;}
+/* Game defaults: what each game is set to, as small tags */
+small.k-defsum{display:flex !important;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.k-defsum span{padding:1px 7px;border-radius:999px;background:var(--w08);font-size:.78rem;font-weight:700;color:var(--text-2);line-height:1.5;}
 .setup .k-startdock.has-alt{display:flex;gap:10px;align-items:stretch;}
 .setup .k-startdock.has-alt .k-start{flex:1;min-width:0;}
 .setup .k-start-alt{flex:none;width:auto;padding:0 14px;gap:6px;white-space:nowrap;font-size:.92rem;}
