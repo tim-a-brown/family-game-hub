@@ -203,6 +203,28 @@ Underlying principles for everything:
 - **Apples to Apples** mixes robots with people (`cpu: 'mix'`), in pass and play and online (the host's device plays them).
 - **Space Invaders** stays two players at most (Tim: "online game requires two humans on different devices").
 
+## Bridge (2026-11-14; Tim: "two more classic cards game to add: Bridge and Pinochle")
+
+- `games/bridge.html` with `games/bridge/engine.js` (the rules, scoring, the score pad: `newPad`, `vulOf`, `padDeal`;
+  the computer's bidding and play; runs in the page and in Node), `table.js` (the table, setup, moments, online, saved
+  games, undo), `bridge.css`, and history `hist/bridge.js`. Contract bridge under ACBL's Laws for rubber bridge:
+  **Chicago** (four deals, vulnerability none, dealer's side, dealer's side, both; 300 or 500 for a game, 100 for a part
+  score on deal 4) is the default and **Rubber** the other choice (the 700 or 500 rubber bonus); doubled and redoubled
+  scoring, the insult bonus, slams and honors in both.
+- The computer bids SAYC basics from one table of rules (`rulesFor`): a robot's call and the meaning shown for it come
+  from the same rule, so a new convention is one rule with its `say` and `sh` (the hand it shows). Michaels, the
+  unusual 2NT and new minor forcing are not in it. Easy, Normal and Hard differ in skill, never in cheating; Hard
+  samples hands that fit the auction and solves the last three tricks exactly (`HARD_DEALS`, `HARD_MS`, `DD_AT`).
+- The table: a bidding box (levels and strains, Pass, X, XX), the auction slip by seat (a tap says what a call means),
+  a duplicate board in the corner whose colors show vulnerability, the contract plaque, the dummy in suit columns,
+  played tricks face down in rows by side, the We/They pad. Learning aids that can be turned off: your hand's HCP, bid
+  meanings, a hint bulb. Each shape has its own layout, sideways with the information at the left; turning the device
+  redoes the layout inside a View Transition.
+- Online is TurnNet: each device gets only its own hand and the dummy (`netView`), seats `PS = [0,2,1,3]` so the first
+  two people are partners, history once per device (`bridge_netrec`). Pass and play keeps hands face down between deals
+  until a person acts (`BLIND`). Test hooks: `window.__bridge` (`setup({decl, slam, cards, stop})`), and
+  `localStorage.bridge_fast = '1'` for 6x speed.
+
 ## Pinochle (2026-11-14; Tim: "two more classic cards game to add: Bridge and Pinochle")
 
 - `games/pinochle.html`, the rules and the robots in `games/pinochle-core.js` (plain JSON state; the same code runs in
