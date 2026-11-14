@@ -2438,7 +2438,7 @@
       // (the slide on the round track: this round, in the colour of whoever's turn it is. Lincoln's Seal is due at round 5.)
       if (dom.track) window.AnoriaDomains.track(dom.track, { round: V.round, turn: G.over ? -1 : V.turn, due: V.P.map((p, o) => (p.guide === 'lincoln' ? { r: 5, o: o } : null)) });
     } finally { pass = null; }
-    fitStrips(); if (!M) layout(); fitPlates(); if (!M) { fitNames(); piles(); } coverNames(); lines(); fitSides();
+    fitStrips(); if (!M) layout(); fitPlates(); fitNames(); if (!M) piles(); coverNames(); lines(); fitSides();
     dom.root.querySelectorAll('.st-name').forEach(n => Kit.fitText(n, .6));
   }
   // A player's bar keeps everything on it inside its own edge (a 320-wide phone held upright: the other player's name,
@@ -2488,6 +2488,12 @@
     // the same paper on every tile: the tallest one's height, the words centred on it
     const H = Math.max.apply(null, tiles.map(t => plate(t).getBoundingClientRect().height));
     tiles.forEach(t => { plate(t).style.minHeight = H + 'px'; });
+    // (a tile too short for its totals over its name, a phone on its side with more players: the totals step down until
+    // they are clear of the name's words. They lay on the "U" of "University of Padua")
+    tiles.forEach(t => { t.style.removeProperty('--pt'); const nm = t.querySelector('.pl-plate .pl-name'), tots = t.querySelectorAll('.pl-tot'); if (!nm || !tots.length || t.closest('.an-map.bl, .pl.wn-bl')) return;
+      const hit = () => { const rg = document.createRange(); rg.selectNodeContents(nm); const ls = Array.prototype.filter.call(rg.getClientRects(), r => r.width > .5);
+        return Array.prototype.some.call(tots, x => { const r = x.getBoundingClientRect(); return ls.some(a => a.top < r.bottom - .5 && a.bottom > r.top && a.left < r.right && a.right > r.left); }); };
+      let pt = parseFloat(getComputedStyle(tots[0]).fontSize); while (hit() && pt > 7.5) { pt -= .5; t.style.setProperty('--pt', pt + 'px'); } });
   }
   // Sizes from the room there is
   function layout() { if (!dom.map) return; layoutHand(); layoutMap(); }
@@ -2544,6 +2550,9 @@
         else if (window.innerHeight >= 740) {
           const hr8 = Math.floor(Math.min((W - 7 * g) / 8, cap)); per = Math.max(n, 5); rows = 1;
           hw = Math.min((W - (per - 1) * g) / per, hr8); h.style.minHeight = Math.ceil(hr8 * 1.4 + 8) + 'px';
+          // (more than eight: the cards keep the size of eight and overlap, as a hand of cards is held, each name down the
+          // edge of the part that shows: coverNames. Smaller, they dropped their names)
+          if (n > 8) { hw = hr8; const ov = (W - n * hw) / (n - 1); h.style.setProperty('--ho', ov.toFixed(1) + 'px'); h.classList.toggle('over', ov < 0); }
         } else {
           const h5 = Math.floor(Math.max(30, Math.min((W - 4 * g) / 5, cap))), room = h5 * 1.4 + 2;
           per = Math.max(n, 5); rows = 1; hw = Math.min((W - (per - 1) * g) / per, cap);
@@ -2655,24 +2664,29 @@
     const rows = [];
     if (dom.hand && dom.hand.classList.contains('over')) rows.push(Array.prototype.filter.call(dom.hand.children, c => c.matches('.hc')));
     if (dom.map && !(ui.lay && ui.lay.ln && ui.lay.up)) dom.map.querySelectorAll('.pl-side').forEach(sd => { if (parseFloat(sd.style.getPropertyValue('--ov')) < 0) rows.push(Array.prototype.filter.call(sd.children, c => c.matches('.fp.card'))); });
-    rows.forEach(ks => { ks = ks.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left); ks.forEach((k, j) => {
-      const nx = ks[j + 1], n = k.querySelector('.ac-name'); if (!nx || !n || k.classList.contains('sel') || nx.classList.contains('sel')) return;
-      const kr = k.getBoundingClientRect(), xr = nx.getBoundingClientRect(), cover = kr.right - xr.left; if (cover < 1.5 || xr.left < kr.left) return;
-      const nr = n.getBoundingClientRect(), fs0 = parseFloat(getComputedStyle(n).fontSize), vis = kr.width - cover;
-      k.classList.add('cv'); n.dataset.fs0 = n.style.fontSize || '';
-      // (the words of the name, each inside the part that shows?)
-      const fits = () => { const right = kr.left + vis - 2, t = n.firstChild; if (!t || t.nodeType !== 3) return false; let ok = true, at = 0;   // (every word on one line, none broken at its hyphen, inside the part that shows)
-        t.textContent.split(' ').forEach(w => { const rg = document.createRange(); rg.setStart(t, at); rg.setEnd(t, at + w.length); at += w.length + 1; const rs = Array.prototype.filter.call(rg.getClientRects(), r => r.width > .5); if (rs.length > 1 || rs.some(r => r.right > right + .5)) ok = false; }); return ok; };
-      n.style.textAlign = 'left'; n.style.paddingRight = Math.max(0, nr.right - (kr.left + vis) + 2) + 'px';
-      let fs = fs0; while (!fits() && fs > fs0 * .9) { fs -= .5; n.style.fontSize = fs + 'px'; }
-      if (fits() && n.getBoundingClientRect().bottom <= kr.bottom + 1) return;
+    // (one way for a whole row: if any covered name in it needs the spine, they all have one, so the row reads alike)
+    rows.forEach(ks => {
+      ks = ks.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+      const cv = []; ks.forEach((k, j) => {
+        const nx = ks[j + 1], n = k.querySelector('.ac-name'); if (!nx || !n || k.classList.contains('sel') || nx.classList.contains('sel')) return;
+        const kr = k.getBoundingClientRect(), xr = nx.getBoundingClientRect(), cover = kr.right - xr.left; if (cover < 1.5 || xr.left < kr.left) return;
+        cv.push({ k: k, n: n, kr: kr, cover: cover, vis: kr.width - cover, fs0: parseFloat(getComputedStyle(n).fontSize) });
+      });
+      if (!cv.length) return;
+      // (the words of the name, each on one line, none broken at its hyphen, inside the part that shows?)
+      const fits = c => { const right = c.kr.left + c.vis - 2, t = c.n.firstChild; if (!t || t.nodeType !== 3) return false; let ok = true, at = 0;
+        t.textContent.split(' ').forEach(w => { const rg = document.createRange(); rg.setStart(t, at); rg.setEnd(t, at + w.length); at += w.length + 1; const rs = Array.prototype.filter.call(rg.getClientRects(), r => r.width > .5); if (rs.length > 1 || rs.some(r => r.right > right + .5)) ok = false; });
+        return ok && c.n.getBoundingClientRect().bottom <= c.kr.bottom + 1; };
+      const flat = cv.every(c => { const n = c.n, nr = n.getBoundingClientRect(); c.k.classList.add('cv'); n.dataset.fs0 = n.style.fontSize || '';
+        n.style.textAlign = 'left'; n.style.paddingRight = Math.max(0, nr.right - (c.kr.left + c.vis) + 2) + 'px';
+        let fs = c.fs0; while (!fits(c) && fs > c.fs0 * .9) { fs -= .5; n.style.fontSize = fs + 'px'; } return fits(c); });
+      if (flat) return;
       // (the spine: down the right edge of the part that shows, at the names' own size, smaller only if it must be)
-      n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0;
-      k.classList.add('cvv');
-      const sp = el('span', { class: 'cv-v', 'aria-hidden': 'true', text: n.textContent }); k.appendChild(sp);
-      const ac = k.querySelector('.ac'); if (ac) sp.style.setProperty('--f', ac.style.getPropertyValue('--f')); sp.style.fontSize = fs0 + 'px'; sp.style.right = (cover + 1) + 'px'; sp.style.maxWidth = Math.max(10, vis * .62) + 'px';
-      let f = fs0; while ((sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1) && f > 7) { f -= .5; sp.style.fontSize = f + 'px'; }
-    }); });
+      cv.forEach(c => { const n = c.n, k = c.k; k.classList.add('cv', 'cvv'); if (n.dataset.fs0 == null) n.dataset.fs0 = n.style.fontSize || ''; n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0;
+        const sp = el('span', { class: 'cv-v', 'aria-hidden': 'true', text: n.textContent }); k.appendChild(sp);
+        const ac = k.querySelector('.ac'); if (ac) sp.style.setProperty('--f', ac.style.getPropertyValue('--f')); sp.style.fontSize = c.fs0 + 'px'; sp.style.right = (c.cover + 1) + 'px'; sp.style.maxWidth = Math.max(10, c.vis * .62) + 'px';
+        let f = c.fs0; while ((sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1) && f > 7) { f -= .5; sp.style.fontSize = f + 'px'; } });
+    });
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
   function lines() {
