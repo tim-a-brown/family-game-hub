@@ -1630,8 +1630,10 @@
         { id: 'decks', value: 'any', render: (v, set, ctx) => bots(ctx) ? deckPicker(bots(ctx) > 1 ? 'The computer players\' decks' : 'The computer\'s deck', v, set, 'cpu', bots(ctx) > 1) : none() },
         { id: 'teams', label: 'Teams', value: 'off', when: (m, v, n) => n === 4 || n === 6,
           help: 'Teammates sit with an opponent between them. They add their Renown together and their Might together, and they can\'t clash with each other.',
-          choices: n => n === 6 ? [['off', 'No teams', 'Each player plays for themselves, and the first to 25 Renown wins.'], ['three', '3 against 3', 'Two teams of three. The first team to 65 Renown between them wins.'], ['two', 'Three teams of 2', 'Three teams of two. The first team to 45 Renown between them wins.']]
-            : [['off', 'No teams', 'Each player plays for themselves, and the first to 25 Renown wins.'], ['two', '2 against 2', 'Two teams of two. The first team to 45 Renown between them wins.']] },
+          // (the Renown that wins is never typed into a sentence: it is the engine's, for one player and for a team of each size)
+          choices: n => { const t1 = E.STD.target, t2 = E.targetFor([[0, 1]]), t3 = E.targetFor([[0, 1, 2]]);
+            return n === 6 ? [['off', 'No teams', 'Each player plays for themselves, and the first to ' + t1 + ' Renown wins.'], ['three', '3 against 3', 'Two teams of three. The first team to ' + t3 + ' Renown between them wins.'], ['two', 'Three teams of 2', 'Three teams of two. The first team to ' + t2 + ' Renown between them wins.']]
+              : [['off', 'No teams', 'Each player plays for themselves, and the first to ' + t1 + ' Renown wins.'], ['two', '2 against 2', 'Two teams of two. The first team to ' + t2 + ' Renown between them wins.']]; } },
         { id: 'level', robot: true, label: 'Computer skill', value: Coll.load().wins ? 'normal' : 'easy', choices: [['easy', 'Easy', 'The computer stops early and misses things, which makes for a good first game.'], ['normal', 'Normal', DW('The computer plays to hold Places, with the odd slip.')], ['hard', 'Hard', 'The computer plays its best, and comes for your Gate and your Seals.']] }
       ]),
       players: { range: () => [2, 6], count: 2, cpu: m => m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false, teams: (n, v) => teamsFor(n, v.teams) },
@@ -4158,7 +4160,7 @@
     '<li>A player who loses their last Seal is out of the game. ' + (RC.outEnds ? 'The count that puts a player out ends the game, and whoever has the most Renown of the players still in wins.' : 'Their Figures leave the map, and the game goes on without them until one player is left or someone reaches ' + E.STD.target + ' Renown.') + '</li>' +
     '<li>A card that says <b>an opponent</b> means any other player. The Congress of Vienna counts 4 and 5 on the spoke of the player on your left. With the Columbian Exchange you choose whose Gate and Outpost trade places with yours, by tapping that player\'s Gate.</li></ul>' +
     '<h3>Teams</h3><ul><li>With 4 or 6 players you can play in teams: 2 against 2, 3 against 3, or three teams of 2. Teammates sit with an opponent between them, and each team has a color of its own and a diamond on its players\' plates.</li>' +
-    '<li>A team\'s Renown is its players\' Renown added together. The first team to reach 20 Renown for each player on it, and 5 more, wins: 45 Renown for a team of two, and 65 for a team of three.</li>' +
+    '<li>A team\'s Renown is its players\' Renown added together. The first team to reach ' + E.targetFor([[0, 1]]) + ' Renown wins if it has two players, and ' + E.targetFor([[0, 1, 2]]) + ' Renown if it has three.</li>' +
     '<li>' + (RC.tmight === 'add' ? 'Teammates add their Might together to hold a Place. ' : '') + 'Teammates can\'t clash with each other, no card hurts a teammate, and holding a teammate\'s Gate breaks none of their Seals.</li></ul>' +
     '<h3>Tips</h3><ul><li>Tap any card, Figure, Guide or Place to read it full size.</li><li>Your Guide\'s power is always on. Build your turn around it.</li>' +
     '<li>You can take a move back from the menu, as long as it drew no card and rolled no dice.</li></ul>').replace(/\bPlace(s?)\b/g, (m, x) => (C.DM_LIVE ? 'Domain' + x : m)); };
