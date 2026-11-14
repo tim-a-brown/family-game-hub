@@ -15,41 +15,34 @@
 <style>
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
-html.ar-on body{display:flex;flex-direction:column;
-  background:radial-gradient(90% 50% at 50% 0%, rgba(139,92,246,.18) 0%, rgba(139,92,246,0) 70%),var(--bg);}
+html.ar-on body{display:flex;flex-direction:column;}
 html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px calc(var(--safe-b) + 10px);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
 .ar-hud{flex:none;display:flex;gap:6px;width:100%;}
-.ar-plate{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 8px;border-radius:14px;
-  background:linear-gradient(180deg,#221a3e 0%,#130e26 100%);
-  box-shadow:inset 0 0 0 1.5px rgba(176,150,255,.35),inset 0 0 0 3.5px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);}
-.ar-plate small{font-size:.62rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(214,200,255,.65);white-space:nowrap;}
-.ar-plate b{font-family:var(--display);font-weight:400;font-size:1.45rem;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.ar-plate{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 8px;border-radius:15px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.ar-plate small{font-size:.74rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
+.ar-plate b{font-family:var(--display);font-weight:800;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.45rem;line-height:1.05;}
 .ar-plate.sc{flex:1.7;}
-.ar-plate.sc b{color:#ffd45a;text-shadow:0 0 14px rgba(255,190,40,.4),0 2px 0 rgba(0,0,0,.5);}
+.ar-plate.sc b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .ar-plate.bump b{animation:bounce .45s var(--spring);}
 .ar-wrap{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;touch-action:none;}
 .ar-cab{position:relative;padding:7px;border-radius:20px;}
 .ar-cab canvas{display:block;border-radius:13px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-.ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;
-  background:rgba(8,6,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.ar-ov{position:absolute;inset:7px;border-radius:13px;display:none;align-items:center;justify-content:center;z-index:4;background:var(--win-shade);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .ar-ov.show{display:flex;animation:pop .3s var(--spring);}
-.ar-ov .card{width:min(250px,84%);text-align:center;padding:20px 16px 14px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
-.ar-ov h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 2px;}
+.ar-ov .card{width:min(250px,84%);text-align:center;padding:20px 16px 14px;--text:#f3f1fb;--text-2:#c6c4da;--text-3:#8f8daa;--gl:rgba(255,255,255,.07);--gl-2:rgba(255,255,255,.1);--gl-3:rgba(255,255,255,.08);--gl-line:rgba(255,255,255,.12);--lit:#ffd34d;--lit-ink:#ffe28a;--litg:rgba(255,190,60,.55);color:var(--text);background:rgba(24,26,48,.94);border-radius:var(--r-xl);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px var(--gl-line),0 30px 60px -24px rgba(0,0,0,.9);}
+.ar-ov h2{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:2rem;margin:0 0 2px;}
 .ar-ov p{color:var(--text-2);margin:0 0 12px;font-weight:700;font-size:.92rem;}
 .ar-ov .btn{margin-top:8px;}
 /* Arcade buttons */
 .ar-ctl{flex:none;display:flex;justify-content:center;gap:6px;width:100%;padding:0 calc(var(--corner-x) / 2) var(--corner-y);}
-.ar-key{flex:1;max-width:72px;height:58px;border:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  color:#efe9ff;background:linear-gradient(180deg,#3b3166 0%,#261e48 100%);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px rgba(176,150,255,.28),0 4px 0 #120d26,0 8px 14px rgba(0,0,0,.4);
-  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .06s,box-shadow .06s;}
+.ar-key{flex:1;max-width:72px;height:58px;border:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text);background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .08s var(--ease),filter .08s,background .08s;}
 .ar-key .ico{width:24px;height:24px;stroke-width:2.8;}
-.ar-key span{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(230,220,255,.75);}
-.ar-key.on{transform:translateY(3px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px rgba(176,150,255,.45),0 1px 0 #120d26;}
-.ar-key.hot{background:linear-gradient(180deg,#ffd768 0%,#e8a51c 100%);color:#3a2200;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 4px 0 #7a4c08,0 8px 14px rgba(0,0,0,.4);}
-.ar-key.hot span{color:rgba(58,34,0,.75);}
-.ar-key.hot.on{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 1px 0 #7a4c08;}
+.ar-key span{font-size:.74rem;font-weight:700;color:var(--text-2);}
+.ar-key.on{transform:translateY(1px) scale(.95);background:var(--gl);filter:brightness(.94);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.ar-key.hot{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 10px 24px -10px rgba(255,190,60,.6);}
+.ar-key.hot span{color:var(--gold-ink);opacity:.8;}
+.ar-key.hot.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 12px -6px rgba(255,190,60,.6);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));}
 .ar-key:disabled{opacity:.4;}
 .ar-hint{flex:none;font-size:.8rem;color:var(--text-3);text-align:center;font-weight:700;}
 @media (hover:hover) and (pointer:fine){ .ar-touch{display:none!important;} }
@@ -512,7 +505,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var DROP = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m6 10 6 6 6-6"/><path d="M5 21h14"/></svg>';
     var ROT = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
     function key(html, label, cls) { return el('button', { type: 'button', class: 'ar-key ' + (cls || ''), 'aria-label': label, html: html }); }
-    var kHold = key('<span style="font-size:.78rem">Hold</span>', 'Hold', 'k-hold');
+    var kHold = key('<span style="font-size:.86rem">Hold</span>', 'Hold', 'k-hold');
     var kL = key(I('back'), 'Move left'), kR = key(I('right'), 'Move right'), kD = key(I('down'), 'Soft drop');
     var kRot = key(ROT, 'Rotate'), kDrop = key(DROP + '<span>Drop</span>', 'Hard drop', 'hot');
     ctlEl = el('div', { class: 'ar-ctl ar-touch' }, [el('div', { class: 'ar-grp' }, [kL, kD, kR]), el('div', { class: 'ar-grp' }, [kHold, kRot, kDrop])]);
@@ -891,8 +884,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // Flash over everything
     if (fx.flash > 0) { g.fillStyle = 'rgba(255,255,255,' + (fx.flash * 0.22) + ')'; g.fillRect(0, 0, W, H); }
   }
-  function label(text, x, y, size, col, align) {
-    g.font = '400 ' + size + 'px "Lilita One", ui-rounded, system-ui, sans-serif';
+  // Words in the side panels are the app's own type in sentence case; numbers and the big calls use its display cut
+  function label(text, x, y, size, col, align, disp) {
+    if (disp == null) disp = /^[\d+]/.test(text);
+    g.font = (disp ? '800 ' : '650 ') + size + 'px ' + (disp ? '"GN Display", ' : '') + '"Schibsted Grotesk", system-ui, sans-serif';
     g.textAlign = align || 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.fillText(text, x, y);
   }
   function miniPiece(t, cx, cy, size, alpha) {
@@ -904,15 +899,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.globalAlpha = 1;
   }
   function panel(x, y, w, h) {
-    g.fillStyle = 'rgba(0,0,0,.32)'; rr(g, x, y, w, h, C * 0.35); g.fill();
-    g.strokeStyle = 'rgba(176,150,255,.18)'; g.lineWidth = 1; rr(g, x + 0.5, y + 0.5, w - 1, h - 1, C * 0.35); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.05)'; rr(g, x, y, w, h, C * 0.35); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; rr(g, x + 0.5, y + 0.5, w - 1, h - 1, C * 0.35); g.stroke();
   }
   function drawSide() {
     var lx = 0.1 * C, w = (SIDE - 0.1) * C, top = wellY();
     // HOLD
     if (!G.classic) {
       panel(lx, top, w, 3.3 * C);
-      label('HOLD', lx + w / 2, top + 0.55 * C, Math.round(C * 0.55), 'rgba(214,200,255,.7)');
+      label('Hold', lx + w / 2, top + 0.55 * C, Math.round(C * 0.5), 'rgba(198,196,218,.85)');
       if (G.hold) miniPiece(G.hold, lx + w / 2, top + 2.0 * C, C * 0.62, G.holdUsed ? 0.45 : 1);
     }
     // Action text (TETRIS / T-SPIN / COMBO)
@@ -926,13 +921,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (a.pc) lines.push(['PERFECT', '#4fd65a', 0.55]);
       lines.push(['+' + fmt(a.pts), '#ffd45a', 0.5]);
       var yy = 0;
-      lines.forEach(function (l) { label(l[0], 0, yy, Math.round(C * l[2]), l[1]); yy += C * (l[2] + 0.28); });
+      lines.forEach(function (l) { label(l[0], 0, yy, Math.round(C * l[2]), l[1], 'center', true); yy += C * (l[2] + 0.28); });
       g.restore();
     }
     // NEXT
     var rx = (SIDE + GAP * 2 + 10) * C, nh = 10.4 * C;
     panel(rx, top, w, nh);
-    label('NEXT', rx + w / 2, top + 0.55 * C, Math.round(C * 0.55), 'rgba(214,200,255,.7)');
+    label('Next', rx + w / 2, top + 0.55 * C, Math.round(C * 0.5), 'rgba(198,196,218,.85)');
     for (var i = 0; i < (G.classic ? 1 : 5) && i < G.queue.length; i++) {
       var sz = i === 0 ? C * 0.62 : C * 0.5, cy = i === 0 ? top + 2.0 * C : top + 2.75 * C + i * 1.65 * C;
       miniPiece(G.queue[i], rx + w / 2, cy, sz, 1);
@@ -940,7 +935,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // Level progress meter (rows to next level)
     var mt = top + nh + 0.4 * C, mh = 20 * C - nh - 0.4 * C;
     panel(rx, mt, w, mh);
-    label('NEXT LEVEL', rx + w / 2, mt + 0.5 * C, Math.round(C * 0.4), 'rgba(214,200,255,.6)');
+    label('Next level', rx + w / 2, mt + 0.5 * C, Math.round(C * 0.4), 'rgba(198,196,218,.85)');
     var need = Math.max(0, G.level * 10 - G.lines), frac = clamp(1 - need / 10, 0, 1);
     var bx = rx + w / 2 - C * 0.35, by = mt + 1.1 * C, bh = mh - 2.6 * C;
     g.fillStyle = 'rgba(0,0,0,.4)'; rr(g, bx, by, C * 0.7, bh, C * 0.35); g.fill();
@@ -951,15 +946,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.stats) {
       panel(lx, lt, w, 20 * C - lt + top);
       var secs = Math.floor(G.playMs / 1000), tm = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
-      label('TIME', lx + w / 2, lt + 0.6 * C, Math.round(C * 0.42), 'rgba(214,200,255,.6)');
+      label('Time', lx + w / 2, lt + 0.6 * C, Math.round(C * 0.42), 'rgba(198,196,218,.85)');
       label(tm, lx + w / 2, lt + 1.35 * C, Math.round(C * 0.62), '#fff');
-      label('TETRISES', lx + w / 2, lt + 2.5 * C, Math.round(C * 0.4), 'rgba(214,200,255,.6)');
+      label('Tetrises', lx + w / 2, lt + 2.5 * C, Math.round(C * 0.42), 'rgba(198,196,218,.85)');
       label(String(G.stats.tetris), lx + w / 2, lt + 3.25 * C, Math.round(C * 0.62), '#2fd0f0');
-      label('BLOCKS', lx + w / 2, lt + 4.4 * C, Math.round(C * 0.4), 'rgba(214,200,255,.6)');
+      label('Blocks', lx + w / 2, lt + 4.4 * C, Math.round(C * 0.42), 'rgba(198,196,218,.85)');
       label(String(G.stats.pieces), lx + w / 2, lt + 5.15 * C, Math.round(C * 0.62), '#fff');
       var rem = 20 * C - lt + top;
       if (rem > 7.2 * C) {
-        label('BEST', lx + w / 2, lt + 6.3 * C, Math.round(C * 0.4), 'rgba(214,200,255,.6)');
+        label('Best', lx + w / 2, lt + 6.3 * C, Math.round(C * 0.42), 'rgba(198,196,218,.85)');
         label(bestShort(), lx + w / 2, lt + 7.05 * C, Math.round(C * 0.5), '#ffd45a');
       }
     }
@@ -1045,7 +1040,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.phase === 'ready' && !paused) {
       var goT = 0.6 + (G.stats.pieces === 0 && TOUCH ? 1.2 : 0), txt = G.readyT < goT ? 'READY' : 'GO!', k2 = G.readyT < goT ? G.readyT / goT : (G.readyT - goT) / 0.3;
       g.save(); g.translate(X + WW / 2, Y + WH * 0.42); var sc = 1 + 0.25 * (1 - Math.min(1, k2 * 3)); g.scale(sc, sc);
-      g.shadowColor = '#000'; g.shadowBlur = 12; label(txt, 0, 0, Math.round(C * 1.6), txt === 'GO!' ? '#4fd65a' : '#ffd45a'); g.restore();
+      g.shadowColor = '#000'; g.shadowBlur = 12; label(txt, 0, 0, Math.round(C * 1.6), txt === 'GO!' ? '#4fd65a' : '#ffd45a', 'center', true); g.restore();
       if (G.stats.pieces === 0 && TOUCH) {
         (G.classic ? ['Tap to turn', 'Drag to slide', 'Flick down to drop'] : ['Tap to turn', 'Drag to slide', 'Flick down to drop', 'Flick up to hold']).forEach(function (t, i) { label(t, X + WW / 2, Y + WH * 0.56 + i * C * 0.95, Math.round(C * 0.62), 'rgba(255,255,255,.8)'); });
       }
@@ -1055,10 +1050,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       var k = 1 - b.life / b.max, a = b.life < 0.4 ? b.life / 0.4 : 1, s = k < 0.15 ? 0.6 + (k / 0.15) * 0.5 : 1.1 - Math.min(0.1, (k - 0.15));
       g.save(); g.globalAlpha = a; g.translate(X + WW / 2, Y + WH * 0.36); g.scale(s, s);
       var fs = Math.round(C * (b.text.length > 10 ? 1.05 : 1.5));
-      g.font = '400 ' + fs + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '800 ' + fs + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineWidth = C * 0.28; g.strokeStyle = 'rgba(0,0,0,.65)'; g.strokeText(b.text, 0, 0);
       g.fillStyle = b.c; g.shadowColor = b.c; g.shadowBlur = C * 0.8; g.fillText(b.text, 0, 0); g.shadowBlur = 0;
-      if (b.sub) { g.font = '400 ' + Math.round(C * 0.7) + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; g.lineWidth = C * 0.2; g.strokeText(b.sub, 0, C * 1.2); g.fillStyle = '#fff'; g.fillText(b.sub, 0, C * 1.2); }
+      if (b.sub) { g.font = '800 ' + Math.round(C * 0.7) + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.lineWidth = C * 0.2; g.strokeText(b.sub, 0, C * 1.2); g.fillStyle = '#fff'; g.fillText(b.sub, 0, C * 1.2); }
       g.restore();
     });
     // Game over
@@ -1066,7 +1061,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       g.save(); g.globalAlpha = clamp((G.overT - 0.9) / 0.3, 0, 1);
       g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(X, Y, WW, WH);
       g.translate(X + WW / 2, Y + WH * 0.42);
-      g.font = '400 ' + Math.round(C * 1.4) + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '800 ' + Math.round(C * 1.4) + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineWidth = C * 0.25; g.strokeStyle = 'rgba(0,0,0,.7)'; g.strokeText('GAME OVER', 0, 0); g.fillStyle = '#ff4058'; g.fillText('GAME OVER', 0, 0);
       g.restore();
     }

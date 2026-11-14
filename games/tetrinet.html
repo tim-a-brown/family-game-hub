@@ -15,33 +15,28 @@
 <style>
 /* ── Play view: fills the screen, no page scroll (the same cabinet as Tetris) ── */
 html.tn-on,html.tn-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
-html.tn-on body{display:flex;flex-direction:column;
-  background:radial-gradient(90% 50% at 50% 0%, rgba(139,92,246,.18) 0%, rgba(139,92,246,0) 70%),var(--bg);}
+html.tn-on body{display:flex;flex-direction:column;}
 html.tn-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 6px calc(var(--safe-b) + 8px);
   display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:6px;}
 .tn-wrap{flex:1;min-height:0;width:100%;position:relative;touch-action:none;}
 .tn-cab{position:absolute;inset:0;padding:6px;border-radius:20px;}
 .tn-cab canvas{display:block;width:100%;height:100%;border-radius:14px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
-.ar-ov{position:absolute;inset:6px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:4;
-  background:rgba(8,6,20,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.ar-ov{position:absolute;inset:6px;border-radius:14px;display:none;align-items:center;justify-content:center;z-index:4;background:var(--win-shade);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 .ar-ov.show{display:flex;animation:pop .3s var(--spring);}
-.ar-ov .card{width:min(260px,84%);text-align:center;padding:20px 16px 14px;border-radius:var(--r-lg);background:var(--bg-2);box-shadow:var(--shadow);}
-.ar-ov h2{font-family:var(--display);font-weight:400;font-size:2rem;margin:0 0 2px;}
+.ar-ov .card{width:min(260px,84%);text-align:center;padding:20px 16px 14px;--text:#f3f1fb;--text-2:#c6c4da;--text-3:#8f8daa;--gl:rgba(255,255,255,.07);--gl-2:rgba(255,255,255,.1);--gl-3:rgba(255,255,255,.08);--gl-line:rgba(255,255,255,.12);--lit:#ffd34d;--lit-ink:#ffe28a;--litg:rgba(255,190,60,.55);color:var(--text);background:rgba(24,26,48,.94);border-radius:var(--r-xl);-webkit-backdrop-filter:blur(26px);backdrop-filter:blur(26px);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px var(--gl-line),0 30px 60px -24px rgba(0,0,0,.9);}
+.ar-ov h2{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:2rem;margin:0 0 2px;}
 .ar-ov p{color:var(--text-2);margin:0 0 12px;font-weight:700;font-size:.92rem;}
 .ar-ov .btn{margin-top:8px;}
 /* Arcade buttons (as in Tetris) */
 .ar-ctl{flex:none;display:flex;justify-content:center;gap:6px;width:100%;padding:0 calc(var(--corner-x) / 2) var(--corner-y);}
 .ar-grp{display:contents;}
-.ar-key{flex:1;max-width:72px;height:56px;border:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
-  color:#efe9ff;background:linear-gradient(180deg,#3b3166 0%,#261e48 100%);
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px rgba(176,150,255,.28),0 4px 0 #120d26,0 8px 14px rgba(0,0,0,.4);
-  touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .06s,box-shadow .06s;}
+.ar-key{flex:1;max-width:72px;height:56px;border:0;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--text);background:var(--gl-2);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;transition:transform .08s var(--ease),filter .08s,background .08s;}
 .ar-key .ico{width:24px;height:24px;stroke-width:2.8;}
-.ar-key span{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(230,220,255,.75);}
-.ar-key.on{transform:translateY(3px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.2),inset 0 0 0 1.5px rgba(176,150,255,.45),0 1px 0 #120d26;}
-.ar-key.hot{background:linear-gradient(180deg,#ffd768 0%,#e8a51c 100%);color:#3a2200;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 4px 0 #7a4c08,0 8px 14px rgba(0,0,0,.4);}
-.ar-key.hot span{color:rgba(58,34,0,.75);}
-.ar-key.hot.on{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 1px 0 #7a4c08;}
+.ar-key span{font-size:.74rem;font-weight:700;color:var(--text-2);}
+.ar-key.on{transform:translateY(1px) scale(.95);background:var(--gl);filter:brightness(.94);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.ar-key.hot{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 10px 24px -10px rgba(255,190,60,.6);}
+.ar-key.hot span{color:var(--gold-ink);opacity:.8;}
+.ar-key.hot.on{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 12px -6px rgba(255,190,60,.6);background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));}
 .ar-hint{flex:none;font-size:.8rem;color:var(--text-3);text-align:center;font-weight:700;}
 @media (hover:hover) and (pointer:fine){ .ar-touch{display:none!important;} }
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
@@ -1261,15 +1256,17 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     }
     sprites[k] = c; return c;
   }
-  function label(text, x, y, size, col, align, stroke) {
-    g.font = '400 ' + size + 'px "Lilita One", ui-rounded, system-ui, sans-serif';
+  // Words in the side panels are the app's own type in sentence case; numbers and the calls over a field use its display cut
+  function label(text, x, y, size, col, align, stroke, disp) {
+    if (disp == null) disp = stroke || /^[\d+]/.test(text);
+    g.font = (disp ? '800 ' : '650 ') + size + 'px ' + (disp ? '"GN Display", ' : '') + '"Schibsted Grotesk", system-ui, sans-serif';
     g.textAlign = align || 'center'; g.textBaseline = 'middle';
     if (stroke) { g.lineWidth = Math.max(2, size * 0.18); g.strokeStyle = 'rgba(0,0,0,.65)'; g.strokeText(text, x, y); }
     g.fillStyle = col; g.fillText(text, x, y);
   }
   function panel(x, y, w, h, c) {
-    g.fillStyle = 'rgba(0,0,0,.32)'; rr(g, x, y, w, h, c * 0.35); g.fill();
-    g.strokeStyle = 'rgba(176,150,255,.18)'; g.lineWidth = 1; rr(g, x + 0.5, y + 0.5, w - 1, h - 1, c * 0.35); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.05)'; rr(g, x, y, w, h, c * 0.35); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; rr(g, x + 0.5, y + 0.5, w - 1, h - 1, c * 0.35); g.stroke();
   }
   function draw() {
     if (!g || !M || !LAY) return;
@@ -1307,7 +1304,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       var nm = (s + 1) + '  ' + S.name, place = !S.alive && S.place ? placeText(S.place) : (S.place === 1 ? '1st' : '');
       g.save();
       g.fillStyle = target && S.alive ? hexA(PCOL[s % 6], 0.95) : hexA(PCOL[s % 6], 0.28); rr(g, X, tagY - 7, WW, 14, 7); g.fill();
-      g.font = '800 10.5px ui-rounded, system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
+      g.font = '700 10.5px "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle';
       g.fillStyle = target && S.alive ? '#1a1430' : '#efe9ff';
       var maxW = WW - 8 - (place ? 24 : 0), txt = nm; while (txt.length > 3 && g.measureText(txt).width > maxW) txt = txt.slice(0, -1);
       g.fillText(txt === nm ? txt : txt.slice(0, -1) + '…', X + 5, tagY);
@@ -1442,19 +1439,19 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     var c = LAY.c, x = LAY.sx, w = LAY.sw, y = LAY.fy, e = meE(), S = M.seats[M.me];
     // NEXT
     panel(x, y, w, 3.4 * c, c);
-    label('NEXT', x + w / 2, y + 0.55 * c, Math.round(c * 0.5), 'rgba(214,200,255,.7)');
+    label('Next', x + w / 2, y + 0.55 * c, Math.round(c * 0.5), 'rgba(198,196,218,.85)');
     if (e && e.alive) miniPiece(e.next, x + w / 2, y + 2.05 * c, c * 0.62);
     // LEVEL, LINES
     var y2 = y + 3.8 * c;
     panel(x, y2, w, 4.6 * c, c);
-    label('LEVEL', x + w / 2, y2 + 0.6 * c, Math.round(c * 0.42), 'rgba(214,200,255,.6)');
+    label('Level', x + w / 2, y2 + 0.6 * c, Math.round(c * 0.44), 'rgba(198,196,218,.85)');
     label(String(e ? e.lv : S.lv), x + w / 2, y2 + 1.45 * c, Math.round(c * 0.8), '#ffd45a');
-    label('LINES', x + w / 2, y2 + 2.65 * c, Math.round(c * 0.42), 'rgba(214,200,255,.6)');
+    label('Lines', x + w / 2, y2 + 2.65 * c, Math.round(c * 0.44), 'rgba(198,196,218,.85)');
     label(String(e ? e.lines : S.ln), x + w / 2, y2 + 3.5 * c, Math.round(c * 0.8), '#fff');
     // players still in: one dot per seat
     var y3 = y2 + 5 * c;
     panel(x, y3, w, 2.3 * c, c);
-    label('STILL IN', x + w / 2, y3 + 0.55 * c, Math.round(c * 0.4), 'rgba(214,200,255,.6)');
+    label('Still in', x + w / 2, y3 + 0.55 * c, Math.round(c * 0.42), 'rgba(198,196,218,.85)');
     var n = M.seats.length, dw = Math.min(c * 0.55, (w - c * 0.4) / n);
     M.seats.forEach(function (s, i) { g.fillStyle = s.alive ? PCOL[i % 6] : 'rgba(255,255,255,.14)'; g.beginPath(); g.arc(x + w / 2 + (i - (n - 1) / 2) * dw, y3 + 1.45 * c, dw * 0.36, 0, Math.PI * 2); g.fill(); });
     // what just happened: the last few specials, newest on top
@@ -1465,7 +1462,7 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       M.log.slice(0, Math.floor((h4 - 0.4 * c) / rowH)).forEach(function (l, i) {
         var a = clamp(1 - (M.t - l.t) / 12, 0.35, 1);
         g.globalAlpha = a;
-        if (l.out != null) { label((l.out === M.me ? 'You' : M.seats[l.out].name).slice(0, 8), x + w / 2, yy + rowH * 0.32, Math.round(c * 0.4), '#fff'); label('OUT', x + w / 2, yy + rowH * 0.72, Math.round(c * 0.38), '#ff4058'); }
+        if (l.out != null) { label((l.out === M.me ? 'You' : M.seats[l.out].name).slice(0, 8), x + w / 2, yy + rowH * 0.32, Math.round(c * 0.4), '#fff'); label('Out', x + w / 2, yy + rowH * 0.72, Math.round(c * 0.38), '#ff4058'); }
         else {
           var chip = c * 0.8, cx = x + w / 2 - chip / 2;
           if (l.k === 'line') { g.fillStyle = '#ff4058'; rr(g, cx, yy, chip, chip, chip * 0.2); g.fill(); label('+' + l.n, cx + chip / 2, yy + chip / 2, Math.round(chip * 0.6), '#fff'); }
@@ -1495,8 +1492,8 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
     if (!inv.length) {
       g.strokeStyle = 'rgba(176,150,255,.2)'; g.lineWidth = 1.5; g.setLineDash([3, 3]); rr(g, x, y, big, big, 4); g.stroke(); g.setLineDash([]);
       var tx0 = x + big + c * 0.3, txt0 = e && !e.alive ? 'Out of the game' : 'Clear lines with lettered blocks to collect specials', fs0 = Math.round(Math.max(10, c * 0.42));
-      g.font = '400 ' + fs0 + 'px "Lilita One", ui-rounded, system-ui, sans-serif';
-      while (fs0 > 8 && g.measureText(txt0).width > B.x + B.w - tx0 - c * 0.3) { fs0--; g.font = '400 ' + fs0 + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; }
+      g.font = '650 ' + fs0 + 'px "Schibsted Grotesk", system-ui, sans-serif';
+      while (fs0 > 8 && g.measureText(txt0).width > B.x + B.w - tx0 - c * 0.3) { fs0--; g.font = '650 ' + fs0 + 'px "Schibsted Grotesk", system-ui, sans-serif'; }
       label(txt0, tx0, B.y + B.h / 2, fs0, 'rgba(214,200,255,.55)', 'left');
     } else {
       var k = inv[0], pulse = armed ? 1 + 0.08 * Math.sin(performance.now() / 120) : 1;
@@ -1540,17 +1537,17 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       var k = 1 - b.life / b.max, a = b.life < 0.4 ? b.life / 0.4 : 1, s = k < 0.15 ? 0.6 + (k / 0.15) * 0.5 : 1.1 - Math.min(0.1, (k - 0.15));
       g.save(); g.globalAlpha = a; g.translate(X + WW / 2, Y + WH * 0.36); g.scale(s, s);
       var fs = Math.round(Math.min(c * (b.text.length > 9 ? 1.05 : 1.5), WW / b.text.length * 1.7));
-      g.font = '400 ' + fs + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = '800 ' + fs + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
       g.lineWidth = c * 0.28; g.strokeStyle = 'rgba(0,0,0,.65)'; g.strokeText(b.text, 0, 0);
       g.fillStyle = b.c; g.shadowColor = b.c; g.shadowBlur = c * 0.8; g.fillText(b.text, 0, 0); g.shadowBlur = 0;
-      if (b.sub) { var f2 = Math.round(Math.min(c * 0.6, WW / Math.max(8, b.sub.length) * 1.8)); g.font = '400 ' + f2 + 'px "Lilita One", ui-rounded, system-ui, sans-serif'; g.lineWidth = c * 0.2; g.strokeText(b.sub, 0, c * 1.2); g.fillStyle = '#fff'; g.fillText(b.sub, 0, c * 1.2); }
+      if (b.sub) { var f2 = Math.round(Math.min(c * 0.6, WW / Math.max(8, b.sub.length) * 1.8)); g.font = '800 ' + f2 + 'px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.lineWidth = c * 0.2; g.strokeText(b.sub, 0, c * 1.2); g.fillStyle = '#fff'; g.fillText(b.sub, 0, c * 1.2); }
       g.restore();
     });
   }
   function drawReady() {
     var X = LAY.fx, Y = LAY.fy, WW = LAY.fw, WH = LAY.fh, c = LAY.c, t = M.readyT, n = t < 0.8 ? '3' : t < 1.6 ? '2' : '1', k = (t % 0.8) / 0.8;
     g.save(); g.translate(X + WW / 2, Y + WH * 0.4); var sc = 1 + 0.4 * (1 - Math.min(1, k * 3)); g.scale(sc, sc);
-    g.shadowColor = '#000'; g.shadowBlur = 12; label(n, 0, 0, Math.round(c * 3), '#ffd45a'); g.restore();
+    g.shadowColor = '#000'; g.shadowBlur = 12; label(n, 0, 0, Math.round(c * 3), '#ffd45a', 'center', false, true); g.restore();
     label(M.seats.length + ' players, and the last one standing wins', X + WW / 2, Y + WH * 0.58, Math.round(Math.max(11, c * 0.55)), 'rgba(255,255,255,.85)', 'center', true);
     if (TOUCH) ['Tap to turn and drag to slide', 'Flick down to drop', 'Tap a field up top to fire a special'].forEach(function (s, i) { label(s, X + WW / 2, Y + WH * 0.66 + i * c * 0.9, Math.round(Math.max(10, c * 0.5)), 'rgba(255,255,255,.7)', 'center', true); });
   }
