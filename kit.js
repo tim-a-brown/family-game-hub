@@ -1480,9 +1480,14 @@
     bridge:      { felt: ['#1e5a47', '#123d30', '#0b2a20'], back: ['#16264f', '#b48a3c'], wood: ['#5a3a24', '#34200f'] }
   };
   function applyTheme(id) {
-    var t = THEMES[id]; if (!t) return;
+    var t = THEMES[id] || (findGameSafe(id) ? {} : null); if (!t) return;
     function set(k, v) { if (v) root.style.setProperty(k, v); }
-    if (t.felt) { set('--felt-a', t.felt[0]); set('--felt-b', t.felt[1]); set('--felt-c', t.felt[2]); }
+    // Night glass in color: the felt is the game's own shade of its category's color (games.js), deepened toward the
+    // night, so the color that sorts a game on the home screen is the table it is played on. Other themes keep THEMES.
+    var g = findGameSafe(id);
+    if (!root.hasAttribute('data-theme') && g && /^#[0-9a-f]{6}$/i.test(g.color || '') && id !== '_custom') {
+      set('--felt-a', 'color-mix(in oklab,' + g.color + ' 60%,#0b0c18)'); set('--felt-b', 'color-mix(in oklab,' + g.color + ' 44%,#0b0c18)'); set('--felt-c', 'color-mix(in oklab,' + g.color + ' 32%,#0b0c18)');
+    } else if (t.felt) { set('--felt-a', t.felt[0]); set('--felt-b', t.felt[1]); set('--felt-c', t.felt[2]); }
     if (t.back) { set('--back-a', t.back[0]); set('--back-b', t.back[1]); set('--back-edge', t.back[2]); }
     if (t.wood) { set('--wood-a', t.wood[0]); set('--wood-b', t.wood[1]); }
   }
