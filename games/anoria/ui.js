@@ -4227,76 +4227,110 @@
     const lose = w >= 0 && people && !win.some(human), mine = G.mode === 'cpu' && win.indexOf(0) >= 0;
     const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
     const said = endSaid(); notes.push(said);
-    S.P.forEach((p, o) => { if (p.out && !/ lost (the last Seal|their last Seals) /.test(said)) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left'); });
+    S.P.forEach((p, o) => { if (p.out && !/ lost (the last Seal|their last Seals) /.test(said)) notes.push(pname(o) + (pname(o) === 'You' ? ' are out' : ' is out') + ', with no Seals left.'); });
+    const order = S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown);
     const rank = T ? T.map(t => t[0]).sort((a, b) => (E.ally(S, b, w) ? 1 : 0) - (E.ally(S, a, w) ? 1 : 0) || E.sren(S, b) - E.sren(S, a)).map(o => ({ name: teamName(o), score: E.sren(S, o), color: teamCol(o), cpu: !teamOf(o).some(human) }))
-      : S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown).map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
+      : order.map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
-      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
+      sub: guideSaid(w) || 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      show: q => { if (!T) sealRanks(S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown)); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
+      show: q => { winLayout(T ? null : order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
-    winCols();
   }
-  // Each player's Seals at the end, drawn on their row of the results card as the table's own seals, whole or broken
-  // (they were a line of words each in How it ended; the audit, 2026-11-14, the card scrolled on a phone). Kit.win calls
-  // the show slot as it builds the card, each time the card is shown, so the rows are marked the moment it is in the page.
-  function sealRanks(order) {
+  // Whose Guide stood with the winner, said under the title: "Leonardo da Vinci was Tim's Guide."
+  function guideSaid(w) {
+    if (w < 0 || G.teams || !S.P[w]) return '';
+    const g = TXG[S.P[w].guide]; if (!g) return '';
+    const who = pname(w); return (g.n + ' was ' + (who === 'You' ? 'your' : Kit.poss(who)) + ' Guide').replace(/'/g, '\u2019');
+  }
+  // The results card, laid out as Arvela's own (Tim, 2026-11-14: the stock card mixed the site's sans with the book
+  // face, its buttons wrapped and the last of them fell under the card's edge in Safari). Kit.win builds the card and
+  // calls the show slot as it does, each time the card is shown (after Look at the table too), so this runs in the
+  // frame before the card first paints. It puts the winner's Guide beside the title, rules a star under them, gives
+  // the standings their Seals and the heads of their columns, gathers the buttons after Play again into one panel
+  // (each with its icon: what you earned shows itself) and splits the card into what scrolls and what stays: on an
+  // upright phone the buttons are a dock at the card's foot, always in view, and the game above them scrolls if the
+  // screen is short; from 700 wide the game and what it earned stand side by side with the buttons (ui.css .aw).
+  function winLayout(order, earned) {
     requestAnimationFrame(() => {
-      const all = document.querySelectorAll('.k-win'), card = all.length ? all[all.length - 1] : null; if (!card) return;
-      card.querySelectorAll('.rank > div').forEach((row, i) => {
-        const o = order[i]; if (o == null || row.querySelector('.rk-sl')) return; const P = S.P[o], sm = P.sm || 3;
-        const box = el('span', { class: 'rk-sl', role: 'img', 'aria-label': P.seals + (P.seals === 1 ? ' Seal' : ' Seals') + ' left of ' + sm });
-        for (let k = 0; k < sm; k++) box.appendChild(el('span', { class: 'seal' + (k >= P.seals ? ' broken' : '') }));
-        row.insertBefore(box, row.querySelector('.p'));
-      });
+      const all = document.querySelectorAll('.k-win'), card = all.length ? all[all.length - 1].querySelector('.card') : null; if (!card || card.classList.contains('aw')) return;
+      card.classList.add('aw');
+      const q = s => card.querySelector(s), h2 = q(':scope > h2'), sub = q(':scope > .sub'), pic = q(':scope > .an-race'), notes = q(':scope > .k-win-notes'), rank = q(':scope > .rank'), show = q(':scope > .k-win-show'), acts = q(':scope > .k-acts');
+      // the head: the winner's Guide in a gilt ring, the title, whose Guide it was
+      const w = S.winner, g = w >= 0 && !G.teams ? S.P[w].guide : null, gi = g ? artImg(g, true, true) : null;
+      const head = el('div', { class: 'aw-hd' + (g ? '' : ' solo') }, [g ? el('span', { class: 'aw-med', style: { '--pc': G.players[w].color || 'var(--pc' + w + ')' } }, gi ? [gi] : []) : null, el('div', { class: 'aw-ht' }, [h2, sub])]);
+      const game = el('div', { class: 'aw-game' }, [head, el('div', { class: 'aw-orn', 'aria-hidden': 'true' }, [el('i')]), pic, notes, rank]);
+      // each player's Seals at the end, whole or broken, on their row, and the heads of the columns
+      if (rank) {
+        if (order) rank.querySelectorAll(':scope > div').forEach((row, i) => {
+          const o = order[i]; if (o == null || row.querySelector('.rk-sl')) return; const P = S.P[o], sm = P.sm || 3;
+          const box = el('span', { class: 'rk-sl', role: 'img', 'aria-label': P.seals + (P.seals === 1 ? ' Seal' : ' Seals') + ' left of ' + sm });
+          for (let k = 0; k < sm; k++) box.appendChild(el('span', { class: 'seal' + (k >= P.seals ? ' broken' : '') }));
+          row.insertBefore(box, row.querySelector('.p'));
+        });
+        rank.classList.toggle('sl', !!order);
+        rank.insertBefore(el('div', { class: 'aw-cols', 'aria-hidden': 'true' }, [order ? el('span', { class: 's', text: 'Seals' }) : null, el('span', { class: 'r', text: 'Renown' })]), rank.firstChild);
+      }
+      // the buttons after Play again, in Kit.win's order, as one panel; what you earned shows itself on its button
+      if (acts) {
+        const soft = Array.prototype.slice.call(acts.querySelectorAll(':scope > .btn-soft'));
+        if (soft.length) { const grp = el('div', { class: 'aw-grp' }); acts.insertBefore(grp, soft[0]); soft.forEach(b => grp.appendChild(b)); }
+        soft.forEach(b => {
+          if (!b.querySelector('svg, .aw-ic')) {
+            const gj = (earned || []).filter(x => x.t === 'guide'), ic = gj.length && gj.length === earned.length ? el('span', { class: 'aw-ic face' }, [artImg(gj[0].g, true, true)].filter(Boolean)) : el('span', { class: 'aw-ic' }, [packMini()]);
+            b.insertBefore(ic, b.firstChild);
+          }
+          b.appendChild(el('span', { class: 'aw-go', 'aria-hidden': 'true', html: Kit.icon('right') }));
+        });
+        const pr = acts.querySelector('.btn-primary'); if (pr) pr.classList.add('shine');
+      }
+      const body = el('div', { class: 'aw-body' }, [game, show]);
+      card.insertBefore(body, acts);
+      Array.prototype.slice.call(card.children).forEach(c => { if (c !== body && c !== acts) c.remove(); });   // (the kit's trophy: the Guide stands in its place)
+      card.classList.toggle('earn', !!show);
+      // the game scrolls under the dock only when the screen is short: a shade at the foot says there is more
+      const fit = () => { if (!body.isConnected) return removeEventListener('resize', fit); body.classList.toggle('more', body.scrollHeight > body.clientHeight + 2 && body.scrollTop + body.clientHeight < body.scrollHeight - 2); };
+      body.addEventListener('scroll', fit, { passive: true }); addEventListener('resize', fit); setTimeout(fit, 60); setTimeout(fit, 700);
     });
   }
+  // a sealed pack the size of an icon: the crimped gilt ends, the foil and the sphere of the logo (packs.css .pk-art)
+  function packMini() { return el('span', { class: 'aw-pk' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('img', { class: 'pk-logo', src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })])]); }
   function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g;
     return g && p ? 'See what you earned' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
-  // The game on its results card (the audit of 2026-11-13, #7.3: the card showed nothing of the game it ends): the
-  // winner's Guide, and the race for Renown drawn as a line for each player, round by round from 0, with the Renown
-  // that wins ruled across the top. Kit.win shows it under the title (its pic slot).
+  // The race for Renown on the results card (Kit.win's pic slot, under the title): a line for each player, round by
+  // round from 0, with the Renown that wins ruled across in gilt.
   function racePic() {
     if (!G || !S || !G.tale || G.demo) return null;
     const rows = [S.P.map(() => 0)].concat((G.tale.tot || []).map(t => String(t).split('-').map(Number)));
     const now = S.P.map(p => p.renown); if (rows[rows.length - 1].join() !== now.join()) rows.push(now);   // (an end by Seals comes before the count)
     if (rows.length < 2) return null;
-    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 300, H = 96, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
-    const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')';
-    const lines = S.P.map((p, o) => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
-      '<circle cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="4" style="fill:' + col(o) + '"/>').join('');
-    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 20) + '">' + i + '</text>' : '')).join('');
-    const svg = '<svg viewBox="-10 -14 ' + (W + 46) + ' ' + (H + 38) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
-      '<line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 6) + '" y="' + (y(goal) + 5).toFixed(1) + '">' + goal + '</text>' +
-      '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/>' + lines + ticks + '</svg>';
-    const g = w >= 0 && !G.teams ? S.P[w].guide : null, gi = g ? artImg(g, true, true) : null;
-    return el('div', { class: 'an-race' }, [
-      g ? el('div', { class: 'rc-g', style: { '--pc': col(w) } }, [el('span', { class: 'rc-pt' }, gi ? [gi] : []), el('b', { text: TXG[g].n }), el('small', { text: Kit.poss(pname(w)) + ' Guide' })]) : null,
-      el('div', { class: 'rc-ch' }, [el('div', { class: 'rc-k', text: 'The race for Renown, round by round' }), el('div', { class: 'rc-svg', html: svg })])]);
-  }
-  // The results card in two columns where the screen is wide enough (an iPad either way, a phone on its side): the game
-  // at the left (who won, the race, how it ended, the scores), what it earned and the buttons at the right, so the
-  // buttons are in view without scrolling (on an iPad held sideways they were all under the card's edge)
-  function winCols() {
-    const ws = document.querySelectorAll('.k-win'), card = ws.length && ws[ws.length - 1].querySelector('.card'); if (!card || card.classList.contains('an-win')) return;
-    const l = el('div', { class: 'an-win-l' }), r = el('div', { class: 'an-win-r' });
-    Array.prototype.slice.call(card.children).forEach(c => (c.matches('.k-win-show, .k-acts') ? r : l).appendChild(c));
-    card.appendChild(l); card.appendChild(r); card.classList.add('an-win');
+    const goal = S.cfg.target || E.STD.target, top = Math.max(goal, ...now), W = 330, H = 62, n = rows.length - 1, x = i => (i / n) * W, y = v => H - (v / top) * H;
+    const w = S.winner, col = o => G.players[o].color || 'var(--pc' + o + ')', ord = S.P.map((p, o) => o).sort((a, b) => (a === w) - (b === w));   // (the winner's line drawn last, on top)
+    const lines = ord.map(o => '<path d="' + rows.map((r, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(r[o] || 0).toFixed(1)).join('') + '" style="stroke:' + col(o) + '"' + (o === w ? ' class="w"' : '') + '/>' +
+      '<circle class="end' + (o === w ? ' w' : '') + '" cx="' + x(n).toFixed(1) + '" cy="' + y(now[o]).toFixed(1) + '" r="' + (o === w ? 4.6 : 3.6) + '" style="fill:' + col(o) + '"/>').join('');
+    const ticks = rows.map((r, i) => (i && (n <= 10 || i % 2 === 0 || i === n) ? '<text x="' + x(i).toFixed(1) + '" y="' + (H + 15) + '">' + i + '</text>' : '')).join('');
+    const svg = '<svg viewBox="-4 -7 ' + (W + 32) + ' ' + (H + 24) + '" role="img" aria-label="' + esc(S.P.map((p, o) => pname(o) + ' ' + p.renown).join(', ') + ' Renown after ' + n + (n === 1 ? ' round' : ' rounds')) + '">' +
+      '<line class="b" x1="0" x2="' + W + '" y1="' + H + '" y2="' + H + '"/><line class="g" x1="0" x2="' + W + '" y1="' + y(goal).toFixed(1) + '" y2="' + y(goal).toFixed(1) + '"/><text class="gl" x="' + (W + 7) + '" y="' + (y(goal) + 4).toFixed(1) + '">' + goal + '</text>' +
+      lines + ticks + '</svg>';
+    return el('div', { class: 'an-race' }, [el('div', { class: 'rc-k', text: 'The race for Renown' }), el('div', { class: 'rc-svg', html: svg })]);
   }
   function showWin(quiet) {
     if (S.N > 2) return showWinN(quiet);
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
-    notes.push(S.how === 'seals' ? 'All ' + (S.P[1 - w].sm === 4 ? 'four' : 'three') + ' of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
+    const W = w >= 0 ? pname(w) : '', L = w >= 0 ? pname(1 - w) : '';
+    notes.push(w < 0 ? 'The game ended level on Renown, Seals and Might after round ' + S.round + '.'
+      : S.how === 'seals' ? 'The last of ' + (L === 'You' ? 'your' : Kit.poss(L)) + (S.P[1 - w].sm === 4 ? ' four' : ' three') + ' Seals broke in round ' + S.round + '.'
+      : W + (W === 'You' ? ' were' : ' was') + ' first to ' + S.cfg.target + ' Renown, when round ' + S.round + ' ended.');
+    notes[0] = notes[0].replace(/'/g, '’');
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
-      title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
-      sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended',
+      title: w < 0 ? 'A draw' : lose ? W + ' wins this one' : W === 'You' ? 'You win!' : W + ' wins!',
+      sub: guideSaid(w) || 'After ' + S.round + (S.round === 1 ? ' round' : ' rounds'), pic: racePic(), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      show: q => { sealRanks(order); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
+      show: q => { winLayout(order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
-    winCols();
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════

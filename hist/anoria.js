@@ -121,9 +121,11 @@
   }
 
   HistView.css('hv-anoria', [
-    '@font-face{font-family:"Crimson Pro";src:url("' + FONTS + 'crimson-pro.woff2") format("woff2");font-weight:200 900;font-display:swap;}',
-    '@font-face{font-family:"IM Fell English SC";src:url("' + FONTS + 'im-fell-english-sc.woff2") format("woff2");font-display:swap;}',
-    '.ah{--gold:#d9b45a;--ink:#f3e9d2;--dim:rgba(243,233,210,.62);--sc:"IM Fell English SC",Georgia,serif;--bk:"Crimson Pro",Georgia,serif;display:flex;flex-direction:column;gap:14px;min-width:0;}',
+    // (the game's own type: EB Garamond for the words, its small capitals for the labels, as on Arvela's page)
+    '@font-face{font-family:"Arvela Text";src:url("' + FONTS + 'arvela-text.woff2") format("woff2");font-weight:450 600;font-display:swap;}',
+    '@font-face{font-family:"Arvela Text";src:url("' + FONTS + 'arvela-text-italic.woff2") format("woff2");font-weight:450 600;font-style:italic;font-display:swap;}',
+    '@font-face{font-family:"Arvela SC";src:url("' + FONTS + 'arvela-sc.woff2") format("woff2");font-weight:450 600;font-display:swap;}',
+    '.ah{--gold:#d9b45a;--ink:#f3e9d2;--dim:rgba(243,233,210,.62);--sc:"Arvela SC",Georgia,serif;--bk:"Arvela Text",Georgia,serif;display:flex;flex-direction:column;gap:14px;min-width:0;}',
     '.ah-plate{position:relative;border-radius:16px;color:var(--ink);background:radial-gradient(120% 90% at 50% 0%,#22305a,#0e1428 72%);box-shadow:inset 0 0 0 1.5px rgba(217,180,90,.5),inset 0 0 0 4px rgba(11,17,36,.9),inset 0 0 0 5px rgba(217,180,90,.22),0 8px 20px rgba(0,0,0,.35);}',
     // who led each company
     '.ah-top{display:flex;flex-direction:column;gap:10px;padding:16px 12px 13px;}',

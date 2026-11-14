@@ -845,17 +845,16 @@ Underlying principles for everything:
   in play. A card name tapped in the log opens in the same panel with the way back to the log. Turning the iPad upright
   closes it; a phone and an upright iPad keep the sheets. While the panel is open the dock lays out as an upright
   iPad's (the caption and the button over a hand the table's full width), so the hand keeps its names.
-- **The results card shows the game** (the audit of 2026-11-13, #7.3; Tim approved the plan the same day): the winner's
-  Guide stands where the trophy was, and the race for Renown is drawn as a line for each player, round by round from
-  0, with the Renown that wins ruled across the top (`racePic` in ui.js, from `G.tale.tot`), in `Kit.win`'s `pic`
-  slot (a picture of the game under the title, any game can give one). From 700 wide (an iPad either way, a phone on
-  its side) the card is in columns (`winCols`, `.an-win`): the game at the left, what it earned and the buttons at the
-  right (on a phone on its side, the earnings and the buttons each a column), so every button is in view. **It fits the
-  screen without scrolling** (audit, 2026-11-14) at Tim's sizes, by CSS that only Anoria's card reaches
-  (`.k-win .card:has(.an-race)` in ui.css; kit.js is unchanged): each player's Seals are drawn on their row as the
-  table's seals, whole or broken (`sealRanks`, through the `show` slot so the card shown again has them too), instead
-  of a line of words each; the rows, the rewards panel and the gaps are closer; the buttons after Play again stand two
-  to a row in Kit.win's order. A game that earns a Guide or several packs can still make the card scroll.
+- **The results card is Arvela's own** (the audit of 2026-11-13, #7.3; redrawn 2026-11-14 when Tim called the old one
+  "wildly inelegant and thoughtless in design"): `showWin`/`showWinN`, `winLayout`, `racePic`, `packMini` in ui.js, CSS
+  under `.k-win .card.aw` in ui.css, laid out from Kit.win's `show` slot so the card shown again after Look at the table
+  is the same. The winner's Guide in a gilt ring beside the title with "Leonardo da Vinci was Tim's Guide" under it; a
+  ruled star; the race for Renown (a line for each player from `G.tale.tot`, the Renown that wins ruled across); how it
+  ended as one italic sentence; the standings as a ledger with Seals (red wax, broken ones gray and split) and Renown
+  columns, the winner's row lit. Then the gilt plate (Play again), Kit.win's other buttons as one panel of rows with a
+  gilt icon and a chevron (Open your pack shows the real small sealed pack), and Back to games. Upright on a phone the
+  buttons are a dock that never leaves the card and the game above it scrolls; from 700 wide it is two columns; a
+  phone on its side has three. Kit.win's buttons and their order are unchanged; kit.js is unchanged.
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
   played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by
@@ -870,9 +869,20 @@ Underlying principles for everything:
   the game's menu (`anoria_step` '0'; the menu leaves it out of a game of people only); then the computer plays through
   and the fast-forward button is there as before.
   Lessons and the test hook's `turbo` never wait. A new kind of move gets its sentence in `moveSaid`.
-- **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
-  plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
-  screen doesn't restyle its own buttons' colour or face; size and layout only.
+- **Buttons**: every `.btn` on Arvela's page takes one skin from the end of `ui.css`: the main action a smooth gilt
+  plate lettered in the text face's small capitals, with one engraved rule inside its edge and a line of light that
+  crosses it once (`.shine`); the rest night enamel with a gilt hairline, the book face and a gilt icon; the way out
+  (`.btn-ghost`) spaced small capitals alone. No textures, no screw heads. Corners 12px (10px small). Pressed, a button
+  sinks 1px; disabled, it fades and loses its color. A screen sets size and layout only.
+- **Type** (Tim, 2026-11-14: "even the fonts look cheap -- not what i'd expect from an expert artist designer"):
+  EB Garamond for every word, its own small capitals for labels, Cormorant for titles, scores and initials
+  (`fonts/arvela-*.woff2`, subset, limited weights so the kit's 800 and 900 come out SemiBold, lining figures, tabular
+  in score columns). The kit's pieces on this page (setup, sheets, menus, handoff) take them through `--font` and
+  `--display`, with `font-size-adjust` keeping their small letters as tall as before; the game bar keeps the hub's faces.
+  The page is always Arvela's midnight navy and gilt, whatever the app's theme. **Card faces keep IM Fell and Crimson
+  Pro** (Garamond pushed 24 stories to a fifth line), and Alfa Slab stays on the Might, Spark and Renown marks. New
+  words go through `--fell`, `--fellsc` or `--disp`. An initial in an avatar is centered by its ink (Cormorant, the
+  kit's offset removed: a T within half a pixel of the disc's middle).
 - **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
   `guide` option). The rules on one page are `rulesScreen()` in ui.js (audit 6.4, 2026-11-14), in the shared frame
   `AnoriaUI.screen()`, set like the rule book in a game's box: the story and the goal first, then a button for each

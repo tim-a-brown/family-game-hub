@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v756-2026-11-14-live-shows';
+const CACHE_VERSION = 'v757-2026-11-14-arvela-finish';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -40,6 +40,10 @@ const PRECACHE_URLS = [
   '/fonts/patrick-hand.woff2',
   '/fonts/great-vibes.woff2',
   '/fonts/cinzel-700.woff2',
+  '/fonts/arvela-text.woff2',
+  '/fonts/arvela-text-italic.woff2',
+  '/fonts/arvela-sc.woff2',
+  '/fonts/arvela-display.woff2',
   '/fonts/bungee.woff2',
   '/fonts/russo-one.woff2',
   '/fonts/sofia-sans-condensed.woff2',

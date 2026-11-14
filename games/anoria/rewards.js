@@ -53,6 +53,9 @@
     setTimeout(step, 650);
   }
 
+  // a sealed pack, small: the crimped gilt ends, the foil, the frame and the logo (packs.css draws them)
+  const packFace = () => el('span', { class: 'rw-pk', 'aria-hidden': 'true' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('i', { class: 'pk-frame' }), el('img', { class: 'pk-logo', src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })])]);
+
   // ═══ The results card: one panel ═══════════════════════════════════════════════════════════════════════════
   // R is what Coll.gameOver gave. The panel is a single box: the sphere with the signs this game lit beside what lit
   // them, then a row for each Guide who joined and for the calling that moved nearest to its end.
@@ -60,7 +63,7 @@
     if (!R || !R.lit || !R.lit.length) return null;
     const total = R.lit.reduce((a, x) => a + x.n, 0), N = Coll.SIGNS, round = R.turns > 0;
     const sp = sphere({ lit: quiet ? (round ? R.signs : R.from + total) : R.from, size: 92 });
-    const WHY = { game: 'for the game', win: 'for the win', daily: 'for today\'s first win' };
+    const WHY = { game: 'for the game', win: 'for the win', daily: 'for today\u2019s first win' };
     const lit = el('ul', { class: 'rw-e-lit' }, R.lit.map(x => el('li', {}, [el('b', { text: '+' + x.n }), el('span', { text: WHY[x.why] })])));
     const packsNow = R.list.filter(x => x.t === 'pack' && x.pack.k === 'sphere').length;
     const say = round ? (packsNow > 1 ? 'The sphere came round ' + WORD[packsNow] + ' times, and a pack is waiting for each time.' : 'The sphere came round, and a pack of\u00a0' + Coll.PACK + ' is waiting for you.')
@@ -72,11 +75,11 @@
       const set = Coll.setCards(x.g).length, doms = (x.doms || []).length;
       box.appendChild(el('div', { class: 'rw-e-row join' }, [face(x.g, 'lit'), el('div', { class: 'rw-e-w' }, [
         el('b', { text: NAME(x.g) + ' joins your company' }),
-        el('span', { text: (x.why === 'call' ? 'The calling is met. ' : '') + 'The ' + set + ' cards of ' + Kit.poss(NAME(x.g)) + ' set are yours' + (doms ? ', with ' + doms + (doms === 1 ? ' Domain' : ' Domains') + '.' : '.') })])]));
+        el('span', { text: ((x.why === 'call' ? 'The calling is met. ' : '') + 'The ' + set + ' cards of ' + Kit.poss(NAME(x.g)) + ' set are yours' + (doms ? ', with ' + doms + (doms === 1 ? ' Domain' : ' Domains') + '.' : '.')).replace(/'/g, '\u2019') })])]));
     });
     // a first (your first win, against Normal, against Hard, with a deck you built): a pack of its own
     R.list.filter(x => x.t === 'pack' && x.pack.k === 'first').forEach(x => {
-      box.appendChild(el('div', { class: 'rw-e-row first' }, [el('span', { class: 'rw-e-pk' }, [el('i', { class: 'pk-mini' })]), el('div', { class: 'rw-e-w' }, [
+      box.appendChild(el('div', { class: 'rw-e-row first' }, [el('span', { class: 'rw-e-pk' }, [packFace()]), el('div', { class: 'rw-e-w' }, [
         el('b', { text: x.pack.why }), el('span', { text: 'A pack of\u00a0' + x.pack.n + ' is waiting for you.' })])]));
     });
     // the calling this game moved nearest to its end (one row: the others are on the sphere's screen)
@@ -103,7 +106,7 @@
     L.appendChild(big);
     if (sp.next) {
       const tr = el('div', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
-      for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(t === sp.toGuide ? el('span', { class: 'rw-t g', html: A.MARK.guide }) : el('i', { class: 'pk-mini rw-t' }));
+      for (let t = 1; t <= sp.toGuide; t++) tr.appendChild(t === sp.toGuide ? el('span', { class: 'rw-t g', html: A.MARK.guide }) : el('span', { class: 'rw-t' }, [packFace()]));
       L.appendChild(tr);
       L.appendChild(el('p', { class: 'rw-say c', text: sp.toGuide === 1 ? 'The next time the sphere comes round, it brings a pack and a new Guide.' : 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards. ' + sp.guideSay }));
     } else L.appendChild(el('p', { class: 'rw-say c', text: 'Each time the sphere comes round it brings a pack of\u00a0' + Coll.PACK + ' cards.' }));
@@ -113,7 +116,7 @@
     // the firsts still to come
     const firsts = Coll.nextUp().filter(x => Coll.FIRSTS[x.id]);
     if (firsts.length) { L.appendChild(el('h2', { class: 'rw-cap', text: 'A pack for each first' }));
-      L.appendChild(el('ul', { class: 'rw-firsts' }, firsts.map(x => el('li', {}, [el('i', { class: 'pk-mini' }), el('span', { text: x.when })])))); }
+      L.appendChild(el('ul', { class: 'rw-firsts' }, firsts.map(x => el('li', {}, [packFace(), el('span', { text: x.when })])))); }
     // the callings
     const calls = Coll.callings().sort((a, b) => b.have / b.need - a.have / a.need);
     if (calls.length) {

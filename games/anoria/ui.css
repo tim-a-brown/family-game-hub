@@ -1,6 +1,23 @@
 /* Arvela: the table, the cards and the pieces. Sizes hang off a few variables that ui.js sets from the room
    there is (--fw a Figure's width on the map, --hw a hand card's width), so one layout serves a phone either
    way up and an iPad. */
+/* ══ Type (Tim, 2026-11-14: "even the fonts look cheap"). One family of book faces, set the way a book designer
+   would: the text face is EB Garamond (Georg Duffner's Garamond, after the 1592 Egenolff-Berner specimen), the
+   display face for titles is Cormorant (Christian Thalmann's Garamond cut for large sizes, its contrast too fine to
+   read small), and the labels are EB Garamond's own small capitals, so a label and the sentence under it are one
+   type. Each file is the variable font held to the weights the page uses (fonts/arvela-*.woff2, subset to Latin and
+   the marks the card names need), with lining figures as the default: Arvela's numbers are counts and scores read at
+   a glance, so they stand on the line at the height of a capital. The cards themselves are printed matter and keep
+   their own type: the Fell types (IM Fell English, cut in the 1670s and given to Oxford by Bishop Fell) for names
+   and stories, which suit the inked pictures and are narrow enough for four lines of story (in EB Garamond 24
+   stories ran to a fifth line), and Crimson Pro for the rules, a text face drawn for small sizes on screens. The
+   Might, Spark and Renown marks keep their stamped slab (Alfa Slab One).
+   The kit's own pieces on this page (the setup, sheets, menus, the handoff, the results card) take the same faces
+   through --font and --display below; the game bar stays the hub's. ══ */
+@font-face{font-family:"Arvela Text";src:url("../../fonts/arvela-text.woff2") format("woff2");font-weight:450 600;font-display:swap;}
+@font-face{font-family:"Arvela Text";src:url("../../fonts/arvela-text-italic.woff2") format("woff2");font-weight:450 600;font-style:italic;font-display:swap;}
+@font-face{font-family:"Arvela SC";src:url("../../fonts/arvela-sc.woff2") format("woff2");font-weight:450 600;font-display:swap;}
+@font-face{font-family:"Arvela Display";src:url("../../fonts/arvela-display.woff2") format("woff2");font-weight:600 700;font-display:swap;}
 @font-face{font-family:"IM Fell English";src:url("../../fonts/im-fell-english.woff2") format("woff2");font-style:normal;font-display:swap;}
 @font-face{font-family:"IM Fell English";src:url("../../fonts/im-fell-english-italic.woff2") format("woff2");font-style:italic;font-display:swap;}
 @font-face{font-family:"IM Fell English SC";src:url("../../fonts/im-fell-english-sc.woff2") format("woff2");font-display:swap;}
@@ -10,9 +27,35 @@
 :root{
   --an-navy:#10131c; --an-ink:#16120e; --an-paper:#f8f5ee; --an-gilt:#e9cf86; --an-gilt-2:#b8862d; --an-amber:#e8b04a;
   --an-gold:linear-gradient(135deg,#f6e3a1,#b8862d 30%,#fff1bf 48%,#9a6a1c 70%,#e9cf86);
-  --fell:"IM Fell English",Georgia,serif; --fellsc:"IM Fell English SC","IM Fell English",Georgia,serif;
-  --crim:"Crimson Pro",Georgia,serif; --slab:"Alfa Slab One",Impact,sans-serif;
+  /* (the names the stylesheets have always used: --fell the text face, --fellsc its small capitals, --crim the text
+     face where it was Crimson; and --disp the display face, --cardtxt the card's rules) */
+  --fell:"Arvela Text",Georgia,serif; --fellsc:"Arvela SC","Arvela Text",Georgia,serif; --crim:"Arvela Text",Georgia,serif;
+  --disp:"Arvela Display","Arvela Text",Georgia,serif; --cardtxt:"Crimson Pro",Georgia,serif; --slab:"Alfa Slab One",Impact,sans-serif;
+  /* the kit's faces on this page */
+  --font:"Arvela Text",Georgia,serif; --display:"Arvela Display","Arvela Text",Georgia,serif;
 }
+html{font-synthesis:none;}
+/* The page is Arvela's midnight navy, whatever the app's theme: the kit's own parts here (the setup, sheets, menus,
+   the handoff, the results card) read these, so they sit in the game's night blue with warm parchment words and gilt,
+   not the hub's violet. (The collection's screens pin the same values: .an-screen.) */
+html:root{color-scheme:dark;
+  --bg:#10162d;--bg-2:#161d38;--surface:#1c2444;--surface-2:#242d52;--surface-3:#303a64;--shade:rgba(4,6,14,.6);
+  --text:#f6f0e2;--text-2:#cfc6ad;--text-3:#968d77;--accent:#e3c77e;--accent-ink:#1a1408;--yellow:#e3c77e;--yellow-fill:#e3c77e;
+  --w03:rgba(255,255,255,.03);--w04:rgba(255,255,255,.04);--w05:rgba(255,255,255,.05);--w06:rgba(255,255,255,.06);--w07:rgba(255,255,255,.07);--w08:rgba(255,255,255,.08);
+  --w09:rgba(255,255,255,.09);--w1:rgba(255,255,255,.1);--w12:rgba(255,255,255,.12);--w14:rgba(255,255,255,.14);--w15:rgba(255,255,255,.15);--w16:rgba(255,255,255,.16);--w18:rgba(255,255,255,.18);--w2:rgba(255,255,255,.2);
+  --inset:rgba(0,0,0,.28);--inset-2:rgba(0,0,0,.38);--seg:rgba(0,0,0,.25);--line:var(--w08);--line-2:var(--w14);
+  --glow-1:#1f2b55;--glow-2:rgba(227,199,126,.06);--glass:rgba(14,19,38,.88);--win-shade:rgba(5,7,16,.72);--ho-glow:#1b2547;
+  --page-bg:radial-gradient(120% 60% at 50% -10%,#1f2b55 0%,transparent 60%),radial-gradient(80% 40% at 100% 0%,rgba(227,199,126,.06) 0%,transparent 70%),#10162d;}
+/* (a card keeps its printed type: above) */
+.ac{--fell:"IM Fell English",Georgia,serif; --fellsc:"IM Fell English SC","IM Fell English",Georgia,serif;}
+/* (the hub's own bar keeps the hub's faces) */
+.gbar{--font:ui-rounded,"SF Pro Rounded","Nunito","Varela Round",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--display:"Lilita One",var(--font);font-family:var(--font);font-synthesis:weight style;}
+/* (Garamond's small letters are short: .40 of its size, against .47 for the Fell types and about .52 for the kit's
+   rounded face. Where words were sized for those faces, in the kit's setup, sheets and handoff and the collection's
+   screens, they are drawn at the height of a small letter they were sized for, so nothing reads smaller than it did.
+   Buttons, cards and the results card are sized for this face already.) */
+.setup,.k-sheet,.k-ho,.an-screen{font-size-adjust:.45;}
+:is(.setup,.k-sheet,.k-ho,.an-screen) :is(.btn,.ac,.an-sc-t){font-size-adjust:none;}
 
 /* ══ The card (the approved design). Everything is in em: the card's font-size is its width / 30. ══════════ */
 .ac{position:relative;width:30em;height:42em;flex:none;border-radius:1.3em;background:var(--an-navy);padding:.8em;box-sizing:border-box;
@@ -65,7 +108,7 @@
 .ac-name{font:400 2.27em/1.02 var(--fell);color:var(--an-ink);letter-spacing:-.01em;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
 .ac-when{margin:.15em 0 .4em;font:italic 400 1.18em var(--fell);color:#6e5c40;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
 .ac-when::after{content:"";display:block;width:4.6em;height:2px;margin-top:.42em;background:linear-gradient(90deg,#b8862d,#f6e3a1 45%,#9a6a1c);border-radius:1px;}
-.ac-txt{font:500 1.2em/1.3 var(--crim);color:var(--an-ink);text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
+.ac-txt{font:500 1.2em/1.3 var(--cardtxt);color:var(--an-ink);text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
 .ac-txt b{font-weight:700;}
 .ac-fact{margin-top:.45em;padding-top:.4em;border-top:1px solid rgba(60,45,25,.3);font:italic 400 1.01em/1.28 var(--fell);color:#5e4d34;text-shadow:0 0 3px var(--an-paper);}
 .ac-txt:empty{display:none;}
@@ -133,7 +176,7 @@
    dot stop short of the lines, and the map's edge there fades out) */
 .ac.hasll:not(.mini){--lw:calc(.75em + var(--lc,1) * 2.15em + (var(--lg,1) - 1) * .3em);}
 .ac.hasll:not(.mini) .ac-map{inset:0 auto 0 0;width:calc(100% - var(--lw));-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 1.3em),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 1.3em),transparent);}
-.ac-say{min-width:0;text-align:center;font:500 1.04em/1.1 var(--crim);color:#6e5c40;text-wrap:balance;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
+.ac-say{min-width:0;text-align:center;font:500 1.04em/1.1 var(--cardtxt);color:#6e5c40;text-wrap:balance;text-shadow:0 0 3px var(--an-paper),0 0 6px var(--an-paper);}
 .ac.hassay:not(.hasst):not(.t-place) .ac-paper{padding-bottom:2.7em;}
 .ac.t-place .ac-say{margin-top:.7em;}
 .ac.mini .ac-foot{display:none;}
@@ -159,8 +202,8 @@
 .an-artview .ac.tg.hasst .ac-brief{padding-left:7.3em;}
 .ac-brief .ac-rib{position:absolute;left:0;top:0;bottom:0;width:2em;background:var(--f);}
 .ac-brief b{font:400 1.72em/1 var(--fell);letter-spacing:-.01em;color:var(--an-ink);white-space:nowrap;}
-.ac-brief span{font:500 1.1em/1.12 var(--crim);color:#4a3d2a;white-space:nowrap;}
-.ac-brief span b{font:700 1em/1.12 var(--crim);letter-spacing:0;}
+.ac-brief span{font:500 1.1em/1.12 var(--cardtxt);color:#4a3d2a;white-space:nowrap;}
+.ac-brief span b{font:700 1em/1.12 var(--cardtxt);letter-spacing:0;}
 /* "+2 Might" in a card's words: the number and the Might shield, at the size of the text and centered on it, never parted at a line's end (Tim, 2026-11-12) */
 i.mi{font-style:inherit;white-space:nowrap;} i.mi-t{display:inline-block;width:1.08em;height:.98em;margin-left:.1em;vertical-align:-.07em;background:url(ui/mark-might.webp) center/contain no-repeat;}
 b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;width:.82em;height:.82em;margin:0 .12em 0 0;vertical-align:-.08em;color:#c9821f;} .kq-i svg{display:block;width:100%;height:100%;}   /* (the lightning bolt before Quick) */
@@ -264,12 +307,11 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .st-name i{width:9px;height:9px;border-radius:50%;background:var(--pc);flex:none;box-shadow:0 0 0 1.5px rgba(0,0,0,.35);}
 .st-fill{flex:1;}
 .st-seals{display:flex;gap:3px;flex:none;}
-.seal{position:relative;width:19px;height:19px;flex:none;border-radius:47% 53% 50% 50%/52% 48% 52% 48%;
-  background:radial-gradient(circle at 36% 30%,#e0503f,#a3201d 55%,#6e0f10);box-shadow:inset 0 -2px 2px rgba(0,0,0,.35),inset 0 1px 1px rgba(255,255,255,.35),0 1px 2px rgba(0,0,0,.6);}
-.seal::before{content:"";position:absolute;inset:22%;border-radius:50%;box-shadow:inset 0 0 0 1.2px rgba(60,5,5,.55),0 0 0 .8px rgba(255,160,140,.25);
-  background:conic-gradient(from 45deg,rgba(60,5,5,.5) 0 25%,transparent 0 50%,rgba(60,5,5,.5) 0 75%,transparent 0);-webkit-mask:radial-gradient(circle,#000 30%,transparent 32%,transparent 46%,#000 48%);mask:radial-gradient(circle,#000 30%,transparent 32%,transparent 46%,#000 48%);}
-.seal.broken{background:radial-gradient(circle at 36% 30%,#5d5560,#3b3540 60%,#27232b);box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);opacity:.75;}
-.seal.broken::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 44%,#0b0d14 45% 53%,transparent 54%),linear-gradient(40deg,transparent 60%,#0b0d14 61% 66%,transparent 67%);border-radius:inherit;}
+/* A Seal is red wax, pressed: an uneven round with the card back's four-point star struck into it; a broken one is
+   gray and split (Tim, 2026-11-14: the seals were flat red buttons) */
+:root{--an-seal:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3CradialGradient id='g' cx='38%' cy='32%' r='70%'%3E%3Cstop offset='0' stop-color='%23e8604c'/%3E%3Cstop offset='.55' stop-color='%23a5231f'/%3E%3Cstop offset='1' stop-color='%235e0d0f'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M39.7 20.0L38.8 23.3L36.8 26.1L35.0 28.7L33.8 31.6L32.1 34.4L29.4 36.4L26.2 37.2L23.1 37.8L20.0 38.9L16.6 39.5L13.2 38.6L10.7 36.2L8.5 33.6L6.2 31.6L3.8 29.3L2.4 26.4L2.2 23.1L2.5 20.0L2.1 16.9L1.8 13.4L2.8 10.1L5.3 7.6L8.2 5.9L10.8 4.1L13.5 2.2L16.7 1.2L20.0 1.7L23.0 2.9L26.0 3.6L29.3 4.0L32.5 5.1L34.7 7.7L36.0 10.7L37.3 13.7L38.9 16.7L39.7 20.0Z' fill='url(%23g)'/%3E%3Ccircle cx='20' cy='20' r='11.6' fill='none' stroke='rgba(0,0,0,.32)' stroke-width='1.6'/%3E%3Ccircle cx='20' cy='20.6' r='11.6' fill='none' stroke='rgba(255,220,200,.22)' stroke-width='1'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='rgba(0,0,0,.3)' transform='translate(0 .5)'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='rgba(255,225,205,.3)' transform='translate(0 -.4)'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='%23a5231f'/%3E%3C/svg%3E"); --an-seal-x:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3CradialGradient id='g' cx='38%' cy='32%' r='70%'%3E%3Cstop offset='0' stop-color='%236b6470'/%3E%3Cstop offset='.55' stop-color='%23423c48'/%3E%3Cstop offset='1' stop-color='%2324202a'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M39.7 20.0L38.8 23.3L36.8 26.1L35.0 28.7L33.8 31.6L32.1 34.4L29.4 36.4L26.2 37.2L23.1 37.8L20.0 38.9L16.6 39.5L13.2 38.6L10.7 36.2L8.5 33.6L6.2 31.6L3.8 29.3L2.4 26.4L2.2 23.1L2.5 20.0L2.1 16.9L1.8 13.4L2.8 10.1L5.3 7.6L8.2 5.9L10.8 4.1L13.5 2.2L16.7 1.2L20.0 1.7L23.0 2.9L26.0 3.6L29.3 4.0L32.5 5.1L34.7 7.7L36.0 10.7L37.3 13.7L38.9 16.7L39.7 20.0Z' fill='url(%23g)'/%3E%3Ccircle cx='20' cy='20' r='11.6' fill='none' stroke='rgba(0,0,0,.32)' stroke-width='1.6'/%3E%3Ccircle cx='20' cy='20.6' r='11.6' fill='none' stroke='rgba(255,220,200,.22)' stroke-width='1'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='rgba(0,0,0,.3)' transform='translate(0 .5)'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='rgba(255,225,205,.3)' transform='translate(0 -.4)'/%3E%3Cpath d='M20 11.5l1.7 6.8 6.8 1.7-6.8 1.7-1.7 6.8-1.7-6.8-6.8-1.7 6.8-1.7z' fill='%23423c48'/%3E%3Cpath d='M7 6 L17 17 L12.5 23.5 L23 35' fill='none' stroke='%230b0d16' stroke-width='2.8' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E");}
+.seal{position:relative;width:19px;height:19px;flex:none;background:var(--an-seal) center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+.seal.broken{background-image:var(--an-seal-x);opacity:.82;}
 .seal.crack{animation:an-crack .9s cubic-bezier(.3,1.4,.5,1);}
 /* the Theodosian Walls: a Seal pressed into its place, coming down from above, landing hard and settling */
 .seal.press{animation:an-press .8s cubic-bezier(.3,1.1,.4,1);z-index:2;}
@@ -1181,47 +1223,70 @@ button.ll-n{cursor:pointer;}
 .an-screen.show{opacity:1;transform:none;}
 .an-sc-h .icon-btn{background:var(--w08);color:var(--text);}
 .an-sc-h{flex:none;display:flex;align-items:center;gap:10px;padding:max(calc(var(--safe-t) + 10px),19px) max(calc(var(--safe-r) + 12px),19px) 10px max(calc(var(--safe-l) + 12px),19px);}
-.an-sc-t{flex:1;min-width:0;margin:0;font:400 1.7rem/1.1 var(--fell);color:#f3e9d2;overflow-wrap:break-word;}   /* (natural case, no tracking: the collection's screens are set like a printed book, not in spaced small capitals) */
+.an-sc-t{flex:1;min-width:0;margin:0;font:600 1.8rem/1.05 var(--disp);color:#f3e9d2;overflow-wrap:break-word;}   /* (natural case, no tracking: the collection's screens are set like a printed book, not in spaced small capitals) */
 .an-sc-tools{flex:none;display:flex;align-items:center;gap:8px;}
 .an-sc-b{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px calc(var(--safe-r) + 14px) calc(var(--safe-b) + 18px) calc(var(--safe-l) + 14px);}
 
+/* ══ A player's avatar on Arvela's page (the kit's, everywhere it is drawn here: the setup, the table's bars, the results
+   card, sheets): a disc of the player's color with a little light on it, and the initial in the display face's
+   capitals. The kit's padding under the letter (for its rounded face) is gone: in Cormorant a capital's middle is
+   within 0.01em of the line box's middle (ascent .924, descent .287, capital .625), so line-height 1 centers its ink
+   (Tim, 2026-11-14: "the initials are too high from center"). ══ */
+.avatar{padding:0;line-height:1;font:700 20px/1 var(--disp);letter-spacing:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 -2px 3px rgba(0,0,0,.2),0 0 0 1px rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.35);}
+.avatar.sm{font-size:16px;} .avatar.lg{font-size:32px;} .avatar.xl{font-size:48px;}
+.avatar.av-photo{box-shadow:0 0 0 1px rgba(0,0,0,.35),0 2px 4px rgba(0,0,0,.35);}
+
 /* ═══ Buttons ═══════════════════════════════════════════════════════════════════════════════════════════════
-   One material for every button in the game (the table, the collection's screens, the setup, sheets and results):
-   the main action is a struck brass plate (brushed grain, an engraved rule inside its edge), everything else is
-   dark enamel with a gilt edge, and the words are set in the book face. Shape and size stay the kit's. */
+   (Tim, 2026-11-14: the brushed brass and the speckled enamel were "wildly inelegant and thoughtless".) Three kinds,
+   one material each, and nothing on a button that isn't the button: no grain, no screws, no thick lip.
+   · The main action is a gilt plate: a smooth fall of light from pale gold to old gold, a bright edge along the top,
+     one engraved rule just inside the edge, and its words in small capitals, as a plate is lettered. A line of
+     light crosses it once when it appears (.btn-primary.shine), as a turned plate catches the lamp.
+   · Everything else is night enamel: the card's own navy, a gilt hairline for its edge and a faint light along the
+     top; the words in the book face, an icon in gilt beside them.
+   · The quiet way out (.btn-ghost) is words only, in spaced small capitals.
+   Pressed, a button sinks a pixel and its light dims; turned off, it fades and loses its color. Shape and size stay
+   the kit's; the corners are 12px everywhere (10px on a small button). */
 :root{
   --an-brush:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='64'%3E%3Cfilter id='b' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.011 .9' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .36  0 0 0 0 .22  0 0 0 0 .03  .7 0 0 0 -.27'/%3E%3C/filter%3E%3Crect width='240' height='64' filter='url(%23b)'/%3E%3C/svg%3E");
   --an-tooth:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='t' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 .96  0 0 0 0 .86  .5 0 0 0 -.2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23t)'/%3E%3C/svg%3E");
+  /* the system's colors: parchment words, gilt, the hairlines that edge every panel */
+  --an-parch:#f3e9d2; --an-parch-2:#d8ccad; --an-dim:#a89e85; --an-gl:#e3c77e; --an-gl-2:#f6e3a1;
+  --an-hair:rgba(227,199,126,.24); --an-hair-2:rgba(227,199,126,.12);
+  --an-enamel:linear-gradient(180deg,#242d50 0%,#1b2241 100%);
+  --an-plate:linear-gradient(180deg,#f9ebb9 0%,#ecd086 34%,#d8b25d 66%,#c0943f 100%);
+  --an-ring:conic-gradient(from 200deg,#8a6526,#f6e3a1 18%,#b48a3c 35%,#f9ecc0 55%,#9c7432 75%,#e9cf86 90%,#8a6526);
 }
-@font-face{font-family:"Arvela Figures";src:url("../../fonts/crimson-pro.woff2") format("woff2");font-weight:200 900;font-display:swap;unicode-range:U+30-39;}
-/* (the old-book face draws 0 like an o, "3o cards": a button's digits come from the plain book face) */
-.btn{font-family:"Arvela Figures",var(--fell);font-weight:500;font-size:1.2rem;letter-spacing:0;border-radius:12px;background:var(--an-tooth),var(--b);}
-.btn-ghost{background:none;}
-.btn-lg{font-size:1.36rem;border-radius:14px;}
-.btn-sm{font-size:1.06rem;border-radius:9px;}
-.btn.k-two small{font:600 .8rem/1.1 var(--crim);opacity:.85;}
-/* dark enamel, gilt-edged */
-.btn-soft{--b-lip:#090c1a;color:#f3e9d2;background:var(--an-tooth),linear-gradient(180deg,#29325a 0%,#1d2445 52%,#161c38 100%);
-  box-shadow:0 4px 0 var(--b-lip),0 7px 12px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(233,207,134,.36);}
-.btn-soft:active:not(:disabled){box-shadow:0 1px 0 var(--b-lip),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(233,207,134,.36);}
-.btn-soft.btn-sm{box-shadow:0 3px 0 var(--b-lip),0 5px 9px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px rgba(233,207,134,.36);}
-.btn-soft.btn-sm:active:not(:disabled){box-shadow:0 1px 0 var(--b-lip),inset 0 0 0 1px rgba(233,207,134,.36);}
-/* struck brass */
-.btn-primary{--b-lip:#7c5a1c;color:#231906;text-shadow:0 1px 0 rgba(255,244,206,.6);
-  background:var(--an-brush),linear-gradient(180deg,#f8e6a8 0%,#ecd07f 30%,#dcb65a 68%,#c99c41 100%);
-  box-shadow:0 4px 0 var(--b-lip),0 8px 14px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,251,228,.85),inset 0 -1px 0 rgba(112,76,16,.5),inset 0 0 0 1px rgba(128,90,26,.5);}
-.btn-primary::after{content:"";position:absolute;inset:4px;border-radius:8px;border:1px solid rgba(104,72,16,.46);box-shadow:0 1px 0 rgba(255,247,214,.55),inset 0 1px 0 rgba(255,247,214,.28);pointer-events:none;}
-.btn-primary:active:not(:disabled){box-shadow:0 1px 0 var(--b-lip),inset 0 2px 5px rgba(96,64,10,.45),inset 0 0 0 1px rgba(128,90,26,.5);}
-.btn-primary.btn-sm{box-shadow:0 3px 0 var(--b-lip),0 6px 10px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,251,228,.85),inset 0 -1px 0 rgba(112,76,16,.5),inset 0 0 0 1px rgba(128,90,26,.5);}
-.btn-primary.btn-sm::after{inset:3px;border-radius:6px;}
-.btn-primary.btn-sm:active:not(:disabled){box-shadow:0 1px 0 var(--b-lip),inset 0 2px 4px rgba(96,64,10,.45),inset 0 0 0 1px rgba(128,90,26,.5);}
-.btn-primary.btn-lg::after{inset:5px;border-radius:9px;}
-/* a wide plate is pinned at each end */
-.btn-primary.btn-block::before,.btn-primary.btn-lg::before{content:"";position:absolute;left:13px;right:13px;top:50%;height:6px;margin-top:-3px;pointer-events:none;
-  --pin:radial-gradient(circle closest-side at 50% 50%,#e3be63 0,#b28530 58%,#6a4810 88%,rgba(106,72,16,0) 100%);--glint:radial-gradient(circle closest-side at 36% 30%,rgba(255,248,214,.95) 0,rgba(255,248,214,0) 46%);
-  background:var(--glint) left center / 6px 6px no-repeat,var(--pin) left center / 6px 6px no-repeat,var(--glint) right center / 6px 6px no-repeat,var(--pin) right center / 6px 6px no-repeat;
-  filter:drop-shadow(0 1px 0 rgba(255,246,208,.55));}
-.btn-primary .ico{filter:drop-shadow(0 1px 0 rgba(255,244,206,.5));}
+@font-face{font-family:"Arvela Figures";src:url("../../fonts/arvela-text.woff2") format("woff2");font-weight:450 600;font-display:swap;unicode-range:U+30-39;}
+.btn{font-family:var(--fell);font-weight:500;font-size:1.12rem;letter-spacing:0;line-height:1.1;border-radius:12px;color:var(--an-parch);background:var(--an-enamel);
+  box-shadow:inset 0 1px 0 rgba(255,240,205,.13),inset 0 0 0 1px rgba(227,199,126,.34),0 1px 0 rgba(0,0,0,.5),0 6px 14px -6px rgba(0,0,0,.65);
+  transition:transform .08s ease,box-shadow .12s ease,filter .15s,opacity .15s;}
+.btn .ico{color:var(--an-gl);}
+.btn:active:not(:disabled){transform:translateY(1px);box-shadow:inset 0 1px 3px rgba(0,0,0,.45),inset 0 0 0 1px rgba(227,199,126,.3);}
+.btn:disabled{opacity:.42;filter:saturate(.3);}
+.btn-lg{font-size:1.2rem;border-radius:12px;}
+.btn-sm{font-size:1.04rem;border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,240,205,.13),inset 0 0 0 1px rgba(227,199,126,.34),0 1px 0 rgba(0,0,0,.5),0 4px 10px -5px rgba(0,0,0,.6);}
+.btn.k-two small{font:500 .8rem/1.1 var(--fell);opacity:.8;}
+.btn-soft{--b-lip:transparent;}
+/* the quiet way out */
+.btn-ghost{background:none;box-shadow:none;color:var(--an-dim);font-family:var(--fellsc);font-size:1rem;letter-spacing:.13em;}
+.btn-ghost:active:not(:disabled){transform:none;box-shadow:none;color:var(--an-parch);}
+/* the gilt plate */
+.btn-primary{--b-lip:transparent;color:#2a1d07;text-shadow:0 1px 0 rgba(255,246,214,.55);font-family:var(--fellsc);font-weight:600;letter-spacing:.09em;overflow:hidden;
+  background:var(--an-plate);
+  box-shadow:inset 0 1px 0 rgba(255,252,236,.95),inset 0 -1px 0 rgba(120,80,16,.5),inset 0 0 0 1px rgba(132,92,26,.6),0 2px 0 #6d4a14,0 10px 20px -8px rgba(0,0,0,.75),0 0 24px -8px rgba(233,199,110,.5);}
+.btn-primary::before{content:"";position:absolute;inset:4px;border-radius:8px;border:1px solid rgba(116,78,18,.3);box-shadow:inset 0 1px 0 rgba(255,250,228,.35);pointer-events:none;}
+.btn-primary.btn-sm::before{inset:3px;border-radius:7px;}
+.btn-primary .ico{color:#3a2808;filter:drop-shadow(0 1px 0 rgba(255,244,206,.5));}
+.btn-primary:active:not(:disabled){transform:translateY(1px);filter:brightness(.95);box-shadow:inset 0 1px 3px rgba(96,64,10,.5),inset 0 0 0 1px rgba(132,92,26,.6),0 1px 0 #6d4a14;}
+.btn-primary:disabled{filter:saturate(.25) brightness(.8);}
+/* (its one line of light, when a results card or a screen brings it up) */
+.btn-primary::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;
+  background:linear-gradient(105deg,rgba(255,255,255,0) 40%,rgba(255,253,240,.62) 50%,rgba(255,255,255,0) 60%) 130% 0/300% 100% no-repeat;}
+.btn-primary.shine::after{animation:an-shine 1.2s cubic-bezier(.45,.05,.3,1) .7s 1 both;}
+@keyframes an-shine{0%{opacity:1;background-position:130% 0;}100%{opacity:1;background-position:-30% 0;}}
+@media (prefers-reduced-motion:reduce){ .btn-primary.shine::after{animation:none;} }
 
 /* ═══ The art proof (anoria.html?art=1): every card at every size it is drawn ═══════════════════════════════ */
 .an-proof{display:block;overflow:auto;}
@@ -1317,7 +1382,7 @@ button.ll-n{cursor:pointer;}
 /* ══ Bigger things to tap (Tim, 2026-11-12: "action buttons throughout the game ... are tiny for touchscreen fingers.
    increasing size by about 1.3x-ish would be helpful"): the small buttons, a screen's header buttons, the reader's close,
    the turn log, a Legacy Line's ?, the strip's buttons and thumbnails ══ */
-.btn-sm:not(.st-go){min-height:50px;padding:0 18px;font-size:1.2rem;border-radius:11px;}
+.btn-sm:not(.st-go){min-height:50px;padding:0 18px;font-size:1.12rem;border-radius:10px;}
 .btn-sm:not(.st-go) .ico{width:21px;height:21px;}
 .an-sc-h .icon-btn,.view-x{width:52px;height:52px;} .an-sc-h .icon-btn .ico,.view-x .ico{width:24px;height:24px;}
 .cap-log{width:46px;height:46px;} .cap-log .ico{width:22px;height:22px;}
@@ -1725,79 +1790,132 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .an-side.log .sd-b{align-items:stretch;}
 @media (prefers-reduced-motion:reduce){ .an-side{transition:none;} }
 
-/* ══ The game on its results card (racePic in ui.js): the winner's Guide and the race for Renown ══ */
-.an-race{display:flex;align-items:center;gap:12px;width:100%;margin:10px 0 4px;text-align:left;}
-.rc-g{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;width:84px;text-align:center;}
-.rc-pt{position:relative;width:64px;height:64px;border-radius:50%;overflow:hidden;background:#223;box-shadow:0 0 0 2.5px var(--pc),0 0 14px color-mix(in srgb,var(--pc) 55%,transparent),0 4px 10px rgba(0,0,0,.5);}
-.rc-pt > :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
-.rc-g b{font:400 .95rem/1.1 var(--fell,Georgia,serif);color:var(--text,#f3ead2);text-wrap:balance;}
-.rc-g small{font-size:.74rem;line-height:1.1;color:var(--text-2,#b9b08f);}
-.rc-ch{flex:1;min-width:0;}
-.rc-k{font-size:.78rem;letter-spacing:.04em;color:var(--text-2,#b9b08f);margin-bottom:2px;text-wrap:balance;}
+/* ══ The results card (showWin, winLayout and racePic in ui.js; Tim, 2026-11-14) ══════════════════════════════
+   Arvela's own card, in its own type and materials: night lacquer edged in gilt with a second fine rule inside (the
+   card back's frame), the winner's Guide in a gilt ring beside the title, a ruled star under them, the race for
+   Renown, how it ended in a sentence, the standings as a ledger with their Seals, what the game earned, and the
+   buttons: the gilt plate, one panel of the rest, the quiet way out. On an upright phone the buttons are a dock that
+   never leaves the card and the game above them scrolls when the screen is short (Safari with its bars shows only
+   about 700 of an iPhone's 874); from 700 wide the game stands at the left and what it earned and the buttons at the
+   right; a phone on its side has the three side by side. */
+.k-win .card.aw{--pad:20px;position:relative;display:flex;flex-direction:column;max-width:400px;max-height:calc(100dvh - 24px);padding:0;overflow:hidden;text-align:left;
+  border-radius:22px;color:var(--an-parch);
+  background:radial-gradient(130% 55% at 50% -8%,rgba(227,199,126,.13),rgba(227,199,126,0) 62%),linear-gradient(180deg,#1a2240 0%,#141a33 46%,#10152a 100%);
+  box-shadow:0 34px 70px rgba(0,0,0,.62),0 0 0 1px rgba(0,0,0,.5),inset 0 0 0 1px rgba(227,199,126,.30),inset 0 1px 0 rgba(255,240,205,.22);}
+.k-win:has(.card.aw){padding:12px;}
+.k-win .card.aw::before{content:"";position:absolute;inset:5px;border-radius:17px;border:1px solid rgba(227,199,126,.11);pointer-events:none;z-index:2;}
+.aw-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:20px var(--pad) 10px;}
+.aw-body::-webkit-scrollbar{display:none;}
+.aw-body.more{-webkit-mask:linear-gradient(#000 calc(100% - 26px),transparent);mask:linear-gradient(#000 calc(100% - 26px),transparent);}
+.k-win .card.aw > .k-acts{flex:none;display:flex;flex-direction:column;gap:0;padding:8px calc(var(--pad) - 2px) 14px;}
+/* the head */
+.aw-hd{display:flex;align-items:center;gap:14px;}
+.aw-med{position:relative;flex:none;width:66px;height:66px;border-radius:50%;padding:2.5px;background:var(--an-ring);box-shadow:0 6px 16px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.4);}
+.aw-med > :is(img,canvas){display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 18%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.4);}
+.aw-ht{min-width:0;}
+.aw-hd.solo{justify-content:center;text-align:center;}
+.k-win .card.aw h2{margin:0;font:600 2.15rem/1 var(--disp);letter-spacing:.003em;color:#f8eed6;text-wrap:balance;}
+.k-win .card.aw .sub{margin:6px 0 0;font:italic 500 1rem/1.25 var(--fell);color:var(--an-dim);text-wrap:balance;}
+/* a rule with the card back's four-point star at its middle */
+.aw-orn{position:relative;height:13px;margin:13px 0 7px;}
+.aw-orn::before{content:"";position:absolute;left:0;right:0;top:6px;height:1px;background:linear-gradient(90deg,rgba(227,199,126,0),rgba(227,199,126,.45) 20%,rgba(227,199,126,.45) 80%,rgba(227,199,126,0));}
+.aw-orn i{position:absolute;left:50%;top:0;width:13px;height:13px;margin-left:-6.5px;border-radius:50%;box-shadow:0 0 0 5px #171e3a;background:#171e3a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M10 0l2 8 8 2-8 2-2 8-2-8-8-2 8-2z' fill='%23e3c77e'/%3E%3C/svg%3E") center/contain no-repeat;}
+/* the race */
+.an-race{margin:0;}
+.an-race .rc-k,.aw-cols span,.k-win .card.aw .rw-k{font:500 .84rem/1 var(--fellsc);letter-spacing:.09em;color:var(--an-dim);}
+.rc-svg{margin:6px 0 0;}
 .rc-svg svg{display:block;width:100%;height:auto;overflow:visible;}
-.rc-svg path{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:.75;}
-.rc-svg path.w{stroke-width:4;opacity:1;}
-.rc-svg .g{stroke:#e9cf86;stroke-width:1.2;stroke-dasharray:4 4;} .rc-svg .b{stroke:rgba(255,255,255,.18);stroke-width:1;}
-.rc-svg text{font:600 16px/1 var(--crim,Georgia,serif);fill:var(--text-2,#b9b08f);text-anchor:middle;}
-.rc-svg text.gl{fill:#e9cf86;text-anchor:start;}
-@media (orientation:landscape) and (max-height:520px){ .an-race{margin:4px 0 2px;} .rc-pt{width:46px;height:46px;} .rc-g{width:70px;} .rc-svg svg{max-height:96px;} }
-.k-win .card:has(.an-race) .trophy{display:none;}   /* (the winner's Guide stands where the trophy was) */
-/* The results card in two columns (winCols in ui.js) where the screen is 700 wide or more: the game at the left, what it
-   earned and the buttons at the right, every button in view. Narrower, the two columns stack as the card always was. */
-.an-win-l,.an-win-r{min-width:0;}
+.rc-svg .b{stroke:rgba(243,233,210,.16);stroke-width:1;}
+.rc-svg .g{stroke:var(--an-gl);stroke-width:1;stroke-dasharray:2 4;stroke-linecap:round;opacity:.85;}
+.rc-svg path{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:.72;}
+.rc-svg path.w{stroke-width:3;opacity:1;}
+.rc-svg .end{stroke:#141a33;stroke-width:2;}
+.rc-svg text{font:500 11px var(--fell);fill:var(--an-dim);text-anchor:middle;}
+.rc-svg text.gl{font:600 12px var(--fell);fill:var(--an-gl);text-anchor:start;}
+/* how it ended: a sentence, not a box */
+.k-win .card.aw .k-win-notes{margin:8px 0 0;padding:0;background:none;border-radius:0;text-align:center;font:italic 500 1rem/1.3 var(--fell);color:var(--an-parch-2);text-wrap:balance;}
+.k-win .card.aw .k-win-notes > b{display:none;}
+.k-win .card.aw .k-win-notes div + div{margin-top:2px;}
+/* the standings: a ledger, the winner's line lit */
+.k-win .card.aw .rank{display:flex;flex-direction:column;gap:0;margin:12px 0 0;}
+.k-win .card.aw .rank > div{display:grid;grid-template-columns:20px 30px minmax(0,1fr) 46px;align-items:center;column-gap:10px;min-height:42px;padding:0 8px;border-radius:0;background:none;font:600 1.12rem/1.1 var(--fell);color:var(--an-parch);border-top:1px solid var(--an-hair-2);}
+.k-win .card.aw .rank.sl > div{grid-template-columns:20px 30px minmax(0,1fr) auto 46px;}
+.k-win .card.aw .rank > div:last-child{border-bottom:1px solid var(--an-hair-2);}
+.k-win .card.aw .rank > .aw-cols{min-height:0;padding:0 8px 5px;border:0;}
+.aw-cols span{grid-column:-2;text-align:right;font-size:.74rem;letter-spacing:.11em;}
+.aw-cols span.s{grid-column:-3;text-align:center;}
+.k-win .card.aw .rank > .aw-cols + div{border-top:0;border-radius:10px;background:linear-gradient(90deg,rgba(227,199,126,.17),rgba(227,199,126,.05) 70%,rgba(227,199,126,0));box-shadow:inset 0 0 0 1px rgba(227,199,126,.3);}
+.k-win .card.aw .rank > .aw-cols + div + div{border-top:0;}
+.k-win .card.aw .rank > div > span:nth-child(3){min-width:0;overflow-wrap:anywhere;}
+.k-win .card.aw .rank .place{width:auto;font:italic 600 1.15rem/1 var(--fell);color:var(--an-dim);text-align:center;}
+.k-win .card.aw .rank > .aw-cols + div .place{color:var(--an-gl);}
+.k-win .card.aw .rank .p{margin:0;font:600 1.5rem/1 var(--disp);color:var(--an-parch);text-align:right;font-variant-numeric:tabular-nums;}
+.k-win .card.aw .rank > .aw-cols + div .p{color:var(--an-gl-2);}
+.k-win .card.aw .rank .rk-sl{display:flex;align-items:center;justify-content:center;gap:4px;}
+.k-win .card.aw .rank .rk-sl .seal{width:17px;height:17px;}
+.k-win .card.aw .rank .avatar{width:30px;height:30px;}
+/* what the game earned (rewards.js endPanel; its own look is in rewards.css) */
+.k-win .card.aw .k-win-show{margin:14px 0 0;}
+/* the buttons: the gilt plate, the rest as one panel of rows (each its icon in gilt, a chevron at its end), the quiet way out */
+.k-win .card.aw .k-acts > .btn-primary{min-height:52px;font-size:1.1rem;}
+.aw-grp{margin-top:10px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.022));box-shadow:inset 0 0 0 1px var(--an-hair),inset 0 1px 0 rgba(255,240,205,.08);}
+.aw-grp > .btn{display:flex;width:100%;min-height:46px;height:auto;padding:0 12px 0 14px;gap:13px;justify-content:flex-start;text-align:left;border-radius:0;background:none;box-shadow:none;font-size:1.08rem;white-space:nowrap;transform:none;}
+.aw-grp > .btn + .btn::before{content:"";position:absolute;left:46px;right:0;top:0;height:1px;background:var(--an-hair-2);}
+.aw-grp > .btn:active:not(:disabled){background:rgba(227,199,126,.09);box-shadow:none;transform:none;}
+.aw-grp > .btn > span:not([class]){min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.aw-grp > .btn .ico{width:19px;height:19px;stroke-width:1.7;}
+.aw-go{margin-left:auto;padding-left:6px;display:grid;place-items:center;color:var(--an-dim);opacity:.8;}
+.aw-go .ico{width:15px !important;height:15px !important;color:inherit;}
+.aw-ic{flex:none;display:grid;place-items:center;width:19px;height:24px;}
+.aw-ic.face{width:22px;height:22px;border-radius:50%;padding:1px;background:var(--an-ring);}
+.aw-ic.face > :is(img,canvas){width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:50% 18%;}
+.aw-pk{position:relative;display:block;width:16px;height:23px;transform:rotate(-7deg);filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
+.aw-pk .pk-art{border-radius:1.5px;-webkit-mask:none;mask:none;box-shadow:inset 0 0 0 .5px rgba(233,207,134,.7);}
+.aw-pk .pk-art::before,.aw-pk .pk-art::after{display:none;}
+.aw-pk .pk-crimp{height:13%;background:linear-gradient(180deg,#f6e3a1,#c79a3b 55%,#8a5f1a);}
+.aw-pk .pk-logo{top:13%;width:160%;}
+.k-win .card.aw .k-acts > .btn-ghost{min-height:40px;margin-top:4px;font-size:.95rem;}
+/* (from 700 wide: the game at the left; what it earned and the buttons at the right) */
 @media (min-width:700px){
-  .k-win .card.an-win{max-width:min(900px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:30px;align-items:center;padding:24px 26px;}
-  .k-win .card.an-win > .an-win-l{grid-column:1;grid-row:1;} .k-win .card.an-win > .an-win-r{grid-column:2;grid-row:1;}
-  .k-win .card.an-win .an-win-r > .k-win-show{margin-top:0;}
-  .k-win .card.an-win .an-win-l > .rank{margin-bottom:0;}
+  .k-win .card.aw{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;max-width:min(860px,calc(100vw - 32px));--pad:24px;}
+  .k-win .card.aw:not(.earn){grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);max-width:min(760px,calc(100vw - 32px));}
+  .k-win .card.aw .aw-body{display:contents;}
+  .aw-game{grid-column:1;grid-row:1 / 3;align-self:center;min-height:0;max-height:100%;overflow-y:auto;scrollbar-width:none;padding:24px 8px 22px var(--pad);}
+  .k-win .card.aw .k-win-show{grid-column:2;grid-row:1;align-self:end;margin:24px var(--pad) 0 16px;min-height:0;overflow-y:auto;scrollbar-width:none;}
+  .k-win .card.aw > .k-acts{grid-column:2;grid-row:2;padding:12px var(--pad) 20px 16px;}
+  .k-win .card.aw:not(.earn) > .k-acts{grid-row:1 / 3;align-self:center;}
 }
-/* (a phone on its side: the title smaller, the notes closer, so the left column fits the screen's height) */
+/* (a phone on its side: the game, what it earned, the buttons, side by side, the title smaller) */
 @media (orientation:landscape) and (max-height:520px){
-  .k-win .card.an-win{padding:12px 18px;column-gap:20px;align-items:start;}
-  .k-win .card.an-win h2{font-size:1.5rem;margin:0 0 2px;} .k-win .card.an-win .sub{margin-bottom:4px;}
-  .k-win .card.an-win .k-win-notes{margin:6px 0 6px;padding:6px 10px;} .k-win .card.an-win .rank div{padding:5px 10px;}
-  /* (three columns there: the game, what it earned, the buttons) */
-  .k-win .card.an-win:has(.k-win-show){grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.8fr);max-width:min(1000px,calc(100vw - 24px));}
-  .k-win .card.an-win:has(.k-win-show) > .an-win-r{display:contents;}
-  .k-win .card.an-win .an-win-r > .k-win-show{grid-column:2;grid-row:1;margin:0;align-self:center;}
-  .k-win .card.an-win .an-win-r > .k-acts{grid-column:3;grid-row:1;align-self:center;gap:8px;}
+  .k-win:has(.card.aw){padding:8px max(calc(env(safe-area-inset-right,0px) + 8px),16px) 8px max(calc(env(safe-area-inset-left,0px) + 8px),16px);}
+  .k-win .card.aw{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);max-width:min(1000px,100%);max-height:calc(100dvh - 16px);--pad:16px;}
+  .k-win .card.aw:not(.earn){grid-template-columns:minmax(0,1.2fr) minmax(0,.86fr);}
+  .aw-game{grid-row:1;padding:14px 4px 12px var(--pad);}
+  .k-win .card.aw .k-win-show{grid-column:2;grid-row:1;align-self:center;margin:12px 4px;max-height:calc(100% - 24px);}
+  .k-win .card.aw > .k-acts{grid-column:3;grid-row:1;align-self:center;padding:12px var(--pad) 12px 8px;}
+  .k-win .card.aw:not(.earn) > .k-acts{grid-column:2;grid-row:1;}
+  .aw-med{width:52px;height:52px;} .aw-hd{gap:11px;}
+  .k-win .card.aw h2{font-size:1.7rem;} .k-win .card.aw .sub{font-size:.92rem;margin-top:3px;}
+  .aw-orn{margin:8px 0 3px;}
+  .k-win .card.aw .rank{margin-top:8px;} .k-win .card.aw .rank > div:not(.aw-cols){min-height:36px;}
+  .k-win .card.aw .k-acts > .btn-primary{min-height:46px;}
+  .aw-grp > .btn{min-height:42px;font-size:1.02rem;padding:0 10px 0 12px;gap:11px;} .aw-go{display:none;} .aw-grp > .btn + .btn::before{left:42px;}
+  .k-win .card.aw .k-acts > .btn-ghost{min-height:36px;}
 }
-.k-win .card.an-win .rc-svg svg{max-height:120px;}   /* (two columns leave the race its room) */
-/* (with winCols above, where the screen is 700 wide or more) Anoria's results card fits the screen without scrolling (the audit, 2026-11-14: it scrolled on an upright phone and on
-   both iPads). Only Anoria's card has the race picture (.an-race), so nothing here reaches another game's card. Each
-   player's Seals are drawn on their row (sealRanks in ui.js) instead of a line of words each; the rows, the rewards
-   panel and the gaps are closer; the buttons after Play again stand two to a row, in Kit.win's order. */
-.k-win .card:has(.an-race){padding:20px 18px 16px;}
-.k-win .card:has(.an-race) h2{margin:4px 0 2px;}
-.k-win .card:has(.an-race) .sub{margin-bottom:6px;}
-.k-win .card:has(.an-race) .k-win-notes{margin:8px 0 8px;padding:8px 12px;}
-.k-win .card:has(.an-race) .rank{gap:5px;margin-bottom:12px;}
-.k-win .card:has(.an-race) .rank > div{padding:5px 12px;min-height:36px;box-sizing:border-box;}
-.k-win .rank .rk-sl{display:flex;align-items:center;gap:3px;margin-left:auto;}
-.k-win .rank .rk-sl + .p{margin-left:12px;min-width:1.4em;text-align:right;}
-.k-win .rank .rk-sl .seal{width:15px;height:15px;}
-.k-win .card:has(.an-race) .k-win-show{margin-bottom:12px;}
-.k-win .rw-end .rw-sph{--sz:76px !important;}
-.k-win .rw-end .rw-e-top{gap:12px;padding:8px 12px;}
-.k-win .rw-end .rw-e-say{gap:3px;}
-.k-win .rw-end .rw-e-row{gap:10px;padding:8px 12px;}
-.k-win .rw-end .rw-face{width:38px;height:38px;}
-.k-win .rw-end .rw-e-w{gap:3px;}
-.k-win .card:has(.an-race) .k-acts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;}
-.k-win .card:has(.an-race) .k-acts > .btn-primary,.k-win .card:has(.an-race) .k-acts > .btn-ghost:nth-child(even){grid-column:1 / -1;}
-.k-win .card:has(.an-race) .k-acts > .btn:not(.btn-primary){min-height:46px;height:auto;padding:6px 10px;font-size:1.04rem;line-height:1.12;white-space:normal;text-wrap:balance;}
-.k-win .card:has(.an-race) .k-acts > .btn:not(.btn-primary) .ico{flex:none;}
-@media (orientation:landscape) and (max-height:520px){ .k-win .card:has(.an-race) .k-acts{grid-template-columns:minmax(0,1fr);} }   /* (a phone on its side: the kit's column of buttons at the right) */
-/* (closer still where the card is tallest: four or more players on an upright phone, and a phone on its side) */
-.k-win .card:has(.an-race) .rank > div{min-height:34px;padding:4px 12px;}
-@media (orientation:portrait) and (max-width:500px){ .k-win .an-race .rc-pt{width:56px;height:56px;} .k-win .an-race .rc-k{margin-bottom:0;font-size:.74rem;} .k-win .an-race{margin-top:4px;} .k-win .an-race .rc-svg svg{max-height:80px;} }
-.k-win .card:has(.an-race) .rank:has(> div:nth-child(4)){gap:4px;} .k-win .card:has(.an-race) .rank:has(> div:nth-child(4)) > div{min-height:31px;padding:2px 12px;}
-/* (a phone on its side with three or more players: How it ended says the round, so the line under the title makes way) */
-@media (orientation:landscape) and (max-height:520px){
-  .k-win .card:has(.an-race):has(.rank > div:nth-child(3)) .sub{display:none;}
-  .k-win .card:has(.an-race):has(.rank > div:nth-child(3)) .rc-svg svg{max-height:50px;}
+/* (closer where the card has the most to hold: four or more players) */
+.k-win .card.aw .rank:has(> div:nth-child(5)) > div:not(.aw-cols){min-height:36px;}
+/* (an upright phone with Safari's bars showing, 800 tall or less: the head, the rule and the ledger a little closer,
+   so more of the game shows above the dock) */
+@media (orientation:portrait) and (max-height:800px){
+  .k-win .card.aw .aw-body{padding-top:16px;}
+  .aw-med{width:58px;height:58px;} .aw-hd{gap:12px;}
+  .k-win .card.aw h2{font-size:1.95rem;} .k-win .card.aw .sub{margin-top:4px;}
+  .aw-orn{margin:10px 0 5px;}
+  .k-win .card.aw .rank{margin-top:9px;} .k-win .card.aw .rank > div:not(.aw-cols){min-height:38px;}
+  .k-win .card.aw .k-acts > .btn-primary{min-height:50px;}
+  .aw-grp{margin-top:8px;} .aw-grp > .btn{min-height:44px;}
+  .k-win .card.aw .k-acts > .btn-ghost{min-height:38px;margin-top:2px;}
 }
-.k-win .rw-end .rw-e-lit{flex-direction:row;flex-wrap:wrap;column-gap:14px;row-gap:2px;}   /* (what lit the signs, side by side while they fit) */
 /* ══ The battle line with three to six players (drawN, mineLine; Tim's A3four, 2026-11-13): on an iPad sideways your
    three Domains are columns across your mat at the left, as the two-player table's are, everyone else's Figures above
    the line as stacks and yours below it as cards; each other player's column stands on their mat at the right ══ */
@@ -1834,8 +1952,6 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .fo.vt.e-them{grid-template-rows:auto auto minmax(0,1fr);} .fo.vt.e-me{grid-template-rows:minmax(0,1fr) auto auto;}
 .fo.vt.e-them .fo-side.them,.fo.vt.e-me .fo-side.me{min-height:56px;}
 .fo.hz.e-them{grid-template-columns:minmax(0,.6fr) var(--mw) minmax(0,1fr);} .fo.hz.e-me{grid-template-columns:minmax(0,1fr) var(--mw) minmax(0,.6fr);}
-@media (max-height:820px){ .an-race{margin:6px 0 0;} .rc-pt{width:52px;height:52px;} .rc-g{width:76px;} .rc-svg svg{max-height:84px;} .rc-k{margin-bottom:0;} }
-@media (orientation:landscape) and (max-height:520px){ .an-race{margin:2px 0 0;} .rc-k{display:none;} .rc-svg svg{max-height:58px;} .rc-pt{width:40px;height:40px;} .rc-g small{display:none;} }
 
 /* ── The Relic powers of 2026-11-13 ─────────────────────────────────────────────────────────────────────────── */
 /* Foresight: the top cards of the draw pile on two trays, what comes into the hand now (lit) and what stays on the pile */
@@ -1886,7 +2002,14 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .an .an-felt .an-strip.n2 .st-spark{width:20px;height:24px;} .an .an-felt .an-strip.n2 .st-spark b{font-size:.72rem;}
 .an .an-felt .an-strip.n2 .st-hand{width:14px;height:19px;margin-right:5px;}
 .an .an-felt .an-strip.n3 :is(.st-top,.st-bot){gap:3px;} .an .an-felt .an-strip.n3 .st-name > i{display:none;} .an .an-felt .an-strip.n3 .st-name{font-size:.76rem;}
-/* (an upright phone: a smaller sphere in the results card's panel gives its words the room to keep to fewer lines, so the
-   buttons stay on the card) */
-@media (orientation:portrait) and (max-width:500px){ .k-win .rw-end .rw-sph{--sz:58px !important;} .k-win .rw-end .rw-e-top{gap:10px;padding:8px 10px;} .k-win .rw-end .rw-e-row{padding:7px 10px;} .k-win .card:has(.an-race) .rank{margin-bottom:8px;} .k-win .card:has(.an-race) .k-win-show{margin-bottom:10px;} }
-@media (orientation:landscape) and (max-height:520px){ .k-win .card.an-win:has(.an-race){padding:12px 18px;} }   /* (a phone on its side keeps winCols' closer edge) */
+/* (a small phone, 620 tall or less: the dock closer still, so the game keeps a window above it) */
+@media (orientation:portrait) and (max-height:620px){
+  .k-win .card.aw > .k-acts{padding-top:6px;padding-bottom:10px;}
+  .k-win .card.aw .k-acts > .btn-primary{min-height:46px;}
+  .aw-grp > .btn{min-height:40px;font-size:1.02rem;}
+  .k-win .card.aw .k-acts > .btn-ghost{min-height:34px;}
+}
+/* (the kit's labels on this page, which it sets in spaced capitals: the text face's small capitals instead, as every
+   label of Arvela's own is, a size up so the small capitals stand as tall as the capitals did) */
+:is(.label,.k-list .k-grp h3,.k-ho-k,.hv-h){font-family:var(--fellsc);font-weight:500;text-transform:none;letter-spacing:.1em;font-size:.92rem;}
+:is(.k-vs,.qs-vs,.k-ps-vs){font-family:var(--fellsc);font-style:italic;font-weight:500;text-transform:none;letter-spacing:.02em;font-size:.95rem;}
