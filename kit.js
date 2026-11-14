@@ -2124,10 +2124,10 @@
     return 'n';
   }
   var BOT_FLAME = '<svg class="fl" viewBox="0 0 40 40" aria-hidden="true"><defs>' +
-    '<linearGradient id="kBotF1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e5321b"/><stop offset=".55" stop-color="#ff7a22"/><stop offset="1" stop-color="#ffc53d" stop-opacity=".85"/></linearGradient>' +
-    '<linearGradient id="kBotF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffb02e"/><stop offset="1" stop-color="#fff1a8"/></linearGradient></defs>' +
-    '<path class="f1" fill="url(#kBotF1)" d="M5 41C2.5 31 8 27 7 18.5c3.4 3.2 4.2 5.4 5.4 4.2C11.6 16 14.6 11.4 13.6 4.6c4.8 4.6 6.2 8.6 6.4 11.4C21 11.4 23.8 7.6 26 2.6c1.6 6.6 2.4 11.2 1.4 16.6 1.8-1.6 3.2-3.8 4-6.6 3.6 7.2 6 15.4 3.6 28.4z"/>' +
-    '<path class="f2" fill="url(#kBotF2)" d="M10 41c-1.6-7 2.4-10 2-15.6 2.6 2.4 3.4 4.4 4.4 3.6-.4-5.2 2-8.4 3.4-12.6 2 3.8 3.4 7.6 3.2 11.6 1.6-1.4 2.6-3 3.2-5.2 2.8 5.4 4 11.2 2.4 18.2z"/></svg>';
+    '<linearGradient id="kBotF1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#d9261a"/><stop offset=".5" stop-color="#ff5a1f"/><stop offset="1" stop-color="#ff9a2e"/></linearGradient>' +
+    '<linearGradient id="kBotF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffb02e"/><stop offset="1" stop-color="#ffe98a"/></linearGradient></defs>' +
+    '<g class="fg"><path fill="url(#kBotF1)" d="M20 1.5c1.6 5.6 7 8.4 8.6 14.4 1-2.4.6-4.6-.4-6.8 4.8 3.6 7 9.6 6 15.4C33 32 27 37 20 37S7 32 6 24.6c-.6-5 1.8-9.4 5-12.2-.2 3 .6 5.2 2.6 6.6-.8-7 2.4-12.6 6.4-17.5z"/>' +
+    '<path fill="url(#kBotF2)" d="M20.4 12.5c1 4.4 5.6 7 5.6 12.2 0 4.2-2.8 7.3-6 7.3s-6-2.8-6-6.4c0-3.2 1.8-5.4 3.6-6.8 0 2 .8 3.2 2 3.6-.6-3.8.2-7 .8-9.9z"/></g></svg>';
   function botFace(tag, color) {
     var lv = botLevel(tag), ink = '#1b1c2e', eyes = lv === 'e'
       ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
