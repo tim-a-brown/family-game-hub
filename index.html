@@ -954,6 +954,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var on = !!resumeMap[b.dataset.g];
       if (on !== b.classList.contains('live')) { var g = findGame(b.dataset.g); if (g) b.replaceWith(badge(g)); }
     });
+    refreshLive();   // (Night: each row's line at the right)
   }
   var tiles = get('gn_home_view', 'tiles') !== 'list';
   // Console games: the tile is the cartridge itself, in its console's plastic, with the game's label (box art and
@@ -988,6 +989,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       r0.appendChild(ct[1]); r0.appendChild(star0);
       return r0;
     }
+    if (glassOn()) return glassRow(g, fav);
     // the tile frame is one colour per section (the icon keeps the game's own shade)
     var cat = GAME_CATS.filter(function (x) { return x.id === g.cat; })[0];
     var r = el('div', { class: 'g', 'data-id': g.id, 'data-cat': g.cat, style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color } });
@@ -1005,6 +1007,83 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     r.appendChild(go); r.appendChild(star);
     return r;
   }
+  // ── Night glass in color (the Night theme, Tim 2026-11-14): every game is a row of glass tinted with its category's
+  // color, the game's icon at the left, its name and how many play under it, and at the right what is happening in it
+  // now (gold when it's something for you to do). The other themes keep the tiles above.
+  function glassOn() { return !document.documentElement.hasAttribute('data-theme'); }
+  function catHsl(g, l) { var c = GAME_CATS.filter(function (x) { return x.id === g.cat; })[0]; return c ? 'hsl(' + c.hue + ' ' + c.sat + '% ' + l + '%)' : g.color; }
+  function playersSaid(g) {
+    if (g.cart) return CONSOLE_NAME[g.sys] || 'Console';
+    if (g.max === 0) return g.min + ' or more players';
+    if (g.min === g.max) return g.min === 1 ? 'Just you' : g.min + ' players';
+    return g.min + ' to ' + g.max + ' players';
+  }
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  function whenSaid(ts) {
+    var d = new Date(ts), t0 = new Date().setHours(0, 0, 0, 0), days = Math.floor((t0 - new Date(ts).setHours(0, 0, 0, 0)) / 864e5);
+    if (days <= 0) return 'today'; if (days === 1) return 'yesterday'; if (days < 7) return DAYS[d.getDay()];
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  // today's daily puzzles by game: 'new', 'going' or 'done' (worked out once a redraw)
+  var dailyBy = null;
+  function dailyOf(id) {
+    if (!dailyBy) { dailyBy = {}; try { if (window.Daily) Daily.list().forEach(function (x) { var o = dailyBy[x.id]; dailyBy[x.id] = !o ? x.status : o === 'going' || x.status === 'going' ? 'going' : o === 'new' || x.status === 'new' ? 'new' : 'done'; }); } catch (e) {} }
+    return dailyBy[id] || null;
+  }
+  // the best score on a game's own board (a plain score board: highest first)
+  function bestOf(g) {
+    try {
+      var cfg = typeof hiBoard === 'function' ? hiBoard(g.id) : null; if (cfg && cfg.low) return null;
+      var l = JSON.parse(get('hi_' + g.id, '[]')); if (!Array.isArray(l)) return null;
+      var b = null; l.forEach(function (e) { var s = e && Number(e.score); if (e && e.score !== '' && e.score != null && isFinite(s) && (b == null || s > b)) b = s; });
+      return b ? b : null;
+    } catch (e) { return null; }
+  }
+  // what a game's row says at its right: your turn, a friend's open table, a game in progress, today's puzzle, the
+  // best score, or when it was last played ({t: [lines], y: gold})
+  function liveOf(g) {
+    var nt = netTurns.filter(function (x) { return x.id === g.id; }), mine = nt.filter(function (x) { return x.mine; })[0];
+    if (mine) return { t: ['Your turn with ' + listAnd(String(mine.vs || 'the computer').split(', '))], y: 1 };
+    var ft = friendTables.filter(function (x) { return x.id === g.id; })[0];
+    if (ft) return { t: [Kit.poss(ft.who) + ' table is open'], y: 1 };
+    if (nt[0]) return { t: [nt[0].vs + '’s turn'] };
+    var r = resumeMap[g.id];
+    if (r) { var p = String(r.label || 'Game in progress').split(' · ').map(function (q) { return q.trim(); }).filter(Boolean).slice(-2); return { t: p.length ? p : ['Game in progress'] }; }
+    var dl = dailyOf(g.id);
+    if (dl === 'new') return { t: ['Today’s puzzle is ready'], y: 1 };
+    if (dl === 'going') return { t: ['You’re partway through today’s puzzle'], y: 1 };
+    if (dl === 'done') return { t: ['You solved today’s puzzle'] };
+    var b = bestOf(g); if (b) return { t: ['The best score is ' + b.toLocaleString()] };
+    try { var h = window.GameHistory ? GameHistory.load(g.id) : []; if (h && h[0] && h[0]._date) return { t: ['Last played ' + whenSaid(h[0]._date)] }; } catch (e) {}
+    return null;
+  }
+  function liveEl(g) {
+    var v = liveOf(g), e = el('em', { class: 'lv' + (v && v.y ? ' y' : '') });
+    if (v) v.t.forEach(function (t) { e.appendChild(el('span', { text: t })); });
+    e.dataset.lv = g.id; return e;
+  }
+  function refreshLive() {
+    if (!glassOn()) return;
+    dailyBy = null;
+    document.querySelectorAll('#list em.lv[data-lv]').forEach(function (e) { var g = findGame(e.dataset.lv); if (g) { var n = liveEl(g); if (n.outerHTML !== e.outerHTML) e.replaceWith(n); } });
+  }
+  function glassRow(g, fav) {
+    var r = el('div', { class: 'g gr', 'data-id': g.id, 'data-cat': g.cat, style: { '--h': catHsl(g, 58), '--c': catHsl(g, 46) } });
+    var ic = g.cart ? el('span', { class: 'gi' }, [el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)])]) : el('span', { class: 'gi', html: GameIcon(g.id) });
+    var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + playersSaid(g) }, [
+      ic, el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: playersSaid(g) })]), liveEl(g)]);
+    go.addEventListener('click', function () { launch(g); });
+    var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
+    star.addEventListener('click', function () {
+      var on = toggleFav(g); Kit.haptic('success'); Kit.sfx(on ? 'good' : 'tap');
+      Kit.toast(on ? g.name + ' added to favorites' : g.name + ' removed from favorites');
+      render();
+    });
+    r.appendChild(go); r.appendChild(star);
+    return r;
+  }
+  // switching the theme redraws home in the new theme's way
+  try { new MutationObserver(function () { railSig = ''; render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
 
   // ── Launch (with "phone or real game?" for games that have a scorekeeper) ─
   // fresh: a new game, so the players filter (Just me / Two of us / Three or more) goes along as ?np= for its setup screen
@@ -1069,7 +1148,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (g.id === 'lorcana') askMotion();
     var live = resumeRead()[g.id] || null, nw = live ? '#new' : '';
     var sp = Kit.setupPage ? Kit.setupPage(g) : null;
-    var box = el('div', { class: 'pick gsheet' }), s;
+    var box = el('div', { class: 'pick gsheet', style: { '--h': catHsl(g, 58) } }), s;
     function opt(e, t, d, act, cls) {
       var b = el('button', { type: 'button', class: cls || '', onclick: function () { s.close(); act(); } }, [
         el('span', { class: 'e', html: Kit.icon(e) }), el('span', { class: 'tx' }, [el('div', { class: 't', text: t })].concat(d ? [typeof d === 'string' ? el('div', { class: 'd', text: d }) : d] : []))
@@ -1080,7 +1159,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       try { sessionStorage.setItem('kit_go', JSON.stringify({ page: page || sp, how: how || 'start', t: Date.now() })); } catch (e) {}
       s.close(); go(g.play + nw, false);
     }
-    var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b></div>' });
+    var head = el('div', { class: 'pick-h', html: GameIcon(g.id) + '<div><b>' + Kit.esc(g.name) + '</b><span class="pk-tag">' + Kit.esc(g.tag || '') + '</span></div>' });
     box.appendChild(head);
     // a friend has a table open in this game: joining it is the first thing offered (Tim, 2026-11-11)
     friendTables.filter(function (x) { return x.id === g.id; }).forEach(function (x) {
@@ -1184,11 +1263,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 
   function section(title, ic, games, extra, favs) {
     var sc = GAME_CATS.filter(function (x) { return x.id === ic; })[0];
-    var s = el('section', { class: 'sec sec-' + ic + (favs ? ' favs' : ''), style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)' } : null });
-    var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: String(games.length) })]);
+    var gl = glassOn();
+    var s = el('section', { class: 'sec sec-' + ic + (favs ? ' favs' : ''), style: sc ? { '--sc': 'hsl(' + sc.hue + ' ' + sc.sat + '% 46%)', '--h': 'hsl(' + sc.hue + ' ' + sc.sat + '% 58%)' } : null });
+    var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: gl ? games.length + (games.length === 1 ? ' game' : ' games') : String(games.length) })]);
     if (extra) h.appendChild(extra);
     s.appendChild(h);
-    var list = el('div', { class: 'list' + (tiles ? ' tiles' : '') });
+    // (Night: rows, except the Consoles shelf of cartridges in the tile view)
+    var list = el('div', { class: 'list' + (gl && !(ic === 'console' && tiles && !favs) ? ' rows' : tiles ? ' tiles' : '') });
     // Favorites keep the order you arranged them in; other sections are A to Z
     var bySys = ic === 'console' && !favs && consoleSort() === 'sys';
     games.slice().sort(favs ? function (a, b) { return favIndex(a) - favIndex(b); } : bySys ? consoleOrder : function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g, i, all) {
@@ -1468,7 +1549,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // a cartridge played on its own page (games.js CONSOLE_NATIVE, Jungle Hunt): its tile is the cartridge, like the
     // other console games
     var ct = g.cart ? g : window.consoleNative && GAMES.filter(function (c) { return c.cart && consoleNative({ sys: c.sys, id: c.cart, name: c.name }) === g.id; })[0];
-    var a = el('a', { class: 'sbox' + (ct ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
+    var a = el('a', { class: 'sbox' + (ct ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color, '--h': catHsl(g, 58) }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
       el('span', { class: 'art' }, [ct ? el('span', { class: 'gicon mini-ct ct-' + ct.sys }, [cartBody(ct)]) : el('span', { html: GameIcon(g.id, { bare: true }), style: { display: 'contents' } }), stLines(x.r.label || 'In progress'), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
       el('span', { class: 'nm', text: g.name })
     ]);
@@ -1495,7 +1576,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function netBar(x) {
     var mine = x.n.mine;
     // (the first tap through to an online game asks to allow notifications, which the icon's count needs on iPhone)
-    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
+    return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color, '--h': catHsl(x.g, 58) }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
       el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
       el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'Against ' + x.n.vs : x.n.vs + '’s turn' }), mine ? el('small', { text: 'Last move ' + ago(x.n.at) }) : null]),   // (how long ago is at the right when it's their turn)
       mine ? el('span', { class: 'yt', html: '<i></i><span>Your turn</span>' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
@@ -1650,7 +1731,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var fresh = out.filter(function (x) { return x.live && !friendTables.some(function (y) { return y.code === x.code; }); });
     if (FGHSync.log && (out.length || friendTables.length)) FGHSync.log('tables', out.length ? 'Open tables: ' + out.map(function (x) { return x.who + ' · ' + ((findGame(x.id) || {}).name || x.id) + ' ' + x.code + (x.live ? ' (' + x.n + '/' + x.max + (x.playing ? ', playing' : '') + ')' : ' (waiting)'); }).join('; ') : 'No open tables now');
     friendTables = out;
-    renderOtb(fresh.length > 0);
+    renderOtb(fresh.length > 0); refreshLive();
     if (FT.sheet) FT.sheet.paint();
   }
   // a table's heartbeat stops when its page closes: look again every 15 s so it leaves on time
@@ -1790,6 +1871,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // Preferences changed the section order: redraw
   window.addEventListener('kit:cats', function () { render(); });
   function render() {
+    dailyBy = null;
     renderChips();
     renderRail();
     var list = $('list'); list.innerHTML = '';
