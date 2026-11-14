@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .turnline{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 8px;min-height:30px;font-family:var(--display);font-size:1.25rem;color:var(--c,var(--yellow));text-align:center;}
 .turnline .dot{width:11px;height:11px;flex:none;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px color-mix(in srgb,currentColor 25%,transparent);}
@@ -109,8 +111,8 @@
   Kit.init({
     id: KEY,
     theme: { felt: ['#17727a', '#0e4f56', '#09393e'], wood: ['#8a5530', '#5a3418'] },
-    onNew: function () { token++; busy = false; clearSave(); showSetup(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Left Right Center: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } token++; busy = false; clearSave(); showSetup(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Left Right Center: past games' }); } }]),
     rules:
       '<p class="goal">Be the last player with chips left. The winner takes the whole pot in the middle!</p>' +
       '<h3>Getting ready</h3><p>Everyone starts with <b>3 chips</b>. Play goes around the table to the left.</p>' +
@@ -121,12 +123,13 @@
       '<li><b>Dot</b>: you keep that chip.</li></ul>' +
       '<h3>Out of chips?</h3><p>You are still in the game! You just skip your turn. If a neighbor rolls an L or R your way, you get chips back and roll again.</p>' +
       '<h3>Winning</h3><p>When only one player still has chips, that player wins and takes everything in the center pot.</p>' +
-      '<h3>Handy buttons</h3><p><b>Auto-roll</b> rolls for everyone so you can just watch. <b>Speed</b> makes the dice and chips move faster or slower.</p>'
+      '<h3>Handy buttons</h3><p><b>Auto-roll</b> rolls for everyone so you can just watch. <b>Speed</b> makes the dice and chips move faster or slower.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone rolls on their own device when it’s their turn, and the computer rolls for any seats it plays.</p>'
   });
 
   // ── Save / load ──────────────────────────────────────────────────────────
   function save() {
-    if (!S) return;
+    if (!S || NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     Kit.resume.set('Round ' + S.round + ' · pot ' + S.pot);
   }
@@ -181,6 +184,7 @@
     if (S.winner != null) return finish();
     var p = S.players[S.cur];
     render();
+    if (NET) { if (prefs.auto && NET.myTurn() && S.cur === NET.seat && p.chips > 0) later(function () { if (S && NET && !busy && S.cur === NET.seat && prefs.auto) roll(true); }, 700); return; }
     if (p.chips === 0) {
       busy = true;
       say(S.cur, 'No chips: skip');
@@ -194,17 +198,34 @@
     if (S.cur === 0) { S.round++; S.rounds.push(S.players.map(function () { return 0; })); }
   }
 
+  // One roll applied to a game state (this device's game, or an online table's): who rolled, the faces and where
+  // each chip went. Online, the turn then moves on past anyone with no chips (their skips ride along in skip).
+  function rollState(st, online) {
+    var keep = S; S = st;
+    try {
+      var who = S.cur, p = S.players[who];
+      if (S.winner != null || p.chips === 0) return null;
+      var n = Math.min(3, p.chips), faces = [];
+      var rig = window.__lrc && window.__lrc.rig; if (rig) window.__lrc.rig = null;
+      for (var i = 0; i < n; i++) faces.push(rig && rig[i] ? rig[i] : FACES[Math.floor(Math.random() * 6)]);
+      var moves = applyFaces(who, faces), skip = [];
+      if (online && S.winner == null) while (S.players[S.cur].chips === 0 && skip.length < S.players.length) { skip.push(S.cur); advance(); }
+      return { state: S, mv: { t: 'r', who: who, faces: faces, moves: moves, skip: skip } };
+    } finally { S = keep; }
+  }
   function roll(auto) {
     if (!S || busy || S.winner != null) return;
     var who = S.cur, p = S.players[who];
+    if (NET) { if (p.chips === 0 || !NET.myTurn() || who !== NET.seat) return; netRoll(); return; }
     if (!auto && p.cpu) return;
     if (p.chips === 0) return;
-    var n = Math.min(3, p.chips), faces = [];
-    var rig = window.__lrc && window.__lrc.rig; if (rig) window.__lrc.rig = null;
-    for (var i = 0; i < n; i++) faces.push(rig && rig[i] ? rig[i] : FACES[Math.floor(Math.random() * 6)]);
-
-    // Apply the result to the saved state right away; the animation then catches the view up.
     view = snapshotView();
+    var r = rollState(S);
+    save();
+    playRoll(who, r.mv.moves, function () { if (S.winner != null) return finish(); render(); next(); });
+  }
+  function applyFaces(who, faces) {
+    var p = S.players[who], n = faces.length;
     var row = S.rounds[S.rounds.length - 1], moves = [];
     faces.forEach(function (f) {
       if (f === '.') { moves.push({ f: f }); return; }
@@ -225,9 +246,11 @@
     var al = alive();
     if (al.length === 1) S.winner = S.players.indexOf(al[0]);
     else advance();
-    save();
-
-    // Show it
+    return moves;
+  }
+  // The roll on the table: the dice tumble from the roller's seat, then each chip flies where its die says (view
+  // starts as the chips before the roll and catches up with S one chip at a time)
+  function playRoll(who, moves, done) {
     busy = true;
     var t = token;
     render(true);
@@ -240,11 +263,7 @@
       if (t !== token) return;
       if (k > 0 && dieEls[k - 1]) { dieEls[k - 1].classList.remove('act'); if (!dieEls[k - 1].classList.contains('keep')) dieEls[k - 1].classList.add('done'); }
       if (k >= moves.length) {
-        later(function () {
-          busy = false; view = null;
-          if (S.winner != null) return finish();
-          render(); next();
-        }, 420);
+        later(function () { busy = false; view = null; done(); }, 420);
         return;
       }
       var m = moves[k], d = dieEls[k]; k++;
@@ -363,8 +382,8 @@
     if (lucky && hl.length < 6) hl.push(lucky.name + ' rolled three dots ' + (lucky.st.tripleDot === 1 ? 'once' : lucky.st.tripleDot + ' times') + ' and kept every chip');
     var broke = null; S.players.forEach(function (q) { if (q !== w && (!broke || q.st.zero > broke.st.zero)) broke = q; });
     if (broke && broke.st.zero >= 3 && hl.length < 6) hl.push(broke.name + ' went broke ' + broke.st.zero + ' times');
-    var modeTxt = (S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + (S.stake ? ' · ' + stakeName(S.stake) + ' chips' : '');
-    Kit.record(KEY, {
+    var modeTxt = (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + (S.stake ? ' · ' + stakeName(S.stake) + ' chips' : '');
+    if (netRecorded()) {} else Kit.record(KEY, {
       started: S.started, mode: modeTxt,
       // Scores are chips taken home: the winner's stack plus the pot
       players: S.players.map(function (q, i) { return { name: q.name, score: q.chips + (i === S.winner ? pot : 0), cpu: q.cpu }; }),
@@ -378,10 +397,10 @@
       detail: { p: S.players.map(function (q) { var s = q.st || {}; return { z: s.zero || 0, pk: s.peak || 0, pr: s.peakR || 0, c3: s.tripleC || 0, d3: s.tripleDot || 0, n: s.rolls || 0 }; }),
         lw: S.last ? S.last.who : -1, lf: S.last ? S.last.faces.join('') : '', mp: S.maxPot || pot, rl: rollLog().rl, r0: rollLog().r0 }
     });
-    clearSave();
-    var last = S, t = token;
+    if (!NET) clearSave();
+    var last = S, t = token, net = NET, meWon = NET ? S.winner === NET.seat : w.name === 'You';
     // Celebration: the whole pot slides over to the winner, chip by chip
-    Kit.callout(w.name === 'You' ? 'You win the pot!' : w.name + ' wins!');
+    Kit.callout(meWon ? 'You win the pot!' : w.name + ' wins!');
     Kit.sfx('good'); Kit.haptic('success');
     view = snapshotView(); view.chips[S.winner] = w.chips;
     var seatSt = topChipRect(S.winner, 1), potEl = app.querySelector('.pot'), n = Math.min(pot, 24);
@@ -405,6 +424,7 @@
     setTimeout(function () {
       if (t !== token) return;
       busy = false;
+      if (net) { if (net === NET) { netWin(last, meWon); drain(); } return; }
       var youLost = last.mode === 'cpu' && w.cpu;
       Kit.win({
         title: w.name === 'You' ? 'You win!' : w.name + ' wins!',
@@ -485,9 +505,10 @@
     var roller = S.players[rollerIdx];
     var line;
     if (S.winner != null && !rolling) line = Kit.poss(S.players[S.winner].name) + ' pot!';
-    else if (rolling) line = roller.name + (roller.name === 'You' ? ' roll' : ' rolls') + ' ' + S.last.faces.length + (S.last.faces.length === 1 ? ' die' : ' dice');
+    else if (rolling) line = (NET && rollerIdx === NET.seat ? 'You' : roller.name) + (roller.name === 'You' || NET && rollerIdx === NET.seat ? ' roll' : ' rolls') + ' ' + S.last.faces.length + (S.last.faces.length === 1 ? ' die' : ' dice');
     else if (cur.chips === 0) line = cur.name + (cur.name === 'You' ? ' have' : ' has') + ' no chips: skip';
     else if (cur.cpu) line = cur.name + ' is rolling…';
+    else if (NET) line = S.cur === NET.seat ? 'Your roll' : Kit.poss(cur.name) + ' roll';
     else line = n > 1 && (S.mode === 'pass' || cur.name !== 'You') ? Kit.poss(cur.name) + ' roll' : 'Your roll';
     app.appendChild(el('div', { class: 'turnline', style: { '--c': roller.color } }, [el('span', { class: 'dot' }), el('span', { text: line })]));
 
@@ -524,10 +545,10 @@
     paintPot();
 
     // Roll button + pace controls
-    var canTap = S.winner == null && !busy && !cur.cpu && cur.chips > 0 && !prefs.auto;
+    var canTap = S.winner == null && !busy && !cur.cpu && cur.chips > 0 && !prefs.auto && (!NET || NET.myTurn() && S.cur === NET.seat);
     var nd = Math.min(3, cur.chips);
     var rb = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block rollbtn', onclick: function () { roll(false); } },
-      [el('span', { text: S.winner != null ? 'Game over' : busy || cur.cpu || cur.chips === 0 ? 'Rolling…' : prefs.auto ? 'Auto-rolling…' : 'Roll ' + nd + (nd === 1 ? ' die' : ' dice') })]);
+      [el('span', { text: S.winner != null ? 'Game over' : busy || cur.cpu || cur.chips === 0 ? 'Rolling…' : NET && S.cur !== NET.seat ? 'Waiting for ' + cur.name : prefs.auto ? 'Auto-rolling…' : 'Roll ' + nd + (nd === 1 ? ' die' : ' dice') })]);
     rb.disabled = !canTap;
     app.appendChild(rb);
 
@@ -546,6 +567,86 @@
     var tot = n * 3;
     app.appendChild(el('div', { class: 'stakeline', text: 'Round ' + S.round + ' · ' + tot + ' chips' + (S.stake ? ' at ' + stakeName(S.stake) + ' (' + money(tot) + ')' : '') }));
   }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // The table holds the game state itself (mode 'online'). A roll is one move: the dice, where each chip went, and
+  // anyone with no chips skipped after it. The computer rolls for its seats (the people's devices make those moves).
+  var NET = null, showQ = [], NETREC = 'lrc_net_rec';
+  function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_lrc')) || {}; } catch (e) { return {}; } }
+  function netBots() { var s = setupSaved(), n = +s.count || 0; return (s.robots || []).filter(function (i) { return i > 0 && i < n; }).length; }
+  function netOpts() { var o = setupSaved().options || {}; return { stake: +o.stake || 0, bots: netBots() }; }
+  function netStart(players, opts) {
+    return {
+      mode: 'online', stake: +(opts && opts.stake) || 0,
+      players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, color: Kit.color(i), chips: 3, st: { zero: 0, peak: 3, peakR: 1, tripleC: 0, tripleDot: 0, rolls: 0 } }; }),
+      cur: 0, round: 1, pot: 0, maxPot: 0, turns: 0, last: null, winner: null, ev: [],
+      rounds: [players.map(function () { return 3; }), players.map(function () { return 0; })], started: Date.now()
+    };
+  }
+  function netRoll() { var seat = NET.seat; NET.act(function (st) { return st.cur === seat ? rollState(st, true) : null; }); }
+  function netShow(net, info) {
+    NET = net;
+    if (busy) { showQ.push(info); return; }
+    showOne(info);
+  }
+  function showOne(info) {
+    var st = JSON.parse(JSON.stringify(NET.state)), mv = info.mv, prev = info.prev;
+    token++; busy = false;
+    if ((info.again || info.fresh) && winRef) { winRef.close(); winRef = null; }
+    if (mv && mv.t === 'r' && prev && !info.fresh && !info.again) {
+      view = { chips: prev.players.map(function (p) { return p.chips; }), pot: prev.pot };
+      S = st;
+      playRoll(mv.who, mv.moves, function () {
+        (mv.skip || []).forEach(function (i, k) { setTimeout(function () { say(i, 'No chips: skip'); }, k * 250); });
+        if (S.winner != null) return finish();
+        render(); next(); drain();
+      });
+      if (!info.mine && NET.myTurn() && S.cur === NET.seat) Kit.haptic('light');
+      return;
+    }
+    S = st; view = null;
+    if (info.again) { Kit.sfx('deal'); Kit.callout(S.cur === NET.seat ? 'You roll first' : S.players[S.cur].name + ' rolls first'); }
+    if (S.winner != null) { render(); if (info.fresh) netWin(S, S.winner === NET.seat); else finish(); return; }
+    if (NET.status === 'over' && NET.result && NET.result.left != null) { render(); netWin(S, false); return; }
+    render(); next();
+  }
+  function drain() { if (!busy && showQ.length && NET) showOne(showQ.shift()); }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  var winRef = null;
+  function netWin(st, meWon) {
+    if (!NET) return;
+    var res = NET.result, left = !!(res && res.left != null), w = st.winner != null ? st.players[st.winner] : null;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : meWon ? 'You win!' : w.name + ' wins!',
+      sub: left ? '' : (meWon ? 'You took' : w.name + ' took') + ' the pot of ' + st.pot + ' chip' + (st.pot === 1 ? '' : 's') + (st.stake ? ', worth ' + money(st.pot) + ',' : '') + ' after ' + st.round + ' round' + (st.round === 1 ? '' : 's') + '.',
+      lose: !meWon && !left, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: true
+    });
+  }
+  function netLeave() {
+    NET = null; showQ = []; token++; busy = false; view = null;
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = load();
+    if (sv && sv.players && sv.players.length && !sv.done) { S = sv; next(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'lrc', title: 'Left Right Center', min: 2, max: 10, botMs: 2600,
+    seats: function (n, o) { return Math.min(10, n + Math.max(0, +(o && o.bots) || 0)); },
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.winner != null ? [] : [st.cur]; },
+    over: function (st) { return st.winner == null ? null : { win: [st.winner], text: st.players[st.winner].name + ' won the pot' }; },
+    bot: function (st, seat) { return st.cur === seat ? rollState(st, true) : null; },
+    show: netShow, leave: netLeave
+  });
 
   // Test hooks
   window.__lrc = { state: function () { return S; }, busy: function () { return busy; }, speed: function (x) { testSpd = x; }, start: function (cfg) { start(cfg); } };
