@@ -378,6 +378,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function nextActive(g, i) { for (var k = 1; k <= g.players.length; k++) { var j = (i + k) % g.players.length; if (!g.players[j].gone) return j; } return i; }
   function subOf(g, i) { for (var k = 0; k < g.subs.length; k++) if (g.subs[k].p === i) return g.subs[k]; return null; }
   function waiting(g) { return act(g).filter(function (i) { return i !== g.judge && !subOf(g, i); }); }
+  function nextPerson(g) { for (var k = 1; k <= g.players.length; k++) { var j = (g.judge + k) % g.players.length; if (!g.players[j].gone && !g.players[j].cpu && j !== g.judge && !subOf(g, j)) return j; } return -1; }
   function nextToPlay(g) { for (var k = 1; k <= g.players.length; k++) { var j = (g.judge + k) % g.players.length; if (!g.players[j].gone && j !== g.judge && !subOf(g, j)) return j; } return -1; }
   function minPlayers(g) { return g.ghost ? 2 : 3; }
   function drawA(g) {
@@ -592,7 +593,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   var botT = 0, gen = 0;
   function schedule() {
     clearTimeout(botT);
-    var g = G; if (!g || g.mode !== 'solo') return;
+    var g = G; if (!g || (g.mode === 'online' && net.mode !== 'host')) return;   // (robots play on this device: solo, pass and play, or the host's table)
     var my = gen, J = g.players[g.judge], step = null, wait = 900;
     if (g.phase === 'flip' && J.cpu) { step = function () { apply(g, g.judge, { t: 'flip' }); }; wait = 1100; }
     else if (g.phase === 'play') {
@@ -653,9 +654,11 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function passFlow() {
     if (!G || G.mode !== 'pass' || pp.busy) return;
     var need = -1, msg = '', w = words(viewFor(-1));
-    if (G.phase === 'play') { need = nextToPlay(G); msg = 'Pick a ' + w.ans + (G.shown ? ' for ' + G.prompt.map(function (c) { return raw(G.prKind, c).n || 'the ' + w.pr; }).join(' and ') : '') + '.'; if (G.deck === 'cah') msg = 'Pick ' + (G.pick > 1 ? G.pick + ' white cards' : 'a white card') + ' for the black card.'; }
-    else if (G.phase === 'judge') { need = G.judge; msg = 'You’re the ' + w.judge + '. Turn the cards over, read them out loud, and pick your favorite.'; }
-    if (need < 0 || need === pp.viewer) return;
+    if (G.phase === 'play') { need = nextPerson(G); msg = 'Pick a ' + w.ans + (G.shown ? ' for ' + G.prompt.map(function (c) { return raw(G.prKind, c).n || 'the ' + w.pr; }).join(' and ') : '') + '.'; if (G.deck === 'cah') msg = 'Pick ' + (G.pick > 1 ? G.pick + ' white cards' : 'a white card') + ' for the black card.'; }
+    else if (G.phase === 'judge' && !G.players[G.judge].cpu) { need = G.judge; msg = 'You’re the ' + w.judge + '. Turn the cards over, read them out loud, and pick your favorite.'; }
+    // nobody needs the device (the robots are picking, or a robot judges): every hand goes face down and the table plays on
+    if (need < 0) { if (pp.viewer >= 0) { pp.viewer = -1; render(viewFor(-1)); } return; }
+    if (need === pp.viewer) return;
     pp.busy = true;
     var showing = pp.viewer >= 0;
     pp.viewer = -1;
@@ -968,14 +971,15 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var felt = el('div', { class: 'felt-in ph-' + V.phase }), tbl = el('div', { class: 'tbl wood' }, [felt]);
     app.appendChild(tbl);
     var meJ = V.me === V.judge && V.me >= 0, J = V.players[V.judge] || { name: '?' };
-    var passJ = V.mode === 'pass';   // in pass and play the judge acts from the shared screen
+    var personPicks = V.players.some(function (p, k) { return k !== V.judge && !p.gone && !p.cpu && !p.played; });
+    var passJ = V.mode === 'pass' && !J.cpu;   // in pass and play a person judging acts from the shared screen (a robot judge acts on its own)
     var canJudge = meJ || (passJ && V.phase === 'judge' && V.me === V.judge);
     var myTurn = V.phase === 'play' && V.me >= 0 && !meJ && !V.mine;
     // One short line: whose move it is. The table itself shows the rest.
     var msg = '';
     if (V.phase === 'wait') msg = 'Waiting for players<span class="think"><i></i><i></i><i></i></span>';
     else if (V.phase === 'flip') msg = meJ ? 'You’re the ' + w.judge : passJ ? nameB(V, V.judge) + ' turns a card' : nameB(V, V.judge) + ' is the ' + w.judge;
-    else if (V.phase === 'play') msg = myTurn ? (V.rules.crab ? 'Worst fit wins' : V.deck === 'cah' ? (V.pick > 1 ? 'Pick ' + V.pick + ', in order' : 'Your pick') : V.prompt ? 'Your pick' : 'Play it blind') : meJ ? 'They’re picking for you' : passJ && V.me < 0 ? 'Pass it on' : 'Picking<span class="think"><i></i><i></i><i></i></span>';
+    else if (V.phase === 'play') msg = myTurn ? (V.rules.crab ? 'Worst fit wins' : V.deck === 'cah' ? (V.pick > 1 ? 'Pick ' + V.pick + ', in order' : 'Your pick') : V.prompt ? 'Your pick' : 'Play it blind') : meJ ? 'They’re picking for you' : V.mode === 'pass' && V.me < 0 && personPicks ? 'Pass it on' : 'Picking<span class="think"><i></i><i></i><i></i></span>';
     else if (V.phase === 'judge') { var unrev = V.subs.some(function (s) { return !s.c; }); msg = canJudge ? (unrev ? 'Turn them over' : V.rules.crab ? 'Pick the worst fit' : 'Pick a winner') : nameB(V, V.judge) + ' is judging<span class="think"><i></i><i></i><i></i></span>'; }
     else if (V.phase === 'result' && V.win) msg = V.win.p < 0 ? 'The ' + (V.deck === 'cah' ? 'Rando' : 'ghost') + ' steals it!' : nameB(V, V.win.p) + (V.win.p === V.me && V.mode !== 'pass' ? ' win!' : ' wins!');
     felt.appendChild(el('div', { class: 'st' }, [el('div', { class: 'msg', html: msg }),
@@ -1097,7 +1101,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       }
     }
     if (btn && !(showHand && myTurn)) tbl.appendChild(el('div', { class: 'bar' }, [btn]));
-    if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine) app.appendChild(el('div', { class: 'hint', text: 'Played. Pass the phone on.' }));
+    if (V.mode === 'pass' && V.phase === 'play' && V.me >= 0 && V.mine && personPicks) app.appendChild(el('div', { class: 'hint', text: 'Played. Pass the phone on.' }));
 
     // the hand: laid out now it's on the page; picks change after the old look is in place, so the lift animates
     if (hf) { void hf.el.offsetWidth; hf.layout(); hf.sync(ui.sel, V.pick, myTurn); }
@@ -1291,7 +1295,8 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       '<li><b>Apple Turnovers</b>: everyone holds 5 green cards instead. The judge turns over a red card, and you play the green card that describes it best.</li></ul>' +
       '<h3>Ways to play</h3><ul><li><b>Solo</b>: you and computer players. They play and judge by what fits, with a little personality, and say why they picked.</li>' +
       '<li><b>Pass and play</b>: one phone. When it says Pass to Sam, hand it over. Sam holds the button to see their cards. The judge gets the phone last.</li>' +
-      '<li><b>Online</b>: everyone on their own phone, up to 24 players. Open a table and others join with its code. People can join a game that is already going.</li></ul>' +
+      '<li><b>Computer players with people</b>: any seat can be a computer player, in pass and play and online. A computer player picks its own card, and when it is the judge it turns the cards over and picks a winner by itself.</li>' +
+      '<li><b>Online</b>: everyone on their own phone, up to 24 players. Open a table and others join with its code. The computer players you seat in the setup come to the table too, played by your device. People can join a game that is already going.</li></ul>' +
       '<p class="rnote">Apples to Apples is a Mattel game. The cards here are original, written for this site.</p>';
     if (cahUnlocked()) r += '<h3>Cards Against Humanity</h3><ul>' +
       '<li>Everyone holds <b>10 white cards</b>. The <b>Card Czar</b> turns over a <b>black card</b> with a question or a fill-in-the-blank.</li>' +
@@ -1344,7 +1349,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var st = Kit.setup(app, {
       intro: cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.',
       modes: Kit.modes([{ id: 'solo', kind: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Each player on their own device, up to 24' }]),
-      players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
+      players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : m === 'pass' ? 'mix' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
       options: [
         { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },
         { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', '3 players'], ['on', 'Always'], ['off', 'Off']] }
@@ -1446,12 +1451,18 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       var nm = (cfg.players[0] && cfg.players[0].name) || '';
       if (/^Player \d+$/.test(nm)) nm = rawGet('my_name') || nm;
       lsSet(NETME, { name: nm });
-      net.cfg = { deck: ch.deck, packs: ch.packs.slice(), rules: Object.assign({}, ch.rules), target: cfg.options.target, ghost: cfg.options.ghost };
+      net.cfg = { deck: ch.deck, packs: ch.packs.slice(), rules: Object.assign({}, ch.rules), target: cfg.options.target, ghost: cfg.options.ghost, bots: setupBots() };
       goLobby(); return;
     }
     var n = cfg.players.length;
     startLocal({ mode: cfg.mode, deck: ch.deck, packs: ch.packs.slice(), rules: Object.assign({}, ch.rules), target: cfg.options.target, ghost: cfg.options.ghost === 'on' || (cfg.options.ghost === 'auto' && n === 3),
       players: cfg.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu }; }) });
+  }
+  // The computer players seated in the setup (online the setup hands over only your own seat; the rest is in its save)
+  function setupBots() {
+    var s = lsGet('gn_setup_' + KEY, null) || {}, out = [];
+    (s.robots || []).forEach(function (i) { if (i > 0 && i < (s.count || 0)) { var n = String((s.bots || [])[i - 1] || '').trim(); out.push(n || 'Computer ' + (out.length + 1)); } });
+    return out;
   }
   function startLocal(cfg) {
     var need = cfg.deck === 'cah' ? cahData() : a2aData();
@@ -1492,7 +1503,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   function hostTable(name) {
     closeLobby(); busy('Opening your table…');
     var need = net.cfg && net.cfg.deck === 'cah' ? cahData() : a2aData();
-    return need.then(function () { return a2aData(); }).then(function () { return Online.host({ game: KEY, name: name, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), screen: app }); }).then(function (table) {
+    return need.then(function () { return a2aData(); }).then(function () { return Online.host({ game: KEY, name: name, max: 24, min: Math.max(1, netMin() - ((net.cfg && net.cfg.bots) || []).length), screen: app }); }).then(function (table) {
       table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); goLobby(); });
       if (!net.cfg) { var r = savedRules(); net.cfg = { deck: cahOn() ? 'cah' : 'a2a', packs: cahOn() ? savedCahPacks() : savedPacks(), rules: r, target: 'auto', ghost: 'auto' }; }
       net.mode = 'host'; net.table = table; net.myName = name; net.nextPid = 1;
@@ -1522,26 +1533,36 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     }).catch(function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); goLobby(); });
   }
   function idxOfPid(pid) { if (!G) return -1; for (var i = 0; i < G.players.length; i++) if (G.players[i].pid === pid) return i; return -1; }
-  function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
-  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), playing: !!(G && G.phase !== 'over') }; }
+  function uniqueName(n) { var base = String(n || 'Player').slice(0, 14), k = 2, out = base; while (net.roster.some(function (r) { return r.name.toLowerCase() === out.toLowerCase(); }) || netBots().some(function (b) { return b.toLowerCase() === out.toLowerCase(); })) out = base + ' ' + k++; return out; }
+  function rosterMsg() { return { t: 'ro', ro: net.roster.map(function (r) { return { pid: r.pid, name: r.name, host: !!r.host }; }), bots: netBots(), playing: !!(G && G.phase !== 'over') }; }
   function sendRoster() { if (net.table) net.table.broadcast(rosterMsg(), true); if (net.wait) net.wait.update(waitPlayers(net.roster, 0)); }
-  function waitPlayers(ro, mePid) { return ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; }); }
+  // the people at the table, then the computer players the host seated (they sit down when the game starts)
+  function waitPlayers(ro, mePid) {
+    var l = ro.map(function (r, i) { return { name: r.name, host: !!r.host, me: r.pid === mePid, color: Kit.color(i) }; });
+    netBots().forEach(function (n, k) { l.push({ name: n, bot: true, color: Kit.color(ro.length + k) }); });
+    return l;
+  }
+  function netBots() { return net.mode === 'host' ? (net.cfg && net.cfg.bots) || [] : net.bots || []; }
+  function netMin() { return (net.cfg && net.cfg.ghost === 'on' ? 2 : 3); }
+  function waitNote() { var b = netBots().length; return b ? 'Three or more players, counting the ' + (b === 1 ? 'computer player' : b + ' computer players') + '. People can join while you play.' : 'Three or more players. People can join while you play.'; }
   function showWait() {
     screen = 'wait'; lastV = null; G = net.mode === 'host' ? null : G; finished = false;
     window.scrollTo(0, 0);
     if (net.mode === 'host') {
       net.table.setStatus('open', '');
-      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
-        note: 'Three or more players. People can join while you play.' });
+      net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: Math.max(1, netMin() - netBots().length), table: net.table, players: waitPlayers(net.roster, 0), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
+        note: waitNote() });
     } else if (net.mode === 'guest') {
       net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: (net.cfg && net.cfg.ghost === 'on' ? 2 : 3), players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); } });
     }
   }
   function hostStart() {
-    var c = net.cfg, n = net.roster.length, ghost = c.ghost === 'on' || (c.ghost === 'auto' && n === 3);
+    var c = net.cfg, bots = c.bots || [], n = net.roster.length + bots.length, ghost = c.ghost === 'on' || (c.ghost === 'auto' && n === 3);
     if (n < 3 && !(ghost && n === 2)) { Kit.toast('You need at least 3 players'); return Promise.resolve(); }
     net.wait = null;
-    lastCfg = { mode: 'online', deck: c.deck, packs: c.packs, rules: c.rules, target: c.target, ghost: ghost, players: net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; }) };
+    var seated = net.roster.map(function (r, i) { return { name: r.name, color: Kit.color(i), cpu: false, pid: r.pid }; });
+    bots.forEach(function (b, k) { seated.push({ name: b, color: Kit.color(seated.length), cpu: true, pid: null }); });   // (the host's device plays them)
+    lastCfg = { mode: 'online', deck: c.deck, packs: c.packs, rules: c.rules, target: c.target, ghost: ghost, players: seated };
     G = newGame(lastCfg); screen = 'game'; finished = false; lastV = null; ui.round = 0;
     Kit.gameStart(); Kit.sfx('deal');
     net.table.setStatus('playing', 'Round 1');
@@ -1582,7 +1603,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   }
   function guestMsg(m) {
     if (m.t === 'hi') { net.myPid = m.you; if (m.name) net.myName = m.name; return; }
-    if (m.t === 'ro') { net.roster = m.ro; if (net.wait) net.wait.update(waitPlayers(m.ro, net.myPid)); return; }
+    if (m.t === 'ro') { net.roster = m.ro; net.bots = m.bots || []; if (net.wait) net.wait.update(waitPlayers(m.ro, net.myPid)); return; }
     if (m.t === 'wait') { net.view = null; lastV = null; finished = false; showWait(); return; }
     if (m.t === 'v') {
       var first = screen !== 'game';
