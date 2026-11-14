@@ -439,7 +439,7 @@
       var z = zone('pz', p[0], [el('div', { class: 'dd' }, [miniDie(p[1]), miniDie(p[2])]), el('div', { class: 'ztxt', text: PROPS[p[0]][1] + ' to 1' })], PROPS[p[0]][0] + ', pays ' + PROPS[p[0]][1] + ' to 1');
       anchor(p[0], '82%', '30%', z); og.appendChild(z);
     });
-    var ac = zone('pz wide', 'anyCraps', [el('div', { class: 'ztxt r', text: 'Any craps' }), el('div', { class: 'ztxt', text: '2 · 3 · 12 · 7 to 1' })]); anchor('anyCraps', '90%', '50%', ac); og.appendChild(ac);
+    var ac = zone('pz wide', 'anyCraps', [el('div', { class: 'ztxt r', text: 'Any craps' }), el('div', { class: 'ztxt', text: '2, 3 or 12 pays 7 to 1' })]); anchor('anyCraps', '90%', '50%', ac); og.appendChild(ac);
     props.appendChild(og);
     felt.appendChild(props);
 
@@ -464,7 +464,7 @@
         if (!R.msg) return;
         if (bet == null) { R.msg.innerHTML = 'Drop the <b>' + money(v) + '</b> chip on a bet'; return; }
         var z = R.zones[bet], m = /^box(\d+)$/.exec(bet);
-        R.msg.innerHTML = z && z.classList.contains('closed') ? '<b>' + nameOf(bet) + '</b> is closed right now' : '<b>' + (m ? 'Number ' + m[1] : bet === 'pass' && S.point ? 'Pass odds' : bet === 'dp' && S.point ? "Don't pass odds" : nameOf(bet)) + '</b> · let go to bet ' + money(v);
+        R.msg.innerHTML = z && z.classList.contains('closed') ? '<b>' + nameOf(bet) + '</b> is closed right now' : '<b>' + (m ? 'Number ' + m[1] : bet === 'pass' && S.point ? 'Pass odds' : bet === 'dp' && S.point ? "Don't pass odds" : nameOf(bet)) + '</b>: let go to bet ' + money(v);
       },
       done: function (placed) { if (!placed) hintMsg(); },
       drop: function (bet, v) { chipV = v; return tapZone(bet); }
@@ -557,7 +557,7 @@
     var t = total(S.bets);
     if (!t) R.msg.innerHTML = S.point ? 'Point is <b>' + S.point + '</b>. Try a Come bet, odds, or place a number.' : 'Drag a chip onto the <b>Pass line</b>, then roll';
     else if (S.point && S.bets.pass && !S.bets.passOdds) R.msg.innerHTML = 'Tip: drop chips on <b>ODDS</b> behind the Pass line. Odds pay ' + oddsName(S.point) + ' on the ' + S.point + ' with no house edge';
-    else R.msg.innerHTML = 'On the table: <b>' + money(t) + '</b>' + (S.point ? ' · point is ' + S.point : ' · come-out roll');
+    else R.msg.innerHTML = 'On the table: <b>' + money(t) + '</b>' + (S.point ? '<span class="k-fact">The point is ' + S.point + '</span>' : '<span class="k-fact">Come-out roll</span>');
   }
 
   // ── Betting ──────────────────────────────────────────────────────────────
@@ -609,7 +609,7 @@
     flash(zoneId || id);
     paintAll(id); save();
     var t = S.bets[id];
-    R.msg.innerHTML = '<b>' + nameOf(id) + '</b> · ' + money(t) + (working(id) ? '' : ' · off until the point is set');
+    R.msg.innerHTML = money(t) + ' on <b>' + nameOf(id) + '</b>' + (working(id) ? '' : ', off until the point is set');
     return true;
   }
   function undoChip() {
@@ -635,7 +635,7 @@
     var t = 0; ids.forEach(function (id) { t += S.bets[id]; delete S.bets[id]; });
     Casino.win(t); S.undo = [];
     Kit.sfx('whoosh'); Kit.haptic('light'); paintAll(); save();
-    R.msg.innerHTML = 'Took down ' + money(t) + (total(S.bets) ? ' · line and come bets with a point stay' : '');
+    R.msg.innerHTML = 'Took down ' + money(t) + (total(S.bets) ? '. Line and come bets with a point stay up.' : '');
   }
 
   // ── Rolling ──────────────────────────────────────────────────────────────
@@ -719,7 +719,7 @@
       L('pass'); L('passOdds'); W('dp', 1, 1, true); W('dpOdds', LAY[P][0], LAY[P][1], false);
       S.point = 0; out.head = 'Seven out'; out.kind = 'sevenout'; ss.sevenOuts++;
     } else {
-      out.head = (hard ? 'Hard ' : '') + t + (t === 11 ? ', yo' : '') + ' · point is ' + P; out.kind = 'roll';
+      out.head = (hard ? 'Hard ' : '') + t + (t === 11 ? ', yo' : '') + ', and the point is ' + P; out.kind = 'roll';
     }
     // Session bookkeeping
     ss.rolls++; ss.last = Date.now(); ss.net += out.net; ss.cur.rolls++; ss.cur.net += out.net;
@@ -791,8 +791,8 @@
     paintBank(); paintPuck(); paintState();
     if (swept) setTimeout(function () { if (!busy) paintStacks(); }, 480); else paintStacks();
     var net = res.net;
-    var line = '<b>' + res.d[0] + ' + ' + res.d[1] + ' = ' + res.t + '</b> · ' + res.head;
-    if (res.won.length || res.lost.length) line += ' · ' + (net > 0 ? 'won ' + money(net) : net < 0 ? 'lost ' + money(-net) : 'even');
+    var line = '<b>' + res.d[0] + ' + ' + res.d[1] + ' = ' + res.t + '</b><span class="k-fact">' + res.head + '</span>';   // (the roll, then what it means and what it paid, a line each)
+    if (res.won.length || res.lost.length) line += '<span class="k-fact">' + (net > 0 ? 'Won ' + money(net) : net < 0 ? 'Lost ' + money(-net) : 'Even') + '</span>';
     R.msg.innerHTML = line;
     if (instant) return;
     var hardHit = res.won.some(function (w) { return /^hard/.test(w.id); });
@@ -877,7 +877,7 @@
       g.appendChild(el('b', { text: String(t) }));
       g.appendChild(el('span', { text: w + (w === 1 ? ' way' : ' ways') }));
       g.appendChild(el('span', { class: 'bar' }, [el('i', { class: t === 7 ? 's' : '', style: { width: (w / 6 * 100) + '%' } })]));
-      g.appendChild(el('span', { text: pc(w / 36, 1) + ' · 1 in ' + (one % 1 ? one.toFixed(1) : one) }));
+      g.appendChild(el('span', { text: pc(w / 36, 1) + ', or 1 in ' + (one % 1 ? one.toFixed(1) : one) }));
     }
     return g;
   }
@@ -896,9 +896,9 @@
         else bits.push('wins ' + pc(inf.q) + (inf.line && inf.n ? ' from here' : ''));
         if (!working(id)) bits.push('off this roll');
         if (shortPaid(inf)) bits.push('pays $' + inf.win + ', not ' + dollars(inf.full) + ': bet in $' + inf.unit + 's');
-        lines.push('<strong>' + nameOf(id) + ' ' + money(a) + '</strong>: ' + bits.join(' · '));
+        lines.push('<strong>' + nameOf(id) + ' ' + money(a) + '</strong>: ' + bits.slice(0, -1).join(', ') + (bits.length > 1 ? ' and ' : '') + bits[bits.length - 1]);
       });
-      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(ev),
+      best = { label: 'Your ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(ev),
         text: lines.join('<br>') + '<span class="bg-note">The amount is what each bet loses on average every time it is settled, won or lost. Line bets count the whole bet, start to finish.</span>' };
     } else if (P) {
       best = { label: 'Point is ' + P, value: 'Come bet + odds',
@@ -913,37 +913,37 @@
         note: 'Behind a Pass, Come, Don’t pass or Don’t come bet that has a number. Pays the true odds: 2 to 1 on 4 and 10, 3 to 2 on 5 and 9, 6 to 5 on 6 and 8 (laying pays the reverse). House edge <b>0%</b>.' + (P ? ' Bar shows the ' + P + '.' : '') },
       { name: 'Pass line + full odds', best: true, value: -10 * combo, bar: false,
         note: 'Your line bet still costs 1.41% of itself; the odds money costs nothing. Spread over all the money at ' + oddsLabel() + ' odds, the house edge is <b>' + pc(combo, 2) + '</b>.' },
-      { name: 'Don’t pass · Don’t come', w: DP_W, p: DP_PUSH, l: 1 - DP_W - DP_PUSH, pLabel: 'Push (12)', value: -10 * DP_EDGE,
-        note: 'Pays 1 to 1 · wins on 2 or 3, then if a 7 comes before the point · house edge <b>' + pc(DP_EDGE, 2) + '</b>' },
-      { name: 'Pass line · Come', w: PASS_W, l: 1 - PASS_W, value: -10 * PASS_EDGE,
-        note: 'Pays 1 to 1 · wins on 7 or 11, then if the point comes before a 7 · house edge <b>' + pc(PASS_EDGE, 2) + '</b>' },
+      { name: 'Don’t pass or Don’t come', w: DP_W, p: DP_PUSH, l: 1 - DP_W - DP_PUSH, pLabel: 'Push (12)', value: -10 * DP_EDGE,
+        note: 'Pays 1 to 1 and wins on 2 or 3, then if a 7 comes before the point, with a house edge of <b>' + pc(DP_EDGE, 2) + '</b>' },
+      { name: 'Pass line or Come', w: PASS_W, l: 1 - PASS_W, value: -10 * PASS_EDGE,
+        note: 'Pays 1 to 1 and wins on 7 or 11, then if the point comes before a 7, with a house edge of <b>' + pc(PASS_EDGE, 2) + '</b>' },
       { name: 'Place 6 or 8', w: 5 / 11, l: 6 / 11, value: -10 / 66,
-        note: 'Pays 7 to 6 (fair would be 6 to 5) · bet in $6s · house edge <b>1.52%</b>' },
+        note: 'Pays 7 to 6 (fair would be 6 to 5), bet in $6s, with a house edge of <b>1.52%</b>' },
       { name: 'Field', w: 16 / 36, l: 20 / 36, value: -10 * fieldEdge,
-        note: 'One roll · pays 1 to 1, double on 2, ' + (f12 === 3 ? 'triple' : 'double') + ' on 12 · misses 5, 6, 7 and 8, which come up 20 times in 36 · house edge <b>' + pc(fieldEdge, 2) + '</b>' },
+        note: 'A one-roll bet that pays 1 to 1, double on 2 and ' + (f12 === 3 ? 'triple' : 'double') + ' on 12. It misses 5, 6, 7 and 8, which come up 20 times in 36, and the house edge is <b>' + pc(fieldEdge, 2) + '</b>' },
       { name: 'Place 5 or 9', w: 0.4, l: 0.6, value: -0.4,
-        note: 'Pays 7 to 5 (fair would be 3 to 2) · bet in $5s · house edge <b>4.00%</b>' },
+        note: 'Pays 7 to 5 (fair would be 3 to 2), bet in $5s, with a house edge of <b>4.00%</b>' },
       { name: 'Place 4 or 10', w: 1 / 3, l: 2 / 3, value: -10 / 15,
-        note: 'Pays 9 to 5 (fair would be 2 to 1) · bet in $5s · house edge <b>6.67%</b>' },
+        note: 'Pays 9 to 5 (fair would be 2 to 1), bet in $5s, with a house edge of <b>6.67%</b>' },
       { name: 'Hard 6 or 8', w: 1 / 11, l: 10 / 11, value: -10 / 11,
-        note: 'Pays 9 to 1 (fair would be 10 to 1) · 1 hard way against 5 easy ways and 6 sevens · house edge <b>9.09%</b>' },
+        note: 'Pays 9 to 1 (fair would be 10 to 1): 1 hard way against 5 easy ways and 6 sevens, with a house edge of <b>9.09%</b>' },
       { name: 'Hard 4 or 10', w: 1 / 9, l: 8 / 9, value: -10 / 9,
-        note: 'Pays 7 to 1 (fair would be 8 to 1) · house edge <b>11.11%</b>' },
+        note: 'Pays 7 to 1 (fair would be 8 to 1), with a house edge of <b>11.11%</b>' },
       { name: 'Any craps (2, 3, 12)', w: 4 / 36, l: 32 / 36, value: -10 / 9,
-        note: 'One roll · pays 7 to 1 (fair would be 8 to 1) · house edge <b>11.11%</b>' },
+        note: 'A one-roll bet that pays 7 to 1 (fair would be 8 to 1), with a house edge of <b>11.11%</b>' },
       { name: '3 or 11', w: 2 / 36, l: 34 / 36, value: -10 / 9,
-        note: 'One roll · pays 15 to 1 (fair would be 17 to 1) · house edge <b>11.11%</b>' },
+        note: 'A one-roll bet that pays 15 to 1 (fair would be 17 to 1), with a house edge of <b>11.11%</b>' },
       { name: '2 or 12', w: 1 / 36, l: 35 / 36, value: -10 * 5 / 36,
-        note: 'One roll · pays 30 to 1 (fair would be 35 to 1) · house edge <b>13.89%</b>' },
+        note: 'A one-roll bet that pays 30 to 1 (fair would be 35 to 1), with a house edge of <b>13.89%</b>' },
       { name: 'Any 7', w: 6 / 36, l: 30 / 36, value: -10 / 6,
-        note: 'One roll · pays 4 to 1 (fair would be 5 to 1) · house edge <b>16.67%</b>, the worst bet on the table' }
+        note: 'A one-roll bet that pays 4 to 1 (fair would be 5 to 1), with a house edge of <b>16.67%</b>, the worst bet on the table' }
     ];
     moves.sort(function (a, b) { return b.value - a.value; });
     var secs = [];
     if (P) secs.push({ title: 'The point is ' + P, items: [
       'A ' + P + ' comes before a 7 <b>' + pc(before7(P), 1) + '</b> of the time: there ' + (WAYS[P] === 1 ? 'is 1 way' : 'are ' + WAYS[P] + ' ways') + ' to roll a ' + P + ' and 6 ways to roll a 7.',
       'From here, Pass bets win ' + pc(before7(P), 1) + ' and Don’t pass bets win ' + pc(1 - before7(P), 1) + '. Odds on the ' + P + ' pay ' + oddsName(P) + ', exactly what that risk is worth.',
-      'Every point: <b>4 or 10</b> 33.3% (odds pay 2 to 1) · <b>5 or 9</b> 40% (3 to 2) · <b>6 or 8</b> 45.5% (6 to 5).'
+      'Every point: <b>4 or 10</b> 33.3% (odds pay 2 to 1), <b>5 or 9</b> 40% (3 to 2) and <b>6 or 8</b> 45.5% (6 to 5).'
     ] });
     secs.push({ title: 'The odds bet: no house edge', text: 'It’s the only bet in the casino with no house edge: it pays exactly what the risk is worth. You need a Pass or Come bet first (that part costs 1.41%), but every dollar you add as odds costs nothing on average. So the smart way to bet more is a small line bet with big odds behind it. Just know it makes the swings bigger: more money rides on whether the point comes before a 7.' });
     secs.push({ title: 'How the dice work', text: 'Two dice make <b>36</b> combinations. <b>7</b> is the most common total (6 ways, 1 roll in 6); 2 and 12 are the rarest (1 way each, 1 in 36). Every payout above is set against these counts.', node: diceChart() });

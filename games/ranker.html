@@ -429,11 +429,11 @@
   var lastTop = null;
   function render(celebrate) {
     if (document.activeElement !== titleEl) titleEl.textContent = state.name || 'Untitled';
-    var n = state.items.length, hint = n > 1 ? ' · drag to rank' : '';
+    var n = state.items.length, hint = n > 1 ? '. Drag them into order.' : '';
     dotEl.className = 'rk-dot';
     if (state.id) { dotEl.classList.add(state.unsaved ? 'unsaved' : 'saved'); statusEl.textContent = (state.unsaved ? 'Unsaved changes' : 'Saved') + hint; }
     else if (n) { dotEl.classList.add('unsaved'); statusEl.textContent = 'Draft, not saved yet' + hint; }
-    else statusEl.textContent = 'New list · add some items below';
+    else statusEl.textContent = 'This list is new, so add some items below.';
     paintPodium(celebrate);
     paintDupes();
     paintRows();
@@ -699,7 +699,7 @@
           var go = function () { loadList(l.id); listsSheet && listsSheet.close(); Kit.sfx('pop'); };
           if (state.unsaved && state.items.length && state.id !== l.id) Kit.confirm('Load this list?', { ok: 'Load', body: 'Unsaved changes to the current list will be lost.' }).then(function (ok) { if (ok) go(); });
           else go();
-        } }, [el('b', { text: l.name || 'Untitled' }), el('small', { text: cnt + ' item' + (cnt === 1 ? '' : 's') + ' · ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' }) + (cur ? ' · open now' : '') })]),
+        } }, [el('b', { text: l.name || 'Untitled' }), el('small', { text: cnt + ' item' + (cnt === 1 ? '' : 's') + ', from ' + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' }) + (cur ? ', open now' : '') })]),
         el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Rename ' + l.name, html: icon('pencil'), onclick: function () { renameList(l.id); } }),
         el('button', { type: 'button', class: 'icon-btn del', 'aria-label': 'Delete ' + l.name, html: TRASH, onclick: function () { deleteList(l.id); } })
       ]));

@@ -61,7 +61,7 @@ const ArcadeHi = (function(){
     if(c.unit === 'moves') return v.toLocaleString() + (short ? '' : v === 1 ? ' move' : ' moves');
     if(c.unit === 'marbles'){
       const m = marblesRead(v);
-      return (m.left === 1 && !m.off ? '1 center' : m.left + ' left') + (m.sec ? (short ? ' ' : ' · ') + clock(m.sec) : '');
+      return (m.left === 1 && !m.off ? '1 center' : m.left + ' left') + (m.sec ? (short ? ' ' : ' in ') + clock(m.sec) : '');
     }
     return v.toLocaleString();
   }
@@ -71,7 +71,7 @@ const ArcadeHi = (function(){
     if(c.title) return c.title;
     let g = null; try{ if(c.game && typeof findGame === 'function') g = findGame(c.game); }catch(e){}
     if(!g) return '';
-    return g.name + (c.label ? ' · ' + c.label : '');
+    return g.name + (c.label ? ': ' + c.label : '');
   }
   // Other boards of the same game (Easy, Medium, Hard...) for the tabs
   function siblings(key){
@@ -181,7 +181,8 @@ const ArcadeHi = (function(){
 .ahi-arrow:active{background:rgba(255,255,255,.15);}
 .ahi-score-disp{text-align:center;margin-bottom:16px;}
 .ahi-score-val{font-family:var(--display);font-size:2rem;font-weight:900;color:#f5c842;}
-.ahi-score-lbl{font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
+.ahi-score-lbl{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
+.ahi-score-lbl .ahi-rk{padding:0 6px;border-radius:6px;background:rgba(255,216,74,.18);color:#ffd84a;font-weight:900;}
 .ahi-also{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:8px;}
 .ahi-also b{color:#f5c842;font-weight:900;}
 .ahi-plate{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;padding:10px 18px;width:max-content;max-width:100%;border-radius:999px;background:rgba(245,200,66,.1);box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.5);animation:ahi-plate .55s cubic-bezier(.3,1.6,.5,1) .15s backwards;}
@@ -267,7 +268,7 @@ const ArcadeHi = (function(){
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
-    const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
+    const c = conf(key), lbl = c.label ? '<span>' + esc(c.label).toUpperCase() + '</span>' : '';
     const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     overlay.innerHTML = `
       <div class="ahi-box">
@@ -275,7 +276,7 @@ const ArcadeHi = (function(){
         <div class="ahi-sub">${who && !forMe ? esc(who) + ' made the top ' + MAX + '. Their initials?' : 'You made the top ' + MAX + '. Enter your initials.'}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
-          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}</div>
+          <div class="ahi-score-lbl">${lbl}<span>${unitName(key).toUpperCase()}</span></div>
           ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
         </div>
         <div id="ahi-quick-wrap"></div>
@@ -437,7 +438,7 @@ const ArcadeHi = (function(){
   function showFiled(key, score, ini, who, also, onDone, filed){
     injectCSS();
     if(!filed){ insert(key, ini, score, who); also.forEach(a=>insert(a.key, ini, a.score, who)); }
-    const c = conf(key), lbl = c.label ? esc(c.label).toUpperCase() + ' · ' : '';
+    const c = conf(key), lbl = c.label ? '<span>' + esc(c.label).toUpperCase() + '</span>' : '';
     const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
     const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;
     const snap = snapshot(key, ini, score);
@@ -448,7 +449,7 @@ const ArcadeHi = (function(){
         <div class="ahi-l"><div class="ahi-title">${ttl}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
-          <div class="ahi-score-lbl">${lbl}${unitName(key).toUpperCase()}${rank && !snap ? ' · #' + rank : ''}</div>
+          <div class="ahi-score-lbl">${lbl}<span>${unitName(key).toUpperCase()}</span>${rank && !snap ? '<b class="ahi-rk">#' + rank + '</b>' : ''}</div>
           ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
         </div></div>
         <div class="ahi-r">${snap || `<div class="ahi-plate">${avHTML(who || ini, 'sm')}<span class="ahi-plate-ini">${esc(ini)}</span><small>${esc(who || '')}</small></div>`}
@@ -528,7 +529,7 @@ const ArcadeHi = (function(){
     overlay.innerHTML = `
       <div class="ahi-box">
         <div class="ahi-title">${window.Kit&&Kit.icon?Kit.icon('trophy'):''} ${gameName}</div>
-        <div class="ahi-sub">${low ? (conf(key).unit === 'time' ? 'Fastest ' : 'Fewest ') + MAX : 'Top ' + MAX} · ${list.length} entr${list.length===1?'y':'ies'}${nThem?' · '+nThem+' from linked players':''}</div>
+        <div class="ahi-sub">${low ? 'The ' + (conf(key).unit === 'time' ? 'fastest ' : 'fewest ') + MAX : 'The top ' + MAX} has ${list.length} entr${list.length===1?'y':'ies'}${nThem?', ' + nThem + ' of them from linked players':''}.</div>
         ${sibs.length ? '<div class="ahi-tabs" role="tablist">' + sibs.map(k=>`<button type="button" role="tab" data-k="${esc(k)}" class="${k===key?'on':''}" aria-selected="${k===key}">${esc(conf(k).tab || conf(k).label || k)}</button>`).join('') + '</div>' : ''}
         <table class="ahi-table">
           <thead><tr><th>#</th><th>Name</th><th style="text-align:right">${unitName(key)}</th><th style="text-align:right">Date</th></tr></thead>

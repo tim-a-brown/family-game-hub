@@ -353,7 +353,7 @@ function startGame(id, balls, who) {
   plunger.el = el('div', { class: 'pb-plunger' }, [plunger.cv = el('canvas', { 'aria-hidden': 'true' }),
     plunger.grab = el('button', { type: 'button', class: 'grab', 'aria-label': 'Plunger: pull down and let go to launch the ball' })]);
   plunger.th = Object.assign({}, def.theme || {}); plunger.knobCol = plunger.th.knob || '#e8dcc0'; plunger.layers = null; plunger.shown = false; plunger.ball = false;
-  retBtn = el('button', { type: 'button', class: 'pb-return', html: Kit.icon('play') + '<span>Return to play<small>' + (TOUCH ? 'Tap a feature to learn it · pinch to zoom' : 'Click a feature to learn it · scroll to zoom') + '</small></span>',
+  retBtn = el('button', { type: 'button', class: 'pb-return', html: Kit.icon('play') + '<span>Return to play<small>' + (TOUCH ? 'Tap a feature to learn it, and pinch to zoom' : 'Click a feature to learn it, and scroll to zoom') + '</small></span>',
     onclick: () => { Kit.sfx('tap'); exitLook(); } });
   retBtn.addEventListener('pointerdown', e => e.stopPropagation());
   buildExplain(def);
@@ -966,7 +966,7 @@ function pauseGame() {
   G.pause();
   pauseEl.innerHTML = '';
   pauseEl.appendChild(el('div', { class: 'card' }, [
-    el('h2', { text: 'Paused' }), el('p', { text: G.def.name + ' · ball ' + Math.min(G.ballNo, G.balls0) + ' · ' + fmt(G.score) }),
+    el('h2', { text: 'Paused' }), el('p', { text: fmt(G.score) + ' on ' + G.def.name + ', ball ' + Math.min(G.ballNo, G.balls0) }),
     el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Resume', onclick: resumeGame }),
     el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Choose table', onclick: () => showSetup() })
   ]));
@@ -1017,7 +1017,7 @@ function finish(g0) {
       icon: wasBest ? 'trophy' : 'flag', quiet: !wasBest,
       title: wasBest ? 'New best!' : 'Game over',
       sub: fmt(sc) + ' points on ' + bd.name,
-      notes: [g0.ballScores.length ? 'Balls: ' + g0.ballScores.map(fmt).join(' · ') : null, st.jp ? st.jp + (st.jp === 1 ? ' jackpot' : ' jackpots') : null].filter(Boolean), notesTitle: 'Your game',
+      notes: [g0.ballScores.length ? 'Each ball scored ' + (function (a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; })(g0.ballScores.map(fmt)) : null, st.jp ? st.jp + (st.jp === 1 ? ' jackpot' : ' jackpots') : null].filter(Boolean), notesTitle: 'Your game',
       again: () => startGame(id, balls, who), againLabel: 'Play again',
       extra: [{ label: 'Choose table', onClick: showSetup }, { label: 'High scores', onClick: () => ArcadeHi.show(key, 'Pinball: ' + bd.name) }]
     });

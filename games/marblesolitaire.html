@@ -75,6 +75,7 @@ body{overflow-x:hidden;}
 .plate{position:absolute;left:50%;bottom:0;transform:translateX(-50%);padding:2px 14px;border-radius:4px;white-space:nowrap;pointer-events:none;
   background:linear-gradient(180deg,#f3e2ae,#cfa94e 60%,#b48a35);color:#4a3205;font-size:.6rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 1px 0 rgba(0,0,0,.4), 0 3px 6px rgba(0,0,0,.35);}
+.plate small{margin-left:12px;font-size:inherit;opacity:.72;}   /* (the board's name and its kind, two engravings on the plate) */
 
 /* Glass marbles */
 .mb{--c:#e0393e;position:absolute;width:8%;aspect-ratio:1;margin:-4% 0 0 -4%;border-radius:50%;pointer-events:none;z-index:2;
@@ -742,7 +743,7 @@ body{overflow-x:hidden;}
     if (setupObs) { setupObs.disconnect(); setupObs = null; }
     S = null; sel = -1; hintMv = null; lock = 0;
     app.className = 'ms';
-    function bdesc(id, t) { var bs = best(id); return t + (bs ? ' · best ' + bestText(bs, true) : ''); }
+    function bdesc(id, t) { var bs = best(id); return t + (bs ? '. Your best is ' + bestText(bs, true) + '.' : ''); }
     var bestWarm = ['cross', 'plus', 'pyramid', 'arrow'].filter(function (k) { return best(k); }).length;
     var su = Kit.setup(app, {
       intro: 'Jump marbles until only one is left',
@@ -750,7 +751,7 @@ body{overflow-x:hidden;}
         { id: 'english', icon: 'plus', title: 'English board', desc: bdesc('english', '33 holes. The classic cross') },
         { id: 'european', icon: 'board', title: 'European board', desc: bdesc('european', '37 holes. Harder') },
         { id: 'triangle', icon: 'play', title: 'Triangle', desc: bdesc('triangle', '15 holes. The Cracker Barrel game') },
-        { id: 'warm', icon: 'lightbulb', title: 'Warm-ups', desc: 'Small puzzles to learn on' + (bestWarm ? ' · ' + bestWarm + ' of 4 solved' : '') }
+        { id: 'warm', icon: 'lightbulb', title: 'Warm-ups', desc: 'Small puzzles to learn on' + (bestWarm ? ', and ' + bestWarm + ' of 4 are solved' : '') }
       ],
       mode: 'english',
       options: [
@@ -777,7 +778,7 @@ body{overflow-x:hidden;}
       pv.innerHTML = miniFor(id, null, 'pv');
       pv.appendChild(el('div', { class: 'tx' }, [
         el('b', { text: B0.name + (B0.warm ? ' warm-up' : ' board') }),
-        el('small', { text: (B0.pick ? '15 marbles. You take one out first' : cnt + ' marbles') + ' · ' + (B0.goal === 'center' ? 'finish in the center' : 'finish with one') }),
+        el('small', { text: (B0.pick ? '15 marbles. You take one out first' : cnt + ' marbles') + '. ' + (B0.goal === 'center' ? 'Finish in the center.' : 'Finish with one.') }),
         el('small', { text: 'Best: ' + bestText(bs, true) })
       ]));
       var stack = su.el.querySelector('.k-opts');
@@ -834,7 +835,7 @@ body{overflow-x:hidden;}
     layer = el('div', { class: 'layer' });
     bd.appendChild(layer);
     wrap.appendChild(bd);
-    wrap.appendChild(el('div', { class: 'plate', text: B.name + ' · ' + (B.warm ? 'warm-up' : B.sub) }));
+    wrap.appendChild(el('div', { class: 'plate' }, [el('span', { text: B.name }), el('small', { text: B.warm ? 'Warm-up' : B.sub })]));
     play.appendChild(wrap);
     play.appendChild(el('div', { class: 'tip', id: 'tip' }));
     var tools = el('div', { class: 'tools' });
@@ -902,7 +903,7 @@ body{overflow-x:hidden;}
       if (!tipMsg) {
         if (sel >= 0) setTip(Kit.icon('hand') + '<span>' + (isTouch() ? 'Tap a glowing hole, or drag the marble there' : 'Click a glowing hole, or drag the marble there') + '</span>');
         else if (!S.moves) setTip(Kit.icon('hand') + '<span>' + (isTouch() ? 'Tap a marble to see where it can jump' : 'Click a marble to see where it can jump') + '</span>');
-        else setTip('<span>' + left() + ' marbles left' + (B.goal === 'center' ? ' · aim for the center' : '') + '</span>');
+        else setTip('<span>' + left() + ' marbles left' + (B.goal === 'center' ? ', and the last one should finish in the center' : '') + '</span>');
       }
     }
     updHud();

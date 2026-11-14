@@ -671,7 +671,7 @@
     var dock = el('div', { class: 'dock' }), any = false;
     f.forEach(function (sh, k) {
       if (sh) return; any = true;
-      var d = el('div', { class: 'dship' + (sel === k ? ' sel' : ''), html: shipSvg(k, true), 'aria-label': SHIPS[k].n, 'data-n': SHIPS[k].n + ' · ' + SHIPS[k].s });
+      var d = el('div', { class: 'dship' + (sel === k ? ' sel' : ''), html: shipSvg(k, true), 'aria-label': SHIPS[k].n, 'data-n': SHIPS[k].n + ', ' + SHIPS[k].s });
       d.style.width = 'calc(var(--cell,32px) * ' + SHIPS[k].s + ')';
       d.addEventListener('pointerdown', function (e) { startDrag(e, k, false, d); });
       dock.appendChild(d);
@@ -731,7 +731,7 @@
     });
     side.appendChild(fl);
     var st = S.st[v];
-    side.appendChild(el('div', { class: 'tally', html: 'Shots <b>' + st.shots + '</b> · Hits <b>' + st.hits + '</b>' + (st.shots ? ' (' + Math.round(st.hits / st.shots * 100) + '%)' : '') + '<br>Your ships afloat <b>' + (5 - sunkCount(v)) + '</b>' }));
+    side.appendChild(el('div', { class: 'tally', html: 'Shots <b>' + st.shots + '</b><span style="margin-left:12px">Hits <b>' + st.hits + '</b></span>' + (st.shots ? ' (' + Math.round(st.hits / st.shots * 100) + '%)' : '') + '<br>Your ships afloat <b>' + (5 - sunkCount(v)) + '</b>' }));
     app.appendChild(el('div', { class: 'lower' }, [own, side]));
     app.appendChild(el('div', { class: 'lastshot', text: NET ? netLog() : S.log || (S.mode === 'cpu' ? 'Tap a square on the target grid to fire.' : '') }));
     if (over && NET) app.appendChild(el('div', { class: 'pbtns' }, [el('button', { type: 'button', class: 'btn btn-primary', text: left ? 'Back to the lobby' : 'Play again', onclick: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); } })]));
@@ -956,7 +956,7 @@
     var w = G.phase === 'over' ? G.winner : -1, W = w >= 0 ? G.players[w] : null, key = NET.code + ':' + G.started;
     if (W && !NETREC[key]) {
       NETREC[key] = 1;
-      var hl = highlightsFor(G, w); hl.push('Online game · table ' + NET.code);
+      var hl = highlightsFor(G, w); hl.push('Played online at table ' + NET.code);
       Kit.record(KEY, { started: G.started, mode: 'Online',
         players: G.players.map(function (p, i) { return { name: p.name, score: G.sunk[1 - i].filter(Boolean).length }; }),
         winner: W.name, summary: W.name + ' won in ' + G.st[w].shots + ' shots', highlights: hl.slice(0, 6),

@@ -381,7 +381,7 @@
   function paintClue() {
     var R = S.R;
     clueEl.className = 'clue' + (R.clueUsed ? '' : ' dim');
-    clueEl.textContent = R.clueUsed ? R.clue : R.w.length + ' letters · ' + catName(S.cat === 'Mixed' ? catOf(R.w) : S.cat);
+    clueEl.textContent = R.clueUsed ? R.clue : R.w.length + ' letters, from ' + catName(S.cat === 'Mixed' ? catOf(R.w) : S.cat);
   }
   function catOf(w) { for (var i = 0; i < CATS.length; i++) if (WORDS[CATS[i]].some(function (o) { return o.w === w; })) return catName(CATS[i]); return ''; }
 
@@ -658,9 +658,9 @@
   function coverReady() {
     var p = curP(), c = el('div', { class: 'cover' });
     if (S.online) c.appendChild(el('p', { text: S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds : 'Everyone gets these same words' }));
-    else c.appendChild(el('p', { text: (S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds + ' · ' : '') + (S.mode === 'race' ? 'Pass the phone to' : 'Ready?') }));
+    else c.appendChild(el('p', { text: (S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds + '. ' : '') + (S.mode === 'race' ? 'Pass the phone to' : 'Ready?') }));
     c.appendChild(el('h2', { text: p.name === 'You' || S.online ? 'Your turn' : p.name }));
-    c.appendChild(el('p', { text: (S.time ? TIMES[S.time] + ' on the clock' : RELAXED_WORDS + ' words') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] }));
+    c.appendChild(el('p', { text: (S.time ? TIMES[S.time] + ' on the clock' : RELAXED_WORDS + ' words') + ', from ' + catName(S.cat) + ', ' + DIFF[S.diff][2].toLowerCase() }));
     c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Start my turn', onclick: beginTurn }));
     feltEl.appendChild(c);
   }
@@ -668,7 +668,7 @@
     var last = S.log[S.log.length - 1], p = S.players[last.p], c = el('div', { class: 'cover' });
     c.appendChild(el('p', { text: p.name + ' scored' }));
     c.appendChild(el('div', { class: 'big', text: String(last.score) }));
-    c.appendChild(el('p', { text: last.solved + (last.solved === 1 ? ' word' : ' words') + (last.best >= 3 ? ' · best streak ' + last.best : '') }));
+    c.appendChild(el('p', { text: last.solved + (last.solved === 1 ? ' word' : ' words') + (last.best >= 3 ? ', with a best streak of ' + last.best : '') }));
     c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Next: ' + curP().name, onclick: function () { newTurn(); } }));
     feltEl.appendChild(c);
   }
@@ -847,7 +847,7 @@
     winRef = Kit.win({
       title: left ? res.text : tie ? 'It’s a tie!' : order[0] === me ? 'You win!' : P[order[0]].name + ' wins!',
       sub: left ? '' : 'After ' + S.rounds + (S.rounds > 1 ? ' rounds' : ' round'),
-      rank: order ? order.map(function (i) { return { name: i === me ? 'You' : P[i].name, score: S.scores[i], color: Kit.color(i) }; }) : null,
+      rank: order ? order.map(function (i) { return { name: P[i].name, me: i === me, score: S.scores[i], color: Kit.color(i) }; }) : null,
       lose: !!order && S.scores[me] !== S.scores[order[0]],
       againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },

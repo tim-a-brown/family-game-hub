@@ -472,7 +472,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
     wrapEl = el('div', { class: 'ar-wrap' }, [hudEl, cabEl]);
-    hintEl = el('div', { class: 'ar-hint', text: TOUCH ? 'Drag anywhere to move · tap to launch' : 'Mouse or arrow keys to move · click or Space to launch · P pauses' });
+    hintEl = el('div', { class: 'ar-hint', text: TOUCH ? 'Drag anywhere to move, and tap to launch' : 'Move with the mouse or the arrow keys, launch with a click or Space, and P pauses.' });
     app.appendChild(wrapEl); app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
@@ -574,13 +574,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
     paused = true; drag = null; keys = {}; Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
-    showOverlay('Paused', 'Level ' + G.level + ' · ' + fmt(G.score) + ' points', 'Resume');
+    showOverlay('Paused', fmt(G.score) + ' points on level ' + G.level, 'Resume');
     save();
   }
   function showOverlay(title, sub, btn) {
     ovEl.innerHTML = '';
     ovEl.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: title }), el('p', { text: sub }),
+      el('h2', { text: title }), Kit.facts(el('p'), sub),
       el('button', { type: 'button', class: 'btn btn-primary btn-block', text: btn, onclick: resumeGame }),
       el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); } })
     ]));
@@ -612,7 +612,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       bricks = buildBricks(G.level, saved.hits || ''); caps = []; bolts = [];
       serve();
       buildView();
-      paused = true; showOverlay('Welcome back', 'Level ' + G.level + ' · ' + fmt(G.score) + ' points', 'Continue');
+      paused = true; showOverlay('Welcome back', fmt(G.score) + ' points on level ' + G.level, 'Continue');
     } else {
       buildView();
       startLevel(G.level);

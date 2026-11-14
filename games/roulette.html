@@ -66,6 +66,7 @@
 .bank div{background:rgba(255,255,255,.06);border-radius:12px;padding:5px 8px;text-align:center;min-width:0;}
 .bank small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);}
 .bank b{display:block;font-size:1.08rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
+.bank div{container-type:inline-size;} .bank b{font-size:min(1.08rem, 22cqi);}   /* (a bankroll of $10,000 fits its tile) */
 .bank .gold{color:var(--yellow);} .pos{color:var(--green)!important;} .neg{color:var(--red)!important;}
 
 .msg{min-height:24px;text-align:center;font-weight:800;color:var(--text-2);margin:-2px 0 8px;font-size:.92rem;line-height:1.3;}
@@ -295,7 +296,7 @@
   function save() {
     if (NET || PURE) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && (S.sess.spins || total(S.bets))) Kit.resume.set((S.sess.spins ? signed(S.sess.net) + ' · ' + S.sess.spins + ' spin' + (S.sess.spins === 1 ? '' : 's') : 'Bets on the table'));
+    if (S && (S.sess.spins || total(S.bets))) Kit.resume.set((S.sess.spins ? signed(S.sess.net) + ' \u00b7 ' + S.sess.spins + ' spin' + (S.sess.spins === 1 ? '' : 's') : 'Bets on the table'));
   }
   function load() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 2 ? s : null; } catch (e) { return null; } }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
@@ -506,7 +507,7 @@
     if (!R.msg) return;
     if (NET && amIn()) { R.msg.textContent = netWaitMsg(); return; }
     var t = total(S.bets);
-    R.msg.innerHTML = t ? 'Total bet <b>' + money(t) + '</b> · tap Spin when ready' : (S.recent.length ? 'Place your bets for the next spin' : 'Drag a chip from the rack onto a bet');
+    R.msg.innerHTML = t ? 'Total bet <b>' + money(t) + '</b>' : (S.recent.length ? 'Place your bets for the next spin' : 'Drag a chip from the rack onto a bet');
   }
   function rail(on) {
     var old = document.querySelector('.rail'); if (old) old.remove();
@@ -638,7 +639,7 @@
     R.undo.disabled = busy || !S.undo.length;
     R.spin.disabled = busy || !t; R.cash.disabled = NET ? spinning || NET.seat < 0 : busy;
     [R.bal, R.on, R.net].forEach(function (b) { Kit.fitText(b); });
-    R.spin.querySelector('span').textContent = NET ? (amIn() ? 'Your bet is in' : t ? 'Bet ' + money(t) : 'Place a bet') : t ? 'Spin · ' + money(t) : 'Spin';
+    R.spin.querySelector('span').textContent = NET ? (amIn() ? 'Your bet is in' : t ? 'Bet ' + money(t) : 'Place a bet') : t ? 'Spin for ' + money(t) : 'Spin';
     R.spin.querySelector('svg').style.display = NET && amIn() ? 'none' : '';
     if (NET) paintNet();
     if (!t && S.last && total(S.last)) { R.rep.innerHTML = Kit.icon('sync') + '<span>Repeat</span>'; R.rep.disabled = busy; R.rep.dataset.m = 'rep'; }
@@ -647,7 +648,7 @@
   }
   function paintBoard() {
     var b = R.board; b.innerHTML = '';
-    b.appendChild(el('div', { class: 'lbl' }, [el('span', { text: 'Last numbers' }), el('span', { text: S.wheel === 'us' ? '0 · 00' : 'Single 0' })]));
+    b.appendChild(el('div', { class: 'lbl' }, [el('span', { text: 'Last numbers' }), el('span', { text: S.wheel === 'us' ? '0 and 00' : 'Single 0' })]));
     var nums = el('div', { class: 'nums' });
     if (!S.recent.length) nums.appendChild(el('div', { class: 'empty', text: 'No spins yet' }));
     S.recent.slice(0, 11).forEach(function (n, i) { nums.appendChild(el('div', { class: 'nb ' + colorOf(n) + (i === 0 ? ' first' : ''), text: lbl(n) })); });
@@ -684,7 +685,7 @@
     Kit.sfx('chip'); Kit.haptic('light');
     flash(id); paintStacks(id); paintBank(); save();
     var b = BETS[id];
-    R.msg.innerHTML = '<b>' + b.name + '</b> · pays ' + payText(b) + ' · ' + money(S.bets[id]) + ' on it';
+    R.msg.innerHTML = '<b>' + b.name + '</b> pays ' + payText(b) + ', and ' + money(S.bets[id]) + ' is on it';
     return true;
   }
   function undoChip() {
@@ -732,7 +733,7 @@
         if (kind === 'end') return;
         if (id) {
           var b = BETS[id];
-          R.msg.innerHTML = '<b>' + b.name + '</b> · pays ' + payText(b) + (kind === 'move' && id !== dragFrom ? ' · move ' + money(v) + ' here' : '');
+          R.msg.innerHTML = '<b>' + b.name + '</b> pays ' + payText(b) + (kind === 'move' && id !== dragFrom ? '. Let go to move ' + money(v) + ' here.' : '');
         } else if (kind === 'move') R.msg.innerHTML = off ? 'Let go to take <b>' + money(v) + '</b> back' : 'Drag to a new spot, or off the table to take it back';
         else R.msg.innerHTML = 'Drop the <b>' + money(v) + '</b> chip on a bet';
       },
@@ -762,7 +763,7 @@
         Kit.sfx('chip'); Kit.haptic('light');
         flash(tgt); paintStacks(tgt); paintBank(); save();
         var b = BETS[tgt];
-        R.msg.innerHTML = 'Moved to <b>' + b.name + '</b> · pays ' + payText(b) + ' · ' + money(S.bets[tgt]) + ' on it';
+        R.msg.innerHTML = 'Moved to <b>' + b.name + '</b>, which pays ' + payText(b) + '. ' + money(S.bets[tgt]) + ' is on it now.';
         return true;
       },
       remove: function (from) {
@@ -897,9 +898,11 @@
       Object.keys(R.stacks).forEach(function (id) { if (!S.bets[id]) { var s = R.stacks[id]; s.classList.add('lost'); s.style.transform = 'translate(-50%,200%) scale(.7)'; } });
       setTimeout(function () { Object.keys(R.stacks).forEach(function (id) { if (!S.bets[id]) { R.stacks[id].remove(); delete R.stacks[id]; } }); }, 520);
     }, instant ? 300 : 2400);
-    var parity = n === 0 || n === DZ ? '' : (n % 2 ? ' · Odd' : ' · Even') + (n <= 18 ? ' · 1-18' : ' · 19-36');
+    // ("17 Black, odd and in 1 to 18. It paid $50, so you're up $25.")
+    var parity = n === 0 || n === DZ ? '' : ', ' + (n % 2 ? 'odd' : 'even') + ' and in ' + (n <= 18 ? '1 to 18' : '19 to 36');
     var hitStraight = sp.winners.some(function (w) { return /^n/.test(w.id); });
-    R.msg.innerHTML = (hitStraight ? 'Straight up! ' : '') + '<b>' + lbl(n) + ' ' + cap(col) + '</b>' + parity + ' · ' + (sp.ret ? 'paid ' + money(sp.ret) + ' (' + signed(net) + ')' : 'no winners (' + signed(net) + ')');
+    var upDown = net > 0 ? 'you’re up ' + money(net) : net < 0 ? 'you’re down ' + money(-net) : 'you broke even';
+    R.msg.innerHTML = (hitStraight ? 'Straight up! ' : '') + '<b>' + lbl(n) + ' ' + cap(col) + '</b>' + parity + '. ' + (sp.ret ? 'It paid ' + money(sp.ret) + ', so ' + upDown + '.' : 'Nothing won, so ' + upDown + '.');
     paintBoard(); paintBank(); drawMini();
     if (instant) return;
     var straight = sp.winners.some(function (w) { return /^n/.test(w.id); });
@@ -955,8 +958,8 @@
       { name: 'Even-money bets', k: 18, pay: 1, what: 'Red or Black, Odd or Even, 1-18 or 19-36' },
       { name: 'Dozen or Column', k: 12, pay: 2 },
       { name: 'Six line', k: 6, pay: 5 },
-      { name: us ? 'Corner' : 'Corner · First four', k: 4, pay: 8 },
-      { name: 'Street · Trio', k: 3, pay: 11 },
+      { name: us ? 'Corner' : 'Corner or First four', k: 4, pay: 8 },
+      { name: 'Street or Trio', k: 3, pay: 11 },
       { name: 'Split', k: 2, pay: 17 },
       { name: 'Straight up', k: 1, pay: 35 }
     ];
@@ -965,12 +968,12 @@
     var moves = rows.map(function (r) {
       var w = r.k / N, e = edgeOf(r.k, r.pay);
       return { name: r.name, w: w, l: 1 - w, value: -10 * e,
-        note: (r.what ? r.what + ' · covers ' : 'Covers ') + r.k + ' number' + (r.k > 1 ? 's' : '') + ' · pays ' + r.pay + ' to 1 (fair would be ' + fair(r.k) + ') · wins ' + pcT(w, 1) + ' of spins, about 1 in ' + (N / r.k).toFixed(1).replace(/\.0$/, '') + ' · house edge <b>' + pcT(e) + '</b>' };
+        note: (r.what ? r.what + ': each covers ' : 'Covers ') + r.k + ' number' + (r.k > 1 ? 's' : '') + ' and pays ' + r.pay + ' to 1, where a fair price would be ' + fair(r.k) + '. It wins ' + pcT(w, 1) + ' of spins, about 1 in ' + (N / r.k).toFixed(1).replace(/\.0$/, '') + ', and the house edge is <b>' + pcT(e) + '</b>.' };
     });
     var best, t = total(S.bets);
     if (t) {
       var st = spinStats(S.bets), hasBk = us && S.bets.bk;
-      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(st.ev) + ' a spin',
+      best = { label: 'Your ' + money(t) + ' on the table', value: 'Avg loss ' + dollars(st.ev) + ' a spin',
         text: 'Chance at least one bet wins: <strong>' + pcT(st.any, 1) + '</strong><br>Chance you finish the spin ahead: <strong>' + pcT(st.ahead, 1) + '</strong><br>' +
           (st.top > 0 ? 'Best possible spin: <strong>+' + money(st.top) + '</strong>' : 'No single spin can put you ahead with these bets') +
           '<span class="bg-note">' + (hasBk ? 'The Top line costs 7.89%, the worst bet here. Every other bet costs ' + eTxt + '.' :
@@ -1154,7 +1157,7 @@
   function replayLast() {
     var n = S.recent[0], i = ORDER[S.wheel].indexOf(n);
     var cv = el('canvas'), res = el('div', { class: 'res' }, [el('div', { class: 'nb ' + colorOf(n), text: lbl(n) }), el('span', { text: cap(colorOf(n)) })]);
-    var o = el('div', { class: 'spinov', onclick: function () { o.classList.remove('show'); setTimeout(function () { o.remove(); }, 300); } }, [cv, res, el('div', { class: 'tip', text: 'Last spin · tap to close' })]);
+    var o = el('div', { class: 'spinov', onclick: function () { o.classList.remove('show'); setTimeout(function () { o.remove(); }, 300); } }, [cv, res, el('div', { class: 'tip', text: 'The last spin' })]);
     document.body.appendChild(o);
     var size = Math.min(window.innerWidth * 0.92, 520, window.innerHeight * 0.66);
     drawWheel(cv, size, S.wAng, lastBall(), i);

@@ -243,6 +243,7 @@ body{overflow-x:hidden;}
 .foot .sum{flex:1;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-3);line-height:1.3;}
 .foot .sum b{display:block;font:400 1.2rem/1.1 var(--display);color:var(--text);font-variant-numeric:tabular-nums;}
 .foot .sum b.neg{color:#ff8a8a;}
+.foot .sum .sp{display:block;}   /* (what the plan spends, on a line of its own over the cash left) */
 .foot .btn{flex:none;}
 
 /* Game day */
@@ -407,9 +408,9 @@ body{overflow-x:hidden;}
     bowl:       { name: 'Championship', crowd: [62000, 72000], share: .0078, tol: 1.4, want: { dog: 1.2, soda: 1, chips: 1, cocoa: 1.05 }, segs: FOOT, sport: 1, hours: [14.42, 18.5], tk: '#b45309' }
   };
   var MODES = {
-    rookie:  { name: 'Rookie', n: 8, goal: 700000, tErr: 3, cErr: .08, acc: .92, surp: .3, desc: '8 events · reach $7,000 · spot-on forecasts' },
-    pro:     { name: 'Pro', n: 10, goal: 1000000, tErr: 7, cErr: .2, acc: .78, surp: .45, desc: '10 events · reach $10,000 · forecasts can miss' },
-    allstar: { name: 'All-Star', n: 12, goal: 1350000, tErr: 11, cErr: .32, acc: .62, surp: .6, desc: '12 events · reach $13,500 · anything can happen' }
+    rookie:  { name: 'Rookie', n: 8, goal: 700000, tErr: 3, cErr: .08, acc: .92, surp: .3, desc: '8 events to reach $7,000, with spot-on forecasts' },
+    pro:     { name: 'Pro', n: 10, goal: 1000000, tErr: 7, cErr: .2, acc: .78, surp: .45, desc: '10 events to reach $10,000, and the forecasts can miss' },
+    allstar: { name: 'All-Star', n: 12, goal: 1350000, tErr: 11, cErr: .32, acc: .62, surp: .6, desc: '12 events to reach $13,500, and anything can happen' }
   };
   var START_CASH = 50000;
   var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -455,7 +456,7 @@ body{overflow-x:hidden;}
     }
     return out;
   }
-  function dateText(ev) { var d = new Date(ev.date); return DAYS[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate() + ' · ' + clock12(ev.hour); }
+  function dateText(ev) { var d = new Date(ev.date); return DAYS[d.getDay()] + ', ' + MON[d.getMonth()] + ' ' + d.getDate() + ' at ' + clock12(ev.hour); }
 
   // ── The day itself: every fan who walks up, second by second ──────────────
   // Uses the event's own seed, so the same choices always play out the same way.
@@ -1078,7 +1079,7 @@ body{overflow-x:hidden;}
     var tRange = e.tLo + '–' + e.tHi + '°F';
     return '<div class="stub" style="--tk:' + T.tk + '"><span>' + (e.type === 'bowl' ? 'FINAL' : 'EVENT ' + (S.i + 1)) + '</span></div><div class="bd">' +
       '<h3>' + esc(e.title) + '</h3><div class="when">' + esc(T.name) + '<br>' + dateText(e) + '</div>' +   // (the kind of event over the day and time, so the time never runs off)
-      '<div class="fc">' + wxIcon(e.fCond, e.night) + '<span>' + WX_NAME[e.fCond] + ' · ' + tRange + '</span></div>' +
+      '<div class="fc">' + wxIcon(e.fCond, e.night) + '<span>' + WX_NAME[e.fCond] + ', ' + tRange + '</span></div>' +
       '<div class="fc">' + ICO('users') + '<span>' + e.cLo.toLocaleString() + '–' + e.cHi.toLocaleString() + ' fans</span></div>' + news + '</div>';
   }
   function planCost() {
@@ -1119,7 +1120,7 @@ body{overflow-x:hidden;}
     panel.appendChild(body);
     var c = planCost(), left = S.cash - c.total;
     var foot = el('div', { class: 'foot' }, [
-      el('div', { class: 'sum', html: (c.total ? 'Spend ' + money(c.total) + ' · ' : '') + 'cash left<b class="' + (left < 0 ? 'neg' : '') + '">' + money(left) + '</b>' }),
+      el('div', { class: 'sum', html: (c.total ? '<span class="sp">Spending ' + money(c.total) + '</span>' : '') + 'Cash left<b class="' + (left < 0 ? 'neg' : '') + '">' + money(left) + '</b>' }),
       el('button', { class: 'btn btn-primary btn-lg', disabled: left < 0, html: ICO('play') + 'Open the stand', onclick: openStand })
     ]);
     panel.appendChild(foot);
@@ -1164,7 +1165,7 @@ body{overflow-x:hidden;}
       var n = el('div', { class: 'n', html: '$' + (p / 100).toFixed(2) });
       var row = el('div', { class: 'prow' + (off ? ' off' : '') }, [
         el('div', { class: 'art', html: art(k) }),
-        el('div', { html: '<div class="nm">' + (k === 'dog' ? 'Hot dog' : ITEMS[k].name) + '</div><div class="cost">costs ' + money(uc) + ' · <b class="' + (m < uc * .5 ? 'thin' : '') + '">' + (m >= 0 ? '+' : '−') + money(Math.abs(m)) + '</b></div>' }),
+        el('div', { html: '<div class="nm">' + (k === 'dog' ? 'Hot dog' : ITEMS[k].name) + '</div><div class="cost">costs ' + money(uc) + ' and makes <b class="' + (m < uc * .5 ? 'thin' : '') + '">' + (m >= 0 ? '+' : '−') + money(Math.abs(m)) + '</b></div>' }),
         el('div', { class: 'step' }, [
           el('button', { 'aria-label': 'Lower', html: ICO('minus'), disabled: p <= 25, onclick: function () { setPrice(k, -25); } }),
           n,
@@ -1192,7 +1193,7 @@ body{overflow-x:hidden;}
     var as = el('div', { class: 'sect', html: '<h4>Advertising <small>this event only</small></h4><p>Bring more fans to your window.</p>' });
     var ads = el('div', { class: 'ads' });
     ADS.forEach(function (a) {
-      ads.appendChild(el('button', { class: S.ad === a.id ? 'on' : '', html: a.name + '<small>' + (a.cost ? money(a.cost, true) + ' · +' + Math.round((a.lift - 1) * 100) + '% fans' : 'Free') + '</small>', onclick: function () {
+      ads.appendChild(el('button', { class: S.ad === a.id ? 'on' : '', html: a.name + '<small>' + (a.cost ? money(a.cost, true) + ' for ' + Math.round((a.lift - 1) * 100) + '% more fans' : 'Free') + '</small>', onclick: function () {
         if (a.cost - ADS[S.ad].cost + planCost().total > S.cash) { Kit.toast('Not enough cash'); Kit.haptic('error'); return; }
         S.ad = a.id; save(); Kit.sfx('tap', .5); setScene(e, false); drawPanel();
       } }));
@@ -1345,10 +1346,10 @@ body{overflow-x:hidden;}
       if (/quarter|half|Overtime/i.test(seg[0]) && !/Halftime/.test(seg[0])) clock = ' ' + Math.floor(m) + ':' + ('0' + Math.floor(m % 1 * 60)).slice(-2);
     }
     if (TYPES[e.type].sport) {
-      return '<div class="row"><span>' + HOME.toUpperCase().slice(0, 11) + '</span><b>' + D.sc[0] + '</b><span style="opacity:.5">·</span><b>' + D.sc[1] + '</b><span>' + esc(e.foe.toUpperCase()) + '</span></div><div class="ph">' + esc(lab.toUpperCase()) + clock + '</div>';
+      return '<div class="row"><span>' + HOME.toUpperCase().slice(0, 11) + '</span><b>' + D.sc[0] + '</b><span style="opacity:.5">–</span><b>' + D.sc[1] + '</b><span>' + esc(e.foe.toUpperCase()) + '</span></div><div class="ph">' + esc(lab.toUpperCase()) + clock + '</div>';
     }
     var tod = e.hour + D.t / 3600, hh = Math.floor(tod), mm = Math.floor((tod - hh) * 60);
-    return '<div class="row"><span>' + esc(e.title.toUpperCase()) + '</span></div><div class="ph">' + esc(lab.toUpperCase()) + ' · ' + ((hh + 11) % 12 + 1) + ':' + ('0' + mm).slice(-2) + '</div>';
+    return '<div class="row"><span>' + esc(e.title.toUpperCase()) + '</span></div><div class="ph"><span>' + esc(lab.toUpperCase()) + '</span><span style="margin-left:10px">' + ((hh + 11) % 12 + 1) + ':' + ('0' + mm).slice(-2) + '</span></div>';
   }
   function segAt(t) { var sg = D.res.segs; for (var i = 0; i < sg.length; i++) if (t < sg[i][2] * 60) return sg[i]; return sg[sg.length - 1]; }
   function banner(text, tone, icon) {
@@ -1604,7 +1605,7 @@ body{overflow-x:hidden;}
     panel.innerHTML = ''; panel.scrollTop = 0;
     var L = el('div', { class: 'ledger' });
     L.appendChild(el('h3', { text: e.title }));
-    L.appendChild(el('div', { class: 'ev', text: TYPES[e.type].name + ' · ' + dateText(e) + ' · ' + WX_NAME[e.cond] + ' ' + e.temp + '°F · ' + e.crowd.toLocaleString() + ' fans' }));
+    L.appendChild(Kit.facts(el('div', { class: 'ev' }), TYPES[e.type].name + ' on ' + dateText(e) + ' \u00b7 ' + WX_NAME[e.cond] + ' and ' + e.temp + '°F, with ' + e.crowd.toLocaleString() + ' fans'));
     var rows = [];
     SELL.forEach(function (k) {
       if (!r.sold[k] && !(r.miss[k] + r.pass[k])) return;
@@ -1746,7 +1747,7 @@ body{overflow-x:hidden;}
     var t = '<table class="sea"><tbody>';
     S.log.forEach(function (l, i) { t += '<tr><td>' + (i + 1) + '</td><td>' + esc(l.title) + '</td><td class="' + (l.net >= 0 ? 'up' : 'down') + '">' + (l.net >= 0 ? '+' : '−') + money(Math.abs(l.net), true) + '</td></tr>'; });
     if (!S.log.length) t += '<tr><td colspan="3">No events yet.</td></tr>';
-    return el('div', { class: 'sect', html: '<h4>Season so far <small>' + MODES[S.mode].name + ' · goal ' + money(MODES[S.mode].goal, true) + '</small></h4>' + t + '</tbody></table>' });
+    return el('div', { class: 'sect', html: '<h4>Season so far <small>' + MODES[S.mode].name + ' season, with a goal of ' + money(MODES[S.mode].goal, true) + '</small></h4>' + t + '</tbody></table>' });
   }
   function seasonSheet() {
     if (!S) { Kit.toast('No season running'); return; }

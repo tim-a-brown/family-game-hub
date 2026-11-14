@@ -252,7 +252,7 @@
         tb[who].classList.add('on'); kids.push(tabs);
       }
       kids.push(stripBox, box, dvKey(ui, [['p', 'upper'], ['w', 'lower'], ['l', 'scratched'], ['big', 'Yahtzee']]));
-      out.push(ui.section('Every turn · tap one', kids, { icon: 'dice' }));
+      out.push(ui.section('Every turn', kids, { icon: 'dice' }));
       drawStrip(who);
     } else if (!solo) {
       // older games: the dice behind the best boxes
@@ -343,7 +343,7 @@
       }
       var shown = turns.reduce(function (a, t) { return Math.max(a, t.length); }, 0), all = shown >= (e.rounds && e.rounds.scores ? arr(e.rounds.scores).length : 0);
       kids.push(strip, card, dvKey(ui, [['w', 'banked'], ['big', '1,000 or more'], ['l', 'farkle']]));
-      out.push(ui.section(all ? 'Every turn · tap one' : 'The last turns · tap one', kids, { icon: 'dice' }));
+      out.push(ui.section(all ? 'Every turn' : 'The last turns', kids, { icon: 'dice' }));
       draw(who);
     }
     // best single roll per player
@@ -453,7 +453,7 @@
         card.appendChild(ui.el('div', { class: 'hv-snap lr-felt' }, [ui.el('div', { class: 'lr-top' }, [ui.el('span', { html: '<b style="color:' + ui.color(x.w) + '">' + esc(nm[x.w] || '') + '</b> rolled ' + words.join(', ') }), ui.el('span', { class: 'lr-dice', html: dice })]),
           ui.el('div', { html: lrcTable(ui, nm, x.b, x.a, x.w, x.f, x.pb, x.pa) })]));
       };
-      out.push(ui.section(d.r0 ? 'The last ' + rl.length + ' rolls · tap one' : 'Every roll · tap one', [roadStrip(ui, items, snaps.length - 1, showRoll), card,
+      out.push(ui.section(d.r0 ? 'The last ' + rl.length + ' rolls' : 'Every roll', [roadStrip(ui, items, snaps.length - 1, showRoll), card,
         dvKey(ui, [['p', 'passed chips'], ['l', 'chips to the pot'], ['w', 'all dots, kept them'], ['', 'the bar under each: who rolled']])], { icon: 'dice' }));
     }
     if (d.lf && d.lw >= 0 && !d.rl) {
@@ -536,7 +536,7 @@
       };
       var best = 0; drops.forEach(function (q, n) { if (PV[q.s] > PV[drops[best].s]) best = n; });
       var items = drops.map(function (q, n) { var v = PV[q.s]; return { c: (v === 10000 ? 'big' : v === 0 ? 'l' : v >= 1000 ? 'w' : 'p') + (ps.length > 1 ? ' pc' : ''), pc: ui.color(q.i), t: String(n + 1), title: (nm[q.i] || '') + ' chip ' + (q.k + 1) + ': $' + v }; });
-      out.push(ui.section('Every chip · tap one', [roadStrip(ui, items, best, showChip), pic, note, ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
+      out.push(ui.section('Every chip', [roadStrip(ui, items, best, showChip), pic, note, ps.length > 1 ? legend(ui, nm.map(function (n, i) { return { name: n, color: ui.color(i) }; })) : null,
         ui.el('p', { class: 'dv-note', text: 'Rings at the top: where each chip was let go. Dots: the slot it landed in.' })], { icon: 'coins' }));
       var aimMid = drops.filter(function (q) { return q.x >= 4 && q.x <= 5; }).length, hit = drops.filter(function (q) { return q.s === 4; }).length, zero = drops.filter(function (q) { return PV[q.s] === 0; }).length;
       var tot = drops.reduce(function (a, q) { return a + PV[q.s]; }, 0);
@@ -865,7 +865,7 @@
           ui.picture(moneyBoard(inPlay, DV.indexOf(mv), just), { max: 380 }), offLine]));
       };
       var items = steps.map(function (st) { return { c: st.fin ? 'big' : st.deal ? 'w' : st.ghost ? 'gh' : 'l', t: st.fin ? 'F' : String(st.r + 1), title: st.fin ? 'The final two' : 'Round ' + (st.r + 1) }; });
-      out.push(ui.section('Round by round · tap one', [roadStrip(ui, items, start, showStep), card,
+      out.push(ui.section('Round by round', [roadStrip(ui, items, start, showStep), card,
         dvKey(ui, [['l', 'No Deal'], ['w', 'Deal'], ['gh', 'what if'], ['big', 'the final two']]),
         ui.el('p', { class: 'dv-note', text: 'Lit amounts were still in play. Red ones came out of the cases opened that round; the white outline is what your case held.' })], { icon: 'book' }));
     }
@@ -995,7 +995,7 @@
       stops.forEach(function (x, k) { if ((x.code === 'c' || x.code === 'p') && (big < 0 || x.v > stops[big].v)) big = k; });
       var items = stops.map(function (x, k) { return { c: (x.code === 'w' ? 'l' : x.code === 'd' ? 'big' : x.code === 'p' ? 'pz' : 'p') + ' pc', pc: x.b ? '#fff' : ui.color(x.p), t: x.b ? 'B' : String(k + 1), title: (x.b ? 'Bonus · ' : 'Spin ' + (k + 1) + ' · ') + ((P[x.p] || {}).name || '') }; });
       var strip = roadStrip(ui, items, big >= 0 ? big : stops.length - 1, function (k) { var x = stops[k]; card.innerHTML = ''; card.appendChild(ui.picture(pylBoard(x, (P[x.p] || {}).name || '', x.b ? '#ffd84a' : ui.color(x.p), x.name), { max: 340 })); });
-      out.push(ui.section('Every spin · tap one', [strip, card, dvKey(ui, [['p', 'cash'], ['pz', 'prize'], ['big', 'double'], ['l', 'Whammy'], ['', 'the bar under each: whose spin']])], { icon: 'star' }));
+      out.push(ui.section('Every spin', [strip, card, dvKey(ui, [['p', 'cash'], ['pz', 'prize'], ['big', 'double'], ['l', 'Whammy'], ['', 'the bar under each: whose spin']])], { icon: 'star' }));
       var chs = pylChart(ui, stops, P.length);
       if (chs) out.push(ui.section('The banks, spin by spin', [ui.picture(chs, { frame: 'dark', max: 420 }), legend(ui, P.map(function (p, i) { return { name: p.name, color: ui.color(i) }; })), ui.el('p', { class: 'dv-note', text: 'Red stripes: a Whammy hit.' })], { icon: 'chart' }));
     }

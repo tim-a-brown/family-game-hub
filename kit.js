@@ -455,9 +455,21 @@
 
   // ── Toast & callout ───────────────────────────────────────────────────────
   var toastEl = null, toastT = null;
+  // A message made of separate facts ("New shoe · 3 cards burned", how games hand them over) is shown with each fact
+  // on a line of its own, never strung together with dots (CLAUDE.md: no dots joining text). facts(node, text)
+  // fills node; factHtml does the same for markup.
+  var FACT_SEP = /\s+[\u00b7]\s+/;
+  function factParts(t) { return String(t == null ? '' : t).split(FACT_SEP).map(function (q) { q = q.trim(); return q.charAt(0).toUpperCase() !== q.charAt(0) && /^[a-z]/.test(q) ? q.charAt(0).toUpperCase() + q.slice(1) : q; }).filter(Boolean); }
+  function facts(node, t) {
+    var p = factParts(t);
+    if (p.length < 2) { node.textContent = t == null ? '' : String(t); return node; }
+    node.textContent = ''; p.forEach(function (q) { node.appendChild(el('span', { class: 'k-fact', text: q })); });
+    return node;
+  }
+  function factHtml(h) { var p = String(h == null ? '' : h).split(FACT_SEP); return p.length < 2 ? h : p.map(function (q) { return '<span class="k-fact">' + q.replace(/^([a-z])/, function (c) { return c.toUpperCase(); }) + '</span>'; }).join(''); }
   function toast(msg, ms) {
     if (!toastEl) { toastEl = el('div', { class: 'k-toast', role: 'status' }); doc.body.appendChild(toastEl); }
-    toastEl.textContent = msg;
+    facts(toastEl, msg);
     requestAnimationFrame(function () { toastEl.classList.add('show'); });
     clearTimeout(toastT);
     toastT = setTimeout(function () { toastEl.classList.remove('show'); }, ms || 1800);
@@ -594,7 +606,7 @@
     o = o || {};
     return new Promise(function (resolve) {
       sheet({
-        title: msg, html: o.body ? '<p class="muted">' + o.body + '</p>' : null,
+        title: msg, html: o.body ? '<p class="muted">' + factHtml(o.body) + '</p>' : null,
         actions: [
           { label: o.ok || 'OK', cls: o.danger ? 'btn-red' : 'btn-primary', onClick: function () { resolve(true); } },
           { label: o.cancel || 'Cancel', cls: 'btn-ghost', onClick: function () { resolve(false); } }
@@ -1079,7 +1091,7 @@
   }
   function mb(b) { return b >= 1e6 ? Math.round(b / 1e6) + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB'; }
   function offDate(t) { return new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric' }); }
-  function offlineTag() { var t = +lsGet('fgh_offline_at', '0'); return t ? 'Ready · saved ' + offDate(t) : 'Save everything for a flight'; }
+  function offlineTag() { var t = +lsGet('fgh_offline_at', '0'); return t ? 'Saved ' + offDate(t) : 'Save everything for a flight'; }
   function offlineSheet() {
     sfx('pop');
     var ring = el('div', { class: 'k-off-ring', html: icon('plane') });
@@ -1103,10 +1115,14 @@
       ring.classList.toggle('ok', !!cur); ring.innerHTML = icon(cur ? 'check' : 'plane');
       if (m) lsSet('fgh_offline_at', String(m.at));
       head.textContent = !m ? 'Not saved yet' : cur ? 'Ready for offline' : 'Saved before the latest update';
-      sub.textContent = !m ? 'Saves about ' + mb(45e6) + ' on this device' : 'Saved ' + offDate(m.at) + ' · ' + mb(m.bytes) + (cur ? '' : ' · save again to top up') + (m.failed ? ' · ' + m.failed + ' files didn’t save' : '');
+      // (each fact on a line of its own)
+      var said = !m ? ['Saves about ' + mb(45e6) + ' on this device'] : ['Saved ' + offDate(m.at) + ', ' + mb(m.bytes)];
+      if (m && !cur) said.push('Save again to top it up.');
+      if (m && m.failed) said.push(m.failed + ' files didn’t save.');
+      if (!navigator.onLine) said.push('Connect to the internet to save.');
+      facts(sub, said.join(' \u00b7 '));
       go.textContent = !m ? 'Save everything' : cur ? 'Save again' : 'Top up';
       go.disabled = !navigator.onLine;
-      if (!navigator.onLine) sub.textContent += (sub.textContent ? ' · ' : '') + 'connect to the internet to save';
     }
     function run() {
       if (busy) return; busy = true; go.disabled = true; go.textContent = 'Saving…';
@@ -1114,7 +1130,7 @@
       barBox.hidden = false; bar.style.width = '0'; ring.classList.add('spin'); head.textContent = 'Saving for offline';
       swAsk({ type: 'offline-prep' }, function (p) {
         bar.style.width = Math.round(p.n / p.total * 100) + '%';
-        sub.textContent = p.n + ' of ' + p.total + ' files · ' + mb(p.bytes) + ' of ' + mb(p.all);
+        sub.textContent = mb(p.bytes) + ' of ' + mb(p.all) + ' saved, in ' + p.n + ' of ' + p.total + ' files';
       }).then(function (r) {
         busy = false; ring.classList.remove('spin'); bar.style.width = '100%';
         setTimeout(function () { barBox.hidden = true; }, 700);
@@ -1149,7 +1165,7 @@
       var games = [], busy = false;
       function show() {
         var away = games.filter(function (c) { return !c.local && c.lib; }), have = games.length - away.length;
-        sm.textContent = !games.length ? 'None on your shelves yet' : !away.length ? 'All ' + games.length + ' on this device' : have + ' of ' + games.length + ' on this device · ' + mb(CL.toFetch(away));
+        sm.textContent = !games.length ? 'None on your shelves yet' : !away.length ? 'All ' + games.length + ' on this device' : have + ' of ' + games.length + ' are on this device, and the rest come to ' + mb(CL.toFetch(away));
         go.hidden = !away.length; go.disabled = busy || navigator.onLine === false;
       }
       CL.list().then(function (l) { games = l || []; show(); }, function () { sm.textContent = 'Couldn’t check them'; });
@@ -1157,10 +1173,10 @@
         if (busy) return; busy = true; go.disabled = true; go.textContent = 'Downloading…'; barBox.hidden = false; bar.style.width = '0'; sfx('tap');
         CL.saveAll(games, function (p) {
           bar.style.width = Math.round((p.n + (p.landed ? 0 : p.frac)) / Math.max(1, p.total) * 100) + '%';
-          if (!p.done) sm.textContent = Math.min(p.n + 1, p.total) + ' of ' + p.total + (p.c ? ' · ' + p.c.name : '');
+          if (!p.done) facts(sm, Math.min(p.n + 1, p.total) + ' of ' + p.total + (p.c ? ' \u00b7 ' + p.c.name : ''));
         }).then(function (failed) {
           busy = false; go.textContent = 'Download all'; setTimeout(function () { barBox.hidden = true; }, 700); show();
-          if (failed) { sm.textContent += ' · ' + failed + ' didn’t come down'; haptic('error'); } else { haptic('success'); sfx('good'); }
+          if (failed) { facts(sm, sm.textContent + ' \u00b7 ' + failed + ' didn’t come down'); haptic('error'); } else { haptic('success'); sfx('good'); }
         });
       };
     });
@@ -1459,7 +1475,7 @@
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
-    if (game) { doc.title = game.name + ' · Game Night'; applyTheme(game.id); }
+    if (game) { doc.title = game.name; applyTheme(game.id); }
     if (game && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
     // Faint silhouette of the game's mark in the middle of the table
     if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
@@ -1514,7 +1530,7 @@
   // the arrow alone (gbar.k-tight) so the name wins
   function fitBar() {
     if (!gbarEl) return;
-    gbarEl.classList.remove('k-tight', 'k-noic');
+    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap', 'k-nochev');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
     if (!t) return;
     t.style.fontSize = '';
@@ -1525,6 +1541,13 @@
     while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.84) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
     if (t.scrollWidth > t.clientWidth + 0.5 && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
     while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+    // (a long name on a 320-wide phone, "Wheel of Fortune": two lines, at the size the eased name had first)
+    if (t.scrollWidth > t.clientWidth + 0.5) {
+      gbarEl.classList.add('k-wrap'); fs = Math.round(fs0 * 0.84); t.style.fontSize = fs + 'px';
+      // (one long word, "Conversation", still has to fit its line)
+      while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.6) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+      if (t.scrollWidth > t.clientWidth + 0.5) gbarEl.classList.add('k-nochev');   // (still too long: a switcher's arrow steps aside, the name is what you tap)
+    }
   }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
@@ -1737,7 +1760,7 @@
             var ini = iniOf(n), bits = [];
             if (ini) bits.push(ini);
             if (p) bits.push(p + (p === 1 ? ' game' : ' games'));
-            return bits.length ? el('small', { class: 'k-plays', text: bits.join(' · ') }) : null;
+            return bits.length ? el('small', { class: 'k-plays' }, bits.map(function (b) { return el('span', { text: b }); })) : null;   // (initials and games played, each in its own place)
           })()]),
           // the signed-in person is already themselves: no link button for them
           whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (function () { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); return r ? (r.hs ? ' lk-on' : ' lk-wait') : ''; })(), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
@@ -1864,6 +1887,8 @@
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats'|'mix', seatLabel}
   //            cpu 'seats': every seat but the first is a computer. 'mix': every seat but the first has a
   //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat.
+  //            onlineBots: true = a game on online.js whose table takes the robots seated in the setup (the
+  //            host's device plays them); the Play online review shows them. TurnNet games say so with info().bots.
   //            The setup shows who's playing on one line (the people from last time); a tap opens the players
   //            sheet (playersSheet) for how many, who sits where, robots and their skill. The returned
   //            object's seats() gives [{name, cpu}] as it stands, for a game that shows something per seat
@@ -2441,6 +2466,7 @@
     // The sides at this table: players.teams ([[seat, ...], ...], or a function of the count, the options and the mode
     // for games where partners are a choice); two seats with no teams are simply one against the other (players.vs:
     // false for two who play together).
+    var lastWho = null;   // who the Players card shows: {seats, teams}
     function teamsAt(n) {
       if (!P) return null;
       var t = typeof P.teams === 'function' ? P.teams(n, state.options, state.mode) : P.teams;
@@ -2478,6 +2504,7 @@
         told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
       });
       var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
+      lastWho = { seats: told, teams: teams };   // (the Play online review shows the same chips)
       if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one, teams); return; }
       // the Players card: who is already seated as chips (robots with their skill; partners and sides as people say
       // them), and a tap opens the players sheet
@@ -2651,8 +2678,14 @@
         var me = String(names[0] || lsGet('my_name', '') || '').trim(), cpuNow2 = cpuFor(), pals = [], robotsHere = 0;
         for (var i = 1; i < state.count; i++) { var isC = cpuNow2 === 'seats' ? true : cpuNow2 === 'mix' ? !!robots[i] : !!cpuNow2; if (isC) robotsHere++; else if (isPersonName(names[i])) pals.push(String(names[i]).trim()); }
         var who = el('div', { class: 'k-rev-sec' }, [el('div', { class: 'k-rev-h', text: 'At the table' })]);
-        var chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]);
-        pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); });
+        // (the same chips as the Players card: partners joined by "&", the sides by "vs", robots with their skill)
+        var chips;
+        // (a game the computer can't play online seats people only: the robots of the setup don't come)
+        var botsCome = info ? !!info.bots : !!(P && P.onlineBots);
+        var wl = lastWho && (!botsCome ? { seats: lastWho.seats.filter(function (t) { return !t.cpu; }), teams: lastWho.seats.some(function (t) { return t.cpu; }) ? null : lastWho.teams } : lastWho);
+        var botsHere = wl ? wl.seats.filter(function (t) { return t.cpu; }).length : 0;
+        if (wl && wl.seats.length) chips = whoChips(wl.seats, wl.teams, 'k');
+        else { chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]); pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); }); }
         who.appendChild(chips);
         var lines = [];
         if (pals.length) lines.push(listAnd(pals) + (pals.length === 1 ? ' joins' : ' join') + ' from ' + (pals.length === 1 ? 'their own device' : 'their own devices') + ', with the table’s code or from Open tables on the home screen.');
@@ -2661,7 +2694,8 @@
           lines.push(info.min === info.max ? 'This table seats ' + info.max + ' people.' : 'A game can start with ' + info.min + ' ' + (info.min === 1 ? 'person' : 'people') + ', and the table seats up to ' + info.max + '.');
           var filled = info.bots ? info.seats(info.min) - info.min : 0;
           if (filled > 0) lines.push('The computer plays any seat that nobody takes.');
-        } else if (robotsHere && P && modeCpu(om)) lines.push('Computer players are chosen at the table.');
+        } else if (botsHere) lines.push((botsHere === 1 ? 'The computer player you seated comes' : 'The computer players you seated come') + ' to the table too, and your device plays ' + (botsHere === 1 ? 'it.' : 'them.'));
+        else if (robotsHere && P && modeCpu(om)) lines.push('Computer players are chosen at the table.');
         lines.forEach(function (t) { who.appendChild(el('p', { class: 'k-rev-p', text: t })); });
         box.appendChild(who);
         // the rules as they stand
@@ -2682,7 +2716,9 @@
       }
       paint();
       // the table itself: opened here and now where the game's tables are TurnNet's, by the game's own lobby otherwise
-      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else go(true, 'open'); }, 0); }
+      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else go(true, 'open'); }, 0); }
+      // (the robots the review shows keep their names at the table, in the seats nobody takes)
+      function botNames() { return lastWho && info && info.bots ? lastWho.seats.filter(function (t) { return t.cpu; }).map(function (t) { return t.name; }) : []; }
       function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true, 'find'); }, 0); }
       sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
     }
@@ -2735,8 +2771,13 @@
       // (a game page whose own frame has no padding, Press Your Luck's: the setup keeps 16px off the screen's edges)
       var hl = parseFloat(getComputedStyle(host).paddingLeft) || 0, wl = wrap.getBoundingClientRect().left;
       wrap.classList.toggle('k-pad', hl < 8 && wl < 8);
-      d.style.paddingLeft = d.style.paddingRight = '';
-      var r = d.getBoundingClientRect(), cs = getComputedStyle(d), W = doc.documentElement.clientWidth || innerWidth;
+      d.style.paddingLeft = d.style.paddingRight = d.style.marginLeft = d.style.marginRight = '';
+      // (the dock reaches out over the page's padding, but never past the screen's edge: a page with less padding than
+      // 16px made the whole page a few pixels too wide)
+      var W = doc.documentElement.clientWidth || innerWidth, r0 = d.getBoundingClientRect(), cs0 = getComputedStyle(d);
+      if (r0.left < 0) d.style.marginLeft = (parseFloat(cs0.marginLeft) - r0.left) + 'px';
+      if (r0.right > W) d.style.marginRight = (parseFloat(cs0.marginRight) + r0.right - W) + 'px';
+      var r = d.getBoundingClientRect(), cs = getComputedStyle(d);
       var l = r.left + parseFloat(cs.paddingLeft), rt = W - (r.right - parseFloat(cs.paddingRight));
       if (l < 17) d.style.paddingLeft = (parseFloat(cs.paddingLeft) + 17 - l) + 'px';
       if (rt < 17) d.style.paddingRight = (parseFloat(cs.paddingRight) + 17 - rt) + 'px';
@@ -2757,7 +2798,7 @@
 
   // ── Win / results ─────────────────────────────────────────────────────────
   // Kit.win({icon:'trophy', title:'Sam wins!', sub:'by 12 points',
-  //          rank:[{name,score,color}], lose:false, again:fn, againLabel, extra:[{label,onClick}]})
+  //          rank:[{name,score,color,cpu,me}], lose:false, again:fn, againLabel, extra:[{label,onClick}]})
   // Every game's results card offers the same things, in the same order, each only when it applies:
   //   again   (primary)  Play again: the same people and settings. againLabel names what comes next
   //                      when it isn't a rematch ('Next puzzle', 'New deal'); false leaves it out
@@ -2780,14 +2821,15 @@
     var card = el('div', { class: 'card' });
     card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
-    if (o.sub) card.appendChild(el('div', { class: 'sub', text: o.sub }));
+    if (o.sub) card.appendChild(facts(el('div', { class: 'sub' }), o.sub));
     if (o.pic) card.appendChild(o.pic);   // (pic: the game's own picture of how it went, an element under the title: Arvela's race for Renown)
     // notes: how it ended (the last moves), so a sudden win makes sense
     if (o.notes && o.notes.length) card.appendChild(el('div', { class: 'k-win-notes' }, [el('b', { text: o.notesTitle || 'How it ended' })].concat(o.notes.map(function (t) { return el('div', { text: t }); }))));
     if (o.rank && o.rank.length) {
       var rk = el('div', { class: 'rank' });
       o.rank.forEach(function (p, i) {
-        rk.appendChild(el('div', null, [
+        // (me: this device's own row, ringed in the player's color, the name as everyone else sees it)
+        rk.appendChild(el('div', p.me ? { class: 'me', style: { '--rc': p.color || playerColor(i) } } : null, [
           el('span', { class: 'place', text: String(i + 1) }),
           p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color || playerColor(i) }, html: icon('bot') }) : avEl(p.name || '?', 'sm', p.color || playerColor(i)),
           el('span', { text: p.name }),
@@ -2856,7 +2898,7 @@
     var st = r.started || startedAt;
     entry.started = st; entry.duration = Math.max(0, Math.round((Date.now() - st) / 1000));
     entry._summary = r.summary || (winner ? winner + ' won' : players.length > 1 ? 'Tie game' : 'Finished') +
-      (ranked.length > 1 ? ' · ' + ranked.map(function (p) { return p.score; }).join(' – ') : ranked.length === 1 ? ' · ' + ranked[0].score : '');
+      (ranked.length > 1 ? ', ' + ranked.map(function (p) { return p.score; }).join(' – ') : ranked.length === 1 ? ' with ' + ranked[0].score : '');
     entry._badge = r.badge || '';
     if (r.detail) {
       // it syncs: a detail that got too big is left out rather than crowding everyone's history
@@ -2868,7 +2910,7 @@
 
   function fmtDate(ts) {
     var d = new Date(ts);
-    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
   function fmtDur(sec) {
     if (!sec) return ''; var m = Math.round(sec / 60);
@@ -2907,8 +2949,9 @@
   function historyDetail(e, o) {
     o = o || {};
     var n = normalize(e), box = el('div', { class: 'k-hd' });
-    var meta = o.inList ? [] : [fmtDate(n.date)]; if (n.duration && !o.inList) meta.push(fmtDur(n.duration)); if (n.mode && !o.inList) meta.push(n.mode);
-    if (meta.length) box.appendChild(el('div', { class: 'k-hd-meta', text: meta.join(' · ') }));
+    // when, how long and how it was played: a caps label over each value (in a list the date is on the row already)
+    var meta = o.inList ? [] : [['Played', fmtDate(n.date)]]; if (n.duration) meta.push(['Took', fmtDur(n.duration)]); if (n.mode) meta.push(['Played as', factParts(n.mode).join(', ')]);
+    if (meta.length) box.appendChild(el('div', { class: 'k-hd-meta' }, meta.map(function (m) { return el('span', null, [el('small', { text: m[0] }), el('b', { text: m[1] })]); })));
     if (n.players.length) {
       var ps = n.players.map(function (p, i) { return { p: p, i: i }; });
       if (ps.some(function (x) { return typeof x.p.score === 'number'; })) ps.sort(function (a, b) { return n.lowWins ? a.p.score - b.p.score : b.p.score - a.p.score; });
@@ -2924,12 +2967,12 @@
         ]));
       });
       box.appendChild(st);
-    } else if (n.summary) box.appendChild(el('div', { class: 'k-hd-sum', text: n.summary }));
+    } else if (n.summary) box.appendChild(facts(el('div', { class: 'k-hd-sum' }), n.summary));
     // the game's own view: final board, cards, scorecard... (hist/*.js)
     if (window.HistView) { var gv = HistView.render(e, o.game || e.game); if (gv) box.appendChild(gv); }
     if (n.highlights.length) {
       var hl = el('ul', { class: 'k-hd-hl' });
-      n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + esc(h) + '</span>' })); });
+      n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + factHtml(esc(h)) + '</span>' })); });   // (a highlight's separate facts, a line each)
       box.appendChild(hl);
     }
     if (n.rounds && n.players.length) {
@@ -2974,7 +3017,7 @@
     list.forEach(function (e, i) {
       var n = normalize(e);
       var head = el('button', { type: 'button', class: 'k-hist-h' }, [
-        el('span', { class: 'grow' }, [el('b', { text: n.winner ? n.winner + ' won' : n.summary.split(' · ')[0] || 'Finished' }), el('small', { text: fmtDate(n.date) + (n.duration ? ' · ' + fmtDur(n.duration) : '') + (n.mode ? ' · ' + n.mode : '') })]),
+        el('span', { class: 'grow' }, [el('b', { text: n.winner ? n.winner + ' won' : factParts(n.summary)[0] || 'Finished' }), el('small', { text: fmtDate(n.date) })]),
         el('span', { class: 'k-hist-s', text: n.players.length > 1 && n.players.every(function (p) { return p.score != null; }) ? n.players.map(function (p) { return p.score; }).join(' – ') : '' }),
         el('span', { class: 'chev', html: icon('down') })
       ]);
@@ -3324,7 +3367,7 @@
     }
     var r = FGHSync.linkOf(name);
     node.appendChild(el('div', { class: 'lk-top' }, [avEl(name, 'lg', 'var(--surface-3)'), el('div', null, [el('b', { text: name }),
-      el('small', { class: r && !r.hs ? 'k-wait' : '', text: r ? (r.hs ? 'Linked to ' + (r.them || name) + '’s profile · ' + r.code : 'Waiting to accept') : 'Not linked yet' })])]));
+      el('small', { class: r && !r.hs ? 'k-wait' : '', text: r ? (r.hs ? 'Linked to ' + (r.them || name) + '’s profile' : 'Waiting to accept') : 'Not linked yet' })])]));
     if (r && r.gone) {
       node.appendChild(el('p', { class: 'muted', text: 'That code doesn’t work anymore (' + name + ' made a new one). Unlink, then link again with their new code.' }));
       s = sheet({ title: name, node: node, actions: [{ label: 'Unlink ' + name, primary: true, onClick: function () { FGHSync.linkRemove(name); avRefresh(); if (onDone) onDone(); linkSheet(name, onDone); } }, { label: 'Close', cls: 'btn-ghost' }] });
@@ -3374,7 +3417,7 @@
     try { localStorage.removeItem('fgh_link_acc'); } catch (e) {}
     var who = names.join(' and '), me = lsGet('my_name', '').trim() || 'You';
     var old = doc.querySelector('.k-note'); if (old) old.remove();
-    var b = el('button', { type: 'button', class: 'k-note', role: 'status', 'aria-label': who + ' accepted · you’re linked' }, [
+    var b = el('button', { type: 'button', class: 'k-note', role: 'status', 'aria-label': who + ' accepted, so you’re linked' }, [
       el('span', { class: 'k-note-pair' }, [avEl(me, null, '#3f86e0'), el('i', { html: icon('link') }), avEl(names[0], null, '#e2557f')]),
       el('span', { class: 'grow' }, [el('b', { text: who + ' accepted' }), el('small', { text: 'You’re linked' })]),
       el('span', { class: 'k-note-ok', html: icon('check') })
@@ -3579,7 +3622,7 @@
     var week = days.reduce(function (a, x) { return a + x.s; }, 0), active = days.filter(function (x) { return x.s > 0; }).length;
     var who = whose || (window.FGHSync && FGHSync.isPin && FGHSync.isPin() ? (lsGet('my_name', '') || 'This profile') : 'Guest on this device');
     var hero = el('div', { class: 'k-pt-hero' }, [el('small', { text: 'Today' }), el('b', { text: minsText(days[6].s) }),
-      el('span', { text: 'This week ' + minsText(week) + (active ? ' · about ' + minsText(week / active) + ' a day played' : '') })]);
+      el('span', { text: 'This week ' + minsText(week) + (active ? ', about ' + minsText(week / active) + ' on each day you played' : '') })]);
     var bars = el('div', { class: 'k-pt-bars', role: 'tablist', 'aria-label': 'Last 7 days' }), hours = el('div', { class: 'k-pt-hours' }), dayT = el('div', { class: 'k-pt-day' }), tip = el('div', { class: 'k-pt-tip' });
     var span = 'day', pick = null, gHead = el('div', { class: 'k-pt-ghead' }), gList = el('div', { class: 'k-pt-games' });
     var seg = el('div', { class: 'k-pt-seg', role: 'tablist', 'aria-label': 'Games played' }, [['day', 'Day'], ['week', 'Week']].map(function (o) {
@@ -3596,12 +3639,12 @@
     function dayName(j) { return j === 6 ? 'Today' : days[j].d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }); }
     function paintHours() {
       var x = days[sel], a = pick ? ((G[x.k] || {})[pick] || new Array(24).fill(0)) : (U[x.k] || new Array(24).fill(0));
-      dayT.innerHTML = '<b>' + esc(dayName(sel)) + (pick ? ' · ' + esc(gameLabel(G, pick)) : '') + '</b><span>' + esc(minsText(sumDay(a))) + '</span>';
+      dayT.innerHTML = '<b>' + esc(dayName(sel)) + (pick ? '<small>' + esc(gameLabel(G, pick)) + '</small>' : '') + '</b><span>' + esc(minsText(sumDay(a))) + '</span>';   // (the game picked on a line of its own under the day)
       hours.innerHTML = ''; tip.textContent = ''; hours.classList.toggle('game', !!pick);
       a.forEach(function (s, h) {
         var lv = s <= 0 ? 0 : s < 600 ? 1 : s < 1500 ? 2 : s < 2700 ? 3 : 4;   // shade by how much of that hour was played
         var lab = function (n) { return (n % 12 || 12) + (n < 12 ? ' AM' : ' PM'); };
-        var c = el('button', { type: 'button', class: 'k-pt-h l' + lv, 'aria-label': lab(h) + ': ' + minsText(s), onclick: function () { Array.prototype.forEach.call(hours.children, function (y) { y.classList.remove('pick'); }); c.classList.add('pick'); tip.textContent = lab(h) + '–' + lab((h + 1) % 24) + ' · ' + minsText(s); } });
+        var c = el('button', { type: 'button', class: 'k-pt-h l' + lv, 'aria-label': lab(h) + ': ' + minsText(s), onclick: function () { Array.prototype.forEach.call(hours.children, function (y) { y.classList.remove('pick'); }); c.classList.add('pick'); tip.textContent = minsText(s) + ' between ' + lab(h) + ' and ' + lab((h + 1) % 24); } });
         hours.appendChild(c);
       });
     }
@@ -3629,7 +3672,7 @@
     }
     paintSel();
     var node = el('div', { class: 'k-pt' }, [
-      el('p', { class: 'k-pt-who', text: who + ' · counted while the games are open and in use' }), hero,
+      el('p', { class: 'k-pt-who', text: who + '’s play time is counted while the games are open and in use.' }), hero,
       el('div', { class: 'label k-sec', text: 'Last 7 days' }), bars,
       el('div', { class: 'label k-sec', text: 'Time of day' }), dayT, hours,
       el('div', { class: 'k-pt-axis' }, ['12 AM', '6 AM', '12 PM', '6 PM', '12 AM'].map(function (t) { return el('span', { text: t }); })), tip,
@@ -3711,8 +3754,8 @@
       var down = function (e) {
         e.preventDefault(); hold.classList.add('on'); var t0 = Date.now();
         ht = setTimeout(function () { haptic('success'); timerSet(null); }, HOLD);
-        hi = setInterval(function () { lab.textContent = 'Keep holding · ' + Math.max(1, Math.ceil((HOLD - (Date.now() - t0)) / 1000)); }, 200);
-        lab.textContent = 'Keep holding · 15';
+        hi = setInterval(function () { lab.textContent = 'Keep holding for ' + Math.max(1, Math.ceil((HOLD - (Date.now() - t0)) / 1000)) + ' seconds'; }, 200);
+        lab.textContent = 'Keep holding for 15 seconds';
       };
       var up = function () { hold.classList.remove('on'); clearTimeout(ht); clearInterval(hi); lab.textContent = 'Hold to unlock'; };
       hold.addEventListener('pointerdown', down); ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (k) { hold.addEventListener(k, up); });
@@ -3862,7 +3905,7 @@
           start(Math.round((d.getTime() - Date.now()) / 60000), d.getTime());
         } else { lsSet('gn_timer_custom', String(cm)); start(cm); }
       } });
-      at.addEventListener('input', function () { dial.classList.toggle('dim', !!at.value); go.textContent = at.value ? 'Start · until ' + endsAt((function () { var hm = at.value.split(':'), d = new Date(); d.setHours(+hm[0], +hm[1], 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); return d.getTime(); })()) : 'Start'; });
+      at.addEventListener('input', function () { dial.classList.toggle('dim', !!at.value); go.textContent = at.value ? 'Play until ' + endsAt((function () { var hm = at.value.split(':'), d = new Date(); d.setHours(+hm[0], +hm[1], 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); return d.getTime(); })()) : 'Start'; });
       return el('div', { class: 'k-tmr-cust' }, [dial, el('p', { class: 'k-dial-hint', text: 'Spin the dial: a full turn is an hour' }), el('label', { class: 'k-tmr-or' }, [el('span', { text: 'or until' }), at]), go]);
     }
     function paint() {
@@ -4567,7 +4610,7 @@
         (typeof GAME_CATS !== 'undefined' ? GAME_CATS : [{ id: null, name: '' }]).forEach(function (c) {
           var gs = all.filter(function (g) { return (c.id == null || g.cat === c.id) && (!t || g.name.toLowerCase().indexOf(t) >= 0); }); if (!gs.length) return;
           var secOff = cur.pc.cats.indexOf(c.id) >= 0;
-          box.appendChild(el('div', { class: 'label k-sec', text: c.name + (secOff ? ' · section off' : '') }));
+          box.appendChild(el('div', { class: 'label k-sec' }, [el('span', { text: c.name }), secOff ? el('small', { class: 'k-sec-off', text: 'This section is turned off' }) : null]));
           gs.forEach(function (g) {
             var on = !secOff && cur.pc.games.indexOf(g.id) < 0;
             box.appendChild(swRow(window.GameIcon ? GameIcon(g.id) : 'gamepad', g.name, secOff ? '' : on ? '' : 'Off for ' + name, on, function () { toggleList(cur.pc.games, g.id); sfx('tap'); haptic('light'); p(); saveSoon(); }, secOff));
@@ -4590,9 +4633,10 @@
       list = FGHSync.linkPending(); box.innerHTML = '';
       if (!list.length) { box.appendChild(el('p', { class: 'muted', text: 'Nothing waiting.' })); return; }
       list.forEach(function (it) {
-        var g = findGameSafe(histGameId(it.key)), e = it.entry, ps = (e.players || []).map(function (p) { return p.name + (p.score != null ? ' ' + p.score : ''); }).join(' · ');
+        // (the game, then who won, who sent it and when, and each player with their score as a chip of its own)
+        var g = findGameSafe(histGameId(it.key)), e = it.entry, ps = el('span', { class: 'lk-ps' }, (e.players || []).map(function (p) { return el('span', null, [el('span', { text: p.name }), p.score != null ? el('b', { text: String(p.score) }) : null]); }));
         box.appendChild(el('div', { class: 'lk-item' }, [
-          el('div', { class: 'grow' }, [el('b', { text: (g ? g.name : it.key) + (e.winner ? ' · ' + e.winner + ' won' : '') }), el('small', { text: it.from + ' · ' + fmtDate(e._date || it.at) }), el('small', { text: ps })]),
+          el('div', { class: 'grow' }, [el('b', { text: g ? g.name : it.key }), e.winner ? el('small', { text: e.winner + ' won' }) : null, el('small', { text: 'From ' + it.from + ' on ' + fmtDate(e._date || it.at) }), ps]),
           el('div', { class: 'lk-btns' }, [
             el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Add', onclick: function () { FGHSync.linkAccept(it.id); sfx('good'); paint(); if (onDone) onDone(); } }),
             el('button', { type: 'button', class: 'btn btn-ghost btn-sm', text: 'Not me', onclick: function () { FGHSync.linkDecline(it.id); sfx('tap'); paint(); if (onDone) onDone(); } })])]));
@@ -4844,7 +4888,7 @@
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
     whoChips: whoChips, whoSaid: whoSaid,
-    titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
+    facts: facts, factParts: factParts, titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
 })();

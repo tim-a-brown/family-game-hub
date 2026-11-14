@@ -71,6 +71,8 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
 .cs-head{grid-area:head;display:flex;align-items:stretch;gap:8px;padding:5px;min-width:0;}
 .cs-city{flex:1;min-width:0;background:var(--navy);border-radius:2px;padding:7px 10px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;}
 .cs-city b{display:block;font:400 clamp(.72rem,2.4vw,1rem)/1.25 var(--px);color:var(--amber);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:2px 2px 0 #5a2a00;}
+.cs-city b{white-space:normal;text-overflow:clip;text-wrap:balance;}
+@media (max-width:359px){ .cs-city b{font-size:.6rem;} }   /* (Detective fits its line on a 320 phone) */   /* (a long place, ACME Detective Agency, takes two lines instead of being cut) */
 .cs-city small{display:block;font:400 1.15rem/1 var(--vt);color:#a8b4ff;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cs-time{display:flex;align-items:center;gap:8px;background:var(--navy);border-radius:2px;padding:4px 10px 4px 6px;box-shadow:inset 2px 2px 0 #000,inset -1px -1px 0 #3a3e5a;}
 .cs-time canvas{width:40px;height:40px;image-rendering:pixelated;}
@@ -816,7 +818,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     unclutter();
     say('Where to? You can reach these ' + (C.v === 'time' ? 'times and places' : V[C.v].unit) + ' from ' + esc(here.name) + '.', C.v === 'time' ? 'CHRONOSKIMMER' : 'FLIGHTS');
     var keys = cd.opts.map(function (id) {
-      var p = place(id), b = keyBtn('plane', p.name, (C.v === 'time' ? yr(p.year) + ' · ' : '') + flightHours(here, p) + ' hrs', function () { fly(id); });
+      var p = place(id), b = keyBtn('plane', p.name, (C.v === 'time' ? yr(p.year) + ', ' : '') + flightHours(here, p) + ' hrs', function () { fly(id); });
       ['pointerenter', 'focus'].forEach(function (ev) { b.addEventListener(ev, function () { dots[id].classList.add('hot'); }); });
       ['pointerleave', 'blur'].forEach(function (ev) { b.addEventListener(ev, function () { dots[id].classList.remove('hot'); }); });
       return b;
@@ -1081,7 +1083,7 @@ html.cs-on,html.cs-on body{overflow:hidden;overscroll-behavior:none;}   /* (a ca
     var land = (A.rings ? A.rings('world') : []).map(function (r) { return r.pts; });
     ORDER.forEach(function (k) { var b = el('button', { type: 'button', text: V[k].name, onclick: function () { pick(k); } }); b._k = k; chips.appendChild(b); });
     function paintInfo() {
-      nm.textContent = V[cur].name.toUpperCase(); ds.textContent = V[cur].desc + ' · ' + ((window.CARMEN_DATA[cur] || []).length) + ' ' + V[cur].unit;
+      nm.textContent = V[cur].name.toUpperCase(); ds.textContent = V[cur].desc + '. There are ' + ((window.CARMEN_DATA[cur] || []).length) + ' ' + V[cur].unit + '.';
       Array.prototype.forEach.call(chips.children, function (b) { b.classList.toggle('on', b._k === cur); b.setAttribute('aria-pressed', String(b._k === cur)); });
     }
     function pick(k) { if (k === cur) return; cur = k; sfx('blip'); Kit.haptic('light'); paintInfo(); set(k); }

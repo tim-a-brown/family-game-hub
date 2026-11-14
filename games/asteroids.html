@@ -269,7 +269,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
     deckEl = buildDeck();
     app.appendChild(hudEl); app.appendChild(wrapEl); app.appendChild(deckEl);
-    app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Left / Right to turn · Up to thrust · Space to fire · Shift for hyperspace · P pauses' }));
+    app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Left and Right turn, Up thrusts, Space fires, Shift jumps to hyperspace and P pauses.' }));
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app);
     cssW = 0; fit();
@@ -372,13 +372,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     paused = true; keys = {}; resetCtl();
     setThrustSound(false); setUfoSound(null);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
-    showOverlay('Paused', 'Wave ' + G.wave + ' · ' + fmt(G.score) + ' points', 'Resume');
+    showOverlay('Paused', fmt(G.score) + ' points on wave ' + G.wave, 'Resume');
     save();
   }
   function showOverlay(title, sub, btn) {
     ovEl.innerHTML = '';
     ovEl.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: title }), el('p', { text: sub }),
+      el('h2', { text: title }), Kit.facts(el('p'), sub),
       el('button', { type: 'button', class: 'btn btn-primary btn-block', text: btn, onclick: resumeGame }),
       el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); } })
     ]));
@@ -414,7 +414,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       rocks = (saved.rocks || []).map(function (r) { return mkRock(r.x, r.y, r.size, r.vx, r.vy, r.shape); });
       G.phase = 'play'; ship = newShip();
       if (!rocks.length) startWave();
-      paused = welcome = true; showOverlay('Welcome back', 'Wave ' + G.wave + ' · ' + fmt(G.score) + ' points', 'Continue');
+      paused = welcome = true; showOverlay('Welcome back', fmt(G.score) + ' points on wave ' + G.wave, 'Continue');
     } else {
       fit();
       G.phase = 'play'; ship = newShip();

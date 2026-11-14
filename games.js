@@ -302,7 +302,7 @@ var HI_BOARDS = (function () {
   // Math Puzzles: Beat the clock, one board per level and clock length
   [['k2', 'K–2'], ['g34', '3–4'], ['g56', '5–6'], ['g78', '7–8'], ['g912', '9–12'], ['seq', 'Sequences']].forEach(function (l) {
     [60, 120, 180].forEach(function (s) {
-      add('mathpuzzles', 'mathpuzzles_' + l[0] + '_' + s, { label: (l[0] === 'seq' ? '' : 'Grades ') + l[1] + ' · ' + (s / 60) + ' min', tab: l[1] + ' · ' + (s / 60) + 'm', unit: 'points' });
+      add('mathpuzzles', 'mathpuzzles_' + l[0] + '_' + s, { label: (l[0] === 'seq' ? '' : 'Grades ') + l[1] + ' in ' + (s / 60) + (s === 60 ? ' minute' : ' minutes'), tab: l[1] + ' in ' + (s / 60) + 'm', unit: 'points' });
     });
   });
   add('candymatch', 'candymatch', { label: '', unit: 'score' });
@@ -316,7 +316,7 @@ var HI_BOARDS = (function () {
   add('drugwars', 'drugwars', { label: '', title: 'Drug Wars', unit: 'cash', secret: 'hotdogstand_dw' });
   // Trivia Countdown (solo): one board per level and game length
   [['easy', 'Elementary'], ['medium', 'General'], ['hard', 'Genius']].forEach(function (l) {
-    [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: l[1] + ' · ' + n + ' questions', tab: l[1] + ' ' + n, unit: 'points' }); });
+    [10, 15, 20].forEach(function (n) { add('trivia', 'trivia_cd_' + l[0] + '_' + n, { label: n + ' ' + l[1] + ' questions', tab: n + ' ' + l[1], unit: 'points' }); });
   });
   // Mazes: best times per size, drawn (Pencil) and rolled (Labyrinth)
   [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard'], ['expert', 'Expert']].forEach(function (d) {

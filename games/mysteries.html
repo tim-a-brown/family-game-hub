@@ -78,7 +78,8 @@ body{overflow-x:hidden;}
 .ms-card .stamp.closed{border-color:rgba(70,70,90,.8);color:rgba(70,70,90,.85);}
 .ms-card .seal{position:absolute;right:4px;top:4px;z-index:3;width:30px;height:30px;}
 .ms-card.next{box-shadow:0 0 0 3px #ffd34d,0 10px 20px rgba(0,0,0,.45);}
-.ms-card.next .no::after{content:" · NEXT";color:#c0192b;}
+.tab .tlv{margin-left:10px;opacity:.75;}
+.ms-card.next .no::after{content:"NEXT";margin-left:7px;padding:0 4px;border:1.5px solid #c0192b;border-radius:3px;color:#c0192b;}   /* (a stamp beside the number) */
 .ms-yarn{position:absolute;inset:0;pointer-events:none;z-index:1;}
 /* the extra-cases file: a stack of fresh case files */
 .ms-card.extra{box-shadow:0 1px 0 rgba(255,255,255,.6) inset,5px 5px 0 -1px #efe2c2,5px 5px 0 0 rgba(90,60,20,.25),10px 10px 0 -1px #e2d1a8,10px 10px 0 0 rgba(90,60,20,.25),0 10px 18px rgba(0,0,0,.4);}
@@ -247,7 +248,7 @@ body{overflow-x:hidden;}
   function getCase(id) { return BY[id] || (GEN && id ? GEN.byId(id) : null) || null; }
   function dayLabel(day) { return new Date(2024, 0, day).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
   function caseName(c) { return c.daily ? 'Daily case' : c.gen ? 'Extra case ' + c.no : 'Case ' + c.no; }
-  function caseTab(c) { return c.daily ? 'DAILY · ' + dayLabel(c.daily).toUpperCase() : c.gen ? 'EXTRA No. ' + c.no : 'CASE ' + ('0' + c.no).slice(-2); }
+  function caseTab(c) { return c.daily ? 'DAILY CASE ' + dayLabel(c.daily).toUpperCase() : c.gen ? 'EXTRA No. ' + c.no : 'CASE ' + ('0' + c.no).slice(-2); }
   var LV = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
   var LV_DESC = { easy: 'Clear clues, one or two steps', medium: 'A few clues to put together', hard: 'Tiny details and careful logic' };
   var LV_ICON = { easy: 'search', medium: 'eye', hard: 'flame' };
@@ -335,7 +336,7 @@ body{overflow-x:hidden;}
   function showSetup() {
     leaveCase(); view = 'setup'; Kit.titleSwitch(null); app.className = 'ms';
     var b = book();
-    function desc(l) { var n = solvedIn(l, b), t = byLevel(l).length; return LV_DESC[l] + ' · ' + (n >= t ? 'all ' + t + ' solved!' : n + ' of ' + t + ' solved'); }
+    function desc(l) { var n = solvedIn(l, b), t = byLevel(l).length; return LV_DESC[l] + '. ' + (n >= t ? 'All ' + t + ' are solved!' : n + ' of ' + t + ' are solved.'); }
     var st = Kit.setup(app, {
       intro: 'Study the scene, crack the case',
       modes: ['easy', 'medium', 'hard'].map(function (l) { return { id: l, icon: LV_ICON[l], title: LV[l], desc: desc(l) }; }),
@@ -355,7 +356,7 @@ body{overflow-x:hidden;}
       el('div', { class: 'cal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(new Date().getDate()) })]),
       el('div', { class: 'tx' }, [
         el('b', { text: 'Daily case' }),
-        el('small', { text: (dc.gen ? dc.type : 'Case ' + dc.no) + ' · ' + LV[dc.level] + ' · a new mystery every day' }),
+        Kit.facts(el('small'), (dc.gen ? dc.type : 'Case ' + dc.no) + ', ' + LV[dc.level].toLowerCase() + ' \u00b7 A new mystery every day'),
         done ? el('small', { class: 'st', html: Kit.icon(done.solved ? 'check' : 'eye') + '<span>' + (done.solved ? 'Solved in ' + fmt(done.secs) : 'Solution seen') + '</span>' }) : null
       ]),
       el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
@@ -403,8 +404,8 @@ body{overflow-x:hidden;}
       card.appendChild(el('div', { class: 'no', text: 'CASE ' + ('0' + c.no).slice(-2) }));
       card.appendChild(el('div', { class: 'tt', text: c.title }));
       card.appendChild(el('div', { class: 'ty', text: c.type }));
-      if (going) card.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress · ' + fmt(live.secs) + '</span>' }));
-      else if (r.s) card.appendChild(el('div', { class: 'rs', html: Kit.icon('check') + '<span>' + fmt(r.t) + (r.h ? ' · ' + plural(r.h, 'hint') : '') + '</span>' }));
+      if (going) card.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress for ' + fmt(live.secs) + '</span>' }));
+      else if (r.s) card.appendChild(el('div', { class: 'rs', html: Kit.icon('check') + '<span>' + fmt(r.t) + (r.h ? ' with ' + plural(r.h, 'hint') : '') + '</span>' }));
       else if (r.r) card.appendChild(el('div', { class: 'rs shown', html: Kit.icon('eye') + '<span>Solution seen</span>' }));
       grid.appendChild(card);
     });
@@ -418,8 +419,8 @@ body{overflow-x:hidden;}
         if (!xGoing) xcard.appendChild(el('span', { class: 'new', text: 'NEW' }));
         xcard.appendChild(el('div', { class: 'no', text: 'EXTRA No. ' + xc.no }));
         xcard.appendChild(el('div', { class: 'tt', text: xc.title }));
-        xcard.appendChild(el('div', { class: 'ty', text: xc.type + ' · a new case every time' }));
-        if (xGoing) xcard.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress · ' + fmt(live.secs) + '</span>' }));
+        xcard.appendChild(Kit.facts(el('div', { class: 'ty' }), xc.type + ' \u00b7 A new case every time'));
+        if (xGoing) xcard.appendChild(el('div', { class: 'rs go', html: Kit.icon('pencil') + '<span>In progress for ' + fmt(live.secs) + '</span>' }));
         grid.appendChild(xcard);
       }
     }
@@ -448,12 +449,12 @@ body{overflow-x:hidden;}
     leaveCase();
     var c = getCase(S.id); view = 'case';
     var sz = MysteryScene.size(c), W = sz[0], H = sz[1];
-    Kit.titleSwitch((S.daily && !c.daily ? 'Daily · ' : '') + caseName(c) + ' · ' + LV[c.level], function () { showBoard(c.level); }, 'Back to the case board');
+    Kit.titleSwitch(caseName(c), function () { showBoard(c.level); }, 'Back to the case board');
     app.className = 'ms'; app.innerHTML = '';
     var desk = el('div', { class: 'ms-desk wood' }), box = el('div', { class: 'ms-case' });
     // the file
     var file = el('section', { class: 'ms-file' });
-    file.appendChild(el('div', { class: 'tab', text: caseTab(c) + ' · ' + LV[c.level].toUpperCase() }));
+    file.appendChild(el('div', { class: 'tab' }, [el('span', { text: caseTab(c) }), el('span', { class: 'tlv', text: LV[c.level].toUpperCase() })]));
     var clock = el('span', { class: 'ms-clock', html: Kit.icon('history') + '<span>' + fmt(S.secs) + '</span>' });
     file.appendChild(el('div', { class: 'ms-fh' }, [el('h2', { text: c.title }), clock]));
     file.appendChild(el('p', { class: 'ms-setup', text: c.setup }));
@@ -635,7 +636,7 @@ body{overflow-x:hidden;}
   }
   function stamp(anim) {
     if (!cur) return;
-    var st = el('div', { class: 'ms-stamp' + (S.solved ? '' : ' closed') + (anim ? '' : ' still'), html: (S.solved ? 'SOLVED' : 'CLOSED') + '<small>' + (S.solved ? fmt(S.secs) + (S.hints ? ' · ' + plural(S.hints, 'hint') : '') : 'SOLUTION SEEN') + '</small>' });
+    var st = el('div', { class: 'ms-stamp' + (S.solved ? '' : ' closed') + (anim ? '' : ' still'), html: (S.solved ? 'SOLVED' : 'CLOSED') + '<small>' + (S.solved ? fmt(S.secs) + (S.hints ? ' with ' + plural(S.hints, 'hint') : '') : 'SOLUTION SEEN') + '</small>' });
     if (!anim) { st.style.animation = 'none'; st.classList.add('corner'); }
     else setTimeout(function () { st.classList.add('corner'); }, 950);
     cur.photo.appendChild(st);

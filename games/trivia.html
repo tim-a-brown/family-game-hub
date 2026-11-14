@@ -1073,7 +1073,7 @@ body{overflow-x:hidden;}
     if (n === 1) hl.push({ w: 10, t: P[0].name + ' got ' + S.right[0] + ' of ' + S.asked[0] + ' right' });
     hl.sort(function (a, b) { return b.w - a.w; });
     var levels = S.mode === 'pass' && P.some(function (p) { return p.level !== P[0].level; }) ? 'Own levels' : LEVELS[P[0].level || S.level];
-    var mode = (S.mode === 'buzz' ? 'Buzz in' : n > 1 ? 'Pass and play' : 'Solo') + ' · ' + levels + ' · ' + catLabel(S.cats).replace('Random categories', 'All categories');
+    var mode = (S.mode === 'buzz' ? 'Buzz in' : n > 1 ? 'Pass and play' : 'Solo') + ' \u00b7 ' + levels + ' \u00b7 ' + catLabel(S.cats).replace('Random categories', 'All categories');
     var rounds;
     if (S.mode === 'buzz') {
       rounds = { labels: S.log.map(function (l, k) { return 'Q' + (k + 1); }), scores: S.log.map(function (l) { return P.map(function (p, i) { return l.p === i ? l.pts : 0; }); }) };
@@ -1152,7 +1152,7 @@ body{overflow-x:hidden;}
     var P = S.players, ord = order();
     stage.appendChild(el('div', { class: 'marq' }, [el('div', { class: 'who', style: { '--c': '#ffd447' } }, [el('i'), el('span', { text: 'Final scores' })]), el('div', { class: 'qn', text: total() + ' questions' })]));
     if (N() === 1) {
-      stage.appendChild(el('div', { class: 'solo-final' }, [el('div', { class: 'big', text: S.scores[0] }), el('p', { text: S.right[0] + ' of ' + S.asked[0] + ' right · best run ' + S.best[0].n + ' in a row' })]));
+      stage.appendChild(el('div', { class: 'solo-final' }, [el('div', { class: 'big', text: S.scores[0] }), el('p', { text: S.right[0] + ' of ' + S.asked[0] + ' right, with a best run of ' + S.best[0].n + ' in a row' })]));
     } else podium(stage, ord.map(function (i) { return { name: P[i].name, score: S.scores[i], color: Kit.color(i) }; }));
     app.appendChild(el('div', { class: 'endacts' }, [
       el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Play again', onclick: again }),
@@ -1186,7 +1186,7 @@ body{overflow-x:hidden;}
   function pcol(pid) { return Kit.color((pid - 1) % 8); }
   function HI() { return typeof ArcadeHi !== 'undefined' ? ArcadeHi : null; }   // arcade-hi.js declares it with const (not on window)
   function hiKey(lv, n) { return 'trivia_cd_' + (LEVELS[lv] && lv !== 'mixed' ? lv : 'medium') + '_' + ([10, 15, 20].indexOf(+n) >= 0 ? +n : 10); }
-  function hiConf(lv, n) { var k = hiKey(lv, n); if (HI()) HI().config(k, { game: 'trivia', label: 'Countdown · ' + LEVELS[k.split('_')[2]] + ' · ' + k.split('_')[3] + ' questions', unit: 'points' }); return k; }
+  function hiConf(lv, n) { var k = hiKey(lv, n); if (HI()) HI().config(k, { game: 'trivia', label: k.split('_')[3] + ' ' + LEVELS[k.split('_')[2]] + ' questions', unit: 'points' }); return k; }
   function showHi(lv, n) { if (HI()) HI().show(hiConf(lv, n)); }
 
   // ── Engine ──
@@ -1579,7 +1579,7 @@ body{overflow-x:hidden;}
       d.num.textContent = ok ? '+0' : '0';
       var chips = el('div', { class: 'chips' });
       if (ok) {
-        chips.appendChild(el('span', { html: Kit.icon('pulse') + (my[1] / 1000).toFixed(1) + 's · ' + fmtN(my[2]) }));
+        chips.appendChild(el('span', { html: Kit.icon('pulse') + (my[1] / 1000).toFixed(1) + 's for ' + fmtN(my[2]) }));
         if (my[3]) chips.appendChild(el('span', { class: 'x', html: Kit.icon('flame') + my[4] + ' in a row +' + my[3] }));
       } else chips.appendChild(el('span', { text: picked ? 'No points this time' : 'No answer' }));
       d.say.innerHTML = ''; d.say.appendChild(el('h3', { text: ok ? (my[2] >= 950 ? 'Lightning fast!' : 'Correct!') : picked ? 'Not quite' : my ? "Time's up!" : 'Watching this one' })); d.say.appendChild(chips);
@@ -1740,7 +1740,7 @@ body{overflow-x:hidden;}
     // online: the podium
     podium(stage, list);
     var myRank = list.indexOf(me) + 1;
-    if (myRank > 0) stage.appendChild(el('div', { class: 'mine', html: 'You came <b>' + ordn(myRank) + '</b> of ' + list.length + ' · ' + me.right + ' of ' + m.of + ' right' + (avg ? ' · avg ' + avg.toFixed(1) + 's' : '') }));
+    if (myRank > 0) stage.appendChild(el('div', { class: 'mine', html: 'You came <b>' + ordn(myRank) + '</b> of ' + list.length + ', with ' + me.right + ' of ' + m.of + ' right' + (avg ? ' in ' + avg.toFixed(1) + 's on average' : '') }));
     app.appendChild(el('div', { class: 'endacts' }, [
       el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: net.mode === 'host' ? 'Back to your table' : 'Back to the table', onclick: backToTable }),
       el('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Leave the table', onclick: function () { leaveOnline(false); goLobby(); } }),
@@ -1782,7 +1782,7 @@ body{overflow-x:hidden;}
     if (solo && meP) hl.push({ w: 10, t: meP.name + ' got ' + meP.right + ' of ' + m.of + ' right' });
     hl.sort(function (a, b) { return b.w - a.w; });
     var cats = VW.cfg.cats || [];
-    var mode = (solo ? 'Countdown' : 'Online countdown') + ' · ' + (LEVELS[VW.cfg.lv] || '') + ' · ' + catLabel(okCats(cats)).replace('Random categories', 'All categories') + ' · ' + m.of + ' questions';
+    var mode = (solo ? 'Countdown' : 'Online countdown') + ' \u00b7 ' + (LEVELS[VW.cfg.lv] || '') + ' \u00b7 ' + catLabel(okCats(cats)).replace('Random categories', 'All categories') + ' \u00b7 ' + m.of + ' questions';
     var room = log.length > 15 ? 90 : 140, cn = {}, cc = {};
     var qs = log.map(function (l) {
       cn[l.cat] = CAT_NAME[l.cat] || l.cn || l.cat; cc[l.cat] = CAT_COLOR[l.cat] || l.cc || '';
@@ -1848,7 +1848,7 @@ body{overflow-x:hidden;}
     var nm = s.name || (function () { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } })();
     return { name: nm, level: LEVELS[s.level] && s.level !== 'mixed' ? s.level : 'medium', count: [10, 15, 20].indexOf(+s.count) >= 0 ? +s.count : 10, cats: savedCats() };
   }
-  function tableInfo() { var c = netCfg(); return 'Countdown · ' + LV_SHORT[c.level] + ' · ' + c.count + ' questions'; }
+  function tableInfo() { var c = netCfg(); return 'Countdown with ' + c.count + ' ' + LV_SHORT[c.level] + ' questions'; }
   function goLobby() {
     leaveOnline(false); cdStop(true); stopTimer(); S = null; VW = null; E = null;
     app.innerHTML = ''; app.className = 'tv';
@@ -1862,7 +1862,7 @@ body{overflow-x:hidden;}
       onHost: function (me) { return hostTable(me.name); },
       onJoin: function (code, room, me) { return joinTable(code, me.name); },
       onSolo: function () { closeLobby(); showSetup(); }, solo: 'Play on this device instead',
-      sub: function (r) { return [r.status === 'playing' ? 'Playing now, join in' : r.info, (r.n || 1) + ((r.n || 1) === 1 ? ' player' : ' players')].filter(Boolean).join(' · '); },
+      sub: function (r) { return [r.status === 'playing' ? 'Playing now, join in' : r.info, (r.n || 1) + ((r.n || 1) === 1 ? ' player' : ' players')].filter(Boolean).join(' \u00b7 '); },
       note: 'Your table plays the level, length and categories picked on your setup screen. Each device connects straight to the host’s.'
     });
     window.scrollTo(0, 0);
@@ -1917,7 +1917,7 @@ body{overflow-x:hidden;}
     if (net.mode === 'host') {
       net.table.setStatus('open', tableInfo());
       net.wait = Online.waitRoom(app, { code: net.table.code, host: true, max: 24, min: 2, table: net.table, players: waitPlayers(roList(), net.myPid), onStart: hostStart, onLeave: function () { leaveOnline(false); goLobby(); },
-        note: 'Countdown · ' + LEVELS[cf.level] + ' · ' + cf.count + ' questions · ' + catLabel(cf.cats) + '. Everyone answers on their own screen: the faster you pick the right answer, the more points you get. Others can join while you play.' });
+        note: 'A countdown of ' + cf.count + ' ' + LEVELS[cf.level] + ' questions from ' + catLabel(cf.cats) + '. Everyone answers on their own screen: the faster you pick the right answer, the more points you get. Others can join while you play.' });
     } else {
       net.wait = Online.waitRoom(app, { code: null, host: false, hostName: net.hostName, max: 24, min: 2, players: waitPlayers(net.roster, net.myPid), onLeave: function () { leaveOnline(false); goLobby(); },
         note: 'Everyone answers on their own screen. The faster you pick the right answer, the more points you get.' });

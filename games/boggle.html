@@ -369,7 +369,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     app.appendChild(side);
     paintFound(); paintCur(); paintClock(); bindTray();
   }
-  function statLine() { var m = S.words[S.turn]; return m.length + (m.length === 1 ? ' word · ' : ' words · ') + m.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts'; }
+  function statLine() { var m = S.words[S.turn]; return m.length + (m.length === 1 ? ' word for ' : ' words for ') + m.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts'; }
   function lid() {
     var L = el('div', { class: 'lid' }), p = me(), multi = S.players.length > 1;
     if (S.online && S.phase === 'wait') {
@@ -583,7 +583,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       var p = S.players[i], ws = r.words[i].slice().sort(function (a, b) { return b.length - a.length || (a < b ? -1 : 1); });
       var card = el('div', { class: 'rp' }, [el('div', { class: 'h' }, [
         el('span', { class: 'avatar sm', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
-        el('b', { text: p.name + ' · ' + ws.length + (ws.length === 1 ? ' word' : ' words') }),
+        el('b', null, [el('span', { text: p.name }), el('span', { text: ws.length + (ws.length === 1 ? ' word' : ' words'), style: { float: 'right', 'font-weight': '700' } })]),
         el('span', { class: 'sc', text: String(r.scores[i]) })
       ])]);
       var wl = el('div', { class: 'ws' });
@@ -779,7 +779,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   }
   function netWin(tot, best) {
     var res = NET.result, left = !!(res && res.left != null), me = NET.seat;
-    var rank = tot ? S.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: tot[i], color: p.color, i: i }; }).sort(function (a, b) { return b.score - a.score; }) : null;
+    var rank = tot ? S.players.map(function (p, i) { return { name: p.name, me: i === me, score: tot[i], color: p.color, i: i }; }).sort(function (a, b) { return b.score - a.score; }) : null;
     var tie = rank && rank.length > 1 && rank[0].score === rank[1].score;
     if (winRef) winRef.close();
     winRef = Kit.win({

@@ -378,7 +378,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
   function today() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }   // local calendar day, steady across DST
-  function label() { return (S.daily ? 'Daily · ' : '') + DIFFS[S.diff]; }
+  function label() { return S.daily ? 'Daily ' + DIFFS[S.diff].toLowerCase() : DIFFS[S.diff]; }
   function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
   function bestTime(d) {
     var b = 0;
@@ -398,7 +398,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
   function showSetup() {
     stopClock(); app.className = 'sdk';
     var dd = DAILY_DIFF[new Date().getDay()], done = dailyDone();
-    function bt(d) { var b = bestTime(d); return b ? ' · best ' + fmt(b) : ''; }
+    function bt(d) { var b = bestTime(d); return b ? '. Your best is ' + fmt(b) + '.' : ''; }
     Kit.setup(app, {
       intro: 'A fresh puzzle, printed just for you',
       modes: [
@@ -562,7 +562,7 @@ html[data-theme="light"] .pad.notes button,html[data-theme="parchment"] .pad.not
         ArcadeHi.check(clean ? hiKey(diff) : '', clean ? S.time : 0, function () {
           paintBest();
           Kit.win({
-            title: 'Solved!', sub: name + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+            title: 'Solved!', sub: name + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : '') + (best && prev ? ', a new best time' : ''),
             againLabel: 'Another ' + name, again: function () { newPuzzle(diff); },
             look: 'Look at the grid',
             setup: showSetup, setupLabel: 'Choose a level',

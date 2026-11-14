@@ -349,7 +349,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     padEl = el('div', { class: 'ar-pad ar-touch' }, [key('l', 'back', 'Left'), ku, key('d', 'down', 'Down'), key('r', 'right', 'Right')]);
     if (!G.pad) padEl.style.display = 'none';
     app.appendChild(wrapEl); app.appendChild(padEl);
-    app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Arrow keys or W A S D to steer · Space pauses' }));
+    app.appendChild(el('div', { class: 'ar-hint ar-desk', text: 'Steer with the arrow keys or W, A, S and D, and Space pauses.' }));
     bindGestures();
     if (ro) ro.disconnect();
     ro = new ResizeObserver(fit); ro.observe(app);
@@ -441,13 +441,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.phase === 'wait') { save(); return; }
     paused = true; gest = null; musicStop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
-    showOverlay('Paused', 'Length ' + G.body.length + ' · ' + fmt(G.score) + ' points', 'Resume');
+    showOverlay('Paused', fmt(G.score) + ' points at length ' + G.body.length, 'Resume');
     save();
   }
   function showOverlay(title, sub, btn) {
     ovEl.innerHTML = '';
     ovEl.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: title }), el('p', { text: sub }),
+      el('h2', { text: title }), Kit.facts(el('p'), sub),
       el('button', { type: 'button', class: 'btn btn-primary btn-block', text: btn, onclick: resumeGame }),
       el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This game will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); } })
     ]));

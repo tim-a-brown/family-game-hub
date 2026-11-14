@@ -225,7 +225,7 @@
     pick(0);
     var key = solo || cd ? '<span><i style="background:#22c55e"></i>right</span><span><i style="background:#ef4444"></i>wrong</span>'
       : P.map(function (n, i) { return '<span><i style="background:' + ui.color(i) + '"></i>' + ui.esc(n) + ' got it</span>'; }).join('') + '<span><i style="background:#ef4444"></i>wrong</span><span><i style="background:#4b5068"></i>nobody</span>';
-    out.push(ui.section('Question by question · tap one', [road, timed ? null : el('div', { class: 'tv-key', html: key }), card].filter(Boolean), { icon: 'help' }));
+    out.push(ui.section('Question by question', [road, timed ? null : el('div', { class: 'tv-key', html: key }), card].filter(Boolean), { icon: 'help' }));
     if (d.n > qs.length) out.push(el('p', { class: 'tv-more', text: 'The first ' + qs.length + ' of ' + d.n + ' questions' }));
     // how each category went
     var cats = {}, ck = [];
@@ -546,7 +546,7 @@
         bs.push(b); bars.appendChild(b);
       });
       var key = Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; }).map(function (k) { var ct = CONV_CAT[k] || [k, '#64748b']; return '<span><i style="background:' + ct[1] + '"></i>' + ui.esc(ct[0]) + ' ' + byCat[k] + '</span>'; }).join('');
-      out.push(ui.section('How long each card ran · tap one', [el('div', { class: 'cv-chart' }, [bars, el('div', { class: 'cv-axis' }, [el('span', { text: 'First card' }), el('span', { text: 'Last card' })])]), el('div', { class: 'cv-key', html: key })], { icon: 'chart' }));
+      out.push(ui.section('How long each card ran', [el('div', { class: 'cv-chart' }, [bars, el('div', { class: 'cv-axis' }, [el('span', { text: 'First card' }), el('span', { text: 'Last card' })])]), el('div', { class: 'cv-key', html: key })], { icon: 'chart' }));
     } else {
       out.push(ui.chips(Object.keys(byCat).sort(function (a, b) { return byCat[b] - byCat[a]; }).map(function (k) { return { t: (CONV_CAT[k] ? CONV_CAT[k][0] : k) + ' ' + byCat[k], c: CONV_CAT[k] ? CONV_CAT[k][1] : null }; })));
     }
@@ -775,7 +775,7 @@
     });
     function pick(i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); show(i); }
     pick(rs.length - 1);
-    out.push(ui.section('Every round · tap one', [road, view], { icon: 'cards' }));
+    out.push(ui.section('Every round', [road, view], { icon: 'cards' }));
     return ui.wrap(out);
   });
   HistView.css('hv-a2a',

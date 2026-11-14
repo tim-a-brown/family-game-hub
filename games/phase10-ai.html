@@ -39,7 +39,7 @@
 .ctable .felt-in.p10f{height:auto;min-height:0;display:flex;flex-direction:column;gap:8px;padding:10px 8px 10px;}
 .opps{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 10px;}
 .p10f .cseat{position:relative;min-width:0;}
-.p10f .cseat .tag .nm{max-width:82px;overflow:hidden;text-overflow:ellipsis;}
+.p10f .cseat .tag .nm{max-width:82px;white-space:normal;line-height:1.05;text-wrap:balance;}   /* (Optimus / Prime on two lines, not cut) */
 .p10f .cseat .info{flex-wrap:wrap;justify-content:center;}
 .p10f .cseat .chip-s.ph{background:#fff7d6;}
 .p10f .cseat .chip-s.laid{background:var(--green);color:#063;}
@@ -747,7 +747,7 @@
       if (ops.length === 1) { snapshot(); doDiscard(m, c, S.skipNext[ops[0]] ? -1 : ops[0]); return; }
       var box = el('div', { class: 'skiplist' }), sh;
       ops.forEach(function (o) {
-        var pl = S.players[o], b = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: '<span class="avatar sm" style="--c:' + Kit.color(o) + '">' + (pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase())) + '</span><span>' + Kit.esc(pl.name) + ' · phase ' + pl.ph + (S.laid[o] ? ' · laid down, ' + S.hands[o].length + ' cards left' : '') + '</span>', onclick: function () { sh.close(); snapshot(); doDiscard(m, c, o); } });
+        var pl = S.players[o], b = el('button', { type: 'button', class: 'btn btn-soft btn-block', html: '<span class="avatar sm" style="--c:' + Kit.color(o) + '">' + (pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase())) + '</span><span>' + Kit.esc(pl.name) + ', on phase ' + pl.ph + (S.laid[o] ? ', has laid down with ' + S.hands[o].length + ' cards left' : '') + '</span>', onclick: function () { sh.close(); snapshot(); doDiscard(m, c, o); } });
         if (S.skipNext[o]) { b.disabled = true; }
         box.appendChild(b);
       });
@@ -829,7 +829,7 @@
     var w = tie ? -1 : done[0];
     var rank = S.players.map(function (p, i) { return { i: i, name: p.name, cpu: p.cpu, ph: p.done ? S.last + 1 : p.ph, pts: p.total, color: Kit.color(i) }; })
       .sort(function (a, b) { return b.ph - a.ph || a.pts - b.pts; })
-      .map(function (r) { return { name: r.name, score: (r.ph > S.last ? 'Done' : 'Ph ' + r.ph) + ' · ' + r.pts, color: r.color, i: r.i, cpu: r.cpu }; });
+      .map(function (r) { return { name: r.name, score: (r.ph > S.last ? 'Done, ' : 'Phase ' + r.ph + ', ') + r.pts, color: r.color, i: r.i, cpu: r.cpu }; });
     var lose = NET ? (w >= 0 ? w !== S.me : done.indexOf(S.me) < 0) : w >= 0 && !!S.players[w].cpu;
     var recKey = NET ? NET.code + ':' + S.started : null;
     if (!NET || (NET.seat >= 0 && !NETREC[recKey])) { if (NET) NETREC[recKey] = 1; Kit.record(KEY, {
@@ -977,7 +977,7 @@
     var sw = el('div', { class: 'stackwrap' });
     if (S.stock.length > 1) sw.appendChild(Kit.card('', '', { back: true, cls: 'under' }));
     if (S.stock.length) { var st = Kit.card('', '', { back: true }); st.id = 'stockTop'; sw.appendChild(st); } else sw.appendChild(el('div', { class: 'empty', id: 'stockTop' }));
-    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw ? ' live' : ''), 'aria-label': 'Draw from the deck', onclick: function () { youDraw(false); } }, [sw, el('span', { class: 'cap', text: 'Deck · ' + S.stock.length })]));
+    mid.appendChild(el('button', { type: 'button', class: 'pile' + (canDraw ? ' live' : ''), 'aria-label': 'Draw from the deck', onclick: function () { youDraw(false); } }, [sw, el('span', { class: 'cap', text: S.stock.length + ' in the deck' })]));
     var dw = el('div', { class: 'stackwrap' });
     if (S.discard.length > 1) { var u = cardEl(S.discard[S.discard.length - 2], { cls: 'under2' }); u.removeAttribute('data-id'); dw.appendChild(u); }
     if (top) { var tn = cardEl(top); tn.id = 'discardTop'; dw.appendChild(tn); } else dw.appendChild(el('div', { class: 'empty', id: 'discardTop' }));
@@ -1013,7 +1013,7 @@
     if (S.last < 10) dots.style.gridTemplateColumns = 'repeat(' + S.last + ',18px)';
     goalEl.appendChild(el('div', { class: 'gl' }, [
       el('b', { html: (pl.done ? 'All done!' : (isYou(m) ? 'Your phase ' : Kit.esc(pl.name) + ': phase ') + pl.ph) + (S.skipNext && S.skipNext[m] ? ' <em class="skp">Skip</em>' : '') }),
-      el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[m] ? ' <span class="ok">· laid down</span>' : '') })
+      el('span', { html: pl.done ? 'Wait for the hand to end' : Kit.esc(PH[ph].d) + (S.laid[m] ? '<span class="ok" style="display:block">Laid down</span>' : '') })
     ]));
     goalEl.appendChild(dots);
   }

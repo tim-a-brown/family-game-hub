@@ -78,6 +78,9 @@ html.pg-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   box-shadow:inset 0 0 0 1.5px rgba(232,180,90,.55),inset 0 0 0 3.5px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);}
 .pg-plate small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,210,140,.7);white-space:nowrap;}
 .pg-plate b{display:block;font-weight:900;color:#fbf8ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pg-plate{flex-shrink:1;} .pg-plate b{text-overflow:clip;} .pg-plate.pg-pw b{white-space:normal;line-height:1.05;text-wrap:balance;}   /* (Super / Guide on two lines; the plates keep room for their numbers) */
+@media (max-width:359px){ .pg-pw{flex:1 0 100%;order:9;} }   /* (a 320 phone: the power plate takes a row of its own under the others) */
+.pg-best b{overflow:visible;}
 .pg-lv{flex:none;min-width:64px;text-align:center;align-items:center;}
 .pg-lv b{font-family:var(--display);font-weight:400;font-size:1.6rem;line-height:1;color:#fff;overflow:visible;}
 .pg-sc{flex:1;text-align:center;align-items:center;}
@@ -1200,7 +1203,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     bestEl = el('div', { class: 'pg-plate pg-best' }, [el('small', { text: 'Best' }), el('b', { text: '0' })]);
     hudEl = el('div', { class: 'pg-hud' }, [lvEl, scoreEl, bestEl, pwEl]);
     if (inRun()) hudEl.appendChild(el('div', { class: 'pg-run', 'aria-label': 'Full game, level ' + L.n + ' of ' + NL + ', ' + fmt(runTotal(run)) + ' points so far',
-      html: 'Full game <i>·</i> level ' + L.n + ' of ' + NL + ' <i>·</i> <b>' + fmt(runTotal(run)) + '</b>' }));
+      html: 'Full game, level ' + L.n + ' of ' + NL + '<b style="margin-left:10px">' + fmt(runTotal(run)) + '</b>' }));
     cssW = 0;
     canvas = el('canvas', { 'aria-label': 'Peggle board' });
     gctx = canvas.getContext('2d');
@@ -1309,7 +1312,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     pauseEl.innerHTML = '';
     pauseEl.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: 'Paused' }), el('p', { text: 'Level ' + L.n + ' · ' + fmt(L.score) + ' points' }),
+      el('h2', { text: 'Paused' }), el('p', { text: fmt(L.score) + ' points on level ' + L.n }),
       el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Resume', onclick: resumeGame }),
       el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'Choose level', onclick: function () { paused = false; save(); showSetup(); } })
     ]));
@@ -1364,7 +1367,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     buildView();
     state = 'aim'; paused = false;
     updateHud();
-    banner('Level ' + n, L.def.name + (inRun() ? ' · full game ' + n + '/' + NL : ''), '#ffffff', 2.2);
+    banner('Level ' + n, L.def.name + (inRun() ? ', level ' + n + ' of ' + NL + ' in the full game' : ''), '#ffffff', 2.2);
     introMechs(L.def.intro || []);
     save();
   }
@@ -1678,7 +1681,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
     L.shots.push(s);
     if (s > L.stats.maxShot) L.stats.maxShot = s;
     if (shot.hits.length > L.stats.maxHits) L.stats.maxHits = shot.hits.length;
-    if (s > 0 && !L.fever) banner(fmt(s), shot.hits.length + (shot.hits.length === 1 ? ' peg' : ' pegs') + (mult() > 1 ? ' · ×' + mult() : ''), '#ffffff', 1.4, 0.42, true);
+    if (s > 0 && !L.fever) banner(fmt(s), shot.hits.length + (shot.hits.length === 1 ? ' peg' : ' pegs') + (mult() > 1 ? ' at ×' + mult() : ''), '#ffffff', 1.4, 0.42, true);
     if (L.fever) { state = 'done'; later(1.4, levelWon); return; }
     if (L.ballsLeft <= 0) { state = 'done'; L.done = true; sLose(); later(1.3, levelLost); return; }
     movePurple();
@@ -1762,7 +1765,7 @@ html.pg-on #app.side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-
       if (n < NL) { run.cur = n + 1; saveRun(); }
       else { full = run; recordRun(full, null); run = null; saveRun(); }
     }
-    var cleared = fmt(sc) + ' points · ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left' + (L.stats.feverBucket ? ' · ' + fmt(L.stats.feverBucket) + ' fever bucket' : '');
+    var cleared = fmt(sc) + ' points \u00b7 ' + L.ballsLeft + (L.ballsLeft === 1 ? ' ball' : ' balls') + ' left' + (L.stats.feverBucket ? ' \u00b7 ' + fmt(L.stats.feverBucket) + ' from the fever bucket' : '');
     if (full) {
       // one initials entry for both boards: the full game's total, and this level's score
       var tot = runTotal(full), lv = full.lv.map(function (v) { return Number(v) || 0; }), bi = lv.indexOf(Math.max.apply(null, lv));

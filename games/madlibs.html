@@ -524,7 +524,7 @@ body{overflow-x:hidden;}
     if (!favs.length) box.appendChild(el('p', { class: 'muted', text: 'No favorites yet. Tap the star on a finished story to keep it here.' }));
     favs.forEach(function (e) {
       var n = storyNode(e, true); if (!n) return;
-      n.appendChild(el('div', { style: { 'font-family': 'var(--font)', 'font-size': '.75rem', 'font-weight': '800', color: '#8d846a', 'margin-top': '6px' }, text: Kit.fmtDate(e._date) + ' · ' + (e.players || []).map(function (p) { return p.name; }).join(', ') }));
+      n.appendChild(el('div', { style: { 'font-family': 'var(--font)', 'font-size': '.75rem', 'font-weight': '800', color: '#8d846a', 'margin-top': '6px' }, text: Kit.fmtDate(e._date) + ', with ' + (function (a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; })((e.players || []).map(function (p) { return p.name; })) }));
       box.appendChild(n);
     });
     Kit.sheet({ title: 'Favorite stories', node: box, actions: [{ label: 'Close', cls: 'btn-soft' }] });
@@ -560,7 +560,7 @@ body{overflow-x:hidden;}
       shelf.appendChild(el('button', { type: 'button', class: 'st' + (done ? ' done' : ''), onclick: function () { startStory(s.id); } }, [
         favIds[s.id] ? el('span', { class: 'fav', html: Kit.icon('star') }) : null,
         el('b', { text: s.t }),
-        el('small', { html: (done ? Kit.icon('check') + 'Played · ' : '') + s.b.length + ' blanks' })
+        el('small', { html: (done ? Kit.icon('check') + 'Played, ' : '') + s.b.length + ' blanks' })
       ]));
     });
     box.appendChild(shelf);

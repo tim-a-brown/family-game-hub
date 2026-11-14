@@ -73,6 +73,7 @@ body{overflow-x:hidden;}
 .file::before{content:"";position:absolute;left:0;top:-12px;width:42%;height:14px;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#f1e0b4,var(--manila));}
 .fh{display:flex;align-items:center;gap:10px;font-family:var(--tw);}
 .fh .no{font-size:.78rem;letter-spacing:.16em;font-weight:700;color:#7a6234;white-space:nowrap;}
+.fh .no .lvt{margin-left:10px;padding:0 5px;border:1px solid currentColor;border-radius:3px;}   /* (the level as a stamp beside the case number) */
 .fh .sp{flex:1;}
 .fh .tm{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--manila-ink);min-width:3.4em;text-align:right;}
 .tally{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 2px;color:var(--stamp);}
@@ -2057,7 +2058,7 @@ body{overflow-x:hidden;}
     var file = el('div', { class: 'file' });
     dom.tally = el('span', { class: 'tally', 'aria-label': 'Wrong tries' });
     dom.tm = el('span', { class: 'tm', text: fmt(S.time) });
-    file.appendChild(el('div', { class: 'fh' }, [el('span', { class: 'no', text: (C.gen ? (C.daily ? 'DAILY CODE' : 'INTERCEPT ' + C.no.replace('No. ', 'NO. ')) : 'CASE ' + caseNo(C)) + ' · ' + LV[C.lv].toUpperCase() }), dom.tally, el('span', { class: 'sp' }), el('span', { html: Kit.icon('history') , style: { color: '#7a6234', display: 'inline-flex' } }), dom.tm]));
+    file.appendChild(el('div', { class: 'fh' }, [el('span', { class: 'no' }, [el('span', { text: C.gen ? (C.daily ? 'DAILY CODE' : 'INTERCEPT ' + C.no.replace('No. ', 'NO. ')) : 'CASE ' + caseNo(C) }), el('span', { class: 'lvt', text: LV[C.lv].toUpperCase() })]), dom.tally, el('span', { class: 'sp' }), el('span', { html: Kit.icon('history') , style: { color: '#7a6234', display: 'inline-flex' } }), dom.tm]));
     file.appendChild(el('h2', { class: 'ft', text: C.title }));
     // (on a phone the story folds to two lines; tap it for the rest)
     var fs = el('p', { class: 'fs', text: C.setup });
@@ -2344,10 +2345,10 @@ body{overflow-x:hidden;}
     if (!sel || BYID[sel].lv !== lvSel) { var firstOpen = casesOf(lvSel).filter(function (c) { return !sm[c.id]; })[0]; sel = (firstOpen || casesOf(lvSel)[0]).id; }
     var dd = DAILY[new Date().getDay()], dDone = dailyDone();
     var modes = [];
-    if (sv) { var sc = caseOf(sv.S); if (sc) modes.push({ id: 'cont', icon: 'play', title: 'Continue', desc: (sc.gen ? (sc.daily ? "Today's code" : GTYPES[sc.type] + ' · ' + LV[sc.lv]) : 'Case ' + caseNo(sc) + ': ' + sc.title) + ' · ' + fmt(sv.S.time) }); }
+    if (sv) { var sc = caseOf(sv.S); if (sc) modes.push({ id: 'cont', icon: 'play', title: 'Continue', desc: (sc.gen ? (sc.daily ? "Today's code" : GTYPES[sc.type] + ' at ' + LV[sc.lv]) : 'Case ' + caseNo(sc) + ': ' + sc.title) + ', with ' + fmt(sv.S.time) + ' on the clock' }); }
     modes.push({ id: 'cases', icon: 'lock', title: 'Case files', desc: done ? done + ' of ' + total + ' cases closed' : total + ' cases, from easy to hard' });
     modes.push({ id: 'endless', icon: 'infinity', title: 'Endless codes', desc: 'New Caesar, number and letter-swap codes' });
-    modes.push({ id: 'daily', icon: 'calendar', title: "Today's code", desc: dDone ? 'Cracked today in ' + fmt(dDone.secs) + '. Play it again?' : GTYPES[dd[0]] + ' · ' + LV[dd[1]] + '. The same code for everyone.' });
+    modes.push({ id: 'daily', icon: 'calendar', title: "Today's code", desc: dDone ? 'Cracked today in ' + fmt(dDone.secs) + '. Play it again?' : GTYPES[dd[0]] + ' at ' + LV[dd[1]] + '. The same code for everyone.' });
     var startMode = sv ? 'cont' : (u.mode && u.mode !== 'cont' ? u.mode : 'cases');
     var s = Kit.setup(app, {
       intro: 'Crack the code, open the lock',
@@ -2421,7 +2422,7 @@ body{overflow-x:hidden;}
       return '<tr><td>' + LV[l] + '</td><td>' + n + ' / ' + cs.length + '</td><td>' + (n ? fmt(Math.round(t / n)) : '–') + '</td></tr>';
     }).join('');
     var gens = {}; h.forEach(function (e) { if (e && e.gen && !e.revealed) gens[e.gen] = (gens[e.gen] || 0) + 1; });
-    var gl = Object.keys(GTYPES).map(function (k) { return GTYPES[k] + ': <b>' + (gens[k] || 0) + '</b>'; }).join(' · ');
+    var gl = Object.keys(GTYPES).map(function (k) { return GTYPES[k] + ' <b>' + (gens[k] || 0) + '</b>'; }); gl = gl.slice(0, -1).join(', ') + ' and ' + gl[gl.length - 1];
     Kit.sheet({ title: 'Case record', html: '<table class="k-hd-rounds" style="width:100%;border-collapse:collapse;font-weight:800"><tr><th>Level</th><th>Closed</th><th>Avg time</th></tr>' + rows + '</table><p class="muted" style="margin-top:12px">Endless codes cracked. ' + gl + '</p>', actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
   function histExtra(e) {

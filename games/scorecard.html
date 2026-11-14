@@ -363,15 +363,15 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
   function rowLabel(ri) { return S.end === 'rounds' && ri >= S.rounds ? 'TB' : String(ri + 1); }
   function ruleLine() {
     var w = S.low ? 'Lowest score wins' : 'Highest score wins';
-    if (S.end === 'target') return w + ' · play to ' + fmt(S.target);
-    if (S.end === 'rounds') return w + ' · ' + plural(S.rounds, 'round');
+    if (S.end === 'target') return w + ', playing to ' + fmt(S.target);
+    if (S.end === 'rounds') return w + ' over ' + plural(S.rounds, 'round');
     return w;
   }
   function statusText(t) {
     if (!S.rows.length) return { ic: 'pencil', tx: 'Play a round, then add the scores' };
     if (S.sides.length === 1) return { ic: 'star', tx: S.sides[0].name + ': ' + fmt(t[0]) + ' after ' + plural(S.rows.length, 'round') };
     var L = leaderOf(t);
-    var pre = S.over ? '' : (S.end === 'rounds' && S.rows.length < S.rounds ? 'Round ' + S.rows.length + ' of ' + S.rounds + ' · ' : '');
+    var pre = S.over ? '' : (S.end === 'rounds' && S.rows.length < S.rounds ? 'Round ' + S.rows.length + ' of ' + S.rounds + ': ' : '');
     if (S.over) {
       if (S.winner >= 0) return { ic: 'trophy', tx: S.sides[S.winner].name + ' won by ' + plural(margin(t, S.winner), 'point') };
       return { ic: 'trophy', tx: 'A tie at ' + fmt(bestOf(t)) };
@@ -430,7 +430,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
       entry.active = i;
       cells.forEach(function (c, j) { c.classList.toggle('on', j === i); });
       heads.forEach(function (h, j) { h.classList.toggle('on', j === i); });
-      if (qhint) qhint.textContent = 'Quick add goes to ' + S.sides[i].name + ' · blank counts as 0';
+      if (qhint) qhint.textContent = 'Quick add goes to ' + S.sides[i].name + ', and a blank counts as 0.';
     }
     function paintFoot() {
       var tt = base.map(function (v, i) { return v + (entry ? parseVal(entry.vals[i]) : 0); });
@@ -495,7 +495,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
     }
     tbl.appendChild(tf);
     sheet.appendChild(tbl);
-    sheet.appendChild(el('div', { class: 'sheet-f', text: S.over ? 'Final scores · tap a round to look back' : editing ? 'Change the numbers, then Save' : (S.rows.length ? 'Tap a round to fix it' : 'Type the scores in the dashed row') }));
+    sheet.appendChild(el('div', { class: 'sheet-f', text: S.over ? 'Final scores' : editing ? 'Change the numbers, then Save' : (S.rows.length ? 'Tap a round to fix it' : 'Type the scores in the dashed row') }));
     board.appendChild(sheet);
     app.appendChild(board);
 
@@ -581,8 +581,8 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 
   function editRound(ri) {
     var r = S.rows[ri];
-    var summary = S.sides.map(function (s, i) { return '<b>' + esc(s.name) + '</b> ' + (r[i] == null ? '–' : esc(fmt(r[i]))); }).join(' · ');
-    if (S.over) { Kit.sheet({ title: 'Round ' + rowLabel(ri), html: '<p class="muted">' + summary + '</p>', actions: [{ label: 'Close', cls: 'btn-soft' }] }); return; }
+    var summary = '<table class="k-rnd-t">' + S.sides.map(function (s, i) { return '<tr><th>' + esc(s.name) + '</th><td>' + (r[i] == null ? '–' : esc(fmt(r[i]))) + '</td></tr>'; }).join('') + '</table>';   // (each side and its score as a chip of its own)
+    if (S.over) { Kit.sheet({ title: 'Round ' + rowLabel(ri), html: summary, actions: [{ label: 'Close', cls: 'btn-soft' }] }); return; }
     if (entry && entry.ri != null) { Kit.toast('Save or cancel round ' + rowLabel(entry.ri) + ' first'); return; }
     // The round opens again right where it is written
     entry = { ri: ri, vals: r.map(function (v) { return v == null ? '' : String(v); }), active: 0 };

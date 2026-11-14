@@ -47,6 +47,8 @@
 .count{display:inline-flex;align-items:center;gap:4px;border:0;cursor:pointer;padding:2px 6px 2px 8px;border-radius:999px;background:rgba(0,0,0,.4);color:#fff;font:inherit;
   font-size:calc(var(--u)*10.5);font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums;-webkit-tap-highlight-color:transparent;}
 .count b{color:var(--yellow);}
+.count .tc{margin-left:6px;padding-left:7px;border-left:1px solid rgba(255,255,255,.25);}   /* (the running and true counts, side by side, each in its own place) */
+.st .bank .bk-drag{display:block;font-size:.72rem;color:var(--text-3);}
 .count .ico{width:calc(var(--u)*9);height:calc(var(--u)*9);opacity:.7;}
 .count:active{transform:scale(.96);}
 .count:focus:not(:focus-visible),.cmove:focus:not(:focus-visible){outline:none;}
@@ -348,7 +350,7 @@
   function save() {
     if (NET || PURE) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S) { var m = mineSeat(); Kit.resume.set('Hand ' + (S.round + (S.phase === 'bet' ? 1 : 0)) + (m >= 0 ? ' · bank ' + money(bank(m)) : S.money === 'table' ? ' · table money' : '')); }
+    if (S) { var m = mineSeat(); Kit.resume.set('Hand ' + (S.round + (S.phase === 'bet' ? 1 : 0)) + (m >= 0 ? ' \u00b7 ' + money(bank(m)) + ' in the bank' : S.money === 'table' ? ' \u00b7 Table money' : '')); }
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function snapshot() {
@@ -930,7 +932,7 @@
         el('p', { text: 'Insurance is a side bet that the dealer’s face-down card is a 10. It pays 2 to 1, so it only makes money when more than 1 in 3 of the unseen cards are 10s. Right now ' + pct(r.p10) + ' are (' + tens + ' of ' + N + ' cards). ' + (take ? 'That’s above 1 in 3, so it’s worth it this time.' : 'That’s below 1 in 3, so over time it costs you.') })]));
     } else if (r) {
       var bet = r.h.bet || 1;
-      out.push(el('div', { class: 'bjc-best' }, [el('small', { text: 'Best move · your ' + (r.soft ? 'soft ' : '') + r.T + ' vs dealer ' + (r.up === 1 ? 'Ace' : r.up) }), el('b', { text: LONG[r.best.a] }), el('p', { text: whySentence(r) })]));
+      out.push(el('div', { class: 'bjc-best' }, [el('small', { text: 'The best move with your ' + (r.soft ? 'soft ' : '') + r.T + ' against the dealer’s ' + (r.up === 1 ? 'Ace' : r.up) }), el('b', { text: LONG[r.best.a] }), el('p', { text: whySentence(r) })]));
       out.push(el('h4', { text: 'Every move, compared' }));
       out.push(el('p', { class: 'plain', text: 'If you played this exact spot many times, here’s how each move would turn out. The dollar figure is the average you’d end up with per hand on your ' + money(bet) + ' bet (a minus means you’d lose that much on average, so the smallest loss is the best you can do).' }));
       r.moves.forEach(function (m) { out.push(moveRow(m, r, bet)); });
@@ -938,7 +940,7 @@
       if (r.moves.length > 1) { var nx = r.moves[1]; tips.push(el('li', { html: '<b>' + LONG[r.best.a] + '</b> beats <b>' + LONG[nx.a].toLowerCase() + '</b> by about <b>' + cash((r.best.ev - nx.ev) * bet).replace('+', '') + '</b> a hand on average. Small edges like this add up over hundreds of hands.' })); }
       if (r.chart !== r.best.a) tips.push(el('li', { html: 'The basic strategy chart says <b>' + LONG[r.chart].toLowerCase() + '</b> here. ' + (r.chartCount === r.best.a ? 'The count changes it: with this true count, <b>' + LONG[r.best.a].toLowerCase() + '</b> is the better play (a count “index play”).' : 'With this exact mix of cards left, <b>' + LONG[r.best.a].toLowerCase() + '</b> comes out slightly ahead.') }));
       else tips.push(el('li', { html: 'This matches the <b>basic strategy</b> chart: the best play for every hand, worked out from millions of deals.' }));
-      tips.push(el('li', { html: 'Dealer finishes: 17 <b>' + pct(r.D[0]) + '</b> · 18 <b>' + pct(r.D[1]) + '</b> · 19 <b>' + pct(r.D[2]) + '</b> · 20 <b>' + pct(r.D[3]) + '</b> · 21 <b>' + pct(r.D[4]) + '</b> · bust <b>' + pct(r.D[5]) + '</b>.' }));
+      tips.push(el('li', { html: 'The dealer finishes on 17 <b>' + pct(r.D[0]) + '</b> of the time, 18 <b>' + pct(r.D[1]) + '</b>, 19 <b>' + pct(r.D[2]) + '</b>, 20 <b>' + pct(r.D[3]) + '</b> and 21 <b>' + pct(r.D[4]) + '</b>, and busts <b>' + pct(r.D[5]) + '</b>.' }));
       out.push(el('h4', { text: 'Why' }));
       out.push(el('ul', null, tips));
     } else {
@@ -1076,7 +1078,12 @@
   // ── Session end & history ─────────────────────────────────────────────────
   function sessionNets() { return S.seats.map(function (s) { return s.st.net; }); }
   function modeLabel() {
-    return (S.mode === 'online' ? 'Online · ' : S.mode === 'pass' ? 'Pass and play · ' : S.mode === 'cpu' ? 'With computers · ' : '') + (S.money === 'table' ? 'Table money ' + money(S.stake) + ' · ' : '') + S.opt.decks + (S.opt.decks === 1 ? ' deck' : ' decks') + ' · ' + (S.opt.h17 ? 'H17' : 'S17') + (S.opt.surr ? ' · surrender' : '');
+    // a sentence: "Online with table money of $1,000, 6 decks, the dealer hitting soft 17 and surrender allowed"
+    var lead = S.mode === 'online' ? 'Online' : S.mode === 'pass' ? 'Pass and play' : S.mode === 'cpu' ? 'With computers' : '';
+    var a = (S.money === 'table' ? ['table money of ' + money(S.stake)] : []).concat([S.opt.decks + (S.opt.decks === 1 ? ' deck' : ' decks'), 'the dealer ' + (S.opt.h17 ? 'hitting' : 'standing on') + ' soft 17']);
+    if (S.opt.surr) a.push('surrender allowed');
+    var t = a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+    return lead ? lead + ' with ' + t : t.charAt(0).toUpperCase() + t.slice(1);
   }
   function highlights() {
     var hl = [], nets = sessionNets();
@@ -1193,7 +1200,7 @@
   // Sessions saved by the old version of this page kept final bankrolls
   function oldEntry(e) {
     if (!e || e.v === 2 || !e.startBR || !Array.isArray(e.players)) return null;
-    return el('div', { class: 'k-hd-sum', text: e.players.map(function (p) { return p.name + ': ' + money(p.bankroll) + ' (' + signed(p.bankroll - e.startBR) + ')'; }).join(' · ') + ' · started with ' + money(e.startBR) + (e.decks ? ', ' + e.decks + '-deck shoe' : '') });
+    return el('div', { class: 'k-hd-sum' }, e.players.map(function (p) { return el('span', { class: 'k-fact', text: p.name + ' ended with ' + money(p.bankroll) + ', ' + signed(p.bankroll - e.startBR) }); }).concat([el('span', { class: 'k-fact', text: 'Everyone started with ' + money(e.startBR) + (e.decks ? ', from a ' + e.decks + '-deck shoe' : '') })]));
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1246,7 +1253,7 @@
 
     // Shoe (cards come from here) and discard tray
     var shoe = el('button', { type: 'button', class: 'shoe', 'aria-label': 'Card shoe', onclick: function () {
-      Kit.toast(S.shoe.length + ' cards left · ' + (S.shoe.length > S.cutLeft ? (S.shoe.length - S.cutLeft) + ' until the cut card' : 'shuffle after this hand'));
+      Kit.toast(S.shoe.length + ' cards are left, ' + (S.shoe.length > S.cutLeft ? (S.shoe.length - S.cutLeft) + ' of them before the cut card' : 'and the shoe is shuffled after this hand'));
     } });
     shoe.appendChild(Kit.card('', '', { back: true }));
     var cutPos = Math.max(0, Math.min(1, (S.shoe.length - S.cutLeft) / Math.max(1, S.opt.decks * 52 - S.cutLeft)));
@@ -1265,7 +1272,7 @@
     felt.appendChild(disc);
     if (S.opt.coach === 'count') {
       var cbox = el('div', { class: 'cbox' });
-      cbox.appendChild(el('button', { type: 'button', class: 'count', 'aria-label': 'Count and best move, explained', html: 'Count <b>' + (S.rc > 0 ? '+' : '') + S.rc + '</b> · True <b>' + fmtTc(trueCount()) + '</b>' + Kit.icon('right'), onclick: function () { Kit.sfx('tap'); showCoach(); } }));
+      cbox.appendChild(el('button', { type: 'button', class: 'count', 'aria-label': 'Count and best move, explained', html: '<span>Count <b>' + (S.rc > 0 ? '+' : '') + S.rc + '</b></span><span class="tc">True <b>' + fmtTc(trueCount()) + '</b></span>' + Kit.icon('right'), onclick: function () { Kit.sfx('tap'); showCoach(); } }));
       var cr = coachNow();
       if (cr) cbox.appendChild(el('button', { type: 'button', class: 'cmove', html: cr.ins ? 'Insurance: <b>' + (cr.take ? 'take it' : 'skip it') + '</b>' : 'Best move: <b>' + LONG[cr.best.a] + '</b>', onclick: function () { Kit.sfx('tap'); showCoach(); } }));
       felt.appendChild(cbox);
@@ -1482,7 +1489,7 @@
           btn(Kit.icon('play') + '<span>' + (NET ? 'Place bet' : 'Deal') + '</span>', 'btn-primary wide', deal)
         ], 3);
       }
-      var bk = el('span', { class: 'bank grow', html: (humans().length > 1 && !NET && srcOf(i) !== 'link' ? 'Drag chips to anyone\'s circle · ' : '') + moneyLabel(i) + ' <b>' + money(left) + '</b>' });
+      var bk = el('span', { class: 'bank grow', html: moneyLabel(i) + ' <b>' + money(left) + '</b>' + (humans().length > 1 && !NET && srcOf(i) !== 'link' ? '<small class="bk-drag">Drag chips to anyone’s circle</small>' : '') });
       c.appendChild(el('div', { class: 'st' }, [bk, Kit.cashOut(endSession)]));
       requestAnimationFrame(function () { Kit.fitText(bk, 0.7); });
     } else if (ph === 'ins' && S.insQ >= 0 && NET && S.hands[S.insQ].seat !== NET.seat) {
@@ -1729,7 +1736,7 @@
     if (S.rounds.length && !netRecorded()) recordSession();
     var bk = me >= 0 && S.phase === 'over' && S.netMoney === 'bank' && (nets[me] - (S.seats[me].filed || 0) || S.seats[me].filed);
     if (bk) netBank(S, me);
-    var rank = S.seats.map(function (x, i) { return { name: i === me ? 'You' : x.name, score: signed(nets[i]), n: nets[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
+    var rank = S.seats.map(function (x, i) { return { name: x.name, me: i === me, score: signed(nets[i]), n: nets[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
     var top = rank[0], tie = rank[1] && rank[1].n === top.n;
     if (winRef) winRef.close();
     winRef = Kit.win({

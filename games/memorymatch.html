@@ -698,12 +698,12 @@ body{overflow:hidden;}
   function netWin() {
     var res = NET.result, left = !!(res && res.left != null), me = NET.seat, ps = S.players;
     var top = Math.max.apply(null, ps.map(function (p) { return p.pairs; })), winners = ps.filter(function (p) { return p.pairs === top; });
-    var rank = ps.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: p.pairs, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
+    var rank = ps.map(function (p, i) { return { name: p.name, me: i === me, score: p.pairs, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
     var meTop = ps[me] && ps[me].pairs === top;
     if (winRef) winRef.close();
     winRef = Kit.win({
       title: left ? res.text : winners.length > 1 ? 'It’s a tie!' : ps.indexOf(winners[0]) === me ? 'You win!' : winners[0].name + ' wins!',
-      sub: left ? '' : winners.length > 1 ? (function (n) { return n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; })(winners.map(function (p) { return ps.indexOf(p) === me ? 'You' : p.name; })) + ' each found ' + top + ' pairs' : (ps.indexOf(winners[0]) === me ? 'You' : winners[0].name) + ' found ' + top + ' pairs',
+      sub: left ? '' : winners.length > 1 ? (function (n) { return n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; })(winners.map(function (p, k) { return ps.indexOf(p) === me ? (k ? 'you' : 'You') : p.name; })) + ' each found ' + top + ' pairs' : (ps.indexOf(winners[0]) === me ? 'You' : winners[0].name) + ' found ' + top + ' pairs',
       rank: left ? null : rank, lose: !left && !meTop, againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       look: 'Look at the cards'

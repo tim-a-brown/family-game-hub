@@ -4545,8 +4545,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       .replace(/\b(You) ([A-Za-z\u2019']+)/g, function (m, y, v) { var k = v.toLowerCase(); return YOU_V[k] ? y + ' ' + YOU_V[k] : m; })
       .replace(/ and (skips|draws|gains|takes|puts|plays) /g, function (m, v) { return ' and ' + YOU_V[v] + ' '; });
   }
+  // A log is read later, by either player: "this turn" and "your next turn" say whose turn they mean
+  // ("Mulan gets +2 strength during Cam’s turn", "until the start of Tim’s next turn").
+  function turnSaid(t, pi) {
+    if (t == null || !S || !S.P) return t;
+    function ps(i) { var P = S.P[i]; return P ? (P.name === 'You' ? 'your' : P.name + '’s') : 'this'; }
+    var cur = ps(S.cur);
+    t = String(t)
+      .replace(/\b(for the rest of|until the end of) this turn\b/g, function (m, a) { return a + ' ' + cur + ' turn'; })
+      .replace(/\bthis turn\b/g, 'during ' + cur + ' turn');
+    if (pi != null && pi >= 0) t = t.replace(/\buntil the start of your next turn\b/g, 'until the start of ' + ps(pi) + ' next turn')
+      .replace(/\bduring their next turn\b/g, 'during ' + ps(opp(pi)) + ' next turn');
+    return t;
+  }
   function log(t, pi, priv) {
-    t = youFix(t); priv = priv ? youFix(priv) : undefined;
+    t = youFix(turnSaid(t, pi)); priv = priv ? youFix(turnSaid(priv, pi)) : undefined;
     var e = { t: t, p: pi == null ? -1 : pi, priv: priv }, r = logRefs(t), pr = priv ? logRefs(priv) : null;
     if (r.length) e.r = r; if (pr && pr.length) e.pr = pr;
     S.log.push(e); if (S.log.length > 120) S.log.splice(0, S.log.length - 120);
@@ -5579,7 +5592,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     function finish() {
       if (PLAN === st.plan) PLAN = null;
       abNow = abWas;
-      if (st.said.length) log(DD(src).n + (ab.name ? ' · ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
+      if (st.said.length) log(DD(src).n + (ab.name ? '’s ' + abTitle(src, ab) : '') + ': ' + st.said.join('. '), pi);
       // what the computer's abilities did, so nothing slips by
       if (st.said.length && (S.mode === 'online' || (!ctlHuman(pi) && humans() > 0))) oppTick(pi, abTitle(src, ab), st.said.join(' · ').replace(/^\w/, function (c) { return c.toUpperCase(); }));
       done();
@@ -5816,7 +5829,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         while (P.deckL.length && !hitU) { var tu = P.deckL.shift(); shown.push(tu); if (descFits(tu, e, st.src) && (!e.cls || hasCls(tu, e.cls))) hitU = tu; }
         act(function () { if (hitU) { shown.splice(shown.indexOf(hitU), 1); P.hand.push(hitU); } shown.forEach(function (u) { P.deckL.push(u); }); shuffle(P.deckL); });
         noUndo(); st.said.push(P.name + ' revealed ' + plural(shown.length + (hitU ? 1 : 0), 'card') + (hitU ? ' and took ' + DD(hitU).full : ''));
-        if (humans() > 0) ticker(P, 'Revealed', shown.map(function (u) { return DD(u).n; }).concat(hitU ? ['→ ' + DD(hitU).n + ' to hand'] : ['no match']).join(' · '));
+        if (humans() > 0) ticker(P, 'Revealed', shown.map(function (u) { return DD(u).n; }).concat(hitU ? ['→ ' + DD(hitU).n + ' to hand'] : ['no match']).join(', '));
         if (hitU && (ctlHuman(pi) || humans() > 0)) showReveal(hitU, 'Revealed ' + plural(shown.length + 1, 'card') + ' to find it; the rest were shuffled back', 'Found', 'Into ' + P.name + '’s hand');
         return cb(!!hitU);
       }
@@ -5864,7 +5877,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       case 'moveFree': return moveFreeFx(e, st, optional, cb);
       case 'nameCard': case 'nameReveal': return nameFx(e, st, optional, cb);
-      case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('this turn: ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
+      case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('for the rest of this turn, ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
       case 'later': S.later = (S.later || []).filter(function (t) { return t.turn >= S.turn; }); S.later.push({ src: st.src, pi: pi, fx: e.fx, turn: S.turn, uids: (st.prev || []).slice(), name: abTitle(st.src, st.ab) }); return cb(true);
       case 'count': st.last = amtVal(e.amt, st); st.said.push('counted ' + st.last); return cb(true);
       case 'drops': {
@@ -5909,7 +5922,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         act(function () { [pi, opp(pi)].forEach(function (w, i) { var x = tops[i]; if (!x) return; var W = S.P[w]; W.deckL.shift(); if ((DD(x).c || 0) === hiC) W.hand.push(x); else W.deckL.push(x); }); });
         noUndo(); fx.drawn(pi); fx.drawn(opp(pi));
         var line2 = [pi, opp(pi)].map(function (w, i) { var x = tops[i]; return x ? S.P[w].name + ': ' + DD(x).n + ' (cost ' + (DD(x).c || 0) + ')' + ((DD(x).c || 0) === hiC ? ' → hand' : ' → bottom') : S.P[w].name + ': no card'; });
-        st.said.push(line2.join('; ')); if (humans() > 0) ticker(P, 'Revealed', line2.join(' · '));
+        st.said.push(line2.join('; ')); if (humans() > 0) ticker(P, 'Revealed', line2.join(', '));
         return cb(true);
       }
       case 'healSplit': return healSplitFx(e, st, cb);
@@ -6028,7 +6041,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         st.said.push(O.name + ' revealed their hand');
         if (!human || !O.hand.length) return cb(true);
         var box = el('div', { class: 'lp-list' });
-        O.hand.forEach(function (x) { var d = DD(x); var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]); r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); }); box.appendChild(r); });
+        O.hand.forEach(function (x) { var d = DD(x); var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: (d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + ' for ' + (d.c || 0) + ' ink' })])]); r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); }); box.appendChild(r); });
         Kit.sheet({ title: O.name + '’s Hand', node: box, actions: [{ label: 'Done', cls: 'btn-primary' }], onClose: function () { cb(true); } });
         return;
       }
@@ -6206,7 +6219,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       });
     });
     st.revealed = seen; noUndo();
-    if (humans() > 0 && seen.length) ticker(S.P[pi], 'Revealed', seen.map(function (u) { return DD(u).full; }).join(' · '));
+    if (humans() > 0 && seen.length) ticker(S.P[pi], 'Revealed', seen.map(function (u) { return DD(u).full; }).join(', '));
     cb(seen.length > 0);
   }
   // Cards from under your characters and locations into your inkwell
@@ -6265,7 +6278,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var hitIt = DD(top).n === name;
       act(function () { if (hitIt) { P.deckL.shift(); if (e.dest === 'ink') { C(top).ex = true; P.ink.push(top); inked(pi); } else P.hand.push(top); if (e.lore) { questing = true; gainLore(pi, e.lore); questing = false; } } });
       st.said.push('revealed ' + DD(top).full + (hitIt ? ': a match!' + (e.lore ? ' +' + e.lore + ' lore' : '') : ', no match'));
-      if (ctlHuman(pi) || humans() > 0) showReveal(top, hitIt ? 'It’s the named card' : 'Not ' + name, hitIt ? 'Match' : 'Revealed', hitIt ? 'Into ' + P.name + '’s hand' + (e.lore ? ' · +' + e.lore + ' lore' : '') : 'Back on top of the deck');
+      if (ctlHuman(pi) || humans() > 0) showReveal(top, hitIt ? 'It’s the named card' : 'Not ' + name, hitIt ? 'Match' : 'Revealed', hitIt ? 'Into ' + P.name + '’s hand' + (e.lore ? ', and +' + e.lore + ' lore' : '') : 'Back on top of the deck');
       noUndo(); cb(true);
     }
     if (!ctlHuman(pi)) {
@@ -7207,7 +7220,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var lab = choiceLabel(choices[i]);
         seats.appendChild(el('div', { class: 'dk-seat' }, [
           el('span', { class: 'avatar', style: { '--c': p.color }, html: p.cpu ? Kit.icon('bot') : esc(p.name.charAt(0).toUpperCase()) }),
-          el('div', { class: 'grow' }, [el('b', { text: p.name }), el('small', { html: (lab.inks.length ? inkDots(lab.inks) + ' ' : '') + esc(lab.name) + ' · ' + esc(lab.sub) })]),
+          el('div', { class: 'grow' }, [el('b', { text: p.name }), el('small', { html: (lab.inks.length ? inkDots(lab.inks) + ' ' : '') + esc(lab.name) + '<span style="display:block">' + esc(lab.sub) + '</span>' })]),
           el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Change', onclick: function () { pickDeck(p, choices[i], function (ch) { choices[i] = ch; paint(); }); } })
         ]));
       });
@@ -7263,7 +7276,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var pr = DB.status === 'ready' ? deckProblems(d.cards, d.casual) : [];
         var edit = el('span', { class: 'btn btn-sm btn-ghost', role: 'button', html: Kit.icon('pencil'), 'aria-label': 'Edit ' + d.name, onclick: function (e) { e.stopPropagation(); s.close(); showBuilder(d.id, function () { reopen(); }); } });
         var blocked = ui.noCasual && isCasual(d);
-        var ob = opt({ kind: 'saved', id: d.id }, d.name, blocked ? 'Casual · not allowed in this game' : pr.length ? 'Not ready: ' + pr[0] : (isCasual(d) ? 'Casual · ' : '') + deckCount(d.cards) + ' cards', DB.status === 'ready' ? deckInks(d.cards) : [], edit);
+        var ob = opt({ kind: 'saved', id: d.id }, d.name, blocked ? 'A casual deck, which this game doesn’t allow' : pr.length ? 'Not ready: ' + pr[0] : deckCount(d.cards) + ' cards' + (isCasual(d) ? ', casual' : ''), DB.status === 'ready' ? deckInks(d.cards) : [], edit);
         if (blocked) { ob.disabled = true; ob.classList.add('dk-off'); }
         list.appendChild(ob);
       });
@@ -8245,7 +8258,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var mat = solo ? null : $(cur === bottomPi() ? '.mat-bot' : '.mat-top'), r = mat && mat.offsetWidth ? mat.offsetHeight / mat.offsetWidth : .7;
       var W0 = who(cur), sq = m.u === 'v' && avatarSrc(W0).photo, can = m.u === 'a' || sq;
       var big = el('i', { class: 'art-big' + (can ? '' : ' fixed') }); big.style.aspectRatio = '1 / ' + Math.min(1.1, Math.max(.35, r)).toFixed(3); matFill(big, m, { who: W0, stars: 4 });
-      var cap = m.u === 'n' ? m.name : m.uname === 'Avatar' ? (solo ? 'Your avatar' : (S.P[cur].name + '’s avatar')) + ' · ' + m.name : m.uname + ' · ' + m.name;
+      var cap = m.u === 'n' ? m.name : m.uname === 'Avatar' ? (solo ? 'Your avatar' : (S.P[cur].name + '’s avatar')) + ', ' + m.name : m.uname + ', ' + m.name;
       if (!can) return el('div', { class: 'art-cur' }, [el('div', { class: 'art-frame' }, [big]), el('b', { text: cap })]);
       var fr = { x: m.fr.x, y: m.fr.y, z: m.fr.z }, ptrs = {}, pinch = null, moved = false;
       var zoom = el('input', { type: 'range', class: 'art-zoom', min: '1', max: '3', step: '0.01', value: String(fr.z), 'aria-label': 'Zoom' });
@@ -8400,12 +8413,12 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // the set by name (Rise of the Floodborn) on its own line, then the artist and the printed number beneath
     var sx = p.set ? DB.sets.filter(function (y) { return y.code === p.set; })[0] : null, sn = p.set ? (sx && sx.name ? sx.name + ' [Set ' + p.set + ']' : 'Set ' + p.set) : '';
     if (p.il) bits.push('<i>' + esc(p.il) + '</i>');
-    return (sn ? '<small class="sn">' + esc(sn) + '</small>' : '') + '<small>' + bits.join(' · ') + '</small>';
+    return (sn ? '<small class="sn">' + esc(sn) + '</small>' : '') + '<small>' + bits.join('<br>') + '</small>';   // (the number, the language and the artist, a line each)
   }
   function prRarName(r) { return String(r || '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); }); }
   var PR_ORDER = { common: 1, uncommon: 2, rare: 3, 'super rare': 4, legendary: 5, special: 6, promo: 6, epic: 7, iconic: 8, enchanted: 9 };
   function printsSorted(d) { return printingsOf(d).slice().sort(function (a, b) { return (PR_ORDER[rarKey(a)] || 6) - (PR_ORDER[rarKey(b)] || 6) || setOrd(a.set) - setOrd(b.set); }); }
-  function prLabel(p, list) { var n = prRarName(p.r) || 'Card'; return list.filter(function (x) { return prRarName(x.r) === n; }).length > 1 ? n + ' · Set ' + p.set : n; }
+  function prLabel(p, list) { var n = prRarName(p.r) || 'Card'; return list.filter(function (x) { return prRarName(x.r) === n; }).length > 1 ? n + ' from set ' + p.set : n; }
   // The rarity marks as printed at the bottom of the cards (drawn to match; Legendary and Enchanted have an older
   // and a newer mark, and promos one per series): Common a gray disc and swirl, Uncommon a
   // white open book, Rare a bronze notched triangle, Super Rare a silver art-deco fan, Legendary a gold
@@ -8556,7 +8569,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       card.setAttribute('data-r', rarKey(a)); card.classList.toggle('foil', !!prSpecial(a));
     }
     $$('.sb-rar', ov).forEach(function (b) { b.outerHTML = rarBtnHTML(d); });
-    var sn = ov.querySelector('.setno'); if (sn) sn.textContent = 'Set ' + a.set + (a.no ? ' · #' + a.no : '');
+    var sn = ov.querySelector('.setno'); if (sn) sn.textContent = 'Set ' + a.set + (a.no ? ', #' + a.no : '');
     if (Kit.haptic) Kit.haptic('light');
     artChanged();
   }
@@ -8596,9 +8609,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   }
   function faceEl(d) {
     var f = el('div', { class: 'face', style: { '--ink-c': INKC[inkOf(d)[0]] || '#666' } });
-    var stats = d.t === 'character' ? (d.s || 0) + ' str · ' + (d.w || 0) + ' will · ' + (d.l || 0) + ' lore' : d.t === 'location' ? (d.w || 0) + ' will · ' + (d.l || 0) + ' lore · move ' + (d.mv || 0) : '';
+    var stats = d.t === 'character' ? (d.s || 0) + ' strength, ' + (d.w || 0) + ' willpower and ' + (d.l || 0) + ' lore' : d.t === 'location' ? (d.w || 0) + ' willpower, ' + (d.l || 0) + ' lore and a move cost of ' + (d.mv || 0) : '';
     f.innerHTML = '<div class="fn">' + esc(d.n) + '</div>' + (d.v ? '<div class="fv">' + esc(d.v) + '</div>' : '') +
-      '<div class="ft">' + esc((d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (stats ? ' · ' + stats : '')) + '<br>' + esc(d.tx.replace(/\{([A-Z])\}/g, function (m, k) { return { I: 'ink', E: 'exert', S: 'str', W: 'will', L: 'lore' }[k] || k; })) + '</div>';
+      '<div class="ft">' + esc((d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + (stats ? ' with ' + stats : '')) + '<br>' + esc(d.tx.replace(/\{([A-Z])\}/g, function (m, k) { return { I: 'ink', E: 'exert', S: 'str', W: 'will', L: 'lore' }[k] || k; })) + '</div>';
     return f;
   }
   function statSpan(k, v, base) {
@@ -9891,8 +9904,8 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // Ready / exerted / drying sit up in the top-right corner of the details (where Add to deck is in the library);
     // press and hold for what they mean
     if (d.t === 'character' || d.t === 'item') top += c.ex ? stt('s-exd', 'ex', 'Exerted') : stt('s-rdy', 'ready', 'Ready');
-    if (d.t === 'character' && !c.dry) top += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying · Rush' : 'Drying', '--ic:' + inkColor(u));
-    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage · ' + sv('w', 'Willpower', WP(u) + '→' + Math.max(0, WP(u) - c.dmg), -1));
+    if (d.t === 'character' && !c.dry) top += stt('s-wet', 'drop', hasKw(u, 'rush') ? 'Drying, with Rush' : 'Drying', '--ic:' + inkColor(u));
+    if (c.dmg) h += stt('s-dmg', '<b>' + c.dmg + '</b>', 'damage, ' + sv('w', 'Willpower', WP(u) + '→' + Math.max(0, WP(u) - c.dmg), -1));
     if (c.at && S.cards[c.at]) h += stt('s-loc', 'pin', 'At ' + esc(DD(c.at).full));
     if (c.under && c.under.length) h += stt('s-und', 'stack', plural(c.under.length, 'card') + ' under it');
     (c.mods || []).forEach(function (m) {
@@ -11231,9 +11244,9 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     text = youFix(text);
     var lf = lzFeed(); if (lf) { feedLine(lf, p, verb, text); return; }
     var open = $('.lz.reveal .rv-head');
-    if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + fxHTML(text) }), open.firstChild); return; }
+    if (open) { open.insertBefore(el('span', { class: 'rv-also', html: '<b>' + esc(verb) + '</b> ' + String(text).split(' \u00b7 ').map(fxHTML).join('<br>') }), open.firstChild); return; }
     var box = $('.rv-ticks') || document.body.appendChild(el('div', { class: 'rv-ticks', 'aria-live': 'polite' }));
-    var t = el('div', { class: 'rv-tick', html: '<i class="dot" style="--c:' + p.color + '"></i><b>' + esc(verb) + '</b><span>' + fxHTML(text) + '</span>' });
+    var t = el('div', { class: 'rv-tick', html: '<i class="dot" style="--c:' + p.color + '"></i><b>' + esc(verb) + '</b><span>' + String(text).split(' \u00b7 ').map(fxHTML).join('<br>') + '</span>' });   // (separate facts, a line each)
     box.appendChild(t); while (box.children.length > 3) box.removeChild(box.firstChild);
     setTimeout(function () { t.classList.add('out'); setTimeout(function () { t.remove(); }, 400); }, 2600);
   }
@@ -11271,7 +11284,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     // a challenge: the card it challenged comes in beside it, takes its damage, and is banished if it was
     if (vs && vs.t && S.cards[vs.t]) revealVs(ov, u, vs);
     // inked rather than played: the ink-blue version, saying where it went and how much ink that makes
-    if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell · ' + p.ink.length + ' ink'; }
+    if (verb === 'Inked') { ov.classList.add('inked'); if (!effect) effect = 'Into the inkwell, which holds ' + p.ink.length + ' ink'; }
     var also = $$('.rv-tick:not(.out)').map(function (t) { t.remove(); return '<span class="rv-also">' + t.innerHTML.replace(/<i class="dot"[^>]*><\/i>/, '') + '</span>'; }).join('');
     ov.insertBefore(el('div', { class: 'rv-head', html: also + '<span class="rv-who"><i class="dot" style="--c:' + p.color + '"></i>' + esc(p.name) + '</span><b class="rv-verb">' + esc(verb) + '</b>' + (effect ? '<span class="rv-fx">' + fxHTML(effect) + '</span>' : '') }), ov.firstChild);
     var online = S.mode === 'online';   // (online the other player's moves come at their pace: nothing to skip or speed up)
@@ -11316,7 +11329,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     if (aBan) setTimeout(function () { mark(att, true, vs.da); }, 1250);
     // Tap either card to read it underneath (tap the one showing to switch to the other); the one being read is ringed in gold
     var info = $('.lz-info', ov), firstHTML = info ? info.innerHTML : '', da = DD(u);
-    var defHTML = headHTML(dt) + defMeta(dt, vs.t) + '<p class="lz-sub">' + esc('Challenged by ' + nm(u) + (vs.dt ? ' · took ' + vs.dt : '') + (tBan ? ' · Banished' : '')) + '</p><div class="rtext">' + rulesHTML(dt) + '</div>';
+    var defHTML = headHTML(dt) + defMeta(dt, vs.t) + '<p class="lz-sub">' + esc('Challenged by ' + nm(u) + (vs.dt ? ', and took ' + vs.dt + ' damage' : '') + (tBan ? '. Banished.' : '')) + '</p><div class="rtext">' + rulesHTML(dt) + '</div>';
     function read(card) {
       var other = card === att ? dc : att, isDef = card === dc;
       if (card.classList.contains('rv-focus')) return read(other);
@@ -11617,7 +11630,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var ov = zoomShell(d, who + headHTML(d) + defMeta(d, u) + statusHTML(u, zu) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>', acts, whys, nav, { modal: true, onClose: function () { if (!fin) setTimeout(function () { if (!fin) show(i); }, 0); } });
       // what's asking, pinned above the cards
       var head = el('div', { class: 'cp-head' }, [el('span', { class: 'cp-src', html: o.src && S.cards[o.src] ? miniArt(DD(o.src)) : '' }),
-        el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: o.n === 0 ? (o.uids.length > 1 ? 'Swipe through them and choose where each goes' : 'Choose where it goes') : !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') + (o.place === 'top' ? ' · 1st chosen is the top card' : o.place === 'bottom' ? ' · 1st chosen is the bottom card' : '') : 'Swipe to look through them' })])]);
+        el('div', { class: 'grow' }, [el('b', { text: o.title }), el('small', { text: o.n === 0 ? (o.uids.length > 1 ? 'Swipe through them and choose where each goes' : 'Choose where it goes') : !single ? sel.length + ' of ' + n + ' chosen' + (min < n ? ' (up to ' + n + ')' : '') + (o.place === 'top' ? '. The first chosen goes on top.' : o.place === 'bottom' ? '. The first chosen goes on the bottom.' : '') : 'Swipe to look through them' })])]);
       // with the steps listed underneath, the header just names the card
       var pl = planHTML(); if (pl) { head.classList.add('has-plan'); var hb = $('b', head); if (hb) hb.textContent = o.title.split(': ')[0]; head.insertAdjacentHTML('beforeend', pl); }
       var lin = ov && $('.lz-in', ov); if (lin) lin.insertBefore(head, lin.firstChild);
@@ -11646,7 +11659,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     top.forEach(function (u) { dest[u] = 'top'; });
     top.forEach(function (u) {
       var d = DD(u);
-      var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })])]);
+      var r = el('div', { class: 'lp-li' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: (d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + ' for ' + (d.c || 0) + ' ink' })])]);
       r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
       r.appendChild(seg([['top', 'Top'], ['bottom', 'Bottom'], ['hand', 'Hand'], ['discard', 'Discard']], 'top', function (x) { dest[u] = x; }));
       r.classList.add('wrap');
@@ -11688,7 +11701,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     P.discard.slice().reverse().forEach(function (u) {
       var d = DD(u);
-      var r = el('div', { class: 'lp-li wrap' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: 'Cost ' + (d.c || 0) + ' · ' + (d.song ? 'Song' : d.t) })]),
+      var r = el('div', { class: 'lp-li wrap' }, [el('span', { html: miniArt(d) }), el('div', { class: 'grow' }, [el('b', { text: d.full }), el('small', { text: (d.song ? 'Song' : d.t.charAt(0).toUpperCase() + d.t.slice(1)) + ' for ' + (d.c || 0) + ' ink' })]),
         el('div', { class: 'acts' }, [['hand', 'Hand'], ['play', 'Play'], ['ink', 'Ink'], ['top', 'Deck top'], ['bottom', 'Bottom']].map(function (a) { return el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: a[1], onclick: function () { move(u, a[0]); } }); }))]);
       r.querySelector('.mini').addEventListener('click', function () { zoomDef(d); });
       list.appendChild(r);
@@ -11718,7 +11731,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function inkZoom(pi, u, dir) {
     var P = S.P[pi], well = P.ink.slice().reverse(), i = well.indexOf(u); if (i < 0) return;
     var d = DD(u), used = C(u).ex, hid = inkHid(pi, u);
-    var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell · ' + (used ? 'used this turn' : 'ready') + (!hid && C(u).fd === 2 ? ' · face down to ' + esc(S.P[opp(pi)].name) : '') + '</div>';
+    var head = '<div class="inkpk' + (used ? ' used' : '') + '"><i></i>' + esc(P.name) + '’s inkwell, ' + (used ? 'used this turn' : 'ready') + (!hid && C(u).fd === 2 ? ' · face down to ' + esc(S.P[opp(pi)].name) : '') + '</div>';
     var info = hid ? head + '<h2 class="inkfd-h">Face down</h2><p class="inkfd-p">' + (C(u).fd === 2 ? 'It went in without being shown, so only ' + esc(P.name) + ' knows what it is.' : 'It went into the inkwell without being shown.') + '</p>'
       : head + headHTML(d) + defMeta(d) + '<div class="rtext">' + rulesHTML(d) + kwHelpHTML(d, null) + '</div>';
     zoomShell(d, info, [], null,
@@ -11772,11 +11785,11 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       var lastT = null;
       for (var i = rows.length - 1; i >= 0; i--) {
         var x = rows[i];
-        if (x.t !== lastT) { lastT = x.t; list.appendChild(el('div', { class: 'll-turn', html: '<span>Turn ' + x.t + (x.t === S.turn ? ' · now' : '') + '</span><b>' + totals[i] + '</b>' })); }
+        if (x.t !== lastT) { lastT = x.t; list.appendChild(el('div', { class: 'll-turn', html: '<span>Turn ' + x.t + (x.t === S.turn ? ', now' : '') + '</span><b>' + totals[i] + '</b>' })); }
         var d = x.i ? D(x.i) : null, theirs = x.o != null && x.o !== w;
         list.appendChild(el('div', { class: 'll-row' + (x.d < 0 ? ' neg' : ''), role: d ? 'button' : null, onclick: d ? function (dd) { return function () { zoomDef(dd); }; }(d) : null }, [
           d ? el('span', { class: 'll-art', html: miniArt(d) }) : el('span', { class: 'll-art ic', html: Kit.icon(x.r === 'Changed by hand' ? 'pencil' : 'sparkle') }),
-          el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), el('small', { text: x.r + (x.w ? ' · ' + x.w : '') + (theirs && !(x.w && x.w.indexOf(S.P[x.o].name + '’s') >= 0) ? ' · ' + S.P[x.o].name + '’s card' : '') })]),
+          el('div', { class: 'grow' }, [el('b', { text: x.n || (x.d > 0 ? 'Lore' : 'Lore lost') }), Kit.facts(el('small'), x.r + (x.w ? ' \u00b7 ' + x.w : '') + (theirs && !(x.w && x.w.indexOf(S.P[x.o].name + '’s') >= 0) ? ' \u00b7 ' + S.P[x.o].name + '’s card' : ''))]),
           el('span', { class: 'll-d', text: (x.d > 0 ? '+' : '−') + Math.abs(x.d) })]));
       }
       if (early > 0) list.appendChild(el('div', { class: 'll-row early' }, [el('span', { class: 'll-art ic', html: Kit.icon('history') }), el('div', { class: 'grow' }, [el('b', { text: 'Earlier in the game' }), el('small', { text: 'Before this game kept a ledger' })]), el('span', { class: 'll-d', text: '+' + early })]));
@@ -11953,7 +11966,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     decks.forEach(function (dk) {
       var cs = deckCards(dk.cards), by = {}, order = [];
       out.push('## ' + dk.name, '');
-      if (cs.length) out.push('*' + deckInks(dk.cards).join(' & ') + ' · ' + deckCount(dk.cards) + ' cards*', '');
+      if (cs.length) out.push('*' + deckCount(dk.cards) + ' cards in ' + deckInks(dk.cards).join(' & ') + '*', '');
       cs.forEach(function (x) { if (!by[x.d.full]) order.push(x.d.full); by[x.d.full] = (by[x.d.full] || 0) + x.n; });
       order.forEach(function (k) { out.push(by[k] + ' ' + k); });
       out.push('');
@@ -12252,7 +12265,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       if (!mine.length) { Kit.toast('No saved decks yet. Tap New Deck to build one.'); return; }
       node.appendChild(el('button', { type: 'button', class: 'lp-li st-row', onclick: function () { sh.close(); setDeckFilter('*'); } }, [el('span', { html: inkDots(INKS.filter(function (i) { return mine.some(function (dk) { return deckInks(dk.cards).indexOf(i) >= 0; }); })) }), el('b', { class: 'grow', text: 'In any saved deck' }), el('small', { text: plural(mine.length, 'deck') + ', ' + plural(Object.keys(mine.reduce(function (u, dk) { for (var id in dk.cards) { var x = DB.byId[id]; if (x && dk.cards[id] > 0) u[x.full.toLowerCase()] = 1; } return u; }, {})).length, 'card') })]));
       node.appendChild(el('div', { class: 'lp-div', role: 'separator' }));
-      mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: (isCasual(dk) ? 'Casual · ' : '') + deckCount(dk.cards) + ' cards' })])); });
+      mine.forEach(function (dk) { node.appendChild(el('button', { type: 'button', class: 'lp-li st-row' + (f.deck === dk.id ? ' on' : ''), onclick: function () { sh.close(); setDeckFilter(dk.id); } }, [el('span', { html: inkDots(deckInks(dk.cards)) }), el('b', { class: 'grow', text: dk.name }), el('small', { text: deckCount(dk.cards) + ' cards' + (isCasual(dk) ? ', casual' : '') })])); });
       sh = Kit.sheet({ title: 'Cards in a Saved Deck', node: node, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
     }
     var deckSet = null;
@@ -12629,10 +12642,10 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         if (tl && ui.clsPick) {
           tl.textContent = '';
           // Card type links to the type chips (Characters, Actions, Songs…); classifications to the Classification filter
-          var tyBtn = function (label, ty, sep) { if (sep) tl.appendChild(document.createTextNode(' · ')); tl.appendChild(el('button', { type: 'button', class: 'cls-tap', title: 'Every ' + label.toLowerCase() + ' card', text: label, onclick: function (e) { e.stopPropagation(); ui.typePick(ty); } })); };
+          var tyBtn = function (label, ty, sep) { if (sep) tl.appendChild(document.createTextNode(' ')); tl.appendChild(el('button', { type: 'button', class: 'cls-tap', title: 'Every ' + label.toLowerCase() + ' card', text: label, onclick: function (e) { e.stopPropagation(); ui.typePick(ty); } })); };
           if (d.song) { tyBtn('Action', 'action'); tyBtn('Song', 'song', true); } else tyBtn(d.t.charAt(0).toUpperCase() + d.t.slice(1), d.t);
           (d.cl || []).filter(function (x) { return x !== 'Song'; }).forEach(function (x) {
-            tl.appendChild(document.createTextNode(' · '));
+            tl.appendChild(document.createTextNode(' '));
             tl.appendChild(el('button', { type: 'button', class: 'cls-tap', title: 'Every ' + x + ' card', text: x, onclick: function (e) { e.stopPropagation(); ui.clsPick(x); } }));
           });
         }
@@ -12918,7 +12931,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var go2 = function () {
           var added = 0, full = 0;
           picked.forEach(function (d) { if (copiesByFull(deck.cards, d.full) >= copyLimit(d)) { full++; return; } deck.cards[d.id] = (deck.cards[d.id] || 0) + 1; added++; });
-          dirty = true; Kit.sfx(added ? 'good' : 'bad'); Kit.toast('Added ' + plural(added, 'card') + (full ? ' · ' + full + ' already at the limit' : ''));
+          dirty = true; Kit.sfx(added ? 'good' : 'bad'); Kit.toast('Added ' + plural(added, 'card') + (full ? ', and ' + full + ' already at the limit' : ''));
           selEnd(); paintDeck();
         };
         var test = {}; for (var k0 in deck.cards) test[k0] = deck.cards[k0]; picked.forEach(function (d) { test[d.id] = (test[d.id] || 0) + 1; });
@@ -12933,7 +12946,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
         var go = function () {
           all.forEach(function (d) { if (copiesByFull(cards, d.full) >= copyLimit(d)) { full++; return; } cards[d.id] = (cards[d.id] || 0) + 1; added++; });
           dk.cards = cards; putDeck(dk); lsSet(LASTDK, dk.id); Kit.sfx(added ? 'good' : 'bad');
-          notePill('dk', [dk.name, 'Added ' + plural(added, 'card') + (full ? ' · ' + full + ' already at the limit' : '')], added && !isNew ? [['Undo', function () { var k2 = savedDecks().filter(function (x) { return x.id === dk.id; })[0]; if (!k2) return; k2.cards = JSON.parse(before); putDeck(k2); Kit.sfx('tap'); paintGrid(true); }]] : []);
+          notePill('dk', [dk.name, 'Added ' + plural(added, 'card') + (full ? ', and ' + full + ' already at the limit' : '')], added && !isNew ? [['Undo', function () { var k2 = savedDecks().filter(function (x) { return x.id === dk.id; })[0]; if (!k2) return; k2.cards = JSON.parse(before); putDeck(k2); Kit.sfx('tap'); paintGrid(true); }]] : []);
           selEnd();
         };
         var test = {}; for (var k1 in cards) test[k1] = cards[k1]; picked.forEach(function (d) { test[d.id] = (test[d.id] || 0) + 1; });
@@ -13116,7 +13129,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     }
     // Done shows how many cards the filters leave (kept up to date as you tap)
     var doneBtn = null;
-    function doneText(n) { if (doneBtn && doneBtn.isConnected) doneBtn.textContent = 'Done · ' + (n ? n.toLocaleString() + (n === 1 ? ' card' : ' cards') : 'no cards'); }
+    function doneText(n) { if (doneBtn && doneBtn.isConnected) doneBtn.textContent = n ? 'Done with ' + n.toLocaleString() + (n === 1 ? ' card' : ' cards') : 'Done, with no cards'; }
     function moreFilters(onClose) {
       if (typeof onClose !== 'function' && window.matchMedia && matchMedia('(min-width:900px) and (orientation:landscape)').matches) {
         if (fpanel) closeFilterPanel(); else openFilterPanel();
@@ -13652,7 +13665,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
   function roomInfo(r) {
     var dk = {}; try { dk = JSON.parse(r.d.host.deck); } catch (e) {}
     var inks = DB.status === 'ready' && dk.cards ? deckInks(dk.cards) : [];
-    return (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ' · code ' + r.code + (+r.d.host.goal === 50 ? ' · to 50 lore' : '') + (+r.d.host.hand === 10 ? ' · 10-card hands' : '') + (r.d.host.casual === 'no' ? ' · no casual decks' : ''));
+    return (inks.length ? inkDots(inks) + ' ' : '') + esc((dk.name || 'Deck') + ', code ' + r.code + (+r.d.host.goal === 50 ? ', to 50 lore' : '') + (+r.d.host.hand === 10 ? ', 10-card hands' : '') + (r.d.host.casual === 'no' ? ', no casual decks' : ''));
   }
   // A linked person's table: their avatar, and a big Join button
   function palRoom(r, title, label, onJoin) {
@@ -13850,17 +13863,17 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
     var chev = el('span', { class: 'net-chev', html: Kit.icon('right') });
     if (r.wait) {
       return el('button', { type: 'button', class: 'net-room net-mine', onclick: go }, [el('span', { class: 'net-ic', html: Kit.icon('globe') }),
-        el('div', { class: 'grow' }, [el('b', { text: 'Your table · code ' + r.code }), el('small', { text: 'Waiting for someone to join · opened ' + agoText(r.when) })]), chev]);
+        el('div', { class: 'grow' }, [el('b', { text: 'Your table' }), Kit.facts(el('small'), 'Code ' + r.code + ' \u00b7 Waiting for someone to join \u00b7 Opened ' + agoText(r.when))]), chev]);
     }
     var nm = r.who ? r.who.name : (r.opp && r.opp.name) || 'Someone', bits = [];
     if (r.deal) bits.push(r.mine ? nm + ' joined: tap to deal' : 'Waiting for ' + nm + ' to deal');
     else if (r.mull) bits.push('Opening hands');
-    else if (r.turn) bits.push('Turn ' + r.turn + ' · you ' + r.lore[0] + ', ' + nm + ' ' + r.lore[1]);
+    else if (r.turn) bits.push('Turn ' + r.turn + ', with you on ' + r.lore[0] + ' lore and ' + nm + ' on ' + r.lore[1]);
     bits.push(agoText(r.when));
-    var head = r.deal && !r.mine ? '' : r.mine ? '<span class="net-yours">Your move</span> · ' : esc('Waiting for ' + nm) + ' · ';
+    var head = r.deal && !r.mine ? '' : r.mine ? '<span class="net-yours">Your move</span>' : esc('Waiting for ' + nm);
     return el('button', { type: 'button', class: 'net-room net-mine' + (r.mine ? ' net-turn' : ''), onclick: go }, [
       Kit.avatar.el(nm, null, Kit.color(1)),
-      el('div', { class: 'grow' }, [el('b', { text: 'vs ' + nm }), el('small', { html: head + esc(bits.join(' · ')) })]), chev]);
+      el('div', { class: 'grow' }, [el('b', { text: 'vs ' + nm }), el('small', { html: head + bits.map(function (b) { return '<span class="k-fact">' + esc(b) + '</span>'; }).join('') })]), chev]);
   }
   // A box of your games (empty, so hidden, when there are none or you're not signed in)
   function mineBox(title) {

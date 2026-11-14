@@ -66,6 +66,10 @@ Underlying principles for everything:
   table to line up names and hands, a caps label over a value). A setup choice with a second part ("10" and
   "Standard") has it on a second line in its button: the label is `'10\nStandard'`, and a folded row, the online
   review and the Game defaults line say the first line alone (`chText` in kit.js).
+  A list of facts may be passed as text joined by " · " (toasts, confirm bodies, `Kit.win`'s sub line, history
+  summaries): `Kit.facts` draws one fact a line and `HistView` splits a dotted line in a history view, so the dot itself
+  is never shown. `Kit.resume` labels and Poker's hand rows keep it as a stored format, split for display. Printed
+  artwork (Lorcana's type line, pinball prints, Poker venue logos) keeps its own.
 - **Write the way a person talks** (Tim, 2026-11-11). Every sentence a player reads should be one a person would say
   out loud to someone across the table: a whole sentence, in ordinary word order, that says what it is about. Not a
   stub put together from a name and a verb ("Leonardo da Vinci guides it": say "Leonardo da Vinci is this deck's
@@ -166,6 +170,8 @@ Underlying principles for everything:
   above the Players card (`friendTables` in kit.js reads the linked people's tables once when the setup opens and
   again when the page comes back into view: TurnNet's, `online.js`'s, Chess's and Lorcana's). **A setup that would not fit the screen folds its options** into
   one-line rows (`fitFold`), as the home sheet shows them, so nothing scrolls where that can be helped.
+  `Kit.win`'s rank rows take `me: true`: your row is ringed in your color and shows your own name, never "You".
+  An online.js game whose table takes the setup's robots says `players.onlineBots: true`, and its review shows them.
   Results cards use `Kit.win`'s slots (`again`, `look`, `extra`, `setup`, `scores`, `stats`, close) rather
   than hand-rolled buttons, so every game offers the same things in the same order. Reference:
   `games/othello.html`.

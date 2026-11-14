@@ -259,7 +259,7 @@ button.hole{cursor:pointer;}
     if (S.phase === 'over') return;
     var lbl = DIFF[S.diff].label;
     if (S.mode === '2p') lbl = 'Round ' + (S.round + 1) + ' of ' + S.total;
-    else if (S.phase === 'break') lbl = 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R + ' · ' + lbl;
+    else if (S.phase === 'break') lbl = 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R + ': ' + lbl;
     Kit.resume.set(lbl);
   }
   function clearSave() { tok++; busy = false; if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
@@ -548,7 +548,7 @@ button.hole{cursor:pointer;}
     try { (GameHistory.load(KEY) || []).forEach(function (e) { if (e.mode === modeLabel() && e.solved && (best == null || e.guesses < best)) best = e.guesses; }); } catch (e) {}
     return best;
   }
-  function modeLabel() { return MODES[S.mode] + ' · ' + DIFF[S.diff].label + (S.blanks ? ' + blanks' : ''); }
+  function modeLabel() { return MODES[S.mode] + ', ' + DIFF[S.diff].label.toLowerCase() + (S.blanks ? ' with blanks' : ''); }
 
   // History detail: every round's secret code and each guess with its black/white pegs (as short strings)
   function detail() {
@@ -793,7 +793,7 @@ button.hole{cursor:pointer;}
     } else if (S.phase === 'break') {
       var b = ps[S.breaker];
       txt = S.mode === 'solo' ? 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R : b.cpu ? b.name + ': guess ' + (S.guesses.length + 1) : b.name + ': guess ' + (S.guesses.length + 1) + ' of ' + S.R;
-      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total + ' · breaking ' + ps[S.maker].name + "'s code" : DIFF[S.diff].label + (S.blanks ? ' with blanks' : '');
+      sub = S.mode === '2p' ? 'Round ' + (S.round + 1) + ' of ' + S.total + ', breaking ' + ps[S.maker].name + "'s code" : DIFF[S.diff].label + (S.blanks ? ' with blanks' : '');
       c = S.mode === 'solo' ? '#ffd88a' : Kit.color(S.breaker);
     } else {
       var r = S.result || {};

@@ -261,7 +261,7 @@
         el('span', { html: Kit.icon('download') + '<span>' + (dl.n + 1 > dl.total ? dl.total : dl.n + 1) + ' of ' + dl.total + '</span>' })]);
       barEl.appendChild(pr);
     } else if (away.length) {
-      barEl.appendChild(sbBtn('download', 'Download all <small>' + away.length + ' · ' + mb(L.toFetch(away)) + '</small>', '', downloadAll));
+      barEl.appendChild(sbBtn('download', 'Download all <small>' + away.length + ' games, ' + mb(L.toFetch(away)) + '</small>', '', downloadAll));
     } else if (all.some(function (c) { return c.lib; })) {
       barEl.appendChild(el('span', { class: 'sb-done', html: Kit.icon('check') + '<span>All on this device</span>' }));
     }
@@ -332,7 +332,7 @@
       home,
       cloud ? item('sparkle', c.art ? 'Find the cartridge art again' : 'Find cartridge art', 'Its logo and box art', function () { s.close(); findArt(c); }) : null,
       cloud ? item('camera', 'Use my own picture', 'A photo of the cartridge or the box', function () { s.close(); askPhoto(function (b) { if (b) L.setLabel(c, b).then(function () { L.cache(carts); drawShelf([c.id]); Kit.toast('Label added'); }, function () { Kit.toast('Couldn’t save the picture'); }); }); }) : null,
-      item('trash', c.house ? 'Remove for everyone' : cloud ? 'Remove from your games' : 'Remove from this device', c.file + ' · ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
+      item('trash', c.house ? 'Remove for everyone' : cloud ? 'Remove from your games' : 'Remove from this device', c.file + ', ' + Math.round((c.size || 0) / 1024) + ' KB', function () {
         s.close();
         Kit.confirm('Take ' + c.name + ' off the shelf' + (c.house ? ' for everyone' : '') + '?', { ok: 'Remove', danger: true, body: (c.house ? 'It’s deleted from the family’s games, so nobody has it any more' : cloud ? 'Its game file is deleted from your account and this device' : 'Its game file is deleted from this device') + ', along with its save states here. Its battery saves stay, in case you add it again.' })
           .then(function (ok) { if (!ok) return; L.drop(c.id, c).then(function () { carts = carts.filter(function (x) { return x.id !== c.id; }); L.cache(carts); drawShelf(); Kit.toast('Removed'); }); });
@@ -394,8 +394,8 @@
     else if (it.state === 'ready') thumb.appendChild(el('b', { text: it.name }));
     else if (it.state !== 'skip') thumb.appendChild(el('i', { class: 'ag-spin' }));
     var what = { wait: 'Waiting', read: 'Reading the file', find: 'Looking it up', art: 'Finding its cartridge art', skip: '', ready: '' }[it.state];
-    var sub = [it.sys ? SYSTEMS[it.sys].name : '', what, it.note].filter(Boolean).join(' · ');
-    r.appendChild(thumb); r.appendChild(el('span', { class: 'lbl' }, [el('span', { text: it.name }), el('small', { text: sub })]));
+    var sub = [it.sys ? SYSTEMS[it.sys].name : '', what, it.note].filter(Boolean).join(' \u00b7 ');   // (a line each, Kit.facts)
+    r.appendChild(thumb); r.appendChild(el('span', { class: 'lbl' }, [el('span', { text: it.name }), Kit.facts(el('small'), sub)]));
     if (it.state === 'ready') r.appendChild(el('span', { class: 'ag-edit', html: Kit.icon('pencil') }));
   }
   function work(it) {
@@ -643,7 +643,7 @@
     if (seats[0] == null && seats[1] != null) { padRelease(1); seats[0] = seats[1]; seats[1] = null; moved = true; }
     if (playEl) {
       padMode(); showSeats();
-      Kit.toast((seat >= 0 ? 'Player ' + (seat + 1) + '’s controller disconnected' : 'Controller disconnected') + (moved ? ' · ' + padName(padAt(seats[0])) + ' is player 1 now' : ''));
+      Kit.toast((seat >= 0 ? 'Player ' + (seat + 1) + '’s controller disconnected' : 'Controller disconnected') + (moved ? '. ' + padName(padAt(seats[0])) + ' is player 1 now.' : ''));
     }
   });
   window.addEventListener('touchstart', function () { if (!touchy) { touchy = true; if (playEl) padMode(); } }, { passive: true });
@@ -920,7 +920,7 @@
     if (st && st.where) out.push(st.where);
     if (pts) out.push(pts);
     if (out.length < 2) out.push(time);
-    return out.slice(0, 2).join(' · ');
+    return out.slice(0, 2).join(' \u00b7 ');   // (Keep playing shows each on a line of its own)
   }
   function keepPlaying() {
     if (!cur || cur.netGame || NET.mode === 'guest') return;
@@ -1732,7 +1732,7 @@
       onSolo: netOvClose, solo: cur ? 'Back to the game' : 'Not now',
       sub: function (r) {
         var free = (r.max || 2) - (r.n || 1);
-        return (r.info || SYS.name) + (r.status === 'playing' ? ' · playing, join in' : (r.max || 2) > 2 ? ' · ' + free + (free === 1 ? ' seat' : ' seats') + ' free' : ' · needs player 2');
+        return (r.info || SYS.name) + (r.status === 'playing' ? ' \u00b7 Playing, and you can join in' : (r.max || 2) > 2 ? ' \u00b7 ' + free + (free === 1 ? ' seat is' : ' seats are') + ' free' : ' \u00b7 Waiting for player 2');
       },
       note: 'Fast-paced games play best with every device on good Wi-Fi.'
     });
@@ -1884,7 +1884,7 @@
     if (NET.wait) netShowWait();   // (now it knows which player you are)
     var c = carts.filter(function (x) { return x.id === m.id; })[0];
     netStep('Getting ' + m.name + ' ready');
-    (c ? (c.data ? Promise.resolve(c) : L.file(c, function (f) { netStep('Getting ' + m.name + ' · ' + Math.round(f * 100) + '%'); }).then(function (full) { c.data = full.data; return c; })) : Promise.reject())
+    (c ? (c.data ? Promise.resolve(c) : L.file(c, function (f) { netStep('Getting ' + m.name + ', ' + Math.round(f * 100) + '%'); }).then(function (full) { c.data = full.data; return c; })) : Promise.reject())
       .catch(function () {   // not on this shelf: straight from the host's device
         return new Promise(function (ok) {
           NET.romWant = function (b) { ok({ id: m.id, sys: SYS_ID, name: m.name, file: m.file, size: b.length, data: new Blob([b]), net: true }); };
@@ -1905,7 +1905,7 @@
       netOvClose(true); netLive();
     }
   });
-  ConsoleNet.onProgress(function (k, frac) { if (k === 'nrom') netStep('Getting the cartridge from ' + NET.other + ' · ' + Math.round(frac * 100) + '%'); });
+  ConsoleNet.onProgress(function (k, frac) { if (k === 'nrom') netStep('Getting the cartridge from ' + NET.other + ', ' + Math.round(frac * 100) + '%'); });
 
   // ── Leaving, and the others leaving ──
   function netEnded(why) {

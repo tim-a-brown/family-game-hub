@@ -55,7 +55,7 @@ const GameHistory = window.GameHistory = (function(){
   function fmt(ts){
     const d = new Date(ts);
     return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) +
-      ' · ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+      ' at ' + d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
   }
 
   // Inject drawer HTML + CSS into document once

@@ -165,9 +165,9 @@
     '<h3>What scores</h3><ul>' +
     '<li>Each <b>1</b> = 100, each <b>5</b> = 50</li>' +
     '<li>Three of a kind = 100 × the number (three 4s = 400). Three 1s = 1,000</li>' +
-    '<li>Four of a kind = 1,000 · Five of a kind = 2,000 · Six of a kind = 3,000</li>' +
+    '<li>Four of a kind scores 1,000, five of a kind 2,000 and six of a kind 3,000.</li>' +
     '<li>Straight 1-2-3-4-5-6 = 1,500</li>' +
-    '<li>Three pairs = 1,500 · Four of a kind + a pair = 1,500</li>' +
+    '<li>Three pairs score 1,500, and so do four of a kind with a pair.</li>' +
     '<li>Two sets of three of a kind = 2,500</li></ul>' +
     '<p>Combos only count when they come up in the <b>same roll</b>. Dice you set aside earlier can\'t be combined with new ones.</p>' +
     '<h3>Classic doubling (setup option)</h3><p>Four of a kind is double the three of a kind, five is double again, six is double again (four 3s = 600, five 3s = 1,200). Two triplets just score as two three of a kinds.</p>' +
@@ -562,7 +562,7 @@
     if (S.players.length === 1) hl.unshift('Reached ' + fmt(top.score) + ' in ' + S.round + ' turns');
     var rounds = S.rounds;
     if (!netRecorded()) Kit.record(KEY, {
-      started: S.started, mode: (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' · to ' + fmt(S.rules.target) + (S.rules.dbl ? ' · doubling' : ''),
+      started: S.started, mode: (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' \u00b7 To ' + fmt(S.rules.target) + (S.rules.dbl ? ', with doubling' : ''),
       players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: { labels: rounds.map(function (r, i) { return String(i + 1); }), scores: rounds },
@@ -808,7 +808,7 @@
     rb.disabled = !mine || !canRoll(); bb.disabled = !mine || !canBank();
     if (live) app.appendChild(el('div', { class: 'acts' }, [rb, bb]));
     app.appendChild(el('div', { class: 'rulechip' }, [
-      document.createTextNode('To ' + fmt(S.rules.target) + (S.rules.entry ? ' · ' + fmt(S.rules.entry) + ' to get on' : '') + (S.rules.dbl ? ' · doubling' : '') + ' · '),
+      document.createTextNode('Play to ' + fmt(S.rules.target) + (S.rules.entry ? ', with ' + fmt(S.rules.entry) + ' to get on' : '') + (S.rules.dbl ? ', with doubling' : '') + '. '),
       el('button', { type: 'button', text: 'Scoring chart', onclick: chart })
     ]));
   }
@@ -960,7 +960,7 @@
     winRef = Kit.win({
       title: left ? res.text : tie ? 'It’s a tie!' : top.i === me ? 'You win!' : top.name + ' wins!',
       sub: rank ? 'Final scores' : '',
-      rank: rank ? rank.map(function (r) { return { name: r.i === me ? 'You' : r.name, score: fmt(r.score), color: r.color }; }) : null,
+      rank: rank ? rank.map(function (r) { return { name: r.name, me: r.i === me, score: fmt(r.score), color: r.color }; }) : null,
       lose: !left && !meTop, againLabel: left ? 'Back to the lobby' : 'Play again',
       again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       look: true

@@ -561,7 +561,7 @@
     node.style.setProperty('--c', side === BLACK ? '#b9b9c2' : '#ff5a5f');
     var lost = 12 - count(-side).n, tray = el('div', { class: 'tray' });
     for (var i = 0; i < Math.min(lost, 12); i++) tray.appendChild(el('span', { class: 'mini ' + (side === BLACK ? 'r' : 'b') }));
-    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : colorName(side) + (on ? (NET && NET.seat >= 0 && S.players[NET.seat].side === side ? ' · your move' : ' · to move') : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : (on ? (NET && NET.seat >= 0 && S.players[NET.seat].side === side ? 'Your move as ' + colorName(side) : colorName(side) + ' to move') : colorName(side));
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok' }, [el('span', { class: 'mini ' + (side === BLACK ? 'b' : 'r') })]));
     node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
@@ -740,7 +740,7 @@
       S.events.filter(function (e) { return e.type === 'multi'; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 2).forEach(function (e) { hl.push(e.text); });
       S.events.filter(function (e) { return e.type === 'jk' || e.type === 'firstking'; }).slice(0, 2).forEach(function (e) { hl.push(e.text); });
       if (!S.forced) hl.push('Played with jumps optional');
-      hl.push('Online game · table ' + NET.code);
+      hl.push('Played online at table ' + NET.code);
       Kit.record(KEY, {
         started: S.started, mode: 'Online' + (S.forced ? '' : ', jumps optional'),
         players: S.players.map(function (p, i) { return { name: p.name + ' (' + colorName(p.side) + ')', score: w ? (i === wi ? 1 : 0) : 0.5 }; }),

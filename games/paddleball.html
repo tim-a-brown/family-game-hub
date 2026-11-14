@@ -27,7 +27,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   box-shadow:inset 0 0 0 1.5px rgba(140,200,255,.22),inset 0 0 0 3.5px rgba(0,0,0,.35),0 6px 16px rgba(0,0,0,.4);transition:box-shadow .2s;}
 .ar-plate .nm{flex:1;min-width:0;display:flex;flex-direction:column;}
 .ar-plate small{font-size:.62rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(200,225,255,.6);white-space:nowrap;}
-.ar-plate .who{font-weight:800;font-size:.9rem;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ar-plate .who{font-weight:800;font-size:.9rem;color:#fff;line-height:1.1;text-wrap:balance;overflow-wrap:break-word;hyphens:auto;}
 .ar-plate b{font-family:var(--display);font-weight:400;font-size:1.8rem;line-height:1;color:var(--pc);font-variant-numeric:tabular-nums;
   text-shadow:0 0 14px var(--pc),0 2px 0 rgba(0,0,0,.5);}
 .ar-plate.p2{flex-direction:row-reverse;text-align:right;}
@@ -504,7 +504,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
     wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
-    hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'net' ? 'Move with the mouse or the arrow keys, and press Space to serve' : G.mode === 'two' ? 'Left player: W / S  ·  Right player: arrow keys  ·  Space serves  ·  P pauses' : 'Mouse, W / S or arrow keys to move  ·  Space or click serves  ·  P pauses' });
+    hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'net' ? 'Move with the mouse or the arrow keys, and press Space to serve' : G.mode === 'two' ? 'The left player moves with W and S and the right player with the arrow keys. Space serves, and P pauses.' : 'Move with the mouse, W and S or the arrow keys. Space or a click serves, and P pauses.' });
     app.appendChild(hudEl); app.appendChild(wrapEl); if (!TOUCH) app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
@@ -615,7 +615,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function showOverlay(title, sub, btn) {
     ovEl.innerHTML = '';
     ovEl.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: title }), el('p', { text: sub }),
+      el('h2', { text: title }), Kit.facts(el('p'), sub),
       el('button', { type: 'button', class: 'btn btn-primary btn-block', text: btn, onclick: resumeGame }),
       el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: 'New game', onclick: function () { Kit.confirm('Start a new game?', { ok: 'New game', body: 'This match will be lost.' }).then(function (ok) { if (ok) { clearSave(); showSetup(); } }); } })
     ]));
@@ -1261,7 +1261,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function netCard(title, sub, btns) {
     if (!ovEl) return;
     ovEl.innerHTML = '';
-    ovEl.appendChild(el('div', { class: 'card' }, [el('h2', { text: title }), el('p', { text: sub })].concat((btns || []).map(function (b) {
+    ovEl.appendChild(el('div', { class: 'card' }, [el('h2', { text: title }), Kit.facts(el('p'), sub)].concat((btns || []).map(function (b) {
       return el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: b.label, onclick: b.fn });
     }))));
     ovEl.classList.add('show'); NET.card = title;

@@ -352,7 +352,7 @@
     Kit.setup(app, {
       intro: 'Old riddles and new ones. Fewer hints, more points.',
       modes: [
-        { id: 'mixed', icon: 'shuffle', title: 'Mixed', desc: 'Easy to hard in every round' + (solvedAll ? ' · ' + solvedAll + ' of ' + ALL.length + ' solved' : '') },
+        { id: 'mixed', icon: 'shuffle', title: 'Mixed', desc: 'Easy to hard in every round' + (solvedAll ? ', and ' + solvedAll + ' of ' + ALL.length + ' are solved' : '') },
         { id: 'easy', icon: 'star', title: 'Easy', desc: prog('easy') },
         { id: 'medium', icon: 'lightbulb', title: 'Medium', desc: prog('medium') },
         { id: 'hard', icon: 'flame', title: 'Hard', desc: prog('hard') },
@@ -458,7 +458,7 @@
     var longest = txt.split(' ').reduce(function (m, w) { return Math.max(m, w.length); }, 0);
     if (longest > 9) ans.style.fontSize = 'min(' + (2.1 * 9 / longest).toFixed(2) + 'rem, ' + (7 * 9 / longest).toFixed(2) + 'vw)';
     box.appendChild(ans);
-    var verdict = s.ok ? (s.h ? 'with ' + plural(s.h, 'hint') : 'no hints') + ' · ' + plural(s.t.length, 'try', 'tries') + ' · +' + s.p + ' points' : 'Given up · no points';
+    var verdict = s.ok ? 'Solved in ' + plural(s.t.length, 'try', 'tries') + (s.h ? ' with ' + plural(s.h, 'hint') : ' with no hints') + ', for ' + s.p + ' points' : 'Given up, so no points';
     box.appendChild(el('div', { class: 'verdict', text: verdict }));
     box.appendChild(el('p', { class: 'why' + (animate ? ' in' : ''), text: pretty(r.why) }));
     if (animate) box.querySelector('.why').style.animationDelay = Math.min(1.6, txt.length * 0.055 + 0.25) + 's';
@@ -611,8 +611,8 @@
     Kit.record(HKEY, {
       started: S.started, mode: S.daily ? 'Daily riddle #' + S.daily : MODES[S.mode] + ' · ' + n + ' riddles',
       players: [{ name: me, score: S.pts }], winner: null,
-      summary: S.daily ? (solved ? 'Solved' + (S.res[0].h ? ' with ' + plural(S.res[0].h, 'hint') : ', no hints') : 'Gave up') + ' · ' + BY[S.ids[0]].a
-        : solved + ' of ' + n + ' solved · ' + S.pts + ' points',
+      summary: S.daily ? (solved ? 'Solved' + (S.res[0].h ? ' with ' + plural(S.res[0].h, 'hint') : ', no hints') : 'Gave up') + ' \u00b7 ' + BY[S.ids[0]].a
+        : solved + ' of ' + n + ' solved, for ' + S.pts + ' points',
       badge: S.daily ? (solved ? stars + '/3' : 'X') : solved + '/' + n,
       highlights: hl,
       meta: { daily: S.daily || 0, level: S.mode, n: n, solved: solved, stars: stars, pts: S.pts, hints: hints, gaveUp: gave },
@@ -639,7 +639,7 @@
     var title = solved === n && !hints ? 'Flawless!' : solved === n ? 'Every riddle solved!' : solved >= n / 2 ? 'Well riddled!' : 'The riddles won this round';
     var w = Kit.win({
       icon: solved === n ? 'trophy' : 'star', lose: solved < n / 2,
-      title: title, sub: solved + ' of ' + n + ' solved · ' + S.pts + ' points',
+      title: title, sub: solved + ' of ' + n + ' solved, for ' + S.pts + ' points',
       againLabel: 'Another round', again: function () { startRound(S.mode, n); },
       setup: showSetup, setupLabel: 'Choose a level'
     });
@@ -684,7 +684,7 @@
     LEVELS.forEach(function (l) {
       var all = PLAY.filter(function (r) { return r.d === l; }), n = all.filter(function (r) { return stt.solved[r.id]; }).length;
       var clean = all.filter(function (r) { return stt.solved[r.id] === 3; }).length;
-      bars.appendChild(el('div', { class: 'rs-bar' }, [el('b', { text: LV[l].name }), el('i', { html: '<s style="width:' + Math.round(n / all.length * 100) + '%"></s>' }), el('span', { text: n + ' / ' + all.length + (clean ? ' · ' + clean + ' clean' : '') })]));
+      bars.appendChild(el('div', { class: 'rs-bar' }, [el('b', { text: LV[l].name }), el('i', { html: '<s style="width:' + Math.round(n / all.length * 100) + '%"></s>' }), el('span', { text: n + ' / ' + all.length + (clean ? ', ' + clean + ' with no hints' : '') })]));
     });
     box.appendChild(bars);
     box.appendChild(el('p', { class: 'dim', style: { 'font-size': '.8rem', margin: '12px 2px 0' }, text: '"Clean" means solved with no hints.' }));

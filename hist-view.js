@@ -32,7 +32,35 @@ var HistView = window.HistView = (function () {
   function render(e, gameId) {
     var fn = views[gameId] || (e && views[e.game]);
     if (!fn) return null;
-    try { var n = fn(unpack(e), ui); return n || null; } catch (err) { console.warn('[hist-view]', gameId, err); return null; }
+    try { var n = fn(unpack(e), ui); if (n) facts(n); return n || null; } catch (err) { console.warn('[hist-view]', gameId, err); return null; }
+  }
+  // The views hand over separate facts as "Move 12 · Tim at D4" (captions, labels, headings): each fact goes on a line of
+  // its own, never strung together with dots (CLAUDE.md). It runs once the view is built and again whenever a caption
+  // changes under a scrubber or a tap. (Text drawn in a picture's SVG is left as it is.)
+  var SEP = /\s*\u00b7\s+|\s+\u00b7\s*/;
+  function cap1(q) { return /^[a-z]/.test(q) ? q.charAt(0).toUpperCase() + q.slice(1) : q; }
+  function splitIn(root) {
+    if (!root || root.nodeType !== 1 || root.closest && root.closest('svg')) return;
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), list = [], t;
+    while ((t = w.nextNode())) if (t.nodeValue.indexOf('\u00b7') >= 0 && SEP.test(t.nodeValue) && !(t.parentNode.closest && t.parentNode.closest('svg, script, style'))) list.push(t);
+    list.forEach(function (tn) {
+      var parts = tn.nodeValue.split(SEP), frag = document.createDocumentFragment();
+      parts.forEach(function (q, i) {
+        q = q.trim(); if (!q) { if (i) frag.appendChild(el('span', { class: 'k-fact-br' })); return; }
+        frag.appendChild(i === 0 ? document.createTextNode(q) : el('span', { class: 'k-fact', text: cap1(q) }));
+      });
+      tn.parentNode.replaceChild(frag, tn);
+    });
+  }
+  function facts(n) {
+    splitIn(n);
+    if (n._factObs || !window.MutationObserver) return;
+    var busy = false;
+    n._factObs = new MutationObserver(function (ms) {
+      if (busy) return; busy = true;
+      try { ms.forEach(function (m) { if (m.type === 'characterData') splitIn(m.target.parentNode); else [].forEach.call(m.addedNodes, function (x) { splitIn(x.nodeType === 3 ? x.parentNode : x); }); }); } finally { busy = false; }
+    });
+    n._factObs.observe(n, { subtree: true, childList: true, characterData: true });
   }
 
   // A view's own styles, added once

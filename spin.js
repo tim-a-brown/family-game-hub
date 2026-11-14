@@ -512,7 +512,7 @@ var Spin = (function () {
       b.addEventListener('pointercancel', function () { if (power !== null) powerUp(); });
       b.addEventListener('click', function (e) { if (e.detail === 0) spin(); });   // keyboard
       ctl.appendChild(b);
-      if (!spinning) ctl.appendChild(el('div', { class: 'sp-hint', text: 'Hold Spin for power · hold a slice to remove it' }));
+      if (!spinning) ctl.appendChild(el('div', { class: 'sp-hint', text: 'Hold Spin to spin harder, and hold a slice to remove it.' }));
     }
     var rb = null;
     function clearResult() { if (rb) { rb.remove(); rb = null; } ctl.style.visibility = ''; }

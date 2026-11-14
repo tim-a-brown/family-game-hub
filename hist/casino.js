@@ -277,7 +277,7 @@
     var card = ui.el('div', { class: 'hv' }), W = o.word || 'hand', Ws = o.words || W + 's';
     var items = list.map(function (x, i) { var n = o.net(x); return { c: i === big ? 'big' : n > 0 ? 'w' : n < 0 ? 'l' : 'p', t: String(o.no(x)), title: W.charAt(0).toUpperCase() + W.slice(1) + ' ' + o.no(x) + ' ' + signed(n) }; });
     var show = function (i) { card.innerHTML = ''; card.appendChild(o.draw(list[i], i === big)); };
-    var title = list.length < (o.total || 0) ? list.length + ' of the ' + o.total + ' ' + Ws + ' · tap one' : 'Every ' + W + ' · tap one';
+    var title = list.length < (o.total || 0) ? list.length + ' of the ' + o.total + ' ' + Ws + '' : 'Every ' + W + '';
     return ui.section(title, [road(ui, items, big >= 0 ? big : list.length - 1, show), card,
       roadKey(ui, [['w', 'won'], ['l', 'lost'], ['p', o.even || 'push'], ['big', 'biggest win']])], { icon: o.icon || 'cards' });
   }
@@ -379,7 +379,7 @@
       card.innerHTML = ''; card.appendChild(felt(ui, 'blackjack', kids));
     }
     var items = hands.map(function (h, i) { var n = mineNet(h); if (n == null) n = h.h.reduce(function (a, x) { return a + (x.n || 0); }, 0); return { c: i === best && n > 0 ? 'big' : n > 0 ? 'w' : n < 0 ? 'l' : 'p', t: String(h.i), title: 'Hand ' + h.i + ' ' + signed(n) }; });
-    out.push(ui.section(hands.length < (d.n || 0) ? 'Last ' + hands.length + ' hands · tap one' : 'Every hand · tap one', [road(ui, items, best, show), card], { icon: 'cards' }));
+    out.push(ui.section(hands.length < (d.n || 0) ? 'Last ' + hands.length + ' hands' : 'Every hand', [road(ui, items, best, show), card], { icon: 'cards' }));
     return ui.wrap(out);
   });
 
@@ -448,12 +448,13 @@
         var h = hx[i], kids = [];
         kids.push(ui.el('div', { class: 'cz-kv', html: '<span><b>Hand ' + h.no + '</b></span>' + (h.g ? '<span>' + ui.esc(h.g) + '</span>' : '') +
           '<span class="cz-res ' + cls(h.net) + '">' + (h.r === 'F' ? 'Folded' : h.r === 'W' ? 'Won' : 'Lost') + (h.net ? ' ' + sgn(h.net) : '') + '</span>' }));
-        kids.push(line(ui, 'You' + (h.mine ? ' · ' + h.mine : ''), h.c, null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
+        kids.push(line(ui, 'You', h.c, h.mine || null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
         if (h.b.length) kids.push(line(ui, 'Board', h.b, null, null, { small: false }));
-        if (h.vs) kids.push(ui.el('div', { class: 'cz-kv', html: '<span>' + (h.r === 'F' ? 'Won by ' : 'Lost to ') + '<b>' + ui.esc(h.vs) + '</b></span>' }));
+        // the row keeps the winner and their hand apart with the separator (the row's own data); shown at either end
+        if (h.vs) { var vs = h.vs.split(' \u00b7 '); kids.push(ui.el('div', { class: 'cz-kv', html: '<span>' + (h.r === 'F' ? 'Won by ' : 'Lost to ') + '<b>' + ui.esc(vs[0]) + '</b></span>' + (vs[1] ? '<span>' + ui.esc(vs[1]) + '</span>' : '') })); }
         card.innerHTML = ''; card.appendChild(felt(ui, 'poker', kids));
       };
-      out.push(ui.section(hx.length < (d.hands || 0) ? 'Your last ' + hx.length + ' hands · tap one' : 'Every hand · tap one', [road(ui, items, start, show), card,
+      out.push(ui.section(hx.length < (d.hands || 0) ? 'Your last ' + hx.length + ' hands' : 'Every hand', [road(ui, items, start, show), card,
         ui.el('div', { class: 'cz-key', html: '<i class="w"></i>won <i class="l"></i>lost <i class="p"></i>folded <i class="big"></i>biggest win' })], { icon: 'cards' }));
     }
     if (d.big) out.push(ui.section('Biggest pot', tableHand(ui, e, d.big, 'Biggest pot'), { icon: 'coins' }));
@@ -555,7 +556,7 @@
       }));
       var c = { red: 0, black: 0, green: 0 }, cnt = {}; log.forEach(function (x) { c[rcol(x.n)]++; cnt[x.n] = (cnt[x.n] || 0) + 1; });
       var start = spins.length - 1; spins.forEach(function (x, i) { if (d.best && x.no === d.best.no) start = i; });
-      out.push(ui.section(log.length < (d.spins || 0) ? 'Last ' + log.length + ' spins · tap one' : 'Every spin · tap one', [marq, card,
+      out.push(ui.section(log.length < (d.spins || 0) ? 'Last ' + log.length + ' spins' : 'Every spin', [marq, card,
         ui.el('div', { class: 'cz-key', html: '<i class="big" style="border-radius:50%"></i>gold ring: a winning spin' })], { icon: 'target' }));
       pick(start);
       if (d.best && !spins.some(function (x) { return x.no === d.best.no; })) out.push(ui.section('Biggest win', spinCard(ui, d.best, 'Biggest win', us), { icon: 'trophy' }));
@@ -705,7 +706,7 @@
       var card = ui.el('div', { class: 'hv' });
       var items = rec.map(function (x) { return { c: spinCls(x), t: String(x.no), title: 'Spin ' + x.no + (x.a ? ': paid ' + ui.money(x.a) : ': no win') }; });
       var show = function (i) { var x = rec[i]; card.innerHTML = ''; card.appendChild(spinShot(ui, x, x === rec[rec.length - 1] ? 'Last spin' : 'Spin ' + x.no, m)); };
-      out.push(ui.section(rec.length < (d.spins || 0) ? 'Last ' + rec.length + ' spins · tap one' : 'Every spin · tap one', [road(ui, items, rec.length - 1, show), card,
+      out.push(ui.section(rec.length < (d.spins || 0) ? 'Last ' + rec.length + ' spins' : 'Every spin', [road(ui, items, rec.length - 1, show), card,
         roadKey(ui, [['w', 'won'], ['p', 'some back'], ['l', 'nothing'], ['big', '10x or a feature']])], { icon: 'rows' }));
     } else if (d.last) out.push(ui.section('Last spin', spinShot(ui, d.last, 'Last spin', m)));
     var cb = d.combos ? Object.keys(d.combos).filter(function (k) { return d.combos[k]; }).sort(function (a, b) { return d.combos[b] - d.combos[a]; }) : [];

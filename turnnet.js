@@ -298,7 +298,7 @@
     if (!ready()) { Kit.toast('Sign in with your PIN to play online'); return false; }
     return true;
   }
-  function host(me) {
+  function host(me, bots) {
     if (!need()) return Promise.resolve();
     if (!me.name) { Kit.toast('Pick your name first'); return Promise.resolve(); }
     var tries = 0;
@@ -314,6 +314,7 @@
           var o = {}; try { o = G.opts ? G.opts() || {} : {}; } catch (e) {}
           var dd = { game: G.game, v: V, status: 'open', seats: [seat], accts: tags[0] ? [tags[0]] : [], turn: [], drive: 0, st: '', seq: 0, mv: null,
             opts: JSON.stringify(o), min: G.min || 2, max: G.max || 2, g: 1, t0: now, result: null, hb: { 0: now }, at: now, by: dev() };
+          if (bots && bots.length) dd.bn = bots.slice(0, 9);   // (the robots named in the host's setup sit in the seats nobody takes)
           if (tags[1]) dd.lk = tags[1];   // (the home screens of the people linked to you list it: "Tim has a table open")
           return dd;
         }).then(function () { dl('Opened ' + G.title + ' table ' + code); listen(code); }, function (e) {
@@ -366,6 +367,7 @@
       var hs = humans(d), o0 = {}; try { o0 = JSON.parse(d.opts || '{}'); } catch (e) {}
       if (hs.length < (d.min || 2)) throw new Error('Waiting for more players');
       var n = G.seats ? G.seats(hs.length, o0) : hs.length, seats = hs.slice(), names = hs.map(function (s) { return s.name; });
+      (d.bn || []).forEach(function (nm) { if (seats.length < n && typeof nm === 'string' && nm && names.indexOf(nm) < 0) { seats.push({ name: nm, bot: true }); names.push(nm); } });
       if (n > seats.length) (Kit.cpuNames ? Kit.cpuNames(n - seats.length, names, n >= 4 ? 8 : 0) : []).forEach(function (nm) { seats.push({ name: nm, bot: true }); });
       while (seats.length < n) seats.push({ name: 'Robot ' + seats.length, bot: true });
       var o = {}; try { o = JSON.parse(d.opts || '{}'); } catch (e) {}
@@ -488,7 +490,7 @@
     root.innerHTML = '';
     var wrap = E('div', { class: 'ol' }); root.appendChild(wrap);
     wrap.appendChild(E('h1', { text: 'Play online' }));
-    wrap.appendChild(E('p', { class: 'tn-sub', text: G.title + ' · take your turn whenever you like' }));
+    wrap.appendChild(E('p', { class: 'tn-sub', text: 'Take your turn in ' + G.title + ' whenever you like.' }));
     if (!ready()) {
       wrap.appendChild(E('p', { class: 'ol-note', style: { 'text-align': 'center' }, text: 'Sign in with your PIN to play online: the profile button on the home screen.' }));
       wrap.appendChild(E('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Back to the game', onclick: closeOv }));
@@ -539,9 +541,9 @@
           var d = x.d, others = d.seats.filter(function (s, i) { return i !== x.s; }), faces = E('span', { class: 'tn-faces' });
           others.slice(0, 4).forEach(function (s, i) { faces.appendChild(av(s.name, i + 1)); });
           var upName = (d.turn || []).map(function (i) { return d.seats[i] && d.seats[i].name; }).filter(Boolean)[0];
-          var sub = d.status === 'open' ? 'Waiting for players · code ' + x.code : x.mine ? 'vs ' + others.map(function (s) { return s.name; }).join(', ') + ' · ' + ago(d.at || 0) : (upName ? upName + '’s turn' : 'Their turn') + ' · ' + ago(d.at || 0);
+          var sub = d.status === 'open' ? 'Waiting for players \u00b7 Code ' + x.code : x.mine ? 'Last move ' + ago(d.at || 0) : (upName ? upName + '’s turn' : 'Their turn') + ' \u00b7 Last move ' + ago(d.at || 0);   // (facts: a line each)
           var b = E('button', { type: 'button', class: 'ol-row tn-g ' + (x.mine ? 'turn' : 'wait'), onclick: function (e) { run(e.currentTarget, 'Opening…', function () { return resume(x.code); }); } }, [
-            faces, E('div', { class: 'grow' }, [E('b', { text: others.length ? 'With ' + others.map(function (s) { return s.name; }).join(', ') : 'Your table' }), E('small', { text: sub })]),
+            faces, E('div', { class: 'grow' }, [E('b', { text: others.length ? 'With ' + others.map(function (s) { return s.name; }).join(', ') : 'Your table' }), Kit.facts(E('small'), sub)]),
             x.mine ? E('span', { class: 'yt', text: 'Your turn' }) : null]);
           mineBox.appendChild(b);
         });
@@ -561,15 +563,15 @@
         var rest = [];
         (rs || []).forEach(function (r) {
           var x = r.x || r, d = x.d, n = humans(d).length;
-          var sub = n + ' of ' + (d.max || 2) + ' seats taken · code ' + x.code;
+          var sub = n + ' of ' + (d.max || 2) + ' seats are taken \u00b7 Code ' + x.code;
           var go = function (e) { run(e.currentTarget, 'Joining…', function () { return join(x.code, me); }); };
-          if (r.who) pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [av(r.who.name, 1), E('div', { class: 'grow' }, [E('b', { text: r.who.name + ' has a table open' }), E('small', { text: sub })]),
+          if (r.who) pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [av(r.who.name, 1), E('div', { class: 'grow' }, [E('b', { text: r.who.name + ' has a table open' }), Kit.facts(E('small'), sub)]),
             E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>' + Kit.esc('Join ' + r.who.name + '’s table') + '</span>', onclick: go })]));
           else rest.push([x, sub, go]);
         });
         if (!rest.length) rooms.appendChild(E('p', { class: 'ol-note', text: 'No open tables yet. When someone opens one, it shows up here.' }));
         rest.forEach(function (y) {
-          rooms.appendChild(E('div', { class: 'ol-row' }, [av(y[0].host.name, 1), E('div', { class: 'grow' }, [E('b', { text: y[0].host.name + '’s table' }), E('small', { text: y[1] })]),
+          rooms.appendChild(E('div', { class: 'ol-row' }, [av(y[0].host.name, 1), E('div', { class: 'grow' }, [E('b', { text: y[0].host.name + '’s table' }), Kit.facts(E('small'), y[1])]),
             E('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: y[2] })]));
         });
       });
@@ -650,7 +652,7 @@
     if (!G) return false;
     var me = meName(); if (o && o.name && !me.name) { me.name = o.name; lsP('tn_me', { name: o.name }); }
     if (!ready() || !me.name) { lobby(); return true; }
-    ov(); host(me);
+    ov(); host(me, o && o.bots);
     return true;
   }
   window.TurnNet = {
