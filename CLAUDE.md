@@ -111,6 +111,15 @@ Underlying principles for everything:
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
+- **A moment on the table is the edge-lit acrylic strip** (Tim, 2026-11-14, after calling the old rounded colored box
+  "quick AI solution, not thoughtful": he picked it from twelve blends of a Swiss poster, a broadcast strip and a glowing
+  display). `Kit.moment({title, line, chip | icon, pts, color, tone: 'bad', big, at, ms})`: a strip of smoked acrylic
+  you see the table through, lit along its top edge; the contract or what happened on a tinted square at the left, the
+  sentence in Schibsted Grotesk, the points glowing in Doto's dots at the right (counted up), `at` the table element so
+  it lies across the table's lower edge. `Kit.callout(text, color)` is a short one in the middle of the screen (a number
+  alone glows). Arvela keeps its own callout (`k-own-callout` on its `<html>`). Not a box made of nothing: no rounded
+  candy card, no tracked caps label, no flat two-color gradient. Big moments use the strip's `big` size until Tim picks
+  a big-moment design.
 - **New games: the bar is very high.** Tim expects high-end design polish, effects, sound and
   interactivity in every new game: real materials and pieces, motion on every action, sounds and haptics,
   big moments for big plays. Screenshot every phase and critique it before calling it done.

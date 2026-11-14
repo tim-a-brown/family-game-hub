@@ -1154,7 +1154,7 @@
           countTo(panel.querySelector('.mt'), run - g.pts, run, 360);
           Kit.sfx(Core.bigMeld(g.k) ? 'boom' : g.k === 'run' ? 'sparkle' : 'chip', g.pts >= 100 ? 1 : 0.7);
           fitMeld(); paintTop();
-          if (Core.bigMeld(g.k)) { bigMoment(BIG[g.k][0], p); }
+          if (Core.bigMeld(g.k)) { bigMoment(BIG[g.k][0], p, { line: meldLine(BIG[g.k], p), pts: '+' + g.pts.toLocaleString('en-US') }); }
           else if (g.k === 'run') { seatSay(p, 'A run!', true); Kit.haptic('success'); }
         }, t0 + gap * (gi + 1));
       });
@@ -1163,8 +1163,13 @@
     });
     later(function () { fitMeld(); paintSeats(); paintTop(); done(); }, Math.min(t0 + 500, 12000));
   }
-  function bigMoment(text, p) {
-    Kit.callout(text, 'var(--yellow)'); Kit.confetti(); Kit.haptic('heavy');
+  // "Tim melded aces twice around."
+  function meldLine(b, p) { var w = b[1].split(',')[0]; return nm(p) + ' melded ' + w.charAt(0).toLowerCase() + w.slice(1) + '.'; }
+  // a big moment: the kit's strip across the felt's lower edge (in the middle of the screen over the count sheet)
+  function bigMoment(text, p, o) {
+    o = o || {};
+    Kit.moment({ title: text, line: o.line, pts: o.pts, chip: o.chip, big: true, at: p != null && tblBg ? tblBg : null });
+    Kit.confetti(); Kit.haptic('heavy');
     later(function () { Kit.sfx('win'); }, 150);
     if (p != null) seatSay(p, text, true);
   }
@@ -1266,7 +1271,7 @@
     var mineB = bs === MS() && (!NET || MYSEAT >= 0);
     if (got >= X.high && !madeShown[r]) {
       madeShown[r] = 1;
-      later(function () { Kit.callout(mineB ? 'Bid made!' : sideName(bs) + ' made the bid', mineB ? 'var(--green)' : null); Kit.sfx(mineB ? 'good' : 'tap'); if (mineB) Kit.haptic('success'); paintTop(); }, 300);
+      later(function () { Kit.moment({ chip: X.high, title: mineB ? 'Bid made!' : sideName(bs) + ' made the bid', at: tblBg, ms: 1400 }); Kit.sfx(mineB ? 'good' : 'tap'); if (mineB) Kit.haptic('success'); paintTop(); }, 300);
       return;
     }
     // what is left to take: every counter still out and the last trick
@@ -1275,8 +1280,8 @@
     if (most < X.high && !setShown[r]) {
       setShown[r] = 1;
       later(function () {
-        if (mineB) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
-        else { Kit.callout(X.kind === 'part' ? 'They’re set!' : sideName(bs) + ' is set!', 'var(--green)'); Kit.sfx('good'); Kit.haptic('success'); }
+        if (mineB) { Kit.moment({ chip: X.high, title: 'Set!', line: 'There aren’t enough points left to make ' + X.high + '.', tone: 'bad', at: tblBg }); Kit.sfx('bad'); Kit.haptic('error'); }
+        else { Kit.moment({ chip: X.high, title: X.kind === 'part' ? 'They’re set!' : sideName(bs) + ' is set!', line: 'There aren’t enough points left to make ' + X.high + '.', at: tblBg }); Kit.sfx('good'); Kit.haptic('success'); }
       }, 300);
     }
   }
@@ -1293,7 +1298,7 @@
       S = pre; render();
       var anchor = p === me() ? handEl : seatEls[p];
       floatAt(anchor, '+' + mv.m.pts, 'g');
-      if (Core.bigMeld(mv.m.k)) bigMoment(BIG[mv.m.k][0], p);
+      if (Core.bigMeld(mv.m.k)) bigMoment(BIG[mv.m.k][0], p, { line: meldLine(BIG[mv.m.k], p), pts: '+' + mv.m.pts.toLocaleString('en-US') });
       else { seatSay(p, mv.swap ? 'Swaps the dix' : meldLabel(mv.m), mv.m.k === 'run'); Kit.sfx(mv.m.k === 'run' ? 'sparkle' : 'chip'); if (mv.m.k === 'run') Kit.haptic('success'); }
       if (p === me()) { fresh = mv.m.ids.slice(); if (mv.swap) fresh = [mv.swap.up.id]; paintHand(); }
     } else { S = pre; pre.phase = 'stock'; pre.turn = -1; render(); }
@@ -1342,7 +1347,7 @@
       moments.forEach(function (m) { bigMoment(m[0]); });
       if (bs >= 0) {
         var r = L.res[bs];
-        if (L.conceded) {} else if (r.made && L.high >= 400) bigMoment(mineS(bs) ? 'Big bid made!' : sideName(bs) + ' made ' + L.high + '!');
+        if (L.conceded) {} else if (r.made && L.high >= 400) bigMoment(mineS(bs) ? 'Big bid made!' : sideName(bs) + ' made ' + L.high + '!', null, { chip: L.high });
         else if (r.set) { if (mineS(bs)) { Kit.sfx('bad'); Kit.haptic('error'); } else { Kit.sfx('good'); Kit.haptic('success'); if (st.kind === 'part' || !onePerson()) Kit.confetti(); } }
         else if (r.made) { Kit.sfx(mineS(bs) ? 'good' : 'tap'); }
       }

@@ -19,6 +19,7 @@
 //   Kit.sheet({title, html|node, actions})     bottom sheet; returns {close}. An action can have a short second line: {label, sub}
 //   Kit.confirm(msg, {ok, danger})             -> Promise<bool>
 //   Kit.toast(msg)   Kit.callout(text)         quick feedback
+//   Kit.moment({title, line, chip|icon, pts, color, tone, big, at, ms})   a moment on the table (the edge-lit strip)
 //   Kit.confetti()   Kit.sfx(name, vol?)   Kit.haptic(kind)
 //   Kit.card(rank, suit, {back, cls})          playing-card element
 //   Kit.die(value)                             die element
@@ -474,7 +475,73 @@
     clearTimeout(toastT);
     toastT = setTimeout(function () { toastEl.classList.remove('show'); }, ms || 1800);
   }
+  // Kit.moment({title, line, chip | icon, pts, color, tone: 'bad', big, at, ms}): a moment on the table, as the
+  // edge-lit acrylic strip (kit.css .k-mo). chip: the contract or what happened ("6♦"), on a square tinted with color;
+  // pts: points glowing at the right, counted up when it is a number ("+650"). at: the table element; the strip lies
+  // across its lower edge, 14px in. Without at it stands in the middle of the screen, where a callout always did. One
+  // at a time: a new one replaces the last. Returns the strip.
+  var moEl = null, moT = null, moR = null;
+  function moment(o) {
+    o = o || {};
+    if (moEl) { moEl.remove(); clearTimeout(moT); }
+    if (moR) { window.removeEventListener('resize', moR); moR = null; }
+    var big = !!o.big, reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var root = el('div', { class: 'k-mo' + (big ? ' big' : '') + (o.tone === 'bad' || o.tone === 'cold' ? ' bad' : ''), role: 'status', 'aria-live': 'polite' });
+    if (o.color) root.style.setProperty('--chip', o.color);
+    var inn = el('div', { class: 'k-mo-in' });
+    if (o.icon) inn.appendChild(el('div', { class: 'k-mo-sq', html: icon(o.icon) }));
+    else if (o.chip != null && o.chip !== '') inn.appendChild(el('div', { class: 'k-mo-sq', text: String(o.chip) }));
+    else if (o.title || (o.pts != null && o.pts !== '')) inn.appendChild(el('div', { class: 'k-mo-sq bar' }));
+    if (o.title || o.line) inn.appendChild(el('div', { class: 'k-mo-tx' }, [o.title ? el('b', { text: o.title }) : null, o.line ? el('span', { text: o.line }) : null]));
+    if (o.pts != null && o.pts !== '') {
+      var ps = String(o.pts), on = el('span', { class: 'on', text: ps });
+      inn.appendChild(el('div', { class: 'k-mo-pt' }, [el('span', { class: 'gh', text: ps.replace(/\d/g, '8') }), on]));
+      var m = /^([+\-−$]*)(\d[\d,]*)$/.exec(ps);
+      if (m && !reduce) {
+        var v = +m[2].replace(/,/g, ''), comma = m[2].indexOf(',') >= 0, t0 = performance.now();
+        var step = function (t) {
+          if (!on.isConnected) return;
+          var k = Math.min(1, Math.max(0, (t - t0 - 380) / 650)), n = Math.round(v * (1 - Math.pow(1 - k, 3)));
+          on.textContent = m[1] + (comma ? n.toLocaleString('en-US') : n);
+          if (k < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+    }
+    root.appendChild(inn);
+    var at = o.at && o.at.getBoundingClientRect ? o.at : null;
+    if (!at) root.classList.add('mid');
+    doc.body.appendChild(root); moEl = root;
+    function place() {
+      if (!at || !root.isConnected) return;
+      if (!at.isConnected) { root.classList.add('mid'); root.style.cssText = ''; if (o.color) root.style.setProperty('--chip', o.color); return; }
+      var r = at.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
+      var w = Math.max(Math.min(r.width - 28, big ? 540 : 470, vw - 24), Math.min(240, vw - 24));
+      root.style.width = w + 'px';
+      var left = Math.max(12, Math.min(vw - 12 - w, r.left + (r.width - w) / 2));
+      var top = Math.min(r.bottom, vh) - 14 - root.offsetHeight;
+      root.style.left = left + 'px'; root.style.top = Math.max(8, top) + 'px';
+    }
+    place();
+    // on a narrow strip the points go under the words, so the sentence keeps its room
+    var tx = inn.querySelector('.k-mo-tx'), pt = inn.querySelector('.k-mo-pt');
+    if (tx && pt && root.offsetWidth < (big ? 360 : 300)) { tx.appendChild(pt); place(); }
+    if (at) { moR = place; window.addEventListener('resize', moR); }
+    var ms = o.ms || (big ? 2300 : 1600);
+    moT = setTimeout(function () {
+      root.classList.add('out');
+      setTimeout(function () { root.remove(); if (moEl === root) moEl = null; if (moR === place) { window.removeEventListener('resize', moR); moR = null; } }, 320);
+    }, ms);
+    return root;
+  }
+  // Kit.callout(text, color): a short moment ("Domino!", "+12!"). A number comes out glowing on its own; anything else
+  // is the strip's sentence, with color on its square. A page that dresses the old big callout its own way (Arvela)
+  // puts the class k-own-callout on its <html> and keeps it.
   function callout(text, color) {
+    if (!doc.documentElement.classList.contains('k-own-callout')) {
+      var t = String(text == null ? '' : text), num = /^[+\-−]?\$?\d[\d,.:]*s?!?$/.test(t);
+      return moment(num ? { pts: t.replace(/!$/, ''), color: color, ms: 1300 } : { title: t, color: color, ms: 1300 });
+    }
     var c = el('div', { class: 'k-callout', text: text });
     if (color) c.style.color = color;
     doc.body.appendChild(c);
@@ -494,6 +561,8 @@
   }
   function sheet(o) {
     o = o || {};
+    // a moment still on the table steps away for the sheet
+    if (moEl) { var mo0 = moEl; moEl = null; clearTimeout(moT); mo0.classList.add('out'); setTimeout(function () { mo0.remove(); }, 320); }
     var body = el('div', { class: 'k-sheet' + (o.help ? ' k-sh-has-help' : ''), role: 'dialog', 'aria-modal': 'true' });
     body.appendChild(el('div', { class: 'grab' }));
     // o.help: a "?" in the top corner that opens an explanation (a function, usually another sheet)
@@ -4883,7 +4952,7 @@
 
   window.Kit = {
     netTurns: netTurns, turnsMark: turnsMark, turnBanner: turnBanner, turnBadge: turnBadge, badgeAsk: badgeAsk, notify: notifySheet, notifyStatus: notifyStatus, inbox: inboxSheet, inboxNew: inboxNew,
-    marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout,
+    marquee: marquee, init: init, keepAwake: keepAwake, setup: setup, cashOut: cashOutBtn, fitText: fitText, modes: modes, depth: depth, win: win, winClear: winPeekClear, sheet: sheet, confirm: confirmSheet, toast: toast, callout: callout, moment: moment,
     confetti: confetti, sfx: sfx, _sounds: soundsLoaded, haptic: haptic, card: card, cardFace: cardFace, die: die, color: playerColor, el: el, esc: esc, poss: poss, icon: icon, catName: catName, avatar: { el: avEl, fill: avFill, html: avHTML, color: avColor, edit: avatarEdit, has: function (n) { return !!avRec(n); } },
     defaults: { sheet: defaultsSheet, get: setupSaved }, setupPage: function (g) { return g && g.play && SETUP_PAGES.indexOf(g.play) >= 0 ? g.play : null; }, prefs: function () { defaultsSheet(); }, homeSheet: homeSheet, timerSheet: timerSheet, timerStatus: timerStatus, homeStatus: homeStatus, playTime: playTimeSheet, playToday: playToday, playing: playing, cats: catsOrdered, catOn: catOn, timer: { get: timerGet, set: timerSet }, dragGrip: dragGrip, gameOn: gameOn, family: familySheet, familyStatus: famStatus, kids: { open: kidSheet, setup: parentSetup, request: parentReqSheet },
     initials: { of: iniOf, set: iniSet }, player: function () { return curPlayers.length === 1 ? curPlayers[0] : ''; }, players: function () { return curPlayers.slice(); },
