@@ -33,6 +33,7 @@ var GAMES = [
   { id: 'hearts',      name: 'Hearts',       color: '#ff4d6d', cat: 'cards', min: 3, max: 6, tag: 'Dodge hearts and the Queen of Spades', play: 'hearts-ai', score: 'hearts' },
   { id: 'spades',      name: 'Spades',       color: '#5b6cff', cat: 'cards', min: 4, max: 4, tag: 'Bid your tricks with a partner', play: 'spades-ai', score: 'spades' },
   { id: 'euchre',      name: 'Euchre',       color: '#22b07d', cat: 'cards', min: 4, max: 4, tag: 'Call trump and take three tricks', play: 'euchre-ai', score: 'euchre' },
+  { id: 'bridge',      name: 'Bridge',       color: '#2f6fb3', cat: 'cards', min: 4, max: 4, tag: 'Bid a contract with your partner, then make it', play: 'bridge' },
   { id: 'cribbage',    name: 'Cribbage',     color: '#c9853d', cat: 'cards', min: 2, max: 4, tag: 'Peg your way to 121', play: 'cribbage' },
   { id: 'gin-rummy',   name: 'Gin Rummy',    color: '#2bb3a3', cat: 'cards', min: 2, max: 2, tag: 'Meld sets and runs, then knock', play: 'gin-rummy-ai', score: 'gin-rummy' },
   { id: 'wizard',      name: 'Wizard',       color: '#8b5cf6', cat: 'specialty', min: 3, max: 6, tag: 'Bid exactly how many tricks you take', play: 'wizard-ai', score: 'wizard' },

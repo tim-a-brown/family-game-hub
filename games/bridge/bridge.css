@@ -1,0 +1,345 @@
+/* Bridge: the table. Four layouts (phone upright and sideways, iPad upright and sideways) are set by table.js on .bx
+   as L-pu, L-ps, L-tu, L-ts; the sizes it works out from the screen are the registered properties below, which
+   glide when the device turns, so cards grow and shrink smoothly instead of jumping. */
+@property --hcw { syntax: '<length>'; inherits: true; initial-value: 64px; }
+@property --tcw { syntax: '<length>'; inherits: true; initial-value: 56px; }
+@property --dcw { syntax: '<length>'; inherits: true; initial-value: 44px; }
+@property --bcw { syntax: '<length>'; inherits: true; initial-value: 46px; }
+@property --ov { syntax: '<length>'; inherits: true; initial-value: -30px; }
+@property --qcw { syntax: '<length>'; inherits: true; initial-value: 16px; }
+
+.bridge-stage{max-width:none;padding:0;margin:0;}
+.bx{
+  --gl:.45s;
+  position:relative;display:grid;gap:8px;box-sizing:border-box;
+  height:calc(100dvh - var(--bar));width:100%;
+  padding:6px max(8px, var(--safe-l, 0px)) calc(max(var(--safe-b), 10px)) max(8px, var(--safe-r, 0px));
+  transition:--hcw var(--gl) ease, --tcw var(--gl) ease, --dcw var(--gl) ease, --bcw var(--gl) ease, --ov var(--gl) ease, --qcw var(--gl) ease;
+  overflow:hidden;
+}
+.bx *{box-sizing:border-box;}
+/* Phone and iPad upright: the table, your hand, then what you do */
+.bx.L-pu,.bx.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table" "hand" "act";}
+/* Sideways: what you look at on the left, the table, and what you do on the right; your hand along the bottom */
+.bx.L-ps,.bx.L-ts{grid-template-columns:var(--infw) minmax(0,1fr) var(--actw);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"info table act" "info hand act";}
+.bx.L-ps.ph-play,.bx.L-ts.ph-play{grid-template-columns:var(--infw) minmax(0,1fr);grid-template-areas:"info table" "info hand";}
+.bx-info{grid-area:info;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;}
+.bx.L-pu .bx-info,.bx.L-tu .bx-info{display:none;}
+.bx-table{grid-area:table;position:relative;min-height:0;min-width:0;border-radius:24px;padding:7px;}
+.bx-felt{position:absolute;inset:7px;border-radius:18px;overflow:hidden;}
+.bx-hand{grid-area:hand;position:relative;min-width:0;}
+.bx-act{grid-area:act;position:relative;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;}
+.bx.L-ps .bx-act,.bx.L-ts .bx-act{justify-content:center;}
+
+/* ── Seats round the felt (no transforms on anything that moves with the layout: it glides by its edges) ── */
+.bs{position:absolute;z-index:4;display:flex;flex-direction:column;align-items:center;gap:4px;transition:left var(--gl) ease, top var(--gl) ease, right var(--gl) ease, bottom var(--gl) ease;}
+.bs.b{left:0;right:0;bottom:6px;}
+.bs.t{left:0;right:0;top:6px;}
+.bs.l{left:6px;top:0;bottom:0;justify-content:center;align-items:flex-start;}
+.bs.r{right:6px;top:0;bottom:0;justify-content:center;align-items:flex-end;}
+.bs-tag{position:relative;display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:rgba(6,18,13,.62);color:#fff;font-weight:800;font-size:.8rem;white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,.3), inset 0 0 0 2px var(--vul, rgba(255,255,255,.18));transition:box-shadow .25s, background .25s;}
+.bs-tag .avatar{width:26px;height:26px;font-size:.74rem;flex:none;}
+.bs-tag .avatar .ico{width:60%;height:60%;}
+.bs-tag .tx{display:flex;flex-direction:column;align-items:flex-start;line-height:1.05;}
+.bs-tag .nm{max-width:7.5em;overflow:hidden;}
+.bs-tag .role{margin-top:1px;font-size:.56rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:#f4ead0;opacity:.85;}
+.bs-tag .role.dl{color:#ffd770;opacity:1;}
+.bs.turn .bs-tag{background:rgba(255,200,61,.95);color:#1b1404;box-shadow:0 0 0 3px #ffd770, 0 0 22px rgba(255,200,61,.6), inset 0 0 0 2px var(--vul, transparent);}
+.bs.turn .bs-tag .role{color:#4a3300;}
+.bs.away .bs-tag{opacity:.6;}
+.bs.vul{--vul:#e0263f;}
+.bs-backs{display:flex;--cw:calc(var(--tcw) * .42);}
+.bs-backs .pcard+.pcard{margin-left:calc(var(--cw) * -.72);}
+.bs.l .bs-backs,.bs.r .bs-backs{flex-direction:column;}
+.bs.l .bs-backs .pcard+.pcard,.bs.r .bs-backs .pcard+.pcard{margin-left:0;margin-top:calc(var(--cw) * -1.2);}
+/* the call a player has just made, as its bidding card in front of them (toward the middle of the table) */
+.bs-call{position:absolute;z-index:5;pointer-events:none;}
+.bs.b .bs-call{left:calc(100% + 8px);top:50%;margin-top:calc(var(--bcw) * -.36);}
+.bs.t .bs-call{top:calc(100% + 4px);left:50%;margin-left:calc(var(--bcw) * -.5);}
+.bs.l .bs-call{top:calc(100% + 6px);left:4px;}
+.bs.r .bs-call{top:calc(100% + 6px);right:4px;}
+.bs.t .bs-backs{margin-top:calc(var(--bcw) * .78 + 4px);}
+.bx.ph-play .bs.t .bs-backs{margin-top:0;}
+.bs.l .bs-backs,.bs.r .bs-backs{margin-top:calc(var(--bcw) * .8);}
+.bx.ph-play .bs.l .bs-backs,.bx.ph-play .bs.r .bs-backs{margin-top:0;}
+/* the caption, above your own name upright */
+.bs .ba-cap{min-height:0;padding:5px 12px;border-radius:999px;background:rgba(0,0,0,.4);color:#f4ead0;font-size:.84rem;max-width:min(94vw, 420px);}
+.bs .ba-cap.go{background:rgba(255,200,61,.92);color:#1b1404;}
+.bs .ba-cap.empty{visibility:hidden;}
+.bs .ba-cap.empty::before{content:"\00a0";}
+.ba-cap.tipc{background:#fffaf0 !important;color:#2a2a3a !important;font-weight:700;font-size:.8rem;border-radius:12px;text-align:left;}
+.ba-cap .sug b{font-family:var(--display);font-weight:400;color:#7a1f2a;margin-right:4px;}
+.ba-cap .sug b .s{font-family:var(--font);font-weight:900;}
+.ba-cap .sug b .s.r{color:#d0142f;}
+
+/* ── Bidding cards (a real bidding box: white bid cards, green Pass, red Double, blue Redouble) ── */
+.bc{--w:var(--bcw);position:relative;display:inline-grid;place-items:center;width:var(--w);height:calc(var(--w) * .72);border-radius:calc(var(--w) * .1);
+  background:linear-gradient(170deg,#fffdf6,#efe7d3);color:#1b1b28;font-family:var(--display);font-size:calc(var(--w) * .38);line-height:1;
+  box-shadow:0 1px 0 rgba(255,255,255,.9) inset, 0 -2px 0 rgba(0,0,0,.12) inset, 0 3px 6px rgba(0,0,0,.35);white-space:nowrap;flex:none;}
+.bc .s{font-family:var(--font);font-weight:900;font-size:.92em;margin-left:.04em;}
+.bc .s.r{color:#d0142f;}
+.bc .s.n{font-family:var(--display);font-size:.7em;letter-spacing:.02em;}
+.bc.pass{background:linear-gradient(170deg,#3fbf6e,#1f8a49);color:#fff;font-family:var(--font);font-weight:900;font-size:calc(var(--w) * .24);letter-spacing:.06em;}
+.bc.dbl{background:linear-gradient(170deg,#f0475b,#b5162d);color:#fff;}
+.bc.rdbl{background:linear-gradient(170deg,#4f8ff0,#1f56b8);color:#fff;}
+.bc.alert::after{content:"";position:absolute;right:calc(var(--w) * .06);top:calc(var(--w) * .06);width:calc(var(--w) * .13);height:calc(var(--w) * .13);border-radius:50%;background:#2b78e4;box-shadow:0 0 0 1.5px #fff;}
+.bc.new{animation:bcIn .42s var(--spring) both;}
+@keyframes bcIn{from{opacity:0;scale:.5;translate:0 10px;}}
+
+/* ── The trick in the middle ── */
+.bt{position:absolute;left:50%;top:50%;width:0;height:0;z-index:3;transition:top var(--gl) ease;}
+.bt .tc{position:absolute;--cw:var(--tcw);width:var(--cw);height:calc(var(--cw) * 1.4);transition:left var(--gl) ease, top var(--gl) ease;}
+.bt .tc .pcard{position:absolute;left:0;top:0;}
+.bt .tc.b{left:calc(var(--tcw) * -.5);top:calc(var(--tcw) * -.06);}
+.bt .tc.t{left:calc(var(--tcw) * -.5);top:calc(var(--tcw) * -1.36);}
+.bt .tc.l{left:calc(var(--tcw) * -1.42);top:calc(var(--tcw) * -.72);}
+.bt .tc.r{left:calc(var(--tcw) * .42);top:calc(var(--tcw) * -.72);}
+.bt .tc.b .pcard{rotate:3deg;} .bt .tc.t .pcard{rotate:-4deg;} .bt .tc.l .pcard{rotate:-7deg;} .bt .tc.r .pcard{rotate:6deg;}
+.bt .tc .pcard.win{box-shadow:0 0 0 3px #ffd34d, 0 0 24px rgba(255,211,77,.75), 0 6px 14px rgba(0,0,0,.3);}
+.bt .lead-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:#ffd34d;box-shadow:0 0 8px #ffd34d;}
+
+/* ── The dummy, face up on the table ── */
+.bd{position:relative;z-index:3;display:flex;--cw:var(--dcw);}
+.bd .col{display:flex;flex-direction:column;align-items:center;}
+.bd .col .pcard+.pcard{margin-top:calc(var(--cw) * (var(--dvis, .34) - 1.4));}
+.bd.cols{gap:calc(var(--cw) * .1);}
+.bd.line{gap:calc(var(--cw) * .14);}
+.bd.line .col{flex-direction:row;}
+.bd.line .col .pcard+.pcard{margin-top:0;margin-left:calc(var(--cw) * -.62);}
+.bd.rows{flex-direction:column;gap:calc(var(--cw) * .06);}
+.bd.rows .col{flex-direction:row;}
+.bd.rows .col .pcard+.pcard{margin-top:0;margin-left:calc(var(--cw) * -.64);}
+.bd .pcard{transition:box-shadow .2s, filter .2s, translate .2s var(--spring);}
+.bd .pcard.play{cursor:pointer;box-shadow:0 0 0 2px rgba(255,211,77,.9), 0 4px 10px rgba(0,0,0,.35);}
+.bd .pcard.play:active{translate:0 -4px;}
+.bd .pcard.dim{filter:brightness(.62) saturate(.6);}
+.bd-lbl{position:absolute;font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55);white-space:nowrap;}
+
+/* ── Your hand ── */
+.bh{position:relative;display:flex;justify-content:center;align-items:flex-end;--cw:var(--hcw);height:calc(var(--hcw) * 1.4 + 14px);padding-top:14px;}
+.bh > .pcard{transition:translate .22s var(--spring), box-shadow .2s, filter .2s, margin var(--gl) ease;}
+.bh > .pcard + .pcard{margin-left:var(--ov);}
+.bh > .pcard.play{cursor:pointer;}
+.bh > .pcard.play:hover{translate:0 -8px;}
+.bh > .pcard.play:active{translate:0 -10px;}
+.bh > .pcard.dim{filter:brightness(.6) saturate(.6);}
+.bh > .pcard.gap{margin-left:calc(var(--ov) + var(--hcw) * .12);}
+.bh.dummy > .pcard{filter:brightness(.92);}
+.bh-hcp{position:absolute;left:4px;top:-4px;z-index:6;display:flex;align-items:baseline;gap:3px;padding:3px 9px;border-radius:999px;border:0;background:rgba(0,0,0,.35);color:#f4ead0;font:inherit;font-weight:900;font-size:.78rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.bh-hcp small{font-size:.62rem;letter-spacing:.06em;color:rgba(244,234,208,.7);}
+.bh-hcp.big{background:linear-gradient(135deg,#ffd34d,#e8a412);color:#2a1a00;box-shadow:0 0 16px rgba(255,211,77,.6);}
+.bh-hcp.big small{color:#4a3200;}
+.bh-tag{position:absolute;right:4px;top:-4px;z-index:6;font-size:.62rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--text-2);}
+
+/* ── What you do: the caption and the bidding box ── */
+.ba-cap{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 8px;text-align:center;font-weight:800;color:var(--text-2);line-height:1.25;}
+.ba-cap b{color:var(--text);}
+.ba-cap.go{color:var(--yellow);}
+.bbox{position:relative;border-radius:18px;padding:9px;display:flex;flex-direction:column;gap:7px;
+  background:linear-gradient(180deg,#7a1f2a,#511219);box-shadow:inset 0 2px 0 rgba(255,255,255,.14), inset 0 -3px 0 rgba(0,0,0,.3), 0 10px 22px rgba(0,0,0,.4);}
+.bbox .row{display:grid;gap:5px;}
+.bbox .lv{grid-template-columns:repeat(7,minmax(0,1fr));}
+.bbox .st{grid-template-columns:repeat(5,minmax(0,1fr));}
+.bbox .ca{grid-template-columns:repeat(3,minmax(0,1fr)) auto;}
+.bbox button{appearance:none;border:0;padding:0;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent;}
+.bbox .lvb{height:var(--bbh,40px);border-radius:10px;background:linear-gradient(170deg,#fffdf6,#e8dfc8);color:#1b1b28;font-family:var(--display);font-size:1.25rem;
+  box-shadow:0 -2px 0 rgba(0,0,0,.14) inset, 0 3px 0 rgba(0,0,0,.35);transition:translate .15s var(--spring), box-shadow .15s, background .15s;}
+.bbox .lvb.on{background:linear-gradient(170deg,#ffe28a,#f1b92c);translate:0 -3px;box-shadow:0 -2px 0 rgba(0,0,0,.14) inset, 0 6px 0 rgba(0,0,0,.35), 0 0 14px rgba(255,211,77,.55);}
+.bbox .lvb:disabled,.bbox .stb:disabled,.bbox .cab:disabled{opacity:.28;cursor:default;box-shadow:none;}
+.bbox .stb{height:calc(var(--bbh,40px) * 1.32);border-radius:12px;background:linear-gradient(170deg,#fffdf6,#efe7d3);color:#1b1b28;font-family:var(--display);font-size:1.5rem;line-height:1;
+  display:flex;align-items:center;justify-content:center;gap:2px;box-shadow:0 -2px 0 rgba(0,0,0,.12) inset, 0 4px 0 rgba(0,0,0,.35);transition:translate .15s var(--spring), box-shadow .15s;}
+.bbox .stb .s{font-family:var(--font);font-weight:900;}
+.bbox .stb .s.r{color:#d0142f;}
+.bbox .stb .s.n{font-family:var(--display);font-size:.78em;}
+.bbox .stb:not(:disabled):active,.bbox .lvb:not(:disabled):active,.bbox .cab:not(:disabled):active{translate:0 3px;box-shadow:0 -1px 0 rgba(0,0,0,.12) inset, 0 1px 0 rgba(0,0,0,.35);}
+.bbox .cab{height:var(--bbh,40px);border-radius:10px;font-weight:900;font-size:.95rem;letter-spacing:.04em;color:#fff;box-shadow:0 -2px 0 rgba(0,0,0,.18) inset, 0 3px 0 rgba(0,0,0,.35);}
+.bbox .cab.pass{background:linear-gradient(170deg,#3fbf6e,#1f8a49);}
+.bbox .cab.dbl{background:linear-gradient(170deg,#f0475b,#b5162d);font-family:var(--display);font-size:1.2rem;font-weight:400;}
+.bbox .cab.rdbl{background:linear-gradient(170deg,#4f8ff0,#1f56b8);font-family:var(--display);font-size:1.2rem;font-weight:400;}
+.bbox .hintb{width:calc(var(--bbh,40px) + 4px);height:var(--bbh,40px);border-radius:10px;background:rgba(0,0,0,.28);color:#ffe28a;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.bbox .hintb .ico{width:22px;height:22px;}
+.bbox .sug{box-shadow:0 0 0 3px #ffd34d, 0 0 16px rgba(255,211,77,.7), 0 4px 0 rgba(0,0,0,.35) !important;animation:sugp 1.1s ease-in-out infinite;}
+@keyframes sugp{50%{box-shadow:0 0 0 3px #ffd34d, 0 0 26px rgba(255,211,77,.95), 0 4px 0 rgba(0,0,0,.35);}}
+.bbox .tip{position:absolute;left:8px;right:8px;bottom:calc(100% + 6px);padding:8px 12px;border-radius:12px;background:#fffaf0;color:#2a2a3a;font-size:.85rem;font-weight:700;line-height:1.3;box-shadow:0 8px 20px rgba(0,0,0,.4);animation:bcIn .3s var(--spring) both;}
+.bbox .tip b{color:#7a1f2a;}
+
+/* ── The auction slip (a four-column pad, West North East South) ── */
+.bslip{position:relative;border-radius:10px;padding:8px 8px 9px;background:linear-gradient(180deg,#fffaf0,#f3ead5);color:#2a2a3a;box-shadow:0 1px 0 rgba(255,255,255,.6) inset, 0 10px 22px rgba(0,0,0,.4);}
+.bslip table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.bslip th{font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#7a1f2a;padding:0 0 4px;border-bottom:2px solid rgba(122,31,42,.35);}
+.bslip th.vul{color:#d0142f;}
+.bslip th .dl{display:inline-block;margin-left:3px;padding:0 4px;border-radius:4px;background:#2a2a3a;color:#fffaf0;font-size:.55rem;}
+.bslip td{text-align:center;padding:2px 0;height:calc(var(--bcw) * .58);}
+.bslip td button{appearance:none;border:0;background:none;padding:2px 3px;border-radius:6px;font-family:var(--display);font-size:1.06rem;color:#1b1b28;cursor:pointer;line-height:1;position:relative;}
+.bslip td button .s{font-family:var(--font);font-weight:900;}
+.bslip td button .s.r{color:#d0142f;}
+.bslip td button .s.n{font-family:var(--display);font-size:.78em;}
+.bslip td button.p{font-family:var(--font);font-size:.72rem;font-weight:800;color:#7a7a90;letter-spacing:.02em;}
+.bslip td button.x{color:#c8102e;} .bslip td button.xx{color:#1f56b8;}
+.bslip td button.alert::after{content:"";position:absolute;right:-3px;top:0;width:6px;height:6px;border-radius:50%;background:#2b78e4;}
+.bslip td button:active,.bslip td button.on{background:rgba(122,31,42,.12);}
+.bslip td.next::after{content:"?";display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:rgba(122,31,42,.12);color:#7a1f2a;font-weight:900;font-size:.8rem;animation:sugp 1.2s ease-in-out infinite;}
+.bslip td button.new{animation:bcIn .4s var(--spring) both;}
+.bslip .say{margin-top:6px;padding:7px 9px;border-radius:8px;background:rgba(122,31,42,.08);font-size:.8rem;font-weight:700;line-height:1.3;color:#3a2a2a;}
+.bslip .say b{font-family:var(--display);font-weight:400;font-size:1.05em;color:#1b1b28;}
+.bslip-scroll{max-height:var(--slipmax, 40vh);overflow-y:auto;}
+
+/* ── The board tray: dealer and vulnerability, colored as a duplicate board ── */
+.bboard{display:flex;align-items:center;gap:8px;color:#f4ead0;}
+.bboard svg{width:var(--bbw,46px);height:var(--bbw,46px);flex:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4));}
+.bboard .tx{display:flex;flex-direction:column;line-height:1.15;font-weight:800;font-size:.74rem;}
+.bboard .tx b{font-family:var(--display);font-weight:400;font-size:1.05rem;color:#fff;}
+
+/* ── The contract, laid on the table after the auction ── */
+.bk{display:flex;align-items:center;gap:7px;padding:5px 9px 5px 6px;border-radius:14px;background:rgba(6,18,13,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);color:#f4ead0;cursor:pointer;border:0;font:inherit;}
+.bk .cards{display:flex;}
+.bk .cards .bc+.bc{margin-left:calc(var(--bcw) * -.38);}
+.bk .tx{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;font-weight:800;font-size:.72rem;text-align:left;}
+.bk .tx b{font-size:.84rem;color:#fff;}
+
+/* ── Tricks taken: real quitted tricks, a face-down card for each, in a row for each side ── */
+.bq{display:flex;flex-direction:column;gap:5px;}
+.bq .rw{display:flex;align-items:center;gap:6px;}
+.bq .lb{width:3.6em;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:rgba(244,234,208,.75);text-align:right;flex:none;}
+.bq .lb b{display:block;font-family:var(--display);font-weight:400;font-size:1.25rem;letter-spacing:0;color:#fff;line-height:1;}
+.bq .tk{position:relative;display:flex;align-items:center;height:calc(var(--qcw) * 1.4 + 4px);--cw:var(--qcw);}
+.bq .tk .pcard{flex:none;}
+.bq .tk .pcard+.pcard{margin-left:calc(var(--qcw) * -.5);}
+.bq .tk .pcard.won{animation:qIn .5s var(--spring) both;}
+@keyframes qIn{from{translate:0 -14px;scale:1.5;opacity:0;}}
+.bq .tk .slot{flex:none;width:var(--qcw);height:calc(var(--qcw) * 1.4);border-radius:3px;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22);}
+.bq .tk .slot+.slot,.bq .tk .pcard+.slot{margin-left:calc(var(--qcw) * -.5);}
+.bq .tk .slot.goal{box-shadow:inset 0 0 0 1.5px #ffd34d, 0 0 8px rgba(255,211,77,.5);}
+.bq .tk .pcard.goal{box-shadow:0 0 0 1.5px #ffd34d, 0 0 10px rgba(255,211,77,.7);}
+.bq .need{font-size:.62rem;font-weight:800;color:rgba(244,234,208,.7);white-space:nowrap;}
+.bq .need.ok{color:#7ff0a8;}
+.bq .streak{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;background:linear-gradient(135deg,#ff9a3d,#ff4d5e);color:#fff;font-size:.62rem;font-weight:900;white-space:nowrap;animation:bcIn .4s var(--spring) both;}
+.bq .streak .ico{width:12px;height:12px;}
+
+/* ── The score: a tap opens the pad ── */
+.bscore{display:flex;align-items:stretch;gap:0;border-radius:12px;overflow:hidden;border:0;padding:0;font:inherit;cursor:pointer;background:linear-gradient(180deg,#fffaf0,#efe5cd);color:#2a2a3a;box-shadow:0 6px 14px rgba(0,0,0,.35);}
+.bscore .c{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 10px;min-width:58px;}
+.bscore .c+.c{border-left:1.5px solid rgba(122,31,42,.3);}
+.bscore .c small{font-size:.58rem;font-weight:900;letter-spacing:.1em;color:#7a1f2a;}
+.bscore .c b{font-family:var(--hand);font-weight:400;font-size:1.3rem;line-height:1.05;color:#1b1b28;font-variant-numeric:tabular-nums;}
+.bscore .c i{font-style:normal;font-size:.58rem;font-weight:800;color:#7a7a90;white-space:nowrap;}
+.bscore .pips{display:flex;gap:3px;margin-top:2px;}
+.bscore .pips span{width:7px;height:7px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(122,31,42,.45);}
+.bscore .pips span.on{background:#7a1f2a;box-shadow:none;}
+.bscore .pips span.vul{box-shadow:inset 0 0 0 1.5px #d0142f;}
+.bscore .pips span.on.vul{background:#d0142f;}
+
+/* pieces inside the felt in portrait: corners */
+.bcorner{position:absolute;z-index:6;display:flex;flex-direction:column;gap:6px;}
+.bcorner.tl{left:8px;top:8px;align-items:flex-start;}
+.bcorner.tr{right:8px;top:8px;align-items:flex-end;}
+.bcorner.bl{left:8px;bottom:8px;align-items:flex-start;}
+.bcorner.br{right:8px;bottom:8px;align-items:flex-end;}
+.bcorner.mid{left:50%;top:50%;width:min(92%, 330px);margin-left:max(-46%, -165px);translate:0 -50%;align-items:stretch;z-index:7;}
+.bx-info > *{flex:none;}
+.bx-info .bslip{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+.bx-info .bslip .bslip-scroll{max-height:none;flex:1 1 auto;min-height:0;}
+.bx-info .bq{padding:8px;border-radius:12px;background:rgba(0,0,0,.22);}
+
+/* ── A big moment on the table ── */
+.bm{position:absolute;inset:0;z-index:20;display:grid;place-items:center;pointer-events:none;}
+.bm .card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 22px;border-radius:20px;text-align:center;
+  background:radial-gradient(120% 140% at 50% 0%, rgba(255,226,138,.96), rgba(232,164,18,.96));color:#2a1a00;box-shadow:0 0 0 3px #fff3c4, 0 18px 40px rgba(0,0,0,.5), 0 0 60px rgba(255,211,77,.55);
+  animation:bmIn .7s var(--spring) both;}
+.bm .card .k{font-size:.7rem;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.75;}
+.bm .card h3{font-family:var(--display);font-weight:400;font-size:clamp(1.7rem,7vw,2.6rem);line-height:1.02;margin:0;}
+.bm .card p{margin:0;font-weight:800;font-size:.88rem;max-width:18em;}
+.bm .card.cold{background:radial-gradient(120% 140% at 50% 0%, rgba(255,140,150,.97), rgba(190,30,55,.97));color:#fff;box-shadow:0 0 0 3px #ffd0d6, 0 18px 40px rgba(0,0,0,.5);}
+.bm .card.cool{background:radial-gradient(120% 140% at 50% 0%, rgba(150,230,180,.97), rgba(30,140,80,.97));color:#03200f;box-shadow:0 0 0 3px #d6ffe4, 0 18px 40px rgba(0,0,0,.5);}
+.bm.out .card{animation:bmOut .4s ease-in both;}
+@keyframes bmIn{from{opacity:0;scale:.4;rotate:-6deg;}}
+@keyframes bmOut{to{opacity:0;scale:1.15;}}
+.bm .rays{position:absolute;inset:-40%;background:repeating-conic-gradient(from 0deg, rgba(255,226,138,.16) 0 9deg, transparent 9deg 18deg);animation:rays 6s linear infinite, raysIn .5s ease both;border-radius:50%;}
+@keyframes rays{to{rotate:360deg;}}
+@keyframes raysIn{from{opacity:0;}}
+.bspark{position:absolute;z-index:21;pointer-events:none;width:10px;height:10px;border-radius:50%;background:#ffd34d;box-shadow:0 0 10px #ffd34d;}
+.bplus{position:absolute;z-index:21;pointer-events:none;font-family:var(--display);font-size:1.1rem;color:#ffd34d;text-shadow:0 2px 0 #6b4200, 0 0 8px rgba(0,0,0,.5);}
+
+/* ── The score pad (a real bridge pad: WE and THEY, above and below the line) ── */
+.bpad{border-radius:6px 6px 14px 14px;overflow:hidden;background:linear-gradient(180deg,#fffaf0,#f6eedb);color:#2a2a3a;box-shadow:0 14px 30px rgba(0,0,0,.4);padding:10px 12px 12px;}
+.bpad-h{display:grid;grid-template-columns:1fr 1fr;text-align:center;font-family:var(--display);font-size:1.2rem;color:#7a1f2a;letter-spacing:.06em;border-bottom:2px solid rgba(122,31,42,.4);padding-bottom:4px;}
+.bpad-h small{display:block;font-family:var(--font);font-size:.68rem;font-weight:800;letter-spacing:0;color:#7a7a90;}
+.bpad-g{display:grid;grid-template-columns:1fr 1fr;}
+.bpad-g > div{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 4px;}
+.bpad-g > div + div{border-left:2px solid rgba(122,31,42,.4);}
+.bpad-g.above > div{justify-content:flex-end;flex-direction:column-reverse;min-height:42px;}
+.bpad-line{height:0;border-top:3px solid #2a2a3a;}
+.bpad-g.below > div{min-height:30px;}
+.bpad-e{display:flex;align-items:baseline;gap:6px;font-family:var(--hand);font-size:1.32rem;line-height:1.15;color:#1b1b28;}
+.bpad-e small{font-family:var(--font);font-size:.62rem;font-weight:800;color:#8a8796;}
+.bpad-e.new{animation:write .6s ease-out both;}
+.bpad-gl{height:0;border-top:1.5px solid #7a1f2a;margin:2px 0;}
+.bpad-gl.new{animation:gline .8s ease-out both;}
+@keyframes gline{from{clip-path:inset(0 100% 0 0);}to{clip-path:inset(0 0 0 0);}}
+.bpad-t{display:grid;grid-template-columns:1fr 1fr;text-align:center;border-top:3px double #2a2a3a;margin-top:6px;padding-top:4px;}
+.bpad-t b{font-family:var(--hand);font-weight:400;font-size:1.7rem;line-height:1.1;}
+.bpad-t b.lead{color:#1f8a49;}
+.bpad-t small{display:block;font-size:.62rem;font-weight:900;letter-spacing:.1em;color:#7a1f2a;}
+.bpad-deals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-bottom:8px;}
+.bpad-deals > div{border-radius:8px;padding:4px 2px;text-align:center;background:rgba(122,31,42,.06);font-size:.66rem;font-weight:800;color:#5a5a6a;line-height:1.2;}
+.bpad-deals > div b{display:block;font-family:var(--hand);font-weight:400;font-size:1.05rem;color:#1b1b28;}
+.bpad-deals > div.vul{box-shadow:inset 0 0 0 1.5px #d0142f;}
+.bpad-deals > div.cur{background:rgba(255,211,77,.35);}
+
+/* ── A deal laid out as a bridge diagram (end of the deal, and the history) ── */
+.bdg{display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto auto;gap:6px;align-items:center;justify-items:center;}
+.bdg .h{display:flex;flex-direction:column;gap:1px;font-weight:800;font-size:.86rem;line-height:1.25;min-width:0;}
+.bdg .h .who{font-size:.66rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.bdg .h .who b{color:var(--text);letter-spacing:0;text-transform:none;font-size:.78rem;}
+.bdg .h .ln{white-space:nowrap;font-variant-numeric:tabular-nums;}
+.bdg .h .ln i{display:inline-block;width:1.1em;font-style:normal;}
+.bdg .h .ln i.r{color:#ff6b80;}
+.bdg .n{grid-column:2;grid-row:1;} .bdg .w{grid-column:1;grid-row:2;justify-self:start;} .bdg .e{grid-column:3;grid-row:2;justify-self:end;} .bdg .s{grid-column:2;grid-row:3;}
+.bdg .ctr{grid-column:2;grid-row:2;}
+.bdg .ctr svg{width:58px;height:58px;}
+
+/* ── Sheets: the end of a deal ── */
+.bsum{display:flex;flex-direction:column;gap:12px;}
+.bsum .res{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--surface-2);}
+.bsum .res .bc{--w:52px;}
+.bsum .res .tx{display:flex;flex-direction:column;gap:2px;font-weight:800;line-height:1.25;}
+.bsum .res .tx small{font-weight:700;color:var(--text-3);font-size:.82rem;}
+.bsum .res.good{box-shadow:inset 0 0 0 2px var(--green);}
+.bsum .res.bad{box-shadow:inset 0 0 0 2px var(--red);}
+.bsum .rows{display:flex;flex-direction:column;gap:4px;font-weight:700;font-size:.9rem;}
+.bsum .rows div{display:flex;justify-content:space-between;gap:10px;}
+.bsum .rows b{font-variant-numeric:tabular-nums;}
+
+/* Online: a tap when it isn't your move nudges whoever's turn it is */
+.bs.turn.nudge .bs-tag,.ba-cap.nudge{animation:bnudge .4s;}
+@keyframes bnudge{20%{translate:-6px 0;}40%{translate:6px 0;}60%{translate:-4px 0;}80%{translate:3px 0;}}
+
+/* the face-down cards in a pass and play hand-over */
+.bh.blind > .pcard{filter:none;}
+
+/* phone sideways: your hand overlaps the table's near edge, as cards held over a real table; your own name tag
+   steps aside (the caption on the left says when it's your turn) */
+.bx.lowhand .bx-hand{margin-top:calc(var(--hcw) * -.42);z-index:8;}
+.bx.lowhand .bs.b .bs-tag{display:none;}
+.bx.lowhand .bs.b{bottom:auto;top:auto;}
+.bh.myturn::before{content:"";position:absolute;left:8%;right:8%;bottom:-4px;height:3px;border-radius:3px;background:#ffd34d;box-shadow:0 0 12px #ffd34d;}
+.bx-info .bscore .c{flex:1;}
+.bx.L-ps .bx-info{gap:6px;}
+.bx.L-ps .bx-info .bq{padding:6px;gap:3px;}
+.bx.L-ps .bboard .tx{font-size:.66rem;}
+.bx-info .ba-cap{justify-content:flex-start;text-align:left;padding:4px 2px;min-height:0;}
+
+/* phone upright: the side seats' name tags stand on end, leaving the width to the trick */
+.bx.L-pu .bs.l .bs-tag,.bx.L-pu .bs.r .bs-tag{flex-direction:column;gap:3px;padding:5px 7px 6px;border-radius:16px;}
+.bx.L-pu .bs.l .bs-tag .tx,.bx.L-pu .bs.r .bs-tag .tx{align-items:center;}
+.bx.L-pu .bs.l .bs-tag .nm,.bx.L-pu .bs.r .bs-tag .nm{max-width:5.4em;font-size:.76rem;}
+
+/* the bidding box keeps its outer buttons clear of the screen's rounded corners */
+.bx.L-pu.ph-bid,.bx.L-tu.ph-bid{padding-bottom:max(calc(var(--safe-b) + 10px), 18px);}
+.bx.L-pu .bbox,.bx.L-tu .bbox{margin:0 9px;}
+/* iPad: a larger auction slip */
+.bx.L-tu .bcorner.mid{width:min(80%, 520px);margin-left:max(-40%, -260px);}
+.bx.L-tu .bslip td button,.bx.L-ts .bslip td button{font-size:1.3rem;}
+.bx.L-tu .bslip th,.bx.L-ts .bslip th{font-size:.74rem;}
+.bx.L-tu .bslip .say,.bx.L-ts .bslip .say{font-size:.92rem;}
