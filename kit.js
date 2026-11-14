@@ -2092,15 +2092,21 @@
   // Without teams the chips simply follow each other. pre: the class prefix ('k' on a game's page, 'qs' on the home sheet).
   function whoChips(seats, teams, pre) {
     pre = pre || 'k';
-    var box = el('span', { class: pre + '-chips' + (teams ? ' teams' : '') });
-    function chip(t) { return t.cpu ? el('span', { class: pre + '-chip bot', html: icon('bot') + '<span>' + esc(t.name) + '</span>' + (t.tag ? '<i>' + esc(t.tag) + '</i>' : '') }) : el('span', { class: pre + '-chip' + (t.anon ? '' : ' who'), text: t.name }); }
-    if (!teams) { seats.forEach(function (t) { box.appendChild(chip(t)); }); return box; }
+    // (Tim, 2026-11-14: "is there a better way of organizing these player panels so it looks more organized?") each
+    // seat is a token in its seat's color, the name under it and a robot's skill under that, in even columns; partners
+    // stand together on one plate and the sides face each other across "vs", as at the players sheet's table
+    var box = el('span', { class: pre + '-chips ' + pre + '-toks' + (teams ? ' teams' : '') });
+    function seat(t, i) {
+      var c = playerColor(i), av = t.cpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') })
+        : t.anon ? el('span', { class: 'avatar', style: { '--c': c }, text: String(i + 1) }) : avMarked(t.name, c);
+      return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.tag ? el('small', { text: t.tag }) : null]);
+    }
+    if (!teams) { seats.forEach(function (t, i) { box.appendChild(seat(t, i)); }); return box; }
     teams.forEach(function (side, k) {
-      var g = el('span', { class: pre + '-team' });
-      // ("&" goes with the partner it introduces, so it never hangs at the end of a line either)
-      side.forEach(function (i, j) { if (!seats[i]) return; g.appendChild(j ? el('span', { class: pre + '-pair' }, [el('i', { class: pre + '-amp', text: '&' }), chip(seats[i])]) : chip(seats[i])); });
-      // ("vs" goes with the side it introduces, so it never hangs at the end of a line)
-      box.appendChild(k ? el('span', { class: pre + '-team ' + pre + '-next' }, [el('i', { class: pre + '-vs', text: 'vs' }), g]) : g);
+      var g = el('span', { class: pre + '-side' });
+      side.forEach(function (i) { if (seats[i]) g.appendChild(seat(seats[i], i)); });
+      if (k) box.appendChild(el('i', { class: pre + '-vs', text: 'vs' }));
+      box.appendChild(g);
     });
     return box;
   }
@@ -2689,7 +2695,7 @@
       // them), and a tap opens the players sheet
       var chips = whoChips(told, teams, 'k');
       seatsBox.appendChild(el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + whoSaid(told, teams), onclick: openPlayers },
-        [el('span', { class: 'k-who-e', html: icon('users') }), el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]));
+        [el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]));
     }
     // a short line for the Game defaults list: the mode, the player count and each option shown
     function summary() {
