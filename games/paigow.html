@@ -45,7 +45,7 @@
 .who .avatar{width:22px;height:22px;font-size:.7rem;}
 .who .avatar .ico{width:62%;height:62%;}
 .who .hn{color:rgba(255,255,255,.75);font-weight:700;overflow:hidden;text-overflow:ellipsis;}
-.who .hn:not(:empty)::before{content:"·";margin:0 6px 0 2px;color:rgba(255,255,255,.4);}
+.who .hn:not(:empty){margin-left:2px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.12);}   /* (the hand held, as a tag of its own beside the name) */
 /* dealer: seven face down, then set into high + low */
 .row7{display:flex;justify-content:center;--cw:clamp(36px,10.5vw,44px);min-height:calc(var(--cw) * 1.4);}
 .row7 > .pcard + .pcard{margin-left:-10px;}
@@ -741,7 +741,7 @@
     list.sort(function (a, b) { return a === rec ? -1 : b === rec ? 1 : b.ev - a.ev; });
     var moves = list.map(function (o) {
       return { name: 'Low: ' + lowLabel(o.lc), best: o === rec, w: o.w / n, p: o.p / n, l: o.l / n, value: cash(o), wLabel: 'Win both', pLabel: 'Push', lLabel: 'Lose',
-        note: 'High hand: <b>' + Kit.esc(hiName(o)) + '</b> · low hand: <b>' + Kit.esc(loName(o)) + '</b>' + (o === hw ? ' · <b>the house way</b>' : '') +
+        note: 'The high hand is <b>' + Kit.esc(hiName(o)) + '</b> and the low hand is <b>' + Kit.esc(loName(o)) + '</b>' + (o === hw ? ', <b>the house way</b>' : '') +
           '<br>Your high hand wins ' + Coach.pct(o.hiW / n) + ', your low hand wins ' + Coach.pct(o.loW / n) + '.' };
     });
     var nxt = r.sorted.filter(function (o) { return o !== rec; })[0];
@@ -753,7 +753,7 @@
     ];
     Coach.sheet({
       title: 'How to set your hands',
-      best: { label: 'Best split' + (rec === hw ? ' · the house way' : '') + ' · estimate', value: 'Low: ' + lowLabel(rec.lc), text: why },
+      best: { label: 'Best split' + (rec === hw ? ', the house way' : '') + ', estimated', value: 'Low: ' + lowLabel(rec.lc), text: why },
       movesTitle: 'The best ways to set them',
       intro: 'If you held these 7 cards many times, here is how each way of setting them would turn out. The dollar figure is the average result per hand on your ' + money(bet) + ' bet, commission included. A minus means you’d lose that much on average, so the smallest loss is best.',
       moves: moves,
@@ -813,7 +813,7 @@
     dz.appendChild(whoTag('Dealer', '', 'dtag'));
     dz.appendChild(dealerCards(showD));
     felt.appendChild(dz);
-    felt.appendChild(el('div', { class: 'print rule', text: 'Dealer wins copies · 5% commission' }));
+    felt.appendChild(el('div', { class: 'print rule', text: 'Dealer wins copies, and wins pay a 5% commission' }));
 
     // Bet circle + low hand
     var amt = res ? res.amt : S.phase === 'bet' ? S.bet : S.bet;
@@ -885,7 +885,7 @@
     } else if (S.phase === 'set') {
       if (S.low.length < 2) status.innerHTML = 'Tap <b>' + (2 - S.low.length) + '</b> card' + (S.low.length ? '' : 's') + ' for your low hand.' + (S.hw ? '' : '<span class="tip">Or tap House way to see how the dealer would set them.</span>');
       else if (bad) status.innerHTML = '<span class="bad">Your high hand must beat your low hand.</span><span class="tip">Swap a card, or tap House way.</span>';
-      else status.innerHTML = '<span class="ok">' + Kit.icon('check') + ' Ready.</span> High: <b>' + Kit.esc(hiName) + '</b> · Low: <b>' + Kit.esc(name2(key2(s.lo))) + '</b>' +
+      else status.innerHTML = '<span class="ok">' + Kit.icon('check') + ' Ready.</span> High <b>' + Kit.esc(hiName) + '</b> and low <b>' + Kit.esc(name2(key2(s.lo))) + '</b>' +
         (S.hw ? '<span class="tip">House way: ' + Kit.esc(S.hw) + '</span>' : '');
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', html: Kit.icon('lightbulb') + '<span>House way</span>', onclick: useHouseWay }));
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Play hands', disabled: !legal(), onclick: playHands }));

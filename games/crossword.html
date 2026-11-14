@@ -260,8 +260,8 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     return bankFiles[f].then(function (arr) {
       var x = arr[info.idx % BLOCK]; if (!x) throw new Error('missing');
       var p = { id: info.id, daily: info.key, date: info.date, kind: info.kind, dow: info.dow, size: info.kind === 'mini' ? 'mini' : 'big', grid: x.g, clues: x.c,
-        title: info.kind === 'mini' ? 'Mini · ' + shortDate(info.date) : DOW[info.dow] + ' Crossword',
-        by: (info.kind === 'mini' ? shortDate(info.date) : info.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (info.dow < 6 ? ' · ' + LEVEL[info.dow] : '')) };
+        title: info.kind === 'mini' ? 'The Mini for ' + shortDate(info.date) : DOW[info.dow] + ' Crossword',
+        by: (info.kind === 'mini' ? shortDate(info.date) : info.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (info.dow < 6 ? ', ' + LEVEL[info.dow].toLowerCase() : '')) };
       loaded[p.id] = p; return p;
     });
   }
@@ -383,7 +383,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     var p = Z.p, g = $('grid');
     $('puz').innerHTML = '<span>' + Kit.esc(p.daily ? p.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : p.title) + '</span>' + Kit.icon('down');
     $('mast').textContent = p.daily ? (p.kind === 'mini' ? 'The Daily Mini' : DOW[p.dow] + ' Crossword') : p.size === 'big' ? 'The Big Crossword' : 'The Mini Crossword';
-    $('by').textContent = p.daily ? p.by + ' · ' + Z.n + '×' + Z.n : 'No. ' + (PUZZLES.indexOf(p) + 1) + ' · ' + Z.n + '×' + Z.n;
+    $('by').textContent = p.daily ? p.by + ', ' + Z.n + '×' + Z.n : 'No. ' + (PUZZLES.indexOf(p) + 1) + ', ' + Z.n + '×' + Z.n;
     g.innerHTML = ''; g.className = 'grid'; g.style.setProperty('--n', Z.n);
     g.style.setProperty('--gw', Z.n <= 5 ? '360px' : Z.n <= 7 ? '440px' : Z.n <= 15 ? '520px' : '560px');
     $('app').classList.toggle('bigp', Z.n >= 13);
@@ -700,9 +700,9 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     function pick(id) { s.close(); if (!Z || Z.p.id !== id) open(id); }
     function state(id) { var t = done[id]; return t !== undefined ? { cls: 'done', txt: t ? fmt(t) : 'done' } : started(id) ? { cls: 'prog', txt: 'started' } : { cls: '', txt: ' ' }; }
     var now = new Date(), tm = dailyInfo('mini', now), tb = dailyInfo('big', now);
-    box.appendChild(el('h3', { text: 'Today · ' + now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) }));
+    box.appendChild(el('h3', { text: 'Today, ' + now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }) }));
     var today = el('div', { class: 'pk-today' });
-    [[tm, 'The Mini', '5×5'], [tb, DOW[tb.dow] + ' Crossword', (tb.dow === 6 ? '21×21' : '15×15') + ' · ' + LEVEL[tb.dow]]].forEach(function (x) {
+    [[tm, 'The Mini', '5×5'], [tb, DOW[tb.dow] + ' Crossword', (tb.dow === 6 ? '21×21' : '15×15') + ', ' + LEVEL[tb.dow].toLowerCase()]].forEach(function (x) {
       var st = state(x[0].id);
       today.appendChild(el('button', { type: 'button', class: 'pk-big ' + st.cls + (Z && Z.p.id === x[0].id ? ' cur' : ''), onclick: function () { pick(x[0].id); } },
         [el('b', { text: x[1] }), el('small', { text: x[2] }), el('i', { text: st.cls === 'done' ? 'Solved ' + st.txt : st.cls === 'prog' ? 'In progress' : 'Play' })]));
@@ -727,7 +727,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
       };
       addDays(1, 7);
     }
-    [['mini', 'Classic minis · 5×5'], ['big', 'Classic bigger · 7×7']].forEach(function (sec) {
+    [['mini', 'Classic minis, 5×5'], ['big', 'Classic bigger puzzles, 7×7']].forEach(function (sec) {
       var list = PUZZLES.filter(function (p) { return p.size === sec[0]; }); if (!list.length) return;
       box.appendChild(el('h3', { text: sec[1] }));
       var g = el('div', { class: 'g' });

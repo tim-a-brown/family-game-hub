@@ -259,7 +259,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     sec = Math.max(0, sec); var m = Math.floor(sec / 60), s = sec - m * 60;
     return m + ':' + (s < 10 ? '0' : '') + (tenths ? s.toFixed(1) : String(Math.floor(s)));
   }
-  function mazeName(o) { o = o || S; return o.mode === 'tilt' ? 'Labyrinth · ' + MC.SIZES[o.size].name : MC.SIZES[o.size].name + ' ' + (o.shape === 'round' ? 'round' : 'square'); }
+  function mazeName(o) { o = o || S; return o.mode === 'tilt' ? MC.SIZES[o.size].name + ' labyrinth' : MC.SIZES[o.size].name + ' ' + (o.shape === 'round' ? 'round' : 'square'); }
   function myName() {
     var n = ''; try { var g = JSON.parse(lsGet('gn_setup_mazes', '{}')); n = g && g.names && g.names[0] || ''; } catch (e) {}
     return n || lsGet('my_name', '').trim() || 'You';
@@ -336,7 +336,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       el('div', { class: 'tx' }, [
         el('b', { text: 'Daily maze' }),
         el('small', { html: Kit.esc(MC.SIZES[dm.size].name + ' ' + (dm.shape === 'round' ? 'round' : 'square') + ' maze, ' + MC.PATHS[dm.paths].toLowerCase() + ' paths') + '<br>Same for everyone today' }),
-        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>Solved in ' + clock(done.secs, true) + (sk > 1 ? ' · ' + sk + '-day streak' : '') + '</span>' })
+        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>Solved in ' + clock(done.secs, true) + (sk > 1 ? ', a ' + sk + '-day streak' : '') + '</span>' })
           : sk ? el('small', { class: 'st', html: Kit.icon('flame') + '<span>' + sk + '-day streak. Keep it going!</span>' }) : null
       ]),
       el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
@@ -387,7 +387,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     if (!S) return;
     var b = S.daily ? (function () { var d = dailyDone(S.daily); return d ? d.secs : 0; })() : boardBest(S.mode, S.size);
     hud.best.textContent = b ? clock(b, b < 60) : '–';
-    hud.third.textContent = S.mode === 'tilt' && S.holes ? String(S.falls) : S.hints ? S.hints + ' · +' + S.pen + 's' : '0';
+    hud.third.textContent = S.mode === 'tilt' && S.holes ? String(S.falls) : S.hints ? '+' + S.pen + 's' : '0';   // (the hints' cost in seconds is what counts on the clock)
   }
   function updTime() { if (hud.time) hud.time.textContent = clock(S.ms / 1000 + S.pen); }
   function setTools(list) {
@@ -434,7 +434,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var head = el('div', { class: 'sh-head' }, [
       el('div', { class: 'sh-l' }, [
         el('span', { class: 'sh-no', text: S.daily ? 'Daily maze' : 'Maze ' + S.seed }),
-        el('span', { class: 'sh-sub', text: S.daily ? dayLabel(S.daily) + ' · ' + MC.SIZES[S.size].name : MC.SIZES[S.size].name + ' · ' + MC.PATHS[S.paths] })
+        el('span', { class: 'sh-sub', text: S.daily ? MC.SIZES[S.size].name + ' maze for ' + dayLabel(S.daily) : MC.SIZES[S.size].name + ' maze with ' + MC.PATHS[S.paths].toLowerCase() + ' paths' })
       ]),
       el('span', { class: 'sh-time' }, [el('span', { text: 'Time' }), timeI = el('i', { text: S.solved ? clock(secsOf(), true) : '' })])
     ]);
@@ -487,7 +487,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     drawPencil();
     applyView();
     hud.zoom.style.display = cell < 30 && !S.done ? '' : 'none';
-    tipEl.textContent = S.done ? '' : cell < 30 ? (TOUCH ? 'Drag from the red dot · pinch to zoom' : 'Drag from the red dot · scroll to zoom · arrow keys work too') : (TOUCH ? 'Drag from the red dot along the corridors' : 'Drag from the red dot, or use the arrow keys');
+    tipEl.textContent = S.done ? '' : cell < 30 ? (TOUCH ? 'Drag from the red dot, and pinch to zoom' : 'Drag from the red dot and scroll to zoom. The arrow keys work too.') : (TOUCH ? 'Drag from the red dot along the corridors' : 'Drag from the red dot, or use the arrow keys');
   }
   function drawPencil() {
     svg.innerHTML = '';
@@ -883,7 +883,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     doneTools();
     var notes = [];
     var steps = M.solution.length - 1;
-    if (mode === 'pencil') notes.push('Line drawn: ' + S.drawn + ' squares · shortest way ' + steps);
+    if (mode === 'pencil') notes.push('The line drawn is ' + S.drawn + ' squares long, and the shortest way is ' + steps + '.');
     else notes.push('Shortest way: ' + steps + ' squares');
     notes.push(S.wrong ? S.wrong + (S.wrong === 1 ? ' wrong turn' : ' wrong turns') : (mode === 'pencil' ? 'No wrong turns!' : null));
     if (S.hints) notes.push(S.hints + (S.hints === 1 ? ' hint' : ' hints') + ' (+' + S.pen + ' s)');
@@ -895,7 +895,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
         delete hiTop[key]; if (S && hud.best) updHud();
         Kit.win({
           title: isBest && prev ? 'New best time!' : S.daily ? 'Daily maze solved!' : 'You made it out!',
-          sub: mazeName(o) + ' in ' + clock(sec, true) + (isBest && prev ? ' (old best ' + clock(prev, true) + ')' : !isBest && prev ? ' · best ' + clock(prev, true) : ''),
+          sub: mazeName(o) + ' in ' + clock(sec, true) + (isBest && prev ? ' (old best ' + clock(prev, true) + ')' : !isBest && prev ? ', against a best of ' + clock(prev, true) : ''),
           notes: notes.filter(Boolean), notesTitle: 'Your solve',
           againLabel: S.daily ? 'Random maze' : 'Next maze', again: function () { newGame(o); },
           look: 'Look at the maze',
@@ -941,7 +941,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var sk = streak(), dd = dailyDone(today());
     Kit.sheet({ title: 'Best times', html: '<p class="muted" style="margin-bottom:10px">Fastest solves for each size, hint seconds included. Linked players count too.</p>' +
       '<table class="bt-table"><tr><th>Size</th><th>Solved</th><th>Pencil</th><th>Labyrinth</th></tr>' + rows + '</table>' +
-      '<p class="muted" style="margin-top:14px">Daily maze: ' + (dd ? 'solved today in ' + clock(dd.secs, true) : 'not solved yet today') + (sk ? ' · ' + sk + '-day streak' : '') + '</p>',
+      '<p class="muted" style="margin-top:14px">Daily maze: ' + (dd ? 'solved today in ' + clock(dd.secs, true) : 'not solved yet today') + (sk ? ', a ' + sk + '-day streak' : '') + '</p>',
       actions: [{ label: 'High scores', cls: 'btn-soft', onClick: function () { ArcadeHi.show(hiKey(S ? S.mode : 'pencil', S ? S.size : 'easy')); } }, { label: 'Close', cls: 'btn-ghost' }] });
   }
 

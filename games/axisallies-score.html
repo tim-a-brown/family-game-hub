@@ -728,7 +728,7 @@
     var k = cur(), P = POW[k], pw = S.pw[k], ph = PHASES[S.phase];
     var h = '<div class="home"><div class="col">';
     h += '<section class="tcard paper" style="--c:' + P.c + '"><div class="th"><div class="who">' + plq(k, 'big') +
-      '<div style="min-width:0"><div class="pn display">' + P.n + '</div><div class="pp' + (pw.cap ? '' : ' lost') + '">' + esc(playerOf(k)) + (pw.cap ? '' : ' · capital lost') + '</div></div></div>' +
+      '<div style="min-width:0"><div class="pn display">' + P.n + '</div><div class="pp' + (pw.cap ? '' : ' lost') + '">' + esc(playerOf(k)) + (pw.cap ? '' : ', capital lost') + '</div></div></div>' +
       '<div class="rd"><small>Round</small><b>' + S.round + '</b></div></div><ol class="phases">';
     PHASES.forEach(function (p, i) {
       h += '<li class="' + (i < S.phase ? 'done' : i === S.phase ? 'on' : '') + '"><button type="button" data-act="phase" data-i="' + i + '"><span class="bx">' + (i < S.phase ? ic('check') : '') + '</span><span class="nm">' + p.n + '</span>' +
@@ -763,13 +763,13 @@
       ORDER.filter(function (x) { return POW[x].s === sd; }).forEach(function (x) {
         var q = S.pw[x];
         h += '<button type="button" class="pw' + (x === k ? ' on' : '') + '" data-act="power" data-k="' + x + '" style="--c:' + POW[x].c + '">' + plq(x) +
-          '<span class="nm"><b>' + POW[x].n + '</b><small>' + esc(playerOf(x)) + (q.cap ? '' : ' · <em>capital lost</em>') + '</small></span>' +
-          '<span class="ipc"><b>' + q.bank + '</b><small>IPCs · <i>+' + q.inc + '</i></small></span></button>';
+          '<span class="nm"><b>' + POW[x].n + '</b><small>' + esc(playerOf(x)) + (q.cap ? '' : ', <em>capital lost</em>') + '</small></span>' +
+          '<span class="ipc"><b>' + q.bank + '</b><small>IPCs, <i>+' + q.inc + '</i> a turn</small></span></button>';
       });
     });
     h += '</section>';
     var ax = vcCount('axis'), al = vcCount('allies');
-    h += '<button type="button" class="vcbar" data-act="vc"><span class="vs"><span class="tt"><span>Axis ' + ax + ' · Allies ' + al + '</span><span>Need ' + need('axis') + ' / ' + need('allies') + '</span></span>' +
+    h += '<button type="button" class="vcbar" data-act="vc"><span class="vs"><span class="tt"><span>Axis ' + ax + '</span><span>Allies ' + al + '</span><span>Need ' + need('axis') + ' / ' + need('allies') + '</span></span>' +
       '<span class="vcmeter"><i class="ax" style="width:' + (ax / NC * 100) + '%"></i><i class="al" style="width:' + (al / NC * 100) + '%"></i><span class="goal" style="left:' + (need('axis') / NC * 100) + '%"></span></span></span>' + ic('right') + '</button>';
     h += '<section><div class="sh"><span class="label">Game log</span>' + (S.log.length > 8 ? '<button type="button" data-act="logall">Show all</button>' : '') + '</div><div class="log">' + logHTML(8) + '</div></section>';
     h += '</div></div>';
@@ -796,7 +796,7 @@
   }
   function renderBattle() {
     var B = S.battle, h = '';
-    h += vbar((B.kind === 'land' ? 'Land battle' : 'Sea battle') + (B.where ? ' · ' + esc(B.where) : ''));
+    h += vbar((B.kind === 'land' ? 'Land battle' : 'Sea battle') + (B.where ? ' in ' + esc(B.where) : ''));
     if (B.stage === 'setup') h += battleSetup(B); else h += battleFight(B);
     app.innerHTML = h;
     var w = app.querySelector('.where');
@@ -861,7 +861,7 @@
     var h = '<div class="fight"><div class="trayw wood"><div class="tray felt-in" style="--dsz:' + dsz(L) + '">';
     function half(sd, P, role, groups, u, st, keys) {
       var hits = groups ? groups.reduce(function (s, g) { return s + g.hits; }, 0) : 0;
-      var x = '<div class="half ' + sd + (anim ? '' : ' landed') + '"><div class="hh">' + plq(sd === 'att' ? B.att.p : B.def.p) + '<span class="t">' + role + ' · ' + P.n + '<small>' + (alive(u) || u.aa ? '' : 'No units left') + '</small></span>' +
+      var x = '<div class="half ' + sd + (anim ? '' : ' landed') + '"><div class="hh">' + plq(sd === 'att' ? B.att.p : B.def.p) + '<span class="t">' + P.n + (role === 'Defender' ? ' defends' : ' attacks') + '<small>' + (alive(u) || u.aa ? '' : 'No units left') + '</small></span>' +
         (groups ? '<span class="hits' + (hits ? '' : ' zero') + '"><small>Hits</small>' + hits + '</span>' : '') + '</div>';
       if (groups && groups.length) {
         x += '<div class="groups">';
@@ -880,7 +880,7 @@
     }
     var st = B.start || {};
     h += half('def', D, 'Defender', L ? L.def : null, B.def.u, st.def || B.def.u, keysD);
-    var mid = B.stage === 'done' ? 'Battle over' : L ? (L.step === 'open' ? 'Opening fire' : L.step === 'surprise' ? 'Surprise strike · round ' + L.round : 'Round ' + L.round) : 'Round 1';
+    var mid = B.stage === 'done' ? 'Battle over' : L ? (L.step === 'open' ? 'Opening fire' : L.step === 'surprise' ? 'Surprise strike in round ' + L.round : 'Round ' + L.round) : 'Round 1';
     h += '<div class="mid"><span>' + mid + '</span></div>';
     h += half('att', A, 'Attacker', L ? L.att : null, B.att.u, st.att || B.att.u, keysA);
     if (B.stage === 'done' && B.res) h += '<div class="stamp' + (B.res.r === 'a' ? ' win' : '') + '"' + (anim ? ' style="animation-delay:.9s"' : '') + '>' + stampText(B) + '</div>';
@@ -1138,7 +1138,7 @@
     h += '<div class="buy">';
     BUY.forEach(function (t) {
       var n = c.u[t] || 0, u = U[t];
-      var stats = t === 'ic' ? 'On land you held all turn' : 'Att ' + u.a + ' · Def ' + u.d + ' · Move ' + u.m;
+      var stats = t === 'ic' ? 'On land you held all turn' : 'Attack ' + u.a + ', defense ' + u.d + ' and move ' + u.m;
       h += '<div class="urow' + (n ? ' on' : '') + '"><span class="cost">' + u.cost + '<small>IPC</small></span><span class="un"><b>' + u.n + '</b><small>' + stats + '</small><small>' + (UNOTE[t] || '') + '</small></span>' +
         '<span class="stp2"><button type="button" data-act="cart-sub" data-t="' + t + '"' + (n ? '' : ' disabled') + ' aria-label="One less">−</button><output>' + n + '</output><button type="button" data-act="cart-add" data-t="' + t + '"' + (pw.cap && left >= u.cost ? '' : ' disabled') + ' aria-label="One more">+</button></span></div>';
     });
@@ -1148,7 +1148,7 @@
       h += '<div class="sh" style="margin-top:16px"><span class="label">Factories and repairs</span></div>';
       fs.forEach(function (x) {
         var r = c.rep[x.i] || 0, f = x.f;
-        h += '<div class="frow"><span class="fn">' + esc(f.name) + '<small>Can place ' + Math.max(0, f.val - f.dmg + r) + ' of ' + f.val + ' units' + (f.dmg ? ' · ' + (f.dmg - r) + ' damage left' : ' · no damage') + '</small></span>' +
+        h += '<div class="frow"><span class="fn">' + esc(f.name) + '<small>Can place ' + Math.max(0, f.val - f.dmg + r) + ' of ' + f.val + ' units' + (f.dmg ? ', with ' + (f.dmg - r) + ' damage left' : ', with no damage') + '</small></span>' +
           (f.dmg ? '<span class="stp2"><button type="button" data-act="rep-sub" data-i="' + x.i + '"' + (r ? '' : ' disabled') + '>−</button><output>' + r + '</output><button type="button" data-act="rep-add" data-i="' + x.i + '"' + (r < f.dmg && left >= 1 && pw.cap ? '' : ' disabled') + '>+</button></span>' : '') + '</div>';
       });
     }
@@ -1384,7 +1384,7 @@
     function paint() {
       node.innerHTML = '';
       var ax = 0, al = 0; for (var c in dr) { if (dr[c] === 'axis') ax++; else al++; }
-      head.innerHTML = '<b>Axis ' + ax + '</b> · <b>Allies ' + al + '</b>. At the end of a round the Axis need ' + need('axis') + ' and the Allies need ' + need('allies') + ' to win. Tap a city to change who holds it.';
+      head.innerHTML = 'The Axis hold <b>' + ax + '</b> and the Allies <b>' + al + '</b>. At the end of a round the Axis need ' + need('axis') + ' and the Allies need ' + need('allies') + ' to win. Tap a city to change who holds it.';
       node.appendChild(head);
       var g = el('div', { class: 'vcgrid', style: { 'margin-top': '10px' } });
       CITIES.forEach(function (c) {
@@ -1414,7 +1414,7 @@
       dr.forEach(function (f, i) {
         node.appendChild(el('div', { class: 'frow' }, [
           el('span', { html: plq(f.own) }),
-          el('span', { class: 'fn', html: esc(f.name) + '<small>Value ' + f.val + ' · damage ' + f.dmg + ' of ' + 2 * f.val + '</small>' }),
+          el('span', { class: 'fn', html: esc(f.name) + '<small>Value ' + f.val + ', with damage ' + f.dmg + ' of ' + 2 * f.val + '</small>' }),
           el('span', { class: 'stp2' }, [
             el('button', { type: 'button', text: '−', disabled: f.dmg <= 0, 'aria-label': 'Less damage', onclick: function () { f.dmg--; paint(); } }),
             el('output', { text: String(f.dmg) }),

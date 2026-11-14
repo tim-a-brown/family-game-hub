@@ -116,11 +116,11 @@ function line(r) {
   var e = r.e, w = e.winner;
   if (typeof w === 'number' && r.ps[w]) w = r.ps[w].name;
   var bits = [];
-  if (w) bits.push(w + ' won'); else if (e._summary) bits.push(String(e._summary).split(' · ').slice(0, 2).join(' · '));
+  if (w) bits.push(w + ' won'); else if (e._summary) bits.push(Kit.factParts(e._summary)[0]);
   var sc = r.ps.filter(function (p) { return typeof p.score === 'number'; }); if (sc.length > 1 && bits.length < 2) bits.push(sc.map(function (p) { return p.score; }).join(' – '));
-  return bits.join(' · ') || 'Finished';
+  return bits.join(', ') || 'Finished';   // ("Tim won, 12 – 8")
 }
-function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+function when(t) { if (!t) return ''; var d = new Date(t); return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
 function month(t) { return t ? new Date(t).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Older'; }
 
 var WIDE = window.matchMedia('(min-width: 900px) and (orientation: landscape)'), cur = '', shownSheet = null;
@@ -164,7 +164,7 @@ function paint() {
       el('span', { class: 'ck', html: Kit.icon('check') }),
       el('span', { class: 'gi', html: GameIcon(r.gid) }),
       el('span', { class: 'tx' }, [el('b', { text: title(r) }), el('small', { text: line(r) }),
-        el('small', r.from ? { html: '<span class="gh-from">' + Kit.icon('link') + 'From ' + Kit.esc(r.from.by || r.from.from || 'someone') + '</span> · ' + Kit.esc(when(r.date)) } : { text: sub })]),
+        el('small', r.from ? { html: '<span class="gh-from">' + Kit.icon('link') + 'From ' + Kit.esc(r.from.by || r.from.from || 'someone') + '</span><span class="k-fact">' + Kit.esc(when(r.date)) + '</span>' } : { text: sub })]),
       pp]);
     row.addEventListener('click', function () {
       if (selecting) { var k = r.key + '|' + r.id; if (picked[k]) delete picked[k]; else picked[k] = r; Kit.sfx('tap'); row.classList.toggle('on', !!picked[k]); bar(); return; }
@@ -191,7 +191,7 @@ function showPane(pane, r) {
   var acts = el('div', { class: 'acts' });
   actions(r).forEach(function (a) { if (a.label === 'Close') return; acts.appendChild(el('button', { type: 'button', class: 'btn btn-sm ' + (a.label === 'Delete' ? 'btn-soft' : 'btn-ghost'), text: a.label, onclick: a.onClick })); });
   pane.appendChild(el('div', { class: 'gh-ph' }, [el('span', { class: 'gi', html: GameIcon(r.gid) }),
-    el('div', { class: 'tx' }, [el('h2', { text: title(r) }), el('small', { text: meta.filter(Boolean).join(' · ') })]), acts]));
+    el('div', { class: 'tx' }, [el('h2', { text: title(r) }), null   // (when, how long and how: Kit.historyDetail shows each under its own label)]), acts]));
   pane.appendChild(Kit.historyDetail(e, { game: r.gid }));
 }
 // Computer: up and down arrows step through the list

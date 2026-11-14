@@ -51,7 +51,7 @@
 .who .avatar{width:22px;height:22px;font-size:.7rem;}
 .who .avatar .ico{width:62%;height:62%;}
 .who .hn{color:rgba(255,255,255,.75);font-weight:700;overflow:hidden;text-overflow:ellipsis;}
-.who .hn:not(:empty)::before{content:"·";margin:0 6px 0 2px;color:rgba(255,255,255,.4);}
+.who .hn:not(:empty){margin-left:2px;padding:1px 8px;border-radius:999px;background:rgba(255,255,255,.12);}   /* (the hand held, as a tag of its own beside the name) */
 .who.won{box-shadow:0 0 0 3px var(--yellow),0 0 16px rgba(255,200,61,.5);}
 .who.won .hn{color:var(--yellow);}
 /* betting circles */
@@ -588,7 +588,7 @@
     ];
     Coach.sheet({
       title: 'Play or fold?',
-      best: { label: 'Best move · your ' + (pe.cat ? nm : hand), value: r.play ? 'Play' : 'Fold', text: why },
+      best: { label: 'The best move with your ' + (pe.cat ? nm : hand), value: r.play ? 'Play' : 'Fold', text: why },
       movesTitle: 'Both choices, compared',
       intro: 'Your ' + money(a) + ' Ante is already out. If you held these exact cards many times, here is how each choice would turn out on average for the hand (Ante and Play together). A minus means you’d lose that much on average, so the smaller loss is the better choice. “Win” means you come out ahead.',
       moves: moves,
@@ -710,7 +710,7 @@
           tap: function (v) { addChip(v, rk.el.querySelector('.cz-slot[data-v="' + v + '"]')); },
           over: function (k, v) {
             if (k == null) { status.innerHTML = 'Drop the ' + money(v) + ' chip on <b>Ante</b> or <b>Pair Plus</b>'; return; }
-            status.innerHTML = v <= room(k) ? '<b>' + (k === 'pp' ? 'Pair Plus' : 'Ante') + '</b> · let go to bet ' + money(v) : (k === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips');
+            status.innerHTML = v <= room(k) ? '<b>' + (k === 'pp' ? 'Pair Plus' : 'Ante') + '</b>: let go to bet ' + money(v) : (k === 'ante' ? 'Keep enough back for your Play bet' : 'Not enough chips');
           },
           done: function (placed) { if (!placed) status.innerHTML = hint0; },
           drop: function (k, v) { return addChip(v, null, k); }
@@ -741,7 +741,7 @@
     if (hidden) { status.innerHTML = '<span class="big">&nbsp;</span>&nbsp;'; return; }
     var cls = res.net > 0 ? 'pos' : res.net < 0 ? 'neg' : '';
     status.innerHTML = '<span class="big ' + cls + '">' + (res.net ? signed(res.net) : 'Even') + '</span>' + Kit.esc(res.why) +
-      (res.bonus ? ' · Ante bonus ' + money(res.bonus) : '') + (res.ppWin ? ' · Pair Plus ' + money(res.ppWin) : '');
+      (res.bonus ? '<span class="k-fact">Ante bonus ' + money(res.bonus) + '</span>' : '') + (res.ppWin ? '<span class="k-fact">Pair Plus ' + money(res.ppWin) + '</span>' : '');
   }
 
   function animateDeal() {
