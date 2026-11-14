@@ -1887,6 +1887,8 @@
   //   players: {min, max, count, names:true, cpu:(mode)=>bool|'seats'|'mix', seatLabel}
   //            cpu 'seats': every seat but the first is a computer. 'mix': every seat but the first has a
   //            person/robot switch (the robot button at the end of its row); cfg.players carries cpu per seat.
+  //            onlineBots: true = a game on online.js whose table takes the robots seated in the setup (the
+  //            host's device plays them); the Play online review shows them. TurnNet games say so with info().bots.
   //            The setup shows who's playing on one line (the people from last time); a tap opens the players
   //            sheet (playersSheet) for how many, who sits where, robots and their skill. The returned
   //            object's seats() gives [{name, cpu}] as it stands, for a game that shows something per seat
@@ -2679,7 +2681,9 @@
         // (the same chips as the Players card: partners joined by "&", the sides by "vs", robots with their skill)
         var chips;
         // (a game the computer can't play online seats people only: the robots of the setup don't come)
-        var wl = lastWho && (info && !info.bots ? { seats: lastWho.seats.filter(function (t) { return !t.cpu; }), teams: lastWho.seats.some(function (t) { return t.cpu; }) ? null : lastWho.teams } : lastWho);
+        var botsCome = info ? !!info.bots : !!(P && P.onlineBots);
+        var wl = lastWho && (!botsCome ? { seats: lastWho.seats.filter(function (t) { return !t.cpu; }), teams: lastWho.seats.some(function (t) { return t.cpu; }) ? null : lastWho.teams } : lastWho);
+        var botsHere = wl ? wl.seats.filter(function (t) { return t.cpu; }).length : 0;
         if (wl && wl.seats.length) chips = whoChips(wl.seats, wl.teams, 'k');
         else { chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]); pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); }); }
         who.appendChild(chips);
@@ -2690,7 +2694,8 @@
           lines.push(info.min === info.max ? 'This table seats ' + info.max + ' people.' : 'A game can start with ' + info.min + ' ' + (info.min === 1 ? 'person' : 'people') + ', and the table seats up to ' + info.max + '.');
           var filled = info.bots ? info.seats(info.min) - info.min : 0;
           if (filled > 0) lines.push('The computer plays any seat that nobody takes.');
-        } else if (robotsHere && P && modeCpu(om)) lines.push('Computer players are chosen at the table.');
+        } else if (botsHere) lines.push((botsHere === 1 ? 'The computer player you seated comes' : 'The computer players you seated come') + ' to the table too, and your device plays ' + (botsHere === 1 ? 'it.' : 'them.'));
+        else if (robotsHere && P && modeCpu(om)) lines.push('Computer players are chosen at the table.');
         lines.forEach(function (t) { who.appendChild(el('p', { class: 'k-rev-p', text: t })); });
         box.appendChild(who);
         // the rules as they stand
@@ -2713,7 +2718,7 @@
       // the table itself: opened here and now where the game's tables are TurnNet's, by the game's own lobby otherwise
       function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else go(true, 'open'); }, 0); }
       // (the robots the review shows keep their names at the table, in the seats nobody takes)
-      function botNames() { return lastWho && !(info && !info.bots) ? lastWho.seats.filter(function (t) { return t.cpu; }).map(function (t) { return t.name; }) : []; }
+      function botNames() { return lastWho && info && info.bots ? lastWho.seats.filter(function (t) { return t.cpu; }).map(function (t) { return t.name; }) : []; }
       function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true, 'find'); }, 0); }
       sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
     }
