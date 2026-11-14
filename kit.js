@@ -2112,10 +2112,10 @@
     return box;
   }
   // A robot's token says how well it plays by itself (Tim, 2026-11-14: "incorporate it into the robot icon but not just as
-  // a color. be creative"): an easy robot dozes with its eyes shut and a smile on a cool green field; a normal one looks
-  // straight at you on warm gold; a hard one glares with red eyes and lowered brows over a dark ember with fire licking
-  // up from the bottom. Its seat's color rings it. The skill's own words (Easy, Normal, Hard, or a game's names for them)
-  // decide which, so every game's levels land on one of the three.
+  // a color", then "be creative but professional"): the robot in its seat's color on dark glass, and under it a gauge of
+  // three segments along the token's lower edge, lit to its level: one in green for Easy, two in gold for Normal, all
+  // three in ember for Hard, with the glass warming from below in the same light (Hard's glow breathes slowly). The
+  // skill's own words (Easy, Normal, Hard, or a game's names for them) decide which, so every game's levels fit.
   function botLevel(tag) {
     var t = String(tag || '').toLowerCase();
     if (/easy|begin|novice|gentle|casual|relax|kid|learn/.test(t)) return 'e';
@@ -2123,15 +2123,14 @@
     return 'n';
   }
   function botFace(tag, color) {
-    var lv = botLevel(tag), eyes = lv === 'e'
-      ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="#1b1c2e" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>'
-      : lv === 'n'
-        ? '<circle cx="9" cy="12" r="1.5" fill="#1b1c2e"/><circle cx="15" cy="12" r="1.5" fill="#1b1c2e"/><path d="M10.2 15.2h3.6" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>'
-        : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="#1b1c2e" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff4a2a"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff4a2a"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>';
-    var svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.2" fill="' + (lv === 'h' ? '#ff6a3d' : '#f3f1fb') + '"/>' +
-      '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
-      '<rect x="4.4" y="6" width="15.2" height="12.2" rx="4.2" fill="#f3f1fb"/>' + eyes + '</svg>';
-    return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html: (lv === 'h' ? '<i class="fl"></i><i class="fl f2"></i>' : '') + svg });
+    var lv = botLevel(tag), lit = lv === 'e' ? 1 : lv === 'n' ? 2 : 3, R = 17.2, segs = '';
+    // three arcs across the bottom, from lower left to lower right (angles in degrees, 0 at the right, down positive)
+    [[148, 112], [108, 72], [68, 32]].forEach(function (a, k) {
+      var p = function (d) { var r = d * Math.PI / 180; return (20 + R * Math.cos(r)).toFixed(2) + ' ' + (20 + R * Math.sin(r)).toFixed(2); };
+      segs += '<path class="gs' + (k < lit ? ' on' : '') + '" d="M' + p(a[0]) + 'A' + R + ' ' + R + ' 0 0 0 ' + p(a[1]) + '"/>';
+    });
+    return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html:
+      '<svg class="gauge" viewBox="0 0 40 40" aria-hidden="true">' + segs + '</svg><span class="bi">' + icon('bot') + '</span>' });
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
