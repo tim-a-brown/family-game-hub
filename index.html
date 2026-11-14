@@ -936,6 +936,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not([data-theme]) .sbox.ct .art .gicon.mini-ct{position:relative;left:auto;top:auto;justify-self:center;width:31px;height:42px;border-radius:0;transform:rotate(-4deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));}
 :root:not([data-theme]) .sbox.ct:active .art .gicon.mini-ct{transform:scale(.92) rotate(-6deg);}
 :root:not([data-theme]) .shelf{padding-bottom:6px;}
+:root:not([data-theme]) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--kpn) - 1) * 10px) / var(--kpn));gap:9px 10px;}
+:root:not([data-theme]) .shelf.two .sbox{width:auto;flex:none;}
+:root:not([data-theme]) .sbox .nm,:root:not([data-theme]) .sbox .nm.two{padding-right:0;margin-right:30px;}   /* (clear of how long ago, "45m", at the box's top right: a margin, so a name too long for the room is measured as too long and eased down) */
 :root:not([data-theme]) .shelf-more{bottom:6px;background:linear-gradient(90deg,transparent,rgba(14,15,27,.8) 60%);}
 :root:not([data-theme]) .sdel{box-shadow:0 0 0 2px #1a1c33,0 4px 10px rgba(224,36,60,.5);}
 /* online games: glass bars; your move rings in gold with a gold play button */
@@ -2055,6 +2058,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var edge = function () { more.classList.toggle('off', shelf.scrollLeft + shelf.clientWidth >= shelf.scrollWidth - 8); };
       shelf.addEventListener('scroll', edge, { passive: true });
       rail.appendChild(el('div', { class: 'shelf-w' }, [shelf, more]));
+      kpLayout(shelf);
       if (sx) shelf.scrollLeft = sx;
       requestAnimationFrame(edge);
     }
@@ -2072,6 +2076,17 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     renderFoot(items.length);
     fitNames(rail);
   }
+  // Night glass: Keep playing stands in two rows once there are more games than fit across one (Tim, 2026-11-14: "do two
+  // rows in keep playing"); the newest first, filling each column top and bottom, so the newest four are the ones in
+  // view on a phone and the shelf scrolls sideways for the rest
+  function kpLayout(shelf) {
+    shelf = shelf || document.querySelector('#rail .shelf'); if (!shelf) return;
+    var n = shelf.querySelectorAll('.sbox').length, w = innerWidth, cols = w >= 1180 ? 5 : w >= 900 ? 4 : w >= 560 ? 3 : 2;
+    var two = glassOn() && n > cols;
+    shelf.classList.toggle('two', two);
+    shelf.style.setProperty('--kpn', cols);
+  }
+  window.addEventListener('resize', function () { kpLayout(); });
   // a game's name on its box shrinks until it fits on one line (no "…"); a very long one takes two lines
   function fitNames(box) {
     function fit() {
