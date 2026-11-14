@@ -79,7 +79,7 @@
     '.sx-c.wild{box-shadow:inset 0 0 0 2px #e7b416,0 1px 2px rgba(0,0,0,.4);}',
     '.sx-c.dup{box-shadow:inset 0 0 0 2px #e5263f,0 1px 2px rgba(0,0,0,.4);opacity:.85;}',
     '.sx-c.dup::after{content:"";position:absolute;left:3px;right:3px;top:50%;height:2px;background:#e5263f;transform:rotate(-30deg);}',
-    '.sx-c.act{font-size:.5rem;letter-spacing:.02em;text-transform:uppercase;padding:0 1px;text-align:center;}',
+    '.sx-c.act{font-size:.5rem;padding:0 1px;text-align:center;}',
     // wild-card strip (Five Crowns)
     '.sx-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;}',
     '.sx-strip>div{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;}',

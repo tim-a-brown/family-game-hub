@@ -252,7 +252,7 @@
     '.tv-q{position:relative;padding:12px 12px 12px 14px;border-radius:14px;background:linear-gradient(160deg,#1c2350,#141a3c);box-shadow:inset 4px 0 0 var(--cc),0 6px 14px -8px rgba(0,0,0,.7);color:#fff;display:flex;flex-direction:column;gap:8px;}' +
     '.tv-top{display:flex;align-items:center;gap:8px;}' +
     '.tv-n{font-family:var(--display);font-size:1rem;color:#ffd447;}' +
-    '.tv-k{font-size:.64rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--cc);color:#fff;}' +
+    '.tv-k{font-size:.64rem;font-weight:900;padding:2px 7px;border-radius:999px;background:var(--cc);color:#fff;}' +
     '.tv-q p{margin:0;font-weight:800;font-size:.98rem;line-height:1.3;}' +
     '.tv-a{display:flex;}.tv-ans{padding:3px 9px;border-radius:8px;background:#1fa64a;color:#fff;font-weight:900;font-size:.84rem;}' +
     '.tv-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;}' +

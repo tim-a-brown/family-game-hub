@@ -111,7 +111,7 @@ const GameHistory = window.GameHistory = (function(){
       .gh-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0;}
       .gh-stat{background:rgba(255,255,255,.05);border-radius:8px;padding:8px;text-align:center;}
       .gh-stat-val{font-family:var(--serif,serif);font-size:1.2rem;font-weight:900;color:var(--gold,#f5c842);}
-      .gh-stat-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.4);margin-top:2px;}
+      .gh-stat-lbl{font-size:.6rem;color:rgba(255,255,255,.4);margin-top:2px;}
       .gh-empty{text-align:center;color:rgba(255,255,255,.3);padding:32px 0;font-size:.9rem;}
       .gh-sudoku{display:grid;grid-template-columns:repeat(9,1fr);gap:1px;
         background:rgba(255,255,255,.3);border:2px solid rgba(255,255,255,.5);
