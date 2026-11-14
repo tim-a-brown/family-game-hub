@@ -76,7 +76,7 @@
   }
   // ── App theme (colours only). Set on <html> before first paint; Kit.theme has the list and picker.
   var THEME_LIST = [
-    { id: 'night', name: 'Night', bg: '#141029', s: '#2d2556', t: '#fbf8ff', a: '#ffc83d', light: false },
+    { id: 'night', name: 'Night', bg: '#0e0f1b', bar: '#171a30', s: '#30355c', t: '#f3f1fb', a: '#ffd34d', light: false },
     { id: 'light', name: 'Light', bg: '#f3f1f9', s: '#dcd8ec', t: '#1b1733', a: '#ff5c9a', light: true },
     { id: 'dark', name: 'Dark', bg: '#0b0b0f', s: '#2f2f39', t: '#f4f4f7', a: '#4da3ff', light: false },
     { id: 'midnight', name: 'Midnight', bg: 'linear-gradient(180deg,#123a7c,#050a18)', bar: '#123a7c', s: '#1f376f', t: '#f1f5ff', a: '#ffc83d', light: false },
@@ -94,9 +94,19 @@
     meta('theme-color', t.bar || t.bg);
     meta('apple-mobile-web-app-status-bar-style', t.light ? 'default' : 'black');
   }
+  // Night glass in color: the page, the setup's Players card and the results card take the game's category color (--h).
+  // Set before first paint, from games.js (loaded ahead of this file); a page that isn't a game keeps the default violet.
+  function catHue(id) {
+    try {
+      var g = findGame(id || pageKey()), c = null;
+      if (g && typeof GAME_CATS !== 'undefined') for (var i = 0; i < GAME_CATS.length; i++) if (GAME_CATS[i].id === g.cat) c = GAME_CATS[i];
+      if (c) root.style.setProperty('--h', 'hsl(' + c.hue + ' ' + c.sat + '% 58%)');
+    } catch (e) {}
+  }
   function themeSet(id) { lsSet('fgh_theme', themeRec(id).id); themeApply(id); }
   meta('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
   themeApply(themeGet());
+  catHue();
   meta('apple-mobile-web-app-capable', 'yes');
   meta('mobile-web-app-capable', 'yes');
   meta('apple-mobile-web-app-status-bar-style', 'black');
@@ -1635,7 +1645,7 @@
     var accent = opts.color || (game && game.color) || '#ffc83d';
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
-    if (game) { doc.title = game.name; applyTheme(game.id); }
+    if (game) { doc.title = game.name; applyTheme(game.id); catHue(game.id); }
     if (game && spotifyOn() && spotifyPick(game.id)) spotifyLoad().then(function (Sp) { Sp.gameStart(game.id); }, function () {});
     // Faint silhouette of the game's mark in the middle of the table
     if (game && window.GameIcon && GameIcon.mark && opts.mark !== false) {
