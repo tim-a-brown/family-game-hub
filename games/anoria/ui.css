@@ -503,6 +503,7 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .sc-cost{position:relative;flex:none;width:24px;height:28px;margin-right:-4px;background:url(ui/mark-spark.webp) center/contain no-repeat;}
 .sc-cost b{position:absolute;left:49.4%;top:51.9%;transform:translate(-50%,-50%);font:400 .78rem/1 var(--slab);color:var(--an-ink);}
 .sc-note{flex:1 1 100%;margin:0;text-align:center;font:italic 400 .95rem/1.25 var(--fell);color:#cbb98a;}
+@media (min-width:700px) and (min-height:700px){ .sc-map{zoom:1.3;} }   /* (an iPad: the map of the levels a size a finger hits; its tabs were 38 by 26) */
 @media (max-width:359px){ .sc-lv{width:32px;height:25px;} .sc-lv.hand{height:28px;} .sc-lv.side{height:22px;} .sc-gd{width:20px;height:20px;} .sc-rel{width:20px;} .sc-back{width:13px;height:18px;top:1px;} .sc-map{padding:5px 5px;gap:5px;} }
 @media (orientation:landscape) and (max-height:560px){
   .view.flow.scan{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);}
@@ -516,6 +517,18 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
   .view.flow.scan .rd-chips{justify-content:flex-start;}
   .view.flow.scan .sc-note{text-align:left;}
 }
+/* An iPad held sideways reads the table's cards the way a phone on its side does: the strip at the left, the road and
+   the notes in a column of their own at the right, so the notes have the screen's height and nothing under the road is
+   cut off (scan's size() puts .sd on the view: wider than tall and 960 wide at least) */
+.view.flow.scan.sd:not(.fo-on){display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;align-items:center;justify-items:center;column-gap:12px;row-gap:8px;padding-top:calc(var(--safe-t) + 14px);padding-bottom:calc(var(--safe-b) + 12px);}
+.view.flow.scan.sd:not(.fo-on) .sc-body{grid-column:1;grid-row:1 / 4;align-self:center;}
+.view.flow.scan.sd:not(.fo-on) .vf-flow{--cu:min(calc(100vh - 150px),560px);overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 5%,#000 92%,transparent);mask-image:linear-gradient(90deg,transparent,#000 5%,#000 92%,transparent);}
+.view.flow.scan.sd:not(.fo-on) .vf-strip{grid-column:1;grid-row:4;max-width:100%;}
+.view.flow.scan.sd:not(.fo-on) .vf-head{grid-column:2;grid-row:1;justify-self:start;text-align:left;padding:0 64px 0 0;min-height:60px;}   /* (as tall as the close button, so the road starts under it) */
+.view.flow.scan.sd:not(.fo-on) .sc-road{grid-column:2;grid-row:2;justify-self:start;width:calc(100% - 24px);}
+.view.flow.scan.sd:not(.fo-on) .vf-notes{flex:none;grid-column:2;grid-row:3 / 5;align-self:start;justify-self:start;width:calc(100% - 24px);height:auto;max-height:100%;}
+.view.flow.scan.sd:not(.fo-on) .rd-chips{justify-content:flex-start;}
+.view.flow.scan.sd:not(.fo-on) .sc-note{text-align:left;}
 
 /* ══ The road under the card (scan: roadOf, paintRoad). The table's Domains as small tiles in the order they lie, always
    in the same place under the card; the ones the card can go to are lit, with the two totals (yours as the move would
@@ -588,8 +601,11 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .fo-c.front{box-shadow:0 0 0 3px #fff3c4,0 0 18px 4px rgba(246,214,120,.6),0 10px 20px rgba(0,0,0,.6);}
 .fo-c:active{transform:scale(.97);}
 .fo-f.tgt .fo-c{box-shadow:0 0 0 3px #ffb3b3,0 0 18px 4px rgba(255,120,120,.6);animation:an-pulse 1.1s infinite;}
-.fo-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:calc(var(--cw) + 60px);}
-.fo .rd-c{min-height:36px;font-size:.92rem;padding:0 10px;} .fo .rd-c.clash{padding-left:6px;}
+.fo-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;max-width:calc(var(--cw) + 8px);}   /* (no wider than the card's own column: two Figures' chips side by side never meet) */
+.fo .rd-c{min-height:36px;font-size:.92rem;padding:3px 10px;max-width:100%;box-sizing:border-box;white-space:normal;text-align:left;line-height:1.05;} .fo .rd-c.clash{padding-left:6px;}
+/* (a walk chip is a move, so it has the brass of the game's action buttons and footprints; the dark arrows under the sentence only page along the road) */
+.fo .rd-c.mv{color:#2a1d08;background:linear-gradient(180deg,#f8e6a8 0%,#ecd07f 35%,#d6ad55 100%);box-shadow:0 0 0 1.5px #7c5a1c,0 2px 6px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,251,228,.8);gap:5px;}
+.rd-st{display:inline-grid;width:18px;height:18px;flex:none;} .rd-st svg{width:100%;height:100%;display:block;}
 .fo-none{margin:0;align-self:center;font:italic 400 1rem/1.25 var(--fell);color:#d9cba4;text-align:center;}
 .fo-mid{position:relative;z-index:2;min-width:0;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
 .fo-tile{position:relative;width:var(--tw);height:var(--th);padding:0;border:0;background:none;cursor:pointer;flex:none;}
@@ -698,6 +714,7 @@ b.kq{white-space:normal;} .kq-n{white-space:nowrap;} .kq-i{display:inline-block;
 .lg-l.dim,.lg-none{font:italic 400 .95rem/1.3 var(--fell);color:#b9b08f;}
 .lg-none{margin:18px 4px;text-align:center;}
 .lg-c{display:inline;padding:0;border:0;background:none;font:inherit;font-weight:700;color:#f6e3a1;text-decoration:underline;text-decoration-color:rgba(246,227,161,.45);text-underline-offset:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.lg-nw{white-space:nowrap;}
 .lg-g.end h2{color:#fff1bf;}
 .cap-card{flex:1;min-width:0;display:flex;align-items:center;gap:8px;border:0;background:none;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer;}
 .cap-card .who{font:400 1.12em/1 var(--fell);color:#f6e3a1;margin-right:.25em;}
@@ -1038,7 +1055,7 @@ button.ll-n{cursor:pointer;}
 .view.lesson .view-x{display:none;}
 .view.lesson.side{flex-direction:row;align-items:flex-start;gap:16px;padding-left:max(18px,env(safe-area-inset-left,0px));}
 .view.lesson.side .view-notes{width:min(300px,30vw);}
-.view-x{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));top:calc(var(--safe-t) + 10px);z-index:2;}
+.view-x{position:fixed;right:max(calc(12px + env(safe-area-inset-right,0px)),19px);top:max(calc(var(--safe-t) + 10px),19px);z-index:2;}   /* (19px at least from each edge: clear of a phone's rounded corner when the browser reports no safe area) */
 
 /* ── Setup: choosing a deck ── */
 .dk-pick{display:flex;flex-direction:column;gap:8px;}
@@ -1163,7 +1180,7 @@ button.ll-n{cursor:pointer;}
   opacity:0;transform:translateY(14px);transition:opacity .22s,transform .26s var(--ease);}
 .an-screen.show{opacity:1;transform:none;}
 .an-sc-h .icon-btn{background:var(--w08);color:var(--text);}
-.an-sc-h{flex:none;display:flex;align-items:center;gap:10px;padding:calc(var(--safe-t) + 10px) calc(var(--safe-r) + 12px) 10px calc(var(--safe-l) + 12px);}
+.an-sc-h{flex:none;display:flex;align-items:center;gap:10px;padding:max(calc(var(--safe-t) + 10px),19px) max(calc(var(--safe-r) + 12px),19px) 10px max(calc(var(--safe-l) + 12px),19px);}
 .an-sc-t{flex:1;min-width:0;margin:0;font:400 1.7rem/1.1 var(--fell);color:#f3e9d2;overflow-wrap:break-word;}   /* (natural case, no tracking: the collection's screens are set like a printed book, not in spaced small capitals) */
 .an-sc-tools{flex:none;display:flex;align-items:center;gap:8px;}
 .an-sc-b{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:4px calc(var(--safe-r) + 14px) calc(var(--safe-b) + 18px) calc(var(--safe-l) + 14px);}
@@ -1482,6 +1499,8 @@ button.ll-n{cursor:pointer;}
 .an-felt.bl > .an-cap .cap-card .tx{font-size:1rem;}
 .an-felt.bl.up > .an-cap{align-self:center;}
 .an-felt.bl .an-hand .ac.mini .ac-name{font-size:clamp(3.2em,11px,4.2em);overflow-wrap:normal;}
+.an-felt.rw .an-hand:not(.small) .ac.mini .ac-name{font-size:clamp(3.2em,9.5px,4.4em);overflow-wrap:normal;}   /* (a phone held upright: names that read, a long word stepped down by fitNames) */
+.an-felt.many .an-hand:not(.small) .ac.mini .ac-name{font-size:clamp(3.2em,11px,4.2em);overflow-wrap:normal;}   /* (more players: the hand's names as large as the two-player table's) */
 .an .an-felt.bl > .an-go{grid-area:go;display:flex;align-items:stretch;min-width:0;}
 .an .an-felt.bl > .an-go .st-go{flex:1;min-height:54px;margin:0 0 3px;font-size:1.3rem;}
 .an .an-felt.bl.up > .an-go .st-go{min-width:180px;min-height:54px;}
@@ -1490,7 +1509,12 @@ button.ll-n{cursor:pointer;}
 .an .an-felt.bl.short > .an-hand{padding:2px 0 0;}
 .an-go:empty{display:none;}
 .an-hand.over .hc{filter:drop-shadow(-3px 0 4px rgba(0,0,0,.45));}
-.an-hand.over .hc:not(:last-child) .ac-name{text-align:left;text-wrap:wrap;overflow-wrap:normal;padding-right:calc(0px - var(--ho));box-sizing:border-box;}   /* (overlapped: the name starts at the card's left, where it shows) */
+.an-hand.over .hc.cv .ac-name{text-wrap:wrap;overflow-wrap:normal;box-sizing:border-box;}   /* (overlapped: coverNames moves the name into the part that shows) */
+/* a card overlapped by the next keeps its name where it shows: down the edge of that part, as on a book's spine */
+.cv-v{position:absolute;top:5%;bottom:5%;z-index:3;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:.35em .12em;writing-mode:vertical-rl;text-wrap:balance;text-align:center;
+  font-family:var(--fellsc);line-height:1.02;letter-spacing:.03em;color:var(--an-ink);background:linear-gradient(90deg,#efe4c8,#f8f2e3 45%,#efe4c8);border-radius:3px;
+  box-shadow:0 0 0 1px rgba(22,18,14,.55),inset 0 0 0 1.5px color-mix(in srgb,var(--f,#8a6d3b) 55%,transparent),-1px 0 3px rgba(0,0,0,.35);pointer-events:none;overflow:hidden;}
+.cvv > .ac .ac-name{visibility:hidden;}
 /* the bars: one line each, riding the far corners of the mats (theirs top right, yours bottom left) */
 .an .an-felt:is(.bl,.rw) > .an-strip{display:flex;align-items:center;gap:10px;padding:5px 12px 5px 5px;border-radius:12px;--gw:34px;
   background:rgba(12,16,32,.86);box-shadow:0 0 0 1.5px color-mix(in srgb,var(--pc) 60%,transparent),0 6px 14px rgba(0,0,0,.45);}
@@ -1594,6 +1618,15 @@ button.ll-n{cursor:pointer;}
 .an-map.bl .pl-side.R .fp-tab{top:-6px;border-radius:5px 5px 0 0;}
 .an-map.rw .pl-side .fp-tab{left:auto;top:50%;width:8px;height:34%;translate:0 -50%;}
 .an-map.rw .pl-side.L .fp-tab{right:-6px;border-radius:0 5px 5px 0;} .an-map.rw .pl-side.R .fp-tab{left:-6px;border-radius:5px 0 0 5px;}
+.an-map.rw .pl-side.ovl > .fp + .fp .fp-tab{display:none;}   /* (an overlapping pile: only the card nearest the Domain shows its tab; the others' would lie on the names down the cards' edges) */
+/* (a phone held upright: a Figure on the map is about 50 px wide, too small for its cost and Might to read side by side
+   down the spine. What it cost is paid, so the piece shows its Might at the top of the spine, at the size a small card
+   in the hand has, and its home under it) */
+.an-map.rw .fp.card > .ac.mini.sp{--sw:10.6em;}
+.an-map.rw .fp.card > .ac.mini.sp .ac-cost{display:none;}
+.an-map.rw .fp.card > .ac.mini.sp .ac-st.m{left:.5em;top:.8em;width:9.6em;height:8.7em;}
+.an-map.rw .fp.card > .ac.mini.sp .ac-st b{font-size:5.2em;}
+.an-map.rw .fp.card > .ac.mini.sp .ac-mh{top:10.6em;} .an-map.rw .fp.card > .ac.mini.sp .ac-mh .dm-home{--dm:7em;}
 .fp.card.can > .ac{box-shadow:0 0 0 .07em #0a0d17,0 0 0 calc(2.5px + .06em) var(--pc),0 0 14px 3px color-mix(in srgb,var(--pc) 70%,transparent);}
 .fp.card.sel{transform:translateY(-6%) scale(1.06);z-index:20 !important;}
 .an-map.bl .pl-side .fp.card.sel{transform:scale(1.05);transform-origin:50% 100%;} .an-map.bl .pl-side.R .fp.card.sel{transform-origin:50% 0;}   /* (picked up where it lies: lifted toward the line it would cover the shield) */
@@ -1647,6 +1680,11 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .an-side{position:fixed;top:var(--bar);right:0;bottom:0;z-index:40;width:var(--sidew,400px);box-sizing:border-box;display:flex;flex-direction:column;padding:0 0 calc(var(--safe-b) + 6px);
   background:radial-gradient(120% 90% at 50% 30%,rgba(18,22,44,.98),rgba(6,8,16,.99));box-shadow:inset 1.5px 0 0 rgba(233,207,134,.45),-10px 0 24px rgba(0,0,0,.45);transform:translateX(100%);transition:transform .24s var(--ease,ease);}
 .an-side.show{transform:none;}
+/* (the table beside the panel is narrower: its dock lays out as an upright iPad's does, the caption and the turn's button
+   over a hand the table's full width, so the cards keep their names) */
+.an.side-on .an-felt.bl:not(.up){grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"map map" "trk trk" "cap go" "hand hand";row-gap:8px;}
+.an.side-on .an-felt.bl:not(.up) > .an-cap{align-self:center;}
+.an.side-on .an .an-felt.bl:not(.up) > .an-go .st-go,.an.side-on .an-felt.bl:not(.up) > .an-go .st-go{min-width:170px;min-height:50px;}
 .sd-h{flex:none;display:flex;align-items:center;gap:8px;padding:8px 10px 6px 16px;}
 .sd-h h2{flex:1;min-width:0;margin:0;font:400 1.3rem/1.15 var(--fell);color:#f6e3a1;text-wrap:balance;}
 .sd-h .icon-btn{width:46px;height:46px;flex:none;}
@@ -1662,18 +1700,39 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .rc-g{flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;width:84px;text-align:center;}
 .rc-pt{position:relative;width:64px;height:64px;border-radius:50%;overflow:hidden;background:#223;box-shadow:0 0 0 2.5px var(--pc),0 0 14px color-mix(in srgb,var(--pc) 55%,transparent),0 4px 10px rgba(0,0,0,.5);}
 .rc-pt > :is(img,canvas){position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 20%;}
-.rc-g b{font:400 .95rem/1.1 var(--fell,Georgia,serif);color:var(--text,#f3ead2);}
+.rc-g b{font:400 .95rem/1.1 var(--fell,Georgia,serif);color:var(--text,#f3ead2);text-wrap:balance;}
 .rc-g small{font-size:.74rem;line-height:1.1;color:var(--text-2,#b9b08f);}
 .rc-ch{flex:1;min-width:0;}
-.rc-k{font-size:.78rem;letter-spacing:.04em;color:var(--text-2,#b9b08f);margin-bottom:2px;}
+.rc-k{font-size:.78rem;letter-spacing:.04em;color:var(--text-2,#b9b08f);margin-bottom:2px;text-wrap:balance;}
 .rc-svg svg{display:block;width:100%;height:auto;overflow:visible;}
 .rc-svg path{fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:.75;}
 .rc-svg path.w{stroke-width:4;opacity:1;}
 .rc-svg .g{stroke:#e9cf86;stroke-width:1.2;stroke-dasharray:4 4;} .rc-svg .b{stroke:rgba(255,255,255,.18);stroke-width:1;}
-.rc-svg text{font:600 11px/1 var(--crim,Georgia,serif);fill:var(--text-2,#b9b08f);text-anchor:middle;}
+.rc-svg text{font:600 16px/1 var(--crim,Georgia,serif);fill:var(--text-2,#b9b08f);text-anchor:middle;}
 .rc-svg text.gl{fill:#e9cf86;text-anchor:start;}
 @media (orientation:landscape) and (max-height:520px){ .an-race{margin:4px 0 2px;} .rc-pt{width:46px;height:46px;} .rc-g{width:70px;} .rc-svg svg{max-height:96px;} }
-.k-win .card:has(.an-race) > .trophy{display:none;}   /* (the winner's Guide stands where the trophy was) */
+.k-win .card:has(.an-race) .trophy{display:none;}   /* (the winner's Guide stands where the trophy was) */
+/* The results card in two columns (winCols in ui.js) where the screen is 700 wide or more: the game at the left, what it
+   earned and the buttons at the right, every button in view. Narrower, the two columns stack as the card always was. */
+.an-win-l,.an-win-r{min-width:0;}
+@media (min-width:700px){
+  .k-win .card.an-win{max-width:min(900px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:30px;align-items:center;padding:24px 26px;}
+  .k-win .card.an-win > .an-win-l{grid-column:1;grid-row:1;} .k-win .card.an-win > .an-win-r{grid-column:2;grid-row:1;}
+  .k-win .card.an-win .an-win-r > .k-win-show{margin-top:0;}
+  .k-win .card.an-win .an-win-l > .rank{margin-bottom:0;}
+}
+/* (a phone on its side: the title smaller, the notes closer, so the left column fits the screen's height) */
+@media (orientation:landscape) and (max-height:520px){
+  .k-win .card.an-win{padding:12px 18px;column-gap:20px;align-items:start;}
+  .k-win .card.an-win h2{font-size:1.5rem;margin:0 0 2px;} .k-win .card.an-win .sub{margin-bottom:4px;}
+  .k-win .card.an-win .k-win-notes{margin:6px 0 6px;padding:6px 10px;} .k-win .card.an-win .rank div{padding:5px 10px;}
+  /* (three columns there: the game, what it earned, the buttons) */
+  .k-win .card.an-win:has(.k-win-show){grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,.8fr);max-width:min(1000px,calc(100vw - 24px));}
+  .k-win .card.an-win:has(.k-win-show) > .an-win-r{display:contents;}
+  .k-win .card.an-win .an-win-r > .k-win-show{grid-column:2;grid-row:1;margin:0;align-self:center;}
+  .k-win .card.an-win .an-win-r > .k-acts{grid-column:3;grid-row:1;align-self:center;gap:8px;}
+}
+.k-win .card.an-win .rc-svg svg{max-height:120px;}   /* (two columns leave the race its room) */
 /* ══ The battle line with three to six players (drawN, mineLine; Tim's A3four, 2026-11-13): on an iPad sideways your
    three Domains are columns across your mat at the left, as the two-player table's are, everyone else's Figures above
    the line as stacks and yours below it as cards; each other player's column stands on their mat at the right ══ */
@@ -1712,7 +1771,6 @@ html.an-low .gbar .ttl{font-size:1rem;} html.an-low .gbar .ttl .gi .gicon{width:
 .fo.hz.e-them{grid-template-columns:minmax(0,.6fr) var(--mw) minmax(0,1fr);} .fo.hz.e-me{grid-template-columns:minmax(0,1fr) var(--mw) minmax(0,.6fr);}
 @media (max-height:820px){ .an-race{margin:6px 0 0;} .rc-pt{width:52px;height:52px;} .rc-g{width:76px;} .rc-svg svg{max-height:84px;} .rc-k{margin-bottom:0;} }
 @media (orientation:landscape) and (max-height:520px){ .an-race{margin:2px 0 0;} .rc-k{display:none;} .rc-svg svg{max-height:58px;} .rc-pt{width:40px;height:40px;} .rc-g small{display:none;} }
-@media (orientation:landscape) and (max-height:520px){ .k-win .card > .an-race{grid-column:2;grid-row:1;align-self:end;margin:0 0 6px;} .k-win .card:has(.an-race) > .k-acts{grid-row:2 / span 11;align-self:start;} }   /* (a phone on its side: the race over the buttons, where there is room) */
 
 /* ── The Relic powers of 2026-11-13 ─────────────────────────────────────────────────────────────────────────── */
 /* Foresight: the top cards of the draw pile on two trays, what comes into the hand now (lit) and what stays on the pile */
