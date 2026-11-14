@@ -134,6 +134,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
 .ac.kw .fa{background:#fff;color:#111;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),0 2px 0 rgba(0,0,0,.2),0 8px 16px rgba(0,0,0,.35);}
 .ac.kb .fa{background:#121212;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 2px 0 rgba(0,0,0,.25),0 8px 16px rgba(0,0,0,.4);}
 .ac .tx{font:700 calc(var(--cw) * var(--fs,.1))/1.18 "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:-.01em;white-space:pre-line;overflow-wrap:anywhere;overflow:hidden;}
+.ac .fa.fitting :is(.nm, .tx, .ds){overflow-wrap:normal;word-break:normal;}   /* (fitFace: words kept whole while the size is fitted) */
 .ac .tx .bl{display:inline-block;min-width:2.6em;border-bottom:.11em solid currentColor;vertical-align:baseline;}
 .ac .ft{margin-top:auto;display:flex;align-items:center;gap:calc(var(--cw) * .03);font:700 calc(var(--cw) * .052)/1 "Helvetica Neue",Helvetica,Arial,sans-serif;opacity:.85;padding-top:4px;}
 .ac .ft i{display:inline-block;width:calc(var(--cw) * .06);height:calc(var(--cw) * .08);border:1px solid currentColor;border-radius:1.5px;transform:rotate(-12deg);}
@@ -408,7 +409,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       [[aK, 'a'], [pK, 'p']].forEach(function (x) {
         var range = pk[x[0]]; for (var i = range[0]; i < range[1]; i++) {
           var key = x[0] + ':' + String(raw(x[0], i).n || raw(x[0], i).t).toLowerCase();
-          if (seen[key]) continue; seen[key] = 1; g.pile[x[1]].push(i);
+          if (seen[key] || String(raw(x[0], i).t || '').length > 400) continue; seen[key] = 1; g.pile[x[1]].push(i);   // (one black card runs 900 letters: no card can hold it, so it is never dealt)
         }
       });
     });
@@ -704,6 +705,27 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (!blanks) return esc(t) + '\n' + ans.map(function (a) { return '<b>' + esc(a.t) + '</b>'; }).join(' ');
     return cahText(t, ans.map(function (a) { return a.t; }));
   }
+  // A card's words fit the card (Tim, 2026-11-14: "some words on apples to apples/CAH overrun their line"). The sizes
+  // from the length of the text are a first guess; this measures: a word wider than the card, or text taller than its
+  // room, steps the size down (to 55% at most) until it fits, with words kept whole. Only text that still can't fit
+  // at the smallest size may break inside a word.
+  function fitFace(face) {
+    var w = face.clientWidth, h = face.clientHeight; if (!w || !h) return;
+    if (face._fw === w && face._fh === h) return; face._fw = w; face._fh = h;
+    var big = face.querySelectorAll('.nm, .tx'), small = face.querySelectorAll('.ds'), all = face.querySelectorAll('.nm, .tx, .ds');
+    face.classList.add('fitting');
+    Array.prototype.forEach.call(all, function (t) { t.style.fontSize = ''; t._b = parseFloat(getComputedStyle(t).fontSize) || 12; });
+    var wide = function (t) { return t.scrollWidth > t.clientWidth + 1; };
+    var tall = function () { return face.scrollHeight > face.clientHeight + 1 || Array.prototype.some.call(face.querySelectorAll('.tx, .ds'), function (t) { return t.scrollHeight > t.clientHeight + 1; }); };
+    var set = function (list, k) { Array.prototype.forEach.call(list, function (t) { t.style.fontSize = (t._b * k).toFixed(2) + 'px'; }); };
+    // a word wider than the card: the big words step down first
+    for (var k = 1; k > .55 && Array.prototype.some.call(big, wide); k -= .05) set(big, k - .05);
+    // then the whole card's words if they are taller than the card: the description first, then the name too
+    for (var k2 = 1; k2 > .6 && tall() && small.length; k2 -= .05) set(small, k2 - .05);
+    for (var k3 = 1; k3 > .55 && tall(); k3 -= .05) Array.prototype.forEach.call(big, function (t) { t.style.fontSize = (parseFloat(t.style.fontSize || t._b) * .95).toFixed(2) + 'px'; });
+    if (Array.prototype.some.call(all, wide) || tall()) face.classList.remove('fitting');   // (last resort: a word may break)
+  }
+  var FIT = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { fitFace(e.target); }); }) : null;
   function cardEl(c, o) {
     o = o || {};
     var k = c ? c.k : o.kind, n = el('div', { class: 'ac k' + k + (o.down ? ' down' : '') + (o.cls ? ' ' + o.cls : '') });
@@ -728,6 +750,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     if (k === 'r' || k === 'g') back.appendChild(el('div', { class: 'ap', html: APPLE }));
     else back.textContent = 'Cards Against Humanity';
     inner.appendChild(face); inner.appendChild(back); n.appendChild(inner);
+    if (c && FIT) FIT.observe(face);   // (the words are fitted once the card is on the page and has its size: fitFace)
     return n;
   }
   function chipName(V, i) { if (i < 0) return words(V).ghost; var p = V.players[i]; return p ? p.name : '?'; }
@@ -1590,7 +1613,9 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     act: function (i, a) { if (apply(G, i, a)) changed(); },
     cpuPlay: function (i) { return cpuPlay(G, i); }, cpuJudge: function () { return cpuJudge(G); },
     host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { return hostStart(); }, lobby: goLobby,
-    local: function (cfg) { startLocal(cfg); }, setup: showSetup
+    local: function (cfg) { startLocal(cfg); }, setup: showSetup,
+    // tests: every card drawn at a width, to measure how its words fit (fitFace)
+    cards: function () { return Promise.all([a2aData(), cahData()]).then(function () { return { A: A, C: C }; }); }, cardEl: cardEl
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
