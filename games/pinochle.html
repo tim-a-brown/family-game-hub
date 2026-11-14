@@ -325,6 +325,19 @@
 .spad td small.k{font-size:.7rem;color:#7a7a90;display:block;line-height:1;}
 .spad thead th{font-size:1rem;}
 .spad tbody tr{cursor:default;}
+/* The table's signage (kit.css --plate-bg, --lit): name plates, a seat's chips and what a player says are the moment
+   strip's smoked glass; a turn is lit along the top edge; the bid sits on the strip's red square */
+.st .tg{position:relative;border-radius:8px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px) saturate(.7);backdrop-filter:blur(10px) saturate(.7);font-family:var(--type-sign);font-weight:650;box-shadow:var(--plate-line),0 2px 8px rgba(0,0,0,.3);}
+.st .tg .dl{text-transform:none;letter-spacing:0;font-weight:650;padding:0;background:none;color:var(--lit);font-size:.7rem;}
+.st.turn .tg{box-shadow:inset 0 0 0 1px rgba(255,211,77,.7),0 0 18px var(--litg),0 2px 8px rgba(0,0,0,.3);}
+.st.turn .tg::before{content:"";position:absolute;left:7px;right:7px;top:-1px;height:2px;border-radius:2px;background:var(--lit);box-shadow:0 0 8px 1px var(--litg);}
+.st .chip{border-radius:6px;background:var(--plate-bg);color:#fff;font-family:var(--type-sign);font-weight:700;box-shadow:var(--plate-line);padding:2px 8px;}
+.st .chip.hi{background:var(--plate-bg);color:var(--lit);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 10px var(--litg);}
+.st .chip.bidr{background:rgba(213,50,42,.9);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
+.st .chip.saved{box-shadow:var(--plate-line),inset 3px 0 0 #49c47f;}
+.st .chip.pass{background:rgba(38,40,44,.5);color:rgba(255,255,255,.62);}
+.st .say{border-radius:8px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-family:var(--type-sign);font-weight:650;box-shadow:var(--plate-line),0 4px 12px rgba(0,0,0,.35);}
+.st .say.big{background:var(--plate-bg);color:var(--lit);box-shadow:inset 0 0 0 1px rgba(255,211,77,.7),0 0 16px var(--litg);}
 </style>
 </head>
 <body>
@@ -1154,7 +1167,7 @@
           countTo(panel.querySelector('.mt'), run - g.pts, run, 360);
           Kit.sfx(Core.bigMeld(g.k) ? 'boom' : g.k === 'run' ? 'sparkle' : 'chip', g.pts >= 100 ? 1 : 0.7);
           fitMeld(); paintTop();
-          if (Core.bigMeld(g.k)) { bigMoment(BIG[g.k][0], p, { line: meldLine(BIG[g.k], p), pts: '+' + g.pts.toLocaleString('en-US') }); }
+          if (Core.bigMeld(g.k)) { bigMoment(BIG[g.k][0], p, { line: meldLine(BIG[g.k], p), pts: '+' + g.pts.toLocaleString('en-US'), cards: meldCards(g.ids) }); }
           else if (g.k === 'run') { seatSay(p, 'A run!', true); Kit.haptic('success'); }
         }, t0 + gap * (gi + 1));
       });
@@ -1163,12 +1176,14 @@
     });
     later(function () { fitMeld(); paintSeats(); paintTop(); done(); }, Math.min(t0 + 500, 12000));
   }
+  // the meld's own cards, set inside the big moment's panel
+  function meldCards(ids) { try { return (ids || []).map(function (id) { var c = Core.cardOfId(id); return { r: c.r, s: c.s }; }); } catch (e) { return null; } }
   // "Tim melded aces twice around."
   function meldLine(b, p) { var w = b[1].split(',')[0]; return nm(p) + ' melded ' + w.charAt(0).toLowerCase() + w.slice(1) + '.'; }
   // a big moment: the kit's strip across the felt's lower edge (in the middle of the screen over the count sheet)
   function bigMoment(text, p, o) {
     o = o || {};
-    Kit.moment({ title: text, line: o.line, pts: o.pts, chip: o.chip, big: true, at: p != null && tblBg ? tblBg : null });
+    Kit.moment({ title: text, line: o.line, pts: o.pts, chip: o.chip, cards: o.cards, big: true, at: p != null && tblBg ? tblBg : null });
     Kit.confetti(); Kit.haptic('heavy');
     later(function () { Kit.sfx('win'); }, 150);
     if (p != null) seatSay(p, text, true);
@@ -1298,7 +1313,7 @@
       S = pre; render();
       var anchor = p === me() ? handEl : seatEls[p];
       floatAt(anchor, '+' + mv.m.pts, 'g');
-      if (Core.bigMeld(mv.m.k)) bigMoment(BIG[mv.m.k][0], p, { line: meldLine(BIG[mv.m.k], p), pts: '+' + mv.m.pts.toLocaleString('en-US') });
+      if (Core.bigMeld(mv.m.k)) bigMoment(BIG[mv.m.k][0], p, { line: meldLine(BIG[mv.m.k], p), pts: '+' + mv.m.pts.toLocaleString('en-US'), cards: meldCards(mv.m.ids) });
       else { seatSay(p, mv.swap ? 'Swaps the dix' : meldLabel(mv.m), mv.m.k === 'run'); Kit.sfx(mv.m.k === 'run' ? 'sparkle' : 'chip'); if (mv.m.k === 'run') Kit.haptic('success'); }
       if (p === me()) { fresh = mv.m.ids.slice(); if (mv.swap) fresh = [mv.swap.up.id]; paintHand(); }
     } else { S = pre; pre.phase = 'stock'; pre.turn = -1; render(); }

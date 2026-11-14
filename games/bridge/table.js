@@ -298,7 +298,7 @@
     var head = made ? (res.over ? 'Made with ' + res.over + ' over' : 'Made it exactly') : 'Down ' + res.down;
     var good = onePerson() ? (made === mine) : made;
     var seq = [], sc = made ? ds : 1 - ds, chip = E.contractText(L.k), ptsS = L.pts && L.pts[sc] ? '+' + L.pts[sc] : '';
-    if (big.length) big.forEach(function (m, j) { seq.push({ title: m.title, line: m.line, tone: m.side === weSide() || !onePerson() ? '' : 'cold', big: m.big, chip: j ? '' : chip, pts: j ? '' : ptsS }); });
+    if (big.length) big.forEach(function (m, j) { seq.push({ title: m.title, line: m.line, tone: m.side === weSide() || !onePerson() ? '' : 'cold', big: m.big, chip: j ? '' : chip, pts: j ? '' : ptsS, cards: momCards(L, m), sub: m.id === 'slam' || m.id === 'grand' ? 'Bid and made' : '' }); });
     else seq.push({ title: head, line: E.contractText(L.k, true) + ' by ' + who(L.k.decl) + '.', tone: good ? 'cool' : 'cold', small: 1, chip: chip, pts: ptsS });
     small.forEach(function (m) { seq.push({ title: m.title, line: m.line, tone: m.side === weSide() || !onePerson() ? '' : 'cold' }); });
     var i = 0;
@@ -306,7 +306,7 @@
       if (t !== token || !S) return;
       if (i >= seq.length) { tw(function () { if (t === token && S) { if (S.phase === 'over') finish(); else dealSheet(); } }, 300); return; }
       var m = seq[i++];
-      moment({ title: m.title, line: m.line, tone: m.tone, big: m.big, chip: m.chip, pts: m.pts, ms: m.big ? 2300 : 1500 });
+      moment({ title: m.title, line: m.line, tone: m.tone, big: m.big, chip: m.chip, pts: m.pts, cards: m.cards, sub: m.sub, ms: m.big ? 2600 : 1500 });
       if (m.big === 2) { Kit.confetti(); Kit.sfx('win'); Kit.haptic('success'); }
       else if (m.tone === 'cold') { Kit.sfx('bad'); Kit.haptic('error'); }
       else { Kit.sfx('good'); Kit.haptic('success'); }
@@ -1112,7 +1112,18 @@
   // points glowing at its end (a deal's bad news for your side lit warm)
   function moment(o) {
     if (!D) return;
-    Kit.moment({ title: o.title, line: o.line, chip: o.chip, pts: o.pts, tone: o.tone === 'cold' ? 'bad' : '', big: !!o.big, at: D.felt, ms: o.ms || 1600 });
+    Kit.moment({ title: o.title, line: o.line, chip: o.chip, pts: o.pts, sub: o.sub, cards: o.cards, tone: o.tone === 'cold' ? 'bad' : '', big: !!o.big, at: D.felt, ms: o.ms || 1600 });
+  }
+  // the cards that made a big moment, set inside its panel: in a suit contract every trump the declaring side held, in
+  // notrump that side's aces and kings, highest first
+  function momCards(L, m) {
+    if (!L || !L.dealt || !L.k || !m || !/^(slam|grand|all13)$/.test(m.id)) return null;
+    var side = m.id === 'all13' ? m.side : L.k.decl % 2, RK = ['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'];
+    var cs = E.pbnHand(L.dealt[side]).concat(E.pbnHand(L.dealt[side + 2]));
+    var tr = L.k.st < 4 ? ['c', 'd', 'h', 's'][L.k.st] : null;
+    cs = cs.filter(function (c) { return tr ? c.s === tr : (c.r === 'A' || c.r === 'K'); });
+    cs.sort(function (a, b) { return RK.indexOf(a.r) - RK.indexOf(b.r) || 'shdc'.indexOf(a.s) - 'shdc'.indexOf(b.s); });
+    return cs.slice(0, 13).map(function (c) { return { r: c.r, s: c.s }; });
   }
 
   // ── Sheets: the end of a deal, the pad, the auction ──
@@ -1387,7 +1398,7 @@
         return;
       }
       var m = seq[i++], ours = m.side === weSide(), sc = res.made ? ds : 1 - ds;
-      moment({ title: m.title, line: m.line, tone: ours ? (m.big ? '' : 'cool') : 'cold', big: m.big, chip: i === 1 ? E.contractText(L.k) : '', pts: i === 1 && L.pts && L.pts[sc] ? '+' + L.pts[sc] : '' });
+      moment({ title: m.title, line: m.line, tone: ours ? (m.big ? '' : 'cool') : 'cold', big: m.big, chip: i === 1 ? E.contractText(L.k) : '', pts: i === 1 && L.pts && L.pts[sc] ? '+' + L.pts[sc] : '', cards: m.big ? momCards(L, m) : null, sub: m.id === 'slam' || m.id === 'grand' ? 'Bid and made' : '' });
       if (m.big === 2) { Kit.confetti(); Kit.sfx('win'); } else Kit.sfx(ours ? 'good' : 'bad');
       tw(step, m.big ? 2400 : 1600);
     })();

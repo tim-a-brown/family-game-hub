@@ -480,11 +480,23 @@
   // pts: points glowing at the right, counted up when it is a number ("+650"). at: the table element; the strip lies
   // across its lower edge, 14px in. Without at it stands in the middle of the screen, where a callout always did. One
   // at a time: a new one replaces the last. Returns the strip.
+  // The game's own table (its felt), for a moment that names no place: the largest felt in view, taking up a good part
+  // of the screen and not inside a sheet. A moment then lies on the table where the play is, not over the chrome.
+  function tableEl() {
+    var vw = window.innerWidth, vh = window.innerHeight, best = null, ba = vw * vh * 0.16;
+    Array.prototype.forEach.call(doc.querySelectorAll('.felt-in, .felt, .tblbg, .bx-felt, [data-k-table]'), function (n) {
+      if (n.closest('.k-sheet, .k-win, .setup')) return;
+      var r = n.getBoundingClientRect(), a = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0)) * Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+      if (a > ba) { ba = a; best = n; }
+    });
+    return best;
+  }
   var moEl = null, moT = null, moR = null;
   function moment(o) {
     o = o || {};
     if (moEl) { moEl.remove(); clearTimeout(moT); }
     if (moR) { window.removeEventListener('resize', moR); moR = null; }
+    if (o.big) return bigMoment(o);
     var big = !!o.big, reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     var root = el('div', { class: 'k-mo' + (big ? ' big' : '') + (o.tone === 'bad' || o.tone === 'cold' ? ' bad' : ''), role: 'status', 'aria-live': 'polite' });
     if (o.color) root.style.setProperty('--chip', o.color);
@@ -509,15 +521,17 @@
       }
     }
     root.appendChild(inn);
-    var at = o.at && o.at.getBoundingClientRect ? o.at : null;
+    var at = o.at === undefined ? tableEl() : o.at && o.at.getBoundingClientRect ? o.at : null;
     if (!at) root.classList.add('mid');
     doc.body.appendChild(root); moEl = root;
     function place() {
       if (!at || !root.isConnected) return;
       if (!at.isConnected) { root.classList.add('mid'); root.style.cssText = ''; if (o.color) root.style.setProperty('--chip', o.color); return; }
       var r = at.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
-      var w = Math.max(Math.min(r.width - 28, big ? 540 : 470, vw - 24), Math.min(240, vw - 24));
-      root.style.width = w + 'px';
+      // as wide as its words need, never wider than the table: a short moment is a short strip
+      root.style.width = 'max-content';
+      root.style.maxWidth = Math.max(Math.min(r.width - 28, 470, vw - 24), Math.min(240, vw - 24)) + 'px';
+      var w = root.offsetWidth;
       var left = Math.max(12, Math.min(vw - 12 - w, r.left + (r.width - w) / 2));
       var top = Math.min(r.bottom, vh) - 14 - root.offsetHeight;
       root.style.left = left + 'px'; root.style.top = Math.max(8, top) + 'px';
@@ -525,7 +539,7 @@
     place();
     // on a narrow strip the points go under the words, so the sentence keeps its room
     var tx = inn.querySelector('.k-mo-tx'), pt = inn.querySelector('.k-mo-pt');
-    if (tx && pt && root.offsetWidth < (big ? 360 : 300)) { tx.appendChild(pt); place(); }
+    if (tx && pt && tx.scrollHeight > 72 && root.offsetWidth < 330) { tx.appendChild(pt); place(); }
     if (at) { moR = place; window.addEventListener('resize', moR); }
     var ms = o.ms || (big ? 2300 : 1600);
     moT = setTimeout(function () {
@@ -534,6 +548,78 @@
     }, ms);
     return root;
   }
+  // A big moment (Tim, 2026-11-14: "3 but with the visual (cards) info from 2 and the glow effect on the header from 1 and
+  // 2"): the strip's lit edge is drawn across the table and splits in two, the edges pull apart and open a tall panel of
+  // smoked acrylic; the contract on its red square down the left, the title etched and glowing with the points beside
+  // it, the sentence, and the moment's own pieces set inside the acrylic (o.cards: [{r, s}] with s one of s h d c, or
+  // o.dice: [1-6]). It stands in the middle of the table (o.at) or the screen.
+  var SUITG = { s: '♠', h: '♥', d: '♦', c: '♣' };
+  function bigMoment(o) {
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var items = (o.cards || []).map(function (c) { return { c: c }; }).concat((o.dice || []).map(function (d) { return { d: d }; }));
+    var root = el('div', { class: 'k-mob' + (o.tone === 'bad' || o.tone === 'cold' ? ' bad' : ''), role: 'status', 'aria-live': 'polite' });
+    if (o.color) root.style.setProperty('--chip', o.color);
+    var pn = el('div', { class: 'kmb-pn' }), body = el('div', { class: 'kmb-bd' }), hd = el('div', { class: 'kmb-hd' }, [el('b', { text: o.title || '' })]);
+    var on = null;
+    if (o.pts != null && o.pts !== '') { var ps = String(o.pts); on = el('span', { class: 'kmb-on', text: ps }); hd.appendChild(el('span', { class: 'kmb-pt' }, [el('span', { class: 'kmb-gh', text: ps.replace(/\d/g, '8') }), on])); }
+    body.appendChild(hd);
+    if (o.line) body.appendChild(el('div', { class: 'kmb-ln', text: o.line }));
+    var inside = items.length ? el('div', { class: 'kmb-in' }) : null;
+    if (inside) body.appendChild(inside);
+    if (o.chip != null && o.chip !== '' || o.icon) pn.appendChild(el('div', { class: 'kmb-sq' }, [o.icon ? el('span', { html: icon(o.icon) }) : el('span', { text: String(o.chip) }), o.sub ? el('small', { text: o.sub }) : null]));
+    pn.appendChild(body); pn.appendChild(el('div', { class: 'kmb-gl' }));
+    root.appendChild(pn); root.appendChild(el('i', { class: 'kmb-e kmb-t' })); root.appendChild(el('i', { class: 'kmb-e kmb-b' }));
+    doc.body.appendChild(root); moEl = root;
+    var at = o.at === undefined ? tableEl() : o.at && o.at.getBoundingClientRect ? o.at : null;
+    // as wide and tall as the title, the sentence and the pieces need (no empty middle), within the table
+    function place() {
+      if (!root.isConnected) return;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var r = at && at.isConnected ? at.getBoundingClientRect() : { left: 0, top: 0, width: vw, height: vh, right: vw, bottom: vh };
+      var maxW = Math.max(Math.min(r.width - 24, 600, vw - 16), Math.min(280, vw - 16));
+      root.style.cssText = 'left:0;top:0;width:max-content;max-width:' + maxW + 'px;min-width:' + Math.min(300, maxW) + 'px' + (o.color ? ';--chip:' + o.color : '');
+      if (inside) fan(inside, maxW - (pn.querySelector('.kmb-sq') ? pn.querySelector('.kmb-sq').offsetWidth : 0) - 32);
+      var w = root.offsetWidth, h = root.offsetHeight;
+      var left = Math.max(8, Math.min(vw - 8 - w, r.left + (r.width - w) / 2));
+      var top = Math.max(12, Math.min(vh - 12 - h, r.top + (r.height - h) / 2));
+      root.style.left = left + 'px'; root.style.top = top + 'px'; root.style.setProperty('--h', h + 'px');
+    }
+    // the pieces fanned inside the acrylic: cards overlapping like a held hand, dice in a row
+    function fan(box, room) {
+      box.textContent = '';
+      var n = items.length, die = !!items[0].d;
+      var cw = die ? Math.min(54, room * 0.16) : Math.min(62, room * 0.15);
+      var step = n > 1 ? Math.min(cw * (die ? 1.16 : 0.6), (room - (die ? 24 : 44) - cw) / (n - 1)) : 0, span = step * (n - 1) + cw;
+      var bh = (die ? cw : cw * 1.4) + 22, bw = span + (die ? 24 : 44);
+      box.style.width = bw + 'px'; box.style.height = bh + 'px';
+      items.forEach(function (it, i) {
+        var t = n > 1 ? i / (n - 1) - .5 : 0, a = die ? t * 10 : t * Math.min(30, n * 3.4), x = (die ? 12 : 20) + step * i;
+        var node;
+        if (it.d) { node = el('div', { class: 'kmb-d' }); for (var k = 0; k < 9; k++) node.appendChild(el('i', { class: PIPS[it.d].indexOf(k) >= 0 ? 'kmb-p' : '' })); }
+        else { var red = it.c.s === 'h' || it.c.s === 'd', g = SUITG[it.c.s] || it.c.s; node = el('div', { class: 'kmb-c' + (red ? ' kmb-red' : '') }, [el('i', { html: it.c.r + '<br>' + g }), el('em', { text: g })]); }
+        node.style.cssText = 'left:' + x.toFixed(1) + 'px;width:' + cw.toFixed(1) + 'px;height:' + (die ? cw : cw * 1.4).toFixed(1) + 'px;font-size:' + (cw * (die ? .3 : .27)).toFixed(1) + 'px;--a:' + a.toFixed(1) + 'deg;--dy:' + (Math.abs(t) * (die ? 2 : 8)).toFixed(1) + 'px;animation-delay:' + (reduce ? 0 : .78 + i * .045).toFixed(2) + 's';
+        box.appendChild(node);
+      });
+    }
+    place();
+    moR = place; window.addEventListener('resize', moR);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (root.isConnected) place(); });
+    if (on && !reduce) {
+      var m = /^([+\-−$]*)(\d[\d,]*)$/.exec(String(o.pts));
+      if (m) {
+        var v = +m[2].replace(/,/g, ''), comma = m[2].indexOf(',') >= 0, t0 = performance.now();
+        var step = function (t) { if (!on.isConnected) return; var k = Math.min(1, Math.max(0, (t - t0 - 900) / 750)), n = Math.round(v * (1 - Math.pow(1 - k, 3))); on.textContent = m[1] + (comma ? n.toLocaleString('en-US') : n); if (k < 1) requestAnimationFrame(step); };
+        requestAnimationFrame(step);
+      }
+    }
+    var ms = o.ms || 2600;
+    moT = setTimeout(function () {
+      root.classList.add('out');
+      setTimeout(function () { root.remove(); if (moEl === root) moEl = null; if (moR === place) { window.removeEventListener('resize', moR); moR = null; } }, 380);
+    }, ms);
+    return root;
+  }
+  var PIPS = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
   // Kit.callout(text, color): a short moment ("Domino!", "+12!"). A number comes out glowing on its own; anything else
   // is the strip's sentence, with color on its square. A page that dresses the old big callout its own way (Arvela)
   // puts the class k-own-callout on its <html> and keeps it.

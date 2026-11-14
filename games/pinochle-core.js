@@ -868,7 +868,7 @@
 
   var API = {
     RANKS: RANKS, SUITS: SUITS, SNAME: SNAME, MV: MV, MNAME: MNAME, MIN_BID: MIN_BID, STEP: STEP, KINDS: KINDS, PW: PW, C: C,
-    deck: deck, code: code, cval: cval, isCounter: isCounter, sortHand: sortHand, meldOf: meldOf, bigMeld: bigMeld, beats: beats, winIdx: winIdx,
+    deck: deck, code: code, cardOfId: cardOfId, cval: cval, isCounter: isCounter, sortHand: sortHand, meldOf: meldOf, bigMeld: bigMeld, beats: beats, winIdx: winIdx,
     legal: legal, legalStrict: legalStrict, whyNot: whyNot, rname: rname, newGame: newGame, deal: deal, turn: turn, minBid: minBid, stuck: stuck,
     apply: apply, bot: bot, meldOptions: meldOptions, sideOf: sideOf, seatsOf: seatsOf, nSides: nSides, sideName: sideName, codeOfId: codeOfId,
     bestTrump: bestTrump, handValue: handValue, maxBid: maxBid, find: find, lv: lv
