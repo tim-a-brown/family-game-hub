@@ -3022,7 +3022,7 @@
       var n = normalize(e);
       var head = el('button', { type: 'button', class: 'k-hist-h' }, [
         el('span', { class: 'grow' }, [el('b', { text: n.winner ? n.winner + ' won' : factParts(n.summary)[0] || 'Finished' }), el('small', { text: fmtDate(n.date) })]),
-        el('span', { class: 'k-hist-s', text: n.players.length > 1 && n.players.every(function (p) { return p.score != null; }) ? n.players.map(function (p) { return p.score; }).join(' – ') : '' }),
+        el('span', { class: 'k-hist-s', text: n.players.length > 1 && n.players.every(function (p) { return p.score != null; }) ? n.players.map(function (p) { return p.score; }).join('\u00a0– ').replace(/\u00a0– /g, '\u00a0–\u200b ') : '' }),
         el('span', { class: 'chev', html: icon('down') })
       ]);
       var item = el('div', { class: 'k-hist-i' + (i === 0 ? ' open' : '') }, [head]);
