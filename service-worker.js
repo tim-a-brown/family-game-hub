@@ -179,6 +179,7 @@ const PRECACHE_URLS = [
   '/games/mazes.html',
   '/games/mazes/maze-core.js',
   '/online.js',
+  '/games/liveshow.js',
   '/turnnet.js',
   '/games/dealornodeal.html',
   '/games/dice-roller.html',
