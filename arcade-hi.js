@@ -132,6 +132,15 @@ const ArcadeHi = (function(){
     return '';
   }
   function esc(t){ return String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  // the moment's title, in sentence case: a time board, a low board, any other board
+  function titleOf(c){ return c.unit === 'time' ? 'Fast time!' : c.low ? 'Top ' + MAX + '!' : 'High score!'; }
+  // the letter arrows: the kit's line chevron (turned over for up), a plain triangle where the kit isn't loaded
+  function arrowIc(fb){ try{ if(window.Kit && Kit.icon) return Kit.icon('down'); }catch(e){} return fb; }
+  // 'Nov 14, 2026 7:05 PM': the day over the time, each on its own line
+  function dateHTML(d){
+    const m = String(d||'').match(/^(.*\d{4})\s+(\d.*)$/);
+    return m ? '<span>' + esc(m[1]) + '</span><span>' + esc(m[2]) + '</span>' : esc(d||'');
+  }
 
   function qualifies(key, score){
     const list = load(key);
@@ -162,86 +171,122 @@ const ArcadeHi = (function(){
     if(cssInjected) return; cssInjected = true;
     const s = document.createElement('style');
     s.textContent = `
-.ahi-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:ahi-in .2s ease;}
+/* Night glass (Tim, 2026-11-14): a glass card over the dimmed game, gold for your new score and whatever you pick */
+.ahi-overlay{position:fixed;inset:0;background:var(--win-shade,rgba(6,7,16,.6));-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);z-index:1000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;animation:ahi-in .2s ease;}
 @keyframes ahi-in{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
-.ahi-box{background:#12151c;border:1px solid rgba(255,255,255,.12);color:#f4f4f7;color-scheme:dark;
-  /* an arcade screen: always dark, whatever the app theme, so its light text and buttons read */
-  --surface:#12151c;--surface-2:#1c2030;--surface-3:#2a2f42;--bg:#0b0d13;--bg-2:#161a24;--text:#f4f4f7;--text-2:#b8bccb;--text-3:#808597;
-  --line:rgba(255,255,255,.08);--line-2:rgba(255,255,255,.14);--seg:rgba(0,0,0,.3);--seg-track:rgba(0,0,0,.3);
-  --w05:rgba(255,255,255,.05);--w06:rgba(255,255,255,.06);--w08:rgba(255,255,255,.08);--w1:rgba(255,255,255,.1);--w12:rgba(255,255,255,.12);--w15:rgba(255,255,255,.15);--w2:rgba(255,255,255,.2);border-radius:26px;padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;}
-.ahi-title{font-family:var(--display);font-size:1.6rem;font-weight:900;text-align:center;color:#f5c842;margin-bottom:4px;}
-.ahi-sub{text-align:center;color:rgba(255,255,255,.45);font-size:.78rem;margin-bottom:18px;}
-/* 3-letter name entry */
-.ahi-slots{display:flex;gap:10px;justify-content:center;margin-bottom:18px;}
+.ahi-box{color:var(--text);font-family:var(--font);border-radius:var(--r-xl,28px);padding:24px 20px;max-width:380px;width:100%;max-height:90vh;overflow-y:auto;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--h,#7a6cf0) 14%,transparent),transparent 55%),var(--sheet-bg);
+  -webkit-backdrop-filter:blur(26px) saturate(1.2);backdrop-filter:blur(26px) saturate(1.2);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px var(--gl-line),0 30px 60px -24px rgba(0,0,0,.9);}
+.ahi-title{display:flex;align-items:center;justify-content:center;gap:8px;font-family:var(--display);font-size:1.9rem;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-align:center;color:var(--lit-ink);margin-bottom:4px;}
+.ahi-title .ico{width:26px;height:26px;flex:none;color:var(--lit-ink);}
+.ahi-title.board{color:var(--text);font-size:1.6rem;}
+.ahi-sub{text-align:center;color:var(--text-3);font-size:.84rem;font-weight:550;margin-bottom:18px;}
+/* 3-letter name entry: three letter tiles, the one you're on lit gold */
+.ahi-slots{display:flex;gap:10px;justify-content:center;margin-bottom:18px;border-radius:18px;transition:box-shadow .2s;}
+.ahi-slots.bad{box-shadow:0 0 0 2px var(--bad-ink,#ff8a8a);}
 .ahi-slot{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.ahi-letter{width:64px;height:80px;background:rgba(245,200,66,.1);border:2px solid rgba(245,200,66,.4);border-radius:10px;font-family:var(--display);font-size:2.6rem;font-weight:900;color:#f5c842;display:flex;align-items:center;justify-content:center;letter-spacing:0;user-select:none;}
-.ahi-letter.active{border-color:#f5c842;background:rgba(245,200,66,.2);box-shadow:0 0 12px rgba(245,200,66,.3);}
+.ahi-letters{display:flex;gap:8px;justify-content:center;margin-top:10px;}
+.ahi-letter{width:64px;height:80px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:16px;font-family:var(--display);font-size:2.6rem;font-weight:800;color:var(--text);display:flex;align-items:center;justify-content:center;letter-spacing:0;user-select:none;transition:box-shadow .15s,background .15s,color .15s;}
+.ahi-letter.active{color:var(--lit-ink);background:rgba(255,211,77,.12);box-shadow:inset 0 0 0 2px var(--lit),0 0 18px var(--litg);}
 .ahi-arrows{display:flex;flex-direction:column;gap:4px;}
-.ahi-arrow{width:64px;height:40px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;color:rgba(255,255,255,.6);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
-.ahi-arrow:active{background:rgba(255,255,255,.15);}
+.ahi-arrow{width:64px;height:40px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);border:0;border-radius:13px;color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;transition:transform .12s,background .15s;}
+.ahi-arrow .ico{width:20px;height:20px;}
+.ahi-arrow.up .ico{transform:rotate(180deg);}
+.ahi-arrow:active{background:var(--gl-2);transform:translateY(1px) scale(.96);}
+.ahi-type{font-size:.84rem;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+.ahi-input{font-family:var(--display);font-size:2.2rem;font-weight:800;text-align:center;letter-spacing:12px;text-indent:12px;text-transform:uppercase;
+  background:var(--well);border:0;box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;color:var(--text);width:170px;padding:12px 8px;outline:none;transition:box-shadow .15s;}
+.ahi-input:focus{box-shadow:inset 0 0 0 2px var(--lit),0 0 16px var(--litg);}
+.ahi-input::placeholder{color:var(--text-3);opacity:.6;}
+.ahi-warn{display:none;color:var(--bad-ink,#ff8a8a);font-size:.84rem;font-weight:650;text-align:center;margin-bottom:10px;}
+.ahi-acts{display:flex;flex-direction:column;align-items:stretch;gap:6px;max-width:260px;margin:0 auto;}
 .ahi-score-disp{text-align:center;margin-bottom:16px;}
-.ahi-score-val{font-family:var(--display);font-size:2rem;font-weight:900;color:#f5c842;}
-.ahi-score-lbl{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;font-size:.72rem;color:rgba(255,255,255,.4);margin-top:2px;}
-.ahi-score-lbl .ahi-rk{padding:0 6px;border-radius:6px;background:rgba(255,216,74,.18);color:#ffd84a;font-weight:900;}
-.ahi-also{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:8px;}
-.ahi-also b{color:#f5c842;font-weight:900;}
-.ahi-plate{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;padding:10px 18px;width:max-content;max-width:100%;border-radius:999px;background:rgba(245,200,66,.1);box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.5);animation:ahi-plate .55s cubic-bezier(.3,1.6,.5,1) .15s backwards;}
+.ahi-score-val{font-family:var(--display);font-size:2.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.05;color:var(--lit-ink);text-shadow:0 0 22px var(--litg);font-variant-numeric:tabular-nums;}
+.ahi-score-lbl{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;font-size:.84rem;font-weight:600;color:var(--text-2);margin-top:4px;}
+.ahi-score-lbl .ahi-tag{padding:2px 9px;border-radius:9px;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);font-weight:650;}
+.ahi-score-lbl .ahi-rk{padding:2px 9px;border-radius:9px;background:rgba(255,211,77,.16);box-shadow:inset 0 0 0 1px rgba(255,211,77,.5);color:var(--lit-ink);font-weight:800;}
+.ahi-also{font-size:.84rem;color:var(--text-2);margin-top:8px;}
+.ahi-also b{color:var(--lit-ink);font-weight:800;}
+.ahi-plate{display:flex;align-items:center;justify-content:center;gap:10px;margin:14px auto 0;padding:10px 18px;width:max-content;max-width:100%;border-radius:20px;background:rgba(255,211,77,.12);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.55),0 0 22px rgba(255,190,60,.18);animation:ahi-plate .55s cubic-bezier(.3,1.6,.5,1) .15s backwards;}
 .ahi-plate .avatar{width:34px;height:34px;font-size:.9rem;flex:none;}
-.ahi-plate-ini{font-family:var(--display);font-size:1.7rem;font-weight:900;letter-spacing:.18em;color:#f5c842;text-shadow:0 0 14px rgba(245,200,66,.5);}
-.ahi-plate small{font-size:.8rem;font-weight:800;color:rgba(255,255,255,.6);}
-.ahi-change{display:block;margin:0 auto;padding:6px 10px;border:0;background:none;color:rgba(255,255,255,.5);font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;}
+.ahi-plate-ini{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:.14em;color:var(--lit-ink);text-shadow:0 0 14px var(--litg);}
+.ahi-plate small{font-size:.86rem;font-weight:700;color:var(--text-2);}
+.ahi-change{display:block;margin:0 auto;padding:8px 12px;border:0;border-radius:12px;background:none;color:var(--text-3);font:inherit;font-size:.84rem;font-weight:650;cursor:pointer;}
+.ahi-change:active{background:var(--gl);}
 @keyframes ahi-plate{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
 /* the board right after a score files: the rows around it, the new one dropping into its place and the ones below
    stepping down to make room */
-.ahi-snap{margin:4px 0 6px;display:flex;flex-direction:column;gap:4px;}
-.ahi-sr{display:grid;grid-template-columns:26px 30px 1fr auto;align-items:center;gap:8px;padding:5px 10px;border-radius:12px;background:rgba(255,255,255,.04);}
+.ahi-snap{margin:4px 0 6px;display:flex;flex-direction:column;gap:5px;}
+.ahi-sr{display:grid;grid-template-columns:26px 30px 1fr auto;align-items:center;gap:8px;padding:6px 12px 6px 10px;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);}
 .ahi-sr .avatar{width:28px;height:28px;font-size:.8rem;}
-.ahi-sr-rk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.72rem;font-weight:900;color:rgba(255,255,255,.4);}
+.ahi-sr-rk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:.76rem;font-weight:800;color:var(--text-3);}
 .ahi-sr-rk.m{color:#2b1a00;}
-.ahi-sr-nm{min-width:0;font-family:var(--display);font-size:1.02rem;letter-spacing:.1em;line-height:1.05;}
-.ahi-sr-nm small{display:block;font-family:var(--font,system-ui);font-size:.66rem;font-weight:700;letter-spacing:0;color:rgba(255,255,255,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ahi-sr-pt{font-family:var(--display);font-size:1rem;}
-.ahi-sr.me{background:rgba(245,200,66,.14);box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.6),0 0 18px rgba(245,200,66,.18);color:#f5c842;animation:ahi-drop .6s cubic-bezier(.3,1.5,.5,1) .45s backwards;}
-.ahi-sr.me .ahi-sr-nm small{color:rgba(245,200,66,.75);}
+.ahi-sr-nm{min-width:0;font-family:var(--display);font-size:1.02rem;font-weight:800;letter-spacing:.1em;line-height:1.05;}
+.ahi-sr-nm small{display:block;font-family:var(--font);font-size:.72rem;font-weight:650;letter-spacing:0;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ahi-sr-pt{font-family:var(--display);font-size:1rem;font-weight:800;font-variant-numeric:tabular-nums;}
+.ahi-sr.me{background:rgba(255,211,77,.13);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 0 18px rgba(255,190,60,.2);color:var(--lit-ink);animation:ahi-drop .6s cubic-bezier(.3,1.5,.5,1) .45s backwards;}
+.ahi-sr.me .ahi-sr-nm small{color:var(--lit-ink);opacity:.8;}
 .ahi-sr.dn{animation:ahi-step .45s cubic-bezier(.3,1.2,.5,1) .2s backwards;}
-.ahi-sr-gap{height:10px;margin:-2px 0;background:radial-gradient(circle,rgba(255,255,255,.3) 1.5px,transparent 2px) center/12px 10px repeat-x;width:40px;align-self:center;}
+.ahi-sr-gap{height:10px;margin:-2px 0;background:radial-gradient(circle,var(--text-3) 1.5px,transparent 2px) center/12px 10px repeat-x;width:40px;align-self:center;opacity:.7;}
 @keyframes ahi-drop{from{transform:translateY(-14px) scale(1.12);opacity:0;}to{transform:none;opacity:1;}}
-@keyframes ahi-step{from{transform:translateY(calc(-100% - 4px));}to{transform:none;}}
+@keyframes ahi-step{from{transform:translateY(calc(-100% - 5px));}to{transform:none;}}
 @media (prefers-reduced-motion:reduce){.ahi-sr.me,.ahi-sr.dn{animation:none;}}
+.ahi-r .ahi-acts{margin-top:14px;}
 /* sideways phone: the score on the left, the board and Continue on the right */
 @media (max-height:540px) and (orientation:landscape){
   .ahi-box.ahi-two{max-width:720px;display:grid;grid-template-columns:1fr 1.35fr;gap:4px 22px;align-items:center;padding:16px 20px;}
   .ahi-two .ahi-score-disp{margin-bottom:0;}
   .ahi-two .ahi-sr{padding:3px 10px;}
   .ahi-two .ahi-sr .avatar{width:24px;height:24px;}
-  .ahi-two #ahi-go{margin:10px auto 2px !important;}
+  .ahi-two .ahi-r .ahi-acts{margin-top:10px;}
 }
-/* Leaderboard table */
-.ahi-table{width:100%;border-collapse:collapse;font-size:.82rem;}
-.ahi-table th{color:rgba(255,255,255,.4);font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1);}
-.ahi-table td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.05);}
-.ahi-table tr.ahi-new td{color:#f5c842;}
-.ahi-table tr.ahi-top td{color:#f5c842;}
-.ahi-quick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:-4px 0 16px;}
-.ahi-quick button{font-family:var(--display);font-size:1.15rem;letter-spacing:.08em;padding:8px 14px;border-radius:12px;border:0;background:rgba(255,255,255,.1);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.35);}
-.ahi-quick button.ahi-me{display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.18);box-shadow:0 3px 0 rgba(0,0,0,.35),inset 0 0 0 1.5px rgba(245,200,66,.55);}
+/* Leaderboard table: glass rows, the new score lit gold */
+.ahi-table{width:100%;border-collapse:separate;border-spacing:0 4px;font-size:.84rem;margin-top:-4px;}
+.ahi-table th{color:var(--text-3);font-size:.78rem;font-weight:600;text-align:left;padding:2px 8px;}
+.ahi-table td{padding:7px 8px;background:var(--gl);box-shadow:inset 0 1px 0 var(--gl-line),inset 0 -1px 0 var(--gl-line);}
+.ahi-table td:first-child{border-radius:13px 0 0 13px;box-shadow:inset 1px 1px 0 var(--gl-line),inset 0 -1px 0 var(--gl-line);}
+.ahi-table td:last-child{border-radius:0 13px 13px 0;box-shadow:inset -1px 1px 0 var(--gl-line),inset 0 -1px 0 var(--gl-line);}
+.ahi-table tr.ahi-new td{color:var(--lit-ink);background:rgba(255,211,77,.13);box-shadow:inset 0 1.5px 0 rgba(255,211,77,.6),inset 0 -1.5px 0 rgba(255,211,77,.6);}
+.ahi-table tr.ahi-new td:first-child{box-shadow:inset 1.5px 1.5px 0 rgba(255,211,77,.6),inset 0 -1.5px 0 rgba(255,211,77,.6);}
+.ahi-table tr.ahi-new td:last-child{box-shadow:inset -1.5px 1.5px 0 rgba(255,211,77,.6),inset 0 -1.5px 0 rgba(255,211,77,.6);}
+.ahi-table tr.ahi-new .ahi-who small,.ahi-table tr.ahi-new .ahi-dt{color:var(--lit-ink);opacity:.8;}
+.ahi-quick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 18px;}
+.ahi-quick button{font-family:var(--display);font-size:1.15rem;font-weight:800;letter-spacing:.08em;padding:8px 14px;border-radius:14px;border:0;background:var(--gl-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--gl-line),0 8px 18px -14px rgba(0,0,0,.9);cursor:pointer;touch-action:manipulation;transition:transform .12s,background .15s;}
+.ahi-quick button.ahi-me{display:inline-flex;align-items:center;gap:8px;background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 .ahi-quick button.ahi-me .avatar{width:24px;height:24px;font-size:.75rem;}
-.ahi-quick button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
-.ahi-quick-lbl{text-align:center;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;}
-.ahi-rank{color:rgba(255,255,255,.3);font-size:.72rem;width:24px;}
-.ahi-name{font-family:var(--display);font-size:1.1rem;font-weight:900;letter-spacing:.1em;}
-.ahi-pts{font-family:var(--display);font-size:1.05rem;font-weight:900;text-align:right;}
-.ahi-dt{color:rgba(255,255,255,.3);font-size:.65rem;text-align:right;}
+.ahi-quick button:active{transform:translateY(1px) scale(.96);filter:brightness(.94);}
+.ahi-quick-lbl{text-align:center;font-size:.84rem;font-weight:600;color:var(--text-2);margin-bottom:8px;}
+.ahi-rank{color:var(--text-3);font-size:.78rem;font-weight:700;width:24px;}
+.ahi-name{font-family:var(--display);font-size:1.1rem;font-weight:800;letter-spacing:.1em;}
+.ahi-pts{font-family:var(--display);font-size:1.05rem;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;}
+.ahi-dt{color:var(--text-3);font-size:.7rem;font-weight:550;text-align:right;line-height:1.3;white-space:nowrap;}
+.ahi-dt span{display:block;}
 .ahi-who{display:flex;align-items:center;gap:8px;}
 .ahi-who .avatar{width:26px;height:26px;font-size:.8rem;flex:none;}
-.ahi-who small{display:block;font-family:var(--font,system-ui);font-size:.66rem;font-weight:700;letter-spacing:0;color:rgba(255,255,255,.45);}
-.ahi-table tr.ahi-them td{background:rgba(91,140,255,.07);}
-.ahi-mine-lbl{text-align:center;font-size:.72rem;color:rgba(255,255,255,.5);margin:-8px 0 14px;}
-.ahi-empty{text-align:center;color:rgba(255,255,255,.25);padding:24px;font-size:.85rem;}
+.ahi-who small{display:block;font-family:var(--font);font-size:.72rem;font-weight:650;letter-spacing:0;color:var(--text-3);}
+.ahi-table tr.ahi-mine .ahi-name{color:var(--lit-ink);}
+.ahi-table tr.ahi-them td{background:color-mix(in srgb,var(--blue,#4da3ff) 10%,var(--gl));}
+.ahi-medal{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:800;font-size:.76rem;color:#2b1a00;}
+.ahi-mine-lbl{text-align:center;font-size:.8rem;color:var(--text-2);margin:-8px 0 14px;}
+.ahi-table td.ahi-empty{text-align:center;color:var(--text-2);padding:24px;font-size:.92rem;font-weight:650;border-radius:16px;box-shadow:inset 0 0 0 1px var(--gl-line);}
+.ahi-empty span{display:block;margin-top:6px;font-size:.8rem;font-weight:550;color:var(--text-3);}
 .ahi-tabs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:-6px 0 14px;}
-.ahi-tabs button{border:0;border-radius:999px;padding:6px 12px;font-family:var(--font,system-ui);font-size:.76rem;font-weight:800;background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);touch-action:manipulation;}
-.ahi-tabs button.on{background:rgba(245,200,66,.2);color:#f5c842;box-shadow:inset 0 0 0 1.5px rgba(245,200,66,.55);}
+.ahi-tabs button{border:0;border-radius:13px;padding:7px 13px;font-family:var(--font);font-size:.82rem;font-weight:700;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);cursor:pointer;touch-action:manipulation;}
+.ahi-tabs button.on{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 .ahi-pts.ahi-low{font-size:.95rem;white-space:nowrap;}
+.ahi-btns{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;}
+.ahi-btns #ahi-close{min-width:120px;}
+.ahi-btns #ahi-clear{color:var(--bad-ink,#ff8a8a);}
+/* a narrow phone (320 wide): less padding, the board without its little avatars so every column fits */
+@media (max-width:360px){
+  .ahi-overlay{padding:12px;}
+  .ahi-box{padding:20px 12px;}
+  .ahi-table td,.ahi-table th{padding-left:5px;padding-right:5px;}
+  .ahi-table .ahi-who .avatar{display:none;}
+  .ahi-name{font-size:1rem;}
+  .ahi-pts{font-size:.95rem;}
+}
 `;
     document.head.appendChild(s);
   }
@@ -268,22 +313,23 @@ const ArcadeHi = (function(){
 
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay';
-    const c = conf(key), lbl = c.label ? '<span>' + esc(c.label).toUpperCase() + '</span>' : '';
-    const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
+    const c = conf(key);
     overlay.innerHTML = `
       <div class="ahi-box">
-        <div class="ahi-title">${ttl}</div>
+        <div class="ahi-title">${titleOf(c)}</div>
         <div class="ahi-sub">${who && !forMe ? esc(who) + ' made the top ' + MAX + '. Their initials?' : 'You made the top ' + MAX + '. Enter your initials.'}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
-          <div class="ahi-score-lbl">${lbl}<span>${unitName(key).toUpperCase()}</span></div>
+          <div class="ahi-score-lbl"><span>${unitName(key)}</span>${c.label ? '<span class="ahi-tag">' + esc(c.label) + '</span>' : ''}</div>
           ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
         </div>
         <div id="ahi-quick-wrap"></div>
         <div class="ahi-slots" id="ahi-slots"></div>
-        <div id="ahi-warn" style="display:none;color:#ef4444;font-size:.75rem;text-align:center;margin-bottom:8px;"></div>
-        <button class="btn btn-gold btn-block" id="ahi-submit" style="max-width:240px;margin:0 auto 10px;display:block;">Submit →</button>
-        <button class="btn btn-outline btn-block" id="ahi-skip" style="max-width:240px;margin:0 auto;display:block;font-size:.78rem;">Skip</button>
+        <div class="ahi-warn" id="ahi-warn"></div>
+        <div class="ahi-acts">
+          <button class="btn btn-primary btn-block" id="ahi-submit" type="button">Save initials</button>
+          <button class="btn btn-ghost btn-block btn-sm" id="ahi-skip" type="button">Skip</button>
+        </div>
       </div>`;
     document.body.style.overflow = 'hidden';
     // Always release the scroll lock however the overlay is dismissed
@@ -302,13 +348,10 @@ const ArcadeHi = (function(){
         const wrapper = document.createElement('div');
         wrapper.style.cssText = 'text-align:center;';
         wrapper.innerHTML = `
-          <div style="font-size:.78rem;color:rgba(255,255,255,.5);margin-bottom:8px;">Type your 3 initials</div>
-          <input id="ahi-mobile-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-            maxlength="3" placeholder="AAA"
-            style="font-family:var(--display);font-size:2.2rem;font-weight:900;text-align:center;letter-spacing:12px;
-            background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.3);border-radius:12px;
-            color:#fff;width:160px;padding:12px 8px;text-transform:uppercase;outline:none;">
-          <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+          <div class="ahi-type">Type your 3 initials</div>
+          <input id="ahi-mobile-input" class="ahi-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+            maxlength="3" placeholder="AAA">
+          <div class="ahi-letters">
             ${letters.map((l,i)=>`<div class="ahi-letter${i===focusIdx?' active':''}" style="pointer-events:none;">${l}</div>`).join('')}
           </div>`;
         container.appendChild(wrapper);
@@ -328,11 +371,11 @@ const ArcadeHi = (function(){
           slot.className = 'ahi-slot';
           slot.innerHTML = `
             <div class="ahi-arrows">
-              <button class="ahi-arrow" data-i="${i}" data-dir="1">▲</button>
+              <button class="ahi-arrow up" type="button" data-i="${i}" data-dir="1" aria-label="Next letter">${arrowIc('▲')}</button>
             </div>
             <div class="ahi-letter${i===focusIdx?' active':''}" data-i="${i}">${letters[i]}</div>
             <div class="ahi-arrows">
-              <button class="ahi-arrow" data-i="${i}" data-dir="-1">▼</button>
+              <button class="ahi-arrow" type="button" data-i="${i}" data-dir="-1" aria-label="Previous letter">${arrowIc('▼')}</button>
             </div>`;
           container.appendChild(slot);
         }
@@ -406,7 +449,7 @@ const ArcadeHi = (function(){
         if(letters.join('')==='AAA'){
           // Flash warning on the slots
           const slotsEl=document.getElementById('ahi-slots');
-          if(slotsEl){slotsEl.style.outline='2px solid #ef4444';setTimeout(()=>{slotsEl.style.outline='';},600);}
+          if(slotsEl){slotsEl.classList.add('bad');setTimeout(()=>{slotsEl.classList.remove('bad');},600);}
           const warn=document.getElementById('ahi-warn');
           if(warn){warn.textContent='Enter your initials first!';warn.style.display='block';}
           document.addEventListener('keydown',onKey); // re-attach
@@ -438,23 +481,22 @@ const ArcadeHi = (function(){
   function showFiled(key, score, ini, who, also, onDone, filed){
     injectCSS();
     if(!filed){ insert(key, ini, score, who); also.forEach(a=>insert(a.key, ini, a.score, who)); }
-    const c = conf(key), lbl = c.label ? '<span>' + esc(c.label).toUpperCase() + '</span>' : '';
-    const ttl = c.unit === 'time' ? 'FAST TIME!' : c.low ? 'TOP ' + MAX + '!' : 'HIGH SCORE!';
+    const c = conf(key);
     const rank = load(key).findIndex(e=>e.name.trim()===ini && e.score===score) + 1;
     const snap = snapshot(key, ini, score);
     const overlay = document.createElement('div');
     overlay.className = 'ahi-overlay ahi-filed';
     overlay.innerHTML = `
       <div class="ahi-box${snap ? ' ahi-two' : ''}">
-        <div class="ahi-l"><div class="ahi-title">${ttl}</div>
+        <div class="ahi-l"><div class="ahi-title">${titleOf(c)}</div>
         <div class="ahi-score-disp">
           <div class="ahi-score-val">${esc(fmt(key, score))}</div>
-          <div class="ahi-score-lbl">${lbl}<span>${unitName(key).toUpperCase()}</span>${rank && !snap ? '<b class="ahi-rk">#' + rank + '</b>' : ''}</div>
+          <div class="ahi-score-lbl"><span>${unitName(key)}</span>${c.label ? '<span class="ahi-tag">' + esc(c.label) + '</span>' : ''}${rank && !snap ? '<b class="ahi-rk">#' + rank + '</b>' : ''}</div>
           ${also.map(a=>`<div class="ahi-also">Also on ${esc(conf(a.key).label || boardTitle(a.key) || a.key)}: <b>${esc(fmt(a.key, a.score))}</b></div>`).join('')}
         </div></div>
         <div class="ahi-r">${snap || `<div class="ahi-plate">${avHTML(who || ini, 'sm')}<span class="ahi-plate-ini">${esc(ini)}</span><small>${esc(who || '')}</small></div>`}
-        <button class="btn btn-gold btn-block" id="ahi-go" style="max-width:240px;margin:14px auto 6px;display:block;">Continue</button>
-        <button class="ahi-change" id="ahi-change" type="button">Not ${esc(ini)}? Change</button></div>
+        <div class="ahi-acts"><button class="btn btn-primary btn-block" id="ahi-go" type="button">Continue</button>
+        <button class="ahi-change" id="ahi-change" type="button">Not ${esc(ini)}? Change</button></div></div>
       </div>`;
     document.body.style.overflow = 'hidden';
     document.body.appendChild(overlay);
@@ -507,20 +549,20 @@ const ArcadeHi = (function(){
 
     let rows = '';
     if(list.length===0){
-      rows = `<tr><td colspan="4" class="ahi-empty">No scores yet — be the first!<br><span style="font-size:.75rem;color:rgba(255,255,255,.2);display:block;margin-top:6px;">Play a game to get on the board.</span></td></tr>`;
+      rows = `<tr><td colspan="4" class="ahi-empty">No scores yet. Be the first!<span>Play a game to get on the board.</span></td></tr>`;
     } else {
       list.forEach((e,i)=>{
         const isNew = i===newIdx;
         const isTop = i===0;
-        const medal = i<3 ? `<span style="display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-weight:900;font-size:.75rem;color:#2b1a00;background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
+        const medal = i<3 ? `<span class="ahi-medal" style="background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
         const nm = e.who ? `<div class="ahi-who">${avHTML(e.who)}<div>${esc(e.name)}<small>${esc(e.who)}</small></div></div>`
           : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>You</small></div></div>`
           : e.by ? `<div class="ahi-who">${avHTML(e.by)}<div>${esc(e.name)}<small>${esc(e.by)}</small></div></div>` : esc(e.name);
-        rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}">
+        rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}${e.mine?' ahi-mine':''}">
           <td class="ahi-rank">${medal||i+1}</td>
           <td class="ahi-name">${nm}</td>
           <td class="ahi-pts${conf(key).unit && conf(key).unit !== 'score' && conf(key).unit !== 'points' ? ' ahi-low' : ''}">${esc(fmt(key, e.score))}</td>
-          <td class="ahi-dt">${esc(e.date||'')}</td>
+          <td class="ahi-dt">${dateHTML(e.date)}</td>
         </tr>`;
       });
     }
@@ -528,16 +570,16 @@ const ArcadeHi = (function(){
     const hasScores = nLocal > 0;
     overlay.innerHTML = `
       <div class="ahi-box">
-        <div class="ahi-title">${window.Kit&&Kit.icon?Kit.icon('trophy'):''} ${gameName}</div>
+        <div class="ahi-title board">${window.Kit&&Kit.icon?Kit.icon('trophy'):''}<span>${esc(gameName)}</span></div>
         <div class="ahi-sub">${low ? 'The ' + (conf(key).unit === 'time' ? 'fastest ' : 'fewest ') + MAX : 'The top ' + MAX} has ${list.length} entr${list.length===1?'y':'ies'}${nThem?', ' + nThem + ' of them from linked players':''}.</div>
         ${sibs.length ? '<div class="ahi-tabs" role="tablist">' + sibs.map(k=>`<button type="button" role="tab" data-k="${esc(k)}" class="${k===key?'on':''}" aria-selected="${k===key}">${esc(conf(k).tab || conf(k).label || k)}</button>`).join('') + '</div>' : ''}
         <table class="ahi-table">
           <thead><tr><th>#</th><th>Name</th><th style="text-align:right">${unitName(key)}</th><th style="text-align:right">Date</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-        <div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
-          <button class="btn btn-gold" id="ahi-close" style="min-width:100px;">Close</button>
-          ${hasScores?`<button class="btn btn-outline btn-sm" id="ahi-clear" style="color:rgba(255,100,100,.7);border-color:rgba(255,100,100,.3);">Clear scores</button>`:''}
+        <div class="ahi-btns">
+          <button class="btn btn-primary" id="ahi-close" type="button">Close</button>
+          ${hasScores?`<button class="btn btn-ghost btn-sm" id="ahi-clear" type="button">Clear scores</button>`:''}
         </div>
       </div>`;
     document.body.style.overflow = 'hidden';
@@ -622,7 +664,7 @@ const ArcadeHi = (function(){
     btn(key, title){
       injectCSS();
       const b = document.createElement('button');
-      b.className = 'btn btn-outline btn-sm';
+      b.className = 'btn btn-soft btn-sm';
       b.innerHTML = (window.Kit&&Kit.icon?Kit.icon('trophy')+' ':'')+'Scores';
       b.addEventListener('click', ()=>ArcadeHi.show(key, title));
       return b;

@@ -48,7 +48,7 @@
     scr.appendChild(top);
     var party = el('div', { class: 'or-party' });
     d.p.forEach(function (p, i) {
-      if (p.a) party.appendChild(el('div', { class: 'or-p ok' }, [el('b', { text: p.n }), el('small', { text: (i === 0 ? 'Wagon leader · ' : '') + (d.a ? 'made it, ' + (d.h || 'good') + ' health' : 'still on the trail') })]));
+      if (p.a) party.appendChild(el('div', { class: 'or-p ok' }, [el('b', { text: p.n }), el('small', { text: (i === 0 ? 'Wagon leader · ' : '') + (d.a ? 'Made it, ' + (d.h || 'good') + ' health' : 'Still on the trail') })]));
       else party.appendChild(el('div', { class: 'or-p rip' }, [el('i'), el('b', { text: p.n }), el('small', { text: cause(p.c) + (p.at ? ' near ' + p.at : '') }), p.e ? el('em', { text: '"' + p.e + '"' }) : null]));
     });
     scr.appendChild(party);
