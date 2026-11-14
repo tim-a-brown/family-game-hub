@@ -17,22 +17,19 @@
 <script type="module" src="willycrash/scene3d.js"></script>
 <style>
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
-html.ar-on body{display:flex;flex-direction:column;
-  background:radial-gradient(90% 45% at 50% 0%, rgba(255,140,90,.15) 0%, rgba(255,140,90,0) 70%),var(--bg);}
+html.ar-on body{display:flex;flex-direction:column;}
 html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 8px);display:flex;}
 .wc-view{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .wc-view[hidden]{display:none;}
 .hud{flex:none;display:flex;align-items:stretch;gap:6px;width:100%;}
-.plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:14px;
-  background:linear-gradient(180deg,#3a2140,#1c0f22);box-shadow:inset 0 0 0 1.5px rgba(255,180,140,.3),0 6px 14px rgba(0,0,0,.35);}
-.plate small{font-size:.6rem;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,205,180,.7);white-space:nowrap;}
-.plate b{font-family:var(--display);font-weight:400;font-size:1.4rem;line-height:1.05;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.plate{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:4px 8px;border-radius:15px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.plate small{font-size:.74rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
+.plate b{font-family:var(--display);font-weight:800;letter-spacing:-.02em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:1.4rem;line-height:1.05;}
 .plate.gold{flex:1.4;}
-.plate.gold b{color:#ffd84a;text-shadow:0 0 12px rgba(255,200,40,.4);}
+.plate.gold b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .plate.bump b{animation:bounce .45s var(--spring);}
-.pbtn{flex:none;width:48px;border:0;border-radius:14px;display:grid;place-items:center;color:#ffd9c8;
-  background:linear-gradient(180deg,#3a2140,#1c0f22);box-shadow:inset 0 0 0 1.5px rgba(255,180,140,.3),0 6px 14px rgba(0,0,0,.35);}
-.pbtn:active{transform:scale(.94);}
+.pbtn{flex:none;width:48px;border:0;border-radius:15px;display:grid;place-items:center;color:var(--text);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .12s var(--ease),filter .15s;}
+.pbtn:active{transform:translateY(1px) scale(.95);filter:brightness(.94);}
 .pbtn svg{width:22px;height:22px;}
 .cab{flex:1 1 0;min-height:0;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .bezel{position:relative;padding:7px;border-radius:22px;}
@@ -78,9 +75,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .ov{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;pointer-events:none;}
 .ov[hidden]{display:none;}
 .ov button{pointer-events:auto;}
-.ov h2{font-family:var(--display);font-weight:400;font-size:2.6rem;line-height:1;color:#fff;
-  -webkit-text-stroke:2px #3a1630;paint-order:stroke fill;text-shadow:0 4px 0 #3a1630,0 8px 18px rgba(0,0,0,.25);}
-.pausecard{background:rgba(20,8,30,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);pointer-events:auto;}
+.ov h2{font-family:var(--display);font-weight:800;letter-spacing:-.03em;font-size:2.6rem;line-height:1;color:#fff;text-shadow:0 2px 0 rgba(10,8,24,.5),0 8px 22px rgba(0,0,0,.45);}
+.pausecard{background:var(--win-shade);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);pointer-events:auto;}
 .pausecard .btn{min-width:200px;margin-top:14px;}
 .pausecard .btn-ghost{margin-top:8px;color:#fff;}
 .hint{flex:none;font-size:.8rem;font-weight:700;color:var(--text-3);text-align:center;}
@@ -2148,19 +2144,22 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     if (tt < .35 || (jp && tt < JP_END)) return;
     var pw = Math.min(250, W - 40), ph = 92, px = W / 2 - pw / 2, py = H * .2 + big * .75, up = ease((tt - .35) / .3);
     g.globalAlpha = up; g.save(); g.translate(0, (1 - up) * 30);
-    g.fillStyle = '#fff8e4'; rr(px, py, pw, ph, 16); g.fill();
-    g.strokeStyle = '#d7b56b'; g.lineWidth = 3; g.stroke();
-    g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#7a5a2a'; g.fillText(r.where, px + 16, py + 22);
-    g.textAlign = 'right'; g.fillStyle = '#5a3d16'; g.font = '400 17px ' + FONT; g.fillText('+' + r.tickets, px + pw - 16, py + 22);
-    g.fillStyle = '#e8d5a8'; g.fillRect(px + 12, py + ph - 38, pw - 24, 1.5);
-    g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'left'; g.fillStyle = '#c0702a'; g.fillText('SHOT ' + c.n + ' OF ' + SHOTS, px + 16, py + ph - 18);
-    g.textAlign = 'right'; g.font = '400 20px ' + FONT; g.fillStyle = '#e5263f'; g.fillText(fmt(total) + ' points', px + pw - 16, py + ph - 18);
+    g.fillStyle = 'rgba(24,26,48,.9)'; rr(px, py, pw, ph, 18); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; g.stroke();
+    g.font = '700 14px "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillStyle = '#f3f1fb'; g.fillText(r.where, px + 16, py + 22);
+    g.textAlign = 'right'; g.fillStyle = '#ffe28a'; g.font = '800 17px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.fillText('+' + r.tickets, px + pw - 16, py + 22);
+    g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(px + 12, py + ph - 38, pw - 24, 1);
+    g.font = '650 13px "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'left'; g.fillStyle = '#c6c4da'; g.fillText('Shot ' + c.n + ' of ' + SHOTS, px + 16, py + ph - 18);
+    g.textAlign = 'right'; g.font = '800 20px "GN Display", "Schibsted Grotesk", system-ui, sans-serif'; g.fillStyle = '#ffd34d'; g.fillText(fmt(total) + ' points', px + pw - 16, py + ph - 18);
     g.restore(); g.globalAlpha = 1;
     if (tt > 1) tapHint();
   }
   function tapHint() {
-    g.globalAlpha = .75 + Math.sin(t * 5) * .25; g.fillStyle = 'rgba(20,24,60,.72)'; rr(W / 2 - 100, H - 46, 200, 30, 15); g.fill();
-    txt((shotIdx + 1 >= SHOTS ? 'Tap to finish' : 'Tap for the next shot') + (FINE ? ' (Space)' : ''), W / 2, H - 31, 14, '#fff', 'center', 0); g.globalAlpha = 1;
+    // a smoked-glass pill in the app's own type, like the prompts outside the screen
+    g.globalAlpha = .75 + Math.sin(t * 5) * .25; g.fillStyle = 'rgba(14,15,30,.62)'; rr(W / 2 - 100, H - 46, 200, 30, 15); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 1; g.stroke();
+    g.font = '700 14px "Schibsted Grotesk", system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff';
+    g.fillText((shotIdx + 1 >= SHOTS ? 'Tap to finish' : 'Tap for the next shot') + (FINE ? ' (Space)' : ''), W / 2, H - 31); g.globalAlpha = 1;
   }
   // Jackpot, part 1: the gold sunburst card, Willy pointing at the sky
   function drawSunburst(tt, a) {
@@ -2268,7 +2267,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     // ── left: cannon speed (arcade) or plunger power (aim yourself)
     var gx = tall ? 24 : Math.max(30, w * .13), gy0 = 22, gy1 = h - 12, gw = 18, gh = gy1 - gy0;
-    x.font = '900 10px system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(210,220,255,.8)'; x.fillText(arcade ? 'SPEED' : 'POWER', gx, 12);
+    x.font = '650 11px "Schibsted Grotesk", system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(198,196,218,.9)'; x.fillText(arcade ? 'Speed' : 'Power', gx, 12);
     x.fillStyle = '#0a0c1c'; x.beginPath(); x.moveTo(gx - gw / 2 + 6, gy0); x.arcTo(gx + gw / 2, gy0, gx + gw / 2, gy1, 6); x.arcTo(gx + gw / 2, gy1, gx - gw / 2, gy1, 6); x.arcTo(gx - gw / 2, gy1, gx - gw / 2, gy0, 6); x.arcTo(gx - gw / 2, gy0, gx + gw / 2, gy0, 6); x.fill();
     if (arcade) {
       // four lamps: one more lights each time a jackpot speeds the cannon up
@@ -2297,7 +2296,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     // ── right: angle dial (the gold arc is the cannon's swing)
     var dr = tall ? Math.min(RW * .42, h * .22, 52) : Math.min(h * .46, 50, w * .13), dx = tall ? RX + (RW - dr) / 2 : w - Math.max(14, w * .05) - dr, dyy = tall ? 40 + dr : h - 12;
-    x.font = '900 10px system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(210,220,255,.8)'; x.fillText('ANGLE', dx + dr / 2, 12);
+    x.font = '650 11px "Schibsted Grotesk", system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = 'rgba(198,196,218,.9)'; x.fillText('Angle', dx + dr / 2, 12);
     x.fillStyle = '#0a0c1c'; x.beginPath(); x.moveTo(dx, dyy); x.arc(dx, dyy, dr + 4, -PI / 2, 0); x.closePath(); x.fill();
     var lo = arcade ? ARC_LO : 24, hi = arcade ? ARC_HI : 80;
     x.strokeStyle = 'rgba(255,200,80,.45)'; x.lineWidth = 6; x.beginPath(); x.arc(dx, dyy, dr - 6, -hi * PI / 180, -lo * PI / 180); x.stroke();
@@ -2387,7 +2386,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     var ov = $('ov');
     if (!paused) { ov.hidden = true; ov.innerHTML = ''; ov.className = 'ov'; return; }
     ov.className = 'ov pausecard'; ov.hidden = false;
-    ov.innerHTML = '<h2>Paused</h2><div style="color:#ffd9c8;font-weight:800;margin-top:6px">Shot ' + Math.min(SHOTS, shotIdx + 1) + ' of ' + SHOTS + ', with ' + fmt(total) + ' points</div>' +
+    ov.innerHTML = '<h2>Paused</h2><div style="color:rgba(243,241,251,.82);font-weight:650;margin-top:8px">Shot ' + Math.min(SHOTS, shotIdx + 1) + ' of ' + SHOTS + ', with ' + fmt(total) + ' points</div>' +
       '<button class="btn btn-primary btn-lg" type="button" id="ov-resume">' + Kit.icon('play') + 'Keep playing</button>' +
       '<button class="btn btn-ghost" type="button" id="ov-new">New game</button>';
     $('ov-resume').addEventListener('click', function (e) { e.stopPropagation(); Kit.sfx('tap'); resume(); });
