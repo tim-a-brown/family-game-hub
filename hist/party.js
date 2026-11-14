@@ -348,7 +348,7 @@
     '.wy-list{display:flex;flex-direction:column;gap:8px;}' +
     '.wy-q{padding:10px;border-radius:14px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;gap:7px;}' +
     '.wy-top{display:flex;align-items:center;gap:7px;font-size:.72rem;font-weight:900;}' +
-    '.wy-n{color:var(--text-3);}.wy-k{padding:2px 7px;border-radius:999px;background:var(--cc);color:#fff;letter-spacing:.06em;text-transform:uppercase;font-size:.62rem;}' +
+    '.wy-n{color:var(--text-3);}.wy-k{padding:2px 8px;border-radius:9px;background:color-mix(in srgb,var(--cc) 30%,rgba(255,255,255,.06));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cc) 60%,transparent);color:var(--text);font-weight:650;font-size:.74rem;}' +
     '.wy-split{margin-left:auto;color:var(--text-2);}' +
     '.wy-two{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:stretch;}' +
     '.wy-or{align-self:center;font-family:var(--display);font-size:.8rem;color:var(--text-3);}' +
@@ -565,7 +565,7 @@
     '.cv-card{padding:10px 12px 11px;border-radius:12px;background:#fffdf7;color:#22222e;transform:rotate(var(--r));box-shadow:inset 0 5px 0 var(--cc),0 6px 14px -8px rgba(0,0,0,.7);display:flex;flex-direction:column;gap:6px;transition:box-shadow .25s,transform .25s;}' +
     '.cv-card.hl{transform:rotate(0) scale(1.02);box-shadow:inset 0 5px 0 var(--cc),0 0 0 3px #ffd447,0 10px 20px -8px rgba(0,0,0,.8);}' +
     '.cv-top{display:flex;align-items:center;gap:8px;padding-top:2px;}' +
-    '.cv-k{font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--cc);}' +
+    '.cv-k{font-size:.78rem;font-weight:650;color:color-mix(in srgb,var(--cc) 70%,var(--text));}' +
     '.cv-t{display:inline-flex;align-items:center;gap:3px;font-size:.7rem;font-weight:800;color:#7a7588;}.cv-t .ico{width:12px;height:12px;}' +
     '.cv-star{margin-left:auto;display:flex;color:#e0a21a;}.cv-star .ico{width:16px;height:16px;fill:currentColor;}' +
     '.cv-card p{margin:0;font-family:var(--display);font-weight:400;font-size:1.02rem;line-height:1.25;}' +

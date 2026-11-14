@@ -38,7 +38,7 @@
     '.lh-nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     '.lh-nm i.dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 0 1.5px rgba(255,255,255,.7);}',
     '.lh-inks{display:flex;gap:2px;min-height:19px;}',
-    '.lh-won{font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#1d1530;background:linear-gradient(180deg,#f7dc93,#d8a944);padding:2px 8px;border-radius:999px;}',
+    '.lh-won{font-size:.74rem;font-weight:750;color:#1d1530;background:linear-gradient(180deg,#f7dc93,#d8a944);padding:2px 9px;border-radius:9px;}',
     '.lh-mid{font-family:var(--display);font-size:1rem;color:rgba(232,193,106,.7);}',
     '.lh-foot{text-align:center;font-size:.84rem;font-weight:800;color:#e8c16a;line-height:1.3;}',
     '.lh-foot small{display:block;color:rgba(246,236,210,.6);font-size:.74rem;font-weight:700;}',
