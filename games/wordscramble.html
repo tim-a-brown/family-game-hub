@@ -12,6 +12,8 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../data/wordle-words.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .sc{max-width:560px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 18px);}
 .sc .scores{margin-bottom:2px;}
@@ -164,9 +166,9 @@
   Kit.init({
     id: 'wordscramble',
     theme: { felt: ['#167a72', '#0d524d', '#083b37'] },
-    onNew: function () { showSetup(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } showSetup(); },
     undo: function () { undoTile(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Word Scramble: past games' }); } }],
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Word Scramble: past games' }); } }]),
     rules:
       '<p class="goal">Unscramble the letter tiles to make the hidden word. Solve as many as you can before the sand runs out.</p>' +
       '<h3>Playing</h3><ul><li><b>Tap</b> a tile to put it in the next empty square, or <b>drag</b> it to any square.</li>' +
@@ -180,7 +182,8 @@
       '<li>Solve 3 or more in a row for a <b>+5 streak bonus</b> on each word. Skipping ends your streak.</li></ul>' +
       '<h3>Ways to play</h3><ul><li><b>Solo</b>: beat your best score.</li>' +
       '<li><b>Pass and play</b>: 2 to 4 players take turns with the same clock. Highest total after all rounds wins.</li>' +
-      '<li><b>Relaxed</b> has no clock: ' + RELAXED_WORDS + ' words per turn.</li></ul>'
+      '<li><b>Relaxed</b> has no clock: ' + RELAXED_WORDS + ' words per turn.</li>' +
+      '<li><b>Online</b>: 2 to 4 players, each on their own phone or tablet, all at the same time. Everyone gets the same words in the same order and their own clock, and the scores add up as each turn is handed in.</li></ul>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -188,6 +191,7 @@
   //      deck:[idx], R: current word {w, clue, letters, slots, rack, locked, clueUsed}, left(ms), words:[...] per turn log, log:[]}
   var S = null, undoStack = [];
   function save() {
+    if (NET) { saveDraft(); return; }
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set(catName(S.cat) + ' · ' + (S.mode === 'race' ? curP().name + "'s turn" : S.T.score + ' points'));
   }
@@ -205,13 +209,13 @@
     var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
     if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
     var st = Kit.setup(app, {
-      modes: Kit.modes([{ id: 'solo', desc: 'Beat the clock and your best score' }, { id: 'race', kind: 'local', desc: '2 to 4 players race the same clock in turns' }]),
+      modes: Kit.modes([{ id: 'solo', desc: 'Beat the clock and your best score' }, { id: 'race', kind: 'local', desc: '2 to 4 players race the same clock in turns' }, { id: 'online', desc: 'Everyone on their own device, all at once' }]),
       options: [
         { id: 'diff', label: 'Word length', help: 'How long the scrambled words are. Longer words are harder to unscramble.', value: 'medium', choices: [['easy', 'Easy 3–5'], ['medium', 'Medium 6–7'], ['hard', 'Hard 8+']] },
         { id: 'time', label: 'Clock', help: 'How long you get to unscramble as many words as you can.', value: 90, choices: [[60, '60 sec'], [90, '90 sec'], [120, '2 min'], [0, 'Relaxed', 'No clock: take your time on 10 words.']] },
-        { id: 'rounds', label: 'Rounds', value: 1, choices: [[1, '1 round'], [2, '2 rounds'], [3, '3 rounds']], when: function (m) { return m === 'race'; } }
+        { id: 'rounds', label: 'Rounds', value: 1, choices: [[1, '1 round'], [2, '2 rounds'], [3, '3 rounds']], when: function (m) { return m !== 'solo'; } }
       ],
-      players: { min: 1, max: 4, range: function (m) { return m === 'race' ? [2, 4] : [1, 1]; } },
+      players: { min: 1, max: 4, range: function (m) { return m === 'solo' ? [1, 1] : [2, 4]; } },
       onStart: function (cfg) {
         var cat = chosen === 'Surprise' ? null : chosen;
         start(cfg, cat);
@@ -340,7 +344,7 @@
     paintHud(); paintClock();
     if (S.phase === 'ready') return coverReady();
     if (S.phase === 'turnover') return coverTurnOver();
-    if (S.phase === 'over') return coverOver();
+    if (S.phase === 'over' || S.phase === 'wait') return coverOver();
     clueEl = el('div', { class: 'clue dim' }); feltEl.appendChild(clueEl); paintClue();
     slotsEl = el('div', { class: 'row slots' });
     rackEl = el('div', { class: 'row' });
@@ -638,6 +642,7 @@
   // ── Turns and the end ─────────────────────────────────────────────────────
   function endTurn() {
     stopClock();
+    if (NET) { netSubmit(); return; }
     var i = S.turn % S.players.length;
     S.scores[i] += S.T.score;
     var r = curRound();
@@ -652,8 +657,9 @@
   }
   function coverReady() {
     var p = curP(), c = el('div', { class: 'cover' });
-    c.appendChild(el('p', { text: (S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds + ' · ' : '') + (S.mode === 'race' ? 'Pass the phone to' : 'Ready?') }));
-    c.appendChild(el('h2', { text: p.name === 'You' ? 'Your turn' : p.name }));
+    if (S.online) c.appendChild(el('p', { text: S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds : 'Everyone gets these same words' }));
+    else c.appendChild(el('p', { text: (S.rounds > 1 ? 'Round ' + (curRound() + 1) + ' of ' + S.rounds + ' · ' : '') + (S.mode === 'race' ? 'Pass the phone to' : 'Ready?') }));
+    c.appendChild(el('h2', { text: p.name === 'You' || S.online ? 'Your turn' : p.name }));
     c.appendChild(el('p', { text: (S.time ? TIMES[S.time] + ' on the clock' : RELAXED_WORDS + ' words') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] }));
     c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Start my turn', onclick: beginTurn }));
     feltEl.appendChild(c);
@@ -668,7 +674,14 @@
   }
   function coverOver() {
     var c = el('div', { class: 'cover' });
+    if (S.online && S.phase === 'wait') {
+      var w = netWaiting();
+      c.appendChild(el('h2', { text: 'Your turns are in' }));
+      c.appendChild(el('p', { text: w.length ? 'The game ends when ' + listAnd(w) + (w.length === 1 ? ' finishes.' : ' finish.') : 'The game is ending.' }));
+      feltEl.appendChild(c); return;
+    }
     c.appendChild(el('h2', { text: 'Game over' }));
+    if (S.online && NET) { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Play again', onclick: function () { NET.again(); } })); feltEl.appendChild(c); return; }
     c.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Play again', onclick: again }));
     c.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Change settings', onclick: showSetup }));
     feltEl.appendChild(c);
@@ -718,8 +731,8 @@
     if (alt) hl.push('Found ' + alt.w.as + ' hiding in ' + alt.w.w);
     var skipped = 0; S.log.forEach(function (L) { L.words.forEach(function (w) { if (w.skipped) skipped++; }); });
     if (!all.length && skipped) hl.push('Tough letters: ' + skipped + ' skipped');
-    var mode = (solo ? 'Solo' : 'Pass and play') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] + ' · ' + TIMES[S.time];
-    Kit.record(KEY, {
+    var mode = (solo ? 'Solo' : NET ? 'Online' : 'Pass and play') + ' · ' + catName(S.cat) + ' · ' + DIFF[S.diff][2] + ' · ' + TIMES[S.time];
+    if (!netRecorded()) Kit.record(KEY, {
       started: S.started, mode: mode,
       players: P.map(function (p, i) { return { name: p.name, score: S.scores[i] }; }),
       winner: solo ? P[0].name : tie ? null : P[order[0]].name,
@@ -729,6 +742,7 @@
       meta: { solo: solo, time: S.time, diff: S.diff, cat: S.cat, top: top },
       detail: scrambleDetail(best)
     });
+    if (NET) { netWin(order, tie); return; }
     clearSave();
     Kit.win({
       title: solo ? (best != null && top > best ? 'New best!' : top + ' points!') : tie ? "It's a tie!" : (P[order[0]].name === 'You' ? 'You win!' : P[order[0]].name + ' wins!'),
@@ -744,6 +758,121 @@
   }
 
   document.addEventListener('visibilitychange', function () { if (document.hidden && S && S.phase === 'play' && S.time) { pause(); stopClock(); } });
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // Everyone plays at the same time, each on their own device and clock (the table's turn holds every seat with a
+  // round still to play). Everyone gets the same words in the same order: round r starts at the same place in the
+  // table's shuffled deck. A turn in progress stays on your device (a draft: closing the app pauses your clock);
+  // when your clock runs out the turn is handed in as one move, and the scores update on every device.
+  var NET = null, NETREC = 'wordscramble_net_rec', DRAFT = 'wordscramble_net_draft', winRef = null;
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_wordscramble')) || {}).options || {}; } catch (e) {}
+    var cat = null; try { cat = localStorage.getItem(CAT_KEY); } catch (e) {}
+    if (cat !== 'Surprise' && !WORDS[cat]) cat = 'Animals';
+    var time = +o.time; if (!(time in TIMES)) time = 90;
+    return { cat: cat === 'Surprise' ? null : cat, diff: DIFF[o.diff] ? o.diff : 'medium', time: time, rounds: Math.min(3, Math.max(1, +o.rounds || 1)) };
+  }
+  function netStart(players, o) {
+    return { online: 1, mode: 'race', cat: o.cat || 'Mixed', diff: o.diff || 'medium', time: o.time == null ? 90 : o.time, rounds: o.rounds || 1,
+      players: players.map(function (p) { return { name: p.name }; }), scores: players.map(function () { return 0; }), roundScores: [],
+      done: players.map(function () { return 0; }), gone: [], deck: poolFor(o.cat || null, o.diff || 'medium'), log: [], started: Date.now(), phase: 'play' };
+  }
+  function netTurn(st) { var out = []; if (st.phase === 'over') return out; st.done.forEach(function (d, i) { if (d < st.rounds && !st.gone[i]) out.push(i); }); return out; }
+  function handIn(st, seat, T, r) {
+    if (st.phase === 'over' || st.done[seat] !== r) return null;
+    st.scores[seat] += T.score;
+    if (!st.roundScores[r]) st.roundScores[r] = st.players.map(function () { return 0; });
+    st.roundScores[r][seat] = T.score;
+    st.log.push({ p: seat, r: r, score: T.score, solved: T.solved, best: T.best, words: T.words });
+    st.done[seat]++;
+    if (!netTurn(st).length) st.phase = 'over';
+    return { state: st, mv: { t: 'in', s: seat, sc: T.score, n: T.solved } };
+  }
+  function draftGet() {
+    try { var d = JSON.parse(localStorage.getItem(DRAFT)); var st = NET.state; return d && d.code === NET.code && d.started === st.started && d.seat === NET.seat && d.r === st.done[NET.seat] ? d : null; } catch (e) { return null; }
+  }
+  function saveDraft() {
+    if (!NET || !S || !S.online || S.phase !== 'play') return;
+    try { localStorage.setItem(DRAFT, JSON.stringify({ code: NET.code, started: S.started, seat: NET.seat, r: curRound(), T: S.T, R: S.R, di: S.di })); } catch (e) {}
+  }
+  function clearDraft() { try { localStorage.removeItem(DRAFT); } catch (e) {} }
+  function netSubmit() {
+    var me = NET.seat, T = JSON.parse(JSON.stringify(S.T)), r = curRound();
+    clearDraft();
+    if (S.time) { Kit.sfx('lose'); Kit.callout("Time's up!"); } else Kit.sfx('good');
+    busy = false; S.phase = 'wait'; render();
+    NET.act(function (st) { return handIn(st, me, T, r); });
+  }
+  function netWaiting() { var st = NET && NET.state; if (!st) return []; return netTurn(st).filter(function (i) { return i !== NET.seat; }).map(function (i) { return st.players[i].name; }); }
+  // The table as this device plays it: your seat's next round, from your draft if you were part way through it
+  function viewOf(st) {
+    var v = JSON.parse(JSON.stringify(st)), me = Math.max(0, NET.seat), n = v.players.length, r = Math.min(v.done[me], v.rounds - 1), d = draftGet();
+    if (v.cat === 'Mixed') CAT_NAME.Mixed = 'Mixed';
+    v.turn = r * n + me;
+    if (v.phase === 'over') { v.turn = v.rounds * n; return v; }
+    if (NET.seat < 0 || v.done[me] >= v.rounds || v.gone[me]) { v.phase = 'wait'; v.T = null; return v; }
+    if (d) { v.T = d.T; v.R = d.R; v.di = d.di; v.phase = 'play'; if (v.R) v.R.fresh = false; return v; }
+    v.di = (r * 37) % Math.max(1, v.deck.length);
+    v.T = { score: 0, solved: 0, streak: 0, best: 0, words: [], left: v.time * 1000, count: 0 };
+    v.R = null; v.phase = 'ready';
+    return v;
+  }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state, mv = info.mv;
+    if ((info.fresh || info.again) && winRef) { winRef.close(); winRef = null; }
+    if (mv && mv.t === 'in' && !info.mine && !info.fresh) Kit.toast(st.players[mv.s].name + ' scored ' + mv.sc + (mv.sc === 1 ? ' point' : ' points'));
+    var mid = S && S.online && S.started === st.started && S.phase === 'play' && st.phase !== 'over';
+    if (mid) { S.scores = st.scores.slice(); S.done = st.done.slice(); paintStrip(); return; }   // (in the middle of your turn: only the scores change)
+    stopClock();
+    S = viewOf(st);
+    if (S.phase === 'over') { render(); finish(); return; }
+    if (net.status === 'over' && net.result && net.result.left != null) { render(); netWin(null, false); return; }
+    if (S.phase === 'play' && S.time) paused = true;
+    render();
+    if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+  }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin(order, tie) {
+    var res = NET.result, left = !!(res && res.left != null), me = NET.seat, P = S.players;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : tie ? 'It’s a tie!' : order[0] === me ? 'You win!' : P[order[0]].name + ' wins!',
+      sub: left ? '' : 'After ' + S.rounds + (S.rounds > 1 ? ' rounds' : ' round'),
+      rank: order ? order.map(function (i) { return { name: i === me ? 'You' : P[i].name, score: S.scores[i], color: Kit.color(i) }; }) : null,
+      lose: !!order && S.scores[me] !== S.scores[order[0]],
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: true
+    });
+  }
+  function netLeave() {
+    NET = null; stopClock(); busy = false; paused = false;
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.phase && sv.phase !== 'over' && !sv.online) { S = sv; if (S.phase === 'play') { if (S.R) S.R.fresh = false; if (S.time) paused = true; } render(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'wordscramble', title: 'Word Scramble', min: 2, max: 4,
+    opts: netOpts, start: netStart, turn: netTurn,
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var hi = Math.max.apply(null, st.scores), win = [];
+      st.scores.forEach(function (s, i) { if (s === hi) win.push(i); });
+      return { win: win, text: win.length > 1 ? 'Tie at ' + hi : st.players[win[0]].name + ' won with ' + hi };
+    },
+    resign: function (st, seat) { st.gone[seat] = true; if (!netTurn(st).length) st.phase = 'over'; return st; },
+    leaveNote: function () { return 'The turns you played still count, and the others play on without you.'; },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
