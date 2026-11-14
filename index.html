@@ -603,7 +603,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .al-steps b{font-weight:900;font-variant-numeric:tabular-nums;}
 .al-steps .bad b,.al-steps .bad i{color:#ff8a96;}
 .al-err{margin-top:8px;font-size:.8rem;font-weight:700;color:#ff8a96;word-break:break-word;}
-.al-dev{font-size:.75rem;font-weight:700;color:var(--text-3);margin:0 2px;}
+.al-dev{display:flex;justify-content:space-between;gap:10px;font-size:.75rem;font-weight:700;color:var(--text-3);margin:0 2px;}
 .al-acts{display:flex;gap:8px;}
 .al-acts .btn{min-height:44px;}
 .al-acts .btn .ico{width:18px;height:18px;}
@@ -615,7 +615,7 @@ html[data-theme="light"] .tiles .g,html[data-theme="parchment"] .tiles .g{
 .al-t{font-variant-numeric:tabular-nums;color:var(--text-3);font-weight:700;}
 .al-k{--kc:var(--text-3);font-size:.66rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:6px;color:var(--kc);background:color-mix(in srgb,var(--kc) 16%,transparent);}
 .al-m{color:var(--text);font-weight:600;word-break:break-word;}
-.al-m small{color:var(--text-3);font-weight:700;}
+.al-m small{display:block;color:var(--text-3);font-weight:700;}
 .t-sync .al-k{--kc:#60a5fa;}
 .t-online .al-k,.t-tables .al-k{--kc:#4ade80;}
 .t-error .al-k{--kc:#ff6b7d;}
@@ -1088,7 +1088,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         function () { Kit.sfx('pop'); window.__leaving = true; location.href = x.href; }, 'resume join');
       b.setAttribute('aria-label', 'Join ' + Kit.poss(x.who) + ' ' + g.name + ' table');
     });
-    if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [el('span', { text: live.label || 'In progress' }), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
+    if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [Kit.facts(el('span'), live.label || 'In progress'), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
     var chips = sp ? setupChips(g, sp) : null;
     if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
     else if (!sp) opt('play', live ? 'New game' : 'Play', live ? 'Start over' : g.tag, function () { go(g.play + nw, true); }, 'quick');
@@ -1373,7 +1373,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       Kit.sfx('pop');
       var list = el('div', { class: 'stack' });
       br.slice().reverse().forEach(function (x) {
-        list.appendChild(el('div', { class: 'br-row' }, [el('span', { class: 'br-ic', html: BR_SVG }), el('span', { class: 'grow' }, [el('b', { text: x.e + ' champion' }), el('small', { text: x.t + ' circuit · ' + new Date(x.d).toLocaleDateString() + (x.p ? ' · $' + x.p.toLocaleString() : '') })])]));
+        list.appendChild(el('div', { class: 'br-row' }, [el('span', { class: 'br-ic', html: BR_SVG }), el('span', { class: 'grow' }, [el('b', { text: x.e + ' champion' }), el('small', { text: 'Won on the ' + x.t + ' circuit on ' + new Date(x.d).toLocaleDateString() }), x.p ? el('small', { text: '$' + x.p.toLocaleString() + ' prize' }) : null])]));
       });
       Kit.sheet({ title: br.length === 1 ? 'Your gold bracelet' : 'Your ' + br.length + ' gold bracelets', node: list, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     } }, [el('span', { html: BR_SVG }), el('span', { text: '\u00d7' + br.length })]));
@@ -1383,7 +1383,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       Kit.sfx('pop');
       var list = el('div', { class: 'stack' });
       rg.slice().reverse().forEach(function (x) {
-        list.appendChild(el('div', { class: 'br-row' }, [el('span', { class: 'br-ic rg', html: RG_SVG }), el('span', { class: 'grow' }, [el('b', { text: x.e + ' champion' }), el('small', { text: 'Summer Series · ' + x.t + ' circuit · ' + new Date(x.d).toLocaleDateString() + (x.p ? ' · $' + x.p.toLocaleString() : '') })])]));
+        list.appendChild(el('div', { class: 'br-row' }, [el('span', { class: 'br-ic rg', html: RG_SVG }), el('span', { class: 'grow' }, [el('b', { text: x.e + ' champion' }), el('small', { text: 'Won in the Summer Series on the ' + x.t + ' circuit on ' + new Date(x.d).toLocaleDateString() }), x.p ? el('small', { text: '$' + x.p.toLocaleString() + ' prize' }) : null])]));
       });
       Kit.sheet({ title: rg.length === 1 ? 'Your Summer Series ring' : 'Your ' + rg.length + ' Summer Series rings', node: list, actions: [{ label: 'Close', cls: 'btn-soft' }] });
     } }, [el('span', { html: RG_SVG }), el('span', { text: '\u00d7' + rg.length })]));
@@ -1482,7 +1482,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     a.addEventListener('contextmenu', function (e) {
       e.preventDefault(); if (editing) return;
       Kit.haptic('light');
-      Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: g.name + ' · ' + (x.r.label || 'In progress') + '. Your progress will be lost.' }).then(function (ok) {
+      Kit.confirm('Delete this ongoing game?', { ok: 'Delete game', danger: true, body: 'Your game of ' + g.name + ' will be lost.' }).then(function (ok) {
         if (!ok) return;
         var back = deleteSaved(x); Kit.haptic('success'); Kit.sfx('tap');
         gone(function () { offerUndo([back], g.name + ' game deleted'); renderRail(); });
@@ -1496,7 +1496,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     // (the first tap through to an online game asks to allow notifications, which the icon's count needs on iPhone)
     return el('a', { class: 'nbar ' + (mine ? 'turn' : 'wait'), href: x.n.href, onclick: function (e) { var h = x.n.href; e.preventDefault(); Kit.badgeAsk().then(function () { location.href = h; }); }, style: { '--c': x.g.color }, title: x.g.name + (mine ? ': your turn' : ': ' + x.n.vs + '’s turn') }, [
       el('span', { html: GameIcon(x.g.id), style: { display: 'contents' } }),
-      el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'vs ' + x.n.vs + ' · ' + ago(x.n.at) : x.n.vs + '’s turn · ' + ago(x.n.at) })]),
+      el('span', { class: 'tx' }, [el('b', { text: x.g.name }), el('small', { text: mine ? 'Against ' + x.n.vs : x.n.vs + '’s turn' }), mine ? el('small', { text: 'Last move ' + ago(x.n.at) }) : null]),   // (how long ago is at the right when it's their turn)
       mine ? el('span', { class: 'yt', html: '<i></i><span>Your turn</span>' }) : el('span', { class: 'a', text: ago(x.n.at, true) }),
       mine ? el('span', { class: 'pl', html: Kit.icon('play') }) : null
     ]);
@@ -1671,12 +1671,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (friendTables.some(function (x) { return x.live; })) avs.appendChild(el('i', { class: 'live-dot' }));
     $('otb-t').textContent = n + ' open table' + (n === 1 ? '' : 's') + ' available';
     var games = []; friendTables.forEach(function (x) { var g = findGame(x.id); if (g && games.indexOf(g.name) < 0) games.push(g.name); });
-    $('otb-s').textContent = (hosts.length === 1 ? hosts[0] : hosts.length === 2 ? hosts[0] + ' and ' + hosts[1] : hosts[0] + ', ' + hosts[1] + ' and ' + (hosts.length - 2) + ' more') + ' · ' + games.slice(0, 3).join(', ') + (games.length > 3 ? '…' : '');
+    $('otb-s').textContent = (hosts.length === 1 ? hosts[0] : hosts.length === 2 ? hosts[0] + ' and ' + hosts[1] : hosts[0] + ', ' + hosts[1] + ' and ' + (hosts.length - 2) + ' more') + (hosts.length === 1 ? ' is' : ' are') + ' playing ' + (games.length <= 3 ? listAnd(games) : games.slice(0, 2).join(', ') + ' and ' + (games.length - 2) + ' more');
     if (wasHidden || arrive) {
       b.classList.remove('in', 'ping'); void b.offsetWidth; b.classList.add(wasHidden ? 'in' : 'ping');
       if (arrive) { try { Kit.sfx('pop'); Kit.haptic('light'); } catch (e) {} }
     }
   }
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
   // The sheet: each friend with their tables, newest live table first; a table that just opened glows in
   function openTablesSheet() {
     var box = el('div', { class: 'ots' });
@@ -1688,10 +1689,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         var grp = el('div', { class: 'ots-g' }, [el('div', { class: 'ots-h' }, [Kit.avatar.el(h), el('b', { text: h }), mine.some(function (x) { return x.live; }) ? el('span', { class: 'ots-on', text: 'Online now' }) : null])]);
         mine.forEach(function (x) {
           var g = findGame(x.id), isNew = !otbShown[x.code]; otbShown[x.code] = 1;
-          var sub = x.live ? (x.playing ? (x.info || 'Playing') + ' · jump in' : 'Waiting to start') + ' · ' + x.n + ' of ' + x.max + ' seated' : (x.max > 2 && x.n ? 'Waiting for players · ' + x.n + ' of ' + x.max + ' seated' : 'Waiting for an opponent') + ' · opened ' + ago(x.at);
+          // (what's happening at the table, then how full it is or when it opened, each on a line of its own)
+          var sub = x.live ? [x.playing ? (x.info || 'Playing') + ', and you can jump in' : 'Waiting to start', x.n + ' of ' + x.max + ' seats are taken'] : [x.max > 2 && x.n ? 'Waiting for players, with ' + x.n + ' of ' + x.max + ' seats taken' : 'Waiting for an opponent', 'Opened ' + ago(x.at)];
           grp.appendChild(el('a', { class: 'ots-r' + (x.live ? ' live' : '') + (isNew ? ' arrive' : ''), href: x.href, style: { '--c': g.color } }, [
             el('span', { html: GameIcon(g.id), style: { display: 'contents' } }),
-            el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: sub })]),
+            el('span', { class: 'tx' }, [el('b', { text: g.name })].concat(sub.map(function (t) { return el('small', { text: t }); }))),
             el('span', { class: 'btn btn-sm ots-join', text: 'Join' })
           ]));
         });
@@ -1756,7 +1758,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     }
     var nAll = items.length + nets.length;
     var nMine = nets.filter(function (x) { return x.n.mine; }).length, cn = $('cont-n');
-    cn.textContent = nMine ? 'Your turn · ' + nMine : nAll > 1 ? nAll + ' going' : '';
+    cn.textContent = nMine ? (nMine === 1 ? 'Your turn in 1 game' : 'Your turn in ' + nMine + ' games') : nAll > 1 ? nAll + ' going' : '';
     cn.classList.toggle('yt-n', !!nMine);
     $('cont-sec').hidden = !nAll && !undoList;
     renderFoot(items.length);
@@ -2282,11 +2284,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       box.innerHTML = '';
       var ls = FGHSync.lastSync(), sp = syncSpeed(ls);
       box.appendChild(el('div', { class: 'al-sum ' + sp }, ls ? [
-        el('div', { class: 'al-big' }, [el('b', { text: ls.ok ? (ls.ms / 1000).toFixed(ls.ms < 10000 ? 1 : 0) + ' s' : 'Failed' }), el('span', { text: 'last sync · ' + new Date(ls.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })]),
+        el('div', { class: 'al-big' }, [el('b', { text: ls.ok ? (ls.ms / 1000).toFixed(ls.ms < 10000 ? 1 : 0) + ' s' : 'Failed' }), el('span', { text: 'Last sync on ' + new Date(ls.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }) })]),
         el('div', { class: 'al-steps' }, (ls.steps || []).map(function (st) { var m = /^(.*?) (?:failed after )?([\d.]+) s$/.exec(st) || [0, st, '']; return el('span', { class: /failed/.test(st) ? 'bad' : '' }, [el('i', { text: m[1] }), el('b', { text: m[2] ? m[2] + ' s' : '' })]); })),
         ls.err ? el('div', { class: 'al-err', text: ls.err }) : null
       ] : [el('div', { class: 'al-big' }, [el('b', { text: '–' }), el('span', { text: 'no sync on this device yet' })])]));
-      box.appendChild(el('div', { class: 'al-dev', text: 'Version ' + ver + ' · ' + (navigator.onLine ? 'online' : 'offline') }));
+      box.appendChild(el('div', { class: 'al-dev' }, [el('span', { text: 'Version ' + ver }), el('span', { text: navigator.onLine ? 'Online' : 'Offline' })]));
       box.appendChild(el('div', { class: 'al-acts' }, [
         el('button', { type: 'button', class: 'btn btn-primary grow', html: Kit.icon('share') + '<span>Share log</span>', onclick: function () { Kit.sfx('tap'); share(); } }),
         el('button', { type: 'button', class: 'btn btn-soft', text: 'Copy', onclick: function () { Kit.sfx('tap'); copy(); } })
@@ -2299,7 +2301,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
         list.appendChild(el('div', { class: 'al-row t-' + r[2] }, [
           el('span', { class: 'al-t', text: stamp(r[0]) }),
           el('span', { class: 'al-k', text: AL_TAGS[r[2]] || r[2] }),
-          el('span', { class: 'al-m' }, [el('span', { text: r[3] }), r[1] !== 'home' && r[1] !== 'index' ? el('small', { text: ' · ' + r[1] }) : null])
+          el('span', { class: 'al-m' }, [el('span', { text: r[3] }), r[1] !== 'home' && r[1] !== 'index' ? el('small', { class: 'al-pg', text: r[1] }) : null])
         ]));
       });
       box.appendChild(list);
@@ -2349,11 +2351,12 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (!rows.length) box.appendChild(el('p', { class: 'muted', text: 'No finished games yet. Results show up here after each game.' }));
     rows.forEach(function (r) {
       var e = r.e, g = r.g, name = g ? g.name : r.key;
-      var line = e.winner ? e.winner + ' won' : (e._summary || 'Finished');
-      var who = Array.isArray(e.players) ? e.players.map(function (p) { return (p.name || p) + (p.score != null ? ' ' + p.score : ''); }).join(' · ') : '';
+      var line = e.winner ? e.winner + ' won' : (Kit.factParts(e._summary)[0] || 'Finished');
+      // (each player and their score as a chip of their own)
+      var who = Array.isArray(e.players) && e.players.length ? el('span', { class: 'lk-ps' }, e.players.map(function (p) { return el('span', null, [el('span', { text: p.name || p }), p.score != null ? el('b', { text: String(p.score) }) : null]); })) : null;
       var b = el('button', { type: 'button', class: 'rg' }, [
         el('span', { html: g ? GameIcon(g.id) : '', style: { display: 'contents' } }),
-        el('span', { class: 'grow' }, [el('b', { text: name }), el('span', { class: 'w', text: line }), who && who !== line ? el('small', { text: who }) : null]),
+        el('span', { class: 'grow' }, [el('b', { text: name }), el('span', { class: 'w', text: line }), who]),
         el('span', { class: 'when', text: ago(e._date) })
       ]);
       b.addEventListener('click', function () {
