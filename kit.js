@@ -2626,14 +2626,18 @@
     // (a game whose tables are TurnNet's has the button too, whether or not it lists online among its ways to play;
     // not one that shows a card of its own for it, like Poker's Online table)
     var ownNetCard = !merged && (o.modes || []).some(function (m) { return m.kind === 'online' || /net|online/i.test(String(m.id)); });
-    if (!o.alt && !o.noOnline && ((merged && MK.online) || (!ownNetCard && window.TurnNet && (!EDIT_DEFAULTS || IN_SHEET)))) o.alt = { label: 'Play online', icon: 'globe', onClick: function () { goOnline(); }, own: true };
+    // (a game with a second way of its own, like Bingo's Call only, gets Play online as well, on a row with it under the start button)
+    var netAlt = !o.noOnline && ((merged && MK.online) || (!ownNetCard && window.TurnNet && (!EDIT_DEFAULTS || IN_SHEET))) ? { label: 'Play online', icon: 'globe', onClick: function () { goOnline(); }, own: true } : null;
+    if (!o.alt && netAlt) { o.alt = netAlt; netAlt = null; }
+    if (o.alt && o.alt.own) netAlt = null;
     var dock = [startBtn];
     if (o.alt) dock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: (o.alt.icon ? icon(o.alt.icon) : '') + '<span>' + esc(o.alt.label) + '</span>',
       onclick: function () {
         if (o.alt.own) return o.alt.onClick();
         saveSetup(); sfx('pop'); haptic('medium'); o.alt.onClick && o.alt.onClick({ mode: state.mode, players: [], options: state.options });
       } }));
-    wrap.appendChild(el('div', { class: 'k-startdock' + (o.alt ? ' has-alt' : '') }, dock));
+    if (netAlt) dock.push(el('button', { type: 'button', class: 'btn btn-soft btn-lg k-start-alt', html: icon(netAlt.icon) + '<span>' + esc(netAlt.label) + '</span>', onclick: function () { netAlt.onClick(); } }));
+    wrap.appendChild(el('div', { class: 'k-startdock' + (o.alt ? ' has-alt' : '') + (netAlt ? ' has-alt2' : '') }, dock));
     host.appendChild(wrap);
     winPeekClear();
     renderModes(); renderSeats();

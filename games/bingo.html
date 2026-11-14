@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* Ball colours: the standard 75-ball set */
 .cB{--c:#1f6fe5;--ci:#fff;}
@@ -369,9 +371,9 @@
   Kit.init({
     id: 'bingo',
     theme: { felt: ['#25508f', '#173766', '#0f2649'], back: ['#b3122e', '#e4475d'] },
-    onNew: function () { stopAuto(); clearSave(); S = null; showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Bingo: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } stopAuto(); clearSave(); S = null; showSetup(); },
+    undo: function () { if (NET) { Kit.toast('A ball can’t go back in the cage online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Bingo: past games' }); } }]),
     rules:
       '<p class="goal">Everyone plays their own Bingo card. The caller draws balls one at a time. First to cover the pattern shouts <b>BINGO!</b></p>' +
       '<h3>The card</h3><ul><li>A card has 5 columns: <b>B I N G O</b>.</li><li>B has numbers 1 to 15, I has 16 to 30, N has 31 to 45, G has 46 to 60, O has 61 to 75.</li><li>The middle square is a <b>free space</b>. It counts as covered from the start.</li></ul>' +
@@ -380,6 +382,7 @@
       '<h3>Calling for paper cards</h3><p>Tap <b>Call only</b> next to Play to just call the balls while everyone marks their own paper cards.</p>' +
       '<h3>Shout Bingo!</h3><p>With paper cards, the player reads out their numbers. Tap <b>Check a card</b> and type them in. The caller checks every one was really called. If it is good, pick the winner and celebrate. You can keep calling for second place.</p>' +
       '<h3>Playing on this phone</h3><p>Tap <b>Play</b> and everyone at the table gets a card on the screen, Bingo or Keno. Draw the balls (or cards) and every card is marked for its player. Computer players can take any seat after yours: tap the robot at the end of a seat.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and everyone joins from their own phone or tablet with a card of their own. Anyone at the table can draw the next ball, and every device shows it as it comes out, with every card marked. The first card to finish the pattern wins.</p>' +
       '<h3>Keno</h3><p>Bingo with a deck of cards. Everyone gets their own card on the screen, filled with playing cards in a random order: 5 by 5, 6 by 6 or 7 by 7. Every player\'s card is different.</p>' +
       '<ul><li>Tap <b>Draw card</b> (or the deck). The top card is turned over and read out, like "Jack of hearts".</li><li>Everyone who has that card on their card gets it marked straight away.</li>' +
       '<li>When someone is one card away, the card they need glows.</li><li>The same patterns win: a <b>Line</b> all the way across, down or corner to corner, <b>4 corners</b>, an <b>X</b>, or <b>Blackout</b>. First to finish it gets <b>KENO!</b> Keep drawing to play for second place.</li></ul>'
@@ -391,6 +394,7 @@
   function loadPrefs() { try { var p = JSON.parse(localStorage.getItem(PREFS)); if (p) return { voice: p.voice !== false, every: p.every || 8 }; } catch (e) {} return { voice: true, every: 8 }; }
   function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(P)); } catch (e) {} }
   function save() {
+    if (NET || NOSAVE) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (onScreen()) { if (S.drawn.length) Kit.resume.set((cards() ? 'Bingo: ' + S.drawn.length + ' balls called' : 'Keno: ' + S.drawn.length + ' cards drawn') + (S.players.length > 1 ? ', ' + S.players.length + ' cards' : '')); }
     else if (S.called.length) Kit.resume.set(S.called.length + ' balls called');
@@ -861,7 +865,7 @@
   function gameName() { return cards() ? 'Bingo' : 'Keno'; }
   function humans() { return S.players.filter(function (p) { return !p.cpu; }); }
   // a name as the device holder reads it: "You" when one person plays against computers
-  function nameOf(p) { return humans().length === 1 && !p.cpu ? 'You' : p.name; }
+  function nameOf(p) { if (NET) return S.players.indexOf(p) === NET.seat ? 'You' : p.name; return humans().length === 1 && !p.cpu ? 'You' : p.name; }
   function whoEl(p) { return p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color); }
   // The groups of squares that win under the pattern (each one a list of square numbers, row by row)
   function kLines() {
@@ -1047,7 +1051,8 @@
     var done = !S.deck.length;
     R.draw.disabled = busy || done;
     R.draw.innerHTML = done ? '<span>' + (cards() ? 'All 75 called' : 'Deck empty') + '</span>' : '<span>' + (cards() ? 'Draw ball' : 'Draw card') + '</span>';
-    R.undo.disabled = !S.drawn.length || busy;
+    R.undo.disabled = !S.drawn.length || busy || !!NET;
+    if (NET && NET.seat < 0) R.draw.disabled = true;
     R.auto.classList.toggle('on', autoOn);
     R.auto.innerHTML = autoOn ? PAUSE : icon('play');
     R.auto.setAttribute('aria-label', autoOn ? 'Pause auto draw' : 'Start auto draw');
@@ -1061,6 +1066,10 @@
   }
 
   function kDraw() {
+    if (NET) { netDraw(); return; }
+    kDrawRun();
+  }
+  function kDrawRun() {
     if (busy || !S || !onScreen() || !S.deck.length) return;
     busy = true; kButtons();
     var c = S.deck.pop();
@@ -1150,9 +1159,9 @@
     }
     var nCpu = S.players.filter(function (p) { return p.cpu; }).length;
     if (nCpu) hl.push(nCpu === 1 ? 'One computer player at the table' : nCpu + ' computer players at the table');
-    var cpuWon = idx.every(function (i) { return S.players[i].cpu; }), youWon = idx.some(function (i) { return !S.players[i].cpu; }) && humans().length === 1;
-    Kit.record(KEY, {
-      started: S.started, mode: (cards() ? 'Bingo ' : 'Keno ' + S.size + ' by ' + S.size + ' ') + PAT[S.pattern].name + (nCpu ? (humans().length > 1 ? ', with computers' : ', vs computer') : ''),
+    var cpuWon = idx.every(function (i) { return S.players[i].cpu; }), youWon = NET ? idx.indexOf(NET.seat) >= 0 : idx.some(function (i) { return !S.players[i].cpu; }) && humans().length === 1;
+    if (!netRecorded()) Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online, ' : '') + (cards() ? 'Bingo ' : 'Keno ' + S.size + ' by ' + S.size + ' ') + PAT[S.pattern].name + (nCpu ? (humans().length > 1 ? ', with computers' : ', vs computer') : ''),
       players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }),
       winner: names.length === 1 ? S.players[idx[0]].name : null,
       summary: who + (names.length > 1 ? ' tied' : ' won') + ' on ' + unit + ' ' + k,
@@ -1163,6 +1172,7 @@
         ? (function () { var g = S.players[idx[0]].grid, wl = kState(S.players[idx[0]]).win || [], wn = wl.map(function (k) { return g[k]; }); return { c: S.drawn.join(','), w: wn.filter(Boolean).join(','), f: wn.indexOf(0) >= 0 ? 1 : 0 }; })()
         : { k: 1, s: S.size, d: S.drawn.map(itemShort).join(' '), g: S.players[idx[0]].grid.map(itemShort).join(' '), wl: (kState(S.players[idx[0]]).win || []).join(','), wn: S.players[idx[0]].name, n: S.wins.length }
     });
+    if (NET) { netWin(youWon, who, names.length, G + ' on ' + unit + ' ' + k); return; }
     Kit.win({
       icon: cpuWon ? 'bot' : 'trophy', lose: cpuWon,
       title: youWon ? 'You win!' : cpuWon && humans().length === 1 ? who + (names.length > 1 ? ' win this one' : ' wins this one') : who + (names.length > 1 ? ' win!' : ' wins!'),
@@ -1306,6 +1316,109 @@
     api.off = function () { window.removeEventListener('resize', onResize); };
     return api;
   }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // Bingo and Keno cards, each person on their own device with a card of their own, computer cards in the seats the
+  // setup gave the computer. The table's turn holds every person at once: anyone can draw the next ball (or card),
+  // and every device plays the draw out the same way, marks every card and celebrates the first card to finish the
+  // pattern, which ends the game. A ball is taken at random from those left in the cage, so the cage's order means
+  // nothing, and a draw carries how many had been drawn so two taps at once draw only one.
+  var NET = null, NETREC = 'bingo_net_rec', showQ = [], winRef = null, NOSAVE = false;
+  function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_bingo')) || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var s = setupSaved(), o = s.options || {}, n = +s.count || 0;
+    return { game: o.game === 'keno' ? 'keno' : 'bingo', size: Math.min(7, Math.max(5, +o.size || 5)), pattern: PAT[o.pattern] ? o.pattern : 'line',
+      bots: (s.robots || []).filter(function (i) { return i > 0 && i < n; }).length };
+  }
+  function netStart(players, o) {
+    var keep = S, cfg = { options: { size: o.size, pattern: o.pattern }, players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, color: Kit.color(i) }; }) };
+    NOSAVE = true;
+    try { if (o.game === 'keno') freshKeno(cfg); else freshCards(cfg); return S; } finally { S = keep; NOSAVE = false; }
+  }
+  function withS(st, fn) { var k = S; S = st; try { return fn(); } finally { S = k; kSet(); } }
+  function drawOn(st, n) {
+    if (st.drawn.length !== n || !st.deck.length || st.wins.length) return null;
+    var c = st.deck.splice(Math.floor(Math.random() * st.deck.length), 1)[0];
+    st.drawn.push(c);
+    withS(st, function () {
+      kSet();
+      S.players.forEach(function (p, i) { if (!wonBy(i) && kState(p).win) S.wins.push({ i: i, name: p.name, card: S.drawn.length }); });
+    });
+    return { state: st, mv: { t: 'd', c: c } };
+  }
+  function netDraw() {
+    if (!S || busy || NET.seat < 0) return;
+    var n = S.drawn.length;
+    NET.act(function (st) { return drawOn(st, n); });
+  }
+  function netShow(net, info) {
+    NET = net;
+    if (busy) { showQ.push(info); return; }
+    showOne(info);
+  }
+  function showOne(info) {
+    var st = JSON.parse(JSON.stringify(NET.state)), mv = info.mv;
+    if ((info.fresh || info.again) && winRef) { winRef.close(); winRef = null; }
+    var same = S && S.started === st.started && R.boards && R.boards.isConnected;
+    if (mv && mv.t === 'd' && info.prev && same && !info.fresh && !info.again) {
+      // the draw played out: the ball rolls out of the cage and every card is marked, as on one device
+      S = JSON.parse(JSON.stringify(info.prev));
+      var at = S.deck.indexOf(mv.c); if (at >= 0) S.deck.splice(at, 1);
+      S.deck.push(mv.c);
+      kDrawRun();
+      waitIdle();
+      return;
+    }
+    stopAuto();
+    S = st; buildKeno();
+    if (info.again) { Kit.sfx('deal'); Kit.callout('New cards'); }
+    if (S.wins.length && (NET.status === 'over')) netCelebrateNow();
+    else if (NET.status === 'over' && NET.result && NET.result.left != null) netWin(false, '', 0, '');
+  }
+  function netCelebrateNow() { var idx = []; S.wins.forEach(function (w) { if (idx.indexOf(w.i) < 0) idx.push(w.i); }); kCelebrate(idx, 0); }
+  function waitIdle() { if (busy) { setTimeout(waitIdle, 120); return; } if (showQ.length && NET) showOne(showQ.shift()); }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin(youWon, who, n, how) {
+    var res = NET.result, left = !!(res && res.left != null && !S.wins.length);
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      icon: youWon ? 'trophy' : 'users', lose: !left && !youWon,
+      title: left ? res.text : youWon && n === 1 ? 'You win!' : who + (n > 1 ? ' win!' : ' wins!'),
+      sub: left ? '' : PAT[S.pattern].name + ' ' + how,
+      rank: left ? null : S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
+        .sort(function (a, b) { return a.o - b.o; }),
+      againLabel: left ? 'Back to the lobby' : 'New cards',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the cards'
+    });
+  }
+  function netLeave() {
+    NET = null; showQ = []; stopAuto(); busy = false;
+    if (winRef) { winRef.close(); winRef = null; }
+    S = load();
+    if (S && (S.mode === 'keno' || S.mode === 'cards')) buildKeno();
+    else if (S && (S.called.length || S.pool.length)) build();
+    else showSetup();
+  }
+  TurnNet.setup({
+    game: 'bingo', title: 'Bingo', min: 2, max: 8, botTakeover: true,
+    seats: function (n, o) { return Math.min(8, n + Math.max(0, +(o && o.bots) || 0)); },
+    opts: netOpts, start: netStart,
+    turn: function (st) { var out = []; if (st.wins.length || !st.deck.length) return out; st.players.forEach(function (p, i) { if (!p.cpu) out.push(i); }); return out; },
+    over: function (st) {
+      if (!st.wins.length && st.deck.length) return null;
+      var win = []; st.wins.forEach(function (w) { if (win.indexOf(w.i) < 0) win.push(w.i); });
+      return { win: win, text: win.length ? win.map(function (i) { return st.players[i].name; }).join(' and ') + ' got ' + (st.mode === 'cards' ? 'Bingo' : 'Keno') : 'Everything was drawn' };
+    },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ───────────────────────────────────────────────────────────────
   S = load();
