@@ -357,7 +357,8 @@ Underlying principles for everything:
     which you were behind when a round ended"). The table counts what a game did with `track()` (ui.js `callTrack`,
     from the engine's events, for the first player, whoever holds the device) and `gameOver` adds it up. How often each
     happens is `scripts/anoria/calls.js` (`calls.txt`); the needs are set so a calling is met about when the sphere
-    would bring that Guide.
+    would bring that Guide. A move taken back is taken out of the count too (the undo snapshot keeps `G.cl` as `cl0`),
+    so playing a card and taking it back again and again does not meet a calling.
   - **Packs**: every slot is a card you don't have or a finish you don't have, the finish rolled first (`ED_ODDS`), the
     card weighted by its tier (`TIER_W`); packs draw the cards of Guides who haven't joined you too, and never hold a
     Domain. Two welcome packs come with the first Guide (`WELCOME`), and four firsts give a pack each (`FIRSTS`: your
@@ -375,7 +376,13 @@ Underlying principles for everything:
   - The screens: `packs.js` (choosing one of the twelve Guides, the first deck forming, packs where a new finish lands
     on top of the card as you had it, a Guide joining with their set), `library.js`, `decks.js`, and `rewards.js`
     (`AnoriaRewards`: the sphere, its screen with the callings, the collection's rings, and the results card's panel
-    in Kit.win's `show` slot), each in the shared frame `AnoriaUI.screen()`.
+    in Kit.win's `show` slot), each in the shared frame `AnoriaUI.screen()`. The results card's panel lights this
+    game's signs from where the sphere stood, flashes as it comes round and starts the ring again, and has a row for
+    everything the game earned: each Guide who joined, each first's pack, and the calling nearest its end. Where the
+    next Guide is said in words, every screen uses `sphere().guideSay` (coll.js), never a count of "turns". Sideways,
+    the choice of Guide puts the twelve beside the chosen Guide's set and power, and the first deck forming puts the
+    two sets at the left and the deck, its Domains and the way on at the right, so nothing needs scrolling to reach
+    the start button.
 - **A deck is 40 cards and can hold no more than two of a card** (`DECK`, `CAP` in coll.js): any card you have can go in
   a deck twice at once. The five ready decks of before (`ARCH`, `STACKS`, `GROWN` in cards.js) stay only for the balance
   scripts, the lessons and games saved with them; no player plays one.

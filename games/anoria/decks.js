@@ -115,7 +115,7 @@
       const grid = el('div', { class: 'adk-decks' }, [
         el('button', { type: 'button', class: 'adk-deck adk-new', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); fresh(); } }, [
           el('span', { class: 'adk-dg none', html: Kit.icon('plus') }), el('span', { class: 'adk-dn', text: 'Build a new deck' }),
-          el('span', { class: 'adk-dw', text: built.length ? DECK + ' cards and a Guide' : 'From the cards you have: ' + DECK + ' and a Guide' }),
+          el('span', { class: 'adk-dw', text: built.length ? DECK + ' cards and a Guide' : 'Choose ' + DECK + ' of the cards you have, and a Guide to lead them.' }),
           pack ? el('span', { class: 'adk-ds gift', html: Kit.icon('sparkle') }, [el('b', { text: pack.what }), el('small', { text: pack.when })]) : null])
       ].concat(built.map(mine)));
       sc.body.appendChild(el('section', { class: 'adk-sec' }, [el('h2', { text: 'Your decks' }), grid]));
@@ -247,7 +247,7 @@
       t.pips.innerHTML = '';
       for (let i = 0; i < Math.max(have, inn); i++) t.pips.appendChild(el('i', { class: (i < inn ? 'on' : '') + (i >= have ? ' no' : '') }));
       t.minus.disabled = !inn; t.minus.tabIndex = inn ? 0 : -1; t.plus.disabled = inn >= have || total() >= DECK; t.plus.tabIndex = t.plus.disabled ? -1 : 0;
-      t.card.setAttribute('aria-label', 'Read ' + c.n + ', ' + c.c + ' Spark. You have ' + have + ', ' + inn + ' in the deck' + (inn > have ? ', more than you own' : ''));
+      t.card.setAttribute('aria-label', 'Read ' + c.n + ', ' + c.c + ' Spark. ' + (have ? 'Up to ' + have + ' can go in the deck, and ' + inn + (inn === 1 ? ' is' : ' are') + ' in it' : c.n + ' isn\'t yours yet, and ' + inn + (inn === 1 ? ' is' : ' are') + ' in the deck'));
     }
     function syncTiles() {
       const lit = {}, reach = {}; held().forEach(p => { lit[p.a] = lit[p.b] = 1; }); near().forEach(x => { reach[x.need] = 1; });
@@ -428,7 +428,7 @@
       keys.forEach(k => {
         const c = CARDS[k], x = st.cnt[k], bad = x > owned(k), two = x > 1 && c.t === 'fig'; if (two) spare = true;
         lst.appendChild(el('div', { class: 'adk-li' + (bad ? ' bad' : '') }, [
-          el('button', { type: 'button', class: 'adk-lr', 'aria-label': 'Read ' + c.n, onclick: () => U.openView(k) }, [coin(c.c), might(c.m), thumb(k, 'adk-lp'), kindTab(k), el('span', { class: 'adk-ln' }, [el('b', { text: c.n }), bad ? el('small', { text: 'You have ' + owned(k) }) : null])]),
+          el('button', { type: 'button', class: 'adk-lr', 'aria-label': 'Read ' + c.n, onclick: () => U.openView(k) }, [coin(c.c), might(c.m), thumb(k, 'adk-lp'), kindTab(k), el('span', { class: 'adk-ln' }, [el('b', { text: c.n }), bad ? el('small', { text: owned(k) ? 'No more than ' + owned(k) + ' can go in a deck' : 'Not yours yet' }) : null])]),
           el('span', { class: 'adk-lx', text: x > 1 ? 'x' + x : '' }),
           el('button', { type: 'button', class: 'adk-tm', 'aria-label': 'Take one ' + c.n + ' out', html: Kit.icon('minus'), onclick: () => take(k) })]));
       });
@@ -525,12 +525,12 @@
         const x = TX.GUIDES[g], on = st.guide === g;
         box.appendChild(el('div', { class: 'adk-gr' + (on ? ' on' : '') }, [
           el('button', { type: 'button', class: 'adk-gb', 'aria-pressed': String(on), onclick: () => { const ch = st.guide !== g; st.guide = g; sh.close(); if (ch) { Kit.sfx('flip'); Kit.haptic('medium'); } after(); if (ch && total() === DECK) say([el('span', { class: 'adk-seal', html: Kit.icon('check') }), line(x.n + ' is now the Guide', 'This deck is ready to play. Tap Save to keep the deck.')], { cls: 'ok' }); } },
-            [thumb(g, 'adk-gp'), el('span', { class: 'adk-gw' }, [el('b', { text: x.n }), el('span', { text: x.tx })]), on ? el('i', { class: 'adk-seal', html: Kit.icon('check') }) : null]),
+            [thumb(g, 'adk-gp'), el('span', { class: 'adk-gw' }, [el('b', { text: x.n }), el('span', { text: U.DW ? U.DW(x.tx) : x.tx })]), on ? el('i', { class: 'adk-seal', html: Kit.icon('check') }) : null]),
           el('button', { type: 'button', class: 'adk-tr', 'aria-label': 'Read ' + x.n, html: Kit.icon('eye'), onclick: () => U.openView(g) })]));
       });
       // who else there is to meet, and when
       const nx = Coll.nextUp().filter(x => x.id === 'guide')[0];
-      if (nx) box.appendChild(el('div', { class: 'adk-gr next' }, [el('span', { class: 'adk-gp', html: Kit.icon('lock') }), el('span', { class: 'adk-gw' }, [el('b', { text: nx.what }), el('span', { text: nx.when + '. You have ' + nx.have + '.' })])]));
+      if (nx) box.appendChild(el('div', { class: 'adk-gr next' }, [el('span', { class: 'adk-gp', html: Kit.icon('lock') }), el('span', { class: 'adk-gw' }, [el('b', { text: nx.what }), el('span', { text: nx.when })])]));
       sh = sheet({ title: 'Who guides this deck?', node: box, actions: [{ label: 'Close', cls: 'btn-ghost' }] });
     }
 

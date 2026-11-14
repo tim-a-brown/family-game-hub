@@ -191,7 +191,7 @@
     return el('button', { type: 'button', class: 'lb-next lb-sph', 'aria-label': sp.lit + ' of ' + sp.of + ' signs on the sphere are lit. Open the sphere', onclick: () => { tap(); R.path(() => refresh()); } }, [
       R.sphere({ lit: sp.lit, size: 58 }),
       el('span', { class: 'lb-sph-w' }, [el('small', { class: 'lb-cap', text: 'The sphere' }), el('b', { text: sp.lit + ' of ' + sp.of + ' signs' }),
-        el('span', { text: left + (left === 1 ? ' more sign brings a pack.' : ' more signs bring a pack.') + (sp.toGuide ? ' A new Guide joins you in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn.' : ' turns.') : '') })])]);
+        el('span', { text: (left === 1 ? 'One more sign brings' : left + ' more signs bring') + (sp.toGuide === 1 ? ' a pack and a new Guide.' : ' a pack.' + (sp.guideSay ? ' ' + sp.guideSay : '')) })])]);
   }
   function nextRow0() {
     const row = el('div', { class: 'lb-next' }, [el('small', { class: 'lb-cap', text: 'Next to earn' })]), seals = el('div', { class: 'lb-seals' });
