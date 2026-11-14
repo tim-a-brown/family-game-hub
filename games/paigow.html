@@ -14,8 +14,12 @@
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
 <script src="../coach.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
-.stage{padding-bottom:calc(var(--safe-b) + 10px);}
+.stage{padding-bottom:max(calc(var(--safe-b) + 10px + var(--corner-y)), 18px);}
+.ctl > .acts{padding:0 var(--corner-x);}
+.bankbar.net{gap:8px;}.bankbar.net .netbox{flex:1;min-width:0;}.bankbar.net .cz-net{justify-content:flex-start;margin:0;gap:4px;}.bankbar.net .czs{gap:4px;padding-right:7px;font-size:.78rem;}
 /* ── Bankroll strip (chrome) ── */
 .bankbar{display:flex;align-items:center;gap:10px;margin:0 2px 8px;min-height:40px;}
 .bankbar .bk{display:flex;align-items:center;gap:7px;flex:none;}
@@ -147,6 +151,7 @@
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'paigow_state', HKEY = 'paigow';
+  var Casino = CasinoNet.wallet();   // (your own money; at an online table, your seat's table money)
   var V = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
   var WORD = { 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight', 9: 'Nine', 10: 'Ten', 11: 'Jack', 12: 'Queen', 13: 'King', 14: 'Ace' };
   var CHIPS = [1, 5, 25, 100, 500];
@@ -375,13 +380,13 @@
   Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
     id: 'paigow',
     confirmNew: false,
-    onNew: function () { leave(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } leave(); },
     undo: function () { undo(); },
-    menu: [
-      { icon: 'logout', label: 'Cash out (end session)', onClick: function () { leave(); } },
+    menu: TurnNet.menu().concat([
+      { icon: 'logout', label: function () { return NET ? 'Cash out the whole table' : 'Cash out (end session)'; }, onClick: function () { leave(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Pai Gow: past sessions' }); } },
-      { icon: 'coins', label: function () { return topUp(S ? S.name : 'You').menu; }, onClick: function () { resetBank(); } }
-    ],
+      { icon: 'coins', label: function () { return topUp(S ? S.name : 'You').menu; }, when: function () { return !NET; }, onClick: function () { resetBank(); } }
+    ]),
     rules:
       '<p class="goal">Split your 7 cards into a <b>5-card high hand</b> and a <b>2-card low hand</b>. Beat both of the dealer\'s hands to win.</p>' +
       '<h3>Betting</h3><ul><li>Drag chips from the rack into the <b>Bet</b> circle. The circle lights up under the chip; let go to put it down, or let go anywhere else and it goes back to the rack.</li>' +
@@ -399,12 +404,14 @@
       '<p>A-2-3-4-5 is the <b>second-best</b> straight, just under 10-J-Q-K-A (standard Nevada rule).</p>' +
       '<h3>The dealer</h3><p>The dealer sets cards by the fixed <b>house way</b>: pairs stay high, two pairs usually split, straights and flushes play high, and so on.</p>' +
       '<h3>Ending a session</h3><p>Tap <b>Cash out</b> when you leave. Your session is saved in Past games. Your bankroll is shared by all the casino games.</p>' +
-      '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>'
+      '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone plays their own seven cards against the same dealer. You all bet at the same time, and the cards are dealt when the last bet is in. Then everyone sets their hands, each seeing only their own cards, and the dealer turns over when the last player has set theirs. Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between hands ends the session for the whole table.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, undoStack = [], busy = false, token = 0;
   function save() {
+    if (NET || PURE) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S) Kit.resume.set('Hand ' + Math.max(1, S.hand) + ' · ' + (S.net >= 0 ? 'up ' : 'down ') + money(Math.abs(S.net)));
   }
@@ -420,13 +427,13 @@
     else if (fresh && (m === 'link' || m === 'player')) Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
     return m;
   }
-  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankLabel(name) { if (NET) return 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
   // a linked player's money carries the link badge, a frequent player's a person badge; short: a narrow HUD box ("Jamie's")
   function bankLabelHtml(name, short) {
     var m = Casino.mode(), own = m === 'link' || m === 'player';
     return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
   }
-  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankWords(name) { if (NET) return 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
   function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
@@ -445,8 +452,9 @@
     S = null; token++; undoStack = []; moneyHome();
     Kit.setup(app, {
       intro: 'Set a high hand and a low hand, beat the dealer with both. Your bankroll: ' + money(myBankroll()),
+      modes: Kit.modes(['solo', { id: 'online', desc: 'Everyone plays against the same dealer, each on their own device' }]),
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
-      options: [Coach.option({ on: 'A “best split” tag while you set your hands; tap it to compare the best ways to set them.' })],
+      options: [Coach.option({ on: 'A “best split” tag while you set your hands; tap it to compare the best ways to set them.' }), CasinoNet.stakeOption()],
       start: 'Take a seat',
       onStart: function (cfg) {
         var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
@@ -487,6 +495,7 @@
     if (busy || S.phase !== 'bet') return;
     if (!S.bet) { Kit.toast('Put chips in the circle first'); Kit.haptic('error'); return; }
     if (S.bet > bank()) { Kit.toast('Not enough chips'); return; }
+    if (NET) { netBet(); return; }
     bankAdd(-S.bet);
     var d = newDeck();
     S.p = sortHand(d.slice(0, 7)); S.d = sortHand(d.slice(7, 14));
@@ -496,7 +505,7 @@
   function current() { return split(S.p, S.low); }
   function legal() { if (S.low.length !== 2) return false; var s = current(); return !fouls(key5(s.hi), key2(s.lo)); }
   function tapCard(i) {
-    if (busy || S.phase !== 'set') return;
+    if (busy || S.phase !== 'set' || NET && S.dec) return;
     var k = S.low.indexOf(i);
     if (k < 0 && S.low.length >= 2) { Kit.toast('Low hand is full. Tap a low card to move it back.'); Kit.haptic('error'); return; }
     var from = cardRects();
@@ -505,7 +514,7 @@
     Kit.sfx('flip'); Kit.haptic('light'); save(); render(); flyFrom(from, 260);
   }
   function useHouseWay() {
-    if (busy || S.phase !== 'set') return;
+    if (busy || S.phase !== 'set' || NET && S.dec) return;
     var hw = houseWay(S.p), from = cardRects();
     snapshot(); S.low = hw.lo.slice(); S.hw = hw.why; Kit.sfx('whoosh'); save(); render(); flyFrom(from, 380);
   }
@@ -523,6 +532,7 @@
     if (busy || S.phase !== 'set') return;
     if (S.low.length !== 2) { Kit.toast('Pick 2 cards for your low hand'); return; }
     if (!legal()) { Kit.toast('Your high hand must beat your low hand'); Kit.haptic('error'); return; }
+    if (NET && !PURE) { netSet(); return; }
     var mine = current(), dh = houseWay(S.d), ds = split(S.d, dh.lo);
     var phk = key5(mine.hi), plk = key2(mine.lo), dhk = key5(ds.hi), dlk = key2(ds.lo);
     var hiW = cmpKey(phk, dhk) > 0, loW = cmpKey(plk, dlk) > 0;
@@ -567,6 +577,7 @@
 
   function nextHand(same) {
     if (busy) return;
+    if (NET) { netNext(same); return; }
     var last = S.last;
     S.phase = 'bet'; S.p = S.d = null; S.res = null; S.low = []; S.hw = null; S.bet = 0; undoStack = [];
     if (same && last && last <= bank()) { S.bet = last; save(); deal(); return; }
@@ -575,6 +586,7 @@
 
   // ── Ending a session ──────────────────────────────────────────────────────
   function leave() {
+    if (NET) { netEndAsk(); return; }
     if (!S) return showSetup();
     if (busy || S.phase === 'set') { Kit.toast('Finish this hand first'); return; }
     if (!S.hand) { if (S.lr) finish(); else { clearSave(); showSetup(); } return; }   // (a linked player's bankroll reset is always filed)
@@ -779,7 +791,7 @@
 
   function render(anim) {
     anim = anim || {};
-    if (!S) return;
+    if (!S || PURE) return;
     token++; busy = false;
     app.innerHTML = '';
     var res = S.phase === 'result' ? S.res : null, revealing = !!anim.reveal, showD = res && !revealing;
@@ -787,7 +799,9 @@
       el('span', { class: S.net > 0 ? 'pos' : S.net < 0 ? 'neg' : '', text: S.log.length ? (S.net ? signed(S.net) : 'Even') : 'New session' }),
       document.createTextNode(S.log.length ? S.log.length + ' hand' + (S.log.length === 1 ? '' : 's') + ' this session' : 'Good luck, ' + S.name)
     ]);
-    app.appendChild(el('div', { class: 'bankbar' }, [
+    // online: everyone at the table with their money (yours among them) where your money and the session were
+    if (NET) { var nb = el('div', { class: 'netbox' }); app.appendChild(el('div', { class: 'bankbar net' }, [nb, el('b', { id: 'bankv', hidden: true }), Kit.cashOut(leave)])); paintNet(nb); }
+    else app.appendChild(el('div', { class: 'bankbar' }, [
       el('div', { class: 'bk' + (Casino.mode() !== 'mine' ? ' lab' : ''), html: Casino.mode() === 'mine' ? Kit.icon('coins') + '<b id="bankv">' + money(bank() - pending()) + '</b>' : '<span class="bkr">' + Kit.icon('coins') + '<b id="bankv">' + money(bank() - pending()) + '</b></span><span class="bkl">' + bankLabelHtml(S.name, true) + '</span>' }), ss,
       Kit.cashOut(leave)
     ]));
@@ -838,13 +852,18 @@
     // Controls
     var ctl = el('div', { class: 'ctl' }), status = el('div', { class: 'status', id: 'status' }), acts = el('div', { class: 'acts' });
     ctl.appendChild(status);
-    if (S.phase === 'bet') {
+    if (S.phase === 'bet' && NET && amIn()) {
+      status.textContent = netWaitMsg();
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Your bet is in', disabled: true }));
+    } else if (S.phase === 'set' && NET && S.dec) {
+      status.innerHTML = Kit.esc(netWaitMsg()) + '<span class="tip">High: ' + Kit.esc(hiName) + '. Low: ' + Kit.esc(name2(key2(s.lo))) + '.</span>';
+    } else if (S.phase === 'bet') {
       if (bank() < 1 && !S.bet) {
         var w = topUp(S.name), mine = Casino.mode() === 'mine';
         status.innerHTML = mine ? 'Out of chips! <span class="tip">The house will stake you a fresh $1,000.</span>' : Kit.esc(w.body);
         acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: mine ? 'Get $1,000 in chips' : w.btn, onclick: function () { bankReset(); save(); Kit.sfx('chip'); render(); } }));
       } else {
-        status.innerHTML = S.bet ? 'Bet <b>' + money(S.bet) + '</b>. Drag on more or deal.' : 'Drag chips from the rack into the <b>Bet</b> circle.';
+        status.innerHTML = S.bet ? 'Bet <b>' + money(S.bet) + '</b>. Drag on more or ' + (NET ? 'place your bet.' : 'deal.') : 'Drag chips from the rack into the <b>Bet</b> circle.';
         var hint0 = status.innerHTML;
         var rk = Casino.rack({
           denoms: CHIPS, value: null, select: false,
@@ -861,7 +880,7 @@
         ctl.appendChild(rk.el);
         if (!S.bet && S.last && S.last <= bank()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Rebet ' + money(S.last), onclick: function () { snapshot(); S.bet = S.last; Kit.sfx('chip'); save(); render(); } }));
         else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Clear', disabled: !S.bet, onclick: clearBet }));
-        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: 'Deal', disabled: !S.bet, onclick: deal }));
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary main', text: NET ? (S.bet ? 'Bet ' + money(S.bet) : 'Place a bet') : 'Deal', disabled: !S.bet, onclick: deal }));
       }
     } else if (S.phase === 'set') {
       if (S.low.length < 2) status.innerHTML = 'Tap <b>' + (2 - S.low.length) + '</b> card' + (S.low.length ? '' : 's') + ' for your low hand.' + (S.hw ? '' : '<span class="tip">Or tap House way to see how the dealer would set them.</span>');
@@ -988,6 +1007,165 @@
     document.getElementById('bankv').textContent = money(bank());
     paintResult(document.getElementById('status'), res, false);
     app.querySelectorAll('.acts button').forEach(function (b) { b.disabled = false; });
+  }
+
+  // ── Online (turnnet.js, CasinoNet in casino.js) ───────────────────────────
+  // Everyone plays their own seven cards against one dealer, each on their own device, with table money. Each seat keeps
+  // its own S in the table. Everyone bets at the same time; the last bet in deals one deck (seven cards to each seat and
+  // to the dealer), and the table turns to setting: everyone sets their hands at the same time, seeing only their own
+  // cards. The last one set settles every seat against the dealer's house way (playHands, PURE: the same code with its
+  // saves, sounds and drawing left out); the hand as it finished is kept on the seat (R) for each device to turn over the
+  // dealer's cards and pay out, and the next round's betting opens. ME is this device's seat (its money); NETR the round
+  // shown; hold: the hand's result stays up here until you tap for the next one.
+  var NET = null, PURE = false, ME = null, NETR = 0, hold = false, revealing = false, endLater = false;
+  function pure(fn) { var keep = S, kb = busy; PURE = true; busy = false; try { return CasinoNet.quiet(fn); } finally { S = keep; busy = kb; PURE = false; Casino.use(NET ? ME : null); } }
+  function amIn() { var st = NET && NET.state; return !!st && (NET.seat < 0 || st.phase === 'bet' && !!st.ready[NET.seat]); }
+  function netWaitMsg() {
+    var st = NET.state, l = CasinoNet.left(st);
+    if (!l.length) return st.phase === 'bet' ? 'Dealing…' : 'The dealer turns over.';
+    return st.phase === 'bet' ? 'The cards are dealt when ' + CasinoNet.listAnd(l) + (l.length === 1 ? ' bets.' : ' bet.')
+      : 'The dealer turns over when ' + CasinoNet.listAnd(l) + (l.length === 1 ? ' has' : ' have') + ' set their hands.';
+  }
+  function setting(st) { var out = []; st.seats.forEach(function (s, i) { if (s.S.phase === 'set' && !s.S.dec) out.push(i); }); return out; }
+  // every hand is set: each against the dealer's house way, then the next round's betting
+  function showdown(st) {
+    st.seats.forEach(function (seat) {
+      if (seat.S.phase !== 'set') return;
+      pure(function () {
+        S = seat.S; Casino.use(seat);
+        playHands();
+        if (S.res) S.res.rd = st.round;
+        seat.R = JSON.parse(JSON.stringify(S));
+        S.phase = 'bet'; S.p = S.d = null; S.res = null; S.dec = null; S.low = []; S.hw = null; S.bet = 0;
+      });
+    });
+    st.prev = { round: st.round };
+    CasinoNet.next(st);
+  }
+  var TBL = CasinoNet.table({
+    game: 'paigow', title: 'Pai Gow', max: 6, unit: 'hand',
+    opts: function (o) { return { coach: o.coach === 'on' ? 'on' : 'off', stake: o.stake }; },
+    seat: function (p, o) {
+      return { online: 1, name: p.name, opts: { coach: o.coach }, started: Date.now(), hand: 0, net: 0, phase: 'bet', bet: 0, last: 0, p: null, d: null, low: [], hw: null, res: null, dec: null,
+        log: [], ev: [], st: { won: 0, lost: 0, push: 0, streak: 0, best: 0, comm: 0, big: null, own: 0, house: 0, bestHi: null } };
+    },
+    take: function (st, i, m) {
+      var seat = st.seats[i], b = +m.bet;
+      if (!(b >= 1) || b !== Math.round(b) || b > seat.bank) return false;
+      seat.S.bet = b;
+    },
+    // every bet is in: one deck, seven cards to each seat that bet and seven to the dealer
+    resolve: function (st) {
+      var d = newDeck(), k = 7, dl = sortHand(d.slice(0, 7));
+      st.seats.forEach(function (seat) {
+        var s = seat.S;
+        if (seat.out || !s.bet) return;
+        seat.bank -= s.bet;
+        s.p = sortHand(d.slice(k, k + 7)); k += 7; s.d = dl;
+        s.hand++; s.phase = 'set'; s.low = []; s.hw = null; s.res = null; s.dec = null; s.last = s.bet; s.rd = st.round;
+      });
+      st.phase = 'set';
+      if (!setting(st).length) showdown(st);
+    },
+    turn: function (st) { return st.phase === 'set' ? setting(st) : []; },
+    move: function (st, i, m) {
+      var s = st.seats[i].S, lo = m.low;
+      if (st.phase !== 'set' || s.phase !== 'set' || s.dec || m.t !== 'set' || !Array.isArray(lo) || lo.length !== 2) return null;
+      if (lo[0] === lo[1] || lo.some(function (x) { return !(x >= 0 && x < 7) || x !== Math.round(x); })) return null;
+      var sp = split(s.p, lo); if (fouls(key5(sp.hi), key2(sp.lo))) return null;
+      s.low = lo.slice(); s.dec = 1;
+      if (!setting(st).length) showdown(st);
+      return true;
+    },
+    // someone who leaves mid-hand: the dealer sets their cards the house way
+    sitOut: function (st, i) {
+      var s = st.seats[i].S;
+      if (st.phase === 'bet') s.bet = 0;
+      else if (s.phase === 'set' && !s.dec) { s.low = houseWay(s.p).lo.slice(); s.dec = 1; if (!setting(st).length) showdown(st); }
+    },
+    show: netShow, leave: netLeave
+  });
+  function mine(st) { return st.seats[Math.max(0, NET.seat)]; }
+  function takeView(st) { S = JSON.parse(JSON.stringify(mine(st).S)); ME = { bank: mine(st).bank }; Casino.use(ME); NETR = st.round; undoStack = []; }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state, seat = mine(st);
+    if (info.fresh || info.again) { CasinoNet.closeEnd(); endLater = false; hold = false; revealing = false; }
+    if (st.phase === 'over') { if (revealing) endLater = true; else netEnd(); return; }
+    // the hands were settled since this device last looked: the dealer turns over here
+    if (!info.fresh && !info.again && S && S.online && st.round > NETR && seat.R && seat.R.res && seat.R.res.rd >= NETR && NET.seat >= 0) { playReveal(st); return; }
+    if (hold) { paintNet(); return; }
+    if (info.fresh || info.again || !S || !S.online) { takeView(st); Kit.gameStart(); render(); return; }
+    // the cards were just dealt: they fly in here
+    if (seat.S.phase === 'set' && S.phase === 'bet') { takeView(st); Kit.sfx('pop'); render({ deal: true }); return; }
+    // anyone else's bet or hands: your own chips and cards stay just as they are
+    if (S.phase === 'bet' && !amIn() || S.phase === 'set' && !S.dec) { paintNet(); return; }
+    if (!busy) render(); else paintNet();
+  }
+  // Everyone has set their hands: yours as they finished, the dealer's cards turned over and set, and the bet paid
+  function playReveal(st) {
+    var seat = mine(st);
+    NETR = st.round; hold = true; revealing = true;
+    S = JSON.parse(JSON.stringify(seat.R)); ME = { bank: seat.bank - S.res.net }; Casino.use(ME);   // (paid as the bet settles)
+    render({ reveal: true });
+    (function wait() { setTimeout(function () { if (!NET) return; if (busy) return wait(); revealing = false; ME.bank = mine(NET.state).bank; var bv = document.getElementById('bankv'); if (bv) bv.textContent = money(bank()); paintNet(); if (endLater || NET.state.phase === 'over') { endLater = false; hold = false; netEnd(); } }, 300); })();
+  }
+  function paintNet(box) {
+    box = box || app.querySelector('.netbox');
+    if (!NET || !box) return;
+    var st = NET.state;
+    box.innerHTML = '';
+    box.appendChild(CasinoNet.strip(NET, {
+      amount: function (i) { var R0 = st.seats[i].R; return revealing && R0 && R0.res && R0.res.rd === NETR - 1 ? st.seats[i].bank - R0.res.net : i === NET.seat && ME ? (S && S.phase === 'bet' ? bank() - pending() : ME.bank) : st.seats[i].bank; },
+      delta: function (i) { var R0 = st.seats[i].R; return !revealing && R0 && R0.res && R0.res.rd === st.round - 1 && st.phase === 'bet' && !st.ready[i] ? R0.res.net : null; }
+    }));
+  }
+  function netBet() {
+    if (!NET || NET.seat < 0 || amIn()) return;
+    var b = S.bet, me = NET.seat;
+    Kit.sfx('pop'); Kit.haptic('medium');
+    NET.act(function (st) { return TBL.move(st, me, { t: 'bet', bet: b }); });
+  }
+  function netSet() {
+    if (!NET || NET.seat < 0 || !NET.myTurn()) return;
+    var me = NET.seat, lo = S.low.slice();
+    S.dec = 1; Kit.sfx('chip');
+    NET.act(function (st) { return TBL.move(st, me, { t: 'set', low: lo }); });
+  }
+  function netNext(same) {
+    hold = false;
+    var st = NET.state; takeView(st);
+    if (same && S.phase === 'bet' && !amIn() && S.last && S.last <= bank()) { S.bet = S.last; render(); netBet(); return; }
+    render();
+  }
+  function netEndAsk() {
+    if (!NET || NET.seat < 0) return;
+    if (revealing || NET.state.phase !== 'bet') { Kit.toast('Finish this hand first'); return; }
+    var me = NET.seat;
+    Kit.confirm('Cash out the whole table?', { ok: 'Cash out', body: 'The session ends for everyone at the table, and it is saved to Past games on every device.' })
+      .then(function (ok) { if (ok && NET) NET.act(function (st) { return TBL.move(st, me, { t: 'end' }); }); });
+  }
+  function netEnd() {
+    var st = NET.state, me = NET.seat;
+    hold = false; revealing = false;
+    if (me >= 0) {
+      takeView(st); S.bet = 0;
+      if (S.hand && CasinoNet.once('paigow:' + NET.code + ':' + st.started)) {
+        var s = S, net = s.net;
+        Kit.record(HKEY, { started: s.started, mode: 'Online', players: [{ name: s.name, score: net }], winner: null,
+          summary: s.name + (net > 0 ? ' won ' + money(net) : net < 0 ? ' lost ' + money(-net) : ' broke even') + ' · ' + s.hand + ' hand' + (s.hand === 1 ? '' : 's'),
+          rounds: roundsData(), highlights: highlights(), meta: { hands: s.hand, bankroll: bank(), commission: s.st.comm },
+          detail: { play: 1, bank: { s: bank() - net, e: bank() }, hands: s.hand, won: s.st.won, lost: s.st.lost, push: s.st.push, comm: s.st.comm, house: s.st.house,
+            big: s.bigH || null, last: (s.hl || []).filter(function (x) { return !s.bigH || x.h !== s.bigH.h; }).slice(-10), sk: skString(bank() - net, s.log), best: s.st.best >= 2 ? s.st.best : 0 } });
+      }
+    }
+    render();
+    CasinoNet.end(NET, { unit: 'hand' });
+  }
+  function netLeave() {
+    NET = null; ME = null; Casino.use(null); hold = false; revealing = false; endLater = false; token++; busy = false; CasinoNet.closeEnd();
+    var sv = load();
+    if (sv && sv.phase && !sv.online) { S = sv; moneyFor(S.name || 'You'); if (S.phase === 'result' && !S.res) S.phase = 'bet'; render(); } else showSetup();
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────
