@@ -2130,9 +2130,9 @@
     '<path fill="url(#kBotF2)" d="M20.4 12.5c1 4.4 5.6 7 5.6 12.2 0 4.2-2.8 7.3-6 7.3s-6-2.8-6-6.4c0-3.2 1.8-5.4 3.6-6.8 0 2 .8 3.2 2 3.6-.6-3.8.2-7 .8-9.9z"/></g></svg>';
   function botFace(tag, color) {
     var lv = botLevel(tag), ink = '#1b1c2e', eyes = lv === 'e'
-      ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
+      ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="#10a650" stroke-width="1.7" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
       : lv === 'n'
-        ? '<circle cx="9" cy="12" r="1.5" fill="' + ink + '"/><circle cx="15" cy="12" r="1.5" fill="' + ink + '"/><path d="M10.2 15.2h3.6" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
+        ? '<circle cx="9" cy="12" r="1.6" fill="#e8a200"/><circle cx="15" cy="12" r="1.6" fill="#e8a200"/><path d="M10.2 15.2h3.6" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
         : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff3b1f"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff3b1f"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>';
     var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.6" fill="' + (lv === 'h' ? '#ff5a2a' : lv === 'e' ? '#5cff9f' : '#ffd34d') + '"/>' +
       '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
