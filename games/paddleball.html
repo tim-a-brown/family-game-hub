@@ -13,6 +13,7 @@
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
 <script src="../arcade-music.js"></script>
+<script src="../online.js"></script>
 <style>
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -135,7 +136,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   function hw(p) { return pads[p].hw; }
   function front(p) { return p === 0 ? PAD_OFF + PAD_T / 2 : FL - PAD_OFF - PAD_T / 2; }
-  function human(p) { return G.mode === 'two' || p === 0; }
+  function human(p) { return G.mode === 'two' || G.mode === 'net' || p === 0; }
+  // the paddle this device moves: online it's only your own (ME); on one screen, either person's
+  function mine(p) { return G.mode === 'net' ? p === ME : human(p); }
   function server() { return (G.firstServer + G.score[0] + G.score[1]) % 2; }
   function newPads() {
     pads = [0, 1].map(function () { return { c: FC / 2, tc: FC / 2, v: 0, hw: PAD_HW, flash: 0 }; });
@@ -148,7 +151,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     G.phase = 'serve'; G.serveT = 0; G.rally = 0; G.rallyT = 0;
     G.ai.next = 0; G.ai.serveAt = 0.9 + Math.random() * 0.6; G.ai.serveTo = clamp(FC / 2 + randn() * 60, 60, FC - 60);
     G.orbT = 5 + Math.random() * 5; orb = null;
-    var b = { l: 0, c: pads[s].c, vl: 0, vc: 0, spin: 0, last: s, trail: [], held: s, speed: SERVE_V };
+    var b = { id: ++G.bid, n: 0, l: 0, c: pads[s].c, vl: 0, vc: 0, spin: 0, last: s, trail: [], held: s, speed: SERVE_V };
     placeHeld(b);
     balls.push(b);
     hudDirty = true;
@@ -165,7 +168,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var a = clamp(-off * 0.35 + (Math.random() - 0.5) * 0.5, -0.5, 0.5);
     b.held = null; b.speed = SERVE_V; b.vl = dir * Math.cos(a) * SERVE_V; b.vc = Math.sin(a) * SERVE_V; b.last = p;
     G.phase = 'play'; G.rallyT = 0; hudDirty = true;
-    sServe(); Kit.haptic('light');
+    sServe(); Kit.haptic('light'); netEv({ k: 'sv' });
   }
 
   // ═══ Physics ═════════════════════════════════════════════════════════════
@@ -193,6 +196,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       G.serveT += dt;
       var b0 = balls[0]; if (b0 && b0.held != null) placeHeld(b0);
       var s = server();
+      if (G.mode === 'net' && s === 1 && !NET.peer) G.serveT = 0;   // (the other player's device is away: nobody serves for them)
       if (!human(s) && G.serveT > G.ai.serveAt) doServe();
       else if (human(s) && G.serveT > 4) doServe(); // auto-serve if nobody does
       return;
@@ -225,8 +229,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     }
     for (var p = 0; p < 2; p++) if (G.pw.big[p] > 0) G.pw.big[p] = Math.max(0, G.pw.big[p] - dt);
   }
-  function moveBall(b, dt) {
-    if (b.out != null) return;
+  // The ball's flight on its own: curve, travel, the side walls. Returns true when it bounced off a wall.
+  function fly(b, dt) {
     if (b.spin) {
       b.vc += b.spin * dt; b.spin *= Math.max(0, 1 - 0.9 * dt);
       if (Math.abs(b.spin) < 20) b.spin = 0;
@@ -234,23 +238,50 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (Math.abs(b.vl) < minL) { b.vl = Math.sign(b.vl) * minL; b.vc = Math.sign(b.vc) * Math.sqrt(sp * sp - minL * minL); }
       var m = b.speed / (Math.hypot(b.vl, b.vc) || 1); b.vl *= m; b.vc *= m;
     }
-    var pl = b.l;
     b.l += b.vl * dt; b.c += b.vc * dt;
-    if (b.c < R) { b.c = R; b.vc = Math.abs(b.vc); b.spin = -b.spin * 0.5; sWall(); wallSpark(b); }
-    if (b.c > FC - R) { b.c = FC - R; b.vc = -Math.abs(b.vc); b.spin = -b.spin * 0.5; sWall(); wallSpark(b); }
+    if (b.c < R) { b.c = R; b.vc = Math.abs(b.vc); b.spin = -b.spin * 0.5; return true; }
+    if (b.c > FC - R) { b.c = FC - R; b.vc = -Math.abs(b.vc); b.spin = -b.spin * 0.5; return true; }
+    return false;
+  }
+  function moveBall(b, dt) {
+    if (b.out != null) return;
+    var pl = b.l;
+    if (fly(b, dt)) { sWall(); wallSpark(b); }
     // paddles
     for (var p = 0; p < 2; p++) {
       var f = front(p), toward = p === 0 ? b.vl < 0 : b.vl > 0;
       if (!toward) continue;
       var crossed = p === 0 ? (pl - R >= f - 1 && b.l - R <= f) : (pl + R <= f + 1 && b.l + R >= f);
       if (!crossed) continue;
-      var P = pads[p];
-      if (Math.abs(b.c - P.c) <= P.hw + R * 0.8) { hitPaddle(b, p); return; }
+      var P = pads[p], on = Math.abs(b.c - P.c) <= P.hw + R * 0.8;
+      if (NET.mode === 'host' && p === 1) {   // online, the guest's own device says whether its paddle hit
+        if (b.claim && b.claim.n === b.n && !b.claim.miss) { b.cross = G.clk; takeClaim(b); return; }
+        if (b.cross == null) b.cross = G.clk;
+        continue;
+      }
+      if (NET.mode === 'guest') {
+        if (p === 1) {   // your own paddle, as you see it: tell the host at once
+          if (b.told === b.n) continue;
+          b.told = b.n;
+          if (NET.peer) NET.peer.send({ t: 'h', id: b.id, n: b.n, c: r1(b.c), pc: r1(P.c), v: Math.round(P.v), miss: on ? 0 : 1 }, true);
+          if (on) { hitPaddle(b, 1); return; }
+          continue;
+        }
+        if (on) { hitPaddle(b, 0, true); return; }   // the host's paddle: bounce it here; the host's word follows
+        continue;
+      }
+      if (on) { hitPaddle(b, p); return; }
     }
+    if (NET.mode === 'guest') { if (b.l < -R * 3) b.l = -R * 3; else if (b.l > FL + R * 3) b.l = FL + R * 3; return; }   // (the host says when a point is won)
     if (b.l < -R * 3) b.out = 1;
-    else if (b.l > FL + R * 3) b.out = 0;
+    else if (b.l > FL + R * 3) {
+      // online: the guest's word on its own paddle is on its way (a moment, at most)
+      if (NET.mode === 'host' && !(b.claim && b.claim.n === b.n && b.claim.miss) && b.cross != null && G.clk - b.cross < 0.45) b.l = FL + R * 3;
+      else b.out = 0;
+    }
   }
-  function hitPaddle(b, p) {
+  // quiet: an online guest's guess at the host's hit (the bounce only; the host sends the rest)
+  function hitPaddle(b, p, quiet) {
     var P = pads[p], dir = p === 0 ? 1 : -1;
     var rel = clamp((b.c - P.c) / (P.hw + R * 0.5), -1, 1);
     var ang = rel * 1.02 + clamp(P.v / 2600, -0.18, 0.18);
@@ -259,43 +290,57 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     b.speed = sp;
     b.vl = dir * Math.cos(ang) * sp; b.vc = Math.sin(ang) * sp;
     b.l = p === 0 ? front(0) + R : front(1) - R;
-    b.last = p; b.spin = 0;
+    b.last = p; b.spin = 0; b.n = (b.n || 0) + 1; b.cross = null; b.claim = null;
+    var curve = 0;
     if (G.pw.curve[p] > 0) {
-      G.pw.curve[p]--;
+      if (!quiet) G.pw.curve[p]--;
       var sgn = Math.abs(P.v) > 40 ? -Math.sign(P.v) : (rel >= 0 ? -1 : 1);
-      b.spin = sgn * 760;
-      pop(b.l + dir * 30, b.c, 'CURVE', POWERS.curve.c, 13);
+      b.spin = sgn * 760; curve = 1;
     }
+    if (quiet) return;
     G.rally++; G.hits[p]++;
     if (G.rally > G.stats.longest) G.stats.longest = G.rally;
     if (sp > G.stats.top) G.stats.top = sp;
     var smash = sp >= 640 && Math.abs(rel) > 0.55;
-    if (smash) { G.stats.smash[p]++; fx.shake = 0.55; fx.flash = 0.6; Kit.haptic('heavy'); pop(b.l + dir * 40, b.c, 'SMASH!', PC[p], 16); b.smash = 0.6; }
-    else Kit.haptic('light');
-    P.flash = 1;
-    sHit(sp, smash);
-    for (var i = 0; i < (smash ? 18 : 7); i++) part(b.l, b.c, dir * (60 + Math.random() * 200), (Math.random() - 0.5) * 260, PC[p], 0.35 + Math.random() * 0.3, 1.2 + Math.random() * 1.6);
+    if (smash) { G.stats.smash[p]++; b.smash = 0.6; }
+    hitFx(p, b.l, b.c, sp, smash, curve, G.rally);
+    netEv({ k: 'hit', p: p, l: r1(b.l), c: r1(b.c), sp: Math.round(sp), sm: smash ? 1 : 0, cv: curve, r: G.rally });
     if (!human(1 - p)) G.ai.next = 0; // computer re-reads the new direction (after its reaction delay)
     if (!human(p)) G.ai.next = 0;
-    if (G.rally === 20 || G.rally === 40) Kit.callout && Kit.callout(G.rally + '-hit rally!');
+  }
+  // what a hit looks and sounds like (an online guest plays the host's hits with this too)
+  function hitFx(p, l, c, sp, smash, curve, rally) {
+    var dir = p === 0 ? 1 : -1, P = pads[p];
+    if (curve) pop(l + dir * 30, c, 'CURVE', POWERS.curve.c, 13);
+    if (smash) { fx.shake = 0.55; fx.flash = 0.6; pop(l + dir * 40, c, 'SMASH!', PC[p], 16); }
+    if (G.mode !== 'net' || p === ME) Kit.haptic(smash ? 'heavy' : 'light');
+    P.flash = 1;
+    sHit(sp, smash);
+    for (var i = 0; i < (smash ? 18 : 7); i++) part(l, c, dir * (60 + Math.random() * 200), (Math.random() - 0.5) * 260, PC[p], 0.35 + Math.random() * 0.3, 1.2 + Math.random() * 1.6);
+    if (rally === 20 || rally === 40) Kit.callout && Kit.callout(rally + '-hit rally!');
   }
   function wallSpark(b) { for (var i = 0; i < 4; i++) part(b.l, b.c, (Math.random() - 0.5) * 120, (b.c < FC / 2 ? 1 : -1) * (40 + Math.random() * 80), '#cfe6ff', 0.2, 0.8); }
   function grabPower(p, o, b) {
-    var P = POWERS[o.kind];
     G.stats.powers[p]++; G.stats.powerKinds[o.kind] = (G.stats.powerKinds[o.kind] || 0) + 1;
-    pop(o.l, o.c, P.name.toUpperCase(), P.c, 14);
-    for (var i = 0; i < 16; i++) { var a = Math.random() * 6.28; part(o.l, o.c, Math.cos(a) * 140, Math.sin(a) * 140, P.c, 0.5, 2); }
-    sPower(); Kit.haptic('medium');
+    powerFx(p, o.kind, o.l, o.c);
+    netEv({ k: 'pw', p: p, kind: o.kind, l: r1(o.l), c: r1(o.c) });
     if (o.kind === 'big') G.pw.big[p] = 12;
     else if (o.kind === 'curve') G.pw.curve[p] = 3;
     else if (o.kind === 'multi') {
       var a0 = Math.atan2(b.vc, Math.abs(b.vl)), sgn = Math.sign(b.vl) || 1;
       [-0.42, 0.42].forEach(function (d) {
         var a1 = clamp(a0 + d, -1, 1);
-        balls.push({ l: b.l, c: b.c, vl: sgn * Math.cos(a1) * b.speed, vc: Math.sin(a1) * b.speed, spin: 0, last: b.last, trail: [], speed: b.speed });
+        balls.push({ id: ++G.bid, n: 0, l: b.l, c: b.c, vl: sgn * Math.cos(a1) * b.speed, vc: Math.sin(a1) * b.speed, spin: 0, last: b.last, trail: [], speed: b.speed });
       });
       G.stats.maxBalls = Math.max(G.stats.maxBalls, balls.length);
     }
+  }
+
+  function powerFx(p, kind, l, c) {
+    var P = POWERS[kind];
+    pop(l, c, P.name.toUpperCase(), P.c, 14);
+    for (var i = 0; i < 16; i++) { var a = Math.random() * 6.28; part(l, c, Math.cos(a) * 140, Math.sin(a) * 140, P.c, 0.5, 2); }
+    sPower(); if (G.mode !== 'net' || p === ME) Kit.haptic('medium');
   }
 
   // ═══ Points ══════════════════════════════════════════════════════════════
@@ -309,18 +354,24 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.score[0] === G.score[1] && G.score[0] >= G.to - 1) G.stats.deuce = true;
     if (G.rally > (G.stats.longestBy || { n: 0 }).n) G.stats.longestBy = { n: G.rally, winner: p };
     if (b.smash > 0) G.stats.smashWins[p]++;
-    fx.flash = Math.max(fx.flash, 0.4); fx.flashC = PC[p];
-    for (var i = 0; i < 24; i++) part(clamp(b.l, 0, FL), b.c, (p === 0 ? 1 : -1) * Math.random() * 220, (Math.random() - 0.5) * 300, PC[p], 0.6, 2);
-    var goodForHuman = G.mode === 'two' || p === 0;
-    sPoint(goodForHuman); Kit.haptic(goodForHuman ? 'success' : 'error');
-    scoreBump = p; hudDirty = true;
-    if (won(p)) { G.phase = 'over'; G.overT = 0; G.winner = p; G.pw.big = [0, 0]; G.pw.curve = [0, 0]; orb = null; balls = []; clearSave(); return; }
+    pointFx(p, b.l, b.c);
+    var ev = { k: 'pt', p: p, id: b.id, l: r1(b.l), c: r1(b.c), sc: G.score.slice() };
+    if (won(p)) { G.phase = 'over'; G.overT = 0; G.winner = p; G.pw.big = [0, 0]; G.pw.curve = [0, 0]; orb = null; balls = []; clearSave(); ev.w = p; netEv(ev); return; }
     if (last) {
       G.phase = 'point'; G.pointT = 0; G.pw.big = [0, 0]; G.pw.curve = [0, 0]; orb = null;
       var a = G.score[0], c = G.score[1], hi = Math.max(a, c);
       if (a === c && a >= G.to - 1) fx.banner = { text: 'DEUCE', sub: 'Win by 2', c: '#fff', life: 1.3, max: 1.3 };
       else if (hi >= G.to - 1 && Math.abs(a - c) >= 1) fx.banner = { text: 'GAME POINT', sub: name(a > c ? 0 : 1), c: PC[a > c ? 0 : 1], life: 1.3, max: 1.3 };
+      if (fx.banner) ev.ban = fx.banner;
     }
+    netEv(ev);
+  }
+  function pointFx(p, l, c) {
+    fx.flash = Math.max(fx.flash, 0.4); fx.flashC = PC[p];
+    for (var i = 0; i < 24; i++) part(clamp(l, 0, FL), c, (p === 0 ? 1 : -1) * Math.random() * 220, (Math.random() - 0.5) * 300, PC[p], 0.6, 2);
+    var goodForHuman = G.mode === 'two' || p === ME;
+    sPoint(goodForHuman); Kit.haptic(goodForHuman ? 'success' : 'error');
+    scoreBump = p; hudDirty = true;
   }
   function won(p) { return G.score[p] >= G.to && G.score[p] - G.score[1 - p] >= 2; }
   function name(p) { return G.players[p].name; }
@@ -356,7 +407,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Persistence ═════════════════════════════════════════════════════════
   function save() {
-    if (!G || G.ended || G.phase === 'over') return;
+    if (!G || G.ended || G.phase === 'over' || G.mode === 'net') return;
     var s = { v: 1, mode: G.mode, diff: G.diff, to: G.to, powers: G.powers, players: G.players, score: G.score, firstServer: G.firstServer,
       started: G.started, stats: G.stats, seq: G.seq, ral: G.ral, run: G.run, runP: G.runP, hits: G.hits };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
@@ -369,8 +420,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   Kit.init({ orient: 'portrait',
     id: 'paddleball',
     theme: { wood: ['#2a3550', '#141b2e'] },
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { if (NET.mode) { leaveOnline(true); return; } clearSave(); showSetup(); },
     menu: [
+      { icon: 'logout', label: 'Leave the online match', when: function () { return !!NET.mode; }, onClick: function () { leaveOnline(true); } },
       { icon: 'trophy', label: 'Longest rallies', onClick: function () { pauseGame(); ArcadeHi.show('paddleball', 'Pong: longest rallies'); } },
       { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Pong: past games' }); } },
       Mus.menuItem
@@ -385,17 +437,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       '<li>Hit it near an <b>end</b> to send it off at a sharp angle.</li><li>The ball speeds up every time it\'s hit, so long rallies get fast. A fast ball hit off the end of the paddle is a <b>smash</b>.</li></ul>' +
       '<h3>Power-ups (if turned on)</h3><p>Glowing orbs appear in the middle. The player who hit the ball last gets the power when the ball rolls through one:</p>' +
       '<ul><li><b>Big paddle:</b> a longer paddle for 12 seconds.</li><li><b>Multi-ball:</b> two extra balls. Every ball that gets past a paddle scores.</li>' +
-      '<li><b>Curve:</b> your next 3 hits bend in the air. Move your paddle as you hit to choose which way.</li></ul>'
+      '<li><b>Curve:</b> your next 3 hits bend in the air. Move your paddle as you hit to choose which way.</li></ul>' +
+      '<h3>Playing online</h3><p>Two players, each on their own phone or tablet. Tap <b>Play online</b> beside Play: one of you opens a table and the other joins it from the list or with its 4-letter code. Your own paddle is always at the bottom of your screen. Whether the ball hits your paddle is decided on your own device, by what you saw, so a hit that looks like a hit counts. Pong needs a direct link between the two devices, so put both on the same Wi-Fi (or join one to the other phone\'s Personal Hotspot). An online match can\'t be paused. If one player\'s device drops out, the match waits for them to join the table again.</p>'
   });
 
   // ═══ Setup ═══════════════════════════════════════════════════════════════
   function showSetup() {
-    leaveGame();
+    if (NET.mode) leaveOnline(false);
+    closeLobby(); leaveGame();
     app.className = 'stage';
     Kit.setup(app, {
       intro: 'Classic two-paddle table tennis',
-      // two ends of the table: the far end is the computer or a second person sharing the screen
-      modes: Kit.modes(['cpu', { id: 'two', kind: 'local' }]),
+      // two ends of the table: the far end is the computer or a second person sharing the screen; or each
+      // player on their own device (Play online, beside Play)
+      modes: Kit.modes(['cpu', { id: 'two', kind: 'local' }, 'online']),
       mode: 'cpu',
       options: [
         { id: 'diff', robot: true, label: 'Computer skill', when: function (m) { return m === 'cpu'; }, value: 'normal', choices: [
@@ -407,10 +462,17 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
           ['off', 'Off', 'Plain classic Pong.'],
           ['on', 'On', 'Orbs appear in the middle: big paddle, multi-ball and curve shots.']] }
       ],
-      players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; } },
+      players: { min: 2, max: 2, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : false; }, range: function (m) { return m === 'online' ? [1, 1] : [2, 2]; } },
       start: 'Play',
       onStart: function (cfg) {
         var o = cfg.options || {};
+        if (cfg.mode === 'online') {   // Play online's review: Open the table, or Find a table to join
+          NET.opts = { to: +o.to || 11, powers: o.powers === 'on' };
+          NET.me = (cfg.players[0] && cfg.players[0].name) || NET.me || myName();
+          NET.from = 'setup';
+          if (cfg.net === 'find') goLobby(); else hostTable(NET.me);
+          return;
+        }
         startGame({ mode: cfg.mode === 'two' ? 'two' : 'cpu', diff: DIFF[o.diff] ? o.diff : 'normal', to: +o.to || 11, powers: o.powers === 'on',
           players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; }) });
       }
@@ -434,12 +496,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     // vs the computer the board records the longest rally: show it, overtaken live by this match
     if (G.mode === 'cpu') { bestRallyEl = el('b', { class: 'br', text: String(ArcadeHi.best('paddleball')) }); midEl.appendChild(el('small', { text: 'best rally' })); midEl.appendChild(bestRallyEl); } else bestRallyEl = null;
     var pb = el('button', { type: 'button', class: 'ar-pbtn', 'aria-label': 'Pause', html: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>', onclick: function () { Kit.sfx('tap'); if (paused) resumeGame(); else pauseGame(); } });
-    hudEl = el('div', { class: 'ar-hud' }, [plates[0], midEl, plates[1], pb]);
+    // online: your own plate on the left, the way your own paddle is nearest you; no pause (the match can't stop for one player)
+    var first = G.mode === 'net' ? ME : 0;
+    plates[first].className = 'ar-plate p1'; plates[1 - first].className = 'ar-plate p2';
+    hudEl = el('div', { class: 'ar-hud' }, [plates[first], midEl, plates[1 - first]].concat(G.mode === 'net' ? [] : [pb]));
     cv = el('canvas', { 'aria-label': 'Pong court' }); g = cv.getContext('2d');
     ovEl = el('div', { class: 'ar-ov' });
     cabEl = el('div', { class: 'ar-cab wood' }, [cv, ovEl]);
     wrapEl = el('div', { class: 'ar-wrap' }, [cabEl]);
-    hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'two' ? 'Left player: W / S  ·  Right player: arrow keys  ·  Space serves  ·  P pauses' : 'Mouse, W / S or arrow keys to move  ·  Space or click serves  ·  P pauses' });
+    hintEl = el('div', { class: 'ar-hint ar-desk', text: G.mode === 'net' ? 'Move with the mouse or the arrow keys, and press Space to serve' : G.mode === 'two' ? 'Left player: W / S  ·  Right player: arrow keys  ·  Space serves  ·  P pauses' : 'Mouse, W / S or arrow keys to move  ·  Space or click serves  ·  P pauses' });
     app.appendChild(hudEl); app.appendChild(wrapEl); if (!TOUCH) app.appendChild(hintEl);
     bindInput();
     if (ro) ro.disconnect();
@@ -473,10 +538,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     draw();
   }
   // Court (l, c) to canvas field units, and back
-  function P2(l, c) { return LAND ? { x: l, y: c } : { x: c, y: FL - l }; }
+  function P2(l, c) { if (FLIP) { l = FL - l; c = FC - c; } return LAND ? { x: l, y: c } : { x: c, y: FL - l }; }
   function toCourt(clientX, clientY) {
     var r = cv.getBoundingClientRect(), x = (clientX - r.left) / S, y = (clientY - r.top) / S;
-    return LAND ? { l: x, c: y } : { l: FL - y, c: x };
+    var k = LAND ? { l: x, c: y } : { l: FL - y, c: x };
+    if (FLIP) { k.l = FL - k.l; k.c = FC - k.c; }
+    return k;
   }
 
   // ── Input: every finger is tied to the paddle on its half (multi-touch)
@@ -488,14 +555,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       if (!G || paused || G.phase === 'over') return;
       try { wrapEl.setPointerCapture(e.pointerId); } catch (er) {}
       var k = toCourt(e.clientX, e.clientY);
-      var p = G.mode === 'two' ? (k.l < FL / 2 ? 0 : 1) : 0;
+      var p = G.mode === 'two' ? (k.l < FL / 2 ? 0 : 1) : ME;
       ptrs[e.pointerId] = { p: p, x0: e.clientX, y0: e.clientY, t0: performance.now(), moved: false, type: e.pointerType };
-      if (e.pointerType !== 'mouse' || G.mode === 'cpu' || e.buttons) pads[p].tc = k.c;
+      if (e.pointerType !== 'mouse' || G.mode !== 'two' || e.buttons) pads[p].tc = k.c;
     });
     wrapEl.addEventListener('pointermove', function (e) {
       if (!G || paused) return;
       var d = ptrs[e.pointerId];
-      if (!d) { if (e.pointerType === 'mouse' && G.mode === 'cpu') pads[0].tc = toCourt(e.clientX, e.clientY).c; return; }
+      if (!d) { if (e.pointerType === 'mouse' && G.mode !== 'two') pads[ME].tc = toCourt(e.clientX, e.clientY).c; return; }
       e.preventDefault();
       pads[d.p].tc = toCourt(e.clientX, e.clientY).c;
       if (Math.abs(e.clientX - d.x0) > 10 || Math.abs(e.clientY - d.y0) > 10) d.moved = true;
@@ -505,7 +572,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       delete ptrs[e.pointerId];
       if (!G || paused) return;
       var quick = !d.moved && performance.now() - d.t0 < 350;
-      if ((quick || d.type === 'mouse') && G.phase === 'serve' && server() === d.p && human(d.p)) doServe();
+      if (quick || d.type === 'mouse') serveTap(d.p);
     }
     wrapEl.addEventListener('pointerup', up);
     wrapEl.addEventListener('pointercancel', function (e) { delete ptrs[e.pointerId]; });
@@ -516,7 +583,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   var down = {};
   function keyDir() {
     keys = [0, 0];
-    for (var k in down) { if (!down[k]) continue; var m = KMAP[k]; var p = G && G.mode === 'cpu' ? 0 : m[0]; keys[p] += m[1]; }
+    for (var k in down) { if (!down[k]) continue; var m = KMAP[k]; var p = G && G.mode !== 'two' ? ME : m[0]; keys[p] += m[1] * (FLIP ? -1 : 1); }
     keys = keys.map(function (v) { return clamp(v, -1, 1); });
     // In portrait the arrow pairs read left/right; in landscape up/down. Both map to the cross axis.
   }
@@ -525,21 +592,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var k = e.key;
     if (k === 'p' || k === 'P' || k === 'Escape') { e.preventDefault(); if (paused) resumeGame(); else pauseGame(); return; }
     if (paused) { if (k === 'Enter' || k === ' ') { e.preventDefault(); resumeGame(); } return; }
-    if (k === ' ' || k === 'Enter') { e.preventDefault(); ac(); if (G && G.phase === 'serve' && human(server())) doServe(); return; }
+    if (k === ' ' || k === 'Enter') { e.preventDefault(); ac(); if (G) serveTap(server()); return; }
     if (KMAP[k]) {
       e.preventDefault(); ac(); down[k] = true; keyDir();
       // keyboard play takes over from the last touch/mouse target
-      var p = G.mode === 'cpu' ? 0 : KMAP[k][0]; pads[p].tc = pads[p].c;
+      var p = G.mode !== 'two' ? ME : KMAP[k][0]; pads[p].tc = pads[p].c;
     }
   });
   document.addEventListener('keyup', function (e) { if (down[e.key]) { down[e.key] = false; keyDir(); } });
   document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   document.addEventListener('kit:orient', function (e) { if (!e.detail.ok) { pauseGame(); save(); } });   // device turned the wrong way: pause behind the cover
   window.addEventListener('blur', function () { pauseGame(); });
-  window.addEventListener('pagehide', function () { save(); });
+  window.addEventListener('pagehide', function (e) { save(); if (NET.mode && !e.persisted) leaveOnline(false); });   // (online: say goodbye at once, so the other device isn't left waiting)
 
   function pauseGame() {
-    if (view !== 'game' || paused || !G || G.ended || G.phase === 'over') return;
+    if (view !== 'game' || paused || !G || G.ended || G.phase === 'over' || G.mode === 'net') return;
     paused = true; ptrs = {}; down = {}; keys = [0, 0]; Mus.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', name(0) + ' ' + G.score[0] + ' – ' + G.score[1] + ' ' + name(1), 'Resume');
@@ -555,7 +622,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     ovEl.classList.add('show');
   }
   function resumeGame() {
-    if (!paused) return;
+    if (!paused || (G && G.mode === 'net')) return;
     paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
@@ -569,7 +636,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       players: cfg.players && cfg.players.length === 2 ? cfg.players : [{ name: 'You' }, { name: 'Computer', cpu: true }],
       score: [0, 0], firstServer: Math.random() < 0.5 ? 0 : 1, phase: 'serve', started: Date.now(),
       seq: [], ral: [], run: 0, runP: -1, hits: [0, 0], rally: 0,
-      pw: { big: [0, 0], curve: [0, 0] }, ai: { next: 0, target: FC / 2, serveAt: 1, serveTo: FC / 2, err: 0 },
+      pw: { big: [0, 0], curve: [0, 0] }, ai: { next: 0, target: FC / 2, serveAt: 1, serveTo: FC / 2, err: 0 }, bid: 0, clk: 0,
       stats: { longest: 0, top: 0, smash: [0, 0], smashWins: [0, 0], bestRun: [0, 0], maxDown: [0, 0], powers: [0, 0], powerKinds: {}, maxBalls: 1, deuce: false, longestBy: null }
     };
     if (G.mode === 'cpu') G.players[1].cpu = true;
@@ -581,14 +648,20 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       G.stats = Object.assign(G.stats, saved.stats || {}); G.seq = saved.seq || []; G.ral = saved.ral || []; G.run = saved.run || 0; G.runP = saved.runP == null ? -1 : saved.runP; G.hits = saved.hits || [0, 0];
     }
     buildView();
-    readyServe();
+    if (G.mode === 'net' && NET.mode === 'guest') { balls = []; orb = null; G.phase = 'serve'; }   // (the host's device sends the ball)
+    else readyServe();
     if (saved) { paused = true; showOverlay('Welcome back', name(0) + ' ' + G.score[0] + ' – ' + G.score[1] + ' ' + name(1), 'Continue'); }
     else fx.banner = { text: 'FIRST TO ' + G.to, sub: name(server()) + ' serves', c: '#fff', life: 1.8, max: 1.8 };
     hudDirty = true; updateHud();
   }
   function endGame() {
     if (G.ended) return; G.ended = true;
-    clearSave();
+    clearSave(); hostTimer(false);
+    var net = G.mode === 'net';
+    if (net && NET.mode === 'host' && NET.peer) {   // the guest's device shows the same results
+      NET.peer.send({ t: 'over', w: G.winner, sc: G.score, st: G.stats, seq: G.seq, ral: G.ral.slice(0, 120), hits: G.hits }, true);
+      if (NET.table) NET.table.setStatus('open', '');
+    }
     var w = G.winner, l = 1 - w, st = G.stats, h = [];
     var wn = name(w), ln = name(l);
     h.push(wn + ' won ' + G.score[w] + '–' + G.score[l]);
@@ -601,7 +674,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.top > 0) h.push('Top ball speed: ' + (st.top / SERVE_V).toFixed(1) + '× the serve');
     var pk = Object.keys(st.powerKinds);
     if (pk.length) { pk.sort(function (a, b) { return st.powerKinds[b] - st.powerKinds[a]; }); h.push((st.powers[0] + st.powers[1]) + ' power-ups grabbed (most: ' + POWERS[pk[0]].name.toLowerCase() + ')'); }
-    var mode = (G.mode === 'cpu' ? 'vs Computer (' + DIFF[G.diff].name + ')' : '2 players') + ' · to ' + G.to + (G.powers ? ' · power-ups' : '');
+    var mode = (G.mode === 'cpu' ? 'vs Computer (' + DIFF[G.diff].name + ')' : net ? 'Online' : '2 players') + ' · to ' + G.to + (G.powers ? ' · power-ups' : '');
     // history detail: who won each point and how long each rally went, plus the match's numbers
     var hiL = ArcadeHi.list('paddleball');
     var detail = {
@@ -618,49 +691,62 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
       meta: { longestRally: st.longest, mode: G.mode, diff: G.mode === 'cpu' ? G.diff : null, to: G.to }
     });
     var cfg = { mode: G.mode, diff: G.diff, to: G.to, powers: G.powers, players: G.players };
-    var lose = G.mode === 'cpu' && w === 1;
+    var lose = net ? w !== ME : G.mode === 'cpu' && w === 1;
     function done() {
       Kit.win({
         lose: lose, icon: lose ? 'meh' : 'trophy',
-        title: (wn === 'You' ? 'You win!' : wn + ' wins!'),
+        title: net ? (w === ME ? 'You win!' : wn + ' wins!') : (wn === 'You' ? 'You win!' : wn + ' wins!'),
         sub: G.score[w] + '–' + G.score[l] + (st.longest >= 2 ? ' · longest rally ' + st.longest : ''),
         rank: [w, l].map(function (p) { return { name: name(p), score: G.score[p], color: PC[p] }; }),
-        again: function () { startGame(cfg); }, againLabel: 'Rematch',
-        extra: [{ label: 'Change settings', onClick: showSetup }]
+        again: net ? backToTable : function () { startGame(cfg); }, againLabel: net ? (NET.mode === 'host' ? 'Back to your table' : 'Back to the table') : 'Rematch',
+        extra: net ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); showSetup(); } }] : [{ label: 'Change settings', onClick: showSetup }]
       });
     }
     if (G.mode === 'cpu' && st.longest > 0) ArcadeHi.check('paddleball', st.longest, done); else done();
   }
 
   // ═══ Loop ════════════════════════════════════════════════════════════════
-  var raf = 0, lastT = 0, acc = 0, rt = 0;
-  function loop(t) {
+  var raf = 0, lastT = 0, acc = 0, rt = 0, frameAt = 0;
+  function loop() {
     raf = 0;
-    var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t;
+    frame(true);
+    // Battery: no frames while paused, once the match is over or with the page hidden (wake() restarts)
+    if (view === 'game' && G && !paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
+  }
+  function frame(drawIt) {
+    var t = performance.now();
+    var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0; lastT = t; frameAt = t;
     if (view !== 'game' || !G) return;
-    if (!paused) {
+    if (NET.mode === 'guest' && G.mode === 'net') guestFrame(dt);
+    else if (!paused && !(NET.mode === 'host' && netQuiet())) {
       rt += dt; acc += dt;
       var n = 0;
       while (acc >= TICK && n++ < 24) { acc -= TICK; update(TICK); }
     }
+    if (NET.mode === 'host') netTick();
     if (!paused && !document.hidden && (G.phase === 'serve' || G.phase === 'play' || G.phase === 'point')) Mus.tick(); else Mus.stop();
     if (hudDirty) updateHud();
-    draw();
-    // Battery: no frames while paused, once the match is over or with the page hidden (wake() restarts)
-    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
+    if (drawIt) draw();
   }
   function wake() { if (!raf && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
-  function update(dt) {
+  function fxStep(dt) {
     fx.parts = fx.parts.filter(function (p) { p.life -= dt; p.l += p.vl * dt; p.c += p.vc * dt; p.vl *= 0.985; p.vc *= 0.985; return p.life > 0; });
     fx.pops = fx.pops.filter(function (p) { p.life -= dt; return p.life > 0; });
     if (fx.banner) { fx.banner.life -= dt; if (fx.banner.life <= 0) fx.banner = null; }
     fx.shake = Math.max(0, fx.shake - dt * 2.2); fx.flash = Math.max(0, fx.flash - dt * 2.5);
     balls.forEach(function (b) { if (b.smash) b.smash = Math.max(0, b.smash - dt); });
+  }
+  function trailStep(dt) {
+    G.trailT = (G.trailT || 0) + dt;
+    if (G.trailT >= 1 / 60) { G.trailT = 0; balls.forEach(function (b) { b.trail.push(b.l, b.c); if (b.trail.length > 20) b.trail.splice(0, 2); }); }
+  }
+  function update(dt) {
+    G.clk += dt;
+    fxStep(dt);
     if (G.phase === 'serve' || G.phase === 'play') step(dt);
     else if (G.phase === 'point') { movePad(0, dt); movePad(1, dt); G.pointT += dt; if (G.pointT > 1.0) readyServe(); }
     else if (G.phase === 'over') { G.overT += dt; if (G.overT > 1.3) { G.phase = 'done'; endGame(); } }
-    G.trailT = (G.trailT || 0) + dt;
-    if (G.trailT >= 1 / 60) { G.trailT = 0; balls.forEach(function (b) { b.trail.push(b.l, b.c); if (b.trail.length > 20) b.trail.splice(0, 2); }); }
+    trailStep(dt);
   }
   var shown = { a: -1, b: -1, s: -1 };
   function updateHud() {
@@ -749,7 +835,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     g.setTransform(sc, 0, 0, sc, 0, 0);
     if (fx.flash > 0) { g.fillStyle = fx.flashC || '#fff'; g.globalAlpha = fx.flash * 0.12; g.fillRect(0, 0, FW, FH); g.globalAlpha = 1; }
     // serve prompt
-    if (G.phase === 'serve' && !paused && human(server()) && !fx.banner) {
+    if (G.phase === 'serve' && !paused && mine(server()) && !fx.banner) {
       var s = server(), q2 = P2(s === 0 ? FL * 0.2 : FL * 0.8, FC / 2);
       txt(TOUCH ? 'Tap to serve' : 'Space or click to serve', q2.x, q2.y, 17, '#fff', rotFor(s), 0.6 + 0.35 * Math.sin(rt * 5));
     }
@@ -764,7 +850,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (G.phase === 'over' || G.phase === 'done') {
       var w = G.winner; g.globalAlpha = clamp(G.overT / 0.3, 0, 1);
       g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(0, 0, FW, FH);
-      txt(name(w).toUpperCase() + (name(w) === 'You' ? ' WIN' : ' WINS'), FW / 2, FH / 2, 34, PC[w]);
+      txt(G.mode === 'net' ? (w === ME ? 'YOU WIN' : name(w).toUpperCase() + ' WINS') : name(w).toUpperCase() + (name(w) === 'You' ? ' WIN' : ' WINS'), FW / 2, FH / 2, 34, PC[w]);
       g.globalAlpha = 1;
     }
   }
@@ -828,13 +914,389 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     return '#' + ((1 << 24) + (r << 16) + (gg << 8) + bl).toString(16).slice(1);
   }
 
+  // ═══ Online: two players, each on their own device (online.js) ═════════════
+  // The host's device runs the match (player 1, cyan); the guest (player 2, pink) sees the court from its own end,
+  // its paddle at the bottom. Each device decides whether the ball hits its own paddle, from what its player saw,
+  // so a hit that looks like a hit counts on both. The guest moves its own paddle at once and sends where it is;
+  // it runs its own copy of the ball at the host's present moment (the host's clock, worked out from the updates)
+  // so the ball reaches its paddle on its screen when it does on the host's. There the guest tells the host hit or
+  // miss, and the host bounces the ball from where the guest hit it (the host's ball waits at the guest's end for
+  // that word, a few hundredths of a second on a direct link). Everything else comes from the host: 40 updates a
+  // second put the guest's copy right, and hits, points and power-ups come as events the moment they happen.
+  var NET = { mode: null, table: null, peer: null, lobby: null, wait: null, me: '', them: '', themDev: null, hostName: '', opts: null, from: '', note: '',
+    q: 0, lastQ: 0, snapT: 0, sendT: 0, sentC: null, evq: [], off: null, lastAt: 0, pb: [], away: false, stall: false, card: '' };
+  var ME = 0, FLIP = false;   // this device's paddle (an online guest's is player 2's) and whether the court is seen from the far end
+  var PHS = ['serve', 'play', 'point', 'over', 'done'];
+  var NATMSG = 'The two devices couldn’t link up. Pong is too fast to play through the relay, so it needs a direct link: put both devices on the same Wi-Fi, or turn on Personal Hotspot on one phone and join the other device to it. Phone data on its own often blocks this.';
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function myName() { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } }
+  function netEv(e) { if (NET.mode === 'host' && G && G.mode === 'net') NET.evq.push(e); }
+  // the rules the table plays by: as chosen on the setup screen (the last ones chosen there, coming from the tables list)
+  function netOpts() {
+    if (NET.opts) return NET.opts;
+    var s = null; try { s = JSON.parse(localStorage.getItem('gn_setup_paddleball') || 'null'); } catch (e) {}
+    var o = (s && s.options) || {};
+    return { to: +o.to || 11, powers: o.powers === 'on' };
+  }
+  function optsLine(o) { return 'The first to ' + o.to + ' points wins, by 2. ' + (o.powers ? 'Power-ups are on.' : 'Power-ups are off.'); }
+  // a serve tapped on this device
+  function serveTap(p) {
+    if (!G || G.phase !== 'serve' || server() !== p || !mine(p) || paused) return;
+    if (NET.mode === 'guest') { if (NET.peer) NET.peer.send({ t: 'sv', c: r1(pads[1].c) }, true); return; }
+    doServe();
+  }
+
+  // ── The tables list ──
+  function goLobby() {
+    leaveOnline(false); leaveGame(); closeLobby();
+    app.className = 'stage';
+    NET.lobby = Online.lobby(app, {
+      game: 'paddleball', title: 'Pong online', max: 2,
+      intro: 'Two players, each on their own phone or tablet. Pong needs a direct link between the two devices: put both on the same Wi-Fi, or join one to the other phone’s Personal Hotspot.',
+      me: { name: NET.me || myName() },
+      onName: function (n) { NET.me = n; },
+      onHost: function (me) { NET.from = 'lobby'; return hostTable(me.name); },
+      onJoin: function (code, room, me) { return joinTable(code, me.name); },
+      onSolo: showSetup, solo: 'Play on this device instead',
+      sub: function (r) { return r.status === 'playing' ? (r.info || 'Playing') : 'Waiting for a player'; }
+    });
+    window.scrollTo(0, 0);
+  }
+  function closeLobby() { if (NET.lobby) { NET.lobby.close(); NET.lobby = null; } }
+  function backOut() { if (NET.from === 'setup') showSetup(); else goLobby(); }
+
+  // ── Hosting ──
+  function hostTable(name) {
+    closeLobby(); leaveGame(); NET.me = name;
+    return Online.host({ game: 'paddleball', name: name, max: 2, min: 2, screen: app, relay: false,
+      // a match under way keeps the other seat for its player: only that device can take it again
+      accept: function (o) { if (G && G.mode === 'net' && !G.ended && NET.themDev) return o.x && o.x.dev === NET.themDev ? true : 'That match is under way'; return true; }
+    }).then(function (table) {
+      NET.mode = 'host'; NET.table = table; NET.peer = null; NET.themDev = null; NET.them = ''; ME = 0; FLIP = false;
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); backOut(); });
+      table.on('peer', hostPeer);
+      table.on('leave', hostLeave);
+      table.on('msg', hostMsg);
+      showWait();
+    }, function (e) { if (!(e && e.message === 'Cancelled')) Kit.toast('Couldn’t open a table. ' + Online.errText(e)); backOut(); });
+  }
+  function hostPeer(peer) {
+    if (NET.peer && !NET.peer.closed && NET.peer !== peer) { peer.close('full'); return; }
+    var back = !!(G && G.mode === 'net' && !G.ended && NET.themDev === peer.id);
+    NET.peer = peer;
+    if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }
+    sendRoster();
+    if (back) {   // the same device again: the match carries on
+      sendInit(peer); NET.away = false; NET.inAt = performance.now(); NET.quiet = false; netCardOff(); paused = false; lastT = 0; acc = 0; wake(); netStatus();
+      Kit.toast(NET.them + ' is back'); Kit.sfx('pop');
+      return;
+    }
+    Kit.toast(NET.them + ' joined'); Kit.sfx('pop');
+  }
+  function hostLeave(peer) {
+    if (peer !== NET.peer) return;
+    NET.peer = null;
+    if (G && G.mode === 'net' && !G.ended && view === 'game') {   // the match waits for them
+      NET.away = true; paused = true; ptrs = {}; Mus.stop(true);
+      netCard(NET.them + ' left the match', 'The match waits at ' + G.score[0] + ' – ' + G.score[1] + '. If ' + NET.them + ' joins this table again, it carries on from there.',
+        [{ label: 'End the match', fn: function () { G.ended = true; NET.away = false; NET.themDev = null; NET.them = ''; netCardOff(); showWait(); } }]);
+      netStatus();
+      return;
+    }
+    NET.themDev = null; NET.them = '';
+    sendRoster();
+    Kit.toast(peer.name + ' left');
+  }
+  function hostMsg(peer, m) {
+    if (peer !== NET.peer || !G || G.mode !== 'net' || G.ended) return;
+    NET.inAt = performance.now();
+    if (m.t === 'i') pads[1].tc = clamp(+m.c || 0, 0, FC);
+    else if (m.t === 'sv') { var b0 = balls[0]; if (G.phase === 'serve' && server() === 1 && b0 && b0.held === 1) { pads[1].c = pads[1].tc = clamp(+m.c || 0, pads[1].hw, FC - pads[1].hw); placeHeld(b0); doServe(); } }
+    else if (m.t === 'h') {
+      var b = balls.filter(function (x) { return x.id === m.id; })[0];
+      if (!b || b.n !== m.n || b.held != null || b.out != null) return;
+      b.claim = m;
+      if (b.cross != null && !m.miss) takeClaim(b);
+    }
+  }
+  // The guest's paddle hit the ball, where the guest saw it hit: bounce it from there
+  function takeClaim(b) {
+    var cl = b.claim, late = Math.min(0.45, Math.max(0, G.clk - b.cross)), P = pads[1];
+    P.c = clamp(cl.pc, P.hw, FC - P.hw); P.v = cl.v || 0; b.c = clamp(cl.c, R, FC - R);
+    hitPaddle(b, 1);
+    for (var t = 0; t < late - 1e-6; t += TICK) fly(b, Math.min(TICK, late - t));   // it waited at the guest's end: send it on as far as it has gone since
+  }
+  function sendRoster() {
+    if (NET.peer) NET.peer.send({ t: 'ro', pl: [NET.me, NET.them], note: optsLine(netOpts()) }, true);
+    if (NET.wait) NET.wait.update(waitPlayers());
+  }
+  function sendInit(peer) {
+    peer.send({ t: 'init', to: G.to, pw: G.powers ? 1 : 0, pl: [name(0), name(1)], fs: G.firstServer, sc: G.score, ph: PHS.indexOf(G.phase), bid: G.bid, ban: fx.banner, st: G.started }, true);
+  }
+  // The guest's device has gone quiet (it sends where its paddle is at least five times a second): the match holds
+  // still until it speaks again or its link closes, so nobody wins points off a player who can't see the ball
+  function netQuiet() {
+    if (!G || G.mode !== 'net' || G.ended || !NET.peer || G.phase === 'over' || G.phase === 'done') { if (NET.quiet) { NET.quiet = false; if (NET.card.indexOf('Waiting for') === 0) netCardOff(); } return false; }
+    var q = performance.now() - (NET.inAt || 0) > 1200;
+    if (q !== NET.quiet) {
+      NET.quiet = q;
+      if (q) netCard('Waiting for ' + NET.them, NET.them + '’s device has stopped answering. It may be locked or out of range. The match carries on as soon as it’s back.', [{ label: 'End the match', fn: function () { var p = NET.peer; NET.peer = null; if (p) p.close('host'); G.ended = true; NET.quiet = false; NET.themDev = null; NET.them = ''; showWait(); } }]);
+      else { netCardOff(); lastT = 0; acc = 0; }
+    }
+    return q;
+  }
+  function netStatus() { if (NET.table) NET.table.setStatus('playing', NET.away ? 'Waiting for ' + NET.them + ' to come back' : 'Playing'); }
+  function hostStart() {
+    if (!NET.peer) return;
+    var o = netOpts();
+    if (NET.wait) { NET.wait.close(); NET.wait = null; }
+    startGame({ mode: 'net', to: o.to, powers: o.powers, players: [{ name: NET.me }, { name: NET.them }] });
+    NET.t0 = performance.now();
+    sendInit(NET.peer);
+    NET.inAt = performance.now(); NET.quiet = false;
+    netStatus();
+    hostTimer(true);
+  }
+  // A host keeps the match going even while its browser holds back animation frames (a covered window): a
+  // timer steps it then, without drawing. Runs only while hosting a match.
+  var hostT = 0;
+  function hostTimer(on) {
+    clearInterval(hostT); hostT = 0;
+    if (on) hostT = setInterval(function () {
+      if (NET.mode !== 'host' || !G || G.mode !== 'net' || G.ended) { hostTimer(false); return; }
+      if (view === 'game' && !paused && performance.now() - frameAt > 90) frame(false);
+    }, 30);
+  }
+  // 40 updates a second to the guest, and the events as they happen
+  function netTick() {
+    if (!G || G.mode !== 'net' || !NET.peer) { NET.evq = []; return; }
+    if (NET.evq.length) { NET.peer.send({ t: 'e', ev: NET.evq }, true); NET.evq = []; }
+    var now = performance.now(); if (now - NET.snapT < 25) return;
+    NET.snapT = now;
+    var b = balls.map(function (x) { return [x.id, x.n || 0, r1(x.l), r1(x.c), Math.round(x.vl), Math.round(x.vc), Math.round(x.spin || 0), Math.round(x.speed), x.held == null ? -1 : x.held, x.last == null ? -1 : x.last]; });
+    // (stamped with the match's own clock: where the ball is at that moment of play, even if this device fell behind)
+    NET.peer.send({ t: 's', q: ++NET.q, tm: Math.round(NET.t0 + G.clk * 1000), ph: PHS.indexOf(G.phase), sc: G.score, fs: G.firstServer, r: G.rally,
+      pw: [r1(G.pw.big[0]), r1(G.pw.big[1]), G.pw.curve[0], G.pw.curve[1]], o: orb ? [Object.keys(POWERS).indexOf(orb.kind), r1(orb.l), r1(orb.c), r1(orb.life)] : 0,
+      p: [r1(pads[0].c), Math.round(pads[0].v), r1(pads[0].hw)], b: b }, false);
+  }
+
+  // ── The waiting room (before a match and between matches) ──
+  function waitPlayers() {
+    var host = NET.mode === 'host', a = [{ name: host ? NET.me : NET.hostName, host: true, me: host, color: PC[0] }], two = host ? NET.them : NET.me;
+    if (two) a.push({ name: two, me: !host, color: PC[1] });
+    return a;
+  }
+  function showWait() {
+    leaveGame(); closeLobby(); hostTimer(false); netCardOff();
+    app.className = 'stage';
+    if (NET.mode === 'host') {
+      NET.table.setStatus('open', '');
+      NET.wait = Online.waitRoom(app, { code: NET.table.code, host: true, max: 2, min: 2, table: NET.table, players: waitPlayers(), onStart: hostStart, onLeave: function () { leaveOnline(false); backOut(); }, note: optsLine(netOpts()) });
+      sendRoster();
+    } else {
+      NET.wait = Online.waitRoom(app, { host: false, hostName: NET.hostName, max: 2, min: 2, players: waitPlayers(), onLeave: function () { leaveOnline(false); goLobby(); }, note: NET.note });
+    }
+    window.scrollTo(0, 0);
+  }
+  function backToTable() {
+    if (NET.mode === 'host' && NET.table && !NET.table.closed) { G = null; showWait(); return; }
+    if (NET.mode === 'guest' && NET.peer && !NET.peer.closed) { G = null; showWait(); return; }
+    leaveOnline(false); goLobby();
+  }
+
+  // ── Joining ──
+  function joinTable(code, name) {
+    closeLobby(); NET.me = name;
+    return Online.join(code, { game: 'paddleball', name: name, min: 2, max: 2, screen: app, relay: false, extra: { dev: Online.dev() } }).then(function (peer) {
+      NET.mode = 'guest'; NET.peer = peer; NET.hostName = peer.name; NET.note = ''; ME = 1; FLIP = true; NET.lastQ = 0; NET.off = null;
+      peer.on('msg', guestMsg);
+      peer.on('close', function () { guestLost(peer); });
+      showWait();
+    }, function (e) {
+      if (!(e && e.message === 'Cancelled')) { if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(NATMSG) + '</p>' }); else Kit.toast(Online.errText(e)); }
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'ro') {
+      NET.hostName = m.pl[0] || NET.hostName; if (m.pl[1]) NET.me = m.pl[1];
+      if (m.note && m.note !== NET.note) { NET.note = m.note; if (NET.wait) NET.wait = Online.waitRoom(app, { host: false, hostName: NET.hostName, max: 2, min: 2, players: waitPlayers(), onLeave: function () { leaveOnline(false); goLobby(); }, note: NET.note }); }
+      if (NET.wait) NET.wait.update(waitPlayers());
+      return;
+    }
+    if (m.t === 'init') { guestStart(m); return; }
+    if (!G || G.mode !== 'net' || NET.mode !== 'guest' || G.ended) return;
+    if (m.t === 's') guestSnap(m);
+    else if (m.t === 'e') m.ev.forEach(guestEv);
+    else if (m.t === 'over') guestOver(m);
+  }
+  function guestStart(m) {
+    if (NET.wait) { NET.wait.close(); NET.wait = null; }
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+    startGame({ mode: 'net', to: m.to, powers: !!m.pw, players: [{ name: m.pl[0] }, { name: m.pl[1] }] });
+    G.firstServer = m.fs; G.score = m.sc.slice(); G.phase = PHS[m.ph] || 'serve'; G.bid = m.bid; G.started = m.st || Date.now();
+    fx.banner = m.ban || null; balls = []; orb = null;
+    NET.lastQ = 0; NET.pb = []; NET.lastAt = performance.now(); NET.stall = false; NET.sentC = null;
+    hudDirty = true; updateHud();
+  }
+  // The host's clock now: from the updates (the least-delayed one sets it) and half the link's round trip
+  function hostNow() { return performance.now() + (NET.off || 0) + Math.min(150, ((NET.peer && NET.peer.rtt) || 0) / 2); }
+  function guestSnap(s) {
+    var now = performance.now(), sample = s.tm - now;
+    NET.off = NET.off == null ? sample : Math.max(sample, NET.off - 2);   // (it can slip back 80 ms a second: the host's play falling behind, a busy moment)
+    if (s.q <= NET.lastQ) return;   // (updates can arrive out of order: only the newest counts)
+    NET.lastQ = s.q; NET.lastAt = now;
+    var ph = PHS[s.ph] || 'serve';
+    if (ph !== G.phase && G.phase !== 'done') { if (ph === 'over') G.overT = 0; G.phase = ph; hudDirty = true; }
+    if (s.sc[0] !== G.score[0] || s.sc[1] !== G.score[1]) { G.score = s.sc.slice(); hudDirty = true; }
+    if (G.firstServer !== s.fs) { G.firstServer = s.fs; hudDirty = true; }
+    G.rally = s.r;
+    G.pw.big = [s.pw[0], s.pw[1]]; G.pw.curve = [s.pw[2], s.pw[3]];
+    if (s.o) { var k = Object.keys(POWERS)[s.o[0]]; if (!orb || orb.kind !== k) orb = { kind: k, t: 0 }; orb.l = s.o[1]; orb.c = s.o[2]; orb.life = s.o[3]; } else orb = null;
+    NET.pb.push({ tm: s.tm, c: s.p[0], v: s.p[1], hw: s.p[2] }); if (NET.pb.length > 12) NET.pb.shift();
+    // the balls: this device's copy, put right
+    var ahead = clamp((hostNow() - s.tm) / 1000, 0, 0.25), seen = {};
+    s.b.forEach(function (x) {
+      seen[x[0]] = 1;
+      var sb = { id: x[0], n: x[1], l: x[2], c: x[3], vl: x[4], vc: x[5], spin: x[6], speed: x[7], held: x[8] < 0 ? null : x[8], last: x[9] < 0 ? null : x[9], trail: [] };
+      var lb = balls.filter(function (y) { return y.id === sb.id; })[0];
+      if (sb.held != null) { if (!lb) { balls.push(sb); lb = sb; } lb.held = sb.held; lb.n = sb.n; lb.speed = sb.speed; lb.vl = lb.vc = 0; lb.spin = 0; lb.el = lb.ec = 0; placeHeld(lb); return; }
+      var tgt = ahead > 0 ? coast(sb, ahead) : sb;
+      if (!lb) { balls.push(tgt); return; }
+      if (lb.held != null || sb.n > lb.n) { lb.n = sb.n; lb.l = tgt.l; lb.c = tgt.c; lb.vl = tgt.vl; lb.vc = tgt.vc; lb.spin = tgt.spin; lb.speed = sb.speed; lb.held = null; lb.last = sb.last; lb.el = lb.ec = 0; return; }
+      if (sb.n < lb.n) return;   // this device is a hit ahead (yours, on its way to the host; or its guess at the host's)
+      var el = tgt.l - lb.l, ec = tgt.c - lb.c;
+      if (window.__pDbg) window.__pDbg.push([Math.round(el), Math.round(ec), Math.round(lb.l), Math.round(lb.vl), Math.round(ahead * 1000)]);
+      if (Math.abs(el) + Math.abs(ec) > 80) { lb.l = tgt.l; lb.c = tgt.c; lb.el = lb.ec = 0; } else { lb.el = el; lb.ec = ec; }
+      lb.vl = tgt.vl; lb.vc = tgt.vc; lb.spin = tgt.spin; lb.speed = sb.speed; lb.last = sb.last;
+    });
+    balls = balls.filter(function (y) { return seen[y.id]; });
+  }
+  // where a ball from an update is by now (it stops at a paddle's line: the paddles decide what happens there)
+  function coast(b0, secs) {
+    var b = { id: b0.id, n: b0.n, l: b0.l, c: b0.c, vl: b0.vl, vc: b0.vc, spin: b0.spin, speed: b0.speed, held: null, last: b0.last, trail: [] };
+    for (var t = 0; t < secs - 1e-6; t += TICK) {
+      var pl = b.l; fly(b, Math.min(TICK, secs - t));
+      if ((b.vl < 0 && pl - R >= front(0) - 1 && b.l - R <= front(0)) || (b.vl > 0 && pl + R <= front(1) + 1 && b.l + R >= front(1))) { b.l = pl; break; }
+    }
+    return b;
+  }
+  function guestEv(e) {
+    if (e.k === 'hit') { if (e.p !== ME) hitFx(e.p, e.l, e.c, e.sp, e.sm, e.cv, e.r); }   // (your own hits were played here already)
+    else if (e.k === 'pt') {
+      G.score = e.sc.slice(); balls = balls.filter(function (b) { return b.id !== e.id; });
+      pointFx(e.p, e.l, e.c);
+      if (e.ban) fx.banner = Object.assign({}, e.ban);
+      if (e.w != null) { G.winner = e.w; G.phase = 'over'; G.overT = 0; balls = []; orb = null; }
+    }
+    else if (e.k === 'pw') powerFx(e.p, e.kind, e.l, e.c);
+    else if (e.k === 'sv') { sServe(); if (server() === ME) Kit.haptic('light'); }
+  }
+  function guestOver(m) {
+    G.winner = m.w; G.score = m.sc.slice(); G.stats = Object.assign(G.stats, m.st || {}); G.seq = m.seq || []; G.ral = m.ral || []; G.hits = m.hits || G.hits;
+    if (G.phase !== 'over' && G.phase !== 'done') { G.phase = 'over'; G.overT = 0; }
+    setTimeout(function () { if (G && G.mode === 'net' && !G.ended) { G.phase = 'done'; endGame(); } }, Math.max(0, 1300 - (G.overT || 0) * 1000));
+  }
+  // the host's paddle where it is now: between two updates, or carried on from the last one for a moment
+  // (the ball here is at the host's present, so its paddle has to be too, or the bounces off it come out wrong)
+  function padFromHost() {
+    var B = NET.pb; if (!B.length) return;
+    var rtm = hostNow(), A = B[0], C = B[B.length - 1], P = pads[0];
+    if (rtm >= C.tm) { var ex = Math.min(0.06, (rtm - C.tm) / 1000); P.c = clamp(C.c + C.v * ex, C.hw, FC - C.hw); P.tc = P.c; P.v = C.v; P.hw = C.hw; return; }
+    else if (rtm <= A.tm) C = A;
+    else for (var i = 0; i < B.length - 1; i++) if (B[i].tm <= rtm && B[i + 1].tm >= rtm) { A = B[i]; C = B[i + 1]; break; }
+    var a = C.tm > A.tm ? clamp((rtm - A.tm) / (C.tm - A.tm), 0, 1) : 1;
+    P.c = A.c + (C.c - A.c) * a; P.tc = P.c; P.v = C.v; P.hw = A.hw + (C.hw - A.hw) * a;
+  }
+  function guestFrame(dt) {
+    rt += dt; acc += dt;
+    var n = 0;
+    while (acc >= TICK && n++ < 24) {
+      acc -= TICK;
+      fxStep(TICK);
+      padFromHost();
+      pads[0].flash = Math.max(0, pads[0].flash - TICK * 4);
+      movePad(1, TICK);   // your own paddle: at once
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i];
+        if (b.held != null) { placeHeld(b); continue; }
+        moveBall(b, TICK);
+        if (b.el || b.ec) { var dl = b.el * 0.06, dc = b.ec * 0.06; b.l += dl; b.c = clamp(b.c + dc, R, FC - R); b.el -= dl; b.ec -= dc; if (Math.abs(b.el) + Math.abs(b.ec) < 0.05) b.el = b.ec = 0; }
+      }
+      if (orb) orb.t += TICK;
+      if (G.phase === 'over') G.overT += TICK;
+      trailStep(TICK);
+    }
+    // where your paddle is, to the host: whenever it moves, and now and then while it doesn't
+    NET.sendT -= dt;
+    var c = r1(pads[1].c);
+    if (NET.peer && (NET.sendT <= 0 || (c !== NET.sentC && NET.sendT <= 0.2 - 1 / 60))) { NET.peer.send({ t: 'i', c: c }, false); NET.sentC = c; NET.sendT = 0.2; }
+    // the host's device has gone quiet (locked, or out of range)
+    var stall = performance.now() - NET.lastAt > 1500;
+    if (stall !== NET.stall) {
+      NET.stall = stall;
+      if (stall) netCard('Waiting for ' + (NET.hostName || 'the host'), (NET.hostName || 'The host') + '’s device has stopped sending the match. It may be locked or out of range. The match carries on as soon as it’s back.', [{ label: 'Leave the match', fn: function () { leaveOnline(false); goLobby(); } }]);
+      else netCardOff();
+    }
+  }
+  function guestLost(peer) {
+    if (NET.peer !== peer) return;
+    var host = NET.hostName || 'The host', playing = !!(G && G.mode === 'net' && !G.ended && view === 'game');
+    NET.peer = null; NET.mode = null; NET.wait = null;
+    netCardOff();
+    if (playing) {
+      G.ended = true;
+      Kit.win({ lose: true, icon: 'meh', title: host + ' left the match',
+        rank: [0, 1].map(function (p) { return { name: name(p), score: G.score[p], color: PC[p] }; }),
+        again: function () { ME = 0; FLIP = false; goLobby(); }, againLabel: 'Find another table',
+        extra: [{ label: 'Play on this device', onClick: function () { ME = 0; FLIP = false; showSetup(); } }] });
+      return;
+    }
+    ME = 0; FLIP = false;
+    Kit.toast(host + ' closed the table');
+    goLobby();
+  }
+
+  // ── A note over the court (the other player has gone away) ──
+  function netCard(title, sub, btns) {
+    if (!ovEl) return;
+    ovEl.innerHTML = '';
+    ovEl.appendChild(el('div', { class: 'card' }, [el('h2', { text: title }), el('p', { text: sub })].concat((btns || []).map(function (b) {
+      return el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: b.label, onclick: b.fn });
+    }))));
+    ovEl.classList.add('show'); NET.card = title;
+  }
+  function netCardOff() { if (ovEl && NET.card) { ovEl.classList.remove('show'); ovEl.innerHTML = ''; } NET.card = ''; }
+
+  // ── Leaving ──
+  function leaveOnline(ask) {
+    if (!NET.mode) { closeLobby(); return; }
+    if (ask) {
+      var host = NET.mode === 'host';
+      Kit.confirm(view === 'game' ? 'Leave the match?' : 'Leave the table?', { ok: 'Leave', body: host ? 'Your table closes, and the match ends for ' + (NET.them || 'the other player') + ' too.' : 'You can join ' + (NET.hostName || 'the host') + '’s table again to carry on.' })
+        .then(function (ok) { if (ok) { leaveOnline(false); showSetup(); } });
+      return;
+    }
+    hostTimer(false);
+    var t = NET.table, p = NET.peer;
+    NET.mode = null; NET.table = null; NET.peer = null; NET.wait = null; NET.themDev = null; NET.them = ''; NET.away = false; NET.evq = []; NET.stall = false;
+    if (t) t.close();
+    if (p) p.close();   // (no reason: this device is the one leaving, so the goodbye goes out)
+    if (G && G.mode === 'net') G.ended = true;
+    ME = 0; FLIP = false;
+    closeLobby();
+  }
+
   // ═══ Test hooks ══════════════════════════════════════════════════════════
   window.__pong = {
-    get: function () { return G && { phase: G.phase, mode: G.mode, score: G.score.slice(), server: server(), rally: G.rally, land: LAND, paused: paused, pads: pads.map(function (p) { return { c: Math.round(p.c), tc: Math.round(p.tc), hw: Math.round(p.hw) }; }), balls: balls.map(function (b) { return { l: Math.round(b.l), c: Math.round(b.c), speed: Math.round(b.speed), held: b.held }; }), stats: G.stats, pw: G.pw, orb: orb && orb.kind }; },
+    get: function () { return G && { phase: G.phase, mode: G.mode, score: G.score.slice(), server: server(), rally: G.rally, land: LAND, paused: paused, ended: !!G.ended, me: ME, flip: FLIP, net: NET.mode, away: NET.away, stall: !!NET.stall, players: G.players.map(function (p) { return p.name; }), pads: pads.map(function (p) { return { c: Math.round(p.c), tc: Math.round(p.tc), hw: Math.round(p.hw) }; }), balls: balls.map(function (b) { return { id: b.id, n: b.n, l: Math.round(b.l), c: Math.round(b.c), vl: Math.round(b.vl), speed: Math.round(b.speed), held: b.held }; }), stats: G.stats, pw: G.pw, orb: orb && orb.kind }; },
+    net: function () { return { mode: NET.mode, code: NET.table && NET.table.code, peer: !!NET.peer, them: NET.them, host: NET.hostName, rtt: NET.peer && NET.peer.rtt, off: NET.off }; },
+    host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { hostStart(); }, lobby: function () { goLobby(); }, leave: function () { leaveOnline(false); },
+    setPad: function (p, c) { pads[p].tc = c; },
     serve: doServe,
     score: function (a, b) { G.score = [a, b]; hudDirty = true; },
     orb: function (kind, l, c) { orb = { kind: kind, l: l, c: c, life: 10, t: 0 }; },
-    autopilot: function (on) { window.__pAuto = on; if (on && !autoT) autoT = setInterval(autoTick, 16); else if (!on && autoT) { clearInterval(autoT); autoT = 0; } },
+    autopilot: function (on, miss) { window.__pAuto = on; window.__pMiss = miss || 0; if (on && !autoT) autoT = setInterval(autoTick, 16); else if (!on && autoT) { clearInterval(autoT); autoT = 0; } },
     reset: function () { if (G) G.ended = true; clearSave(); showSetup(); },
     // Simulated human: looks every 0.2 s, guesses with some error, moves at a capped speed
     sim: function (sec, jit, hspeed) {
@@ -859,20 +1321,22 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     shotAt: function (l, c, vl, vc) { var b = balls[0]; if (!b) return; b.held = null; b.l = l; b.c = c; b.vl = vl; b.vc = vc; b.speed = Math.hypot(vl, vc); G.phase = 'play'; }
   };
   // Test autopilot: human paddle(s) track the ball (the timer only runs while it is on)
-  var autoT = 0;
+  var autoT = 0, autoSv = 0;
   function autoTick() {
     if (!window.__pAuto || !G || paused) return;
     [0, 1].forEach(function (p) {
-      if (!human(p)) return;
+      if (!mine(p)) return;
       var best = null; balls.forEach(function (b) { if (!best || Math.abs(b.l - (p ? FL : 0)) < Math.abs(best.l - (p ? FL : 0))) best = b; });
-      if (best) pads[p].tc = best.c + (Math.random() - 0.5) * 30;
+      // (__pMiss: now and then stand well clear, so points get scored)
+      if (best) pads[p].tc = best.c + (Math.random() - 0.5) * 30 + (window.__pMiss && (best.id % window.__pMiss === 0) ? 140 : 0);
     });
-    if (G.phase === 'serve' && human(server()) && G.serveT > 0.4) doServe();
+    if (G.phase === 'serve' && mine(server()) && (G.serveT > 0.4 || NET.mode === 'guest')) { if (performance.now() - autoSv > 600) { autoSv = performance.now(); serveTap(server()); } }
   }
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
   var saved = loadSave();
-  if (saved) startGame({ mode: saved.mode, diff: saved.diff, to: saved.to, powers: saved.powers, players: saved.players }, saved);
+  if (/[?&]online=1/.test(location.search)) goLobby();
+  else if (saved) startGame({ mode: saved.mode, diff: saved.diff, to: saved.to, powers: saved.powers, players: saved.players }, saved);
   else showSetup();
 })();
 </script>

@@ -13,6 +13,7 @@
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
 <script src="../arcade-music.js"></script>
+<script src="../online.js"></script>
 <style>
 /* ── Play view: the LED game screen on top, a plain control strip under it (beside it when turned) ── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
@@ -249,7 +250,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   // ═══ State ═══════════════════════════════════════════════════════════════
   var G = null, view = 'none', paused = false;
   var invs = [], shots = [], lasers = [], pups = [], parts = [], rings = [], pops = [], bombs = [], saucers = [], bunkers = [];
-  var ufo = null, F = null;
+  var ufo = null, F = null, oid = 0;
   var aims = [{ x: 200, y: 280 }, { x: 200, y: 280 }];   // a target per player
   function newStick() { return { x: 0, y: 0, on: false, id: null }; }
   var sticks = [newStick(), newStick()];
@@ -276,6 +277,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       for (var r = 0; r < 16; r++) for (var c = 0; c < 22; c++) m[r * 22 + c] = art[r].charAt(c) === '#' ? 1 : 0;
       return { fx: fx0, m: m, sp: null };
     });
+    NET.bkDirty = true;
   }
   function bkX0(b) { return WW * b.fx - BK_W / 2; }
   function bkCell(b, x, y) {
@@ -289,7 +291,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       var d = Math.hypot(c + 0.5 - c0, r + 0.5 - r0);
       if (d <= rad * (0.7 + Math.random() * 0.5) && b.m[r * 22 + c]) { b.m[r * 22 + c] = 0; hit = true; }
     }
-    if (hit) b.sp = null;
+    if (hit) { b.sp = null; NET.bkDirty = true; }
     return hit;
   }
   function bkHit(x, y) {
@@ -305,7 +307,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         var cx = bx + (c + 0.5) * BK_CELL, cy = BUNK_Y + (r + 0.5) * BK_CELL;
         if (cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1 && b.m[r * 22 + c]) { b.m[r * 22 + c] = 0; hit = true; }
       }
-      if (hit) b.sp = null;
+      if (hit) { b.sp = null; NET.bkDirty = true; }
     });
   }
 
@@ -325,7 +327,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function makeInv(k, kind, col, x, y) {
     var cell = kind === 'armor' || kind === 'split' ? CELL_H : kind === 'micro' ? CELL_M : CELL_S, w = G.wave;
     var hp = kind === 'armor' ? 5 + Math.floor(w / 6) : kind === 'split' ? 3 + Math.floor(w / 10) : 1;
-    return { k: k, kind: kind, cell: cell, w: COLS[k] * cell, h: 8 * cell, col: col, x: x, y: y, hx: 0, hy: 0,
+    return { id: ++oid, k: k, kind: kind, cell: cell, w: COLS[k] * cell, h: 8 * cell, col: col, x: x, y: y, hx: 0, hy: 0,
       hp: hp, max: hp, st: 'form', fl: 0, gold: false, dead: false };
   }
   function heavy(v) { return v.kind === 'armor' || v.kind === 'split'; }
@@ -401,7 +403,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     while (team() >= bonusAt(G.nb)) {
       G.nb++; G.stats.bonuses++;
       G.shield = SHIELD_MAX; addBomb(null, null, true);
-      fx.glitch = 0.5; sPower(); Kit.haptic('success');
+      fx.glitch = 0.5; sPower(); hap('success');
       callout('Bonus!', '#6dff4a'); pop(WW / 2, BUNK_Y - 40, 'SHIELD FULL + BOMB', '#6dff4a', 1);
     }
   }
@@ -455,6 +457,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function fireRate(who) { var w = G.pl[who].wpn; return (w === 'ring' ? 0.22 : w === 'missile' ? 0.17 : 0.09) * (TWO() ? 1.1 : 1); }
   // one shot (or a ring pair) from cannon c, for player who
   function fireFrom(c, who) {
+    if (NET.mode === 'host' && who === 1) qOff++;   // (the guest's device plays its own shot)
+    try { fireFrom0(c, who); } finally { if (NET.mode === 'host' && who === 1) qOff--; }
+  }
+  function fireFrom0(c, who) {
     var a = aimOf(c), cx = canX(c), cy = CAN_Y - 4, w = G.pl[who].wpn;
     var base = Math.atan2(a.y - cy, a.x - cx), ca = Math.cos(base), sa = Math.sin(base);
     var tx0 = cx + ca * BARREL, ty0 = cy + sa * BARREL, dist = Math.max(20, Math.hypot(a.x - tx0, a.y - ty0));
@@ -462,12 +468,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var offs = w === 'ring' && TWO() ? [-9, 9] : [0];
     for (var k = 0; k < offs.length; k++) {
       var ox = -sa * offs[k], oy = ca * offs[k];
-      shots.push({ x: tx0 + ox, y: ty0 + oy, vx: ca * sv, vy: sa * sv, tx: a.x + ox, ty: a.y + oy, left: dist, d0: dist, run: 0,
-        mis: w === 'missile', ring: w === 'ring', pierce: 3, hits: w === 'ring' ? [] : null, who: who, hit: false, dead: false });
+      var sh = { x: tx0 + ox, y: ty0 + oy, vx: ca * sv, vy: sa * sv, tx: a.x + ox, ty: a.y + oy, left: dist, d0: dist, run: 0,
+        mis: w === 'missile', ring: w === 'ring', pierce: 3, hits: w === 'ring' ? [] : null, who: who, hit: false, dead: false };
+      shots.push(sh);
+      if (NET.mode === 'host' && who === 0) netQ('shot', [r1(sh.x), r1(sh.y), Math.round(sh.vx), Math.round(sh.vy), r1(sh.tx), r1(sh.ty), r1(dist), sh.mis ? 1 : 0, sh.ring ? 1 : 0, c]);
     }
     G.rec[c] = 1; G.muz[c] = 1; G.stats.shots++;
     if (w === 'missile') sMisShot(); else if (w === 'ring') sRingShot(); else sShot();
-    recoil(w ? 'light' : 'tick');
+    if (!NET.mode || who === ME) recoil(w ? 'light' : 'tick');
   }
   function hitBox(v, x, y, pad) { return Math.abs(x - v.x) < v.w / 2 + pad && Math.abs(y - v.y) < v.h / 2 + pad; }
   function ringR(s) { return Math.min(26, 7 + s.run * 0.045); }   // energy rings grow as they fly
@@ -544,7 +552,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       else if (v.kind === 'std' && Math.random() < 0.01) addBomb(v.x, v.y);
     }
     explode(v.x, v.y, v.col, heavy(v));
-    if (heavy(v)) { sBig(); fx.shake = Math.max(fx.shake, 0.2); Kit.haptic('medium'); } else sHit();
+    if (heavy(v)) { sBig(); fx.shake = Math.max(fx.shake, 0.2); hap('medium'); } else sHit();
     // the top-tier splitting ships fracture into hyper-fast micro-invaders that rush the bottom
     if (v.kind === 'split' && !noPts) {
       for (var i = -1; i <= 1; i++) {
@@ -562,13 +570,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
 
   // ═══ Shield sphere (the one pickup) ═══════════════════════════════════════
-  function dropPup(x, y) { pups.push({ k: 'H', x: x, y: y, x0: x, t: 0, dead: false }); }
+  function dropPup(x, y) { pups.push({ id: ++oid, k: 'H', x: x, y: y, x0: x, t: 0, dead: false }); }
   function collect(p) {
     if (p.dead) return; p.dead = true;
     G.shield = Math.min(SHIELD_MAX, G.shield + 35); G.bubble = 8;
     pop(p.x, p.y - 10, 'SHIELD', '#4aa8ff', 1);
     ring(p.x, p.y, '#4aa8ff', 46, 0.4, 56); burst(p.x, p.y, '#4aa8ff', 10, 0.8, 0.9);
-    sPower(); Kit.haptic('success');
+    sPower(); hap('success');
     G.stats.pups++;
   }
 
@@ -579,7 +587,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function addBomb(x, y, quiet) {
     if (!G || bombs.length >= BOMB_CAP) return false;
     var bx = bombBox(), sp = rnd(58, 78), top = x == null;
-    var b = { x: top ? rnd(bx.x0 + 30, bx.x1 - 30) : clamp(x, bx.x0, bx.x1), y: top ? bx.y0 + 4 : clamp(y, bx.y0, bx.y1),
+    var b = { id: ++oid, x: top ? rnd(bx.x0 + 30, bx.x1 - 30) : clamp(x, bx.x0, bx.x1), y: top ? bx.y0 + 4 : clamp(y, bx.y0, bx.y1),
       vx: sp * (Math.random() < 0.5 ? -1 : 1), vy: sp, t: Math.random() * 6, fuse: 0, chain: 0, bf: 0, who: 0, dead: false };
     bombs.push(b); G.stats.bombsSeen++;
     if (!quiet) { ring(b.x, b.y, '#ffb02e', 44, 0.4, 50); sBombAppear(); }
@@ -603,7 +611,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     G.stats.bombs++; if (chain > G.stats.chain) G.stats.chain = chain;
     ring(x, y, '#ffb02e', BOMB_R * 1.12, 0.65, 0); ring(x, y, '#ff5a2e', BOMB_R, 0.8, 0); ring(x, y, '#fff1c0', BOMB_R * 0.7, 0.45, BOMB_R * 0.9);
     burst(x, y, 'fire', 44, 2.2, 1.5); burst(x, y, '#ffffff', 10, 1.2, 1);
-    fx.flash = 0.8; fx.flashCol = '255,180,90'; fx.shake = 0.7; sBombBoom(); Kit.haptic('heavy');
+    fx.flash = 0.8; fx.flashCol = '255,180,90'; fx.shake = 0.7; sBombBoom(); hap('heavy');
     if (chain > 1) {
       var cb = 250 * chain; addScore(who, cb);
       pop(x, y - 22, 'CHAIN X' + chain, '#ffe23e', 1); pop(x, y + 4, '+' + cb, '#ffffff', 0);
@@ -628,10 +636,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         var dir = Math.random() < 0.5 ? 1 : -1, y0 = rnd(110, Math.max(150, BUNK_Y - 170)), sp = 170 + Math.min(G.wave, 50) * 3;
         if (B.left <= 0 || (B.ships > 0 && B.left < 10 && Math.random() < 0.35)) {   // a gold bounty ship
           B.ships--; B.total++;
-          saucers.push({ x: dir > 0 ? -70 : WW + 70, y0: y0, y: y0, vx: dir * sp * 0.7, amp: 30, f: 1.6, ph: 0, t: 0, hp: 3, ship: true, w: 88, h: 38, fl: 0, dead: false });
+          saucers.push({ id: ++oid, x: dir > 0 ? -70 : WW + 70, y0: y0, y: y0, vx: dir * sp * 0.7, amp: 30, f: 1.6, ph: 0, t: 0, hp: 3, ship: true, w: 88, h: 38, fl: 0, dead: false });
         } else {
           var k = Math.min(B.left, Math.random() < 0.5 ? 3 : 4), wavy = Math.random() < 0.5; B.left -= k; B.total += k;
-          for (var i = 0; i < k; i++) saucers.push({ x: (dir > 0 ? -40 : WW + 40) - dir * i * 56, y0: y0, y: y0, vx: dir * sp, amp: wavy ? 46 : 14, f: wavy ? 2.6 : 4, ph: i * (wavy ? 0.9 : 0.5), t: 0, hp: 1, ship: false, w: 51, h: 22, fl: 0, dead: false });
+          for (var i = 0; i < k; i++) saucers.push({ id: ++oid, x: (dir > 0 ? -40 : WW + 40) - dir * i * 56, y0: y0, y: y0, vx: dir * sp, amp: wavy ? 46 : 14, f: wavy ? 2.6 : 4, ph: i * (wavy ? 0.9 : 0.5), t: 0, hp: 1, ship: false, w: 51, h: 22, fl: 0, dead: false });
         }
       }
     }
@@ -656,7 +664,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     pop(u.x, u.y, String(pts), u.ship ? GOLD : '#ff8aa0', 1);
     if (B && B.streak % 5 === 0) sStreak(B.streak * 2);
     explode(u.x, u.y, u.ship ? GOLD : '#ff3b5c', u.ship);
-    if (u.ship) { sBig(); Kit.haptic('medium'); } else sHit();
+    if (u.ship) { sBig(); hap('medium'); } else sHit();
   }
 
   // ═══ The formation, frenzy velocity, divers, lasers ═══════════════════════
@@ -704,7 +712,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     });
     G.fvT = 0.9;
     banner('FRENZY VELOCITY!', 'PARK YOUR TARGET IN THEIR PATH', '#ff5fd0', 1.8);
-    sRush(); fx.glitch = 0.25; Kit.haptic('medium');
+    sRush(); fx.glitch = 0.25; hap('medium');
   }
   function startDive(v, kind, side) {
     var w = Math.min(G.wave, 50), micro = kind === 'micro';
@@ -751,7 +759,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       G.fvT -= dt;
       if (G.fvT <= 0) {
         G.fvT = Math.max(0.8, 1.6 - Math.min(w, 50) * 0.02) * (intro() ? 1.4 : 1);
-        fvs.forEach(function (v) { lasers.push({ x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(260, 130 + w * 4), t: 0, dead: false }); });
+        fvs.forEach(function (v) { lasers.push({ id: ++oid, x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(260, 130 + w * 4), t: 0, dead: false }); });
       }
     }
     // pick a diver now and then (after the opening stages)
@@ -781,7 +789,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         // a mother grid keeps the base under heavy fire
         G.lasT = rnd(0.6, 1.4) * Math.max(0.6, 3.1 - w * 0.11) * (intro() ? 1.5 : 1) * (F.grid ? 0.3 : 1);
         var cand = invs.filter(function (v) { return !v.dead && v.st === 'form' && v.y > 30 && v.y < BUNK_Y - 60; });
-        for (var n = 0; n < (F.grid ? 2 + (Math.random() < 0.5 ? 1 : 0) : 1) && cand.length; n++) { var v = cand.splice(Math.floor(Math.random() * cand.length), 1)[0]; lasers.push({ x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(230, 100 + w * 5), t: 0, dead: false }); }
+        for (var n = 0; n < (F.grid ? 2 + (Math.random() < 0.5 ? 1 : 0) : 1) && cand.length; n++) { var v = cand.splice(Math.floor(Math.random() * cand.length), 1)[0]; lasers.push({ id: ++oid, x: v.x, y: v.y + v.h / 2, vx: 0, vy: Math.min(230, 100 + w * 5), t: 0, dead: false }); }
       }
     }
     for (var i = 0; i < lasers.length; i++) {
@@ -793,7 +801,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }
     lasers = lasers.filter(function (b) { return !b.dead; });
     // the warning line: sound the alarm the first time the swarm crosses it
-    if (F && !G.warned && swarmBottom() > WARN_Y) { G.warned = true; sWarn(); pop(WW / 2, WARN_Y - 14, 'WARNING', '#ff4f5e', 1); Kit.haptic('error'); }
+    if (F && !G.warned && swarmBottom() > WARN_Y) { G.warned = true; sWarn(); pop(WW / 2, WARN_Y - 14, 'WARNING', '#ff4f5e', 1); hap('error'); }
   }
   function hitBase(x, dmg) {
     if (G.phase !== 'play' && G.phase !== 'clear') return;
@@ -801,7 +809,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (G.bubble > 0) { ring(x, BOTTOM, '#4aa8ff', 34, 0.3, 30); sDeflect(); return; }
     G.shield = Math.max(0, G.shield - dmg); G.hurt += dmg; G.stats.dmg += dmg;
     fx.shake = Math.max(fx.shake, 0.3); fx.flash = Math.max(fx.flash, 0.35); fx.flashCol = '255,60,90';
-    sBase(); Kit.haptic('medium');
+    sBase(); hap('medium');
     if (G.shield <= 0) die('shield');
   }
 
@@ -826,7 +834,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     pop(x, y, String(pts), '#ff8aa0', 1);
     explode(x, y, '#ff3b5c', true);
     if (Math.random() < 0.35) addBomb(x, y + 20);
-    ufo = null; ufoSoundOff(); sBig(); Kit.haptic('medium');
+    ufo = null; ufoSoundOff(); sBig(); hap('medium');
   }
 
   // ═══ Ending a stage, the weapon choice, losing ════════════════════════════
@@ -843,14 +851,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (ufo) { ufo = null; ufoSoundOff(); }
     if (B) banner('UFOS HIT ' + B.hit + '/' + B.total, (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#ffd23e', 2.6);
     else banner(G.wave === STAGES ? 'ALL 50 STAGES!' : 'STAGE ' + G.wave + ' CLEAR', (perfect ? 'PERFECT  ' : '') + '+' + fmt(bonus), '#6dff4a', 2.4);
-    sWave(); Kit.haptic('success');
-    if (G.wave === STAGES) { G.stats.all50 = 1; Kit.confetti(); callout('You beat all 50 stages!', '#6dff4a'); }
+    sWave(); hap('success');
+    if (G.wave === STAGES) { G.stats.all50 = 1; confetti(); callout('You beat all 50 stages!', '#6dff4a'); }
     else if (perfect) callout(B ? 'Every UFO!' : 'Perfect stage!', '#6dff4a');
   }
   function nextStage() {
     // after stage 3: each player picks a permanent weapon upgrade
     var who = G.pl.findIndex(function (p) { return !p.wpn; });
-    if (G.wave >= 3 && who >= 0) { G.phase = 'choose'; showChoice(who); return; }
+    if (G.wave >= 3 && who >= 0) { G.phase = 'choose'; if (NET.mode === 'host') netChoose(); else showChoice(who); return; }
     startWave(G.wave + 1);
   }
   var WPN = {
@@ -875,14 +883,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     Kit.sfx('pop');
   }
   function pickWeapon(who, id) {
+    if (NET.mode === 'guest') { if (NET.peer && G && !G.pl[ME].wpn) { NET.peer.send({ t: 'wpn', id: id }, true); G.pl[ME].wpn = id; } netCard('Weapon upgrade', 'Waiting for ' + NET.hostName + ' to pick a weapon.'); sPower(); Kit.haptic('success'); return; }
     if (!G || G.phase !== 'choose' || G.pl[who].wpn) return;
     G.pl[who].wpn = id; G.stats['w_' + id] = (G.stats['w_' + id] || 0) + 1;
     ovEl.classList.remove('show'); ovEl.innerHTML = '';
     sPower(); Kit.haptic('success');
     pop(WW / 2, WH * 0.45, (TWO() ? 'P' + (who + 1) + ' ' : '') + (id === 'ring' ? 'RING WEAPON' : 'MISSILE SHOOTER'), TWO() ? PCOL[who] : '#ff5fd0', 1);
     var next = G.pl.findIndex(function (p) { return !p.wpn; });
-    if (next >= 0) showChoice(next);
-    else { G.phase = 'clear'; startWave(G.wave + 1); lastT = 0; acc = 0; wake(); }
+    if (next >= 0) { if (NET.mode === 'host') netChoose(); else showChoice(next); }
+    else { netCardOff(); G.phase = 'clear'; startWave(G.wave + 1); lastT = 0; acc = 0; wake(); }
   }
   // ── The run's story for the game's history (hist/arcade.js draws it): the score every few seconds of play,
   // when each level ended and each life lost. Kept in the saved stats, so a resumed game carries on.
@@ -899,7 +908,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     [0, 1].forEach(function (i) { explode(canX(i), CAN_Y, '#6dff4a', true); });
     burst(WW / 2, BOTTOM, 'fire', 40, 1.8, 1.4); ring(WW / 2, BOTTOM, '#ff4f5e', 220, 0.8, 160);
     fx.shake = 0.9; fx.glitch = 0.7;
-    sBig(); sBlast(); Kit.haptic('error');
+    sBig(); sBlast(); hap('error');
     MUS.stop(); ufoSoundOff(); clearSave();
   }
 
@@ -909,7 +918,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (!s.on || m < DZ) {
       // keys: arrows / WASD steer the one joystick; with two players, WASD is red and the arrows blue
       var l, r, u, d, h;
-      if (!TWO()) { if (i) return null; l = keys.l || keys.l2; r = keys.r || keys.r2; u = keys.u || keys.u2; d = keys.d || keys.d2; h = Math.max(keys.hold, keys.hold2); }
+      if (!TWO() || NET.mode) { if (i) return null; l = keys.l || keys.l2; r = keys.r || keys.r2; u = keys.u || keys.u2; d = keys.d || keys.d2; h = Math.max(keys.hold, keys.hold2); }
       else if (i === 0) { l = keys.l; r = keys.r; u = keys.u; d = keys.d; h = keys.hold; }
       else { l = keys.l2; r = keys.r2; u = keys.u2; d = keys.d2; h = keys.hold2; }
       var kx = (r ? 1 : 0) - (l ? 1 : 0), ky = (d ? 1 : 0) - (u ? 1 : 0);
@@ -928,13 +937,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (G.phase === 'play') trkTime(trk(G.stats), dt, invTotal());
     keys.hold = keys.l || keys.r || keys.u || keys.d ? keys.hold + dt : 0;
     keys.hold2 = keys.l2 || keys.r2 || keys.u2 || keys.d2 ? keys.hold2 + dt : 0;
-    fx.shake = Math.max(0, fx.shake - dt * 1.6); fx.flash = Math.max(0, fx.flash - dt * 2.5); fx.glitch = Math.max(0, fx.glitch - dt);
-    if (G.ban) { G.ban.t += dt; if (G.ban.t > G.ban.dur) G.ban = null; }
-    if (G.frameMsg) { G.frameMsg.t += dt; if (G.frameMsg.t > 2.4) G.frameMsg = null; }
+    fxDecay(dt);
     var live = G.phase === 'play' || G.phase === 'clear';
-    // aim: each stick (or keys) pushes its target; reversed axes flip the push
+    // aim: each stick (or keys) pushes its target; reversed axes flip the push (online, the guest's target comes from its device)
     for (i = 0; i < 2; i++) {
       var v = stickVec(i), a = aims[i];
+      if (NET.mode && i === 1) continue;
       if (v && live) {
         var V = aimSpeed();
         a.x += (SET.invX ? -1 : 1) * v.x * V * dt;
@@ -956,7 +964,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         }
       } else for (i = 0; i < 2; i++) {
         G.cool[i] -= dt;
-        var want = sticks[i].on || SET.auto || (i === 0 ? keys.f || input.mouse : keys.f2);
+        // online: you fire with FIRE (or the mouse, Space, auto-shoot) as on your own; the guest's device says when it fires
+        var want = NET.mode ? (i === 0 ? input.fire || input.mouse || keys.f || keys.f2 || SET.auto : !!(NET.peer && NET.gf)) : sticks[i].on || SET.auto || (i === 0 ? keys.f || input.mouse : keys.f2);
         if (want && G.cool[i] <= 0) { fireFrom(i, i); G.cool[i] = fireRate(i); }
       }
     }
@@ -973,14 +982,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }
     pups = pups.filter(function (p) { return !p.dead; });
     invs = invs.filter(function (v) { return !v.dead; });
-    // effects
-    for (i = parts.length - 1; i >= 0; i--) {
-      var q = parts[i]; q.life -= dt;
-      if (q.life <= 0) { parts[i] = parts[parts.length - 1]; parts.pop(); continue; }
-      q.vy += 160 * dt; q.vx *= 0.985; q.x += q.vx * dt; q.y += q.vy * dt;
-    }
-    for (i = rings.length - 1; i >= 0; i--) { rings[i].t += dt; if (rings[i].t >= rings[i].dur) rings.splice(i, 1); }
-    for (i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; pops[i].y -= 34 * dt; if (pops[i].t > 0.95) pops.splice(i, 1); }
+    effects(dt);
     // flow
     if (G.phase === 'play') {
       var B = G.sauc;
@@ -994,9 +996,25 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     }
   }
 
+  function fxDecay(dt) {
+    fx.shake = Math.max(0, fx.shake - dt * 1.6); fx.flash = Math.max(0, fx.flash - dt * 2.5); fx.glitch = Math.max(0, fx.glitch - dt);
+    if (G.ban) { G.ban.t += dt; if (G.ban.t > G.ban.dur) G.ban = null; }
+    if (G.frameMsg) { G.frameMsg.t += dt; if (G.frameMsg.t > 2.4) G.frameMsg = null; }
+  }
+  function effects(dt) {
+    var i;
+    for (i = parts.length - 1; i >= 0; i--) {
+      var q = parts[i]; q.life -= dt;
+      if (q.life <= 0) { parts[i] = parts[parts.length - 1]; parts.pop(); continue; }
+      q.vy += 160 * dt; q.vx *= 0.985; q.x += q.vx * dt; q.y += q.vy * dt;
+    }
+    for (i = rings.length - 1; i >= 0; i--) { rings[i].t += dt; if (rings[i].t >= rings[i].dur) rings.splice(i, 1); }
+    for (i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; pops[i].y -= 34 * dt; if (pops[i].t > 0.95) pops.splice(i, 1); }
+  }
+
   // ═══ Persistence: a checkpoint at the start of each stage ═════════════════
   function save() {
-    if (!G || G.ended || !G.cp || G.phase === 'dying' || G.phase === 'over') return;
+    if (!G || G.ended || !G.cp || G.phase === 'dying' || G.phase === 'over' || G.net) return;
     var cp = G.cp;
     var s = { v: 4, wave: cp.wave, pl: cp.pl, shield: cp.shield, bombs: cp.bombs, nb: cp.nb, stats: cp.stats, started: G.started };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
@@ -1016,15 +1034,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function setOpt(k, key, on) { SET[k] = on; lsSet(key, on ? '1' : '0'); syncControls(); }
   Kit.init({
     id: 'invaders',
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { if (NET.mode) { leaveOnline(true); return; } clearSave(); showSetup(); },
     menu: [
+      { icon: 'logout', label: 'Leave the online game', when: function () { return !!NET.mode; }, onClick: function () { leaveOnline(true); } },
       { icon: 'trophy', label: 'High scores', onClick: function () { pauseGame(); ArcadeHi.show(HI, 'Space Invaders'); } },
       { icon: 'history', label: 'Past games', onClick: function () { pauseGame(); Kit.history(KEY, { title: 'Space Invaders: past games' }); } },
       MUS.menuItem,
       { icon: 'target', label: 'Auto-shoot', sub: 'Keeps firing for you', toggle: function () { return SET.auto; }, onClick: function () { setAuto(!SET.auto); } },
       { icon: 'swap', label: 'Reverse left/right', sub: 'Push right to aim left, like a mounted gun', toggle: function () { return SET.invX; }, onClick: function () { setOpt('invX', INVXK, !SET.invX); } },
       { icon: 'swap', label: 'Reverse up/down', sub: 'Push up to aim down, like a mounted gun', toggle: function () { return SET.invY; }, onClick: function () { setOpt('invY', INVYK, !SET.invY); } },
-      { icon: 'hand', label: 'Joystick on the right', sub: 'One player: Fire moves to the left', when: function () { return TOUCH && !TWO(); }, toggle: function () { return SET.right; }, onClick: function () { setOpt('right', SIDEK, !SET.right); if (view === 'game') fit(true); } }
+      { icon: 'hand', label: 'Joystick on the right', sub: 'One player: Fire moves to the left', when: function () { return TOUCH && (!TWO() || !!NET.mode); }, toggle: function () { return SET.right; }, onClick: function () { setOpt('right', SIDEK, !SET.right); if (view === 'game') fit(true); } }
     ],
     rules:
       '<p class="goal">Waves of space invaders march down toward your base. Blast them with your laser cannons before they reach the bottom.</p>' +
@@ -1055,19 +1074,29 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       '<li><b>Mother grid</b> (stage 9, 14, 19 and so on): a huge, heavy swarm that fires a lot. When it crosses the red <b>warning line</b>, that\'s the moment for a BOMB or your ring weapon.</li></ul>' +
       '<h3>Bonuses</h3><ul><li>The <b>INVADER BONUS</b> at the top counts down. Clear the stage fast to win more of it, plus 1,000 for a <b>perfect</b> stage with no shield damage.</li>' +
       '<li><b>BONUS AT</b> shows the next goal. Reach it to fill the shield and get a free BOMB.</li></ul>' +
-      '<h3>How far can you go?</h3><p>There are 50 stages. Beat them all, then keep going for as long as you can!</p>'
+      '<h3>How far can you go?</h3><p>There are 50 stages. Beat them all, then keep going for as long as you can!</p>' +
+      '<h3>Playing online</h3><p>Two players, each on their own phone or tablet, defend the same base together. Tap <b>Play online</b> beside Play: one of you opens a table and the other joins it from the list or with its 4-letter code. The one who opens the table is <b>red</b> on the left cannon, and the one who joins is <b>blue</b> on the right. Each of you aims with a joystick and fires with FIRE, as one player does, and keeps your own score and streak. Each of you picks your own weapon upgrade. Space Invaders needs a direct link between the two devices, so put both on the same Wi-Fi (or join one to the other phone\'s Personal Hotspot). An online game can\'t be paused. If the blue player\'s device drops out, the battle goes on and they can join the table again to take their cannon back.</p>'
   });
 
   // ═══ Setup ═══════════════════════════════════════════════════════════════
   function showSetup() {
     leaveGame();
     app.className = 'stage'; app.removeAttribute('style');
+    if (NET.mode) leaveOnline(false);
+    closeLobby();
     Kit.setup(app, {
       title: Kit.game && Kit.game() ? undefined : 'Space Invaders',
       intro: 'One player: one joystick. Two players: one joystick each.',
-      players: { min: 1, max: 2, count: 1, label: 'Player' },
+      // one player, two sharing this device, or two on their own devices (Play online, beside Play)
+      modes: Kit.modes(['solo', 'local', 'online']),
+      players: { min: 1, max: 2, count: 1, label: 'Player', vs: false, range: function (m) { return m === 'local' ? [2, 2] : [1, 1]; } },
       start: 'Play',
       onStart: function (cfg) {
+        if (cfg.mode === 'online') {   // Play online's review: Open the table, or Find a table to join
+          NET.me = (cfg.players[0] && cfg.players[0].name) || NET.me || myName(); NET.from = 'setup';
+          if (cfg.net === 'find') goLobby(); else hostTable(NET.me);
+          return;
+        }
         var ps = (cfg.players || []).slice(0, 2).map(function (p, i) { return { name: (p && p.name) || 'Player ' + (i + 1) }; });
         startGame({ players: ps.length ? ps : [{ name: 'Player' }] });
       }
@@ -1105,7 +1134,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     deckEl = el('div', { class: 'inv-deck' }, [cellA, midEl, cellB]);
     topL = el('div', { class: 'inv-top' }); topR = el('div', { class: 'inv-top' });
     sideL = el('div', { class: 'inv-side l' }, [topL]); sideR = el('div', { class: 'inv-side r' }, [topR]);
-    hintEl = el('div', { class: 'ar-hint', text: TWO() ? 'Red: WASD + Space (or the mouse) · Blue: arrows + Enter · F auto-shoot · P pause' : 'Mouse aims · click or Space fires · arrows / WASD steer · F auto-shoot · P pause' });
+    hintEl = el('div', { class: 'ar-hint', text: NET.mode ? 'The mouse aims, and a click or Space fires. Arrows or WASD steer, F turns auto-shoot on or off.' : TWO() ? 'Red: WASD + Space (or the mouse) · Blue: arrows + Enter · F auto-shoot · P pause' : 'Mouse aims · click or Space fires · arrows / WASD steer · F auto-shoot · P pause' });
     app.appendChild(sideL); app.appendChild(scrEl); app.appendChild(sideR); app.appendChild(deckEl); app.appendChild(hintEl);
     bindInput();
     syncControls();
@@ -1119,8 +1148,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (autoEl) { autoEl.classList.toggle('on', SET.auto); autoEl.setAttribute('aria-pressed', SET.auto ? 'true' : 'false'); }
     if (!SZ.length) return;
     var rev = SET.invX && SET.invY ? ' · reversed' : SET.invX ? ' · left/right reversed' : SET.invY ? ' · up/down reversed' : '';
-    if (TWO()) { SZ[0].lab.textContent = 'P1 ' + G.pl[0].name; SZ[1].lab.textContent = 'P2 ' + G.pl[1].name; }
+    if (TWO() && !NET.mode) { SZ[0].lab.textContent = 'P1 ' + G.pl[0].name; SZ[1].lab.textContent = 'P2 ' + G.pl[1].name; }
     else SZ[0].lab.textContent = 'Aim' + rev;
+    if (NET.mode && G && SZ[0]) SZ[0].zone.classList.toggle('c2', ME === 1);   // (your joystick's knob in your cannon's color)
   }
   function setAuto(on) {
     SET.auto = !!on; lsSet(AUTOK, on ? '1' : '0');
@@ -1132,7 +1162,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function maxAsp() { return lay.indexOf('land') === 0 && app.clientHeight < 560 ? 1 : 0.8; }
   // Lay out the controls: under the screen when upright, either side of it when turned sideways
   function arrange() {
-    var W0 = app.clientWidth, H0 = app.clientHeight, two = TWO();
+    var W0 = app.clientWidth, H0 = app.clientHeight, two = TWO() && !NET.mode;
     var mode = !TOUCH ? 'desk' : W0 > H0 * 1.15 ? 'land' : 'port';
     var key = mode + (SET.right ? 'R' : 'L') + (two ? '2' : '1');
     if (mode === 'port') {
@@ -1153,11 +1183,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (mode === 'port') {
       if (two) { cellA.appendChild(SZ[0].zone); cellB.appendChild(SZ[1].zone); }
       else { (SET.right ? cellB : cellA).appendChild(SZ[0].zone); (SET.right ? cellA : cellB).appendChild(fireZone); }
-      midEl.appendChild(pauseEl); midEl.appendChild(autoEl);
+      if (!NET.mode) midEl.appendChild(pauseEl);   // (an online game can't be paused)
+      midEl.appendChild(autoEl);
     } else if (mode === 'land') {
       if (two) { sideL.appendChild(SZ[0].zone); sideR.appendChild(SZ[1].zone); }
       else { (SET.right ? sideR : sideL).appendChild(SZ[0].zone); (SET.right ? sideL : sideR).appendChild(fireZone); }
-      topL.appendChild(pauseEl); topR.appendChild(autoEl);
+      if (!NET.mode) topL.appendChild(pauseEl);
+      topR.appendChild(autoEl);
     }
   }
   function fit(force) {
@@ -1165,7 +1197,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     arrange();
     var aw = scrEl.clientWidth, ah = scrEl.clientHeight;
     if (aw < 40 || ah < 40) return;
-    var asp = clamp(aw / ah, 0.55, maxAsp()), cw, ch;
+    var asp = NET.mode === 'guest' && NET.ww ? NET.ww / WH : clamp(aw / ah, 0.55, maxAsp()), cw, ch;
     if (aw / ah > asp) { ch = ah; cw = ah * asp; } else { cw = aw; ch = aw / asp; }
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     var w = Math.round(cw * DPR), h = Math.round(ch * DPR);
@@ -1174,7 +1206,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     cv.width = w; cv.height = h; cv.style.width = Math.round(cw) + 'px'; cv.style.height = Math.round(ch) + 'px';
     S = h / WH;
     var nw = w / S;
-    if (G && Math.abs(nw - WW) > 0.5) rescale(nw / WW);
+    if (NET.mode === 'guest' && NET.ww) nw = NET.ww;   // (the host's device runs the field: same width here)
+    else if (G && Math.abs(nw - WW) > 0.5) rescale(nw / WW);
     WW = nw;
     SC = {}; GL = {}; grainCv = null; bunkers.forEach(function (b) { b.sp = null; });
     draw();
@@ -1246,7 +1279,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     [SZ[0].zone, SZ[1].zone, fireZone, deckEl, sideL, sideR].forEach(function (n) { n.addEventListener('contextmenu', function (e) { e.preventDefault(); }); });
     // the mouse aims (red's target with two players) straight at the screen
     function toWorld(e) { var r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * WW, y: (e.clientY - r.top) / r.height * WH }; }
-    function mouseAim(e) { var p = toWorld(e); aims[0].x = clamp(p.x, 12, WW - 12); aims[0].y = clamp(p.y, AIM_TOP, AIM_BOT); }
+    function mouseAim(e) { var p = toWorld(e); aims[ME].x = clamp(p.x, 12, WW - 12); aims[ME].y = clamp(p.y, AIM_TOP, AIM_BOT); }
     cv.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' && !paused && G) mouseAim(e); });
     cv.addEventListener('pointerdown', function (e) {
       ac();
@@ -1278,10 +1311,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   });
   document.addEventListener('visibilitychange', function () { if (document.hidden) { pauseGame(); save(); } else wake(); });
   window.addEventListener('blur', function () { pauseGame(); });
-  window.addEventListener('pagehide', function () { save(); });
+  window.addEventListener('pagehide', function (e) { save(); if (NET.mode && !e.persisted) leaveOnline(false); });   // (online: say goodbye at once)
 
   function pauseGame() {
-    if (view !== 'game' || paused || !G || G.ended || G.phase === 'dying' || G.phase === 'over' || G.phase === 'choose') return;
+    if (view !== 'game' || paused || !G || G.ended || G.phase === 'dying' || G.phase === 'over' || G.phase === 'choose' || G.net) return;
     paused = true; resetInput(); ufoSoundOff(); MUS.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
     showOverlay('Paused', 'Stage ' + G.wave + ' · ' + fmt(team()) + ' points', 'Resume');
@@ -1298,7 +1331,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     ovEl.classList.add('show');
   }
   function resumeGame() {
-    if (!paused) return;
+    if (!paused || (G && G.net)) return;
     paused = false; ovEl.classList.remove('show'); lastT = 0; acc = 0;
     if (AC && AC.state === 'suspended') try { AC.resume(); } catch (e) {}
     Kit.sfx('tap');
@@ -1310,7 +1343,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function newStats() { return { kills: 0, heavies: 0, splits: 0, ufos: 0, ufoSeen: 0, saucers: 0, shots: 0, lasersShot: 0, bombs: 0, bombsSeen: 0, chain: 0, bonusUfos: 0, bonusTotal: 0, bonuses: 0, pups: 0, rushes: 0, cleared: 0, perfect: 0, dives: 0, dmg: 0 }; }
   function newPlayer(p) { return { name: p.name || 'Player', score: p.score || 0, streak: 0, best: p.best || 0, wpn: p.wpn || null, kills: 0 }; }
   function startGame(cfg, saved) {
-    G = {
+    netCardOff();
+    G = { net: !!cfg.net,
       pl: (cfg.players || [{ name: 'Player' }]).slice(0, 2).map(newPlayer), shield: SHIELD_MAX, wave: 1, t: 0, waveT: 0, phase: 'play', started: Date.now(), best0: bestScore(),
       stats: newStats(), cool: [0, 0], rec: [0, 0], muz: [0, 0], side: 0, bubble: 0, baseHit: 0, baseX: 0, hurt: 0, ban: null, frameMsg: null, ib: 1000, nb: 0
     };
@@ -1320,6 +1354,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     Kit.gameStart();
     buildView();
     aims[0].x = TWO() ? WW * 0.3 : WW / 2; aims[1].x = WW * 0.7; aims[0].y = aims[1].y = WH * 0.42;
+    if (NET.mode === 'guest') { draw(); return; }   // (the host's device sends the stage)
     if (saved) {
       G.shield = clamp(saved.shield || SHIELD_MAX, 1, SHIELD_MAX); G.nb = saved.nb || 0;
       while (team() >= bonusAt(G.nb)) G.nb++;
@@ -1334,7 +1369,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   }
   function endGame() {
     if (G.ended) return; G.ended = true;
-    clearSave(); ufoSoundOff(); MUS.stop();
+    clearSave(); ufoSoundOff(); MUS.stop(); hostTimer(false); netCardOff();
+    var net = !!G.net;
+    if (net && NET.mode === 'host') {   // the other device shows the same results
+      if (NET.peer) NET.peer.send({ t: 'over', w: G.wave, why: G.why || '', pl: G.pl.map(function (p) { return [p.score, p.best, p.wpn || '', p.kills]; }), st: G.stats }, true);
+      if (NET.table) NET.table.setStatus('open', '');
+    }
     var st = G.stats, h = [], two = TWO(), pl = G.pl;
     h.push(st.all50 ? 'Beat all 50 stages and reached stage ' + G.wave + '!' : 'Reached stage ' + G.wave + (st.cleared ? ' (cleared ' + st.cleared + ')' : ''));
     if (two) pl.forEach(function (p, i) { h.push(p.name + ' (' + (i ? 'blue' : 'red') + '): ' + fmt(p.score) + ' points, best streak ' + p.best + (p.wpn ? ', ' + (p.wpn === 'ring' ? 'ring weapon' : 'missile shooter') : '')); });
@@ -1354,7 +1394,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     var hiL = ArcadeHi.list(HI), top0 = Math.max.apply(null, pl.map(function (p) { return p.score; }));
     detail.hr = top0 > 0 && (hiL.length < ArcadeHi.max || top0 > hiL[hiL.length - 1].score) ? hiL.filter(function (x) { return x.score >= top0; }).length + 1 : 0;
     Kit.record(KEY, {
-      detail: detail, started: G.started, mode: two ? '2p' : '',
+      detail: detail, started: G.started, mode: net ? 'online' : two ? '2p' : '',
       players: pl.map(function (p) { return { name: p.name, score: p.score }; }), winner: two ? undefined : null,
       highlights: h.slice(0, 8),
       summary: (two ? pl.map(function (p) { return p.name + ' ' + fmt(p.score); }).join(' · ') : fmt(pl[0].score) + ' points') + ' · stage ' + G.wave,
@@ -1369,9 +1409,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     (function next() {
       if (i >= pl.length) return finish();
       var who = i++, p = pl[who];
+      if (net && who !== ME) return next();   // (online: each device files its own player's score)
       if (!ArcadeHi.qualifies(HI, p.score)) return next();
       ArcadeHi.check(HI, p.score, next, { who: p.name });
-      if (two) {   // say whose turn it is
+      if (two && !net) {   // say whose turn it is
         var ovs = document.querySelectorAll('.ahi-overlay'), sub = ovs.length ? ovs[ovs.length - 1].querySelector('.ahi-sub') : null;
         if (sub) { sub.textContent = 'Player ' + (who + 1) + ' (' + (/^Player \d$/.test(p.name) ? '' : p.name + ', ') + (who ? 'blue' : 'red') + '): you made the top 50! Enter your initials.'; sub.style.color = PCOL[who]; sub.style.fontWeight = '800'; }
       }
@@ -1382,28 +1423,35 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
         title: two ? (ranked[0].score === ranked[1].score ? 'It\'s a tie!' : ranked[0].name + ' wins!') : best ? 'New high score!' : G.why === 'invaded' ? 'The invaders landed!' : 'Game over',
         sub: two ? 'Reached stage ' + wave : fmt(top) + ' points · reached stage ' + wave,
         rank: two ? ranked : null,
-        again: function () { startGame({ players: names }); }, againLabel: 'Play again',
-        extra: [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Space Invaders'); showSetup(); } }, { label: 'Change players', onClick: showSetup }]
+        again: net ? backToTable : function () { startGame({ players: names }); }, againLabel: net ? (NET.mode === 'host' ? 'Back to your table' : 'Back to the table') : 'Play again',
+        extra: net ? [{ label: 'Leave the table', onClick: function () { leaveOnline(false); showSetup(); } }, { label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Space Invaders'); } }]
+          : [{ label: 'High scores', onClick: function () { ArcadeHi.show(HI, 'Space Invaders'); showSetup(); } }, { label: 'Change players', onClick: showSetup }]
       });
     }
   }
 
   // ═══ Loop ════════════════════════════════════════════════════════════════
-  var raf = 0, lastT = 0, acc = 0, frozen = false;   // frozen: test hook, the clock stops but input still works
-  function loop(t) {
+  var raf = 0, lastT = 0, acc = 0, frozen = false, frameAt = 0;   // frozen: test hook, the clock stops but input still works
+  function loop() {
     raf = 0;
     if (frozen) return;
-    var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t;
-    if (view !== 'game' || !G) { ufoSoundOff(); return; }
+    if (!frame(true)) return;
+    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
+  }
+  function frame(drawIt) {
+    var t = performance.now(), dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0; lastT = t; frameAt = t;
+    if (view !== 'game' || !G) { ufoSoundOff(); return false; }
     var n = 0;
-    if (!paused && !G.ended) {
+    if (NET.mode === 'guest' && G.net) { if (!G.ended) guestFrame(dt); n = 1; }
+    else if (!paused && !G.ended) {
       acc += dt;
       while (acc >= TICK && n++ < 6) { acc -= TICK; update(); if (G.ended) break; }
       if (n >= 6) acc = 0;
-      if (G.phase === 'play' || G.phase === 'clear') MUS.tick(); else MUS.stop();
     }
-    if (n || !dt || paused || G.ended) draw();   // 120Hz screens: no step this frame, nothing new to draw
-    if (!paused && !G.ended && !document.hidden) raf = requestAnimationFrame(loop);
+    if (!paused && !G.ended) { if (G.phase === 'play' || G.phase === 'clear') MUS.tick(); else MUS.stop(); }
+    if (NET.mode === 'host' && G.net) netTick();
+    if (drawIt && (n || !dt || paused || G.ended)) draw();   // 120Hz screens: no step this frame, nothing new to draw
+    return true;
   }
   function wake() { if (!raf && !frozen && view === 'game' && G && !paused && !G.ended && !document.hidden) { lastT = 0; raf = requestAnimationFrame(loop); } }
 
@@ -1756,6 +1804,389 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     g.globalAlpha = 1;
   }
 
+  // ═══ Online: two players, each on their own device (online.js) ═════════════
+  // The host's device runs the battle (player 1, red, the left cannon); the guest (player 2, blue, the right cannon)
+  // aims and fires on its own device. The guest's target moves at once on its own screen and its shots fly from its
+  // cannon at once, sound and kick included; its device sends where the target is and whether it's firing 30 times
+  // a second, and the host's game fires the blue cannon from there and decides what each shot hits. Everything
+  // else on the guest's screen is the host's battle drawn a tenth of a second in the past, smoothly between the
+  // host's updates (20 a second), the way Centipede does it; explosions, sounds and banners come as events, played
+  // at the same moment. Both devices keep their own score each, and the stage, base and shield are shared.
+  var NET = { mode: null, table: null, peer: null, lobby: null, wait: null, me: '', them: '', themDev: null, hostName: '', from: '',
+    q: 0, lastQ: 0, snapT: 0, bkT: 0, bkDirty: false, sendT: 0, evq: [], off: null, lastAt: 0, inAt: 0, buf: [], gf: false, ww: 0, stall: false, card: '', obj: {}, fr: 0, dt: 0 };
+  var ME = 0, qOff = 0, qDepth = 0, DELAY = 100;
+  var NATMSG = 'The two devices couldn’t link up. Space Invaders is too fast to play through the relay, so it needs a direct link: put both devices on the same Wi-Fi, or turn on Personal Hotspot on one phone and join the other device to it. Phone data on its own often blocks this.';
+  function r1(v) { return Math.round(v * 10) / 10; }
+  function myName() { try { return (localStorage.getItem('my_name') || '').trim(); } catch (e) { return ''; } }
+  function netQ(k, a) { if (NET.mode === 'host' && G && G.net && NET.peer && !qOff) NET.evq.push([k, a]); }
+  // The effects the host's game makes are played on the guest's device too: each goes as its name and arguments
+  var FXF = {};
+  function rn(v) { return typeof v === 'number' ? r1(v) : v; }
+  function wrapFx(k, f) {
+    FXF[k] = f;
+    return function () {
+      var a = Array.prototype.slice.call(arguments);
+      if (!qDepth) netQ(k, a.map(rn));
+      qDepth++;
+      try { return f.apply(null, a); } finally { qDepth--; }
+    };
+  }
+  burst = wrapFx('burst', burst); ring = wrapFx('ring', ring); explode = wrapFx('explode', explode); pop = wrapFx('pop', pop);
+  banner = wrapFx('banner', banner); callout = wrapFx('callout', callout);
+  sShot = wrapFx('sShot', sShot); sMisShot = wrapFx('sMisShot', sMisShot); sRingShot = wrapFx('sRingShot', sRingShot); sHit = wrapFx('sHit', sHit);
+  sBig = wrapFx('sBig', sBig); sClank = wrapFx('sClank', sClank); sLaserPop = wrapFx('sLaserPop', sLaserPop); sChip = wrapFx('sChip', sChip);
+  sPower = wrapFx('sPower', sPower); sBase = wrapFx('sBase', sBase); sDeflect = wrapFx('sDeflect', sDeflect); sRush = wrapFx('sRush', sRush);
+  sStreak = wrapFx('sStreak', sStreak); sWave = wrapFx('sWave', sWave); sWarn = wrapFx('sWarn', sWarn); sBlast = wrapFx('sBlast', sBlast);
+  sBombAppear = wrapFx('sBombAppear', sBombAppear); sBombBoom = wrapFx('sBombBoom', sBombBoom);
+  function hap(k) { Kit.haptic(k); netQ('hap', [k]); }
+  function confetti() { Kit.confetti(); netQ('cf', []); }
+  FXF.hap = function (k) { Kit.haptic(k); }; FXF.cf = function () { Kit.confetti(); };
+  // the host's own shots, drawn on the guest's screen
+  FXF.shot = function (x, y, vx, vy, tx, ty, d, mis, rg, c) {
+    shots.push({ x: x, y: y, vx: vx, vy: vy, tx: tx, ty: ty, left: d, d0: d, run: 0, mis: !!mis, ring: !!rg, who: 0, hit: true, dead: false });
+    G.rec[c] = 1; G.muz[c] = 1;
+  };
+  var KS = ['squid', 'crab', 'oct'], KD = ['std', 'armor', 'split', 'micro'], STS = ['form', 'enter', 'fv', 'dive'], PHS = ['play', 'clear', 'choose', 'dying', 'over'], WPS = ['', 'missile', 'ring'];
+  var COLP = ROWCOL.concat([GOLD, ARMOR, SPLIT, MICRO]);
+  function bkStr() { return bunkers.map(function (b) { return Array.prototype.join.call(b.m, ''); }).join(','); }
+  function bkSet(s) { String(s || '').split(',').forEach(function (r, i) { var b = bunkers[i]; if (!b) return; for (var k = 0; k < b.m.length && k < r.length; k++) b.m[k] = r.charCodeAt(k) === 49 ? 1 : 0; b.sp = null; }); }
+
+  // ── The tables list ──
+  function goLobby() {
+    leaveOnline(false); leaveGame(); closeLobby();
+    app.className = 'stage'; app.removeAttribute('style');
+    NET.lobby = Online.lobby(app, {
+      game: 'invaders', title: 'Space Invaders online', max: 2,
+      intro: 'Two players, each on their own phone or tablet, defend the same base. Space Invaders needs a direct link between the two devices: put both on the same Wi-Fi, or join one to the other phone’s Personal Hotspot.',
+      me: { name: NET.me || myName() },
+      onName: function (n) { NET.me = n; },
+      onHost: function (me) { NET.from = 'lobby'; return hostTable(me.name); },
+      onJoin: function (code, room, me) { return joinTable(code, me.name); },
+      onSolo: showSetup, solo: 'Play on this device instead',
+      sub: function (r) { return r.status === 'playing' ? (r.info || 'Playing') : 'Waiting for a player'; }
+    });
+    window.scrollTo(0, 0);
+  }
+  function closeLobby() { if (NET.lobby) { NET.lobby.close(); NET.lobby = null; } }
+  function backOut() { if (NET.from === 'setup') showSetup(); else goLobby(); }
+
+  // ── Hosting ──
+  function hostTable(name) {
+    closeLobby(); leaveGame(); NET.me = name;
+    app.className = 'stage'; app.removeAttribute('style');
+    return Online.host({ game: 'invaders', name: name, max: 2, min: 2, screen: app, relay: false,
+      // a game under way keeps the blue cannon for its player: only that device can take it again
+      accept: function (o) { if (G && G.net && !G.ended && NET.themDev) return o.x && o.x.dev === NET.themDev ? true : 'That game is under way'; return true; }
+    }).then(function (table) {
+      NET.mode = 'host'; NET.table = table; NET.peer = null; NET.themDev = null; NET.them = ''; ME = 0;
+      table.on('fail', function (e) { Kit.toast('Couldn’t open a table. ' + Online.errText(e)); leaveOnline(false); backOut(); });
+      table.on('peer', hostPeer);
+      table.on('leave', hostLeave);
+      table.on('msg', hostMsg);
+      showWait();
+    }, function (e) { if (!(e && e.message === 'Cancelled')) Kit.toast('Couldn’t open a table. ' + Online.errText(e)); backOut(); });
+  }
+  function hostPeer(peer) {
+    if (NET.peer && !NET.peer.closed && NET.peer !== peer) { peer.close('full'); return; }
+    var back = !!(G && G.net && !G.ended && NET.themDev === peer.id);
+    NET.peer = peer; NET.inAt = performance.now(); NET.gf = false;
+    if (!back) { NET.themDev = peer.id; NET.them = peer.name && peer.name.toLowerCase() !== NET.me.toLowerCase() ? peer.name : (peer.name || 'Player') + ' 2'; }
+    sendRoster();
+    if (back) {   // the same device again: the blue cannon is theirs again
+      sendInit(peer);
+      if (G.phase === 'choose') netChoose();
+      netStatus(); Kit.toast(NET.them + ' is back'); Kit.sfx('pop');
+      return;
+    }
+    Kit.toast(NET.them + ' joined'); Kit.sfx('pop');
+  }
+  function hostLeave(peer) {
+    if (peer !== NET.peer) return;
+    NET.peer = null; NET.gf = false;
+    if (G && G.net && !G.ended && view === 'game') {   // the battle goes on; the blue cannon waits for them
+      Kit.toast(NET.them + ' left. If ' + NET.them + ' joins this table again, the blue cannon is theirs again.');
+      if (G.phase === 'choose' && !G.pl[1].wpn && G.pl[0].wpn) showChoice(1);
+      netStatus();
+      return;
+    }
+    NET.themDev = null; NET.them = '';
+    sendRoster();
+    Kit.toast(peer.name + ' left');
+  }
+  function hostMsg(peer, m) {
+    if (peer !== NET.peer || !G || !G.net || G.ended) return;
+    NET.inAt = performance.now();
+    if (m.t === 'i') { aims[1].x = clamp(+m.x || 0, 12, WW - 12); aims[1].y = clamp(+m.y || 0, AIM_TOP, AIM_BOT); NET.gf = !!m.f; }
+    else if (m.t === 'wpn') { if (G.phase === 'choose' && !G.pl[1].wpn && WPN[m.id]) pickWeapon(1, m.id); }
+  }
+  // after stage 3, each player picks their weapon on their own device
+  function netChoose() {
+    var need0 = !G.pl[0].wpn, need1 = !G.pl[1].wpn;
+    if (need1 && NET.peer) NET.peer.send({ t: 'choose' }, true);
+    if (need0) showChoice(0);
+    else if (need1 && NET.peer) netCard('Weapon upgrade', 'Waiting for ' + NET.them + ' to pick a weapon.');
+    else if (need1) showChoice(1);
+  }
+  function sendRoster() {
+    if (NET.peer) NET.peer.send({ t: 'ro', pl: [NET.me, NET.them] }, true);
+    if (NET.wait) NET.wait.update(waitPlayers());
+  }
+  function sendInit(peer) {
+    peer.send({ t: 'init', pl: G.pl.map(function (p) { return { name: p.name, score: p.score, best: p.best, wpn: p.wpn }; }), w: G.wave, ty: G.type, ww: r1(WW), bk: bkStr(),
+      sh: G.shield, nb: G.nb, st: G.started, ph: PHS.indexOf(G.phase) }, true);
+  }
+  function netStatus() { if (NET.table) NET.table.setStatus('playing', NET.peer ? 'Playing' : 'Waiting for ' + NET.them + ' to come back'); }
+  function hostStart() {
+    if (!NET.peer) return;
+    if (NET.wait) { NET.wait.close(); NET.wait = null; }
+    startGame({ net: true, players: [{ name: NET.me }, { name: NET.them }] });
+    NET.inAt = performance.now(); NET.gf = false; NET.evq = []; NET.bkDirty = false;
+    sendInit(NET.peer);
+    netStatus();
+    hostTimer(true);
+  }
+  // A host keeps the battle going even while its browser holds back animation frames (a covered window): a timer
+  // steps it then, without drawing. Runs only while hosting a game.
+  var hostT = 0;
+  function hostTimer(on) {
+    clearInterval(hostT); hostT = 0;
+    if (on) hostT = setInterval(function () {
+      if (NET.mode !== 'host' || !G || !G.net || G.ended) { hostTimer(false); return; }
+      if (view === 'game' && performance.now() - frameAt > 90) frame(false);
+    }, 30);
+  }
+  // 20 updates a second to the guest, the events as they happen, and the bunkers whenever they're chipped
+  function netTick() {
+    if (!NET.peer) { NET.evq = []; return; }
+    var now = performance.now();
+    if (now - NET.inAt > 1200) NET.gf = false;   // (the guest's device has gone quiet: its cannon stops)
+    if (NET.evq.length) { NET.peer.send({ t: 'e', ev: NET.evq }, true); NET.evq = []; }
+    if (NET.bkDirty && now - NET.bkT > 100) { NET.bkDirty = false; NET.bkT = now; NET.peer.send({ t: 'bk', bk: bkStr() }, true); }
+    if (now - NET.snapT < 50) return;
+    NET.snapT = now;
+    var s = { t: 's', q: ++NET.q, tm: Math.round(now), ww: r1(WW), ph: PHS.indexOf(G.phase), w: G.wave, ty: G.type, sh: r1(G.shield), ib: Math.round(G.ib), nb: G.nb,
+      bu: r1(G.bubble), bh: Math.round(G.baseHit * 100), bx: r1(G.baseX), wn: G.warned ? 1 : 0,
+      pl: G.pl.map(function (p) { return [p.score, p.streak, p.best, WPS.indexOf(p.wpn || ''), p.kills]; }),
+      sa: G.sauc ? [G.sauc.left, G.sauc.ships, G.sauc.hit, G.sauc.total, G.sauc.streak] : 0,
+      F: F ? [F.anim, F.fv ? 1 : 0, F.grid ? 1 : 0] : 0,
+      fx: [Math.round(fx.shake * 100), Math.round(fx.flash * 100), Math.round(fx.glitch * 100), fx.flashCol],
+      a: [r1(aims[0].x), r1(aims[0].y)], v: [], u: [], o: ufo ? [r1(ufo.x), r1(ufo.y)] : 0, b: [], l: [], p: [] };
+    invs.forEach(function (v) { if (v.dead) return; s.v.push(v.id, r1(v.x), r1(v.y), KS.indexOf(v.k), KD.indexOf(v.kind), Math.max(0, COLP.indexOf(v.col)), v.hp, v.max, STS.indexOf(v.st), (v.gold ? 1 : 0) | (v.fl > 0 ? 2 : 0), Math.round(v.fvx || 0)); });
+    saucers.forEach(function (u) { if (!u.dead) s.u.push(u.id, r1(u.x), r1(u.y), u.ship ? 1 : 0, u.fl > 0 ? 1 : 0); });
+    bombs.forEach(function (b) { if (!b.dead) s.b.push(b.id, r1(b.x), r1(b.y), b.fuse > 0 ? 1 : 0, Math.round(b.bf * 100)); });
+    lasers.forEach(function (b) { if (!b.dead) s.l.push(b.id, r1(b.x), r1(b.y)); });
+    pups.forEach(function (p) { if (!p.dead) s.p.push(p.id, r1(p.x), r1(p.y)); });
+    NET.peer.send(s, false);
+  }
+
+  // ── The waiting room (before a game and between games) ──
+  function waitPlayers() {
+    var host = NET.mode === 'host', a = [{ name: host ? NET.me : NET.hostName, host: true, me: host, color: PCOL[0] }], two = host ? NET.them : NET.me;
+    if (two) a.push({ name: two, me: !host, color: PCOL[1] });
+    return a;
+  }
+  var WAITNOTE = 'Red, on the left cannon, opens the table. Blue, on the right, joins it. You share the base and keep your own scores.';
+  function showWait() {
+    leaveGame(); closeLobby(); hostTimer(false); netCardOff();
+    app.className = 'stage'; app.removeAttribute('style');
+    if (NET.mode === 'host') {
+      NET.table.setStatus('open', '');
+      NET.wait = Online.waitRoom(app, { code: NET.table.code, host: true, max: 2, min: 2, table: NET.table, players: waitPlayers(), onStart: hostStart, onLeave: function () { leaveOnline(false); backOut(); }, note: WAITNOTE });
+      sendRoster();
+    } else {
+      NET.wait = Online.waitRoom(app, { host: false, hostName: NET.hostName, max: 2, min: 2, players: waitPlayers(), onLeave: function () { leaveOnline(false); goLobby(); }, note: WAITNOTE });
+    }
+    window.scrollTo(0, 0);
+  }
+  function backToTable() {
+    if ((NET.mode === 'host' && NET.table && !NET.table.closed) || (NET.mode === 'guest' && NET.peer && !NET.peer.closed)) { G = null; showWait(); return; }
+    leaveOnline(false); goLobby();
+  }
+
+  // ── Joining ──
+  function joinTable(code, name) {
+    closeLobby(); NET.me = name;
+    app.className = 'stage'; app.removeAttribute('style');
+    return Online.join(code, { game: 'invaders', name: name, min: 2, max: 2, screen: app, relay: false, extra: { dev: Online.dev() } }).then(function (peer) {
+      NET.mode = 'guest'; NET.peer = peer; NET.hostName = peer.name; ME = 1; NET.lastQ = 0; NET.off = null;
+      peer.on('msg', guestMsg);
+      peer.on('close', function () { guestLost(peer); });
+      showWait();
+    }, function (e) {
+      if (!(e && e.message === 'Cancelled')) { if (e && e.nat) Kit.sheet({ title: 'Couldn’t connect', html: '<p>' + Kit.esc(NATMSG) + '</p>' }); else Kit.toast(Online.errText(e)); }
+      goLobby();
+    });
+  }
+  function guestMsg(m) {
+    if (m.t === 'ro') { NET.hostName = m.pl[0] || NET.hostName; if (m.pl[1]) NET.me = m.pl[1]; if (NET.wait) NET.wait.update(waitPlayers()); return; }
+    if (m.t === 'init') { guestStart(m); return; }
+    if (!G || !G.net || NET.mode !== 'guest' || G.ended) return;
+    if (m.t === 's') guestSnap(m);
+    else if (m.t === 'e') setTimeout(function () { if (!G || !G.net || G.ended) return; m.ev.forEach(function (e) { var f = FXF[e[0]]; if (f) try { f.apply(null, e[1]); } catch (er) {} }); }, DELAY);
+    else if (m.t === 'bk') setTimeout(function () { if (G && G.net) bkSet(m.bk); }, DELAY);
+    else if (m.t === 'choose') { if (!G.pl[ME].wpn) showChoice(ME); }
+    else if (m.t === 'over') setTimeout(function () { guestOver(m); }, DELAY);
+  }
+  function guestStart(m) {
+    if (NET.wait) { NET.wait.close(); NET.wait = null; }
+    Array.prototype.forEach.call(document.querySelectorAll('.k-win'), function (n) { n.remove(); });
+    NET.ww = m.ww; NET.buf = []; NET.obj = {}; NET.ph = ''; NET.off = null; NET.lastQ = 0; NET.lastAt = performance.now(); NET.stall = false;
+    startGame({ net: true, players: m.pl });
+    G.wave = m.w; G.type = m.ty; G.shield = m.sh; G.nb = m.nb; G.started = m.st || Date.now(); G.phase = PHS[m.ph] || 'play';
+    buildBunkers(); bkSet(m.bk);
+    syncControls(); draw();
+  }
+  // the host's clock: the least-delayed update sets it (Centipede's way)
+  function guestSnap(s) {
+    var now = performance.now(), sample = s.tm - now;
+    NET.off = NET.off == null ? sample : Math.max(sample, NET.off - 1);
+    NET.lastAt = now;
+    if (s.q <= NET.lastQ) return;   // (updates can arrive out of order: only the newest counts)
+    NET.lastQ = s.q;
+    if (s.ww && Math.abs(s.ww - NET.ww) > 0.5) { NET.ww = s.ww; WW = s.ww; fit(true); }
+    NET.buf.push(s); if (NET.buf.length > 14) NET.buf.shift();
+  }
+  function guestOver(m) {
+    if (!G || !G.net || G.ended) return;
+    G.wave = m.w; G.why = m.why; G.stats = Object.assign(G.stats, m.st || {});
+    m.pl.forEach(function (r, i) { var p = G.pl[i]; if (!p) return; p.score = r[0]; p.best = r[1]; p.wpn = r[2] || null; p.kills = r[3]; });
+    G.phase = 'over';
+    endGame();
+  }
+  // items in an update: [id, x, y, ...] every `stride` numbers; each kept as the same object frame to frame
+  function lerpL(A, C, stride, a, mk) {
+    var out = [], m = {}, i;
+    if (A) for (i = 0; i < A.length; i += stride) m[A[i]] = i;
+    for (var j = 0; j < C.length; j += stride) {
+      var k = m[C[j]], x = C[j + 1], y = C[j + 2];
+      if (k != null && Math.abs(A[k + 1] - x) + Math.abs(A[k + 2] - y) < 240) { x = A[k + 1] + (x - A[k + 1]) * a; y = A[k + 2] + (y - A[k + 2]) * a; }
+      var o = NET.obj[C[j]] || (NET.obj[C[j]] = { id: C[j], fresh: 1 });
+      o.seen = NET.fr; mk(o, C, j, x, y); o.fresh = 0; out.push(o);
+    }
+    return out;
+  }
+  function guestWorld() {
+    var B = NET.buf; if (!B.length) return;
+    NET.fr++;
+    var rt = performance.now() + NET.off - DELAY, A = B[0], C = B[B.length - 1];
+    if (rt >= C.tm) A = C;
+    else if (rt <= A.tm) C = A;
+    else for (var i = 0; i < B.length - 1; i++) if (B[i].tm <= rt && B[i + 1].tm >= rt) { A = B[i]; C = B[i + 1]; break; }
+    var a = C.tm > A.tm ? clamp((rt - A.tm) / (C.tm - A.tm), 0, 1) : 1, dt = NET.dt;
+    var ph = PHS[C.ph] || 'play';
+    if (ph !== NET.ph) {   // the weapon choice is over (on the host's device): its card goes here too
+      if (NET.ph === 'choose') { netCardOff(); ovEl.classList.remove('show'); ovEl.innerHTML = ''; }
+      NET.ph = ph;
+    }
+    G.phase = ph;
+    G.wave = C.w; G.type = C.ty; G.shield = C.sh; G.ib = C.ib; G.nb = C.nb; G.bubble = C.bu; G.baseHit = C.bh / 100; G.baseX = C.bx; G.warned = !!C.wn;
+    C.pl.forEach(function (r, i) { var p = G.pl[i]; if (!p) return; p.score = r[0]; p.streak = r[1]; p.best = r[2]; p.wpn = WPS[r[3]] || null; p.kills = r[4]; });
+    G.sauc = C.sa ? { left: C.sa[0], ships: C.sa[1], hit: C.sa[2], total: C.sa[3], streak: C.sa[4] } : null;
+    F = C.F ? { anim: C.F[0], fv: !!C.F[1], grid: !!C.F[2] } : null;
+    fx.shake = Math.max(fx.shake, C.fx[0] / 100); fx.flash = Math.max(fx.flash, C.fx[1] / 100); fx.glitch = Math.max(fx.glitch, C.fx[2] / 100); if (C.fx[1]) fx.flashCol = C.fx[3];
+    aims[0].x = A.a[0] + (C.a[0] - A.a[0]) * a; aims[0].y = A.a[1] + (C.a[1] - A.a[1]) * a;
+    invs = lerpL(A.v, C.v, 11, a, function (o, r, j, x, y) {
+      var k = KS[r[j + 3]] || 'crab', kind = KD[r[j + 4]] || 'std', cell = kind === 'armor' || kind === 'split' ? CELL_H : kind === 'micro' ? CELL_M : CELL_S, st = STS[r[j + 8]] || 'form';
+      if (st === 'fv' && !o.fresh) { o.trail = o.trail || []; if (Math.abs(o.x - x) > 0.4) { o.trail.unshift(o.x); if (o.trail.length > 4) o.trail.pop(); } } else o.trail = null;
+      o.x = x; o.y = y; o.k = k; o.kind = kind; o.cell = cell; o.w = COLS[k] * cell; o.h = 8 * cell; o.col = COLP[r[j + 5]] || ROWCOL[0];
+      o.hp = r[j + 6]; o.max = r[j + 7]; o.st = st; o.gold = !!(r[j + 9] & 1); o.fl = r[j + 9] & 2 ? 0.09 : 0; o.fvx = r[j + 10]; o.dead = false;
+    });
+    saucers = lerpL(A.u, C.u, 5, a, function (o, r, j, x, y) { o.x = x; o.y = y; o.ship = !!r[j + 3]; o.fl = r[j + 4] ? 0.08 : 0; o.w = o.ship ? 88 : 51; o.h = o.ship ? 38 : 22; o.dead = false; });
+    bombs = lerpL(A.b, C.b, 5, a, function (o, r, j, x, y) { o.x = x; o.y = y; o.fuse = r[j + 3] ? 0.1 : 0; o.bf = r[j + 4] / 100; o.t = o.fresh ? Math.random() * 6 : o.t + dt; o.dead = false; });
+    lasers = lerpL(A.l, C.l, 3, a, function (o, r, j, x, y) { o.x = x; o.y = y; o.t = o.fresh ? 0 : o.t + dt; o.dead = false; });
+    pups = lerpL(A.p, C.p, 3, a, function (o, r, j, x, y) { o.x = x; o.y = y; o.dead = false; });
+    if (C.o) { var ao = A.o || C.o; ufo = { x: ao[0] + (C.o[0] - ao[0]) * a, y: ao[1] + (C.o[1] - ao[1]) * a }; } else ufo = null;
+    if (NET.fr % 120 === 0) Object.keys(NET.obj).forEach(function (k) { if (NET.obj[k].seen < NET.fr - 60) delete NET.obj[k]; });
+  }
+  // shots drawn on the guest's screen (its own, and the host's from its events): they fly to their target and go;
+  // what they hit comes from the host
+  function guestShots(dt) {
+    for (var i = 0; i < shots.length; i++) {
+      var s = shots[i], st = Math.hypot(s.vx, s.vy) * dt;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.left -= st; s.run += st;
+      if (s.x < -30 || s.x > WW + 30 || s.y < -30 || (!s.ring && s.left <= 0)) s.dead = true;
+    }
+    shots = shots.filter(function (s) { return !s.dead; });
+  }
+  function guestFrame(dt) {
+    var i, live = G.phase === 'play' || G.phase === 'clear';
+    NET.dt = dt;
+    G.t += dt;
+    fxDecay(dt);
+    keys.hold = keys.l || keys.r || keys.u || keys.d ? keys.hold + dt : 0;
+    keys.hold2 = keys.l2 || keys.r2 || keys.u2 || keys.d2 ? keys.hold2 + dt : 0;
+    // your own target: at once
+    var v = stickVec(0), a = aims[ME];
+    if (v && live) { var V = aimSpeed(); a.x += (SET.invX ? -1 : 1) * v.x * V * dt; a.y += (SET.invY ? -1 : 1) * v.y * V * dt; }
+    a.x = clamp(a.x, 12, WW - 12); a.y = clamp(a.y, AIM_TOP, AIM_BOT);
+    for (i = 0; i < 2; i++) { G.rec[i] = Math.max(0, G.rec[i] - dt * 9); G.muz[i] = Math.max(0, G.muz[i] - dt * 10); }
+    // your own shots: fired here at once (the host's game fires the same ones and decides what they hit)
+    var want = input.fire || input.mouse || keys.f || keys.f2 || SET.auto;
+    G.cool[ME] -= dt;
+    if (G.phase === 'play' && want && G.cool[ME] <= 0) { fireFrom(ME, ME); G.cool[ME] = fireRate(ME); }
+    guestShots(dt);
+    guestWorld();
+    effects(dt);
+    var flying = !!ufo || saucers.some(function (u) { return u.x > -30 && u.x < WW + 30; });
+    if (flying && live) ufoSoundOn(); else ufoSoundOff();
+    // where your target is and whether you're firing, to the host, 30 times a second
+    NET.sendT -= dt;
+    if (NET.sendT <= 0 && NET.peer) { NET.sendT = 1 / 30; NET.peer.send({ t: 'i', x: r1(a.x), y: r1(a.y), f: want && G.phase === 'play' ? 1 : 0 }, false); }
+    // the host's device has gone quiet (locked, or out of range)
+    var stall = performance.now() - NET.lastAt > 1500;
+    if (stall !== NET.stall) {
+      NET.stall = stall;
+      if (stall) netCard('Waiting for ' + (NET.hostName || 'the host'), (NET.hostName || 'The host') + '’s device has stopped sending the game. It may be locked or out of range. The game carries on as soon as it’s back.', [{ label: 'Leave the game', fn: function () { leaveOnline(false); goLobby(); } }]);
+      else if (NET.card.indexOf('Waiting for ' + (NET.hostName || 'the host')) === 0) netCardOff();
+    }
+  }
+  function guestLost(peer) {
+    if (NET.peer !== peer) return;
+    var host = NET.hostName || 'The host', playing = !!(G && G.net && !G.ended && view === 'game');
+    NET.peer = null; NET.mode = null; NET.wait = null; ME = 0;
+    netCardOff();
+    if (playing) {
+      G.ended = true; ufoSoundOff(); MUS.stop();
+      Kit.win({ lose: true, icon: 'meh', title: host + ' left the game', sub: 'You reached stage ' + G.wave + ' together.',
+        rank: G.pl.map(function (p, i) { return { name: p.name, score: fmt(p.score), color: PCOL[i] }; }),
+        again: goLobby, againLabel: 'Find another table',
+        extra: [{ label: 'Play on this device', onClick: showSetup }] });
+      return;
+    }
+    Kit.toast(host + ' closed the table');
+    goLobby();
+  }
+
+  // ── A note over the screen (waiting for the other player) ──
+  function netCard(title, sub, btns) {
+    if (!ovEl) return;
+    ovEl.innerHTML = '';
+    ovEl.appendChild(el('div', { class: 'card' }, [el('h2', { text: title }), el('p', { text: sub })].concat((btns || []).map(function (b) {
+      return el('button', { type: 'button', class: 'btn btn-ghost btn-block', text: b.label, onclick: b.fn });
+    }))));
+    ovEl.classList.add('show'); NET.card = title;
+  }
+  function netCardOff() { if (ovEl && NET.card) { ovEl.classList.remove('show'); ovEl.innerHTML = ''; } NET.card = ''; }
+
+  // ── Leaving ──
+  function leaveOnline(ask) {
+    if (!NET.mode) { closeLobby(); return; }
+    if (ask) {
+      var host = NET.mode === 'host';
+      Kit.confirm(view === 'game' ? 'Leave the game?' : 'Leave the table?', { ok: 'Leave', body: host ? 'Your table closes, and the game ends for ' + (NET.them || 'the other player') + ' too.' : 'You can join ' + (NET.hostName || 'the host') + '’s table again to take your cannon back.' })
+        .then(function (ok) { if (ok) { leaveOnline(false); showSetup(); } });
+      return;
+    }
+    hostTimer(false);
+    var t = NET.table, p = NET.peer;
+    NET.mode = null; NET.table = null; NET.peer = null; NET.wait = null; NET.themDev = null; NET.them = ''; NET.evq = []; NET.stall = false; NET.gf = false;
+    if (t) t.close();
+    if (p) p.close();   // (no reason: this device is the one leaving, so the goodbye goes out)
+    if (G && G.net) { G.ended = true; ufoSoundOff(); MUS.stop(); }
+    ME = 0;
+    netCardOff(); closeLobby();
+  }
+
   // ═══ Test hooks ══════════════════════════════════════════════════════════
   window.__inv = {
     get: function () {
@@ -1783,7 +2214,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     shield: function (n) { G.shield = n; },
     score: function (n, i) { G.pl[i || 0].score = n; },
     addScore: function (n, i) { addScore(i || 0, n); },
-    laser: function (x, y) { lasers.push({ x: x, y: y, vx: 0, vy: 140, t: 0, dead: false }); },
+    laser: function (x, y) { lasers.push({ id: ++oid, x: x, y: y, vx: 0, vy: 140, t: 0, dead: false }); },
     addBomb: function (x, y) { return addBomb(x, y, false); },
     clearBombs: function () { bombs = []; },
     freezeBombs: function () { bombs.forEach(function (b) { b.vx = b.vy = 0; }); },
@@ -1793,12 +2224,16 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     ufo: function () { G.ufoT = 0; },
     die: function () { G.bubble = 0; G.phase = 'play'; G.shield = 1; hitBase(WW / 2, 99); },
     auto: function (on) { setAuto(on); },
-    save: save, pause: pauseGame, resume: resumeGame, fit: function () { fit(true); }
+    save: save, pause: pauseGame, resume: resumeGame, fit: function () { fit(true); },
+    net: function () { return { mode: NET.mode, code: NET.table && NET.table.code, peer: !!NET.peer, them: NET.them, host: NET.hostName, rtt: NET.peer && NET.peer.rtt, ww: NET.ww, gf: NET.gf, me: ME }; },
+    host: function (n) { return hostTable(n || 'Tim'); }, join: function (c, n) { return joinTable(c, n || 'Sam'); }, start: function () { hostStart(); }, lobby: function () { goLobby(); }, leave: function () { leaveOnline(false); },
+    fire: function (on) { input.fire = !!on; }
   };
 
   // ═══ Boot ════════════════════════════════════════════════════════════════
   var saved = loadSave();
-  if (saved) startGame({ players: saved.pl }, saved);
+  if (/[?&]online=1/.test(location.search)) goLobby();
+  else if (saved) startGame({ players: saved.pl }, saved);
   else showSetup();
 })();
 </script>
