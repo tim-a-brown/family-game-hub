@@ -35,7 +35,7 @@
 .pl .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.1;}
 .pl .nm{font-weight:800;font-size:.8rem;color:var(--text-2);line-height:1.1;text-wrap:balance;overflow-wrap:break-word;hyphens:auto;}   /* (a long name takes two lines, not cut) */
 .pl.on .nm{color:var(--text);}
-.pl.me .nm::after{content:" · you";font-weight:700;color:var(--text-3);}
+.pl.me .nm::after{content:"YOU";margin-left:5px;padding:0 4px;border-radius:4px;background:var(--w08);font-size:.6rem;font-weight:900;letter-spacing:.06em;color:var(--text-3);vertical-align:1px;}   /* (a tag of its own) */
 .pl .pt{font-family:var(--display);font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.05;}
 .pl .think{position:absolute;right:6px;top:4px;display:none;color:var(--c);}
 .pl.busy .think{display:block;}
@@ -166,6 +166,7 @@
 .sc-msg .err{color:var(--red);}
 .sc-msg .bingo{font-family:var(--display);color:var(--yellow);font-size:1.05rem;letter-spacing:.03em;}
 .sc-msg .last b{color:var(--text);}
+.sc-msg .last{display:block;}   /* (the last move on a line of its own) */
 .sc-rackwrap{position:relative;padding:0 2px;}
 .sc-rack{position:relative;display:flex;justify-content:center;align-items:flex-end;gap:calc(var(--rt) * .1);min-height:calc(var(--rt) + 22px);padding:8px 10px 14px;border-radius:12px 12px 8px 8px;
   background:var(--grain) 30px 10px/220px 220px,linear-gradient(180deg,var(--wood-a,#9a6233),var(--wood-b,#64391a));
@@ -1199,7 +1200,7 @@
     var t = el('span', { class: 'turn', style: { '--c': col(S.turn) } }, [el('span', { class: 'dot' }), el('span', { text: txt })]);
     m.appendChild(t);
     var lm = lastMoveText(), logShown = V.log && V.log.clientHeight > 30;
-    if (lm && !(p.cpu && (busy || S.mode === 'online')) && !logShown) m.appendChild(el('span', { class: 'last', text: '· ' + lm }));
+    if (lm && !(p.cpu && (busy || S.mode === 'online')) && !logShown) m.appendChild(el('span', { class: 'last', text: lm }));
   }
   function paintActs() {
     if (!V.acts) return;
@@ -1716,7 +1717,7 @@
     if (best && sub) {
       var row = el('div', { class: 'bestw', style: { '--n': String(best.m.length) } });
       best.m.split('').forEach(function (L, k) { var t = tileEl(L); t.style.animationDelay = (again ? 0 : 0.5 + k * 0.08) + 's'; row.appendChild(t); });
-      sub.parentNode.insertBefore(el('div', { class: 'bestb' }, [row, el('small', { text: 'Best play · ' + nm(best.p) + ' · ' + best.s + ' points' })]), sub.nextSibling);
+      sub.parentNode.insertBefore(el('div', { class: 'bestb' }, [row, el('small', { text: nm(best.p) + ' made the best play, for ' + best.s + ' points' })]), sub.nextSibling);
     }
   }
   function bestPlay() { var b = null; S.log.forEach(function (e) { if (e.k === 'play' && (!b || e.s > b.s)) b = e; }); return b; }

@@ -662,8 +662,8 @@
   function P(id) { return S.P[id]; }
   function nm(id) { var p = S.P[id]; if (!p) return '?'; return p.name || (p.role === 'p' ? 'Pitcher ' + p.no : 'Hitter ' + p.no); }
   function ini(id) { var n = nm(id); var m = /([A-Za-z])[a-z']*\s*$/.exec(n); return /\d/.test(n.slice(-1)) ? n.slice(-1) : (m ? m[1].toUpperCase() : n.charAt(0)); }
-  function hline(p) { if (!p) return ''; var s = fmtAvg(p.avg) + ' · ' + (p.hr || 0) + ' HR'; if (p.sb != null && p.sbSet) s += ' · ' + p.sb + ' SB'; return s; }
-  function pline(p) { if (!p) return ''; var s = fmtEra(p.era) + ' ERA · ' + (p.so || 0) + ' K'; if (p.ipSet) s += ' · ' + p.ip + ' IP'; return s; }
+  function hline(p) { if (!p) return ''; var s = fmtAvg(p.avg) + ' with ' + (p.hr || 0) + ' HR'; if (p.sb != null && p.sbSet) s += ' and ' + p.sb + ' SB'; return s; }   // (".312 with 4 HR and 2 SB")
+  function pline(p) { if (!p) return ''; var s = fmtEra(p.era) + ' ERA with ' + (p.so || 0) + ' K'; if (p.ipSet) s += ' in ' + p.ip + ' IP'; return s; }
   function kindTag(p) { return { rookie: 'Rookie', kid: 'Sandlot kid', pbat: 'Pitcher batting', emergency: 'Hitter pitching' }[p.kind] || ''; }
   function spd(id) { return ENG.hit(S.P[id]).sp; }
   function hv(id) {   // run value of a hitter against an average pitcher
@@ -833,9 +833,9 @@
     }
     if (!derby) {
       var lrows = T.lineup.map(function (id, i) { return slotRow(t, 'lineup', i, id, String(i + 1), 'Batting ' + ord(i + 1), ro); });
-      wrap.appendChild(box('Lineup', ro ? 'batting order' : 'AVG · HR · SB from the back', lrows));
+      wrap.appendChild(box('Lineup', ro ? 'batting order' : 'Average, home runs and steals from the back of the card', lrows));
       var prows = T.pitchers.map(function (id, i) { return slotRow(t, 'pitchers', i, id, i ? 'R' : 'S', i ? 'Reliever' : 'Starting pitcher', ro); });
-      wrap.appendChild(box('Pitchers', 'ERA · SO · IP', prows));
+      wrap.appendChild(box('Pitchers', 'ERA, strikeouts and innings', prows));
       var brows = T.bench.map(function (id, i) { return slotRow(t, 'bench', i, id, 'B', 'Bench', ro); });
       if (!ro && T.bench.length < 6) brows.push(slotRow(t, 'bench', T.bench.length, null, '+', 'Add a bench card'));
       wrap.appendChild(box('Bench', ro ? 'pinch hitters' : 'extra hitters, for pinch hitting', brows.length ? brows : [el('div', { class: 'tk-none', text: 'No bench cards' })]));
@@ -1159,7 +1159,7 @@
       found.forEach(function (pl) {
         var sp = span(pl), st = role === 'p' && pl.ps ? 'Pitcher' : seasons(pl, 'h').length ? (function () { var c = {}; seasons(pl, 'h').forEach(function (s) { if (s.pos) c[s.pos] = (c[s.pos] || 0) + s.g; }); var b = '', n = 0; for (var k in c) if (c[k] > n) { n = c[k]; b = k; } return b || (pl.ps ? 'Pitcher' : ''); })() : 'Pitcher';
         results.appendChild(el('button', { type: 'button', class: 'ke-hit', onclick: function () { choose(pl); } }, [
-          el('b', { text: pl.f + ' ' + pl.l }), el('small', { text: (sp ? sp.from + (sp.to > sp.from ? '–' + sp.to : '') : '') + ' · ' + teamName(mainTeam(pl)) + (st ? ' · ' + st : '') })]));
+          el('b', { text: pl.f + ' ' + pl.l }), Kit.facts(el('small'), (sp ? sp.from + (sp.to > sp.from ? '–' + sp.to : '') + ' with the ' : '') + teamName(mainTeam(pl)) + (st ? ' \u00b7 ' + st : ''))]));
       });
     }
     function choose(pl) {
@@ -1178,7 +1178,7 @@
       list.slice().reverse().forEach(function (sn) {
         var on = pickedSeason === sn;
         var b = el('button', { type: 'button', class: 'ke-yr' + (on ? ' on' : ''), onclick: function () { useSeason(sn, sr); paintSeasons(); Kit.sfx('tap'); } }, [
-          el('b', { text: String(sn.y) }), el('small', { text: teamName(sn.t) }), el('small', { text: sr === 'p' ? fmtEra(sn.era) + ' · ' + sn.so + ' K' : fmtAvg(sn.avg) + ' · ' + sn.hr + ' HR' })]);
+          el('b', { text: String(sn.y) }), el('small', { text: teamName(sn.t) }), el('small', { text: sr === 'p' ? fmtEra(sn.era) + ' ERA with ' + sn.so + ' K' : fmtAvg(sn.avg) + ' with ' + sn.hr + ' HR' })]);
         strip.appendChild(b);
       });
       seasRow.appendChild(strip);
@@ -1552,7 +1552,7 @@
     var bid = curBatter(), pid = S.pi[fldT()], bt = batT(), ft = fldT();
     var bp = S.P[bid], pp = S.P[pid], spot = (S.bat[bt] % 9) + 1;
     var bcard = el('button', { type: 'button', class: 'bc b', style: { '--tc': S.teams[bt].color }, onclick: function () { openLineup(bt); }, 'aria-label': 'At bat: ' + nm(bid) + '. Show lineup' }, [
-      el('span', { class: 'rl', text: 'At bat · ' + ord(spot) }),
+      el('span', { class: 'rl', text: 'At bat, batting ' + ord(spot) }),
       el('span', { class: 'nm', text: nm(bid) }),
       el('span', { class: 'st', text: hline(bp) }),
       el('span', { class: 'td', text: todayH(bid) })
@@ -1562,7 +1562,7 @@
     var pr = ENG.pit(pp), f = fat(pid), tired = f > pr.lim;
     var arm = el('span', { class: 'arm' + (tired ? ' tired' : '') }, [el('b', null, [el('i', { style: { width: Math.min(100, f / pr.lim * 100).toFixed(0) + '%' } })]), el('small', { text: tired ? 'Tired! ' + f + ' P' : f + ' pitches' })]);
     var pcard = el('button', { type: 'button', class: 'bc p', style: { '--tc': S.teams[ft].color }, onclick: function () { openLineup(ft); }, 'aria-label': 'Pitching: ' + nm(pid) + '. Show team' }, [
-      el('span', { class: 'rl', text: 'Pitching' + (S.teams[ft].pitchers[0] === pid ? '' : ' · relief') }),
+      el('span', { class: 'rl', text: S.teams[ft].pitchers[0] === pid ? 'Pitching' : 'Pitching in relief' }),
       el('span', { class: 'nm', text: nm(pid) }),
       el('span', { class: 'st', text: pline(pp) }),
       arm
@@ -2315,7 +2315,7 @@
       var up = t === bt && S.bat[t] % 9 === i;
       node.appendChild(el('div', { class: 'k-name', style: up ? { background: 'color-mix(in srgb,' + Tm.color + ' 22%,transparent)' } : null }, [
         el('span', { class: 'avatar sm', style: { '--c': Tm.color }, text: String(i + 1) }),
-        el('span', { class: 'grow' }, [el('span', { text: nm(id) + (S.P[id].pos ? ' · ' + S.P[id].pos : '') }), el('small', { class: 'k-plays', text: hline(S.P[id]) + ' · ' + todayH(id).replace('Today: ', 'today ') })])
+        el('span', { class: 'grow' }, [el('span', { text: nm(id) + (S.P[id].pos ? ', ' + S.P[id].pos : '') }), el('small', { class: 'k-plays', text: hline(S.P[id]) + ', ' + todayH(id).replace('Today: ', 'and today ') })])
       ]));
     });
     var extra = [];
@@ -2387,9 +2387,9 @@
       for (var i = 0; i < lim; i++) balls.appendChild(el('i', { class: (i < S.d.outs ? 'used' : '') + (i >= lim - S.d.bonus ? ' bonus' : '') }));
       var today = S.d.off ? s.off : s.hr;
       V.mu.appendChild(el('div', { class: 'bc b', style: { '--tc': S.teams[cur.t].color } }, [
-        el('span', { class: 'rl', text: S.teams[cur.t].name + (S.d.off ? ' · swing-off' : '') }),
+        el('span', { class: 'rl', text: S.teams[cur.t].name + (S.d.off ? ' in the swing-off' : '') }),
         el('span', { class: 'nm', text: nm(cur.id) }),
-        el('span', { class: 'st', text: (p.hr || 0) + ' HR on the back · ' + today + ' today' + (s.long ? ' · long ' + s.long + ' ft' : '') }),
+        el('span', { class: 'st', text: (p.hr || 0) + ' HR on the back of the card, ' + today + ' today' + (s.long ? ', and the longest went ' + s.long + ' ft' : '') }),
         balls
       ]));
     }

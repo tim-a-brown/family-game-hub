@@ -1085,7 +1085,7 @@ body.pyl-on{
       d.n.textContent = p.name;
       d.b.textContent = money(p.bank);
       var sp = spins(p);
-      d.s.innerHTML = p.out ? 'Out of the game' : sp ? '<b>' + sp + '</b> ' + (sp === 1 ? 'spin' : 'spins') + (p.passed ? ' · <em>' + p.passed + ' passed</em>' : '') : 'No spins';
+      d.s.innerHTML = p.out ? 'Out of the game' : sp ? '<b>' + sp + '</b> ' + (sp === 1 ? 'spin' : 'spins') + (p.passed ? '<em style="display:block">' + p.passed + ' passed</em>' : '') : 'No spins';
       d.w.innerHTML = whMarks(p.wh);
       d.root.classList.toggle('on', S.cur === i && (S.phase === 'board' || S.phase === 'quiz' || S.phase === 'bonus'));
       d.root.classList.toggle('buzzed', S.phase === 'quiz' && !!S.quiz && !!S.quiz.cur && S.quiz.cur.buzz === i);
@@ -1103,7 +1103,7 @@ body.pyl-on{
       st.style.removeProperty('--pc'); return;
     }
     st.style.setProperty('--pc', pc(S.cur));
-    var sp = spins(p), sub = p.passed ? p.earned + ' earned · ' + p.passed + ' passed' : '';
+    var sp = spins(p), sub = p.passed ? p.earned + ' earned and ' + p.passed + ' passed' : '';
     var prizes = p.prizes.slice(-4).map(function (z) { return '<span title="' + esc(z.n) + '">' + ART.prize(z.k) + '</span>'; }).join('');
     var m = msg != null ? msg : '';
     st.innerHTML =
@@ -1121,7 +1121,7 @@ body.pyl-on{
     var pct = Math.min(100, B.bank / JACKPOT_AT * 100);
     var prizes = B.prizes.slice(-4).map(function (z) { return '<span title="' + esc(z.n) + '">' + ART.prize(z.k) + '</span>'; }).join('');
     st.innerHTML =
-      '<div class="st-r">Bonus · level ' + Math.max(1, B.level) + ' of 5</div>' +
+      '<div class="st-r">Bonus level ' + Math.max(1, B.level) + ' of 5</div>' +
       '<div class="st-n">' + esc(p.name) + '</div>' +
       '<div class="st-b">' + money(B.bank) + '</div>' +
       '<div class="jm" title="' + money(JACKPOT_AT) + ' wins ' + money(JACKPOT) + '"><i style="width:' + pct.toFixed(1) + '%"></i><span>' + money(JACKPOT_AT) + ' = ' + money(JACKPOT) + '</span></div>' +
@@ -1880,7 +1880,7 @@ body.pyl-on{
     return new Promise(function (res) {
       var box = el('div', { class: 'k-list' }), done = false;
       var s = Kit.sheet({ title: 'Pass to who?', html: '<p class="muted">They\'re tied for the lead, so you choose.</p>', node: box, onCancel: function () { if (!done) res(-1); } });
-      rec.forEach(function (j) { box.appendChild(el('button', { type: 'button', onclick: function () { done = true; s.close(); res(j); } }, [el('span', { class: 'lbl' }, [el('span', { text: S.players[j].name + ' · ' + money(S.players[j].bank) })])])); });
+      rec.forEach(function (j) { box.appendChild(el('button', { type: 'button', onclick: function () { done = true; s.close(); res(j); } }, [el('span', { class: 'lbl' }, [el('span', { text: S.players[j].name }), el('b', { text: money(S.players[j].bank), style: { 'margin-left': 'auto' } })])])); });
     });
   }
   // to: online, who a guest chose when the lead is tied

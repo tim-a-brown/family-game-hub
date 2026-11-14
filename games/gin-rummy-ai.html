@@ -596,12 +596,12 @@
     var node = el('div', null, [revealNode(), totalsTable(S.rounds[S.rounds.length - 1]), el('div', { class: 'goalline', text: 'First to ' + S.target + ' wins' })]);
     var title = r.dead ? 'No winner' : r.gin ? (isYou(r.kn) ? 'Gin!' : S.players[r.kn].name + ' went gin') : r.undercut ? 'Undercut!' : (isYou(r.kn) ? 'You knocked' : S.players[r.kn].name + ' knocked');
     Kit.sheet({
-      title: title + ' · hand ' + S.hand, node: node, dismissible: false,
+      title: title + ' in hand ' + S.hand, node: node, dismissible: false,
       actions: [{ label: over ? 'See the result' : 'Deal next hand', primary: true, onClick: function () { over ? finish() : newHand(); } }]
     });
   }
   function showScores() {
-    Kit.sheet({ title: 'Scores · hand ' + S.hand, node: el('div', null, [totalsTable(null), el('div', { class: 'goalline', text: 'First to ' + S.target + ' · 25 per hand won · 100 game bonus' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+    Kit.sheet({ title: 'Scores after hand ' + S.hand, node: el('div', null, [totalsTable(null), el('div', { class: 'goalline', text: 'The first to ' + S.target + ' wins. Each hand won adds 25, and winning the game adds 100.' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
   }
 
   // History detail: the last hand laid down (melds as 'Ah,2h,3h' strings) and how each hand ended
@@ -710,7 +710,7 @@
       if (S.stock.length > 1) sw.appendChild(Kit.card('', '', { back: true, cls: 'stk2' }));
       sw.appendChild(Kit.card('', '', { back: true, cls: 'top' }));
     } else sw.appendChild(Kit.card('', '', { cls: 'slot' }));
-    stockEl.appendChild(sw); stockEl.appendChild(el('span', { class: 'lbl', text: 'Stock · ' + S.stock.length }));
+    stockEl.appendChild(sw); stockEl.appendChild(el('span', { class: 'lbl', text: S.stock.length + ' in the stock' }));
     var dw = el('div', { class: 'slotwrap' });
     var d = S.discard;
     if (d.length > 1) dw.appendChild(Cards.el(d[d.length - 2], { cls: 'under' }));
@@ -838,7 +838,7 @@
       }
       var c = byId(S.hands[S.me], S.sel), dw = canKnockWith(S.sel);
       barEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Discard ' + lab(c), onclick: function () { snapshot(); discardCard(S.me, S.sel, false); } }));
-      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock · ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(S.me, id, true); } }));
+      if (dw <= 10) barEl.appendChild(el('button', { type: 'button', class: 'btn ' + (dw === 0 ? 'btn-yellow' : 'btn-primary'), html: dw === 0 ? Kit.icon('star') + '<span>Gin!</span>' : '<span>Knock with ' + dw + '</span>', onclick: function () { var id = S.sel; snapshot(); discardCard(S.me, id, true); } }));
       return;
     }
     barEl.appendChild(el('span', { class: 'hint', text: S.turn >= 0 && (S.players[S.turn].cpu || NET) ? S.players[S.turn].name + ' is thinking…' : '' }));

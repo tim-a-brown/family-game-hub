@@ -1122,8 +1122,8 @@ function GoEngine() {
     node.style.setProperty('--c', c === BLACK ? '#a9a9b3' : '#f4f1e8');
     var sub;
     if (on && p.cpu && S.busy) sub = '<span class="think">Thinking <i></i><i></i><i></i></span>';
-    else if (S.phase === 'play' && S.lastPass === c) sub = cname(c) + ' · passed';
-    else sub = cname(c) + (S.hcap >= 2 && c === BLACK ? ' · ' + S.hcap + ' handicap' : '') + (c === WHITE ? ' · komi ' + S.komi : '') + (on ? ' · to play' : '');
+    else if (S.phase === 'play' && S.lastPass === c) sub = cname(c) + ' passed';
+    else sub = cname(c) + (on ? ' to play' : '') + (S.hcap >= 2 && c === BLACK ? ', with ' + S.hcap + ' handicap stones' : '') + (c === WHITE ? ', with komi ' + S.komi : '');
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok ' + (c === BLACK ? 'b' : 'w') }));
     node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(NET && NET.seat >= 0 && S.players[NET.seat] === p ? 'You' : p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
@@ -1205,7 +1205,7 @@ function GoEngine() {
   }
   function paintInfo(sc) {
     col.classList.toggle('end', S.phase !== 'play');
-    infoEl.textContent = S.n + '×' + S.n + ' · ' + RULE_NAME[S.rule] + ' · Komi ' + S.komi + (S.hcap >= 2 ? ' · Handicap ' + S.hcap : '') + (S.phase === 'play' ? ' · Move ' + (S.mv + 1) : '');
+    infoEl.textContent = (S.phase === 'play' ? 'Move ' + (S.mv + 1) + ' on a ' : 'A ') + S.n + '×' + S.n + ' board with ' + RULE_NAME[S.rule].toLowerCase() + ' rules, komi ' + S.komi + (S.hcap >= 2 ? ' and a handicap of ' + S.hcap : '');
     scw.innerHTML = '';
     if (S.phase === 'play') return;
     var card = el('div', { class: 'sc paper' });
@@ -1217,7 +1217,7 @@ function GoEngine() {
     }
     var h = '<table><thead><tr><th></th><th>Territory</th><th>' + (area ? 'Stones' : 'Prisoners') + '</th><th>' + (sc.hc ? 'Komi + hcp' : 'Komi') + '</th><th>Total</th></tr></thead><tbody>' + cell(BLACK) + cell(WHITE) + '</tbody></table>';
     var lead = sc.total[1] > sc.total[2] ? BLACK : WHITE, m = Math.abs(sc.total[1] - sc.total[2]);
-    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' || NET && S.players[NET.seat] === pl(lead) ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' · ' + RULE_NAME[S.rule].toLowerCase() + '</div>';
+    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' || NET && S.players[NET.seat] === pl(lead) ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' under ' + RULE_NAME[S.rule].toLowerCase() + ' rules</div>';
     card.innerHTML = h;
     scw.appendChild(card);
   }

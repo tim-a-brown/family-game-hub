@@ -181,7 +181,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
   }
 
   // "Mulligan's Island · Pirate" for a venue with several courses
-  function label(c) { return c ? c.name + (c.sub ? ' · ' + c.sub : '') : ''; }
+  function label(c) { return c ? c.name + (c.sub ? ': ' + c.sub : '') : ''; }
 
   // Step 1: which place? (played before, search, near me, or just type a name)
   function pickCourse(onPick) {
@@ -417,7 +417,7 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
         var out = el('output', { class: v == null ? 'empty' : '', text: v == null ? '–' : String(v) });
         var row = el('div', { class: 'prow' + (v === 1 ? ' ace' : '') }, [
           el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: p.name.charAt(0).toUpperCase() }),
-          el('span', { class: 'nm', html: Kit.esc(p.name) + '<small>' + total(i) + ' total · ' + vsPar(i) + '</small>' }),
+          el('span', { class: 'nm', html: Kit.esc(p.name) + '<small>' + total(i) + ' total, ' + vsPar(i) + '</small>' }),
           el('span', { class: 'stk' }, [
             el('button', { type: 'button', 'aria-label': 'One less stroke for ' + p.name, text: '−', onclick: function () { if (v == null) return; setStroke(i, v <= 1 ? null : v - 1); } }),
             out,
@@ -491,12 +491,12 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
       var v = venues[k], c = v.course;
       var r = el('div', { class: 'rec' }, [
         el('b', { text: c ? c.name : 'No course picked' }),
-        el('small', { text: (c && c.place ? c.place + ' · ' : '') + 'last played ' + new Date(v.last).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) })
+        el('small', { text: (c && c.place ? c.place + ', ' : '') + 'last played ' + new Date(v.last).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) })
       ]);
       Object.keys(v.courses).forEach(function (ck) {
         var g = v.courses[ck], bests = Object.keys(g.best).map(function (x) { return g.best[x]; }).sort(function (a, b) { return a.score - b.score; });
-        r.appendChild(el('div', { class: 'best', html: '<b style="display:inline">' + Kit.esc(g.sub || (Object.keys(v.courses).length > 1 ? 'Main course' : 'Course')) + '</b> · ' + g.rounds + (g.rounds === 1 ? ' round' : ' rounds') +
-          '<br>Best: ' + Kit.esc(bests.slice(0, 4).map(function (b) { return b.name + ' ' + b.score + (b.holes ? ' (' + b.holes + ' holes)' : ''); }).join(' · ')) }));
+        r.appendChild(el('div', { class: 'best', html: '<b style="display:inline">' + Kit.esc(g.sub || (Object.keys(v.courses).length > 1 ? 'Main course' : 'Course')) + '</b>, ' + g.rounds + (g.rounds === 1 ? ' round' : ' rounds') +
+          '<br>Best: ' + Kit.esc(bests.slice(0, 4).map(function (b) { return b.name + ' ' + b.score + (b.holes ? ' over ' + b.holes + ' holes' : ''); }).join(', ')) }));
       });
       if (c && c.lat != null) r.appendChild(el('a', { href: 'https://maps.apple.com/?ll=' + c.lat + ',' + c.lon + '&q=' + encodeURIComponent(c.name), target: '_blank', rel: 'noopener', class: 'btn btn-soft btn-sm', style: { 'margin-top': '8px' }, html: PIN + '<span>Open in Maps</span>' }));
       box.appendChild(r);

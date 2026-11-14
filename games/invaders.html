@@ -1134,7 +1134,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     deckEl = el('div', { class: 'inv-deck' }, [cellA, midEl, cellB]);
     topL = el('div', { class: 'inv-top' }); topR = el('div', { class: 'inv-top' });
     sideL = el('div', { class: 'inv-side l' }, [topL]); sideR = el('div', { class: 'inv-side r' }, [topR]);
-    hintEl = el('div', { class: 'ar-hint', text: NET.mode ? 'The mouse aims, and a click or Space fires. Arrows or WASD steer, F turns auto-shoot on or off.' : TWO() ? 'Red: WASD + Space (or the mouse) · Blue: arrows + Enter · F auto-shoot · P pause' : 'Mouse aims · click or Space fires · arrows / WASD steer · F auto-shoot · P pause' });
+    hintEl = el('div', { class: 'ar-hint', text: NET.mode ? 'The mouse aims, and a click or Space fires. Arrows or WASD steer, F turns auto-shoot on or off.' : TWO() ? 'Red steers with WASD and fires with Space or the mouse, and Blue uses the arrows and Enter. F turns auto-shoot on or off, and P pauses.' : 'The mouse aims, and a click or Space fires. The arrows or WASD steer, F turns auto-shoot on or off, and P pauses.' });
     app.appendChild(sideL); app.appendChild(scrEl); app.appendChild(sideR); app.appendChild(deckEl); app.appendChild(hintEl);
     bindInput();
     syncControls();
@@ -1147,7 +1147,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
   function syncControls() {
     if (autoEl) { autoEl.classList.toggle('on', SET.auto); autoEl.setAttribute('aria-pressed', SET.auto ? 'true' : 'false'); }
     if (!SZ.length) return;
-    var rev = SET.invX && SET.invY ? ' · reversed' : SET.invX ? ' · left/right reversed' : SET.invY ? ' · up/down reversed' : '';
+    var rev = SET.invX && SET.invY ? ', reversed' : SET.invX ? ', left and right reversed' : SET.invY ? ', up and down reversed' : '';
     if (TWO() && !NET.mode) { SZ[0].lab.textContent = 'P1 ' + G.pl[0].name; SZ[1].lab.textContent = 'P2 ' + G.pl[1].name; }
     else SZ[0].lab.textContent = 'Aim' + rev;
     if (NET.mode && G && SZ[0]) SZ[0].zone.classList.toggle('c2', ME === 1);   // (your joystick's knob in your cannon's color)
@@ -1317,7 +1317,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
     if (view !== 'game' || paused || !G || G.ended || G.phase === 'dying' || G.phase === 'over' || G.phase === 'choose' || G.net) return;
     paused = true; resetInput(); ufoSoundOff(); MUS.stop(true);
     if (AC && AC.state === 'running') try { AC.suspend(); } catch (e) {}
-    showOverlay('Paused', 'Stage ' + G.wave + ' · ' + fmt(team()) + ' points', 'Resume');
+    showOverlay('Paused', fmt(team()) + ' points on stage ' + G.wave, 'Resume');
     save();
     draw();
   }
@@ -1363,7 +1363,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:2
       startWave(saved.wave);
       bombs = []; for (var i = 0; i < clamp(saved.bombs | 0, 0, BOMB_CAP); i++) addBomb(null, null, true);
       G.cp.bombs = bombs.length;
-      paused = true; showOverlay('Welcome back', 'Stage ' + G.wave + ' · ' + fmt(team()) + ' points', 'Continue');
+      paused = true; showOverlay('Welcome back', fmt(team()) + ' points on stage ' + G.wave, 'Continue');
     } else startWave(1);
     draw();
   }
