@@ -140,7 +140,10 @@
   }
 
   // ═══ The event: one layer that carries a new Guide, each pack in turn, and the way out ═══════════════════
-  // o = {guides: [{g, starter}], first: [ids of the packs to open first]}
+  // o = {guides: [{g, starter} | a guide entry from AnoriaColl.gameOver: {g, why} or {pick: true} for the sphere's
+  //      Guide still to be chosen], first: [ids of the packs to open first], only (the Guides alone: the packs wait),
+  //      onward (the last button's words then)}. A guide entry is marked `met` once its moment is shown, and a chosen
+  //      one has its g, cards and doms filled in, so the results card knows.
   let running = false;   // (one event at a time: a second tap on the way in doesn't start another over it)
   function run(o, done) {
     if (running) return; running = true;
@@ -163,8 +166,9 @@
     }
     function next() {
       if (!alive) return;
-      stage.className = 'pk-stage'; stage.innerHTML = ''; sc.title.textContent = '';
+      stage.className = 'pk-stage'; stage.innerHTML = ''; sc.title.textContent = ''; sc.el.querySelectorAll(':scope > .gj-rays').forEach(n => n.remove());
       if (guides.length) return guide(guides.shift());
+      if (o.only) return leave();
       if (waiting().length) return sealed();
       if (!opened && !hadGuide) { if (window.AnoriaRewards) { leave(() => window.AnoriaRewards.path(done)); return; } return nothing(); }
       leave();
@@ -172,10 +176,12 @@
 
     // ── A Guide steps forward: the one you chose to begin with, or one who joins after a win ──
     function guide(x) {
+      if (x.pick && !x.g) return choice(x);
+      if (!x.starter) return arrival(x);
       const g = x.g, G = TX.GUIDES[g], packs = waiting().length, set = Coll.setCards(g);
       dots.innerHTML = ''; dots.removeAttribute('aria-label');
       const card = el('button', { type: 'button', class: 'pk-g-card', 'aria-label': 'Read ' + G.n + '\'s card', onclick: () => A.openView(g) }, [A.cardEl(g)]);
-      const label = x.starter ? 'See your first deck' : guides.length ? 'Meet ' + TX.GUIDES[guides[0].g].n : packs ? plural(packs, 'Open your pack', 'Open your packs') : 'Done';
+      const label = x.starter ? 'See your first deck' : onLabel();
       const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: label, onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); if (x.starter) formDeck(g); else next(); } });
       // (a Guide who joins later: the set that comes with them, as a row of its cards, a tap away from reading)
       const doms = (x.doms || []).length;
@@ -194,6 +200,108 @@
       if (!calm()) {
         setTimeout(() => { if (alive && m.isConnected) Kit.confetti({ colors: GOLD.concat([col(g)]), count: 150 }); }, 380);
         setTimeout(() => { if (!alive || !m.isConnected) return; const r = card.getBoundingClientRect(); Kit.sfx('sparkle'); bits(fx, r.left + r.width / 2, r.top + r.height / 2, 30, GOLD.concat([col(g)]), { d: r.width * .9, ms: 1000 }); }, 620);
+      }
+      setTimeout(() => { if (alive && m.isConnected) try { go.focus({ preventScroll: true }); } catch (e) {} }, 900);
+    }
+
+    // ── The sphere brings a Guide, and you choose who: the Guides who haven't joined you yet, each with their set and
+    // power. Leaving without choosing keeps the choice waiting (the collection's `pick`): Arvela asks again. ──
+    function choice(x) {
+      const P = Coll.pending();
+      if (!P.n) return next();   // (chosen already, on another device)
+      if (P.from.length === 1) return chosen(x, P.from[0]);
+      dots.innerHTML = ''; dots.removeAttribute('aria-label');
+      const R = window.AnoriaRewards, head = R ? R.sphere({ lit: Coll.SIGNS, size: 52, cls: 'pk-ch-sph' }) : el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: '', draggable: 'false' });
+      const root = chooser({ keys: P.from, inSc: true, head: head, title: 'Choose who joins you',
+        sub: 'The sphere came round. The Guide you choose joins your company, with their set of 20 cards.',
+        see: g => { const set = Coll.setCards(g), G = TX.GUIDES[g]; return ['See the ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set', () => A.browse(set, { title: Kit.poss(G.n) + ' set', sub: set.length + ' cards' })]; },
+        go: g => 'Welcome ' + TX.GUIDES[g].n,
+        commit: (g, again) => { root.classList.add('gone'); setTimeout(() => chosen(x, g, again), calm() ? 0 : 220); } });
+      stage.classList.add('choosing'); stage.appendChild(root);
+      Kit.sfx('whoosh');
+    }
+    function chosen(x, g, again) {
+      if (!alive) return;
+      const j = Coll.join(g);
+      if (!j) { if (again) again(); return Coll.pending().n ? choice(x) : next(); }   // (that Guide joined on another device meanwhile)
+      x.g = j.g; x.cards = j.cards; x.doms = j.doms; x.chose = true;
+      stage.className = 'pk-stage'; stage.innerHTML = ''; sc.el.querySelectorAll(':scope > .gj-rays').forEach(n => n.remove());
+      arrival(x);
+    }
+    // what the button under a Guide says: whoever comes next, or the way on
+    const onLabel = () => guides.length ? (guides[0].g ? 'Meet ' + TX.GUIDES[guides[0].g].n : 'Choose your next Guide')
+      : o.only ? (o.onward || 'Done') : waiting().length ? plural(waiting().length, 'Open your pack', 'Open your packs') : 'Done';
+
+    // ── A new Guide arrives (Tim, 2026-11-14: "new guide moment? yes definitely"): their card rises in the light, their
+    // name and power, and their set is dealt from the card onto their play mat, 20 cards fanned like a hand and the
+    // Domains under them, counted as they land. The mat is the one a deck they lead is played on. A tap on the moment
+    // finishes the dealing at once; the mat and its cards are a tap away from reading on the strip. ──
+    function arrival(x) {
+      const g = x.g, G = TX.GUIDES[g]; if (!G) return next();
+      x.met = true;
+      dots.innerHTML = ''; dots.removeAttribute('aria-label');
+      const set = Coll.setCards(g), doms = Coll.DSET[g] || [], fresh = x.doms || doms, nd = doms.filter(id => fresh.indexOf(id) >= 0).length;
+      const card = el('button', { type: 'button', class: 'pk-g-card', 'aria-label': 'Read ' + Kit.poss(G.n) + ' card', onclick: e => { e.stopPropagation(); A.openView(g); } }, [A.cardEl(g)]);
+      // the set, on the Guide's mat: the cards fanned in an arc, the Domains in a row under them
+      const mat = el('span', { class: 'an-pm gj-mat', 'aria-hidden': 'true' }); if (A.matFill) A.matFill(mat, g, 'gj');
+      // (the fan: each card's place along the mat, its drop toward the ends and its turn, in units of the mat's width)
+      const slots = set.map((k, i) => { const h = (set.length - 1) / 2 || 1, t = (i - h) / h, a = t * 15;
+        const n = el('span', { class: 'gj-c', style: { '--x': (5 + i * (78 / (set.length - 1 || 1))).toFixed(2), '--y': (3 * t * t).toFixed(2), '--a': a.toFixed(1), '--i': i } }, [A.cardEl(k, { mini: true })]); n._a = a; return n; });
+      const tiles = doms.map((id, j) => { const t = el('span', { class: 'gj-d' + (fresh.indexOf(id) < 0 ? ' had' : ''), style: { '--j': j, '--n': doms.length } }); const im = A.artImg(id, true); if (im) t.appendChild(im); return t; });
+      const tray = el('button', { type: 'button', class: 'gj-tray', 'aria-label': 'Read the ' + set.length + ' cards of ' + Kit.poss(G.n) + ' set',
+        onclick: e => { e.stopPropagation(); Kit.sfx('tap'); A.browse(set, { title: Kit.poss(G.n) + ' set', sub: set.length + ' cards' }); } },
+        [mat, el('span', { class: 'gj-fan' }, slots), el('span', { class: 'gj-doms' }, tiles)]);
+      const nC = el('b', { text: '0' }), nD = el('b', { text: '0' }), MT = (A.MATS || {})[g];
+      const tally = el('div', { class: 'gj-tally' }, [el('span', { class: 'gj-ts' }, [
+        el('span', { class: 'gj-t' }, [nC, el('small', { text: 'cards' })]),
+        el('span', { class: 'gj-t' }, [nD, el('small', { text: nd === doms.length ? 'Domains' : nd === 1 ? 'new Domain' : 'new Domains' })])]),
+        MT ? el('span', { class: 'gj-mt' }, [el('small', { text: 'Play mat' }), el('span', { text: MT.n })]) : null]);
+      const kick = x.why === 'call' ? 'A calling is met' : x.chose ? 'You chose' : 'The sphere came round';
+      const callSay = x.why === 'call' && Coll.CALLS[g] ? Coll.CALLS[g].say.replace('#', Coll.CALLS[g].need) : '';
+      const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg gj-go', text: onLabel(), onclick: e => { e.stopPropagation(); Kit.sfx('tap'); Kit.haptic('light'); next(); } });
+      const m = el('div', { class: 'pk-moment gj', style: { '--f': col(g) } }, [el('div', { class: 'gj-sc' }, [
+        el('div', { class: 'gj-a' }, [el('div', { class: 'pk-g-show' }, [el('i', { class: 'pk-halo' }), card])]),
+        el('div', { class: 'gj-b' }, [
+          el('div', { class: 'gj-k' }, [el('i', { class: 'gj-kd' }), el('span', { text: kick }), el('i', { class: 'gj-kd' })]),
+          el('h2', { class: 'gj-n', text: G.n }),
+          callSay ? el('p', { class: 'gj-call', text: callSay }) : null,
+          el('div', { class: 'gj-pow' }, [el('span', { class: 'gj-cap', text: Kit.poss(G.n) + ' power' }), el('p', { text: A.DW(G.tx) })]),
+          tray, tally,
+          el('div', { class: 'gj-dock' }, [go])])])]);
+      // (the light turning behind the Guide lies on the layer itself, under its header and its words, centered on the
+      // card, so it spreads across the whole screen and never makes the words scroll)
+      const rays = el('i', { class: 'pk-rays gj-rays' }); sc.el.insertBefore(rays, sc.el.firstChild);
+      const sc0 = m.querySelector('.gj-sc'), aim = () => { if (!m.isConnected) { removeEventListener('resize', aim); rays.remove(); return; } const a = card.getBoundingClientRect(), b = sc.el.getBoundingClientRect();
+        rays.style.left = (a.left + a.width / 2 - b.left).toFixed(1) + 'px'; rays.style.top = (a.top + a.height / 2 - b.top).toFixed(1) + 'px'; rays.style.setProperty('--rw', a.width.toFixed(1) + 'px'); };
+      addEventListener('resize', aim); sc0.addEventListener('scroll', aim, { passive: true });
+      stage.classList.add('moment'); stage.appendChild(m); aim(); setTimeout(aim, 1100);
+      // the dealing: each card flies from the Guide's card to its place in the fan, then the Domains drop on the mat
+      let dealt = false; const timers = [], later = (fn, ms) => timers.push(setTimeout(() => { if (alive && m.isConnected) fn(); }, ms));
+      function finish() {
+        if (dealt) return; dealt = true; timers.forEach(clearTimeout);
+        tray.classList.add('open', 'done'); slots.concat(tiles).forEach(n => { n.classList.add('in'); (n.getAnimations ? n.getAnimations({ subtree: true }) : []).forEach(a => { try { a.finish(); } catch (e) {} }); });
+        nC.textContent = String(set.length); nD.textContent = String(nd); go.classList.add('shine');
+      }
+      m.addEventListener('click', e => { if (!dealt && !e.target.closest('button')) finish(); });
+      if (calm()) { finish(); Kit.sfx('win'); Kit.haptic('success'); }
+      else {
+        Kit.sfx('whoosh');
+        later(() => { Kit.sfx('win'); Kit.haptic('success'); }, 260);
+        later(() => Kit.confetti({ colors: GOLD.concat([col(g)]), count: 150 }), 420);
+        later(() => { const r = card.getBoundingClientRect(); Kit.sfx('sparkle'); bits(fx, r.left + r.width / 2, r.top + r.height / 2, 30, GOLD.concat([col(g)]), { d: r.width * .9, ms: 1000 }); }, 680);
+        later(() => { tray.classList.add('open'); Kit.sfx('slide'); }, 1150);
+        const T0 = 1550, STEP = 75;
+        slots.forEach((n, i) => later(() => {
+          const c = card.getBoundingClientRect(), r = n.getBoundingClientRect(), a = n._a * Math.PI / 180;
+          let dx = c.left + c.width / 2 - (r.left + r.width / 2), dy = c.top + c.height / 2 - (r.top + r.height / 2);
+          [dx, dy] = [dx * Math.cos(a) + dy * Math.sin(a), -dx * Math.sin(a) + dy * Math.cos(a)];   // (into the slot's own turn)
+          n.classList.add('in');
+          const k = n.firstChild; if (k && k.animate) k.animate([{ transform: 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px) scale(.5) rotate(-24deg)', opacity: 0 }, { opacity: 1, offset: .25 }, { transform: 'none', opacity: 1 }], { duration: 560, easing: 'cubic-bezier(.2,.85,.25,1)' });
+          later(() => { nC.textContent = String(i + 1); if (i % 3 === 0) Kit.sfx('deal', .5); if (i % 4 === 0) Kit.haptic('tick'); }, 470);
+        }, T0 + i * STEP));
+        const T1 = T0 + slots.length * STEP + 420;
+        tiles.forEach((n, j) => later(() => { n.classList.add('in'); Kit.sfx('chip', .55); if (fresh.indexOf(doms[j]) >= 0) nD.textContent = String(doms.slice(0, j + 1).filter(id => fresh.indexOf(id) >= 0).length); }, T1 + j * 110));
+        later(() => { finish(); Kit.sfx('good'); Kit.haptic('success'); }, T1 + tiles.length * 110 + 300);
       }
       setTimeout(() => { if (alive && m.isConnected) try { go.focus({ preventScroll: true }); } catch (e) {} }, 900);
     }
@@ -575,7 +683,7 @@
         if (window.AnoriaLibrary && window.AnoriaLibrary.open) foot.appendChild(btn('Library', 'btn-soft pk-b-lib', toLibrary, 'book'));
         const fin = btn('Done', more ? 'btn-soft pk-b-done' : 'btn-primary pk-b-done pk-b-main', () => leave());
         foot.appendChild(fin);
-        let nxt = null; if (more) { nxt = btn(guides.length ? 'Meet ' + TX.GUIDES[guides[0].g].n : 'Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
+        let nxt = null; if (more) { nxt = btn(guides.length ? onLabel() : 'Next pack', 'btn-primary pk-b-main', next); foot.appendChild(nxt); }
         fit(); Kit.sfx('good'); Kit.haptic('success');
         setTimeout(() => { if (alive && foot.isConnected) try { (nxt || fin).focus({ preventScroll: true }); } catch (e) {} }, 300);
       }
@@ -643,12 +751,17 @@
   // what each Guide's set is made of, in a few words
   const WORLD = { cleopatra: 'Rulers of the ancient Mediterranean', leonardo: 'Inventors and explorers', tubman: 'The road to freedom in the Americas', shakespeare: 'Poets, players and composers', suntzu: 'Generals and strategists',
     curie: 'Scientists and healers', joan: 'Rebels and revolutions', saladin: 'The Crusades and the golden age of Islam', wuzetian: 'The courts of China, Japan and Korea', akbar: 'The empires of Persia and India', mansamusa: 'The kingdoms and trade of Africa', sorjuana: 'Writers and scholars' };
-  function chooseStarter(app, done) {
-    const A = U(), DECKS = Object.keys(C.GUIDES), tiles = [];
+  // A choice among Guides: their portraits in a row, the one chosen standing large (a finger drawn across them brings
+  // the next one forward), their set and their power, and the button that chooses. The first time it is all twelve
+  // (chooseStarter); when the sphere brings a Guide it is the ones who haven't joined you yet (choice() in run()).
+  // o = {keys, title, sub, head (the node at the left of the title), see (g => [label, onClick]), go (g => label),
+  //      commit (g, again: call it to choose once more), inSc (it lies in a screen's stage, not over the page)}
+  function chooser(o) {
+    const A = U(), DECKS = o.keys, tiles = [];
     let cur = -1, busy = false;
     const hero = el('div', { class: 'pk-ch-hero' }, [el('i', { class: 'pk-ch-glow' })]);
     const info = el('div', { class: 'pk-ch-info', 'aria-live': 'polite' });
-    const row = el('div', { class: 'pk-ch-row', role: 'radiogroup', 'aria-label': 'The twelve Guides' });
+    const row = el('div', { class: 'pk-ch-row', role: 'radiogroup', 'aria-label': DECKS.length === 12 ? 'The twelve Guides' : 'The Guides you can choose' });
     const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block pk-ch-go', onclick: commit });
     DECKS.forEach((g, i) => {
       const G = TX.GUIDES[g], pic = el('span', { class: 'pic' }), im = A.artImg(g, true), bar = el('span', { class: 'bar' });
@@ -666,7 +779,7 @@
     function pick(i, user) {
       if (busy || i === cur) return;
       const fromRight = i > cur; cur = i;
-      const g = DECKS[i], G = TX.GUIDES[g], d = Coll.guideDeck(g);
+      const g = DECKS[i], G = TX.GUIDES[g];
       tiles.forEach((t, j) => { t.classList.toggle('on', j === i); t.setAttribute('aria-checked', String(j === i)); t.setAttribute('tabindex', j === i ? '0' : '-1'); });
       // the Guide steps forward, and the one who was there steps back
       hero.querySelectorAll('.pk-ch-card').forEach(old => { old.classList.add('out'); old.disabled = true; setTimeout(() => old.remove(), calm() ? 0 : 260); });
@@ -676,38 +789,62 @@
       info.innerHTML = '';
       info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' set' }), el('b', { text: WORLD[g] })]), facs]));
       info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: A.DW(G.tx) })]));
-      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the first deck\'s ' + d.cards.length + ' cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(d); } }));
+      const see = o.see(g);
+      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>' + A.esc(see[0]) + '</span>', onclick: () => { Kit.sfx('tap'); see[1](); } }));
       info.classList.remove('in'); void info.offsetWidth; info.classList.add('in');
-      go.textContent = 'Begin with ' + G.n;
+      go.textContent = o.go(g);
       if (user) { Kit.sfx('flip'); Kit.haptic('light'); }
     }
     function commit() {
       if (busy || cur < 0) return; busy = true;
-      const g = DECKS[cur];
       Kit.sfx('tap'); Kit.haptic('medium');
-      if (!Coll.chooseGuide(g)) { if (done) done(); return; }   // (already chosen, on another device)
-      root.classList.add('gone');
-      run({ guides: [{ g: g, starter: true }] }, done);
+      o.commit(DECKS[cur], () => { busy = false; });
     }
-    const root = el('div', { class: 'pk-choose' }, [
+    const root = el('div', { class: 'pk-choose' + (o.inSc ? ' in-sc' : '') }, [
       el('div', { class: 'pk-ch-in' }, [
-        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Arvela', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a set of 20 cards.' })])]),
+        el('header', { class: 'pk-ch-hd' }, [o.head, el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: o.title }), el('p', { text: o.sub })])]),
         hero, el('div', { class: 'pk-ch-side' }, [row, info, el('div', { class: 'pk-ch-dock' }, [go])])
       ])
     ]);
+    pick(0, false);
+    return root;
+  }
+  function chooseStarter(app, done) {
+    const A = U();
+    const root = chooser({ keys: Object.keys(C.GUIDES), title: 'Choose your Guide', sub: 'Each one brings a set of 20 cards.',
+      head: el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Arvela', draggable: 'false' }),
+      see: g => { const d = Coll.guideDeck(g); return ['See the first deck\'s ' + d.cards.length + ' cards', () => A.deckSheet(d)]; },
+      go: g => 'Begin with ' + TX.GUIDES[g].n,
+      commit: g => {
+        if (!Coll.chooseGuide(g)) { if (done) done(); return; }   // (already chosen, on another device)
+        root.classList.add('gone');
+        run({ guides: [{ g: g, starter: true }] }, done);
+      } });
     app.innerHTML = ''; app.appendChild(root);
     // the logo first, for a breath (a tap moves on)
     if (!calm() && !(window.AnoriaGuide && window.AnoriaGuide.justRan())) { const sp = el('div', { class: 'pk-ch-splash' }, [el('img', { src: IMG + 'logo.webp', alt: '', draggable: 'false' })]); root.appendChild(sp); sp.addEventListener('pointerdown', () => sp.remove()); setTimeout(() => sp.remove(), 1950); }
-    pick(0, false);
   }
   // (a guide object from AnoriaColl.gameOver keeps why it joined, so the moment can say so)
 
+  const isGuide = x => !!x && x.t === 'guide' && (x.pick && !x.g ? true : !!TX.GUIDES[x.g]);
   window.AnoriaPacks = {
     chooseStarter: chooseStarter,
     open: function (done) { run({}, done); },
+    // (the guide entries are passed on as they are, so a choice made or a moment shown is marked on them)
     earned: function (list, done) {
       list = list || [];
-      run({ guides: list.filter(x => x && x.t === 'guide' && TX.GUIDES[x.g]).map(x => ({ g: x.g, why: x.why, doms: x.doms })), first: list.filter(x => x && x.t === 'pack' && x.pack).map(x => x.pack.id) }, done);
+      run({ guides: list.filter(isGuide), first: list.filter(x => x && x.t === 'pack' && x.pack).map(x => x.pack.id) }, done);
+    },
+    // A finished game's new Guides, before its results card: the sphere's to choose, and any a calling brought. The
+    // packs wait for the results card's button. onward: the last button's words.
+    arrive: function (list, done, onward) {
+      const gs = (list || []).filter(isGuide); if (!gs.length) { if (done) done(); return; }
+      run({ guides: gs, only: true, onward: onward || 'See the results' }, done);
+    },
+    // The sphere's Guides still to be chosen (a page closed before the choice was made): the choice, then each arrival
+    pending: function (done) {
+      const n = Coll.pending().n; if (!n) { if (done) done(); return; }
+      run({ guides: Array.from({ length: n }, () => ({ t: 'guide', g: null, why: 'sphere', pick: true })), only: true, onward: 'Done' }, done);
     }
   };
 })();

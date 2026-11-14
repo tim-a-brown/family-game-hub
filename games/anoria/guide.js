@@ -421,7 +421,7 @@
         await L.say('The two nearest you are your side: your <b>Gate</b> and your <b>Outpost</b>.', { at: [L.row(MY_OUT), L.row(MY_GATE)], tag: ['Your Outpost', 'Your Gate'] });
         await L.say('The <b>Crossroads</b> in the middle is shared.', { at: L.row(CROSS), tag: 'The Crossroads' });
         await L.say('The far two are the other player’s side.', { at: [L.row(TH_GATE), L.row(TH_OUT)], tag: ['Their Gate', 'Their Outpost'] });
-        await L.say('Every Place has a rule of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
+        await L.say('Every Place has a power of its own, printed under its name. Tap a Place to read it.', { at: L.row(CROSS) + ' .pl-plate' });
         await L.say('You <b>hold</b> a Place when you have more Might there than the other player. Each Place you hold when a round ends scores <b>Renown</b>, and the first player to reach ' + WIN + ' wins.', { at: '.an-strip.me .st-ren' });
         await L.say('Each player has 3 <b>Seals</b>. One breaks when the other player holds your Gate at the end of a round, and a player who loses all three loses the game at once.', { at: ['.an-strip.me .st-seals', '.an-strip.opp .st-seals'] });
       } },
@@ -443,9 +443,9 @@
         await L.say('Greenwich is the one left over. It turns face down and goes under your stack, so it can still come up later in the game.', { at: '.an-hand' });
         await L.say('Sprocket has laid three Domains face down too. Now both of you roll a die, and the higher roll’s offer is laid at the Crossroads.', { at: '.an .st-go' });
         L.hush(); const fin = UI().demo.suDone(); await L.press('.an .st-go'); await fin; await L.pause(300);
-        await L.say('Your roll was higher, so the Silk Road lies at the Crossroads with your banner on it. Sprocket takes the first turn.', { at: tile(CROSS) });
+        await L.say('Your roll was higher, so the Silk Road lies at the Crossroads as your Domain, with your avatar on its lower edge. Sprocket takes the first turn.', { at: tile(CROSS) });
         await L.say('Sprocket’s offer, Thermopylae, goes to their Domain discard pile, and Sprocket’s Gate and Outpost turn face up.', { at: [tile(TH_GATE), tile(TH_OUT)] });
-        await L.say('Your banner on the Crossroads means you win ties there for as long as you have a Figure there.', { at: tile(CROSS) });
+        await L.say('The Crossroads is your Domain, so you win ties there for as long as you have a Figure there.', { at: tile(CROSS) });
       } },
     { id: 'turn', n: 'Your turn', sub: 'Cards, Spark and what carries over', art: 'copernicus',
       table: () => ({ round: 3, places: PL, me: { guide: 'cleopatra', renown: 3, hand: ['copernicus', 'compass', 'galileo', 'zhenghe'], draw: ['hypatia', 'eureka'], figs: [['hatshepsut', MY_GATE]] },
@@ -531,7 +531,7 @@
         await L.scene('guides');
         await L.say('There are ' + NUM(Object.keys(UI().C.GUIDES).length) + ' Guides, and each has a different power. You start with the one you chose, and with that Guide\'s set of ' + UI().Coll.GSET.cleopatra.length + ' cards.', { scene: 1 });
         await L.scene('guides2');
-        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you as you play. Every game you finish lights signs on a great sphere, and each time the sphere comes round it brings a pack, and on some turns a new Guide with their set.', { scene: 1 });
+        await L.say('The other ' + NUM(Object.keys(UI().C.GUIDES).length - 1) + ' join you as you play. Every game you finish lights signs on a great sphere, and each time the sphere comes round it brings a pack. On some of its turns you choose a new Guide, who joins you with their set.', { scene: 1 });
         await L.scene('guides3');
         await L.say('A new Guide is a new way to play. Each Guide also has a calling, something to do in your games that brings that Guide sooner.', { scene: 1 });
       } },
@@ -560,7 +560,7 @@
         await L.say('When the Might is tied, nobody holds the Place.', { at: L.row(MY_OUT) });
         await L.say('An empty or tied Gate stays with its owner.', { at: L.row(TH_GATE) });
         await L.round();
-        await L.say('A Place scores the same in every round of the game. The banner on a Place shows what it scores, in the color of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
+        await L.say('A Place scores the same in every round of the game. The flag on a Place shows what it scores, in the color of whoever holds it now.', { at: L.row(CROSS) + ' .pl-flag' });
         await L.say('Whoever has more Renown goes first next round, so the player behind has the last word.', { at: ['.an-strip.me .st-ren', '.an-strip.opp .st-ren'] });
         await L.say('If both players pass ' + WIN + ' in the same round, whoever has more Renown wins. The game also ends after 14 rounds, and again whoever has more Renown wins.', { at: document.querySelector('.an-felt > .dm-track') ? '.an-felt > .dm-track' : '.an-cap .cap-round' });
       } },
@@ -589,7 +589,7 @@
         await L.say('A deck is 40 cards, with one copy of a card or two. So a single card from a pack can go straight in.', { at: '.an-hand' });
         await L.say('This deck has two of Copernicus. One is on the map and the other is in your hand.', { at: [L.card('copernicus'), L.piece('copernicus')] });
         await L.play('copernicus', MY_GATE, { lit: 'Both copies of a person can stand on your side at the same time, so the second Copernicus comes into play at your Gate.', at: L.card('copernicus') });
-        await L.say('A second copy makes the card twice as likely to turn up. A pack never gives you a third copy.', { at: L.piece('copernicus') });
+        await L.say('A second copy makes the card twice as likely to turn up. A pack never gives you a copy of a card you have: each card in it is new to you, or a finish you haven’t found.', { at: L.piece('copernicus') });
       } },
     { id: 'read', n: 'Reading a card', sub: 'Every part of a card, and what it tells you', art: 'hypatia',
       table: () => ({ round: 3, places: ['globe', 'library', 'nineveh', 'seneca', 'wall'], me: { guide: 'leonardo', hand: ['galileo', 'compass', 'eureka'], figs: [['hypatia', MY_OUT], ['copernicus', MY_GATE]] },
@@ -613,7 +613,8 @@
         if (find(V + '.view-notes .ll')) await L.say('Under the card, the same Legacy Line is drawn as the table: the Library of Alexandria on your side of the board, and Hypatia coming down from your hand. The <b>?</b> says in words what the Legacy Line does.', { at: V + '.view-notes .ll-scene' });
         else if (find(V + '.view-notes')) await L.say('Under the card, each skill is written out in full.', { at: V + '.view-notes' });
         L.hush(); UI().closeView(); await L.pause(350);
-        await L.say('In a game, <b>hold your finger on any card</b> to look through the cards at that Place. Swipe up and down to go from Place to Place and to your hand, and use the buttons under a card to play it or move it.', {});
+        await L.say('In a game, <b>hold your finger on any card</b> to look closer. At a Place, the two sides face each other across its card, with the moves your Figures can make there under them.', {});
+        await L.say('Under a card you read large, the Places lie as small tiles, and the ones the card can go to are lit. Tap one to play the card there, or drag a card from your hand straight onto the map.', {});
         await L.say('Every card you have, and every one you have seen, is kept in the <b>Library</b>. You open it from the screen where you choose your deck.', {});
       } }
   ];
