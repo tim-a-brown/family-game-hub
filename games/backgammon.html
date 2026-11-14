@@ -20,7 +20,7 @@
 .btag.on{border-color:var(--yellow);background:rgba(255,200,61,.1);}
 .btag .chk{position:relative;width:30px;height:30px;flex:none;}
 .btag .nm{font-weight:900;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.btag .st{font-size:.76rem;font-weight:800;color:var(--text-3);white-space:nowrap;}
+.btag .st{font-size:.76rem;font-weight:800;color:var(--text-3);line-height:1.2;text-wrap:balance;}
 .btag.on .st{color:var(--yellow);}
 .btag .col{display:flex;flex-direction:column;line-height:1.15;min-width:0;flex:1;}
 .btag .nums{display:flex;gap:6px;flex:none;}
@@ -147,7 +147,7 @@
       '<h3>The doubling cube (optional)</h3><ul><li>Before rolling, you can <b>double</b> the stakes. The other player either <b>takes</b> (the game is now worth twice as much and they own the cube) or <b>drops</b> (and loses the game at the current value).</li>' +
       '<li>Only the cube\'s owner can double next. In a match, no doubling the game right after someone gets one point from winning (the Crawford rule).</li></ul>' +
       '<h3>How to move here</h3><p>Tap a glowing checker, then tap a gold point. To bear off, tap the glowing tray on the right.</p>' +
-      '<h3>Online</h3><p><b>Play online</b> opens a table, and the other player joins on their own device, with the match length and the cube chosen in the setup. Whoever opens the table plays White. Take your turn whenever you like: the home screen shows when it’s your roll, and when a double waits for your answer.</p>'
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the other player joins on their own device, with the match length and the cube chosen in the setup. Whoever opens the table plays White. Each of you sees the board from your own side, with your home at the bottom right, so your checkers run the same way across your screen whichever color you play. Take your turn whenever you like: the home screen shows when it’s your roll, and when a double waits for your answer.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@
   function save() {
     if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
-    if (S && S.phase !== 'over') Kit.resume.set(S.target > 1 ? 'Game ' + S.gameNo + ' · ' + S.score[0] + '–' + S.score[1] + ' (to ' + S.target + ')' : 'Game in progress');
+    if (S && S.phase !== 'over') Kit.resume.set(S.target > 1 ? 'Game ' + S.gameNo + ' of a match to ' + S.target + ', at ' + S.score[0] + '–' + S.score[1] : 'Game in progress');
   }
   function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
@@ -534,10 +534,10 @@
     if (dblSheet) dblSheet.close();
     dblSheet = Kit.sheet({
       title: (P[s].name === 'You' ? 'You offer' : P[s].name + ' offers') + ' a double',
-      html: '<p class="muted">' + Kit.esc(P[o].name) + ': <b>take</b> and play on for ' + (S.cube * 2) + ' points (you then own the cube), or <b>drop</b> and lose this game for ' + S.cube + (S.cube === 1 ? ' point' : ' points') + '.</p>',
+      html: '<p class="muted">' + (P[o].name === 'You' ? 'You can <b>take</b> and play on for ' + (S.cube * 2) + ' points, and then the cube is yours. Or you can' : Kit.esc(P[o].name) + ' can <b>take</b> and play on for ' + (S.cube * 2) + ' points, and then the cube is theirs. Or they can') + ' <b>drop</b> and lose this game for ' + S.cube + (S.cube === 1 ? ' point' : ' points') + '.</p>',
       dismissible: false,
       actions: [
-        { label: 'Take (play for ' + S.cube * 2 + ')', primary: true, onClick: function () { dblSheet = null; answerDouble(true); } },
+        { label: 'Take and play for ' + S.cube * 2, primary: true, onClick: function () { dblSheet = null; answerDouble(true); } },
         { label: 'Drop', cls: 'btn-soft', onClick: function () { dblSheet = null; answerDouble(false); } }
       ]
     });
@@ -611,7 +611,7 @@
     if (last && last.how === 'single' && last.pipsLeft <= 12) hl.push('Close finish: ' + P[1 - last.w].name + ' had only ' + last.pipsLeft + ' pips to go');
     if (S.target > 1) hl.push('Match to ' + S.target + ', won ' + S.score[w] + '–' + S.score[1 - w] + ' over ' + S.games.length + ' games');
     Kit.record(KEY, {
-      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Two players') + (S.target > 1 ? ' · match to ' + S.target : ''),
+      started: S.started, mode: S.target > 1 ? 'Match to ' + S.target + (S.mode === 'cpu' ? ' against the computer' : ' for two players') : S.mode === 'cpu' ? 'vs Computer' : 'Two players',
       players: P.map(function (p, i) { return { name: p.name, score: S.score[i], cpu: p.cpu }; }),
       winner: P[w].name,
       rounds: S.games.length > 1 ? { labels: S.games.map(function (g, i) { return 'Game ' + (i + 1); }), scores: S.games.map(function (g) { return g.row; }) } : null,
@@ -627,7 +627,8 @@
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!',
-      sub: S.target > 1 ? 'Match ' + S.score[0] + ' – ' + S.score[1] + (last2.how === 'gammon' ? ', finished with a gammon' : last2.how === 'backgammon' ? ', finished with a backgammon' : '') : (last2.how === 'gammon' ? 'With a gammon!' : last2.how === 'backgammon' ? 'With a backgammon!' : last2.how === 'drop' ? 'Double dropped' : 'All 15 checkers off') + (last2.pts > 1 ? ' · ' + last2.pts + ' points' : ''),
+      sub: S.target > 1 ? 'Match ' + S.score[0] + ' – ' + S.score[1] + (last2.how === 'gammon' ? ', finished with a gammon' : last2.how === 'backgammon' ? ', finished with a backgammon' : '') : (last2.how === 'gammon' || last2.how === 'backgammon' ? 'That was a ' + last2.how + ', worth ' + last2.pts + ' points' :
+        (last2.how === 'drop' ? 'The double was dropped' : 'All 15 checkers are off') + (last2.pts > 1 ? ', and the game was worth ' + last2.pts + ' points' : '')),
       lose: lose,
       again: function () {
         var keep = { mode: S.mode, level: S.level, cubeOn: S.cubeOn, target: S.target, players: S.players };
@@ -671,20 +672,26 @@
     g.topY = fw + pad; g.botY = H - fw - pad;
     return g;
   }
-  // column (0-11, left to right) and row (top/bottom) of point index i
-  function colOf(i) { if (i >= 12) return i <= 17 ? { c: i - 12, top: true } : { c: i - 12, top: true }; return i >= 6 ? { c: 11 - i, top: false } : { c: 11 - i, top: false }; }
+  // The seat drawn at the bottom of the board. On one device that's always White. Online each player sees the board
+  // from their own side, the way a backgammon app does: Black's device turns it top to bottom, so Black's home is at
+  // the bottom right and Black's checkers run across the screen the same way White's do on White's.
+  function bot() { return NET && NET.seat === 1 ? 1 : 0; }
+  // column (0-11, left to right) and row (top/bottom) of point index i, as this device shows it
+  function colOf(i) { var v = bot() ? 23 - i : i; return v >= 12 ? { c: v - 12, top: true } : { c: 11 - v, top: false }; }
+  // the point's number counted from the bottom player's side (White's 1 is Black's 24)
+  function ptNum(i) { return bot() ? 24 - i : i + 1; }
   function colX(c) { return c < 6 ? G.fieldL + c * G.pw : G.fieldR + (c - 6) * G.pw; }
   function checkerXY(where, s, k) {
     var cd = G.cd;
     if (where === BAR) {
       var x = G.barX + G.bw / 2, mid = G.H / 2;
-      // White's bar checkers sit in the upper half (they come back in top right), Black's lower
-      var y = s === 0 ? mid - G.mg / 2 - cd / 2 - k * cd * 0.8 : mid + G.mg / 2 + cd / 2 + k * cd * 0.8;
+      // the bottom player's bar checkers sit in the upper half (they come back in at the top right), the other's lower
+      var y = s === bot() ? mid - G.mg / 2 - cd / 2 - k * cd * 0.8 : mid + G.mg / 2 + cd / 2 + k * cd * 0.8;
       return { x: x, y: y };
     }
     if (where === OFF) {
       var tx = G.trayX + G.tw / 2, sh = Math.max(4, Math.floor(G.th / 16));
-      return s === 0 ? { x: tx, y: G.botY - 2 - k * sh - sh / 2 } : { x: tx, y: G.topY + 2 + k * sh + sh / 2 };
+      return s === bot() ? { x: tx, y: G.botY - 2 - k * sh - sh / 2 } : { x: tx, y: G.topY + 2 + k * sh + sh / 2 };
     }
     var cc = colOf(where), n = Math.max(1, own(S.pos, s, where) || 1);
     var step = n <= 5 ? cd : (G.th - cd) / (n - 1);
@@ -706,7 +713,7 @@
 
     app.innerHTML = ''; app.classList.add('ipl');
     var wrap = el('div', { class: 'bgw', style: { '--bh': G.H + 'px' } });
-    wrap.appendChild(tag(1));
+    wrap.appendChild(tag(1 - bot()));
     boardEl = el('div', { class: 'bboard', style: { width: G.W + 'px', height: G.H + 'px', '--cd': G.cd + 'px' } });
     // felt halves, bar, tray
     boardEl.appendChild(el('div', { class: 'field', style: { left: G.fieldL + 'px', top: G.fw + 'px', width: 6 * G.pw + 'px', height: (G.H - 2 * G.fw) + 'px' } }));
@@ -724,8 +731,8 @@
         var t = el('div', { class: 'tri ' + (cc.top ? 'dn ' : 'up ') + ((cc.c + (cc.top ? 0 : 1)) % 2 ? 'b' : 'a') + (dests[i] ? ' dest' : ''),
           style: { left: (x + 1) + 'px', width: (G.pw - 2) + 'px', top: (cc.top ? G.topY - G.pad + 1 : G.botY - G.th * 1.02) + 'px', height: (G.th * 1.02) + 'px' } }, [el('i')]);
         boardEl.appendChild(t);
-        boardEl.appendChild(el('div', { class: 'pnum', text: String(i + 1), style: { left: (x + G.pw / 2) + 'px', top: (cc.top ? G.topY + G.th + 3 : G.botY - G.th - 13) + 'px' } }));
-        var hit = el('button', { type: 'button', class: 'hit', 'aria-label': 'Point ' + (i + 1),
+        boardEl.appendChild(el('div', { class: 'pnum', text: String(ptNum(i)), style: { left: (x + G.pw / 2) + 'px', top: (cc.top ? G.topY + G.th + 3 : G.botY - G.th - 13) + 'px' } }));
+        var hit = el('button', { type: 'button', class: 'hit', 'aria-label': 'Point ' + ptNum(i),
           style: { left: x + 'px', width: G.pw + 'px', top: (cc.top ? G.fw : G.H / 2) + 'px', height: (G.H / 2 - G.fw) + 'px' } });
         hit.addEventListener('click', function () { tapPoint(i); });
         boardEl.appendChild(hit);
@@ -743,7 +750,7 @@
       }
     });
     var offEl = el('button', { type: 'button', class: 'offhit' + (dests[OFF] ? ' dest' : ''), 'aria-label': 'Bear off',
-      style: { left: G.trayX + 'px', width: G.tw + 'px', top: (s === 0 ? G.H / 2 : G.fw) + 'px', height: (G.H / 2 - G.fw) + 'px' } });
+      style: { left: G.trayX + 'px', width: G.tw + 'px', top: (s === bot() ? G.H / 2 : G.fw) + 'px', height: (G.H / 2 - G.fw) + 'px' } });
     offEl.addEventListener('click', tapOff);
     boardEl.appendChild(offEl);
     // checkers
@@ -782,14 +789,15 @@
     }
     // cube
     if (S.cubeOn && !S.crawford) {
-      var cs = Math.round(Math.min(G.tw - 4, 28)), cy = S.owner === -1 ? G.H / 2 - cs / 2 : S.owner === 0 ? G.H / 2 + 2 : G.H / 2 - cs - 2;
-      if (S.phase === 'double') cy = S.doubler === 0 ? G.H / 2 - cs - 2 : G.H / 2 + 2;
+      // the cube sits on its owner's side of the tray; offered, it moves across to the other player
+      var cs = Math.round(Math.min(G.tw - 4, 28)), cy = S.owner === -1 ? G.H / 2 - cs / 2 : S.owner === bot() ? G.H / 2 + 2 : G.H / 2 - cs - 2;
+      if (S.phase === 'double') cy = S.doubler === bot() ? G.H / 2 - cs - 2 : G.H / 2 + 2;
       var cube = el('div', { class: 'cube' + (S.phase === 'double' ? ' pop' : ''), text: String(S.phase === 'double' ? S.cube * 2 : S.cube === 1 ? 64 : S.cube),
         style: { width: cs + 'px', height: cs + 'px', left: (G.trayX + (G.tw - cs) / 2) + 'px', top: cy + 'px', 'font-size': (cs * 0.5) + 'px' } });
       boardEl.appendChild(cube);
     }
     wrap.appendChild(boardEl);
-    wrap.appendChild(tag(0));
+    wrap.appendChild(tag(bot()));
     wrap.appendChild(hintLine(human, lm));
     wrap.appendChild(controls(human));
     app.appendChild(wrap);
@@ -819,8 +827,8 @@
     var opening = S.opening;
     var left = S.left.slice(), used = dice.map(function (d) { var k = left.indexOf(d); if (k >= 0) { left.splice(k, 1); return false; } return true; });
     var ds = Math.min(G.mg - 8, dice.length === 4 ? G.pw * 1.15 : 36);
-    // each player rolls into the half on their right: White (bottom) the right half, Black the left half
-    var x = s === 0 ? G.fieldR : G.fieldL;
+    // each player rolls into the half on their right: the bottom player the right half, the one across the left half
+    var x = s === bot() ? G.fieldR : G.fieldL;
     var box = el('div', { class: 'dicebox' + (s && !opening ? ' blk' : ''), style: { left: x + 'px', width: 6 * G.pw + 'px', top: (G.H / 2 - G.mg / 2) + 'px', height: G.mg + 'px', gap: (ds * 0.22) + 'px' } });
     dice.forEach(function (v, i) {
       var d = Kit.die(v); d.tabIndex = -1; d.style.setProperty('--ds', ds + 'px');
@@ -831,7 +839,7 @@
       if (used[i]) d.classList.add('used');
       if (rollAnim) {
         d.classList.add('rolling'); d.style.animationDelay = (i * 60) + 'ms';
-        d.style.setProperty('--dx', ((s === 0 ? -1 : 1) * (40 + Math.random() * 60)) + 'px');
+        d.style.setProperty('--dx', ((s === bot() ? -1 : 1) * (40 + Math.random() * 60)) + 'px');
         d.style.setProperty('--dr', ((Math.random() > .5 ? 1 : -1) * (260 + Math.random() * 300)) + 'deg');
       }
       box.appendChild(d);
@@ -839,10 +847,10 @@
     return box;
   }
   function tag(pl) {
-    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl, net = NET && NET.seat !== pl && !LEFT;
+    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl, net = NET && NET.seat !== pl && !LEFT, name = NET && NET.seat === pl ? 'You' : p.name;
     var chk = el('span', { class: 'chk' }, [el('span', { class: 'ck ' + (pl ? 'b' : 'w'), style: { '--cd': '30px', transform: 'none', position: 'absolute' } })]);
     var st = S.phase === 'over' ? (S.games.length && S.games[S.games.length - 1].w === pl ? 'Won this game' : '') :
-      !on ? (pl === 0 ? 'White · home bottom right' : 'Black · home top right') :
+      !on ? Kit.poss(name) + ' home is ' + (pl === bot() ? 'bottom right' : 'top right') :
       S.phase === 'double' ? (S.doubler === pl ? 'Doubling…' : 'Take or drop?') :
       p.cpu ? (S.phase === 'roll' ? 'Thinking…' : 'Moving…') : net ? (S.phase === 'roll' ? 'Rolling next' : 'Moving') : S.phase === 'roll' ? 'Your roll' : 'Your move';
     if (S.phase === 'double' && S.doubler !== pl) st = p.cpu ? 'Deciding…' : net ? 'Deciding' : 'Take or drop?';
@@ -851,7 +859,7 @@
       el('span', { class: 'num' }, [el('b', { text: S.pos.off[pl] + '' }), el('small', { text: 'off' })])
     ]);
     if (S.target > 1) nums.appendChild(el('span', { class: 'num' }, [el('b', { text: String(S.score[pl]) }), el('small', { text: 'of ' + S.target })]));
-    return el('div', { class: 'btag' + (on ? ' on' : '') }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: NET && NET.seat === pl ? 'You' : p.name }), el('span', { class: 'st', text: st })]), nums]);
+    return el('div', { class: 'btag' + (on ? ' on' : '') }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: name }), el('span', { class: 'st', text: st })]), nums]);
   }
   function hintLine(human, lm) {
     var t = '';
@@ -870,7 +878,7 @@
     if (NET) {
       if (LEFT || S.phase === 'over' && S.matchOver) { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return c; }
       if (S.phase === 'over') { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Next game', onclick: netNext })); return c; }
-      if (S.phase === 'double' && NET.myTurn()) { c.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Drop', onclick: function () { netAnswer(false); } })); c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take (play for ' + S.cube * 2 + ')', onclick: function () { netAnswer(true); } })); return c; }
+      if (S.phase === 'double' && NET.myTurn()) { c.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Drop', onclick: function () { netAnswer(false); } })); c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take and play for ' + S.cube * 2, onclick: function () { netAnswer(true); } })); return c; }
       if (S.phase !== 'roll' || !NET.myTurn()) return c;
     }
     if (S.phase === 'roll' && !me.cpu) {
@@ -1055,9 +1063,9 @@
     var s = S.doubler;
     NSHEET = Kit.sheet({
       title: S.players[s].name + ' offers a double',
-      html: '<p class="muted">You can <b>take</b> and play on for ' + (S.cube * 2) + ' points (you then own the cube), or <b>drop</b> and lose this game for ' + S.cube + (S.cube === 1 ? ' point' : ' points') + '.</p>',
+      html: '<p class="muted">You can <b>take</b> and play on for ' + (S.cube * 2) + ' points, and then the cube is yours. Or you can <b>drop</b> and lose this game for ' + S.cube + (S.cube === 1 ? ' point' : ' points') + '.</p>',
       actions: [
-        { label: 'Take (play for ' + S.cube * 2 + ')', primary: true, onClick: function () { NSHEET = null; netAnswer(true); } },
+        { label: 'Take and play for ' + S.cube * 2, primary: true, onClick: function () { NSHEET = null; netAnswer(true); } },
         { label: 'Drop', cls: 'btn-soft', onClick: function () { NSHEET = null; netAnswer(false); } },
         { label: 'Look at the board first', cls: 'btn-ghost', onClick: function () { NSHEET = null; } }
       ]
@@ -1092,7 +1100,7 @@
       if (S.target > 1) hl.push('Match to ' + S.target + ', won ' + S.score[w] + '–' + S.score[1 - w] + ' over ' + S.games.length + ' games');
       hl.push('Played online at table ' + NET.code);
       Kit.record(KEY, {
-        started: S.started, mode: 'Online' + (S.target > 1 ? ' · match to ' + S.target : ''),
+        started: S.started, mode: S.target > 1 ? 'Online match to ' + S.target : 'Online',
         players: P.map(function (p, i) { return { name: p.name, score: S.score[i], cpu: false }; }), winner: P[w].name,
         rounds: S.games.length > 1 ? { labels: S.games.map(function (g, i) { return 'Game ' + (i + 1); }), scores: S.games.map(function (g) { return g.row; }) } : null,
         highlights: hl.slice(0, 6),
