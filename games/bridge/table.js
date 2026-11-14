@@ -208,8 +208,10 @@
 
   // ── Local game: moves with their animation ─────────────────────────────────
   function afterDeal() {
-    clearUndo(); save(); BLIND = false;
-    if (!person(LME) || !onePerson()) LME = firstPersonFrom(S.dealer);
+    clearUndo(); save();
+    if (!person(LME)) { LME = firstPersonFrom(0); S.me = LME; }
+    // pass and play: every hand face down until the first person to act has the device
+    BLIND = !onePerson();
     render(); dealAnim();
     var big = S.hands[bottom()] && E.hcp(S.hands[bottom()]);
     if (big >= 20 && canSee(bottom()) && S.aids) tw(function () { if (S && S.phase === 'bid') { glowHcp(); Kit.callout(big + ' points!'); Kit.sfx('sparkle'); Kit.haptic('success'); } }, 900);
@@ -218,7 +220,8 @@
   function firstPersonFrom(p) { for (var i = 0; i < 4; i++) { var q = (p + i) % 4; if (person(q)) return q; } return 0; }
   // Before a different person acts: every hand face down, and the cover asks to pass the device
   function gate(p, then) {
-    if (NET || !person(p) || p === LME) { then && then(); return; }
+    if (NET || !person(p)) { then && then(); return; }
+    if (p === LME) { if (BLIND) { BLIND = false; paint(); } then && then(); return; }
     BLIND = true; undoStack = []; paint();
     var t = token;
     Kit.handoff({ name: nm(p), color: Kit.color(p % 2), what: 'cards' }).then(function () {
@@ -392,7 +395,7 @@
     var actw = play ? 0 : (mode === 'ps' ? Math.min(300, Math.max(236, W * 0.3)) : Math.min(380, Math.max(300, W * 0.32)));
     R.style.setProperty('--infw', px(infw)); R.style.setProperty('--actw', px(actw));
     // the hand: as large as fits, 13 cards across with their corners showing
-    var handW = land ? (play ? W - infw - 30 : W - infw - actw - 40) : W - 20;
+    var handW = land ? W - infw - 30 : W - 20;
     var hcw;
     if (mode === 'pu') hcw = Math.min(84, Math.max(52, handW / 5.4));
     else if (mode === 'tu') hcw = Math.min(118, Math.max(70, handW / 6.2));
@@ -401,7 +404,9 @@
     var step = Math.min(hcw * 0.66, (handW - hcw - 8 - 3 * hcw * 0.12) / Math.max(1, n - 1));
     R.style.setProperty('--hcw', px(hcw)); R.style.setProperty('--ov', px(step - hcw));
     R.style.setProperty('--bcw', px(tab ? 54 : mode === 'ps' ? 40 : 44));
-    R.style.setProperty('--bbh', px(tab ? 50 : mode === 'ps' ? 34 : 40));
+    // the bidding box fills the right-hand column sideways
+    var bxH = R.getBoundingClientRect().height || (H - 60);
+    R.style.setProperty('--bbh', px(land && !play ? Math.max(32, Math.min(tab ? 74 : 56, (bxH - hcw * 1.4 - 70) / 3.75)) : tab ? 50 : 40));
     R.style.setProperty('--qcw', px(tab ? 20 : mode === 'ps' ? 13 : 15));
     R.style.setProperty('--bbw', px(tab ? 56 : 44));
     // the pieces: in the felt's corners upright, in the left column sideways
@@ -440,7 +445,7 @@
         put(D.corner.mid, D.slip);
       }
     }
-    R0().classList.toggle('lowhand', mode === 'ps');
+    R0().classList.toggle('lowhand', mode === 'ps' && play);
     D.box.style.display = play ? 'none' : '';
     D.act.style.display = play ? 'none' : '';
   }
@@ -942,14 +947,16 @@
     if (last) last.classList.add('won');
     var ours = !onePerson() || ws === weSide();
     if (last && ours) sparkle(last.getBoundingClientRect(), got === goal ? 10 : 4);
-    if (got === goal) {
+    var lastTrick = S.phase !== 'play' || (S.tricks && S.tricks.length >= 13);   // (the end of the deal has its own moment)
+    if (got === goal && !lastTrick) {
       var made = ws === ds;
       var mine = !onePerson() || ws === weSide();
       Kit.callout(made ? 'Contract made!' : 'Contract beaten!', mine ? '#7ff0a8' : '#ff8a94');
       Kit.sfx(mine ? 'good' : 'bad'); Kit.haptic(mine ? 'success' : 'error');
     } else if (got > goal && ws === ds && ours) { plus(last, '+1'); Kit.sfx('sparkle'); }
     var run = S.run[ws];
-    if (run >= 5 && ours && (run === 5 || run === 7 || run === 9 || run === 11)) { Kit.callout(run + ' tricks in a row!'); Kit.sfx('sparkle'); Kit.haptic('success'); if (run === 7) S.hl.push(sideNames(ws) + ' won ' + run + ' tricks in a row on deal ' + S.dealNo); }
+    if (run === 9 || run === 13) { S.hl = S.hl.filter(function (x) { return x.indexOf(' tricks in a row on deal ' + S.dealNo) < 0; }); S.hl.push(sideNames(ws) + ' won ' + run + ' tricks in a row on deal ' + S.dealNo); }
+    if (ours && !lastTrick && (run === 6 || run === 9 || run === 12)) { Kit.callout(run + ' tricks in a row!'); Kit.sfx('sparkle'); Kit.haptic('success'); }
   }
   function sparkle(r, n) {
     if (!r || !D) return;
