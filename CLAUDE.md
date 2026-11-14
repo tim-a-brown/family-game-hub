@@ -341,6 +341,17 @@ Underlying principles for everything:
   key (`anoria_*`) keep the old name, so saved games, collections and links carry on. The notes below still say
   Anoria where they mean the game's code.
 
+- **Arvela online** (games/anoria/net.js; Tim, 2026-11-14: "add online to all the remaining games") is TurnNet: the
+  table holds the page's G with S, each person's deck (chosen on their own device after Start; the host's from the
+  setup), and a seed every die and shuffle comes from. A move ({k: 'deck' | 'lay' | 'act' | 'disc' | 'end'}) is made in
+  the transaction against E.actions on the server's table, by mirrors of ui.js's game loop (actPhase is doAction,
+  startPhase beginTurn, endPhase endTurn, rollPhase suRoll), with ui.js's own tally and turn log: **a change to what
+  those do to G needs the same change in net.js**. Every device plays a move back with the table's own playback.
+  Everyone lays their Domains at once. Two players are people only and leaving gives the other the win; with 3 to 6 the
+  computer fills and takes over seats. History and rewards are kept once per device (`anoria_net_rec`), even for a game
+  that ended while that device was away, and a Guide who joined has their moment before the results card as at home.
+  ui.js's hooks are marked `// NET hook` (`AnoriaUI.net`). The doc carries every hand, as Spades' and Hearts' do; each
+  device draws only its own.
 - **Every card is part of the prime set until launch** (Tim, 2026-11-13: "right now, we're still on the 1st printing
   beyond starter and guide decks as far as i'm concerned. i'm still testing the game and tweaking rules so anoria is
   still in beta and any cards we add for balance/interest/fun/unexpectedness going forward until we agree we're at

@@ -58,6 +58,7 @@ var GAMES = [
       { icon: 'book', title: 'Library', desc: 'Every card in the set, and the ones you have', file: 'anoria.html?library=1', tool: true },
       { icon: 'sparkle', title: 'Packs', desc: 'Open your packs, and see the sphere and the callings', file: 'anoria.html?packs=1', tool: true },
       { icon: 'cards', title: 'Decks', desc: 'Build a deck of your own from your cards', file: 'anoria.html?decks=1', tool: true },
+      { icon: 'users', title: 'Play online', desc: '2 to 6 players, each on their own device with their own deck', file: 'anoria.html?online=1' },
       { icon: 'help', title: 'How to play', desc: 'The story of Arvela, then every rule shown on the table', file: 'anoria.html?guide=1', tool: true }
     ] },
 

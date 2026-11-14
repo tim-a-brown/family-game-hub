@@ -402,6 +402,7 @@ const PRECACHE_URLS = [
   '/games/mindmeld-data.js',
   '/games/anoria.html',
   '/games/anoria/ui.js',
+  '/games/anoria/net.js',
   '/games/anoria/ui.css',
   '/games/anoria/coll.js',
   '/games/anoria/editions.js',

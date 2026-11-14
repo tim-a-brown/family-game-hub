@@ -1693,6 +1693,8 @@
   // G = {mode, level, players:[{name,cpu,color,deck}], S (the engine's state), ord (who goes first and second this
   //      round), k (0 or 1: which of them is on), ph ('start': the turn hasn't begun, 'play'), started, stats, hist}
   let G = null, S = null, V = null, gen = 0, speed = 1, undoStack = [];
+  // NET hook: the online table (net.js) while this page is at one, and the seat this device plays (0 otherwise)
+  let NET = null; const meSeat = () => (NET ? NET.seat() : 0);
   const ui = { sel: null, busy: false, view: 0, viewer: -1, hideHand: false, discard: false, acts: [], newLine: 0, banner: 0, fresh: {}, crack: null, drop: {} };
   const dom = {};
   const cfgStd = () => Object.assign({}, E.DEF, { log: 1, coin: 1 }, E.STD);
@@ -1708,7 +1710,7 @@
   if (lsGet('anoria_artview') === '1') document.documentElement.classList.add('an-artview');
   const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
   function save() {
-    if (!G || !S || G.demo) return;   // (a lesson on the table is never saved: your own game is)
+    if (!G || !S || G.demo || NET) return;   // (a lesson on the table is never saved: your own game is. NET hook: nor an online game, which lives in its table)
     if (G.over) { clearSave(); return; }
     lsSet(SAVE, JSON.stringify({ v: 1, G: Object.assign({}, G, { S: Object.assign({}, S, { cfg: null, st: null, ev: null }) }) }));
     Kit.resume.set('Round ' + S.round, { keys: [SAVE] });
@@ -1771,6 +1773,7 @@
   const SU_SLOT = { gate: 0, out: 1 };
   function suBegin() {
     if (!G || G.ph !== 'setup') return;
+    if (NET) return NET.su();   // NET hook
     const my = gen, todo = G.players.map((p, o) => (!p.cpu && !S.su.lay[o] ? o : -1)).filter(o => o >= 0);
     if (ui.turbo || G.demo) { todo.forEach(o => E.setupLay(S, o, E.setupPick(S, o, null, Math.random))); return suRoll(); }
     if (!todo.length) return suRoll();
@@ -1893,13 +1896,14 @@
   }
   function suDone() {
     const me = ui.su; if (!me || ui.busy) return;
+    if (NET) return NET.lay({ gate: me.put.gate, out: me.put.out, offer: me.put.offer });   // NET hook
     if (!E.setupLay(S, me.o, { gate: me.put.gate, out: me.put.out, offer: me.put.offer })) return;
     ui.su = null; save(); Kit.sfx('flip'); Kit.haptic('medium');
     suBegin();
   }
   async function suRoll() {
     const my = gen, su = S.su;
-    if (!E.setupRoll(S, Math.random, G.demo && G.suDice ? G.suDice : undefined)) return;   // (a lesson rolls the dice it wants)
+    if (!E.setupRoll(S, Math.random, (G.demo || NET) && G.suDice ? G.suDice : undefined)) return;   // (a lesson rolls the dice it wants; NET hook: an online table plays back the dice its table rolled)
     const evs = S.ev.splice(0), first = su.first, dibs = su.dibs;
     G.ord = S.N > 2 ? E.order(S) : [first, 1 - first]; G.k = 0; S.turn = G.ord[0];
     G.log = G.log || []; G.log.push({ o: dibs, x: [Kit.poss(pname(dibs)) + ' offer, ', { k: '@' + S.places[2 * S.N] }, ', is the Crossroads, and ' + (pname(first) === 'You' ? 'you take' : pname(first) + ' takes') + ' the first turn.'] });
@@ -1935,7 +1939,7 @@
     G.ph = 'start'; save(); V = snap(); render();
     const hub = dom.map.querySelector('.pl[data-p="' + 2 * S.N + '"] .pl-tile'); if (hub) hub.classList.add('su-land');
     Kit.sfx('deal'); await wait(700); if (gen !== my) return;
-    if (G.demo) { setBusy(false); V = snap(); V.turn = -1; render(); const k = G.suDone; G.suDone = null; if (k) k(); return; }   // (a still table: nobody's turn has begun)   // (the lesson goes on from here, not into a turn)
+    if (G.demo || NET) { setBusy(false); V = snap(); V.turn = -1; render(); const k = G.suDone; G.suDone = null; if (k) k(); return; }   // (a still table: nobody's turn has begun)   // (the lesson goes on from here, not into a turn)
     setBusy(false); beginTurn();
   }
   // The dice for the Crossroads with three or more players: everyone's offer with a die under it, in seat order from
@@ -2137,7 +2141,7 @@
   const matWarm = () => { const v = matMineV(), id = v || (Coll.deck(starterId()) || {}).guide; if (typeof id === 'object') warmSrc(artSrc(id.c, false)); else if (MATS[id] && !MATS[id].chart) warmSrc(MATSRC + id + '.webp');
     setTimeout(() => Object.keys(MATS).forEach(k => { if (!MATS[k].chart) warmSrc(MATSRC + k + '.webp'); }), 900); };
   // the seat whose choice of mat is the account's own: the first person at the table
-  const matMine = o => !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0);
+  const matMine = o => (NET ? o === NET.seat() : !G.players[o].cpu && o === (G.players[0].cpu ? 1 : 0));   // (NET hook: online, your own seat)
   const matPick = o => G.demo || G.players[o].cpu ? '' : matMine(o) ? matMineV() : matSeatV(o);
   // the mat a seat plays on: the one that person chose, or their Guide's
   const matOf = o => matPick(o) || S.P[o].guide;
@@ -2239,9 +2243,9 @@
       }
       else if (G.ph === 'setup') {   // (the set-up: once all three Domains are laid, the dice, or the device to the next player)
         const su = ui.su, full = su && su.o === o && su.put.gate && su.put.out && su.put.offer, next = G.players.some((q, x) => x !== o && !q.cpu && !S.su.lay[x]);
-        b = S.su.step === 'done' || !su ? el('span', { class: 'st-go-none' }) : el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go st-su' + (full ? ' ready' : ''), text: next ? 'Hand over' : 'Roll the dice', disabled: !full, onclick: suDone });
+        b = S.su.step === 'done' || !su || su.wait ? el('span', { class: 'st-go-none' }) : el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go st-su' + (full ? ' ready' : ''), text: next ? (NET ? 'Ready' : 'Hand over') : 'Roll the dice', disabled: !full, onclick: suDone });   // (NET hook: online, each lays on their own device, su.wait once laid)
       }
-      else if (!human(S.turn) && stepOn() && !ui.turbo && !G.demo) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (ui.ack ? ' ready' : ''), text: 'Next', disabled: !ui.ack, 'aria-label': ui.ack ? 'Next: let ' + pname(S.turn) + ' make the next move' : pname(S.turn) + ' is playing', onclick: () => { Kit.sfx('pop'); Kit.haptic('light'); ackGo(); } });
+      else if (!human(S.turn) && stepOn() && !ui.turbo && !G.demo && !NET) b = el('button', { type: 'button', class: 'btn btn-primary btn-sm st-go' + (ui.ack ? ' ready' : ''), text: 'Next', disabled: !ui.ack, 'aria-label': ui.ack ? 'Next: let ' + pname(S.turn) + ' make the next move' : pname(S.turn) + ' is playing', onclick: () => { Kit.sfx('pop'); Kit.haptic('light'); ackGo(); } });
       else if (!human(S.turn)) b = el('button', { type: 'button', class: 'btn btn-sm st-go ' + (speed > 1 ? 'btn-primary' : 'btn-soft'), 'aria-label': 'Fast forward', 'aria-pressed': String(speed > 1), html: SVG.ff, onclick: toggleFast });
       else {
         const can = idle() && !ui.discard, nothing = can && !ui.acts.length;
@@ -2432,7 +2436,7 @@
     else if (ui.discard) { const hm = E.handMax(S, S.turn), k = S.P[S.turn].hand.length - hm; txt = 'Hand limit ' + hm + ': discard ' + k; }   // (a player's own limit: 10 with the Timbuktu Manuscripts' power)
     else if (V.turn < 0) { txt = G.demo && !ui.counting ? '' : 'The count'; dim = true; }
     else if (!human(V.turn)) { txt = pname(V.turn) + ' is playing'; dim = true; }
-    else txt = Kit.poss(pname(V.turn)) + ' turn';
+    else txt = NET && V.turn === ui.view ? 'Your turn' : Kit.poss(pname(V.turn)) + ' turn';   // (NET hook: online, your own turn)
     n.appendChild(el('div', { class: 'cap-txt' + (dim ? ' dim' : ''), text: txt }));
     if (!G.demo) n.appendChild(el('button', { type: 'button', class: 'cap-log', 'aria-label': 'Turn log', html: Kit.icon('rows'), onclick: logScreen }));
   }
@@ -4001,6 +4005,7 @@
   }
   async function doHuman(a) {
     if (!idle()) return;
+    if (NET) return NET.act(a);   // NET hook
     const my = gen, snapS = JSON.stringify(Object.assign({}, S, { cfg: null, st: null, ev: null, cl0: G.cl || null }));   // (cl0: what the game had done for the callings, so a move taken back is not counted)
     ui.sel = null; setBusy(true); render();
     const ctx = await doAction(a); if (gen !== my || !ctx) return;
@@ -4011,6 +4016,7 @@
     setBusy(false); legal(); settle();
   }
   function undo() {
+    if (NET) return Kit.toast('Moves can’t be taken back online');   // NET hook
     if (G && G.demo) return;
     if (!G || G.over) return Kit.toast('The game is over');
     if (!idle()) return Kit.toast('Wait for your turn');
@@ -4118,6 +4124,7 @@
     endTurn();
   }
   async function discardOne(h) {
+    if (NET) return NET.disc(h);   // NET hook
     const my = gen, o = S.turn; setBusy(true);
     E.discard(S, o, h); const evs = S.ev.splice(0); logEvs(evs); save();
     if (!(await playEvents(evs, { h: h, o: o }))) return;
@@ -4127,6 +4134,7 @@
   async function endTurn() {
     const my = gen, o = S.turn;
     if (human(o) && S.P[o].hand.length > E.handMax(S, o)) { ui.sel = null; ui.discard = true; setBusy(false); legal(); render(); Kit.sfx('bad'); return; }
+    if (NET) return NET.end();   // NET hook
     ui.sel = null; ui.discard = false; undoStack = []; setBusy(true); render();
     E.endTurn(S); const evs = S.ev.splice(0), mid = snap(); logEvs(evs);
     let evR = null; const r0 = S.P.map(p => p.renown);
@@ -4162,6 +4170,7 @@
   let slips = 0;
   function recover(e) {
     if (window.console) console.error('anoria', e);
+    if (NET) return NET.recover();   // NET hook
     if (!G || !S || ++slips > 5) return;
     try { document.querySelectorAll('.clash,.show-card,.an-banner').forEach(n => n.remove()); dom.fx.innerHTML = ''; ui.sel = null; ui.count = -1; V = snap(); setBusy(false); legal(); render(); } catch (e2) {}
     if (G.over) setTimeout(() => showWin(true), 300);
@@ -4183,7 +4192,7 @@
     if (E.sren(S, w) >= S.cfg.target) return W + ' reached ' + E.sren(S, w) + ' Renown' + (tm ? ' together' : '') + ' at the end of round ' + S.round + '.';
     return W + ' had the most Renown when the last round ended.';
   }
-  function modeName() { return G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
+  function modeName() { return G.mode === 'net' ? 'Online' : G.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[G.level] + ')' : 'Pass & play'; }
   function record() {
     if (S.N > 2) return recordN();
     const w = S.winner, T = G.tale, hl = [];
@@ -4208,7 +4217,7 @@
     // The collection (Tim, 2026-11-13: "a game earns the same however it's played"): the cards that crossed the table are
     // seen, and the game lights signs on the sphere for the first player, whoever holds the device. A game begun under an
     // older collection finishes and earns nothing.
-    try { const win = w === 0; G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[0].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }
+    try { const me = meSeat(), win = w === me; G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[me].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cls ? G.cls[me] : G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }   // (NET hook: online, the seat this device plays, and its own callings, G.cls)
   }
   // The record of a game of three or more players for its history (hist/anoria.js reads it: v 3). Each player's
   // numbers as with two; rt, each round's Renown so far for every player; hold, who held each Domain at each count,
@@ -4223,7 +4232,7 @@
           rt: T.tot.slice(), hold: T.hold.slice(), links: T.links.slice(), sl: T.seals.slice(), outs: (T.outs || []).slice() } });
     } catch (e) {}
     // (a win against the computer: your own, or your team's)
-    try { const win = w >= 0 && E.ally(S, 0, w); G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[0].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }
+    try { const me = meSeat(), win = w >= 0 && E.ally(S, me, w); G.rew = G.cv === Coll.VER ? Coll.gameOver({ win: win, how: S.how, level: G.mode === 'cpu' ? G.level : null, built: !!G.players[me].built, seen: Object.keys(G.seen || {}), m: Coll.trackEnd(G.cls ? G.cls[me] : G.cl, { win: win, how: S.how }) }) : null; } catch (e) { G.rew = null; }   // (NET hook: as in record)
   }
   // The results card for three or more players: everyone in order (or every team, with its Renown together), the
   // winner first and anyone who was put out last, and how it ended in a sentence
@@ -4236,13 +4245,14 @@
     const order = S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown);
     const rank = T ? T.map(t => t[0]).sort((a, b) => (E.ally(S, b, w) ? 1 : 0) - (E.ally(S, a, w) ? 1 : 0) || E.sren(S, b) - E.sren(S, a)).map(o => ({ name: teamName(o), score: E.sren(S, o), color: teamCol(o), cpu: !teamOf(o).some(human) }))
       : order.map(o => ({ name: pname(o), score: S.P[o].renown, color: G.players[o].color, cpu: G.players[o].cpu }));
-    Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
+    Kit.win(netWin({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: guideSaid(w) || 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(T ? null : order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
-      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null });
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null }));
   }
+  const netWin = o => (NET ? NET.win(o) : o);   // NET hook: the results card at an online table (whose win it is, Play again at the table)
   // A Guide who joins in this game (the sphere's, chosen first, or one a calling brought) has their moment before the
   // results card (packs.js arrive); the results card's panel keeps their row. A lesson earns nothing, so never has one.
   let pickAsked = false;   // (the sphere's choice is offered once per visit: a page opened again asks again)
@@ -4340,13 +4350,13 @@
       : S.how === 'seals' ? 'The last of ' + (L === 'You' ? 'your' : Kit.poss(L)) + (S.P[1 - w].sm === 4 ? ' four' : ' three') + ' Seals broke in round ' + S.round + '.'
       : W + (W === 'You' ? ' were' : ' was') + ' first to ' + S.cfg.target + ' Renown, when round ' + S.round + ' ended.');
     notes[0] = notes[0].replace(/'/g, '’');
-    Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
+    Kit.win(netWin({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? W + ' wins this one' : W === 'You' ? 'You win!' : W + ' wins!',
       sub: guideSaid(w) || 'After ' + S.round + (S.round === 1 ? ' round' : ' rounds'), pic: racePic(), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
       show: q => { winLayout(order, earned); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
-      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null });
+      extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(unmet(R), showSetup); } }] : null }));
   }
 
   // ═══ The page ════════════════════════════════════════════════════════════════════════════════════════════
@@ -4526,16 +4536,16 @@
   Kit.init({
     id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
-    onNew: () => { if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,
-    menu: [
+    onNew: () => { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,   // (NET hook)
+    menu: (window.TurnNet ? TurnNet.menu() : []).concat([   // (NET hook: Play online, Leave the online game)
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you have', onClick: () => tool('library') },
       { icon: 'sparkle', label: 'Packs', sub: 'Open your packs, and see the sphere and the callings', onClick: () => tool('packs') },
       { icon: 'cards', label: 'Decks', sub: 'Build a deck of your own', onClick: () => tool('decks') },
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
-      { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep, when: () => !(G && S && !G.demo && !G.players.some(p => p.cpu)) },   // (not in a game of people only: there is no computer to wait for)
+      { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep, when: () => !NET && !(G && S && !G.demo && !G.players.some(p => p.cpu)) },   // (not in a game of people only: there is no computer to wait for)
       { icon: 'rows', label: 'Turn log', sub: 'Everything that has happened in this game', when: () => !!(G && S && !G.demo), onClick: logScreen },
       { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Arvela: past games' }) }
-    ]
+    ])
   });
 
 
@@ -4636,6 +4646,14 @@
   window.AnoriaUI = { line: () => !!(ui.lay && ui.lay.ln), homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, matFill: matFill, MATS: MATS, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
+  // NET hook: what the online table (games/anoria/net.js) uses of this one. It runs a move's bookkeeping (tally, the turn
+  // log) on its own copy of the game with swap(), and draws and plays the table back here with the table's own pieces.
+  window.AnoriaUI.net = { attach: n => { NET = n; }, get: () => ({ G: G, S: S, V: V }), put: (g, v) => { G = g; S = g ? g.S : null; if (v !== undefined) V = v; },
+    swap: (g, fn) => { const g0 = G, s0 = S; G = g; S = g.S; try { return fn(); } finally { G = g0; S = s0; } },
+    ui: ui, gen: () => gen, stop: stop, buildTable: buildTable, snap: snap, settle: settle, render: render, legal: legal, setBusy: setBusy, wait: ms => wait(ms), playEvents: playEvents,
+    roundEnd: roundEnd, banner: banner, suRoll: suRoll, tally: tally, logEvs: logEvs, logEnd: logEnd, posOrder: () => posOrder(), quickOf: a => quickOf(a), cfgOf: cfgOf, cfgStd: cfgStd,
+    deckOf: deckOf, stackOf: stackOf, readyDeck: readyDeck, deckChoice: deckChoice, starterId: starterId, deckPicker: deckPicker, seatColors: seatColors, teamsFor: teamsFor, setCols: setCols,
+    profOf: profOf, askPend: () => askPend(), moveSaid: a => moveSaid(a), showWin: showWin, endShow: () => endShow(), record: record, showSetup: showSetup, resume: resume, logScreen: logScreen, LEVEL: LEVEL, matKey: MATK };
   window.__anoria = { seatColors: seatColors, teamsFor: teamsFor, scan: scan, relegal: () => { legal(); V = snap(); render(); }, E: E, ui: ui, mats: MATS, G: () => G, S: () => S, V: () => V, card: cardEl, view: openView, newGame: newGame, act: doHuman, legal: () => ui.acts, idle: idle, endTurn: endTurn, setSpeed: s => { speed = s; }, turbo: s => { ui.turbo = s; speed = s || 1; }, showWin: showWin, refresh: () => { legal(); V = snap(); render(); }, events: (evs, ctx) => playEvents(evs, ctx || {}), undo: undo };
 
   // The art proof (anoria.html?art=1): every card as it is drawn at each size, side by side, so a new or changed
