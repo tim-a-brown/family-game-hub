@@ -302,32 +302,52 @@
   let mapN = 0;
   const MAPW = 284, MAPH = 196, DOT0 = { x: 227.2, y: 47, r: 9 };
   // at: where the dot stands in the map's own box (x, y) and its ring's radius (r; 0 for the dot alone): dotSpot() below finds the place clear of the card's words
-  // how close a card's map is drawn: 10.92 to the degree, or less until some coastline (a vertex of LAND) stands well
-  // inside the part of the map the card shows, not at its rim (x0: its left edge, y1: its foot; the card crops the map's box to fit
-  // the paper), from the dot's line down to two thirds of the way, below the name and clear of the shield and plates
-  const zoomAt = {};
-  function mapZoom(ll, cx, cy, x0, y1) {
-    x0 = x0 || 0; y1 = Math.min(MAPH, y1 || MAPH);
-    const zk = ll.join(',') + '|' + cx + ',' + cy + ',' + x0 + ',' + y1; if (zoomAt[zk]) return zoomAt[zk];
-    const B = landBoxes(), m = 14; let k = 10.92;
-    for (let step = 0; step < 7; step++) {
-      const ky = k / Math.cos(ll[1] * Math.PI / 180), mx = Math.max(m, (MAPW - x0) * .18), lonA = ll[0] - (cx - x0 - mx) / k, lonB = ll[0] + (MAPW - cx - mx) / k, latA = ll[1] - (y1 * .66 - cy) / ky, latB = ll[1] + Math.min(cy - m, 8) / ky;
-      let seen = 0;   // (points of coastline in view: a stretch of coast, not one tip of a bay at the edge)
-      for (let i = 0; i < LAND.length && seen < 25; i++) {
+  // How close a card's map is drawn (map units to the degree). Tim, 2026-11-14: "check the maps and visible coastlines
+  // of all cards so they're clearly visible", then "coastline doesn't have to be more prominent, just zoomed out a bit
+  // to make the coast more recognizable". So the part of the map the card shows (x0: its left edge, y1: its foot; the
+  // card crops the map's box to fit the paper) spans at least MAPDEG degrees from side to side, and the map draws back
+  // further, a little at a time, until the coast in the clear part of it is a shape you could name, not a sliver: the
+  // clear part is inside the map's rim and outside the words, plates and shield, which dotSpot found as boxes (at.tx);
+  // in it there must be MAPLEN units of coastline, with one unbroken stretch MAPRUN long that spreads MAPSPAN across.
+  // Before drawing back, one step closer (30 degrees) is tried: an inland place like Mali has its coast clear of the
+  // words there, and under them further out. A map that never gets there (a speck of an island in mid-ocean) is drawn
+  // at the step that came closest.
+  // (It was 10.92 to the degree, about 26 degrees across, or less until 25 points of coastline stood in a window under
+  // the name: often a close-up of one bay that nobody could place.)
+  const zoomAt = {}, MAPDEG = 36, MAPLEN = 70, MAPRUN = 40, MAPSPAN = 30;
+  function mapZoom(ll, at) {
+    const cx = at.x, cy = at.y, x0 = at.x0 || 0, y1 = Math.min(MAPH, at.y1 || MAPH), tx = at.tx || [];
+    const zk = ll.join(',') + '|' + cx + ',' + cy + ',' + x0 + ',' + y1 + '|' + tx.join(','); if (zoomAt[zk]) return zoomAt[zk];
+    const B = landBoxes(), m = 8, cosl = Math.cos(ll[1] * Math.PI / 180), wx0 = x0 + m, wx1 = MAPW - m, wy0 = m, wy1 = y1 - m;
+    const clearAt = (x, y) => { if (x < wx0 || x > wx1 || y < wy0 || y > wy1) return false; for (let i = 0; i < tx.length; i += 4) if (x > tx[i] - 2 && x < tx[i + 2] + 2 && y > tx[i + 1] - 1.5 && y < tx[i + 3] + 1.5) return false; return true; };
+    const k0 = Math.min(10.92, (MAPW - x0) / MAPDEG); let k = k0, bestK = k0, bestS = -1;
+    for (let step = 0; step < 16; step++) {
+      k = step === 0 ? k0 : step === 1 ? k0 * 1.2 : k0 / Math.pow(1.15, step - 1);
+      const ky = k / cosl, lonA = ll[0] + (wx0 - cx) / k, lonB = ll[0] + (wx1 - cx) / k, latA = ll[1] - (wy1 - cy) / ky, latB = ll[1] + (cy - wy0) / ky;
+      let len = 0, run = 0, ext = 0;
+      for (let i = 0; i < LAND.length; i++) {
         const b = B[i]; if (b[2] < lonA || b[0] > lonB || b[3] < latA || b[1] > latB) continue;
-        const r = LAND[i]; for (let j = 0; j < r.length && seen < 25; j += 2) if (r[j] > lonA && r[j] < lonB && r[j + 1] > latA && r[j + 1] < latB) seen++;
+        const r = LAND[i]; let go = 0, ax = 1e9, ay = 1e9, bx = -1e9, by = -1e9;
+        for (let j = 0; j < r.length; j += 2) {
+          const j2 = (j + 2) % r.length, x = cx + ((r[j] + r[j2]) / 2 - ll[0]) * k, y = cy - ((r[j + 1] + r[j2 + 1]) / 2 - ll[1]) * ky;
+          if (!clearAt(x, y)) { go = 0; ax = ay = 1e9; bx = by = -1e9; continue; }   // (a stretch is broken where the coast goes under the words)
+          const d = Math.hypot((r[j2] - r[j]) * k, (r[j2 + 1] - r[j + 1]) * ky); len += d; go += d; if (go > run) run = go;
+          if (x < ax) ax = x; if (x > bx) bx = x; if (y < ay) ay = y; if (y > by) by = y; const e = Math.hypot(bx - ax, by - ay); if (e > ext) ext = e;
+        }
       }
-      if (seen >= 25) break; k /= 1.45;
+      const sc = Math.min(len / MAPLEN, run / MAPRUN, ext / MAPSPAN); if (sc >= 1) { bestK = k; break; }
+      if (sc > bestS) { bestS = sc; bestK = k; }
     }
+    k = bestK;
     return (zoomAt[zk] = k);
   }
   function mapSVG(ll, color, at, reg) {
     if (!ll) return '';
-    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + ',' + (at.x0 || 0) + ',' + (at.y1 || 0) + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
+    at = at || DOT0; const ck = ll.join(',') + color + '|' + at.x + ',' + at.y + ',' + at.r + ',' + (at.x0 || 0) + ',' + (at.y1 || 0) + '|' + (at.tx || []).join(',') + '|' + (reg || ''); if (mapCache[ck]) return mapCache[ck];
     const tint = reg && window.AnoriaDomains && window.AnoriaDomains.REGCOL ? window.AnoriaDomains.REGCOL[reg] : null;   // (the land in a faint wash of the home region's colour: Tim, 2026-11-12)
     // (a place far from any coast, like Sitting Bull's plains, would show a blank map: the map draws back, step by step,
     // until a coastline is in view to give a bearing, and the dot stays the same size: Tim, 2026-11-12)
-    const W = MAPW, H = MAPH, cx = at.x, cy = at.y, k = mapZoom(ll, cx, cy, at.x0, at.y1), ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
+    const W = MAPW, H = MAPH, cx = at.x, cy = at.y, k = mapZoom(ll, at), ky = k / Math.cos(ll[1] * Math.PI / 180), lon0 = ll[0], lat0 = ll[1], pad = 6;
     const X = lon => cx + (lon - lon0) * k, Y = lat => cy - (lat - lat0) * ky;
     const lonA = lon0 - (cx + pad) / k, lonB = lon0 + (W - cx + pad) / k, latA = lat0 - (H - cy + pad) / ky, latB = lat0 + (cy + pad) / ky;
     const B = landBoxes(); let d = '';
@@ -388,7 +408,11 @@
       for (let ti = 0; ti < tiers.length && !out; ti++) { const r = tiers[ti][0], body = Math.max(r, 3.4), rad = body * sc + tiers[ti][1] * em; let best = 1e9;
         for (let y = Math.max(body + 2, top); y <= y1 - body - 3; y += 2.5) for (let x = MAPW - body - 4; x >= x0 + body + 4; x -= 2.5) {
           const d = (x - DOT0.x) * (x - DOT0.x) + 2.2 * (y - DOT0.y) * (y - DOT0.y); if (d >= best) continue; if (clear(x, y, rad)) { best = d; out = { x: Math.round(x * 2) / 2, y: Math.round(y * 2) / 2, r: r }; } } }
-      if (out) { out.x0 = Math.max(0, Math.round(x0)); out.y1 = Math.round(y1); }
+      if (out) { out.x0 = Math.max(0, Math.round(x0)); out.y1 = Math.round(y1);
+        // (the words, plates and shield as boxes in the map's own units, so mapZoom can tell the clear part of the map)
+        out.tx = []; near.forEach(q => { const a = [Math.round(MAPW - (sr.right - q.left) / sc), Math.round((q.top - sr.top) / sc), Math.round(MAPW - (sr.right - q.right) / sc), Math.round((q.bottom - sr.top) / sc)];
+          if (a[2] > out.x0 && a[0] < MAPW && a[3] > 0 && a[1] < out.y1) out.tx.push(a[0], a[1], a[2], a[3]); });
+        if (n.classList.contains('hasll')) out.tx.push(Math.round(MAPW - 1.3 * em / sc), 0, MAPW, out.y1); }   // (the map's edge fades out by the Legacy Line)
     } catch (e) { out = null; }
     c.remove(); return out;
   }

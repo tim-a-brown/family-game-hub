@@ -502,6 +502,16 @@ Underlying principles for everything:
   all card text"). `dotSpot()` in ui.js lays a copy of the card out off the screen, takes every line of text, the
   shield, the home plate, the ribbon and the Legacy Line as boxes, and stands the dot in the clear place nearest the
   upper right; the map is drawn round that place (`mapSVG(ll, color, at)`), found once for each card and layout.
+- **A card's map is drawn far enough back to show a coast you could name** (Tim, 2026-11-14: "coastline doesn't have to
+  be more prominent, just zoomed out a bit to make the coast more recognizable"). The map's ink stays as faint as it is
+  (Tim, 2026-11-12); only the zoom changed. `mapZoom()` in ui.js: the part of the map the card shows spans 36 degrees
+  from side to side (`MAPDEG`; it was about 26), and if the coast in its clear part (outside the words, plates and
+  shield, which `dotSpot()` hands it as boxes, `at.tx`) is only a sliver, it tries 30 degrees once (an inland place
+  like Mali has its coast clear of the words there) and then draws back a little at a time until it is a shape: 70
+  map units of coast, one unbroken stretch 40 long that spreads 30 across (`MAPLEN`, `MAPRUN`, `MAPSPAN`). A speck of
+  an island in mid-ocean is drawn at the step that came closest. The map and its dot stay hidden until the faces have
+  loaded (`.dotwait`), so a card never shows a map that then moves. The scratchpad's `maps/audit.js` measures every
+  card's visible coast (the coast painted in one color, so the words and plates hide it as they do).
 - **A number inside a mark is centred by its own ink** (Tim: "the numbers in spark and shield sit too high" on his
   iPhone). Browsers read a font's ascent and descent differently, so a box one line tall puts a digit in a different
   place in each. The rule in ui.css (after `.ac-cost b`) makes the box with a strut as tall as a digit standing on the
