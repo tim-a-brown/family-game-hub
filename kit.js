@@ -2112,21 +2112,33 @@
     return box;
   }
   // A robot's token says how well it plays by itself (Tim, 2026-11-14: "incorporate it into the robot icon but not just as
-  // a color", "be creative but professional", then "don't use the whole background ... there might be two computer
-  // players at that difficulty level ... a glow at the bottom for green, yellow, and then the fire"): the token is its
-  // seat's color with the robot on it, like anyone's, and light rises from its lower edge: a cool green glow for Easy,
-  // a warm gold one for Normal, and fire for Hard. The skill's own words (Easy, Normal, Hard, or a game's names for
-  // them) decide which, so every game's levels fit.
+  // a color", "be creative but professional", "a glow at the bottom for green, yellow, and then the fire", then "I liked
+  // the nice and evil faces ... give hard a little bit of an actual flame coming up behind the icon"): the token is its
+  // seat's color, so two robots at one level still differ, with the robot's head on it and light rising from its lower
+  // edge. Easy smiles over a green glow, Normal looks on steadily over a gold one, and Hard glares with red eyes from in
+  // front of a flame. The skill's own words (Easy, Normal, Hard, or a game's names for them) decide which.
   function botLevel(tag) {
     var t = String(tag || '').toLowerCase();
     if (/easy|begin|novice|gentle|casual|relax|kid|learn/.test(t)) return 'e';
     if (/hard|expert|master|tough|pro\b|brutal|shark|elite|strong/.test(t)) return 'h';
     return 'n';
   }
+  var BOT_FLAME = '<svg class="fl" viewBox="0 0 40 40" aria-hidden="true"><defs>' +
+    '<linearGradient id="kBotF1" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e5321b"/><stop offset=".55" stop-color="#ff7a22"/><stop offset="1" stop-color="#ffc53d" stop-opacity=".85"/></linearGradient>' +
+    '<linearGradient id="kBotF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffb02e"/><stop offset="1" stop-color="#fff1a8"/></linearGradient></defs>' +
+    '<path class="f1" fill="url(#kBotF1)" d="M5 41C2.5 31 8 27 7 18.5c3.4 3.2 4.2 5.4 5.4 4.2C11.6 16 14.6 11.4 13.6 4.6c4.8 4.6 6.2 8.6 6.4 11.4C21 11.4 23.8 7.6 26 2.6c1.6 6.6 2.4 11.2 1.4 16.6 1.8-1.6 3.2-3.8 4-6.6 3.6 7.2 6 15.4 3.6 28.4z"/>' +
+    '<path class="f2" fill="url(#kBotF2)" d="M10 41c-1.6-7 2.4-10 2-15.6 2.6 2.4 3.4 4.4 4.4 3.6-.4-5.2 2-8.4 3.4-12.6 2 3.8 3.4 7.6 3.2 11.6 1.6-1.4 2.6-3 3.2-5.2 2.8 5.4 4 11.2 2.4 18.2z"/></svg>';
   function botFace(tag, color) {
-    var lv = botLevel(tag);
+    var lv = botLevel(tag), ink = '#1b1c2e', eyes = lv === 'e'
+      ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
+      : lv === 'n'
+        ? '<circle cx="9" cy="12" r="1.5" fill="' + ink + '"/><circle cx="15" cy="12" r="1.5" fill="' + ink + '"/><path d="M10.2 15.2h3.6" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
+        : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff3b1f"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff3b1f"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>';
+    var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.2" fill="' + (lv === 'h' ? '#ff5a2a' : '#f3f1fb') + '"/>' +
+      '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
+      '<rect x="4.4" y="6" width="15.2" height="12.2" rx="4.2" fill="#f3f1fb"/>' + eyes + '</svg>';
     return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html:
-      '<i class="glow"></i>' + (lv === 'h' ? '<i class="fl"></i><i class="fl f2"></i>' : '') + '<span class="bi">' + icon('bot') + '</span>' });
+      '<i class="glow"></i>' + (lv === 'h' ? BOT_FLAME : '') + head });
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
