@@ -23,11 +23,11 @@
 /* ── Bankroll strip (chrome) ── */
 .bankbar{display:flex;align-items:center;gap:10px;margin:0 2px 8px;min-height:40px;}
 .bankbar .bk{display:flex;align-items:center;gap:7px;flex:none;}
-.bankbar .bk .ico{width:20px;height:20px;color:var(--yellow);}
-.bankbar .bk b{font-family:var(--display);font-weight:400;font-size:1.4rem;color:var(--yellow);letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+.bankbar .bk .ico{width:20px;height:20px;color:var(--lit);}
+.bankbar .bk b{font-family:var(--display);font-weight:800;font-size:1.4rem;color:var(--lit);letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
 .bankbar .bk.lab{flex-direction:column;align-items:flex-start;gap:0;}
 .bankbar .bk .bkr{display:flex;align-items:center;gap:7px;}
-.bankbar .bk .bkl{white-space:nowrap;font-size:.68rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);line-height:1.1;}
+.bankbar .bk .bkl{white-space:nowrap;font-size:.76rem;font-weight:600;color:var(--text-2);line-height:1.1;}
 .bankbar .bk .bkl .ico{width:.85em;height:.85em;color:#fff;}
 .bankbar .ss{flex:1;min-width:0;font-size:.8rem;font-weight:800;color:var(--text-3);line-height:1.2;text-align:right;}
 .bankbar .ss span{display:block;font-size:.95rem;color:var(--text-2);}
@@ -41,7 +41,7 @@
 .shoe{position:absolute;top:10px;right:12px;--cw:30px;display:flex;}
 .shoe .pcard{box-shadow:0 0 0 1px rgba(0,0,0,.2),2px 2px 0 rgba(0,0,0,.25),4px 4px 0 rgba(255,255,255,.12),5px 5px 8px rgba(0,0,0,.35);}
 .zone{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;}
-.who{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:3px 12px 3px 4px;border-radius:999px;background:rgba(10,20,15,.55);font-weight:800;font-size:.85rem;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);max-width:calc(100% - 60px);}
+.who{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:3px 12px 3px 4px;border-radius:999px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font-weight:750;font-size:.85rem;white-space:nowrap;box-shadow:var(--plate-line),0 2px 8px rgba(0,0,0,.25);max-width:calc(100% - 60px);}
 .who .avatar{width:22px;height:22px;font-size:.7rem;}
 .who .avatar .ico{width:62%;height:62%;}
 .who .hn{color:rgba(255,255,255,.75);font-weight:700;overflow:hidden;text-overflow:ellipsis;}
@@ -67,8 +67,8 @@
 .res{position:absolute;left:50%;top:-12px;transform:translateX(-50%) scale(.6);opacity:0;z-index:4;padding:3px 9px;border-radius:999px;font-weight:900;font-size:.72rem;white-space:nowrap;
   box-shadow:0 3px 8px rgba(0,0,0,.35);transition:transform .35s var(--spring),opacity .2s;pointer-events:none;}
 .res.show{transform:translateX(-50%) scale(1);opacity:1;}
-.res.win{background:var(--yellow);color:#2b1a00;}
-.res.lose{background:#2a1d1d;color:#ffb3b3;}
+.res.win{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);}
+.res.lose{background:rgba(42,29,29,.85);color:#ffb3b3;box-shadow:inset 0 0 0 1px rgba(255,140,140,.25);}
 .res.push{background:#e9e4f7;color:#2a2440;}
 /* player's two hands */
 .mid{display:flex;align-items:center;gap:10px;width:100%;}
@@ -111,7 +111,7 @@
 .status{text-align:center;font-weight:800;color:var(--text-2);min-height:22px;font-size:.95rem;}
 .status b{color:var(--text);white-space:nowrap;}
 .status .ico{width:18px;height:18px;vertical-align:-3px;}
-.status .big{display:block;font-family:var(--display);font-weight:400;font-size:2rem;line-height:1.1;color:var(--text);}
+.status .big{display:block;font-family:var(--display);font-weight:800;font-size:2rem;line-height:1.1;color:var(--text);}
 .status .tip{display:block;font-size:.8rem;color:var(--text-3);font-weight:700;margin-top:2px;}
 .status .bad{color:#ff8a8a;}
 .status .ok{color:var(--green);}
@@ -786,7 +786,7 @@
     ]);
   }
   function badge(o, copy) {
-    return el('span', { class: 'res ' + (o ? 'win' : copy ? 'push' : 'lose'), text: o ? 'WIN' : copy ? 'COPY: DEALER' : 'LOSE' });
+    return el('span', { class: 'res ' + (o ? 'win' : copy ? 'push' : 'lose'), text: o ? 'Win' : copy ? 'Dealer wins the copy' : 'Lose' });
   }
 
   function render(anim) {
@@ -819,7 +819,7 @@
     var amt = res ? res.amt : S.phase === 'bet' ? S.bet : S.bet;
     var spot = el('div', { class: 'spot' + (amt ? ' has' : ''), 'aria-label': 'Bet ' + money(amt), 'data-spot': S.phase === 'bet' ? 'bet' : null }, [el('span', { class: 'lab', text: 'Bet' })]);
     if (amt) spot.appendChild(stackEl(amt));
-    if (res) spot.appendChild(el('span', { class: 'res ' + res.out + (revealing ? '' : ' show'), text: res.out === 'win' ? 'WIN' : res.out === 'push' ? 'PUSH' : 'LOSE' }));
+    if (res) spot.appendChild(el('span', { class: 'res ' + res.out + (revealing ? '' : ' show'), text: res.out === 'win' ? 'Win' : res.out === 'push' ? 'Push' : 'Lose' }));
     var spotw = el('div', { class: 'spotw' }, [spot, el('span', { class: 'amt', id: 'betamt', text: amt ? money(amt) : '' })]);
 
     var hasCards = !!S.p, s = hasCards ? current() : null;
