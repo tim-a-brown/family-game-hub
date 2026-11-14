@@ -128,6 +128,22 @@ Underlying principles for everything:
   are rounded (13 to 28px), buttons have no lip and press with a small sink. The home screen is one row per game
   (icon, name, players, a live line at the right, gold when it is something for you to do), sections marked by a bar
   in the category's color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+- **Every game is in Night glass** (the sweep of 2026-11-14, every game page, its own folder and history view). The line
+  between what a game keeps and what follows the look: **anything that would be printed on the physical game keeps its own
+  type and look** (a show's logo, words printed on a felt, card faces, dice, a pinball playfield, slot reels, an arcade
+  game's in-canvas pixel art and score font, Poker's venue logos, a printed board, a rubber stamp, a receipt, a drawn
+  console controller, Oregon Trail's period computer screen); **everything around it is Night glass**: glass plates and
+  panels (`--gl`, `--gl-line`, `--plate-bg`, `--plate-line`), gold only for whose turn it is, your score and the chosen
+  thing, our fonts in sentence case (no `text-transform: uppercase`, no letter-spacing, no Lilita, Bungee, Fredoka or
+  Baloo on labels, buttons, plates or HUD), buttons with no lip. A new game follows the same line. The kit's own fixes from
+  the sweep: `.score` plates are glass with the turn lit gold; a disabled main button is plain glass; `.btn-green`,
+  `.btn-red`, `.btn-blue` and `.btn-pink` keep their color; the body's transparent default has no weight
+  (`:where(...) body`), so a game that paints its own stage on `body` (Pinball, Goblin Defenders, Lorcana) still does;
+  the score keepers' shared pad (`.spad` in cards.js) is glass ruled like Yahtzee's; the card tables' seat tags, chips,
+  bubbles and sort toggle (cards.js) are smoked glass. **The fonts' tabular figures change only the digits**: the hosted
+  Schibsted files had their `tnum` lookup cut to digits (fontTools), so "$1,250" never reads "$1 , 250"; a new build of
+  either font needs the same cut. The kit's Players card uses the class names `.k-side`, `.k-tok`, `.k-toks`, `.k-vs`, so
+  a game must not use them for its own elements (Bingo did, and its table broke).
 - **A moment on the table** (`Kit.moment({title, line, chip | icon, pts, color, tone: 'bad', big, at, ms})`) is a
   strip of rounded navy glass lit along its top edge in gold: the contract or what happened on a rounded tile at the
   left, the sentence in Schibsted Grotesk, the points glowing in Doto's dots at the right (counted up), `at` the table
