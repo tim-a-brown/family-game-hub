@@ -889,10 +889,10 @@
   var LG_LV = { easy: 'Easy 3×4', medium: 'Medium 4×4', hard: 'Hard 4×5', hard5: 'Hard 5×5' };
   HistView.css('hv-logicgrid', [
     '.hv-lg{background:linear-gradient(180deg,#fffdf6,#f4ecd8);color:#1d1b22;border-radius:6px;padding:10px 12px 8px;box-shadow:0 6px 16px -6px rgba(0,0,0,.55);}',
-    '.hv-lg h5{margin:0 0 6px;padding-bottom:4px;border-bottom:1.5px solid #1d1b22;font:700 .8rem Georgia,"Times New Roman",serif;letter-spacing:.12em;text-transform:uppercase;}',
+    '.hv-lg h5{margin:0 0 6px;padding-bottom:4px;border-bottom:1.5px solid #1d1b22;font:700 .85rem var(--font,system-ui);}',
     '.hv-lg h5 i{font-weight:400;letter-spacing:0;text-transform:none;color:#6b6455;margin-left:6px;}',
     '.hv-lg table{width:100%;border-collapse:collapse;font-size:.82rem;}',
-    '.hv-lg th{font:800 .6rem "Helvetica Neue",Helvetica,Arial,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#6b6455;text-align:left;padding:3px 4px;border-bottom:1px solid #1d1b22;}',
+    '.hv-lg th{font:700 .66rem var(--font,system-ui);color:#6b6455;text-align:left;padding:3px 4px;border-bottom:1px solid #1d1b22;}',
     '.hv-lg td{padding:4px;border-bottom:1px solid rgba(29,27,34,.2);font-family:"Patrick Hand","Bradley Hand",cursive;font-size:1rem;color:#1f3a8a;}',
     '.hv-lg td:first-child{font:700 .85rem Georgia,serif;color:#1d1b22;}',
     '.hv-lg tr.on td{background:#ffe36b;}.hv-lg tr[onclick],.hv-lg tr{cursor:default;}',
