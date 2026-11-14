@@ -594,3 +594,214 @@ const Casino = (function(){
 
   return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, home, mode, linkRecord, isMain, isFrequent, pbKey: fpKey, playMoney: function(){ return !!PLAY; } };
 })();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CasinoNet: the house games (Roulette, Craps, Baccarat, Three Card Poker, Pai Gow, Horse Race) at one online table
+// through turnnet.js. Everyone sits at the same table and plays against the house with table money: each seat starts
+// with the same amount (the review's "Everyone starts with"), buys back in for it when it runs out, and nobody's
+// bankroll changes. Everyone bets at the same time (TurnNet's turn holds every seat still to bet); the last bet in
+// settles the round (the spin, the roll, the deal, the race) for every seat at once, and each device plays the result
+// out with the game's own animation. Cash out ends the table for everyone, between rounds.
+//
+//   CasinoNet.wallet()   the Casino object a game uses (var Casino = CasinoNet.wallet() inside the game): the same calls,
+//                        playing from a seat's table money while .use(seat) is set ({bank}), your own money otherwise
+//   CasinoNet.quiet(fn)  fn with the game's sounds, haptics and messages switched off (a table worked out in a move)
+//   CasinoNet.table(cfg) TurnNet.setup for the table; returns {move(st, seat, m) -> {state, mv} | null} for net.act. cfg:
+//     game, title, max, unit    as TurnNet (min is 2); unit names a round ('spin', 'roll', 'hand', 'race')
+//     opts(o, saved) -> o       the table's settings from the setup (o.stake is filled in)
+//     seat(player, opts, i) -> the seat's own game state (its S, as the game keeps one for a player)
+//     shared(opts) -> st.g      what the whole table shares (a shoe, the shooter)
+//     onTable(S, st, i) -> $    money a seat has on the table (counted in its result)
+//     take(st, i, m) -> false to refuse   a 'bet' move from seat i (the seat is then in)
+//     resolve(st)               every seat is in: the round is played for all of them (sets st.prev); leave
+//                               st.phase 'bet' to open the next round, or set the game's own phase (decisions)
+//     turn(st), move(st, i, m)  the game's own phases: who is to act, and their moves (move returns a truthy value,
+//                               an object adds to mv; call CasinoNet.next(st) once that round is settled)
+//     sitOut(st, i)             a person who leaves: the game takes their bets back or decides for them
+//     next(st)                  the game's part of opening a new round
+//     show(net, info), leave()  as TurnNet
+//   Table state: {online, started, o, stake, round, phase 'bet'|game's|'over', seats [{name, bank, rebuys, out, S}],
+//                 ready [seat is in this round], g (shared), prev (the round just settled, for the devices to play out)}
+//   Moves: {t: 'bet', ...} (the game's take() reads the rest), {t: 'end'} (Cash out: the whole table), the game's own.
+//   Also: CasinoNet.next(st), .nets(st), .left(st) (names still to act), .listAnd(names), .strip(net, o), .end(net, o),
+//   .once(key), .stakeOption()
+// ═══════════════════════════════════════════════════════════════════════════
+var CasinoNet = (function () {
+  'use strict';
+  var STAKES = [500, 1000, 2500, 5000];
+  var CFG = null;
+
+  function wallet() {
+    var cur = null, w = {};
+    Object.keys(Casino).forEach(function (k) { w[k] = typeof Casino[k] === 'function' ? function () { return Casino[k].apply(Casino, arguments); } : Casino[k]; });
+    w.use = function (seat) { cur = seat || null; };
+    w.seat = function () { return cur; };
+    w.balance = function () { return cur ? Math.max(0, cur.bank) : Casino.balance(); };
+    w.bet = function (n) { if (!cur) return Casino.bet(n); if (n > cur.bank + 1e-9) return false; cur.bank -= n; return true; };
+    w.win = function (n) { if (!cur) return Casino.win(n); cur.bank += Math.round(n); };
+    w.reset = function () { if (!cur) return Casino.reset(); };
+    w.mode = function () { return cur ? 'play' : Casino.mode(); };   // (table money is play money: no bankroll is touched)
+    w.forPlayer = function (n) { return cur ? 'play' : Casino.forPlayer(n); };
+    w.home = function () { if (!cur) Casino.home(); };
+    w.linkRecord = function (s) { return cur ? {} : Casino.linkRecord(s); };
+    w.playMoney = function () { return cur ? true : Casino.playMoney(); };
+    return w;
+  }
+  function quiet(fn) {
+    var k = { sfx: Kit.sfx, haptic: Kit.haptic, callout: Kit.callout, toast: Kit.toast, confetti: Kit.confetti }, nop = function () {};
+    Kit.sfx = nop; Kit.haptic = nop; Kit.callout = nop; Kit.toast = nop; Kit.confetti = nop;
+    try { return fn(); } finally { Kit.sfx = k.sfx; Kit.haptic = k.haptic; Kit.callout = k.callout; Kit.toast = k.toast; Kit.confetti = k.confetti; }
+  }
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function onT(st, i) { try { return CFG && CFG.onTable ? CFG.onTable(st.seats[i].S, st, i) || 0 : 0; } catch (e) { return 0; } }
+  // each seat's result for the session: what it has (money and chips on the table) less what it was given
+  function nets(st) { return st.seats.map(function (s, i) { return Math.round(s.bank + onT(st, i) - st.stake * (1 + (s.rebuys || 0))); }); }
+  function allIn(st) { return st.seats.every(function (s, i) { return s.out || st.ready[i]; }); }
+  function turnOf(st) {
+    if (!st || st.phase === 'over') return [];
+    if (st.phase === 'bet') { var out = []; st.seats.forEach(function (s, i) { if (!s.out && !st.ready[i]) out.push(i); }); return out; }
+    return CFG.turn ? CFG.turn(st) : [];
+  }
+  function left(st) { return turnOf(st).map(function (i) { return st.seats[i].name; }); }
+  // a new round of betting: anyone out of money (with nothing on the table) buys back in for the starting amount
+  function next(st) {
+    st.round++; st.phase = 'bet';
+    st.seats.forEach(function (s, i) { if (!s.out && s.bank < 1 && onT(st, i) < 1) { s.bank += st.stake; s.rebuys = (s.rebuys || 0) + 1; s.rebuy = st.round; } });
+    st.ready = st.seats.map(function (s) { return !!s.out; });
+    if (CFG.next) CFG.next(st);
+  }
+  function settle(st) {
+    CFG.resolve(st);
+    if (st.phase === 'bet') next(st);
+  }
+  function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_' + CFG.game)) || {}; } catch (e) { return {}; } }
+  function table(cfg) {
+    CFG = cfg;
+    function start(players, o) {
+      var stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
+      var st = { v: 1, online: 1, started: Date.now(), o: o, stake: stake, round: 1, phase: 'bet', g: cfg.shared ? cfg.shared(o) : {},
+        seats: players.map(function (p, i) { return { name: p.name, bank: stake, rebuys: 0, S: cfg.seat(p, o, i) }; }), ready: players.map(function () { return false; }) };
+      if (cfg.next) cfg.next(st);
+      return st;
+    }
+    function moveOn(st, i, m) {
+      if (!st || st.phase === 'over' || !m) return null;
+      if (m.t === 'end') {
+        if (st.phase !== 'bet' || (cfg.canEnd && !cfg.canEnd(st))) return null;
+        st.phase = 'over'; st.endBy = i;
+        return { state: st, mv: { t: 'end', s: i } };
+      }
+      if (m.t === 'bet') {
+        if (st.phase !== 'bet' || st.ready[i] || !st.seats[i] || st.seats[i].out) return null;
+        if (cfg.take(st, i, m) === false) return null;
+        st.ready[i] = true;
+        var mv = { t: 'bet', s: i };
+        if (allIn(st)) { mv.settled = st.round; settle(st); }
+        return { state: st, mv: mv };
+      }
+      if (st.phase === 'bet' || !cfg.move || turnOf(st).indexOf(i) < 0) return null;
+      var r0 = st.round, r = cfg.move(st, i, m);
+      if (!r) return null;
+      var mv2 = Object.assign({ t: m.t, s: i }, typeof r === 'object' ? r : {});
+      if (st.round !== r0) mv2.settled = r0;
+      return { state: st, mv: mv2 };
+    }
+    TurnNet.setup({
+      game: cfg.game, title: cfg.title, min: 2, max: cfg.max || 6,
+      opts: function () {
+        var s = setupSaved(), o = Object.assign({}, s.options || {});
+        o.stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
+        return cfg.opts ? cfg.opts(o, s) : o;
+      },
+      start: start,
+      turn: turnOf,
+      over: function (st) {
+        if (st.phase !== 'over') return null;
+        var n = nets(st), hi = Math.max.apply(null, n), win = [];
+        n.forEach(function (x, i) { if (x === hi) win.push(i); });
+        return { win: win, text: 'Cashed out after ' + (st.round - 1) + ' ' + (cfg.unit || 'round') + (st.round - 1 === 1 ? '' : 's') };
+      },
+      // someone who leaves sits out: their seat stays with its money, and the others play on
+      resign: function (st, i) {
+        st.seats[i].out = true;
+        if (cfg.sitOut) cfg.sitOut(st, i);
+        if (st.phase === 'bet') { st.ready[i] = true; if (allIn(st)) settle(st); }
+        return { state: st };
+      },
+      leaveNote: function () { return 'The others play on without you, and your money stays at the table.'; },
+      show: cfg.show, leave: cfg.leave
+    });
+    return { move: moveOn };
+  }
+
+  // ── The seats on screen: each player's money, and whoever still has to bet glows ──
+  var CSS = '.cz-net{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:2px 0 6px;}' +
+    '.cz-net .czs{display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);font-weight:800;font-size:.8rem;color:#e9e4f7;max-width:100%;transition:background .25s,box-shadow .25s,opacity .25s;}' +
+    '.cz-net .czs .avatar{width:24px;height:24px;font-size:.66rem;flex:none;}' +
+    '.cz-net .czs > span{white-space:nowrap;}' +
+    '.cz-net .czs b{font-variant-numeric:tabular-nums;color:#f6d77b;font-weight:900;white-space:nowrap;}' +
+    '.cz-net .czs.up{background:color-mix(in srgb,var(--yellow,#f5c542) 30%,rgba(0,0,0,.3));box-shadow:inset 0 0 0 1.5px var(--yellow,#f5c542),0 0 12px color-mix(in srgb,var(--yellow,#f5c542) 45%,transparent);color:#fff;}' +
+    '.cz-net .czs .ck{width:14px;height:14px;color:#3ddc84;flex:none;display:inline-flex;}.cz-net .czs .ck svg{width:14px;height:14px;}' +
+    '.cz-net .czs.me:not(.up){box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.4);}' +
+    '.cz-net .czs.out{opacity:.45;}' +
+    '.cz-net .czs .mk{display:inline-flex;width:16px;height:16px;margin-right:-2px;color:#f6d77b;flex:none;}.cz-net .czs .mk svg{width:16px;height:16px;}' +
+    '.cz-net .czs .d{font-size:.74rem;font-weight:900;}.cz-net .czs .d.pos{color:#3ddc84;}.cz-net .czs .d.neg{color:#ff8a8a;}';
+  function css() { if (document.getElementById('cz-net-css')) return; var s = document.createElement('style'); s.id = 'cz-net-css'; s.textContent = CSS; document.head.appendChild(s); }
+  function money(n) { n = Math.round(n); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString(); }
+  // o: {st: the table as this device shows it (default the table), amount(i) -> $ (default the seat's money),
+  //     delta(i) -> $ won or lost in the round just played, mark(i) -> {icon, title} beside the name (Craps: the shooter),
+//     up: [seats still to act] (default: whose turn it is)}
+  function strip(net, o) {
+    css(); o = o || {};
+    var st = o.st || net.state, me = net.seat, up = o.up || turnOf(net.state), box = Kit.el('div', { class: 'cz-net', 'aria-label': 'Players at the table' });
+    st.seats.forEach(function (s, i) {
+      var isUp = up.indexOf(i) >= 0, inn = !isUp && !s.out && net.state.phase !== 'over' && (net.state.phase === 'bet' ? !!net.state.ready[i] : true);
+      var amt = o.amount ? o.amount(i) : s.bank, d = o.delta ? o.delta(i) : null;
+      var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.out ? s.name + ' left the table' : '' }, [
+        Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) }),
+        Kit.el('span', { text: i === me ? 'You' : s.name }), Kit.el('b', { text: money(amt) })]);
+      var mk = o.mark ? o.mark(i) : null;
+      if (mk) c.insertBefore(Kit.el('span', { class: 'mk', title: mk.title || '', html: Kit.icon(mk.icon || mk) }), c.children[1]);
+      if (d) c.appendChild(Kit.el('span', { class: 'd ' + (d > 0 ? 'pos' : 'neg'), text: (d > 0 ? '+' : '−') + '$' + Math.abs(Math.round(d)).toLocaleString() }));
+      else if (inn && o.check !== false) c.appendChild(Kit.el('span', { class: 'ck', html: Kit.icon('check') }));
+      box.appendChild(c);
+    });
+    return box;
+  }
+  // The results card when the table cashes out: everyone's result for the session, best first. o: {unit}
+  var winRef = null;
+  function end(net, o) {
+    o = o || {};
+    var st = net.state, res = net.result, left = !!(res && res.left != null), me = net.seat, n = nets(st), played = st.round - 1;
+    var rank = st.seats.map(function (s, i) { return { name: i === me ? 'You' : s.name, score: (n[i] > 0 ? '+' : n[i] < 0 ? '−' : '') + '$' + Math.abs(n[i]).toLocaleString(), n: n[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
+    var top = rank[0], tie = rank[1] && rank[1].n === top.n;
+    if (winRef) winRef.close();
+    var by = st.endBy != null && st.seats[st.endBy] ? (st.endBy === me ? 'You' : st.seats[st.endBy].name) + ' cashed out the table after ' : 'The table cashed out after ';
+    winRef = Kit.win({
+      title: left ? res.text : top.n > 0 && !tie ? (top.i === me ? 'You win the table!' : top.name + ' wins the table!') : 'Nobody came out ahead',
+      sub: by + played + ' ' + (o.unit || 'round') + (played === 1 ? '.' : 's.'),
+      rank: rank, lose: me >= 0 && n[me] < 0, icon: me >= 0 && n[me] >= 0 ? 'trophy' : 'meh',
+      againLabel: left ? 'Back to the lobby' : 'New session',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else net.again(); },
+      look: o.look !== false
+    });
+    return winRef;
+  }
+  function closeEnd() { if (winRef) { winRef.close(); winRef = null; } }
+  // true the first time this device sees a key (a table's session is filed once on each device)
+  function once(key) {
+    var K = 'casino_net_rec', done = [];
+    try { done = JSON.parse(localStorage.getItem(K)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return false;
+    done.push(key); try { localStorage.setItem(K, JSON.stringify(done.slice(-30))); } catch (e) {}
+    return true;
+  }
+  // the setup's "Everyone starts with": it only matters online, so the Play online review asks it
+  function stakeOption() {
+    return { id: 'stake', label: 'Everyone starts with', value: 1000, when: function (m) { return m === 'online'; },
+      help: 'Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes.',
+      choices: STAKES.map(function (v) { return [v, money(v)]; }) };
+  }
+  return { wallet: wallet, quiet: quiet, table: table, next: next, nets: nets, left: left, turn: turnOf, allIn: allIn,
+    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, STAKES: STAKES };
+})();
