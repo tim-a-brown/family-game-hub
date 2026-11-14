@@ -12,6 +12,8 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../data/words-en.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 body{overflow-x:hidden;}
 .bg{max-width:520px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 14px);}
@@ -156,10 +158,10 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   Kit.init({
     id: 'boggle',
     theme: { felt: ['#2a4f8a', '#1a3566', '#11244a'] },
-    onNew: function () { clearSave(); showSetup(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Boggle: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Find as many words as you can in the letter grid before the sand runs out.</p>' +
       '<h3>Making words</h3><ul><li><b>Swipe</b> across touching letters to spell a word, then let go. Letters can touch sideways, up and down, or <b>diagonally</b>.</li>' +
@@ -168,11 +170,13 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       '<li><b>Qu</b> is one cube and counts as two letters.</li><li>You can also tap letters one at a time and press Enter, or type on a keyboard.</li></ul>' +
       '<h3>Scoring</h3><ul><li>3 or 4 letters: <b>1 point</b></li><li>5 letters: <b>2 points</b></li><li>6 letters: <b>3 points</b></li><li>7 letters: <b>5 points</b></li><li>8 or more: <b>11 points</b></li></ul>' +
       '<h3>Playing together</h3><p>Each player gets the <b>same board</b> in turn, with their own timer, and passes the phone on. When everyone has played, lists are compared. In the standard rules, a word found by <b>two or more players is crossed out</b> and nobody scores it, so hunt for the words nobody else will spot.</p>' +
-      '<p>At the end of each round you can see every word that was hiding in the grid.</p>'
+      '<p>At the end of each round you can see every word that was hiding in the grid.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> gives everyone the same board at the same time, each on their own phone or tablet with their own sand timer. Your words stay on your device until your time is up. When everyone is done, the lists are compared and the round’s results show on every device.</p>'
   });
 
   var S = null, cells = [], selected = [], typedStr = '', timerT = null, lastTick = 0;
   function save() {
+    if (NET) { saveDraft(); return; }
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set((S.players.length > 1 ? 'Round ' + S.round + ' of ' + S.rounds + ' · ' : '') + (S.size === 5 ? 'Big Boggle' : 'Boggle'));
   }
@@ -184,13 +188,13 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     stopTimer(); S = null; app.className = 'bg';
     Kit.setup(app, {
       intro: 'Find hidden words before the sand runs out.',
-      modes: Kit.modes([{ id: 'solo' }, { id: 'party', kind: 'local', desc: '2 to 4 players take turns on the same board' }]),
-      players: { range: function (m) { return m === 'party' ? [2, 4] : [1, 1]; }, count: 2, names: true },
+      modes: Kit.modes([{ id: 'solo' }, { id: 'party', kind: 'local', desc: '2 to 4 players take turns on the same board' }, { id: 'online', desc: 'Everyone on their own device, all at once' }]),
+      players: { range: function (m) { return m === 'solo' ? [1, 1] : [2, 4]; }, count: 2, names: true },
       options: [
         { id: 'size', label: 'Board', choices: [['4', '4×4 Classic', 'The classic 16-letter board. Words need 3 or more letters.'], ['5', '5×5 Big Boggle', 'A bigger 25-letter board. Words need 4 or more letters.']], value: '4' },
         { id: 'time', label: 'Sand timer', help: 'How long each player gets to find words.', choices: [['180', '3 min'], ['120', '2 min'], ['0', 'No timer', 'Take as long as you like.']], value: '180' },
-        { id: 'rounds', label: 'Rounds', choices: [['1', '1'], ['3', '3'], ['5', '5']], value: '3', when: function (m) { return m === 'party'; } },
-        { id: 'rule', label: 'Words two players both found', choices: [['cross', 'Cross out (standard)', 'A word found by more than one player scores nothing for anyone.'], ['keep', 'Both score', 'Everyone scores every word they found, even shared ones.']], value: 'cross', when: function (m) { return m === 'party'; } }
+        { id: 'rounds', label: 'Rounds', choices: [['1', '1'], ['3', '3'], ['5', '5']], value: '3', when: function (m) { return m !== 'solo'; } },
+        { id: 'rule', label: 'Words two players both found', choices: [['cross', 'Cross out (standard)', 'A word found by more than one player scores nothing for anyone.'], ['keep', 'Both score', 'Everyone scores every word they found, even shared ones.']], value: 'cross', when: function (m) { return m !== 'solo'; } }
       ],
       start: 'Shake the cubes',
       onStart: function (cfg) {
@@ -232,6 +236,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   function endTurn(reason) {
     stopTimer(); clearSel();
     if (reason === 'time') { Kit.callout("Time's up!"); Kit.sfx('bad'); Kit.haptic('heavy'); }
+    if (NET) { netSubmit(); return; }
     if (S.turn < S.players.length - 1) {
       S.turn++; S.left = S.time; S.phase = 'ready'; save();
       setTimeout(render, reason === 'time' ? 1100 : 200);
@@ -326,7 +331,8 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     // Status row
     var st = el('div', { class: 'st' });
     var who = el('div', { class: 'who' });
-    if (showP) {
+    if (S.online && S.phase === 'wait') who.appendChild(el('div', null, [el('b', { text: 'Round ' + S.round + ' of ' + S.rounds }), el('small', { text: statLine() })]));
+    else if (showP) {
       who.appendChild(el('span', { class: 'avatar', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }));
       who.appendChild(el('div', null, [el('b', null, [document.createTextNode(p.name), multi ? el('i', { class: 'rd', text: 'Round ' + S.round + '/' + S.rounds }) : null]), el('small', { text: statLine() })]));
     } else who.appendChild(el('div', null, [el('b', { text: multi ? 'Round ' + S.round + ' of ' + S.rounds : 'Round over' }), el('small', { text: S.size === 5 ? 'Big Boggle' : 'Boggle' })]));
@@ -366,9 +372,16 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   function statLine() { var m = S.words[S.turn]; return m.length + (m.length === 1 ? ' word · ' : ' words · ') + m.reduce(function (s, x) { return s + pts(x); }, 0) + ' pts'; }
   function lid() {
     var L = el('div', { class: 'lid' }), p = me(), multi = S.players.length > 1;
-    if (S.phase === 'ready') {
+    if (S.online && S.phase === 'wait') {
+      var waitOn = netWaiting();
+      L.appendChild(el('h2', { text: 'Your words are in' }));
+      L.appendChild(el('p', { text: waitOn.length ? 'The round ends when ' + listAnd(waitOn) + (waitOn.length === 1 ? ' finishes.' : ' finish.') : 'The round is ending.' }));
+    } else if (S.phase === 'ready') {
       if (!S.shook) L.appendChild(el('div', { class: 'logo', text: 'BOGGLE' }));
-      if (multi) {
+      if (S.online) {
+        L.appendChild(el('h2', { text: 'Round ' + S.round + ' of ' + S.rounds }));
+        L.appendChild(el('p', { text: S.shook && S.left < S.time ? fmt(S.left) + ' left on your timer.' : 'Everyone at the table gets this same board, each on their own device.' }));
+      } else if (multi) {
         L.appendChild(el('h2', { text: S.turn === 0 && !S.shook ? p.name + ' goes first' : 'Pass to ' + p.name }));
         L.appendChild(el('p', { text: S.shook ? 'Same board as the others. No peeking until it\'s your turn!' : 'Round ' + S.round + ' of ' + S.rounds + '. Everyone gets this same board in turn.' }));
       } else if (S.shook && S.left < S.time) {
@@ -383,7 +396,8 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: S.round < S.rounds ? 'Next round' : 'Final scores', onclick: function () { nextFromResults(); } }));
     } else if (S.phase === 'over') {
       L.appendChild(el('h2', { text: 'Game over' }));
-      L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'New game', onclick: function () { clearSave(); showSetup(); } }));
+      if (S.online && NET) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'Play again', onclick: function () { NET.again(); } }));
+      else L.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: 'New game', onclick: function () { clearSave(); showSetup(); } }));
       L.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Last round results', onclick: function () { showRoundResults(); } }));
     }
     return L;
@@ -391,9 +405,9 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   function paintFound(fresh) {
     if (!foundEl) return;
     foundEl.innerHTML = '';
-    var list = S.phase === 'play' || (S.phase === 'ready' && S.players.length === 1) ? S.words[S.turn] : [];
+    var list = S.phase === 'play' || S.phase === 'wait' || (S.phase === 'ready' && (S.players.length === 1 || S.online)) ? S.words[S.turn] : [];
     if (!list.length) {
-      foundEl.appendChild(el('span', { class: 'none', text: S.phase === 'play' ? 'Swipe across touching letters to make words of ' + minLen() + '+ letters.' : S.phase === 'ready' && S.players.length > 1 ? 'Your words stay hidden from the other players.' : '' }));
+      foundEl.appendChild(el('span', { class: 'none', text: S.phase === 'play' ? 'Swipe across touching letters to make words of ' + minLen() + '+ letters.' : S.phase === 'ready' && S.players.length > 1 ? 'Your words stay hidden from the other players.' : S.phase === 'wait' ? 'You found no words this round.' : '' }));
       return;
     }
     list.slice().reverse().forEach(function (w) { foundEl.appendChild(chip(w, w === fresh)); });
@@ -597,6 +611,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     ] });
   }
   function nextFromResults() {
+    if (NET) { netNext(); return; }
     if (S.phase !== 'roundEnd') return;
     if (S.round < S.rounds) { newRound(); return; }
     finishGame();
@@ -640,14 +655,15 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       if (tot[0] > prev && prev > 0) hl.push('New personal best (old best ' + prev + ')');
       hl.push('Found ' + S.log[0].words[0].length + ' of ' + S.log[0].possible + ' words in the grid');
     }
-    Kit.record(KEY, {
-      started: S.started, mode: (S.size === 5 ? 'Big Boggle 5×5' : 'Boggle 4×4') + (multi ? ' · ' + S.rounds + (S.rounds === 1 ? ' round' : ' rounds') : ''),
+    if (!netRecorded()) Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online, ' : '') + (S.size === 5 ? 'Big Boggle 5×5' : 'Boggle 4×4') + (multi ? ' · ' + S.rounds + (S.rounds === 1 ? ' round' : ' rounds') : ''),
       players: S.players.map(function (p, i) { return { name: p.name, score: tot[i] }; }),
       rounds: multi && S.rounds > 1 ? { labels: S.log.map(function (r, i) { return 'R' + (i + 1); }), scores: S.log.map(function (r) { return r.scores; }) } : null,
       highlights: hl, summary: multi ? null : tot[0] + ' pts · ' + S.log[0].words[0].length + ' words',
       meta: { size: S.size, rule: S.rule, boards: S.log.map(function (r) { return r.board.join(','); }) },
       detail: boggleDetail()
     });
+    if (NET) { render(); netWin(tot, best); return; }
     Kit.resume.clear();
     save(); render();
     var rank = S.players.map(function (p, i) { return { name: p.name, score: tot[i], color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
@@ -662,6 +678,140 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
       setup: function () { clearSave(); showSetup(); }
     });
   }
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // Everyone plays the same board at the same time (the table's turn holds every seat that hasn't finished the
+  // round). Your words and your time left stay on your device (a draft, so closing the app pauses your timer) until
+  // your time is up or you're done; then one move hands your list in. The move that hands in the last list scores
+  // the round, and the next round's board comes with it. Each device shows a round's results once.
+  var NET = null, NETREC = 'boggle_net_rec', DRAFT = 'boggle_net_draft', winRef = null, seenKey = 'boggle_net_seen';
+  function listAnd(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+  function withS(st, fn) { var k = S; S = st; try { return fn(); } finally { S = k; } }
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_boggle')) || {}).options || {}; } catch (e) {}
+    return { size: +o.size === 5 ? 5 : 4, time: o.time == null ? 180 : +o.time, rounds: [1, 3, 5].indexOf(+o.rounds) >= 0 ? +o.rounds : 3, rule: o.rule === 'keep' ? 'keep' : 'cross' };
+  }
+  function netStart(players, o) {
+    var st = { online: 1, size: o.size || 4, time: o.time == null ? 180 : o.time, rounds: o.rounds || 3, rule: o.rule || 'cross',
+      players: players.map(function (p, i) { return { name: p.name, color: Kit.color(i) }; }), round: 0, log: [], gone: [], started: Date.now(), phase: 'play' };
+    netRound(st);
+    return st;
+  }
+  function netRound(st) {
+    withS(st, function () { S.round++; S.board = roll(); });
+    st.words = st.players.map(function () { return []; });
+    st.done = st.players.map(function (p, i) { return !!st.gone[i]; });
+  }
+  function netTurn(st) { var out = []; if (st.phase === 'over') return out; st.done.forEach(function (d, i) { if (!d) out.push(i); }); return out; }
+  // hand in a list (or nothing, for a seat that left); the last one in scores the round
+  function handIn(st, seat, words) {
+    if (st.phase === 'over' || st.done[seat]) return null;
+    st.words[seat] = words; st.done[seat] = true;
+    var mv = { t: 'in', s: seat, r: st.round };
+    if (st.done.every(Boolean)) {
+      withS(st, function () { scoreRound(); delete S.all; });
+      mv.end = st.round;
+      if (st.round < st.rounds && st.gone.filter(Boolean).length < st.players.length) netRound(st); else st.phase = 'over';
+    }
+    return { state: st, mv: mv };
+  }
+  function draftGet() { try { var d = JSON.parse(localStorage.getItem(DRAFT)); return d && NET && d.code === NET.code && d.started === NET.state.started && d.round === NET.state.round && d.seat === NET.seat ? d : null; } catch (e) { return null; } }
+  function saveDraft() {
+    if (!NET || !S || !S.online || S.phase === 'wait') return;
+    try { localStorage.setItem(DRAFT, JSON.stringify({ code: NET.code, started: S.started, round: S.round, seat: NET.seat, words: S.words[S.turn], left: S.left, shook: S.shook })); } catch (e) {}
+  }
+  function netSubmit() {
+    var me = NET.seat, words = (S.words[me] || []).slice(), r = S.round;
+    saveDraft();
+    S.phase = 'wait'; render();
+    NET.act(function (st) { return st.round === r ? handIn(st, me, words) : null; });
+  }
+  function netWaiting() { var st = NET && NET.state; if (!st) return []; return netTurn(st).filter(function (i) { return i !== NET.seat; }).map(function (i) { return st.players[i].name; }); }
+  // The table as this device plays it: your seat, your words so far and your time left
+  function viewOf(st) {
+    var v = JSON.parse(JSON.stringify(st)), me = NET.seat, d = draftGet();
+    v.turn = Math.max(0, me);
+    if (v.phase === 'over') return v;
+    if (me < 0 || st.done[me]) { v.phase = 'wait'; v.left = 0; v.shook = true; return v; }
+    v.words[me] = d ? d.words : [];
+    v.left = d ? d.left : v.time; v.shook = !!(d && d.shook);
+    v.phase = 'ready';
+    return v;
+  }
+  function seenGet() { try { return JSON.parse(localStorage.getItem(seenKey)) || {}; } catch (e) { return {}; } }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state, mv = info.mv;
+    if ((info.fresh || info.again) && winRef) { winRef.close(); winRef = null; }
+    var playing = S && S.online && S.started === st.started && (S.phase === 'play' || S.phase === 'roundEnd');
+    // a round that ended: its results, once on this device
+    var last = st.log.length, seen = seenGet(), key = net.code + ':' + st.started;
+    if (last && (seen[key] || 0) < last && !(S && S.phase === 'play' && S.started === st.started)) {
+      seen[key] = last; try { localStorage.setItem(seenKey, JSON.stringify(seen)); } catch (e) {}
+      stopTimer();
+      S = JSON.parse(JSON.stringify(st)); S.left = 0; S.shook = true; S.turn = Math.max(0, net.seat); S.round = last; S.board = st.log[last - 1].board;
+      if (st.phase === 'over') { finishGame(); return; }
+      S.phase = 'roundEnd'; render(); showRoundResults();
+      Kit.sfx('good');
+      return;
+    }
+    if (playing) { if (S.phase === 'roundEnd') return; paintWait(); return; }   // (in the middle of your turn: the others' news waits)
+    if (st.phase === 'over') { S = JSON.parse(JSON.stringify(st)); S.left = 0; S.shook = true; S.turn = Math.max(0, net.seat); S.round = st.log.length; S.board = st.log[st.log.length - 1].board; finishGame(); return; }
+    if (net.status === 'over' && net.result && net.result.left != null) { S = viewOf(st); render(); netWin(null, null); return; }
+    stopTimer();
+    S = viewOf(st);
+    render();
+    if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+  }
+  function paintWait() { var sm = app.querySelector('.st .who small'); if (sm && S.phase === 'play') sm.textContent = statLine(); }
+  function netNext() {
+    var st = NET.state;
+    if (st.phase === 'over') { S = JSON.parse(JSON.stringify(st)); S.left = 0; S.shook = true; S.turn = Math.max(0, NET.seat); S.round = st.log.length; S.board = st.log[st.log.length - 1].board; finishGame(); return; }
+    S = viewOf(st); render();
+  }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin(tot, best) {
+    var res = NET.result, left = !!(res && res.left != null), me = NET.seat;
+    var rank = tot ? S.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: tot[i], color: p.color, i: i }; }).sort(function (a, b) { return b.score - a.score; }) : null;
+    var tie = rank && rank.length > 1 && rank[0].score === rank[1].score;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : tie ? 'It’s a tie!' : rank[0].i === me ? 'You win!' : rank[0].name + ' wins!',
+      sub: best ? 'The longest word was ' + best.w.toUpperCase() + '.' : '',
+      rank: rank, lose: !!rank && rank[0].score !== tot[me],
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the grid',
+      extra: rank ? [{ label: 'See every word', onClick: function () { showRoundResults(); } }] : []
+    });
+  }
+  function netLeave() {
+    NET = null; stopTimer();
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = load();
+    if (sv && sv.players && sv.board && sv.phase !== 'over' && !sv.online) { S = sv; if (S.phase === 'play') S.phase = 'ready'; render(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'boggle', title: 'Boggle', min: 2, max: 4,
+    opts: netOpts, start: netStart, turn: netTurn,
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var tot = st.players.map(function (p, i) { return st.log.reduce(function (s, r) { return s + r.scores[i]; }, 0); }), hi = Math.max.apply(null, tot), win = [];
+      tot.forEach(function (t, i) { if (t === hi) win.push(i); });
+      return { win: win, text: win.length > 1 ? 'Tie at ' + hi : st.players[win[0]].name + ' won with ' + hi };
+    },
+    // someone who leaves hands in nothing for this round and sits out the rest; the others play on
+    resign: function (st, seat) { st.gone[seat] = true; var r = handIn(st, seat, st.done[seat] ? st.words[seat] : []); return r ? r.state : st; },
+    leaveNote: function () { return 'Your words don’t count for this round, and the others play on without you.'; },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = load();
