@@ -54,7 +54,9 @@
     var nS = kind === 'part' ? 2 : n;
     function side(p) { return kind === 'part' ? p % 2 : p; }
     function seats(s) { return kind === 'part' ? [s, s + 2] : [s]; }
-    function sname(s) { return seats(s).map(function (p) { return first(nm[p]); }).join(' & '); }
+    function sname(s) { return seats(s).map(fn).join(' & '); }
+    // a person by first name, a computer player by its whole name
+    function fn(p) { return String(d.cpu || '').charAt(p) === '1' ? String(nm[p] || '') : first(nm[p]); }
     var POS = { 4: ['s', 'w', 'n', 'e'], 3: ['s', 'w', 'e'], 2: ['s', 'n'] }[n] || ['s', 'w', 'n', 'e'];
     var sc = hx.map(function (h) { return nums(h.sc); });
     var made = d.made || [], sets = d.sets || [];
@@ -65,7 +67,7 @@
       ['Hands', hx.length, d.to ? 'played to ' + Number(d.to).toLocaleString('en-US') : ''],
       kind !== 'two' && made.length ? ['Bids made', made.join(' – '), sname(0) + '’s count first'] : null,
       kind !== 'two' && sets.length ? ['Went set', sets.join(' – '), sname(0) + '’s count first'] : null,
-      best && best.v ? ['Best meld', best.v.toLocaleString('en-US'), first(nm[best.p]) + ', hand ' + (best.i + 1)] : null
+      best && best.v ? ['Best meld', best.v.toLocaleString('en-US'), fn(best.p) + ', hand ' + (best.i + 1)] : null
     ]));
 
     var panel = el('div', { class: 'hv' });
@@ -74,11 +76,11 @@
       var h = hx[i], kids = [], pts = sc[i], tot = nums(h.tot), cp = nums(h.c), tk = nums(h.k), mp = nums(h.mp);
       var bw = h.bw != null ? +h.bw : -1, bs = bw >= 0 ? side(bw) : -1, r = h.r;
       var tag = kind === 'two' ? 'Trump ' + (SN[h.t] || '') : r === 'm' ? 'Made ' + h.b : r === 'c' ? 'Threw in ' + h.b : 'Set ' + h.b;
-      kids.push(ck.head('<b>Hand ' + (i + 1) + '</b>' + (nm[h.d] ? ' · ' + K().esc(first(nm[h.d])) + ' dealt' : ''), tag, kind === 'two' ? '' : r === 'm' ? 'good' : 'bad'));
+      kids.push(ck.head('<b>Hand ' + (i + 1) + '</b>' + (nm[h.d] ? ' · ' + K().esc(fn(h.d)) + ' dealt' : ''), tag, kind === 'two' ? '' : r === 'm' ? 'good' : 'bad'));
       // the bid and trump
       if (kind !== 'two' && h.t) {
         kids.push(el('div', { class: 'pn-bid' }, [el('span', { class: 'su' + (h.t === 'h' || h.t === 'd' ? ' red' : ''), text: GL[h.t] }),
-          el('div', null, [el('b', { text: first(nm[bw]) + ' bid ' + h.b + ' with ' + SN[h.t].toLowerCase() + ' as trump' }),
+          el('div', null, [el('b', { text: fn(bw) + ' bid ' + h.b + ' with ' + SN[h.t].toLowerCase() + ' as trump' }),
             el('span', { text: r === 'm' ? sname(bs) + ' made it' : r === 'c' ? sname(bs) + ' threw the hand in' : sname(bs) + ' went set' })])]));
       } else if (kind === 'two' && h.u) {
         kids.push(ck.grp('Turned for trump', ck.row([h.u], { w: 34 }), SN[h.t] + ' were trump'));
@@ -89,7 +91,7 @@
         var dia = el('div', { class: 'pn-dia k' + n });
         deal.forEach(function (hs, p) {
           var pos = POS[p], cs = sortC(codes(hs));
-          dia.appendChild(el('div', { class: 'h a-' + pos, style: { 'grid-area': pos } }, [el('small', null, [document.createTextNode(first(nm[p])), p === bw ? el('i', { text: 'Bid ' + h.b }) : null, p === +h.d ? el('i', { class: 'dl', text: 'Dealer' }) : null]), cardRow(cs, n === 2 ? 26 : 22)]));
+          dia.appendChild(el('div', { class: 'h a-' + pos, style: { 'grid-area': pos } }, [el('small', null, [document.createTextNode(fn(p)), p === bw ? el('i', { text: 'Bid ' + h.b }) : null, p === +h.d ? el('i', { class: 'dl', text: 'Dealer' }) : null]), cardRow(cs, n === 2 ? 26 : 22)]));
         });
         kids.push(ck.grp('The deal', dia));
       }
@@ -103,7 +105,7 @@
           if (!row || c <= col) { row = ord.map(function () { return null; }); rows.push(row); }
           row[c] = x; col = c;
         });
-        var t = el('table', { class: 'pn-auc' }, [el('tr', null, ord.map(function (p) { return el('th', { text: first(nm[p]), style: { color: ui.color(side(p)) } }); }))]);
+        var t = el('table', { class: 'pn-auc' }, [el('tr', null, ord.map(function (p) { return el('th', { text: fn(p), style: { color: ui.color(side(p)) } }); }))]);
         rows.forEach(function (rw, ri) {
           t.appendChild(el('tr', null, rw.map(function (x) {
             var isWin = x && x.b && x.p === bw && x.b === +h.b;
@@ -115,9 +117,9 @@
       // the pass, the widow and what was buried
       if (h.pg && bw >= 0) {
         var mate = (bw + 2) % 4;
-        kids.push(el('div', { class: 'hvc-pair' }, [ck.grp(first(nm[mate]) + ' passed ' + first(nm[bw]), ck.row(sortC(codes(h.pg)), { w: 28 })), ck.grp(first(nm[bw]) + ' passed back', ck.row(sortC(codes(h.pb)), { w: 28 }))]));
+        kids.push(el('div', { class: 'hvc-pair' }, [ck.grp(fn(mate) + ' passed ' + fn(bw), ck.row(sortC(codes(h.pg)), { w: 28 })), ck.grp(fn(bw) + ' passed back', ck.row(sortC(codes(h.pb)), { w: 28 }))]));
       }
-      if (h.w) kids.push(el('div', { class: 'hvc-pair' }, [ck.grp('The widow', ck.row(codes(h.w), { w: 28 })), h.bu ? ck.grp(first(nm[bw]) + ' buried', ck.row(sortC(codes(h.bu)), { w: 28 })) : null]));
+      if (h.w) kids.push(el('div', { class: 'hvc-pair' }, [ck.grp('The widow', ck.row(codes(h.w), { w: 28 })), h.bu ? ck.grp(fn(bw) + ' buried', ck.row(sortC(codes(h.bu)), { w: 28 })) : null]));
       // everyone's meld
       if (h.m != null) {
         var ml = el('div', { class: 'pn-ml' }), per = String(h.m).split('|');
@@ -128,7 +130,7 @@
             row.appendChild(el('div', { class: 'pn-g' + (BIG[k] ? ' big' : '') }, [cardRow(codes(kv[1]), 20, { ov: -0.55 }), el('span', { class: 'lb', text: (k === 'm' ? 'Marriage ' + (GL[(codes(kv[1])[0] || ' s').charAt(1)] || '') : MNAME[k] || k) + ' ' + (MV[k] || 0).toLocaleString('en-US') })]));
           });
           if (!row.children.length) row.appendChild(el('span', { class: 'pn-none', text: 'No meld' }));
-          ml.appendChild(el('div', { class: 'pl' }, [el('div', { class: 't' }, [el('span', { text: first(nm[p]) }), el('b', { text: String(mp[p] || 0) })]), row]));
+          ml.appendChild(el('div', { class: 'pl' }, [el('div', { class: 't' }, [el('span', { text: fn(p) }), el('b', { text: String(mp[p] || 0) })]), row]));
         });
         kids.push(ck.grp(kind === 'two' ? 'Meld laid during the hand' : 'The meld', ml));
       }
@@ -141,7 +143,7 @@
           c: ui.color(s), cls: s === bs ? (r === 'm' ? 'good' : 'bad') : '' };
       })));
       if (h.ml) {
-        var lines = String(h.ml).split('.').filter(Boolean).map(function (x) { var y = x.split(':'); return { t: first(nm[+y[0]]) + ' laid ' + (MNAME[y[1]] || y[1]).toLowerCase() + ' for ' + (MV[y[1]] || 0), c: +y[0] }; });
+        var lines = String(h.ml).split('.').filter(Boolean).map(function (x) { var y = x.split(':'); return { t: fn(+y[0]) + ' laid ' + (MNAME[y[1]] || y[1]).toLowerCase() + ' for ' + (MV[y[1]] || 0), c: +y[0] }; });
         if (lines.length) kids.push(ck.grp('Meld in the order it was laid', ui.log(lines)));
       }
       panel.innerHTML = ''; panel.appendChild(ck.felt(FELT, kids));
@@ -171,7 +173,7 @@
     // what decided it
     if (fin.length && d.ws != null) {
       var w = +d.ws, lh = hx[hx.length - 1], why = sname(w) + ' won with ' + fin[w] + ' after ' + plural(hx.length, 'hand') + '.';
-      if (lh && kind !== 'two' && lh.bw != null && side(+lh.bw) === w && lh.r === 'm') why += ' ' + first(nm[+lh.bw]) + ' bid ' + lh.b + ' in the last hand and made it, and the bidding side counts out first.';
+      if (lh && kind !== 'two' && lh.bw != null && side(+lh.bw) === w && lh.r === 'm') why += ' ' + fn(+lh.bw) + ' bid ' + lh.b + ' in the last hand and made it, and the bidding side counts out first.';
       else if (lh && kind !== 'two' && lh.bw != null && side(+lh.bw) !== w && lh.r !== 'm') why += ' The other side went set in the last hand.';
       out.push(ck.foot(why, 'flag'));
     }

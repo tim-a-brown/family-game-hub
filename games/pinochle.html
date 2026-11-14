@@ -319,14 +319,17 @@
   function onePerson() { return !!NET || people() < 2; }
   function nm(p) { return S.players[p].name; }
   function first(n) { return String(n || '').split(' ')[0]; }
+  // a person by their first name ("Kathleen M." is Kathleen); a computer player by its whole name ("Number 5")
+  function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
+  function fshort(p) { var t = short(p); return t === 'You' ? t : fn(p); }
   function short(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0) ? 'You' : nm(p); }
   function sideCount() { return Core.nSides(S); }
   function sideSeats(s) { return Core.seatsOf(S, s); }
-  function sideName(s) { return sideSeats(s).map(function (p) { return first(nm(p)); }).join(' & '); }
+  function sideName(s) { return sideSeats(s).map(function (p) { return fn(p); }).join(' & '); }
   // a side as this device says it: "You", "You & Jamie", or the names
   function sideSay(s) {
     if (!(onePerson() && s === MS() && (!NET || MYSEAT >= 0))) return sideName(s);
-    return S.kind === 'part' ? 'You & ' + first(nm((me() + 2) % 4)) : 'You';
+    return S.kind === 'part' ? 'You & ' + fn((me() + 2) % 4) : 'You';
   }
   function sideColor(s) { return Kit.color(s); }
   function seatColor(p) { return Kit.color(sideOf(p)); }
@@ -516,8 +519,8 @@
     return null;
   }
   function trumpPlaque() {
-    var t = S.trump, bd = S.high ? S.high + ' ' + first(nm(S.bidder)) : S.kind === 'two' ? 'Trump' : 'No bid yet';
-    if (S.phase === 'bid' && S.high) bd = S.high + ' ' + first(nm(S.bidder));
+    var t = S.trump, bd = S.high ? S.high + ' ' + fn(S.bidder) : S.kind === 'two' ? 'Trump' : 'No bid yet';
+    if (S.phase === 'bid' && S.high) bd = S.high + ' ' + fn(S.bidder);
     return el('div', { class: 'tp' }, [el('span', { class: 'k', text: t ? 'Trump' : 'Bid' }),
       el('span', { class: 'su' + (t ? (t === 'h' || t === 'd' ? ' red' : '') : ' none'), text: t ? GL[t] : '?', 'aria-label': t ? SN[t] + ' are trump' : 'No trump yet' }),
       el('span', { class: 'bd', text: S.kind === 'two' ? (t ? SN[t] : '') : bd })]);
@@ -572,15 +575,15 @@
     var t = S.trump; wmEl.textContent = t ? GL[t] : ''; wmEl.className = 'wm' + (t === 'h' || t === 'd' ? ' red' : '');
     if (S.trick.length || S.phase === 'meld') return;
     if (S.phase === 'bid') {
-      ctrEl.appendChild(el('div', { class: 'plate' }, S.high ? [el('small', { text: 'High bid' }), el('b', { text: String(S.high) }), el('i', { text: first(short(S.bidder)) })]
+      ctrEl.appendChild(el('div', { class: 'plate' }, S.high ? [el('small', { text: 'High bid' }), el('b', { text: String(S.high) }), el('i', { text: fshort(S.bidder) })]
         : [el('small', { text: 'Opening bid' }), el('b', { text: String(Core.MIN_BID) }), el('i', { text: 'or more' })]));
       if (S.kind === 'cut') { var w = el('div', { class: 'widow' }); for (var i = 0; i < 3; i++) w.appendChild(Kit.card('', '', { back: true })); ctrEl.appendChild(w); }
     } else if (S.phase === 'trump') {
-      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: 'Winning bid' }), el('b', { text: String(S.high) }), el('i', { text: short(S.bidder) === 'You' ? 'You name trump' : first(nm(S.bidder)) + ' names trump' })]));
+      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: 'Winning bid' }), el('b', { text: String(S.high) }), el('i', { text: short(S.bidder) === 'You' ? 'You name trump' : fn(S.bidder) + ' names trump' })]));
       if (S.kind === 'cut') { var w2 = el('div', { class: 'widow' }); S.widow.forEach(function (c) { w2.appendChild(Cards.el(c)); }); ctrEl.appendChild(w2); }
     } else if (S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury') {
       var who = S.turn, txt = S.phase === 'bury' ? 'Burying 3 cards' : 'Passing ' + S.passN + ' cards';
-      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: first(short(who)) }), el('i', { text: txt })]));
+      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: fshort(who) }), el('i', { text: txt })]));
     }
   }
   function paintTrick() {
@@ -618,7 +621,7 @@
   function meldPanel(p, groups, total, live) {
     var pos = posOf(p), panel = el('div', { class: 'mp m-' + pos });
     var av = avatar(p); av.classList.add('sm');
-    panel.appendChild(el('div', { class: 'mh' }, [el('span', { class: 'who' }, [av, el('span', { text: first(short(p)) + (p === S.bidder ? ', bid ' + S.high : '') })]), el('b', { class: 'mt', text: live ? '0' : String(total) })]));
+    panel.appendChild(el('div', { class: 'mh' }, [el('span', { class: 'who' }, [av, el('span', { text: fshort(p) + (p === S.bidder ? ', bid ' + S.high : '') })]), el('b', { class: 'mt', text: live ? '0' : String(total) })]));
     if (p === S.bidder) panel.classList.add('turn');
     var gs = el('div', { class: 'gs' });
     if (!groups.length) gs.appendChild(el('span', { class: 'none', text: 'No meld' }));
@@ -742,7 +745,7 @@
   }
   function waitText(p) {
     if (p < 0 || p === me() && !BLIND) return '';
-    var who = S.players[p], nmx = first(nm(p)), passTo = !onePerson() && person(p) && !NET;
+    var who = S.players[p], nmx = fn(p), passTo = !onePerson() && person(p) && !NET;
     if (passTo) return 'Pass the device to ' + nmx;
     var verb = { bid: 'bidding', trump: 'naming trump', pass: 'choosing cards to pass', passback: 'choosing cards to pass back', bury: 'burying 3 cards', meld: 'looking at the meld', smeld: 'choosing a meld', play: 'thinking', stock: 'thinking' }[S.phase] || 'thinking';
     if (who.cpu) return nmx + ' is ' + verb + '…';
@@ -776,8 +779,8 @@
   }
   function pickBox() {
     var need = S.phase === 'bury' ? 3 : S.passN, to = S.phase === 'bury' ? -1 : (me() + 2) % 4;
-    var label = S.phase === 'bury' ? 'Bury these 3' : 'Pass ' + need + ' to ' + first(nm(to));
-    hint(S.phase === 'bury' ? 'Choose 3 cards to bury. Counters you bury count for you.' : S.phase === 'pass' ? 'Choose ' + need + ' cards to pass to ' + first(nm(to)) + ', who won the bid. Trump and aces help most.' : 'Choose ' + need + ' cards to pass back to ' + first(nm(to)) + '.');
+    var label = S.phase === 'bury' ? 'Bury these 3' : 'Pass ' + need + ' to ' + fn(to);
+    hint(S.phase === 'bury' ? 'Choose 3 cards to bury. Counters you bury count for you.' : S.phase === 'pass' ? 'Choose ' + need + ' cards to pass to ' + fn(to) + ', who won the bid. Trump and aces help most.' : 'Choose ' + need + ' cards to pass back to ' + fn(to) + '.');
     var b = el('button', { type: 'button', class: 'btn btn-primary', text: sel.length === need ? label : 'Chosen ' + sel.length + ' of ' + need, disabled: sel.length !== need,
       onclick: function () { var ids = sel.slice(); sel = []; Kit.haptic('medium'); move({ k: S.phase === 'bury' ? 'bury' : 'pass', ids: ids }); } });
     actEl.appendChild(el('div', { class: 'row' }, [b]));
@@ -878,10 +881,10 @@
       render(); seatSay(p, mv.b ? String(mv.b) : 'Pass');
       Kit.sfx(mv.b ? 'chip' : 'tap');
       if (mv.b && ctrEl.querySelector('.plate')) ctrEl.querySelector('.plate').classList.add('pop');
-      if (mv.b && prev.high === 0 && Core.stuck(prev, p)) flash(first(short(p)) + ' is stuck with the bid at 250');
+      if (mv.b && prev.high === 0 && Core.stuck(prev, p)) flash(fshort(p) + ' is stuck with the bid at 250');
       if (mv.won != null) {
         later(function () {
-          flash((short(mv.won) === 'You' ? 'You take' : first(nm(mv.won)) + ' takes') + ' the bid at ' + S.high, 1900);
+          flash((short(mv.won) === 'You' ? 'You take' : fn(mv.won) + ' takes') + ' the bid at ' + S.high, 1900);
           Kit.sfx('good'); if (mv.won === me()) Kit.haptic('success');
           later(done, 1100);
         }, 700);
@@ -943,7 +946,7 @@
       }
       mbEl.querySelectorAll('.mp').forEach(function (m) { m.style.transition = 'opacity .35s'; m.style.opacity = '0'; });
       Kit.sfx('whoosh');
-      later(function () { render(); flash((short(p) === 'You' ? 'You lead' : first(nm(p)) + ' leads') + ' the first trick'); done(); }, 380);
+      later(function () { render(); flash((short(p) === 'You' ? 'You lead' : fn(p) + ' leads') + ' the first trick'); done(); }, 380);
       return;
     }
     if (k === 'meld') return stepMeld2(prev, mv, done);
@@ -1198,7 +1201,7 @@
     var box = el('div', { class: 'cnt' }), bs = L.bidder >= 0 ? Core.sideOf(st, L.bidder) : -1, order = [];
     for (var s = 0; s < Core.nSides(st); s++) order.push(s);
     order.forEach(function (s) {
-      var r = L.res[s], names = Core.seatsOf(st, s).map(function (p) { return first(st.players[p].name); }).join(' & ');
+      var r = L.res[s], names = Core.seatsOf(st, s).map(function (p) { return (st.players[p].cpu ? st.players[p].name : first(st.players[p].name)); }).join(' & ');
       var tag = s === bs ? (L.conceded ? 'Bid ' + L.high + ', thrown in' : 'Bid ' + L.high) : st.kind === 'two' ? '' : 'Against the bid';
       var cc = el('div', { class: 'cc' });
       var row = el('div', { class: 'cr', style: { '--sc': Kit.color(s) } }, [
@@ -1243,7 +1246,7 @@
     var S2 = Core.nSides(st), t = el('table'), pad = el('div', { class: 'spad' + (S2 > 2 ? ' many' : '') });
     pad.appendChild(el('div', { class: 'spad-h' }, [el('h2', { text: 'Pinochle' }), el('small', { text: 'Game to ' + st.target.toLocaleString('en-US') })]));
     var hr = el('tr', null, [el('th', { class: 'rn', text: 'Hand' })]);
-    for (var s = 0; s < S2; s++) hr.appendChild(el('th', { text: Core.seatsOf(st, s).map(function (p) { return first(st.players[p].name); }).join(' & ') }));
+    for (var s = 0; s < S2; s++) hr.appendChild(el('th', { text: Core.seatsOf(st, s).map(function (p) { return (st.players[p].cpu ? st.players[p].name : first(st.players[p].name)); }).join(' & ') }));
     var thead = el('thead', null, [hr]), tb = el('tbody'), run = [];
     for (s = 0; s < S2; s++) run.push(0);
     st.hx.forEach(function (h, i) {
@@ -1277,7 +1280,7 @@
     var src = seatAnchor(S.dealer);
     cards.forEach(function (n, i) { n.style.opacity = '0'; setTimeout(function () { n.style.opacity = ''; Cards.fly(n, src, { ms: 300 }); if (i % 3 === 0) Kit.sfx('deal', 0.7); }, 40 + i * 45); });
     seatEls.forEach(function (s, p) { if (p === me()) return; var bk = s.querySelector('.bk'); if (bk) { bk.style.opacity = '0'; setTimeout(function () { bk.style.opacity = ''; Cards.fly(bk, src, { ms: 320 }); }, 80 + p * 90); } });
-    flash('Hand ' + S.round + ' and ' + (S.dealer === me() && onePerson() ? 'you deal' : first(nm(S.dealer)) + ' deals'), 1600);
+    flash('Hand ' + S.round + ' and ' + (S.dealer === me() && onePerson() ? 'you deal' : fn(S.dealer) + ' deals'), 1600);
     later(done, 260 + cards.length * 45);
   }
   function startHand(first0) {
@@ -1298,7 +1301,7 @@
     var best = st.stats.bestMeld; if (best && best.pts >= 150) hl.push('Best meld: ' + names[best.p] + ', ' + best.pts + ' in hand ' + best.r);
     hl.push(st.hx.length + ' hands, played to ' + st.target);
     (extraHl || []).forEach(function (x) { hl.push(x); });
-    var detail = { kind: st.kind, names: names, to: st.target, ps: st.passN, ws: w, hx: clone(st.hx), sets: st.stats.sets, made: st.stats.made };
+    var detail = { kind: st.kind, names: names, cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''), to: st.target, ps: st.passN, ws: w, hx: clone(st.hx), sets: st.stats.sets, made: st.stats.made };
     // keep it small: the oldest hands lose their deal diagrams first
     for (var i = 0; JSON.stringify(detail).length > 5800 && i < detail.hx.length; i++) { delete detail.hx[i].h; }
     for (i = 0; JSON.stringify(detail).length > 5800 && i < detail.hx.length; i++) { delete detail.hx[i].m; delete detail.hx[i].a; }
@@ -1321,7 +1324,7 @@
     clearSave(); S.phase = 'over';
     Kit.win({
       title: mine ? 'You win!' : sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' win!' : ' wins!'),
-      sub: (mine ? (st.kind === 'part' ? 'You and ' + first(nm((me() + 2) % 4)) + ' won by ' : 'You won by ') : 'Won by ') + (st.scores[w] - st.scores[second]) + ' · ' + st.hx.length + ' hands',
+      sub: (mine ? (st.kind === 'part' ? 'You and ' + fn((me() + 2) % 4) + ' won by ' : 'You won by ') : 'Won by ') + (st.scores[w] - st.scores[second]) + ' · ' + st.hx.length + ' hands',
       rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }), me: s === MS() && onePerson() }; }),
       lose: lose, icon: lose ? 'bot' : 'trophy',
       again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(true); },
