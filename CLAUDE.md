@@ -203,6 +203,20 @@ Underlying principles for everything:
 - **Apples to Apples** mixes robots with people (`cpu: 'mix'`), in pass and play and online (the host's device plays them).
 - **Space Invaders** stays two players at most (Tim: "online game requires two humans on different devices").
 
+## Pinochle (2026-11-14; Tim: "two more classic cards game to add: Bridge and Pinochle")
+
+- `games/pinochle.html`, the rules and the robots in `games/pinochle-core.js` (plain JSON state; the same code runs in
+  the page, at the online table and in Node), history `hist/pinochle.js`. The count of players decides the game: 4
+  Partnership, 3 Cutthroat (15 each and a 3-card widow), 2 Two-handed (stock and draw, meld after winning a trick).
+- The ten-point scale (Pagat, the USPCC's rules): A, 10 and K are 10 each and the last trick 10 (250 a hand); bids from
+  250 in tens; game to 1,500 (two-handed 1,000), or a shorter game from the setup. The dealer is stuck at 250, partners
+  pass 4 cards each way (option 3), meld counts only with a trick taken, the bidder may throw in after the meld, and the
+  bidding side counts out first. Run 150, double run 1,500, aces around 100 (twice 1,000), kings 80, queens 60, jacks 40
+  (twice 800, 600, 400), pinochle 40, double pinochle 300, royal marriage 40, marriage 20, dix 10.
+- Four layouts (`layoutFor`/`fit`); a turn of the device glides from the last painted frame (`SNAP`, `relayout`), and
+  cards in flight carry `.aim` with `_aim()` to re-target. Online through TurnNet (seats `PS` 0,2,1,3 for four); each
+  device records once on arrival (`netRecord`, `pinochle_netrec`).
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable
