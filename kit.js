@@ -2441,6 +2441,7 @@
     // The sides at this table: players.teams ([[seat, ...], ...], or a function of the count, the options and the mode
     // for games where partners are a choice); two seats with no teams are simply one against the other (players.vs:
     // false for two who play together).
+    var lastWho = null;   // who the Players card shows: {seats, teams}
     function teamsAt(n) {
       if (!P) return null;
       var t = typeof P.teams === 'function' ? P.teams(n, state.options, state.mode) : P.teams;
@@ -2478,6 +2479,7 @@
         told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
       });
       var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
+      lastWho = { seats: told, teams: teams };   // (the Play online review shows the same chips)
       if (IN_SHEET) { seatsBox.style.display = 'none'; tellWho(told, one, teams); return; }
       // the Players card: who is already seated as chips (robots with their skill; partners and sides as people say
       // them), and a tap opens the players sheet
@@ -2651,8 +2653,12 @@
         var me = String(names[0] || lsGet('my_name', '') || '').trim(), cpuNow2 = cpuFor(), pals = [], robotsHere = 0;
         for (var i = 1; i < state.count; i++) { var isC = cpuNow2 === 'seats' ? true : cpuNow2 === 'mix' ? !!robots[i] : !!cpuNow2; if (isC) robotsHere++; else if (isPersonName(names[i])) pals.push(String(names[i]).trim()); }
         var who = el('div', { class: 'k-rev-sec' }, [el('div', { class: 'k-rev-h', text: 'At the table' })]);
-        var chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]);
-        pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); });
+        // (the same chips as the Players card: partners joined by "&", the sides by "vs", robots with their skill)
+        var chips;
+        // (a game the computer can't play online seats people only: the robots of the setup don't come)
+        var wl = lastWho && (info && !info.bots ? { seats: lastWho.seats.filter(function (t) { return !t.cpu; }), teams: lastWho.seats.some(function (t) { return t.cpu; }) ? null : lastWho.teams } : lastWho);
+        if (wl && wl.seats.length) chips = whoChips(wl.seats, wl.teams, 'k');
+        else { chips = el('span', { class: 'k-chips' }, [el('span', { class: 'k-chip who', text: me || 'You' })]); pals.forEach(function (n) { chips.appendChild(el('span', { class: 'k-chip', text: n })); }); }
         who.appendChild(chips);
         var lines = [];
         if (pals.length) lines.push(listAnd(pals) + (pals.length === 1 ? ' joins' : ' join') + ' from ' + (pals.length === 1 ? 'their own device' : 'their own devices') + ', with the table’s code or from Open tables on the home screen.');
@@ -2682,7 +2688,9 @@
       }
       paint();
       // the table itself: opened here and now where the game's tables are TurnNet's, by the game's own lobby otherwise
-      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else go(true, 'open'); }, 0); }
+      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim(), bots: botNames() }); } else go(true, 'open'); }, 0); }
+      // (the robots the review shows keep their names at the table, in the seats nobody takes)
+      function botNames() { return lastWho && !(info && !info.bots) ? lastWho.seats.filter(function (t) { return t.cpu; }).map(function (t) { return t.name; }) : []; }
       function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true, 'find'); }, 0); }
       sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
     }
@@ -2757,7 +2765,7 @@
 
   // ── Win / results ─────────────────────────────────────────────────────────
   // Kit.win({icon:'trophy', title:'Sam wins!', sub:'by 12 points',
-  //          rank:[{name,score,color}], lose:false, again:fn, againLabel, extra:[{label,onClick}]})
+  //          rank:[{name,score,color,cpu,me}], lose:false, again:fn, againLabel, extra:[{label,onClick}]})
   // Every game's results card offers the same things, in the same order, each only when it applies:
   //   again   (primary)  Play again: the same people and settings. againLabel names what comes next
   //                      when it isn't a rematch ('Next puzzle', 'New deal'); false leaves it out
@@ -2787,7 +2795,8 @@
     if (o.rank && o.rank.length) {
       var rk = el('div', { class: 'rank' });
       o.rank.forEach(function (p, i) {
-        rk.appendChild(el('div', null, [
+        // (me: this device's own row, ringed in the player's color, the name as everyone else sees it)
+        rk.appendChild(el('div', p.me ? { class: 'me', style: { '--rc': p.color || playerColor(i) } } : null, [
           el('span', { class: 'place', text: String(i + 1) }),
           p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color || playerColor(i) }, html: icon('bot') }) : avEl(p.name || '?', 'sm', p.color || playerColor(i)),
           el('span', { text: p.name }),

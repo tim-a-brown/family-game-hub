@@ -851,7 +851,7 @@ var CasinoNet = (function () {
   function end(net, o) {
     o = o || {};
     var st = net.state, res = net.result, left = !!(res && res.left != null), me = net.seat, n = nets(st), played = st.round - 1;
-    var rank = st.seats.map(function (s, i) { return { name: i === me ? 'You' : s.name, score: (n[i] > 0 ? '+' : n[i] < 0 ? '−' : '') + '$' + Math.abs(n[i]).toLocaleString(), n: n[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
+    var rank = st.seats.map(function (s, i) { return { name: s.name, me: i === me, score: (n[i] > 0 ? '+' : n[i] < 0 ? '−' : '') + '$' + Math.abs(n[i]).toLocaleString(), n: n[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
     var top = rank[0], tie = rank[1] && rank[1].n === top.n;
     var due = me >= 0 ? n[me] - (st.seats[me].filed || 0) : 0, bk = st.money === 'bank' && me >= 0 && st.phase === 'over' && (due || st.seats[me].filed);
     if (bk && due) bankSettle(st, me, net.code, due);

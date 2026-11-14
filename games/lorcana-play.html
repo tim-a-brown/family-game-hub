@@ -4545,8 +4545,21 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       .replace(/\b(You) ([A-Za-z\u2019']+)/g, function (m, y, v) { var k = v.toLowerCase(); return YOU_V[k] ? y + ' ' + YOU_V[k] : m; })
       .replace(/ and (skips|draws|gains|takes|puts|plays) /g, function (m, v) { return ' and ' + YOU_V[v] + ' '; });
   }
+  // A log is read later, by either player: "this turn" and "your next turn" say whose turn they mean
+  // ("Mulan gets +2 strength during Cam’s turn", "until the start of Tim’s next turn").
+  function turnSaid(t, pi) {
+    if (t == null || !S || !S.P) return t;
+    function ps(i) { var P = S.P[i]; return P ? (P.name === 'You' ? 'your' : P.name + '’s') : 'this'; }
+    var cur = ps(S.cur);
+    t = String(t)
+      .replace(/\b(for the rest of|until the end of) this turn\b/g, function (m, a) { return a + ' ' + cur + ' turn'; })
+      .replace(/\bthis turn\b/g, 'during ' + cur + ' turn');
+    if (pi != null && pi >= 0) t = t.replace(/\buntil the start of your next turn\b/g, 'until the start of ' + ps(pi) + ' next turn')
+      .replace(/\bduring their next turn\b/g, 'during ' + ps(opp(pi)) + ' next turn');
+    return t;
+  }
   function log(t, pi, priv) {
-    t = youFix(t); priv = priv ? youFix(priv) : undefined;
+    t = youFix(turnSaid(t, pi)); priv = priv ? youFix(turnSaid(priv, pi)) : undefined;
     var e = { t: t, p: pi == null ? -1 : pi, priv: priv }, r = logRefs(t), pr = priv ? logRefs(priv) : null;
     if (r.length) e.r = r; if (pr && pr.length) e.pr = pr;
     S.log.push(e); if (S.log.length > 120) S.log.splice(0, S.log.length - 120);
@@ -5864,7 +5877,7 @@ html.lorc .flowpanel{background:radial-gradient(120% 40% at 50% 0,rgba(227,189,9
       }
       case 'moveFree': return moveFreeFx(e, st, optional, cb);
       case 'nameCard': case 'nameReveal': return nameFx(e, st, optional, cb);
-      case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('this turn: ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
+      case 'tmpTrig': S.tmpAbs = (S.tmpAbs || []).filter(function (t) { return t.turn === S.turn; }); S.tmpAbs.push({ src: st.src, pi: pi, ab: e.ab, turn: S.turn }); st.said.push('for the rest of this turn, ' + e.ab.text.replace(/\.$/, '').toLowerCase()); return cb(true);
       case 'later': S.later = (S.later || []).filter(function (t) { return t.turn >= S.turn; }); S.later.push({ src: st.src, pi: pi, fx: e.fx, turn: S.turn, uids: (st.prev || []).slice(), name: abTitle(st.src, st.ab) }); return cb(true);
       case 'count': st.last = amtVal(e.amt, st); st.said.push('counted ' + st.last); return cb(true);
       case 'drops': {

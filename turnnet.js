@@ -298,7 +298,7 @@
     if (!ready()) { Kit.toast('Sign in with your PIN to play online'); return false; }
     return true;
   }
-  function host(me) {
+  function host(me, bots) {
     if (!need()) return Promise.resolve();
     if (!me.name) { Kit.toast('Pick your name first'); return Promise.resolve(); }
     var tries = 0;
@@ -314,6 +314,7 @@
           var o = {}; try { o = G.opts ? G.opts() || {} : {}; } catch (e) {}
           var dd = { game: G.game, v: V, status: 'open', seats: [seat], accts: tags[0] ? [tags[0]] : [], turn: [], drive: 0, st: '', seq: 0, mv: null,
             opts: JSON.stringify(o), min: G.min || 2, max: G.max || 2, g: 1, t0: now, result: null, hb: { 0: now }, at: now, by: dev() };
+          if (bots && bots.length) dd.bn = bots.slice(0, 9);   // (the robots named in the host's setup sit in the seats nobody takes)
           if (tags[1]) dd.lk = tags[1];   // (the home screens of the people linked to you list it: "Tim has a table open")
           return dd;
         }).then(function () { dl('Opened ' + G.title + ' table ' + code); listen(code); }, function (e) {
@@ -366,6 +367,7 @@
       var hs = humans(d), o0 = {}; try { o0 = JSON.parse(d.opts || '{}'); } catch (e) {}
       if (hs.length < (d.min || 2)) throw new Error('Waiting for more players');
       var n = G.seats ? G.seats(hs.length, o0) : hs.length, seats = hs.slice(), names = hs.map(function (s) { return s.name; });
+      (d.bn || []).forEach(function (nm) { if (seats.length < n && typeof nm === 'string' && nm && names.indexOf(nm) < 0) { seats.push({ name: nm, bot: true }); names.push(nm); } });
       if (n > seats.length) (Kit.cpuNames ? Kit.cpuNames(n - seats.length, names, n >= 4 ? 8 : 0) : []).forEach(function (nm) { seats.push({ name: nm, bot: true }); });
       while (seats.length < n) seats.push({ name: 'Robot ' + seats.length, bot: true });
       var o = {}; try { o = JSON.parse(d.opts || '{}'); } catch (e) {}
@@ -650,7 +652,7 @@
     if (!G) return false;
     var me = meName(); if (o && o.name && !me.name) { me.name = o.name; lsP('tn_me', { name: o.name }); }
     if (!ready() || !me.name) { lobby(); return true; }
-    ov(); host(me);
+    ov(); host(me, o && o.bots);
     return true;
   }
   window.TurnNet = {
