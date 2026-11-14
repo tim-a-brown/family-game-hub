@@ -777,7 +777,9 @@ Underlying principles for everything:
   about 50 px wide, so it shows its Might at the top of its spine at a small hand card's size, and not its cost, which
   is paid. Names on the iPad's board cards are 11px or more. **Nothing on the table reads under 8px** (2026-11-14):
   tile names and powers, the round track, small cards' numbers, and the 3 to 6 player plates, stacks and totals have
-  floors. When no size fits every tile's name and rule, the rules
+  floors. A board card's name is 8px or more (a covered card's name moved by `coverNames` too: one that can't fit at
+  8px shows its picture and Might, and a hold reads it), and a small card, piece or stack whose picture is still
+  loading shows the initial in a ring, not the name. When no size fits every tile's name and rule, the rules
   go (a tap reads them) and the names take the largest size that fits (`fitTiles`). **A 320-wide phone held upright**
   (audit, 2026-11-14): a board card under 40px wide is its picture and its Might on a shield, 9px or more (`.mini` from
   `layoutMap`; its name and cost were 3 to 4px); the tiles are a third of the map wide; the hand is one row of cards the
