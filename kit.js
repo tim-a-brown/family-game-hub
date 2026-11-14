@@ -2097,9 +2097,10 @@
     // stand together on one plate and the sides face each other across "vs", as at the players sheet's table
     var box = el('span', { class: pre + '-chips ' + pre + '-toks' + (teams ? ' teams' : '') });
     function seat(t, i) {
-      var c = playerColor(i), av = t.cpu ? el('span', { class: 'avatar', style: { '--c': c }, html: icon('bot') })
+      var c = playerColor(i), av = t.cpu ? botFace(t.tag, c)
         : t.anon ? el('span', { class: 'avatar', style: { '--c': c }, text: String(i + 1) }) : avMarked(t.name, c);
-      return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.tag ? el('small', { text: t.tag }) : null]);
+      // (a robot's skill is in its face, with the words kept for screen readers)
+      return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
     if (!teams) { seats.forEach(function (t, i) { box.appendChild(seat(t, i)); }); return box; }
     teams.forEach(function (side, k) {
@@ -2109,6 +2110,28 @@
       box.appendChild(g);
     });
     return box;
+  }
+  // A robot's token says how well it plays by itself (Tim, 2026-11-14: "incorporate it into the robot icon but not just as
+  // a color. be creative"): an easy robot dozes with its eyes shut and a smile on a cool green field; a normal one looks
+  // straight at you on warm gold; a hard one glares with red eyes and lowered brows over a dark ember with fire licking
+  // up from the bottom. Its seat's color rings it. The skill's own words (Easy, Normal, Hard, or a game's names for them)
+  // decide which, so every game's levels land on one of the three.
+  function botLevel(tag) {
+    var t = String(tag || '').toLowerCase();
+    if (/easy|begin|novice|gentle|casual|relax|kid|learn/.test(t)) return 'e';
+    if (/hard|expert|master|tough|pro\b|brutal|shark|elite|strong/.test(t)) return 'h';
+    return 'n';
+  }
+  function botFace(tag, color) {
+    var lv = botLevel(tag), eyes = lv === 'e'
+      ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="#1b1c2e" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>'
+      : lv === 'n'
+        ? '<circle cx="9" cy="12" r="1.5" fill="#1b1c2e"/><circle cx="15" cy="12" r="1.5" fill="#1b1c2e"/><path d="M10.2 15.2h3.6" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>'
+        : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="#1b1c2e" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff4a2a"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff4a2a"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="#1b1c2e" stroke-width="1.3" stroke-linecap="round"/>';
+    var svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.2" fill="' + (lv === 'h' ? '#ff6a3d' : '#f3f1fb') + '"/>' +
+      '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
+      '<rect x="4.4" y="6" width="15.2" height="12.2" rx="4.2" fill="#f3f1fb"/>' + eyes + '</svg>';
+    return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html: (lv === 'h' ? '<i class="fl"></i><i class="fl f2"></i>' : '') + svg });
   }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
