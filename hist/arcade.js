@@ -843,7 +843,7 @@
       };
       var fast = null; lx.forEach(function (x, k) { var d = x.t - (k ? lx[k - 1].t : 0); if (!x.end && (fast == null || d < fast.d)) fast = { k: k, d: d }; });
       var items = lx.map(function (x, k) { return { t: x.n, c: x.end ? '#ff4058' : x.l ? '#ff9a4a' : '#2fd35a', ink: !x.end, title: unit + ' ' + x.n }; });
-      out.push(ui.section('Every ' + unit.toLowerCase() + ' · tap one', pane(ui, [strip(ui, items, lx.length - 1, show), key(ui, [['Clean', '#2fd35a'], lx.some(function (x) { return x.l && !x.end; }) ? ['Cost a ' + lw.toLowerCase(), '#ff9a4a'] : null, ['Where it ended', '#ff4058']].filter(Boolean)), card], o.ac), { icon: 'flag' }));
+      out.push(ui.section('Every ' + unit.toLowerCase() + '', pane(ui, [strip(ui, items, lx.length - 1, show), key(ui, [['Clean', '#2fd35a'], lx.some(function (x) { return x.l && !x.end; }) ? ['Cost a ' + lw.toLowerCase(), '#ff9a4a'] : null, ['Where it ended', '#ff4058']].filter(Boolean)), card], o.ac), { icon: 'flag' }));
     }
     return out;
   }
@@ -945,7 +945,7 @@
     var items = order.map(function (i) { return { t: nm(i).slice(0, 9), c: TN_PC[i % 6], ink: true, title: nm(i) + ', ' + ord(S[i].pl || 0) }; });
     return ui.wrap([main,
       ui.section('How it went', pane(ui, [ui.el('div', { class: 'ar-pic', html: svg(W2, H2, g, { aria: 'A lane for each player: dots are specials that hit them, red ticks are lines added, a cross is when they went out' }) }), laneKey, legend(ui, koLines)], '#b45ef0'), { icon: 'chart' }),
-      ui.section('Every player · tap one', pane(ui, [strip(ui, items, order.indexOf(mi), showP), card], '#b45ef0'), { icon: 'users' })]);
+      ui.section('Every player', pane(ui, [strip(ui, items, order.indexOf(mi), showP), card], '#b45ef0'), { icon: 'users' })]);
   });
   // ═══ Donkey Kong ═══
   // The stage where the last life went, drawn as the cabinet lays it out (girders, ladders, Kong, Pauline) with a mark
@@ -1079,7 +1079,7 @@
           stat(ui, 'Score', n(x.s))])]));
       };
       var items = ev.map(function (x) { return { t: x.h, c: x.r === 'C' ? '#2fd35a' : '#ff4058', ink: x.r === 'C', title: 'Level ' + x.l + ', ' + x.h + ' m: ' + (x.r === 'C' ? 'cleared' : 'lost a life') }; });
-      out.push(ui.section(ev.length >= 40 ? 'The last 40 stages · tap one' : 'Every stage · tap one', pane(ui, [strip(ui, items, ev.length - 1, show), card], '#fa2899'), { icon: 'flag' }));
+      out.push(ui.section(ev.length >= 40 ? 'The last 40 stages' : 'Every stage', pane(ui, [strip(ui, items, ev.length - 1, show), card], '#fa2899'), { icon: 'flag' }));
     } else if (lives.length) out.push(ui.section('How each life ended', pane(ui, legend(ui, lives), '#fa2899'), { icon: 'heart' }));
     return ui.wrap(out);
   });
@@ -1250,7 +1250,7 @@
         : d.why === 'wrongwarrant' ? 'Found ' + d.sus + ', but the warrant was for ' + d.wr
           : 'Found ' + d.sus + ', but without a warrant';
     var kids = [head, map, mapKey, tiles, warrant];
-    if (route.length) kids.push(el('div', { class: 'csh-t', style: { color: '#2a2010', 'text-shadow': 'none', padding: '2px 2px 0' }, text: 'EVERY STOP · TAP ONE' }), strip(ui, items, route.length - 1, showStop, { cls: 'csh-road' }), card);
+    if (route.length) kids.push(el('div', { class: 'csh-t', style: { color: '#2a2010', 'text-shadow': 'none', padding: '2px 2px 0' }, text: 'EVERY STOP' }), strip(ui, items, route.length - 1, showStop, { cls: 'csh-road' }), card);
     kids.push(el('div', { class: 'csh-foot', text: foot }));
     return el('div', { class: 'csh' }, kids);
   });
@@ -1357,7 +1357,7 @@
       card.appendChild(el('div', { class: 'hds-tk', style: { '--tk': T[1] } }, [el('div', { class: 'hds-stub' }, [el('span', { text: T[0] })]), el('div', { class: 'hds-bd' }, body)]));
     }
     var items = evs.map(function (x, i) { return { t: i + 1, c: i === best && x.net > 0 ? '#e3a51c' : x.net >= 0 ? '#23a35f' : '#c0392b', title: x.t + ': ' + (x.net >= 0 ? '+' : '') + money(x.net, true) }; });
-    out.push(ui.section('Every event · tap one', [strip(ui, items, best, show), card], { icon: 'calendar' }));
+    out.push(ui.section('Every event', [strip(ui, items, best, show), card], { icon: 'calendar' }));
     out.push(el('div', { class: 'ar-sub', style: { 'text-align': 'center', color: 'var(--text-3)' }, text: met ? 'Reached the ' + money(goal, true) + ' goal' + (evs[best].net > 0 ? ', best of all at ' + evs[best].t : '') : goal ? 'Finished ' + money(goal - end, true) + ' short of the goal' : '' }));
     return ui.wrap(out);
   });
@@ -1475,7 +1475,7 @@
         return { t: x.d, c: cop ? '#c0392b' : i === bestD ? '#ffd447' : news ? '#1f281a' : '#b0bd9e', ink: !cop && !(news && i !== bestD), title: 'Day ' + x.d + (x.ev ? ': ' + x.ev : '') };
       });
       var road = strip(ui, items, days.length - 1, showD, { cls: 'dwh-road' });
-      out.push(ui.section('Every day · tap one', [road, el('div', { class: 'cz-key ar-sub', style: { color: 'var(--text-3)', 'text-transform': 'none', 'letter-spacing': '0', 'font-weight': '700' }, text: 'Dark: news on the street · red: the cops · gold: your best day' }), hold], { icon: 'calendar' }));
+      out.push(ui.section('Every day', [road, el('div', { class: 'cz-key ar-sub', style: { color: 'var(--text-3)', 'text-transform': 'none', 'letter-spacing': '0', 'font-weight': '700' }, text: 'Dark: news on the street · red: the cops · gold: your best day' }), hold], { icon: 'calendar' }));
     }
     var deals = (d.deals || []).filter(function (x) { return x.w > 0; });
     if (deals.length) out.push(ui.section('Best deals', el('div', { class: 'dwh-paper paper', html: deals.map(function (x) {

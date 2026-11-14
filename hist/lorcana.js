@@ -266,7 +266,7 @@
     pick(best);
     var key = el('div', { class: 'lh-key', html: [0, 1].map(function (i) { return '<span><i style="background:' + ui.color(i) + '"></i>' + ui.esc(poss(name(i))) + ' turns</span>'; }).join('') + '<span><b class="lh-kl">+3</b>3 or more lore</span>' });
     var first = tks[0].t;
-    return ui.section(first > 1 ? 'Turns ' + first + ' to ' + tks[tks.length - 1].t + ' · tap one' : 'Turn by turn · tap one', [road, key, view], { icon: 'rows' });
+    return ui.section(first > 1 ? 'Turns ' + first + ' to ' + tks[tks.length - 1].t + '' : 'Turn by turn', [road, key, view], { icon: 'rows' });
   }
 
   // ── each deck: its inks, the cards it played, the numbers ──
@@ -397,7 +397,7 @@
       });
       var pick = function (i) { btns.forEach(function (b, j) { b.classList.toggle('on', i === j); }); show(i); };
       pick(best);
-      out.push(ui.section('Turn by turn · tap one', [road, view], { icon: 'rows' }));
+      out.push(ui.section('Turn by turn', [road, view], { icon: 'rows' }));
     }
     return ui.wrap(out);
   });

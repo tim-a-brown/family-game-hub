@@ -668,7 +668,7 @@
       area.innerHTML = ''; kids.forEach(function (k) { if (k) area.appendChild(k); });
     }
     if (rounds.length > 1) {
-      out.push(ui.section('Each round · tap one', B.strip(ui, rounds.map(function (r) {
+      out.push(ui.section('Each round', B.strip(ui, rounds.map(function (r) {
         return { t: 'Round ' + (r.i + 1), s: (nm[r.rd.m] || 'Player') + '’s code · ' + (r.rd.ok ? r.gs.length + (r.gs.length === 1 ? ' guess' : ' guesses') : 'held'), c: ui.color(r.rd.m >= 0 ? r.rd.m : 0), hot: !r.rd.ok };
       }), rounds.length - 1, show)));
     } else {

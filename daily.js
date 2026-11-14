@@ -32,34 +32,34 @@ var Daily = window.Daily = (function () {
       var e = hist('wordle').filter(function (x) { return x && x.dayNum === day && !x.randomMode; })[0];
       if (e) {
         var n = Array.isArray(e.guesses) ? e.guesses.length : e.guesses && typeof e.guesses === 'object' ? Object.keys(e.guesses).length : 0;
-        return { id: 'wordle', what: 'Daily #' + day, status: 'done', note: e.won ? 'Solved ' + n + '/6' : 'Missed it' };
+        return { id: 'wordle', what: 'Puzzle #' + day, status: 'done', note: e.won ? 'Solved ' + n + '/6' : 'Missed it' };
       }
       var s = state('wordle_state');
-      if (s && !s.random && s.day === day && !s.over && s.guesses && s.guesses.length) return { id: 'wordle', what: 'Daily #' + day, status: 'going', note: s.guesses.length + ' of 6 guesses' };
-      return { id: 'wordle', what: 'Daily #' + day + ' · the same word for everyone', status: 'new' };
+      if (s && !s.random && s.day === day && !s.over && s.guesses && s.guesses.length) return { id: 'wordle', what: 'Puzzle #' + day, status: 'going', note: s.guesses.length + ' of 6 guesses' };
+      return { id: 'wordle', what: 'Puzzle #' + day + ' \u00b7 The same word for everyone', status: 'new' };
     },
     function spellingbee() {
       var day = localDay(), all = state('spellingbee_state') || {}, d = all.daily;
       var w = d && d.day === day && Array.isArray(d.found) ? d.found.slice() : [], pg = state('prog_spellingbee') || {};   // + words found on other devices
       if (pg[day] && Array.isArray(pg[day].w)) pg[day].w.forEach(function (x) { if (w.indexOf(x) < 0) w.push(x); });
       var n = w.length;
-      return { id: 'spellingbee', what: 'Daily #' + day + ' · a new hive every day', status: n ? 'going' : 'new', note: n ? n + (n === 1 ? ' word' : ' words') : '' };
+      return { id: 'spellingbee', what: 'Puzzle #' + day + ' \u00b7 A new hive every day', status: n ? 'going' : 'new', note: n ? n + (n === 1 ? ' word' : ' words') : '' };
     },
     function sudoku() {
       var day = localDay(), best = null;
       hist('sudoku').forEach(function (e) { if (e && e.daily === day && (!best || e.seconds < best.seconds)) best = e; });
-      if (best) return { id: 'sudoku', what: 'Daily · ' + SUDOKU[WD], status: 'done', note: clock(best.seconds) };
+      if (best) return { id: 'sudoku', what: SUDOKU[WD], status: 'done', note: clock(best.seconds) };
       var s = state('sudoku_state'); s = s && s.S;
-      if (s && s.daily === day && !s.done) return { id: 'sudoku', what: 'Daily · ' + SUDOKU[WD], status: 'going', note: clock(s.time) };
-      return { id: 'sudoku', what: 'Daily · ' + SUDOKU[WD] + ' today', status: 'new' };
+      if (s && s.daily === day && !s.done) return { id: 'sudoku', what: SUDOKU[WD], status: 'going', note: clock(s.time) };
+      return { id: 'sudoku', what: SUDOKU[WD] + ' today', status: 'new' };
     },
     function wordsearch() {
       var day = localDay(), best = null;
       hist('wordsearch').forEach(function (e) { if (e && e.daily === day && !e.gaveUp && (!best || e.seconds < best.seconds)) best = e; });
-      if (best) return { id: 'wordsearch', what: 'Daily · ' + SEARCH[WD], status: 'done', note: clock(best.seconds) };
+      if (best) return { id: 'wordsearch', what: SEARCH[WD], status: 'done', note: clock(best.seconds) };
       var s = state('wordsearch_state');
-      if (s && s.daily === day && !s.done) return { id: 'wordsearch', what: 'Daily · ' + SEARCH[WD], status: 'going', note: clock(s.seconds) };
-      return { id: 'wordsearch', what: 'Daily · ' + SEARCH[WD] + ' today', status: 'new' };
+      if (s && s.daily === day && !s.done) return { id: 'wordsearch', what: SEARCH[WD], status: 'going', note: clock(s.seconds) };
+      return { id: 'wordsearch', what: SEARCH[WD] + ' today', status: 'new' };
     },
     function mazes() {
       var day = isoDay(), best = null;
@@ -67,34 +67,34 @@ var Daily = window.Daily = (function () {
       if (best) return { id: 'mazes', what: 'Daily maze', status: 'done', note: clock(best.secs) };
       var s = state('mazes_state');
       if (s && s.daily === day && !s.done) return { id: 'mazes', what: 'Daily maze', status: 'going', note: s.ms ? clock(s.ms / 1000) : '' };
-      return { id: 'mazes', what: 'Daily maze · small Monday, biggest Saturday', status: 'new' };
+      return { id: 'mazes', what: 'Small on Monday, biggest on Saturday', status: 'new' };
     },
     function logicgrid() {
       var day = localDay(), best = null;
       hist('logicgrid').forEach(function (e) { if (e && e.daily === day && (!best || e.seconds < best.seconds)) best = e; });
-      if (best) return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD], status: 'done', note: clock(best.seconds) };
+      if (best) return { id: 'logicgrid', what: LOGIC[WD], status: 'done', note: clock(best.seconds) };
       var s = state('logicgrid_state'); s = s && s.S;
-      if (s && s.daily === day && !s.done) return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD], status: 'going', note: clock(s.time) };
-      return { id: 'logicgrid', what: 'Daily · ' + LOGIC[WD] + ' today', status: 'new' };
+      if (s && s.daily === day && !s.done) return { id: 'logicgrid', what: LOGIC[WD], status: 'going', note: clock(s.time) };
+      return { id: 'logicgrid', what: LOGIC[WD] + ' today', status: 'new' };
     },
     function mysteries() {
       var day = localDay(), e = hist('mysteries').filter(function (x) { return x && x.daily === day; })[0];
       if (e) return { id: 'mysteries', what: 'Daily case', status: 'done', note: e.solved ? clock(e.secs) : 'Solution seen' };
       var s = state('mysteries_state');
       if (s && s.daily === day && !s.done) return { id: 'mysteries', what: 'Daily case', status: 'going', note: clock(s.secs) };
-      return { id: 'mysteries', what: 'Daily case · a new picture mystery every day', status: 'new' };
+      return { id: 'mysteries', what: 'A new picture mystery every day', status: 'new' };
     },
     function riddles() {
       var day = localDay(), e = hist('riddles').filter(function (x) { return x && x.daily === day; })[0];
       if (e) return { id: 'riddles', what: 'Daily riddle', status: 'done', note: e.solved ? (e.stars === 3 ? 'No hints' : 'Solved') : 'Gave up' };
       var s = state('riddles_state');
       if (s && s.daily === day && !s.over && s.res && s.res[0] && (s.res[0].t.length || s.res[0].h)) return { id: 'riddles', what: 'Daily riddle', status: 'going', note: 'Keep thinking' };
-      return { id: 'riddles', what: 'Daily riddle · a new one for you', status: 'new' };
+      return { id: 'riddles', what: 'A new riddle every day', status: 'new' };
     },
     function ciphers() {
       var day = localDay(), T = { caesar: 'Caesar shift', a1z26: 'Letter numbers', crypto: 'Cryptogram' };
       var d = [['crypto', 'Hard'], ['caesar', 'Easy'], ['a1z26', 'Medium'], ['caesar', 'Medium'], ['crypto', 'Easy'], ['caesar', 'Hard'], ['crypto', 'Medium']][WD];
-      var what = 'Daily code · ' + T[d[0]] + ' · ' + d[1];
+      var what = T[d[0]] + ' \u00b7 ' + d[1];
       var e = hist('ciphers').filter(function (x) { return x && x.daily === day; })[0];
       if (e) return { id: 'ciphers', what: what, status: 'done', note: e.revealed ? 'Answer shown' : clock(e.secs) };
       var s = state('ciphers_state'); s = s && s.S;
@@ -109,7 +109,7 @@ var Daily = window.Daily = (function () {
     return function () {
       var id = (kind === 'mini' ? 'dm-' : 'db-') + isoDay(), dow = (new Date().getDay() + 6) % 7, best = null;
       hist('crossword').forEach(function (e) { if (e && e.pid === id && e.secs && (!best || e.secs < best.secs)) best = e; });
-      var name = kind === 'mini' ? 'The Mini' : XW_DOW[dow] + ' Crossword', what = kind === 'mini' ? 'Daily 5×5 crossword' : 'Daily · ' + XW_LVL[dow];
+      var name = kind === 'mini' ? 'The Mini' : XW_DOW[dow] + ' Crossword', what = kind === 'mini' ? '5×5' : XW_LVL[dow];
       if (best) return { id: 'crossword', name: name, what: what, status: 'done', note: clock(best.secs), q: 'kind=' + kind };
       var st = state('crossword_state'), pr = st && st.prog && st.prog[id];
       var going = pr && !pr.solved && pr.fill && pr.fill.some(function (r) { return r.some(function (x) { return x && x !== '#'; }); });
@@ -121,10 +121,10 @@ var Daily = window.Daily = (function () {
   games.push(function truthlies() {
     var day = localDay(), best = null;
     hist('truthlies').forEach(function (e) { if (e && e.daily === day && e.solved && (!best || e.seconds < best.seconds)) best = e; });
-    if (best) return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD], status: 'done', note: clock(best.seconds) };
+    if (best) return { id: 'truthlies', what: TRUTHLIES[WD], status: 'done', note: clock(best.seconds) };
     var s = state('truthlies_state'); s = s && s.S;
-    if (s && s.daily === day && !s.done) return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD], status: 'going', note: clock(s.time) };
-    return { id: 'truthlies', what: 'Daily · ' + TRUTHLIES[WD] + ' · who is lying?', status: 'new' };
+    if (s && s.daily === day && !s.done) return { id: 'truthlies', what: TRUTHLIES[WD], status: 'going', note: clock(s.time) };
+    return { id: 'truthlies', what: 'Who is lying? \u00b7 ' + TRUTHLIES[WD] + ' today', status: 'new' };
   });
   // Other games add their own (the crossword adds its mini and big) with Daily.add(fn)
   function add(fn) { games.push(fn); }
@@ -169,7 +169,7 @@ var Daily = window.Daily = (function () {
     var el = Kit.el, items = list(), done = items.filter(function (x) { return x.status === 'done'; }).length;
     css();
     var box = el('div', { class: 'dly' }, [
-      el('p', { class: 'dly-sum', text: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · ' + done + ' of ' + items.length + ' done' })
+      el('p', { class: 'dly-sum' }, [el('span', { text: new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) }), el('b', { text: done + ' of ' + items.length + ' done' })])
     ]);
     // Drag a row by its grip (Kit.dragGrip): it lifts, the others slide out of its way, and the new order is saved
     var dragGrip = Kit.dragGrip(box, '.dly-row', function () { saveOrder(Array.prototype.map.call(box.querySelectorAll('.dly-row'), function (r) { return r.getAttribute('data-k'); })); }, 'dly-grip');
@@ -181,7 +181,7 @@ var Daily = window.Daily = (function () {
       var row = el('a', { class: 'dly-row' + (x.status === 'done' ? ' is-done' : ''), href: 'games/' + x.file, 'data-k': keyOf(x), onclick: function (e) { if (box._dragged) { e.preventDefault(); return; } Kit.sfx('pop'); try { sessionStorage.setItem('fgh_from_daily', '1'); } catch (e2) {} } }, [
         grip(),
         el('span', { class: 'gi', html: typeof GameIcon === 'function' ? GameIcon(x.id) : '' }),
-        el('span', { class: 'tx' }, [el('b', { text: x.name }), el('small', { text: x.what })]),
+        el('span', { class: 'tx' }, [el('b', { text: x.name }), Kit.facts(el('small'), x.what)]),   // (two facts, two lines)
         right
       ]);
       box.appendChild(row);
@@ -193,7 +193,7 @@ var Daily = window.Daily = (function () {
     if (cssDone) return; cssDone = true;
     var s = document.createElement('style');
     s.textContent = '.dly{display:flex;flex-direction:column;gap:8px;}' +
-      '.dly-sum{margin:0 2px 4px;color:var(--text-2);font-weight:700;font-size:.9rem;}' +
+      '.dly-sum{display:flex;justify-content:space-between;gap:10px;margin:0 2px 4px;color:var(--text-2);font-weight:700;font-size:.9rem;}.dly-sum b{color:var(--text);font-weight:900;}' +
       '.dly-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:16px;background:var(--surface-2);color:var(--text);text-decoration:none;-webkit-tap-highlight-color:transparent;}' +
       '.dly-row:active{transform:scale(.99);}' +
       '.dly-row{transition:transform .18s ease;}.dly-row.drag{position:relative;z-index:3;transition:none;box-shadow:0 12px 30px rgba(0,0,0,.45),inset 0 0 0 1.5px color-mix(in srgb,var(--text) 18%,transparent);}' +

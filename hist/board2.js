@@ -662,7 +662,7 @@
     var items = hands.map(function (h) {
       return { t: String(h.l), s: h.w < 0 ? 'Draw' : (nm[h.w] || '').split(' ')[0] + ' · ' + h.fa, c: h.w >= 0 ? Kit.color(h.w) : null, hot: h === big, dim: h.w < 0 };
     });
-    out.push(ui.section(hands.length > 1 ? 'Every hand · tap one' : 'The hand', [hands.length > 1 ? B.strip(ui, items, big ? hands.indexOf(big) : hands.length - 1, show) : null, card]));
+    out.push(ui.section(hands.length > 1 ? 'Every hand' : 'The hand', [hands.length > 1 ? B.strip(ui, items, big ? hands.indexOf(big) : hands.length - 1, show) : null, card]));
     if (hands.length === 1) show(0);
     // who won, who paid
     var wins = [0, 0, 0, 0], self = [0, 0, 0, 0], dealt = [0, 0, 0, 0], best = [0, 0, 0, 0];
@@ -743,7 +743,7 @@
         var who = nm[t.p] || 'Player';
         return 'Turn ' + n + ' · ' + (t.k === 'play' ? who + ' played ' + t.w + ' for ' + t.s + (t.b ? ', a bingo' : '') : t.k === 'swap' ? who + ' swapped ' + t.n + (t.n === 1 ? ' tile' : ' tiles') : who + ' passed') + ' · ' + run.map(function (x, i) { return ser[i][n]; }).join('–');
       }, { start: best ? turns.indexOf(best) + 1 : N, ms: 650 });
-      out.push(ui.section('Every turn · tap one', [st, rp]));
+      out.push(ui.section('Every turn', [st, rp]));
       if (ch) out.push(ui.section('The score race', [ch, B.key(ui, nm.map(function (n, i) { return [n, ui.color(i)]; }))]));
     } else if (d.top && d.top.length) out.push(ui.section('Best plays', ui.log(d.top.map(function (t) { return { c: t.p, b: t.w, t: t.s + ' points' + (t.b ? ' · bingo' : '') + ' · ' + (nm[t.p] || '') }; }))));
     var rows = nm.map(function (n, i) {

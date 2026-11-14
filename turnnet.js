@@ -490,7 +490,7 @@
     root.innerHTML = '';
     var wrap = E('div', { class: 'ol' }); root.appendChild(wrap);
     wrap.appendChild(E('h1', { text: 'Play online' }));
-    wrap.appendChild(E('p', { class: 'tn-sub', text: G.title + ' · take your turn whenever you like' }));
+    wrap.appendChild(E('p', { class: 'tn-sub', text: 'Take your turn in ' + G.title + ' whenever you like.' }));
     if (!ready()) {
       wrap.appendChild(E('p', { class: 'ol-note', style: { 'text-align': 'center' }, text: 'Sign in with your PIN to play online: the profile button on the home screen.' }));
       wrap.appendChild(E('button', { type: 'button', class: 'btn btn-soft btn-block', text: 'Back to the game', onclick: closeOv }));
@@ -541,9 +541,9 @@
           var d = x.d, others = d.seats.filter(function (s, i) { return i !== x.s; }), faces = E('span', { class: 'tn-faces' });
           others.slice(0, 4).forEach(function (s, i) { faces.appendChild(av(s.name, i + 1)); });
           var upName = (d.turn || []).map(function (i) { return d.seats[i] && d.seats[i].name; }).filter(Boolean)[0];
-          var sub = d.status === 'open' ? 'Waiting for players · code ' + x.code : x.mine ? 'vs ' + others.map(function (s) { return s.name; }).join(', ') + ' · ' + ago(d.at || 0) : (upName ? upName + '’s turn' : 'Their turn') + ' · ' + ago(d.at || 0);
+          var sub = d.status === 'open' ? 'Waiting for players \u00b7 Code ' + x.code : x.mine ? 'Last move ' + ago(d.at || 0) : (upName ? upName + '’s turn' : 'Their turn') + ' \u00b7 Last move ' + ago(d.at || 0);   // (facts: a line each)
           var b = E('button', { type: 'button', class: 'ol-row tn-g ' + (x.mine ? 'turn' : 'wait'), onclick: function (e) { run(e.currentTarget, 'Opening…', function () { return resume(x.code); }); } }, [
-            faces, E('div', { class: 'grow' }, [E('b', { text: others.length ? 'With ' + others.map(function (s) { return s.name; }).join(', ') : 'Your table' }), E('small', { text: sub })]),
+            faces, E('div', { class: 'grow' }, [E('b', { text: others.length ? 'With ' + others.map(function (s) { return s.name; }).join(', ') : 'Your table' }), Kit.facts(E('small'), sub)]),
             x.mine ? E('span', { class: 'yt', text: 'Your turn' }) : null]);
           mineBox.appendChild(b);
         });
@@ -563,15 +563,15 @@
         var rest = [];
         (rs || []).forEach(function (r) {
           var x = r.x || r, d = x.d, n = humans(d).length;
-          var sub = n + ' of ' + (d.max || 2) + ' seats taken · code ' + x.code;
+          var sub = n + ' of ' + (d.max || 2) + ' seats are taken \u00b7 Code ' + x.code;
           var go = function (e) { run(e.currentTarget, 'Joining…', function () { return join(x.code, me); }); };
-          if (r.who) pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [av(r.who.name, 1), E('div', { class: 'grow' }, [E('b', { text: r.who.name + ' has a table open' }), E('small', { text: sub })]),
+          if (r.who) pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [av(r.who.name, 1), E('div', { class: 'grow' }, [E('b', { text: r.who.name + ' has a table open' }), Kit.facts(E('small'), sub)]),
             E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>' + Kit.esc('Join ' + r.who.name + '’s table') + '</span>', onclick: go })]));
           else rest.push([x, sub, go]);
         });
         if (!rest.length) rooms.appendChild(E('p', { class: 'ol-note', text: 'No open tables yet. When someone opens one, it shows up here.' }));
         rest.forEach(function (y) {
-          rooms.appendChild(E('div', { class: 'ol-row' }, [av(y[0].host.name, 1), E('div', { class: 'grow' }, [E('b', { text: y[0].host.name + '’s table' }), E('small', { text: y[1] })]),
+          rooms.appendChild(E('div', { class: 'ol-row' }, [av(y[0].host.name, 1), E('div', { class: 'grow' }, [E('b', { text: y[0].host.name + '’s table' }), Kit.facts(E('small'), y[1])]),
             E('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: y[2] })]));
         });
       });

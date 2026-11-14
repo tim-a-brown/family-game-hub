@@ -251,7 +251,7 @@ var Cards = (function () {
     '.spad-h small{font-family:var(--hand);font-size:1.05rem;color:#6a6a80;}',
     '.spad table{width:100%;border-collapse:collapse;table-layout:fixed;}',
     '.spad th,.spad td{height:42px;border-bottom:1px solid rgba(60,80,160,.16);text-align:center;padding:0 2px;}',
-    '.spad thead th{font-family:var(--hand);font-weight:400;font-size:1.15rem;border-bottom:2px solid rgba(60,80,160,.3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    '.spad thead th{font-family:var(--hand);font-weight:400;font-size:1.15rem;border-bottom:2px solid rgba(60,80,160,.3);line-height:1.05;text-wrap:balance;}',   // (a team, Player 2 & Player 4, takes two lines instead of being cut)
     '.spad th.rn{width:44px;font-family:var(--font);font-size:.72rem;font-weight:900;color:#c8102e;letter-spacing:.06em;}',
     '.spad td{font-family:var(--hand);font-size:1.4rem;color:var(--ink);border-left:1px solid rgba(200,16,46,.2);}',
     '.spad td small{display:block;font-size:.8rem;line-height:1;color:#7a7a90;margin-top:-4px;}',
@@ -577,7 +577,7 @@ function Scorepad(host, o) {
       return;
     }
     Kit.sheet({
-      title: 'Round ' + (ri + 1), html: '<p class="muted">' + S.sides.map(function (s, i) { return Kit.esc(s.name) + ': ' + r.scores[i]; }).join(' · ') + '</p>',
+      title: 'Round ' + (ri + 1), html: '<table class="k-rnd-t">' + S.sides.map(function (s, i) { return '<tr><th>' + Kit.esc(s.name) + '</th><td>' + r.scores[i] + '</td></tr>'; }).join('') + '</table>',   // (a small table: each side and its score)
       actions: [
         { label: 'Fix this round', primary: true, onClick: function () {
           openForm({ index: ri, round: r }, function (scores, extra) { replaceRound(ri, scores, extra); }, 'Fix round ' + (ri + 1));

@@ -235,7 +235,7 @@
     S.lastAt = Date.now();
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var net = S.st.returned - S.st.wagered;
-    Kit.resume.set(S.st.hands ? S.st.hands + ' hand' + (S.st.hands === 1 ? '' : 's') + ' · ' + (net >= 0 ? 'up ' : 'down ') + money(Math.abs(net)) : 'At the table');
+    Kit.resume.set(S.st.hands ? S.st.hands + ' hand' + (S.st.hands === 1 ? '' : 's') + ' \u00b7 ' + (net >= 0 ? 'Up ' : 'Down ') + money(Math.abs(net)) : 'At the table');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function load() { try { return JSON.parse(localStorage.getItem(SAVE)); } catch (e) { return null; } }
@@ -341,8 +341,9 @@
       s += '<text class="tx sm" font-size="7.5" x="' + a[1] + '" y="389" text-anchor="middle">11 TO 1</text>';
     });
     s += '<text class="tx" font-size="15" x="200" y="378" text-anchor="middle">BACCARAT</text>';
-    s += '<text class="tx sm" font-size="8.5" x="200" y="393" text-anchor="middle">PUNTO BANCO · 8 DECKS</text>';
-    s += '<text class="tx sm" font-size="8.5" x="200" y="406" text-anchor="middle">MIN $1 · MAX $1,000</text>';
+    // (the felt's print, each thing in its own place: the game's name, then the limits at either side of the decks)
+    s += '<text class="tx sm" font-size="8.5" x="200" y="393" text-anchor="middle">PUNTO BANCO</text>';
+    s += '<text class="tx sm" font-size="8.5" x="138" y="406" text-anchor="middle">MIN $1</text><text class="tx sm" font-size="8.5" x="200" y="406" text-anchor="middle">8 DECKS</text><text class="tx sm" font-size="8.5" x="262" y="406" text-anchor="middle">MAX $1,000</text>';
     return s + '</svg>';
   }
   function pct(x, y) { return { left: (x / 4) + '%', top: (y / 4.3) + '%' }; }
@@ -407,7 +408,7 @@
       over: function (k, v) {
         if (!dom.hint) return;
         if (k == null) { dom.hint.textContent = 'Drop the ' + money(v) + ' chip on a bet'; return; }
-        dom.hint.textContent = (S.bets[k] || 0) + v > SPOTS[k].max ? SPOTS[k].name + ' limit is ' + money(SPOTS[k].max) : SPOTS[k].name + ' · let go to bet ' + money(v);
+        dom.hint.textContent = (S.bets[k] || 0) + v > SPOTS[k].max ? SPOTS[k].name + ' limit is ' + money(SPOTS[k].max) : 'Let go to bet ' + money(v) + ' on ' + SPOTS[k].name;
       },
       done: function (placed) { if (!placed) paintButtons(); },
       drop: function (k, v) { sel = v; return placeChip(k); }
@@ -466,8 +467,8 @@
     if (busy) { dom.deal.disabled = true; dom.deal.textContent = 'Dealing…'; }
     else if (NET && t) { dom.deal.disabled = false; dom.deal.textContent = 'Bet ' + money(t); }
     else if (NET && !(last && last <= bal)) { dom.deal.disabled = true; dom.deal.textContent = 'Place a bet'; }
-    else if (t) { dom.deal.disabled = false; dom.deal.textContent = 'Deal · ' + money(t); }
-    else if (last && last <= bal) { dom.deal.disabled = false; dom.deal.textContent = 'Rebet · ' + money(last); }
+    else if (t) { dom.deal.disabled = false; dom.deal.textContent = 'Deal ' + money(t); }
+    else if (last && last <= bal) { dom.deal.disabled = false; dom.deal.textContent = 'Rebet ' + money(last); }
     else { dom.deal.disabled = true; dom.deal.textContent = 'Deal'; }
     var h = '';
     if (!busy) {
@@ -478,7 +479,8 @@
     dom.hint.textContent = h;
   }
   function describeBets(b) {
-    return ORDER.filter(function (k) { return b[k]; }).map(function (k) { return SPOTS[k].name + ' ' + money(b[k]); }).join(' · ');
+    var a = ORDER.filter(function (k) { return b[k]; }).map(function (k) { return money(b[k]) + ' on ' + SPOTS[k].name; });   // ("$5 on Banker and $10 on Player")
+    return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
   }
   function paintShoe() {
     var sh = S.shoe, left = sh.cards.length - sh.pos;
@@ -764,7 +766,7 @@
     finishHand(h, true);
   }
 
-  function verdictText(h) { return h.w === 'T' ? 'Tie · ' + h.pt + ' – ' + h.bt : (h.w === 'P' ? 'Player' : 'Banker') + ' wins · ' + (h.w === 'P' ? h.pt + ' – ' + h.bt : h.bt + ' – ' + h.pt); }
+  function verdictText(h) { return h.w === 'T' ? 'A tie at ' + h.pt : (h.w === 'P' ? 'Player' : 'Banker') + ' wins ' + (h.w === 'P' ? h.pt + ' to ' + h.bt : h.bt + ' to ' + h.pt); }
   function markWinners(h) {
     if (h.w !== 'T') dom.zones[h.w === 'P' ? 'p' : 'b'].el.classList.add('win');
     var spots = [];
@@ -822,8 +824,8 @@
     busy = false;
     save();
     paint();
-    if (S.shoe.left === 0) setTimeout(function () { if (S && !busy) Kit.toast('Shoe finished · fresh shoe next', 2200); }, 1200);
-    else if (S.shoe.left === 1 && h.lastHand === false && !h._cutTold) { h._cutTold = true; setTimeout(function () { if (S && !busy) Kit.toast('Cut card is out · one more hand', 2200); }, 1200); }
+    if (S.shoe.left === 0) setTimeout(function () { if (S && !busy) Kit.toast('The shoe is finished, so a fresh shoe comes next.', 2200); }, 1200);
+    else if (S.shoe.left === 1 && h.lastHand === false && !h._cutTold) { h._cutTold = true; setTimeout(function () { if (S && !busy) Kit.toast('The cut card is out, so there’s one more hand.', 2200); }, 1200); }
   }
 
   // ── Bet guide (setup option): best bet on the table, and the odds behind every bet ──
@@ -850,7 +852,7 @@
         return '<strong>' + SPOTS[k].name + ' ' + money(b[k]) + '</strong>: ' + Coach.cash(b[k] * EV[k]);
       });
       var onlyBanker = ORDER.every(function (k) { return k === 'b' || !b[k]; });
-      best = { label: 'Your bets · ' + money(t) + ' on the table', value: 'Avg loss ' + lossTxt(ev) + ' a hand',
+      best = { label: 'Your ' + money(t) + ' on the table', value: 'Avg loss ' + lossTxt(ev) + ' a hand',
         text: lines.join('<br>') + '<span class="bg-note">' + (onlyBanker ? 'Banker is the best bet on the table: nothing here costs less.' :
           'The same ' + money(t) + ' all on Banker would lose about ' + lossTxt(t * EV.b) + ' a hand on average.') + '</span>' };
     } else {
@@ -864,13 +866,13 @@
       intro: 'Chances are for one hand from a full 8-deck shoe. The amount on the right is your average result for every <b>$10</b> you bet, if you made that bet over and over.',
       moves: [
         { name: 'Banker', best: true, w: ODDS.B, p: ODDS.T, l: ODDS.P, pLabel: 'Tie (bet back)', value: 10 * EV.b,
-          note: 'Pays 0.95 to 1 (the house keeps 5% of the win) · house edge <b>' + edgeTxt(EV.b) + '</b>' },
+          note: 'Pays 0.95 to 1 (the house keeps 5% of the win), with a house edge of <b>' + edgeTxt(EV.b) + '</b>' },
         { name: 'Player', w: ODDS.P, p: ODDS.T, l: ODDS.B, pLabel: 'Tie (bet back)', value: 10 * EV.p,
-          note: 'Pays 1 to 1 · house edge <b>' + edgeTxt(EV.p) + '</b>' },
+          note: 'Pays 1 to 1, with a house edge of <b>' + edgeTxt(EV.p) + '</b>' },
         { name: 'Player Pair or Banker Pair', w: ODDS.pair, l: 1 - ODDS.pair, value: 10 * EV.pp,
-          note: 'Pays 11 to 1 · hits about 1 hand in ' + (1 / ODDS.pair).toFixed(1) + '; a fair price would be ' + (1 / ODDS.pair - 1).toFixed(1) + ' to 1 · house edge <b>' + edgeTxt(EV.pp) + '</b>' },
+          note: 'Pays 11 to 1 and hits about 1 hand in ' + (1 / ODDS.pair).toFixed(1) + '; a fair price would be ' + (1 / ODDS.pair - 1).toFixed(1) + ' to 1, so the house edge is <b>' + edgeTxt(EV.pp) + '</b>' },
         { name: 'Tie', w: ODDS.T, l: 1 - ODDS.T, value: 10 * EV.t,
-          note: 'Pays 8 to 1 · hits about 1 hand in ' + (1 / ODDS.T).toFixed(1) + '; a fair price would be ' + (1 / ODDS.T - 1).toFixed(1) + ' to 1 · house edge <b>' + edgeTxt(EV.t) + '</b> (some casinos pay 9 to 1, which cuts it to 4.84%)' }
+          note: 'Pays 8 to 1 and hits about 1 hand in ' + (1 / ODDS.T).toFixed(1) + '; a fair price would be ' + (1 / ODDS.T - 1).toFixed(1) + ' to 1, so the house edge is <b>' + edgeTxt(EV.t) + '</b> (some casinos pay 9 to 1, which cuts it to 4.84%)' }
       ],
       sections: [
         { title: 'Why Banker is the best bet', items: [
@@ -949,7 +951,7 @@
     Kit.win({
       icon: net >= 0 ? 'trophy' : 'coins',
       title: net > 0.004 ? 'Up ' + money(net) + '!' : net < -0.004 ? 'Down ' + money(-net) : 'Broke even',
-      sub: st.hands + ' hands · Banker ' + st.counts.B + ', Player ' + st.counts.P + ', Tie ' + st.counts.T + ' · ' + left,
+      sub: st.hands + ' hands, won by the Banker ' + st.counts.B + ', the Player ' + st.counts.P + ' and tied ' + st.counts.T + ' \u00b7 ' + left,
       lose: net < -0.004,
       againLabel: 'Play again',
       again: function () { start(name, reveal, coach); }

@@ -198,7 +198,7 @@ const Casino = (function(){
   function money(n){ return (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString(); }
   function when(ts){
     var d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   }
   function spark(list){
     // Balance after each entry, oldest to newest, ending at the current bankroll
@@ -284,7 +284,7 @@ const Casino = (function(){
       var t = !e.table ? (e.name || e.game) : e.rev ? (e.name || e.game) + ' at ' + tbl + ': not me' : 'At ' + tbl + ': ' + (e.name || e.game);
       box.appendChild(el('div', { class: 'cz-row' }, [
         el('span', { html: ic, style: { display: 'contents' } }),
-        el('span', { class: 'tx' }, [el('div', { class: 't', text: t }), el('div', { class: 'd', text: when(e._date) + (e.bets ? ' · ' + e.bets + (e.bets === 1 ? ' bet' : ' bets') : '') + (e.best ? ' · best payout ' + money(e.best) : '') })]),
+        el('span', { class: 'tx' }, [el('div', { class: 't', text: t }), Kit.facts(el('div', { class: 'd' }), when(e._date) + (e.bets ? ' \u00b7 ' + e.bets + (e.bets === 1 ? ' bet' : ' bets') + (e.best ? ', the best paying ' + money(e.best) : '') : ''))]),
         el('span', { class: 'v ' + (e.net > 0 ? 'cz-up' : e.net < 0 ? 'cz-down' : '') }, [el('span', { text: (e.net > 0 ? '+' : '') + money(e.net) }), el('small', { text: money(e.start) + ' → ' + money(e.end) })])
       ]));
     });

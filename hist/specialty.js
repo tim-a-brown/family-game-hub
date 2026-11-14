@@ -168,7 +168,7 @@
         panel.innerHTML = ''; panel.appendChild(ck.felt(['#3a2f7a', '#241c55', '#18123d'], kids));
       };
       var items = d.r.map(function (r, i) { var pts = sc[i] || [], best = -1; pts.forEach(function (v, p) { if (best < 0 || v > pts[best]) best = p; }); var b = nums(r.b), k = nums(r.k); return { t: String(i + 1), c: best >= 0 ? ui.color(best) : null, ring: P.every(function (x, p) { return b[p] === k[p]; }), title: 'Round ' + (i + 1) }; });
-      out.push(ui.section('Every round · tap one', [ck.road(items, d.r.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Everyone made it', 'ring']]))], { icon: 'cards' }));
+      out.push(ui.section('Every round', [ck.road(items, d.r.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Everyone made it', 'ring']]))], { icon: 'cards' }));
     }
     var rows = d.r.map(function (r, ri) {
       var su = SUIT[r.t], tc = r.tc;
@@ -232,7 +232,7 @@
         panel.innerHTML = ''; panel.appendChild(ck.felt(['#1f7a4a', '#145a35', '#0e4a2b'], kids));
       };
       var items = rr.map(function (r, k) { var i = off + k, pts = sc[i] || [], b = -1; pts.forEach(function (v, p) { if (b < 0 || v > pts[b]) b = p; }); return { t: String(i + 1), c: b >= 0 ? ui.color(b) : null, ring: /7/.test(d.st[i] || ''), title: 'Round ' + (i + 1) }; });
-      out.push(ui.section('Every round · tap one', [ck.road(items, rr.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Flip 7', 'ring']])), legend([['#e5263f', 'Red cross: the duplicate that busted']])], { icon: 'cards' }));
+      out.push(ui.section('Every round', [ck.road(items, rr.length - 1, show), panel, ck.key(P.map(function (x, p) { return ['Best round: ' + short(x, 8), ui.color(p)]; }).concat([['Flip 7', 'ring']])), legend([['#e5263f', 'Red cross: the duplicate that busted']])], { icon: 'cards' }));
     } else if (d.fin && d.fin.length) {
       var felt = el('div', { class: 'sx-felt' });
       P.forEach(function (x, i) {
@@ -314,7 +314,7 @@
         panel.innerHTML = ''; panel.appendChild(ck.felt(['#1d7a52', '#105636', '#0a3f27'], kids));
       };
       var items = d.out.split('').map(function (o, i) { return { t: FCR[i], c: o === '-' ? null : ui.color(+o), title: fcWild(i) + ' wild' + (o === '-' ? '' : ': ' + P[+o] + ' went out') }; });
-      out.push(ui.section('Every round · tap one', [ck.road(items, nR - 1, show), panel,
+      out.push(ui.section('Every round', [ck.road(items, nR - 1, show), panel,
         ck.key(P.map(function (x, p) { return [short(x, 10) + ' went out', ui.color(p)]; })), legend([['#e7b416', 'Wild card'], ['rgba(220,40,60,.6)', 'Left in hand (counts against)']])], { icon: 'crown' }));
     }
     out.push(ui.section('Went out first', ui.bars(P.map(function (x, i) { return { label: x, value: outs[i], max: nR, color: ui.color(i), text: outs[i] + (outs[i] === 1 ? ' time' : ' times') }; }))));
@@ -398,7 +398,7 @@
         panel.innerHTML = ''; panel.appendChild(ck.felt(['#1c5a8a', '#123d61', '#0b2a45'], kids));
       };
       var items = d.h.map(function (h, i) { return { t: String(i + 1), c: ui.color(h.b % 2), ring: !h.m, title: 'Hand ' + (i + 1) + ': ' + pl[h.b] + ' bid ' + h.bid + (h.m ? ', made' : ', set') }; });
-      out.push(ui.section('Every hand · tap one', [ck.road(items, d.h.length - 1, show), panel, ck.key([['Bid by ' + T[0], ui.color(0)], ['Bid by ' + T[1], ui.color(1)], sets ? ['Went set', 'ring'] : null])], { icon: 'cards' }));
+      out.push(ui.section('Every hand', [ck.road(items, d.h.length - 1, show), panel, ck.key([['Bid by ' + T[0], ui.color(0)], ['Bid by ' + T[1], ui.color(1)], sets ? ['Went set', 'ring'] : null])], { icon: 'cards' }));
     }
     var rows = d.h.map(function (h, i) {
       var bt = h.b % 2, took = bt ? h.c1 : h.c0, tr = RK[h.t] || ['?', '#888'];
@@ -453,7 +453,7 @@
       };
       var first = H.findIndex ? H.findIndex(function (h) { return h.t; }) : 0, items = [], idx = [];
       H.forEach(function (h, r) { if (!h.t) return; idx.push(r); items.push({ t: String(r + 1), c: h.o >= 0 ? ui.color(h.o) : null, ring: d.made[r] && d.made[r].indexOf('0') < 0, title: 'Hand ' + (r + 1) }); });
-      out.push(ui.section(first > 0 ? 'The last ' + items.length + ' hands · tap one' : 'Every hand · tap one', [ck.road(items, items.length - 1, function (k) { show(idx[k]); }), panel,
+      out.push(ui.section(first > 0 ? 'The last ' + items.length + ' hands' : 'Every hand', [ck.road(items, items.length - 1, function (k) { show(idx[k]); }), panel,
         ck.key(P.map(function (x, p) { return [short(x, 10) + ' went out', ui.color(p)]; }).concat([['Everyone made it', 'ring']])), legend([['rgba(220,40,60,.6)', 'Left in hand (counts against)']])], { icon: 'cards' }));
     }
     var rows = P.map(function (x, i) {
@@ -569,7 +569,7 @@
       };
       var items = d.hx.map(function (h) { var bt = h.h ? d.home : aw; return { t: (h.h ? 'B' : 'T') + h.i, c: h.r ? d.tm[bt].c : null, dk: h.r && /^#(f|e|d)/i.test(d.tm[bt].c || ''), ring: /HR/.test(h.o || ''), title: (h.h ? 'Bottom ' : 'Top ') + h.i + (h.r ? ': ' + h.r + ' runs' : '') }; });
       var start = 0; d.hx.forEach(function (h, i) { if (h.r >= (d.hx[start].r || 0)) start = i; });
-      out.push(ui.section('Every half-inning · tap one', [ck.road(items, start, show), panel,
+      out.push(ui.section('Every half-inning', [ck.road(items, start, show), panel,
         ck.key([[short(T0.n, 12) + ' scored', T0.c], [short(T1.n, 12) + ' scored', T1.c], ['Home run', 'ring']])], { icon: 'chart' }));
     }
     [aw, d.home].forEach(function (t) {
@@ -652,7 +652,7 @@
         panel.innerHTML = ''; panel.appendChild(ck.felt(['#34406a', '#252e52', '#1a2140'], kids));
       };
       var items = sc.map(function (r, ri) { var l = leader(cum[ri]); return { t: String(ri + 1), c: l >= 0 ? ui.color(l) : null, ring: ri > 0 && l >= 0 && leader(cum[ri - 1]) !== l, title: (labels[ri] || 'Round ' + (ri + 1)) + (l >= 0 ? ': ' + P[l] + ' leads' : '') }; });
-      out.push(ui.section('Every round · tap one', [ck.road(items, sc.length - 1, show), panel, ck.key(P.map(function (x, i) { return [short(x, 10) + ' leads', ui.color(i)]; }).concat([['Lead changed', 'ring']]))], { icon: 'chart' }));
+      out.push(ui.section('Every round', [ck.road(items, sc.length - 1, show), panel, ck.key(P.map(function (x, i) { return [short(x, 10) + ' leads', ui.color(i)]; }).concat([['Lead changed', 'ring']]))], { icon: 'chart' }));
     }
     if (n > 1 && sc.length >= 2) {
       out.push(ui.section('Rounds in the lead', ui.bars(P.map(function (x, i) { return { label: x, value: ledRounds[i], max: sc.length, color: ui.color(i), text: ledRounds[i] + ' of ' + sc.length }; }))));

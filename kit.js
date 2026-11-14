@@ -1530,7 +1530,7 @@
   // the arrow alone (gbar.k-tight) so the name wins
   function fitBar() {
     if (!gbarEl) return;
-    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap');
+    gbarEl.classList.remove('k-tight', 'k-noic', 'k-wrap', 'k-nochev');
     var t = gbarEl.querySelector('.ttl > span:not(.gi):not(.k-chev)');
     if (!t) return;
     t.style.fontSize = '';
@@ -1542,7 +1542,12 @@
     if (t.scrollWidth > t.clientWidth + 0.5 && gbarEl.querySelector('.ttl .gi')) gbarEl.classList.add('k-noic');
     while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.7) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
     // (a long name on a 320-wide phone, "Wheel of Fortune": two lines, at the size the eased name had first)
-    if (t.scrollWidth > t.clientWidth + 0.5) { gbarEl.classList.add('k-wrap'); t.style.fontSize = Math.round(fs0 * 0.84) + 'px'; }
+    if (t.scrollWidth > t.clientWidth + 0.5) {
+      gbarEl.classList.add('k-wrap'); fs = Math.round(fs0 * 0.84); t.style.fontSize = fs + 'px';
+      // (one long word, "Conversation", still has to fit its line)
+      while (t.scrollWidth > t.clientWidth + 0.5 && fs > fs0 * 0.6) { fs -= 0.5; t.style.fontSize = fs + 'px'; }
+      if (t.scrollWidth > t.clientWidth + 0.5) gbarEl.classList.add('k-nochev');   // (still too long: a switcher's arrow steps aside, the name is what you tap)
+    }
   }
   function titleSwitch(text, onClick, label) {
     var ttl = gbarEl && gbarEl.querySelector('.ttl'); if (!ttl) return;
@@ -2761,8 +2766,13 @@
       // (a game page whose own frame has no padding, Press Your Luck's: the setup keeps 16px off the screen's edges)
       var hl = parseFloat(getComputedStyle(host).paddingLeft) || 0, wl = wrap.getBoundingClientRect().left;
       wrap.classList.toggle('k-pad', hl < 8 && wl < 8);
-      d.style.paddingLeft = d.style.paddingRight = '';
-      var r = d.getBoundingClientRect(), cs = getComputedStyle(d), W = doc.documentElement.clientWidth || innerWidth;
+      d.style.paddingLeft = d.style.paddingRight = d.style.marginLeft = d.style.marginRight = '';
+      // (the dock reaches out over the page's padding, but never past the screen's edge: a page with less padding than
+      // 16px made the whole page a few pixels too wide)
+      var W = doc.documentElement.clientWidth || innerWidth, r0 = d.getBoundingClientRect(), cs0 = getComputedStyle(d);
+      if (r0.left < 0) d.style.marginLeft = (parseFloat(cs0.marginLeft) - r0.left) + 'px';
+      if (r0.right > W) d.style.marginRight = (parseFloat(cs0.marginRight) + r0.right - W) + 'px';
+      var r = d.getBoundingClientRect(), cs = getComputedStyle(d);
       var l = r.left + parseFloat(cs.paddingLeft), rt = W - (r.right - parseFloat(cs.paddingRight));
       if (l < 17) d.style.paddingLeft = (parseFloat(cs.paddingLeft) + 17 - l) + 'px';
       if (rt < 17) d.style.paddingRight = (parseFloat(cs.paddingRight) + 17 - rt) + 'px';

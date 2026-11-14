@@ -522,7 +522,7 @@
     dl('Joining ' + opts.game + ' table ' + code + (opts.relay === false ? ' (direct only)' : ''));
     var scr = opts.screen ? stage(opts.screen, { host: false, code: code, max: opts.max || 0, min: opts.min, myName: opts.name, onLeave: function () { if (cancel) cancel(); } }) : null, cancel = null;
     if (scr) { scr.step('find', 'run', 'Looking for table ' + code); scr.step('connect', 'wait'); scr.step('seat', 'wait'); scr.step('start', 'wait'); }
-    var slowFind = scr ? setTimeout(function () { scr.step('find', null, 'Taking a while · reconnecting to the server'); }, 5000) : 0;
+    var slowFind = scr ? setTimeout(function () { scr.step('find', null, 'This is taking a while, so the server is being asked again.'); }, 5000) : 0;
     // Cancel works from the first tap: before the handshake starts it just stops here (and the screen goes at once)
     var cancelled = false, outerRej = null;
     cancel = function () { cancelled = true; clearTimeout(slowFind); if (outerRej) outerRej(new Error('Cancelled')); };
@@ -533,7 +533,7 @@
       if ((room.n || 1) >= (room.max || 2)) throw new Error('That table is full');
       if (scr) {
         scr.room(room);
-        scr.step('find', 'done', (room.host && room.host.name || 'The host') + '’s table · ' + code);
+        scr.step('find', 'done', 'Found ' + (room.host && room.host.name || 'the host') + '’s table, ' + code);
         scr.step('connect', 'run', 'Asking ' + (room.host && room.host.name || 'the host') + '’s device to let you in');
       }
       return Promise.all([tagP, ice()]).then(function (x) {
@@ -576,14 +576,14 @@
             relayAsked = true;
             log('guest: no direct link, asking for the relay');
             try { pc.close(); } catch (er) {}
-            if (scr) scr.step('connect', 'run', 'This network blocks a direct link · connecting through the relay');
+            if (scr) scr.step('connect', 'run', 'This network blocks a direct link, so the devices are connecting through a relay.');
             relay = new RelayPeer(t, code, me, room.host.dev, room.host.name, sid);
             t.send(code, { id: rid(), to: room.host.dev, from: me, k: 'relay', d: JSON.stringify(hello()), at: Date.now() }).catch(function (er) { finish(er); });
             relayTo = setTimeout(function () { var e = new Error(NAT_MSG); e.nat = true; e.diag = 'relay didn’t answer · ' + diag(); finish(e); }, 20000);
           }
           // a game that can't use the relay gets the whole time to link up directly (phones can take a while)
           var to = setTimeout(fallBack, opts.relay === false ? config.connectMs : config.directMs);
-          var slowT = opts.relay === false && scr ? setTimeout(function () { if (!done) scr.step('connect', 'run', 'Still linking the two devices · this can take a few more seconds'); }, config.directMs) : 0;
+          var slowT = opts.relay === false && scr ? setTimeout(function () { if (!done) scr.step('connect', 'run', 'Still linking the two devices. This can take a few more seconds.'); }, config.directMs) : 0;
           pc.addEventListener('connectionstatechange', function () { if (pc.connectionState === 'failed') fallBack(); });
           peer.on('open', function () { if (relayAsked) return; log('guest: channel open'); finish(null); });
           offs.push(t.inbox(code, me, function (m) {
@@ -596,7 +596,7 @@
             if (m.k === 'cand') { if (a.c && !done) { if (remoteSet) pc.addIceCandidate(a.c).catch(function () {}); else lateBuf.push(a.c); } return; }
             if (m.k === 'no') finish(new Error(a.why || 'The table didn’t let you in'));
             else if (m.k === 'relayok' && relay) finish(null, relay);
-            else if (m.k === 'answer' && !answered && !relayAsked) { answered = true; if (scr) scr.step('connect', 'run', 'Let in · linking the two devices'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).then(function () { remoteSet = true; lateBuf.splice(0).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); }).catch(function () { fallBack(); }); }
+            else if (m.k === 'answer' && !answered && !relayAsked) { answered = true; if (scr) scr.step('connect', 'run', 'You’re in. Linking the two devices.'); pc.setRemoteDescription({ type: 'answer', sdp: a.sdp }).then(function () { remoteSet = true; lateBuf.splice(0).forEach(function (c) { pc.addIceCandidate(c).catch(function () {}); }); }).catch(function () { fallBack(); }); }
           }, function (e) { finish(e); }));
           pc.createOffer()
             .then(function (o) { return pc.setLocalDescription(o); })
@@ -704,7 +704,7 @@
     if (o.onSolo) wrap.appendChild(E('button', { type: 'button', class: 'btn btn-ghost btn-block', text: o.solo || 'Play solo instead', onclick: o.onSolo }));
     if (o.note) wrap.appendChild(E('p', { class: 'ol-note', text: o.note }));
 
-    function sub(r) { var s = o.sub ? o.sub(r) : ''; return (s ? s + ' · ' : '') + 'code ' + r.code; }
+    function sub(r) { var s = o.sub ? o.sub(r) : ''; return (s ? s + ' \u00b7 ' : '') + 'Code ' + r.code; }   // (facts: a line each, Kit.facts)
     function paint(list) {
       if (!alive) return;
       if (one.busy) { held = true; return; }   // a join is under way: keep its button as it is, paint after
@@ -714,7 +714,7 @@
         var nm = r.who.name;
         pals.appendChild(E('div', { class: 'ol-row ol-pal' }, [
           av(nm, window.Kit ? Kit.color(1) : null),
-          E('div', { class: 'grow' }, [E('b', { text: nm + (r.status === 'playing' ? ' is playing' : ' has a table open') }), E('small', { text: sub(r) })]),
+          E('div', { class: 'grow' }, [E('b', { text: nm + (r.status === 'playing' ? ' is playing' : ' has a table open') }), Kit.facts(E('small'), sub(r))]),
           E('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', html: Kit.icon('play') + '<span>' + esc('Join ' + nm + '’s table') + '</span>', onclick: joinAt(r) })
         ]));
       });
@@ -722,7 +722,7 @@
       rest.forEach(function (r) {
         rooms.appendChild(E('div', { class: 'ol-row' }, [
           av(r.host.name, window.Kit ? Kit.color(1) : null),
-          E('div', { class: 'grow' }, [E('b', { text: r.host.name + '’s table' }), E('small', { text: sub(r) })]),
+          E('div', { class: 'grow' }, [E('b', { text: r.host.name + '’s table' }), Kit.facts(E('small'), sub(r))]),
           E('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Join', onclick: joinAt(r) })
         ]));
       });
@@ -984,14 +984,14 @@
       b.textContent = S.max <= 8 ? here + ' of ' + S.max + ' seats taken' : here + (here === 1 ? ' player' : ' players') + ' at the table';
       count.classList.toggle('ready', !need);
       sm.textContent = need ? 'Waiting for ' + need + ' more ' + (need === 1 ? 'player' : 'players') + ' to start' :
-        here >= S.max ? 'The table is full · ready to start' : 'Ready to start' + (S.max - here > 0 ? ' · ' + (S.max - here) + ' more can join' : '');
+        here >= S.max ? 'The table is full and ready to start' : 'Ready to start' + (S.max - here > 0 ? ', and ' + (S.max - here) + ' more can join' : '');
     }
     function paintSteps() {
       if (!S.players.length) { if (startBtn && !one.busy) startBtn.disabled = true; return; }
       var here = S.players.length, need = Math.max(0, S.min - here);
       if (S.host) {
-        step('open', 'done', S.code ? 'Code ' + S.code + ' · share it, or they find you under Play online' : null);
-        step('join', need ? 'run' : 'done', need ? 'Waiting for ' + need + ' more' + (S.coming.length ? ' · ' + S.coming.map(function (c) { return c.name; }).join(', ') + ' joining now' : '') : here + ' at the table' + (here < S.max ? ' · more can still join' : ''));
+        step('open', 'done', S.code ? 'Share the code ' + S.code + ', or they can find you under Play online.' : null);
+        step('join', need ? 'run' : 'done', need ? 'Waiting for ' + need + ' more' + (S.coming.length ? ', and ' + S.coming.map(function (c) { return c.name; }).join(', ') + (S.coming.length === 1 ? ' is' : ' are') + ' joining now' : '') : here + ' at the table' + (here < S.max ? ', and more can still join' : ''));
         step('start', need ? 'wait' : 'now', need ? 'You can start once ' + S.min + ' are here' : 'Tap Start when everyone’s in');
         if (startBtn) {
           startBtn.disabled = !!need || one.busy;
@@ -1001,7 +1001,7 @@
         step('find', 'done'); step('connect', 'done');
         var mine = S.players.filter(function (p) { return p.me; })[0], k = S.players.indexOf(mine);
         step('seat', 'done', mine ? 'Seat ' + (k + 1) + ' of ' + S.max : 'You’re in');
-        step('start', 'run', need ? 'Waiting for ' + need + ' more ' + (need === 1 ? 'player' : 'players') : 'Everyone’s ready · waiting for ' + hostLabel() + ' to start');
+        step('start', 'run', need ? 'Waiting for ' + need + ' more ' + (need === 1 ? 'player' : 'players') : 'Everyone’s ready, waiting for ' + hostLabel() + ' to start');
       }
     }
     // the players as rows too: names in full, who hosts, who's you (games add to these rows, e.g. Monopoly's pieces)
@@ -1029,7 +1029,7 @@
       S.players.slice(0, 5).forEach(function (p, i) { faces.appendChild(av(p.name, PAL[i % PAL.length])); });
       many.appendChild(faces);
       many.appendChild(E('b', { text: S.players.length + ' players' }));
-      many.appendChild(E('small', { html: (S.coming.length ? S.coming.length + ' joining · ' : '') + 'See who’s here' + Kit.icon('right') }));
+      many.appendChild(E('small', { html: (S.coming.length ? S.coming.length + ' joining. ' : '') + 'See who’s here' + Kit.icon('right') }));
     }
     function paint() { paintHead(); paintSeats(); paintCount(); paintSteps(); paintCols(); }
     function update(players) {
