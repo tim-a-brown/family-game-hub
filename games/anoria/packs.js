@@ -208,15 +208,17 @@
         el('span', { class: 'pk-f-row' }, keys.map((k, j) => { const c = A.cardEl(k, { mini: true }); c.style.setProperty('--j', j); return c; }))]);
       const count = el('b', { class: 'pk-f-n', text: '0' });
       const go = el('button', { type: 'button', class: 'btn btn-primary btn-lg pk-g-go', text: waiting().length ? 'Open your welcome packs' : 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); next(); } });
-      const m = el('div', { class: 'pk-moment form', style: { '--f': col(g) } }, [el('div', { class: 'pk-f-in' }, [
+      // (two halves: the two sets, and what they make with the way on. Upright they run one after the other; sideways
+      // they stand side by side, the way on at the right)
+      const m = el('div', { class: 'pk-moment form', style: { '--f': col(g) } }, [el('div', { class: 'pk-f-in' }, [el('div', { class: 'pk-f-a' }, [
         el('div', { class: 'pk-k', text: 'Your first deck' }),
         band('', 'The base set', Coll.BASE.length, Coll.BASE, 0),
-        band('g', Kit.poss(G.n) + ' set', Coll.GSET[g].length, Coll.GSET[g], 1),
+        band('g', Kit.poss(G.n) + ' set', Coll.GSET[g].length, Coll.GSET[g], 1)]), el('div', { class: 'pk-f-b' }, [
         el('div', { class: 'pk-f-merge' }, [el('i'), el('span', { class: 'pk-f-box' }, [el('span', { class: 'pk-f-stack' }), el('span', { class: 'pk-f-say' }, [count, el('span', { text: 'cards in your deck, one of each. Any card you have can go in a deck twice.' })])]), el('i')]),
         el('div', { class: 'pk-k', text: 'Your Domains' }),
         el('div', { class: 'pk-f-doms' }, mine.map((id, j) => { const t = el('span', { class: 'pk-f-dom' + (st.indexOf(id) < 0 ? ' out' : ''), style: { '--j': j }, title: C.PLACES[id].n }); const im = A.artImg(id, true); if (im) t.appendChild(im); return t; })),
         el('p', { class: 'pk-f-note', text: 'You bring ' + st.length + ' of your ' + mine.length + ' Domains to a game. The faded one stays home until you change your stack under Decks.' }),
-        go])]);
+        el('div', { class: 'pk-f-dock' }, [go])])])]);
       stage.classList.add('moment'); stage.appendChild(m);
       let i = 0; const to = d.cards.length, up = () => { if (!count.isConnected) return; i = Math.min(to, i + 2); count.textContent = String(i); if (i < to) setTimeout(up, 28); else { count.classList.add('pop'); Kit.sfx('good'); Kit.haptic('success'); } };
       if (calm()) count.textContent = String(to); else setTimeout(up, 900);
@@ -228,13 +230,10 @@
     function nothing() {
       count(false); sc.title.textContent = 'Packs'; stage.classList.add('none');
       const rows = Coll.nextUp().map(x => {
-        const isG = x.id === 'guide', mid = el('span', { class: 'pk-n-w' }, [el('b', { text: x.when })]);
-        if (isG) {
-          if (x.need <= 8) { const row = el('span', { class: 'pk-n-wins', role: 'img', 'aria-label': x.have + ' of ' + x.need + ' wins' }); for (let i = 0; i < x.need; i++) row.appendChild(el('i', { class: i < x.have ? 'on' : '' })); mid.appendChild(row); }
-          else mid.appendChild(el('span', { class: 'pk-n-bar', role: 'img', 'aria-label': x.have + ' of ' + x.need + ' wins', style: { '--p': (x.have / x.need).toFixed(3) } }, [el('i')]));
-        }
-        return el('li', { class: 'pk-n-row' + (x.done ? ' done' : '') + (isG ? ' g' : '') }, [
-          isG ? el('i', { class: 'pk-n-g' }) : el('span', { class: 'pk-n-p' }, [miniPack('row'), x.done ? el('span', { class: 'ck', html: Kit.icon('check') }) : null]),
+        const isG = x.id === 'guide', mid = el('span', { class: 'pk-n-w' }, [el('b', { text: x.when || x.have + ' of ' + x.need + ' signs on the sphere' })]);
+        if (x.need) mid.appendChild(el('span', { class: 'pk-n-bar', role: 'img', 'aria-label': x.have + ' of ' + x.need + ' signs', style: { '--p': (x.have / x.need).toFixed(3) } }, [el('i')]));
+        return el('li', { class: 'pk-n-row' + (isG ? ' g' : '') }, [
+          isG ? el('i', { class: 'pk-n-g' }) : el('span', { class: 'pk-n-p' }, [miniPack('row')]),
           mid, el('span', { class: 'pk-n-what', text: x.what })]);
       });
       const ok = el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'Done', onclick: () => { Kit.sfx('tap'); Kit.haptic('light'); leave(); } });
@@ -615,11 +614,11 @@
               el('span', { class: 'pk-glow' }), el('span', { class: 'pk-fl' }, [el('span', { class: 'pk-side b' }, [el('div', { class: 'ac back' }, [el('div', { class: 'ac-in' })]), el('i', { class: 'pk-bow' })]), el('span', { class: 'pk-side f' }, [A.cardEl(g, { mini: true })])])]);
             giftEl.addEventListener('click', () => {
               if (turned) { A.openView(g); return; } turned = true;
-              const isNew = Coll.copies(g) < 2; giftEl.classList.add('up', 'new', 'lift'); giftEl.classList.remove('next'); setTimeout(() => giftEl.classList.remove('lift'), 800);
+              const isNew = had[g] == null ? !Coll.owns(g) : !had[g]; giftEl.classList.add('up', 'new', 'lift'); giftEl.classList.remove('next'); setTimeout(() => giftEl.classList.remove('lift'), 800);
               giftEl.setAttribute('aria-label', CARDS[g].n + '. Read it');
               Kit.sfx('flip'); setTimeout(() => Kit.sfx('sparkle'), 150); Kit.haptic('success');
               const r = giftEl.getBoundingClientRect(); bits(fx, r.left + r.width / 2, r.top + r.height / 2, 20, [col(g)].concat(GOLD), { d: r.width, ms: 800 });
-              cap.innerHTML = ''; cap.appendChild(el('b', { text: CARDS[g].n })); cap.appendChild(el('span', { text: isNew ? 'New to you' : 'Your second copy' }));
+              cap.innerHTML = ''; cap.appendChild(el('b', { text: CARDS[g].n })); cap.appendChild(el('span', { text: isNew ? 'New to you' : 'Already yours' }));
               go.hidden = false; setTimeout(() => { try { go.focus({ preventScroll: true }); } catch (e) {} }, 500);
             });
           }
@@ -677,7 +676,7 @@
       info.innerHTML = '';
       info.appendChild(el('div', { class: 'pk-ch-dk' }, [el('div', {}, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' set' }), el('b', { text: WORLD[g] })]), facs]));
       info.appendChild(el('div', { class: 'pk-ch-pow' }, [el('span', { class: 'pk-k', text: Kit.poss(G.n) + ' power' }), el('p', { text: A.DW(G.tx) })]));
-      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the ' + d.cards.length + ' cards of the first deck</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(d); } }));
+      info.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm pk-ch-see', html: Kit.icon('cards') + '<span>See the first deck\'s ' + d.cards.length + ' cards</span>', onclick: () => { Kit.sfx('tap'); A.deckSheet(d); } }));
       info.classList.remove('in'); void info.offsetWidth; info.classList.add('in');
       go.textContent = 'Begin with ' + G.n;
       if (user) { Kit.sfx('flip'); Kit.haptic('light'); }
