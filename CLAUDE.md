@@ -300,7 +300,7 @@ Underlying principles for everything:
 
 ## Arvela (the card game; its files, code and storage keys say anoria)
 
-- **The game is called Arvela** (Tim, 2026-11-14: "rename this game 'Arvela'"; it was Anoria). Every word a player reads says
+- **The game is called Arvela** (Tim, 2026-11-14: "rename this game 'Arvela'"; it was Anoria). The name comes from Arbela, today's Erbil, one of the oldest cities lived in without a break, said the later Greek way (Tim: "arbela was the main inspiration"); Archimedes' arbelos sounds the same. Every word a player reads says
   Arvela, the country of memory in its story too; the logo's wordmark says ARVELA. The files (`games/anoria.html`,
   `games/anoria/`), the catalog id `anoria`, the code's names (`AnoriaUI`, `AnoriaColl` and the rest) and every storage
   key (`anoria_*`) keep the old name, so saved games, collections and links carry on. The notes below still say
