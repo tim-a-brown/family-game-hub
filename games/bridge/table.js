@@ -234,12 +234,12 @@
     var t = token;
     if (S.phase === 'bid') {
       var p = S.turn;
-      if (person(p)) { if (p !== LME) { gate(p, next); return; } paint(); return; }
+      if (person(p)) { if (p !== LME || BLIND) { gate(p, next); return; } paint(); return; }
       paint();
       tw(function () { if (t !== token || !S || S.phase !== 'bid' || S.turn !== p) return; var c = E.chooseCall(S.hands[p], S.calls, S.dealer, lvOf(p)); doCall(p, c.call, c.say); }, 650 + Math.random() * 350);
     } else if (S.phase === 'play' && S.trick.length < 4) {
       var q = S.turn, c2 = ctrl(q);
-      if (person(c2)) { if (c2 !== LME) { gate(c2, next); return; } paint(); return; }
+      if (person(c2)) { if (c2 !== LME || BLIND) { gate(c2, next); return; } paint(); return; }
       paint();
       var wait = S.trick.length ? 520 + Math.random() * 260 : 760;
       tw(function () {
@@ -360,6 +360,7 @@
     D.slip = el('div', { class: 'bslip', style: { 'view-transition-name': 'b-slip' } });
     D.contract = el('button', { type: 'button', class: 'bk', style: { 'view-transition-name': 'b-contract' }, onclick: function () { Kit.sfx('tap'); slipSheet(); } });
     D.tray = el('div', { class: 'bq', style: { 'view-transition-name': 'b-tray' } });
+    D.shape = el('div', { class: 'bshape', style: { 'view-transition-name': 'b-shape' } });
     D.trayW = el('div', { class: 'bq' }); D.trayT = el('div', { class: 'bq' });
     D.handEl = el('div', { class: 'bh' });
     D.hcp = el('button', { type: 'button', class: 'bh-hcp', onclick: function () { Kit.sfx('tap'); Kit.toast('High-card points: ace 4, king 3, queen 2, jack 1. About 25 between you and your partner makes a game.', 3600); } });
@@ -390,18 +391,23 @@
     var small = mode === 'pu' && (W < 380 || H < 700);
     R.classList.toggle('small', small);
     var n = Math.max(1, (S.hands && S.hands[bottom()] || []).length || 13);
+    // an iPad sideways in the auction: your hand takes the whole width under everything, and the bidding box is
+    // the whole box of 35 bids in the right-hand column, one tap to a call
+    var full = mode === 'ts' && !play;
+    R.classList.toggle('fullbox', full);
     // widths of the side columns sideways
     var infw = mode === 'ps' ? Math.min(230, Math.max(176, W * 0.24)) : Math.min(270, Math.max(232, W * 0.235));
     var actw = play ? 0 : (mode === 'ps' ? Math.min(300, Math.max(236, W * 0.3)) : Math.min(380, Math.max(300, W * 0.32)));
     R.style.setProperty('--infw', px(infw)); R.style.setProperty('--actw', px(actw));
     // the hand: as large as fits, 13 cards across with their corners showing
-    var handW = land ? W - infw - 30 : W - 20;
+    var handW = mode === 'ps' && play ? W - infw - 30 : W - 20;
     var hcw;
     if (mode === 'pu') hcw = Math.min(84, Math.max(52, handW / 5.4));
     else if (mode === 'tu') hcw = Math.min(118, Math.max(70, handW / 6.2));
     else if (mode === 'ps') hcw = Math.min(64, Math.max(46, (H - 60) * 0.19));
-    else hcw = Math.min(104, Math.max(64, H * 0.13));
-    var step = Math.min(hcw * 0.66, (handW - hcw - 8 - 3 * hcw * 0.12) / Math.max(1, n - 1));
+    else hcw = Math.min(118, Math.max(64, H * 0.145));
+    // the hand spreads across the width it has, however few cards are left
+    var step = Math.min(hcw * 0.9, (handW - hcw - 8 - 3 * hcw * 0.12) / Math.max(1, n - 1));
     R.style.setProperty('--hcw', px(hcw)); R.style.setProperty('--ov', px(step - hcw));
     R.style.setProperty('--bcw', px(tab ? 54 : mode === 'ps' ? 40 : 44));
     // the bidding box fills the right-hand column sideways
@@ -431,6 +437,7 @@
       if (mode === 'ps' && play) out(D.slip); else { put(D.info, D.slip); D.slip.style.order = 3; }
       if (play) { put(D.info, D.tray); D.tray.style.order = 4; } else out(D.tray);
       put(D.info, D.cap); D.cap.style.order = 5;
+      if (mode === 'ts' && !play) { put(D.info, D.shape); D.shape.style.order = 6; } else out(D.shape);
       out(D.trayW); out(D.trayT);
     } else {
       put(D.corner.tl, D.board); put(D.corner.tl, D.score);
@@ -441,7 +448,7 @@
         out(D.slip); put(D.corner.tr, D.contract);
         out(D.tray); put(D.corner.bl, D.trayW); put(D.corner.br, D.trayT);
       } else {
-        out(D.contract); out(D.tray); out(D.trayW); out(D.trayT);
+        out(D.contract); out(D.tray); out(D.trayW); out(D.trayT); out(D.shape);
         put(D.corner.mid, D.slip);
       }
     }
@@ -466,7 +473,24 @@
 
   function paint() {
     if (!S || !D) return;
-    paintSeats(); paintTrick(); paintDummy(); paintHand(); paintAct(); paintSlip(); paintBoard(); paintScore(); paintContract(); paintTray(); placeTrick();
+    paintSeats(); paintTrick(); paintDummy(); paintHand(); paintAct(); paintSlip(); paintBoard(); paintScore(); paintContract(); paintTray(); paintShape(); placeTrick();
+  }
+  // iPad sideways in the auction: your hand's shape, a row of pips for each suit, under the auction (a learning aid)
+  function paintShape() {
+    if (!D.shape.isConnected) return;
+    var m = bottom(), h = S.hands && S.hands[m] || [];
+    var on = S.aids && S.phase === 'bid' && h.length && canSee(m) && !(NET && NET.seat < 0);
+    D.shape.style.display = on ? '' : 'none';
+    if (!on) return;
+    var f = E.feat(h);
+    D.shape.innerHTML = '';
+    D.shape.appendChild(el('div', { class: 'hd', text: 'Your hand' }));
+    ['s', 'h', 'd', 'c'].forEach(function (su) {
+      var pips = el('span', { class: 'pp' });
+      for (var i = 0; i < f.len[su]; i++) pips.appendChild(el('i'));
+      D.shape.appendChild(el('div', { class: 'rw' }, [el('span', { class: 'g' + (su === 'h' || su === 'd' ? ' r' : ''), text: GL[su] }), el('b', { text: String(f.len[su]) }), pips]));
+    });
+    D.shape.appendChild(el('div', { class: 'ft', text: f.bal ? 'A balanced hand' : 'An unbalanced hand' }));
   }
   // ── seats ──
   function seatTag(p) { return D && D.seats[p] && D.seats[p].querySelector('.bs-tag'); }
@@ -479,7 +503,7 @@
       var role = S.phase !== 'bid' && S.k ? (p === S.k.decl ? 'Declarer' : p === S.dummy ? 'Dummy' : '') : S.phase === 'bid' && p === S.dealer ? 'Dealer' : '';
       var tag = el('div', { class: 'bs-tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p % 2) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { class: 'tx' }, [el('span', { class: 'nm', text: slot === 'b' && who(p) === 'You' ? 'You' : first(pl.name) }), role ? el('span', { class: 'role' + (role === 'Dealer' ? ' dl' : ''), text: role }) : null])
+        el('span', { class: 'tx' }, [el('span', { class: 'nm' + (first(pl.name).length >= 9 ? ' long' : ''), text: slot === 'b' && who(p) === 'You' ? 'You' : first(pl.name) }), role ? el('span', { class: 'role' + (role === 'Dealer' ? ' dl' : ''), text: role }) : null])
       ]);
       tag.setAttribute('aria-label', pl.name + ', ' + SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : ', not vulnerable') + (role ? ', ' + role.toLowerCase() : ''));
       tag.addEventListener('click', function () { if (NET) netNudge(); });
@@ -518,7 +542,7 @@
   function isAlert(i) {
     var c = S.calls[i]; if (!E.isBid(c) && c !== 'X') return false;
     var w = S.why[i] || E.meaning(S.calls, S.dealer, i);
-    return /^(Stayman|Jacoby|Blackwood|Answers Blackwood|Answers Stayman|Strong and artificial|Waiting|Completes the transfer|Cuebid|Negative double|Takeout double|Asks for kings|Answers the king|Asks partner to describe|Jordan)/.test(w);
+    return /^(Stayman|Jacoby|Blackwood|Michaels|Unusual 2NT|New minor forcing|Answers new minor|Answers the ask|Asks partner which minor|Pass or correct|Answers Blackwood|Answers Stayman|Strong and artificial|Waiting|Completes the transfer|Cuebid|Negative double|Takeout double|Asks for kings|Answers the king|Asks partner to describe|Jordan)/.test(w);
   }
   // ── the trick ──
   function paintTrick() {
@@ -585,19 +609,59 @@
     var fr = D.felt.getBoundingClientRect(); if (!fr.width) return;
     var portrait = !lay.land, sb = D.seats[bottom()], mid = D.corner.mid;
     D.seats.forEach(function (s) { s.style.top = ''; s.style.bottom = ''; });
-    mid.style.top = ''; mid.style.bottom = '';
-    if (!portrait) return;
+    mid.style.top = ''; mid.style.bottom = ''; mid.style.width = ''; mid.style.marginLeft = ''; mid.style.translate = '';
+    D.score.style.display = '';
+    if (!portrait) { fitInfo(); return; }
+    // a long name over the top seat would run into the contract in the top right corner: the contract goes under the score
+    var tt = seatTag(D.seats.indexOf(D.seats.filter(function (s) { return s.classList.contains('t'); })[0]));
+    if (tt && D.contract.parentNode === D.corner.tr) {
+      var a1 = tt.getBoundingClientRect(), a2 = D.contract.getBoundingClientRect();
+      if (a1.right > a2.left - 4 && a1.left < a2.right && a1.bottom > a2.top && a1.top < a2.bottom) D.corner.tl.appendChild(D.contract);
+    }
     var sr = sb.getBoundingClientRect(), bottomTop = sr.height ? sr.top - fr.top : fr.height;
     var topB = 0;
     ['tl', 'tr'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) topB = Math.max(topB, c.getBoundingClientRect().bottom - fr.top); });
     var low = bottomTop;
+    // a small phone in the auction: the score plaque steps aside (the menu's Score pad has it), the side seats are
+    // their name tags in a band under the board, and the auction (whose slip shows every call) takes the rest
+    var small = mid.children.length && D.root.classList.contains('small');
+    var lim = topB;
+    if (small) {
+      D.score.style.display = 'none';
+      topB = 0;
+      ['tl', 'tr'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) topB = Math.max(topB, c.getBoundingClientRect().bottom - fr.top); });
+      var band = 0;
+      D.seats.forEach(function (s) { if (s.classList.contains('l') || s.classList.contains('r')) { var tg = s.querySelector('.bs-tag'); if (tg) band = Math.max(band, tg.getBoundingClientRect().height); } });
+      lim = topB + band + 8;
+      var ts = D.seats.filter(function (s) { return s.classList.contains('t'); })[0];
+      if (ts) Array.prototype.forEach.call(ts.querySelectorAll('.bs-tag, .bs-call'), function (k) { if (k.offsetWidth) lim = Math.max(lim, k.getBoundingClientRect().bottom - fr.top); });
+    }
     if (mid.children.length) {
-      mid.style.bottom = px(fr.height - bottomTop + 8); mid.style.top = 'auto';
-      var sc = D.slip.querySelector('.bslip-scroll'); if (sc) sc.style.maxHeight = px(Math.max(90, (fr.height - topB) * 0.42));
+      mid.style.bottom = px(fr.height - bottomTop + 8); mid.style.top = 'auto'; mid.style.translate = '0 0';
+      var sc = D.slip.querySelector('.bslip-scroll');
+      if (sc) {
+        sc.style.maxHeight = px(Math.max(90, (fr.height - topB) * 0.42));
+        // never over the board and the score: a short table shows the latest rows of a long auction, the names kept
+        var over = lim + 6 - (mid.getBoundingClientRect().top - fr.top);
+        if (over > 0) sc.style.maxHeight = px(Math.max(50, sc.getBoundingClientRect().height - over));
+        snapSlip(sc);
+        // a table too short for both: the score plaque steps aside while the auction is on, and the board stays
+        if (!small && topB + 6 > mid.getBoundingClientRect().top - fr.top && D.score.parentNode === D.corner.tl) {
+          D.score.style.display = 'none';
+          topB = D.board.getBoundingClientRect().bottom - fr.top;
+          ['tr'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) topB = Math.max(topB, c.getBoundingClientRect().bottom - fr.top); });
+        }
+      }
       low = mid.getBoundingClientRect().top - fr.top;
     }
     ['bl', 'br'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) low = Math.min(low, c.getBoundingClientRect().top - fr.top); });
-    D.seats.forEach(function (s) { if (s.classList.contains('l') || s.classList.contains('r')) { s.style.top = px(topB + 4); s.style.bottom = px(Math.max(0, fr.height - low + 4)); } });
+    D.seats.forEach(function (s) {
+      if (!(s.classList.contains('l') || s.classList.contains('r'))) return;
+      s.style.top = px(topB + 4); s.style.bottom = px(Math.max(0, fr.height - low + 4));
+      // too little room between the corner and the auction: the backs of that hand step aside, the name and call stay
+      s.classList.remove('slim');
+      if (s.scrollHeight > s.clientHeight + 1) s.classList.add('slim');
+    });
     // a dummy across the top starts below the corner pieces it would otherwise run into
     D.dummy.style.marginTop = '';
     if (D.dummy.isConnected && D.dummy.parentNode.classList.contains('t')) {
@@ -605,6 +669,29 @@
       ['tl', 'tr'].forEach(function (k) { var c = D.corner[k]; if (!c.children.length) return; var q = c.getBoundingClientRect(); if (q.right > dr.left && q.left < dr.right) need = Math.max(need, q.bottom - dr.top + 6); });
       if (need > 0) D.dummy.style.marginTop = px(need);
     }
+  }
+  // sideways, the left column gives the auction room first: if its calls would scroll, the hand's shape (in the
+  // auction) or the lines under the tricks (in the play) step aside, and then the auction itself (the contract
+  // plaque still opens it)
+  // a scrolled auction shows whole rows under the names, never a row cut in half
+  function snapSlip(sc) {
+    if (!sc || sc.scrollHeight <= sc.clientHeight + 1) return;
+    var th = sc.querySelector('th'), td = sc.querySelector('td'); if (!th || !td) return;
+    var hh = th.getBoundingClientRect().height, rh = td.getBoundingClientRect().height; if (!rh) return;
+    var rows = Math.max(1, Math.floor((sc.clientHeight - hh) / rh));
+    sc.style.maxHeight = px(hh + rows * rh + 1);
+    sc.scrollTop = sc.scrollHeight;
+  }
+  function fitInfo() {
+    var R = D.root; R.classList.remove('tight1', 'tight2');
+    var sc = D.slip.isConnected && D.slip.querySelector('.bslip-scroll');
+    if (sc) sc.style.maxHeight = '';
+    function over() { return sc && sc.scrollHeight > sc.clientHeight + 2 || D.info.scrollHeight > D.info.clientHeight + 2; }
+    if (!over()) return;
+    R.classList.add('tight1');
+    if (!over()) return;
+    if (S.phase === 'bid') { snapSlip(sc); return; }
+    R.classList.add('tight2');
   }
   function placeTrick() {
     if (!D || !lay) return;
@@ -708,12 +795,13 @@
   function paintBox() {
     var m = bottom();
     var mine = S.phase === 'bid' && !BLIND && S.turn === m && (NET ? NET.myTurn() : person(m));
-    D.box.innerHTML = '';
+    D.box.innerHTML = ''; D.box.classList.remove('full');
     if (S.phase !== 'bid') return;
     var legal = mine ? E.legalCalls(S.calls, S.dealer) : [];
     var lo = 8; legal.forEach(function (c) { if (E.isBid(c)) lo = Math.min(lo, E.lvOf(c)); });
     if (D.boxAt !== S.calls.length + ':' + S.dealNo) { D.boxAt = S.calls.length + ':' + S.dealNo; boxLv = 0; }
     if (!boxLv || boxLv < lo || boxLv > 7) boxLv = lo <= 7 ? lo : 7;
+    if (D.root.classList.contains('fullbox')) { paintFullBox(mine, legal, lo); return; }
     var lvRow = el('div', { class: 'row lv' }), stRow = el('div', { class: 'row st' }), caRow = el('div', { class: 'row ca' });
     for (var l = 1; l <= 7; l++) (function (l) {
       var ok = mine && l >= lo;
@@ -733,6 +821,24 @@
     if (S.aids && !NET || S.aids && NET) caRow.appendChild(el('button', { type: 'button', class: 'hintb', html: Kit.icon('lightbulb'), disabled: !mine, 'aria-label': 'Suggest a bid', onclick: function () { hint(); } }));
     else caRow.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
     D.box.appendChild(lvRow); D.box.appendChild(stRow); D.box.appendChild(caRow);
+    D.box.style.opacity = mine ? '' : '.75';
+  }
+  // the whole bidding box at once: a row for each level, the five strains across, and Pass, X and XX under them
+  function paintFullBox(mine, legal, lo) {
+    D.box.classList.add('full');
+    for (var l = 1; l <= 7; l++) for (var st = 0; st < 5; st++) (function (c, st) {
+      var ok = mine && legal.indexOf(c) >= 0;
+      D.box.appendChild(el('button', { type: 'button', class: 'stb' + (sugCall === c ? ' sug' : '') + (E.lvOf(c) < lo ? ' used' : ''), html: E.lvOf(c) + strainHtml(st), disabled: !ok, 'aria-label': 'Bid ' + E.callWords(c),
+        onclick: function () { pickCall(c); } }));
+    })(l + E.STR[st], st);
+    var caRow = el('div', { class: 'row ca' });
+    [['P', 'pass', 'Pass'], ['X', 'dbl', 'X'], ['XX', 'rdbl', 'XX']].forEach(function (q) {
+      var ok = mine && legal.indexOf(q[0]) >= 0;
+      caRow.appendChild(el('button', { type: 'button', class: 'cab ' + q[1] + (sugCall === q[0] ? ' sug' : ''), text: q[2], disabled: !ok, 'aria-label': E.callWords(q[0]), onclick: function () { pickCall(q[0]); } }));
+    });
+    if (S.aids) caRow.appendChild(el('button', { type: 'button', class: 'hintb', html: Kit.icon('lightbulb'), disabled: !mine, 'aria-label': 'Suggest a bid', onclick: function () { hint(); } }));
+    else caRow.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
+    D.box.appendChild(caRow);
     D.box.style.opacity = mine ? '' : '.75';
   }
   function sizeBox() {}
@@ -758,7 +864,8 @@
     var cols = [1, 2, 3, 0];   // W N E S
     var tb = el('table'), hd = el('tr');
     cols.forEach(function (p) {
-      var th = el('th', { class: S.vul[p % 2] ? 'vul' : '', title: SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : '') }, [document.createTextNode(SEATN[p].charAt(0) === 'S' && p === bottom() && who(p) === 'You' ? 'You' : first(nm(p)))]);
+      var nmL = (p === bottom() && who(p) === 'You' ? 'You' : first(nm(p))).length;
+      var th = el('th', { class: (S.vul[p % 2] ? 'vul' : '') + (nmL >= 9 ? ' xs' : nmL >= 7 ? ' sm' : ''), title: SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : '') }, [document.createTextNode(SEATN[p].charAt(0) === 'S' && p === bottom() && who(p) === 'You' ? 'You' : first(nm(p)))]);
       if (p === S.dealer) th.appendChild(el('span', { class: 'dl', text: 'D' }));
       hd.appendChild(th);
     });
@@ -789,7 +896,23 @@
       var p = (S.dealer + slipPick) % 4, say = S.why[slipPick] || E.meaning(S.calls, S.dealer, slipPick);
       D.slip.appendChild(el('div', { class: 'say', html: '<b>' + callHtml(S.calls[slipPick]) + '</b> by ' + Kit.esc(who(p)) + ': ' + Kit.esc(say) }));
     }
-    requestAnimationFrame(function () { sc.scrollTop = sc.scrollHeight; });
+    fitHeads(tb);
+    if (D.root && D.root.contains(D.slip) && lay) placeTrick();
+    requestAnimationFrame(function () { sc.scrollTop = sc.scrollHeight; fitHeads(tb); });
+  }
+  // a name too wide for its column over the auction is set smaller, then in lower case, and only then shortened
+  function fitHeads(tb) {
+    if (!tb.isConnected) return;
+    Array.prototype.forEach.call(tb.querySelectorAll('th'), function (th) {
+      var tx = th.firstChild; if (!tx || tx.nodeType !== 3) return;
+      function over() { return th.scrollWidth > th.clientWidth + 1; }
+      if (!over()) return;
+      var steps = [['.52rem', ''], ['.5rem', 'none']];
+      for (var i = 0; i < steps.length && over(); i++) { th.style.fontSize = steps[i][0]; th.style.textTransform = steps[i][1]; th.style.letterSpacing = '0'; }
+      var full = tx.nodeValue;
+      for (var k = full.length - 1; k >= 3 && over(); k--) tx.nodeValue = full.slice(0, k);
+      th.title = full;
+    });
   }
   // ── the board tray, the contract and the score ──
   function boardSvg(dealer, vul, size) {
