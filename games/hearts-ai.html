@@ -30,6 +30,47 @@
 .pstack.w{left:28%;top:46%;transform:translate(-50%,-50%);}
 .pstack.e{right:28%;top:46%;transform:translate(50%,-50%);}
 .ghost{position:fixed;z-index:60;pointer-events:none;margin:0;}
+.pstack.nw,.pstack.ne{top:30%;transform:translate(-50%,-50%);}
+.many .pstack.w,.many .pstack.e{top:40%;}
+/* 3, 5 and 6 players: seats along the top (left set from the script), the trick's cards toward whoever played them */
+.cseat.nw,.cseat.ne{top:8px;transform:translateX(-50%);}
+.ctrick .pcard.p-nw{transform:translate(-96%,-80%) rotate(-10deg);}
+.ctrick .pcard.p-ne{transform:translate(-4%,-80%) rotate(9deg);}
+.many .ctrick{top:57%;}
+.many .ctrick .pcard{--cw:clamp(44px,11.5vw,58px);}
+.n5 .ctrick .pcard.p-nw{transform:translate(-96%,-128%) rotate(-7deg);}
+.n5 .ctrick .pcard.p-ne{transform:translate(-4%,-128%) rotate(7deg);}
+.n6 .ctrick .pcard.p-nw{transform:translate(-142%,-122%) rotate(-8deg);}
+.n6 .ctrick .pcard.p-n{transform:translate(-50%,-132%) rotate(-2deg);}
+.n6 .ctrick .pcard.p-ne{transform:translate(42%,-122%) rotate(8deg);}
+.many .ctrick .pcard.p-w{transform:translate(-142%,-22%) rotate(-6deg);}
+.many .ctrick .pcard.p-e{transform:translate(42%,-22%) rotate(6deg);}
+.many .ctrick .pcard.p-s{transform:translate(-50%,8%) rotate(2deg);}
+.many .cseat.w,.many .cseat.e{top:34%;}
+.many .cseat{min-width:0;}
+.many .cseat .tag{font-size:.76rem;padding-right:8px;gap:5px;}
+.many .cseat .tag .avatar{width:22px;height:22px;}
+.many .cseat .backs{--cw:18px;}
+.many .cseat .backs .pcard+.pcard{margin-left:-13px;}
+.cseat .tag > span:last-child{max-width:118px;overflow:hidden;text-overflow:ellipsis;}
+.many .cseat .tag > span:last-child{max-width:84px;}
+#app .cseat.s .tag > span:last-child{max-width:none;}
+/* the narrowest phones: smaller cards in the trick so it fits between the side seats; a short screen leaves out the
+   fanned backs (everyone holds as many cards as you do) and moves the side seats clear of the trick */
+@media (max-width:360px){
+  #app .ctrick .pcard{--cw:42px;}
+  #app .many .ctrick .pcard{--cw:38px;}
+  .cseat{min-width:0;}
+  .cseat .tag > span:last-child{max-width:72px;}
+  .many .cseat .tag > span:last-child{max-width:60px;}
+}
+@media (max-height:700px){
+  .ctable .cseat .backs{display:none;}
+  .many .cseat.w,.many .cseat.e{top:29%;} .many .ctrick{top:60%;}
+  .n4 .cseat.w,.n4 .cseat.e{top:66%;} .n4 .ctrick{top:43%;} .n4 .cmsg{bottom:auto;top:45%;transform:translate(-50%,-50%);}
+}
+.n3 .ctrick{top:56%;}
+@media (max-width:360px){.many .cseat .tag{font-size:.7rem;gap:4px;padding:3px 7px 3px 3px;}}
 .cbar.nudge,.chand.nudge{animation:hnudge .4s;}
 @keyframes hnudge{20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(3px);}}
 .sum{width:100%;border-collapse:collapse;margin-top:6px;font-variant-numeric:tabular-nums;}
@@ -47,6 +88,7 @@
   .cseat .backs{--cw:30px;}
   .cseat .backs .pcard+.pcard{margin-left:-21px;}
   .ctrick .pcard{--cw:86px;}
+  .many .ctrick .pcard{--cw:72px;}
   .cmsg{font-size:.98rem;padding:8px 16px;}
   .cbar .hint{font-size:1.06rem;}
 }
@@ -74,9 +116,36 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
-  var SAVE = 'hearts_state', SEATS = ['s', 'w', 'n', 'e'];
+  var SAVE = 'hearts_state';
+  // Seats round the table from the bottom, clockwise as the players sit (your left is the next seat): kit has
+  // n/s/e/w; 3, 5 and 6 players add nw and ne along the top
+  var LAYOUT = { 3: ['s', 'nw', 'ne'], 4: ['s', 'w', 'n', 'e'], 5: ['s', 'w', 'nw', 'ne', 'e'], 6: ['s', 'w', 'nw', 'n', 'ne', 'e'] };
+  var TOPX = { 3: { nw: 27, ne: 73 }, 5: { nw: 31, ne: 69 }, 6: { nw: 19, ne: 81 } };
+  // The standard ways to play with other than four (the score keeper's rules say the same): the cards taken out so
+  // every hand is the same size, the lowest club left leads, and the passing that the table allows (no across with
+  // an odd number of players)
+  var COUNTS = {
+    3: { out: ['2d'], lead: '2', pass: ['left', 'right', 'hold'] },
+    4: { out: [], lead: '2', pass: ['left', 'right', 'across', 'hold'] },
+    5: { out: ['2c', '2d'], lead: '3', pass: ['left', 'right', 'hold'] },
+    6: { out: ['2c', '3c', '2d', '3d'], lead: '4', pass: ['left', 'right', 'across', 'hold'] }
+  };
+  function NN(X) { return ((X || S) && (X || S).players && (X || S).players.length) || 4; }
+  function cnt(X) { return COUNTS[NN(X)] || COUNTS[4]; }
+  function zeros(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v === undefined ? 0 : v); return a; }
+  function empties(n) { var a = []; for (var i = 0; i < n; i++) a.push([]); return a; }
+  function isLead(c, X) { return c.s === 'c' && c.r === cnt(X).lead; }
+  function leadName(X) { return cnt(X).lead + '♣'; }
+  function tricksIn(X) { return (52 - cnt(X).out.length) / NN(X); }
+  // a fresh deck without the cards this many players take out, dealt round the table
+  function dealHands(X) {
+    var n = NN(X), out = cnt(X).out, d = Cards.shuffle(Cards.deck().filter(function (c) { return out.indexOf(c.r + c.s) < 0; })), h = empties(n);
+    d.forEach(function (c, i) { h[i % n].push(c); });
+    h.forEach(sortHand);
+    return h;
+  }
+  function passDirOf(X) { var c = cnt(X).pass; return c[(X.round - 1) % c.length]; }
   var RANK = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
-  var PASS = ['left', 'right', 'across', 'hold'];
 
   Kit.init({
     orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
@@ -89,15 +158,22 @@
     ]),
     rules:
       '<p class="goal">Avoid taking hearts and the Queen of Spades. When someone reaches the target score, the <b>lowest score wins</b>.</p>' +
-      '<h3>Passing</h3><p>Before each hand, pick 3 cards to pass. The direction rotates: <b>left, right, across, then no pass</b>.</p>' +
-      '<h3>Playing</h3><ul><li>Whoever has the <b>2♣</b> leads it to start the hand.</li>' +
+      '<h3>Passing</h3><p>Before each hand, pick 3 cards to pass. The direction rotates: <b>left, right, across, then no pass</b>. With 3 or 5 players nobody sits across, so it goes <b>left, right, then no pass</b>.</p>' +
+      '<h3>Playing</h3><ul><li>Whoever has the <b>2♣</b> leads it to start the hand (the lowest club in the deck: see Players below).</li>' +
       '<li>You must follow the suit that was led if you can. If you can\'t, play anything.</li>' +
       '<li>The highest card of the suit led wins the trick, and the winner leads next.</li>' +
       '<li>You can\'t lead hearts until a heart has been played (hearts are "broken"), unless you only have hearts.</li>' +
       '<li>No hearts or Queen of Spades on the very first trick, unless you have nothing else.</li></ul>' +
       '<h3>Scoring</h3><ul><li>Each heart you take is <b>1 point</b>. The Queen of Spades is <b>13 points</b>.</li>' +
       '<li><b>Shoot the moon:</b> take all 13 hearts and the Queen and you score 0, while everyone else gets 26.</li></ul>' +
-      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and up to 3 others join on their own devices. Empty seats are played by the computer.</li>' +
+      '<h3>Players</h3><p>Hearts is best with 4, and plays with 3 to 6. A few low cards come out of the deck so everyone gets the same number. The hearts and the Queen always stay in.</p>' +
+      '<table class="sum"><tr><th>Players</th><th>Cards out</th><th>Each gets</th><th>Leads</th></tr>' +
+      '<tr><td>3</td><td>2♦</td><td>17</td><td>2♣</td></tr>' +
+      '<tr><td>4</td><td>None</td><td>13</td><td>2♣</td></tr>' +
+      '<tr><td>5</td><td>2♣ 2♦</td><td>10</td><td>3♣</td></tr>' +
+      '<tr><td>6</td><td>2♣ 3♣ 2♦ 3♦</td><td>8</td><td>4♣</td></tr></table>' +
+      '<p>With 6, across is the player straight opposite you.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table for as many players as you set up, and the others join on their own devices. Empty seats are played by the computer.</li>' +
       '<li>Everyone picks their 3 cards to pass at the same time, then play goes round the table. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
       '<li>Moves can’t be taken back online.</li></ul>'
   });
@@ -107,7 +183,7 @@
   // online: your seat at the table. BLIND: every hand face down while the device is handed to the next person.
   var S = null, token = 0, undoStack = [], ME = 0, BLIND = false;
   var NET = null, NETREC = {}, NETSEL = [], NETQ = [], NETBUSY = false, NETSEEN = {}, NETFLY = null;
-  function posOf(p) { return SEATS[(p - ME + 4) % 4]; }
+  function posOf(p) { var n = NN(); return LAYOUT[n][(p - ME + n) % n]; }
   function save() {
     if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
@@ -131,12 +207,12 @@
     });
   }
   function onePerson() { return S.players.filter(function (p) { return !p.cpu; }).length < 2; }
-  function firstPerson() { for (var p = 0; p < 4; p++) if (person(p)) return p; return 0; }
-  function nextPasser() { for (var p = 0; p < 4; p++) if (p !== ME && person(p) && !(S.passes && S.passes[p])) return p; return -1; }
+  function firstPerson() { for (var p = 0; p < NN(); p++) if (person(p)) return p; return 0; }
+  function nextPasser() { for (var p = 0; p < NN(); p++) if (p !== ME && person(p) && !(S.passes && S.passes[p])) return p; return -1; }
   // picking up a saved game (or coming back from an online table)
   function resumeLocal() {
     if (S.phase === 'pass' && passedYet()) { var nx = nextPasser(); if (nx >= 0) gate(nx, render); else doPass(); }
-    else if (S.phase === 'play' && S.trick.length === 4) setTimeout(resolveTrick, 600);
+    else if (S.phase === 'play' && S.trick.length === NN()) setTimeout(resolveTrick, 600);
     else if (S.phase === 'play') next();
   }
 
@@ -144,12 +220,12 @@
     S = null; token++; BLIND = false; ME = 0; Kit.handoff.close();
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
-      players: { min: 4, max: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
+      players: { min: 3, max: 6, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'local' ? 'mix' : false; } },
       options: [{ id: 'target', label: 'Play to', help: 'The game ends when someone reaches this score, and the lowest score wins.', value: 100, choices: [[50, '50\nQuick'], [100, '100\nStandard']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }],
       onStart: function (cfg) {
         S = {
-          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, level: lvName(cfg.options.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0],
+          mode: cfg.mode, me: 0, target: +cfg.options.target || 100, level: lvName(cfg.options.level), round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(cfg.players.length), moons: zeros(cfg.players.length),
           players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu && p.level ? lvName(p.level) : undefined, total: 0 }; })   // (each robot its own skill at a mixed table)
         };
         undoStack = []; newHand();
@@ -178,7 +254,7 @@
     X = X || S;
     var h = X.hands[p];
     if (!X.trick.length) {
-      if (X.trickNo === 0) return h.filter(function (c) { return c.r === '2' && c.s === 'c'; });
+      if (X.trickNo === 0) return h.filter(function (c) { return isLead(c, X); });
       if (!X.broken) { var nh = h.filter(function (c) { return c.s !== 'h'; }); if (nh.length) return nh; }
       return h.slice();
     }
@@ -191,14 +267,12 @@
   // ── Dealing & passing ─────────────────────────────────────────────────────
   function newHand() {
     S.round++;
-    var d = Cards.shuffle(Cards.deck());
-    S.hands = [[], [], [], []];
-    d.forEach(function (c, i) { S.hands[i % 4].push(c); });
-    S.hands.forEach(sortHand);
-    S.taken = [0, 0, 0, 0]; S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = []; S.vd = ['', '', '', ''];
-    S.tw = [0, 0, 0, 0]; S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
-    S.passDir = PASS[(S.round - 1) % 4];
-    S.passSel = []; S.passes = [null, null, null, null];
+    var n = NN();
+    S.hands = dealHands(S);
+    S.taken = zeros(n); S.tookQS = -1; S.trick = []; S.trickNo = 0; S.broken = false; S.received = []; S.vd = zeros(n, '');
+    S.tw = zeros(n); S.hb = 0; S.dtDeal = cs(S.hands[0].map(cc));   // for the history: tricks won, when hearts broke, your dealt hand
+    S.passDir = passDirOf(S);
+    S.passSel = []; S.passes = zeros(n, null);
     if (S.passDir === 'hold') startPlay();
     else { S.phase = 'pass'; save(); gate(firstPerson(), render); }
     Kit.sfx('deal');
@@ -219,12 +293,13 @@
     }).sort(function (a, b) { return b.v - a.v; });
     return scored.slice(0, 3).map(function (x) { return x.c.id; });
   }
-  function passTarget(p, dir) { dir = dir || S.passDir; return dir === 'left' ? (p + 1) % 4 : dir === 'right' ? (p + 3) % 4 : (p + 2) % 4; }
+  function passTarget(p, dir, X) { X = X || S; var n = NN(X); dir = dir || X.passDir; return dir === 'left' ? (p + 1) % n : dir === 'right' ? (p + n - 1) % n : (p + n / 2) % n; }
+  function passSource(p, dir, X) { X = X || S; var n = NN(X); dir = dir || X.passDir; return dir === 'left' ? (p + n - 1) % n : dir === 'right' ? (p + 1) % n : (p + n / 2) % n; }
   // the person at the bottom confirms their 3 cards; the next person gets the device, and when everyone has
   // picked (robots pick as the cards move) the cards cross the table
   function passNow() {
     if (S.passSel.length !== 3) return;
-    if (!S.passes) S.passes = [null, null, null, null];
+    if (!S.passes) S.passes = zeros(NN(), null);
     var nxt = nextPasser();
     if (nxt < 0) snapshot();
     S.passes[ME] = S.passSel.slice(); S.passSel = [];
@@ -232,13 +307,13 @@
     doPass();
   }
   function doPass() {
-    var sel = [0, 1, 2, 3].map(function (p) { return person(p) && S.passes && S.passes[p] ? S.passes[p] : cpuPass(p); });
+    var sel = S.players.map(function (pl, p) { return person(p) && S.passes && S.passes[p] ? S.passes[p] : cpuPass(p); });
     var moving = sel.map(function (ids, p) { return ids.map(function (id) { return S.hands[p][find(S.hands[p], id)]; }); });
     moving.forEach(function (cards, p) { S.hands[p] = S.hands[p].filter(function (c) { return cards.indexOf(c) < 0; }); });
     moving.forEach(function (cards, p) { S.hands[passTarget(p)] = S.hands[passTarget(p)].concat(cards); });
     S.hands.forEach(sortHand);
-    var from = function (p) { return S.passDir === 'left' ? (p + 3) % 4 : S.passDir === 'right' ? (p + 1) % 4 : (p + 2) % 4; };
-    S.recvAll = [0, 1, 2, 3].map(function (p) { return moving[from(p)].map(function (c) { return c.id; }); });
+    var from = function (p) { return passSource(p); };
+    S.recvAll = S.players.map(function (pl, p) { return moving[from(p)].map(function (c) { return c.id; }); });
     S.received = S.recvAll[ME];
     S.dtPass = { out: moving[0].map(cc), got: moving[from(0)].map(cc) };
     S.passSel = []; S.passes = null;
@@ -261,7 +336,7 @@
   function startPlay() {
     S.phase = 'play';
     S.dtHand = S.hands[0].map(cc); if (S.passDir === 'hold') S.dtPass = null;
-    for (var p = 0; p < 4; p++) if (S.hands[p].some(function (c) { return c.r === '2' && c.s === 'c'; })) S.turn = p;
+    for (var p = 0; p < NN(); p++) if (S.hands[p].some(function (c) { return isLead(c); })) S.turn = p;
     S.leader = S.turn;
     save(); render(); next();
   }
@@ -279,7 +354,7 @@
   // (Anyone at the table could have noticed; only Hard keeps track.)
   function noteVoid(X, p, card) {
     if (!X.trick.length || card.s === X.trick[0].c.s) return;
-    if (!X.vd) X.vd = ['', '', '', ''];
+    if (!X.vd) X.vd = zeros(NN(X), '');
     if (X.vd[p].indexOf(X.trick[0].c.s) < 0) X.vd[p] += X.trick[0].c.s;
   }
   function cpuChoose(p, X) {
@@ -302,8 +377,8 @@
   var HARD_DEALS = 24, HARD_MS = 400;   // (as many deals as fit in the time, and never fewer than 8)
   function hardChoose(p, X) {
     var opts = legal(p, X); if (opts.length < 2) return opts[0];
-    var out = [], need = [0, 0, 0, 0], vd = X.vd || ['', '', '', ''], q, n, i;
-    for (q = 0; q < 4; q++) if (q !== p) { need[q] = X.hands[q].length; out = out.concat(X.hands[q]); }
+    var N = NN(X), out = [], need = zeros(N), vd = X.vd || zeros(N, ''), q, n, i;
+    for (q = 0; q < N; q++) if (q !== p) { need[q] = X.hands[q].length; out = out.concat(X.hands[q]); }
     var tot = opts.map(function () { return 0; });
     var t0 = Date.now();
     for (n = 0; n < HARD_DEALS && (n < 8 || Date.now() - t0 < HARD_MS); n++) {
@@ -317,13 +392,13 @@
   }
   // one way the cards still out could lie: shuffled, then handed round, never giving a suit to someone out of it
   function dealOut(out, need, vd) {
-    var left = need.slice(), hands = [[], [], [], []], cards = Cards.shuffle(out.slice()), i, q;
+    var N = need.length, left = need.slice(), hands = empties(N), cards = Cards.shuffle(out.slice()), i, q;
     // (cards only one or two seats can hold go first, so they find a seat)
-    function can(c) { var l = []; for (var q = 0; q < 4; q++) if (left[q] > 0 && vd[q].indexOf(c.s) < 0) l.push(q); return l; }
+    function can(c) { var l = []; for (var q = 0; q < N; q++) if (left[q] > 0 && vd[q].indexOf(c.s) < 0) l.push(q); return l; }
     cards.sort(function (a, b) { return can(a).length - can(b).length; });
     for (i = 0; i < cards.length; i++) {
       var ok = can(cards[i]);
-      if (!ok.length) for (q = 0; q < 4; q++) if (left[q] > 0) ok.push(q);
+      if (!ok.length) for (q = 0; q < N; q++) if (left[q] > 0) ok.push(q);
       q = ok[Math.floor(Math.random() * ok.length)];
       hands[q].push(cards[i]); left[q]--;
     }
@@ -331,24 +406,24 @@
   }
   // the rest of the hand with seat p playing card first; returns what it costs p: its points less the others' average
   function playOut(X, hands, p, card) {
-    var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, broken: X.broken, taken: X.taken.slice(), turn: p, level: 'normal' };
-    var c = card, s;
+    var Y = { hands: hands.map(function (h) { return h.slice(); }), trick: X.trick.slice(), trickNo: X.trickNo, broken: X.broken, taken: X.taken.slice(), turn: p, level: 'normal', players: X.players };
+    var c = card, s, N = NN(X), T = tricksIn(X);
     for (;;) {
       s = Y.turn;
       Y.hands[s].splice(Y.hands[s].indexOf(c), 1); Y.trick.push({ p: s, c: c });
       if (c.s === 'h') Y.broken = true;
-      if (Y.trick.length === 4) {
+      if (Y.trick.length === N) {
         var led = Y.trick[0].c.s, win = Y.trick[0], got = 0;
-        for (var k = 0; k < 4; k++) { var t = Y.trick[k]; got += pts(t.c); if (t.c.s === led && RANK[t.c.r] > RANK[win.c.r]) win = t; }
+        for (var k = 0; k < N; k++) { var t = Y.trick[k]; got += pts(t.c); if (t.c.s === led && RANK[t.c.r] > RANK[win.c.r]) win = t; }
         Y.taken[win.p] += got; Y.trick = []; Y.trickNo++; Y.turn = win.p;
-        if (Y.trickNo === 13) break;
-      } else Y.turn = (s + 1) % 4;
+        if (Y.trickNo === T) break;
+      } else Y.turn = (s + 1) % N;
       c = normalChoose(Y.turn, Y);
     }
     var mine = Y.taken[p], moon = Y.taken.indexOf(26);
     if (moon === p) return -26;
-    if (moon >= 0) return 26 - 52 / 3;
-    return mine - (26 - mine) / 3;
+    if (moon >= 0) return 26 - 26 * (N - 2) / (N - 1);   // (26 for p, against the others' average)
+    return mine - (26 - mine) / (N - 1);
   }
   function normalChoose(p, X) {
     var opts = legal(p, X), trick = X.trick;
@@ -391,11 +466,11 @@
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
     if (p === ME) paintHand();
-    if (S.trick.length === 4) { S.turn = -1; save(); paintSeats(); setTimeout(resolveTrick, 900); }
-    else { S.turn = (p + 1) % 4; save(); next(); }
+    if (S.trick.length === NN()) { S.turn = -1; save(); paintSeats(); setTimeout(resolveTrick, 900); }
+    else { S.turn = (p + 1) % NN(); save(); next(); }
   }
   function resolveTrick() {
-    if (NET || !S || !S.trick || S.trick.length !== 4) return;
+    if (NET || !S || !S.trick || S.trick.length !== NN()) return;
     var t = token;
     var led = S.trick[0].c.s, win = S.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = S.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
@@ -416,7 +491,7 @@
         if (t !== token) return;
         trickEl.innerHTML = '';
         S.trick = []; S.trickNo++; S.leader = win.p; S.turn = win.p;
-        if (S.trickNo === 13) endHand(); else { save(); next(); }
+        if (S.trickNo === tricksIn(S)) endHand(); else { save(); next(); }
       }, 380);
     }, 650);
   }
@@ -476,7 +551,7 @@
       title: tie ? "It's a tie!" : solo && rank[0].i === 0 ? 'You win!' : rank[0].name + ' wins',
       sub: 'Lowest score wins', rank: rank, lose: rank[0].cpu && !tie, icon: rank[0].cpu ? 'bot' : 'trophy',
       again: function () {
-        S = { mode: S.mode, me: S.me, target: S.target, round: 0, rounds: [], highlights: [], started: Date.now(), qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, total: 0 }; }) };
+        S = { mode: S.mode, me: S.me, target: S.target, level: S.level, round: 0, rounds: [], highlights: [], started: Date.now(), qs: zeros(NN()), moons: zeros(NN()), players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, total: 0 }; }) };
         newHand();
       },
       look: 'Look at the table',
@@ -500,10 +575,11 @@
   var seatEls = [], trickEl, handEl, barEl, msgEl, feltEl;
   function render() {
     app.innerHTML = '';
-    var table = el('div', { class: 'ctable wood' }), felt = el('div', { class: 'felt-in' });
+    var n = NN(), table = el('div', { class: 'ctable wood n' + n + (n >= 5 ? ' many' : '') }), felt = el('div', { class: 'felt-in' });
     feltEl = felt;
-    seatEls = [0, 1, 2, 3].map(function (p) {
-      var s = el('div', { class: 'cseat ' + posOf(p) });
+    seatEls = S.players.map(function (pl, p) {
+      var ps = posOf(p), s = el('div', { class: 'cseat ' + ps });
+      if (TOPX[n] && TOPX[n][ps] != null) s.style.left = TOPX[n][ps] + '%';
       felt.appendChild(s); return s;
     });
     trickEl = el('div', { class: 'ctrick' });
@@ -535,7 +611,7 @@
       s.classList.toggle('turn', up.indexOf(p) >= 0);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: p === mySeat() && (NET || onePerson()) ? 'You' : pl.name })
+        el('span', { text: p === mySeat() && (NET || onePerson()) ? 'You' : NN() >= 5 && p !== mySeat() && innerWidth < 700 ? firstWord(pl.name) : pl.name })
       ]);
       var info = el('div', { class: 'info' }, [
         el('span', { class: 'chip-s' + (S.taken && S.taken[p] ? ' hot' : ''), html: '<span class="handpts"><span class="h">♥</span>' + (S.taken ? S.taken[p] : 0) + '</span>' }),
@@ -560,7 +636,8 @@
     if (!NET || S.phase !== 'pass' || !S.pass) return;
     S.pass.forEach(function (cs, p) {
       if (!cs) return;
-      var st = el('div', { class: 'pstack ' + posOf(passTarget(p, S.passDir)), 'data-from': String(p) });
+      var to = posOf(passTarget(p, S.passDir)), st = el('div', { class: 'pstack ' + to, 'data-from': String(p) });
+      if (TOPX[NN()] && TOPX[NN()][to] != null) st.style.left = TOPX[NN()][to] + '%';
       for (var k = 0; k < 3; k++) st.appendChild(Kit.card('', '', { back: true }));
       feltEl.appendChild(st);
     });
@@ -597,12 +674,13 @@
     paintBar();
   }
   function whyNot(c) {
-    if (!S.trick.length && S.trickNo === 0) return 'The 2♣ leads the first trick';
+    if (!S.trick.length && S.trickNo === 0) return 'The ' + leadName() + ' leads the first trick';
     if (!S.trick.length && c.s === 'h') return "Hearts aren't broken yet";
     if (S.trick.length && S.hands[ME].some(function (x) { return x.s === S.trick[0].c.s; })) return 'You have to follow suit';
     if (S.trickNo === 0) return 'No points on the first trick';
     return "You can't play that now";
   }
+  function firstWord(n) { var w = String(n || '').trim().split(/\s+/)[0]; return w || String(n || ''); }
   function names(l) {
     l = l.map(function (p) { return S.players[p].name; });
     return l.length < 2 ? l.join('') : l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1];
@@ -622,7 +700,7 @@
       barEl.appendChild(b);
     } else if (S.phase === 'play') {
       var who = S.turn >= 0 && S.players[S.turn];
-      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the 2♣ to start' : 'Your turn: tap a card') : who ? (!isCpu(S.turn) ? (NET ? 'Waiting for ' : 'Pass the device to ') + who.name : who.name + ' is thinking…') : '' }));
+      barEl.appendChild(el('span', { class: 'hint', text: S.turn === ME && mySeat() >= 0 ? (S.trickNo === 0 && !S.trick.length ? 'Lead the ' + leadName() + ' to start' : 'Your turn: tap a card') : who ? (!isCpu(S.turn) ? (NET ? 'Waiting for ' : 'Pass the device to ') + who.name : who.name + ' is thinking…') : '' }));
     }
   }
   function paintMsg() {
@@ -644,7 +722,7 @@
   // hasn't passed yet. The move that finishes a trick scores it; the one that finishes a hand scores it and deals.
   function netTurn(st) {
     if (!st || !st.players) return [];
-    if (st.phase === 'pass') { var l = []; for (var i = 0; i < 4; i++) if (!st.pass[i]) l.push(i); return l; }
+    if (st.phase === 'pass') { var l = []; for (var i = 0; i < NN(st); i++) if (!st.pass[i]) l.push(i); return l; }
     if (st.phase === 'play') return st.turn >= 0 ? [st.turn] : [];
     return [];
   }
@@ -653,29 +731,28 @@
     if (!(S && S.target)) { try { var o = (JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}; if (+o.target) t = +o.target; } catch (e) {} }
     var lv = S && S.level && !NET ? S.level : '';
     if (!lv) { try { lv = ((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).options || {}).level; } catch (e) {} }
-    return { target: +t === 50 ? 50 : 100, level: lvName(lv) };
+    var seats = 4; try { seats = +((JSON.parse(localStorage.getItem('gn_setup_hearts') || '{}') || {}).count) || 4; } catch (e) {}
+    return { target: +t === 50 ? 50 : 100, level: lvName(lv), seats: Math.max(3, Math.min(6, seats)) };
   }
   function netStart(players, opts, last) {
     var st = { online: 1, target: opts && +opts.target === 50 ? 50 : 100, level: lvName(opts && opts.level), round: 0, rounds: [], highlights: [], hx: [], started: Date.now(),
-      qs: [0, 0, 0, 0], moons: [0, 0, 0, 0], wins: last && last.wins ? last.wins.slice() : [0, 0, 0, 0],
+      qs: zeros(players.length), moons: zeros(players.length), wins: last && last.wins && last.wins.length === players.length ? last.wins.slice() : zeros(players.length),
       players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, total: 0 }; }) };
     netDeal(st);
     return st;
   }
   function netDeal(st) {
     st.round++;
-    var d = Cards.shuffle(Cards.deck());
-    st.hands = [[], [], [], []];
-    d.forEach(function (c, i) { st.hands[i % 4].push(c); });
-    st.hands.forEach(sortHand);
-    st.taken = [0, 0, 0, 0]; st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = [0, 0, 0, 0]; st.hb = 0; st.vd = ['', '', '', ''];
-    st.passDir = PASS[(st.round - 1) % 4];
-    st.pass = [null, null, null, null]; st.recv = [[], [], [], []];
+    var n = NN(st);
+    st.hands = dealHands(st);
+    st.taken = zeros(n); st.tookQS = -1; st.trick = []; st.trickNo = 0; st.broken = false; st.last = null; st.tw = zeros(n); st.hb = 0; st.vd = zeros(n, '');
+    st.passDir = passDirOf(st);
+    st.pass = zeros(n, null); st.recv = empties(n);
     if (st.passDir === 'hold') netPlayStart(st); else { st.phase = 'pass'; st.turn = -1; }
   }
   function netPlayStart(st) {
     st.phase = 'play';
-    for (var p = 0; p < 4; p++) if (st.hands[p].some(function (c) { return c.r === '2' && c.s === 'c'; })) st.turn = p;
+    for (var p = 0; p < NN(st); p++) if (st.hands[p].some(function (c) { return isLead(c, st); })) st.turn = p;
     st.leader = st.turn;
   }
   function netDoPass(st, seat, ids) {
@@ -686,7 +763,7 @@
     st.pass[seat] = cards;
     var all = st.pass.every(Boolean);
     if (all) {
-      st.pass.forEach(function (cs, p) { var to = passTarget(p, st.passDir); st.hands[to] = st.hands[to].concat(cs); st.recv[to] = cs.map(function (c) { return c.id; }); });
+      st.pass.forEach(function (cs, p) { var to = passTarget(p, st.passDir, st); st.hands[to] = st.hands[to].concat(cs); st.recv[to] = cs.map(function (c) { return c.id; }); });
       st.hands.forEach(sortHand);
       netPlayStart(st);
     }
@@ -701,7 +778,7 @@
     st.trick.push({ p: seat, c: card });
     var mv = { t: 'play', p: seat, c: card };
     if (card.s === 'h' && !st.broken) { st.broken = true; st.hb = st.trickNo + 1; if (st.trickNo > 0) mv.broke = 1; }
-    if (st.trick.length < 4) { st.turn = (seat + 1) % 4; return { state: st, mv: mv }; }
+    if (st.trick.length < NN(st)) { st.turn = (seat + 1) % NN(st); return { state: st, mv: mv }; }
     var led = st.trick[0].c.s, win = st.trick.filter(function (x) { return x.c.s === led; }).sort(function (a, b) { return RANK[b.c.r] - RANK[a.c.r]; })[0];
     var got = st.trick.reduce(function (a, x) { return a + pts(x.c); }, 0);
     st.taken[win.p] += got; if (st.tw) st.tw[win.p]++;
@@ -709,7 +786,7 @@
     st.last = { t: st.trick, w: win.p, got: got };
     st.trick = []; st.trickNo++; st.leader = win.p; st.turn = win.p;
     mv.done = 1; mv.w = win.p; mv.got = got;
-    if (st.trickNo === 13) { netEndHand(st); mv.hand = 1; }
+    if (st.trickNo === tricksIn(st)) { netEndHand(st); mv.hand = 1; }
     return { state: st, mv: mv };
   }
   function netEndHand(st) {
@@ -845,8 +922,8 @@
       Array.prototype.forEach.call(feltEl.querySelectorAll('.pstack'), function (n) { rs[n.dataset.from] = n.getBoundingClientRect(); });
       netView(st); render();
       Kit.sfx('deal'); Kit.haptic('light');
-      for (var p = 0; p < 4; p++) {
-        var to = passTarget(p, st.passDir), r = rs[p];
+      for (var p = 0; p < NN(st); p++) {
+        var to = passTarget(p, st.passDir, st), r = rs[p];
         if (!r) continue;
         if (to === ME && NET.seat >= 0) st.recv[ME].forEach(function (id) { var n = handEl.querySelector('[data-id="' + id + '"]'); if (n) Cards.fly(n, rectEl(r), { ms: 560 }); });
         else ghosts(r, tagOf(to), 3, 480);
@@ -857,8 +934,8 @@
   // the table just before the last card of a hand landed (the next hand is already dealt in st)
   function handEndView(st, mv) {
     var lh = st.lastHand, v = JSON.parse(JSON.stringify(st));
-    v.round = lh.round; v.passDir = lh.dir; v.phase = 'play'; v.trickNo = 12; v.turn = -1; v.pass = null; v.recv = [[], [], [], []];
-    v.hands = [[], [], [], []]; v.taken = lh.taken.slice(); v.taken[mv.w] -= mv.got;
+    v.round = lh.round; v.passDir = lh.dir; v.phase = 'play'; v.trickNo = tricksIn(st) - 1; v.turn = -1; v.pass = null; v.recv = empties(NN(st));
+    v.hands = empties(NN(st)); v.taken = lh.taken.slice(); v.taken[mv.w] -= mv.got;
     v.players.forEach(function (p, i) { p.total -= lh.hand[i]; });
     v.trick = lh.last.t.slice(0, -1);
     return v;
@@ -966,8 +1043,8 @@
 
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
-    game: 'hearts', title: 'Hearts', min: 2, max: 4, botMs: 800,
-    seats: function (n) { return Math.max(4, n); },
+    game: 'hearts', title: 'Hearts', min: 2, max: 6, botMs: 800,
+    seats: function (n, o) { return Math.max(3, n, Math.min(6, +(o && o.seats) || 4)); },
     opts: netOpts,
     start: netStart,
     turn: netTurn,
