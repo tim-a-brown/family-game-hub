@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .cb-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .pbar{--c:var(--accent);display:flex;align-items:center;gap:10px;min-height:46px;padding:5px 12px 5px 10px;border-radius:14px;background:var(--w05);border:2px solid transparent;transition:border-color .2s, background .2s;}
@@ -206,11 +208,14 @@
   var S = null;
   var LEVELS = { easy: { depth: 1, time: 300, noise: 40, exact: 0 }, normal: { depth: 4, time: 1200, noise: 6, exact: 8 }, hard: { depth: 8, time: 2500, noise: 0, exact: 14 } };
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && !S.over) Kit.resume.set(S.n ? 'Move ' + (S.n + 1) : 'Ready');
   }
-  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function pl(side) { return S.players[0].side === side ? S.players[0] : S.players[1]; }
   function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
   function colorName(side) { return side === BLACK ? 'Black' : 'White'; }
@@ -218,9 +223,9 @@
 
   Kit.init({
     id: 'othello', mark: false,
-    onNew: function () { cancelThink(); clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Othello: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Othello: past games' }); } }]),
     rules:
       '<p class="goal">Have <b>more discs of your color</b> on the board than the other player when the game ends.</p>' +
       '<h3>Your turn</h3><ul><li><b>Black goes first.</b> The board starts with two black and two white discs in the middle.</li>' +
@@ -229,6 +234,7 @@
       '<li>The dots show where you can play.</li></ul>' +
       '<h3>Passing and the end</h3><ul><li>If you have no move that flips something, you <b>pass</b> and the other player goes again.</li>' +
       '<li>The game ends when neither player can move (usually when the board is full). Most discs wins.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device. Take your turn whenever you like: the home screen shows when it’s your move. Each new game at the table swaps colors.</li></ul>' +
       '<h3>Tips</h3><ul><li><b>Corners</b> can never be flipped. Grab them!</li><li>Be careful with the squares right next to an empty corner: they often give the corner away.</li><li>Flipping lots of discs early isn\'t always best. Having more moves to choose from matters more.</li></ul>'
   });
 
@@ -327,7 +333,8 @@
   function detail() {
     var rows = [], mv = '', who = '';
     for (var r = 0; r < 8; r++) { var row = ''; for (var c = 0; c < 8; c++) { var v = S.b[r * 8 + c]; row += v === BLACK ? 'b' : v === WHITE ? 'w' : '.'; } rows.push(row); }
-    var boards = S.hist.map(function (h) { return { b: h.b, turn: h.turn }; }).concat([{ b: S.b }]);
+    var boards = S.ml ? [] : S.hist.map(function (h) { return { b: h.b, turn: h.turn }; }).concat([{ b: S.b }]);
+    if (S.ml) S.ml.forEach(function (m) { mv += 'abcdefgh'.charAt(m[0] & 7) + (8 - (m[0] >> 3)); who += m[1] === BLACK ? 'b' : 'w'; });
     for (var i = 0; i < boards.length - 1; i++) {
       for (var s = 0; s < 64; s++) if (!boards[i].b[s] && boards[i + 1].b[s]) { mv += 'abcdefgh'.charAt(s & 7) + (8 - (s >> 3)); who += boards[i].turn === BLACK ? 'b' : 'w'; break; }
     }
@@ -346,7 +353,7 @@
     Kit.sfx('whoosh'); save(); render(); maybeCpu();
   }
   function maybeCpu() {
-    if (!S || S.over || !pl(S.turn).cpu || S.busy) return;
+    if (NET || !S || S.over || !pl(S.turn).cpu || S.busy) return;
     S.busy = true; paintStatus();
     var t0 = Date.now(), myN = S.n;
     think(S.b, S.turn, LEVELS[S.level] || LEVELS.normal, function (res) {
@@ -361,7 +368,7 @@
 
   // ── Render ───────────────────────────────────────────────────────────────
   var bdEl, layerEl, topBar, botBar, turnEl;
-  function bottomSide() { return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : BLACK; }
+  function bottomSide() { if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : BLACK; return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : BLACK; }
   function render(anim) {
     if (!S || !S.b) return;
     app.innerHTML = ''; app.classList.add('ipl');
@@ -369,7 +376,7 @@
     topBar = el('div', { class: 'pbar' }); botBar = el('div', { class: 'pbar' });
     var frame = el('div', { class: 'frame' });
     bdEl = el('div', { class: 'bd felt-in', role: 'grid', 'aria-label': 'Othello board' });
-    var human = !S.over && !pl(S.turn).cpu, hints = {};
+    var human = !S.over && (NET ? !LEFT && NET.myTurn() && !S.busy : !pl(S.turn).cpu), hints = {};
     if (human) E.moves(S.b, S.turn).forEach(function (m) { hints[m.s] = 1; });
     for (var s = 0; s < 64; s++) {
       (function (s) {
@@ -384,7 +391,8 @@
     col.appendChild(topBar); col.appendChild(frame); col.appendChild(botBar);
     turnEl = el('div', { class: 'turn' }); col.appendChild(turnEl);
     var acts = el('div', { class: 'acts' });
-    if (S.over) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }));
+    if (NET) { if (S.over || LEFT) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); }
+    else if (S.over) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: function () { newGame(true); } }));
     else acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('undo') + '<span>Undo</span>', onclick: undo }));
     col.appendChild(acts);
     app.appendChild(col);
@@ -431,10 +439,10 @@
     var p = pl(side), on = !S.over && S.turn === side;
     node.className = 'pbar' + (on ? ' on' : '');
     node.style.setProperty('--c', side === BLACK ? '#a9a9b3' : '#f4f1e8');
-    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : colorName(side) + (on ? ' · to move' : '');
+    var sub = on && p.cpu && S.busy ? '<span class="think">Thinking <i></i><i></i><i></i></span>' : colorName(side) + (on ? (NET && NET.seat >= 0 && S.players[NET.seat].side === side ? ' · your move' : ' · to move') : '');
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok ' + (side === BLACK ? 'b' : 'w') }));
-    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(NET && NET.seat >= 0 && S.players[NET.seat] === p ? 'You' : p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
     node.appendChild(el('span', { class: 'cnt', text: String(count(side)) }));
   }
   function paintStatus() {
@@ -442,6 +450,8 @@
     var bs = bottomSide(); bar(topBar, -bs); bar(botBar, bs);
     var p = pl(S.turn);
     turnEl.innerHTML = ''; turnEl.style.setProperty('--c', S.turn === BLACK ? '#b9b9c4' : '#f4f1e8');
+    if (NET && LEFT) { turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
+    if (NET) return netStatus();
     if (S.over) {
       var nb = count(BLACK), nw = count(WHITE), w = nb > nw ? pl(BLACK) : nw > nb ? pl(WHITE) : null;
       turnEl.appendChild(el('span', { text: w ? (w.name === 'You' ? 'You win ' : w.name + ' wins ') + Math.max(nb, nw) + '–' + Math.min(nb, nw) : "It's a tie" }));
@@ -453,6 +463,7 @@
     turnEl.appendChild(el('span', { text: txt }));
   }
   function tap(s) {
+    if (NET) return netTap(s);
     if (!S || S.over || S.busy || pl(S.turn).cpu) return;
     if (!E.flips(S.b, s, S.turn).length) {
       if (!S.b[s]) { Kit.haptic('error'); Kit.toast('That move doesn\'t flip anything'); }
@@ -461,15 +472,148 @@
     play(s);
   }
 
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Seat 0 plays Black in the first game; each new game at the table swaps colors (Black always moves first).
+  // The table's state is S without the undo history: a light move list (ml) instead, for the history view.
+  function netSeatOf(st, side) { return st.players[0].side === side ? 0 : 1; }
+  // The setup's "You play" holds online too: the one who opens the table plays that color in the first game
+  function netOpts() {
+    var side = 'b'; try { var g = JSON.parse(localStorage.getItem('gn_setup_othello')); if (g && g.options && g.options.side === 'w') side = 'w'; } catch (e) {}
+    return { side: side };
+  }
+  function netStart(players, opts, last) {
+    var s0 = last && last.players ? -last.players[0].side : opts && opts.side === 'w' ? WHITE : BLACK, b = [];
+    for (var i = 0; i < 64; i++) b.push(0);
+    b[27] = WHITE; b[28] = BLACK; b[35] = BLACK; b[36] = WHITE;
+    return { mode: 'online', level: 'normal', players: players.map(function (p, i) { return { name: p.name, cpu: false, side: i === 0 ? s0 : -s0 }; }),
+      b: b, turn: BLACK, last: null, n: 0, passes: { '1': 0, '-1': 0 }, best: { '1': null, '-1': null }, hist: [], ml: [], passNote: null,
+      wins: last && last.wins ? last.wins.slice() : [0, 0, 0], over: false, started: Date.now() };
+  }
+  function netCount(st, side) { var n = 0; st.b.forEach(function (v) { if (v === side) n++; }); return n; }
+  // The move itself (pure: it may run again on a newer table): the same rules and bookkeeping as play()
+  function netApply(st, s) {
+    if (st.over) return null;
+    var side = st.turn, f = E.flips(st.b, s, side);
+    if (!f.length) return null;
+    st.b = E.apply(st.b, { s: s, f: f }, side); st.n++; st.ml.push([s, side]);
+    st.last = { s: s, f: f, side: side };
+    if (!st.best[side] || f.length > st.best[side].n) st.best[side] = { n: f.length, move: st.n };
+    st.passNote = null;
+    var next = -side;
+    if (!E.moves(st.b, next).length) {
+      if (!E.moves(st.b, side).length) {
+        st.over = true;
+        var nb = netCount(st, BLACK), nw = netCount(st, WHITE);
+        st.wins[nb === nw ? 2 : netSeatOf(st, nb > nw ? BLACK : WHITE)]++;
+      } else { st.passes[next]++; st.passNote = next; next = side; }
+    }
+    st.turn = next;
+    return { state: st, mv: { s: s, f: f, side: side, pass: st.passNote } };
+  }
+  function netTap(s) {
+    if (!S || S.over || LEFT || S.busy) return;
+    if (!NET.myTurn()) { if (!S.b[s]) { Kit.haptic('error'); Kit.toast('It’s ' + Kit.poss(pl(S.turn).name) + ' turn'); } return; }
+    if (!E.flips(S.b, s, S.turn).length) { if (!S.b[s]) { Kit.haptic('error'); Kit.toast('That move doesn\'t flip anything'); } return; }
+    NET.act(function (st) { return netApply(st, s); });
+  }
+  function netStatus() {
+    var p = pl(S.turn), me = NET.seat >= 0 ? S.players[NET.seat] : null;
+    if (S.over) {
+      var nb = count(BLACK), nw = count(WHITE), w = nb > nw ? pl(BLACK) : nw > nb ? pl(WHITE) : null;
+      turnEl.appendChild(el('span', { text: w ? (w === me ? 'You win ' : w.name + ' wins ') + Math.max(nb, nw) + '–' + Math.min(nb, nw) : 'It’s a tie' }));
+      return;
+    }
+    turnEl.appendChild(el('span', { class: 'dot' }));
+    var txt = p === me ? 'Your turn' : 'Waiting for ' + p.name;
+    if (S.passNote) { var passer = pl(S.passNote); txt = (passer === me ? 'You have no move, so ' : passer.name + ' has no move, so ') + (p === me ? 'it’s your turn again' : p.name + ' goes again'); }
+    turnEl.appendChild(el('span', { text: txt }));
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  // Draw the table: the newest disc drops in and the trapped discs flip over (yours or theirs), then the end
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = [];
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.s != null && !info.fresh && !info.again ? info.mv : null;
+    render(mv ? { s: mv.s, f: mv.f, side: mv.side } : null);
+    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(BLACK) === S.players[net.seat] ? 'You start' : pl(BLACK).name + ' starts'); }
+    var flipT = mv ? 380 + mv.f.length * 60 : 0;
+    if (mv) {
+      Kit.sfx('tap'); Kit.haptic(mv.f.length >= 5 ? 'medium' : 'light');
+      setTimeout(function () { if (tok === SHOWN) Kit.sfx('flip'); }, 120);
+      if (mv.f.length >= 6) setTimeout(function () { if (tok === SHOWN) { Kit.callout(mv.f.length + ' flipped!'); Kit.sfx('good'); } }, flipT - 200);
+      if (mv.pass != null && !S.over) setTimeout(function () { if (tok !== SHOWN) return; var passer = pl(mv.pass); Kit.callout(passer === S.players[net.seat] ? 'You have to pass' : passer.name + ' has to pass'); Kit.sfx('bad'); }, flipT);
+    }
+    if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, mv ? flipT + 500 : 150);
+    else if (mv && !info.mine && net.myTurn()) setTimeout(function () { if (tok === SHOWN) Kit.haptic('light'); }, flipT);
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, left = LEFT, nb = count(BLACK), nw = count(WHITE);
+    var winSide = nb > nw ? BLACK : nw > nb ? WHITE : 0;
+    var wi = left ? (left.win && left.win.length ? left.win[0] : -1) : winSide ? netSeatOf(S, winSide) : -1;
+    var w = wi >= 0 ? S.players[wi] : null, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('othello_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('othello_net_rec')) || []; rl.push(key); localStorage.setItem('othello_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [];
+      if (w) hl.push(w.name + ' won ' + Math.max(nb, nw) + '–' + Math.min(nb, nw) + (count(-winSide) === 0 ? ': a total wipeout!' : ''));
+      else hl.push('A perfect tie, ' + nb + '–' + nw);
+      [BLACK, WHITE].map(function (sd) { return { p: pl(sd), b: S.best[sd] }; }).filter(function (x) { return x.b; })
+        .sort(function (a, c) { return c.b.n - a.b.n; }).slice(0, 1).forEach(function (x) { if (x.b.n >= 3) hl.push(x.p.name + ' flipped ' + x.b.n + ' discs in one move (move ' + x.b.move + ')'); });
+      [BLACK, WHITE].forEach(function (sd) { var k = S.passes[sd]; if (k) hl.push(pl(sd).name + ' had to pass ' + (k === 1 ? 'once' : k === 2 ? 'twice' : k + ' times')); });
+      hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online',
+        players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: count(p.side), cpu: false }; }),
+        winner: w ? w.name + ' (' + colorName(w.side) + ')' : null,
+        highlights: hl, detail: detail()
+      });
+    }
+    if (WINO) WINO.close();
+    WINO = Kit.win({
+      icon: !w ? 'users' : wi === me ? 'trophy' : 'users',
+      title: left ? left.text : !w ? 'It’s a tie!' : wi === me ? 'You win!' : w.name + ' wins',
+      sub: left ? '' : 'Black ' + nb + ' – ' + nw + ' White',
+      rank: left ? null : S.players.slice().sort(function (a, c) { return count(c.side) - count(a.side); }).map(function (p) { return { name: p.name, score: count(p.side), color: p.side === BLACK ? '#2a2a30' : '#f1efe9' }; }),
+      notes: left ? null : [S.players[0].name + ' has won ' + S.wins[0] + ' and ' + S.players[1].name + ' has won ' + S.wins[1] + (S.wins[2] ? ', with ' + S.wins[2] + (S.wins[2] === 1 ? ' tie' : ' ties') : '') + '.'], notesTitle: 'Games at this table',
+      lose: !!w && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.busy = false; render(); maybeCpu(); }
+    else showSetup();
+  }
+
   window.__othello = {
     E: E, state: function () { return S; },
     set: function (b, turn) { cancelThink(); S.busy = false; S.b = b.slice(); S.turn = turn; S.hist = []; S.last = null; S.over = false; S.n = 0; S.passNote = null; save(); render(); maybeCpu(); },
-    tap: tap
+    tap: tap,
+    // tests: set up a position at an online table (on your turn)
+    netSet: function (b, turn) { if (NET) NET.act(function (st) { st.b = b.slice(); st.turn = turn; st.last = null; return { state: st, mv: null }; }); }
   };
 
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.b && saved.players && !saved.over) { S = saved; S.busy = false; render(); maybeCpu(); }
   else showSetup();
+
+  TurnNet.setup({
+    game: 'othello', title: 'Othello', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [netSeatOf(st, st.turn)]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var nb = netCount(st, BLACK), nw = netCount(st, WHITE), w = nb === nw ? -1 : netSeatOf(st, nb > nw ? BLACK : WHITE);
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' wins ' + Math.max(nb, nw) + '–' + Math.min(nb, nw) : 'A tie, ' + nb + '–' + nw };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
