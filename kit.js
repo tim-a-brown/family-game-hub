@@ -2097,7 +2097,7 @@
     // stand together on one plate and the sides face each other across "vs", as at the players sheet's table
     var box = el('span', { class: pre + '-chips ' + pre + '-toks' + (teams ? ' teams' : '') });
     function seat(t, i) {
-      var c = playerColor(i), av = t.cpu ? botFace(t.tag, botColor(i))
+      var c = playerColor(i), av = t.cpu ? botFace(t.tag, c)
         : t.anon ? el('span', { class: 'avatar', style: { '--c': c }, text: String(i + 1) }) : avMarked(t.name, c);
       // (a robot's skill is in its face, with the words kept for screen readers)
       return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
@@ -2113,9 +2113,9 @@
   }
   // A robot's token says how well it plays by itself (Tim, 2026-11-14: "incorporate it into the robot icon but not just as
   // a color", "be creative but professional", "a glow at the bottom for green, yellow, and then the fire", then "I liked
-  // the nice and evil faces ... give hard a little bit of an actual flame coming up behind the icon"): the token is its
-  // seat's color, so two robots at one level still differ, with the robot's head on it and light rising from its lower
-  // edge. Easy smiles over a green glow, Normal looks on steadily over a gold one, and Hard glares with red eyes from in
+  // the nice and evil faces ... give hard a little bit of an actual flame coming up behind the icon"): the token's ring is
+  // its seat's color, the color that player has in the game, for a robot as for a person (Tim: "it's helpful if the player
+  // color matches the ring around the player"), and just inside the ring, past a thin dark gap, a glow in the skill's color. Easy smiles over a green glow, Normal looks on steadily over a gold one, and Hard glares with red eyes from in
   // front of a flame. The skill's own words (Easy, Normal, Hard, or a game's names for them) decide which.
   function botLevel(tag) {
     var t = String(tag || '').toLowerCase();
@@ -2128,11 +2128,6 @@
     '<linearGradient id="kBotF2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ffb02e"/><stop offset="1" stop-color="#ffe98a"/></linearGradient></defs>' +
     '<g class="fg"><path fill="url(#kBotF1)" d="M20 1.5c1.6 5.6 7 8.4 8.6 14.4 1-2.4.6-4.6-.4-6.8 4.8 3.6 7 9.6 6 15.4C33 32 27 37 20 37S7 32 6 24.6c-.6-5 1.8-9.4 5-12.2-.2 3 .6 5.2 2.6 6.6-.8-7 2.4-12.6 6.4-17.5z"/>' +
     '<path fill="url(#kBotF2)" d="M20.4 12.5c1 4.4 5.6 7 5.6 12.2 0 4.2-2.8 7.3-6 7.3s-6-2.8-6-6.4c0-3.2 1.8-5.4 3.6-6.8 0 2 .8 3.2 2 3.6-.6-3.8.2-7 .8-9.9z"/></g></svg>';
-  // A robot's token never takes a color its rim or flame could melt into (Tim, 2026-11-14): a seat whose color is
-  // yellow, pink, green, orange, teal or red gives its robot a cool color of its own instead, so the green, gold and fiery rims
-  // always stand out. People keep their seat's color.
-  var BOT_COL = [ '#9fe3ff', null, '#ef8fe0', '#b545d8', null, '#3b4cc0', '#5d6680', '#c8cfdc' ];
-  function botColor(i) { return BOT_COL[i % 8] || playerColor(i); }
   function botFace(tag, color) {
     var lv = botLevel(tag), ink = '#1b1c2e', eyes = lv === 'e'
       ? '<path d="M7.6 12.4q1.4-1.5 2.8 0M13.6 12.4q1.4-1.5 2.8 0" fill="none" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><path d="M10.2 15.1q1.8 1.2 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
@@ -2238,7 +2233,7 @@
     // one seat at the table: who (or what) sits there, and whether it's the one being filled
     function token(i) {
       var cpu = cpuNow(), bot = seatIsBot(M, i), c = playerColor(i), nm = bot ? (M.bots[i - 1] || 'Computer') : person(i);
-      var av = bot ? botFace(M.lv ? levelText(i) : '', botColor(i)) : nm ? avMarked(nm, c) : el('span', { class: 'avatar', style: { '--c': c }, html: String(i + 1) });
+      var av = bot ? botFace(M.lv ? levelText(i) : '', c) : nm ? avMarked(nm, c) : el('span', { class: 'avatar', style: { '--c': c }, html: String(i + 1) });
       var shown = nm || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1));
       return el('button', { type: 'button', class: 'k-st' + (i === sel ? ' on' : '') + (bot ? ' cpu' : '') + (!bot && !nm ? ' open' : '') + (pop[i] ? ' pop' : ''), 'aria-pressed': String(i === sel),
         'aria-label': 'Seat ' + (i + 1) + ': ' + (bot ? 'computer, ' : '') + shown, onclick: function () { if (sel === i) return; sel = i; sfx('tap'); haptic('light'); paint(); } },
@@ -2247,7 +2242,7 @@
     // the computer in the chosen seat: a switch, and once it's on, its name and how well it plays
     function robotBlock(i, next) {
       var cpu = next ? M.cpu[M.count + 1] : cpuNow(), bot = !next && seatIsBot(M, i), fixed = cpu !== 'mix', kids = [];
-      var row = [bot ? botFace(M.lv ? levelText(i) : '', botColor(i)) : el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, html: icon('bot') }),
+      var row = [bot ? botFace(M.lv ? levelText(i) : '', playerColor(i)) : el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, html: icon('bot') }),
         el('span', { class: 'k-pb-n' }, [el('b', { text: 'Computer' }), bot ? el('small', { text: M.bots[i - 1] || '' }) : null])];
       if (fixed) kids.push(el('div', { class: 'k-pb-row' }, row));
       else kids.push(el('button', { type: 'button', class: 'k-pb-row', role: 'switch', 'aria-checked': String(bot), 'aria-label': 'Computer plays seat ' + (i + 1), onclick: function () {
