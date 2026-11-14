@@ -665,12 +665,21 @@ Underlying principles for everything:
   the bands of cards start below the one and end above the other (`layoutLine`). The dock along the bottom holds the
   round track, your hand in one row of whole cards (kept at the size of eight, so the table never jumps; more overlap
   like a held hand), the caption and the button for the turn (`.an-go`: End turn, Next, Roll the dice, Hand over).
-  Upright on an iPad (`up`) the cards overlap down the table in cascades, every name showing; sideways on a phone
+  **A card overlapped by the next one keeps its name where it shows** (the iPad re-audit of 2026-11-14: the next card
+  lay over the end of every name, "Archimede", "Lei Erik"): in a pile at a Domain and in a hand of more than eight,
+  the card farther right lies over the one at its left, so what shows is its spine with its cost and Might, and
+  `coverNames` (ui.js) moves the name to the left of the card for a little overlap, or prints it down the edge of the
+  part that shows, as on a book's spine (`.cv-v`), for more; a row reads alike (one spine, all spines). A new place
+  where cards overlap side by side goes through it.
+  Upright on an iPad (`up`) the cards overlap down the table in cascades, every name showing (each card its own layer:
+  the marks of the card underneath never come up through the one over it); sideways on a phone
   (`short`) each side's cards at a Domain are one stack (`stackEl`: its top card, how many, a tap reads them in the
   scan) and the two bars stand on end at the table's two ends, yours at the left; the game bar slims to its buttons
   there (`html.an-low`: the kit keeps iOS's top edge clear, so it folds no further). A phone held upright (`rw`) keeps
   the line on its end, their Gate at the top on their mat and yours at the bottom on yours, their cards to the left of
-  each Domain and yours to the right, the two bars as thin strips at the top and above the dock. Names on the iPad's
+  each Domain and yours to the right, the two bars as thin strips at the top and above the dock; a Figure there is
+  about 50 px wide, so it shows its Might at the top of its spine at a small hand card's size, and not its cost, which
+  is paid. Names on the iPad's
   board cards are 11px or more. Everything is worked out from the window each time the table is drawn, and a turn of
   the device redraws it. This is how the table meets the Landscape rule: the taps go to the line itself and to the
   hand and button in the dock under it, so the line runs the full width. (The 3 to 6 player table, `drawN`, keeps its
@@ -748,12 +757,16 @@ Underlying principles for everything:
   1 Renown when the round ends.", with the reason first when a tie is settled (a Gate's owner, the Crossroads' banner
   with a Figure there), a Gate held by the other side ("..., which is your Gate, so Jamie scores 1 Renown and one of
   your Seals breaks"), Tordesillas's tie, or nobody. Under each of your Figures: Clash ("3 vs 5" with one enemy there;
-  with several, Clash marks each enemy with its own chip), a walk chip toward the Domain on either side along the road,
-  and More moves for the rest (the strip with the road). A Domain's power is a button under the sentence. A swipe
+  with several, Clash marks each enemy with its own chip), a walk chip toward the Domain on either side along the road
+  (brass, with footprints: a move, never mistaken for the dark arrows under the sentence that only page along the road;
+  a card's chips stay inside its own column), and More moves for the rest (the strip with the road). A Domain's power is a button under the sentence. A swipe
   sideways, the arrow keys or the arrows under the sentence walk along the road; up and down still changes level. A
   tap on a card reads that Domain's cards on the strip, with See both sides to come back. A tap or hold on a board
   card, or a stack on a phone held sideways, opens the face-off at its Domain with that card raised in front: on a
   phone this is how the board's small cards are read.
+  **On an iPad held sideways the strip is laid out as on a phone on its side** (`scanWide`, the view's `.sd`): the card
+  large at the left, the road and the notes in a column of their own at the right, so the notes have the screen's
+  height (under the road they were cut off). Upright on an iPad the notes keep a fifth of the screen.
   **Drag to play** (the same day): a card from your hand dragged onto the board lights the Domains it can go to and
   dims the rest, and the Domain under your finger shows your total there after the move and what it does ("You take
   it", "You keep it", "Jamie keeps it"); letting go plays it, letting go anywhere else sends it back. A Figure is
@@ -766,11 +779,15 @@ Underlying principles for everything:
   sideways (`sideFits`: wider than tall, 960 wide and 600 tall at least) a card read on its own (`openView`) and the
   turn log open in a panel at the right (`sidePanel`, `sideRead`), and the table steps aside into the room left, still
   in play. A card name tapped in the log opens in the same panel with the way back to the log. Turning the iPad upright
-  closes it; a phone and an upright iPad keep the sheets.
+  closes it; a phone and an upright iPad keep the sheets. While the panel is open the dock lays out as an upright
+  iPad's (the caption and the button over a hand the table's full width), so the hand keeps its names.
 - **The results card shows the game** (the audit of 2026-11-13, #7.3; Tim approved the plan the same day): the winner's
   Guide stands where the trophy was, and the race for Renown is drawn as a line for each player, round by round from
   0, with the Renown that wins ruled across the top (`racePic` in ui.js, from `G.tale.tot`), in `Kit.win`'s `pic`
-  slot (a picture of the game under the title, any game can give one).
+  slot (a picture of the game under the title, any game can give one). From 700 wide (an iPad either way, a phone on
+  its side) the card is in columns (`winCols`, `.an-win`): the game at the left, what it earned and the buttons at the
+  right (on a phone on its side, the earnings and the buttons each a column), so every button is in view; on an iPad
+  held sideways they were all under the card's edge.
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
   played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by
@@ -782,7 +799,8 @@ Underlying principles for everything:
   (`ackWait` in `robotTurn`, ui.js): the caption says what it did in a sentence ("Sprocket played Hatshepsut at Seneca
   Falls.", `moveSaid`), a tap on the caption reads the card, and the player's own button, where End turn is, reads
   Next (Enter and the space bar do the same). It is on unless the player turns off "Computer moves one at a time" in
-  the game's menu (`anoria_step` '0'); then the computer plays through and the fast-forward button is there as before.
+  the game's menu (`anoria_step` '0'; the menu leaves it out of a game of people only); then the computer plays through
+  and the fast-forward button is there as before.
   Lessons and the test hook's `turbo` never wait. A new kind of move gets its sentence in `moveSaid`.
 - **Buttons**: every `.btn` on Anoria's page takes one skin from the end of `ui.css` (the main action a brushed brass
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
@@ -843,7 +861,8 @@ Underlying principles for everything:
   more, all at one size, `nameFs`, and only a tile whose name can't fit is its picture alone; a short phone folds to
   tokens) and their stacks (a third or fourth player's at one Domain fans over the first two, so a stack never crosses
   into the next column). The hand is the two-player table's size (Tim: names and numbers that read): two rows of five
-  on a phone, one row on an iPad, with room kept so the table doesn't jump; your spoke's tiles are as wide as the
+  on a phone, one row on an iPad, with room kept so the table doesn't jump (on an iPad a hand of more than eight keeps
+  the size of eight and overlaps, the names down the edges, `coverNames`); your spoke's tiles are as wide as the
   two-player rows' where the room allows. The rim starts with the
   player on your left (`seatsFrom`, `nextLive`), so the Congress of Vienna's "on your left" is the column at the left.
   Roads are drawn from where the tiles lie (`roadsN`). A Figure's piece is `figN(u)`: its card in your rows or the
