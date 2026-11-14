@@ -194,8 +194,11 @@ Underlying principles for everything:
   and `drive`, so the home screen's Keep playing shows "Your turn" for any game without game-specific code. A new
   turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
 - **The house casino games** (Roulette, Craps, Baccarat, Three Card Poker, Pai Gow, Horse Race) go online through
-  `CasinoNet` at the end of casino.js (Blackjack's pattern): table money that everyone starts with the same amount of
-  (`casino_bank` is never touched), everyone bets at once (TurnNet's turn holds every seat still to bet), and the last
+  `CasinoNet` at the end of casino.js (Blackjack's pattern). **The host chooses the money** (Tim, 2026-11-14: "host gets
+  to pick buy in with bankrolls or play money"; the review's Money, `CasinoNet.moneyOption`, Blackjack's `netmoney`):
+  Bankrolls, where each device takes its own seat's result to its own `casino_bank` once (`CasinoNet.settle`, through
+  `Casino.applyRemote` with a gid, so the ledger shows it as a session at the host's table) when the table cashes out or
+  it leaves, or Table money, where no bankroll changes. Either way everyone starts with the same amount, and everyone bets at once (TurnNet's turn holds every seat still to bet), and the last
   bet in settles the round for every seat inside its transaction; each device plays the result out with the game's
   own animation. Each seat keeps the game's own state in the table, and settling runs the game's own code with saves
   and drawing switched off. Craps passes the dice on a seven-out; Horse Race uses its pass-and-play state. People only:

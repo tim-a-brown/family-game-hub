@@ -223,7 +223,7 @@
       '<h3>Best bets</h3><p>House edge: Banker 1.06%, Player 1.24%, Tie 14.4%, pairs 10.4%. Banker is the best bet on the table.</p>' +
       '<h3>Playing</h3><p>Drag a chip from the rack onto Player, Banker, Tie or a Pair circle. The spot lights up under the chip; let go to put it down (let go anywhere else and it goes back to the rack). Then Deal. Shortcut: tap a chip to pick it, then tap betting areas. Undo takes back your last chip. <b>Cash out</b>, beside your money, ends the session between hands and saves it to Past sessions. Your bankroll is shared by every casino game.</p>' +
       '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
-      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone bets on the same hand from the same shoe, at the same time, and the cards come out when the last bet is in. Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between hands ends the session for the whole table.</p>'
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone bets on the same hand from the same shoe, at the same time, and the cards come out when the last bet is in. The host chooses the money. With <b>Bankrolls</b>, everyone buys in from their own casino bankroll, and what they win or lose at the table goes back to it when the table cashes out or they leave. With <b>Table money</b>, everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between hands ends the session for the whole table.</p>'
   });
   function openHistory() { Kit.history(HKEY, { title: 'Baccarat: past sessions' }); }
 
@@ -249,13 +249,13 @@
     else if (fresh && (m === 'link' || m === 'player')) Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
     return m;
   }
-  function bankLabel(name) { if (NET) return 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankLabel(name) { if (NET) return NET.state.money === 'bank' ? 'Chips' : 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
   // a linked player's money carries the link badge, a frequent player's a person badge; short: a narrow HUD box ("Jamie's")
   function bankLabelHtml(name, short) {
     var m = Casino.mode(), own = m === 'link' || m === 'player';
     return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
   }
-  function bankWords(name) { if (NET) return 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankWords(name) { if (NET) return NET.state.money === 'bank' ? 'your chips' : 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
   function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
@@ -292,7 +292,7 @@
       modes: Kit.modes(['solo', { id: 'online', desc: 'Everyone bets on the same hand, each on their own device' }]),
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
       options: [{ id: 'reveal', label: 'Card reveal', help: 'How the cards are turned over after the deal.', choices: [['squeeze', 'Slow squeeze', 'Cards are lifted and peeked at one corner at a time, like a high-roller table.'], ['quick', 'Quick', 'Cards flip over right away so hands go faster.']], value: 'squeeze' },
-        Coach.option({ label: 'Bet guide', help: 'Shows the smartest bet on the table. Tap it for every bet\u2019s real odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A \u201cbest bet\u201d tag on the table; tap it to compare every bet and see what yours cost.' }), CasinoNet.stakeOption()],
+        Coach.option({ label: 'Bet guide', help: 'Shows the smartest bet on the table. Tap it for every bet\u2019s real odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A \u201cbest bet\u201d tag on the table; tap it to compare every bet and see what yours cost.' }), CasinoNet.moneyOption(), CasinoNet.stakeOption()],
       intro: 'Punto Banco, 8-deck shoe. Bankroll ' + money(myBankroll()) + ', shared by every casino game',
       start: 'Take a seat',
       onStart: function (cfg) { start(cfg.players[0].name, cfg.options.reveal, cfg.options.coach); }

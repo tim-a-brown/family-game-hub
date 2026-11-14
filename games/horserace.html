@@ -1385,7 +1385,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
           choices: [['on', 'On', 'The race is called out loud.'], ['off', 'Off', 'Calls show on screen only.']] },
         { id: 'races', label: 'Races', value: 5, when: function (m) { return m === 'pass' || m === 'online'; }, help: 'How many races the session lasts. The richest player after the last race wins.',
           choices: [[3, '3'], [5, '5'], [8, '8']] },
-        { id: 'stake', label: 'Table money', value: 100, when: function (m) { return m === 'pass' || m === 'online'; }, help: 'What each player starts with. Everyone gets the same, and nobody’s casino bankroll changes.',
+        CasinoNet.moneyOption(),
+        { id: 'stake', label: 'Everyone starts with', value: 100, when: function (m) { return m === 'pass' || m === 'online'; }, help: 'What each player starts with. Everyone gets the same. In pass and play nobody’s casino bankroll changes.',
           choices: [[100, '$100'], [250, '$250'], [500, '$500']] }
       ],
       start: 'To the track',
@@ -2206,10 +2207,10 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function netOpts() {
     var o = setupSaved().options || {};
     return { field: ['6', '8', 'mix'].indexOf(String(o.field)) >= 0 ? String(o.field) : 'mix', pace: o.pace === 'quick' ? 'quick' : 'full', voice: o.voice === 'off' ? 'off' : 'on',
-      races: [3, 5, 8].indexOf(+o.races) >= 0 ? +o.races : 5, stake: [100, 250, 500].indexOf(+o.stake) >= 0 ? +o.stake : 100 };
+      races: [3, 5, 8].indexOf(+o.races) >= 0 ? +o.races : 5, stake: [100, 250, 500].indexOf(+o.stake) >= 0 ? +o.stake : 100, money: o.money === 'bank' ? 'bank' : 'table' };
   }
   function netStart(players, o) {
-    var st = { v: 1, online: 1, mode: 'online', started: Date.now(), opt: { field: o.field, pace: o.pace, races: o.races, stake: o.stake, voice: o.voice },
+    var st = { v: 1, online: 1, mode: 'online', started: Date.now(), money: o.money === 'bank' ? 'bank' : 'table', opt: { field: o.field, pace: o.pace, races: o.races, stake: o.stake, voice: o.voice },
       players: players.map(function (p, i) { return { name: p.name, color: Kit.color(i), stack: o.stake, net: 0, wagered: 0, ret: 0, best: null, hits: 0, broke: 0 }; }),
       raceNo: 0, log: [], notes: [], startBank: 0, hi: 0, cfgPlayers: players.map(function (p) { return { name: p.name }; }) };
     pure(st, function () { nextRace(); });
@@ -2312,6 +2313,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     hold = false;
     S = JSON.parse(JSON.stringify(st)); S.turn = Math.max(0, me); S.pick = { type: 'W', sel: [] }; S.undo = []; S.phase = 'result';
     if (S.log.length && CasinoNet.once('horserace:' + NET.code + ':' + st.started)) recordSession();
+    var bk = st.money === 'bank' && me >= 0 && st.phase === 'over' && !!netOf(st, me);
+    if (bk) CasinoNet.settle(st, me, NET.code, netOf(st, me), 'horserace');
     if (RV) RV.stop(); app.innerHTML = ''; rail(null);
     var ranked = st.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: money(p.stack), color: p.color, v: p.stack, i: i }; }).sort(function (a, b) { return b.v - a.v; });
     var tie = ranked.length > 1 && ranked[0].v === ranked[1].v;
@@ -2320,11 +2323,15 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       title: left ? res.text : tie ? 'A dead heat!' : ranked[0].i === me ? 'You win!' : ranked[0].name + ' wins!',
       sub: 'Richest after ' + st.log.length + ' race' + (st.log.length === 1 ? '' : 's') + ', starting with ' + money(st.opt.stake) + ' each.',
       rank: ranked, lose: me >= 0 && ranked[0].i !== me && !tie, icon: ranked[0].i === me ? 'trophy' : 'meh',
+      notes: bk ? ['You have ' + money(+localStorage.getItem('casino_bank') || 0) + ' in your bankroll now.'] : undefined, notesTitle: bk ? 'Bankroll' : undefined,
       againLabel: left ? 'Back to the lobby' : 'Race again', again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
       extra: [{ label: 'Past races', onClick: function () { Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } }]
     });
   }
+  // a seat's result for the session: its money and its tickets on the race still to run, less what it started with
+  function netOf(st, i) { var t = (st.tickets || []).reduce(function (a, k) { return a + (k.p === i ? +k.amt || 0 : 0); }, 0); return st.players[i].stack + t - st.opt.stake; }
   function netLeave() {
+    if (NET && NET.state && NET.seat >= 0) CasinoNet.settle(NET.state, NET.seat, NET.code, netOf(NET.state, NET.seat), 'horserace');   // (Bankrolls: whoever leaves takes their result as it stands)
     NET = null; hold = false; NETR = 0;
     if (winRef) { winRef.close(); winRef = null; }
     if (RV) RV.stop();
@@ -2347,7 +2354,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       if (st.phase === 'bet' && !st.ready[seat]) { st.ready[seat] = true; if (st.ready.every(function (r, i) { return r || st.players[i].out; })) runNet(st); }
       return { state: st };
     },
-    leaveNote: function () { return 'Your money stays at the table, and the others race on.'; },
+    leaveNote: function (st) { return st && st.money === 'bank' ? 'The others race on without you. What you have won or lost so far goes to your bankroll.' : 'Your money stays at the table, and the others race on.'; },
     show: netShow, leave: netLeave
   });
 

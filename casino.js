@@ -597,9 +597,11 @@ const Casino = (function(){
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CasinoNet: the house games (Roulette, Craps, Baccarat, Three Card Poker, Pai Gow, Horse Race) at one online table
-// through turnnet.js. Everyone sits at the same table and plays against the house with table money: each seat starts
-// with the same amount (the review's "Everyone starts with"), buys back in for it when it runs out, and nobody's
-// bankroll changes. Everyone bets at the same time (TurnNet's turn holds every seat still to bet); the last bet in
+// through turnnet.js. Everyone sits at the same table and plays against the house. The host chooses the money
+// (Tim, 2026-11-14: "host gets to pick buy in with bankrolls or play money"): Table money, where nobody's bankroll
+// changes, or Bankrolls, where what each person wins or loses at the table goes to their own casino bankroll (each
+// device files its own seat's result once, through Casino.applyRemote, when the table cashes out or it leaves). Either
+// way each seat starts with the same amount (the review's "Everyone starts with") and buys back in for it when it runs out. Everyone bets at the same time (TurnNet's turn holds every seat still to bet); the last bet in
 // settles the round (the spin, the roll, the deal, the race) for every seat at once, and each device plays the result
 // out with the game's own animation. Cash out ends the table for everyone, between rounds.
 //
@@ -624,12 +626,12 @@ const Casino = (function(){
 //                 ready [seat is in this round], g (shared), prev (the round just settled, for the devices to play out)}
 //   Moves: {t: 'bet', ...} (the game's take() reads the rest), {t: 'end'} (Cash out: the whole table), the game's own.
 //   Also: CasinoNet.next(st), .nets(st), .left(st) (names still to act), .listAnd(names), .strip(net, o), .end(net, o),
-//   .once(key), .stakeOption()
+//   .once(key), .moneyOption(), .stakeOption(), .settle(st, seat, code, net, game) (a seat's result to its bankroll)
 // ═══════════════════════════════════════════════════════════════════════════
 var CasinoNet = (function () {
   'use strict';
   var STAKES = [500, 1000, 2500, 5000];
-  var CFG = null;
+  var CFG = null, LAST = null;
 
   function wallet() {
     var cur = null, w = {};
@@ -674,12 +676,20 @@ var CasinoNet = (function () {
     CFG.resolve(st);
     if (st.phase === 'bet') next(st);
   }
+  // Bankrolls: a seat's result for the table goes to this device's own casino bankroll, once (the ledger's gid keeps it to
+  // one entry however often it is called), as a session at the host's table. Table money: nothing.
+  function bankSettle(st, seat, code, net, game) {
+    if (!st || st.money !== 'bank' || seat == null || seat < 0 || !Math.round(net || 0) || typeof Casino === 'undefined' || !Casino.applyRemote) return false;
+    var who = st.seats || st.players, host = who && who[0] && who[0].name;
+    return Casino.applyRemote(Math.round(net), { game: game || (CFG && CFG.game) || '', name: ((CFG && CFG.title) || 'Casino') + ' online',
+      table: host ? Kit.poss(host) + ' table' : 'Online table', gid: 'tbl:' + (game || (CFG && CFG.game)) + ':' + code + ':' + st.started + ':' + seat });
+  }
   function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_' + CFG.game)) || {}; } catch (e) { return {}; } }
   function table(cfg) {
     CFG = cfg;
     function start(players, o) {
       var stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
-      var st = { v: 1, online: 1, started: Date.now(), o: o, stake: stake, round: 1, phase: 'bet', g: cfg.shared ? cfg.shared(o) : {},
+      var st = { v: 1, online: 1, started: Date.now(), o: o, stake: stake, money: o.money === 'bank' ? 'bank' : 'table', round: 1, phase: 'bet', g: cfg.shared ? cfg.shared(o) : {},
         seats: players.map(function (p, i) { return { name: p.name, bank: stake, rebuys: 0, S: cfg.seat(p, o, i) }; }), ready: players.map(function () { return false; }) };
       if (cfg.next) cfg.next(st);
       return st;
@@ -711,7 +721,8 @@ var CasinoNet = (function () {
       opts: function () {
         var s = setupSaved(), o = Object.assign({}, s.options || {});
         o.stake = STAKES.indexOf(+o.stake) >= 0 ? +o.stake : 1000;
-        return cfg.opts ? cfg.opts(o, s) : o;
+        var money = o.money === 'bank' ? 'bank' : 'table', r = cfg.opts ? cfg.opts(o, s) : o;
+        r.money = money; return r;
       },
       start: start,
       turn: turnOf,
@@ -728,8 +739,10 @@ var CasinoNet = (function () {
         if (st.phase === 'bet') { st.ready[i] = true; if (allIn(st)) settle(st); }
         return { state: st };
       },
-      leaveNote: function () { return 'The others play on without you, and your money stays at the table.'; },
-      show: cfg.show, leave: cfg.leave
+      leaveNote: function (st) { return st && st.money === 'bank' ? 'The others play on without you. What you have won or lost so far goes to your bankroll.' : 'The others play on without you, and your money stays at the table.'; },
+      // (Bankrolls: whoever leaves takes their result to their bankroll as it stands when they go)
+      show: function (net, info) { LAST = net; return cfg.show(net, info); },
+      leave: function () { var n = LAST; LAST = null; if (n && n.state && n.seat >= 0) bankSettle(n.state, n.seat, n.code, nets(n.state)[n.seat], cfg.game); return cfg.leave && cfg.leave.apply(this, arguments); }
     });
     return { move: moveOn };
   }
@@ -775,12 +788,15 @@ var CasinoNet = (function () {
     var st = net.state, res = net.result, left = !!(res && res.left != null), me = net.seat, n = nets(st), played = st.round - 1;
     var rank = st.seats.map(function (s, i) { return { name: i === me ? 'You' : s.name, score: (n[i] > 0 ? '+' : n[i] < 0 ? '−' : '') + '$' + Math.abs(n[i]).toLocaleString(), n: n[i], color: Kit.color(i), i: i }; }).sort(function (a, b) { return b.n - a.n; });
     var top = rank[0], tie = rank[1] && rank[1].n === top.n;
+    var bk = st.money === 'bank' && me >= 0 && n[me] && st.phase === 'over';
+    if (bk) bankSettle(st, me, net.code, n[me]);
     if (winRef) winRef.close();
     var by = st.endBy != null && st.seats[st.endBy] ? (st.endBy === me ? 'You' : st.seats[st.endBy].name) + ' cashed out the table after ' : 'The table cashed out after ';
     winRef = Kit.win({
       title: left ? res.text : top.n > 0 && !tie ? (top.i === me ? 'You win the table!' : top.name + ' wins the table!') : 'Nobody came out ahead',
       sub: by + played + ' ' + (o.unit || 'round') + (played === 1 ? '.' : 's.'),
       rank: rank, lose: me >= 0 && n[me] < 0, icon: me >= 0 && n[me] >= 0 ? 'trophy' : 'meh',
+      notes: bk ? ['You have ' + money(+localStorage.getItem('casino_bank') || 0) + ' in your bankroll now.'] : undefined, notesTitle: bk ? 'Bankroll' : undefined,
       againLabel: left ? 'Back to the lobby' : 'New session',
       again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else net.again(); },
       look: o.look !== false
@@ -797,11 +813,16 @@ var CasinoNet = (function () {
     return true;
   }
   // the setup's "Everyone starts with": it only matters online, so the Play online review asks it
+  function moneyOption(id) {
+    return { id: id || 'money', label: 'Money', value: 'table', when: function (m) { return m === 'online'; }, help: 'Where everyone’s money at the online table comes from.',
+      choices: [['bank', 'Bankrolls', 'Everyone buys in from their own casino bankroll, and what they win or lose at the table stays with it.'],
+        ['table', 'Table money', 'Everyone starts with the same amount, and nobody’s bankroll changes.']] };
+  }
   function stakeOption() {
     return { id: 'stake', label: 'Everyone starts with', value: 1000, when: function (m) { return m === 'online'; },
-      help: 'Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes.',
+      help: 'What each player sits down with. Anyone who runs out buys back in for the same amount.',
       choices: STAKES.map(function (v) { return [v, money(v)]; }) };
   }
   return { wallet: wallet, quiet: quiet, table: table, next: next, nets: nets, left: left, turn: turnOf, allIn: allIn,
-    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, STAKES: STAKES };
+    listAnd: listAnd, strip: strip, end: end, closeEnd: closeEnd, once: once, stakeOption: stakeOption, moneyOption: moneyOption, settle: bankSettle, STAKES: STAKES };
 })();

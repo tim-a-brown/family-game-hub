@@ -269,7 +269,7 @@
       '<p>With only 3 cards, a straight is harder to get than a flush, so <b>a straight beats a flush</b>.</p>' +
       '<h3>Ending a session</h3><p>Tap <b>Cash out</b> when you leave the table. Your session (wins, losses, best hands) is saved in Past games.</p>' +
       '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
-      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone plays their own three cards against the same dealer. You all bet at the same time, and the cards are dealt when the last bet is in. Then everyone decides to play or fold, each seeing only their own cards, and the dealer turns over when the last player has decided. Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between hands ends the session for the whole table.</p>'
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone plays their own three cards against the same dealer. You all bet at the same time, and the cards are dealt when the last bet is in. Then everyone decides to play or fold, each seeing only their own cards, and the dealer turns over when the last player has decided. The host chooses the money. With <b>Bankrolls</b>, everyone buys in from their own casino bankroll, and what they win or lose at the table goes back to it when the table cashes out or they leave. With <b>Table money</b>, everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between hands ends the session for the whole table.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -291,13 +291,13 @@
     else if (fresh && (m === 'link' || m === 'player')) Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
     return m;
   }
-  function bankLabel(name) { if (NET) return 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankLabel(name) { if (NET) return NET.state.money === 'bank' ? 'Chips' : 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
   // a linked player's money carries the link badge, a frequent player's a person badge; short: a narrow HUD box ("Jamie's")
   function bankLabelHtml(name, short) {
     var m = Casino.mode(), own = m === 'link' || m === 'player';
     return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
   }
-  function bankWords(name) { if (NET) return 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankWords(name) { if (NET) return NET.state.money === 'bank' ? 'your chips' : 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
   function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
@@ -319,7 +319,7 @@
       modes: Kit.modes(['solo', { id: 'online', desc: 'Everyone plays against the same dealer, each on their own device' }]),
       players: { min: 1, max: 1, count: 1, label: "Who's at the table?" },
       options: [{ id: 'flush', label: 'Pair Plus: a flush pays', help: 'Pair Plus is a side bet that pays if your three cards have a pair or better.', value: 4, choices: [[4, '4 to 1\nClassic', 'The classic pay table.'], [3, '3 to 1', 'Pays a little less, as some casino tables do.']] },
-        Coach.option({ on: 'A “best move” tag when you decide to play or fold; tap it for the exact odds.' }), CasinoNet.stakeOption()],
+        Coach.option({ on: 'A “best move” tag when you decide to play or fold; tap it for the exact odds.' }), CasinoNet.moneyOption(), CasinoNet.stakeOption()],
       start: 'Take a seat',
       onStart: function (cfg) {
         var nm = cfg.players[0].name; if (/^Player \d+$/.test(nm)) nm = 'You';
