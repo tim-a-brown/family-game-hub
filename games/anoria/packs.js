@@ -264,7 +264,7 @@
         el('div', { class: 'gj-b' }, [
           el('div', { class: 'gj-k' }, [el('i', { class: 'gj-kd' }), el('span', { text: kick }), el('i', { class: 'gj-kd' })]),
           el('h2', { class: 'gj-n', text: G.n }),
-          callSay ? el('p', { class: 'gj-call', text: callSay }) : null,
+          callSay ? el('div', { class: 'gj-callb' }, [el('span', { class: 'gj-cap', text: Kit.poss(G.n) + ' calling' }), el('p', { class: 'gj-call', text: callSay })]) : null,
           el('div', { class: 'gj-pow' }, [el('span', { class: 'gj-cap', text: Kit.poss(G.n) + ' power' }), el('p', { text: A.DW(G.tx) })]),
           tray, tally,
           el('div', { class: 'gj-dock' }, [go])])])]);
