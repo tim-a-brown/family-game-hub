@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* --dread runs 0..1 with the misses; registered so every effect built on it eases */
 @property --dread{syntax:'<number>';inherits:true;initial-value:0;}
@@ -261,9 +263,9 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 
   Kit.init({
     id: 'hangman',
-    onNew: function () { showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Hangman: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Guesses can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Hangman: past games' }); } }]),
     rules:
       '<p class="goal">Work out the secret word one letter at a time, before the picture is finished.</p>' +
       '<h3>How to play</h3><ul><li>Each blank is one letter. Tap a letter on the keyboard to guess it.</li>' +
@@ -275,12 +277,14 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       '<h3>Pictures</h3><p><b>Classic</b> draws the gallows and stick figure in chalk. <b>Balloons</b> is gentler: each miss pops a balloon, and if they all pop the basket drops.</p>' +
       '<h3>Scoring</h3><ul><li>Solve a word: <b>1 point plus 1 for each miss you had left</b>.</li>' +
       '<li><b>Clue</b> shows a hint, but costs 1 point if you solve it.</li>' +
-      '<li>Two players: take turns writing a secret word for each other. If your word stumps the other player, <b>you</b> get 5 points.</li></ul>'
+      '<li>Two players: take turns writing a secret word for each other. If your word stumps the other player, <b>you</b> get 5 points.</li></ul>' +
+      '<h3>Online</h3><p><b>Play online</b> is the two-player game with each of you on your own phone or tablet. You write your secret word on your own device, and it never shows on the other player’s screen until the word is over.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, undoStack = [], fresh = null;
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set(S.mode === 'duel' ? 'Two players · round ' + (Math.floor(S.wi / 2) + 1) : catName(S.cat) + ' · word ' + (S.wi + 1) + ' of ' + S.perGame);
   }
@@ -467,14 +471,14 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     var chosen = null; try { chosen = localStorage.getItem(CAT_KEY); } catch (e) {}
     if (chosen !== 'Surprise' && !WORDS[chosen]) chosen = 'Animals';
     var st = Kit.setup(app, {
-      modes: Kit.modes([{ id: 'solo', desc: 'Guess words from a category' }, { id: 'duel', kind: 'local', desc: 'Take turns writing a secret word for each other' }]),
+      modes: Kit.modes([{ id: 'solo', desc: 'Guess words from a category' }, { id: 'duel', kind: 'local', desc: 'Take turns writing a secret word for each other' }, { id: 'online', desc: 'Two players, each on their own device' }]),
       options: [
         { id: 'diff', label: 'Difficulty', value: 'easy', choices: [['easy', 'Easy', 'Shorter words and 10 misses allowed.'], ['medium', 'Medium', 'Medium-length words and 8 misses allowed.'], ['hard', 'Hard', 'Long words and only 6 misses allowed.']] },
         { id: 'theme', label: 'Picture', value: 'classic', choices: [['classic', 'Classic', 'A chalk stick figure is drawn one piece for each miss.'], ['balloons', 'Balloons', 'Gentler: each miss pops a balloon, and if they all pop the basket drops.']] },
         { id: 'count', label: 'Words', value: 5, choices: [[3, '3 words'], [5, '5 words'], [10, '10 words']], when: function (m) { return m === 'solo'; } },
-        { id: 'rounds', label: 'Rounds', value: 2, choices: [[1, '1 each'], [2, '2 each'], [3, '3 each']], when: function (m) { return m === 'duel'; } }
+        { id: 'rounds', label: 'Rounds', value: 2, choices: [[1, '1 each'], [2, '2 each'], [3, '3 each']], when: function (m) { return m !== 'solo'; } }
       ],
-      players: { min: 1, max: 2, range: function (m) { return m === 'duel' ? [2, 2] : [1, 1]; } },
+      players: { min: 1, max: 2, range: function (m) { return m === 'solo' ? [1, 1] : [2, 2]; } },
       onStart: function (cfg) { start(cfg, chosen); }
     });
     var box = el('div', { class: 'cats' });
@@ -535,6 +539,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   function guess(L) {
     var W = S.W;
     if (!W || W.over || S.phase !== 'play' || W.guessed.indexOf(L) >= 0 || busy) return;
+    if (NET) { netMove({ t: 'g', L: L }); return; }
     snapshot();
     W.guessed.push(L);
     if (W.word.indexOf(L) >= 0) {
@@ -562,6 +567,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       var v = inp.value.toUpperCase().replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
       if (!v) return;
       s.close();
+      if (NET) { netMove({ t: 's', v: v }); return; }
       snapshot();
       if (v.replace(/ /g, '') === W.word.replace(/[^A-Z]/g, '')) {
         W.wholeWord = true;
@@ -577,6 +583,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   function showClue() {
     var W = S.W; if (!W || W.over || W.clueShown) return;
     if (!W.clue) return Kit.toast('No clue for this one');
+    if (NET) { netMove({ t: 'c' }); return; }
     snapshot(); W.clueShown = true; Kit.sfx('flip'); save(); render();
   }
   function wordPoints(W) { return Math.max(1, 1 + (maxMiss() - W.misses) - (W.clueShown ? 1 : 0)); }
@@ -756,6 +763,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       });
       app.appendChild(strip);
     }
+    if (NET && S.phase === 'set') return W.setter === NET.seat ? setWord() : netWaitWord();
     if (S.phase === 'cover-set') return coverSet();
     if (S.phase === 'set') return setWord();
     if (S.phase === 'cover-guess') return coverGuess();
@@ -800,9 +808,11 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     if (S.phase === 'result') {
       var nx = el('div', { class: 'next' });
       if (!W.won && S.mode === 'solo' && W.clue && !W.clueShown) nx.appendChild(el('div', { class: 'center muted', text: W.clue }));
-      nx.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: S.wi + 1 >= S.perGame ? 'See the results' : S.mode === 'duel' ? 'Next secret word' : 'Next word', onclick: afterWord }));
+      nx.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: S.wi + 1 >= S.perGame ? 'See the results' : S.mode === 'duel' ? 'Next secret word' : 'Next word', onclick: NET ? netNext : afterWord }));
       nx.style.marginTop = '12px';
       app.appendChild(nx);
+    } else if (NET && W.guesser !== NET.seat) {
+      app.appendChild(el('div', { class: 'next' }, [el('p', { class: 'center muted', style: { 'margin-top': '14px' }, text: S.players[W.guesser].name + ' is guessing your word, ' + W.word + '.' })]));
     } else {
       var acts = el('div', { class: 'acts' }, [
         el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('lightbulb') + '<span>Clue</span>', disabled: W.clueShown || !W.clue, onclick: showClue }),
@@ -836,7 +846,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
         if (fresh && fresh.hit && fresh.hit === ch) { cls += ' slam'; s.style.animationDelay = (sk++ * 110) + 'ms'; }
         else if (fresh && fresh.win) { cls += ' wave'; s.style.animationDelay = (300 + k++ * 70) + 'ms'; }
         if (reveal && !shown) { cls += ' red'; if (rv) s.style.animationDelay = (rv.start + k++ * rv.step) + 'ms'; }
-        var c = el('div', { class: cls, 'data-ch': ch }, [s]);
+        var c = el('div', { class: cls, 'data-ch': shown || reveal || !/[A-Z]/.test(ch) ? ch : '' }, [s]);   // (a letter not yet guessed isn't in the page at all)
         g.appendChild(c);
       });
       wrap.appendChild(g);
@@ -938,7 +948,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   function setWord() {
     var W = S.W, setter = S.players[W.setter].name, guesser = S.players[W.guesser].name;
     var box = el('div', { class: 'setw' });
-    box.appendChild(el('h2', { text: setter + ', write a word for ' + guesser }));
+    box.appendChild(el('h2', { text: NET ? 'Write a word for ' + guesser : setter + ', write a word for ' + guesser }));
     var inp = el('input', { class: 'input secret', maxlength: 24, placeholder: 'Secret word or short phrase', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     var clue = el('input', { class: 'input', maxlength: 60, placeholder: 'Clue (optional)', autocomplete: 'off' });
     var err = el('div', { class: 'err' });
@@ -952,13 +962,14 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     }
     picks.appendChild(el('button', { type: 'button', class: 'chip', html: Kit.icon('shuffle') + '<span>Pick one for me (' + Kit.esc(S.cat === 'Surprise' ? 'any category' : catName(S.cat)) + ')</span>', onclick: pickOne }));
     box.appendChild(picks);
-    box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: 'Hide it and pass the phone', onclick: function () {
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: NET ? 'Send it to ' + guesser : 'Hide it and pass the phone', onclick: function () {
       var v = inp.value.toUpperCase().replace(/[’']/g, '').replace(/\s+/g, ' ').trim();
       if (!v) { err.textContent = 'Type a secret word first, or tap "Pick one for me".'; Kit.sfx('bad'); return; }
       if (!/^[A-Z ]+$/.test(v)) { err.textContent = 'Letters and spaces only, please.'; Kit.sfx('bad'); return; }
       if (v.replace(/ /g, '').length < 2) { err.textContent = 'Use at least 2 letters.'; Kit.sfx('bad'); return; }
       if (v.split(' ').some(function (w) { return w.length > 13; })) { err.textContent = 'That word is too long to fit. Try 13 letters or fewer.'; Kit.sfx('bad'); return; }
       if (v.split(' ').length > 3) { err.textContent = 'Keep it to 3 words or fewer.'; Kit.sfx('bad'); return; }
+      if (NET) { if (document.activeElement) document.activeElement.blur(); netMove({ t: 'w', w: v, c: clue.value.trim(), cat: picked && picked.w === v ? picked.cat : '' }); return; }
       W.word = v; W.clue = clue.value.trim(); W.cat = picked && picked.w === v ? picked.cat : '';
       if (picked && picked.w === v) S.used.push(v);
       if (document.activeElement) document.activeElement.blur();
@@ -991,8 +1002,8 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     var whole = L.filter(function (x) { return x.whole; })[0];
     if (whole) hl.push((solo ? '' : P[whole.guesser].name + ' ') + 'Called it early: solved ' + whole.w + ' in one go');
     if (S.bestStreak >= 2) hl.push('Best run: ' + S.bestStreak + ' words in a row');
-    var mode = (solo ? 'Solo · ' + catName(S.cat === 'Surprise' ? 'Mixed' : S.cat) : 'Two players') + ' · ' + DIFF[S.diff].name + ' · ' + THEME_NAME[S.theme];
-    Kit.record(KEY, {
+    var mode = (solo ? 'Solo · ' + catName(S.cat === 'Surprise' ? 'Mixed' : S.cat) : NET ? 'Online' : 'Two players') + ' · ' + DIFF[S.diff].name + ' · ' + THEME_NAME[S.theme];
+    if (!netRecorded()) Kit.record(KEY, {
       started: S.started, mode: mode,
       players: P.map(function (p, i) { return { name: p.name, score: S.scores[i] }; }),
       winner: solo ? (L.some(function (x) { return x.won; }) ? P[0].name : null) : S.scores[0] === S.scores[1] ? null : P[S.scores[0] > S.scores[1] ? 0 : 1].name,
@@ -1004,9 +1015,10 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       // History: every word with the letters guessed in order (misses are the ones not in the word), who guessed it, the picture state
       detail: { th: S.theme, w: L.map(function (x) { return { w: x.w, c: x.cat || '', ok: x.won ? 1 : 0, m: x.misses, mx: x.max, g: x.gs || '', p: x.pts || 0, st: x.stump || 0, gu: x.guesser, se: x.setter, cl: x.clue ? 1 : 0, wh: x.whole ? 1 : 0 }; }) }
     });
-    clearSave();
     var wonN = L.filter(function (x) { return x.won; }).length;
     var top = solo ? null : S.scores[0] === S.scores[1] ? -1 : (S.scores[0] > S.scores[1] ? 0 : 1);
+    if (NET) { netWin(top); return; }
+    clearSave();
     Kit.win({
       title: solo ? (wonN === L.length ? 'Perfect game!' : wonN ? wonN + ' of ' + L.length + ' saved' : 'Tough words!') : top < 0 ? "It's a tie!" : P[top].name + ' wins!',
       sub: solo ? S.scores[0] + ' points' : 'After ' + L.length / 2 + (L.length > 2 ? ' rounds' : ' round'),
@@ -1020,6 +1032,197 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   function again() {
     start({ mode: S.mode, players: S.players, options: { diff: S.diff, theme: S.theme, count: S.mode === 'solo' ? S.perGame : 0, rounds: S.perGame / 2 } }, S.cat);
   }
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The two-player game, each on their own device. The table holds the game; the secret word is kept in it only in
+  // a scrambled form (wx, with the word's own key), so the guesser's device never shows it or holds it as plain text
+  // in the table. A device makes it readable only to check a guess, and the whole word goes into the log once the
+  // word is over. Writing the word, each guess, Solve and Clue are moves; the move that ends a word also sets up the
+  // next one (the other player writes), so the turn passes at once and each device shows the ending first.
+  var NET = null, NETREC = 'hangman_net_rec', winRef = null, holdRes = false;
+  function enc(t, k) { t = encodeURIComponent(t || ''); var o = ''; for (var i = 0; i < t.length; i++) o += ('0' + ((t.charCodeAt(i) ^ k.charCodeAt(i % k.length)) & 255).toString(16)).slice(-2); return o; }
+  function dec(h, k) { var o = ''; for (var i = 0; i < (h || '').length; i += 2) o += String.fromCharCode(parseInt(h.substr(i, 2), 16) ^ k.charCodeAt((i / 2) % k.length)); try { return decodeURIComponent(o); } catch (e) { return ''; } }
+  function keyOf() { return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10); }
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_hangman')) || {}).options || {}; } catch (e) {}
+    var cat = null; try { cat = localStorage.getItem(CAT_KEY); } catch (e) {}
+    if (cat !== 'Surprise' && !WORDS[cat]) cat = 'Animals';
+    return { diff: DIFF[o.diff] ? o.diff : 'easy', theme: o.theme === 'balloons' ? 'balloons' : 'classic', rounds: Math.min(3, Math.max(1, +o.rounds || 2)), cat: cat };
+  }
+  function blankW(setter) { return { wx: '', cx: '', k: keyOf(), cat: '', setter: setter, guesser: 1 - setter, guessed: [], misses: 0, missed: [], clueShown: false, over: false, won: false, wholeWord: false, has: false }; }
+  function netStart(players, o, last) {
+    var first = last ? 1 - (last.first || 0) : 0;
+    return { mode: 'duel', online: 1, diff: o.diff || 'easy', theme: o.theme || 'classic', cat: o.cat || 'Animals', perGame: (+o.rounds || 2) * 2,
+      players: players.map(function (p) { return { name: p.name }; }), scores: players.map(function () { return 0; }),
+      wi: 0, first: first, log: [], used: [], streak: 0, bestStreak: 0, W: blankW(first), phase: 'set', started: Date.now() };
+  }
+  // The table's state as this device draws it: the word readable (to check guesses and draw the board), never shown
+  function viewOf(st) {
+    var v = JSON.parse(JSON.stringify(st));
+    if (v.W) { v.W.word = v.W.has ? dec(v.W.wx, v.W.k) : ''; v.W.clue = v.W.has ? dec(v.W.cx, v.W.k) : ''; }
+    return v;
+  }
+  function maxOf(st) { return DIFF[st.diff].max; }
+  // One move on the table: w (write the word), g (guess a letter), s (solve), c (show the clue)
+  function moveOn(st, m) {
+    var W = st.W;
+    if (st.phase === 'set') {
+      if (m.t !== 'w' || !m.w) return null;
+      W.wx = enc(m.w, W.k); W.cx = enc(m.c || '', W.k); W.cat = m.cat || ''; W.has = true;
+      if (m.cat) st.used.push(m.w);
+      st.phase = 'play';
+      return { state: st, mv: { t: 'w' } };
+    }
+    if (st.phase !== 'play' || W.over) return null;
+    var word = dec(W.wx, W.k), mv = { t: m.t, L: m.L || null };
+    function done(won) {
+      var mx = maxOf(st), pts = won ? Math.max(1, 1 + (mx - W.misses) - (W.clueShown ? 1 : 0)) : 0, stump = won ? 0 : 5;
+      W.over = true; W.won = won;
+      if (won) { st.scores[W.guesser] += pts; st.streak++; st.bestStreak = Math.max(st.bestStreak, st.streak); }
+      else { st.scores[W.setter] += stump; st.streak = 0; }
+      st.log.push({ w: word, cat: W.cat, won: won, misses: W.misses, max: mx, pts: pts, stump: won ? undefined : stump, guesser: W.guesser, setter: W.setter, clue: W.clueShown, whole: won ? W.wholeWord : undefined, guesses: W.guessed.length, gs: W.guessed.join('') });
+      mv.end = won ? 'win' : 'lose';
+      mv.fw = JSON.parse(JSON.stringify(W)); mv.fw.word = word; mv.fw.clue = dec(W.cx, W.k); mv.wi = st.wi;
+      st.wi++;
+      if (st.wi >= st.perGame) st.phase = 'over';
+      else { st.W = blankW(W.guesser); st.phase = 'set'; }
+    }
+    if (m.t === 'c') { if (W.clueShown || !W.cx || !dec(W.cx, W.k)) return null; W.clueShown = true; return { state: st, mv: mv }; }
+    if (m.t === 'g') {
+      if (W.guessed.indexOf(m.L) >= 0) return null;
+      W.guessed.push(m.L);
+      mv.hit = word.indexOf(m.L) >= 0;
+      if (mv.hit) { if (letters(word).every(function (c) { return W.guessed.indexOf(c) >= 0; })) done(true); }
+      else { W.misses++; W.missed.push(m.L); if (W.misses >= maxOf(st)) done(false); }
+      return { state: st, mv: mv };
+    }
+    if (m.t === 's') {
+      if (m.v.replace(/ /g, '') === word.replace(/[^A-Z]/g, '')) {
+        W.wholeWord = true; letters(word).forEach(function (c) { if (W.guessed.indexOf(c) < 0) W.guessed.push(c); });
+        mv.hit = true; done(true);
+      } else { mv.wrong = m.v; W.misses++; if (W.misses >= maxOf(st)) done(false); }
+      return { state: st, mv: mv };
+    }
+    return null;
+  }
+  function netMove(m) {
+    var st = NET.state; if (!st) return;
+    var me = NET.seat, W = st.W, mine = st.phase === 'set' ? W.setter === me : W.guesser === me;
+    if (!NET.myTurn() || !mine) { Kit.haptic('error'); return; }
+    NET.act(function (s) { var w = s.W; if (s.phase === 'set' ? w.setter !== me : w.guesser !== me) return null; return moveOn(s, m); });
+  }
+  function netWaitWord() {
+    var W = S.W, setter = S.players[W.setter].name;
+    app.appendChild(el('div', { class: 'cover' }, [el('div', { class: 'big', html: Kit.icon('pencil') }), el('h2', { text: setter + ' is writing a word' }),
+      el('p', { text: 'Your turn to guess comes as soon as ' + setter + ' sends it. The home screen shows it too.' })]));
+  }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state, mv = info.mv;
+    if ((info.fresh || info.again) && winRef) { winRef.close(); winRef = null; }
+    if (info.fresh || info.again) holdRes = false;
+    var live = mv && !info.fresh && !info.again;
+    if (live && mv.end) {
+      // the word's ending, drawn as it was; the next word waits for Next
+      clearFx(); stopBeat();
+      S = viewOf(st); S.W = mv.fw; S.wi = mv.wi; S.phase = 'play';
+      holdRes = true;
+      if (mv.end === 'win') netWinFx(mv.L); else netLoseFx(mv.L);
+      return;
+    }
+    if (holdRes) return;
+    netDraw(info);
+  }
+  function netDraw(info) {
+    var st = NET.state, mv = info && info.mv, live = mv && !info.fresh && !info.again;
+    clearFx();
+    S = viewOf(st); fresh = null;
+    if (S.phase === 'over') { S.phase = 'result'; render(); finish(); return; }
+    if (NET.status === 'over' && NET.result && NET.result.left != null) { render0(); netWin(null); return; }
+    if (info && info.again) { Kit.sfx('deal'); Kit.callout(S.W.setter === NET.seat ? 'You write the first word' : S.players[S.W.setter].name + ' writes the first word'); }
+    if (live && mv.t === 'g' || live && mv.t === 's') {
+      if (mv.hit) fresh = { hit: mv.L };
+      else { fresh = { miss: S.W.misses, missL: mv.L || null, last: false }; if (mv.wrong && !info.mine) Kit.toast(S.players[S.W.guesser].name + ' tried ' + mv.wrong); else if (mv.wrong) Kit.toast(mv.wrong + ' is not it'); }
+      Kit.haptic(mv.hit ? 'light' : 'error');
+    }
+    if (live && mv.t === 'c') Kit.sfx('flip');
+    if (live && mv.t === 'w') { Kit.sfx('flip'); if (S.W.guesser === NET.seat) Kit.callout('Your word is ready'); }
+    render(); syncBeat(fresh && fresh.miss ? 700 : 0); syncMood();
+  }
+  function render0() { app.innerHTML = ''; }
+  function netNext() {
+    if (busy) return;
+    holdRes = false;
+    netDraw(null);
+  }
+  function netWinFx(L) {
+    var W = S.W;
+    fresh = { win: true, hit: L || null };
+    S.phase = 'result';
+    document.documentElement.classList.add('lift'); later(function () { document.documentElement.classList.remove('lift'); }, 2400);
+    ambience(null, 1.4);
+    render();
+    busy = true; Kit.haptic('success');
+    var nHit = L ? W.word.split(L).length - 1 : 0, t0 = Math.max(300, nHit * 110 + 180);
+    later(function () { snd(S.theme === 'balloons' ? 'gust' : 'snip', 0.05); }, t0 + 100);
+    later(function () { snd('exhale'); }, t0 + 250);
+    later(function () { snd('sting'); Kit.confetti({ count: 90 }); }, t0 + 700);
+    var s = S.streak, left = maxMiss() - W.misses;
+    var run = s >= 5 ? 'On fire! ' + s + ' in a row' : s >= 2 ? s + ' in a row!' : null;
+    later(function () { Kit.callout(left === 1 ? 'Close call!' : run || (W.misses === 0 ? 'Flawless!' : left === 2 ? 'That was close!' : 'Saved!')); }, t0 + 650);
+    later(function () { busy = false; }, 1200);
+  }
+  function netLoseFx(L) {
+    fresh = { miss: S.W.misses, missL: L || null, last: true };
+    render();
+    busy = true; ambience(1);
+    later(function () {
+      stopBeat(); snd('thud'); ambience(null, 2.5); Kit.haptic('heavy');
+      var sl = app.querySelector('.slate'); if (sl) sl.classList.add('out');
+      jolt();
+    }, 1400);
+    later(function () { fresh = { lose: true }; S.phase = 'result'; render(); }, 1700);
+    later(function () { busy = false; }, 1750);
+  }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin(top) {
+    var res = NET.result, left = !!(res && res.left != null), me = NET.seat, P = S.players;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : top < 0 ? 'It’s a tie!' : top === me ? 'You win!' : P[top].name + ' wins!',
+      sub: left ? '' : 'After ' + S.log.length / 2 + (S.log.length > 2 ? ' rounds' : ' round'),
+      lose: !left && top >= 0 && top !== me,
+      rank: left ? null : [0, 1].sort(function (x, y) { return S.scores[y] - S.scores[x]; }).map(function (i) { return { name: i === me ? 'You' : P[i].name, score: S.scores[i], color: Kit.color(i) }; }),
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the last word'
+    });
+  }
+  function netLeave() {
+    NET = null; holdRes = false; clearFx(); stopBeat();
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.W && sv.players && sv.phase !== 'over') { S = sv; if (S.phase === 'set') S.phase = 'cover-set'; if (S.phase === 'play' && S.W.over) S.phase = 'result'; render(); syncBeat(); syncMood(); }
+    else showSetup();
+  }
+  TurnNet.setup({
+    game: 'hangman', title: 'Hangman', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.phase === 'set' ? [st.W.setter] : st.phase === 'play' ? [st.W.guesser] : []; },
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var a = st.scores[0], b = st.scores[1];
+      return { win: a === b ? [] : [a > b ? 0 : 1], text: a === b ? 'Tie at ' + a : st.players[a > b ? 0 : 1].name + ' won ' + Math.max(a, b) + ' to ' + Math.min(a, b) };
+    },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
