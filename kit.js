@@ -2134,7 +2134,7 @@
       : lv === 'n'
         ? '<circle cx="9" cy="12" r="1.5" fill="' + ink + '"/><circle cx="15" cy="12" r="1.5" fill="' + ink + '"/><path d="M10.2 15.2h3.6" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>'
         : '<path d="M7.2 9.7l3.4 1.3M16.8 9.7l-3.4 1.3" stroke="' + ink + '" stroke-width="1.5" stroke-linecap="round"/><circle cx="9.1" cy="12.6" r="1.45" fill="#ff3b1f"/><circle cx="14.9" cy="12.6" r="1.45" fill="#ff3b1f"/><path d="M10.2 15.9q1.8-1 3.6 0" fill="none" stroke="' + ink + '" stroke-width="1.3" stroke-linecap="round"/>';
-    var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.2" fill="' + (lv === 'h' ? '#ff5a2a' : '#f3f1fb') + '"/>' +
+    var head = '<svg class="hd" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.4v2.4" stroke="#f3f1fb" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="2.9" r="1.6" fill="' + (lv === 'h' ? '#ff5a2a' : lv === 'e' ? '#5cff9f' : '#ffd34d') + '"/>' +
       '<rect x="2.6" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/><rect x="19.2" y="10" width="2.2" height="4.4" rx="1" fill="#d9d7e6"/>' +
       '<rect x="4.4" y="6" width="15.2" height="12.2" rx="4.2" fill="#f3f1fb"/>' + eyes + '</svg>';
     return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html:
