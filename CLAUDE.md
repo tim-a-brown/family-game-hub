@@ -193,6 +193,13 @@ Underlying principles for everything:
   in `turnRooms`, holding the whole game. Every table keeps `seats`, `accts`, `turn` (seat indexes whose move it is)
   and `drive`, so the home screen's Keep playing shows "Your turn" for any game without game-specific code. A new
   turn-based online game needs nothing added on the home screen. (Chess and Lorcana predate it and keep their own.)
+- **The house casino games** (Roulette, Craps, Baccarat, Three Card Poker, Pai Gow, Horse Race) go online through
+  `CasinoNet` at the end of casino.js (Blackjack's pattern): table money that everyone starts with the same amount of
+  (`casino_bank` is never touched), everyone bets at once (TurnNet's turn holds every seat still to bet), and the last
+  bet in settles the round for every seat inside its transaction; each device plays the result out with the game's
+  own animation. Each seat keeps the game's own state in the table, and settling runs the game's own code with saves
+  and drawing switched off. Craps passes the dice on a seven-out; Horse Race uses its pass-and-play state. People only:
+  against the house a computer gambler adds nothing.
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in

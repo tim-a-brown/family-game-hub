@@ -13,6 +13,8 @@
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
 <script src="../coach.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* ── Casino chips (local; candidates for the kit) ─────────────────────────
    Standard colours: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -196,6 +198,7 @@
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'rl_state', HKEY = 'roulette';
+  var Casino = CasinoNet.wallet();   // (your own money; at an online table, your seat's table money)
   try { sessionStorage.removeItem('rl_state'); } catch (e) {}   // old versions kept the table here
 
   // ── Wheel data ───────────────────────────────────────────────────────────
@@ -255,13 +258,13 @@
   // ── Menu & rules ─────────────────────────────────────────────────────────
   Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
     id: 'roulette', confirmNew: false,
-    onNew: function () { endSession(true); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } endSession(true); },
     undo: function () { undoChip(); },
-    menu: [
-      { icon: 'coins', label: 'Cash out (end session)', onClick: function () { endSession(false); } },
+    menu: TurnNet.menu().concat([
+      { icon: 'coins', label: function () { return NET ? 'Cash out the whole table' : 'Cash out (end session)'; }, onClick: function () { endSession(false); } },
       { icon: 'history', label: 'Past sessions', onClick: function () { Kit.history(HKEY, { title: 'Roulette: past sessions' }); } },
-      { icon: 'sync', label: function () { return topUp(S ? S.player : 'You').menu; }, onClick: resetBank }
-    ],
+      { icon: 'sync', label: function () { return topUp(S ? S.player : 'You').menu; }, when: function () { return !NET; }, onClick: resetBank }
+    ]),
     rules:
       '<p class="goal">Bet on where the little ball will land. Drag a chip onto the table (or pick a chip and tap the table), then spin.</p>' +
       '<h3>Moving chips</h3><ul><li>Drag a chip from the rack onto the table. The spot it will land on lights up.</li>' +
@@ -281,7 +284,8 @@
       '<li>After a spin, <b>Repeat</b> puts the same bets down again.</li>' +
       '<li>Tap the little wheel to see the last spin again.</li></ul>' +
       '<h3>Your money</h3><p>The bankroll is shared with all the casino games. <b>Cash out</b>, beside your money, ends your session between spins and saves how it went to Past sessions.</p>' +
-      '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>'
+      '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone bets on the same wheel at the same time, and the wheel spins when the last bet is in. Online tables use table money: everyone starts with the same amount, and nobody’s bankroll changes. Anyone who runs out buys back in for the same amount. <b>Cash out</b> between spins ends the session for the whole table.</p>'
   });
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -289,6 +293,7 @@
   //      sess:{started,last,spins,net,wagered,best,straights:[],counts:{},streak,bestStreak,series:[],hi,startBank}, spin}
   var S = null, chipV = 5, G = null, busy = false;
   function save() {
+    if (NET || PURE) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && (S.sess.spins || total(S.bets))) Kit.resume.set((S.sess.spins ? signed(S.sess.net) + ' · ' + S.sess.spins + ' spin' + (S.sess.spins === 1 ? '' : 's') : 'Bets on the table'));
   }
@@ -306,13 +311,13 @@
     else if (fresh && (m === 'link' || m === 'player')) Kit.toast('Playing from ' + Kit.poss(name) + ' bankroll', 3000);
     return m;
   }
-  function bankLabel(name) { var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankLabel(name) { if (NET) return 'Table money'; var m = Casino.mode(); return m === 'play' ? 'Play money' : m === 'mine' ? 'Bankroll' : Kit.poss(name) + ' bankroll'; }
   // a linked player's money carries the link badge, a frequent player's a person badge; short: a narrow HUD box ("Jamie's")
   function bankLabelHtml(name, short) {
     var m = Casino.mode(), own = m === 'link' || m === 'player';
     return (own ? '<span class="czlk' + (m === 'player' ? ' pl' : '') + '">' + Kit.icon(m === 'link' ? 'link' : 'user') + '</span>' : '') + Kit.esc(own && short ? Kit.poss(name) : bankLabel(name));
   }
-  function bankWords(name) { var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
+  function bankWords(name) { if (NET) return 'table money'; var m = Casino.mode(); return m === 'play' ? 'play money' : m === 'mine' ? 'your bankroll' : Kit.poss(name) + ' bankroll'; }
   function myBankroll() { try { var v = localStorage.getItem('casino_bank'), n = parseInt(v, 10); return v == null || v === '' || isNaN(n) ? 1000 : Math.max(0, n); } catch (e) { return 1000; } }
   // The out-of-money sheet and the reset menu item, in the words for whoever is playing
   function topUp(name) {
@@ -337,9 +342,10 @@
     S = null; busy = false; rail(false); moneyHome();
     Kit.setup(app, {
       intro: 'Place your bets, spin the wheel',
+      modes: Kit.modes(['solo', { id: 'online', desc: 'Everyone bets on the same wheel, each on their own device' }]),
       players: { min: 1, max: 1, count: 1, label: "Who's playing?" },
       options: [{ id: 'wheel', label: 'Wheel', value: 'eu', choices: [['eu', 'European\nOne zero', '37 pockets with one green 0. Better odds for you.'], ['us', 'American\nZero and double zero', 'Adds a second green pocket, 00, so the house wins a bit more often.']] },
-        Coach.option({ label: 'Bet guide', help: 'Shows what the bets on this wheel really cost. Tap it for every bet\u2019s odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A tag above the table with the house edge and what your bets cost; tap it to compare every bet.' })],
+        Coach.option({ label: 'Bet guide', help: 'Shows what the bets on this wheel really cost. Tap it for every bet\u2019s odds, explained in plain words.', off: 'No guide: you bet on your own.', on: 'A tag above the table with the house edge and what your bets cost; tap it to compare every bet.' }), CasinoNet.stakeOption()],
       start: 'Go to the table',
       onStart: function (cfg) { start(cfg.options.wheel || 'eu', cfg.players[0] ? cfg.players[0].name : 'You', cfg.options.coach); }
     });
@@ -468,6 +474,8 @@
     R.board = el('div', { class: 'board' });
     R.hcol = el('div', { class: 'hcol' }, [R.board]);
     R.head = el('div', { class: 'head wood' }, [mini, R.hcol]);
+    R.netBox = NET ? el('div', { class: 'netbox' }) : null;   // online: everyone at the table and their money
+    if (R.netBox) { app.appendChild(R.netBox); paintNet(); }
     app.appendChild(R.head);
     R.mini = mini;
     R.bal = el('b', { class: 'gold' }); R.on = el('b'); R.net = el('b');
@@ -496,6 +504,7 @@
   }
   function hintMsg() {
     if (!R.msg) return;
+    if (NET && amIn()) { R.msg.textContent = netWaitMsg(); return; }
     var t = total(S.bets);
     R.msg.innerHTML = t ? 'Total bet <b>' + money(t) + '</b> · tap Spin when ready' : (S.recent.length ? 'Place your bets for the next spin' : 'Drag a chip from the rack onto a bet');
   }
@@ -627,9 +636,11 @@
     var b = Casino.balance();
     R.rack.refresh();
     R.undo.disabled = busy || !S.undo.length;
-    R.spin.disabled = busy || !t; R.cash.disabled = busy;
+    R.spin.disabled = busy || !t; R.cash.disabled = NET ? spinning || NET.seat < 0 : busy;
     [R.bal, R.on, R.net].forEach(function (b) { Kit.fitText(b); });
-    R.spin.querySelector('span').textContent = t ? 'Spin · ' + money(t) : 'Spin';
+    R.spin.querySelector('span').textContent = NET ? (amIn() ? 'Your bet is in' : t ? 'Bet ' + money(t) : 'Place a bet') : t ? 'Spin · ' + money(t) : 'Spin';
+    R.spin.querySelector('svg').style.display = NET && amIn() ? 'none' : '';
+    if (NET) paintNet();
     if (!t && S.last && total(S.last)) { R.rep.innerHTML = Kit.icon('sync') + '<span>Repeat</span>'; R.rep.disabled = busy; R.rep.dataset.m = 'rep'; }
     else { R.rep.innerHTML = Kit.icon('close') + '<span>Clear</span>'; R.rep.disabled = busy || !t; R.rep.dataset.m = 'clr'; }
     paintGuide();
@@ -806,12 +817,21 @@
   // ── Spin ─────────────────────────────────────────────────────────────────
   function spin() {
     if (busy) return;
+    if (NET) { netBet(); return; }
     var stake = total(S.bets);
     if (!stake) { Kit.toast('Place a bet first'); return; }
     clearResult();
-    var order = ORDER[S.wheel];
-    var idx = Math.floor(Math.random() * order.length), n = order[idx];
+    var idx = Math.floor(Math.random() * ORDER[S.wheel].length);
     // Settle the money now so leaving mid-spin can't lose the result; reveal when the ball drops.
+    settleSpin(idx);
+    save();
+    busy = true; paintBank();
+    Kit.sfx('roll'); Kit.haptic('medium');
+    animateSpin(idx, function () { finishSpin(false); });
+  }
+  // The bets on the table settled for a ball in pocket idx (the session's numbers too). Online, this runs for every seat.
+  function settleSpin(idx) {
+    var stake = total(S.bets), n = ORDER[S.wheel][idx];
     var ret = 0, winners = [];
     Object.keys(S.bets).forEach(function (id) {
       var b = BETS[id];
@@ -840,10 +860,6 @@
     S.spin = { n: n, idx: idx, stake: stake, ret: ret, winners: winners, bets: S.bets };
     S.last = JSON.parse(JSON.stringify(S.bets));
     S.recent.unshift(n); if (S.recent.length > 40) S.recent.length = 40;
-    save();
-    busy = true; paintBank();
-    Kit.sfx('roll'); Kit.haptic('medium');
-    animateSpin(idx, function () { finishSpin(false); });
   }
 
   // Result on the table: dolly on the number, winners glow, losers swept away
@@ -891,7 +907,7 @@
     else if (net > 0) { Kit.callout(signed(net), '#3ddc84'); Kit.sfx('good'); Kit.haptic('success'); }
     else if (sp.ret > 0) { Kit.sfx('tap'); }
     else { Kit.sfx('bad'); Kit.haptic('error'); }
-    if (Casino.balance() < 1) setTimeout(brokeSheet, 1600);
+    if (Casino.balance() < 1 && !NET) setTimeout(brokeSheet, 1600);
   }
 
   // ── Bet guide (setup option): what the bets on this wheel really cost ──────────
@@ -1104,6 +1120,7 @@
       return { w: w, ball: { a: w + idx * sl + rel, r: r }, rel: rel };
     }
     function frame(now) {
+      if (!document.body.contains(cv)) return;   // (the overlay was taken away: left the online table mid-spin)
       if (t0 === null) t0 = now;
       var t = skip ? 1 : Math.min(1, (now - t0) / DUR);
       var st = at(t);
@@ -1201,6 +1218,7 @@
   }
   // Cash out (toSetup=false) or start a new session (toSetup=true)
   function endSession(toSetup) {
+    if (NET) { netEndAsk(); return; }
     if (busy || !S) { if (!S) showSetup(); return; }
     var ss = S.sess;
     var go = function () {
@@ -1221,6 +1239,135 @@
     };
     if (!ss.spins) { go(); return; }
     Kit.confirm(toSetup ? 'End this session?' : 'Cash out?', { ok: toSetup ? 'End session' : 'Cash out', body: 'Your session (' + signed(ss.net) + ' over ' + ss.spins + ' spins) is saved to Past sessions. Chips on the table go back to ' + bankWords(S.player) + '.' }).then(function (ok) { if (ok) go(); });
+  }
+
+  // ── Online (turnnet.js, CasinoNet in casino.js) ───────────────────────────
+  // Everyone at the table bets on the same wheel, each on their own device, with table money. Each seat keeps its own
+  // S in the table (its bets, last bets, numbers and session); the last bet in spins the wheel for every seat at once
+  // (settleSpin for each, PURE: the same code with its saves, sounds and drawing left out), and every device then rolls
+  // the ball into that pocket on its own wheel. ME is this device's seat as you bet (its money); NETR the round it shows.
+  var NET = null, PURE = false, ME = null, NETR = 0, spinning = false, endLater = false;
+  function pure(fn) { var keep = S; PURE = true; try { return CasinoNet.quiet(fn); } finally { S = keep; PURE = false; Casino.use(NET ? ME : null); } }
+  function amIn() { var st = NET && NET.state; return !!st && (NET.seat < 0 || st.phase === 'bet' && !!st.ready[NET.seat]); }
+  function netWaitMsg() {
+    var l = CasinoNet.left(NET.state);
+    return l.length ? 'The wheel spins when ' + CasinoNet.listAnd(l) + (l.length === 1 ? ' bets.' : ' bet.') : 'The wheel is spinning.';
+  }
+  var TBL = CasinoNet.table({
+    game: 'roulette', title: 'Roulette', max: 6, unit: 'spin',
+    opts: function (o) { return { wheel: o.wheel === 'us' ? 'us' : 'eu', coach: o.coach === 'on' ? 'on' : 'off', stake: o.stake }; },
+    seat: function (p, o) {
+      return { v: 2, online: 1, wheel: o.wheel === 'us' ? 'us' : 'eu', player: p.name, coach: o.coach === 'on' ? 'on' : 'off', bets: {}, undo: [], last: null, recent: [], wAng: -Math.PI / 2, spin: null,
+        sess: { started: Date.now(), last: Date.now(), spins: 0, net: 0, wagered: 0, best: null, straights: [], counts: {}, streak: null, bestStreak: null, series: [], hi: o.stake, startBank: o.stake } };
+    },
+    onTable: function (s) { return total(s.bets); },
+    take: function (st, i, m) {
+      var seat = st.seats[i], b = m.bets || {}, t = 0, ok = true;
+      buildBets(st.o.wheel);
+      Object.keys(b).forEach(function (id) { var a = Math.round(+b[id]); if (!BETS[id] || !(a > 0) || a !== +b[id]) ok = false; else t += a; });
+      if (!ok || t < 1 || t > seat.bank) return false;
+      seat.bank -= t; seat.S.bets = b; seat.S.undo = []; seat.S.spin = null;
+    },
+    resolve: function (st) {
+      buildBets(st.o.wheel);
+      var idx = Math.floor(Math.random() * ORDER[st.o.wheel].length);
+      st.seats.forEach(function (seat) {
+        pure(function () {
+          S = seat.S; Casino.use(seat);
+          if (total(S.bets)) settleSpin(idx);
+          else { S.spin = null; S.recent.unshift(ORDER[S.wheel][idx]); if (S.recent.length > 40) S.recent.length = 40; }
+          S.bets = {}; S.undo = [];
+        });
+      });
+      st.prev = { round: st.round, idx: idx };
+    },
+    sitOut: function (st, i) { var seat = st.seats[i], t = total(seat.S.bets); if (t) { seat.bank += t; seat.S.bets = {}; } },
+    show: netShow, leave: netLeave
+  });
+  function mine(st) { return st.seats[Math.max(0, NET.seat)]; }
+  // your seat as the table has it: the bets, numbers and session, and the money
+  function takeView(st) {
+    S = JSON.parse(JSON.stringify(mine(st).S)); ME = { bank: mine(st).bank }; Casino.use(ME);
+    NETR = st.round;
+  }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state;
+    if (info.fresh || info.again) { CasinoNet.closeEnd(); endLater = false; }
+    buildBets(st.o.wheel);
+    if (st.phase === 'over') { if (spinning) endLater = true; else netEnd(); return; }
+    // the wheel was spun since this device last looked (the last bet in, or someone leaving): roll the ball here
+    if (!info.fresh && !info.again && S && S.online && st.round > NETR && st.prev && st.prev.round >= NETR) { playSpin(st); return; }
+    if (info.fresh || info.again || !S || !S.online) {
+      takeView(st); busy = amIn(); spinning = false;
+      if (S.spin) S.spin = null;   // (the last spin's result was seen when it was spun)
+      Kit.gameStart(); render(); return;
+    }
+    // anyone else's bet: your own bets stay just as you are making them
+    if (!spinning) { busy = amIn(); paintBank(); hintMsg(); }
+    paintNet();
+    if (info.mv && !info.mine && net.myTurn() && !spinning) Kit.haptic('light');
+  }
+  // Everyone's bets are in: the ball rolls into the pocket the table drew, then your bets are paid
+  function playSpin(st) {
+    var seat = mine(st), sp = seat.S.spin;
+    var v = JSON.parse(JSON.stringify(seat.S));
+    NETR = st.round;
+    if (!sp || NET.seat < 0) { takeView(st); busy = amIn(); render(); return; }
+    v.bets = sp.bets; S = v;   // (your chips stay on the table while the ball rolls)
+    ME = { bank: seat.bank - sp.ret }; Casino.use(ME);   // (and are paid when it drops)
+    clearResult(); busy = true; spinning = true;
+    paintStacks(); paintBank(); paintNet(); if (R.msg) R.msg.textContent = 'No more bets';
+    Kit.sfx('roll'); Kit.haptic('medium');
+    animateSpin(sp.idx, function () {
+      spinning = false;
+      var now = NET && NET.state; if (!now) return;
+      ME.bank = mine(now).bank;   // (paid, and anything the table did since: a buy-back)
+      busy = false; finishSpin(false); busy = amIn(); paintBank(); paintNet();
+      if (endLater || now.phase === 'over') { endLater = false; netEnd(); }
+    });
+  }
+  function paintNet() {
+    if (!NET || !R.netBox) return;
+    var st = NET.state, h = R.netBox.offsetHeight;
+    R.netBox.innerHTML = '';
+    R.netBox.appendChild(CasinoNet.strip(NET, {
+      amount: function (i) { var s = st.seats[i]; return i === NET.seat && ME ? ME.bank : spinning && s.S.spin ? s.bank - s.S.spin.ret : s.bank; },
+      delta: function (i) { var sp = st.seats[i].S.spin; return !spinning && sp && st.phase === 'bet' && !st.ready[i] ? sp.ret - sp.stake : null; }
+    }));
+    if (h && R.netBox.offsetHeight !== h && !busy) refit();
+  }
+  function netBet() {
+    if (!NET || NET.seat < 0 || amIn() || spinning) return;
+    var b = JSON.parse(JSON.stringify(S.bets)), me = NET.seat;
+    if (!total(b)) { Kit.toast('Place a bet first'); return; }
+    Kit.sfx('pop'); Kit.haptic('medium');
+    NET.act(function (st) { return TBL.move(st, me, { t: 'bet', bets: b }); });
+  }
+  function netEndAsk() {
+    if (!NET || NET.seat < 0) return;
+    if (spinning || NET.state.phase !== 'bet') { Kit.toast('Wait for the ball to drop'); return; }
+    var me = NET.seat;
+    Kit.confirm('Cash out the whole table?', { ok: 'Cash out', body: 'The session ends for everyone at the table, and it is saved to Past sessions on every device. Chips still on the table go back to whoever put them there.' })
+      .then(function (ok) { if (ok && NET) NET.act(function (st) { return TBL.move(st, me, { t: 'end' }); }); });
+  }
+  function netEnd() {
+    var st = NET.state, me = NET.seat;
+    busy = false; spinning = false;
+    if (me >= 0) {
+      var seat = st.seats[me];
+      S = JSON.parse(JSON.stringify(seat.S)); S.spin = null; ME = { bank: seat.bank + total(seat.S.bets) }; Casino.use(ME);
+      S.bets = {};
+      if (S.sess.spins && CasinoNet.once('roulette:' + NET.code + ':' + st.started)) recordSession(S);
+    }
+    render();
+    CasinoNet.end(NET, { unit: 'spin' });
+  }
+  function netLeave() {
+    NET = null; ME = null; Casino.use(null); spinning = false; busy = false; endLater = false; CasinoNet.closeEnd();
+    document.querySelectorAll('.spinov').forEach(function (o) { o.remove(); });
+    var sv = load();
+    if (sv) { S = sv; moneyFor(S.player || 'You'); buildBets(S.wheel); render(); } else showSetup();
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────

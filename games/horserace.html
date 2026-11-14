@@ -12,6 +12,8 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../casino.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* ── Casino chips (same as roulette/craps; candidates for the kit) ───────
    Standard colors: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -1279,14 +1281,14 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   Kit.init({
     id: 'horserace', confirmNew: false,
     theme: { felt: ['#2f7d3a', '#1f5c29', '#16451e'], wood: ['#7a5232', '#4e321c'] },
-    onNew: function () { VO.stop(); newGame(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } VO.stop(); newGame(); },
     undo: function () { undoChip(); },
-    menu: [
-      { icon: 'coins', label: function () { return S && S.mode === 'pass' ? 'End session now' : 'Cash out (end session)'; }, onClick: function () { endSession(); } },
+    menu: TurnNet.menu().concat([
+      { icon: 'coins', label: function () { return NET ? 'End the session for everyone' : S && S.mode === 'pass' ? 'End session now' : 'Cash out (end session)'; }, onClick: function () { endSession(); } },
       { icon: 'history', label: 'Past races', onClick: function () { Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } },
       { icon: 'sound', label: 'Announcer voice', onClick: function () { VO.chooser(); } },
-      { icon: 'sync', label: function () { return S && solo() ? topUp(S.players[0].name).menu : 'Reset bankroll to $1,000'; }, onClick: resetBank }
-    ],
+      { icon: 'sync', label: function () { return S && solo() ? topUp(S.players[0].name).menu : 'Reset bankroll to $1,000'; }, when: function () { return !NET; }, onClick: resetBank }
+    ]),
     rules:
       '<p class="goal">Read the program, bet on the horses you like, then watch them race. Pick right and your tickets pay off.</p>' +
       '<h3>The program</h3><ul>' +
@@ -1311,7 +1313,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       '<p>The results board shows <b>$2 payouts</b>, like the board at a real track: "Win $9.00" means a $2 Win ticket brings back $9.</p>' +
       '<h3>The race</h3><p>The gate bell rings and they\'re off. Follow the leaders on the big screen, the running order on the strip below it, and the little map of the oval. On a phone, turn it sideways to watch the whole field at once. If it\'s too close to call, it goes to a <b>photo finish</b>. Tap <b>Skip</b> to jump to the result.</p><p>The announcer calls the race out loud (turn it off in setup, or tap the call box during a race). It stays quiet when the game sound is off. Choose its voice from <b>Announcer voice</b> in the menu; on iPhone, downloading an Enhanced or Premium voice makes it sound much better.</p>' +
       '<h3>Solo or pass and play</h3><p><b>Solo</b> bets come from the casino bankroll you share with the other casino games. <b>Cash out</b> in the menu saves your session to Past races. Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>' +
-      '<p><b>Pass and play</b>: everyone starts with the same <b>table money</b> (pick $100, $250 or $500 in setup). Nobody\'s casino bankroll changes. Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>'
+      '<p><b>Pass and play</b>: everyone starts with the same <b>table money</b> (pick $100, $250 or $500 in setup). Nobody\'s casino bankroll changes. Players bet one at a time, pass the phone, then everyone watches the race together. Whoever has the most money after the last race wins.</p>' +
+      '<p><b>Play online</b>: everyone bets on the same races from their own phone or tablet, with the same table money as pass and play. You all bet at the same time, and the horses go to the gate when the last bets are in; everyone watches the race on their own screen. Whoever has the most money after the last race wins.</p>'
   });
 
   // ── State ────────────────────────────────────────────────────────────────
@@ -1320,7 +1323,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   //      race:{seed,order,gaps,photo,Tw,clock,settled,per,res}, log:[{race,nets,order,photo,fav}], notes:[{w,t}], startBank, hi, last}
   var S = null, RV = null, R = {};
   function save() {
-    if (!S) return;
+    if (!S || NET || PURE) return;
     S.last = Date.now();
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var lbl = 'Race ' + S.raceNo + (S.mode === 'pass' ? ' of ' + S.opt.races : '');
@@ -1371,7 +1374,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     Kit.setup(app, {
       intro: 'Read the program, place your bets, cheer them home',
       // one seat bets from the casino bankroll; with 2 to 6 seats everyone gets the same table money
-      modes: Kit.modes(['solo', { id: 'pass', kind: 'local' }]),
+      modes: Kit.modes(['solo', { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Everyone bets on the same races, each on their own device' }]),
       players: { min: 1, max: 6, count: 1, range: function (m) { return m === 'pass' ? [2, 6] : [1, 1]; }, label: "Who's playing?" },
       options: [
         { id: 'field', label: 'Horses per race', value: 'mix', help: 'How many horses run in each race.',
@@ -1380,9 +1383,9 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
           choices: [['quick', 'Quick', 'About 15 seconds a race.'], ['full', 'Full', 'About 22 seconds a race, with more time for lead changes.']] },
         { id: 'voice', label: 'Announcer', value: 'on', help: 'Calls the race out loud: the start, lead changes, the stretch and the winner. Uses your device’s voice: pick which one under Announcer voice in the menu. Tap the call box during a race to turn it on or off.',
           choices: [['on', 'On', 'The race is called out loud.'], ['off', 'Off', 'Calls show on screen only.']] },
-        { id: 'races', label: 'Races', value: 5, when: function (m) { return m === 'pass'; }, help: 'How many races the session lasts. The richest player after the last race wins.',
+        { id: 'races', label: 'Races', value: 5, when: function (m) { return m === 'pass' || m === 'online'; }, help: 'How many races the session lasts. The richest player after the last race wins.',
           choices: [[3, '3'], [5, '5'], [8, '8']] },
-        { id: 'stake', label: 'Table money', value: 100, when: function (m) { return m === 'pass'; }, help: 'What each player starts with. Everyone gets the same, and nobody’s casino bankroll changes.',
+        { id: 'stake', label: 'Table money', value: 100, when: function (m) { return m === 'pass' || m === 'online'; }, help: 'What each player starts with. Everyone gets the same, and nobody’s casino bankroll changes.',
           choices: [[100, '$100'], [250, '$250'], [500, '$500']] }
       ],
       start: 'To the track',
@@ -1413,11 +1416,12 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     S.phase = 'bet'; S.tickets = []; S.undo = []; S.pick = { type: 'W', sel: [] }; S.focus = null; S.race = null;
     S.turn = solo() ? 0 : Math.max(0, liveBettor(0));
     save(); render();
-    if (!solo()) turnCallout();
+    if (!solo() && !PURE) turnCallout();
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
   function render() {
+    if (PURE) return;
     app.innerHTML = ''; app.className = 'stage hr ph-' + S.phase;
     R = {};
     if (!RV) RV = RaceView();
@@ -1533,7 +1537,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       R.bank.classList.remove('has-cash');
       var cur = S.players[S.turn] || S.players[0];
       R.bal = el('b', { class: 'gold', text: money(cur.stack) });
-      R.bank.appendChild(el('div', null, [el('small', { text: S.phase === 'bet' ? cur.name + ' has' : 'Race' }), S.phase === 'bet' ? R.bal : el('b', { text: S.raceNo + ' of ' + S.opt.races })]));
+      R.bank.appendChild(el('div', null, [el('small', { text: S.phase === 'bet' ? (NET && S.turn === NET.seat ? 'You have' : cur.name + ' has') : 'Race' }), S.phase === 'bet' ? R.bal : el('b', { text: S.raceNo + ' of ' + S.opt.races })]));
       var paidAll = S.phase === 'result' && S.race && S.race.per ? S.race.per.reduce(function (a, x) { return a + x.ret; }, 0) : null;
       R.bank.appendChild(el('div', null, [el('small', { text: paidAll != null ? 'Paid out' : 'On tickets' }), el('b', { text: money(paidAll != null ? paidAll : S.phase === 'bet' ? staked(S.turn) : staked()) })]));
       R.bank.appendChild(el('div', null, [el('small', { text: 'Races left' }), el('b', { text: String(S.opt.races - S.raceNo + (S.phase === 'bet' ? 1 : 0)) })]));
@@ -1545,10 +1549,14 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     R.stand.innerHTML = '';
     S.players.forEach(function (p, i) {
       var v = vals ? vals[i] : p.stack;
-      R.stand.appendChild(el('div', { class: 'pp' + (S.phase === 'bet' && i === S.turn ? ' on' : '') + (p.stack < 1 && !staked(i) && S.phase === 'bet' ? ' out' : ''), style: { '--c': p.color } }, [
+      // (online: whoever is still betting glows, and a check shows whose bets are in)
+      var on = NET ? S.phase === 'bet' && !p.out && !S.ready[i] && !(i === NET.seat && amIn()) : S.phase === 'bet' && i === S.turn;
+      var pp = el('div', { class: 'pp' + (on ? ' on' : '') + ((p.stack < 1 && !staked(i) && S.phase === 'bet') || p.out ? ' out' : ''), style: { '--c': p.color } }, [
         el('span', { class: 'avatar sm', style: { '--c': p.color }, text: p.name.charAt(0).toUpperCase() }),
-        el('span', { text: p.name }), el('b', { 'data-i': i, text: money(v) })
-      ]));
+        el('span', { text: NET && i === NET.seat ? 'You' : p.name }), el('b', { 'data-i': i, text: money(v) })
+      ]);
+      if (NET && S.phase === 'bet' && !on && !p.out && (S.ready[i] || i === NET.seat && amIn())) pp.appendChild(el('span', { class: 'ck', html: Kit.icon('check') }));
+      R.stand.appendChild(pp);
     });
   }
   function paintTypes() {
@@ -1560,7 +1568,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     });
   }
   function setType(t) {
-    if (S.phase !== 'bet') return;
+    if (S.phase !== 'bet' || netLocked()) return;
     S.pick.type = t; S.pick.sel = S.pick.sel.slice(0, NEED[t]);
     Kit.sfx('tap'); Kit.haptic('light');
     paintTypes(); paintProgram(); paintInfo(); paintPick(); save();
@@ -1591,7 +1599,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     });
   }
   function tapHorse(i) {
-    if (S.phase !== 'bet') return;
+    if (S.phase !== 'bet' || netLocked()) return;
     var sel = S.pick.sel, need = NEED[S.pick.type], at = sel.indexOf(i);
     if (need === 1) S.pick.sel = at >= 0 ? [] : [i];
     else if (at >= 0) sel.splice(at, 1);
@@ -1612,6 +1620,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function paintPickIn(box) {
     var p = S.pick, need = NEED[p.type];
     box.innerHTML = '';
+    if (netLocked()) { box.appendChild(el('span', { class: 'grow', text: netWaitMsg() })); return; }
     if (!solo()) { var pl = S.players[S.turn]; box.appendChild(el('span', { class: 'av', style: { '--c': pl.color }, text: pl.name.charAt(0).toUpperCase() })); }
     if (p.sel.length < need) {
       var left = need - p.sel.length;
@@ -1628,14 +1637,14 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function paintSlip() {
     R.slip.innerHTML = '';
     var mine = S.tickets.filter(function (k) { return k.p === S.turn; });
-    R.slip.appendChild(el('h4', null, [el('span', { text: solo() ? 'Your tickets' : S.players[S.turn].name + "'s tickets" }), el('span', { text: mine.length ? money(staked(S.turn)) : '' })]));
+    R.slip.appendChild(el('h4', null, [el('span', { text: solo() || NET ? 'Your tickets' : S.players[S.turn].name + "'s tickets" }), el('span', { text: mine.length ? money(staked(S.turn)) : '' })]));
     if (!mine.length) { R.slip.appendChild(el('div', { class: 'empty', text: 'No bets yet. Pick a horse, then tap a chip below.' })); return; }
     mine.forEach(function (k) {
       var row = el('div', { class: 'tk' + (k === lastAdded ? ' drop' : '') }, [
         stackEl(k.amt, 26),
         el('div', { class: 'tx' }, [el('b', { html: BT[k.type] + ' ' + selText(k.type, k.sel) }), el('small', { text: (k.type === 'W' ? mlText(S.field.horses[k.sel[0]].ml) + ' odds' : fmtOdds(k.m)) + (NEED[k.type] === 1 ? '' : ' · ' + k.sel.map(function (i) { return S.field.horses[i].name; }).join(', ')) })]),
         el('div', { class: 'am' }, [el('span', { text: money(k.amt) }), el('small', { text: 'pays ' + money(payout(k.amt, k.m)) })]),
-        el('button', { type: 'button', class: 'x', 'aria-label': 'Take back this ticket', html: Kit.icon('close'), onclick: function () { removeTicket(k.k); } })
+        netLocked() ? null : el('button', { type: 'button', class: 'x', 'aria-label': 'Take back this ticket', html: Kit.icon('close'), onclick: function () { removeTicket(k.k); } })
       ]);
       R.slip.appendChild(row);
     });
@@ -1660,7 +1669,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   function keyOf(p, type, sel) { return p + ':' + type + ':' + sel.join('-'); }
   function findTk(k) { for (var i = 0; i < S.tickets.length; i++) if (S.tickets[i].k === k) return S.tickets[i]; return null; }
   function addChip(v, btn) {
-    if (!S || S.phase !== 'bet') return;
+    if (!S || S.phase !== 'bet' || netLocked()) return;
     var p = S.pick, need = NEED[p.type];
     if (p.sel.length < need) {
       Kit.sfx('bad'); Kit.haptic('error');
@@ -1699,7 +1708,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   }
   function afterBetChange() { paintPick(); paintSlip(); paintProgram(); paintBank(); paintRail(); save(); }
   function undoChip() {
-    if (!S || S.phase !== 'bet') { if (S) Kit.toast('Bets are locked once the race starts'); return; }
+    if (!S || S.phase !== 'bet' || netLocked()) { if (S) Kit.toast('Bets are locked once the race starts'); return; }
     var j = -1;
     for (var i = S.undo.length - 1; i >= 0; i--) if (S.undo[i].p === S.turn) { j = i; break; }
     if (j < 0) { Kit.toast('Nothing to undo'); return; }
@@ -1710,7 +1719,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     afterBetChange();
   }
   function removeTicket(k) {
-    var tk = findTk(k); if (!tk || S.phase !== 'bet') return;
+    var tk = findTk(k); if (!tk || S.phase !== 'bet' || netLocked()) return;
     give(tk.p, tk.amt);
     S.tickets.splice(S.tickets.indexOf(tk), 1);
     S.undo = S.undo.filter(function (u) { return u.k !== k; });
@@ -1718,6 +1727,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     afterBetChange();
   }
   function clearMine() {
+    if (netLocked()) return;
     var mine = S.tickets.filter(function (k) { return k.p === S.turn; });
     if (!mine.length) return;
     mine.forEach(function (k) { give(k.p, k.amt); });
@@ -1750,8 +1760,8 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       R.rinfo = el('div', { class: 'rinfo' });   // wide screens: the call and bankroll move here (placeInfo)
       inner.appendChild(R.rinfo); inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     } else {
-      var last = !solo() && (S.raceNo >= S.opt.races || allBroke());
-      R.goB = el('button', { type: 'button', class: 'btn btn-primary go', html: Kit.icon(last ? 'trophy' : 'play') + '<span>' + (last ? 'Final standings' : 'Next race') + '</span>', onclick: function () { if (last) endPass(); else { if (solo() && Casino.balance() < 1) { brokeSheet(); return; } nextRace(); } } });
+      var last = !solo() && (S.raceNo >= S.opt.races || allBroke() || (NET && NET.state.phase === 'over'));
+      R.goB = el('button', { type: 'button', class: 'btn btn-primary go', html: Kit.icon(last ? 'trophy' : 'play') + '<span>' + (last ? 'Final standings' : 'Next race') + '</span>', onclick: function () { if (NET) { netNext(); return; } if (last) endPass(); else { if (solo() && Casino.balance() < 1) { brokeSheet(); return; } nextRace(); } } });
       inner.appendChild(el('div', { class: 'acts' }, [R.goB]));
     }
     var r = el('div', { class: 'rail wood rk-' + kind }, [inner]);
@@ -1766,9 +1776,10 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     var b = bal(S.turn);
     R.tray.querySelectorAll('button').forEach(function (x) { x.disabled = +x.dataset.v > b; });
     var mineUndo = S.undo.some(function (u) { return u.p === S.turn; });
-    R.undoB.disabled = !mineUndo; R.clrB.disabled = !staked(S.turn);
+    R.undoB.disabled = !mineUndo || netLocked(); R.clrB.disabled = !staked(S.turn) || netLocked();
     var nx = nextBettor(), t = staked(S.turn);
-    if (solo()) R.goB.innerHTML = Kit.icon('play') + '<span>' + (t ? 'Race · ' + money(t) : 'Watch race') + '</span>';
+    if (NET) { R.goB.disabled = netLocked(); R.goB.innerHTML = netLocked() ? '<span>Your bets are in</span>' : Kit.icon('play') + '<span>' + (t ? 'Bet ' + money(t) : 'Just watch this race') + '</span>'; if (netLocked()) R.tray.querySelectorAll('button').forEach(function (x) { x.disabled = true; }); }
+    else if (solo()) R.goB.innerHTML = Kit.icon('play') + '<span>' + (t ? 'Race · ' + money(t) : 'Watch race') + '</span>';
     else if (nx >= 0) R.goB.innerHTML = '<span>' + (t ? 'Done' : 'Pass') + ' · ' + esc(S.players[nx].name) + ' next</span>';
     else R.goB.innerHTML = Kit.icon('play') + '<span>Start the race</span>';
   }
@@ -1778,6 +1789,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   }
   function doneBetting() {
     if (S.phase !== 'bet') return;
+    if (NET) { netBet(); return; }
     if (!solo()) {
       var nx = nextBettor();
       if (nx >= 0) {
@@ -1795,6 +1807,21 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
 
   // ── The race ─────────────────────────────────────────────────────────────
   function startRace() {
+    makeRace();
+    S.phase = 'race';
+    save();
+    VO.prime();
+    Kit.sfx('pop'); Kit.haptic('medium');
+    app.className = 'stage hr ph-race';
+    paintBank();
+    RV.setField(S.field, S.race);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    rail('race');
+    layout();
+    runRace();
+  }
+  // The race's result, drawn now from the horses' strengths (the running of it is played out from this)
+  function makeRace() {
     var F = S.field, r = Math.random;
     var order = harville(F.horses.map(function (h) { return h.p; }), r);
     // Winning margins in lengths: often clear, sometimes a blanket finish
@@ -1807,17 +1834,6 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     }
     var Tw = S.opt.pace === 'quick' ? 12.5 : 18.5;
     S.race = { seed: Math.floor(r() * 2147483647), order: order, gaps: gaps, photo: gaps[0] < 0.35, Tw: Tw, clock: 69.4 + r() * 3.2 + (F.cond === 'Sloppy' || F.cond === 'Yielding' ? 1.2 : 0), settled: false };
-    S.phase = 'race';
-    save();
-    VO.prime();
-    Kit.sfx('pop'); Kit.haptic('medium');
-    app.className = 'stage hr ph-race';
-    paintBank();
-    RV.setField(S.field, S.race);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    rail('race');
-    layout();
-    runRace();
   }
   function runRace() {
     buildStrip();
@@ -1883,6 +1899,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
   }
   function onRaceDone() {
     settle();
+    if (NET && S.netAfter) S.players.forEach(function (p, i) { p.stack = S.netAfter[i]; });   // (online: paid when they cross the line)
     S.phase = 'result'; save();
     app.className = 'stage hr ph-result';
     paintResults(true);
@@ -2086,7 +2103,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       var top = ps.slice().sort(function (a, b) { return b.stack - a.stack; });
       var winner = top.length > 1 && top[0].stack !== top[1].stack ? top[0].name : null;
       return Kit.record(HKEY, {
-        started: S.started, mode: 'Pass and play · ' + S.log.length + ' races',
+        started: S.started, mode: (S.mode === 'online' ? 'Online · ' : 'Pass and play · ') + S.log.length + ' races',
         players: ps.map(function (p) { return { name: p.name, score: p.stack }; }), winner: winner,
         rounds: { labels: ['Start'].concat(S.log.map(function (l) { return 'Race ' + l.race; })), scores: [stakes].concat(S.log.map(function (l) { return l.nets; })) },
         highlights: highlights(),
@@ -2112,6 +2129,7 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
     if (S && S.phase === 'bet') { S.tickets.forEach(function (k) { give(k.p, k.amt); }); S.tickets = []; S.undo = []; }
   }
   function endSession() {
+    if (NET) { netEndAsk(); return; }
     if (!S) { showSetup(); return; }
     if (S.phase === 'race') { Kit.toast('Wait for the race to finish (or skip it)'); return; }
     if (!solo()) {
@@ -2162,6 +2180,176 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       refundOpen(); recordSession(); clearSave(); showSetup();
     });
   }
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // Everyone bets on the same races, each on their own device, with table money as in pass and play. The table holds
+  // the whole session (S, mode 'online', its players' money and tickets). Everyone bets at the same time (the turn
+  // holds every player still to bet; a player out of money sits the race out); the last bets in run the race: its
+  // result is drawn and settled at once (makeRace and settle, PURE: the same code with its saves and drawing left out),
+  // the race is kept (prev) and the next race's betting opens, or the session ends after the last one. Every device
+  // then runs that race on its own track, from the same seed, and shows the results until you tap Next race.
+  // hold: this device is showing a race or its results; NETR: the race number this device is betting on.
+  var NET = null, PURE = false, NETR = 0, hold = false, winRef = null;
+  function pure(st, fn) {
+    var keep = S, k = { sfx: Kit.sfx, haptic: Kit.haptic, callout: Kit.callout, toast: Kit.toast }, nop = function () {};
+    S = st; PURE = true; Kit.sfx = nop; Kit.haptic = nop; Kit.callout = nop; Kit.toast = nop;
+    try { return fn(); } finally { S = keep; PURE = false; Kit.sfx = k.sfx; Kit.haptic = k.haptic; Kit.callout = k.callout; Kit.toast = k.toast; }
+  }
+  function amIn() { return !!NET && (NET.seat < 0 || NET.state.phase === 'bet' && !!NET.state.ready[NET.seat]); }
+  function netLocked() { return !!NET && S && S.phase === 'bet' && amIn(); }
+  function stillToBet(st) { var out = []; if (st.phase === 'bet') st.players.forEach(function (p, i) { if (!p.out && !st.ready[i]) out.push(i); }); return out; }
+  function netWaitMsg() {
+    var l = stillToBet(NET.state).map(function (i) { return NET.state.players[i].name; });
+    return l.length ? 'The horses go to the gate when ' + CasinoNet.listAnd(l) + (l.length === 1 ? ' bets.' : ' bet.') : 'They’re going to the gate.';
+  }
+  function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_horserace')) || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var o = setupSaved().options || {};
+    return { field: ['6', '8', 'mix'].indexOf(String(o.field)) >= 0 ? String(o.field) : 'mix', pace: o.pace === 'quick' ? 'quick' : 'full', voice: o.voice === 'off' ? 'off' : 'on',
+      races: [3, 5, 8].indexOf(+o.races) >= 0 ? +o.races : 5, stake: [100, 250, 500].indexOf(+o.stake) >= 0 ? +o.stake : 100 };
+  }
+  function netStart(players, o) {
+    var st = { v: 1, online: 1, mode: 'online', started: Date.now(), opt: { field: o.field, pace: o.pace, races: o.races, stake: o.stake, voice: o.voice },
+      players: players.map(function (p, i) { return { name: p.name, color: Kit.color(i), stack: o.stake, net: 0, wagered: 0, ret: 0, best: null, hits: 0, broke: 0 }; }),
+      raceNo: 0, log: [], notes: [], startBank: 0, hi: 0, cfgPlayers: players.map(function (p) { return { name: p.name }; }) };
+    pure(st, function () { nextRace(); });
+    st.ready = st.players.map(function () { return false; });
+    return st;
+  }
+  // every bet is in: the race is run and settled, then the next race opens (or the session is over)
+  function runNet(st) {
+    pure(st, function () {
+      var before = S.players.map(function (p) { return p.stack; });
+      makeRace(); settle();
+      S.prev = { raceNo: S.raceNo, field: S.field, race: S.race, tickets: S.tickets, before: S.race.before || before, after: S.players.map(function (p) { return p.stack; }) };
+      if (S.raceNo >= S.opt.races || allBroke()) { S.phase = 'over'; return; }
+      nextRace();
+      S.ready = S.players.map(function (p) { return !!p.out || p.stack < 1; });
+      if (S.ready.every(Boolean)) S.phase = 'over';
+    });
+  }
+  function moveOn(st, seat, m) {
+    if (!st || st.phase === 'over') return null;
+    if (m.t === 'end') {
+      if (st.phase !== 'bet') return null;
+      pure(st, function () { refundOpen(); });
+      st.phase = 'over'; st.endBy = seat;
+      return { state: st, mv: { t: 'end', s: seat } };
+    }
+    if (m.t !== 'bet' || st.phase !== 'bet' || st.ready[seat] || st.players[seat].out) return null;
+    var F = st.field, t = 0, ok = true, tks = (m.tk || []).map(function (k) {
+      var sel = (k.sel || []).map(Number), amt = Math.round(+k.amt || 0);
+      if (!BT[k.type] || sel.length !== NEED[k.type] || sel.some(function (i, j) { return !(i >= 0 && i < F.n) || sel.indexOf(i) !== j; }) || amt < 1) ok = false;
+      t += amt;
+      return { k: keyOf(seat, k.type, sel), p: seat, type: k.type, sel: sel, amt: amt, m: ok ? price(F, k.type, sel) : 0 };
+    });
+    if (!ok || t > st.players[seat].stack) return null;
+    st.players[seat].stack -= t;
+    st.tickets = st.tickets.filter(function (k) { return k.p !== seat; }).concat(tks);
+    st.ready[seat] = true;
+    var mv = { t: 'bet', s: seat };
+    if (st.ready.every(function (r, i) { return r || st.players[i].out; })) { mv.settled = st.raceNo; runNet(st); }
+    return { state: st, mv: mv };
+  }
+  // the table as this device bets on it: your own tickets and money stay as you are making them
+  function betView(st) {
+    var v = JSON.parse(JSON.stringify(st));
+    v.turn = Math.max(0, NET.seat); v.pick = { type: 'W', sel: [] }; v.focus = null; v.undo = [];
+    delete v.prev;
+    return v;
+  }
+  function netShow(net, info) {
+    NET = net;
+    var st = net.state;
+    if (info.fresh || info.again) { if (winRef) { winRef.close(); winRef = null; } hold = false; NETR = 0; }
+    // a race was run since this device last looked: it is run here too
+    if (st.prev && NETR && st.prev.raceNo >= NETR && !hold) { playRace(st); return; }
+    if (hold) { if (S && S.phase === 'result' && R.goB && st.phase === 'over') rail('result'); return; }   // (the race or its results are up: they stay)
+    if (st.phase === 'over') { netFinal(); return; }
+    if (info.fresh || info.again || !S || !S.online || S.raceNo !== st.raceNo) { S = betView(st); NETR = st.raceNo; Kit.gameStart(); render(); return; }
+    // anyone else's bets: their money and checks change; yours stay as you are making them
+    var me = Math.max(0, net.seat);
+    st.players.forEach(function (p, i) { if (i !== me || amIn()) S.players[i] = JSON.parse(JSON.stringify(p)); });
+    if (amIn()) S.tickets = JSON.parse(JSON.stringify(st.tickets));
+    S.ready = st.ready.slice();
+    paintBank(); paintRail(); paintPick(); paintSlip();
+    if (info.mv && !info.mine && net.myTurn()) Kit.haptic('light');
+  }
+  // the race the table just ran, on this track: the field, your tickets and everyone's money as they went to the gate
+  function playRace(st) {
+    var p = st.prev, v = JSON.parse(JSON.stringify(st));
+    v.field = p.field; v.race = p.race; v.tickets = p.tickets; v.raceNo = p.raceNo; v.phase = 'race'; v.turn = Math.max(0, NET.seat);
+    v.players.forEach(function (x, i) { x.stack = p.before[i]; });
+    v.netAfter = p.after; v.pick = { type: 'W', sel: [] }; v.undo = [];
+    delete v.prev;
+    S = v; hold = true; NETR = p.raceNo + 1;
+    VO.prime(); Kit.sfx('pop'); Kit.haptic('medium');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    render();
+  }
+  function netNext() {
+    hold = false;
+    var st = NET.state;
+    if (st.phase === 'over') { netFinal(); return; }
+    S = betView(st); NETR = st.raceNo; render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  function netBet() {
+    if (!NET || NET.seat < 0 || amIn()) return;
+    var me = NET.seat, tk = S.tickets.filter(function (k) { return k.p === me; }).map(function (k) { return { type: k.type, sel: k.sel.slice(), amt: k.amt }; });
+    Kit.sfx('pop'); Kit.haptic('medium');
+    NET.act(function (st) { return moveOn(st, me, { t: 'bet', tk: tk }); });
+  }
+  function netEndAsk() {
+    if (!NET || NET.seat < 0) return;
+    if (hold || NET.state.phase !== 'bet') { Kit.toast('Wait for the race to finish'); return; }
+    var me = NET.seat;
+    Kit.confirm('End the session for everyone?', { ok: 'End session', body: 'Final standings after ' + NET.state.log.length + ' race' + (NET.state.log.length === 1 ? '' : 's') + '. Tickets on the next race go back to whoever bet them.' })
+      .then(function (ok) { if (ok && NET) NET.act(function (st) { return moveOn(st, me, { t: 'end' }); }); });
+  }
+  function netFinal() {
+    var st = NET.state, res = NET.result, left = !!(res && res.left != null), me = NET.seat;
+    hold = false;
+    S = JSON.parse(JSON.stringify(st)); S.turn = Math.max(0, me); S.pick = { type: 'W', sel: [] }; S.undo = []; S.phase = 'result';
+    if (S.log.length && CasinoNet.once('horserace:' + NET.code + ':' + st.started)) recordSession();
+    if (RV) RV.stop(); app.innerHTML = ''; rail(null);
+    var ranked = st.players.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: money(p.stack), color: p.color, v: p.stack, i: i }; }).sort(function (a, b) { return b.v - a.v; });
+    var tie = ranked.length > 1 && ranked[0].v === ranked[1].v;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : tie ? 'A dead heat!' : ranked[0].i === me ? 'You win!' : ranked[0].name + ' wins!',
+      sub: 'Richest after ' + st.log.length + ' race' + (st.log.length === 1 ? '' : 's') + ', starting with ' + money(st.opt.stake) + ' each.',
+      rank: ranked, lose: me >= 0 && ranked[0].i !== me && !tie, icon: ranked[0].i === me ? 'trophy' : 'meh',
+      againLabel: left ? 'Back to the lobby' : 'Race again', again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      extra: [{ label: 'Past races', onClick: function () { Kit.history(HKEY, { title: 'Horse Race: past sessions' }); } }]
+    });
+  }
+  function netLeave() {
+    NET = null; hold = false; NETR = 0;
+    if (winRef) { winRef.close(); winRef = null; }
+    if (RV) RV.stop();
+    var sv = load();
+    if (sv && !sv.online) { S = sv; if (solo()) moneyFor(S.players[0].name); render(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'horserace', title: 'Horse Race', min: 2, max: 6,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return stillToBet(st); },
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var hi = Math.max.apply(null, st.players.map(function (p) { return p.stack; })), win = [];
+      st.players.forEach(function (p, i) { if (p.stack === hi) win.push(i); });
+      return { win: win, text: 'Richest after ' + st.log.length + ' race' + (st.log.length === 1 ? '' : 's') };
+    },
+    // someone who leaves: their tickets on this race still run, and they sit out the races after it
+    resign: function (st, seat) {
+      st.players[seat].out = true;
+      if (st.phase === 'bet' && !st.ready[seat]) { st.ready[seat] = true; if (st.ready.every(function (r, i) { return r || st.players[i].out; })) runNet(st); }
+      return { state: st };
+    },
+    leaveNote: function () { return 'Your money stays at the table, and the others race on.'; },
+    show: netShow, leave: netLeave
+  });
 
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = load();
