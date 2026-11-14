@@ -292,7 +292,7 @@
     if (/^load https?:/.test(m) || /offline|unavailable|network/i.test(m)) return 'Couldn’t reach the internet. Check the connection and try again.';
     return m || 'Something went wrong';
   }
-  var NAT_MSG = 'Couldn’t connect to the other device. Some networks (often phone data, or school and office Wi-Fi) block direct connections between devices. Try again with both devices on the same Wi-Fi.';
+  var NAT_MSG = 'Couldn’t connect to the other device. Check that both devices are online, then try again.';
 
   // ── Host a table ────────────────────────────────────────────────────────
   // opts: {game, name, max, info, accept(info) -> true | 'reason'}
