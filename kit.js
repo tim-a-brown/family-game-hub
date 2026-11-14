@@ -845,7 +845,7 @@
   }
   function pageKey() { return location.pathname.replace(/^.*\//, '').replace(/\.html$/, ''); }
   function playerColor(i) {
-    return getComputedStyle(root).getPropertyValue('--p' + ((i % 8) + 1)).trim() || '#ffc83d';
+    return getComputedStyle(root).getPropertyValue('--p' + ((i % 24) + 1)).trim() || '#ffc83d';
   }
   // Text on a colour: white or near-black, whichever stands out more (true contrast, not a brightness guess)
   function inkFor(hex) {
@@ -2098,7 +2098,7 @@
     var box = el('span', { class: pre + '-chips ' + pre + '-toks' + (teams ? ' teams' : '') });
     function seat(t, i) {
       var c = playerColor(i), av = t.cpu ? botFace(t.tag, c)
-        : t.anon ? el('span', { class: 'avatar', style: { '--c': c }, text: String(i + 1) }) : avMarked(t.name, c);
+        : t.anon ? el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, text: String(i + 1) }) : avMarked(t.name, c);
       // (a robot's skill is in its face, with the words kept for screen readers)
       return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
@@ -2163,7 +2163,7 @@
   // Seat marker: the seat number, or the person's avatar with a tag when it's you or someone linked to their own profile
   function seatBadge(v, i, c) {
     var m = whoMark(v);
-    if (!m) return el('span', { class: 'avatar', style: { '--c': c }, 'data-who': '', html: String(i + 1) });
+    if (!m) return el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, 'data-who': '', html: String(i + 1) });
     var b = avMarked(v.trim(), c); b.setAttribute('data-who', m + ':' + avKey(v));
     return b;
   }
@@ -2233,7 +2233,7 @@
     // one seat at the table: who (or what) sits there, and whether it's the one being filled
     function token(i) {
       var cpu = cpuNow(), bot = seatIsBot(M, i), c = playerColor(i), nm = bot ? (M.bots[i - 1] || 'Computer') : person(i);
-      var av = bot ? botFace(M.lv ? levelText(i) : '', c) : nm ? avMarked(nm, c) : el('span', { class: 'avatar', style: { '--c': c }, html: String(i + 1) });
+      var av = bot ? botFace(M.lv ? levelText(i) : '', c) : nm ? avMarked(nm, c) : el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, html: String(i + 1) });
       var shown = nm || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1));
       return el('button', { type: 'button', class: 'k-st' + (i === sel ? ' on' : '') + (bot ? ' cpu' : '') + (!bot && !nm ? ' open' : '') + (pop[i] ? ' pop' : ''), 'aria-pressed': String(i === sel),
         'aria-label': 'Seat ' + (i + 1) + ': ' + (bot ? 'computer, ' : '') + shown, onclick: function () { if (sel === i) return; sel = i; sfx('tap'); haptic('light'); paint(); } },
@@ -3414,7 +3414,7 @@
     node._avFb = node._avFb || { html: fallback != null ? fallback : node.innerHTML, c: color || node.style.getPropertyValue('--c') };
     node.innerHTML = h || node._avFb.html;
     node.classList.toggle('av-photo', !!(h && h.indexOf('<img') === 0));
-    var cc = c || node._avFb.c; if (cc) node.style.setProperty('--c', cc); if (c) node.style.color = inkFor(c); else node.style.color = '';
+    var cc = c || node._avFb.c; if (cc) node.style.setProperty('--c', cc); node.style.color = cc && /^#/.test(String(cc).trim()) ? inkFor(cc) : '';
     return node;
   }
   function avEl(name, cls, color, fallback) {
