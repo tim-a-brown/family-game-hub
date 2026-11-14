@@ -1745,9 +1745,10 @@
     ui.hideHand = false; if (G.mode !== 'cpu') ui.viewer = o; render();
   }
   // a Domain as it lies on the map, with no Figures yet: its picture, its name and rule, its kind's frame and home
-  function suTile(pk, cls, at) {
+  // (tag: 'span' for a tile inside a button of its own, as the hand's are)
+  function suTile(pk, cls, at, tag) {
     const pi = C.PLACES[pk], AD = window.AnoriaDomains;
-    const tile = el('button', { type: 'button', class: 'pl-tile su-t' + (cls ? ' ' + cls : ''), 'data-su': pk, 'aria-label': pi.n });
+    const tile = el(tag || 'button', { type: tag ? null : 'button', class: 'pl-tile su-t' + (cls ? ' ' + cls : ''), 'data-su': pk, 'aria-label': tag ? null : pi.n });
     const art = el('span', { class: 'pl-art' }, [el('span', { class: 'na' })]); const im = artImg(pk, true); if (im) art.appendChild(im); else art.style.setProperty('--kc', (AD && AD.KINDS[AD.kindOf(pk)] || {}).c || '#223');
     tile.appendChild(art);
     tile.appendChild(el('span', { class: 'pl-plate' }, [el('span', { class: 'pl-name' + (pi.n.length > 15 ? ' long' : ''), text: pi.n }), DSHORT[pi.pw] ? el('span', { class: 'pl-rule', text: DSHORT[pi.pw] }) : null]));
@@ -1785,12 +1786,17 @@
       let mid;
       if (i === 2 * S.N) {   // the Crossroads, with the two offers beside it
         mid = el('span', { class: 'pl-tile su-slot hub', 'aria-label': 'The Crossroads' }, [el('span', { class: 'su-lbl', text: 'The Crossroads' })]);
+        // (two players: an offer is the tile it would be at the Crossroads, as large as the room beside it allows, so its
+        // name and rule read like the map's: layoutLine and layoutMap size it, --ofw and --ofh. Audit 4.1, 2026-11-14:
+        // the offers were small upright cards whose rule was 7px. With more players, yours is a tile beside the Crossroads
+        // and everyone else's stay small cards in a stack.)
         const off = (o, side) => {
+          const T2 = !many() || o === v ? ' tile' : '';
           const id = shown ? su.lay[o].offer : o === v ? put.offer : null;
-          if (id) return el('span', { class: 'su-off', 'data-su': o === v && !shown ? id : null, style: { '--oc': 'var(--pc' + o + ')' } }, [cardEl(id, { mini: true, now: true })]);
-          if (su.lay[o] && o !== v) return el('span', { class: 'su-off' }, [suBack()]);
-          if (o === v && me) return el('button', { type: 'button', class: 'su-off empty' + (sel ? ' lit' : ''), 'data-slot': 'offer', 'aria-label': 'Your offer for the Crossroads' }, [el('span', { class: 'su-lbl', text: 'Your offer' })]);
-          return el('span', { class: 'su-off empty dim' }, [el('span', { class: 'su-lbl', text: Kit.poss(pname(o)) + ' offer' })]);
+          if (id) return el('span', { class: 'su-off' + T2, 'data-su': o === v && !shown ? id : null, style: { '--oc': 'var(--pc' + o + ')' } }, [T2 ? suTile(id, 'su-ot', 'cross', 'span') : cardEl(id, { mini: true, now: true })]);
+          if (su.lay[o] && o !== v) return el('span', { class: 'su-off' + T2 }, [suBack()]);
+          if (o === v && me) return el('button', { type: 'button', class: 'su-off empty' + T2 + (sel ? ' lit' : ''), 'data-slot': 'offer', 'aria-label': 'Your offer for the Crossroads' }, [el('span', { class: 'su-lbl', text: 'Your offer' })]);
+          return el('span', { class: 'su-off empty dim' + T2 }, [el('span', { class: 'su-lbl', text: Kit.poss(pname(o)) + ' offer' })]);
         };
         if (many()) seatsFrom(v).slice(1).forEach(o => L.appendChild(off(o, 'L'))); else L.appendChild(off(t, 'L'));
         R.appendChild(off(v, 'R'));
@@ -1813,15 +1819,18 @@
     const full = me && put.gate && put.out && put.offer, next = G.players.some((p, o) => o !== v && !p.cpu && !su.lay[o]), N = S.N;
     n.appendChild(el('div', { class: 'cap-txt' + (me ? '' : ' dim'), text: shown || !me ? '' : full ? (next ? (N > 2 ? 'Your Domains lie face down until everyone has laid theirs.' : 'Your Domains lie face down until both of you have laid yours.') : (N > 2 ? 'The highest roll’s offer is the Crossroads.' : 'The higher roll’s offer is the Crossroads.')) : 'Lay three of your ' + ['', 'one', 'two', 'three', 'four', 'five'][su.drew[v].length] + ' Domains.' }));
     // the hand: the Domains drawn and not yet laid
-    const h = dom.hand; h.innerHTML = '';
+    const h = dom.hand; h.innerHTML = ''; h.classList.add('su');
+    // (each Domain drawn is shown as the tile it will be on the map, its name and rule as large as the hand's room allows:
+    // layoutHand, suHand. Audit 4.1, 2026-11-14: as small upright cards their rules were 7px)
+    const face = id => suTile(id, '', null, 'span');
     if (me) su.drew[v].filter(id => id !== put.gate && id !== put.out && id !== put.offer).forEach(id => {
       // (once three are laid, the one left over turns face down and is tucked under a card back that stands for the stack:
       // it goes under the stack. Tim: "animate the unchosen domain card to flip face down as it is tucked under". It can
       // still be picked up, face up again, and laid in place of another)
       const tuck = full && sel !== id;
-      if (!tuck) { h.appendChild(el('button', { type: 'button', class: 'hc' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [cardEl(id, { mini: true })])); return; }
+      if (!tuck) { h.appendChild(el('button', { type: 'button', class: 'hc su-h' + (sel === id ? ' sel' : ' ok'), 'data-su': id, 'aria-label': C.PLACES[id].n }, [face(id)])); return; }
       const go = me.tucked !== id; me.tucked = id;
-      const c = el('button', { type: 'button', class: 'hc su-under', 'data-su': id, 'aria-label': C.PLACES[id].n + ', going under your stack' }, [el('span', { class: 'su-tk' }, [el('span', { class: 'su-tf' }, [cardEl(id, { mini: true })]), el('span', { class: 'su-tb' }, [suBack()])])]);
+      const c = el('button', { type: 'button', class: 'hc su-h su-under', 'data-su': id, 'aria-label': C.PLACES[id].n + ', going under your stack' }, [el('span', { class: 'su-tk' }, [el('span', { class: 'su-tf' }, [face(id)]), el('span', { class: 'su-tb' }, [suBack()])])]);
       h.appendChild(el('span', { class: 'su-stack' + (go ? ' go' : '') }, [c, suBack('stk')]));
       if (go) { setTimeout(() => Kit.sfx('flip', .5), 380); setTimeout(() => { Kit.sfx('deal', .5); Kit.haptic('light'); }, 820); }
     });
@@ -2386,7 +2395,7 @@
     if (!G.demo) n.appendChild(el('button', { type: 'button', class: 'cap-log', 'aria-label': 'Turn log', html: Kit.icon('rows'), onclick: logScreen }));
   }
   function handEl() {
-    const n = dom.hand; n.innerHTML = '';
+    const n = dom.hand; n.innerHTML = ''; n.classList.remove('su');
     if (ui.pend) return pendHand(n);
     if (ui.hideHand || ui.viewer < 0) return;
     const o = ui.view, hand = V.P[o].hand, can = idle() && o === S.turn, T = targets();
@@ -2462,7 +2471,18 @@
   }
   function fitPlates() {
     if (!dom.map) return;
-    const tiles = Array.prototype.filter.call(dom.map.querySelectorAll('.pl-tile:not(.wn-small)'), t => t.querySelector('.pl-plate'));
+    const of = (root, s) => Array.prototype.filter.call(root.querySelectorAll(s), t => t.querySelector('.pl-plate'));
+    const all = of(dom.map, '.pl-tile:not(.wn-small)');
+    fitTiles(all.filter(t => !t.closest('.su-off')));
+    // (the set-up's offers and hand are fitted as groups of their own, each at its own size, with the picture kept in view;
+    // a Domain tucked face down under the stack takes its group's size without being measured, as it lies turned)
+    const offs = all.filter(t => t.closest('.su-off'));
+    const oh = offs.length ? offs[0].getBoundingClientRect().height : 0;
+    fitTiles(offs, { pic: oh >= 100 ? .62 : oh >= 50 ? .76 : 0 });   // (a low offer gives its words more of the tile, and one too low for its picture as well shows its words)
+    if (dom.hand && dom.hand.classList.contains('su')) { const hs = of(dom.hand, '.pl-tile'); fitTiles(hs.filter(t => !t.closest('.su-tk')), { pic: .62, also: hs.filter(t => t.closest('.su-tk')) }); }
+  }
+  function fitTiles(tiles, o) {
+    o = o || {};
     if (!tiles.length) return;
     const plate = t => t.querySelector('.pl-plate');
     const set = (t, k) => { t.classList.remove('f1', 'f2', 'f3', 'f4'); if (k) t.classList.add('f' + Math.min(k, 3)); if (k > 3) t.classList.add('f4'); };
@@ -2474,18 +2494,42 @@
       const nm = p.querySelector('.pl-name'), a = nm && nm.getBoundingClientRect();
       const hits = a && Array.prototype.some.call(t.querySelectorAll('.pl-flag, .pl-tot'), x => { const r = x.getBoundingClientRect(); return a.top - 2 < r.bottom && a.bottom > r.top && a.left < r.right && a.right > r.left; });
       const ru = p.querySelector('.pl-rule'), rr = ru && ru.offsetParent ? ru.getBoundingClientRect() : null;
-      return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (ln && !(ui.lay || {}).short && pr.height > tr.height * .62) || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
+      const rw = t.closest('.pl'), rr0 = rw && !t.closest('.su-off') ? rw.getBoundingClientRect() : null;   // (a tile whose words would make it taller than its row: a 320-wide phone)
+      return pr.top < top - 1 || pr.bottom > tr.bottom - 2 || (rr0 && tr.bottom > rr0.bottom + 1) || (ln && !o.pic && !(ui.lay || {}).short && pr.height > tr.height * .62) || (o.pic && pr.height > tr.height * o.pic) || (rr && rr.bottom > pr.bottom + 1) || p.scrollWidth > p.clientWidth + 1 || (nm && nm.scrollWidth > nm.clientWidth + 1) || hits;
     };
-    tiles.forEach(t => { plate(t).style.minHeight = ''; roomy(t); });   // (the mark and home go into a roomy tile's paper before its words are measured)
-    let k = 0; for (; k <= 3; k++) { tiles.forEach(t => set(t, k)); if (!tiles.some(bad)) break; }
-    if (k > 3) tiles.forEach(t => { set(t, 3); if (bad(t)) set(t, 4); });
+    const also = o.also || [];
+    tiles.concat(also).forEach(t => { plate(t).style.minHeight = ''; if (!o.pic) roomy(t); });   // (the mark and home go into a roomy tile's paper before its words are measured)
+    let k = 0; for (; k <= 3; k++) { tiles.concat(also).forEach(t => set(t, k)); if (!tiles.some(bad)) break; }
+    // (no size fits the name and the rule: every tile's rule goes, a tap still reads it, and the names take the largest size
+    // that fits without it. A 320-wide phone: the names had stayed at the smallest size, 7.5px, under the flag)
+    if (k > 3) { let j = 0; for (; j <= 3; j++) { tiles.concat(also).forEach(t => { set(t, j); t.classList.add('f4'); }); if (!tiles.some(bad)) break; } }
     // the same paper on every tile: the tallest one's height, the words centred on it
     const H = Math.max.apply(null, tiles.map(t => plate(t).getBoundingClientRect().height));
-    tiles.forEach(t => { plate(t).style.minHeight = H + 'px'; });
+    tiles.concat(also).forEach(t => { plate(t).style.minHeight = H + 'px'; });
   }
   // Sizes from the room there is
   function layout() { if (!dom.map) return; layoutHand(); layoutMap(); }
-  function layoutHand() {
+  function layoutHand() { layoutHandPlay(); if (G && G.ph === 'setup' && dom.hand && dom.hand.classList.contains('su')) suHand(); }
+  // The set-up's hand: the Domains drawn, as tiles in one row or two, whichever makes them bigger, in the room the hand
+  // keeps for the game, so nothing moves when the first turn begins (a short phone, which keeps none, gives it about two
+  // rows' worth). The words on them are fitted with the map's (fitPlates).
+  function suHand() {
+    const h = dom.hand, ks = Array.prototype.filter.call(h.children, c => c.matches('.hc, .su-stack')), n = ks.length;
+    h.classList.remove('two', 'small', 'over', 'su2'); if (!n) return;
+    const cs = getComputedStyle(h), W = h.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) - 2, L = ui.lay || {};
+    const g = W > 600 ? 10 : 6, top = (parseFloat(cs.paddingTop) || 0) + 6;
+    let R = parseFloat(h.style.minHeight) || 0, A = L.short ? .5 : .56, own = false;
+    if (R < W * .4 && !L.ln) { R = Math.round(Math.min(W * .46, window.innerHeight * .24)); own = true; A = .38; }   // (a short phone: wider, lower tiles)
+    // (sized for all four drawn, so a tile keeps its size as the others are laid and the last is tucked under the stack)
+    const room = R - top, cap = L.short ? 150 : 220, nn = Math.max(n, 4);
+    let best = 0, rows = 1, per = n;
+    for (let rw = 1; rw <= 2; rw++) { const pr = Math.ceil(nn / rw), tw = Math.min((W - (pr - 1) * g) / pr, (room - (rw - 1) * g) / rw / A, cap); if (tw > best + 2) { best = tw; rows = rw; per = Math.min(pr, n); } }
+    const tw = Math.floor(best), th = Math.floor(tw * A);
+    if (own) h.style.minHeight = Math.ceil(rows * th + (rows - 1) * g + top + 2) + 'px';
+    h.classList.toggle('su2', rows > 1); h.style.setProperty('--per', per); h.style.setProperty('--ho', g + 'px');
+    [['--stw', tw], ['--sth', th], ['--spn', Math.max(10, Math.min(16, tw * .08))], ['--spr', Math.max(9.5, Math.min(14, tw * .068))]].forEach(x => h.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
+  }
+  function layoutHandPlay() {
     if (!dom.map) return;
     // The hand is sized first and the map measured after it. (The other way round, a hand that had just grown
     // squeezed the map for one measurement: every card drawn made the whole board jump flat and back.)
@@ -2542,7 +2586,16 @@
           const h5 = Math.floor(Math.max(30, Math.min((W - 4 * g) / 5, cap))), room = h5 * 1.4 + 2;
           per = Math.max(n, 5); rows = 1; hw = Math.min((W - (per - 1) * g) / per, cap);
           if (n > 5) { const p2 = Math.ceil(n / 2), w2 = Math.min((W - (p2 - 1) * g) / p2, (room - 6) / 2 / 1.4); if (w2 > hw) { hw = w2; rows = 2; per = p2; } }
-          h.style.minHeight = Math.ceil(room + 6) + 'px';
+          if (!many()) {
+            // (two players on a short phone held upright, a 320-wide one: one row of cards the size of five across the
+            // whole width, overlapping as a held hand does once more are held, each spine and its numbers showing. Two
+            // rows of small cards left a third of the width empty: audit, 2026-11-14)
+            hw = h5; rows = 1; per = n;
+            const ov = n > 1 && n * hw + (n - 1) * g > W ? (W - n * hw) / (n - 1) : g;
+            h.style.setProperty('--ho', ov.toFixed(1) + 'px'); h.classList.toggle('over', ov < 0);
+            h.style.paddingBottom = '8px';   // (the first and last cards clear of the screen's rounded corners)
+          }
+          h.style.minHeight = Math.ceil(room + 6 + (many() ? 0 : 8)) + 'px';
         }
       }
     }
@@ -2565,12 +2618,19 @@
     let fw = Math.floor(Math.max(24, Math.min((rowH - 9) / 1.44, (r.width - padX - 2 * gp - mwMin - 4 * sg) / 6, 118)));
     let mw = Math.floor(Math.min(r.width - padX - 2 * gp - 6 * fw - 4 * sg, Math.max(mwMin, rowH * 2.2, 240)));
     if (!many()) {   // (two players, a phone upright: the Figures are cards, as tall as the row allows, beside a tile a third of the width)
-      mw = Math.floor(Math.max(mwMin, Math.min(rowH * 1.7, r.width * .37)));
+      // (a 320-wide phone: the tile as wide as a third of the map, so its name reads; the cards beside it overlap as they must)
+      mw = Math.floor(Math.max(mwMin, Math.min(rowH * (r.width < 340 ? 2.6 : 1.7), r.width * .37)));
       const sideW = (r.width - padX - 2 * gp - mw) / 2; fw = Math.floor(Math.max(26, Math.min((rowH - 4) / 1.4, sideW * .6, 118)));
       dom.map.style.setProperty('--sdw', Math.floor(sideW) + 'px');
+      // (the set-up's offers beside the Crossroads: tiles as wide as the room at its side)
+      const ofw = Math.floor(sideW - 4), ofh = Math.floor(Math.min(rowH - 4, ofw * .72));
+      [['--ofw', ofw], ['--ofh', ofh], ['--opn', Math.max(10.5, Math.min(13, ofw * .1))], ['--opr', Math.max(10, Math.min(12, ofw * .085))]].forEach(x => dom.map.style.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
     }
     const st = dom.map.style; st.setProperty('--fw', fw + 'px'); st.setProperty('--rg', rg + 'px'); st.setProperty('--sg', sg + 'px'); st.setProperty('--mw', mw + 'px'); st.setProperty('--gp', gp + 'px');
     dom.map.classList.toggle('tight', rowH < 74);
+    // (a board card under 40px wide, a 320-wide phone held upright: its picture and its Might only, the Might large enough
+    // to read; the name and the cost were 3 to 4px there. A hold reads it, as everywhere)
+    dom.map.classList.toggle('mini', !many() && fw < 40);
   }
   // The battle line's sizes, from the room between the two players' bars: five columns, one for each Domain, the
   // tile across the middle of each, the other player's Figures in the band above it and yours in the band below.
@@ -2597,16 +2657,26 @@
     const fw = Math.floor(Math.max(30, L.up ? Math.min(colW - 14, (band - 6) / 1.62 / 1.4, 124) : Math.min((colW - 6) / 2, (band - 4) / 1.4, 124)));
     const sw = Math.floor(Math.max(22, Math.min((band - 4) / 1.36, colW * .4, 60)));
     const pn = Math.max(11, Math.min(15, tw * .075)), pr = Math.max(10, Math.min(13.5, tw * .064));
-    [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', Math.round(Math.max(18, Math.min(32, tw * .16)))]].forEach(x => st.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
-    M.classList.remove('tight', 'pos2');
+    // (the set-up's offers, in the bands above and below the Crossroads, which hold no Figures yet: tiles the Crossroads'
+    // size, smaller on a phone on its side where the bands are short; upright on an iPad, where the tiles are narrow and the
+    // bands tall, a wide tile reaching over the empty bands either side)
+    const os = Math.min(1, (band - 6) / th), ofw = L.up ? Math.min(colW * 1.85, (band - 6) / .62, 300) : tw * os, ofh = L.up ? ofw * .62 : th * os;
+    [['--ry', oh + gapB + H / 2], ['--cg', cg], ['--colw', colW], ['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--pn', pn], ['--pr', pr], ['--fl', Math.round(Math.max(18, Math.min(32, tw * .16)))],
+      ['--ofw', ofw], ['--ofh', ofh], ['--opn', Math.max(L.short ? 10 : 11, Math.min(16, ofw * .075))], ['--opr', Math.max(L.short ? 9.5 : 10.5, Math.min(14, ofw * .064))]].forEach(x => st.setProperty(x[0], (Math.round(x[1] * 10) / 10) + 'px'));
+    M.classList.remove('tight', 'pos2', 'mini');
   }
   // A card's name on the board or in the hand is set as large as reads at arm's length (11px on an iPad), and a name
   // with a word too long for its card at that size steps down until the word fits: nothing is broken or cut off.
   function fitNames() {
     if (!dom.map || !(ui.lay && (ui.lay.ln || ui.lay.rows))) return;
+    // (measured against the name's own box less its padding: an overlapped hand card pads its name clear of the next card,
+    // and a word running into that padding was not counted, so it ran under the next card. Audit, 2026-11-14)
+    const over = n => { const cs = getComputedStyle(n), pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0, w = n.clientWidth - pl - pr, rg = document.createRange(); rg.selectNodeContents(n);
+      const c = n.closest('.hc'), nx = c && c.parentElement.classList.contains('over') ? c.nextElementSibling : null, lim = nx && nx.matches('.hc') ? nx.getBoundingClientRect().left - 2 : 0;   // (and clear of the next card's edge)
+      return n.scrollWidth - pl - pr > w + 1 || Array.prototype.some.call(rg.getClientRects(), r => r.width > w + 1 || (lim && r.right > lim)); };
     dom.root.querySelectorAll('.an-map .fp.card .ac-name, .an-hand .hc .ac-name').forEach(n => {
-      n.style.fontSize = ''; if (n.scrollWidth <= n.clientWidth + 1) return;
-      let fs = parseFloat(getComputedStyle(n).fontSize); while (n.scrollWidth > n.clientWidth + 1 && fs > 6) { fs -= .5; n.style.fontSize = fs + 'px'; }
+      n.style.fontSize = ''; if (!over(n)) return;
+      let fs = parseFloat(getComputedStyle(n).fontSize); while (over(n) && fs > 6) { fs -= .5; n.style.fontSize = fs + 'px'; }
     });
   }
   // The Figures at each Domain lie as a pile: side by side while they fit, else overlapping, the newest on top, every
@@ -2617,7 +2687,7 @@
     const L = ui.lay || {};
     dom.map.querySelectorAll('.pl-side').forEach(sd => {
       const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot, .stk')), n = ks.length;
-      ks.forEach(k => { k.style.zIndex = ''; });
+      ks.forEach(k => { k.style.zIndex = ''; k.classList.remove('under'); });
       if (n < 2) { sd.style.removeProperty('--ov'); return; }
       const r = sd.getBoundingClientRect(), b = ks[0].getBoundingClientRect(), gap = L.ln ? 6 : 3;
       if (L.ln && L.up) {
@@ -2627,6 +2697,9 @@
       }
       const w = b.width, room = r.width - 2, fit = n * w + (n - 1) * gap;
       sd.style.setProperty('--ov', (fit <= room ? gap : (room - n * w) / (n - 1)).toFixed(1) + 'px');
+      // (an overlapped card shows only a slice, so its name would be cut off there. It shows its spine and picture, and
+      // the card on top, the newest, keeps its name; a hold reads them all. Audit, 2026-11-14)
+      ks.forEach((k, j) => k.classList.toggle('under', fit > room && j < n - 1));
     });
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
@@ -3779,6 +3852,22 @@
       g.lines.forEach(e => box.appendChild(line(e))); sc.body.appendChild(box); });
   }
 
+  // How to play, the rules on one page (audit 6.4, 2026-11-14: it opened in the site's stock sheet). The shared frame,
+  // set like the rule book in a game's box: the story and the goal first, then the sections, each a button in the
+  // contents under the goal so a rule is found by its name. The words are RULES, which reads the Renown that wins from
+  // the engine. Kit.rules on this page opens it too (the guide's "rules on one page" and the bar's fallback).
+  function rulesScreen() {
+    Kit.sfx('pop');
+    const sc = screen({ title: 'How to play', cls: 'an-rules' }), box = el('div', { class: 'an-rl', html: RULES() });
+    const hs = Array.prototype.slice.call(box.querySelectorAll('h3'));
+    const to = h => { Kit.sfx('tap'); const b = sc.body, y = h.getBoundingClientRect().top - b.getBoundingClientRect().top + b.scrollTop - 6; b.scrollTo({ top: y, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
+    const nav = el('nav', { class: 'an-rl-nav', 'aria-label': 'The rules, section by section' }, hs.map(h => el('button', { type: 'button', class: 'btn btn-sm an-rl-go', text: h.textContent, onclick: () => to(h) })));
+    if (hs.length) box.insertBefore(nav, hs[0]);
+    sc.body.appendChild(el('div', { class: 'an-rl-col' }, [box]));
+    return sc;
+  }
+  Kit.rules = rulesScreen;
+
   // (whose Figure knocked one out: the knocker's player, from the table, or from who the log has seen play it)
   const byOf = ev => { const f = E.byU(S, ev.by); if (f) return f.o; const w = G.who && G.who[ev.by]; return w ? w[1] : S.N === 2 ? 1 - ev.o : -1; };
   // what the game did, for the callings (coll.js track: the first player's, whoever holds the device)
@@ -4057,8 +4146,22 @@
       title: w < 0 ? 'A draw' : T ? (mine ? 'Your team wins!' : winName(w) + ' win!') : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'when the Seals ran out' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended', rank: rank,
       again: () => newGame({ mode: G.mode, level: G.level, teams: G.teams, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
+      show: q => { if (!T) sealRanks(S.P.map((p, o) => o).sort((a, b) => (b === w) - (a === w) || (S.P[a].out ? 1 : 0) - (S.P[b].out ? 1 : 0) || S.P[b].renown - S.P[a].renown)); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
+  }
+  // Each player's Seals at the end, drawn on their row of the results card as the table's own seals, whole or broken
+  // (they were a line of words each in How it ended; the audit, 2026-11-14, the card scrolled on a phone). Kit.win calls
+  // the show slot as it builds the card, each time the card is shown, so the rows are marked the moment it is in the page.
+  function sealRanks(order) {
+    requestAnimationFrame(() => {
+      const all = document.querySelectorAll('.k-win'), card = all.length ? all[all.length - 1] : null; if (!card) return;
+      card.querySelectorAll('.rank > div').forEach((row, i) => {
+        const o = order[i]; if (o == null || row.querySelector('.rk-sl')) return; const P = S.P[o], sm = P.sm || 3;
+        const box = el('span', { class: 'rk-sl', role: 'img', 'aria-label': P.seals + (P.seals === 1 ? ' Seal' : ' Seals') + ' left of ' + sm });
+        for (let k = 0; k < sm; k++) box.appendChild(el('span', { class: 'seal' + (k >= P.seals ? ' broken' : '') }));
+        row.insertBefore(box, row.querySelector('.p'));
+      });
+    });
   }
   function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g;
     return g && p ? 'See what you earned' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
@@ -4088,13 +4191,12 @@
     const w = S.winner, lose = w >= 0 && G.players[w].cpu, order = [0, 1].sort((a, b) => (b === w) - (a === w) || S.P[b].renown - S.P[a].renown);
     const notes = [], R = G.rew && G.rew.list ? G.rew : null, earned = R && window.AnoriaPacks ? R.list : [];
     notes.push(S.how === 'seals' ? 'All ' + (S.P[1 - w].sm === 4 ? 'four' : 'three') + ' of ' + Kit.poss(pname(1 - w)) + ' Seals are broken' : w < 0 ? 'Level on Renown, Seals and Might' : 'First to ' + S.cfg.target + ' Renown at the end of a round');
-    G.players.forEach((p, i) => notes.push((p.name === 'You' ? 'You have ' : p.name + ' has ') + S.P[i].seals + (S.P[i].seals === 1 ? ' Seal' : ' Seals') + ' left'));
     Kit.win({ quiet: quiet, icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy', lose: !!lose,
       title: w < 0 ? 'A draw' : lose ? pname(w) + ' wins this one' : pname(w) === 'You' ? 'You win!' : pname(w) + ' wins!',
       sub: 'Round ' + S.round + ', ' + (S.how === 'seals' ? 'by breaking the Seals' : 'on Renown'), pic: racePic(), notes: notes, notesTitle: 'How it ended',
       rank: order.map(i => ({ name: pname(i), score: S.P[i].renown, color: G.players[i].color, cpu: G.players[i].cpu })),
       again: () => newGame({ mode: G.mode, level: G.level, players: G.players }), look: 'Look at the table', setup: showSetup, setupLabel: 'Change decks or players',
-      show: R && window.AnoriaRewards ? q => window.AnoriaRewards.endPanel(R, q) : null,
+      show: q => { sealRanks(order); return R && window.AnoriaRewards ? window.AnoriaRewards.endPanel(R, q) : null; },
       extra: earned.length ? [{ label: earnedLabel(earned), onClick: () => { window.AnoriaPacks.earned(earned, showSetup); } }] : null });
   }
 
@@ -4267,7 +4369,7 @@
     paint();
   }
   Kit.init({
-    id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else Kit.rules(); },
+    id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
     theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
     onNew: () => { if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,
     menu: [

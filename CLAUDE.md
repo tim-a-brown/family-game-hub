@@ -671,7 +671,13 @@ Underlying principles for everything:
   there (`html.an-low`: the kit keeps iOS's top edge clear, so it folds no further). A phone held upright (`rw`) keeps
   the line on its end, their Gate at the top on their mat and yours at the bottom on yours, their cards to the left of
   each Domain and yours to the right, the two bars as thin strips at the top and above the dock. Names on the iPad's
-  board cards are 11px or more. Everything is worked out from the window each time the table is drawn, and a turn of
+  board cards are 11px or more. **A card under another in a pile shows no name** (`under` in `piles()`), since the next
+  card would cut it off; the newest, on top, keeps its name, and a hold reads them all. A hand card's name is fitted
+  clear of the next card when the hand overlaps (`fitNames`). When no size fits every tile's name and rule, the rules go
+  (a tap reads them) and the names take the largest size that fits (`fitTiles`). **A 320-wide phone held upright**
+  (audit, 2026-11-14): a board card under 40px wide is its picture and its Might on a shield, 9px or more (`.mini` from
+  `layoutMap`; its name and cost were 3 to 4px); the tiles are a third of the map wide; the hand is one row of cards the
+  size of five across the full width, overlapping like a held hand when more are held, clear of the corners. Everything is worked out from the window each time the table is drawn, and a turn of
   the device redraws it. This is how the table meets the Landscape rule: the taps go to the line itself and to the
   hand and button in the dock under it, so the line runs the full width. (The 3 to 6 player table, `drawN`, keeps its
   own layout on phones; on an iPad held sideways it is the battle line too: below.)
@@ -770,7 +776,13 @@ Underlying principles for everything:
 - **The results card shows the game** (the audit of 2026-11-13, #7.3; Tim approved the plan the same day): the winner's
   Guide stands where the trophy was, and the race for Renown is drawn as a line for each player, round by round from
   0, with the Renown that wins ruled across the top (`racePic` in ui.js, from `G.tale.tot`), in `Kit.win`'s `pic`
-  slot (a picture of the game under the title, any game can give one).
+  slot (a picture of the game under the title, any game can give one). **It fits the screen without scrolling** (audit,
+  2026-11-14) at Tim's sizes, by CSS that only Anoria's card reaches (`.k-win .card:has(.an-race)` in ui.css; kit.js is
+  unchanged): each player's Seals are drawn on their row as the table's seals, whole or broken (`sealRanks`, through the
+  `show` slot so the card shown again has them too), instead of a line of words each; the rows, the rewards panel and the
+  gaps are closer; the buttons after Play again stand two to a row in Kit.win's order; an iPad on its side puts the
+  buttons in a column at the right, and a phone on its side has three columns, the game, what it earned and the
+  buttons. A game that earns a Guide or several packs can still make the card scroll.
 - **The turn log** (Tim, 2026-11-11: "add a turn log with tappable card names like we have in lorcana"). `logEvs` in
   ui.js turns every event the engine reports into a sentence in `G.log` (kept with the saved game, the last 200): who
   played what where, each clash with its Might and who was knocked out, Legacy Lines, Seals, the count Place by
@@ -788,7 +800,10 @@ Underlying principles for everything:
   plate with an engraved rule, the rest dark enamel with a gilt edge, words in the book face with plain digits). A
   screen doesn't restyle its own buttons' colour or face; size and layout only.
 - **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
-  `guide` option; the rules on one page are still `Kit.rules()`). The quick start (shown once, the first time Anoria
+  `guide` option). The rules on one page are `rulesScreen()` in ui.js (audit 6.4, 2026-11-14), in the shared frame
+  `AnoriaUI.screen()`, set like the rule book in a game's box: the story and the goal first, then a button for each
+  section, then the sections under small-capitals headings; `Kit.rules` on Anoria's page opens it (the guide's "rules
+  on one page"), and the words are still `RULES`. The quick start (shown once, the first time Anoria
   is opened: `anoria_guide`) and the chapters after the story are all **lessons**: a made-up position on the real table,
   played by a script through `AnoriaUI.demo` in ui.js (`G.demo`: never saved or recorded, fixed dice; your own game
   waits in its save and comes back). A lesson is `{id, n, table(), run(L)}`: `L.say` (caption, with `at` rings and
@@ -827,7 +842,9 @@ Underlying principles for everything:
   from the card's border and plates. Each player brings a **stack of 15 Domains**, no two the same, chosen from a
   collection that can hold more. Set-up: draw four (`suDraw`; three until Tim's choice on 2026-11-12), one to your Gate, one to your Outpost, one under your
   stack, and one offered for
-  the Crossroads; each player rolls a die, the higher roll's offer is the Crossroads and the other player takes the
+  the Crossroads (on the screen each Domain drawn, and each offer, is the tile it will be on the map, its name and rule
+  as large as the room allows: `suHand`, `--ofw` from `layoutLine`/`layoutMap`; audit 4.1, 2026-11-14, the offers were
+  small cards with 7px rules; with more players everyone else's offers stay small cards in a stack); each player rolls a die, the higher roll's offer is the Crossroads and the other player takes the
   first turn. The Crossroads' owner wins ties there while they have a Figure there, and nothing more. Domination (a
   win by holding every kind) is left out as too complicated. **The game must translate to a real table**: whose
   Domain each one is (a banner in the player's colour that travels with the card, since cards may swap, reverse or
