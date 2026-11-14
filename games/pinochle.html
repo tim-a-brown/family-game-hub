@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pinochle</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="pinochle-core.js"></script>
+<style>
+/* ── The page is laid out to the screen: four shapes (phone and iPad, upright and sideways), set by fit() ── */
+.pn{position:relative;display:grid;gap:8px;padding:4px 8px 0;box-sizing:border-box;margin:0 auto;width:100%;
+  height:var(--ph,calc(100dvh - var(--bar,64px)));padding-bottom:max(calc(var(--safe-b) + 6px),12px);}
+.pn.L-pu,.pn.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"top" "tbl" "act" "hand";}
+.pn.L-tu{max-width:860px;padding-left:14px;padding-right:14px;gap:10px;}
+.pn.L-ps{grid-template-columns:minmax(0,1fr) var(--side,400px);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"tbl top" "tbl act" "tbl hand";column-gap:10px;row-gap:6px;
+  padding-left:max(var(--safe-l,0px),10px);padding-right:max(var(--safe-r,0px),14px);}
+.pn.L-ts{grid-template-columns:minmax(0,1fr) var(--side,380px);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"tbl top" "tbl pad" "tbl act" "hand hand";column-gap:14px;row-gap:8px;padding-left:16px;padding-right:18px;}
+.pn > .tblbg,.pn > .tbl{grid-area:tbl;min-height:0;min-width:0;}
+.pn > .top{grid-area:top;min-width:0;}
+.pn > .act{grid-area:act;min-width:0;}
+.pn > .hand{grid-area:hand;min-width:0;}
+.pn > .lpad{display:none;}
+.pn.L-ts > .lpad{display:block;grid-area:pad;min-height:0;overflow:auto;border-radius:6px 6px 14px 14px;-webkit-overflow-scrolling:touch;}
+.lpad .spad{box-shadow:0 8px 20px rgba(0,0,0,.4);}
+.lpad .spad th,.lpad .spad td{height:34px;} .lpad .spad td{font-size:1.2rem;} .lpad .spad tfoot td{font-size:1.5rem;height:42px;} .lpad .spad-h h2{font-size:1.2rem;} .lpad .spad-h{padding:8px 12px 6px;}
+.pn.L-ps > .act,.pn.L-ts > .act{align-self:end;}
+.pn.L-pu > .act{min-height:96px;} .pn.L-tu > .act{min-height:112px;}
+
+/* ── The table: wood and felt behind (its own layer, so it can glide when the shape changes), the play area over it ── */
+.tblbg{position:relative;border-radius:26px;padding:8px;z-index:0;transform-origin:0 0;}
+.tblbg .felt-in{position:absolute;inset:8px;border-radius:19px;}
+.tbl{position:relative;z-index:1;margin:8px;border-radius:19px;--u:1;}
+.tbl .wm{position:absolute;left:50%;top:50%;translate:-50% -50%;font-size:calc(var(--u) * 190px);line-height:1;opacity:.07;color:#fff;pointer-events:none;transition:opacity .6s;font-family:Georgia,serif;}
+.tbl .wm.red{color:#ffb3b3;opacity:.09;}
+/* seats */
+.st{position:absolute;z-index:4;display:flex;flex-direction:column;align-items:center;gap:3px;transform-origin:0 0;}
+.st.p-s{left:50%;bottom:4px;translate:-50% 0;}
+.st.p-n{left:50%;top:4px;translate:-50% 0;}
+.st.p-w{left:4px;top:40%;translate:0 -50%;align-items:flex-start;}
+.st.p-e{right:4px;top:40%;translate:0 -50%;align-items:flex-end;}
+.tbl.n3 .st.p-w,.tbl.n3 .st.p-e{top:max(70px,24%);}
+.st .tg{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 3px;border-radius:999px;background:rgba(10,8,6,.55);color:#fff;font-weight:800;font-size:calc(.78rem * var(--fz,1));white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);transition:box-shadow .25s,scale .3s var(--spring);}
+.st .tg .avatar{width:calc(24px * var(--fz,1));height:calc(24px * var(--fz,1));font-size:calc(.7rem * var(--fz,1));flex:none;}
+.st .tg .avatar .ico{width:60%;height:60%;}
+.st .tg .nm{max-width:9.5em;overflow:hidden;text-overflow:ellipsis;}
+.st .tg .dl{font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:1px 5px;border-radius:5px;background:#f3e6c4;color:#3a2a14;}
+.st.turn .tg{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.55);scale:1.06;}
+.st.away .tg{opacity:.6;}
+.st .chs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;}
+.st.p-w .chs{justify-content:flex-start;} .st.p-e .chs{justify-content:flex-end;}
+.st .chip{padding:1px 8px;border-radius:999px;background:rgba(255,250,235,.92);color:#2a1d10;font-size:calc(.7rem * var(--fz,1));font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.st .chip.pass{background:rgba(255,255,255,.18);color:rgba(255,255,255,.7);text-decoration:line-through;text-decoration-thickness:1.5px;}
+.st .chip.hi{background:var(--yellow);color:#2b1a00;}
+.st .chip.bidr{background:#b3202e;color:#fff;}
+.st .chip.saved{background:#1f8a4c;color:#fff;}
+.st .chip.lost{background:rgba(0,0,0,.35);color:rgba(255,255,255,.7);}
+.st .bk{display:flex;--cw:calc(20px * var(--fz,1));height:calc(var(--cw) * 1.4);}
+.st .bk .pcard{flex:none;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.st .bk .pcard+.pcard{margin-left:calc(var(--cw) * -.62);}
+.st .tm{display:flex;--cw:calc(19px * var(--fz,1));gap:0;}
+.st .tm .pcard+.pcard{margin-left:calc(var(--cw) * -.45);}
+.st .say{position:absolute;top:100%;margin-top:4px;padding:5px 11px;border-radius:12px;background:#fffaf0;color:#2a1d10;font-weight:900;font-size:calc(.86rem * var(--fz,1));white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.35);animation:pnpop .35s var(--spring);z-index:6;}
+.st.p-s .say{top:auto;bottom:100%;margin:0 0 4px;}
+.st.p-w .say{top:0;left:100%;margin:0 0 0 6px;} .st.p-e .say{top:0;right:100%;margin:0 6px 0 0;}
+.st .say.big{background:var(--yellow);color:#2b1a00;}
+@keyframes pnpop{from{scale:.5;opacity:0;}to{scale:1;opacity:1;}}
+/* trick */
+.trk{position:absolute;left:50%;top:47%;width:0;height:0;z-index:3;}
+.trk .pcard{--cw:var(--tcw,64px);position:absolute;left:0;top:0;box-shadow:0 3px 10px rgba(0,0,0,.4);}
+.trk .pcard.t-s{translate:-50% 2%;rotate:3deg;}
+.trk .pcard.t-n{translate:-50% -102%;rotate:-4deg;}
+.trk .pcard.t-w{translate:-114% -50%;rotate:-8deg;}
+.trk .pcard.t-e{translate:14% -50%;rotate:7deg;}
+.trk.n3 .pcard.t-w{translate:-104% -64%;} .trk.n3 .pcard.t-e{translate:4% -64%;} .trk.n3 .pcard.t-s{translate:-50% -14%;}
+.trk.n2 .pcard.t-s{translate:-50% -14%;rotate:4deg;} .trk.n2 .pcard.t-n{translate:-50% -88%;}
+.trk .pcard.win{box-shadow:0 0 0 3px var(--yellow),0 0 24px rgba(255,200,61,.8);}
+/* the stacks of tricks each side has taken */
+.pile{position:absolute;z-index:2;display:flex;align-items:flex-end;gap:6px;--cw:calc(26px * var(--fz,1));transform-origin:0 0;}
+.pile.bl{left:8px;bottom:8px;} .pile.tr{right:8px;top:8px;flex-direction:row-reverse;} .pile.tl{left:8px;top:8px;} .pile.br{right:8px;bottom:8px;flex-direction:row-reverse;}
+.pile .stk{position:relative;width:calc(var(--cw) + 10px);height:calc(var(--cw) * 1.4 + 10px);}
+.pile .stk .pcard{position:absolute;left:0;bottom:0;box-shadow:0 1px 2px rgba(0,0,0,.45);}
+.pile .stk.empty{outline:1.5px dashed rgba(255,255,255,.18);outline-offset:-2px;border-radius:6px;width:var(--cw);height:calc(var(--cw) * 1.4);}
+.pile .n{display:flex;flex-direction:column;line-height:1.05;color:#fff;font-weight:900;font-size:calc(.95rem * var(--fz,1));font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.5);}
+.pile .n small{font-size:.62em;letter-spacing:.06em;text-transform:uppercase;opacity:.72;}
+.pile.tr .n,.pile.br .n{text-align:right;}
+.pile .rb{position:absolute;inset:auto 0 -4px 0;height:3px;border-radius:2px;background:var(--pc);}
+.pile.bump .stk{animation:pnbump .35s var(--spring);}
+@keyframes pnbump{40%{scale:1.14;}}
+/* the middle of the table: the auction plate, the widow, the stock */
+.ctr{position:absolute;left:50%;top:47%;translate:-50% -50%;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;transform-origin:0 0;}
+.plate{display:flex;flex-direction:column;align-items:center;padding:8px 18px 9px;border-radius:14px;background:linear-gradient(180deg,#fbf3dd,#eadcb4);color:#3a2a14;box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 8px 20px rgba(0,0,0,.4),0 0 0 3px rgba(120,80,30,.35);min-width:calc(110px * var(--fz,1));}
+.plate small{font-size:calc(.64rem * var(--fz,1));font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#7a6440;}
+.plate b{font-family:var(--display);font-weight:400;font-size:calc(2rem * var(--fz,1));line-height:1.05;font-variant-numeric:tabular-nums;}
+.plate i{font-style:normal;font-weight:800;font-size:calc(.82rem * var(--fz,1));}
+.plate.pop b{animation:pnpop .35s var(--spring);}
+.widow{display:flex;gap:6px;--cw:calc(var(--tcw,64px) * .82);}
+.widow .pcard{box-shadow:0 3px 8px rgba(0,0,0,.45);}
+.stock{position:absolute;left:12%;top:47%;translate:0 -50%;z-index:2;--cw:calc(var(--tcw,64px) * .8);width:calc(var(--cw) * 1.75);height:calc(var(--cw) * 1.4);transform-origin:0 0;}
+.stock .up{position:absolute;left:calc(var(--cw) * .5);top:calc(var(--cw) * .2);rotate:90deg;box-shadow:0 2px 6px rgba(0,0,0,.4);}
+.stock .pile2{position:absolute;left:0;top:0;}
+.stock .pile2 .pcard{position:absolute;left:0;top:0;box-shadow:0 1px 2px rgba(0,0,0,.5);}
+.stock .cnt{position:absolute;left:0;top:100%;margin-top:6px;width:calc(var(--cw) * 1.75);text-align:center;color:#fff;font-weight:900;font-size:calc(.72rem * var(--fz,1));text-shadow:0 1px 2px rgba(0,0,0,.6);white-space:nowrap;}
+/* the meld, laid face up in front of each player */
+.mb{position:absolute;inset:6px;z-index:5;pointer-events:none;display:grid;gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"n n" "w e" "s s";}
+.mb:empty{display:none;}
+.mb.n3{grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"w e" "s s";}
+.mb.n2{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"n" "." "s";}
+.tbl.melding .st,.tbl.melding .pile,.tbl.melding .ctr{opacity:0;transition:opacity .3s;pointer-events:none;}
+.mp{position:relative;display:flex;flex-direction:column;gap:4px;padding:6px 8px 7px;border-radius:12px;background:rgba(12,8,4,.55);box-shadow:0 6px 18px rgba(0,0,0,.35);color:#fff;transform-origin:0 0;animation:pnin .3s ease-out;--mcw:24px;}
+@keyframes pnin{from{opacity:0;}to{opacity:1;}}
+.mp{min-width:0;max-width:100%;}
+.mp.m-s{grid-area:s;justify-self:center;align-self:end;}
+.mp.m-n{grid-area:n;justify-self:center;align-self:start;}
+.mp.m-w{grid-area:w;justify-self:start;align-self:center;}
+.mp.m-e{grid-area:e;justify-self:end;align-self:center;}
+.mp .mh .who{display:flex;align-items:center;gap:6px;}
+.mp .mh .avatar{width:20px;height:20px;font-size:.62rem;}
+.mp .mh .avatar .ico{width:60%;height:60%;}
+.mp.turn{box-shadow:0 0 0 2px var(--yellow),0 6px 18px rgba(0,0,0,.35);}
+.mp .mh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.7rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.78);}
+.mp .mh b{font-family:var(--display);font-weight:400;font-size:1.15rem;letter-spacing:0;color:#ffd166;font-variant-numeric:tabular-nums;}
+.mp .gs{display:flex;flex-wrap:wrap;gap:5px 8px;}
+.mp .none{font-size:.78rem;font-weight:800;color:rgba(255,255,255,.6);}
+.mg{display:flex;flex-direction:column;align-items:center;gap:2px;animation:pnmg .45s var(--spring) both;}
+@keyframes pnmg{from{opacity:0;translate:0 10px;scale:.8;}to{opacity:1;translate:0 0;scale:1;}}
+.mg .cs{display:flex;--cw:var(--mcw);}
+.mg .cs .pcard{flex:none;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.mg .cs .pcard+.pcard{margin-left:calc(var(--mcw) * -.55);}
+.mg .lb{font-size:.62rem;font-weight:900;white-space:nowrap;color:#fff;background:rgba(255,255,255,.14);padding:1px 6px;border-radius:999px;}
+.mg.big .lb{background:var(--yellow);color:#2b1a00;}
+.mg.big .cs{filter:drop-shadow(0 0 8px rgba(255,209,102,.9));}
+.mb .tot{position:absolute;left:50%;top:47%;translate:-50% -50%;display:flex;gap:8px;}
+/* floating points and the glow on a big moment */
+.fl{position:absolute;z-index:9;pointer-events:none;font-family:var(--display);font-size:calc(1.35rem * var(--fz,1));color:#ffd166;text-shadow:0 2px 6px rgba(0,0,0,.6);animation:pnfl 1.2s ease-out forwards;white-space:nowrap;}
+.fl.g{color:#8ff0b0;} .fl.r{color:#ff9aa5;}
+@keyframes pnfl{0%{opacity:0;translate:-50% 0;scale:.6;}15%{opacity:1;scale:1.1;}100%{opacity:0;translate:-50% -46px;scale:1;}}
+.flash{position:absolute;left:50%;bottom:calc(var(--sh,60px) + 10px);translate:-50% 0;z-index:7;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font-weight:800;font-size:calc(.86rem * var(--fz,1));white-space:nowrap;animation:pnin .25s;}
+
+/* ── The score strip: a paper pad for each side and the trump plaque between ── */
+.top{display:flex;gap:6px;align-items:stretch;transform-origin:0 0;cursor:pointer;}
+.sd{flex:1 1 0;min-width:0;position:relative;border-radius:9px;padding:4px 9px 5px;background:linear-gradient(180deg,#fffaf0,#f1e6cc);color:#2a2a3a;box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 5px 12px rgba(0,0,0,.35);border-top:4px solid var(--sc);
+  background-image:repeating-linear-gradient(180deg,transparent 0 17px,rgba(60,80,160,.12) 17px 18px),linear-gradient(180deg,#fffaf0,#f1e6cc);}
+.sd .nm{display:block;font-size:.66rem;font-weight:900;letter-spacing:.02em;line-height:1.15;color:#6a6a80;overflow-wrap:anywhere;}
+.sd .row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
+.sd .tot{font-family:var(--hand);font-size:1.6rem;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;}
+.sd .tot.neg{color:#c8102e;}
+.sd .now{font-family:var(--hand);font-size:.98rem;line-height:1;color:#3a7d4a;white-space:nowrap;}
+.sd .now.bad{color:#c8102e;}
+.sd .bar{position:relative;height:5px;border-radius:3px;background:rgba(0,0,0,.1);margin-top:3px;overflow:hidden;}
+.sd .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--sc);transition:width .5s ease;}
+.sd .bar.made i{background:#1f8a4c;}
+.sd.bidd::after{content:'BID';position:absolute;top:4px;right:7px;font-size:.56rem;font-weight:900;letter-spacing:.08em;color:#c8102e;}
+.sd.bidd .nm{padding-right:22px;}
+.sd.won{box-shadow:0 0 0 3px #1f8a4c,0 5px 12px rgba(0,0,0,.35);}
+.tp{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:76px;padding:3px 8px;border-radius:10px;background:radial-gradient(circle at 50% 35%,#3a2a1a,#1e140b);box-shadow:inset 0 0 0 1.5px rgba(220,180,110,.45),0 4px 10px rgba(0,0,0,.35);color:#f3e6c4;}
+.tp .k{font-size:.56rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(243,230,196,.7);}
+.tp .su{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#fffaf0;color:#1b1b22;font-size:21px;line-height:1;box-shadow:0 0 0 2px #c9a24a;font-family:Georgia,serif;}
+.tp .su.red{color:#d81e3a;}
+.tp .su.none{background:rgba(255,255,255,.12);box-shadow:0 0 0 1.5px rgba(243,230,196,.35);color:rgba(243,230,196,.5);font-size:14px;}
+.tp .bd{font-weight:900;font-size:.78rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.tp.pop .su{animation:pnpop .45s var(--spring);}
+
+/* ── The action bar ── */
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:52px;transform-origin:0 0;}
+.act .hint{color:var(--text-2);font-weight:800;text-align:center;font-size:.95rem;}
+.act .sub{color:var(--text-3);font-weight:700;font-size:.8rem;text-align:center;}
+.act .row{display:flex;gap:8px;width:100%;max-width:440px;justify-content:center;}
+.act .row .btn{flex:1;min-width:0;}
+.bidbar{display:flex;align-items:center;gap:8px;width:100%;max-width:440px;}
+.bidbar .amt{flex:1.3;display:flex;align-items:center;justify-content:center;gap:4px;min-height:52px;border-radius:var(--r);background:rgba(0,0,0,.25);}
+.bidbar .amt output{min-width:56px;text-align:center;font-family:var(--display);font-size:1.6rem;font-variant-numeric:tabular-nums;}
+.bidbar .amt button{width:42px;height:42px;border:0;border-radius:12px;background:var(--surface-3);color:var(--text);font-weight:900;font-size:1.3rem;transition:transform .12s var(--spring);}
+.bidbar .amt button:active{transform:scale(.88);}
+.bidbar .amt button:disabled{opacity:.3;}
+.bidbar > .btn{flex:1;min-width:0;padding-left:10px;padding-right:10px;}
+.trumps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;width:100%;max-width:460px;}
+.trumps button{min-height:58px;border:0;border-radius:var(--r);background:#fffaf0;color:#1b1b22;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;box-shadow:0 4px 0 rgba(0,0,0,.35);transition:transform .12s var(--spring);}
+.trumps button .g{font-size:1.7rem;font-family:Georgia,serif;}
+.trumps button.red .g{color:#d81e3a;}
+.trumps button small{font-size:.72rem;font-weight:900;color:#5a4a30;}
+.trumps button.best{box-shadow:0 0 0 3px var(--yellow),0 4px 0 rgba(0,0,0,.35);}
+.trumps button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.35);}
+.melds{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;width:100%;max-width:460px;}
+.melds .btn{flex:1 1 auto;min-width:0;}
+/* ── Your hand ── */
+.hand{position:relative;display:flex;justify-content:center;align-items:flex-end;padding:18px 6px 2px;--cw:64px;min-height:calc(var(--cw) * 1.4 + 22px);touch-action:none;}
+.hand > .pcard{flex:none;transform-origin:0 0;transition:translate .18s var(--spring),box-shadow .2s,filter .2s;}
+.hand > .pcard + .pcard{margin-left:var(--ov,-24px);}
+.hand > .pcard.dim{filter:brightness(.6) saturate(.7);}
+.hand > .pcard.ok{box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 0 0 1px rgba(0,0,0,.08),0 6px 14px rgba(0,0,0,.35);}
+.hand > .pcard.sel{translate:0 -16px;box-shadow:0 0 0 3px var(--yellow),0 10px 18px rgba(0,0,0,.4);}
+.hand > .pcard.hl{translate:0 -12px;box-shadow:0 0 0 3px #8ff0b0,0 10px 18px rgba(0,0,0,.4);}
+.hand > .pcard.tr::after{content:'';position:absolute;left:12%;right:12%;bottom:3px;height:3px;border-radius:2px;background:linear-gradient(90deg,#c9a24a,#ffe3a0,#c9a24a);}
+.hand > .pcard.tab::before{content:'';position:absolute;inset:-3px;border-radius:inherit;box-shadow:0 0 0 2px rgba(143,240,176,.85);pointer-events:none;}
+.hand > .pcard.new{box-shadow:0 0 0 3px #8ff0b0,0 8px 18px rgba(0,0,0,.35);}
+.hand > .pcard.drag{transition:none;z-index:40;box-shadow:0 18px 30px rgba(0,0,0,.5);}
+.hand > .pcard:active{filter:brightness(.97);}
+/* a small table (a 320-wide phone, a short window): seats on one line, no fans of backs, smaller plates */
+.tbl.tight .st .bk{display:none;}
+.tbl.tight .st.p-n,.tbl.tight .st.p-s{flex-direction:row;}
+.tbl.tight .st .tg{font-size:.72rem;padding:2px 8px 2px 2px;}
+.tbl.tight .st .tg .avatar{width:20px;height:20px;}
+.tbl.tight .st .chip{font-size:.64rem;padding:0 6px;}
+.tbl.tight .st .say{font-size:.74rem;padding:3px 8px;}
+.tbl.tight .pile .n small{display:none;} .tbl.tight .pile .n{font-size:.74rem;}
+.tbl.tight .pile{--cw:20px;}
+.tbl.tight .plate{padding:4px 12px 5px;min-width:0;} .tbl.tight .plate b{font-size:1.4rem;} .tbl.tight .plate small{font-size:.56rem;} .tbl.tight .plate i{font-size:.7rem;}
+.tbl.tight .widow{--cw:34px;}
+@media (max-height:700px){ .pn.L-pu > .act{min-height:74px;} .pn.L-pu .tp{min-width:64px;} .pn.L-pu .tp .su{width:24px;height:24px;font-size:16px;} .pn.L-pu .sd .tot{font-size:1.3rem;} .pn.L-pu .sd{padding:3px 8px;} .pn.L-pu{gap:6px;} }
+.sd .bar i.g{background:repeating-linear-gradient(135deg,var(--sc) 0 3px,transparent 3px 6px);opacity:.55;}
+/* phone sideways: a slimmer score strip and bar */
+.pn.L-ps .sd{padding:3px 8px 4px;} .pn.L-ps .sd .tot{font-size:1.35rem;}
+.pn.L-ps .tp{min-width:64px;padding:2px 6px;} .pn.L-ps .tp .su{width:26px;height:26px;font-size:18px;}
+.pn.L-ps .act{min-height:46px;gap:4px;} .pn.L-ps .act .hint{font-size:.88rem;}
+.pn.L-ps .bidbar .amt{min-height:46px;} .pn.L-ps .bidbar .amt button{width:38px;height:38px;}
+.pn.L-ps .trumps button{min-height:50px;}
+.pn.L-ps .hand{padding-top:16px;}
+/* iPad: bigger pieces */
+.pn.L-tu .sd .nm,.pn.L-ts .sd .nm{font-size:.78rem;}
+.pn.L-tu .sd .tot,.pn.L-ts .sd .tot{font-size:2rem;}
+.pn.L-tu .tp,.pn.L-ts .tp{min-width:96px;} .pn.L-tu .tp .su,.pn.L-ts .tp .su{width:38px;height:38px;font-size:27px;}
+.pn.L-tu .bidbar,.pn.L-tu .trumps,.pn.L-tu .act .row{max-width:560px;}
+.pn.L-tu .act .hint,.pn.L-ts .act .hint{font-size:1.05rem;}
+.pn.L-tu .bidbar .amt output{font-size:1.9rem;}
+.pn.L-tu .mp,.pn.L-ts .mp{padding:8px 10px 9px;}
+.pn.L-tu .mp .mh,.pn.L-ts .mp .mh{font-size:.8rem;} .pn.L-tu .mp .mh b,.pn.L-ts .mp .mh b{font-size:1.4rem;}
+.pn.L-tu .mg .lb,.pn.L-ts .mg .lb{font-size:.74rem;}
+/* online: a tap out of turn nudges whoever's move it is */
+.act.nudge .hint,.st.turn.nudge .tg{animation:pnnudge .4s;}
+@keyframes pnnudge{20%{translate:-6px 0;}40%{translate:6px 0;}60%{translate:-4px 0;}80%{translate:3px 0;}}
+/* the hand's count, in the sheet */
+.cnt{display:flex;flex-direction:column;gap:10px;}
+.cr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.05);border-left:4px solid var(--sc);position:relative;overflow:hidden;}
+.cr .who{font-weight:900;font-size:.95rem;min-width:0;}
+.cr .who small{display:block;font-size:.74rem;font-weight:800;color:var(--text-3);}
+.cr .pts{font-family:var(--display);font-size:1.7rem;line-height:1;text-align:right;font-variant-numeric:tabular-nums;}
+.cr .pts.neg{color:var(--red);}
+.cr .ln{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:.8rem;font-weight:800;color:var(--text-2);}
+.cr .ln .k{display:inline-flex;flex-direction:column;line-height:1.1;}
+.cr .ln .k small{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);}
+.cr .ln .k b{font-size:1.05rem;font-variant-numeric:tabular-nums;}
+.cr .ln .k.lost b{text-decoration:line-through;color:var(--text-3);}
+.cr .cc{grid-column:1 / -1;display:flex;flex-wrap:wrap;--cw:24px;min-height:34px;}
+.cr .cc .pcard{flex:none;margin-right:-10px;box-shadow:0 1px 3px rgba(0,0,0,.4);animation:pnmg .35s var(--spring) both;}
+.cr .stamp{position:absolute;right:12px;bottom:12px;rotate:-10deg;padding:3px 12px;border:3px solid currentColor;border-radius:8px;font-family:var(--display);font-size:1.5rem;letter-spacing:.06em;text-transform:uppercase;opacity:0;scale:2;transition:opacity .25s,scale .35s var(--spring);pointer-events:none;background:rgba(20,16,10,.6);}
+.cr .stamp.on{opacity:1;scale:1;}
+.cr .stamp.good{color:#4ade80;} .cr .stamp.bad{color:#ff6b7a;}
+.padw{margin-top:12px;}
+.spad td.made{color:#17703c;} .spad td.set{color:#c8102e;}
+.spad td small.k{font-size:.7rem;color:#7a7a90;display:block;line-height:1;}
+.spad thead th{font-size:1rem;}
+.spad tbody tr{cursor:default;}
+</style>
+</head>
+<body>
+<main class="pn k-hold" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var Core = window.PinoCore, el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'pinochle_state', HKEY = 'pinochle';
+  var GL = { s: '♠', h: '♥', d: '♦', c: '♣' }, SN = Core.SNAME;
+  var POS = { 4: ['s', 'w', 'n', 'e'], 3: ['s', 'w', 'e'], 2: ['s', 'n'] };
+
+  Kit.init({
+    id: 'pinochle',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'chart', label: 'Score pad', onClick: function () { if (S && S.players) showPad(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Pinochle: past games' }); } }
+    ]),
+    rules:
+      '<p class="goal">Pinochle is played with a 48-card deck: two of each 9, jack, queen, king, ten and ace in every suit. In each suit the ace is highest, then the ten, king, queen, jack and nine. You score for <b>meld</b> (sets of cards you show) and for the <b>counters</b> you take in tricks. The first side to 1,500 wins (two-handed: 1,000).</p>' +
+      '<h3>How many play</h3><ul><li><b>Four players</b> play in two partnerships, partners sitting across from each other. This is the main game.</li><li><b>Three players</b> play Cutthroat: everyone for themselves, 15 cards each, and 3 cards go face down as the widow.</li><li><b>Two players</b> play Two-handed Pinochle, with a stock to draw from.</li></ul>' +
+      '<h3>The bidding</h3><ul><li>Starting to the dealer’s left, each player bids how many points their side will score in the hand, meld and counters together, or passes. The first bid is at least 250, and each bid is 10 more than the last. Once you pass, you are out of the bidding.</li>' +
+      '<li>If everyone else passes and nobody has bid, the dealer is stuck with a bid of 250.</li>' +
+      '<li>The highest bidder names trump. With three players, the bidder first turns up the widow for everyone to see, takes it, names trump and buries 3 cards face down. Counters in the buried cards count for the bidder.</li>' +
+      '<li>With four players, the bidder’s partner passes the bidder 4 cards, and the bidder passes 4 cards back (3 each way if you choose 3 in the setup).</li></ul>' +
+      '<h3>Meld</h3><p>Everyone lays their meld face up for the others to see, then picks it back up to play. A card can count in two melds of different kinds, but not twice in the same kind, so the king and queen in a run aren’t also a royal marriage.</p><ul>' +
+      '<li><b>Run</b> (ace, ten, king, queen and jack of trump): 150. A double run is 1,500.</li><li><b>Royal marriage</b> (king and queen of trump): 40. A <b>marriage</b> in another suit: 20.</li><li><b>Dix</b> (the nine of trump): 10 each.</li>' +
+      '<li><b>Aces around</b> (an ace of every suit): 100. Kings around 80, queens around 60, jacks around 40. Twice around is ten times as much: a thousand aces, 800 kings, 600 queens, 400 jacks.</li>' +
+      '<li><b>Pinochle</b> (the queen of spades and the jack of diamonds): 40. Double pinochle: 300.</li></ul><p>A side’s meld only counts if that side takes at least one trick.</p>' +
+      '<h3>The play</h3><ul><li>The bidder leads the first trick. You have to follow suit, and you have to beat the best card in the trick if you can. If you can’t follow suit, you have to play a trump, and beat any trump already played if you can. If the trick has already been trumped, you can follow suit with any card.</li>' +
+      '<li>The best trump wins the trick, or the best card of the suit led. If two identical cards are played, the first one wins.</li>' +
+      '<li><b>Counters:</b> every ace, ten and king you take is worth 10. The last trick is worth 10 more, so there are 250 in every hand.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>If the bidding side’s meld and counters reach its bid, it scores them all. If they fall short, the side <b>goes set</b>: it scores nothing for the hand and loses the amount of the bid.</li>' +
+      '<li>Every other side scores its meld (if it took a trick) and its counters.</li>' +
+      '<li>After seeing the meld, the bidder can <b>throw in</b> the hand instead of playing it. The bidding side loses its bid, and the others score their meld.</li>' +
+      '<li>When a side reaches 1,500, the game ends. If two sides get there in the same hand, the bidding side wins.</li></ul>' +
+      '<h3>Two-handed</h3><ul><li>Each player gets 12 cards. The next card is turned up for trump, and the rest are the stock. If the turned card is a nine, the dealer scores 10.</li>' +
+      '<li>While the stock lasts, you don’t have to follow suit. The winner of each trick can lay one meld on the table, then the winner draws from the stock and the other player draws next. Cards laid on the table can still be played.</li>' +
+      '<li>Each meld has to add at least one card from your hand. A royal marriage can later grow into a run for 150 more. If you hold the nine of trump, you can swap it for the turned-up card as your meld, for 10.</li>' +
+      '<li>When the stock is gone, everyone picks up their meld and the last 12 tricks are played with the full rules: follow suit, beat the trick, and trump if you can’t follow. The game is to 1,000.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> in the menu: open a table and the others join on their own devices. With four, the first two people to sit are partners. The computer plays any empty seat.</li></ul>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [], busy = false, sel = [], madeShown = {}, setShown = {}, savedShown = {};
+  var NET = null, MYSEAT = 0, LME = 0, BLIND = false;
+  function me() { return NET ? MYSEAT : LME; }
+  function N() { return S ? S.n : 4; }
+  function posOf(p) { return POS[N()][(p - me() + N()) % N()]; }
+  function sideOf(p) { return Core.sideOf(S, p); }
+  function MS() { return sideOf(me()); }
+  function person(p) { return p >= 0 && S.players[p] && !S.players[p].cpu; }
+  function people() { return S.players.filter(function (x) { return !x.cpu; }).length; }
+  function onePerson() { return !!NET || people() < 2; }
+  function nm(p) { return S.players[p].name; }
+  function first(n) { return String(n || '').split(' ')[0]; }
+  function short(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0) ? 'You' : nm(p); }
+  function sideCount() { return Core.nSides(S); }
+  function sideSeats(s) { return Core.seatsOf(S, s); }
+  function sideName(s) { return sideSeats(s).map(function (p) { return first(nm(p)); }).join(' & '); }
+  // a side as this device says it: "You", "You & Jamie", or the names
+  function sideSay(s) {
+    if (!(onePerson() && s === MS() && (!NET || MYSEAT >= 0))) return sideName(s);
+    return S.kind === 'part' ? 'You & ' + first(nm((me() + 2) % 4)) : 'You';
+  }
+  function sideColor(s) { return Kit.color(s); }
+  function seatColor(p) { return Kit.color(sideOf(p)); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · ' + S.scores.map(function (v, s) { return sideName(s) + ' ' + v; }).join(' · '));
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
+
+  var LEVELS = [['easy', 'Easy', 'Bids by feel and forgets which cards have gone.'],
+    ['normal', 'Normal', 'Counts its meld, bids what its hand is worth and keeps track of the high cards.'],
+    ['hard', 'Hard', 'Remembers every card and the meld on the table, and thinks each play through.']];
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function kindFor(n) { return n === 2 ? 'two' : n === 3 ? 'cut' : 'part'; }
+  function showSetup() {
+    S = null; token++; BLIND = false; LME = 0; sel = []; Kit.handoff.close();
+    app.className = 'stage'; app.innerHTML = ''; app.removeAttribute('style'); tbl = null;
+    Kit.setup(app, {
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 4, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; }, teams: function (n) { return n === 4 ? [[0, 2], [1, 3]] : null; } },
+      options: [
+        { id: 'to', label: 'Play to', help: 'The first side to reach this score wins.', value: 1500, choices: [[1000, '1,000\nShorter'], [1500, '1,500\nStandard']], when: function (m, o, n) { return n !== 2; } },
+        { id: 'to2', label: 'Play to', help: 'Two-handed Pinochle is usually played to 1,000.', value: 1000, choices: [[500, '500\nShorter'], [1000, '1,000\nStandard']], when: function (m, o, n) { return n === 2; } },
+        { id: 'pass', label: 'Cards passed', help: 'After trump is named, the bidder’s partner passes the bidder this many cards, and the bidder passes the same number back.', value: 4, choices: [[3, '3'], [4, '4']], when: function (m, o, n) { return n === 4; } },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
+      ],
+      onStart: function (cfg) {
+        var n = cfg.players.length, o = cfg.options;
+        S = Core.newGame({ kind: kindFor(n), players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
+          target: n === 2 ? +o.to2 || 1000 : +o.to || 1500, passN: +o.pass || 4, level: o.level });
+        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        LME = 0; Kit.gameStart(); undoStack = []; startHand(true);
+      }
+    });
+  }
+
+  // ═══ Layout: four shapes, measured from the screen, and a glide between them ═══════════════════════
+  var LAY = '', padEl, topEl, tblBg, tbl, actEl, handEl, seatEls = [], trkEl, ctrEl, pileEls = [], mbEl, stockEl, wmEl;
+  function layoutFor() {
+    var w = innerWidth, h = innerHeight, big = Math.min(w, h) >= 600;
+    if (w > h * 1.05) return big ? 'L-ts' : 'L-ps';
+    return big ? 'L-tu' : 'L-pu';
+  }
+  function build() {
+    app.innerHTML = '';
+    LAY = layoutFor(); app.className = 'pn k-hold ' + LAY;
+    topEl = el('div', { class: 'top', 'data-flip': '1', role: 'button', 'aria-label': 'Score pad', onclick: function () { if (S) { Kit.sfx('tap'); showPad(); } } });
+    tblBg = el('div', { class: 'tblbg wood', 'data-flip': '1' }, [el('div', { class: 'felt-in' })]);
+    tbl = el('div', { class: 'tbl n' + N() });
+    actEl = el('div', { class: 'act', 'data-flip': '1' });
+    handEl = el('div', { class: 'hand' });
+    padEl = el('div', { class: 'lpad', 'data-flip': '1' });
+    app.appendChild(padEl);
+    app.appendChild(topEl); app.appendChild(tblBg); app.appendChild(tbl); app.appendChild(actEl); app.appendChild(handEl);
+    wmEl = el('div', { class: 'wm' }); tbl.appendChild(wmEl);
+    seatEls = []; for (var p = 0; p < N(); p++) { var s = el('div', { class: 'st', 'data-flip': '1' }); seatEls.push(s); tbl.appendChild(s); }
+    pileEls = []; for (var k = 0; k < sideCount(); k++) { var pe = el('div', { class: 'pile', 'data-flip': '1' }); pileEls.push(pe); tbl.appendChild(pe); }
+    ctrEl = el('div', { class: 'ctr', 'data-flip': '1' }); tbl.appendChild(ctrEl);
+    stockEl = el('div', { class: 'stock', 'data-flip': '1', hidden: true }); tbl.appendChild(stockEl);
+    trkEl = el('div', { class: 'trk n' + N() }); tbl.appendChild(trkEl);
+    mbEl = el('div', { class: 'mb' + (N() === 3 ? ' n3' : '') }); tbl.appendChild(mbEl);
+    handDrag();
+  }
+  // sizes from the room there is: the hand's cards, the trick's cards, the type on the table
+  function fit() {
+    if (!app.classList.contains('pn') || !tbl) return;
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--ph', Math.max(300, innerHeight - top) + 'px');
+    var side = LAY === 'L-ps' ? Math.min(430, Math.max(330, Math.round(innerWidth * 0.45))) : LAY === 'L-ts' ? Math.min(420, Math.round(innerWidth * 0.36)) : 0;
+    if (side) app.style.setProperty('--side', side + 'px');
+    fitHand();
+    var r = tbl.getBoundingClientRect(), m = Math.min(r.width, r.height);
+    var u = Math.max(0.62, Math.min(1.5, m / 420));
+    tbl.style.setProperty('--u', u.toFixed(3));
+    tbl.style.setProperty('--fz', Math.max(0.86, Math.min(1.35, m / 400)).toFixed(3));
+    tbl.classList.toggle('tight', r.height < 400 || r.width < 330);
+    var tcw = Math.max(40, Math.min(108, Math.min(r.width / (N() === 2 ? 4.4 : 5.2), r.height / (N() === 2 ? 4.4 : 5.4))));
+    tbl.style.setProperty('--tcw', Math.round(tcw) + 'px');
+    // the meld panels sit clear of the seats
+    var sh = seatEls[0] ? seatEls[0].offsetHeight : 60; tbl.style.setProperty('--sh', sh + 'px');
+    var nn = seatEls.filter(function (s) { return s.classList.contains('p-n'); })[0]; if (nn) tbl.style.setProperty('--nh', nn.offsetHeight + 'px');
+    var ww = seatEls.filter(function (s) { return s.classList.contains('p-w'); })[0]; if (ww) tbl.style.setProperty('--wh', Math.round(ww.offsetHeight / 2 + 4) + 'px');
+    fitMeld();
+  }
+  function fitHand() {
+    if (!handEl) return;
+    var cards = handEl.querySelectorAll('.pcard'), n = Math.max(cards.length, S && S.kind === 'cut' ? 15 : 12);
+    var W = handEl.clientWidth - 12, H = innerHeight;
+    var capH = LAY === 'L-pu' ? H * 0.112 : LAY === 'L-tu' ? H * 0.15 : LAY === 'L-ps' ? H * 0.22 : H * 0.15;
+    var cw = Math.max(44, Math.min(156, capH, W / (n * 0.3 + 0.7)));
+    handEl.style.setProperty('--cw', Math.round(cw) + 'px');
+    var k = cards.length, ov = k > 1 ? Math.min(6, (W - cw) / (k - 1) - cw) : 0;
+    handEl.style.setProperty('--ov', Math.max(-cw * 0.8, ov).toFixed(1) + 'px');
+  }
+  function fitMeld() {
+    if (!mbEl || !mbEl.children.length) return;
+    // one card size for the whole board, eased down until every panel fits the table with nothing cut off
+    var box = mbEl.getBoundingClientRect(), cw = Math.max(18, Math.min(62, box.width / 8, box.height / 7));
+    for (var i = 0; i < 18; i++) {
+      mbEl.style.setProperty('--mcw', cw.toFixed(1) + 'px');
+      [].forEach.call(mbEl.children, function (p) { p.style.setProperty('--mcw', cw.toFixed(1) + 'px'); });
+      var ok = mbEl.scrollHeight <= mbEl.clientHeight + 1 && [].every.call(mbEl.children, function (p) { var r = p.getBoundingClientRect(); return r.left >= box.left - 1 && r.right <= box.right + 1 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1 && p.scrollWidth <= p.clientWidth + 1; });
+      if (ok || cw <= 14) break;
+      cw *= 0.92;
+    }
+  }
+  // A turn of the device (or a resized window) at any moment: everything glides from where it is to its new place
+  // Where everything was in the last frame the screen showed (taken each frame: a resize has already moved things by
+  // the time it is heard, so the glide starts from these)
+  var SNAP = null;
+  function flipNodes() { return [].slice.call(app.querySelectorAll('[data-flip], .hand > .pcard, .trk > .pcard, .mp, .wm')).filter(function (n) { return !n.classList.contains('aim'); }); }
+  (function snapLoop() {
+    if (tbl && tbl.isConnected && !document.hidden) { var m = new Map(); flipNodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); SNAP = m; }
+    requestAnimationFrame(snapLoop);
+  })();
+  window.addEventListener('resize', function () { relayout(); });
+  function relayout() {
+    if (!S || !tbl || !tbl.isConnected) return;
+    dragCancel();
+    // (cards on their way somewhere, a trick sweeping to its stack or passed cards, are aimed again at where that is now)
+    var aim = [].slice.call(app.querySelectorAll('.aim'));
+    var nodes = flipNodes(), snap = SNAP || new Map();
+    var before = nodes.map(function (n) { return snap.get(n) || null; });
+    SNAP = null;
+    var next = layoutFor();
+    if (next !== LAY) { app.classList.remove(LAY); LAY = next; app.classList.add(LAY); paintPad(); }
+    fit();
+    nodes.forEach(function (n, i) {
+      if (!n.isConnected) return;
+      var a = before[i]; if (!a) return;
+      n.style.transition = 'none'; n.style.transform = '';
+      var b = n.getBoundingClientRect();
+      if (!a.width || !b.width) return;
+      var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) { n.style.transition = ''; return; }
+      n.style.transformOrigin = '0 0';
+      n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+      n.getBoundingClientRect();
+      n.style.transition = 'transform .45s cubic-bezier(.25,.8,.25,1)';
+      n.style.transform = '';
+      setTimeout(function () { if (n.style.transform === '') { n.style.transition = ''; n.style.transformOrigin = ''; } }, 480);
+    });
+    aim.forEach(function (n) { if (n.isConnected && n._aim) n._aim(); });
+  }
+
+  // ═══ Painting the table from S ═══════════════════════════════════════════════════════════════════
+  function render() {
+    if (!S) return;
+    if (!tbl || !tbl.isConnected || seatEls.length !== N()) build();
+    paintAll();
+    requestAnimationFrame(fit); fit();
+  }
+  function paintAll() { paintPad(); paintTop(); paintSeats(); paintCenter(); paintTrick(); paintPiles(); paintMeld(); paintStock(); paintHand(); paintAct(); }
+  function paintPad() { if (!padEl) return; padEl.innerHTML = ''; if (LAY === 'L-ts' && S.hx) { padEl.appendChild(padTable(S, true)); padEl.scrollTop = padEl.scrollHeight; } }
+  function sideOrder() { var a = []; for (var s = 0; s < sideCount(); s++) a.push(s); var m = MS(); if (S.kind === 'cut') return [m, (m + 1) % 3, (m + 2) % 3]; return m ? [1, 0] : [0, 1]; }
+  function paintTop() {
+    topEl.innerHTML = '';
+    var order = sideOrder(), bs = S.bidder >= 0 ? sideOf(S.bidder) : -1;
+    var mid = S.kind === 'cut' ? 1 : 1;
+    order.forEach(function (s, i) {
+      if (i === mid) topEl.appendChild(trumpPlaque());
+      var cell = el('div', { class: 'sd' + (s === bs && S.phase !== 'bid' ? ' bidd' : ''), style: { '--sc': sideColor(s) } });
+      cell.appendChild(el('span', { class: 'nm', text: sideSay(s) }));
+      var row = el('div', { class: 'row' }, [el('span', { class: 'tot' + (S.scores[s] < 0 ? ' neg' : ''), text: String(S.scores[s]) })]);
+      var now = handNow(s);
+      if (now) row.appendChild(el('span', { class: 'now' + (now.bad ? ' bad' : ''), text: now.t }));
+      cell.appendChild(row);
+      if (s === bs && S.high && (S.phase === 'play' || S.phase === 'meld')) {
+        // the bid as a bar: what is in hand so far, and (striped) meld still waiting for a trick to save it
+        var got = handGot(s), pct = Math.max(0, Math.min(100, got / S.high * 100)), wait = S.won[s] ? 0 : sideMeld(s), wp = Math.max(0, Math.min(100 - pct, wait / S.high * 100));
+        cell.appendChild(el('div', { class: 'bar' + (got >= S.high ? ' made' : ''), title: got + ' of ' + S.high }, [el('i', { style: { width: pct + '%' } }), wp ? el('i', { class: 'g', style: { left: pct + '%', width: wp + '%' } }) : null]));
+      }
+      topEl.appendChild(cell);
+    });
+  }
+  // what a side has so far this hand: its meld (if a trick has saved it) and its counters
+  function sideMeld(s) { var m = 0; if (!S.melds) return 0; S.melds.forEach(function (x, p) { if (sideOf(p) === s) m += x.pts; }); return m; }
+  function handGot(s) { return (S.won[s] || S.kind === 'two' ? sideMeld(s) : 0) + S.cpts[s] + (S.kind === 'cut' && S.bidder === s && s === me() ? S.buriedPts || 0 : 0); }
+  function handNow(s) {
+    if (S.phase === 'play' || S.phase === 'stock' || S.phase === 'smeld' || S.phase === 'meld') {
+      var g = handGot(s); if (!g && S.phase === 'meld') g = sideMeld(s);
+      return { t: '+' + g };
+    }
+    return null;
+  }
+  function trumpPlaque() {
+    var t = S.trump, bd = S.high ? S.high + ' ' + first(nm(S.bidder)) : S.kind === 'two' ? 'Trump' : 'No bid yet';
+    if (S.phase === 'bid' && S.high) bd = S.high + ' ' + first(nm(S.bidder));
+    return el('div', { class: 'tp' }, [el('span', { class: 'k', text: t ? 'Trump' : 'Bid' }),
+      el('span', { class: 'su' + (t ? (t === 'h' || t === 'd' ? ' red' : '') : ' none'), text: t ? GL[t] : '?', 'aria-label': t ? SN[t] + ' are trump' : 'No trump yet' }),
+      el('span', { class: 'bd', text: S.kind === 'two' ? (t ? SN[t] : '') : bd })]);
+  }
+  function avatar(p) {
+    var pl = S.players[p];
+    if (pl.cpu) return el('span', { class: 'avatar', style: { '--c': seatColor(p) }, html: Kit.icon('bot') });
+    return Kit.avatar && Kit.avatar.el ? Kit.avatar.el(pl.name, '', seatColor(p)) : el('span', { class: 'avatar', style: { '--c': seatColor(p) }, text: pl.name.charAt(0) });
+  }
+  function paintSeats() {
+    var tp = Core.turn(S);
+    S.players.forEach(function (pl, p) {
+      var s = seatEls[p]; if (!s) return;
+      var keepSay = s.querySelector('.say');
+      s.innerHTML = '';
+      s.className = 'st p-' + posOf(p) + (tp === p && S.phase !== 'over' ? ' turn' : '') + (pl.away ? ' away' : '');
+      var tag = el('div', { class: 'tg' }, [avatar(p), el('span', { class: 'nm', text: short(p) }), p === S.dealer ? el('span', { class: 'dl', text: 'Deals' }) : null]);
+      var chs = el('div', { class: 'chs' });
+      if (S.phase === 'bid') {
+        var said = null; S.auction.forEach(function (x) { if (x.p === p) said = x; });
+        if (said) chs.appendChild(el('span', { class: 'chip' + (said.b ? (S.bidder === p ? ' hi' : '') : ' pass'), text: said.b ? String(said.b) : 'Pass' }));
+        else if (tp === p) chs.appendChild(el('span', { class: 'chip', text: 'Bidding' }));
+      } else if (S.kind !== 'two') {
+        if (S.bidder === p) chs.appendChild(el('span', { class: 'chip bidr', text: 'Bid ' + S.high }));
+        if (S.melds && (S.phase === 'play' || S.phase === 'meld')) {
+          var m = S.melds[p].pts, sd = sideOf(p), sv = S.won[sd] > 0;
+          if (m) chs.appendChild(el('span', { class: 'chip' + (S.phase === 'play' ? (sv ? ' saved' : '') : ''), text: 'Meld ' + m }));
+        }
+      } else if (S.melds && S.melds[p].pts) chs.appendChild(el('span', { class: 'chip', text: 'Meld ' + S.melds[p].pts }));
+      var kids = [tag, chs];
+      if (p !== me() || BLIND || (NET && MYSEAT < 0)) {
+        var n = S.hands[p].length, bk = el('div', { class: 'bk' });
+        // (two-handed: the cards an opponent has melded lie face up instead)
+        var tab = S.kind === 'two' && S.mt ? S.mt[p] : [];
+        var shown = Math.min(n - tab.length, 8);
+        for (var k = 0; k < shown; k++) bk.appendChild(Kit.card('', '', { back: true }));
+        if (posOf(p) !== 's') {
+          kids.push(bk);
+          if (tab.length) {
+            var tm = el('div', { class: 'tm' });
+            tab.forEach(function (id) { var c = S.hands[p][Core.find(S.hands[p], id)]; if (c) tm.appendChild(Cards.el(c)); });
+            kids.push(tm);
+          }
+        }
+      }
+      kids.forEach(function (k) { if (k) s.appendChild(k); });
+      if (keepSay) s.appendChild(keepSay);
+    });
+  }
+  function paintCenter() {
+    ctrEl.innerHTML = '';
+    var t = S.trump; wmEl.textContent = t ? GL[t] : ''; wmEl.className = 'wm' + (t === 'h' || t === 'd' ? ' red' : '');
+    if (S.trick.length || S.phase === 'meld') return;
+    if (S.phase === 'bid') {
+      ctrEl.appendChild(el('div', { class: 'plate' }, S.high ? [el('small', { text: 'High bid' }), el('b', { text: String(S.high) }), el('i', { text: first(short(S.bidder)) })]
+        : [el('small', { text: 'Opening bid' }), el('b', { text: String(Core.MIN_BID) }), el('i', { text: 'or more' })]));
+      if (S.kind === 'cut') { var w = el('div', { class: 'widow' }); for (var i = 0; i < 3; i++) w.appendChild(Kit.card('', '', { back: true })); ctrEl.appendChild(w); }
+    } else if (S.phase === 'trump') {
+      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: 'Winning bid' }), el('b', { text: String(S.high) }), el('i', { text: short(S.bidder) === 'You' ? 'You name trump' : first(nm(S.bidder)) + ' names trump' })]));
+      if (S.kind === 'cut') { var w2 = el('div', { class: 'widow' }); S.widow.forEach(function (c) { w2.appendChild(Cards.el(c)); }); ctrEl.appendChild(w2); }
+    } else if (S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury') {
+      var who = S.turn, txt = S.phase === 'bury' ? 'Burying 3 cards' : 'Passing ' + S.passN + ' cards';
+      ctrEl.appendChild(el('div', { class: 'plate' }, [el('small', { text: first(short(who)) }), el('i', { text: txt })]));
+    }
+  }
+  function paintTrick() {
+    trkEl.innerHTML = '';
+    S.trick.forEach(function (x) { trkEl.appendChild(Cards.el(x.c, { cls: 't-' + posOf(x.p) })); });
+  }
+  function pileCorner(s) {
+    if (S.kind === 'part') return s === MS() ? 'bl' : 'tr';
+    var pos = posOf(sideSeats(s)[0]);
+    return { s: 'bl', w: 'tl', e: 'tr', n: 'tr' }[pos];
+  }
+  function paintPiles() {
+    pileEls.forEach(function (pe, s) {
+      pe.className = 'pile ' + pileCorner(s); pe.style.setProperty('--pc', sideColor(s));
+      pe.innerHTML = '';
+      var k = S.won[s] || 0, stk = el('div', { class: 'stk' + (k ? '' : ' empty') });
+      for (var i = 0; i < Math.min(k, 7); i++) { var c = Kit.card('', '', { back: true }); c.style.left = (i * 1.4) + 'px'; c.style.bottom = (i * 1.6) + 'px'; c.style.rotate = ((i % 3) - 1) * 3 + 'deg'; stk.appendChild(c); }
+      stk.appendChild(el('span', { class: 'rb' }));
+      pe.appendChild(stk);
+      pe.appendChild(el('span', { class: 'n', html: '<small>' + Kit.esc(S.kind === 'part' ? (s === MS() && onePerson() ? 'Us' : 'Them') : first(short(sideSeats(s)[0]))) + '</small>' + k + (k === 1 ? ' trick' : ' tricks') }));
+    });
+  }
+  function paintStock() {
+    if (S.kind !== 'two' || !stockEl) { if (stockEl) stockEl.hidden = true; return; }
+    var n = (S.stock ? S.stock.length : 0) + (S.turnup ? 1 : 0);
+    stockEl.hidden = !n; stockEl.innerHTML = '';
+    if (!n) return;
+    if (S.turnup) stockEl.appendChild(Cards.el(S.turnup, { cls: 'up' }));
+    var pl = el('div', { class: 'pile2' });
+    for (var i = 0; i < Math.min(S.stock.length, 6); i++) { var c = Kit.card('', '', { back: true }); c.style.left = (i * 1.2) + 'px'; c.style.top = (-i * 1.2) + 'px'; pl.appendChild(c); }
+    stockEl.appendChild(pl);
+    stockEl.appendChild(el('span', { class: 'cnt', text: n + ' left' }));
+  }
+  // The meld board: each player's meld laid face up in front of them, in its groups, each with its points
+  function meldPanel(p, groups, total, live) {
+    var pos = posOf(p), panel = el('div', { class: 'mp m-' + pos });
+    var av = avatar(p); av.classList.add('sm');
+    panel.appendChild(el('div', { class: 'mh' }, [el('span', { class: 'who' }, [av, el('span', { text: first(short(p)) + (p === S.bidder ? ', bid ' + S.high : '') })]), el('b', { class: 'mt', text: live ? '0' : String(total) })]));
+    if (p === S.bidder) panel.classList.add('turn');
+    var gs = el('div', { class: 'gs' });
+    if (!groups.length) gs.appendChild(el('span', { class: 'none', text: 'No meld' }));
+    groups.forEach(function (g, i) { gs.appendChild(meldGroup(p, g, live ? i : -1)); });
+    panel.appendChild(gs);
+    return panel;
+  }
+  function meldGroup(p, g, i) {
+    var cs = el('div', { class: 'cs' });
+    g.ids.forEach(function (id) { var cd = Core.codeOfId(S, id); cs.appendChild(Kit.card(cd.charAt(0) === 'T' ? '10' : cd.charAt(0), cd.charAt(1))); });
+    var big = Core.bigMeld(g.k) || g.k === 'run';
+    var n = el('div', { class: 'mg' + (big ? ' big' : ''), style: i >= 0 ? { 'animation-delay': (i * 0.12) + 's' } : null }, [cs, el('span', { class: 'lb', text: meldLabel(g) })]);
+    return n;
+  }
+  function meldLabel(g) {
+    var nmx = Core.MNAME[g.k] || g.k;
+    if (g.k === 'm') nmx = 'Marriage ' + GL[g.s];
+    return nmx + ' ' + g.pts.toLocaleString('en-US');
+  }
+  function paintMeld() {
+    mbEl.innerHTML = '';
+    tbl.classList.toggle('melding', S.phase === 'meld' && !!S.melds);
+    if (S.phase !== 'meld' || !S.melds) return;
+    S.melds.forEach(function (m, p) { mbEl.appendChild(meldPanel(p, m.groups, m.pts, false)); });
+  }
+
+  // ── Your hand ──
+  function handCards() {
+    var m = me(); if (m < 0 || !S.hands[m]) return [];
+    return S.hands[m];
+  }
+  function paintHand() {
+    handEl.innerHTML = '';
+    var m = me(), mine = handCards(), tp = Core.turn(S);
+    var hidden = BLIND || (NET && MYSEAT < 0);
+    var myTurn = tp === m && !busy && !hidden && (!NET || NET.myTurn());
+    var playing = myTurn && (S.phase === 'play' || S.phase === 'stock');
+    var okIds = playing ? Core.legal(S, m).map(function (c) { return c.id; }) : null;
+    var picking = myTurn && (S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury');
+    var tab = S.kind === 'two' && S.mt ? S.mt[m] || [] : [];
+    mine.forEach(function (c) {
+      if (hidden) { handEl.appendChild(Kit.card('', '', { back: true })); return; }
+      var n = Cards.el(c);
+      if (S.trump && c.s === S.trump) n.classList.add('tr');
+      if (tab.indexOf(c.id) >= 0) n.classList.add('tab');
+      if (fresh.indexOf(c.id) >= 0) n.classList.add('new');
+      if (okIds) n.classList.add(okIds.indexOf(c.id) >= 0 ? 'ok' : 'dim');
+      if (picking && sel.indexOf(c.id) >= 0) n.classList.add('sel');
+      n.addEventListener('click', function () { if (n._dragged) return; tapCard(c); });
+      handEl.appendChild(n);
+    });
+    fitHand();
+  }
+  var fresh = [];   // cards that just arrived (passed to you, the widow, drawn)
+  function tapCard(c) {
+    if (!S) return;
+    var m = me(), tp = Core.turn(S);
+    if (NET && !NET.myTurn()) { netNudge(); return; }
+    if (busy || tp !== m || BLIND) return;
+    if (S.phase === 'play' || S.phase === 'stock') {
+      var ok = Core.legal(S, m).some(function (x) { return x.id === c.id; });
+      if (!ok) { Kit.haptic('error'); Kit.toast(Core.whyNot(S, m, c)); return; }
+      Kit.haptic('light'); move({ k: 'play', id: c.id }); return;
+    }
+    if (S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury') {
+      var need = S.phase === 'bury' ? 3 : S.passN, i = sel.indexOf(c.id);
+      if (i >= 0) sel.splice(i, 1); else { if (sel.length >= need) sel.shift(); sel.push(c.id); }
+      Kit.sfx('tick'); Kit.haptic('light'); paintHand(); paintAct();
+    }
+  }
+  // Drag a card up out of your hand onto the table to play it
+  var DR = null;
+  function handDrag() {
+    handEl.addEventListener('pointerdown', function (e) {
+      var n = e.target.closest && e.target.closest('.pcard'); if (!n || !S) return;
+      DR = { n: n, x: e.clientX, y: e.clientY, on: false, id: e.pointerId };
+    });
+    if (handDrag.on) return; handDrag.on = true;
+    window.addEventListener('pointermove', function (e) {
+      if (!DR || e.pointerId !== DR.id) return;
+      var dx = e.clientX - DR.x, dy = e.clientY - DR.y;
+      if (!DR.on && Math.hypot(dx, dy) > 12 && dy < -6) {
+        if (!(S.phase === 'play' || S.phase === 'stock') || Core.turn(S) !== me() || busy || (NET && !NET.myTurn())) { DR = null; return; }
+        DR.on = true; DR.n.classList.add('drag');
+      }
+      if (DR.on) DR.n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) rotate(' + (dx / 30) + 'deg)';
+    });
+    window.addEventListener('pointerup', function (e) {
+      if (!DR || e.pointerId !== DR.id) return;
+      var d = DR; DR = null;
+      if (!d.on) return;
+      d.n._dragged = true; setTimeout(function () { d.n._dragged = false; }, 50);
+      var hr = handEl.getBoundingClientRect(), id = d.n.dataset.id, c = handCards().filter(function (x) { return x.id === id; })[0];
+      if (e.clientY < hr.top - 10 && c && Core.legal(S, me()).some(function (x) { return x.id === id; })) { d.n.classList.remove('drag'); tapCard(c); return; }
+      if (c && e.clientY < hr.top - 10) { Kit.haptic('error'); Kit.toast(Core.whyNot(S, me(), c)); }
+      d.n.style.transition = 'transform .25s var(--spring)'; d.n.style.transform = ''; d.n.classList.remove('drag');
+      setTimeout(function () { d.n.style.transition = ''; }, 260);
+    });
+    window.addEventListener('pointercancel', dragCancel);
+  }
+  function dragCancel() { if (DR && DR.n) { DR.n.style.transform = ''; DR.n.classList.remove('drag'); } DR = null; }
+
+  // ── The action bar ──
+  function hint(t, sub) { actEl.appendChild(el('span', { class: 'hint', text: t })); if (sub) actEl.appendChild(Kit.facts(el('span', { class: 'sub' }), sub)); }
+  function paintAct() {
+    actEl.innerHTML = ''; actEl.classList.remove('nudge');
+    if (S.phase === 'over') return;
+    var m = me(), tp = Core.turn(S), mine = tp === m && !BLIND && !(NET && MYSEAT < 0) && (!NET || NET.myTurn());
+    if (BLIND) { hint(''); return; }
+    if (busy) { hint(S.phase === 'meld' ? 'Everyone lays their meld' : waitText(tp)); return; }
+    if (!mine) { hint(waitText(tp)); return; }
+    if (S.phase === 'bid') return bidBox();
+    if (S.phase === 'trump') return trumpBox();
+    if (S.phase === 'pass' || S.phase === 'passback' || S.phase === 'bury') return pickBox();
+    if (S.phase === 'meld') return goBox();
+    if (S.phase === 'smeld') return meld2Box();
+    if (S.phase === 'play' || S.phase === 'stock') {
+      if (!S.trick.length) hint(S.trickNo === 0 && S.kind !== 'two' ? 'You won the bid, so you lead.' : 'Your lead.', 'Tap a card, or drag it to the table.');
+      else hint('Your turn. The bright cards are the ones you can play.');
+    }
+  }
+  function waitText(p) {
+    if (p < 0) return '';
+    var who = S.players[p], nmx = first(nm(p)), passTo = !onePerson() && person(p) && !NET;
+    if (passTo) return 'Pass the device to ' + nmx;
+    var verb = { bid: 'bidding', trump: 'naming trump', pass: 'choosing cards to pass', passback: 'choosing cards to pass back', bury: 'burying 3 cards', meld: 'looking at the meld', smeld: 'choosing a meld', play: 'thinking', stock: 'thinking' }[S.phase] || 'thinking';
+    if (who.cpu) return nmx + ' is ' + verb + '…';
+    return 'Waiting for ' + nmx;
+  }
+  var bidAmt = 0;
+  function bidBox() {
+    var m = me(), min = Core.minBid(S), stuck = Core.stuck(S, m);
+    if (bidAmt < min) bidAmt = min;
+    var out = el('output', { text: String(bidAmt) });
+    function set(v) { bidAmt = Math.max(min, Math.min(990, v)); out.textContent = String(bidAmt); dn.disabled = bidAmt <= min; Kit.sfx('tick'); bidB.textContent = 'Bid ' + bidAmt; }
+    var dn = el('button', { type: 'button', text: '−', 'aria-label': 'Ten less', onclick: function () { set(bidAmt - 10); } });
+    var up = el('button', { type: 'button', text: '+', 'aria-label': 'Ten more', onclick: function () { set(bidAmt + 10); } });
+    dn.disabled = bidAmt <= min;
+    var bidB = el('button', { type: 'button', class: 'btn btn-primary', text: 'Bid ' + bidAmt, onclick: function () { Kit.haptic('medium'); move({ k: 'bid', b: bidAmt }); } });
+    var passB = el('button', { type: 'button', class: 'btn btn-soft', text: 'Pass', disabled: stuck, onclick: function () { Kit.haptic('light'); move({ k: 'bid', b: 0 }); } });
+    actEl.appendChild(el('div', { class: 'bidbar' }, [passB, el('div', { class: 'amt' }, [dn, out, up]), bidB]));
+    var bt = Core.bestTrump(S.hands[m], 'normal'), mv = Core.meldOf(S.hands[m], bt.s).pts;
+    actEl.appendChild(el('span', { class: 'sub', text: stuck ? 'Everyone else passed, so the dealer has to bid.' : (mv ? 'You have ' + mv + ' in meld with ' + SN[bt.s].toLowerCase() + ' as trump.' : 'You have no meld yet, whatever is trump.') }));
+  }
+  function trumpBox() {
+    var m = me(), h = S.hands[m].concat(S.kind === 'cut' ? S.widow : []), best = Core.bestTrump(h, 'normal').s;
+    var g = el('div', { class: 'trumps' });
+    Core.SUITS.forEach(function (s) {
+      var mp = Core.meldOf(h, s).pts, n = h.filter(function (c) { return c.s === s; }).length;
+      g.appendChild(el('button', { type: 'button', class: (s === 'h' || s === 'd' ? 'red' : '') + (s === best ? ' best' : ''), 'aria-label': SN[s] + ' as trump', onclick: function () { Kit.haptic('medium'); move({ k: 'trump', s: s }); } },
+        [el('span', { class: 'g', text: GL[s] }), el('small', { text: 'Meld ' + mp }), el('small', { text: n + ' cards' })]));
+    });
+    actEl.appendChild(el('span', { class: 'hint', text: S.kind === 'cut' ? 'The widow is yours. Name trump.' : 'Name trump' }));
+    actEl.appendChild(g);
+  }
+  function pickBox() {
+    var need = S.phase === 'bury' ? 3 : S.passN, to = S.phase === 'bury' ? -1 : (me() + 2) % 4;
+    var label = S.phase === 'bury' ? 'Bury these 3' : 'Pass ' + need + ' to ' + first(nm(to));
+    hint(S.phase === 'bury' ? 'Choose 3 cards to bury. Counters you bury count for you.' : S.phase === 'pass' ? 'Choose ' + need + ' cards to pass to ' + first(nm(to)) + ', who won the bid. Trump and aces help most.' : 'Choose ' + need + ' cards to pass back to ' + first(nm(to)) + '.');
+    var b = el('button', { type: 'button', class: 'btn btn-primary', text: sel.length === need ? label : 'Chosen ' + sel.length + ' of ' + need, disabled: sel.length !== need,
+      onclick: function () { var ids = sel.slice(); sel = []; Kit.haptic('medium'); move({ k: S.phase === 'bury' ? 'bury' : 'pass', ids: ids }); } });
+    actEl.appendChild(el('div', { class: 'row' }, [b]));
+  }
+  function goBox() {
+    var bs = sideOf(me()), meld = sideMeld(bs), need = Math.max(0, S.high - meld);
+    hint(need <= 0 ? 'Your meld already makes ' + S.high + '. Take one trick to save it.' : need > 250 ? 'Your side needs ' + need + ' in counters, and there are only 250.' : 'Your side needs ' + need + ' more in counters to make ' + S.high + '.');
+    actEl.appendChild(el('div', { class: 'row' }, [
+      el('button', { type: 'button', class: 'btn btn-soft', text: 'Throw in', onclick: function () { Kit.confirm('Throw in the hand? Your side loses ' + S.high + ', and the others score their meld.', { ok: 'Throw in', danger: true }).then(function (y) { if (y) move({ k: 'go', concede: true }); }); } }),
+      el('button', { type: 'button', class: 'btn btn-primary', text: 'Play the hand', onclick: function () { Kit.haptic('medium'); move({ k: 'go' }); } })]));
+  }
+  function meld2Box() {
+    var o = Core.meldOptions(S, me());
+    hint(o.length ? 'You won the trick. Lay one meld, then you both draw.' : 'You won the trick. You have nothing new to meld.');
+    var box = el('div', { class: 'melds' });
+    o.forEach(function (x, i) {
+      var b = el('button', { type: 'button', class: 'btn ' + (i === 0 ? 'btn-primary' : 'btn-soft'), text: (x.k === 'dix' && x.swap ? 'Swap the dix 10' : meldLabel(x)),
+        onclick: function () { move({ k: 'meld', i: i }); } });
+      function hl(on) { handEl.querySelectorAll('.pcard').forEach(function (n) { n.classList.toggle('hl', on && x.ids.indexOf(n.dataset.id) >= 0); }); }
+      b.addEventListener('pointerenter', function () { hl(true); }); b.addEventListener('pointerleave', function () { hl(false); });
+      b.addEventListener('focus', function () { hl(true); }); b.addEventListener('blur', function () { hl(false); });
+      box.appendChild(b);
+    });
+    box.appendChild(el('button', { type: 'button', class: 'btn btn-ghost', text: o.length ? 'No meld' : 'Draw', onclick: function () { move({ k: 'meld', i: -1 }); } }));
+    actEl.appendChild(box);
+  }
+
+  // ═══ Moves ═══════════════════════════════════════════════════════════════════════════════════════
+  // A move from this device: online it goes to the table; here it is made at once and played out
+  function move(a) {
+    if (!S || busy) return;
+    if (NET) {
+      if (!NET.myTurn()) { netNudge(); return; }
+      var seat = MYSEAT;
+      NET.act(function (st) { var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; });
+      return;
+    }
+    var p = Core.turn(S); if (p !== me() || !person(p)) return;
+    snapshot();
+    doMove(p, a);
+  }
+  function doMove(p, a) {
+    var prev = clone(S), mv = Core.apply(S, p, a);
+    if (!mv) { undoStack.pop(); return false; }
+    if (mv.end || mv.concede) clearUndo();
+    save();
+    busy = true; var t = token;
+    step(prev, mv, S, function () { if (t !== token) return; busy = false; save(); next(); });
+    return true;
+  }
+  // The local game moves on: the computer's moves, or the device handed to the next person
+  function next() {
+    if (!S || NET || busy) return;
+    if (S.phase === 'over') { finish(); return; }
+    var p = Core.turn(S);
+    if (person(p) && p !== LME && !onePersonLocal()) { gate(p, next); return; }
+    if (person(p) && p !== LME) LME = p;   // (one person at the table: always them)
+    paintAll();
+    if (person(p)) return;
+    var t = token, wait = { bid: 650, trump: 900, pass: 900, passback: 900, bury: 900, meld: 2400, smeld: 700, stock: 650, play: 600 }[S.phase] || 600;
+    setTimeout(function () {
+      if (t !== token || busy || !S || Core.turn(S) !== p) return;
+      var a = Core.bot(S, p); if (a) doMove(p, a);
+    }, wait + Math.random() * 300);
+  }
+  function onePersonLocal() { return people() < 2; }
+  function gate(p, then) {
+    BLIND = true; undoStack = []; paintAll();
+    var t = token;
+    Kit.handoff({ name: nm(p), color: seatColor(p), what: 'cards' }).then(function () {
+      if (t !== token || !S || NET) return;
+      BLIND = false; LME = p; S.me = p; save(); render(); then && then();
+    });
+  }
+
+  // ═══ Playing a move out on the table (the same for a move made here and one that came from the table online) ═══
+  function later(f, ms, g) { var t = token; setTimeout(function () { if (t === token && (g == null || g === NGEN)) f(); }, ms); }
+  function seatSay(p, t, big) {
+    var s = seatEls[p]; if (!s) return;
+    var old = s.querySelector('.say'); if (old) old.remove();
+    var b = el('div', { class: 'say' + (big ? ' big' : ''), text: t }); s.appendChild(b);
+    setTimeout(function () { b.remove(); }, big ? 2000 : 1500);
+  }
+  function floatAt(node, text, cls) {
+    if (!node || !tbl) return;
+    var r = node.getBoundingClientRect(), b = tbl.getBoundingClientRect();
+    var f = el('div', { class: 'fl' + (cls ? ' ' + cls : ''), text: text, style: { left: (r.left + r.width / 2 - b.left) + 'px', top: (r.top - b.top - 8) + 'px' } });
+    tbl.appendChild(f); setTimeout(function () { f.remove(); }, 1300);
+  }
+  function flash(t, ms) {
+    var f = el('div', { class: 'flash', text: t }); tbl.appendChild(f);
+    setTimeout(function () { f.remove(); }, ms || 1700);
+  }
+  function step(prev, mv, st, done) {
+    S = st; ST0 = st;
+    var k = mv.k, p = mv.p;
+    if (k === 'bid') {
+      render(); seatSay(p, mv.b ? String(mv.b) : 'Pass');
+      Kit.sfx(mv.b ? 'chip' : 'tap');
+      if (mv.b && ctrEl.querySelector('.plate')) ctrEl.querySelector('.plate').classList.add('pop');
+      if (mv.b && prev.high === 0 && Core.stuck(prev, p)) flash(first(short(p)) + ' is stuck with the bid at 250');
+      if (mv.won != null) {
+        later(function () {
+          flash((short(mv.won) === 'You' ? 'You take' : first(nm(mv.won)) + ' takes') + ' the bid at ' + S.high, 1900);
+          Kit.sfx('good'); if (mv.won === me()) Kit.haptic('success');
+          later(done, 1100);
+        }, 700);
+        return;
+      }
+      later(done, 450); return;
+    }
+    if (k === 'trump') {
+      render();
+      var tp = topEl.querySelector('.tp'); if (tp) tp.classList.add('pop');
+      Kit.sfx('sparkle'); Kit.haptic('medium');
+      flash(SN[mv.s] + ' are trump', 1600);
+      if (S.kind === 'cut') {
+        // the widow, face up for everyone, goes to the bidder
+        fresh = S.widow.map(function (c) { return c.id; });
+        var w = el('div', { class: 'widow' }); S.widow.forEach(function (c) { w.appendChild(Cards.el(c)); });
+        ctrEl.innerHTML = ''; ctrEl.appendChild(w);
+        later(function () {
+          var to = p === me() ? handEl : seatEls[p];
+          [].forEach.call(w.children, function (n, i) { slideTo(n, to, 380 + i * 60); });
+          Kit.sfx('deal');
+          later(function () { ctrEl.innerHTML = ''; paintHand(); later(function () { fresh = []; }, 2500); done(); }, 520);
+        }, 900);
+        return;
+      }
+      later(done, 900); return;
+    }
+    if (k === 'pass') {
+      // the cards slide face down from one partner to the other
+      var from = seatAnchor(p), to = seatAnchor(mv.to);
+      var ghost = [];
+      for (var i = 0; i < mv.n; i++) { var g = Kit.card('', '', { back: true }); g.style.position = 'absolute'; g.style.setProperty('--cw', 'calc(var(--tcw) * .7)'); g.style.zIndex = 8; tbl.appendChild(g); ghost.push(g); }
+      if (mv.to === me()) fresh = S.hands[me()].filter(function (c) { return prev.hands[me()].every(function (x) { return x.id !== c.id; }); }).map(function (c) { return c.id; });
+      render();
+      ghost.forEach(function (g, i) { tbl.appendChild(g); flyBetween(g, from, to, 520 + i * 70, i); });
+      Kit.sfx('deal'); later(function () { Kit.sfx('deal'); }, 160);
+      later(function () {
+        ghost.forEach(function (g) { g.remove(); });
+        if (S.phase === 'meld') { revealMeld(prev, done); return; }
+        later(function () { fresh = []; if (handEl) paintHand(); }, 2600);
+        done();
+      }, 800);
+      return;
+    }
+    if (k === 'bury') {
+      var ghosts = [], f2 = seatAnchor(p), corner = pileEls[sideOf(p)];
+      for (var j = 0; j < 3; j++) { var gg = Kit.card('', '', { back: true }); gg.style.position = 'absolute'; gg.style.setProperty('--cw', 'calc(var(--tcw) * .6)'); gg.style.zIndex = 8; tbl.appendChild(gg); ghosts.push(gg); }
+      fresh = [];
+      render();
+      ghosts.forEach(function (g, i) { tbl.appendChild(g); flyBetween(g, f2, corner, 480 + i * 60, i); });
+      Kit.sfx('deal');
+      later(function () { ghosts.forEach(function (g) { g.remove(); }); revealMeld(prev, done); }, 760);
+      return;
+    }
+    if (k === 'go') {
+      if (mv.concede) {
+        render(); seatSay(p, 'Throws in', true); Kit.sfx('bad');
+        later(function () { handEnd(prev, done); }, 1300); return;
+      }
+      mbEl.querySelectorAll('.mp').forEach(function (m) { m.style.transition = 'opacity .35s'; m.style.opacity = '0'; });
+      Kit.sfx('whoosh');
+      later(function () { render(); flash((short(p) === 'You' ? 'You lead' : first(nm(p)) + ' leads') + ' the first trick'); done(); }, 380);
+      return;
+    }
+    if (k === 'meld') return stepMeld2(prev, mv, done);
+    if (k === 'play') return stepPlay(prev, mv, done);
+    render(); done();
+  }
+  function seatAnchor(p) { return p === me() && handEl ? handEl : seatEls[p] ? seatEls[p].querySelector('.tg') || seatEls[p] : tbl; }
+  function flyBetween(node, a, b, ms, i) {
+    var t = tbl.getBoundingClientRect(), ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    var x0 = ra.left + ra.width / 2 - t.left, y0 = ra.top + ra.height / 2 - t.top, x1 = rb.left + rb.width / 2 - t.left, y1 = rb.top + rb.height / 2 - t.top;
+    node.style.left = '0'; node.style.top = '0'; node.style.translate = '-50% -50%';
+    node.style.transform = 'translate(' + x0 + 'px,' + y0 + 'px) rotate(' + (i * 7 - 8) + 'deg)';
+    node.getBoundingClientRect();
+    node.style.transition = 'transform ' + ms + 'ms cubic-bezier(.3,.7,.25,1)';
+    node.style.transform = 'translate(' + (x1 + i * 4) + 'px,' + y1 + 'px) rotate(' + (i * 9 - 4) + 'deg)';
+    // a turn of the device on the way: carry on from where it is to where the other seat is now
+    node.classList.add('aim');
+    node._aim = function () {
+      var t2 = tbl.getBoundingClientRect(), r2 = b.isConnected ? b.getBoundingClientRect() : rb, cur = node.getBoundingClientRect();
+      node.style.transition = 'none';
+      node.style.transform = 'translate(' + (cur.left + cur.width / 2 - t2.left) + 'px,' + (cur.top + cur.height / 2 - t2.top) + 'px)';
+      node.getBoundingClientRect();
+      node.style.transition = 'transform 300ms ease-out';
+      node.style.transform = 'translate(' + (r2.left + r2.width / 2 - t2.left + i * 4) + 'px,' + (r2.top + r2.height / 2 - t2.top) + 'px) rotate(' + (i * 9 - 4) + 'deg)';
+    };
+  }
+  function slideTo(node, target, ms) {
+    var a = node.getBoundingClientRect(), b = target.getBoundingClientRect();
+    node.style.transition = 'transform ' + ms + 'ms cubic-bezier(.3,.7,.25,1), opacity ' + ms + 'ms';
+    node.style.transform = 'translate(' + (b.left + b.width / 2 - a.left - a.width / 2) + 'px,' + (b.top + b.height / 2 - a.top - a.height / 2) + 'px) scale(.6)';
+    node.style.opacity = '0.2';
+  }
+  // The meld goes down a player at a time, a group at a time, each with its points; a big one gets its moment
+  var BIG = { drun: ['Double run!', 'A double run, 1,500'], AA: ['A thousand aces!', 'Aces twice around, 1,000'], KK: ['Eight hundred kings!', 'Kings twice around'], QQ: ['Six hundred queens!', 'Queens twice around'],
+    JJ: ['Four hundred jacks!', 'Jacks twice around'], dpin: ['Double pinochle!', 'Both queens of spades and both jacks of diamonds, 300'] };
+  function revealMeld(prev, done) {
+    render();
+    mbEl.innerHTML = ''; tbl.classList.add('melding');
+    var order = []; for (var i = 1; i <= S.n; i++) order.push((S.bidder + i - 1 + S.n) % S.n);
+    var t0 = 0, gap = 260, totals = {}, moments = [];
+    order.forEach(function (p) {
+      var m = S.melds[p], panel = meldPanel(p, [], 0, true);
+      panel.querySelector('.gs').innerHTML = ''; panel.style.visibility = 'hidden';
+      mbEl.appendChild(panel);
+      later(function () {
+        panel.style.visibility = '';
+        if (!m.groups.length) { panel.querySelector('.gs').appendChild(el('span', { class: 'none', text: 'No meld' })); Kit.sfx('tap', 0.5); fitMeld(); }
+      }, t0);
+      m.groups.forEach(function (g, gi) {
+        later(function () {
+          panel.querySelector('.gs').appendChild(meldGroup(p, g, -1));
+          var run = (totals[p] || 0) + g.pts; totals[p] = run;
+          countTo(panel.querySelector('.mt'), run - g.pts, run, 360);
+          Kit.sfx(Core.bigMeld(g.k) ? 'boom' : g.k === 'run' ? 'sparkle' : 'chip', g.pts >= 100 ? 1 : 0.7);
+          fitMeld(); paintTop();
+          if (Core.bigMeld(g.k)) { bigMoment(BIG[g.k][0], p); }
+          else if (g.k === 'run') { seatSay(p, 'A run!', true); Kit.haptic('success'); }
+        }, t0 + gap * (gi + 1));
+      });
+      t0 += gap * (m.groups.length + 1) + 120;
+      if (m.groups.some(function (g) { return Core.bigMeld(g.k); })) t0 += 900;
+    });
+    later(function () { fitMeld(); paintSeats(); paintTop(); done(); }, Math.min(t0 + 500, 12000));
+  }
+  function bigMoment(text, p) {
+    Kit.callout(text, 'var(--yellow)'); Kit.confetti(); Kit.haptic('heavy');
+    later(function () { Kit.sfx('win'); }, 150);
+    if (p != null) seatSay(p, text, true);
+  }
+  function countTo(node, a, b, ms) {
+    if (!node) return; var t0 = performance.now();
+    function f(t) { var k = Math.min(1, (t - t0) / ms); node.textContent = String(Math.round(a + (b - a) * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(f); }
+    requestAnimationFrame(f);
+  }
+  // A card to the trick: from your hand (where it was) or from the player's seat; the last card wins the trick, which
+  // sweeps to that side's stack with the counters it holds floating up
+  function stepPlay(prev, mv, done) {
+    var p = mv.p, fromRect = null;
+    if (p === me() && handEl) { var hn = handEl.querySelector('[data-id="' + mv.c.id + '"]'); if (hn) fromRect = hn.getBoundingClientRect(); }
+    function fly(node) {
+      var from = fromRect ? { getBoundingClientRect: function () { return fromRect; } } : seatAnchor(p);
+      Cards.fly(node, from, { ms: 340 });
+      var trumped = prev.trick.length && mv.c.s === S.trump && prev.trick[0].c.s !== S.trump;
+      Kit.sfx(trumped ? 'chip' : 'flip');
+      if (p === me()) Kit.haptic('light');
+      if (trumped) seatSay(p, 'Trump!');
+    }
+    if (mv.w == null) {
+      render();
+      fly(trkEl.querySelector('[data-id="' + mv.c.id + '"]'));
+      later(done, mv.endgame ? 900 : 360); return;
+    }
+    // the last card of the trick: draw the table as it was with this card added, then settle the trick
+    var V = clone(prev); V.hands[p] = V.hands[p].filter(function (c) { return c.id !== mv.c.id; });
+    if (V.mt) V.mt[p] = V.mt[p].filter(function (id) { return id !== mv.c.id; });
+    V.trick.push({ p: p, c: mv.c }); V.turn = -1;
+    S = V; render();
+    fly(trkEl.querySelector('[data-id="' + mv.c.id + '"]'));
+    var w = mv.w, ws = Core.sideOf(st0(), w);
+    var trickPts = V.trick.reduce(function (a, x) { return a + Core.cval(x.c); }, 0);
+    later(function () {
+      var wc = V.trick.filter(function (x) { return x.p === w; })[0], wn = wc && trkEl.querySelector('[data-id="' + wc.c.id + '"]');
+      if (wn) wn.classList.add('win');
+      Kit.sfx('chip', 0.6);
+      later(function () {
+        var dest = pileEls[ws].querySelector('.stk'), box = trkEl.getBoundingClientRect(), dr = dest.getBoundingClientRect();
+        [].forEach.call(trkEl.children, function (n) {
+          var r = n.getBoundingClientRect();
+          n.style.transition = 'transform .38s cubic-bezier(.5,0,.75,0), opacity .38s ease-in';
+          n.style.transform = 'translate(' + (dr.left + dr.width / 2 - r.left - r.width / 2) + 'px,' + (dr.top + dr.height / 2 - r.top - r.height / 2) + 'px) scale(.35)';
+          n.style.opacity = '0.3';
+          n.classList.add('aim');
+          n._aim = function () {
+            var cur = n.getBoundingClientRect(); n.style.transition = 'none'; n.style.transform = '';
+            var nat = n.getBoundingClientRect(), d2 = dest.getBoundingClientRect();
+            n.style.transform = 'translate(' + (cur.left - nat.left) + 'px,' + (cur.top - nat.top) + 'px) scale(' + (cur.width / nat.width) + ')'; n.style.transformOrigin = '0 0';
+            n.getBoundingClientRect();
+            n.style.transition = 'transform .25s ease-in, opacity .25s';
+            n.style.transform = 'translate(' + (d2.left + d2.width / 2 - nat.left - nat.width * .175) + 'px,' + (d2.top + d2.height / 2 - nat.top - nat.height * .175) + 'px) scale(.35)';
+          };
+        });
+        Kit.sfx('whoosh');
+        later(function () {
+          trkEl.innerHTML = '';
+          var fin = !!mv.end;
+          // the trick lands on the stack: a bump, and the counters in it float up
+          S = fin ? afterHandView(prev, mv) : st0();
+          render();
+          var pe = pileEls[ws]; pe.classList.add('bump'); setTimeout(function () { pe.classList.remove('bump'); }, 400);
+          var mineWon = sideOf(w) === MS() && (!NET || MYSEAT >= 0);
+          if (trickPts) floatAt(pe, '+' + trickPts, mineWon ? 'g' : '');
+          if (w === me()) Kit.haptic('success'); else if (mineWon) Kit.haptic('light');
+          if (trickPts >= 30 && mineWon) Kit.sfx('good', 0.6);
+          trickMoments(prev, mv, w, ws);
+          if (fin) {
+            later(function () { floatAt(pe, '+10 last trick', 'g'); seatSay(w, 'Last trick +10', true); Kit.sfx('sparkle'); }, 450);
+            later(function () { handEnd(prev, done); }, 1500);
+            return;
+          }
+          if (S.kind === 'two' && S.phase === 'smeld' && Core.turn(S) !== me() && !mv.end) { later(done, 380); return; }
+          later(done, 240);
+        }, 400);
+      }, 520);
+    }, 640);
+  }
+  var ST0 = null;
+  function st0() { return ST0; }
+  // after the last trick, the table as it stands at the end of the hand (the next hand is already dealt in the state)
+  function afterHandView(prev, mv) {
+    var V = clone(prev); V.hands[mv.p] = V.hands[mv.p].filter(function (c) { return c.id !== mv.c.id; });
+    V.trick = []; V.turn = -1; var L = ST0.last;
+    V.won = L.won.slice(); V.cpts = L.res.map(function (r) { return r.cpts; });
+    return V;
+  }
+  // moments in the middle of a hand: meld saved by a first trick, the bid made, the bidder set beyond saving
+  function trickMoments(prev, mv, w, ws) {
+    var X = S, r = X.round;
+    if (X.kind !== 'two' && prev.won[ws] === 0 && X.melds) {
+      var meld = 0; X.melds.forEach(function (m, q) { if (Core.sideOf(X, q) === ws) meld += m.pts; });
+      if (meld >= 20 && !savedShown[r + ':' + ws]) { savedShown[r + ':' + ws] = 1; later(function () { seatSay(w, 'Meld saved', false); Kit.sfx('sparkle', 0.7); }, 200); }
+    }
+    if (X.kind === 'two' || X.bidder < 0 || mv.end) return;
+    var bs = Core.sideOf(X, X.bidder), meldB = 0; X.melds.forEach(function (m, q) { if (Core.sideOf(X, q) === bs) meldB += m.pts; });
+    var got = (X.won[bs] ? meldB : 0) + X.cpts[bs] + (X.kind === 'cut' ? (X.bidder === me() ? X.buriedPts || 0 : 0) : 0);
+    var mineB = bs === MS() && (!NET || MYSEAT >= 0);
+    if (got >= X.high && !madeShown[r]) {
+      madeShown[r] = 1;
+      later(function () { Kit.callout(mineB ? 'Bid made!' : sideName(bs) + ' made the bid', mineB ? 'var(--green)' : null); Kit.sfx(mineB ? 'good' : 'tap'); if (mineB) Kit.haptic('success'); paintTop(); }, 300);
+      return;
+    }
+    // what is left to take: every counter still out and the last trick
+    var left = 0; X.hands.forEach(function (h) { h.forEach(function (c) { left += Core.cval(c); }); });
+    var most = (X.won[bs] || left > 0 ? meldB : 0) + X.cpts[bs] + left + 10 + (X.kind === 'cut' ? X.buriedPts || 0 : 0);
+    if (most < X.high && !setShown[r]) {
+      setShown[r] = 1;
+      later(function () {
+        if (mineB) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
+        else { Kit.callout(X.kind === 'part' ? 'They’re set!' : sideName(bs) + ' is set!', 'var(--green)'); Kit.sfx('good'); Kit.haptic('success'); }
+      }, 300);
+    }
+  }
+  // Two-handed: a meld goes down on the table (or the dix swaps for the turned card), then both draw
+  function stepMeld2(prev, mv, done) {
+    var p = mv.p, V = clone(S);
+    // first show the meld landing, with the hands as they were before the draw
+    var pre = clone(prev);
+    if (mv.m) {
+      pre.melds = clone(S.melds); pre.mpts = S.mpts.slice(); pre.mt = clone(prev.mt);
+      mv.m.ids.forEach(function (id) { if (mv.m.k !== 'dix' && pre.mt[p].indexOf(id) < 0) pre.mt[p].push(id); });
+      if (mv.swap) { pre.hands[p] = pre.hands[p].map(function (c) { return c.id === mv.swap.nine.id ? mv.swap.up : c; }); pre.turnup = mv.swap.nine; }
+      pre.phase = 'stock'; pre.turn = -1;
+      S = pre; render();
+      var anchor = p === me() ? handEl : seatEls[p];
+      floatAt(anchor, '+' + mv.m.pts, 'g');
+      if (Core.bigMeld(mv.m.k)) bigMoment(BIG[mv.m.k][0], p);
+      else { seatSay(p, mv.swap ? 'Swaps the dix' : meldLabel(mv.m), mv.m.k === 'run'); Kit.sfx(mv.m.k === 'run' ? 'sparkle' : 'chip'); if (mv.m.k === 'run') Kit.haptic('success'); }
+      if (p === me()) { fresh = mv.m.ids.slice(); if (mv.swap) fresh = [mv.swap.up.id]; paintHand(); }
+    } else { S = pre; pre.phase = 'stock'; pre.turn = -1; render(); }
+    later(function () {
+      // the draw: the winner first, then the other player (the turned card last of all)
+      S = V; fresh = mv.drew.filter(function (d) { return d.p === me(); }).map(function (d) { return d.c.id; });
+      render();
+      Kit.sfx('deal'); later(function () { Kit.sfx('deal'); }, 150);
+      mv.drew.forEach(function (d, i) {
+        var src = stockEl && !stockEl.hidden ? stockEl : tbl, node = d.p === me() ? handEl.querySelector('[data-id="' + d.c.id + '"]') : seatEls[d.p] && seatEls[d.p].querySelector('.bk');
+        if (node && stockEl) Cards.fly(node, { getBoundingClientRect: function () { return stockRect || tbl.getBoundingClientRect(); } }, { ms: 360 + i * 120 });
+      });
+      later(function () { fresh = []; if (handEl) paintHand(); }, 2200);
+      if (mv.endgame) {
+        later(function () { flash('The stock is gone. Now follow suit and beat the trick if you can.', 2800); Kit.sfx('whoosh'); }, 500);
+        later(done, 1400); return;
+      }
+      later(done, 560);
+    }, mv.m ? 1100 : 250);
+  }
+  var stockRect = null;
+  setInterval(function () { if (stockEl && !stockEl.hidden && stockEl.isConnected) stockRect = stockEl.getBoundingClientRect(); }, 500);
+
+  // ═══ The end of a hand: the count, with its moments, and the score pad ═══════════════════════════════════
+  function handEnd(prev, done) {
+    var st = ST0, L = st.last, g = NGEN;
+    var X = clone(prev); X.scores = st.scores.slice(); X.last = L; X.round = L.round;
+    var node = countNode(st, L);
+    var moments = [];
+    var all = st.kind === 'two' ? 24 : Core.KINDS[st.kind].hand, bs = L.bidder >= 0 ? Core.sideOf(st, L.bidder) : -1;
+    L.won.forEach(function (k, s) { if (k === all && !L.conceded) moments.push(['Every trick!', s]); });
+    var mineS = function (s) { return s === MS() && (!NET || MYSEAT >= 0); };
+    var over = st.phase === 'over', shown = false;
+    function go() {
+      if (shown) return; shown = true;
+      if (NET && g !== NGEN) return;
+      if (over) { S = st; done(); return; }
+      S = st; fresh = []; madeShown = {}; setShown = {};
+      if (!NET) { S.seen = L.round; save(); }
+      dealIn(done);
+    }
+    var sh = Kit.sheet({ title: 'Hand ' + L.round + ' count', node: node, dismissible: !!NET, onClose: function () { if (NET) { NOVER = null; go(); } },
+      actions: [{ label: over ? 'See who won' : 'Deal the next hand', primary: true, onClick: function () { go(); } }] });
+    if (NET) NOVER = sh;
+    animateCount(node, st, L, function () {
+      moments.forEach(function (m) { bigMoment(m[0]); });
+      if (bs >= 0) {
+        var r = L.res[bs];
+        if (L.conceded) {} else if (r.made && L.high >= 400) bigMoment(mineS(bs) ? 'Big bid made!' : sideName(bs) + ' made ' + L.high + '!');
+        else if (r.set) { if (mineS(bs)) { Kit.sfx('bad'); Kit.haptic('error'); } else { Kit.sfx('good'); Kit.haptic('success'); if (st.kind === 'part' || !onePerson()) Kit.confetti(); } }
+        else if (r.made) { Kit.sfx(mineS(bs) ? 'good' : 'tap'); }
+      }
+      L.won.forEach(function (k, s) { if (k === 1 && st.kind !== 'two' && !L.conceded && L.res[s].meld >= 20) { var row = node.querySelectorAll('.cr')[s]; if (row) { var t = row.querySelector('.svd'); if (t) t.hidden = false; } } });
+    });
+  }
+  function countNode(st, L) {
+    var box = el('div', { class: 'cnt' }), bs = L.bidder >= 0 ? Core.sideOf(st, L.bidder) : -1, order = [];
+    for (var s = 0; s < Core.nSides(st); s++) order.push(s);
+    order.forEach(function (s) {
+      var r = L.res[s], names = Core.seatsOf(st, s).map(function (p) { return first(st.players[p].name); }).join(' & ');
+      var tag = s === bs ? (L.conceded ? 'Bid ' + L.high + ', thrown in' : 'Bid ' + L.high) : st.kind === 'two' ? '' : 'Against the bid';
+      var cc = el('div', { class: 'cc' });
+      var row = el('div', { class: 'cr', style: { '--sc': Kit.color(s) } }, [
+        el('div', { class: 'who' }, [el('span', { text: names }), el('small', { text: tag })]),
+        el('div', { class: 'pts' + (r.pts < 0 ? ' neg' : ''), text: '0', 'data-v': String(r.pts) }),
+        el('div', { class: 'ln' }, [
+          el('span', { class: 'k' + (r.saved ? '' : ' lost') }, [el('small', { text: r.saved ? 'Meld' : 'Meld, no trick' }), el('b', { text: String(r.meld) })]),
+          el('span', { class: 'k' }, [el('small', { text: 'Counters' }), el('b', { class: 'cv', text: '0', 'data-v': String(r.cpts) })]),
+          el('span', { class: 'k' }, [el('small', { text: 'Tricks' }), el('b', { text: String(r.tricks) })]),
+          el('span', { class: 'k svd', hidden: true }, [el('small', { text: 'Saved with' }), el('b', { text: 'one trick' })])
+        ]),
+        cc,
+        el('span', { class: 'stamp ' + (r.set ? 'bad' : 'good'), text: r.set ? (L.conceded ? 'Thrown in' : 'Set') : r.made ? 'Made' : '' })
+      ]);
+      box.appendChild(row);
+    });
+    box.appendChild(el('div', { class: 'padw' }, [padTable(st)]));
+    return box;
+  }
+  function animateCount(node, st, L, after) {
+    var rows = node.querySelectorAll('.cr'), t = 120, step = 70;
+    rows.forEach(function (row, s) {
+      var cs = String(L.piles[s] || '').match(/(10|[2-9TJQKA])[shdc]/g) || [], cc = row.querySelector('.cc'), cv = row.querySelector('.cv'), pts = row.querySelector('.pts');
+      var counters = cs.filter(function (c) { return /^[AKT]/.test(c); }), running = 0;
+      counters.forEach(function (c, i) {
+        setTimeout(function () {
+          var r = c.charAt(0) === 'T' ? '10' : c.charAt(0), card = Kit.card(r, c.charAt(1)); cc.appendChild(card);
+          running += 10; cv.textContent = String(running); Kit.sfx('tick', 0.6);
+        }, t + i * step);
+      });
+      var lastAt = t + counters.length * step + 80;
+      if (L.lastBy >= 0 && Core.sideOf(st, L.lastBy) === s && !L.conceded) setTimeout(function () { running += 10; cv.textContent = String(running) + ''; cc.appendChild(el('span', { class: 'hv-chip', style: { 'align-self': 'center', 'margin-left': '16px', 'font-weight': '900', 'font-size': '.75rem' }, text: '+10 last trick' })); Kit.sfx('chip', 0.6); }, lastAt);
+      if (st.kind === 'cut' && L.bidder === s && L.buriedPts) setTimeout(function () { cc.appendChild(el('span', { style: { 'align-self': 'center', 'margin-left': '16px', 'font-weight': '900', 'font-size': '.75rem' }, text: '+' + L.buriedPts + ' buried' })); }, lastAt + 40);
+      setTimeout(function () { cv.textContent = cv.getAttribute('data-v'); countTo(pts, 0, +pts.getAttribute('data-v'), 600); }, lastAt + 220);
+      setTimeout(function () { var sp = row.querySelector('.stamp'); if (sp.textContent) { sp.classList.add('on'); Kit.sfx(sp.classList.contains('bad') ? 'bad' : 'pop'); } }, lastAt + 900);
+      t = lastAt + 300;
+    });
+    setTimeout(after, t + 700);
+  }
+  // The score pad: a column for each side, a row for each hand (meld and counters in it), the bid marked made or set
+  function padTable(st, quiet) {
+    var S2 = Core.nSides(st), t = el('table'), pad = el('div', { class: 'spad' + (S2 > 2 ? ' many' : '') });
+    pad.appendChild(el('div', { class: 'spad-h' }, [el('h2', { text: 'Pinochle' }), el('small', { text: 'Game to ' + st.target.toLocaleString('en-US') })]));
+    var hr = el('tr', null, [el('th', { class: 'rn', text: 'Hand' })]);
+    for (var s = 0; s < S2; s++) hr.appendChild(el('th', { text: Core.seatsOf(st, s).map(function (p) { return first(st.players[p].name); }).join(' & ') }));
+    var thead = el('thead', null, [hr]), tb = el('tbody'), run = [];
+    for (s = 0; s < S2; s++) run.push(0);
+    st.hx.forEach(function (h, i) {
+      var sc = String(h.sc).split('.').map(Number), cp = String(h.c).split('.').map(Number), mp = String(h.mp || '').split('.').map(Number), bs = h.bw != null ? Core.sideOf(st, +h.bw) : -1;
+      var meldBy = []; for (var q = 0; q < S2; q++) meldBy.push(0);
+      mp.forEach(function (v, p) { meldBy[Core.sideOf(st, p)] += v || 0; });
+      var tr = el('tr', { class: i === st.hx.length - 1 && !quiet ? 'just' : '' }, [el('th', { class: 'rn', text: String(i + 1) })]);
+      for (q = 0; q < S2; q++) {
+        run[q] += sc[q];
+        var note = q === bs ? (h.r === 'm' ? 'made ' + h.b : h.r === 'c' ? 'threw in ' + h.b : 'set ' + h.b) : (st.kind === 'two' ? '' : 'meld ' + meldBy[q] + ' + ' + cp[q]);
+        if (st.kind === 'two') note = 'meld ' + meldBy[q] + ' + ' + cp[q];
+        tr.appendChild(el('td', { class: q === bs ? (h.r === 'm' ? 'made' : 'set') : '' }, [document.createTextNode(String(run[q])), el('small', { class: 'k', text: note })]));
+      }
+      tb.appendChild(tr);
+    });
+    t.appendChild(thead); t.appendChild(tb);
+    var ft = el('tr', null, [el('th', { class: 'rn', text: 'Total' })]), lead = Math.max.apply(null, st.scores);
+    st.scores.forEach(function (v) { ft.appendChild(el('td', { class: v === lead ? 'lead' : '', text: String(v) })); });
+    t.appendChild(el('tfoot', null, [ft]));
+    pad.appendChild(t);
+    return pad;
+  }
+  function showPad() {
+    var node = el('div', null, [padTable(S), el('p', { class: 'muted', style: { 'margin-top': '10px', 'font-size': '.85rem' }, text: 'This is hand ' + S.round + '. The first side to ' + S.target.toLocaleString('en-US') + ' wins.' })]);
+    Kit.sheet({ title: 'Score pad', node: node, actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+  // The new hand dealt round the table, a card at a time
+  function dealIn(done) {
+    render();
+    var cards = handEl ? [].slice.call(handEl.querySelectorAll('.pcard')) : [];
+    var src = seatAnchor(S.dealer);
+    cards.forEach(function (n, i) { n.style.opacity = '0'; setTimeout(function () { n.style.opacity = ''; Cards.fly(n, src, { ms: 300 }); if (i % 3 === 0) Kit.sfx('deal', 0.7); }, 40 + i * 45); });
+    seatEls.forEach(function (s, p) { if (p === me()) return; var bk = s.querySelector('.bk'); if (bk) { bk.style.opacity = '0'; setTimeout(function () { bk.style.opacity = ''; Cards.fly(bk, src, { ms: 320 }); }, 80 + p * 90); } });
+    flash('Hand ' + S.round + ' and ' + (S.dealer === me() && onePerson() ? 'you deal' : first(nm(S.dealer)) + ' deals'), 1600);
+    later(done, 260 + cards.length * 45);
+  }
+  function startHand(first0) {
+    ST0 = S; madeShown = {}; setShown = {};
+    if (!NET && !onePersonLocal()) {
+      var p = Core.turn(S);
+      if (person(p)) { LME = p; S.me = p; }
+    }
+    save(); build(); fit();
+    busy = true; var t = token;
+    dealIn(function () { if (t !== token) return; busy = false; next(); });
+  }
+
+  // ═══ The end of the game ═════════════════════════════════════════════════════════════════════════
+  function recordGame(st, mode, extraHl) {
+    var nS = Core.nSides(st), w = st.winner, names = st.players.map(function (p) { return p.name; });
+    var seen = {}, hl = st.highlights.slice().reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 8).reverse();
+    var best = st.stats.bestMeld; if (best && best.pts >= 150) hl.push('Best meld: ' + names[best.p] + ', ' + best.pts + ' in hand ' + best.r);
+    hl.push(st.hx.length + ' hands, played to ' + st.target);
+    (extraHl || []).forEach(function (x) { hl.push(x); });
+    var detail = { kind: st.kind, names: names, to: st.target, ps: st.passN, ws: w, hx: clone(st.hx), sets: st.stats.sets, made: st.stats.made };
+    // keep it small: the oldest hands lose their deal diagrams first
+    for (var i = 0; JSON.stringify(detail).length > 5800 && i < detail.hx.length; i++) { delete detail.hx[i].h; }
+    for (i = 0; JSON.stringify(detail).length > 5800 && i < detail.hx.length; i++) { delete detail.hx[i].m; delete detail.hx[i].a; }
+    var sides = []; for (var s = 0; s < nS; s++) sides.push({ name: Core.sideName(st, s), score: st.scores[s], cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }) });
+    Kit.record(HKEY, {
+      started: st.started, mode: mode,
+      players: sides, winner: Core.sideName(st, w),
+      rounds: { labels: st.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: st.rounds },
+      highlights: hl, detail: detail
+    });
+  }
+  function finish() {
+    var st = S, w = st.winner;
+    recordGame(st, (st.kind === 'part' ? 'Partnership' : st.kind === 'cut' ? 'Cutthroat' : 'Two-handed') + ' · ' + (st.mode === 'local' ? 'Pass & play' : 'Against the computer'));
+    var cfg = { players: st.players, target: st.target, passN: st.passN, level: st.level, mode: st.mode, kind: st.kind };
+    var mine = w === MS() && onePerson(), lose = Core.seatsOf(st, w).every(function (p) { return !person(p); });
+    var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
+    ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    var second = ranks[1];
+    clearSave(); S.phase = 'over';
+    Kit.win({
+      title: mine ? 'You win!' : sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' win!' : ' wins!'),
+      sub: (mine ? (st.kind === 'part' ? 'You and ' + first(nm((me() + 2) % 4)) + ' won by ' : 'You won by ') : 'Won by ') + (st.scores[w] - st.scores[second]) + ' · ' + st.hx.length + ' hands',
+      rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), cpu: Core.seatsOf(st, s).every(function (p) { return st.players[p].cpu; }), me: s === MS() && onePerson() }; }),
+      lose: lose, icon: lose ? 'bot' : 'trophy',
+      again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(true); },
+      look: 'Look at the table',
+      extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
+      setup: function () { clearSave(); showSetup(); }
+    });
+  }
+
+  // ── Undo (your last move this hand) ──
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function clearUndo() { undoStack = []; }
+  function undo() {
+    if (busy) return Kit.toast('One moment');
+    if (!undoStack.length) return Kit.toast('Nothing to undo this hand');
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if ((back.me || 0) !== LME && !onePersonLocal()) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; busy = false; sel = []; S = back; ST0 = S; Kit.sfx('whoosh'); Kit.toast('Undone'); save(); render(); next();
+  }
+
+  // ═══ Online (turnnet.js) ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game in fixed seats. With four, people take the seats in the order 0, 2, 1, 3, so the
+  // first two to sit are partners (PS turns a table seat into a game seat and back). Each device draws the table from
+  // its own seat with only its own hand face up. The rules and the computer players are the same as here.
+  var NQ = [], NGEN = 0, NETREC = {}, NOVER = null, NST = null;
+  function PS(st, x) { return st && st.n === 4 ? [0, 2, 1, 3][x] : x; }
+  function netCloseOver() { if (NOVER) { var o = NOVER; NOVER = null; try { o.close(); } catch (e) {} } }
+  function netOpts() {
+    var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_pinochle')) || {}; } catch (e) {}
+    var o = g.options || {}, n = Math.max(2, Math.min(4, +g.count || 4));
+    return { seats: n, to: n === 2 ? +o.to2 || 1000 : +o.to || 1500, pass: +o.pass || 4, level: Core.lv(o.level) };
+  }
+  function netStart(players, opts, last) {
+    var n = players.length, pl = [];
+    for (var p = 0; p < n; p++) { var x = players[PS({ n: n }, p)] || { name: 'Robot', bot: true }; pl.push({ name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }); }
+    var st = Core.newGame({ kind: kindFor(n), players: pl, target: opts.to, passN: opts.pass, level: opts.level });
+    st.online = 1; st.series = last && last.series && last.series.length === Core.nSides(st) ? last.series.slice() : [0, 0, 0].slice(0, Core.nSides(st));
+    return st;
+  }
+  function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [PS(st, p)]; }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var w = st.winner;
+    return { win: Core.seatsOf(st, w).map(function (p) { return PS(st, p); }), text: Core.sideName(st, w) + ' win ' + st.scores[w] };
+  }
+  function netBot(st, seat) {
+    var p = PS(st, seat), a = Core.bot(st, p); if (!a) return null;
+    var mv = Core.apply(st, p, a);
+    return mv ? { state: st, mv: mv } : null;
+  }
+  function netNudge() {
+    if (busy || !NET) return;
+    Kit.haptic('error');
+    [actEl].concat(seatEls.filter(function (s) { return s.classList.contains('turn'); })).forEach(function (e) { e.classList.remove('nudge'); void e.offsetWidth; e.classList.add('nudge'); });
+  }
+  function netShow(net, info) {
+    NET = net;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
+    NQ.push({ st: clone(net.state), prev: info.prev ? clone(info.prev) : null, mv: info.mv, info: info });
+    if (NQ.length > 8) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });   // (far behind: jump to now)
+    if (!busy) netPump();
+  }
+  function netPump() {
+    var it = NQ.shift(); if (!it) return;
+    var g = NGEN; busy = true;
+    netStep(it, function () {
+      if (g !== NGEN) return;
+      busy = false;
+      if (NQ.length) netPump(); else if (NET && S) { paintAll(); }
+    });
+  }
+  function netStep(it, done) {
+    var st = it.st, prev = it.prev, mv = it.mv, info = it.info;
+    MYSEAT = NET.seat >= 0 ? PS(st, NET.seat) : -1;
+    // seats: names as the table has them, robots, and people who've stepped away
+    st.players.forEach(function (pl, p) { var s = NET.seats[PS(st, p)]; if (s) { pl.cpu = !!s.bot; pl.away = !!(!s.bot && !s.me && s.away); } });
+    NST = st; ST0 = st; token++;
+    if (!mv || !prev || info.fresh || info.again || it.skip) {
+      S = st; build(); render(); fit();
+      if (info.again) { Kit.gameStart(); Kit.callout('New game'); }
+      else if (info.fresh) Kit.gameStart();
+      if (st.phase === 'over') { setTimeout(function () { if (NET) netEnd(); }, info.fresh ? 300 : 900); }
+      else if (info.fresh || info.again) { busy = true; dealIn(done); return; }
+      done(); return;
+    }
+    prev.players = st.players;
+    // (check it follows from what's on screen; otherwise just draw the table as it is now)
+    var act = mvAction(mv), ok = Core.turn(prev) === mv.p && (!act || !!Core.apply(clone(prev), mv.p, act));
+    if (!ok) { S = st; render(); done(); return; }
+    var t = token;
+    step(prev, mv, st, function () {
+      if (st.phase === 'over' && (mv.end || mv.concede)) { S = st; render(); netEnd(); }
+      done();
+    });
+  }
+  // a move as the table recorded it, back into the action that made it (to check it follows from what's on screen)
+  function mvAction(mv) {
+    switch (mv.k) {
+      case 'bid': return { k: 'bid', b: mv.b };
+      case 'trump': return { k: 'trump', s: mv.s };
+      case 'play': return { k: 'play', id: mv.c.id };
+      default: return null;
+    }
+  }
+  function netEnd() {
+    if (!NET || !NST || NST.phase !== 'over') return;
+    var st = NST, w = st.winner, key = NET.code + ':' + st.started;
+    var done = []; try { done = JSON.parse(localStorage.getItem('pinochle_netrec')) || []; } catch (e) {}
+    if (NET.seat >= 0 && !NETREC[key] && done.indexOf(key) < 0) {
+      NETREC[key] = 1;
+      try { localStorage.setItem('pinochle_netrec', JSON.stringify(done.concat([key]).slice(-20))); } catch (e) {}
+      recordGame(st, (st.kind === 'part' ? 'Partnership' : st.kind === 'cut' ? 'Cutthroat' : 'Two-handed') + ' · Online', ['Played online at table ' + NET.code]);
+    }
+    var res = NET.result, left = res && res.left != null, watching = MYSEAT < 0, won = !watching && Core.sideOf(st, MYSEAT) === w;
+    var ranks = []; for (var s = 0; s < Core.nSides(st); s++) ranks.push(s);
+    ranks.sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    netCloseOver(); S = st;
+    NOVER = Kit.win({
+      title: left ? res.text : won ? 'You win!' : sideName(w) + (Core.seatsOf(st, w).length > 1 ? ' win' : ' wins'),
+      sub: 'Won by ' + (st.scores[w] - st.scores[ranks[1]]) + (st.series && st.series.reduce(function (a, b) { return a + b; }, 0) > 1 ? ' · games ' + st.series.join('–') : ''),
+      rank: ranks.map(function (s) { return { name: sideName(s), score: st.scores[s], color: sideColor(s), me: !watching && s === Core.sideOf(st, MYSEAT) }; }),
+      lose: !won, icon: won ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the table',
+      extra: [{ label: 'Score pad', onClick: function () { showPad(); } }],
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() {
+    NET = null; NST = null; NQ = []; NGEN++; busy = false; token++;
+    netCloseOver();
+    resumeLocal(true);
+  }
+
+  // ── Boot ──
+  function resumeLocal(back) {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.v === 1 && saved.players && saved.hands && saved.phase !== 'over') {
+      S = saved; ST0 = S; LME = S.me || 0; BLIND = false; Kit.gameStart();
+      if (back) save();
+      build(); render(); fit();
+      // a hand that ended just before the page closed: its count first
+      if (S.last && (S.seen || 0) < S.last.round && S.hx.length) {
+        busy = true; var t = token;
+        var prev = clone(S); prev.won = S.last.won.slice(); prev.cpts = S.last.res.map(function (r) { return r.cpts; }); prev.trick = [];
+        handEnd(prev, function () { if (t !== token) return; busy = false; next(); });
+        return;
+      }
+      next();
+    } else showSetup();
+  }
+  // a game page reloads when its keys arrive newer from another device (sync.js): nothing extra needed here
+  resumeLocal();
+  TurnNet.setup({
+    game: 'pinochle', title: 'Pinochle', min: 2, max: 4, botMs: 1100,
+    seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || 4)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
+  // (tests)
+  window.__pino = { get S() { return S; }, get busy() { return busy; }, get seat() { return NET ? MYSEAT : LME; }, get net() { return !!NET; }, move: move, core: Core, record: recordGame };
+})();
+</script>
+</body>
+</html>

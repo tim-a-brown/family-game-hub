@@ -69,6 +69,9 @@ var GameIcon = (function () {
     // Cards
     hearts: function () { return path(HEART, R); },
     spades: function () { return path(SPADE, K); },
+    pinochle: function (c) {   // the pinochle itself: the queen of spades over the jack of diamonds
+      return rect(2.5, 4, 11, 15.5, 2, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-10 8 12)"') + txt('Q', 8.5, K, 10, 7.4) + rect(10.5, 4.5, 11, 15.5, 2, W, ' stroke="' + R + '" stroke-width="1.2" transform="rotate(10 16 12)"') + txt('J', 8.5, R, 11, 16.5);
+    },
     euchre: function (c) { return txt('J', 19, c, 11) + path('M12 17.5l2 2.5-2 2.5-2-2.5z', R); },
     cribbage: function (c) {
       var h = ''; for (var i = 0; i < 5; i++) h += circ(5 + i * 3.5, 14, .9, K, ' opacity=".35"');
