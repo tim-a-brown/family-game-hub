@@ -228,7 +228,10 @@
   const mono = key => noPic(key) ? el('span', { class: 'mono-i', 'aria-hidden': 'true', html: '<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet"><circle cx="50" cy="50" r="36"/><text x="50" y="52" text-anchor="middle" dominant-baseline="central">' + esc(info(key).n.replace(/^The /, '').charAt(0)) + '</text></svg>' }) : null;
   // (A card whose picture has not been made yet shows its initial as a monogram in a ring: its name is on its title
   // plate already, and twice on one card read like a placeholder.)
-  const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : noPic(key) ? el('span', { class: cls + ' mono', 'aria-hidden': 'true' }, [el('b', { text: info(key).n.replace(/^The /, '').charAt(0) })]) : el('span', { class: cls, text: info(key).n });
+  // (a small card, a piece or a stack: while its picture is on its way it shows the initial in a ring, as a card with no
+  // picture yet does. The whole name had been 3 to 6px on a board card 27 to 52px wide, and ran off a stack 35px wide;
+  // a small card's name is on its own plate anyway)
+  const noArtLabel = (key, small, cls) => hasArt[artSrc(key, small)] ? null : noPic(key) || small ? el('span', { class: cls + ' mono', 'aria-hidden': 'true' }, [el('b', { text: info(key).n.replace(/^The /, '').charAt(0) })]) : el('span', { class: cls, text: info(key).n });
   function preload(keys) { keys.forEach(k => { const src = artSrc(k, true); if (hasArt[src] || noArt[src]) return; const im = new Image(); im.onload = () => { hasArt[src] = 1; keep(src); gotSmall(src, im); }; im.onerror = () => { noArt[src] = 1; }; im.src = src; }); }
 
   // Full-size pictures, made ready ahead of the finger (Tim, 2026-11-11: "some of the art flashes into place after
@@ -2780,13 +2783,16 @@
         return ok && c.n.getBoundingClientRect().bottom <= c.kr.bottom + 1; };
       const flat = cv.every(c => { const n = c.n, nr = n.getBoundingClientRect(); c.k.classList.add('cv'); n.dataset.fs0 = n.style.fontSize || '';
         n.style.textAlign = 'left'; n.style.paddingRight = Math.max(0, nr.right - (c.kr.left + c.vis) + 2) + 'px';
-        let fs = c.fs0; while (!fits(c) && fs > c.fs0 * .9) { fs -= .5; n.style.fontSize = fs + 'px'; } return fits(c); });
+        let fs = c.fs0; while (!fits(c) && fs - .5 >= Math.max(8, c.fs0 * .9)) { fs -= .5; n.style.fontSize = fs + 'px'; } return fits(c); });   // (never under 8px)
       if (flat) return;
       // (the spine: down the right edge of the part that shows, at the names' own size, smaller only if it must be)
       cv.forEach(c => { const n = c.n, k = c.k; k.classList.add('cv', 'cvv'); if (n.dataset.fs0 == null) n.dataset.fs0 = n.style.fontSize || ''; n.style.paddingRight = ''; n.style.textAlign = ''; n.style.fontSize = n.dataset.fs0;
         const sp = el('span', { class: 'cv-v', 'aria-hidden': 'true', text: n.textContent }); k.appendChild(sp);
         const ac = k.querySelector('.ac'); if (ac) sp.style.setProperty('--f', ac.style.getPropertyValue('--f')); sp.style.fontSize = c.fs0 + 'px'; sp.style.right = (c.cover + 1) + 'px'; sp.style.maxWidth = Math.max(10, c.vis * .62) + 'px';
-        let f = c.fs0; while ((sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1) && f > 7) { f -= .5; sp.style.fontSize = f + 'px'; } });
+        const over = () => sp.scrollHeight > sp.clientHeight + 1 || sp.scrollWidth > sp.clientWidth + 1;
+        let f = c.fs0; while (over() && f - .5 >= 8) { f -= .5; sp.style.fontSize = f + 'px'; }
+        if (over()) sp.remove();   // (no room for the name at 8px: the card shows its picture and its Might, and a hold reads it)
+      });
     });
   }
   // Legacy lines: gold thread from each Legacy Figure to the one who inspired it
