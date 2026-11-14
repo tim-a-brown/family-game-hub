@@ -846,7 +846,13 @@ Underlying principles for everything:
   on a phone, one row on an iPad, with room kept so the table doesn't jump; your spoke's tiles are as wide as the
   two-player rows' where the room allows. The rim starts with the
   player on your left (`seatsFrom`, `nextLive`), so the Congress of Vienna's "on your left" is the column at the left.
-  Roads are drawn from where the tiles lie (`roadsN`). A Figure's piece is `figN(u)`: its card in your rows or the
+  Roads are drawn from where the tiles lie (`roadsN`). The table is laid out in the map's room as it is when drawn
+  (`M._wh`), and a change of that room afterwards draws it again (the ResizeObserver in `buildTable`: the game bar was
+  still settling when the set-up was first drawn, and a phone on its side laid the last lane past the felt). In your
+  three rows the other players' stacks take as many lines as leave them biggest, all inside the row (the set-up's offers
+  one line), and your own cards overlap like a held hand once they don't fit side by side; stacks in a row under a rim
+  tile fan the same way, so they stay in their column. The scratchpad's `ov/stress.js` lays every player's Figures at
+  every Domain and measures the table for overlaps. A Figure's piece is `figN(u)`: its card in your rows or the
   stack it is in; every EV handler aims there, and a Figure joining or leaving a stack flies as a card (`renderFlip`
   with `only`). A tap on a stack picks the Figure in it that can be reached or moved (a sheet asks which when several
   could), otherwise opens the scan. Seat colors are `--pc0` to `--pc5` (`PCOL`, `TCOL` team families, `setCols`; a
@@ -865,7 +871,10 @@ Underlying principles for everything:
   as stacks (one for each player, in seat order from your left) and yours below it as cards, the totals on shields at
   the tile's top and bottom (the strongest other side's and yours); your bar rides your mat's lower left. Each other
   player is a column on their own mat at the right (`rimCols`, the rim's columns): their plate, their Gate and their
-  Outpost, with the stacks under them. Phones and an upright iPad keep layout C above. A new piece on the table needs
+  Outpost, with the stacks under them. The Domain set-up is laid on the same line (`mineLine` with `suRow`'s slots:
+  everyone else's offers above the Crossroads, yours below it; the rim columns hold `suRim`'s slots), so each Domain is
+  laid where it will lie and your bar at your mat's lower left stays clear of the other players' columns. Phones and an
+  upright iPad keep layout C above, for the set-up too. A new piece on the table needs
   its place in `mineLine`'s columns (`.pl.wn-bl` in ui.css) as well.
 - **Twelve Guides** (the roster of twelve, Tim, 2026-11-12): Cleopatra, Leonardo, Tubman, Sun Tzu, Shakespeare, Marie
   Curie, Joan of Arc, Saladin, Empress Wu, Akbar, Mansa Musa and Sor Juana. Since 2026-11-13 a new player chooses any

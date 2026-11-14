@@ -2111,7 +2111,11 @@
     app.className = 'an-on'; app.innerHTML = ''; window.scrollTo(0, 0);
     preload(S.places.concat(S.su ? [].concat.apply([], S.su.drew) : []).filter(x => x).concat(S.P.map(p => p.guide), G.players.reduce((a, p) => a.concat(deckOf(p).cards), [])));
     dom.opp = el('div', { class: 'an-strip opp' }); dom.me = el('div', { class: 'an-strip me' });
-    dom.map = el('div', { class: 'an-map', onclick: onMapTap }); dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
+    dom.map = el('div', { class: 'an-map', onclick: onMapTap });
+    // (more players: the table is laid out in the map's room as it is when drawn, so if the room changes after (the game
+    // bar still settling as the set-up is first drawn), the table is drawn again: drawN keeps the size it used)
+    if (window.ResizeObserver) { const m = dom.map; new ResizeObserver(() => { const r = m.getBoundingClientRect(), d = m._wh; if (many() && d && (Math.abs(Math.floor(r.width) - d[0]) > 1 || Math.abs(Math.floor(r.height) - d[1]) > 1)) onSize(); }).observe(m); }
+    dom.cap = el('div', { class: 'an-cap' }); dom.hand = el('div', { class: 'an-hand', onclick: onHandTap });
     holdToScan(dom.map, scanAt); holdToScan(dom.hand, scanAt); dom.map.addEventListener('pointerdown', dragDown); dom.hand.addEventListener('pointerdown', dragDown);
     dom.fx = el('div', { class: 'an-fx' });
     if (!dom.pm) dom.pm = [0, 1].map(() => el('div', { class: 'an-pm' }));   // (the same two mats from one table to the next)
@@ -2792,7 +2796,7 @@
   }
   // Lay the table out in the map's room and draw it
   function drawN(T, X) {
-    const M = dom.map, mr = M.getBoundingClientRect(), W = Math.floor(mr.width), H = Math.floor(mr.height); if (W < 60 || H < 60) return;
+    const M = dom.map, mr = M.getBoundingClientRect(), W = Math.floor(mr.width), H = Math.floor(mr.height); M._wh = [W, H]; if (W < 60 || H < 60) return;
     const N = S.N, v = ui.view, rim = seatsFrom(v).slice(1), R = rim.length, land = window.innerWidth > window.innerHeight && W > H * 1.15;
     const put = (n, x, y, w, h) => { n.style.left = Math.round(x) + 'px'; n.style.top = Math.round(y) + 'px'; if (w != null) n.style.width = Math.round(w) + 'px'; if (h != null) n.style.height = Math.round(h) + 'px'; M.appendChild(n); return n; };
     const here = (i, q) => V.figs.filter(f => f.p === i && f.o === q);
@@ -2808,16 +2812,19 @@
       // in a hand, so the stacks never cross into the next player's column)
       const cols = Math.ceil(n / 2), room = xr - x - tw - 4;
       if (dir === 'r') ps = Math.max(14, Math.min(Math.max(16, Math.min(ps, room / cols - 4)), n > 1 ? (th + 4) / 2.72 - 1 : ps, room - 6 * (cols - 1)));
-      else ps = Math.max(14, Math.min(ps, (xr - xl) / n - 4));
+      else ps = Math.max(14, Math.min(ps, (xr - xl + 4) / n - 4));
       const step = cols > 1 ? Math.min(ps + 4, Math.max(6, (room - ps) / (cols - 1))) : 0;
+      const stepB = n > 1 ? Math.min(ps + 4, (xr - xl - ps) / (n - 1)) : 0;   // (in a row under the tile: fanned like cards once they don't fit side by side, so they stay in the column)
       qs.forEach((q, j) => { const nd = stackEl(q, i, here(i, q), T, Math.floor(ps));
         if (dir === 'r') { const cc = j >> 1, rr = j & 1, two = n > 1; if (step < ps + 4) nd.classList.add('fan'); put(nd, x + tw + 4 + cc * step, y + th / 2 - (two ? ps * 1.36 + 2 : ps * .68) + rr * (ps * 1.36 + 4)); }
-        else { const tot = n * (ps + 4) - 4; put(nd, Math.max(xl, Math.min(xr - tot, x + tw / 2 - tot / 2)) + j * (ps + 4), y + th + 4); } });
+        else { const tot = (n - 1) * stepB + ps; if (stepB < ps + 4) nd.classList.add('fan'); put(nd, Math.max(xl, Math.min(xr - tot, x + tw / 2 - tot / 2)) + j * stepB, y + th + 4); } });
     };
     // (an iPad held sideways, the table playing: the battle line (A3four, Tim 2026-11-13). Your Gate, Outpost and the
     // Crossroads lie in a row across your mat at the left, everyone else's Figures there above the line as stacks and
-    // yours below it as cards; each other player's Gate and Outpost stand in a column of their own on their mat at the right)
-    const bl = !X && !!(ui.lay && ui.lay.nbl);
+    // yours below it as cards; each other player's Gate and Outpost stand in a column of their own on their mat at the right.
+    // The set-up is laid on the same line, so each Domain is laid where it will lie, and your bar at your mat's lower left
+    // keeps clear of the other players' columns)
+    const bl = !!(ui.lay && ui.lay.nbl);
     M.dataset.lay = bl ? 'bl' : land ? 'side' : 'up';
     // (the other players' columns: x the left edge of the first, cw the room for all of them, rimH their height)
     const rimCols = (bx, bw, rimH) => {
@@ -2860,7 +2867,7 @@
         [2 * o, 2 * o + 1].forEach((i, j) => { const x = pw + j * cellW + 4, y = y0 + rowH / 2 - th / 2; put(tileAt(i, tw, th), x, y, tw, th); stacks(i, x, y, tw, th, ps, 'r', o, x, pw + (j + 1) * cellW - 2); });
       });
     }
-    if (bl) { mineLine(T, mine, put); fitRim(); roadsN(land); return; }
+    if (bl) { mineLine(T, mine, put, X); fitRim(); if (!X) roadsN(land); return; }
     // your three rows: the Crossroads, your Outpost, your Gate, drawn as the two-player rows are, on your own mat
     // (the tiles as wide as the two-player rows' where the room allows: on an iPad wide and low as there, on a phone taller)
     const rh = mine.h / 3, mw = Math.round(Math.min(mine.w * (land ? .4 : mine.w > 560 ? .42 : .38), 300, (rh - 6) * (mine.w > 560 ? 2.4 : 1 / .62))), bh = Math.round(Math.min(rh - 8, mw * .64));
@@ -2871,8 +2878,19 @@
     const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y + rh - 2, mine.w, mine.h - rh + 2);
     [2 * N, 2 * v + 1, 2 * v].forEach((i, r) => {
       const row = X ? suRow(i, X) : rowEl(i, T, { many: true, slots: slots });
-      row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.round(Math.min(fw * .92, X ? (sideW - 4) / (N - 1) - 10 : (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');   // (the set-up: everyone else's offers in one line)
+      // (everyone else's stacks here: in as many lines as leave them biggest, all within the row, with the gaps between
+      // them, .pl.wn-row .pl-side.L's; the set-up's offers in one line)
+      const nL = X ? N - 1 : Math.max(1, seatsFrom(v).slice(1).filter(q => V.figs.some(f => f.p === i && f.o === q)).length);
+      let swL = 0; for (let ln = 1; ln <= (X ? 1 : nL); ln++) { const per = Math.ceil(nL / ln); swL = Math.max(swL, Math.min((sideW - 4) / (per + .22 * (per - 1)), (bh - 4) / (1.36 * ln + .3 * (ln - 1) + (X ? .04 : .16)))); }
+      row.style.setProperty('--mw', mw + 'px'); row.style.setProperty('--fw', fw + 'px'); row.style.setProperty('--sw', Math.floor(Math.min(fw * .92, swL, X ? 999 : (sideW - 8) / 2.2, (rh - 12) / 1.42)) + 'px');
       put(row, mine.x, mine.y + r * rh + (rh - bh) / 2, mine.w, bh);
+    });
+    // (your own cards in a row: side by side while they fit, else overlapping like a held hand, the newest on top)
+    if (!X) M.querySelectorAll('.pl.wn-row > .pl-side.R').forEach(sd => {
+      const ks = Array.prototype.filter.call(sd.children, c => c.matches('.fp, .slot')), n = ks.length; if (n < 2) return;
+      const room = sd.getBoundingClientRect().width - 2, w = ks[0].getBoundingClientRect().width, gap = parseFloat(getComputedStyle(sd).columnGap) || 0;
+      if (n * w + (n - 1) * gap <= room) return;
+      sd.style.gap = '0px'; ks.forEach((k, j) => { if (j) k.style.marginLeft = ((room - n * w) / (n - 1)).toFixed(1) + 'px'; });
     });
     fitRim();
     if (!X) roadsN(land);
@@ -2880,15 +2898,16 @@
   // Your spoke on the battle line (drawN, an iPad sideways): your Gate, your Outpost and the Crossroads side by side
   // across your mat, each a column like the two-player table's: everyone else's Figures there above the Domain as
   // stacks, one for each player in seat order from your left, and yours below it as cards; the totals on the shields
-  // at the tile's top and bottom edges are the strongest other side's and yours.
-  function mineLine(T, mine, put) {
+  // at the tile's top and bottom edges are the strongest other side's and yours. (X: the set-up, suRow's slots in the same
+  // columns: everyone else's offers above the Crossroads and yours below it)
+  function mineLine(T, mine, put, X) {
     const N = S.N, v = ui.view, cg = 12, colW = (mine.w - 2 * cg) / 3, topR = G.teams && dom.opp ? dom.opp.offsetHeight + 6 : 0, H = mine.h - (dom.me ? dom.me.offsetHeight + 8 : 0) - topR;
     const mm = matN(v); mm.className = 'an-pm wn-col wn-mine' + (V.turn === v && !G.over && G.ph !== 'setup' ? ' on' : ''); mm.style.setProperty('--pc', 'var(--pc' + v + ')'); put(mm, mine.x, mine.y, mine.w, mine.h);
     const tw = Math.floor(colW - 14), sh = Math.round(Math.max(30, Math.min(44, tw * .21))), th = Math.floor(Math.min(tw * .62, H * .3)), bg = Math.round(sh * .62 + 3), band = (H - th - 2 * bg) / 2;
     const others = N - 1, perRow = Math.min(3, others), rowsL = Math.ceil(others / perRow);
     const sw = Math.floor(Math.max(26, Math.min(64, (colW - 10) / perRow - 6, (band - 8) / rowsL / 1.36 - 4)));
     [2 * v, 2 * v + 1, 2 * N].forEach((i, k) => {
-      const row = rowEl(i, T, { many: true, bl: true }); row.classList.remove('wn-row'); row.classList.add('wn-bl');
+      const row = X ? suRow(i, X) : rowEl(i, T, { many: true, bl: true }); row.classList.remove('wn-row'); row.classList.add('wn-bl');
       const mine0 = V.figs.filter(f => f.p === i && f.o === v).length + (T.places[i] && S.turn === v ? 1 : 0);
       const fw = Math.floor(Math.max(30, Math.min((colW - 6) / 2, (band - 10) / 1.4, 124))), n = Math.max(1, mine0), ov = n * fw + (n - 1) * 6 > colW - 4 ? -((n * fw - (colW - 4)) / Math.max(1, n - 1)) : 6;
       [['--tw', tw], ['--th', th], ['--sh', sh], ['--bg', bg], ['--band', band], ['--fw', fw], ['--sw', sw], ['--ov', ov]].forEach(x => row.style.setProperty(x[0], Math.round(x[1] * 10) / 10 + 'px'));
