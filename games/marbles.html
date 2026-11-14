@@ -12,6 +12,8 @@
 <script src="../cards.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .mcol{max-width:max(320px,min(520px,calc(100dvh - 250px)));margin:0 auto;display:flex;flex-direction:column;gap:10px;}
 .mcol.cm{max-width:max(300px,min(520px,calc(100dvh - 392px)));gap:8px;}
@@ -186,6 +188,7 @@
   //      viewer (whose hand is showing, -1 = hidden), pend (second half of a split 7), deals, line.
   // Marble position: -1 base, 0..N-1 steps from your start hole, N..N+3 home, CEN centre.
   var S = null, SPD = 1, tok = 0, lock = false, sel = -1;
+  var NET = null, NETBUSY = false;   // the online table (turnnet.js), while at one: S is the table's game, S.viewer your place
   function G() { return geo(S.B); }
   function N() { return SEG * S.B; }
   function isCards() { return S && S.rules === 'cards'; }
@@ -202,7 +205,7 @@
     S.ml += (S.ml ? ' ' : '') + t; S.mlp = now;
   }
   function save() {
-    if (!S) return;
+    if (!S || NET) return;
     logMarbles();
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S.phase !== 'over') Kit.resume.set(Kit.poss(S.players[S.cur].name) + ' turn · ' + RULES[S.rules]);
@@ -223,15 +226,19 @@
   function humans() { return S.players.filter(function (p) { return !p.cpu; }).length; }
   function firstHuman() { for (var i = 0; i < S.players.length; i++) if (!S.players[i].cpu) return i; return -1; }
   function who(i) { return S.players[i].name; }
+  // a computer player (online: also a seat the computer took over when its player left)
+  function isCpu(i) { return NET ? !!(NET.seats[tbl(S, i)] && NET.seats[tbl(S, i)].bot) : !!S.players[i].cpu; }
+  // the turn belongs to someone who isn't holding this device (a computer player, or online anyone else)
+  function notMine() { return NET ? S.cur !== S.viewer || NETBUSY || !NET.myTurn() : P().cpu; }
 
   // ── Rules text ───────────────────────────────────────────────────────────
   Kit.init({
     orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'marbles', mark: false,
     theme: { wood: ['#8a5530', '#5a3318'], back: ['#22406e', '#c9963a'] },
-    onNew: function () { tok++; Kit.handoff.close(); clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Marbles: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; Kit.handoff.close(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Marbles: past games' }); } }]),
     rules:
       '<p class="goal">Race all four of your marbles around the board and into your home row. You move by playing cards. First one (or first team) with every marble home wins.</p>' +
       '<p>This is the card game families call <b>Marbles</b>, <b>Cards &amp; Marbles</b>, <b>Tock</b> or <b>Pegs and Jokers</b>. Aggravation and Wahoo (with a die) are in setup under <b>Rules</b>.</p>' +
@@ -268,7 +275,11 @@
       '<li>Move one marble the number you rolled. If you can move, you must.</li>' +
       '<li><b>Aggravation:</b> if a marble <b>starts its turn on a star</b> (inside corner) it may hop star to star; each hop counts as one. The <b>center hole</b> counts as one step past any star; leave it only with a 1, hopping out to any star.</li>' +
       '<li><b>Wahoo:</b> no star hops; the center hole still works. <b>Wahoo, no center:</b> no shortcuts.</li></ul>' +
-      '<h3>Boards</h3><p>Two to four players use the cross board. Five or six players use the six-sided board.</p>'
+      '<h3>Boards</h3><p>Two to four players use the cross board. Five or six players use the six-sided board.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> beside the start button: open a table and up to 5 others join on their own devices, with the rules you chose. The computer plays any seat that nobody takes.</li>' +
+      '<li>With partners, the people you seated in the setup sit where you put them, so your partner is still straight across from you.</li>' +
+      '<li>In the card game each of you sees only your own cards. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
+      '<li>Moves can’t be taken back online.</li></ul>'
   });
 
   // ── Setup ────────────────────────────────────────────────────────────────
@@ -455,6 +466,7 @@
   function snapshot() { var snap = JSON.parse(JSON.stringify(S)); snap.hist = []; S.hist.push(JSON.stringify(snap)); if (S.hist.length > 12) S.hist.shift(); }
   function doMove(m, byCpu) {
     if (!S || S.phase !== 'move' || lock) return;
+    if (NET) { if (notMine()) return; lock = true; sel = -1; netYou({ t: 'move', o: m.o, mi: m.mi, to: m.to }); return; }
     var ok = legal().filter(function (x) { return x.o === m.o && x.mi === m.mi && x.to === m.to; })[0];
     if (!ok) return;
     m = ok;
@@ -541,15 +553,20 @@
     return s;
   }
   function cpuMove() {
-    var ms = legal(); if (!ms.length) { nextTurn(); return; }
+    var m = cpuPickDice(); if (!m) { nextTurn(); return; }
+    doMove(m, true);
+  }
+  // the move the computer makes with the die it rolled (null: none)
+  function cpuPickDice() {
+    var ms = legal(); if (!ms.length) return null;
     var best = ms[0], bs = -1e9, lv = lvNow();
-    if (lv === 'easy' && Math.random() < 0.5) { doMove(ms[Math.floor(Math.random() * ms.length)], true); return; }
+    if (lv === 'easy' && Math.random() < 0.5) return ms[Math.floor(Math.random() * ms.length)];
     ms.forEach(function (m) {
       var v = cpuScore(m, lv === 'hard');
       if (lv === 'hard') v += HARD_NEXT * nextRoll(m);
       if (v > bs) { bs = v; best = m; }
     });
-    doMove(best, true);
+    return best;
   }
   // Hard: what the next roll could do after move m, the best move's worth averaged over the six faces
   function nextRoll(m) {
@@ -734,17 +751,8 @@
     if (!allPlays(S.cur).length && !S.pend) { Kit.sfx('bad'); }
   }
   function deal() {
-    var n = S.players.length, size = 5, newCycle = false;
-    if (S.dealMode === 'shrink') {
-      var idx = (S.deals || 0) % 5; size = 5 - idx;
-      // After the 1-card hand: fresh shuffle and the deal moves one seat on
-      if (idx === 0 && S.deals > 0) { newCycle = true; S.deck = newDeck(); S.pile = []; S.cur = (S.cur + 1) % n; }
-    }
-    if (S.deck.length < size * n) { S.deck = newDeck(); S.pile = []; }
-    if (S.dealMode === 'shrink') { S.line = (newCycle ? 'New deal: ' : '') + size + (size === 1 ? ' card' : ' cards') + ' each'; if (S.deals > 0) Kit.toast(S.line, 1500); }
-    for (var k = 0; k < size; k++) for (var i = 0; i < n; i++) S.hands[(S.cur + i) % n].push(S.deck.shift());
-    S.hands.forEach(sortHand);
-    S.deals++;
+    dealCore();
+    if (S.dealMode === 'shrink' && S.deals > 1) Kit.toast(S.line, 1500);
     Kit.sfx('deal');
     save(); paint();
     if (S.viewer >= 0) flyDeal(true);
@@ -756,6 +764,20 @@
       if (humans() === 1) S.viewer = S.cur;
       afterReveal();
     }, S.deals > 1 ? 700 : 450);
+  }
+  // the deal itself (the rules only: online tables deal with it too)
+  function dealCore() {
+    var n = S.players.length, size = 5, newCycle = false;
+    if (S.dealMode === 'shrink') {
+      var idx = (S.deals || 0) % 5; size = 5 - idx;
+      // After the 1-card hand: fresh shuffle and the deal moves one seat on
+      if (idx === 0 && S.deals > 0) { newCycle = true; S.deck = newDeck(); S.pile = []; S.cur = (S.cur + 1) % n; }
+    }
+    if (S.deck.length < size * n) { S.deck = newDeck(); S.pile = []; }
+    if (S.dealMode === 'shrink') S.line = (newCycle ? 'New deal: ' : '') + size + (size === 1 ? ' card' : ' cards') + ' each';
+    for (var k = 0; k < size; k++) for (var i = 0; i < n; i++) S.hands[(S.cur + i) % n].push(S.deck.shift());
+    S.hands.forEach(sortHand);
+    S.deals++;
   }
   function flyDeal(sound) {
     if (!handEl || !deckEl) return;
@@ -918,14 +940,20 @@
   function keepValue(c) { return { JK: 100, J: 60, '7': 50, A: 45, K: 44, '4': 40 }[c.r] || (13 - Math.min(12, +c.r || 12)); }
   function cpuCards() {
     if (!S || S.phase !== 'play' || lock || !S.players[S.cur].cpu) return;
+    var pk = cpuPickCards();
+    if (!pk) cNext();
+    else if (pk.disc) discard(pk.disc, { cpu: true });
+    else playMove(pk.mv, { cpu: true });
+  }
+  // the computer's play: {mv} a move, {disc: card} a card thrown away, null: no cards at all
+  function cpuPickCards() {
     var plays = allPlays(S.cur), lv = lvNow();
     if (!plays.length) {
       var h = hand().slice().sort(function (a, b) { return keepValue(a) - keepValue(b); });
       if (lv === 'easy' && h.length) h = [h[Math.floor(Math.random() * h.length)]];   // (Easy throws away any card)
-      if (h.length) discard(h[0], { cpu: true }); else cNext();
-      return;
+      return h.length ? { disc: h[0] } : null;
     }
-    if (lv === 'easy' && Math.random() < 0.5) { playMove(plays[Math.floor(Math.random() * plays.length)], { cpu: true }); return; }
+    if (lv === 'easy' && Math.random() < 0.5) return { mv: plays[Math.floor(Math.random() * plays.length)] };
     var base = evalPl(S.players, S.cur), best = null, bs = -1e9, list = [];
     plays.forEach(function (mv) {
       var pl = copyPl(S.players);
@@ -950,7 +978,7 @@
         if (v > bs) { bs = v; best = x.mv; }
       });
     }
-    playMove(best, { cpu: true });
+    return { mv: best };
   }
 
   // ── Undo: back to just before the last move a person made ────────────────
@@ -1018,9 +1046,10 @@
     if (!pairs.length) hl.push('Nobody got ' + (S.rules === 'agg' ? 'aggravated' : 'sent home') + ' all game');
     var score = function (i) { return homeCount(i); };
     var players = S.players.map(function (p, i) { return { name: p.name, score: score(i), cpu: p.cpu }; });
-    Kit.record(KEY, {
+    var recKey = NET ? NET.code + ':' + S.started : null;
+    if (!NET || (NET.seat >= 0 && !NETREC[recKey])) { if (NET) NETREC[recKey] = 1; Kit.record(KEY, {
       started: S.started,
-      mode: RULES[S.rules] + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (S.mode === 'cpu' ? ', vs computer' : ''),
+      mode: RULES[S.rules] + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (NET ? ', online' : S.mode === 'cpu' ? ', vs computer' : ''),
       players: players, winner: wname,
       summary: wname + ' won · ' + RULES[S.rules],
       highlights: hl.slice(0, 6),
@@ -1028,10 +1057,23 @@
         var sent = 0; Object.keys(p.st.agg).forEach(function (v) { sent += p.st.agg[v]; });
         return { a: p.arm, c: p.color, m: p.m.join(','), t: p.st.turns, s: sent, g: p.st.got };
       }) }
-    });
-    clearSave(); paint();
+    }); }
+    if (!NET) clearSave();
+    paint();
     var rank = S.players.map(function (p, i) { return { name: p.name, score: score(i) + ' home', color: p.color, pr: score(i) * 1000 + progress(i) + (w.team.indexOf(i) >= 0 ? 1e6 : 0) }; })
       .sort(function (a, b) { return b.pr - a.pr; });
+    if (NET) {
+      var mine = w.team.indexOf(S.viewer) >= 0, res = NET.result, left = res && res.left != null;
+      return Kit.win({
+        icon: mine ? 'trophy' : 'users',
+        title: left ? res.text : mine ? 'You win!' : names.length > 1 ? wname + ' win!' : wname + ' wins!',
+        sub: names.length > 1 ? 'All eight marbles home' : 'All four marbles home',
+        rank: rank, lose: !mine && !left,
+        againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+        look: true, closeLabel: 'Back to games'
+      });
+    }
     var humansL = S.players.filter(function (p) { return !p.cpu; });
     var lose = humansL.length > 0 && w.team.every(function (i) { return S.players[i].cpu; });
     var setup0 = { mode: S.mode, rules: S.rules, king: S.king, jokers: S.jokers, deal: S.dealMode, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) };
@@ -1205,11 +1247,11 @@
       for (var k = 0; k < 4; k++) pips.appendChild(el('i', { class: k < hc ? 'h' : '' }));
       var busy = cards ? (lock || S.phase !== 'play') : (lock || S.phase !== 'move');
       if (S.teams) pips.appendChild(el('em', { text: 'Team ' + (i % (S.players.length / 2) + 1) }));
-      else if (on && p.cpu && busy) pips.appendChild(el('em', { html: '<span class="think"><i></i><i></i><i></i></span>' }));
+      else if (on && (isCpu(i) || NET && i !== S.viewer) && busy) pips.appendChild(el('em', { html: '<span class="think"><i></i><i></i><i></i></span>' }));
       var lc = null;
       if (cards && S.lastCard[i]) { lc = el('div', { class: 'lc', title: 'Last card played' }, [cardEl(S.lastCard[i])]); }
       chipsEl.appendChild(el('div', { class: 'pc' + (on ? ' on' : '') + (cards ? ' lcp' : ''), style: { '--c': p.color } }, [
-        el('div', { class: 'nm', html: glass(p.color) + (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), pips, lc
+        el('div', { class: 'nm', html: glass(p.color) + (isCpu(i) ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), pips, lc
       ]));
     });
   }
@@ -1229,7 +1271,7 @@
   function paint() {
     if (!S || !layerEl) return;
     if (isCards()) return paintCards();
-    var cur = P(), ms = (S.phase === 'move' && !lock && !cur.cpu) ? legal() : [];
+    var cur = P(), ms = (S.phase === 'move' && !lock && !notMine()) ? legal() : [];
     paintChips();
     var canMove = {}, selMoves = [];
     ms.forEach(function (m) { canMove[m.o + ':' + m.mi] = 1; if (m.mi === sel) selMoves.push(m); });
@@ -1240,17 +1282,17 @@
       layerEl.appendChild(el('div', { class: 'tgt' + (m.cap ? ' cap' : ''), style: { left: xy[0] + '%', top: xy[1] + '%' } }, [multi ? el('b', { text: String(i + 1) }) : null]));
     });
     // Tray
-    cupEl.classList.toggle('ready', S.phase === 'roll' && !cur.cpu && !lock);
+    cupEl.classList.toggle('ready', S.phase === 'roll' && !notMine() && !lock);
     if (S.die) { dieEl.dataset.v = S.die; dieEl.classList.remove('blank'); } else dieEl.classList.add('blank');
     trayMsg.innerHTML = ''; trayOpts.innerHTML = '';
     trayMsg.style.setProperty('--c', cur.color);
     var who = cur.name === 'You' ? 'You' : cur.name, line = '', sub = '';
     if (S.phase === 'over') { line = 'Game over'; }
-    else if (cur.cpu) {
+    else if (notMine()) {
       line = S.phase === 'roll' ? who + ' is rolling' : S.phase === 'move' && !lock ? who + ' rolled ' + S.die : who + (lock && S.phase === 'move' ? ' is rolling' : ' is moving');
       sub = S.die === 6 && S.phase === 'roll' ? 'Rolled a 6: another roll' : '';
     } else if (S.phase === 'roll') {
-      line = (who === 'You' ? 'Your' : Kit.poss(who)) + ' roll';
+      line = (who === 'You' || NET ? 'Your' : Kit.poss(who)) + ' roll';
       sub = S.die === 6 && S.sixRun ? 'You rolled a 6: roll again!' : mover(S.cur) !== S.cur ? 'You\'re home! Now move ' + S.players[mover(S.cur)].name + '\'s marbles' : 'Tap the die or the Roll button';
       trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: Kit.icon('dice') + '<span>Roll</span>', onclick: function () { humanRoll(); } }));
     } else if (S.phase === 'move' && !lock) {
@@ -1264,7 +1306,7 @@
         line = 'Rolled ' + S.die + ': tap a glowing marble';
         sub = mover(S.cur) !== S.cur ? 'Moving ' + S.players[mover(S.cur)].name + '\'s marbles' : ms.some(function (m) { return m.cap; }) ? 'You can aggravate someone!' : '';
       }
-    } else line = (who === 'You' ? 'Your' : Kit.poss(who)) + ' turn';
+    } else line = (who === 'You' || NET && S.cur === S.viewer ? 'Your' : Kit.poss(who)) + ' turn';
     setMsg(line, sub);
   }
   function setMsg(line, sub) {
@@ -1351,13 +1393,13 @@
     var nm = cur.name, line = '', sub = '';
     var helping = mover(S.cur) !== S.cur ? 'You\'re home! Your cards move ' + Kit.poss(who(mover(S.cur))).replace('Your', 'your') + ' marbles' : '';
     if (S.phase === 'over') line = 'Game over';
-    else if (cur.cpu) {
+    else if (cur.cpu || (NET && isCpu(S.cur))) {
       line = nm + (lock ? ' is moving' : ' is thinking');
       sub = S.line && S.lastBy !== S.cur ? S.line : '';
       if (lock && S.lastBy === S.cur) sub = S.line;
     } else if (!mine) {
       line = Kit.poss(nm) + ' turn';
-      sub = humans() > 1 ? 'Pass to ' + nm : '';
+      sub = NET ? (S.line && S.lastBy !== S.cur ? S.line : '') : humans() > 1 ? 'Pass to ' + nm : '';
     } else if (lock) {
       line = (nm === 'You' ? 'You' : nm) + ' moved'; sub = S.line;
     } else if (S.pend) {
@@ -1371,7 +1413,7 @@
         sub = dc ? 'Throw away the ' + cardShort(dc) + '?' : 'Tap a card to throw away';
         if (dc) trayOpts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', html: Kit.icon('trash') + '<span>Throw away ' + Kit.esc(cardShort(dc)) + '</span>', onclick: function () { humanDiscard(); } }));
       } else if (!ui.card) {
-        line = (nm === 'You' ? 'Your' : Kit.poss(nm)) + ' turn: pick a card';
+        line = (nm === 'You' || NET ? 'Your' : Kit.poss(nm)) + ' turn: pick a card';
         sub = helping || (S.line && S.lastBy !== S.cur ? S.line : 'Then tap a glowing marble');
       } else {
         var cc = cardById(ui.card);
@@ -1404,14 +1446,14 @@
   function paintHand(ch) {
     if (!handEl) return;
     handEl.innerHTML = '';
-    var mine = myHandShown(), v = S.viewer, showIdx = mine ? S.cur : (humans() === 1 && v >= 0 ? v : -1);
+    var mine = myHandShown(), v = S.viewer, showIdx = mine ? S.cur : ((humans() === 1 || NET) && v >= 0 ? v : -1);
     var active = mine && !lock && S.phase === 'play' && !S.pend;
     var noPlays = active && !allPlays(S.cur).length;
     handEl.classList.toggle('off', !mine || S.phase !== 'play');
     if (showIdx < 0) {
       var cnt = S.hands[S.cur] ? S.hands[S.cur].length : 0;
       for (var i = 0; i < cnt; i++) handEl.appendChild(Kit.card('A', 's', { back: true }));
-      if (cnt && S.phase === 'play' && !S.players[S.cur].cpu) handEl.appendChild(el('div', { class: 'hidetag', html: Kit.icon('eye') + '<span>' + Kit.esc(Kit.poss(who(S.cur))) + ' cards are hidden</span>' }));
+      if (cnt && S.phase === 'play' && !S.players[S.cur].cpu && !NET) handEl.appendChild(el('div', { class: 'hidetag', html: Kit.icon('eye') + '<span>' + Kit.esc(Kit.poss(who(S.cur))) + ' cards are hidden</span>' }));
     } else {
       S.hands[showIdx].forEach(function (c) {
         var playable = active && (noPlays || cardMoves(c).length > 0);
@@ -1507,9 +1549,10 @@
   }
 
   // ── Input ────────────────────────────────────────────────────────────────
-  function canAct() { return S && !lock && S.phase === 'move' && !P().cpu; }
+  function canAct() { return S && !lock && S.phase === 'move' && !notMine(); }
   function humanRoll() {
-    if (!S || isCards() || lock || S.phase !== 'roll' || P().cpu) return;
+    if (!S || isCards() || lock || S.phase !== 'roll' || notMine()) return;
+    if (NET) { lock = true; netYou({ t: 'roll' }); return; }
     roll();
   }
   function onBoard(e) {
@@ -1542,7 +1585,7 @@
     Kit.sfx('tick'); Kit.haptic('tick'); paint();
   }
   // Cards: tap a card, then a glowing marble, then (if needed) a glowing hole
-  function canPlay() { return S && isCards() && !lock && S.phase === 'play' && myHandShown(); }
+  function canPlay() { return S && isCards() && !lock && S.phase === 'play' && myHandShown() && (!NET || !notMine()); }
   function onCard(c, node) {
     if (!canPlay() || S.pend) return;
     Kit.sfx('tick'); Kit.haptic('tick');
@@ -1565,12 +1608,20 @@
   function humanDiscard() {
     if (!canPlay() || !ui.discard) return;
     var c = cardById(ui.discard); if (!c) return;
+    if (NET) { NETFLY = handRect(c.id); lock = true; netYou({ t: 'disc', id: c.id }); return; }
     discard(c, { fromRect: handRect(c.id) });
   }
   function chooseGroup(g) {
     if (!canPlay()) return;
     var rect = ui.card ? handRect(ui.card) : null;
     var whole = g.moves.filter(function (m) { return m.steps.length === 1; })[0];
+    if (NET) {
+      NETFLY = rect; lock = true;
+      if (whole && whole.second) netYou({ t: 'second', st: whole.steps[0] });
+      else if (whole) netYou({ t: 'play', id: ui.card, st: whole.steps });
+      else netYou({ t: 'half', id: ui.card, st: g.moves[0].steps[0] });
+      return;
+    }
     if (whole) { playMove(whole, { fromRect: rect }); return; }
     // First half of a split 7
     playMove(g.moves[0], { half: true, fromRect: rect });
@@ -1653,10 +1704,288 @@
     else if (S.phase === 'over') { var w = winner(); if (w) finish(w); }
   }
 
+  // ═════════════════════════════════════════════════════════════════════════
+  // Online (turnnet.js)
+  // ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game, with the rules the host chose. Each device draws the board the same way and, in
+  // the card game, only its own hand face up (S.viewer is its place at the table). A move is a roll, a marble moved,
+  // a card played (a split 7 as two moves, as on one device) or a card thrown away; the move that empties the hands
+  // deals the next ones. Partners: the players are kept in board order (partners straight across, play going round),
+  // and st.ps maps each place to its TurnNet seat, built at the start from the setup so the partners are the ones the
+  // setup chose (people sit where the setup put them, by name).
+  var NETQ = [], NETFLY = null, NETREC = {}, NETWIN = null;
+  function tbl(st, p) { return st && st.ps ? st.ps[p] : p; }
+  function posOf(st, seat) { return st && st.ps ? st.ps.indexOf(seat) : seat; }
+  function withS(st, f) { var k = S; S = st; try { return f(); } finally { S = k; } }
+  function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_marbles') || '{}') || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var c = netSetup(), o = c.options || {}, n = Math.max(2, Math.min(6, +c.count || 4)), robots = c.robots || [];
+    var names = []; for (var i = 0; i < n; i++) names.push(robots.indexOf(i) >= 0 ? '' : String((c.names || [])[i] || '').trim());
+    return { rules: RULES[o.ruleset] ? o.ruleset : 'cards', king: o.king === 'out' ? 'out' : '13', jokers: o.jokers === 'off' ? 'off' : 'on', deal: o.deal === 'shrink' ? 'shrink' : '5',
+      partners: o.partners !== 'off', level: lvName(o.level), seats: n, names: names };
+  }
+  function netStart(players, opts) {
+    var n = players.length, teams = !!opts.partners && (n === 4 || n === 6), ps = [], i;
+    if (teams) {
+      var names = opts.names || [], free = players.map(function (p, j) { return j; }), lc = function (x) { return String(x || '').toLowerCase(); };
+      for (i = 0; i < n; i++) {
+        var k = free.filter(function (j) { return !players[j].bot && names[i] && lc(players[j].name) === lc(names[i]); })[0];
+        if (k != null) { ps[i] = k; free.splice(free.indexOf(k), 1); }
+      }
+      var people = free.filter(function (j) { return !players[j].bot; }), bots = free.filter(function (j) { return players[j].bot; });
+      for (i = 0; i < n; i++) if (ps[i] == null && names[i]) ps[i] = people.length ? people.shift() : bots.shift();
+      for (i = 0; i < n; i++) if (ps[i] == null) ps[i] = people.length ? people.shift() : bots.shift();
+    } else for (i = 0; i < n; i++) ps.push(i);
+    var arms = armsFor(n), rules = RULES[opts.rules] ? opts.rules : 'cards';
+    var st = {
+      mode: 'online', rules: rules, teams: teams, B: n <= 4 ? 4 : 6, ps: ps,
+      players: ps.map(function (j, pos) { var x = players[j]; return { name: x.name, cpu: !!x.bot, level: x.bot ? lvName(opts.level) : undefined, color: Kit.color(pos), arm: arms[pos], m: [-1, -1, -1, -1], st: newStats() }; }),
+      cur: 0, phase: 'roll', die: 0, sixRun: 0, turns: 0, started: Date.now(), hist: [], last: null, ml: '', viewer: -1
+    };
+    st.mlp = st.players.map(function (P) { return P.m.join(','); }).join('|');
+    if (rules === 'cards') {
+      st.king = opts.king === 'out' ? 'out' : '13'; st.jokers = opts.jokers === 'off' ? 'off' : 'on'; st.dealMode = opts.deal === 'shrink' ? 'shrink' : '5'; st.deck = []; st.hands = st.players.map(function () { return []; });
+      st.pile = []; st.lastCard = st.players.map(function () { return null; }); st.pend = null; st.deals = 0; st.line = '';
+      st.phase = 'play';
+      withS(st, dealCore);
+    }
+    return st;
+  }
+  function netTurn(st) { return st && (st.phase === 'roll' || st.phase === 'move' || st.phase === 'play') ? [tbl(st, st.cur)] : []; }
+  function netOver(st) {
+    if (!st || st.phase !== 'over' || !st.win) return null;
+    var names = st.win.team.map(function (i) { return st.players[i].name; });
+    return { win: st.win.team.map(function (i) { return tbl(st, i); }), text: names.join(' & ') + (names.length > 1 ? ' win' : ' wins') };
+  }
+  // (inside withS) after a move: the game is won, or the turn goes on
+  function nWon() { var w = winner(); if (w) { S.phase = 'over'; S.win = w; return true; } return false; }
+  function nNextDice() {
+    if (S.die !== 6) { S.sixRun = 0; S.cur = (S.cur + 1) % S.players.length; }
+    S.phase = 'roll';
+  }
+  function nNextCards(mv) {
+    S.cur = (S.cur + 1) % S.players.length; S.phase = 'play';
+    if (S.hands.every(function (h) { return !h.length; })) { dealCore(); mv.dealt = 1; }
+  }
+  // a card played: playMove without the screen (half: the first part of a split 7)
+  function nCard(mv, half, out) {
+    var me = S.players[S.cur], st0 = mv.steps[0], steps = half ? [st0] : mv.steps;
+    if (!mv.second) { takeCard(S.cur, mv.c); me.st.turns++; S.turns++; }
+    steps.forEach(function (st) {
+      applyStep(S.players, st);
+      if (st.cap) {
+        me.st.agg[st.cap.pi] = (me.st.agg[st.cap.pi] || 0) + 1; S.players[st.cap.pi].st.got++;
+        if (st.kind === 'joker') me.st.jk[st.cap.pi] = (me.st.jk[st.cap.pi] || 0) + 1;
+      }
+      if (st.kind === 'swap') me.st.swaps++;
+      if (st.kind === 'back' && st.to > st.from) me.st.back4++;
+      if (st.kind === 'home') me.st.home++;
+    });
+    var homes = function (st) { return st.from < N() && st.to >= N(); };
+    if (!half && mv.steps.length === 2 && homes(mv.steps[0]) && homes(mv.steps[1])) me.st.split2++;
+    if (mv.second && S.pend && homes(S.pend.first) && homes(st0)) me.st.split2++;
+    if (half) { S.pend = { c: mv.c, left: 7 - st0.n, o: st0.o, mi: st0.mi, first: st0 }; S.line = me.name + ' played a 7: ' + stepLine(st0) + ', ' + S.pend.left + ' to go'; }
+    else if (mv.second) { S.line = me.name + ' split a 7: ' + stepLine(S.pend.first) + ', then ' + stepLine(st0); S.pend = null; }
+    else S.line = me.name + ' played ' + aCard(mv.c) + ' and ' + steps.map(function (s) { return stepLine(s); }).join(', then ');
+    S.lastBy = S.cur; S.last = { o: st0.o, mi: st0.mi };
+    out.steps = steps; out.c = mv.second ? null : mv.c;
+    if (half) return;
+    if (!nWon()) nNextCards(out);
+  }
+  // seat's move, on the table's own copy: {state, mv}, or null when it can't be made
+  function netApply(st, seat, a) {
+    var p = posOf(st, seat);
+    if (!st || !a || p < 0 || st.cur !== p || netTurn(st).indexOf(seat) < 0) return null;
+    var r = withS(st, function () {
+      var mv = { t: a.t, p: p };
+      if (S.rules !== 'cards') {
+        if (a.t === 'roll') {
+          if (S.phase !== 'roll') return null;
+          var d = 1 + Math.floor(Math.random() * 6);
+          S.die = d; S.phase = 'move'; S.turns++; P().st.turns++;
+          if (d === 6) { S.sixRun++; if (S.sixRun > P().st.maxSix) P().st.maxSix = S.sixRun; } else S.sixRun = 0;
+          mv.d = d; mv.six = S.sixRun;
+          if (!legal().length) { mv.none = 1; nNextDice(); }
+          return mv;
+        }
+        if (a.t === 'move') {
+          if (S.phase !== 'move') return null;
+          var m = legal().filter(function (x) { return x.o === a.o && x.mi === a.mi && x.to === a.to; })[0];
+          if (!m) return null;
+          var me = P(), owner = S.players[m.o];
+          owner.m[m.mi] = m.to;
+          if (m.cap) { S.players[m.cap.pi].m[m.cap.mi] = -1; me.st.agg[m.cap.pi] = (me.st.agg[m.cap.pi] || 0) + 1; S.players[m.cap.pi].st.got++; }
+          if (m.to === CEN) me.st.centre++;
+          if (m.kind === 'star' || (m.to === CEN && m.path.some(function (t, i) { return i > 0 && t.p != null && t.p - m.path[i - 1].p === SEG; }))) me.st.star++;
+          if (m.kind === 'home') me.st.home++;
+          S.last = { o: m.o, mi: m.mi };
+          mv.m = m;
+          if (!nWon()) nNextDice();
+          return mv;
+        }
+        return null;
+      }
+      if (S.phase !== 'play') return null;
+      function card(id) { return hand().filter(function (c) { return c.id === id; })[0]; }
+      function same(m, list) { return m.steps.length === list.length && m.steps.every(function (s, i) { return sameStep(s, list[i]); }); }
+      if (a.t === 'play' || a.t === 'half') {
+        if (S.pend) return null;
+        var c = card(a.id); if (!c) return null;
+        var pm = cardMoves(c).filter(function (m) { return a.t === 'half' ? m.steps.length === 2 && sameStep(m.steps[0], a.st) : same(m, a.st || []); })[0];
+        if (!pm) return null;
+        nCard(pm, a.t === 'half', mv);
+        return mv;
+      }
+      if (a.t === 'second') {
+        if (!S.pend) return null;
+        var sm = pendMoves().filter(function (m) { return sameStep(m.steps[0], a.st); })[0];
+        if (!sm) return null;
+        nCard(sm, false, mv);
+        return mv;
+      }
+      if (a.t === 'disc') {
+        if (S.pend || allPlays(S.cur).length) return null;
+        var dc = card(a.id); if (!dc) return null;
+        var me2 = P();
+        takeCard(S.cur, dc); me2.st.discards++; me2.st.turns++; S.turns++;
+        S.line = me2.name + ' couldn\'t move and threw away ' + aCard(dc);
+        S.lastBy = S.cur; mv.c = dc;
+        nNextCards(mv);
+        return mv;
+      }
+      return null;
+    });
+    if (!r) return null;
+    withS(st, logMarbles);
+    return { state: st, mv: r };
+  }
+  function netBot(st, seat) {
+    var p = posOf(st, seat);
+    if (!st || st.cur !== p || netTurn(st).indexOf(seat) < 0) return null;
+    var a = withS(st, function () {
+      if (S.rules !== 'cards') {
+        if (S.phase === 'roll') return { t: 'roll' };
+        var m = cpuPickDice(); return m ? { t: 'move', o: m.o, mi: m.mi, to: m.to } : null;
+      }
+      if (S.pend) {   // (a person left halfway through a split 7: the computer finishes it)
+        var best = null, bs = -1e9;
+        pendMoves().forEach(function (m) { var pl = copyPl(S.players); applyStep(pl, m.steps[0]); var v = evalPl(pl, S.cur); if (v > bs) { bs = v; best = m; } });
+        return best ? { t: 'second', st: best.steps[0] } : null;
+      }
+      var pk = cpuPickCards();
+      return !pk ? null : pk.disc ? { t: 'disc', id: pk.disc.id } : { t: 'play', id: pk.mv.c.id, st: pk.mv.steps };
+    });
+    return a ? netApply(st, seat, a) : null;
+  }
+  function netYou(a) {
+    if (!NET) return;
+    if (!NET.myTurn()) { lock = false; Kit.toast('Wait for your turn'); Kit.haptic('error'); return; }
+    var seat = NET.seat;
+    if (a.t === 'roll') Kit.haptic('medium');
+    NET.act(function (st) { return netApply(st, seat, a); }).then(function (ok) { if (!ok && NET) { lock = false; if (S) paint(); } });
+  }
+
+  // Drawing the table: each move as it comes, with the same motion as on one device. A backlog is caught up quickly.
+  function netShow(net, info) {
+    info = info || {};
+    NET = net;
+    var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { tok++; NETBUSY = false; } netCloseOv(); }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    if (!NET) { NETQ = []; NETBUSY = false; return; }
+    var e = NETQ.shift();
+    if (!e) { NETBUSY = false; lock = false; if (S && layerEl) paint(); return; }
+    NETBUSY = true;
+    netDraw(e.st, e.info, NETQ.length > 2 || document.hidden, netNext);
+  }
+  function netView(st) {
+    st.viewer = posOf(st, NET.seat); S = st; sel = -1; ui.card = null; ui.sel = null; ui.discard = null; return st;
+  }
+  function netDraw(st, info, quick, next2) {
+    var mv = info.mv;
+    if (!layerEl || !layerEl.isConnected || info.fresh || info.again || quick || !mv) {
+      netView(st); lock = false; render();
+      if (info.again) { Kit.sfx('deal'); Kit.callout('New game'); }
+      if (st.phase === 'over') { laterRaw(netEnd, info.fresh ? 300 : 700); }
+      next2(); return;
+    }
+    var p = mv.p, mine = tbl(st, p) === NET.seat, chip = chipsEl && chipsEl.children[p], chipR = chip ? chip.getBoundingClientRect() : null;
+    var flyR = mine && NETFLY ? NETFLY : chipR; NETFLY = null;
+    netView(st); lock = true;
+    function end(ms) {
+      laterRaw(function () {
+        lock = false;
+        if (st.phase === 'over') { paint(); netEnd(); next2(); return; }
+        paint(); next2();
+      }, ms);
+    }
+    if (mv.t === 'roll') {
+      paint(); tumble(); Kit.sfx('roll');
+      if (mv.d === 6 && mv.six === 3) later(function () { Kit.callout('Three 6s!'); Kit.sfx('good'); }, 650);
+      if (mv.none) later(function () { Kit.toast((mine ? 'No move for you' : 'No move for ' + who(p)) + (mv.d === 6 ? '. Roll again!' : ''), 1300); Kit.sfx('tap'); }, 720);
+      return end((mv.none ? 1900 : 760) * SPD);
+    }
+    if (mv.t === 'move') {
+      paint();
+      var dur = animate(mv.m, 0);
+      laterRaw(function () {
+        if (mv.m.kind === 'out') Kit.sfx('pop');
+        if (mv.m.kind === 'home' || mv.m.kind === 'inhome') { Kit.sfx('good'); if (mine) Kit.haptic('light'); }
+        if (mv.m.to === CEN) { Kit.sfx('good'); Kit.toast(who(p) + ' took the center shortcut'); }
+      }, dur);
+      return end(dur + (mv.m.cap ? 650 : 200) * SPD);
+    }
+    // cards
+    paint();
+    if (mv.c) flyToPile(flyR);
+    if (mv.t === 'disc') { Kit.sfx('tap'); }
+    else Kit.sfx('flip');
+    var t = 0, jk = false;
+    (mv.steps || []).forEach(function (s) { if (s.kind === 'joker') jk = true; t = animStep(s, t); });
+    if (jk) laterRaw(function () { Kit.callout('Joker!', S.players[p].color); }, 80 * SPD);
+    laterRaw(function () {
+      var steps = mv.steps || [];
+      if (steps.some(function (s) { return s.kind === 'out'; })) Kit.sfx('pop');
+      if (steps.some(function (s) { return s.kind === 'home' || s.kind === 'inhome'; })) { Kit.sfx('good'); if (mine) Kit.haptic('light'); }
+      if (mv.dealt) {
+        lock = false; paint(); Kit.sfx('deal'); flyDeal(true);
+        if (S.dealMode === 'shrink' && S.deals > 1) Kit.toast(S.line, 1500);
+      }
+    }, t + 60 * SPD);
+    end(t + (mv.t === 'disc' ? 700 : mv.dealt ? 900 : 300) * SPD);
+  }
+  function netCloseOv() { if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over' || !S.win) return;
+    var key = NET.code + ':' + S.started;
+    if (NETWIN && NETWIN.key === key) return;
+    netCloseOv();
+    NETWIN = finish(S.win) || null;
+    if (NETWIN) NETWIN.key = key;
+  }
+  function netLeave() {
+    NET = null; NETQ = []; NETBUSY = false; tok++; lock = false; sel = -1;
+    netCloseOv();
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.players.length && sv.phase !== 'over') { S = sv; S.hist = S.hist || []; render(); resumeFlow(); }
+    else showSetup();
+  }
+
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.players && saved.players.length && saved.phase !== 'over') { S = saved; S.hist = S.hist || []; render(); resumeFlow(); }
   else showSetup();
+
+  // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'marbles', title: 'Marbles', min: 2, max: 6, botMs: 850,
+    seats: function (n, o) { return Math.max(n, Math.min(6, +(o && o.seats) || n)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
