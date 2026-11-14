@@ -289,7 +289,7 @@
     clearUndo(); save();
     var res = L.res, ds = L.k.decl % 2, mine = ds === weSide(), pad = 900;
     var big = L.mom.filter(function (m) { return !m.quiet && m.big; });
-    var small = L.mom.filter(function (m) { return !m.quiet && !m.big && m.id !== 'game'; });
+    var small = L.mom.filter(function (m) { return !m.quiet && !m.big; });
     var made = res.made;
     // the contract made or beaten, from where you sit
     var head = made ? (res.over ? 'Made with ' + res.over + ' over' : 'Made it exactly') : 'Down ' + res.down;
@@ -338,7 +338,7 @@
   function build() {
     app.innerHTML = '';
     D = {};
-    D.root = el('div', { class: 'bx' });
+    D.root = el('div', { class: 'bx' + (document.startViewTransition ? ' vt-ok' : '') });
     D.info = el('div', { class: 'bx-info' });
     D.table = el('div', { class: 'bx-table wood', style: { 'view-transition-name': 'b-table' } });
     D.felt = el('div', { class: 'bx-felt felt-in' });
@@ -383,9 +383,12 @@
     ['pu', 'ps', 'tu', 'ts'].forEach(function (m) { R.classList.toggle('L-' + m, m === mode); });
     R.classList.toggle('ph-bid', !play); R.classList.toggle('ph-play', play);
     var land = mode === 'ps' || mode === 'ts', tab = mode === 'tu' || mode === 'ts';
+    // a small phone (320 wide, or short): your own name tag steps aside and the caption rides above your hand
+    var small = mode === 'pu' && (W < 380 || H < 700);
+    R.classList.toggle('small', small);
     var n = Math.max(1, (S.hands && S.hands[bottom()] || []).length || 13);
     // widths of the side columns sideways
-    var infw = mode === 'ps' ? Math.min(230, Math.max(176, W * 0.24)) : Math.min(300, Math.max(232, W * 0.25));
+    var infw = mode === 'ps' ? Math.min(230, Math.max(176, W * 0.24)) : Math.min(270, Math.max(232, W * 0.235));
     var actw = play ? 0 : (mode === 'ps' ? Math.min(300, Math.max(236, W * 0.3)) : Math.min(380, Math.max(300, W * 0.32)));
     R.style.setProperty('--infw', px(infw)); R.style.setProperty('--actw', px(actw));
     // the hand: as large as fits, 13 cards across with their corners showing
@@ -426,7 +429,9 @@
       out(D.trayW); out(D.trayT);
     } else {
       put(D.corner.tl, D.board); put(D.corner.tl, D.score);
-      var bs = D.seats[bottom()]; if (D.cap.parentNode !== bs) bs.insertBefore(D.cap, bs.firstChild);
+      var bs = D.seats[bottom()];
+      if (D.root.classList.contains('small')) { if (D.cap.parentNode !== D.hand) D.hand.appendChild(D.cap); }
+      else if (D.cap.parentNode !== bs) bs.insertBefore(D.cap, bs.firstChild);
       if (play) {
         out(D.slip); put(D.corner.tr, D.contract);
         out(D.tray); put(D.corner.bl, D.trayW); put(D.corner.br, D.trayT);
@@ -441,7 +446,9 @@
   }
   // Turning the device (or any resize) moves everything to the new layout smoothly
   var relayT = 0;
-  window.addEventListener('resize', function () { clearTimeout(relayT); relayT = tw(function () { relayout(true); }, 80); });
+  // (at once: a moment in the old layout at the new size would show a squashed table)
+  var lastWH = '';
+  window.addEventListener('resize', function () { var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh; relayout(true); });
   function relayout(anim) {
     if (!D || !S) return;
     finishFlights();
@@ -529,7 +536,7 @@
     var dcw;
     if (mode === 'cols' && slot !== 't') dcw = Math.min(52, fw * 0.3 / 4.4, (fh - 56) / (1.4 + (L - 1) * 0.3));
     else if (mode === 'cols') dcw = Math.min(lay.tab ? 78 : 60, (fw - 190) / 4.4, (fh * 0.36) / (1.4 + (L - 1) * 0.34));
-    else if (mode === 'line') dcw = Math.min(54, (fw - 140) / (1 + (13 - 4) * 0.38 + 4 * 1.14), fh * 0.26 / 1.4);
+    else if (mode === 'line') dcw = Math.min(50, (fw - 170) / (4 + 9 * 0.38 + 0.5), fh * 0.23 / 1.4);
     else dcw = Math.min(lay.tab ? 64 : 48, (fw * 0.34) / (1 + (L - 1) * 0.36), (fh * 0.62) / (4 * 1.46));
     D.root.style.setProperty('--dcw', px(Math.max(26, dcw)));
     D.root.style.setProperty('--dvis', mode === 'cols' && slot !== 't' ? '.3' : '.34');
@@ -575,7 +582,7 @@
     D.seats.forEach(function (s) { s.style.top = ''; s.style.bottom = ''; });
     mid.style.top = ''; mid.style.bottom = '';
     if (!portrait) return;
-    var sr = sb.getBoundingClientRect(), bottomTop = sr.top - fr.top;
+    var sr = sb.getBoundingClientRect(), bottomTop = sr.height ? sr.top - fr.top : fr.height;
     var topB = 0;
     ['tl', 'tr'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) topB = Math.max(topB, c.getBoundingClientRect().bottom - fr.top); });
     var low = bottomTop;
@@ -609,7 +616,7 @@
     ['bl', 'br'].forEach(function (k) { var c = D.corner[k]; if (c.children.length) { var q = rel(c); if (q.h) B = Math.min(B, Math.max(q.t, fr.height * 0.6)); } });
     if (D.root.classList.contains('lowhand')) { var hr = D.handEl.getBoundingClientRect(); if (hr.height) B = Math.min(B, hr.top - fr.top + 6); }
     var w = Math.max(60, Rr - L - 12), h = Math.max(60, B - T - 12);
-    var tcw = Math.max(36, Math.min(lay.tab ? 100 : 76, w / 3, h / 3.05));
+    var tcw = Math.max(36, Math.min(lay.tab ? 90 : 76, w / 3, h / 3.05));
     D.root.style.setProperty('--tcw', px(tcw));
     D.trick.style.left = px((L + Rr) / 2 - 7); D.trick.style.top = px((T + B) / 2 + tcw * 0.02 - 7);
   }
@@ -654,7 +661,7 @@
     D.hcp.classList.toggle('big', hc >= 20);
     D.hcp.setAttribute('aria-label', hc + ' high-card points');
     D.htag.textContent = isDummy ? 'Dummy: ' + first(nm(S.k.decl)) + ' plays these' : '';
-    D.htag.style.display = isDummy ? '' : 'none';
+    D.htag.style.display = isDummy && !D.root.classList.contains('small') ? '' : 'none';
   }
   function glowHcp() { if (!D) return; D.hcp.classList.add('big'); D.hcp.animate([{ scale: 1 }, { scale: 1.35 }, { scale: 1 }], { duration: 700, easing: 'ease-out' }); }
   function humanCard(p, c) {

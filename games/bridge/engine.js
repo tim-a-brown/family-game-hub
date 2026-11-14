@@ -901,6 +901,7 @@
     var short = 0; if (fit) SUITS.forEach(function (s) { if (s !== fit) short += h.len[s] === 0 ? 2 : h.len[s] === 1 ? 1 : 0; });
     var myPts = fit ? (longHand ? h.hcp + h.lp + Math.min(short, 2) : supPts(h, fit)) : h.hcp + (h.bal ? 0 : Math.min(h.lp, 2));
     var tot = myPts + pdMid, totLo = myPts + pdLo, totHi = myPts + pdHi;
+    var hcpTot = h.hcp + Math.min(pdMid, pdLo + 2);   // (slams are counted in high cards: shape alone doesn't take twelve tricks)
     var theyHaveSuit = Object.keys(X.theirSuits);
     var allStopped = theyHaveSuit.every(function (s) { return stopper(h, s); });
     var major = fit === 'h' || fit === 's';
@@ -909,18 +910,18 @@
     var ntOk = !fit ? (h.bal || pd.bal && h.shape[0] <= 5 && h.shape[3] >= 1) && allStopped : !major && fitLen < 9 && (h.bal || pd.bal) && allStopped || !major && allStopped && h.bal;
     if (fit && !ntOk) {
       var st = sIdx(fit);
-      if (tot >= 37) tgt = [st, 7]; else if (tot >= 33) tgt = [st, 6];
+      if (tot >= 37 && hcpTot >= 35) tgt = [st, 7]; else if (tot >= 33 && hcpTot >= 32) tgt = [st, 6];
       else if (tot >= (major ? 25 : 28)) tgt = [st, major ? 4 : 5];
       else tgt = [st, Math.max(2, Math.min(fitLen - 6, 3))];
     } else if (ntOk) {
-      if (tot >= 37) tgt = [4, 7]; else if (tot >= 33) tgt = [4, 6]; else if (tot >= 25) tgt = [4, 3]; else tgt = [4, tot >= 23 ? 2 : 1];
+      if (hcpTot >= 37) tgt = [4, 7]; else if (hcpTot >= 33) tgt = [4, 6]; else if (tot >= 25) tgt = [4, 3]; else tgt = [4, tot >= 23 ? 2 : 1];
     } else {
       // no fit: partner's long suit, notrump with the other suits covered, or this hand's own long suit
       var mine = longest(h), pl = SUITS.filter(function (s) { return pd.len[s] >= 6; })[0] || SUITS.filter(function (s) { return pd.len[s] >= 5; })[0];
       var others = SUITS.filter(function (s) { return pd.len[s] < 4; });
       var covered = others.filter(function (s) { return stopper(h, s); }).length >= Math.min(2, others.length) && theyHaveSuit.every(function (s) { return stopper(h, s); });
       if (pl && h.len[pl] >= 2 && pd.len[pl] + h.len[pl] >= 7 && !(tot >= 25 && covered && pl !== 'h' && pl !== 's')) tgt = [sIdx(pl), tot >= 25 ? gameLvl(sIdx(pl)) : 2];
-      else if (tot >= 25 && covered) tgt = [4, tot >= 33 ? 6 : 3];
+      else if (tot >= 25 && covered) tgt = [4, hcpTot >= 33 ? 6 : 3];
       else tgt = [sIdx(mine), tot >= 27 && h.len[mine] >= 6 ? gameLvl(sIdx(mine)) : h.len[mine] >= 6 && tot >= 22 ? 3 : 2];
     }
     var tgtBid = mkBid(tgt[1], tgt[0]);
@@ -948,8 +949,8 @@
     var cur = a.last, curL = lvOf(cur), curSt = stOf(cur), ourCur = side(a.lastBy) === side(me);
     // slam: ask for aces first when a suit is agreed
     var askedBW = X.ours.some(function (e) { return e.c === '4N' && isBW(X, e); });
-    if (fit && tot >= 33 && !askedBW && X.can('4N') && !ntOk && h.lv !== 'easy') return { c: '4N', say: 'Blackwood: asks partner how many aces they hold, on the way to a slam.', ext: { conv: 1, bw: 1 } };
-    if (!fit && ntOk && tot >= 31 && tot <= 32 && X.can('4N') && curSt === 4 && pdHi - pdLo >= 2 && !askedBW) return { c: '4N', say: 'Invites a slam in notrump: partner bids 6NT with a maximum.', ext: { quant: 1 } };
+    if (fit && tot >= 33 && hcpTot >= 32 && !askedBW && X.can('4N') && !ntOk && h.lv !== 'easy') return { c: '4N', say: 'Blackwood: asks partner how many aces they hold, on the way to a slam.', ext: { conv: 1, bw: 1 } };
+    if (!fit && ntOk && hcpTot >= 31 && hcpTot <= 32 && X.can('4N') && curSt === 4 && pdHi - pdLo >= 2 && !askedBW) return { c: '4N', say: 'Invites a slam in notrump: partner bids 6NT with a maximum.', ext: { quant: 1 } };
     // already there (or partner's last bid set the contract)
     var curIsTgt = curSt === tgt[0] && curL >= tgt[1];
     var pdSignedOff = X.pdBids.length && lastRuleOf(X, X.pd) && lastRuleOf(X, X.pd).signoff;
