@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 /* Scoreboard */
 .board{display:grid;grid-template-columns:repeat(var(--cols,3),minmax(0,1fr));gap:6px;margin:2px 0 10px;}
@@ -171,17 +173,18 @@
     '<h3>Classic doubling (setup option)</h3><p>Four of a kind is double the three of a kind, five is double again, six is double again (four 3s = 600, five 3s = 1,200). Two triplets just score as two three of a kinds.</p>' +
     '<h3>Getting on the board</h3><p>If the 500 minimum is on, you need at least 500 in one turn before you can bank for the first time.</p>' +
     '<h3>Three farkles in a row</h3><p>If the penalty is on, farkling three turns in a row costs 1,000 points (never below 0).</p>' +
-    '<h3>The end</h3><p>When someone banks 10,000 or more, everyone else gets <b>one last turn</b> to beat them. Highest score wins.</p>';
+    '<h3>The end</h3><p>When someone banks 10,000 or more, everyone else gets <b>one last turn</b> to beat them. Highest score wins.</p>' +
+    '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone rolls on their own device when it’s their turn and sees each roll as it happens. The computer plays any seats you gave it.</p>';
 
   Kit.init({
     id: KEY,
     theme: { felt: ['#26508e', '#173766', '#0f274b'], wood: ['#8a5530', '#5c3519'] },
-    onNew: function () { token++; lock = false; inCup = []; undoStack = []; clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } token++; lock = false; inCup = []; undoStack = []; clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Rolls and banks can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'chart', label: 'Scoring chart', onClick: function () { chart(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Farkle: past games' }); } }
-    ],
+    ]),
     rules: RULES
   });
 
@@ -263,7 +266,7 @@
   //      cur, round, phase:'start'|'pick'|'farkle'|'over', dice:[{v,x,y,r,kept,sel,set}],
   //      turn, sets:[[vals],...], hot, rolls, final, finalLeft, rounds:[[...]], ev:[], started}
   function save() {
-    if (!S) return;
+    if (!S || NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var lead = Math.max.apply(null, S.players.map(function (p) { return p.score; }));
     Kit.resume.set(S.final != null ? 'Final round' : 'Round ' + S.round + ' · high ' + fmt(lead));
@@ -355,7 +358,14 @@
   var inCup = [];   // dice drawn hidden until the cup tips them out
   function roll(fromCpu) {
     if (!canRoll()) return;
+    if (NET) { netMove('roll'); return; }
     if (!fromCpu && P().cpu) return;
+    var r = rollCore();
+    save();
+    rollFx(r, function () { if (r.farkled) return farkle(); render(); maybeCpu(); });
+  }
+  // A roll applied to S: the dice set aside go to the ledge, the rest are rolled (all six again on hot dice)
+  function rollCore() {
     if (S.phase === 'pick') keepSelected();
     var hot = false;
     if (S.dice.every(function (d) { return d.kept; })) {
@@ -376,7 +386,11 @@
       if (cb && vals.length === 6 && /straight|six|two triplets|three pairs|pair/.test(cb)) note(3, P().name + ' rolled ' + cb);
       else if (cb === 'five of a kind') note(2, P().name + ' rolled five of a kind');
     }
-    save();
+    return { idx: idx, hot: hot, farkled: farkled, vals: vals };
+  }
+  // The roll on the table: the cup shakes and tips, the dice tumble out, then done()
+  function rollFx(r, done) {
+    var idx = r.idx, hot = r.hot, vals = r.vals;
     lock = true;
     inCup = idx.slice();
     render();
@@ -393,10 +407,10 @@
       later(function () {
         lock = false;
         if (cup) cup.classList.remove('tip');
-        if (farkled) return farkle();
+        if (r.farkled) return done();
         var cb2 = combo(vals, S.rules.dbl);
         if (cb2 && (vals.length >= 4 || cb2 === 'three 1s')) { Kit.callout(cap(cb2.replace(/^a /, '')) + '!'); Kit.sfx('good'); }
-        render(); maybeCpu();
+        done();
       }, 760);
     }, shakeMs);
   }
@@ -446,7 +460,10 @@
     return S.fkInfo;
   }
   function farkle() {
-    var info = applyFarkle(), lost = info.lost, pen = info.three;
+    var info = applyFarkle();
+    farkleFx(info.lost, info.three, endTurn);
+  }
+  function farkleFx(lost, pen, done) {
     render();
     var felt = app.querySelector('.table'), zone = app.querySelector('.zone');
     if (zone) zone.appendChild(el('div', { class: 'stamp', html: 'FARKLE' + (lost ? '<small>−' + fmt(lost) + '</small>' : '') }));
@@ -454,13 +471,20 @@
     Kit.sfx('bad'); setTimeout(function () { Kit.sfx('lose'); }, 180); Kit.haptic('error');
     if (pen) later(function () { Kit.callout('−1,000! Three farkles', '#ff4d5e'); }, 900);
     lock = true;
-    later(function () { lock = false; endTurn(); }, pen ? 2600 : 1900);
+    later(function () { lock = false; done(); }, pen ? 2600 : 1900);
   }
 
   function bank(fromCpu) {
     if (!canBank()) return;
+    if (NET) { netMove('bank'); return; }
     if (!fromCpu && P().cpu) return;
     if (!fromCpu) snapshot();
+    var b = bankCore();
+    save();
+    bankFx(b.amt, S.cur, b.trig, endTurn);
+  }
+  // Banking applied to S: the turn's points go on the player's score (and may start the final round)
+  function bankCore() {
     var p = P();
     keepSelected();
     var amt = S.turn;
@@ -473,36 +497,43 @@
     var trig = S.final == null && p.score >= S.rules.target;
     if (trig) { S.final = S.cur; S.finalLeft = S.players.length - 1; note(2, p.name + ' reached ' + fmt(S.rules.target) + ' first in round ' + S.round); }
     S.turn = 0; S.phase = 'banked';
-    save();
+    void before;
+    return { amt: amt, trig: trig };
+  }
+  function bankFx(amt, who, trig, done) {
     lock = true;
     Kit.sfx('chip'); Kit.haptic('success');
-    flyPoints(amt, S.cur, function () {
+    flyPoints(amt, who, function () {
       render();
-      var chip = app.querySelector('.pc[data-i="' + S.players.indexOf(p) + '"]');
+      var chip = app.querySelector('.pc[data-i="' + who + '"]');
       if (chip) chip.classList.add('bump');
       Kit.sfx('good');
       if (amt >= 2000) Kit.callout('+' + fmt(amt) + '!');
       if (trig && S.players.length > 1) later(function () { Kit.callout('Final round!', '#ff8a3d'); Kit.sfx('whoosh'); }, 300);
-      later(function () { lock = false; endTurn(); }, trig ? 1500 : 900);
+      later(function () { lock = false; done(); }, trig ? 1500 : 900);
     });
-    void before;
   }
 
   function endTurn() {
     if (!S) return;
+    if (passTurn()) return finish();
+    save(); render(); maybeCpu();
+    if (S.final != null && !P().cpu) Kit.toast('Last turn: ' + (S.players.length > 1 ? 'beat ' + fmt(S.players[S.final].score) : ''));
+  }
+
+  // The turn passes to the next player; true when that was the last turn of the game
+  function passTurn() {
     S.dice = freshDice(); S.turn = 0; S.sets = []; S.hot = 0; S.rolls = 0; S.fkInfo = null;
     var n = S.players.length;
     if (S.final != null) {
-      if (S.finalLeft <= 0) return finish();
+      if (S.finalLeft <= 0) { S.phase = 'over'; return true; }
       S.finalLeft--;
     }
     S.cur = (S.cur + 1) % n;
     if (S.cur === 0) { S.round++; S.rounds.push(S.players.map(function () { return 0; })); }
     S.phase = 'start';
-    save(); render(); maybeCpu();
-    if (S.final != null && !P().cpu) Kit.toast('Last turn: ' + (S.players.length > 1 ? 'beat ' + fmt(S.players[S.final].score) : ''));
+    return false;
   }
-
   // Highlights: keep the juiciest moments
   function note(pri, text, v) { S.ev.push({ p: pri, t: text, v: v || 0, r: S.round }); }
 
@@ -530,8 +561,8 @@
     if (mostF && mostF.st.farkles >= 4 && hl.length < 6) hl.push(mostF.name + ' farkled ' + mostF.st.farkles + ' times');
     if (S.players.length === 1) hl.unshift('Reached ' + fmt(top.score) + ' in ' + S.round + ' turns');
     var rounds = S.rounds;
-    Kit.record(KEY, {
-      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' · to ' + fmt(S.rules.target) + (S.rules.dbl ? ' · doubling' : ''),
+    if (!netRecorded()) Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' · to ' + fmt(S.rules.target) + (S.rules.dbl ? ' · doubling' : ''),
       players: S.players.map(function (p) { return { name: p.name, score: p.score, cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: { labels: rounds.map(function (r, i) { return String(i + 1); }), scores: rounds },
@@ -542,6 +573,7 @@
         return { f: s.farkles || 0, h: s.hot || 0, mh: s.maxHotTurn || 0, b: s.best || 0, bs: s.bestSets || '', bh: s.bestHot || 0, lm: s.lostMax || 0, k: s.banks || 0, br: s.br ? s.br.v + ':' + s.br.p : '', tl: turnLog(p) };
       }) }
     });
+    if (NET) { render(); netWin(rank, tie); return; }
     clearSave();
     render();
     var youLost = S.mode === 'cpu' && top.cpu;
@@ -612,7 +644,7 @@
     return best;
   }
   function maybeCpu() {
-    if (!S || S.phase === 'over' || !P().cpu || lock) return;
+    if (NET || !S || S.phase === 'over' || !P().cpu || lock) return;
     var p = P();
     if (S.phase === 'start') return later(function () { if (S && P() === p && S.phase === 'start') roll(true); }, 750);
     if (S.phase === 'pick') {
@@ -702,7 +734,7 @@
     var zone = el('div', { class: 'zone', style: { height: WIDE.matches
       ? 'max(220px, calc(100svh - var(--safe-t) - var(--safe-b) - ' + (286 + (n > 3 ? 36 : 0) + fin) + 'px))'   // the table spans the top, the strip under it
       : 'clamp(196px, calc(100svh - ' + (420 + (n > 3 ? 70 : 0) + fin) + 'px), var(--zmax, 340px))' } });
-    var mine = live && !p.cpu && !lock;
+    var mine = live && !p.cpu && !lock && (!NET || NET.myTurn() && S.cur === NET.seat);
     var cup = el('button', { type: 'button', class: 'cup' + (mine && (S.phase === 'start' || (S.phase === 'pick' && selScore() > 0)) ? ' ready' : ''), 'aria-label': 'Roll the dice', onclick: function () { roll(); } },
       [el('span', { class: 'body' }), el('span', { class: 'rim' })]);
     zone.appendChild(cup);
@@ -723,7 +755,7 @@
       zone.appendChild(sp);
     });
     if (!anyLive && S.phase === 'start') {
-      zone.appendChild(el('div', { class: 'msg', text: p.cpu ? '' : (S.players.length > 1 && S.mode === 'pass' ? Kit.poss(p.name) + ' turn. ' : '') + 'Tap the cup or Roll' }));
+      zone.appendChild(el('div', { class: 'msg', text: p.cpu ? '' : NET && S.cur !== NET.seat ? Kit.poss(p.name) + ' turn' : (S.players.length > 1 && S.mode === 'pass' ? Kit.poss(p.name) + ' turn. ' : '') + 'Tap the cup or Roll' }));
     }
     felt.appendChild(zone);
     var ledge = el('div', { class: 'ledge' }, [el('span', { class: 'lbl', text: S.hot ? 'Hot dice ×' + S.hot : 'Set aside' })]);
@@ -741,9 +773,9 @@
 
     // Readout
     var ss = S.phase === 'pick' ? selScore() : 0;
-    var whoTxt = !live ? 'Game over' : p.cpu ? p.name + (S.phase === 'start' ? ' is up' : ' is thinking') : S.players.length === 1 ? 'Round ' + S.round : Kit.poss(p.name) + ' turn';
+    var whoTxt = !live ? 'Game over' : NET && S.cur === NET.seat ? 'Your turn' : p.cpu ? p.name + (S.phase === 'start' ? ' is up' : ' is thinking') : S.players.length === 1 ? 'Round ' + S.round : Kit.poss(p.name) + ' turn';
     var why = '';
-    if (live && !p.cpu) {
+    if (live && !p.cpu && (!NET || S.cur === NET.seat)) {
       if (S.phase === 'start') why = S.hot ? '' : 'Roll all six dice';
       else if (S.phase === 'pick') {
         var restN = liveIdx().length - sel.length;
@@ -783,6 +815,7 @@
 
   function tapDie(i) {
     if (!S || lock || S.phase !== 'pick' || P().cpu) return;
+    if (NET && !(NET.myTurn() && S.cur === NET.seat)) return;
     var d = S.dice[i]; if (d.kept) return;
     var info = tableInfo();
     if (!canScore(i, info)) {
@@ -814,6 +847,144 @@
     var html = '<table class="sctbl">' + rows.map(function (r) { return '<tr><td>' + mini(r[0]) + '</td><td>' + r[1] + '</td><td>' + (typeof r[2] === 'number' ? fmt(r[2]) : r[2]) + '</td></tr>'; }).join('') + '</table>';
     Kit.sheet({ title: 'Scoring chart', html: html, actions: [{ label: 'Got it', primary: true }] });
   }
+
+  // ── Online (turnnet.js) ──────────────────────────────────────────────────
+  // The table holds the game state (mode 'online'). A roll and a bank are each one move; which dice you set aside
+  // stays on your device until you roll or bank (the move carries them). A farkle ends the turn in the same move,
+  // and carries the dice it showed so every device sees the stamp. The computer plays its seats.
+  var NET = null, showQ = [], NETREC = 'farkle_net_rec', winRef = null;
+  function setupSaved() { try { return JSON.parse(localStorage.getItem('gn_setup_farkle')) || {}; } catch (e) { return {}; } }
+  function netOpts() {
+    var s = setupSaved(), o = s.options || {}, n = +s.count || 0;
+    return { target: +o.target || 10000, entry: o.entry == null ? 500 : +o.entry, scoring: o.scoring === 'dbl' ? 'dbl' : 'std', pen: o.pen === 'off' ? 'off' : 'on',
+      level: lvName(o.level), bots: (s.robots || []).filter(function (i) { return i > 0 && i < n; }).length };
+  }
+  function netStart(players, o, last) {
+    o = o || {};
+    var n = players.length, first = last && last.players && last.players.length === n ? ((last.first || 0) + 1) % n : 0;
+    return {
+      mode: 'online', rules: { dbl: o.scoring === 'dbl', entry: o.entry == null ? 500 : +o.entry, target: +o.target || 10000, pen: o.pen !== 'off' },
+      players: players.map(function (p, i) {
+        return { name: p.name, cpu: !!p.bot, level: p.bot ? lvName(o.level) : undefined, color: Kit.color(i), score: 0, on: false, fk: 0, risk: 0.85 + Math.random() * 0.35,
+          st: { farkles: 0, best: 0, hot: 0, maxHotTurn: 0, lostMax: 0, banks: 0 } };
+      }),
+      cur: first, first: first, round: 1, phase: 'start', dice: freshDice(), turn: 0, sets: [], hot: 0, rolls: 0,
+      final: null, finalLeft: 0, rounds: [players.map(function () { return 0; })], ev: [], started: Date.now()
+    };
+  }
+  function withS(st, fn) { var k = S; S = st; try { return fn(); } finally { S = k; } }
+  // One move on a state: 'roll' or 'bank' with the dice set aside (indexes)
+  function moveOn(st, what, sel) {
+    return withS(st, function () {
+      if (S.phase === 'over') return null;
+      var who = S.cur;
+      S.dice.forEach(function (d, i) { d.sel = S.phase === 'pick' && sel.indexOf(i) >= 0 && !d.kept && !!d.v; });
+      if (what === 'bank') {
+        if (!canBank()) return null;
+        var b = bankCore(), sets = JSON.parse(JSON.stringify(S.sets)), over = passTurn();
+        return { state: S, mv: { t: 'b', s: who, amt: b.amt, trig: b.trig, sets: sets, over: over } };
+      }
+      if (S.phase !== 'start' && !(S.phase === 'pick' && selScore() > 0)) return null;
+      var r = rollCore(), mv = { t: 'r', s: who, idx: r.idx, hot: r.hot, vals: r.vals };
+      if (r.farkled) {
+        mv.t = 'f'; mv.d = JSON.parse(JSON.stringify(S.dice)); mv.sets = JSON.parse(JSON.stringify(S.sets)); mv.hotN = S.hot;
+        var info = applyFarkle(); mv.lost = info.lost; mv.three = info.three;
+        mv.over = passTurn();
+      }
+      return { state: S, mv: mv };
+    });
+  }
+  function netMove(what) {
+    if (!NET.myTurn() || S.cur !== NET.seat) return;
+    var seat = NET.seat, sel = selIdx();
+    NET.act(function (st) { return st.cur === seat ? moveOn(st, what, sel) : null; });
+  }
+  function netBot(st, seat) {
+    if (st.cur !== seat || st.phase === 'over') return null;
+    if (st.phase === 'start') return moveOn(st, 'roll', []);
+    var plan = withS(st, cpuPlan); if (!plan) return null;
+    return moveOn(st, plan.dec === 'bank' ? 'bank' : 'roll', plan.pick);
+  }
+  function netShow(net, info) {
+    NET = net;
+    if (lock) { showQ.push(info); return; }
+    showOne(info);
+  }
+  function showOne(info) {
+    var st = JSON.parse(JSON.stringify(NET.state)), mv = info.mv, live = mv && info.prev && !info.fresh && !info.again;
+    token++; lock = false; inCup = [];
+    if ((info.again || info.fresh) && winRef) { winRef.close(); winRef = null; }
+    function after() { lock = false; if (S.phase === 'over') finish(); else { render(); turnBell(); } drain(); }
+    if (live && mv.t === 'r') { S = st; rollFx({ idx: mv.idx, hot: mv.hot, vals: mv.vals, farkled: false }, after); return; }
+    if (live && mv.t === 'f') {
+      // the roll as it fell, the stamp, then the next player's turn
+      var show = JSON.parse(JSON.stringify(st));
+      show.cur = mv.s; show.dice = mv.d; show.sets = mv.sets; show.hot = mv.hotN || 0; show.turn = mv.lost; show.phase = 'farkle';
+      if (show.final != null && !mv.over) show.finalLeft++;
+      S = show;
+      rollFx({ idx: mv.idx, hot: mv.hot, vals: mv.vals, farkled: true }, function () {
+        S.turn = 0;
+        farkleFx(mv.lost, mv.three, function () { S = st; after(); });
+      });
+      return;
+    }
+    if (live && mv.t === 'b') {
+      var pre = JSON.parse(JSON.stringify(st));
+      pre.cur = mv.s; pre.sets = mv.sets; pre.turn = mv.amt; pre.phase = 'banked'; pre.dice = freshDice();
+      pre.players[mv.s].score -= mv.amt;
+      S = pre; render();
+      S.players[mv.s].score += mv.amt; S.turn = 0;
+      bankFx(mv.amt, mv.s, mv.trig, function () { S = st; after(); });
+      return;
+    }
+    S = st;
+    if (info.again) { Kit.sfx('deal'); Kit.callout(S.cur === NET.seat ? 'You roll first' : S.players[S.cur].name + ' rolls first'); }
+    if (NET.status === 'over' && NET.result && NET.result.left != null && S.phase !== 'over') { render(); netWin(null, false); return; }
+    if (S.phase === 'over') { finish(); return; }
+    render(); turnBell();
+  }
+  function turnBell() { if (NET && NET.myTurn() && S.cur === NET.seat && S.phase === 'start') Kit.haptic('light'); }
+  function drain() { if (!lock && showQ.length && NET) showOne(showQ.shift()); }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin(rank, tie) {
+    var res = NET.result, left = !!(res && res.left != null), me = NET.seat;
+    var top = rank && rank[0], meTop = !!rank && rank.some(function (r) { return r.score === top.score && r.i === me; });
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : tie ? 'It’s a tie!' : top.i === me ? 'You win!' : top.name + ' wins!',
+      sub: rank ? 'Final scores' : '',
+      rank: rank ? rank.map(function (r) { return { name: r.i === me ? 'You' : r.name, score: fmt(r.score), color: r.color }; }) : null,
+      lose: !left && !meTop, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: true
+    });
+  }
+  function netLeave() {
+    NET = null; showQ = []; token++; lock = false; inCup = [];
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = load();
+    if (sv && sv.players && sv.players.length && sv.phase !== 'over') { S = sv; render(); maybeCpu(); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'farkle', title: 'Farkle', min: 2, max: 6, botMs: 1700,
+    seats: function (n, o) { return Math.min(6, n + Math.max(0, +(o && o.bots) || 0)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.phase === 'over' ? [] : [st.cur]; },
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var hi = Math.max.apply(null, st.players.map(function (p) { return p.score; })), win = [];
+      st.players.forEach(function (p, i) { if (p.score === hi) win.push(i); });
+      return { win: win, text: win.length > 1 ? 'Tie at ' + fmt(hi) : st.players[win[0]].name + ' won with ' + fmt(hi) };
+    },
+    show: netShow, leave: netLeave
+  });
 
   // Test hooks
   window.__farkle = {

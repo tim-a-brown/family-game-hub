@@ -12,6 +12,8 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 body{overflow:hidden;}
 .mm{display:flex;flex-direction:column;height:calc(100dvh - var(--bar));max-width:820px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 6px);}
@@ -246,18 +248,19 @@ body{overflow:hidden;}
   Kit.init({
     id: 'memorymatch',
     theme: { felt: ['#4a2a6e', '#311b4d', '#22123a'], back: ['#7b2cbf', '#d946ef'] },
-    onNew: function () { showSetup(); },
-    menu: [
-      { icon: 'sync', label: 'Restart with the same cards', onClick: function () { restartSame(); } },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } showSetup(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'sync', label: 'Restart with the same cards', when: function () { return !NET; }, onClick: function () { restartSame(); } },
       { icon: 'trophy', label: 'High scores', onClick: function () { ArcadeHi.show(hiKey(S ? S.size : '4x4')); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Memory Match: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Find all the <b>matching pairs</b>. The player with the most pairs at the end wins.</p>' +
       '<h3>How it works</h3><ul><li>All the cards start face down.</li><li>On your turn, flip over <b>two</b> cards.</li>' +
       '<li><b>Match:</b> you keep the pair (it goes in your pile) and you <b>go again</b>.</li>' +
       '<li><b>No match:</b> look carefully, then the cards flip back and it is the next player’s turn. Tap anywhere to flip them back sooner.</li></ul>' +
       '<h3>Playing alone</h3><p>Try to clear the table in as few <b>moves</b> as you can (one move is two flips). The clock keeps time too, and your best scores are saved.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the others join from their own phones or tablets. Everyone sees every card that is turned over, as it happens.</p>' +
       '<h3>Cards</h3><p>Pick a deck (animals, food, sports, space, nature, game icons, or the tricky shapes deck, where some cards are the same shape in a different color) and a size from 12 to 36 cards.</p>' +
       '<h3>Tips</h3><ul><li>Remember where every card was, even the ones that did not match.</li><li>If you flip a card you have seen the partner of, go straight to it.</li></ul>'
   });
@@ -267,7 +270,7 @@ body{overflow:hidden;}
   // S.seen[i] has been face up before; S.up = face-up cards this turn.
   var S = null, busy = false, missT = 0, tickT = 0;
   function save() {
-    if (!S || S.done) return;
+    if (!S || S.done || NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     var left = S.owner.filter(function (o) { return o < 0; }).length / 2;
     Kit.resume.set(deckName(S.deck) + ' · ' + left + ' pairs left');
@@ -328,6 +331,7 @@ body{overflow:hidden;}
   // ── Play ──────────────────────────────────────────────────────────────────
   function solo() { return S.players.length === 1; }
   function tap(i) {
+    if (NET) { netTap(i); return; }
     if (!S || S.done || busy) return;
     if (S.owner[i] >= 0 || S.up.indexOf(i) >= 0) return;
     if (S.up.length === 2) { hurry(); }
@@ -361,7 +365,7 @@ body{overflow:hidden;}
   // Flip a missed pair back and pass the turn
   function hurry() {
     clearTimeout(missT);
-    if (S.up.length !== 2) return;
+    if (S.up.length !== 2 || S.cards[S.up[0]] === S.cards[S.up[1]]) return;   // (a pair being taken isn't a miss)
     var a = S.up[0], b = S.up[1];
     S.up = [];
     [a, b].forEach(function (j) { cardEls[j].classList.remove('up', 'miss'); });
@@ -464,12 +468,13 @@ body{overflow:hidden;}
     var lastP = S.order[S.order.length - 1]; if (lastP != null) hl.push(ps[lastP].name + ' took the last pair');
     if (!winner) hl.unshift('A tie at ' + top + ' pairs between ' + winners.map(function (p) { return p.name; }).join(' and '));
     hl.push(S.cards.length + ' ' + dname + ' cards in ' + S.moves + ' moves');
-    Kit.record(KEY, {
-      started: S.started, mode: dname + ' · ' + S.cards.length + ' cards',
+    if (!netRecorded()) Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online, ' : '') + dname + ' · ' + S.cards.length + ' cards',
       players: ps.map(function (p) { return { name: p.name, score: p.pairs }; }), winner: winner,
       highlights: hl.slice(0, 6), meta: { solo: false, size: S.size, deck: S.deck, moves: S.moves, time: S.time },
       detail: histDetail()
     });
+    if (NET) { netWin(); return; }
     clearSave();
     var rank = ps.map(function (p, i) { return { name: p.name, score: p.pairs, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
     setTimeout(function () {
@@ -565,14 +570,163 @@ body{overflow:hidden;}
         var lastFace = -1; for (var j = 0; j < S.cards.length; j++) if (S.owner[j] === i) lastFace = S.cards[j];
         for (var k = 0; k < n; k++) { var c = el('i', { style: { transform: 'translate(' + (k * 1.5) + 'px,' + (-k * 1.5) + 'px) rotate(' + ((k % 2 ? 1 : -1) * k * 2) + 'deg)' } }); if (k === n - 1 && lastFace >= 0) c.innerHTML = art(S.deck, lastFace); pile.appendChild(c); }
       });
-      var p = S.players[S.turn];
+      var p = S.players[S.turn], mineUp = NET && S.turn === NET.seat;
       turnEl.innerHTML = '';
-      turnEl.appendChild(el('div', { class: 'turn', style: { '--c': p.color } }, [el('span', { class: 'dot' }), el('span', { text: Kit.poss(p.name) + ' turn' + (S.up.length === 2 && S.cards[S.up[0]] !== S.cards[S.up[1]] ? '' : p.run ? ' · go again!' : '') })]));
+      turnEl.appendChild(el('div', { class: 'turn', style: { '--c': p.color } }, [el('span', { class: 'dot' }), el('span', { text: p.run && !(S.up.length === 2 && S.cards[S.up[0]] !== S.cards[S.up[1]]) ? (mineUp ? 'You go again!' : p.name + ' goes again!') : mineUp ? 'Your turn' : Kit.poss(p.name) + ' turn' })]));
     }
   }
   var rzT = 0;
   window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && gridEl && gridEl.isConnected) fit(); }, 80); });
   document.addEventListener('keydown', function (e) { if (e.key === ' ' && S && S.up.length === 2) { e.preventDefault(); hurry(); } });
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The table holds the game (S, mode 'online'). Each card turned over is one move. A pair is kept and the same
+  // player goes again; a miss passes the turn in the same move, and every device shows the two cards for a moment
+  // before they turn back (sooner if the next player starts turning cards).
+  var NET = null, NETREC = 'memorymatch_net_rec', winRef = null, missFx = null;
+  function netOpts() {
+    var o = {}; try { o = (JSON.parse(localStorage.getItem('gn_setup_memorymatch')) || {}).options || {}; } catch (e) {}
+    return { deck: getDeckPref(), size: SIZES[o.size] ? o.size : '4x4' };
+  }
+  function netStart(players, o, last) {
+    var deck = ART[o && o.deck] ? o.deck : 'animals', size = SIZES[o && o.size] ? o.size : '4x4';
+    var d = SIZES[size], pairs = d[0] * d[1] / 2, n = players.length;
+    var pick = shuffle(ART[deck].map(function (_, i) { return i; })).slice(0, pairs), cards = shuffle(pick.concat(pick));
+    var first = last && last.players && last.players.length === n ? ((last.first || 0) + 1) % n : 0;
+    return { mode: 'online', deck: deck, size: size, cards: cards, owner: cards.map(function () { return -1; }), seen: cards.map(function () { return false; }), up: [],
+      players: players.map(function (p, i) { return { name: p.name, pairs: 0, best: 0, run: 0, lucky: 0, slips: 0, color: Kit.color(i) }; }),
+      turn: first, first: first, moves: 0, misses: 0, time: 0, started: Date.now(), done: false, order: [] };
+  }
+  // One card turned over on a state
+  function flipOn(st, i) {
+    if (st.done || st.owner[i] >= 0 || st.up.indexOf(i) >= 0 || st.up.length > 1) return null;
+    var firstSeen = st.seen[i];
+    st.up.push(i);
+    if (st.up.length < 2) return { state: st, mv: { t: 'f', i: i, s: st.turn } };
+    st.moves++;
+    var a = st.up[0], b = st.up[1], p = st.players[st.turn], who = st.turn;
+    st.up = [];
+    if (st.cards[a] === st.cards[b]) {
+      if (!st.seen[a] && !firstSeen) p.lucky++;
+      st.seen[a] = st.seen[b] = true;
+      st.owner[a] = st.owner[b] = who;
+      p.pairs++; p.run++; p.best = Math.max(p.best, p.run);
+      st.order.push(who);
+      st.mo = (st.mo || []).concat([st.moves]); st.ma = (st.ma || []).concat([st.cards[a]]);
+      if (st.owner.every(function (o) { return o >= 0; })) st.done = true;
+      return { state: st, mv: { t: 'm', a: a, b: b, s: who } };
+    }
+    var partner = -1;
+    for (var j = 0; j < st.cards.length; j++) if (j !== a && st.cards[j] === st.cards[a] && st.owner[j] < 0) partner = j;
+    if (partner >= 0 && st.seen[partner] && st.seen[a]) p.slips++;
+    st.seen[a] = st.seen[b] = true;
+    st.misses++; p.run = 0;
+    st.turn = (st.turn + 1) % st.players.length;
+    return { state: st, mv: { t: 'x', a: a, b: b, s: who } };
+  }
+  function netTap(i) {
+    if (!S || S.done) return;
+    if (!NET.myTurn() || S.turn !== NET.seat) {
+      Kit.haptic('error');
+      var t = turnEl && turnEl.firstChild; if (t) { t.classList.remove('nudge'); void t.offsetWidth; t.classList.add('nudge'); }
+      return;
+    }
+    if (S.owner[i] >= 0 || S.up.indexOf(i) >= 0) return;
+    var seat = NET.seat;
+    NET.act(function (st) { return st.turn === seat ? flipOn(st, i) : null; });
+  }
+  // the missed pair turns back face down
+  function unMiss() {
+    if (!missFx) return;
+    clearTimeout(missFx.t);
+    [missFx.a, missFx.b].forEach(function (j) { if (cardEls[j] && S.owner[j] < 0 && S.up.indexOf(j) < 0) cardEls[j].classList.remove('up', 'miss'); });
+    missFx = null;
+  }
+  function netShow(net, info) {
+    NET = net;
+    var st = JSON.parse(JSON.stringify(net.state)), mv = info.mv;
+    var same = S && S.started === st.started && gridEl && gridEl.isConnected && cardEls.length === st.cards.length && !info.fresh && !info.again;
+    if ((info.fresh || info.again) && winRef) { winRef.close(); winRef = null; }
+    S = st;
+    if (!same || !mv) {
+      missFx = null;
+      build(!!info.again || !!info.fresh && !st.moves && !st.up.length);
+      if (info.again) { Kit.sfx('deal'); Kit.callout(S.turn === NET.seat ? 'You go first' : S.players[S.turn].name + ' goes first'); }
+      if (S.done) setTimeout(function () { if (S === st) finish(); }, 400);
+      else if (NET.status === 'over' && NET.result && NET.result.left != null) netWin();
+      return;
+    }
+    unMiss();
+    var a = mv.t === 'f' ? mv.i : mv.a, b = mv.b;
+    if (cardEls[a] && !cardEls[a].classList.contains('up')) { cardEls[a].classList.add('up'); Kit.sfx('flip'); if (info.mine) Kit.haptic('light'); }
+    if (b != null && cardEls[b]) { cardEls[b].classList.add('up'); setTimeout(function () { Kit.sfx('flip'); }, mv.t === 'f' ? 0 : 60); }
+    if (mv.t === 'm') {
+      var target = pileEls[mv.s], g = gridEl;
+      setTimeout(function () {
+        if (gridEl !== g) return;
+        cardEls[a].classList.add('hit'); cardEls[b].classList.add('hit');
+        Kit.sfx('good'); if (info.mine) Kit.haptic('success');
+        var p = S.players[mv.s];
+        if (p.run === 3) Kit.callout(p.name + ': three in a row!'); else if (p.run === 5) Kit.callout('Five in a row!');
+        setTimeout(function () {
+          if (gridEl !== g) return;
+          flyTo(cardEls[a], target, S.cards[a]); flyTo(cardEls[b], target, S.cards[b]);
+          cardEls[a].classList.add('taken'); cardEls[b].classList.add('taken');
+          setTimeout(function () {
+            paintBar();
+            if (target) { target.classList.remove('bump'); void target.offsetWidth; target.classList.add('bump'); }
+            if (gridEl === g && S.done && S.started === st.started) finish();
+          }, 560);
+        }, 260);
+      }, 520);
+    } else if (mv.t === 'x') {
+      missFx = { a: a, b: b };
+      setTimeout(function () { if (missFx && missFx.a === a && cardEls[a].classList.contains('up')) { cardEls[a].classList.add('miss'); cardEls[b].classList.add('miss'); Kit.sfx('bad'); } }, 420);
+      missFx.t = setTimeout(function () { if (missFx && missFx.a === a) { unMiss(); paintBar(); } }, 1700);
+      if (!info.mine && S.turn === NET.seat) setTimeout(function () { Kit.haptic('light'); }, 900);
+    }
+    paintBar();
+  }
+  function netRecorded() {
+    if (!NET) return false;
+    var key = NET.code + ':' + S.started, done = [];
+    try { done = JSON.parse(localStorage.getItem(NETREC)) || []; } catch (e) {}
+    if (done.indexOf(key) >= 0) return true;
+    done.push(key); try { localStorage.setItem(NETREC, JSON.stringify(done.slice(-20))); } catch (e) {}
+    return false;
+  }
+  function netWin() {
+    var res = NET.result, left = !!(res && res.left != null), me = NET.seat, ps = S.players;
+    var top = Math.max.apply(null, ps.map(function (p) { return p.pairs; })), winners = ps.filter(function (p) { return p.pairs === top; });
+    var rank = ps.map(function (p, i) { return { name: i === me ? 'You' : p.name, score: p.pairs, color: p.color }; }).sort(function (a, b) { return b.score - a.score; });
+    var meTop = ps[me] && ps[me].pairs === top;
+    if (winRef) winRef.close();
+    winRef = Kit.win({
+      title: left ? res.text : winners.length > 1 ? 'It’s a tie!' : ps.indexOf(winners[0]) === me ? 'You win!' : winners[0].name + ' wins!',
+      sub: left ? '' : winners.length > 1 ? (function (n) { return n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1]; })(winners.map(function (p) { return ps.indexOf(p) === me ? 'You' : p.name; })) + ' each found ' + top + ' pairs' : (ps.indexOf(winners[0]) === me ? 'You' : winners[0].name) + ' found ' + top + ' pairs',
+      rank: left ? null : rank, lose: !left && !meTop, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the cards'
+    });
+  }
+  function netLeave() {
+    NET = null; missFx = null;
+    if (winRef) { winRef.close(); winRef = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.cards && !sv.done && ART[sv.deck] && SIZES[sv.size]) { S = sv; build(false); } else showSetup();
+  }
+  TurnNet.setup({
+    game: 'memorymatch', title: 'Memory Match', min: 2, max: 4,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.done ? [] : [st.turn]; },
+    over: function (st) {
+      if (!st.done) return null;
+      var top = Math.max.apply(null, st.players.map(function (p) { return p.pairs; })), win = [];
+      st.players.forEach(function (p, i) { if (p.pairs === top) win.push(i); });
+      return { win: win, text: win.length > 1 ? 'Tie at ' + top + ' pairs' : st.players[win[0]].name + ' found ' + top + ' pairs' };
+    },
+    show: netShow, leave: netLeave
+  });
 
   // Test hook
   window.__mm = { get: function () { return S; }, tap: function (i) { tap(i); } };
