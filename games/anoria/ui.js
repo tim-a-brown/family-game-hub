@@ -1430,7 +1430,7 @@
     function size() {
       const W = window.innerWidth, H = window.innerHeight, side = W > H * 1.15 && H <= 560; v.classList.toggle('sd', scanWide());
       flow.style.removeProperty('--cu'); cuPx = ''; if (side || scanWide() || mode === 'fo') return;
-      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - roadDims().h - 4 * 8, notes = Math.max(96, Math.round(H * .16));
+      const cs = getComputedStyle(v), room = H - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - v.querySelector('.vf-head').offsetHeight - 46 - roadDims().h - 4 * 8, notes = Math.max(96, Math.round(H * (H >= 900 ? .21 : .16)));   // (an iPad upright: room for a Legacy Line's sentence and its row of cards, which ran under the screen's edge)
       const mapW = map.offsetWidth + 14;
       cuPx = Math.round(Math.max(200, Math.min(520, (W - 2 * mapW) * 1.4, room - notes))) + 'px'; flow.style.setProperty('--cu', cuPx);
     }
