@@ -2765,12 +2765,12 @@
   //                      the bottom of the page to bring the card back. true, a label ('Look at the table')
   //                      or {label, onClick}. Kit.setup, Kit.gameStart or the next Kit.win clear the button
   //   extra              the game's own buttons [{label, onClick}] (See every word, Box score)
-  //   pic                an element under the title: the game's own picture of how it went (Anoria's race for Renown)
-  //   show               an element, or a function of quiet that returns one, after the scores (Anoria's rewards panel)
-  //   show               a Node the game draws under the scores: what the game earned (Anoria's sphere), never buttons
+  //   pic                an element under the title: the game's own picture of how it went (Arvela's race for Renown)
+  //   show               an element, or a function of quiet that returns one, after the scores (Arvela's rewards panel)
+  //   show               a Node the game draws under the scores: what the game earned (Arvela's sphere), never buttons
   //   setup              Change players: back to the setup screen (setupLabel: 'Change settings', 'Choose a level')
   //   scores             High scores        stats   Statistics
-  //   show               a picture of the game, under the title (an element the game draws: Anoria's race for Renown)
+  //   show               a picture of the game, under the title (an element the game draws: Arvela's race for Renown)
   //   close              Back to games (closeLabel/onClose: 'Leave the table' for an online game)
   var peek = null;
   function winPeekClear() { if (peek) { peek.remove(); peek = null; } }
@@ -2781,7 +2781,7 @@
     card.appendChild(el('div', { class: 'trophy' + (o.lose ? ' lose' : ''), html: icon(o.icon || (o.lose ? 'meh' : 'trophy')) }));
     card.appendChild(el('h2', { text: o.title || (o.lose ? 'So close!' : 'You win!') }));
     if (o.sub) card.appendChild(el('div', { class: 'sub', text: o.sub }));
-    if (o.pic) card.appendChild(o.pic);   // (pic: the game's own picture of how it went, an element under the title: Anoria's race for Renown)
+    if (o.pic) card.appendChild(o.pic);   // (pic: the game's own picture of how it went, an element under the title: Arvela's race for Renown)
     // notes: how it ended (the last moves), so a sudden win makes sense
     if (o.notes && o.notes.length) card.appendChild(el('div', { class: 'k-win-notes' }, [el('b', { text: o.notesTitle || 'How it ended' })].concat(o.notes.map(function (t) { return el('div', { text: t }); }))));
     if (o.rank && o.rank.length) {

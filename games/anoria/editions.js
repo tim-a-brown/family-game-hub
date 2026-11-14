@@ -1,4 +1,4 @@
-// Anoria: the editions of a card (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana such that a
+// Arvela: the editions of a card (Tim, 2026-11-11: "adapt the card art selection mechanic from lorcana such that a
 // player could uncover different editions of the cards through the pack opens and can switch the art on the card at
 // any point through an icon opposite the art/text toggle button").
 // Every card is printed in five finishes that play the same: Matte, Shiny, Silver foil, Gold foil and Rainbow foil.

@@ -298,7 +298,13 @@ Underlying principles for everything:
 - "Wire up the Lorcana cards in the weekly check issue": read that issue or the saved card list, extend the
   parser/engine, check new screens and animations with Tim before building them, then preview as usual.
 
-## Anoria (the card game)
+## Arvela (the card game; its files, code and storage keys say anoria)
+
+- **The game is called Arvela** (Tim, 2026-11-14: "rename this game 'Arvela'"; it was Anoria). Every word a player reads says
+  Arvela, the country of memory in its story too; the logo's wordmark says ARVELA. The files (`games/anoria.html`,
+  `games/anoria/`), the catalog id `anoria`, the code's names (`AnoriaUI`, `AnoriaColl` and the rest) and every storage
+  key (`anoria_*`) keep the old name, so saved games, collections and links carry on. The notes below still say
+  Anoria where they mean the game's code.
 
 - **Every card is part of the prime set until launch** (Tim, 2026-11-13: "right now, we're still on the 1st printing
   beyond starter and guide decks as far as i'm concerned. i'm still testing the game and tweaking rules so anoria is
@@ -854,7 +860,7 @@ Underlying principles for everything:
 - **The story comes before the rules** (Tim, 2026-11-11: the guide went straight into play without the goal or the
   story behind it; then, of the first story: "unimaginative and weak": it must say how the greats share one place and
   time, why they want Renown, why they contest the wonders, and what the Seals are for). **The story**: what the world
-  remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once (memory
+  remembers is never quite gone: it lives on in Arvela, the country of memory, where every age stands at once (memory
   keeps no calendar) among the wonders, where the world's memory is strongest. A great sphere turns at its heart (the
   one on every card back); each full turn ends an age, and the world can't carry all it knew into the next. So the
   greats lead companies to keep their people from being forgotten, each player one of them with a Guide. The world

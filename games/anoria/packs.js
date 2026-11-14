@@ -1,4 +1,4 @@
-// Anoria: choosing your Guide and opening packs (Tim, 2026-11-13: you uncover a card or a finish, never a copy).
+// Arvela: choosing your Guide and opening packs (Tim, 2026-11-13: you uncover a card or a finish, never a copy).
 //   AnoriaPacks.chooseStarter(app, done)  the first time: all twelve Guides; the one you choose brings their set, your
 //                                         first deck forms from the base set and theirs, then the welcome packs
 //   AnoriaPacks.open(done)                open the packs that are waiting (none waiting: the sphere's screen)
@@ -691,7 +691,7 @@
     }
     const root = el('div', { class: 'pk-choose' }, [
       el('div', { class: 'pk-ch-in' }, [
-        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Anoria', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a set of 20 cards.' })])]),
+        el('header', { class: 'pk-ch-hd' }, [el('img', { class: 'pk-ch-logo', src: IMG + 'logo.webp', alt: 'Arvela', draggable: 'false' }), el('div', { class: 'pk-ch-ttl' }, [el('h1', { text: 'Choose your Guide' }), el('p', { text: 'Each one brings a set of 20 cards.' })])]),
         hero, el('div', { class: 'pk-ch-side' }, [row, info, el('div', { class: 'pk-ch-dock' }, [go])])
       ])
     ]);

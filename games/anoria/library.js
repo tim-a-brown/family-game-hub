@@ -1,4 +1,4 @@
-// Anoria: the Library. Every card in the set has a spot: yours in full colour (with the ladder of its finishes), the
+// Arvela: the Library. Every card in the set has a spot: yours in full colour (with the ladder of its finishes), the
 // ones you've only met across the table in grey, and the ones you've never seen as the card back with nothing showing
 // but a sash in its faction's colour and where it sits in time.
 //

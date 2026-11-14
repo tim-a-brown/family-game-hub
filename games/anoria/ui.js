@@ -1,4 +1,4 @@
-// Anoria: the playable table. The rules live in engine.js (AnoriaEngine); this file draws the table, lets a
+// Arvela: the playable table. The rules live in engine.js (AnoriaEngine); this file draws the table, lets a
 // player pick up a card or a Figure and shows where it can go, and plays back what the engine did from its
 // event log (S.ev), one moment at a time.
 (function () {
@@ -2007,7 +2007,7 @@
   // another (matPicker; the choice is anoria_mat, which follows the account).
   // The pictures are ui/mats/<id>.webp: printed cloth in the cards' own inked style, each true to its Guide's world.
   // A mat for a new Guide is one line here and its picture. Until a Guide has one, that Guide plays on the chart
-  // of Anoria in their own colour.
+  // of Arvela in their own colour.
   //   n: the mat's name, c: its cloth (shown until the picture has come), th: the thread its edge is bound with,
   //   d: how far the print is dimmed so the pieces stay the brightest things on it (0 to 1; .2 if not given),
   //   fill: the picture is stretched to the mat's shape, not cropped (a pattern with borders that should all show)
@@ -2071,7 +2071,7 @@
     akbar: { n: 'Red sandstone', c: '#401e1b', th: '#b08a6a', d: 0.04 },
     mansamusa: { n: 'Gold and salt', c: '#372717', th: '#b08d4a', d: 0.12 },
     sorjuana: { n: 'The top in the flour', c: '#151d28', th: '#8c97ad', d: 0.35 },
-    chart: { n: 'The chart of Anoria', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
+    chart: { n: 'The chart of Arvela', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
   };
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
   // A mat can also be made from a card's picture, placed anywhere on it by hand, with a cloth of the player's choosing
@@ -4210,8 +4210,8 @@
   function kindKey() { const D = window.AnoriaDomains; if (!D) return ''; return '<span class="rk-keys">' + D.ORDER.map(k => '<span class="rk-k">' + D.mark(k).outerHTML + '<b>' + D.KINDS[k].n + '</b></span>').join('') + '</span>'; }
   function homeKey() { const D = window.AnoriaDomains; if (!D || !D.home) return ' '; const regs = ['MED', 'EUR', 'AFR', 'MIDEAST', 'ASIA', 'AMER', 'OCE']; let h = ''; try { h = regs.map(r => '<span class="rk-k">' + D.home(r).outerHTML + '<b>' + REG[r] + '</b></span>').join(''); } catch (e) { return ' '; } return '<span class="rk-keys">' + h + '</span>'; }
   const RULES = () => { const WIN = (G && S && !G.demo && !G.teams && S.cfg && S.cfg.target) || E.STD.target, RC = (G && S && !G.demo && S.N > 2 && S.cfg) || E.STD; return ('' +
-    '<p>What the world remembers is never quite gone: it lives on in Anoria, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
-    '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Anoria through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
+    '<p>What the world remembers is never quite gone: it lives on in Arvela, the country of memory, where every age stands at once among the wonders of the world. At its heart turns a great sphere. Each time the sphere comes full circle an age ends, and the world can’t carry everything it knew into the next one.</p>' +
+    '<p>So the greats gather companies to keep their people from being forgotten. You lead one, with one of the greats as your Guide. The world remembers whoever stands at its wonders, and that is Renown. A company comes into Arvela through its Gate, which three Seals hold open: a company whose Seals are all broken is shut out and forgotten.</p>' +
     '<p class="goal">Send great Figures from history to hold Places on the map. <b>The first player to reach ' + WIN + ' Renown</b> at the end of a round wins. With two players, breaking all of the other player\'s Seals wins on the spot. Each player starts with <b>3 Seals</b>.</p>' +
     '<h3>The map</h3><ul><li>With two players, five Places lie in a line: your <b>Gate</b> nearest you, then your <b>Outpost</b>, the shared <b>Crossroads</b>, and the other player\'s Outpost and Gate.</li>' +
     '<li>Each Place has one rule of its own, printed on it. Tap a Place to read it.</li>' +
@@ -4384,7 +4384,7 @@
       { icon: 'palette', label: 'Play mats', sub: 'Choose the mat on your side of the table', onClick: matPicker },
       { icon: 'clock', label: 'Computer moves one at a time', sub: 'The computer waits for you to tap Next after each move', toggle: () => stepOn(), onClick: toggleStep, when: () => !(G && S && !G.demo && !G.players.some(p => p.cpu)) },   // (not in a game of people only: there is no computer to wait for)
       { icon: 'rows', label: 'Turn log', sub: 'Everything that has happened in this game', when: () => !!(G && S && !G.demo), onClick: logScreen },
-      { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Anoria: past games' }) }
+      { icon: 'history', label: 'Past games', onClick: () => Kit.history(KEY, { title: 'Arvela: past games' }) }
     ]
   });
 

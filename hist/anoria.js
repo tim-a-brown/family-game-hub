@@ -1,5 +1,5 @@
 'use strict';
-// History view: Anoria. Who led each company and how the game ended, the race for Renown with who scored each Place
+// History view: Arvela. Who led each company and how the game ended, the race for Renown with who scored each Place
 // every round, the map as it stood at the end, the numbers side by side, and the Threads and Legacy lines that were
 // made, each with its true sentence. (The record's detail is written by record() in games/anoria/ui.js.)
 (function () {
@@ -8,10 +8,10 @@
   var DW = function (x) { return window.AnoriaCards && window.AnoriaCards.DM_LIVE ? x.replace(/\bPlace(s?)\b/g, 'Domain$1') : x; };
   var base = (function () { try { var s = document.querySelector('script[src*="hist-view.js"]'); return new URL('games/', s.src).href; } catch (e) { return ''; } })();
   var ART = base + 'anoria/art/t/', FONTS = (function () { try { return new URL('../fonts/', base).href; } catch (e) { return ''; } })();
-  var PCOL = ['#f2b84b', '#8fd3f4'];   // (the two seats' colours on Anoria's table)
+  var PCOL = ['#f2b84b', '#8fd3f4'];   // (the two seats' colours on Arvela's table)
   var FAC = { D: '#1d4f9c', S: '#1f6f6a', V: '#a3262b', A: '#b5672a', W: '#6a3a72', N: '#6b5a36', P: '#3c4a6e' };
 
-  // The cards' names and the sentences behind each Thread live with the game (cards.js, text.js): on Anoria's own
+  // The cards' names and the sentences behind each Thread live with the game (cards.js, text.js): on Arvela's own
   // page they are already there; anywhere else they are fetched the first time one of its games is opened.
   var waiting = null;
   function data(then) {

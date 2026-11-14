@@ -1,4 +1,4 @@
-// Anoria: the card pool, for the page and for the rules simulator (scripts/anoria). Numbers here are what the balance runs tune.
+// Arvela: the card pool, for the page and for the rules simulator (scripts/anoria). Numbers here are what the balance runs tune.
 // Figure: f faction (D Discovery, S Statecraft, V Valor, A Arts, W Wonder), c Spark cost, m Might, reg home region,
 // era 1..7, y year (for the fun log), k keywords, arr arrive effect, insp who inspired them (Legacy)
 // Relic or Deed: fx the effect it has when that is not its own key, quick (a Quick Deed), pr 3 (the third printing)

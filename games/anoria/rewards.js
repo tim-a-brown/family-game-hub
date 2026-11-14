@@ -1,4 +1,4 @@
-// Anoria: the sphere and what it brings (Tim, 2026-11-13). The rules are coll.js's; this file draws them.
+// Arvela: the sphere and what it brings (Tim, 2026-11-13). The rules are coll.js's; this file draws them.
 //   AnoriaRewards.sphere({lit, fresh, size})  the sphere with its twelve signs: lit, just lit (fresh), dark
 //   AnoriaRewards.endPanel(R, quiet)          for the results card (Kit.win's show slot): the signs a game lit, the
 //                                             sphere coming round, a Guide joining, a calling moving on

@@ -53,12 +53,12 @@ var GAMES = [
       { icon: 'pencil', title: 'Keep score', desc: 'Playing with real cards? Track the lore here', file: 'lorcana' },
       { icon: 'book', title: 'Cards and decks', desc: 'Browse every card and build your decks. Leaves any game as it is', file: 'lorcana-play.html?library=1', tool: true }
     ] },
-  { id: 'anoria',      name: 'Anoria',       color: '#c9a24a', cat: 'specialty', min: 1, max: 6, tag: 'The great figures of every age hold the wonders of the world', play: 'anoria',
+  { id: 'anoria',      name: 'Arvela',       color: '#c9a24a', cat: 'specialty', min: 1, max: 6, tag: 'The great figures of every age hold the wonders of the world', play: 'anoria',
     launch: [
       { icon: 'book', title: 'Library', desc: 'Every card in the set, and the ones you have', file: 'anoria.html?library=1', tool: true },
       { icon: 'sparkle', title: 'Packs', desc: 'Open your packs, and see the sphere and the callings', file: 'anoria.html?packs=1', tool: true },
       { icon: 'cards', title: 'Decks', desc: 'Build a deck of your own from your cards', file: 'anoria.html?decks=1', tool: true },
-      { icon: 'help', title: 'How to play', desc: 'The story of Anoria, then every rule shown on the table', file: 'anoria.html?guide=1', tool: true }
+      { icon: 'help', title: 'How to play', desc: 'The story of Arvela, then every rule shown on the table', file: 'anoria.html?guide=1', tool: true }
     ] },
 
   // ── Board ────────────────────────────────────────────────────────────────

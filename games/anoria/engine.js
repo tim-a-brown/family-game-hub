@@ -1,4 +1,4 @@
-// Anoria rules simulator: the whole game as code, for 2 to 6 players, with robot players that pick the best
+// Arvela rules simulator: the whole game as code, for 2 to 6 players, with robot players that pick the best
 // next step by a scoring rule (a "profile"). run.js plays thousands of games with it and reports balance.
 (function (root, factory) { if (typeof module === 'object' && module.exports) module.exports = factory(require('./cards')); else root.AnoriaEngine = factory(root.AnoriaCards); })(this, function (cards) {
 'use strict';

@@ -1,4 +1,4 @@
-// Anoria: your collection. What you have, what you've seen, the packs waiting to be opened, the sphere and how it
+// Arvela: your collection. What you have, what you've seen, the packs waiting to be opened, the sphere and how it
 // turns, the Guides and their callings, your decks and the Legacy Lines you've finished. No screens here (packs.js,
 // library.js, decks.js and rewards.js draw them); this is the one place the rules of collecting live, so the pacing
 // script (scripts/anoria/pacing.js) plays the same ones.

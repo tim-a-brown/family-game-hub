@@ -1,4 +1,4 @@
-// Anoria: your decks and the deck builder.
+// Arvela: your decks and the deck builder.
 //   AnoriaDecks.open(id, done)   id null: the list of decks (yours, a new one, and each of your Guides' decks as a
 //                                recipe); a built deck's id: that deck, open for changing. done() when the player leaves.
 // The rules of a deck (40 cards, two of a card at most, only cards you have, one Guide) live in coll.js; any card you
@@ -53,7 +53,7 @@
   // (the card's kind as it is on the small card's spine: its mark in white on the faction's color)
   const kindTab = k => { const c = CARDS[k], kd = c.t === 'fig' ? (c.insp ? 'legacy' : 'fig') : c.t, M = U.MARK;
     return el('span', { class: 'adk-kd', style: { '--f': (FAC[c.f] || FAC.N).c }, 'aria-label': { fig: 'Figure', legacy: 'Legacy Figure', relic: 'Relic', deed: 'Deed' }[kd] || '', html: kd === 'legacy' ? M.legacy + M.fig : M[kd] || '' }); };
-  // a kit sheet in Anoria's own colours (navy and gilt in every app theme)
+  // a kit sheet in Arvela's own colours (navy and gilt in every app theme)
   const sheet = o => { const sh = Kit.sheet(o); sh.el.classList.add('adk-sheet'); return sh; };
   const btn = (cls, label, icon, fn) => el('button', { type: 'button', class: 'btn ' + cls, html: (icon || '') + '<span>' + esc(label) + '</span>', onclick: fn });
   // one small slot for each card of a deck (40): the cards in it coloured by faction, the rest empty (keys = the deck's cards)

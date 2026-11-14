@@ -1,4 +1,4 @@
-// Anoria: the world's coastlines (Natural Earth, public domain), thinned, for the map behind each card's text.
+// Arvela: the world's coastlines (Natural Earth, public domain), thinned, for the map behind each card's text.
 // Each ring is a flat list: lon, lat, lon, lat, ...
 (function (root, d) { if (typeof module === 'object' && module.exports) module.exports = d; else root.AnoriaLand = d; })(this, [
 [180,-16.20,179.85,-16.35,179.70,-16.50,179.55,-16.50,179.55,-16.65,179.55,-16.80,179.70,-16.65,179.85,-16.50,180,-16.50,179.85,-16.65,180,-16.80,179.85,-16.80,179.70,-16.80,179.55,-16.80,179.40,-16.80,179.25,-16.65,179.10,-16.80,178.95,-16.95,178.80,-16.95,178.65,-16.95,178.65,-16.80,178.50,-16.80,178.50,-16.65,178.65,-16.65,178.80,-16.65,178.80,-16.50,178.95,-16.50,179.10,-16.50,179.25,-16.35,179.40,-16.35,179.55,-16.35,179.55,-16.20,179.70,-16.20,179.85,-16.20,180,-16.20],
