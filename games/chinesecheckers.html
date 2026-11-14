@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .cc-col{max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:8px;overflow-x:clip;}
 
@@ -277,6 +279,8 @@
   //      turn, round, cnt:[moves each], fin:[player idx in finish order], last:{p,path},
   //      st:{chains:[best hop chain each], big:[{p,h,gain,round}]}, rk:{p:{key:n}}, hist, over, started, rot}
   var S = null, sel = -1, selMoves = [], animating = false;
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   var LEVELS = { easy: { depth: 1, noise: 2.5, wild: 0.3 }, normal: { depth: 2, beam: 6, noise: 0.8 }, hard: { depth: 3, beam: 14, noise: 0.05 } };
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   function hasCpu() { return S.players.some(function (p) { return p.cpu; }); }
@@ -284,19 +288,20 @@
   function cur() { return S.players[S.turn]; }
   function g() { return { b: S.b, pts: S.pts, nostay: S.nostay }; }
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && !S.over) Kit.resume.set('Turn ' + S.round);
   }
-  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function ord(n) { return n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'); }
 
   Kit.init({
     id: 'chinesecheckers', mark: false,
-    onNew: function () { cancelThink(); clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Chinese Checkers: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Be the first to move all 10 of your marbles across the star into the point straight opposite where they start.</p>' +
       '<h3>On your turn</h3><ul>' +
@@ -316,7 +321,8 @@
       '<h3>Playing here</h3><ul>' +
       '<li>Tap one of your marbles to see every hole it can reach. Lines show the hop routes. Tap a hole to move there.</li>' +
       '<li>If you have no move at all, your turn is skipped.</li>' +
-      '<li>In pass &amp; play the board can turn so the player whose turn it is sits at the bottom.</li></ul>'
+      '<li>In pass &amp; play the board can turn so the player whose turn it is sits at the bottom.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table for two to six people, each on their own device, with your home point at the bottom of your screen. Seats you gave the computer in the setup are played by the computer when nobody takes them. Take your turn whenever you like: the home screen shows when it’s your move.</li></ul>'
   });
 
   function showSetup() {
@@ -381,6 +387,7 @@
   function cell36(i) { return (i < 36 ? '0' : '') + i.toString(36); }
   function movesMade() { return S.cnt.reduce(function (a, b) { return a + b; }, 0); }
   function commit(mv, byCpu) {
+    if (NET) return netCommit(mv);
     if (!S || S.over) return;
     var p = S.turn;
     var legal = E.movesFrom(S.b, mv.f, S.pts, S.nostay).filter(function (m) { return m.t === mv.t; })[0];
@@ -454,7 +461,7 @@
   // ── Computer ─────────────────────────────────────────────────────────────
   var fast = false; // test hook: skip delays and animations
   function maybeCpu() {
-    if (!S || S.over || animating || S.busy || !cur().cpu) return;
+    if (NET || !S || S.over || animating || S.busy || !cur().cpu) return;
     S.busy = true; paintChips(); paintTurn();
     var t0 = Date.now(), myB = S.b, p = S.turn, lv = LEVELS[(S.players[p] && S.players[p].level) || S.level] || LEVELS.normal;
     var o = { depth: lv.depth, beam: lv.beam, noise: lv.noise, wild: lv.wild, recent: S.rk[p] || {} };
@@ -471,6 +478,7 @@
 
   // ── Finish ───────────────────────────────────────────────────────────────
   function finish() {
+    if (NET) return netFinish();
     S.over = true; sel = -1; save(); clearSave(); paintAll();
     var n = S.players.length, w = S.fin[0], W = S.players[w];
     var order = S.fin.slice();
@@ -671,7 +679,7 @@
       var chip = el('div', { class: 'pchip' + (on ? ' on' : '') + (pi >= 0 ? ' done' : '') }, [
         el('span', { class: 'mm' }, [marble(pl.col)]),
         el('div', { class: 'who' }, [
-          el('span', { class: 'nm', html: (pl.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(pl.name) + '</span>' }),
+          el('span', { class: 'nm', html: (pl.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(NET && NET.seat === i ? 'You' : pl.name) + '</span>' }),
           el('span', { class: 'sub', html: sub })
         ])
       ]);
@@ -682,13 +690,20 @@
   function paintTurn() {
     if (!turnEl) return;
     turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.style.setProperty('--c', 'var(--text-2)'); turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); return; }
     if (S.over) {
       var w = S.players[S.fin[0]];
       turnEl.style.setProperty('--c', CHEX[w.col]);
-      turnEl.appendChild(el('span', { text: (w.name === 'You' ? 'You win' : w.name + ' wins') + ' in ' + S.cnt[S.fin[0]] + ' moves' }));
+      turnEl.appendChild(el('span', { text: (w.name === 'You' || NET && NET.seat === S.fin[0] ? 'You win' : w.name + ' wins') + ' in ' + S.cnt[S.fin[0]] + ' moves' }));
       return;
     }
     var p = cur();
+    if (NET) {
+      turnEl.style.setProperty('--c', CHEX[p.col]);
+      turnEl.appendChild(el('span', { class: 'dot' }));
+      turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : NET.seat === S.turn ? 'Your turn' + (S.cnt[S.turn] === 0 ? ': tap a ' + CNAME[p.col].toLowerCase() + ' marble' : '') : 'Waiting for ' + p.name }));
+      return;
+    }
     turnEl.style.setProperty('--c', CHEX[p.col]);
     turnEl.appendChild(el('span', { class: 'dot' }));
     var txt = p.cpu ? p.name + ' is thinking…' : S.players.length === 1 ? 'Move ' + (S.cnt[0] + 1) + ': tap a marble' : Kit.poss(p.name) + ' turn' + (S.cnt[S.turn] === 0 ? ': tap a marble' : '');
@@ -696,6 +711,7 @@
   }
   function paintActs() {
     actsEl.innerHTML = '';
+    if (NET) { if (S.over || LEFT) actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return; }
     if (S.over) {
       actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Play again', onclick: again }));
       actsEl.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', html: Kit.icon('history') + '<span>Past games</span>', onclick: function () { Kit.history(KEY, { title: 'Chinese Checkers: past games' }); } }));
@@ -705,7 +721,7 @@
   }
 
   // ── Input: tap a marble, then a hole. Nearest-hole tapping, rotation aware ─
-  function canAct() { return S && !S.over && !S.busy && !animating && !cur().cpu; }
+  function canAct() { return S && !S.over && !S.busy && !animating && (NET ? !LEFT && NET.myTurn() : !cur().cpu); }
   function cellAt(x, y) {
     var r = wrapEl.getBoundingClientRect(), dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height / 2);
     var th = -(S.rot || 0) * Math.PI / 180, ux = dx * Math.cos(th) - dy * Math.sin(th), uy = dx * Math.sin(th) + dy * Math.cos(th);
@@ -722,7 +738,7 @@
   function bindInput() {
     wrapEl.addEventListener('click', function (e) {
       if (!canAct()) {
-        if (S && !S.over && cur().cpu) Kit.toast(cur().name + ' is moving');
+        if (S && !S.over && !LEFT && (cur().cpu || NET && !animating)) Kit.toast(cur().cpu ? cur().name + ' is moving' : 'It’s ' + Kit.poss(cur().name) + ' turn');
         return;
       }
       var c = cellAt(e.clientX, e.clientY); if (c < 0) { if (sel >= 0) select(-1); return; }
@@ -737,7 +753,7 @@
         if (!selMoves.length) Kit.toast('That marble is boxed in');
         return;
       }
-      if (v && sel < 0) { Kit.haptic('error'); Kit.toast((S.players.length > 1 && humans() > 1 ? Kit.poss(cur().name) + ' turn: ' : '') + 'your marbles are ' + CNAME[cur().col].toLowerCase()); return; }
+      if (v && sel < 0) { Kit.haptic('error'); Kit.toast((S.players.length > 1 && humans() > 1 && !NET ? Kit.poss(cur().name) + ' turn: ' : '') + 'your marbles are ' + CNAME[cur().col].toLowerCase()); return; }
       if (sel >= 0) select(-1);
     });
   }
@@ -756,10 +772,161 @@
     }
   };
 
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Two to six people, each on their own device, with their own home point at the bottom of their screen. The setup's
+  // seats are the table's: a seat nobody takes is played by the computer, from whichever device has the table open.
+  function netOpts() {
+    var o = { seats: 2, level: 'normal', places: false, nostay: false };
+    try {
+      var g = JSON.parse(localStorage.getItem('gn_setup_chinesecheckers')) || {}, op = g.options || {};
+      if (+g.count >= 2 && +g.count <= 6) o.seats = +g.count;
+      if (LEVEL_NAME[op.level]) o.level = op.level;
+      o.places = op.places === 'all'; o.nostay = op.nostay === 'pass';
+    } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var n = players.length, st0 = E.start(n), first = last && last.players && last.players.length === n ? ((last.firstWas || 0) + 1) % n : 0;
+    return { mode: 'online', level: opts && LEVEL_NAME[opts.level] ? opts.level : 'normal', places: !!(opts && opts.places) && n > 2, nostay: !!(opts && opts.nostay), spin: false,
+      players: players.map(function (p, i) { return { name: p.name, cpu: !!p.bot, col: COLORS[i] }; }), pts: st0.pts, b: st0.b, turn: first, firstWas: first, round: 1,
+      cnt: players.map(function () { return 0; }), fin: [], won: [], last: null, st: { chains: players.map(function () { return 0; }), big: [] }, rk: {}, hist: [],
+      over: false, started: Date.now(), rot: 0, ml: '' };
+  }
+  // The move itself (pure on st: it may run again on a newer table), by the same rules as commit()
+  function netApply(st, f, t, path0) {
+    if (st.over) return null;
+    var keep = S; S = st;
+    try {
+      var p = st.turn;
+      var legal = E.movesFrom(st.b, f, st.pts, st.nostay).filter(function (m) { return m.t === t; })[0];
+      if (!legal || st.b[f] !== p + 1) return null;
+      var path = path0 && path0[0] === legal.f && path0[path0.length - 1] === legal.t ? path0 : legal.path, h = legal.h ? path.length - 1 : 0;
+      var D = E.DIST[E.tgtOf(st.pts, p)], gain = D[legal.f] - D[legal.t];
+      st.b[legal.f] = 0; st.b[legal.t] = p + 1;
+      st.cnt[p]++; st.last = { p: p, path: path }; st.ml += cell36(legal.f) + cell36(legal.t);
+      if (h > st.st.chains[p]) st.st.chains[p] = h;
+      if (h >= 4) st.st.big.push({ p: p, h: h, gain: gain, round: st.round });
+      var rk = st.rk[p] || (st.rk[p] = {}), kk = E.key(st.b, p); rk[kk] = (rk[kk] || 0) + 1;
+      var won = E.isWin(st.b, p, st.pts), place = 0;
+      if (won) { st.fin.push(p); st.won.push(p); place = st.fin.length; }
+      var left = st.players.map(function (x, i) { return i; }).filter(active);
+      if (won && (!st.places || left.length <= 1)) { if (st.places) left.forEach(function (i) { st.fin.push(i); }); st.over = true; }
+      var skipped = st.over ? [] : advance();
+      return { state: st, mv: { p: p, path: path, h: h, won: won, place: place, skipped: skipped } };
+    } finally { S = keep; }
+  }
+  function netCommit(m) {
+    if (!S || S.over || LEFT || !NET.myTurn()) return;
+    var f = m.f, t = m.t, path = (m.path || []).slice();
+    sel = -1; selMoves = [];
+    NET.act(function (st) { return netApply(st, f, t, path); });
+  }
+  function netBot(st, seat) {
+    var lv = LEVELS[st.level] || LEVELS.normal, o = { depth: lv.depth, beam: lv.beam, noise: lv.noise, wild: lv.wild, recent: st.rk[seat] || {} };
+    return new Promise(function (res) {
+      think({ b: st.b, pts: st.pts, nostay: st.nostay }, seat, o, function (m) {
+        if (m) return res(netApply(st, m.f, m.t, m.path));
+        // no move at all: the turn passes
+        var keep = S; S = st; try { var sk = advance(); res({ state: st, mv: { p: seat, skipped: [seat].concat(sk) } }); } finally { S = keep; }
+      });
+    });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  // Draw the table: the newest move's marble steps or hops along its route (yours or theirs), then the end
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.hist = [];
+    S.rot = net.seat >= 0 ? -60 * S.pts[net.seat] : 0;
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    sel = -1; selMoves = [];
+    var tok = ++SHOWN, mv = info.mv && !info.fresh && !info.again ? info.mv : null, path = mv && mv.path;
+    animating = !!path;
+    render();
+    if (info.again) { Kit.sfx('deal'); Kit.callout(S.turn === net.seat ? 'You start' : cur().name + ' starts'); }
+    function after() {
+      if (tok !== SHOWN) return;
+      animating = false;
+      if (mv && mv.h >= 3) Kit.callout(mv.h + ' hops!', CHEX[S.players[mv.p].col]);
+      if (mv && mv.won) { Kit.sfx('good'); if (!S.over) Kit.callout((mv.p === net.seat ? 'You finished ' : S.players[mv.p].name + ' finished ') + ord(mv.place) + '!', CHEX[S.players[mv.p].col]); }
+      if (S.over || LEFT) { setTimeout(function () { if (tok === SHOWN) finish(); }, 300); paintAll(); return; }
+      if (mv && mv.skipped) mv.skipped.forEach(function (i, k) { setTimeout(function () { if (tok === SHOWN) Kit.toast((i === net.seat ? 'You have' : S.players[i].name + ' has') + ' no move, so the turn passes'); }, k * 1900); });
+      paintAll();
+      if (mv && mv.p !== net.seat && net.myTurn()) Kit.haptic('light');
+    }
+    if (path) { Kit.haptic(mv.h ? 'medium' : 'light'); animPath(layerNode(path[path.length - 1]), path, mv.h > 0).then(after); }
+    else after();
+  }
+  function netFinish() {
+    if (!NET || !S) return;
+    sel = -1; paintAll();
+    var me = NET.seat, n = S.players.length;
+    if (LEFT) {
+      if (WINO) WINO.close();
+      WINO = Kit.win({ icon: 'users', title: LEFT.text || 'The other player left', againLabel: 'Back to the lobby', again: function () { WINO = null; netAgain(); }, look: { label: 'Look at the board', onClick: function () { WINO = null; } } });
+      return;
+    }
+    var w = S.fin[0], W = S.players[w], order = S.fin.slice();
+    S.players.forEach(function (x, i) { if (order.indexOf(i) < 0) order.push(i); });
+    var tail = order.slice(S.fin.length).sort(function (a, b) { return E.homeCount(S.b, b, S.pts) - E.homeCount(S.b, a, S.pts) || E.togo(S.b, a, S.pts) - E.togo(S.b, b, S.pts); });
+    order = S.fin.slice().concat(tail);
+    var key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('chinesecheckers_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('chinesecheckers_net_rec')) || []; rl.push(key); localStorage.setItem('chinesecheckers_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [W.name + ' finished in ' + S.cnt[w] + ' moves'];
+      var big = S.st.big.slice().sort(function (a, b) { return b.h - a.h || b.gain - a.gain; })[0];
+      if (big && big.h >= 5) hl.push(S.players[big.p].name + ' chained a ' + big.h + '-hop jump on turn ' + big.round);
+      if (S.places && S.fin.length > 1) hl.push('Places: ' + S.fin.map(function (i, k) { return ord(k + 1) + ' ' + S.players[i].name; }).join(', '));
+      if (S.nostay) hl.push('Played with pass-through-only points');
+      if (hasCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+      hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online · ' + n + ' players',
+        players: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: S.won.indexOf(i) >= 0 ? 10 : E.homeCount(S.b, i, S.pts), cpu: x.cpu }; }),
+        winner: W.name, summary: W.name + ' won in ' + S.cnt[w] + ' moves', highlights: hl,
+        meta: { rounds: S.round, places: S.fin.map(function (i) { return S.players[i].name; }), colors: S.players.map(function (x) { return x.col; }) },
+        detail: { b: S.b.join(''), pt: S.pts.join(''), n: S.players.map(function (x) { return x.name; }), c: S.players.map(function (x) { return x.col; }),
+          fin: S.fin.slice(), mv: S.cnt.slice(), ch: S.st.chains.slice(), hm: S.players.map(function (x, i) { return E.homeCount(S.b, i, S.pts); }), r: S.round,
+          ml: S.ml && S.ml.length === movesMade() * 4 && S.ml.length <= 2800 ? S.ml : undefined }
+      });
+    }
+    Kit.callout(w === me ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
+    setTimeout(function () {
+      if (!NET) return;
+      if (WINO) WINO.close();
+      WINO = Kit.win({
+        icon: w === me ? 'trophy' : W.cpu ? 'bot' : 'users',
+        title: w === me ? 'You win!' : W.name + ' wins!',
+        sub: 'Filled the ' + CNAME[W.col].toLowerCase() + ' goal point in ' + S.cnt[w] + ' moves',
+        lose: w !== me,
+        rank: order.map(function (i) { var x = S.players[i]; return { name: x.name, score: S.won.indexOf(i) >= 0 ? S.cnt[i] + ' moves' : E.homeCount(S.b, i, S.pts) + '/10 home', color: CHEX[x.col] }; }),
+        againLabel: 'Play again', again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+    }, 900);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; animating = false; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && !sv.over) { S = sv; S.won = S.won || []; S.busy = false; render(); maybeCpu(); }
+    else showSetup();
+  }
+
   // ── Boot ─────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.b && saved.players && !saved.over) { S = saved; S.won = S.won || []; S.busy = false; render(); maybeCpu(); }
   else showSetup();
+
+  TurnNet.setup({
+    game: 'chinesecheckers', title: 'Chinese Checkers', min: 2, max: 6, botMs: 700,
+    seats: function (n, o) { return Math.max(n, Math.min(6, o && +o.seats || n)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.over ? [] : [st.turn]; },
+    over: function (st) { if (!st.over) return null; var w = st.fin[0]; return { win: [w], text: st.players[w].name + ' wins in ' + st.cnt[w] + ' moves' }; },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

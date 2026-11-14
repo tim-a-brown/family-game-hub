@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px);}
 .cb{--pg:34px;--rh:43px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;-webkit-user-select:none;user-select:none;}
@@ -201,12 +203,12 @@ button.hole{cursor:pointer;}
     id: KEY,
     mark: false,
     theme: { wood: ['#5a3b26', '#33200f'], felt: ['#5b2230', '#3d1420', '#2b0d16'] },
-    onNew: function () { clearSave(); showSetup(); },
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { undo(); },
-    menu: [
+    menu: TurnNet.menu().concat([
       { icon: 'eye', label: function () { return symOn() ? 'Color shapes: on' : 'Color shapes: off'; }, onClick: function () { setSym(!symOn()); Kit.toast(symOn() ? 'Shapes on every peg' : 'Shapes hidden'); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mastermind: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Crack the secret color code in as few guesses as you can.</p>' +
       '<h3>The secret code</h3><ul>' +
@@ -228,6 +230,10 @@ button.hole{cursor:pointer;}
       '<li>One player sets the code in secret while the other looks away, then hands over the phone. Hold the button for 3 seconds to take your turn.</li>' +
       '<li>The codemaker scores <b>1 point for every guess</b> the breaker makes, plus <b>1 bonus point</b> if the code is never cracked.</li>' +
       '<li>Swap roles every round. Play 2, 4 or 6 rounds; most points wins.</li></ul>' +
+      '<h3>Online</h3><ul>' +
+      '<li><b>Play online</b> opens a table for two, each on your own device. You take turns making and breaking codes, as in two players.</li>' +
+      '<li>Your secret code stays on your device. When the other player checks a guess, your device answers it with the little pegs the next time you open the game, and the home screen shows it as your turn.</li>' +
+      '<li>The code is shown to the breaker only when the round ends.</li></ul>' +
       '<h3>Computer breaks</h3><p>When you play on your own, the setup screen asks who breaks the code. If you choose the computer, you set a code and watch the computer crack it, one guess at a time. It plays a clever strategy: on Classic it never needs more than 5 guesses.</p>' +
       '<h3>Tips</h3><ul><li>Start with something like two of one color and two of another.</li><li>Every new guess should fit all the clues so far.</li><li>Color shapes in the menu add a symbol to every peg.</li></ul>'
   });
@@ -243,9 +249,12 @@ button.hole{cursor:pointer;}
   //   maker, breaker, code:[], guesses:[{g:[],b,w}], cur:[], act, stack:[{i,prev}],
   //   phase:'make'|'break'|'reveal'|'over', pass:null|'make'|'break', perm (solver), started}
   var S = null, tok = 0, busy = false, flash = -1, keyAnim = -1, shieldAnim = '';
+  // Online (turnnet.js): NET is the table while playing at one. S is then this device's view of the table: the
+  // table's state, with the row being filled in here, and the secret code only on the codemaker's own device.
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   function later(fn, ms) { var t = tok; setTimeout(function () { if (t === tok && S) fn(); }, ms); }
   function save() {
-    if (!S) return;
+    if (!S || NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S.phase === 'over') return;
     var lbl = DIFF[S.diff].label;
@@ -253,7 +262,7 @@ button.hole{cursor:pointer;}
     else if (S.phase === 'break') lbl = 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R + ' · ' + lbl;
     Kit.resume.set(lbl);
   }
-  function clearSave() { tok++; busy = false; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { tok++; busy = false; if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
     S = null; tok++; busy = false;
@@ -265,20 +274,21 @@ button.hole{cursor:pointer;}
     } catch (e) {}
     Kit.setup(app, {
       // one seat plays the computer (who breaks the code is a choice below); two seats take turns making and breaking
-      modes: Kit.modes(['solo', { id: '2p', kind: 'local' }]),
+      modes: Kit.modes(['solo', { id: '2p', kind: 'local' }, { id: 'online', desc: 'Two players, each on their own device' }]),
       options: [
         { id: 'breaker', label: 'Who breaks the code', value: 'me', when: function (m) { return m === 'solo'; }, choices: [
           ['me', 'You', 'The computer hides a code and you try to break it.'],
           ['cpu', 'The computer', 'You set a secret code and watch the computer crack it.']] },
         { id: 'diff', label: 'Difficulty', value: 'classic', choices: [['easy', 'Easy', '4 pegs from 6 colors, no repeats, 10 guesses.'], ['classic', 'Classic', '4 pegs from 6 colors, colors can repeat, 10 guesses. Like the real Mastermind.'], ['hard', 'Hard', '5 pegs from 8 colors, colors can repeat, 12 guesses.']] },
         { id: 'blanks', label: 'Blanks allowed in the code', help: 'A blank is an empty hole that can be part of the secret code.', value: 'no', choices: [['no', 'No', 'Every hole in the code has a colored peg.'], ['yes', 'Yes', 'The code can have empty holes too, which makes it harder to crack.']] },
-        { id: 'rounds', label: 'Rounds', value: 2, choices: [[2, '2'], [4, '4'], [6, '6']], when: function (m) { return m === '2p'; } }
+        { id: 'rounds', label: 'Rounds', value: 2, choices: [[2, '2'], [4, '4'], [6, '6']], when: function (m) { return m === '2p' || m === 'online'; } }
       ],
       players: {
         min: 1, max: 2,
         range: function (m) { return m === 'solo' ? [1, 1] : [2, 2]; }
       },
       onStart: function (cfg) {
+        if (cfg.mode === 'online') { TurnNet.open(); return; }
         var d = DIFF[cfg.options.diff] || DIFF.classic, blanks = cfg.options.blanks === 'yes';
         // (the game's own modes: 'solo' you break the computer's code, 'watch' the computer breaks yours, '2p')
         var mode = cfg.mode === '2p' ? '2p' : cfg.options.breaker === 'cpu' ? 'watch' : 'solo';
@@ -422,6 +432,7 @@ button.hole{cursor:pointer;}
 
   // ── Human input ─────────────────────────────────────────────────────────
   function myTurn() {
+    if (NET) return !!S && !busy && !LEFT && NET.myTurn() && (S.phase === 'make' && NET.seat === S.maker || S.phase === 'break' && S.np === 'break' && NET.seat === S.breaker);
     if (!S || busy || S.pass) return false;
     if (S.phase === 'make') return true;
     return S.phase === 'break' && !(S.players[S.breaker] && S.players[S.breaker].cpu);
@@ -468,6 +479,7 @@ button.hole{cursor:pointer;}
     S.cur = r; S.act = 0; Kit.sfx('roll'); Kit.haptic('light'); save(); render();
   }
   function lockCode() {
+    if (NET) return netLock();
     if (!myTurn() || S.phase !== 'make' || S.cur.some(function (x) { return x == null; })) return;
     S.code = S.cur.slice(); S.cur = emptyRow(); S.act = 0; S.stack = [];
     S.phase = 'break';
@@ -483,6 +495,7 @@ button.hole{cursor:pointer;}
   }
 
   function submit(byCpu) {
+    if (NET) return netGuess();
     if (!S || S.phase !== 'break' || (!byCpu && !myTurn())) return;
     if (S.cur.some(function (x) { return x == null; })) { Kit.toast('Fill every hole first'); return; }
     var g = S.cur.slice(), f = feedback(S.code, g, S.K);
@@ -682,7 +695,7 @@ button.hole{cursor:pointer;}
     lane.appendChild(el('span', { class: 'lock', html: making ? Kit.icon('pencil') : '' }));
     cr.appendChild(lane);
     var sh = el('div', { class: 'shield' + (S.mode === 'watch' && S.phase === 'break' ? ' smoked' : '') }, [el('span', { text: 'CODE' })]);
-    var open = S.phase === 'make' || S.phase === 'reveal' || S.phase === 'over';
+    var open = S.phase === 'make' || S.phase === 'reveal' || S.phase === 'over' || !!(NET && S.code && NET.seat === S.maker);
     if (shieldAnim === 'open') requestAnimationFrame(function () { requestAnimationFrame(function () { sh.classList.add('open'); }); });
     else if (shieldAnim === 'flip') sh.classList.add('flip');
     else if (shieldAnim === 'shut') sh.classList.add('shut');
@@ -693,6 +706,7 @@ button.hole{cursor:pointer;}
 
     var rows = el('div', { class: 'rows' });
     var curRow = S.phase === 'break' ? S.guesses.length : -1;
+    if (NET && S.np === 'score') S.cur = S.pend ? S.pend.slice() : S.cur;
     for (var r = S.R - 1; r >= 0; r--) (function (r) {
       var gr = S.guesses[r], isCur = r === curRow;
       var row = el('div', { class: 'grw' + (isCur ? ' cur' : '') + (r > curRow && !gr && curRow >= 0 ? ' fut' : '') + (gr && gr.b === S.P ? ' solved' : ''), 'data-r': r });
@@ -721,7 +735,11 @@ button.hole{cursor:pointer;}
     tray.appendChild(tin);
     cb.appendChild(tray);
     if (S.phase === 'reveal' || S.phase === 'over') tin.appendChild(resultPanel());
-    else if (!myTurn() && S.phase === 'break' && S.players[S.breaker] && S.players[S.breaker].cpu) {
+    else if (NET && !myTurn()) {
+      var wt = netWaitText();
+      tin.appendChild(el('div', { class: 'think', html: Kit.icon(wt[1]) + '<span>' + Kit.esc(wt[0]) + '</span>' + (wt[2] ? '<span><i></i><i></i><i></i></span>' : '') }));
+      tin.appendChild(legend());
+    } else if (!myTurn() && S.phase === 'break' && S.players[S.breaker] && S.players[S.breaker].cpu) {
       tin.appendChild(el('div', { class: 'think', html: Kit.icon('bot') + '<span>' + Kit.esc(S.players[S.breaker].name) + ' is thinking</span><span><i></i><i></i><i></i></span>' }));
       tin.appendChild(legend());
     } else {
@@ -756,6 +774,18 @@ button.hole{cursor:pointer;}
   }
   function paintTurn(t) {
     var ps = S.players, txt = '', sub = '', c = '#ffd88a';
+    if (NET) {
+      var me = NET.seat, mk = ps[S.maker], br = ps[S.breaker], rd = 'Round ' + (S.round + 1) + ' of ' + S.total;
+      if (LEFT) { txt = LEFT.text || 'The other player left'; sub = rd; }
+      else if (S.phase === 'make') { txt = me === S.maker ? 'Set a secret code' : 'Waiting for ' + mk.name + ' to set the code'; sub = me === S.maker ? br.name + ' will try to crack it in ' + rd.toLowerCase() : rd; c = Kit.color(S.maker); }
+      else if (S.np === 'score') { txt = me === S.maker ? 'Checking ' + Kit.poss(br.name) + ' guess' : 'Waiting for ' + mk.name + ' to check your guess'; sub = 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R; c = Kit.color(S.maker); }
+      else if (S.phase === 'break') { txt = me === S.breaker ? 'Guess ' + (S.guesses.length + 1) + ' of ' + S.R : br.name + ' is guessing'; sub = me === S.breaker ? 'Breaking ' + Kit.poss(mk.name) + ' code in ' + rd.toLowerCase() : 'Your code, ' + rd.toLowerCase(); c = Kit.color(S.breaker); }
+      else { var rr = S.result || {}; txt = rr.cracked ? 'Cracked in ' + rr.n + '!' : 'Code unbroken'; sub = rd; }
+      t.style.setProperty('--c', c);
+      if (S.phase !== 'reveal' && S.phase !== 'over') t.appendChild(el('span', { class: 'dot' }));
+      t.appendChild(el('span', null, [document.createTextNode(txt), el('small', { text: sub })]));
+      return;
+    }
     if (S.phase === 'make') {
       txt = (S.mode === 'watch' ? 'Set a secret code' : ps[S.maker].name + ', set the code');
       sub = S.mode === 'watch' ? 'The computer will try to crack it' : DIFF[S.diff].label + ': ' + S.P + ' pegs' + (S.dup ? ', repeats allowed' : ', no repeats');
@@ -789,6 +819,13 @@ button.hole{cursor:pointer;}
       small = r.cracked ? 'Nice code breaking' : 'There is the secret code, up top';
     }
     box.appendChild(el('div', { class: 'msg' }, [document.createTextNode(msg), el('small', { text: small })]));
+    if (NET) {
+      if (S.phase === 'reveal') small = ps[S.maker].name + ' scores ' + (r.n + (r.cracked ? 0 : 1)) + ' point' + (r.n + (r.cracked ? 0 : 1) === 1 ? '' : 's') + (r.cracked ? '' : ' (with the bonus)') + '. Next, ' + (NET.seat === S.breaker ? 'you make' : ps[S.breaker].name + ' makes') + ' the code.';
+      box.innerHTML = ''; box.appendChild(el('div', { class: 'msg' }, [document.createTextNode(msg), el('small', { text: small })]));
+      if (S.phase === 'reveal' && NET.seat === S.breaker && !LEFT) box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Next round</span>', onclick: function () { Kit.sfx('pop'); netNextRound(); } }));
+      else if (S.phase === 'over' || LEFT) box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('sparkle') + '<span>' + (LEFT ? 'Back to the lobby' : 'Play again') + '</span>', onclick: netAgain }));
+      return box;
+    }
     if (S.phase === 'reveal' && S.mode === '2p') {
       box.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', html: Kit.icon('swap') + '<span>Next round</span>', onclick: function () { Kit.sfx('pop'); nextRound(); } }));
     } else if (S.phase === 'over') {
@@ -872,8 +909,202 @@ button.hole{cursor:pointer;}
     btn.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapColour(c); } });
   }
 
+  // ── Online ──────────────────────────────────────────────────────────────
+  // Two people take turns making and breaking codes, each on their own device. The secret code never goes to the
+  // table: it stays on the codemaker's device (codebreaker_net_codes, which follows only their own account). The
+  // table gets a fingerprint of it (a hash of the code with a random salt), each guess goes to the table, and the
+  // codemaker's device answers it with the little pegs (the table's turn is then the codemaker's, so their home
+  // screen says so). When the round ends the codemaker's device puts the code and the salt on the table, and the
+  // breaker's device checks them against the fingerprint.
+  var NETKEY = 'codebreaker_net_codes';
+  function netOpts() {
+    var o = { diff: 'classic', blanks: false, rounds: 2 };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_codebreaker')) || {}, op = g.options || {}; if (op.diff in DIFF) o.diff = op.diff; o.blanks = op.blanks === 'yes'; if ([2, 4, 6].indexOf(+op.rounds) >= 0) o.rounds = +op.rounds; } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var d = DIFF[opts && opts.diff] || DIFF.classic, blanks = !!(opts && opts.blanks), m0 = last ? 1 - (last.m0 || 0) : 0;
+    return { mode: 'online', diff: opts && opts.diff in DIFF ? opts.diff : 'classic', blanks: blanks, P: d.pegs, C: d.colors, K: d.colors + (blanks ? 1 : 0), dup: d.dup, R: d.rows,
+      players: players.map(function (p) { return { name: p.name, cpu: false }; }), total: opts && +opts.rounds || 2, round: 0, scores: [0, 0], log: [], m0: m0,
+      maker: m0, breaker: 1 - m0, phase: 'make', commit: null, guesses: [], pend: null, result: null, reveal: null, started: Date.now() };
+  }
+  // A small one-way fingerprint (cyrb53): enough to show the code wasn't changed during the round
+  function fp(code, salt) {
+    var s = salt + ':' + code.join(','), h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+    for (var i = 0; i < s.length; i++) { var ch = s.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+  function secretId(st) { return NET.code + ':' + st.started + ':' + st.round; }
+  // (kept masked with its salt, so the code isn't sitting in plain sight in the device's storage either)
+  function secretGet(st) {
+    try {
+      var all = JSON.parse(localStorage.getItem(NETKEY)) || {}, x = all[secretId(st)];
+      if (!x) return null;
+      var code = x.m.map(function (v, i) { return v ^ (x.s.charCodeAt(i % x.s.length) & 15); });
+      return fp(code, x.s) === st.commit ? { code: code, salt: x.s } : null;
+    } catch (e) { return null; }
+  }
+  function secretPut(st, code, salt) {
+    try {
+      var all = JSON.parse(localStorage.getItem(NETKEY)) || {}, keys = Object.keys(all);
+      if (keys.length > 20) keys.slice(0, keys.length - 20).forEach(function (k) { delete all[k]; });
+      all[secretId(st)] = { s: salt, m: code.map(function (v, i) { return v ^ (salt.charCodeAt(i % salt.length) & 15); }) };
+      localStorage.setItem(NETKEY, JSON.stringify(all));
+      return true;
+    } catch (e) { return false; }
+  }
+  function netWaitText() {
+    var ps = S.players;
+    if (LEFT) return [LEFT.text || 'The other player left', 'users', false];
+    if (S.phase === 'make') return [NET.seat === S.maker ? 'Set your code' : ps[S.maker].name + ' is setting the code', 'lock', true];
+    if (S.np === 'score') return NET.seat === S.maker ? (S.code ? ['Answering the guess', 'check', true] : ['Your code was set on another device. Open Mastermind there to answer this guess.', 'lock', false]) : ['Waiting for ' + ps[S.maker].name + ' to answer your guess', 'clock', true];
+    return [NET.seat === S.maker ? ps[S.breaker].name + ' can’t see your code' : ps[S.breaker].name + ' is guessing', NET.seat === S.maker ? 'eye' : 'clock', NET.seat !== S.maker];
+  }
+  function netLock() {
+    if (!myTurn() || S.phase !== 'make' || S.cur.some(function (x) { return x == null; })) return;
+    var code = S.cur.slice(), salt = Math.random().toString(36).slice(2, 12), h = fp(code, salt), rd = S.round;
+    var st0 = { started: S.started, round: rd };
+    if (!secretPut(st0, code, salt)) { Kit.toast('This device couldn’t keep the code. Try again.'); return; }
+    Kit.sfx('chip'); Kit.haptic('medium'); shieldAnim = 'shut';
+    NET.act(function (st) {
+      if (st.phase !== 'make' || st.round !== rd) return null;
+      st.phase = 'break'; st.commit = h; st.guesses = []; st.pend = null;
+      return { state: st, mv: { lock: 1 } };
+    });
+  }
+  function netGuess() {
+    if (!myTurn() || S.np !== 'break' || S.cur.some(function (x) { return x == null; })) { if (myTurn()) Kit.toast('Fill every hole first'); return; }
+    var g = S.cur.slice(), n = S.guesses.length;
+    Kit.sfx('chip');
+    NET.act(function (st) {
+      if (st.phase !== 'break' || st.guesses.length !== n) return null;
+      st.pend = g; st.phase = 'score';
+      return { state: st, mv: { guess: 1 } };
+    });
+  }
+  // The codemaker's device answers the guess waiting on the table (on its own, as soon as it sees it)
+  function netAnswer() {
+    var sec = secretGet(S);
+    if (!sec) { render(); return; }
+    var n = S.guesses.length;
+    NET.act(function (st) {
+      if (st.phase !== 'score' || !st.pend || st.guesses.length !== n) return null;
+      var f = feedback(sec.code, st.pend, st.K);
+      st.guesses.push({ g: st.pend, b: f[0], w: f[1] }); st.pend = null;
+      var cracked = f[0] === st.P, out = cracked || st.guesses.length >= st.R;
+      if (!out) { st.phase = 'break'; return { state: st, mv: { key: st.guesses.length - 1 } }; }
+      var pts = st.guesses.length + (cracked ? 0 : 1);
+      st.scores[st.maker] += pts;
+      st.result = { cracked: cracked, n: st.guesses.length };
+      st.reveal = { code: sec.code, salt: sec.salt };
+      st.log.push({ maker: st.maker, breaker: st.breaker, n: st.guesses.length, cracked: cracked, pts: pts, code: sec.code.slice(), gs: st.guesses.map(function (x) { return x.g.join('') + ':' + x.b + x.w; }).join(' ') });
+      st.phase = st.log.length >= st.total ? 'over' : 'reveal';
+      return { state: st, mv: { key: st.guesses.length - 1, end: 1 } };
+    });
+  }
+  function netNextRound() {
+    var rd = S.round;
+    NET.act(function (st) {
+      if (st.phase !== 'reveal' || st.round !== rd) return null;
+      st.round++; var mk = st.breaker; st.breaker = st.maker; st.maker = mk;
+      st.phase = 'make'; st.commit = null; st.guesses = []; st.pend = null; st.result = null; st.reveal = null;
+      return { state: st, mv: { next: 1 } };
+    });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function netShow(net, info) {
+    NET = net; tok++; busy = false;
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var st = JSON.parse(JSON.stringify(net.state)), prev = S;
+    var k = [st.started, st.round, st.phase, st.guesses.length].join(':');
+    // this device's view: the table's phases make / break / reveal / over, with the guess waiting for its answer
+    // shown as the row being checked
+    st.np = st.phase; if (st.phase === 'score') st.phase = 'break';
+    st.mode = '2p'; st.pass = null; st._k = k;
+    if (prev && prev._k === k && prev.cur) { st.cur = prev.cur; st.act = prev.act; st.stack = prev.stack; }
+    else { st.cur = []; for (var i = 0; i < st.P; i++) st.cur.push(null); st.act = 0; st.stack = []; }
+    st.code = st.reveal ? st.reveal.code : null;
+    S = st;
+    LEFT = net.status === 'over' && !(st.np === 'over') && net.result && net.result.left != null ? net.result : null;
+    if (!st.code && net.seat === st.maker && st.commit) { var sec = secretGet(st); if (sec) st.code = sec.code; }
+    var mv = !info.fresh && !info.again ? info.mv : null, tk = ++SHOWN;
+    // the breaker's device checks the revealed code against the fingerprint from the start of the round
+    if (st.reveal && mv && mv.end && net.seat === st.breaker && fp(st.reveal.code, st.reveal.salt) !== (st.commit || '')) Kit.toast('That code doesn’t match the one hidden at the start of the round');
+    if (mv && mv.key != null) keyAnim = mv.key;
+    if (mv && mv.end) shieldAnim = 'flip';
+    if (info.again || mv && mv.next) shieldAnim = net.seat === st.maker ? 'open' : '';
+    render();
+    if (mv && mv.key != null) {
+      var gr = st.guesses[mv.key], n = gr.b + gr.w;
+      busy = true;
+      for (var j = 0; j < n; j++) (function (j) {
+        later(function () {
+          var holes = document.querySelectorAll('.grw[data-r="' + mv.key + '"] .kh');
+          if (holes[j]) holes[j].appendChild(el('i', { class: 'kp pop ' + (j < gr.b ? 'b' : 'w') }));
+          Kit.sfx('tick'); Kit.haptic('tick');
+        }, 260 + j * 190);
+      })(j);
+      later(function () {
+        keyAnim = -1; busy = false;
+        if (mv.end) {
+          if (st.result.cracked) { Kit.callout(st.result.n === 1 ? 'First try!' : 'Cracked!'); Kit.sfx('good'); Kit.haptic('success'); }
+          else { Kit.callout('Unbroken!', '#ff8a8a'); Kit.sfx('bad'); Kit.haptic('error'); }
+        } else if (n === 0 && net.seat === st.breaker) Kit.toast('No color matches');
+        render();
+        if (st.np === 'over') later(netFinish, 1900);
+      }, 300 + n * 190 + 200);
+    } else if (st.np === 'over' || LEFT) later(netFinish, 300);
+    if (mv && mv.lock && net.seat === st.breaker) Kit.sfx('deal');
+    if (info.again) { Kit.sfx('deal'); Kit.callout(net.seat === st.maker ? 'You make the first code' : st.players[st.maker].name + ' makes the first code'); }
+    // the guess waiting on the table: this device holds the code, so it answers
+    if (st.np === 'score' && net.seat === st.maker && net.myTurn() && !LEFT) setTimeout(function () { if (tk === SHOWN && NET) netAnswer(); }, 700);
+  }
+  function netFinish() {
+    if (!NET || !S) return;
+    var ps = S.players, me = NET.seat;
+    if (LEFT) {
+      if (WINO) WINO.close();
+      WINO = Kit.win({ icon: 'users', title: LEFT.text || 'The other player left', againLabel: 'Back to the lobby', again: function () { WINO = null; netAgain(); }, look: { label: 'Look at the board', onClick: function () { WINO = null; } } });
+      return;
+    }
+    var lead = S.scores[0] === S.scores[1] ? -1 : S.scores[0] > S.scores[1] ? 0 : 1, key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('codebreaker_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('codebreaker_net_rec')) || []; rl.push(key); localStorage.setItem('codebreaker_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [];
+      S.log.forEach(function (l, i) { hl.push(l.cracked ? ps[l.breaker].name + ' cracked ' + Kit.poss(ps[l.maker].name) + ' code in ' + l.n + ' (round ' + (i + 1) + ')' : Kit.poss(ps[l.maker].name) + ' code was never cracked (round ' + (i + 1) + ')'); });
+      if (hl.length > 4) { var cr = S.log.filter(function (l) { return l.cracked; }).length; hl = hl.filter(function (h) { return /never cracked/.test(h); }); hl.unshift(cr + ' of ' + S.log.length + ' codes were cracked'); }
+      hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online · ' + DIFF[S.diff].label + (S.blanks ? ' + blanks' : '') + ' · ' + S.total + ' rounds',
+        players: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: false }; }),
+        winner: lead < 0 ? null : ps[lead].name,
+        rounds: { labels: S.log.map(function (l, i) { return 'R' + (i + 1); }), scores: S.log.map(function (l) { var a = [0, 0]; a[l.maker] = l.pts; return a; }) },
+        highlights: hl, detail: detail()
+      });
+    }
+    if (WINO) WINO.close();
+    WINO = Kit.win({
+      icon: lead < 0 ? 'users' : lead === me ? 'trophy' : 'users',
+      title: lead < 0 ? "It's a tie!" : lead === me ? 'You win!' : ps[lead].name + ' wins!',
+      sub: ps[0].name + ' ' + S.scores[0] + ' – ' + S.scores[1] + ' ' + ps[1].name,
+      rank: ps.map(function (p, i) { return { name: p.name, score: S.scores[i], color: Kit.color(i) }; }).sort(function (a, b) { return b.score - a.score; }),
+      lose: lead >= 0 && lead !== me, againLabel: 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; tok++; busy = false; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.players && sv.phase && sv.phase !== 'over') { S = sv; render(); cpuTurn(); } else showSetup();
+  }
+
   // For tests: the scoring rule and the solver
-  window.CodeBreaker = { feedback: feedback, Solver: Solver };
+  window.CodeBreaker = { feedback: feedback, Solver: Solver, state: function () { return S; }, place: function (i, c) { place(i, c); }, lock: function () { lockCode(); }, check: function () { submit(false); }, next: function () { netNextRound(); }, myTurn: function () { return myTurn(); } };
 
   // ── Boot ────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
@@ -893,6 +1124,18 @@ button.hole{cursor:pointer;}
       save(); render(); cpuTurn();
     }
   } else showSetup();
+
+  TurnNet.setup({
+    game: 'codebreaker', title: 'Mastermind', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.phase === 'over' ? [] : st.phase === 'break' || st.phase === 'reveal' ? [st.breaker] : [st.maker]; },
+    over: function (st) {
+      if (st.phase !== 'over') return null;
+      var w = st.scores[0] === st.scores[1] ? -1 : st.scores[0] > st.scores[1] ? 0 : 1;
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' wins ' + Math.max(st.scores[0], st.scores[1]) + '–' + Math.min(st.scores[0], st.scores[1]) : 'A tie' };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
