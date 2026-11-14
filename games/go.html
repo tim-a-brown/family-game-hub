@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .go-col{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 
@@ -716,6 +718,8 @@ function GoEngine() {
   // S = {mode, level, n, komi, hcap, rule, atari, players:[{name,cpu,color}], b:[n*n], turn, ko, last,
   //      caps:[0,b,w], passes, mv, hist:[], phase:'play'|'mark'|'over', dead:[], big:{c,n,mv}, kos, started}
   var S = null, epoch = 0;
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   var LEVELS = {
     easy: { 9: { time: 450, sims: 350, temp: 1 }, 13: { time: 600, sims: 450, temp: 1 }, 19: { time: 800, sims: 600, temp: 1 } },
     normal: { 9: { time: 1000 }, 13: { time: 1500 }, 19: { time: 2000 } },
@@ -724,13 +728,14 @@ function GoEngine() {
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
   var RULE_NAME = { area: 'Area scoring', territory: 'Territory scoring' };
   function save() {
+    if (NET) return;
     try {
       var o = {}; for (var k in S) if (k !== 'busy' && k !== 'counting') o[k] = S[k];
       localStorage.setItem(SAVE, JSON.stringify(o));
     } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set(S.phase === 'mark' ? 'Counting' : S.mv ? 'Move ' + (S.mv + 1) : 'Ready');
   }
-  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function pl(c) { return S.players[0].color === c ? S.players[0] : S.players[1]; }
   function vsCpu() { return S.players.some(function (p) { return p.cpu; }); }
   function cname(c) { return c === BLACK ? 'Black' : 'White'; }
@@ -796,13 +801,14 @@ function GoEngine() {
 
   Kit.init({
     id: 'go', mark: false, color: '#d9a650',
-    onNew: function () { epoch++; cancelThink(); clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } epoch++; cancelThink(); clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Go: past games' }); } },
-      { icon: 'close', label: 'Resign', onClick: function () { resign(); } }
-    ],
-    rules: RULES
+      { icon: 'close', label: 'Resign', onClick: function () { if (NET) netResign(); else resign(); } }
+    ]),
+    rules: RULES + '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the other player joins on their own device, on the board, handicap, komi and scoring chosen in the setup. Whoever opens the table plays the color chosen in the setup in the first game; colors swap each game when there is no handicap.</li>' +
+      '<li>After two passes in a row, either of you can tap a group to mark it dead or alive. The game is counted when you both agree to the count.</li></ul>'
   });
 
   function showSetup() {
@@ -869,6 +875,7 @@ function GoEngine() {
   var WHY = { suicide: 'No liberties there: that stone would be captured straight away', ko: 'Ko! You can\'t take back right away. Play somewhere else first', occupied: '' };
   // i = board index, or -1 to pass
   function move(i, byCpu) {
+    if (NET) return netMove(i);
     if (!S || S.phase !== 'play') return false;
     var c = S.turn, res = null;
     if (i >= 0) {
@@ -905,7 +912,7 @@ function GoEngine() {
     return true;
   }
   function maybeCpu() {
-    if (!S || S.phase !== 'play' || S.busy || !pl(S.turn).cpu) return;
+    if (NET || !S || S.phase !== 'play' || S.busy || !pl(S.turn).cpu) return;
     S.busy = true; paintStatus();
     var t0 = Date.now(), my = epoch, myMv = S.mv, lv = (LEVELS[S.level] || LEVELS.normal)[S.n] || { time: 1000 };
     var o = { toPlay: S.turn, ko: S.ko, komi: effKomi(), passes: S.passes, last: S.last, mv: S.mv, time: lv.time, sims: lv.sims, temp: lv.temp };
@@ -955,6 +962,7 @@ function GoEngine() {
     });
   }
   function toggleDead(i) {
+    if (NET) return netToggle(i);
     if (!S || S.phase !== 'mark' || S.counting || !S.b[i]) return;
     var ch = E.chainOf(S.b, S.n, i), isDead = S.dead.indexOf(i) >= 0;
     if (isDead) S.dead = S.dead.filter(function (x) { return ch.indexOf(x) < 0; });
@@ -1105,7 +1113,7 @@ function GoEngine() {
     return out;
   }
   function paintBars(anim) {
-    var hu = S.players.filter(function (p) { return !p.cpu; }), bs = hu.length === 1 ? hu[0].color : BLACK;
+    var hu = S.players.filter(function (p) { return !p.cpu; }), bs = NET ? (NET.seat >= 0 ? S.players[NET.seat].color : BLACK) : hu.length === 1 ? hu[0].color : BLACK;
     bar(topBar, 3 - bs, anim); bar(botBar, bs, anim);
   }
   function bar(node, c, anim) {
@@ -1118,7 +1126,7 @@ function GoEngine() {
     else sub = cname(c) + (S.hcap >= 2 && c === BLACK ? ' · ' + S.hcap + ' handicap' : '') + (c === WHITE ? ' · komi ' + S.komi : '') + (on ? ' · to play' : '');
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok ' + (c === BLACK ? 'b' : 'w') }));
-    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
+    node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(NET && NET.seat >= 0 && S.players[NET.seat] === p ? 'You' : p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
     var bump = anim && anim.c === c && anim.caps.length;
     node.appendChild(el('div', { class: 'pris', 'aria-label': S.caps[c] + ' prisoners' }, [
       el('div', null, [el('div', { class: 'n' + (bump ? ' bump' : ''), text: String(S.caps[c]) }), el('div', { class: 'lb', text: 'caught' })]),
@@ -1129,6 +1137,20 @@ function GoEngine() {
     if (!turnEl || !S) return;
     paintBarsLite();
     var p = pl(S.turn), txt, color = S.turn === BLACK ? '#c4c4cf' : '#f4f1e8', dot = true;
+    if (NET) {
+      var me = NET.seat >= 0 ? S.players[NET.seat] : null, other = S.players[1 - Math.max(0, NET.seat)];
+      if (LEFT) { txt = LEFT.text || 'The other player left'; dot = false; color = 'var(--accent)'; }
+      else if (S.phase === 'over') { var rr = S.result; dot = false; color = 'var(--accent)'; txt = rr.resign ? (pl(rr.win) === me ? 'You win: ' + pl(rr.resign).name + ' resigned' : pl(rr.win).name + ' wins: you resigned') : (pl(rr.win) === me ? 'You win' : pl(rr.win).name + ' wins') + ' by ' + fmt(rr.margin); }
+      else if (S.phase === 'mark') { color = 'var(--accent)'; txt = !S.dead ? 'Finding dead stones…' : S.agree && S.agree[NET.seat] ? 'Waiting for ' + other.name + ' to agree to the count' : S.agree && S.agree[1 - NET.seat] ? other.name + ' agrees with this count. Tap a group to change it, or agree' : 'Tap a group to mark it dead or alive'; }
+      else if (pv >= 0) txt = 'Tap again to place';
+      else if (p !== me) txt = S.lastPass && S.lastPass !== S.turn ? 'You passed. Waiting for ' + p.name : 'Waiting for ' + p.name;
+      else if (S.lastPass && S.lastPass !== S.turn) txt = pl(S.lastPass).name + ' passed. Pass to end, or play on';
+      else txt = 'Your turn';
+      turnEl.innerHTML = ''; turnEl.style.setProperty('--c', color);
+      if (dot) turnEl.appendChild(el('span', { class: 'dot' }));
+      turnEl.appendChild(el('span', { text: txt }));
+      return;
+    }
     if (S.phase === 'over') {
       var r = S.result; dot = false;
       txt = r ? (r.resign ? pl(r.win).name + ' wins: ' + pl(r.resign).name + ' resigned' : (pl(r.win).name === 'You' ? 'You win' : pl(r.win).name + ' wins') + ' by ' + fmt(r.margin)) : 'Game over';
@@ -1155,6 +1177,19 @@ function GoEngine() {
   }
   function paintActs() {
     acts.innerHTML = '';
+    if (NET) {
+      if (LEFT || S.phase === 'over') { acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return; }
+      if (S.phase === 'mark') {
+        var agreed = !!(S.agree && S.agree[NET.seat]);
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Keep playing', onclick: netKeepPlaying }));
+        acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: agreed ? 'You agreed' : 'Agree to the count', disabled: !S.dead || agreed, onclick: netAgree }));
+        return;
+      }
+      var mine = canAct();
+      acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Pass', disabled: !mine, onclick: function () { if (canAct()) move(-1); } }));
+      if (touchy()) acts.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-sm', text: 'Place', disabled: !(mine && pv >= 0), onclick: function () { if (pv >= 0 && canAct()) move(pv); } }));
+      return;
+    }
     var human = S.phase === 'play' && !pl(S.turn).cpu && !S.busy;
     if (S.phase === 'play') {
       acts.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-sm', text: 'Pass', disabled: !human, onclick: function () { if (canAct()) { move(-1); } } }));
@@ -1182,7 +1217,7 @@ function GoEngine() {
     }
     var h = '<table><thead><tr><th></th><th>Territory</th><th>' + (area ? 'Stones' : 'Prisoners') + '</th><th>' + (sc.hc ? 'Komi + hcp' : 'Komi') + '</th><th>Total</th></tr></thead><tbody>' + cell(BLACK) + cell(WHITE) + '</tbody></table>';
     var lead = sc.total[1] > sc.total[2] ? BLACK : WHITE, m = Math.abs(sc.total[1] - sc.total[2]);
-    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' · ' + RULE_NAME[S.rule].toLowerCase() + '</div>';
+    h += '<div class="res">' + (S.phase === 'over' ? (pl(lead).name === 'You' || NET && S.players[NET.seat] === pl(lead) ? 'You win' : Kit.esc(pl(lead).name) + ' wins') : Kit.esc(cname(lead)) + ' leads') + ' by ' + m + ' · ' + RULE_NAME[S.rule].toLowerCase() + '</div>';
     card.innerHTML = h;
     scw.appendChild(card);
   }
@@ -1211,7 +1246,7 @@ function GoEngine() {
   // ── Board input: hover ghost with a mouse; tap to preview, tap again to place on touch
   function touchy() { return (navigator.maxTouchPoints || 0) > 0 || !finePointer(); }
   function finePointer() { try { return matchMedia('(hover:hover) and (pointer:fine)').matches; } catch (e) { return true; } }
-  function canAct() { return S && S.phase === 'play' && !S.busy && !pl(S.turn).cpu; }
+  function canAct() { return S && S.phase === 'play' && !S.busy && (NET ? !LEFT && NET.myTurn() : !pl(S.turn).cpu); }
   function pointAt(e) {
     var r = bd.getBoundingClientRect(), u = r.width / (S.n + 0.5);
     var c = Math.round((e.clientX - r.left) / u - 0.75), rr = Math.round((e.clientY - r.top) / u - 0.75);
@@ -1276,8 +1311,185 @@ function GoEngine() {
     bd.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
 
+  // ── Online ───────────────────────────────────────────────────────────────
+  // Two people, each on their own device, with the setup's board, handicap, komi, scoring and atari warnings. Seat 0
+  // plays the setup's "You play" color in the first game; colors swap each game without a handicap. After two passes the table counts:
+  // the first device to see it finds the dead stones, either player can mark a group dead or alive, and the game
+  // ends when both have agreed to the count as it stands (a change clears the agreement).
+  function netOpts() {
+    var o = { n: 9, hcap: 0, komi: 6.5, rule: 'area', atari: true, side: 'b' };
+    try {
+      var g = JSON.parse(localStorage.getItem('gn_setup_go')) || {}, op = g.options || {};
+      if ([9, 13, 19].indexOf(+op.size) >= 0) o.n = +op.size;
+      if (+op.hcap >= 2 && +op.hcap <= 9) o.hcap = +op.hcap;
+      if ([0.5, 5.5, 6.5, 7.5].indexOf(+op.komi) >= 0) o.komi = +op.komi;
+      o.rule = op.rule === 'territory' ? 'territory' : 'area'; o.atari = op.atari !== 'off'; if (op.side === 'w') o.side = 'w';
+    } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    opts = opts || {};
+    var n = [9, 13, 19].indexOf(+opts.n) >= 0 ? +opts.n : 9, hcap = +opts.hcap || 0;
+    // (the setup's "You play" holds online: the one who opens the table plays that color in the first game)
+    var c0 = last && last.players ? (hcap ? last.players[0].color : 3 - last.players[0].color) : opts.side === 'w' ? WHITE : BLACK;
+    var st = { mode: 'online', level: 'normal', n: n, hcap: hcap, komi: hcap >= 2 ? 0.5 : +opts.komi || 6.5, rule: opts.rule === 'territory' ? 'territory' : 'area', atari: opts.atari !== false,
+      players: players.map(function (p, i) { return { name: p.name, cpu: false, color: i === 0 ? c0 : 3 - c0 }; }),
+      wins: last && last.wins ? last.wins.slice() : [0, 0], b: [], ko: -1, last: -1, caps: [0, 0, 0], passes: 0, mv: 0, lastPass: 0, hist: [], phase: 'play',
+      dead: null, agree: [false, false], big: null, kos: 0, started: Date.now(), result: null, ml: '' };
+    for (var i = 0; i < n * n; i++) st.b.push(0);
+    if (hcap >= 2) E.handicap(n, hcap).forEach(function (i) { st.b[i] = BLACK; });
+    st.turn = hcap >= 2 ? WHITE : BLACK;
+    return st;
+  }
+  function seatOfC(st, c) { return st.players[0].color === c ? 0 : 1; }
+  // A stone or a pass (pure on st: it may run again on a newer table), by the same rules as move()
+  function netApply(st, i) {
+    if (st.phase !== 'play') return null;
+    var c = st.turn, res = null, mv;
+    if (i >= 0) { res = E.tryPlay(st.b, st.n, i, c, st.ko); if (!res.ok) return null; }
+    st.ml += i < 0 ? '..' : 'abcdefghijklmnopqrs'.charAt((i / st.n) | 0) + 'abcdefghijklmnopqrs'.charAt(i % st.n);
+    if (i < 0) {
+      st.passes++; st.ko = -1; st.last = -1; st.lastPass = c; st.mv++; st.turn = 3 - c;
+      if (st.passes >= 2) { st.phase = 'mark'; st.dead = null; st.agree = [false, false]; }
+      mv = { pass: c, mark: st.phase === 'mark' };
+    } else {
+      st.b = res.arr; st.ko = res.ko; st.last = i; st.passes = 0; st.lastPass = 0; st.mv++; st.turn = 3 - c;
+      var k = res.caps.length;
+      if (k) { st.caps[c] += k; if (!st.big || k > st.big.n) st.big = { c: c, n: k, mv: st.mv }; if (res.ko >= 0) st.kos++; }
+      mv = { i: i, c: c, caps: res.caps };
+    }
+    return { state: st, mv: mv };
+  }
+  function netMove(i) {
+    if (!S || S.phase !== 'play' || !canAct()) return false;
+    if (i >= 0) { var w = E.tryPlay(S.b, S.n, i, S.turn, S.ko); if (!w.ok) { if (WHY[w.why]) { Kit.toast(WHY[w.why]); Kit.haptic('error'); } return false; } }
+    pv = -1;
+    NET.act(function (st) { return netApply(st, i); });
+    return true;
+  }
+  function netCount(st) {
+    var sc = E.score(st.b, st.n, { dead: st.dead || [], rule: st.rule, komi: st.komi, caps: st.caps, hcap: st.hcap }), winC = sc.total[1] > sc.total[2] ? BLACK : WHITE;
+    st.phase = 'over'; st.result = { win: winC, margin: Math.abs(sc.total[1] - sc.total[2]), resign: 0 }; st.wins[seatOfC(st, winC)]++;
+  }
+  function netToggle(i) {
+    if (!S || S.phase !== 'mark' || !S.dead || !S.b[i] || LEFT) return;
+    if (S.agree && S.agree[NET.seat]) { Kit.toast('You agreed to this count. If ' + S.players[1 - NET.seat].name + ' changes it, you can too.'); return; }
+    var ch = E.chainOf(S.b, S.n, i), isDead = S.dead.indexOf(i) >= 0;
+    tock(0.6); Kit.haptic('light');
+    NET.act(function (st) {
+      if (st.phase !== 'mark' || !st.dead) return null;
+      if (isDead) st.dead = st.dead.filter(function (x) { return ch.indexOf(x) < 0; });
+      else st.dead = st.dead.filter(function (x) { return ch.indexOf(x) < 0; }).concat(ch);
+      st.agree = [false, false];
+      return { state: st, mv: { toggle: i, dead: !isDead } };
+    });
+  }
+  function netAgree() {
+    var me = NET.seat;
+    NET.act(function (st) {
+      if (st.phase !== 'mark' || !st.dead || st.agree[me]) return null;
+      st.agree[me] = true;
+      if (st.agree[0] && st.agree[1]) netCount(st);
+      return { state: st, mv: { agree: me } };
+    });
+  }
+  function netKeepPlaying() {
+    NET.act(function (st) {
+      if (st.phase !== 'mark') return null;
+      st.phase = 'play'; st.dead = null; st.passes = 0; st.agree = [false, false];
+      return { state: st, mv: { keep: 1 } };
+    });
+  }
+  function netResign() {
+    if (!NET || !S || S.phase === 'over' || LEFT) return Kit.toast('No game in progress');
+    var me = NET.seat, c = S.players[me].color;
+    Kit.confirm('Resign this game?', { ok: 'Resign', danger: true, body: S.players[1 - me].name + ' will win this game.' }).then(function (ok) {
+      if (!ok || !NET) return;
+      NET.act(function (st) {
+        if (st.phase === 'over') return null;
+        st.phase = 'over'; st.result = { win: 3 - c, margin: 0, resign: c }; st.wins[1 - me]++;
+        return { state: st, mv: { resign: c } };
+      });
+    });
+  }
+  // the table counts: the first device to see two passes finds the dead stones
+  function netFindDead() {
+    var my = epoch, k = NET.code + ':' + S.mv;
+    if (netFindDead.k === k) return;
+    netFindDead.k = k;
+    think({ cmd: 'dead', arr: S.b.slice(), n: S.n, o: { komi: effKomi(), time: S.n >= 19 ? 1400 : 900 } }, function (res) {
+      if (!NET || my !== epoch) return;
+      var dead = res && res.dead ? res.dead : [];
+      NET.act(function (st) { if (st.phase !== 'mark' || st.dead) return null; st.dead = dead; return { state: st, mv: { dead: 1 } }; });
+    });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  // Draw the table: the newest stone is laid with its click, captured stones fly into the capturer's bowl
+  function netShow(net, info) {
+    NET = net; cancelThink();
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    var mv = !info.fresh && !info.again ? info.mv : null, sizeChanged = !S || !bd || !bd.isConnected || S.n !== net.state.n;
+    var anim = mv && mv.i != null && !sizeChanged ? { i: mv.i, caps: mv.caps, c: mv.c, from: capRects(mv.caps) } : null;
+    epoch++;
+    S = JSON.parse(JSON.stringify(net.state)); S.busy = false; S.counting = S.phase === 'mark' && !S.dead;
+    LEFT = net.status === 'over' && S.phase !== 'over' && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN;
+    if (sizeChanged || info.again || info.fresh) { pv = -1; build(); }
+    paint(anim);
+    if (anim) { tock(1); Kit.haptic(anim.caps.length >= 3 ? 'medium' : 'light'); if (anim.caps.length >= 5) setTimeout(function () { if (tok === SHOWN) { Kit.callout(anim.caps.length + ' stones captured!'); Kit.sfx('good'); } }, 300); else if (anim.caps.length) setTimeout(function () { Kit.sfx('pop'); }, 260); }
+    if (mv && mv.pass) { Kit.sfx('tap'); if (mv.mark) Kit.callout('Both passed: time to count'); else Kit.callout(pl(mv.pass) === S.players[net.seat] ? 'You pass' : pl(mv.pass).name + ' passes'); }
+    if (mv && mv.keep) Kit.toast('Back to the game. Two passes in a row end it again.');
+    if (info.again) { Kit.sfx('deal'); Kit.callout(pl(S.turn) === S.players[net.seat] ? 'You start' : pl(S.turn).name + ' starts'); }
+    if (S.phase === 'mark' && !S.dead && net.seat >= 0 && !LEFT) netFindDead();
+    if (S.phase === 'over' || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, mv && mv.resign ? 300 : 900);
+    else if (mv && !info.mine && net.myTurn() && S.phase === 'play') Kit.haptic('light');
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat >= 0 ? S.players[NET.seat] : null;
+    if (LEFT) {
+      if (WINO) WINO.close();
+      WINO = Kit.win({ icon: 'users', title: LEFT.text || 'The other player left', againLabel: 'Back to the lobby', again: function () { WINO = null; netAgain(); }, look: { label: 'Look at the board', onClick: function () { WINO = null; } } });
+      return;
+    }
+    var r = S.result, sc = r.resign ? null : currentScore(), winner = pl(r.win), loser = pl(3 - r.win), key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('go_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('go_net_rec')) || []; rl.push(key); localStorage.setItem('go_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [r.resign ? loser.name + ' resigned after ' + plural(S.mv, 'move') : winner.name + ' (' + cname(r.win) + ') won by ' + fmt(r.margin) + ' points'];
+      [BLACK, WHITE].forEach(function (c) { if (S.caps[c] >= 1) hl.push(pl(c).name + ' captured ' + plural(S.caps[c], 'stone')); });
+      if (S.big && S.big.n >= 3) hl.push(pl(S.big.c).name + ' made a big capture of ' + S.big.n + ' stones on move ' + S.big.mv);
+      if (S.kos >= 2) hl.push('A ko fight: ' + S.kos + ' ko captures back and forth');
+      hl.push('Played online at table ' + NET.code + ' on ' + S.n + '×' + S.n + (S.hcap >= 2 ? ' with a ' + S.hcap + '-stone handicap' : '') + ' in ' + plural(S.mv, 'move'));
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online · ' + S.n + '×' + S.n,
+        players: [BLACK, WHITE].map(function (c) { var p = pl(c); return { name: p.name + ' (' + cname(c) + ')', score: sc ? sc.total[c] : (c === r.win ? 1 : 0), cpu: false }; }),
+        winner: winner.name + ' (' + cname(r.win) + ')', summary: r.resign ? winner.name + ' won by resignation' : winner.name + ' won by ' + fmt(r.margin),
+        highlights: hl, meta: { size: S.n, komi: S.komi, handicap: S.hcap, rule: S.rule, moves: S.mv }, detail: detail(sc)
+      });
+    }
+    if (WINO) WINO.close();
+    WINO = Kit.win({
+      icon: winner === me ? 'trophy' : 'users',
+      title: winner === me ? 'You win!' : winner.name + ' wins!',
+      sub: r.resign ? (loser === me ? 'You resigned' : loser.name + ' resigned') : cname(r.win) + ' wins by ' + fmt(r.margin) + ' points',
+      rank: sc ? [r.win, 3 - r.win].map(function (c) { return { name: pl(c).name, score: sc.total[c], color: c === BLACK ? '#8b8b96' : '#f1efe9' }; }) : null,
+      lose: winner !== me, againLabel: 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; epoch++; cancelThink(); if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.b && sv.players && sv.phase && sv.phase !== 'over') { S = sv; S.busy = false; S.counting = false; build(); paint(); if (S.phase === 'mark' && !S.dead) enterMark(); else maybeCpu(); }
+    else showSetup();
+  }
+
   // Test hooks
   window.__go = {
+    agree: function () { netAgree(); }, myTurn: function () { return canAct(); },
     E: E, state: function () { return S; },
     set: function (arr, turn, extra) { epoch++; cancelThink(); S.busy = false; S.b = arr.slice(); S.turn = turn || BLACK; S.hist = []; S.last = -1; S.ml = null; S.ko = -1; S.phase = 'play'; S.passes = 0; S.lastPass = 0; S.dead = null; if (extra) for (var k in extra) S[k] = extra[k]; save(); paint(); maybeCpu(); },
     move: function (i) { return move(i); }, pass: function () { return move(-1); }, finish: function () { finish(); }, undo: undo, toggle: toggleDead
@@ -1290,6 +1502,22 @@ function GoEngine() {
     if (S.phase === 'mark' && !S.dead) enterMark();
     else maybeCpu();
   } else showSetup();
+
+  TurnNet.setup({
+    game: 'go', title: 'Go', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) {
+      if (st.phase === 'over') return [];
+      if (st.phase === 'mark') { var t = []; [0, 1].forEach(function (s) { if (!st.agree || !st.agree[s]) t.push(s); }); return t; }
+      return [seatOfC(st, st.turn)];
+    },
+    over: function (st) {
+      if (st.phase !== 'over' || !st.result) return null;
+      var w = seatOfC(st, st.result.win);
+      return { win: [w], text: st.players[w].name + (st.result.resign ? ' wins: ' + st.players[1 - w].name + ' resigned' : ' wins by ' + st.result.margin) };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
