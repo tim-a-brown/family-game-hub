@@ -920,7 +920,7 @@ const CSS = `
 .ck-b svg{width:19px;height:19px;flex:none;}
 .ck-b .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;}
 .ck-b .l{font-weight:750;font-size:1rem;text-shadow:0 1px 0 rgba(0,0,0,.55);}
-.ck-b .s{margin-top:2px;font-weight:550;font-size:.8rem;color:#e3c88f;opacity:.85;font-variant-numeric:tabular-nums;}
+.ck-b .s{margin-top:2px;font-weight:550;font-size:.8rem;color:#e3c88f;opacity:.85;}
 .ck-b + .ck-b::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:linear-gradient(180deg,transparent,var(--ck-gold-2),transparent);}
 .ck-b.rs{min-width:54px;padding:0 16px;}
 .ck-b[hidden]{display:none;}
