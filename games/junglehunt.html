@@ -120,7 +120,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     </div>
     <button class="fbtn" id="fbtn" type="button" aria-label="Button"></button>
   </div>
-  <div class="hint" id="hint">Arrow keys or WASD to move · Space to jump or stab · P to pause</div>
+  <div class="hint" id="hint">Move with the arrow keys or WASD, Space jumps or stabs, and P pauses.</div>
 </div>
 <script>
 (function () {
@@ -174,7 +174,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     var fb = $('fbtn'); if (fb) fb.classList.toggle('start', mode === 'attract');
     $('gno').textContent = mode === 'play' ? gameNo() : wantGame;
     $('sw-select').disabled = mode !== 'attract';
-    var h = $('hint'); if (h) h.textContent = mode === 'attract' ? 'Press Space to start · S for GAME SELECT' : 'Arrow keys or WASD to move · Space to jump or stab · P to pause';
+    var h = $('hint'); if (h) h.textContent = mode === 'attract' ? 'Press Space to start, or S for GAME SELECT.' : 'Move with the arrow keys or WASD, Space jumps or stabs, and P pauses.';
   }
   // a flick of the switch: the lever goes down while the console sees it pressed
   function flick(id, frames) { var b = $(id); b.classList.add('down'); setTimeout(function () { b.classList.remove('down'); }, Math.max(140, frames * 17)); Kit.haptic('light'); Kit.sfx('tap'); }
@@ -259,7 +259,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     if (mode !== 'play' || attract()) return;
     var s = { v: 1, who: cfg0.who, game: gameNo(), started: startedAt, maxScene: maxScene, rounds: rounds, st: C.save() };
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
-    Kit.resume.set((rounds > 1 ? 'Round ' + rounds + ' · ' : '') + SCENES[scene()].replace(/^the /, '').replace(/^./, function (c) { return c.toUpperCase(); }) + ' · ' + score().toLocaleString() + ' pts');
+    Kit.resume.set((rounds > 1 ? 'Round ' + rounds + ' \u00b7 ' : '') + SCENES[scene()].replace(/^the /, '').replace(/^./, function (c) { return c.toUpperCase(); }) + ' \u00b7 ' + score().toLocaleString() + ' pts');
   }
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.st ? s : null; } catch (e) { return null; } }
@@ -275,7 +275,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     $('btn-pause').style.visibility = mode === 'play' ? 'visible' : 'hidden';
     var ov = $('ov'), card = $('ov-card'), h = '';
     if (paused && mode === 'play') {
-      h = '<h2>' + (welcome ? 'Welcome back' : 'Paused') + '</h2><div class="sub">' + (rounds > 1 ? 'Round ' + rounds + ' · ' : '') + SCENES[scene()].replace(/^./, function (c) { return c.toUpperCase(); }) + ' · ' + score().toLocaleString() + ' points</div>' +
+      h = '<h2>' + (welcome ? 'Welcome back' : 'Paused') + '</h2><div class="sub">' + score().toLocaleString() + ' points at ' + SCENES[scene()] + (rounds > 1 ? ' in round ' + rounds : '') + '</div>' +
         '<button class="btn btn-primary btn-lg" id="ov-resume" type="button">' + Kit.icon('play') + (welcome ? 'Continue' : 'Resume') + '</button>' +
         '<div class="row2"><button class="btn btn-soft" id="ov-quit" type="button">New game</button><button class="btn btn-soft" id="ov-rules" type="button">' + Kit.icon('book') + 'Rules</button></div>';
     }

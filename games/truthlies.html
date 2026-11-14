@@ -1095,7 +1095,7 @@ body{overflow-x:hidden;}
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function fmt(t) { t = t | 0; var m = Math.floor(t / 60), s = ('0' + t % 60).slice(-2); return m + ':' + s; }
   function today() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }   // local calendar day, steady across DST
-  function label() { return S.daily ? 'Daily · ' + LVN[S.lvl] : S.cls >= 0 ? 'Classic ' + (S.cls + 1) : LVN[S.lvl]; }
+  function label() { return S.daily ? 'Daily ' + LVN[S.lvl].toLowerCase() : S.cls >= 0 ? 'Classic ' + (S.cls + 1) : LVN[S.lvl]; }
   function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
   function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d && e.solved; })[0] || null; }
   function jget(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } }
@@ -1111,7 +1111,7 @@ body{overflow-x:hidden;}
   function showSetup() {
     stopClock(); accusing = false; app.className = 'tl';
     var dl = DAILY_LV[new Date().getDay()], done = dailyDone(), nos = jget(NOKEY, {}), cls = jget(CLSKEY, []);
-    function solvedN(lv) { var n = hist().filter(function (e) { return e && e.lvl === lv && e.solved; }).length; return n ? ' · ' + n + ' solved' : ''; }
+    function solvedN(lv) { var n = hist().filter(function (e) { return e && e.lvl === lv && e.solved; }).length; return n ? ', and ' + n + ' are solved' : ''; }
     var modes = [
       { id: 'daily', icon: 'calendar', title: 'Daily puzzle', desc: done ? 'Solved today in ' + fmt(done.seconds) + '. Play it again?' : "Today's is " + LVN[dl] + '. Same puzzle everywhere.' },
       { id: 'easy', icon: 'star', title: 'Easy', desc: 'Two or three on stage' + solvedN('easy') },
@@ -1333,7 +1333,7 @@ body{overflow-x:hidden;}
       quiet: !!quiet,
       icon: P.fam === 'wd' ? 'search' : 'trophy',
       title: S.gave ? 'The answer' : P.fam === 'wd' ? 'Case closed!' : 'Solved!',
-      sub: S.gave ? (P.fam === 'wd' ? P.names[P.sol.c] + ' ' + N().P + '.' : 'Every bubble now says why.') : label() + ' in ' + fmt(S.time) + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' · no hints') + (S.wrong ? ' · ' + S.wrong + ' wrong' : ''),
+      sub: S.gave ? (P.fam === 'wd' ? P.names[P.sol.c] + ' ' + N().P + '.' : 'Every bubble now says why.') : label() + ' in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ' with no hints') + (S.wrong ? ' and ' + S.wrong + ' wrong' : ''),
       againLabel: mode === 'daily' ? 'Play ' + LVN[lv] : cls >= 0 ? 'Next classic' : 'Next puzzle',
       again: function () { newPuzzle(mode === 'daily' ? lv : mode); },
       look: 'See why',
@@ -1396,7 +1396,7 @@ body{overflow-x:hidden;}
     // playbill
     play.appendChild(el('div', { class: 'bill' }, [
       el('div', { class: 'top' }, [el('span', { class: 'lv', text: S.daily ? 'Daily' : S.cls >= 0 ? 'Classic' : LVN[S.lvl] }),
-        el('span', { class: 'no', text: S.daily ? new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ' · ' + LVN[S.lvl] : S.cls >= 0 ? 'No. ' + (S.cls + 1) + ' of ' + CLASSICS.length : 'No. ' + S.no }),
+        el('span', { class: 'no', text: S.daily ? new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) + ', ' + LVN[S.lvl].toLowerCase() : S.cls >= 0 ? 'No. ' + (S.cls + 1) + ' of ' + CLASSICS.length : 'No. ' + S.no }),
         el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]),
       el('h2', { text: set.title }),
       el('p', { class: 'rule', id: 'rule', html: ruleHTML() + (P.fam === 'wd' ? ' <b>' + Kit.esc(set.Q) + '</b>' : '') })

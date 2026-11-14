@@ -470,7 +470,7 @@ function Scorepad(host, o) {
       var tr = el('tr', { class: (justAdded && ri === S.rounds.length - 1 ? 'just' : '') + (editing ? ' dim' : '') }, [el('th', { class: 'rn', text: r.label || String(ri + 1) })]);
       r.scores.forEach(function (v, i) {
         var td = el('td', { class: Number(v) < 0 ? 'neg' : '', text: v == null ? '–' : String(v) });
-        if (r.detail && r.detail[i]) td.appendChild(el('small', { text: r.detail[i] }));
+        if (r.detail && r.detail[i]) td.appendChild(Kit.facts(el('small'), r.detail[i]));   // (a round's facts, a line each)
         tr.appendChild(td);
       });
       tr.addEventListener('click', function () {

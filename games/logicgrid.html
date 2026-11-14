@@ -1077,7 +1077,7 @@ var LG = (function () {
   var S = null, P = null, U = [], R = [], tick = null;
   function today() { return Math.round((new Date().setHours(0, 0, 0, 0) - new Date(2024, 0, 1).getTime()) / 86400000) + 1; }   // local calendar day, steady across DST
   function fmt(t) { t = t | 0; var h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = ('0' + t % 60).slice(-2); return h ? h + ':' + ('0' + m).slice(-2) + ':' + s : m + ':' + s; }
-  function label() { return (S.daily ? 'Daily · ' : '') + lvName(S.lv); }
+  function label() { return (S.daily ? 'Daily ' + lvName(S.lv).toLowerCase() : lvName(S.lv)); }
   function hist() { try { return GameHistory.load(HKEY); } catch (e) { return []; } }
   function bestTime(lv) { var b = 0; hist().forEach(function (e) { if (e && e.lv === lv && e.seconds > 0 && !e.hints && (!b || e.seconds < b)) b = e.seconds; }); return b; }
   function dailyDone() { var d = today(); return hist().filter(function (e) { return e && e.daily === d; })[0] || null; }
@@ -1117,7 +1117,7 @@ var LG = (function () {
   function showSetup() {
     stopClock(); document.body.classList.remove('playing'); app.className = 'lg';
     var dl = DAILY_LV[new Date().getDay()], done = dailyDone();
-    function bt(lv) { var b = bestTime(lv); return b ? ' · best ' + fmt(b) : ''; }
+    function bt(lv) { var b = bestTime(lv); return b ? '. Your best is ' + fmt(b) + '.' : ''; }
     Kit.setup(app, {
       intro: 'A short story, a page of clues and a grid to work it out on',
       modes: [
@@ -1329,7 +1329,7 @@ var LG = (function () {
     var play = el('div', { class: 'play' });
     var page = el('div', { class: 'page', id: 'page' });
     var th = LG.theme(P);
-    page.appendChild(el('div', { class: 'ph' }, [el('span', { class: 't', text: th.title }), el('span', { class: 'no', text: 'No. ' + S.no + ' · ' + (S.daily ? 'Daily ' : '') + LV[S.lv] }), el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]));
+    page.appendChild(el('div', { class: 'ph' }, [el('span', { class: 't', text: th.title }), el('span', { class: 'no', text: 'No. ' + S.no + ', ' + (S.daily ? 'daily ' + LV[S.lv].toLowerCase() : LV[S.lv].toLowerCase()) }), el('span', { class: 'tm', id: 'tm', text: fmt(S.time) })]));
     var gwrap = el('div', { class: 'gwrap' });
     gview = el('div', { class: 'gview', id: 'gview' });
     gridEl = el('div', { class: 'grid', id: 'grid', role: 'grid', 'aria-label': 'Logic grid' });
@@ -1757,7 +1757,7 @@ var LG = (function () {
       setTimeout(function () {
         var lv = S.lv;
         Kit.win({
-          title: 'Solved!', sub: lvn + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (best && prev ? ' · new best time' : '') + (S.hints ? ' · ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : ''),
+          title: 'Solved!', sub: lvn + (S.daily ? ' daily' : '') + ' in ' + fmt(S.time) + (S.hints ? ' with ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : '') + (best && prev ? ', a new best time' : ''),
           againLabel: 'Another ' + LV[lv] + ' puzzle', again: function () { newPuzzle(lv, 0, false); },
           look: 'Look at the grid',
           setup: showSetup, setupLabel: 'Choose a level'
