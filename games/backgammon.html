@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .bgw{display:flex;flex-direction:column;align-items:center;gap:8px;}
 /* Player strips above and below the board */
@@ -128,9 +130,9 @@
 
   Kit.init({
     id: 'backgammon',
-    onNew: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Backgammon: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cpuToken++; clearSave(); undoStack = []; showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Backgammon: past games' }); } }]),
     rules:
       '<p class="goal">Race all <b>15 of your checkers</b> around the board, into your home corner, and then off the board. First to bear off all 15 wins.</p>' +
       '<h3>Moving</h3><ul><li>Roll two dice. Move one checker the number on one die, and a checker (the same one or another) the number on the other die.</li>' +
@@ -144,18 +146,22 @@
       '<li><b>Backgammon</b> (3 points): the loser hasn\'t borne off any and still has a checker on the bar or in the winner\'s home corner.</li></ul>' +
       '<h3>The doubling cube (optional)</h3><ul><li>Before rolling, you can <b>double</b> the stakes. The other player either <b>takes</b> (the game is now worth twice as much and they own the cube) or <b>drops</b> (and loses the game at the current value).</li>' +
       '<li>Only the cube\'s owner can double next. In a match, no doubling the game right after someone gets one point from winning (the Crawford rule).</li></ul>' +
-      '<h3>How to move here</h3><p>Tap a glowing checker, then tap a gold point. To bear off, tap the glowing tray on the right.</p>'
+      '<h3>How to move here</h3><p>Tap a glowing checker, then tap a gold point. To bear off, tap the glowing tray on the right.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the other player joins on their own device, with the match length and the cube chosen in the setup. Whoever opens the table plays White. Take your turn whenever you like: the home screen shows when it’s your roll, and when a double waits for your answer.</p>'
   });
 
   // ── State ─────────────────────────────────────────────────────────────────
   // pts[i] (i = 0..23 is point i+1 from White's side): + = White (player 0) checkers, − = Black (player 1).
   // White moves 24 → 1 and bears off below point 1; Black moves 1 → 24.
   var S = null, undoStack = [], cpuToken = 0, sel = null, rolling = false;
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0, NSHEET = null;
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set(S.target > 1 ? 'Game ' + S.gameNo + ' · ' + S.score[0] + '–' + S.score[1] + ' (to ' + S.target + ')' : 'Game in progress');
   }
-  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
     S = null; app.innerHTML = '';
@@ -378,6 +384,7 @@
       (S.target === 1 || S.score[S.cur] + S.cube < S.target);
   }
   function roll(byCpu) {
+    if (NET) return netRoll();
     if (!S || S.phase !== 'roll' || (curP().cpu && !byCpu) || rolling) return;
     S.dice = [rnd(), rnd()];
     S.left = S.dice[0] === S.dice[1] ? [S.dice[0], S.dice[0], S.dice[0], S.dice[0]] : S.dice.slice();
@@ -438,6 +445,7 @@
   // Human taps
   function tapPoint(i) {
     if (!S || S.phase !== 'move' || curP().cpu || rolling) return;
+    if (NET && (LEFT || !NET.myTurn())) { if (!LEFT) nudge('It’s ' + Kit.poss(curP().name) + ' turn'); return; }
     var lm = legalMoves(S.pos, S.cur, S.left);
     if (sel != null) {
       var ms = lm.filter(function (m) { return m.from === sel && m.to === i; });
@@ -452,12 +460,13 @@
     if (sel != null) { sel = null; render(); }
   }
   function tapOff() {
-    if (!S || S.phase !== 'move' || curP().cpu || sel == null) return;
+    if (!S || S.phase !== 'move' || curP().cpu || sel == null || NET && !NET.myTurn()) return;
     var ms = legalMoves(S.pos, S.cur, S.left).filter(function (m) { return m.from === sel && m.to === OFF; }).sort(function (a, b) { return a.d - b.d; });
     if (ms.length) humanMove(ms[0]);
   }
   function nudge(t) { Kit.toast(t); Kit.haptic('error'); Kit.sfx('bad'); }
   function humanMove(m) {
+    if (NET) return netMove(m);
     snapshot();
     if (doMove(m, false)) return;
     var lm = legalMoves(S.pos, S.cur, S.left);
@@ -504,6 +513,7 @@
   // ── Doubling cube ─────────────────────────────────────────────────────────
   var dblSheet = null;
   function humanDouble() {
+    if (NET) return netDouble();
     if (!canDouble() || curP().cpu) return;
     snapshot();
     offerDouble(S.cur);
@@ -689,7 +699,7 @@
     app.classList.add('ipl');
     G = geometry();
     var s = S.cur, me = curP(), q = S.pos, P = S.players;
-    var human = !me.cpu && S.phase === 'move' && !rolling;
+    var human = !me.cpu && S.phase === 'move' && !rolling && (!NET || !LEFT && NET.myTurn());
     var lm = human ? legalMoves(q, s, S.left) : [];
     var froms = {}, dests = {};
     lm.forEach(function (m) { froms[m.from] = 1; if (sel != null && m.from === sel) dests[m.to] = 1; });
@@ -829,19 +839,19 @@
     return box;
   }
   function tag(pl) {
-    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl;
+    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl, net = NET && NET.seat !== pl && !LEFT;
     var chk = el('span', { class: 'chk' }, [el('span', { class: 'ck ' + (pl ? 'b' : 'w'), style: { '--cd': '30px', transform: 'none', position: 'absolute' } })]);
     var st = S.phase === 'over' ? (S.games.length && S.games[S.games.length - 1].w === pl ? 'Won this game' : '') :
       !on ? (pl === 0 ? 'White · home bottom right' : 'Black · home top right') :
       S.phase === 'double' ? (S.doubler === pl ? 'Doubling…' : 'Take or drop?') :
-      p.cpu ? (S.phase === 'roll' ? 'Thinking…' : 'Moving…') : S.phase === 'roll' ? 'Your roll' : 'Your move';
-    if (S.phase === 'double' && S.doubler !== pl) st = p.cpu ? 'Deciding…' : 'Take or drop?';
+      p.cpu ? (S.phase === 'roll' ? 'Thinking…' : 'Moving…') : net ? (S.phase === 'roll' ? 'Rolling next' : 'Moving') : S.phase === 'roll' ? 'Your roll' : 'Your move';
+    if (S.phase === 'double' && S.doubler !== pl) st = p.cpu ? 'Deciding…' : net ? 'Deciding' : 'Take or drop?';
     var nums = el('span', { class: 'nums' }, [
       el('span', { class: 'num' }, [el('b', { text: String(pips(S.pos, pl)) }), el('small', { text: 'pips' })]),
       el('span', { class: 'num' }, [el('b', { text: S.pos.off[pl] + '' }), el('small', { text: 'off' })])
     ]);
     if (S.target > 1) nums.appendChild(el('span', { class: 'num' }, [el('b', { text: String(S.score[pl]) }), el('small', { text: 'of ' + S.target })]));
-    return el('div', { class: 'btag' + (on ? ' on' : '') }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'st', text: st })]), nums]);
+    return el('div', { class: 'btag' + (on ? ' on' : '') }, [chk, el('span', { class: 'col' }, [el('span', { class: 'nm', text: NET && NET.seat === pl ? 'You' : p.name }), el('span', { class: 'st', text: st })]), nums]);
   }
   function hintLine(human, lm) {
     var t = '';
@@ -850,11 +860,19 @@
       if (S.pos.bar[S.cur]) t = 'Tap a gold point to come in from the bar';
       else if (sel != null) t = lm.some(function (m) { return m.from === sel && m.to === OFF; }) ? (lm.some(function (m) { return m.from === sel && m.to !== OFF; }) ? 'Tap a gold point, or the tray to bear off' : 'Tap the glowing tray to bear off') : 'Tap a gold point';
       else t = 'Tap a glowing checker';
-    } else if (S.phase === 'roll' && !curP().cpu) t = S.mode === '2p' ? Kit.poss(curP().name) + ' roll' : '';
+    } else if (NET && LEFT) t = LEFT.text || 'The other player left';
+    else if (NET && S.phase !== 'over' && !NET.myTurn()) t = S.phase === 'double' ? 'Waiting for ' + S.players[1 - S.doubler].name + ' to answer your double' : 'Waiting for ' + curP().name;
+    else if (S.phase === 'roll' && !curP().cpu) t = S.mode === '2p' ? Kit.poss(curP().name) + ' roll' : '';
     return el('div', { class: 'hint', text: t });
   }
   function controls(human) {
     var c = el('div', { class: 'ctrl' }), me = curP();
+    if (NET) {
+      if (LEFT || S.phase === 'over' && S.matchOver) { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); return c; }
+      if (S.phase === 'over') { c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Next game', onclick: netNext })); return c; }
+      if (S.phase === 'double' && NET.myTurn()) { c.appendChild(el('button', { type: 'button', class: 'btn btn-soft', text: 'Drop', onclick: function () { netAnswer(false); } })); c.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Take (play for ' + S.cube * 2 + ')', onclick: function () { netAnswer(true); } })); return c; }
+      if (S.phase !== 'roll' || !NET.myTurn()) return c;
+    }
     if (S.phase === 'roll' && !me.cpu) {
       if (S.cubeOn && !S.crawford && S.mode) {
         var db = el('button', { type: 'button', class: 'btn btn-soft', html: '<span>Double</span>', onclick: humanDouble });
@@ -889,9 +907,234 @@
   var rT = null;
   window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && S.pos) render(); }, 150); });
 
+  // ── Online ────────────────────────────────────────────────────────────────
+  // Two people, each on their own device: whoever opens the table plays White. The match length and the cube are
+  // the setup's. Each roll, each checker moved, a double and its answer are moves at the table; a turn ends by
+  // itself when no die can be played. Between the games of a match either player starts the next one.
+  function netOpts() {
+    var o = { target: 1, cube: true };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_backgammon')) || {}, op = g.options || {}; if ([1, 3, 5, 7].indexOf(+op.target) >= 0) o.target = +op.target; o.cube = op.cube !== 'off'; } catch (e) {}
+    return o;
+  }
+  function netFreshGame(st) {
+    var p = []; for (var i = 0; i < 24; i++) p.push(0);
+    p[23] = 2; p[12] = 5; p[7] = 3; p[5] = 5; p[0] = -2; p[11] = -5; p[16] = -3; p[18] = -5;
+    st.pos = { p: p, bar: [0, 0], off: [0, 0] };
+    st.gameNo++; st.cube = 1; st.owner = -1; st.crawford = false;
+    if (st.target > 1 && !st.crawfordUsed && (st.score[0] === st.target - 1 || st.score[1] === st.target - 1)) { st.crawford = true; st.crawfordUsed = true; }
+    st.gs = { hits: [0, 0] };
+    var a, b; do { a = rnd(); b = rnd(); } while (a === b);
+    st.cur = a > b ? 0 : 1; st.dice = [a, b].sort(function (x, y) { return y - x; }); st.left = st.dice.slice();
+    st.phase = 'move'; st.opening = [a, b]; st.doubler = null;
+    st.mv = '' + st.cur + st.dice[0] + st.dice[1];
+    netNoMoves(st, {});
+    return st;
+  }
+  function netStart(players, opts, last) {
+    var st = { mode: 'online', level: 'med', cubeOn: !(opts && opts.cube === false), target: opts && +opts.target || 1,
+      players: players.map(function (p) { return { name: p.name, cpu: false }; }), score: [0, 0], games: [], gameNo: 0, crawfordUsed: false, started: Date.now(),
+      ms: { hits: [0, 0], doubles: [0, 0], maxCube: 1, drops: [], gammons: [] }, matchOver: false };
+    return netFreshGame(st);
+  }
+  // after a roll or a move: when no die can be played any more, the turn passes
+  function netNoMoves(st, out) {
+    if (st.phase !== 'move') return out;
+    if (st.left.length && legalMoves(st.pos, st.cur, st.left).length) return out;
+    out.pass = st.left.length ? st.cur : -1;
+    st.left = []; st.dice = []; st.cur = 1 - st.cur; st.phase = 'roll'; st.opening = null;
+    return out;
+  }
+  function netFinish(st, w, mult, how, out) {
+    var pts = mult * st.cube;
+    st.score[w] += pts;
+    var row = [0, 0]; row[w] = pts;
+    st.games.push({ w: w, pts: pts, how: how, cube: st.cube, row: row, hits: st.gs.hits.slice(), pipsLeft: pips(st.pos, 1 - w) });
+    if (how === 'gammon' || how === 'backgammon') st.ms.gammons.push({ w: w, how: how, game: st.gameNo, pts: pts });
+    st.phase = 'over'; st.left = []; st.matchOver = st.score[w] >= st.target;
+    out.end = { w: w, how: how, pts: pts };
+    return out;
+  }
+  function netRoll() {
+    if (!S || S.phase !== 'roll' || LEFT || !NET.myTurn()) return;
+    var a = rnd(), b = rnd();
+    NET.act(function (st) {
+      if (st.phase !== 'roll') return null;
+      st.dice = [a, b]; st.left = a === b ? [a, a, a, a] : [a, b];
+      if (a === b) st.ms.doubles[st.cur]++;
+      st.mv += ' ' + st.cur + a + b; st.phase = 'move'; st.opening = null;
+      return { state: st, mv: netNoMoves(st, { roll: [a, b], s: st.cur }) };
+    });
+  }
+  function netMove(m) {
+    var from = m.from, to = m.to, d = m.d;
+    sel = null;
+    NET.act(function (st) {
+      if (st.phase !== 'move') return null;
+      var s = st.cur, lm = legalMoves(st.pos, s, st.left), mm = lm.filter(function (x) { return x.from === from && x.to === to && x.d === d; })[0] || lm.filter(function (x) { return x.from === from && x.to === to; })[0];
+      if (!mm) return null;
+      var hit = mm.to !== OFF && own(st.pos, 1 - s, mm.to) === 1;
+      st.pos = apply(st.pos, s, mm); delete st.pos.hit;
+      st.mv += mvCode(mm.from) + mvCode(mm.to);
+      st.left = without(st.left, st.left.indexOf(mm.d));
+      if (hit) { st.gs.hits[s]++; st.ms.hits[s]++; }
+      var out = { m: { from: mm.from, to: mm.to, d: mm.d }, s: s, hit: hit };
+      if (st.pos.off[s] === 15) {
+        var l = 1 - s, q = st.pos, mult = 1, how = 'single';
+        if (q.off[l] === 0) { mult = 2; how = 'gammon'; var back = q.bar[l] > 0; for (var i = 0; i < 24; i++) if (own(q, l, i) && (s === 0 ? i <= 5 : i >= 18)) back = true; if (back) { mult = 3; how = 'backgammon'; } }
+        return { state: st, mv: netFinish(st, s, mult, how, out) };
+      }
+      return { state: st, mv: netNoMoves(st, out) };
+    });
+  }
+  function netDouble() {
+    if (!S || !canDouble() || LEFT || !NET.myTurn()) return;
+    NET.act(function (st) {
+      var keep = S; S = st; var ok = canDouble(); S = keep;
+      if (!ok) return null;
+      st.phase = 'double'; st.doubler = st.cur;
+      return { state: st, mv: { double: st.cur, to: st.cube * 2 } };
+    });
+  }
+  function netAnswer(take) {
+    if (NSHEET) { NSHEET.close(); NSHEET = null; }
+    NET.act(function (st) {
+      if (st.phase !== 'double') return null;
+      var s = st.doubler, o = 1 - s;
+      if (take) { st.cube *= 2; st.owner = o; st.ms.maxCube = Math.max(st.ms.maxCube, st.cube); st.mv += ' ' + s + 'C' + st.cube; st.phase = 'roll'; return { state: st, mv: { take: o, cube: st.cube } }; }
+      st.ms.drops.push({ who: o, cube: st.cube, game: st.gameNo });
+      return { state: st, mv: netFinish(st, s, 1, 'drop', { drop: o }) };
+    });
+  }
+  function netNext() {
+    if (NSHEET) { NSHEET.close(); NSHEET = null; }
+    NET.act(function (st) { if (st.phase !== 'over' || st.matchOver) return null; return { state: netFreshGame(st), mv: { next: st.gameNo } }; });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  function nm(i) { return NET && NET.seat === i ? 'You' : S.players[i].name; }
+  // Draw the table: a roll tumbles in, a moved checker slides (a hit one flies to the bar), a double pops the cube
+  function netShow(net, info) {
+    NET = net; cpuToken++; rolling = false;
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    if (NSHEET) { NSHEET.close(); NSHEET = null; }
+    var prev = info.prev, mv = !info.fresh && !info.again ? info.mv : null, anim = null;
+    // where the moved checker (and a hit one) stood, on the table as it was
+    if (mv && mv.m && prev) {
+      S = JSON.parse(JSON.stringify(prev)); G = geometry();
+      var s0 = mv.s, from = checkerXY(mv.m.from, s0, stackTop(S.pos, s0, mv.m.from)), vic = mv.hit ? checkerXY(mv.m.to, 1 - s0, 0) : null;
+      anim = { s: s0, m: mv.m, from: from, victim: vic };
+    }
+    S = JSON.parse(JSON.stringify(net.state)); sel = null;
+    LEFT = net.status === 'over' && !S.matchOver && net.result && net.result.left != null ? net.result : null;
+    if (S.phase === 'move' && net.myTurn()) autoSelect();
+    var tok = ++SHOWN;
+    render(!!(mv && mv.roll) || !!info.again || !!(mv && mv.next), anim);
+    if (mv && mv.roll) { Kit.sfx('roll'); Kit.haptic('medium'); }
+    if (mv && mv.m) {
+      if (mv.hit) { Kit.sfx('chip'); Kit.haptic('heavy'); Kit.callout('Hit!'); } else { Kit.sfx('tap'); Kit.haptic('light'); }
+      if (mv.m.to === OFF) Kit.sfx('pop');
+    }
+    if (mv && mv.pass != null && mv.pass >= 0) setTimeout(function () { if (tok === SHOWN) Kit.toast(mv.pass === net.seat ? 'You have no legal moves' : S.players[mv.pass].name + ' has no legal moves'); }, mv.roll ? 800 : 300);
+    if (mv && mv.double != null) {
+      Kit.sfx('chip'); Kit.haptic('medium'); Kit.callout((mv.double === net.seat ? 'You double' : S.players[mv.double].name + ' doubles') + ' to ' + mv.to);
+      if (net.myTurn()) setTimeout(function () { if (tok === SHOWN) netAsk(); }, 900);
+    } else if (S.phase === 'double' && net.myTurn() && info.fresh) netAsk();
+    if (mv && mv.take != null) { Kit.sfx('good'); Kit.toast(mv.take === net.seat ? 'You take. The cube is at ' + mv.cube : S.players[mv.take].name + ' takes. The cube is at ' + mv.cube); }
+    if (mv && mv.drop != null) Kit.toast(mv.drop === net.seat ? 'You drop' : S.players[mv.drop].name + ' drops');
+    if (info.again || mv && mv.next) setTimeout(function () { if (tok === SHOWN) Kit.callout((S.cur === net.seat ? 'You go' : S.players[S.cur].name + ' goes') + ' first'); }, 650);
+    if (mv && mv.end) {
+      var e = mv.end;
+      if (e.how === 'gammon') Kit.callout('Gammon!'); else if (e.how === 'backgammon') Kit.callout('Backgammon!');
+      setTimeout(function () { if (tok !== SHOWN) return; if (S.matchOver) netEnd(); else netGameSheet(e); }, e.how === 'drop' ? 500 : 1300);
+    } else if (info.fresh && S.phase === 'over') { if (S.matchOver) setTimeout(netEnd, 300); }
+    if (LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, 300);
+    if (!info.mine && net.myTurn() && mv && !mv.double) Kit.haptic('light');
+  }
+  function netAsk() {
+    if (!NET || S.phase !== 'double' || !NET.myTurn()) return;
+    if (NSHEET) NSHEET.close();
+    var s = S.doubler;
+    NSHEET = Kit.sheet({
+      title: S.players[s].name + ' offers a double',
+      html: '<p class="muted">You can <b>take</b> and play on for ' + (S.cube * 2) + ' points (you then own the cube), or <b>drop</b> and lose this game for ' + S.cube + (S.cube === 1 ? ' point' : ' points') + '.</p>',
+      actions: [
+        { label: 'Take (play for ' + S.cube * 2 + ')', primary: true, onClick: function () { NSHEET = null; netAnswer(true); } },
+        { label: 'Drop', cls: 'btn-soft', onClick: function () { NSHEET = null; netAnswer(false); } },
+        { label: 'Look at the board first', cls: 'btn-ghost', onClick: function () { NSHEET = null; } }
+      ]
+    });
+  }
+  function netGameSheet(e) {
+    if (!NET) return;
+    var P = S.players, w = e.w;
+    Kit.sfx(w === NET.seat ? 'win' : 'lose');
+    if (NSHEET) NSHEET.close();
+    NSHEET = Kit.sheet({
+      title: (w === NET.seat ? 'You win' : P[w].name + ' wins') + ' game ' + S.gameNo,
+      html: '<p class="muted">' + (e.how === 'drop' ? 'The double was dropped. ' : e.how === 'single' ? '' : e.how === 'gammon' ? 'A gammon is worth double points. ' : 'A backgammon is worth triple points. ') +
+        (S.cube > 1 ? 'The cube is at ' + S.cube + '. ' : '') + '<b>' + e.pts + (e.pts === 1 ? ' point</b> goes' : ' points</b> go') + ' to ' + Kit.esc(w === NET.seat ? 'you' : P[w].name) + '.</p>' +
+        '<table style="margin-top:10px;width:100%;font-weight:900;font-size:1.05rem"><tr><td>' + Kit.esc(P[0].name) + '</td><td style="text-align:right">' + S.score[0] + '</td></tr><tr><td>' + Kit.esc(P[1].name) + '</td><td style="text-align:right">' + S.score[1] + '</td></tr></table>' +
+        '<p class="muted" style="margin-top:6px">The first to ' + S.target + ' points wins the match.</p>',
+      actions: [{ label: 'Next game', primary: true, onClick: function () { NSHEET = null; netNext(); } }, { label: 'Look at the board', cls: 'btn-ghost', onClick: function () { NSHEET = null; } }]
+    });
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var P = S.players, me = NET.seat, left = LEFT;
+    var w = left ? (left.win && left.win.length ? left.win[0] : -1) : S.score[0] >= S.target ? 0 : 1, key = NET.code + ':' + S.started, done = NETREC[key];
+    try { done = done || (JSON.parse(localStorage.getItem('backgammon_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('backgammon_net_rec')) || []; rl.push(key); localStorage.setItem('backgammon_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [];
+      S.ms.gammons.forEach(function (g) { hl.push(P[g.w].name + ' won a ' + g.how + (S.games.length > 1 ? ' in game ' + g.game : '') + ' (' + g.pts + ' points)'); });
+      if (S.ms.maxCube >= 2) hl.push('The cube went up to ' + S.ms.maxCube);
+      S.ms.drops.forEach(function (d) { hl.push(P[d.who].name + ' dropped a double' + (S.games.length > 1 ? ' in game ' + d.game : '')); });
+      if (S.target > 1) hl.push('Match to ' + S.target + ', won ' + S.score[w] + '–' + S.score[1 - w] + ' over ' + S.games.length + ' games');
+      hl.push('Played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online' + (S.target > 1 ? ' · match to ' + S.target : ''),
+        players: P.map(function (p, i) { return { name: p.name, score: S.score[i], cpu: false }; }), winner: P[w].name,
+        rounds: S.games.length > 1 ? { labels: S.games.map(function (g, i) { return 'Game ' + (i + 1); }), scores: S.games.map(function (g) { return g.row; }) } : null,
+        highlights: hl.slice(0, 6),
+        detail: { p: S.pos.p.slice(), bar: S.pos.bar.slice(), off: S.pos.off.slice(), cube: S.cube, own: S.owner, to: S.target, cubeOn: !!S.cubeOn,
+          g: S.games.map(function (g) { return { w: g.w, h: g.how, pts: g.pts, c: g.cube, pl: g.pipsLeft }; }),
+          hits: S.ms.hits.slice(), dbl: S.ms.doubles.slice(), max: S.ms.maxCube, pips: [pips(S.pos, 0), pips(S.pos, 1)], mv: S.mv && S.mv.length < 2600 ? S.mv : undefined }
+      });
+    }
+    var last = S.games[S.games.length - 1];
+    if (WINO) WINO.close();
+    WINO = Kit.win({
+      icon: w === me ? 'trophy' : 'users',
+      title: left ? left.text : w === me ? 'You win!' : P[w].name + ' wins!',
+      sub: left || !last ? '' : S.target > 1 ? 'The match ended ' + S.score[0] + ' – ' + S.score[1] + (last.how === 'gammon' ? ', finished with a gammon' : last.how === 'backgammon' ? ', finished with a backgammon' : '') : last.how === 'gammon' ? 'With a gammon!' : last.how === 'backgammon' ? 'With a backgammon!' : last.how === 'drop' ? 'The double was dropped' : 'All 15 checkers are off',
+      lose: w !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; cpuToken++; if (WINO) { WINO.close(); WINO = null; } if (NSHEET) { NSHEET.close(); NSHEET = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.pos && sv.players && (sv.phase !== 'over' || (sv.score[0] < sv.target && sv.score[1] < sv.target))) { S = sv; render(); resumeFlow(); }
+    else showSetup();
+  }
+  window.__bg = { state: function () { return S; }, legal: function () { return S && S.phase === 'move' ? legalMoves(S.pos, S.cur, S.left) : []; }, move: function (m) { humanMove(m); }, roll: function () { roll(false); }, dbl: function () { humanDouble(); }, answer: function (t) { netAnswer(t); }, next: function () { netNext(); }, canDouble: function () { return canDouble(); } };
+
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.pos && saved.players && (saved.phase !== 'over' || (saved.score[0] < saved.target && saved.score[1] < saved.target))) { S = saved; render(); resumeFlow(); }
   else showSetup();
+
+  TurnNet.setup({
+    game: 'backgammon', title: 'Backgammon', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.phase === 'over' ? (st.matchOver ? [] : [0, 1]) : st.phase === 'double' ? [1 - st.doubler] : [st.cur]; },
+    over: function (st) {
+      if (!st.matchOver) return null;
+      var w = st.score[0] >= st.target ? 0 : 1;
+      return { win: [w], text: st.players[w].name + ' wins' + (st.target > 1 ? ' the match ' + Math.max(st.score[0], st.score[1]) + '–' + Math.min(st.score[0], st.score[1]) : '') };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

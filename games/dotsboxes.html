@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .desk{position:relative;border-radius:18px;padding:14px 12px 16px;margin-top:4px;}
 .sheet{position:relative;border-radius:3px;transform:rotate(-.6deg);
@@ -68,15 +70,16 @@
 
   Kit.init({
     id: 'dotsboxes',
-    onNew: function () { clearSave(); showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dots and Boxes: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Lines can’t be erased online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dots and Boxes: past games' }); } }]),
     rules:
       '<p class="goal">Close more boxes than anyone else.</p>' +
       '<h3>How to play</h3><ul><li>On your turn, draw <b>one line</b> between two dots that are next to each other (across or up and down).</li>' +
       '<li>If your line finishes the fourth side of a box, the box is yours: it gets your initial, and you <b>must draw another line</b>.</li>' +
       '<li>If your line doesn\'t finish a box, your turn is over.</li>' +
       '<li>When every box is closed, the player with the most boxes wins.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> opens a table for two to four people, each on their own device, on the grid chosen in the setup. Seats you gave the computer in the setup are played by the computer when nobody takes them. Take your turn whenever you like: the home screen shows when it’s your move.</li></ul>' +
       '<h3>Tips</h3><ul><li>Don\'t draw the third side of a box. That hands it to the next player.</li>' +
       '<li>Late in the game, boxes link up into <b>chains</b>. Try to make your opponent open the long ones.</li>' +
       '<li>Expert trick ("double-cross"): when taking a long chain, leave the last two boxes for your opponent. They take two, but then they have to open the next chain for you.</li></ul>'
@@ -86,11 +89,14 @@
   // S = {mode, level, n, players:[{name,cpu}], h:[(n+1)*n], v:[n*(n+1)], box:[n*n] (owner+1 or 0),
   //      cur, moves:[{t,i,p,got}], run, best:[], dd:[], over, last, started}
   var S = null, token = 0, undoStack = [], fresh = {}, hover = null;
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here)
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, SHOWN = 0;
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && !S.over) Kit.resume.set(S.n + '×' + S.n + ' · ' + S.players.map(function (p, i) { return p.name + ' ' + score(i); }).join(', '));
   }
-  function clearSave() { token++; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { token++; if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
     S = null; token++; undoStack = [];
@@ -216,7 +222,7 @@
   function boardNow() { return { n: S.n, h: S.h.map(Boolean), v: S.v.map(Boolean) }; }
   function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
   function cpuLine() {
-    var B = boardNow(), cs = caps(B), all = undrawn(B), lv = (cur() && cur().level) || S.level;
+    var B = boardNow(), cs = caps(B), all = undrawn(B), lv = (S.players[S.cur] && S.players[S.cur].level) || S.level;
     var safe = all.filter(function (L) { return isSafe(B, L); });
     if (lv === 'easy') {
       if (cs.length && Math.random() < 0.8) return { ln: rnd(cs) };
@@ -287,7 +293,7 @@
     return pick.lines[0];
   }
   function maybeCpu() {
-    if (!S || S.over || !S.players[S.cur].cpu) return;
+    if (NET || !S || S.over || !S.players[S.cur].cpu) return;
     var t = ++token, B = boardNow();
     paintTurn();
     var quick = caps(B).length > 0 && S.run > 0;
@@ -300,6 +306,7 @@
 
   // ── Moves ─────────────────────────────────────────────────────────────────
   function play(t, i, byCpu, dd) {
+    if (NET) return netPlay(t, i);
     if (!S || S.over || S[t][i]) return;
     var p = S.cur;
     if (S.players[p].cpu && !byCpu) return;
@@ -396,7 +403,8 @@
     svgEl.addEventListener('pointerleave', function () { setHover(null); });
     var below = el('div', { class: 'below' });
     noteEl = el('div', { class: 'note' }); below.appendChild(noteEl);
-    if (S.over) below.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Play again', onclick: newGame }));
+    if (NET) { if (S.over || LEFT) below.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })); }
+    else if (S.over) below.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Play again', onclick: newGame }));
     app.appendChild(below);
     paintTurn();
     fresh = {};
@@ -406,25 +414,27 @@
     var max = Math.max.apply(null, S.players.map(function (p, i) { return score(i); }));
     S.players.forEach(function (p, i) {
       stripEl.appendChild(el('div', { class: 'score' + (i === S.cur && !S.over ? ' on' : '') + (S.over && score(i) === max ? ' lead' : ''), style: { '--c': INK[i], flex: '1' } }, [
-        el('span', { class: 'nm', html: '<span class="ini-dot" style="background:' + INK[i] + '">' + Kit.esc(initial(i)) + '</span>' + Kit.esc(p.name) }),
+        el('span', { class: 'nm', html: '<span class="ini-dot" style="background:' + INK[i] + '">' + Kit.esc(initial(i)) + '</span>' + (p.cpu && NET ? Kit.icon('bot') : '') + Kit.esc(NET && NET.seat === i ? 'You' : p.name) }),
         el('span', { class: 'pt', text: String(score(i)) }),
         el('span', { class: 'sub', text: score(i) === 1 ? 'box' : 'boxes' })
       ]));
     });
     var p = S.players[S.cur];
     turnEl.innerHTML = '';
+    if (NET && LEFT) { turnEl.style.setProperty('--c', 'var(--text)'); turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); if (noteEl) noteEl.textContent = ''; return; }
     if (S.over) { turnEl.style.setProperty('--c', 'var(--text)'); turnEl.appendChild(el('span', { text: resultText() })); if (noteEl) noteEl.textContent = ''; return; }
     turnEl.style.setProperty('--c', lighten(INK[S.cur]));
     turnEl.appendChild(el('span', { class: 'dot' }));
-    turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : Kit.poss(p.name) + ' turn' }));
-    if (noteEl) noteEl.textContent = S.run ? (p.cpu ? p.name : (p.name === 'You' ? 'You' : p.name)) + ' closed ' + (S.run === 1 ? 'a box' : S.run + ' boxes') + ': ' + (p.cpu ? 'goes again' : 'go again!') : (S.moves.length ? '' : 'Tap between two dots to draw a line');
+    var mine = NET ? NET.seat === S.cur : !p.cpu;
+    turnEl.appendChild(el('span', { text: p.cpu ? p.name + ' is thinking…' : NET ? (mine ? 'Your turn' : 'Waiting for ' + p.name) : Kit.poss(p.name) + ' turn' }));
+    if (noteEl) noteEl.textContent = S.run ? (NET && mine ? 'You' : p.name) + ' closed ' + (S.run === 1 ? 'a box' : S.run + ' boxes') + ': ' + (NET ? (mine ? 'go again!' : 'goes again') : p.cpu ? 'goes again' : 'go again!') : (S.moves.length ? '' : 'Tap between two dots to draw a line');
   }
   function lighten(hex) { return 'color-mix(in srgb,' + hex + ' 55%, #fff)'; }
   function resultText() {
     var sc = S.players.map(function (p, i) { return score(i); }), max = Math.max.apply(null, sc), top = sc.filter(function (x) { return x === max; }).length;
     if (top > 1) return "It's a tie!";
     var w = S.players[sc.indexOf(max)];
-    return w.name === 'You' ? 'You win!' : w.name + ' wins!';
+    return w.name === 'You' || NET && NET.seat === sc.indexOf(max) ? 'You win!' : w.name + ' wins!';
   }
 
   // Tap / hover: nearest free line to the pointer
@@ -448,12 +458,13 @@
     return best;
   }
   function onTap(e) {
-    if (!S || S.over || S.players[S.cur].cpu) return;
+    if (NET && S && !S.over && !LEFT && !NET.myTurn()) { if (nearest(e)) { Kit.haptic('error'); Kit.toast(S.players[S.cur].cpu ? S.players[S.cur].name + ' is thinking' : 'It’s ' + Kit.poss(S.players[S.cur].name) + ' turn'); } return; }
+    if (!S || S.over || LEFT || !NET && S.players[S.cur].cpu) return;
     var ln = nearest(e); if (!ln) return;
     play(ln.t, ln.i, false);
   }
   function onHover(e) {
-    if (e.pointerType !== 'mouse' || !S || S.over || S.players[S.cur].cpu) return;
+    if (e.pointerType !== 'mouse' || !S || S.over || (NET ? !NET.myTurn() : S.players[S.cur].cpu)) return;
     setHover(nearest(e));
   }
   function setHover(ln) {
@@ -473,8 +484,9 @@
     S.players.forEach(function (p, i) { if (S.dd[i]) hl.push(p.name + ' left two boxes on purpose to keep control' + (S.dd[i] > 1 ? ' (' + S.dd[i] + ' times)' : '')); });
     if (S.lastBy != null) hl.push(S.players[S.lastBy].name + ' closed the last box');
     if (S.players.some(function (p) { return p.cpu; })) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
-    Kit.record(KEY, {
-      started: S.started, mode: (S.mode === 'cpu' ? 'vs Computer' : 'Pass and play') + ' · ' + S.n + '×' + S.n,
+    if (NET) { hl.push('Played online at table ' + NET.code); var nk = NET.code + ':' + S.started, seen = NETREC[nk]; try { seen = seen || (JSON.parse(localStorage.getItem('dotsboxes_net_rec')) || []).indexOf(nk) >= 0; } catch (e) {} NETREC[nk] = 1; if (!seen) try { var rl = JSON.parse(localStorage.getItem('dotsboxes_net_rec')) || []; rl.push(nk); localStorage.setItem('dotsboxes_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {} }
+    if (!NET || !seen) Kit.record(KEY, {
+      started: S.started, mode: (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass and play') + ' · ' + S.n + '×' + S.n,
       players: S.players.map(function (p, i) { return { name: p.name, cpu: p.cpu, score: sc[i] }; }),
       winner: w ? w.name : null, highlights: hl.slice(0, 6),
       // for the history view: who drew each line and who closed each box (digit = player + 1), and the lines in the order
@@ -484,6 +496,17 @@
         best: S.best.slice(), dd: S.dd.slice() }
     });
     var rank = S.players.map(function (p, i) { return { name: p.name, score: sc[i], color: INK[i] }; }).sort(function (a, b) { return b.score - a.score; });
+    if (NET) {
+      if (WINO) WINO.close();
+      WINO = Kit.win({
+        icon: !w ? 'users' : wi === NET.seat ? 'trophy' : w.cpu ? 'bot' : 'users',
+        title: !w ? "It's a tie!" : wi === NET.seat ? 'You win!' : w.name + ' wins!',
+        sub: sc.join(' – ') + ' boxes', rank: rank, lose: !!w && wi !== NET.seat, againLabel: 'Play again',
+        again: function () { WINO = null; netAgain(); },
+        look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+      });
+      return;
+    }
     var lose = !w ? false : w.cpu && S.players.some(function (p) { return !p.cpu; });
     Kit.win({
       icon: !w ? 'users' : lose ? 'bot' : 'trophy',
@@ -496,10 +519,90 @@
     Kit.resume.clear();
   }
 
+  // ── Online ────────────────────────────────────────────────────────────────
+  // Two to four people, each on their own device, on the grid chosen in the setup. The setup's seats are the table's:
+  // a seat nobody takes is played by the computer (at the setup's skill), from whichever device has the table open.
+  function netOpts() {
+    var o = { n: 4, seats: 2, level: 'normal' };
+    try { var g = JSON.parse(localStorage.getItem('gn_setup_dotsboxes')); if (g) { if (g.options && +g.options.n >= 2 && +g.options.n <= 7) o.n = +g.options.n; if (g.options && LEVEL_NAME[g.options.level]) o.level = g.options.level; if (+g.count >= 2 && +g.count <= 4) o.seats = +g.count; } } catch (e) {}
+    return o;
+  }
+  function netStart(players, opts, last) {
+    var n = opts && +opts.n || 4, keep = last && last.players && last.players.length === players.length, i;
+    var st = { mode: 'online', level: opts && opts.level || 'normal', n: n, players: players.map(function (p) { return { name: p.name, cpu: !!p.bot }; }),
+      first: keep ? last.first : 0, h: [], v: [], box: [], moves: [], run: 0, over: false, last: null, started: Date.now() };
+    for (i = 0; i < (n + 1) * n; i++) st.h.push(0);
+    for (i = 0; i < n * (n + 1); i++) st.v.push(0);
+    for (i = 0; i < n * n; i++) st.box.push(0);
+    st.cur = st.first; st.best = st.players.map(function () { return 0; }); st.dd = st.players.map(function () { return 0; });
+    return st;
+  }
+  // The line itself (pure on st: it may run again on a newer table), by the same rules as play()
+  function netApply(st, t, i, dd) {
+    if (st.over || st[t][i]) return null;
+    var p = st.cur, got = [];
+    st[t][i] = p + 1;
+    boxesOf(st.n, t, i).forEach(function (b) {
+      if (sides({ n: st.n, h: st.h, v: st.v }, b[0], b[1]) === 4 && !st.box[b[0] * st.n + b[1]]) { st.box[b[0] * st.n + b[1]] = p + 1; got.push(b[0] * st.n + b[1]); }
+    });
+    st.moves.push({ t: t, i: i, p: p, got: got.length }); st.last = { t: t, i: i };
+    if (dd) st.dd[p]++;
+    if (got.length) { st.run += got.length; if (st.run > st.best[p]) st.best[p] = st.run; }
+    if (st.box.filter(Boolean).length === st.n * st.n) { st.over = true; st.lastBy = p; st.first = (st.first + 1) % st.players.length; }
+    else if (!got.length) { st.cur = (st.cur + 1) % st.players.length; st.run = 0; }
+    return { state: st, mv: { t: t, i: i, p: p, got: got } };
+  }
+  function netPlay(t, i) {
+    if (!S || S.over || LEFT || S[t][i]) return;
+    if (!NET.myTurn()) return;
+    NET.act(function (st) { return netApply(st, t, i); });
+  }
+  function netBot(st, seat) {
+    var keep = S; S = st;
+    try { var mv = cpuLine(); return mv && mv.ln ? netApply(st, mv.ln[0], mv.ln[1], mv.dd) : null; } finally { S = keep; }
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  // Draw the table: the newest line is penciled in and any box it closed fills with its owner's initial, then the end
+  function netShow(net, info) {
+    NET = net; token++; undoStack = [];
+    if (WINO && (info.again || info.fresh)) { WINO.close(); WINO = null; }
+    S = JSON.parse(JSON.stringify(net.state));
+    LEFT = net.status === 'over' && !S.over && net.result && net.result.left != null ? net.result : null;
+    var tok = ++SHOWN, mv = info.mv && info.mv.t && !info.fresh && !info.again ? info.mv : null;
+    fresh = mv ? { line: mv.t + mv.i, boxes: mv.got } : {};
+    render();
+    if (mv) {
+      if (mv.got.length) { Kit.sfx(mv.got.length > 1 ? 'good' : 'pop'); Kit.haptic('medium'); if (S.run >= 4 && S.run % 2 === 0) Kit.callout(S.run + ' boxes!', INK[mv.p]); }
+      else { Kit.sfx('tap'); Kit.haptic('light'); }
+    }
+    if (info.again) { Kit.sfx('deal'); Kit.callout(S.cur === net.seat ? 'You start' : S.players[S.cur].name + ' starts'); }
+    if (S.over || LEFT) setTimeout(function () { if (tok !== SHOWN) return; if (LEFT) { if (WINO) WINO.close(); WINO = Kit.win({ icon: 'users', title: LEFT.text || 'The other player left', againLabel: 'Back to the lobby', again: function () { WINO = null; netAgain(); }, look: { label: 'Look at the board', onClick: function () { WINO = null; } } }); } else endGame(); }, mv ? 900 : 150);
+  }
+  function netLeave() {
+    NET = null; LEFT = null; SHOWN++; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.h && sv.players && !sv.over) { S = sv; render(); maybeCpu(); } else showSetup();
+  }
+  window.__dots = { state: function () { return S; }, play: function (t, i) { play(t, i); } };
+
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.h && saved.players && !saved.over) { S = saved; render(); maybeCpu(); }
   else showSetup();
+
+  TurnNet.setup({
+    game: 'dotsboxes', title: 'Dots & Boxes', min: 2, max: 4, botMs: 700,
+    seats: function (n, o) { return Math.max(n, Math.min(4, o && +o.seats || n)); },
+    opts: netOpts, start: netStart, bot: netBot,
+    turn: function (st) { return st.over ? [] : [st.cur]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var sc = st.players.map(function (p, i) { return st.box.filter(function (b) { return b === i + 1; }).length; }), max = Math.max.apply(null, sc), win = [];
+      sc.forEach(function (x, i) { if (x === max) win.push(i); });
+      return { win: win.length === 1 ? win : [], text: win.length === 1 ? st.players[win[0]].name + ' wins with ' + max + ' boxes' : 'A tie' };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>

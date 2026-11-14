@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 .mc{display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:2px;}
 /* Player tags at each end of the board */
@@ -87,9 +89,9 @@
 
   Kit.init({
     id: 'mancala',
-    onNew: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); },
-    undo: function () { undo(); },
-    menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mancala: past games' }); } }],
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } cpuToken++; clearSave(); undoStack = []; showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mancala: past games' }); } }]),
     rules:
       '<p class="goal">Collect more stones in your <b>store</b> (the long pit at your end) than the other player.</p>' +
       '<h3>The board</h3><ul><li>You own the <b>6 small pits on your side</b> and the <b>store</b> at your end.</li>' +
@@ -99,6 +101,7 @@
       '<h3>Special moves</h3><ul><li><b>Extra turn:</b> if your last stone lands in your store, go again.</li>' +
       '<li><b>Capture:</b> if your last stone lands in an <b>empty pit on your side</b> and the pit across from it has stones, you take that stone and everything across into your store.</li></ul>' +
       '<h3>Game end</h3><p>When all six pits on one side are empty, the game ends. The other player puts every stone left on their side into their own store. Most stones wins.</p>' +
+      '<h3>Online</h3><p><b>Play online</b> opens a table, and the other player joins on their own device. Each of you sees your own pits along the near side. Take your turn whenever you like: the home screen shows when it’s your move.</p>' +
       '<p class="muted" style="margin-top:10px">Rules: standard Kalah (6 pits a side).</p>'
   });
 
@@ -106,11 +109,15 @@
   // pits 0-5 = player 0's pits, 6 = player 0's store, 7-12 = player 1's pits, 13 = player 1's store.
   // S.stones[i] = {c: colour index, p: pit, k: arrival order}. Pit counts are derived from stones.
   var S = null, undoStack = [], cpuToken = 0, busy = false, K = 0;
+  // Online (turnnet.js): NET is the table while playing at one; S is then the table's state (never saved here).
+  // RE: a move being played out on this screen (sown stone by stone), then the table's state takes over
+  var NET = null, LEFT = null, WINO = null, NETREC = {}, NETQ = [], RE = null;
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && !S.over) Kit.resume.set(S.players[0].name + ' ' + store(0) + ' – ' + store(1) + ' ' + S.players[1].name);
   }
-  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
+  function clearSave() { if (NET) return; try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
   function counts() { var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; S.stones.forEach(function (s) { if (typeof s.p === 'number') c[s.p]++; }); return c; }
   function store(pl) { return counts()[pl ? 13 : 6]; }
   function own(pl, i) { return pl === 0 ? i >= 0 && i <= 5 : i >= 7 && i <= 12; }
@@ -198,7 +205,7 @@
     return best;
   }
   function maybeCpu() {
-    if (!S || S.over || !S.players[S.cur].cpu) return;
+    if (NET || !S || S.over || !S.players[S.cur].cpu) return;
     busy = true; paint();
     var tk = ++cpuToken;
     setTimeout(function () { if (tk !== cpuToken) return; play(cpuPick(), true); }, 750);
@@ -206,6 +213,7 @@
 
   // ── Playing a move (animated, one stone at a time) ───────────────────────
   function tap(pit) {
+    if (NET) return netTap(pit);
     if (!S || S.over || busy || S.players[S.cur].cpu) return;
     var b = counts();
     if (!own(S.cur, pit)) { nudge('Pick a pit on your side'); return; }
@@ -237,7 +245,7 @@
     }
   }
   function after(pl, from, lastPit, n) {
-    var b = counts(), who = S.players[pl], extra = lastPit === storeOf(pl), cap = 0, delay = 0;
+    var b = counts(), who = S.players[pl], extra = lastPit === storeOf(pl), cap = 0, delay = 0, tk = cpuToken;
     S.moves++;
     if (S.st.m != null) S.st.m += 'abcdefghijklmn'.charAt(from);   // every pit played, for the history replay
     if (!extra && own(pl, lastPit) && b[lastPit] === 1 && b[12 - lastPit] > 0) {
@@ -254,6 +262,7 @@
     S.last = lastPit;
     if (S.st.t0) { S.st.t0.push(store(0)); S.st.t1.push(store(1)); }
     paint();
+    if (RE) { setTimeout(function () { if (tk === cpuToken) netSettled(); }, delay + 150); return; }
     setTimeout(function () {
       b = counts();
       var e0 = true, e1 = true;
@@ -270,6 +279,7 @@
         setTimeout(endGame, amt ? 1200 : 500);
         return;
       }
+      if (tk !== cpuToken) return;
       if (extra) {
         Kit.callout(who.name === 'You' ? 'Go again!' : who.name + ' goes again!', who.color);
         Kit.sfx('good'); Kit.haptic('medium');
@@ -373,6 +383,8 @@
       g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: r.x + r.w / 2, y: p <= 5 ? H2 - rim2 / 2 : rim2 / 2 }; };
       g.ss = Math.round(D2 * 0.25);
     }
+    // online, the second seat sees the board turned round: their own pits along the near side
+    if (flipped()) { var r2 = {}, L0 = []; for (i = 0; i < 14; i++) { r2[i] = g.r[(i + 7) % 14]; L0[i] = g.lbl(i); } g.r = r2; g.lbl = function (p) { return L0[(p + 7) % 14]; }; }
     return g;
   }
   // Stable, natural-looking spot for the n-th stone in a pit
@@ -398,8 +410,9 @@
     G = geometry();
     var wrap = el('div', { class: 'mc' });
     tagEls = [mkTag(0), mkTag(1)];
-    if (G.v) wrap.appendChild(tagEls[1]);
-    else wrap.appendChild(el('div', { class: 'row mtags' }, [tagEls[1], tagEls[0]]));
+    var near = flipped() ? 1 : 0;
+    if (G.v) wrap.appendChild(tagEls[1 - near]);
+    else wrap.appendChild(el('div', { class: 'row mtags' }, [tagEls[1 - near], tagEls[near]]));
     boardEl = el('div', { class: 'mboard', style: { width: G.W + 'px', height: G.H + 'px', '--grain': G.v ? '180deg' : '90deg', '--br': Math.round(G.D * 0.7) + 'px' } });
     pitEls = []; lblEls = [];
     for (var i = 0; i < 14; i++) {
@@ -417,8 +430,9 @@
       boardEl.appendChild(st); return st;
     });
     wrap.appendChild(boardEl);
-    if (G.v) wrap.appendChild(tagEls[0]);
-    if (S.over) wrap.appendChild(el('div', { class: 'ctrls' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'Play again', onclick: newRound })]));
+    if (G.v) wrap.appendChild(tagEls[near]);
+    if (NET) { if ((S.over || LEFT) && !RE) wrap.appendChild(el('div', { class: 'ctrls' }, [el('button', { type: 'button', class: 'btn btn-primary', text: LEFT ? 'Back to the lobby' : 'Play again', onclick: netAgain })])); }
+    else if (S.over) wrap.appendChild(el('div', { class: 'ctrls' }, [el('button', { type: 'button', class: 'btn btn-primary', text: 'Play again', onclick: newRound })]));
     app.appendChild(wrap);
     paint(-1, true);
   }
@@ -426,13 +440,13 @@
     var p = S.players[pl];
     return el('div', { class: 'mtag', style: { '--c': p.color } }, [
       el('span', { class: 'avatar', style: { '--c': p.color }, html: p.cpu ? Kit.icon('bot') : Kit.esc(p.name.charAt(0).toUpperCase()) }),
-      el('span', { class: 'col' }, [el('span', { class: 'nm', text: p.name }), el('span', { class: 'st' })]),
+      el('span', { class: 'col' }, [el('span', { class: 'nm', text: NET && NET.seat === pl ? 'You' : p.name }), el('span', { class: 'st' })]),
       el('span', { class: 'cnt' })
     ]);
   }
   function paint(landing, instant) {
     if (!boardEl) return;
-    var c = counts(), canPlay = !S.over && !busy && !S.players[S.cur].cpu;
+    var c = counts(), canPlay = !S.over && !busy && (NET ? !RE && !LEFT && NET.myTurn() : !S.players[S.cur].cpu);
     // place stones: in-pit by arrival order, "in hand" ones float above their pit
     var byPit = {};
     S.stones.forEach(function (s, i) { if (typeof s.p === 'number') (byPit[s.p] = byPit[s.p] || []).push(i); });
@@ -467,9 +481,143 @@
       t.classList.toggle('on', on);
       t.querySelector('.cnt').textContent = c[storeOf(pl)];
       t.querySelector('.st').textContent = S.over ? (c[storeOf(pl)] > c[storeOf(1 - pl)] ? 'Winner' : c[storeOf(pl)] === c[storeOf(1 - pl)] ? 'Tie' : 'Final') :
-        on ? (p.cpu ? 'Thinking…' : busy ? 'Sowing…' : S.mode === 'cpu' ? 'Your turn: tap a pit' : Kit.poss(p.name) + ' turn') : 'in store';
+        NET && LEFT ? 'in store' : on ? (p.cpu ? 'Thinking…' : busy ? 'Sowing…' : NET ? (NET.seat === pl ? 'Your turn: tap a pit' : 'Their turn') : S.mode === 'cpu' ? 'Your turn: tap a pit' : Kit.poss(p.name) + ' turn') : 'in store';
     });
   }
+  function flipped() { return !!(NET && NET.seat === 1); }
+
+  // ── Online ────────────────────────────────────────────────────────────────
+  // Two people, each on their own device; seat 0 has pits 0-5. The setup's stones per pit holds at the table.
+  // Every move is played out stone by stone on both screens (from the table as it was), then the table takes over.
+  function netOpts() {
+    var per = 4; try { var g = JSON.parse(localStorage.getItem('gn_setup_mancala')); if (g && g.options && +g.options.stones === 6) per = 6; } catch (e) {}
+    return { stones: per };
+  }
+  function netStart(players, opts, last) {
+    var per = opts && +opts.stones === 6 ? 6 : 4, st = { mode: 'online', level: 'med', per: per,
+      players: players.map(function (p, i) { return { name: p.name, cpu: false, color: Kit.color ? Kit.color(i) : ['#3d8bff', '#ff4d6d'][i] }; }),
+      wins: last && last.wins ? last.wins.slice() : [0, 0, 0], first: last ? 1 - (last.firstWas || 0) : 0, stones: [] };
+    var ci = 0, k = 0;
+    for (var i = 0; i < 14; i++) { if (i === 6 || i === 13) continue; for (var j = 0; j < per; j++) st.stones.push({ c: (ci++ * 5 + i) % GLASS.length, p: i, k: ++k }); }
+    st.firstWas = st.first; st.cur = st.first; st.over = false; st.started = Date.now(); st.moves = 0; st.last = -1;
+    st.st = { caps: [], extra: [0, 0], chain: 0, bestChain: { n: 0, who: -1 }, sweep: null, t0: [], t1: [], m: '' };
+    return st;
+  }
+  // The move itself, all at once (pure on st: it may run again on a newer table), by the same rules as play() and after()
+  function netApply(st, pit) {
+    if (st.over) return null;
+    var keepS = S, keepK = K; S = st;
+    try {
+      var b = counts(), pl = st.cur;
+      if (!own(pl, pit) || !b[pit]) return null;
+      K = st.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+      var c = pit;
+      st.stones.filter(function (s) { return s.p === pit; }).sort(function (a, z) { return a.k - z.k; }).forEach(function (s) { c = next(c, pl); s.p = c; s.k = ++K; });
+      b = counts(); st.moves++; st.st.m += 'abcdefghijklmn'.charAt(pit);
+      var extra = c === storeOf(pl), cap = 0;
+      if (!extra && own(pl, c) && b[c] === 1 && b[12 - c] > 0) { cap = b[12 - c] + 1; moveAll([c, 12 - c], storeOf(pl)); st.st.caps.push({ who: pl, n: cap, pit: c }); }
+      if (extra) { st.st.extra[pl]++; st.st.chain++; if (st.st.chain > st.st.bestChain.n) st.st.bestChain = { n: st.st.chain, who: pl }; } else st.st.chain = 0;
+      st.last = c; st.st.t0.push(store(0)); st.st.t1.push(store(1));
+      b = counts();
+      var e0 = true, e1 = true, i;
+      for (i = 0; i < 6; i++) { if (b[i]) e0 = false; if (b[i + 7]) e1 = false; }
+      if (e0 || e1) {
+        var left0 = 0, left1 = 0; for (i = 0; i < 6; i++) { left0 += b[i]; left1 += b[i + 7]; }
+        if (left0 + left1) st.st.sweep = { who: left0 ? 0 : 1, n: left0 + left1 };
+        st.st.endB = b.slice();
+        moveAll([0, 1, 2, 3, 4, 5], 6); moveAll([7, 8, 9, 10, 11, 12], 13);
+        st.over = true;
+        var s0 = store(0), s1 = store(1); st.wins[s0 > s1 ? 0 : s1 > s0 ? 1 : 2]++;
+      } else if (!extra) st.cur = 1 - st.cur;
+      return { state: st, mv: { pit: pit, pl: pl, cap: cap, extra: extra } };
+    } finally { S = keepS; K = keepK; }
+  }
+  function netTap(pit) {
+    if (!S || S.over || LEFT || busy || RE) return;
+    if (!NET.myTurn()) { nudge('It’s ' + Kit.poss(S.players[S.cur].name) + ' turn'); return; }
+    var b = counts();
+    if (!own(S.cur, pit)) { nudge('Pick a pit on your side'); return; }
+    if (!b[pit]) { nudge('That pit is empty'); return; }
+    NET.act(function (st) { return netApply(st, pit); });
+  }
+  function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
+  // The table's news comes in a line: each move is sown on screen in turn
+  function netShow(net, info) {
+    NET = net;
+    if (info.fresh || info.again) { NETQ = []; RE = null; cpuToken++; busy = false; if (WINO) { WINO.close(); WINO = null; } }
+    NETQ.push({ st: JSON.parse(JSON.stringify(net.state)), info: info, status: net.status, result: net.result });
+    if (!RE) netNext();
+  }
+  function netNext() {
+    var e = NETQ.shift();
+    if (!e || !NET) { RE = null; return; }
+    var mv = e.info.mv, prev = e.info.prev;
+    LEFT = e.status === 'over' && !e.st.over && e.result && e.result.left != null ? e.result : null;
+    if (mv && mv.pit != null && prev && !e.info.fresh && !e.info.again && !document.hidden && NETQ.length < 3) {
+      // play it out from the table as it was
+      RE = e; cpuToken++; S = JSON.parse(JSON.stringify(prev)); S.cur = mv.pl;
+      K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+      render(); play(mv.pit, true);
+      return;
+    }
+    RE = e; netSettled();
+  }
+  function netSettled() {
+    var e = RE; if (!e) return;
+    RE = null; busy = false; cpuToken++;
+    S = e.st; K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+    var mv = e.info.mv;
+    render();
+    if (e.info.again) { Kit.sfx('deal'); Kit.callout(S.cur === NET.seat ? 'You start' : S.players[S.cur].name + ' starts'); }
+    if (mv && mv.extra && !S.over && !NETQ.length) { var who = S.players[mv.pl]; Kit.callout(mv.pl === NET.seat ? 'Go again!' : who.name + ' goes again!', who.color); Kit.sfx('good'); Kit.haptic('medium'); }
+    if (NETQ.length) { setTimeout(netNext, 120); return; }
+    if (S.over || LEFT) setTimeout(function () { if (!RE && NET) netEnd(); }, S.st.sweep && !LEFT && mv ? 1000 : 300);
+    else if (mv && mv.pl !== NET.seat && NET.myTurn()) Kit.haptic('light');
+  }
+  function netEnd() {
+    if (!NET || !S) return;
+    var me = NET.seat, P = S.players, s0 = store(0), s1 = store(1), left = LEFT;
+    var wi = left ? (left.win && left.win.length ? left.win[0] : -1) : s0 > s1 ? 0 : s1 > s0 ? 1 : -1, key = NET.code + ':' + S.started;
+    var done = NETREC[key]; try { done = done || (JSON.parse(localStorage.getItem('mancala_net_rec')) || []).indexOf(key) >= 0; } catch (e) {}
+    if (!done && !left) {
+      NETREC[key] = 1;
+      try { var rl = JSON.parse(localStorage.getItem('mancala_net_rec')) || []; rl.push(key); localStorage.setItem('mancala_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {}
+      var hl = [], big = S.st.caps.slice().sort(function (a, b) { return b.n - a.n; })[0];
+      if (big) hl.push('Biggest capture: ' + P[big.who].name + ' grabbed ' + big.n + ' stones');
+      if (S.st.bestChain.n >= 2) hl.push(P[S.st.bestChain.who].name + ' took ' + (S.st.bestChain.n + 1) + ' turns in a row with extra turns');
+      if (S.st.sweep && S.st.sweep.n >= 4) hl.push(P[S.st.sweep.who].name + ' swept ' + S.st.sweep.n + ' stones into their store at the end');
+      if (wi >= 0 && Math.abs(s0 - s1) <= 2) hl.push('A nail-biter: won by ' + Math.abs(s0 - s1));
+      hl.push(S.per + ' stones per pit, played online at table ' + NET.code);
+      Kit.record(KEY, {
+        started: S.started, mode: 'Online',
+        players: P.map(function (p, i) { return { name: p.name, score: i ? s1 : s0, cpu: false }; }),
+        winner: wi >= 0 ? P[wi].name : null, highlights: hl,
+        detail: { b: S.st.endB || counts(), per: S.per, t0: S.st.t0, t1: S.st.t1, caps: S.st.caps.map(function (c) { return { w: c.who, n: c.n, p: c.pit }; }), m: S.st.m.length === S.moves ? S.st.m : undefined,
+          ex: S.st.extra.slice(), ch: S.st.bestChain, sw: S.st.sweep ? { w: S.st.sweep.who, n: S.st.sweep.n } : null, mv: S.moves, ser: S.wins.slice(), col: P.map(function (p) { return p.color || ''; }) }
+      });
+    }
+    if (WINO) WINO.close();
+    WINO = Kit.win({
+      icon: wi < 0 ? 'users' : wi === me ? 'trophy' : 'users',
+      title: left ? left.text : wi < 0 ? 'It’s a tie!' : wi === me ? 'You win!' : P[wi].name + ' wins!',
+      sub: left ? '' : P[0].name + ' has won ' + S.wins[0] + ' and ' + P[1].name + ' has won ' + S.wins[1] + ' at this table' + (S.wins[2] ? ', with ' + S.wins[2] + (S.wins[2] === 1 ? ' tie' : ' ties') : '') + '.',
+      rank: left ? null : [{ name: P[0].name, score: s0, color: P[0].color }, { name: P[1].name, score: s1, color: P[1].color }].sort(function (a, b) { return b.score - a.score; }),
+      lose: wi >= 0 && wi !== me, againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { WINO = null; netAgain(); },
+      look: { label: 'Look at the board', onClick: function () { WINO = null; } }
+    });
+  }
+  function netLeave() {
+    NET = null; LEFT = null; NETQ = []; RE = null; cpuToken++; busy = false; if (WINO) { WINO.close(); WINO = null; }
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.stones && sv.players && !sv.over) {
+      S = sv; S.stones.forEach(function (s) { if (s.p === 'h') { s.p = s.hp; delete s.hp; delete s.hi; } });
+      K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
+      render(); maybeCpu();
+    } else showSetup();
+  }
+  window.__mancala = { state: function () { return S; }, counts: function () { return counts(); }, tap: function (p) { tap(p); }, busy: function () { return busy || !!RE; } };
+
   var rT = null;
   // (also mid-move: render rebuilds from S, stones in hand included, and the sowing carries on in the new layout)
   window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S) render(); }, 150); });
@@ -483,6 +631,19 @@
     K = S.stones.reduce(function (m, s) { return Math.max(m, s.k); }, 0);
     render(); maybeCpu();
   } else showSetup();
+
+  TurnNet.setup({
+    game: 'mancala', title: 'Mancala', min: 2, max: 2,
+    opts: netOpts, start: netStart,
+    turn: function (st) { return st.over ? [] : [st.cur]; },
+    over: function (st) {
+      if (!st.over) return null;
+      var c = [0, 0]; st.stones.forEach(function (s) { if (s.p === 6) c[0]++; else if (s.p === 13) c[1]++; });
+      var w = c[0] > c[1] ? 0 : c[1] > c[0] ? 1 : -1;
+      return { win: w >= 0 ? [w] : [], text: w >= 0 ? st.players[w].name + ' wins ' + Math.max(c[0], c[1]) + '–' + Math.min(c[0], c[1]) : 'A tie' };
+    },
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
