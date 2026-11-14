@@ -24,12 +24,12 @@
     /* clue list */
     '.hvw-clues{display:grid;grid-template-columns:1fr;gap:10px;}' +
     '@media (min-width:520px){.hvw-clues{grid-template-columns:1fr 1fr;}}' +
-    '.hvw-clues h5{margin:0 0 4px;font-family:Georgia,serif;font-variant:small-caps;font-size:.92rem;letter-spacing:.05em;color:var(--text-2);border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:2px;}' +
+    '.hvw-clues h5{margin:0 0 4px;font-family:var(--font);font-weight:700;font-size:.88rem;color:var(--text-2);border-bottom:1px solid var(--gl-line);padding-bottom:3px;}' +
     '.hvw-clue{display:grid;grid-template-columns:22px 1fr;gap:2px 6px;padding:4px 2px;font-size:.86rem;line-height:1.3;color:var(--text-2);}' +
     '.hvw-clue b{color:var(--text);font-weight:900;text-align:right;}' +
     '.hvw-clue em{grid-column:2;font-style:normal;font-weight:900;letter-spacing:.12em;font-size:.78rem;color:var(--text-3);}' +
-    '.hvw-clue.miss em{color:#ff8a94;}' +
-    '.hvw-clue.miss em::after{content:" · revealed";letter-spacing:0;font-weight:700;}' +
+    '.hvw-clue.miss em{color:var(--bad-ink);}' +
+    '.hvw-clue.miss em::after{content:"Revealed";display:block;letter-spacing:0;font-weight:650;}' +
     '.hvw-more{font-size:.85rem;color:var(--text-2);}' +
     '.hvw-more summary{cursor:pointer;font-weight:800;color:var(--text-2);padding:4px 0;}' +
     /* wordle */
@@ -65,8 +65,8 @@
     '.hvw-pw .h{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.9rem;}' +
     '.hvw-pw .h .sp{flex:1;}.hvw-pw .h small{color:var(--text-3);font-weight:800;}' +
     '.hvw-tabs{display:flex;gap:6px;flex-wrap:wrap;}' +
-    '.hvw-tabs button{border:0;border-radius:999px;padding:6px 12px;font-weight:800;font-size:.82rem;background:rgba(255,255,255,.07);color:var(--text-2);}' +
-    '.hvw-tabs button.on{background:var(--text);color:var(--bg,#111);}' +
+    '.hvw-tabs button{border:0;border-radius:12px;padding:6px 12px;font-weight:700;font-size:.84rem;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:var(--text-2);}' +
+    '.hvw-tabs button.on{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6);}' +
     /* hangman */
     '.hvw-hm{display:flex;flex-direction:column;gap:8px;}' +
     '.hvw-hmc{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:#22302a;background:linear-gradient(160deg,#2b3a33,#1d2722);box-shadow:inset 0 0 0 2px #5a4128,inset 0 0 0 4px #3b2a19;}' +
