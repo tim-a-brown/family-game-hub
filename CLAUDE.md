@@ -249,7 +249,9 @@ Underlying principles for everything:
 - Real-time games (arcade, consoles) use `online.js` (WebRTC); consoles add lockstep in `games/console-net.js`.
 - **Notifications** (the bell on home, the profile menu and every game's menu, `Kit.inbox`): news that came in on this
   device, newest first (`gn_inbox_dev`). Anything new worth looking back at (a turn, a link answer, a request) goes in
-  with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js.
+  with `FGHSync.inboxAdd({id, k, ...})` and gets a line in `inboxLine` in kit.js. A turn notification is marked read (`read: 1`,
+  `FGHSync.inboxRead`) once that table is no longer waiting on you (Tim, 2026-11-14: "if i've taken my turn, mark this
+  notification as read"): `netTurns` does it for every table that isn't your move, and your turn there again brings a new one.
 
 ## Poker circuit rooms (pictures)
 

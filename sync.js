@@ -1751,6 +1751,18 @@
       window.dispatchEvent(new CustomEvent('fghinbox'));
     }catch(e){}
   }
+  // marks notifications read without opening the list (read: 1): a turn you have since taken (kit.js netTurns). A newer
+  // one with the same id (your turn again at that table) comes in unread, since inboxAdd puts a new item in its place.
+  function inboxRead(ids){
+    try{
+      if(!ids || !ids.length) return;
+      var a = inboxList(), hit = false;
+      a.forEach(function(x){ if(!x.read && ids.indexOf(x.id) >= 0){ x.read = 1; hit = true; } });
+      if(!hit) return;
+      LS.setItem(INBOX, JSON.stringify(a));
+      window.dispatchEvent(new CustomEvent('fghinbox'));
+    }catch(e){}
+  }
   function inboxDay(){ var d = new Date(); return d.getFullYear() + '' + (d.getMonth() + 1) + '' + d.getDate(); }
   function lk(n){ return String(n || '').trim().toLowerCase(); }
   function linkCol(){ return _fb.db.collection('links'); }
@@ -2729,7 +2741,7 @@
     initials: myInitials, setInitials: setInitials, renameIni: renameIni, tagOldScores: tagOldScores, linkHi: linkHi, linkPublishSoon: linkPublishSoon,
     linkMark: linkMark, linkSend: linkSend, linkBackfill: linkBackfill, linkPoll: linkPoll,
     linkPending: linkPending, linkAccept: linkAccept, linkDecline: linkDecline, linkNotMe: linkNotMe,
-    inboxList: inboxList, inboxAdd: inboxAdd, linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
+    inboxList: inboxList, inboxAdd: inboxAdd, inboxRead: inboxRead, linkReqs: linkReqs, linkReqInfo: linkReqInfo, linkReqAccept: linkReqAccept, linkReqDecline: linkReqDecline, linkWatch: linkWatch, linkPeek: linkPeek,
     linkBank: linkBank, bankRemote: bankRemote, _fileGame: fileGame,
     hiReset: HI_RESET, hiKeep: hiKeep,
     _scanLocal: scanLocal, _myHi: myHi, _mergeHi: mergeHi, _hiFromFirestore: hiFromFirestore

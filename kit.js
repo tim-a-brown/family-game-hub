@@ -825,6 +825,9 @@
         out.sort(function (a, b) { return (b.mine - a.mine) || (b.at - a.at); });
         // each table that came back to you goes in Notifications (one line per table, moved up when it's your turn again)
         if (FGHSync.inboxAdd) out.forEach(function (x) { if (x.mine && +x.at) FGHSync.inboxAdd({ id: 'turn:' + x.id + ':' + x.code, k: 'turn', game: x.id, vs: x.vs, file: x.file, at: +x.at }); });
+        // (and a table where you have taken your turn since: its notification is read. Tim, 2026-11-14: "if i've taken my
+        // turn, mark this notification as read")
+        if (FGHSync.inboxRead) FGHSync.inboxRead(out.filter(function (x) { return !x.mine; }).map(function (x) { return 'turn:' + x.id + ':' + x.code; }));
         return out;
       });
     }).catch(function () { return null; });
@@ -888,7 +891,7 @@
   // home screen, the profile menu and every game's menu. Kept on this device (sync.js inboxAdd).
   function inboxList() { return window.FGHSync && FGHSync.inboxList ? FGHSync.inboxList() : []; }
   function inboxSeen() { return +lsGet('gn_inbox_seen_dev', '0') || 0; }
-  function inboxNew() { var t = inboxSeen(); return inboxList().filter(function (x) { return (x.t || 0) > t; }).length; }
+  function inboxNew() { var t = inboxSeen(); return inboxList().filter(function (x) { return (x.t || 0) > t && !x.read; }).length; }
   function inboxAgo(ts) {
     var d = Date.now() - ts, m = Math.round(d / 60000);
     if (m < 1) return 'Now';
@@ -943,7 +946,7 @@
       var L = inboxLine(x); if (!L) return;
       var w = inboxWhen(x.at || x.t || 0);
       if (w !== last) { last = w; grp = el('div', { class: 'k-grp' }, [el('h3', { text: w })]); box.appendChild(grp); }
-      var row = el(L[3] ? 'button' : 'div', { class: 'k-ib-row' + ((x.t || 0) > seen ? ' new' : '') + (L[3] ? '' : ' still'), type: L[3] ? 'button' : null }, [
+      var row = el(L[3] ? 'button' : 'div', { class: 'k-ib-row' + ((x.t || 0) > seen && !x.read ? ' new' : '') + (L[3] ? '' : ' still'), type: L[3] ? 'button' : null }, [
         L[0], el('span', { class: 'grow' }, [el('b', { text: L[1] })].concat(L[2] ? [el('small', { text: L[2] })] : [])),
         el('span', { class: 'k-ib-ago', text: inboxAgo(x.at || x.t) })]);
       if (L[3]) row.onclick = function () { sfx('tap'); s.close(); setTimeout(L[3], 250); };
