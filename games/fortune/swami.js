@@ -88,11 +88,11 @@ const CSS = `
 .zd-big .zd-card{position:static;width:100%;height:100%;box-shadow:0 18px 40px rgba(0,0,0,.6),0 2px 4px rgba(0,0,0,.4);cursor:default;}
 .zd-acts{display:flex;gap:10px;flex:none;}
 .zd-over:not(.col) .zd-acts{flex-direction:column;}
-.zd-btn{min-height:48px;padding:0 20px;border-radius:14px;border:0;font:700 1rem/1 ui-rounded,system-ui,sans-serif;letter-spacing:.01em;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
+.zd-btn{min-height:48px;padding:0 20px;border-radius:15px;border:0;font:750 1rem/1 var(--font,system-ui,sans-serif);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;}
 .zd-btn svg{width:18px;height:18px;}
-.zd-btn.gold{color:#2b1600;background:linear-gradient(180deg,#ffe9a6,#e3b04a 55%,#c08a28);box-shadow:0 3px 0 #7a5212,inset 0 1px 0 rgba(255,255,255,.6);}
+.zd-btn.gold{color:#2b1600;background:linear-gradient(180deg,#ffe9a6,#e3b04a 55%,#c08a28);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 10px 22px -10px rgba(255,190,60,.55);}
 .zd-btn.plain{color:#f6e6c0;background:rgba(255,240,210,.08);box-shadow:inset 0 0 0 1.5px rgba(255,220,150,.35);}
-.zd-btn:active{transform:translateY(2px);}
+.zd-btn:active{transform:translateY(1px) scale(.975);filter:brightness(.94);}
 `;
 
 export default {

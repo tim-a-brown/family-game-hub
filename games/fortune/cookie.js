@@ -901,11 +901,11 @@ const CSS = `
   background:linear-gradient(180deg,#6a1014 0%,#4a080b 48%,#330507 100%);
   box-shadow:inset 0 0 0 1.5px var(--ck-gold-2),inset 0 0 0 4px #3d0608,inset 0 0 0 5px rgba(236,198,109,.45),
     0 10px 20px rgba(0,0,0,.42),0 2px 3px rgba(0,0,0,.5);
-  font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;}
+  font-family:var(--font,system-ui,sans-serif);}
 .ck-plq::before{content:"";position:absolute;inset:5px 5px 50% 5px;border-radius:6px 6px 2px 2px;pointer-events:none;
   background:linear-gradient(180deg,rgba(255,226,200,.14),rgba(255,226,200,0));}
 .ck-hint{position:absolute;left:50%;top:12px;z-index:2;transform:translateX(-50%);padding:8px 20px 9px;white-space:nowrap;pointer-events:none;
-  font-style:italic;font-size:1.02rem;letter-spacing:.02em;text-shadow:0 1px 0 rgba(0,0,0,.5);transition:opacity .3s,transform .3s;}
+  font-weight:600;font-size:.98rem;text-shadow:0 1px 0 rgba(0,0,0,.5);transition:opacity .3s,transform .3s;}
 .ck-hint.off{opacity:0;transform:translate(-50%,-8px);}
 .ck-bar{position:absolute;left:0;right:0;bottom:calc(var(--safe-b,0px) + 14px);z-index:4;display:flex;justify-content:center;padding:0 16px;
   pointer-events:none;transition:opacity .3s,transform .35s var(--spring,ease);}
@@ -919,8 +919,8 @@ const CSS = `
 .ck-b:focus-visible{outline:2px solid var(--ck-gold);outline-offset:-6px;}
 .ck-b svg{width:19px;height:19px;flex:none;}
 .ck-b .t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1;}
-.ck-b .l{font-weight:700;font-size:.86rem;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 1px 0 rgba(0,0,0,.55);}
-.ck-b .s{margin-top:3px;font-style:italic;font-size:.8rem;letter-spacing:.02em;color:#e3c88f;opacity:.85;font-variant-numeric:oldstyle-nums tabular-nums;}
+.ck-b .l{font-weight:750;font-size:1rem;text-shadow:0 1px 0 rgba(0,0,0,.55);}
+.ck-b .s{margin-top:2px;font-weight:550;font-size:.8rem;color:#e3c88f;opacity:.85;font-variant-numeric:tabular-nums;}
 .ck-b + .ck-b::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:linear-gradient(180deg,transparent,var(--ck-gold-2),transparent);}
 .ck-b.rs{min-width:54px;padding:0 16px;}
 .ck-b[hidden]{display:none;}
