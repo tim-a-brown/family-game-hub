@@ -20,7 +20,8 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .top{flex:none;display:flex;align-items:center;gap:8px;padding:0 0 8px;min-width:0;width:100%;}
 .puz{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px 0 14px;border:0;border-radius:999px;background:var(--w08);color:var(--text);font-weight:900;font-size:.95rem;white-space:nowrap;min-width:0;flex:0 1 auto;}
 .puz span{overflow:hidden;text-overflow:ellipsis;}.puz .ico{flex:none;}
-.puz{flex-shrink:0;}   /* (the puzzle's date stays whole: Nov 14; the other buttons give way) */
+@media (max-width:359px){ .top .puz span{display:none;} .top .puz{padding:0 10px;} }   /* (a 320 phone: the paper's own header names the puzzle; the button keeps its arrow) */
+
 .puz .ico{width:16px;height:16px;color:var(--text-3);}
 .clock{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-radius:999px;background:rgba(0,0,0,.25);color:var(--text);font-weight:900;font-variant-numeric:tabular-nums;font-size:1rem;}
 .clock .ico{width:16px;height:16px;color:var(--text-3);}
@@ -260,7 +261,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     return bankFiles[f].then(function (arr) {
       var x = arr[info.idx % BLOCK]; if (!x) throw new Error('missing');
       var p = { id: info.id, daily: info.key, date: info.date, kind: info.kind, dow: info.dow, size: info.kind === 'mini' ? 'mini' : 'big', grid: x.g, clues: x.c,
-        title: info.kind === 'mini' ? 'The Mini for ' + shortDate(info.date) : DOW[info.dow] + ' Crossword',
+        title: info.kind === 'mini' ? DOW[info.dow] + ' Mini' : DOW[info.dow] + ' Crossword',
         by: (info.kind === 'mini' ? shortDate(info.date) : info.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + (info.dow < 6 ? ', ' + LEVEL[info.dow].toLowerCase() : '')) };
       loaded[p.id] = p; return p;
     });
