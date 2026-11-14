@@ -448,9 +448,10 @@
         var h = hx[i], kids = [];
         kids.push(ui.el('div', { class: 'cz-kv', html: '<span><b>Hand ' + h.no + '</b></span>' + (h.g ? '<span>' + ui.esc(h.g) + '</span>' : '') +
           '<span class="cz-res ' + cls(h.net) + '">' + (h.r === 'F' ? 'Folded' : h.r === 'W' ? 'Won' : 'Lost') + (h.net ? ' ' + sgn(h.net) : '') + '</span>' }));
-        kids.push(line(ui, 'You' + (h.mine ? ' · ' + h.mine : ''), h.c, null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
+        kids.push(line(ui, 'You', h.c, h.mine || null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
         if (h.b.length) kids.push(line(ui, 'Board', h.b, null, null, { small: false }));
-        if (h.vs) kids.push(ui.el('div', { class: 'cz-kv', html: '<span>' + (h.r === 'F' ? 'Won by ' : 'Lost to ') + '<b>' + ui.esc(h.vs) + '</b></span>' }));
+        // the row keeps the winner and their hand apart with the separator (the row's own data); shown at either end
+        if (h.vs) { var vs = h.vs.split(' \u00b7 '); kids.push(ui.el('div', { class: 'cz-kv', html: '<span>' + (h.r === 'F' ? 'Won by ' : 'Lost to ') + '<b>' + ui.esc(vs[0]) + '</b></span>' + (vs[1] ? '<span>' + ui.esc(vs[1]) + '</span>' : '') })); }
         card.innerHTML = ''; card.appendChild(felt(ui, 'poker', kids));
       };
       out.push(ui.section(hx.length < (d.hands || 0) ? 'Your last ' + hx.length + ' hands' : 'Every hand', [road(ui, items, start, show), card,
