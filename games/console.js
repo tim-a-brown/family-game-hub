@@ -183,7 +183,7 @@
       style: { '--cw': w + 'px', '--lx': (C.lab[0] * 100) + '%', '--ly': (C.lab[1] * w * C.vb[1] / C.vb[0]) + 'px', '--lw': (C.lab[2] * 100) + '%',
         '--lh': (C.lab[3] * w * C.vb[1] / C.vb[0]) + 'px', '--lab': lb[0], '--lab-ink': lb[1] } });
     b.innerHTML = opts.add
-      ? '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '"><rect x="4" y="4" width="' + (C.vb[0] - 8) + '" height="' + (C.vb[1] - 8) + '" rx="10" fill="rgba(255,236,210,.05)" stroke="rgba(255,236,210,.45)" stroke-width="2.5" stroke-dasharray="7 6"/></svg>'
+      ? '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '"><rect x="4" y="4" width="' + (C.vb[0] - 8) + '" height="' + (C.vb[1] - 8) + '" rx="14" fill="currentColor" fill-opacity=".07" stroke="currentColor" stroke-opacity=".55" stroke-width="2.5" stroke-dasharray="7 6"/></svg>'
       : '<svg viewBox="0 0 ' + C.vb[0] + ' ' + C.vb[1] + '">' + C.svg() + '</svg>';
     if (opts.add) b.appendChild(el('span', { class: 'plus', html: Kit.icon('plus') + '<span>Add games</span>' }));
     else {
@@ -215,7 +215,7 @@
     var sv = el('div', { class: 'shelf-view' + (picking ? ' picking' : '') });
     var U = UNITS[SYS_ID];
     unitEl = el('div', { class: 'unit', html: '<svg viewBox="' + U.vb.join(' ') + '">' + U.svg + '</svg>' });
-    sv.appendChild(el('div', { class: 'stand' }, [unitEl, el('div', { class: 'top wood' }), el('div', { class: 'lip' })]));
+    sv.appendChild(el('div', { class: 'stand' }, [unitEl, el('div', { class: 'top' }), el('div', { class: 'lip' })]));
     var all = mine().sort(function (a, b) { return (b.played || b.added || 0) - (a.played || a.added || 0); });
     barEl = el('div', { class: 'shelf-bar' }); if (all.length) sv.appendChild(barEl);
     var wrap = el('div', { class: 'shelves' }); sv.appendChild(wrap);
