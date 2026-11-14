@@ -300,8 +300,16 @@
     X.pdPic = pics[pd]; X.myPic = pics[me];
     // the suits each side has bid
     X.bidBy = function (p) { var o = {}; calls.forEach(function (c, i) { if ((dealer + i) % 4 === p && isBid(c) && stOf(c) < 4) o[SUITS[stOf(c)]] = 1; }); return o; };
-    X.theirSuits = {}; X.theirs.forEach(function (e) { if (isBid(e.c) && stOf(e.c) < 4) X.theirSuits[SUITS[stOf(e.c)]] = 1; });
     X.ourSuits = {}; X.ours.forEach(function (e) { if (isBid(e.c) && stOf(e.c) < 4) X.ourSuits[SUITS[stOf(e.c)]] = 1; });
+    // their suits: a cuebid of a suit our side bid first is not theirs, and a two-suited bid (Michaels, the unusual
+    // 2NT) shows the suits it names
+    X.theirSuits = {};
+    X.theirs.forEach(function (e) {
+      if (!isBid(e.c) || stOf(e.c) > 3) return;
+      var ourFirst = X.ours.some(function (o) { return o.i < e.i && isBid(o.c) && stOf(o.c) === stOf(e.c); });
+      if (!ourFirst) X.theirSuits[SUITS[stOf(e.c)]] = 1;
+    });
+    [X.lho, X.rho].forEach(function (p) { var two = pics[p] && pics[p].f.two; if (two) two.split('').forEach(function (q) { if (SUITS.indexOf(q) >= 0) X.theirSuits[q] = 1; }); });
     X.can = function (c) { return X.legal.indexOf(c) >= 0; };
     // the cheapest legal bid in strain st
     X.cheap = function (st) { for (var l = 1; l <= 7; l++) { var b = mkBid(l, st); if (X.can(b)) return b; } return null; };
@@ -323,6 +331,8 @@
     // Answers to an ace or king ask come first, whatever else is going on
     var bw = blackwoodState(X);
     if (bw) return bw;
+    var cv = convState(X);
+    if (cv) return cv;
     var nt = ntSeqRules(X);
     if (nt) return nt;
     if (X.opener < 0) return openingRules(X);
@@ -549,6 +559,16 @@
   function compResp(X, os, their) {
     var L = [], major = os === 'h' || os === 's', ts = their && isBid(their.c) && stOf(their.c) < 4 ? SUITS[stOf(their.c)] : null, tl = their && isBid(their.c) ? lvOf(their.c) : 0;
     var need = major ? 3 : 4;
+    var twoX = their && X.pics[their.by] && X.pics[their.by].f.two;
+    if (twoX) {
+      // they showed two suits (Michaels, the unusual 2NT): raise partner, double to say the hand is ours, or pass
+      if (major && X.can('4' + os.toUpperCase())) L.push(r('4' + os.toUpperCase(), function (h) { return h.len[os] >= need && supPts(h, os) >= 13; }, 'To play: game in ' + SUITWORD[os] + ', with support and enough points for it.', { lo: 13, len: o1(os, need) }, { fit: os }));
+      if (X.can('X')) L.push(r('X', function (h) { return h.hcp >= 10 && !(h.len[os] >= need && supPts(h, os) >= 10); }, 'Double: 10 or more points. The hand belongs to this side, and a double of their suits later is for penalty.', { lo: 10 }));
+      var rz2 = X.cheap(sIdx(os));
+      if (rz2 && lvOf(rz2) <= 3) L.push(r(rz2, function (h) { var p = supPts(h, os); return h.len[os] >= need && p >= 6 && p <= 12; }, 'Raise: ' + need + ' or more ' + SUITWORD[os] + ' and 6 to 12 points.', { lo: 6, hi: 12, len: o1(os, need) }, { fit: os }));
+      L.push(r('P', T, 'Nothing good to say over their two-suited bid.', { hi: 9 }));
+      return L;
+    }
     if (ts) {
       var cue = X.cheap(sIdx(ts));
       if (cue && lvOf(cue) <= 3) L.push(r(cue, function (h) { return h.len[os] >= need && supPts(h, os) >= 11; }, 'Cuebid of their suit: support for partner\'s ' + SUITWORD[os] + ' and 11 or more points (a limit raise or better).', { lo: 11, len: o1(os, need) }, { force: 1, fit: os, conv: 1 }));
@@ -728,6 +748,25 @@
       if (X.can('1N')) L.push(r('1N', function (h) { return h.bal && h.hcp >= 15 - b * 1.3 && h.hcp <= 18 - b && stopper(h, os); }, balancing ? 'Balancing 1NT: 11 to 14 points, balanced, with ' + SUITWORD[os] + ' stopped.' : 'Notrump overcall: 15 to 18 points, balanced, with ' + SUITWORD[os] + ' stopped.', balancing ? { lo: 11, hi: 14, bal: 1 } : { lo: 15, hi: 18, bal: 1 }));
       if (X.can('2N') && olvl >= 2) L.push(r('2N', function (h) { return h.bal && h.hcp >= 15 && h.hcp <= 18 && stopper(h, os); }, 'Natural: 15 to 18 points, balanced, with ' + SUITWORD[os] + ' stopped.', { lo: 15, hi: 18, bal: 1 }));
       if (X.can('3N') && olvl >= 3) L.push(r('3N', function (h) { return h.hcp >= 16 && stopper(h, os); }, 'To play: a strong hand with ' + SUITWORD[os] + ' stopped.', { lo: 16 }));
+      // two-suited overcalls (weak, 7 to 11 points, or strong, 16 or more): Michaels and the unusual 2NT
+      if (olvl === 1 && X.theirs.length === 1) {
+        var two = function (h) { return h.hcp >= 7 && h.hcp <= 11 || h.hcp >= 16; };
+        var cueM = '2' + os.toUpperCase();
+        if (X.can(cueM)) {
+          if (os === 'c' || os === 'd') L.push(r(cueM, function (h) { return two(h) && h.len.h >= 5 && h.len.s >= 5; },
+            'Michaels cuebid: 5 or more of each major, and either 7 to 11 points or 16 or more.', { lo: 7, len: { h: 5, s: 5 } }, { conv: 1, two: 'hs' }));
+          else {
+            var om = os === 'h' ? 's' : 'h';
+            L.push(r(cueM, function (h) { return two(h) && h.len[om] >= 5 && (h.len.c >= 5 || h.len.d >= 5); },
+              'Michaels cuebid: 5 or more ' + SUITWORD[om] + ' and 5 or more of a minor, and either 7 to 11 points or 16 or more.', { lo: 7, len: o1(om, 5) }, { conv: 1, two: om + 'm' }));
+          }
+        }
+        if (X.can('2N')) {
+          var low2 = ['c', 'd', 'h'].filter(function (q) { return q !== os; }).slice(0, 2);
+          L.push(r('2N', function (h) { return two(h) && h.len[low2[0]] >= 5 && h.len[low2[1]] >= 5; },
+            'Unusual 2NT: 5 or more ' + SUITWORD[low2[0]] + ' and 5 or more ' + SUITWORD[low2[1]] + ' (the two lowest suits nobody has bid), and either 7 to 11 points or 16 or more.', o2(low2, 5, 7), { conv: 1, two: low2.join('') }));
+        }
+      }
       // takeout double
       var unbidM = ['h', 's'].filter(function (s) { return !ts[s]; });
       if (X.can('X') && tl <= 4) L.push(r('X', function (h) {
@@ -789,6 +828,8 @@
       L.push(r('P', T, 'Nothing to say.', null));
       return L;
     }
+    var twoF = X.pics[X.pd].f.two;
+    if (twoF && X.pdBids.length === 1) return advanceTwo(X, twoF);
     if (isBid(pc) && stOf(pc) < 4) {
       var ps = SUITS[stOf(pc)], weak = X.pics[X.pd].f.weak;
       var cue2 = os ? X.cheap(sIdx(os)) : null;
@@ -810,6 +851,23 @@
     return laterRules(X);
   }
   function longestUnbid(h, ts) { return longest(h, SUITS.filter(function (s) { return !ts[s]; })); }
+  // Partner made a two-suited overcall: choose between the suits (or ask for the minor), at the level the hand is worth
+  function advanceTwo(X, two) {
+    var L = [], known = two.split('').filter(function (q) { return q !== 'm'; }), askMinor = two.indexOf('m') >= 0;
+    function better(h) { return known.slice().sort(function (a, b) { return h.len[b] - h.len[a] || sIdx(b) - sIdx(a); })[0]; }
+    known.forEach(function (s) {
+      var g = gameLvl(sIdx(s)), cb = X.cheap(sIdx(s)); if (!cb) return;
+      var gb = mkBid(Math.max(g, lvOf(cb)), sIdx(s));
+      if (lvOf(gb) <= 5) L.push(r(gb, function (h) { return better(h) === s && h.len[s] >= 3 && supPts(h, s) >= 13; }, 'To play: game in ' + SUITWORD[s] + ', with support for it and enough points opposite the two-suiter.', { lo: 12, len: o1(s, 3) }, { fit: s }));
+      var jb = mkBid(lvOf(cb) + 1, sIdx(s));
+      if (lvOf(jb) < g) L.push(r(jb, function (h) { var p = supPts(h, s); return better(h) === s && h.len[s] >= 4 && p >= 10 && p <= 12; }, 'Invites game: 4 or more ' + SUITWORD[s] + ' and 10 to 12 points opposite the two-suiter.', { lo: 10, hi: 12, len: o1(s, 4) }, { fit: s, inv: 1 }));
+    });
+    if (askMinor && X.can('2N')) L.push(r('2N', function (h) { return h.len[known[0]] <= 2 && h.hcp >= 10; }, 'Asks partner which minor goes with the ' + SUITWORD[known[0]] + ': 10 or more points.', { lo: 10 }, { conv: 1, force: 1, ask: 'minor' }));
+    if (askMinor && X.can('3C')) L.push(r('3C', function (h) { return h.len[known[0]] <= 2; }, 'Pass or correct: partner passes with clubs, or bids diamonds with diamonds. A weak hand without ' + SUITWORD[known[0]] + '.', { hi: 9 }, { conv: 1, poc: 1 }));
+    known.forEach(function (s) { var cb = X.cheap(sIdx(s)); if (cb && lvOf(cb) <= 3) L.push(r(cb, function (h) { return better(h) === s; }, 'Chooses ' + SUITWORD[s] + ', the better of partner\'s suits for this hand. It shows nothing extra.', { len: o1(s, 2) }, { fit: s })); });
+    L.push(r('P', T, 'Nothing to add.', null));
+    return L;
+  }
 
   // ── Ace and king asks ──
   // 4NT is Blackwood unless it comes straight after partner's notrump with no suit agreed (then it invites 6NT)
@@ -842,10 +900,22 @@
         var fit = agreedSuit(X, h);
         var pa = shown === 0 ? (h.aces === 0 ? 4 : 0) : shown;
         var tot = pa + h.aces, t = fit != null ? sIdx(fit) : 4;
-        if (tot <= 2) return { c: X.can(mkBid(5, t)) ? mkBid(5, t) : X.cheap(t) || 'P', say: 'Signs off: the side is missing two aces, too many for a slam.' };
-        if (tot === 3) return { c: X.can(mkBid(6, t)) ? mkBid(6, t) : 'P', say: 'To play: a small slam, missing one ace.' };
+        var five = X.can(mkBid(5, t)) && t < 4 ? mkBid(5, t) : 'P';
+        var stop = { c: five, say: five === 'P' ? 'Stops here: too much is missing for a slam.' : 'Signs off: too much is missing for a slam.' };
+        if (tot <= 2) return { c: five, say: 'Signs off: the side is missing two aces, too many for a slam.' };
+        if (h.lv === 'hard' && h.hand && t < 4) {
+          // Hard plays the slam out in its head against the hands partner could hold with these aces
+          var od = slamOdds(X, h, t, pa);
+          if (tot === 4 && od.avg >= SLAM7 && X.can(mkBid(7, t))) return { c: mkBid(7, t), say: 'To play: a grand slam, with every ace.' };
+          if (slamGo(od, 0.1)) return { c: X.can(mkBid(6, t)) ? mkBid(6, t) : 'P', say: tot === 3 ? 'To play: a small slam, missing one ace.' : 'To play: a small slam with every ace.' };
+          return stop;
+        }
+        if (tot === 3) {
+          if (weakSide(X, h, t)) return stop;
+          return { c: X.can(mkBid(6, t)) ? mkBid(6, t) : 'P', say: 'To play: a small slam, missing one ace.' };
+        }
         var est = h.hcp + mid(X.pdPic);
-        if (est >= 35) return { c: '5N', say: 'Asks for kings: every ace is here, so a grand slam is possible.', ext: { conv: 1 } };
+        if (est >= 36) return { c: '5N', say: 'Asks for kings: every ace is here, so a grand slam is possible.', ext: { conv: 1 } };
         return { c: mkBid(6, t), say: 'To play: a small slam with every ace.' };
       } }];
     }
@@ -855,11 +925,98 @@
         var fit2 = agreedSuit(X, h), t2 = fit2 != null ? sIdx(fit2) : 4;
         var pk = sk === 0 ? (h.kings === 0 ? 4 : 0) : sk, tot = pk + h.kings;
         var est = h.hcp + mid(X.pdPic);
-        if (tot === 4 && est >= 35) return { c: mkBid(7, t2), say: 'To play: a grand slam, with every ace and king.' };
+        if (tot === 4 && est >= 36) return { c: mkBid(7, t2), say: 'To play: a grand slam, with every ace and king.' };
         return { c: X.can(mkBid(6, t2)) ? mkBid(6, t2) : 'P', say: 'To play: a small slam. A king is missing.' };
       } }];
     }
     return null;
+  }
+  // Conventional conversations: the answer to "which minor?" after Michaels, and new minor forcing
+  function convState(X) {
+    var ours = X.ours, n = ours.length; if (!n) return null;
+    var last = ours[n - 1], L = [];
+    // I made a Michaels cuebid showing a major and an unnamed minor; partner asked with 2NT
+    var myF = X.myPic.f || {};
+    if (last.by === X.pd && last.c === '2N' && X.myBids.length === 1 && myF.two && myF.two.indexOf('m') >= 0) {
+      L.push(r('3C', function (h) { return h.len.c >= 5 && h.len.c >= h.len.d; }, 'Answers the ask: the minor is clubs.', { len: { c: 5 } }));
+      L.push(r('3D', T, 'Answers the ask: the minor is diamonds.', { len: { d: 5 } }));
+      return L;
+    }
+    // partner bid 3 clubs, pass or correct
+    if (last.by === X.pd && last.c === '3C' && X.myBids.length === 1 && myF.two && myF.two.indexOf('m') >= 0 && ruleAt(X, last.i) && ruleAt(X, last.i).poc) {
+      L.push(r('P', function (h) { return h.len.c >= 5 && h.len.c >= h.len.d; }, 'Passes: the minor is clubs.', { len: { c: 5 } }));
+      L.push(r('3D', T, 'Corrects to diamonds: the minor is diamonds.', { len: { d: 5 } }));
+      return L;
+    }
+    if (!X.weOpened || X.interf) return null;
+    var q = ours.map(function (e) { return (e.by === X.opener ? 'o' : 'r') + e.c; }).join(' ');
+    var m = /^o1([CD]) r1([HS]) o1N$/.exec(q);
+    if (m && X.me !== X.opener) {
+      // responder: new minor forcing with 5 cards in the major (or 4 spades beside the hearts) and 11 or more points
+      var M = m[2].toLowerCase(), nm = m[1] === 'C' ? '2D' : '2C', nms = nm === '2D' ? 'd' : 'c';
+      L.push(r(nm, function (h) { return h.hcp >= 11 && (h.len[M] >= 5 || M === 'h' && h.len.s >= 4); },
+        'New minor forcing: it says nothing about ' + SUITWORD[nms] + '. It asks partner for 3-card ' + S1(M) + ' support, and shows 11 or more points.', { lo: 11, len: o1(M, 4) }, { conv: 1, force: 1, nmf: M }));
+      return L.concat(laterRules(X));
+    }
+    var m2 = /^o1([CD]) r1([HS]) o1N r2([CD])$/.exec(q);
+    var lr = m2 && ruleAt(X, last.i);
+    if (m2 && X.me === X.opener && lr && lr.nmf) {
+      var M2 = m2[2].toLowerCase(), U = M2.toUpperCase();
+      L.push(r('3' + U, function (h) { return h.len[M2] >= 3 && h.hcp >= 14; }, 'Answers new minor forcing: 3 ' + SUITWORD[M2] + ' and a maximum, 14 points.', { lo: 14, len: o1(M2, 3) }, { fit: M2 }));
+      L.push(r('2' + U, function (h) { return h.len[M2] >= 3; }, 'Answers new minor forcing: 3 ' + SUITWORD[M2] + ' and a minimum, 12 or 13 points.', { hi: 13, len: o1(M2, 3) }, { fit: M2 }));
+      if (M2 === 'h') L.push(r('2S', function (h) { return h.len.s >= 4; }, 'Answers new minor forcing: 4 spades, and not 3 hearts.', { len: { s: 4 }, mx: { h: 2 } }));
+      L.push(r('3N', function (h) { return h.hcp >= 14; }, 'Answers new minor forcing: no 3-card ' + S1(M2) + ' support, and a maximum.', { lo: 14, mx: o1(M2, 2) }));
+      L.push(r('2N', T, 'Answers new minor forcing: no 3-card ' + S1(M2) + ' support, and a minimum.', { hi: 13, mx: o1(M2, 2) }));
+      return L;
+    }
+    return null;
+  }
+  // a side suit where this hand has two or more cards and neither the ace nor the king, that partner never bid:
+  // with an ace missing, the opponents may take two tricks there at once
+  function weakSide(X, h, t) {
+    var pb = X.bidBy(X.pd);
+    return SUITS.some(function (s) { return sIdx(s) !== t && h.len[s] >= 2 && !has(h, s, 14) && !has(h, s, 13) && !pb[s]; });
+  }
+  // Blackwood only when the answer can still stop at five of the trump suit, and never with a void
+  function bwSafe(h, t) { return t < 4 && h.aces >= 2 - t && h.shape[3] > 0; }
+  // Hard's look at a slam: deal partner hands that fit what partner has shown (and the aces, when known), the rest
+  // to the opponents, play each out open-handed, and count how often twelve and thirteen tricks come in
+  function slamOdds(X, h, st, pa) {
+    var mine = h.hand, used = {}; mine.forEach(function (c) { used[c.id] = 1; });
+    var rest = deck().filter(function (c) { return !used[c.id]; });
+    var pic = X.pdPic, t = st < 4 ? SUITS[st] : null, N = 72, n12 = 0, n13 = 0, sum = 0;
+    var firstBy = X.ours.filter(function (e) { return isBid(e.c) && stOf(e.c) === st; })[0];
+    var decl = firstBy ? firstBy.by : X.me;
+    for (var k = 0; k < N; k++) {
+      var best = null, bestBad = 99;
+      for (var tries = 0; tries < 250; tries++) {
+        var cs = shuffle(rest.slice()), ph = cs.slice(0, 13), hc = 0, L = { c: 0, d: 0, h: 0, s: 0 }, ac = 0;
+        ph.forEach(function (c) { hc += HCPV[c.r] || 0; L[c.s]++; if (c.r === 'A') ac++; });
+        var bad = 0;
+        if (hc < pic.lo - 2) bad += pic.lo - 2 - hc; if (hc > pic.hi) bad += hc - pic.hi;
+        for (var s1 in pic.len) if (L[s1] < pic.len[s1]) bad += pic.len[s1] - L[s1];
+        for (var s2 in pic.mx) if (L[s2] > pic.mx[s2]) bad += L[s2] - pic.mx[s2];
+        if (pic.bal) { var sh = SUITS.map(function (q) { return L[q]; }).sort(function (a, b) { return b - a; }); if (sh[3] < 2 || sh[0] > 5) bad += 1; }
+        if (pa != null && ac !== pa) bad += 3;
+        if (bad < bestBad) { bestBad = bad; best = cs; if (!bad) break; }
+      }
+      var H = []; H[X.me] = mine.slice(); H[X.pd] = best.slice(0, 13); H[X.lho] = best.slice(13, 26); H[X.rho] = best.slice(26, 39);
+      var tk = simTricks(H, decl, t);
+      sum += tk; if (tk >= 12) n12++; if (tk >= 13) n13++;
+    }
+    LAST_ODDS = { p12: n12 / N, p13: n13 / N, avg: sum / N, st: st, hc: h.hc != null ? h.hc : h.hcp + Math.min(mid(pic), pic.lo + 2) };
+    return LAST_ODDS;
+  }
+  function simTricks(H, decl, t) {
+    var trick = [], turn = (decl + 1) % 4, won = 0, ds = side(decl);
+    for (;;) {
+      if (!trick.length && H[turn].length <= SIM_DD) { if (H[turn].length) won += ddSolve(H, [], turn, t, ds); break; }
+      var c = greedy(H, trick, turn, t);
+      H[turn].splice(idxOf(H[turn], c), 1); trick.push({ p: turn, c: c });
+      if (trick.length === 4) { var w = trickWinner(trick, t); if (side(w) === ds) won++; trick = []; turn = w; }
+      else turn = (turn + 1) % 4;
+    }
+    return won;
   }
   function mid(pic) { var hi = Math.min(pic.hi, pic.lo + 8); return Math.round((pic.lo * 2 + hi) / 3); }
   // the suit our side has agreed (both of us bid it, or one bid it and the other showed support), or a long one
@@ -878,7 +1035,11 @@
   // partnership belongs, and bids toward it: pass when we're there, invite when partner's range decides it,
   // a forcing bid when partner's last bid demands one, compete for a partscore, and double when they've gone too far.
   function laterRules(X) {
-    return [{ c: null, dyn: function (h) { return place(X, h); } }];
+    return [{ c: null, dyn: function (h) {
+      var res = place(X, h);
+      if (res && res.c === '4N' && !(res.ext && (res.ext.bw || res.ext.quant)) && isBW(X, { c: '4N', by: X.me, i: X.calls.length })) return { c: 'P', say: 'Happy where the bidding stands.' };
+      return res;
+    } }];
   }
   function place(X, h) {
     var pd = X.pdPic, me = X.me, a = X.a;
@@ -902,6 +1063,7 @@
     var myPts = fit ? (longHand ? h.hcp + h.lp + Math.min(short, 2) : supPts(h, fit)) : h.hcp + (h.bal ? 0 : Math.min(h.lp, 2));
     var tot = myPts + pdMid, totLo = myPts + pdLo, totHi = myPts + pdHi;
     var hcpTot = h.hcp + Math.min(pdMid, pdLo + 2);   // (slams are counted in high cards: shape alone doesn't take twelve tricks)
+    var hcpN = h.hcp + Math.min(pdMid, pdLo + 1);     // (and a notrump slam on the high cards partner is sure to hold)
     var theyHaveSuit = Object.keys(X.theirSuits);
     var allStopped = theyHaveSuit.every(function (s) { return stopper(h, s); });
     var major = fit === 'h' || fit === 's';
@@ -910,19 +1072,29 @@
     var ntOk = !fit ? (h.bal || pd.bal && h.shape[0] <= 5 && h.shape[3] >= 1) && allStopped : !major && fitLen < 9 && (h.bal || pd.bal) && allStopped || !major && allStopped && h.bal;
     if (fit && !ntOk) {
       var st = sIdx(fit);
-      if (tot >= 37 && hcpTot >= 35) tgt = [st, 7]; else if (tot >= 33 && hcpTot >= 32) tgt = [st, 6];
+      if (tot >= 37 && hcpTot >= 36) tgt = [st, 7]; else if (tot >= 33 && hcpTot >= (fitLen >= 9 ? 32 : 33)) tgt = [st, 6];
       else if (tot >= (major ? 25 : 28)) tgt = [st, major ? 4 : 5];
       else tgt = [st, Math.max(2, Math.min(fitLen - 6, 3))];
     } else if (ntOk) {
-      if (hcpTot >= 37) tgt = [4, 7]; else if (hcpTot >= 33) tgt = [4, 6]; else if (tot >= 25) tgt = [4, 3]; else tgt = [4, tot >= 23 ? 2 : 1];
+      if (hcpN >= 38) tgt = [4, 7]; else if (hcpN >= 33) tgt = [4, 6]; else if (tot >= 25) tgt = [4, 3]; else tgt = [4, tot >= 23 ? 2 : 1];
     } else {
       // no fit: partner's long suit, notrump with the other suits covered, or this hand's own long suit
       var mine = longest(h), pl = SUITS.filter(function (s) { return pd.len[s] >= 6; })[0] || SUITS.filter(function (s) { return pd.len[s] >= 5; })[0];
       var others = SUITS.filter(function (s) { return pd.len[s] < 4; });
       var covered = others.filter(function (s) { return stopper(h, s); }).length >= Math.min(2, others.length) && theyHaveSuit.every(function (s) { return stopper(h, s); });
       if (pl && h.len[pl] >= 2 && pd.len[pl] + h.len[pl] >= 7 && !(tot >= 25 && covered && pl !== 'h' && pl !== 's')) tgt = [sIdx(pl), tot >= 25 ? gameLvl(sIdx(pl)) : 2];
-      else if (tot >= 25 && covered) tgt = [4, hcpTot >= 33 ? 6 : 3];
+      else if (tot >= 25 && covered) tgt = [4, hcpN >= 34 ? 6 : 3];
       else tgt = [sIdx(mine), tot >= 27 && h.len[mine] >= 6 ? gameLvl(sIdx(mine)) : h.len[mine] >= 6 && tot >= 22 ? 3 : 2];
+    }
+    // Hard plays a hand in the slam zone out in its head, for the strain the side is headed for
+    if (h.lv === 'hard' && h.hand && tgt && (tgt[1] >= 6 || (fit && !ntOk ? tot >= 30 : hcpTot >= 30))) {
+      var sst = fit && !ntOk ? sIdx(fit) : tgt[0];
+      if (sst === tgt[0] || tgt[1] >= gameLvl(tgt[0])) {
+        h.hc = fit && !ntOk ? hcpTot : hcpN;
+        var od = slamOdds(X, h, sst, null); h.looked = 1;
+        if (slamGo(od)) tgt = [sst, od.avg >= SLAM7 && sst === 4 ? 7 : 6];
+        else if (tgt[1] >= 6) tgt = [sst, gameLvl(sst)];
+      }
     }
     var tgtBid = mkBid(tgt[1], tgt[0]);
     // they bid last: compete, double, or let them have it
@@ -954,7 +1126,7 @@
     var cur = a.last, curL = lvOf(cur), curSt = stOf(cur), ourCur = side(a.lastBy) === side(me);
     // slam: ask for aces first when a suit is agreed
     var askedBW = X.ours.some(function (e) { return e.c === '4N' && isBW(X, e); });
-    if (fit && tot >= 33 && hcpTot >= 32 && !askedBW && X.can('4N') && !ntOk && h.lv !== 'easy') return { c: '4N', say: 'Blackwood: asks partner how many aces they hold, on the way to a slam.', ext: { conv: 1, bw: 1 } };
+    if (fit && !ntOk && tgt[1] >= 6 && tgt[0] === sIdx(fit) && !askedBW && X.can('4N') && h.lv !== 'easy' && bwSafe(h, sIdx(fit)) && curL <= 4) return { c: '4N', say: 'Blackwood: asks partner how many aces they hold, on the way to a slam.', ext: { conv: 1, bw: 1 } };
     if (!fit && ntOk && hcpTot >= 31 && hcpTot <= 32 && X.can('4N') && curSt === 4 && pdHi - pdLo >= 2 && !askedBW) return { c: '4N', say: 'Invites a slam in notrump: partner bids 6NT with a maximum.', ext: { quant: 1 } };
     // already there (or partner's last bid set the contract)
     var curIsTgt = curSt === tgt[0] && curL >= tgt[1];
@@ -962,7 +1134,7 @@
     if (curIsTgt && !pdForce || curL >= 6 && curSt === tgt[0] && !pdForce) return { c: 'P', say: 'The partnership has found its contract.' };
     if (pdSignedOff && a.lastBy === X.pd && !pdForce) return { c: 'P', say: 'Partner chose where to stop.' };
     // partner bid a game: leave it there, unless a slam is on, or a long major of this hand's own plays better than notrump
-    if (a.lastBy === X.pd && isGameOrMore(cur) && curL < 6 && !pdForce && tot < 33) {
+    if (a.lastBy === X.pd && isGameOrMore(cur) && curL < 6 && !pdForce && tgt[1] < 6) {
       var lm = ['s', 'h'].filter(function (s) { return h.len[s] >= 6 && X.myPic.len[s] < 6 && pd.len[s] < 3; })[0];
       if (curSt === 4 && lm && X.can('4' + lm.toUpperCase())) return { c: '4' + lm.toUpperCase(), say: 'Prefers ' + SUITWORD[lm] + ': with 6 or more of them, game in ' + SUITWORD[lm] + ' plays better than in notrump.' };
       return { c: 'P', say: 'Partner chose the game.' };
@@ -1025,7 +1197,7 @@
       out.push(ru);
       var by = (dealer + i) % 4;
       if (ru && ru.sh) apply(pics[by], ru.sh);
-      if (ru && (ru.fit || ru.force || ru.inv || ru.weak || ru.tko || ru.jac)) { var f = pics[by].f; ['fit', 'force', 'inv', 'weak', 'tko', 'jac', 'quant'].forEach(function (k) { if (ru[k]) f[k] = ru[k]; }); }
+      if (ru && (ru.fit || ru.force || ru.inv || ru.weak || ru.tko || ru.jac || ru.two || ru.nmf)) { var f = pics[by].f; ['fit', 'force', 'inv', 'weak', 'tko', 'jac', 'quant', 'two', 'nmf'].forEach(function (k) { if (ru[k]) f[k] = ru[k]; }); }
       if (ru && !ru.force) pics[by].f.force = 0;
       if (ru && ru.fit) apply(pics[by], { len: o1(ru.fit, 3) });
     }
@@ -1090,6 +1262,7 @@
   // The computer's call. lv: 'easy' | 'normal' | 'hard'. Returns {call, say}
   function chooseCall(hand, calls, dealer, lv) {
     var A = analyze(calls, dealer), X = context(calls, dealer, A.pics), h = feat(hand, lv);
+    h.hand = hand;
     var L = rulesFor(X), pick = null;
     for (var i = 0; i < L.length && !pick; i++) {
       var q = L[i];
@@ -1098,6 +1271,14 @@
       if (q.ok(h, X)) pick = { call: q.c, say: q.say };
     }
     if (!pick) pick = { call: 'P', say: 'Nothing more to say.' };
+    // Hard: a game bid from the book (3NT opposite partner's opening, say) gets the same look at a slam first
+    if (lv === 'hard' && !h.looked && isBid(pick.call)) {
+      var gl0 = lvOf(pick.call), gs0 = stOf(pick.call), pd0 = X.pdPic;
+      if (gl0 < 6 && gl0 >= gameLvl(gs0) && X.pdBids.length && h.hcp + Math.min(mid(pd0), pd0.lo + 2) >= 30) {
+        var od0 = slamOdds(X, h, gs0, null), six = mkBid(6, gs0);
+        if (slamGo(od0) && X.can(six)) pick = { call: six, say: 'To play: a small slam in ' + SW(gs0) + '.' };
+      }
+    }
     // Easy forgets to compete now and then
     if (lv === 'easy' && pick.call !== 'P' && X.a.last && R() < 0.12) pick = { call: 'P', say: 'Nothing more to say.' };
     return pick;
@@ -1400,6 +1581,12 @@
   // deal on every one of those layouts, and keeps the card that wins the most tricks for its side. The last few
   // tricks are worked out exactly (double dummy).
   var HARD_DEALS = 60, HARD_MS = 450, DD_AT = 3;
+  // Hard bids a slam when its open-handed playouts average this many tricks or more. The quick playouts count
+  // about 0.6 of a trick under what Hard robots really take; 10.6 (with twelve tricks in at least 3 of 10
+  // playouts) was set by playing about 17,000 Hard auctions out: 73% of the slams bid made, against 62% before, and
+  // more slams made in all. A grand slam needs 12.6.
+  var SLAM6 = 10.6, SLAM7 = 12.6, LAST_ODDS = null, SIM_DD = 3;
+  function slamGo(od, ease) { return od.avg >= SLAM6 - (ease || 0) && od.p12 >= 0.3; }
   function hardCard(G, p, opts) {
     var me = whoControls(G, p), vis = knownTo(G, p);
     var groups = groupEq(G, opts, me, vis); if (groups.length === 1) return groups[0];
@@ -1567,6 +1754,10 @@
     newPad: newPad, vulOf: vulOf, vulCode: vulCode, padDeal: padDeal,
     chooseCall: chooseCall, meaning: meaning, pictures: pictures, hintCall: hintCall, hcp: hcp, feat: feat,
     chooseCard: chooseCard, openingLead: openingLead, gameLvl: gameLvl,
+    _sim: function (H, decl, t) { return simTricks(H, decl, t); },
+    _slam: function (a, b) { SLAM6 = a; SLAM7 = b; },
+    _simdd: function (n) { SIM_DD = n; },
+    _odds: function () { var o = LAST_ODDS; LAST_ODDS = null; return o; },
     setHard: function (n, ms, dd) { HARD_DEALS = n; HARD_MS = ms; if (dd != null) DD_AT = dd; }
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;

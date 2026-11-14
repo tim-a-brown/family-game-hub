@@ -213,8 +213,13 @@ Underlying principles for everything:
   scoring, the insult bonus, slams and honors in both.
 - The computer bids SAYC basics from one table of rules (`rulesFor`): a robot's call and the meaning shown for it come
   from the same rule, so a new convention is one rule with its `say` and `sh` (the hand it shows). Michaels, the
-  unusual 2NT and new minor forcing are not in it. Easy, Normal and Hard differ in skill, never in cheating; Hard
-  samples hands that fit the auction and solves the last three tricks exactly (`HARD_DEALS`, `HARD_MS`, `DD_AT`).
+  unusual 2NT (`two` on the bidder's picture) and new minor forcing (`convState`) are in it. Easy, Normal and Hard
+  differ in skill, never in cheating; Hard samples hands that fit the auction and solves the last three tricks exactly
+  (`HARD_DEALS`, `HARD_MS`, `DD_AT`). Hard bids a slam only after playing the hand out in its head (`slamOdds`: 72
+  partner hands that fit the auction, played open-handed): when they average `SLAM6` (10.6) tricks and take twelve at
+  least 3 times in 10. On about 17,000 Hard deals that made 73% of the slams bid (62% before); 11.1 makes 78% but fewer
+  slams in all, and Hard's own card play is what loses most of the rest.
+  On an iPad held sideways the bidding box is the whole box of 35 bids (`fullbox`) and the hand runs the full width.
 - The table: a bidding box (levels and strains, Pass, X, XX), the auction slip by seat (a tap says what a call means),
   a duplicate board in the corner whose colors show vulnerability, the contract plaque, the dummy in suit columns,
   played tricks face down in rows by side, the We/They pad. Learning aids that can be turned off: your hand's HCP, bid
