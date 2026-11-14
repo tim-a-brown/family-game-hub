@@ -11,6 +11,8 @@
 <script src="../kit.js"></script>
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
 <style>
 :root{--tback:#1f5ea8;--tback-2:#2d7bd0;}
 .mj{display:flex;flex-direction:column;align-items:center;gap:8px;}
@@ -116,12 +118,12 @@
 
   Kit.init({
     id: 'mahjong4',
-    onNew: function () { tok++; clearSave(); undoStack = []; showSetup(); },
-    undo: function () { undo(); },
-    menu: [
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; clearSave(); undoStack = []; showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
       { icon: 'lightbulb', label: 'Hint: what to discard', onClick: function () { hint(); } },
       { icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Mahjong: past games' }); } }
-    ],
+    ]),
     rules:
       '<p class="goal">Be the first to make a <b>complete hand</b>: four sets plus one pair (14 tiles). You play against three computer players.</p>' +
       '<h3>The tiles</h3><ul><li><b>Dots</b>, <b>Bamboo</b> and <b>Characters</b> (萬), numbered 1 to 9. Characters show the Chinese number (一 1, 二 2, 三 3 … 九 9) with a small number in the corner.</li>' +
@@ -134,7 +136,10 @@
       '<h3>Scoring (Hong Kong style)</h3><ul><li>Hands earn <b>faan</b>: Self-drawn 1, Concealed hand 1, All Chows 1, each Dragon pung 1, your Seat wind or the Round wind pung 1, Last tile 1, Win after a kong 1, All Pungs 3, Mixed One Suit 3, Seven Pairs 4, Small Three Dragons 5, Small Four Winds 6, Pure One Suit 7, Big Three Dragons 8, All Honors / Big Four Winds / Thirteen Orphans 10 (the limit).</li>' +
       '<li>Points: 0 faan 1, 1 → 2, 2 → 4, 3 → 8, 4 → 16, 5 → 24, 6 → 32, 7 → 48, 8 → 64, 9 → 96, 10+ → 128.</li>' +
       '<li>Win on a discard: the discarder pays <b>double</b>. Self-drawn win: <b>each</b> other player pays.</li></ul>' +
-      '<h3>Dealer and rounds</h3><p>East is the dealer and starts with 14 tiles. In a full game the dealer stays on after winning or a draw; otherwise the deal passes to the right. The game ends after the chosen number of rounds; highest score wins.</p>'
+      '<h3>Dealer and rounds</h3><p>East is the dealer and starts with 14 tiles. In a full game the dealer stays on after winning or a draw; otherwise the deal passes to the right. The game ends after the chosen number of rounds; highest score wins.</p>' +
+      '<h3>Online</h3><ul><li><b>Play online</b> beside the start button: open a table and up to 3 others join on their own devices. The computer plays any seat that nobody takes.</li>' +
+      '<li>Each of you sees only your own tiles. Take your turn whenever you like; the home screen shows when it’s your move, or when you can claim a discard.</li>' +
+      '<li>When a hand ends, the next one is dealt at once, and everyone sees how the hand was scored. Moves can’t be taken back online.</li></ul>'
   });
 
   // ── Tiles ─────────────────────────────────────────────────────────────────
@@ -336,7 +341,9 @@
 
   // ── State ─────────────────────────────────────────────────────────────────
   var S = null, undoStack = [], tok = 0, sel = null, busy = false;
+  var NET = null, NETBUSY = false;   // the online table (turnnet.js), while at one: S is the table's game, S.me your seat
   function save() {
+    if (NET) return;
     try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
     if (S && S.phase !== 'over') Kit.resume.set('Hand ' + S.handNo + ', ' + WIND_EN[S.wind] + (humans() > 1 ? '' : ' · you ' + S.scores[0]));
   }
@@ -386,6 +393,13 @@
 
   function startHand() {
     tok++; undoStack = []; sel = null; busy = false;
+    startHandCore();
+    save(); render();
+    setTimeout(function () { Kit.callout(WIND_EN[S.wind] + ' round · Hand ' + S.handNo); }, 200);
+    flow(900);
+  }
+  // the deal (the rules only: online tables deal with it too)
+  function startHandCore() {
     var order = []; for (var i = 0; i < 136; i++) order.push(i);
     for (i = order.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = order[i]; order[i] = order[j]; order[j] = t; }
     S.order = order; S.front = 0; S.back = 0;
@@ -393,9 +407,6 @@
     for (var r = 0; r < 13; r++) for (var k = 0; k < 4; k++) S.hands[(S.dealer + k) % 4].push(S.order[S.front++]);
     S.handNo++; S.cur = S.dealer; S.last = null; S.kongDraw = false; S.drawn = null; S.claim = null; S.result = null;
     S.phase = 'draw';
-    save(); render();
-    setTimeout(function () { Kit.callout(WIND_EN[S.wind] + ' round · Hand ' + S.handNo); }, 200);
-    flow(900);
   }
   function wallLeft() { return 136 - S.front - S.back; }
 
@@ -611,19 +622,23 @@
   }
 
   // ── Human actions ─────────────────────────────────────────────────────────
-  function myTurn() { return S && !S.cover && S.phase === 'discard' && S.cur === S.me && !S.players[S.me].cpu; }
+  function myTurn() { return S && !S.cover && S.phase === 'discard' && S.cur === S.me && !S.players[S.me].cpu && (!NET || (!NETBUSY && NET.myTurn())); }
+  // online: the discard is yours to claim or pass
+  function myClaim() { return S && S.phase === 'claim' && S.claim && (!NET || (S.claim.q === S.me && !NETBUSY && NET.myTurn())); }
   function tapTile(id) {
     if (!myTurn()) { if (S && !S.cover && S.phase === 'claim' && S.claim) Kit.toast('Choose a claim or Pass first'); return; }
-    if (sel === id) { snapshot(); discard(S.me, id); return; }
+    if (sel === id) { if (NET) { netYou({ t: 'disc', id: id }); return; } snapshot(); discard(S.me, id); return; }
     sel = id; Kit.sfx('tap'); Kit.haptic('light'); render();
   }
   function declareWin() {
     if (!myTurn() || !canWin(S.hands[S.me], S.melds[S.me].length)) return;
+    if (NET) { netYou({ t: 'win' }); return; }
     snapshot(); endHand({ winner: S.me, self: true });
   }
-  function humanKong(k) { if (!myTurn()) return; snapshot(); selfKong(S.me, k); }
+  function humanKong(k) { if (!myTurn()) return; if (NET) { netYou({ t: 'kong', k: k }); return; } snapshot(); selfKong(S.me, k); }
   function humanClaim(type, pair) {
     if (!S.claim || S.cover) return;
+    if (NET) { if (myClaim()) netYou({ t: 'claim', type: type, pair: pair || null }); return; }
     snapshot();
     var cl = S.claim, q = cl.q == null ? 0 : cl.q;
     if (type === 'pass') {
@@ -657,16 +672,25 @@
   function closeSheet() { if (openSheet) { openSheet.close(); openSheet = null; } }
   function endHand(res) {
     tok++;
-    var P = S.players, deltas = [0, 0, 0, 0], sc = null;
+    var P = S.players, over = endHandCore(res);
+    if (res) {
+      var p = res.winner;
+      Kit.callout(isMe(p) && humans() < 2 ? 'Mahjong!' : P[p].name + ': Mahjong!');
+      if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
+    } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
+    save(); render();
+    setTimeout(function () { showResult(over); }, res ? 1300 : 900);
+  }
+  // the count at the end of a hand (the rules only: online tables count with it too); true when the game is over
+  function endHandCore(res) {
+    var deltas = [0, 0, 0, 0], sc = null;
     if (res) {
       var p = res.winner;
       sc = score(p, res.self, { lastTile: wallLeft() === 0, kong: res.self && S.kongDraw });
       if (res.self) { for (var q = 0; q < 4; q++) if (q !== p) { deltas[q] -= sc.pts; deltas[p] += sc.pts; } }
       else { deltas[res.from] -= sc.pts * 2; deltas[p] += sc.pts * 2; }
       for (q = 0; q < 4; q++) S.scores[q] += deltas[q];
-      Kit.callout(isMe(p) && humans() < 2 ? 'Mahjong!' : P[p].name + ': Mahjong!');
-      if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
-    } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
+    }
     var label = 'ESWN'[S.wind] + S.handNo;
     S.log.push({ tl: res ? handCode(res.winner, res.self ? S.drawn : S.last && S.last.id) : '', dl: S.dealer, label: label, winner: res ? res.winner : -1, from: res ? (res.self ? -1 : res.from) : -1, self: res ? res.self : false, faan: sc ? sc.faan : 0, pts: sc ? sc.pts : 0, list: sc ? sc.list.slice().sort(function (a, b) { return b[1] - a[1]; }).map(function (x) { return x[0]; }) : [], deltas: deltas });
     S.result = { res: res, sc: sc, deltas: deltas };
@@ -678,8 +702,7 @@
     }
     var over = S.len === 'quick' ? S.handNo >= 4 : S.len === 'east' ? (S.wind >= 1 || S.handNo >= 12) : (S.wind >= 4 || S.handNo >= 32);
     S.phase = over ? 'over' : 'end';
-    save(); render();
-    setTimeout(function () { showResult(over); }, res ? 1300 : 900);
+    return over;
   }
   // For the history view: the winning hand as one short string. One letter per tile kind (A-Z then a-h),
   // melds first ('*' = concealed kong), space-separated, then the concealed tiles; '!' marks the winning tile.
@@ -690,20 +713,21 @@
     g.push(S.hands[p].map(kindOf).sort(function (a, b) { return a - b; }).map(function (k) { if (k === won && !marked) { marked = true; return '!' + kc(k); } return kc(k); }).join(''));
     return g.join(' ');
   }
-  function handTiles(p) {
-    var box = el('div', { class: 'hand' });
-    S.melds[p].forEach(function (m) { var g = el('div', { class: 'grp' }); m.ids.forEach(function (id, i) { g.appendChild(m.conc && (i === 0 || i === 3) ? backTile(23) : tile(id, 23)); }); box.appendChild(g); });
+  // X (online): the hand just played, kept when the next hand was dealt ({melds, hand, last} of the winner)
+  function handTiles(p, X) {
+    var box = el('div', { class: 'hand' }), melds = X ? X.melds : S.melds[p], hand = X ? X.hand : S.hands[p], lastId = X ? X.last : S.last && S.last.id;
+    melds.forEach(function (m) { var g = el('div', { class: 'grp' }); m.ids.forEach(function (id, i) { g.appendChild(m.conc && (i === 0 || i === 3) ? backTile(23) : tile(id, 23)); }); box.appendChild(g); });
     var g2 = el('div', { class: 'grp' });
-    S.hands[p].slice().sort(function (a, b) { return a - b; }).forEach(function (id) { g2.appendChild(tile(id, 23, id === (S.last && S.last.id) ? 'hot' : '')); });
+    hand.slice().sort(function (a, b) { return a - b; }).forEach(function (id) { g2.appendChild(tile(id, 23, id === lastId ? 'hot' : '')); });
     box.appendChild(g2);
     return box;
   }
-  function showResult(over) {
-    var r = S.result, P = S.players, node = el('div', { class: 'res' });
+  function showResult(over, X) {
+    var r = X ? X.result : S.result, P = S.players, node = el('div', { class: 'res' }), scores = X ? X.scores : S.scores;
     if (r.res) {
       var p = r.res.winner;
-      node.appendChild(el('p', { class: 'muted', text: r.res.self ? 'Self-drawn win' : 'Won on ' + (P[r.res.from].name === 'You' ? 'your' : P[r.res.from].name + '\'s') + ' discard' }));
-      node.appendChild(handTiles(p));
+      node.appendChild(el('p', { class: 'muted', text: r.res.self ? 'Self-drawn win' : 'Won on ' + (P[r.res.from].name === 'You' || (NET && r.res.from === S.me) ? 'your' : P[r.res.from].name + '\'s') + ' discard' }));
+      node.appendChild(handTiles(p, X));
       var t = el('table');
       (r.sc.list.length ? r.sc.list : [['Chicken hand (no bonuses)', 0]]).forEach(function (x) { t.appendChild(el('tr', null, [el('td', { text: x[0] }), el('td', { text: x[1] + ' faan' })])); });
       t.appendChild(el('tr', null, [el('td', { html: '<b>Total</b>' }), el('td', { text: r.sc.faan + (r.sc.faan >= 10 ? ' (limit)' : '') + ' faan = ' + r.sc.pts + ' pts' })]));
@@ -713,10 +737,11 @@
     var t2 = el('table');
     [0, 1, 2, 3].forEach(function (q) {
       var d = r.deltas[q];
-      t2.appendChild(el('tr', null, [el('td', { text: P[q].name }), el('td', { html: (d ? '<span class="' + (d > 0 ? 'pos' : 'neg') + '">' + (d > 0 ? '+' : '') + d + '</span> · ' : '') + S.scores[q] })]));
+      t2.appendChild(el('tr', null, [el('td', { text: P[q].name }), el('td', { html: (d ? '<span class="' + (d > 0 ? 'pos' : 'neg') + '">' + (d > 0 ? '+' : '') + d + '</span> · ' : '') + scores[q] })]));
     });
     node.appendChild(t2);
-    var title = !r.res ? 'Draw' : P[r.res.winner].name === 'You' ? 'You win the hand!' : P[r.res.winner].name + ' wins the hand';
+    var title = !r.res ? 'Draw' : P[r.res.winner].name === 'You' || (NET && r.res.winner === S.me) ? 'You win the hand!' : P[r.res.winner].name + ' wins the hand';
+    if (X) { openSheet = Kit.sheet({ title: title, node: node, actions: [{ label: over ? 'See who won' : 'Play hand ' + (X.handNo + 1), primary: true, onClick: function () { openSheet = null; if (over) netEnd(true); } }] }); return openSheet; }
     openSheet = Kit.sheet({
       title: title, node: node, dismissible: false,
       actions: [{ label: over ? 'Final results' : 'Next hand', primary: true, onClick: function () { openSheet = null; if (over) finish(); else startHand(); } }]
@@ -751,13 +776,24 @@
     var selfs = S.log.filter(function (h) { return h.self; }).length; if (selfs >= 2) hl.push(selfs + ' hands won on a self-drawn tile');
     var kg = S.stats.kongs.reduce(function (a, b) { return a + b; }, 0); if (kg) hl.push(kg + ' kong' + (kg === 1 ? '' : 's') + ' declared');
     var draws = S.log.filter(function (h) { return h.winner < 0; }).length; if (draws) hl.push(draws + ' hand' + (draws === 1 ? '' : 's') + ' ended in a draw');
-    Kit.record(KEY, {
-      started: S.started, mode: { quick: 'Quick game', east: 'East round', full: 'Full game' }[S.len] + (S.mode === 'local' ? ', pass & play' : ' vs Computer'),
+    var recKey = NET ? NET.code + ':' + S.started : null;
+    if (!NET || (NET.seat >= 0 && !NETREC[recKey])) { if (NET) NETREC[recKey] = 1; Kit.record(KEY, {
+      started: S.started, mode: { quick: 'Quick game', east: 'East round', full: 'Full game' }[S.len] + (NET ? ', online' : S.mode === 'local' ? ', pass & play' : ' vs Computer'),
       players: P.map(function (p, i) { return { name: p.name, score: S.scores[i], cpu: p.cpu }; }),
       winner: tie ? null : top.name,
       rounds: { labels: S.log.map(function (h) { return h.label; }), scores: S.log.map(function (h) { return h.deltas; }) },
       highlights: hl.slice(0, 6), detail: mjDetail()
-    });
+    }); }
+    if (NET) {
+      var tops = rank.filter(function (x) { return x.score === top.score; }), mine = tops.some(function (x) { return x.i === S.me; }), res = NET.result, left = res && res.left != null;
+      return Kit.win({
+        icon: mine ? 'trophy' : 'users', title: left ? res.text : mine ? (tie ? 'You tied for the win!' : 'You win!') : tie ? 'A tie at the top!' : top.name + ' wins!',
+        sub: S.log.length + ' hands played', rank: rank, lose: !mine && !left,
+        againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+        look: 'Look at the table', closeLabel: 'Back to games'
+      });
+    }
     clearSave();
     var lose = top.cpu || tie && rank.filter(function (x) { return x.score === top.score; }).every(function (x) { return x.cpu; });
     Kit.win({
@@ -884,13 +920,14 @@
     // status, claim bar, rack, actions
     var ME = S.me, mh = S.hands[ME], mine = myTurn();
     var st2 = el('div', { class: 'status' });
-    if (S.cover || (S.phase === 'claim' && S.claim)) st2.textContent = '';
+    if (S.cover || (S.phase === 'claim' && S.claim && (!NET || S.claim.q === S.me))) st2.textContent = '';
     else if (mine) st2.innerHTML = sel != null ? 'Tap the raised tile again to <b>discard</b> it' : canWin(mh, S.melds[ME].length) ? '<b>You can win!</b> Tap Mahjong' : 'Your turn: tap a tile to discard';
     else if (S.phase === 'end' || S.phase === 'over') st2.textContent = S.result && S.result.res ? (P[S.result.res.winner].name + ' won the hand') : 'Hand over';
-    else st2.textContent = P[S.cur].cpu ? P[S.cur].name + (S.phase === 'draw' ? ' is drawing…' : ' is thinking…') : '';
+    else if (NET && S.phase === 'claim' && S.claim) st2.textContent = P[S.claim.q].name + ' is deciding whether to claim the ' + kname(kindOf(S.last.id));
+    else st2.textContent = P[S.cur].cpu ? P[S.cur].name + (S.phase === 'draw' ? ' is drawing…' : ' is thinking…') : NET ? Kit.poss(P[S.cur].name) + ' turn' : '';
     wrap.appendChild(st2);
 
-    if (!S.cover && S.phase === 'claim' && S.claim) table.appendChild(claimBar());
+    if (!S.cover && S.phase === 'claim' && S.claim && (!NET || S.claim.q === S.me)) table.appendChild(claimBar());
 
     var rtw = Math.floor(Math.min(side ? 48 : Math.round(48 * Math.min(KZ, 1.15)), (RW - 40) / 7.4));
     var rack = el('div', { class: 'rack', style: { width: Math.min(RW, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
@@ -952,7 +989,7 @@
   function actions() {
     var a = el('div', { class: 'acts' });
     if (S.cover) return a;
-    if (S.phase === 'claim' && S.claim) {
+    if (S.phase === 'claim' && S.claim && (!NET || myClaim())) {
       var o = S.claim.opts;
       if (o.win) a.appendChild(el('button', { type: 'button', class: 'btn btn-green', text: 'Mahjong!', onclick: function () { humanClaim('win'); } }));
       if (o.kong) a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Kong', onclick: function () { humanClaim('kong'); } }));
@@ -974,14 +1011,255 @@
         a.appendChild(b);
       });
       a.appendChild(el('button', { type: 'button', class: 'btn btn-soft hintb', 'aria-label': 'Hint', html: Kit.icon('lightbulb') + (a.children.length ? '' : '<span>Hint</span>'), onclick: hint }));
-      var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { snapshot(); discard(S.me, sel); } } });
+      var d = el('button', { type: 'button', class: 'btn btn-primary', text: 'Discard', onclick: function () { if (sel != null) { if (NET) { netYou({ t: 'disc', id: sel }); return; } snapshot(); discard(S.me, sel); } } });
       d.disabled = sel == null; a.appendChild(d);
+    } else if (NET) {
     } else if (S.phase === 'end') {
       a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Hand result', onclick: function () { showResult(false); } }));
     } else if (S.phase === 'over') {
       a.appendChild(el('button', { type: 'button', class: 'btn btn-primary', text: 'Final results', onclick: finish }));
     }
     return a;
+  }
+
+  // ── Online (turnnet.js) ───────────────────────────────────────────────────
+  // The table holds the whole game. Each device sits its own seat at the bottom (S.me) with only its tiles face up.
+  // A move is a discard, a kong, a Mahjong, or a claim on a discard (or Pass). The rules run on from there as on one
+  // device: the next player draws at once, the computer players claim what they want, and a person who could claim
+  // a discard gets the turn to decide (best claim first, as on one device). The move that ends a hand scores it and
+  // deals the next, and everyone sees how the hand was scored.
+  var NETQ = [], NETREC = {}, NETWIN = null, NETSEEN = {}, EVX = null;
+  function withS(st, f) { var k = S; S = st; try { return f(); } finally { S = k; } }
+  function ev() { if (EVX) EVX.push([].slice.call(arguments)); }
+  function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_mahjong4') || '{}') || {}; } catch (e) { return {}; } }
+  function netOpts() { var o = netSetup().options || {}; return { len: o.len === 'east' || o.len === 'full' ? o.len : 'quick', level: lvName(o.level) }; }
+  function netStart(players, opts) {
+    var st = { mode: 'online', me: 0, len: opts.len === 'east' || opts.len === 'full' ? opts.len : 'quick',
+      players: players.map(function (p) { return { name: p.name, cpu: !!p.bot, level: p.bot ? lvName(opts.level) : undefined }; }),
+      scores: [0, 0, 0, 0], log: [], handNo: 0, wind: 0, dealer: 0, startDealer: 0, started: Date.now(), stats: { kongs: [0, 0, 0, 0], claims: [0, 0, 0, 0] } };
+    withS(st, nStartHand);
+    return st;
+  }
+  // (inside withS) the rules without the screen or the waits
+  function nStartHand() { startHandCore(); ev('deal'); nDraw(S.cur, false); }
+  function nDraw(p, repl) {
+    if (wallLeft() <= 0) { nEnd(null); return; }
+    var id = repl ? S.order[136 - 1 - S.back++] : S.order[S.front++];
+    S.hands[p].push(id); S.drawn = id; S.kongDraw = !!repl; S.phase = 'discard';
+    ev('draw', p);
+  }
+  function nDiscard(p, id) {
+    var h = S.hands[p], i = h.indexOf(id);
+    h.splice(i, 1); S.ponds[p].push(id);
+    S.last = { id: id, from: p }; S.drawn = null; S.kongDraw = false;
+    S.phase = 'claim'; S.claim = null;
+    ev('disc', p, id);
+    var L = S.last, from = L.from, k = kindOf(L.id), cpuBest = null, people = [], lastDiscard = wallLeft() === 0;
+    for (var d = 1; d <= 3; d++) {
+      var q = (from + d) % 4, o = claimOptions(q, L.id, from);
+      if (!S.players[q].cpu) { if (o.win || o.pung || o.kong || o.chows.length) people.push({ q: q, o: o, d: d }); continue; }
+      var want = null;
+      if (o.win) want = { t: 'win', rank: 3 };
+      else if (!lastDiscard && o.kong && cpuWantsSet(q, k, 'kong')) want = { t: 'kong', rank: 2 };
+      else if (!lastDiscard && o.pung && cpuWantsSet(q, k, 'pung')) want = { t: 'pung', rank: 2 };
+      else if (!lastDiscard && o.chows.length) { var ch = cpuWantsChow(q, o.chows); if (ch) want = { t: 'chow', rank: 1, pair: ch }; }
+      if (want) { want.q = q; want.d = d; if (!cpuBest || want.rank > cpuBest.rank || (want.rank === cpuBest.rank && want.d < cpuBest.d)) cpuBest = want; }
+    }
+    people.forEach(function (x) { if (lastDiscard) { x.o.pung = x.o.kong = false; x.o.chows = []; } x.rank = x.o.win ? 3 : (x.o.pung || x.o.kong) ? 2 : x.o.chows.length ? 1 : 0; });
+    people = people.filter(function (x) { return x.rank > 0; }).sort(function (a, b) { return b.rank - a.rank || a.d - b.d; });
+    nAsk(people, cpuBest);
+  }
+  function nAsk(people, cpuBest) {
+    while (people.length) {
+      var x = people.shift();
+      if (!cpuBest || x.rank > cpuBest.rank || (x.rank === cpuBest.rank && x.d < cpuBest.d)) {
+        S.claim = { q: x.q, opts: x.o, cpu: cpuBest, rest: people.map(function (y) { return { q: y.q, o: y.o, d: y.d, rank: y.rank }; }) };
+        S.phase = 'claim'; ev('ask', x.q);
+        return;
+      }
+    }
+    nNoClaim(cpuBest);
+  }
+  function nNoClaim(cpuBest) {
+    S.claim = null;
+    if (cpuBest) { nClaim(cpuBest.q, cpuBest.t, cpuBest.pair); return; }
+    if (wallLeft() === 0) { nEnd(null); return; }
+    S.cur = (S.last.from + 1) % 4; S.phase = 'draw';
+    nDraw(S.cur, false);
+  }
+  function nClaim(q, type, pair) {
+    var L = S.last, from = L.from, id = L.id, k = kindOf(id), h = S.hands[q];
+    S.ponds[from].pop(); S.claim = null; S.stats.claims[q]++;
+    ev('claim', q, type);
+    if (type === 'win') { h.push(id); nEnd({ winner: q, from: from, self: false }); return; }
+    function take(kind, n) { var got = []; for (var i = h.length - 1; i >= 0 && got.length < n; i--) if (kindOf(h[i]) === kind) got.push(h.splice(i, 1)[0]); return got; }
+    var ids = type === 'chow' ? take(pair[0], 1).concat(take(pair[1], 1), [id]).sort(function (a, b) { return kindOf(a) - kindOf(b); }) : take(k, type === 'kong' ? 3 : 2).concat([id]);
+    S.melds[q].push({ t: type, ids: ids, from: from, conc: false });
+    if (type === 'kong') S.stats.kongs[q]++;
+    S.cur = q; S.last = null;
+    if (type === 'kong') { nDraw(q, true); return; }
+    S.phase = 'discard'; S.drawn = null;
+  }
+  function nSelfKong(p, k) {
+    var h = S.hands[p], m = S.melds[p].filter(function (x) { return x.t === 'pung' && kindOf(x.ids[0]) === k; })[0];
+    if (m) { var i = h.findIndex(function (id) { return kindOf(id) === k; }); m.ids.push(h.splice(i, 1)[0]); m.t = 'kong'; }
+    else { var ids = []; for (var j = h.length - 1; j >= 0; j--) if (kindOf(h[j]) === k) ids.push(h.splice(j, 1)[0]); S.melds[p].push({ t: 'kong', ids: ids, from: -1, conc: true }); }
+    S.stats.kongs[p]++; S.drawn = null;
+    ev('kong', p);
+    nDraw(p, true);
+  }
+  function nEnd(res) {
+    var X = { handNo: S.handNo };
+    if (res) { var p = res.winner; X.melds = JSON.parse(JSON.stringify(S.melds[p])); X.hand = S.hands[p].slice(); X.last = res.self ? S.drawn : S.last && S.last.id; }
+    var over = endHandCore(res);
+    X.result = S.result; X.scores = S.scores.slice(); X.over = over;
+    S.prev = X;
+    ev('end', res ? res.winner : -1);
+    if (!over) nStartHand();
+  }
+  function netTurn(st) {
+    if (!st) return [];
+    if (st.phase === 'discard') return [st.cur];
+    if (st.phase === 'claim' && st.claim) return [st.claim.q];
+    return [];
+  }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    var hi = Math.max.apply(null, st.scores), w = [];
+    st.scores.forEach(function (x, i) { if (x === hi) w.push(i); });
+    return { win: w, text: w.map(function (i) { return st.players[i].name; }).join(' and ') + (w.length > 1 ? ' tie' : ' wins') + ' with ' + hi };
+  }
+  // seat p's move, on the table's own copy: {state, mv}, or null when it can't be made
+  function netApply(st, p, a) {
+    if (!a || netTurn(st).indexOf(p) < 0) return null;
+    EVX = [];
+    try {
+      var ok = withS(st, function () {
+        if (S.phase === 'discard') {
+          if (a.t === 'disc') { if (S.hands[p].indexOf(a.id) < 0) return false; nDiscard(p, a.id); return true; }
+          if (a.t === 'win') { if (!canWin(S.hands[p], S.melds[p].length)) return false; nEnd({ winner: p, self: true }); return true; }
+          if (a.t === 'kong') { if (kongChoices(p).indexOf(a.k) < 0) return false; nSelfKong(p, a.k); return true; }
+          return false;
+        }
+        if (a.t !== 'claim' || !S.claim || S.claim.q !== p) return false;
+        var cl = S.claim, o = cl.opts;
+        if (a.type === 'pass') {
+          S.claim = null; ev('pass', p);
+          if (cl.rest && cl.rest.length) nAsk(cl.rest.slice(), cl.cpu); else nNoClaim(cl.cpu);
+          return true;
+        }
+        if (a.type === 'win' ? !o.win : a.type === 'pung' ? !o.pung : a.type === 'kong' ? !o.kong :
+          a.type === 'chow' ? !(a.pair && o.chows.some(function (c) { return c[0] === a.pair[0] && c[1] === a.pair[1]; })) : true) return false;
+        nClaim(p, a.type, a.pair);
+        return true;
+      });
+      return ok ? { state: st, mv: { t: a.t, p: p, ev: EVX } } : null;
+    } finally { EVX = null; }
+  }
+  function netBot(st, p) {
+    if (netTurn(st).indexOf(p) < 0) return null;
+    var a = withS(st, function () {
+      if (S.phase === 'discard') {
+        var h = S.hands[p], m = S.melds[p].length;
+        if (S.drawn != null && canWin(h, m)) return { t: 'win' };
+        var kc = kongChoices(p);
+        for (var i = 0; i < kc.length; i++) {
+          var k = kc[i], c = counts(h);
+          if (S.melds[p].some(function (x) { return x.t === 'pung' && kindOf(x.ids[0]) === k; })) return { t: 'kong', k: k };
+          var now = minAfterDiscard(c.slice(), m); c[k] -= 4;
+          if (shanten(c, m + 1) <= now) return { t: 'kong', k: k };
+        }
+        return { t: 'disc', id: bestDiscard(p) };
+      }
+      var o = S.claim.opts, kk = kindOf(S.last.id);
+      if (o.win) return { t: 'claim', type: 'win' };
+      if (o.kong && cpuWantsSet(p, kk, 'kong')) return { t: 'claim', type: 'kong' };
+      if (o.pung && cpuWantsSet(p, kk, 'pung')) return { t: 'claim', type: 'pung' };
+      var ch = o.chows.length ? cpuWantsChow(p, o.chows) : null;
+      return ch ? { t: 'claim', type: 'chow', pair: ch } : { t: 'claim', type: 'pass' };
+    });
+    return netApply(st, p, a);
+  }
+  function netYou(a) {
+    if (!NET) return;
+    if (!NET.myTurn()) { Kit.toast('Wait for your turn'); Kit.haptic('error'); return; }
+    var seat = NET.seat;
+    sel = null;
+    NET.act(function (st) { return netApply(st, seat, a); });
+  }
+
+  // Drawing the table: each move as it comes. A backlog is caught up quickly.
+  function netShow(net, info) {
+    info = info || {};
+    NET = net;
+    var e = { st: JSON.parse(JSON.stringify(net.state)), info: info };
+    if (info.fresh || info.again) { NETQ = [e]; if (NETBUSY) { tok++; NETBUSY = false; } netCloseOv(); }
+    else NETQ.push(e);
+    if (!NETBUSY) netNext();
+  }
+  function netNext() {
+    if (!NET) { NETQ = []; NETBUSY = false; return; }
+    var e = NETQ.shift();
+    if (!e) { NETBUSY = false; if (S && S.hands) render(); return; }
+    NETBUSY = true;
+    netDraw(e.st, e.info, NETQ.length > 2 || document.hidden, netNext);
+  }
+  function netView(st) { st.me = Math.max(0, NET.seat); st.cover = false; S = st; sel = null; return st; }
+  function netDraw(st, info, quick, next2) {
+    var mv = info.mv, evs = mv && mv.ev || [], t = ++tok;
+    function later(ms, f) { setTimeout(function () { if (t === tok && NET) f(); }, ms); }
+    netView(st);
+    if (info.fresh || info.again || quick || !mv) {
+      render();
+      if (info.again || (info.fresh && st.handNo === 1 && !st.ponds.some(function (x) { return x.length; }))) later(200, function () { Kit.callout(WIND_EN[S.wind] + ' round · Hand ' + S.handNo); });
+      if (st.phase === 'over') later(info.fresh ? 300 : 600, function () { netEnd(true); });
+      next2(); return;
+    }
+    var me = S.me, end = null, disc = null, claimed = false, drewMe = false, dealt = false;
+    evs.forEach(function (e) {
+      if (e[0] === 'disc') { disc = e[1]; claimed = false; }
+      else if (e[0] === 'claim') { claimed = true; say(e[1], e[2] === 'chow' ? 'Chow!' : e[2] === 'pung' ? 'Pung!' : e[2] === 'kong' ? 'Kong!' : 'Mahjong!'); }
+      else if (e[0] === 'kong') say(e[1], 'Kong!');
+      else if (e[0] === 'pass' && e[1] !== me) say(e[1], 'Pass');
+      else if (e[0] === 'draw' && e[1] === me && !dealt) drewMe = true;
+      else if (e[0] === 'end') end = e;
+      else if (e[0] === 'deal') dealt = true;
+    });
+    if (end) {
+      // the hand ended: Mahjong! (or the wall ran dry), then the scores, with the next hand dealt underneath
+      render();
+      var X = S.prev, r = X.result.res;
+      if (r) { Kit.callout(r.winner === me && NET.seat >= 0 ? 'Mahjong!' : S.players[r.winner].name + ': Mahjong!'); if (r.winner === NET.seat) { Kit.sfx('win'); Kit.confetti({ count: 70 }); } else Kit.sfx('lose'); }
+      else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
+      later(r ? 1300 : 900, function () {
+        var key = NET.code + ':' + S.started + ':' + X.handNo;
+        if (!NETSEEN[key]) { NETSEEN[key] = 1; closeSheet(); showResult(X.over, X); }
+        if (!X.over) Kit.sfx('deal');
+        next2();
+      });
+      return;
+    }
+    render({ discard: disc != null && !claimed ? disc : undefined, drew: drewMe ? me : undefined });
+    if (disc != null) { Kit.sfx('flip'); if (disc === me) Kit.haptic('light'); }
+    if (claimed || evs.some(function (e) { return e[0] === 'kong'; })) later(disc != null ? 250 : 0, function () { Kit.sfx('chip'); Kit.haptic('medium'); });
+    if (drewMe) later(300, function () { Kit.sfx('deal'); Kit.haptic('light'); if (canWin(S.hands[me], S.melds[me].length)) { Kit.sfx('good'); Kit.haptic('success'); } });
+    if (S.phase === 'claim' && S.claim && S.claim.q === me) later(300, function () { Kit.sfx('pop'); Kit.haptic('medium'); });
+    later(claimed ? 900 : 520, next2);
+  }
+  function netCloseOv() { closeSheet(); if (NETWIN) { try { NETWIN.close(); } catch (e) {} NETWIN = null; } }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over') return;
+    var key = NET.code + ':' + S.started;
+    if (NETWIN && NETWIN.key === key) return;
+    NETWIN = finish() || null;
+    if (NETWIN) NETWIN.key = key;
+  }
+  function netLeave() {
+    NET = null; NETQ = []; NETBUSY = false; tok++; sel = null;
+    netCloseOv();
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.hands && sv.players && sv.players.length === 4) { S = sv; if (S.me == null) S.me = 0; S.cover = false; render(); resumeFlow(); }
+    else showSetup();
   }
 
   // ── Resume ────────────────────────────────────────────────────────────────
@@ -998,6 +1276,14 @@
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; if (S.me == null) S.me = 0; S.cover = false; render(); resumeFlow(); }
   else { try { localStorage.removeItem(SAVE); } catch (e) {} showSetup(); }
+
+  // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
+  TurnNet.setup({
+    game: 'mahjong4', title: 'Mahjong', min: 2, max: 4, botMs: 800,
+    seats: function () { return 4; },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
 })();
 </script>
 </body>
