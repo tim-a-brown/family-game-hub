@@ -2531,7 +2531,9 @@
       onclick: function () { go(false); }
     });
     // online: the merged screen's Play online button (just your own seat; the others join from their devices)
-    function go(online) {
+    // net: which button of the Play online review sent it, 'open' (Open the table) or 'find' (Find a table to
+    // join), passed on to onStart as cfg.net for a game that opens its own tables (online.js: Pong, Space Invaders)
+    function go(online, net) {
         if (merged && !online) state.mode = resolved();
         if (online) state.mode = MK.online;
         var cpu = online ? false : cpuFor(), players = [], picked = [];
@@ -2543,7 +2545,7 @@
             var cj = cpu === 'seats' ? j > 0 : cpu === 'mix' ? !!robots[j] : (cpu && j > 0);
             if (cj || isPersonName(names[j])) continue;
             (function (j) {
-              pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { go(online); }, 260); },
+              pickName(function (n) { names[j] = n; renderSeats(); setTimeout(function () { go(online, net); }, 260); },
                 { taken: names.slice(0, state.count).filter(function (x, q) { return q !== j; }), title: state.count > 1 && !cpu ? 'Player ' + (j + 1) : 'Who’s playing?' });
             })(j);
             return;
@@ -2565,7 +2567,7 @@
         curPlayers = players.filter(function (p) { return !p.cpu; }).map(function (p) { return p.name; });
         saveSetup();
         sfx('pop'); haptic('medium');
-        o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options });
+        o.onStart && o.onStart({ mode: state.mode, players: players, options: state.options, net: online ? net || 'open' : undefined });
     }
     // Play online takes what is chosen here to an online table. First a review (Tim, 2026-11-11: "review rules and
     // player/ai selection before opening table"): the rules as they are set, any choice that only matters online,
@@ -2594,7 +2596,7 @@
           lines.push(info.min === info.max ? 'This table seats ' + info.max + ' people.' : 'A game can start with ' + info.min + ' ' + (info.min === 1 ? 'person' : 'people') + ', and the table seats up to ' + info.max + '.');
           var filled = info.bots ? info.seats(info.min) - info.min : 0;
           if (filled > 0) lines.push('The computer plays any seat that nobody takes.');
-        } else if (robotsHere) lines.push('Computer players are chosen at the table.');
+        } else if (robotsHere && P && modeCpu(om)) lines.push('Computer players are chosen at the table.');
         lines.forEach(function (t) { who.appendChild(el('p', { class: 'k-rev-p', text: t })); });
         box.appendChild(who);
         // the rules as they stand
@@ -2615,8 +2617,8 @@
       }
       paint();
       // the table itself: opened here and now where the game's tables are TurnNet's, by the game's own lobby otherwise
-      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else go(true); }, 0); }
-      function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true); }, 0); }
+      function openTable() { setTimeout(function () { if (tn && tn.host && !MK.online) { saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else if (tn && tn.host) { state.mode = MK.online; saveSetup(); sfx('pop'); haptic('medium'); tn.host({ name: String(names[0] || '').trim() }); } else go(true, 'open'); }, 0); }
+      function findTable() { setTimeout(function () { if (tn) { saveSetup(); tn.open(); } else go(true, 'find'); }, 0); }
       sh = sheet({ title: 'Play online', node: box, actions: [{ label: 'Open the table', primary: true, onClick: openTable }, { label: 'Find a table to join', cls: 'btn-soft', onClick: findTable }, { label: 'Cancel', cls: 'btn-ghost' }] });
     }
     function resolvedMode() { return merged ? resolved() : state.mode; }
