@@ -1098,7 +1098,7 @@
       } else if (tab === 'blinds') {
         for (var i = 0; i < 3; i++) {
           var info = E.blindInfo(i);
-          var tx = '<b>' + esc(info.name) + '</b>' + (info.boss ? '<small>' + esc(info.boss.d) + '</small>' : '') + '<small>Score at least <span class="t-m">' + fmt(info.target) + '</span> · Reward <span class="t-o">$' + info.reward + '</span></small>';
+          var tx = '<b>' + esc(info.name) + '</b>' + (info.boss ? '<small>' + esc(info.boss.d) + '</small>' : '') + '<small>Score at least <span class="t-m">' + fmt(info.target) + '</span></small><small>Reward <span class="t-o">$' + info.reward + '</span></small>';
           if (i < 2) tx += '<small>Skip for: ' + esc(E.TAGS[s.tags[i].k].n) + '</small>';
           body.appendChild(el('div', { class: 'blrow' }, [el('img', { alt: '', src: A.url('b:' + (info.kind === 'boss' ? info.key : info.kind)) }), el('div', { class: 'tx', html: tx })]));
         }
@@ -1141,7 +1141,7 @@
     var s = S(); if (!s) return;
     try { localStorage.setItem(SAVE, JSON.stringify(s)); } catch (e) {}
     if (s.phase !== 'over') {
-      var lbl = 'Ante ' + s.ante + ' · ' + (s.phase === 'shop' ? 'Shop' : s.phase === 'play' ? E.blindInfo(s.bi).name : s.phase === 'cashout' ? 'Cash out' : s.phase === 'pack' ? 'Booster pack' : 'Choose a blind');
+      var lbl = 'Ante ' + s.ante + ' \u00b7 ' + (s.phase === 'shop' ? 'Shop' : s.phase === 'play' ? E.blindInfo(s.bi).name : s.phase === 'cashout' ? 'Cash out' : s.phase === 'pack' ? 'Booster pack' : 'Choose a blind');
       Kit.resume.set(lbl);
     }
   }

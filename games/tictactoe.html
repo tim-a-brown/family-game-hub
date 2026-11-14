@@ -553,7 +553,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     paintTurn();
   }
   function seriesText() {
-    return 'Series  ' + S.players.map(function (p, i) { return p.name + ' ' + S.wins[i]; }).join('  ·  ') + (S.draws ? '  ·  ' + S.draws + ' draw' + (S.draws > 1 ? 's' : '') : '');
+    return 'Series ' + S.players.map(function (p, i) { return p.name + ' ' + S.wins[i]; }).join(', ') + (S.draws ? ', with ' + S.draws + ' draw' + (S.draws > 1 ? 's' : '') : '');
   }
   function paintTurn() {
     var G = S.G;
@@ -598,7 +598,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     S.players.forEach(function (p, i) { if (G.blocks[i] >= 2) hl.push(p.name + ' blocked ' + G.blocks[i] + ' wins'); else if (G.blocks[i] === 1 && S.variant === 'classic') hl.push(p.name + ' made a key block'); });
     if (vsCpu) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     if (gameNo() > 2) hl.push('Series so far: ' + S.players.map(function (p, i) { return p.name + ' ' + S.wins[i]; }).join(' – ') + (S.draws ? ', ' + S.draws + ' draws' : ''));
-    var modeName = (VARIANT_NAME[S.variant] && S.mode !== S.variant ? VARIANT_NAME[S.variant] + ' · ' : '') + MODE_NAME[S.mode] + (S.variant === 'multi' ? ' (' + S.nboards + ' boards)' : '');
+    var modeName = (VARIANT_NAME[S.variant] && S.mode !== S.variant ? VARIANT_NAME[S.variant] + ', ' : '') + MODE_NAME[S.mode] + (S.variant === 'multi' ? ' (' + S.nboards + ' boards)' : '');
     if (NET) { hl.push('Played online at table ' + NET.code); var nk = NET.code + ':' + S.started, seen = NETREC[nk]; try { seen = seen || (JSON.parse(localStorage.getItem('tictactoe_net_rec')) || []).indexOf(nk) >= 0; } catch (e) {} NETREC[nk] = 1; if (!seen) try { var rl = JSON.parse(localStorage.getItem('tictactoe_net_rec')) || []; rl.push(nk); localStorage.setItem('tictactoe_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {} }
     if (!NET || !seen) Kit.record(KEY, {
       started: S.started, mode: modeName,

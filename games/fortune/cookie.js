@@ -1830,7 +1830,7 @@ function mount(stage, api) {
       '<div class="ck-f">' + MARK + '<span></span>' + MARK + '</div>' +
       '<div class="ck-rule"></div>' +
       '<div class="ck-s"><b>Lucky numbers</b>' + O.nums.join('&ensp;') + '</div>' +
-      '<div class="ck-s"><b>Learn Chinese</b><span class="zh" lang="zh-Hans">' + w[0] + '</span><i lang="zh-Latn-pinyin"></i> · <span class="en"></span></div>' +
+      '<div class="ck-s"><b>Learn Chinese</b><span class="zh" lang="zh-Hans">' + w[0] + '</span><i lang="zh-Latn-pinyin"></i><span class="en" style="display:block"></span></div>' +
       '</div><div class="ck-roll"></div></div>';
     slipBox.querySelector('.ck-f span').textContent = O.fortune;
     slipBox.querySelector('.ck-s i').textContent = w[1];
