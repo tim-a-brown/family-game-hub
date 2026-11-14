@@ -1261,7 +1261,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var pc = S.deck === 'cah' ? '#222' : S.kinds && S.kinds[0] === 'r' ? '#c8102e' : '#2f9b44';
     S.rounds.forEach(function (r, k) {
       var who = r.w < 0 ? (S.deck === 'cah' ? 'Rando Cardrissian' : 'Ghost') : S.players[r.w] ? S.players[r.w].name : '?';
-      box.appendChild(el('div', { class: 'rd' }, [el('span', { class: 'pc', style: { '--pc': pc } }), el('span', { class: 't', html: '<b>' + esc(r.pr) + '</b> <s>·</s> ' + esc(r.a) }), el('span', { class: 'n', text: who })]));
+      box.appendChild(el('div', { class: 'rd' }, [el('span', { class: 'pc', style: { '--pc': pc } }), el('span', { class: 't', html: '<b>' + esc(r.pr) + '</b><br>' + esc(r.a) }), el('span', { class: 'n', text: who })]));
     });
     felt.appendChild(box);
     app.appendChild(el('div', { class: 'acts', style: { 'flex-direction': 'column' } }, [
@@ -1349,7 +1349,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     var st = Kit.setup(app, {
       intro: cahOn() ? 'Fill in the blank. The Card Czar picks the funniest.' : 'Match a red card to the green card. The judge picks the best.',
       modes: Kit.modes([{ id: 'solo', kind: 'cpu' }, { id: 'pass', kind: 'local' }, { id: 'online', desc: 'Each player on their own device, up to 24' }]),
-      players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : m === 'pass' ? 'mix' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; } },
+      players: { min: 3, max: 10, count: 4, cpu: function (m) { return m === 'solo' ? 'seats' : m === 'pass' ? 'mix' : false; }, range: function (m) { return m === 'solo' ? [3, 10] : m === 'pass' ? [3, 12] : [1, 1]; }, onlineBots: true },
       options: [
         { id: 'target', label: 'Cards to win', value: 'auto', help: 'Official: 4 players play to 8, 5 to 7, 6 to 6, 7 to 5, and 8 or more to 4.', choices: [['auto', 'Official'], ['3', '3'], ['5', '5'], ['7', '7'], ['10', '10']] },
         { id: 'ghost', label: 'Ghost player', value: 'auto', help: 'A random card from the deck is played every round. If the judge picks it, nobody scores. If the ghost wins the game, everyone loses.', choices: [['auto', '3 players'], ['on', 'Always'], ['off', 'Off']] }
@@ -1387,7 +1387,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         var more = el('details', { class: 'more' }, [el('summary', { html: Kit.icon('down') + '<span>Mini packs and promos (' + nRest + ' of ' + rest.children.length + ' on)</span>' }), rest]);
         if (ui.moreOpen) more.open = true;
         more.addEventListener('toggle', function () { ui.moreOpen = more.open; });
-        box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', html: '<span>Card packs</span><span class="n">' + nB + ' black · ' + nW + ' white</span>' }), top, more]));
+        box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', html: '<span>Card packs</span><span class="n">' + nB + ' black and ' + nW + ' white</span>' }), top, more]));
         var hr = el('div', { class: 'chips' });
         CAH_RULES.forEach(function (r) { hr.appendChild(chip(r.name, !!rules[r.id], null, function () { rules[r.id] = !rules[r.id]; lsSet(RK, rules); }, r.icon)); });
         box.appendChild(el('div', { class: 'a-sec' }, [el('div', { class: 'label', text: 'House rules' }), hr, el('p', { class: 'rnote', html: CAH_RULES.map(function (r) { return '<b>' + r.name + '</b>: ' + r.note; }).join('<br>') + '<br><b>Ghost player</b> is Rando Cardrissian.' })]));
@@ -1496,7 +1496,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       onHost: function (me) { hostTable(me.name); },
       onJoin: function (code, room, me) { joinTable(code, me.name); },
       onSolo: function () { showSetup(); }, solo: 'Back to setup',
-      sub: function (r) { return r.status === 'playing' ? (r.info || 'Playing') + ' · ' + (r.n || 1) + ' playing · join in' : (r.n || 1) + (r.n === 1 ? ' player' : ' players'); },
+      sub: function (r) { return r.status === 'playing' ? (r.info ? r.info + '. ' : '') + ((r.n || 1) === 1 ? 'One person is playing' : (r.n || 1) + ' people are playing') + ', and you can join in.' : (r.n || 1) + (r.n === 1 ? ' player' : ' players'); },
       note: 'Each device connects straight to the host’s.'
     });
   }

@@ -365,7 +365,7 @@
       }
       var svg = chart(pts.map(function (l, k) { return { pts: l, color: ui.color(k), step: true }; }),
         { max: 121, h: 170, xmarks: marks, aria: 'Peg race', lines: [{ y: 121, label: '121', c: 'rgba(255,209,102,.55)' }, { y: 91, label: '91' }, { y: 61, label: '61' }], xlabel: 'every score, hand by hand' });
-      out.push(ui.section('The peg race', [ui.chips(sn.map(function (x, k) { return { t: x + ' · ' + sc[k], c: ui.color(k), on: true }; })), ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
+      out.push(ui.section('The peg race', [ui.chips(sn.map(function (x, k) { return { t: x + ' ' + sc[k], c: ui.color(k), on: true }; })), ui.picture(svg, { frame: 'wood', max: 380 }), ui.el('p', { class: 'hv-note', text: 'Each step is a score. Faint lines split the hands. 91 is the skunk line, 61 double skunk.' })]));
     }
     if (d.best) {
       var bk = [];
