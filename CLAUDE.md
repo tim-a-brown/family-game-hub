@@ -114,6 +114,22 @@ Underlying principles for everything:
 - **New games: the bar is very high.** Tim expects high-end design polish, effects, sound and
   interactivity in every new game: real materials and pieces, motion on every action, sounds and haptics,
   big moments for big plays. Screenshot every phase and critique it before calling it done.
+- **The baseline for every game** (Tim, 2026-11-14, with Bridge and Pinochle: "make sure both games' layouts are fully
+  optimized for phone/ipad in both portrait/landscape too with minimal wasted space and user interactions are
+  fun/pleasant with dopamine reward hits and special moments that fit into the gameplay for uncommon events and
+  accomplishments", and "record the above instructions as ongoing/baseline instructions for all games added"). Every
+  new game, and every game the app sweep touches, meets all three:
+  - **A layout for each shape**: iPhone upright and sideways, iPad upright and sideways (402x874, 874x402, 768x1024,
+    1024x768), each designed for that shape and using the screen fully: the board, cards and pieces as large as the
+    room allows, no dead bands or empty margins, nothing scrolling that could fit. Not one layout stretched; measure the
+    empty share of the screen, not just by eye.
+  - **Pleasant, rewarding interaction**: every press answers at once (motion, sound, haptic), every good move gets a
+    small reward (a trick swept in, a point counted up, a meter filling), so playing feels good from move to move.
+  - **Special moments for uncommon events and accomplishments**, each built into the play where it happens (a slam, a
+    double run, a perfect hand, a comeback, a personal best), rarer events bigger, and the game history keeps them as
+    highlights.
+  **Planned (Tim, the same day): once Bridge and Pinochle are live, a sweep of everything in the app against this
+  baseline**, game by game.
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
