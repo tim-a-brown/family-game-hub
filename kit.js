@@ -27,7 +27,7 @@
 //   Kit.resume.set(label, {keys, id, file}) / .clear({id})  "Continue" rail on home
 //   Kit.rules()                                open the rules sheet
 //   Kit.cashOut(onClick, {label, tile})        the casino games' Cash out button (walk away with your money)
-//   Kit.marquee(host, {dir, speed, make}) -> {set(items)}   LED ticker strip: rolls on through new data, swipeable
+//   Kit.marquee(host, {dir, speed, make}) -> {set(items)}   ticker strip: rolls on through new data, swipeable
 //   Kit.fitText(el, min)                       ease a one-line number or label down until it fits (no "…")
 //   Kit.music({search})                        the Music sheet (your Spotify: a playlist per game, search); Kit.spotifyOwns(id)
 //   Kit.offline()                              save everything on this device for offline (a flight); Kit.offlineTag()
@@ -4964,7 +4964,7 @@
   handoff.close = function () { var c = doc.querySelector('.k-ho'); if (c) c.remove(); };
 
 
-  // ── Kit.marquee: an LED ticker strip you can swipe ─────────────────────────────────────────────────────────────
+  // ── Kit.marquee: an ticker strip you can swipe ─────────────────────────────────────────────────────────────
   // Kit.marquee(host, {dir: -1 left (default) | 1 right, speed: px a second, make(item) -> element, id(item)})
   // menu: {title, options() -> [{id, label, sub, group, icon | img (imgSize [w, h]) | glyph, color, tone: 'up' | 'down' | 'live', dim: nothing in it now}], value() -> id, pick(id)}: a key at the strip's right end names what it shows
   // and opens a choice of what else it could (set its words with .label(text)).

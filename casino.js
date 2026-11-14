@@ -224,14 +224,14 @@ const Casino = (function(){
         '.cz-hist .cz-bal{font-family:var(--display);font-size:2rem;color:var(--green)}' +
         '.cz-hist .cz-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px}' +
         '.cz-hist .cz-sum div{background:rgba(255,255,255,.06);border-radius:12px;padding:8px 10px}' +
-        '.cz-hist .cz-sum b{display:block;font-size:1.05rem}.cz-hist .cz-sum small{color:var(--text-3);font-weight:800;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}' +
+        '.cz-hist .cz-sum b{display:block;font-size:1.05rem}.cz-hist .cz-sum small{color:var(--text-2);font-weight:600;font-size:.78rem}' +
         '.cz-spark{display:block;width:100%;height:80px;margin:4px 0 6px}' +
         '.cz-row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line)}' +
         '.cz-row .gicon{width:34px;height:34px;flex:none}.cz-row .tx{flex:1;min-width:0}.cz-row .t{font-weight:800}' +
         '.cz-row .d{font-size:.78rem;color:var(--text-3);font-weight:700}.cz-row .v{font-weight:900;font-variant-numeric:tabular-nums;text-align:right}' +
         '.cz-row .v small{display:block;font-size:.72rem;color:var(--text-3);font-weight:700}' +
         '.cz-up{color:var(--green)}.cz-down{color:var(--red)}.cz-reset{color:var(--yellow)}' +
-        '.cz-fh{margin:14px 2px 2px;font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}' +
+        '.cz-fh{margin:14px 2px 2px;font-size:.8rem;font-weight:700;color:var(--text-2)}' +
         '.cz-row .avatar{width:34px;height:34px;flex:none;font-size:.8rem}.cz-row .btn-sm{flex:none}' +
         '.cz-rs{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(255,200,61,.15);color:var(--yellow);flex:none}';
       document.head.appendChild(st);
