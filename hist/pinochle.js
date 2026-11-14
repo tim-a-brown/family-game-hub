@@ -21,7 +21,7 @@
 
   HistView.css('hv-pino', [
     '.pn-dia{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px 10px;grid-template-areas:"n n" "w e" "s s";}',
-    '.pn-dia.k3{grid-template-areas:"w e" "s s";}.pn-dia.k2{grid-template-columns:minmax(0,1fr);grid-template-areas:"n" "s";}',
+    '.pn-dia.k3{grid-template-columns:minmax(0,1fr);grid-template-areas:"w" "e" "s";}.pn-dia.k3 .h{align-items:flex-start !important;}.pn-dia.k2{grid-template-columns:minmax(0,1fr);grid-template-areas:"n" "s";}',
     '.pn-dia .h{display:flex;flex-direction:column;gap:3px;min-width:0;}',
     '.pn-dia .h.a-n,.pn-dia .h.a-s{align-items:center;}.pn-dia .h.a-e{align-items:flex-end;}',
     '.pn-dia .h small{font-size:.7rem;font-weight:900;color:rgba(255,255,255,.8);}',

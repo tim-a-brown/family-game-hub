@@ -613,7 +613,7 @@
     if (lvl !== 'easy') {
       var v = handValue(st.hands[p], st.trump, lvl), mate = st.kind === 'part' ? handValue(st.hands[(p + 2) % 4] ? st.hands[(p + 2) % 4] : [], st.trump, lvl) : null;
       var share = st.kind === 'part' ? 0.42 + 0.045 * (v.tl - 4) + v.play / 1400 : 0.3 + 0.05 * (v.tl - 5) + v.play / 1500;
-      if (need > 250 * Math.min(0.9, share) + (lvl === 'hard' ? 45 : 70)) return { k: 'go', concede: true };
+      if (need > 250 * Math.min(0.9, share) + (lvl === 'hard' && st.kind === 'part' ? 45 : 70)) return { k: 'go', concede: true };
     }
     return { k: 'go' };
   }
@@ -777,7 +777,9 @@
       if (st.bidder >= 0 && i === sideOf(st, st.bidder) && st.kind !== 'two') val[i] = got >= st.high ? got : -st.high - 60;
       else val[i] = got;
     }
-    var others = 0, no = 0; for (i = 0; i < S; i++) if (i !== sd0) { others += val[i]; no++; }
+    // (Cutthroat: against the best of the others, who is the one to beat)
+    var others = 0, no = 0, top = -1e9; for (i = 0; i < S; i++) if (i !== sd0) { others += val[i]; no++; top = Math.max(top, val[i] + (st.scores ? st.scores[i] : 0)); }
+    if (st.kind === 'cut') return val[sd0] + (st.scores ? st.scores[sd0] : 0) - (top + others / no) / 2;
     return val[sd0] - others / no;
   }
   function hardPlay(st, p) {
@@ -816,7 +818,8 @@
     if (!st.trick.length) return junk(h);
     var led = st.trick[0].c, beat = h.filter(function (c) { return beats(c, led, t); });
     var unmelded = meldOptionsFor(st, p);
-    var want = isCounter(led) || unmelded >= 40 || (lvl === 'hard' && st.stock.length <= 6 && cval(led) === 0 && unmelded >= 20);
+    // (Hard also takes a trick for a smaller meld, and fights for the last cards of the stock)
+    var want = isCounter(led) || unmelded >= 40 || (lvl === 'hard' && (unmelded >= 20 || st.stock.length <= 4));
     if (want && beat.length) {
       var cheap = beat.slice().sort(function (a, b) {
         var va = (keep[a.id] ? 30 : 0) + (a.s === t ? 20 + PW[a.r] * 3 : PW[a.r]) - (isCounter(a) && a.s === led.s ? 12 : 0);
