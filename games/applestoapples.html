@@ -12,6 +12,8 @@
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../online.js"></script>
+<script src="talk/talk.js"></script>
+<script src="talk/applestoapples.js"></script>
 <style>
 body{overflow-x:hidden;}
 .aa{max-width:980px;margin:0 auto;padding:0 10px calc(var(--safe-b) + 18px);}
@@ -597,7 +599,28 @@ html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
   var CAH_WHY = ['This one made my circuits blush.', 'I’m not proud of it, but yes.', 'Pure chaos. I love it.', 'My processors need a minute after that one.',
     'Points for nerve.', 'Somebody here has a dark sense of humor.', 'I laughed. Out loud. With my speaker.', 'This is the one. Don’t ask me to explain.', 'Too far? Just far enough.'];
   var WILD_WHY = ['No idea why. It just made me laugh.', 'Gut feeling.', 'It’s weird. I like weird.', 'That one made my circuits giggle.', 'I can’t explain it. I won’t try.', 'Makes no sense. Love it.'];
+  // The judge's lines live in talk/applestoapples.js, 20 times these (Talk.line keeps a pool from repeating soon);
+  // the lines here are for a page that couldn't load that file
+  function talkWhy(g, s, pers, wild) {
+    var T = window.TALK_A2A, L = function (k, v) { return Talk.line('a2a.' + k, T[k], v); };
+    if (g.deck === 'cah') return L('cah');
+    if (wild) return L('wild');
+    var a = raw(g.ansKind, s.c[0]), pn = g.prompt.map(function (c) { return raw(g.prKind, c); });
+    var v = { a: a.n, p: pn.map(function (x) { return x.n; }).join(' and ') };
+    if (g.rules.crab) {
+      var ot = []; pn.forEach(function (x) { oppTags(x.t).forEach(function (o) { if (a.t.indexOf(o) >= 0 && ot.indexOf(o) < 0) ot.push(o); }); });
+      if (ot.length) { v.o = A.tags[ot[0]]; return L('crab', v); }
+      return L('crabNone', v);
+    }
+    var sh = []; pn.forEach(function (x) { x.t.forEach(function (t) { if (a.t.indexOf(t) >= 0 && sh.indexOf(t) < 0) sh.push(t); }); });
+    var fav = pers ? a.t.filter(function (t) { return pers.fav.indexOf(t) >= 0; }) : [];
+    if (sh.length >= 2) { v.t1 = A.tags[sh[0]]; v.t2 = A.tags[sh[1]]; return L('two', v); }
+    if (sh.length === 1) { v.t1 = A.tags[sh[0]]; return L('one', v); }
+    if (fav.length) { v.f = A.tags[fav[0]]; return L('fav', v); }
+    return L('wild');
+  }
   function reasonFor(g, s, pers, wild) {
+    if (window.TALK_A2A && window.Talk) return talkWhy(g, s, pers, wild);
     if (g.deck === 'cah') return pickOne(CAH_WHY);
     if (wild) return pickOne(WILD_WHY);
     var a = raw(g.ansKind, s.c[0]), pn = g.prompt.map(function (c) { return raw(g.prKind, c); });

@@ -13,6 +13,8 @@
 <script src="../players.js"></script>
 <script src="../online.js"></script>
 <script src="liveshow.js"></script>
+<script src="talk/talk.js"></script>
+<script src="talk/wheeloffortune.js"></script>
 <style>
 #app.wofgame{max-width:1180px;padding:0 10px calc(var(--safe-b) + 14px);}
 .show{display:flex;flex-direction:column;gap:9px;}
@@ -114,7 +116,7 @@
   text-shadow:0 2px 0 rgba(0,0,0,.25);white-space:nowrap;transition:color .3s;}
 .ptot{font-size:.72rem;font-weight:650;color:var(--pi);opacity:.85;white-space:nowrap;}
 .say{position:absolute;left:50%;bottom:calc(100% + 12px);z-index:12;pointer-events:none;padding:6px 11px;border-radius:13px;
-  background:#fff;color:#1b1340;font-weight:750;font-size:.88rem;white-space:nowrap;opacity:0;transform:translateX(-50%) scale(.5);
+  background:#fff;color:#1b1340;font-weight:750;font-size:.88rem;line-height:1.2;text-align:center;width:max-content;max-width:calc(100% + 14px);opacity:0;transform:translateX(-50%) scale(.5);
   box-shadow:0 6px 16px rgba(0,0,0,.45);}
 .say::after{content:"";position:absolute;left:50%;top:100%;margin-left:-7px;border:7px solid transparent;border-top-color:#fff;}
 .say.go{animation:say 2s var(--spring) forwards;}
@@ -1181,6 +1183,8 @@
     tw[id] = requestAnimationFrame(f);
   }
   function say(i, text) { bc('say', [i, text]); say0(i, text); }
+  // a computer contestant's own words, from talk/wheeloffortune.js (Talk.line keeps a pool from repeating soon)
+  function botLine(k, d) { return window.TALK_WOF && window.Talk ? Talk.line('wof.' + k, TALK_WOF[k]) : d; }
   function say0(i, text) {
     var b = shell.pods[i].say; b.textContent = text;
     b.classList.remove('go'); void b.offsetWidth; b.classList.add('go');
@@ -1596,10 +1600,10 @@
   async function cpuSolve() {
     var me = S.cur, p = S.players[me], k = knownFrac(), b = blankIdx().length;
     var ok = Math.random() < (b <= 2 ? 0.98 : clamp(0.5 + 0.45 * k, 0, 0.97));
-    say(me, "I'd like to solve!"); host(esc(p.name) + ' wants to solve…');
+    say(me, botLine('solve', "I'd like to solve!")); host(esc(p.name) + ' wants to solve…');
     await wait(1400);
     if (ok) { var info = applyWin(me); save(); return winSequence(me, info); }
-    ev(me + '?'); snd('buzz'); say(me, 'Hmm… no?'); fxOn('board', 'shake', 500);
+    ev(me + '?'); snd('buzz'); say(me, botLine('miss', 'Hmm… no?')); fxOn('board', 'shake', 500);
     host("That's not it. " + esc(p.name) + "'s turn is over.");
     nextPlayer(); save();
     await wait(1500);
@@ -1663,7 +1667,7 @@
     await wait(1200);
     var ok = sure || Math.random() < clamp(0.35 + knownFrac() * 0.7, 0, 0.97);
     if (ok) return tossupWon(i);
-    say(i, 'Is it…?'); await wait(800);
+    say(i, botLine('blank', 'Is it…?')); await wait(800);
     return tossupAnswer(i, false, null);
   }
   function humanBuzz(i) {
@@ -1833,7 +1837,7 @@
         if (c.paused) { paintClock(); continue; }
         c.left -= 100; elapsed += 100; paintClock();
         var sec = Math.ceil(c.left / 1000); if (sec !== lastSec) { lastSec = sec; snd('tick'); }
-        if (plan && plan.ok && elapsed >= plan.at) { c.done = true; say(S.cur, 'I know it!'); await wait(700); return bonusEnd(true); }
+        if (plan && plan.ok && elapsed >= plan.at) { c.done = true; say(S.cur, botLine('bonus', 'I know it!')); await wait(700); return bonusEnd(true); }
         if (c.left <= 0) { c.done = true; ui.solve = null; return bonusEnd(false); }
       }
     });

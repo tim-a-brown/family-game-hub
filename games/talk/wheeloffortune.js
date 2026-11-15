@@ -1,0 +1,97 @@
+// What a computer contestant says in its bubble on Wheel of Fortune, read by games/wheeloffortune.html through
+// Talk.line (games/talk/talk.js). Each pool is 20 times what the game first had (Tim, 2026-11-15). The bubble sits
+// on one line over a podium, so every line stays short enough to fit there on a 320-wide phone.
+window.TALK_WOF = {
+  // Asking to solve the puzzle (right or wrong comes after)
+  solve: [
+    'I’d like to solve!',
+    'I’ll solve it!',
+    'Let me solve!',
+    'I know this one!',
+    'Solve, please!',
+    'I’ve got it!',
+    'Time to solve!',
+    'I think I know!',
+    'Let me take a shot!',
+    'Ooh, I’ll solve!',
+    'I’m ready to solve!',
+    'Solving now!',
+    'I’m going for it!',
+    'I want to solve!',
+    'Here goes nothing!',
+    'This one’s mine!',
+    'I’ll give it a try!',
+    'Okay, I’ll solve!',
+    'I can see it now!',
+    'Wait, I know this!'
+  ],
+  // After a wrong solve
+  miss: [
+    'Hmm, no?',
+    'Oops, not it.',
+    'Oh, so close!',
+    'Aw, nuts!',
+    'Darn it!',
+    'That wasn’t it?',
+    'Well, shoot.',
+    'I was so sure!',
+    'Oh no, not it!',
+    'Never mind!',
+    'Oops!',
+    'Rats!',
+    'Ugh, so close.',
+    'Worth a shot!',
+    'My mistake!',
+    'Ah, nope.',
+    'Too soon!',
+    'I should’ve waited.',
+    'Next time for sure!',
+    'So much for that!'
+  ],
+  // Buzzed in on a toss-up, then lost the answer
+  blank: [
+    'Wait, is it?',
+    'Um, let me think.',
+    'Oh, wait.',
+    'Hold on!',
+    'Um, um, um!',
+    'Tip of my tongue!',
+    'Give me a second!',
+    'Oh, I had it!',
+    'Wait, what was it?',
+    'I lost it!',
+    'Hang on, hang on!',
+    'I know this!',
+    'I blanked!',
+    'Uh oh.',
+    'It’s right there!',
+    'I forgot it!',
+    'Shoot, what was it?',
+    'My mind went blank!',
+    'Rats, I lost it!',
+    'Um, wait!'
+  ],
+  // Sure of the bonus puzzle before the clock runs out
+  bonus: [
+    'I know it!',
+    'Got it!',
+    'I know this one!',
+    'That’s it!',
+    'I see it!',
+    'Oh, I know!',
+    'Ooh, I’ve got it!',
+    'Yes, I know it!',
+    'Now I see it!',
+    'There it is!',
+    'That’s the one!',
+    'I know, I know!',
+    'Ha, I see it!',
+    'Easy, I’ve got it!',
+    'Wait, I know it!',
+    'It just clicked!',
+    'Oh, that’s it!',
+    'I’m sure of it!',
+    'Here’s my answer!',
+    'I can read it now!'
+  ]
+};
