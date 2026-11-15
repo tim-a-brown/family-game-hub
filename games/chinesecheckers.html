@@ -78,23 +78,27 @@
 .turn{margin:0;min-height:34px;font-size:1rem;}
 .acts{display:flex;gap:10px;justify-content:center;}
 .acts .btn{flex:1;max-width:190px;}
-@media (min-width:700px){ .cc-col{max-width:600px;} .bwrap{width:min(100%, 600px, calc((100svh - var(--chrome, 330px)) * 0.8663));} }
-
-/* iPad: bigger board in portrait; landscape puts the player chips, status and buttons beside the board */
-@media (min-width:700px) and (orientation:portrait){
-  .cc-col{max-width:712px;} .bwrap{width:min(100%, 712px, calc((100svh - var(--chrome, 330px) + 30px) * 0.8663));}
-  #app.stage.ipl{max-width:760px;}
-}
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
-  .cc-col{max-width:none;overflow:visible;display:grid;grid-template-columns:minmax(250px,300px) auto;grid-template-rows:auto auto auto 1fr;
-    grid-template-areas:"c b" "t b" "a b" ". b";column-gap:32px;row-gap:12px;justify-content:center;align-content:start;}
-  .cc-col>.chips{grid-area:c;grid-template-columns:1fr;}
-  .cc-col>.bwrap{grid-area:b;margin:0;width:min(calc((100dvh - 80px - var(--safe-t) - var(--safe-b)) * 0.8663),calc(100vw - 400px));}
-  .cc-col>.turn{grid-area:t;justify-self:start;}
-  .cc-col>.acts{grid-area:a;justify-content:flex-start;}
-  .chips.c3 .pchip .nm .ico{display:inline-block;}
-}
+/* A layout for each shape (fit() sizes the board to the room). Upright: the players over the board, whose turn and
+   the buttons under it, the board as large as the screen allows, the whole table in the middle of the screen. Sideways
+   (phones too): the players, whose turn and the buttons in a column at the left, the board you play on at the right */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cc-col{width:min(100%,var(--colw,712px));max-width:none;flex:none;margin:auto 0;}
+#app.ipl .bwrap{width:var(--bw,100%);margin:2px auto 0;}
+#app.cc-land>.cc-col{width:auto;overflow:visible;display:grid;grid-template-columns:var(--sw,280px) var(--bw);grid-template-rows:auto auto auto 1fr;
+  grid-template-areas:"c b" "t b" "a b" ". b";column-gap:var(--cg,32px);row-gap:12px;justify-content:center;align-content:center;}
+#app.cc-land>.cc-col>.chips{grid-area:c;grid-template-columns:1fr;}
+#app.cc-land>.cc-col>.bwrap{grid-area:b;margin:0;}
+#app.cc-land>.cc-col>.turn{grid-area:t;justify-self:start;}
+#app.cc-land>.cc-col>.acts{grid-area:a;justify-content:flex-start;}
+#app.cc-land .chips.c3 .pchip .nm .ico{display:inline-block;}
+/* a phone on its side: two columns of player chips, a slimmer turn line */
+#app.cc-low>.cc-col{row-gap:8px;}
+#app.cc-low>.cc-col>.chips{grid-template-columns:repeat(var(--lcols,1),minmax(0,1fr));}
+#app.cc-low .pchip{min-height:38px;padding:3px 7px;}
+#app.cc-low>.cc-col>.turn{min-height:28px;font-size:.95rem;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -327,7 +331,7 @@
 
   function showSetup() {
     S = null; sel = -1; selMoves = [];
-    app.classList.remove('ipl');
+    app.classList.remove('ipl', 'cc-land', 'cc-low');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 5 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
@@ -420,7 +424,12 @@
     animPath(node, path, h > 0).then(function () {
       animating = false;
       if (!S) return;
-      if (h >= 3) Kit.callout(h + ' hops!', CHEX[S.players[p].col]);
+      if (h >= 5) {
+        // a chain of five hops or more is rare: the big moment, on the board
+        var bp = S.players[p], good = !bp.cpu || humans() > 1;
+        Kit.moment({ big: true, title: h + '-hop chain', line: bp.name + ' hopped ' + h + ' times in one move.', icon: 'bolt', color: CHEX[bp.col], tone: good ? '' : 'bad', at: wrapEl, ms: 2100 });
+        Kit.sfx(good ? 'sparkle' : 'bad'); Kit.haptic(good ? 'success' : 'medium');
+      } else if (h >= 3) Kit.callout(h + ' hops!', CHEX[S.players[p].col]);
       if (won) {
         Kit.sfx('good');
         if (!S.over) Kit.callout((S.players[p].name === 'You' ? 'You finished ' : S.players[p].name + ' finished ') + ord(place) + '!', CHEX[S.players[p].col]);
@@ -501,6 +510,18 @@
       var ru = order[1], hc = E.homeCount(S.b, ru, S.pts);
       hl.push(S.players[ru].name + (n === 2 ? ' had ' : ' came closest with ') + hc + ' of 10 marbles home' + (n === 2 ? ' at the end' : ''));
     }
+    // the rarer wins: a personal best when playing alone, a runaway win, beating the Hard computer
+    var sp = [];
+    if (n === 1) {
+      var pb = 0; try { pb = +localStorage.getItem('cc_best_solo') || 0; } catch (e) {}
+      if (!pb || moves < pb) { try { localStorage.setItem('cc_best_solo', String(moves)); } catch (e) {} if (pb) sp.push({ t: 'Personal best', l: W.name + ' solved the star in ' + moves + ' moves. The best before was ' + pb + '.', h: W.name + ' set a personal best of ' + moves + ' moves' }); }
+    } else {
+      var rest = order.slice(1).map(function (i) { return E.homeCount(S.b, i, S.pts); }), most = Math.max.apply(null, rest);
+      var who2 = n === 2 ? S.players[order[1]].name : 'anyone else', had = most === 0 ? 'before ' + who2 + ' had a single marble home' : 'while ' + (n === 2 ? who2 + ' had only ' : 'nobody else had more than ') + most + (most === 1 ? ' marble' : ' marbles') + ' home';
+      if (most <= 2) sp.push({ t: 'Runaway win', l: W.name + ' filled the goal point ' + had + '.', h: W.name + ' won ' + had });
+      if (!W.cpu && S.level === 'hard' && S.players.some(function (x) { return x.cpu; })) sp.push({ t: 'Hard computer beaten', l: W.name + ' beat the computer on Hard.', h: W.name + ' beat the computer on Hard' });
+    }
+    sp.forEach(function (x, i) { hl.splice(1 + i, 0, x.h); });
     if (S.nostay) hl.push('Played with pass-through-only points');
     if (hasCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     var modeName = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : hasCpu() ? 'People + computers (' + LEVEL_NAME[S.level] + ')' : n === 1 ? 'Solo' : 'Pass & play';
@@ -515,7 +536,10 @@
         ml: S.ml && S.ml.length === movesMade() * 4 && S.ml.length <= 2800 ? S.ml : undefined }
     });
     var lose = W.cpu && humans() > 0;
-    Kit.callout(W.name === 'You' ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
+    if (sp.length) {
+      Kit.moment({ big: true, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), icon: lose ? 'bot' : 'trophy', color: CHEX[W.col], tone: lose ? 'bad' : '', at: wrapEl, ms: 2300 });
+      Kit.sfx(lose ? 'lose' : 'sparkle'); Kit.haptic(lose ? 'heavy' : 'success');
+    } else Kit.callout(W.name === 'You' ? 'You win!' : W.name + ' wins!', CHEX[W.col]);
     setTimeout(function () {
       Kit.win({
         icon: lose ? 'bot' : 'trophy',
@@ -530,7 +554,7 @@
         look: true,
         setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
-    }, 900);
+    }, sp.length ? 2500 : 900);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -574,12 +598,12 @@
     if (!S || !S.b) return;
     app.innerHTML = ''; app.classList.add('ipl');
     var col = el('div', { class: 'cc-col' });
-    chipsEl = el('div', { class: 'chips' });
+    chipsEl = el('div', { class: 'chips', style: { 'view-transition-name': 'cc-chips' } });
     var n = S.players.length;
     chipsEl.style.setProperty('--cols', n >= 5 ? 3 : n === 1 ? 1 : 2);
     if (n >= 5) chipsEl.classList.add('c3');
     col.appendChild(chipsEl);
-    wrapEl = el('div', { class: 'bwrap', role: 'application', 'aria-label': 'Chinese checkers board' });
+    wrapEl = el('div', { class: 'bwrap', role: 'application', 'aria-label': 'Chinese checkers board', style: { 'view-transition-name': 'cc-board' } });
     wrapEl.style.setProperty('--chrome', (n > 2 ? 380 : 330) + 'px');
     spinEl = el('div', { class: 'spin', html: boardSvg() });
     hsvgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -594,8 +618,41 @@
     app.appendChild(col);
     paintRot(true);
     paintMarbles(); paintAll();
+    fit();
     bindInput();
   }
+  // The board as large as the room allows for the shape the screen is now (the board is 14 wide to 16.16 tall)
+  var ASP = 16.16 / 14;
+  function fit() {
+    var col = app.querySelector('.cc-col'); if (!col || !wrapEl || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('cc-land', land); app.classList.toggle('cc-low', low);
+    col.style.setProperty('--lcols', S && S.players.length > 3 ? 2 : 1);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var bw;
+    if (land) {
+      var many = S && S.players.length > 3;
+      var sw = low ? Math.min(many ? 330 : 250, Math.max(200, W * (many ? 0.38 : 0.27))) : Math.min(320, Math.max(260, W * 0.27)), cg = low ? 18 : 32;
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      bw = Math.min(ih / ASP, iw - sw - cg);
+    } else {
+      var other = 0;
+      Array.prototype.forEach.call(col.children, function (c) { if (c !== wrapEl) other += c.offsetHeight + 8; });
+      bw = Math.min(iw, 712, (ih - other - 4) / ASP);
+    }
+    app.style.setProperty('--bw', Math.floor(Math.max(200, bw)) + 'px');
+    if (!land) { var over = col.offsetHeight - ih; if (over > 0) app.style.setProperty('--bw', Math.floor(Math.max(180, bw - over / ASP)) + 'px'); }
+  }
+  // Turning the device: the board and the players glide to the new shape (the marbles are placed in shares of the board)
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (document.startViewTransition && !reduce && !document.hidden && app.classList.contains('ipl')) { try { document.startViewTransition(fit); return; } catch (e) {} }
+    fit();
+  });
   function paintAll() { if (!S || !layerEl) return; paintHints(); paintChips(); paintTurn(); paintActs(); paintCan(); }
   function paintRot(now) {
     if (!spinEl) return;
