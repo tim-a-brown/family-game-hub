@@ -79,23 +79,44 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   .tray .felt-in{min-height:132px;}
   .sc th,.sc td{height:40px;}
 }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app:has(.ylay){max-width:1120px;padding-top:10px;padding-bottom:calc(var(--safe-b) + 8px);}
-  .ylay{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;}
-  .ylay > *{grid-row:1;grid-column:1;}
-  .ylay .yleft{grid-column:2;position:sticky;top:calc(var(--safe-t) + 60px);display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - var(--safe-t) - 80px);}
-  .ylay .tray{position:static;margin-bottom:0;}
-  .ylay .turnline{font-size:1.6rem;margin-bottom:16px;}
-  .ylay .tray .felt-in{min-height:180px;display:flex;align-items:center;justify-content:center;}
-  .ylay .dice{width:100%;}
-  .ylay .card-head{padding:8px 14px 6px;}
-  .ylay .card-head h2{font-size:1.35rem;}
-  .ylay .sc th,.ylay .sc td{height:calc((100dvh - var(--safe-t) - 316px) / 14);min-height:30px;}
-  .ylay .sc thead th{height:30px;}
-  .ylay .sc .sect th{height:22px;}
-  .ylay .sc tr.grand td,.ylay .sc tr.grand th{height:40px;}
-  .ylay .sc .lbl small{display:none;}
+/* iPad either way up and a phone on its side (html.yw, set in the script from the screen's width): the score card on
+   the left, as tall as the screen, and the turn line, the dice and the Roll button on the right, held in view */
+html.yw #app:has(.ylay){max-width:1120px;padding-top:10px;padding-bottom:max(calc(var(--safe-b) + 8px),18px);}
+html.yw .ylay{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:22px;align-items:start;}
+html.yw .ylay > *{grid-row:1;grid-column:1;}
+html.yw .ylay .yleft{grid-column:2;position:sticky;top:calc(var(--bar) + 6px);display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - var(--bar) - 30px);}
+html.yw .ylay .tray{position:static;margin-bottom:0;}
+html.yw .ylay .turnline{font-size:1.6rem;margin-bottom:16px;}
+html.yw .ylay .tray .felt-in{min-height:180px;display:flex;align-items:center;justify-content:center;}
+html.yw .ylay .dice{width:100%;}
+html.yw .ylay .card-head{padding:8px 14px 6px;}
+html.yw .ylay .card-head h2{font-size:1.35rem;}
+html.yw .ylay .sc th,html.yw .ylay .sc td{height:calc((100dvh - var(--bar) - 250px) / 14);min-height:30px;}
+html.yw .ylay .sc thead th{height:30px;}
+html.yw .ylay .sc .sect th{height:22px;}
+html.yw .ylay .sc tr.grand td,html.yw .ylay .sc tr.grand th{height:40px;}
+html.yw .ylay .sc .lbl small{display:none;}
+/* an upright iPad: the column is narrow and tall, so the dice lie three over two in a deep tray, as large as it allows */
+@media (orientation:portrait){
+  html.yw .ylay{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;}
+  html.yw .ylay .tray .felt-in{min-height:min(46dvh,420px);padding:34px 10px 34px;}
+  html.yw .ylay .dice{flex-wrap:wrap;gap:18px 16px;align-content:center;}
+  html.yw .ylay .dice .die{--ds:min(calc((50vw - 120px) / 3),100px);}
+  html.yw .ylay .sc .lbl small{display:block;}
 }
+/* a phone on its side: rows as tall as a finger needs, the card scrolls under the bar while the dice stay in view */
+@media (max-height:520px){
+  html.yw #app:has(.ylay){padding-left:calc(var(--corner-x) + 8px);padding-right:calc(var(--corner-x) + 8px);}
+  html.yw .ylay{gap:16px;}
+  html.yw .ylay .sc th,html.yw .ylay .sc td{height:34px;}
+  html.yw .ylay .sc .lbl .die{--ds:20px;}
+  html.yw .ylay .turnline{font-size:1.2rem;margin-bottom:8px;}
+  html.yw .ylay .tray .felt-in{min-height:118px;padding:14px 8px;}
+  html.yw .ylay .dice .die{--ds:min(calc((50vw - 100px) / 5),58px);}
+  html.yw .ylay .tray .rollbtn{min-height:48px;}
+}
+/* Turning the device: the dice tray and the score card glide to their new places (a View Transition in the script) */
+.tray{view-transition-name:y-tray;} .card{view-transition-name:y-card;} .turnline{view-transition-name:y-turn;}
 </style>
 </head>
 <body>
@@ -104,6 +125,21 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
 <script>
 (function () {
   'use strict';
+  // Turning the device: the two-column layout (html.yw: an iPad either way up, or a phone on its side) is switched
+  // inside a View Transition, so the dice tray and the score card glide to their new places instead of jumping
+  (function () {
+    var R = document.documentElement, q = matchMedia('(min-width:700px)'), o = matchMedia('(orientation:landscape)'), wait = false, land = o.matches;
+    function set() { wait = false; land = o.matches; R.classList.toggle('yw', q.matches); window.dispatchEvent(new Event('resize')); }
+    R.classList.toggle('yw', q.matches);
+    function turn() {
+      if (wait || (R.classList.contains('yw') === q.matches && land === o.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, o].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var el = Kit.el;
   var app = document.getElementById('app');
   var SAVE = 'yahtzee_state';
@@ -261,7 +297,9 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
   function rollFx() {
     var d = S.dice;
     if (isYahtzee(d)) {
-      setTimeout(function () { Kit.callout('YAHTZEE!'); Kit.confetti({ count: 100 }); Kit.sfx('win'); }, 350);
+      // the rarest roll gets the big moment: the five dice on a lit panel across the tray (an extra Yahtzee says its 100)
+      var yb = P().card.yz === 50, felt = document.querySelector('.tray .felt-in');
+      setTimeout(function () { Kit.moment({ big: true, title: yb ? 'Another Yahtzee!' : 'Yahtzee!', line: yb ? 'An extra Yahtzee is worth a 100 point bonus.' : 'Five of a kind.', dice: d.slice(), pts: yb ? '+100' : P().card.yz == null ? '+50' : '', at: felt, ms: 2400 }); Kit.confetti({ count: 100 }); Kit.sfx('win'); Kit.haptic('success'); }, 350);
     } else if (raw('ls', d)) setTimeout(function () { Kit.callout('Large Straight!'); Kit.sfx('good'); }, 350);
     else if (raw('fh', d) && P().card.fh == null) setTimeout(function () { Kit.callout('Full House!'); Kit.sfx('good'); }, 350);
   }
@@ -305,7 +343,8 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
     var youLost = S.mode === 'cpu' && top.cpu;
     Kit.win({
       title: rank.length === 1 ? top.score + ' points!' : tie ? "It's a tie!" : top.name + ' wins!',
-      sub: rank.length === 1 ? (top.score >= 300 ? 'Legendary game!' : top.score >= 250 ? 'Great game!' : 'Nice rolling!') : 'Final scores',
+      sub: r.pbs.length ? (r.pbs.length === 1 ? (rank.length === 1 ? 'A new personal best!' : r.pbs[0] + ' set a new personal best') : 'New personal bests for ' + r.pbs.join(' and ')) : rank.length === 1 ? (top.score >= 300 ? 'Legendary game!' : top.score >= 250 ? 'Great game!' : 'Nice rolling!') : 'Final scores',
+      icon: r.pbs.length && !youLost ? 'trophy' : undefined,
       rank: rank.length > 1 ? rank : null, lose: youLost,
       again: function () { start({ mode: S.mode, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) }); },
       extra: [{ label: 'Change players', onClick: showSetup }]
@@ -331,6 +370,10 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
       var zeros = CATS.filter(function (c) { return p.card[c.id] === 0; }).map(function (c) { return c.name; });
       if (zeros.length >= 3) hl.push(p.name + ' scratched ' + zeros.length + ' boxes');
     });
+    // a personal best: more than this player has scored in any earlier game here
+    var prev = {}, pbs = [];
+    try { GameHistory.load('yahtzee').forEach(function (e) { (e.players || []).forEach(function (q) { if (q && !q.cpu && typeof q.score === 'number') prev[q.name] = Math.max(prev[q.name] || 0, q.score); }); }); } catch (e) {}
+    S.players.forEach(function (p) { if (!p.cpu && prev[p.name] != null && total(p) > prev[p.name]) { pbs.push(p.name); hl.unshift(p.name + ' set a personal best of ' + total(p) + ', beating ' + prev[p.name]); } });
     var best = { v: 0 };
     S.players.forEach(function (p) { (p.log || []).forEach(function (x) { if (x.v > best.v && x.id !== 'yz') best = { v: x.v, who: p.name, id: x.id, r: x.r }; }); });
     if (best.who && rank.length > 1) hl.push('Best single turn: ' + best.who + ', ' + best.v + ' in ' + CAT[best.id].name + ' (round ' + best.r + ')');
@@ -349,7 +392,7 @@ table.sc{width:100%;border-collapse:collapse;table-layout:fixed;}
         return { c: CATS.map(function (c) { return p.card[c.id] == null ? null : p.card[c.id]; }), yb: p.yb || 0, d: /\d/.test(dice) ? dice : '', t: t };
       }) }
     });
-    return { rank: rank, top: top, tie: tie };
+    return { rank: rank, top: top, tie: tie, pbs: pbs };
   }
 
   // ── Computer player ───────────────────────────────────────────────────────
