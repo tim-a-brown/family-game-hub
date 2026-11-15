@@ -202,6 +202,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'dominoes', SAVE = 'dominoes_state';
   var VNAME = { draw: 'Draw', block: 'Block', fives: 'All Fives' };
@@ -1450,7 +1452,7 @@
     rT = setTimeout(function () {
       if (!(S && dw && dw.isConnected)) return;
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (document.startViewTransition && !reduce && !document.hidden && !drag) { try { document.startViewTransition(function () { setBarH(); paint(); }); return; } catch (e) {} }
+      if (document.startViewTransition && !reduce && !document.hidden && !drag) { try { vtGo(function () { setBarH(); paint(); }); return; } catch (e) {} }
       setBarH(); paint();
     }, 80);
   });

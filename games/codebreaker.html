@@ -201,6 +201,8 @@ button.hole{cursor:pointer;}
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'codebreaker', SAVE = 'codebreaker_state', SYM = 'codebreaker_symbols';
 
@@ -930,7 +932,7 @@ button.hole{cursor:pointer;}
     var r = document.querySelector('.rows'), t = document.querySelector('.tray'); if (!(r && t && S)) return;
     var wh = window.innerWidth + 'x' + window.innerHeight, st = r.scrollTop;
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (wh !== lastWH && document.startViewTransition && !reduce && !document.hidden) { lastWH = wh; try { document.startViewTransition(function () { fitNow(r, t, st); }); return; } catch (e) {} }
+    if (wh !== lastWH && document.startViewTransition && !reduce && !document.hidden) { lastWH = wh; try { vtGo(function () { fitNow(r, t, st); }); return; } catch (e) {} }
     lastWH = wh; fit(r, t, st);
   });
 

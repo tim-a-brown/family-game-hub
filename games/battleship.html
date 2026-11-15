@@ -178,6 +178,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'battleship_state', KEY = 'battleship', N = 10;
   var SHIPS = [{ n: 'Carrier', s: 5 }, { n: 'Battleship', s: 4 }, { n: 'Cruiser', s: 3 }, { n: 'Submarine', s: 3 }, { n: 'Destroyer', s: 2 }];
@@ -773,7 +775,7 @@
   window.addEventListener('resize', function () {
     var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!drag && document.startViewTransition && !reduce && !document.hidden && app.classList.contains('bsx')) { try { document.startViewTransition(fit); return; } catch (e) {} }
+    if (!drag && document.startViewTransition && !reduce && !document.hidden && app.classList.contains('bsx')) { try { vtGo(fit); return; } catch (e) {} }
     fit();
   });
   window.addEventListener('resize', function () {

@@ -106,6 +106,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'chinesecheckers_state', KEY = 'chinesecheckers';
 
@@ -650,7 +652,7 @@
   window.addEventListener('resize', function () {
     var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
     var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (document.startViewTransition && !reduce && !document.hidden && app.classList.contains('ipl')) { try { document.startViewTransition(fit); return; } catch (e) {} }
+    if (document.startViewTransition && !reduce && !document.hidden && app.classList.contains('ipl')) { try { vtGo(fit); return; } catch (e) {} }
     fit();
   });
   function paintAll() { if (!S || !layerEl) return; paintHints(); paintChips(); paintTurn(); paintActs(); paintCan(); }

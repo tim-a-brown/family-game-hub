@@ -141,6 +141,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   function innerW() { var cs = getComputedStyle(app); return (app.clientWidth || 390) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); }
   var SAVE = 'backgammon_state', KEY = 'backgammon';
@@ -990,7 +992,7 @@
     rT = setTimeout(function () {
       if (!(S && S.pos) || !app.classList.contains('ipl')) return;
       var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (document.startViewTransition && !reduce && !document.hidden) { try { document.startViewTransition(function () { render(); }); return; } catch (e) {} }
+      if (document.startViewTransition && !reduce && !document.hidden) { try { vtGo(function () { render(); }); return; } catch (e) {} }
       render();
     }, 120);
   });
