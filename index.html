@@ -1081,9 +1081,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .g.gr.tl .tx{flex:1 0 auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;}
 :root:not(.ng-x) .g.gr.tl .tx b{font-size:.9rem;line-height:1.12;overflow-wrap:normal;word-break:normal;text-wrap:balance;}
 :root:not(.ng-x) .g.gr.tl .tx b.l1{font-size:.8rem;}
-/* every tile the same height (Tim, 2026-11-15: "make sure that all of the game tiles heights are all the same height"):
-   the name always has room for two lines, so a long name never makes its tile taller than the rest */
-:root:not(.ng-x) .g.gr.tl .tx b{min-height:2.24em;}
+/* every tile the same height (Tim, 2026-11-15: "make sure that all of the game tiles heights are all the same height"),
+   and no taller than it must be ("make all the game tiles tighter"): the name has one line of room, or two on every tile
+   when some name on the screen needs two at this width (markWraps sets html.tl2) */
+:root:not(.ng-x) .g.gr.tl .tx b{min-height:1.12em;}
+:root.tl2:not(.ng-x) .g.gr.tl .tx b{min-height:2.24em;}
 /* (what is happening in a game stays on its sheet; a game waiting on you is a gold light on the tile's corner) */
 :root:not(.ng-x) .g.gr.tl .lv{display:none;}
 :root:not(.ng-x) .g.gr.tl .lv.y{display:block;position:absolute;top:10px;left:10px;width:9px;height:9px;max-width:none;padding:0;border-radius:50%;font-size:0;
@@ -1096,14 +1098,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 /* (Tim, 2026-11-15: "condense these tiles in tile view so that the player count isn't on its own line"): the icon and
    how many play share the first row, the name the second; a 320-wide phone's tiles are too narrow and keep them stacked */
 @media (min-width:360px){
-  :root:not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"gi ppl" "nm nm";align-items:end;align-content:start;justify-items:start;column-gap:8px;row-gap:9px;padding:12px 10px 12px 12px;text-align:left;}
-  :root:not(.ng-x) .g.gr.tl .gi{grid-area:gi;width:44px;height:44px;border-radius:13px;}
+  :root:not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"gi ppl" "nm nm";align-items:end;align-content:start;justify-items:start;column-gap:8px;row-gap:6px;padding:9px 9px 9px 10px;border-radius:16px;text-align:left;}
+  :root:not(.ng-x) .g.gr.tl .gi{grid-area:gi;width:38px;height:38px;border-radius:11px;}
   :root:not(.ng-x) .g.gr.tl .tx{display:contents;}
   :root:not(.ng-x) .g.gr.tl .tx b{grid-area:nm;align-self:start;justify-self:stretch;}
   :root:not(.ng-x) .g.gr.tl .ppl{grid-area:ppl;margin:0 0 1px;justify-content:flex-start;}
   :root:not(.ng-x) .g.gr.tl .lv.y{top:8px;left:50px;}
 }
-@media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding-top:18px;} :root:not(.ng-x) .g.gr.tl .gi{width:40px;height:40px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
+@media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding:11px 5px 9px;gap:5px;border-radius:16px;} :root:not(.ng-x) .g.gr.tl .tx{gap:4px;} :root:not(.ng-x) .g.gr.tl .gi{width:36px;height:36px;border-radius:11px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
 @media (max-width:359px){:root:not(.ng-x) .g.gr .go{gap:9px;} :root:not(.ng-x) .g.gr .lv{max-width:46%;font-size:.76rem;} :root:not(.ng-x) .g.gr .fav{width:32px;}}
 :root:not(.ng-x) .sec.favs.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
 
@@ -1392,7 +1394,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var r = el('div', { class: 'g gr' + (tile ? ' tl' : ''), 'data-id': g.id, 'data-cat': g.cat, style: { '--h': catHsl(g, 58), '--c': catHsl(g, 46) } });
     var ic = g.cart ? el('span', { class: 'gi' }, [el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)])]) : el('span', { class: 'gi', html: GameIcon(g.id) });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + playersSaid(g) }, [
-      ic, el('span', { class: 'tx' }, [el('b', { text: g.name }), tile ? seatsPic(g) : el('small', { text: playersSaid(g) })]), liveEl(g)]);
+      ic, el('span', { class: 'tx' }, [el('b', { text: tile && g.tile ? g.tile : g.name }), tile ? seatsPic(g) : el('small', { text: playersSaid(g) })]), liveEl(g)]);
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
     star.addEventListener('click', function () {
@@ -2269,6 +2271,20 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // Tiles whose name runs to two lines: the icon steps down and in so the name stays on the shade, clear of the art.
   // (Also fits over-wide names.)
   function markWraps() {
+    // (game tiles: does any name on the screen need two lines at this width? then every tile keeps room for two)
+    // (a long name first eases its size down, to 74% at most, to stay on one line, so one long name doesn't make every tile taller)
+    var two = false, rg = document.createRange();
+    function lines(b) { rg.selectNodeContents(b); var ys = {}; [].forEach.call(rg.getClientRects(), function (r) { if (r.width > 1) ys[Math.round(r.top)] = 1; }); return Object.keys(ys).length; }
+    document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) {
+      if (!b.offsetWidth) return; b.style.fontSize = '';
+      var over = function () { return lines(b) > 1 || b.scrollWidth > b.clientWidth; };
+      if (!over()) return;
+      var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
+      while (over() && fs > fs0 * .74) { fs -= .5; b.style.fontSize = fs + 'px'; }
+      if (lines(b) > 1) { b.style.fontSize = ''; two = true; }
+    });
+    if (two) document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) { b.style.fontSize = ''; });   // (room for two lines anyway: every name at its own size)
+    document.documentElement.classList.toggle('tl2', two);
     document.querySelectorAll('.tiles .g').forEach(function (g) {
       var b = g.querySelector('.txt b'); if (!b) return;
       // a name too wide for the tile, or longer than two lines (Bungee is broad): shrink it just enough to fit, never below 70%
