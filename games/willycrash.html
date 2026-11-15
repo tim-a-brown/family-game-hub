@@ -28,6 +28,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 .plate.gold{flex:1.4;}
 .plate.gold b{color:var(--lit);text-shadow:0 0 14px var(--litg);}
 .plate.bump b{animation:bounce .45s var(--spring);}
+.plate.pb{animation:wc-pb 1.6s var(--ease);}
+.plate.pb b{color:var(--lit);text-shadow:0 0 14px var(--litg);animation:bounce .5s var(--spring);}
+@keyframes wc-pb{0%{box-shadow:inset 0 0 0 1px var(--gl-line)}18%{box-shadow:inset 0 0 0 2px var(--lit),0 0 26px 4px rgba(255,200,60,.55)}100%{box-shadow:inset 0 0 0 1px var(--gl-line)}}
 .pbtn{flex:none;width:48px;border:0;border-radius:15px;display:grid;place-items:center;color:var(--text);background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .12s var(--ease),filter .15s;}
 .pbtn:active{transform:translateY(1px) scale(.95);filter:brightness(.94);}
 .pbtn svg{width:22px;height:22px;}
@@ -1178,7 +1181,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     }
     lastLand.push({ x: Math.round(pl.x), y: Math.round(pl.y) }); if (lastLand.length > 4) lastLand.shift();
     cur.land = r.code; cur.name = r.name; cur.tickets = r.tickets; cur.bi = r.bi != null ? r.bi : -1; cur.total = r.tickets;
+    var before = total;
     res = r; total += cur.total; shots.push(cur);
+    // the shot that takes the game past your best: the Best plate flares, a chime and a call once Willy has landed
+    if (best0 > 0 && before <= best0 && total > best0) { var bp = $('h-best').parentNode; $('h-best').textContent = fmt(total); bp.classList.remove('pb'); void bp.offsetWidth; bp.classList.add('pb'); setTimeout(function () { Kit.sfx('sparkle'); Kit.haptic('success'); Kit.callout('New best!', '#ffd84a'); }, 900); }
     state = 'result'; resultT = 0; timeScale = Math.max(timeScale, .6); slowOn = false;
     hud(true);
     // the jackpot speeds the cannon up and moves the jackpot one building to the right for the next shot
