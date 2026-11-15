@@ -217,6 +217,53 @@
 }
 .rd-mid{flex:1;display:flex;flex-direction:column;gap:inherit;}
 @media (min-width:700px) and (min-height:900px){ .rd-mid{justify-content:center;padding-bottom:8vh;} }
+@media (min-width:700px) and (min-height:900px) and (orientation:portrait){ .rd{max-width:760px;} .q{font-size:1.9rem;} .q.verse{font-size:1.75rem;} }
+
+/* Sideways: the tablet at the left, for reading; the stones, points and the moves at the right, where the taps go */
+@media (orientation:landscape) and (min-width:640px){
+  .rd{max-width:none;height:calc(100dvh - var(--bar));min-height:0;padding:0 18px calc(var(--safe-b) + 10px);}
+  .rd-table{display:grid;grid-template-columns:minmax(0,1fr) clamp(190px,25vw,290px);grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"stage top" "stage acts";gap:12px 16px;min-height:0;}
+  .rd-mid{display:contents;}
+  .rd-top{grid-area:top;flex-wrap:wrap;row-gap:8px;padding:0;}
+  .rd-top .pips{flex:1 1 100%;}
+  .rd-stage{grid-area:stage;align-self:center;min-height:0;max-height:100%;overflow:auto;scrollbar-width:none;padding:2px 2px 8px;}
+  .rd-stage::-webkit-scrollbar{display:none;}
+  .acts{grid-area:acts;flex-direction:column;align-self:start;}
+  .acts .btn{flex:none;}
+  .q{font-size:clamp(1.1rem,2.6vw,1.75rem);}
+  .q.verse{font-size:clamp(1.05rem,2.4vw,1.6rem);}
+}
+/* While the keyboard is up the table is the room above it, so the riddle never slides under the game bar; on a
+   short screen the tablet tightens (fitRd) until the riddle, the answer box and the moves all fit */
+html.k-kb .rd{height:calc(var(--vvh,100dvh) - var(--bar));min-height:0;}
+html.k-kb .rd-table{min-height:0;overflow:hidden;}
+.rd.t1 .meander{display:none;}
+.rd.t1 .rd-table{gap:8px;padding-top:8px;padding-bottom:10px;}
+.rd.t1 .slab{padding:12px 16px 14px;}
+.rd.t1 .slab::before{inset:6px;}
+.rd.t1 .q{margin:8px 2px 2px;}
+.rd.t1 .groove{margin-top:8px;}
+.rd.t1 .groove input,.rd.t1 .go{height:46px;}
+.rd.t1 .acts .btn{min-height:44px;}
+.rd.t2 .q{font-size:1.04rem;line-height:1.3;}
+.rd.t2 .q.verse{font-size:1rem;line-height:1.32;}
+.rd.t2 .from{display:none;}
+.rd.t2 .slab-h .lvl{visibility:hidden;}
+.rd.t3 .rd-top{display:none;}
+.rd.t3 .slab-h{display:none;}
+.rd.t3 .tried{margin-top:6px;}
+.rd.t4 .rd-table{padding:6px 8px 8px;}
+.rd.t4 .slab{padding:8px 12px 10px;}
+.rd.t4 .slab::before{display:none;}
+.rd.t4 .q,.rd.t4 .q.verse{font-size:.98rem;margin:2px 2px 0;}
+.rd.t4 .groove{margin-top:6px;}
+.rd.t4 .groove input,.rd.t4 .go{height:40px;}
+.rd.t4 .tried{margin-top:4px;}
+.rd.t4 .tried:empty{display:none;}
+.rd.t4 .acts{gap:6px;}
+.rd.t4 .acts .btn{min-height:38px;}
+html.k-kb .rd{padding-bottom:6px;}
 </style>
 </head>
 <body>
@@ -400,6 +447,27 @@
     if (!s.done) focusInput(enter ? 380 : 0);
     else setTimeout(function () { var b = V.acts.querySelector('.next'); if (b) b.focus({ preventScroll: true }); }, 50);
   }
+  // Tighten the tablet step by step until everything fits the table (only a table of fixed height can overflow:
+  // sideways, or with the keyboard up)
+  var fitQ = 0;
+  function fitRd() {
+    var rd = app.querySelector('.rd'); if (!rd) return;
+    var tb = rd.querySelector('.rd-table'), stage = rd.querySelector('.rd-stage'); if (!tb) return;
+    // (layout sizes, not scrollHeight: a hint slip or a tablet sliding in is moved by a transform for a moment)
+    function over() {
+      var room = tb.clientHeight - parseFloat(getComputedStyle(tb).paddingBottom), low = 0;
+      [].forEach.call(tb.querySelectorAll('.rd-top, .rd-stage, .acts'), function (n) { if (n.offsetParent) low = Math.max(low, n.offsetTop + n.offsetHeight); });
+      var slab = stage && stage.querySelector('.slab');
+      return low > room + 1 || !!(slab && slab.offsetHeight + 10 > stage.clientHeight + 1 && getComputedStyle(stage).overflowY !== 'visible');
+    }
+    rd.classList.remove('t1', 't2', 't3', 't4');
+    ['t1', 't2', 't3', 't4'].some(function (k) { if (!over()) return true; rd.classList.add(k); return false; });
+  }
+  function queueFit() { if (fitQ) return; fitQ = requestAnimationFrame(function () { fitQ = 0; fitRd(); if (window.KitKb && KitKb.on()) KitKb.place(); }); }
+  if (window.MutationObserver) {
+    new MutationObserver(queueFit).observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'style'] });
+    new MutationObserver(queueFit).observe(app, { childList: true, subtree: true });
+  }
   function pipCls(x, i) { return x.done ? ' s' + (x.ok ? x.s : 0) : i === S.i ? ' now' : ''; }
 
   // The tablet for a riddle in state s (hints shown, answer carved if done)
@@ -554,8 +622,8 @@
     // the big moments
     var milestone = stt.streak >= 3 && (stt.streak === 3 || stt.streak === 5 || stt.streak % 10 === 0);
     setTimeout(function () {
-      if (milestone) { Kit.callout(stt.streak + ' in a row!'); Kit.confetti({ count: stt.streak >= 10 ? 200 : 110 }); Kit.sfx('win', 0.7); }
-      else if (!s.h && r.d === 'hard') { Kit.callout('Brilliant!'); Kit.confetti({ count: 90 }); }
+      if (milestone) { Kit.moment({ big: stt.streak >= 10, icon: 'flame', title: stt.streak + ' riddles in a row', line: 'You have solved ' + stt.streak + ' riddles in a row without giving one up.', pts: stt.streak }); Kit.confetti({ count: stt.streak >= 10 ? 200 : 110 }); Kit.sfx('win', 0.7); Kit.haptic('success'); }
+      else if (!s.h && r.d === 'hard') { Kit.moment({ icon: 'star', title: 'A hard one, no hints', line: 'You solved a hard riddle without a single hint.', pts: '+' + s.p }); Kit.confetti({ count: 90 }); Kit.sfx('sparkle'); }
       else if (!s.h && s.t.length === 1) Kit.callout(r.d === 'easy' ? 'Got it!' : 'First try!');
       else if (!s.h) Kit.callout('No hints!');
       else Kit.callout('Solved!');
@@ -668,6 +736,31 @@
   }
 
   // test hooks
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.rd .slab, .rd .acts .btn, .rd .pips, .rd .tally', fitRd);
+
   window.__rd = { get: function () { return S; }, start: startRound, cur: cur, hint: hint, next: next, type: function (g) { V.input.value = g; submit(); } };
   function leave() {
     if (S && !S.over && S.res.some(function (x) { return x.done || x.t.length || x.h; })) {
