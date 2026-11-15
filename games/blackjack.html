@@ -15,6 +15,21 @@
 <script src="../casino.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 .stage{padding-bottom:calc(var(--safe-b) + 10px + var(--corner-y));}
 /* ── Table: a half-moon blackjack table in a wooden rail ─────────────────── */
@@ -208,12 +223,29 @@
 .sess td.up{color:var(--green);font-weight:900;} .sess td.down{color:#ff8a8a;font-weight:900;}
 /* ── iPad / tablet ── */
 @media (min-width:700px) and (orientation:portrait){ .ctrl{max-width:560px;} }
-/* Wide landscape (iPad, laptop): table on the left, controls beside it, all in one screen */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage:has(> .bjwrap){max-width:1180px;display:flex;align-items:center;justify-content:center;gap:clamp(20px,3vw,40px);min-height:calc(100dvh - 70px);padding-top:0;padding-bottom:8px;}
-  .stage > .bjwrap{flex:none;width:min(calc((100dvh - 92px) * .7234 + 18px),62vw);max-width:none;margin:0;}
-  .stage > .ctrl{flex:0 1 420px;min-width:320px;margin:0;justify-content:center;}
-}
+/* iPad upright: the table as tall as the screen allows over bigger controls */
+.sh-tall .stage > .bjwrap{max-width:min(100%,calc((100dvh - 300px) * .7234 + 18px));}
+@media (min-width:700px){ .sh-tall .stage > .bjwrap{max-width:min(100%,calc((100dvh - 394px) * .7234 + 18px));} .sh-tall .stage > .ctrl{gap:12px;min-height:272px;justify-content:center;} .sh-tall .acts .btn{min-height:62px;font-size:1.15rem;} .sh-tall .acts .btn.sm{min-height:52px;} .sh-tall .st{font-size:1.08rem;} }
+/* Sideways (an iPad, a laptop, a phone on its side): the table at the left, the chips and buttons beside it at the right */
+.sh-wide .stage:has(> .bjwrap),.sh-side .stage:has(> .bjwrap){max-width:1180px;display:flex;align-items:center;justify-content:center;gap:clamp(20px,3vw,40px);min-height:calc(100dvh - 70px);padding-top:0;padding-bottom:8px;}
+.sh-wide .stage > .bjwrap{flex:none;width:min(calc((100dvh - 92px) * .7234 + 18px),62vw);max-width:none;margin:0;}
+.sh-wide .stage > .ctrl{flex:0 1 460px;min-width:320px;margin:0;justify-content:center;gap:14px;}
+.sh-wide .acts .btn{min-height:64px;font-size:1.15rem;} .sh-wide .acts .btn.sm{min-height:52px;} .sh-wide .st{font-size:1.08rem;}
+/* a phone on its side, laid out like Bridge's: what you read at the left (your bankroll, the hand against the dealer's card),
+   the table in the middle the screen's height, the chips and buttons at the right */
+.sh-side .stage:has(> .bjwrap){display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1.35fr);grid-template-rows:1fr auto auto auto auto 1fr;grid-auto-flow:row dense;align-items:center;
+  column-gap:18px;row-gap:8px;min-height:calc(100dvh - 72px);padding:0 max(env(safe-area-inset-right),20px) 4px max(env(safe-area-inset-left),20px);}
+.sh-side .stage:has(> .bjwrap)::before,.sh-side .stage:has(> .bjwrap)::after{content:"";grid-row:1;grid-column:1;}   /* (so both side columns start under a free top row and sit centered) */
+.sh-side .stage:has(> .bjwrap)::after{grid-column:3;}
+.sh-side .stage > .bjwrap{grid-column:2;grid-row:1 / -1;width:calc((100dvh - 94px) * .7234 + 18px);min-width:0;max-width:none;margin:0;}
+.sh-side .stage > .ctrl{display:contents;}
+.sh-side .ctrl > *{grid-column:3;}
+.sh-side .ctrl > .st{grid-column:1;flex-wrap:wrap;row-gap:6px;}
+.sh-side .ctrl > .st .grow{flex:1 1 100%;}
+.sh-side .acts .btn{min-height:50px;} .sh-side .acts .btn.sm{min-height:44px;}
+.sh-side .wait{min-height:60px;}
+/* the pieces that glide to their new places when the device turns */
+.stage > .bjwrap{view-transition-name:bj-table;} .stage > .ctrl{view-transition-name:bj-ctrl;}
 </style>
 </head>
 <body>
@@ -228,7 +260,7 @@
   var S = null, token = 0, undoStack = [], seen = {}, busyUntil = 0, lastTurnSeat = -1;
   var dom = {};
 
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'blackjack', mark: false,
     theme: { back: ['#8f1d2c', '#c43a4c'] },
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } if (S && S.rounds.length && LIVE.indexOf(S.phase) < 0) recordSession(); clearSave(); showSetup(); },
@@ -1030,6 +1062,30 @@
     if (d > 21 && live) { Kit.callout('Dealer busts!', '#3ddc84'); }
     if (hn > 0) { Kit.sfx('good'); Kit.haptic('success'); }
     else if (hn < 0) { Kit.sfx('lose'); }
+    if (!PURE) rareMoment(nets);
+  }
+  // The uncommon hands get a moment on the table, the rarest one when a round has several: a winning hand of five or
+  // more cards, every hand of a split won, and every fifth win in a row
+  function rareMoment(nets) {
+    var m = null;
+    humans().forEach(function (i) {
+      var s = S.seats[i], mine = seatHands(i);
+      mine.forEach(function (h) {
+        var t = tot(h.cards).t;
+        if (h.cards.length >= 5 && t <= 21 && h.res === 'win' && (!m || m.r < 3))
+          m = { r: 3, chip: String(h.cards.length), title: 'A ' + h.cards.length + '-card ' + t, line: s.name + ' drew to ' + h.cards.length + ' cards without busting and beat the dealer.', pts: signed(h.net), big: h.cards.length >= 6 };
+      });
+      if (mine.length > 1 && mine.every(function (h) { return h.res === 'win'; }) && (!m || m.r < 2))
+        m = { r: 2, chip: String(mine.length), title: 'Every split hand won', line: s.name + ' split into ' + mine.length + ' hands and won all ' + mine.length + '.', pts: signed(nets[i]), big: mine.length >= 3 };
+      var k = s.st.streak;
+      if (nets[i] > 0 && k >= 5 && k % 5 === 0 && (!m || m.r < 1))
+        m = { r: 1, chip: String(k), title: k + ' wins in a row', line: s.name + ' has won ' + k + ' hands in a row.', pts: signed(nets[i]), big: k >= 10 };
+    });
+    if (!m) return;
+    setTimeout(function () {
+      Kit.moment({ chip: m.chip, title: m.title, line: m.line, pts: m.pts, big: m.big, at: dom.felt });
+      Kit.sfx('win'); Kit.haptic('success'); if (m.big) Kit.confetti({ count: 110 });
+    }, 700);
   }
   function notesFor(i, mine, net, d) {
     var s = S.seats[i], name = s.name, H = ' (hand ' + S.round + ')', up = S.dealer[0];
@@ -1553,6 +1609,7 @@
     else if (S.phase === 'done' && k === 'enter') nextRound(true);
   });
   var rt = null;
+  window.addEventListener('shape', function () { if (S) { var b = busyUntil; render(); busyUntil = b; } });   // (inside the turn's View Transition)
   window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (S) { var b = busyUntil; render(); busyUntil = b; } }, 150); });
 
   // ── Resume ────────────────────────────────────────────────────────────────
