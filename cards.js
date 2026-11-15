@@ -327,8 +327,20 @@ var Cards = (function () {
     '.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:1 1 0;min-height:48px;font-size:1rem;}',
     '@media (min-width:560px){.spad-acts.fixing .btn-primary{flex:1 1 0;}.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:0 0 auto;min-height:60px;padding:0 18px;font-size:1.1rem;}}',
     '.spad-acts .spad-del.armed{--b:var(--red);--b-ink:#fff;--b-lip:#a8202e;color:#fff;}',
-    // Short landscape screens: keep Add round reachable without scrolling for every entry
-    '@media (orientation:landscape) and (max-height:820px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
+    // Short landscape screens below 700 wide: keep Add round reachable without scrolling for every entry
+    '@media (orientation:landscape) and (max-height:820px) and (max-width:699px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
+    // Sideways from 700 wide (a phone on its side, an iPad): the score sheet at the left and what you do with it (the
+    // note and the buttons) in a column of its own at the right, held in view while the sheet scrolls, so it never lies
+    // over a row being written in
+    '@media (orientation:landscape) and (min-width:700px) and (max-height:820px){' +
+      '.stage:has(.spad-acts){max-width:min(1180px,100%);padding-right:18px;display:grid;grid-template-columns:minmax(0,1fr) clamp(200px,26vw,280px);column-gap:18px;align-items:start;}' +
+      '.stage:has(.spad-acts) > *{grid-column:1;}' +
+      '.stage > div:has(> .spad-acts){display:contents;}' +
+      '.stage > div:has(> .spad-acts) > :not(.spad-acts){grid-column:1;}' +
+      '.stage .spad-acts,.stage .spad-acts.fixing{grid-column:2;grid-row:1 / span 6;position:sticky;top:calc(var(--safe-t) + 66px);bottom:auto;margin:0;padding:0 0 calc(var(--safe-b) + 18px);background:none;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:10px;}' +
+      '.stage .spad-acts .spad-note{flex:none;margin:0;text-align:left;text-wrap:balance;}' +
+      '.stage .spad-acts .btn,.stage .spad-acts.fixing .btn-primary,.stage .spad-acts.fixing .spad-del,.stage .spad-acts.fixing .spad-cancel{flex:none;width:100%;min-height:56px;white-space:normal;}' +
+    '}',
     // Tablets: a bigger score sheet
     '@media (min-width:700px){.spad th,.spad td{height:52px;}.spad td{font-size:1.7rem;}.spad thead th{font-size:1.35rem;}.spad th.rn{width:56px;font-size:.85rem;}.spad tfoot td,.spad tfoot th{height:64px;}.spad tfoot td{font-size:2.2rem;}.spad-h h2{font-size:1.9rem;}.spad-h small,.spad .goal{font-size:1.25rem;}}',
     // Round entry form
