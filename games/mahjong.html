@@ -50,7 +50,7 @@ body{overflow:hidden;}
 .tip.hide{opacity:0;}
 .tip .ico{width:15px;height:15px;margin-right:4px;vertical-align:-3px;}
 /* Bottom bar */
-.sbar{flex:none;display:flex;align-items:center;gap:6px;height:calc(58px + var(--corner-y));padding:6px calc(2px + var(--corner-x)) var(--corner-y);}
+.sbar{flex:none;display:flex;align-items:center;gap:6px;height:calc(60px + var(--corner-y));padding:6px max(calc(2px + var(--corner-x)), 9px) calc(var(--corner-y) + 2px);}
 .sbar .icon-btn{width:46px;height:46px;}
 .sbar .icon-btn:disabled{opacity:.35;}
 .sbar .stats{flex:1;display:flex;justify-content:center;gap:clamp(10px,4vw,30px);}
@@ -71,17 +71,16 @@ body{overflow:hidden;}
   .sbar{gap:8px;}
   .sbar .stats{order:-1;justify-content:flex-start;padding-left:10px;}
 }
-/* Phone on its side: controls move to a column on the right so the tiles get the height */
+/* Phone on its side: controls move to a column on the right (where the right hand is) so the tiles get the height */
 @media (orientation:landscape) and (max-height:540px){
   .gbar{padding-top:calc(var(--safe-t) + 3px);padding-bottom:3px;}
-  .mjw{flex-direction:row-reverse;gap:6px;height:calc(100dvh - var(--safe-t) - 48px);padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));}
+  .mjw{flex-direction:row;gap:6px;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px), 12px);box-sizing:border-box;padding-left:max(8px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right));}
   .mtab{padding:5px;}
   .sbar{flex-direction:column;height:auto;width:62px;padding:0 0 calc(4px + var(--corner-y));justify-content:space-between;}
   .sbar .stats{flex-direction:column;gap:6px;justify-content:center;}
 }
 /* phones: the kit keeps the bar 16px off the top edge (iOS drops taps there), so the tiles get the rest */
 @media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:500px){
-  .mjw{height:calc(100dvh - max(16px, var(--safe-t)) - 45px);}
   .sbar{padding-bottom:calc(1px + var(--corner-y));}
   .sbar .stats{gap:2px;}
 }
@@ -385,14 +384,17 @@ body{overflow:hidden;}
     S.gone[a] = S.gone[b] = true; S.pairs.push([a, b, S.k[a]]);
     [a, b].forEach(function (j) { tiles[j].classList.remove('sel', 'hint'); tiles[j].classList.add('gone'); });
     Kit.sfx('pop'); Kit.haptic('medium');
-    var n = left();
-    if (n && n % 24 === 0 && n < POS.length) Kit.callout(n + ' to go');
+    var n = left(), now = Date.now();
+    quick = now - lastPair < 3000 ? quick + 1 : 1; lastPair = now;
+    if (quick === 6 && n) { S.quick = (S.quick || 0) + 1; Kit.callout('Six quick pairs'); Kit.sfx('sparkle'); Kit.haptic('success'); }   // six pairs, each within three seconds of the last
+    else if (n && n % 24 === 0 && n < POS.length) Kit.callout(n + ' to go');
     setTimeout(function () { [a, b].forEach(function (j) { if (S.gone[j]) { tiles[j].classList.add('out'); tiles[j].classList.remove('gone'); } }); }, 400);
     paint();
     if (!n) return finish(true);
     save();
     if (!freePairs().length) setTimeout(stuck, 500);
   }
+  var quick = 0, lastPair = 0;
   function undo() {
     if (!S || S.done || !U.length) { Kit.toast('Nothing to undo'); return; }
     var u = U.pop(), back = [];
@@ -497,6 +499,7 @@ body{overflow:hidden;}
     hl.push(S.hints ? 'Used ' + S.hints + (S.hints === 1 ? ' hint' : ' hints') : 'No hints used');
     if (S.shuffles) hl.push('Shuffled ' + S.shuffles + (S.shuffles === 1 ? ' time' : ' times'));
     if (won && !S.undos && !S.shuffles) hl.push('Cleared without a single undo or shuffle');
+    if (S.quick) hl.push(name + ' took six quick pairs in a row' + (S.quick > 1 ? ', ' + S.quick + ' times' : ''));
     else if (S.undos >= 5) hl.push('Took back ' + S.undos + ' moves along the way');
     Kit.record(KEY, {
       started: S.started, mode: lay + (won ? '' : ' · stuck'),
@@ -507,6 +510,10 @@ body{overflow:hidden;}
     });
     clearSave(); updBar();
     var layout = S.layout, nm = S.name;
+    // the rare finishes have their moment on the table before the results
+    var mo = !won ? null : !S.hints && !S.undos && !S.shuffles ? { title: 'A clean clear', line: name + ' cleared the ' + lay + ' with no hints, undos or shuffles.', icon: 'star', big: true }
+      : best.length && S.time < bestT ? { title: 'New best time', line: 'The old best on the ' + lay + ' was ' + fmt(bestT) + '.', icon: 'clock', pts: fmt(S.time) } : null;
+    if (mo) setTimeout(function () { Kit.moment({ title: mo.title, line: mo.line, icon: mo.icon, pts: mo.pts, big: mo.big, at: mo.big ? null : document.querySelector('.mtab'), ms: 2200 }); Kit.sfx(mo.big ? 'win' : 'sparkle'); Kit.haptic('success'); if (mo.big) Kit.confetti(); }, 450);
     setTimeout(function () {
       ArcadeHi.check(won ? hiKey(layout) : '', won ? S.time : 0, function () {
         if (bar.best) bar.best.textContent = boardBest(layout) ? fmt(boardBest(layout)) : '–';
@@ -519,7 +526,7 @@ body{overflow:hidden;}
           scores: function () { ArcadeHi.show(hiKey(layout)); showSetup(); }
         });
       });
-    }, won ? 500 : 200);
+    }, mo ? 2700 : won ? 500 : 200);
   }
 
   // ── Clock ─────────────────────────────────────────────────────────────────
@@ -678,6 +685,22 @@ body{overflow:hidden;}
     vp.addEventListener('dblclick', function (e) { e.preventDefault(); });
   }
   var rzT = 0;
+  // Turning the device: the tiles are laid out for the new shape at once, and the board glides there from where it
+  // was (the felt simply takes its new size); the bar's buttons glide too
+  var turn = { bd: null, bar: null, w: innerWidth };
+  function turnSnap() { turn.bd = bd && bd.isConnected ? bd.getBoundingClientRect() : null; var sb = document.querySelector('.sbar'); turn.bar = sb ? [sb, sb.getBoundingClientRect()] : null; turn.w = innerWidth; }
+  setInterval(function () { if (!document.hidden) turnSnap(); }, 400);
+  window.addEventListener('resize', function () {
+    if (innerWidth === turn.w || !S || !vp || !vp.isConnected || matchMedia('(prefers-reduced-motion: reduce)').matches) { turnSnap(); return; }
+    var R = turn.bd, B = turn.bar;
+    Z.s = 1; layout(); setZoom(1, 0, 0, true);
+    if (R && R.width && G.bw) {
+      var V = vp.getBoundingClientRect(), to = bd.style.transform || 'none';
+      bd.animate([{ transform: 'translate(' + (R.left - V.left) + 'px,' + (R.top - V.top) + 'px) scale(' + (R.width / G.bw) + ')' }, { transform: to }], { duration: 440, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    }
+    if (B && B[0].isConnected) { var n = B[0].getBoundingClientRect(); if (n.width) B[0].animate([{ transformOrigin: '0 0', transform: 'translate(' + (B[1].left - n.left) + 'px,' + (B[1].top - n.top) + 'px)' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 440, easing: 'cubic-bezier(.2,.8,.2,1)' }); }
+    turnSnap();
+  });
   window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && vp && vp.isConnected) { Z.s = 1; layout(); setZoom(1, 0, 0, true); if (tipEl && !tipEl.classList.contains('hide')) tipText(); } }, 80); });
 
   // ── Rules (built after the tile faces exist so the sheet can show them) ───
