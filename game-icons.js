@@ -75,6 +75,7 @@ var GameIcon = (function () {
     gofish: function (c) {   // a fish leaping over a fanned pair of cards
       return rect(3, 9, 9, 12.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.1" transform="rotate(-14 7.5 15)"') + rect(11.5, 9.5, 9, 12.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.1" transform="rotate(12 16 16)"') +
         '<g transform="translate(-1.8 -2.4) scale(1.42)">' + path('M4.5 6.2c2.6-3 7.6-3.4 10.6-.6l2.2-1.8-.5 3 .6 2.9-2.3-1.6c-3.1 2.6-7.9 2.2-10.6-.8z', c, ' stroke="' + K + '" stroke-width=".7" stroke-linejoin="round"') + circ(7.4, 6.1, .6, K) + '</g>';
+    },
     war: function (c) {   // two cards turned up against each other, a spark where they meet
       return rect(1.5, 6, 10, 14, 2, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-16 6.5 13)"') + txt('K', 8, K, 12.6, 6.2) +
         rect(12.5, 6, 10, 14, 2, W, ' stroke="' + R + '" stroke-width="1.2" transform="rotate(16 17.5 13)"') + txt('K', 8, R, 12.6, 17.8) +
