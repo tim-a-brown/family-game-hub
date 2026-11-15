@@ -349,6 +349,13 @@ html[data-theme="light"] .tiles .g.ct,html[data-theme="parchment"] .tiles .g.ct{
 .mini-ct.ct-snes .ct-body{top:6%;height:88%;}
 .mini-ct .ct-title{font-size:.3rem;padding:2px 4%;}
 .mini-ct .ct-plain b{font-size:.42rem;}
+/* (a small cartridge: Atari's red title band is a plain band, the name being under it; a label with no picture sets the
+   name in its window's own scale, so it is never cut off) */
+.mini-ct .ct-title{font-size:0;padding:6% 0 0;}
+.mini-ct .ct-title span{display:none;}
+.mini-ct .ct-win{container-type:inline-size;}
+.mini-ct .ct-plain{padding:5%;}
+.mini-ct .ct-plain b{font-size:12cqw;line-height:1.05;}
 .mini-ct .ct-arrow{border-width:3px;border-top-width:4px;margin-left:-3px;}
 /* the Consoles header's sort switch, and the console dividers when sorted by console */
 .sec-h .cs-head{margin-left:auto;display:flex;align-items:center;gap:8px;}
@@ -1003,7 +1010,9 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .sbox .ago,:root:not(.ng-x) .sbox.ct .ago{position:absolute;top:9px;right:11px;padding:0;background:none;color:var(--text-3);text-shadow:none;font-size:.72rem;font-weight:600;}
 :root:not(.ng-x) .sbox.old .gicon{filter:saturate(.45) brightness(.9);}
 :root:not(.ng-x) .sbox.ct .art::after{display:none;}
-:root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{position:relative;left:auto;top:auto;justify-self:center;width:31px;height:42px;border-radius:0;transform:rotate(-4deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));}
+/* (a cartridge stands straight in the icon's place, as tall as the icons beside it: Tim, 2026-11-15) */
+:root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{--cth:46px;position:relative;left:auto;top:auto;justify-self:center;width:calc(var(--cth) * .84);height:var(--cth);border-radius:0;transform:none;filter:drop-shadow(0 5px 7px rgba(0,0,0,.5));}
+:root:not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-snes{width:calc(var(--cth) * .96);}
 :root:not(.ng-x) .sbox.ct:active .art .gicon.mini-ct{transform:scale(.92) rotate(-6deg);}
 :root:not(.ng-x) .shelf{padding-bottom:6px;}
 :root:not(.ng-x) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--kpn) - 1) * 10px) / var(--kpn));gap:9px 10px;}
@@ -1035,11 +1044,18 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 @media (max-width:559px){
   :root:not(.ng-x) .sbox{grid-template-columns:34px minmax(0,1fr);column-gap:8px;padding:9px 8px 9px 9px;}
   :root:not(.ng-x) .sbox .art .gicon{width:34px;height:34px;border-radius:10px;}
+  :root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{--cth:38px;}
   :root:not(.ng-x) .sbox .ago,:root:not(.ng-x) .sbox.ct .ago{top:9px;bottom:auto;right:9px;}
   :root:not(.ng-x) .sbox .nm{padding-right:32px;}
+  /* (the time keeps clear of the name's first line only: a name on two lines has the box's whole width for its second) */
+  :root:not(.ng-x) .sbox .nm{padding-right:0;}
+  :root:not(.ng-x) .sbox .nm::before{content:"";float:right;width:30px;height:1px;}
+  :root:not(.ng-x) .sbox.n2 .nm::before{display:none;}
+  :root:not(.ng-x) .sbox.n2 .ago,:root:not(.ng-x) .sbox.n2.ct .ago{top:auto;bottom:9px;}
+  :root:not(.ng-x) .sbox.n2 .st > :last-child,:root:not(.ng-x) .sbox.n2 .st.one{padding-right:28px;}
   :root:not(.ng-x) .sbox .st > :last-child,:root:not(.ng-x) .sbox .st.one{padding-right:0;}
 }
-@media (max-width:400px){:root:not(.ng-x) .sbox{grid-template-columns:40px minmax(0,1fr);} :root:not(.ng-x) .sbox .art .gicon{width:40px;height:40px;} :root:not(.ng-x) .sbox .nm{font-size:.96rem;}}
+@media (max-width:400px){:root:not(.ng-x) .sbox{grid-template-columns:40px minmax(0,1fr);} :root:not(.ng-x) .sbox .art .gicon{width:40px;height:40px;} :root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{--cth:44px;} :root:not(.ng-x) .sbox .nm{font-size:.96rem;}}
 :root:not(.ng-x) .shelf-more{bottom:6px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bg) 80%,transparent) 60%);}
 :root:not(.ng-x) .sdel{box-shadow:0 0 0 2px #1a1c33,0 4px 10px rgba(224,36,60,.5);}
 /* online games: glass bars; your move rings in gold with a gold play button */
@@ -1118,41 +1134,53 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .g.gr .fav .ico{width:17px;height:17px;}
 :root:not(.ng-x) .g.gr .fav:not(.on){opacity:.55;}
 :root:not(.ng-x) .g.gr .fav.on{color:var(--lit);opacity:1;filter:drop-shadow(0 0 6px var(--litg));}
-/* the tile view (the view button at the top): the same glass, standing as tiles, two across on a phone and more where
-   there is room; the icon large at the top, the name and how many play under it, what is happening now at the foot */
-:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
-@media (min-width:520px){:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:10px;}}
-:root:not(.ng-x) .g.gr.tl{position:relative;align-items:stretch;min-height:0;}
-:root:not(.ng-x) .g.gr.tl .go{flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:14px 6px 11px;border-radius:20px;width:100%;text-align:center;}
-:root:not(.ng-x) .g.gr.tl .gi{width:50px;height:50px;border-radius:14px;}
-:root:not(.ng-x) .g.gr.tl .tx{flex:1 0 auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;}
-:root:not(.ng-x) .g.gr.tl .tx b{font-size:.9rem;line-height:1.12;overflow-wrap:normal;word-break:normal;text-wrap:balance;}
-:root:not(.ng-x) .g.gr.tl .tx b.l1{font-size:.8rem;}
-/* every tile the same height (Tim, 2026-11-15: "make sure that all of the game tiles heights are all the same height"),
-   and no taller than it must be ("make all the game tiles tighter"): the name has one line of room, or two on every tile
-   when some name on the screen needs two at this width (markWraps sets html.tl2) */
-:root:not(.ng-x) .g.gr.tl .tx b{min-height:1.12em;}
-:root.tl2:not(.ng-x) .g.gr.tl .tx b{min-height:2.24em;}
-/* (what is happening in a game stays on its sheet; a game waiting on you is a gold light on the tile's corner) */
-:root:not(.ng-x) .g.gr.tl .lv{display:none;}
-:root:not(.ng-x) .g.gr.tl .lv.y{display:block;position:absolute;top:10px;left:10px;width:9px;height:9px;max-width:none;padding:0;border-radius:50%;font-size:0;
-  background:var(--lit);box-shadow:0 0 10px var(--litg);}
-:root:not(.ng-x) .g.gr.tl .fav{position:absolute;top:2px;right:2px;width:34px;height:34px;border-radius:12px;align-self:auto;}
-:root:not(.ng-x) .g.gr.tl .fav .ico{width:15px;height:15px;}
 :root:not(.ng-x) .ppl{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:auto;color:var(--text-2);font-size:.8rem;font-weight:650;line-height:1;font-variant-numeric:tabular-nums;}
 :root:not(.ng-x) .ppl:empty{display:none;}
 :root:not(.ng-x) .ppl .ico{width:14px;height:14px;flex:none;color:color-mix(in srgb,var(--h) 55%,#fff);}
-/* (Tim, 2026-11-15: "condense these tiles in tile view so that the player count isn't on its own line"): the icon and
-   how many play share the first row, the name the second; a 320-wide phone's tiles are too narrow and keep them stacked */
-@media (min-width:360px){
-  :root:not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"gi ppl" "nm nm";align-items:end;align-content:start;justify-items:start;column-gap:8px;row-gap:6px;padding:9px 9px 9px 10px;border-radius:16px;text-align:left;}
-  :root:not(.ng-x) .g.gr.tl .gi{grid-area:gi;width:38px;height:38px;border-radius:11px;}
-  :root:not(.ng-x) .g.gr.tl .tx{display:contents;}
-  :root:not(.ng-x) .g.gr.tl .tx b{grid-area:nm;align-self:start;justify-self:stretch;}
-  :root:not(.ng-x) .g.gr.tl .ppl{grid-area:ppl;margin:0 0 1px;justify-content:flex-start;}
-  :root:not(.ng-x) .g.gr.tl .lv.y{top:8px;left:50px;}
-}
-@media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding:11px 5px 9px;gap:5px;border-radius:16px;} :root:not(.ng-x) .g.gr.tl .tx{gap:4px;} :root:not(.ng-x) .g.gr.tl .gi{width:36px;height:36px;border-radius:11px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
+/* the tile view (the view button at the top): an app grid where each game's own colorful icon is the tile (Tim,
+   2026-11-15: "the main game tiles should focus more on the colorful tiles -- all that empty space looks not fun to look
+   through"). No glass box: the icon stands large on the sky with a glow of its category's color under it, the name
+   under the icon, how many play on a small pill at the icon's lower corner, the star beside its upper corner and a
+   game waiting on you a gold light on its other corner. Three across on a phone, more where there is room. */
+:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 6px;}
+@media (min-width:520px){:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:18px 8px;}}
+:root.tl2:not(.ng-x) .list.rows.gtiles{row-gap:8px;}   /* (the names' second line of room is space enough between the rows) */
+@media (min-width:520px){:root.tl2:not(.ng-x) .list.rows.gtiles{row-gap:12px;}}
+:root:not(.ng-x) .g.gr.tl{container-type:inline-size;--ti:min(66cqw,92px);--tp:7px;--tfs:.88rem;position:relative;align-items:stretch;min-height:0;border-radius:18px;background:none;box-shadow:none;}
+:root:not(.ng-x) .g.gr.tl:hover{background:none;}
+:root:not(.ng-x) .g.gr.tl .go{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:var(--tp) 2px 4px;border-radius:18px;width:100%;text-align:center;}
+:root:not(.ng-x) .g.gr.tl .go:active{transform:none;}
+:root:not(.ng-x) .g.gr.tl .gi{width:var(--ti);height:var(--ti);border-radius:calc(var(--ti) * .24);
+  box-shadow:0 0 0 1px rgba(255,255,255,.16),0 14px 24px -14px color-mix(in srgb,var(--h) 85%,transparent),0 7px 14px -8px rgba(0,0,0,.75);}
+:root:not(.ng-x) .g.gr.tl .tx{display:contents;}
+:root:not(.ng-x) .g.gr.tl .tx b{width:100%;padding:0 1px;font-size:var(--tfs);line-height:1.15;overflow-wrap:normal;word-break:normal;text-wrap:balance;}
+:root:not(.ng-x) .g.gr.tl .tx b.l1{font-size:.8rem;}
+.nw{white-space:nowrap;}
+/* every tile the same height (Tim, 2026-11-15: "make sure that all of the game tiles heights are all the same height"),
+   and no taller than it must be ("make all the game tiles tighter"): the name has one line of room, or two on every tile
+   when some name on the screen needs two at this width (markWraps sets html.tl2) */
+:root:not(.ng-x) .g.gr.tl .tx b{min-height:calc(var(--tfs) * 1.15);}
+:root.tl2:not(.ng-x) .g.gr.tl .tx b{min-height:calc(var(--tfs) * 2.3);}
+/* how many play: a small pill of smoked glass hung on the icon's lower right corner */
+:root:not(.ng-x) .g.gr.tl .ppl{position:absolute;z-index:2;top:calc(var(--tp) + var(--ti) - 15px);right:calc(50% - var(--ti) / 2 - 7px);margin:0;gap:3px;height:20px;padding:0 7px 0 5px;border-radius:999px;
+  background:rgba(13,13,32,.86);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.17),0 3px 8px rgba(0,0,0,.45);
+  color:#fff;font-size:.68rem;font-weight:700;line-height:1;white-space:nowrap;}
+:root:not(.ng-x) .g.gr.tl .ppl .ico{width:11px;height:11px;color:color-mix(in srgb,var(--h) 45%,#fff);}
+/* (what is happening in a game stays on its sheet; a game waiting on you is a gold light on the icon's upper left corner) */
+:root:not(.ng-x) .g.gr.tl .lv{display:none;}
+:root:not(.ng-x) .g.gr.tl .lv.y{display:block;position:absolute;z-index:2;top:calc(var(--tp) - 4px);left:calc(50% - var(--ti) / 2 - 4px);width:12px;height:12px;max-width:none;padding:0;border-radius:50%;font-size:0;
+  background:var(--lit);box-shadow:0 0 0 2px #141430,0 0 12px var(--litg);}
+/* the star stands in the room beside the icon's upper right corner (its tap area reaches 44px with the ::after below) */
+:root:not(.ng-x) .g.gr.tl .fav{position:absolute;top:calc(var(--tp) - 8px);left:calc(75% + var(--ti) / 4 - 17px);width:34px;height:34px;border-radius:12px;align-self:auto;}
+:root:not(.ng-x) .g.gr.tl .fav .ico{width:15px;height:15px;}
+@media (max-width:359px){:root:not(.ng-x) .g.gr.tl{--ti:min(68cqw,92px);--tp:6px;--tfs:.8rem;} :root:not(.ng-x) .g.gr.tl .go{gap:7px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}
+  :root:not(.ng-x) .g.gr.tl .ppl{height:18px;padding:0 6px 0 4px;font-size:.62rem;right:calc(50% - var(--ti) / 2 - 5px);top:calc(var(--tp) + var(--ti) - 13px);} :root:not(.ng-x) .g.gr.tl .ppl .ico{width:10px;height:10px;}}
+/* a console game is its cartridge, in its console's own plastic, standing in the icon's place (the tile and list views
+   alike, the label's picture whole on the cartridge instead of cropped to a square) */
+:root:not(.ng-x) .g.gr .gi.gi-ct{display:grid;place-items:center;overflow:visible;border-radius:0;background:none;box-shadow:none;}
+:root:not(.ng-x) .g.gr .gi.gi-ct .gicon.mini-ct{position:relative;display:block;width:88%;height:100%;filter:drop-shadow(0 5px 7px rgba(0,0,0,.5));}
+:root:not(.ng-x) .g.gr .gi.gi-ct .gicon.mini-ct.ct-snes{width:100%;}
+:root:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{filter:drop-shadow(0 9px 10px rgba(0,0,0,.55));}
 @media (max-width:359px){:root:not(.ng-x) .g.gr .go{gap:9px;} :root:not(.ng-x) .g.gr .lv{max-width:46%;font-size:.76rem;} :root:not(.ng-x) .g.gr .fav{width:32px;}}
 /* every list row the same shape (Tim, 2026-11-15: "verify tile and detail views"): the name has the row's whole width on
    the first line, and what is happening in the game (gold when it waits on you) sits on the second line at the right,
@@ -1355,7 +1383,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   }
   function row(g, inFavs) {
     var fav = isFav(g);
-    if (g.cart && tiles && !inFavs) {
+    if (g.cart && tiles && !inFavs && !glassOn()) {
       var ct = cartTile(g, fav), r0 = ct[0];
       var star0 = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
       star0.addEventListener('click', function () { var on = toggleFav(g); Kit.haptic('success'); Kit.sfx(on ? 'good' : 'tap'); Kit.toast(on ? g.name + ' added to favorites' : g.name + ' removed from favorites'); render(); });
@@ -1450,11 +1478,16 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     dailyBy = null;
     document.querySelectorAll('#list em.lv[data-lv]').forEach(function (e) { var g = findGame(e.dataset.lv); if (g) { var n = liveEl(g); if (n.outerHTML !== e.outerHTML) e.replaceWith(n); } });
   }
+  // a name for a line that may wrap: a hyphened word stays whole ("Punch-Out!!", "Tic-Tac-Toe" never break at a hyphen)
+  function wholeWords(t) {
+    return String(t).split(/( )/).map(function (w) { return /\S-\S/.test(w) ? el('span', { class: 'nw', text: w }) : w; });
+  }
   function glassRow(g, fav, tile) {
     var r = el('div', { class: 'g gr' + (tile ? ' tl' : ''), 'data-id': g.id, 'data-cat': g.cat, style: { '--h': catHsl(g, 58), '--c': catHsl(g, 46) } });
-    var ic = g.cart ? el('span', { class: 'gi' }, [el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)])]) : el('span', { class: 'gi', html: GameIcon(g.id) });
+    // (a console game: its cartridge, the label's picture whole on it, where a game's icon stands)
+    var ic = g.cart ? el('span', { class: 'gi gi-ct' }, [el('span', { class: 'gicon mini-ct ct-' + g.sys }, [cartBody(g)])]) : el('span', { class: 'gi', html: GameIcon(g.id) });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + playersSaid(g) }, [
-      ic, el('span', { class: 'tx' }, [el('b', { text: tile && g.tile ? g.tile : g.name }), tile ? seatsPic(g) : el('small', { text: playersSaid(g) })]), liveEl(g)]);
+      ic, el('span', { class: 'tx' }, [el('b', null, wholeWords(tile && g.tile ? g.tile : g.name)), tile ? seatsPic(g) : el('small', { text: playersSaid(g) })]), liveEl(g)]);
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
     star.addEventListener('click', function () {
@@ -1696,8 +1729,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var h = el('div', { class: 'sec-h' }, [el('span', { html: Kit.icon(ic) }), el('h2', { text: title }), el('span', { class: 'n', text: gl ? games.length + (games.length === 1 ? ' game' : ' games') : String(games.length) })]);
     if (extra) h.appendChild(extra);
     s.appendChild(h);
-    // (Night: rows, except the Consoles shelf of cartridges in the tile view)
-    var list = el('div', { class: 'list' + (gl && !(ic === 'console' && tiles && !favs) ? (tiles ? ' rows gtiles' : ' rows') : tiles ? ' tiles' : '') });
+    // (Night: rows, or tiles in the tile view, the Consoles' cartridges in the same grid as every game)
+    var list = el('div', { class: 'list' + (gl ? (tiles ? ' rows gtiles' : ' rows') : tiles ? ' tiles' : '') });
     // Favorites keep the order you arranged them in; other sections are A to Z
     var bySys = ic === 'console' && !favs && consoleSort() === 'sys';
     games.slice().sort(favs ? function (a, b) { return favIndex(a) - favIndex(b); } : bySys ? consoleOrder : function (a, b) { return a.name.localeCompare(b.name); }).forEach(function (g, i, all) {
@@ -1979,7 +2012,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var ct = g.cart ? g : window.consoleNative && GAMES.filter(function (c) { return c.cart && consoleNative({ sys: c.sys, id: c.cart, name: c.name }) === g.id; })[0];
     var a = el('a', { class: 'sbox' + (ct ? ' ct' : '') + (old ? ' old' : ''), href: 'games/' + f + (/\.html/.test(f) ? '' : '.html'), draggable: 'false', style: { '--c': cat ? 'hsl(' + cat.hue + ' ' + cat.sat + '% 46%)' : g.color, '--h': catHsl(g, 58) }, title: g.name + ': ' + (x.r.label || 'In progress') }, [
       el('span', { class: 'art' }, [ct ? el('span', { class: 'gicon mini-ct ct-' + ct.sys }, [cartBody(ct)]) : el('span', { html: GameIcon(g.id, { bare: !glassOn() }), style: { display: 'contents' } }), stLines(x.r.label || 'In progress'), el('span', { class: 'ago', text: ago(x.r.ts, true) })]),
-      el('span', { class: 'nm', text: g.name })
+      el('span', { class: 'nm' }, wholeWords(g.name))
     ]);
     function gone(then) { a.style.transition = 'opacity .22s, transform .22s'; a.style.opacity = '0'; a.style.transform = 'scale(.8)'; setTimeout(then, 230); }
     if (editing) a.appendChild(el('button', { type: 'button', class: 'sdel', 'aria-label': 'Delete ' + g.name + ' game in progress', html: Kit.icon('trash'), onclick: function (e) {
@@ -2291,16 +2324,27 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   function fitNames(box) {
     function fit() {
       Array.prototype.forEach.call(box.querySelectorAll('.sbox .nm'), function (n) {
-        n.style.fontSize = ''; n.classList.remove('two');
-        // (the text's own width against the room inside the padding, which keeps clear of the time at the corner)
+        n.style.fontSize = ''; n.classList.remove('two'); n.parentNode.classList.remove('n2');
+        // (the text's own width on one line against the room inside the padding, which keeps clear of the time at the
+        // corner: a name a little too long eases down to stay on one line; a long one (Mike Tyson's Punch-Out!!) takes
+        // two lines at its own size, smaller only if two lines still can't hold it)
         var cs = getComputedStyle(n), w = n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), s = parseFloat(cs.fontSize);
+        var bf = getComputedStyle(n, '::before'), w1 = w - (bf.float === 'right' ? parseFloat(bf.width) || 0 : 0);   // (the first line's room, beside the time)
         var rg = document.createRange(); rg.selectNodeContents(n);
-        var tw = function () { return rg.getBoundingClientRect().width; }, need = tw();
-        if (w <= 0 || need <= w) return;
-        var to = Math.floor(s * w / need * 10) / 10;
-        // (then a touch smaller while it still doesn't fit: the estimate rounds)
-        while (to >= 9 && (n.style.fontSize = to + 'px', tw() > w + 0.5)) to = Math.round((to - 0.2) * 10) / 10;
-        if (to < 9) { n.style.fontSize = '10px'; n.classList.add('two'); }
+        var oneW = function () { n.style.whiteSpace = 'nowrap'; var x = rg.getBoundingClientRect().width; n.style.whiteSpace = ''; return x; };
+        var need = oneW();
+        if (w1 <= 0 || need <= w1) return;
+        var to = Math.floor(s * w1 / need * 10) / 10;
+        if (to >= s * .86) {
+          // (then a touch smaller while it still doesn't fit: the estimate rounds)
+          while (n.style.fontSize = to + 'px', oneW() > w1 + 0.5) to = Math.round((to - 0.2) * 10) / 10;
+          return;
+        }
+        // (two lines: on a phone the time moves down to the box's lower corner, so both lines have the whole width)
+        n.style.fontSize = ''; n.classList.add('two'); n.parentNode.classList.add('n2');
+        w = n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        var lines = function () { var ys = {}, wide = 0; [].forEach.call(rg.getClientRects(), function (r) { if (r.width > 1) { ys[Math.round(r.top)] = 1; wide = Math.max(wide, r.width); } }); return wide > w + 0.5 ? 9 : Object.keys(ys).length; };
+        to = s; while (lines() > 2 && to > 10) { to = Math.round((to - 0.5) * 10) / 10; n.style.fontSize = to + 'px'; }
       });
       // (and each fact under the name keeps to one line: "Round 7 of 13" never breaks; a long one eases down to 78% of
       // its size, and only past that does it wrap)
@@ -2364,7 +2408,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var rows = [].slice.call(document.querySelectorAll('#list .g.gr:not(.tl)'));
     even(rows.filter(function (g) { return !g.closest('.sec-tools'); }), root);
     if (tools) even(rows.filter(function (g) { return g.closest('.sec-tools'); }), tools);
-    if (two) document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) { b.style.fontSize = ''; });   // (room for two lines anyway: every name at its own size)
+    if (two) document.querySelectorAll('.g.gr.tl .tx b').forEach(function (b) {
+      b.style.fontSize = '';   // (room for two lines anyway: every name at its own size)
+      // (and none past two, so no tile is taller than the rest: a longer name, like a console game's, eases down)
+      if (!b.offsetWidth || (lines(b) <= 2 && b.scrollWidth <= b.clientWidth)) return;
+      var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
+      while ((lines(b) > 2 || b.scrollWidth > b.clientWidth) && fs > fs0 * .62) { fs -= .5; b.style.fontSize = fs + 'px'; }
+    });
     document.documentElement.classList.toggle('tl2', two);
     document.querySelectorAll('.tiles .g').forEach(function (g) {
       var b = g.querySelector('.txt b'); if (!b) return;
