@@ -86,24 +86,30 @@
 .turn.nudge{animation:shake .4s;}
 .rulechip{text-align:center;font-size:.8rem;font-weight:600;color:var(--text-3);}
 
-/* iPad / large screens: bigger board; landscape puts the player bars and buttons beside the board */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:none;}
-  .cb-col{max-width:min(712px,calc(100dvh - 380px));}
-  .frame{--rim:20px;}
-}
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 14px);}
-  .cb-col{--bsz:min(calc(100dvh - 76px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));max-width:none;height:var(--bsz);
-    display:grid;grid-template-columns:minmax(280px,320px) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
-    grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:24px;row-gap:10px;justify-content:center;}
-  .cb-col>.frame{grid-area:b;--rim:clamp(16px,2.4vh,22px);}
-  .cb-col>.pbar:nth-child(1){grid-area:t;}
-  .cb-col>.pbar:nth-child(3){grid-area:p;}
-  .cb-col>.turn{grid-area:s;justify-self:start;}
-  .cb-col>.acts{grid-area:a;}
-  .cb-col>.rulechip{grid-area:r;}
-}
+/* A layout for each shape (fit() sizes the board to the room). Upright: the players over and under the board, the
+   board as wide as the screen allows, the whole table in the middle of the screen. Sideways (phones too): the player
+   bars, whose turn and the buttons in a column at the left, the board you play on at the right, as tall as the room */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--cw,100%);max-width:none;flex:none;margin:auto 0;}
+#app.ck-tall .frame{--rim:20px;}
+#app.ck-land>.cb-col{width:auto;height:var(--bsz);display:grid;grid-template-columns:var(--sw,300px) var(--bsz);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
+  grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:var(--cg,24px);row-gap:10px;justify-content:center;}
+#app.ck-land>.cb-col>.frame{grid-area:b;--rim:clamp(10px,2.4vh,22px);}
+#app.ck-land>.cb-col>.pbar:nth-child(1){grid-area:t;}
+#app.ck-land>.cb-col>.pbar:nth-child(3){grid-area:p;}
+#app.ck-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.ck-land>.cb-col>.acts{grid-area:a;}
+#app.ck-land>.cb-col>.rulechip{grid-area:r;}
+/* a phone on its side: the column is narrow and short */
+#app.ck-low>.cb-col{row-gap:6px;}
+#app.ck-low>.cb-col>.rulechip{display:none;}
+#app.ck-low .pbar{min-height:40px;padding:3px 8px;}
+#app.ck-low .pbar .tray{display:none;}
+#app.ck-low>.cb-col>.turn{min-height:28px;font-size:.95rem;margin:0;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -111,6 +117,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'checkers_state', KEY = 'checkers';
   var BLACK = 1, RED = -1;
@@ -309,7 +317,7 @@
 
   function showSetup() {
     S = null; sel = -1; prefix = [];
-    app.classList.remove('ipl');
+    app.classList.remove('ipl', 'ck-land', 'ck-low', 'ck-tall');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }]),
       options: [
@@ -365,8 +373,14 @@
     render({ m: mv, side: side, byCpu: byCpu, victims: mv.caps.map(function (s) { return S.hist[S.hist.length - 1].b[s]; }) });
     var hops = mv.path.length, dur = byCpu ? hops * 300 : 260;
     Kit.sfx(k ? 'chip' : 'tap'); Kit.haptic(k ? 'medium' : 'light');
-    if (k >= 2) setTimeout(function () { Kit.callout(k === 2 ? 'Double jump!' : k === 3 ? 'Triple jump!' : k + ' jumps!'); Kit.sfx('good'); }, dur - 100);
-    if (mv.crown) setTimeout(function () { Kit.callout('King me!'); Kit.sfx('pop'); Kit.haptic('success'); }, dur + (k >= 2 ? 700 : 0));
+    if (k === 2) setTimeout(function () { Kit.callout('Double jump!'); Kit.sfx('good'); }, dur - 100);
+    // three or more checkers in one move is rare: it gets the big moment on the board
+    if (k >= 3) setTimeout(function () {
+      var bad = pl(side).cpu && vsCpu();
+      Kit.moment({ big: true, title: k === 3 ? 'Triple jump' : k + ' jumps', line: who + ' took ' + k + ' checkers in one move' + (mv.crown ? ' and landed on the king row.' : '.'), icon: bad ? 'bot' : 'sparkle', tone: bad ? 'bad' : '', at: bdEl, ms: 2200 });
+      Kit.sfx(bad ? 'bad' : 'sparkle'); Kit.haptic(bad ? 'heavy' : 'success');
+    }, dur - 100);
+    if (mv.crown) setTimeout(function () { Kit.callout('King me!'); Kit.sfx('pop'); Kit.haptic('success'); }, dur + (k >= 3 ? 2400 : k === 2 ? 700 : 0));
     var end = checkEnd();
     if (end) { setTimeout(function () { finish(end); }, dur + 200); S.over = true; S.result = end; save(); return; }
     save();
@@ -392,8 +406,15 @@
     var multis = S.events.filter(function (e) { return e.type === 'multi'; }).sort(function (a, b) { return b.n - a.n; });
     multis.slice(0, 2).forEach(function (e) { hl.push(e.text); });
     S.events.filter(function (e) { return e.type === 'jk' || e.type === 'firstking'; }).slice(0, 2).forEach(function (e) { hl.push(e.text); });
+    var sp = winner ? specialWins(winner, loser) : [];
+    sp.forEach(function (x) { hl.push(x.h); });
     if (!S.forced) hl.push('Played with jumps optional');
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
+    if (sp.length) {
+      var bad = winner.cpu;
+      Kit.moment({ big: true, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), icon: bad ? 'bot' : 'trophy', tone: bad ? 'bad' : '', at: bdEl, ms: 2300 });
+      Kit.sfx(bad ? 'lose' : 'sparkle'); Kit.haptic(bad ? 'heavy' : 'success');
+    }
     Kit.record(KEY, {
       started: S.started, mode: (vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play') + (S.forced ? '' : ', jumps optional'),
       players: S.players.map(function (p) { return { name: p.name + ' (' + colorName(p.side) + ')', score: winner ? (p === winner ? 1 : 0) : 0.5, cpu: p.cpu }; }),
@@ -412,7 +433,16 @@
         look: true,
         setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
-    }, 500);
+    }, sp.length ? 2500 : 500);
+  }
+  // The rarer wins: not one checker lost, a comeback from three or more checkers down, beating the Hard computer
+  function specialWins(w, lo) {
+    var out = [], mine = count(w.side).n, worst = 0;
+    S.hist.forEach(function (h) { var a = 0, b = 0; h.b.forEach(function (v) { if (v * w.side > 0) a++; else if (v) b++; }); worst = Math.min(worst, a - b); });
+    if (mine === 12) out.push({ t: 'A shutout', l: w.name + ' won without losing a single checker.', h: w.name + ' won without losing a single checker' });
+    else if (worst <= -3) out.push({ t: 'Comeback', l: w.name + ' was ' + (-worst) + ' checkers behind and still won.', h: w.name + ' came back from ' + (-worst) + ' checkers down to win' });
+    if (lo.cpu && !w.cpu && S.level === 'hard') out.push({ t: 'Hard computer beaten', l: w.name + ' beat ' + lo.name + ' on Hard.', h: w.name + ' beat ' + lo.name + ' on Hard' });
+    return out;
   }
   // History detail: final board rows (b/B black man/king, r/R red), every move in square numbers (1-32) for the replay
   function checkersDetail(res, winner) {
@@ -476,8 +506,8 @@
     if (!S || !S.b) return;
     app.innerHTML = ''; app.classList.add('ipl');
     var col = el('div', { class: 'cb-col' });
-    topBar = el('div', { class: 'pbar' }); botBar = el('div', { class: 'pbar' });
-    var frame = el('div', { class: 'frame' });
+    topBar = el('div', { class: 'pbar', style: { 'view-transition-name': 'ck-top' } }); botBar = el('div', { class: 'pbar', style: { 'view-transition-name': 'ck-bot' } });
+    var frame = el('div', { class: 'frame', style: { 'view-transition-name': 'ck-board' } });
     bdEl = el('div', { class: 'bd', role: 'grid', 'aria-label': 'Checkers board' });
     for (var i = 0; i < 64; i++) { var s = disp(i), r = s >> 3, c = s & 7; bdEl.appendChild(el('div', { class: 'sq ' + ((r + c) % 2 ? 'd' : 'l'), 'data-s': s })); }
     layerEl = el('div', { class: 'layer' }); bdEl.appendChild(layerEl);
@@ -491,9 +521,39 @@
     col.appendChild(acts);
     col.appendChild(el('div', { class: 'rulechip', text: S.forced ? 'Standard rules: jumps are required' : 'House rule: jumps optional' }));
     app.appendChild(col);
+    fit();
     paintBoard(anim); paintStatus();
     bindInput();
   }
+  // The board as large as the room allows for the shape the screen is now (the frame is square)
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('ck-land', land); app.classList.toggle('ck-low', low); app.classList.toggle('ck-tall', !land && W >= 700);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (land) {
+      var sw = low ? Math.min(250, Math.max(200, W * 0.26)) : Math.min(320, Math.max(260, W * 0.27)), cg = low ? 18 : 28;
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      app.style.setProperty('--bsz', Math.floor(Math.max(200, Math.min(ih, iw - sw - cg))) + 'px');
+    } else {
+      var other = 0;
+      Array.prototype.forEach.call(col.children, function (c) { if (!c.classList.contains('frame')) other += c.offsetHeight + 8; });
+      var cw = Math.floor(Math.max(240, Math.min(iw, 760, ih - other)));
+      app.style.setProperty('--cw', cw + 'px');
+      var over = col.offsetHeight - ih;   // (the square frame: a pixel narrower is a pixel shorter)
+      if (over > 0) app.style.setProperty('--cw', Math.max(180, cw - over) + 'px');
+    }
+  }
+  // Turning the device: the board and the player bars glide to the new shape
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (document.startViewTransition && !reduce && !document.hidden && app.classList.contains('ipl')) { try { vtGo(fit); return; } catch (e) {} }
+    fit();
+  });
   function sqEl(s) { return bdEl.children[disp(s)]; }
   function viewBoard() {
     // While a multi-jump is part-way through, show the checker where it has got to

@@ -15,8 +15,8 @@
 <script src="../turnnet.js"></script>
 <style>
 /* ── Page frame: one screen, no scrolling during play ─────────────────── */
-#app.stage.dmapp{max-width:none;padding:0 12px calc(var(--safe-b) + 8px);}
-.dw{height:calc(100dvh - var(--barh,60px) - var(--safe-b) - 10px);min-height:520px;max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
+#app.stage.dmapp{max-width:none;padding:0 max(17px,var(--corner-x)) max(calc(var(--safe-b) + 8px),18px);}
+.dw{height:calc(100dvh - var(--barh,60px) - max(calc(var(--safe-b) + 8px),18px) - 2px);min-height:360px;max-width:620px;margin:0 auto;display:flex;flex-direction:column;gap:8px;}
 .pan{display:contents;}
 .dw .scores{order:0;margin:0;padding:2px 0 0;gap:6px;}
 .dw .tbl{order:1;}
@@ -174,6 +174,27 @@
   .acts .btn{min-height:50px;min-width:140px;padding:0 20px;}
   .pq .nm{font-size:.88rem;} .pq .bk .dm{--tw:10px;}
 }
+/* A phone on its side: the same shape as the iPad's, made for the short screen. The line of dominoes runs across the
+   whole width at the top; under it the scores and whose turn at the left, your tiles in the middle, the buttons at the right */
+@media (orientation:landscape) and (max-height:599px){
+  #app.stage.dmapp{padding:0 max(17px,calc(var(--corner-x) + 6px)) max(calc(var(--safe-b) + 8px),18px);}
+  .dw{height:calc(100dvh - var(--barh,60px) - max(calc(var(--safe-b) + 8px),18px) - 2px);min-height:0;max-width:none;display:grid;
+    grid-template-columns:minmax(230px,31%) minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto;
+    grid-template-areas:"tbl tbl tbl" "scores rack acts" "msg rack acts";gap:4px 12px;}
+  .pan,.status{display:contents;}
+  .dw .tbl{grid-area:tbl;}
+  .dw .rack{grid-area:rack;align-self:end;margin:0;padding:11px 8px 10px;}
+  .dw .scores{grid-area:scores;align-self:end;overflow:visible;padding:0;}
+  .dw .score{padding:3px 6px 4px;gap:0;} .dw .score .pt{font-size:1.1rem;line-height:1.05;} .dw .score .sub{font-size:.62rem;}
+  .msg{grid-area:msg;align-self:start;font-size:.9rem;line-height:1.15;} .msg small{font-size:.74rem;}
+  .acts{grid-area:acts;flex-direction:column;justify-content:center;align-self:stretch;}
+  .acts:empty{display:none;}
+  .dw:has(.acts:empty) .rack{grid-column:2 / 4;}
+  .tbl>.felt-in{inset:7px;}
+  .plq{height:40px;top:4px;} .layer{top:46px;bottom:36px;}
+}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -181,6 +202,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'dominoes', SAVE = 'dominoes_state';
   var VNAME = { draw: 'Draw', block: 'Block', fives: 'All Fives' };
@@ -563,6 +586,11 @@
     if (!o.lead && S.line && !ends(S.line).some(function (e) { return e.end === end && (t[0] === e.v || t[1] === e.v); })) return;
     clearUndoIfOther(pi);
     if (!P.cpu && !o.lead) { var snap = clone(S); snap.undo = null; snap.undoBy = -1; S.undo = JSON.stringify(snap); S.undoBy = pi; }
+    // the last tile in hand, and it fits two open ends of the line: a capicúa
+    // (two different numbers showing at the ends, and the tile carries both: it could close either end)
+    var capi = false;
+    if (!o.lead && S.line && P.hand.length === 1 && t[0] !== t[1]) { var ev = ends(S.line).map(function (e) { return e.v; }); capi = ev.indexOf(t[0]) >= 0 && ev.indexOf(t[1]) >= 0; }
+    S.capi = capi ? pi : -1;
     // where it flies from
     var from = sourceRect(pi, tid(t));
     P.hand.splice(hi, 1);
@@ -584,7 +612,10 @@
       bump();
       if (pts) {
         later(function () {
-          Kit.callout('+' + pts + '!', P.color); Kit.sfx('good'); Kit.haptic('medium'); say(pi, '+' + pts);
+          // twenty or more points from one tile is rare: its own moment, the points counted up
+          if (pts >= 20) { Kit.moment({ title: pts === 20 ? 'Twenty' : 'Big count', line: who(pi) + ' made the ends add up to ' + pts + '.', pts: '+' + pts, color: P.color, tone: P.cpu && humans() ? 'bad' : '', at: tblEl, ms: 2000 }); Kit.sfx(P.cpu && humans() ? 'good' : 'sparkle'); Kit.haptic('success'); }
+          else { Kit.callout('+' + pts + '!', P.color); Kit.sfx('good'); Kit.haptic('medium'); }
+          say(pi, '+' + pts);
           var es = document.querySelector('.ends'); if (es) { es.classList.remove('hit'); void es.offsetWidth; es.classList.add('hit'); }
         }, 120);
       }
@@ -651,11 +682,19 @@
     if (!S || S.phase !== 'play') return;
     var r = endHandCore(kind, wi);
     save(); paint();
-    if (kind === 'domino') {
+    if (kind === 'domino' && S.capi === wi) {
+      // a capicúa: the last tile could have gone on either end of the line
+      if (!S.hl.capi) S.hl.capi = [];
+      S.hl.capi.push(who(wi) + ' dominoed with a capicúa in hand ' + S.hand + ': the last tile fit both ends');
+      var bad = S.players[wi].cpu && humans() > 0;
+      Kit.moment({ big: true, title: 'Capicúa', line: who(wi) + '\'s last tile carried both numbers at the ends of the line, so it could close either end.', icon: bad ? 'bot' : 'sparkle', color: S.players[wi].color, tone: bad ? 'bad' : '', at: tblEl, ms: 2300 });
+      Kit.sfx(bad ? 'bad' : 'sparkle'); Kit.haptic('success');
+      if (!bad) Kit.confetti({ count: 120 });
+    } else if (kind === 'domino') {
       Kit.callout('Domino!', S.players[wi].color); Kit.sfx('good'); Kit.haptic('success');
       if (!S.players[wi].cpu || (S.teams && S.players.some(function (p, i) { return !p.cpu && sideOf(i) === r.side; }))) Kit.confetti({ count: 90 });
     } else { Kit.callout('Blocked!'); Kit.sfx('bad'); }
-    later(showHandSheet, 1500);
+    later(showHandSheet, kind === 'domino' && S.capi === wi ? 2500 : 1500);
   }
   // the count at the end of a hand (the rules only: online tables count with it too)
   function endHandCore(kind, wi) {
@@ -743,6 +782,13 @@
       var fv = Object.keys(H.fives).map(function (i) { return { name: who(+i), n: H.fives[i] }; }).sort(function (a, b) { return b.n - a.n; })[0];
       if (fv && fv.n >= 20) hl.push(fv.name + ' made ' + fv.n + ' points from fives during play');
     }
+    hl.unshift.apply(hl, (H.capi || []).slice(0, 2));
+    // the rarer match wins: nobody else scored a point, or a comeback from far behind
+    var spm = [], others = S.score.filter(function (x, i) { return i !== best; }), behind = 0, run = S.score.map(function () { return 0; });
+    S.rounds.forEach(function (r) { r.forEach(function (v, k) { run[k] += v || 0; }); var lead = Math.max.apply(null, run.filter(function (x, k) { return k !== best; })); behind = Math.max(behind, lead - run[best]); });
+    if (others.every(function (x) { return x === 0; })) spm.push({ t: 'Shutout', l: wname + (S.teams ? ' won' : ' won') + ' the match before anyone else scored a point.', h: wname + ' won without anyone else scoring' });
+    else if (behind >= Math.max(30, S.target * 0.3)) spm.push({ t: 'Comeback', l: wname + (S.teams ? ' were ' : ' was ') + behind + ' points behind and still won.', h: wname + ' came back from ' + behind + ' points behind' });
+    spm.forEach(function (x) { hl.unshift(x.h); });
     hl.unshift(wname + ' won ' + S.score[best] + ' to ' + S.score.filter(function (x, i) { return i !== best; }).sort(function (a, b) { return b - a; }).join(' to ') + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'));
     var players = S.players.map(function (p, i) { return { name: p.name, score: S.score[sideOf(i)], cpu: p.cpu }; });
     var modeName = VNAME[S.variant] + ', to ' + S.target + ', ' + S.players.length + ' players' + (S.teams ? ', partners' : '') + (NET ? ', online' : S.mode === 'cpu' ? ', vs computer' : S.players.some(function (p) { return p.cpu; }) ? ', with computers' : '');
@@ -776,7 +822,12 @@
     var winHumans = S.players.some(function (p, i) { return !p.cpu && sideOf(i) === best; });
     var lose = humans() > 0 && !winHumans;
     var again = { mode: S.mode, variant: S.variant, target: S.target, teams: S.teams, players: S.players.map(function (p) { return { name: p.name, cpu: p.cpu, level: p.level, color: p.color }; }) };
-    Kit.win({
+    if (spm.length) {
+      Kit.moment({ big: true, title: spm[0].t, line: spm[0].l, icon: lose ? 'bot' : 'trophy', tone: lose ? 'bad' : '', at: tblEl, ms: 2300 });
+      Kit.sfx(lose ? 'lose' : 'sparkle'); Kit.haptic(lose ? 'heavy' : 'success');
+    }
+    var t0 = tok;
+    setTimeout(function () { if (t0 === tok) Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: S.teams ? wname + ' win!' : wname === 'You' ? 'You win!' : wname + ' wins!',
       sub: VNAME[S.variant] + ' to ' + S.target + ' in ' + S.hand + (S.hand === 1 ? ' hand' : ' hands'),
@@ -784,7 +835,7 @@
       again: function () { newMatch(again); },
       look: 'Look at the table',
       setup: function () { tok++; clearSave(); showSetup(); }
-    });
+    }); }, spm.length ? 2500 : 0);
   }
 
   // ── Undo: take back your last tile before the next player moves ──────────
@@ -987,7 +1038,7 @@
     msgEl = el('div', { class: 'msg' }); actsEl = el('div', { class: 'acts' });
     statusEl.appendChild(msgEl); statusEl.appendChild(actsEl);
     pan.appendChild(scoresEl); pan.appendChild(statusEl);
-    tblEl = el('div', { class: 'tbl wood' });
+    tblEl = el('div', { class: 'tbl wood', style: { 'view-transition-name': 'dm-table' } });
     feltEl = el('div', { class: 'felt-in' });
     plqEl = el('div', { class: 'plq' });
     layerEl = el('div', { class: 'layer' });
@@ -997,7 +1048,8 @@
     feltEl.appendChild(plqEl); feltEl.appendChild(layerEl); feltEl.appendChild(boneEl); feltEl.appendChild(endsEl); feltEl.appendChild(hlabelEl);
     feltEl.addEventListener('click', onFelt);
     tblEl.appendChild(feltEl);
-    rackEl = el('div', { class: 'rack' });
+    rackEl = el('div', { class: 'rack', style: { 'view-transition-name': 'dm-rack' } });
+    scoresEl.style.setProperty('view-transition-name', 'dm-scores');
     dw.appendChild(pan); dw.appendChild(tblEl); dw.appendChild(rackEl);
     app.appendChild(dw);
     setBarH();
@@ -1107,7 +1159,7 @@
   }
   function rackSize(n) {
     var w = rackEl.clientWidth - 20, big = Math.min(innerWidth, innerHeight) >= 700;
-    var maxW = big ? 50 : 40, gap = 6, rows = 1;
+    var maxW = big ? 50 : innerHeight < 500 ? 32 : 40, gap = 6, rows = 1;   // (a phone on its side keeps the table tall)
     var tw = Math.min(maxW, (w - (n - 1) * gap) / Math.max(n, 1));
     if (tw < 30 && n > 1) { rows = 2; var per = Math.ceil(n / 2); tw = Math.min(maxW, (w - (per - 1) * gap) / per); }
     return { tw: Math.max(20, Math.floor(tw)), rows: rows };
@@ -1393,7 +1445,17 @@
     if ((e.key === 'd' || e.key === 'D') && myTurn()) humanDraw();
   });
   var rT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && dw) { setBarH(); paint(); } }, 80); });
+  // Turning the device: the table, the scores and your tiles glide to the new shape (a View Transition), and the
+  // dominoes on the table slide to their new places
+  window.addEventListener('resize', function () {
+    clearTimeout(rT);
+    rT = setTimeout(function () {
+      if (!(S && dw && dw.isConnected)) return;
+      var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (document.startViewTransition && !reduce && !document.hidden && !drag) { try { vtGo(function () { setBarH(); paint(); }); return; } catch (e) {} }
+      setBarH(); paint();
+    }, 80);
+  });
 
   // ── Test hooks ───────────────────────────────────────────────────────────
   window.__dom = {

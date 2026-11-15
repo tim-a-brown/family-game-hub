@@ -124,29 +124,37 @@
 .cn-yours{color:var(--lit-ink);font-weight:800;}
 .setup .cn-mines,.k-setup .cn-mines{margin:4px 0 8px;}
 
-/* iPad / large screens: bigger board; landscape puts bars, moves and buttons beside the board */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:none;}
-  .cb-col{max-width:min(712px,calc(100dvh - 400px));}
-  .frame{--rim:22px;}
-  .coord{font-size:12px;}
-}
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 14px);}
-  .cb-col{--bsz:min(calc(100dvh - 76px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));max-width:none;height:var(--bsz);
-    display:grid;grid-template-columns:minmax(280px,320px) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content;
-    grid-template-areas:"t b" "s b" "m b" "a b" "p b";column-gap:24px;row-gap:10px;justify-content:center;}
-  .cb-col>.frame{grid-area:b;--rim:clamp(18px,2.6vh,24px);}
-  .cb-col>.pbar:nth-child(1){grid-area:t;}
-  .cb-col>.pbar:nth-child(3){grid-area:p;}
-  .cb-col>.turn{grid-area:s;justify-self:start;}
-  .cb-col>.moves{grid-area:m;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:10px;border-radius:18px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);}
-  .cb-col>.moves .mp{justify-content:flex-start;}
-  .cb-col>.moves .empty{grid-column:1/-1;margin:6px auto;}
-  .cb-col>.acts{grid-area:a;}
-  .coord{font-size:12px;}
-  .tray{max-width:50%;}
-}
+/* A layout for each shape (fit() sizes the board to the room). Upright: the players over and under the board, the
+   board as wide as the screen allows, the whole table in the middle of the screen. Sideways (phones too): the player
+   bars, whose turn, the moves and the buttons in a column at the left, the board you play on at the right */
+#app.stage.ipl{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
+#app.ipl>.cb-col{width:var(--cw,100%);max-width:none;flex:none;margin:auto 0;}
+#app.cs-tall .frame{--rim:22px;}
+#app.cs-tall .coord{font-size:12px;}
+#app.cs-land>.cb-col{width:auto;height:var(--bsz);display:grid;grid-template-columns:var(--sw,300px) var(--bsz);
+  grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content;
+  grid-template-areas:"t b" "s b" "m b" "a b" "p b";column-gap:var(--cg,24px);row-gap:10px;justify-content:center;}
+#app.cs-land>.cb-col>.frame{grid-area:b;--rim:clamp(13px,2.6vh,24px);}
+#app.cs-land>.cb-col>.pbar:nth-child(1){grid-area:t;}
+#app.cs-land>.cb-col>.pbar:nth-child(3){grid-area:p;}
+#app.cs-land>.cb-col>.turn{grid-area:s;justify-self:start;}
+#app.cs-land>.cb-col>.moves{grid-area:m;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;overflow-y:auto;overflow-x:hidden;padding:10px;border-radius:18px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);}
+#app.cs-land>.cb-col>.moves .mp{justify-content:flex-start;}
+#app.cs-land>.cb-col>.moves .empty{grid-column:1/-1;margin:6px auto;}
+#app.cs-land>.cb-col>.acts{grid-area:a;}
+#app.cs-land .coord{font-size:11px;}
+#app.cs-land .tray{max-width:50%;}
+/* a phone on its side: the column is narrow and short, so the moves are one line and the bars slim */
+#app.cs-low>.cb-col{row-gap:6px;}
+#app.cs-low .pbar{min-height:40px;padding:3px 8px;}
+#app.cs-low>.cb-col>.turn{min-height:28px;font-size:.95rem;margin:0;}
+#app.cs-low>.cb-col>.moves{padding:6px;gap:4px;}
+#app.cs-low>.cb-col>.moves .mp{height:26px;line-height:26px;padding:0 8px;font-size:.8rem;}
+#app.cs-low .coord{font-size:9px;}
+#app.cs-low .acts .btn-sm .ico{display:none;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -160,6 +168,8 @@
 <script>
 (function () {
   'use strict';
+  // a View Transition whose promises can't end up unhandled (a turn mid-turn cancels the one before)
+  function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var SAVE = 'chess_state', KEY = 'chess';
 
@@ -553,7 +563,7 @@
 
   function showSetup() {
     S = null; sel = -1; NET.screen = 'setup'; Kit.onBack = null;
-    app.classList.remove('ipl');
+    app.classList.remove('ipl', 'cs-land', 'cs-low', 'cs-tall');
     var su = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local' }, { id: 'online', desc: 'Two devices, each signed in with a PIN' }]),
       options: [
@@ -627,6 +637,13 @@
     if (victim === 5 && !S.events.some(function (e) { return e.type === 'queen' && e.side === pos.turn; })) add('queen', who + ' captured the queen on move ' + n);
     if (mv.promo) add('promo', who + ' promoted a pawn to a ' + PNAME[mv.promo] + ' on move ' + n);
     if (mv.ep) add('ep', who + ' captured en passant on move ' + n);
+    // the rarer moves get their moment on the board as they happen
+    if (!quiet) {
+      var mine = !pl(pos.turn).cpu && (!online() || pos.turn === mySide());
+      if (mv.promo) setTimeout(function () { Kit.moment({ title: 'Promotion', line: who + ' turned a pawn into a ' + PNAME[mv.promo] + '.', icon: 'sparkle', tone: mine ? '' : 'bad', at: bdEl, ms: 1900 }); Kit.sfx(mine ? 'sparkle' : 'bad'); Kit.haptic(mine ? 'success' : 'medium'); }, 320);
+      else if (mv.ep) setTimeout(function () { Kit.callout('En passant!'); Kit.sfx('good'); }, 300);
+      else if (victim === 5) setTimeout(function () { Kit.moment({ title: 'Queen taken', line: who + ' captured the queen.', icon: 'target', tone: mine ? '' : 'bad', at: bdEl, ms: 1600 }); Kit.sfx(mine ? 'good' : 'bad'); }, 300);
+    }
     if (mv.castle && !S.events.some(function (e) { return e.type === 'castle' && e.side === pos.turn; })) add('castle', who + ' castled ' + (mv.castle === 1 ? 'kingside' : 'queenside') + ' on move ' + n);
     if (mover === 2) {
       var hit = E.KN[mv.t].map(function (s) { return np.b[s] * pos.turn; }).filter(function (x) { return x <= -4; }).map(function (x) { return -x; });
@@ -673,6 +690,16 @@
     evs.slice(-4).forEach(function (e) { hl.push(e.text); });
     var mat = [1, -1].map(function (s) { return S.caps[s].reduce(function (a, v) { return a + [0, 1, 3, 3, 5, 9][v]; }, 0); });
     if (S.caps['1'].length + S.caps['-1'].length) hl.push('Pieces captured: ' + pl(1).name + ' ' + S.caps['1'].length + ' (worth ' + mat[0] + '), ' + pl(-1).name + ' ' + S.caps['-1'].length + ' (worth ' + mat[1] + ')');
+    // a rarer checkmate gets the big moment: a quick mate, a mate by a pawn or the king, a mate from behind on material, beating Hard
+    var sp = [], mineW = !!winner && !winner.cpu && (!net || winner.me);
+    if (res.type === 'mate') {
+      var mp = Math.abs(S.pos.b[S.last.t]), wi = res.winner === 1 ? 0 : 1;
+      if (moves <= 10) sp.push({ t: 'Mate in ' + moves, l: winner.name + ' checkmated ' + loser.name + ' in only ' + moves + ' moves.', h: winner.name + ' checkmated ' + loser.name + ' in only ' + moves + ' moves' });
+      if (mp === 1 || mp === 6) sp.push({ t: 'Mate with a ' + PNAME[mp], l: 'The ' + PNAME[mp] + ' delivered the checkmate.', h: winner.name + ' delivered checkmate with the ' + PNAME[mp] });
+      if (mat[1 - wi] - mat[wi] >= 3) sp.push({ t: 'Mate from behind', l: winner.name + ' was ' + (mat[1 - wi] - mat[wi]) + ' points of pieces down and still checkmated.', h: winner.name + ' checkmated while ' + (mat[1 - wi] - mat[wi]) + ' points of pieces down' });
+      if (!net && loser.cpu && !winner.cpu && S.level === 'hard') sp.push({ t: 'Hard computer beaten', l: loser.name + ' was playing on Hard.', h: winner.name + ' checkmated ' + loser.name + ' on Hard' });
+      sp.forEach(function (x, i) { hl.splice(1 + i, 0, x.h); });
+    }
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     if (net) hl.push('Played online, each on their own device');
     Kit.record(KEY, {
@@ -683,7 +710,13 @@
       highlights: hl, meta: { moves: S.moves.slice(), result: res.type },
       detail: chessDetail(res, winner)
     });
-    if (res.type === 'mate') { Kit.callout('Checkmate!'); }
+    if (res.type === 'mate') {
+      if (sp.length) {
+        Kit.moment({ big: true, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), icon: mineW ? 'trophy' : 'bot', tone: mineW ? '' : 'bad', at: bdEl, ms: 2300 });
+        Kit.sfx(mineW ? 'sparkle' : 'lose'); Kit.haptic(mineW ? 'success' : 'heavy');
+      } else Kit.callout('Checkmate!');
+    }
+    S.spMate = sp.length;
     if (net) {
       var g = S.online.game;
       setTimeout(function () {
@@ -712,7 +745,7 @@
         look: true,
         setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
-    }, res.type === 'mate' ? 1300 : 700);
+    }, res.type === 'mate' ? (S.spMate ? 2500 : 1300) : 700);
   }
   // History detail: final board (FEN-style rows), every move as from-to squares for the replay, captures
   function chessDetail(res, winner) {
@@ -799,10 +832,42 @@
     movesEl = el('div', { class: 'moves' }); col.appendChild(movesEl);
     actsEl = el('div', { class: 'acts' });
     col.appendChild(actsEl);
+    frame.style.setProperty('view-transition-name', 'cs-board'); topBar.style.setProperty('view-transition-name', 'cs-top'); botBar.style.setProperty('view-transition-name', 'cs-bot');
     app.appendChild(col);
     paintBoard(anim); paintBars(); paintStatus(); paintMoves(); paintActs();
+    fit();
     bindInput();
   }
+  // The board as large as the room allows for the shape the screen is now (the frame is square)
+  function fit() {
+    var col = app.querySelector('.cb-col'); if (!col || !app.classList.contains('ipl')) return;
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.toggle('cs-land', land); app.classList.toggle('cs-low', low); app.classList.toggle('cs-tall', !land && W >= 700);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (land) {
+      var sw = low ? Math.min(260, Math.max(210, W * 0.27)) : Math.min(320, Math.max(270, W * 0.27)), cg = low ? 18 : 28;
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--cg', cg + 'px');
+      app.style.setProperty('--bsz', Math.floor(Math.max(200, Math.min(ih, iw - sw - cg))) + 'px');
+    } else {
+      var other = 0;
+      Array.prototype.forEach.call(col.children, function (c) { if (!c.classList.contains('frame')) other += c.offsetHeight + 8; });
+      var cw = Math.floor(Math.max(240, Math.min(iw, 760, ih - other)));
+      app.style.setProperty('--cw', cw + 'px');
+      var over = col.offsetHeight - ih;   // (the square frame: a pixel narrower is a pixel shorter)
+      if (over > 0) app.style.setProperty('--cw', Math.max(180, cw - over) + 'px');
+    }
+    movesEnd();
+  }
+  // Turning the device: the board and the player bars glide to the new shape
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (document.startViewTransition && !reduce && !document.hidden && app.classList.contains('ipl')) { try { vtGo(fit); return; } catch (e) {} }
+    fit();
+  });
   function paintActs() {
     if (!actsEl) return;
     var b = function (cls, ic, label, fn) { return el('button', { type: 'button', class: 'btn btn-sm ' + cls, html: (ic ? Kit.icon(ic) : '') + '<span>' + label + '</span>', onclick: fn }); };
@@ -1534,7 +1599,7 @@
   function cnScreen() {
     if (NET.win) { NET.win.close(); NET.win = null; }
     cancelThink(); S = null; sel = -1; actsEl = null;
-    app.classList.remove('ipl'); app.innerHTML = '';
+    app.classList.remove('ipl', 'cs-land', 'cs-low', 'cs-tall'); app.innerHTML = '';
     var wrap = el('div', { class: 'cn' });
     app.appendChild(wrap); window.scrollTo(0, 0);
     return wrap;
