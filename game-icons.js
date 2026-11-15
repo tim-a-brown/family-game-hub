@@ -94,6 +94,10 @@ var GameIcon = (function () {
       function fan(cy, col) { var s = ''; [-26, 0, 26].forEach(function (a) { s += rect(8.4, cy - 11.5, 7.2, 10.6, 1.2, col, ' stroke="' + W + '" stroke-width=".9" transform="rotate(' + a + ' 12 ' + cy + ')"'); }); return s; }
       return fan(11.4, K) + fan(24.6, R);
     },
+    crazy8s: function (c) {   // a wild 8 with the four suits round it
+      return txt('8', 19, c, 12.6) + path(HEART, R, ' transform="translate(15.6 1.2) scale(.3)"') + path(SPADE, K, ' transform="translate(1.6 1.4) scale(.28)"') +
+        path('M12 2 19 12 12 22 5 12z', R, ' transform="translate(15.9 15.4) scale(.3)"') + circ(4.1, 17.6, 1.35, K) + circ(6.3, 17.6, 1.35, K) + circ(5.2, 15.8, 1.35, K) + rect(4.75, 17.4, .9, 3, .3, K);
+    },
     wizard: function () { return path('M12 2 6.5 17h11z', P) + rect(3, 16.5, 18, 3.6, 1.8, P) + path('M12.5 8.5l.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z', Y); },
     flip7: function (c) { return txt('7', 24, c, 12.5); },
     'five-crowns': function () { return path('M3 18 2 7l5.5 4.5L12 4l4.5 7.5L22 7l-1 11z', Y, ' stroke="' + K + '" stroke-width="1.2" stroke-linejoin="round"') + rect(3, 18, 18, 3, 1, Y, ' stroke="' + K + '" stroke-width="1.2"'); },

@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crazy Eights</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="crazy8s-core.js"></script>
+<style>
+/* the card backs: night blue with a gold lattice (the felt is the category's own shade, from games.js) */
+:root{--back-a:#1d2a5c;--back-b:#c9a24a;}
+.stage.c8-stage{max-width:none;margin:0;padding:0;}
+/* ── The page is laid out to the screen: four shapes, set by layoutFor() ── */
+.c8{position:relative;display:grid;gap:8px;box-sizing:border-box;width:100%;margin:0 auto;
+  height:calc(100dvh - var(--bar,64px));padding:4px max(10px,var(--safe-l,0px)) max(calc(var(--safe-b) + 8px),18px) max(10px,var(--safe-r,0px));}
+.c8.L-pu,.c8.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"tbl" "side" "hand";}
+.c8.L-tu{max-width:900px;padding-left:18px;padding-right:18px;gap:12px;}
+/* sideways: what you look at (the other players, the piles) at the left, what you act with at the right */
+.c8.L-ps{grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"tbl side" "tbl hand";column-gap:12px;
+  padding-left:calc(10px + var(--corner-x,0px));padding-right:calc(10px + var(--corner-x,0px));}
+.c8.L-ts{grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"tbl side" "hand hand";column-gap:16px;row-gap:10px;padding-left:18px;padding-right:18px;}
+.c8 > .tbl{grid-area:tbl;min-height:0;min-width:0;}
+.c8 > .side{grid-area:side;min-width:0;}
+.c8 > .c8h{grid-area:hand;min-width:0;min-height:0;}
+
+/* ── The table ── */
+.tbl{position:relative;border-radius:26px;padding:8px;display:flex;}
+.tbl .felt-in{--pw:clamp(54px,min(21cqw,24cqh),130px);position:relative;flex:1;border-radius:19px;overflow:hidden;container-type:size;}
+.tbl .wm{position:absolute;left:50%;top:56%;translate:-50% -50%;font-size:min(60cqw,52cqh);line-height:1;color:#fff;opacity:.05;pointer-events:none;font-family:Georgia,serif;transition:opacity .6s,color .6s;}
+.tbl .wm.red{color:#ffb3b3;opacity:.08;}
+/* the other players round the far side of the table, in the order they play (the next one at your left) */
+.st{position:absolute;z-index:4;display:flex;flex-direction:column;align-items:center;gap:calc(3px * var(--sz,1));translate:-50% -50%;width:calc(86px * var(--sz,1));}
+.st .bk{position:relative;display:flex;justify-content:center;height:calc(var(--bw) * 1.4);--bw:calc(26px * var(--sz,1));--cw:var(--bw);}
+.st .bk .pcard{transition:none;}
+.st .bk .pcard + .pcard{margin-left:calc(var(--bw) * -.72);}
+.st .bk .n{position:absolute;right:calc(-8px * var(--sz,1));bottom:calc(-6px * var(--sz,1));min-width:calc(22px * var(--sz,1));height:calc(22px * var(--sz,1));padding:0 5px;box-sizing:border-box;border-radius:999px;display:grid;place-items:center;
+  background:var(--plate-bg);color:#fff;font-weight:800;font-size:calc(.78rem * var(--sz,1));font-variant-numeric:tabular-nums;box-shadow:var(--plate-line),0 2px 6px rgba(0,0,0,.35);z-index:2;}
+.st .tg{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:100%;}
+.st .tg .avatar{width:calc(30px * var(--sz,1));height:calc(30px * var(--sz,1));font-size:calc(.8rem * var(--sz,1));transition:box-shadow .3s;}
+.st .tg .nm{max-width:100%;padding:1px 8px;border-radius:9px;background:var(--plate-bg);box-shadow:var(--plate-line);color:#fff;font-weight:700;font-size:calc(.76rem * var(--sz,1));line-height:1.35;text-align:center;overflow-wrap:anywhere;}
+.st .sc{font-size:calc(.72rem * var(--sz,1));font-weight:800;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;}
+.st.turn .tg .avatar{box-shadow:0 0 0 2.5px var(--lit),0 0 16px var(--litg);}
+.st.turn .tg .nm{box-shadow:inset 0 0 0 1px rgba(255,211,77,.7),0 0 12px var(--litg);color:var(--lit-ink,#ffe28a);}
+/* down to one card: the seat glows */
+.st.one .bk::after,.me.one .av::after{content:"";position:absolute;inset:-9px;border-radius:50%;background:radial-gradient(closest-side,rgba(255,120,80,.55),rgba(255,120,80,0));animation:c8glow 1.1s ease-in-out infinite alternate;z-index:-1;pointer-events:none;}
+@keyframes c8glow{from{opacity:.45;transform:scale(.9);}to{opacity:1;transform:scale(1.12);}}
+.st.one .tg .nm::after{content:"";}
+.st .say,.me .say{position:absolute;left:50%;top:100%;translate:-50% 4px;z-index:9;padding:4px 11px;border-radius:12px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;font-weight:800;font-size:.82rem;white-space:nowrap;box-shadow:var(--plate-line),0 4px 12px rgba(0,0,0,.35);animation:c8pop .35s var(--spring);pointer-events:none;}
+.st .say.gold,.me .say.gold{color:#2a1c00;background:linear-gradient(180deg,var(--gold-hi,#ffe486),var(--gold-lo,#f6b93b));}
+.st .say.hot,.me .say.hot{background:linear-gradient(180deg,#ff8a6a,#e0453a);}
+.me .say{top:auto;bottom:100%;translate:-50% -6px;}
+.st.skip .tg{animation:c8skip .7s;}
+@keyframes c8skip{30%{translate:0 -4px;opacity:.4;}100%{translate:0;opacity:1;}}
+@keyframes c8pop{from{scale:.6;opacity:0;}to{scale:1;opacity:1;}}
+
+/* the stock and the discard pile, side by side in the middle */
+.ctr{position:absolute;left:50%;top:var(--cy,58%);translate:-50% -50%;display:flex;align-items:center;gap:calc(var(--pw) * .32);z-index:2;}
+.stock{position:relative;width:var(--pw);height:calc(var(--pw) * 1.4);border:0;padding:0;background:none;cursor:pointer;border-radius:calc(var(--pw) * .1);--cw:var(--pw);-webkit-tap-highlight-color:transparent;}
+.stock .pcard{position:absolute;left:0;top:0;transition:none;}
+.stock .cnt{position:absolute;left:50%;bottom:calc(var(--pw) * .1);translate:-50% 0;z-index:2;padding:1px 9px;border-radius:999px;background:var(--plate-bg);box-shadow:var(--plate-line);color:#fff;font-weight:800;font-size:.74rem;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.stock.go{animation:c8breathe 1.6s ease-in-out infinite;}
+.stock.go .pcard:last-of-type{box-shadow:0 0 0 2.5px var(--lit),0 0 22px var(--litg),0 6px 14px rgba(0,0,0,.3);}
+.stock:active{transform:translateY(2px);}
+.stock.none{opacity:.35;cursor:default;}
+@keyframes c8breathe{50%{transform:translateY(-3px);}}
+.stock .pend{position:absolute;right:calc(var(--pw) * -.24);top:calc(var(--pw) * -.2);z-index:3;min-width:calc(var(--pw) * .5);height:calc(var(--pw) * .5);padding:0 .3em;box-sizing:border-box;border-radius:999px;display:grid;place-items:center;
+  background:linear-gradient(180deg,#ff8a6a,#d83a30);color:#fff;font-family:var(--display);font-size:calc(var(--pw) * .26);box-shadow:0 0 0 2px rgba(255,255,255,.85),0 0 18px rgba(255,90,60,.7);animation:c8pop .4s var(--spring);}
+.stock .pend.big{animation:c8pop .4s var(--spring),c8throb .9s ease-in-out .4s infinite;}
+@keyframes c8throb{50%{scale:1.12;}}
+.pile{position:relative;width:var(--pw);height:calc(var(--pw) * 1.4);--cw:var(--pw);}
+.pile .pcard{position:absolute;left:0;top:0;transition:none;box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 0 0 1px rgba(0,0,0,.1),0 3px 8px rgba(0,0,0,.35);}
+.pile .pcard.top{box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 0 0 1px rgba(0,0,0,.1),0 8px 18px rgba(0,0,0,.45);}
+.pile .pcard.land{animation:c8land .32s cubic-bezier(.3,1.4,.5,1);}
+@keyframes c8land{0%{scale:1.08;}60%{scale:.97;}100%{scale:1;}}
+/* the suit an 8 named: a tile beside the pile, in that suit */
+.suitb{position:absolute;right:calc(var(--pw) * -.2);top:calc(var(--pw) * -.2);z-index:3;display:flex;flex-direction:column;align-items:center;gap:2px;padding:calc(var(--pw) * .08) calc(var(--pw) * .1);border-radius:calc(var(--pw) * .14);
+  background:#fffaf0;color:#1b1b22;box-shadow:0 0 0 2px var(--lit),0 0 18px var(--litg),0 6px 14px rgba(0,0,0,.35);font-family:Georgia,serif;}
+.suitb b{font-size:calc(var(--pw) * .44);line-height:1;}
+.suitb small{font-family:var(--font);font-size:max(.62rem,calc(var(--pw) * .12));font-weight:800;color:#3a3550;}
+.suitb.red{color:#d81e3a;}
+.suitb.pop{animation:c8pop .45s var(--spring);}
+.suitb[hidden]{display:none;}
+.msg{position:absolute;left:50%;top:calc(var(--cy,58%) + var(--pw,90px) * .7 + 16px);translate:-50% 0;max-width:86%;padding:5px 14px;border-radius:999px;background:var(--plate-bg);box-shadow:var(--plate-line);color:#fff;font-weight:700;font-size:.86rem;text-align:center;z-index:5;pointer-events:none;transition:opacity .3s;}
+.msg[hidden]{display:none;}
+.fly{position:fixed;z-index:60;pointer-events:none;margin:0;}
+
+/* ── Your side: your name, score and what you can do ── */
+.side{display:flex;align-items:center;gap:10px;min-height:56px;}
+.c8.L-ps .side{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"me sort" "stat act";align-items:center;gap:8px 10px;min-height:0;padding-top:4px;}
+.c8.L-ps .side > .me{grid-area:me;justify-self:start;} .c8.L-ps .side > .sortw{grid-area:sort;justify-self:end;align-self:center;} .c8.L-ps .side > .stat{grid-area:stat;} .c8.L-ps .side > .act{grid-area:act;}
+.stat{display:none;color:#fff;font-weight:700;font-size:.92rem;line-height:1.3;min-height:2.6em;}
+.stat small{display:block;color:rgba(255,255,255,.7);font-weight:600;font-size:.8rem;}
+.c8.L-ps .stat{display:block;}
+.c8.L-ps .msg{display:none;}
+@media (max-height:440px){.c8.L-ps .side{grid-template-areas:"me act" "stat stat";gap:4px 8px;} .c8.L-ps .side > .sortw{display:none;} .c8.L-ps .stat{min-height:0;font-size:.84rem;} .c8.L-ps .me .av .avatar{width:28px;height:28px;} .c8.L-ps .act .btn{min-height:44px;padding-top:6px;padding-bottom:6px;}}
+.c8.L-ts .side{flex-direction:column;align-items:stretch;justify-content:center;gap:14px;}
+.me{position:relative;display:flex;align-items:center;gap:8px;flex:none;padding:4px 12px 4px 4px;border-radius:999px;background:var(--plate-bg);box-shadow:var(--plate-line);color:#fff;}
+.me .av{position:relative;display:grid;}
+.me .av .avatar{width:34px;height:34px;font-size:.9rem;transition:box-shadow .3s;}
+.me.turn .av .avatar{box-shadow:0 0 0 2.5px var(--lit),0 0 16px var(--litg);}
+.me .tx{display:flex;flex-direction:column;line-height:1.15;min-width:0;}
+.me .tx b{font-size:.92rem;font-weight:800;}
+.me .tx small{font-size:.74rem;font-weight:700;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums;}
+.me.turn .tx small{color:var(--lit-ink,#ffe28a);}
+.c8.L-ps .me,.c8.L-ts .me{align-self:flex-start;}
+.act{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0;flex-wrap:wrap;}
+.act .hint{flex:1 1 auto;min-width:0;color:#fff;font-weight:700;font-size:.92rem;line-height:1.25;}
+.act .hint small{display:block;color:rgba(255,255,255,.7);font-weight:600;font-size:.8rem;}
+.act .btn{min-height:46px;flex:none;}
+.c8.L-ts .act{flex-direction:column;align-items:stretch;justify-content:flex-start;flex:none;}
+.c8.L-ts .act .btn{width:100%;}
+.c8.L-ps .act{flex:none;justify-content:flex-end;}
+.act.nudge{animation:c8nudge .4s;}
+@keyframes c8nudge{20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(3px);}}
+/* the scores at a glance on an iPad held sideways */
+.board{display:none;}
+.c8.L-ts .board{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:16px;background:var(--gl,rgba(255,255,255,.06));box-shadow:inset 0 0 0 1px var(--gl-line,rgba(255,255,255,.1));color:#fff;}
+.board .bh{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:2px;}
+.board .br{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:700;}
+.board .br i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c);}
+.board .br span{flex:1;min-width:0;overflow-wrap:anywhere;}
+.board .br b{font-variant-numeric:tabular-nums;}
+.board .br.lead b{color:var(--lit-ink,#ffe28a);}
+.board .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;margin:0 0 4px 17px;}
+.board .bar > i{display:block;height:100%;background:var(--c);border-radius:2px;transition:width .6s;}
+
+/* ── Your hand: the cards you can play rise a little ── */
+.c8h{position:relative;display:flex;justify-content:center;align-items:flex-end;padding:calc(var(--cw) * .2) 4px 2px;--cw:72px;}
+.c8h > .pcard{margin-left:var(--ov,6px);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.c8h > .pcard:first-child{margin-left:0;}
+.c8h > .pcard.ok{transform:translateY(calc(var(--cw) * -.16));box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 0 0 1.5px rgba(255,211,77,.85),0 10px 18px rgba(0,0,0,.35);}
+.c8h.mine > .pcard.no{filter:brightness(.82) saturate(.85);}
+.c8h > .pcard.ok:active{transform:translateY(calc(var(--cw) * -.1));}
+.c8h > .pcard.fresh{animation:c8fresh 1.8s ease-out;}
+@keyframes c8fresh{0%,40%{box-shadow:0 0 0 3px #7fe0ff,0 0 18px rgba(127,224,255,.7);}100%{}}
+.c8h > .pcard.shake{animation:c8shake .38s;}
+@keyframes c8shake{25%{translate:-5px 0;}50%{translate:5px 0;}75%{translate:-3px 0;}}
+.sortw{flex:none;display:flex;align-items:center;}
+.sortw[hidden]{display:none;}
+.c8.L-ps .sortw,.c8.L-ts .sortw{align-self:flex-start;}
+.msg small{display:block;font-weight:600;font-size:.78rem;color:rgba(255,255,255,.72);}
+.c8.L-ps .c8h,.c8.L-ts .c8h{align-items:center;}
+
+/* ── Naming the suit for an 8: four big tiles ── */
+.pick{position:absolute;inset:0;z-index:40;display:grid;place-items:center;background:rgba(6,7,16,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:c8fade .2s;}
+@keyframes c8fade{from{opacity:0;}}
+.pick .pw{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px;width:min(440px,94%);}
+.pick h2{margin:0;color:#fff;font-size:1.25rem;text-align:center;}
+.pick .g{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;}
+.pick .t{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:clamp(96px,17dvh,150px);border:0;border-radius:22px;background:linear-gradient(170deg,#ffffff,#f3ecdc);color:#1b1b22;cursor:pointer;
+  box-shadow:0 0 0 1px rgba(0,0,0,.08),0 10px 22px rgba(0,0,0,.4);font-family:var(--font);transition:transform .15s;animation:c8pop .35s var(--spring) backwards;}
+.pick .t:nth-child(2){animation-delay:.04s;} .pick .t:nth-child(3){animation-delay:.08s;} .pick .t:nth-child(4){animation-delay:.12s;}
+.pick .t:active{transform:scale(.96);}
+.pick .t b{font-family:Georgia,serif;font-size:clamp(46px,9dvh,78px);line-height:1;}
+.pick .t.red b{color:#d81e3a;}
+.pick .t span{font-weight:800;font-size:.95rem;}
+.pick .t small{font-weight:700;font-size:.78rem;color:#5b5670;}
+.pick .t.best{box-shadow:0 0 0 3px var(--lit),0 0 22px var(--litg),0 10px 22px rgba(0,0,0,.4);}
+.pick .x{min-height:46px;}
+.c8.L-ps .pick .g{grid-template-columns:repeat(4,1fr);} .c8.L-ps .pick .t{min-height:120px;} .c8.L-ps .pick .pw{width:min(620px,94%);}
+
+/* ── The count at the end of a hand ── */
+.cnt8{display:flex;flex-direction:column;gap:8px;}
+.cnt8 .r{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding:8px 10px;border-radius:14px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+.cnt8 .r.w{background:rgba(255,211,77,.1);box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6);}
+.cnt8 .r .avatar{width:32px;height:32px;font-size:.85rem;}
+.cnt8 .r .who{display:flex;flex-direction:column;min-width:0;line-height:1.2;}
+.cnt8 .r .who b{font-size:.95rem;overflow-wrap:anywhere;}
+.cnt8 .r .who small{font-size:.76rem;font-weight:700;color:rgba(255,255,255,.7);}
+.cnt8 .r .pt{font-family:var(--display);font-size:1.45rem;font-variant-numeric:tabular-nums;min-width:2.6em;text-align:right;}
+.cnt8 .r.w .pt{color:var(--lit-ink,#ffe28a);}
+.cnt8 .r .cs{grid-column:2 / 4;display:flex;flex-wrap:wrap;gap:4px;--cw:30px;min-height:0;}
+.cnt8 .r .cs:empty{display:none;}
+.cnt8 .r .cs .pcard{animation:c8pop .3s var(--spring);}
+.cnt8 .r .cs .pcard.e8{box-shadow:0 0 0 2px #ff7a5a,0 0 10px rgba(255,120,90,.6);}
+.cnt8 .tot{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:4px;font-size:.84rem;font-weight:700;color:rgba(255,255,255,.75);}
+.pad8{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+.pad8 th,.pad8 td{padding:6px 5px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);font-size:.88rem;}
+.pad8 th{font-size:.76rem;color:rgba(255,255,255,.75);overflow-wrap:anywhere;}
+.pad8 td.z{color:rgba(255,255,255,.3);}
+.pad8 td.w{color:var(--lit-ink,#ffe28a);font-weight:800;}
+.pad8 tfoot td{font-weight:900;font-size:1rem;border-bottom:0;}
+.pad8 tfoot td.lead{color:var(--lit-ink,#ffe28a);}
+.pad8 th.rn{text-align:left;}
+/* the setup on a phone held sideways stays the kit's two columns; a game's own sideways table waits for the game */
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var Core = window.C8Core, el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'crazy8s_state', HKEY = 'crazy8s';
+  var GL = Core.GLYPH, SN = { s: 'Spades', h: 'Hearts', d: 'Diamonds', c: 'Clubs' };
+  var RW = { A: 'ace', T: '10', J: 'jack', Q: 'queen', K: 'king' };
+
+  Kit.init({
+    id: 'crazy8s',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'chart', label: 'Score pad', onClick: function () { if (S && S.players) showPad(); } },
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Crazy Eights: past games' }); } }
+    ]),
+    rules:
+      '<p class="goal">Be the first to play every card in your hand. When you do, you score the cards left in everyone else’s hands, and the first to reach the target score wins the game.</p>' +
+      '<h3>The deal</h3><ul><li>One deck of 52 cards. With two players, each gets 7 cards. With three to seven, each gets 5.</li>' +
+      '<li>The rest of the deck is the stock. Its top card is turned face up to start the discard pile. If that card is an 8, it goes back into the stock and the next card is turned up.</li>' +
+      '<li>The player at the dealer’s left goes first, and play goes round to the left.</li></ul>' +
+      '<h3>Your turn</h3><ul><li>Play a card on the discard pile that matches its <b>suit</b> or its <b>rank</b>. On the 7♥ you can play any heart or any 7.</li>' +
+      '<li><b>8s are wild.</b> You can play an 8 on anything, and you name the suit the next player has to follow. They can match that suit or play another 8.</li>' +
+      '<li>If you can’t play, you draw from the stock until you can (or, if you chose Draw one in the setup, you draw one card, play it if you can, and otherwise your turn is over). You may draw even when you could play.</li>' +
+      '<li>When the stock runs out, the discard pile, all but its top card, is shuffled to make a new stock. If there is nothing left to draw and you can’t play, you pass.</li>' +
+      '<li>When you are down to your last card, your seat glows so everyone can see.</li></ul>' +
+      '<h3>Choices in the setup</h3><ul><li><b>2s make the next player draw two.</b> The next player takes two cards and misses their turn, unless they play a 2 of their own: then the player after them takes four, and so on up to eight.</li>' +
+      '<li><b>The queen of spades skips</b> the next player.</li>' +
+      '<li><b>Draw one</b> instead of drawing until you can play.</li></ul>' +
+      '<h3>Scoring</h3><ul><li>The player who goes out scores the cards everyone else is still holding: <b>50 for an 8</b>, 10 for a king, queen, jack or 10, 1 for an ace, and every other card its number.</li>' +
+      '<li>If nobody can play or draw, the hand is blocked. The player holding the fewest points wins it and scores the difference to each other hand.</li>' +
+      '<li>The game is to 100 points, or 200, or a single hand.</li></ul>' +
+      '<h3>Online</h3><ul><li><b>Play online</b>, beside the start button, opens a table for as many players as you set up. The others join on their own devices, and the computer plays any empty seat.</li>' +
+      '<li>Take your turn whenever you like; the home screen shows when it’s your move. Moves can’t be taken back online.</li></ul>'
+  });
+
+  // ── State ──
+  // ME: the seat drawn at the bottom with its hand face up (pass and play: the person holding the device; online:
+  // your seat). VIEW: what the table shows while a move plays out (the hand just finished, before the next is dealt).
+  var S = null, VIEW = null, token = 0, undoStack = [], busy = false;
+  var NET = null, MYSEAT = 0, LME = 0, BLIND = false, picking = null, fresh = {};
+  function V() { return VIEW || S; }
+  function me() { return NET ? MYSEAT : LME; }
+  function N() { return S ? S.n : 2; }
+  function person(p) { return p >= 0 && S.players[p] && !S.players[p].cpu; }
+  function people() { return S.players.filter(function (x) { return !x.cpu; }).length; }
+  function onePerson() { return !!NET || people() < 2; }
+  function first(n) { return String(n || '').split(' ')[0]; }
+  // a person by their first name; a computer player by its whole name
+  function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
+  function isMe(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0); }
+  function short(p) { return isMe(p) ? 'You' : fn(p); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function cardObj(c) { return { r: Core.rk(c) === 'T' ? '10' : Core.rk(c), s: Core.su(c), id: c }; }
+  function cardEl(c, o) { return Cards.el(cardObj(c), o); }
+  function rankWord(c) { var r = Core.rk(c); return RW[r] || r; }
+  function later(f, ms) { var t = token; setTimeout(function () { if (t === token) f(); }, ms); }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set('Hand ' + S.round + ' · ' + S.players.map(function (p, i) { return fn(i) + ' ' + S.scores[i]; }).join(' · '));
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; VIEW = null; }
+
+  var LEVELS = [['easy', 'Easy', 'Plays the first card it can, and names any suit for an 8.'],
+    ['normal', 'Normal', 'Saves its 8s for when nothing else will do, and names a suit it holds.'],
+    ['hard', 'Hard', 'Counts the suits played, notices who had to draw, and plays the card the next player is least likely to follow.']];
+
+  // ── Setup ──
+  function showSetup() {
+    S = null; VIEW = null; token++; BLIND = false; LME = 0; busy = false; closePick(); Kit.handoff.close();
+    app.className = 'stage'; app.innerHTML = ''; root = null;
+    Kit.setup(app, {
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 7, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; } },
+      options: [
+        { id: 'to', label: 'Play to', help: 'The first player to reach this score wins. With one hand, whoever goes out first wins.', value: 100, choices: [[0, 'One\nhand'], [100, '100\nStandard'], [200, '200\nLonger']] },
+        { id: 'draw', label: 'When you can’t play', value: 'until', choices: [['until', 'Draw until\nyou can', 'Keep drawing from the stock until you get a card you can play.'], ['one', 'Draw one', 'Draw one card. Play it if you can; otherwise your turn is over.']] },
+        { id: 'twos', label: '2s make the next player draw two', value: 'off', choices: [['off', 'Off', 'A 2 is an ordinary card.'], ['on', 'On', 'The next player takes two and misses a turn, unless they play a 2: then the next takes four, and so on.']] },
+        { id: 'qs', label: 'The queen of spades skips', value: 'off', choices: [['off', 'Off', 'The queen of spades is an ordinary card.'], ['on', 'On', 'The next player misses their turn.']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
+      ],
+      onStart: function (cfg) {
+        var o = cfg.options;
+        S = Core.newGame({ players: cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
+          target: +o.to, draw: o.draw, twos: o.twos === 'on', qs: o.qs === 'on', level: o.level });
+        S.mode = cfg.mode; S.me = 0; S.seen = 0;
+        LME = 0; Kit.gameStart(); undoStack = []; startHand();
+      }
+    });
+  }
+
+  // ═══ Layout: four shapes, measured from the screen, with a glide between them ═══
+  var LAY = '', root = null, sortEl = null, statEl = null, STATUS = null, tblEl, feltEl, wmEl, seatEls = [], ctrEl, stockEl, pileEl, suitEl, msgEl, sideEl, meEl, actEl, boardEl, handEl, pickEl = null;
+  function layoutFor() {
+    var w = innerWidth, h = innerHeight, big = Math.min(w, h) >= 600;
+    if (w > h * 1.05) return big ? 'ts' : 'ps';
+    return big ? 'tu' : 'pu';
+  }
+  var sortT = Cards.sortToggle(null, { key: 'crazy8s_sort', value: 'suit', flip: function () { return handEl; }, onChange: function () { if (S && handEl) paintHand(); } });
+  function build() {
+    app.className = 'stage c8-stage'; app.innerHTML = '';
+    LAY = layoutFor();
+    root = el('div', { class: 'c8 L-' + LAY });
+    tblEl = el('div', { class: 'tbl wood', 'data-flip': '1' });
+    feltEl = el('div', { class: 'felt-in' });
+    wmEl = el('div', { class: 'wm', text: '' });
+    feltEl.appendChild(wmEl);
+    seatEls = [];
+    for (var p = 0; p < N(); p++) { var s = el('div', { class: 'st', 'data-flip': '1' }); seatEls.push(s); if (p !== me()) feltEl.appendChild(s); }
+    ctrEl = el('div', { class: 'ctr' });
+    stockEl = el('button', { type: 'button', class: 'stock', 'data-flip': '1', 'aria-label': 'Draw a card from the stock', onclick: function () { tapStock(); } });
+    pileEl = el('div', { class: 'pile', 'data-flip': '1', 'aria-label': 'Discard pile' });
+    suitEl = el('div', { class: 'suitb', hidden: true });
+    pileEl.appendChild(suitEl);
+    ctrEl.appendChild(stockEl); ctrEl.appendChild(pileEl);
+    feltEl.appendChild(ctrEl);
+    msgEl = el('div', { class: 'msg', hidden: true });
+    feltEl.appendChild(msgEl);
+    tblEl.appendChild(feltEl);
+    sideEl = el('div', { class: 'side' });
+    meEl = el('div', { class: 'me', 'data-flip': '1' });
+    boardEl = el('div', { class: 'board', 'data-flip': '1' });
+    actEl = el('div', { class: 'act', 'data-flip': '1' });
+    sortEl = el('div', { class: 'sortw' }, [sortT.el]);
+    statEl = el('div', { class: 'stat', 'aria-live': 'polite' });
+    sideEl.appendChild(meEl); sideEl.appendChild(sortEl); sideEl.appendChild(boardEl); sideEl.appendChild(statEl); sideEl.appendChild(actEl);
+    handEl = el('div', { class: 'c8h' });
+    root.appendChild(tblEl); root.appendChild(sideEl); root.appendChild(handEl);
+    // the table's size can change after a turn of the device has been laid out (the bar settles): fit again
+    if (window.ResizeObserver) { var ro = new ResizeObserver(function () { if (!feltEl.isConnected) { ro.disconnect(); return; } cancelAnimationFrame(ro.f); ro.f = requestAnimationFrame(fit); }); ro.observe(feltEl); ro.observe(handEl); }
+    app.appendChild(root);
+  }
+  // the seats round the far side of the table: an arc from your left, over the top, to your right
+  function fit() {
+    if (!root) return;
+    var n = N(), m = n - 1, fw = feltEl.clientWidth, fh = feltEl.clientHeight;
+    var rx = LAY === 'pu' || LAY === 'tu' ? 0.38 : 0.4, ry = LAY === 'pu' || LAY === 'tu' ? 0.33 : 0.34, cy0 = 0.42;
+    if (m === 1) { rx = 0; }
+    var pos = [], i;
+    for (i = 1; i <= m; i++) {
+      var th = Math.PI - i * Math.PI / (m + 1);
+      if (m >= 5) th = Math.PI * 1.06 - (i - 1) * Math.PI * 1.12 / (m - 1);   // (many seats: spread a little below the sides)
+      pos.push({ x: 0.5 + rx * Math.cos(th), y: cy0 - ry * Math.sin(th) - (m === 1 ? 0.06 : 0) });
+    }
+    // seat size: from the room between neighbors
+    var gap = 999; for (i = 1; i < pos.length; i++) gap = Math.min(gap, Math.hypot((pos[i].x - pos[i - 1].x) * fw, (pos[i].y - pos[i - 1].y) * fh));
+    if (m === 1) gap = fw * 0.6;
+    var sz = Math.max(0.7, Math.min(Math.min(fw, fh * 1.3) / 330, gap / 88, 1.55));
+    feltEl.style.setProperty('--sz', sz.toFixed(3));
+    var k = 0;
+    for (var p = 0; p < n; p++) {
+      if (p === me()) continue;
+      var q = (me() + 1 + k) % n, s = seatEls[q], at = pos[k];
+      // keep the seat inside the felt
+      var hw = 43 * sz + 6, hh = 52 * sz + 6;
+      s.style.left = Math.max(hw, Math.min(fw - hw, at.x * fw)) + 'px';
+      s.style.top = Math.max(hh, Math.min(fh - hh, at.y * fh)) + 'px';
+      k++;
+    }
+    // the piles below the seats, as large as the room allows
+    var top = 0; seatEls.forEach(function (s, q) { if (q !== me() && s.isConnected) top = Math.max(top, s.offsetTop + s.offsetHeight / 2); });
+    var capH = LAY === 'ps' ? 0 : 58, room = fh - top - 14 - capH;
+    var pw = Math.max(48, Math.min(fw * (m >= 4 ? 0.26 : 0.34), (room - 30) / 1.4 * 0.92, LAY === 'tu' || LAY === 'ts' ? 170 : 140));
+    if (m >= 5 && fh > fw) pw = Math.min(pw, fw * 0.24);
+    feltEl.style.setProperty('--pw', pw.toFixed(1) + 'px');
+    var cy = Math.min(top + 14 + room / 2, fh - capH - pw * 0.7 - 26);
+    feltEl.style.setProperty('--cy', Math.max(pw * 0.75 + 8, cy).toFixed(0) + 'px');
+    fitHand();
+  }
+  // the hand: cards as large as the room allows, overlapping only when they must
+  function fitHand() {
+    if (!handEl) return;
+    var cards = handEl.querySelectorAll('.pcard'), n = cards.length || 1, W = handEl.clientWidth - 12, H;
+    var maxW = LAY === 'pu' ? Math.min(innerWidth * 0.23, 96) : LAY === 'tu' ? 124 : LAY === 'ps' ? 130 : Math.min(innerHeight * 0.16, 124);
+    if (LAY === 'ps') { H = handEl.clientHeight - 8; maxW = Math.min(maxW, H / 1.58); }
+    var cw = maxW, minShow = 0.34;
+    // each card shows at least a third of its width; a big hand gets smaller cards before it squeezes more
+    if (cw + (n - 1) * cw * minShow > W) cw = Math.max(LAY === 'pu' ? 46 : 52, W / (1 + (n - 1) * minShow));
+    var ov = n > 1 ? Math.min(6, (W - cw) / (n - 1) - cw) : 0;
+    ov = Math.max(ov, -cw * 0.8);
+    handEl.style.setProperty('--cw', cw.toFixed(1) + 'px');
+    handEl.style.setProperty('--ov', ov.toFixed(1) + 'px');
+  }
+  // the last painted frame of every piece, so a turn of the device can glide from it
+  var SNAP = new Map();
+  function flipNodes() { return root ? [].slice.call(root.querySelectorAll('[data-flip], .c8h > .pcard, .pile > .pcard')) : []; }
+  (function snapLoop() {
+    if (root && root.isConnected && !document.hidden) { var m = new Map(); flipNodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); SNAP = m; }
+    setTimeout(function () { requestAnimationFrame(snapLoop); }, 120);
+  })();
+  window.addEventListener('resize', function () { relayout(); });
+  function relayout() {
+    if (!root || !root.isConnected) return;
+    var nl = layoutFor(), snap = SNAP;
+    if (nl !== LAY) { root.classList.remove('L-' + LAY); LAY = nl; root.classList.add('L-' + LAY); msgEl.hidden = true; if (statEl) statEl.textContent = ''; showStatus(); }
+    fit();
+    var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) return;
+    flipNodes().forEach(function (n) {
+      var a = snap.get(n); if (!a) return;
+      var b = n.getBoundingClientRect(); if (!b.width) return;
+      var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01) return;
+      n.style.transition = 'none'; n.style.transformOrigin = '0 0';
+      n.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        n.style.transition = 'transform .42s cubic-bezier(.2,.8,.25,1)'; n.style.transform = '';
+        setTimeout(function () { if (!n.style.transform) { n.style.transition = ''; n.style.transformOrigin = ''; } }, 470);
+      }); });
+    });
+  }
+
+  // ═══ Painting the table from the state ═══
+  function render() { if (!root || !root.isConnected) build(); paint(); fit(); paintHand(); }
+  function paint() { paintSeats(); paintCenter(); paintMe(); paintBoard(); paintAct(); paintHand(); }
+  function upSeat() { var X = V(); return X.phase === 'play' && !VIEW ? X.turn : -1; }
+  function avatarEl(p) {
+    return el('span', { class: 'avatar', style: { '--c': Kit.color(p) }, html: S.players[p].cpu ? Kit.icon('bot') : Kit.esc(fn(p).charAt(0).toUpperCase()) });
+  }
+  function paintSeats() {
+    var X = V(), up = upSeat();
+    seatEls.forEach(function (s, p) {
+      if (p === me()) return;
+      var n = X.hands[p].length, say = s.querySelector('.say');
+      s.innerHTML = '';
+      s.classList.toggle('turn', up === p);
+      s.classList.toggle('one', n === 1 && X.phase === 'play');
+      var bk = el('div', { class: 'bk' });
+      for (var k = 0; k < Math.min(n, 4); k++) bk.appendChild(Kit.card('', '', { back: true }));
+      bk.appendChild(el('b', { class: 'n', text: String(n) }));
+      s.appendChild(bk);
+      s.appendChild(el('div', { class: 'tg' }, [avatarEl(p), el('span', { class: 'nm', text: fn(p) })]));
+      s.appendChild(el('div', { class: 'sc', text: X.scores[p] + (X.scores[p] === 1 ? ' point' : ' points') }));
+      if (say) s.appendChild(say);
+    });
+  }
+  // a stable little turn for each card on the pile, from the card and where it lies, so the pile looks thrown
+  function tilt(c, i) {
+    var h = 7; for (var k = 0; k < c.length; k++) h = (h * 31 + c.charCodeAt(k) + i * 17) % 9973;
+    return { r: (h % 23) - 11, x: ((h >> 3) % 13) - 6, y: ((h >> 5) % 11) - 5 };
+  }
+  function paintCenter() {
+    var X = V(), left = X.deck.length;
+    // the stock: a few backs stacked, how many are left under it
+    stockEl.innerHTML = '';
+    var layers = Math.min(4, Math.ceil(left / 8));
+    for (var k = 0; k < layers; k++) { var b = Kit.card('', '', { back: true }); b.style.transform = 'translate(' + (-k * 1.5) + 'px,' + (-k * 1.5) + 'px)'; stockEl.appendChild(b); }
+    stockEl.appendChild(el('span', { class: 'cnt', text: left ? left + (left === 1 ? ' card' : ' cards') : X.disc.length > 1 ? 'Empty' : 'Empty' }));
+    stockEl.classList.toggle('none', !left && X.disc.length < 2);
+    if (X.pend > 0) stockEl.appendChild(el('b', { class: 'pend' + (X.run >= 3 ? ' big' : ''), text: '+' + X.pend }));
+    var mine = myTurn();
+    stockEl.classList.toggle('go', !!(mine && ((X.pend > 0 && !Core.legal(X, me()).length) || (X.pend <= 0 && Core.canDraw(X, me()) && !Core.legal(X, me()).length))));
+    stockEl.setAttribute('aria-label', X.pend > 0 ? 'Take ' + X.pend + ' cards' : 'Draw a card from the stock');
+    // the discard pile: its last few cards, each lying a little turned
+    [].slice.call(pileEl.querySelectorAll('.pcard')).forEach(function (n) { n.remove(); });
+    var from = Math.max(0, X.disc.length - 7);
+    for (var i = from; i < X.disc.length; i++) {
+      var c = X.disc[i], t = tilt(c, i), node = cardEl(c, { cls: i === X.disc.length - 1 ? 'top' : '' });
+      node.style.transform = 'translate(' + t.x + 'px,' + t.y + 'px) rotate(' + t.r + 'deg)';
+      pileEl.insertBefore(node, suitEl);
+    }
+    // an 8 on top: the suit it named
+    var top = Core.top(X), named = Core.rk(top) === '8';
+    suitEl.hidden = !named;
+    if (named) { suitEl.className = 'suitb' + (X.suit === 'h' || X.suit === 'd' ? ' red' : ''); suitEl.innerHTML = '<b>' + GL[X.suit] + '</b><small>' + SN[X.suit] + '</small>'; }
+    wmEl.textContent = GL[X.suit]; wmEl.classList.toggle('red', X.suit === 'h' || X.suit === 'd');
+  }
+  function paintMe() {
+    var X = V(), p = me(), n = X.hands[p] ? X.hands[p].length : 0, say = meEl.querySelector('.say');
+    meEl.innerHTML = '';
+    meEl.classList.toggle('turn', upSeat() === p && !BLIND);
+    meEl.classList.toggle('one', n === 1 && X.phase === 'play');
+    if (NET && MYSEAT < 0) { meEl.hidden = true; return; }
+    meEl.hidden = false;
+    meEl.appendChild(el('span', { class: 'av' }, [avatarEl(p)]));
+    meEl.appendChild(el('span', { class: 'tx' }, [el('b', { text: short(p) === 'You' ? S.players[p].name : fn(p) }), el('small', { text: X.scores[p] + (X.scores[p] === 1 ? ' point' : ' points') })]));
+    if (say) meEl.appendChild(say);
+  }
+  function paintBoard() {
+    if (!boardEl) return;
+    var X = V(); boardEl.innerHTML = '';
+    var hi = Math.max.apply(null, X.scores), tgt = X.target;
+    boardEl.appendChild(el('div', { class: 'bh' }, [el('span', { text: 'Hand ' + X.round }), el('span', { text: tgt ? 'Game to ' + tgt : 'One hand' })]));
+    X.players.forEach(function (pl, p) {
+      boardEl.appendChild(el('div', { class: 'br' + (hi > 0 && X.scores[p] === hi ? ' lead' : ''), style: { '--c': Kit.color(p) } }, [el('i'), el('span', { text: short(p) }), el('b', { text: String(X.scores[p]) })]));
+      if (tgt) boardEl.appendChild(el('div', { class: 'bar', style: { '--c': Kit.color(p) } }, [el('i', { style: { width: Math.min(100, X.scores[p] * 100 / tgt) + '%' } })]));
+    });
+  }
+  function myTurn() { var X = V(); return !VIEW && !BLIND && !busy && X.phase === 'play' && X.turn === me() && (!NET || MYSEAT >= 0) && !(S.players[me()] || {}).cpu; }
+  function handCards() {
+    var X = V(), h = (X.hands[me()] || []).slice();
+    var objs = h.map(cardObj);
+    Cards.sort(objs, { suits: ['s', 'h', 'c', 'd'], by: sortT.get() });
+    return objs;
+  }
+  function paintHand() {
+    if (!handEl) return;
+    var X = V();
+    handEl.innerHTML = '';
+    if (NET && MYSEAT < 0) return;
+    var mine = myTurn(), ok = mine ? Core.legal(X, me()) : [];
+    handEl.classList.toggle('mine', mine);
+    handCards().forEach(function (c) {
+      var n = BLIND ? Kit.card('', '', { back: true }) : Cards.el(c);
+      if (!BLIND) {
+        if (mine) n.classList.add(ok.indexOf(c.id) >= 0 ? 'ok' : 'no');
+        if (fresh[c.id]) n.classList.add('fresh');
+        n.addEventListener('click', function () { tapCard(c.id, n); });
+      }
+      handEl.appendChild(n);
+    });
+    if (sortEl) sortEl.hidden = BLIND || !(X.hands[me()] && X.hands[me()].length > 2);
+    fitHand();
+  }
+  // what's happening, said on the felt under the piles (a flash takes its place for a moment)
+  function hint(t, sub) { STATUS = { t: t, sub: sub }; showStatus(); }
+  function showStatus() {
+    var cap = LAY === 'ps' ? statEl : msgEl; if (!cap || flash.on) return;
+    if (!STATUS) { if (cap === msgEl) msgEl.hidden = true; else cap.textContent = ''; return; }
+    cap.innerHTML = ''; cap.appendChild(document.createTextNode(STATUS.t)); if (STATUS.sub) cap.appendChild(el('small', { text: STATUS.sub }));
+    cap.hidden = false;
+  }
+  function btn(label, cls, fn2) { var b = el('button', { type: 'button', class: 'btn ' + cls, text: label, onclick: function () { Kit.haptic('light'); fn2(); } }); actEl.appendChild(b); return b; }
+  function paintAct() {
+    var X = V(); actEl.innerHTML = ''; STATUS = null; showStatus();
+    if (VIEW || X.phase !== 'play') return;
+    var p = me(), t = X.turn;
+    if (NET && MYSEAT < 0) { hint('You’re watching this table.'); return; }
+    if (BLIND) { hint('Pass the device to ' + fn(t) + '.'); return; }
+    if (t !== p || S.players[p].cpu) {
+      var who = fn(t);
+      if (X.pend > 0) hint(who + ' has to play a 2 or take ' + X.pend + ' cards.');
+      else hint(NET && !S.players[t].cpu ? 'Waiting for ' + who + ' to play.' : who + '’s turn.');
+      return;
+    }
+    if (busy) { hint('Your turn.'); return; }
+    var ok = Core.legal(X, p);
+    if (X.pend > 0) {
+      hint(ok.length ? 'Play a 2 to pass it on, or take ' + X.pend + ' cards.' : 'You have no 2, so you take ' + X.pend + ' cards.');
+      btn('Take ' + X.pend + ' cards', ok.length ? 'btn-soft' : 'btn-primary', function () { move({ k: 'take' }); });
+      return;
+    }
+    var suitWord = SN[X.suit].toLowerCase().replace(/s$/, ''), top = Core.top(X);
+    var follow = Core.rk(top) === '8' ? 'Play a ' + suitWord + ' or an 8.' : 'Play a ' + suitWord + ', ' + (/^(ace|8)$/.test(rankWord(top)) ? 'an ' : 'a ') + rankWord(top) + ' or an 8.';
+    if (X.opts.draw === 'one' && X.drew) {
+      hint('The card you drew can be played.', 'Play it, or keep it and pass.');
+      btn('Keep it and pass', 'btn-soft', function () { move({ k: 'pass' }); });
+      return;
+    }
+    if (ok.length) {
+      hint('Your turn. ' + follow, X.drew ? 'You can play now.' : null);
+      if (Core.canDraw(X, p) && X.opts.draw === 'until') btn('Draw', 'btn-soft', function () { move({ k: 'draw' }); });
+      return;
+    }
+    if (Core.canDraw(X, p)) {
+      hint(X.drew ? 'Still nothing to play. Draw again.' : 'You have nothing to play. Draw a card.', follow);
+      btn('Draw a card', 'btn-primary', function () { move({ k: 'draw' }); });
+      return;
+    }
+    if (Core.canPass(X, p)) { hint('There’s nothing left to draw, and you can’t play.'); btn('Pass', 'btn-primary', function () { move({ k: 'pass' }); }); }
+  }
+
+  // ═══ Your moves ═══
+  function nudge() { Kit.haptic('error'); actEl.classList.remove('nudge'); void actEl.offsetWidth; actEl.classList.add('nudge'); }
+  function tapCard(id, node) {
+    if (!myTurn()) { if (S && V().phase === 'play' && !busy) nudge(); return; }
+    var X = V(), ok = Core.legal(X, me());
+    if (ok.indexOf(id) < 0) {
+      Kit.sfx('bad'); Kit.haptic('error');
+      node.classList.remove('shake'); void node.offsetWidth; node.classList.add('shake');
+      return;
+    }
+    Kit.sfx('tap');
+    if (Core.rk(id) === '8' && X.hands[me()].length > 1) { openPick(id); return; }
+    move({ k: 'play', c: id });
+  }
+  function tapStock() {
+    if (!myTurn()) { if (S && V().phase === 'play' && !busy) nudge(); return; }
+    var X = V();
+    if (X.pend > 0) { move({ k: 'take' }); return; }
+    if (Core.canDraw(X, me())) { move({ k: 'draw' }); return; }
+    nudge();
+  }
+  // an 8: the four suits as big tiles, the one you hold most lit
+  function openPick(id) {
+    closePick();
+    var X = V(), h = X.hands[me()].filter(function (c) { return c !== id; }), cnt = { s: 0, h: 0, d: 0, c: 0 };
+    h.forEach(function (c) { if (Core.rk(c) !== '8') cnt[Core.su(c)]++; });
+    var best = 's'; ['s', 'h', 'd', 'c'].forEach(function (s) { if (cnt[s] > cnt[best]) best = s; });
+    var g = el('div', { class: 'g' });
+    ['s', 'h', 'd', 'c'].forEach(function (s) {
+      g.appendChild(el('button', { type: 'button', class: 't' + (s === 'h' || s === 'd' ? ' red' : '') + (cnt[s] && s === best ? ' best' : ''), 'aria-label': SN[s], onclick: function () {
+        Kit.haptic('medium'); closePick(); move({ k: 'play', c: id, s: s });
+      } }, [el('b', { text: GL[s] }), el('span', { text: SN[s] }), el('small', { text: cnt[s] ? 'You hold ' + cnt[s] : 'You hold none' })]));
+    });
+    pickEl = el('div', { class: 'pick', role: 'dialog', 'aria-label': 'Name the suit' }, [el('div', { class: 'pw' }, [
+      el('h2', { text: 'Name the suit for your 8' }), g,
+      el('button', { type: 'button', class: 'btn btn-ghost x', text: 'Keep the 8', onclick: function () { Kit.sfx('tap'); closePick(); } })])]);
+    pickEl.addEventListener('click', function (e) { if (e.target === pickEl) closePick(); });
+    root.appendChild(pickEl);
+    Kit.sfx('pop');
+  }
+  function closePick() { if (pickEl) { pickEl.remove(); pickEl = null; } }
+  function move(a) {
+    if (!S) return;
+    if (NET) {
+      if (MYSEAT < 0) return;
+      busy = true; paintAct(); paintHand();
+      var seat = MYSEAT;
+      NET.act(function (st) { var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; });
+      return;
+    }
+    if (a.k === 'draw') undoStack = [];   // (a card you've seen can't go back into the stock)
+    else snapshot();
+    doMove(me(), a);
+  }
+  function doMove(p, a) {
+    var prev = clone(S), mv = Core.apply(S, p, a);
+    if (!mv) { busy = false; paint(); return; }
+    busy = true; var t = token;
+    step(prev, mv, function () { if (t !== token) return; busy = false; save(); next(); });
+  }
+
+  // ═══ Turns ═══
+  function next() {
+    if (NET || !S) return;
+    if (S.phase === 'over') { finish(); return; }
+    var p = Core.turn(S);
+    if (p < 0) return;
+    if (S.players[p].cpu) {
+      paint();
+      var drawing = S.drew > 0;
+      later(function () { if (!S || busy || Core.turn(S) !== p) return; var a = Core.bot(S, p); if (a) doMove(p, a); }, drawing ? 380 : S.pend > 0 ? 900 : 760);
+      return;
+    }
+    if (p !== me() && !onePersonLocal()) { gate(p, function () { paint(); }); return; }
+    paint();
+  }
+  function onePersonLocal() { return people() < 2; }
+  // pass and play: every hand face down while the device goes to the next person
+  function gate(p, then) {
+    BLIND = true; undoStack = []; paint();
+    var t = token;
+    Kit.handoff({ name: S.players[p].name, color: Kit.color(p), what: 'cards' }).then(function () {
+      if (t !== token || !S) return;
+      BLIND = false; LME = p; S.me = p; save(); build(); render(); then && then();
+    });
+  }
+
+  // ═══ A move played out on the table ═══
+  function rectOf(n) { return n ? n.getBoundingClientRect() : null; }
+  function srcRect(p, c) {
+    if (p === me() && handEl) { var h = handEl.querySelector('[data-id="' + c + '"]'); if (h) return rectOf(h); return rectOf(handEl); }
+    var s = seatEls[p]; return rectOf(s && (s.querySelector('.bk') || s));
+  }
+  function seatSay(p, text, cls, ms) {
+    var host = p === me() ? meEl : seatEls[p]; if (!host) return;
+    var old = host.querySelector('.say'); if (old) old.remove();
+    var b = el('div', { class: 'say' + (cls ? ' ' + cls : ''), text: text });
+    host.appendChild(b);
+    setTimeout(function () { b.remove(); }, ms || 1500);
+  }
+  function flash(t, ms) { var cap = LAY === 'ps' ? statEl : msgEl; cap.textContent = t; cap.hidden = false; flash.on = 1; clearTimeout(flash.t); flash.t = setTimeout(function () { flash.on = 0; if (cap === msgEl) msgEl.hidden = true; showStatus(); }, ms || 1700); }
+  function ghostFly(fromR, toR, ms, delay, back, c) {
+    if (!fromR || !toR) return;
+    setTimeout(function () {
+      var g = back ? Kit.card('', '', { back: true }) : cardEl(c);
+      g.classList.add('fly');
+      var w = fromR.width || 60; g.style.setProperty('--cw', w + 'px');
+      g.style.left = fromR.left + 'px'; g.style.top = fromR.top + 'px'; g.style.transition = 'none';
+      document.body.appendChild(g);
+      var dx = toR.left + toR.width / 2 - (fromR.left + w / 2), dy = toR.top + toR.height / 2 - (fromR.top + w * 0.7), sc = Math.max(0.35, Math.min(1.4, (toR.width || w) / w));
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        g.style.transition = 'transform ' + ms + 'ms cubic-bezier(.3,.7,.3,1), opacity ' + ms + 'ms';
+        g.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sc + ') rotate(' + (Math.random() * 16 - 8) + 'deg)';
+      }); });
+      setTimeout(function () { g.remove(); }, ms + 30);
+    }, delay || 0);
+  }
+  function step(prev, mv, done) {
+    var p = mv.p, X = S;
+    if (mv.k === 'play') {
+      var from = srcRect(p, mv.c), finalHand = !!mv.end;
+      if (finalHand) {
+        // the hand is over: show its last moment as it lay, then the count
+        VIEW = clone(prev); VIEW.hands[p] = VIEW.hands[p].filter(function (c) { return c !== mv.c; }); VIEW.disc.push(mv.c);
+        VIEW.suit = Core.su(mv.c); VIEW.pend = 0;
+      }
+      paint();
+      var node = pileEl.querySelector('.pcard.top');
+      if (node && from) {
+        var t = node.style.transform;
+        Cards.fly(node, { getBoundingClientRect: function () { return from; } }, { ms: 360 }).then(function () { node.style.transform = t; node.classList.add('land'); });
+        node.style.transform = t;
+      }
+      Kit.sfx('flip'); later(function () { Kit.sfx('deal', 0.8); }, 300);
+      if (isMe(p)) Kit.haptic('light');
+      later(function () { afterPlay(prev, mv, done); }, 400);
+      return;
+    }
+    if (mv.k === 'draw' || mv.k === 'take') {
+      var stockR = rectOf(stockEl);
+      if (mv.reshuf) { flash('The discard pile is shuffled into a new stock.', 1800); Kit.sfx('whoosh'); }
+      var got = mv.drew || [];
+      if (p === me() && !BLIND) got.forEach(function (c) { fresh[c] = 1; });
+      paint();
+      if (p === me() && !BLIND && handEl) {
+        got.forEach(function (c, i) {
+          var n = handEl.querySelector('[data-id="' + c + '"]');
+          if (n) { n.style.opacity = '0'; setTimeout(function () { n.style.opacity = ''; Cards.fly(n, { getBoundingClientRect: function () { return stockR; } }, { ms: 340 }); }, i * 130); }
+        });
+      } else got.forEach(function (c, i) { ghostFly(stockR, srcRect(p), 380, i * 130, true); });
+      got.forEach(function (c, i) { later(function () { Kit.sfx('deal'); }, i * 130); });
+      later(function () { fresh = {}; if (!busy) paintHand(); }, 2200);
+      if (mv.k === 'take') {
+        later(function () { seatSay(p, (isMe(p) ? 'You take ' : 'Takes ') + got.length, 'hot'); if (isMe(p)) Kit.haptic('error'); Kit.sfx(isMe(p) ? 'bad' : 'whoosh'); }, 120);
+      }
+      if (mv.pass) later(function () { seatSay(p, isMe(p) ? 'You can’t play it' : 'Pass'); }, 360);
+      later(done, Math.max(420, got.length * 130 + 340) + (mv.pass ? 300 : 0));
+      return;
+    }
+    if (mv.k === 'pass') {
+      paint(); seatSay(p, 'Pass'); Kit.sfx('tap');
+      if (mv.end) { VIEW = clone(prev); paint(); later(function () { handEnd(done); }, 700); return; }
+      later(done, 600);
+      return;
+    }
+    paint(); done();
+  }
+  // what a card does once it lands: an 8 names its suit, a 2 adds to the stack, the queen of spades skips, a last card glows
+  function afterPlay(prev, mv, done) {
+    var p = mv.p, c = mv.c, mine = isMe(p);
+    if (mv.end) { handEnd(done); return; }
+    var r = Core.rk(c);
+    if (r === '8') {
+      suitEl.classList.remove('pop'); void suitEl.offsetWidth; suitEl.classList.add('pop');
+      Kit.sfx('sparkle'); seatSay(p, SN[mv.s], 'gold');
+    }
+    if (mv.pend) {
+      Kit.sfx('chip'); Kit.haptic(mine ? 'medium' : 'light');
+      var nx = Core.nextOf(S, p);
+      if (mv.run === 4) bigTwos(prev, p);
+      else if (mv.run === 3) Kit.moment({ chip: '+6', title: 'Three 2s stacked', line: short(nx) + (short(nx) === 'You' ? ' take six cards unless you play the last 2.' : ' takes six cards unless they play the last 2.'), tone: isMe(nx) ? 'bad' : '', ms: 2000 });
+      else if (mv.run === 2) seatSay(nx, '+4 coming', 'hot');
+    }
+    if (mv.skip != null) {
+      var s = seatEls[mv.skip]; if (s && mv.skip !== me()) { s.classList.remove('skip'); void s.offsetWidth; s.classList.add('skip'); }
+      seatSay(mv.skip, isMe(mv.skip) ? 'You’re skipped' : 'Skipped', 'hot'); Kit.sfx('whoosh');
+    }
+    if (mv.one) { later(function () { seatSay(p, 'Last card!', 'hot', 1800); Kit.sfx('pop'); if (!mine) Kit.haptic('light'); }, mv.skip != null || r === '8' ? 700 : 150); }
+    later(done, r === '8' || mv.pend || mv.skip != null ? 700 : 260);
+  }
+  function bigTwos(prev, p) {
+    var twos = prev.disc.slice(-3).concat([S.disc[S.disc.length - 1]]).filter(function (c) { return Core.rk(c) === '2'; });
+    var nx = Core.nextOf(S, p);
+    Kit.moment({ big: true, chip: '+8', title: 'All four 2s', line: 'Every 2 in the deck is on the pile, so ' + (isMe(nx) ? 'you take eight cards.' : fn(nx) + ' takes eight cards.'), cards: twos.map(function (c) { return { r: '2', s: Core.su(c) }; }), tone: isMe(nx) ? 'bad' : '', ms: 2800 });
+    Kit.sfx('boom'); Kit.haptic('heavy');
+  }
+
+  // ═══ The end of a hand: the count ═══
+  function handEnd(done) {
+    var L = S.last, w = L.w, mineW = w >= 0 && isMe(w);
+    var over = S.phase === 'over';
+    // the moment: going out, bigger on an 8
+    if (w >= 0) {
+      seatSay(w, isMe(w) ? 'You’re out!' : 'Out!', 'gold', 2200);
+      if (L.eight) {
+        Kit.moment({ big: true, icon: 'sparkle', title: 'Out on an 8', line: (isMe(w) ? 'You went out' : fn(w) + ' went out') + ' with the 8 of ' + SN[Core.su(L.last)].toLowerCase() + ' and caught ' + L.gain[w] + ' points.', pts: '+' + L.gain[w], cards: [{ r: '8', s: Core.su(L.last) }], tone: mineW || !onePerson() ? '' : 'bad', ms: 2900 });
+        Kit.sfx(mineW ? 'win' : 'sparkle'); Kit.haptic(mineW ? 'success' : 'light'); if (mineW) Kit.confetti({ count: 70 });
+      } else {
+        Kit.moment({ chip: Core.label(L.last), title: isMe(w) ? 'You went out' : fn(w) + ' went out', pts: '+' + L.gain[w], tone: mineW || !onePerson() ? '' : 'bad', ms: 1700 });
+        Kit.sfx(mineW ? 'good' : 'pop'); if (mineW) Kit.haptic('success');
+      }
+    } else { flash('Nobody can play or draw. The hand is blocked.', 2200); Kit.sfx('bad'); }
+    later(function () { countSheet(L, over, done); }, L.eight ? 3000 : 1500);
+  }
+  var COUNT = null;
+  function countSheet(L, over, done) {
+    var box = el('div', { class: 'cnt8' }), w = L.w, order = [];
+    if (w >= 0) order.push(w);
+    for (var q = 0; q < S.n; q++) if (q !== w) order.push(q);
+    var rows = order.map(function (q) {
+      var r = el('div', { class: 'r' + (q === w ? ' w' : '') }, [
+        avatarEl(q),
+        el('div', { class: 'who' }, [el('b', { text: short(q) }), el('small', { text: q === w ? (L.how === 'block' ? 'Fewest points left' : L.clean ? 'Went out without drawing a card' : 'Went out on this card') : L.hands[q].length ? 'Holding ' + L.hands[q].length + (L.hands[q].length === 1 ? ' card' : ' cards') : 'No cards left' })]),
+        el('div', { class: 'pt', text: q === w ? '+0' : '0' }),
+        el('div', { class: 'cs' })
+      ]);
+      if (q === w && L.last) { var lc = cardEl(L.last); if (L.eight) lc.classList.add('e8'); r.querySelector('.cs').appendChild(lc); }
+      box.appendChild(r); return { q: q, r: r };
+    });
+    box.appendChild(el('div', { class: 'tot' }, [el('span', { text: S.target ? 'The first to ' + S.target + ' wins the game.' : 'One hand decides the game.' })]));
+    var go = function () { if (COUNT) { var c = COUNT; COUNT = null; try { c.close(); } catch (e) {} } VIEW = null; if (over) { done(); return; } S.seen = S.round; save(); dealIn(done); };
+    COUNT = Kit.sheet({ title: L.how === 'block' ? 'Hand ' + L.round + ' was blocked' : 'Hand ' + L.round + ': the count', node: box, dismissible: false,
+      actions: [{ label: over ? 'See who won' : 'Deal the next hand', primary: true, onClick: function () { COUNT = null; go(); } }] });
+    // the cards left in each hand turn up one at a time, and the winner's points count up with them
+    var t = 250, gained = 0, wPt = w >= 0 ? rows[0].r.querySelector('.pt') : null;
+    rows.forEach(function (x) {
+      if (x.q === w) return;
+      var cs = x.r.querySelector('.cs'), pt = x.r.querySelector('.pt'), run = 0;
+      L.hands[x.q].slice().sort(function (a, b) { return Core.pts(b) - Core.pts(a); }).forEach(function (c) {
+        setTimeout(function () {
+          if (!cs.isConnected) return;
+          var n = cardEl(c); if (Core.rk(c) === '8') n.classList.add('e8'); cs.appendChild(n);
+          run += Core.pts(c); pt.textContent = String(run);
+          var add = L.how === 'block' ? 0 : Core.pts(c); gained += add; if (wPt && add) wPt.textContent = '+' + gained;
+          Kit.sfx(Core.rk(c) === '8' ? 'chip' : 'tick', 0.7);
+        }, t);
+        t += Core.rk(c) === '8' ? 260 : 120;
+      });
+      t += 160;
+    });
+    setTimeout(function () {
+      if (wPt) wPt.textContent = '+' + (w >= 0 ? L.gain[w] : 0);
+      if (!box.isConnected) return;
+      if (w >= 0 && L.gain[w] >= 100) { Kit.moment({ icon: 'flame', title: (isMe(w) ? 'You caught ' : fn(w) + ' caught ') + L.gain[w] + ' points', line: 'That’s a big hand: ' + L.gain[w] + ' points in one go.', pts: '+' + L.gain[w], at: null, ms: 2000 }); Kit.sfx('sparkle'); }
+    }, t + 100);
+  }
+  // the next hand dealt round the table
+  function dealIn(done) {
+    if (!NET && !onePersonLocal()) { var p = Core.turn(S); if (person(p)) { LME = p; S.me = p; } }
+    build(); render();
+    var cards = handEl ? [].slice.call(handEl.querySelectorAll('.pcard')) : [], src = stockEl;
+    var sr = rectOf(src);
+    cards.forEach(function (n, i) { n.style.opacity = '0'; setTimeout(function () { n.style.opacity = ''; Cards.fly(n, { getBoundingClientRect: function () { return sr; } }, { ms: 320 }); if (i % 2 === 0) Kit.sfx('deal', 0.7); }, 60 + i * 70); });
+    seatEls.forEach(function (s, p) { if (p === me()) return; var bk = s.querySelector('.bk'); if (bk) { bk.style.opacity = '0'; setTimeout(function () { bk.style.opacity = ''; Cards.fly(bk, { getBoundingClientRect: function () { return sr; } }, { ms: 340 }); }, 100 + p * 80); } });
+    var top = pileEl.querySelector('.pcard.top'); if (top) { var tt = top.style.transform; top.style.opacity = '0'; later(function () { top.style.opacity = ''; Cards.fly(top, { getBoundingClientRect: function () { return sr; } }, { ms: 300 }).then(function () { top.style.transform = tt; }); top.style.transform = tt; Kit.sfx('flip'); }, 200 + cards.length * 70); }
+    flash('Hand ' + S.round + '. ' + (S.turn === me() && onePerson() ? 'You go first.' : fn(S.turn) + ' goes first.'), 1700);
+    later(done, 500 + cards.length * 70);
+  }
+  function startHand() {
+    if (!NET && !onePersonLocal()) { var p = Core.turn(S); if (person(p)) { LME = p; S.me = p; } }
+    save(); busy = true; var t = token;
+    dealIn(function () { if (t !== token) return; busy = false; next(); });
+  }
+
+  // ═══ The score pad ═══
+  function padTable(st) {
+    var t = el('table', { class: 'pad8' }), hr = el('tr', null, [el('th', { class: 'rn', text: 'Hand' })]);
+    st.players.forEach(function (p, i) { hr.appendChild(el('th', { text: short(i), style: { color: Kit.color(i) } })); });
+    t.appendChild(el('thead', null, [hr]));
+    var tb = el('tbody');
+    st.rounds.forEach(function (r, i) {
+      var tr = el('tr', null, [el('th', { class: 'rn', text: String(i + 1) })]);
+      r.forEach(function (v) { tr.appendChild(el('td', { class: v ? 'w' : 'z', text: v ? '+' + v : '0' })); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    var hi = Math.max.apply(null, st.scores), ft = el('tr', null, [el('th', { class: 'rn', text: 'Total' })]);
+    st.scores.forEach(function (v) { ft.appendChild(el('td', { class: v === hi && hi > 0 ? 'lead' : '', text: String(v) })); });
+    t.appendChild(el('tfoot', null, [ft]));
+    return t;
+  }
+  function showPad() {
+    Kit.sheet({ title: 'Score pad', node: el('div', null, [padTable(S), el('p', { class: 'muted', style: { 'margin-top': '10px', 'font-size': '.85rem' }, text: S.target ? 'The first to ' + S.target + ' wins.' : 'This game is a single hand.' })]), actions: [{ label: 'Close', cls: 'btn-soft' }] });
+  }
+
+  // ═══ The end of the game ═══
+  function recordGame(st, mode, extra) {
+    var names = st.players.map(function (p) { return p.name; });
+    var hl = st.highlights.slice(-9);
+    if (st.stats.bestHand && st.stats.bestHand.g >= 40 && st.hx.length > 1) hl.push('Best hand: ' + names[st.stats.bestHand.p] + ' caught ' + st.stats.bestHand.g + ' points in hand ' + st.stats.bestHand.r + '.');
+    hl.push(st.hx.length === 1 ? 'The game was a single hand.' : st.hx.length + ' hands, played to ' + st.target + '.');
+    (extra || []).forEach(function (x) { hl.push(x); });
+    var detail = { names: names, cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''), to: st.target,
+      o: (st.opts.draw === 'one' ? '1' : 'u') + (st.opts.twos ? '2' : '') + (st.opts.qs ? 'q' : ''), ws: st.winner, hx: clone(st.hx), sw: st.stats.sweep != null ? 1 : 0 };
+    // keep it small: the oldest hands lose the cards they held first
+    for (var i = 0; JSON.stringify(detail).length > 5600 && i < detail.hx.length; i++) delete detail.hx[i].h;
+    for (i = 0; JSON.stringify(detail).length > 5600 && i < detail.hx.length; i++) delete detail.hx[i].e;
+    Kit.record(HKEY, {
+      started: st.started, mode: mode,
+      players: st.players.map(function (p, i) { return { name: p.name, score: st.scores[i], cpu: p.cpu }; }),
+      winner: names[st.winner],
+      rounds: { labels: st.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: st.rounds },
+      highlights: hl, detail: detail
+    });
+  }
+  function finish() {
+    var st = S, w = st.winner;
+    recordGame(st, st.mode === 'local' ? 'Pass & play' : 'vs Computer');
+    var cfg = { players: st.players, target: st.target, draw: st.opts.draw, twos: st.opts.twos, qs: st.opts.qs, level: st.level, mode: st.mode };
+    var mine = isMe(w), lose = !person(w);
+    var rank = st.players.map(function (p, i) { return i; }).sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    clearSave(); S.phase = 'over';
+    var sweep = st.stats.sweep != null;
+    function show() {
+      Kit.win({
+        title: mine ? 'You win!' : fn(w) + ' wins!',
+        sub: (st.hx.length > 1 ? 'Won by ' + (st.scores[w] - st.scores[rank[1]]) + ' · ' + st.hx.length + ' hands' : (mine ? 'You went out first.' : fn(w) + ' went out first.')) + (sweep ? ' · Won every hand' : ''),
+        rank: rank.map(function (i) { return { name: st.players[i].name, score: st.scores[i], color: Kit.color(i), cpu: st.players[i].cpu, me: isMe(i) }; }),
+        lose: lose && onePerson(), icon: lose ? 'bot' : 'trophy',
+        again: function () { S = Core.newGame(cfg); S.mode = cfg.mode; S.seen = 0; LME = 0; Kit.gameStart(); undoStack = []; startHand(); },
+        look: 'Look at the table',
+        extra: st.hx.length > 1 ? [{ label: 'Score pad', onClick: function () { showPad(); } }] : null,
+        setup: function () { clearSave(); showSetup(); }
+      });
+    }
+    render();
+    if (sweep) {
+      Kit.moment({ big: true, icon: 'crown', title: 'A clean sweep', line: (mine ? 'You won' : fn(w) + ' won') + ' every one of the ' + st.hx.length + ' hands.', pts: String(st.scores[w]), tone: lose && onePerson() ? 'bad' : '', ms: 2800 });
+      Kit.sfx('win'); setTimeout(show, 3000);
+    } else show();
+  }
+
+  // ── Undo (your own last card) ──
+  function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 30) undoStack.shift(); }
+  function undo() {
+    if (busy || VIEW) return Kit.toast('One moment');
+    if (!undoStack.length) return Kit.toast('There’s nothing to take back');
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if (back.round !== S.round) { undoStack = []; return Kit.toast('A finished hand can’t be taken back'); }
+    if ((back.me || 0) !== LME && !onePersonLocal()) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; busy = false; closePick(); S = back; Kit.sfx('whoosh'); Kit.toast('Taken back'); save(); render(); next();
+  }
+
+  // ═══ Online (turnnet.js) ═══
+  // The table holds the whole game in fixed seats; each device draws it from its own seat with only its own hand face
+  // up. The rules and the computer players are the same as here.
+  var NQ = [], NGEN = 0, NETREC = {}, NST = null, NWIN = null;
+  function netOpts() {
+    var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_crazy8s')) || {}; } catch (e) {}
+    var o = g.options || {};
+    return { seats: Math.max(2, Math.min(7, +g.count || 2)), to: o.to == null ? 100 : +o.to, draw: o.draw === 'one' ? 'one' : 'until', twos: o.twos === 'on' ? 1 : 0, qs: o.qs === 'on' ? 1 : 0, level: Core.lv(o.level) };
+  }
+  function netStart(players, opts) {
+    var st = Core.newGame({ players: players.map(function (x) { return { name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }; }), target: opts.to, draw: opts.draw, twos: opts.twos, qs: opts.qs, level: opts.level });
+    st.online = 1; return st;
+  }
+  function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [p]; }
+  function netOver(st) { return st && st.phase === 'over' ? { win: [st.winner], text: st.players[st.winner].name + ' wins ' + st.scores[st.winner] } : null; }
+  function netBot(st, seat) { var a = Core.bot(st, seat); if (!a) return null; var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; }
+  function netShow(net, info) {
+    NET = net;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; closeWin(); closeCount(); }
+    NQ.push({ st: clone(net.state), prev: info.prev ? clone(info.prev) : null, mv: info.mv, info: info });
+    if (net.state && net.state.phase === 'over') netRecord(clone(net.state));
+    if (NQ.length > 8) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });
+    if (!busy || NQ.length === 1 && !VIEW && !COUNT) netPump();
+  }
+  function closeWin() { if (NWIN) { try { NWIN.close(); } catch (e) {} NWIN = null; } }
+  function closeCount() { if (COUNT) { try { COUNT.close(); } catch (e) {} COUNT = null; } VIEW = null; }
+  var pumping = false;
+  function netPump() {
+    if (pumping) return;
+    var it = NQ.shift(); if (!it) return;
+    var g = NGEN; pumping = true; busy = true;
+    netStep(it, function () { if (g !== NGEN) return; pumping = false; busy = false; if (NQ.length) netPump(); else if (NET && S) paint(); });
+  }
+  function netStep(it, done) {
+    var st = it.st, prev = it.prev, mv = it.mv, info = it.info;
+    MYSEAT = NET.seat;
+    st.players.forEach(function (pl, p) { var s = NET.seats[p]; if (s) pl.cpu = !!s.bot; });
+    NST = st; token++; closePick();
+    if (!mv || !prev || info.fresh || info.again || it.skip) {
+      S = st; VIEW = null; build(); render();
+      if (info.again) { Kit.gameStart(); Kit.callout('New game'); }
+      else if (info.fresh) Kit.gameStart();
+      if (st.phase === 'over') { setTimeout(function () { if (NET) netEnd(); }, 400); done(); return; }
+      if (info.fresh || info.again) { dealIn(done); return; }
+      done(); return;
+    }
+    prev.players = st.players;
+    S = prev; VIEW = null;
+    var ok = Core.turn(prev) === mv.p;
+    if (!ok) { S = st; render(); done(); return; }
+    S = st;
+    step(prev, mv, function () { if (st.phase === 'over' && mv.end) { render(); netEnd(); } done(); });
+  }
+  function netRecord(st) {
+    if (!NET || !st || st.phase !== 'over' || NET.seat < 0) return;
+    var key = NET.code + ':' + st.started, list = [];
+    try { list = JSON.parse(localStorage.getItem('crazy8s_netrec')) || []; } catch (e) {}
+    if (NETREC[key] || list.indexOf(key) >= 0) return;
+    NETREC[key] = 1;
+    try { localStorage.setItem('crazy8s_netrec', JSON.stringify(list.concat([key]).slice(-20))); } catch (e) {}
+    recordGame(st, 'Online', ['Played online at table ' + NET.code + '.']);
+  }
+  function netEnd() {
+    if (!NET || !NST || NST.phase !== 'over') return;
+    var st = NST, w = st.winner, res = NET.result, left = res && res.left != null, watching = MYSEAT < 0, won = !watching && w === MYSEAT;
+    netRecord(st);
+    var rank = st.players.map(function (p, i) { return i; }).sort(function (a, b) { return st.scores[b] - st.scores[a]; });
+    closeWin(); S = st;
+    NWIN = Kit.win({
+      title: left ? res.text : won ? 'You win!' : fn(w) + ' wins!',
+      sub: st.hx.length > 1 ? 'Won by ' + (st.scores[w] - st.scores[rank[1]]) + ' · ' + st.hx.length + ' hands' : (won ? 'You went out first.' : fn(w) + ' went out first.'),
+      rank: rank.map(function (i) { return { name: st.players[i].name, score: st.scores[i], color: Kit.color(i), cpu: st.players[i].cpu, me: !watching && i === MYSEAT }; }),
+      lose: !won, icon: won ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the table',
+      extra: st.hx.length > 1 ? [{ label: 'Score pad', onClick: function () { showPad(); } }] : null,
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() { NET = null; NST = null; NQ = []; NGEN++; busy = false; pumping = false; token++; closeWin(); closeCount(); MYSEAT = 0; resumeLocal(true); }
+
+  // ── Boot ──
+  function resumeLocal(back) {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.v === 1 && saved.players && saved.hands && saved.phase !== 'over') {
+      S = saved; VIEW = null; LME = S.me || 0; BLIND = false; Kit.gameStart();
+      if (back) save();
+      build(); render();
+      // a hand that ended just before the page closed: its count first
+      if (S.last && (S.seen || 0) < S.last.round) {
+        busy = true; var t = token;
+        countSheet(S.last, false, function () { if (t !== token) return; busy = false; next(); });
+        return;
+      }
+      if (!onePersonLocal() && person(Core.turn(S)) && Core.turn(S) !== LME) { next(); return; }
+      next();
+    } else showSetup();
+  }
+  resumeLocal();
+  TurnNet.setup({
+    game: 'crazy8s', title: 'Crazy Eights', min: 2, max: 7, botMs: 900,
+    seats: function (n, o) { return Math.max(n, Math.min(7, +(o && o.seats) || 2)); },
+    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
+  // (tests)
+  window.__c8 = { get S() { return S; }, get busy() { return busy; }, get seat() { return me(); }, get net() { return !!NET; }, get view() { return !!VIEW; }, move: move, core: Core, record: recordGame, tapCard: function (id) { var n = handEl && handEl.querySelector('[data-id="' + id + '"]'); tapCard(id, n || document.body); } };
+})();
+</script>
+</body>
+</html>
