@@ -63,14 +63,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
 @media (max-height:720px){ .pad{width:140px;height:140px;} .pad i{width:44px;height:44px;} .pad i.u{left:48px;top:3px;} .pad i.d{left:48px;bottom:3px;} .pad i.l{left:3px;top:48px;} .pad i.r{right:3px;top:48px;}
   .pad .nub{width:48px;height:48px;margin:-24px 0 0 -24px;} .jbtn{width:96px;height:96px;font-size:1.1rem;} }
-/* Tablet landscape: the screen takes the full height, the stick bottom-left and the button bottom-right, under the thumbs */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{max-width:none;position:relative;}
-  .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 22px);padding:0 26px;pointer-events:none;}
-  .ctrls > *{pointer-events:auto;}
-  .pad{width:200px;height:200px;} .pad i{width:60px;height:60px;} .pad i.u{left:70px;top:8px;} .pad i.d{left:70px;bottom:8px;} .pad i.l{left:8px;top:70px;} .pad i.r{right:8px;top:70px;}
-  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .jbtn{width:140px;height:140px;font-size:1.6rem;}
+/* Sideways (phones too, iPads, wide windows; .dk-wide is set by layout()): the screen takes the full height, the stick
+   low at the left and the Jump button low at the right, under the thumbs (the cabinet's own layout), pause in the corner */
+html.dk-wide.ar-on #app{max-width:none;position:relative;}
+html.dk-wide .hud{position:absolute;top:4px;right:max(var(--corner-x),10px);width:auto;z-index:2;}
+html.dk-wide .pbtn{height:44px;}
+html.dk-wide .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 18px);padding:0 max(var(--corner-x),20px);pointer-events:none;}
+html.dk-wide .ctrls > *{pointer-events:auto;}
+@media (min-height:600px){
+  html.dk-wide .pad{width:200px;height:200px;} html.dk-wide .pad i{width:60px;height:60px;} html.dk-wide .pad i.u{left:70px;top:8px;} html.dk-wide .pad i.d{left:70px;bottom:8px;} html.dk-wide .pad i.l{left:8px;top:70px;} html.dk-wide .pad i.r{right:8px;top:70px;}
+  html.dk-wide .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} html.dk-wide .jbtn{width:140px;height:140px;font-size:1.6rem;}
 }
+/* Upright on a tall phone the stick and the button grow into the room under the screen */
+@media (orientation:portrait) and (min-height:800px) and (max-width:600px) and (pointer:coarse){
+  html:not(.dk-wide) .pad{width:196px;height:196px;} html:not(.dk-wide) .pad i{width:58px;height:58px;} html:not(.dk-wide) .pad i.u{left:69px;top:8px;} html:not(.dk-wide) .pad i.d{left:69px;bottom:8px;} html:not(.dk-wide) .pad i.l{left:8px;top:69px;} html:not(.dk-wide) .pad i.r{right:8px;top:69px;}
+  html:not(.dk-wide) .pad .nub{width:66px;height:66px;margin:-33px 0 0 -33px;} html:not(.dk-wide) .jbtn{width:132px;height:132px;font-size:1.5rem;}
+}
+html.ar-on .bezel{view-transition-name:dk-screen;} html.ar-on .pad{view-transition-name:dk-pad;} html.ar-on .jbtn{view-transition-name:dk-jump;}
 </style>
 </head>
 <body>
@@ -379,7 +388,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var scr = mk(W, H), px = scr.getContext('2d');
   function hiList() { return ArcadeHi.list(HI); }
   function topScore() { var l = hiList(), old = 0; try { old = parseInt(localStorage.getItem('dkHi'), 10) || 0; } catch (e) {} return Math.max(old, l.length ? l[0].score : 0); }
-  var hiAtStart = 0;
+  var hiAtStart = 0, root0 = document.documentElement;
 
   // measured on the cabinet (frame by frame from its memory): walk 2 px per 3 frames, climb 24 px in 57 frames,
   // a jump 14 px high and 42 frames long that drifts 1 px every 2 frames, and 4 frames stuck on landing
@@ -420,6 +429,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function add(n, x, y) {
     var before = G.score; G.score += n; hud(true);
     if (x != null) ST.pops.push({ x: x, y: y, n: n, t: 50 });
+    // Passing the high score mid-game: a chime and a call (once a game; the cabinet's own HIGH SCORE line counts on with it)
+    if (!G.stats.pb && hiAtStart > 0 && before <= hiAtStart && G.score > hiAtStart) { G.stats.pb = hiAtStart; Kit.sfx('sparkle'); Kit.haptic('success'); Kit.callout('New high score!', '#ffd84a'); }
     if (!G.extra && before < 7000 && G.score >= 7000) { G.extra = true; G.lives++; Kit.callout('Extra life!', '#ff6b6b'); Kit.haptic('success'); Snd.play('prize'); }
   }
 
@@ -1103,7 +1114,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function fit() {
     var v = $('view'); if (v.hidden) return;
     var cab = $('cab'), hudH = v.querySelector('.hud').offsetHeight, ctr = v.querySelector('.ctrls'), hint = v.querySelector('.hint');
-    var land = TOUCH && innerWidth > innerHeight && innerWidth >= 900;
+    var land = root0.classList.contains('dk-wide');
+    if (land) hudH = 0;   // (sideways the pause button sits in the corner, over nothing)
     var ctrH = ctr && getComputedStyle(ctr).display !== 'none' && !land ? Math.max(150, ctr.querySelector('.pad').offsetHeight + 16) : 0;
     var hintH = hint && getComputedStyle(hint).display !== 'none' ? hint.offsetHeight + 8 : 0;
     var availH = v.clientHeight - hudH - ctrH - hintH - 30, availW = Math.min(v.clientWidth, 640) - 14;
@@ -1237,7 +1249,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
   buildSprites(function () { if (G) render(); });
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'donkeykong',
     theme: { wood: ['#4a2a1a', '#2a160c'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -1275,6 +1287,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     frameImg: function () { render(); return scr.toDataURL(); }, ready: function () { return artReady; }, sndReady: Snd.ready
   };
 
+  // The shape decides the layout (a class, so turning the device can glide: a View Transition around the change)
+  function wideNow() { return innerWidth > innerHeight * 1.15; }
+  function layout() {
+    var w = wideNow(); if (w === root0.classList.contains('dk-wide')) return;
+    function go() { root0.classList.toggle('dk-wide', w); fit(); }
+    if (!$('view').hidden && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    go();
+  }
+  root0.classList.toggle('dk-wide', wideNow());
+  window.addEventListener('resize', layout);
   new ResizeObserver(function () { fit(); }).observe($('view'));
   var saved0 = loadSave();
   if (saved0) startGame({ who: saved0.who, lives: saved0.startLives || 3 }, saved0);
