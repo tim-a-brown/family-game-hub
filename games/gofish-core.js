@@ -31,11 +31,15 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
   // ── Words ──
-  // "7s", "Jacks", "Aces"; "a 7", "an 8", "an Ace"; "one", "two", "three"
-  function plural(r) { return NAMES[r] ? NAMES[r] + 's' : r + 's'; }
-  function single(r) { return NAMES[r] || r; }
-  function aOf(r) { var w = single(r); return (/^(8|A)/.test(w) ? 'an ' : 'a ') + w; }
-  function many(n, r) { return n === 1 ? 'one ' + single(r) : ['zero', 'one', 'two', 'three', 'four'][n] + ' ' + plural(r); }
+  // "7s", "Jacks", "Aces"; "a 7", "an 8", "an Ace"; "one", "two", "three". With a themed deck (th: its id, see
+  // gofish/decks.js) a rank is said by its subject: "Tigers", "a Tiger", "two Tigers".
+  var DECKS = root.GoFishDecks || (typeof require === 'function' ? (function () { try { return require('./gofish/decks.js'); } catch (e) { return null; } })() : null);
+  function sub(r, th) { return th && DECKS ? DECKS.subj(th, r) : null; }
+  function plural(r, th) { var t = sub(r, th); return t ? t.many : NAMES[r] ? NAMES[r] + 's' : r + 's'; }
+  function single(r, th) { var t = sub(r, th); return t ? t.one : NAMES[r] || r; }
+  function aOf(r, th) { var t = sub(r, th); if (t) return t.a; var w = single(r); return (/^(8|A)/.test(w) ? 'an ' : 'a ') + w; }
+  function many(n, r, th) { return n === 1 ? (sub(r, th) ? 'one ' + sub(r, th).one : 'one ' + single(r)) : ['zero', 'one', 'two', 'three', 'four'][n] + ' ' + plural(r, th); }
+  function theme(th) { return th && DECKS && DECKS.get(th) ? th : null; }
   var NUMW = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen'];
   function numw(n) { return NUMW[n] || String(n); }
 
@@ -52,11 +56,11 @@
   function zeros(n, v) { var a = []; for (var i = 0; i < n; i++) a.push(v === undefined ? 0 : (typeof v === 'object' ? clone(v) : v)); return a; }
 
   // ── A new game ──
-  // o: {players: [{name, cpu, level}], level, next: 'left' | 'asked', dealer}
+  // o: {players: [{name, cpu, level}], level, next: 'left' | 'asked', dealer, theme (a themed deck's id, or none)}
   function newGame(o) {
     var n = o.players.length;
     var st = {
-      v: 1, n: n, level: lv(o.level), next: o.next === 'asked' ? 'asked' : 'left',
+      v: 1, n: n, level: lv(o.level), next: o.next === 'asked' ? 'asked' : 'left', theme: theme(o.theme),
       players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lv(p.level || o.level) : undefined }; }),
       hands: zeros(n, []), pond: [], books: zeros(n, []), turn: 0, phase: 'ask', ask: null,
       tn: 1, asks: 0, streak: 0, kn: zeros(n, {}), no: zeros(n, {}), dr: zeros(n), log: [],
@@ -265,20 +269,20 @@
   // highlights(st): the rare moments of a finished game as sentences a person would say
   function list(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
   function highlights(st) {
-    var out = [], nm = function (p) { return st.players[p].name; }, by = {};
+    var out = [], nm = function (p) { return st.players[p].name; }, by = {}, th = st.theme;
     st.ev.forEach(function (e) { (by[e.k] = by[e.k] || []).push(e); });
     (by.sweep || []).forEach(function (e) { out.push(nm(e.p) + ' made all 13 books'); });
-    (by.dealt || []).forEach(function (e) { out.push(nm(e.p) + ' was dealt all four ' + plural(e.r)); });
+    (by.dealt || []).forEach(function (e) { out.push(nm(e.p) + ' was dealt all four ' + plural(e.r, th)); });
     var bestS = {};
     (by.streak || []).forEach(function (e) { if (!bestS[e.p] || e.n > bestS[e.p].n) bestS[e.p] = e; });
     Object.keys(bestS).forEach(function (p) { out.push(nm(+p) + ' asked ' + bestS[p].n + ' times in a row and got cards every time'); });
     // (three of a rank in one ask comes up a few times a game among good players: the game's first is the one kept)
     var big = (by.big || [])[0];
-    if (big) out.push(nm(big.p) + ' took three ' + plural(big.r) + ' from ' + nm(big.to) + ' in one ask');
+    if (big) out.push(nm(big.p) + ' took three ' + plural(big.r, th) + ' from ' + nm(big.to) + ' in one ask');
     for (var p = 0; p < st.n; p++) {
       var lk = (by.lucky || []).filter(function (e) { return e.p === p; });
-      if (lk.length === 1) out.push(nm(p) + ' asked for ' + plural(lk[0].r) + ' and fished one up from the pond');
-      else if (lk.length > 1) out.push(nm(p) + ' fished up the very rank just asked for ' + (lk.length === 2 ? 'twice' : numw(lk.length) + ' times') + ': ' + list(lk.map(function (e) { return plural(e.r); })));
+      if (lk.length === 1) out.push(nm(p) + ' asked for ' + plural(lk[0].r, th) + ' and fished one up from the pond');
+      else if (lk.length > 1) out.push(nm(p) + ' fished up the very rank just asked for ' + (lk.length === 2 ? 'twice' : numw(lk.length) + ' times') + ': ' + list(lk.map(function (e) { return plural(e.r, th); })));
     }
     out.push('The game took ' + st.asks + ' asks');
     return out;
@@ -286,15 +290,17 @@
   // historyDetail(st): small and flat (strings, no arrays inside arrays) for Kit.record. o: the books in the order they
   // went down, "seat.rank.turn.how" joined by spaces (how: a ask, f fish, d deal); t: the last turn; s: each player's
   // best streak; lk, bg: fish you wished for and three-card catches, each player's; c: the biggest single catch
-  // "seat.from.rank.count"; nx: who went next after a Go fish
+  // "seat.from.rank.count"; nx: who went next after a Go fish; th: the themed deck's id (none for the standard deck)
   function historyDetail(st) {
     function rc(r) { return r === '10' ? 'T' : r; }
-    return {
+    var d = {
       names: st.players.map(function (p) { return p.name; }), cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''),
       o: st.bo.map(function (b) { return b.p + '.' + rc(b.r) + '.' + b.t + '.' + b.h.charAt(0); }).join(' '),
       t: st.tn, asks: st.asks, s: st.stats.best.join('.'), lk: st.stats.lucky.join('.'), bg: st.stats.big.join('.'),
       c: st.catchBest ? [st.catchBest.p, st.catchBest.to, rc(st.catchBest.r), st.catchBest.n].join('.') : '', nx: st.next
     };
+    if (st.theme) d.th = st.theme;
+    return d;
   }
 
   function scores(st) { return st.books.map(function (b) { return b.length; }); }
@@ -302,7 +308,7 @@
 
   var API = {
     RANKS: RANKS, SUITS: SUITS, C: C, deck: deck, sortHand: sortHand, countOf: countOf, ranksIn: ranksIn, dealCount: dealCount,
-    plural: plural, single: single, aOf: aOf, many: many, numw: numw, lv: lv, lvOf: lvOf,
+    plural: plural, single: single, aOf: aOf, many: many, numw: numw, lv: lv, lvOf: lvOf, theme: theme, decks: function () { return DECKS; },
     newGame: newGame, turn: turn, canAsk: canAsk, targets: targets, apply: apply, bot: bot, booksDown: booksDown, booked: booked,
     scores: scores, over: over, clone: clone, highlights: highlights, historyDetail: historyDetail, list: list
   };

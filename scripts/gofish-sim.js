@@ -2,9 +2,13 @@
 // Go Fish: plays thousands of games between the computer players with the game's own rules (games/gofish-core.js),
 // checks every move against the rules and that every game ends with all 13 books down, and measures the three skill
 // levels against each other and how often the game's special moments come up.
+// Every themed deck (games/gofish/decks.js) is played too, in turn: the rules are the same, and the game's sentences
+// must name every subject properly.
 //   node scripts/gofish-sim.js [games] [seed]
 'use strict';
 const Core = require('../games/gofish-core.js');
+const Decks = require('../games/gofish/decks.js');
+const THEMES = [null].concat(Decks.DECKS.map(d => d.id));
 const N = +process.argv[2] || 4000;
 let seed = +process.argv[3] || 7;
 Core.C.rng = function () {   // (mulberry32: a small generator with good low bits)
@@ -21,9 +25,10 @@ function check(st) {
   st.pond.concat(...st.hands).forEach(c => { if (ids[c.id]) throw new Error('card twice ' + c.id); ids[c.id] = 1; });
   st.hands.forEach((h, p) => { Core.ranksIn(h).forEach(r => { if (Core.countOf(h, r) >= 4) throw new Error('book left in hand'); }); });
 }
-function play(levels, next) {
+function play(levels, next, theme) {
   const players = levels.map((l, i) => ({ name: 'P' + i, cpu: true, level: l }));
-  const st = Core.newGame({ players, next });
+  const st = Core.newGame({ players, next, theme });
+  if ((st.theme || null) !== theme) throw new Error('theme not kept: ' + theme);
   check(st);
   let moves = 0;
   const m = { lucky: 0, big: 0, streak4: 0, sweep: 0, dealt: st.dealtBooks.length, dry: 0, refill: 0 };
@@ -49,6 +54,9 @@ function play(levels, next) {
   if (Core.booksDown(st) !== 13) throw new Error('ended with ' + Core.booksDown(st) + ' books');
   if (st.hands.some(h => h.length) || st.pond.length) throw new Error('cards left at the end');
   if (Math.max(...Core.scores(st)) === 13) m.sweep++;
+  // the sentences the history keeps name the deck's subjects, never a rank or "undefined"
+  Core.highlights(st).forEach(h => { if (/undefined|null|NaN/.test(h) || (theme && /\b(\d+s|Jacks|Queens|Kings|Aces)\b/.test(h))) throw new Error('bad sentence: ' + h); });
+  if (theme && Core.historyDetail(st).th !== theme) throw new Error('history lost the theme');
   return { st, moves, m };
 }
 
@@ -61,7 +69,7 @@ for (let g = 0; g < N; g++) {
   const n = 2 + (g % 5);
   const levels = [];
   for (let i = 0; i < n; i++) levels.push(LV[(g + i) % 3]);
-  const r = play(levels, g % 4 === 3 ? 'asked' : 'left');
+  const r = play(levels, g % 4 === 3 ? 'asked' : 'left', THEMES[g % THEMES.length]);
   tot.moves += r.moves;
   Object.keys(r.m).forEach(k => { tot[k] += r.m[k]; });
   const w = r.st.winner;
@@ -69,7 +77,10 @@ for (let g = 0; g < N; g++) {
   if (n === 2) { n2++; const k = levels.join(' v '); head[k] = head[k] || [0, 0, 0]; head[k][2]++; w.forEach(i => { head[k][i] += 1 / w.length; }); }
 }
 const pct = (a, b) => (100 * a / b).toFixed(1) + '%';
-console.log(N + ' games, every one ended with all 13 books down and no card lost.');
+console.log(N + ' games across the standard deck and ' + (THEMES.length - 1) + ' themed decks, every one ended with all 13 books down and no card lost.');
+// every subject of every deck, said every way
+Decks.DECKS.forEach(d => Core.RANKS.forEach(r => { [Core.plural(r, d.id), Core.single(r, d.id), Core.aOf(r, d.id), Core.many(2, r, d.id)].forEach(w => { if (!w || /undefined/.test(w)) throw new Error(d.id + ' ' + r); }); }));
+console.log('Every subject of the ' + Decks.DECKS.length + ' themed decks has its words.');
 console.log('Average moves a game: ' + (tot.moves / N).toFixed(1));
 console.log('Share of wins against share of seats:');
 LV.forEach(l => console.log('  ' + l.padEnd(7) + ' won ' + pct(wins[l], games[l]) + ' of the games it sat in'));

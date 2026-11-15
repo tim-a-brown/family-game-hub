@@ -325,6 +325,7 @@ const PRECACHE_URLS = [
   '/games/pinochle-core.js',
   '/games/gofish.html',
   '/games/gofish-core.js',
+  '/games/gofish/decks.js',
   '/games/war.html',
   '/games/war-core.js',
   '/games/canasta.html',
