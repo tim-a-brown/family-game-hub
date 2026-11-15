@@ -91,6 +91,23 @@
   .sg-status{grid-area:status;margin:0;min-height:0;text-align:left;}
   .sg-go{grid-area:go;}
 }
+
+/* ── A phone on its side (html.ls, set in the script): the scoreboard and what just happened on the left, the table and
+   its Shuffle button on the right where you act; layout() gives the felt the height left above the button ── */
+html.ls .stage:has(> .sg-table){max-width:none;display:grid;grid-template-columns:minmax(210px,29%) minmax(0,1fr);
+  grid-template-areas:"board table" "status table" "status go";grid-template-rows:auto 1fr auto;column-gap:16px;row-gap:10px;align-items:start;
+  height:calc(100dvh - var(--bar));padding:0 calc(var(--corner-x) + 6px) max(calc(var(--safe-b) + 8px),18px);}
+html.ls .sg-table{grid-area:table;margin:0;padding:8px;}
+html.ls .sg-board{grid-area:board;margin:0;padding:12px 10px 10px;}
+html.ls .sg-who{font-size:1rem;}
+html.ls .sg-stat b{font-size:1.5rem;}
+html.ls .sg-stat.lv b{font-size:2.3rem;}
+html.ls .sg-sub{flex-wrap:wrap;row-gap:6px;font-size:.78rem;}
+html.ls .sg-status{grid-area:status;margin:0;min-height:0;text-align:left;align-self:start;}
+html.ls .sg-status .t{font-size:1.3rem;}
+html.ls .sg-go{grid-area:go;min-height:52px;}
+/* Turning the device: the board, the table and the button glide to their new places (a View Transition in the script) */
+.sg-board{view-transition-name:sg-board;} .sg-table{view-transition-name:sg-table;} .sg-go{view-transition-name:sg-go;} .sg-status{view-transition-name:sg-status;}
 </style>
 </head>
 <body>
@@ -117,6 +134,22 @@
 <script>
 (function () {
   'use strict';
+  // Turning the device. A phone on its side has its own layout (html.ls), and every turn (phone or iPad) changes the
+  // layout inside a View Transition, so the scoreboard, the table and the button glide to their new places instead of jumping.
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape) and (max-height:520px)'), o = matchMedia('(orientation:landscape)');
+    var wait = false;
+    function set() { wait = false; R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches); window.dispatchEvent(new Event('resize')); }
+    R.classList.toggle('ls', q.matches); R.classList.toggle('land', o.matches);
+    function turn() {
+      if (wait || (R.classList.contains('ls') === q.matches && R.classList.contains('land') === o.matches)) return;
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, o].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'shellgame', SAVE = 'shellgame_state';
 
@@ -301,7 +334,12 @@
   var WIDE = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
   function layout() {
     var W = R.felt.clientWidth || 340, n = S.n, cw3, ch3;
-    if (WIDE.matches) {
+    if (document.documentElement.classList.contains('ls')) {
+      // A phone on its side: the felt takes the height above the Shuffle button
+      var room = window.innerHeight - R.felt.getBoundingClientRect().top - 8 - 10 - R.go.offsetHeight - (parseFloat(getComputedStyle(app).paddingBottom) || 0);
+      ch3 = Math.max(70, Math.min(room / 2.45, (W - 20) / 3.7 * 1.1)); cw3 = ch3 / 1.1;
+      G.H = Math.round(Math.max(ch3 * 2.3, room));
+    } else if (WIDE.matches) {
       // The felt takes the height left above the scoreboard row
       var avail = window.innerHeight - R.felt.getBoundingClientRect().top - 26 - R.board.offsetHeight - (parseFloat(getComputedStyle(app).paddingBottom) || 0);
       ch3 = Math.max(110, Math.min(avail / 2.5, (W - 20) / 3.7 * 1.1, 250)); cw3 = ch3 / 1.1;
@@ -310,7 +348,9 @@
       // Bigger cups on a tablet, as long as the table still fits the screen height
       var cap = W >= 560 ? Math.max(104, Math.min(140, ((window.innerHeight || 800) - 430) / 2.695)) : 104;
       cw3 = Math.min(cap, (W - 20) / 3.7); ch3 = cw3 * 1.1;
-      G.H = Math.round(Math.max(ch3 * 2.45, Math.min((window.innerHeight || 800) - 540, ch3 * 3.1)));
+      // the felt takes the height the status line and the button leave, so no empty band lies under the button
+      var left = (window.innerHeight || 800) - R.felt.getBoundingClientRect().top - 10 - 84 - R.go.offsetHeight - 6 - (parseFloat(getComputedStyle(app).paddingBottom) || 0);
+      G.H = Math.round(Math.max(ch3 * 2.45, Math.min(left, ch3 * 4.2)));
     }
     G.base = Math.round(Math.min(G.H - ch3 * 0.5, G.H / 2 + ch3 * 0.62));
     G.cw = Math.min(cw3, (W - 16) / (n + (n - 1) * 0.34)); G.ch = G.cw * 1.1;
@@ -467,7 +507,12 @@
         else if (r.streak === 10) msg = 'Eagle eye!';
         else if (r.streak > 10 && r.streak % 5 === 0) msg = r.streak + ' in a row!';
         else if (lvl === 6 || lvl === 12) msg = 'Tier cleared!';
-        if (msg) Kit.callout(msg);
+        // the rare ones lie on the table as moments: a new record, ten in a row, a tier of cups cleared without a miss
+        var clean = (lvl === 6 || lvl === 12) && !r.missLog.some(function (x) { return x.level > lvl - 6; });
+        if (msg === 'New record!') { Kit.moment({ big: true, title: 'New record', line: 'This run has cleared ' + r.cleared + ' levels, more than any before at this table.', icon: 'trophy', pts: String(r.cleared), at: R.felt, ms: 2400 }); Kit.sfx('win'); Kit.confetti({ count: 80 }); }
+        else if (r.streak === 10 || (r.streak > 10 && r.streak % 5 === 0)) { Kit.moment({ title: r.streak + ' in a row', line: 'You have found the ball ' + r.streak + ' times without a miss.', icon: 'eye', pts: String(r.streak), at: R.felt, ms: 2200 }); Kit.sfx('win'); }
+        else if (clean) { Kit.moment({ title: (lvl === 6 ? 'Three' : 'Four') + ' cups cleared', line: 'You found the ball on every level of that tier, with no misses.', icon: 'sparkle', at: R.felt, ms: 2200 }); Kit.sfx('win'); }
+        else if (msg) Kit.callout(msg);
         var next = cfg(r.level, S.pace);
         status('Found it!', next.n > c.n ? 'Level ' + r.level + ' adds another cup' : 'On to level ' + r.level, 'good');
         paintBoard(); bump(R.lv); bump(R.st); if (msg === 'New record!') bump(R.best);
@@ -518,6 +563,7 @@
       var last = r.missLog[r.missLog.length - 1];
       if (last) hl.push((solo ? 'The last miss' : who + "'s last miss") + ' came at level ' + last.level + ': the ball was under the ' + last.at + ', not the ' + last.picked);
       if (!r.misses && r.cleared) hl.push(who + ' never missed');
+      else [6, 12].forEach(function (t) { if (r.cleared >= t && !r.missLog.some(function (x) { return x.level > t - 6 && x.level <= t; })) hl.push(who + ' cleared every ' + (t === 6 ? 'three' : 'four') + '-cup level without a miss'); });
     });
     return hl;
   }
