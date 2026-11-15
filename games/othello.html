@@ -63,23 +63,55 @@
 .acts{display:flex;gap:10px;justify-content:center;margin-top:2px;}
 .acts .btn{flex:1;max-width:180px;}
 
-/* iPad / large screens: bigger board; landscape puts the player bars and buttons beside the board */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:none;}
-  .cb-col{max-width:min(712px,calc(100dvh - 380px));}
-  .frame{--rim:20px;}
+/* A layout for each shape. <html data-o> says which way the screen is turned (set by the script below, not by a
+   media query), so a turn of the device can glide from the one layout to the other inside a View Transition. */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.frame{view-transition-name:oth-board;}
+.cb-col>.turn{view-transition-name:oth-turn;}
+.cb-col>.acts{view-transition-name:oth-acts;}
+/* Phone upright: the board as wide as the screen, the column in the middle of the screen's height */
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;
+  padding-left:10px;padding-right:10px;padding-bottom:calc(var(--safe-b) + 18px);}
+html[data-o=port] .cb-col{width:100%;gap:10px;max-width:min(440px,calc(100dvh - var(--bar) - 262px));}
+html[data-o=port] .pbar{min-height:54px;}
+/* iPad upright: the board as large as the height leaves room for */
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:none;padding-left:16px;padding-right:16px;}
+  html[data-o=port] .cb-col{max-width:min(736px,calc(100dvh - var(--bar) - 290px));gap:12px;}
+  html[data-o=port] .frame{--rim:20px;}
+  html[data-o=port] .pbar{min-height:62px;padding:8px 16px 8px 12px;}
+  html[data-o=port] .pbar .nm{font-size:1.1rem;}
+  html[data-o=port] .pbar .sub{font-size:.85rem;}
+  html[data-o=port] .pbar .cnt{font-size:2rem;}
+  html[data-o=port] .tok{width:34px;height:34px;}
 }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 14px);}
-  .cb-col{--bsz:min(calc(100dvh - 76px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));max-width:none;height:var(--bsz);
-    display:grid;grid-template-columns:minmax(280px,320px) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
-    grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:24px;row-gap:10px;justify-content:center;}
-  .cb-col>.frame{grid-area:b;--rim:clamp(16px,2.4vh,22px);}
-  .cb-col>.pbar:nth-child(1){grid-area:t;}
-  .cb-col>.pbar:nth-child(3){grid-area:p;}
-  .cb-col>.turn{grid-area:s;justify-self:start;}
-  .cb-col>.acts{grid-area:a;}
+/* Sideways (phone and iPad): who's playing, whose turn and Undo at the left to look at; the board, where the taps go,
+   at the right and as tall as the screen allows */
+html[data-o=land] #app.stage.ipl{max-width:none;padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 10px) max(18px,env(safe-area-inset-left));}
+html[data-o=land] .cb-col{--lc:220px;--cg:clamp(18px,4vw,40px);--bsz:min(calc(100dvh - var(--bar) - 14px - var(--safe-b)),calc(100vw - 36px - var(--lc) - var(--cg)));max-width:none;height:var(--bsz);
+  display:grid;grid-template-columns:minmax(var(--lc),360px) var(--bsz);grid-template-rows:max-content max-content minmax(0,1fr) max-content max-content max-content;
+  grid-template-areas:"t b" "s b" ". b" "a b" "r b" "p b";column-gap:var(--cg);row-gap:10px;justify-content:center;}
+html[data-o=land] .cb-col>.frame{grid-area:b;--rim:clamp(10px,2.4vh,22px);}
+html[data-o=land] .cb-col>.pbar:nth-child(1){grid-area:t;}
+html[data-o=land] .cb-col>.pbar:nth-child(3){grid-area:p;}
+html[data-o=land] .cb-col>.turn{grid-area:s;justify-self:start;}
+html[data-o=land] .cb-col>.acts{grid-area:a;justify-content:flex-start;}
+@media (min-height:600px){
+  html[data-o=land] .cb-col{--lc:280px;grid-template-columns:minmax(var(--lc),340px) var(--bsz);}
+  html[data-o=land] .pbar{min-height:60px;}
+  html[data-o=land] .pbar .cnt{font-size:2rem;}
 }
+/* A short phone on its side: the bars a little tighter so the column fits beside the board */
+@media (max-height:420px){
+  html[data-o=land] .cb-col{row-gap:6px;}
+  html[data-o=land] .turn{min-height:26px;}
+}
+/* A big move: the discs it turned glow for a moment */
+.dk.big .coin{animation:bigglow 1.1s ease-out .5s;}
+@keyframes bigglow{0%{filter:none;}35%{filter:drop-shadow(0 0 7px rgba(255,214,90,.95));}100%{filter:none;}}
+/* A corner taken: a ring of light spreads from it */
+.dk.corner::after{content:"";position:absolute;inset:6%;border-radius:50%;pointer-events:none;box-shadow:0 0 0 2px rgba(255,214,90,.9);animation:ring .8s ease-out .2s both;}
+@keyframes ring{from{transform:scale(.7);opacity:1;}to{transform:scale(1.8);opacity:0;}}
 </style>
 </head>
 <body>
@@ -88,6 +120,19 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  // Which way the screen is turned, as <html data-o="port|land">: the layouts hang off it rather than off a media query,
+  // so a turn of the device moves everything to the new shape inside a View Transition (the pieces glide, nothing jumps)
+  (function () {
+    var R = document.documentElement;
+    function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+    R.setAttribute('data-o', shape());
+    window.addEventListener('resize', function () {
+      var o = shape(); if (R.getAttribute('data-o') === o) return;
+      var go = function () { R.setAttribute('data-o', o); };
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
+    });
+  })();
   var SAVE = 'othello_state', KEY = 'othello';
   var BLACK = 1, WHITE = -1;
 
@@ -285,7 +330,7 @@
     Kit.sfx('tap'); Kit.haptic(f.length >= 5 ? 'medium' : 'light');
     var flipT = 380 + f.length * 60;
     setTimeout(function () { Kit.sfx('flip'); }, 120);
-    if (f.length >= 6) setTimeout(function () { Kit.callout(f.length + ' flipped!'); Kit.sfx('good'); }, flipT - 200);
+    reward(s, f, side, flipT);
     if (ended) { S.over = true; save(); setTimeout(finish, flipT + 500); return; }
     if (S.passNote) {
       var passer = pl(-next);
@@ -293,6 +338,28 @@
     }
     save();
     setTimeout(maybeCpu, flipT + (S.passNote ? 900 : 100));
+  }
+  // A good move's reward, where it happens: a corner rings out (it can never be lost), six or more discs turned is
+  // called out, and ten or more in one move (uncommon) is a moment on the table
+  var CORNERS = { 0: 1, 7: 1, 56: 1, 63: 1 };
+  function reward(s, f, side, flipT) {
+    var who = pl(side), me = NET && NET.seat >= 0 ? S.players[NET.seat] === who : !who.cpu;
+    if (CORNERS[s]) setTimeout(function () { Kit.sfx('chip'); if (me) Kit.haptic('medium'); }, 260);
+    if (f.length >= 10) setTimeout(function () {
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      Kit.moment({ title: f.length + ' discs in one move', line: (NET && me ? 'You' : who.name) + ' turned ' + f.length + ' discs over with a single disc.', pts: '+' + f.length, color: side === BLACK ? '#2a2a30' : '#e9e6dd' });
+    }, flipT - 200);
+    else if (f.length >= 6) setTimeout(function () { Kit.callout(f.length + ' flipped!'); Kit.sfx('good'); }, flipT - 200);
+  }
+  // The end's own moments: a wipeout (the other color gone from the board) and a comeback from 16 or more discs behind
+  function endMoments(winSide) {
+    if (!winSide) return null;
+    var w = pl(winSide), lead = 0;
+    (S.hist || []).forEach(function (h) { var d = 0; h.b.forEach(function (v) { d += v; }); d *= winSide; if (d < lead) lead = d; });
+    var who = NET && NET.seat >= 0 && S.players[NET.seat] === w ? 'You' : w.name;
+    if (count(-winSide) === 0) return { hl: null, mo: { big: true, title: 'A wipeout', line: 'Every disc on the board is ' + colorName(winSide) + '. ' + (who === 'You' ? 'You' : who) + ' left the other color with none at all.', icon: 'trophy', pts: String(count(winSide)) } };
+    if (lead <= -16) return { hl: w.name + ' came back from ' + (-lead) + ' discs behind to win', mo: { title: 'A comeback', line: (who === 'You' ? 'You were' : who + ' was') + ' ' + (-lead) + ' discs behind and still won.', icon: 'trophy' } };
+    return null;
   }
   function finish() {
     S.over = true; save(); clearSave(); render();
@@ -307,6 +374,9 @@
     [BLACK, WHITE].forEach(function (sd) { if (corners[sd] >= 3) hl.push(pl(sd).name + ' held ' + (corners[sd] === 4 ? 'all four corners' : '3 of the 4 corners')); });
     [BLACK, WHITE].forEach(function (sd) { var k = S.passes[sd]; if (k) hl.push(pl(sd).name + ' had to pass ' + (k === 1 ? 'once' : k === 2 ? 'twice' : k + ' times')); });
     var empt = 64 - nb - nw; if (empt) hl.push('Game ended with ' + empt + ' empty square' + (empt === 1 ? '' : 's') + ': nobody could move');
+    var em = endMoments(winSide);
+    if (em && em.hl) hl.push(em.hl);
+    if (em) { Kit.sfx('sparkle'); Kit.haptic('success'); Kit.moment(em.mo); }
     if (vsCpu()) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     Kit.record(KEY, {
       started: S.started, mode: vsCpu() ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass & play',
@@ -326,7 +396,7 @@
         look: true,
         setup: function () { cancelThink(); clearSave(); showSetup(); }
       });
-    }, 300);
+    }, em ? 2300 : 300);
   }
   // For the history view: final board ('b'/'w'/'.' rows), the moves in order (square names like 'f5', rank 8 at the top as on the board), who played each
   // (b/w, passes make the order uneven), and the best flip.
@@ -367,7 +437,7 @@
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
-  var bdEl, layerEl, topBar, botBar, turnEl;
+  var bdEl, layerEl, topBar, botBar, turnEl, lastCnt = {};
   function bottomSide() { if (NET) return NET.seat >= 0 ? S.players[NET.seat].side : BLACK; return vsCpu() ? S.players.filter(function (p) { return !p.cpu; })[0].side : BLACK; }
   function render(anim) {
     if (!S || !S.b) return;
@@ -411,7 +481,8 @@
       var v = S.b[s]; if (!v) continue;
       var d = disc(flipping[s] ? -v : v, s);
       if (S.last && S.last.s === s) d.classList.add('lastm');
-      if (anim && anim.s === s) d.classList.add('new');
+      if (anim && anim.s === s) { d.classList.add('new'); if (CORNERS[s]) d.classList.add('corner'); }
+      if (flipping[s] && anim.f.length >= 6) d.classList.add('big');
       layerEl.appendChild(d);
     }
     if (!anim) return;
@@ -443,7 +514,10 @@
     node.innerHTML = '';
     node.appendChild(el('span', { class: 'tok ' + (side === BLACK ? 'b' : 'w') }));
     node.appendChild(el('div', { class: 'who' }, [el('span', { class: 'nm', html: (p.cpu ? Kit.icon('bot') : '') + '<span>' + Kit.esc(NET && NET.seat >= 0 && S.players[NET.seat] === p ? 'You' : p.name) + '</span>' }), el('span', { class: 'sub', html: sub })]));
-    node.appendChild(el('span', { class: 'cnt', text: String(count(side)) }));
+    var n = count(side), cnt = el('span', { class: 'cnt', text: String(n) });
+    if (lastCnt[side] != null && n > lastCnt[side]) cnt.classList.add('bump');   // (a count that goes up pops)
+    lastCnt[side] = n;
+    node.appendChild(cnt);
   }
   function paintStatus() {
     if (!turnEl) return;
@@ -542,7 +616,7 @@
     if (mv) {
       Kit.sfx('tap'); Kit.haptic(mv.f.length >= 5 ? 'medium' : 'light');
       setTimeout(function () { if (tok === SHOWN) Kit.sfx('flip'); }, 120);
-      if (mv.f.length >= 6) setTimeout(function () { if (tok === SHOWN) { Kit.callout(mv.f.length + ' flipped!'); Kit.sfx('good'); } }, flipT - 200);
+      reward(mv.s, mv.f, mv.side, flipT);
       if (mv.pass != null && !S.over) setTimeout(function () { if (tok !== SHOWN) return; var passer = pl(mv.pass); Kit.callout(passer === S.players[net.seat] ? 'You have to pass' : passer.name + ' has to pass'); Kit.sfx('bad'); }, flipT);
     }
     if (S.over || LEFT) setTimeout(function () { if (tok === SHOWN) netEnd(); }, mv ? flipT + 500 : 150);
