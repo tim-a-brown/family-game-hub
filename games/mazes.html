@@ -100,6 +100,20 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
 .tools .zm .icon-btn .ico{width:20px;height:20px;}
 .tools .pen-k{font-family:var(--display);font-weight:400;font-size:.8rem;opacity:.75;}
 .tip{flex:none;text-align:center;font-size:.78rem;font-weight:700;color:var(--text-3);margin-top:6px;min-height:1.1em;}
+/* An iPad or a computer held sideways (a phone's maze stands upright): the maze is a wide page, so it spans the top
+   and the strip under it has the counters at the left and the tools at the right, the hint in between */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-height:521px){
+  .mz.play{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"stage stage stage" "hud tip tools";column-gap:18px;row-gap:10px;height:calc(100dvh - var(--bar));box-sizing:border-box;
+    padding:0 calc(18px + var(--corner-x)) max(calc(var(--safe-b) + 10px), 18px);}
+  .mz.play > .stage{grid-area:stage;height:100%;}
+  .mz.play > .hud{grid-area:hud;margin:0;width:auto;max-width:none;}
+  .mz.play > .hud .cnt{flex:none;min-width:120px;padding:8px 14px;}
+  .mz.play > .tools{grid-area:tools;margin:0;width:auto;flex-wrap:nowrap;}
+  .mz.play > .tools .grow{flex:none;min-width:150px;}
+  .mz.play > .tip{grid-area:tip;align-self:center;margin:0;}
+}
+}
 
 /* ── Labyrinth: a wooden box with a steel ball ── */
 .lab-wrap{position:relative;perspective:1100px;flex:none;}
@@ -881,8 +895,14 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       timeI.textContent = clock(sec, true); timeI.classList.add('write');
     }
     Kit.sfx('good'); Kit.haptic('success');
+    // uncommon moments: the shortest way out drawn with no wrong turns or hints, a daily streak growing past two days
+    var clean = mode === 'pencil' && !S.wrong && !S.hints && S.drawn === M.solution.length - 1;
+    var mo = sk >= 3 && sk > sk0 ? { title: sk + ' days in a row', line: 'You have solved the daily maze ' + sk + ' days running.', icon: 'flame', big: sk >= 7 }
+      : clean && M.solution.length > 30 ? { title: 'Straight to the exit', line: 'Your line was the shortest way out, with no wrong turns and no hints.', icon: 'star' } : null;
+    S.mo = mo ? (clean ? 'clean' : 'streak') : '';
     setTimeout(function () { Kit.callout(clock(sec, true)); }, 250);
     if (isBest && prev) setTimeout(function () { Kit.callout('New best time!'); }, 1250);
+    if (mo) setTimeout(function () { Kit.moment({ title: mo.title, line: mo.line, icon: mo.icon, big: mo.big, at: mo.big ? null : stage, ms: 2200 }); Kit.sfx(mo.big ? 'win' : 'sparkle'); Kit.haptic('success'); if (mo.big) Kit.confetti(); }, isBest && prev ? 2300 : 1250);
     doneTools();
     var notes = [];
     var steps = M.solution.length - 1;
@@ -906,7 +926,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
           scores: function () { ArcadeHi.show(key); }
         });
       });
-    }, mode === 'tilt' ? 1500 : 1700);
+    }, mo ? (isBest && prev ? 4600 : 3500) : mode === 'tilt' ? 1500 : 1700);
   }
   function recordGame() {
     var sec = S.solved ? secsOf() : null, hl = [];
@@ -918,6 +938,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     if (S.hints) hl.push(S.hints + (S.hints === 1 ? ' hint' : ' hints') + ' used');
     if (S.wrong) hl.push(S.wrong + (S.wrong === 1 ? ' wrong turn' : ' wrong turns'));
     if (S.mode === 'pencil' && S.solved) hl.push('Drew ' + S.drawn + ' squares of line for a ' + (M.solution.length - 1) + '-square route');
+    if (S.mode === 'pencil' && S.solved && !S.wrong && !S.hints && S.drawn === M.solution.length - 1 && M.solution.length > 30) hl.push('Drew the shortest way out with no wrong turns');
     if (S.falls) hl.push('Dropped into ' + S.falls + (S.falls === 1 ? ' hole' : ' holes'));
     Kit.record(HKEY, {
       started: S.started, mode: (S.daily ? 'Daily · ' : '') + mazeName(),
@@ -959,7 +980,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   }
   // show the marker at the edge of a w x h view (its top left at ox, oy in the host) when (gx, gy), in the view, is off it
   function placeArrow(a, ox, oy, w, h, gx, gy, show) {
-    var m = 26, off = gx < 0 || gy < 0 || gx > w || gy > h;
+    var m = 34, off = gx < 0 || gy < 0 || gx > w || gy > h;   // (34: the marker and its bob stay clear of the screen's edge)
     if (!show || !off || w < 2 * m || h < 2 * m) { a.classList.remove('on'); return; }
     var cx = w / 2, cy = h / 2, dx = gx - cx, dy = gy - cy;
     var s = Math.min(dx ? (cx - m) / Math.abs(dx) : 1e9, dy ? (cy - m) / Math.abs(dy) : 1e9);
@@ -1309,6 +1330,23 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     if (down) ac();
   }
 
+  // Turning the device (an iPad; a phone's maze stands upright): the maze is laid out for the new shape at once and
+  // the clipboard, the counters and the tools glide there from where they were
+  var turnR = [], turnW = innerWidth;
+  function turnSnap() { turnR = []; document.querySelectorAll('.mz.play > .hud, .mz.play .clip, .mz.play .lab-box, .mz.play > .tools').forEach(function (e) { turnR.push([e, e.getBoundingClientRect()]); }); turnW = innerWidth; }
+  setInterval(function () { if (!document.hidden) turnSnap(); }, 400);
+  window.addEventListener('resize', function () {
+    if (innerWidth === turnW || !S || !stage || !stage.isConnected || matchMedia('(prefers-reduced-motion: reduce)').matches) { turnSnap(); return; }
+    if (S.mode === 'tilt') layoutTilt();
+    else { var k0 = svg && view && zoomed() ? pxu / fitPxu : 0; layoutPencil(); if (k0) { var r0 = svg.getBoundingClientRect(); setScale(fitPxu * k0, r0.left + r0.width / 2, r0.top + r0.height / 2); centerOn(MC.center(M, S.head, tr)); } }
+    turnR.forEach(function (a) {
+      var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+      var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+      e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    });
+    turnSnap();
+  });
   var rz; window.addEventListener('resize', function () {
     clearTimeout(rz); rz = setTimeout(function () {
       if (!S || !stage || !stage.isConnected) return;
