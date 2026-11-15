@@ -295,19 +295,55 @@
 /* ── Desktop: bigger stage, two-tier risers ─────────────────────────────── */
 @media (min-width:760px){
   .studio{padding:18px 16px 16px;}
-  .floor{--colw:150px;gap:14px;}
+  .floor{gap:14px;}
   .marq{font-size:1.2rem;}
   .desk{max-width:820px;margin-left:auto;margin-right:auto;}
   .bank-top{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:center;}
   .bank-top .dnd{margin-top:0;}
-  .mv{--mvh:23px;--mvf:15px;}
 }
 @media (min-width:700px) and (max-width:759px) and (orientation:portrait) and (min-height:1000px){
-  .floor{--colw:112px;gap:10px;}
-  .mv{--mvh:31px;--mvf:15px;}
-  .col{gap:6px;}
+  .floor{gap:10px;}
 }
-@media (max-width:360px){.floor{--colw:70px;}.mv{--mvf:11.5px;}}
+/* ── Every shape: the stage fills the screen ───────────────────────────────
+   Upright, the stage takes the height the desk leaves (the desk keeps room for the Banker's offer, so nothing moves
+   between rounds); sideways, the stage fills the left and the desk with your podium, the offer and the buttons stands
+   at the right. arrangeCases() sizes the bars and the cases to the stage. */
+.col{gap:var(--mvg,3px);}
+#app{display:flex;flex-direction:column;min-height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 10px),18px);}
+#app>.studio{flex:1 1 0;min-height:290px;display:flex;flex-direction:column;}
+#app>.studio>.floor{flex:1 1 0;min-height:0;grid-template-rows:minmax(0,1fr);}
+#app .floor>*{min-height:0;}
+#app>.desk{flex:none;min-height:calc((100dvh - var(--bar)) * .34);display:flex;flex-direction:column;justify-content:center;}
+#app>.desk>*{flex:none;}
+@media (orientation:portrait) and (min-height:900px){#app>.desk{min-height:calc((100dvh - var(--bar)) * .3);}}
+/* A tall screen upright: your podium and the prompt step up into the desk's room */
+@media (orientation:portrait) and (min-height:780px){
+  .ped{width:116px;} .ped .case{--cs:92px;} .ped .slot{width:92px;height:82px;font-size:1rem;} .ped .top{width:112px;} .ped .base{width:100px;height:30px;font-size:.84rem;}
+  .prompt h2{font-size:1.95rem;} .prompt p{font-size:1rem;} .pips i{width:18px;height:13px;}
+}
+@media (orientation:portrait) and (max-height:640px){#app>.desk{min-height:0;}#app>.studio{min-height:250px;}}
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  #app{display:grid;grid-template-columns:minmax(0,1fr) clamp(290px,34vw,400px);grid-template-rows:minmax(0,1fr);column-gap:12px;
+    height:calc(100dvh - var(--bar));min-height:0;max-width:1500px;}
+  #app>.studio{grid-column:1;grid-row:1;min-height:0;}
+  #app>.desk{grid-column:2;grid-row:1;margin-top:0;min-height:0;max-width:none;overflow-y:auto;overscroll-behavior:contain;}
+  #app .bank-top{display:block;}
+  #app .bank-top .dnd{margin-top:8px;}
+  .desk-row{grid-template-columns:auto 1fr;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  #app>.desk{padding:10px 12px;}
+  .studio{padding:10px 8px 8px;}
+  .marq{height:24px;}
+  .bank-sub{font-size:.78rem;}
+  .dealbtn{width:70px;height:70px;} .dealbtn .dome{font-size:1.1rem;} .bank-sub{line-height:1.2;}
+  .nodeal{min-height:56px;font-size:1.4rem;}
+  .tl{margin-top:4px;padding-top:4px;} .tl-h{margin-bottom:2px;font-size:.74rem;} .tl-bars{height:30px;} .tl-c .n{margin-top:1px;}
+  .led{margin:3px auto 1px;padding:3px 10px;} .led span{font-size:2rem;} .bank-h{font-size:.82rem;} #app .bank-top .dnd{margin-top:4px;} .dealw small{font-size:.7rem;}
+  .ped .case{--cs:56px;} .ped .slot{width:56px;height:50px;} .ped{width:80px;}
+  .prompt h2{font-size:1.4rem;}
+  .res-amt{font-size:2.2rem;}
+}
 </style>
 </head>
 <body>
@@ -585,7 +621,17 @@
     ov.innerHTML = '<div class="ring-in"><div class="phone">' + icon('phone') + '</div><div class="ring-t">The Banker<br>is calling<small>Round ' + (r + 1) + ' offer</small></div></div>';
     ov.addEventListener('click', hurry);
     document.body.appendChild(ov);
+    // A perfect first round (six small amounts, all blue) is rare: it gets its moment on the stage before the phone rings
+    var perfect = r === 0 && g.opened.length >= 6 && g.opened.slice(0, 6).every(function (i) { return g.vals[i] <= 750; });
+    if (perfect) { ov.style.visibility = 'hidden'; }
     (async function () {
+      if (perfect) {
+        var st = document.querySelector('.studio');
+        Kit.moment({ title: 'A perfect first round', line: (S.players.length > 1 ? P().name + ' opened' : 'You opened') + ' six cases and every one held $750 or less.', icon: 'sparkle', color: '#2f78e6', at: st, ms: 2400 });
+        Kit.sfx('sparkle'); Kit.haptic('success'); Kit.confetti({ count: 50 });
+        await sleep(2300); if (myGen !== gen) { ov.remove(); return; }
+        ov.style.visibility = '';
+      }
       await sleep(16); ov.classList.add('show');
       var rings = tv() ? 2 : 1;
       for (var k = 0; k < rings; k++) { ringSound(); Kit.haptic('heavy'); await sleep(k === 0 ? 1150 : 1000); if (!document.body.contains(ov)) break; }
@@ -904,40 +950,67 @@
   // Cases sit on risers: 3-4-4-4-4-4-3 on a phone, 6-7-6-7 on a wide screen
   function layoutCases() {
     var box = document.getElementById('cases'); if (!box) return;
-    var g = G(), w = box.clientWidth;
-    var wide = w >= 400, rows = wide ? [6, 7, 6, 7] : [3, 4, 4, 4, 4, 4, 3];
-    // Tall tablet portrait: six risers of bigger cases fill the height
-    var tall = wide && window.innerHeight > window.innerWidth * 1.25 && window.innerWidth >= 700;
-    if (tall) rows = [4, 5, 4, 4, 5, 4];
-    var per = Math.max.apply(null, rows), gap = wide ? (tall ? 14 : 10) : 4;
-    var cs = Math.min(tall ? 92 : wide ? 76 : 64, Math.floor((w - (per - 1) * gap) / per));
-    box.style.setProperty('--cg', gap + 'px');
-    box.style.setProperty('--rg', (tall ? 16 : wide ? 10 : 5) + 'px');
-    var h = '', n = 0;
-    rows.forEach(function (cnt) {
-      h += '<div class="crow">';
-      for (var k = 0; k < cnt; k++, n++) {
-        var i = n, cls, extra = ' style="--cs:' + cs + 'px;--d:' + ((i * 0.37) % 5).toFixed(2) + 's"';
-        if (!g) cls = 'lock';
-        else if (isOpen(g, i) && !(g.phase === 'done' && i === g.my)) {
-          var v = g.vals[i];
-          h += '<button type="button" class="case open' + (fx.just === i ? ' just' : '') + '" data-i="' + i + '" aria-label="Case ' + (i + 1) + ' opened: ' + fmt(v) + '" disabled' + extra + '><span class="shell"></span><span class="amt' + (isHi(v) ? ' hi' : '') + '">' + fmtK(v) + '</span></button>';
-          continue;
-        } else if (i === g.my) cls = 'away';
-        else if (g.phase === 'pick') cls = 'can pickme';
-        else if (g.phase === 'open' && !busy) cls = 'can';
-        else cls = 'lock';
-        h += caseHTML(i, cls, extra + (i === g.my ? ' disabled title="On your podium"' : ''));
-      }
-      h += '</div>';
-    });
+    var g = G(), h = '';
+    for (var i = 0; i < 26; i++) {
+      var cls, extra = ' style="--d:' + ((i * 0.37) % 5).toFixed(2) + 's"';
+      if (!g) cls = 'lock';
+      else if (isOpen(g, i) && !(g.phase === 'done' && i === g.my)) {
+        var v = g.vals[i];
+        h += '<button type="button" class="case open' + (fx.just === i ? ' just' : '') + '" data-i="' + i + '" aria-label="Case ' + (i + 1) + ' opened: ' + fmt(v) + '" disabled' + extra + '><span class="shell"></span><span class="amt' + (isHi(v) ? ' hi' : '') + '">' + fmtK(v) + '</span></button>';
+        continue;
+      } else if (i === g.my) cls = 'away';
+      else if (g.phase === 'pick') cls = 'can pickme';
+      else if (g.phase === 'open' && !busy) cls = 'can';
+      else cls = 'lock';
+      h += caseHTML(i, cls, extra + (i === g.my ? ' disabled title="On your podium"' : ''));
+    }
     box.innerHTML = h;
+    arrangeCases(false);
+  }
+  // The money board's bars and the cases are sized to the room the stage has at this shape: the bars share the
+  // stage's height, and the cases sit on as many risers as gives the biggest cases (3-4-4-4-4-4-3 on a phone upright,
+  // 6-7-6-7 across a wide stage). A turn of the device moves the same cases onto the new risers.
+  function arrangeCases(turned) {
+    var box = document.getElementById('cases'); if (!box) return;
+    var fl = box.parentNode;
+    var fw = fl.clientWidth, fh = fl.clientHeight;
+    var colw = Math.round(Math.max(68, Math.min(170, fw * 0.2)));
+    var mg = fh > 500 ? 6 : fh > 360 ? 4 : 3;
+    var mvh = Math.floor(Math.max(16, Math.min(46, (fh - 12 * mg) / 13)));
+    fl.style.setProperty('--colw', colw + 'px');
+    fl.style.setProperty('--mvh', mvh + 'px');
+    fl.style.setProperty('--mvf', Math.max(11, Math.min(19, mvh * 0.6, colw * 0.16)).toFixed(1) + 'px');
+    fl.style.setProperty('--mvg', mg + 'px');
+    var w = box.clientWidth, H = box.clientHeight;
+    if (H < 80) H = w * 1.2;
+    var gap = Math.round(Math.max(4, Math.min(16, w * 0.022))), best = null;
+    for (var r = 3; r <= 8; r++) {
+      var per = Math.ceil(26 / r);
+      var cs = Math.floor(Math.min((w - (per - 1) * gap) / per, (H - (r - 1) * gap) / r / 0.92, 112));
+      if (!best || cs > best.cs) best = { r: r, cs: cs };
+    }
+    var R = best.r, base = Math.floor(26 / R), extra = 26 - base * R, rows = [], k;
+    for (k = 0; k < R; k++) rows.push(base);
+    var order = [];
+    for (k = 1; k < R; k += 2) order.push(k);
+    for (k = 2; k < R - 1; k += 2) order.push(k);
+    order.push(0, R - 1);
+    for (k = 0; k < extra; k++) rows[order[k]]++;
+    box.style.setProperty('--cg', gap + 'px');
+    box.style.setProperty('--rg', gap + 'px');
+    var btns = Array.prototype.slice.call(box.querySelectorAll('.case'));
+    btns.forEach(function (b) { b.style.setProperty('--cs', best.cs + 'px'); if (turned) b.classList.remove('just'); });
+    var same = box.children.length === R && rows.every(function (c, i) { return box.children[i].children.length === c; });
+    if (same) return;
+    var frag = document.createDocumentFragment(), n = 0;
+    rows.forEach(function (c) { var d = document.createElement('div'); d.className = 'crow'; for (var q = 0; q < c; q++) d.appendChild(btns[n++]); frag.appendChild(d); });
+    box.textContent = ''; box.appendChild(frag);
   }
   app.addEventListener('click', function (e) {
     var c = e.target.closest('.cases .case.can'); if (c) tapCase(+c.dataset.i);
   });
   var rsT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(layoutCases, 120); });
+  window.addEventListener('resize', function () { arrangeCases(true); clearTimeout(rsT); rsT = setTimeout(function () { arrangeCases(true); }, 150); });
 
   function pedestal(g) {
     var ped = el('div', { class: 'ped' });
@@ -1072,6 +1145,31 @@
     if (g0 && g0.phase === 'done' && S.players.every(function (p) { return p.g && p.g.phase === 'done'; })) finish();
     else runOn();
   } else showSetup();
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = '#app>.desk, #app>.studio>.marq, #cases .case, .floor>.col', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>
