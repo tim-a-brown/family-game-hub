@@ -188,8 +188,18 @@ Underlying principles for everything:
   - **Special moments for uncommon events and accomplishments**, each built into the play where it happens (a slam, a
     double run, a perfect hand, a comeback, a personal best), rarer events bigger, and the game history keeps them as
     highlights.
-  **Planned (Tim, the same day): once Bridge and Pinochle are live, a sweep of everything in the app against this
-  baseline**, game by game.
+  **The sweep against this baseline** (2026-11-15) went game by game through every page but Arvela and Lorcana. What it
+  left in the kit for every game: **`Kit.glide(fn)`** runs a relayout (the device turned) inside a View Transition, quietly
+  dropping one that a second turn cuts short (give the pieces `view-transition-name`; many pages carry their own small
+  FLIP or `vtGo` from before it existed). **A setup on a phone held sideways** (landscape, 520 tall or less, 640 wide or
+  more) is two columns: the options fill the left, the title, the Players card, anything the game adds (each on its own
+  row) and the start button stand at the right; a part the game adds after its options goes under them at the left
+  (Trivia's categories). A game's own sideways layout for its table must not apply while the setup shows
+  (`.stage:not(:has(> .setup))`). **A score keeper held sideways** from 700 wide has its sheet at the left and its note and
+  buttons in a column of their own at the right (cards.js). Sheets' buttons and the Kit keyboard's bottom row stand clear
+  of a phone's rounded corners when the browser reports no safe area (18px and 26px). Most games that were locked upright
+  on a phone now play sideways (the card tables, the casino tables, Rook, Phase 10, Marbles, the arcade games); Mazes
+  stays upright for its tilt mode, and Centipede and Goblin Defenders stay sideways.
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
