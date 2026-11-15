@@ -11,7 +11,7 @@ function check(st, deck) {
 }
 function pct(a, k) { const s = a.slice().sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(s.length * k))]; }
 const VARIANTS = [
-  { n: 2, o: {} }, { n: 2, o: { shuffle: 0 } }, { n: 2, o: { down: 1 } }, { n: 2, o: { aces: 'low' } }, { n: 2, o: { aces: 'two' } },
+  { n: 2, o: {} }, { n: 2, o: { shuffle: 0 } }, { n: 2, o: { shuffle: 1 } }, { n: 2, o: { down: 1 } }, { n: 2, o: { aces: 'low' } }, { n: 2, o: { aces: 'two' } },
   { n: 2, o: { rounds: 100 } }, { n: 3, o: {} }, { n: 3, o: { shuffle: 0 } }, { n: 4, o: {} }, { n: 4, o: { shuffle: 0, down: 1 } }
 ];
 let fail = 0;

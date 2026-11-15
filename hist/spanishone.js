@@ -1,7 +1,7 @@
 'use strict';
 // History view: Spanish One. The race to the target score, every hand (who went out and with which card, drawn as the
 // game's own card face, and what everyone else was left holding), the score sheet hand by hand, and the game's numbers:
-// the longest draw stack, the reverses and skips, Last card calls and catches. Recorded by games/spanishone.html
+// the longest draw stack, the reverses and skips, One Card calls and catches. Recorded by games/spanishone.html
 // (Kit.record 'spanishone').
 (function () {
   if (!window.HistView) return;

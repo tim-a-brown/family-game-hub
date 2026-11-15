@@ -122,7 +122,7 @@
     var opts = String(d.o || '').split('.');
     var vari = [];
     if (opts[1] === 'low') vari.push('aces low'); if (opts[1] === 'two') vari.push('a 2 takes an ace');
-    if (opts[2] === '1') vari.push('one card face down in a war'); if (opts[3] === '1') vari.push('won cards shuffled');
+    if (opts[2] === '1') vari.push('one card face down in a war'); if (opts[3] === '1') vari.push('won cards shuffled'); if (opts[3] === '0') vari.push('won cards put under in order');
     if (vari.length) why += ' Played with ' + vari.join(', ') + '.';
     if (+d.a2) why += ' A two took an ace ' + (+d.a2 === 1 ? 'once.' : d.a2 + ' times.');
     out.push(ck.foot(why, 'flag'));

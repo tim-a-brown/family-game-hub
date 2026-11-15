@@ -16,7 +16,7 @@
 //   cards when the rounds are up wins (a tie is a tie). No game goes on forever: at CAP rounds it ends the same way.
 //
 // State (all plain JSON):
-//   v, n, players [{name, cpu}], o {down, aces, shuffle, rounds}
+//   v, n, players [{name, cpu}], o {down, aces, shuffle (2 gathered after a war, 0 in order, 1 shuffled), rounds}
 //   piles [[card codes]]  index 0 is the top of the pile; a code is rank + suit: 'As', 'Th', '2c'
 //   out [bool]            players who have run out
 //   phase  'flip' | 'war' | 'over'
@@ -54,7 +54,7 @@
   function rankWord(c, plural) { var r = rankOf(c), w = RNAME[r]; return plural ? (RPLURAL[r] || w + 's') : w; }
   function opts(o) {
     o = o || {};
-    return { down: +o.down === 1 ? 1 : 3, aces: o.aces === 'low' || o.aces === 'two' ? o.aces : 'high', shuffle: o.shuffle === 0 || o.shuffle === '0' || o.shuffle === false ? 0 : 1, rounds: Math.max(0, +o.rounds || 0) };
+    return { down: +o.down === 1 ? 1 : 3, aces: o.aces === 'low' || o.aces === 'two' ? o.aces : 'high', shuffle: o.shuffle == null || +o.shuffle === 2 ? 2 : o.shuffle === 0 || o.shuffle === '0' || o.shuffle === false ? 0 : 1, rounds: Math.max(0, +o.rounds || 0) };
   }
 
   // a new game: players [{name, cpu}], o the options, seed (optional)
@@ -142,13 +142,26 @@
     return take(st, b.seats[0], res);
   }
   // the winner of the battle takes every card on the table under their pile
-  // (Not shuffled, they go under as they were laid, each player's cards together, starting with a different player
+  // (In order, they go under as they were laid, each player's cards together, starting with a different player
   // each round: a fixed order that started with the winner every time could send a game round and round for ever,
   // which scripts/war-sim.js found in about one game in eight with three players.)
+  // Gathered (shuffle 2, the default): after a war the winner scoops the table up the way hands do, each player's
+  // cards in a clump, the clumps picked up in any order, a clump sometimes turned round as it is picked up, and a card
+  // or two slipping out of place. A plain battle's few cards still go under in the order laid.
+  function gather(st) {
+    var cl = [], got = [];
+    for (var q = 0; q < st.n; q++) { var p0 = (st.round + q) % st.n; if (st.tbl[p0].length) cl.push(st.tbl[p0].map(function (x) { return x.c; })); st.tbl[p0] = []; }
+    shuffle(st, cl);
+    cl.forEach(function (c) { if (rnd(st) < 0.5) c.reverse(); got.push.apply(got, c); });
+    var slips = Math.floor(rnd(st) * 3);
+    for (var i = 0; i < slips && got.length > 1; i++) { var a = Math.floor(rnd(st) * got.length), b = Math.floor(rnd(st) * got.length), t = got[a]; got[a] = got[b]; got[b] = t; }
+    return got;
+  }
   function take(st, w, res) {
     var got = [], fin = st.inb.map(function (p) { var t = st.tbl[p]; return t.length ? t[t.length - 1].c : ''; }).filter(Boolean).join('.');
-    for (var q = 0; q < st.n; q++) { var p0 = (st.round + q) % st.n; st.tbl[p0].forEach(function (x) { got.push(x.c); }); st.tbl[p0] = []; }
-    if (st.o.shuffle) shuffle(st, got);
+    if (st.o.shuffle === 2 && st.wars) got = gather(st);
+    else for (var q = 0; q < st.n; q++) { var p0 = (st.round + q) % st.n; st.tbl[p0].forEach(function (x) { got.push(x.c); }); st.tbl[p0] = []; }
+    if (st.o.shuffle === 1) shuffle(st, got);
     got.forEach(function (c) { st.piles[w].push(c); });
     res.k = 'take'; res.w = w; res.cards = got; res.wars = st.wars;
     var S = st.st[w]; S.w++; if (st.wars) S.wars++; if (got.length > S.big) S.big = got.length;

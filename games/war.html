@@ -148,7 +148,7 @@
     '<h3>Winning</h3><ul><li>A player with no cards left is out. The last player with cards wins.</li>' +
     '<li>In a short game, whoever holds the most cards when the rounds are up wins. No game goes on forever: after 3,000 rounds it ends the same way.</li></ul>' +
     '<h3>Ways to play</h3><ul><li><b>Aces low</b> makes the ace the lowest card. <b>A 2 takes an ace</b> keeps aces high, but a two beats an ace.</li>' +
-    '<li><b>Won cards shuffled</b> mixes the cards you win before they go under your pile. Otherwise they go under in the order they were laid, the way they come off a real table.</li>' +
+    '<li><b>Won cards</b>: after a war, the cards you win are gathered up the way hands scoop them off a real table, each player’s cards in a clump and the clumps in no set order. <b>In order</b> puts them under exactly as they were laid, and <b>Shuffled</b> mixes them first.</li>' +
     '<li><b>Flipping</b>: by tap (tap your pile, or hold it to keep going), by themselves, or fast.</li></ul>' +
     '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the others join on their own devices. Each player turns up their own card, and the round is settled when everyone has. The computer plays any empty seat.</li></ul>';
 
@@ -206,8 +206,9 @@
         { id: 'down', label: 'Cards face down in a war', value: 3, choices: [
           [3, '3', 'Each player in a war lays three cards face down, then one face up.'],
           [1, '1', 'Each player in a war lays one card face down, then one face up.']] },
-        { id: 'shuffle', label: 'Won cards', value: 0, choices: [
-          [0, 'In order\nStandard', 'The cards you win go under your pile in the order they were laid.'],
+        { id: 'shuffle', label: 'Won cards', value: 2, choices: [
+          [2, 'Gathered\nStandard', 'After a war, the cards you win are scooped up off the table the way hands do it, in no set order.'],
+          [0, 'In order', 'The cards you win go under your pile in the order they were laid.'],
           [1, 'Shuffled', 'The cards you win are shuffled before they go under your pile.']] },
         { id: 'speed', label: 'Flipping', value: speed, choices: [
           ['tap', 'By tap', 'Tap your pile to flip, or hold it to keep flipping.'],
@@ -807,7 +808,7 @@
   function netOpts() {
     var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_war')) || {}; } catch (e) {}
     var o = g.options || {};
-    return { seats: Math.max(2, Math.min(4, +g.count || 2)), rounds: +o.rounds || 0, aces: o.aces || 'high', down: +o.down || 3, shuffle: +o.shuffle || 0 };
+    return { seats: Math.max(2, Math.min(4, +g.count || 2)), rounds: +o.rounds || 0, aces: o.aces || 'high', down: +o.down || 3, shuffle: o.shuffle == null ? 2 : +o.shuffle };
   }
   function netStart(players, opts, last) {
     var st = Core.newGame(players.map(function (p) { return { name: p.name, cpu: !!p.bot }; }), opts);

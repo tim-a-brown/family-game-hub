@@ -220,7 +220,7 @@ Underlying principles for everything:
 - **Every game keeps a good history** (Tim, 2026-11-15: "remember all games need good history recorded too"). A finished
   game is recorded with `Kit.record` and a compact `detail` (hist-view.js's header has the rules: small, no arrays inside
   arrays) that holds what made the game that game (the hands, the scores hand by hand, the board, the order of play), and
-  `highlights` for its rare moments as whole sentences; and the game has a view in `hist/` (`HistView.register`, its file
+  `highlights` for its rare moments as whole sentences (a view that draws its own score race or score sheet keeps the kit from adding a second one: `ownScores` in kit.js reads it, or the view says `data-scores="chart sheet"`); and the game has a view in `hist/` (`HistView.register`, its file
   in hist-view.js's list) that draws it: a scoresheet, the final board or hands, a replay where it fits. A score line
   alone is not a history. `hist/pinochle.js` and `hist/bridge.js` are the reference.
 - Player setup goes through `Kit.setup` (name picker, regulars, robot names for
@@ -323,16 +323,18 @@ Underlying principles for everything:
 
 - Each has its rules in a plain-JSON core that runs in the page, at the TurnNet table and in Node, a robot run under
   `scripts/` that plays thousands of games and checks every move, and a history view in `hist/`.
-- **War** `games/war.html`, `war-core.js`, `hist/war.js`, `scripts/war-sim.js`: 2 to 4, Pagat's rules; won cards go under
-  in the order laid starting from a different player each round (a fixed order looped forever in about 1 three-player
-  game in 8).
+- **War** `games/war.html`, `war-core.js`, `hist/war.js`, `scripts/war-sim.js`: 2 to 4, Pagat's rules; after a war the won
+  cards are gathered the way hands scoop them off a table (Tim, 2026-11-15: each player's cards a clump, the clumps in any
+  order, a clump sometimes turned round, a card or two out of place; `gather` in the core, seeded), and a plain battle's
+  cards go under in the order laid starting from a different player each round (a fixed order looped forever in about 1
+  three-player game in 8). In order and Shuffled are the other choices.
 - **Go Fish** `games/gofish.html`, `gofish-core.js`, `hist/gofish.js`, `scripts/gofish-sim.js`: 2 to 6; no undo (an
   answered ask shows another player's cards).
 - **Canasta** `games/canasta.html`, `canasta-core.js`, `hist/canasta.js`, `scripts/canasta/run.js` (`run.txt`): four in
   partnerships by default, two- and three-handed too; the robots' settings are `LV` in the core; test hooks
   `window.__canasta` and `localStorage.canasta_fast = '1'`.
 - **Spanish One** `games/spanishone.html`, `spanishone-core.js`, `hist/spanishone.js`, `scripts/spanishone-sim.js`: Tim's
-  name for an original game in the genre of UNO (UNO's own name, logo and card look are Mattel's and are not used); 2 to
+  name for an original game in the genre of UNO; the call is "One Card!" (Tim, 2026-11-15) (UNO's own name, logo and card look are Mattel's and are not used); 2 to
   10, its own card faces with a shape for each color.
 - **Arrow Jam** `games/arrowjam.html`, levels `games/arrowjam/levels.js` from `scripts/arrowjam/gen.js` (checked by
   `check.js`, table in `levels.txt`), `hist/arrowjam.js` (replays a clear): played from Mazes beside the Labyrinth (Tim:

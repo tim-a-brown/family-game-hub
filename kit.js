@@ -3538,6 +3538,23 @@
     }
     return el('div', { class: 'k-race-wrap', html: svg + '</svg>' });
   }
+  // A game's own history view that already draws the scores (hist/*.js: "The race to 500", "The score pad") keeps the
+  // kit from drawing a second race chart or a second round-by-round table under it. A view says so with
+  // data-scores="chart sheet" on any element, or is read: a line chart of the scores (a labeled picture with two or more
+  // lines in it, about a race, scores, lore, Renown, points, pegs, piles or books) and a table with a Total row.
+  function ownScores(gv) {
+    var r = { chart: false, sheet: false }; if (!gv || !gv.querySelectorAll) return r;
+    var tag = gv.querySelector('[data-scores]'), say = tag ? tag.getAttribute('data-scores') : '';
+    if (/chart/.test(say)) r.chart = true; if (/sheet/.test(say)) r.sheet = true;
+    [].forEach.call(gv.querySelectorAll('svg[aria-label]'), function (sv) {
+      if (/race|score|lore|renown|point|peg|pile|book/i.test(sv.getAttribute('aria-label')) && sv.querySelectorAll('polyline, path[fill="none"]').length >= 2) r.chart = true;
+    });
+    [].forEach.call(gv.querySelectorAll('table'), function (t) {
+      if (t.querySelector('tfoot, tr.tot')) { r.sheet = true; return; }
+      [].forEach.call(t.rows, function (row) { var c = row.cells[0]; if (c && /^totals?$/i.test(c.textContent.trim())) r.sheet = true; });
+    });
+    return r;
+  }
   function historyDetail(e, o) {
     o = o || {};
     var n = normalize(e), box = el('div', { class: 'k-hd' });
@@ -3561,14 +3578,15 @@
       box.appendChild(st);
     } else if (n.summary) box.appendChild(facts(el('div', { class: 'k-hd-sum' }), n.summary));
     // the game's own view: final board, cards, scorecard... (hist/*.js)
-    if (window.HistView) { var gv = HistView.render(e, o.game || e.game); if (gv) box.appendChild(gv); }
+    var gv = null; if (window.HistView) { gv = HistView.render(e, o.game || e.game); if (gv) box.appendChild(gv); }
+    var own = ownScores(gv);
     if (n.highlights.length) {
       var hl = el('ul', { class: 'k-hd-hl' });
       n.highlights.forEach(function (h) { hl.appendChild(el('li', { html: icon('sparkle') + '<span>' + factHtml(esc(h)) + '</span>' })); });   // (a highlight's separate facts, a line each)
       box.appendChild(hl);
     }
-    if (n.rounds && n.players.length) {
-      var chart = raceChart(n); if (chart) box.appendChild(chart);
+    if (n.rounds && n.players.length && !own.chart) { var chart = raceChart(n); if (chart) box.appendChild(chart); }
+    if (n.rounds && n.players.length && !own.sheet) {
       var t = el('table', { class: 'k-hd-rounds' }), hr = el('tr', null, [el('th', { text: '' })]);
       n.players.forEach(function (p, i) { hr.appendChild(el('th', { text: p.name, style: { color: playerColor(i) } })); });
       t.appendChild(hr);
