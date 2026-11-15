@@ -1541,9 +1541,23 @@
   // Enter follows the box's enterkeyhint (Done, Go, Next, Search, Send); Next moves to the next box. A key the page
   // listens for arrives as a keydown first, so code written for a real keyboard works unchanged. A box can opt out with
   // data-osk="off"; data-osk="neg" or "dec" says a number box takes a minus or a point. Desktops keep their own keyboard.
+  // Key sets (Tim, 2026-11-15: "some games might need numbers or certain symbols while others wouldn't"): a box shows
+  // only keys it can take, never a key that would be refused. data-osk on the box chooses the set:
+  //   letters  A to Z and space (data-osk-space="off" drops the space): no 123 key, no symbols page
+  //   name     letters, an apostrophe and a hyphen beside the space, capitals at each word: a person's name
+  //   word     letters, apostrophe, hyphen and space, capitals as the box asks: a word or an answer
+  //   code     capitals and digits, a row of digits over the letters, no space (data-osk-space="on" adds one)
+  //   (none)   the full keyboard: letters and a symbols page, for free text, search and notes
+  // A number box gets the number pad (above). A box with a simple pattern ("[A-Za-z]*", "[A-Z0-9]{4}", "[0-9]*") gets
+  // the set that pattern takes without saying so. A box that can only take capitals (autocapitalize="characters", or
+  // styled uppercase) has no shift key.
   var KitOsk = (function () {
     var touch = false; try { touch = matchMedia('(hover:none) and (pointer:coarse)').matches; } catch (e) {}
     var root = doc.documentElement, box = null, inner = null, cur = null, kind = 'text', page = 'abc', shift = 0, lastShift = 0, h = 0, repT = 0, repI = 0, hideT = 0;
+    var chEl = null, chV = '', chDirty = false;   // (a box typed in here hears 'change' on Enter or as it loses the focus, as with a real keyboard)
+    var held = null;   // (the key under the finger, kept pressed when the keys are redrawn)
+    function keyId(b) { return b.dataset.ch != null ? 'c' + b.dataset.ch.toLowerCase() : 'a' + b.dataset.act; }
+    function changed(a) { if (a && a === chEl && chDirty && a.value !== chV) { chV = a.value; chDirty = false; try { a.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {} } }
     function textual(a) {
       if (!a || a.nodeType !== 1) return false;
       if (a.tagName === 'TEXTAREA') return true;
@@ -1558,17 +1572,29 @@
       var num = t === 'number' || t === 'tel' || im === 'numeric' || im === 'decimal' || /^\[0-9\]/.test(a.getAttribute('pattern') || '') || o === 'neg' || o === 'dec';
       var dec = o === 'dec' || im === 'decimal' || (t === 'number' && /\./.test(a.getAttribute('step') || '') ) || (t === 'number' && a.getAttribute('step') === 'any');
       var neg = o === 'neg' || (t === 'number' && a.getAttribute('min') != null && parseFloat(a.getAttribute('min')) < 0);
+      var named = /^(letters|name|code|word)$/.test(o), ps = named ? null : patSet(a.getAttribute('pattern')), set = named ? o : ps ? ps.set : '';
+      if (ps && a.getAttribute('data-osk-space') == null) a.setAttribute('data-osk-space', ps.sp ? 'on' : 'off');
+      if (ps && ps.caps) a.dataset.oskCaps = '1';   // ("[A-Z]*": capitals only)
       a.dataset.oskIm = im;
-      a.dataset.oskKind = a.tagName === 'TEXTAREA' ? 'area' : num ? 'num' + (neg ? '-' : '') + (dec ? '.' : '') : t === 'email' ? 'email' : t === 'url' ? 'url' : t === 'password' ? 'pw' : 'text';
+      a.dataset.oskKind = a.tagName === 'TEXTAREA' ? 'area' : num ? 'num' + (neg ? '-' : '') + (dec ? '.' : '') : set && t !== 'email' && t !== 'url' ? set : t === 'email' ? 'email' : t === 'url' ? 'url' : t === 'password' ? 'pw' : 'text';
       if (t === 'number') { a.dataset.oskNum = '1'; a.setAttribute('type', 'text'); }   // (a number box rejects a lone "-" or "3."; as text it shows them while being typed)
       a.setAttribute('inputmode', 'none');
     }
+    // the set a simple pattern stands for: one class of characters, any count ("[A-Za-z]*", "[A-Z0-9]{4}")
+    function patSet(p) {
+      var m = /^\^?\[([^\]^]+)\](?:[*+?]|\{\d+(?:,\d*)?\})?\$?$/.exec(p || ''); if (!m) return null;
+      var c = m[1], L = /a-z|A-Z/.test(c), D = /0-9|\\d/.test(c), X = c.replace(/a-z|A-Z|0-9|\\d/g, '').replace(/\\/g, ''), caps = !/a-z/.test(c);
+      if (!L) return null;
+      if (D) return X.replace(/ /g, '') ? null : { set: 'code', sp: / /.test(X) };
+      if (!X || X === ' ') return { set: 'letters', sp: !!X, caps: caps };
+      return /^[ '’-]+$/.test(X) ? { set: 'word', sp: / /.test(X), caps: caps } : null;
+    }
     function capMode(a) {
-      var c = (a.getAttribute('autocapitalize') || '').toLowerCase();
-      if (/^(email|url|pw)$/.test(a.dataset.oskKind)) return 'none';
+      var c = (a.getAttribute('autocapitalize') || '').toLowerCase(), k = a.dataset.oskKind;
+      if (/^(email|url|pw)$/.test(k)) return 'none';
       if (c === 'off' || c === 'none') return 'none';
-      if (c === 'characters' || /uppercase/.test(getComputedStyle(a).textTransform)) return 'all';
-      return c === 'words' ? 'words' : 'sentences';
+      if (c === 'characters' || k === 'code' || a.dataset.oskCaps || /uppercase/.test(getComputedStyle(a).textTransform)) return 'all';
+      return c === 'words' || (k === 'name' && !c) ? 'words' : 'sentences';
     }
     function before(a) { try { var p = a.selectionStart; return p == null ? a.value : a.value.slice(0, p); } catch (e) { return a.value; } }
     function autoShift() {
@@ -1578,7 +1604,8 @@
     }
     var ROWS = {
       abc: [['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['@shift','z','x','c','v','b','n','m','@back'], ['@123','@space','@enter']],
-      sym: [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','$','&','@','"'], ['@abc2','.',',','?','!',"'",'#','%','@back'], ['@abc','@space','@enter']]
+      sym: [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','$','&','@','"'], ['@more','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']],
+      sym2: [['[',']','{','}','#','%','^','*','+','='], ['_','\\','|','~','<','>','€','£','¥','`'], ['@123b','.',',','?','!',"'",'@back'], ['@abc','@hide','@space','@enter']]
     };
     function rows() {
       var k = cur ? cur.dataset.oskKind : 'text';
@@ -1587,13 +1614,21 @@
         if (window.innerHeight < 500) return [['1','2','3','4','5','6','7','8','9','0','@back'], ['@hide', ex, '@enter']];   // (a phone on its side: the digits in one row)
         return [['1','2','3'], ['4','5','6'], ['7','8','9'], [ex, '0', '@back'], ['@hide', '@enter']];
       }
-      var r = ROWS[page === 'sym' ? 'sym' : 'abc'].map(function (x) { return x.slice(); });
-      if (page !== 'sym') {
+      if (/^(letters|name|code|word)$/.test(k)) {
+        // a narrowed set: the letters, and only what else the box takes
+        var L = ROWS.abc.slice(0, 3).map(function (x) { return x.slice(); }), so = (cur.getAttribute('data-osk-space') || '').toLowerCase();
+        var sp = k === 'code' ? so === 'on' : so !== 'off', pun = k === 'name' || k === 'word';
+        if (capMode(cur) === 'all') L[2][0] = '@none';   // (capitals only: no shift, its place kept so the letters stay put)
+        if (k === 'code') L.unshift(['1','2','3','4','5','6','7','8','9','0']);
+        L.push(['@hide'].concat(pun ? ["'"] : [], [sp ? '@space' : '@pad'], pun ? ['-'] : [], ['@enter']));
+        return L;
+      }
+      var r = ROWS[page === 'sym' || page === 'sym2' ? page : 'abc'].map(function (x) { return x.slice(); });
+      if (page === 'abc') {
         if (k === 'email') r[3] = ['@123', '@', '@space', '.', '@enter'];
         else if (k === 'url') r[3] = ['@123', '/', '@space', '.', '@enter'];
         else r[3] = ['@123', '@hide', '@space', '@enter'];
       }
-      if (page === 'sym' && k === 'num.' ) {}
       return r;
     }
     function enterLabel() {
@@ -1612,8 +1647,11 @@
         else if (a === 'enter') { var l = enterLabel(); if (l) b.textContent = l; else { b.innerHTML = icon('kenter'); b.setAttribute('aria-label', 'Return'); } b.classList.add('go'); }
         else if (a === 'hide') { b.innerHTML = icon('khide'); b.setAttribute('aria-label', 'Hide the keyboard'); }
         else if (a === '123') b.textContent = '123';
-        else if (a === 'abc' || a === 'abc2') b.textContent = 'ABC';
+        else if (a === 'abc') b.textContent = 'ABC';
+        else if (a === 'more') { b.textContent = '#+='; b.setAttribute('aria-label', 'More symbols'); }
+        else if (a === '123b') b.textContent = '123';
         else if (a === 'none') { b.className = 'k-osk-k gap'; b.disabled = true; }
+        else if (a === 'pad') { b.className = 'k-osk-k gap pad'; b.disabled = true; }
       } else {
         var ch = spec.length === 1 && /[a-z]/.test(spec) && shift ? spec.toUpperCase() : spec;
         b.dataset.ch = ch; b.textContent = ch === '-' && /^num/.test(kind) ? '−' : ch;
@@ -1627,8 +1665,8 @@
       box.classList.toggle('num', /^num/.test(kind));
       inner.innerHTML = '';
       rows().forEach(function (r, i) {
-        var row = doc.createElement('div'); row.className = 'k-osk-r r' + i;
-        r.forEach(function (k) { row.appendChild(keyEl(k)); });
+        var row = doc.createElement('div'); row.className = 'k-osk-r r' + i + (r[0] === 'a' ? ' mid' : '');
+        r.forEach(function (k) { var b = keyEl(k); if (held && keyId(b) === held) b.classList.add('dn'); row.appendChild(b); });
         inner.appendChild(row);
       });
     }
@@ -1644,6 +1682,15 @@
       ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { box.addEventListener(t, function (e) { e.stopPropagation(); up(e); }); });
       ['mousedown', 'mouseup', 'click', 'dblclick', 'touchend', 'contextmenu'].forEach(function (t) { box.addEventListener(t, keep); });
       box.addEventListener('touchstart', keep, { passive: false });
+    }
+    // the page answered a key by changing what is around the box (a name added to the list above it, a message under
+    // it): the box is brought back above the keyboard, in its sheet or by the page's lift
+    function inView(a) {
+      if (!a || !a.isConnected || doc.activeElement !== a || !box || !box.classList.contains('on')) return;
+      var r = a.getBoundingClientRect(), lim = window.innerHeight - h - 8;
+      if (r.bottom <= lim && r.top >= 0) return;
+      if (a.closest && a.closest('.k-sheet')) { try { a.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+      else if (window.KitKb) window.KitKb.place();
     }
     function fire(a, inputType, data) { try { a.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: inputType, data: data })); } catch (e) { var ev = doc.createEvent('Event'); ev.initEvent('input', true, false); a.dispatchEvent(ev); } }
     function keydown(k) {
@@ -1664,7 +1711,7 @@
         if (t === '.' && v.indexOf('.') >= 0) return;
       }
       if (a.setRangeText) a.setRangeText(t, st, en, 'end'); else a.value = v.slice(0, st) + t + v.slice(en);
-      fire(a, 'insertText', t);
+      chDirty = true; fire(a, 'insertText', t); inView(a);
     }
     function backspace() {
       var a = cur; if (!a || !keydown('Backspace') || cur !== a) return;
@@ -1672,13 +1719,14 @@
       try { if (a.selectionStart != null) { st = a.selectionStart; en = a.selectionEnd; } } catch (e) {}
       if (st === en) { if (!st) return; st -= (/[\uDC00-\uDFFF]/.test(v.charAt(st - 1)) ? 2 : 1); }
       if (a.setRangeText) a.setRangeText('', st, en, 'end'); else a.value = v.slice(0, st) + v.slice(en);
-      fire(a, 'deleteContentBackward', null);
+      chDirty = true; fire(a, 'deleteContentBackward', null);
     }
     function enter() {
       var a = cur; if (!a) return;
       var was = a.value;
       if (!keydown('Enter') || cur !== a) return;
       if (a.tagName === 'TEXTAREA') { insert('\n'); return; }
+      changed(a); if (cur !== a) return;
       var hint = (a.getAttribute('enterkeyhint') || '').toLowerCase();
       if (hint === 'next') {
         var all = Array.prototype.slice.call(doc.querySelectorAll('input,textarea')).filter(function (x) { return wants(x) && x.offsetParent; });
@@ -1686,15 +1734,25 @@
       }
       if (a.form && !a.form.hasAttribute('novalidate') && a.form.requestSubmit) { try { a.form.requestSubmit(); } catch (e) {} }
       else if (a.form && a.form.requestSubmit) { try { a.form.requestSubmit(); } catch (e) {} }
-      setTimeout(function () { if (doc.activeElement === a && a.isConnected && !(was && !a.value)) a.blur(); }, 0);   // (a box its page cleared for the next entry, a name added, keeps the keyboard)
+      // The keyboard goes away once Enter has done its work, but stays for the next try: a box its page cleared for the
+      // next entry (a name added), and a box in a sheet that is still open (a PIN that didn't match, a code not found,
+      // with the sheet's message above it). A search puts it away to show what it found.
+      setTimeout(function () {
+        if (doc.activeElement !== a || !a.isConnected) return;
+        if (was && !a.value) { inView(a); return; }
+        var sc = a.closest && a.closest('.k-scrim');
+        if (hint !== 'search' && sc && sc.classList.contains('show')) { inView(a); return; }
+        a.blur();
+      }, 0);
     }
     function press(b) {
       var act = b.dataset.act;
-      if (b.dataset.ch != null) { insert(b.dataset.ch); if (shift === 1 && page !== 'sym') { shift = 0; autoShift(); paint(); } else if (page === 'abc') { var s0 = shift; autoShift(); if (s0 !== shift) paint(); } return; }
+      if (b.dataset.ch != null) { insert(b.dataset.ch); if (shift === 1 && page === 'abc') { shift = 0; autoShift(); paint(); } else if (page === 'abc') { var s0 = shift; autoShift(); if (s0 !== shift) paint(); } return; }
       if (act === 'back') { backspace(); var s1 = shift; autoShift(); if (s1 !== shift) paint(); return; }
-      if (act === 'space') { insert(' '); if (page === 'sym') { page = 'abc'; } autoShift(); paint(); return; }
+      if (act === 'space') { insert(' '); page = 'abc'; autoShift(); paint(); return; }   // (a space after a number or a symbol: back to the letters)
       if (act === 'shift') { var now = Date.now(); shift = shift === 2 ? 0 : (shift === 1 && now - lastShift < 350) ? 2 : shift ? 0 : 1; lastShift = now; paint(); return; }
-      if (act === '123' || act === 'abc2') { page = 'sym'; paint(); return; }
+      if (act === '123' || act === '123b') { page = 'sym'; paint(); return; }
+      if (act === 'more') { page = 'sym2'; paint(); return; }
       if (act === 'abc') { page = 'abc'; autoShift(); paint(); return; }
       if (act === 'enter') { enter(); return; }
       if (act === 'hide') { if (cur) cur.blur(); hide(); return; }
@@ -1702,13 +1760,13 @@
     function down(e) {
       var b = e.target.closest && e.target.closest('.k-osk-k');
       if (!b || b.disabled) return;
-      b.classList.add('dn'); haptic('light'); sfx('tap', 0.4);
+      b.classList.add('dn'); held = keyId(b); haptic('light'); sfx('tap', 0.4);
       press(b);
       var act = b.dataset.act;
       if (act === 'back' || b.dataset.ch === ' ') { clearTimeout(repT); clearInterval(repI); repT = setTimeout(function () { repI = setInterval(function () { if (act === 'back') backspace(); }, 70); }, 420); }
     }
     function up(e) {
-      clearTimeout(repT); clearInterval(repI);
+      clearTimeout(repT); clearInterval(repI); held = null;
       if (!box) return;
       Array.prototype.forEach.call(box.querySelectorAll('.k-osk-k.dn'), function (b) { b.classList.remove('dn'); });
     }
@@ -1716,6 +1774,7 @@
       clearTimeout(hideT);
       build(); prep(a);
       var same = cur === a; cur = a;
+      if (chEl !== a) { chEl = a; chV = a.value; chDirty = false; }
       if (!same) { page = 'abc'; if (shift !== 2) shift = 0; }
       autoShift(); paint();
       root.classList.add('k-osk-up');
@@ -1748,6 +1807,9 @@
         else if (cur && box && !box.contains(a) && !(a.closest && a.closest('label')) && doc.activeElement === cur) cur.blur();   // (a tap anywhere else puts the keyboard away)
       }, true);
       doc.addEventListener('focusin', function (e) { if (wants(e.target)) show(e.target); else if (cur) { hideT = setTimeout(hide, 30); } });
+      doc.addEventListener('focusout', function (e) { if (e.target === chEl) { changed(chEl); chEl = null; } }, true);
+      // a sheet closing with its box still focused takes the keyboard down with it, as it starts to slide away
+      window.addEventListener('kit-sheet-closed', function () { var sc = cur && cur.closest && cur.closest('.k-scrim'); if (sc && !sc.classList.contains('show')) cur.blur(); });
       doc.addEventListener('focusout', function () { hideT = setTimeout(function () { var a = doc.activeElement; if (wants(a)) show(a); else hide(); }, 60); });
       // a page changes what is on the screen while the keyboard is up: a box that leaves takes the keyboard with it
       setInterval(function () { if (cur && (!cur.isConnected || doc.activeElement !== cur)) { if (wants(doc.activeElement)) show(doc.activeElement); else hide(); } }, 500);
@@ -1770,7 +1832,9 @@
       var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)), osk = KitOsk.on() ? KitOsk.h() : 0;
       if (osk > kb) kb = osk;
       var now = (typing() && kb > 80) || osk > 0;
-      if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(osk >= kb && osk ? window.innerHeight - osk : vv.height) + 'px'); }
+      var left = Math.round(osk >= kb && osk ? window.innerHeight - osk : vv.height);
+      if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', left + 'px'); }
+      root.classList.toggle('k-kb-short', now && left < 460);   // (little room above the keyboard: a sheet's buttons scroll with it, kit.css)
       if (now !== on) { on = now; root.classList.toggle('k-kb', on); if (on) seat(); }
       if (!on) setLift(0); else { clearTimeout(liftT); clearTimeout(liftT2); liftT = setTimeout(place, 80); liftT2 = setTimeout(place, 420); }   // (again once the page settles)
     }
@@ -2121,7 +2185,7 @@
         used ? el('span', { class: 'dim', text: 'playing' }) : null
       ]));
     });
-    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'New name', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'New name', 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
     function addNew() {
       var v = inp.value.trim(); if (!v) return;
       if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
@@ -2178,8 +2242,8 @@
           // the signed-in person is already themselves: no link button for them
           whoMark(n) === 'me' ? el('span', { class: 'k-you', text: 'You' }) : el('button', { type: 'button', class: 'icon-btn' + (function () { var r = window.FGHSync && FGHSync.linkOf && FGHSync.linkOf(n); return r ? (r.hs ? ' lk-on' : ' lk-wait') : ''; })(), 'aria-label': 'Link ' + n + ' to their profile', title: 'Link to their profile', html: icon('link'), onclick: function () { linkSheet(n, paint); } }),
           el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Edit ' + n, html: icon('pencil'), onclick: function () {
-            var inp = el('input', { class: 'input', maxlength: 14, value: n, autocomplete: 'off' }), s2;
-            var ini0 = iniOf(n), iin = el('input', { class: 'input k-ini-in', maxlength: 3, value: ini0, placeholder: 'ABC', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+            var inp = el('input', { class: 'input', maxlength: 14, value: n, 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off' }), s2;
+            var ini0 = iniOf(n), iin = el('input', { class: 'input k-ini-in', maxlength: 3, value: ini0, placeholder: 'ABC', 'data-osk': 'letters', 'data-osk-space': 'off', enterkeyhint: 'done', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
             iin.addEventListener('input', function () { var c = iniClean(iin.value); if (c !== iin.value) iin.value = c; });
             var form = el('div', { class: 'k-edit' }, [el('div', { class: 'label', text: 'Name' }), inp, el('div', { class: 'label', text: 'Arcade initials' }), iin]);
             function go() {
@@ -2207,7 +2271,7 @@
         ]));
       });
     }
-    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Add a player', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Add a player', 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
     function add() {
       var v = inp.value.trim(); if (!v) return;
       if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
@@ -2549,7 +2613,7 @@
           });
           pane.appendChild(bench);
         } else pane.appendChild(el('p', { class: 'muted', text: 'Nobody on your list yet. Add a name and it’s saved for next time.' }));
-        var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Someone new', 'aria-label': 'A new player’s name', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
+        var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Someone new', 'aria-label': 'A new player’s name', 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off', autocorrect: 'off', spellcheck: 'false' });
         var addNew = function () {
           var v = inp.value.trim(); if (!v || !isPersonName(v)) { if (v) toast('Pick a different name'); return; }
           if (!fpRead().some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) fpWrite(fpRead().concat([v]));
@@ -3838,7 +3902,7 @@
       return;
     }
     node.appendChild(el('p', { class: 'muted', text: 'Ask ' + name + ' for their profile code. On their phone: tap their avatar at the top of the home screen, then Share my profile. The games you’ve already played with ' + name + ' go to their history too, once they accept on their phone.' }));
-    var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+    var inp = el('input', { class: 'input lk-code', maxlength: 7, placeholder: 'ABC123', 'data-osk': 'code', enterkeyhint: 'go', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       node.appendChild(el('button', { type: 'button', class: 'btn btn-soft btn-block', html: icon('camera') + '<span>Scan their QR code</span>', onclick: function () {
         scanSheet(name, function (code) { inp.value = code; setTimeout(go, 200); });   // scanned: link straight away, in this sheet
@@ -4474,7 +4538,7 @@
       } }));
     }
     paintOrd();
-    var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', 'aria-label': 'Find a game' });
+    var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', enterkeyhint: 'search', 'aria-label': 'Find a game' });
     var box = el('div', { class: 'k-list k-defs' });
     function paint() {
       var t = q.value.trim().toLowerCase(); box.innerHTML = '';
@@ -4519,7 +4583,7 @@
     var me = lsGet('my_name', '').trim();
     if (!me) {
       // no name yet: ask for it here, then carry on to the code
-      var nin = el('input', { class: 'input', maxlength: 14, placeholder: 'Your name', autocomplete: 'off', enterkeyhint: 'done' }), s0;
+      var nin = el('input', { class: 'input', maxlength: 14, placeholder: 'Your name', 'data-osk': 'name', autocomplete: 'off', enterkeyhint: 'done' }), s0;
       function goName() {
         var v = nin.value.trim(); if (!v) { nin.focus(); return; }
         if (typeof FrequentPlayers !== 'undefined' && FrequentPlayers.setMyName) FrequentPlayers.setMyName(v); else lsSet('my_name', v);
@@ -4661,7 +4725,7 @@
       btns.push([b, n]); list.appendChild(b);
     });
     node.appendChild(list);
-    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Or type another name', autocomplete: 'off', enterkeyhint: 'done', style: { marginTop: '10px' } });
+    var inp = el('input', { class: 'input', maxlength: 14, placeholder: 'Or type another name', 'data-osk': 'name', autocomplete: 'off', enterkeyhint: 'done', style: { marginTop: '10px' } });
     inp.addEventListener('input', function () { picked = inp.value.trim(); mark(); });
     node.appendChild(inp);
     var msg = el('p', { class: 'lk-msg' }); node.appendChild(msg);
@@ -4710,7 +4774,7 @@
   function initialsSheet(onDone) {
     if (!linksOn()) { sheet({ title: 'Arcade initials', html: '<p class="muted">Sign in with a PIN to set your arcade initials.</p>', actions: [{ label: 'OK', cls: 'btn-soft' }] }); return; }
     var cur = FGHSync.initials() || lsGet('my_name', '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-    var inp = el('input', { class: 'input lk-code', maxlength: 3, value: cur, placeholder: 'ABC', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Your initials' });
+    var inp = el('input', { class: 'input lk-code', maxlength: 3, value: cur, placeholder: 'ABC', 'data-osk': 'letters', 'data-osk-space': 'off', enterkeyhint: 'done', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Your initials' });
     inp.addEventListener('input', function () { var v = inp.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3); if (v !== inp.value) inp.value = v; });
     var node = el('div', { class: 'lk' }, [el('p', { class: 'muted', style: { margin: '0 0 10px' }, text: 'Three letters for arcade high scores. They’re filled in for you when you make the board, and people who link you see your best scores on theirs.' }), inp]), s;
     function go() {
@@ -4733,7 +4797,7 @@
       el('div', { class: 'lk-top' }, [av, el('div', null, [el('b', { text: name }), el('small', { text: 'linked you from their phone' })])]),
       el('p', { class: 'muted', text: 'Accept and their avatar and best scores show here, and the games you play together go to both histories. Decline and nothing is linked, on either phone.' })
     ]);
-    var inp = el('input', { class: 'input', maxlength: 14, value: name, autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'Their name here' });
+    var inp = el('input', { class: 'input', maxlength: 14, value: name, 'data-osk': 'name', autocomplete: 'off', enterkeyhint: 'done', 'aria-label': 'Their name here' });
     var hint = el('p', { class: 'lk-msg' });
     function check() {
       var v = inp.value.trim(), have = knownNames().some(function (n) { return n.toLowerCase() === v.toLowerCase(); }), lk = v && FGHSync.linkOf(v);
@@ -4991,7 +5055,7 @@
       body.innerHTML = '';
       if (cur.state === 'pin') {
         sub.textContent = 'Their PIN changed';
-        var inp = el('input', { class: 'input fam-pin', type: 'password', inputmode: 'numeric', maxlength: '4', autocomplete: 'off', placeholder: '• • • •', 'aria-label': poss(name) + ' new PIN' }), msg = el('p', { class: 'lk-msg' });
+        var inp = el('input', { class: 'input fam-pin', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '4', autocomplete: 'off', placeholder: '• • • •', 'aria-label': poss(name) + ' new PIN' }), msg = el('p', { class: 'lk-msg' });
         body.appendChild(el('p', { class: 'muted', text: 'Type ' + poss(name) + ' new PIN to keep looking after their games.' })); body.appendChild(inp); body.appendChild(msg);
         body.appendChild(el('button', { type: 'button', class: 'btn btn-primary btn-block', style: { marginTop: '10px' }, text: 'Continue', onclick: function () {
           msg.textContent = 'Checking…'; FGHSync.kids.ask(code, inp.value, name).then(function () { load(); }).catch(function (e) { msg.textContent = (e && e.message) || 'Try again'; sfx('bad'); });
@@ -5053,7 +5117,7 @@
       sheet({ title: poss(name) + ' sections', node: el('div', null, [el('p', { class: 'muted', style: { margin: '0 0 6px' }, text: 'A section that’s off leaves ' + poss(name) + ' home screen, and its games won’t open.' }), box]), actions: [{ label: 'Done', cls: 'btn-soft' }], onClose: function () { paint(); } });
     }
     function kidGames() {
-      var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', 'aria-label': 'Find a game' }), box = el('div', { class: 'k-ord kd-games' });
+      var q = el('input', { class: 'input', type: 'search', placeholder: 'Find a game', autocomplete: 'off', enterkeyhint: 'search', 'aria-label': 'Find a game' }), box = el('div', { class: 'k-ord kd-games' });
       var all = (typeof GAMES !== 'undefined' ? GAMES : []).filter(function (g) { return !g.hidden; });
       function p() {
         var t = q.value.trim().toLowerCase(); box.innerHTML = '';

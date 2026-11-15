@@ -199,6 +199,14 @@ const ArcadeHi = (function(){
   background:var(--well);border:0;box-shadow:inset 0 0 0 1px var(--gl-line);border-radius:18px;color:var(--text);width:170px;padding:12px 8px;outline:none;transition:box-shadow .15s;}
 .ahi-input:focus{box-shadow:inset 0 0 0 2px var(--lit),0 0 16px var(--litg);}
 .ahi-input::placeholder{color:var(--text-3);opacity:.6;}
+.ahi-mob{text-align:center;}
+html.k-kb .ahi-overlay{padding-bottom:calc(var(--kb,0px) + 12px);}
+html.k-kb .ahi-box{max-height:calc(var(--vvh,100vh) - 24px);}
+.ahi-tiles{position:relative;margin-top:0;}
+.ahi-ghost{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;font-size:16px;background:none;color:transparent;caret-color:transparent;}
+.ahi-tiles .ahi-letter.active:empty::after{content:'';width:3px;height:46px;border-radius:2px;background:var(--lit);animation:ahi-caret 1.06s steps(2,jump-none) infinite;}
+.ahi-tiles:not(:focus-within) .ahi-letter.active:empty::after{animation:none;opacity:.35;}
+@keyframes ahi-caret{0%{opacity:1;}100%{opacity:0;}}
 .ahi-warn{display:none;color:var(--bad-ink,#ff8a8a);font-size:.84rem;font-weight:650;text-align:center;margin-bottom:10px;}
 .ahi-acts{display:flex;flex-direction:column;align-items:stretch;gap:6px;max-width:260px;margin:0 auto;}
 .ahi-score-disp{text-align:center;margin-bottom:16px;}
@@ -341,31 +349,39 @@ const ArcadeHi = (function(){
 
     function renderSlots(){
       const container = document.getElementById('ahi-slots');
-      container.innerHTML = '';
 
       if(isMobile){
-        // Mobile: single text input that brings up keyboard
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'text-align:center;';
-        wrapper.innerHTML = `
-          <div class="ahi-type">Type your 3 initials</div>
-          <input id="ahi-mobile-input" class="ahi-input" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
-            maxlength="3" placeholder="AAA">
-          <div class="ahi-letters">
-            ${letters.map((l,i)=>`<div class="ahi-letter${i===focusIdx?' active':''}" style="pointer-events:none;">${l}</div>`).join('')}
-          </div>`;
-        container.appendChild(wrapper);
-        const inp = document.getElementById('ahi-mobile-input');
-        setTimeout(()=>{inp.focus();inp.click();},100);
-        inp.addEventListener('input',()=>{
-          const val = inp.value.toUpperCase().replace(/[^A-Z]/g,'');
-          for(let i=0;i<3;i++) letters[i] = val[i]||'A';
-          focusIdx = Math.min(val.length, 2);
-          renderSlots();
-        });
-        inp.value = letters.join('').replace(/A+$/,'') || '';
+        // A touch screen: the three tiles are the display, and one box laid invisibly over them takes the typing (the
+        // app's own keyboard: capital letters only). The box stays put while the tiles follow it, so typing never
+        // loses the keyboard; a letter not yet typed is an empty tile, the next one lit with a caret.
+        let inp = document.getElementById('ahi-mobile-input');
+        if(!inp){
+          container.innerHTML = `
+            <div class="ahi-mob">
+              <div class="ahi-type">Type your 3 initials</div>
+              <div class="ahi-letters ahi-tiles">
+                <div class="ahi-letter"></div><div class="ahi-letter"></div><div class="ahi-letter"></div>
+                <input id="ahi-mobile-input" class="ahi-ghost" type="text" inputmode="text" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                  maxlength="3" pattern="[A-Za-z]*" data-osk="letters" data-osk-space="off" enterkeyhint="done" aria-label="Your initials">
+              </div>
+            </div>`;
+          inp = document.getElementById('ahi-mobile-input');
+          inp.value = guess.length >= 2 ? guess : '';
+          inp.addEventListener('input',()=>{
+            const val = inp.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,3);
+            if(val !== inp.value) inp.value = val;
+            const warn=document.getElementById('ahi-warn'); if(warn) warn.style.display='none';
+            renderSlots();
+          });
+          setTimeout(()=>{ inp.focus(); try{ inp.setSelectionRange(inp.value.length, inp.value.length); }catch(e){} },100);
+        }
+        const val = inp.value;
+        for(let i=0;i<3;i++) letters[i] = val[i]||' ';
+        focusIdx = Math.min(val.length, 2);
+        container.querySelectorAll('.ahi-letter').forEach((t,i)=>{ t.textContent = val[i]||''; t.classList.toggle('active', i===focusIdx); });
       } else {
         // Desktop: arrow slot UI
+        container.innerHTML = '';
         for(let i=0;i<3;i++){
           const slot = document.createElement('div');
           slot.className = 'ahi-slot';
@@ -425,6 +441,10 @@ const ArcadeHi = (function(){
 
     // Keyboard support
     function onKey(e){
+      if(e.target && e.target.id==='ahi-mobile-input'){   // (typing in the box: its own input event fills the tiles)
+        if(e.key==='Enter'){ e.preventDefault(); document.getElementById('ahi-submit')?.click(); }
+        return;
+      }
       if(e.key.length===1&&((e.key>='A'&&e.key<='Z')||(e.key>='a'&&e.key<='z'))){
         letters[focusIdx]=e.key.toUpperCase();
         focusIdx=Math.min(2,focusIdx+1);
@@ -446,7 +466,7 @@ const ArcadeHi = (function(){
       document.removeEventListener('keydown', onKey);
       if(submit){
         // Block default AAA — user hasn't actually typed initials
-        if(letters.join('')==='AAA'){
+        if(letters.join('')==='AAA' || letters.join('').trim().length<2){
           // Flash warning on the slots
           const slotsEl=document.getElementById('ahi-slots');
           if(slotsEl){slotsEl.classList.add('bad');setTimeout(()=>{slotsEl.classList.remove('bad');},600);}
