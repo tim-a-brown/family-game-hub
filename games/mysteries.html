@@ -225,14 +225,50 @@ body{overflow-x:hidden;}
   .ms-tag{font-size:1.2rem;min-height:52px;}
   .ms-photo{padding:10px;}
 }
-/* Landscape tablets and desktops: the photo on the left, the file and answers beside it */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .ms-case{grid-template-columns:minmax(0,1fr) minmax(300px,380px);grid-template-areas:"photo file" "photo notes" "photo tags" "photo dock";grid-template-rows:auto auto auto 1fr;column-gap:22px;align-items:start;}
+/* The desk stands in the middle of the screen's height */
+.ms:has(> .ms-desk){min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;padding:2px 18px calc(var(--safe-b) + 18px);}
+/* Sideways (phones too): the photo on the left, as large as the height allows; the file, the suspects and the
+   answer beside it at the right, where the taps go */
+@media (orientation:landscape) and (min-width:640px){
+  .ms-case{--side:clamp(250px,32vw,380px);grid-template-columns:auto minmax(0,var(--side));grid-template-areas:"photo file" "photo notes" "photo tags" "photo dock";grid-template-rows:auto auto auto 1fr;column-gap:clamp(14px,2vw,22px);align-items:start;justify-content:center;}
   .ms-notes{grid-area:notes;}
-  .ms-photo{grid-area:photo;align-self:center;width:min(100%,calc((100dvh - var(--safe-t) - var(--safe-b) - 130px) * var(--ar,1.333)));}
+  .ms-photo{grid-area:photo;align-self:center;width:min(calc(100vw - 36px - 36px - var(--side) - 22px),calc((100dvh - var(--bar) - var(--safe-b) - 84px) * var(--ar,1.333)));}
   .ms-file{grid-area:file;margin-top:16px;}
   .ms-tags{grid-area:tags;justify-content:flex-start;}
   .ms-dock{grid-area:dock;align-self:start;}
+}
+/* a small phone upright: the same tighter file and tags, so the case fits without scrolling */
+@media (orientation:portrait) and (max-height:620px){
+  .ms:has(> .ms-desk){padding-left:14px;padding-right:14px;}
+  .ms-desk{padding:8px;margin-top:0;}
+  .ms-case{gap:8px;}
+  .ms-file{padding:9px 11px 8px;margin-top:14px;}
+  .ms-fh h2{font-size:1.1rem;}
+  .ms-clock{font-size:1.05rem;}
+  .ms-setup{font-size:.8rem;line-height:1.26;margin-top:3px;}
+  .ms-q{font-size:1.05rem;}
+  .ms-photo{padding:5px;}
+  .ms-tags{gap:5px 4px;}
+  .ms-tag{min-height:36px;font-size:.9rem;padding:4px 9px 4px 20px;}
+  .ms-dock .btn{min-height:46px;}
+  .ms-dock .hint{min-width:64px;padding:0 10px;}
+  .ms-dock .go{font-size:.95rem;padding:0 8px;}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:500px){
+  .ms:has(> .ms-desk){padding-bottom:calc(var(--safe-b) + 12px);}
+  .ms-desk{padding:10px;margin-top:0;}
+  .ms-case{gap:8px;}
+  .ms-file{padding:10px 12px 9px;margin-top:14px;}
+  .ms-fh h2{font-size:1.15rem;}
+  .ms-setup{font-size:.86rem;line-height:1.3;}
+  .ms-q{font-size:1.1rem;}
+  .ms-case{--side:clamp(250px,36vw,380px);}
+  .ms-tags{gap:6px 5px;}
+  .ms-tag{min-height:36px;font-size:.92rem;padding:4px 10px 4px 22px;}
+  .ms-setup{font-size:.82rem;line-height:1.28;margin-top:3px;}
+  .ms-dock .btn{min-height:46px;}
+  .ms-dock .hint{min-width:70px;}
+  .ms-photo{width:min(calc(100vw - 36px - 20px - var(--side) - 14px),calc((100dvh - var(--bar) - var(--safe-b) - 50px) * var(--ar,1.333)));}
 }
 @media (prefers-reduced-motion:reduce){.ms-card,.ms-file,.ms-photo,.ms-note.new,.ms-coach{animation:none!important;}}
 </style>
@@ -646,6 +682,9 @@ body{overflow-x:hidden;}
       Kit.sfx('boom', 0.7); Kit.haptic('heavy');
       cur.photo.classList.remove('thud'); void cur.photo.offsetWidth; cur.photo.classList.add('thud');
       if (S.solved && S.perfect) setTimeout(function () { Kit.sfx('sparkle'); }, 420);
+      // a perfect deduction on a Medium or Hard case is the uncommon one: its moment comes with the gold seal
+      var lvl = cur.c.level;
+      if (S.solved && S.perfect && lvl !== 'easy') setTimeout(function () { Kit.moment({ big: lvl === 'hard', icon: 'search', color: '#c99a2e', title: 'A perfect deduction', line: 'You solved a ' + LV[lvl] + ' case on the first try, with no hints.', pts: fmt(S.secs), at: lvl === 'hard' ? null : cur && cur.photo }); Kit.haptic('success'); if (lvl === 'hard') Kit.confetti({ count: 110 }); }, 600);
     }
   }
   // the solution: typed into the file, one step at a time, while the camera visits each clue
@@ -940,6 +979,31 @@ body{overflow-x:hidden;}
   });
 
   // Test hook
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.ms-case > .ms-photo, .ms-case > .ms-file, .ms-tags .ms-tag, .ms-case > .ms-dock');
+
   window.__ms = { get: function () { return S; }, cur: function () { return cur; }, open: openCase, board: showBoard, setup: showSetup, cases: CASES, daily: dailyCase, today: today, extra: extraCase, getCase: getCase,
     answer: function () { if (cur) { S.sel = cur.c.answer; accuse(); } }, wrong: function () { if (cur) { var w = cur.c.choices.filter(function (ch) { return ch.id !== cur.c.answer && S.crossed.indexOf(ch.id) < 0; })[0]; if (w) { S.sel = w.id; accuse(); } } },
     hint: hint, loupe: showLoupe, hideLoupe: hideLoupe, zoom: zoomBy, skip: function () { endTour(); } };
