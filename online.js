@@ -669,7 +669,7 @@
     var me = o.me || { name: myName() }, alive = true, off = null, last = [];
     var wrap = E('div', { class: 'ol ol-lobby' });
     root.appendChild(wrap);
-    wrap.appendChild(E('h1', { text: o.title || 'Play Online' }));
+    wrap.appendChild(E('h1', { text: o.title || 'Play online' }));
     if (o.intro) wrap.appendChild(E('p', { class: 'ol-note', style: { 'text-align': 'center' }, text: o.intro }));
     var seat = E('div', { class: 'ol-row' });
     function paintMe() {
@@ -696,7 +696,7 @@
     wrap.appendChild(E('div', { class: 'ol-h', text: 'Open tables' }));
     var rooms = E('div', { class: 'stack' }, [E('p', { class: 'ol-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(rooms);
-    var code = E('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    var code = E('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', 'data-osk': 'letters', 'data-osk-space': 'off', enterkeyhint: 'go', autocomplete: 'off', spellcheck: 'false' });
     var codeBtn = E('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: go });
     code.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     function go() { act(codeBtn, 'Joining…', function () { return o.onJoin(code.value.trim().toUpperCase(), null, me); }); }

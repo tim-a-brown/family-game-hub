@@ -128,6 +128,21 @@ Underlying principles for everything:
   are rounded (13 to 28px), buttons have no lip and press with a small sink. The home screen is one row per game
   (icon, name, players, a live line at the right, gold when it is something for you to do), sections marked by a bar
   in the category's color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+- **Typing is on the Kit keyboard, never the phone's** (Tim, 2026-11-15: "any opportunity to type is done with a
+  thoughtful onscreen keyboard not the device keyboard -- and make sure that doesn't mess up any of the formatting").
+  `KitOsk` in kit.js: on a touch screen every text box (`input` text/search/email/tel/number/password/url, `textarea`)
+  gets `inputmode="none"` before it takes the focus, and the Kit keyboard (`.k-osk` in kit.css, on `<html>` so the
+  page's lift never moves it) rises in the app's glass: letters with shift (double tap for caps lock) and a symbols page,
+  a number pad for numbers (a minus with `data-osk="neg"` or a negative `min`, a point with `data-osk="dec"`, inputmode
+  decimal or a decimal step; sideways the digits sit in one row), capitals by `autocapitalize`, the action key by
+  `enterkeyhint` in the gold (Next moves to the next box), the letter rising over the finger, delete repeating while
+  held. Every key reaches the page as a `keydown` first, then the text with an `input` event, so a page written for a
+  real keyboard needs nothing new. The page makes room exactly as it does for a phone keyboard (`KitKb`: `html.k-kb`,
+  `--kb`, `--vvh`, the `--kblift` page lift), so a sheet rides above it and the box stays in view. A new box needs
+  nothing; one that is really a game's own key capture, or a game that draws its own keys (Wordle, Oregon Trail), says
+  `data-osk="off"`. A box is described for the keyboard by its own attributes (`type`, `inputmode`, `autocapitalize`,
+  `enterkeyhint`, `maxlength`). Desktops keep their keyboard, and a real key pressed on an iPad's keyboard case puts the
+  screen keyboard away for the visit.
 - **Every game is in Night glass** (the sweep of 2026-11-14, every game page, its own folder and history view). The line
   between what a game keeps and what follows the look: **anything that would be printed on the physical game keeps its own
   type and look** (a show's logo, words printed on a felt, card faces, dice, a pinball playfield, slot reels, an arcade
@@ -197,7 +212,7 @@ Underlying principles for everything:
   can sit there, the Computer switch with its skill and everyone you play with as chips (a tap seats them and moves
   to the next open seat; at a full table it adds a seat). A game never draws its own seat list; one that shows something per seat reads
   `setup.seats()` (Axis & Allies' countries). Who's playing is shown as a **Players card** above the game's options
-  (`.k-who`: each seat a token in its seat's color with the name under it; there are 24 seat colors (`--p1` to `--p24` in kit.css, `Kit.color(i)`, Tim 2026-11-14: "a set of 24 colors that you assign to either humans or AI", the most players any game seats), the first eight as they always were and every one at least 8 apart from every other in OKLab, and an avatar's letter is white or dark by its color's contrast (`inkFor`); a robot's token is ringed in its seat's color, the color that player has in the game, as a person's token is that color (Tim, 2026-11-14: "it's helpful if the player color matches the ring around the player, whether it's computer or human"), and shows its skill in the robot's face and a glow just inside the ring, past a thin dark gap: Easy smiles with green eyes inside a green glow, under a green antenna tip, Normal looks on with gold eyes inside a gold glow, under a gold tip, Hard glares with red eyes inside a fiery one, under a short flame rising from behind its head (`botFace`), in even columns, partners on one plate and the sides across "vs" (`whoChips`, Tim 2026-11-14: "looks more organized"); a tap opens the players sheet). On the
+  (`.k-who`: each seat a token in its seat's color with the name under it; there are 24 seat colors (`--p1` to `--p24` in kit.css, `Kit.color(i)`, Tim 2026-11-14: "a set of 24 colors that you assign to either humans or AI", the most players any game seats), the first eight as they always were and every one at least 8 apart from every other in OKLab, and an avatar's letter is white or dark by its color's contrast (`inkFor`); a robot's token is ringed in its seat's color, the color that player has in the game, as a person's token is that color (Tim, 2026-11-14: "it's helpful if the player color matches the ring around the player, whether it's computer or human"), and shows its skill in the robot's face and a glow just inside the ring, past a thin dark gap: Easy smiles with green eyes inside a green glow, under a green antenna tip, Normal looks on with gold eyes inside a gold glow, under a gold tip, Hard glares with red eyes inside a fiery one, under a short flame rising from behind its head (`botFace`), in even columns, partners on one plate and the sides across "vs" (`whoChips`, Tim 2026-11-14: "looks more organized"); a tap opens the players sheet; where the count can change, a − and + either side of it sit in the card's top right (`countStepper`, Tim 2026-11-15), and change it at once: a seat added is filled as the players sheet fills one, the last seat is the one that leaves; the home sheet's card has the same, sent to the setup in its frame with `kitSheet: 'step'`). On the
   home screen's game sheet the sheet draws that card itself (`.gs-who` in index.html; the framed setup says who is
   seated with `kitSheet: 'who'` and draws none). A game's extras (Lorcana's online games) go under the options. One seat is Just me, robots in
   every other seat is vs Computer, people (and robots where the game mixes them, `cpu: 'mix'`) is Pass & play, and

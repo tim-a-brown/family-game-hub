@@ -733,6 +733,10 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 .gs-dock .gs-alt .ico{width:18px;height:18px;}
 .pick.gsheet button.gs-who{width:calc(100% - 40px);margin:6px 20px 8px;background:var(--surface-2);box-shadow:0 4px 0 rgba(0,0,0,.3),inset 0 0 0 1.5px var(--w12);}
 .pick.gsheet button.gs-who[hidden]{display:none;}
+.gs-whobox .k-wn{top:15px;right:32px;}
+.pick.gsheet .gs-whobox .k-wn-b{display:grid;place-items:center;justify-content:center;width:36px;height:34px;min-height:0;margin:0;padding:0;border-radius:11px;background:transparent;box-shadow:none;font-size:1rem;}
+.pick.gsheet .gs-whobox .k-wn-b:active:not(:disabled){background:var(--gl-2);}
+.gs-whobox.has-n .gs-who .t{padding-right:130px;min-height:44px;display:flex;align-items:center;}
 .gs-who .qs-chips{margin-top:5px;}
 .gs-who .qs-chip.bot i{font-style:normal;font-weight:700;color:var(--text-3);margin-left:2px;}
 .gs-who-go{flex:none;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--w08);color:var(--text-2);}
@@ -1447,7 +1451,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
       var whoChips = el('span', { class: 'qs-chips' }), whoT = el('div', { class: 't', text: 'Players' });
       var whoCard = el('button', { type: 'button', class: 'alt gs-who', hidden: true, onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); frame.contentWindow.postMessage({ kitSheet: 'press', which: 'who' }, location.origin); } }, [
         el('span', { class: 'e', html: Kit.icon('users') }), el('span', { class: 'tx' }, [whoT, whoChips]), el('span', { class: 'gs-who-go', html: Kit.icon('right') })]);
-      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), whoCard, el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
+      var whoBox = el('div', { class: 'k-whobox gs-whobox' }, [whoCard]), whoN = null;
+      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), whoBox, el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
       box.appendChild(fw);
       // the setup's start buttons, pinned to the bottom of the sheet (they press the frame's own)
       var dockEl = el('div', { class: 'gs-dock' }), dockSig = '';
@@ -1457,6 +1462,11 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
           var seats = d.seats; whoCard.hidden = !seats || !seats.length; if (whoCard.hidden) return;
           whoT.textContent = d.one ? 'Player' : 'Players';
           var chips = Kit.whoChips(seats, d.teams, 'qs'); whoChips.parentNode.replaceChild(chips, whoChips); whoChips = chips;
+          // how many are playing, − and + on the card's top right (the setup in the frame does the change, kitSheet 'step')
+          if (whoN) { whoN.remove(); whoN = null; }
+          var many = !d.one && d.hi > d.lo && Kit.countStepper;
+          whoBox.classList.toggle('has-n', !!many);
+          if (many) { whoN = Kit.countStepper(d.count || seats.length, d.lo, d.hi, function (k) { frame.contentWindow.postMessage({ kitSheet: 'step', d: k }, location.origin); }); whoBox.appendChild(whoN); }
           whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + Kit.whoSaid(seats, d.teams));
         },
         fit: function () { frame.style.height = Math.max(GS.fh || 360, GS.inner || 0, 8) + 'px'; },   // (as tall as the setup says: with the players on their own card, some setups have nothing else)
@@ -2457,8 +2467,8 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // forced = this device is on a PIN that is now too easy to guess (no "later", but signing out is allowed).
   function changePinSheet(forced) {
     var s, busy = false;
-    function pinIn(ph) { return el('input', { class: 'input pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 4, autocomplete: 'new-password', placeholder: ph, 'aria-label': ph }); }
-    var a = pinIn('New PIN'), b = pinIn('Type it again'), msg = el('p', { class: 'pin-msg', role: 'status' });
+    function pinIn(ph, hint) { return el('input', { class: 'input pin-in', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: 4, autocomplete: 'new-password', enterkeyhint: hint, placeholder: ph, 'aria-label': ph }); }
+    var a = pinIn('New PIN', 'next'), b = pinIn('Type it again', 'done'), msg = el('p', { class: 'pin-msg', role: 'status' });
     [a, b].forEach(function (x) { x.addEventListener('input', function () { x.value = x.value.replace(/[^0-9]/g, '').slice(0, 4); msg.textContent = ''; msg.className = 'pin-msg'; }); });
     b.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
     function say(t, err) { msg.textContent = t; msg.className = 'pin-msg' + (err ? ' err' : ''); }
@@ -2561,7 +2571,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var node = el('div'), s;
     // One header: you (avatar + name, both editable here), with the account underneath
     var mn = typeof FrequentPlayers !== 'undefined' && FrequentPlayers.myName ? FrequentPlayers.myName() : '';
-    var myIn = el('input', { class: 'acct-name', maxlength: 14, placeholder: 'Your name', value: mn || '', autocomplete: 'off', 'aria-label': 'Your name' });
+    var myIn = el('input', { class: 'acct-name', maxlength: 14, placeholder: 'Your name', value: mn || '', 'data-osk': 'name', enterkeyhint: 'done', autocomplete: 'off', 'aria-label': 'Your name' });
     function saveName() { var v = myIn.value.trim(); if (v && v !== mn && FrequentPlayers.setMyName) { FrequentPlayers.setMyName(v); mn = v; refreshWho(); } return v; }
     myIn.addEventListener('change', saveName);
     myIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') myIn.blur(); });
