@@ -77,7 +77,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 .sheet.over .sheet-h::after{content:"FINAL";position:absolute;right:12px;top:14px;padding:2px 8px;border:2px solid #c8102e;border-radius:6px;color:#c8102e;font-family:var(--display);font-size:.9rem;letter-spacing:.08em;transform:rotate(8deg);opacity:.8;}
 
 /* Sticky action bar: quick add, a note, then the buttons */
-.sc-bar{position:sticky;bottom:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:12px 0 calc(var(--safe-b) + 10px);background:linear-gradient(transparent,var(--glass) 22px);}
+.sc-bar{position:sticky;bottom:0;z-index:5;display:flex;flex-direction:column;gap:6px;padding:12px 0 max(calc(var(--safe-b) + 10px), 18px);margin:0 max(0px, calc(17px - var(--stage-x, 16px)));background:linear-gradient(transparent,var(--glass) 22px);}
 .sc-btns{display:flex;gap:10px;}
 .sc-btns .btn-lg{flex:1;min-width:0;white-space:nowrap;}
 .sc-btns .btn-end{flex:none;min-height:60px;padding:0 18px;border-radius:var(--r-lg);}
@@ -105,6 +105,41 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
 .sct tfoot td.pend span{color:#8a8796;}
 .addp .quick{margin-top:10px;}
 
+/* Upright: the sheet reaches down to the buttons, a longer page to write on, its foot line at the bottom */
+@media (orientation:portrait){
+  #app.stage:has(> .clip){display:flex;flex-direction:column;min-height:calc(var(--vvh,100dvh) - var(--bar));padding-bottom:0;}
+  #app > .clip{flex:1 0 auto;display:flex;flex-direction:column;}
+  #app > .clip > .sheet{flex:1;display:flex;flex-direction:column;}
+  #app > .clip .sheet-f{margin-top:auto;}
+}
+@media (min-width:700px) and (min-height:900px){ #app.stage:has(> .clip){max-width:720px;} }
+/* Sideways (a phone on its side, an iPad): the sheet on the left to read, quick add and Save in a column on the
+   right where the thumb is, kept in view while a long sheet scrolls */
+@media (orientation:landscape) and (min-width:640px){
+  #app.stage:has(> .clip){max-width:1100px;display:grid;grid-template-columns:minmax(0,1fr) minmax(250px,34%);column-gap:20px;align-items:start;
+    padding-left:calc(16px + var(--corner-x));padding-right:calc(16px + var(--corner-x));padding-bottom:0;}
+  #app > .clip{grid-column:1;display:flex;flex-direction:column;min-height:calc(var(--vvh,100dvh) - var(--bar) - var(--safe-b) - 40px);}
+  #app > .clip > .sheet{flex:1;display:flex;flex-direction:column;}
+  #app > .clip .sheet-f{margin-top:auto;}
+  #app > .sc-bar{grid-column:2;grid-row:1;position:sticky;top:calc(var(--bar) + 4px);bottom:auto;align-self:start;min-height:calc(var(--vvh,100dvh) - var(--bar) - 4px);
+    justify-content:flex-end;background:none;padding:10px 0 max(calc(var(--safe-b) + 10px),18px);}
+  .qk{flex-wrap:wrap;}
+  .qk button{flex:1 1 calc(25% - 5px);}
+  #app > .sc-bar .sc-btns{flex-direction:column;}
+  #app > .sc-bar .sc-btns .btn-end{min-height:48px;}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .clip{padding-top:28px;margin-top:16px;}
+  .sheet-h{padding:14px 14px 4px;}
+  .sheet-h .rule{font-size:.95rem;}
+  .sheet-f{display:none;}
+  .sheet-h h2{font-size:1.35rem;}
+  .status{min-height:32px;font-size:1.1rem;}
+  .sct th,.sct td{height:34px;}
+  .sct thead th{height:38px;}
+  .sct tfoot th,.sct tfoot td{height:42px;}
+  .qk button{min-height:40px;}
+}
 /* ── Wide landscape (iPad, laptop): a tighter header and rows so more rounds and the totals fit on screen ── */
 @media (orientation:landscape) and (min-width:900px) and (max-height:900px){
   .clip{padding-top:22px;margin-top:16px;}
