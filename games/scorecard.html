@@ -447,7 +447,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
     function entryRow(label) {
       var tr = el('tr', { class: 'next' + (editing ? ' fixing' : '') + (!editing && S.end === 'rounds' && S.rows.length >= S.rounds ? ' tb' : '') }, [el('th', { class: 'rn', text: label })]);
       S.sides.forEach(function (s, i) {
-        var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', enterkeyhint: i === n - 1 ? 'done' : 'next', autocomplete: 'off', value: entry.vals[i], placeholder: '', 'aria-label': s.name + ' points, round ' + label });
+        var inp = el('input', { class: 'cell', type: 'text', inputmode: 'numeric', 'data-osk': 'neg', enterkeyhint: i === n - 1 ? 'done' : 'next', autocomplete: 'off', value: entry.vals[i], placeholder: '', 'aria-label': s.name + ' points, round ' + label });
         inp.addEventListener('focus', function () { pick(i); inp.select(); });
         inp.addEventListener('input', function () { entry.vals[i] = inp.value; saveDraft(); paintFoot(); });
         inp.addEventListener('keydown', function (e) {
@@ -726,7 +726,7 @@ table.sct{width:100%;border-collapse:collapse;table-layout:fixed;}
   function addPlayer() {
     if (!S || S.over) return Kit.toast('Start a game first');
     if (S.sides.length >= 8) return Kit.toast('The sheet holds 8 players');
-    var inp = el('input', { class: 'input', type: 'text', maxlength: 14, placeholder: 'Name', autocomplete: 'off' });
+    var inp = el('input', { class: 'input', type: 'text', maxlength: 14, placeholder: 'Name', autocomplete: 'off', autocapitalize: 'words', enterkeyhint: 'done', 'data-osk': 'name' });
     var taken = S.sides.map(function (s) { return s.name.toLowerCase(); });
     var quick = el('div', { class: 'quick' });
     Kit.knownNames().filter(function (n) { return taken.indexOf(n.toLowerCase()) < 0; }).slice(0, 6).forEach(function (n) {

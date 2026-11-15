@@ -1673,7 +1673,8 @@
     wrap.appendChild(el('h2', { class: 'cn-h', text: 'Tables waiting for a player' }));
     var box = el('div', { class: 'stack' }, [el('p', { class: 'cn-note', text: 'Looking for open tables…' })]);
     wrap.appendChild(box);
-    var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false' });
+    var code = el('input', { class: 'input', type: 'text', maxlength: '4', placeholder: 'Code', 'aria-label': 'Table code', autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', enterkeyhint: 'go', 'data-osk': 'letters', 'data-osk-space': 'off' });
+    code.addEventListener('keydown', function (e) { if (e.key === 'Enter' && code.value.trim()) { e.preventDefault(); var j = code.nextElementSibling; if (j) j.click(); } });   // (Go on the keyboard joins, as the button does)
     wrap.appendChild(el('div', { class: 'cn-join' }, [code, el('button', { type: 'button', class: 'btn btn-soft', text: 'Join with code', onclick: function (e) { var b = e.currentTarget; netAct(b, 'Joining…', function () { return netJoin(code.value, me); }); } })]));
     function fail(e) { box.innerHTML = ''; box.appendChild(el('p', { class: 'cn-note', text: 'Couldn’t reach the tables: ' + (e && e.message || e) })); }
     var myAcct = null; acctTag().then(function (t) { myAcct = t; });
