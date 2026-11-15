@@ -17,9 +17,10 @@
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.ar-on body{display:flex;flex-direction:column;background:transparent;}
-html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px calc(var(--safe-b) + 10px);
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px max(18px,calc(var(--safe-b) + 10px));
   display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;}
-.ar-hud{flex:none;display:flex;gap:6px;width:100%;max-width:520px;}
+.ar-hud{flex:none;display:flex;gap:6px;width:100%;max-width:520px;padding:0 9px;}
+html.qb-land .ar-hud{padding:0;}
 .ar-plate{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 8px;border-radius:15px;
   background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 .ar-plate small{font-size:.74rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
@@ -69,11 +70,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:hover) and (pointer:fine){ .qb-padwrap{display:none!important;} .ar-wrap{flex:1;min-height:0;} html.ar-on #app{justify-content:center;} }
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-plate b{font-size:1.2rem;} }
-/* Tablet landscape: the pyramid takes the full height and the hop pad sits in the lower-left corner, under the left thumb */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{position:relative;}
-  .qb-padwrap{position:absolute;left:24px;bottom:calc(var(--safe-b) + 18px);width:auto;}
+/* Sideways (a phone or an iPad on its side, html.qb-land): the pyramid as tall as the screen in the middle, the score
+   plates in a column at the left (for looking at) and the hop pad at the right, under the right thumb */
+@media (pointer:coarse),(hover:none){
+  html.ar-on.qb-land #app{display:grid;grid-template-columns:minmax(0,1fr) auto var(--pdc,200px);grid-template-rows:minmax(0,1fr);
+    grid-template-areas:"hud wrap pad";align-items:center;column-gap:12px;
+    padding:0 max(17px,env(safe-area-inset-right)) max(18px,calc(var(--safe-b) + 10px)) max(17px,env(safe-area-inset-left));}
+  html.qb-land .ar-hud{grid-area:hud;display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:220px!important;justify-self:end;width:100%;}
+  html.qb-land .ar-plate.sc{grid-column:1/3;}
+  html.qb-land .ar-pbtn{grid-column:1/3;height:44px;width:100%;}
+  html.qb-land .ar-wrap{grid-area:wrap;width:auto;}
+  html.qb-land .qb-padwrap{grid-area:pad;width:auto;justify-self:start;align-self:end;}
 }
+/* Turning the device: the parts glide to their new places (the class is switched inside a View Transition) */
+.ar-hud{view-transition-name:qb-hud;} .ar-cab{view-transition-name:qb-cab;} .qb-pad{view-transition-name:qb-pad;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -83,6 +94,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
   var KEY = 'cubehopper', SAVE = 'cubehopper_state', PROG = 'cubehopper_progress';
+  // Turning the device: the sideways layout (html.qb-land) is switched inside a View Transition, so the pyramid, the
+  // plates and the hop pad glide to their new places
+  (function () {
+    var q = matchMedia('(orientation:landscape)'), wait = false;
+    function set() { wait = false; root.classList.toggle('qb-land', q.matches); if (typeof fit === 'function') { cssW = 0; fit(); } }
+    root.classList.toggle('qb-land', q.matches);
+    function turn() {
+      if (wait || root.classList.contains('qb-land') === q.matches) return;
+      if (document.startViewTransition && !document.hidden && view === 'game' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    if (q.addEventListener) q.addEventListener('change', turn); else q.addListener(turn);
+  })();
   var FW = 360, FH = 430;
   // Cube geometry (isometric): top diamond half-width HW, half-height TH, side height SH
   var W = 44, HW = 22, TH = 12, SH = 26, DY = TH + SH, AX = FW / 2, AY = 100;
@@ -288,6 +314,12 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     addScore(bonus + db);
     G.stats.rounds++; trkLevel(trk(G.stats), G.level + '-' + G.round, G.score);
     if (!G.roundDeaths) G.stats.perfect++;
+    // a whole level (all four rounds) without losing a life: the arcade's hardest boast, its own moment
+    G.lvlPerf = !G.roundDeaths && (G.round === 1 || G.lvlPerf === true);
+    if (G.round === 4 && G.lvlPerf) {
+      G.stats.perfLv = G.level;
+      setTimeout(function () { if (G && view === 'game') { Kit.moment({ title: 'Perfect level', line: 'You cleared all four rounds of level ' + G.stats.perfLv + ' without losing a life.', icon: 'trophy', at: cabEl, ms: 2300 }); Kit.sfx('win'); } }, 700);
+    }
     G.perRound.push({ l: G.level + '-' + G.round, s: G.score - G.roundStart });
     fx.banner = { text: 'ROUND CLEAR', sub: '+' + fmt(bonus) + ' bonus' + (db ? ' · discs +' + db : ''), c: '#ffd24a', life: 2.3, max: 2.3 };
     sClear(); Kit.haptic('success');
@@ -386,7 +418,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     addScore(500);
     pop(e.x, e.y - 30, '+500', '#d58cff', 15);
     sLure(); Kit.haptic('success');
-    Kit.callout && Kit.callout('Coily fell!');
+    Kit.moment({ title: 'Coily fell', line: 'You lured Coily off the edge of the pyramid.', pts: '+500', at: cabEl, ms: 1700 });
     // Everyone else vanishes too, like the arcade
     enemies.forEach(function (o) { if (o !== e) { burst(o.x, o.y - 8, '#fff', 8); o.gone = true; } });
     enemies = enemies.filter(function (o) { return !o.gone; });
@@ -549,7 +581,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
   // ═══ Score & effects ═════════════════════════════════════════════════════
   function addScore(n) {
+    var before = G.score;
     G.score += n;
+    if (G.best0 > 0 && before <= G.best0 && G.score > G.best0 && !G.stats.pb) {
+      G.stats.pb = G.level + ', round ' + G.round;
+      Kit.moment({ title: 'New personal best', line: 'You just passed your best of ' + fmt(G.best0) + ' points.', icon: 'trophy', at: cabEl, ms: 2100 });
+      Kit.sfx('win'); Kit.haptic('success');
+    }
     while (G.score >= G.nextLife) {
       G.lives++; G.stats.extra++; G.nextLife += 14000;
       pop(FW / 2, FH * 0.5, 'EXTRA LIFE', '#9df5b5', 18); sUp();
@@ -575,7 +613,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function loadSave() { try { var s = JSON.parse(localStorage.getItem(SAVE)); return s && s.v === 1 && s.level >= 1 && s.lives > 0 ? s : null; } catch (e) { return null; } }
 
   // ═══ Kit shell ═══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({
     id: 'cubehopper',
     theme: { wood: ['#4a3550', '#2a1c30'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -668,14 +706,18 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function fit() {
     if (!wrapEl) return;
-    var pcs = padWrap && getComputedStyle(padWrap), padOn = pcs && pcs.display !== 'none', padSide = padOn && pcs.position === 'absolute';
+    var pcs = padWrap && getComputedStyle(padWrap), padOn = pcs && pcs.display !== 'none', padSide = padOn && root.classList.contains('qb-land');
     var aw = app.clientWidth - 16 - 14;
     var ah = app.clientHeight - hudEl.offsetHeight - 8 - 14 - (padOn && !padSide ? 196 : 30) - 10;
-    var s = Math.min(aw / FW, ah / FH, 1.8); s = Math.max(0.4, s);
+    if (padSide) {
+      // sideways: the pyramid takes the height; the plates' column and the pad's column share what is left
+      var pd = clamp(app.clientHeight * 0.62, 150, 250);
+      padEl.style.setProperty('--pd', pd + 'px'); app.style.setProperty('--pdc', pd + 'px');
+      ah = app.clientHeight - 18 - 14; aw = app.clientWidth - 34 - 24 - 14 - pd - 140;
+    }
+    var s = Math.min(aw / FW, ah / FH, padSide ? 2.4 : 1.8); s = Math.max(0.4, s);
     var w = Math.round(FW * s), h = Math.round(FH * s);
     if (padSide) {
-      // beside the pyramid (tablet landscape): as big as the side margin allows
-      padEl.style.setProperty('--pd', clamp((app.clientWidth - w - 14) / 2 - 44, 150, 240) + 'px');
     } else if (padOn) {
       var left = app.clientHeight - hudEl.offsetHeight - h - 14 - 26;
       padEl.style.setProperty('--pd', clamp(left, 150, 230) + 'px');
@@ -685,7 +727,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     DPR = Math.min(window.devicePixelRatio || 1, 3);
     cv.style.width = w + 'px'; cv.style.height = h + 'px';
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
-    hudEl.style.maxWidth = Math.max(320, w + 14) + 'px';
+    hudEl.style.maxWidth = padSide ? '' : Math.max(320, w + 14) + 'px';
     bgCanvas = null;
     draw();
   }
@@ -830,6 +872,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.greens) h.push('Froze everyone with the green ball ' + (st.greens === 1 ? 'once' : st.greens + ' times'));
     var NAMES = { red: 'red balls', purple: 'the purple ball', coily: 'Coily', ugg: 'Ugg', wrong: 'Wrongway', fall: 'falling off the edge' };
     var dk = Object.keys(G.deaths).sort(function (a, b) { return G.deaths[b] - G.deaths[a]; });
+    if (st.pb) h.unshift(G.who + ' passed the old best of ' + fmt(G.best0) + ' points on level ' + st.pb);
+    if (st.perfLv) h.splice(1, 0, G.who + ' cleared level ' + st.perfLv + ' without losing a life');
     if (dk.length) h.push('Lost the most lives to ' + (NAMES[dk[0]] || dk[0]) + ' (' + G.deaths[dk[0]] + ')');
     var mode = [G.pace === 'easy' ? 'Relaxed speed' : '', G.startLevel > 1 ? 'Started at level ' + G.startLevel : ''].filter(Boolean).join(' \u00b7 ');
     // history detail: the pyramid as it was left (cube colour steps), the round's colours, and the run's numbers
