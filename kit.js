@@ -2459,7 +2459,9 @@
         : t.anon ? el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, text: String(i + 1) }) : avMarked(t.name, c);
       // (a robot's skill is in its face, with the words kept for screen readers)
       var nl = String(t.name || '').length;
-        return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { class: nl >= 11 ? 'l2' : nl >= 8 ? 'l1' : null, text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
+        // (at a casino game each person's bankroll stands under their name, what they sit down with: Tim, 2026-11-15)
+        var bank = typeof t.bank === 'number' ? el('small', { class: pre + '-bank', text: '$' + Math.round(t.bank).toLocaleString('en-US') }) : null;
+        return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { class: nl >= 11 ? 'l2' : nl >= 8 ? 'l1' : null, text: t.name }), bank, t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
     // (a name breaks only between words; one long word that doesn't fit its token eases down until it does, once the
     // card is on the page)
@@ -3215,7 +3217,8 @@
       seatList().forEach(function (st, i) {
         var c = playerColor(i), nm = st.name || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1)), tag = null;
         if (st.cpu && lvs) { var cur = lvs.filter(function (x) { return String(x[0]) === String(levelOf(i)); })[0]; if (cur) tag = el('small', { text: cur[1] }); }
-        told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name });
+        var bk = null; if (!st.cpu && typeof Casino !== 'undefined' && Casino && typeof Casino.peek === 'function') try { bk = Casino.peek(st.name ? nm : ''); } catch (e) {}
+        told.push({ name: nm, cpu: !!st.cpu, tag: tag ? tag.textContent : '', anon: !st.name, bank: bk });
       });
       var one = r[1] <= 1 && !cpu, teams = teamsAt(state.count);
       lastWho = { seats: told, teams: teams };   // (the Play online review shows the same chips)

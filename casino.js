@@ -85,6 +85,16 @@ const Casino = (function(){
     playSave();
     return mode();
   }
+  // What a player would sit down with, read without changing anything (the setup's Players card shows it under each
+  // name: Tim, 2026-11-15): your bankroll, a linked player's shared one, a frequent player's on this PIN, or play money
+  function peek(name){
+    var k = name == null ? '' : String(name).trim();
+    if(!k || isMain(k)) return realBank();
+    try{ var lb = !unnamed(k) && typeof FGHSync !== 'undefined' && FGHSync.linkBank ? FGHSync.linkBank(k) : null; if(lb && lb.code) return Math.max(0, lb.bank); } catch(e){}
+    if(!unnamed(k) && isFrequent(k)){ try{ var fb = JSON.parse(localStorage.getItem(fpKey(k))); if(fb && typeof fb.bal === 'number') return Math.max(0, fb.bal); } catch(e){} return DEFAULT; }
+    try{ var old = JSON.parse(localStorage.getItem(PLAYK())); if(old && old.name === k && !old.link && !old.fp && typeof old.bal === 'number') return Math.max(0, old.bal); } catch(e){}
+    return DEFAULT;
+  }
   // your bankroll again (leaving to the setup screen)
   function home(){ return forPlayer(null); }
   function mode(){ return !PLAY ? 'mine' : PLAY.link ? 'link' : PLAY.fp ? 'player' : 'play'; }
@@ -592,7 +602,7 @@ const Casino = (function(){
     return r;
   }
 
-  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, forPlayer, home, mode, linkRecord, isMain, isFrequent, pbKey: fpKey, playMoney: function(){ return !!PLAY; } };
+  return { balance, bet, win, reset, applyRemote, history, showHistory, rack, chip, stack, peek, forPlayer, home, mode, linkRecord, isMain, isFrequent, pbKey: fpKey, playMoney: function(){ return !!PLAY; } };
 })();
 
 // ═══════════════════════════════════════════════════════════════════════════
