@@ -85,6 +85,59 @@ table.sc.more{border-top:3px double #1f9a4f;}
 .rec b{display:block;font-weight:750;}
 .rec small{display:block;color:var(--text-3);font-weight:550;}
 .rec .best{margin-top:6px;font-weight:650;color:var(--text-2);font-size:.9rem;}
+/* Playing: the green and the scorecard fill the screen. The rows on the green grow into the room there is (taller
+   rows, bigger steppers and numbers), the Next hole button sits at the green's foot. */
+.stage.mg-play{max-width:760px;display:flex;flex-direction:column;min-height:calc(var(--vvh,100dvh) - var(--bar));padding-bottom:calc(var(--safe-b) + 14px);}
+.mg-play .green{flex:1 0 auto;display:flex;margin-bottom:12px;view-transition-name:mg-green;}
+.mg-play .green .turf{flex:1;display:flex;flex-direction:column;}
+.mg-play .prow{flex:1 1 0;min-height:64px;max-height:128px;container-type:size;}
+.mg-play .prow .stk button{width:clamp(44px,62cqh,72px);height:clamp(44px,62cqh,72px);font-size:clamp(1.4rem,32cqh,2.2rem);}
+.mg-play .prow .stk output{width:clamp(46px,56cqh,72px);font-size:clamp(2rem,50cqh,3.4rem);}
+.mg-play .prow .nm b{display:block;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mg-play .prow .nm small{white-space:normal;}
+.mg-play .holenav{margin-top:auto;padding-top:12px;}
+.mg-play .card{view-transition-name:mg-card;flex:none;}
+.prow .stk output.bump{animation:mgBump .45s var(--spring);}
+@keyframes mgBump{40%{transform:scale(1.35);}}
+.prow.ace output{color:#c8102e;}
+/* Sideways (an iPad or a phone on its side): the scorecard on the left to read, the green on the right to tap */
+.stage.mg-play.mg-side{max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(330px,44%);column-gap:14px;align-items:start;padding-left:calc(16px + var(--corner-x));padding-right:calc(16px + var(--corner-x));}
+.mg-side .green{grid-column:2;grid-row:1;margin-bottom:0;min-height:calc(var(--vvh,100dvh) - var(--bar) - var(--safe-b) - 22px);}
+.mg-side .card{grid-column:1;grid-row:1;}
+.mg-side .holenav.done{grid-column:1;}
+/* sideways with height to spare (an iPad): the scorecard stands as tall as the green, its rows taller */
+@media (min-height:600px){
+  .mg-side .card{align-self:stretch;display:flex;flex-direction:column;}
+  .mg-side .card table.sc{flex:1;}
+  .mg-side .sc td.v{font-size:1.75rem;}
+  .mg-side .sc td.tot{font-size:1.8rem;}
+  .mg-side .sc tr.par td{font-size:.95rem;}
+  .mg-side .prow{max-height:150px;}
+}
+@media (max-height:520px){
+  .mg-side .green{padding:6px;border-radius:22px;}
+  .mg-side .green .turf{padding:10px 12px 10px;}
+  .mg-side .hole-h{margin-bottom:4px;}
+  .mg-side .hole-h .num{font-size:1.7rem;}
+  .mg-side .flag{width:24px;height:34px;}
+  .mg-side .prow{min-height:52px;margin-top:6px;padding-top:4px;padding-bottom:4px;}
+  .mg-side .holenav{padding-top:8px;margin-top:auto;}
+  .mg-side .holenav .btn{min-height:46px;}
+  .mg-side .sc th,.mg-side .sc td{height:29px;}
+  .mg-side .card-h{padding:7px 14px 5px;}
+  .mg-side .card-h h2{font-size:1.15rem;}
+  .stage.mg-play.mg-side{padding-bottom:calc(var(--safe-b) + 8px);}
+}
+/* A narrow phone: smaller steppers, so the name and the total keep their room */
+@media (max-width:360px){
+  .stage.mg-play{padding-left:10px;padding-right:10px;}
+  .mg-play .green{padding:6px;}
+  .mg-play .green .turf{padding:12px 10px 10px;}
+  .prow{gap:7px;padding-left:8px;padding-right:6px;}
+  .prow .stk{gap:3px;}
+  .mg-play .prow .stk button{width:38px;height:clamp(38px,62cqh,56px);}
+  .mg-play .prow .stk output{width:34px;}
+}
 /* Tablets: bigger rows and steppers on the green */
 @media (min-width:700px) and (min-height:700px){
   .hole-h .num{font-size:2.8rem;}
@@ -293,7 +346,7 @@ table.sc.more{border-top:3px double #1f9a4f;}
   function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); }
 
   function showSetup() {
-    S = null;
+    S = null; app.className = 'stage';
     var setup = Kit.setup(app, {
       players: { min: 1, max: 6, count: 2 },
       options: [
@@ -340,8 +393,8 @@ table.sc.more{border-top:3px double #1f9a4f;}
   function setStroke(i, v) {
     snapshot();
     if (v != null) { v = Math.max(1, v); if (S.cap) v = Math.min(S.cap, v); }
-    S.strokes[i][S.hole] = v;
-    Kit.sfx('tick'); Kit.haptic('light');
+    S.strokes[i][S.hole] = v; bumped = i;
+    Kit.sfx(v === 1 ? 'sparkle' : 'tick'); Kit.haptic('light');
     save(); render();
   }
   function nextHole() {
@@ -409,8 +462,13 @@ table.sc.more{border-top:3px double #1f9a4f;}
   function undo() { if (!undoStack.length) return Kit.toast('Nothing to undo'); S = JSON.parse(undoStack.pop()); Kit.sfx('whoosh'); save(); render(); }
 
   // ── Render ────────────────────────────────────────────────────────────────
+  // The screen's shape: sideways (wider than tall, 640 wide at least), the scorecard and the green stand side by side
+  function sideways() { return innerWidth > innerHeight && innerWidth >= 640; }
+  var bumped = -1;
   function render() {
     app.innerHTML = '';
+    lastShape = sideways(); lastW = innerWidth;
+    app.className = 'stage mg-play' + (lastShape ? ' mg-side' : '');
     if (!S.over) {
       var green = el('div', { class: 'green wood' }), turf = el('div', { class: 'turf' });
       var parBtn = el('button', { type: 'button', class: 'parbtn', html: '<span>Par ' + S.par[S.hole] + '</span>' + Kit.icon('pencil') });
@@ -418,10 +476,10 @@ table.sc.more{border-top:3px double #1f9a4f;}
       turf.appendChild(el('div', { class: 'hole-h' }, [el('div', { class: 'hole-l' }, [el('span', { class: 'flag', html: '<svg viewBox="0 0 40 56"><ellipse cx="12" cy="52" rx="10" ry="3" fill="rgba(0,0,0,.3)"/><rect x="11" y="4" width="2.5" height="48" rx="1" fill="#fff"/><path d="M13.5 4 34 11 13.5 18z" fill="#ff4d5e"/></svg>' }), el('div', { class: 'num', html: '<small>Hole</small>' + (S.hole + 1) + '<span style="font-size:1rem;opacity:.7"> / ' + S.holes + '</span>' })]), parBtn]));
       S.players.forEach(function (p, i) {
         var v = S.strokes[i][S.hole];
-        var out = el('output', { class: v == null ? 'empty' : '', text: v == null ? '–' : String(v) });
+        var out = el('output', { class: (v == null ? 'empty' : '') + (bumped === i ? ' bump' : ''), text: v == null ? '–' : String(v) });
         var row = el('div', { class: 'prow' + (v === 1 ? ' ace' : '') }, [
           el('span', { class: 'avatar sm', style: { '--c': Kit.color(i) }, text: p.name.charAt(0).toUpperCase() }),
-          el('span', { class: 'nm', html: Kit.esc(p.name) + '<small>' + total(i) + ' total, ' + vsPar(i) + '</small>' }),
+          el('span', { class: 'nm' }, [el('b', { text: p.name }), el('small', { text: total(i) + ' total, ' + vsPar(i) })]),
           el('span', { class: 'stk' }, [
             el('button', { type: 'button', 'aria-label': 'One less stroke for ' + p.name, text: '−', onclick: function () { if (v == null) return; setStroke(i, v <= 1 ? null : v - 1); } }),
             out,
@@ -476,8 +534,23 @@ table.sc.more{border-top:3px double #1f9a4f;}
     });
     // (a long name eases its size down to fit the column, rather than being cut off)
     card.querySelectorAll('.sc tbody th, .sc tr:not(.par) > th:first-child').forEach(function (th) { Kit.fitText(th, 0.55); });
-    if (S.over) app.appendChild(el('div', { class: 'holenav' }, [el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'New round', onclick: function () { showSetup(); } })]));
+    if (S.over) app.appendChild(el('div', { class: 'holenav done' }, [el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'New round', onclick: function () { showSetup(); } })]));
+    // (each name eases its size down before it would be cut off)
+    app.querySelectorAll('.prow .nm b').forEach(function (b) { Kit.fitText(b, 0.7); });
+    bumped = -1;
   }
+  // Turning the device: the green and the scorecard glide to the new shape (a View Transition); a new width also
+  // re-blocks the scorecard's holes, so the page is drawn again for it
+  var lastShape = null, lastW = innerWidth, rT = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(rT);
+    rT = setTimeout(function () {
+      if (!S || !app.classList.contains('mg-play')) return;
+      var sh = sideways(); if (sh === lastShape && innerWidth === lastW) return;
+      if (sh !== lastShape && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(render); return; } catch (e) {} }
+      render();
+    }, 60);
+  });
   function editPar() {
     var grid = el('div', { class: 'seg' }), s;
     [1, 2, 3, 4, 5, 6].forEach(function (v) {
