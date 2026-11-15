@@ -767,7 +767,12 @@
     // (a phone on its side: what's written about the card goes beside it, where there is room, not under it)
     const wide = !o.lesson && notes.childNodes.length > 0 && window.innerWidth > window.innerHeight * 1.15 && window.innerHeight <= 560;
     if (o.lesson) v.classList.add('lesson'); if (side) v.classList.add('side'); if (wide) v.classList.add('wide');
-    const vw = Math.min(side ? window.innerWidth * .34 : wide ? window.innerWidth * .4 : window.innerWidth - 36, 420), vh = window.innerHeight - (o.lesson ? 26 : 40) - bar - (side ? 0 : o.room || 0);
+    const vw = Math.min(side ? window.innerWidth * .34 : wide ? window.innerWidth * .4 : window.innerWidth - 36, 420);
+    // (a card as wide as an upright phone would reach under the close button in the top right corner: the card starts
+    // below the button's row instead)
+    const clear = !o.lesson && !wide && window.innerWidth - vw < 150;
+    if (clear) v.classList.add('clr');
+    const vh = window.innerHeight - (o.lesson ? 26 : 40) - bar - (side ? 0 : o.room || 0) - (clear ? 62 : 0);
     document.body.appendChild(v);
     // as big as fits: the card, then what's written under it
     let w = vw; v.style.setProperty('--vw', w + 'px');
