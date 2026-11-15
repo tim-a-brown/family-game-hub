@@ -1770,9 +1770,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       b.setAttribute('aria-label', 'Join ' + Kit.poss(x.who) + ' ' + g.name + ' table');
     });
     if (live) opt('play', 'Resume game', el('div', { class: 'd rs' }, [Kit.facts(el('span'), live.label || 'In progress'), el('span', { class: 'ago', text: ago(live.ts) })]), function () { go(live.file || g.play, false); }, 'resume');
-    var chips = sp ? setupChips(g, sp) : null;
-    if (chips) opt('bolt', live ? 'Quick start a new game' : 'Quick start', chips, function () { start('start'); }, 'quick');
-    else if (!sp) opt('play', live ? 'New game' : 'Play', live ? 'Start over' : g.tag, function () { go(g.play + nw, true); }, 'quick');
+    // (no Quick start row: the setup below already holds the last game's choices, and its own Play starts them: Tim,
+    // 2026-11-15, "Quick start just defaults to the last selections made, so it's kind of redundant")
+    if (!sp) opt('play', live ? 'New game' : 'Play', live ? 'Start over' : g.tag, function () { go(g.play + nw, true); }, 'quick');
     var board = g.cat === 'board';
     if (g.launch) g.launch.forEach(function (o) {
       if (o.tool || (sp && o.file === sp + '.html')) return;   // (playing on this device: that's the setup below)
@@ -1822,7 +1822,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
           if (many) { whoN = Kit.countStepper(d.count || seats.length, d.lo, d.hi, function (k) { frame.contentWindow.postMessage({ kitSheet: 'step', d: k }, location.origin); }); whoBox.appendChild(whoN); }
           whoCard.setAttribute('aria-label', (d.one ? 'Change who is playing: ' : 'Change the players: ') + Kit.whoSaid(seats, d.teams));
         },
-        fit: function () { frame.style.height = Math.max(GS.fh || 360, GS.inner || 0, 8) + 'px'; },   // (as tall as the setup says: with the players on their own card, some setups have nothing else)
+        fit: function () { var h = Math.max(GS.fh || 360, GS.inner || 0, 8); frame.style.height = (GS.fh && GS.fh <= 40 && !GS.inner ? 0 : h) + 'px'; },   // (a setup with nothing but its players (the card above) takes no room)   // (as tall as the setup says: with the players on their own card, some setups have nothing else)
         dock: function (d) {
           if (/online/i.test(d.alt || '')) [].forEach.call(box.querySelectorAll('[data-net]'), function (b) { b.hidden = true; });
           var sig = (d.start || '') + '|' + (d.alt || '') + '|' + (d.altIcon || '') + '|' + JSON.stringify(d.look || ''); if (sig === dockSig) return; dockSig = sig;
