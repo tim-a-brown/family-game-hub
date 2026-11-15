@@ -196,6 +196,9 @@
 .vp-pay td{padding:2.5px 4px;text-align:right;font-variant-numeric:tabular-nums;border-left:1px solid rgba(255,225,77,.22);white-space:nowrap;}
 .vp-pay td:first-child{text-align:left;width:39%;border-left:0;padding-left:8px;font-size:.66rem;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;}
 .vp-pay tr:first-child td{padding-top:5px;} .vp-pay tr:last-child td{padding-bottom:5px;}
+/* a 320-wide phone: every hand's name and every payout whole (names may take two lines, the numbers a size smaller) */
+@media (max-width:359px){ .vp-pay{font-size:.6rem;} .vp-pay td{padding:2px 2px;}
+  .vp-pay td:first-child{width:35%;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.05;padding-left:6px;font-size:.58rem;} }
 .vp-pay td.on{background:#b3122b;color:#fff;}
 .vp-pay tr.dealt td:first-child{color:#fff;}
 .vp-pay tr.hit td{background:#ffe14d;color:#0b1c8f;animation:vpblink .5s steps(2) 4;}
@@ -227,6 +230,39 @@
 .vp-holds .vbtn{background:linear-gradient(180deg,#e9e2c8,#bfb38a);box-shadow:0 4px 0 #6d6248,inset 0 1px 0 rgba(255,255,255,.7);color:#4a4230;}
 .vp-holds .vbtn.held{background:linear-gradient(180deg,#fff4b0,#ffd43d 45%,#e8a900);color:#3a2600;box-shadow:0 1px 0 #8a5b00,0 0 16px rgba(255,214,61,.7);transform:translateY(3px);}
 .vbtn small{display:block;font-size:.62rem;opacity:.75;letter-spacing:.04em;}
+/* Sideways (a phone on its side, an iPad held wide): the cabinet lies wide, the pay table at the left to read and the
+   screen with the cards you hold at the right, the machine's buttons across the deck below */
+@media (orientation:landscape) and (min-width:600px){
+  .vp{max-width:min(1000px,100%);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);column-gap:14px;align-items:start;margin:0 auto 10px;}
+  .vp > .vp-title{grid-column:1;grid-row:1;} .vp > .vp-sub{grid-column:1;grid-row:2;} .vp > .vp-pay{grid-column:1;grid-row:3 / span 3;}
+  .vp > .vp-screen{grid-column:2;grid-row:1 / span 3;margin-top:0;align-self:stretch;display:flex;flex-direction:column;justify-content:center;} .vp > .vp-leds{grid-column:2;grid-row:4;} .vp > .vp-holds{grid-column:2;grid-row:5;}
+  .vp .vp-cards{--cw:clamp(46px,min(15vh,(50vw - 96px) / 5),96px);}
+  .vp .vp-holds .vbtn{width:var(--hw,clamp(46px,min(15vh,(50vw - 96px) / 5),96px));}
+  .vp-btns{max-width:min(1000px,100%);}
+  .stage:has(> .vp){max-width:none;}
+}
+/* an iPad held wide: the same, sized up to the screen's height */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .vp{padding:18px 18px 18px;margin-top:10px;} .vp-title{font-size:2.3rem;} .vp-sub{font-size:.8rem;margin-bottom:12px;}
+  .vp-pay{font-size:1rem;} .vp-pay td{padding:10px 6px;} .vp-pay td:first-child{font-size:.95rem;padding-left:14px;}
+  .vp-screen{padding:30px 10px 22px;} .vp .vp-cards{gap:10px;} .vp-msg{font-size:1rem;margin-top:16px;}
+  .vp-leds{margin-top:14px;gap:10px;} .vp-leds div{padding:6px 12px 8px;} .vp-leds small{font-size:.7rem;} .vp-leds b{font-size:1.5rem;}
+  .vp-holds{gap:10px;margin-top:14px;} .vp-holds .vbtn{min-height:56px;font-size:.8rem;}
+  .vp-btns{gap:12px;} .vbtn{min-height:76px;font-size:.95rem;} .vbtn small{font-size:.75rem;} .vbtn.go{font-size:1.25rem;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .vp{padding:8px 10px 9px;margin-bottom:8px;} .vp-title{font-size:1.25rem;} .vp-sub{margin-bottom:4px;}
+  .vp-pay td{padding:1.5px 4px;}
+  .vp-screen{padding:6px 6px 5px;} .vp-msg{margin-top:4px;font-size:.74rem;min-height:16px;} .vp-leds{margin-top:6px;} .vp-holds{margin-top:6px;}
+  .vp-holds .vbtn{min-height:34px;}
+  .vbtn{min-height:46px;}
+}
+/* a short phone (SE, 320 by 568): the cabinet a notch tighter, so the machine's buttons sit clear of the screen's bottom edge */
+@media (orientation:portrait) and (max-height:620px){
+  .vp{padding:8px 9px 9px;margin-bottom:8px;} .vp-title{font-size:1.3rem;} .vp-sub{margin-bottom:5px;}
+  .vp-screen{margin-top:6px;padding:7px 6px 5px;} .vp-msg{margin-top:5px;font-size:.74rem;} .vp-leds{margin-top:6px;}
+  .vp-btns{gap:5px;} .vbtn{min-height:48px;font-size:.68rem;letter-spacing:.03em;} .vbtn.go{font-size:.88rem;}
+}
 
 /* Strategy help chip: on the felt between the board and you (portrait), above the buttons (sideways), on the machine's screen (video poker) */
 .pcoach{display:flex;justify-content:center;min-height:26px;margin:-4px 0 8px;}
@@ -477,10 +513,11 @@
   .pland .pmsg{font-size:.9rem;}
 }
 
-/* ── iPad portrait: taller table, bigger cards and labels ── */
+/* ── iPad portrait: taller table, bigger cards and labels (a notch under half the screen, so the buttons under the
+   strategy help and the bet sizer stay in view) ── */
 @media (min-width:700px) and (min-height:900px) and (orientation:portrait){
-  .ptable{height:clamp(420px,43dvh,560px);}
-  .stage.raising .ptable{height:clamp(440px,48dvh,580px);}
+  .ptable{height:clamp(390px,40dvh,560px);}
+  .stage.raising .ptable{height:clamp(410px,44dvh,580px);}
   .pboard{--cw:64px;gap:6px;}
   .pseat .cards{--cw:32px;min-height:45px;}
   .pseat .cards .pcard+.pcard{margin-left:-17px;}
@@ -902,6 +939,11 @@
 .pstand .bar i{display:block;height:100%;border-radius:3px;transition:width .6s var(--ease);}
 .pstand b{font-variant-numeric:tabular-nums;color:var(--text);font-size:.82rem;}
 @media (min-height:600px){ .pland .pstand{display:flex;} }
+/* turning the device (onLand): these glide to their new places */
+.ptable{view-transition-name:pk-table;} .pme{view-transition-name:pk-me;} .prail:not([style]){view-transition-name:pk-rail;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+::view-transition-old(pk-table),::view-transition-new(pk-table){height:100%;width:100%;object-fit:fill;}
 /* Upright (iPad held tall, or a computer window): the rail under your cards, in two columns */
 .stage:not(.pland) .prail{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
 .stage:not(.pland) .prail .pev{grid-column:1;display:flex;flex-direction:column;justify-content:center;}
@@ -1864,7 +1906,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var r = S.row;
     setTimeout(function () {
       if (r < 0) { Kit.sfx('tap'); return; }
-      if (r <= 2) { Kit.callout(PAY[r][0] + '!'); Kit.confetti({ count: r === 0 ? 180 : 90 }); Kit.sfx('win'); Kit.haptic('success'); }
+      if (r <= 2) {
+        // a royal flush, a straight flush or four of a kind: the machine's payout glows and counts up (the royal biggest)
+        Kit.moment({ big: r === 0, icon: r === 0 ? 'crown' : 'star', title: PAY[r][0], line: 'The machine pays ' + PAY[r][1][S.coins - 1].toLocaleString() + ' coins.', pts: '$' + Math.round(S.win).toLocaleString('en-US'), color: '#ffd84d', at: app.querySelector('.vp'), ms: r === 0 ? 4000 : 2800 });
+        Kit.confetti({ count: r === 0 ? 180 : 90 }); Kit.sfx('win'); Kit.haptic('success');
+      }
       else if (r <= 4) { Kit.callout(PAY[r][0] + '!'); Kit.sfx('win'); Kit.haptic('success'); }
       else { Kit.sfx('good'); Kit.haptic('light'); }
     }, fresh.length ? 380 : 50);
@@ -1928,7 +1974,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
 
   function renderVP(o) {
     o = o || {};
-    orient('portrait');
+    orient(null);   // (the cabinet has a sideways layout: the pay table at the left, the screen at the right)
     app.classList.remove('raising', 'pland', 'pport', 'k-hold');
     app.innerHTML = '';
     var cab = el('div', { class: 'vp' });
@@ -3261,9 +3307,22 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var evb = evBased();
     if (won[0] > 0 && main && (main.w.indexOf(0) >= 0)) {
       Kit.sfx(showdown ? 'win' : 'good'); Kit.haptic('success');
-      if (showdown && evb && scores[0] != null && catOf(scores[0]) >= 6) Kit.callout(shortName(scores[0]) + '!');
+      var cat0 = showdown && evb && scores[0] != null ? catOf(scores[0]) : -1;
+      if (cat0 >= 7) {
+        // four of a kind or better: a once-in-a-session hand, a moment on the table with the pot it takes (bigger still
+        // for a straight flush or a royal)
+        Kit.moment({ big: cat0 >= 8, chip: cat0 >= 8 ? '' : '4', icon: cat0 >= 8 ? 'crown' : null, title: shortName(scores[0]), line: 'You take the pot with ' + aName(scores[0]) + '.', pts: (S.tourn ? '' : '$') + Math.round(won[0]).toLocaleString('en-US'), color: '#ffc83d', at: tableEl, ms: cat0 >= 8 ? 3600 : 2800 });
+        setTimeout(function () { try { Kit.confetti({ n: cat0 >= 8 ? 200 : 90 }); } catch (e) {} }, 300);
+      }
+      else if (cat0 >= 6) Kit.callout(shortName(scores[0]) + '!');
       else if (me >= 40 * S.bb) Kit.callout('Big pot!');
-    } else if (showdown && lv.indexOf(0) >= 0) { Kit.sfx('lose'); Kit.haptic('error'); }
+    } else if (showdown && lv.indexOf(0) >= 0) {
+      Kit.sfx('lose'); Kit.haptic('error');
+      // a bad beat: all in as the big favorite, and the cards turned the other way
+      var aiK = H.ai ? H.ai.seats.indexOf(0) : -1;
+      if (aiK >= 0 && H.ai.eq[aiK] >= 0.7 && main && main.w.indexOf(0) < 0 && main.v != null && evb)
+        Kit.moment({ tone: 'bad', icon: 'bolt', title: 'Bad beat', line: 'You were ' + Math.round(H.ai.eq[aiK] * 100) + ' percent to win when the chips went in, and ' + nm(main.w[0]) + ' caught ' + aName(main.v) + '.', at: tableEl, ms: 3000 });
+    }
     if (busted.length && busted.indexOf(0) < 0 && !S.circ) setTimeout(function () { if (S) Kit.toast(busted.map(nm).join(' and ') + (busted.length > 1 ? ' are' : ' is') + ' out'); }, 900);
     if (S.circ) { if (busted.indexOf(0) >= 0 || (S.circ.else === 0 && alive().length <= 1)) later(endEvent, 3000); else if (SIM) later(SIM.next, 0); }
     else if (S.tourn && (busted.indexOf(0) >= 0 || alive().length <= 1)) later(endTourney, 2600);
@@ -4728,7 +4787,15 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
   // sideways), your cards rising off the table's bottom rail
   var PORTQ = window.matchMedia ? matchMedia('(orientation:portrait) and (max-width:540px)') : { matches: false };
   function sideLay() { return LANDQ.matches || PORTQ.matches; }
-  function onLand() { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); }
+  // turning the device: the table, your cards and the rail glide from the old layout to the new one
+  function onLand() {
+    if (!(S && S.kind === 'table')) return;
+    var go = function () { if (S && S.kind === 'table') renderTable(!S.hand || app.classList.contains('after')); };
+    if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+    }
+    go();
+  }
   [LANDQ, PORTQ].forEach(function (q) { if (q.addEventListener) q.addEventListener('change', onLand); else if (q.addListener) q.addListener(onLand); });
   function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; }
   function at(node, p) { node.classList.add('pa'); node.style.left = p[0] + '%'; node.style.top = p[1] + '%'; return node; }
