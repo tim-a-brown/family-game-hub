@@ -342,14 +342,15 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       intro: 'Find the one way out',
       modes: [
         { id: 'pencil', icon: 'pencil', title: 'Pencil', desc: 'Draw your way out with a finger, like a puzzle book' },
-        { id: 'tilt', icon: 'phone', title: 'Labyrinth', desc: 'Tilt the phone to roll a steel ball out of a wooden maze' }
+        { id: 'tilt', icon: 'phone', title: 'Labyrinth', desc: 'Tilt the phone to roll a steel ball out of a wooden maze' },
+        { id: 'arrows', icon: 'swap', title: 'Arrow Jam', desc: 'Tap each arrow to slide it off the board, in an order that never crashes' }
       ],
       mode: 'pencil',
       options: [
-        { id: 'size', label: 'Size', value: 'easy', choices: SIZE_ORDER.map(function (z) { return [z, MC.SIZES[z].name, sizeHelp(z)]; }) },
-        { id: 'shape', label: 'Shape', value: 'square', when: function (m) { return m !== 'tilt'; },
+        { id: 'size', label: 'Size', value: 'easy', when: function (m) { return m !== 'arrows'; }, choices: SIZE_ORDER.map(function (z) { return [z, MC.SIZES[z].name, sizeHelp(z)]; }) },
+        { id: 'shape', label: 'Shape', value: 'square', when: function (m) { return m !== 'tilt' && m !== 'arrows'; },
           choices: [['square', 'Square', 'Start at the top, finish at the bottom.'], ['round', 'Round', 'A circular maze: start at the edge, finish in the middle.']] },
-        { id: 'paths', label: 'Paths', value: 'winding',
+        { id: 'paths', label: 'Paths', value: 'winding', when: function (m) { return m !== 'arrows'; },
           choices: [['winding', 'Winding', 'Long twisting corridors with few side turns.'], ['mixed', 'Mixed', 'A bit of everything, like a puzzle book.'], ['branchy', 'Branchy', 'Lots of short dead ends at every turn.']] },
         { id: 'holes', label: 'Holes', value: 'off', when: function (m) { return m === 'tilt'; },
           choices: [['off', 'None', 'A plain wooden maze.'], ['on', 'Holes', 'Holes on the wrong turns: drop in and the ball goes back to the start.']] }
@@ -357,6 +358,8 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
       players: { min: 1, max: 1, names: true, label: 'Who is solving?' },
       start: 'New maze',
       onStart: function (cfg) {
+        // Arrow Jam lives in Mazes beside the Labyrinth (Tim, 2026-11-15) and plays on its own page, levels and all
+        if (cfg.mode === 'arrows') { Kit.sfx('pop'); location.href = 'arrowjam.html'; return; }
         var o = cfg.options, nm = cfg.players[0] && cfg.players[0].name;
         if (!nm || /^Player \d+$/.test(nm)) nm = lsGet('my_name', '').trim() || 'You';
         newGame({ mode: cfg.mode, size: o.size, shape: cfg.mode === 'tilt' ? 'square' : o.shape, paths: o.paths, holes: o.holes === 'on', name: nm });

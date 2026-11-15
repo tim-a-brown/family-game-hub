@@ -115,7 +115,7 @@ var GAMES = [
   { id: 'memorymatch', name: 'Memory Match', color: '#d946ef', cat: 'puzzle', min: 1, max: 4, tag: 'Flip two, find the pairs', play: 'memorymatch' },
   { id: 'mahjong',     name: 'Mahjong Tiles', color: '#059669', cat: 'puzzle', min: 1, max: 1, tag: 'Match free tiles, clear the stack', play: 'mahjong' },
   { id: 'mathpuzzles', name: 'Math Puzzles', color: '#0891b2', cat: 'puzzle', min: 1, max: 1, tag: 'Patterns, sequences and brain teasers', play: 'mathpuzzles' },
-  { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, or tilt a steel ball', play: 'mazes' },
+  { id: 'mazes',       name: 'Mazes',        color: '#000', cat: 'puzzle', min: 1, max: 1, tag: 'Draw your way out, tilt a steel ball, or clear an arrow jam', play: 'mazes' },
 
   // ── Logic and riddles (in Puzzles & Words) ──────────────────────────────
   { id: 'mysteries',   name: 'Picture Mysteries', color: '#b45309', cat: 'puzzle', min: 1, max: 1, tag: 'Study the scene, crack the case', play: 'mysteries' },
@@ -132,7 +132,7 @@ var GAMES = [
   { id: 'hangman',     name: 'Hangman',      color: '#8b5cf6', cat: 'puzzle', min: 1, max: 2, tag: 'Guess the word, letter by letter', play: 'hangman' },
   { id: 'wordscramble',name: 'Word Scramble', color: '#14b8a6', cat: 'puzzle', min: 1, max: 4, tag: 'Unscramble against the clock', play: 'wordscramble' },
   { id: 'wordsearch',  name: 'Word Search',  color: '#e11d48', cat: 'puzzle', min: 1, max: 1, tag: 'Find every hidden word', play: 'wordsearch' },
-  { id: 'arrowjam',    name: 'Arrow Jam',    color: '#1e88e5', cat: 'puzzle', min: 1, max: 1, tag: 'Slide every arrow off the board without a bump', play: 'arrowjam' },
+  { id: 'arrowjam',    name: 'Arrow Jam',    color: '#1e88e5', cat: 'puzzle', min: 1, max: 1, tag: 'Slide every arrow off the board without a bump', play: 'arrowjam', hidden: true },   // (played from Mazes, beside the Labyrinth)
 
   // ── Party ────────────────────────────────────────────────────────────────
   { id: 'trivia',      name: 'Trivia',       color: '#f59e0b', cat: 'party', min: 1, max: 24, tag: 'Who knows the most?', play: 'trivia' },
