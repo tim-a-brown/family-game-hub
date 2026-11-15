@@ -685,6 +685,32 @@ body.pyl-on{
   .buzzers{--bz:clamp(110px,20vw,170px);} .bz .nm{font-size:18px;}
 }
 @media (prefers-reduced-motion:reduce){ .bulbs circle{animation:none;} .sl.in{animation:none;} }
+/* A phone on its side (874 x 402): the board at the left as tall as the screen allows, the podiums as one-line plates
+   and the button and Pass under them at the right; a question over the board steps down to fit */
+.pyls.land.short .side{gap:6px;}
+.pyls.land.short .pods{gap:5px;}
+.pyls.land.short .pod{grid-template-columns:auto 1fr auto;grid-template-areas:"n n n" "b s w";align-items:center;}
+.pyls.land.short .pod .pn{font-size:13px;padding:3px 9px 2px;}
+.pyls.land.short .pod .pb{font-size:22px;margin:3px 0 4px;padding-left:9px;}
+.pyls.land.short .pod .ps{padding:0 0 0 8px;font-size:12px;}
+.pyls.land.short .pod .pw{padding:0 8px;}
+.pyls.land.short .pod .pw svg{width:15px;height:12px;}
+.pyls.land.short .pod.out::after{font-size:15px;}
+.pyls.land.short .ctl{--dome:84px;row-gap:4px;min-height:0;}
+.pyls.land.short .hint{font-size:13px;} .pyls.land.short .hint b{font-size:14px;margin-bottom:0;}
+.pyls.land.short .passb{padding:7px 10px 6px;} .pyls.land.short .passb span{font-size:16px;} .pyls.land.short .passb small{font-size:11px;}
+.pyls.land.short .buzzers{--bz:70px;min-height:0;row-gap:6px;padding-top:4px;}
+.pyls.land.short .bz{gap:8px;} .pyls.land.short .bz .nm{font-size:13px;}
+.pyls.short .pan-in{gap:6px;padding:8px 10px;}
+.pyls.short .pan-in p{font-size:14px;line-height:1.25;margin:0;}
+.pyls.short .logo{font-size:26px;} .pyls.short .rnd{font-size:17px;} .pyls.short .gobtn{font-size:15px;padding:9px 18px 8px;}
+.pyls.short .q{gap:5px;padding:6px 8px;} .pyls.short .qt{font-size:17px;} .pyls.short .qh .tu{font-size:14px;} .pyls.short .qh .qn,.pyls.short .qh .cat{font-size:12px;}
+.pyls.short .qbulbs i{width:9px;height:9px;}
+.pyls.short .qmsg{font-size:13.5px;} .pyls.short .qf{font-size:13px;line-height:1.25;} .pyls.short .qres{gap:4px;} .pyls.short .qres .chip{font-size:11.5px;padding:2px 8px;} .pyls.short .qres .chip b{font-size:12.5px;}
+.pyls.short .qo{grid-template-columns:1fr 1fr;gap:5px;}
+.pyls.short .qo button{min-height:36px;padding:4px 8px;gap:6px;font-size:14px;}
+.pyls.short .qo button b{width:20px;height:20px;font-size:11px;}
+.pyls.short .stand .nm{font-size:15px;} .pyls.short .stand .bk{font-size:20px;}
 /* A small phone upright (320 x 568): the button and podiums step down, and a question's answers sit two by two */
 @media (orientation:portrait) and (max-height:640px){
   .pan-in{gap:8px;padding:10px 10px;} .pan-in p{font-size:15px;line-height:1.25;margin:0;}
@@ -872,7 +898,7 @@ body.pyl-on{
     '<h3>Playing online</h3><p>Tap <b>Play online</b> beside Start the show. One of you opens a table and the others join it, each on their own phone or tablet, and each plays their own podium: buzz in, answer, spin and stop the board, and pass. The computer plays any podium nobody takes. The host\'s device runs the show, and everyone sees the questions and the Big Board at the same moment. A buzz, or a stop of the board, counts from the moment you pressed on your own device, even when your link is slower. Picks from three stay secret on each device. If your device drops out, the computer stands in at your podium until you join the table again.</p>';
 
   Kit.init({
-    id: 'pressyourluck', title: 'Press Your Luck', orient: 'portrait',
+    id: 'pressyourluck', title: 'Press Your Luck',
     onNew: function () { if (NET && NET.mode) { NET.leave(true); return; } clearSave(); showSetup(); },
     undo: function () { undo(); },
     rules: RULES,
@@ -1018,12 +1044,13 @@ body.pyl-on{
   }
   function fit() {
     if (!shell) return;
-    var W = app.clientWidth - 20, top = shell.stage.getBoundingClientRect().top, H = window.innerHeight - top - 12 - safeBottom();
+    var W = app.clientWidth - 20, top = shell.stage.getBoundingClientRect().top, H = window.innerHeight - top - Math.max(18, 12 + safeBottom());
     var land = W >= 700 && W > H * 1.12, bw, bh, sw = 0;
     if (land) {
-      sw = Math.max(270, Math.min(380, W * 0.3)); bw = W - sw - 14; bh = H;
+      sw = H < 470 ? Math.max(250, Math.min(330, W * 0.31)) : Math.max(270, Math.min(380, W * 0.3)); bw = W - sw - 14; bh = H;
       if (bh > bw * 0.95) bh = bw * 0.95;
-      if (bh < bw * 0.76) bw = bh / 0.76;
+      var flat = H < 470 ? 0.62 : 0.76;   // (on a phone on its side the squares may be wider than tall, so the board takes the width)
+      if (bh < bw * flat) bw = bh / flat;
     } else {
       var small = H < 520, reserve = W >= 600 ? 372 : small ? 240 : 256;   // (the podiums and the buzzer or SPIN button below the board, whole)
       bw = W; bh = Math.min(H - reserve, bw * 1.3);
@@ -1035,6 +1062,7 @@ body.pyl-on{
     r.setProperty('--bw', bw + 'px'); r.setProperty('--bh', bh + 'px'); r.setProperty('--sw', sw + 'px');
     r.setProperty('--pad', pad + 'px'); r.setProperty('--gap', gap + 'px');
     shell.stage.classList.toggle('land', land);
+    shell.stage.classList.toggle('short', land && H < 470);   // (a phone on its side: the podiums and the button step down to fit beside the board)
     drawBulbs(shell.bulbs, bw, bh, pad / 2, pad * 1.15, Math.max(1.8, pad * 0.2));
     requestAnimationFrame(function () {
       if (!shell) return;
@@ -2660,6 +2688,31 @@ body.pyl-on{
     netui: function () { return { await: ui.await, busy: busyNow(), zp: zPhase(), lit: T.lit, show: T.show.slice(), q: TL.q.length, hold: TL.hold }; },
     judged: function () { return lastJudge; }, stops: function () { return STOPS; }
   };
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = '.pyls>.bwrap, .side>.pods>.pod, .side>.ctl, .side>.buzzers', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>

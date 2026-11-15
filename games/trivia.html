@@ -436,6 +436,124 @@ body{overflow-x:hidden;}
   .meter .tr{height:20px;border-radius:10px;}
   .lbr{font-size:1.1rem;}
 }
+/* ── Every shape: the question screen fills the screen under the bar ──────
+   Upright, the card and the four tiles share the height; sideways (phone or iPad), the question, its clock and what
+   happened stand on the left and the tiles you tap fill the right. Items never shrink below their content. */
+.cnext:empty{display:none;}
+.tv.vq,.tv.pq{display:flex;flex-direction:column;min-height:calc(100dvh - var(--bar));}
+.tv.vq>.stage{flex:1 1 auto;display:flex;flex-direction:column;}
+.vq .qwrap{flex:.75 1 auto;display:flex;flex-direction:column;}
+.vq .qwrap>.qcard{flex:1 1 auto;}
+.vq .tiles{flex:1 1 auto;grid-auto-rows:minmax(min-content,1fr);}
+.vq .cfoot{flex:none;}
+.tv.vq{padding-bottom:max(calc(var(--safe-b) + 10px),18px);}
+.vq .tiles.one .tile{min-height:56px;}
+.tv.pq>.stage{flex:1 1 auto;display:flex;flex-direction:column;}
+.pq .qwrap{flex:.6 1 auto;display:flex;flex-direction:column;}
+.pq .qwrap>.qcard,.pq .qwrap>.reel{flex:1 1 auto;height:auto;min-height:100px;}
+.pq .answers{flex:1 1 auto;grid-auto-rows:minmax(min-content,1fr);}
+.pq .answers .ans{max-height:none;}
+.pq .answers .ans.gone{max-height:0;}
+.tv.pq>.stage{max-width:none;width:100%;}
+.pq .answers>.ans:not(.gone){flex:1 1 auto;}
+.pq .stage>.buzzers{margin-top:auto;padding-top:12px;}
+.pq .stage>.next{margin-top:12px;}
+.pq .stage:has(>.res)>.answers,.pq .stage:has(>.res)>.answers>.ans{flex:none;}
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  .tv.vq,.tv.pq{max-width:1180px;padding-left:max(16px,var(--safe-l,0px));padding-right:max(16px,var(--safe-r,0px));}
+  .tv.vq>.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);grid-template-rows:auto minmax(0,1fr) auto auto auto;column-gap:16px;align-content:stretch;}
+  .vq .stage>.marq{grid-area:1/1;}
+  .vq .stage>.qwrap{grid-area:2/1;}
+  .vq .stage>.meter{grid-area:3/1;}
+  .vq .stage>.cfoot{grid-area:4/1;}
+  .vq .stage>.cnext{grid-area:5/1;}
+  .vq .stage>.tiles{grid-area:1/2/6/3;margin-top:0;grid-auto-rows:1fr;align-content:stretch;}
+  .vq .tiles.one{grid-template-columns:1fr;}
+  .vq .tiles .tile{min-height:0;}
+  .tv.pq>.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);grid-template-rows:auto minmax(0,1fr) auto auto;column-gap:16px;}
+  .pq .stage>.marq{grid-area:1/1;}
+  .pq .stage>.qwrap{grid-area:2/1;}
+  .pq .stage>.buzzbar,.pq .stage>.res{grid-area:3/1;}
+  .pq .stage>.answers{grid-area:1/2/5/3;margin-top:0;display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;}
+  .pq .stage>.answers .ans.gone{display:none;}
+  .pq .stage>.res{margin-top:10px;}
+  .pq .stage>.res h2{font-size:1.6rem;}
+  .pq .stage>.buzzers{grid-area:5/2;padding-top:10px;}
+  .pq .stage>.buzzhint{grid-area:5/1;align-self:end;}
+  .pq .stage>.next{grid-area:5/1;align-self:end;}
+  .tv.pq>.stage{grid-template-rows:auto minmax(0,1fr) auto auto auto;}
+  .pq .stage>.answers{grid-area:1/2/5/3;}
+  /* the answer is in: what was right, the points and the fact sit at the right with the way on under them */
+  .tv.pq>.stage:has(>.res){grid-template-rows:auto auto minmax(0,1fr) auto;}
+  .pq .stage:has(>.res)>.qwrap{grid-area:2/1/5/2;}
+  .pq .stage:has(>.res)>.answers{grid-area:1/2/2/3;grid-auto-rows:auto;}
+  .pq .stage:has(>.res)>.res{grid-area:2/2/4/3;margin-top:8px;}
+  .pq .stage:has(>.res)>.next{grid-area:4/2;}
+}
+/* Big tiles get big words */
+@media (min-width:700px) and (min-height:700px){
+  .pq .ans{font-size:1.15rem;} .pq .ans .k{width:34px;height:34px;font-size:1.2rem;} .pq .qcard .q{font-size:2rem;}
+  .vq .tile{font-size:1.4rem;} .vq .tile .L{width:44px;height:44px;font-size:1.6rem;}
+  .vq .qcard .q{font-size:2.1rem;} .vq .qcard .q.long{font-size:1.75rem;}
+  .vq .meter{min-height:76px;} .vq .meter .num{font-size:3rem;} .vq .meter .nb{min-width:120px;}
+  .vq .cfoot .hint{font-size:1rem;} .vq .cfact{font-size:1.05rem;}
+}
+/* A small phone upright (320 x 568): the plates step down so the question fits without scrolling */
+@media (orientation:portrait) and (max-height:640px){
+  .vq .qcard{min-height:72px;padding:12px 12px 16px;}
+  .vq .qcard .q{font-size:1.12rem;} .vq .qcard .q.long{font-size:1rem;}
+  .vq .tiles.one{gap:6px;} .vq .tiles.one .tile{min-height:40px;font-size:1.05rem;padding-top:6px;padding-bottom:6px;}
+  .vq .tiles.one .tile .L{width:30px;height:30px;}
+  .vq .tile{min-height:60px;}
+  .vq .meter{min-height:52px;margin-top:8px;} .vq .meter .num{font-size:1.9rem;} .vq .meter .nb{min-width:76px;}
+  .vq .marq{min-height:32px;margin-bottom:6px;}
+  .vq .cfoot{min-height:44px;margin-top:10px;} .vq .cfoot .hint{padding-top:6px;font-size:.82rem;}
+  .vq .cfact{font-size:.84rem;padding:7px 10px;}
+  .tv.vq>.stage{padding:12px 10px 10px;}
+}
+@media (orientation:portrait) and (max-height:640px){
+  .tv.pq>.stage{padding:10px 10px 10px;}
+  .pq .qwrap>.qcard,.pq .qwrap>.reel{min-height:80px;padding:8px 12px 10px;}
+  .pq .qcard .q{font-size:1.05rem;} .pq .qcard .q.long{font-size:.95rem;}
+  .pq .marq{min-height:34px;margin-bottom:6px;} .pq .ring,.pq .ring svg{width:36px;height:36px;}
+  .pq .answers{gap:6px;margin-top:8px;} .pq .ans{min-height:38px;padding-top:4px;padding-bottom:4px;font-size:.9rem;}
+  .pq .stage>.buzzers{padding-top:8px;gap:8px;} .pq .stage>.buzzers .buzz{height:44px;}
+  .tv.pq>.scores .score{padding:4px 10px 5px;} .tv.pq>.scores .score .sub{display:none;}
+  .pq .res{margin-top:8px;} .pq .res h2{font-size:1.5rem;} .pq .res p{font-size:.85rem;padding:7px 10px;margin-top:6px;}
+}
+@media (orientation:portrait) and (max-width:360px){.vq .cfoot .hint{font-size:.74rem;padding-top:4px;}}
+/* A phone on its side: the counters ride in the middle of the game bar, and everything steps down to fit 400 tall */
+@media (orientation:landscape) and (max-height:500px){
+  .tv.vq>.hud,.tv.pq>.hud{position:fixed;top:calc(var(--safe-t) + 12px);left:50%;transform:translateX(-50%);z-index:51;margin:0;flex-wrap:nowrap;}
+  .tv.vq,.tv.pq{min-height:calc(100dvh - var(--bar));padding-bottom:calc(var(--safe-b) + 10px);}
+  .tv.vq>.stage,.tv.pq>.stage{padding:12px 12px 10px;border-radius:18px;}
+  .vq .marq,.pq .marq{min-height:30px;margin-bottom:4px;}
+  .vq .qcard,.cdm.vq .qcard{min-height:64px;padding:10px 14px 14px;}
+  .vq .qcard .q,.pq .qcard .q{font-size:1.15rem;}
+  .vq .qcard .q.long,.pq .qcard .q.long{font-size:1rem;}
+  .vq .meter{min-height:50px;margin-top:8px;padding:6px 12px 6px 10px;}
+  .vq .meter .num{font-size:1.9rem;}
+  .vq .meter .nb{min-width:76px;}
+  .vq .meter .say h3{font-size:1.2rem;}
+  .vq .cfoot{min-height:44px;margin-top:8px;gap:6px;}
+  .vq .cfoot .hint{padding-top:8px;font-size:.85rem;}
+  .vq .lockbtn{height:46px;}
+  .vq .cfact{font-size:.84rem;line-height:1.3;padding:7px 10px;}
+  .vq .cnext{margin-top:8px;}
+  .vq .cnext .btn-lg{min-height:46px;padding-top:8px;padding-bottom:8px;}
+  .vq .tiles,.pq .answers{gap:8px;}
+  .vq .tile{font-size:1rem;}
+  .pq .qcard .cat{margin-bottom:2px;}
+  .pq .ans{min-height:38px;padding-top:4px;padding-bottom:4px;font-size:.92rem;}
+  .tv.pq>.scores .score .sub{display:none;}
+  .tv.pq>.scores{padding:2px 2px 6px;}
+  .tv.pq>.scores .score{flex-direction:row;justify-content:space-between;align-items:center;gap:10px;padding:4px 14px;}
+  .tv.pq>.scores .score .pt{font-size:1.25rem;}
+  .pq .stage>.buzzers{gap:8px;}
+  .pq .stage>.buzzers .buzz{height:42px;}
+  .pq .stage>.next .btn-lg{min-height:46px;padding-top:8px;padding-bottom:8px;}
+  .tv.pq>.scores{margin-bottom:6px;}
+}
 @media (prefers-reduced-motion:reduce){
   .tile.enter,.tiles.rv .tile.ok,.reel.land,.reel.spin .ri,.reel.spin .rn{animation:none;}
 }
@@ -933,6 +1051,7 @@ body{overflow-x:hidden;}
   }
   function renderQuestion(stage) {
     var c = S.cur, q = Qcur();
+    app.classList.add('pq');
     marquee(stage);
     var wrap = el('div', { class: 'qwrap' });
     stage.appendChild(wrap);
@@ -1000,7 +1119,7 @@ body{overflow-x:hidden;}
       stage.appendChild(res);
       var last = S.qi + 1 >= total();
       var nextName = !last && S.mode === 'pass' && N() > 1 ? S.players[(S.qi + 1) % N()].name : null;
-      app.appendChild(el('div', { class: 'next' }, [el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: last ? 'See the winners' : nextName ? 'Next: pass to ' + nextName : 'Next question', onclick: next })]));
+      stage.appendChild(el('div', { class: 'next' }, [el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: last ? 'See the winners' : nextName ? 'Next: pass to ' + nextName : 'Next question', onclick: next })]));
       if (fresh === 'ok') { stage.classList.add('flash-ok'); }
       else if (fresh === 'bad') { stage.classList.add('flash-bad'); }
       fresh = null;
@@ -1013,8 +1132,8 @@ body{overflow-x:hidden;}
           'aria-label': p.name + ' buzzer', html: esc(p.name) + (locked ? Kit.icon('close') : ''),
           onpointerdown: function (e) { e.preventDefault(); buzz(i); } }));
       });
-      app.appendChild(bz);
-      app.appendChild(el('div', { class: 'buzzhint', text: c.buzz >= 0 ? S.players[c.buzz].name + ': tap your answer' : c.locked.length ? 'Still open! Anyone else?' : 'Read it, then hit your buzzer' }));
+      stage.appendChild(bz);
+      stage.appendChild(el('div', { class: 'buzzhint', text: c.buzz >= 0 ? S.players[c.buzz].name + ': tap your answer' : c.locked.length ? 'Still open! Anyone else?' : 'Read it, then hit your buzzer' }));
     }
     paintRing();
     if (!reel && !c.done) startTimer();
@@ -1350,7 +1469,7 @@ body{overflow-x:hidden;}
   // The screen for one question: HUD, stage (category, question, points clock, tiles), footer
   function vBuild() {
     var m = VW.q;
-    app.innerHTML = ''; app.className = 'tv cdm';
+    app.innerHTML = ''; app.className = 'tv cdm vq';
     var d = VW.d = {};
     d.hud = el('div', { class: 'hud' }); app.appendChild(d.hud);
     var stage = d.stage = el('section', { class: 'stage' });
@@ -1389,7 +1508,7 @@ body{overflow-x:hidden;}
     d.foot = el('div', { class: 'cfoot' }); stage.appendChild(d.foot);
     d.who = el('div', { class: 'whos' });
     app.appendChild(stage);
-    d.after = el('div', { class: 'cnext' }); app.appendChild(d.after);
+    d.after = el('div', { class: 'cnext' }); stage.appendChild(d.after);   // (inside the stage, so a sideways screen keeps it in the left column)
     vHud(); vFoot();
   }
   function vHud() {
@@ -1676,7 +1795,7 @@ body{overflow-x:hidden;}
     var avg = times.length ? times.reduce(function (a, b) { return a + b; }, 0) / times.length / 1000 : 0;
     var hiK = VW.solo ? hiConf(VW.cfg.lv, VW.cfg.of) : null;
     var prevTop = hiK && HI() ? HI().top(hiK) : null;
-    var rec = cdRecord(m, list);
+    var rec = cdRecord(m, list, prevTop);
     // screen
     app.innerHTML = ''; app.className = 'tv cdm';
     var hud = el('div', { class: 'hud' }, [el('span', { class: 'pill', html: Kit.icon('help') + '<b>' + m.of + '</b>questions' }), el('span', { class: 'pill', html: Kit.icon('chart') + esc(LEVELS[VW.cfg.lv] || '') })]);
@@ -1765,7 +1884,7 @@ body{overflow-x:hidden;}
     startCdGame({ level: c.lv, count: c.of, cats: okCats(c.cats) }, [{ pid: 1, name: nm }], true);
   }
   // Game history: each player's points per question, the highlights and a detail for the history view
-  function cdRecord(m, list) {
+  function cdRecord(m, list, prevTop) {
     var P = list, log = VW.log, n = P.length, solo = VW.solo;
     if (!log.length) return null;
     var hl = [], meP = P.filter(function (p) { return p.me; })[0];
@@ -1777,6 +1896,7 @@ body{overflow-x:hidden;}
     if (n > 1 && P[0].score > P[1].score) hl.push({ w: 6, t: P[0].name + ' won by ' + fmtN(P[0].score - P[1].score) + ' points' });
     if (n > 1) { var st = log.filter(function (l) { return !P.some(function (p) { var r = l.r[p.pid]; return r && r[0] === l.k; }); })[0]; if (st) hl.push({ w: 2, t: 'Stumped everyone: ' + cut(st.q, 70) }); }
     if (solo && meP) hl.push({ w: 10, t: meP.name + ' got ' + meP.right + ' of ' + m.of + ' right' });
+    if (solo && meP && prevTop != null && meP.score > prevTop) hl.push({ w: 11, t: meP.name + ' set a new high score of ' + fmtN(meP.score) + ' points, beating ' + fmtN(prevTop) });
     hl.sort(function (a, b) { return b.w - a.w; });
     var cats = VW.cfg.cats || [];
     var mode = (solo ? 'Countdown' : 'Online countdown') + ' \u00b7 ' + (LEVELS[VW.cfg.lv] || '') + ' \u00b7 ' + catLabel(okCats(cats)).replace('Random categories', 'All categories') + ' \u00b7 ' + m.of + ' questions';
@@ -2028,6 +2148,31 @@ body{overflow-x:hidden;}
   // the points clock rewrites its text ~45x a second and a page-wide observer would refit on every frame
   new MutationObserver(function (ms) { for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { soon(); return; } }).observe(document.getElementById('app'), { childList: true });
   window.addEventListener('resize', soon);
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = '.tv>.hud, .tv>.scores, .tv>.stage>.marq, .tv>.stage>.qwrap, .tv>.stage>.meter, .tv>.stage>.tiles, .tv>.stage>.answers, .tv>.stage>.cfoot, .tv>.stage>.cnext, .tv>.stage>.res, .tv>.stage>.buzzers, .tv>.stage>.next', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>

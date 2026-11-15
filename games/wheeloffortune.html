@@ -906,12 +906,16 @@
     if (desk) { if (shell.boardcam.parentNode !== shell.bwrap) shell.bwrap.appendChild(shell.boardcam); }
     else if (shell.boardcam.parentNode !== shell.studio) shell.studio.insertBefore(shell.boardcam, shell.studio.firstChild);
     var W = shell.studio.clientWidth || 360, H, C;
-    if (desk) { C = Math.round(Math.min(W, 620, window.innerHeight - 100)); H = C; }
+    if (desk) {
+      // (sideways on an iPad or a desktop: the wheel as big as its column allows, and its panel the full height beside the board and keys)
+      var bar0 = document.querySelector('.gbar'), bar0H = bar0 ? bar0.offsetHeight : 58;
+      C = Math.round(Math.min(W, 680, window.innerHeight - 100)); H = Math.max(C, Math.min(Math.round((window.innerHeight || 760) - bar0H - 30), Math.round(C * 1.5)));
+    }
     else {
       // Fill the phone screen: the studio takes whatever the podiums, host line and keys leave over
       var bar = document.querySelector('.gbar'), barH = bar ? bar.offsetHeight : 58;
       // (a phone on its side: the studio stands beside the rest and takes the height)
-      var avail = (window.innerHeight || 760) - barH - (short ? 0 : shell.side.offsetHeight + 9) - 18;
+      var avail = (window.innerHeight || 760) - barH - (short ? 0 : shell.side.offsetHeight + 9) - 24;
       if (short) { H = Math.max(200, Math.round(avail)); C = Math.min(H, W); }
       // (a tall tablet upright: the studio gives up what the keys need, so the last row of keys stays on the screen)
       else { H = Math.round(clamp(avail, Math.min(W * 0.82, Math.max(avail, W * 0.6)), Math.min(W * 1.1, 820))); C = Math.min(H, W); }
@@ -926,7 +930,7 @@
     Wheel.resize(C);
   }
   var rsT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rsT); rsT = setTimeout(layoutStage, 120); });
+  window.addEventListener('resize', function () { layoutStage(); clearTimeout(rsT); rsT = setTimeout(layoutStage, 120); });
   function setCam(c) { bc('cam', [c]); setCam0(c); }
   function setCam0(c) {
     ui.cam = c; if (!shell) return;
@@ -1444,8 +1448,11 @@
     ui.busy = true; paintDeck();
     var p = S.players[me];
     if (info.hidden.length) await revealWave(info.hidden);
-    snd('solve'); callout('Solved!');
-    if (!p.cpu) confetti(90);
+    // A solve with most of the board still green is the rare one: it gets its own call and a bigger burst
+    var lastSv = S.log.solves[S.log.solves.length - 1], shown = lastSv ? lastSv.shown : 99, tot = lastSv ? lastSv.total : 1;
+    var daring = lastSv && shown / tot <= 0.4;
+    snd('solve'); callout(daring ? (shown === 0 ? 'Solved with no letters showing!' : shown === 1 ? 'Solved with only 1 letter showing!' : 'Solved with only ' + shown + ' letters showing!') : 'Solved!');
+    if (!p.cpu || daring) confetti(daring ? 160 : 90);
     hap(me, 'success');
     host(vb(p.name, 'wins', 'win') + ' round ' + S.round + (p.name === 'You' ? ' and bank <b>' : ' and banks <b>') + money(info.amt) + '</b>' + (info.min ? ' (the $1,000 minimum)' : '') + '!');
     await wait(800);
@@ -2259,6 +2266,31 @@
     next: function () { var b = shell && shell.acts.querySelector('.btn-primary'); if (b && !b.disabled) b.click(); return !!b; },
     startClock: function () { var b = shell && Array.prototype.filter.call(shell.acts.querySelectorAll('button'), function (x) { return /Start the clock/.test(x.textContent); })[0]; if (b && !b.disabled) b.click(); return !!b; },
     answer: function () { return GUEST() ? null : S && S.pz && S.pz.text; }, judged: function () { return lastJudge; } };
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = '.show>.studio, .side>.bwrap, .side>.pods, .side>.host, .side>.deck', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>
