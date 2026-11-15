@@ -13,6 +13,9 @@
 <script src="../players.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script src="mexicantrain-core.js"></script>
+<script src="mexicantrain.js"></script>
+<link rel="stylesheet" href="mexicantrain.css">
 <style>
 /* ── Page frame: one screen, no scrolling during play ─────────────────── */
 #app.stage.dmapp{max-width:none;padding:0 max(17px,var(--corner-x)) max(calc(var(--safe-b) + 8px),18px);}
@@ -206,7 +209,11 @@
   function vtGo(fn) { var t = document.startViewTransition(fn); ['ready', 'finished', 'updateCallbackDone'].forEach(function (k) { if (t && t[k] && t[k].catch) t[k].catch(function () {}); }); }
   var el = Kit.el, app = document.getElementById('app');
   var KEY = 'dominoes', SAVE = 'dominoes_state';
-  var VNAME = { draw: 'Draw', block: 'Block', fives: 'All Fives' };
+  var VNAME = { draw: 'Draw', block: 'Block', fives: 'All Fives', mexican: 'Mexican Train' };
+  // the Game chosen in the setup (Mexican Train seats 2 to 8 and has options of its own; games/mexicantrain.js plays it)
+  var curV = (function () { try { return ((JSON.parse(localStorage.getItem('gn_setup_dominoes') || '{}') || {}).options || {}).variant || 'draw'; } catch (e) { return 'draw'; } })();
+  function isMex(m, o) { return !!o && o.variant === 'mexican'; }
+  function notMex(m, o) { return !o || o.variant !== 'mexican'; }
   var TARGETS = { draw: { short: 100, long: 150 }, block: { short: 100, long: 150 }, fives: { short: 150, long: 250 } };
   var NUMW = ['zero', 'one', 'two', 'three', 'four', 'five', 'six'];
   var DNAME = ['blank', 'one', 'two', 'three', 'four', 'five', 'six'];
@@ -417,10 +424,15 @@
   Kit.init({
     id: 'dominoes',
     theme: { felt: ['#1b7a52', '#0f5638', '#0a4129'], wood: ['#7b4a26', '#4b2a13'] },
-    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; clearSave(); showSetup(); },
-    undo: function () { if (NET) { Kit.toast('Tiles can’t be taken back online'); return; } undo(); },
+    onNew: function () { if (NET || MTUI.isNet()) { Kit.toast('Leave the online game first (in the menu)'); return; } tok++; if (MTUI.active()) MTUI.clearSave(); else clearSave(); showSetup(); },
+    undo: function () { if (MTUI.active()) { MTUI.undo(); return; } if (NET) { Kit.toast('Tiles can’t be taken back online'); return; } undo(); },
     menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(KEY, { title: 'Dominoes: past games' }); } }]),
-    rules:
+    rules: function () {
+      if (MTUI.active() || (!S && curV === 'mexican')) return MTUI.rules() + '<h3>The other games</h3><p>Draw, Block and All Fives are the classic games with a double-six set. Choose one under Game in the setup, and How to play explains it.</p>';
+      return RULES + '<h3>Mexican Train</h3><p>Mexican Train is a choice under Game in the setup: a double-12 set for 2 to 8 players, with a train for every player and one for everyone. Choose it, and How to play explains it.</p>';
+    }
+  });
+  var RULES =
       '<p class="goal">Match the dots on your tiles to the open ends of the line. Get rid of all your tiles first to win the hand, and score the dots left in everyone else\'s hands.</p>' +
       '<h3>The tiles</h3><ul><li>A double-six set has 28 tiles. Each tile has two ends with 0 (blank) to 6 dots.</li>' +
       '<li>A <b>double</b> has the same number on both ends, like 4-4. Doubles are laid crosswise.</li></ul>' +
@@ -447,32 +459,41 @@
       '<h3>Online</h3><ul><li><b>Play online</b> beside the start button: open a table and up to 3 others join on their own devices. The computer plays any seat that nobody takes.</li>' +
       '<li>With partners, the people you seated in the setup sit where you put them, so your partner is still across from you.</li>' +
       '<li>Each of you sees only your own tiles. Take your turn whenever you like; the home screen shows when it’s your move.</li>' +
-      '<li>When a hand ends, the next one is dealt at once, and everyone sees how the hand was counted. Tiles can’t be taken back online.</li></ul>'
-  });
+      '<li>When a hand ends, the next one is dealt at once, and everyone sees how the hand was counted. Tiles can’t be taken back online.</li></ul>';
 
   function showSetup() {
-    tok++; S = null; sel = -1; lock = false;
+    tok++; S = null; sel = -1; lock = false; MTUI.stop();
     app.className = 'stage';
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'You against 1 to 3 computer players' }, { id: 'pp', kind: 'local' }]),
       options: [
-        { id: 'variant', label: 'Game', value: 'draw', choices: [
+        { id: 'variant', label: 'Game', value: 'draw', onPick: function (v) { curV = v; }, choices: [
           ['draw', 'Draw', 'If you can\'t play, take tiles from the boneyard until one fits.'],
           ['block', 'Block', 'No drawing. If you can\'t play, you pass.'],
-          ['fives', 'All Fives', 'Score points during play whenever the open ends add up to 5, 10, 15 and so on. The first double is a spinner with four sides.']] },
-        { id: 'target', label: 'Play to', value: 'short', help: 'How many points win the match.', choices: [
+          ['fives', 'All Fives', 'Score points during play whenever the open ends add up to 5, 10, 15 and so on. The first double is a spinner with four sides.'],
+          ['mexican', 'Mexican Train', 'A double-12 set for 2 to 8 players. Every player builds a train of their own out from the hub, and anyone can play on the Mexican Train. After 13 rounds the lowest total wins.']] },
+        { id: 'mtfirst', label: 'First turn', value: 'one', when: isMex, choices: [
+          ['one', 'One tile', 'Everyone plays one tile a turn, on the first turn too.'],
+          ['run', 'Lay a train', 'On your first turn of each round you may lay as many tiles as you can on your own train, one after another.']] },
+        { id: 'mtdbl', label: 'Doubles', value: 'cover', when: isMex, choices: [
+          ['cover', 'Covered first', 'A double must be covered before anything else is played. Whoever plays it plays again.'],
+          ['open', 'Covered later', 'Play carries on everywhere, and anyone can cover a double when it suits them. Whoever plays it still plays again.']] },
+        { id: 'mtrounds', label: 'Rounds', value: 13, when: isMex, choices: [
+          [13, '13 rounds', 'The engine goes from the double 12 down to the double blank.'],
+          [7, '7 rounds', 'A shorter game: the engine goes from the double 12 down to the double 6.']] },
+        { id: 'target', label: 'Play to', value: 'short', when: notMex, help: 'How many points win the match.', choices: [
           ['short', 'Shorter', '100 points (150 in All Fives).'],
           ['long', 'Longer', '150 points (250 in All Fives).']] },
-        { id: 'teams', label: 'Partners (4 players)', value: 'off', help: 'With 4 players you can team up with the player sitting across from you.', choices: [
+        { id: 'teams', label: 'Partners (4 players)', value: 'off', when: notMex, help: 'With 4 players you can team up with the player sitting across from you.', choices: [
           ['off', 'On your own', 'Each player keeps their own score.'],
           ['on', 'Partners across', 'You and the player across share a score.']] },
         { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
       ],
       players: {
-        min: 1, max: 4, count: 2,
-        range: function () { return [2, 4]; },
+        min: 1, max: 8, count: 2,
+        range: function () { return curV === 'mexican' ? [2, 8] : [2, 4]; },
         cpu: function (m) { return m === 'cpu' ? 'seats' : m === 'pp' ? 'mix' : false; },
-        teams: function (n, v) { return n === 4 && v.teams === 'on' ? [[0, 2], [1, 3]] : null; }   // (partners sit across from each other)
+        teams: function (n, v) { return n === 4 && v.teams === 'on' && v.variant !== 'mexican' ? [[0, 2], [1, 3]] : null; }   // (partners sit across from each other)
       },
       onStart: function (cfg) {
         var players = cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.cpu ? lvName(p.level || cfg.options.level) : undefined }; });   // (each robot its own skill)
@@ -480,13 +501,14 @@
         var teams = cfg.options.teams === 'on';
         if (teams && players.length !== 4) { Kit.toast('Partners need 4 players'); teams = false; }
         var v = cfg.options.variant || 'draw';
+        if (v === 'mexican') { clearSave(); MTUI.start({ mode: cfg.mode, players: players, options: cfg.options }); return; }
         newMatch({ mode: cfg.mode, variant: v, target: TARGETS[v][cfg.options.target === 'long' ? 'long' : 'short'], teams: teams, players: players });
       }
     });
   }
 
   function newMatch(o) {
-    tok++; sel = -1; lock = false;
+    tok++; sel = -1; lock = false; MTUI.stop(); MTUI.clearSave();
     S = {
       v: 1, mode: o.mode, variant: o.variant, target: o.target, teams: !!o.teams,
       players: o.players.map(function (p) { return { name: p.name, cpu: !!p.cpu, level: p.level, color: p.color, hand: [] }; }),
@@ -1496,10 +1518,11 @@
   function netSetup() { try { return JSON.parse(localStorage.getItem('gn_setup_dominoes') || '{}') || {}; } catch (e) { return {}; } }
   function netOpts() {
     var c = netSetup(), o = c.options || {}, n = Math.max(2, Math.min(4, +c.count || 2)), robots = c.robots || [];
-    var v = o.variant === 'block' || o.variant === 'fives' ? o.variant : 'draw', teams = o.teams === 'on' && n === 4;
+    var v = o.variant === 'block' || o.variant === 'fives' || o.variant === 'mexican' ? o.variant : 'draw', teams = o.teams === 'on' && n === 4 && v !== 'mexican';
+    if (v === 'mexican') n = Math.max(2, Math.min(8, +c.count || 2));
     // who sits where in the setup: a person's name, or '' for the computer
     var names = []; for (var i = 0; i < n; i++) names.push(robots.indexOf(i) >= 0 ? '' : String((c.names || [])[i] || '').trim());
-    return { variant: v, target: o.target === 'long' ? 'long' : 'short', teams: teams, level: lvName(o.level), seats: n, names: names };
+    return { variant: v, target: o.target === 'long' ? 'long' : 'short', teams: teams, level: lvName(o.level), seats: n, names: names, mtfirst: o.mtfirst, mtdbl: o.mtdbl, mtrounds: o.mtrounds };
   }
   function netStart(players, opts) {
     var n = players.length, teams = !!opts.teams && n === 4, ps = [], i;
@@ -1715,20 +1738,32 @@
     netCloseOv();
     var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
     if (sv && sv.players && sv.players.length && sv.phase !== 'over') { S = sv; buildUI(); resumeFlow(); }
-    else showSetup();
+    else if (!MTUI.resume()) showSetup();
   }
 
   // ── Boot ─────────────────────────────────────────────────────────────────
+  MTUI.init({ app: app, showSetup: showSetup, lvName: lvName });
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
-  if (saved && saved.players && saved.players.length && saved.phase !== 'over') { S = saved; buildUI(); resumeFlow(); }
+  if (MTUI.resume()) {}
+  else if (saved && saved.players && saved.players.length && saved.phase !== 'over') { S = saved; buildUI(); resumeFlow(); }
   else showSetup();
 
   // online tables (after the local game is drawn): opens ?online=1&room=CODE from the home screen
   TurnNet.setup({
-    game: 'dominoes', title: 'Dominoes', min: 2, max: 4, botMs: 900,
-    seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || n)); },
-    opts: netOpts, start: netStart, turn: netTurn, over: netOver, bot: netBot,
-    show: netShow, leave: netLeave
+    game: 'dominoes', title: 'Dominoes', min: 2, botMs: 900,
+    get max() { return netOpts().variant === 'mexican' ? 8 : 4; },   // (Mexican Train seats up to 8)
+    seats: function (n, o) { return Math.max(n, Math.min(o && o.variant === 'mexican' ? 8 : 4, +(o && o.seats) || n)); },
+    // a Mexican Train table (its state says mt) is games/mexicantrain.js's; the classic games are this page's
+    opts: netOpts,
+    start: function (players, o, last) { return o && o.variant === 'mexican' ? MTUI.net.start(players, o) : netStart(players, o, last); },
+    turn: function (st) { return st && st.mt ? MTUI.net.turn(st) : netTurn(st); },
+    over: function (st) { return st && st.mt ? MTUI.net.over(st) : netOver(st); },
+    bot: function (st, seat) { return st && st.mt ? MTUI.net.bot(st, seat) : netBot(st, seat); },
+    show: function (net, info) {
+      if (net.state && net.state.mt) { if (NET || S) { NET = null; NETQ = []; NETBUSY = false; tok++; S = null; netCloseOv(); } MTUI.net.show(net, info); }
+      else { if (MTUI.isNet()) MTUI.net.leave(); netShow(net, info); }
+    },
+    leave: function () { MTUI.net.leave(); netLeave(); }
   });
 })();
 </script>
