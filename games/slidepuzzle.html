@@ -16,9 +16,32 @@
 @property --g{syntax:'<length>';inherits:true;initial-value:4px;}
 body{overflow-x:hidden;}
 .sp{max-width:500px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 18px);}
-.sp .play{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 78px);padding-bottom:3vh;}
-.sp .play > *{width:min(100%, 460px, calc(100dvh - var(--safe-t) - var(--safe-b) - 300px));min-width:min(100%,300px);}
-@media (min-width:700px) and (min-height:700px){ .sp{max-width:720px;} .sp .play > *{width:min(100%, 640px, calc(100dvh - var(--safe-t) - var(--safe-b) - 310px));} }
+/* The board as large as the screen allows. Upright: the plates over the frame and the tools under it, the frame's
+   width the room left (--bw). Sideways: the plates and the tip in a column at the left, the frame in the middle and
+   the tools in a column at the right, where the taps go. */
+.sp:has(> .play){max-width:none;padding:0 18px;}
+.sp .play{--h:calc(100dvh - var(--bar) - var(--safe-b));--bw:min(100vw - 36px, var(--h) - 236px, 760px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;height:var(--h);min-height:0;padding:0 0 10px;}
+.sp .play > *{width:var(--bw);}
+.sp .play > .frame{flex:none;}
+@media (orientation:landscape){
+  .sp .play{--side:clamp(118px,14vw,200px);--bw:min(var(--h) - 52px, 100vw - 72px - 2 * var(--side));
+    display:grid;grid-template-columns:var(--side) auto var(--side);grid-template-rows:1fr auto 1fr;
+    grid-template-areas:"hud frame tools" "hud frame tools" "tip frame tools";column-gap:16px;justify-content:center;align-content:center;padding:4px 0 12px;}
+  .sp .play > *{width:auto;}
+  .sp .play > .frame{grid-area:frame;width:var(--bw);align-self:center;}
+  .sp .play > .hud{grid-area:hud;flex-direction:column;margin:0;align-self:end;}
+  .sp .play > .hud .plaque{flex:none;padding:8px 10px 9px;}
+  .sp .play > .tools{grid-area:tools;grid-auto-flow:row;grid-auto-columns:auto;align-self:center;margin:0;}
+  .sp .play > .tools .tool{min-height:58px;}
+  .sp .play > .tip{grid-area:tip;align-self:start;margin-top:12px;text-align:left;justify-content:flex-start;align-items:flex-start;}
+  .sp .play > .tip .ico{flex:none;margin-top:2px;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .sp .play > .tip{display:none;}
+  .sp .play > .hud{align-self:center;grid-row:1 / 4;}
+  .sp .play > .hud .plaque{padding:5px 8px 6px;}
+}
 
 /* Score plates: night glass, the moves lit gold */
 .hud{display:flex;gap:8px;align-items:stretch;margin:2px 0 12px;}
@@ -963,7 +986,13 @@ body{overflow-x:hidden;}
     board.appendChild(last);
     Kit.sfx('good'); Kit.haptic('success');
     setTimeout(function () { board.classList.add('won'); well.classList.add('won'); well.appendChild(el('div', { class: 'shine' })); }, 450);
-    setTimeout(function () { Kit.callout(newM && prevM ? 'New best!' : S.watched ? 'Solved!' : 'Solved!'); }, 900);
+    // Uncommon finishes get their moment on the frame: the fewest moves possible, then a new best
+    var perfect = S.opt && !S.watched && S.moves <= S.opt;
+    setTimeout(function () {
+      if (perfect) { Kit.moment({ big: true, icon: 'star', color: '#d9a520', title: 'A perfect solve', line: 'You solved the ' + name + ' in ' + S.moves + (S.moves === 1 ? ' move' : ' moves') + ', the fewest it can be done in.', pts: S.moves, at: null }); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 }); }
+      else if (newM && prevM) { Kit.moment({ icon: 'trophy', title: 'A new best', line: S.moves + ' moves beats your old best of ' + prevM + '.', pts: S.moves, at: frame }); Kit.sfx('sparkle'); }
+      else Kit.callout('Solved!');
+    }, 900);
     setTimeout(function () {
       var size = S.n, style = S.style, pid = S.pic;
       ArcadeHi.check(isClean ? hiKey(size) : '', isClean ? S.moves : 0, function () {
@@ -978,7 +1007,7 @@ body{overflow-x:hidden;}
           scores: function () { ArcadeHi.show(hiKey(size)); showSetup(); }
         });
       });
-    }, 2700);
+    }, perfect || (newM && prevM) ? 3500 : 2700);
   }
 
   function histExtra(e) {
@@ -999,6 +1028,31 @@ body{overflow-x:hidden;}
   }
 
   // Test hook
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.sp .play > .frame, .sp .play .plaque, .sp .play .tool, .sp .play > .tip');
+
   window.__slide = {
     get: function () { return S; }, E: E, pic: picSvg,
     set: function (b) { S.b = b.slice(); S.U = []; plan = null; clearHint(); placeAll(true); updHud(); save(); },
