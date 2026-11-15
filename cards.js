@@ -321,14 +321,14 @@ var Cards = (function () {
     '.spad tbody tr.dim:active{background:none;}',
     '.spad tbody tr.fixing,.spad tbody tr.fixing:active{background:color-mix(in srgb,var(--lit) 14%,transparent);}',
     '.spad tbody tr.fixing th.rn{color:var(--lit-ink);}',
-    '.spad-acts.fixing{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}',
+    '.spad-acts.fixing{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px max(calc(var(--safe-b) + 10px), 18px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}',
     // Phones: Save across the top, Delete and Cancel side by side under it; wider screens: one row
     '.spad-acts.fixing .btn-primary{flex:1 1 100%;}',
     '.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:1 1 0;min-height:48px;font-size:1rem;}',
     '@media (min-width:560px){.spad-acts.fixing .btn-primary{flex:1 1 0;}.spad-acts.fixing .spad-del,.spad-acts.fixing .spad-cancel{flex:0 0 auto;min-height:60px;padding:0 18px;font-size:1.1rem;}}',
     '.spad-acts .spad-del.armed{--b:var(--red);--b-ink:#fff;--b-lip:#a8202e;color:#fff;}',
     // Short landscape screens below 700 wide: keep Add round reachable without scrolling for every entry
-    '@media (orientation:landscape) and (max-height:820px) and (max-width:699px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px calc(var(--safe-b) + 10px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
+    '@media (orientation:landscape) and (max-height:820px) and (max-width:699px){.spad-acts{position:sticky;bottom:0;z-index:4;margin:14px -16px 0;padding:10px 16px max(calc(var(--safe-b) + 10px), 18px);background:linear-gradient(rgba(0,0,0,0),var(--bg) 16px);}}',
     // Sideways from 700 wide (a phone on its side, an iPad): the score sheet at the left and what you do with it (the
     // note and the buttons) in a column of its own at the right, held in view while the sheet scrolls, so it never lies
     // over a row being written in
