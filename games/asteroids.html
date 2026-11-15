@@ -16,9 +16,9 @@
 /* ── Play view: fills the screen, no page scroll ────────────────────────── */
 html.ar-on,html.ar-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
 html.ar-on body{display:flex;flex-direction:column;background:transparent;}
-html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px calc(var(--safe-b) + 8px);
+html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px max(18px,calc(var(--safe-b) + 10px));
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
-.ar-hud{flex:none;display:flex;gap:6px;width:100%;}
+.ar-hud{flex:none;display:flex;gap:6px;width:100%;padding:0 9px;}
 .ar-plate{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 8px;border-radius:15px;
   background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 .ar-plate small{font-size:.74rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
@@ -46,7 +46,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 .ar-ov .btn{margin-top:8px;}
 .ar-hint{flex:none;font-size:.8rem;color:var(--text-3);text-align:center;font-weight:700;}
 /* ── Touch deck: steering on the left, fire on the right ──────────────── */
-.deck{flex:none;width:100%;max-width:520px;height:148px;display:flex;align-items:center;justify-content:space-between;padding:0 4px;
+.deck{flex:none;width:100%;max-width:520px;height:148px;display:flex;align-items:center;justify-content:space-between;padding:0 13px;
   touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .deck *{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 .stick{position:relative;width:138px;height:138px;border-radius:50%;
@@ -84,18 +84,34 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 @media (hover:none),(pointer:coarse){ .ar-desk{display:none!important;} }
 @media (max-height:700px){ .ar-plate b{font-size:1.2rem;} .deck{height:122px;} .stick{width:116px;height:116px;} .stick .nub{width:46px;height:46px;margin:-23px 0 0 -23px;}
   .fire{width:88px;height:88px;} .right{height:116px;} .btns{grid-template-columns:54px 54px;grid-template-rows:54px 54px;} }
-/* Tablet landscape: steering in the lower-left corner, fire in the lower-right, under the thumbs; the field sits between them */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{position:relative;}
-  .ar-wrap{padding:0 196px;}
-  .deck{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 16px);max-width:none;height:auto;align-items:flex-end;padding:0 20px;pointer-events:none;}
-  .deck > *{pointer-events:auto;}
-  .stick{width:164px;height:164px;} .stick .nub{width:62px;height:62px;margin:-31px 0 0 -31px;} .stick .lab{font-size:.74rem;top:9px;}
-  .btns{grid-template-columns:72px 72px;grid-template-rows:72px 72px;gap:10px;}
-  .right{width:170px;height:180px;}
-  .fire{width:120px;height:120px;font-size:1.25rem;}
-  .hyper{width:62px;height:62px;}
+/* Sideways (a phone or an iPad on its side, html.ar-land): the field stands between the thumbs as tall as the screen
+   allows; the score plates and the stick are a column at the left, pause, hyperspace and fire a column at the right */
+@media (pointer:coarse){
+  html.ar-on.ar-land #app{--ars:clamp(150px,19vw,236px);display:grid;grid-template-columns:var(--ars) minmax(0,1fr) var(--ars);
+    grid-template-rows:auto minmax(0,1fr);grid-template-areas:"hud wrap fire" "stick wrap fire";align-items:stretch;justify-items:stretch;position:relative;
+    column-gap:10px;row-gap:10px;padding:0 max(17px,env(safe-area-inset-right)) max(18px,calc(var(--safe-b) + 10px)) max(17px,env(safe-area-inset-left));}
+  html.ar-land .ar-hud{grid-area:hud;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:none!important;align-self:start;}
+  html.ar-land .ar-plate.sc{grid-column:1/3;flex:none;padding:6px 8px;}
+  html.ar-land .ar-plate{padding:4px 6px;}
+  html.ar-land .ar-pbtn{position:absolute;top:0;right:max(17px,env(safe-area-inset-right));width:var(--pbw,52px);height:44px;}
+  html.ar-land .ar-wrap{grid-area:wrap;padding:0;}
+  html.ar-land .deck{display:contents;padding:0;}
+  html.ar-land .deck > .stick,html.ar-land .deck > .btns{grid-area:stick;align-self:end;justify-self:center;}
+  html.ar-land .deck > .right{grid-area:fire;align-self:end;justify-self:end;}
+  html.ar-land .ar-hint{display:none;}
 }
+/* an iPad on its side: bigger plates and thumb pads */
+@media (pointer:coarse) and (min-height:600px){
+  html.ar-land .ar-plate b{font-size:1.6rem;} html.ar-land .ar-plate{padding:8px;}
+  html.ar-land .stick{width:170px;height:170px;} html.ar-land .stick .nub{width:64px;height:64px;margin:-32px 0 0 -32px;} html.ar-land .stick .lab{font-size:.76rem;top:9px;}
+  html.ar-land .btns{grid-template-columns:76px 76px;grid-template-rows:76px 76px;gap:10px;}
+  html.ar-land .right{width:184px;height:190px;}
+  html.ar-land .fire{width:128px;height:128px;font-size:1.35rem;}
+  html.ar-land .hyper{width:66px;height:66px;}
+}
+/* Turning the device: the parts glide to their new places (the class is switched inside a View Transition) */
+.ar-hud{view-transition-name:ar-hud;} .ar-cab{view-transition-name:ar-cab;} .deck .stick,.deck .btns{view-transition-name:ar-stick;} .deck .right{view-transition-name:ar-fire;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -105,6 +121,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   'use strict';
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
   var KEY = 'asteroids', HI = 'ast', SAVE = 'asteroids_state';
+  // Turning the device: the sideways layout (html.ar-land) is switched inside a View Transition, so the field, the plates
+  // and the thumb pads glide to their new places; the field keeps the world it was dealt and is fitted again at once
+  (function () {
+    var q = matchMedia('(orientation:landscape)'), wait = false;
+    function set() { wait = false; root.classList.toggle('ar-land', q.matches); if (typeof fit === 'function') { cssW = 0; fit(); } }
+    root.classList.toggle('ar-land', q.matches);
+    function turn() {
+      if (wait || root.classList.contains('ar-land') === q.matches) return;
+      if (document.startViewTransition && !document.hidden && view === 'game' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    if (q.addEventListener) q.addEventListener('change', turn); else q.addListener(turn);
+  })();
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var PI = Math.PI, TAU = PI * 2;
   function fmt(n) { return Number(n).toLocaleString('en-US'); }
@@ -202,7 +233,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function bestScore() { return ArcadeHi.best(HI); }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({
     id: 'asteroids',
     theme: { wood: ['#30325c', '#181a36'] },
     onNew: function () { clearSave(); showSetup(); },
@@ -299,6 +330,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     var aw = wrapEl.clientWidth - padX - 14, ah = wrapEl.clientHeight - 14;
     if (aw < 50 || ah < 50) return;
     if (!G || G.phase === 'new') { var wd = worldFor(aw, ah); WW = wd[0]; WH = wd[1]; }
+    else if (G.phase === 'play' && (WW > WH) !== (aw > ah) && Math.abs(aw - ah) > 40) reshape(worldFor(aw, ah));
     var s = Math.min(aw / WW, ah / WH), w = Math.floor(WW * s), h = Math.floor(WH * s);
     if (w === cssW && h === cssH && cv.width) return;
     cssW = w; cssH = h;
@@ -309,6 +341,15 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     hudEl.style.maxWidth = Math.min(wrapEl.clientWidth, w + 14) + 'px';
     starImg = null;
     draw();
+  }
+
+  // Turned mid-game: the field takes the new shape (its short side stays the same) and everything in it keeps its place
+  // across the field, so the game carries on where it was instead of shrinking into a strip
+  function reshape(wd) {
+    var kx = wd[0] / WW, ky = wd[1] / WH;
+    function mv(o) { if (o) { o.x *= kx; o.y *= ky; } }
+    [ship, ufo].forEach(mv); [bullets, rocks, parts, debris, rings, pops].forEach(function (l) { (l || []).forEach(mv); });
+    WW = wd[0]; WH = wd[1]; starImg = null;
   }
 
   // ── Touch deck
@@ -436,7 +477,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   function startWave() {
     if (G.wave) { G.stats.perWave.push(G.score - G.stats.waveStartScore); trkLevel(trk(G.stats), G.wave, G.score); }
     G.stats.waveStartScore = G.score;
-    G.wave++; G.waveT = 0; G.beatGap = 1; G.nextWaveT = 0;
+    G.wave++; G.waveT = 0; G.beatGap = 1; G.nextWaveT = 0; G.waveDeaths = G.stats.deaths.length;
     var n = Math.min(11, 4 + (G.wave - 1) * 2);
     rocks = [];
     for (var i = 0; i < n; i++) {
@@ -588,6 +629,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
         bullets.splice(i, 1); st.hits++;
         if (ufo.big) st.ufoBig++; else st.ufoSmall++;
         addScore(UFO_PTS[ufo.big ? 'big' : 'small'], ufo.x, ufo.y, true);
+        if (!ufo.big) { Kit.moment({ title: 'Small saucer down', line: 'The small saucer was aiming at you, and you shot it first.', pts: '+1,000', at: cabEl, ms: 1700 }); Kit.haptic('success'); }
         killUfo();
         continue;
       }
@@ -625,7 +667,14 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
 
     // next wave
     if (!rocks.length && G.phase === 'play') {
-      if (!G.nextWaveT) G.nextWaveT = 2.2;
+      if (!G.nextWaveT) {
+        G.nextWaveT = 2.2;
+        if (G.wave >= 3 && (st.deaths.length === (G.waveDeaths || 0))) {
+          st.clean = (st.clean || 0) + 1; st.cleanTop = Math.max(st.cleanTop || 0, G.wave);
+          Kit.moment({ title: 'Wave ' + G.wave + ' cleared', line: 'You cleared every rock in wave ' + G.wave + ' without losing a ship.', icon: 'sparkle', at: cabEl, ms: 1900 });
+          Kit.sfx('sparkle'); Kit.haptic('success');
+        }
+      }
       else { G.nextWaveT -= dt; if (G.nextWaveT <= 0.0001) { G.nextWaveT = 0; startWave(); } }
     }
     // saucers
@@ -709,6 +758,11 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
   }
   function addScore(n, x, y, pop) {
     var before = G.score; G.score += n; hudDirty = true; bumpScore = true;
+    if (G.best0 > 0 && before <= G.best0 && G.score > G.best0 && !G.stats.pb) {
+      G.stats.pb = G.wave;
+      Kit.moment({ title: 'New personal best', line: 'You just passed your best of ' + fmt(G.best0) + ' points, and every rock from here adds to it.', icon: 'trophy', at: cabEl, ms: 2200 });
+      Kit.sfx('win'); Kit.haptic('success');
+    }
     if (pop) pops.push({ x: x, y: y, text: fmt(n), life: 1.1, max: 1.1 });
     while (G.score >= G.nextLife) {
       G.nextLife += EXTRA_EVERY; G.lives++; G.stats.extra++;
@@ -738,6 +792,9 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0
     if (st.shots >= 20) h.push('Hit with ' + Math.round(st.hits / st.shots * 100) + '% of ' + st.shots + ' shots');
     if (st.hypers) h.push('Jumped to hyperspace ' + st.hypers + (st.hypers === 1 ? ' time' : ' times') + (st.hyperDeaths ? ' (landed on a rock ' + st.hyperDeaths + (st.hyperDeaths === 1 ? ' time)' : ' times)') : ''));
     if (st.extra) h.push('Earned ' + st.extra + (st.extra === 1 ? ' extra ship' : ' extra ships'));
+    if (st.pb) h.unshift(G.who + ' passed the old best of ' + fmt(G.best0) + ' points in wave ' + st.pb);
+    if (st.ufoSmall && st.ufoSmall >= 3) h.push(G.who + ' shot down ' + st.ufoSmall + ' small saucers');
+    if (st.clean) h.push(G.who + ' cleared ' + (st.clean === 1 ? 'wave ' + st.cleanTop : st.clean + ' waves') + ' without losing a ship');
     var last = st.deaths[st.deaths.length - 1];
     if (last) h.push('Last ship lost to ' + last.by + ' in wave ' + last.wave);
     var pw = st.perWave;
