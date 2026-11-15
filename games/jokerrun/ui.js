@@ -258,17 +258,20 @@
     var cs = getComputedStyle(app), padB = parseFloat(cs.paddingBottom) || 6;
     var H = Math.max(240, innerHeight - top - padB - 2);
     jr.style.setProperty('--jrh', H + 'px');
-    var tall = innerWidth >= 600 && innerHeight > innerWidth * 1.1;
-    jr.classList.toggle('tall', tall);
+    // Tall (iPad upright): the Jokers run the full width above, the hand and buttons under everything.
+    // Short (a phone on its side): the buttons stand in a column at the right of the hand, so the cards get the height.
+    var tall = innerWidth >= 600 && innerHeight > innerWidth * 1.1, short = !tall && innerHeight <= 520 && innerWidth > innerHeight;
+    jr.classList.toggle('tall', tall); jr.classList.toggle('short', short);
     var sb = R.side ? R.side.getBoundingClientRect().width : 200, JW = jr.getBoundingClientRect().width;
-    var W = Math.max(240, JW - sb - 10), WH = tall ? JW : W;
+    var aw = short && R.acts && !jr.classList.contains('full') ? R.acts.getBoundingClientRect().width + 8 : 0;
+    var W = Math.max(240, JW - sb - 10), WH = (tall ? JW : W) - aw, WT = tall && !jr.classList.contains('full') ? JW : W;
     var s = S(), n = Math.max(5, s && s.phase === 'play' ? Math.max(s.hand.length, s.hs || 8) : 8);
-    var cwH = (H - 106) / 4.2;
-    var cwW = (WH - 10) / (1.3 + 1 + 0.5 * (n - 1));
-    var cw = Math.max(38, Math.min(118, cwH, cwW));
+    var cwH = short ? (H - 66) / 4.1 : (H - 106) / 4.2;
+    var cwW = (WH - 10) / (1.3 + 1 + 0.5 * (n - 1) + 0.36);
+    var cw = Math.max(38, Math.min(140, cwH, cwW));
     var slots = (s ? E.jslots() + E.cslots() : 7);
-    var jw = Math.max(34, Math.min(104, cw * 1.0, (W - 46) / (slots + 0.6)));
-    var pw = Math.max(36, Math.min(cw * 0.95, (W - 20) / 5.8));
+    var jw = Math.max(34, Math.min(104, cw * (short ? 0.9 : 1.0), (WT - 46) / (slots + 0.6)));
+    var pw = Math.max(36, Math.min(cw * (short ? 0.88 : 0.95), (W - 20) / 5.8));
     var Hm = H - jw * 1.35 - 26, sw = Math.max(jw, Math.min(130, (Hm - 70) / 2 / 1.6, (W - 170) / 5.2));
     jr.style.setProperty('--sw', sw.toFixed(1) + 'px');
     jr.style.setProperty('--cw', cw.toFixed(1) + 'px'); jr.style.setProperty('--jw', jw.toFixed(1) + 'px'); jr.style.setProperty('--pw', pw.toFixed(1) + 'px');
@@ -276,7 +279,17 @@
     placeHand();
   }
   var lt = 0;
-  window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(function () { layout(); if (tipEl && tipAnchor && tipAnchor.isConnected) placeTip(); else closeTip(); }, 60); });
+  // Turning the device: the panels and cards glide to the new layout (a View Transition where the browser has one)
+  var lastWH = innerWidth + 'x' + innerHeight;
+  function relay() { layout(); if (tipEl && tipAnchor && tipAnchor.isConnected) placeTip(); else closeTip(); }
+  window.addEventListener('resize', function () {
+    var wh = innerWidth + 'x' + innerHeight; if (wh === lastWH) return;
+    var turned = lastWH && (lastWH.split('x')[0] > +lastWH.split('x')[1]) !== (innerWidth > innerHeight); lastWH = wh;
+    clearTimeout(lt);
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (turned && document.startViewTransition && !reduce && !document.hidden && R.jr && R.jr.isConnected) { try { document.startViewTransition(relay); return; } catch (e) {} }
+    lt = setTimeout(relay, 60);
+  });
 
   // ═══ Render ══════════════════════════════════════════════════════════════
   var busy = false, sel = [], shopUndo = [], packSel = -1;
@@ -562,7 +575,8 @@
     if (!R.hand || !R.hand.isConnected) return;
     var ids = (only || E.curHand()).filter(function (id) { return R.hEls[id]; }), n = ids.length; if (!n) return;
     var W = R.hand.getBoundingClientRect().width, cw = R.cw || 60;
-    var gap = n > 1 ? Math.min(cw * 1.04, (W - cw - 4) / (n - 1)) : 0;
+    // room for the fan's tilt at both ends, so the outer cards never reach past the hand's own space
+    var gap = n > 1 ? Math.min(cw * 1.04, (W - cw * 1.36 - 4) / (n - 1)) : 0;
     var dr = R.deck ? R.deck.getBoundingClientRect() : null, hr = R.hand.getBoundingClientRect();
     ids.forEach(function (id, i) {
       var t = n > 1 ? (i - (n - 1) / 2) / ((n - 1) / 2) : 0;
@@ -668,7 +682,7 @@
     if (s.forced && ids.indexOf(s.forced) < 0) { Kit.toast('The chimed card must be played'); return; }
     var snap = {}; ids.forEach(function (id) { snap[id] = JSON.parse(JSON.stringify(C(id))); });
     var rects = {}; ids.forEach(function (id) { if (R.hEls[id]) rects[id] = R.hEls[id].firstChild.getBoundingClientRect(); });
-    var pre = { score: s.score, money: s.money, target: s.target, jokers: s.jokers.slice(), hand: s.hand.slice() };
+    var pre = { score: s.score, money: s.money, target: s.target, jokers: s.jokers.slice(), hand: s.hand.slice(), ante: s.ante, bname: (document.querySelector('.sb-blind .bn') || {}).textContent || '', last: s.hands === 1 };
     var res = E.play(ids);
     sel = [];
     save();
@@ -759,6 +773,7 @@
     if (res.saved) { Kit.callout('Saved by Lucky Bones!'); Kit.sfx('good'); }
     if (res.outcome === 'win') { Kit.sfx('good'); hap('success'); }
     else if (res.outcome === 'lose') { Kit.sfx('lose'); hap('error'); }
+    rareMoment(res, pre);
     await D(res.outcome === 'go' ? 260 : 600);
     if (tok !== token) return;
     // 6. played cards leave, new cards deal in
@@ -776,6 +791,30 @@
     }
     paintSide(); paintTop(); paintHand(); paintActs(); preview(); layout();
     drainNotes();
+  }
+  // Uncommon moments, each on the table where it happens, and kept for the run's history:
+  // a hand rarer than a Full House (rarer hands bigger), and a blind beaten with the last hand of the round
+  var RARE = { four: 1, sflush: 2, five: 3, flushhouse: 3, flushfive: 3 };
+  function rareMoment(res, pre) {
+    var s = S(), st = s.stats, lv = RARE[res.hand], who = s.name || 'You', nm = E.HMAP[res.hand].n, an = /^[AEIOU]/.test(nm) ? 'an ' : 'a ';
+    var royal = res.hand === 'sflush' && res.played.some(function (id) { var c = C(id); return c && c.r === 'A'; }) && res.played.some(function (id) { var c = C(id); return c && c.r === 'K'; });
+    var pts = /^[\d,]+$/.test(fmt(res.total)) ? fmt(res.total) : '';
+    var hl = st.hl = st.hl || [];
+    if (lv) {
+      var title = royal ? 'Royal Flush' : nm;
+      hl.push(who + ' played ' + (royal ? 'a Royal Flush' : an + nm) + ' in ante ' + pre.ante + ' for ' + fmt(res.total) + '.');
+      setTimeout(function () {
+        Kit.moment({ title: title, line: royal ? 'Ace to ten, all one suit. Most runs never see one.' : lv >= 3 ? 'A secret hand. You found one of the rarest hands in the game.' : 'Not many hands get this far.', chip: royal ? 'A' : null, icon: royal ? null : 'star', pts: pts, big: lv >= 2 || royal, color: '#f5b73b', at: R.mid, ms: lv >= 2 ? 3200 : 2400 });
+        Kit.sfx(lv >= 2 || royal ? 'win' : 'sparkle'); hap(lv >= 2 ? 'success' : 'medium'); JRBg.kick(lv >= 2 ? 8 : 5);
+      }, 120);
+    }
+    if (res.outcome === 'win' && pre.last && !res.saved) {
+      var bn = pre.bname.trim() || 'the blind'; if (!/^the /i.test(bn)) bn = 'the ' + bn;
+      hl.push(who + ' beat ' + bn + ' with the last hand of the round in ante ' + pre.ante + '.');
+      if (!lv) setTimeout(function () { Kit.moment({ title: 'Last hand', line: 'You beat ' + bn + ' with your final hand.', icon: 'flame', pts: pts, color: '#ff4b3e', at: R.mid, ms: 2400 }); Kit.sfx('win', 0.8); hap('success'); }, 120);
+    }
+    if (hl.length > 12) hl.splice(0, hl.length - 12);
+    save();
   }
   // cards whose look changed during scoring (Midas gold, Leech...)
   function refreshPlayed(res, pEls) {
@@ -1010,17 +1049,17 @@
     R.mid.appendChild(box);
   }
   function highlights(won) {
-    var s = S(), st = s.stats, hl = [];
-    hl.push(won ? 'Beat all 8 antes with the ' + E.DECKS[s.deckId].n + '!' : 'Reached ante ' + s.ante + (s.endless && s.ante > 8 ? ' in endless mode' : ''));
-    if (st.best) hl.push('Biggest hand: ' + fmt(st.best) + ' with a' + (/^[AEIOU]/.test(E.HMAP[st.bestHand].n) ? 'n ' : ' ') + E.HMAP[st.bestHand].n);
+    var s = S(), st = s.stats, hl = [], who = s.name || 'You';
+    hl.push(won ? who + ' beat all 8 antes with the ' + E.DECKS[s.deckId].n + '.' : who + ' reached ante ' + s.ante + (s.endless && s.ante > 8 ? ' in endless mode.' : '.'));
+    if (st.best) hl.push('The biggest hand was ' + (/^[AEIOU]/.test(E.HMAP[st.bestHand].n) ? 'an ' : 'a ') + E.HMAP[st.bestHand].n + ' for ' + fmt(st.best) + '.');
     var bj = null; Object.keys(st.jt).forEach(function (k) { if (!bj || st.jt[k] > st.jt[bj]) bj = k; });
-    if (bj) hl.push('Best joker: ' + E.JK[bj].n + ' (fired ' + st.jt[bj] + (st.jt[bj] === 1 ? ' time)' : ' times)'));
-    var mp = E.mostPlayed(); if (s.plays[mp]) hl.push('Favorite hand: ' + E.HMAP[mp].n + ', played ' + s.plays[mp] + (s.plays[mp] === 1 ? ' time' : ' times'));
-    if (!won && st.lostTo) hl.push('Stopped by ' + st.lostTo.name + ': ' + fmt(st.lostTo.score) + ' of ' + fmt(st.lostTo.target));
-    else if (st.bosses.length) hl.push('Bosses beaten: ' + st.bosses.slice(-3).join(', '));
-    if (s.vouchers.length) hl.push('Vouchers: ' + s.vouchers.map(function (v) { return E.VOUCHERS[v].n; }).join(', '));
-    if (st.earned >= 40) hl.push('Earned $' + st.earned + ' along the way');
-    return hl;
+    if (bj) hl.push(E.JK[bj].n + ' was the best Joker, firing ' + st.jt[bj] + (st.jt[bj] === 1 ? ' time.' : ' times.'));
+    var mp = E.mostPlayed(); if (s.plays[mp]) hl.push('The favorite hand was ' + (/^[AEIOU]/.test(E.HMAP[mp].n) ? 'an ' : 'a ') + E.HMAP[mp].n + ', played ' + s.plays[mp] + (s.plays[mp] === 1 ? ' time.' : ' times.'));
+    if (!won && st.lostTo) hl.push(st.lostTo.name + ' stopped the run at ' + fmt(st.lostTo.score) + ' of ' + fmt(st.lostTo.target) + '.');
+    else if (st.bosses.length) hl.push(who + ' beat ' + st.bosses.slice(-3).join(', ') + '.');
+    if (s.vouchers.length) hl.push(who + ' bought ' + s.vouchers.map(function (v) { return E.VOUCHERS[v].n; }).join(', ') + '.');
+    if (st.earned >= 40) hl.push(who + ' earned $' + st.earned + ' along the way.');
+    return (st.hl || []).slice(-6).concat(hl);
   }
   function runDetail(won) {
     var s = S(), st = s.stats;
