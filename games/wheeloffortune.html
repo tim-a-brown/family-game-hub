@@ -35,7 +35,10 @@
 .wheelcam canvas{width:100%;height:100%;touch-action:pan-y;}
 .wheelcam canvas.flick{touch-action:none;cursor:grab;}
 .studio[data-cam="wheel"] .boardcam{transform:translateY(-104%);opacity:0;}
-.studio[data-cam="wheel"] .wheelcam{transform:translateY(var(--wy2,0px)) scale(1);}
+.studio[data-cam="wheel"] .wheelcam{transform:translate(var(--wx,0px),var(--wy2,0px)) scale(var(--wk,1));}
+/* upright: the puzzle shrinks to an inset across the top while the wheel spins, instead of leaving the screen */
+.show:not(.desk):not(.short) .studio[data-cam="wheel"] .boardcam{transform-origin:0 0;transform:translate(var(--bx,0px),var(--by,4px)) scale(var(--bs,.46));opacity:1;pointer-events:none;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.45));}
 
 /* ── Puzzle board ─────────────────────────────────────────────────────── */
 .board{container-type:inline-size;padding:6px;border-radius:14px;
@@ -927,8 +930,30 @@
     var st = shell.studio.style;
     st.setProperty('--wc', C + 'px');
     st.setProperty('--wy', (desk ? 0 : bh + 4) + 'px');
-    st.setProperty('--wy2', Math.round((H - C) / 2) + 'px');
-    st.setProperty('--cy', Math.round((H - C) / 2 + C * 0.53) + 'px');
+    if (!desk && !short && bh) {
+      // (upright: while the wheel spins the puzzle stays in view as a small inset across the top, Tim 2026-11-15, and the
+      // wheel eases down and a little smaller under it; the inset is the board itself, scaled, so it updates as it is)
+      var bs = 0.46, ih = Math.round(bh * bs), y2 = ih + 10, C2 = Math.min(C, H - y2 - 4), wk = C2 / C;
+      if (C2 < C * 0.8) {
+        // (a short studio, a small phone: the puzzle sits beside the wheel instead, at its left, the wheel at the right)
+        C2 = Math.round(Math.min(C * 0.86, H - 8)); wk = C2 / C;
+        bs = Math.max(0.3, (W - C2 - 14) / W); ih = Math.round(bh * bs);
+        st.setProperty('--bs', bs.toFixed(3)); st.setProperty('--bx', '4px'); st.setProperty('--by', Math.max(4, Math.round((H - ih) / 2)) + 'px');
+        st.setProperty('--wx', Math.round(W / 2 - C2 / 2 - 4) + 'px');
+        st.setProperty('--wk', wk.toFixed(4));
+        st.setProperty('--wy2', Math.round((H - C2) / 2) + 'px');
+        st.setProperty('--cy', Math.round((H - C2) / 2 + C2 * 0.53) + 'px');
+      } else {
+        st.setProperty('--bs', bs.toFixed(3)); st.setProperty('--bx', Math.round(W * (1 - bs) / 2) + 'px'); st.setProperty('--by', '4px'); st.setProperty('--wx', '0px');
+        st.setProperty('--wk', wk.toFixed(4));
+        st.setProperty('--wy2', Math.round(y2 + (H - y2 - C2) / 2) + 'px');
+        st.setProperty('--cy', Math.round(y2 + (H - y2 - C2) / 2 + C2 * 0.53) + 'px');
+      }
+    } else {
+      st.setProperty('--wk', '1'); st.setProperty('--wx', '0px');
+      st.setProperty('--wy2', Math.round((H - C) / 2) + 'px');
+      st.setProperty('--cy', Math.round((H - C) / 2 + C * 0.53) + 'px');
+    }
     Wheel.resize(C);
   }
   var rsT = 0;
