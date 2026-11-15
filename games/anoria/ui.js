@@ -1669,6 +1669,9 @@
       render: (v, set, ctx) => (seat(i, ctx) ? !seat(i, ctx).cpu : !i) ? deckPicker(label(i, ctx), v, set, 'me') : none(),
       summary: v => { const d = Coll.deck(deckChoice(v, 'me')); return d ? d.n : ''; } });
     // (the computer starts on Easy until you've won a game: a first game is for learning)
+    // (the setup's head says the name in the same spaced letters, whenever the kit draws it)
+    const nameHead = () => app.querySelectorAll('.setup-hero h1:not(.an-name)').forEach(h => { if (/^arvela$/i.test(h.textContent.trim())) { h.setAttribute('aria-label', 'Arvela'); nameSet(h); } });
+    if (!app._nameObs && window.MutationObserver) { app._nameObs = new MutationObserver(nameHead); app._nameObs.observe(app, { childList: true, subtree: true }); }
     const st = Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: 'local' }]),
       options: [0, 1, 2, 3, 4, 5].map(deckOpt).concat([
@@ -2102,7 +2105,16 @@
   // The sealed pack, the chooser's splash and the story use it; the setup's head is the same lockup, drawn by ui.css.
   function logo(cls, row) {
     return el('span', { class: 'an-logo' + (row ? ' row' : '') + (cls ? ' ' + cls : ''), role: 'img', 'aria-label': 'Arvela' }, [
-      el('img', { src: 'anoria/ui/logo-mark.webp', alt: '', draggable: 'false' }), el('b', { text: 'Arvela', 'aria-hidden': 'true' })]);
+      el('img', { src: 'anoria/ui/logo-mark.webp', alt: '', draggable: 'false' }), nameSet(el('b', { 'aria-hidden': 'true' }))]);
+  }
+  // The name's letters spaced by eye, not by the face's boxes (Tim, 2026-11-15: "The R looks a little closer to the V than
+  // the A"). Measured in Castoro Titling with the wordmark's tracking, the white between R and V and between L and A was
+  // the smallest and E to L the largest, so each letter carries its own space after it (in em, kerning off).
+  const NAME_SP = [0, .07, 0, -.02, .04, 0];
+  function nameSet(node) {
+    node.textContent = ''; node.classList.add('an-name');
+    'ARVELA'.split('').forEach((ch, i) => node.appendChild(el('span', { text: ch, style: NAME_SP[i] ? { marginRight: NAME_SP[i] + 'em' } : null })));
+    return node;
   }
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
   // A mat can also be made from a card's picture, placed anywhere on it by hand, with a cloth of the player's choosing
