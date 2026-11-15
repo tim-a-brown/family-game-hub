@@ -6,7 +6,9 @@
 // The record's detail (games/gofish-core.js historyDetail): names, cpu ('1' a computer player), o the books in order
 // "seat.rank.turn.how" joined by spaces (rank T is 10; how a ask, f fish, d deal), t the last turn, asks, s each
 // player's best streak, lk the fish each wished for, bg their three-card catches (each "n.n.n"), c the biggest catch
-// "seat.from.rank.count", nx 'left' | 'asked', th the themed deck's id (games/gofish/decks.js; none: the standard deck).
+// "seat.from.rank.count", nx 'left' | 'asked', th the themed deck's id (games/gofish/decks.js; none: the standard deck),
+// cl 'p' for a game played for pairs: then each entry of o is a pair, with its two suits after it ("0.7.3.a.sh"), and
+// the view counts, draws and names pairs (two cards each) where a game of books has books.
 // A themed game names every book by its subject and shows it by its picture; the deck's names come from
 // games/gofish/decks.js, fetched the first time such a game is opened away from Go Fish's page.
 (function () {
@@ -71,9 +73,9 @@
     var th = deck ? d.th : null;
     function plural(r) { var t = th && DK.subj(th, r); return t ? t.many : NAMES[r] ? NAMES[r] + 's' : r + 's'; }
     function single(r) { var t = th && DK.subj(th, r); return t ? t.one : NAMES[r] || r; }
-    var nm = d.names, n = nm.length, out = [];
+    var nm = d.names, n = nm.length, out = [], pr = d.cl === 'p', unit = pr ? 'pair' : 'book';
     function fn(p) { return String(d.cpu || '').charAt(p) === '1' ? String(nm[p] || '') : first(nm[p]); }
-    var books = String(d.o).split(' ').filter(Boolean).map(function (x) { var q = x.split('.'); return { p: +q[0], r: rk(q[1]), t: +q[2], h: q[3] || 'a' }; });
+    var books = String(d.o).split(' ').filter(Boolean).map(function (x) { var q = x.split('.'); return { p: +q[0], r: rk(q[1]), t: +q[2], h: q[3] || 'a', s: q[4] || '' }; });
     var tot = []; for (var p = 0; p < n; p++) tot.push(0);
     books.forEach(function (b) { tot[b.p]++; });
     var most = Math.max.apply(null, tot);
@@ -81,7 +83,7 @@
     // ── The race for books: a step line for each player, turn by turn ──
     var T = Math.max(1, +d.t || 1), W = 320, H = 150, L = 22, R = 10, Tp = 10, B = 22;
     var top = Math.max(4, most), sx = function (t) { return L + (W - L - R) * t / T; }, sy = function (k) { return Tp + (H - Tp - B) * (1 - k / top); };
-    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="hvg-race" role="img" aria-label="How many books each player had, turn by turn">';
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="hvg-race" role="img" aria-label="How many ' + unit + 's each player had, turn by turn">';
     for (var k = 0; k <= top; k += top > 8 ? 2 : 1) s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(k) + '" y2="' + sy(k) + '" stroke="rgba(255,255,255,' + (k ? .08 : .25) + ')" stroke-width="1"/><text x="' + (L - 6) + '" y="' + sy(k) + '" text-anchor="end" dominant-baseline="central" font-size="9" fill="rgba(255,255,255,.55)" font-family="system-ui">' + k + '</text>';
     s += '<text x="' + L + '" y="' + (H - 6) + '" font-size="9" fill="rgba(255,255,255,.55)" font-family="system-ui">Turn 1</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end" font-size="9" fill="rgba(255,255,255,.55)" font-family="system-ui">Turn ' + T + '</text>';
     for (p = 0; p < n; p++) {
@@ -97,8 +99,8 @@
     }
     s += '</svg>';
     var key = ui.chips(nm.map(function (x, i) { return { t: fn(i) + ' ' + tot[i], c: ui.color(i), on: tot[i] === most }; }));
-    var legend = el('div', { class: 'hvg-key' }, [el('span', null, [el('i'), 'A book made by asking']), el('span', null, [el('i', { class: 'o' }), 'A book finished with a fish from the pond'])]);
-    out.push(ui.section('The race for books', [ui.picture(s, { frame: 'dark' }), legend, key], { icon: 'chart' }));
+    var legend = el('div', { class: 'hvg-key' }, [el('span', null, [el('i'), pr ? 'A pair made by asking or dealt' : 'A book made by asking']), el('span', null, [el('i', { class: 'o' }), pr ? 'A pair made with a fish from the pond' : 'A book finished with a fish from the pond'])]);
+    out.push(ui.section('The race for ' + unit + 's', [ui.picture(s, { frame: 'dark' }), legend, key], { icon: 'chart' }));
 
     // ── Every player's books, in the order made ──
     var order = []; for (p = 0; p < n; p++) order.push(p);
@@ -108,19 +110,20 @@
       var row = el('div', { class: 'hvg-row' + (tot[p] === most ? ' win' : ''), style: { '--pc': ui.color(p) } }, [
         el('div', { class: 'hd' }, [el('i'), el('span', { text: nm[p] }), el('b', { text: String(tot[p]) })])]);
       var mine = books.filter(function (b) { return b.p === p; });
-      if (!mine.length) row.appendChild(el('div', { class: 'hvg-none', text: fn(p) + ' made no books.' }));
+      if (!mine.length) row.appendChild(el('div', { class: 'hvg-none', text: fn(p) + (pr ? ' laid down no pairs.' : ' made no books.') }));
       else {
         var bx = el('div', { class: 'hvg-bks' });
         mine.forEach(function (b) {
           var r = b.r === '10' ? '10' : b.r;
-          var pic = th ? [el('div', { class: 'hvg-pic', role: 'img', 'aria-label': plural(b.r), style: { 'background-image': 'url("' + base + DK.pic(th, b.r, true) + '")' } }), el('b', { text: plural(b.r) })] : [ui.cards([r + 's', r + 'h', r + 'c', r + 'd'])];
+          var suits = pr ? (b.s || 'sh').split('') : ['s', 'h', 'c', 'd'];
+          var pic = th ? [el('div', { class: 'hvg-pic' + (pr ? ' pr' : ''), role: 'img', 'aria-label': (pr ? 'A pair of ' : '') + plural(b.r), style: { 'background-image': 'url("' + base + DK.pic(th, b.r, true) + '")' } }), el('b', { text: plural(b.r) })] : [ui.cards(suits.map(function (x) { return r + x; }))];
           bx.appendChild(el('div', { class: 'hvg-bk ' + b.h, title: plural(b.r) }, pic.concat([el('small', { html: b.h === 'd' ? 'Dealt' : (b.h === 'f' ? ui.icon('fish') : '') + 'Turn ' + b.t })])));
         });
         row.appendChild(bx);
       }
       rows.appendChild(row);
     });
-    out.push(ui.section('Books in the order made', rows, { icon: 'cards' }));
+    out.push(ui.section((pr ? 'Pairs' : 'Books') + ' in the order made', rows, { icon: 'cards' }));
 
     // ── The game in numbers ──
     var st = nums(d.s), bs = Math.max.apply(null, st.concat([0])), bw = st.indexOf(bs);
@@ -129,10 +132,10 @@
     out.push(ui.section('The game in numbers', ui.stats([
       ['Asks', d.asks],
       bs > 1 ? ['Longest run of asks', bs, fn(bw)] : null,
-      cq ? ['Biggest catch', catchN, NUMW[catchN] + ' ' + (catchN === 1 ? single(rk(cq[2])) : plural(rk(cq[2]))) + ' from ' + fn(+cq[1])] : null,
+      cq && !pr ? ['Biggest catch', catchN, NUMW[catchN] + ' ' + (catchN === 1 ? single(rk(cq[2])) : plural(rk(cq[2]))) + ' from ' + fn(+cq[1])] : null,
       ['Fish wished for', lkT, lkT ? nm.map(function (x, i) { return lk[i] ? fn(i) + ' ' + lk[i] : ''; }).filter(Boolean).join(', ') : 'Nobody drew the rank they asked for']
     ]), { icon: 'fish' }));
-    out.push(ui.facts([['Deck', deck ? 'The ' + deck.name + ' deck' : 'The standard deck'], ['After a Go fish', d.nx === 'asked' ? 'The player who said Go fish took the next turn' : 'The turn passed to the left']]));
+    out.push(ui.facts([['Collect', pr ? 'Pairs, two cards of a rank' : 'Books of four'], ['Deck', deck ? 'The ' + deck.name + ' deck' : 'The standard deck'], ['After a Go fish', d.nx === 'asked' ? 'The player who said Go fish took the next turn' : 'The turn passed to the left']]));
     return ui.wrap(out, 'hvg');
   }
 })();
