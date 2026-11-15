@@ -124,7 +124,7 @@
 .howto b{color:#fff;}
 
 /* Dock with the controls */
-.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:14px 16px calc(var(--safe-b) + 14px);
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:40;padding:14px max(17px, calc(10px + var(--corner-x))) max(calc(var(--safe-b) + 10px), 18px);
   background:linear-gradient(180deg,transparent,var(--glass) 26%);}
 .dock-in{max-width:588px;margin:0 auto;display:flex;flex-direction:column;gap:10px;}
 .dock .btn-row .btn{min-height:50px;padding:0 10px;font-size:.98rem;}
@@ -170,6 +170,30 @@
   body:has(> .dock) .desk .felt-in{min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 250px);display:flex;flex-direction:column;justify-content:center;}
   .dock{justify-content:center;top:calc(var(--safe-t) + 150px);}
   .env{height:124px;margin-top:14px;}
+}
+
+/* Upright: the table reaches down to the controls, with the case file in the middle of it (no empty band) */
+@media (orientation:portrait){
+  body:has(> .dock) .desk .felt-in{min-height:max(300px,calc(var(--vvh,100dvh) - var(--bar) - var(--dock-h,180px) - 154px));display:flex;flex-direction:column;justify-content:center;}
+}
+/* A phone on its side: the case file on the left, the controls in a column at the right where the thumb is */
+@media (orientation:landscape) and (min-width:640px) and (max-height:599px){
+  :root{--dw:min(290px,34vw);}
+  body:has(> .dock) .stage{max-width:none;padding:2px calc(var(--dw) + 32px + var(--corner-x)) 4px calc(16px + var(--corner-x));}
+  body:has(> .dock) .desk{padding:6px;}
+  .caseline{margin-bottom:6px;}
+  .dock{left:auto;right:calc(16px + var(--corner-x));width:var(--dw);top:var(--bar);padding:0 0 max(calc(var(--safe-b) + 10px),18px);background:none;
+    display:flex;flex-direction:column;justify-content:flex-end;}
+  .dock-in{max-width:none;width:100%;margin:0;gap:8px;}
+  .dock .btn-row{flex-direction:column;}
+  .dock .btn-row .btn{min-height:46px;}
+  .page{min-height:164px;}
+  .pill{min-height:40px;}
+  .cover{gap:7px;padding:14px 14px;}
+  .cover .no,.cover .string{display:none;}
+  .cover h3{font-size:1.65rem;}
+  .cover .conf{font-size:.8rem;}
+  body:has(> .dock) .desk .felt-in{min-height:calc(var(--vvh,100dvh) - var(--bar) - 138px);display:flex;flex-direction:column;justify-content:center;padding:16px 12px 8px;}
 }
 
 /* Casebook sheet */
@@ -623,9 +647,19 @@
     S.res = { solver: i, pts: pts };
     S.phase = 'revealed';
     S.log.push({ id: c.id, reader: readerIdx(), solver: i, hints: S.hints, pts: pts });
-    markSolved(c.id); save();
+    var whole = deckDone(c); markSolved(c.id); whole = !whole && deckDone(c); save();
     render({ reveal: true });
-    setTimeout(function () { Kit.callout(S.players[i].name + ' +' + pts); Kit.sfx('good'); Kit.haptic('success'); }, 1100);
+    var rare = rareSolve(c, S.hints, S.players[i].name, whole);
+    setTimeout(function () { if (rare) { Kit.moment(rare); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 }); } else { Kit.callout(S.players[i].name + ' +' + pts); Kit.sfx('good'); Kit.haptic('success'); } }, 1100);
+  }
+  // Every case in this case's deck solved on this device (a whole casebook), before and after this one
+  function deckDone(c) { var m = solvedMap(); return CASES.filter(function (x) { return x.deck === c.deck; }).every(function (x) { return m[x.id]; }); }
+  // An uncommon solve has its moment on the table: a whole deck's casebook closed, or a Brain case cracked with no clues
+  function rareSolve(c, hints, name, whole) {
+    var d = DECK[c.deck] || {}, desk = app.querySelector('.desk'), pts = ptsFor(hints);
+    if (whole) return { title: 'Casebook closed', line: 'Every ' + d.name + ' case has been solved now, and ' + name + ' solved the last one.', icon: 'book', pts: '+' + pts, big: true, at: desk };
+    if (hints === 0 && d.stars >= 4) return { title: 'Cracked cold', line: name + ' solved a Brain case without a single clue.', icon: 'bolt', pts: '+' + pts, big: true, at: desk };
+    return null;
   }
   function soloVerdict(ok) {
     snapshot();
@@ -633,8 +667,14 @@
     S.players[0].score += pts;
     S.res = { solver: ok ? 0 : null, pts: pts };
     S.log.push({ id: c.id, reader: -1, solver: ok ? 0 : null, hints: S.hints, pts: pts });
-    if (ok) { markSolved(c.id); Kit.callout('+' + pts); Kit.sfx('good'); Kit.haptic('success'); } else Kit.sfx('tap');
+    var rare = null;
+    if (ok) {
+      var whole = deckDone(c); markSolved(c.id);
+      rare = rareSolve(c, S.hints, S.players[0].name, !whole && deckDone(c));
+      if (!rare) { Kit.callout('+' + pts); Kit.sfx('good'); Kit.haptic('success'); }
+    } else Kit.sfx('tap');
     save(); render();
+    if (rare) { Kit.moment(rare); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 }); }
   }
   function giveUp() {
     Kit.confirm('Give up on this case?', { ok: 'Open the envelope', body: 'Nobody scores for this one.' }).then(function (ok) {
@@ -662,7 +702,9 @@
     var rounds = { labels: S.log.map(function (l, i) { return String(i + 1); }), scores: S.log.map(function (l) { return P.map(function (p, i) { return l.solver === i ? l.pts : 0; }); }) };
     var hl = [];
     var clean = S.log.filter(function (l) { return l.solver != null && l.hints === 0; });
-    clean.slice(0, 2).forEach(function (l) { hl.push(P[l.solver].name + ' cracked "' + BY[l.id].title + '" with no clues'); });
+    var cold = clean.filter(function (l) { return (DECK[BY[l.id].deck] || {}).stars >= 4; })[0];
+    if (cold) hl.push(P[cold.solver].name + ' cracked the Brain case "' + BY[cold.id].title + '" without a single clue');
+    clean.filter(function (l) { return l !== cold; }).slice(0, 2).forEach(function (l) { hl.push(P[l.solver].name + ' cracked "' + BY[l.id].title + '" with no clues'); });
     var stumped = S.log.filter(function (l) { return l.solver == null; });
     if (stumped.length) hl.push((S.mode === 'solo' ? 'Stumped by "' : 'Nobody solved "') + BY[stumped[0].id].title + '"' + (stumped.length > 1 ? ' (and ' + (stumped.length - 1) + ' more)' : ''));
     var tough = S.log.filter(function (l) { return l.solver != null && l.hints >= 2; });

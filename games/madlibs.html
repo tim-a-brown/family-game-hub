@@ -117,6 +117,18 @@ body{overflow-x:hidden;}
   .pad{padding:40px 30px 26px 60px;background-position:0 0,0 28px,0 0;
     background-image:linear-gradient(90deg,transparent 0 45px,rgba(220,60,70,.55) 45px 46px,transparent 46px 48px,rgba(220,60,70,.4) 48px 49px,transparent 49px),repeating-linear-gradient(180deg,transparent 0 31px,rgba(60,90,170,.28) 31px 32px),linear-gradient(180deg,#fff7c9,#fbefae);}
 }
+/* Wide screens: the story pad's shelf in four columns, so more stories show at once; the pad keeps a reading
+   width for filling in and for the story itself */
+@media (min-width:900px){ .ml:has(.shelf){max-width:1000px;} .shelf{grid-template-columns:repeat(4,1fr);} }
+@media (min-width:700px) and (min-height:900px){ .ml{max-width:720px;} }
+@media (orientation:landscape) and (max-height:520px){
+  .ml{padding-left:calc(12px + var(--corner-x));padding-right:calc(12px + var(--corner-x));}
+  .ml:has(.shelf){max-width:none;}
+  .shelf{grid-template-columns:repeat(4,1fr);}
+  .pad{min-height:0;padding-top:24px;}
+  .pad:has(.shelf) h2{font-size:1.5rem;margin-bottom:6px;}
+  .pick > .btn-lg{min-height:48px;}
+}
 </style>
 </head>
 <body>
@@ -418,7 +430,7 @@ body{overflow-x:hidden;}
     var st = BYID[id];
     S.story = id; S.sv = 2; S.words = {}; S.i = 0; S.started = Date.now(); S.fav = false; S.rid = null;
     S.phase = N() > 1 ? 'cover' : 'fill';
-    Kit.gameStart(); Kit.sfx('flip');
+    Kit.gameStart(); Kit.sfx('flip'); Kit.haptic('light');
     save(); render();
   }
   function surprise() {
@@ -464,7 +476,10 @@ body{overflow-x:hidden;}
   function finishFill() {
     var st = story(), ps = pieces(st, S.words), text = plain(ps);
     S.phase = 'reveal'; S.fresh = true; S.made++;
-    var pl = played().filter(function (x) { return x !== st.id; }); pl.push(st.id); lsSet(PLAYED, pl);
+    var was = played(), pl = was.filter(function (x) { return x !== st.id; }); pl.push(st.id); lsSet(PLAYED, pl);
+    // every story on the pad played at least once: a rare accomplishment, kept in the history too
+    var all = function (list) { return STORIES.every(function (x) { return list.indexOf(x.id) >= 0; }); };
+    var whole = all(pl) && !all(was);
     // Highlights: the funniest-looking lines (sentences with the most filled-in words)
     var sentences = [], cur = '', cnt = 0;
     ps.forEach(function (x) {
@@ -480,6 +495,7 @@ body{overflow-x:hidden;}
     var best = sentences.slice().sort(function (a, b) { return b.n - a.n; }).filter(function (x) { return x.n >= 2 && x.s.length < 160; }).slice(0, 3);
     best.sort(function (a, b) { return sentences.indexOf(a) - sentences.indexOf(b); });
     var hl = best.map(function (x) { return x.s; });
+    if (whole) hl.unshift('That was the last of all ' + STORIES.length + ' stories on the pad: every one has been played');
     if (N() > 1) {
       var by = S.players.map(function (p, i) { var c = st.b.filter(function (b, k) { return owner(k) === i; }).length; return p.name + ' (' + c + (c === 1 ? ' word)' : ' words)'); });
       hl.push('Words by ' + by.slice(0, -1).join(', ') + ' and ' + by[by.length - 1]);
@@ -498,6 +514,10 @@ body{overflow-x:hidden;}
     S.rid = entry && entry._date ? entry._date : null;
     if (!S.rid) { try { var l = GameHistory.load(KEY); S.rid = l.length ? l[0]._date : null; } catch (e) {} }
     save(); render();
+    if (whole) setTimeout(function () {
+      Kit.moment({ title: 'The whole pad', line: 'Every one of the ' + STORIES.length + ' stories has been played now.', icon: 'book', pts: STORIES.length, big: true, at: app.querySelector('.pad') });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 140 });
+    }, 900);
   }
 
   // Favorites live on the synced history entry (fav flag), so they follow you between devices.

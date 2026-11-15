@@ -336,6 +336,8 @@
   .k-drawn .flash:not(.kd) .fc,.k-drawn .flash:not(.kd) .fl{height:22px;font-size:10px;letter-spacing:-.03em;}
 }
 @media (orientation:landscape) and (max-height:560px){
+  .stage:has(> .keno){padding-bottom:calc(var(--safe-b) + 8px);}
+  .bcards .kb{max-width:calc((100dvh - var(--bar, 56px) - var(--safe-b, 0px) - 84px) / 1.12);}   /* (as tall as the room under the bar) */
   .k-drawn{display:none;}
   .k-ctl .opts{flex-wrap:nowrap;gap:6px;}
   .k-ctl .opts .chip{padding:0 8px;font-size:.8rem;min-width:0;}
@@ -1124,8 +1126,11 @@
         // the winning card in full view (with many players it may be further down)
         try { R.bEls[newW[0]].b.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }); } catch (e) {}
         Kit.sfx('good'); Kit.haptic('success');
-        Kit.callout(STAMP() + '!');
-        return wait(reduce ? 200 : 1300).then(function () { kCelebrate(newW, before); });
+        // a rare finish has its moment on the table: two cards on the same ball, or the quickest win yet
+        var rare = kRare(newW, before);
+        if (rare) { Kit.moment(rare); Kit.sfx('win'); Kit.confetti({ count: 120 }); }
+        else Kit.callout(STAMP() + '!');
+        return wait(reduce ? 200 : rare ? 2600 : 1300).then(function () { kCelebrate(newW, before); });
       }
       return wait(reduce ? 50 : 350);
     }).then(function () {
@@ -1148,6 +1153,21 @@
     Kit.sfx('tap'); Kit.haptic('light');
   }
 
+  // The old record for this kind of game (fewest balls or cards to the first win), from the game history
+  function kBest() {
+    var prev = []; try { prev = GameHistory.load(KEY) || []; } catch (e) {}
+    var best = prev.filter(function (e) { return e && e.cards && e.pattern === S.pattern && e.size === S.size && !!e.bingo === cards(); }).map(function (e) { return e.cards; });
+    return best.length ? Math.min.apply(null, best) : null;
+  }
+  function kRare(idx, before) {
+    if (before) return null;
+    var k = S.drawn.length, unit = cards() ? 'ball' : 'card', names = idx.map(function (i) { return nameOf(S.players[i]); });
+    var tbl = document.querySelector('.k-table');
+    if (names.length > 1) return { title: 'Same ' + unit, line: names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' finished on the same ' + unit + '.', icon: 'users', big: true, at: tbl };
+    var best = kBest();
+    if (best != null && k < best) return { title: 'Quickest yet', line: names[0] + ' won on ' + unit + ' ' + k + ', ahead of the old record of ' + best + '.', icon: 'bolt', pts: k, big: true, at: tbl };
+    return null;
+  }
   function kCelebrate(idx, before) {
     var k = S.drawn.length, c = S.drawn[k - 1], G = gameName(), unit = cards() ? 'ball' : 'card';
     var names = idx.map(function (i) { return nameOf(S.players[i]); });

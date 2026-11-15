@@ -289,6 +289,35 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
   .hand{--cw:148px;}
 }
 @media (min-width:1000px) and (orientation:landscape) and (min-height:1000px){ .mid{--cw:176px;} .plays{--cw:148px;} .hand{--cw:160px;} }
+/* A phone on its side (html.lay-side, set by layShape so a turn of the phone glides): the screen's height is the limit. The scores and the table are on the left, where you look;
+   your hand and its button on the right, where you play. Everything fits the screen, nothing scrolls. */
+html.lay-side .aa:has(> .scores){max-width:none;height:calc(var(--vvh,100dvh) - var(--bar));padding:0 calc(8px + var(--corner-x)) 10px;display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(270px,36%);grid-template-rows:auto minmax(0,1fr);column-gap:10px;overflow:hidden;}
+html.lay-side .aa:has(> .scores) > .scores{grid-column:1;grid-row:1;padding-top:0;padding-bottom:6px;}
+html.lay-side .aa:has(> .scores) .score{padding-top:4px;padding-bottom:4px;min-width:64px;flex:1 1 0;}
+html.lay-side .aa:has(> .scores) .score .pt{font-size:1.2rem;}
+html.lay-side .aa:has(> .scores) > .tbl{grid-column:1;grid-row:2;min-height:0;display:flex;flex-direction:column;}
+html.lay-side .aa:has(> .scores):not(:has(> .rail)) > .tbl{grid-column:1 / -1;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in{flex:1;min-height:0;padding:8px 10px 10px;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:14px;align-items:center;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in > .st,html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent,html.lay-side .aa:has(> .scores) .tbl .felt-in > .why{grid-column:1 / -1;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in > .sent,html.lay-side .aa:has(> .scores) .tbl .felt-in > .why{margin-top:6px;font-size:.88rem;padding:7px 10px;}
+html.lay-side .aa:has(> .scores) .st{margin-bottom:6px;min-height:26px;}
+html.lay-side .aa:has(> .scores) .tbl .felt-in{container-type:size;--mcw:clamp(46px, min(calc((100cqh - 54px) / 1.4), 18cqw), 104px);}
+html.lay-side .aa:has(> .scores) .mid{--cw:var(--mcw);gap:8px;grid-column:1;}
+html.lay-side .aa:has(> .scores) .mid.two .deck{display:none;}
+html.lay-side .aa:has(> .scores) .deck .cnt{display:none;}
+/* the seats in one row: as large as the height allows and as narrow as their count needs (--n, set by render) */
+html.lay-side .aa:has(> .scores) .plays{--cw:clamp(40px, min(calc((100cqh - 84px) / 1.4), calc((100cqw - var(--mcw) * 2 - 44px) / var(--n,3) - 8px)), 92px);
+  grid-column:2;margin-top:0;gap:8px 6px;align-content:center;min-height:0;flex-wrap:nowrap;}
+html.lay-side .aa:has(> .scores) .plays.crowd{flex-wrap:wrap;--cw:clamp(38px, min(calc((100cqh - 120px) / 2.8), calc((100cqw - var(--mcw) * 2 - 44px) / round(up, var(--n,8) / 2, 1) - 8px)), 76px);}
+html.lay-side .aa:has(> .scores) .plays .who{max-width:calc(var(--cw) + 14px);font-size:.72rem;padding:0 7px;}
+html.lay-side .aa:has(> .scores) .plays .who .dot{display:none;}
+html.lay-side .aa:has(> .scores) .tbl .bar{padding:8px 2px 0;}
+html.lay-side .aa:has(> .scores) > .rail{grid-column:2;grid-row:1 / span 2;margin-top:0;display:flex;flex-direction:column;justify-content:space-between;min-height:0;}
+html.lay-side .aa:has(> .scores) .rail .hd{flex-wrap:wrap;}
+html.lay-side .aa:has(> .scores) .hand{--cw:clamp(84px, calc((var(--vvh,100dvh) - var(--bar) - 104px) / 1.4), 152px);}
+html.lay-side .aa:has(> .scores) > .hint{grid-column:2;margin-top:4px;}
+.aa > .scores{view-transition-name:a-scores;} .aa > .tbl{view-transition-name:a-table;} .aa > .rail{view-transition-name:a-hand;}
 </style>
 </head>
 <body>
@@ -927,6 +956,19 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     } else if ((e.key === 'Enter' || e.key === ' ') && !e.repeat && HF.up >= 0) { e.preventDefault(); if (HF.onPick) HF.onPick(HF.ids[HF.up], 'toggle'); }
   });
   window.addEventListener('resize', function () { if (HF && HF.el.isConnected) HF.layout(); });
+  // The phone's shape: sideways on a phone the table and your hand stand side by side. Turning the phone glides
+  // the scores, the table and the hand to their new places (a View Transition), whatever is happening at the table.
+  (function layShape() {
+    var root = document.documentElement;
+    function side() { return innerWidth > innerHeight && innerHeight <= 520; }
+    var cur = side(); root.classList.toggle('lay-side', cur);
+    window.addEventListener('resize', function () {
+      var n = side(); if (n === cur) return; cur = n;
+      var go = function () { root.classList.toggle('lay-side', n); if (HF && HF.el.isConnected) HF.layout(); };
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
+    });
+  })();
   // A card picked from the hand: lift it (or drop it back); tapping the lifted card again plays it
   // how: 'toggle' (a tap, or Enter) picks or unpicks; 'pick' (letting go of a slide) picks
   function handPick(id, how) {
@@ -1047,6 +1089,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
         plays.appendChild(node);
       });
     }
+    plays.style.setProperty('--n', String(plays.children.length || 1));
     felt.appendChild(plays);
     // the grown-up deck reads as a sentence
     if (V.deck === 'cah' && V.prompt && V.subs) {
@@ -1166,7 +1209,7 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
     setTimeout(function () { c.remove(); }, 560);
   }
   function celebrate(V) {
-    var p = V.win.p;
+    var p = V.win.p; noteWin(V);
     setTimeout(function () {
       if (lastV !== V) return;
       var chip = app.querySelector('.score[data-i="' + p + '"]'), pr = app.querySelectorAll('.pr-slot .ac');
@@ -1177,7 +1220,36 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       Kit.sfx(me || V.mode !== 'solo' ? 'good' : 'chip'); Kit.haptic(me ? 'success' : 'light');
       setTimeout(function () { if (lastV === V) Kit.sfx('sparkle', 0.7); }, 700);
       if (me || V.mode === 'pass') Kit.confetti({ count: 60, colors: [P.color, '#ffd447', '#ffffff', V.deck === 'cah' ? '#111111' : '#e0283f'] });
+      // Uncommon runs at the table: three rounds in a row (or more), and a comeback that takes the game
+      var run = streakOf(p), back = V.final ? deficitOf(p) : 0, tbl = app.querySelector('.tbl');
+      if (back >= 3) setTimeout(function () {
+        if (lastV !== V) return;
+        Kit.moment({ title: 'Comeback', line: youOr(V, p) + ' came back from ' + back + ' cards behind to win the game.', icon: 'trophy', big: true, color: P.color, at: tbl });
+        Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 140 });
+      }, 1300);
+      else if (run >= 3) setTimeout(function () {
+        if (lastV !== V) return;
+        Kit.moment({ title: run === 3 ? 'Hat trick' : run + ' in a row', line: youOr(V, p) + ' won ' + (run === 3 ? 'three' : run) + ' rounds in a row.', icon: 'crown', pts: run, color: P.color, at: tbl });
+        Kit.sfx('sparkle'); Kit.haptic('success');
+      }, 1300);
     }, 450);
+  }
+  // Who won each round, as this device saw it: the winning run a player is on, and how far behind the leader the
+  // game's winner ever was (the ghost's wins count for nobody)
+  function noteWin(V) { ui.wins = ui.wins || {}; if (V.win) ui.wins[V.round] = V.win.p; }
+  function streakOf(p) {
+    var r = Object.keys(ui.wins || {}).map(Number).sort(function (a, b) { return b - a; }), n = 0;
+    for (var k = 0; k < r.length && ui.wins[r[k]] === p && (k === 0 || r[k] === r[k - 1] - 1); k++) n++;
+    return n;
+  }
+  function deficitOf(p) {
+    var sc = {}, worst = 0;
+    Object.keys(ui.wins || {}).map(Number).sort(function (a, b) { return a - b; }).forEach(function (r) {
+      var w = ui.wins[r]; if (w >= 0) sc[w] = (sc[w] || 0) + 1;
+      var top = 0; for (var k in sc) top = Math.max(top, sc[k]);
+      worst = Math.max(worst, top - (sc[p] || 0));
+    });
+    return worst;
   }
 
   // ── The end ──────────────────────────────────────────────────────────────
@@ -1205,6 +1277,17 @@ html[data-theme="light"] .aa .score.judge .nm,html[data-theme="parchment"] .aa .
       if (S.ghost > 0) hl.push('The ghost took ' + S.ghost + (S.ghost === 1 ? ' card' : ' cards'));
     }
     if (S.ghostWin) hl.unshift('The ghost reached ' + S.target + ' first. Everyone lost!');
+    // the longest winning run, and a winner who came back from 3 or more cards behind
+    var run = { n: 0 }, cur = { w: null, n: 0 }, sc = {}, back = {};
+    S.rounds.forEach(function (r) {
+      cur = r.w === cur.w ? { w: r.w, n: cur.n + 1 } : { w: r.w, n: 1 };
+      if (r.w >= 0 && cur.n > run.n) run = { w: r.w, n: cur.n };
+      if (r.w >= 0) sc[r.w] = (sc[r.w] || 0) + 1;
+      var top = 0; for (var k in sc) top = Math.max(top, sc[k]);
+      S.players.forEach(function (p, i) { back[i] = Math.max(back[i] || 0, top - (sc[i] || 0)); });
+    });
+    if (run.n >= 3 && S.players[run.w]) hl.unshift(S.players[run.w].name + ' won ' + run.n + ' rounds in a row');
+    S.winners.forEach(function (i) { if (back[i] >= 3) hl.unshift(S.players[i].name + ' came back from ' + back[i] + ' cards behind to win'); });
     // the round-by-round detail (hist/party.js), kept small: each round's prompt (d: what the card says under it), the
     // winning card, and the other cards played ('player:card' per line, -1 the ghost); kinds: k = [prompt, answer]
     var rs = S.rounds.slice(-40).map(function (r) {
