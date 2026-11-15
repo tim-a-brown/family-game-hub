@@ -2418,7 +2418,7 @@
   //            help: plain-language explanation shown by a tappable "?" next to
   //            the label. A choice can carry its own note as a third item,
   //            [value, label, help]; the note for the chosen value shows too.
-  //            Or {id, value, render:(value, set, {count, seats})=>node, summary:(value)=>text}: the game draws its own picker.
+  //            Or {id, value, render:(value, set, {count, seats})=>node, summary:(value)=>text, reviewLabel}: the game draws its own picker (with a summary and a label or reviewLabel, the Play online review lists it).
   //            onPick:(value, options) runs when a choice is tapped and may set other options too (a preset).
   //   intro:   (no longer shown: the setup screen shows just the game's name)
   //   start:   button label
@@ -3266,8 +3266,8 @@
       var om = MK.online || resolvedMode(), tn = TN(), info = tn && tn.info ? tn.info() : null;
       var only = MK.online ? (o.options || []).filter(function (op) { return op.when && !op.render && op.when(MK.online, state.options, state.count) && !op.when(resolved(), state.options, state.count); }) : [];
       var box = el('div', { class: 'k-rev' }), sh;
-      function shown(op) { return !op.render && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
-      function valueOf(op) { var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? chText(c) : ''; }
+      function shown(op) { return (!op.render || (op.summary && (op.label || op.reviewLabel))) && !op.robot && only.indexOf(op) < 0 && (!op.when || op.when(om, state.options, state.count)); }
+      function valueOf(op) { if (op.render) return op.summary(state.options[op.id]); var ch = typeof op.choices === 'function' ? op.choices(state.count, om, state.options) : op.choices; var c = (ch || []).filter(function (x) { return String(x[0]) === String(state.options[op.id]); })[0]; return c ? chText(c) : ''; }
       function paint() {
         box.innerHTML = '';
         // who will be there
@@ -3295,7 +3295,7 @@
         lines.forEach(function (t) { who.appendChild(el('p', { class: 'k-rev-p', text: t })); });
         box.appendChild(who);
         // the rules as they stand
-        var rows = (o.options || []).filter(shown).map(function (op) { return [op.label, valueOf(op)]; }).filter(function (r) { return r[1]; });
+        var rows = (o.options || []).filter(shown).map(function (op) { return [op.label || op.reviewLabel, valueOf(op)]; }).filter(function (r) { return r[1]; });
         if (rows.length) {
           var dl = el('dl', { class: 'k-rev-dl' });
           rows.forEach(function (r) { dl.appendChild(el('dt', { text: r[0] })); dl.appendChild(el('dd', { text: r[1] })); });
