@@ -2463,15 +2463,37 @@
     }
     // (a name breaks only between words; one long word that doesn't fit its token eases down until it does, once the
     // card is on the page)
-    requestAnimationFrame(function () { fitTokNames(box); });
+    requestAnimationFrame(function () { fitTokNames(box); evenToks(box); });
+    try { new ResizeObserver(function () { evenToks(box); }).observe(box); } catch (e) {}
     if (!teams) { seats.forEach(function (t, i) { box.appendChild(seat(t, i)); }); return box; }
     teams.forEach(function (side, k) {
+      // (partners joined by "&" on their side's plate, the way people say it: Tim, 2026-11-15, "make it clear which
+      // players are being grouped on a team")
       var g = el('span', { class: pre + '-side' });
-      side.forEach(function (i) { if (seats[i]) g.appendChild(seat(seats[i], i)); });
+      side.filter(function (i) { return seats[i]; }).forEach(function (i, j) { if (j) g.appendChild(el('i', { class: pre + '-amp', text: '&', 'aria-hidden': 'true' })); g.appendChild(seat(seats[i], i)); });
       if (k) box.appendChild(el('i', { class: pre + '-vs', text: 'vs' }));
       box.appendChild(g);
     });
     return box;
+  }
+  // Rows of players are even (Tim, 2026-11-15: six players were four on top and two below; "keep it even if it has to go
+  // to two lines"): when the tokens wrap, each row holds as many as the others, the last at most one fewer, centered.
+  // Sides that wrap stack one over the other with "vs" on a line of its own between them.
+  function evenToks(box) {
+    if (!box || !box.isConnected) return;
+    if (box.classList.contains('teams')) {
+      box.classList.remove('stack');
+      var sides = box.querySelectorAll(':scope > [class$="-side"]');
+      if (sides.length > 1 && [].some.call(sides, function (sd) { return Math.abs(sd.offsetTop - sides[0].offsetTop) > 4; })) box.classList.add('stack');
+      return;
+    }
+    var toks = box.children, n = toks.length; if (n < 2) return;
+    box.style.paddingLeft = box.style.paddingRight = '';
+    var W = box.clientWidth, tw = toks[0].offsetWidth; if (!W || !tw) return;
+    var gap = parseFloat(getComputedStyle(box).columnGap) || 0, per = Math.max(1, Math.floor((W + gap) / (tw + gap)));
+    if (n <= per) return;
+    var rows = Math.ceil(n / per), k = Math.ceil(n / rows), pad = Math.max(0, (W - (k * (tw + gap) - gap)) / 2 - 1);
+    box.style.paddingLeft = box.style.paddingRight = pad + 'px';
   }
   // A robot's token says how well it plays by itself (Tim, 2026-11-14: "incorporate it into the robot icon but not just as
   // a color", "be creative but professional", "a glow at the bottom for green, yellow, and then the fire", then "I liked
@@ -2678,6 +2700,13 @@
       if (M.count < M.hi) table.appendChild(el('button', { type: 'button', class: 'k-st add' + (next ? ' on' : ''), 'aria-label': 'Add a seat', onclick: addSeat }, [el('span', { class: 'avatar', style: { '--c': playerColor(M.count) }, html: icon('plus') }), el('b', { text: 'Add' })]));
       table.classList.toggle('many', M.count >= 5);
       box.appendChild(table);
+      // (rows of seats are even, as on the Players card: five are three and two, not four and one)
+      if (!table.classList.contains('teams')) requestAnimationFrame(function () {
+        if (!table.isConnected) return;
+        table.style.gridTemplateColumns = ''; table.style.justifyContent = '';
+        var n = table.children.length, cs = getComputedStyle(table).gridTemplateColumns.split(' ').filter(Boolean), per = cs.length;
+        if (n > per && per > 1) { var k = Math.ceil(n / Math.ceil(n / per)); table.style.gridTemplateColumns = 'repeat(' + k + ', minmax(76px, ' + Math.floor(table.clientWidth / per) + 'px))'; table.style.justifyContent = 'center'; }
+      });
       // what goes in the chosen seat
       // (Tim, 2026-11-15: "more improvement that can be done on associating the player being modified with the action
       // happening below") everything for the chosen seat stands on one glass panel lit along its top in that seat's

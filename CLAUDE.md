@@ -286,7 +286,7 @@ Underlying principles for everything:
   partnership game gives `players.teams` ([[seats], [seats]], or a function of the count and options when partners
   are a choice: Dominoes, Marbles, or of what the setup shows: Axis & Allies' sides follow the countries each seat
   commands, and `setup.redraw()` draws the card again when they change); `players.vs: false` for people who play
-  together (Mad Libs, Would You Rather). A partner's "&" stays on the line with that partner. `Kit.whoChips` draws them, on
+  together (Mad Libs, Would You Rather). A partner's "&" stays on the line with that partner. On the Players card partners share a plate with "&" between them, and sides that wrap stack with "vs" on its own line between them; rows of players wrap evenly (six are three and three, five three and two: `evenToks`), and so do the players sheet's seats (Tim, 2026-11-15). `Kit.whoChips` draws them, on
   the home sheet too. **Play online** is on every game whose tables are TurnNet's (not only ones that list online
   among their ways to play) and takes what is chosen: a **review** first (`goOnline` in kit.js: who will be at the
   table, the rules as set, choices that only matter online), then Open the table opens it at once
