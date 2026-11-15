@@ -10,7 +10,7 @@
 // the first visit. Total cache size ~3-5MB.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v810-2026-11-15-go-fish';
+const CACHE_VERSION = 'v811-2026-11-15-spanish-one';
 // Preview channels (familygames-da3e5--name-xyz.web.app) and local testing: pages and code always from the network
 const PREVIEW = self.location.hostname.includes('--') || /^(localhost|127\.0\.0\.1)$/.test(self.location.hostname);
 const CACHE_NAME = 'game-night-' + CACHE_VERSION;
@@ -342,6 +342,9 @@ const PRECACHE_URLS = [
   '/vendor/three/addons/shaders/OutputShader.js',
   '/vendor/three/addons/utils/BufferGeometryUtils.js',
   '/games/phase10-ai.html',
+  '/games/spanishone.html',
+  '/games/spanishone-core.js',
+  '/hist/spanishone.js',
   '/games/phase10.html',
   '/games/players.html',
   '/games/history.html',

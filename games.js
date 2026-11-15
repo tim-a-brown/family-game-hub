@@ -42,6 +42,7 @@ var GAMES = [
   { id: 'flip7',       name: 'Flip 7',       color: '#ff8a00', cat: 'specialty', min: 2, max: 8, tag: 'Push your luck to 200', play: 'flip7-ai', score: 'flip7' },
   { id: 'five-crowns', name: 'Five Crowns',  color: '#e2a400', cat: 'specialty', min: 2, max: 7, tag: 'Eleven rounds, the wilds keep moving', play: 'fivecrownss-ai', score: 'five-crowns' },
   { id: 'rook',        name: 'Rook',         color: '#3a86ff', cat: 'specialty', min: 4, max: 4, tag: 'Bid, name trump, capture the Rook', play: 'rook-ai', score: 'rook' },
+  { id: 'spanishone',  name: 'Spanish One',  color: '#7b3fc4', cat: 'specialty', min: 2, max: 10, tag: 'Match the color or the number, and call Last card', play: 'spanishone' },
   { id: 'phase10',     name: 'Phase 10',     color: '#f72585', cat: 'specialty', min: 2, max: 6, tag: 'Race through ten phases', play: 'phase10-ai', score: 'phase10' },
   { id: 'solitaire',   name: 'Solitaire',    color: '#16a34a', cat: 'cards', min: 1, max: 1, tag: 'Classic Klondike', play: 'solitaire' },
   { id: 'freecell',    name: 'FreeCell',     color: '#0ea5e9', cat: 'cards', min: 1, max: 1, tag: 'Every deal is winnable', play: 'freecell' },

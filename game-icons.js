@@ -90,6 +90,9 @@ var GameIcon = (function () {
     flip7: function (c) { return txt('7', 24, c, 12.5); },
     'five-crowns': function () { return path('M3 18 2 7l5.5 4.5L12 4l4.5 7.5L22 7l-1 11z', Y, ' stroke="' + K + '" stroke-width="1.2" stroke-linejoin="round"') + rect(3, 18, 18, 3, 1, Y, ' stroke="' + K + '" stroke-width="1.2"'); },
     rook: function () { return path('M5 15c0-4 3-7.5 7.5-7.5 1.4 0 2.5-1.6 4.2-1.6 1.6 0 2.8 1.3 2.8 2.9l2.5 1-2.6 1C19 15.5 15.5 19 11 19H4l2.5-2.2z', K) + circ(16.8, 8.4, .9, W); },
+    spanishone: function () {   // a ring of the four colors around a One
+      return line('M12 3.2a8.8 8.8 0 0 1 8.8 8.8', R, 3.2) + line('M20.8 12a8.8 8.8 0 0 1-8.8 8.8', Y, 3.2) + line('M12 20.8A8.8 8.8 0 0 1 3.2 12', G, 3.2) + line('M3.2 12A8.8 8.8 0 0 1 12 3.2', B, 3.2) + txt('1', 12, K, 12.4);
+    },
     phase10: function (c) { return txt('10', 18, c, 12.5); },
     solitaire: function () { return txt('A', 18, K, 9.5) + path('M12 14s-3.6 2.8-3.6 4.8a1.8 1.8 0 0 0 3.1 1.2l-.9 2.3h2.8l-.9-2.3a1.8 1.8 0 0 0 3.1-1.2C15.6 16.8 12 14 12 14z', K); },
     freecell: function (c) { return rect(2, 3, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"') + rect(13, 3, 9, 8, 2, c) + rect(2, 13, 9, 8, 2, c) + rect(13, 13, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"'); },
