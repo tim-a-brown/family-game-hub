@@ -208,15 +208,25 @@ Underlying principles for everything:
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
-- **Court cards and jokers are painted** (Tim, 2026-11-15: "keep the cards plain, but make the art like a professional
-  painter would"). `Kit.card` keeps the plain card and its corner index (JOKER set down the corner for a joker) and puts
-  the painting in a thin-lined box: a court's figure from the waist up with the same picture turned over below, as on a
-  real double-ended card; under 40px wide the bold letter stands in. The pictures are `cards/<key>.webp` (`cards/s/` for
-  cards under 80px, precached), placed by kit.css from the box's `data-c`. A deck's two jokers are one painting in two
-  printings: `Kit.card('JK', s)` / `Kit.joker(s)`, 's' 'b' the black-and-white engraving, anything else the color one;
-  history codes `JK`/`JKr`/`JKb`. The prompts (style, suit palettes, each card's brief and its exact prompt) are
-  `scripts/cards/prompts.json`; a card is redone with `scripts/cards/gen.py <work folder> KH` (JKB edits JK), looked at
-  full size (hands, the thing held, the card's convention), then `scripts/cards/pack.py <work folder> KH`.
+- **Court cards and jokers are the English pattern** (Tim, 2026-11-15: "update the King Queen Jack and Joker art to
+  reflect a graphic design tradition known as the English Pattern (or Anglo-American Pattern) that evolved directly from
+  16th-century French woodblock printing"; it replaced the painted set of the same day). The courts of a standard Bicycle
+  or Waddingtons deck: flat inks in bold black outlines, stylized faces with almond eyes, robes in rows of pattern. The
+  card's own conventions are kept and checked at hand size: the King of Hearts' sword crosses behind his head (the
+  suicide king, the one king without a moustache); the King of Diamonds (the axe behind him, facing left), the Jack of
+  Hearts (a leaf, facing left) and the Jack of Spades (facing right) are in strict profile with one eye showing, every
+  other court shows both eyes; the King of Clubs holds the orb, the King of Spades a sword upright, the queens a flower
+  (the Queen of Spades a sceptre too), the Jack of Diamonds a halberd, the Jack of Clubs an arrow. `Kit.card` keeps the
+  plain card and its corner index (JOKER set down the corner for a joker) and puts the picture in a thin-lined box: a
+  court's figure from the crown to the chest with the same picture turned over below, the suit sign beside the head
+  (kit.css, in the corner `pip` names; not under 80px wide); under 40px wide the bold letter stands in. The pictures are
+  `cards/<key>.webp` (`cards/s/` for cards under 80px, cropped closer to the head, precached), placed by kit.css from the
+  box's `data-c`. A deck's two jokers are one jester in two printings: `Kit.card('JK', s)` / `Kit.joker(s)`, 's' 'b' the
+  black ink one, anything else the color one; history codes `JK`/`JKr`/`JKb`. The prompts (the style, each card's brief,
+  the inks) are `scripts/cards/prompts.json`; a card is redone with `scripts/cards/gen.py <work folder> KH [tag]` (JKB edits
+  JK), looked at full size (the eyes, the hands, the thing held, the card's convention), then
+  `scripts/cards/pack.py <work folder> KH` (Pillow, numpy and scipy), which prints it in the six inks (paper, black, the
+  card red, golden yellow, deep blue, flesh), cleans the specks and crops it.
 - Don't tune difficulty or design around a player's age. Match the real game and Tim's choices.
 - **Landscape: where you act on the right, what you look at on the left.** Most players are right-handed, so
   sideways layouts put the side you take action on (buttons, the board or cards you tap to play, a playfield you

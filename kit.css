@@ -338,10 +338,11 @@ p{margin:0;}
 .pcard .face span{font-family:var(--display);font-weight:400;font-size:calc(var(--cw) * .4);line-height:1;}
 .pcard .face i{position:absolute;bottom:5%;font-style:normal;font-size:calc(var(--cw) * .17);}
 .pcard .face::before{content:attr(data-s);position:absolute;top:5%;font-size:calc(var(--cw) * .17);transform:rotate(180deg);}
-/* Painted court cards and jokers (Kit.card / Kit.joker): the card stays plain, the picture sits in a box with one thin
-   line round it between the corner indexes. A court's box holds the picture and the same picture turned over (.b),
+/* English-pattern court cards and jokers (Kit.card / Kit.joker): the card stays plain, the picture sits in a box with
+   one thin line round it between the corner indexes. A court's box holds the picture and the same picture turned over (.b),
    meeting at a line across the middle. The pictures come from cards/ (cards/s/ for small cards), chosen by the box's
-   data-c and the card's width; under 40px wide the bold letter in the middle stands in for the picture. */
+   data-c and the card's width (cards/s/ is cropped closer to the head); under 40px wide the bold letter in the middle
+   stands in for the picture. */
 .pcard.court,.pcard.jkr{container:pc / inline-size;}
 .pcard .face.pic{inset:6% 25%;border-radius:calc(var(--cw) * .02);background:#fbf7ee;overflow:hidden;
   box-shadow:0 0 0 max(1px, calc(var(--cw) * .007)) color-mix(in srgb,var(--ink) 75%,#fff);}
@@ -351,6 +352,15 @@ p{margin:0;}
 .pcard .face.pic em.b{top:auto;bottom:0;transform:rotate(180deg);}
 .pcard.court .face.pic::after{content:"";position:absolute;left:0;right:0;top:50%;height:max(1px, calc(var(--cw) * .006));translate:0 -50%;
   background:color-mix(in srgb,var(--ink) 75%,#fff);}
+/* the suit sign beside the head, in the top corner each court picture leaves plain ("pip" in scripts/cards/prompts.json),
+   turned over with the lower half as on a real English-pattern card */
+.pcard.court .face.pic em::before{position:absolute;top:2.2%;left:4%;z-index:1;font-size:calc(var(--cw) * .1);line-height:1;color:var(--ink);
+  --pq:calc(var(--cw) * .008);text-shadow:var(--pq) 0 #fbf7ee,calc(var(--pq) * -1) 0 #fbf7ee,0 var(--pq) #fbf7ee,0 calc(var(--pq) * -1) #fbf7ee,var(--pq) var(--pq) #fbf7ee,calc(var(--pq) * -1) calc(var(--pq) * -1) #fbf7ee,var(--pq) calc(var(--pq) * -1) #fbf7ee,calc(var(--pq) * -1) var(--pq) #fbf7ee;}
+.pcard.court .pic[data-c$="h"] em::before{content:"♥";}
+.pcard.court .pic[data-c$="d"] em::before{content:"♦";font-size:calc(var(--cw) * .13);top:1.2%;}
+.pcard.court .pic[data-c$="c"] em::before{content:"♣";}
+.pcard.court .pic[data-c$="s"] em::before{content:"♠";}
+.pcard.court .pic:is([data-c="kh"],[data-c="qh"],[data-c="qc"],[data-c="qs"],[data-c="jh"],[data-c="jc"]) em::before{left:auto;right:4%;}
 .pcard.jkr .face.pic{inset:6% 21%;}
 .pcard.jkr .face.pic em{height:100%;}
 .pcard.jkr{--ink:#d81e3a;}
@@ -373,6 +383,7 @@ p{margin:0;}
 .pcard .pic[data-c="jk"] em{background-image:url(cards/jk.webp),url(cards/s/jk.webp);}
 .pcard .pic[data-c="jkb"] em{background-image:url(cards/jkb.webp),url(cards/s/jkb.webp);}
 @container pc (max-width: 79px){
+  .pcard.court .face.pic em::before{content:none;}   /* the corner index says the suit; the small pictures are cropped closer */
   .pcard .pic[data-c="kh"] em{background-image:url(cards/s/kh.webp);}
   .pcard .pic[data-c="kd"] em{background-image:url(cards/s/kd.webp);}
   .pcard .pic[data-c="kc"] em{background-image:url(cards/s/kc.webp);}
