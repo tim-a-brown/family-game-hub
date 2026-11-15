@@ -60,6 +60,8 @@ body{overflow-x:hidden;}
 .hintline{font-weight:650;color:#5b5a6e;font-size:.95rem;}
 .explain{font-size:.98rem;line-height:1.35;color:#3b3a4e;background:rgba(255,255,255,.55);border-radius:10px;padding:8px 10px;margin-top:4px;}
 .explain b{color:#2a2a3a;}
+/* the keyboard up on a short screen (a phone on its side): the word type, its hint, the ideas and the line all stay in view above it; the longer explanation steps aside */
+@media (max-height:600px){html.k-kb .fill .explain{display:none;}}
 .ex{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .ex button{min-height:36px;padding:0 12px;border:1px dashed rgba(42,42,58,.35);border-radius:999px;background:transparent;color:#3b3a4e;font-family:var(--hand);font-size:1.15rem;}
 .ex button:active{background:rgba(0,0,0,.06);}
@@ -589,6 +591,8 @@ body{overflow-x:hidden;}
     if (b[2]) box.appendChild(el('div', { class: 'hintline', text: b[2] }));
     var inp = el('input', { type: 'text', maxlength: 32, autocomplete: 'off', autocorrect: 'off', spellcheck: 'false', autocapitalize: (b[1] === 'name' || b[1] === 'famous' || b[1] === 'city' || b[1] === 'country') ? 'words' : 'off',
       enterkeyhint: S.i === st.b.length - 1 ? 'done' : 'next', inputmode: b[1] === 'number' ? 'text' : 'text', placeholder: 'write it here', 'aria-label': ty[0], value: S.words[S.i] || '' });
+    // the keys a blank needs: a plain word takes letters, a space, an apostrophe and a hyphen; a number ("1,000", "a million"), a name ("Mr. Wiggles") or a place ("St. Louis") the whole keyboard
+    if (!/^(number|name|famous|place|city)$/.test(b[1])) inp.setAttribute('data-osk', 'word');
     var line = el('div', { class: 'wline' }, [inp]);
     if (S.tips) {
       box.appendChild(el('div', { class: 'explain', html: ty[1] }));
@@ -610,7 +614,10 @@ body{overflow-x:hidden;}
       el('button', { type: 'button', class: 'btn btn-primary btn-lg', text: last ? 'Reveal the story!' : 'Next word', onclick: go })
     ]));
     pad.appendChild(box);
-    setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 60);
+    // typing from one blank to the next: the keyboard stays up (the next box takes the focus at once, before the keyboard
+    // could notice the last one left)
+    if (window.KitOsk && KitOsk.on()) { try { inp.focus({ preventScroll: true }); } catch (e) {} }
+    else setTimeout(function () { try { inp.focus({ preventScroll: true }); } catch (e) {} }, 60);
   }
 
   function renderReveal(pad) {

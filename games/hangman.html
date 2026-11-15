@@ -204,6 +204,10 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
 .picks{display:flex;flex-wrap:wrap;gap:6px;}
 .cats{display:flex;flex-wrap:wrap;gap:6px;}
 .solve-in{letter-spacing:.1em;text-transform:uppercase;font-weight:900;}
+/* the word as it stands, over the box, so it stays in view while the keyboard is up */
+.solve-pat{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin:0 0 12px;}
+.solve-pat .w{display:flex;gap:3px;}
+.solve-pat b{display:grid;place-items:center;width:22px;height:28px;border-bottom:2px solid var(--text-3);font:900 1.05rem/1 var(--font);color:var(--lit-ink,var(--text));}
 
 /* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
 .kb .r,.kb .kr{--kg:5px;gap:var(--kg);justify-content:center;}
@@ -561,7 +565,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   }
   function solveSheet() {
     var W = S.W; if (!W || W.over || busy) return;
-    var inp = el('input', { class: 'input solve-in', maxlength: 30, placeholder: 'Type the whole answer', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' }), s;
+    var inp = el('input', { class: 'input solve-in', maxlength: 30, placeholder: 'Type the whole answer', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', enterkeyhint: 'go', 'data-osk': 'letters' }), s;
     function go() {
       var v = inp.value.toUpperCase().replace(/[^A-Z ]/g, '').replace(/\s+/g, ' ').trim();
       if (!v) return;
@@ -575,7 +579,8 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
       } else { Kit.toast(v + ' is not it'); miss(null); }
     }
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
-    s = Kit.sheet({ title: 'Solve it', html: '<p class="muted" style="margin-bottom:10px">Get it right and you win the word. A wrong answer counts as a miss.</p>', node: inp,
+    var pat = '<div class="solve-pat" aria-hidden="true">' + W.word.split(' ').map(function (w) { return '<span class="w">' + w.split('').map(function (ch) { return '<b>' + (W.guessed.indexOf(ch) >= 0 || !/[A-Z]/.test(ch) ? ch : '') + '</b>'; }).join('') + '</span>'; }).join('') + '</div>';
+    s = Kit.sheet({ title: 'Solve it', html: '<p class="muted" style="margin-bottom:10px">Get it right and you win the word. A wrong answer counts as a miss.</p>' + pat, node: inp,
       actions: [{ label: 'Solve', primary: true, keep: true, onClick: go }, { label: 'Cancel', cls: 'btn-ghost' }] });
     setTimeout(function () { inp.focus(); }, 350);
   }
@@ -948,7 +953,7 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
     var W = S.W, setter = S.players[W.setter].name, guesser = S.players[W.guesser].name;
     var box = el('div', { class: 'setw' });
     box.appendChild(el('h2', { text: NET ? 'Write a word for ' + guesser : setter + ', write a word for ' + guesser }));
-    var inp = el('input', { class: 'input secret', maxlength: 24, placeholder: 'Secret word or short phrase', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false' });
+    var inp = el('input', { class: 'input secret', maxlength: 24, placeholder: 'Secret word or short phrase', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', enterkeyhint: 'next', 'data-osk': 'letters' });
     var clue = el('input', { class: 'input', maxlength: 60, placeholder: 'Clue (optional)', autocomplete: 'off' });
     var err = el('div', { class: 'err' });
     var picked = null;

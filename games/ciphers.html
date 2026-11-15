@@ -1844,7 +1844,7 @@ body{overflow-x:hidden;}
   function buildPad(c, M) {
     var tool = c.tool; if (!tool || tool === 'pigpen-part' || tool === 'glyph') return null;
     S.pad = S.pad || {};
-    var box = el('div', { class: 'pad' }), title = { polybius: 'Number grid', semaphore: 'Flag chart', vig: 'Key word slide', wheel: 'Cipher wheel', a1z26: 'Letter numbers', morse: 'Morse code', phone: 'Phone keys', keyword: 'Keyword alphabet', pigpen: 'Pigpen key', crypto: 'Letter counter' }[tool];
+    var box = el('div', { class: 'pad', 'data-osk-view': '' }), title = { polybius: 'Number grid', semaphore: 'Flag chart', vig: 'Key word slide', wheel: 'Cipher wheel', a1z26: 'Letter numbers', morse: 'Morse code', phone: 'Phone keys', keyword: 'Keyword alphabet', pigpen: 'Pigpen key', crypto: 'Letter counter' }[tool];
     var head = el('h4', { html: Kit.icon('key') + '<span>' + esc(title) + '</span><span class="sp"></span>' });
     box.appendChild(head);
     var api = { el: box, title: title };
@@ -1924,7 +1924,7 @@ body{overflow-x:hidden;}
       ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].forEach(function (k) { var d = +k, ls = d >= 2 ? PHONE[d].split('').map(function (L, j) { return '<span>' + L + '<sup>' + (j + 1) + '</sup></span>'; }).join('') : ''; pp.appendChild(el('span', { html: '<b>' + k + '</b><small>' + ls + '</small>' })); });
       box.appendChild(pp);
     } else if (tool === 'keyword') {
-      var inp = el('input', { type: 'text', maxlength: '12', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', value: S.pad.kw || '' });
+      var inp = el('input', { type: 'text', maxlength: '12', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'data-osk': 'letters', 'data-osk-space': 'off', value: S.pad.kw || '' });
       var alpha = el('div', { class: 'alpha' });
       function paintK() {
         var kw = letters(inp.value), ka = keyAlpha(kw), h = '';
@@ -1950,7 +1950,7 @@ body{overflow-x:hidden;}
         for (var r = 0; r < 5; r++) { h += '<b>' + (r + 1) + '</b>'; for (var k = 0; k < 5; k++) { var L = sq[r * 5 + k]; h += '<span data-c="' + (r + 1) + (k + 1) + '">' + (L === 'I' ? 'I/J' : L) + '</span>'; } }
         pg.innerHTML = h;
       }
-      if (ci2.kw) { pin = el('input', { type: 'text', maxlength: '10', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', value: S.pad.kw || '' }); pin.addEventListener('input', function () { S.pad.kw = letters(pin.value); paintP(); save(); }); box.appendChild(el('div', { class: 'kwrow' }, [pin])); }
+      if (ci2.kw) { pin = el('input', { type: 'text', maxlength: '10', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'data-osk': 'letters', 'data-osk-space': 'off', value: S.pad.kw || '' }); pin.addEventListener('input', function () { S.pad.kw = letters(pin.value); paintP(); save(); }); box.appendChild(el('div', { class: 'kwrow' }, [pin])); }
       paintP(); box.appendChild(pg);
       box.appendChild(el('div', { class: 'common', html: 'Row first, then column. ' + (ci2.tap ? 'Top dots are the row, bottom dots the column.' : '') }));
       api.focusKey = function (key) { Array.prototype.forEach.call(pg.querySelectorAll('[data-c]'), function (x) { x.classList.toggle('on', x.getAttribute('data-c') === key); }); };
@@ -1959,7 +1959,7 @@ body{overflow-x:hidden;}
       ABC.split('').forEach(function (L) { sg.appendChild(el('span', { html: semGlyph(L, { col: '#e8edf8', flag: '#ffd36b' }) + '<b>' + L + '</b>' })); });
       box.appendChild(sg);
     } else if (tool === 'vig') {
-      var vin = el('input', { type: 'text', maxlength: '10', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', value: S.pad.kw || '' });
+      var vin = el('input', { type: 'text', maxlength: '10', placeholder: 'Key word', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'characters', spellcheck: 'false', 'data-osk': 'letters', 'data-osk-space': 'off', value: S.pad.kw || '' });
       var info = el('div', { class: 'viginfo' }), slide = el('div', { class: 'alpha' }), cur = { g: null, li: -1 };
       function paintV() {
         var kw = letters(vin.value), kl = kw && cur.li >= 0 ? kw[cur.li % kw.length] : '', sh = kl ? ABC.indexOf(kl) : 0, h = '';
