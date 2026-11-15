@@ -92,15 +92,30 @@
 :root{--cjk:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Noto Serif CJK SC","Source Han Sans SC","WenQuanYi Zen Hei","Microsoft YaHei",serif;}
 
 /* iPad: wider stage in portrait; landscape puts scores, status, rack and buttons beside the table */
+/* A layout for each shape (render() sizes the table in pixels to the screen and sets the class):
+   upright, the scores over the table and your rack and buttons under it, the table as large as leaves room for them;
+   sideways (.side, phone and iPad), the table at the left to look at, and the scores, your rack and the buttons at the
+   right where the taps go; on a phone on its side (.short) your tiles lie in one row */
 @media (min-width:700px) and (orientation:portrait){ #app.stage.ipl{max-width:760px;} .mj .scores,.acts{max-width:700px;} }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 12px);}
-  .mj.side{display:grid;grid-template-columns:auto 360px;grid-template-rows:repeat(5,max-content) 1fr;column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
-  .mj.side>*{grid-column:2;}
-  .mj.side>.mtable{grid-column:1;grid-row:1 / span 6;}
-  .mj.side>.rack{justify-self:center;}
-  .mj.side .score .nm{font-size:.82rem;}
-}
+#app.stage.ipl{padding-left:18px;padding-right:18px;}
+#app.stage.ipl.mjside{max-width:none;padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 12px) max(18px,env(safe-area-inset-left));}
+.mj.side{display:grid;grid-template-columns:auto 360px;grid-template-rows:repeat(5,max-content) 1fr;column-gap:24px;row-gap:12px;justify-content:center;align-items:start;}
+.mj.side>*{grid-column:2;}
+.mj.side>.mtable{grid-column:1;grid-row:1 / span 6;}
+.mj.side>.rack{justify-self:center;}
+.mj.side .score .nm{font-size:.82rem;}
+.mj.side.short{column-gap:18px;row-gap:8px;}
+.mj.side.short .rack{flex-wrap:nowrap;gap:3px;padding:8px 8px 12px;}
+.mj.side.short .rack .gap{display:none;}
+.mj.side.short .acts{min-height:48px;}
+.mj.side.short .acts .btn{min-height:48px;}
+/* Turning the device: the table, the scores, your rack and the buttons glide to the new layout */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.mj>.mtable{view-transition-name:mj-table;}
+.mj>.scores{view-transition-name:mj-scores;}
+.mj>.rack{view-transition-name:mj-rack;}
+.mj>.acts{view-transition-name:mj-acts;}
+.mj>.status{view-transition-name:mj-status;}
 </style>
 </head>
 <body>
@@ -109,7 +124,6 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
-  var LAND_MQ = '(orientation:landscape) and (min-width:900px) and (min-height:600px)';
   function innerW() { var cs = getComputedStyle(app); return (app.clientWidth || 390) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0); }
   var SAVE = 'mj4_state', KEY = 'mj4';
   var WIND_CH = ['東', '南', '西', '北'], WIND_EN = ['East', 'South', 'West', 'North'];
@@ -371,7 +385,7 @@
 
   function showSetup() {
     S = null; app.innerHTML = ''; tok++; Kit.handoff.close();
-    app.classList.remove('ipl');
+    app.classList.remove('ipl', 'mjside');
     Kit.setup(app, {
       modes: Kit.modes(['cpu', 'local']),
       options: [{ id: 'len', label: 'Game length', value: 'quick', choices: [['quick', 'Quick: 4 hands', 'Four hands, one deal each. A quick taste of the game.'], ['east', 'East round', 'Play until every player has been dealer once in the East wind round.'], ['full', 'Full game', 'All four wind rounds: East, South, West and North. This takes a while.']] },
@@ -675,11 +689,16 @@
     var P = S.players, over = endHandCore(res);
     if (res) {
       var p = res.winner;
-      Kit.callout(isMe(p) && humans() < 2 ? 'Mahjong!' : P[p].name + ': Mahjong!');
-      if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: 70 }); }
+      var hs = S.result && S.result.sc, top = hs && hs.list.slice().sort(function (a, b) { return b[1] - a[1]; })[0];
+      if (hs && hs.faan >= 7) {
+        // a big hand (7 faan or more, up to the limit) is rare: a big moment instead of the callout
+        Kit.moment({ big: true, title: hs.faan >= 10 ? 'A limit hand' : 'A ' + hs.faan + '-faan hand', line: (isMe(p) && humans() < 2 ? 'You' : P[p].name) + ' went Mahjong with ' + (top ? top[0] : 'a big hand') + '.', pts: '+' + hs.pts, icon: 'trophy' });
+        Kit.haptic('success');
+      } else Kit.callout(isMe(p) && humans() < 2 ? 'Mahjong!' : P[p].name + ': Mahjong!');
+      if (P[p].cpu) Kit.sfx('lose'); else { Kit.sfx('win'); Kit.confetti({ count: hs && hs.faan >= 7 ? 140 : 70 }); }
     } else { Kit.callout('Wall empty: draw'); Kit.sfx('whoosh'); }
     save(); render();
-    setTimeout(function () { showResult(over); }, res ? 1300 : 900);
+    setTimeout(function () { showResult(over); }, res ? (S.result && S.result.sc && S.result.sc.faan >= 7 ? 2600 : 1300) : 900);
   }
   // the count at the end of a hand (the rules only: online tables count with it too); true when the game is over
   function endHandCore(res) {
@@ -772,6 +791,8 @@
       if (h.list.indexOf('Seven Pairs') >= 0) hl.push(P[h.winner].name + ' won with Seven Pairs in hand ' + h.label);
       if (h.list.indexOf('Pure One Suit') >= 0) hl.push(P[h.winner].name + ' made a Pure One Suit hand in ' + h.label);
       if (h.list.indexOf('Thirteen Orphans') >= 0) hl.push(P[h.winner].name + ' pulled off Thirteen Orphans!');
+      else if (h.faan >= 10) hl.push(P[h.winner].name + ' won a limit hand in ' + h.label);
+      if (h.list.indexOf('Last tile from the wall') >= 0) hl.push(P[h.winner].name + ' drew the last tile of the wall to win hand ' + h.label);
     });
     var selfs = S.log.filter(function (h) { return h.self; }).length; if (selfs >= 2) hl.push(selfs + ' hands won on a self-drawn tile');
     var kg = S.stats.kongs.reduce(function (a, b) { return a + b; }, 0); if (kg) hl.push(kg + ' kong' + (kg === 1 ? '' : 's') + ' declared');
@@ -814,11 +835,31 @@
     if (S.me == null) S.me = 0;
     // iPad: a bigger table (k scales the tile caps); landscape puts scores, rack and buttons beside it
     app.classList.add('ipl');
-    var side = window.matchMedia && matchMedia(LAND_MQ).matches, vh = window.innerHeight || 800;
-    var W = Math.floor(side ? Math.min(innerW() - 384, (vh - 104) / 0.82, 760) : Math.min(innerW(), (window.innerWidth || 0) >= 700 ? 700 : 560));
-    var KZ = Math.max(1, W / 560), RW = side ? 360 : W, P = S.players;
+    var vw = window.innerWidth || 390, vh = window.innerHeight || 800, side = vw > vh, short = side && vh < 600;
+    app.classList.toggle('mjside', side);
+    var bar = (document.querySelector('.gbar') || { offsetHeight: 58 }).offsetHeight;
+    // the table's height for a width (the same sums the drawing below makes)
+    function tableH(w) { var fw = w - 18, sb = Math.round(Math.max(34, fw * 0.105)), l = Math.min(fw - 2 * sb - 6, Math.round(330 * Math.max(1, w / 560))); return Math.round(sb * 1.1) * 2 + l + 6 + 18; }
+    function fitW(maxW, maxH) { var w = Math.floor(maxW); while (w > 240 && tableH(w) > maxH) w -= 4; return w; }
+    var W, RW;
+    if (side) {
+      // sideways: the table as tall as the screen under the bar; the right column takes the rest (360 on an iPad)
+      W = fitW(Math.min(innerW() - (short ? 300 : 384), 760), vh - bar - 16);
+      RW = short ? Math.min(560, innerW() - W - 18) : 360;
+    } else {
+      // upright: the table as large as leaves room for the scores, your two rows of tiles and the buttons under it
+      var maxW = Math.min(innerW(), vw >= 700 ? 736 : 560);
+      W = maxW;
+      for (; W > 280; W -= 4) {
+        var k = Math.max(1, W / 560), rt = Math.floor(Math.min(Math.round(48 * Math.min(k, 1.15)), (W - 40) / 7.4));
+        if (bar + 70 + tableH(W) + 30 + 2 * (rt * 1.43 + 6) + 26 + 60 + 6 * 8 + 30 <= vh) break;
+      }
+      RW = W;
+    }
+    var KZ = Math.max(1, W / 560), P = S.players;
     app.innerHTML = ''; app.classList.add('ipl');
-    var wrap = el('div', { class: 'mj' + (side ? ' side' : '') });
+    var wrap = el('div', { class: 'mj' + (side ? ' side' : '') + (short ? ' short' : '') });
+    if (side) wrap.style.gridTemplateColumns = 'auto ' + RW + 'px';
 
     // score pills, laid out left / across / right / you
     var strip = el('div', { class: 'scores' });
@@ -848,10 +889,10 @@
     for (var st = 0; st < 68; st++) {
       var j0 = st * 2, present = (j0 >= S.front && j0 < 136 - S.back ? 1 : 0) + (j0 + 1 >= S.front && j0 + 1 < 136 - S.back ? 1 : 0);
       if (!present) continue;
-      var pos = (st + startStack) % 68, side = Math.floor(pos / 17), a = pos % 17, x, y, w, h;
-      if (side === 0) { x = L - ring - (a + 1) * seg; y = L - ring; w = seg - 1; h = ring; }          // bottom, right→left
-      else if (side === 1) { x = 0; y = L - ring - (a + 1) * seg; w = ring; h = seg - 1; }            // left, bottom→top
-      else if (side === 2) { x = ring + a * seg; y = 0; w = seg - 1; h = ring; }                      // top, left→right
+      var pos = (st + startStack) % 68, wside = Math.floor(pos / 17), a = pos % 17, x, y, w, h;
+      if (wside === 0) { x = L - ring - (a + 1) * seg; y = L - ring; w = seg - 1; h = ring; }          // bottom, right→left
+      else if (wside === 1) { x = 0; y = L - ring - (a + 1) * seg; w = ring; h = seg - 1; }            // left, bottom→top
+      else if (wside === 2) { x = ring + a * seg; y = 0; w = seg - 1; h = ring; }                      // top, left→right
       else { x = L - ring; y = ring + a * seg; w = ring; h = seg - 1; }                              // right, top→bottom
       wall.appendChild(el('i', { class: present === 1 ? 'one' : '', style: { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' } }));
     }
@@ -930,7 +971,8 @@
     if (!S.cover && S.phase === 'claim' && S.claim && (!NET || S.claim.q === S.me)) table.appendChild(claimBar());
 
     var rtw = Math.floor(Math.min(side ? 48 : Math.round(48 * Math.min(KZ, 1.15)), (RW - 40) / 7.4));
-    var rack = el('div', { class: 'rack', style: { width: Math.min(RW, rtw * 7 + 3 * 6 + 16 + 12) + 'px' } });
+    if (short) rtw = Math.floor(Math.min(44, (RW - 30) / (mh.length * 1.08 + 0.4)));   // one row of tiles
+    var rack = el('div', { class: 'rack', style: { width: (short ? RW : Math.min(RW, rtw * 7 + 3 * 6 + 16 + 12)) + 'px' } });
     if (S.cover) {   // between two people's turns: tile backs only
       mh.forEach(function () { rack.appendChild(backTile(rtw)); });
       wrap.appendChild(rack); app.appendChild(wrap); return;
@@ -1271,7 +1313,15 @@
     flow(600);
   }
   var rT = null;
-  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S && S.hands) render(); }, 150); });
+  window.addEventListener('resize', function () {
+    clearTimeout(rT);
+    rT = setTimeout(function () {
+      if (!(S && S.hands)) return;
+      // a turn of the device: the table, rack and buttons glide to the new layout inside a View Transition
+      if ((window.innerWidth > window.innerHeight) !== app.classList.contains('mjside') && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(function () { render(); }); return; } catch (e) {} }
+      render();
+    }, 150);
+  });
 
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
   if (saved && saved.hands && saved.players && saved.players.length === 4) { S = saved; if (S.me == null) S.me = 0; S.cover = false; render(); resumeFlow(); }
