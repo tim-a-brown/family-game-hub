@@ -208,9 +208,15 @@ Underlying principles for everything:
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
-- **The joker of a standard deck** (Tim, 2026-11-15) is the kit's: `Kit.card('JK', s)` / `Kit.joker(s)` in kit.js
-  (`.pcard.jkr` in kit.css), a jester's cap in both corners and the jester in the court frame. With two in a deck, one
-  is in color (`s` 'r', or a lone joker) and the other black and white (`s` 'b'); history codes `JK`/`JKr`/`JKb`.
+- **Court cards and jokers are painted** (Tim, 2026-11-15: "keep the cards plain, but make the art like a professional
+  painter would"). `Kit.card` keeps the plain card and its corner index (JOKER set down the corner for a joker) and puts
+  the painting in a thin-lined box: a court's figure from the waist up with the same picture turned over below, as on a
+  real double-ended card; under 40px wide the bold letter stands in. The pictures are `cards/<key>.webp` (`cards/s/` for
+  cards under 80px, precached), placed by kit.css from the box's `data-c`. A deck's two jokers are one painting in two
+  printings: `Kit.card('JK', s)` / `Kit.joker(s)`, 's' 'b' the black-and-white engraving, anything else the color one;
+  history codes `JK`/`JKr`/`JKb`. The prompts (style, suit palettes, each card's brief and its exact prompt) are
+  `scripts/cards/prompts.json`; a card is redone with `scripts/cards/gen.py <work folder> KH` (JKB edits JK), looked at
+  full size (hands, the thing held, the card's convention), then `scripts/cards/pack.py <work folder> KH`.
 - Don't tune difficulty or design around a player's age. Match the real game and Tim's choices.
 - **Landscape: where you act on the right, what you look at on the left.** Most players are right-handed, so
   sideways layouts put the side you take action on (buttons, the board or cards you tap to play, a playfield you
