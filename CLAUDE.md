@@ -128,6 +128,21 @@ Underlying principles for everything:
   are rounded (13 to 28px), buttons have no lip and press with a small sink. The home screen is one row per game
   (icon, name, players, a live line at the right, gold when it is something for you to do), sections marked by a bar
   in the category's color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+- **Typing is on the Kit keyboard, never the phone's** (Tim, 2026-11-15: "any opportunity to type is done with a
+  thoughtful onscreen keyboard not the device keyboard -- and make sure that doesn't mess up any of the formatting").
+  `KitOsk` in kit.js: on a touch screen every text box (`input` text/search/email/tel/number/password/url, `textarea`)
+  gets `inputmode="none"` before it takes the focus, and the Kit keyboard (`.k-osk` in kit.css, on `<html>` so the
+  page's lift never moves it) rises in the app's glass: letters with shift (double tap for caps lock) and a symbols page,
+  a number pad for numbers (a minus with `data-osk="neg"` or a negative `min`, a point with `data-osk="dec"`, inputmode
+  decimal or a decimal step; sideways the digits sit in one row), capitals by `autocapitalize`, the action key by
+  `enterkeyhint` in the gold (Next moves to the next box), the letter rising over the finger, delete repeating while
+  held. Every key reaches the page as a `keydown` first, then the text with an `input` event, so a page written for a
+  real keyboard needs nothing new. The page makes room exactly as it does for a phone keyboard (`KitKb`: `html.k-kb`,
+  `--kb`, `--vvh`, the `--kblift` page lift), so a sheet rides above it and the box stays in view. A new box needs
+  nothing; one that is really a game's own key capture, or a game that draws its own keys (Wordle, Oregon Trail), says
+  `data-osk="off"`. A box is described for the keyboard by its own attributes (`type`, `inputmode`, `autocapitalize`,
+  `enterkeyhint`, `maxlength`). Desktops keep their keyboard, and a real key pressed on an iPad's keyboard case puts the
+  screen keyboard away for the visit.
 - **Every game is in Night glass** (the sweep of 2026-11-14, every game page, its own folder and history view). The line
   between what a game keeps and what follows the look: **anything that would be printed on the physical game keeps its own
   type and look** (a show's logo, words printed on a felt, card faces, dice, a pinball playfield, slot reels, an arcade
