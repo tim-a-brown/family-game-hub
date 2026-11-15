@@ -413,6 +413,31 @@ Underlying principles for everything:
   the time it looks first (its own train when its marker is out, a double it can follow, a heavier tile): `EZ` in the
   core. The sim (mulberry32 now) has Easy winning about 1 match in 5 against Normal head to head, 1 in 15 against Hard.
 
+## Pong's Tunnel (2026-11-15; Tim: "a 1 player 3-D concept for pong with bounces off the ceiling, floor and walls ... get weird and colorful and wacky with the effects")
+
+- A Table in Pong's setup (`table`: Classic or Tunnel), not a tile of its own. Choosing it shows the Tunnel's own setup
+  (`showSetup` in paddleball.html: modes `cpu` only, so you against the computer, with its skill); the choice is kept in
+  `gn_setup_paddleball` first (`keepOptions`). Online review leaves the Table out (online is always Classic).
+- `games/paddleball/tunnel.js` + `tunnel.css` (three.js through the page's importmap, `window.PongTunnel`): a neon box
+  tunnel in a synthwave world (striped sun that pulses with the music through an analyser, checkered floor that ripples
+  on hits, stars), a chrome ball with a trail, a depth frame riding the walls at the ball's depth, walls that light near
+  the ball and ring where it strikes. Bloom, then a pass with chromatic aberration, wobble, glitch and flash (`FX`).
+- The ball moves in the tunnel's own measure (u, v from -1 to 1, z depth), so the tunnel takes the screen's shape and a
+  turn of the device only stretches it. Moving the paddle as you hit puts curve on the ball (`spinFromPaddle`, stronger
+  on a faster ball so a swing bends it as far at every level); the computer (`DIFF`) differs in speed, reaction, first
+  guess, settling and how much curve it reads, never in what it can see. Levels: 3 points past the computer clear one
+  (pips in the Level plate), the ball speeds up, the computer sharpens, each level has its own colors (`PALS`; from
+  level 4 the camera rolls, from 5 the tunnel twists, from 6 the picture wobbles, from 7 the colors cycle). 3 balls,
+  an extra one every third level (up to 5). Points count x1, x2, x3 by skill.
+- Moments: a curve or big curve shot (words in the air), rally 10/20/30... (disco floor), a point (sun flash and
+  fireworks), a miss (the ball smashes the glass: glitch and aberration), a level cleared or perfect (`Kit.moment`,
+  then a warp-speed flight out of the tunnel's far end), a new personal best. Moments from mid-rally wait in `G.queue`.
+- Saved in `paddleball_state` as `{v: 2, tunnel: 1}` (classic's are v 1); high scores on the `paddleball_tunnel` board
+  (HI_BOARDS, beside `paddleball`'s rallies); history `detail.tn` (`tunnelView` in hist/arcade.js).
+- Frame time: `QUAL` 2 (bloom, pixel ratio up to 2), 1 (1.25) and 0 (no bloom), stepped down when frames run long.
+- Test hook `window.__tunnel`: `get`, `auto(on, missEvery, curve)`, `sim(seconds, untilPhase)` (full speed, no
+  drawing), `hold`, `level`, `pts`, `lives`, `diff`, `tune`, `miss`, `point`, `curve`, `quality(q, lock)`, `perf`.
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable

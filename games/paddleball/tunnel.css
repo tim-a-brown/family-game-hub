@@ -1,0 +1,58 @@
+/* Pong's Tunnel (games/paddleball/tunnel.js): one player against the computer down a 3-D neon tunnel.
+   The play view fills the screen under the game bar: a strip of glass plates on top (score, level, balls, pause) and
+   the scene under it. A phone on its side puts the plates in a column at the left (what you look at) and the scene,
+   where you play, at the right. */
+html.pt-on,html.pt-on body{height:100%;overflow:hidden;overscroll-behavior:none;}
+html.pt-on body{display:flex;flex-direction:column;background:#07021a;}
+html.pt-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;padding:0 8px max(18px,calc(var(--safe-b) + 10px));
+  display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.pt-hud{flex:none;display:flex;gap:6px;align-items:stretch;padding:0 9px;view-transition-name:pt-hud;}
+.pt-plate{position:relative;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:5px 11px 6px;border-radius:15px;
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+.pt-plate small{font-size:.72rem;font-weight:650;color:var(--text-2);white-space:nowrap;line-height:1.15;}
+.pt-plate b{font-family:var(--display);font-weight:800;font-size:1.55rem;line-height:1.05;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.pt-plate.sc{flex:1.5;}
+.pt-plate.sc b{color:var(--lit,#ffd34d);text-shadow:0 0 16px color-mix(in srgb,var(--lit,#ffd34d) 55%,transparent);}
+.pt-plate.sc.bump b{animation:pt-bump .4s var(--spring);}
+.pt-plate.lv{flex:1;}
+.pt-plate.lv .row,.pt-plate.bl .row{display:flex;align-items:center;gap:8px;}
+.pt-pips{display:flex;gap:4px;}
+.pt-pips i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22);transition:background .25s,box-shadow .25s;}
+.pt-pips i.on{background:var(--pt-a,#ff4fd8);box-shadow:0 0 10px var(--pt-a,#ff4fd8),inset 0 1px 0 rgba(255,255,255,.6);}
+.pt-plate.bl{flex:1;}
+.pt-balls{display:flex;gap:4px;align-items:center;min-height:1.55rem;}
+.pt-balls i{width:15px;height:15px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 34% 30%,#fff 0 12%,#c9d4ff 22%,#5a4a8c 52%,#140b2e 70%,#ff7ad9 92%);box-shadow:0 0 9px rgba(255,140,230,.55);}
+.pt-balls[data-none="1"]::after{content:"None left";font-size:.9rem;font-weight:750;color:#ff7a9a;white-space:nowrap;}
+.pt-balls i.gone{animation:pt-gone .6s ease-in forwards;}
+.pt-balls i.new{animation:pt-new .7s var(--spring);}
+.pt-pbtn{flex:none;width:46px;border:0;border-radius:15px;display:grid;place-items:center;color:var(--text);
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .12s;}
+.pt-pbtn:active{transform:translateY(1px) scale(.94);}
+.pt-pbtn svg{width:22px;height:22px;}
+.pt-view{position:relative;flex:1;min-height:0;border-radius:20px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  background:#0b0322;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 40px -24px rgba(0,0,0,.9);view-transition-name:pt-view;}
+.pt-view canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+/* the serve tip: a pill under your paddle, only until you have served a few times */
+.pt-tip{position:absolute;left:50%;bottom:7%;transform:translateX(-50%);padding:7px 14px;border-radius:999px;pointer-events:none;
+  font-weight:750;font-size:.9rem;color:#fff;white-space:nowrap;background:rgba(20,6,40,.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 22px rgba(255,80,220,.35);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;transition:opacity .3s;}
+.pt-tip.show{opacity:1;animation:pt-breathe 1.6s ease-in-out infinite;}
+.pt-ov{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:rgba(8,2,22,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+.pt-ov.show{display:flex;animation:pop .3s var(--spring);}
+.pt-ov .card{width:min(280px,86%);text-align:center;padding:20px 16px 14px;border-radius:var(--r-lg);background:var(--sheet-bg);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 1px var(--gl-line),0 24px 50px -20px rgba(0,0,0,.9);}
+.pt-ov h2{font-family:var(--display);font-weight:800;font-size:2rem;margin:0 0 2px;color:var(--text);}
+.pt-ov p{color:var(--text-2);margin:0 0 12px;font-weight:650;font-size:.92rem;}
+.pt-ov .btn{margin-top:8px;}
+/* A phone on its side: the plates in a column at the left, the scene beside them */
+html.pt-land.pt-on #app{flex-direction:row;gap:10px;padding:0 max(17px,env(safe-area-inset-right,0px)) max(12px,calc(var(--safe-b) + 8px)) max(17px,env(safe-area-inset-left,0px));}
+html.pt-land .pt-hud{flex-direction:column;justify-content:center;width:clamp(118px,16vw,156px);padding:0;gap:8px;}
+html.pt-land .pt-plate{flex:none;padding:7px 11px 8px;}
+html.pt-land .pt-pbtn{width:100%;height:44px;}
+@keyframes pt-bump{0%{transform:scale(1)}40%{transform:scale(1.16)}100%{transform:scale(1)}}
+@keyframes pt-gone{to{transform:scale(0);opacity:0}}
+@keyframes pt-new{0%{transform:scale(0)}100%{transform:scale(1)}}
+@keyframes pt-breathe{0%,100%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 0 14px rgba(255,80,220,.25)}50%{box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),0 0 30px rgba(255,80,220,.6)}}
+::view-transition-group(pt-hud),::view-transition-group(pt-view){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
+@media (max-width:360px){ .pt-plate b{font-size:1.3rem;} .pt-plate{padding:5px 8px;} .pt-balls i{width:12px;height:12px;} }
