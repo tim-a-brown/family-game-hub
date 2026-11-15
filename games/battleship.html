@@ -105,11 +105,12 @@
 
 /* Placement */
 .dock{display:flex;flex-wrap:wrap;gap:22px 14px;padding-bottom:22px !important;justify-content:center;align-items:center;min-height:calc(var(--cell,32px) * 1 + 10px);margin:14px 0 4px;padding:10px;border-radius:20px;background:var(--well);box-shadow:inset 0 0 0 1px var(--gl-line);}
-.dock .dship{position:relative;height:var(--cell,32px);touch-action:none;cursor:grab;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.45));}
+.dock .dship{position:relative;height:var(--cell,32px);touch-action:none;cursor:grab;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.45));
+  font-size:.72rem;margin-inline:max(0px,calc((var(--lw,0px) - var(--cell,32px) * var(--L,1)) / 2 + 2px));}
 .dock .dship.sel{filter:drop-shadow(0 0 4px #ffe066) drop-shadow(0 2px 2px rgba(0,0,0,.5));}
 .dock .dship.lift{opacity:.25;}
 .dock .dship svg{width:100%;height:100%;display:block;}
-.dock .dship::after{content:attr(data-n);position:absolute;left:0;right:0;top:100%;margin-top:2px;text-align:center;font-size:.72rem;font-weight:650;color:var(--text-3);white-space:nowrap;filter:none;}
+.dock .dship::after{content:attr(data-n);position:absolute;left:50%;transform:translateX(-50%);top:100%;margin-top:2px;text-align:center;font-size:1em;font-weight:650;color:var(--text-3);white-space:nowrap;filter:none;}
 .dock .done{font-weight:800;color:var(--text-3);font-size:.9rem;display:flex;align-items:center;gap:6px;}
 .dock .done .ico{color:var(--green);}
 .phint{text-align:center;color:var(--text-2);font-size:.88rem;margin:4px 0 10px;}
@@ -117,18 +118,41 @@
 .pbtns .btn{flex:1;white-space:nowrap;}
 
 
-/* Landscape iPad: the main grid on the left, everything else in a column beside it */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.bs-place,#app.bs-battle{max-width:none;display:grid;grid-template-columns:minmax(300px,360px) auto;column-gap:32px;
-    justify-content:center;align-content:start;align-items:start;padding-bottom:calc(var(--safe-b) + 12px);}
-  #app.bs-place>*,#app.bs-battle>*{grid-column:1;}
-  #app.bs-place>.case,#app.bs-battle>.case{grid-column:2;grid-row:1 / span 8;width:min(calc(100dvh - 104px - var(--safe-t) - var(--safe-b)),calc(100vw - 440px));}
-  #app.bs-place>.turn,#app.bs-battle>.turn{justify-self:start;}
-  #app.bs-place>.phint{text-align:left;margin-top:0;}
-  #app.bs-place>.dock{margin-top:4px;}
-  #app.bs-battle>.lower{grid-template-columns:1fr;margin-top:8px;}
-  #app.bs-battle>.lastshot{text-align:left;}
-}
+/* A layout for each shape (fit() sizes the grids to the room). Upright: whose turn, the grid you fire at (or place on)
+   as large as the screen allows, your own ocean and their fleet under it, the whole table in the middle of the screen.
+   Sideways (phones too): the grid you tap at the right, as tall as the screen; your ocean, their fleet, the dock and
+   the buttons in a column at the left */
+#app.stage.bsx{max-width:none;box-sizing:border-box;height:var(--avh,auto);display:flex;flex-direction:column;align-items:center;
+  padding:4px max(17px,var(--corner-x)) max(calc(var(--safe-b) + 10px),18px);}
+#app.bsx>*{flex:none;width:100%;max-width:var(--colw,620px);}
+#app.bsx>.case{width:var(--tw,100%);max-width:none;}
+#app.bsx>:first-child{margin-top:auto;}
+#app.bsx>:last-child{margin-bottom:auto;}
+#app.bsx.bs-battle>.lower{grid-template-columns:minmax(0,var(--ow,56%)) 1fr;}
+#app.bsx.bs-land{display:grid;grid-template-columns:var(--sw,340px) var(--tw);grid-auto-rows:max-content;column-gap:var(--cg,32px);
+  justify-content:center;align-content:center;align-items:start;}
+#app.bsx.bs-land>*{grid-column:1;max-width:none;margin:0;}
+#app.bsx.bs-land>.case{grid-column:2;grid-row:1 / span 8;align-self:center;}
+#app.bsx.bs-land>.turn{justify-self:start;justify-content:flex-start;margin:0 0 6px;}
+#app.bsx.bs-land>.phint{text-align:left;margin:0 0 6px;}
+#app.bsx.bs-land>.dock{margin:4px 0 0;}
+#app.bsx.bs-land>.lastshot{text-align:left;}
+#app.bsx.bs-land.bs-battle>.lower{grid-template-columns:minmax(0,var(--ow,100%));margin-top:4px;}
+#app.bsx.bs-land.bs-battle>.lower>.side{max-width:var(--ow,100%);}
+/* a phone on its side: your ocean beside their fleet, a slim turn line */
+#app.bsx.bs-low>.turn{min-height:30px;font-size:.95rem;}
+#app.bsx.bs-low.bs-battle>.lower{grid-template-columns:minmax(0,var(--ow,50%)) 1fr;}
+#app.bsx.bs-low>.dock{padding-bottom:20px !important;gap:20px 12px;}
+#app.bsx.bs-low>.lastshot{margin-top:4px;}
+/* a short phone held upright: the placing screen's words and buttons pack closer */
+#app.bsx.bs-short>.phint{font-size:.8rem;margin:0 0 6px;}
+#app.bsx.bs-short>.turn{min-height:30px;margin:2px 0 4px;}
+#app.bsx.bs-short>.dock{margin:8px 0 2px;padding:8px !important;padding-bottom:20px !important;gap:18px 10px;}
+#app.bsx.bs-short>.pbtns{margin-top:8px;}
+#app.bsx.bs-short>.pbtns .btn,#app.bsx.bs-short>.btn-lg{min-height:46px;padding-top:8px;padding-bottom:8px;}
+#app.bsx.bs-short>.btn-lg{margin-top:8px !important;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 /* Online */
 .turn.nudge{animation:bsnudge .4s;}
 @keyframes bsnudge{0%,100%{transform:none;}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
@@ -147,9 +171,6 @@
 @keyframes bssweep{to{transform:rotate(360deg);}}
 .wait-note{text-align:center;color:var(--text-2);font-size:.9rem;font-weight:700;margin:14px 0 0;display:flex;align-items:center;justify-content:center;gap:6px;}
 .wait-note .ico{color:var(--green,#3ddc84);width:18px;height:18px;}
-@media (min-width:700px) and (orientation:portrait){
-  #app.bs-battle>.case{max-width:min(100%,calc(100dvh - 570px));margin:0 auto;}
-}
 </style>
 </head>
 <body>
@@ -205,6 +226,7 @@
 
   function showSetup() {
     S = null; token++; undoStack = []; busy = false;
+    app.classList.remove('bsx', 'bs-land', 'bs-low', 'bs-short', 'bs-place', 'bs-battle');
     Kit.setup(app, {
       modes: Kit.modes([{ id: 'cpu', desc: 'Easy, Normal or Hard' }, { id: '2p', kind: 'local', desc: 'Take turns on this phone, no peeking' }]),
       options: [{ id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: [['easy', 'Easy', 'Fires mostly at random and only sometimes follows up a hit.'], ['normal', 'Normal', 'Keeps firing around a hit until the ship sinks.'], ['hard', 'Hard', 'Works out where ships are most likely hiding and aims there.']], when: function (m) { return m === 'cpu'; } }],
@@ -478,8 +500,17 @@
         var nm = SHIPS[res.k].n;
         var line = defender.cpu || S.mode === '2p' ? 'You sank my ' + nm.toLowerCase() + '!' : (shooter.name + ' sank your ' + nm.toLowerCase() + '!');
         if (S.mode === 'cpu' && p === 1) line = shooter.name + ' sank your ' + nm.toLowerCase() + '!';
-        setTimeout(function () { Kit.callout(line, p === 0 || S.mode === '2p' ? '#ffd166' : '#ff7b70'); }, 250);
+        var good = p === 0 || S.mode === '2p', L = SHIPS[res.k].s;
+        // a big ship sunk without a single miss after the first hit is rare: its own moment
+        if (L >= 4 && S.st[p].sinkIn[res.k] === L) setTimeout(function () {
+          Kit.moment({ title: 'Clean sink', line: shooter.name + ' sank the ' + nm + ' in ' + L + ' shots without a miss.', icon: 'target', tone: good ? '' : 'bad', at: seaEl, ms: 2000 });
+          Kit.sfx(good ? 'sparkle' : 'bad'); if (good) Kit.haptic('success');
+        }, 250);
+        else setTimeout(function () { Kit.callout(line, good ? '#ffd166' : '#ff7b70'); }, 250);
         if (S.fleets[q][res.k]) cellsOf(res.k, S.fleets[q][res.k]).forEach(function (c, i) { if (c !== x) setTimeout(function () { fxBoom(seaEl, c, false); }, 120 + i * 90); });
+      } else if (S.st[p].streak === 4 || S.st[p].streak === 6) {
+        var n4 = S.st[p].streak, g4 = p === 0 || S.mode === '2p';
+        setTimeout(function () { Kit.moment({ title: n4 + ' hits in a row', line: shooter.name + ' has hit with the last ' + n4 + ' shots.', icon: 'flame', tone: g4 ? '' : 'bad', at: seaEl, ms: 1800 }); Kit.sfx(g4 ? 'good' : 'bad'); }, 120);
       } else setTimeout(function () { Kit.callout('Hit!', '#ff6a5a'); }, 120);
     } else { fxSplash(seaEl, x); sndSplash(); Kit.haptic('light'); }
   }
@@ -638,6 +669,49 @@
     app.classList.toggle('bs-place', placing);
     app.classList.toggle('bs-battle', !placing);
     if (placing) renderPlace(); else renderBattle();
+    var big = app.querySelector('.case'); if (big) big.style.setProperty('view-transition-name', 'bs-main');
+    var low = app.querySelector('.lower'); if (low) low.style.setProperty('view-transition-name', 'bs-lower');
+    fit();
+  }
+  // The grid you tap as large as the room allows for the shape the screen is now. A grid's height grows in a straight
+  // line with its width, so two trial widths say how wide it can be for the height there is.
+  function fit() {
+    var big = app.querySelector(':scope > .case');
+    if (!big || !(app.classList.contains('bs-place') || app.classList.contains('bs-battle'))) { app.classList.remove('bsx', 'bs-land', 'bs-low', 'bs-short'); return; }
+    var W = window.innerWidth, Hh = window.innerHeight, land = W > Hh, low = land && Hh < 560;
+    app.classList.add('bsx'); app.classList.toggle('bs-land', land); app.classList.toggle('bs-low', low); app.classList.toggle('bs-short', !land && Hh < 700);
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    app.style.setProperty('--avh', Math.max(300, Hh - top) + 'px');
+    var cs = getComputedStyle(app), iw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), ih = app.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    big.style.width = '300px'; var h1 = big.offsetHeight; big.style.width = '400px'; var h2 = big.offsetHeight; big.style.width = '';
+    var k = (h2 - h1) / 100, a = h1 - k * 300, tw, battle = app.classList.contains('bs-battle');
+    if (land) {
+      var cg = low ? 20 : 32;
+      tw = Math.min((ih - a) / k, 900);
+      var sw = iw - tw - cg;
+      if (low) sw = Math.min(sw, 540); else sw = Math.min(Math.max(sw, 300), 380);
+      if (sw < (low ? 300 : 300)) { sw = 300; }
+      tw = Math.min(tw, iw - sw - cg);
+      app.style.setProperty('--sw', Math.floor(sw) + 'px'); app.style.setProperty('--cg', cg + 'px');
+      app.style.setProperty('--tw', Math.floor(tw) + 'px');
+      if (battle) app.style.setProperty('--ow', low ? Math.floor(Math.min(sw * 0.5, ih - 110)) + 'px' : '100%');
+    } else {
+      var tall = W >= 700;
+      app.style.setProperty('--colw', Math.min(iw, tall ? 720 : 620) + 'px');
+      if (battle) app.style.setProperty('--ow', tall ? Math.floor(Math.min(iw * 0.4, 270)) + 'px' : '56%');
+      var other = 0;
+      Array.prototype.forEach.call(app.children, function (c) { if (c !== big) { var m = getComputedStyle(c); other += c.offsetHeight + (parseFloat(m.marginTop) || 0) * (c === app.firstElementChild ? 0 : 1) + (c === app.lastElementChild ? 0 : parseFloat(m.marginBottom) || 0); } });
+      tw = Math.min(iw, tall ? 720 : 620, (ih - other - a) / k);
+      app.style.setProperty('--tw', Math.floor(Math.max(200, tw)) + 'px');
+    }
+    // whatever still doesn't fit (a long fleet list, the dock of ships) takes it from the big grid
+    dockCell();
+    for (var i = 0; i < 2; i++) {
+      var over = app.scrollHeight - app.clientHeight;
+      if (over <= 1) break;
+      app.style.setProperty('--tw', Math.floor(Math.max(150, parseFloat(getComputedStyle(app).getPropertyValue('--tw')) - over / k)) + 'px');
+      dockCell();
+    }
   }
   // Pass and play: cover the screen until the next player holds to see their fleet
   var hoOpen = false;
@@ -673,6 +747,8 @@
       if (sh) return; any = true;
       var d = el('div', { class: 'dship' + (sel === k ? ' sel' : ''), html: shipSvg(k, true), 'aria-label': SHIPS[k].n, 'data-n': SHIPS[k].n + ', ' + SHIPS[k].s });
       d.style.width = 'calc(var(--cell,32px) * ' + SHIPS[k].s + ')';
+      d.style.setProperty('--L', SHIPS[k].s);
+      d.style.setProperty('--lw', ((SHIPS[k].n + ', ' + SHIPS[k].s).length * 0.6).toFixed(1) + 'em');   // (its name under it keeps clear of the next ship's)
       d.addEventListener('pointerdown', function (e) { startDrag(e, k, false, d); });
       dock.appendChild(d);
     });
@@ -692,6 +768,14 @@
   function dockCell() {
     var sea = app.querySelector('.sea'), dock = app.querySelector('.dock'); if (sea && dock) dock.style.setProperty('--cell', Math.min(sea.getBoundingClientRect().width / N, 34) + 'px');
   }
+  // Turning the device: the grids and the panels glide to the new shape (a View Transition around the new layout)
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var wh = window.innerWidth + 'x' + window.innerHeight; if (wh === lastWH) return; lastWH = wh;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!drag && document.startViewTransition && !reduce && !document.hidden && app.classList.contains('bsx')) { try { document.startViewTransition(fit); return; } catch (e) {} }
+    fit();
+  });
   window.addEventListener('resize', function () {
     dockCell();
     // a ship being dragged takes the ocean's new square size
@@ -769,6 +853,11 @@
     var l = 1 - w, W = S.players[w], st = S.st[w];
     S.phase = 'over'; busy = false; save(); render();
     var hl = highlightsFor(S, w);
+    // the rarer wins get their moment on the board first: no ship lost, the last ship left afloat, a sharp eye
+    var afl = SHIPS.filter(function (x, k) { return !S.sunk[w][k]; }), acc = st.hits / st.shots, sp = [];
+    if (afl.length === 5) sp.push({ t: 'Flawless victory', l: W.name + ' sank the whole fleet without losing a single ship.' });
+    else if (afl.length === 1) sp.push({ t: 'Last ship standing', l: W.name + ' won with only the ' + afl[0].n + ' left afloat.' });
+    if (acc >= 0.6) { sp.push({ t: 'Sharpshooter', l: W.name + ' hit with ' + Math.round(acc * 100) + ' percent of the shots.' }); hl.splice(1, 0, W.name + ' hit with ' + Math.round(acc * 100) + ' percent of the shots'); }
     if (S.mode === 'cpu') hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : 'Pass and play',
@@ -778,6 +867,14 @@
       detail: detailFor(S, w)
     });
     var lose = W.cpu;
+    if (sp.length) {
+      Kit.moment({ big: true, title: sp[0].t, line: sp.map(function (x) { return x.l; }).join(' '), icon: lose ? 'bot' : 'trophy', tone: lose ? 'bad' : '', at: app.querySelector('.case'), ms: 2300 });
+      Kit.sfx(lose ? 'lose' : 'sparkle'); Kit.haptic(lose ? 'heavy' : 'success');
+    }
+    setTimeout(function () { showWin(w, l, W, st, lose); }, sp.length ? 2500 : 0);
+  }
+  function showWin(w, l, W, st, lose) {
+    if (!S || S.phase !== 'over') return;
     Kit.win({
       icon: lose ? 'bot' : 'trophy',
       title: lose ? W.name + ' wins this one' : W.name === 'You' ? 'You win!' : W.name + ' wins!',
