@@ -81,23 +81,23 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 .cm-wrap{flex:none;position:relative;}
 .cm-frame{position:relative;padding:8px;border-radius:22px;}
 .cm-frame canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer;}
-/* Phone sideways and tablets sideways: plates in a column beside the board */
-@media (orientation:landscape) and (min-aspect-ratio:5/4){
-  html.cm-on #app{flex-direction:row;gap:16px;padding-left:max(10px,calc(env(safe-area-inset-left) + var(--corner-x)));padding-right:max(10px,calc(env(safe-area-inset-right) + var(--corner-x)));}
-  .cm-side{width:clamp(168px,24vw,250px);}
-  .cm-hud{flex-direction:column;}
-  .cm-hud .cm-plate{flex:none;align-items:flex-start;text-align:left;}
-  .cm-hud .cm-sc{align-items:stretch;}
-}
-@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:500px){
-  .cm-plate{padding:3px 10px;}
-  .cm-plate b{font-size:1.2rem;}
-  .cm-mv b{font-size:1.45rem;}
-  .cm-plate i{display:none;}
-  .cm-goal{padding:4px 10px 4px 5px;}
-  .cm-goal .gi{width:28px;height:28px;}
-  .cm-goal .gi svg{width:22px;height:22px;}
-}
+/* Phone sideways and tablets sideways (html.cm-land, switched inside a View Transition when the device turns, so the
+   plates and the board glide): plates in a column at the left, the board you play at the right */
+html.cm-land.cm-on #app{flex-direction:row;gap:16px;padding-left:max(17px,calc(env(safe-area-inset-left) + var(--corner-x,0px)));padding-right:max(17px,calc(env(safe-area-inset-right) + var(--corner-x,0px)));}
+html.cm-land .cm-side{width:clamp(168px,24vw,250px);}
+html.cm-land .cm-hud{flex-direction:column;}
+html.cm-land .cm-hud .cm-plate{flex:none;align-items:flex-start;text-align:left;}
+html.cm-land .cm-hud .cm-sc{align-items:stretch;}
+html.cm-land .cm-goal .tx span{-webkit-line-clamp:4;}
+html.cm-land.cm-short .cm-plate{padding:3px 10px;}
+html.cm-land.cm-short .cm-plate b{font-size:1.2rem;}
+html.cm-land.cm-short .cm-mv b{font-size:1.45rem;}
+html.cm-land.cm-short .cm-plate i{display:none;}
+html.cm-land.cm-short .cm-goal{padding:4px 10px 4px 5px;}
+html.cm-land.cm-short .cm-goal .gi{width:28px;height:28px;}
+html.cm-land.cm-short .cm-goal .gi svg{width:22px;height:22px;}
+.cm-side{view-transition-name:cm-side;} .cm-wrap{view-transition-name:cm-board;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 @media (min-width:700px) and (min-height:700px){
   .cm-plate b{font-size:1.7rem;}
   .cm-mv b{font-size:2.2rem;}
@@ -824,6 +824,20 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
 
   // ═══ Page ═════════════════════════════════════════════════════════════════
   var el = Kit.el, app = document.getElementById('app'), root = document.documentElement;
+  // Turning the device: the sideways layout (html.cm-land; cm-short on a phone) is switched inside a View Transition
+  (function () {
+    var q = matchMedia('(orientation: landscape) and (min-aspect-ratio: 5/4)'), qs = matchMedia('(max-height: 500px)'), wait = false;
+    function set() { wait = false; root.classList.toggle('cm-land', q.matches); root.classList.toggle('cm-short', qs.matches); if (typeof fit === 'function') fit(); }
+    root.classList.toggle('cm-land', q.matches); root.classList.toggle('cm-short', qs.matches);
+    function turn() {
+      if (wait || (root.classList.contains('cm-land') === q.matches && root.classList.contains('cm-short') === qs.matches)) return;
+      if (document.startViewTransition && !document.hidden && root.classList.contains('cm-on') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    [q, qs].forEach(function (m) { if (m.addEventListener) m.addEventListener('change', turn); else m.addListener(turn); });
+  })();
   var KEY = 'candymatch', SAVE = 'candymatch_state', PROG = 'candymatch_progress';
   var TAU = Math.PI * 2;
   var COL = [
@@ -1582,7 +1596,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   }
   function fit() {
     if (!G || !canvas || !sideEl) return;
-    var land = matchMedia('(orientation: landscape) and (min-aspect-ratio: 5/4)').matches;
+    var land = root.classList.contains('cm-land');
     var cs = getComputedStyle(app), cell = 0;
     for (var pass = 0; pass < 2; pass++) {
       var aw = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
@@ -1729,7 +1743,21 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   var COMBO_WORDS = { ss: 'Crossfire!', sw: 'Giant cross!', ww: 'Double boom!', b: 'Color storm!', bb: 'Board wipe!' };
   function afterMove(res) {
     var w = res.kind ? COMBO_WORDS[res.kind] : res.step >= 3 ? STEP_WORDS[Math.min(STEP_WORDS.length - 1, res.step)] : '';
-    if (w) { Kit.callout(w, res.kind ? '#ff8fc8' : res.step >= 5 ? '#7ef0ff' : '#ffd45a'); if (res.step >= 5 || res.kind === 'bb') Kit.haptic('heavy'); }
+    // the rarest plays get a moment of their own on the board's lower edge: two color bombs wiping the board, and a
+    // cascade of six clears or more; the rest keep their quick word in the middle
+    if (res.kind === 'bb') {
+      G.stats.wipes = (G.stats.wipes || 0) + 1;
+      Kit.moment({ title: 'Board wipe', line: 'Two color bombs swapped together cleared the whole board.', icon: 'sparkle', at: wrapEl, ms: 2200 });
+      Kit.sfx('sparkle'); Kit.haptic('heavy');
+    } else if (!res.kind && res.step >= 6) {
+      Kit.moment({ title: res.step + ' in a row', line: 'One move set off ' + res.step + ' clears in a row as the candies fell.', icon: 'sparkle', at: wrapEl, ms: 1900 });
+      Kit.sfx('good'); Kit.haptic('heavy');
+    } else if (w) { Kit.callout(w, res.kind ? '#ff8fc8' : res.step >= 5 ? '#7ef0ff' : '#ffd45a'); if (res.step >= 5) Kit.haptic('heavy'); }
+    // the third star lit with moves still to play
+    if (L && !L.star3 && G.moves > 0 && stars3()[2] > 0 && G.score >= stars3()[2]) {
+      L.star3 = 1;
+      setTimeout(function () { if (!L || state === 'done') return; Kit.moment({ title: 'Three stars', line: 'You reached three stars on ' + L.def.name + ' with ' + G.moves + (G.moves === 1 ? ' move' : ' moves') + ' still to play.', icon: 'star', at: wrapEl, ms: 2000 }); Kit.sfx('win'); Kit.haptic('success'); }, res.kind === 'bb' || res.step >= 6 ? 2300 : 300);
+    }
     scoreVis = G.score; shownIng = G.ingDone; vJelly = G.jelly.slice(); vFrost = G.frost.slice();
     if (L) { L.sc = (L.sc || []).concat([G.score]); if (L.sc.length > 60) L.sc = L.sc.slice(-60); }   // for the history: the score after each move
     hudAll();
@@ -1784,6 +1812,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
   function addStats(a, b) {
     if (!b) return a;
     a.moves += b.moves || 0; a.combos += b.combos || 0; a.shuffles += b.shuffles || 0; a.jellyCleared += b.jellyCleared || 0; a.frostBroken += b.frostBroken || 0;
+    a.wipes = (a.wipes || 0) + (b.wipes || 0);
     a.maxStep = Math.max(a.maxStep, b.maxStep || 0); a.bestMove = Math.max(a.bestMove, b.bestMove || 0);
     ['h', 'w', 'b'].forEach(function (k) { a.made[k] += (b.made && b.made[k]) || 0; });
     return a;
@@ -1954,6 +1983,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     var best = lv.slice().sort(function (a, b) { return b.s - a.s; })[0];
     if (best) hl.push('Best level: ' + best.nm + ', ' + fmt(best.s) + ' points');
     if (st.made.b) hl.push('Made ' + st.made.b + (st.made.b === 1 ? ' color bomb' : ' color bombs'));
+    if (st.wipes) hl.push((s.who || 'You') + ' wiped the whole board with two color bombs' + (st.wipes > 1 ? ' ' + st.wipes + ' times' : ''));
     if (st.combos) hl.push(st.combos + (st.combos === 1 ? ' special combo' : ' special combos'));
     if (st.maxStep >= 4) hl.push('Biggest cascade: ' + st.maxStep + ' clears in one move');
     var levels = {}; cleared.forEach(function (x) { levels[x.n] = Math.max(levels[x.n] || 0, x.st); });
@@ -1980,6 +2010,7 @@ html.cm-on #app{flex:1;min-height:0;width:100%;max-width:none;margin:0;
     hl.push(won ? 'Cleared level ' + L.n + ' (' + L.def.name + ')' + (spare ? ' with ' + spare + (spare === 1 ? ' move' : ' moves') + ' to spare' : '') : 'Ran out of moves on level ' + L.n + ' (' + L.def.name + '), ' + leftText());
     if (won) hl.push(stars + (stars === 1 ? ' star' : ' stars'));
     if (st.made.b) hl.push('Made ' + st.made.b + (st.made.b === 1 ? ' color bomb' : ' color bombs'));
+    if (st.wipes) hl.push((L ? L.who : 'You') + ' wiped the whole board with two color bombs' + (st.wipes > 1 ? ' ' + st.wipes + ' times' : ''));
     if (st.combos) hl.push(st.combos + (st.combos === 1 ? ' special combo' : ' special combos'));
     if (st.maxStep >= 4) hl.push('Biggest cascade: ' + st.maxStep + ' clears in one move');
     var levels = {}; if (won) levels[L.n] = stars;
