@@ -98,12 +98,12 @@
     paiza: n => 'Eclipse, the Lisbon Earthquake and some Figures make a Figure miss its next turn. With ' + n + ' in play, none of that touches your Figures.'
   };
   const LEVEL = { easy: 'novice', normal: 'normal', hard: 'hard' }, LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
-  // The players' colours. Two players are gold and sky, as always. With more, each seat has a colour of its own, chosen
+  // The players' colours. Two players are bronze and sky (Gallery stone: the first seat is the light itself). With more, each seat has a colour of its own, chosen
   // to read apart from every other one on the dark table and in red-green colour blindness (the nearest two still
   // differ by a clear step of lightness or hue: scratchpad np/cvd.py). With teams, each team is one family of colours
   // (golds, blues, pinks) and the team's own colour is its first player's (TCOL).
-  const PCOL = ['#f2b84b', '#8fd3f4', '#ee7fc0', '#8a83f0', '#f4efe2', '#d9622b'];
-  const TCOL = [['#f2b84b', '#e07a2e', '#f6e3a0'], ['#8fd3f4', '#5f7bea', '#c4ecff'], ['#ee7fc0', '#c05aa6', '#f4bfe6']];
+  const PCOL = ['#d39b62', '#8fd3f4', '#ee7fc0', '#8a83f0', '#f4efe2', '#d9622b'];
+  const TCOL = [['#d39b62', '#e07a2e', '#f6e3a0'], ['#8fd3f4', '#5f7bea', '#c4ecff'], ['#ee7fc0', '#c05aa6', '#f4bfe6']];
   function seatColors(n, teams) { const c = PCOL.slice(0, n); if (teams) teams.forEach((t, k) => t.forEach((o, j) => { c[o] = TCOL[k % 3][j % 3]; })); return c; }
   // Who plays together, from the setup's Teams choice: teammates sit on alternating spokes (players-2026-11-13.txt):
   // 2 against 2 is seats 1 and 3 against 2 and 4, 3 against 3 is 1, 3, 5 against 2, 4, 6, and three teams of two are
@@ -1254,7 +1254,7 @@
   function faceOffEl(L, at, h) {
     const p = L.p, me = ui.view, M = many(), riv = M ? (rivalAt(p) >= 0 ? rivalAt(p) : seatsFrom(me)[1]) : 1 - me;
     const box = el('div', { class: 'fo' }), sOrd = seatsFrom(me), rk = o => (sOrd.indexOf(o) + S.N - 1) % S.N;
-    const bg = el('div', { class: 'fo-bg', 'aria-hidden': 'true' }, [riv, me].map((o, k) => { const n = el('div', { class: 'an-pm fo-pm ' + (k ? 'me' : 'them') }); try { matFill(n, matOf(o), 'fo' + o); } catch (e) {} return n; }));
+    const bg = el('div', { class: 'fo-bg', 'aria-hidden': 'true' }, [riv, me].map((o, k) => { const n = el('div', { class: 'an-pm fo-pm ' + (k ? 'me' : 'them') }); try { matFill(n, matOf(o), 'fo' + o); matQuiet(n, !matPick(o)); } catch (e) {} return n; }));
     box.appendChild(bg);
     const th = V.figs.filter(f => f.p === p && f.o !== me).sort((a, b) => rk(a.o) - rk(b.o) || a.u - b.u), mi = V.figs.filter(f => f.p === p && f.o === me).sort((a, b) => a.u - b.u);
     const ix = u => L.items.findIndex(x => x.u === u), on = idle() && !G.over && S.turn === me;
@@ -2096,6 +2096,14 @@
     sorjuana: { n: 'The top in the flour', c: '#151d28', th: '#8c97ad', d: 0.35 },
     chart: { n: 'The chart of Arvela', c: '#1b2850', th: '#a9853d', d: 0, chart: true }
   };
+  // Arvela's mark (the A, its ring and the armillary sphere, in its own gilt, cut from its navy square) with the name set
+  // under it, or beside it (row), as words in the titling capitals. The letters baked into the old logo picture were
+  // unevenly spaced (Tim, 2026-11-15: "check the spacing on the 'ARVELA' word mark"); words are spaced by the face.
+  // The sealed pack, the chooser's splash and the story use it; the setup's head is the same lockup, drawn by ui.css.
+  function logo(cls, row) {
+    return el('span', { class: 'an-logo' + (row ? ' row' : '') + (cls ? ' ' + cls : ''), role: 'img', 'aria-label': 'Arvela' }, [
+      el('img', { src: 'anoria/ui/logo-mark.webp', alt: '', draggable: 'false' }), el('b', { text: 'Arvela', 'aria-hidden': 'true' })]);
+  }
   const matPics = {};   // (each mat's picture is made once for each place it lies and kept, so a mat is never loaded twice)
   // A mat can also be made from a card's picture, placed anywhere on it by hand, with a cloth of the player's choosing
   // in the part the picture leaves empty (matkit.js, which Lorcana's mats use too). Such a choice is MatKit's value:
@@ -2153,6 +2161,9 @@
   const matPick = o => G.demo || G.players[o].cpu ? '' : matMine(o) ? matMineV() : matSeatV(o);
   // the mat a seat plays on: the one that person chose, or their Guide's
   const matOf = o => matPick(o) || S.P[o].guide;
+  // (a mat nobody chose, the Guide's own, lies under the gallery's low light; one a player chose in Play mats is shown
+  // as they made it: data-quiet, ui.css)
+  const matQuiet = (n, quiet) => { n.toggleAttribute('data-quiet', !!quiet); return n; };
   // The other player's mat is turned to face them only when two people sit at one device (pass and play). Against
   // the computer nobody sits across the table, and a picture upside down reads badly, so that mat stays upright.
   const matTurned = () => !!G && G.mode === 'local' && !G.demo;
@@ -2165,6 +2176,7 @@
       const n = dom.pm[o], pick = matOf(o), side = o === ui.view ? 'bot' : 'top', cls = 'an-pm ' + side + (side === 'top' && matTurned() ? ' turn' : '');
       if (n._pick !== pick) { n._pick = pick; n.dataset.m = typeof pick === 'object' ? 'art:' + pick.c : pick; matFill(n, pick, o); }
       if (n.className !== cls) n.className = cls;
+      matQuiet(n, !matPick(o));
     }
   }
   function buildTable() {
@@ -2812,7 +2824,7 @@
     const ls = []; V.figs.forEach(f => { if (!f.li || !V.figs.some(g => g.u === f.li)) return; const ns = CARDS[f.c].insp || [];
       V.figs.forEach(g => { if (g.o === f.o && g !== f && (g.u === f.li || ns.indexOf(g.c) >= 0)) ls.push({ u: f.u, li: g.u }); }); });
     if (!ls.length) return;
-    const mr = dom.map.getBoundingClientRect(); let h = '<defs><linearGradient id="an-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e3a1"/><stop offset=".5" stop-color="#fff1bf"/><stop offset="1" stop-color="#b8862d"/></linearGradient></defs>';
+    const mr = dom.map.getBoundingClientRect(); let h = '<defs><linearGradient id="an-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ecc193"/><stop offset=".5" stop-color="#f3d6b0"/><stop offset="1" stop-color="#8f5f33"/></linearGradient></defs>';
     ls.forEach(f => {
       const a = figN(f.u), b = figN(f.li); if (!a || !b || a === b) return;   // (two Figures in one stack: the stack is the line)
       const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
@@ -2921,7 +2933,7 @@
     dom.nm = dom.nm || [];
     let n = dom.nm[o]; if (!n) n = dom.nm[o] = el('div', { class: 'an-pm', 'aria-hidden': 'true' });
     const pick = matOf(o); if (n._pick !== pick) { n._pick = pick; n.dataset.m = typeof pick === 'object' ? 'art:' + pick.c : pick; matFill(n, pick, 'n' + o); }
-    return n;
+    return matQuiet(n, !matPick(o));
   }
   // A Domain on the rim: its picture in its kind's frame, the kind's mark and its home on the clasps, the holder's flag
   // with what it scores, and its name on a paper slip when the tile is big enough for a name you can read (9px and up);
@@ -4297,7 +4309,7 @@
       // the head: the winner's Guide in a gilt ring, the title, whose Guide it was
       const w = S.winner, g = w >= 0 && !G.teams ? S.P[w].guide : null, gi = g ? artImg(g, true, true) : null;
       const head = el('div', { class: 'aw-hd' + (g ? '' : ' solo') }, [g ? el('span', { class: 'aw-med', style: { '--pc': G.players[w].color || 'var(--pc' + w + ')' } }, gi ? [gi] : []) : null, el('div', { class: 'aw-ht' }, [h2, sub])]);
-      const game = el('div', { class: 'aw-game' }, [head, el('div', { class: 'aw-orn', 'aria-hidden': 'true' }, [el('i')]), pic, notes, rank]);
+      const game = el('div', { class: 'aw-game' }, [head, el('div', { class: 'aw-orn', 'aria-hidden': 'true' }, [el('img', { src: 'anoria/ui/logo-mark.webp', alt: '', draggable: 'false' })]), pic, notes, rank]);
       // each player's Seals at the end, whole or broken, on their row, and the heads of the columns
       if (rank) {
         if (order) rank.querySelectorAll(':scope > div').forEach((row, i) => {
@@ -4320,7 +4332,6 @@
           }
           b.appendChild(el('span', { class: 'aw-go', 'aria-hidden': 'true', html: Kit.icon('right') }));
         });
-        const pr = acts.querySelector('.btn-primary'); if (pr) pr.classList.add('shine');
       }
       const body = el('div', { class: 'aw-body' }, [game, show]);
       card.insertBefore(body, acts);
@@ -4332,7 +4343,7 @@
     });
   }
   // a sealed pack the size of an icon: the crimped gilt ends, the foil and the sphere of the logo (packs.css .pk-art)
-  function packMini() { return el('span', { class: 'aw-pk' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('img', { class: 'pk-logo', src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })])]); }
+  function packMini() { return el('span', { class: 'aw-pk' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-bronze' }), logo('pk-logo')])]); }
   function earnedLabel(list) { const g = list.filter(x => x.t === 'guide').length, p = list.length - g, pick = list.some(x => x.t === 'guide' && !x.g);
     return g && p ? 'See what you earned' : pick ? 'Choose your new Guide' : g ? (g > 1 ? 'Meet your new Guides' : 'Meet your new Guide') : p > 1 ? 'Open your packs' : 'Open your pack'; }
   // The race for Renown on the results card (Kit.win's pic slot, under the title): a line for each player, round by
@@ -4517,7 +4528,7 @@
     const sc = screen({ title: 'Play mats', cls: 'an-mt' });
     const who = el('div', { class: 'mt-who' }), view = el('div', { class: 'mt-view', 'aria-hidden': 'true' }), say = el('p', { class: 'mt-say' }), grid = el('div', { class: 'mt-grid' });
     sc.body.appendChild(el('div', { class: 'mt' }, [el('div', { class: 'mt-look' }, [who, view, say]), grid]));
-    const mat = (id, slot, cls) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return n; };
+    const mat = (id, slot, cls, quiet) => { const n = el('div', { class: 'an-pm ' + cls }); matFill(n, id, slot); return matQuiet(n, quiet); };
     // (until a card is chosen, the swatch shows what such a mat is: this Guide's picture on a cloth of its own colour)
     const sample = g => { const t = toneOf[g], fy = FY[g]; return MK.make({ c: g, w: 640, h: 960, col: t ? t.col : '#1b2850', d: t ? t.d : .2, f: 'quilt', focus: [.5, fy != null ? fy / 100 : .3] }, 2.33); };
     function paint() {
@@ -4529,14 +4540,14 @@
       // the two mats as they lie on the table: this player's nearest, the other player's beyond it (turned to face
       // them when two people sit at one device)
       view.innerHTML = ''; view.classList.toggle('one', !live || N > 2);
-      if (live && N === 2) view.appendChild(mat(matOf(1 - cur), 'v1', 'top' + (matTurned() ? ' turn' : '')));
-      view.appendChild(mat(on || g, 'v0', 'bot'));
+      if (live && N === 2) view.appendChild(mat(matOf(1 - cur), 'v1', 'top' + (matTurned() ? ' turn' : ''), !matPick(1 - cur)));
+      view.appendChild(mat(on || g, 'v0', 'bot', !on));
       say.textContent = name + ' mat lies under ' + (two ? name : 'your') + ' Gate and Outpost, ' + (N > 2 ? 'and every other player\'s mat lies under their own Gate and Outpost round the table.' : 'and meets ' + other + ' mat under the Crossroads.');
       grid.innerHTML = '';
-      const sw = (isOn, shown, slot, title, sub, face, fn) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (isOn ? ' on' : ''), 'aria-pressed': String(isOn), 'aria-label': title + '. ' + sub, onclick: fn }, [
-        el('span', { class: 'mt-m' }, [mat(shown, slot, ''), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
+      const sw = (isOn, shown, slot, title, sub, face, fn, quiet) => grid.appendChild(el('button', { type: 'button', class: 'mt-sw' + (isOn ? ' on' : ''), 'aria-pressed': String(isOn), 'aria-label': title + '. ' + sub, onclick: fn }, [
+        el('span', { class: 'mt-m' }, [mat(shown, slot, '', quiet), face ? el('span', { class: 'mt-g', style: { '--f': FAC[info(face).f].c } }, [artImg(face, true)]) : null]),
         el('b', { text: title }), el('small', { text: sub })]));
-      sw(!on, g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g, () => put(''));
+      sw(!on, g, 'sg', two ? 'The mat of ' + name + ' Guide' : 'Your Guide\'s mat', 'This mat changes with the Guide ' + (two ? pname(cur) + ' plays' : 'you play') + '.', g, () => put(''), true);
       Object.keys(MATS).filter(id => TX.GUIDES[id] || !TXG[id] || id === on).forEach(id => sw(id === on, id, 's', MATS[id].n, TX.GUIDES[id] ? Kit.poss(TX.GUIDES[id].n) + ' mat' : 'The old map of the world', null, () => put(id)));
       if (MK) sw(!!art, art || sample(g), 'sa', 'A card\'s picture', art ? 'This mat shows the picture from the ' + info(art.c).n + ' card.' : (two ? pname(cur) + ' chooses' : 'You choose') + ' a card and place its picture anywhere on the mat.', null,
         () => { Kit.sfx('tap'); Kit.haptic('light'); if (art) placeIt(art); else choose(); });
@@ -4545,8 +4556,8 @@
     paint();
   }
   Kit.init({
-    id: KEY, color: '#d9b45a', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
-    theme: { felt: ['#22305a', '#141d3a', '#0b1124'], wood: ['#4a3826', '#261b11'], back: ['#10131c', '#b8862d'] },
+    id: KEY, color: '#d39b62', mark: false, rules: RULES, guide: () => { if (window.AnoriaGuide) window.AnoriaGuide.open(); else rulesScreen(); },
+    theme: { felt: ['#1b1a19', '#151413', '#121211'], wood: ['#242321', '#1b1a19'], back: ['#171615', '#8f5f33'] },
     onNew: () => { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } if (G && G.demo) demo.end(); else showSetup(); }, undo: undo,   // (NET hook)
     menu: (window.TurnNet ? TurnNet.menu() : []).concat([   // (NET hook: Play online, Leave the online game)
       { icon: 'book', label: 'Library', sub: 'Every card, and the ones you have', onClick: () => tool('library') },
@@ -4654,7 +4665,7 @@
     return { el: layer, head: head, title: title, tools: tools, body: body, close: close };
   }
   // what the collection's screens (library.js, packs.js, decks.js) share with the table
-  window.AnoriaUI = { line: () => !!(ui.lay && ui.lay.ln), homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
+  window.AnoriaUI = { logo: logo, line: () => !!(ui.lay && ui.lay.ln), homeFoot: homeFoot, DW: DW, DSHORT: DSHORT, lineScene: lineScene, lineage: lineage, app: app, el: el, esc: esc, C: C, E: E, TX: TX, CARDS: C.CARDS, Coll: Coll, FAC: FAC, REG: REG, PLAN: PLAN, DECKS: DECKS, PCOL: PCOL, MARK: MARK, LAUREL: LAUREL, SVG: SVG,
     cardEl: cardEl, artImg: artImg, mono: mono, noPic: noPic, warm: warm, artReady: artReady, preload: preload, info: info, boldKeys: boldKeys, openView: openView, closeView: closeView, browse: browse, makeFlow: makeFlow, deckSheet: deckSheet, deckFacs: deckFacs, listOf: listOf,
     showSetup: showSetup, matFill: matFill, MATS: MATS, inGame: () => !!(G && S && !G.over && !G.demo), screen: screen, demo: demo, resume: resume, readyDeck: readyDeck, hubRefresh: () => { const h = document.querySelector('.an-hub'); if (h) h.parentNode.replaceChild(hubRow(), h); } };
   // NET hook: what the online table (games/anoria/net.js) uses of this one. It runs a move's bookkeeping (tally, the turn

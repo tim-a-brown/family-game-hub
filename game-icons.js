@@ -110,8 +110,14 @@ var GameIcon = (function () {
     freecell: function (c) { return rect(2, 3, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"') + rect(13, 3, 9, 8, 2, c) + rect(2, 13, 9, 8, 2, c) + rect(13, 13, 9, 8, 2, 'none', ' stroke="' + c + '" stroke-width="2"'); },
     pyramid: function (c) { return rect(9, 2, 6, 6, 1.2, c) + rect(5.5, 9, 6, 6, 1.2, c) + rect(12.5, 9, 6, 6, 1.2, R) + rect(2, 16, 6, 6, 1.2, R) + rect(9, 16, 6, 6, 1.2, c) + rect(16, 16, 6, 6, 1.2, c); },
     pokersquares: function (c) { var s = ''; for (var i = 0; i < 9; i++) s += rect(2 + (i % 3) * 7, 2 + Math.floor(i / 3) * 7, 6, 6, 1.4, i % 2 ? R : c); return s; },
-    anoria: function () {   // a gilded A with a ring through it (the chronosphere)
-      return line('M5 21 12 3l7 18', '#c9972e', 2.8) + '<ellipse cx="12" cy="14" rx="9.2" ry="3.4" fill="none" stroke="' + K + '" stroke-width="1.7" transform="rotate(-14 12 14)"/>' + line('M3.1 15.6c2.4 2 9 1.6 13.6-.4', '#f1cf6b', 1.7) + circ(12, 13.6, 1.5, '#f1cf6b');
+    anoria: function () {   // Arvela's mark, drawn: the gilt A inside its ring, the armillary sphere where the A's bar would be
+      var g = '#b07a16', d = '#6e4a0e';
+      return path('M4.4 16.6A8.6 8.6 0 1 1 19.6 16.6', 'none', ' stroke="' + d + '" stroke-width="1.6" stroke-linecap="round"') +   // the ring, open under the A
+        path('M12 .9l1.1 1.9-1.1 1-1.1-1z', g) + path('M2 11.4l1.9-.9.9 .9-.9.9z', g) + path('M22 11.4l-1.9-.9-.9.9.9.9z', g) +   // its finials, top and either side
+        line('M5.1 21.4 12 3.6l6.9 17.8', g, 2.9) + line('M3.6 21.5h3.2M17.2 21.5h3.2', d, 1.2) +   // the A on its two feet
+        circ(12, 14.6, 3.3, '#fff', ' stroke="' + d + '" stroke-width="1.3"') +   // the sphere
+        '<ellipse cx="12" cy="14.6" rx="3.1" ry="1.1" fill="none" stroke="' + g + '" stroke-width=".8" transform="rotate(-24 12 14.6)"/>' +
+        '<ellipse cx="12" cy="14.6" rx="1.2" ry="3.1" fill="none" stroke="' + g + '" stroke-width=".8" transform="rotate(-24 12 14.6)"/>' + circ(12, 14.6, .9, d);
     },
     lorcana: function () { return path('M12 1.5c.8 5.7 3.8 8.7 9.5 9.5-5.7.8-8.7 3.8-9.5 9.5-.8-5.7-3.8-8.7-9.5-9.5 5.7-.8 8.7-3.8 9.5-9.5z', P) + path('M19.5 15.5c.3 2 1.2 3 3 3.2-1.8.3-2.7 1.2-3 3.2-.3-2-1.2-2.9-3-3.2 1.8-.2 2.7-1.2 3-3.2z', Y); },
 

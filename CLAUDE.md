@@ -491,7 +491,7 @@ Underlying principles for everything:
 ## Arvela (the card game; its files, code and storage keys say anoria)
 
 - **The game is called Arvela** (Tim, 2026-11-14: "rename this game 'Arvela'"; it was Anoria). The name comes from Arbela, today's Erbil, one of the oldest cities lived in without a break, said the later Greek way (Tim: "arbela was the main inspiration"); Archimedes' arbelos sounds the same. Every word a player reads says
-  Arvela, the country of memory in its story too; the logo's wordmark says ARVELA. The files (`games/anoria.html`,
+  Arvela, the country of memory in its story too; the name beside the logo's mark says ARVELA. The files (`games/anoria.html`,
   `games/anoria/`), the catalog id `anoria`, the code's names (`AnoriaUI`, `AnoriaColl` and the rest) and every storage
   key (`anoria_*`) keep the old name, so saved games, collections and links carry on. The notes below still say
   Anoria where they mean the game's code.
@@ -1040,14 +1040,52 @@ Underlying principles for everything:
   in play. A card name tapped in the log opens in the same panel with the way back to the log. Turning the iPad upright
   closes it; a phone and an upright iPad keep the sheets. While the panel is open the dock lays out as an upright
   iPad's (the caption and the button over a hand the table's full width), so the hand keeps its names.
+- **Gallery stone is Arvela's look** (Tim, 2026-11-15: "we're locking in gallery stone as THE winning arvela look"; chosen
+  from three rounds of looks laid over the game). A contemporary sculpture gallery after hours: honed charcoal stone, flat
+  and matte, no veins and no textures; bone-white words (`--g-bone`), labels in dust (`--g-dust`); and bronze, the one
+  warm light (`--g-br`, lit `--g-br-hi`, deep `--g-br-lo`), only for what is yours or happening now: the main button,
+  your turn, your score, the chosen thing, and the first seat's color (`--pc0`, `PCOL[0]` in ui.js). The tokens are at
+  the top of ui.css (`--g-*`); the old names (`--an-gilt`, `--an-parch`, `--an-navy` and the rest) now hold Gallery
+  stone's values. The page is always Gallery stone, whatever the app's theme. The table is a honed slab with one joint
+  line round it; the players' bars are raised slabs, whose turn it is a 2px line of their color along the foot; the round
+  track a hairline rule of figures with the round now on a bronze tab; a card being read has its notes as a wall label.
+  A card's face keeps its own print; only its border is dark stone and its frame line plain bronze.
+  **Arvela's logo keeps its own gilt** (Tim: "keep the arvela A logo with armillary/gyroscope"): the mark alone, cut from
+  its navy square (`ui/logo-mark.webp`, made from `ui/logo.webp`), with the name set beside it or under it as live text
+  in the titling capitals, evenly tracked (Tim, the same day: "check the spacing on the 'ARVELA' word mark"; the letters
+  baked into the old picture were unevenly spaced). `logo()` in ui.js draws the lockup (`.an-logo`): the sealed pack,
+  the Guide chooser's splash, the story's first scene. The setup's head is the same lockup side by side ("New games use
+  the logo at top only — add the text ... next to the logo"), drawn by ui.css over the kit's hero, small enough that the
+  setup still fits upright on a phone and on an iPad (`k-snug` makes it smaller still). The results card has the mark
+  small on a joint line between its head and the race; the chooser's head, the ghost of an empty pack and the base
+  set's ring show the mark alone. The home screen's tile is the specialty base with the mark drawn on it
+  (`game-icons.js`: the A, its ring and finials, the sphere where the A's bar would be).
+  **Play mats**: the Guide's own mat, the default and always the computer's, lies under the gallery's low light, drawn
+  toward gray with a soft vignette (`data-quiet`, `matQuiet` in ui.js); a mat a player chose in Play mats (another
+  Guide's, the chart, or a picture mat with its own cloth and color) is shown as they made it, in pass and play too
+  (Tim, the same day: "i like having muted mats by default, but allow players' own mat designs and colors to be used").
+  **The pack** is a slab of honed charcoal with a lit top edge, a ground lower face that shows its thickness and a soft
+  shadow on the floor; across its head a band of polished bronze (`.pk-bronze`, the seal and where it tears), the
+  lockup in the middle, and at its foot under one joint line the pack's name and its count in Jost, the pack's own
+  printed face (Tim: the pack's words needed "a better sans serif font so it looks less like the default font"). Torn,
+  flakes of bronze fly off the band (`GOLD` in packs.js), the mouth stays lit and light stands up out of it; the pack does
+  not slide away but glides (smaller where room is short) to where the cards will be, the cards rise out of its mouth one
+  behind the other, each half clear of the pack before it swings across to the strip, and the pack sinks away under the
+  first card as it turns (`aim()` and `deal()` in packs.js). The cards come up into a pool of light; when a card new to
+  you lands the light comes up on it and the room round it falls dark for a moment (`.lit`, set in `land()`); New is a
+  small bronze pill. The tally is two figures set large and light, new cards in bronze, new finishes in bone.
+  A new screen on Arvela's page uses the tokens, Geist in sentence case, stone panels with one hairline (`--g-line`),
+  and bronze only for the one thing that is yours or now. Anything the hub's Night glass draws over the kit's pieces
+  (`:root:not(.ng-x)` rules in kit.css) is met with a rule of the same weight in Arvela's stylesheets.
 - **The results card is Arvela's own** (the audit of 2026-11-13, #7.3; redrawn 2026-11-14 when Tim called the old one
   "wildly inelegant and thoughtless in design"): `showWin`/`showWinN`, `winLayout`, `racePic`, `packMini` in ui.js, CSS
   under `.k-win .card.aw` in ui.css, laid out from Kit.win's `show` slot so the card shown again after Look at the table
-  is the same. The winner's Guide in a gilt ring beside the title with "Leonardo da Vinci was Tim's Guide" under it; a
-  ruled star; the race for Renown (a line for each player from `G.tale.tot`, the Renown that wins ruled across); how it
-  ended as one italic sentence; the standings as a ledger with Seals (red wax, broken ones gray and split) and Renown
-  columns, the winner's row lit. Then the gilt plate (Play again), Kit.win's other buttons as one panel of rows with a
-  gilt icon and a chevron (Open your pack shows the real small sealed pack), and Back to games. Upright on a phone the
+  is the same. A stone plaque: the winner's Guide in a bronze ring beside the title (the winner in the titling capitals,
+  the one other place on the page that is not sentence case) with "Leonardo da Vinci was Tim's Guide" under it; Arvela's
+  mark small on a joint line; the race for Renown (a line for each player from `G.tale.tot`, the Renown that wins ruled across); how it
+  ended as one sentence; the standings as a ledger with Seals (red wax, broken ones gray and split) and Renown columns,
+  the winner's row with a bronze rule at its left. Then the field of bronze (Play again), Kit.win's other buttons as one
+  panel of rows with an icon and a chevron (Open your pack shows the real small sealed pack), and Back to games. Upright on a phone the
   buttons are a dock that never leaves the card (the compact layout covers upright screens up to 900 tall, so an
   iPhone's 874 needs no scroll, and at Safari's shorter heights the game above the dock scrolls); from 700 wide it is two columns; a
   phone on its side has three. Kit.win's buttons and their order are unchanged; kit.js is unchanged.
@@ -1065,20 +1103,20 @@ Underlying principles for everything:
   the game's menu (`anoria_step` '0'; the menu leaves it out of a game of people only); then the computer plays through
   and the fast-forward button is there as before.
   Lessons and the test hook's `turbo` never wait. A new kind of move gets its sentence in `moveSaid`.
-- **Buttons**: every `.btn` on Arvela's page takes one skin from the end of `ui.css`: the main action a smooth gilt
-  plate lettered in the text face's small capitals, with one engraved rule inside its edge and a line of light that
-  crosses it once (`.shine`); the rest night enamel with a gilt hairline, the book face and a gilt icon; the way out
-  (`.btn-ghost`) spaced small capitals alone. No textures, no screw heads. Corners 12px (10px small). Pressed, a button
-  sinks 1px; disabled, it fades and loses its color. A screen sets size and layout only.
-- **Type** (Tim, 2026-11-14: "even the fonts look cheap -- not what i'd expect from an expert artist designer"):
-  EB Garamond for every word, its own small capitals for labels, Cormorant for titles, scores and initials
-  (`fonts/arvela-*.woff2`, subset, limited weights so the kit's 800 and 900 come out SemiBold, lining figures, tabular
-  in score columns). The kit's pieces on this page (setup, sheets, menus, handoff) take them through `--font` and
-  `--display`, with `font-size-adjust` keeping their small letters as tall as before; the game bar keeps the hub's faces.
-  The page is always Arvela's midnight navy and gilt, whatever the app's theme. **Card faces keep IM Fell and Crimson
-  Pro** (Garamond pushed 24 stories to a fifth line), and Alfa Slab stays on the Might, Spark and Renown marks. New
-  words go through `--fell`, `--fellsc` or `--disp`. An initial in an avatar is centered by its ink (Cormorant, the
-  kit's offset removed: a T within half a pixel of the disc's middle).
+- **Buttons**: every `.btn` on Arvela's page takes one skin from the Buttons section of `ui.css`, and they are flat:
+  the main action a plain field of bronze with dark words in Geist; the rest raised stone with one hairline, bone words
+  and a stone-gray icon; the way out (`.btn-ghost`) words alone, in dust. No gradients, no lips, no engraved rules, no
+  textures. Corners 14px. Pressed, a button sinks 1px and darkens; disabled, it fades, and a main button goes to plain
+  stone. A screen sets size and layout only.
+- **Type** (Gallery stone, 2026-11-15): Geist for every word around the game, labels included, in sentence case
+  (`fonts/arvela-geist.woff2`, the variable font held to Latin); Castoro Titling, an inscriptional capital, only for the
+  name beside the mark and the winner on the results card (`arvela-titling.woff2`, `--titling`); Jost for what is
+  printed on a pack, its name and its count (`arvela-jost.woff2`, `--pack`). anoria.html preloads all three. The kit's
+  pieces on this page (setup, sheets, menus, handoff) take Geist through `--font` and `--display`; the game bar keeps
+  the hub's faces. **Card faces keep IM Fell and Crimson Pro**, and so do a Domain's tile and its home plate (they are
+  printed: `.ac`, `.pl-tile`, `.dm-home` set `--fell` back), and Alfa Slab stays on the Might, Spark and Renown marks.
+  New words go through `--fell`, `--fellsc` or `--disp`, which are all Geist around the game. The history view
+  (`hist/anoria.js`) is in the same faces and colors.
 - **How to play** is `games/anoria/guide.js` + `guide.css` (`AnoriaGuide`), opened by the bar's ? and the menu (`Kit.init`'s
   `guide` option). The rules on one page are `rulesScreen()` in ui.js (audit 6.4, 2026-11-14), in the shared frame
   `AnoriaUI.screen()`, set like the rule book in a game's box: the story and the goal first, then a button for each

@@ -54,7 +54,7 @@
   }
 
   // a sealed pack, small: the crimped gilt ends, the foil, the frame and the logo (packs.css draws them)
-  const packFace = () => el('span', { class: 'rw-pk', 'aria-hidden': 'true' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-crimp t' }), el('i', { class: 'pk-crimp b' }), el('i', { class: 'pk-frame' }), el('img', { class: 'pk-logo', src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })])]);
+  const packFace = () => el('span', { class: 'rw-pk', 'aria-hidden': 'true' }, [el('span', { class: 'pk-art' }, [el('i', { class: 'pk-bronze' }), U().logo('pk-logo')])]);
 
   // ═══ The results card: one panel ═══════════════════════════════════════════════════════════════════════════
   // R is what Coll.gameOver gave. The panel is a single box: the sphere with the signs this game lit beside what lit
@@ -108,7 +108,7 @@
     const big = sphere({ lit: sp.lit, cls: 'big' });
     big.appendChild(el('div', { class: 'rw-mid' }, [el('b', { text: String(sp.lit) }), el('span', { text: 'of ' + sp.of })]));
     L.appendChild(big);
-    if (Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary shine rw-pick', html: A.MARK.guide + '<span>Choose your new Guide</span>',
+    if (Coll.pending().n && window.AnoriaPacks && window.AnoriaPacks.pending) L.appendChild(el('button', { type: 'button', class: 'btn btn-primary rw-pick', html: A.MARK.guide + '<span>Choose your new Guide</span>',
       onclick: () => { tap(); sc.close(); window.AnoriaPacks.pending(() => path(done)); } }));
     if (sp.next) {
       const tr = el('div', { class: 'rw-turns', role: 'img', 'aria-label': 'A pack each time the sphere comes round, and a new Guide in ' + sp.toGuide + (sp.toGuide === 1 ? ' turn' : ' turns') });
@@ -140,7 +140,7 @@
     const b = el('button', { type: 'button', class: 'rw-ring' + (x.joined ? '' : ' locked') + (base ? ' base' : '') + (x.have === x.of ? ' full' : ''), 'aria-label': (base ? 'The base set' : Kit.poss(NAME(x.id)) + ' set') + ': ' + x.have + ' of ' + x.of + ' cards' + (x.joined ? '' : ', not with you yet'),
       onclick: () => { tap(); const keys = Coll.setCards(x.id); U().browse((base ? [] : [x.id]).concat(keys.filter(k => Coll.owns(k))), { title: base ? 'The base set' : Kit.poss(NAME(x.id)) + ' set', sub: x.have + ' of ' + x.of + ' cards are yours' }); } });
     const r0 = el('span', { class: 'rw-r' }); r0.innerHTML = '<svg viewBox="0 0 76 76" aria-hidden="true"><circle cx="38" cy="38" r="' + r + '" class="tr"/><circle cx="38" cy="38" r="' + r + '" class="fl" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '"/></svg>';
-    const fc = el('span', { class: 'rw-rf' }); if (base) fc.appendChild(el('img', { src: 'anoria/ui/logo.webp', alt: '', draggable: 'false' })); else { const im = U().artImg(x.id, true); if (im) fc.appendChild(im); }
+    const fc = el('span', { class: 'rw-rf' }); if (base) fc.appendChild(el('img', { src: 'anoria/ui/logo-mark.webp', alt: '', draggable: 'false' })); else { const im = U().artImg(x.id, true); if (im) fc.appendChild(im); }
     r0.appendChild(fc); if (!x.joined) r0.appendChild(el('span', { class: 'rw-lock', html: Kit.icon('lock') }));
     b.appendChild(r0); b.appendChild(el('b', { class: 'rw-rn', text: base ? 'The base set' : short(x.id) })); b.appendChild(el('span', { class: 'rw-rc', text: x.have + ' of ' + x.of }));
     return b;

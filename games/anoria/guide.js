@@ -161,7 +161,7 @@
   const gateScene = broken => [el('div', { class: 'sc-gate' + (broken ? ' shut' : '') }, [el('small', { text: 'Your Gate' }), el('span', { class: 'sc-pic wide' }, [UI().artImg('globe', true)]),
     el('div', { class: 'sc-seals', role: 'img', 'aria-label': (3 - broken) + ' of 3 Seals whole' }, [0, 1, 2].map(i => el('span', { class: 'seal' + (i < broken ? ' broken' : ''), style: { '--i': i } })))])];
   const SCENES = {
-    anoria: () => [el('img', { class: 'sc-logo', src: 'anoria/ui/logo.webp', alt: 'Arvela', draggable: 'false' })],
+    anoria: () => [UI().logo('sc-logo')],
     ages: () => [el('div', { class: 'sc-grid' }, AGES.map((a, i) => tile(a[0], a[1], i)))],
     wonders: () => [el('div', { class: 'sc-grid wide' }, WONDERS.map((k, i) => tile(k, null, i, 'wide')))],
     sides: () => [el('div', { class: 'sc-sides' }, [side('Your Guide', 'leonardo', ['copernicus', 'hatshepsut', 'zhenghe'], 0), el('i', { class: 'sc-vs' }), side('Their Guide', 'suntzu', ['leonidas', 'arminius', 'genghis'], 1)])],
