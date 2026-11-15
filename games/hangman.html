@@ -172,21 +172,42 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   .key{max-width:58px;height:60px;font-size:1.3rem;border-radius:11px;}
 }
 @media (min-width:700px) and (min-height:900px){
-  .pic svg{max-height:520px;}
-  .key{height:66px;}
+  .pic svg{max-height:440px;}
+  .key{height:62px;}
 }
-/* Tablet / desktop landscape: slate on the left, keyboard on the right */
-@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
-  .hm:has(> .frame){max-width:1080px;height:calc(100dvh - var(--bar));min-height:0;display:grid;
-    grid-template-columns:minmax(0,1fr) 500px;grid-template-rows:auto auto 1fr auto auto auto 1fr;column-gap:26px;}
-  .hm:has(> .frame) > *{grid-column:1 / -1;}
-  .hm:has(> .frame) > .scores{grid-row:1;}
-  .hm:has(> .frame) > .hud{grid-row:2;}
-  .hm:has(> .frame) > .frame{grid-column:1;grid-row:3 / -1;}
-  .hm:has(> .frame) > .acts{grid-column:2;grid-row:4;margin-top:0;}
-  .hm:has(> .frame) > .kb{grid-column:2;grid-row:5;}
-  .hm:has(> .frame) > .next{grid-column:2;grid-row:4 / 7;align-self:center;}
+/* Sideways (phone, tablet, desktop): the slate on the left as tall as the screen; the score, the clue and solve
+   buttons and the keys on the right, where the taps go */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px){
+  .hm:has(> .frame){--kc:clamp(300px,48vw,600px);max-width:1180px;height:calc(100dvh - var(--bar));min-height:0;display:grid;box-sizing:border-box;
+    grid-template-columns:minmax(0,1fr) var(--kc);grid-template-rows:1fr auto auto auto auto 1fr;column-gap:clamp(16px,2.6vw,26px);
+    padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 10px), 18px);}
+  .hm:has(> .frame) > *{grid-column:2;}
+  .hm:has(> .frame) > .scores{grid-row:2;}
+  .hm:has(> .frame) > .hud{grid-row:3;margin-bottom:14px;}
+  .hm:has(> .frame) > .frame{grid-column:1;grid-row:1 / -1;}
+  .hm:has(> .frame) > .acts{grid-row:4;margin-top:0;}
+  .hm:has(> .frame) > .kb{grid-row:5;padding-bottom:0;}
+  .hm:has(> .frame) > .next{grid-row:4 / 6;align-self:center;}
   .pic svg{max-height:420px;}
+  .hm:has(> .frame) .key{max-width:none;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-height:600px){
+  .hm:has(> .frame){--kc:clamp(300px,56vw,640px);}
+  .hm:has(> .frame) .key{height:clamp(50px,8.6vh,70px);font-size:1.45rem;}
+  .hm:has(> .frame) .kb{gap:9px;}
+  .hm:has(> .frame) .acts .btn{min-height:50px;font-size:1.08rem;}
+  .hm:has(> .frame) .pill{height:38px;font-size:.98rem;padding:0 14px;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:520px){
+  .hm:has(> .frame) .slate{padding:12px 16px 14px;}
+  .hm:has(> .frame) .frame{padding:7px;}
+  .pic{min-height:80px;}
+  .key{height:40px;}
+  .kb{gap:5px;}
+  .acts{margin:6px 0;}
+  .acts .btn{min-height:38px;}
+  .topline{font-size:1rem;}
+  .banner{font-size:1.9rem;}
 }
 .next{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
 /* Pass-to-guesser and secret word screens */
@@ -830,12 +851,29 @@ body.lastlife::before{opacity:.5;animation:redpulse .64s ease-out infinite;}
   // Letter size from the room available; tablets get bigger chalk letters.
   function sizeWord(wrap) {
     var longest = +wrap.dataset.longest || 6, big = window.innerWidth >= 700 && window.innerHeight >= 700;
-    var side = window.innerWidth >= 1000 && window.innerHeight >= 600 && window.innerWidth > window.innerHeight ? 526 : 0; // keyboard column
-    var avail = Math.min(window.innerWidth - side, big ? 720 : 560) - 84;
+    var sideways = matchMedia('(orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px)').matches;
+    var tall = window.innerHeight >= 600, side = sideways ? Math.min(tall ? 640 : 600, Math.max(300, window.innerWidth * (tall ? 0.56 : 0.48))) + 26 + 24 : 0; // the keyboard column
+    var avail = Math.min(window.innerWidth - side, sideways ? 760 : big ? 720 : 560) - 84;
+    if (sideways && window.innerHeight <= 520) big = false;
     var lw = Math.max(16, Math.min(big ? 46 : 32, Math.floor((avail - (longest - 1) * 5) / longest)));
     wrap.style.setProperty('--lw', lw + 'px');
   }
   window.addEventListener('resize', function () { var w = app && app.querySelector('.word'); if (w) sizeWord(w); });
+  // Turning the device: the slate, the score, the buttons and the keys glide from where they were to the new layout
+  (function (sel) {
+    var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+        var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    setInterval(function () { if (!document.hidden) snap(); }, 400);
+  })('.hm > .scores, .hm > .hud, .hm > .frame, .hm > .acts, .hm > .kb, .hm > .next');
   function wordEl() {
     var W = S.W, wrap = el('div', { class: 'word' }), words = W.word.split(' ');
     wrap.dataset.longest = Math.max.apply(null, words.map(function (w) { return w.length; }).concat([6]));
