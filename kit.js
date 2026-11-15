@@ -2522,7 +2522,7 @@
   // and how well. It works on a plain description of the table, so the home screen can show it for a game's setup
   // in its frame (kitSheet 'players'):
   //   M = {label, lo, hi, count, names[], robots{seat: true}, levels{seat: value}, bots[] (robot names, seat - 1),
-  //        cpu{count: 'mix' | 'seats' | true | false}, teams{count: [[seat, ...], ...] | null}, merged, together (the robot switches move as one),
+  //        cpu{count: 'mix' | 'seats' | true | false}, teams{count: [[seat, ...], ...] | null}, merged, together (a robot seated anywhere seats robots in every other seat too),
   //        lv: {label, def, ch{count: [[value, text, title]]}} | null}
   // o.onChange(M) runs after every change.
   function seatIsBot(M, i) { var c = M.cpu[M.count]; return c === 'seats' ? i > 0 : c === 'mix' ? !!M.robots[i] : !!(c && i > 0); }
@@ -2538,12 +2538,12 @@
     return b;
   }
   // The sheet is a table and a bench. Up top, every seat as a token (its person, a robot, or an open seat) with
-  // one seat chosen; underneath, what can go in that seat: the Computer switch with its skill, and everyone you play
+  // one seat chosen; underneath, what can go in that seat: a robot at each skill (the dice beside them rename them all), and everyone you play
   // with as big chips. A tap seats someone and moves on to the next open seat; a tap on someone already at the
   // table swaps the two seats; a tap on the person sitting there stands them up.
   function playersSheet(M, o) {
     o = o || {};
-    var box = el('div', { class: 'k-ps' }), sel = 0, pop = {}, sh = null, skLast = -1, alive = true;
+    var box = el('div', { class: 'k-ps' }), sel = 0, pop = {}, roll = {}, rolled = false, sh = null, skLast = -1, alive = true, px = null;
     function changed() { if (o.onChange) o.onChange(M); }
     function cpuNow() { return M.cpu[M.count]; }
     function person(i) { return String(M.names[i] || '').trim(); }
@@ -2605,48 +2605,64 @@
       var cpu = cpuNow(), bot = seatIsBot(M, i), c = playerColor(i), nm = bot ? (M.bots[i - 1] || 'Computer') : person(i);
       var av = bot ? botFace(M.lv ? levelText(i) : '', c) : nm ? avMarked(nm, c) : el('span', { class: 'avatar', style: { '--c': c, color: inkFor(c) }, html: String(i + 1) });
       var shown = nm || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1));
-      return el('button', { type: 'button', class: 'k-st' + (i === sel ? ' on' : '') + (bot ? ' cpu' : '') + (!bot && !nm ? ' open' : '') + (pop[i] ? ' pop' : ''), 'aria-pressed': String(i === sel),
+      return el('button', { type: 'button', class: 'k-st' + (i === sel ? ' on' : '') + (bot ? ' cpu' : '') + (!bot && !nm ? ' open' : '') + (pop[i] ? ' pop' : '') + (roll[i] ? ' roll' : ''), 'aria-pressed': String(i === sel),
+        style: roll[i] ? { '--rd': (roll[i] - 1) * 70 + 'ms' } : null,
         'aria-label': 'Seat ' + (i + 1) + ': ' + (bot ? 'computer, ' : '') + shown, onclick: function () { if (sel === i) return; sel = i; sfx('tap'); haptic('light'); paint(); } },
-        [av, el('b', { text: shown }), bot && M.lv && cpu === 'mix' ? el('small', { text: levelText(i) }) : null]);
+        [av, el('b', { text: shown }), bot && M.lv ? el('small', { text: levelText(i) }) : null]);
     }
-    // the computer in the chosen seat: a switch, and once it's on, its name and how well it plays
-    function robotBlock(i, next) {
-      var cpu = next ? M.cpu[M.count + 1] : cpuNow(), bot = !next && seatIsBot(M, i), fixed = cpu !== 'mix', kids = [];
-      var row = [bot ? botFace(M.lv ? levelText(i) : '', playerColor(i)) : el('span', { class: 'avatar', style: { '--c': 'var(--surface-3)' }, html: icon('bot') }),
-        el('span', { class: 'k-pb-n' }, [el('b', { text: 'Computer' }), bot ? el('small', { text: M.bots[i - 1] || '' }) : null])];
-      if (fixed) kids.push(el('div', { class: 'k-pb-row' }, row));
-      else kids.push(el('button', { type: 'button', class: 'k-pb-row', role: 'switch', 'aria-checked': String(bot), 'aria-label': 'Computer plays seat ' + (i + 1), onclick: function () {
-        if (next) M.count++;   // (the next seat: a robot joins)
-        setBot(i, !bot); sfx(bot ? 'tap' : 'pop'); haptic('light'); paint(); changed();
-      } }, row.concat([el('span', { class: 'k-sw' })])));
-      if (bot) {
-        var more = [];
-        if (M.lv && cpu === 'mix') {
-          var cur = String(seatLevel(M, i)), others = []; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j) && j !== i) others.push(j);
-          var seg = el('div', { class: 'seg k-pb-seg', role: 'radiogroup', 'aria-label': M.lv.label || 'Computer skill' }), help = '';
-          (M.lv.ch[M.count] || []).forEach(function (c) {
-            var on = String(c[0]) === cur; if (on) help = c[2] || '';
-            seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', role: 'radio', 'aria-checked': String(on), text: c[1], onclick: function () {
-              if (on) return;
-              M.levels[i] = c[0]; skLast = i; pop[i] = 1; if (!others.length) M.lv.def = c[0];   // (and the default for robots seated next)
-              sfx('tap'); haptic('light'); paint(); changed();
-            } }));
-          });
-          more.push(seg);
-          if (help) more.push(el('p', { class: 'k-pb-help', text: help }));
-          // (just changed, while the other robots play at a different skill: one tap sets them all the same)
-          if (skLast === i && others.some(function (j) { return String(seatLevel(M, j)) !== cur; })) more.push(el('button', { type: 'button', class: 'btn btn-soft btn-sm k-pb-all', text: others.length === 1 ? 'Same for both robots' : 'Same for all ' + (others.length + 1) + ' robots', onclick: function () {
-            others.forEach(function (j) { M.levels[j] = seatLevel(M, i); pop[j] = 1; }); M.lv.def = seatLevel(M, i); skLast = -1;
-            sfx('pop'); haptic('light'); paint(); changed();
-          } }));
-        }
-        more.push(el('button', { type: 'button', class: 'k-pb-re', html: icon('shuffle') + '<span>New name</span>', onclick: function () {
-          M.bots[i - 1] = cpuNames(1, M.bots, M.count >= 4 ? 8 : 0)[0] || M.bots[i - 1]; pop[i] = 1; sfx('pop'); haptic('light'); paint(); changed();
-        } }));
-        kids.push(el('div', { class: 'k-pb-more' }, more));
-      }
-      return el('div', { class: 'k-pb' + (bot ? ' on' : '') }, kids);
+    // The computer for the chosen seat (Tim, 2026-11-15: "having a toggle here is kind of a weird UI decision. instead
+    // of that, just have easy medium and hard computer players selectable with a randomizer for the names on the
+    // right"): one row of the robots themselves, each skill's face in this seat's color with its word under it, and
+    // the dice at the right. A tap on a face seats that robot here and moves on to the next open seat, as a person's
+    // chip does; the face of the robot already sitting here is lit, and a tap on another changes only its skill. The
+    // dice give every robot at the table a new name (each one different, none it had before). A game with no skill
+    // choice has one face, Computer.
+    function robotRow(i, next) {
+      var cpu = next ? M.cpu[M.count + 1] : cpuNow(), bot = !next && seatIsBot(M, i), fixed = cpu !== 'mix', c = playerColor(i);
+      var chs = M.lv ? (M.lv.ch[next ? M.count + 1 : M.count] || []) : [], cur = bot && M.lv ? String(seatLevel(M, i)) : null, help = '';
+      var opts = chs.length ? chs : [[null, 'Computer', '']];
+      var row = el('div', { class: 'k-pk' + (opts.length > 3 ? ' wide' : ''), role: 'group', 'aria-label': 'Computer players' });
+      opts.forEach(function (ch) {
+        var on = bot && (ch[0] == null || String(ch[0]) === cur); if (on) help = ch[2] || '';
+        row.appendChild(el('button', { type: 'button', class: 'k-pk-b' + (on ? ' on' : ''), 'aria-pressed': String(on),
+          'aria-label': (ch[0] == null ? 'Computer' : ch[1] + ' computer') + ' in seat ' + (i + 1), onclick: function () {
+            if (on) return;
+            if (bot) {   // (a robot already sits here: just its skill)
+              if (fixed) { M.lv.def = ch[0]; M.levels = {}; }
+              else { M.levels[i] = ch[0]; skLast = i; if (!othersBots(i).length) M.lv.def = ch[0]; }
+              pop[i] = 1; sfx('tap'); haptic('light'); paint(); changed(); return;
+            }
+            var was = {}; for (var j = 1; j < M.count; j++) was[j] = seatIsBot(M, j);
+            if (next) { M.count++; M.names[i] = ''; }   // (the next seat: a robot joins)
+            setBot(i, true);
+            if (ch[0] != null) {
+              if (!Object.keys(was).some(function (j) { return was[j]; })) M.lv.def = ch[0];
+              for (var q = 1; q < M.count; q++) if (!was[q] && seatIsBot(M, q)) M.levels[q] = ch[0];
+            }
+            sel = nextOpen(i); sfx('pop'); haptic('light'); paint(); changed();
+          } }, [botFace(ch[0] == null ? '' : ch[1], c), el('b', { text: ch[1] })]));
+      });
+      var any = false; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j)) { any = true; break; }
+      var dice = el('button', { type: 'button', class: 'k-pk-b k-pk-re' + (rolled ? ' roll' : ''), 'aria-label': 'New names for the computer players', onclick: function () {
+        var seats = []; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j)) seats.push(j);
+        var fresh = cpuNames(seats.length, M.bots, M.count >= 4 ? 8 : 0);
+        seats.forEach(function (j, k) { if (fresh[k]) { M.bots[j - 1] = fresh[k]; roll[j] = k + 1; } });
+        rolled = true; sfx('roll'); haptic('medium'); paint(); changed();
+      } }, [el('span', { class: 'avatar', html: icon('dice') }), el('b', { text: 'New names' })]);
+      dice.disabled = !any;
+      row.appendChild(el('i', { class: 'k-pk-sep', 'aria-hidden': 'true' }));
+      row.appendChild(dice);
+      var kids = [row];
+      if (help) kids.push(el('p', { class: 'k-pb-help', text: help }));
+      // (just changed, while the other robots play at a different skill: one tap sets them all the same)
+      var others = bot && !fixed ? othersBots(i) : [];
+      if (M.lv && skLast === i && others.some(function (j) { return String(seatLevel(M, j)) !== cur; })) kids.push(el('button', { type: 'button', class: 'btn btn-soft btn-sm k-pb-all', text: others.length === 1 ? 'Same for both robots' : 'Same for all ' + (others.length + 1) + ' robots', onclick: function () {
+        others.forEach(function (j) { M.levels[j] = seatLevel(M, i); pop[j] = 1; }); M.lv.def = seatLevel(M, i); skLast = -1;
+        sfx('pop'); haptic('light'); paint(); changed();
+      } }));
+      return el('div', { class: 'k-pb' }, kids);
     }
+    function othersBots(i) { var out = []; for (var j = 1; j < M.count; j++) if (seatIsBot(M, j) && j !== i) out.push(j); return out; }
     function paint() {
       if (!alive) return;
       norm(); box.innerHTML = '';
@@ -2663,11 +2679,19 @@
       table.classList.toggle('many', M.count >= 5);
       box.appendChild(table);
       // what goes in the chosen seat
-      var pane = el('div', { class: 'k-ps-pane' });
+      // (Tim, 2026-11-15: "more improvement that can be done on associating the player being modified with the action
+      // happening below") everything for the chosen seat stands on one glass panel lit along its top in that seat's
+      // color, with a notch under the chosen token that slides to the next one chosen, and the panel's head is that
+      // seat again, small: who sits there and which seat it is
+      var sc = playerColor(i), pane = el('div', { class: 'k-ps-pane', style: { '--sc': sc } }, [el('i', { class: 'k-ps-notch', 'aria-hidden': 'true' })]);
+      if (px != null) pane.style.setProperty('--px', px + 'px');
+      var hnm = next ? 'New seat' : bot ? (M.bots[i - 1] || 'Computer') : person(i) || (i === 0 && cpu ? 'You' : 'Player ' + (i + 1));
+      var hav = next ? el('span', { class: 'avatar', style: { '--c': sc, color: inkFor(sc) }, html: icon('plus') })
+        : bot ? botFace(M.lv ? levelText(i) : '', sc) : person(i) ? avMarked(person(i), sc) : el('span', { class: 'avatar', style: { '--c': sc, color: inkFor(sc) }, html: String(i + 1) });
       pane.appendChild(el('div', { class: 'k-ps-h' }, [
-        el('span', { class: 'k-ps-seat' }, [el('i', { style: { background: playerColor(i) } }), el('span', { text: 'Seat ' + (i + 1) })]),
+        el('span', { class: 'k-ps-seat' + (roll[i] ? ' roll' : '') }, [hav, el('span', { class: 'k-ps-who' }, [el('b', { text: hnm }), el('small', { text: 'Seat ' + (i + 1) })])]),
         !next && M.count > M.lo && !(i === 0 && cpu) ? el('button', { type: 'button', class: 'k-ps-rm', html: icon('minus') + '<span>Remove seat</span>', onclick: function () { removeSeat(i); } }) : null]));
-      if (i > 0 && cpu) pane.appendChild(robotBlock(i, next));
+      if (i > 0 && cpu) pane.appendChild(robotRow(i, next));
       if (i === 0 || !cpu || cpu === 'mix') {
         var roster = knownNames().slice(), have = {};
         roster.forEach(function (n) { have[avKey(n)] = 1; });
@@ -2695,14 +2719,28 @@
         pane.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block k-ps-edit', html: icon('pencil') + '<span>Edit frequent players</span>', onclick: function () { sfx('tap'); managePlayers(); } }));
       }
       box.appendChild(pane);
-      pop = {};
-      requestAnimationFrame(fitNames);
+      pop = {}; roll = {}; rolled = false;
+      requestAnimationFrame(function () { fitNames(); aim(); });
+    }
+    // the panel's notch stands under the chosen token (it glides there from the last one: --px is a registered
+    // length, so the change transitions)
+    function aim() {
+      if (!alive || !box.isConnected) return;
+      var t = box.querySelector('.k-ps-table .k-st.on'), pane = box.querySelector('.k-ps-pane');
+      if (!t || !pane) return;
+      var a = (t.querySelector('.avatar') || t).getBoundingClientRect(), b = pane.getBoundingClientRect();
+      if (!b.width) return;
+      var x = Math.round(Math.max(26, Math.min(b.width - 26, a.left + a.width / 2 - b.left)));
+      if (x === px && pane.style.getPropertyValue('--px')) return;
+      if (px == null) { pane.classList.add('still'); pane.style.setProperty('--px', x + 'px'); pane.offsetWidth; pane.classList.remove('still'); }
+      else pane.style.setProperty('--px', x + 'px');
+      px = x;
     }
     // A long name eases down a size to stay on its line (measured, so it's right for any name and any screen)
     var fitCtx = null;
     function fitNames() {
       if (!alive || !box.isConnected) return;
-      Array.prototype.forEach.call(box.querySelectorAll('.k-st b, .k-bp b'), function (b) {
+      Array.prototype.forEach.call(box.querySelectorAll('.k-st b, .k-bp b, .k-pk-b b, .k-ps-who b'), function (b) {
         b.style.fontSize = '';
         var word = b.textContent.split(/\s+/).sort(function (x, y) { return y.length - x.length; })[0] || '', cs = getComputedStyle(b), room = b.clientWidth;
         if (word.length < 6 || !room) return;
@@ -2718,10 +2756,13 @@
     if (sel < 0) sel = nextOk() && !seatIsBot(M, M.count - 1) ? M.count : 0;
     paint();
     var onOther = function () { setTimeout(paint, 30); };   // (the frequent players list was edited on top of this sheet)
+    var onSize = function () { requestAnimationFrame(aim); };
     window.addEventListener('kit-sheet-closed', onOther);
-    sh = sheet({ title: M.label || 'Who’s playing?', node: box, actions: [{ label: 'Done', primary: true }], onClose: function () { alive = false; window.removeEventListener('kit-sheet-closed', onOther); if (o.onClose) o.onClose(M); } });
+    window.addEventListener('resize', onSize);
+    sh = sheet({ title: M.label || 'Who’s playing?', node: box, actions: [{ label: 'Done', primary: true }], onClose: function () { alive = false; window.removeEventListener('kit-sheet-closed', onOther); window.removeEventListener('resize', onSize); if (o.onClose) o.onClose(M); } });
     sh.el.classList.add('k-ps-sheet');
-    setTimeout(fitNames, 60);
+    setTimeout(function () { fitNames(); aim(); }, 60);
+    setTimeout(aim, 400);   // (after the sheet has risen)
     return sh;
   }
 

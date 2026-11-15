@@ -255,9 +255,17 @@ Underlying principles for everything:
 - **Same setup, same results card, every game.** Ways to play are declared with `Kit.modes([...])` (`solo`,
   `cpu`, `local`, `online`; a game keeps its own mode ids with `kind`), but **no mode cards are shown** for these:
   the setup shows who's playing on a card (the people who played last; seat 1 starts as the signed-in player), and a
-  tap opens the **players sheet** (`Kit.playersSheet`): the seats as tokens up top with one chosen, and under them what
-  can sit there, the Computer switch with its skill and everyone you play with as chips (a tap seats them and moves
-  to the next open seat; at a full table it adds a seat). A game never draws its own seat list; one that shows something per seat reads
+  tap opens the **players sheet** (`Kit.playersSheet`): the seats as tokens up top with one chosen, and under them, on
+  a glass panel lit along its top in the chosen seat's color with a notch that glides to the chosen token and that seat
+  again small at its head (its name and "Seat 2"), what can sit there: a row of the computer players themselves, each
+  skill's robot face (`botFace`, in the seat's color) with the game's word for the skill under it, the one seated there
+  lit gold, and at the right the dice, New names, which gives every robot at the table a new name (no two alike, none it
+  had), each name turning over in turn (Tim, 2026-11-15: "having a toggle here is kind of a weird UI decision ... just
+  have easy medium and hard computer players selectable with a randomizer for the names on the right"; a game with no
+  skill choice shows one face, Computer; a seat where the game seats no robots has no row); then everyone you play
+  with as chips. A tap on a robot or a chip seats them and moves to the next open seat (at a full table it adds a
+  seat); a tap on another face where a robot already sits changes only its skill; a person's chip or Remove seat takes
+  a robot away. A game never draws its own seat list; one that shows something per seat reads
   `setup.seats()` (Axis & Allies' countries). Who's playing is shown as a **Players card** above the game's options
   (`.k-who`: each seat a token in its seat's color with the name under it; there are 24 seat colors (`--p1` to `--p24` in kit.css, `Kit.color(i)`, Tim 2026-11-14: "a set of 24 colors that you assign to either humans or AI", the most players any game seats), the first eight as they always were and every one at least 8 apart from every other in OKLab, and an avatar's letter is white or dark by its color's contrast (`inkFor`); a robot's token is ringed in its seat's color, the color that player has in the game, as a person's token is that color (Tim, 2026-11-14: "it's helpful if the player color matches the ring around the player, whether it's computer or human"), and shows its skill in the robot's face and a glow just inside the ring, past a thin dark gap: Easy smiles with green eyes inside a green glow, under a green antenna tip, Normal looks on with gold eyes inside a gold glow, under a gold tip, Hard glares with red eyes inside a fiery one, under a short flame rising from behind its head (`botFace`), in even columns, partners on one plate and the sides across "vs" (`whoChips`, Tim 2026-11-14: "looks more organized"); a tap opens the players sheet; where the count can change, a − and + either side of it sit in the card's top right (`countStepper`, Tim 2026-11-15), and change it at once: a seat added is filled as the players sheet fills one, the last seat is the one that leaves; the home sheet's card has the same, sent to the setup in its frame with `kitSheet: 'step'`). On the
   home screen's game sheet the sheet draws that card itself (`.gs-who` in index.html; the framed setup says who is
