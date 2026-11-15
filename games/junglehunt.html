@@ -83,14 +83,27 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
 @media (max-height:740px){ .pad{width:140px;height:140px;} .pad i{width:38px;height:38px;margin:0;} .pad i.u,.pad i.d{margin-left:-19px;} .pad i.l,.pad i.r{margin-top:-19px;}
   .pad .nub{width:50px;height:50px;margin:-25px 0 0 -25px;} .fbtn{width:96px;height:96px;} }
-/* Sideways (phones and tablets): the TV in the middle, the stick under the left thumb, the button under the right */
-@media (orientation:landscape) and (pointer:coarse){
-  html.ar-on #app{max-width:none;position:relative;}
-  .jh-view{gap:4px;}
-  .hud{position:absolute;top:6px;right:calc(var(--safe-r, 0px) + 10px);width:auto;z-index:4;}
-  .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 14px);padding:0 calc(var(--safe-r, 0px) + 18px) 0 calc(var(--safe-l, 0px) + 18px);pointer-events:none;}
-  .ctrls > *{pointer-events:auto;}
+/* Upright: the TV across the full width at the top, the console panel under it, and the stick and button low,
+   under the thumbs; on a tall screen they grow to fill the room */
+.ctrls{align-items:flex-end;padding:0 11px;}
+html.ar-on #app{max-width:none;padding-bottom:max(18px,calc(var(--safe-b) + 10px));}
+.hud{padding:0 9px;}
+.jh-view{justify-content:flex-start;}
+@media (min-height:800px) and (orientation:portrait){ .pad{width:190px;height:190px;} .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .fbtn{width:136px;height:136px;} }
+/* Sideways (html.jh-land): the TV as tall as the screen in the middle, the console panel in the upper left, the
+   stick under the left thumb and the button under the right */
+@media (pointer:coarse){
+  html.jh-land.ar-on #app{position:relative;}
+  html.jh-land .jh-view{gap:4px;justify-content:center;}
+  html.jh-land .hud{position:absolute;top:6px;right:max(17px,env(safe-area-inset-right));width:auto;z-index:4;padding:0;}
+  html.jh-land .vcs{position:absolute;top:6px;left:max(17px,env(safe-area-inset-left));z-index:4;gap:12px;padding:6px 12px 5px;}
+  html.jh-land .ctrls{position:absolute;left:0;right:0;bottom:max(18px,calc(var(--safe-b) + 10px));padding:0 max(17px,env(safe-area-inset-right)) 0 max(17px,env(safe-area-inset-left));pointer-events:none;}
+  html.jh-land .ctrls > *{pointer-events:auto;}
 }
+@media (pointer:coarse) and (min-height:600px){ html.jh-land .vcs{flex-direction:column;gap:8px;padding:10px 12px;} }
+/* Turning the device: the TV, the panel and the controls glide to their new places */
+.bezel{view-transition-name:jh-tv;} .vcs{view-transition-name:jh-vcs;} .pad{view-transition-name:jh-pad;} .fbtn{view-transition-name:jh-fire;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -135,6 +148,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
   var $ = function (id) { return document.getElementById(id); };
   var C = window.JHCore, R = C.R;
   var W = 160, TOPR = 16, H = 207, PAR = 1.7;     // the part of the picture a TV shows; Atari pixels are wide
+  // Turning the device: the sideways layout (html.jh-land) is switched inside a View Transition, so the TV, the
+  // console panel and the controls glide to their new places
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape)'), wait = false;
+    function set() { wait = false; R.classList.toggle('jh-land', q.matches); if (typeof fit === 'function') fit(); }
+    R.classList.toggle('jh-land', q.matches);
+    function turn() {
+      if (wait || R.classList.contains('jh-land') === q.matches) return;
+      if (document.startViewTransition && !document.hidden && R.classList.contains('ar-on') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    if (q.addEventListener) q.addEventListener('change', turn); else q.addListener(turn);
+  })();
   var SCENES = ['the vines', 'Reptile River', 'the boulders', 'the cannibal camp'];
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
@@ -212,13 +240,23 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     wasAttract = att;
     if (mode === 'play') {
       if (scene() > maxScene) maxScene = scene();
-      if (R[0x0B] - (gameNo() - 1) + 1 > rounds) rounds = R[0x0B] - (gameNo() - 1) + 1;
+      if (R[0x0B] - (gameNo() - 1) + 1 > rounds) {
+        rounds = R[0x0B] - (gameNo() - 1) + 1;
+        // the explorer reached the end and freed Lady Penelope: the trip starts again, faster
+        Kit.moment({ title: 'Lady Penelope rescued', line: 'You made it through the whole jungle, and the trip starts again, faster.', icon: 'trophy', at: $('vcs'), ms: 2600 });
+        Kit.haptic('success'); Kit.confetti && Kit.confetti();
+      }
+      if (!passed && best0 > 0 && score() > best0) {
+        passed = true;
+        Kit.moment({ title: 'New high score', line: 'You just passed the best score on the board, ' + best0.toLocaleString() + ' points.', icon: 'trophy', at: $('vcs'), ms: 2200 });
+        Kit.haptic('success');
+      }
       if (++saveT >= 600) { saveT = 0; save(); }
     }
   }
-  var saveT = 0;
+  var saveT = 0, passed = false;
   function gameBegins() {
-    mode = 'play'; startedAt = Date.now(); maxScene = 0; rounds = 1; saveT = 0;
+    mode = 'play'; startedAt = Date.now(); maxScene = 0; rounds = 1; saveT = 0; passed = false;
     syncSwitches(); syncOverlay();
   }
 
@@ -228,7 +266,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
     clearSave();
     mode = 'attract'; syncSwitches(); syncOverlay();
     var newTop = sc > 0 && sc > best0;
-    var hl = [rounds > 1 ? 'Rescued Lady Penelope ' + (rounds - 1) + (rounds === 2 ? ' time' : ' times') : 'Reached ' + far];
+    var hl = [rounds > 1 ? who + ' rescued Lady Penelope ' + (rounds - 1 === 1 ? 'once' : (rounds - 1) + ' times') : 'Reached ' + far];
     if (newTop) hl.push('New high score: ' + sc.toLocaleString() + (best0 ? ' (old best ' + best0.toLocaleString() + ')' : ''));
     var hiL = ArcadeHi.list(HI);
     try {
@@ -342,11 +380,13 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:720px;margin:0 auto;pad
   function fit() {
     var v = $('view'); if (v.hidden) return;
     var hudH = v.querySelector('.hud').offsetHeight, ctr = v.querySelector('.ctrls'), hint = v.querySelector('.hint'), vcs = $('vcs').offsetHeight + 8;
-    var land = TOUCH && innerWidth > innerHeight;
+    var land = TOUCH && document.documentElement.classList.contains('jh-land');
     var ctrH = ctr && getComputedStyle(ctr).display !== 'none' && !land ? Math.max(150, ctr.querySelector('.pad').offsetHeight + 16) : 0;
     var hintH = hint && getComputedStyle(hint).display !== 'none' ? hint.offsetHeight + 8 : 0;
-    var availH = v.clientHeight - (land ? 0 : hudH) - ctrH - hintH - vcs - 36;
-    var availW = (land ? v.clientWidth - 2 * (ctr.querySelector('.pad').offsetWidth + 40) : Math.min(v.clientWidth, 720)) - 22;
+    var availH = v.clientHeight - (land ? 0 : hudH) - ctrH - hintH - (land ? 0 : vcs) - (land ? 20 : 36);
+    // sideways the TV stands between the stick and the button (and the console panel, upper left)
+    var side = land ? Math.max(ctr.querySelector('.pad').offsetWidth, innerHeight >= 600 ? $('vcs').offsetWidth : 0) + 34 : 0;
+    var availW = (land ? v.clientWidth - 2 * side : v.clientWidth) - 22;
     var sc = Math.max(0.5, Math.min(availW / (W * PAR), availH / H));
     var cw = Math.floor(W * PAR * sc), ch = Math.floor(H * sc), dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
