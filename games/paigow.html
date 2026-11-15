@@ -16,6 +16,21 @@
 <script src="../coach.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 .stage{padding-bottom:max(calc(var(--safe-b) + 10px + var(--corner-y)), 18px);}
 .ctl > .acts{padding:0 var(--corner-x);}
@@ -122,23 +137,63 @@
 .flying{position:fixed;z-index:60;pointer-events:none;margin:0;}
 @media (min-width:700px){ .prow{--cw:66px;} .row7,.dset{--cw:46px;} }
 
-/* ── iPad portrait: bigger cards and betting circle ── */
+/* ── Upright: the table fills the room between the bankroll and the buttons, its pieces spread evenly ── */
+.sh-tall .stage:has(> .ctable){display:flex;flex-direction:column;min-height:calc(100dvh - 66px);}
+.sh-tall .stage > .bankbar{margin-bottom:4px;} .sh-tall .stage > .ctable{margin-bottom:8px;flex:1 0 auto;display:flex;flex-direction:column;}
+.sh-tall .ctable .felt-in.tbl{flex:1 0 auto;justify-content:space-evenly;}
+/* ── iPad upright: bigger cards and betting circle, sized by the screen's height ── */
 @media (min-width:700px) and (orientation:portrait){
-  .stage:has(> .ctable){max-width:660px;}
-  .prow{--cw:78px;} .row7,.dset{--cw:56px;}
-  .spot{width:108px;}
-  .cz-rack{--cs:60px;}
-  .acts .btn{min-height:58px;font-size:1.08rem;}
-  .status{font-size:1.05rem;}
+  .stage:has(> .ctable){max-width:700px;}
+  .prow{--cw:clamp(78px,8.4dvh,90px);} .row7,.dset{--cw:clamp(56px,6.4dvh,70px);}
+  .spot{width:clamp(108px,11dvh,128px);}
+  .pz{padding:16px 8px 12px;}
+  .print.rule{font-size:.82rem;}
+  .cz-rack{--cs:62px;}
+  .acts .btn{min-height:60px;font-size:1.1rem;}
+  .status{font-size:1.08rem;}
 }
 
-/* ── Wide landscape (iPad, laptop): table on the left, bank and controls beside it ── */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage:has(> .ctable){max-width:1120px;display:grid;grid-template-columns:minmax(0,640px) minmax(300px,400px);grid-template-rows:1fr auto auto 1fr;column-gap:28px;justify-content:center;min-height:calc(100dvh - 76px);}
-  .stage > .ctable{grid-column:1;grid-row:1 / span 4;align-self:center;margin:0;}
-  .stage > .bankbar{grid-column:2;grid-row:2;margin-bottom:14px;}
-  .stage > .ctl{grid-column:2;grid-row:3;}
-}
+/* ── iPad or laptop on its side: the table on the left the screen's height, the bankroll and controls beside it ── */
+.sh-wide .stage:has(> .ctable){max-width:1180px;display:grid;grid-template-columns:minmax(0,680px) minmax(320px,420px);grid-template-rows:1fr auto auto 1fr;column-gap:28px;justify-content:center;min-height:calc(100dvh - 76px);}
+.sh-wide .stage > .ctable{grid-column:1;grid-row:1 / span 4;align-self:stretch;margin:0;display:flex;flex-direction:column;}
+.sh-wide .ctable .felt-in.tbl{flex:1;justify-content:space-evenly;}
+.sh-wide .stage > .bankbar{grid-column:2;grid-row:2;margin-bottom:14px;}
+.sh-wide .stage > .ctl{grid-column:2;grid-row:3;gap:14px;}
+.sh-wide .prow{--cw:clamp(66px,10dvh,84px);} .sh-wide .row7,.sh-wide .dset{--cw:clamp(46px,7.2dvh,60px);}
+.sh-wide .spot{width:clamp(92px,13dvh,116px);}
+.sh-wide .acts .btn{min-height:60px;font-size:1.1rem;} .sh-wide .status{font-size:1.05rem;}
+
+/* ── A phone on its side: the bankroll and what to do at the left, the table in the middle the screen's height, the chips and
+   buttons at the right; on the felt the dealer's seven over yours at the left, your bet and low hand at the right ── */
+.sh-side .stage:has(> .ctable){max-width:none;display:grid;grid-template-columns:minmax(112px,1fr) auto minmax(226px,1.15fr);grid-template-rows:1fr auto auto auto 1fr;grid-auto-flow:row dense;
+  align-items:center;column-gap:14px;row-gap:8px;min-height:calc(100dvh - 72px);padding:0 max(env(safe-area-inset-right),18px) 4px max(env(safe-area-inset-left),18px);}
+.sh-side .stage:has(> .ctable)::before,.sh-side .stage:has(> .ctable)::after{content:"";grid-row:1;grid-column:1;}
+.sh-side .stage:has(> .ctable)::after{grid-column:3;}
+.sh-side .stage > .ctable{grid-column:2;grid-row:1 / -1;align-self:stretch;margin:0;display:flex;}
+.sh-side .stage > .bankbar{grid-column:1;flex-wrap:wrap;margin:0;gap:6px 10px;}
+.sh-side .stage > .bankbar .ss{flex:1 1 100%;text-align:left;order:2;}
+.sh-side .stage > .bankbar .btn-sm{order:3;}
+.sh-side .stage > .ctl{display:contents;}
+.sh-side .ctl > .status{grid-column:1;text-align:left;font-size:.9rem;}
+.sh-side .ctl > *{grid-column:3;}
+.sh-side .ctable .felt-in.tbl{flex:1;display:grid;grid-template-columns:minmax(0,272px) auto;grid-template-areas:"d mid" "rule mid" "hi mid" "me mid";align-content:space-evenly;align-items:center;justify-content:center;gap:4px 10px;padding:8px 10px;}
+.sh-side .ctable .felt-in.tbl > .zone{grid-area:d;}
+.sh-side .ctable .felt-in.tbl > .print.rule{grid-area:rule;font-size:.52rem;padding:2px 6px;justify-self:center;}
+.sh-side .ctable .felt-in.tbl > .mid{grid-area:mid;flex-direction:column;width:auto;align-self:stretch;justify-content:center;gap:8px;}
+.sh-side .ctable .felt-in.tbl > .mid .pz{flex:none;width:112px;padding:10px 4px 6px;}
+.sh-side .pz.lo .prow > .pcard + .pcard{margin-left:3px;}
+.sh-side .pz.lo .zh{flex-wrap:wrap;row-gap:3px;} .sh-side .pz.lo .zh .hn{overflow:visible;font-size:.72rem;}
+.sh-side .ctable .felt-in.tbl > .pz.hi{grid-area:hi;width:100%;padding:10px 6px 6px;}
+.sh-side .ctable .felt-in.tbl > .who,.sh-side .ctable .felt-in.tbl > .merow{grid-area:me;justify-self:center;}
+.sh-side .prow{--cw:clamp(40px,11.6dvh,48px);} .sh-side .row7,.sh-side .dset{--cw:clamp(30px,8.6dvh,36px);}
+.sh-side .spot{width:clamp(58px,16dvh,66px);} .sh-side .spot .lab{font-size:.7rem;} .sh-side .spot.has .lab{font-size:.52rem;bottom:5px;}
+.sh-side .pz .zh .print{font-size:.6rem;} .sh-side .pz .zh{min-height:16px;}
+.sh-side .shoe{top:8px;right:auto;left:10px;--cw:22px;}
+.sh-side .acts .btn{min-height:50px;padding:0 8px;white-space:normal;line-height:1.1;}
+.sh-side .cz-rack{--cs:40px;}
+.sh-side .status .big{font-size:1.5rem;}
+/* the pieces that glide to their new places when the device turns */
+.stage > .ctable{view-transition-name:pg-table;} .stage > .bankbar{view-transition-name:pg-bank;} .stage > .ctl{view-transition-name:pg-ctl;}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
@@ -377,7 +432,7 @@
   }
 
   // ── Menu & rules ──────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'paigow',
     confirmNew: false,
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } leave(); },
@@ -999,9 +1054,17 @@
     }
     spot.querySelector('.res').classList.add('show');
     busy = false;
+    var hk = key5(split(S.p, S.low).hi);
+    if (hk[0] >= 7) {
+      // four of a kind and better are rare in seven cards: a moment on the table, whatever the dealer had (straight flush and up bigger)
+      Kit.moment({ chip: hk[0] === 9 ? '5A' : hk[0] === 8 ? 'SF' : '4', title: name5(hk),
+        line: S.name + (hk[0] === 9 ? ' held all four Aces and the joker, the best hand in Pai Gow.' : hk[0] === 8 ? ' set a ' + name5(hk).toLowerCase() + ' in the high hand.' : ' set four of a kind in the high hand.') + (res.out === 'win' ? '' : res.out === 'push' ? ' The dealer took the low hand, so it was a push.' : ''),
+        pts: res.out === 'win' ? signed(res.amt - S.bet) : '', big: hk[0] >= 8, at: app.querySelector('.ctable .felt-in') });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: hk[0] >= 8 ? 200 : 110 });
+    }
     if (res.out === 'win') {
-      if (S.res.phn && key5(split(S.p, S.low).hi)[0] >= 6) { Kit.callout(res.phn + '!'); Kit.confetti(); Kit.sfx('win'); }
-      else Kit.sfx('good');
+      if (S.res.phn && hk[0] === 6) { Kit.callout(res.phn + '!'); Kit.confetti(); Kit.sfx('win'); }
+      else if (hk[0] < 7) Kit.sfx('good');
       Kit.haptic('success');
     } else if (res.out === 'lose') { Kit.sfx('bad'); Kit.haptic('error'); }
     document.getElementById('bankv').textContent = money(bank());
@@ -1173,6 +1236,7 @@
   if (saved && saved.phase) { S = saved; moneyFor(S.name || 'You'); if (S.phase === 'result' && !S.res) S.phase = 'bet'; render(); }
   else showSetup();
   window.addEventListener('resize', function () { var r = document.getElementById('hrow'); if (r) fitRow(r); });
+  window.addEventListener('shape', function () { var r = document.getElementById('hrow'); if (r) fitRow(r); });   // (inside the turn's View Transition)
   window.addEventListener('pageshow', function () { var b = document.getElementById('bankv'); if (b && S) b.textContent = money(bank() - pending()); });
 
   // Exposed for testing in the console
