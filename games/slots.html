@@ -54,6 +54,19 @@ body.in-scene .bankrow .net{text-shadow:0 1px 3px #000,0 0 10px rgba(0,0,0,.8);c
 body.in-scene .ctrls .stepper,body.in-scene .ctrls .btn-max{background:rgba(16,12,30,.62);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 10px 22px -14px rgba(0,0,0,.9);}
 body.in-scene .ctrls .stepper button{background:rgba(255,255,255,.14);}
 @media (min-width:700px){ .ctrls{max-width:640px;} }
+/* Sideways: the controls stand in a column at the right, where the hand is, and the machine fills the left */
+:root{--ctlw:250px;}
+@media (orientation:landscape) and (min-aspect-ratio:6/5){
+  .ctrls{left:auto;right:max(17px,var(--safe-r,0px));top:calc(var(--bar) + 6px);bottom:max(calc(var(--safe-b) + 10px),18px);width:var(--ctlw);max-width:none;margin:0;padding:0;justify-content:center;gap:10px;}
+  .ctrls .row{flex-direction:column;gap:8px;}
+  .ctrls .stepper{flex:none;}
+  .ctrls .btn-spin{min-height:70px;font-size:1.7rem;}
+  .ctrls .btn-max{min-height:48px;}
+  html .cab3d{right:auto;width:calc(100% - var(--ctlw) - 24px);}
+  html #app{max-width:none;margin:0;padding-right:calc(var(--ctlw) + 30px);}
+}
+@media (orientation:landscape) and (min-aspect-ratio:6/5) and (min-width:1000px){:root{--ctlw:300px;}}
+@media (orientation:landscape) and (max-height:500px){.ctrls{gap:6px;} .ctrls .row{gap:6px;} .ctrls .stepper button{width:40px;height:40px;} .ctrls .btn-spin{min-height:58px;} .ctrls .btn-max{min-height:42px;}}
 
 /* ── The rendered machine and its overlay ───────────────────────────────── */
 .cab3d{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;display:block;}
@@ -1449,7 +1462,7 @@ window.dispatchEvent(new Event('cab3d-ready'));
       '<h3>Your bankroll</h3><p>Your money is shared by every casino game. Tap Spin again while the reels turn to stop them early. <b>Cash out</b> ends a session and saves it to Past sessions.</p>' +
       '<p>Your bankroll is yours. Frequent players each have their own, and players linked to their own profile play from theirs. Anyone else, or a seat without a name, gets $1,000 in play money.</p>';
   }
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'slots',
     confirmNew: false,
     onNew: function () { cashOut(); },
@@ -1723,12 +1736,18 @@ window.dispatchEvent(new Event('cab3d-ready'));
     dom.svg.setAttribute('viewBox', '0 0 ' + r.win.w.toFixed(1) + ' ' + r.win.h.toFixed(1));
     if (drawn) drawLines(drawn[0], drawn[1]);
   }
+  // Upright the controls are a dock under the machine; sideways (phone or iPad) they stand in a column at the right
+  // and the machine fills the rest from the deck up (its stand goes on below the screen's edge)
   function fitCab() {
     if (!cab || !canvas) return;
     var W = innerWidth, H = innerHeight, top = dom.bank ? dom.bank.getBoundingClientRect().bottom + 4 : 64;
     var sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
-    var bottom = dom.ctl ? dom.ctl.el.getBoundingClientRect().top - 4 : H - sb - 8;
-    cab.resize(W, H, top, bottom);
+    var cr = dom.ctl ? dom.ctl.el.getBoundingClientRect() : null, side = !!(cr && cr.left > W * 0.45);
+    var bottom = side ? H - Math.max(18, sb + 10) : cr ? cr.top - 4 : H - sb - 8;
+    if (side) W = canvas.clientWidth || W;
+    // (a phone on its side: the machine rises past the bank row, whose name and Cash out sit either side of it)
+    if (side && H < 500) { var gb = document.querySelector('.gbar'); top = (gb ? gb.getBoundingClientRect().bottom : 60) + 2; }
+    cab.resize(W, H, top, bottom, side ? 0.4 : null);
   }
   window.addEventListener('resize', function () { if (S && cab) fitCab(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (S && cab) fitCab(); });
@@ -2693,6 +2712,31 @@ window.dispatchEvent(new Event('cab3d-ready'));
       clearSave(); showSetup();
     } else { S = saved; Kit.gameStart(); machineTitle(); render(); }
   } else showSetup();
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = 'body>.ctrls, #app>.bankrow', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>

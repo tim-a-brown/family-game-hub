@@ -468,11 +468,13 @@ export class Cabinet {
     ao.rotation.x = -Math.PI / 2; ao.position.set(0, 0.0015, 0.02); ao.renderOrder = -3; this.scene.add(ao);
   }
   // frame the cabinet into the free area of the viewport (CSS px); the horizon sits at eye level
-  resize(W, H, top, bottom) {
+  // (cut: the height in metres where the frame stops, when the screen is wide and the machine stands taller than it;
+  // the stand and coin tray then go on below the screen's edge and the machine from its deck up fills the height)
+  resize(W, H, top, bottom, cut) {
     this.W = W; this.H = H; this.frameTop = top; this.frameBottom = bottom;
     const r = getRenderer(canvasEl); r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); r.setSize(W, H, false);
     this.camera.aspect = W / H;
-    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = -0.14;
+    const L = this.L, span = bottom - top, cabTop = L.height + 0.05, floorY = cut != null ? cut : -0.14;
     let k = (span - 14) / (cabTop - floorY);                        // px per metre, height-bound
     const kw = (W - 24) / (L.width + 0.1); if (kw < k) k = kw;        // or width-bound
     this.kpm = k;
