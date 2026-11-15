@@ -16,8 +16,32 @@
 <script src="../turnnet.js"></script>
 <style>
 body{overflow-x:hidden;}
-.bg{max-width:520px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 14px);}
-.bg.play{display:flex;flex-direction:column;gap:10px;min-height:calc(100dvh - var(--bar));}
+.bg{max-width:520px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 18px);}
+/* Upright: the status row, the tray as large as the room leaves after the word row and a few lines of found words,
+   then the word row and the words. Sideways: the status, word row and words in a column at the left, the tray (where
+   the swipes go) at the right, as tall as the screen. */
+.bg.play{--tw:min(100%, calc(100dvh - var(--bar) - var(--safe-b) - 330px));display:flex;flex-direction:column;gap:10px;min-height:calc(100dvh - var(--bar));max-width:min(780px, 100%);box-sizing:border-box;}
+@media (min-height:960px){.bg.play{--tw:min(100%, calc(100dvh - var(--bar) - var(--safe-b) - 380px));}}
+.bg.play .tbl{align-self:center;width:calc(var(--tw) + 0px);max-width:100%;box-sizing:border-box;}
+.bg.play .tray{width:100%;}
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  .bg.play{--th:calc(100dvh - var(--bar) - var(--safe-b) - 14px);--tw:min(var(--th), calc(100vw - 420px));max-width:1180px;height:calc(100dvh - var(--bar));min-height:0;
+    display:grid;grid-template-columns:minmax(0,1fr) var(--tw);grid-template-rows:auto auto minmax(0,1fr) auto;
+    grid-template-areas:"st tbl" "row tbl" "found tbl" "done tbl";column-gap:clamp(14px,2.4vw,28px);row-gap:10px;align-content:center;
+    padding:0 calc(12px + var(--corner-x)) calc(var(--safe-b) + 18px);}
+  .bg.play .st{grid-area:st;}
+  .bg.play .tbl{grid-area:tbl;align-self:center;width:var(--tw);}
+  .bg.play .side{display:contents;}
+  .bg.play .wordrow{grid-area:row;}
+  .bg.play .found{grid-area:found;min-height:0;}
+  .bg.play .done-btn{grid-area:done;justify-self:start;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:500px){
+  .bg.play .tbl{padding:6px;border-radius:20px;}
+  .bg.play .tbl .felt-in{padding:8px;}
+  .st{min-height:46px;}
+  .glass svg{height:36px;}
+}
 
 /* Status row: player, score, sand timer */
 .st{display:flex;align-items:center;gap:10px;min-height:56px;}
@@ -40,7 +64,7 @@ body{overflow-x:hidden;}
 /* Table and plastic tray */
 .tbl{border-radius:26px;padding:8px;}
 .tbl .felt-in{position:relative;border-radius:20px;padding:14px;}
-.tray{--n:4;position:relative;margin:0 auto;width:min(100%,440px);aspect-ratio:1;border-radius:22px;padding:5%;
+.tray{--n:4;position:relative;margin:0 auto;width:100%;aspect-ratio:1;container-type:inline-size;border-radius:22px;padding:5%;
   background:
     radial-gradient(120% 70% at 30% 10%, rgba(255,255,255,.35), rgba(255,255,255,0) 45%),
     linear-gradient(160deg,#ff9a3d 0%,#f06a12 55%,#c94f05 100%);
@@ -48,12 +72,12 @@ body{overflow-x:hidden;}
   touch-action:none;user-select:none;-webkit-user-select:none;}
 .grid{position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);gap:4%;width:100%;height:100%;}
 .well{position:relative;border-radius:16%;background:rgba(110,40,0,.45);box-shadow:inset 0 4px 8px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.3);}
-.cube{position:absolute;inset:3%;border-radius:16%;display:grid;place-items:center;
+.cube{position:absolute;inset:3%;border-radius:16%;display:grid;place-items:center;container-type:size;
   background:radial-gradient(110% 110% at 30% 22%, #ffffff 0%, #f7f2e6 45%, #ddd3bc 100%);
   box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), inset 0 2px 1px rgba(255,255,255,.95), 0 4px 0 #b8ab8e, 0 7px 10px rgba(0,0,0,.4);
   transition:transform .12s var(--spring), background .15s;}
-.cube b{font-family:"Arial Black","Helvetica Neue",var(--display);font-weight:900;font-size:calc(min(100vw - 72px, 440px) / var(--n) * .46);color:#1b1a24;line-height:1;transform:rotate(var(--rot,0deg));letter-spacing:-.02em;}
-.cube b.qu{font-size:calc(min(100vw - 72px, 440px) / var(--n) * .36);}
+.cube b{font-family:"Arial Black","Helvetica Neue",var(--display);font-weight:900;font-size:56cqh;color:#1b1a24;line-height:1;transform:rotate(var(--rot,0deg));letter-spacing:-.02em;}
+.cube b.qu{font-size:43cqh;}
 .cube.path{background:radial-gradient(110% 110% at 30% 22%, #fff8d6 0%, #ffe07a 50%, #f5bf2a 100%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), 0 4px 0 #b88a12, 0 7px 10px rgba(0,0,0,.4);transform:translateY(2px);}
 .cube.last{background:radial-gradient(110% 110% at 30% 22%, #fff3c0 0%, #ffc93d 50%, #ef9d00 100%);transform:translateY(3px) scale(.97);}
 .cube.good{background:radial-gradient(110% 110% at 30% 22%, #eafff0 0%, #7ee2a2 55%, #2fbf6a 100%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.12), 0 4px 0 #1d8a4f, 0 7px 10px rgba(0,0,0,.4);}
@@ -69,17 +93,17 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
 @keyframes popup{0%{opacity:0;transform:translate(-50%,10px) scale(.6);}25%{opacity:1;transform:translate(-50%,0) scale(1.1);}100%{opacity:0;transform:translate(-50%,-50px) scale(1);}}
 
 /* Lid: covers the board between players */
-.lid{position:absolute;inset:-2px;z-index:8;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center;
+.lid{position:absolute;inset:-2px;z-index:8;border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,3cqw,14px);padding:clamp(10px,5cqw,24px);text-align:center;
   background:
     radial-gradient(120% 70% at 30% 10%, rgba(255,255,255,.28), rgba(255,255,255,0) 45%),
     repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px),
     linear-gradient(160deg,#2a5bd7,#173a99);
   box-shadow:inset 0 3px 0 rgba(255,255,255,.35), inset 0 -6px 0 rgba(0,0,0,.3);transition:transform .5s var(--ease), opacity .4s;}
 .lid.up{transform:translateY(-110%) rotate(-6deg);opacity:0;pointer-events:none;}
-.lid h2{font-family:var(--display);font-weight:400;font-size:clamp(1.6rem,7vw,2.2rem);color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.3);}
+.lid h2{font-family:var(--display);font-weight:400;font-size:clamp(1.25rem,8.5cqw,2.4rem);color:#fff;text-shadow:0 3px 0 rgba(0,0,0,.3);}
 .lid p{color:rgba(255,255,255,.85);font-weight:700;max-width:280px;}
-.lid .logo{font-family:var(--display);font-size:clamp(2rem,10vw,3rem);letter-spacing:.06em;color:#ffd23d;text-shadow:0 4px 0 #9a3c00;}
-.lid .btn{min-width:220px;}
+.lid .logo{font-family:var(--display);font-size:clamp(1.6rem,12cqw,3.4rem);letter-spacing:.06em;color:#ffd23d;text-shadow:0 4px 0 #9a3c00;}
+.lid .btn{min-width:min(220px,80%);}
 
 /* Word line and found words */
 .wordrow{display:flex;align-items:center;gap:8px;}
@@ -117,15 +141,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
 .sumrow b{display:block;font-family:var(--display);font-size:1.35rem;}
 .sumrow span{font-size:.78rem;font-weight:650;color:var(--text-3);}
 .between{display:flex;flex-direction:column;gap:10px;}
-@media (min-width:900px){
-  .bg.play{max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto auto 1fr;column-gap:20px;align-content:start;}
-  .bg.play .st{grid-column:1/-1;}
-  .bg.play .tbl{grid-column:1;grid-row:2/4;align-self:start;}
-  .bg.play .side{grid-column:2;grid-row:2/4;display:flex;flex-direction:column;gap:10px;min-height:0;}
-  .found{max-height:none;}
-}
 .side{display:contents;}
-@media (min-width:900px){.side{display:flex;}}
 </style>
 </head>
 <body>
@@ -223,6 +239,7 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
   }
   function minLen() { return S.size === 5 ? 4 : 3; }
   function startTurn() {
+    hot = [];
     S.phase = 'play'; if (!S.left && S.time) S.left = S.time;
     save(); render();
     var lid = app.querySelector('.lid');
@@ -539,13 +556,26 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     if (!DICT_SET.has(w)) return reject('Not in the word list');
     mine.push(w);
     flash('good'); popText('+' + pts(w));
-    if (w.length >= 7) { Kit.callout(w.toUpperCase()); Kit.sfx('win'); Kit.haptic('success'); }
+    var hl = S.hl = S.hl || { long: [], hot: [] }, who = me().name, now = Date.now();
+    hot = hot.filter(function (t) { return now - t < 20000; }); hot.push(now);
+    if (w.length >= 8) {
+      // An eight-letter word is the rare one: 11 points on its own
+      hl.long.push({ w: w, p: who, r: S.round });
+      Kit.moment({ title: w.toUpperCase(), line: 'A word of eight letters or more scores 11 points.', icon: 'star', pts: '+11', at: trayEl, ms: 2800 });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti();
+    } else if (w.length >= 7) { Kit.callout(w.toUpperCase()); Kit.sfx('win'); Kit.haptic('success'); }
+    else if (hot.length === 5) {
+      // Five words inside twenty seconds: on a roll
+      if (!hl.hot.some(function (h) { return h.p === who && h.r === S.round; })) hl.hot.push({ p: who, r: S.round });
+      Kit.callout('Five words in 20 seconds'); Kit.sfx('sparkle'); Kit.haptic('medium');
+    }
     else { Kit.sfx('good'); Kit.haptic('light'); }
     save(); paintFound(w);
     var sm = app.querySelector('.st .who small');
     if (sm) sm.textContent = statLine();
     after();
   }
+  var hot = [];   // when this turn's last words were found (five inside twenty seconds is a run)
   function after() { setTimeout(function () { selected = []; typedStr = ''; paintSel(); }, 200); }
   function reject(msg) { flash('bad'); Kit.toast(msg); Kit.sfx('bad'); Kit.haptic('error'); after(); }
 
@@ -641,7 +671,9 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
         if (!mostWords || ws.length > mostWords.n) mostWords = { n: ws.length, p: pi, r: ri };
       });
     });
-    var hl = [];
+    var hl = [], X = S.hl || { long: [], hot: [] };
+    X.long.slice(0, 3).forEach(function (h) { hl.push((multi ? h.p : 'You') + ' found the ' + h.w.length + '-letter word ' + h.w.toUpperCase() + (multi && S.rounds > 1 ? ' in round ' + h.r : '') + ', worth 11 points'); });
+    X.hot.slice(0, 2).forEach(function (h) { hl.push((multi ? h.p : 'You') + ' found five words in 20 seconds' + (multi && S.rounds > 1 ? ' in round ' + h.r : '')); });
     if (best) hl.push((multi ? S.players[best.p].name + "'s longest" : 'Longest') + ' Boggle word: ' + best.w.toUpperCase() + ' (' + pts(best.w) + (pts(best.w) === 1 ? ' pt)' : ' pts)'));
     if (multi && mostWords && mostWords.n) hl.push('Most words in a round: ' + S.players[mostWords.p].name + ', ' + mostWords.n + (S.rounds > 1 ? ' in round ' + (mostWords.r + 1) : ''));
     var crossed = S.log.reduce(function (s, r) { return s + r.crossed.length; }, 0);
@@ -820,6 +852,22 @@ svg.trace polyline{fill:none;stroke:rgba(255,150,0,.38);stroke-linecap:round;str
     if (S.phase === 'play') S.phase = 'ready';   // pause on reload; the lid shows time left
     render();
   } else showSetup();
+  // Turning the device: the status row, the tray, the word row and the words glide from where they were to the new layout
+  (function (sel) {
+    var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+        var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    setInterval(function () { if (!document.hidden) snap(); }, 400);
+  })('.bg.play .st, .bg.play .tbl, .bg.play .wordrow, .bg.play .found');
+
   window.__bg = { get S() { return S; }, solve: function () { return solve(); }, findPath: function (s) { return findPath(s); } };
 })();
 </script>
