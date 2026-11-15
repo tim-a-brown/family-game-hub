@@ -226,8 +226,12 @@
       delay = 1200;
       // the round won with nothing left: the others' dots counted up
       later(function () {
-        var rest = r.pips.map(function (x, i) { return i === w ? null : who(i) + ' ' + verb(i, 'are', 'is') + ' left with ' + x + (x === 1 ? ' dot' : ' dots'); }).filter(Boolean);
-        var line = r.firstOut ? who(w) + ' went out on ' + verb(w, 'your', 'their') + ' very first turn.' : rest.slice(0, 2).join(', ') + (rest.length > 2 ? ', and so on.' : '.');
+        // the others' dots, fewest first: "Jamie is left with 4 dots, Pete with 12 and Pam with 30."
+        var rest = r.pips.map(function (x, i) { return { i: i, x: x }; }).filter(function (o) { return o.i !== w; }).sort(function (a, b) { return a.x - b.x; });
+        function dt(x) { return x + (x === 1 ? ' dot' : ' dots'); }
+        var line = r.firstOut ? who(w) + ' went out on ' + verb(w, 'your', 'their') + ' very first turn.'
+          : rest.length > 3 ? 'The other ' + rest.length + ' players are left with ' + rest[0].x + ' to ' + dt(rest[rest.length - 1].x) + '.'
+          : rest.map(function (o, k) { return k ? who(o.i) + ' with ' + o.x : who(o.i) + ' ' + verb(o.i, 'are', 'is') + ' left with ' + dt(o.x); }).join(', ').replace(/, ([^,]*)$/, rest.length > 1 ? ' and $1' : ', $1') + '.';
         Kit.moment({ big: !!r.firstOut, title: 'Round ' + (r.round + 1) + ' won with 0', line: line, pts: '0', color: P.color, tone: bad(w) ? 'bad' : '', at: tblEl, ms: 2000 });
       }, 900);
       delay = 3000;
@@ -257,7 +261,7 @@
       h.forEach(function (t) { tl.appendChild(tileEl(t[0], t[1], 'lie')); });
       tb.appendChild(el('div', { class: 'row' + (i === r.w ? ' won' : '') }, [
         el('div', { class: 'nm', style: { '--c': p.color } }, [el('i'), el('span', { text: p.name })]), tl,
-        el('div', { class: 'pp' }, [el('b', { text: '+' + r.pips[i] }), el('small', { text: String(P.scores[i]) })])
+        el('div', { class: 'pp' }, [el('b', { text: '+' + r.pips[i] }), el('small', { text: 'Total ' + P.scores[i] })])
       ]));
     });
     box.appendChild(tb);
@@ -422,6 +426,8 @@
     W_.appendChild(whoEl); W_.appendChild(tblEl); W_.appendChild(statusEl); W_.appendChild(rackEl); W_.appendChild(actsEl);
     app.appendChild(W_);
     setBarH();
+    // (names are fitted by measuring, so measure again once the fonts are in)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (S && W_ && W_.isConnected) paintWho(); });
   }
   function setBarH() { var b = document.querySelector('.gbar'); document.documentElement.style.setProperty('--barh', (b ? b.offsetHeight : 60) + 'px'); }
   function paint(o) {
@@ -545,7 +551,7 @@
     rackEl.style.setProperty('--tw', fit.tw + 'px');
     rackEl.style.minHeight = sideways() ? '' : (fit.tw * 2 * fit.rows + (fit.rows - 1) * 8 + 26) + 'px';
     var who0 = S.players[seat];
-    rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : NET || humans() <= 1 || you(seat) ? 'Your tiles' : '<b>' + Kit.esc(who0.name) + '</b>’s tiles' }));
+    rackEl.appendChild(el('div', { class: 'lbl', html: hidden ? 'Hidden tiles' : who0.name === 'You' ? 'Your tiles' : '<b>' + Kit.esc(who0.name) + '</b>’s tiles' }));   // (the rack names whose tiles they are)
     var ms = turn ? C.legal(S) : [], ok = {};
     ms.forEach(function (m) { ok[m.id] = 1; });
     if (!hand.length) rackEl.appendChild(el('div', { class: 'empty', text: 'No tiles left' }));
@@ -595,40 +601,64 @@
         cands.push(g2);
       }
     } else {
-      var Dr = Math.max(60, Math.min(H * 0.34, W * 0.2, big ? 150 : 104)), col = Math.max(Dr, big ? 130 : 108) + pad, hc = (H - 2 * pad) / L, ur = laneU(hc), hw = Math.max(26, Math.min(36, hc * 0.62)) + 8;
-      cands.push({ o: 'row', banks: 1, D: Dr, col: col, hub: [pad + col / 2, H / 2], u: ur, wc: hc, hd: hw, len: W - pad - (col + 8 + hw), cross: 2 * ur <= hc - 6 });
+      // (a narrow table with many trains keeps the hub's column to the hub itself, its plaques stacked small, so the
+      // trains have the length)
+      var nar = !big && W < 420 && L >= 5;
+      var Dr = nar ? Math.max(52, Math.min(H * 0.3, W * 0.2, 80)) : Math.max(60, Math.min(H * 0.34, W * 0.2, big ? 150 : 104)), col = (nar ? Math.max(Dr, 66) : Math.max(Dr, big ? 130 : 108)) + pad, hc = (H - 2 * pad) / L, ur = laneU(hc), hw = Math.max(26, Math.min(36, hc * 0.62)) + 8;
+      cands.push({ o: 'row', banks: 1, nar: nar, D: Dr, col: col, hub: [pad + col / 2, H / 2], u: ur, wc: hc, hd: hw, len: W - pad - (col + 8 + hw), cross: 2 * ur <= hc - 6 });
     }
     var best = cands[0]; cands.forEach(function (g) { if (score(g) > score(best) * 1.04) best = g; });
     best.W = W; best.H = H; best.pad = pad;
     return best;
   }
+  // A train you can't play on now folds when the table is crowded: with many players on a small screen the trains
+  // you can play on (your own, the Mexican Train, any train with its marker out, a double that must be covered) take
+  // the room, so their tiles are large enough to read, and the others lie in thinner lanes with every tile still
+  // there, the open end at the far end as always. Each lane's width across, in lane order: [{w, c}] (c its middle).
+  function laneOpen(tr, v) { var me = rackSeat(); return tr === me || tr === mex() || !!v.trains[tr].m || (!v.prev && v.dbl && S.o.dbl === 'cover' && v.dbl.tr === tr); }
+  function laneWidths(list, avail, g, v) {
+    var n = list.length, t0 = avail / n, big = Math.min(innerWidth, innerHeight) >= 700, maxU = big ? 54 : 40;
+    var open = list.map(function (tr) { return laneOpen(tr, v); }), nO = open.filter(Boolean).length, nF = n - nO, fw = 1;
+    // (fold only where an even share would leave the tiles small, and only as far as the open lanes can use the room)
+    if (nO && nF && (t0 - 6) * 0.82 < (big ? 30 : 22)) {
+      var tMax = maxU / 0.82 + 6;
+      fw = Math.max(0.6, Math.min(1, (avail / tMax - nO) / nF));
+    }
+    var t = avail / (nO + fw * nF), at = g.pad;
+    return list.map(function (tr, k) { var w = open[k] ? t : t * fw, o = { w: w, c: at + w / 2, fold: !open[k] && fw < 1 }; at += w; return o; });
+  }
   // every lane's box and its tiles' places
   function layoutAll(W, H) {
     var v = V(), g = geometry(W, H, v.trains), ord = laneOrder(), L = ord.length, pad = g.pad, lanes = [];
+    var Lb = Math.ceil(L / 2), LW = g.banks === 2 ? laneWidths(ord.slice(0, Lb), W - 2 * pad, g, v).concat(laneWidths(ord.slice(Lb), W - 2 * pad, g, v)) : laneWidths(ord, (g.o === 'col' ? W : H) - 2 * pad, g, v);
+    var tOpen = Math.max.apply(null, LW.map(function (x) { return x.w; }));
+    if (LW.some(function (x) { return x.fold; })) { g.u = Math.max(g.u, Math.min(Math.min(innerWidth, innerHeight) >= 700 ? 54 : 40, (tOpen - 6) * 0.82)); g.wc = tOpen; }
     ord.forEach(function (tr, k) {
-      var ln = { tr: tr, k: k };
+      var ln = { tr: tr, k: k }, lw = LW[k], wk = lw.w;
+      ln.fold = lw.fold;
       if (g.o === 'col' && g.banks === 1) {
-        var x = pad + g.wc * (k + 0.5), y0 = pad + g.D + 8;
+        var x = lw.c, y0 = pad + g.D + 8;
         ln.dir = 'down'; ln.c = x; ln.head = [x, y0 + g.hd / 2]; ln.a0 = y0 + g.hd; ln.a1 = g.H - pad;
-        ln.box = { x: x - g.wc / 2 + 2, y: y0, w: g.wc - 4, h: g.H - pad - y0 };
+        ln.box = { x: x - wk / 2 + 2, y: y0, w: wk - 4, h: g.H - pad - y0 };
       } else if (g.o === 'col') {
-        var Lb = Math.ceil(L / 2), lower = k < Lb, kk = lower ? k : k - Lb, nb = lower ? Lb : L - Lb, wcb = (W - 2 * pad) / nb;
-        var xc = pad + wcb * (kk + 0.5), hy = g.hub[1];
-        if (lower) { var yb = hy + g.D / 2 + 8; ln.dir = 'down'; ln.head = [xc, yb + g.hd / 2]; ln.a0 = yb + g.hd; ln.a1 = g.H - pad; ln.box = { x: xc - wcb / 2 + 2, y: yb, w: wcb - 4, h: g.H - pad - yb }; }
-        else { var yt = hy - g.D / 2 - 8; ln.dir = 'up'; ln.head = [xc, yt - g.hd / 2]; ln.a0 = yt - g.hd; ln.a1 = 30 + pad; ln.box = { x: xc - wcb / 2 + 2, y: 30 + pad, w: wcb - 4, h: yt - 30 - pad }; }
-        ln.c = xc; ln.wc = wcb;
+        var lower = k < Lb;
+        var xc = lw.c, hy = g.hub[1];
+        if (lower) { var yb = hy + g.D / 2 + 8; ln.dir = 'down'; ln.head = [xc, yb + g.hd / 2]; ln.a0 = yb + g.hd; ln.a1 = g.H - pad; ln.box = { x: xc - wk / 2 + 2, y: yb, w: wk - 4, h: g.H - pad - yb }; }
+        else { var yt = hy - g.D / 2 - 8; ln.dir = 'up'; ln.head = [xc, yt - g.hd / 2]; ln.a0 = yt - g.hd; ln.a1 = 30 + pad; ln.box = { x: xc - wk / 2 + 2, y: 30 + pad, w: wk - 4, h: yt - 30 - pad }; }
       } else {
-        var y = pad + g.wc * (k + 0.5), x0 = pad + g.col + 8;
+        var y = lw.c, x0 = pad + g.col + 8;
         ln.dir = 'right'; ln.c = y; ln.head = [x0 + g.hd / 2, y]; ln.a0 = x0 + g.hd; ln.a1 = g.W - pad;
-        ln.box = { x: x0, y: y - g.wc / 2 + 2, w: g.W - pad - x0, h: g.wc - 4 };
+        ln.box = { x: x0, y: y - wk / 2 + 2, w: g.W - pad - x0, h: wk - 4 };
       }
+      ln.wc = wk;
       ln.wc = ln.wc || g.wc;
       placeTiles(ln, v.trains[tr].t, g);
       lanes.push(ln);
     });
     // every train's tiles one size: the size the most crowded lane needs, unless that is under three quarters of the
     // full size (then only that lane's tiles come down further)
-    var uMin = Math.min.apply(null, lanes.map(function (ln) { return ln.u; })), uAll = Math.max(uMin, g.u * 0.74);
+    // (the open lanes only, when some are folded: a folded lane's tiles are its own size)
+    var uMin = Math.min.apply(null, lanes.filter(function (ln) { return !ln.fold; }).map(function (ln) { return ln.u; })), uAll = Math.max(uMin, g.u * 0.74);
     if (uAll < g.u - 0.5) { var g2 = Object.assign({}, g, { u: uAll }); lanes.forEach(function (ln) { placeTiles(ln, v.trains[ln.tr].t, g2); }); }
     g.lanes = lanes;
     return g;
@@ -644,30 +674,32 @@
     function lens(uu, cr) { return T.map(function (t) { return t[0] === t[1] && cr ? uu : 2 * uu; }); }
     var ls = lens(u, cross), total = ls.reduce(function (s, x) { return s + x + gap; }, 0) + 2 * u + gap;
     ln.lines = [ln.c]; ln.sgn = sgn;
+    // pushed together, the newest K tiles and the doubles whole and every older tile showing CF of its length: the
+    // largest tile size that fits the lane that way
+    var K = Math.min(n, 3), CF = 0.3, fixU = 2.06, oldU = 0;
+    T.forEach(function (t, i) { var dbl = t[0] === t[1], l = dbl && cross ? 1 : 2; if (i >= n - K || dbl) fixU += l + 0.06; else oldU += l; });
+    var uPush = Math.min(u, A / (fixU + CF * oldU));
     if (total > A) {
-      // bend: as many lines as the lane is wide, the tiles as large as they can be (down to two thirds of a straight lane's)
-      for (var uu = u; uu >= u * 0.66; uu *= 0.96) {
-        var k = Math.min(3, Math.floor((ln.wc - 4) / (uu * 1.3)));
+      // bend: as many lines as the lane is wide (up to four), the tiles as large as they can be, when that keeps them
+      // larger than pushing together would
+      for (var uu = u; uu >= 9 && uu > uPush * 1.08; uu *= 0.96) {
+        var k = Math.min(4, Math.floor((ln.wc - 4) / (uu * 1.3)));
         if (k < 2) continue;
         var gp = Math.max(1.5, uu * 0.06), per = Math.floor((A - gp) / (2 * uu + gp));
         if (per >= 2 && per * k >= n + 1) return snake(ln, T, uu, k, per, gp);
       }
     }
-    var adv = ls.map(function (x) { return x + gap; }), K = Math.min(n, 3), slot = 2 * u + gap;
+    var adv;
     if (total > A && n > K) {
       // push together: doubles keep their room, the older plain tiles slide under the next
-      var fixed = slot, older = 0;
+      if (uPush < u - 0.5) { u = Math.max(8, uPush); cross = cross && 2 * u <= ln.wc - 6; ls = lens(u, cross); gap = Math.max(1, u * 0.06); }
+      var fixed = 2 * u + gap, older = 0;
       ls.forEach(function (x, i) { var dbl = T[i][0] === T[i][1]; if (i >= n - K || dbl) fixed += x + gap; else older += x; });
-      var c = older ? (A - fixed) / older : 1;
-      if (c < 0.36) {
-        // still too long: the lane's tiles come down in size too
-        var k2 = A / (fixed + 0.36 * older);
-        u = Math.max(8, u * k2); cross = cross && 2 * u <= ln.wc - 6; ls = lens(u, cross); gap = Math.max(1, u * 0.06); slot = 2 * u + gap; adv = ls.map(function (x) { return x + gap; });
-        c = 0.36;
-      }
-      ls.forEach(function (x, i) { if (i < n - K && T[i][0] !== T[i][1]) adv[i] = x * c; });
-    } else if (total > A) {
-      var k3 = A / total; u = Math.max(8, u * k3); ls = lens(u, cross); gap = Math.max(1, u * 0.06); adv = ls.map(function (x) { return x + gap; });
+      var c = older ? Math.max(CF, Math.min(1, (A - fixed) / older)) : 1;
+      adv = ls.map(function (x, i) { return i < n - K && T[i][0] !== T[i][1] ? x * c : x + gap; });
+    } else {
+      if (total > A) { u = Math.max(8, u * A / total); ls = lens(u, cross); gap = Math.max(1, u * 0.06); }
+      adv = ls.map(function (x) { return x + gap; });
     }
     var a = ln.a0 + sgn * gap, items = [];
     T.forEach(function (t, i) {
@@ -711,7 +743,7 @@
     var v = V(), W = feltEl.clientWidth, Hh = feltEl.clientHeight;
     if (!W || !Hh) return;
     var g = layoutAll(W, Hh); curG = g;
-    feltEl.setAttribute('data-o', g.o + g.banks);
+    feltEl.setAttribute('data-o', g.o + g.banks); feltEl.classList.toggle('nar', !!g.nar);
     // the hub and the engine
     var D = g.D;
     hubEl.style.width = hubEl.style.height = D + 'px';
@@ -741,16 +773,21 @@
     var me = viewer(), selT = sel >= 0 && myTurn() ? (S.hands[S.cur].filter(function (t) { return C.tid(t) === sel; })[0] || null) : null;
     var targets = {}; if (selT) C.legal(S).forEach(function (m) { if (m.id === sel) targets[m.tr] = m; });
     var owed = !v.prev && v.dbl && S.o.dbl === 'cover' ? v.dbl.tr : -1;
-    lanesEl.innerHTML = '';
+    // (each lane keeps its element from one paint to the next, so a lane that widens or folds glides with its tiles)
+    var oldL = {};
+    [].forEach.call(lanesEl.children, function (c) { oldL[c.getAttribute('data-tr')] = c; });
     g.lanes.forEach(function (ln) {
       var tr = ln.tr, T = v.trains[tr], m = tr === mex(), p = m ? null : S.players[tr];
       var b = ln.box, can = !!targets[tr];
-      var lane = el('div', { class: 'mt-lane ' + ln.dir + (m ? ' mx' : '') + (tr === me ? ' mine' : '') + (T.m && !m ? ' open' : '') + (can ? ' can' : '') + (selT && !can ? ' dim' : '') + (owed === tr ? ' owed' : '') + (owed >= 0 && owed !== tr ? ' wait' : ''),
-        style: { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px', '--c': m ? '#e9c46a' : p.color } });
-      if (can) lane.addEventListener('click', function (e) { e.stopPropagation(); playOn(targets[tr]); });
+      var lane = oldL[tr] || el('div');
+      delete oldL[tr];
+      lane.className = 'mt-lane ' + ln.dir + (m ? ' mx' : '') + (tr === me ? ' mine' : '') + (T.m && !m ? ' open' : '') + (can ? ' can' : '') + (selT && !can ? ' dim' : '') + (owed === tr ? ' owed' : '') + (owed >= 0 && owed !== tr ? ' wait' : '') + (ln.fold ? ' fold' : '');
+      lane.style.left = b.x + 'px'; lane.style.top = b.y + 'px'; lane.style.width = b.w + 'px'; lane.style.height = b.h + 'px'; lane.style.setProperty('--c', m ? '#e9c46a' : p.color);
+      lane.onclick = can ? function (e) { e.stopPropagation(); playOn(targets[tr]); } : null;
+      lane.innerHTML = '';
       lane.setAttribute('data-tr', tr);
       // the head
-      var hs = Math.min(g.hd - 8, 34), head = el('div', { class: 'mt-head', style: { left: (ln.head[0] - b.x - hs / 2) + 'px', top: (ln.head[1] - b.y - hs / 2) + 'px', width: hs + 'px', height: hs + 'px' } });
+      var hs = Math.max(16, Math.min(g.hd - 8, 34, ln.wc - 3)), head = el('div', { class: 'mt-head', style: { left: (ln.head[0] - b.x - hs / 2) + 'px', top: (ln.head[1] - b.y - hs / 2) + 'px', width: hs + 'px', height: hs + 'px' } });
       if (m) head.appendChild(el('span', { class: 'mxeng', html: engineSvg('#e9c46a', true) }));
       else {
         var av = isBot(tr) ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color);
@@ -765,6 +802,7 @@
       }
       lanesEl.appendChild(lane);
     });
+    Object.keys(oldL).forEach(function (k) { oldL[k].remove(); });
     // the tiles
     var seen = {};
     if (o.fly) S.lastPlay = o.fly.id;
