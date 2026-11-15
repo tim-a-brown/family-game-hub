@@ -1,6 +1,6 @@
 'use strict';
 // History views: board
-// chess, checkers, tictactoe, chinesecheckers, codebreaker (Mastermind), dominoes, marbles, axisallies
+// chess, checkers, tictactoe, chinesecheckers, codebreaker (Mastermind), dominoes (and its Mexican Train), marbles, axisallies
 (function () {
   if (!window.HistView) return;
   var R = HistView.register;
@@ -838,8 +838,103 @@
     return L;
   }
   var DOM_V = { draw: 'Draw game', block: 'Block game', fives: 'All Fives' }, DOM_END = { E: 'right', W: 'left', N: 'top', S: 'bottom' };
+  // ═════════════════════════════════════════════════════════════════════════
+  // Mexican Train (a Game in Dominoes: games/mexicantrain-core.js, detail()): the score sheet round by round, and the
+  // last round's trains running out from the hub as they lay when it ended
+  // ═════════════════════════════════════════════════════════════════════════
+  var MT_PIP = ['', '#2a8fd6', '#2f9e44', '#d63a2f', '#8b5a2b', '#283593', '#c99a06', '#8e3fb0', '#11807f', '#c2185b', '#e8710a', '#546e7a', '#1c1c1c'];
+  var MT_SP = (function () {
+    var A3 = [.25, .5, .75];
+    function g(l) { return l.map(function (k) { return [A3[k % 3], A3[Math.floor(k / 3)]]; }); }
+    var x4 = [.22, .5, .78], y4 = [.17, .39, .61, .83];
+    function c4(cols) { var o = []; cols.forEach(function (rows, ci) { rows.forEach(function (y) { o.push([x4[ci], y]); }); }); return o; }
+    return [[], g([4]), g([2, 6]), g([2, 4, 6]), g([0, 2, 6, 8]), g([0, 2, 4, 6, 8]), g([0, 3, 6, 2, 5, 8]), g([0, 3, 6, 2, 5, 8, 4]), g([0, 1, 2, 3, 5, 6, 7, 8]), g([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+      c4([y4, [.39, .61], y4]), c4([y4, [.28, .5, .72], y4]), c4([y4, y4, y4])];
+  })();
+  function mtPairs(s) { var o = []; s = String(s || ''); for (var i = 0; i + 1 < s.length; i += 2) o.push([parseInt(s.charAt(i), 13), parseInt(s.charAt(i + 1), 13)]); return o; }
+  // one tile lying along a train at (x, y), u its short side; vert: standing on end
+  function mtTile(a, b, x, y, u, vert) {
+    var w = vert ? u : 2 * u, h = vert ? 2 * u : u, s = '<g transform="translate(' + f2(x) + ' ' + f2(y) + ')">';
+    s += '<rect width="' + f2(w) + '" height="' + f2(h) + '" rx="' + f2(u * .16) + '" fill="#fbf6e8" stroke="#8a7550" stroke-opacity=".5" stroke-width="' + f2(u * .04) + '"/>';
+    s += vert ? '<line x1="' + f2(u * .12) + '" x2="' + f2(u * .88) + '" y1="' + f2(u) + '" y2="' + f2(u) + '" stroke="#6b5a3a" stroke-opacity=".5" stroke-width="' + f2(u * .04) + '"/>'
+      : '<line y1="' + f2(u * .12) + '" y2="' + f2(u * .88) + '" x1="' + f2(u) + '" x2="' + f2(u) + '" stroke="#6b5a3a" stroke-opacity=".5" stroke-width="' + f2(u * .04) + '"/>';
+    [[a, 0], [b, 1]].forEach(function (hv) {
+      var v = hv[0], ox = vert ? 0 : hv[1] * u, oy = vert ? hv[1] * u : 0, r = u * (v >= 10 ? .07 : .085);
+      MT_SP[v].forEach(function (p) { s += '<circle cx="' + f2(ox + p[0] * u) + '" cy="' + f2(oy + p[1] * u) + '" r="' + f2(r) + '" fill="' + MT_PIP[v] + '"/>'; });
+    });
+    return s + '</g>';
+  }
+  function mtTrains(d, nm, ui) {
+    var n = (d.tr || []).length - 1; if (n < 1) return '';
+    var U = 11, per = 10, W = 2 * U * per + 74, rowsOf = d.tr.map(function (t) { return Math.max(1, Math.ceil(mtPairs(t).length / per)); });
+    var lane = 1.5 * U, H = 0, ys = [];
+    rowsOf.forEach(function (r) { ys.push(H); H += r * lane + 7; });
+    H += 4;
+    var s = '<svg viewBox="0 0 ' + W + ' ' + f2(H) + '" role="img" aria-label="The trains at the end of the last round">';
+    // the hub: the engine, and a rail from it to every train
+    var hx = 22, hy = H / 2;
+    d.tr.forEach(function (t, i) {
+      var y = ys[i] + lane / 2, m = i === n;
+      s += '<path d="M' + hx + ' ' + f2(hy) + 'Q' + (hx + 18) + ' ' + f2(y) + ' 52 ' + f2(y) + '" fill="none" stroke="' + (m ? '#e9c46a' : ui.color(i)) + '" stroke-width="1.6"' + (m ? ' stroke-dasharray="1.5 2.5"' : '') + ' opacity=".8"/>';
+    });
+    s += '<circle cx="' + hx + '" cy="' + f2(hy) + '" r="17" fill="#8a5128" stroke="#c99a4a" stroke-width="2"/>';
+    s += mtTile(d.e, d.e, hx - U / 2, hy - U, U, true);
+    d.tr.forEach(function (t, i) {
+      var y0 = ys[i], m = i === n, ts = mtPairs(t), col = m ? '#e9c46a' : ui.color(i), open = String(d.mk || '').charAt(i) === '1' && !m;
+      s += '<rect x="48" y="' + f2(y0 - 2) + '" width="' + (W - 50) + '" height="' + f2(rowsOf[i] * lane + 4) + '" rx="6" fill="' + col + '" fill-opacity="' + (m ? .1 : .12) + '"' + (open ? ' stroke="' + col + '" stroke-opacity=".7" stroke-dasharray="3 2"' : '') + '/>';
+      s += '<circle cx="58" cy="' + f2(y0 + lane / 2) + '" r="6" fill="' + col + '"/>';
+      ts.forEach(function (tl, k) {
+        var row = Math.floor(k / per), pos = k % per;
+        s += mtTile(tl[0], tl[1], 68 + pos * 2 * U, y0 + row * lane + (lane - U) / 2, U, false);
+      });
+      if (!ts.length) s += '<text x="68" y="' + f2(y0 + lane / 2 + 3.5) + '" font-size="9" fill="rgba(255,255,255,.55)" font-weight="700">No tiles</text>';
+    });
+    return s + '</svg>';
+  }
+  function mtView(e, ui) {
+    var d = e.dt, nm = names(e), out = [], n = nm.length;
+    var sc = e.rounds && e.rounds.scores ? e.rounds.scores : [], ro = String(d.ro || '').split(' ');
+    ui.css('mt-hv', '.mthv-tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.86rem;}' +
+      '.mthv-tbl th,.mthv-tbl td{padding:4px 5px;text-align:right;}.mthv-tbl th:first-child{text-align:left;white-space:nowrap;color:var(--text-2);font-weight:700;}' +
+      '.mthv-tbl thead th{font-weight:800;font-size:.78rem;text-align:right;}.mthv-tbl td.z{color:var(--lit-ink,#ffe28a);font-weight:900;}' +
+      '.mthv-tbl tr.tot th,.mthv-tbl tr.tot td{border-top:1px solid var(--w10,rgba(255,255,255,.12));font-weight:900;font-size:.95rem;padding-top:7px;}.mthv-tbl td.lo{color:var(--lit-ink,#ffe28a);}' +
+      '.mthv-sc{overflow-x:auto;}.mthv-tr svg{width:100%;height:auto;display:block;border-radius:12px;background:#1d5c40;}');
+    var tot = nm.map(function () { return 0; });
+    var head = ui.el('tr', null, [ui.el('th', { text: 'Engine' })].concat(nm.map(function (x, i) { return ui.el('th', { text: x, style: { color: ui.color(i) } }); })));
+    var body = sc.map(function (row, ri) {
+      var tr = ui.el('tr', null, [ui.el('th', { text: 'Double ' + (12 - ri) })]);
+      row.forEach(function (v, pi) { tot[pi] += +v || 0; tr.appendChild(ui.el('td', { class: v === 0 ? 'z' : '', text: String(v) })); });
+      return tr;
+    });
+    var lo = Math.min.apply(null, tot);
+    var foot = ui.el('tr', { class: 'tot' }, [ui.el('th', { text: 'Total' })].concat(tot.map(function (v) { return ui.el('td', { class: v === lo ? 'lo' : '', text: String(v) }); })));
+    var tbl = ui.el('table', { class: 'mthv-tbl', 'data-scores': 'sheet' }, [ui.el('thead', null, [head]), ui.el('tbody', null, body.concat([foot]))]);
+    var outs = ro.filter(function (x) { return x.charAt(0) === 'o'; }).length;
+    out.push(ui.stats([['Rounds', d.rp || sc.length, 'of ' + (d.R || 13)], ['Went out', outs || null, outs === 1 ? 'round' : 'rounds'], ['Blocked', ro.filter(function (x) { return x === 'b'; }).length || null, 'nobody could play']]));
+    out.push(ui.section('Round by round', ui.el('div', { class: 'mthv-sc' }, [tbl])));
+    if (d.tr && d.tr.length) {
+      var lastR = (d.rp || sc.length);
+      var cap = d.k === 'out' && nm[d.w] ? nm[d.w] + ' went out to end round ' + lastR + '.' : 'Nobody could play, so round ' + lastR + ' ended blocked.';
+      out.push(ui.section('The trains when the last round ended', ui.el('div', { class: 'mthv-tr' }, [ui.el('div', { html: mtTrains(d, nm, ui) }), ui.el('p', { class: 'muted', style: { 'font-size': '.82rem', margin: '6px 2px 0' }, text: cap + ' A dashed outline is a train with its marker out. The gold train is the Mexican Train.' })])));
+    }
+    if (d.hd && d.hd.length) {
+      var rows = d.hd.map(function (h, i) {
+        var ts = mtPairs(h), pips = ts.reduce(function (s, t) { return s + (t[0] === 0 && t[1] === 0 ? 50 : t[0] + t[1]); }, 0);
+        var svg = ts.map(function (t) { return '<svg viewBox="0 0 22 11">' + mtTile(t[0], t[1], 0, 0, 11, false) + '</svg>'; }).join('');
+        return ui.el('div', { class: 'hvb-hand' }, [ui.el('span', { class: 'n', text: nm[i] || 'Player', style: { color: ui.color(i) } }),
+          ui.el('span', { class: 't', html: svg }, ts.length ? null : [ui.el('em', { text: 'Out' })]),
+          ui.el('span', { class: 'p', text: pips + (pips === 1 ? ' dot' : ' dots') })]);
+      });
+      out.push(ui.section('Left in hand', ui.el('div', { class: 'hvb-mm' }, rows)));
+    }
+    var w = nm[tot.indexOf(lo)];
+    out.push(HistView.boardUI.foot(ui, w ? 'The lowest total wins: ' + w + ' finished with ' + lo + '.' : '', 'trophy'));
+    return ui.wrap(out);
+  }
+
   R('dominoes', function (e, ui) {
     var d = e.dt; if (!d) return null;
+    if (d.v === 'mexican') return mtView(e, ui);
     var B = HistView.boardUI, nm = names(e), out = [], fives = d.v === 'fives';
     var Lfin = d.ln && d.ln.r ? dmFromLn(d.ln) : null;
     // the hand move by move: plays and passes are the steps; draws are counted into the next step

@@ -340,6 +340,23 @@ Underlying principles for everything:
   `check.js`, table in `levels.txt`), `hist/arrowjam.js` (replays a clear): played from Mazes beside the Labyrinth (Tim:
   "incorporate arrow jam into the mazes"), so its catalog entry is `hidden`.
 
+## Mexican Train (2026-11-15; Tim: "add mexican train inside dominoes")
+
+- A Game in Dominoes' setup (`variant: 'mexican'`), not a tile of its own: choosing it changes the seats to 2 to 8
+  (`curV`, `range` in dominoes.html) and the options to First turn (one tile, or lay a train on your first turn of each
+  round), Doubles (covered first, the standard, or covered later) and Rounds (13, or 7 from the double 12 to the double 6).
+- The rules are `games/mexicantrain-core.js` (plain JSON, the page, TurnNet and Node; Pagat and the Puremco/Cardinal
+  sheets: double-12 set, the engine taken out before the deal, 15/12/11 tiles for 2-4/5-6/7-8 players, a marker on a
+  train after a pass, a double plays again and must be covered first, the double blank counts 50, lowest total wins).
+  `scripts/mexicantrain-sim.js` plays thousands of robot games and checks every move, the 91 tiles and the markers.
+- The table is `games/mexicantrain.js` + `mexicantrain.css` (`MTUI`; dominoes.html hands over to it in `onStart`, at
+  boot and for a TurnNet table whose state says `mt`). Every train is a lane out of the wooden hub: down a tall table,
+  across a wide one, both ways out of a hub in the middle with many players. A long train bends back beside itself where
+  its lane is wide, and pushes together toward the hub where it isn't (older tiles show the half nearest the hub). Tiles
+  are one size across the table (`layoutAll`), and each number's pips have their own color (`PIP`). Saved in
+  `dominoes_mt`; its history is in Dominoes' history (`detail.v === 'mexican'`, `mtView` in hist/board.js). Test hooks
+  `window.__mt`.
+
 ## Accounts: PIN or Google
 
 - A PIN account lives at `pins/{pin}`; a Google account (mode `google`, `FGHSync.isGoogle()`) at `users/{uid}`, readable

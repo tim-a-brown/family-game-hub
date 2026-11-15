@@ -1,0 +1,213 @@
+/* Mexican Train, inside Dominoes (games/mexicantrain.js draws the table) */
+
+/* ── Page frame: one screen, nothing scrolls during play ─────────────────
+   Upright: the players, the table, whose turn with the buttons, your tiles. Sideways: the players and whose turn at
+   the left (to look at), the table in the middle, your tiles and the buttons at the right (to act on). */
+#app.stage.mtapp{max-width:none;padding:0 max(17px,var(--corner-x)) max(calc(var(--safe-b) + 8px),18px);}
+.mtw{height:calc(100dvh - var(--barh,60px) - max(calc(var(--safe-b) + 8px),18px) - 2px);min-height:360px;max-width:760px;margin:0 auto;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto auto;
+  grid-template-areas:"who who" "tbl tbl" "status acts" "rack rack";gap:8px 8px;}
+.mt-who{grid-area:who;display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:6px;}
+.mt-tbl{grid-area:tbl;position:relative;min-height:0;border-radius:24px;}
+.mt-status{grid-area:status;display:flex;align-items:center;min-height:46px;min-width:0;}
+.mt-acts{grid-area:acts;display:flex;gap:6px;align-items:center;justify-content:flex-end;}
+.mt-acts:empty{display:none;}
+.mt-rack{grid-area:rack;}
+
+/* ── The players ──────────────────────────────────────────────────────── */
+.mt-pl{--c:#888;position:relative;display:flex;align-items:center;gap:7px;min-width:0;padding:5px 8px 5px 6px;border-radius:14px;
+  background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);transition:box-shadow .25s,background .25s;}
+.mt-pl .avatar{flex:none;width:28px;height:28px;font-size:.8rem;box-shadow:0 0 0 2px var(--c);}
+.mt-pl .avatar .ico{width:60%;height:60%;}
+.mt-pl .tx{min-width:0;flex:1;}
+.mt-pl .nm{font-weight:800;font-size:.8rem;line-height:1.15;white-space:nowrap;overflow:hidden;}
+@media (orientation:portrait) and (max-width:520px){
+  .mt-who.c4 .mt-pl{gap:5px;padding:5px 6px 5px 5px;} .mt-who.c4 .mt-pl .avatar{width:22px;height:22px;font-size:.66rem;}
+  .mt-who.c4 .mt-pl .sc{font-size:.9rem;}
+}
+.mt-pl .ln{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:1px;}
+.mt-pl .ct{display:inline-flex;align-items:center;gap:4px;font-size:.74rem;font-weight:700;color:var(--text-2);font-variant-numeric:tabular-nums;}
+.mt-pl .ct i{width:6px;height:11px;border-radius:2px;background:linear-gradient(135deg,#fffef8,#e2d6bb);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.4);}
+.mt-pl .sc{font:800 .98rem/1 var(--display);font-variant-numeric:tabular-nums;color:var(--text);}
+.mt-pl .sc.lo{color:var(--lit-ink);}
+.mt-pl.on{background:color-mix(in srgb,var(--lit) 14%,var(--gl));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--lit) 75%,transparent),0 0 16px color-mix(in srgb,var(--lit) 28%,transparent);}
+.mt-pl.me .nm{color:var(--lit-ink);}
+.mt-pl .think{position:absolute;right:-3px;top:-6px;display:inline-flex;gap:2px;padding:4px 5px;border-radius:999px;background:var(--c);box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.mt-pl .think i{width:4px;height:4px;border-radius:50%;background:#fff;animation:mtth 1s infinite;}
+.mt-pl .think i:nth-child(2){animation-delay:.15s}.mt-pl .think i:nth-child(3){animation-delay:.3s}
+@keyframes mtth{50%{opacity:.2;transform:translateY(-2px);}}
+.mt-pl .say{position:absolute;left:50%;top:calc(100% + 5px);z-index:20;transform:translateX(-50%);padding:5px 12px;border-radius:13px;background:var(--sheet-solid);color:var(--text);
+  font-weight:750;font-size:.84rem;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--gl-line),0 8px 18px -8px rgba(0,0,0,.7);animation:mtsay 1.7s var(--ease) forwards;pointer-events:none;}
+.mt-pl .say::before{content:"";position:absolute;left:50%;top:-5px;margin-left:-5px;border:5px solid transparent;border-top:0;border-bottom-color:var(--sheet-solid);}
+@keyframes mtsayl{0%{opacity:0;}12%,82%{opacity:1;}100%{opacity:0;}}
+@keyframes mtsay{0%{opacity:0;transform:translate(-50%,6px) scale(.7);}12%{opacity:1;transform:translate(-50%,0) scale(1.05);}20%{transform:translate(-50%,0) scale(1);}82%{opacity:1;}100%{opacity:0;}}
+
+/* ── The table ────────────────────────────────────────────────────────── */
+.mt-tbl>.felt-in{position:absolute;inset:9px;border-radius:17px;overflow:hidden;}
+.mt-tbl.bump{animation:mtbump .25s ease-out;}
+@keyframes mtbump{40%{transform:translateY(1.5px);}}
+.mt-rails{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}
+.mt-rails path{fill:none;stroke-linecap:round;}
+.mt-rails .rp{stroke:color-mix(in srgb,var(--c) 70%,#2a1a0a);stroke-width:3;opacity:.75;}
+.mt-rails .rx{stroke:#e9c46a;stroke-width:4;stroke-dasharray:2 5;opacity:.9;}
+/* the hub: a turned wooden station with brass notches, the engine in its middle */
+.mt-hub{position:absolute;z-index:3;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,#6b3f1d 0 30%,transparent 31%),repeating-radial-gradient(circle at 50% 50%,#a8693a 0 3px,#93572b 3px 6px),#8a5128;
+  box-shadow:inset 0 0 0 3px #c99a4a,inset 0 0 0 6px rgba(60,30,10,.6),inset 0 4px 10px rgba(255,220,170,.25),0 8px 18px rgba(0,0,0,.45),0 0 0 2px rgba(0,0,0,.25);}
+.mt-hub .notch{position:absolute;left:50%;top:50%;width:10%;height:10%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3c4,#c99a4a 55%,#6b4512);box-shadow:0 1px 1px rgba(0,0,0,.5);}
+.mt-hub .mtt.eng{position:absolute;box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.9),0 0 0 2px #ffd34d,0 0 16px rgba(255,211,77,.55),0 4px 6px rgba(0,0,0,.5);transition:transform .4s var(--ease),left .4s var(--ease),top .4s var(--ease),width .4s var(--ease),height .4s var(--ease);}
+.mt-hub .mtt.eng.drop{animation:mtdrop .6s var(--spring) both;}
+@keyframes mtdrop{from{opacity:0;scale:1.8;}to{opacity:1;scale:1;}}
+/* each train's lane: a band in its owner's color, the Mexican Train on a rail track */
+.mt-lanes{position:absolute;inset:0;z-index:1;}
+.mt-lane{--c:#888;position:absolute;border-radius:14px;background:color-mix(in srgb,var(--c) 11%,rgba(0,0,0,.08));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 26%,transparent);transition:background .25s,box-shadow .25s,opacity .25s,left .4s var(--ease),top .4s var(--ease),width .4s var(--ease),height .4s var(--ease);}
+.mt-lane.mine{background:color-mix(in srgb,var(--c) 18%,rgba(0,0,0,.06));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 50%,transparent);}
+.mt-lane.open{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c) 60%,transparent);background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 10%,transparent) 0 6px,transparent 6px 14px);}
+.mt-lane.mx{background:rgba(30,20,10,.22);box-shadow:inset 0 0 0 1px rgba(233,196,106,.35);}
+.mt-lane.mx::before,.mt-lane.mx::after{content:"";position:absolute;pointer-events:none;}
+.mt-lane.mx.down::before,.mt-lane.mx.up::before{left:16%;right:16%;top:6px;bottom:6px;background:repeating-linear-gradient(180deg,rgba(110,72,36,.75) 0 5px,transparent 5px 15px);border-radius:3px;}
+.mt-lane.mx.down::after,.mt-lane.mx.up::after{left:0;right:0;top:6px;bottom:6px;background:linear-gradient(90deg,transparent calc(28% - 1.5px),#c9a24a calc(28% - 1.5px) calc(28% + 1.5px),transparent calc(28% + 1.5px) calc(72% - 1.5px),#c9a24a calc(72% - 1.5px) calc(72% + 1.5px),transparent calc(72% + 1.5px));opacity:.8;}
+.mt-lane.mx.right::before{top:16%;bottom:16%;left:6px;right:6px;background:repeating-linear-gradient(90deg,rgba(110,72,36,.75) 0 5px,transparent 5px 15px);border-radius:3px;}
+.mt-lane.mx.right::after{top:0;bottom:0;left:6px;right:6px;background:linear-gradient(180deg,transparent calc(28% - 1.5px),#c9a24a calc(28% - 1.5px) calc(28% + 1.5px),transparent calc(28% + 1.5px) calc(72% - 1.5px),#c9a24a calc(72% - 1.5px) calc(72% + 1.5px),transparent calc(72% + 1.5px));opacity:.8;}
+.mt-lane.can{cursor:pointer;background:color-mix(in srgb,var(--lit) 16%,rgba(0,0,0,.1));box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--lit) 80%,transparent),0 0 18px color-mix(in srgb,var(--lit) 35%,transparent);}
+.mt-lane.can.hot{background:color-mix(in srgb,var(--lit) 30%,rgba(0,0,0,.1));}
+.mt-lane.dim,.mt-lane.wait{opacity:.5;}
+.mt-lane.owed{box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--lit) 70%,transparent);animation:mtowed 1.1s ease-in-out infinite alternate;}
+@keyframes mtowed{to{box-shadow:inset 0 0 0 2px var(--lit),0 0 20px var(--litg);}}
+.mt-lane.pulse.p-cover,.mt-lane.pulse.p-start{animation:mtflash 1s ease-out;}
+.mt-lane.pulse.p-dbl{animation:mtflash 1s ease-out;}
+@keyframes mtflash{0%{box-shadow:inset 0 0 0 3px #fff,0 0 26px color-mix(in srgb,var(--c) 90%,#fff);}100%{}}
+.mt-head{position:absolute;display:grid;place-items:center;z-index:2;}
+.mt-head .avatar{width:100%;height:100%;font-size:calc(.5 * 100%);box-shadow:0 0 0 2px rgba(0,0,0,.35),0 3px 6px rgba(0,0,0,.4);font-size:.82rem;}
+.mt-lane.mine .mt-head .avatar{box-shadow:0 0 0 2px var(--lit),0 3px 8px rgba(0,0,0,.45);}
+.mt-head .mk{position:absolute;right:-42%;bottom:-30%;width:84%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6));}
+.mt-head .mk svg,.mt-head .mxeng svg{display:block;width:100%;height:auto;}
+.mt-head .mk.drop{animation:mtmk .55s var(--spring) both;}
+@keyframes mtmk{from{transform:translateY(-26px) rotate(-20deg);opacity:0;}to{transform:none;opacity:1;}}
+.mt-head .mxeng{width:118%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55));}
+.mt-ghost{position:absolute;z-index:6;border-radius:6px;border:2px dashed #ffe58a;background:rgba(255,229,138,.22);box-shadow:0 0 14px rgba(255,229,138,.6);animation:mtg 1s ease-in-out infinite alternate;pointer-events:none;}
+@keyframes mtg{from{opacity:.55;}to{opacity:1;}}
+.mt-layer{position:absolute;inset:0;z-index:4;pointer-events:none;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.5));}
+.mt-layer .mtt{position:absolute;transition:left .4s var(--ease),top .4s var(--ease),width .4s var(--ease),height .4s var(--ease),transform .4s var(--ease);}
+.mt-layer .mtt.nt{transition:none;}
+.mt-layer .mtt.dbl{box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),0 0 0 1.5px rgba(201,154,74,.9);}
+.mt-layer .mtt.last{box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),0 0 0 2px rgba(255,255,255,.8);}
+.mt-layer .mtt.owed{box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),0 0 0 2.5px #ffd34d,0 0 14px rgba(255,211,77,.8);}
+.mt-layer .mtt.dealin{animation:mtfade .5s var(--ease) both;}
+@keyframes mtfade{from{opacity:0;}to{opacity:1;}}
+/* the plaques: the round, and the boneyard (a tap draws when nothing fits) */
+.mt-plq{position:absolute;z-index:5;display:flex;align-items:center;gap:8px;min-height:36px;padding:4px 11px;border:0;border-radius:14px;color:#fff;
+  background:var(--plate-bg);box-shadow:var(--plate-line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);font:inherit;}
+.mt-plq b{font:800 1rem/1 var(--display);}
+.mt-plq small{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.7);}
+.mt-rnd{flex-direction:column;align-items:flex-start;gap:1px;justify-content:center;}
+.mt-bone span{display:flex;flex-direction:column;line-height:1.05;}
+.mt-bone .pile{position:relative;width:30px;height:22px;flex:none;}
+.mt-bone .pile .mtt{--tw:10px;position:absolute;}
+.mt-bone.go{cursor:pointer;animation:mtbglow 1s ease-in-out infinite alternate;}
+@keyframes mtbglow{to{box-shadow:inset 0 0 0 1.5px var(--lit),0 0 14px var(--litg);}}
+.mt-bone.none .pile{opacity:.35;}
+
+/* ── Tiles: ivory, colored pips, a center bar and a brass pin ─────────── */
+.mtt{--tw:30px;position:relative;flex:none;display:flex;flex-direction:column;width:var(--tw);height:calc(var(--tw) * 2);border-radius:calc(var(--tw) * .17);
+  background:linear-gradient(135deg,#fffef8 0%,#f7f0dd 55%,#e9dec4 100%);
+  box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),inset -1px -2px 2px rgba(120,95,55,.22);}
+.mtt .hf{position:relative;flex:1 1 0;}
+.mtt .hf i{position:absolute;width:17%;height:17%;border-radius:50%;transform:translate(-50%,-50%);
+  background-image:radial-gradient(circle at 36% 30%,rgba(255,255,255,.42),transparent 58%);box-shadow:inset 0 .5px 1px rgba(0,0,0,.55),0 .5px 0 rgba(255,255,255,.8);}
+.mtt .hf.sm i{width:14.5%;height:14.5%;}
+.mtt::before{content:"";position:absolute;left:11%;right:11%;top:50%;height:max(1px,calc(var(--tw) * .045));transform:translateY(-50%);border-radius:1px;background:linear-gradient(180deg,rgba(60,45,25,.55),rgba(255,255,255,.7));}
+.mtt .pin{position:absolute;left:50%;top:50%;width:calc(var(--tw) * .18);height:calc(var(--tw) * .18);transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#fff6cf 0%,#e2b54c 40%,#9a6a18 100%);box-shadow:0 .5px 1px rgba(0,0,0,.5);}
+.mtt.back{background:linear-gradient(135deg,#4a403a 0%,#2a2420 55%,#191512 100%);box-shadow:inset 0 0 0 1px rgba(0,0,0,.5),inset 1px 1px 0 rgba(255,255,255,.18);}
+.mtt.back::before{background:rgba(255,255,255,.08);}
+.mtt.mini::before{display:none;} .mtt.mini .pin{width:3px;height:3px;}
+.mtt.lie{--tw:15px;transform:rotate(-90deg);margin:calc(var(--tw) * -.5) calc(var(--tw) * .5);}
+.mtt.fly,.mtt.dragt{position:fixed;z-index:70;pointer-events:none;margin:0;}
+.mtt.dragt{transform:translate(-50%,-50%) scale(1.08);filter:drop-shadow(0 10px 10px rgba(0,0,0,.5));}
+
+/* ── Your rack ────────────────────────────────────────────────────────── */
+.mt-rack{position:relative;flex:none;min-width:0;border-radius:16px;padding:14px 10px 12px;display:flex;flex-wrap:wrap;justify-content:center;align-content:center;gap:8px 6px;
+  background:repeating-linear-gradient(92deg,rgba(255,255,255,.05) 0 2px,transparent 2px 9px),linear-gradient(180deg,#8a5428,#5e3517);
+  box-shadow:inset 0 2px 0 rgba(255,220,180,.25),inset 0 -5px 0 rgba(0,0,0,.3),0 10px 20px rgba(0,0,0,.4);transition:box-shadow .25s;}
+.mt-rack::after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:5px;border-radius:3px;background:rgba(0,0,0,.25);box-shadow:0 1px 0 rgba(255,220,180,.18);pointer-events:none;}
+.mt-rack.on{box-shadow:inset 0 2px 0 rgba(255,220,180,.25),inset 0 -5px 0 rgba(0,0,0,.3),0 0 0 2px var(--lit),0 0 18px var(--litg);}
+.mt-rack .mtt{cursor:pointer;touch-action:none;transition:transform .2s var(--spring),filter .2s,opacity .2s;
+  box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),inset 1px 1px 0 rgba(255,255,255,.95),inset -1px -2px 2px rgba(120,95,55,.22),0 3px 4px rgba(0,0,0,.45);}
+.mt-rack .mtt.sel{transform:translateY(-9px);box-shadow:inset 0 0 0 1px rgba(90,70,40,.35),0 0 0 3px #ffd84a,0 0 14px rgba(255,216,74,.7),0 10px 12px rgba(0,0,0,.45);}
+.mt-rack .mtt.no{filter:brightness(.68) saturate(.55);}
+.mt-rack .mtt.drag{opacity:.25;}
+.mt-rack .mtt.dealin{animation:mtdealin .45s var(--ease) both;}
+.mt-rack .mtt.flipin{animation:mtflipin .35s var(--ease) both;}
+@keyframes mtdealin{from{transform:translateY(-60px) rotate(-12deg) scale(.6);opacity:0;}to{transform:none;opacity:1;}}
+@keyframes mtflipin{0%{transform:scaleX(0);}100%{transform:none;}}
+.mt-rack .lbl{position:absolute;left:12px;top:-1px;transform:translateY(-55%);padding:3px 10px;border-radius:11px;background:var(--sheet-solid);color:var(--text-2);font-size:.76rem;font-weight:650;box-shadow:inset 0 0 0 1px var(--gl-line),0 4px 10px -4px rgba(0,0,0,.6);white-space:nowrap;}
+.mt-rack .lbl b{color:var(--text);font-weight:750;}
+.mt-rack .empty{color:#f6dcb8;font-weight:800;font-size:.9rem;opacity:.8;}
+
+/* ── Whose turn ───────────────────────────────────────────────────────── */
+.mt-msg{flex:1;min-width:0;display:flex;align-items:center;gap:9px;font-weight:900;font-size:1rem;line-height:1.2;}
+.mt-msg .dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 30%,transparent);}
+.mt-msg small{display:block;font-weight:700;font-size:.8rem;color:var(--text-2);}
+.mt-acts .btn{min-height:44px;padding:0 14px;font-size:.92rem;gap:6px;white-space:nowrap;}
+.mt-acts .btn .ico{width:18px;height:18px;}
+@media (orientation:portrait) and (max-width:520px){ .mt-acts .btn.ic{padding:0 12px;} .mt-acts .btn.ic span{display:none;} .mt-rack{margin-top:6px;} }
+
+/* ── The count at the end of a round ──────────────────────────────────── */
+.mt-res .head{text-align:center;font-weight:750;color:var(--text-2);margin:-4px 0 12px;}
+.mt-res .head b{color:var(--lit-ink);}
+.mt-rrows .row{display:grid;grid-template-columns:minmax(64px,auto) minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--w07);}
+.mt-rrows .row.won .nm span{color:var(--lit-ink);}
+.mt-rrows .nm{display:flex;align-items:center;gap:6px;font-weight:800;min-width:0;}
+.mt-rrows .nm i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none;}
+.mt-rrows .tl{display:flex;flex-wrap:wrap;gap:4px;min-height:30px;align-items:center;}
+.mt-rrows .tl em{font-style:normal;color:var(--green);font-weight:800;font-size:.85rem;}
+.mt-rrows .pp{text-align:right;font-variant-numeric:tabular-nums;}
+.mt-rrows .pp b{display:block;font:800 1.15rem/1 var(--display);}
+.mt-rrows .pp small{display:block;font-size:.72rem;color:var(--text-3);font-weight:700;}
+.mt-res .foot{text-align:center;margin-top:10px;font-size:.85rem;}
+
+/* ── iPad upright ─────────────────────────────────────────────────────── */
+@media (min-width:700px) and (orientation:portrait){
+  .mtw{max-width:900px;gap:12px;}
+  .mt-pl{padding:7px 10px 7px 8px;} .mt-pl .avatar{width:34px;height:34px;font-size:.95rem;} .mt-pl .nm{font-size:.92rem;} .mt-pl .sc{font-size:1.15rem;} .mt-pl .ct{font-size:.84rem;}
+  .mt-msg{font-size:1.15rem;} .mt-msg small{font-size:.9rem;}
+  .mt-plq b{font-size:1.15rem;} .mt-plq small{font-size:.8rem;}
+}
+/* ── Sideways: the players and whose turn at the left, the table, your tiles and the buttons at the right ── */
+@media (orientation:landscape){
+  #app.stage.mtapp{padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  .mtw{max-width:1500px;grid-template-columns:clamp(132px,15vw,200px) minmax(0,1fr) clamp(220px,28vw,360px);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"who tbl status" "who tbl rack" "who tbl acts";gap:10px 12px;}
+  .mt-who{grid-template-columns:minmax(0,1fr);align-content:start;overflow:visible;}
+  .mt-who{align-self:start;}
+  .mt-status{align-items:flex-start;min-height:0;}
+  .mt-msg{align-items:flex-start;font-size:.98rem;} .mt-msg .dot{margin-top:5px;}
+  .mt-acts{flex-direction:column;align-items:stretch;justify-content:flex-end;}
+  .mt-acts .btn{min-height:48px;}
+  .mt-rack{align-content:center;min-height:0;margin-top:10px;}
+}
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .mt-pl{padding:8px 10px 8px 8px;} .mt-pl .avatar{width:34px;height:34px;font-size:.95rem;} .mt-pl .nm{font-size:.94rem;} .mt-pl .sc{font-size:1.2rem;} .mt-pl .ct{font-size:.84rem;}
+  .mt-msg{font-size:1.12rem;} .mt-msg small{font-size:.88rem;}
+  .mtw{gap:12px 16px;}
+}
+/* a phone on its side: the bar, the plates and the gaps made for the short screen */
+@media (orientation:landscape) and (max-height:599px){
+  .mtw{min-height:0;gap:6px 10px;grid-template-columns:clamp(124px,16vw,170px) minmax(0,1fr) clamp(200px,27vw,290px);}
+  .mt-who{gap:4px;}
+  .mt-pl{padding:3px 7px 3px 5px;gap:6px;border-radius:12px;} .mt-pl .avatar{width:24px;height:24px;font-size:.7rem;}
+  .mt-pl .nm{font-size:.74rem;} .mt-pl .sc{font-size:.88rem;} .mt-pl .ct{font-size:.68rem;}
+  /* five to eight players: each plate one line (the avatar, the name, the tiles held and the total) */
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl{padding:2px 7px 2px 3px;}
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl .tx{display:flex;align-items:center;gap:6px;}
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl .nm{flex:1;min-width:0;}
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl .ln{margin:0;gap:7px;}
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl .say{top:50%;left:calc(100% + 6px);transform:translateY(-50%);animation-name:mtsayl;}
+  .mtw:is([data-n="5"],[data-n="6"],[data-n="7"],[data-n="8"]) .mt-pl .say::before{display:none;}
+  .mt-msg{font-size:.86rem;line-height:1.15;} .mt-msg small{font-size:.72rem;}
+  .mt-tbl>.felt-in{inset:7px;}
+  .mt-rack{padding:11px 8px 10px;}
+  .mt-acts .btn{min-height:44px;}
+}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
