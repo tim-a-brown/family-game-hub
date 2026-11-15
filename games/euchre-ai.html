@@ -104,6 +104,42 @@
   .stage > .chand{grid-area:hand;--cw:84px;}
   .stage > .cbar .bidbox .btns{flex-wrap:wrap;}
 }
+/* ── Every shape uses the whole screen (the baseline, 2026-11-15) ─────────────────────────────────────────────────
+   Upright, phone and iPad: the page is the screen, and the table takes all the height the hand and the bar leave;
+   the trick's cards grow with the table (container units of the felt). */
+#app .ctable .felt-in{container-type:size;}
+#app .ctrick .pcard{--cw:clamp(40px,min(17cqw,15cqh),96px);}
+@media (orientation:portrait){
+  #app.stage:has(> .ctable){display:flex;flex-direction:column;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{flex:1 1 0;display:flex;flex-direction:column;margin-bottom:6px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:250px;}
+  #app.stage > .csort-row,#app.stage > .chand,#app.stage > .cbar{flex:none;}
+  #app.stage > .chand{--cw:clamp(56px,17vw,80px);}
+}
+@media (orientation:portrait) and (min-width:700px){
+  #app.stage > .chand{--cw:clamp(84px,12.5vw,104px);}
+}
+/* a short screen leaves out the fanned backs (everyone holds as many cards as you do) */
+@media (max-height:640px){#app .cseat .backs{display:none;}}
+/* A phone on its side: the table at the left as tall as the screen; at the right what you act with, the bar
+   (bids, buttons, what's happening) over your hand */
+@media (orientation:landscape) and (max-height:520px){
+  #app.stage:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "table hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{grid-area:table;margin:0;display:flex;flex-direction:column;min-height:0;padding:6px;border-radius:22px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;border-radius:17px;}
+  #app.stage > .cbar{grid-area:bar;align-self:center;flex-wrap:wrap;margin:0;min-height:0;text-align:center;}
+  #app.stage > .csort-row{grid-area:sort;margin:0;}
+  #app.stage > .chand{grid-area:hand;--cw:clamp(48px,18dvh,76px);padding:14px 0 0;min-height:0;}
+  #app.stage > .cbar .bidgrid button{min-height:38px;}
+  #app .cmsg{bottom:auto;top:64%;transform:translate(-50%,-50%);}
+}
+/* An iPad on its side: the table and its side panel fill the height down to the hand */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  #app.stage:has(> .ctable){height:calc(100dvh - var(--bar));grid-template-rows:minmax(0,1fr) auto auto;padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{display:flex;flex-direction:column;min-height:0;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;}
+  #app.stage > .chand{--cw:clamp(84px,11dvh,100px);}
+}
 </style>
 </head>
 <body>
@@ -119,7 +155,6 @@
   var CPU_MS = 750;
 
   Kit.init({
-    orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'euchre',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
@@ -702,15 +737,16 @@
     if (res === 'alone-march') S.highlights.push(name + ' went alone and marched in hand ' + S.handNo);
     if (S.alone && res === 'euchred') S.highlights.push(name + ' went alone and got euchred in hand ' + S.handNo);
     var good = (res === 'euchred') !== (mt === MT());
-    if (res === 'euchred') Kit.callout('Euchred!', good ? null : '#ff4d5e');
-    else if (res === 'alone-march') Kit.callout('Alone march!');
-    else if (res === 'march') Kit.callout('March!');
-    if (good) { Kit.sfx('good'); Kit.haptic('success'); if (res !== 'made') Kit.confetti({ count: 70 }); } else Kit.sfx('bad');
+    // the uncommon hands have their moment on the table: a march, a euchre, and biggest of all a loner's march
+    var rt = resultText({ maker: S.maker, res: res, tricks: mk });
+    if (res === 'alone-march') Kit.moment({ big: true, chip: '4', title: 'Alone march', line: name + ' went alone and took all 5 tricks.', pts: '+4', tone: good ? '' : 'bad', ms: 3200 });
+    else if (res !== 'made') Kit.moment({ icon: res === 'euchred' ? 'shield' : 'flame', title: rt.big.replace('!', ''), line: rt.why.replace(/: (\d) points?$/, ', worth $1 points') + '.', pts: '+' + (pts[0] + pts[1]), tone: good ? '' : 'bad', ms: 2600 });
+    if (good) { Kit.sfx(res === 'alone-march' ? 'win' : 'good'); Kit.haptic('success'); if (res !== 'made') Kit.confetti({ count: res === 'alone-march' ? 110 : 70 }); } else { Kit.sfx('bad'); if (res !== 'made') Kit.haptic('error'); }
     S.phase = 'handover'; S.turn = -1;
     undoStack = []; save(); paintAll();
     var over = S.scores[0] >= S.target || S.scores[1] >= S.target;
     var t = token;
-    setTimeout(function () { if (t === token) over ? finish() : showHandSummary(); }, res === 'made' ? 700 : 1300);
+    setTimeout(function () { if (t === token) over ? finish() : showHandSummary(); }, res === 'made' ? 700 : res === 'alone-march' ? 3400 : 2700);
   }
   function resultText(L) {
     var mt = L.maker % 2;
@@ -1342,6 +1378,36 @@
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// Turning the device (or resizing the window) at any moment: the cards and seats glide from where they showed in the
+// last frame to their new places (where everything is, is noted every frame, since a resize has already moved things
+// by the time it is heard). A card that was redrawn is found again by its id.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh || reduce) return; wh = now;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!a || !b.width || !n.animate) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .cseat, .plq, .pstack, .cmsg');
 </script>
 </body>
 </html>

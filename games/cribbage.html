@@ -204,6 +204,44 @@
 @media (orientation:landscape) and (min-width:980px) and (min-height:600px) and (display-mode:standalone){
   #app:has(> .cboard){height:calc(100dvh - var(--safe-t) - 64px);}
 }
+/* ── Every shape uses the whole screen (the baseline, 2026-11-15) ─────────────────────────────────────────────────
+   Upright, phone and iPad: the pegboard, then the table taking all the height the hand and the bar leave */
+#app .ctable .felt-in{container-type:size;}
+@media (orientation:portrait){
+  #app.stage:has(> .cboard){display:flex;flex-direction:column;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .cboard,#app.stage > .csort-row,#app.stage > .chand,#app.stage > .cbar{flex:none;}
+  #app.stage > .ctable{flex:1 1 0;display:flex;flex-direction:column;margin-bottom:6px;}
+  #app.stage > .ctable .felt-in,#app.stage > .ctable.tall .felt-in{flex:1 1 0;height:auto;min-height:250px;}
+  #app .pile,#app .deck{--cw:clamp(42px,min(15cqw,13cqh),76px);} #app .crib{--cw:clamp(36px,min(12.5cqw,11cqh),64px);}
+  #app .showv .cards{--cw:clamp(46px,min(15cqw,16cqh),88px);}
+}
+/* An iPad upright: the board, table and hand as wide as the screen */
+@media (orientation:portrait) and (min-width:700px){
+  #app.stage:has(> .cboard){max-width:760px;}
+  #app.stage > .chand{--cw:clamp(88px,13vw,104px);}
+}
+/* A phone on its side: the table at the left, as tall as the screen; the pegboard, the bar and your hand at the right */
+@media (orientation:landscape) and (max-height:520px){
+  #app.stage:has(> .cboard){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"felt board" "felt bar" "felt sort" "felt hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .cboard{grid-area:board;margin:0;padding:4px 8px 2px;}
+  #app.stage > .cboard svg{max-height:calc((100dvh - var(--bar)) * .3);}
+  #app.stage > .ctable{grid-area:felt;margin:0;display:flex;flex-direction:column;min-height:0;padding:6px;border-radius:22px;}
+  #app.stage > .ctable .felt-in,#app.stage > .ctable.tall .felt-in{flex:1 1 0;height:auto;min-height:0;border-radius:17px;}
+  #app.stage > .cbar{grid-area:bar;align-self:center;margin:0;min-height:0;flex-wrap:wrap;}
+  #app.stage > .cbar .btn{min-width:0;padding:0 18px;min-height:44px;}
+  #app.stage > .cbar .passcard{gap:4px;}
+  #app.stage > .csort-row{grid-area:sort;margin:0;min-height:30px;}
+  #app.stage > .chand{grid-area:hand;--cw:clamp(46px,15dvh,64px);padding:12px 0 0;min-height:0;}
+  #app .pile,#app .deck{--cw:clamp(40px,min(13cqw,16cqh),60px);} #app .crib{--cw:clamp(34px,min(11cqw,14cqh),52px);}
+  #app .pile{flex-direction:row;gap:12px;transform:translate(-50%,-50%);}
+  #app .showv{gap:8px;padding:8px 10px;} #app .showv .cards{--cw:clamp(40px,min(14cqw,22cqh),72px);}
+  #app .showv .who{font-size:1.1rem;} #app .slip{padding:6px 12px;} #app .slip .say{font-size:1.1rem;}
+  #app .cutdeal{--cw:clamp(50px,18cqh,70px);}
+  #app .cseat .backs{display:none;}
+}
+/* A short phone upright leaves out the fanned backs and tucks the sort toggle into the top of the hand, so the play has the middle */
+@media (orientation:portrait) and (max-height:640px){#app .cseat .backs{display:none;} #app.stage > .ctable .felt-in,#app.stage > .ctable.tall .felt-in{min-height:158px;} #app .feltmsg{font-size:.78rem;line-height:1.12;top:42%;width:58%;} #app .feltmsg .display{font-size:1.05rem;margin-bottom:1px;} #app.stage > .csort-row{margin-bottom:-18px;z-index:2;} #app.stage > .chand{--cw:50px;} #app.stage > .cboard{padding:3px 6px 1px;margin-bottom:6px;} #app.stage > .cbar{margin:2px 0 0;} #app .cboard.tm .cb-p .nm,#app .cboard.k3 .cb-p .nm{font-size:.74rem;} #app.stage > .ctable.n3 .felt-in{min-height:144px;}}
+@media (max-width:360px){#app .n3 .cseat .tag > span:nth-child(2){max-width:86px;}}
 </style>
 </head>
 <body>
@@ -815,7 +853,13 @@
     save(); render();
     animateShow(r);
     if (addPoints(sp.p, r.total, true)) return;
-    if (r.total >= 20) setTimeout(function () { Kit.callout(r.total + ' points!'); Kit.confetti({ count: 60 }); }, 900);
+    // a hand of 20 or more has its moment on the table once it is counted; 24 and up bigger, and a 29 the biggest
+    if (r.total >= 20) setTimeout(function () {
+      if (S.phase !== 'show') return;
+      var whose = sp.crib ? Kit.poss(nm(sp.p)) + ' crib' : Kit.poss(nm(sp.p)) + ' hand', mine = !isCpu(sp.p);
+      Kit.moment({ big: r.total >= 24, chip: String(r.total), title: r.total === 29 ? 'A perfect 29' : r.total + ' points', line: r.total === 29 ? whose + ' counts 29, the best hand in cribbage.' : whose + ' counts ' + r.total + '.', pts: '+' + r.total, tone: mine ? '' : 'bad', ms: r.total >= 24 ? 3400 : 2600 });
+      if (mine) { Kit.confetti({ count: r.total >= 24 ? 120 : 60 }); Kit.sfx(r.total >= 24 ? 'win' : 'good'); Kit.haptic('success'); }
+    }, 1400);
     save();
   }
   function endHand() {
@@ -1671,6 +1715,36 @@
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// Turning the device (or resizing the window) at any moment: the cards and seats glide from where they showed in the
+// last frame to their new places (where everything is, is noted every frame, since a resize has already moved things
+// by the time it is heard). A card that was redrawn is found again by its id.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh || reduce) return; wh = now;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!a || !b.width || !n.animate) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .cseat, .cboard, .count');
 </script>
 </body>
 </html>

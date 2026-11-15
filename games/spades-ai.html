@@ -105,6 +105,64 @@
 .cbar.nudge .hint,.cseat.turn.nudge .tag{animation:spnudge .4s;}
 @keyframes spnudge{20%{translate:-6px 0;}40%{translate:6px 0;}60%{translate:-4px 0;}80%{translate:3px 0;}}
 .cseat.away .tag{opacity:.6;}
+/* ── Every shape uses the whole screen (the baseline, 2026-11-15) ─────────────────────────────────────────────────
+   Upright, phone and iPad: the page is the screen, and the table takes all the height the hand and the bar leave;
+   the trick's cards grow with the table (container units of the felt). */
+#app .ctable .felt-in{container-type:size;}
+#app .ctrick .pcard{--cw:clamp(40px,min(17cqw,15cqh),96px);}
+@media (orientation:portrait){
+  #app.stage:has(> .ctable){display:flex;flex-direction:column;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{flex:1 1 0;display:flex;flex-direction:column;margin-bottom:6px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:250px;}
+  #app.stage > .csort-row,#app.stage > .chand,#app.stage > .cbar{flex:none;}
+  #app.stage > .chand{--cw:clamp(56px,17vw,80px);}
+}
+@media (orientation:portrait) and (min-width:700px){
+  #app.stage > .chand{--cw:clamp(84px,12.5vw,104px);}
+}
+/* a short screen leaves out the fanned backs (everyone holds as many cards as you do) */
+@media (max-height:640px){#app .cseat .backs{display:none;}}
+/* A phone on its side: the table at the left as tall as the screen; at the right what you act with, the bar
+   (bids, buttons, what's happening) over your hand */
+@media (orientation:landscape) and (max-height:520px){
+  #app.stage:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "table hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{grid-area:table;margin:0;display:flex;flex-direction:column;min-height:0;padding:6px;border-radius:22px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;border-radius:17px;}
+  #app.stage > .cbar{grid-area:bar;align-self:center;flex-wrap:wrap;margin:0;min-height:0;text-align:center;}
+  #app.stage > .csort-row{grid-area:sort;margin:0;}
+  #app.stage > .chand{grid-area:hand;--cw:clamp(48px,18dvh,76px);padding:14px 0 0;min-height:0;}
+  #app.stage > .cbar .bidgrid button{min-height:38px;}
+  #app .cmsg{bottom:auto;top:64%;transform:translate(-50%,-50%);}
+}
+/* An iPad on its side: the table and its side panel fill the height down to the hand */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  #app.stage:has(> .ctable){height:calc(100dvh - var(--bar));grid-template-rows:minmax(0,1fr) auto auto;padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{display:flex;flex-direction:column;min-height:0;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;}
+  #app.stage > .chand{--cw:clamp(84px,11dvh,100px);}
+}
+/* the team plaques keep to their corners on a phone on its side and on the narrowest phones, clear of the seat
+   between them and of the table's message (which rises above them) */
+@media (orientation:landscape) and (max-height:520px){
+  #app .plq{width:92px;padding:6px 9px 7px;} #app .plq .t small{display:none;}
+}
+@media (max-width:360px){
+  #app .plq{width:84px;padding:5px 8px 6px;border-radius:13px;} #app .plq .t small{display:none;}
+  #app .plq .v{font-size:1.25rem;}
+  #app .cmsg{bottom:auto;top:58%;transform:translate(-50%,-50%);font-size:.8rem;}
+  #app .cseat.s .info .chip-s{font-size:.68rem;padding:2px 6px;}
+}
+#app .plq .v{transition:color .3s;} #app .plq .v.ticking{color:var(--lit);text-shadow:0 0 12px var(--litg);}
+/* the shortest phones: the bids, your hand and the table all fit, the sort toggle tucked into the top of the hand */
+@media (orientation:portrait) and (max-height:640px){
+  #app.stage > .csort-row{margin-bottom:-18px;position:relative;z-index:2;}
+  #app.stage > .chand{--cw:50px;}
+  #app.stage > .cbar{margin:2px 0 0;}
+  #app.stage > .ctable .felt-in{min-height:220px;} #app.stage > .ctable{margin-bottom:4px;}
+  #app.stage > .cbar .bidbox .bh{font-size:.84rem;line-height:1.15;}
+  #app.stage > .cbar .bidbox .bh small{display:none;}   /* (the tip is outlined in the grid and your partner's bid is at their seat) */
+  #app.stage > .cbar .bidbox{gap:5px;} #app.stage > .cbar .bidgrid{gap:5px;} #app.stage > .cbar .bidgrid button{min-height:38px;}
+}
 </style>
 </head>
 <body>
@@ -118,7 +176,6 @@
   var SUITNAME = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
 
   Kit.init({
-    orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'spades',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
@@ -505,7 +562,7 @@
       S.broken = true; S.sb = S.trickNo + 1;
       if (S.trick.length > 1) { flash('Spades are broken!'); Kit.sfx('bad'); }
     }
-    Kit.sfx(card.s === 's' && S.trick.length > 1 && S.trick[0].c.s !== 's' ? 'chip' : 'flip');
+    Kit.sfx(card.s === 's' && S.trick.length > 1 && S.trick[0].c.s !== 's' ? 'chip' : 'flip'); if (p === me() && onePerson()) Kit.haptic('light');
     var node = Cards.el(card, { cls: 'p-' + posOf(p) });
     trickEl.appendChild(node);
     Cards.fly(node, from, { ms: 340 });
@@ -588,14 +645,30 @@
     clearUndo(); save(); paintPlaques();
     // Big moments (from the side of whoever holds the device)
     var us = res[MT()], them = res[1 - MT()];
-    if (us.nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
+    // The rare hands have their moment on the table, the rarest the biggest: a Blind Nil made, all 13 tricks, a
+    // contract of 10 or more made
+    var rare = null;
+    res.forEach(function (r, t) {
+      var mine = t === MT();
+      r.nils.forEach(function (x) { if (x.ok && x.blind) rare = { big: true, icon: 'trophy', title: 'Blind Nil made', line: S.players[x.p].name + ' bid Blind Nil before looking and took no tricks at all.', pts: '+200', tone: mine ? '' : 'bad' }; });
+      if (!rare && r.took === 13) rare = { big: true, chip: '13', title: 'All 13 tricks', line: teamName(t) + ' took every trick of hand ' + n + '.', pts: (r.pts >= 0 ? '+' : '−') + Math.abs(r.pts), tone: mine ? '' : 'bad' };
+      if (!rare && r.made && r.bid >= 10) rare = { chip: String(r.bid), title: 'A bid of ' + r.bid + ' made', line: teamName(t) + ' bid ' + r.bid + ' tricks and took ' + r.won + '.', pts: '+' + r.pts, tone: mine ? '' : 'bad' };
+    });
+    if (rare) {
+      Kit.moment(Object.assign({ ms: rare.big ? 3200 : 2600 }, rare));
+      if (rare.tone === 'bad') { Kit.sfx('bad'); Kit.haptic('error'); }
+      else { Kit.sfx(rare.big ? 'win' : 'good'); Kit.haptic('success'); if (rare.big) Kit.confetti({ count: 70 }); }
+    }
+    else if (us.nils.some(function (x) { return x.ok; })) { Kit.callout('Nil made!', 'var(--green)'); Kit.sfx('good'); }
     else if (us.set) { Kit.callout('Set!', 'var(--red)'); Kit.sfx('bad'); Kit.haptic('error'); }
     else if (them.set) { Kit.callout('They went set!', 'var(--green)'); Kit.sfx('good'); }
     else if (us.penalty) { Kit.callout('Bag penalty!', 'var(--red)'); Kit.sfx('bad'); }
     var hi = Math.max(S.scores[0], S.scores[1]);
     var over = hi >= S.target && S.scores[0] !== S.scores[1];
-    setTimeout(function () { over ? finish() : showHandSummary(); }, 900);
+    setTimeout(function () { over ? finish() : showHandSummary(); }, rare ? (rare.big ? 3400 : 2700) : 900);
   }
+  // How far the winners were behind at their worst (from the hands' points), for a comeback
+  function deficit(w) { var a = 0, b = 0, worst = 0; (S.rounds || []).forEach(function (r) { a += r[w]; b += r[1 - w]; worst = Math.max(worst, b - a); }); return worst; }
 
   function scoreTable(withHand) {
     var t = el('table', { class: 'sum' });
@@ -642,6 +715,8 @@
     // One line per kind of moment (latest wins), at most 5
     var seen = {};
     hl = hl.reverse().filter(function (h) { var k = h.replace(/ in hand \d+$/, ''); if (seen[k]) return false; seen[k] = 1; return true; }).slice(0, 5).reverse();
+    var back = deficit(w);
+    if (back >= 150) hl.unshift(teamName(w) + ' came back from ' + back + ' points behind to win');
     var top = 0; for (var p = 1; p < 4; p++) if (S.tricksAll[p] > S.tricksAll[top]) top = p;
     hl.push('Most tricks: ' + S.players[top].name + ', ' + S.tricksAll[top] + ' over the game');
     hl.push(S.rounds.length + ' hands, played to ' + S.target);
@@ -713,7 +788,19 @@
         '<div class="v' + (S.scores[t] < 0 ? ' neg' : '') + '">' + S.scores[t] + '</div>' +
         '<div class="d">' + line + '</div>' +
         (S.bagsOff ? '' : '<div class="bags' + (S.bags[t] >= 7 ? ' warn' : '') + '" title="Bags: ' + S.bags[t] + ' of 10">' + bags + '</div>');
+      countUp(q.querySelector('.v'), q.dataset.v, S.scores[t]); q.dataset.v = S.scores[t];
     });
+  }
+  // A team's score counts up (or down) to its new total when a hand is scored
+  function countUp(n, from, to) {
+    if (!n || from == null || from === '' || +from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var a = +from, t0 = performance.now();
+    n.classList.add('ticking');
+    (function step(t) {
+      if (!n.isConnected) return;
+      var k = Math.min(1, (t - t0) / 900), v = Math.round(a + (to - a) * (1 - Math.pow(1 - k, 3)));
+      n.textContent = v; if (k < 1) requestAnimationFrame(step); else n.classList.remove('ticking');
+    })(t0);
   }
   function paintSeats() {
     S.players.forEach(function (pl, p) {
@@ -1210,6 +1297,36 @@
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// Turning the device (or resizing the window) at any moment: the cards and seats glide from where they showed in the
+// last frame to their new places (where everything is, is noted every frame, since a resize has already moved things
+// by the time it is heard). A card that was redrawn is found again by its id.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh || reduce) return; wh = now;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!a || !b.width || !n.animate) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .cseat, .plq, .pstack, .cmsg');
 </script>
 </body>
 </html>

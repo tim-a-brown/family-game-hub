@@ -15,6 +15,8 @@
 <style>
 /* ── Table ──────────────────────────────────────────────────────────────── */
 .stage.play{max-width:780px;display:flex;flex-direction:column;padding:0 8px calc(var(--safe-b) + 4px);min-height:460px;}
+@media (orientation:landscape) and (min-height:561px){.stage.play{max-width:1180px;}}   /* (an iPad on its side: the table as wide as the screen, the cards as large as its height allows) */
+@media (orientation:landscape) and (max-height:560px){.stage.play{min-height:0;max-width:none;padding-left:calc(8px + var(--corner-x));padding-right:calc(8px + var(--corner-x));}}
 .stable{flex:1;min-height:0;display:flex;border-radius:22px;padding:6px;}
 .stable .felt-in{flex:1;position:relative;isolation:isolate;border-radius:16px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 /* Cards sit on the felt at absolute positions and glide between piles */
@@ -48,7 +50,7 @@
 .badge{position:absolute;left:0;top:0;z-index:900;min-width:24px;padding:1px 7px;border-radius:9px;background:rgba(14,15,30,.8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
   color:#fff;font-size:.72rem;font-weight:900;text-align:center;pointer-events:none;font-variant-numeric:tabular-nums;}
 /* Bottom bar: undo, clock, moves, score, hint */
-.sbar{flex:none;display:flex;align-items:center;gap:8px;height:calc(56px + var(--corner-y));padding:6px calc(2px + var(--corner-x)) var(--corner-y);}
+.sbar{flex:none;display:flex;align-items:center;gap:8px;height:calc(56px + max(var(--corner-y),14px));padding:6px max(calc(2px + var(--corner-x)),9px) max(var(--corner-y),14px);}   /* (undo and the hint clear of a rounded screen corner: 18px off the bottom, 17px in from each side) */
 .sbar .icon-btn{width:46px;height:46px;}
 .sbar .stats{flex:1;display:flex;justify-content:center;gap:clamp(14px,5vw,30px);}
 .sbar .st{display:flex;flex-direction:column;align-items:center;line-height:1.1;min-width:44px;}
@@ -414,9 +416,15 @@
       })()
     });
     clearSave(); updBar();
+    // An uncommon win has its moment on the table as the cards go home: a long run of wins, a new best time, a game won
+    // with one trip through the deck and no undos
+    var mo = m.streak >= 5 ? { big: true, chip: String(m.streak), title: m.streak + ' wins in a row', line: 'You have won ' + m.streak + ' games of Draw ' + S.draw + ' in a row.' }
+      : bestT && m.won > 1 ? { icon: 'clock', title: 'A new best time', line: 'You won in ' + fmt(S.time) + ', and your best was ' + fmt(prevTime) + '.', pts: fmt(S.time) }
+      : !S.undos && !S.passes ? { icon: 'star', title: 'A clean game', line: 'You won with one trip through the deck and no undos.' } : null;
+    if (mo) { Kit.moment(Object.assign({ ms: mo.big ? 3000 : 2400 }, mo)); Kit.haptic('success'); }
     var sub = fmt(S.time) + ' · ' + S.moves + ' moves' + (std() ? ' · ' + S.score.toLocaleString() + ' pts' : '');
     var draw = S.draw, scoring = S.scoring;
-    setTimeout(function () {
+    setTimeout(function () {   // (after a moment, when there is one)
       var list = [];
       for (var r = 12; r >= 0; r--) for (var f = 0; f < 4; f++) if (S.found[f][r]) list.push(S.found[f][r]);
       cascade(list, function () {
@@ -427,7 +435,7 @@
           setup: showSetup, setupLabel: 'Change options'
         });
       });
-    }, 450);
+    }, mo ? 2200 : 450);
   }
 
   // Classic bouncing-card finish: cards leap off the foundations and leave trails
@@ -521,12 +529,30 @@
     app.style.height = 'calc(100dvh - ' + (gb ? gb.offsetHeight : 58) + 'px)';
     var W = felt.clientWidth, H = felt.clientHeight;
     var small = W < 520, pad = small ? 5 : 12, g = small ? 4 : 10;
-    var cw = Math.min(104, Math.floor((W - 2 * pad - 6 * g) / 7));
+    var cw = Math.min(124, Math.floor((W - 2 * pad - 6 * g) / 7));
     // On short, wide screens keep the cards small enough for the columns to fit
     cw = Math.max(30, Math.min(cw, Math.floor((H - 2 * pad - 14) / 4.2)));
-    var ch = Math.round(cw * 1.4), left = Math.round((W - (7 * cw + 6 * g)) / 2), xs = [];
-    for (var i = 0; i < 7; i++) xs.push(left + i * (cw + g));
-    G = { W: W, H: H, pad: pad, g: g, cw: cw, ch: ch, xs: xs, topY: pad, tabY: pad + ch + Math.max(10, Math.round(cw * .22)) };
+    var side = W > H * 1.7 && H < 560;
+    if (side) {
+      // A phone on its side: the foundations two by two at the left, the tableau across the middle with the whole
+      // height to cascade in, and the stock over the waste at the right where your thumb is
+      g = Math.max(g, 8);
+      cw = Math.max(30, Math.min(104, Math.floor((W - 2 * pad - 11 * g) / 10), Math.floor((H - 2 * pad - g) / 3.64)));
+    }
+    var ch = Math.round(cw * 1.4), xs = [], i;
+    if (side) {
+      var left = Math.round((W - (10 * cw + 11 * g)) / 2), x0 = left, xt = left + 2 * cw + 3 * g, xr = xt + 7 * cw + 6 * g + 2 * g;
+      for (i = 0; i < 7; i++) xs.push(xt + i * (cw + g));
+      G = { W: W, H: H, pad: pad, g: g, cw: cw, ch: ch, xs: xs, side: true, topY: pad, tabY: pad,
+        st: { x: xr, y: pad }, wa: { x: xr, y: pad + ch + g, dx: 0, dy: Math.round(ch * .3) },
+        fd: [0, 1, 2, 3].map(function (j) { return { x: x0 + (j % 2) * (cw + g), y: pad + (j < 2 ? 0 : ch + g) }; }) };
+    } else {
+      var left = Math.round((W - (7 * cw + 6 * g)) / 2);
+      for (i = 0; i < 7; i++) xs.push(left + i * (cw + g));
+      G = { W: W, H: H, pad: pad, g: g, cw: cw, ch: ch, xs: xs, topY: pad, tabY: pad + ch + Math.max(10, Math.round(cw * .22)),
+        st: { x: xs[0], y: pad }, wa: { x: xs[1], y: pad, dx: Math.round(cw * .46), dy: 0 },
+        fd: [0, 1, 2, 3].map(function (j) { return { x: xs[3 + j], y: pad }; }) };
+    }
     felt.style.setProperty('--cw', cw + 'px');
   }
   function offsets(i) {
@@ -559,17 +585,17 @@
   function place(instant) {
     if (!S || !felt) return;
     if (instant) for (var id in cardEls) cardEls[id].classList.add('nt');
-    var cw = G.cw, ch = G.ch, xs = G.xs, y0 = G.topY, j;
-    setXY(slots.stock, xs[0], y0); setXY(slots.waste, xs[1], y0);
+    var cw = G.cw, ch = G.ch, xs = G.xs, j;
+    setXY(slots.stock, G.st.x, G.st.y); setXY(slots.waste, G.wa.x, G.wa.y);
     slots.stock.innerHTML = !S.stock.length && S.waste.length ? Kit.icon('sync') : '';
-    for (j = 0; j < 4; j++) setXY(slots.f[j], xs[3 + j], y0);
+    for (j = 0; j < 4; j++) setXY(slots.f[j], G.fd[j].x, G.fd[j].y);
     for (j = 0; j < 7; j++) setXY(slots.t[j], xs[j], G.tabY);
-    S.stock.forEach(function (c, k) { put(c, xs[0], y0, 10 + k, false, 0, k < S.stock.length - 1); });
+    S.stock.forEach(function (c, k) { put(c, G.st.x, G.st.y, 10 + k, false, 0, k < S.stock.length - 1); });
     badge.hidden = !S.stock.length; badge.textContent = S.stock.length;
-    setXY(badge, xs[0] + cw / 2 - 14, y0 + ch - 22);
-    var vf = S.draw === 3 ? Math.max(1, Math.min(3, S.fan, S.waste.length)) : 1, step = Math.round(cw * .46), wl = S.waste.length;
-    S.waste.forEach(function (c, k) { put(c, xs[1] + Math.max(0, k - (wl - vf)) * step, y0, 10 + k, true, 0, k < wl - vf); });
-    S.found.forEach(function (f, i) { f.forEach(function (c, k) { put(c, xs[3 + i], y0, 10 + k, true, 0, k < f.length - 1); }); });
+    setXY(badge, G.st.x + cw / 2 - 14, G.st.y + ch - 22);
+    var vf = S.draw === 3 ? Math.max(1, Math.min(3, S.fan, S.waste.length)) : 1, wl = S.waste.length;
+    S.waste.forEach(function (c, k) { var f = Math.max(0, k - (wl - vf)); put(c, G.wa.x + f * G.wa.dx, G.wa.y + f * G.wa.dy, 10 + k, true, 0, k < wl - vf); });
+    S.found.forEach(function (f, i) { f.forEach(function (c, k) { put(c, G.fd[i].x, G.fd[i].y, 10 + k, true, 0, k < f.length - 1); }); });
     S.tab.forEach(function (p, i) {
       var o = offsets(i), y = G.tabY;
       p.forEach(function (c, k) { var up = k >= S.down[i]; put(c, xs[i], y, 10 + k, up); y += up ? o.u : o.d; });
@@ -579,23 +605,23 @@
   function dealAnim() {
     fit();
     var xs = G.xs, n = 0;
-    for (var id in cardEls) { var c = cardEls[id]; c.classList.add('nt'); setXY(c, xs[0], G.topY); c._x = xs[0]; c._y = G.topY; c._up = false; c.classList.add('back'); c.style.visibility = ''; }
+    for (var id in cardEls) { var c = cardEls[id]; c.classList.add('nt'); setXY(c, G.st.x, G.st.y); c._x = G.st.x; c._y = G.st.y; c._up = false; c.classList.add('back'); c.style.visibility = ''; }
     void felt.offsetWidth;
     for (id in cardEls) cardEls[id].classList.remove('nt');
     // Deal row by row, like at a real table
     var order = [];
     for (var r = 0; r < 7; r++) for (var col = r; col < 7; col++) order.push([col, r]);
-    S.stock.forEach(function (c, k) { put(c, xs[0], G.topY, 10 + k, false, 0, k < S.stock.length - 1); });
+    S.stock.forEach(function (c, k) { put(c, G.st.x, G.st.y, 10 + k, false, 0, k < S.stock.length - 1); });
     var o = S.tab.map(function (p, i) { return offsets(i); });
     order.forEach(function (cr) {
       var i = cr[0], k = cr[1], up = k >= S.down[i];
       put(S.tab[i][k], xs[i], G.tabY + k * o[i].d, 10 + k, up, 120 + n++ * 32);
     });
     slots.stock.innerHTML = ''; badge.hidden = false; badge.textContent = S.stock.length;
-    setXY(badge, xs[0] + G.cw / 2 - 14, G.topY + G.ch - 22);
-    for (var j = 0; j < 4; j++) setXY(slots.f[j], xs[3 + j], G.topY);
+    setXY(badge, G.st.x + G.cw / 2 - 14, G.st.y + G.ch - 22);
+    for (var j = 0; j < 4; j++) setXY(slots.f[j], G.fd[j].x, G.fd[j].y);
     for (j = 0; j < 7; j++) setXY(slots.t[j], xs[j], G.tabY);
-    setXY(slots.stock, xs[0], G.topY); setXY(slots.waste, xs[1], G.topY);
+    setXY(slots.stock, G.st.x, G.st.y); setXY(slots.waste, G.wa.x, G.wa.y);
   }
   function updBar() {
     if (!S || !bar.time) return;
@@ -654,8 +680,8 @@
     p.group.forEach(function (id) { var n = cardEls[id]; setXY(n, n._x, n._y); n._zt = setTimeout(function () { n.style.zIndex = n._z; }, 300); });
   }
   function pileRect(d) {
-    var x = G.xs[d.t === 'found' ? 3 + d.i : d.i];
-    if (d.t === 'found') return { l: x, t: G.topY, r: x + G.cw, b: G.topY + G.ch };
+    if (d.t === 'found') { var fp = G.fd[d.i]; return { l: fp.x, t: fp.y, r: fp.x + G.cw, b: fp.y + G.ch }; }
+    var x = G.xs[d.i];
     var p = S.tab[d.i], last = p.length ? cardEls[top(p)]._y : G.tabY;
     return { l: x, t: G.tabY, r: x + G.cw, b: Math.max(last + G.ch, G.tabY + G.ch * 1.5) };
   }
@@ -690,7 +716,8 @@
     Kit.haptic('error');
   }
   // a card held mid-drag goes back home first (it was measured for the old shape), then the table re-fits
-  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { onCancel(); fit(); place(true); } });
+  // (turning the device: every card glides to its place in the new layout)
+  window.addEventListener('resize', function () { if (S && felt && felt.isConnected) { onCancel(); fit(); place(); } });
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 
