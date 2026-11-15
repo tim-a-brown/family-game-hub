@@ -453,7 +453,7 @@
       topEl.appendChild(el('div', { class: 'sd' + (mineSide(s) ? ' mine' : ''), style: { '--sc': sideColor(s), 'view-transition-name': 'cnsd' + s } }, [
         el('span', { class: 'nm', text: sideSay(s) }),
         el('div', { class: 'row' }, [el('span', { class: 'tot' + (S.scores[s] < 0 ? ' neg' : ''), text: fmt(S.scores[s]) }),
-          el('span', { class: 'now' + (pts < 0 ? ' bad' : ''), text: mel ? (pts >= 0 ? '+' : '') + fmt(pts) : 'needs ' + need })]),
+          el('span', { class: 'now' + (pts < 0 ? ' bad' : ''), text: mel ? (pts >= 0 ? '+' : '') + fmt(pts) : 'First meld ' + need })]),
         el('div', { class: 'bar' }, [el('i', { style: { width: Math.max(0, Math.min(100, S.scores[s] / S.target * 100)) + '%' } })]),
         cans
       ]));
@@ -932,8 +932,8 @@
       var tt = 600;
       if (mv.r3 && mv.r3.length) later(function () { red3s(ps, mv.r3, discR); seatSay(p, 'Red 3!', true); }, 300);
       if (mv.big) { tt = 1700; later(function () { bigMoment('A frozen pile of ' + mv.n + '!', p, { line: (yours ? 'You took' : fn(p) + ' took') + ' a frozen pile of ' + mv.n + ' cards with a natural pair of ' + plural(takeTop.r) + '.', chip: String(mv.n) }); }, 380); }
-      else if (mv.n >= 6) { later(function () { seatSay(p, 'Takes ' + mv.n + ' cards', true); Kit.sfx(mineS ? 'good' : 'chip', 0.7); if (mn) floatAt(mn, '+' + mv.n + ' cards', mineS ? 'g' : ''); }, 360); }
-      else later(function () { seatSay(p, mv.n > 1 ? 'Takes the pile' : 'Takes the ' + Core.RNAME[takeTop.r], false); }, 200);
+      else if (mv.n >= 6) { later(function () { seatSay(p, who(p) + (isYou(p) ? ' take ' : ' takes ') + mv.n + ' cards', true); Kit.sfx(mineS ? 'good' : 'chip', 0.7); if (mn) floatAt(mn, '+' + mv.n + ' cards', mineS ? 'g' : ''); }, 360); }
+      else later(function () { seatSay(p, who(p) + (isYou(p) ? ' take ' : ' takes ') + (mv.n > 1 ? 'the pile' : 'the ' + Core.RNAME[takeTop.r]), false); }, 200);
       if (mv.first) later(function () { firstMeldSay(ps, p); }, 500);
       var cn = canMoments(mv, p, tt);
       tt = Math.max(tt, cn);
@@ -968,7 +968,7 @@
       Kit.sfx('flip'); if (yours) Kit.haptic('light');
       discEl.classList.add('bump'); setTimeout(function () { discEl.classList.remove('bump'); }, 400);
       if (mv.freeze) later(function () { seatSay(p, 'Frozen!', true); Kit.sfx('sparkle', 0.7); flash((yours ? 'You froze' : fn(p) + ' froze') + ' the pile with a wild card.', 1500); }, 300);
-      else if (mv.block) later(function () { seatSay(p, 'Blocked', false); Kit.sfx('tap'); }, 250);
+      else if (mv.block) later(function () { seatSay(p, 'Blocked!', false); Kit.sfx('tap'); }, 250);
       if (endNow) { later(function () { outMoment(st, p); }, 500); later(function () { handEnd(prev, st, mv, done); }, 2200); return; }
       later(done, 380);
       return;
@@ -997,7 +997,7 @@
     list.forEach(function (c, i) {
       later(function () {
         var n = meldNode(ps, c.r); if (n) { n.classList.remove('squ'); void n.offsetWidth; n.classList.add('squ'); }
-        if (c.spoilt) { seatSay(p, 'Now a mixed canasta', false); return; }
+        if (c.spoilt) { seatSay(p, 'The ' + plural(c.r) + ' are a mixed canasta now', false); return; }
         if (c.nat) { bigMoment('Natural canasta!', p, { line: (isYou(p) ? 'You' : fn(p)) + ' squared up seven ' + plural(c.r) + ' with no wild card.', pts: '+500', cards: [0, 1, 2, 3, 4, 5, 6].map(function (j) { return { r: c.r === '10' ? '10' : c.r, s: ['h', 'd', 's', 'c'][j % 4] }; }) }); }
         else if (c.first) { Kit.moment({ title: 'First canasta!', line: sideName(ps) + ' made the first canasta of the game, in ' + plural(c.r) + '.', pts: '+300', chip: '7', at: tblW, ms: 1800 }); Kit.sfx('good'); Kit.haptic(yours ? 'success' : 'light'); seatSay(p, 'Canasta!', true); }
         else { seatSay(p, 'Canasta!', true); Kit.sfx(yours ? 'good' : 'chip'); if (n) floatAt(n, '+300', yours ? 'g' : ''); if (yours) Kit.haptic('success'); }
@@ -1051,7 +1051,7 @@
     var box = el('div', { class: 'cnt' });
     L.res.forEach(function (r, s) {
       var names = Core.seatsOf(st, s).map(function (p) { return st.players[p].cpu ? st.players[p].name : first(st.players[p].name); }).join(' & ');
-      var tag = L.out >= 0 && Core.sideOf(st, L.out) === s ? (L.conc ? 'Went out concealed' : 'Went out') : !r.melded ? 'Didn’t meld' : '';
+      var tag = L.out >= 0 && Core.sideOf(st, L.out) === s ? (L.conc ? 'Went out concealed' : 'Went out') : !r.melded ? 'No meld this hand' : '';
       var lines = el('div', { class: 'lines' });
       function line(label, v) { if (!v) return; lines.appendChild(el('span', { class: 'ln', text: label })); lines.appendChild(el('span', { class: 'ln' + (v < 0 ? ' neg' : ''), text: (v > 0 ? '+' : '') + fmt(v) })); }
       if (r.cn) line(r.cn === 1 ? 'A natural canasta' : r.cn + ' natural canastas', r.cn * 500);

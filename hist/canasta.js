@@ -73,9 +73,24 @@
     // the race to the target
     var mx = Math.max(target, Math.max.apply(null, run.map(function (r) { return Math.max.apply(null, r); })));
     var mn = Math.min(0, Math.min.apply(null, run.map(function (r) { return Math.min.apply(null, r); })));
-    var series = sides.map(function (s) { return { pts: [0].concat(run.map(function (r) { return r[s] - mn; })), color: ui.color(s), step: false }; });
-    var race = el('div', { class: 'cnh-race', html: ck.chart(series, { w: 340, h: 170, max: mx - mn, lines: [{ y: target - mn, label: fmt(target), c: 'rgba(255,211,77,.55)' }].concat(mn < 0 ? [{ y: -mn, label: '0' }] : []), xlabel: 'hand', aria: 'The race to ' + fmt(target) }) });
-    out.push(ui.section('The race to ' + fmt(target), [race, ck.key(sides.map(function (s) { return [sname(s), ui.color(s)]; }))], { icon: 'chart' }));
+    var race = el('div', { class: 'cnh-race', html: raceSvg(mx, mn) });
+    // each side's running total after every hand, the target ruled across in gold
+    function raceSvg(mx, mn) {
+      var W = 340, Hh = 176, pl = 44, pr = 12, pt = 12, pb = 22, n = hx.length;
+      function X(i) { return pl + (W - pl - pr) * i / Math.max(1, n); }
+      function Y(v) { return pt + (Hh - pt - pb) * (1 - (v - mn) / Math.max(1, mx - mn)); }
+      var s = '<svg viewBox="0 0 ' + W + ' ' + Hh + '" role="img" aria-label="The race to ' + fmt(target) + '">';
+      function rule(v, lab, c, dash) { s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="' + c + '" stroke-width="1"' + (dash ? ' stroke-dasharray="4 3"' : '') + '/><text x="' + (pl - 6) + '" y="' + Y(v) + '" text-anchor="end" dominant-baseline="central" font-size="10" font-weight="700" fill="rgba(255,255,255,.7)" font-family="system-ui">' + lab + '</text>'; }
+      rule(0, '0', 'rgba(255,255,255,.18)'); rule(target, fmt(target), 'rgba(255,211,77,.7)', true);
+      for (var i = 1; i <= n; i++) s += '<text x="' + X(i) + '" y="' + (Hh - 6) + '" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(255,255,255,.45)" font-family="system-ui">' + i + '</text>';
+      sides.forEach(function (sd) {
+        var d = 'M' + X(0) + ' ' + Y(0); run.forEach(function (r, i) { d += ' L' + X(i + 1) + ' ' + Y(r[sd]); });
+        s += '<path d="' + d + '" fill="none" stroke="' + ui.color(sd) + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
+        run.forEach(function (r, i) { var h = hx[i], big = h.c || String(String(h.cr || '').split('|')[sd] || '').indexOf('n') >= 0; if (big) s += '<circle cx="' + X(i + 1) + '" cy="' + Y(r[sd]) + '" r="4" fill="' + ui.color(sd) + '" stroke="#fff" stroke-width="1.5"/>'; });
+      });
+      return s + '</svg>';
+    }
+    out.push(ui.section('The race to ' + fmt(target), [race, ck.key(sides.map(function (s) { return [sname(s), ui.color(s)]; }).concat([['A hand with a natural canasta or going out concealed', 'ring']]))], { icon: 'chart' }));
 
     // every hand: the canastas each side squared up, the red 3s, and the count
     var panel = el('div', { class: 'hv' });
