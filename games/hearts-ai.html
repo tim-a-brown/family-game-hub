@@ -108,6 +108,42 @@
   .stage > .csort-row{grid-area:sort;align-self:end;justify-content:center;margin:0 0 8px;}
   .stage > .chand{grid-area:hand;--cw:84px;}
 }
+/* ── Every shape uses the whole screen (the baseline, 2026-11-15) ─────────────────────────────────────────────────
+   Upright, phone and iPad: the page is the screen, and the table takes all the height the hand and the bar leave;
+   the trick's cards grow with the table (container units of the felt). */
+#app .ctable .felt-in{container-type:size;}
+#app .ctrick .pcard{--cw:clamp(40px,min(17cqw,15cqh),96px);}
+@media (orientation:portrait){
+  #app.stage:has(> .ctable){display:flex;flex-direction:column;height:calc(100dvh - var(--bar));padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{flex:1 1 0;display:flex;flex-direction:column;margin-bottom:6px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:250px;}
+  #app.stage > .csort-row,#app.stage > .chand,#app.stage > .cbar{flex:none;}
+  #app.stage > .chand{--cw:clamp(56px,17vw,80px);}
+}
+@media (orientation:portrait) and (min-width:700px){
+  #app.stage > .chand{--cw:clamp(84px,12.5vw,104px);}
+}
+/* a short screen leaves out the fanned backs (everyone holds as many cards as you do) */
+@media (max-height:640px){#app .cseat .backs{display:none;}}
+/* A phone on its side: the table at the left as tall as the screen; at the right what you act with, the bar
+   (bids, buttons, what's happening) over your hand */
+@media (orientation:landscape) and (max-height:520px){
+  #app.stage:has(> .ctable){max-width:none;height:calc(100dvh - var(--bar));display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;grid-template-areas:"table bar" "table sort" "table hand";column-gap:14px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{grid-area:table;margin:0;display:flex;flex-direction:column;min-height:0;padding:6px;border-radius:22px;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;border-radius:17px;}
+  #app.stage > .cbar{grid-area:bar;align-self:center;flex-wrap:wrap;margin:0;min-height:0;text-align:center;}
+  #app.stage > .csort-row{grid-area:sort;margin:0;}
+  #app.stage > .chand{grid-area:hand;--cw:clamp(48px,18dvh,76px);padding:14px 0 0;min-height:0;}
+  #app.stage > .cbar .bidgrid button{min-height:38px;}
+  #app .cmsg{bottom:auto;top:64%;transform:translate(-50%,-50%);}
+}
+/* An iPad on its side: the table and its side panel fill the height down to the hand */
+@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
+  #app.stage:has(> .ctable){height:calc(100dvh - var(--bar));grid-template-rows:minmax(0,1fr) auto auto;padding-bottom:max(calc(var(--safe-b) + 6px),18px);}
+  #app.stage > .ctable{display:flex;flex-direction:column;min-height:0;}
+  #app.stage > .ctable .felt-in{flex:1 1 0;height:auto;min-height:0;}
+  #app.stage > .chand{--cw:clamp(84px,11dvh,100px);}
+}
 </style>
 </head>
 <body>
@@ -148,7 +184,6 @@
   var RANK = { '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, J: 11, Q: 12, K: 13, A: 14 };
 
   Kit.init({
-    orient: 'portrait',   // phones: sideways leaves no room (the hand or board falls below the screen); tablets turn freely
     id: 'hearts',
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } token++; clearSave(); showSetup(); },
     undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
@@ -502,7 +537,10 @@
       hand = hand.map(function (v, i) { return i === moon ? 0 : 26; });
       S.moons[moon]++;
       S.highlights.push(S.players[moon].name + ' shot the moon in hand ' + S.round + '!');
-      Kit.callout('Shot the moon!'); Kit.confetti({ count: 90 });
+      // the rarest thing in Hearts: a big moment on the table
+      var mineM = !isCpu(moon);
+      Kit.moment({ big: true, icon: 'moon', title: 'Shot the moon', line: S.players[moon].name + ' took every heart and the Queen of Spades, so everyone else takes 26.', pts: '+26', tone: mineM ? '' : 'bad', ms: 3200 });
+      Kit.sfx(mineM ? 'win' : 'bad'); Kit.haptic(mineM ? 'success' : 'error'); if (mineM) Kit.confetti({ count: 90 });
     }
     if (S.tookQS >= 0 && moon < 0) S.qs[S.tookQS]++;
     hand.forEach(function (v, i) { S.players[i].total += v; });
@@ -511,7 +549,7 @@
     S.phase = 'handover';
     clearUndo(); save();
     var over = S.players.some(function (p) { return p.total >= S.target; });
-    setTimeout(function () { over ? finish() : showScores(true, hand, moon); }, moon >= 0 ? 1200 : 300);
+    setTimeout(function () { over ? finish() : showScores(true, hand, moon); }, moon >= 0 ? 3400 : 300);
   }
   // o (online): {round} — the next hand is already dealt, so the sheet just closes
   function showScores(between, hand, moon, o) {
@@ -538,6 +576,11 @@
     if (S.qs[qsMost] > 1) hl.push(S.players[qsMost].name + ' got stuck with the Queen of Spades ' + S.qs[qsMost] + ' times');
     var clean = S.rounds.map(function (r, ri) { return r[0] === 0 ? ri + 1 : 0; }).filter(Boolean);
     if (clean.length) hl.push(S.players[0].name + ' took no points in ' + clean.length + ' of ' + S.rounds.length + ' hands');
+    // a comeback: the winner was in last place, 20 or more behind the leader, at the end of some hand
+    if (!tie) { var tot = S.players.map(function () { return 0; }), fromLast = 0;
+      S.rounds.forEach(function (r, ri) { r.forEach(function (v, i) { tot[i] += v; }); var w = rank[0].i, lo = Math.min.apply(null, tot);
+        if (ri < S.rounds.length - 1 && tot[w] === Math.max.apply(null, tot) && tot[w] - lo >= 20) fromLast = Math.max(fromLast, tot[w] - lo); });
+      if (fromLast) hl.unshift(rank[0].name + ' came back from last place, ' + fromLast + ' points behind, to win'); }
     Kit.record('hearts', {
       started: S.started, mode: S.mode === 'local' ? 'Pass & play' : 'vs Computer', lowWins: true,
       players: S.players.map(function (p) { return { name: p.name, score: p.total, cpu: p.cpu }; }),
@@ -1053,6 +1096,36 @@
     show: netShow, leave: netLeave
   });
 })();
+</script>
+<script>
+// Turning the device (or resizing the window) at any moment: the cards and seats glide from where they showed in the
+// last frame to their new places (where everything is, is noted every frame, since a resize has already moved things
+// by the time it is heard). A card that was redrawn is found again by its id.
+(function (SEL) {
+  var root = document.getElementById('app') || document.body, last = new Map(), lastId = {}, wh = innerWidth + 'x' + innerHeight;
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function note() {
+    var m = new Map(), ids = {};
+    root.querySelectorAll(SEL).forEach(function (n) { var r = n.getBoundingClientRect(); if (!r.width) return; m.set(n, r); if (n.dataset && n.dataset.id) ids[n.dataset.id] = r; });
+    last = m; lastId = ids;
+  }
+  (function loop() { if (!document.hidden) note(); requestAnimationFrame(loop); })();
+  window.addEventListener('resize', function () {
+    var now = innerWidth + 'x' + innerHeight; if (now === wh || reduce) return; wh = now;
+    var before = last, beforeId = lastId;
+    requestAnimationFrame(function () {   // (after the game's own resize work has redrawn whatever it redraws)
+      var nodes = [].slice.call(root.querySelectorAll(SEL)), set = new Set(nodes);
+      nodes.forEach(function (n) {
+        for (var p = n.parentElement; p && p !== root; p = p.parentElement) if (set.has(p)) return;   // (moves with its seat)
+        var a = before.get(n) || (n.dataset && n.dataset.id && beforeId[n.dataset.id]), b = n.getBoundingClientRect();
+        if (!a || !b.width || !n.animate) return;
+        var dx = a.left + a.width / 2 - b.left - b.width / 2, dy = a.top + a.height / 2 - b.top - b.height / 2, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        try { n.animate([{ translate: dx + 'px ' + dy + 'px', scale: sx + ' ' + sy }, { translate: '0px 0px', scale: '1 1' }], { duration: 440, easing: 'cubic-bezier(.25,.8,.25,1)' }); } catch (e) {}
+      });
+    });
+  });
+})('.pcard, .cseat, .plq, .pstack, .cmsg');
 </script>
 </body>
 </html>
