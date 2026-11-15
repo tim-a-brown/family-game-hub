@@ -37,6 +37,7 @@ var GAMES = [
   { id: 'bridge',      name: 'Bridge',       color: '#2f6fb3', cat: 'cards', min: 4, max: 4, tag: 'Bid a contract with your partner, then make it', play: 'bridge' },
   { id: 'cribbage',    name: 'Cribbage',     color: '#c9853d', cat: 'cards', min: 2, max: 4, tag: 'Peg your way to 121', play: 'cribbage' },
   { id: 'gin-rummy',   name: 'Gin Rummy',    color: '#2bb3a3', cat: 'cards', min: 2, max: 2, tag: 'Meld sets and runs, then knock', play: 'gin-rummy-ai', score: 'gin-rummy' },
+  { id: 'crazy8s',     name: 'Crazy Eights', color: '#e0457b', cat: 'cards', min: 2, max: 7, tag: 'Match the suit or rank, and 8s are wild', play: 'crazy8s' },
   { id: 'wizard',      name: 'Wizard',       color: '#8b5cf6', cat: 'specialty', min: 3, max: 6, tag: 'Bid exactly how many tricks you take', play: 'wizard-ai', score: 'wizard' },
   { id: 'flip7',       name: 'Flip 7',       color: '#ff8a00', cat: 'specialty', min: 2, max: 8, tag: 'Push your luck to 200', play: 'flip7-ai', score: 'flip7' },
   { id: 'five-crowns', name: 'Five Crowns',  color: '#e2a400', cat: 'specialty', min: 2, max: 7, tag: 'Eleven rounds, the wilds keep moving', play: 'fivecrownss-ai', score: 'five-crowns' },
