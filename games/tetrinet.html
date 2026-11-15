@@ -445,7 +445,6 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
   }
   function meE() { return M && M.eng[M.me]; }
   function alive() { return M.seats.filter(function (s) { return s.alive; }); }
-  function seatName(i) { return i === M.me ? 'You' : (M.seats[i] && M.seats[i].name) || '?'; }
   // a field's event, from this device: to the host (or straight in, when this is the host)
   function emit(s, m) { if (M.mode === 'guest') { if (net.peer) net.peer.send(m, true); } else hostIn(s, m); }
   function bcast(m) { if (M.mode === 'host' && net.table) net.table.broadcast(m, true); }
@@ -1475,12 +1474,12 @@ html.tn-land .ar-ctl{width:52%;margin-left:auto;}
       M.log.slice(0, Math.floor((h4 - 0.4 * c) / rowH)).forEach(function (l, i) {
         var a = clamp(1 - (M.t - l.t) / 12, 0.35, 1);
         g.globalAlpha = a;
-        if (l.out != null) { label((l.out === M.me ? 'You' : M.seats[l.out].name).slice(0, 8), x + w / 2, yy + rowH * 0.32, Math.round(c * 0.4), '#fff'); label('Out', x + w / 2, yy + rowH * 0.72, Math.round(c * 0.38), '#ff4058'); }
+        if (l.out != null) { label(String(M.seats[l.out].name || '?').slice(0, 8), x + w / 2, yy + rowH * 0.32, Math.round(c * 0.4), '#fff'); label('Out', x + w / 2, yy + rowH * 0.72, Math.round(c * 0.38), '#ff4058'); }
         else {
           var chip = c * 0.8, cx = x + w / 2 - chip / 2;
           if (l.k === 'line') { g.fillStyle = '#ff4058'; rr(g, cx, yy, chip, chip, chip * 0.2); g.fill(); label('+' + l.n, cx + chip / 2, yy + chip / 2, Math.round(chip * 0.6), '#fff'); }
           else g.drawImage(sprite(l.k, chip), cx, yy, chip, chip);
-          var fn = l.from === M.me ? 'You' : (M.seats[l.from] ? M.seats[l.from].name : '?'), tn = l.to < 0 ? 'all' : l.to === l.from ? 'self' : l.to === M.me ? 'you' : M.seats[l.to].name;
+          var fn = M.seats[l.from] ? String(M.seats[l.from].name || '?') : '?', tn = l.to < 0 ? 'all' : l.to === l.from ? 'self' : String(M.seats[l.to].name || '?');
           label(fn.slice(0, 5) + '›' + tn.slice(0, 5), x + w / 2, yy + chip + 0.33 * c, Math.round(Math.max(8, c * 0.33)), l.to === M.me && l.from !== M.me ? '#ff8f9a' : 'rgba(230,220,255,.8)');
         }
         g.globalAlpha = 1;

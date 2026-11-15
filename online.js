@@ -895,7 +895,7 @@
     [h1, top, count, steps].concat(startBtn ? [startBtn] : []).concat([leaveBtn, noteEl]).forEach(function (n) { wrap.appendChild(n); });
     root.appendChild(wrap);
 
-    function hostLabel() { return S.host ? 'You' : (S.hostName || 'The host'); }
+    function hostLabel() { return S.host ? 'you' : (S.hostName || 'the host'); }
     function paintHead() {
       h1.textContent = S.host ? 'Your table' : (S.hostName ? S.hostName + '’s table' : 'Joining a table');
       codeEl.textContent = S.code || '····'; codeEl.classList.toggle('pend', !S.code);
@@ -1009,7 +1009,7 @@
       list.innerHTML = '';
       S.players.forEach(function (p, i) {
         var a = av(p.name, PAL[i % PAL.length]); a.style.setProperty('--ring', PAL[i % PAL.length]);
-        list.appendChild(E('div', { class: 'ol-row ol-seat' + (p.host ? ' is-host' : '') }, [a, E('div', { class: 'grow' }, [E('b', { text: p.name, 'data-you': p.me ? '1' : null }), E('small', { text: p.host ? 'Host' : p.me ? 'You' : p.bot ? 'Computer player' : 'Player' })])]));
+        list.appendChild(E('div', { class: 'ol-row ol-seat' + (p.host ? ' is-host' : '') }, [a, E('div', { class: 'grow' }, [E('b', { text: p.name, 'data-you': p.me ? '1' : null }), E('small', { text: p.host ? 'Host' : p.bot ? 'Computer player' : 'Player' })])]));
       });
       paintComing();
     }

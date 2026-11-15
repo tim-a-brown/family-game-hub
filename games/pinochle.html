@@ -399,16 +399,11 @@
   function first(n) { return String(n || '').split(' ')[0]; }
   // a person by their first name ("Kathleen M." is Kathleen); a computer player by its whole name ("Number 5")
   function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
-  function fshort(p) { var t = short(p); return t === 'You' ? t : fn(p); }
+  function fshort(p) { return fn(p); }   // (a label names the player, yours too: never "You")
   function short(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0) ? 'You' : nm(p); }
   function sideCount() { return Core.nSides(S); }
   function sideSeats(s) { return Core.seatsOf(S, s); }
   function sideName(s) { return sideSeats(s).map(function (p) { return fn(p); }).join(' & '); }
-  // a side as this device says it: "You", "You & Jamie", or the names
-  function sideSay(s) {
-    if (!(onePerson() && s === MS() && (!NET || MYSEAT >= 0))) return sideName(s);
-    return S.kind === 'part' ? 'You & ' + fn((me() + 2) % 4) : 'You';
-  }
   function sideColor(s) { return Kit.color(s); }
   function seatColor(p) { return Kit.color(sideOf(p)); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -654,7 +649,7 @@
     order.forEach(function (s, i) {
       if (i === mid) topEl.appendChild(trumpPlaque());
       var cell = el('div', { class: 'sd' + (s === bs && S.phase !== 'bid' ? ' bidd' : ''), style: { '--sc': sideColor(s) } });
-      cell.appendChild(el('span', { class: 'nm', text: sideSay(s) }));
+      cell.appendChild(el('span', { class: 'nm', text: sideName(s) }));
       var row = el('div', { class: 'row' }, [el('span', { class: 'tot' + (S.scores[s] < 0 ? ' neg' : ''), text: String(S.scores[s]) })]);
       var now = handNow(s);
       if (now) row.appendChild(el('span', { class: 'now' + (now.bad ? ' bad' : ''), text: now.t }));
@@ -696,7 +691,7 @@
       var keepSay = s.querySelector('.say');
       s.innerHTML = '';
       s.className = 'st p-' + posOf(p) + (tp === p && S.phase !== 'over' ? ' turn' : '') + (pl.away ? ' away' : '');
-      var tag = el('div', { class: 'tg' }, [avatar(p), el('span', { class: 'nm', text: short(p) }), p === S.dealer ? el('span', { class: 'dl', text: 'Deals' }) : null]);
+      var tag = el('div', { class: 'tg' }, [avatar(p), el('span', { class: 'nm', text: nm(p) }), p === S.dealer ? el('span', { class: 'dl', text: 'Deals' }) : null]);
       var chs = el('div', { class: 'chs' });
       if (S.phase === 'bid') {
         var said = null; S.auction.forEach(function (x) { if (x.p === p) said = x; });
@@ -762,7 +757,7 @@
       for (var i = 0; i < Math.min(k, 7); i++) { var c = Kit.card('', '', { back: true }); c.style.left = (i * 1.4) + 'px'; c.style.bottom = (i * 1.6) + 'px'; c.style.rotate = ((i % 3) - 1) * 3 + 'deg'; stk.appendChild(c); }
       stk.appendChild(el('span', { class: 'rb' }));
       pe.appendChild(stk);
-      pe.appendChild(el('span', { class: 'n', html: '<small>' + Kit.esc(S.kind === 'part' ? (s === MS() && onePerson() ? 'Us' : 'Them') : first(short(sideSeats(s)[0]))) + '</small>' + k + (k === 1 ? ' trick' : ' tricks') }));
+      pe.appendChild(el('span', { class: 'n', html: '<small>' + Kit.esc(S.kind === 'part' ? (s === MS() && onePerson() ? 'Us' : 'Them') : first(nm(sideSeats(s)[0]))) + '</small>' + k + (k === 1 ? ' trick' : ' tricks') }));
     });
   }
   function paintStock() {

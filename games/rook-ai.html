@@ -846,7 +846,7 @@ html.ls .cseat .backs .pcard+.pcard{margin-left:-13px;}
     var live = S.phase === 'play' || S.phase === 'handover', m = MT();
     [m, 1 - m].forEach(function (k, i) {
       var card = el('div', { class: 'rk-team ' + (k === m ? 'us' : 'them') + (S.bidder >= 0 && team(S.bidder) === k && S.phase !== 'bid' ? ' bidding' : '') }, [
-        el('span', { class: 'nm', text: k === m && onePerson() ? 'You & ' + S.players[(ME + 2) % 4].name : teamName(k) }),
+        el('span', { class: 'nm', text: teamName(k) }),
         el('span', { class: 'tot', text: String(S.scores[k]) }),
         live ? el('span', { class: 'now', text: '+' + sumPts(S.taken[k]) }) : null
       ]);
@@ -861,11 +861,11 @@ html.ls .cseat .backs .pcard+.pcard{margin-left:-13px;}
         } else if (S.phase === 'bid') {
           mid.appendChild(el('span', { class: 'k', text: 'High bid' }));
           mid.appendChild(el('span', { class: 'v', text: S.high ? String(S.high) : 'None yet' }));
-          if (S.high) mid.appendChild(el('span', { class: 'w', text: 'by ' + shortName(S.bidder) }));   // (the bidder on a line of their own)
+          if (S.high) mid.appendChild(el('span', { class: 'w', text: 'by ' + S.players[S.bidder].name }));   // (the bidder on a line of their own)
         } else {
           mid.appendChild(el('span', { class: 'k', text: 'Bid' }));
           mid.appendChild(el('span', { class: 'v', text: String(S.bid) }));
-          mid.appendChild(el('span', { class: 'w', text: 'by ' + shortName(S.bidder) }));
+          mid.appendChild(el('span', { class: 'w', text: 'by ' + S.players[S.bidder].name }));
         }
         topEl.appendChild(mid);
       }
@@ -878,7 +878,7 @@ html.ls .cseat .backs .pcard+.pcard{margin-left:-13px;}
       s.classList.toggle('turn', turn);
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(team(p)) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { text: shortName(p) })
+        el('span', { text: pl.name })
       ]);
       var chips = [];
       if (p === (ME + 2) % 4) chips.push(el('span', { class: 'chip-s mate', text: 'Partner' }));

@@ -286,6 +286,8 @@
 
   // ── End of game ───────────────────────────────────────────────────────────
   var overlay = null;
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function win() {
     begin(); S.won = true; S.over = true;
     var st = loadStats(), m = bucket(st), prevTime = m.bestTime, prevMoves = m.fewest;
@@ -303,7 +305,7 @@
     if (S.stock.length + S.waste.length) hl.push((S.stock.length + S.waste.length) + ' cards still left in the deck');
     if (!S.undos) hl.push('No undos needed');
     Kit.record(HKEY, {
-      started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 }], winner: 'You',
+      started: S.started, mode: '3 passes', players: [{ name: recName(), score: 28 }], winner: recName(),
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: 'Win',
       highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, result: 'win', cleared: 28 }, detail: pyrDetail()
     });
@@ -352,7 +354,7 @@
     var tops = S.pyr.filter(Boolean).map(function (c) { return (c[0] === 'T' ? '10' : c[0]) + GL[c[1]]; });
     if (tops.length && tops.length <= 6) hl.push('Stuck with ' + tops.join(' '));
     Kit.record(HKEY, {
-      started: S.started, mode: '3 passes', players: [{ name: 'You', score: 28 - n }], winner: null,
+      started: S.started, mode: '3 passes', players: [{ name: recName(), score: 28 - n }], winner: null,
       summary: 'Out of moves · ' + (28 - n) + ' of 28 cleared', badge: (28 - n) + '/28',
       highlights: hl, meta: { moves: S.moves, time: S.time, result: 'loss', cleared: 28 - n }, detail: pyrDetail()
     });

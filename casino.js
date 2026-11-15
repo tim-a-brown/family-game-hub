@@ -833,7 +833,7 @@ var CasinoNet = (function () {
       var amt = o.amount ? o.amount(i) : s.bank, d = o.delta ? o.delta(i) : null;
       var c = Kit.el('span', { class: 'czs' + (isUp ? ' up' : '') + (inn ? ' in' : '') + (i === me ? ' me' : '') + (s.out ? ' out' : ''), title: s.out ? s.name + ' left the table' : '' }, [
         Kit.avatar && Kit.avatar.el ? Kit.avatar.el(s.name, null, Kit.color ? Kit.color(i) : null) : Kit.el('span', { class: 'avatar', text: s.name.charAt(0) }),
-        Kit.el('span', { text: i === me ? 'You' : s.name }), Kit.el('b', { text: money(amt) })]);
+        Kit.el('span', { text: s.name }), Kit.el('b', { text: money(amt) })]);
       if (s.bust) c.title = (i === me ? 'You are' : s.name + ' is') + ' out of chips';
       var mk = o.mark ? o.mark(i) : null;
       if (mk) c.insertBefore(Kit.el('span', { class: 'mk', title: mk.title || '', html: Kit.icon(mk.icon || mk) }), c.children[1]);

@@ -403,6 +403,8 @@
   }
 
   // ── Win ───────────────────────────────────────────────────────────────────
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function win() {
     begin(); S.won = true; busy = true; token++;
     var st = loadStats(), m = bucket(st), prevTime = m.bestTime, prevMoves = m.fewest;
@@ -420,7 +422,7 @@
     if (S.finished >= 4) hl.push('The last ' + S.finished + ' cards went home by themselves');
     if (!S.undos) hl.push('No undos needed');
     Kit.record(HKEY, {
-      started: S.started, mode: 'Deal #' + S.deal, players: [{ name: 'You' }], winner: 'You',
+      started: S.started, mode: 'Deal #' + S.deal, players: [{ name: recName() }], winner: recName(),
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: S.moves + ' moves',
       highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, deal: S.deal },
       detail: (function () { pgMark(); return { tab: msDeal(S.deal).map(function (p) { return p.join(''); }), pg: pgOut(), cells: S.maxCells, undos: S.undos, auto: S.finished || 0, mv: (S.mv || '').length <= 1800 ? S.mv || '' : '' }; })()

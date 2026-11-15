@@ -353,11 +353,13 @@ body{overflow-x:hidden;}
     if (ended === 'quit') hl.push('Started a new game before the board filled up');
     return hl.slice(0, 8);
   }
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function record(ended) {
     var m = maxTile();
     Kit.record(HKEY, {
       started: S.started, mode: m >= 2048 ? 'Made 2048' : 'Best tile ' + m,
-      players: [{ name: 'You', score: S.score }], winner: m >= 2048 ? 'You' : null,
+      players: [{ name: recName(), score: S.score }], winner: m >= 2048 ? recName() : null,
       summary: S.score.toLocaleString() + ' points · ' + m + ' tile', badge: String(m),
       highlights: highlights(ended),
       meta: { score: S.score, maxTile: m, moves: S.moves, undos: S.undos, cells: S.cells.map(function (c) { return c ? c.v : 0; }) },

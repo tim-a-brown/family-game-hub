@@ -540,6 +540,8 @@ body{overflow-x:hidden;}
   document.addEventListener('visibilitychange', function () { if (document.hidden) save(); });
 
   // ── Finish ────────────────────────────────────────────────────────────────
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function solved() {
     S.done = true; stopClock(); sel = -1;
     var prev = bestTime(S.diff), clean = !S.hints, best = clean && (!prev || S.time < prev);
@@ -553,7 +555,7 @@ body{overflow-x:hidden;}
     if (S.level >= 3) hl.push(S.level >= 5 ? 'Needed advanced chains' : S.level === 4 ? 'Needed an XY-Wing or Swordfish' : 'Needed a triple or X-Wing');
     var grid = function (a) { var out = []; for (var r = 0; r < 9; r++) out.push(a.slice(r * 9, r * 9 + 9)); return out; };
     Kit.record(HKEY, {
-      started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
+      started: S.started, mode: label(), players: [{ name: recName() }], winner: recName(),
       summary: name + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
       meta: { diff: S.diff, seconds: S.time, hints: S.hints, mistakes: S.mistakes, daily: S.daily, level: S.level, board: grid(S.vals), givens: grid(S.given) },
       detail: histDetail(prev)

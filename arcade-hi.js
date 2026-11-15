@@ -576,7 +576,7 @@ html.k-kb .ahi-box{max-height:calc(var(--vvh,100vh) - 24px);}
         const isTop = i===0;
         const medal = i<3 ? `<span class="ahi-medal" style="background:${['#ffc83d','#cfd6e4','#d9925a'][i]}">${i+1}</span>` : '';
         const nm = e.who ? `<div class="ahi-who">${avHTML(e.who)}<div>${esc(e.name)}<small>${esc(e.who)}</small></div></div>`
-          : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>You</small></div></div>`
+          : e.mine ? `<div class="ahi-who">${avHTML(myName()||e.name)}<div>${esc(e.name)}<small>${esc(myName() || 'You')}</small></div></div>`
           : e.by ? `<div class="ahi-who">${avHTML(e.by)}<div>${esc(e.name)}<small>${esc(e.by)}</small></div></div>` : esc(e.name);
         rows += `<tr class="${isNew?'ahi-new':''}${e.who?' ahi-them':''}${e.mine?' ahi-mine':''}">
           <td class="ahi-rank">${medal||i+1}</td>
