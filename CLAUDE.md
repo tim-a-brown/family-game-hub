@@ -110,6 +110,9 @@ Underlying principles for everything:
   (bar, menus, setup) stays clean and minimal. Yahtzee is the reference.
 - Every game checks its rules against the official/standard rules, and has a
   plain-language "How to play" via `Kit.init({rules})`.
+- **Suits at a glance** (Tim, 2026-11-15: clubs and spades were hard to tell apart): the suit under the rank in every
+  standard card's corner is as large as the corner allows, and Settings has Four-color suits (`gn_4color`, off by
+  default; clubs green and diamonds blue through `:root.k-4c` in kit.css), shown in the menu of card and casino games.
 - Fun moments: `Kit.win` (confetti), `Kit.callout`, `Kit.sfx`, `Kit.haptic`.
 - **What computer players say in character** (a judge's reason, a contestant's bubble) lives in `games/talk/<game>.js`
   (`window.TALK_<GAME>`), read through `Talk.line(key, pool, slots)` in `games/talk/talk.js`, which doesn't repeat a

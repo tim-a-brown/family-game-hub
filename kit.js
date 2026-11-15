@@ -473,6 +473,11 @@
   }
   function soundsLoaded() { var o = {}; Object.keys(bufs).forEach(function (n) { o[n] = bufs[n].filter(Boolean).length; }); return o; }
   // vol: an optional 0–1 multiplier for quieter uses of a sound (the synthesized fallback skips very quiet ones)
+  // Four-color suits (Tim, 2026-11-15: a setting, off by default): clubs green and diamonds blue on every standard card,
+  // so the four suits differ at a glance (kit.css :root.k-4c). It follows the account like the other settings.
+  function fourColor() { return lsGet('gn_4color', '0') === '1'; }
+  function applyFourColor() { try { doc.documentElement.classList.toggle('k-4c', fourColor()); } catch (e) {} }
+  applyFourColor();
   function sfx(name, vol) { if (!soundOn()) return; loadSounds(); try { if (!playSample(name, vol) && !(vol != null && vol < 0.5)) (SFX[name] || SFX.tap)(); } catch (e) {} }
   // Fetch the recordings early (decoding needs no tap), so the first sound is the real one
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { if (soundOn()) setTimeout(loadSounds, 400); });
@@ -1443,6 +1448,7 @@
     if (opts.sync) item(G, 'sync', 'Sync now', syncNowItem, '', syncSub());
     if (game && game.cat === 'casino' && window.Casino && Casino.showHistory) item(G, 'chart', 'Bankroll history', function () { Casino.showHistory(); });
     toggle('Settings', 'sound', 'Sound', '', soundOn, function () { lsSet('gn_sound', soundOn() ? '0' : '1'); sfx('good'); });
+    if ((game && /^(cards|casino)$/.test(game.cat)) || doc.querySelector('.pcard')) toggle('Settings', 'cards', 'Four-color suits', 'Clubs green and diamonds blue', fourColor, function () { lsSet('gn_4color', fourColor() ? '0' : '1'); applyFourColor(); sfx('good'); });
     item('Settings', 'palette', 'Theme', function () { themePick(); }, '', themeRec(themeGet()).name);
     item('Settings', 'clock', 'Game timer', timerSheet, '', timerStatus());
     item('Settings', 'bell', 'Notifications', inboxSheet, '', inboxNew() ? inboxNew() + ' new' : '');
