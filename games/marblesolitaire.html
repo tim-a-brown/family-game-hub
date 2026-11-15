@@ -1223,6 +1223,8 @@ body{overflow-x:hidden;}
     if (r === 4 || c === 0 || c === r) return 'an edge marble';
     return 'a middle marble';
   }
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function finish() {
     var n = left(), lastH = -1;
     S.holes.forEach(function (id, h) { if (id >= 0) lastH = h; });
@@ -1244,7 +1246,7 @@ body{overflow-x:hidden;}
     var finalB = filled();
     Kit.record(KEY, {
       started: S.started, mode: B.name + (B.warm ? ' warm-up' : ''),
-      players: [{ name: 'You', score: n }], winner: null, lowWins: true,
+      players: [{ name: recName(), score: n }], winner: null, lowWins: true,
       summary: (n === 1 ? '1 marble' + (center ? ' · center' : '') : n + ' marbles left') + ' · ' + B.name, badge: B.name,
       highlights: hl.slice(0, 6),
       meta: { board: S.board, left: n, center: center, perfect: perfect, moves: S.moves, hints: S.hints, undos: S.undos, restarts: S.restarts,

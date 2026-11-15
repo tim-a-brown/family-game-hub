@@ -1334,6 +1334,8 @@ body{overflow-x:hidden;}
     }, 250 + ord.length * gap + (fast ? 0 : 200));
   }
   function face(i, f) { var svg = actorEls[i] && actorEls[i].querySelector('.fg'); if (svg) svg.setAttribute('class', 'fg f-' + f); }
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function finish(gave) {
     S.done = true; S.gave = !!gave; stopClock(); accusing = false;
     var name = LVN[S.lvl], hl = [], who = P.fam === 'wd' ? P.names[P.sol.c] + ' ' + N().P : '';
@@ -1344,7 +1346,7 @@ body{overflow-x:hidden;}
     if (P.fam === 'wd' && !gave) hl.push(who + '. Case closed.');
     if (P.fam === 'kk') { var Ls = P.sol.t.map(function (t, i) { return t === 1 ? P.names[i] : null; }).filter(Boolean); hl.push((Ls.length === 1 ? 'The ' + N().L + ' was ' : 'The ' + N().Ls + ' were ') + TL.listAnd(Ls)); }
     Kit.record(HKEY, {
-      started: S.started, mode: label(), players: [{ name: 'You' }], winner: gave ? null : 'You',
+      started: S.started, mode: label(), players: [{ name: recName() }], winner: gave ? null : recName(),
       summary: (gave ? 'Answer shown' : 'Solved') + ' · ' + label() + (gave ? '' : ' in ' + fmt(S.time)), badge: gave ? '' : fmt(S.time), highlights: hl,
       meta: { lvl: S.lvl, daily: S.daily, no: S.no, cls: S.cls, seconds: S.time, hints: S.hints, wrong: S.wrong, solved: !gave, fam: P.fam },
       detail: { set: P.set, fam: P.fam, nm: P.names.join(','), t: P.sol.t.join(''), c: P.sol.c, rule: P.rule || '', spy: P.spy ? 1 : 0, st: P.st.map(function (_, i) { return plain(TL.say(P, i)); }), tv: P.st.map(function (_, i) { return TL.ev(P.st[i], P.sol) ? 1 : 0; }).join(''), lv: S.lvl, no: S.no, h: S.hints, w: S.wrong, g: gave ? 1 : 0,

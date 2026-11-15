@@ -385,6 +385,8 @@
   }
 
   // ── Win ───────────────────────────────────────────────────────────────────
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function win() {
     begin(); S.won = true; busy = true; token++;
     var bonus = std() && S.time >= 30 ? Math.round(700000 / S.time) : 0;
@@ -408,7 +410,7 @@
     if (!S.undos) hl.push('No undos needed');
     Kit.record(HKEY, {
       started: S.started, mode: 'Draw ' + S.draw + (std() ? '' : ' · no score'),
-      players: [{ name: 'You', score: std() ? S.score : undefined }], winner: 'You',
+      players: [{ name: recName(), score: std() ? S.score : undefined }], winner: recName(),
       summary: 'Won in ' + fmt(S.time) + ' · ' + S.moves + ' moves', badge: S.moves + ' moves',
       highlights: hl.slice(0, 6), meta: { moves: S.moves, time: S.time, score: std() ? S.score : null, draw: S.draw },
       detail: (function () {

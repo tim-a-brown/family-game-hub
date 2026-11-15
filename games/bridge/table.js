@@ -503,7 +503,7 @@
       var role = S.phase !== 'bid' && S.k ? (p === S.k.decl ? 'Declarer' : p === S.dummy ? 'Dummy' : '') : S.phase === 'bid' && p === S.dealer ? 'Dealer' : '';
       var tag = el('div', { class: 'bs-tag' }, [
         el('span', { class: 'avatar', style: { '--c': Kit.color(p % 2) }, html: pl.cpu ? Kit.icon('bot') : Kit.esc(pl.name.charAt(0).toUpperCase()) }),
-        el('span', { class: 'tx' }, [el('span', { class: 'nm' + (first(pl.name).length >= 9 ? ' long' : ''), text: slot === 'b' && who(p) === 'You' ? 'You' : first(pl.name) }), role ? el('span', { class: 'role' + (role === 'Dealer' ? ' dl' : ''), text: role }) : null])
+        el('span', { class: 'tx' }, [el('span', { class: 'nm' + (first(pl.name).length >= 9 ? ' long' : ''), text: first(pl.name) }), role ? el('span', { class: 'role' + (role === 'Dealer' ? ' dl' : ''), text: role }) : null])
       ]);
       tag.setAttribute('aria-label', pl.name + ', ' + SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : ', not vulnerable') + (role ? ', ' + role.toLowerCase() : ''));
       tag.addEventListener('click', function () { if (NET) netNudge(); });
@@ -864,8 +864,8 @@
     var cols = [1, 2, 3, 0];   // W N E S
     var tb = el('table'), hd = el('tr');
     cols.forEach(function (p) {
-      var nmL = (p === bottom() && who(p) === 'You' ? 'You' : first(nm(p))).length;
-      var th = el('th', { class: (S.vul[p % 2] ? 'vul' : '') + (nmL >= 9 ? ' xs' : nmL >= 7 ? ' sm' : ''), title: SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : '') }, [document.createTextNode(SEATN[p].charAt(0) === 'S' && p === bottom() && who(p) === 'You' ? 'You' : first(nm(p)))]);
+      var nmL = first(nm(p)).length;
+      var th = el('th', { class: (S.vul[p % 2] ? 'vul' : '') + (nmL >= 9 ? ' xs' : nmL >= 7 ? ' sm' : ''), title: SEATN[p] + (S.vul[p % 2] ? ', vulnerable' : '') }, [document.createTextNode(first(nm(p)))]);
       if (p === S.dealer) th.appendChild(el('span', { class: 'dl', text: 'D' }));
       hd.appendChild(th);
     });
@@ -956,7 +956,7 @@
     if (k.dbl) cards.appendChild(bidCard(k.dbl === 2 ? 'XX' : 'X'));
     D.contract.innerHTML = '';
     D.contract.appendChild(cards);
-    D.contract.appendChild(el('span', { class: 'tx' }, [el('b', { text: who(k.decl) === 'You' ? 'You declare' : first(nm(k.decl)) }), el('span', { text: 'Needs ' + need })]));
+    D.contract.appendChild(el('span', { class: 'tx' }, [el('b', { text: first(nm(k.decl)) }), el('span', { text: 'Needs ' + need })]));
     D.contract.setAttribute('aria-label', E.contractText(k, true) + ' by ' + nm(k.decl) + '. ' + need + ' tricks needed. Tap to see the auction.');
   }
   // tricks taken: a face-down card for each, the tricks needed marked in gold

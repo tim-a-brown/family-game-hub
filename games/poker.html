@@ -4757,7 +4757,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     S.players.forEach(function (p, i) {
       box.appendChild(el('div', { class: 'row' }, [
         el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
-        el('span', { class: 'grow' }, [el('b', { text: i === 0 && p.name !== 'You' ? p.name + ' (you)' : p.name }), el('small', { text: p.out ? 'Out in ' + ordinal(p.place) : i === 0 ? 'Your seat' : p.cpu ? (STYLES[p.style] || STYLES.tag).label : 'Playing online' })]),
+        el('span', { class: 'grow' }, [el('b', { text: p.name }), el('small', { text: p.out ? 'Out in ' + ordinal(p.place) : i === 0 ? 'Your seat' : p.cpu ? (STYLES[p.style] || STYLES.tag).label : 'Playing online' })]),
         el('span', { class: 's', text: S.tourn ? kmTxt(p.stack) : signed(p.stack - p.buyin) })
       ]));
     });
@@ -4929,7 +4929,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       }
       var tag = el('div', { class: 'tag' }, [
         el('span', { class: 'avatar', style: { '--c': seatColor(i) }, html: avHtml(p) }),
-        el('span', { class: 'nm', text: me ? 'You' : p.name, 'data-full': me ? 'You' : p.name }),
+        el('span', { class: 'nm', text: p.name, 'data-full': p.name }),
         p.sat && H && p.sat === H.no && !me ? el('span', { class: 'pnew', text: 'New' }) : null,
         p.bty && !p.out && !(S.circ && EV[S.circ.id].mystery) ? el('span', { class: 'pb', text: usd(p.bty) }) : null   // (a mystery bounty has nothing to show)
       ]);
@@ -5764,7 +5764,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var gold = el('div', { class: 'gold' }); gold.style.width = gw + '%'; if (gw >= 14) gold.appendChild(el('small', { text: 'Paid' }));
       line.appendChild(gold);
       if (!me.out) {
-        var at = C.left > 1 ? (C.left - rk) / (C.left - 1) * 100 : 100, pin = el('div', { class: 'you' + (rk <= C.paid ? ' in' : '') }, [el('span', { text: 'You' })]);
+        var at = C.left > 1 ? (C.left - rk) / (C.left - 1) * 100 : 100, pin = el('div', { class: 'you' + (rk <= C.paid ? ' in' : '') }, [el('span', { text: String(me.name).split(' ')[0] })]);
         pin.style.left = at + '%'; pin.firstChild.style.transform = 'translateX(' + (at < 14 ? -12 : at > 86 ? -88 : -50) + '%)';
         line.appendChild(pin);
       }
@@ -5778,11 +5778,11 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
         if (a > 9) { b = Math.min(C.paid, a + sz - 1); if (++k % 2 === 0) sz *= 2; }
         var mine = !me.out && rk >= a && rk <= b || me.out && me.place >= a && me.place <= b;
         pay.appendChild(el('div', { class: (mine ? 'me' : '') + (a > C.left ? ' gone' : '') }, [
-          el('span', null, [document.createTextNode(a === b ? ordinal(a) : ordinal(a) + '–' + ordinal(b)), mine ? el('em', { text: 'You' }) : b === C.paid ? el('em', { class: 'mc', text: 'Min cash' }) : null]),
+          el('span', null, [document.createTextNode(a === b ? ordinal(a) : ordinal(a) + '–' + ordinal(b)), mine ? el('em', { text: String(me.name).split(' ')[0] }) : b === C.paid ? el('em', { class: 'mc', text: 'Min cash' }) : null]),
           el('b', { text: usd(C.pays[b - 1]) })]));
         a = b + 1;
       }
-      if (rk > C.paid) pay.appendChild(el('div', { class: 'me cut' }, [el('span', null, [document.createTextNode((est ? '~' : '') + ordinal(rk)), el('em', { text: 'You' })]), el('b', { text: me.out ? '–' : 'Not yet' })]));
+      if (rk > C.paid) pay.appendChild(el('div', { class: 'me cut' }, [el('span', null, [document.createTextNode((est ? '~' : '') + ordinal(rk)), el('em', { text: String(me.name).split(' ')[0] })]), el('b', { text: me.out ? '–' : 'Not yet' })]));
       box.appendChild(pay);
     } else if (S.tourn) {
       var al = alive(), rk2 = me.out ? me.place : 1 + al.filter(function (i) { return S.players[i].stack > me.stack; }).length;
@@ -5927,7 +5927,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
     var box = el('div', { class: 'pstand' });
     al.forEach(function (i, k) {
       var p = S.players[i], bar = el('i'); bar.style.width = Math.max(2, Math.round(p.stack / top * 100)) + '%'; bar.style.background = seatColor(i);
-      box.appendChild(el('div', { class: i === 0 ? 'me' : '' }, [el('span', { class: 'k', text: String(k + 1) }), el('span', { class: 'nm', text: i === 0 ? 'You' : p.name, 'data-full': i === 0 ? 'You' : p.name }), el('span', { class: 'bar' }, [bar]), el('b', { text: amt(p.stack) })]));
+      box.appendChild(el('div', { class: i === 0 ? 'me' : '' }, [el('span', { class: 'k', text: String(k + 1) }), el('span', { class: 'nm', text: p.name, 'data-full': p.name }), el('span', { class: 'bar' }, [bar]), el('b', { text: amt(p.stack) })]));
     });
     return box;
   }
@@ -5971,7 +5971,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       var t = el('div', { class: 'vs' });
       e.vs.forEach(function (o, k) {
         t.appendChild(el('small', { text: k ? '' : 'Beat' }));
-        t.appendChild(el('b', { text: logWho(o.i, o.n) }));
+        t.appendChild(el('b', { text: o.n || (S.players[o.i] ? S.players[o.i].name : '') }));
         t.appendChild(el('span', { text: o.h || '' }));
         if (o.c && o.c.length) { t.appendChild(el('small')); t.appendChild(el('span', { class: 'vcs', html: o.c.map(function (c, i) { return miniCard(c, i < (o.k || 0)); }).join(' ') })); }
       });
@@ -6150,7 +6150,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       parts.push(s);
     });
     var back = H.results.filter(function (r) { return r.back; });
-    if (!real.length && back.length) parts.push(Kit.esc(nm(back[0].w[0])) + ' gets <b>' + amt(back[0].amt) + '</b> back');
+    if (!real.length && back.length) parts.push((back[0].w[0] === 0 ? 'You get' : Kit.esc(nm(back[0].w[0])) + ' gets') + ' <b>' + amt(back[0].amt) + '</b> back');
     if (S.carry && gv().guts && real.some(function (r) { return !r.carry; })) parts.push('Next pot: <b>' + amt(S.carry) + '</b>');
     return parts.slice(0, 3).join('<br>');
   }
@@ -7112,7 +7112,7 @@ html[data-theme="light"] .cz-head h1,html[data-theme="parchment"] .cz-head h1{co
       NETWIN.key = key; return;
     }
     var me = v.players[0], iWin = e.seat >= 0 && me.place === 1, w = v.players.filter(function (p) { return p.place === 1; })[0];
-    var rank = v.players.map(function (p, i) { return { name: i === 0 && e.seat >= 0 ? p.name + ' (you)' : p.name, score: ordinal(p.place), place: p.place, cpu: p.cpu, color: Kit.color((i + NETME) % v.players.length) }; }).sort(function (a, b) { return a.place - b.place; });
+    var rank = v.players.map(function (p, i) { return { name: p.name, me: i === 0 && e.seat >= 0, score: ordinal(p.place), place: p.place, cpu: p.cpu, color: Kit.color((i + NETME) % v.players.length) }; }).sort(function (a, b) { return a.place - b.place; });
     if (!NETREC[key] && e.seat >= 0) {
       NETREC[key] = 1;
       var keep = S; S = v;

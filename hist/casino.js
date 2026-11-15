@@ -366,7 +366,7 @@
       kids.push(line(ui, 'Dealer', h.d, codes(h.d).length === 2 && dt.t === 21 ? 'Blackjack' : dt.t > 21 ? 'Bust ' + dt.t : String(dt.t)));
       h.h.forEach(function (x) {
         var t = bjTot(x.c), tags = []; if (x.f && x.f.indexOf('S') >= 0) tags.push('split'); if (x.f && x.f.indexOf('D') >= 0) tags.push('doubled'); if (x.f && x.f.indexOf('I') >= 0) tags.push('insured');
-        var lab = (many ? pname(e, x.s) : 'You') + ' · ' + ui.money(x.b) + (tags.length ? ' · ' + tags.join(', ') : '') + ' · ' + (t.t > 21 ? 'bust' : t.t);
+        var lab = (pname(e, many ? x.s : 0) || 'You') + ' · ' + ui.money(x.b) + (tags.length ? ' · ' + tags.join(', ') : '') + ' · ' + (t.t > 21 ? 'bust' : t.t);
         kids.push(line(ui, lab, x.c, (BJRES[x.r] || x.r || '') + ' ' + signed(x.n), cls(x.n)));
       });
       card.innerHTML = ''; card.appendChild(felt(ui, 'blackjack', kids));
@@ -441,7 +441,7 @@
         var h = hx[i], kids = [];
         kids.push(ui.el('div', { class: 'cz-kv', html: '<span><b>Hand ' + h.no + '</b></span>' + (h.g ? '<span>' + ui.esc(h.g) + '</span>' : '') +
           '<span class="cz-res ' + cls(h.net) + '">' + (h.r === 'F' ? 'Folded' : h.r === 'W' ? 'Won' : 'Lost') + (h.net ? ' ' + sgn(h.net) : '') + '</span>' }));
-        kids.push(line(ui, 'You', h.c, h.mine || null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
+        kids.push(line(ui, pname(e, 0) || 'You', h.c, h.mine || null, null, h.r === 'W' ? { hl: h.c, small: false } : { small: false }));
         if (h.b.length) kids.push(line(ui, 'Board', h.b, null, null, { small: false }));
         // the row keeps the winner and their hand apart with the separator (the row's own data); shown at either end
         if (h.vs) { var vs = h.vs.split(' \u00b7 '); kids.push(ui.el('div', { class: 'cz-kv', html: '<span>' + (h.r === 'F' ? 'Won by ' : 'Lost to ') + '<b>' + ui.esc(vs[0]) + '</b></span>' + (vs[1] ? '<span>' + ui.esc(vs[1]) + '</span>' : '') })); }
@@ -826,10 +826,10 @@
     };
     return ui.el('div', { class: 'cz-line' }, [ui.el('div', { class: 'lab', text: who }), ui.el('div', { class: 'cz-pgs' }, [part('High', hi, hn, hw), part('Low', lo, ln, lw)])]);
   }
-  function pgHand(ui, x, title) {
+  function pgHand(ui, x, title, who) {
     var o = { win: 'Won both', push: 'Push', lose: 'Lost' }[x.o] || '';
     return felt(ui, 'paigow', [ui.el('div', { class: 'cz-hand' }, [ui.el('div', { class: 'cz-kv', html: '<span><b>' + ui.esc(title) + '</b></span><span>' + o + '</span><span>bet ' + ui.money(x.b) + '</span>' }), ui.el('span', { class: 'cz-res ' + cls(x.n), text: signed(x.n) })]),
-      pgSide(ui, 'Dealer', x.dh, x.dl, x.dhn, x.dln), pgSide(ui, 'You', x.ph, x.pl, x.phn, x.pln, x.hw, x.lw),
+      pgSide(ui, 'Dealer', x.dh, x.dl, x.dhn, x.dln), pgSide(ui, who || 'You', x.ph, x.pl, x.phn, x.pln, x.hw, x.lw),
       ui.el('div', { class: 'cz-kv', text: x.way ? 'Set the house way.' : 'Set your own way.' })]);
   }
   R('paigow', function (e, ui) {
@@ -839,7 +839,7 @@
     var ch = d.sk ? moneyChart(ui, 'paigow', series(d.sk), { n: d.hands }) : null;
     if (ch) out.push(ui.section('Your money', ch, { icon: 'chart' }));
     var hs = handList(d, 'h', d.last);
-    if (hs.length) out.push(replay(ui, hs, { total: d.hands, no: function (x) { return x.h; }, net: function (x) { return x.n; }, draw: function (x, big) { return pgHand(ui, x, big ? 'Biggest win' : 'Hand ' + x.h); } }));
+    if (hs.length) out.push(replay(ui, hs, { total: d.hands, no: function (x) { return x.h; }, net: function (x) { return x.n; }, draw: function (x, big) { return pgHand(ui, x, big ? 'Biggest win' : 'Hand ' + x.h, pname(e, 0)); } }));
     if (d.hands) out.push(foot(ui, plural(d.hands, 'hand') + ': won ' + (d.won || 0) + ', pushed ' + (d.push || 0) + ', lost ' + (d.lost || 0) + '.' + (d.house != null ? ' House way on ' + (d.house === d.hands ? 'every hand' : d.house + ' of ' + d.hands) + '.' : '') + (net != null ? ' Finished ' + upDown(net) + '.' : ''), net));
     return ui.wrap(out);
   });

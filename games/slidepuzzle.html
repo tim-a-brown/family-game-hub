@@ -956,6 +956,8 @@ body{overflow-x:hidden;}
   }
 
   // ── Finish ────────────────────────────────────────────────────────────────
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function finish() {
     var n = S.n, pic = S.style === 'pic', name = sizeName(n);
     var prevM = bestMoves(n), prevT = bestTime(n), isClean = !S.hints && !S.watched;
@@ -973,7 +975,7 @@ body{overflow-x:hidden;}
     var mini = function (a) { return a.slice(); };
     Kit.record(HKEY, {
       started: S.started, mode: name + ' ' + SIZES[n] + (pic ? ' · ' + PIC_NAMES[S.pic] : ''),
-      players: [{ name: 'You', score: S.moves }], winner: null, lowWins: true,
+      players: [{ name: recName(), score: S.moves }], winner: null, lowWins: true,
       summary: (S.watched ? 'Computer solved it' : 'Solved') + ' · ' + name + ' · ' + S.moves + ' moves · ' + fmt(S.time), badge: name,
       highlights: hl.slice(0, 6),
       meta: { size: n, moves: S.moves, seconds: S.time, hints: S.hints, undos: S.undos, watched: S.watched || 0, style: S.style, pic: pic ? S.pic : '', opt: S.opt || 0, start: mini(S.start) },

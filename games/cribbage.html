@@ -574,6 +574,7 @@
   function colorOf(p) { return Kit.color(sideOf(p)); }
   function people() { var n = 0; S.players.forEach(function (q) { if (!q.cpu) n++; }); return n; }
   function short(p) { return you(p) ? 'You' : nm(p).replace(/-/g, '\u2011'); }
+  function tagName(p) { return nm(p).replace(/-/g, '\u2011'); }   // (a label names the player, yours too: never "You")
   function poss(p) { return you(p) ? 'Your' : nm(p) + "'s"; }
 
   function showSetup() {
@@ -1170,7 +1171,7 @@
     var s = el('div', { class: 'cseat ' + pos + (actor() === p && (S.phase === 'peg' || S.phase === 'discard') ? ' turn' : '') });
     var tag = el('div', { class: 'tag' }, [
       el('span', { class: 'avatar', style: { '--c': colorOf(p) }, html: isCpu(p) ? Kit.icon('bot') : Kit.esc(nm(p).charAt(0).toUpperCase()) }),
-      el('span', { text: NP() > 2 && !you(p) && innerWidth < 700 ? firstWord(short(p)) : short(p) }),
+      el('span', { text: NP() > 2 && !you(p) && innerWidth < 700 ? firstWord(tagName(p)) : tagName(p) }),
       S.dealer === p ? el('span', { class: 'dlr', text: 'Dealer' }) : null
     ]);
     if (TOPX[lay()] && TOPX[lay()][pos] != null) s.style.left = TOPX[lay()][pos] + '%';
@@ -1222,7 +1223,7 @@
     var box = el('div', { class: 'cutdeal' });
     S.players.forEach(function (pl, p) {
       var c = S.cutCards ? Cards.el(S.cutCards[p], { cls: 'flip' + (S.dealer === p ? ' low' : '') }) : Kit.card('', '', { back: true });
-      box.appendChild(el('div', { class: 'who' }, [c, el('span', { text: NP() > 2 && !you(p) ? firstWord(short(p)) : short(p) })]));
+      box.appendChild(el('div', { class: 'who' }, [c, el('span', { text: NP() > 2 && !you(p) ? firstWord(tagName(p)) : tagName(p) })]));
     });
     feltEl.appendChild(box);
   }

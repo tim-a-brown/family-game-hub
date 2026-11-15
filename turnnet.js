@@ -604,7 +604,7 @@
       if (box.hidden) return;
       var up = T.d.status === 'playing' ? turnOf(T.st) : [];
       T.d.seats.forEach(function (s, i) {
-        var c = E('span', { class: 'tn-chip' + (up.indexOf(i) >= 0 ? ' up' : '') + (i === T.seat ? ' me' : '') + (s.bot ? ' bot' : '') + (s.left ? ' left' : '') + (!s.bot && away(i) ? ' away' : '') }, [av(s.name, i), E('span', { text: i === T.seat ? 'You' : s.name })]);
+        var c = E('span', { class: 'tn-chip' + (up.indexOf(i) >= 0 ? ' up' : '') + (i === T.seat ? ' me' : '') + (s.bot ? ' bot' : '') + (s.left ? ' left' : '') + (!s.bot && away(i) ? ' away' : '') }, [av(s.name, i), E('span', { text: s.name })]);
         if (s.bot) c.appendChild(E('span', { class: 'tn-bot', html: Kit.icon('bot') }));
         box.appendChild(c);
       });

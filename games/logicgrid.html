@@ -1742,6 +1742,8 @@ var LG = (function () {
     else if (r.full && !warned) { warned = true; Kit.sfx('bad'); note('The answer table is full, but something in it is wrong. Tap Check to see which marks.', true); }
     else if (!r.full) warned = false;
   }
+  // the history names the player (the setup's seat, or this device's name), never "You"
+  function recName() { var n = Kit.player && Kit.player(); if (!n) try { n = (localStorage.getItem('my_name') || '').trim(); } catch (e) {} return n || 'You'; }
   function solved() {
     S.done = true; stopClock(); hideNote();
     if (zoomCs) setZoom(0);   // step back to see the whole page fill in
@@ -1771,7 +1773,7 @@ var LG = (function () {
     if (pure) hl.push('Solved a hard grid with no hints and no checks');
     if (S.checks) hl.push('Checked for mistakes ' + (S.checks === 1 ? 'once' : S.checks + ' times'));
     Kit.record(HKEY, {
-      started: S.started, mode: label(), players: [{ name: 'You' }], winner: 'You',
+      started: S.started, mode: label(), players: [{ name: recName() }], winner: recName(),
       summary: lvn + ' · solved in ' + fmt(S.time), badge: fmt(S.time), highlights: hl.slice(0, 6),
       meta: { lv: S.lv, seconds: S.time, hints: S.hints, checks: S.checks, wrong: S.wrong, daily: S.daily, no: S.no, th: P.th },
       detail: histDetail(prev)

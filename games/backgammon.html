@@ -920,10 +920,10 @@
     return box;
   }
   function tag(pl) {
-    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl, net = NET && NET.seat !== pl && !LEFT, name = NET && NET.seat === pl ? 'You' : p.name;
+    var p = S.players[pl], on = S.phase !== 'over' && S.cur === pl, net = NET && NET.seat !== pl && !LEFT, name = p.name;
     var chk = el('span', { class: 'chk' }, [el('span', { class: 'ck ' + (pl ? 'b' : 'w'), style: { '--cd': '30px', transform: 'none', position: 'absolute' } })]);
     var st = S.phase === 'over' ? (S.games.length && S.games[S.games.length - 1].w === pl ? 'Won this game' : '') :
-      !on ? Kit.poss(name) + ' home is ' + (pl === bot() ? 'bottom right' : 'top right') :
+      !on ? Kit.poss(NET && NET.seat === pl ? 'You' : name) + ' home is ' + (pl === bot() ? 'bottom right' : 'top right') :
       S.phase === 'double' ? (S.doubler === pl ? 'Doubling…' : 'Take or drop?') :
       p.cpu ? (S.phase === 'roll' ? 'Thinking…' : 'Moving…') : net ? (S.phase === 'roll' ? 'Rolling next' : 'Moving') : S.phase === 'roll' ? 'Your roll' : 'Your move';
     if (S.phase === 'double' && S.doubler !== pl) st = p.cpu ? 'Deciding…' : net ? 'Deciding' : 'Take or drop?';
@@ -1100,7 +1100,6 @@
     NET.act(function (st) { if (st.phase !== 'over' || st.matchOver) return null; return { state: netFreshGame(st), mv: { next: st.gameNo } }; });
   }
   function netAgain() { if (!NET) return; if (LEFT) { TurnNet.leave(); TurnNet.open(); } else NET.again(); }
-  function nm(i) { return NET && NET.seat === i ? 'You' : S.players[i].name; }
   // Draw the table: a roll tumbles in, a moved checker slides (a hit one flies to the bar), a double pops the cube
   function netShow(net, info) {
     NET = net; cpuToken++; rolling = false;

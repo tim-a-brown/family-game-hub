@@ -1751,7 +1751,7 @@
     Array.prototype.forEach.call(rows, function (r, i) {
       var p = pl[i], sm = r.querySelector('small'); if (!p || !sm || sm.querySelector('.net-ptag')) return;
       var t = el('i', { class: 'net-ptag p' + (p.seat + 1), text: 'P' + (p.seat + 1) });
-      sm.textContent = p.host ? 'Host' : p.me ? 'You' : '';
+      sm.textContent = p.host ? 'Host' : '';
       sm.insertBefore(t, sm.firstChild); sm.classList.add('net-sm');
     });
   }

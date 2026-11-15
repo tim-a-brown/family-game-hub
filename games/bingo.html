@@ -872,8 +872,9 @@
   function STAMP() { return cards() ? 'BINGO' : 'KENO'; }
   function gameName() { return cards() ? 'Bingo' : 'Keno'; }
   function humans() { return S.players.filter(function (p) { return !p.cpu; }); }
-  // a name as the device holder reads it: "You" when one person plays against computers
-  function nameOf(p) { if (NET) return S.players.indexOf(p) === NET.seat ? 'You' : p.name; return humans().length === 1 && !p.cpu ? 'You' : p.name; }
+  // a player's name, the device holder's too (a label names the player, never "You"); isMe marks the device holder's
+  function nameOf(p) { return p.name; }
+  function isMe(p) { return NET ? S.players.indexOf(p) === NET.seat : humans().length === 1 && !p.cpu; }
   function whoEl(p) { return p.cpu ? el('span', { class: 'avatar sm', style: { '--c': p.color }, html: Kit.icon('bot') }) : Kit.avatar.el(p.name, 'sm', p.color); }
   // The groups of squares that win under the pattern (each one a list of square numbers, row by row)
   function kLines() {
@@ -1203,7 +1204,7 @@
       icon: cpuWon ? 'bot' : 'trophy', lose: cpuWon,
       title: youWon ? 'You win!' : cpuWon && humans().length === 1 ? who + (names.length > 1 ? ' win this one' : ' wins this one') : who + (names.length > 1 ? ' win!' : ' wins!'),
       sub: PAT[S.pattern].name + ' ' + G + ' on ' + unit + ' ' + k,
-      rank: S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
+      rank: S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), me: isMe(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
         .sort(function (a, b) { return a.o - b.o; }),
       againLabel: 'New game', again: function () {
         var cfg = { options: { size: S.size, pattern: S.pattern }, players: S.players.map(function (p) { return { name: p.name, color: p.color, cpu: p.cpu }; }) };
@@ -1418,7 +1419,7 @@
       icon: youWon ? 'trophy' : 'users', lose: !left && !youWon,
       title: left ? res.text : youWon && n === 1 ? 'You win!' : who + (n > 1 ? ' win!' : ' wins!'),
       sub: left ? '' : PAT[S.pattern].name + ' ' + how,
-      rank: left ? null : S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
+      rank: left ? null : S.players.map(function (p, i) { var st = kState(p), w = wonBy(i); return { name: nameOf(p), me: isMe(p), color: p.color, cpu: p.cpu, score: w ? STAMP() : st.left + ' to go', o: w ? -100 + S.wins.indexOf(w) : st.left }; })
         .sort(function (a, b) { return a.o - b.o; }),
       againLabel: left ? 'Back to the lobby' : 'New cards',
       again: function () { winRef = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
