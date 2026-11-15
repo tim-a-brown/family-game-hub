@@ -721,7 +721,7 @@ function popup(text, u, v, z, color, scale, big) {
   x.shadowColor = col; x.shadowBlur = 9; x.fillStyle = col; x.globalAlpha = 0.8; x.fillText(text, 256, 84);
   x.shadowBlur = 0; x.globalAlpha = 0.45; x.fillStyle = '#fff'; x.fillText(text, 256, 84); x.globalAlpha = 1;
   c.t.needsUpdate = true;
-  W(u, v, z, tmpV); p.s.position.copy(tmpV); p.base = tmpV.clone(); p.life = p.max = big ? 1.5 : 0.9; p.scale = (scale || 1) * Math.min(HH, HW * 1.3) * 0.55; p.s.visible = true;
+  W(u, v, z, tmpV); p.s.position.copy(tmpV); p.base = tmpV.clone(); p.life = p.max = big ? 1.5 : 0.9; p.scale = (scale || 1) * Math.min(HH, HW * 1.3) * 0.55; p.s.visible = true; p.s.material.color.setScalar(big ? 0.78 : 0.62);   // (bright enough to glow, never to white out)
 }
 
 // ═══ Input ═══════════════════════════════════════════════════════════════
