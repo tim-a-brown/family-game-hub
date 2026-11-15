@@ -1523,6 +1523,21 @@ body{overflow-x:hidden;}
       '<p>The <b>Learn</b> tab explains everything, with today’s real numbers.</p>'
   });
 
+  // The uncommon days get a moment, worked out against the last visit before it is overwritten: a holding that has doubled
+  // since it was bought (crossed since the last visit), or the account reaching a new step of 10% up all-time, at a new high
+  function rareMoment() {
+    var mo = null, base = A.dep - A.wd;
+    holdings().forEach(function (h) {
+      var was = A.lastPx[h.sym]; if (mo || !was || !h.cost) return;
+      if (h.val >= 2 * h.cost && was * h.q < 2 * h.cost) mo = { chip: h.sym, title: h.sym + ' has doubled', line: 'What you hold of ' + h.sym + ' is worth ' + money(h.val, 1) + ', twice the ' + money(h.cost, 1) + ' it cost.', pts: '+' + money(h.val - h.cost) };
+    });
+    if (!mo && base > 0 && A.vals.length) {
+      var v = totals().all, hi = Math.max.apply(null, A.vals.map(function (x) { return x[1]; }));
+      var g = (v - base) / base, gh = (hi - base) / base, step = Math.floor(g * 10);
+      if (v > hi && step >= 1 && step > Math.floor(gh * 10)) mo = { chip: '+' + step * 10 + '%', title: 'Up ' + step * 10 + '% all-time', line: 'Your account is worth ' + money(v, 1) + ', a new high, ' + money(v - base, 1) + ' more than you put in.', pts: '+' + money(v - base), big: step >= 5 };
+    }
+    if (mo) setTimeout(function () { mo.at = null; mo.color = '#1f9d55'; Kit.moment(mo); Kit.sfx('win'); Kit.haptic('success'); if (mo.big) Kit.confetti({ count: 150 }); }, 900);
+  }
   function start() {
     var ev = catchUp();
     // how holdings moved since the last visit
@@ -1533,6 +1548,7 @@ body{overflow-x:hidden;}
       if (d > Math.max(250, (A.lastVal || 0) * .05)) setTimeout(function () { Kit.confetti(); Kit.sfx('win'); }, 500);
     }
     if (ev.length) report = ev;
+    if (Q) rareMoment();
     if (Q) { A.last = Date.now(); A.lastVal = totals().all; A.lastPx = {}; holdings().forEach(function (h) { A.lastPx[h.sym] = price(h.sym); }); recordValue(); }
     save(); if (dom.main) paint();
     Kit.resume.clear();   // (an investing account isn't a game in progress: it isn't in Keep playing, and doesn't start over)

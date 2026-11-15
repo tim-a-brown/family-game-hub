@@ -16,6 +16,21 @@
 <script src="../coach.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 .stage{padding-bottom:max(calc(var(--safe-b) + 10px + var(--corner-y)), 18px);}
 .ctl > .acts{padding:0 var(--corner-x);}
@@ -117,26 +132,63 @@
 .ptable td.d{color:var(--text-3);}
 @media (min-width:700px){ .zone.you .cards{--cw:78px;} .cards{--cw:62px;} }
 
-/* ── iPad portrait: bigger cards and betting circles ── */
+/* ── Upright: the table fills the room between the bankroll and the buttons, its pieces spread evenly ── */
+.sh-tall .stage:has(> .ctable){display:flex;flex-direction:column;min-height:calc(100dvh - 66px);}
+.sh-tall .stage > .bankbar{margin-bottom:4px;} .sh-tall .stage > .ctable{margin-bottom:8px;}
+.sh-tall .stage > .ctable{flex:1 0 auto;display:flex;flex-direction:column;}
+.sh-tall .ctable .felt-in.tbl{flex:1 0 auto;justify-content:space-evenly;}
+/* ── iPad upright: bigger cards and betting circles, sized by the screen's height ── */
 @media (min-width:700px) and (orientation:portrait){
-  .stage:has(> .ctable){max-width:660px;}
-  .zone.you .cards{--cw:96px;} .cards{--cw:78px;}
-  .spot{width:112px;} .spot .lab{font-size:.95rem;}
-  .paytbl{max-width:400px;font-size:.72rem;} .paytbl h4{font-size:.82rem;}
-  .print.rule{font-size:.84rem;}
-  .ctable .felt-in.tbl{gap:12px;padding:18px 14px;}
-  .cz-rack{--cs:60px;}
-  .acts .btn{min-height:58px;font-size:1.08rem;}
-  .status{font-size:1.05rem;}
+  .stage:has(> .ctable){max-width:700px;}
+  .zone.you .cards{--cw:clamp(92px,10dvh,126px);} .cards{--cw:clamp(74px,8dvh,102px);}
+  .spot{width:clamp(104px,11dvh,136px);} .spot .lab{font-size:1rem;}
+  .paytbl{max-width:440px;font-size:.78rem;} .paytbl h4{font-size:.88rem;}
+  .print.rule{font-size:.9rem;}
+  .ctable .felt-in.tbl{gap:8px;padding:16px 14px;}
+  .cz-rack{--cs:58px;}
+  .acts .btn{min-height:60px;font-size:1.1rem;}
+  .status{font-size:1.08rem;}
 }
 
-/* ── Wide landscape (iPad, laptop): table on the left, bank and controls beside it ── */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage:has(> .ctable){max-width:1120px;display:grid;grid-template-columns:minmax(0,640px) minmax(300px,400px);grid-template-rows:1fr auto auto 1fr;column-gap:28px;justify-content:center;min-height:calc(100dvh - 76px);}
-  .stage > .ctable{grid-column:1;grid-row:1 / span 4;align-self:center;margin:0;}
-  .stage > .bankbar{grid-column:2;grid-row:2;margin-bottom:14px;}
-  .stage > .ctl{grid-column:2;grid-row:3;}
-}
+/* ── iPad or laptop on its side: the table on the left the screen's height, the bankroll and controls beside it ── */
+.sh-wide .stage:has(> .ctable){max-width:1180px;display:grid;grid-template-columns:minmax(0,680px) minmax(320px,420px);grid-template-rows:1fr auto auto 1fr;column-gap:28px;justify-content:center;min-height:calc(100dvh - 76px);}
+.sh-wide .stage > .ctable{grid-column:1;grid-row:1 / span 4;align-self:stretch;margin:0;display:flex;flex-direction:column;}
+.sh-wide .ctable .felt-in.tbl{flex:1;justify-content:space-evenly;}
+.sh-wide .stage > .bankbar{grid-column:2;grid-row:2;margin-bottom:14px;}
+.sh-wide .stage > .ctl{grid-column:2;grid-row:3;gap:14px;}
+.sh-wide .zone.you .cards{--cw:clamp(78px,13dvh,112px);} .sh-wide .cards{--cw:clamp(62px,10.4dvh,92px);}
+.sh-wide .spot{width:clamp(96px,14dvh,124px);} .sh-wide .spot .lab{font-size:.95rem;}
+.sh-wide .paytbl{max-width:420px;font-size:.76rem;} .sh-wide .paytbl h4{font-size:.86rem;}
+.sh-wide .acts .btn{min-height:60px;font-size:1.1rem;} .sh-wide .status{font-size:1.05rem;}
+
+/* ── A phone on its side: the bankroll and what to do at the left, the table in the middle the screen's height, the chips and
+   buttons at the right; on the felt the dealer's cards over yours at the left, the pay table and the betting circles at the right ── */
+.sh-side .stage:has(> .ctable){max-width:none;display:grid;grid-template-columns:minmax(124px,1fr) auto minmax(236px,1.15fr);grid-template-rows:1fr auto auto auto 1fr;grid-auto-flow:row dense;
+  align-items:center;column-gap:14px;row-gap:8px;min-height:calc(100dvh - 72px);padding:0 max(env(safe-area-inset-right),18px) 4px max(env(safe-area-inset-left),18px);}
+.sh-side .stage:has(> .ctable)::before,.sh-side .stage:has(> .ctable)::after{content:"";grid-row:1;grid-column:1;}
+.sh-side .stage:has(> .ctable)::after{grid-column:3;}
+.sh-side .stage > .ctable{grid-column:2;grid-row:1 / -1;align-self:stretch;margin:0;display:flex;}
+.sh-side .stage > .bankbar{grid-column:1;flex-wrap:wrap;margin:0;gap:6px 10px;}
+.sh-side .stage > .bankbar .ss{flex:1 1 100%;text-align:left;order:2;}
+.sh-side .stage > .bankbar .btn-sm{order:3;}
+.sh-side .stage > .ctl{display:contents;}
+.sh-side .ctl > .status{grid-column:1;text-align:left;font-size:.9rem;}
+.sh-side .ctl > *{grid-column:3;}
+.sh-side .ctable .felt-in.tbl{flex:1;display:grid;grid-template-columns:auto auto;grid-template-areas:"d pay" "d rule" "y spots";align-content:space-evenly;justify-content:center;gap:4px 12px;padding:10px 12px;}
+.sh-side .ctable .felt-in.tbl > .zone:not(.you){grid-area:d;align-self:center;}
+.sh-side .ctable .felt-in.tbl > .zone.you{grid-area:y;}
+.sh-side .ctable .felt-in.tbl > .print.rule{grid-area:rule;font-size:.6rem;padding:2px 6px;align-self:start;}
+.sh-side .ctable .felt-in.tbl > .paytbl{grid-area:pay;width:228px;max-width:none;font-size:.5rem;letter-spacing:.03em;gap:1px 12px;align-self:end;white-space:nowrap;}
+.sh-side .ctable .felt-in.tbl > .paytbl h4{font-size:.62rem;}
+.sh-side .ctable .felt-in.tbl > .spots{grid-area:spots;margin:0;gap:10px;align-self:center;}
+.sh-side .cards{--cw:clamp(40px,11.4dvh,50px);gap:5px;} .sh-side .zone.you .cards{--cw:clamp(44px,13dvh,56px);}
+.sh-side .spot{width:clamp(58px,16dvh,68px);} .sh-side .spot .lab{font-size:.68rem;} .sh-side .spot.has .lab{font-size:.52rem;bottom:5px;}
+.sh-side .shoe{top:8px;right:auto;left:10px;--cw:22px;}
+.sh-side .acts .btn{min-height:50px;padding:0 8px;}
+.sh-side .cz-rack{--cs:40px;}
+.sh-side .status .big{font-size:1.5rem;}
+/* the pieces that glide to their new places when the device turns */
+.stage > .ctable{view-transition-name:tcp-table;} .stage > .bankbar{view-transition-name:tcp-bank;} .stage > .ctl{view-transition-name:tcp-ctl;}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
@@ -240,7 +292,7 @@
   function q64(e) { return e.cat >= 1 || e.v[0] > 12 || (e.v[0] === 12 && (e.v[1] > 6 || (e.v[1] === 6 && e.v[2] >= 4))); }
 
   // ── Menu & rules ──────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'threecardpoker',
     confirmNew: false,
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } leave(); },
@@ -830,7 +882,15 @@
     busy = false;
     if (res.net > 0) {
       var ptag = document.getElementById('ptag'); ptag.classList.add('won');
-      if (res.pcat >= 4 || res.net >= 10 * (S.last.ante + S.last.pp)) { Kit.callout(res.pcat >= 4 ? res.pe + '!' : 'Big win!'); Kit.sfx('win'); Kit.confetti(); Kit.haptic('success'); }
+      if (res.pcat >= 4) {
+        // three of a kind and the straight flush (the mini royal, A-K-Q of one suit, biggest) are the table's rare hands
+        var royal = res.pcat === 5 && S.p.every(function (c) { return /^(A|K|Q)/.test(c.r || c); });
+        Kit.moment({ chip: res.pcat === 5 ? 'SF' : '3', title: royal ? 'A mini royal' : res.pe,
+          line: S.name + (royal ? ' was dealt the Ace, King and Queen of one suit, the best hand in Three Card Poker.' : res.pcat === 5 ? ' was dealt a straight flush, three cards in a row in one suit.' : ' was dealt three of a kind.') + (res.ppWin ? ' Pair Plus paid ' + ppTable()[res.pcat] + ' to 1.' : ''),
+          pts: signed(res.net), big: res.pcat === 5, at: app.querySelector('.ctable .felt-in') });
+        Kit.sfx('win'); Kit.confetti({ count: res.pcat === 5 ? 200 : 110 }); Kit.haptic('success');
+      }
+      else if (res.net >= 10 * (S.last.ante + S.last.pp)) { Kit.callout('Big win!'); Kit.sfx('win'); Kit.confetti(); Kit.haptic('success'); }
       else { Kit.sfx('good'); Kit.haptic('success'); }
     } else if (res.net < 0) { if (!res.folded) { dtag.classList.add('won'); } Kit.sfx('bad'); Kit.haptic('error'); }
     else Kit.sfx('tap');

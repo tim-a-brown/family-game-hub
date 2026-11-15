@@ -15,6 +15,21 @@
 <script src="../coach.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 /* ── Casino chips (local; candidates for the kit) ─────────────────────────
    Standard colours: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -82,7 +97,7 @@
 .dz{position:relative;height:132px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,.12);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18);}
 .wall{position:absolute;left:0;right:0;top:0;height:16px;background:
   conic-gradient(from 45deg at 50% 50%, #3b3b42 0 25%, #1f1f25 0 50%, #2c2c33 0 75%, #18181d 0) 0 0/12px 12px;box-shadow:0 2px 6px rgba(0,0,0,.5);}
-.dz .state{position:absolute;right:12px;top:24px;text-align:right;font-family:var(--font);font-weight:750;font-size:1.05rem;color:rgba(255,255,255,.5);pointer-events:none;}
+.dz .state{position:absolute;left:12px;top:22px;max-width:36%;text-align:left;font-family:var(--font);font-weight:750;font-size:1.05rem;line-height:1.15;color:rgba(255,255,255,.5);pointer-events:none;}   /* (top left, clear of where the dice come to rest at the right) */
 .dz .state.on{color:rgba(255,236,170,.75);}
 .dz .hist{position:absolute;left:52px;right:8px;bottom:6px;display:flex;flex-direction:row-reverse;gap:4px;justify-content:flex-start;pointer-events:none;overflow:hidden;}
 .dz .hist span{min-width:22px;height:22px;padding:0 4px;border-radius:6px;display:grid;place-items:center;font:900 .74rem/1 var(--font);color:#fff;background:rgba(0,0,0,.35);}
@@ -147,31 +162,67 @@
 
 /* ── Wide landscape (iPad, laptop): the table spans the top, dice and proposition bets beside the main layout;
    the rail below holds bankroll and messages on the left, chips and buttons on the right ── */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  /* --avh: the height the layout's rows share once the bar, the rail and the wood are taken off */
-  .stage.cr{max-width:1180px;padding-top:26px;padding-bottom:calc(var(--rail,150px) + 8px);
-    --avh:calc(100dvh - var(--rail,150px) - var(--bar) - 96px);}
-  .ctab .felt-in{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);column-gap:10px;row-gap:6px;align-items:start;}
-  .ctab .felt-in > *{grid-column:1;}
-  .ctab .felt-in > .dz{grid-column:2;grid-row:1;height:100%;min-height:100px;}
-  .ctab .felt-in > .props{grid-column:2;grid-row:2 / span 4;align-self:stretch;justify-content:space-between;}
-  .pb{height:clamp(116px,calc(var(--avh) * .34),240px);}
-  .zcome{height:clamp(58px,calc(var(--avh) * .17),120px);}
-  .zdc,.zfield{height:clamp(62px,calc(var(--avh) * .18),126px);}
-  .zdp{height:clamp(44px,calc(var(--avh) * .13),90px);}
-  .zpass{height:clamp(62px,calc(var(--avh) * .18),126px);}
-  .pz{height:clamp(48px,calc(var(--avh) * .13),92px);gap:3px;}
-  .pz.wide{height:clamp(38px,calc(var(--avh) * .1),70px);}
-  .props .lbl{margin:0;}
-  .rail-in{max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);grid-template-areas:"info rack" "info acts";column-gap:28px;align-items:center;}
-  .rail-in > .cinfo{grid-area:info;min-width:0;}
-  .rail-in > .cz-rack{grid-area:rack;}
-  .rail-in > .acts{grid-area:acts;}
-  .cinfo .bank{max-width:460px;margin-bottom:6px;}
-  .cinfo .bank div{background:rgba(0,0,0,.26);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);}
-  .cinfo .msg{text-align:left;margin:0;min-height:0;color:rgba(255,255,255,.88);}
-  .cinfo .bg-row{justify-content:flex-start;margin:6px 0 0;}
+/* --avh: the height the layout's rows share once the bar, the rail and the wood are taken off */
+:is(.sh-wide,.sh-side) .stage.cr{max-width:1180px;padding-top:26px;padding-bottom:calc(var(--rail,150px) + 8px); --avh:calc(100dvh - var(--rail,150px) - var(--bar) - 96px);}
+:is(.sh-wide,.sh-side) .ctab .felt-in{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);column-gap:10px;row-gap:6px;align-items:start;}
+:is(.sh-wide,.sh-side) .ctab .felt-in > *{grid-column:1;}
+:is(.sh-wide,.sh-side) .ctab .felt-in > .dz{grid-column:2;grid-row:1;height:100%;min-height:100px;}
+:is(.sh-wide,.sh-side) .ctab .felt-in > .props{grid-column:2;grid-row:2 / span 4;align-self:stretch;justify-content:space-between;}
+:is(.sh-wide,.sh-side) .pb{height:clamp(116px,calc(var(--avh) * .34),240px);}
+:is(.sh-wide,.sh-side) .zcome{height:clamp(58px,calc(var(--avh) * .17),120px);}
+:is(.sh-wide,.sh-side) .zdc,:is(.sh-wide,.sh-side) .zfield{height:clamp(62px,calc(var(--avh) * .18),126px);}
+:is(.sh-wide,.sh-side) .zdp{height:clamp(44px,calc(var(--avh) * .13),90px);}
+:is(.sh-wide,.sh-side) .zpass{height:clamp(62px,calc(var(--avh) * .18),126px);}
+:is(.sh-wide,.sh-side) .pz{height:clamp(48px,calc(var(--avh) * .13),92px);gap:3px;}
+:is(.sh-wide,.sh-side) .pz.wide{height:clamp(38px,calc(var(--avh) * .1),70px);}
+:is(.sh-wide,.sh-side) .props .lbl{margin:0;}
+:is(.sh-wide,.sh-side) .rail-in{max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);grid-template-areas:"info rack" "info acts";column-gap:28px;align-items:center;}
+:is(.sh-wide,.sh-side) .rail-in > .cinfo{grid-area:info;min-width:0;}
+:is(.sh-wide,.sh-side) .rail-in > .cz-rack{grid-area:rack;}
+:is(.sh-wide,.sh-side) .rail-in > .acts{grid-area:acts;}
+:is(.sh-wide,.sh-side) .cinfo .bank{max-width:460px;margin-bottom:6px;}
+:is(.sh-wide,.sh-side) .cinfo .bank div{background:rgba(0,0,0,.26);box-shadow:inset 0 1px 2px rgba(0,0,0,.3);}
+:is(.sh-wide,.sh-side) .cinfo .msg{text-align:left;margin:0;min-height:0;color:rgba(255,255,255,.88);}
+:is(.sh-wide,.sh-side) .cinfo .bg-row{justify-content:flex-start;margin:6px 0 0;}
+/* iPad upright: the proposition bets beside the main layout, as on its side, so the whole table shows over the rail */
+@media (min-width:700px){
+.sh-tall .stage.cr{max-width:760px;--avh:calc(100dvh - var(--rail,150px) - var(--bar) - 196px);}
+.sh-tall .ctab .felt-in{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);column-gap:10px;row-gap:6px;align-items:start;}
+.sh-tall .ctab .felt-in > *{grid-column:1;}
+.sh-tall .ctab .felt-in > .dz{grid-column:2;grid-row:1;height:100%;min-height:100px;}
+.sh-tall .ctab .felt-in > .props{grid-column:2;grid-row:2 / span 4;align-self:stretch;justify-content:space-between;}
+.sh-tall .pb{height:clamp(116px,calc(var(--avh) * .34),240px);}
+.sh-tall .zcome{height:clamp(58px,calc(var(--avh) * .17),120px);}
+.sh-tall .zdc,.sh-tall .zfield{height:clamp(62px,calc(var(--avh) * .18),126px);}
+.sh-tall .zdp{height:clamp(44px,calc(var(--avh) * .13),90px);}
+.sh-tall .zpass{height:clamp(62px,calc(var(--avh) * .18),126px);}
+.sh-tall .pz{height:clamp(48px,calc(var(--avh) * .13),92px);gap:3px;}
+.sh-tall .pz.wide{height:clamp(38px,calc(var(--avh) * .1),70px);}
+.sh-tall .props .lbl{margin:0;}
 }
+/* a phone on its side: the table the screen's height at the left; the rail stands at the right, the money and what
+   happened over the chips and buttons (where you act on the right) */
+.sh-side{--railw:280px;}
+.sh-side .stage.cr{max-width:none;padding:2px calc(var(--railw) + 14px) 10px max(env(safe-area-inset-left),16px);--avh:calc(100dvh - var(--bar) - 66px);}
+.sh-side .ctab .felt-in{padding:6px;column-gap:8px;row-gap:4px;}
+.sh-side .pb{height:clamp(56px,calc(var(--avh) * .3),120px);}
+.sh-side .zcome{height:clamp(30px,calc(var(--avh) * .14),70px);}
+.sh-side .zdc,.sh-side .zfield{height:clamp(34px,calc(var(--avh) * .16),72px);}
+.sh-side .zdp{height:clamp(24px,calc(var(--avh) * .1),50px);}
+.sh-side .zpass{height:clamp(34px,calc(var(--avh) * .16),72px);}
+.sh-side .pz{height:clamp(30px,calc(var(--avh) * .14),60px);}
+.sh-side .pz.wide{height:clamp(24px,calc(var(--avh) * .1),44px);}
+.sh-side .rail{left:auto;top:var(--bar);width:var(--railw);box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;border-radius:22px 0 0 22px;
+  padding:10px max(env(safe-area-inset-right),16px) max(calc(var(--safe-b) + 10px),18px) 12px;}
+.sh-side .rail-in{display:flex;flex-direction:column;gap:8px;max-width:none;width:100%;}
+.sh-side .rail .cz-rack{--cs:36px;margin:0;gap:4px;padding:5px 6px 6px;min-width:0;}
+.sh-side .cinfo .bank{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-bottom:4px;}
+.sh-side .cinfo .bank .k-cash{grid-column:1 / -1;}
+.sh-side .cinfo .bank div{padding:4px 5px;} .sh-side .cinfo .bank b{font-size:.92rem;} .sh-side .cinfo .bank small{font-size:.68rem;}
+.sh-side .cinfo .msg{font-size:.82rem;line-height:1.25;}
+.sh-side .acts .icon-btn{width:46px;height:46px;} .sh-side .acts .btn{min-height:46px;} .sh-side .acts{display:grid;grid-template-columns:46px minmax(0,1fr) minmax(0,1fr);} .sh-side .acts .down{min-width:0;padding:0 8px;font-size:.92rem;} .sh-side .acts .down .ico{display:none;} .sh-side .acts .roll{min-width:0;}
+/* the pieces that glide to their new places when the device turns */
+.stage.cr > .ctab{view-transition-name:cr-table;} .rail{view-transition-name:cr-rail;}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
@@ -218,7 +269,7 @@
   }
 
   // ── Menu & rules ─────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'craps', confirmNew: false,
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } endSession(true); },
     undo: function () { undoChip(); },
@@ -480,13 +531,15 @@
     var setH = function () { document.documentElement.style.setProperty('--rail', r.offsetHeight + 'px'); };
     setH(); if (window.ResizeObserver) new ResizeObserver(setH).observe(r);
   }
-  var WIDE = window.matchMedia('(orientation: landscape) and (min-width: 900px) and (min-height: 560px)');
+  // sideways (an iPad or a phone on its side): the shape class the page's head script keeps on <html>
+  var WIDE = { get matches() { var c = document.documentElement.classList; return c.contains('sh-wide') || c.contains('sh-side'); } };
   function placeInfo() {
     if (!R.info || !R.railIn) return;
     if (WIDE.matches) { if (R.info.parentNode !== R.railIn) R.railIn.insertBefore(R.info, R.railIn.firstChild); }
     else if (R.info.parentNode !== app) app.insertBefore(R.info, app.firstChild);
   }
-  if (WIDE.addEventListener) WIDE.addEventListener('change', function () { if (S && R.info && R.railIn && document.body.contains(R.railIn)) { placeInfo(); if (!busy) { paintPuck(); placeDice(false); } } });
+  // a turn of the device: moved and redrawn inside the turn's View Transition, so the table and rail glide
+  window.addEventListener('shape', function () { if (S && R.info && R.railIn && document.body.contains(R.railIn)) { placeInfo(); if (!busy) { paintPuck(); placeDice(false); } } });
   function working(id) {
     if (S.point) return true;
     return !/^(place|hard|comeOdds)/.test(id);
@@ -535,7 +588,7 @@
         var z = R.zones['box' + S.point];
         p.style.left = (z.offsetLeft + z.offsetWidth / 2) + 'px'; p.style.top = (z.offsetTop + 44) + 'px';
       } else {
-        p.style.left = (R.pts.offsetLeft + 24) + 'px'; p.style.top = (R.pts.offsetTop - 26) + 'px';
+        p.style.left = (R.dz.offsetLeft + 26) + 'px'; p.style.top = (R.dz.offsetTop + R.dz.offsetHeight - 22) + 'px';   // (the dice box's lower left, whichever way the table is laid out)
       }
     });
     R.zones.pass.classList.toggle('closed', on && !S.bets.pass); R.zones.dp.classList.toggle('closed', on && !S.bets.dp);
@@ -740,12 +793,12 @@
   var tumbleT = null;
   function placeDice(random) {
     var W = R.dz.clientWidth, H = R.dz.clientHeight;
-    var pos = random ? null : [[W * 0.42, H * 0.52], [W * 0.58, H * 0.46]];
+    var pos = random ? null : [[W * 0.6, H * 0.54], [W * 0.78, H * 0.46]];
     [R.d1, R.d2].forEach(function (d, i) { var p = pos[i]; d.style.transform = 'translate(' + (p[0] - 22) + 'px,' + (p[1] - 22) + 'px) rotate(' + (i ? 12 : -8) + 'deg)'; });
   }
   function tumble(d, done) {
     var W = R.dz.clientWidth, H = R.dz.clientHeight, ds = 44;
-    var ends = [[W * (0.25 + Math.random() * 0.2), 40 + Math.random() * (H - 96)], [W * (0.52 + Math.random() * 0.22), 40 + Math.random() * (H - 96)]];
+    var ends = [[W * (0.5 + Math.random() * 0.12), 40 + Math.random() * (H - 96)], [W * (0.72 + Math.random() * 0.12), 40 + Math.random() * (H - 96)]];   // (the right of the box: the come-out or point words are at the left)
     var faces = setInterval(function () { R.d1.dataset.v = 1 + rnd(6); R.d2.dataset.v = 1 + rnd(6); }, 70);
     var anims = [R.d1, R.d2].map(function (die, i) {
       var e = ends[i], sx = W + 30 + i * 30, sy = H - 20 - i * 16, wallX = W * (0.35 + Math.random() * 0.35), r0 = Math.random() * 360;
@@ -797,8 +850,23 @@
     if (instant) return;
     var hardHit = res.won.some(function (w) { return /^hard/.test(w.id); });
     if (res.kind === 'sevenout') { Kit.callout('Seven out', '#ff6b6f'); Kit.sfx(net > 0 ? 'good' : 'lose'); Kit.haptic('error'); }
+    else if (res.kind === 'made' && S.sess.cur.points >= 3) {
+      // a hot hand: the third point made (and every one after) before the seven-out
+      var pm = S.sess.cur.points;
+      Kit.moment({ chip: String(pm), title: pm >= 5 ? 'A monster roll' : 'A hot roll', line: 'The shooter has made ' + pm + ' points in this hand without sevening out.', pts: net > 0 ? signed(net) : '', big: pm >= 5, at: R.felt });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: pm >= 5 ? 180 : 100 });
+    }
     else if (res.kind === 'made') { Kit.callout('Winner!'); Kit.sfx('win'); Kit.haptic('success'); if (net >= 50) Kit.confetti({ count: 100 }); }
-    else if (hardHit) { Kit.callout('Hard ' + res.t + '!'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 80 }); }
+    else if (hardHit) {
+      var hw = res.won.filter(function (w) { return /^hard/.test(w.id); })[0];
+      Kit.moment({ chip: 'Hard ' + res.t, title: 'The hard ' + res.t, line: S.player + ' hit the hard ' + res.t + ', two ' + (res.t === 6 ? 'threes' : res.t === 4 ? 'twos' : res.t === 8 ? 'fours' : 'fives') + ', and it paid ' + (res.t === 4 || res.t === 10 ? '7' : '9') + ' to 1.',
+        pts: hw ? '+' + money(hw.pr) : '', at: R.felt });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 80 });
+    }
+    else if (S.sess.cur.rolls >= 20 && S.sess.cur.rolls % 10 === 0 && res.kind !== 'sevenout') {
+      Kit.moment({ chip: String(S.sess.cur.rolls), title: S.sess.cur.rolls + ' rolls and no seven', line: 'The shooter has rolled ' + S.sess.cur.rolls + ' times in this hand without sevening out.', pts: net > 0 ? signed(net) : '', at: R.felt });
+      Kit.sfx('good'); Kit.haptic('success');
+    }
     else if (res.kind === 'natural') { Kit.callout(res.t === 7 ? 'Seven!' : 'Yo!'); Kit.sfx('good'); Kit.haptic('success'); }
     else if (res.kind === 'craps') { Kit.callout('Craps!', '#ff6b6f'); Kit.sfx('bad'); Kit.haptic('error'); }
     else if (res.kind === 'point') { Kit.callout('Point ' + res.t); Kit.sfx('pop'); }

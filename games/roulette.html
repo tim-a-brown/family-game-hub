@@ -15,6 +15,21 @@
 <script src="../coach.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 /* ── Casino chips (local; candidates for the kit) ─────────────────────────
    Standard colours: 1 white, 5 red, 25 green, 100 black, 500 purple. */
@@ -97,8 +112,9 @@
 .lay.rot .cell.zero.eu{border-radius:70% 0 0 70% / 50% 0 0 50%;}
 .lay.rot .cell.zero.l{border-radius:0 0 0 80% / 0 0 0 60%;}
 .lay.rot .cell.zero.r{border-radius:80% 0 0 0 / 60% 0 0 0;}
-.lay.rot .cell.fx.dz span{transform:none;font-size:.95rem;}
-.lay.rot .cell.fx{font-size:.9rem;}
+.lay.rot .cell.fx.dz span{transform:none;font-size:min(.95rem, calc(var(--rh) * .42));}
+.lay.rot .cell.fx{font-size:min(.9rem, calc(var(--rh) * .34));white-space:nowrap;}
+.lay.rot .cell.note{font-size:min(.6rem, calc(var(--rh) * .2));letter-spacing:.06em;}
 .cell.fx{background:transparent;font-family:var(--font);font-weight:900;font-size:.8rem;letter-spacing:.04em;color:#f3ecd6;text-transform:uppercase;}
 .cell.fx.dz span{transform:rotate(-90deg);white-space:nowrap;font-size:.86rem;}
 .cell.strip{background:rgba(0,0,0,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.28);}
@@ -169,23 +185,42 @@
 
 /* ── Wide landscape (iPad, laptop): the table on its side spans the top; the rail below holds the wheel, last
    numbers, bankroll and message on the left, chips and buttons on the right (arrange() moves them) ── */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage.rl:has(> .tbl){max-width:1240px;padding-top:6px;padding-bottom:calc(var(--rail,150px) + 8px);}
-  .stage.rl > .tbl{width:100%;margin:0 auto;}
-  .rail-in{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);grid-template-areas:"info rack" "info acts";column-gap:28px;align-items:center;}
-  .rail-in > .rinfo{grid-area:info;min-width:0;display:flex;gap:18px;align-items:center;}
-  .rail-in > .cz-rack{grid-area:rack;}
-  .rail-in > .acts{grid-area:acts;}
-  .rinfo .head{flex:1 1 0;min-width:0;max-width:440px;margin:0;padding:0;background:none;box-shadow:none;border-radius:0;align-items:center;}
-  .rinfo .mini{width:112px;height:112px;}
-  .rinfo .board{height:112px;box-sizing:border-box;min-height:0;overflow:hidden;}
-  .rinfo .board .nb{width:26px;height:26px;font-size:.9rem;} .rinfo .board .nb.first{width:34px;height:34px;font-size:1.15rem;}
-  .rstat{flex:1 1 0;min-width:0;max-width:380px;}
-  .rstat .bank{margin-bottom:6px;}
-  .rstat .bank div{background:var(--plate-bg);box-shadow:var(--plate-line);}
-  .rstat .msg{text-align:left;margin:0;min-height:0;color:rgba(255,255,255,.88);}
-  .rstat .bg-row{justify-content:flex-start;margin:6px 0 0;}
-}
+/* ── Sideways (an iPad, a laptop, a phone on its side): the table on its side spans the top; the rail below holds the wheel, last
+   numbers, bankroll and message on the left, chips and buttons on the right (arrange() moves them) ── */
+:is(.sh-wide,.sh-side) .stage.rl:has(> .tbl){max-width:1240px;padding-top:6px;padding-bottom:calc(var(--rail,150px) + 8px);}
+:is(.sh-wide,.sh-side) .stage.rl > .tbl{width:100%;margin:0 auto;}
+:is(.sh-wide,.sh-side) .rail-in{max-width:1240px;display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,390px);grid-template-areas:"info rack" "info acts";column-gap:28px;align-items:center;}
+:is(.sh-wide,.sh-side) .rail-in > .rinfo{grid-area:info;min-width:0;display:flex;gap:18px;align-items:center;}
+:is(.sh-wide,.sh-side) .rail-in > .cz-rack{grid-area:rack;}
+:is(.sh-wide,.sh-side) .rail-in > .acts{grid-area:acts;}
+:is(.sh-wide,.sh-side) .rinfo .head{flex:1 1 0;min-width:0;max-width:440px;margin:0;padding:0;background:none;box-shadow:none;border-radius:0;align-items:center;}
+:is(.sh-wide,.sh-side) .rinfo .mini{width:112px;height:112px;}
+:is(.sh-wide,.sh-side) .rinfo .board{height:112px;box-sizing:border-box;min-height:0;overflow:hidden;}
+:is(.sh-wide,.sh-side) .rinfo .board .nb{width:26px;height:26px;font-size:.9rem;} .rinfo .board .nb.first{width:34px;height:34px;font-size:1.15rem;}
+:is(.sh-wide,.sh-side) .rstat{flex:1 1 0;min-width:0;max-width:380px;}
+:is(.sh-wide,.sh-side) .rstat .bank{margin-bottom:6px;}
+:is(.sh-wide,.sh-side) .rstat .bank div{background:var(--plate-bg);box-shadow:var(--plate-line);}
+:is(.sh-wide,.sh-side) .rstat .msg{text-align:left;margin:0;min-height:0;color:rgba(255,255,255,.88);}
+:is(.sh-wide,.sh-side) .rstat .bg-row{justify-content:flex-start;margin:6px 0 0;}
+/* a phone on its side: a slimmer rail, so the table keeps most of the height */
+.sh-side .stage.rl:has(> .tbl){padding-top:0;padding-left:max(env(safe-area-inset-left),16px);padding-right:max(env(safe-area-inset-right),16px);}
+.sh-side .rail{padding:5px max(env(safe-area-inset-right),calc(16px + var(--corner-x))) max(calc(var(--safe-b) + 8px), 18px) max(env(safe-area-inset-left),calc(16px + var(--corner-x)));border-radius:18px 18px 0 0;}
+.sh-side .rail-in{grid-template-columns:minmax(0,1fr) minmax(250px,300px);column-gap:16px;row-gap:5px;}
+.sh-side .rail .cz-rack{--cs:34px;margin:0;}
+.sh-side .rinfo .rstat{flex:1 1 auto;max-width:none;}
+.sh-side .stage.rl:has(> .tbl){display:flex;align-items:center;justify-content:center;gap:16px;max-width:none;}
+.sh-side .stage.rl > .tbl{flex:none;width:auto;margin:0;}
+.sh-side .stage.rl > .head{flex:0 1 170px;min-width:120px;flex-direction:column;align-items:center;gap:6px;margin:0;padding:8px;}
+.sh-side .stage.rl > .head .mini{width:82px;height:82px;}
+.sh-side .stage.rl > .head .hcol{width:100%;}
+.sh-side .stage.rl > .head .board{min-height:64px;padding:5px 8px;}
+.sh-side .stage.rl > .head .board .nb{width:22px;height:22px;font-size:.8rem;} .sh-side .stage.rl > .head .board .nb.first{width:28px;height:28px;font-size:1rem;}
+.sh-side .stage.rl > .head .board .nums{gap:4px;margin-top:4px;}
+.sh-side .rstat .bank{gap:5px;margin-bottom:4px;grid-template-columns:repeat(3,minmax(0,1fr)) auto;} .sh-side .rstat .bank div{padding:4px 5px;} .sh-side .rstat .bank b{font-size:min(.92rem, 24cqi);} .sh-side .rstat .bank small{font-size:.66rem;white-space:nowrap;}
+.sh-side .rstat .msg{font-size:.8rem;line-height:1.25;}
+.sh-side .acts .icon-btn{width:44px;height:44px;} .sh-side .acts .btn{min-height:44px;}
+/* the pieces that glide to their new places when the device turns */
+.stage.rl > .tbl{view-transition-name:rl-table;} .rail{view-transition-name:rl-rail;}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
@@ -257,7 +292,7 @@
   function payText(b) { return b.pay + ' to 1'; }
 
   // ── Menu & rules ─────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'roulette', confirmNew: false,
     onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } endSession(true); },
     undo: function () { undoChip(); },
@@ -467,7 +502,8 @@
   }
 
   // ── Rendering ────────────────────────────────────────────────────────────
-  var SIDE = window.matchMedia('(orientation: landscape) and (min-width: 900px) and (min-height: 560px)');
+  // sideways (an iPad or a phone on its side): the shape class the page's head script keeps on <html>
+  var SIDE = { get matches() { var c = document.documentElement.classList; return c.contains('sh-wide') || c.contains('sh-side'); } };
   var R = {};   // element refs
   function render() {
     app.innerHTML = '';
@@ -533,7 +569,10 @@
       if (!R.info) R.info = el('div', { class: 'rinfo' });
       var st = el('div', { class: 'rstat' });
       R.info.innerHTML = '';
-      R.info.appendChild(R.head); R.info.appendChild(st);
+      // a phone on its side: the wheel and the last numbers stand at the left of the table, the rail keeps the money and the chips
+      if (document.documentElement.classList.contains('sh-side')) { var tb = R.lay && R.lay.parentElement.parentElement; if (tb) app.insertBefore(R.head, tb); }
+      else R.info.appendChild(R.head);
+      R.info.appendChild(st);
       [R.bankEl, R.msg, R.guide].forEach(function (n) { if (n) st.appendChild(n); });
       R.bankEl.appendChild(R.cash); if (R.mrow) R.mrow.remove();
       if (R.info.parentNode !== R.railIn) R.railIn.insertBefore(R.info, R.railIn.firstChild);
@@ -906,8 +945,18 @@
     paintBoard(); paintBank(); drawMini();
     if (instant) return;
     var straight = sp.winners.some(function (w) { return /^n/.test(w.id); });
-    if (straight) { Kit.callout('35 to 1!'); Kit.confetti({ count: 120 }); Kit.sfx('win'); Kit.haptic('success'); }
-    else if (net > 0) { Kit.callout(signed(net), '#3ddc84'); Kit.sfx('good'); Kit.haptic('success'); }
+    var run = winRun(S.sess.series), again = S.recent[1] === n;
+    if (straight) {
+      // a number hit straight up is the table's big moment (bigger still when that number came up on the spin before too)
+      var sw = sp.winners.filter(function (w) { return /^n/.test(w.id); }).reduce(function (a, w) { return a + w.amt * 35; }, 0);
+      Kit.moment({ chip: lbl(n), color: col === 'red' ? '#c62a35' : col === 'black' ? '#2a2a31' : '#11804a', title: again ? 'The same number again' : 'Straight up',
+        line: again ? lbl(n) + ' came up twice in a row, and ' + S.player + ' had it straight up for 35 to 1.' : S.player + ' had ' + lbl(n) + ' straight up, and it paid 35 to 1.',
+        pts: '+' + money(sw), big: again || sw >= 500, at: R.lay });
+      Kit.confetti({ count: again ? 200 : 120 }); Kit.sfx('win'); Kit.haptic('success');
+    } else if (net > 0 && run >= 5 && run % 5 === 0) {
+      Kit.moment({ chip: String(run), title: run + ' winning spins in a row', line: S.player + ' has won on ' + run + ' spins in a row.', pts: signed(net), at: R.lay });
+      Kit.sfx('win'); Kit.haptic('success');
+    } else if (net > 0) { Kit.callout(signed(net), '#3ddc84'); Kit.sfx('good'); Kit.haptic('success'); }
     else if (sp.ret > 0) { Kit.sfx('tap'); }
     else { Kit.sfx('bad'); Kit.haptic('error'); }
     if (Casino.balance() < 1 && !NET) setTimeout(brokeSheet, 1600);
@@ -1180,8 +1229,15 @@
       Kit.toast(w.done); Kit.sfx('good');
     });
   }
-  function highlights(ss) {
+  // how many spins in a row ended up (the last ones, or the longest run with all = true)
+  function winRun(series, all) {
+    var r = 0, best = 0; (series || []).forEach(function (x) { r = x > 0 ? r + 1 : 0; if (r > best) best = r; });
+    return all ? best : r;
+  }
+  function highlights(ss, who) {
     var h = [];
+    var wr = winRun(ss.series, true);
+    if (wr >= 5) h.push((who || 'You') + ' won on ' + wr + ' spins in a row');
     if (ss.best) h.push('Biggest win: ' + signed(ss.best.amt) + ' on ' + lbl(ss.best.n) + ' ' + colorOf(ss.best.n));
     ss.straights.slice(0, 2).forEach(function (s) { h.push('Hit ' + lbl(s.n) + ' straight up for ' + money(s.won)); });
     var hot = null; for (var k in ss.counts) if (ss.counts[k] >= 2 && (!hot || ss.counts[k] > hot.c)) hot = { n: +k, c: ss.counts[k] };
@@ -1212,7 +1268,7 @@
       started: ss.started, mode: st.wheel === 'us' ? 'American wheel' : 'European wheel',
       players: [{ name: st.player, score: ss.net }], winner: null,
       summary: st.player + ' ' + (ss.net > 0 ? 'up ' + money(ss.net) : ss.net < 0 ? 'down ' + money(-ss.net) : 'broke even') + ' · ' + ss.spins + ' spins',
-      rounds: { labels: labels, scores: scores }, highlights: highlights(ss),
+      rounds: { labels: labels, scores: scores }, highlights: highlights(ss, st.player),
       meta: casinoMeta({ net: ss.net, spins: ss.spins, wagered: ss.wagered, biggest: ss.best ? ss.best.amt : 0 }),
       detail: playTag({ wheel: st.wheel, bank: { s: ss.startBank, e: Casino.balance(), hi: ss.hi }, spins: ss.spins, bet: ss.wagered, log: ss.slog || [], from: Math.max(1, ss.spins - (ss.slog || []).length + 1),
         best: ss.bestSpin || null, last: ss.lastSpin && ss.lastSpin !== ss.bestSpin && (!ss.bestSpin || ss.bestSpin.no !== ss.lastSpin.no) ? ss.lastSpin : null,
@@ -1400,6 +1456,12 @@
   }
   window.addEventListener('resize', refit);
   window.addEventListener('orientationchange', refit);
+  // a turn of the device: the table and rail re-laid at once, inside the turn's View Transition, so they glide (mid-spin, after it lands)
+  window.addEventListener('shape', function () {
+    if (!S || !R.lay || !document.body.contains(R.lay)) return;
+    if (busy || (R.rack && R.rack.dragging())) { fitLater = true; return; }
+    arrange(); layout(); R.stacks = {}; paintStacks(); drawMini();
+  });
   if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
   window.addEventListener('pageshow', function () { if (S && R.bal && !busy) paintBank(); });
