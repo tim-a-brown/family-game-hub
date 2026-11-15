@@ -2428,6 +2428,16 @@
   // seats [{name, cpu, tag (a robot's skill), anon}] in seat order; teams [[seat, ...], ...] or null. Sides are joined
   // the way people say them: partners with "&", the sides with "vs" (Jim & John vs Pete & Pam; Tim vs Huey).
   // Without teams the chips simply follow each other. pre: the class prefix ('k' on a game's page, 'qs' on the home sheet).
+  function fitTokNames(box) {
+    if (!box || !box.isConnected) return;
+    [].forEach.call(box.querySelectorAll(':scope > * b, :scope > * > * b'), function (b) {
+      b.style.fontSize = ''; var w = b.clientWidth; if (!w) return;
+      var fs = parseFloat(getComputedStyle(b).fontSize), min = fs * 0.62, r = document.createRange();
+      // the widest single word, measured unbroken
+      var widest = function () { var m = 0; String(b.textContent).split(/\s+/).forEach(function (wd) { var s = el('span', { text: wd, style: { whiteSpace: 'nowrap', font: 'inherit' } }); b.appendChild(s); m = Math.max(m, s.offsetWidth); s.remove(); }); return m; };
+      while (widest() > w + 0.5 && fs > min) { fs -= 0.5; b.style.fontSize = fs + 'px'; }
+    });
+  }
   function whoChips(seats, teams, pre) {
     pre = pre || 'k';
     // (Tim, 2026-11-14: "is there a better way of organizing these player panels so it looks more organized?") each
@@ -2441,6 +2451,9 @@
       var nl = String(t.name || '').length;
         return el('span', { class: pre + '-tok' + (t.cpu ? ' bot' : '') }, [av, el('b', { class: nl >= 11 ? 'l2' : nl >= 8 ? 'l1' : null, text: t.name }), t.cpu && t.tag ? el('span', { class: 'sr-only', text: t.tag }) : null]);
     }
+    // (a name breaks only between words; one long word that doesn't fit its token eases down until it does, once the
+    // card is on the page)
+    requestAnimationFrame(function () { fitTokNames(box); });
     if (!teams) { seats.forEach(function (t, i) { box.appendChild(seat(t, i)); }); return box; }
     teams.forEach(function (side, k) {
       var g = el('span', { class: pre + '-side' });
