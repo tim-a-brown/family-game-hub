@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>War</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="war-core.js"></script>
+<style>
+/* ── The table fills the screen under the bar; every piece on it is placed by place() from the room there is ── */
+.wr{position:relative;box-sizing:border-box;width:100%;height:calc(100dvh - var(--bar,64px));margin:0 auto;
+  padding:2px max(var(--safe-r,0px),8px) max(calc(var(--safe-b) + 8px),12px) max(var(--safe-l,0px),8px);
+  --back-a:#18275a;--back-b:#4560c0;}
+.wr .box{position:relative;width:100%;height:100%;}
+.wr .tblbg{position:absolute;inset:0;border-radius:26px;}
+.wr .tblbg .felt-in{position:absolute;inset:8px;border-radius:19px;}
+.wr .tbl{position:absolute;inset:8px;perspective:1600px;}
+.wr .box.shake{animation:wshake .42s cubic-bezier(.36,.07,.19,.97);}
+.wr .box.shake2{animation:wshake2 .6s cubic-bezier(.36,.07,.19,.97);}
+@keyframes wshake{10%,90%{translate:-1px 0}20%,80%{translate:3px 1px}30%,50%,70%{translate:-5px -1px}40%,60%{translate:5px 1px}}
+@keyframes wshake2{10%,90%{translate:-2px 1px}20%,80%{translate:6px -2px}30%,50%,70%{translate:-9px 2px}40%,60%{translate:9px -1px}}
+/* pieces: placed at their middle; a turn of the device moves them with these transitions */
+.wr .pile,.wr .tg,.wr .spd,.wr .mtr,.wr .cap,.wr .gh{position:absolute;transition:left .45s cubic-bezier(.22,1,.36,1),top .45s cubic-bezier(.22,1,.36,1),width .45s,opacity .3s;}
+
+/* a card on the table: a scale layer (the lift in flight, the thud on landing) over a 3D turn (back to face) */
+.wc{position:absolute;left:0;top:0;width:var(--cw);height:calc(var(--cw) * 1.4);translate:-50% -50%;rotate:var(--rot,0deg);
+  transition:left var(--ft,.32s) cubic-bezier(.2,.75,.25,1),top var(--ft,.32s) cubic-bezier(.2,.75,.25,1),rotate var(--ft,.32s),width .45s,height .45s,opacity .25s;pointer-events:none;}
+.wc .sc{position:absolute;inset:0;transition:scale .3s var(--spring),translate .3s var(--spring);}
+.wc .in{position:absolute;inset:0;transform-style:preserve-3d;transform:rotateY(180deg);transition:transform var(--flt,.34s) cubic-bezier(.3,1.25,.5,1);}
+.wc.up .in{transform:rotateY(0deg);}
+.wc .fc,.wc .bk{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.wc .bk{transform:rotateY(180deg);}
+.wc .pcard{width:100%;height:100%;--cw:inherit;}
+.wc.fly .sc{animation:wlift var(--ft,.32s) ease-out;}
+.wc.thud .sc{animation:wthud .26s ease-out;}
+@keyframes wlift{0%{scale:1}45%{scale:1.13;translate:0 -4%}100%{scale:1}}
+@keyframes wthud{0%{scale:1.06}40%{scale:.95}100%{scale:1}}
+.wc.win .sc{scale:1.07;translate:0 -3%;}
+.wc.win .fc .pcard{box-shadow:0 0 0 3px var(--lit,#ffd34d),0 0 26px rgba(255,200,61,.75),0 10px 22px rgba(0,0,0,.45);}
+.wc.lose .fc .pcard{filter:brightness(.72) saturate(.75);}
+.wc.tie .fc .pcard{box-shadow:0 0 0 3px #ff4d5e,0 0 26px rgba(255,77,94,.7),0 8px 18px rgba(0,0,0,.4);}
+.wc.tie .sc{animation:wtie .5s ease-in-out;}
+@keyframes wtie{20%{rotate:-4deg}40%{rotate:4deg}60%{rotate:-3deg}80%{rotate:2deg}}
+.wc.gone{opacity:0;}
+.wc.ace2 .fc .pcard{box-shadow:0 0 0 3px #7ef0c0,0 0 30px rgba(126,240,192,.75);}
+/* a ghost: where a war's cards will land */
+.gh{width:var(--cw);height:calc(var(--cw) * 1.4);translate:-50% -50%;border-radius:calc(var(--cw) * .1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.28);
+  background:rgba(255,255,255,.05);pointer-events:none;animation:wgh 1.1s ease-in-out infinite alternate;}
+.gh.u{box-shadow:inset 0 0 0 2px rgba(255,210,90,.7);background:rgba(255,210,90,.08);}
+@keyframes wgh{from{opacity:.45}to{opacity:1}}
+
+/* a pile: the top card's back over its own edge, the edge as thick as the pile, the count on a chip */
+.pile{width:var(--pw);height:calc(var(--pw) * 1.4);translate:-50% -50%;--cw:var(--pw);touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+.pile .slot{position:absolute;inset:0;border-radius:calc(var(--pw) * .1);box-shadow:inset 0 0 0 2px rgba(255,255,255,.16);background:rgba(0,0,0,.14);}
+.pile .stk{position:absolute;inset:0;transition:translate .3s var(--spring),scale .12s,opacity .3s;}
+.pile .stk .pcard{width:100%;height:100%;transition:box-shadow .3s;}
+.pile.empty .stk{opacity:0;}
+.pile.me{cursor:pointer;}
+.pile.me:active .stk{scale:.97;}
+.pile.go .stk .pcard{animation:wgo 1.5s ease-in-out infinite;}
+@keyframes wgo{0%,100%{filter:none}50%{filter:brightness(1.18)}}
+.pile .ring{position:absolute;inset:-6px;border-radius:calc(var(--pw) * .14);box-shadow:0 0 0 3px var(--lit,#ffd34d),0 0 22px rgba(255,200,61,.55);opacity:0;transition:opacity .25s;pointer-events:none;}
+.pile.go .ring{opacity:1;animation:wring 1.5s ease-in-out infinite;}
+.pile.go.war .ring{box-shadow:0 0 0 3px #ff4d5e,0 0 26px rgba(255,77,94,.6);}
+@keyframes wring{0%,100%{opacity:.55}50%{opacity:1}}
+.pile .cnt{position:absolute;right:-9px;bottom:-9px;z-index:2;min-width:min(34px,calc(var(--pw) * .5));height:min(30px,calc(var(--pw) * .42));padding:0 min(9px,calc(var(--pw) * .1));box-sizing:border-box;border-radius:999px;display:grid;place-items:center;
+  background:rgba(14,12,28,.82);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2),0 3px 8px rgba(0,0,0,.35);color:#fff;font-family:var(--display);font-weight:800;font-size:min(1.02rem,calc(var(--pw) * .25));font-variant-numeric:tabular-nums;line-height:1;transition:background .3s;}
+.pile .cnt.bump{animation:wbump .32s var(--spring);}
+@keyframes wbump{0%{scale:1}40%{scale:1.28}100%{scale:1}}
+.pile.low .cnt{background:#b3202e;}
+.pile.lead .cnt{background:rgba(255,255,255,.92);color:#16142a;}
+.pile.out .stk{opacity:0;}
+.pile.out .slot{opacity:.5;}
+
+/* a player's name plate */
+.tg{display:flex;align-items:center;gap:7px;width:max-content;max-width:var(--tw,140px);color:#fff;pointer-events:none;}
+.tg .avatar{width:30px;height:30px;font-size:.85rem;flex:none;transition:box-shadow .25s;}
+.tg .avatar .ico{width:62%;height:62%;}
+.tg .tx{display:flex;flex-direction:column;min-width:0;}
+.tg .nm{font-weight:800;font-size:.92rem;line-height:1.12;overflow-wrap:anywhere;}
+.tg .sb{font-size:.72rem;font-weight:700;white-space:nowrap;color:rgba(255,255,255,.66);line-height:1.15;}
+.tg.go .avatar{box-shadow:0 0 0 2.5px var(--lit,#ffd34d),0 0 14px rgba(255,200,61,.6);}
+.tg.go .sb{color:var(--lit-ink,#ffe28a);}
+.tg.out{opacity:.45;}
+.tg.al-l{translate:0 -50%;}
+.tg.al-r{translate:-100% -50%;flex-direction:row-reverse;text-align:right;}
+.tg.al-r .tx{align-items:flex-end;}
+.tg.al-c{translate:-50% 0;flex-direction:column;gap:3px;text-align:center;}
+.tg.al-c .tx{align-items:center;}
+.tg.al-b{translate:-50% -100%;}
+.tg.rot{rotate:180deg;}
+.tg.sm .avatar{width:24px;height:24px;font-size:.7rem;}
+.tg.sm .nm{font-size:.82rem;}
+.tg.sm .sb{display:none;}
+.tg.al-c.sm{flex-direction:row;gap:6px;}
+
+/* the meter: who holds how much of the deck, and the round */
+.mtr{display:flex;align-items:center;gap:10px;height:30px;color:#fff;}
+.mtr .rd{flex:none;font-weight:800;font-size:.8rem;color:rgba(255,255,255,.82);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.mtr .bar{position:relative;flex:1;min-width:60px;height:12px;border-radius:999px;background:rgba(0,0,0,.32);display:flex;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.mtr .bar>.wseg{height:100%;background:var(--c);transition:flex-grow .55s cubic-bezier(.22,1,.36,1);flex-basis:0;min-width:0;}
+.mtr .wseg+.wseg{box-shadow:inset 2px 0 0 rgba(0,0,0,.35);}
+.mtr .mid{position:absolute;left:50%;top:-1px;bottom:-1px;width:2px;margin-left:-1px;background:rgba(255,255,255,.7);}
+
+/* how the cards flip: by tap, by themselves, fast */
+.spd{display:flex;flex-direction:column;gap:2px;padding:3px;border-radius:17px;background:rgba(12,10,26,.42);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);translate:-100% -50%;}
+.spd.row{flex-direction:row;translate:-50% 0;}
+.spd.al-l{translate:0 -50%;}
+.spd button{min-width:58px;min-height:44px;padding:0 10px;border:0;border-radius:14px;background:transparent;color:rgba(255,255,255,.8);font:inherit;font-weight:800;font-size:.84rem;cursor:pointer;transition:background .2s,color .2s;}
+.spd button.on{background:linear-gradient(180deg,var(--gold-hi,#ffe17a),var(--gold-lo,#f2b632));color:#2b1a00;}
+.spd button:active{translate:0 1px;}
+.cap{width:max-content;max-width:var(--capw,160px);font-size:.8rem;font-weight:700;line-height:1.25;color:rgba(255,255,255,.82);pointer-events:none;}
+.cap.al-r{translate:-100% -50%;text-align:right;}
+.cap.al-l{translate:0 -50%;}
+.cap.al-c{translate:-50% -50%;text-align:center;}
+.cap.al-t{translate:0 0;}
+.wr .moat{position:absolute;left:0;top:0;width:100%;visibility:hidden;pointer-events:none;}
+.wr .skip{position:absolute;left:50%;translate:-50% 0;bottom:14px;z-index:900;}
+</style>
+</head>
+<body>
+<main class="stage" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var Core = window.WarCore, el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'war_state', HKEY = 'war', SPEEDK = 'war_speed', SEENK = 'war_seen';
+  function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} if (window.FGHSync && FGHSync.noteWrite) FGHSync.noteWrite(k); }
+
+  var RULES =
+    '<p class="goal">Win every card in the deck. There is nothing to choose in War: you flip, and the higher card wins.</p>' +
+    '<h3>The deal</h3><ul><li>The whole deck is dealt out face down, so two players have 26 cards each and four players have 13. With three players, the two of clubs comes out and everyone has 17. Nobody looks at their cards.</li></ul>' +
+    '<h3>A round</h3><ul><li>Everyone turns up the top card of their pile at the same time. Tap your pile to turn yours up, or hold it to keep turning cards round after round.</li>' +
+    '<li>The highest card takes every card turned up, and they go face down under the bottom of the winner’s pile. Aces are high unless you choose otherwise in the setup.</li></ul>' +
+    '<h3>War</h3><ul><li>When the highest cards are the same rank, it’s war. The players who tied each lay three cards face down (or one, if you choose that in the setup) and then one card face up. The highest of those cards takes everything on the table.</li>' +
+    '<li>If those cards tie again, it’s a double war, and the same players go to war again. Then a triple war, and so on.</li>' +
+    '<li>If you don’t have enough cards for a war, you lay all but your last card face down and turn your last card up. If you have no cards left at all when a war starts, you’re out, and your cards on the table go to the winner.</li>' +
+    '<li>In the rare case that everyone in the war runs out of cards at once, everyone takes back the cards they laid and the round is played again.</li></ul>' +
+    '<h3>Winning</h3><ul><li>A player with no cards left is out. The last player with cards wins.</li>' +
+    '<li>In a short game, whoever holds the most cards when the rounds are up wins. No game goes on forever: after 3,000 rounds it ends the same way.</li></ul>' +
+    '<h3>Ways to play</h3><ul><li><b>Aces low</b> makes the ace the lowest card. <b>A 2 takes an ace</b> keeps aces high, but a two beats an ace.</li>' +
+    '<li><b>Won cards shuffled</b> mixes the cards you win before they go under your pile. Otherwise they go under in the order they were laid, the way they come off a real table.</li>' +
+    '<li><b>Flipping</b>: by tap (tap your pile, or hold it to keep going), by themselves, or fast.</li></ul>' +
+    '<h3>Online</h3><ul><li><b>Play online</b> opens a table, and the others join on their own devices. Each player turns up their own card, and the round is settled when everyone has. The computer plays any empty seat.</li></ul>';
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, NET = null, MYSEAT = 0, busy = false, token = 0, queue = {}, holding = false, autoT = 0, WINO = null;
+  var speed = /^(tap|auto|fast)$/.test(lsGet(SPEEDK, '')) ? lsGet(SPEEDK, '') : 'tap';
+  var VT = [], VC = [], CEL = {}, GH = [], Z = 10, G = null, shown500 = 0;
+
+  Kit.init({
+    id: 'war',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    menu: TurnNet.menu().concat([{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'War: past games' }); } }]),
+    rules: RULES
+  });
+
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function me() { return NET ? MYSEAT : 0; }
+  function first(n) { return String(n || '').split(' ')[0]; }
+  function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
+  function people() { return S.players.filter(function (x) { return !x.cpu; }).length; }
+  function onePerson() { return !!NET || people() < 2; }
+  function isYou(p) { return onePerson() && p === me() && (!NET || MYSEAT >= 0); }
+  function who(p) { return isYou(p) ? 'You' : fn(p); }
+  function whose(p) { return isYou(p) ? 'your' : fn(p) + '’s'; }
+  function mine(p) { return NET ? p === MYSEAT : !S.players[p].cpu; }
+  function color(p) { return Kit.color(p); }
+  function fmt(n) { return Core.fmt(n); }
+  function F() { return speed === 'fast' ? 0.42 : holding ? 0.72 : 1; }
+  function T(ms) { return Math.round(ms * F()); }
+  function later(f, ms) { var t = token; setTimeout(function () { if (t === token) f(); }, ms); }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set('Round ' + S.round);
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; clearTimeout(autoT); }
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; token++; busy = false; clearTimeout(autoT); queue = {}; holding = false;
+    if (WINO) { try { WINO.close(); } catch (e) {} WINO = null; }
+    app.className = 'stage'; app.innerHTML = ''; tbl = null;
+    Kit.setup(app, {
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 4, count: 2, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; } },
+      options: [
+        { id: 'rounds', label: 'Game length', value: 0, choices: [
+          [0, 'Every card\nStandard', 'Play until one player has won every card.'],
+          [100, '100\nRounds', 'After 100 rounds, whoever holds the most cards wins.'],
+          [250, '250\nRounds', 'After 250 rounds, whoever holds the most cards wins.']] },
+        { id: 'aces', label: 'Aces', value: 'high', choices: [
+          ['high', 'High\nStandard', 'The ace beats every other card.'],
+          ['low', 'Low', 'The ace is the lowest card, below the two.'],
+          ['two', 'High\nA 2 takes it', 'The ace beats everything except a two, which takes an ace.']] },
+        { id: 'down', label: 'Cards face down in a war', value: 3, choices: [
+          [3, '3', 'Each player in a war lays three cards face down, then one face up.'],
+          [1, '1', 'Each player in a war lays one card face down, then one face up.']] },
+        { id: 'shuffle', label: 'Won cards', value: 0, choices: [
+          [0, 'In order\nStandard', 'The cards you win go under your pile in the order they were laid.'],
+          [1, 'Shuffled', 'The cards you win are shuffled before they go under your pile.']] },
+        { id: 'speed', label: 'Flipping', value: speed, choices: [
+          ['tap', 'By tap', 'Tap your pile to flip, or hold it to keep flipping.'],
+          ['auto', 'Auto', 'The cards flip by themselves.'],
+          ['fast', 'Fast', 'The cards flip by themselves, quickly.']] }
+      ],
+      onStart: function (cfg) {
+        var o = cfg.options;
+        setSpeed(o.speed || 'tap', true);
+        S = Core.newGame(cfg.players.map(function (p) { return { name: p.name, cpu: !!p.cpu }; }), { rounds: +o.rounds || 0, aces: o.aces, down: +o.down, shuffle: +o.shuffle });
+        S.mode = cfg.mode; shown500 = 0;
+        Kit.gameStart(); save(); build(); render(); dealIn();
+      }
+    });
+  }
+  function setSpeed(s, quiet) {
+    speed = s; lsSet(SPEEDK, s);
+    if (spdEl) [].forEach.call(spdEl.children, function (b) { b.classList.toggle('on', b.dataset.s === s); b.setAttribute('aria-pressed', b.dataset.s === s ? 'true' : 'false'); });
+    if (!quiet) { Kit.sfx('tick'); Kit.haptic('light'); }
+    paintCap(); schedule();
+  }
+
+  // ═══ The table ═══════════════════════════════════════════════════════════════════════════════════
+  var box, tbl, pileEls = [], tagEls = [], mtrEl, spdEl, capEl, skipEl, moAtEl;
+  function build() {
+    app.className = 'wr k-hold'; app.innerHTML = ''; CEL = {}; Z = 10;
+    box = el('div', { class: 'box' });
+    box.appendChild(el('div', { class: 'tblbg wood' }, [el('div', { class: 'felt-in' })]));
+    tbl = el('div', { class: 'tbl' }); box.appendChild(tbl); app.appendChild(box);
+    pileEls = []; tagEls = [];
+    for (var p = 0; p < S.n; p++) (function (p) {
+      var pe = el('div', { class: 'pile', role: 'button', 'aria-label': fn(p) + '’s pile' }, [el('div', { class: 'slot' }), el('div', { class: 'stk' }, [Kit.card('', '', { back: true })]), el('div', { class: 'ring' }), el('div', { class: 'cnt' })]);
+      pe.addEventListener('pointerdown', function (e) { pileDown(p, e); });
+      pe.addEventListener('pointerup', pileUp); pe.addEventListener('pointercancel', pileUp); pe.addEventListener('lostpointercapture', pileUp);
+      pe.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      pe.addEventListener('keydown', function (e) { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) { e.preventDefault(); tapPile(p); } });
+      pe.tabIndex = 0;
+      pileEls.push(pe); tbl.appendChild(pe);
+      var tg = el('div', { class: 'tg' }, [avatar(p), el('div', { class: 'tx' }, [el('span', { class: 'nm', text: fn(p) }), el('span', { class: 'sb' })])]);
+      tagEls.push(tg); tbl.appendChild(tg);
+    })(p);
+    mtrEl = el('div', { class: 'mtr' }, [el('span', { class: 'rd' }), el('div', { class: 'bar' })]);
+    tbl.appendChild(mtrEl);
+    spdEl = el('div', { class: 'spd', role: 'group', 'aria-label': 'How the cards flip' }, [['tap', 'Tap'], ['auto', 'Auto'], ['fast', 'Fast']].map(function (x) {
+      return el('button', { type: 'button', 'data-s': x[0], class: speed === x[0] ? 'on' : '', 'aria-pressed': speed === x[0] ? 'true' : 'false', text: x[1], onclick: function () { if (speed !== x[0]) setSpeed(x[0]); } });
+    }));
+    tbl.appendChild(spdEl);
+    capEl = el('div', { class: 'cap' }); tbl.appendChild(capEl);
+    moAtEl = el('div', { class: 'moat', 'aria-hidden': 'true' }); tbl.appendChild(moAtEl);
+    skipEl = null;
+  }
+  function avatar(p) {
+    var pl = S.players[p];
+    if (pl.cpu) return el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') });
+    return Kit.avatar && Kit.avatar.el ? Kit.avatar.el(pl.name, '', color(p)) : el('span', { class: 'avatar', style: { '--c': color(p) }, text: pl.name.charAt(0) });
+  }
+  // seats as this device sees them: its own first, then round the table to its left
+  function view() { var a = [], m = Math.max(0, me()); for (var q = 0; q < S.n; q++) a.push((m + q) % S.n); return a; }
+
+  // ── Where everything goes: one layout for each shape, measured from the room on the table ──
+  function geo() {
+    var W = tbl.clientWidth, H = tbl.clientHeight, n = S.n, land = W > H * 1.05, v = view(), m = 10, top = 42;
+    var g = { W: W, H: H, land: land, seats: [], meter: { x: m + 4, y: 8, w: W - 2 * m - 8 } };
+    var avail = H - top - m, two = n === 2, rot = !NET && two && people() === 2 && !land;
+    function seat(p, o) { g.seats[p] = o; }
+    if (two && !land && W > H * 0.66) {
+      // an iPad upright: two rows, their pile and card across the top, your card and pile (at the right) below
+      var tH = 46, spH5 = 60;
+      var cw5 = Math.min((W - 2 * m - 24) / 2.75, (avail - 2 * tH - spH5 - 30) / 2.8, 300), pcw5 = cw5 * 0.8, ch5 = cw5 * 1.4, pch5 = pcw5 * 1.4;
+      var gap5 = Math.max(8, (avail - 2 * tH - spH5 - 2 * ch5) / 4);
+      var y1 = top + gap5 + tH + ch5 / 2, y2 = y1 + ch5 / 2 + gap5 * 1.5 + tH + ch5 / 2;
+      var pxL5 = m + pcw5 / 2 + 6, pxR5 = W - m - pcw5 / 2 - 6;
+      seat(v[1], { px: pxL5, py: y1, pcw: pcw5, cw: cw5, tag: { x: pxL5, y: y1 - pch5 / 2 - 8, al: 'b', w: 220, rot: rot }, bx: (pxL5 + pcw5 / 2 + W - m) / 2 + 6, by: y1, dx: 1, dy: 0, L: W - m - (pxL5 + pcw5 / 2) - 18, an: 'c' });
+      seat(v[0], { px: pxR5, py: y2, pcw: pcw5, cw: cw5, tag: { x: pxR5, y: y2 - pch5 / 2 - 8, al: 'b', w: 220 }, bx: (m + pxR5 - pcw5 / 2) / 2 - 6, by: y2, dx: 1, dy: 0, L: pxR5 - pcw5 / 2 - m - 18, an: 'c' });
+      g.spd = { x: pxR5, y: y2 + pch5 / 2 + 14, cls: 'row' };
+      g.cap = { x: pxR5 - pcw5 / 2 - 4, y: y2 + pch5 / 2 + 38, al: 'r', w: 300 };
+      g.cw = cw5;
+    } else if (two && !land) {
+      // a phone or iPad upright: their pile at the top, the two cards in the middle, your pile at the bottom
+      var cw = Math.min(avail / 5.75, (W - 2 * m) * 0.4, 180), pcw = cw * 0.8, hp = pcw * 1.4, hb = cw * 1.4;
+      var gap = Math.max(6, (avail - 2 * hp - 2 * hb) / 5), y = top + gap + hp / 2;
+      var tw = (W - pcw) / 2 - 18 - m;
+      var ys = [y, y + hp / 2 + gap + hb / 2]; ys.push(ys[1] + hb + gap); ys.push(ys[2] + hb / 2 + gap + hp / 2);
+      seat(v[1], { px: W / 2, py: ys[0], pcw: pcw, cw: cw, tag: { x: W / 2 + pcw / 2 + 16, y: ys[0], al: 'l', w: tw, rot: rot }, bx: W / 2, by: ys[1], dx: 1, dy: 0, L: W - 2 * m, an: 'c' });
+      seat(v[0], { px: W / 2, py: ys[3], pcw: pcw, cw: cw, tag: { x: W / 2 + pcw / 2 + 16, y: ys[3], al: 'l', w: tw }, bx: W / 2, by: ys[2], dx: 1, dy: 0, L: W - 2 * m, an: 'c' });
+      g.spd = { x: W / 2 - pcw / 2 - 16, y: ys[3], cls: '' };
+      g.cap = { x: W / 2 + pcw / 2 + 16, y: ys[3] + 26, al: 't', w: tw };
+      g.cw = cw;
+    } else if (two) {
+      // sideways: their pile at the left, yours at the right (where you act), the two cards meeting in the middle
+      var tagH = 44;
+      var spW = 72, cwH = (W / 2 - m - 26 - spW / 2) / (0.8 + 1 + 0.95), cwV = Math.min((avail - 8) / 1.4, (avail - tagH - 12) / 1.12);
+      var cw2 = Math.min(cwH, cwV, 230), pcw2 = cw2 * 0.8, hp2 = pcw2 * 1.4, yc = top + avail / 2;
+      var colH = tagH + hp2, y0 = top + (avail - colH) / 2, pyy = y0 + tagH + hp2 / 2;
+      var pxL = m + pcw2 / 2 + 6, pxR = W - m - spW - pcw2 / 2 - 8;
+      seat(v[1], { px: pxL, py: pyy, pcw: pcw2, cw: cw2, tag: { x: pxL, y: y0 + tagH - 6, al: 'b', w: 200 }, bx: W / 2 - 14 - cw2 / 2, by: yc, dx: 1, dy: 0, L: (W / 2 - 14) - (pxL + pcw2 / 2 + 12), an: 'e' });
+      seat(v[0], { px: pxR, py: pyy, pcw: pcw2, cw: cw2, tag: { x: pxR, y: y0 + tagH - 6, al: 'b', w: 200 }, bx: W / 2 + 14 + cw2 / 2, by: yc, dx: -1, dy: 0, L: (pxR - pcw2 / 2 - 12) - (W / 2 + 14), an: 'e' });
+      g.spd = { x: W - m + 2, y: pyy, cls: '' };
+      g.cap = { x: W / 2, y: top + 4 + Math.max(10, (avail - cw2 * 1.4) / 4), al: 'c', w: 260 };
+      g.cw = cw2;
+    } else if (!land) {
+      // three or four, upright: the others in columns across the top (pile, then card), your card and pile below
+      var k = n - 1, colW = (W - 2 * m) / k, cwo = Math.min(colW * 0.56, 120), pcwo = cwo * 0.74, hpo = pcwo * 1.4, hbo = cwo * 1.4, tgH = 26;
+      var rest = avail - hpo - tgH - hbo, cw3 = Math.min(cwo * 1.7, (W - 2 * m) * 0.36, (rest - 36) / 2.52), pcw3 = cw3 * 0.8, hp3 = pcw3 * 1.4, hb3 = cw3 * 1.4;
+      var gap3 = Math.max(6, (avail - hpo - tgH - hbo - hb3 - hp3) / 5);
+      var yA = top + gap3 * 0.6 + hpo / 2, yT = yA + hpo / 2 + 13, yB = yT + tgH + gap3 + hbo / 2, yC = yB + hbo / 2 + gap3 * 1.4 + hb3 / 2, yD = yC + hb3 / 2 + gap3 + hp3 / 2;
+      for (var i = 1; i < n; i++) {
+        var cx = m + colW * (i - 0.5);
+        seat(v[i], { px: cx, py: yA, pcw: pcwo, cw: cwo, tag: { x: cx, y: yT, al: 'c', w: colW - 6, sm: true }, bx: cx, by: yB, dx: 1, dy: 0, L: colW - 4, an: 'c' });
+      }
+      var tw3 = (W - pcw3) / 2 - 18 - m;
+      seat(v[0], { px: W / 2, py: yD, pcw: pcw3, cw: cw3, tag: { x: W / 2 + pcw3 / 2 + 16, y: yD, al: 'l', w: tw3 }, bx: W / 2, by: yC, dx: 1, dy: 0, L: W - 2 * m, an: 'c' });
+      g.spd = { x: W / 2 - pcw3 / 2 - 16, y: yD, cls: '' };
+      g.cap = { x: W / 2 + pcw3 / 2 + 16, y: yD + 26, al: 't', w: tw3 };
+      g.cw = cw3;
+    } else {
+      // three or four, sideways: a column for each player (pile, name, card), yours at the right with the flipping choice
+      var tgH4 = 30, spW = 78;
+      var cwV4 = (avail - tgH4 - 46) / (1.4 + 1.12), cwH4 = (W - 2 * m - spW) / (1.55 * n);
+      var cw4 = Math.min(cwV4, cwH4, 170), pcw4 = cw4 * 0.8, hp4 = pcw4 * 1.4, hb4 = cw4 * 1.4;
+      var colW4 = (W - 2 * m - spW) / n, gap4 = Math.max(16, (avail - hp4 - tgH4 - hb4) / 3);
+      var yN = top + gap4 + tgH4 - 4, yP = yN + 6 + hp4 / 2, yB4 = yP + hp4 / 2 + gap4 + hb4 / 2;
+      for (var j = 0; j < n; j++) {
+        var col = j === 0 ? n - 1 : j - 1, cx4 = m + colW4 * (col + 0.5);
+        seat(v[j], { px: cx4, py: yP, pcw: pcw4, cw: cw4, tag: { x: cx4, y: yN, al: 'b', w: colW4 - 6, sm: true }, bx: cx4, by: yB4, dx: 1, dy: 0, L: colW4 - 6, an: 'c' });
+      }
+      g.spd = { x: W - m - spW + 10, y: yP, cls: 'al-l' };
+      g.moB = yB4 - hb4 / 2 + 16;
+      g.cap = { x: W - m - spW / 2, y: yB4, al: 'c', w: spW + 10 };
+      g.cw = cw4;
+    }
+    return g;
+  }
+  // where each card of a seat's group lies: spread along the seat's direction, the newest card on top and whole
+  function groupPos(s, list) {
+    var cw = s.cw, gaps = [], tot = 0;
+    for (var i = 0; i < list.length - 1; i++) { var gp = list[i].up ? 0.46 * cw : 0.2 * cw; gaps.push(gp); tot += gp; }
+    var room = Math.max(0, s.L - cw * 1.12 - 4), k = tot > room ? room / tot : 1, o = 0, offs = [0];
+    gaps.forEach(function (gp) { o += gp * k; offs.push(o); });
+    var shift = s.an === 'e' ? -o : -o / 2;
+    return offs.map(function (vv) { return { x: s.bx + s.dx * (vv + shift), y: s.by + s.dy * (vv + shift) }; });
+  }
+  function pos(e, x, y) { e.style.left = x.toFixed(1) + 'px'; e.style.top = y.toFixed(1) + 'px'; }
+  // put everything where it belongs now (cards in flight are aimed again)
+  function place() {
+    if (!tbl || !S) return;
+    G = geo();
+    var v = view();
+    for (var p = 0; p < S.n; p++) {
+      var s = G.seats[p]; if (!s) continue;
+      var pe = pileEls[p]; pe.style.setProperty('--pw', s.pcw.toFixed(1) + 'px'); pos(pe, s.px, s.py);
+      pe.classList.toggle('me', mine(p));
+      var tg = tagEls[p], t = s.tag;
+      tg.className = 'tg al-' + t.al + (t.rot ? ' rot' : '') + (t.sm ? ' sm' : '') + (tg.classList.contains('go') ? ' go' : '') + (S.out[p] ? ' out' : '');
+      tg.style.setProperty('--tw', Math.max(70, t.w).toFixed(0) + 'px');
+      // (kept inside the table: a long name moves in rather than off the edge)
+      var tw0 = tg.offsetWidth, tx0 = t.x;
+      if (t.al === 'b' || t.al === 'c') tx0 = Math.max(4 + tw0 / 2, Math.min(G.W - 4 - tw0 / 2, t.x));
+      else if (t.al === 'l') tx0 = Math.min(t.x, G.W - 4 - tw0);
+      pos(tg, tx0, t.y);
+      if (t.al === 'c' && G.land && S.n > 2) tg.style.width = Math.max(70, t.w) + 'px'; else tg.style.width = '';
+      // the cards on the table, and ghosts where a war's cards will land
+      var list = VT[p].concat(GH[p] || []), ps = groupPos(s, list);
+      list.forEach(function (x, i) {
+        var e = x.gh ? x.el : CEL[x.c]; if (!e) return;
+        e.style.setProperty('--cw', s.cw.toFixed(1) + 'px');
+        if (!e._home) pos(e, ps[i].x, ps[i].y);
+      });
+    }
+    // where a moment lies: across the other side's half of the table, clear of your pile and the cards in play
+    var o1 = G.seats[v[1]], moB = G.moB || (G.land ? 42 + 84 : o1.by - o1.cw * 0.7 + 10);
+    moAtEl.style.height = Math.max(90, moB) + 'px';
+    pos(mtrEl, G.meter.x, G.meter.y); mtrEl.style.width = G.meter.w + 'px';
+    spdEl.className = 'spd ' + (G.spd.cls || ''); pos(spdEl, G.spd.x, G.spd.y);
+    capEl.className = 'cap al-' + G.cap.al; capEl.style.setProperty('--capw', G.cap.w + 'px');
+    pos(capEl, G.cap.x, G.cap.y);
+    paintMeter();
+  }
+  // draw the table as the state has it (a fresh look: a saved game, an online table)
+  function render() {
+    if (!S) return;
+    if (!tbl || !tbl.isConnected || pileEls.length !== S.n) build();
+    tbl.querySelectorAll('.wc, .gh').forEach(function (e) { e.remove(); });
+    CEL = {}; GH = []; VT = []; VC = [];
+    for (var p = 0; p < S.n; p++) {
+      VT.push(S.tbl[p].map(function (x) { return { c: x.c, up: x.up }; })); VC.push(S.piles[p].length); GH.push([]);
+      VT[p].forEach(function (x) { var e = cardEl(x.c, x.up); e.style.setProperty('--ft', '0s'); });
+    }
+    if (S.phase === 'war') ghostsFor(S.inb);
+    place(); paintAll();
+  }
+  function paintAll() { for (var p = 0; p < S.n; p++) paintPile(p); paintMeter(); paintGo(); paintCap(); if (spdEl) { var off = S.phase === 'over' || (NET && MYSEAT < 0); spdEl.style.opacity = off ? '0' : ''; spdEl.style.pointerEvents = off ? 'none' : ''; } }
+  // a pile: its edge as thick as the pile, its count
+  function paintPile(p, bump) {
+    var pe = pileEls[p]; if (!pe) return;
+    var n = VC[p] || 0, k = Math.min(16, Math.ceil(n / 3)), sh = [], tot = S ? Core.total(S) : 52;
+    for (var i = 1; i <= k; i++) sh.push((i * 0.45).toFixed(2) + 'px ' + (i * 0.72).toFixed(2) + 'px 0 ' + (i % 2 ? '#e9e2d0' : '#b9b09c'));
+    sh.push((k * 0.45 + 1).toFixed(1) + 'px ' + (k * 0.72 + 3).toFixed(1) + 'px 10px rgba(0,0,0,.4)');
+    var c = pe.querySelector('.stk .pcard'); c.style.boxShadow = 'inset 0 0 0 calc(var(--cw) * .06) var(--back-edge,#fff),' + sh.join(',');
+    pe.querySelector('.stk').style.translate = (-k * 0.45).toFixed(1) + 'px ' + (-k * 0.72).toFixed(1) + 'px';
+    var cnt = pe.querySelector('.cnt'); cnt.textContent = String(n);
+    if (bump) { cnt.classList.remove('bump'); void cnt.offsetWidth; cnt.classList.add('bump'); }
+    pe.classList.toggle('empty', n === 0);
+    pe.classList.toggle('out', !!S.out[p] && n === 0);
+    pe.classList.toggle('low', n > 0 && n <= 3 && !S.out[p]);
+    var lead = true; for (var q = 0; q < S.n; q++) if (q !== p && (VC[q] || 0) >= n) lead = false;
+    pe.classList.toggle('lead', lead && n > tot / S.n + 2);
+    var sb = tagEls[p].querySelector('.sb');
+    sb.textContent = S.out[p] && n === 0 && !VT[p].length ? 'Out of cards' : n === 1 ? '1 card' : n + ' cards';
+  }
+  function paintMeter() {
+    if (!mtrEl || !S) return;
+    var rd = mtrEl.querySelector('.rd'), r = Math.min(S.round, S.o.rounds || 1e9);
+    rd.textContent = S.o.rounds ? 'Round ' + r + ' of ' + S.o.rounds : 'Round ' + fmt(S.round);
+    if (S.phase === 'over') rd.textContent = 'After ' + fmt(S.round - 1) + ' rounds';
+    var bar = mtrEl.querySelector('.bar'), v = view(), order = v.slice(1).concat([v[0]]);
+    if (bar.children.length !== S.n + (S.n === 2 ? 1 : 0)) {
+      bar.innerHTML = '';
+      order.forEach(function (p) { bar.appendChild(el('div', { class: 'wseg', 'data-p': p, style: { '--c': color(p) } })); });
+      if (S.n === 2) bar.appendChild(el('i', { class: 'mid' }));
+    }
+    [].forEach.call(bar.querySelectorAll('.wseg'), function (s) { s.style.flexGrow = String(VC[+s.dataset.p] || 0); });
+  }
+  // whose move it is: the piles waiting for a tap glow
+  function paintGo() {
+    if (!S) return;
+    var t = S.phase === 'over' ? [] : Core.turn(S), war = S.phase === 'war';
+    for (var p = 0; p < S.n; p++) {
+      var on = t.indexOf(p) >= 0 && !busy && mine(p) && speed === 'tap' && !holding;
+      pileEls[p].classList.toggle('go', on); pileEls[p].classList.toggle('war', war);
+      tagEls[p].classList.toggle('go', t.indexOf(p) >= 0 && !S.players[p].cpu && (NET ? true : people() > 1));
+    }
+  }
+  // a few words beside your pile: how to start, and what a war asks of you
+  function paintCap() {
+    if (!capEl || !S) return;
+    var seen = +lsGet(SEENK, '0') || 0, t = '';
+    if (busy && !NET) { capEl.style.opacity = '0'; return; }
+    var meOn = S.phase !== 'over' && me() >= 0 && mine(me()) && Core.turn(S).indexOf(me()) >= 0;
+    if (S.phase === 'war' && meOn && speed === 'tap') t = S.o.down === 3 ? 'War! Tap to lay three face down and one up.' : 'War! Tap to lay one face down and one up.';
+    else if (seen < 3 && meOn && speed === 'tap' && S.round < 4) t = 'Tap your pile to flip. Hold it to keep flipping.';
+    else if (NET && S.phase !== 'over' && !meOn && Core.turn(S).length) t = 'Waiting for ' + Core.turn(S).map(fn).join(' and ') + '.';
+    if (S.n > 2 && !G) t = '';
+    capEl.textContent = t; capEl.style.opacity = t ? '1' : '0';
+  }
+
+  // a card element on the table
+  function cardEl(c, up) {
+    var r = c.charAt(0) === 'T' ? '10' : c.charAt(0);
+    var e = el('div', { class: 'wc' + (up ? ' up' : '') }, [el('div', { class: 'sc' }, [el('div', { class: 'in' }, [el('div', { class: 'fc' }, [Kit.card(r, c.charAt(1))]), el('div', { class: 'bk' }, [Kit.card('', '', { back: true })])])])]);
+    e.style.setProperty('--rot', ((Math.random() - 0.5) * (up ? 7 : 12)).toFixed(1) + 'deg');
+    e.style.zIndex = String(++Z);
+    CEL[c] = e; tbl.appendChild(e);
+    return e;
+  }
+  // ghosts: where the cards of a war will land, for each player still in it
+  function ghostsFor(seats) {
+    seats.forEach(function (p) {
+      (GH[p] || []).forEach(function (x) { if (x.el) x.el.remove(); });
+      GH[p] = [];
+      var n = S.piles[p].length, k = Math.min(S.o.down, n - 1);
+      for (var i = 0; i < k; i++) GH[p].push({ gh: 1, up: 0 });
+      if (n) GH[p].push({ gh: 1, up: 1 });
+      GH[p].forEach(function (x) { x.el = el('div', { class: 'gh' + (x.up ? ' u' : '') }); x.el.style.zIndex = '5'; tbl.appendChild(x.el); });
+    });
+  }
+  function dropGhost(p) { var g = GH[p] && GH[p].shift(); if (g && g.el) g.el.remove(); }
+  function clearGhosts() { GH.forEach(function (l) { (l || []).forEach(function (x) { if (x.el) x.el.remove(); }); }); GH = GH.map(function () { return []; }); }
+
+  // ═══ Playing a move out on the table (the same for a move made here and one from the online table) ═══
+  // mv: {lays: [{p, cards: [{c, up}]}], res}
+  function play(mv, done) {
+    var t0 = 0, war = mv.war > 0 || (mv.lays[0] && mv.lays[0].cards.length > 1);
+    mv.lays.forEach(function (L, li) {
+      var start = li * T(war ? 140 : 70);
+      L.cards.forEach(function (x, i) {
+        var at = start + (x.up ? (L.cards.length > 1 ? T(150) * (L.cards.length - 1) + T(260) : 0) : T(150) * i);
+        later(function () { layCard(L.p, x, L.cards.length > 1); }, at);
+        t0 = Math.max(t0, at);
+      });
+    });
+    var landT = t0 + T(war ? 560 : 380);
+    if (!mv.res) { later(function () { paintAll(); done(); }, landT); return; }
+    later(function () { settle(mv.res, done); }, landT);
+  }
+  function layCard(p, x, inWar) {
+    var s = G.seats[p];
+    VT[p].push({ c: x.c, up: x.up }); VC[p] = Math.max(0, (VC[p] || 0) - 1); paintPile(p);
+    dropGhost(p);
+    var e = cardEl(x.c, false);
+    e.style.setProperty('--ft', '0s'); e.style.setProperty('--cw', s.cw.toFixed(1) + 'px');
+    var k = Math.min(16, Math.ceil((VC[p] + 1) / 3));
+    pos(e, s.px - k * 0.45, s.py - k * 0.72);
+    e.style.width = s.pcw + 'px'; e.style.height = s.pcw * 1.4 + 'px';
+    e.getBoundingClientRect();
+    var ft = T(x.up ? 330 : 240);
+    e.style.setProperty('--ft', ft + 'ms'); e.style.setProperty('--flt', T(320) + 'ms');
+    e.style.width = ''; e.style.height = '';
+    e.classList.add('fly');
+    place();
+    Kit.sfx(x.up ? 'deal' : 'deal', x.up ? 0.9 : 0.75);
+    setTimeout(function () {
+      e.classList.remove('fly');
+      if (x.up) { e.classList.add('up'); Kit.sfx('flip'); if (mine(p)) Kit.haptic('light'); }
+      else { e.classList.add('thud'); Kit.haptic('tick'); if (inWar && VT[p].filter(function (y) { return !y.up; }).length % 3 === 0) { box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } }
+    }, ft);
+  }
+  function mo(o) { if (!o.big && moAtEl && moAtEl.isConnected) o.at = moAtEl; return Kit.moment(o); }
+  function callout(t, c) { return mo({ title: t, color: c, ms: 1300 }); }
+  function upOf(p) { var l = VT[p]; for (var i = l.length - 1; i >= 0; i--) if (l[i].up) return CEL[l[i].c]; return null; }
+  function settle(res, done) {
+    var inb = Object.keys(res).length ? null : null;
+    if (res.k === 'war') return warStarts(res, done);
+    if (res.k === 'back') {
+      callout('Everyone ran out', null);
+      later(function () { sweepBack(done); }, T(900));
+      return;
+    }
+    // somebody takes it
+    var w = res.w, wc = upOf(w);
+    for (var p = 0; p < S.n; p++) { var u = upOf(p); if (u && p !== w) u.classList.add('lose'); }
+    if (res.ace2) { if (wc) wc.classList.add('ace2'); res.ace2.aces.forEach(function (a) { var u = upOf(a); if (u) u.classList.add('tie'); }); }
+    if (wc) wc.classList.add('win');
+    var n = res.cards.length, youWon = isYou(w) || (!NET && mine(w) && people() > 1);
+    Kit.sfx(res.wars ? 'good' : 'tap', res.wars ? 1 : 0.6);
+    if (mine(w)) Kit.haptic(res.wars ? 'success' : 'light');
+    var pause = T(res.wars ? 650 : 440);
+    // the moment, where it happens
+    if (res.wars >= 3) later(function () { bigWar(res); }, T(250));
+    else if (res.wars === 2) later(function () { mo({ title: 'Double war', line: who(w) + (isYou(w) ? ' win' : ' wins') + ' it and ' + (isYou(w) ? 'take ' : 'takes ') + n + ' cards.', pts: '+' + n, chip: 'II', color: color(w) }); Kit.sfx('sparkle'); }, T(200));
+    else if (res.wars === 1) later(function () { mo({ title: isYou(w) ? 'You win the war' : fn(w) + ' wins the war', line: res.short && res.short.length ? res.short.map(fn).join(' and ') + (res.short.length > 1 ? ' had' : ' had') + ' no cards left for it.' : null, pts: '+' + n, chip: 'War', color: color(w), ms: 1500 }); }, T(160));
+    else if (res.short && res.short.length) later(function () { mo({ title: fn(w) + ' takes it', line: res.short.map(fn).join(' and ') + ' had no cards left for the war.', pts: '+' + n, ms: 1600 }); }, T(160));
+    else if (res.ace2) later(function () { mo({ title: 'A two takes the ace', line: (isYou(w) ? 'Your two' : fn(w) + '’s two') + ' beat ' + res.ace2.aces.map(function (a) { return whose(a); }).join(' and ') + ' ace.', chip: '2', color: color(w), pts: '+' + n }); Kit.sfx('sparkle'); }, T(160));
+    var st = S.st && S.st[w];
+    later(function () { sweepTo(w, function () {
+      // small rewards after the sweep: a run of battles, a long game
+      if (st && !res.over) {
+        if (st.run === 5 || st.run === 8) { callout(st.run + ' in a row', color(w)); Kit.sfx('chip'); }
+        else if (st.run === 12) { mo({ title: '12 in a row', line: who(w) + (isYou(w) ? ' have' : ' has') + ' won 12 rounds in a row.', icon: 'bolt', color: color(w) }); Kit.sfx('sparkle'); }
+      }
+      if (!res.over && (S.round - 1 === 500 || S.round - 1 === 1000 || S.round - 1 === 2000) && shown500 !== S.round) {
+        shown500 = S.round;
+        mo({ title: fmt(S.round - 1) + ' rounds', line: 'This war has gone on for ' + fmt(S.round - 1) + ' rounds, and nobody has given up.', icon: 'history', ms: 2400 }); Kit.sfx('sparkle');
+      }
+      (res.outs || []).forEach(function (p, i) {
+        if (res.over) return;
+        later(function () { callout(isYou(p) ? 'You are out of cards' : fn(p) + ' is out of cards'); Kit.sfx('bad'); paintAll(); }, i * T(900) + T(120));
+      });
+      done();
+    }); }, pause);
+  }
+  // the winner sweeps every card on the table under their pile, one after another, and the count climbs
+  function sweepTo(w, after) {
+    var s = G.seats[w], all = [];
+    for (var p = 0; p < S.n; p++) VT[p].forEach(function (x) { all.push(x.c); });
+    var k = Math.min(16, Math.ceil(VC[w] / 3)), step = Math.max(14, Math.min(46, T(320) / Math.max(1, all.length))), ft = T(300);
+    clearGhosts();
+    Kit.sfx('whoosh', 0.55);
+    all.forEach(function (c, i) {
+      setTimeout(function () {
+        var e = CEL[c]; if (!e) return;
+        e._home = true;
+        e.classList.remove('win', 'lose', 'tie', 'ace2');
+        e.style.setProperty('--ft', ft + 'ms');
+        e.style.zIndex = '3';
+        pos(e, s.px - k * 0.45, s.py - k * 0.72);
+        e.style.width = s.pcw + 'px'; e.style.height = s.pcw * 1.4 + 'px';
+        e.classList.remove('up');
+        setTimeout(function () {
+          e.classList.add('gone'); setTimeout(function () { e.remove(); }, 260);
+          delete CEL[c];
+          VC[w]++; paintPile(w, true); paintMeter();
+          if (i % 2 === 0) Kit.sfx('chip', 0.35);
+        }, ft);
+      }, i * step);
+    });
+    var end = all.length * step + ft + 60;
+    setTimeout(function () {
+      VT = VT.map(function () { return []; });
+      // settle the display on the state exactly
+      for (var p = 0; p < S.n; p++) VC[p] = S.piles[p].length;
+      paintAll(); after();
+    }, end);
+  }
+  function sweepBack(after) {
+    clearGhosts();
+    var ft = T(360);
+    for (var p = 0; p < S.n; p++) (function (p) {
+      var s = G.seats[p];
+      VT[p].forEach(function (x, i) {
+        var e = CEL[x.c]; if (!e) return;
+        setTimeout(function () { e._home = true; e.style.setProperty('--ft', ft + 'ms'); e.classList.remove('up', 'tie', 'win', 'lose'); pos(e, s.px, s.py); e.style.width = s.pcw + 'px'; e.style.height = s.pcw * 1.4 + 'px';
+          setTimeout(function () { e.classList.add('gone'); setTimeout(function () { e.remove(); }, 260); delete CEL[x.c]; }, ft); }, i * 30);
+      });
+    })(p);
+    setTimeout(function () { VT = VT.map(function () { return []; }); for (var p = 0; p < S.n; p++) VC[p] = S.piles[p].length; paintAll(); after(); }, ft + 900);
+  }
+  // a tie: the tied cards flash red, and the war is laid out as ghosts where its cards will land
+  function warStarts(res, done) {
+    res.tie.forEach(function (p) { var u = upOf(p); if (u) u.classList.add('tie'); });
+    var d = res.wars;
+    Kit.sfx(d >= 2 ? 'boom' : 'clash'); Kit.haptic(d >= 2 ? 'heavy' : 'medium');
+    box.classList.remove('shake', 'shake2'); void box.offsetWidth; box.classList.add(d >= 2 ? 'shake2' : 'shake');
+    var tieName = Core.rankWord(S.tbl[res.tie[0]].filter(function (x) { return x.up; }).slice(-1)[0].c, true);
+    var three = res.tie.length >= 3 ? ' three ways' : '';
+    if (d === 1) mo({ title: 'War!', line: res.tie.length > 2 ? res.tie.length + ' ' + tieName + ' tie.' : 'Two ' + tieName + ' tie.', chip: '!', tone: 'bad', ms: T(1300) + 200 });
+    else if (d === 2) mo({ title: 'Double war!', line: 'Another tie, so the war goes on' + three + '.', chip: 'II', tone: 'bad', ms: T(1500) + 300 });
+    else Kit.moment({ big: true, title: (d === 3 ? 'Triple' : d === 4 ? 'Quadruple' : d + '-deep') + ' war!', line: 'A ' + (d === 3 ? 'third' : d === 4 ? 'fourth' : d + 'th') + ' tie in a row. Every card on the table goes to whoever wins this.', chip: String(d), tone: 'bad', ms: T(2000) + 500 });
+    (res.short || []).forEach(function (p) { later(function () { Kit.toast(fn(p) + ' has no cards left for the war'); }, T(400)); });
+    later(function () {
+      ghostsFor(S.inb);
+      place(); paintAll(); done();
+    }, T(d >= 3 ? 1300 : 760));
+  }
+  function bigWar(res) {
+    var w = res.w, fin = [];
+    for (var p = 0; p < S.n; p++) { var l = VT[p].filter(function (x) { return x.up; }); if (l.length) fin.push(l[l.length - 1].c); }
+    Kit.moment({ big: true, title: (res.wars === 3 ? 'Triple' : res.wars === 4 ? 'Quadruple' : res.wars + '-deep') + ' war won', line: (isYou(w) ? 'You take ' : fn(w) + ' takes ') + 'all ' + res.cards.length + ' cards on the table.', pts: '+' + res.cards.length,
+      chip: String(res.wars), color: color(w), cards: fin.map(function (c) { return { r: c.charAt(0) === 'T' ? '10' : c.charAt(0), s: c.charAt(1) }; }), at: box });
+    Kit.sfx('win'); Kit.haptic('success');
+    if (isYou(w)) Kit.confetti();
+  }
+  function dealIn() {
+    // the deck is split into the piles: each pile grows from nothing as the cards land
+    var fin = VC.slice(), t = token; busy = true;
+    for (var p = 0; p < S.n; p++) { VC[p] = 0; paintPile(p); }
+    paintMeter();
+    var steps = 10;
+    for (var i = 1; i <= steps; i++) (function (i) {
+      later(function () {
+        for (var p = 0; p < S.n; p++) { VC[p] = Math.round(fin[p] * i / steps); paintPile(p, i === steps); }
+        paintMeter(); Kit.sfx('deal', 0.5);
+      }, i * 70);
+    })(i);
+    later(function () { if (t !== token) return; busy = false; paintAll(); schedule(); }, steps * 70 + 250);
+  }
+
+  // ═══ Taps, holds and the flow of a local game ════════════════════════════════════════════════════
+  var holdT = 0;
+  function pileDown(p, e) {
+    if (!S || S.phase === 'over' || !mine(p)) { if (S && S.phase !== 'over' && !mine(p)) nudge(p); return; }
+    try { pileEls[p].setPointerCapture(e.pointerId); } catch (er) {}
+    tapPile(p);
+    clearTimeout(holdT);
+    holdT = setTimeout(function () { holding = true; paintGo(); schedule(); }, 380);
+  }
+  function pileUp() { clearTimeout(holdT); if (holding) { holding = false; paintGo(); paintCap(); } }
+  function nudge(p) {
+    var pe = pileEls[p]; if (!pe) return;
+    Kit.haptic('error'); pe.animate([{ translate: '-50% -50%' }, { translate: 'calc(-50% - 5px) -50%' }, { translate: 'calc(-50% + 5px) -50%' }, { translate: '-50% -50%' }], { duration: 260 });
+  }
+  function tapPile(p) {
+    if (!S || S.phase === 'over' || !mine(p)) return;
+    if (Core.waiting(S).indexOf(p) < 0) { if (!busy) nudge(p); return; }
+    if (busy) { queue[p] = 1; return; }
+    seen();
+    if (NET) return netLay();
+    doLay([p]);
+  }
+  function seen() { var n = +lsGet(SEENK, '0') || 0; if (n < 3) lsSet(SEENK, String(n + 1)); }
+  function doLay(ps) {
+    var mvs = [];
+    ps.forEach(function (p) { if (Core.waiting(S).indexOf(p) >= 0) { var mv = Core.lay(S, p); if (mv) mvs.push(mv); } });
+    if (!mvs.length) return;
+    var mv = { war: mvs[0].war, lays: [], res: null };
+    mvs.forEach(function (m) { mv.lays = mv.lays.concat(m.lays); if (m.res) mv.res = m.res; });
+    save();
+    busy = true; paintGo(); paintCap(); var t = token;
+    play(mv, function () { if (t !== token) return; busy = false; stepDone(); });
+  }
+  function stepDone() {
+    if (!S) return;
+    paintAll();
+    if (S.phase === 'over') { if (!NET) { save(); later(finish, T(400)); } return; }
+    schedule();
+  }
+  // what happens next: a queued tap, a held pile, flipping by themselves, or the computer once the people are out
+  function schedule() {
+    clearTimeout(autoT);
+    if (!S || busy || S.phase === 'over' || !tbl) return;
+    paintGo(); paintCap();
+    var t = Core.turn(S);
+    if (!t.length) return;
+    var war = S.phase === 'war';
+    if (NET) {
+      if (MYSEAT < 0 || t.indexOf(MYSEAT) < 0) return;
+      if (queue[MYSEAT]) { delete queue[MYSEAT]; return netLay(); }
+      if (holding || speed !== 'tap') autoT = setTimeout(function () { if (!busy && S && Core.turn(S).indexOf(MYSEAT) >= 0) netLay(); }, wait(war));
+      return;
+    }
+    var ppl = t.filter(function (p) { return !S.players[p].cpu; });
+    if (!ppl.length) {
+      // only the computer is left in this battle (a war between computer players, or every person is out): it plays
+      // on, quickly, and once every person is out there is a way to skip to the end
+      showSkip(S.players.every(function (pl, p) { return pl.cpu || S.out[p]; }));
+      autoT = setTimeout(function () { if (!busy && S) doLay([Core.turn(S)[0]]); }, Math.min(wait(war), war ? 380 : 160));
+      return;
+    }
+    var q = ppl.filter(function (p) { return queue[p]; });
+    if (q.length) { q.forEach(function (p) { delete queue[p]; }); return doLay(q); }
+    if (holding || speed !== 'tap') autoT = setTimeout(function () { if (!busy && S && S.phase !== 'over') doLay(Core.turn(S).filter(function (p) { return !S.players[p].cpu; })); }, wait(war));
+  }
+  function wait(war) { return speed === 'fast' ? (war ? 420 : 140) : holding ? (war ? 420 : 90) : (war ? 950 : 620); }
+  function showSkip(on) {
+    if (on && !skipEl && !NET) {
+      skipEl = el('button', { type: 'button', class: 'btn btn-soft skip', text: 'Skip to the end', onclick: function () {
+        token++; busy = false; clearTimeout(autoT); Core.playOut(S); save(); render(); finish();
+      } });
+      app.appendChild(skipEl);
+    } else if (!on && skipEl) { skipEl.remove(); skipEl = null; }
+  }
+
+  // ═══ The end ═════════════════════════════════════════════════════════════════════════════════════
+  function standings(st) {
+    var ps = []; for (var p = 0; p < st.n; p++) ps.push(p);
+    return ps.sort(function (a, b) { return st.piles[b].length - st.piles[a].length || (st.outAt[b] || 1e9) - (st.outAt[a] || 1e9); });
+  }
+  function subLine(st) {
+    var r = st.round - 1, w = st.winner, ord = standings(st);
+    if (st.why === 'all') return 'Won every card in ' + fmt(r) + ' rounds';
+    var counts = ord.map(function (p) { return st.piles[p].length; }).join(' to ');
+    if (st.why === 'tie') return 'Tied on ' + st.piles[ord[0]].length + ' cards each after ' + fmt(r) + ' rounds';
+    return counts + ' cards after ' + fmt(r) + ' rounds';
+  }
+  // the history: the race (each player's count after each round, sampled), every war, the biggest swing
+  function detail(st) {
+    var tr = String(st.tr || '').split('.'), step = Math.max(1, Math.ceil(tr.length / 110)), smp = [];
+    for (var i = 0; i < tr.length; i += step) smp.push(tr[i]);
+    if ((tr.length - 1) % step) smp.push(tr[tr.length - 1]);
+    var wl = (st.wl || []).slice(), keep = wl;
+    if (wl.length > 16) keep = wl.slice().sort(function (a, b) { return b.d - a.d || b.n - a.n; }).slice(0, 16).sort(function (a, b) { return a.r - b.r; });
+    var big = { n: 0 };
+    // the biggest swing: the most a player's count changed in one round
+    var prev = tr[0] ? tr[0].split(',').map(Number) : [];
+    tr.forEach(function (row, r) { var c = row.split(',').map(Number); if (r) c.forEach(function (v, p) { var dd = v - prev[p]; if (dd > big.n) big = { n: dd, p: p, r: r }; }); prev = c; });
+    return { names: st.players.map(function (p) { return p.name; }), cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''), c: smp.join('.'), st: step,
+      w: st.winner, why: st.why, r: st.round - 1, tot: Core.total(st), wars: keep, nw: wl.length, sw: big.n ? big : null, lo: st.lo.join('.'), a2: st.a2 || 0,
+      o: [st.o.rounds, st.o.aces, st.o.down, st.o.shuffle].join('.'), run: st.st.map(function (x) { return x.best; }).join('.') };
+  }
+  function highlights(st) {
+    var hl = [], w = st.winner, r = st.round - 1;
+    if (w >= 0) hl.push(st.why === 'all' ? st.players[w].name + ' won every card in ' + fmt(r) + ' rounds.' : st.players[w].name + ' held the most cards after ' + fmt(r) + ' rounds.');
+    else hl.push('Nobody held more cards than everyone else after ' + fmt(r) + ' rounds, so the game was a tie.');
+    (st.hl || []).forEach(function (h) { hl.push(h); });
+    var nw = (st.wl || []).length;
+    if (nw) { var bw = 0; st.st.forEach(function (x, p) { if (x.wars > st.st[bw].wars) bw = p; }); hl.push(nw === 1 ? 'There was one war, and ' + st.players[bw].name + ' won it.' : 'There were ' + nw + ' wars, and ' + st.players[bw].name + ' won ' + st.st[bw].wars + ' of them.'); }
+    var br = 0; st.st.forEach(function (x, p) { if (x.best > st.st[br].best) br = p; });
+    if (st.st[br].best >= 8) hl.push(st.players[br].name + ' won ' + st.st[br].best + ' rounds in a row.');
+    return hl;
+  }
+  function modeName(st) { return NET ? 'Online' : st.players.every(function (p, i) { return i === 0 || p.cpu; }) ? 'vs Computer' : 'Pass & play'; }
+  function recordGame(st, extra) {
+    var hl = highlights(st); (extra || []).forEach(function (x) { hl.push(x); });
+    Kit.record(HKEY, {
+      started: st.started, mode: modeName(st) + (st.n > 2 ? ', ' + st.n + ' players' : ''),
+      players: st.players.map(function (p, i) { return { name: p.name, score: st.piles[i].length, cpu: p.cpu }; }),
+      winner: st.winner >= 0 ? st.players[st.winner].name : null,
+      highlights: hl, detail: detail(st),
+      summary: st.winner >= 0 ? st.players[st.winner].name + ' won in ' + fmt(st.round - 1) + ' rounds' : 'A tie after ' + fmt(st.round - 1) + ' rounds'
+    });
+  }
+  function endMoment(st, then) {
+    var w = st.winner;
+    if (w >= 0 && st.why === 'all' && st.lo[w] < 5) {
+      Kit.moment({ big: true, title: 'A comeback', line: (isYou(w) ? 'You were' : fn(w) + ' was') + ' down to ' + (st.lo[w] === 1 ? 'a single card' : st.lo[w] + ' cards') + ' and won every card back.', icon: 'trophy', color: color(w), pts: String(Core.total(st)), at: box });
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      setTimeout(then, 2700); return;
+    }
+    then();
+  }
+  function finish() {
+    if (!S || S.phase !== 'over') return;
+    showSkip(false);
+    var st = S, w = st.winner, cfgPlayers = st.players.map(function (p) { return { name: p.name, cpu: p.cpu }; }), o = clone(st.o), mode = st.mode;
+    recordGame(st);
+    clearSave(); S = st; paintAll();
+    var lose = w >= 0 && st.players[w].cpu, mineWin = w >= 0 && isYou(w);
+    endMoment(st, function () {
+      WINO = Kit.win({
+        icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy',
+        title: w < 0 ? 'It’s a tie!' : mineWin ? 'You win!' : fn(w) + ' wins!',
+        sub: subLine(st),
+        rank: standings(st).map(function (p) { return { name: st.players[p].name, score: st.piles[p].length, color: color(p), cpu: st.players[p].cpu, me: onePerson() && p === 0 && !st.players[p].cpu }; }),
+        lose: !!lose,
+        again: function () { WINO = null; S = Core.newGame(cfgPlayers, o); S.mode = mode; shown500 = 0; Kit.gameStart(); save(); build(); render(); dealIn(); },
+        look: { label: 'Look at the table', onClick: function () { WINO = null; } },
+        setup: function () { WINO = null; clearSave(); showSetup(); }
+      });
+    });
+  }
+
+  // ═══ Online (turnnet.js) ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game. Each person turns up their own card on their own device; the round is settled
+  // in the transaction of the last person to flip (the computer's seats flip with them), and every device plays the
+  // move out the same way.
+  var NQ = [], NGEN = 0, NETREC = {};
+  function netOpts() {
+    var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_war')) || {}; } catch (e) {}
+    var o = g.options || {};
+    return { seats: Math.max(2, Math.min(4, +g.count || 2)), rounds: +o.rounds || 0, aces: o.aces || 'high', down: +o.down || 3, shuffle: +o.shuffle || 0 };
+  }
+  function netStart(players, opts, last) {
+    var st = Core.newGame(players.map(function (p) { return { name: p.name, cpu: !!p.bot }; }), opts);
+    st.online = 1; st.series = last && last.series && last.series.length === st.n ? last.series.slice() : players.map(function () { return 0; });
+    return st;
+  }
+  function netOver(st) {
+    if (!st || st.phase !== 'over') return null;
+    return { win: st.winner >= 0 ? [st.winner] : [], text: st.winner >= 0 ? st.players[st.winner].name + ' wins' : 'A tie' };
+  }
+  function netLay() {
+    if (!NET || busy) return;
+    var seat = MYSEAT;
+    NET.act(function (st) { var mv = Core.lay(st, seat); return mv ? { state: st, mv: mv } : null; });
+  }
+  function netShow(net, info) {
+    NET = net; MYSEAT = net.seat;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; token++; if (WINO) { try { WINO.close(); } catch (e) {} WINO = null; } }
+    NQ.push({ st: clone(net.state), mv: info.mv, info: info });
+    if (net.state && net.state.phase === 'over') netRecord(clone(net.state));
+    if (NQ.length > 6) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });
+    if (!busy) netPump();
+  }
+  function netPump() {
+    var it = NQ.shift();
+    if (!it) { if (S) { paintAll(); schedule(); } return; }
+    var g = NGEN, st = it.st, info = it.info;
+    st.players.forEach(function (pl, p) { var s = NET.seats[p]; if (s && s.bot) pl.cpu = true; });
+    if (!it.mv || info.fresh || info.again || it.skip || !S || !tbl || !tbl.isConnected || S.n !== st.n) {
+      S = st; build(); render();
+      if (info.fresh || info.again) { Kit.gameStart(); if (info.again) callout('New game'); busy = true; dealIn(); var t = token; setTimeout(function () { if (g === NGEN && t === token) { busy = false; netPump(); } }, 1100); return; }
+      if (S.phase === 'over') setTimeout(function () { if (g === NGEN) netEnd(); }, 400);
+      netPump(); return;
+    }
+    S = st; busy = true;
+    play(it.mv, function () {
+      if (g !== NGEN) return;
+      busy = false;
+      // (if what is drawn has drifted from the table, draw the table as it is)
+      var drift = false; for (var p = 0; p < S.n; p++) if (VC[p] !== S.piles[p].length || VT[p].length !== S.tbl[p].length) drift = true;
+      if (drift) render();
+      if (S.phase === 'over') { netEnd(); return; }
+      netPump();
+    });
+  }
+  function netRecord(st) {
+    if (!NET || NET.seat < 0) return;
+    var key = NET.code + ':' + st.started, done = [];
+    try { done = JSON.parse(localStorage.getItem('war_netrec')) || []; } catch (e) {}
+    if (NETREC[key] || done.indexOf(key) >= 0) return;
+    NETREC[key] = 1;
+    try { localStorage.setItem('war_netrec', JSON.stringify(done.concat([key]).slice(-20))); } catch (e) {}
+    recordGame(st, ['Played online at table ' + NET.code + '.']);
+  }
+  function netEnd() {
+    if (!NET || !S || S.phase !== 'over') return;
+    var st = S, w = st.winner, res = NET.result, left = res && res.left != null, watching = MYSEAT < 0, won = !watching && w === MYSEAT;
+    if (WINO) { try { WINO.close(); } catch (e) {} }
+    endMoment(st, function () {
+      WINO = Kit.win({
+        icon: won ? 'trophy' : 'users',
+        title: left ? res.text : w < 0 ? 'It’s a tie!' : won ? 'You win!' : fn(w) + ' wins',
+        sub: subLine(st),
+        rank: standings(st).map(function (p) { return { name: st.players[p].name, score: st.piles[p].length, color: color(p), cpu: st.players[p].cpu, me: !watching && p === MYSEAT }; }),
+        lose: !won,
+        againLabel: left ? 'Back to the lobby' : 'Play again',
+        again: function () { WINO = null; if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+        look: { label: 'Look at the table', onClick: function () { WINO = null; } },
+        closeLabel: 'Back to games'
+      });
+    });
+  }
+  function netLeave() {
+    NET = null; NQ = []; NGEN++; busy = false; token++;
+    if (WINO) { try { WINO.close(); } catch (e) {} WINO = null; }
+    resumeLocal();
+  }
+
+  // ── A turn of the device: everything glides to its new place ──
+  var rzT = 0;
+  window.addEventListener('resize', function () {
+    if (!S || !tbl || !tbl.isConnected) return;
+    cancelAnimationFrame(rzT); rzT = requestAnimationFrame(function () { place(); });
+  });
+
+  // ── Boot ──
+  function resumeLocal() {
+    var sv = null; try { sv = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (sv && sv.v === 1 && sv.piles && sv.phase !== 'over') { S = sv; Kit.gameStart(); build(); render(); schedule(); }
+    else showSetup();
+  }
+  resumeLocal();
+  TurnNet.setup({
+    game: 'war', title: 'War', min: 2, max: 4, botMs: 700,
+    seats: function (n, o) { return Math.max(n, Math.min(4, +(o && o.seats) || 2)); },
+    opts: netOpts, start: netStart,
+    turn: function (st) { return Core.turn(st); },
+    over: netOver,
+    bot: function (st, seat) { var mv = Core.lay(st, seat); return mv ? { state: st, mv: mv } : null; },
+    resign: function (st, seat) { if (st.players[seat]) st.players[seat].cpu = true; return { state: st, bot: true }; },
+    show: netShow, leave: netLeave
+  });
+  // (tests)
+  window.__war = { get S() { return S; }, get busy() { return busy; }, tap: tapPile, core: Core, speed: setSpeed, get net() { return !!NET; },
+    set: function (f) { f(S); save(); render(); schedule(); }, finish: finish };
+})();
+</script>
+</body>
+</html>

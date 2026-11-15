@@ -72,6 +72,11 @@ var GameIcon = (function () {
     pinochle: function (c) {   // the pinochle itself: the queen of spades over the jack of diamonds
       return rect(2.5, 4, 11, 15.5, 2, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-10 8 12)"') + txt('Q', 8.5, K, 10, 7.4) + rect(10.5, 4.5, 11, 15.5, 2, W, ' stroke="' + R + '" stroke-width="1.2" transform="rotate(10 16 12)"') + txt('J', 8.5, R, 11, 16.5);
     },
+    war: function (c) {   // two cards turned up against each other, a spark where they meet
+      return rect(1.5, 6, 10, 14, 2, W, ' stroke="' + K + '" stroke-width="1.2" transform="rotate(-16 6.5 13)"') + txt('K', 8, K, 12.6, 6.2) +
+        rect(12.5, 6, 10, 14, 2, W, ' stroke="' + R + '" stroke-width="1.2" transform="rotate(16 17.5 13)"') + txt('K', 8, R, 12.6, 17.8) +
+        path('M12 1.5l1.2 2.6 2.8.3-2.1 1.9.6 2.8L12 7.7 9.5 9.1l.6-2.8L8 4.4l2.8-.3z', Y, ' stroke="' + K + '" stroke-width=".8" stroke-linejoin="round"');
+    },
     bridge: function (c) { return rect(3, 6, 10.5, 7.5, 1.6, W, ' stroke="' + K + '" stroke-width="1.2"') + txt('1', 7, K, 9.9, 6.2) + path('M10.6 8.2s-1.6 1.2-1.6 2.1a.8.8 0 0 0 1.4.5l-.4 1h1.2l-.4-1a.8.8 0 0 0 1.4-.5c0-.9-1.6-2.1-1.6-2.1z', K) + rect(9.5, 11, 11.5, 8, 1.6, R) + txt('NT', 6.2, W, 15.2, 15.2); },
     euchre: function (c) { return txt('J', 19, c, 11) + path('M12 17.5l2 2.5-2 2.5-2-2.5z', R); },
     cribbage: function (c) {

@@ -195,6 +195,6 @@ var HistView = window.HistView = (function () {
   };
 
   // the views, one file per kind of game
-  var files = ['hist/board.js', 'hist/board2.js', 'hist/cards.js', 'hist/bridge.js', 'hist/specialty.js', 'hist/dice.js', 'hist/party.js', 'hist/puzzle.js', 'hist/words.js', 'hist/casino.js', 'hist/arcade.js', 'hist/lorcana.js', 'hist/anoria.js', 'hist/oregon.js', 'hist/pinochle.js', 'games/mazes/maze-core.js'];
+  var files = ['hist/board.js', 'hist/board2.js', 'hist/cards.js', 'hist/bridge.js', 'hist/specialty.js', 'hist/dice.js', 'hist/party.js', 'hist/puzzle.js', 'hist/words.js', 'hist/casino.js', 'hist/arcade.js', 'hist/lorcana.js', 'hist/anoria.js', 'hist/oregon.js', 'hist/pinochle.js', 'hist/war.js', 'games/mazes/maze-core.js'];
   return { register: register, has: has, render: render, unpack: unpack, ui: ui, css: css, files: files };
 })();
