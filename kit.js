@@ -5361,6 +5361,7 @@
     host.addEventListener('pointerdown', function (e) {
       if (e.button > 0) return;
       m.noClick = false; m.v = 0;
+      if (m.still) return;
       m.drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, lx: e.clientX, moved: false, vs: [] };
     });
     host.addEventListener('pointermove', function (e) {
@@ -5431,8 +5432,14 @@
         if (img) { var im = el('img', { src: img, alt: '', style: size ? { width: size[0] + 'px', height: size[1] + 'px', maxWidth: 'none' } : null }); im.onerror = function () { im.remove(); }; sp.insertBefore(im, sp.firstChild); }
       },
       // fresh: start over with these now (a different choice of what the strip shows), rather than roll them in
-      set: function (items, fresh) {
+      // still: a single line that stands still at the start of the strip (a "nothing here" note is said once, not
+      // repeated across it)
+      set: function (items, fresh, still) {
         items = items || [];
+        if (still) { m.still = true; m.q = []; m.key = null; m.by = {}; items.forEach(function (it) { m.by[idOf(it)] = it; });
+          run.innerHTML = ''; var one = items[0] && make(idOf(items[0])); if (one) run.appendChild(one); m.x = 0; m.v = 0;
+          run.style.transform = 'translate3d(0,0,0)'; host.classList.add('k-mq-still'); return; }
+        if (m.still) { m.still = false; fresh = true; host.classList.remove('k-mq-still'); }
         if (fresh) { run.innerHTML = ''; m.x = -41; m.v = base; m.key = null; }
         var ids = items.map(idOf), key = ids.join('\u0001');
         m.by = {}; items.forEach(function (it, j) { m.by[ids[j]] = it; });

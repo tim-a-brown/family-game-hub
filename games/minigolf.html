@@ -64,9 +64,13 @@
 .card-h h2{font-family:var(--display);font-weight:400;font-size:1.35rem;color:#1f7a3f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-h small{font-family:var(--hand);font-size:1rem;color:#6a6a80;white-space:nowrap;}
 .scroll{overflow-x:auto;}
-table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nums;}
-.sc th,.sc td{height:38px;min-width:34px;text-align:center;border-bottom:1px solid rgba(60,80,160,.15);border-left:1px solid rgba(31,122,63,.15);padding:0 4px;}
-.sc th:first-child{position:sticky;left:0;background:#fbf5e8;text-align:left;padding-left:10px;min-width:84px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;z-index:1;}
+table.sc{border-collapse:collapse;width:100%;table-layout:fixed;font-variant-numeric:tabular-nums;}
+table.sc.more{border-top:3px double #1f9a4f;}
+.sc thead th.sum{font-size:.66rem;width:46px;padding:0 2px;}
+.sc th,.sc td{padding:0 2px;}
+.sc td.tot.sub{font-size:1.2rem;font-weight:400;}
+.sc th,.sc td{height:38px;text-align:center;border-bottom:1px solid rgba(60,80,160,.15);border-left:1px solid rgba(31,122,63,.15);padding:0 4px;}
+.sc th:first-child{position:sticky;left:0;background:#fbf5e8;text-align:left;padding-left:10px;width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;z-index:1;}
 .sc thead th{font-size:.72rem;font-weight:900;color:#1f7a3f;}
 .sc thead th.cur{background:rgba(255,220,60,.4);}
 .sc tr.par td{font-size:.8rem;font-weight:800;color:#8a8796;}
@@ -436,28 +440,43 @@ table.sc{border-collapse:collapse;min-width:100%;font-variant-numeric:tabular-nu
     // Paper scorecard
     var card = el('div', { class: 'card' });
     card.appendChild(el('div', { class: 'card-h' }, [el('h2', { text: S.course ? label(S.course) : 'Mini Golf' }), el('small', { text: S.over ? 'final' : 'tap a box to jump there' })]));
-    var tbl = el('table', { class: 'sc' }), hr = el('tr', null, [el('th', { text: 'HOLE' })]);
-    for (var h = 0; h < S.holes; h++) hr.appendChild(el('th', { class: h === S.hole && !S.over ? 'cur' : '', text: String(h + 1) }));
-    hr.appendChild(el('th', { text: 'TOT' }));
-    tbl.appendChild(el('thead', null, [hr]));
-    var pr = el('tr', { class: 'par' }, [el('th', { text: 'Par' })]);
-    S.par.forEach(function (v) { pr.appendChild(el('td', { text: String(v) })); });
-    pr.appendChild(el('td', { text: String(S.par.reduce(function (a, b) { return a + b; }, 0)) }));
-    tbl.appendChild(pr);
-    S.players.forEach(function (p, i) {
-      var tr = el('tr', null, [el('th', { text: p.name, style: { color: 'color-mix(in srgb,' + Kit.color(i) + ' 55%,#2a2a3a)' } })]);
-      S.strokes[i].forEach(function (v, h) {
-        var td = el('td', { class: 'v' + (h === S.hole && !S.over ? ' cur' : '') + (v === 1 ? ' ace' : ''), text: v == null ? '' : String(v) });
-        td.addEventListener('click', function () { if (S.over) return; S.hole = h; save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-        tr.appendChild(td);
-      });
-      tr.appendChild(el('td', { class: 'tot', html: total(i) + '<small class="' + vsCls(i) + '">' + vsPar(i) + '</small>' }));
-      tbl.appendChild(tr);
-    });
-    card.appendChild(el('div', { class: 'scroll' }, [tbl]));
     app.appendChild(card);
+    // Like a real scorecard, the holes come in blocks that fit the card's width (all at once, nine and nine, or sixes):
+    // each block has its holes, the par and everyone's strokes, and its last column the block's own sum, the last
+    // block's the round's total. Nothing scrolls sideways.
+    var W = card.clientWidth || (innerWidth - 32), NAME = 78, SUM = 46, MIN = 25;
+    var per = S.holes;
+    [S.holes, 9, 6, 3].some(function (n) { if (n > S.holes) return false; per = n; return (W - NAME - SUM) / n >= MIN; });
+    var blocks = []; for (var b0 = 0; b0 < S.holes; b0 += per) blocks.push([b0, Math.min(S.holes, b0 + per)]);
+    var sumOf = function (arr, a, z) { var t = 0, any = false; for (var k = a; k < z; k++) if (arr[k] != null) { t += arr[k]; any = true; } return any ? t : null; };
+    blocks.forEach(function (bk, bi) {
+      var last = bi === blocks.length - 1, two = blocks.length === 2;
+      var sumName = last ? 'Total' : two ? 'Out' : 'Sum';
+      var tbl = el('table', { class: 'sc' + (bi ? ' more' : '') }), hr = el('tr', null, [el('th', { text: 'Hole' })]);
+      for (var h = bk[0]; h < bk[1]; h++) hr.appendChild(el('th', { class: h === S.hole && !S.over ? 'cur' : '', text: String(h + 1) }));
+      hr.appendChild(el('th', { class: 'sum', text: sumName }));
+      tbl.appendChild(el('thead', null, [hr]));
+      var pr = el('tr', { class: 'par' }, [el('th', { text: 'Par' })]);
+      for (var h2 = bk[0]; h2 < bk[1]; h2++) pr.appendChild(el('td', { text: String(S.par[h2]) }));
+      pr.appendChild(el('td', { text: String(last ? S.par.reduce(function (a, c) { return a + c; }, 0) : sumOf(S.par, bk[0], bk[1])) }));
+      tbl.appendChild(pr);
+      S.players.forEach(function (p, i) {
+        var tr = el('tr', null, [el('th', { text: p.name, style: { color: 'color-mix(in srgb,' + Kit.color(i) + ' 55%,#2a2a3a)' } })]);
+        for (var h3 = bk[0]; h3 < bk[1]; h3++) (function (h) {
+          var v = S.strokes[i][h];
+          var td = el('td', { class: 'v' + (h === S.hole && !S.over ? ' cur' : '') + (v === 1 ? ' ace' : ''), text: v == null ? '' : String(v) });
+          td.addEventListener('click', function () { if (S.over) return; S.hole = h; save(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+          tr.appendChild(td);
+        })(h3);
+        if (last) tr.appendChild(el('td', { class: 'tot', html: total(i) + '<small class="' + vsCls(i) + '">' + vsPar(i) + '</small>' }));
+        else { var st = sumOf(S.strokes[i], bk[0], bk[1]); tr.appendChild(el('td', { class: 'tot sub', text: st == null ? '' : String(st) })); }
+        tbl.appendChild(tr);
+      });
+      card.appendChild(tbl);
+    });
+    // (a long name eases its size down to fit the column, rather than being cut off)
+    card.querySelectorAll('.sc tbody th, .sc tr:not(.par) > th:first-child').forEach(function (th) { Kit.fitText(th, 0.55); });
     if (S.over) app.appendChild(el('div', { class: 'holenav' }, [el('button', { type: 'button', class: 'btn btn-primary btn-block', text: 'New round', onclick: function () { showSetup(); } })]));
-    var curCol = card.querySelector('thead th.cur'); if (curCol) { var sc = card.querySelector('.scroll'); sc.scrollLeft = Math.max(0, curCol.offsetLeft - 120); }
   }
   function editPar() {
     var grid = el('div', { class: 'seg' }), s;
