@@ -19,7 +19,7 @@
 .turnline span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
 /* Oval table */
-.oval{position:relative;margin:0 auto;width:100%;max-width:540px;height:clamp(420px,calc(100svh - 282px),600px);border-radius:50%;padding:12px;}
+.oval{position:relative;margin:0 auto;width:100%;max-width:540px;height:clamp(420px,calc(100svh - 292px),600px);border-radius:50%;padding:12px;}
 .oval > .felt-in{position:relative;width:100%;height:100%;border-radius:50%;}
 .mid{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;width:min(56%,220px);}
 
@@ -74,6 +74,32 @@
 .auto[aria-pressed="true"] .box{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));box-shadow:none;color:var(--gold-ink);}
 .auto[aria-pressed="true"] .box .ico{opacity:1;}
 /* Tall tablet: bigger table and dice */
+/* Sideways (a phone on its side, an iPad held sideways): the table at the left as tall as the screen, to look at; the
+   turn, Roll and the pace controls in a column at the right, where your thumb is */
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  #app.stage:has(> .oval){max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) clamp(200px,30vw,320px);grid-template-rows:1fr auto auto auto 1fr;
+    grid-template-areas:"oval ." "oval turn" "oval roll" "oval ctrls" "oval stake";column-gap:clamp(14px,3vw,36px);align-items:center;
+    padding-right:max(17px,calc(var(--safe-r,0px) + 8px));padding-bottom:max(18px,calc(var(--safe-b) + 10px));}
+  #app > .turnline{grid-area:turn;justify-content:flex-start;margin:0;}
+  #app > .turnline span{white-space:normal;}
+  #app > .oval{grid-area:oval;max-width:none;height:calc(100svh - var(--safe-t) - var(--safe-b) - 96px);align-self:start;}
+  #app > .rollbtn{grid-area:roll;margin-top:10px;}
+  #app > .ctrls{grid-area:ctrls;flex-direction:column;align-items:stretch;gap:8px;margin-top:10px;}
+  #app > .stakeline{grid-area:stake;align-self:start;text-align:left;}
+  .oval .mid{width:min(46%,290px);}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-height:700px){
+  .die.ldie{--ds:60px;} .dice{gap:14px;min-height:62px;} .lseat .tag{font-size:1rem;}
+  #app > .oval{height:calc(100svh - var(--safe-t) - var(--safe-b) - 100px);}
+}
+/* A short table (a phone on its side): the dice beside the pot, not over it, so the middle clears the seats */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:600px){
+  .oval .mid{flex-direction:row;width:min(60%,420px);gap:14px;transform:translate(-50%,-62%);}
+  .oval .mid .dice{flex:none;gap:8px;}
+  .oval .mid .pot{flex:1;min-width:0;}
+  .die.ldie{--ds:40px;}
+}
+.lseat{transition:left .42s cubic-bezier(.3,.7,.25,1),top .42s cubic-bezier(.3,.7,.25,1);}
 @media (min-width:700px) and (min-height:900px){
   .oval{max-width:680px;height:clamp(420px,calc(100svh - 300px),780px);}
   .mid{width:min(56%,290px);}
@@ -264,7 +290,11 @@
       if (t !== token) return;
       if (k > 0 && dieEls[k - 1]) { dieEls[k - 1].classList.remove('act'); if (!dieEls[k - 1].classList.contains('keep')) dieEls[k - 1].classList.add('done'); }
       if (k >= moves.length) {
-        later(function () { busy = false; view = null; done(); }, 420);
+        // uncommon throws get their moment on the table: three dots keeps every chip, C-C-C sends all three to the pot
+        var fs = moves.map(function (m) { return m.f; }).join(''), nm = S.players[who].name, ld = 0;
+        if (fs === '...') { ld = 1; Kit.moment({ title: 'Three dots', line: nm + ' keeps all three chips.', dice: [1, 1, 1], color: '#3ddc84', ms: 1700 }); Kit.sfx('good'); Kit.haptic('success'); }
+        else if (fs === 'CCC') { ld = 1; Kit.moment({ title: 'C, C, C', line: nm + ' puts all three chips in the pot.', tone: 'bad', icon: 'down', ms: 1700 }); Kit.sfx('bad'); Kit.haptic('error'); }
+        later(function () { busy = false; view = null; done(); }, ld ? 1300 : 420);
         return;
       }
       var m = moves[k], d = dieEls[k]; k++;
@@ -495,9 +525,32 @@
     return out;
   }
 
-  // Rotation / resize: re-seat the table when nothing is mid-animation
-  var rzT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && !busy && app.querySelector('.oval')) render(); }, 150); });
+  // Rotation / resize: the table, buttons and turn line glide from where they were to their new places, and the seats
+  // slide round the oval's new shape (at any moment, mid-roll too: only their places change)
+  function ovalAspect(oval) {
+    var r = oval.getBoundingClientRect();
+    return Math.max(.5, Math.min(2, (r.height - 24) / Math.max(200, r.width - 24)));
+  }
+  function placeSeats(oval) {
+    var seats = oval.querySelectorAll('.lseat'), spots = seatSpots(seats.length, ovalAspect(oval));
+    seats.forEach(function (st, i) { var sp = spots[i]; st.style.left = 'calc(50% + ' + sp[0].toFixed(4) + ' * (50% - 46px))'; st.style.top = 'calc(50% + ' + sp[1].toFixed(4) + ' * (50% - 44px))'; });
+  }
+  var lastR = new Map(), BLK = '#app > .turnline, #app > .oval, #app > .rollbtn, #app > .ctrls, #app > .stakeline';
+  function snapR() { var m = new Map(); document.querySelectorAll(BLK).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) m.set(e, e.getBoundingClientRect()); }); if (m.size) lastR = m; }
+  setInterval(snapR, 400);
+  window.addEventListener('resize', function () {
+    var oval = app.querySelector('.oval'); if (!S || !oval) return;
+    placeSeats(oval);
+    var now = new Map(), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll(BLK).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
+    if (!reduce) now.forEach(function (b, e) {
+      var a = lastR.get(e); if (!a || !b.width || !b.height || !e.animate) return;
+      var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+      e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.25,1)' });
+    });
+    lastR = now;
+  });
   function render(rolling) {
     if (!S) return;
     app.innerHTML = '';
@@ -529,10 +582,8 @@
     felt.appendChild(mid);
     oval.appendChild(felt);
 
-    var big = window.innerWidth >= 700 && window.innerHeight >= 900;
-    var vw = Math.min(document.documentElement.clientWidth - 32, big ? 680 : 540), vh = Math.min(big ? 780 : 600, Math.max(420, window.innerHeight - (big ? 300 : 282)));
-    var aspect = Math.max(.8, Math.min(2, (vh - 24) / Math.max(200, vw - 24)));
-    var spots = seatSpots(n, aspect);
+    app.appendChild(oval);   // in the page first, so the seats go round the oval's real shape at this size
+    var spots = seatSpots(n, ovalAspect(oval));
     S.players.forEach(function (q, i) {
       var sp = spots[i], c = shown(i);
       var seat = el('div', {
@@ -542,7 +593,6 @@
       seat.setAttribute('aria-label', q.name + ': ' + c + ' chips');
       oval.appendChild(seat);
     });
-    app.appendChild(oval);
     paintPot();
 
     // Roll button + pace controls
