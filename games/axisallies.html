@@ -24,7 +24,7 @@
 /* While playing, the page itself never scrolls: the map pans inside its box */
 html.aa-play,html.aa-play body{height:100%;overflow:hidden;}
 html.aa-play body{display:flex;flex-direction:column;height:100vh;height:100dvh;}
-html.aa-play #app{flex:1;min-height:0;max-width:none;width:100%;margin:0;padding:0 0 calc(var(--safe-b)) 0;display:flex;flex-direction:column;}
+html.aa-play #app{flex:1;min-height:0;max-width:none;width:100%;margin:0;padding:0 0 max(var(--safe-b), 4px) 0;display:flex;flex-direction:column;}
 html.aa-play .gbar{padding-top:calc(var(--safe-t) + 4px);padding-bottom:4px;}
 
 /* Phase bar: whose turn, which phase, how much money. Small banners laid over the top of the map, so the map
@@ -808,22 +808,42 @@ button.seat-pw:active{transform:scale(.96);}
 .rules details h3{display:none;}
 .rules details > ul,.rules details > ol,.rules details > p{margin-top:0;}
 
+/* A phone held sideways: the countries each player commands sit under the options at the left, the players side by
+   side on one line with the countries' short names (USSR, UK, USA), so the setup fits the screen with no scrolling */
+.aa-cmd .ps{display:none;}
+@media (orientation:landscape) and (max-height:520px) and (min-width:640px){
+  .setup:has(> .k-seats):has(> .k-opts):has(> .aa-cmd){row-gap:8px;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-row:1 / span 4;}
+  .setup:has(> .k-seats):has(> .k-opts) > .aa-cmd{grid-column:1;grid-row:5;align-self:start;}
+  .setup:has(> .aa-cmd) > .k-opts .k-scrow{min-height:40px;padding-top:6px;padding-bottom:6px;}
+  .setup > .aa-cmd{flex-direction:row;flex-wrap:wrap;gap:6px 10px;}
+  .setup > .aa-cmd > .label{display:none;}
+  .setup > .aa-cmd .aa-cmd-r{min-height:30px;gap:7px;justify-content:flex-start;}
+  .setup > .aa-cmd .aa-cmd-r b{font-size:.86rem;}
+  .setup > .aa-cmd button.seat-pw{max-width:none;padding:4px 8px;gap:4px;font-size:.72rem;flex-wrap:nowrap;white-space:nowrap;}
+  .setup > .aa-cmd .pn{display:none;} .setup > .aa-cmd .ps{display:inline;}
+  /* four or five players: the two sides lie side by side across "vs", not one plate under the other */
+  .setup .k-toks.teams{flex-wrap:nowrap;gap:6px 4px;}
+  .setup .k-toks.teams .k-side .k-tok{width:54px;}
+}
 /* iPad portrait: roomier panel */
 @media (min-width:700px) and (orientation:portrait){
   :root{--aa-panel-h:clamp(260px,33dvh,380px);}
 }
-/* Landscape with room: map left, panel right */
-@media (orientation:landscape) and (min-width:820px){
-  .aa-main{flex-direction:row-reverse;}
-  .aa-mapwrap{margin:0 calc(8px + var(--corner-x)) 8px 6px;}
-  .aa-side{height:auto;width:340px;margin:0 0 8px calc(8px + var(--corner-x));}
-}
-@media (orientation:landscape) and (max-height:500px){
-  :root{--aa-panel-h:auto;}
-  .aa-main{flex-direction:row-reverse;}
-  .aa-side{height:auto;width:300px;margin:0 0 4px calc(6px + var(--corner-x));}
-  .aa-mapwrap{margin:0 calc(6px + var(--corner-x)) 4px 6px;}
-}
+/* Landscape with room: the panel at the left, the map at the right (the map is where the taps go) */
+/* (the two sideways shapes are classes set by aaShape() from the same media queries, so a turn of the device can
+   glide from one layout to the other inside a View Transition) */
+html.aa-l1 .aa-main{flex-direction:row-reverse;}
+html.aa-l1 .aa-mapwrap{margin:0 calc(8px + var(--corner-x)) 8px 6px;}
+html.aa-l1 .aa-side{height:auto;width:340px;margin:0 0 8px calc(8px + var(--corner-x));}
+html.aa-l2{--aa-panel-h:auto;}
+html.aa-l2 .aa-main{flex-direction:row-reverse;}
+html.aa-l2 .aa-side{height:auto;width:300px;margin:0 0 4px calc(6px + var(--corner-x));}
+html.aa-l2 .aa-mapwrap{margin:0 calc(6px + var(--corner-x)) 4px 6px;}
+.aa-mapwrap{view-transition-name:aa-map;} .aa-side{view-transition-name:aa-side;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+::view-transition-old(aa-map),::view-transition-new(aa-map){height:100%;width:100%;object-fit:cover;}
 @media (min-width:700px){
   .bt{align-items:center;}
   .bt .board{border-radius:24px;max-height:calc(100dvh - 40px);padding-bottom:7px;}
@@ -1427,7 +1447,11 @@ function capture(t, p) {
       var took = S.ipc[q] || 0;
       S.ipc[p] += took; S.ipc[q] = 0;
       hl(pname(p) + ' captured ' + (city || tname(t)) + ' in round ' + S.round + (took ? ' and seized ' + took + ' IPCs' : ''));
-      if (!QUIET) Kit.callout(city + ' falls!', PW[p].col);
+      if (!QUIET) {
+        // a capital falling is the war's biggest moment: the treasury it takes counts up
+        Kit.moment({ big: true, icon: 'flag', title: city + ' falls', line: pname(p) + ' captures the ' + PW[q].adj + ' capital' + (took ? ' and seizes its treasury.' : '.'), pts: took ? took + ' IPCs' : '', color: PW[p].col, ms: 3400 });
+        Kit.sfx('boom'); Kit.haptic('heavy');
+      }
     }
     if (to === q && prev !== q) {
       // Capital liberated: the owner's other freed lands come home too
@@ -2189,6 +2213,19 @@ function finishBattle(B) {
   else if (out === 'def' && B.k === 'sbr') B.msg = 'The factory’s AA fire brought down every bomber. No bombs fell.';
   else if (out === 'def') B.msg = (B.def ? pname(B.def) : 'The defenders') + ' hold' + (B.def === 'us' ? '' : 's') + ' ' + tname(B.t) + '.';
   else if (out === 'both') B.msg = 'Both sides are wiped out.';
+  // Against the odds: an attack that had less than a one-in-four chance and won, or a defense that had less than one in
+  // seven and held, is a moment of its own and a highlight of the war
+  if (B.w0 != null && !QUIET && !HEADLESS) {
+    var dog = out === 'att' && B.w0 < 0.25 ? p : out === 'def' && B.w0 > 0.85 && B.def ? B.def : null;
+    if (dog) {
+      var pct = Math.max(1, Math.round((dog === p ? B.w0 : 1 - B.w0) * 100)); var an = /^(8|11|18|8\d)$/.test(String(pct)) ? 'an ' : 'a ';
+      hl(pname(dog) + (dog === p ? ' won the battle for ' : ' held ') + tname(B.t) + ' in round ' + S.round + ' with only ' + an + pct + ' percent chance');
+      setTimeout(function () {
+        Kit.moment({ icon: 'shield', title: 'Against the odds', line: pname(dog) + (dog === p ? ' wins the battle for ' : ' holds ') + tname(B.t) + ' with only ' + an + pct + ' percent chance.', color: PW[dog].col, ms: 3000 });
+        Kit.sfx('win', 0.7); Kit.haptic('success');
+      }, 350);
+    }
+  }
   else if (out === 'stuck') B.msg = bSide(B, 'a').concat(bSide(B, 'd')).some(function (u) { return u.k === 'sub'; }) ? 'Neither side can hit the other: planes can’t hit submarines without a destroyer, and submarines can’t hit planes.' : 'Neither side can hit the other. The battle ends.';
   if (B.k === 'sea') {
     // Defending fighters whose carriers sank fly to land nearby if they can
@@ -3086,7 +3123,21 @@ function panelShell(title, opts) {
 }
 // When the device turns: the panel's "more below" shadow is measured again, and the battle board's casualty
 // choice is scrolled back into view (a shorter board would hide it)
+// The layout's shape (upright, sideways with room, a phone on its side): turning the device moves the map and the
+// panel to their new places inside a View Transition, so they glide there
+var aaShapeK = null;
+function aaShape(anim) {
+  var l1 = matchMedia('(orientation:landscape) and (min-width:820px)').matches, l2 = matchMedia('(orientation:landscape) and (max-height:500px)').matches, k = (l1 ? 1 : 0) + (l2 ? 2 : 0);
+  if (k === aaShapeK) return;
+  var go = function () { aaShapeK = k; document.documentElement.classList.toggle('aa-l1', l1); document.documentElement.classList.toggle('aa-l2', l2); };
+  if (anim && aaShapeK !== null && R.side && R.side.isConnected && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    try { var t = document.startViewTransition(go); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) {}
+  }
+  go();
+}
+aaShape(false);
 window.addEventListener('resize', function () {
+  aaShape(true);
   if (R.more) R.more();
   if (R.casNode && R.casNode.isConnected) try { R.casNode.scrollIntoView({ block: 'nearest' }); } catch (e) {}
 });
@@ -4178,6 +4229,8 @@ function startBattle(b) {
   if (NET) { netOpenBattle(b); return; }
   var B = openBattle(b);
   if (!B) { S.v++; renderAll(); return; }
+  // the odds as the battle opens, so a win against them can be its moment (and a highlight)
+  if (!HEADLESS) { try { var o0 = liveOdds(B); if (o0) B.w0 = o0.win; } catch (e) {} }
   runBattle().catch(function () {});
 }
 function bKinds(list) { return list.map(function (u) { return { k: u.k, h: u.h, o: u.o }; }); }
@@ -5734,7 +5787,7 @@ function showSetup() {
     box = el('div', { class: 'aa-cmd' }, [el('div', { class: 'label', style: { margin: 0 }, text: 'Countries' })]); box.dataset.sig = sig;
     seats.forEach(function (q, i) {
       var cap = groups[i]
-        ? el('button', { type: 'button', class: 'seat-pw tap', 'aria-label': 'Change the country ' + seatName(i) + ' plays', html: groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i>' + PW[p].name + '</span>'; }).join('') + Kit.icon('swap') })
+        ? el('button', { type: 'button', class: 'seat-pw tap', 'aria-label': 'Change the country ' + seatName(i) + ' plays', html: groups[i].map(function (p) { return '<span><i style="background:' + PW[p].col + '"></i><span class="pn">' + PW[p].name + '</span><span class="ps">' + PW[p].short + '</span></span>'; }).join('') + Kit.icon('swap') })
         : el('div', { class: 'seat-pw', html: '<span>Sits out in Skirmish (3 powers)</span>' });
       if (groups[i]) cap.addEventListener('click', function () { pickPowers(i); });
       box.appendChild(el('div', { class: 'aa-cmd-r' }, [el('b', { html: (q.cpu ? Kit.icon('bot') : '') + '<span>' + esc(seatName(i)) + '</span>' }), cap]));
@@ -6260,7 +6313,7 @@ TurnNet.setup({
   }
 });
 // test hook
-window.__aa = { beginTurnUI: beginTurnUI, uval: uval, factoryCap: factoryCap, rocketPlan: rocketPlan, fireRockets: fireRockets, setPhase: setPhase, battleOdds: battleOdds, endMobState: endMobState, buyCost: buyCost, reach: reach, get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot, exactOdds: exactOdds, simOddsMC: simOddsMC,
+window.__aa = { capture: capture, finishBattle: finishBattle, beginTurnUI: beginTurnUI, uval: uval, factoryCap: factoryCap, rocketPlan: rocketPlan, fireRockets: fireRockets, setPhase: setPhase, battleOdds: battleOdds, endMobState: endMobState, buyCost: buyCost, reach: reach, get S() { return S; }, set S(v) { S = v; }, get V() { return V; }, get R() { return R; }, U: U, TER: TER, NAME: NAME, M: M, income: income, cur: cur, renderAll: renderAll, save: save, vcCount: vcCount, doMove: doMove, groupTargets: groupTargets, onTap: onTap, simOdds: simOdds, focusOn: focusOn, fitView: fitView, runCpu: runCpu, newGame: newGame, stranded: strandedAir, logMove: logMove, sendBack: sendBack, movedHere: movedHere, computeBattles: computeBattles, whyNot: whyNot, exactOdds: exactOdds, simOddsMC: simOddsMC,
   get NET() { return NET; }, get DRAFT() { return DRAFT; }, netTurn: netTurn, netBot: netBot, get undo() { return undoStack.length; } };
 })();
 </script>
