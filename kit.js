@@ -2375,6 +2375,14 @@
     return el('span', { class: 'avatar botav bot-' + lv, style: { '--c': color }, title: tag || null, html:
       '<i class="glow"></i>' + (lv === 'h' ? BOT_FLAME : '') + head });
   }
+  // How many are playing, with a − and a + either side of the number: the Players card's top right, in a setup and on
+  // the home screen's game sheet. step(-1 | 1) changes it; a button at the end of the range fades.
+  function countStepper(n, lo, hi, step) {
+    var minus = el('button', { type: 'button', class: 'k-wn-b', 'aria-label': 'One player fewer', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>', onclick: function (e) { e.stopPropagation(); step(-1); } });
+    var plus = el('button', { type: 'button', class: 'k-wn-b', 'aria-label': 'One player more', html: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12M12 6v12"/></svg>', onclick: function (e) { e.stopPropagation(); step(1); } });
+    minus.disabled = n <= lo; plus.disabled = n >= hi;
+    return el('div', { class: 'k-wn', role: 'group', 'aria-label': n + (n === 1 ? ' player' : ' players') }, [minus, el('b', { class: 'k-wn-n', text: String(n) }), plus]);
+  }
   // the same, said aloud: "Tim and Number 5 against Huey and Klaatu"
   function whoSaid(seats, teams) {
     var nm = function (i) { return seats[i] ? seats[i].name : ''; };
@@ -2894,6 +2902,19 @@
       if (lvOp && M.lv) state.options[lvOp.id] = M.lv.def;
       renderSeats();
     }
+    // One more or one fewer seat, from the Players card's own − and + (Tim, 2026-11-15): a seat added is filled the
+    // way the players sheet fills one (a robot where the computer plays the other seats, otherwise an open seat), and the
+    // last seat is the one that leaves
+    function stepSeats(d) {
+      var r = range(), n = state.count + d;
+      if (n < Math.max(1, r[0]) || n > r[1]) return;
+      var M = seatModel();
+      while (M.names.length < M.count) M.names.push('');
+      if (d > 0) { M.count = n; if (M.names.length < n) M.names.push(''); }
+      else { var k = M.count - 1; M.names.splice(k, 1); delete M.robots[k]; delete M.levels[k]; M.count = n; }
+      sfx(d > 0 ? 'pop' : 'whoosh'); haptic('light');
+      seatApply(M);
+    }
     // Change who's playing: one seat and nothing else to set is just the name picker; anything more is the players
     // sheet (on the home screen, over its game sheet, when this setup is in that sheet's frame)
     function openPlayers() {
@@ -2907,12 +2928,13 @@
       if (e.origin !== location.origin || !e.data || !wrap.isConnected) return;
       if (e.data.kitSheet === 'players') seatApply(e.data.m);
       else if (e.data.kitSheet === 'press' && e.data.which === 'who') openPlayers();   // (the sheet's Players card was tapped)
+      else if (e.data.kitSheet === 'step') stepSeats(e.data.d > 0 ? 1 : -1);   // (its − or +)
     });
     // Who's playing, at a glance: the people (and robots, with their skill) seated the way the game was last played.
     // One tap opens the players sheet to change how many, who sits where and which seats the computer plays.
     // (on the home screen's game sheet the players are a card of the sheet's own, above these options: this tells it
     // who is seated, kitSheet 'who'; null when this setup has nobody to name)
-    function tellWho(list, one, teams) { if (IN_SHEET) try { parent.postMessage({ kitSheet: 'who', seats: list, one: !!one, teams: teams || null }, location.origin); } catch (e) {} }
+    function tellWho(list, one, teams) { if (IN_SHEET) try { var r = P ? range() : [0, 0]; parent.postMessage({ kitSheet: 'who', seats: list, one: !!one, teams: teams || null, count: state.count, lo: Math.max(1, r[0]), hi: r[1] }, location.origin); } catch (e) {} }
     // The sides at this table: players.teams ([[seat, ...], ...], or a function of the count, the options and the mode
     // for games where partners are a choice); two seats with no teams are simply one against the other (players.vs:
     // false for two who play together).
@@ -2959,8 +2981,11 @@
       // the Players card: who is already seated as chips (robots with their skill; partners and sides as people say
       // them), and a tap opens the players sheet
       var chips = whoChips(told, teams, 'k');
-      seatsBox.appendChild(el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + whoSaid(told, teams), onclick: openPlayers },
-        [el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]));
+      var card = el('button', { type: 'button', class: 'k-who', 'aria-label': (one ? 'Change who is playing: ' : 'Change the players: ') + whoSaid(told, teams), onclick: openPlayers },
+        [el('span', { class: 'k-who-tx' }, [el('div', { class: 'k-who-t', text: one ? 'Player' : 'Players' }), chips]), el('span', { class: 'k-who-go', html: icon('right') })]);
+      var lo = Math.max(1, r[0]);
+      if (r[1] > lo) seatsBox.appendChild(el('div', { class: 'k-whobox has-n' }, [card, countStepper(state.count, lo, r[1], stepSeats)]));
+      else seatsBox.appendChild(card);
     }
     // a short line for the Game defaults list: the mode, the player count and each option shown
     function summary() {
@@ -5337,7 +5362,7 @@
     orient: function (want, tablets) { orientGate(want, tablets); },
     theme: { list: THEME_LIST, get: themeGet, set: themeSet, name: function () { return themeRec(themeGet()).name; }, pick: themePick },
     spotifyOwns: spotifyOwns, music: spotifySheet, musicMini: spotifyMini, offline: offlineSheet, offlineTag: offlineTag,
-    whoChips: whoChips, whoSaid: whoSaid,
+    whoChips: whoChips, whoSaid: whoSaid, countStepper: countStepper,
     facts: facts, factParts: factParts, titleSwitch: titleSwitch, resume: resume, rules: rules, record: record, gameStart: gameStart, history: history, historyDetail: historyDetail, loadHistView: loadHistView, fmtDate: fmtDate, knownNames: knownNames, pickName: pickName, playersSheet: playersSheet, managePlayers: managePlayers, playersPanel: playersPanel, cpuNames: cpuNames, home: goHome, handoff: handoff, game: function () { return game; }
   };
   window.GN = window.GN || { _loaded: true, haptic: haptic, toast: toast, sheet: sheet, confirm: confirmSheet };
