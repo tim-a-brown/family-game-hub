@@ -344,6 +344,9 @@ var HI_BOARDS = (function () {
   // Centipede: scores from the Centipede Chaos game go on their own board (hi_centipede_chaos). The earlier game's
   // board (hi_centipede) is retired: no longer shown anywhere, its stored data left as it was.
   add('centipede', 'centipede_chaos', { label: '', tab: 'Chaos', pin: 1 });
+  // Pong: the longest rallies against the computer on the classic table, and the Tunnel's scores
+  add('paddleball', 'paddleball', { label: 'Longest rallies', tab: 'Rallies', pin: 1 });
+  add('paddleball', 'paddleball_tunnel', { label: 'Tunnel', tab: 'Tunnel', unit: 'points', pin: 1 });
   // Carmen Sandiego: best case score per version (rank, hours to spare, Carmen herself)
   [['world', 'World'], ['usa', 'USA'], ['time', 'Time'], ['europe', 'Europe'], ['asia', 'Asia'], ['africa', 'Africa'], ['americas', 'Americas']].forEach(function (v) {
     add('carmen', 'carmen_' + v[0], { label: v[1], tab: v[1], unit: 'points' });

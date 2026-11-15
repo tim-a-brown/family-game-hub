@@ -285,6 +285,8 @@ const PRECACHE_URLS = [
   '/games/fortune/swami/card.js',
   '/games/cubehopper.html',
   '/games/paddleball.html',
+  '/games/paddleball/tunnel.js',
+  '/games/paddleball/tunnel.css',
   '/games/jokerrun.html',
   '/games/jokerrun/engine.js',
   '/games/jokerrun/art.js',

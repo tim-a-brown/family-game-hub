@@ -397,8 +397,40 @@
 
   // ═══ Pong ═══
   var PC = ['#38e1ff', '#ff4fa3'];
+  // Pong's Tunnel (games/paddleball/tunnel.js): one player against the computer. The picture is the run level by level,
+  // a neon column for the points each level earned in that level's own colors, a red ball under it for each miss
+  var TUN = [['#ff3df2', '#2ef6ff'], ['#9dff2e', '#ff2e88'], ['#ff8a1a', '#3a8bff'], ['#b14dff', '#ffd23a'], ['#7af0ff', '#ff7ad9'], ['#ff5ab0', '#5affd8']];
+  var TDN = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
+  function tunnelView(e, ui) {
+    var d = e.dt, lp = String(d.lp || '').split(',').filter(function (x) { return x !== ''; }).map(Number), lm = String(d.lm || '').split('').map(Number), pic = null;
+    if (lp.length) {
+      var N = lp.length, W = 320, H = 158, base = 116, top = 26, cw = Math.min(42, (W - 24) / N), x0 = (W - cw * N) / 2, mx = Math.max.apply(null, lp.concat([1]));
+      var s = '<defs><linearGradient id="tnsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12042c"/><stop offset=".72" stop-color="#4a0d5e"/><stop offset="1" stop-color="#ff6a3d"/></linearGradient></defs>';
+      s += '<rect width="' + W + '" height="' + H + '" fill="url(#tnsky)"/>';
+      s += '<circle cx="' + W / 2 + '" cy="' + (base - 6) + '" r="34" fill="#ffd36a" opacity=".55"/>';
+      s += '<rect y="' + base + '" width="' + W + '" height="' + (H - base) + '" fill="#150531"/>';
+      for (var g = 0; g < 9; g++) s += '<line x1="' + (W / 2 + (g - 4) * 12) + '" y1="' + base + '" x2="' + (W / 2 + (g - 4) * 70) + '" y2="' + H + '" stroke="#ff4fd8" stroke-opacity=".35"/>';
+      [base + 8, base + 20, base + 37].forEach(function (y) { s += '<line x1="0" y1="' + y + '" x2="' + W + '" y2="' + y + '" stroke="#ff4fd8" stroke-opacity=".3"/>'; });
+      lp.forEach(function (v, i) {
+        var c = TUN[i % TUN.length], h = Math.max(3, v / mx * (base - top - 8)), x = x0 + i * cw + cw * 0.18, w = cw * 0.64;
+        s += '<rect x="' + x.toFixed(1) + '" y="' + (base - h).toFixed(1) + '" width="' + w.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="' + c[0] + '" fill-opacity=".28" stroke="' + c[0] + '" stroke-width="1.6"/>';
+        s += '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (base - h - 5).toFixed(1) + '" text-anchor="middle" font-size="8" font-weight="800" fill="' + c[1] + '" font-family="ui-monospace,monospace">' + (v >= 10000 ? Math.round(v / 1000) + 'K' : n(v)) + '</text>';
+        s += '<text x="' + (x + w / 2).toFixed(1) + '" y="' + (base + 12) + '" text-anchor="middle" font-size="8.5" font-weight="800" fill="#fff" font-family="ui-monospace,monospace">' + (i + 1) + '</text>';
+        for (var k = 0; k < (lm[i] || 0); k++) s += '<circle cx="' + (x + w / 2 + (k - ((lm[i] || 0) - 1) / 2) * 7).toFixed(1) + '" cy="' + (base + 24) + '" r="2.6" fill="#ff4d6d"/>';
+      });
+      s += '<text x="10" y="15" font-size="9" font-weight="800" fill="#fff" fill-opacity=".8" font-family="ui-monospace,monospace">POINTS BY LEVEL</text>';
+      pic = svg(W, H, s, { aria: 'Points earned on each level, with a red dot under a level for each ball missed there' });
+    }
+    return screen(ui, {
+      ac: '#ff3df2', title: 'Tunnel' + (d.df ? ' · ' + (TDN[d.df] || d.df) : ''), score: n(d.sc), unit: 'points', rank: rankText(d, 'points'), pic: pic, picMax: 340,
+      stats: [['Level reached', d.lv], ['Longest rally', d.lr, 'hits'], ['Returns', n(d.ht)], ['Curve shots', d.cv || 0, d.bc ? plural(d.bc, 'big curve') : ''],
+        d.pf ? ['Perfect levels', d.pf, 'no ball missed'] : null, d.xb ? ['Extra balls', d.xb] : null, d.cm ? ['Past the computer', d.cm] : null],
+      extra: pic ? [key(ui, [['Points on that level', '#ff3df2'], ['A ball missed', '#ff4d6d']])] : null
+    });
+  }
   R('paddleball', function (e, ui) {
-    var d = e.dt; if (!d || d.sq == null) return null;
+    var d = e.dt; if (d && d.tn) return tunnelView(e, ui);
+    if (!d || d.sq == null) return null;
     var ps = e.players || [], nm = [ps[0] ? ps[0].name : 'Left', ps[1] ? ps[1].name : 'Right'], sc = [ps[0] ? ps[0].score : 0, ps[1] ? ps[1].score : 0];
     var seq = String(d.sq).split('').map(Number), rl = String(d.rl || '').split(',').filter(function (x) { return x !== ''; }).map(Number);
     var pic = null;
