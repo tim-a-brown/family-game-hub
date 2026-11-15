@@ -1965,8 +1965,12 @@ html[data-theme="light"] .pk-head b,html[data-theme="parchment"] .pk-head b{colo
           onclick: function () { toggle(side.props, sq); Kit.sfx('tap'); paint(); } }, [el('i'), el('span', null, [el('span', { text: shortName(sq) }), S.mort[sq] || blocked ? el('small', { text: blocked ? 'has buildings' : 'mortgaged' }) : null])]));
       });
       c.appendChild(list);
-      var max = S.players[p].cash, inp = el('input', { class: 'input', type: 'number', min: '0', max: String(max), step: '10', value: String(side.cash), 'aria-label': title + ' cash', inputmode: 'numeric' });
-      inp.addEventListener('change', function () { side.cash = Math.max(0, Math.min(max, Math.floor(+inp.value || 0))); paint(); });
+      var max = S.players[p].cash, inp = el('input', { class: 'input', type: 'number', min: '0', max: String(max), step: '10', value: String(side.cash), 'aria-label': title + ' cash', inputmode: 'numeric', enterkeyhint: 'done' });
+      // the amount is taken when the box is left: a change, or a blur (the Kit keyboard types without a change event)
+      var took = false;
+      function takeCash() { if (took) return; took = true; side.cash = Math.max(0, Math.min(max, Math.floor(+inp.value || 0))); paint(); }
+      inp.addEventListener('change', takeCash); inp.addEventListener('blur', takeCash);
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
       c.appendChild(el('div', { class: 'tr-cash' }, [
         el('button', { type: 'button', text: '−', 'aria-label': 'Less cash', onclick: function () { side.cash = Math.max(0, side.cash - 50); paint(); } }), inp,
         el('button', { type: 'button', text: '+', 'aria-label': 'More cash', onclick: function () { side.cash = Math.min(max, side.cash + 50); paint(); } })]));
