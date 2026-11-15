@@ -1646,7 +1646,10 @@ html.k-kb .ot.typing .ot-scr{display:none;}
     banner('Willamette Valley, Oregon', dstr(S.date));
     jingle([[72, 1], [72, 1], [74, 1], [76, 2], [79, 2], [79, 1], [81, 1], [79, 1], [76, 1], [72, 1], [74, 1], [76, 2], [76, 1], [74, 1], [72, 4]], 0.14, 0.05);
     Kit.confetti(); Kit.haptic('success');
-    setTimeout(function () { Kit.callout('You made it to Oregon!'); }, 300);
+    setTimeout(function () {
+      if (alive().length === 5) Kit.moment({ big: true, title: 'Everyone made it', line: 'All five of your party reached the Willamette Valley, ' + plural(S.days, 'day') + ' after leaving Independence.', icon: 'trophy', ms: 3200 });
+      else Kit.callout('You made it to Oregon!');
+    }, 300);
     clearLow();
     var p = el('p', { class: 'yel' }); info.appendChild(p);
     say(p, 'Congratulations! You have made it to Oregon! ' + (alive().length === 5 ? 'Everyone in your party made it.' : plural(alive().length, 'person', 'people') + ' in your party made it.') + '\n\nLet\'s see how many points you have earned.');
@@ -1685,7 +1688,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
       var tot = el('tr', { class: 'in tot' }, [el('td', { text: 'Total' }), el('td', { text: n(total) })]); tb.appendChild(tot);
       info.scrollTop = 1e6;
       jingle([[72, 1], [76, 1], [79, 1], [84, 3]], 0.09, 0.05); Kit.haptic('success');
-      if (total >= 7000) { Kit.confetti(); Kit.callout('Trail guide!'); }
+      if (total >= 7000) { Kit.confetti(); Kit.moment({ title: 'Trail guide', line: n(total) + ' points earns the trail\'s top rating.', pts: n(total), ms: 2400 }); Kit.sfx('win'); }
       act.appendChild(btn('See the Oregon Top Ten', 'go', function () {
         clearSave();
         ArcadeHi.check(BOARD, total, function () { showTopTen(total); });
@@ -1719,6 +1722,7 @@ html.k-kb .ot.typing .ot-scr{display:none;}
     var where = died ? (N[died.at].short || N[died.at].name) : arrived ? 'Oregon' : (N[S.at].short || N[S.at].name);
     var hl = [];
     if (arrived) hl.push('Reached the Willamette Valley on ' + dstr(S.date) + ', ' + plural(S.days, 'day') + ' after leaving Independence');
+    if (arrived && alive().length === 5) hl.push('All five of the party made it to Oregon');
     else if (died) hl.push(died.n + ' ' + causeText(died.cause) + ' near ' + where + ', ' + plural(Math.floor(S.miles), 'mile') + ' along the trail');
     (S.log || []).forEach(function (d) { if (!died || d.n !== died.n) hl.push(d.n + ' ' + causeText(d.c) + ' near ' + d.at + ' (' + d.date + ')'); });
     if (S.killed) hl.push('Brought back ' + plural(S.hunted, 'pound') + ' of meat from hunting');
