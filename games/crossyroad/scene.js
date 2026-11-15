@@ -223,6 +223,8 @@ export function createScene(renderer) {
     // about 10 tiles across a phone held upright; a little more on wider screens
     const across = Math.max(10.4, Math.min(14, Math.max(W / 62, 10.4 + Math.max(0, asp - 0.62) * 9)));
     hw = across / 2; hh = hw / asp;
+    // a phone held sideways: keep about nine rows in view ahead and behind, and let the road run wider instead
+    if (hh < 4.4) { hh = 4.4; hw = hh * asp; }
     cam.left = -hw; cam.right = hw; cam.top = hh; cam.bottom = -hh; cam.updateProjectionMatrix();
   }
 
