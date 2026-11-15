@@ -16,6 +16,21 @@
 <script src="../coach.js"></script>
 <script src="../online.js"></script>
 <script src="../turnnet.js"></script>
+<script>
+// The screen's shape as a class on <html> (sh-tall upright; sh-wide an iPad or laptop on its side; sh-side a phone on its side),
+// set before the first paint and changed inside a View Transition, so turning the device glides the table and controls to their new places
+(function () {
+  var R = document.documentElement, cur = '';
+  function shape() { var w = innerWidth, h = innerHeight; return w <= h ? 'tall' : h < 560 ? 'side' : w >= 900 ? 'wide' : 'tall'; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { if (cur) R.classList.remove('sh-' + cur); cur = s; R.classList.add('sh-' + s); window.dispatchEvent(new Event('shape')); };
+    if (cur && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 .stage{max-width:520px;padding-top:0;padding-bottom:0;}
 .bankrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:6px;margin:0 0 8px;}
@@ -133,20 +148,39 @@
 .hint{text-align:center;font-size:.82rem;font-weight:800;color:var(--text-2);min-height:20px;margin:-2px 0 6px;}
 
 /* ── iPad portrait: a bigger table ── */
+/* ── Upright phone: the table as big as leaves the bankroll, the scoreboard and the chips all in view ── */
+.sh-tall .stage > .tbl{max-width:max(300px,calc((100dvh - 536px) * .93 + 18px));}
+/* ── iPad upright: a bigger table over the scoreboard and the chips side by side ── */
 @media (min-width:700px) and (orientation:portrait){
-  .stage{max-width:620px;}
+  .stage{max-width:740px;}
+  .sh-tall .stage:has(> .tbl){display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"bank bank" "tbl tbl" "board dock";column-gap:14px;align-items:start;}
+  .sh-tall .stage > .bankrow{grid-area:bank;}
+  .sh-tall .stage > .tbl{grid-area:tbl;width:100%;max-width:min(100%,calc((100dvh - 368px) * .93 + 18px));}
+  .sh-tall .stage > .board{grid-area:board;align-self:stretch;margin-top:10px;}
+  .sh-tall .stage > .dock{grid-area:dock;position:static;margin:10px 0 0;padding:0 0 max(calc(var(--safe-b) + 10px), 18px);background:none;}
   .board-h{font-size:.88rem;} .board-h .seg>button{font-size:.88rem;min-height:38px;}
   .hint{font-size:1rem;}
   .acts .btn{min-height:58px;font-size:1.08rem;} .acts .icon-only{width:58px;}
 }
-/* ── Wide landscape (iPad, laptop): table on the left; scoreboard, chips and buttons beside it ── */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .stage:has(> .tbl){max-width:1080px;display:grid;grid-template-columns:auto minmax(320px,420px);grid-template-rows:auto auto 1fr;column-gap:28px;justify-content:center;align-items:start;}
-  .stage > .tbl{grid-column:1;grid-row:1 / span 3;width:calc((100dvh - 96px) * .93);max-width:calc((100dvh - 96px) * .93);margin:6px 0 0;}
-  .stage > .bankrow{grid-column:2;grid-row:1;margin-top:10px;}
-  .stage > .board{grid-column:2;grid-row:2;margin-top:4px;}
-  .stage > .dock{grid-column:2;grid-row:3;position:static;margin:14px 0 0;padding:0;background:none;}
-}
+/* ── iPad or laptop on its side: table on the left the screen's height; scoreboard, chips and buttons beside it ── */
+.sh-wide .stage:has(> .tbl){max-width:1120px;display:grid;grid-template-columns:auto minmax(320px,440px);grid-template-rows:1fr auto auto auto 1fr;column-gap:28px;justify-content:center;align-items:center;min-height:calc(100dvh - 70px);}
+.sh-wide .stage > .tbl{grid-column:1;grid-row:1 / -1;width:calc((100dvh - 96px) * .93);max-width:calc((100dvh - 96px) * .93);margin:0;}
+.sh-wide .stage > .bankrow{grid-column:2;grid-row:2;margin:0;}
+.sh-wide .stage > .board{grid-column:2;grid-row:3;margin-top:12px;}
+.sh-wide .stage > .dock{grid-column:2;grid-row:4;position:static;margin:14px 0 0;padding:0;background:none;}
+.sh-wide .acts .btn{min-height:58px;font-size:1.08rem;} .sh-wide .acts .icon-only{width:58px;} .sh-wide .hint{font-size:.95rem;}
+/* ── A phone on its side: the bankroll and the scoreboard at the left, the table in the middle the screen's height,
+   the chips and buttons at the right ── */
+.sh-side .stage:has(> .tbl){max-width:none;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(232px,1fr);grid-template-rows:1fr auto auto 1fr;column-gap:16px;align-items:center;
+  min-height:calc(100dvh - 72px);padding:0 max(env(safe-area-inset-right),18px) 4px max(env(safe-area-inset-left),18px);}
+.sh-side .stage > .tbl{grid-column:2;grid-row:1 / -1;width:calc((100dvh - 98px) * .93 + 18px);max-width:none;margin:0;}
+.sh-side .stage > .bankrow{grid-column:1;grid-row:2;margin:0;}
+.sh-side .stage > .board{grid-column:1;grid-row:3;margin:8px 0 0;padding:6px 8px 8px;}
+.sh-side .board-h .seg>button{min-height:30px;padding:0 8px;}
+.sh-side .stage > .dock{grid-column:3;grid-row:2 / span 2;position:static;margin:0;padding:0;background:none;}
+.sh-side .acts{grid-template-columns:auto .85fr 1.3fr;} .sh-side .acts .btn{min-height:48px;padding:0 8px;font-size:.98rem;} .sh-side .acts .icon-only{width:48px;}
+/* the pieces that glide to their new places when the device turns */
+.stage > .tbl{view-transition-name:bc-table;} .stage > .bankrow{view-transition-name:bc-bank;} .stage > .board{view-transition-name:bc-board;} .stage > .dock{view-transition-name:bc-dock;}
 .czlk{display:inline-grid;place-items:center;width:1.3em;height:1.3em;margin-right:4px;border-radius:50%;background:#5b8cff;color:#fff;vertical-align:-.3em;}
 .czlk.pl{background:#8b6cf0;}
 .czlk .ico{width:.85em!important;height:.85em!important;color:#fff!important;stroke-width:3;}
@@ -195,7 +229,7 @@
   var RANK_NAME = { A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' };
 
   // ── Rules ─────────────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait',   // phones: the table and chip rack only fit upright
+  Kit.init({
     id: 'baccarat',
     theme: { back: ['#14244f', '#3b5bb5'] },
     confirmNew: false,
@@ -544,6 +578,7 @@
     dom.road.scrollLeft = dom.road.scrollWidth;
   }
   var roadT = null;
+  window.addEventListener('shape', function () { if (S && dom.road && document.body.contains(dom.road)) paintRoad(); });   // (inside the turn's View Transition)
   window.addEventListener('resize', function () { clearTimeout(roadT); roadT = setTimeout(function () { if (S && dom.road && document.body.contains(dom.road)) paintRoad(); }, 150); });
 
   // ── Betting ───────────────────────────────────────────────────────────────
@@ -766,6 +801,23 @@
     finishHand(h, true);
   }
 
+  // The uncommon hands get a moment on the table: a Tie called, a pair bet paid (both pairs bigger), and a dragon,
+  // one side winning six hands in a row on the Big Road
+  function rareMoment(h) {
+    var m = null, st = S.st, who = S.name || 'You';
+    var tie = h.ret.t > 0, pp = h.ret.pp > 0, bp = h.ret.bp > 0;
+    if (pp && bp) m = { chip: 'Pairs', title: 'Both pairs', line: who + ' had both pair bets, and the Player and the Banker were each dealt a pair.', pts: signed((h.ret.pp - h.bets.pp) + (h.ret.bp - h.bets.bp)), big: true };
+    else if (tie) m = { chip: 'Tie', title: 'A tie called', line: who + ' bet the Tie, and both hands came to ' + h.pt + '.', pts: signed(h.ret.t - h.bets.t) };
+    else if (pp || bp) m = { chip: 'Pair', title: (pp ? 'Player' : 'Banker') + ' pair', line: (pp ? 'The Player' : 'The Banker') + ' was dealt a pair of ' + plural(rankOf((pp ? h.p : h.b)[0])) + ', and ' + who + ' had it covered.', pts: signed(pp ? h.ret.pp - h.bets.pp : h.ret.bp - h.bets.bp) };
+    else if (st.streak && h.w !== 'T' && st.streak.n >= 6 && st.streak.n % 3 === 0)
+      m = { chip: String(st.streak.n), title: 'A dragon', line: (h.w === 'B' ? 'The Banker' : 'The Player') + ' has won ' + st.streak.n + ' hands in a row, a long line down the Big Road.', pts: net(h) > 0 ? signed(net(h)) : '', big: st.streak.n >= 9 };
+    if (!m) return;
+    setTimeout(function () {
+      Kit.moment({ chip: m.chip, title: m.title, line: m.line, pts: m.pts, big: m.big, at: dom.felt });
+      Kit.sfx('win'); Kit.haptic('success'); if (m.big) Kit.confetti({ count: 120 });
+    }, 600);
+    function net(x) { return x.back - x.wager; }
+  }
   function verdictText(h) { return h.w === 'T' ? 'A tie at ' + h.pt : (h.w === 'P' ? 'Player' : 'Banker') + ' wins ' + (h.w === 'P' ? h.pt + ' to ' + h.bt : h.bt + ' to ' + h.pt); }
   function markWinners(h) {
     if (h.w !== 'T') dom.zones[h.w === 'P' ? 'p' : 'b'].el.classList.add('win');
@@ -821,6 +873,7 @@
       if (net >= h.wager * 8) Kit.confetti({ count: 110 });
     } else if (net < 0) { Kit.sfx('bad'); }
     else Kit.sfx('tap');
+    if (animated) rareMoment(h);
     busy = false;
     save();
     paint();
