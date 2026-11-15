@@ -187,12 +187,20 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
 @media (min-width:700px){ .tray .c3{--cs:56px;} }
 
 .hcol{display:contents;}
+/* ── iPad upright: betting in two columns under the bar, the track, money and bet types at the left, the whole program and
+   the tickets at the right, so the field shows without scrolling ── */
+@media (orientation:portrait) and (min-width:700px){
+  .stage.hr.ph-bet{max-width:780px;display:flex;align-items:flex-start;gap:16px;}
+  .stage.hr.ph-bet .hcol{display:block;flex:1 1 0;min-width:0;}
+  .stage.hr.ph-bet .hcol.b{flex:1.08 1 0;}
+  .stage.hr.ph-bet .hz{min-height:50px;}
+}
 /* ── Wide landscape (iPad, laptop): track and bets on the left, program / results on the right ── */
 @media (orientation:landscape) and (min-width:900px) and (min-height:560px){
   .stage.hr.ph-bet,.stage.hr.ph-result{max-width:1160px;display:flex;align-items:flex-start;gap:24px;}
   .stage.hr.ph-bet .hcol,.stage.hr.ph-result .hcol{display:block;flex:1 1 0;min-width:0;}
   .stage.hr.ph-bet .hcol.b,.stage.hr.ph-result .hcol.b{flex:0 1 460px;}
-  .stage.hr.ph-bet .hz{min-height:52px;padding-top:5px;padding-bottom:5px;}
+  .stage.hr.ph-bet .hz{min-height:min(52px, calc((100dvh - 400px) / 8));padding-top:4px;padding-bottom:4px;}
   .stage.hr.ph-bet .prog{margin-bottom:10px;}
   .rail-in{max-width:760px;}
   /* The race runs the full width of the screen with the whole-field camera; under it the rail holds the call
@@ -252,7 +260,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
   .ph-bet .slip{grid-area:slip;margin:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:6px 10px;}
   .tk{padding:4px 2px;gap:8px;}
   .tk .x{width:34px;height:34px;}
-  .rail{padding:6px calc(12px + var(--corner-x)) calc(var(--safe-b) + 6px);border-radius:16px 16px 0 0;}
+  .rail{padding:6px calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 6px), 18px);border-radius:16px 16px 0 0;}   /* (the chips and buttons clear of the rounded screen corners) */
   .rail-in{max-width:none;display:flex;align-items:center;gap:10px;}
   .rail .pk{display:none;}
   .tray{flex:none;padding:0;gap:8px;}
@@ -267,7 +275,7 @@ html[data-theme="light"] .pk:not(:is(.felt,.wood,.felt-in) *) .pay,html[data-the
     .ph-bet .hz > span:nth-child(2),.ph-bet .ml small{display:none;}
   }
 
-  .stage.hr.ph-race{display:flex;flex-direction:column;padding-bottom:calc(var(--safe-b) + 6px);}
+  .stage.hr.ph-race{display:flex;flex-direction:column;padding-bottom:max(calc(var(--safe-b) + 6px), 18px);}   /* (Skip clear of the rounded screen corner) */
   .ph-race .tw{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin:0;}
   .ph-race .tw-in,.ph-result .tw-in{flex:1 1 0;min-height:0;}
   .ph-race .bank,.ph-race .stand,.rail.rk-race{display:none;}
@@ -2050,7 +2058,20 @@ html[data-theme="light"] .vo-row .vo-q.best,html[data-theme="parchment"] .vo-row
       var myNet = solo() ? rc.per[0].ret - rc.per[0].stake : 0;
       var best = rc.res.reduce(function (a, x, j) { return x - S.tickets[j].amt > a ? x - S.tickets[j].amt : a; }, 0);
       setTimeout(function () {
-        if (best >= 100 || S.tickets.some(function (k, j) { return rc.res[j] && k.type === 'TRI'; })) { Kit.callout(signed(best)); Kit.confetti({ count: 110 }); Kit.sfx('win'); Kit.haptic('success'); }
+        // the hard tickets get a moment at the track: a trifecta (biggest), an exacta, or a win on a longshot of 15-1 or longer
+        var hitOf = function (t) { for (var j = 0; j < S.tickets.length; j++) if (rc.res[j] && S.tickets[j].type === t) return j; return -1; };
+        var tri = hitOf('TRI'), ex = hitOf('EX'), ls = -1;
+        S.tickets.forEach(function (k, j) { if (ls < 0 && rc.res[j] && k.type === 'W' && H[k.sel[0]].ml[0] / H[k.sel[0]].ml[1] >= 15) ls = j; });
+        var mj = tri >= 0 ? tri : ex >= 0 ? ex : ls, mk = mj >= 0 ? S.tickets[mj] : null;
+        var wn = mk ? (solo() ? S.players[0].name : (S.players[mk.p] || {}).name) || 'You' : '';
+        if (mk) {
+          Kit.moment({ chip: mk.type === 'TRI' ? '1-2-3' : mk.type === 'EX' ? '1-2' : mlText(H[mk.sel[0]].ml), color: '#c99a1a',
+            title: mk.type === 'TRI' ? 'The trifecta' : mk.type === 'EX' ? 'The exacta' : 'A longshot wins',
+            line: mk.type === 'W' ? H[mk.sel[0]].name + ' won at ' + mlText(H[mk.sel[0]].ml) + ', and ' + wn + ' had the ticket.' : wn + ' called ' + (mk.type === 'TRI' ? 'the first three' : 'the first two') + ' in order: ' + mk.sel.map(function (h) { return H[h].name; }).join(', then ') + '.',
+            pts: '+' + money(rc.res[mj] - mk.amt), big: mk.type === 'TRI', at: R.tw });
+          Kit.confetti({ count: mk.type === 'TRI' ? 180 : 110 }); Kit.sfx('win'); Kit.haptic('success');
+        }
+        else if (best >= 100) { Kit.callout(signed(best)); Kit.confetti({ count: 110 }); Kit.sfx('win'); Kit.haptic('success'); }
         else { Kit.callout(solo() ? (myNet >= 0 ? signed(myNet) : 'Paid ' + money(rc.per[0].ret)) : 'Winners!', '#3ddc84'); Kit.sfx('good'); Kit.haptic('success'); }
       }, 350);
     } else if (animate && anyT) { Kit.sfx('bad'); Kit.haptic('error'); }
