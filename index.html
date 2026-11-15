@@ -960,9 +960,13 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{position:relative;left:auto;top:auto;justify-self:center;width:31px;height:42px;border-radius:0;transform:rotate(-4deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));}
 :root:not(.ng-x) .sbox.ct:active .art .gicon.mini-ct{transform:scale(.92) rotate(-6deg);}
 :root:not(.ng-x) .shelf{padding-bottom:6px;}
-:root:not(.ng-x) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--kpn) - 1) * 10px) / var(--kpn));gap:9px 10px;}
+:root:not(.ng-x) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--kpn) * 10px) / (var(--kpn) + .3));gap:9px 10px;}   /* (a little narrower than the room, so the next column peeks in at the right edge and says the shelf goes on; Tim, 2026-11-15) */
 :root:not(.ng-x) .shelf.two .sbox{width:auto;flex:none;}
-:root:not(.ng-x) .sbox .nm,:root:not(.ng-x) .sbox .nm.two{padding-right:0;margin-right:30px;}   /* (clear of how long ago, "45m", at the box's top right: a margin, so a name too long for the room is measured as too long and eased down) */
+:root:not(.ng-x) .sbox .nm,:root:not(.ng-x) .sbox .nm.two{padding-right:0;margin-right:0;}
+/* (how long ago stands in the box's bottom right corner, so every name has the box's full width and they all come out
+   the same size; the line under the name keeps clear of it) */
+:root:not(.ng-x) .sbox .ago,:root:not(.ng-x) .sbox.ct .ago{top:auto;bottom:8px;right:10px;}
+:root:not(.ng-x) .sbox .st > :last-child::after{content:"";display:inline-block;width:26px;}   /* (room for the time at the end of the last line only) */
 :root:not(.ng-x) .shelf-more{bottom:6px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bg) 80%,transparent) 60%);}
 :root:not(.ng-x) .sdel{box-shadow:0 0 0 2px #1a1c33,0 4px 10px rgba(224,36,60,.5);}
 /* online games: glass bars; your move rings in gold with a gold play button */
@@ -1043,16 +1047,29 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .g.gr .fav.on{color:var(--lit);opacity:1;filter:drop-shadow(0 0 6px var(--litg));}
 /* the tile view (the view button at the top): the same glass, standing as tiles, two across on a phone and more where
    there is room; the icon large at the top, the name and how many play under it, what is happening now at the foot */
-:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
-@media (min-width:520px){:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;}}
+:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+@media (min-width:520px){:root:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(122px,1fr));gap:10px;}}
 :root:not(.ng-x) .g.gr.tl{position:relative;align-items:stretch;min-height:0;}
-:root:not(.ng-x) .g.gr.tl .go{flex-direction:column;align-items:flex-start;gap:9px;padding:12px 12px 12px;border-radius:20px;width:100%;}
-:root:not(.ng-x) .g.gr.tl .gi{width:54px;height:54px;border-radius:15px;}
-:root:not(.ng-x) .g.gr.tl .tx{flex:none;width:100%;}
-:root:not(.ng-x) .g.gr.tl .tx b{font-size:1.08rem;overflow-wrap:normal;word-break:normal;hyphens:auto;}
-:root:not(.ng-x) .g.gr.tl .lv{max-width:none;width:100%;align-items:flex-start;text-align:left;margin-top:auto;}
-:root:not(.ng-x) .g.gr.tl .fav{position:absolute;top:4px;right:4px;width:40px;height:40px;border-radius:12px;align-self:auto;}
-@media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding:10px;} :root:not(.ng-x) .g.gr.tl .gi{width:46px;height:46px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.98rem;}}
+:root:not(.ng-x) .g.gr.tl .go{flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:14px 6px 11px;border-radius:20px;width:100%;text-align:center;}
+:root:not(.ng-x) .g.gr.tl .gi{width:50px;height:50px;border-radius:14px;}
+:root:not(.ng-x) .g.gr.tl .tx{flex:1 0 auto;width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;}
+:root:not(.ng-x) .g.gr.tl .tx b{font-size:.9rem;line-height:1.12;overflow-wrap:normal;word-break:normal;text-wrap:balance;}
+:root:not(.ng-x) .g.gr.tl .tx b.l1{font-size:.8rem;}
+/* (what is happening in a game stays on its sheet; a game waiting on you is a gold light on the tile's corner) */
+:root:not(.ng-x) .g.gr.tl .lv{display:none;}
+:root:not(.ng-x) .g.gr.tl .lv.y{display:block;position:absolute;top:10px;left:10px;width:9px;height:9px;max-width:none;padding:0;border-radius:50%;font-size:0;
+  background:var(--lit);box-shadow:0 0 10px var(--litg);}
+:root:not(.ng-x) .g.gr.tl .fav{position:absolute;top:2px;right:2px;width:34px;height:34px;border-radius:12px;align-self:auto;}
+:root:not(.ng-x) .g.gr.tl .fav .ico{width:15px;height:15px;}
+/* the seats, drawn: filled for the players a game needs, outlined for the ones that can join too */
+:root:not(.ng-x) .ppl{display:flex;align-items:flex-end;justify-content:center;gap:2px;height:13px;margin-top:auto;}
+:root:not(.ng-x) .ppl:empty{display:none;}
+:root:not(.ng-x) .ppl i{display:block;width:10px;height:12px;color:var(--text-3);}
+:root:not(.ng-x) .ppl i svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.1;}
+:root:not(.ng-x) .ppl i.on{color:color-mix(in srgb,var(--h) 55%,#fff);}
+:root:not(.ng-x) .ppl i.on svg{fill:currentColor;stroke:none;}
+:root:not(.ng-x) .ppl b{margin-left:1px;font-size:.78rem;font-weight:800;line-height:12px;color:var(--text-3);}
+@media (max-width:359px){:root:not(.ng-x) .g.gr.tl .go{padding-top:18px;} :root:not(.ng-x) .g.gr.tl .gi{width:40px;height:40px;} :root:not(.ng-x) .g.gr.tl .tx b{font-size:.84rem;} :root:not(.ng-x) .g.gr.tl .fav{top:0;right:0;width:28px;height:28px;} :root:not(.ng-x) .g.gr.tl .fav .ico{width:13px;height:13px;}}
 @media (max-width:359px){:root:not(.ng-x) .g.gr .go{gap:9px;} :root:not(.ng-x) .g.gr .lv{max-width:46%;font-size:.76rem;} :root:not(.ng-x) .g.gr .fav{width:32px;}}
 :root:not(.ng-x) .sec.favs.wiggle .list > .g.lift{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.6),0 16px 30px rgba(0,0,0,.55);}
 
@@ -1279,6 +1296,18 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     if (g.min === g.max) return g.min === 1 ? 'Just you' : g.min + ' players';
     return g.min + ' to ' + g.max + ' players';
   }
+  // How many play, drawn (the tile view; Tim, 2026-11-15: "player ranges should be shown graphically"): a person for
+  // each seat up to six, filled for the players the game needs and outlined for the seats that can join too, and a
+  // + when it seats more than six (or any number). A console game or a tool draws none.
+  var PERSON = '<svg viewBox="0 0 10 12" aria-hidden="true"><circle cx="5" cy="3.1" r="2.4"/><path d="M1 11.4v-.9a4 4 0 0 1 8 0v.9z"/></svg>';
+  function seatsPic(g) {
+    var box = el('span', { class: 'ppl' });
+    if (g.cart || g.cat === 'tools') return box;
+    var lo = Math.max(1, g.min || 1), any = !g.max, hi = any ? Math.max(lo + 2, 3) : g.max, n = Math.min(hi, 6);
+    for (var i = 0; i < n; i++) box.appendChild(el('i', { class: i < lo ? 'on' : '', html: PERSON }));
+    if (any || hi > 6) box.appendChild(el('b', { text: '+' }));
+    return box;
+  }
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function whenSaid(ts) {
     var d = new Date(ts), t0 = new Date().setHours(0, 0, 0, 0), days = Math.floor((t0 - new Date(ts).setHours(0, 0, 0, 0)) / 864e5);
@@ -1332,7 +1361,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var r = el('div', { class: 'g gr' + (tile ? ' tl' : ''), 'data-id': g.id, 'data-cat': g.cat, style: { '--h': catHsl(g, 58), '--c': catHsl(g, 46) } });
     var ic = g.cart ? el('span', { class: 'gi' }, [el('span', { class: 'gicon ct-ic ct-' + g.sys }, [cartLabel(g)])]) : el('span', { class: 'gi', html: GameIcon(g.id) });
     var go = el('button', { type: 'button', class: 'go', 'aria-label': g.name + '. ' + g.tag + '. ' + playersSaid(g) }, [
-      ic, el('span', { class: 'tx' }, [el('b', { text: g.name }), el('small', { text: playersSaid(g) })]), liveEl(g)]);
+      ic, el('span', { class: 'tx' }, [el('b', { text: g.name }), tile ? seatsPic(g) : el('small', { text: playersSaid(g) })]), liveEl(g)]);
     go.addEventListener('click', function () { launch(g); });
     var star = el('button', { type: 'button', class: 'fav' + (fav ? ' on' : ''), 'aria-label': fav ? 'Remove ' + g.name + ' from favorites' : 'Add ' + g.name + ' to favorites', 'aria-pressed': String(fav), html: Kit.icon('star') });
     star.addEventListener('click', function () {
@@ -2158,7 +2187,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
   // view on a phone and the shelf scrolls sideways for the rest
   function kpLayout(shelf) {
     shelf = shelf || document.querySelector('#rail .shelf'); if (!shelf) return;
-    var n = shelf.querySelectorAll('.sbox').length, w = innerWidth, cols = w >= 1180 ? 5 : w >= 900 ? 4 : w >= 560 ? 3 : 2;
+    var n = shelf.querySelectorAll('.sbox').length, w = innerWidth, cols = w >= 1180 ? 5 : w >= 900 ? 4 : w >= 560 ? 3 : w >= 360 ? 2 : 1;   // (a 320-wide phone: one column, the next peeking in)
     var two = glassOn() && n > cols;
     shelf.classList.toggle('two', two);
     shelf.style.setProperty('--kpn', cols);
