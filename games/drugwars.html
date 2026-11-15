@@ -16,6 +16,21 @@ try { if (localStorage.getItem('hotdogstand_dw') !== '1' && !/[?&]dev=1/.test(lo
 <script src="../hist.js"></script>
 <script src="../players.js"></script>
 <script src="../arcade-hi.js"></script>
+<script>
+// Drug Wars' street: wide (a screen at least 13 to 10 on its side) and short (wide and 460 tall at most) as classes on <html>,
+// set before the first paint and changed inside a View Transition, so turning the device glides the street's pieces
+(function () {
+  var R = document.documentElement, cur = null;
+  function shape() { var w = innerWidth, h = innerHeight; return w / h >= 1.3 ? (h <= 460 ? 'ws' : 'w') : ''; }
+  function set() {
+    var s = shape(); if (s === cur) return;
+    var go = function () { cur = s; R.classList.toggle('dw-wide', s !== ''); R.classList.toggle('dw-short', s === 'ws'); };
+    if (cur !== null && document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches && !document.hidden) { try { document.startViewTransition(go); return; } catch (e) {} }
+    go();
+  }
+  set(); addEventListener('resize', set);
+})();
+</script>
 <style>
 html,body{overflow:hidden;overscroll-behavior:none;}
 body{touch-action:manipulation;}
@@ -135,7 +150,9 @@ body.dw-street .dw-stage{display:none;}
     linear-gradient(180deg,#4a302b,#2c1d1c 55%,#171113);}
 body.dw-street .dws{display:grid;}
 .dws{grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);grid-template-areas:"st st" "map map" "brd brd" "coat act";grid-template-rows:auto minmax(60px,1fr) auto auto;
-  gap:8px;padding:8px 10px calc(var(--safe-b,0px) + 10px);}
+  gap:8px;padding:8px max(env(safe-area-inset-right,0px),17px) max(calc(var(--safe-b,0px) + 10px),18px) max(env(safe-area-inset-left,0px),17px);}   /* (the buttons clear of the rounded screen corners) */
+/* the street's pieces glide to their new places when the device turns (dw-wide is set inside a View Transition) */
+.dws-st{view-transition-name:dw-st;} .dws-map{view-transition-name:dw-map;} .dws-brd{view-transition-name:dw-brd;} .dws-coat{view-transition-name:dw-coat;} .dws-act{view-transition-name:dw-act;}
 
 .dws-card{position:relative;border-radius:var(--r-lg);background:rgba(18,16,30,.72);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 10px 24px rgba(0,0,0,.45);}
@@ -343,47 +360,51 @@ body.dw-street .dws{display:grid;}
 .dws-go .list .btn small{font:700 .66rem/1 var(--font);opacity:.7;}
 
 /* sideways and short screens (last, so they win) */
-@media (orientation:landscape) and (min-aspect-ratio:13/10){ .dws-act{flex-direction:row;align-items:stretch;justify-content:stretch;} .dws-act .go{flex:1.15;min-height:46px;width:auto;} .dws-act .two{flex:1;} .dws-act .two .btn{min-height:46px;} }
-@media (orientation:landscape) and (min-aspect-ratio:13/10){
-  .dws{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-areas:"st brd" "map brd" "coat act";grid-template-rows:auto minmax(0,1fr) auto;gap:6px 8px;
-    padding:6px calc(env(safe-area-inset-right,0px) + 10px) calc(var(--safe-b,0px) + 6px) calc(env(safe-area-inset-left,0px) + 10px);}
-  .dws-st > div{padding:6px 8px 7px;}
-  .dws-st b{font-size:1.15rem;margin-top:3px;}
-  .dws-rows{gap:3px;}
-  .dws-row{min-height:0;padding:2px 6px 2px 12px;}
-  .dws-row .nm b{font-size:.9rem;}
-  .dws-row .nm small{font-size:.66rem;margin-top:1px;}
-  .dws-row .pr .led{font-size:1.02rem;}
-  .dws-bs .btn{height:30px;min-height:30px;font-size:.78rem;}
-  .dws-hd{padding-bottom:3px;}
-  .dws-coat{padding:5px 8px;}
-  .dws-coat svg{width:34px;height:40px;}
-  .dws-coat .tx{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-  .dws-coat .tx .dws-cap{width:100%;}
-  .dws-coat .tx b{font-size:1.05rem;margin:0;}
-  .dws-coat .tx b small{display:inline;margin-left:4px;}
-  .dws-coat .gear{flex-direction:row;flex-wrap:wrap;gap:2px 10px;margin:0;}
-  .dws-map .where b{font-size:1.2rem;}
-  .dws-map{max-height:none;}
-}
-@media (orientation:landscape) and (min-aspect-ratio:13/10) and (max-height:460px){
-  .dws-brd{padding:5px 6px 4px;}
-  .dws-rows{gap:2px;}
-  .dws-row{padding:1px 4px 1px 10px;gap:6px;grid-template-columns:minmax(0,1fr) auto 92px;}
-  .dws-hd{grid-template-columns:minmax(0,1fr) auto 92px;}
-  .dws-row::before{top:5px;bottom:5px;}
-  .dws-row .nm b{font-size:.84rem;line-height:1;}
-  .dws-row .nm small{font-size:.6rem;line-height:1;}
-  .dws-row .spark{display:none;}
-  .dws-row .pr{min-width:70px;}
-  .dws-row .pr .col{gap:1px;}
-  .dws-row .pr .led{font-size:.95rem;}
-  .dws-row .dl{font-size:.56rem;}
-  .dws-bs{gap:4px;}
-  .dws-bs .btn{height:27px;min-height:27px;font-size:.74rem;border-radius:10px;}
-  .dws-st b{font-size:1rem;}
-  .dws-st .dws-cap{font-size:.64rem;}
-  .dws-act .go,.dws-act .two .btn{min-height:40px;}
+html.dw-wide .dws-act{flex-direction:row;align-items:stretch;justify-content:stretch;} html.dw-wide .dws-act .go{flex:1.15;min-height:46px;width:auto;} html.dw-wide .dws-act .two{flex:1;} html.dw-wide .dws-act .two .btn{min-height:46px;}
+html.dw-wide .dws{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-areas:"st brd" "map brd" "coat act";grid-template-rows:auto minmax(0,1fr) auto;gap:6px 8px;
+    padding:6px max(env(safe-area-inset-right,0px),18px) max(calc(var(--safe-b,0px) + 8px),18px) max(env(safe-area-inset-left,0px),18px);}
+html.dw-wide .dws-st > div{padding:6px 8px 7px;}
+html.dw-wide .dws-st b{font-size:1.15rem;margin-top:3px;}
+html.dw-wide .dws-rows{gap:3px;}
+html.dw-wide .dws-row{min-height:0;padding:2px 6px 2px 12px;}
+html.dw-wide .dws-row .nm b{font-size:.9rem;}
+html.dw-wide .dws-row .nm small{font-size:.66rem;margin-top:1px;}
+html.dw-wide .dws-row .pr .led{font-size:1.02rem;}
+html.dw-wide .dws-bs .btn{height:30px;min-height:30px;font-size:.78rem;}
+html.dw-wide .dws-hd{padding-bottom:3px;}
+html.dw-wide .dws-coat{padding:5px 8px;}
+html.dw-wide .dws-coat svg{width:34px;height:40px;}
+html.dw-wide .dws-coat .tx{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+html.dw-wide .dws-coat .tx .dws-cap{width:100%;}
+html.dw-wide .dws-coat .tx b{font-size:1.05rem;margin:0;}
+html.dw-wide .dws-coat .tx b small{display:inline;margin-left:4px;}
+html.dw-wide .dws-coat .gear{flex-direction:row;flex-wrap:wrap;gap:2px 10px;margin:0;}
+html.dw-wide .dws-map .where b{font-size:1.2rem;}
+html.dw-wide .dws-map{max-height:none;}
+html.dw-short .dws-brd{padding:5px 6px 4px;}
+html.dw-short .dws-rows{gap:2px;}
+html.dw-short .dws-row{padding:1px 4px 1px 10px;gap:6px;grid-template-columns:minmax(0,1fr) auto 92px;}
+html.dw-short .dws-hd{grid-template-columns:minmax(0,1fr) auto 92px;}
+html.dw-short .dws-row::before{top:5px;bottom:5px;}
+html.dw-short .dws-row .nm b{font-size:.84rem;line-height:1;}
+html.dw-short .dws-row .nm small{font-size:.6rem;line-height:1;}
+html.dw-short .dws-row .spark{display:none;}
+html.dw-short .dws-row .pr{min-width:70px;}
+html.dw-short .dws-row .pr .col{gap:1px;}
+html.dw-short .dws-row .pr .led{font-size:.95rem;}
+html.dw-short .dws-row .dl{font-size:.56rem;}
+html.dw-short .dws-bs{gap:4px;}
+html.dw-short .dws-bs .btn{height:27px;min-height:27px;font-size:.74rem;border-radius:10px;}
+html.dw-short .dws-st b{font-size:1rem;}
+html.dw-short .dws-st .dws-cap{font-size:.64rem;}
+html.dw-short .dws-act .go,html.dw-short .dws-act .two .btn{min-height:40px;}
+/* an iPad upright: the map takes the room that was a blank band, the price rows grow */
+@media (orientation:portrait) and (min-width:700px){
+  html .dws{gap:10px;padding-left:max(env(safe-area-inset-left,0px),20px);padding-right:max(env(safe-area-inset-right,0px),20px);}
+  html .dws-map{max-height:none;}
+  html .dws-row{min-height:54px;} html .dws-row .nm b{font-size:1.1rem;} html .dws-row .pr .led{font-size:1.35rem;}
+  html .dws-bs .btn{height:42px;min-height:42px;font-size:.92rem;}
+  html .dws-act .go{min-height:58px;font-size:1.1rem;} html .dws-act .two .btn{min-height:50px;font-size:.95rem;}
 }
 @media (orientation:portrait) and (max-height:700px){
   .dws{gap:6px;padding-top:6px;}
@@ -816,6 +837,7 @@ body.dw-street .dws{display:grid;}
     s.cost[d] = Math.max(0, s.cost[d] - avg * G);
     s.deals.push({ d: V.B, l: loc, k: d, n: G, a: Math.round(avg), p: F, w: profit });
     s.deals.sort(function (a, b) { return b.w - a.w; }); if (s.deals.length > 5) s.deals.length = 5;
+    return profit;
   }
   function enc() { var e = story().enc; return e[e.length - 1]; }
   function save() {
@@ -1072,6 +1094,9 @@ body.dw-street .dws{display:grid;}
     if (stats.escaped) hl.push('Lost the cops ' + stats.escaped + (stats.escaped === 1 ? ' time' : ' times'));
     if (stats.mugged) hl.push('Mugged ' + stats.mugged + (stats.mugged === 1 ? ' time' : ' times'));
     hl.push('Bought ' + money(stats.bought) + ', sold ' + money(stats.sold));
+    var top = (story().deals || [])[0];
+    if (top && top.w >= 20000) hl.push((who || 'You') + ' made ' + money(top.w) + ' on one sale of ' + DNAME[top.k].toLowerCase() + ' on day ' + top.d);
+    if (stats.best >= 1000000) hl.push((who || 'You') + (who ? ' was' : ' were') + ' worth over a million dollars at the best of it');
     dayLine();
     var s = story();
     Kit.record(HKEY, {
@@ -1409,8 +1434,19 @@ body.dw-street .dws{display:grid;}
   }
   // Lbl A: the board, waiting for you
   function sBoard() {
-    stBusy = false; V.chase = 0; stats.best = Math.max(stats.best, V.Z + V.V - V.Y);
+    var was = stats.best, now = V.Z + V.V - V.Y;
+    stBusy = false; V.chase = 0; stats.best = Math.max(stats.best, now);
     logDay(); save(); sRender();
+    // the first time what you're worth passes $100,000, and then $1,000,000, is a moment on the street
+    [1000000, 100000].some(function (t) {
+      if (was < t && now >= t) { sMoment({ chip: t >= 1e6 ? '1M' : '100K', title: 'Worth ' + usd(t), line: (who || 'You') + (who ? ' is' : ' are') + ' worth ' + usd(now) + ' on day ' + Math.min(30, V.B) + ', counting the bank and less the debt.', pts: usd(now), big: t >= 1e6 }); if (t >= 1e6) Kit.confetti({ count: 180, colors: ['#7ef0b0', '#ffd447', '#ffffff'] }); return true; }
+    });
+  }
+  function sMoment(o) {
+    setTimeout(function () {
+      Kit.moment({ chip: o.chip, icon: o.icon, color: o.color, title: o.title, line: o.line, pts: o.pts, big: o.big, at: document.querySelector('.dws-brd') || null });
+      Kit.sfx('win'); Kit.haptic('success');
+    }, 350);
   }
 
   // ── Buying and selling ───────────────────────────────────────────────────────────────────────
@@ -1455,7 +1491,12 @@ body.dw-street .dws{display:grid;}
       amountSheet({ title: 'Sell ' + DNAME[i].toLowerCase(), head: DNAME[i], color: DCOL[i], price: usd(F) + ' each', max: have, start: have, verb: 'Sell',
         total: function (n) { return 'for ' + usd(F * n); },
         facts: [['In your coat', have.toLocaleString('en-US')], ['Worth today', usd(F * have)]],
-        onOk: function (G) { V[HOLD[i]] -= G; V.Z += F * G; free(); fx2('sell', F * G); stats.sold += F * G; dealDone(i, G, F); sBoard(); } });
+        onOk: function (G) {
+          V[HOLD[i]] -= G; V.Z += F * G; free(); fx2('sell', F * G); stats.sold += F * G;
+          var pf = dealDone(i, G, F); sBoard();
+          // a big score on one sale is a moment on the street (bigger from $100,000)
+          if (pf >= 20000) sMoment({ chip: DNAME[i].charAt(0), color: DCOL[i], title: pf >= 100000 ? 'A killing' : 'A big score', line: (who || 'You') + ' sold ' + G.toLocaleString('en-US') + ' ' + DNAME[i].toLowerCase() + ' at ' + usd(F) + ' each, ' + usd(pf) + ' more than ' + (who ? 'it' : 'you') + ' paid.', pts: '+' + usd(pf), big: pf >= 100000 });
+        } });
     }
   }
 
@@ -1469,7 +1510,7 @@ body.dw-street .dws{display:grid;}
       }));
       var sh = mode === 'repay'
         ? amountSheet({ title: 'Loan shark', head: 'Pay him back', seg: seg, money: true, max: Math.min(V.Z, V.Y), verb: 'Repay', facts: [['You owe', usd(V.Y)], ['Cash', usd(V.Z)]], note: 'What you owe grows 10% every day.',
-            onOk: function (F) { V.Y -= F; V.Z -= F; fx2('buy', F); if (!V.Y) { Kit.sfx('win'); Kit.callout('Debt paid off', '#7ef0b0'); Kit.confetti({ count: 90, colors: ['#7ef0b0', '#ffd447', '#ffffff'] }); } sBoard(); } })
+            onOk: function (F) { V.Y -= F; V.Z -= F; fx2('buy', F); sBoard(); if (!V.Y) { sMoment({ icon: 'check', color: '#2f9e5f', title: 'Debt paid off', line: 'The loan shark has every dollar back, on day ' + Math.min(30, V.B) + ', so nothing more grows on it.', pts: '' }); Kit.confetti({ count: 90, colors: ['#7ef0b0', '#ffd447', '#ffffff'] }); } } })
         : amountSheet({ title: 'Loan shark', head: 'Borrow', seg: seg, money: true, max: 5000, start: 1000, verb: 'Borrow', facts: [['You owe', usd(V.Y)], ['Cash', usd(V.Z)]], note: 'He lends up to $5,000 at a time, at 10% a day.',
             onOk: function (F) { V.Y += F; V.Z += F; fx2('sell', F); sBoard(); } });
     }
