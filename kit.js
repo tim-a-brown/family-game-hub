@@ -23,9 +23,10 @@
 //   Kit.glide(fn)   run a relayout (the device turned) inside a View Transition so the pieces glide; plain where unsupported or motion is reduced
 //   Kit.confetti()   Kit.sfx(name, vol?)   Kit.haptic(kind)
 //   Kit.card(rank, suit, {back, cls})          playing-card element; rank 'JK' is the joker (Kit.joker)
-//   Kit.joker(suit, {cls})                     the joker of a standard deck: a jester's cap in the corners, the jester
-//                                              in the court frame; suit 'b' is the black-and-white printing, any other
-//                                              ('r', none) the color one (two jokers in a deck: 'r' and 'b')
+//   Kit.joker(suit, {cls})                     the joker of a standard deck: JOKER down the corners, the painted jester;
+//                                              suit 'b' is the black-and-white printing, any other ('r', none) the color
+//                                              one (two jokers in a deck: 'r' and 'b'). Courts and jokers are painted
+//                                              (cards/*.webp, placed by kit.css)
 //   Kit.die(value)                             die element
 //   Kit.color(i)                               player colour for seat i
 //   Kit.resume.set(label, {keys, id, file}) / .clear({id})  "Continue" rail on home
@@ -3649,75 +3650,19 @@
 
   // ── Cards & dice ──────────────────────────────────────────────────────────
   var SUIT = { s: '♠', h: '♥', d: '♦', c: '♣', '♠': '♠', '♥': '♥', '♦': '♦', '♣': '♣' };
-  // The joker (Tim, 2026-11-15): a jester's cap in both corner indexes, and the jester in the court cards' gilt frame,
-  // drawn in the cards' own inks. A deck's two jokers are two printings, as a real deck's are: suit 'b' is black ink
-  // on the card's paper, anything else ('r', or a lone joker) is in color. The figure has a plainer cut for small cards
-  // (kit.css swaps them by the card's width).
-  var JK_INK = { c: { r: '#d81e3a', k: '#1d1b2e', g: '#d4a72c', p: '#fffaf0', s: '#fbeee0', o: '#1d1b2e' },
-                 b: { r: '#fffdf8', k: '#1d1b2e', g: '#fffdf8', p: '#fffdf8', s: '#fffdf8', o: '#1d1b2e' } };
-  function jkCap(c) {   // the corner's cap: three points with a bell on each, on a band
-    var st = ' stroke="' + c.o + '" stroke-width="1.1" stroke-linejoin="round"';
-    return '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-      '<path d="M7 19.4C4.6 17.4 2.8 15.4 1.6 12.6C5.4 10 9.8 11.6 11.8 16.4Z" fill="' + c.r + '"' + st + '/>' +
-      '<path d="M17 19.4C19.4 17.4 21.2 15.4 22.4 12.6C18.6 10 14.2 11.6 12.2 16.4Z" fill="' + c.r + '"' + st + '/>' +
-      '<path d="M8.6 18C8.4 11.6 10.2 6.2 12.6 3.2C14.4 7 15.4 12 15.4 18Z" fill="' + c.k + '"' + st + '/>' +
-      '<path d="M5.4 18Q12 15.8 18.6 18L18.6 21.8Q12 19.6 5.4 21.8Z" fill="' + c.g + '"' + st + '/>' +
-      [[2, 14.6], [12.6, 2.4], [22, 14.6]].map(function (b) { return '<circle cx="' + b[0] + '" cy="' + b[1] + '" r="1.75" fill="' + c.g + '"' + st + '/>'; }).join('') +
-      '</svg>';
-  }
-  function jkFigure(c, bw) {   // the jester, half length, cut by the frame like a court card's portrait
-    var o = c.o, st = ' stroke="' + o + '" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"';
-    function bell(x, y, r) { return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + c.g + '"' + st + '/><path d="M' + (x - r * .5) + ' ' + (y + r * .42) + 'h' + (r * 1) + '" stroke="' + o + '" stroke-width=".8" stroke-linecap="round"/>'; }
-    function dia(x, y, w, h, f) { return '<path d="M' + x + ' ' + (y - h) + 'L' + (x + w) + ' ' + y + 'L' + x + ' ' + (y + h) + 'L' + (x - w) + ' ' + y + 'Z" fill="' + f + '"' + st + '/>'; }
-    var R = c.r;   // (the black-and-white printing leaves the paper where the color one prints red)
-    var full = '<svg class="jf-full" viewBox="0 0 60 138" preserveAspectRatio="xMidYMax meet" aria-hidden="true">' +
-      // body: motley in two halves, counterchanged with the cap
-      '<path d="M30 84L15 82C6 85 2 94 2 106L2 140L30 140Z" fill="' + c.k + '"' + st + '/>' +
-      '<path d="M30 84L45 82C54 85 58 94 58 106L58 140L30 140Z" fill="' + R + '"' + st + '/>' +
-      dia(16, 116, 7, 11, R) + dia(44, 116, 7, 11, c.k) +
-      '<path d="M30 92V140" stroke="' + o + '" stroke-width="1.3"/>' +
-      bell(30, 100, 2.3) + bell(30, 114, 2.3) + bell(30, 128, 2.3) +
-      // the ruff, its points tipped with bells
-      '<path d="M11 79Q30 72 49 79L47 87L42.5 83L38 89L34 84L30 90L26 84L22 89L17.5 83L13 87Z" fill="' + c.p + '"' + st + '/>' +
-      bell(13, 87.6, 2.1) + bell(22, 89.6, 2.1) + bell(30, 90.6, 2.1) + bell(38, 89.6, 2.1) + bell(47, 87.6, 2.1) +
-      // the face
-      '<ellipse cx="30" cy="65" rx="10.2" ry="12" fill="' + c.s + '"' + st + '/>' +
-      '<path d="M22.8 59.6q2.8-1.8 5.6-.2M31.6 59.4q2.8-1.6 5.6.2" fill="none" stroke="' + o + '" stroke-width="1.1" stroke-linecap="round"/>' +
-      '<path d="M23.4 63.4q2.4-1.9 4.8 0q-2.4 1.5-4.8 0ZM31.8 63.4q2.4-1.9 4.8 0q-2.4 1.5-4.8 0Z" fill="' + o + '" stroke="' + o + '" stroke-width=".7" stroke-linejoin="round"/>' +
-      '<path d="M30.4 61.6v5.6q-.9 1-2.2.5" fill="none" stroke="' + o + '" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<path d="M25.6 71q4.4 2.8 8.8 0M25.2 70.4l.6.8M34.8 70.4l-.6.8" fill="none" stroke="' + o + '" stroke-width="1.15" stroke-linecap="round"/>' +
-      (bw ? '' : '<circle cx="23.6" cy="68.4" r="2" fill="' + c.r + '" opacity=".28"/><circle cx="36.4" cy="68.4" r="2" fill="' + c.r + '" opacity=".28"/>') +
-      // the cap: three points falling outward, a bell on each, on a gilt band
-      '<path d="M17.6 54C13.4 45 9.6 37 6.4 33.4C13 31 21.4 35 27.6 47Z" fill="' + R + '"' + st + '/>' +
-      '<path d="M42.4 54C46.6 45 50.4 37 53.6 33.4C47 31 38.6 35 32.4 47Z" fill="' + R + '"' + st + '/>' +
-      '<path d="M23.4 49C23 34 26.4 19 31.6 9.6C33.6 20 36.6 33 36.6 49Z" fill="' + c.k + '"' + st + '/>' +
-      '<path d="M16.4 50.6Q30 44.6 43.6 50.6L43.6 57.4Q30 51.6 16.4 57.4Z" fill="' + c.g + '"' + st + '/>' +
-      bell(6.8, 36.6, 3.2) + bell(53.2, 36.6, 3.2) + bell(31.6, 9.4, 3.2) +
-      '</svg>';
-    // the small cut: the head in its cap, larger and plainer, for cards too small to read the full figure
-    var sst = ' stroke="' + o + '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"';
-    function sb(x, y) { return '<circle cx="' + x + '" cy="' + y + '" r="4.2" fill="' + c.g + '"' + sst + '/>'; }
-    var small = '<svg class="jf-small" viewBox="0 0 60 138" preserveAspectRatio="xMidYMid meet" aria-hidden="true">' +
-      '<path d="M2 138V114C2 104 12 98 30 98C48 98 58 104 58 114V138Z" fill="' + c.k + '"' + sst + '/>' +
-      '<path d="M30 98C48 98 58 104 58 114V138H30Z" fill="' + c.r + '"' + sst + '/>' +
-      '<path d="M8 100L52 100L45 109L38 103L30 111L22 103L15 109Z" fill="' + c.p + '"' + sst + '/>' +
-      '<ellipse cx="30" cy="84" rx="15" ry="16" fill="' + c.s + '"' + sst + '/>' +
-      '<path d="M21.6 81.6q3.4-2.6 6.8 0q-3.4 2.1-6.8 0ZM31.6 81.6q3.4-2.6 6.8 0q-3.4 2.1-6.8 0Z" fill="' + o + '" stroke="' + o + '" stroke-width="1.2" stroke-linejoin="round"/>' +
-      '<path d="M25 90.4q5 3.4 10 0" fill="none" stroke="' + o + '" stroke-width="2" stroke-linecap="round"/>' +
-      '<path d="M16 72C10 58 6 46 2 40C14 38 24 46 28 62Z" fill="' + c.r + '"' + sst + '/>' +
-      '<path d="M44 72C50 58 54 46 58 40C46 38 36 46 32 62Z" fill="' + c.r + '"' + sst + '/>' +
-      '<path d="M22 64C22 46 26 30 31 20C34 32 38 46 38 64Z" fill="' + c.k + '"' + sst + '/>' +
-      '<path d="M14 66Q30 59 46 66L46 74Q30 67 14 74Z" fill="' + c.g + '"' + sst + '/>' +
-      sb(4, 42) + sb(56, 42) + sb(31, 19) +
-      '</svg>';
-    return full + small;
-  }
+  // The court cards and the jokers are painted (Tim, 2026-11-15: "make the art like a professional painter would").
+  // The card stays plain: the corner index, and the picture in a thin-lined box between the indexes. A court card's
+  // picture is the figure from the waist up with the same picture turned over below it, meeting at a line across the
+  // middle, as a real double-ended card is. The pictures are cards/<key>.webp (and cards/s/<key>.webp for small cards),
+  // set by kit.css from the box's data-c, so every card reuses the same few files; their prompts are cards/prompts.json.
+  // A deck's two jokers are two printings of one painting: suit 'b' is the black-and-white one, anything else ('r', or
+  // a lone joker) the color one. The joker's index is the word JOKER set down the corner.
+  var COURT = { K: 'k', Q: 'q', J: 'j' }, SKEY = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c' };
   function joker(suit, o) {
     o = o || {};
-    var bw = suit === 'b' || suit === '♠' || suit === '♣' || suit === 'black', c = JK_INK[bw ? 'b' : 'c'];
+    var bw = suit === 'b' || suit === '♠' || suit === '♣' || suit === 'black';
     var n = el('div', { class: 'pcard jkr ' + (bw ? 'jk-bw' : 'jk-color') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': 'JK', 'data-s': bw ? 'b' : 'r' });
-    var cap = jkCap(c);
-    n.innerHTML = '<span class="ix">' + cap + '</span><span class="ix bot">' + cap + '</span><span class="face jf">' + jkFigure(c, bw) + '</span>';
+    n.innerHTML = '<span class="ix">JOKER</span><span class="ix bot">JOKER</span><span class="face pic" data-c="' + (bw ? 'jkb' : 'jk') + '"><span>' + '★' + '</span><em></em></span>';
     n.setAttribute('aria-label', o.back ? 'Face-down card' : (o.aria || 'Joker'));
     return n;
   }
@@ -3725,10 +3670,11 @@
     if (rank === 'JK' || rank === 'Joker') return joker(suit, o);
     o = o || {};
     var st = SUIT[suit] || suit || '', red = st === '♥' || st === '♦';
-    var r = rank === 'T' || rank === 10 ? '10' : String(rank);
-    var c = el('div', { class: 'pcard' + (red ? ' red' : '') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': r, 'data-s': st });
+    var r = rank === 'T' || rank === 10 ? '10' : String(rank), ct = COURT[r] && SKEY[st] ? COURT[r] + SKEY[st] : '';
+    var c = el('div', { class: 'pcard' + (red ? ' red' : '') + (ct ? ' court' : '') + (o.back ? ' back' : '') + (o.cls ? ' ' + o.cls : ''), 'data-r': r, 'data-s': st });
     var corner = '<span class="ix">' + esc(r) + '<b>' + st + '</b></span><span class="ix bot">' + esc(r) + '<b>' + st + '</b></span>';
-    var center = /^[JQK]$/.test(r) ? '<span class="face" data-s="' + st + '"><span>' + r + '</span><i>' + st + '</i></span>' : '<span class="pip">' + st + '</span>';
+    var center = ct ? '<span class="face pic" data-s="' + st + '" data-c="' + ct + '"><span>' + r + '</span><em></em><em class="b"></em></span>'
+      : /^[JQK]$/.test(r) ? '<span class="face" data-s="' + st + '"><span>' + r + '</span><i>' + st + '</i></span>' : '<span class="pip">' + st + '</span>';
     c.innerHTML = corner + center;
     c.setAttribute('aria-label', o.back ? 'Face-down card' : ({ A: 'Ace', J: 'Jack', Q: 'Queen', K: 'King' }[r] || r) + ' of ' + ({ '♠': 'spades', '♥': 'hearts', '♦': 'diamonds', '♣': 'clubs' }[st] || st));
     return c;
