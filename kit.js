@@ -3194,7 +3194,8 @@
       var sdock = wrap.querySelector('.k-startdock');
       var tell = function () {
         var st = sdock.querySelector('.k-start'), al = sdock.querySelector('.k-start-alt');
-        try { parent.postMessage({ kitSheet: 'h', h: Math.ceil(wrap.getBoundingClientRect().height + wrap.offsetTop + 8), page: pageKey(),
+        try { parent.postMessage({ kitSheet: 'h', h: Math.ceil(wrap.getBoundingClientRect().height + wrap.offsetTop + Math.max(8, parseFloat(getComputedStyle(wrap.parentElement).paddingBottom) || 0)), page: pageKey(),   // (the page's own bottom padding too, or the sheet's frame scrolls by that much and the options slide under the Players card)
+         
           start: st ? st.textContent : '', alt: al ? al.textContent : '', altIcon: sAlt && sAlt.icon || '',
           look: st ? (function (cs) { return { bg: cs.backgroundImage !== 'none' ? cs.backgroundImage : cs.backgroundColor, fg: cs.color, sh: cs.boxShadow }; })(getComputedStyle(st)) : null }, location.origin); } catch (e) {}
       };
