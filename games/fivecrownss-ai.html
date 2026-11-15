@@ -139,8 +139,9 @@
   .fc-hand{--cw:80px;gap:14px 12px;}
   .fc-grp .gl{font-size:.74rem;}
 }
-/* Landscape tablets and desktops: table on the left, your hand on the right */
-@media (min-width:1000px) and (orientation:landscape){
+/* Sideways (iPad, desktop and a phone on its side): the table on the left to look at, your hand and the buttons on
+   the right where you act */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px){
   .stage.fc-play{max-width:1120px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);grid-template-rows:auto auto auto 1fr;column-gap:22px;align-items:start;}
   .fc-play > .ctable{grid-column:1;grid-row:1 / -1;margin:0;}
   .fc-play > .fc-me,.fc-play > .fc-sortrow,.fc-play > .fc-hand,.fc-play > .cbar{grid-column:2;}
@@ -151,6 +152,18 @@
   .fc-play .ctable .felt-in,.fc-play .ctable .felt-in.big{height:clamp(320px,calc(100dvh - 88px - var(--safe-b)),640px);}
   .fc-play .fc-piles{--cw:76px;}
   .fc-play .fc-seat .tag .nm{max-width:100px;}
+}
+/* A phone on its side: the same two halves, sized to the short screen */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px) and (max-height:560px){
+  .stage.fc-play{max-width:none;column-gap:14px;padding-right:max(17px,calc(var(--safe-r,0px) + 8px));padding-left:max(12px,calc(var(--safe-l,0px) + 6px));}
+  .fc-play .ctable .felt-in,.fc-play .ctable .felt-in.big{height:calc(100dvh - 112px - var(--safe-t) - var(--safe-b));}
+  .fc-play .fc-piles{--cw:50px;gap:10px;}
+  .fc-play .fc-center{gap:6px;}
+  .fc-play .fc-wild{padding:3px 10px 3px 4px;}
+  .fc-play .fc-wild .wr{min-width:24px;height:24px;font-size:.95rem;}
+  .fc-play .fc-wild b{font-size:.95rem;}
+  .fc-play > .fc-hand{--cw:48px;gap:8px 8px;padding-top:10px;min-height:0;}
+  .fc-play > .cbar .btn{min-height:46px;}
 }
 </style>
 </head>
@@ -466,10 +479,20 @@
     var finalTurn = S.outBy >= 0;
     if (!finalTurn && cost(h, S.wild) === 0) {
       S.outBy = p; S.outTurn = S.turns[p];
-      Kit.callout(isYou(p) ? 'You went out!' : 'Out!');
-      Kit.sfx('good'); Kit.haptic(person(p) ? 'success' : 'medium');
       seatSay(p, 'Out!');
-      if (S.outTurn === 1 && S.round >= 4) S.log.push(S.players[p].name + ' went out on the very first turn in ' + roundName(S.round));
+      // going out on your very first turn of a long round is rare: it gets the big moment, the Kings round a moment too
+      if (S.outTurn === 1 && S.round >= 4) {
+        S.log.push(S.players[p].name + ' went out on the very first turn in ' + roundName(S.round));
+        Kit.moment({ big: true, icon: 'crown', title: 'Out on the first turn', line: S.players[p].name + ' laid down all ' + (S.round + 2) + ' cards on the first turn of the round.', color: '#ffd34d', ms: 2600 });
+        Kit.sfx('win'); Kit.haptic(person(p) ? 'heavy' : 'medium'); if (person(p)) Kit.confetti();
+      } else if (S.round === S.len && S.len >= 11) {
+        S.log.push(S.players[p].name + ' went out in the Kings round');
+        Kit.moment({ icon: 'crown', title: 'Out in the Kings round', line: S.players[p].name + ' went out holding ' + (S.round + 2) + ' cards with Kings wild.', color: '#ffd34d', ms: 2200 });
+        Kit.sfx('good'); Kit.haptic(person(p) ? 'success' : 'medium');
+      } else {
+        Kit.callout(isYou(p) ? 'You went out!' : 'Out!');
+        Kit.sfx('good'); Kit.haptic(person(p) ? 'success' : 'medium');
+      }
     } else if (finalTurn && p !== S.outBy && cost(h, S.wild) === 0) {
       seatSay(p, 'All down!');
     }
@@ -841,7 +864,37 @@
     if (!NET && S.phase === 'roundover') setTimeout(showRound, 250);
     if (!NET && S.phase === 'over') setTimeout(finish, 250);
   }
-  function paint() { if (!S || !feltEl) return; paintSeats(); paintCenter(); paintHand(); }
+  function paint() { if (!S || !feltEl) return; paintSeats(); paintCenter(); paintHand(); fitHand(); }
+  // Your cards as large as the room under (or beside) the table allows for this round's hand: a round of 3 cards
+  // gets big cards, a round of 13 smaller ones on one or two rows. Sized for the most you hold in the round, so the
+  // cards keep their size from turn to turn.
+  function fitHand() {
+    if (!handEl || !handEl.isConnected || !S) return;
+    var n = S.round + 3, W = handEl.clientWidth, r = handEl.getBoundingClientRect();
+    var sb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0;
+    var H = innerHeight - r.top - 64 - 22 - sb, cw = 120;
+    for (; cw > 40; cw -= 2) {
+      var rowW = cw * (0.5 * n + 1) + 30, rows = Math.max(1, Math.ceil(rowW * 1.08 / Math.max(120, W)));
+      if (rows * (cw * 1.4 + 30) + (rows - 1) * 12 + 18 <= H && rowW / rows <= W) break;
+    }
+    handEl.style.setProperty('--cw', cw + 'px');
+  }
+  // Turning the device: the table, your hand and the buttons glide from where they were to their new places
+  (function () {
+    var SEL = '.fc-play > .ctable, .fc-play > .fc-me, .fc-play > .fc-sortrow, .fc-play > .fc-hand, .fc-play > .cbar', last = new Map();
+    setInterval(function () { var m = new Map(); document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) m.set(e, e.getBoundingClientRect()); }); if (m.size) last = m; }, 400);
+    window.addEventListener('resize', function () {
+      fitHand();
+      var now = new Map(); document.querySelectorAll(SEL).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) now.forEach(function (b, e) {
+        var a = last.get(e); if (!a || !b.width || !b.height || !e.animate) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.25,1)' });
+      });
+      last = now;
+    });
+  })();
   // a computer player (online: also a seat the computer took over when its player left)
   function isCpu(p) { return NET ? !!(NET.seats[p] && NET.seats[p].bot) : !!S.players[p].cpu; }
   function avatar(p) {

@@ -33,7 +33,9 @@
 /* Table */
 .table{border-radius:24px;padding:8px;}
 .table .felt-in{position:relative;border-radius:18px;overflow:hidden;}
-.zone{position:relative;height:clamp(196px,32vh,250px);}
+.zone{transition:height .42s cubic-bezier(.3,.7,.25,1);}
+/* The felt takes the height that's left at each shape (phone upright: all of it, under the scores and over the buttons) */
+.zone{position:relative;height:clamp(196px,calc(100svh - 440px - var(--zx,0px)),var(--zmax,560px));}
 .spot{position:absolute;width:0;height:0;}
 .spot .die{--ds:clamp(46px,13vw,56px);position:absolute;left:calc(var(--ds) / -2);top:calc(var(--ds) / -2);}
 .spot .die.held{box-shadow:0 0 0 3px var(--yellow),0 0 18px rgba(255,200,61,.65),0 10px 14px rgba(0,0,0,.45);transform:translateY(-5px) scale(1.06);}
@@ -125,7 +127,8 @@
   .spot .die{--ds:76px;}
   .ledge{min-height:64px;}
   .ledge .die{--ds:36px;}
-  .zone{--zmax:560px;}
+  .zone{--zmax:720px;height:clamp(196px,calc(100svh - 452px - var(--zx,0px)),var(--zmax));}
+  .stage:has(> .table){max-width:none;}
 }
 .sctbl .mini .die{--ds:18px;padding:2px;box-shadow:0 1px 2px rgba(0,0,0,.4);}
 /* Wide landscape (iPad, laptop): the table spans the top (render() sizes it to the height left); under it the
@@ -139,6 +142,26 @@
   .stage > .readout{grid-area:readout;margin:0;min-height:0;}
   .stage > .acts{grid-area:acts;}
   .stage > .rulechip{grid-area:rule;margin:2px 0 0;text-align:left;}
+  .zone{height:max(220px,calc(100svh - var(--safe-t) - var(--safe-b) - 298px - var(--zxw,0px)));}
+}
+/* A phone on its side: the scores and the turn readout at the left (to look at), the felt in the middle as tall as the
+   screen allows, Roll and Bank stacked at the right where your thumb is */
+@media (orientation:landscape) and (max-height:559px){
+  .stage:has(> .table){max-width:none;display:grid;grid-template-columns:minmax(180px,.62fr) minmax(0,1.5fr) minmax(128px,.4fr);
+    grid-template-areas:"board table acts" "final table acts" "readout table acts" "rule table acts";grid-template-rows:auto auto 1fr auto;column-gap:14px;align-items:start;
+    padding-left:max(16px,calc(var(--safe-l,0px) + 8px));padding-right:max(17px,calc(var(--safe-r,0px) + 8px));padding-bottom:max(18px,calc(var(--safe-b) + 10px));}
+  .stage > .board{grid-area:board;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));margin:0 0 8px;}
+  .stage > .final{grid-area:final;margin:0 0 8px;font-size:.8rem;}
+  .stage > .table{grid-area:table;padding:6px;}
+  .stage > .readout{grid-area:readout;flex-direction:column;align-items:flex-start;margin:0;gap:6px;}
+  .stage > .readout .tscore{text-align:left;}
+  .stage > .acts{grid-area:acts;grid-template-columns:1fr;align-self:end;}
+  .stage > .acts .btn{min-height:64px;}
+  .stage > .rulechip{grid-area:rule;margin:4px 0 0;text-align:left;}
+  .zone{height:max(170px,calc(100svh - var(--safe-t) - var(--safe-b) - 160px - var(--zxs,0px)));}
+  .ledge{min-height:46px;padding:5px 10px;}
+  .spot .die{--ds:min(64px,16svh);}
+  .stage > .board .pc .sub{white-space:normal;overflow:visible;line-height:1.15;}
 }
 </style>
 </head>
@@ -410,7 +433,16 @@
         if (cup) cup.classList.remove('tip');
         if (r.farkled) return done();
         var cb2 = combo(vals, S.rules.dbl);
-        if (cb2 && (vals.length >= 4 || cb2 === 'three 1s')) { Kit.callout(cap(cb2.replace(/^a /, '')) + '!'); Kit.sfx('good'); }
+        if (cb2 && (vals.length >= 4 || cb2 === 'three 1s')) {
+          // the rarer the roll, the bigger its moment on the table: six of a kind is the rarest roll in Farkle
+          var lvl = { 'six of a kind': 3, 'a straight': 2, 'two triplets': 2, 'four of a kind and a pair': 2, 'five of a kind': 2 }[cb2] || 1;
+          if (lvl >= 2) {
+            var pv = scoreOf(vals, S.rules.dbl);
+            Kit.moment({ title: cap(cb2.replace(/^a /, '')), line: lvl >= 3 ? 'All six dice came up the same. Six dice land that way about once in 7,776 throws.' : P().name + ' rolled ' + cb2 + ' with one throw.',
+              dice: vals.slice().sort(), pts: pv > 0 ? '+' + fmt(pv) : '', big: lvl >= 3, color: '#ffd34d', ms: lvl >= 3 ? 3200 : 2200 });
+            Kit.sfx(lvl >= 3 ? 'win' : 'good'); Kit.haptic(lvl >= 3 ? 'heavy' : 'success'); if (lvl >= 3) Kit.confetti();
+          } else { Kit.callout(cap(cb2.replace(/^a /, '')) + '!'); Kit.sfx('good'); }
+        }
         done();
       }, 760);
     }, shakeMs);
@@ -509,7 +541,9 @@
       var chip = app.querySelector('.pc[data-i="' + who + '"]');
       if (chip) chip.classList.add('bump');
       Kit.sfx('good');
-      if (amt >= 2000) Kit.callout('+' + fmt(amt) + '!');
+      // a turn of 3,000 or more is a big one; the player's own best turn of the game gets a nod too
+      if (amt >= 3000) { Kit.moment({ icon: 'flame', title: 'Huge turn', line: S.players[who].name + ' banked ' + fmt(amt) + ' in one turn.', pts: '+' + fmt(amt), color: '#ffd34d', ms: 2600 }); Kit.sfx('win'); Kit.haptic('heavy'); note(4, S.players[who].name + ' banked ' + fmt(amt) + ' in one turn', amt); }
+      else if (amt >= 2000) Kit.callout('+' + fmt(amt) + '!');
       if (trig && S.players.length > 1) later(function () { Kit.callout('Final round!', '#ff8a3d'); Kit.sfx('whoosh'); }, 300);
       later(function () { lock = false; done(); }, trig ? 1500 : 900);
     });
@@ -553,14 +587,15 @@
     // Final-round comeback
     var stole = S.final != null && rank.length > 1 && top.i !== S.final && !tie;
     if (stole) hl.push(S.players[S.final].name + ' crossed ' + fmt(S.rules.target) + ' first, but ' + top.name + ' stole it on the last turn');
+    if (stole) Kit.moment({ icon: 'trophy', title: 'Stolen on the last turn', line: top.name + ' passed ' + S.players[S.final].name + ' in the final round.', big: true, color: '#ffd34d', ms: 2600 });
     var evs = S.ev.slice().sort(function (a, b) { return b.p - a.p || b.v - a.v; });
     var seen = {};
     evs.forEach(function (e) { if (stole && / first in round /.test(e.t)) return; if (hl.length < 5 && !seen[e.t]) { seen[e.t] = 1; hl.push(e.t); } });
     var best = null; S.players.forEach(function (p) { if (!best || p.st.best > best.st.best) best = p; });
-    if (best && best.st.best >= 1000) hl.push('Biggest turn: ' + best.name + ' banked ' + fmt(best.st.best));
+    if (best && best.st.best >= 1000 && !hl.some(function (h) { return h.indexOf(' banked ' + fmt(best.st.best) + ' in one turn') >= 0; })) hl.push(best.name + ' banked ' + fmt(best.st.best) + ' in the biggest turn of the game');
     var mostF = null; S.players.forEach(function (p) { if (!mostF || p.st.farkles > mostF.st.farkles) mostF = p; });
     if (mostF && mostF.st.farkles >= 4 && hl.length < 6) hl.push(mostF.name + ' farkled ' + mostF.st.farkles + ' times');
-    if (S.players.length === 1) hl.unshift('Reached ' + fmt(top.score) + ' in ' + S.round + ' turns');
+    if (S.players.length === 1) hl.unshift(top.name + ' reached ' + fmt(top.score) + ' in ' + S.round + ' turns');
     var rounds = S.rounds;
     if (!netRecorded()) Kit.record(KEY, {
       started: S.started, mode: (NET ? 'Online' : S.mode === 'cpu' ? 'vs Computer' : 'Pass & play') + ' \u00b7 To ' + fmt(S.rules.target) + (S.rules.dbl ? ', with doubling' : ''),
@@ -700,7 +735,23 @@
 
   // ── Render ───────────────────────────────────────────────────────────────
   var WIDE = matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)');
-  if (WIDE.addEventListener) WIDE.addEventListener('change', function () { if (S && !lock && app.querySelector('.table .zone')) render(); });
+  // Turning the device: the scoreboard, table, readout and buttons glide from where they were to their new places
+  (function () {
+    var SEL = '#app > .board, #app > .final, #app > .table, #app > .readout, #app > .acts, #app > .rulechip', last = new Map();
+    function snap() { last = new Map(); document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) last.set(e, e.getBoundingClientRect()); }); }
+    setInterval(snap, 400);
+    window.addEventListener('resize', function () {
+      var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches, now = new Map();
+      document.querySelectorAll(SEL).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
+      if (!reduce) now.forEach(function (b, e) {
+        var a = last.get(e); if (!a || !b.width || !b.height || !e.animate) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.25,1)' });
+      });
+      last = now;
+    });
+  })();
   function render() {
     if (!S) return;
     app.innerHTML = '';
@@ -731,9 +782,8 @@
     var table = el('div', { class: 'table wood' });
     var felt = el('div', { class: 'felt-in' });
     var fin = S.final != null && live ? 44 : 0;
-    var zone = el('div', { class: 'zone', style: { height: WIDE.matches
-      ? 'max(220px, calc(100svh - var(--safe-t) - var(--safe-b) - ' + (286 + (n > 3 ? 36 : 0) + fin) + 'px))'   // the table spans the top, the strip under it
-      : 'clamp(196px, calc(100svh - ' + (420 + (n > 3 ? 70 : 0) + fin) + 'px), var(--zmax, 340px))' } });
+    // the felt's height is the room left at each shape (CSS: .zone), less a taller scoreboard or the final-round note
+    var zone = el('div', { class: 'zone', style: { '--zx': ((n > 3 ? 70 : 0) + fin) + 'px', '--zxw': ((n > 3 ? 36 : 0) + fin) + 'px', '--zxs': fin + 'px' } });
     var mine = live && !p.cpu && !lock && (!NET || NET.myTurn() && S.cur === NET.seat);
     var cup = el('button', { type: 'button', class: 'cup' + (mine && (S.phase === 'start' || (S.phase === 'pick' && selScore() > 0)) ? ' ready' : ''), 'aria-label': 'Roll the dice', onclick: function () { roll(); } },
       [el('span', { class: 'body' }), el('span', { class: 'rim' })]);

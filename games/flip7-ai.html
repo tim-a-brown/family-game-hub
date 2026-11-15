@@ -18,7 +18,7 @@
 .f7 .tinfo{display:flex;justify-content:space-between;gap:8px;margin:0 4px 6px;font-size:.82rem;font-weight:600;color:var(--text-3);}
 .f7 .tinfo b{color:var(--text-2);}
 .f7 .ctable{margin:0 0 6px;padding:8px;border-radius:26px;}
-.f7 .ctable .felt-in{height:auto;min-height:min(640px,calc(100dvh - 250px - var(--safe-t) - var(--safe-b)));padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;border-radius:19px;}
+.f7 .ctable .felt-in{height:auto;min-height:min(760px,calc(100dvh - 226px - var(--safe-t) - var(--safe-b)));transition:min-height .42s cubic-bezier(.3,.7,.25,1);padding:8px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;border-radius:19px;}
 
 /* Each player's place at the table: their cards laid out in a row */
 .opps{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -108,17 +108,17 @@
 .sum td.bust{color:var(--red);}
 /* iPad portrait: the table fills the screen and the cards grow with it */
 @media (min-width:700px) and (min-height:900px){
-  .f7{max-width:720px;}
+  .f7{max-width:none;}
   .f7 .tinfo{font-size:.9rem;}
-  .f7 .ctable .felt-in{min-height:min(880px,calc(100dvh - 290px - var(--safe-t) - var(--safe-b)));padding:10px;gap:10px;}
+  .f7 .ctable .felt-in{min-height:min(1100px,calc(100dvh - 246px - var(--safe-t) - var(--safe-b)));padding:10px;gap:10px;}
   .opps{gap:10px;}
   .spot{padding:8px 10px 10px;border-radius:16px;}
   .spot .sh{font-size:.95rem;gap:7px;}
   .spot .sh .avatar{width:28px;height:28px;}
   .spot .tot{font-size:.82rem;padding:2px 9px;}
   .spot .line{margin-top:6px;}
-  .spot .cards{--cw:38px;}
-  .opps.roomy .spot .cards{--cw:48px;}
+  .spot .cards{--cw:46px;}
+  .opps.roomy .spot .cards{--cw:58px;}
   .spot .rp{font-size:1.6rem;min-width:38px;}
   .spot .empty{font-size:.85rem;}
   .stamp{font-size:.8rem;}
@@ -126,7 +126,7 @@
   .spot.me{padding:10px 12px 12px;}
   .spot.me .sh{font-size:1.05rem;}
   .spot.me .sh .avatar{width:32px;height:32px;}
-  .spot.me .cards{--cw:78px;}
+  .spot.me .cards{--cw:90px;}
   .spot.me .rp{font-size:2.6rem;min-width:60px;}
   .spot.me .risk{font-size:.85rem;}
   .spot.me .stamp{font-size:1rem;}
@@ -151,7 +151,14 @@
   .f7 > .tinfo{grid-area:info;flex-direction:column;justify-content:center;gap:2px;margin:0;font-size:.95rem;}
   .f7 > .cbar{grid-area:bar;justify-content:flex-end;margin:0;}
   .f7 .cbar .pickl{text-align:right;}
-  .f7 .ctable .felt-in{min-height:min(900px,calc(100dvh - 218px - var(--safe-t) - var(--safe-b)));}
+  .f7 .ctable .felt-in{min-height:min(900px,calc(100dvh - 214px - var(--safe-t) - var(--safe-b)));}
+  /* the cards as large as the wide table allows */
+  .spot .cards{--cw:42px;}
+  .opps.roomy .spot .cards{--cw:52px;}
+  .spot.me .cards{--cw:80px;}
+  .pile{--cw:86px;}
+  .msg .slot{--cw:86px;}
+  .msg{font-size:1.5rem;}
 }
 </style>
 </head>
@@ -205,7 +212,8 @@
     haptic: function (k, p) { if (QUIET) QUIET.push(['hap', k, p]); else if (p == null || human(p)) Kit.haptic(k); },
     callout: function (t) { if (QUIET) QUIET.push(['call', t]); else Kit.callout(t); },
     confetti: function (p) { if (QUIET) QUIET.push(['conf', p]); else if (human(p)) Kit.confetti({ count: 80 }); },
-    toast: function (t) { if (QUIET) QUIET.push(['toast', t]); else Kit.toast(t); }
+    toast: function (t) { if (QUIET) QUIET.push(['toast', t]); else Kit.toast(t); },
+    moment: function (o) { if (QUIET) QUIET.push(['mo', o]); else Kit.moment(o); }
   };
   function save() {
     if (NET) return;
@@ -405,8 +413,10 @@
           say(p, 'Saved!', 'good'); FX.sfx('good'); FX.haptic('success', p);
           return slow + 300;
         }
-        var before = calc(p).pts;
+        var before = calc(p).pts, six = calc(p).uniq >= 6;
         c.dup = true; S.rows[p].push(c); fly(c);
+        // one card from a Flip 7: the nearest miss in the game gets its own (sad) moment
+        if (six) { S.ev.push({ k: 'six', p: p, r: S.round, v: c.v, pts: before }); FX.moment({ tone: 'bad', chip: '6', title: 'So close', line: S.players[p].name + ' had six different numbers and busted on ' + article(c) + '.', ms: 2200 }); }
         S.status[p] = 'bust';
         S.ev.push({ k: 'bust', p: p, r: S.round, v: c.v, pts: before });
         S.msg = who(p) + ' ' + vb(p, 'bust', 'busts') + ' on ' + article(c) + '!';
@@ -419,7 +429,8 @@
         S.status[p] = 'flip7'; S.queue = []; S.choose = null;
         S.ev.push({ k: 'f7', p: p, r: S.round, pts: cc.pts });
         S.msg = who(p) + ' flipped 7!';
-        FX.callout('Flip 7!'); FX.sfx('win'); FX.haptic('success'); FX.confetti(p);
+        FX.moment({ big: true, chip: '7', title: 'Flip 7', line: S.players[p].name + ' turned up seven different numbers. The round ends for everyone, with ' + BONUS + ' bonus points.', pts: '+' + cc.pts, color: '#ffd34d', ms: 2600 });
+        FX.sfx('win'); FX.haptic('success'); FX.confetti(p);
         return 1500;
       }
       S.msg = who(p) + ' ' + vb(p, 'flip', 'flips') + ' ' + article(c) + (t.f3 ? ' (' + t.f3 + ' of 3)' : '');
@@ -619,7 +630,9 @@
       hl.push(nm(e.p) + ' flipped 7 in round ' + e.r + ' for +' + BONUS + ' (' + e.pts + ' points)');
     });
     var busts = ev.filter(function (e) { return e.k === 'bust'; }).sort(function (a, b) { return b.pts - a.pts; });
-    if (busts.length && busts[0].pts >= 15) hl.push(nm(busts[0].p) + ' busted on a ' + busts[0].v + ' with ' + busts[0].pts + ' points showing');
+    var sx = S.ev.filter(function (e) { return e.k === 'six'; })[0];
+    if (sx) hl.push(nm(sx.p) + ' had six different numbers in round ' + sx.r + ' and busted on ' + (/^(8|11)$/.test(String(sx.v)) ? 'an ' : 'a ') + sx.v);
+    if (busts.length && busts[0].pts >= 15) hl.push(nm(busts[0].p) + ' busted on ' + (/^(8|11)$/.test(String(busts[0].v)) ? 'an ' : 'a ') + busts[0].v + ' with ' + busts[0].pts + ' points showing');
     var best = ev.filter(function (e) { return e.k === 'round'; }).sort(function (a, b) { return b.pts - a.pts; })[0];
     if (best && best.pts > 0) hl.push(nm(best.p) + "'s best round: " + best.pts + ' points in round ' + best.r);
     var saves = ev.filter(function (e) { return e.k === 'save'; });
@@ -836,6 +849,21 @@
   function say(p, text, cls) { if (QUIET) QUIET.push(['say', p, text, cls]); else says.push({ p: p, text: text, cls: cls }); }
   function fly(c, center) { if (QUIET) QUIET.push(['fly', c.id, center]); else flyIds.push({ id: c.id, center: center }); }
   window.addEventListener('resize', function () { spotEls.forEach(function (s) { if (s) fit(s.querySelector('.cards')); }); });
+  // Turning an iPad: the table, the round line and the buttons glide from where they were to their new places
+  (function () {
+    var SEL = '.f7 > .tinfo, .f7 > .ctable, .f7 > .cbar', last = new Map();
+    setInterval(function () { var m = new Map(); document.querySelectorAll(SEL).forEach(function (e) { if (!e.getAnimations || !e.getAnimations().length) m.set(e, e.getBoundingClientRect()); }); if (m.size) last = m; }, 400);
+    window.addEventListener('resize', function () {
+      var now = new Map(); document.querySelectorAll(SEL).forEach(function (e) { now.set(e, e.getBoundingClientRect()); });
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) now.forEach(function (b, e) {
+        var a = last.get(e); if (!a || !b.width || !b.height || !e.animate) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(sx - 1) < .02 && Math.abs(sy - 1) < .02) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.3,.7,.25,1)' });
+      });
+      last = now;
+    });
+  })();
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────
   // The table holds the whole game (every card in Flip 7 is face up, so every device draws the same table, each
@@ -983,6 +1011,7 @@
       x.fx.forEach(function (f) {
         if (f[0] === 'sfx') Kit.sfx(f[1]);
         else if (f[0] === 'call') { Kit.callout(f[1]); ms = 1500; }
+        else if (f[0] === 'mo') { Kit.moment(f[1]); ms = Math.max(ms || 0, f[1].big ? 2000 : 1200); }
         else if (f[0] === 'conf' && f[1] === ME) Kit.confetti({ count: 80 });
         else if (f[0] === 'hap' && (f[2] == null || f[2] === NET.seat)) Kit.haptic(f[1]);
         else if (f[0] === 'toast') Kit.toast(f[1]);

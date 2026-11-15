@@ -24,6 +24,13 @@
 .fc-pips i{display:grid;place-items:center;min-width:21px;height:21px;padding:0 2px;border-radius:7px;font-style:normal;font-size:.7rem;font-weight:750;background:rgba(0,0,0,.25);color:rgba(255,255,255,.6);}
 .fc-pips i.done{background:rgba(255,255,255,.15);color:rgba(255,255,255,.4);text-decoration:line-through;}
 .fc-pips i.cur{background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:0 0 10px rgba(255,190,60,.5);}
+/* Sideways: the round's card and wilds stand at the left (to look at), the score sheet you write on fills the right */
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  #app:has(> .fc-next){max-width:1180px;display:grid;grid-template-columns:minmax(210px,.34fr) minmax(0,1fr);column-gap:16px;align-items:start;padding-right:max(18px,calc(var(--safe-r,0px) + 8px));}
+  #app > .fc-next{position:sticky;top:8px;flex-direction:column;align-items:flex-start;margin:0;}
+  #app > .fc-next .pcard{--cw:64px;}
+  #app > .fc-padhost{min-width:0;}
+}
 /* The open round: points left in each column, Out tapped for whoever went out */
 .spad tr.open td.isout .sp-step{opacity:.35;}
 </style>
@@ -94,7 +101,7 @@
     var cfg = JSON.parse(localStorage.getItem(SETUP));
     app.innerHTML = '';
     banner = el('div', { class: 'fc-next wood' });
-    padHost = el('div');
+    padHost = el('div', { class: 'fc-padhost' });
     app.appendChild(banner); app.appendChild(padHost);
     pad = Scorepad(padHost, {
       key: KEY, title: 'Five Crowns', mode: 'Scorekeeper', lowWins: true, rounds: 11,

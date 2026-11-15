@@ -49,7 +49,26 @@ html.jr-scan .jr-crt::after{content:"";position:absolute;inset:0;background:repe
 .jr.tall.full .mid{grid-column:2;grid-row:2 / 5;}
 .jr.tall.full .side{grid-row:1 / 5;}
 .jr.tall .acts{padding-right:0;}
+/* iPad upright, at the table: the Jokers and cards run the full width along the top, the score panel beside the play area */
+.jr.tall:not(.full){grid-template-areas:"top top" "side mid" "hnd hnd" "act act";}
+/* A phone on its side: Play Hand, Sort and Discard stand in a column at the right of the hand (where you act), so the cards
+   take the height the button row had */
+.jr.short{grid-template-columns:var(--sb) minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"side top top" "side mid mid" "side hnd act";}
+.jr.short.full .side{grid-row:1 / 4;}
+.jr.short.full .mid{grid-row:2 / 4;}
+.jr.short.packhand .mid{grid-row:2;}
+.jr.short .acts{flex-direction:column;align-items:stretch;justify-content:flex-end;gap:6px;padding:0 0 4px;min-width:0;}
+.jr.short .acts .bb.big{flex:none;min-height:42px;padding:0 16px;}
+.jr.short .acts .sortb{padding:3px 5px 5px;}
 .jr.full .hnd,.jr.full .acts{display:none;}
+/* A small phone on its side: choosing a blind takes the whole height beside the score panel (the Jokers come back after) */
+@media (max-height:380px){ .jr.short.ph-blind .top{display:none;} .jr.short.ph-blind .mid{grid-row:1 / 4;} }
+/* Turning the device: each part of the table glides to its new place (startViewTransition in ui.js) */
+.jr .side{view-transition-name:jr-side;}.jr .top{view-transition-name:jr-top;}.jr .mid{view-transition-name:jr-mid;}
+.jr .hnd{view-transition-name:jr-hnd;}.jr .acts{view-transition-name:jr-acts;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
+::view-transition-old(*),::view-transition-new(*){height:100%;width:100%;object-fit:fill;}
 .jr.packhand .mid{grid-row:2;}
 .jr.packhand .hnd{display:block;}
 .jr.packhand .acts{display:flex;}
