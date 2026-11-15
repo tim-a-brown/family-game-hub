@@ -636,7 +636,7 @@ function Scorepad(host, o) {
 //   gives min + step, − gives min. el.get(), el.set(v), el.input, el.disable(b)
 Scorepad.step = function (o) {
   var el = Kit.el, v = o.value == null || o.value === '' ? null : Number(o.value), step = o.step || 1, min = o.min != null ? o.min : (o.neg ? null : 0);
-  var inp = el('input', { class: 'cell', type: 'text', inputmode: o.neg ? 'text' : 'numeric', placeholder: o.placeholder || '–', 'aria-label': o.label || 'Points', enterkeyhint: 'next', autocomplete: 'off' });
+  var inp = el('input', { class: 'cell', type: 'text', inputmode: o.neg ? 'text' : 'numeric', 'data-osk': o.neg ? 'neg' : null, placeholder: o.placeholder || '–', 'aria-label': o.label || 'Points', enterkeyhint: 'next', autocomplete: 'off' });
   function clamp(x) { if (min != null) x = Math.max(min, x); if (o.max != null) x = Math.min(o.max, x); return x; }
   function paint() { inp.value = v == null ? '' : String(v); }
   function bump(d) {

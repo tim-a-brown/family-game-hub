@@ -259,6 +259,11 @@
     pulse: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
     down: '<path d="m6 9 6 6 6-6"/>',
+    kshift: '<path d="M12 4 4 12h4v7h8v-7h4z"/>',
+    kshiftlock: '<path d="M12 3 4 11h4v5h8v-5h4z"/><path d="M8 20h8"/>',
+    kback: '<path d="M21 6H9l-6 6 6 6h12z"/><path d="m16 10-4 4m0-4 4 4"/>',
+    kenter: '<path d="M20 5v7a3 3 0 0 1-3 3H5"/><path d="m9 11-4 4 4 4"/>',
+    khide: '<rect x="3" y="4" width="18" height="11" rx="2"/><path d="M7 8h.01M11 8h.01M15 8h.01M8 12h8"/><path d="m9 18 3 3 3-3"/>',
     right: '<path d="m9 18 6-6-6-6"/>',
     trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.7V17c0 .6-.5 1-1 1.2C7.9 18.8 7 20.2 7 22"/><path d="M14 14.7V17c0 .6.5 1 1 1.2 1.1.6 2 2 2 3.8"/><path d="M18 2H6v7a6 6 0 0 0 12 0z"/>',
     bot: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><path d="M9 13v2"/><path d="M15 13v2"/><path d="M2 13v3"/><path d="M22 13v3"/>',
@@ -1526,6 +1531,234 @@
     }
     return null;
   }
+  // ── Kit's own keyboard (Tim, 2026-11-15: "any opportunity to type is done with a thoughtful onscreen keyboard not the
+  // device keyboard -- and make sure that doesn't mess up any of the formatting"). On a touch screen every text box in
+  // the app types on this keyboard instead of the phone's: it rises from the bottom in the app's own glass, and the page
+  // makes room for it the way it does for any keyboard (--kb, --vvh and the lift below), so sheets ride above it and the
+  // box being typed in stays in view. It knows what each box wants: a number pad for numbers (a minus where a score can
+  // go below zero, a point where a figure has decimals), capitals for codes and names, @ for an email, a return for a
+  // note. The box keeps its caret (inputmode none holds the phone's keyboard back), so a tap in the text moves it.
+  // Enter follows the box's enterkeyhint (Done, Go, Next, Search, Send); Next moves to the next box. A key the page
+  // listens for arrives as a keydown first, so code written for a real keyboard works unchanged. A box can opt out with
+  // data-osk="off"; data-osk="neg" or "dec" says a number box takes a minus or a point. Desktops keep their own keyboard.
+  var KitOsk = (function () {
+    var touch = false; try { touch = matchMedia('(hover:none) and (pointer:coarse)').matches; } catch (e) {}
+    var root = doc.documentElement, box = null, inner = null, cur = null, kind = 'text', page = 'abc', shift = 0, lastShift = 0, h = 0, repT = 0, repI = 0, hideT = 0;
+    function textual(a) {
+      if (!a || a.nodeType !== 1) return false;
+      if (a.tagName === 'TEXTAREA') return true;
+      if (a.tagName !== 'INPUT') return false;
+      return /^(|text|search|email|tel|number|password|url)$/i.test(a.getAttribute('type') || '') || a.dataset.oskNum != null;
+    }
+    function wants(a) { return touch && textual(a) && !a.disabled && !a.readOnly && !(a.closest && a.closest('[data-osk="off"],.k-osk')); }
+    // the box's own wishes, read before inputmode is set to none
+    function prep(a) {
+      if (a.dataset.oskIm != null) return;
+      var t = (a.getAttribute('type') || '').toLowerCase(), im = (a.getAttribute('inputmode') || '').toLowerCase(), o = (a.getAttribute('data-osk') || '').toLowerCase();
+      var num = t === 'number' || t === 'tel' || im === 'numeric' || im === 'decimal' || /^\[0-9\]/.test(a.getAttribute('pattern') || '') || o === 'neg' || o === 'dec';
+      var dec = o === 'dec' || im === 'decimal' || (t === 'number' && /\./.test(a.getAttribute('step') || '') ) || (t === 'number' && a.getAttribute('step') === 'any');
+      var neg = o === 'neg' || (t === 'number' && a.getAttribute('min') != null && parseFloat(a.getAttribute('min')) < 0);
+      a.dataset.oskIm = im;
+      a.dataset.oskKind = a.tagName === 'TEXTAREA' ? 'area' : num ? 'num' + (neg ? '-' : '') + (dec ? '.' : '') : t === 'email' ? 'email' : t === 'url' ? 'url' : t === 'password' ? 'pw' : 'text';
+      if (t === 'number') { a.dataset.oskNum = '1'; a.setAttribute('type', 'text'); }   // (a number box rejects a lone "-" or "3."; as text it shows them while being typed)
+      a.setAttribute('inputmode', 'none');
+    }
+    function capMode(a) {
+      var c = (a.getAttribute('autocapitalize') || '').toLowerCase();
+      if (/^(email|url|pw)$/.test(a.dataset.oskKind)) return 'none';
+      if (c === 'off' || c === 'none') return 'none';
+      if (c === 'characters' || /uppercase/.test(getComputedStyle(a).textTransform)) return 'all';
+      return c === 'words' ? 'words' : 'sentences';
+    }
+    function before(a) { try { var p = a.selectionStart; return p == null ? a.value : a.value.slice(0, p); } catch (e) { return a.value; } }
+    function autoShift() {
+      if (!cur || shift === 2) return;
+      var m = capMode(cur), b = before(cur);
+      shift = m === 'all' ? 1 : m === 'none' ? 0 : !b.trim() ? 1 : m === 'words' ? (/\s$/.test(b) ? 1 : 0) : (/[.!?]\s+$/.test(b) ? 1 : 0);
+    }
+    var ROWS = {
+      abc: [['q','w','e','r','t','y','u','i','o','p'], ['a','s','d','f','g','h','j','k','l'], ['@shift','z','x','c','v','b','n','m','@back'], ['@123','@space','@enter']],
+      sym: [['1','2','3','4','5','6','7','8','9','0'], ['-','/',':',';','(',')','$','&','@','"'], ['@abc2','.',',','?','!',"'",'#','%','@back'], ['@abc','@space','@enter']]
+    };
+    function rows() {
+      var k = cur ? cur.dataset.oskKind : 'text';
+      if (/^num/.test(k)) {
+        var ex = k.indexOf('-') > 0 ? '-' : k.indexOf('.') > 0 ? '.' : '@none';
+        if (window.innerHeight < 500) return [['1','2','3','4','5','6','7','8','9','0','@back'], ['@hide', ex, '@enter']];   // (a phone on its side: the digits in one row)
+        return [['1','2','3'], ['4','5','6'], ['7','8','9'], [ex, '0', '@back'], ['@hide', '@enter']];
+      }
+      var r = ROWS[page === 'sym' ? 'sym' : 'abc'].map(function (x) { return x.slice(); });
+      if (page !== 'sym') {
+        if (k === 'email') r[3] = ['@123', '@', '@space', '.', '@enter'];
+        else if (k === 'url') r[3] = ['@123', '/', '@space', '.', '@enter'];
+        else r[3] = ['@123', '@hide', '@space', '@enter'];
+      }
+      if (page === 'sym' && k === 'num.' ) {}
+      return r;
+    }
+    function enterLabel() {
+      if (!cur) return 'Done';
+      if (cur.dataset.oskKind === 'area') return '';
+      var h = (cur.getAttribute('enterkeyhint') || '').toLowerCase();
+      return { go: 'Go', next: 'Next', search: 'Search', send: 'Send', previous: 'Back' }[h] || 'Done';
+    }
+    function keyEl(spec) {
+      var b = doc.createElement('button'); b.type = 'button'; b.tabIndex = -1; b.className = 'k-osk-k';
+      if (spec[0] === '@' && spec.length > 1) {
+        var a = spec.slice(1); b.dataset.act = a; b.classList.add('fn', 'k-' + a);
+        if (a === 'shift') { b.innerHTML = icon(shift === 2 ? 'kshiftlock' : 'kshift'); b.setAttribute('aria-label', 'Shift'); if (shift) b.classList.add('on'); }
+        else if (a === 'back') { b.innerHTML = icon('kback'); b.setAttribute('aria-label', 'Delete'); }
+        else if (a === 'space') { b.textContent = 'space'; b.classList.remove('fn'); b.classList.add('sp'); }
+        else if (a === 'enter') { var l = enterLabel(); if (l) b.textContent = l; else { b.innerHTML = icon('kenter'); b.setAttribute('aria-label', 'Return'); } b.classList.add('go'); }
+        else if (a === 'hide') { b.innerHTML = icon('khide'); b.setAttribute('aria-label', 'Hide the keyboard'); }
+        else if (a === '123') b.textContent = '123';
+        else if (a === 'abc' || a === 'abc2') b.textContent = 'ABC';
+        else if (a === 'none') { b.className = 'k-osk-k gap'; b.disabled = true; }
+      } else {
+        var ch = spec.length === 1 && /[a-z]/.test(spec) && shift ? spec.toUpperCase() : spec;
+        b.dataset.ch = ch; b.textContent = ch === '-' && /^num/.test(kind) ? '−' : ch;
+        if (/^num/.test(kind)) b.classList.add('n');
+      }
+      return b;
+    }
+    function paint() {
+      if (!box) return;
+      kind = cur ? cur.dataset.oskKind : 'text';
+      box.classList.toggle('num', /^num/.test(kind));
+      inner.innerHTML = '';
+      rows().forEach(function (r, i) {
+        var row = doc.createElement('div'); row.className = 'k-osk-r r' + i;
+        r.forEach(function (k) { row.appendChild(keyEl(k)); });
+        inner.appendChild(row);
+      });
+    }
+    function build() {
+      if (box) return;
+      box = doc.createElement('div'); box.className = 'k-osk'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', 'Keyboard');
+      inner = doc.createElement('div'); inner.className = 'k-osk-in'; box.appendChild(inner);
+      root.appendChild(box);   // (outside body: the page's lift moves body, never the keyboard)
+      // every touch on the keyboard stays inside it: the box keeps its focus, and a sheet or menu under the keyboard
+      // never takes a tap on a key for a tap outside itself
+      function keep(e) { e.stopPropagation(); if (e.cancelable && e.type !== 'pointerup' && e.type !== 'pointercancel') e.preventDefault(); }
+      box.addEventListener('pointerdown', function (e) { keep(e); down(e); });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { box.addEventListener(t, function (e) { e.stopPropagation(); up(e); }); });
+      ['mousedown', 'mouseup', 'click', 'dblclick', 'touchend', 'contextmenu'].forEach(function (t) { box.addEventListener(t, keep); });
+      box.addEventListener('touchstart', keep, { passive: false });
+    }
+    function fire(a, inputType, data) { try { a.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: inputType, data: data })); } catch (e) { var ev = doc.createEvent('Event'); ev.initEvent('input', true, false); a.dispatchEvent(ev); } }
+    function keydown(k) {
+      var a = cur, ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true });
+      var ok = a.dispatchEvent(ev); a.dispatchEvent(new KeyboardEvent('keyup', { key: k, bubbles: true }));
+      return ok;
+    }
+    function insert(t) {
+      var a = cur; if (!a) return;
+      if (!keydown(t)) return;
+      if (cur !== a) return;
+      var v = a.value, st = v.length, en = v.length;
+      try { if (a.selectionStart != null) { st = a.selectionStart; en = a.selectionEnd; } } catch (e) {}
+      var max = a.maxLength > 0 ? a.maxLength : Infinity;
+      if (v.length - (en - st) + t.length > max) { haptic('error'); return; }
+      if (/^num/.test(kind)) {
+        if (t === '-' && (st !== 0 || v.indexOf('-') >= 0)) return;
+        if (t === '.' && v.indexOf('.') >= 0) return;
+      }
+      if (a.setRangeText) a.setRangeText(t, st, en, 'end'); else a.value = v.slice(0, st) + t + v.slice(en);
+      fire(a, 'insertText', t);
+    }
+    function backspace() {
+      var a = cur; if (!a || !keydown('Backspace') || cur !== a) return;
+      var v = a.value, st = v.length, en = v.length;
+      try { if (a.selectionStart != null) { st = a.selectionStart; en = a.selectionEnd; } } catch (e) {}
+      if (st === en) { if (!st) return; st -= (/[\uDC00-\uDFFF]/.test(v.charAt(st - 1)) ? 2 : 1); }
+      if (a.setRangeText) a.setRangeText('', st, en, 'end'); else a.value = v.slice(0, st) + v.slice(en);
+      fire(a, 'deleteContentBackward', null);
+    }
+    function enter() {
+      var a = cur; if (!a) return;
+      var was = a.value;
+      if (!keydown('Enter') || cur !== a) return;
+      if (a.tagName === 'TEXTAREA') { insert('\n'); return; }
+      var hint = (a.getAttribute('enterkeyhint') || '').toLowerCase();
+      if (hint === 'next') {
+        var all = Array.prototype.slice.call(doc.querySelectorAll('input,textarea')).filter(function (x) { return wants(x) && x.offsetParent; });
+        var nx = all[all.indexOf(a) + 1]; if (nx) { nx.focus(); return; }
+      }
+      if (a.form && !a.form.hasAttribute('novalidate') && a.form.requestSubmit) { try { a.form.requestSubmit(); } catch (e) {} }
+      else if (a.form && a.form.requestSubmit) { try { a.form.requestSubmit(); } catch (e) {} }
+      setTimeout(function () { if (doc.activeElement === a && a.isConnected && !(was && !a.value)) a.blur(); }, 0);   // (a box its page cleared for the next entry, a name added, keeps the keyboard)
+    }
+    function press(b) {
+      var act = b.dataset.act;
+      if (b.dataset.ch != null) { insert(b.dataset.ch); if (shift === 1 && page !== 'sym') { shift = 0; autoShift(); paint(); } else if (page === 'abc') { var s0 = shift; autoShift(); if (s0 !== shift) paint(); } return; }
+      if (act === 'back') { backspace(); var s1 = shift; autoShift(); if (s1 !== shift) paint(); return; }
+      if (act === 'space') { insert(' '); if (page === 'sym') { page = 'abc'; } autoShift(); paint(); return; }
+      if (act === 'shift') { var now = Date.now(); shift = shift === 2 ? 0 : (shift === 1 && now - lastShift < 350) ? 2 : shift ? 0 : 1; lastShift = now; paint(); return; }
+      if (act === '123' || act === 'abc2') { page = 'sym'; paint(); return; }
+      if (act === 'abc') { page = 'abc'; autoShift(); paint(); return; }
+      if (act === 'enter') { enter(); return; }
+      if (act === 'hide') { if (cur) cur.blur(); hide(); return; }
+    }
+    function down(e) {
+      var b = e.target.closest && e.target.closest('.k-osk-k');
+      if (!b || b.disabled) return;
+      b.classList.add('dn'); haptic('light'); sfx('tap', 0.4);
+      press(b);
+      var act = b.dataset.act;
+      if (act === 'back' || b.dataset.ch === ' ') { clearTimeout(repT); clearInterval(repI); repT = setTimeout(function () { repI = setInterval(function () { if (act === 'back') backspace(); }, 70); }, 420); }
+    }
+    function up(e) {
+      clearTimeout(repT); clearInterval(repI);
+      if (!box) return;
+      Array.prototype.forEach.call(box.querySelectorAll('.k-osk-k.dn'), function (b) { b.classList.remove('dn'); });
+    }
+    function show(a) {
+      clearTimeout(hideT);
+      build(); prep(a);
+      var same = cur === a; cur = a;
+      if (!same) { page = 'abc'; if (shift !== 2) shift = 0; }
+      autoShift(); paint();
+      root.classList.add('k-osk-up');
+      box.classList.add('on');
+      measure();
+    }
+    function measure() {
+      if (!box) return;
+      var nh = box.classList.contains('on') ? Math.round(box.getBoundingClientRect().height) : 0;
+      if (nh !== h) { h = nh; root.style.setProperty('--osk', h + 'px'); }
+      if (window.KitKb) window.KitKb.fit();
+    }
+    function hide() {
+      if (!box || !box.classList.contains('on')) return;
+      box.classList.remove('on'); root.classList.remove('k-osk-up'); cur = null;
+      h = 0; root.style.setProperty('--osk', '0px');
+      if (window.KitKb) window.KitKb.fit();
+    }
+    if (touch) {
+      // the phone's own keyboard is held back from the first touch, before the box takes the focus
+      // the tap that opens the keyboard also sends a click a moment later; by then the page has made room and something
+      // else (a sheet's backdrop) lies under the finger, so that one click is kept from it
+      var openTap = null, openAt = 0;
+      doc.addEventListener('click', function (e) {
+        if (openTap && Date.now() - openAt < 700 && e.target !== openTap && !(openTap.contains && openTap.contains(e.target))) { e.stopPropagation(); e.preventDefault(); }
+        openTap = null;
+      }, true);
+      doc.addEventListener('pointerdown', function (e) {
+        var a = e.target; if (wants(a)) { prep(a); openTap = a; openAt = Date.now(); }
+        else if (cur && box && !box.contains(a) && !(a.closest && a.closest('label')) && doc.activeElement === cur) cur.blur();   // (a tap anywhere else puts the keyboard away)
+      }, true);
+      doc.addEventListener('focusin', function (e) { if (wants(e.target)) show(e.target); else if (cur) { hideT = setTimeout(hide, 30); } });
+      doc.addEventListener('focusout', function () { hideT = setTimeout(function () { var a = doc.activeElement; if (wants(a)) show(a); else hide(); }, 60); });
+      // a page changes what is on the screen while the keyboard is up: a box that leaves takes the keyboard with it
+      setInterval(function () { if (cur && (!cur.isConnected || doc.activeElement !== cur)) { if (wants(doc.activeElement)) show(doc.activeElement); else hide(); } }, 500);
+      window.addEventListener('resize', function () { if (cur) { paint(); setTimeout(measure, 30); } });
+      // a real keyboard in use (an iPad's keyboard case): the screen keyboard steps aside for the rest of the visit
+      doc.addEventListener('keydown', function (e) { if (e.isTrusted && touch && cur && e.key && (e.key.length === 1 || e.key === 'Backspace')) { touch = false; hide(); } }, true);
+      doc.addEventListener('selectionchange', function () { if (cur && doc.activeElement === cur && page === 'abc') { var s0 = shift; autoShift(); if (s0 !== shift) paint(); } });
+    }
+    return { on: function () { return !!(box && box.classList.contains('on')); }, h: function () { return h; }, show: show, hide: hide, active: function () { return touch; } };
+  })();
+  window.KitOsk = KitOsk;
   // The on-screen keyboard: iPhone covers the bottom of the screen with it, and an open sheet (pasting a deck, typing a
   // name) would sit underneath. While it's up, --kb is its height and --vvh the space left, so sheets ride on top of it
   // (kit.css, html.k-kb), and the box being typed in is scrolled into view inside the sheet.
@@ -1534,9 +1767,10 @@
     var root = doc.documentElement, on = false;
     function typing() { var a = doc.activeElement; return !!(a && (/^(TEXTAREA|SELECT)$/.test(a.tagName) || (a.tagName === 'INPUT' && !/^(button|checkbox|radio|range|submit|reset|file|color)$/i.test(a.type || '')) || a.isContentEditable)); }
     function fit() {
-      var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-      var now = typing() && kb > 80;
-      if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(vv.height) + 'px'); }
+      var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)), osk = KitOsk.on() ? KitOsk.h() : 0;
+      if (osk > kb) kb = osk;
+      var now = (typing() && kb > 80) || osk > 0;
+      if (now) { root.style.setProperty('--kb', kb + 'px'); root.style.setProperty('--vvh', Math.round(osk >= kb && osk ? window.innerHeight - osk : vv.height) + 'px'); }
       if (now !== on) { on = now; root.classList.toggle('k-kb', on); if (on) seat(); }
       if (!on) setLift(0); else { clearTimeout(liftT); clearTimeout(liftT2); liftT = setTimeout(place, 80); liftT2 = setTimeout(place, 420); }   // (again once the page settles)
     }
@@ -1549,11 +1783,11 @@
     function place() {
       var a = doc.activeElement;
       if (!on || !a || !a.getBoundingClientRect || (a.closest && a.closest('.k-sheet'))) { setLift(0); return; }
-      var top = vv.offsetTop + 10, bot = vv.offsetTop + vv.height - 14, r = a.getBoundingClientRect();
+      var top = vv.offsetTop + 10, bot = Math.min(vv.offsetTop + vv.height, KitOsk.on() ? window.innerHeight - KitOsk.h() : Infinity) - 14, r = a.getBoundingClientRect();
       if (r.bottom > bot || r.top < top) { a.scrollIntoView({ block: 'nearest' }); r = a.getBoundingClientRect(); }   // (its scroller, or a page that scrolls)
       var d = r.bottom > bot ? r.bottom - bot : 0;
       if (r.top - d < top) d = r.top - top;   // (a box taller than the space left: its top stays in view)
-      var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop, KitOsk.on() ? KitOsk.h() : 0);
       if (Math.abs(d) > 1) setLift(Math.min(kb, lift + d));
     }
     window.KitKb = { on: function () { return on; }, place: place, fit: fit };
