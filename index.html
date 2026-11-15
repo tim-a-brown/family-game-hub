@@ -714,6 +714,22 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
    options ... there's no need to do a scroll, just make the new game dialog taller") */
 .k-sheet:has(.gsheet){max-height:calc(100dvh - max(env(safe-area-inset-top), 0px) - 14px);}
 html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
+/* a phone held sideways: the game, its Players card and the start buttons at the left, its options at the right, so a
+   setup with a few options needs no scroll (the sheet is wider; the dock still runs along the bottom) */
+@media (orientation:landscape) and (max-height:520px) and (min-width:640px){
+  .k-sheet:has(.gsheet .gs-wrap){max-width:min(920px,calc(100vw - 2 * max(env(safe-area-inset-left),env(safe-area-inset-right),16px)));}
+  .pick.gsheet:has(.gs-wrap){display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr);grid-auto-rows:min-content;grid-auto-flow:row dense;column-gap:20px;row-gap:0;align-items:start;}
+  .pick.gsheet:has(.gs-wrap) > *{grid-column:1;margin-bottom:9px;}
+  .pick.gsheet .gs-wrap{display:contents;}
+  .pick.gsheet .gs-wrap > .gs-h{grid-column:1;margin:0 0 4px;}
+  .pick.gsheet .gs-wrap > .gs-whobox{grid-column:1;}
+  .pick.gsheet .gs-whobox button.gs-who{width:100%;margin:0 0 9px;}
+  .gs-whobox .k-wn{top:9px;right:12px;}
+  .pick.gsheet .gs-wrap > .gs-right{grid-column:2;grid-row:1 / span 30;display:flex;flex-direction:column;gap:9px;}
+  .pick.gsheet .gs-right > .gs-fb{margin:0 -20px 0 -6px;}
+  .pick.gsheet .gs-right > button.alt{margin:0;}
+  .pick.gsheet:has(.gs-wrap) > .gs-dock{grid-column:1 / -1;}
+}
 .pick.gsheet button{padding:11px 12px;gap:12px;box-shadow:0 4px 0 rgba(0,0,0,.3);}
 .pick.gsheet .e{width:40px;height:40px;border-radius:12px;}
 .pick.gsheet .e .ico{width:21px;height:21px;}
@@ -1626,8 +1642,21 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       var whoCard = el('button', { type: 'button', class: 'alt gs-who', hidden: true, onclick: function () { Kit.sfx('tap'); Kit.haptic('light'); frame.contentWindow.postMessage({ kitSheet: 'press', which: 'who' }, location.origin); } }, [
         el('span', { class: 'e', html: Kit.icon('users') }), el('span', { class: 'tx' }, [whoT, whoChips]), el('span', { class: 'gs-who-go', html: Kit.icon('right') })]);
       var whoBox = el('div', { class: 'k-whobox gs-whobox' }, [whoCard]), whoN = null;
-      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), whoBox, el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
+      var gsRight = el('div', { class: 'gs-right' }, [el('div', { class: 'gs-fb' }, [el('span', { class: 'gs-spin' }), frame])]);
+      var fw = el('div', { class: 'gs-wrap' }, [el('div', { class: 'gs-h', text: live ? 'Set up a new game' : 'Set up' }), whoBox, gsRight]);
       box.appendChild(fw);
+      // a phone held sideways lays the sheet in two columns: the other ways in (Keep score, the tools) stand under the
+      // options at the right, and go back above the setup when the phone is turned upright
+      (function () {
+        var mq = window.matchMedia('(orientation: landscape) and (max-height: 520px) and (min-width: 640px)');
+        function place() {
+          var rows = [].slice.call(box.querySelectorAll(':scope > button.alt:not(.gs-who), .gs-right > button.alt'));
+          if (mq.matches) rows.forEach(function (r) { gsRight.appendChild(r); });
+          else { var at = box.querySelector(':scope > .pick-note') || fw; rows.forEach(function (r) { box.insertBefore(r, at); }); }
+        }
+        setTimeout(place, 0);
+        try { mq.addEventListener('change', place); } catch (e) { try { mq.addListener(place); } catch (e2) {} }
+      })();
       // the setup's start buttons, pinned to the bottom of the sheet (they press the frame's own)
       var dockEl = el('div', { class: 'gs-dock' }), dockSig = '';
       box.appendChild(dockEl);
