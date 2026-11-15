@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spanish One</title>
+<link rel="stylesheet" href="../kit.css">
+<script src="../sync.js"></script>
+<script src="../games.js"></script>
+<script src="../game-icons.js"></script>
+<script src="../kit.js"></script>
+<script src="../cards.js"></script>
+<script src="../hist.js"></script>
+<script src="../players.js"></script>
+<script src="../online.js"></script>
+<script src="../turnnet.js"></script>
+<script src="spanishone-core.js"></script>
+<style>
+/* ── Spanish One's own printed cards: four colors, each with its own shape (red circle, yellow triangle, green square,
+   blue diamond) so a color can be told by its shape alone; the Wilds on a night-black card ── */
+:root{--so-r1:#f2594f;--so-r2:#b9232f;--so-y1:#ffcf4d;--so-y2:#e08a0c;--so-g1:#2bc48b;--so-g2:#0b7a53;--so-b1:#4f95ff;--so-b2:#1d4fc4;
+  --so-r:#ec4a46;--so-y:#f7b52c;--so-g:#1fae7a;--so-b:#3a7ff0;--back-a:#14183a;--back-b:#2a1f5c;}
+.oc{--ink:#fff;position:relative;flex:none;width:var(--cw,64px);height:calc(var(--cw,64px) * 1.46);border-radius:calc(var(--cw) * .12);
+  overflow:hidden;isolation:isolate;user-select:none;-webkit-user-select:none;color:var(--ink);
+  background:radial-gradient(130% 80% at 22% 8%,rgba(255,255,255,.34),transparent 46%),linear-gradient(160deg,var(--c1),var(--c2));
+  box-shadow:inset 0 0 0 calc(var(--cw) * .028) rgba(255,255,255,.55),inset 0 calc(var(--cw) * -.05) calc(var(--cw) * .12) rgba(0,0,0,.18),0 1px 0 rgba(255,255,255,.2),0 2px 0 rgba(0,0,0,.2),0 6px 14px rgba(0,0,0,.34);
+  font-family:var(--display);font-weight:800;}
+.oc.c-r{--c1:var(--so-r1);--c2:var(--so-r2);} .oc.c-y{--c1:var(--so-y1);--c2:var(--so-y2);--ink:#2b1a02;}
+.oc.c-g{--c1:var(--so-g1);--c2:var(--so-g2);} .oc.c-b{--c1:var(--so-b1);--c2:var(--so-b2);}
+.oc.c-w{--c1:#262a4e;--c2:#0b0c1c;}
+.oc .wm{position:absolute;inset:0;display:grid;place-items:center;z-index:-1;opacity:.2;}
+.oc .wm svg{width:96%;height:auto;rotate:-14deg;}
+.oc .bd{position:absolute;inset:0;display:grid;place-items:center;}
+.oc .bd .num{font-size:calc(var(--cw) * .74);line-height:1;letter-spacing:-.04em;text-shadow:0 calc(var(--cw) * .03) 0 rgba(0,0,0,.22);}
+.oc .bd .u{text-decoration:underline;text-decoration-thickness:calc(var(--cw) * .05);text-underline-offset:calc(var(--cw) * .06);}
+.oc .bd svg{width:68%;height:auto;filter:drop-shadow(0 calc(var(--cw) * .025) 0 rgba(0,0,0,.25));}
+.oc .ix{position:absolute;left:7%;top:5%;display:flex;flex-direction:column;align-items:center;gap:calc(var(--cw) * .02);font-size:calc(var(--cw) * .22);line-height:1;}
+.oc .ix.bot{left:auto;top:auto;right:7%;bottom:5%;rotate:180deg;}
+.oc .ix svg{width:calc(var(--cw) * .17);height:calc(var(--cw) * .17);}
+.oc .ix .ic{width:calc(var(--cw) * .2);height:calc(var(--cw) * .2);}
+.oc .ix .ic svg{width:100%;height:100%;}
+/* the back: night blue with a ring of the four colors and a One in the middle */
+.oc.back{--c1:var(--back-b);--c2:var(--back-a);background:radial-gradient(120% 70% at 25% 10%,rgba(255,255,255,.16),transparent 50%),
+  repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 2px,transparent 2px 7px),linear-gradient(160deg,var(--c1),var(--c2));}
+.oc.back .bk{position:absolute;inset:0;display:grid;place-items:center;}
+.oc.back .bk svg{width:78%;height:auto;}
+.oc.sm .ix.bot,.oc.xs .ix{display:none;}
+/* a card you can play on your turn sits up; the rest step back */
+.so-hand .oc{position:absolute;left:0;top:0;transition:transform .34s cubic-bezier(.25,.8,.25,1),filter .2s,box-shadow .2s;cursor:pointer;touch-action:manipulation;}
+.so-hand.mine .oc.no{filter:brightness(.74) saturate(.78);}
+.so-hand.mine .oc.ok{box-shadow:inset 0 0 0 calc(var(--cw) * .028) rgba(255,255,255,.75),0 0 0 2px rgba(255,211,77,.0),0 10px 20px rgba(0,0,0,.4);}
+.so-hand .oc.drawn{box-shadow:inset 0 0 0 calc(var(--cw) * .028) rgba(255,255,255,.75),0 0 0 3px var(--lit),0 0 22px var(--litg);}
+.so-hand .oc:active{filter:brightness(1.08);}
+.so-hand.blind .oc{pointer-events:none;}
+
+/* ── The page: laid out to the screen, four shapes ── */
+.so{position:relative;display:grid;box-sizing:border-box;margin:0 auto;width:100%;height:var(--ph,calc(100dvh - var(--bar,64px)));
+  padding:6px 10px max(calc(var(--safe-b) + 8px),14px);gap:6px;}
+.so > .tblbg{grid-area:1 / 1 / -1 / -1;position:relative;border-radius:26px;padding:8px;z-index:0;margin:-2px -4px 0;}
+.so > .tblbg .felt-in{position:absolute;inset:8px;border-radius:19px;}
+.so > .tblbg .felt-in::before{display:none;}   /* (the ring and the card backs carry the mark) */
+.so > *:not(.tblbg){position:relative;z-index:1;min-width:0;min-height:0;}
+.so.L-pu,.so.L-tu{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"seats" "mid" "act" "hand";}
+.so.L-tu{padding:10px 18px max(calc(var(--safe-b) + 10px),18px);gap:10px;}
+.so.L-ps,.so.L-ts{grid-template-columns:var(--sw,300px) minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"seats mid act" "seats hand hand";
+  padding-left:max(var(--safe-l,0px),12px);padding-right:max(var(--safe-r,0px),18px);column-gap:10px;}
+.so.L-ts{padding:12px 22px max(calc(var(--safe-b) + 10px),18px);column-gap:16px;row-gap:10px;}
+.so > .so-seats{grid-area:seats;padding:10px 8px 0;} .so > .so-mid{grid-area:mid;} .so > .so-act{grid-area:act;} .so > .so-hand{grid-area:hand;margin:0 10px 8px;}
+.so.L-ps > .so-seats,.so.L-ts > .so-seats{padding:10px 0 10px 8px;}
+
+/* the other players: a plate each, in the order play goes round from you */
+.so-seats{display:flex;flex-wrap:wrap;justify-content:center;align-content:flex-start;gap:var(--sg,6px);}
+.so.L-ps .so-seats,.so.L-ts .so-seats{display:grid;grid-template-columns:repeat(var(--scol,1),minmax(0,1fr));align-content:center;}
+.so-op{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;width:var(--opw,72px);padding:6px 4px 5px;border-radius:15px;
+  background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--plate-line),0 4px 12px rgba(0,0,0,.28);color:#fff;
+  transition:box-shadow .25s,scale .3s var(--spring),translate .3s var(--spring);}
+.so-op .tp{display:flex;flex-direction:column;align-items:center;gap:3px;max-width:100%;}
+.so-op .avatar{width:calc(26px * var(--fz,1));height:calc(26px * var(--fz,1));font-size:calc(.72rem * var(--fz,1));flex:none;}
+.so-op .avatar .ico{width:62%;height:62%;}
+.so-op .nm{font-family:var(--type-sign,var(--font));font-weight:650;font-size:calc(.74rem * var(--fz,1));line-height:1.1;max-width:100%;text-align:center;overflow-wrap:normal;word-break:keep-all;}
+.so-seats.cmp .so-fan{display:none;}
+.so-seats.cmp .so-op{padding:4px 8px 4px 5px;gap:6px;}
+.so-op .ct{display:flex;align-items:center;gap:6px;}
+.so-op .so-fan{position:relative;height:calc(var(--bw,14px) * 1.46);width:calc(var(--bw,14px) * 2.2);--cw:var(--bw,14px);}
+.so-op .so-fan .oc{position:absolute;top:0;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+.so-op .n{font-family:var(--display);font-weight:800;font-size:calc(1.15rem * var(--fz,1));line-height:1;font-variant-numeric:tabular-nums;}
+.so-op .sc{font-size:calc(.66rem * var(--fz,1));font-weight:700;color:rgba(255,255,255,.66);font-variant-numeric:tabular-nums;}
+.so-op.turn{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.8),0 0 20px var(--litg),0 4px 12px rgba(0,0,0,.28);scale:1.05;}
+.so-op.turn::before{content:"";position:absolute;left:12px;right:12px;top:-1px;height:2px;border-radius:2px;background:var(--lit);box-shadow:0 0 8px 1px var(--litg);}
+.so-op.away{opacity:.6;}
+.so-op.bump{animation:sobump .32s var(--spring);}
+.so-op.shake{animation:soshake .5s ease-in-out;}
+@keyframes sobump{40%{scale:1.12;}}
+@keyframes soshake{20%{translate:-5px 2px;}40%{translate:5px -1px;}60%{translate:-3px 1px;}80%{translate:2px 0;}}
+.so-op .so-flag{position:absolute;top:-8px;right:-6px;padding:2px 7px;border-radius:999px;font-size:.62rem;font-weight:800;white-space:nowrap;background:var(--lit);color:#2b1a00;box-shadow:0 2px 6px rgba(0,0,0,.35);animation:sopop .35s var(--spring);}
+.so-op .so-catch{position:absolute;left:50%;bottom:-34px;translate:-50% 0;min-height:32px;padding:0 14px;white-space:nowrap;border:0;border-radius:999px;background:#e8394a;color:#fff;font:inherit;font-weight:800;font-size:.74rem;
+  box-shadow:0 0 0 2px rgba(255,255,255,.75),0 4px 14px rgba(232,57,74,.6);animation:sopulse 1s ease-in-out infinite;cursor:pointer;z-index:3;}
+.so-op .so-catch::after{content:"";position:absolute;inset:-8px;}
+@keyframes sopulse{50%{scale:1.08;}}
+@keyframes sopop{from{scale:.4;opacity:0;}to{scale:1;opacity:1;}}
+/* sideways: a row per player */
+.so.L-ps .so-op,.so.L-ts .so-op{flex-direction:row;width:auto;padding:5px 10px 5px 6px;gap:8px;justify-content:flex-start;min-height:var(--orh,44px);}
+.so.L-ps .so-op .tp,.so.L-ts .so-op .tp{flex:1 1 auto;min-width:0;flex-direction:row;gap:8px;}
+.so.L-ps .so-op .so-nmw,.so.L-ts .so-op .so-nmw{align-items:flex-start;}
+.so.L-ps .so-op .nm,.so.L-ts .so-op .nm{text-align:left;}
+.so.L-ps .so-op .so-nmw,.so.L-ts .so-op .so-nmw{display:flex;flex-direction:column;min-width:0;}
+.so.L-ps .so-op .so-catch,.so.L-ts .so-op .so-catch{left:auto;bottom:auto;right:6px;top:50%;translate:0 -50%;}
+.so.L-ps .so-op .so-flag,.so.L-ts .so-op .so-flag{top:-7px;right:auto;left:30px;}
+.so-op .so-nmw{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:100%;}
+/* a skip sweeps across the seat it passes over */
+.so-zap{position:absolute;inset:0;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:4;}
+.so-zap i{position:absolute;top:-30%;bottom:-30%;width:46%;left:-60%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);rotate:16deg;animation:sozap .6s ease-out forwards;}
+.so-zap svg{position:absolute;left:50%;top:50%;width:min(60%,54px);translate:-50% -50%;color:#fff;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));animation:sozapic .7s var(--spring) forwards;}
+@keyframes sozap{to{left:120%;}}
+@keyframes sozapic{0%{scale:.3;opacity:0;}40%{scale:1.15;opacity:1;}100%{scale:1;opacity:0;}}
+.so-say{position:absolute;left:50%;top:100%;translate:-50% 6px;padding:5px 11px;border-radius:11px;background:var(--plate-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#fff;
+  font-weight:700;font-size:.8rem;white-space:nowrap;box-shadow:var(--plate-line),0 4px 12px rgba(0,0,0,.35);animation:sopop .35s var(--spring);z-index:6;pointer-events:none;}
+.so-say.lit{color:var(--lit);box-shadow:inset 0 0 0 1px rgba(255,211,77,.7),0 0 16px var(--litg);}
+.so-say.bad{color:#ffb3b3;}
+.so.L-ps .so-op .so-say,.so.L-ts .so-op .so-say{left:auto;right:-8px;top:50%;translate:100% -50%;}
+
+/* the middle: the draw pile, and the pile you play on inside the ring that shows which way play goes */
+.so-mid{display:flex;align-items:center;justify-content:center;gap:calc(var(--pw,80px) * .22);--cw:var(--pw,80px);}
+.so-dp{position:relative;width:var(--cw);height:calc(var(--cw) * 1.46);cursor:pointer;border-radius:calc(var(--cw) * .12);touch-action:manipulation;}
+.so-dp .oc{position:absolute;left:0;top:0;}
+.so-dp .oc:nth-child(1){translate:calc(var(--cw) * .05) calc(var(--cw) * .06);} .so-dp .oc:nth-child(2){translate:calc(var(--cw) * .025) calc(var(--cw) * .03);}
+.so-dp .so-cnt{position:absolute;left:50%;top:100%;translate:-50% 8px;font-size:calc(.7rem * var(--fz,1));font-weight:700;color:rgba(255,255,255,.75);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.so-dp.go{animation:sobeat 1.4s ease-in-out infinite;}
+.so-dp.go .oc:last-child{box-shadow:inset 0 0 0 calc(var(--cw) * .028) rgba(255,255,255,.55),0 0 0 3px var(--lit),0 0 24px var(--litg);}
+@keyframes sobeat{50%{translate:0 -4px;}}
+.so-dp.off{cursor:default;}
+.so-ring{position:relative;width:calc(var(--cw) * 2.05);height:calc(var(--cw) * 2.05);display:grid;place-items:center;flex:none;}
+.so-ring .so-halo{position:absolute;inset:6%;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--cc,#888) 55%,transparent),transparent);opacity:.75;transition:background .5s;}
+.so-ring .so-arw{position:absolute;inset:0;color:var(--cc,#fff);transition:color .5s;}
+.so-ring .so-arw g{transform-origin:50px 50px;animation:sospin 26s linear infinite;}
+.so-ring.ccw .so-arw g{animation-direction:reverse;}
+.so-ring.flip .so-arw g{animation:soflip .9s cubic-bezier(.3,.9,.3,1);}
+.so-ring.ccw.flip .so-arw g{animation:soflipb .9s cubic-bezier(.3,.9,.3,1);}
+@keyframes sospin{to{rotate:360deg;}}
+@keyframes soflip{from{rotate:0deg;scale:1;}50%{scale:1.12;}to{rotate:540deg;scale:1;}}
+@keyframes soflipb{from{rotate:0deg;scale:1;}50%{scale:1.12;}to{rotate:-540deg;scale:1;}}
+.so-ring .so-arw svg{width:100%;height:100%;overflow:visible;}
+.so-disc{position:relative;width:var(--cw);height:calc(var(--cw) * 1.46);}
+.so-disc .oc{position:absolute;left:0;top:0;}
+.so-disc .oc.land{animation:soland .32s cubic-bezier(.3,1.4,.5,1);}
+@keyframes soland{0%{scale:1.18;}60%{scale:.96;}100%{scale:1;}}
+.so-badge{position:absolute;left:50%;bottom:-4%;translate:-50% 0;display:flex;align-items:center;gap:6px;padding:4px 12px 4px 7px;border-radius:999px;background:var(--plate-bg);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--plate-line),0 3px 10px rgba(0,0,0,.4);color:#fff;font-weight:700;font-size:calc(.84rem * var(--fz,1));white-space:nowrap;z-index:3;}
+.so-badge svg{width:calc(18px * var(--fz,1));height:calc(18px * var(--fz,1));}
+.so-badge.pop{animation:sopop .4s var(--spring);}
+.so-pend{position:absolute;right:-6%;top:2%;z-index:4;display:grid;place-items:center;min-width:calc(var(--cw) * .56);height:calc(var(--cw) * .56);padding:0 6px;border-radius:999px;
+  background:#e8394a;color:#fff;font-family:var(--display);font-weight:800;font-size:calc(var(--cw) * .28);box-shadow:0 0 0 2px #fff,0 4px 14px rgba(232,57,74,.6);animation:sopop .35s var(--spring);}
+.so-burst{position:absolute;inset:0;border-radius:50%;pointer-events:none;box-shadow:0 0 0 3px var(--cc,#fff);animation:soburst .7s ease-out forwards;}
+@keyframes soburst{from{scale:.5;opacity:1;}to{scale:1.35;opacity:0;}}
+
+/* your turn: what to do, in a sentence, and the buttons for it */
+.so-act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:52px;}
+.so.L-ps .so-act,.so.L-ts .so-act{width:var(--aw,170px);align-self:center;margin-right:12px;}
+.so-act .so-cap{color:#fff;font-weight:650;font-size:calc(.86rem * var(--fz,1));line-height:1.3;text-align:center;text-wrap:balance;text-shadow:0 1px 2px rgba(0,0,0,.5);max-width:36em;}
+.so-act .so-cap b{color:var(--lit);font-weight:750;}
+.so-act .so-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+.so.L-ps .so-act .so-btns,.so.L-ts .so-act .so-btns{flex-direction:column;align-items:stretch;width:100%;}
+.so-act .btn{min-height:44px;}
+.so-act .btn svg{width:18px;height:18px;}
+.so-act .call{background:linear-gradient(180deg,var(--gold-hi,#ffd75a),var(--gold-lo,#f0a81c));color:#2b1a00;animation:socall 1.1s ease-in-out infinite;}
+@keyframes socall{50%{box-shadow:0 0 0 4px rgba(255,211,77,.35),0 0 26px var(--litg);}}
+.so-hand{position:relative;height:var(--hh,120px);--cw:var(--hw,70px);}
+.so-hand .so-empty{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.6);font-weight:700;font-size:.85rem;}
+.so-hand.mine.myturn::before{content:"";position:absolute;left:8%;right:8%;bottom:-6px;height:2px;border-radius:2px;background:var(--lit);box-shadow:0 0 10px 1px var(--litg);opacity:.8;}
+
+/* a card in flight */
+.so-fly{position:fixed;left:0;top:0;z-index:60;pointer-events:none;transform-origin:0 0;will-change:transform;}
+/* the color chooser and the seat chooser, over the table */
+.so-pick{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(5,6,16,.45);animation:sofade .2s ease-out;}
+@keyframes sofade{from{opacity:0;}}
+.so-pick .pn{display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 18px 14px;border-radius:24px;background:var(--sheet-bg,rgba(22,24,48,.92));
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:inset 0 0 0 1px var(--gl-line),0 20px 50px rgba(0,0,0,.5);color:#fff;max-width:calc(100vw - 32px);animation:sopop .3s var(--spring);}
+.so-pick h3{margin:0;font-family:var(--display);font-weight:800;font-size:1.15rem;text-align:center;}
+.so-pick .so-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.so-pick .so-cb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:min(36vw,128px);height:min(36vw,112px);border:0;border-radius:20px;color:#fff;font:inherit;font-weight:800;font-size:.95rem;cursor:pointer;
+  background:radial-gradient(120% 80% at 25% 10%,rgba(255,255,255,.3),transparent 50%),linear-gradient(160deg,var(--c1),var(--c2));box-shadow:inset 0 0 0 2px rgba(255,255,255,.5),0 6px 16px rgba(0,0,0,.4);transition:scale .15s var(--spring);}
+.so-pick .so-cb:active{scale:.95;}
+.so-pick .so-cb svg{width:40px;height:40px;}
+.so-pick .so-cb .k{font-size:.72rem;font-weight:700;opacity:.85;}
+.so-pick .so-cb.y{color:#2b1a02;}
+.so-pick .so-who{display:flex;flex-direction:column;gap:8px;width:min(80vw,320px);max-height:60vh;overflow:auto;}
+.so-pick .so-who button{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 14px 6px 8px;border:0;border-radius:14px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);color:#fff;font:inherit;font-weight:700;cursor:pointer;text-align:left;}
+.so-pick .so-who button b{margin-left:auto;font-family:var(--display);font-weight:800;font-size:1.1rem;}
+.so-pick .so-who button .avatar{width:30px;height:30px;}
+.so-pick .x{min-height:44px;}
+
+/* the count at the end of a hand */
+.so-tally{position:fixed;inset:0;z-index:65;display:grid;place-items:center;background:rgba(5,6,16,.4);animation:sofade .25s ease-out;padding:16px;}
+.so-tally .pn{display:flex;flex-direction:column;gap:10px;width:min(560px,100%);max-height:calc(100dvh - 40px);padding:16px 16px 14px;border-radius:24px;
+  background:var(--sheet-bg,rgba(22,24,48,.92));-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:inset 0 0 0 1px var(--gl-line),inset 0 1px 0 rgba(255,211,77,.5),0 20px 50px rgba(0,0,0,.5);color:#fff;animation:sopop .3s var(--spring);}
+.so-tally h3{margin:0;font-family:var(--display);font-weight:800;font-size:1.25rem;text-align:center;}
+.so-tally .sub{text-align:center;font-size:.85rem;color:rgba(255,255,255,.75);margin-top:-6px;}
+.so-tally .so-rows{display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0;}
+.so-tally .r{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 8px;border-radius:12px;background:rgba(255,255,255,.05);}
+.so-tally .r .avatar{width:26px;height:26px;font-size:.7rem;}
+.so-tally .r .nm{font-weight:700;font-size:.82rem;}
+.so-tally .r .cs{grid-column:2;display:flex;flex-wrap:wrap;gap:3px;--cw:22px;}
+.so-tally .r .p{grid-row:1 / span 2;grid-column:3;font-family:var(--display);font-weight:800;font-size:1.05rem;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85);}
+.so-tally .r.w{background:rgba(255,211,77,.1);box-shadow:inset 0 0 0 1px rgba(255,211,77,.55);}
+.so-tally .r.w .p{color:var(--lit);font-size:1.35rem;}
+.so-tally .r .av{grid-row:1 / span 2;}
+.so-tally .so-tot{display:flex;justify-content:space-between;align-items:baseline;padding:4px 4px 0;font-weight:700;font-size:.85rem;color:rgba(255,255,255,.8);}
+.so-tally .so-tot b{font-family:var(--display);font-weight:800;font-size:1rem;color:#fff;}
+.so-tally .btn{min-height:48px;}
+.so-tally .so-race{display:flex;flex-direction:column;gap:4px;}
+.so-tally .so-race .ln{display:grid;grid-template-columns:5.5em minmax(0,1fr) 3em;align-items:center;gap:8px;font-size:.74rem;font-weight:700;}
+.so-tally .so-race .ln .nm{overflow-wrap:anywhere;line-height:1.1;}
+.so-tally .so-race .tr{position:relative;height:9px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;}
+.so-tally .so-race .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:var(--rc);transition:width 1s cubic-bezier(.25,.8,.25,1);}
+.so-tally .so-race .ln b{text-align:right;font-variant-numeric:tabular-nums;}
+
+/* an iPad held sideways: the setup in two columns */
+@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+  .stage:has(> .setup){max-width:min(1000px,94vw);display:flex;flex-direction:column;justify-content:center;min-height:calc(100dvh - var(--bar,64px) - 30px);}
+  .stage > .setup{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:32px;row-gap:22px;align-items:start;zoom:1.18;}
+  .stage > .setup > .setup-hero,.stage > .setup > .k-joins,.stage > .setup > .k-startdock{grid-column:1 / -1;}
+}
+@media (prefers-reduced-motion:reduce){.so-ring .so-arw g{animation:none !important;}}
+</style>
+</head>
+<body>
+<main class="so k-hold" id="app"></main>
+<script>
+(function () {
+  'use strict';
+  var Core = window.SpanishCore, el = Kit.el, app = document.getElementById('app');
+  var SAVE = 'spanishone_state', HKEY = 'spanishone';
+  var CN = { r: 'red', y: 'yellow', g: 'green', b: 'blue' };
+  var CCOL = { r: '#ec4a46', y: '#f7b52c', g: '#1fae7a', b: '#3a7ff0' };
+  var CARD = {}; Core.deck().forEach(function (c) { CARD[c.id] = c; });
+
+  // ── The printed pieces: shapes and symbols, drawn in SVG ──
+  var SHAPE = {
+    r: '<circle cx="12" cy="12" r="9.5"/>',
+    y: '<path d="M12 2.6 22.2 20.6H1.8z"/>',
+    g: '<rect x="3" y="3" width="18" height="18" rx="2.6"/>',
+    b: '<path d="M12 1.5 22.5 12 12 22.5 1.5 12z"/>'
+  };
+  function shape(c, fill, extra) { return '<svg viewBox="0 0 24 24" aria-hidden="true"' + (extra || '') + '><g fill="' + (fill || 'currentColor') + '">' + SHAPE[c] + '</g></svg>'; }
+  // Skip: a hop over the one it passes; Reverse: two arrows turning back on each other
+  var SYM = {
+    s: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 33c3-15 13-22 22-20 6 1.4 9.4 5.6 10.4 11" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m33 21 7 5 3-8.5" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="24" cy="38" r="4.6" fill="currentColor"/></svg>',
+    r: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M10 20a14 14 0 0 1 24-7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m35.5 5 .6 9.4-9.3.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><path d="M38 28a14 14 0 0 1-24 7" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="m12.5 43-.6-9.4 9.3-.8" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    d2: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="9" y="7" width="20" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3.4" opacity=".7"/><rect x="19" y="13" width="20" height="28" rx="4" fill="currentColor" opacity=".25"/><rect x="19" y="13" width="20" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="3.4"/><text x="29" y="28.5" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="15" fill="currentColor">+2</text></svg>'
+  };
+  // the Wilds: the four shapes in their colors
+  function wildArt(four) {
+    var s = '<svg viewBox="0 0 48 48" aria-hidden="true">';
+    if (four) {
+      s += '<text x="24" y="17" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="19" fill="#fff">+4</text>';
+      [['r', 3], ['y', 14], ['g', 25], ['b', 36]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' 28) scale(.38)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.6">' + SHAPE[x[0]] + '</g>'; });
+    } else {
+      [['r', 5, 5], ['y', 25, 5], ['g', 5, 25], ['b', 25, 25]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' ' + x[2] + ') scale(.75)" fill="' + CCOL[x[0]] + '" stroke="#fff" stroke-width="1.4">' + SHAPE[x[0]] + '</g>'; });
+    }
+    return s + '</svg>';
+  }
+  function wildIx(four) {
+    var s = '<svg viewBox="0 0 24 24" aria-hidden="true">';
+    [['r', 0, 0], ['y', 12, 0], ['g', 0, 12], ['b', 12, 12]].forEach(function (x) { s += '<g transform="translate(' + x[1] + ' ' + x[2] + ') scale(.5)" fill="' + CCOL[x[0]] + '">' + SHAPE[x[0]] + '</g>'; });
+    return s + '</svg>';
+  }
+  var BACK = '<svg viewBox="0 0 60 60" aria-hidden="true"><g fill="none" stroke-width="6" stroke-linecap="round">' +
+    '<path d="M30 6a24 24 0 0 1 24 24" stroke="' + CCOL.r + '"/><path d="M54 30a24 24 0 0 1-24 24" stroke="' + CCOL.y + '"/><path d="M30 54A24 24 0 0 1 6 30" stroke="' + CCOL.g + '"/><path d="M6 30A24 24 0 0 1 30 6" stroke="' + CCOL.b + '"/></g>' +
+    '<text x="30" y="31" text-anchor="middle" dominant-baseline="central" font-family="Schibsted Grotesk,system-ui,sans-serif" font-weight="800" font-size="27" fill="#fff">1</text></svg>';
+  function cardEl(c, o) {
+    o = o || {};
+    if (!c || o.back) { var b = el('div', { class: 'oc back' + (o.cls ? ' ' + o.cls : ''), 'aria-label': 'A face-down card' }); b.innerHTML = '<span class="bk">' + BACK + '</span>'; return b; }
+    var n = el('div', { class: 'oc c-' + c.c + (o.cls ? ' ' + o.cls : ''), 'data-id': c.id, role: 'img', 'aria-label': Core.name(c) });
+    var num = Core.isNum(c), u = c.v === '6' || c.v === '9' ? ' u' : '';
+    var ix = c.c === 'w' ? '<span class="ic">' + wildIx() + '</span>' + (c.v === 'w4' ? '<span style="font-size:.7em">+4</span>' : '') :
+      num ? '<span class="' + u + '">' + c.v + '</span>' + shape(c.c) : c.v === 'd2' ? '<span>+2</span>' + shape(c.c) : '<span class="ic">' + SYM[c.v] + '</span>' + shape(c.c);
+    var body = c.c === 'w' ? wildArt(c.v === 'w4') : num ? '<span class="num' + u + '">' + c.v + '</span>' : SYM[c.v];
+    n.innerHTML = (c.c !== 'w' ? '<span class="wm">' + shape(c.c, 'rgba(255,255,255,.9)') + '</span>' : '') + '<span class="ix">' + ix + '</span><span class="ix bot">' + ix + '</span><span class="bd">' + body + '</span>';
+    return n;
+  }
+
+  Kit.init({
+    id: 'spanishone',
+    onNew: function () { if (NET) { Kit.toast('Leave the online game first (in the menu)'); return; } clearSave(); showSetup(); },
+    undo: function () { if (NET) { Kit.toast('Moves can’t be taken back online'); return; } undo(); },
+    menu: TurnNet.menu().concat([
+      { icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Spanish One: past games' }); } }
+    ]),
+    rules:
+      '<p class="goal">Be the first to play every card in your hand. When you go out, you score the cards everyone else is still holding, and the first player to 500 points wins the game.</p>' +
+      '<h3>The cards</h3><p>There are 108 cards. Each of the four colors has its own shape, so you can tell them apart by shape too: red circles, yellow triangles, green squares and blue diamonds. Every color has one 0, two of each number from 1 to 9, and two each of Skip, Reverse and Draw Two. There are also four Wild cards and four Wild Draw Four cards.</p>' +
+      '<h3>Your turn</h3><ul><li>Everyone gets 7 cards, and one card is turned face up to start the pile.</li>' +
+      '<li>On your turn, play a card that matches the top card by color, by number or by symbol. A Wild can be played on anything.</li>' +
+      '<li>If you can’t play, or don’t want to, draw a card. If you can play the card you drew, you can play it right away. Otherwise your turn is over.</li></ul>' +
+      '<h3>Action cards</h3><ul><li><b>Skip:</b> the next player loses their turn.</li><li><b>Reverse:</b> play changes direction. The ring around the pile turns the way play is going. With two players, a Reverse works like a Skip, so you go again.</li>' +
+      '<li><b>Draw Two:</b> the next player draws 2 cards and loses their turn.</li><li><b>Wild:</b> you choose the color to play next.</li>' +
+      '<li><b>Wild Draw Four:</b> you choose the color, and the next player draws 4 cards and loses their turn. You’re only allowed to play it when you have no card of the color in play. The next player can challenge it: if you did have a card of that color, you draw the 4 instead. If you didn’t, the challenger draws 6.</li></ul>' +
+      '<h3>Last card!</h3><p>When you’re about to play your second-to-last card, tap <b>Last card!</b> If someone catches you holding one card without having called it, before your next turn comes, you draw 2 cards. Tap <b>Catch</b> on a player’s plate to catch them.</p>' +
+      '<h3>Scoring</h3><ul><li>When someone goes out, they score the cards left in everyone else’s hand: number cards are worth their number, Skip, Reverse and Draw Two are worth 20, and Wilds are worth 50.</li>' +
+      '<li>If the last card played is a Draw Two or a Wild Draw Four, the next player still draws those cards, and they count.</li><li>The first player to reach 500 wins. You can also play a single hand in the setup.</li></ul>' +
+      '<h3>The first card</h3><p>If the first card turned up is a Wild Draw Four, it goes back in the deck and another is turned. If it’s a Wild, the first player chooses the color. A Skip, a Reverse or a Draw Two works on the first player just as if the dealer had played it.</p>' +
+      '<h3>House rules in the setup</h3><ul><li><b>Stacking:</b> when a Draw Two comes to you, you can play a Draw Two or a Wild Draw Four on it to pass the cards on, and a Wild Draw Four can be answered with another Wild Draw Four. Whoever can’t add to the stack draws all of it.</li>' +
+      '<li><b>Draw until you can play:</b> instead of drawing one card, you keep drawing until you get a card you can play.</li>' +
+      '<li><b>7-0:</b> when you play a 7, you swap hands with a player you choose. When anyone plays a 0, everyone passes their hand to the next player in the direction of play.</li>' +
+      '<li><b>No challenges:</b> a Wild Draw Four can be played at any time, and nobody can challenge it.</li></ul>' +
+      '<h3>Online</h3><p><b>Play online</b> in the menu opens a table, and the others join on their own devices. The computer plays any empty seat.</p>'
+  });
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  var S = null, token = 0, undoStack = [], busy = false, V = null, ending = false;
+  var NET = null, MYSEAT = 0, LME = 0, BLIND = false;
+  function me() { return NET ? MYSEAT : LME; }
+  function N() { return S ? S.n : 4; }
+  function person(p) { return p >= 0 && S.players[p] && !S.players[p].cpu; }
+  function people() { return S.players.filter(function (x) { return !x.cpu; }).length; }
+  function onePerson() { return !!NET || people() < 2; }
+  function first(n) { return String(n || '').split(' ')[0]; }
+  function fn(p) { var pl = S.players[p]; return pl.cpu ? pl.name : first(pl.name); }
+  function you(p) { return p === me() && onePerson() && (!NET || MYSEAT >= 0); }
+  function who(p) { return you(p) ? 'You' : fn(p); }
+  function whose(p) { return you(p) ? 'Your' : fn(p) + '’s'; }
+  function color(p) { return Kit.color(p); }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function later(fn, ms) { var t = token; setTimeout(function () { if (t === token) fn(); }, ms); }
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var FAST = (function () { try { return localStorage.getItem('spanishone_fast') === '1'; } catch (e) { return false; } })();
+  function ms(x) { return FAST ? Math.round(x / 6) : x; }
+  function save() {
+    if (NET || !S) return;
+    try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch (e) {}
+    if (S.phase !== 'over') Kit.resume.set((S.to ? 'Hand ' + S.round + ' · ' : '') + S.players.map(function (p, i) { return fn(i) + ' ' + (S.to ? S.scores[i] : S.hands[i].length + ' cards'); }).join(' · '));
+  }
+  function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) {} Kit.resume.clear(); token++; busy = false; }
+
+  var LEVELS = [['easy', 'Easy', 'Plays the first card it can, and sometimes forgets to call Last card.'],
+    ['normal', 'Normal', 'Keeps its Wilds for when nothing else will do, and names the color it holds most of.'],
+    ['hard', 'Hard', 'Remembers which colors each player had to draw on, saves its action cards for whoever is about to go out, and will bluff a Wild Draw Four.']];
+
+  // ── Setup ─────────────────────────────────────────────────────────────────
+  function showSetup() {
+    S = null; V = null; token++; BLIND = false; LME = 0; ending = false; Kit.handoff.close(); closeOverlays();
+    app.className = 'stage'; app.innerHTML = ''; app.removeAttribute('style');
+    Kit.setup(app, {
+      modes: Kit.modes(['cpu', 'local']),
+      players: { min: 2, max: 10, count: 4, cpu: function (m) { return m === 'cpu' ? 'seats' : 'mix'; } },
+      options: [
+        { id: 'to', label: 'Play to', help: 'The first player to reach this score wins. With one hand, whoever goes out first wins.', value: 500, choices: [[500, '500\nStandard'], [0, 'One hand']] },
+        { id: 'stack', label: 'Stacking', help: 'With stacking on, a Draw Two that comes to you can be answered with another Draw Two or a Wild Draw Four, and a Wild Draw Four with another Wild Draw Four. Whoever can’t add to the stack draws all of it.', value: 0, choices: [[0, 'Off\nStandard'], [1, 'On']] },
+        { id: 'until', label: 'Drawing', help: 'Standard: when you can’t play, you draw one card. With Draw until you can play, you keep drawing until you get a card you can play.', value: 0, choices: [[0, 'Draw one\nStandard'], [1, 'Until you can play']] },
+        { id: 'seven', label: '7-0', help: 'With 7-0 on, playing a 7 swaps your hand with a player you choose, and playing a 0 passes every hand to the next player in the direction of play.', value: 0, choices: [[0, 'Off\nStandard'], [1, 'On']] },
+        { id: 'four', label: 'Wild Draw Four', help: 'Standard: you may only play a Wild Draw Four when you have no card of the color in play, and the next player can challenge it. With No challenges, it can be played at any time.', value: 'challenge', choices: [['challenge', 'Can be challenged\nStandard'], ['free', 'No challenges']] },
+        { id: 'level', robot: true, label: 'Computer skill', value: 'normal', choices: LEVELS }
+      ],
+      onStart: function (cfg) {
+        var o = cfg.options, used = {};
+        cfg.players.forEach(function (p) { used[p.name] = 1; });
+        // (the kit names eight computer players; a bigger table gets more robot names here)
+        var spare = ['Number 5', 'Rosie', 'Baymax', 'Marvin', 'KITT', 'Data', 'Robby', 'Sonny', 'Dewey', 'Huey', 'Gort', 'Wheatley'].filter(function (x) { return !used[x]; }), seen = {};
+        S = Core.newGame({ players: cfg.players.map(function (p, i) {
+          var nm = p.name; if (!nm || (p.cpu && /^(computer|cpu|robot)$/i.test(nm)) || seen[nm]) nm = p.cpu ? spare.shift() || 'Robot ' + (i + 1) : nm || 'Player ' + (i + 1);
+          seen[nm] = 1;
+          return { name: nm, cpu: !!p.cpu, level: p.cpu ? (p.level || o.level) : undefined }; }),
+          to: +o.to, stack: +o.stack === 1, until: +o.until === 1, seven: +o.seven === 1, four: o.four, level: o.level });
+        S.mode = cfg.mode; S.me = 0; S.seen = S.round;
+        LME = 0; Kit.gameStart(); undoStack = []; begin(true);
+      }
+    });
+  }
+
+  // ═══ Layout: four shapes, measured from the screen ═════════════════════════════════════════════════
+  var LAY = '', tblBg, seatsEl, midEl, actEl, handEl, dpEl, discEl, ringEl, opEls = [];
+  function layoutFor() {
+    var w = innerWidth, h = innerHeight, big = Math.min(w, h) >= 600;
+    if (w > h * 1.05) return big ? 'L-ts' : 'L-ps';
+    return big ? 'L-tu' : 'L-pu';
+  }
+  function side() { return LAY === 'L-ps' || LAY === 'L-ts'; }
+  function build() {
+    closeOverlays();
+    app.innerHTML = ''; app.removeAttribute('style');
+    LAY = layoutFor(); app.className = 'so k-hold ' + LAY;
+    tblBg = el('div', { class: 'tblbg wood' }, [el('div', { class: 'felt-in' })]);
+    seatsEl = el('div', { class: 'so-seats' });
+    midEl = el('div', { class: 'so-mid' });
+    actEl = el('div', { class: 'so-act' });
+    handEl = el('div', { class: 'so-hand' });
+    dpEl = el('div', { class: 'so-dp', role: 'button', 'aria-label': 'Draw a card', onclick: function () { tapDraw(); } });
+    ringEl = el('div', { class: 'so-ring' }, [el('div', { class: 'so-halo' }), el('div', { class: 'so-arw', html: ringSvg() })]);
+    discEl = el('div', { class: 'so-disc' });
+    ringEl.appendChild(discEl);
+    midEl.appendChild(dpEl); midEl.appendChild(ringEl);
+    [tblBg, seatsEl, midEl, actEl, handEl].forEach(function (n) { app.appendChild(n); });
+  }
+  function ringSvg() {
+    // three arcs with arrowheads, around the pile
+    var s = '<svg viewBox="0 0 100 100"><g>', R = 46;
+    for (var i = 0; i < 3; i++) {
+      var a0 = (i * 120 + 14) * Math.PI / 180, a1 = (i * 120 + 100) * Math.PI / 180;
+      var x0 = 50 + R * Math.cos(a0), y0 = 50 + R * Math.sin(a0), x1 = 50 + R * Math.cos(a1), y1 = 50 + R * Math.sin(a1);
+      s += '<path d="M' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A' + R + ' ' + R + ' 0 0 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2) + '" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" opacity=".9"/>';
+      var tx = -Math.sin(a1), ty = Math.cos(a1), nx = Math.cos(a1), ny = Math.sin(a1);
+      var p1 = [x1 + tx * 5.5, y1 + ty * 5.5], p2 = [x1 - tx * 1.5 + nx * 4.4, y1 - ty * 1.5 + ny * 4.4], p3 = [x1 - tx * 1.5 - nx * 4.4, y1 - ty * 1.5 - ny * 4.4];
+      s += '<path d="M' + p1.map(function (v) { return v.toFixed(2); }).join(' ') + ' L' + p2.map(function (v) { return v.toFixed(2); }).join(' ') + ' L' + p3.map(function (v) { return v.toFixed(2); }).join(' ') + 'Z" fill="currentColor"/>';
+    }
+    return s + '</g></svg>';
+  }
+  // the other players, in the order play goes round from this device's seat
+  function others() { var o = [], n = N(); for (var i = 1; i < n; i++) o.push((me() + i) % n); return o; }
+  function fit() {
+    if (!app.classList.contains('so') || !S) return;
+    var top = app.getBoundingClientRect().top + (window.scrollY || 0);
+    var PH = Math.max(300, innerHeight - top);
+    app.style.setProperty('--ph', PH + 'px');
+    var W = innerWidth, k = N() - 1, big = LAY === 'L-tu' || LAY === 'L-ts';
+    var fz = big ? 1.2 : N() <= 5 ? 1.08 : 1;
+    app.style.setProperty('--fz', fz);
+    // the plates of the other players
+    seatsEl.classList.remove('cmp');
+    if (side()) {
+      var sw = Math.round(Math.min(big ? 340 : 300, Math.max(big ? 260 : 210, W * (big ? 0.28 : 0.3))));
+      var avail = PH - 30, cols = 1, rh = Math.min(big ? 74 : 58, (avail - (k - 1) * 6) / k);
+      if (rh < (big ? 52 : 40)) { cols = 2; sw = Math.round(Math.min(big ? 420 : 330, W * 0.37)); rh = Math.min(big ? 74 : 58, (avail - (Math.ceil(k / 2) - 1) * 6) / Math.ceil(k / 2)); }
+      seatsEl.classList.toggle('cmp', cols === 2);
+      app.style.setProperty('--sw', sw + 'px'); app.style.setProperty('--scol', cols); app.style.setProperty('--orh', Math.floor(rh) + 'px');
+      app.style.setProperty('--sg', '6px');
+      app.style.setProperty('--bw', Math.round(Math.max(10, Math.min(big ? 22 : 16, rh * 0.32))) + 'px');
+      app.style.setProperty('--aw', (big ? 200 : 158) + 'px');
+    } else {
+      var inner = W - (big ? 36 : 20) - 16, perRow = k <= 5 ? k : Math.ceil(k / 2), gap = big ? 10 : 6;
+      var opw = Math.min(big ? 190 : 118, (inner - (perRow - 1) * gap) / perRow);
+      app.style.setProperty('--opw', Math.floor(opw) + 'px'); app.style.setProperty('--sg', gap + 'px');
+      app.style.setProperty('--bw', Math.round(Math.max(10, Math.min(big ? 24 : 17, opw * 0.2))) + 'px');
+    }
+    // the hand
+    fitHand();
+    // the piles, as large as the middle allows
+    var mr = midEl.getBoundingClientRect(), mw = mr.width, mh = mr.height;
+    var pw = Math.max(44, Math.min(big ? 210 : 128, (mw - 8) / 3.3, mh / 2.3));
+    app.style.setProperty('--pw', Math.round(pw) + 'px');
+    fitNames(); fitAct();
+  }
+  // a name that is wider than its plate eases down in size (it may wrap between words, never inside one)
+  function fitNames() {
+    [].forEach.call(seatsEl.querySelectorAll('.nm'), function (n) {
+      n.style.fontSize = '';
+      var fs = parseFloat(getComputedStyle(n).fontSize);
+      for (var i = 0; i < 10 && n.scrollWidth > n.clientWidth + 1 && fs > 9; i++) { fs -= 0.6; n.style.fontSize = fs + 'px'; }
+    });
+  }
+  function handCount() { return V ? V.hand.length : 7; }
+  function fitHand() {
+    var big = LAY === 'L-tu' || LAY === 'L-ts', n = Math.max(handCount(), 1), PH = parseFloat(app.style.getPropertyValue('--ph')) || innerHeight;
+    var W = handEl.clientWidth || (innerWidth - 40);
+    var cap = LAY === 'L-pu' ? Math.min(92, PH * 0.12) : LAY === 'L-tu' ? Math.min(130, PH * 0.13) : LAY === 'L-ps' ? Math.min(78, PH * 0.21) : Math.min(120, PH * 0.17);
+    var cw = cap, rows = 1;
+    // one row while the cards still overlap no more than about two thirds, then two rows, then three
+    function step(cw, r) { var m = Math.ceil(n / r); return m > 1 ? (W - cw) / (m - 1) : cw; }
+    while (rows < 3 && step(cw, rows) < Math.max(28, cw * 0.36)) rows++;
+    if (step(cw, rows) < 26) cw = Math.max(40, Math.min(cw, (W - 26 * (Math.ceil(n / rows) - 1))));
+    var lift = cw * 0.16, hh = cw * 1.46 + (rows - 1) * cw * 0.62 + lift + 4;
+    handEl.style.setProperty('--hw', cw.toFixed(1) + 'px');
+    handEl.style.setProperty('--hh', hh.toFixed(1) + 'px');
+    handEl._rows = rows; handEl._cw = cw; handEl._lift = lift;
+  }
+
+  // ═══ Painting the table from the view V (what this device shows right now) ══════════════════════
+  function viewOf(st) {
+    var m = me();
+    return { hand: st.hands[m].map(function (c) { return c.id; }), counts: st.hands.map(function (h) { return h.length; }), top: Core.topCard(st), under: st.pile.slice(-4, -1),
+      color: st.color, dir: st.dir, turn: st.turn, pend: st.pend, draw: st.draw.length, scores: st.scores.slice() };
+  }
+  function paintAll() {
+    if (!S || !app.classList.contains('so')) return;
+    paintSeats(); paintMid(); fit(); paintHand(); paintAct();
+  }
+  function seatStatus(p) {
+    if (!S || S.phase === 'over') return null;
+    if (Core.vulnerable(S, p)) return 'vul';
+    if (S.hands[p].length === 1 && S.called[p]) return 'called';
+    return null;
+  }
+  function paintSeats() {
+    seatsEl.innerHTML = ''; opEls = [];
+    var list = others();
+    list.forEach(function (p, i) {
+      var pl = S.players[p], n = V.counts[p];
+      var av = pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, '', color(p));
+      var fan = el('div', { class: 'so-fan' }), shown = Math.min(n, 5);
+      for (var j = 0; j < shown; j++) { var b = cardEl(null, { back: true, cls: 'xs' }); b.style.left = (shown > 1 ? j * (1.2 / (shown - 1)) : 0.6) * 100 / 2.2 + '%'; b.style.rotate = ((j - (shown - 1) / 2) * 7) + 'deg'; fan.appendChild(b); }
+      var node = el('div', { class: 'so-op' + (V.turn === p && S.phase !== 'over' ? ' turn' : '') + (pl.away ? ' away' : ''), 'data-p': p }, [
+        el('div', { class: 'tp' }, [av, el('div', { class: 'so-nmw' }, [el('span', { class: 'nm', text: fn(p) }), S.to ? el('span', { class: 'sc', text: V.scores[p] + ' points' }) : null])]),
+        el('div', { class: 'ct' }, [fan, el('span', { class: 'n', text: String(n), 'aria-label': n + (n === 1 ? ' card' : ' cards') })])
+      ]);
+      var stt = seatStatus(p);
+      if (stt === 'called') node.appendChild(el('span', { class: 'so-flag', text: 'Last card' }));
+      if (stt === 'vul' && canCatchNow()) node.appendChild(el('button', { type: 'button', class: 'so-catch', text: 'Catch', 'aria-label': 'Catch ' + fn(p) + ': ' + fn(p) + ' didn’t call Last card', onclick: function (e) { e.stopPropagation(); tapCatch(p); } }));
+      seatsEl.appendChild(node); opEls[p] = node;
+    });
+  }
+  function canCatchNow() { return !busy && S && S.phase !== 'over' && (NET ? MYSEAT >= 0 : person(me()) && !BLIND); }
+  function opEl(p) { return opEls[p] || null; }
+  function paintMid(land) {
+    // the draw pile
+    dpEl.innerHTML = '';
+    var k = Math.min(3, Math.max(1, Math.ceil(V.draw / 20)));
+    if (V.draw > 0) for (var i = 0; i < k; i++) dpEl.appendChild(cardEl(null, { back: true }));
+    dpEl.appendChild(el('span', { class: 'so-cnt', text: V.draw + (V.draw === 1 ? ' card' : ' cards') }));
+    // the pile played on, its last few cards showing under the top one
+    discEl.innerHTML = '';
+    (V.under || []).forEach(function (c) { discEl.appendChild(tilt(cardEl(c), c.id)); });
+    if (V.top) { var t = tilt(cardEl(V.top), V.top.id); if (land) t.classList.add('land'); discEl.appendChild(t); }
+    if (V.pend > 0) discEl.appendChild(el('span', { class: 'so-pend', text: '+' + V.pend, 'aria-label': V.pend + ' cards to draw' }));
+    paintRing();
+  }
+  function tilt(n, id) { var h = 0; for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 997; n.style.rotate = ((h % 23) - 11) + 'deg'; n.style.translate = ((h % 7) - 3) + 'px ' + ((h % 5) - 2) + 'px'; return n; }
+  function paintRing() {
+    var c = V.color;
+    ringEl.style.setProperty('--cc', c ? CCOL[c] : 'rgba(255,255,255,.6)');
+    ringEl.classList.toggle('ccw', V.dir < 0);
+    var bd = ringEl.querySelector('.so-badge');
+    if (!bd) { bd = el('span', { class: 'so-badge' }); ringEl.appendChild(bd); }
+    var txt = c ? CN[c].charAt(0).toUpperCase() + CN[c].slice(1) : 'Choose a color';
+    if (bd._c !== c) { bd.innerHTML = (c ? shape(c, CCOL[c]) : '') + '<span>' + txt + '</span>'; bd._c = c; bd.classList.remove('pop'); void bd.offsetWidth; bd.classList.add('pop'); }
+    dpEl.classList.toggle('go', canDrawNow());
+    dpEl.classList.toggle('off', !canDrawNow());
+  }
+  function myTurnNow() { return !!S && !busy && S.phase !== 'over' && Core.turn(S) === me() && (NET ? MYSEAT >= 0 : person(me())) && !BLIND; }
+  function canDrawNow() { return myTurnNow() && S.phase === 'play' && !S.pend && !S.four; }
+  // the hand: cards placed by hand (left, top) so they glide when the hand changes
+  function paintHand(o) {
+    o = o || {};
+    var mine = !!S && !BLIND && (NET ? MYSEAT >= 0 : person(me()));
+    var legal = myTurnNow() ? Core.legal(S, me()).map(function (c) { return c.id; }) : [];
+    handEl.className = 'so-hand' + (mine ? ' mine' : ' blind') + (myTurnNow() ? ' myturn' : '');
+    var ids = V.hand.slice(), have = {};
+    [].forEach.call(handEl.querySelectorAll('.oc[data-id]'), function (n) { have[n.dataset.id] = n; });
+    var bk = handEl.querySelectorAll('.oc.back'); [].forEach.call(bk, function (n) { n.remove(); });
+    var keep = {};
+    ids.forEach(function (id) { keep[id] = 1; });
+    Object.keys(have).forEach(function (id) { if (!keep[id]) have[id].remove(); });
+    var em = handEl.querySelector('.so-empty'); if (em) em.remove();
+    if (!ids.length) return;
+    var rows = handEl._rows || 1, cw = handEl._cw || 70, lift = handEl._lift || 10, W = handEl.clientWidth;
+    var per = Math.ceil(ids.length / rows);
+    ids.forEach(function (id, i) {
+      var r = Math.floor(i / per), j = i - r * per, m = Math.min(per, ids.length - r * per);
+      var stepX = m > 1 ? Math.min(cw * 0.94, (W - cw) / (m - 1)) : 0, span = stepX * (m - 1) + cw, x0 = (W - span) / 2;
+      var x = x0 + j * stepX, y = lift + r * cw * 0.62;
+      var ok = legal.indexOf(id) >= 0, isNew = !have[id];
+      var n = have[id];
+      if (BLIND || !mine) {
+        if (n) n.remove();
+        n = cardEl(null, { back: true }); handEl.appendChild(n);
+      } else if (!n) {
+        n = cardEl(CARD[id]);
+        n.addEventListener('click', function () { tapCard(id); });
+        n.setAttribute('role', 'button'); n.tabIndex = 0;
+        n.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tapCard(id); } });
+        handEl.appendChild(n);
+      } else handEl.appendChild(n);   // (in order, so each card lies over the one before it)
+      if (ok) y -= lift;
+      n.classList.toggle('ok', ok); n.classList.toggle('no', mine && myTurnNow() && !ok);
+      n.classList.toggle('drawn', !!(S && S.phase === 'drawn' && S.drawn === id && myTurnNow()));
+      n.style.zIndex = String(i + 1);
+      var tf = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+      if (isNew && o.from && mine) {
+        var hr = handEl.getBoundingClientRect(), f = o.from;
+        n.style.transition = 'none';
+        n.style.transform = 'translate(' + (f.left - hr.left) + 'px,' + (f.top - hr.top) + 'px) scale(' + (f.width / cw) + ')';
+        n.getBoundingClientRect(); n.style.transition = '';
+      }
+      n.style.transform = tf;
+    });
+  }
+  function caption(html) { var c = actEl.querySelector('.so-cap'); if (c) c.innerHTML = html; }
+  function topSay() {
+    var t = V.top; if (!t) return '';
+    var col = V.color ? 'a <b>' + CN[V.color] + '</b> card' : 'any card';
+    if (t.c === 'w') return col;
+    return col + ' or ' + (Core.isNum(t) ? 'a <b>' + t.v + '</b>' : 'a <b>' + Core.VNAME[t.v] + '</b>');
+  }
+  function btn(label, cls, onclick, icon) { return el('button', { type: 'button', class: 'btn ' + cls, html: (icon ? Kit.icon(icon) : '') + '<span>' + label + '</span>', onclick: onclick }); }
+  function paintAct() {
+    actEl.innerHTML = '';
+    if (ending) return;
+    var cap = el('div', { class: 'so-cap' }), btns = el('div', { class: 'so-btns' });
+    actEl.appendChild(cap); actEl.appendChild(btns);
+    if (!S || S.phase === 'over') return;
+    var t = Core.turn(S), m = me();
+    if (myTurnNow()) {
+      if (S.phase === 'pick') { cap.innerHTML = 'The first card is a Wild, so you choose the color.'; btns.appendChild(btn('Choose the color', 'btn-primary', function () { pickColor().then(function (c) { if (c) move({ k: 'pick', c: c }); }); })); }
+      else if (S.four) {
+        cap.innerHTML = 'If ' + fn(S.four.by) + ' held a <b>' + CN[S.four.prev] + '</b> card, a challenge gives ' + fn(S.four.by) + ' the 4 cards. If not, you draw 6.';
+        btns.appendChild(btn('Take ' + S.pend, 'btn-soft', function () { move({ k: 'take' }); }));
+        btns.appendChild(btn('Challenge', 'btn-primary', function () { move({ k: 'challenge' }); }));
+      } else if (S.pend > 0) {
+        cap.innerHTML = Core.legal(S, m).length ? 'Play a Draw card to pass the <b>' + S.pend + '</b> on, or take them.' : 'You have no Draw card to add, so you take <b>' + S.pend + '</b>.';
+        btns.appendChild(btn('Take ' + S.pend, 'btn-primary', function () { move({ k: 'take' }); }));
+      } else if (S.phase === 'drawn') {
+        cap.innerHTML = 'You drew a card you can play. Play it, or keep it.';
+        btns.appendChild(btn('Keep it', 'btn-soft', function () { move({ k: 'keep' }); }));
+      } else {
+        cap.innerHTML = Core.legal(S, m).length ? 'Your turn. Play ' + topSay() + ', or draw a card.' : 'Nothing in your hand matches, so draw a card.';
+        btns.appendChild(btn('Draw a card', Core.legal(S, m).length ? 'btn-soft' : 'btn-primary', function () { tapDraw(); }));
+      }
+    } else if (BLIND) cap.textContent = 'Pass the device to ' + fn(t) + '.';
+    else if (t >= 0) cap.innerHTML = whose(t) + ' turn.';
+    if (canCallNow()) btns.insertBefore(btn('Last card!', 'call', function () { tapCall(); }), btns.firstChild);
+    fitAct();
+  }
+  // sideways the sentence and its buttons share the table's row: the sentence eases down until they fit
+  function fitAct() {
+    var cap = actEl.querySelector('.so-cap'); if (!cap) return;
+    cap.style.fontSize = '';
+    if (!side()) return;
+    var room = midEl.clientHeight, fs = parseFloat(getComputedStyle(cap).fontSize);
+    for (var i = 0; i < 8 && actEl.offsetHeight > room && fs > 11; i++) { fs -= 0.8; cap.style.fontSize = fs + 'px'; }
+  }
+  function canCallNow() { return !!S && !busy && !BLIND && (NET ? MYSEAT >= 0 : person(me())) && Core.canCall(S, me()); }
+
+  // ═══ What a person does ═══════════════════════════════════════════════════════════════════════
+  function tapCard(id) {
+    if (!myTurnNow()) { if (S && !busy && Core.turn(S) !== me()) { nudge(); } return; }
+    var c = CARD[id];
+    if (!Core.canPlay(S, c) || (S.phase === 'drawn' && S.drawn !== id) || S.four && !(S.opts.stack && c.v === 'w4')) {
+      Kit.haptic('error'); Kit.sfx('tap', 0.4);
+      var n = handEl.querySelector('.oc[data-id="' + id + '"]'); if (n) { n.classList.remove('shake'); void n.offsetWidth; n.animate([{ translate: '0 0' }, { translate: '-5px 0' }, { translate: '5px 0' }, { translate: '0 0' }], { duration: 260 }); }
+      return;
+    }
+    Kit.sfx('tap'); Kit.haptic('light');
+    var a = { k: 'play', id: id };
+    var need = [];
+    if (c.c === 'w') need.push(function () { return pickColor().then(function (col) { if (!col) return false; a.c = col; return true; }); });
+    if (S.opts.seven && c.v === '7' && S.hands[me()].length > 1) need.push(function () { return pickSwap().then(function (t) { if (t == null) return false; a.t = t; return true; }); });
+    var chain = Promise.resolve(true);
+    need.forEach(function (f) { chain = chain.then(function (ok) { return ok ? f() : false; }); });
+    chain.then(function (ok) { if (ok) move(a); });
+  }
+  function tapDraw() {
+    if (!canDrawNow()) { if (myTurnNow()) { Kit.haptic('error'); } return; }
+    Kit.sfx('flip'); Kit.haptic('light');
+    move({ k: 'draw' });
+  }
+  function tapCall() {
+    if (!canCallNow()) return;
+    Kit.sfx('pop'); Kit.haptic('medium');
+    move({ k: 'call' });
+  }
+  function tapCatch(t) {
+    if (!canCatchNow() || !Core.vulnerable(S, t)) return;
+    Kit.sfx('clash'); Kit.haptic('medium');
+    move({ k: 'catch', t: t });
+  }
+  function nudge() { Kit.haptic('error'); var o = opEl(Core.turn(S)); if (o) { o.classList.remove('bump'); void o.offsetWidth; o.classList.add('bump'); } }
+
+  // the color chooser: four big buttons, each in its color with its shape
+  var overlay = null;
+  function closeOverlays() { if (overlay) { var o = overlay; overlay = null; o.remove(); } var t = document.querySelector('.so-tally'); if (t) t.remove(); }
+  function pickColor() {
+    return new Promise(function (res) {
+      closeOverlays();
+      var hand = S.hands[me()], cnt = { r: 0, y: 0, g: 0, b: 0 }; hand.forEach(function (c) { if (cnt[c.c] != null) cnt[c.c]++; });
+      var cols = el('div', { class: 'so-cols' });
+      ['r', 'y', 'g', 'b'].forEach(function (c) {
+        var b = el('button', { type: 'button', class: 'so-cb ' + c, style: { '--c1': 'var(--so-' + c + '1)', '--c2': 'var(--so-' + c + '2)' }, html: shape(c, c === 'y' ? '#2b1a02' : '#fff') + '<span>' + CN[c].charAt(0).toUpperCase() + CN[c].slice(1) + '</span><span class="k">' + (cnt[c] === 1 ? 'You hold 1' : 'You hold ' + cnt[c]) + '</span>',
+          onclick: function () { Kit.sfx('pop'); Kit.haptic('medium'); done(c); } });
+        cols.appendChild(b);
+      });
+      var box = el('div', { class: 'so-pick', onclick: function (e) { if (e.target === box) done(null); } }, [el('div', { class: 'pn' }, [el('h3', { text: 'Choose the color' }), cols,
+        el('button', { type: 'button', class: 'btn btn-ghost x', text: 'Cancel', onclick: function () { done(null); } })])]);
+      document.body.appendChild(box); overlay = box;
+      function done(c) { if (overlay === box) overlay = null; box.remove(); res(c); }
+    });
+  }
+  function pickSwap() {
+    return new Promise(function (res) {
+      closeOverlays();
+      var list = el('div', { class: 'so-who' });
+      others().forEach(function (p) {
+        var pl = S.players[p], av = pl.cpu ? el('span', { class: 'avatar', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, '', color(p));
+        list.appendChild(el('button', { type: 'button', onclick: function () { Kit.sfx('pop'); done(p); } }, [av, el('span', { text: fn(p) }), el('b', { text: String(S.hands[p].length) })]));
+      });
+      var box = el('div', { class: 'so-pick', onclick: function (e) { if (e.target === box) done(null); } }, [el('div', { class: 'pn' }, [el('h3', { text: 'Swap hands with whom?' }), list,
+        el('button', { type: 'button', class: 'btn btn-ghost x', text: 'Cancel', onclick: function () { done(null); } })])]);
+      document.body.appendChild(box); overlay = box;
+      function done(p) { if (overlay === box) overlay = null; box.remove(); res(p); }
+    });
+  }
+
+  // a person's move: shown at once, then played out
+  function move(a) {
+    if (!S || busy) return;
+    var p = a.k === 'catch' || a.k === 'call' ? me() : Core.turn(S);
+    if (NET) {
+      NET.act(function (st) { var mv = Core.apply(st, p, a); return mv ? { state: st, mv: mv } : null; });
+      return;
+    }
+    var snap = JSON.stringify(S);
+    var mv = Core.apply(S, p, a);
+    if (!mv) { Kit.haptic('error'); return; }
+    if (a.k !== 'call' && a.k !== 'catch') { undoStack.push(snap); if (undoStack.length > 40) undoStack.shift(); }
+    run(mv);
+  }
+  function run(mv) {
+    busy = true; var t = token;
+    paintAct(); paintRing();
+    step(mv).then(function () {
+      if (t !== token) return;
+      busy = false;
+      save();
+      if (S.phase === 'over') { finish(); return; }
+      next();
+    });
+  }
+
+  // ═══ Playing a move out on the table ═════════════════════════════════════════════════════════════
+  function rectOf(n) { return n ? n.getBoundingClientRect() : null; }
+  function seatRect(p) {
+    if (p === me() && !BLIND) return rectOf(handEl);
+    var o = opEl(p); if (o) return rectOf(o.querySelector('.so-fan') || o);
+    return rectOf(handEl);
+  }
+  function fly(node, from, to, dur, o) {
+    o = o || {};
+    return new Promise(function (res) {
+      if (!from || !to) { res(); return; }
+      var w = to.width, cw = o.cw || w;
+      node.classList.add('fly'); node.style.setProperty('--cw', cw + 'px');
+      node.style.left = to.left + 'px'; node.style.top = to.top + 'px';
+      var sx = from.width / cw;
+      node.style.transform = 'translate(' + (from.left - to.left) + 'px,' + (from.top - to.top) + 'px) scale(' + sx + ') rotate(' + (o.r0 || 0) + 'deg)';
+      document.body.appendChild(node);
+      node.getBoundingClientRect();
+      node.style.transition = 'transform ' + dur + 'ms cubic-bezier(.3,.7,.3,1)';
+      node.style.transform = 'translate(0,0) scale(1) rotate(' + (o.r1 || 0) + 'deg)';
+      setTimeout(function () { node.remove(); res(); }, dur + 20);
+    });
+  }
+  function centerRect(r, w) { var h = w * 1.46; return { left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w, height: h }; }
+  function pw() { return parseFloat(getComputedStyle(app).getPropertyValue('--pw')) || 80; }
+  function say(p, text, cls) {
+    var host = p === me() && !BLIND ? actEl : opEl(p); if (!host) return;
+    var b = el('span', { class: 'so-say' + (cls ? ' ' + cls : ''), text: text });
+    if (host === actEl) { b.style.top = 'auto'; b.style.bottom = '100%'; b.style.translate = '-50% -8px'; }
+    host.appendChild(b); setTimeout(function () { b.remove(); }, ms(1500));
+  }
+  function zap(p) {
+    var host = p === me() && !BLIND ? handEl : opEl(p); if (!host) return;
+    var z = el('div', { class: 'so-zap', html: '<i></i>' + SYM.s });
+    host.appendChild(z); setTimeout(function () { z.remove(); }, 800);
+    Kit.sfx('whoosh');
+  }
+  function bumpSeat(p, cls) { var o = opEl(p); if (!o) return; o.classList.remove(cls || 'bump'); void o.offsetWidth; o.classList.add(cls || 'bump'); }
+  function setCount(p) { var o = opEl(p); if (!o) return; var n = o.querySelector('.n'); if (n) n.textContent = String(V.counts[p]); }
+  async function step(mv) {
+    var t = token, evs = mv.ev || [];
+    for (var i = 0; i < evs.length; i++) {
+      if (t !== token) return;
+      await stepEv(evs[i], mv);
+    }
+    if (t !== token) return;
+    if (S.phase !== 'over') { V = viewOf(S); paintAll(); }
+  }
+  async function stepEv(e, mv) {
+    var t = token, m = me();
+    switch (e.e) {
+      case 'play': {
+        var c = e.card, to = rectOf(discEl), from;
+        var hn = e.p === m && !BLIND ? handEl.querySelector('.oc[data-id="' + c.id + '"]') : null;
+        if (hn) { from = hn.getBoundingClientRect(); hn.remove(); }
+        else from = centerRect(seatRect(e.p) || to, 26);
+        V.hand = V.hand.filter(function (x) { return x !== c.id; });
+        V.counts[e.p]--;
+        if (e.p === m && !BLIND) { fitHand(); paintHand(); } else setCount(e.p);
+        Kit.sfx('slide');
+        var tl = tilt(cardEl(c), c.id), rot = parseFloat(tl.style.rotate) || 0; tl.style.rotate = ''; tl.style.translate = '';
+        await fly(tl, from, to, ms(330), { r0: e.p === m ? 0 : -24, r1: rot });
+        if (t !== token) return;
+        if (V.top) { V.under = (V.under || []).concat([V.top]).slice(-3); }
+        V.top = c; V.color = e.c;
+        paintMid(true);
+        Kit.sfx('flip'); Kit.haptic('light');
+        if (c.c === 'w') { burst(); Kit.sfx('sparkle'); }
+        // a chain of the same number
+        if (e.run >= 4) chainMoment(e.run, c);
+        await wait(ms(c.c === 'w' ? 420 : 180));
+        return;
+      }
+      case 'color': V.color = e.c; paintRing(); burst(); Kit.sfx('sparkle'); await wait(ms(300)); return;
+      case 'draw': {
+        var n = e.n; if (!n) { say(e.p, 'The deck is empty'); await wait(ms(500)); return; }
+        var src = rectOf(dpEl), heavy = e.forced && n >= 4, gap = heavy ? 150 : n > 6 ? 70 : 110;
+        if (e.p === m && !BLIND) {
+          var add = e.ids.slice();
+          for (var k = 0; k < add.length; k++) {
+            if (t !== token) return;
+            V.hand.push(add[k]); V.hand.sort(function (a, b) { return sortKey(CARD[a]) - sortKey(CARD[b]); });
+            V.counts[e.p]++; V.draw = Math.max(0, V.draw - 1);
+            fitHand(); paintHand({ from: src });
+            Kit.sfx('deal', 0.8); if (heavy) Kit.haptic('medium');
+            await wait(ms(gap));
+          }
+          if (heavy) { Kit.sfx('boom', 0.6); Kit.haptic('heavy'); }
+          paintMid();
+          await wait(ms(260));
+        } else {
+          var dest = seatRect(e.p), small = Math.max(18, Math.min(34, dest ? dest.height * 0.9 : 24) / 1.46);
+          for (var q = 0; q < n; q++) {
+            if (t !== token) return;
+            var b = cardEl(null, { back: true });
+            fly(b, centerRect(src, pw()), centerRect(dest, small), ms(heavy ? 420 : 300), { r0: 0, r1: (q % 2 ? 14 : -14) });
+            (function (qq) { setTimeout(function () { if (t !== token) return; V.counts[e.p]++; setCount(e.p); bumpSeat(e.p); Kit.sfx('deal', 0.7); if (heavy) Kit.haptic('light'); }, ms(heavy ? 400 : 280)); })(q);
+            V.draw = Math.max(0, V.draw - 1);
+            await wait(ms(gap));
+          }
+          await wait(ms(heavy ? 380 : 280));
+          if (heavy) { bumpSeat(e.p, 'shake'); Kit.sfx('boom', 0.6); Kit.haptic('heavy'); }
+          paintMid();
+        }
+        if (e.stack >= 2 && mv.stack) stackMoment(e.p, mv.stack);
+        return;
+      }
+      case 'skip': if (!e.quiet) { zap(e.p); await wait(ms(560)); } return;
+      case 'rev': {
+        V.dir = e.dir;
+        ringEl.classList.toggle('ccw', V.dir < 0);
+        ringEl.classList.remove('flip'); void ringEl.offsetWidth; ringEl.classList.add('flip');
+        setTimeout(function () { ringEl.classList.remove('flip'); }, 950);
+        Kit.sfx('whoosh'); Kit.haptic('light');
+        await wait(ms(600)); return;
+      }
+      case 'call': {
+        say(e.p, 'Last card!', 'lit'); Kit.sfx('pop'); Kit.haptic('medium');
+        if (e.p !== m) { var o = opEl(e.p); if (o && !o.querySelector('.so-flag')) o.appendChild(el('span', { class: 'so-flag', text: 'Last card' })); }
+        paintAct();
+        await wait(ms(300)); return;
+      }
+      case 'caught': {
+        say(e.p, (e.by === m && onePerson() ? 'You caught ' : fn(e.by) + ' caught ') + (you(e.p) ? 'you!' : fn(e.p) + '!'), 'bad');
+        Kit.sfx('clash'); Kit.haptic('error');
+        var cb = opEl(e.p) && opEl(e.p).querySelector('.so-catch'); if (cb) cb.remove();
+        if (you(e.by)) Kit.callout('Caught!');
+        await wait(ms(500)); return;
+      }
+      case 'bluff': {
+        if (e.guilty) {
+          Kit.moment({ big: true, title: 'Caught bluffing!', line: (you(e.by) ? 'You' : fn(e.by)) + ' challenged, and ' + (you(e.p) ? 'you' : fn(e.p)) + ' did have a ' + CN[e.prev] || 'matching' + ' card. ' + (you(e.p) ? 'You draw' : fn(e.p) + ' draws') + ' the 4 instead.', icon: 'eye', at: tblBg, ms: ms(2600) });
+          Kit.sfx('clash'); Kit.haptic('success');
+        } else {
+          Kit.moment({ title: 'The challenge failed', line: (you(e.p) ? 'You' : fn(e.p)) + ' had no card of that color, so ' + (you(e.by) ? 'you draw' : fn(e.by) + ' draws') + ' 6.', tone: 'bad', chip: '+6', at: tblBg, ms: ms(2000) });
+          Kit.sfx('bad'); Kit.haptic('error');
+        }
+        await wait(ms(e.guilty ? 1300 : 900)); return;
+      }
+      case 'swap': {
+        await swapFly(e.a, e.b); return;
+      }
+      case 'rotate': {
+        Kit.sfx('whoosh');
+        var ps = []; for (var r = 0; r < N(); r++) ps.push(r);
+        await Promise.all(ps.map(function (a) { var b = (((a + e.dir) % N()) + N()) % N(); return fly(cardEl(null, { back: true }), centerRect(seatRect(a), 22), centerRect(seatRect(b), 22), ms(520)); }));
+        V = viewOf(S); paintAll(); Kit.haptic('medium');
+        say(m, 'Everyone passed their hand along');
+        await wait(ms(500)); return;
+      }
+      case 'turn': V.turn = e.p; return;
+      case 'blocked': await wait(ms(300)); return;
+      case 'out': await handEnd(e, mv); return;
+      case 'over': return;
+      case 'newhand': if (t !== token) return; V = viewOf(S); build(); paintAll(); await dealIn(); return;
+      case 'reshuffle': say(m, 'The pile was shuffled into a new deck'); Kit.sfx('roll'); V.draw = e.n; paintMid(); await wait(ms(500)); return;
+      case 'keep': return;
+      default: return;
+    }
+  }
+  function sortKey(c) { return ({ r: 0, y: 1, g: 2, b: 3, w: 4 })[c.c] * 100 + ({ s: 10, r: 11, d2: 12, w: 13, w4: 14 }[c.v] != null ? { s: 10, r: 11, d2: 12, w: 13, w4: 14 }[c.v] : +c.v); }
+  function burst() { var b = el('i', { class: 'so-burst' }); ringEl.appendChild(b); setTimeout(function () { b.remove(); }, 720); }
+  async function swapFly(a, b) {
+    Kit.sfx('whoosh');
+    var ra = centerRect(seatRect(a), 26), rb = centerRect(seatRect(b), 26);
+    await Promise.all([fly(cardEl(null, { back: true }), ra, rb, ms(520), { r1: 12 }), fly(cardEl(null, { back: true }), rb, ra, ms(520), { r1: -12 })]);
+    V = viewOf(S); paintAll(); Kit.haptic('medium');
+    var line = you(a) ? 'You swapped hands with ' + fn(b) : you(b) ? fn(a) + ' swapped hands with you' : fn(a) + ' swapped hands with ' + fn(b);
+    Kit.moment({ title: line, chip: '7', at: tblBg, ms: ms(1500) });
+    await wait(ms(400));
+  }
+  function chainMoment(n, c) {
+    var words = { 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight' }[n] || String(n);
+    Kit.moment({ big: n >= 5, title: words + ' ' + c.v + 's in a row!', line: n >= 5 ? 'The same number, again and again, around the table.' : 'The same number again.', chip: c.v, at: tblBg, ms: ms(n >= 5 ? 2400 : 1500) });
+    Kit.sfx(n >= 5 ? 'sparkle' : 'good'); Kit.haptic(n >= 5 ? 'success' : 'light');
+  }
+  function stackMoment(p, sk) {
+    var big = sk.k >= 3;
+    Kit.moment({ big: big, title: 'A stack of ' + sk.k + '!', line: (you(p) ? 'You draw ' : fn(p) + ' draws ') + sk.n + ' cards.', chip: '+' + sk.n, tone: you(p) ? 'bad' : null, at: tblBg, ms: ms(big ? 2500 : 1800) });
+    Kit.sfx(you(p) ? 'bad' : 'good'); Kit.haptic(big ? 'success' : 'medium');
+  }
+  // the deal: cards fly from the deck to every seat, and yours turn face up
+  async function dealIn() {
+    var t = token, src = rectOf(dpEl);
+    var hand = V.hand.slice(); V.hand = []; var counts = V.counts.slice(); V.counts = V.counts.map(function () { return 0; });
+    var savedTop = V.top, savedUnder = V.under; V.top = null; V.under = [];
+    paintSeats(); paintMid(); fitHand(); paintHand(); paintAct();
+    Kit.sfx('roll', 0.7);
+    for (var k = 0; k < 7; k++) {
+      for (var q = 1; q <= N(); q++) {
+        if (t !== token) return;
+        var p = (S.dealer + q) % N();
+        if (p === me() && !BLIND) { if (hand[k]) { V.hand.push(hand[k]); V.hand.sort(function (a, b) { return sortKey(CARD[a]) - sortKey(CARD[b]); }); fitHand(); paintHand({ from: src }); } V.counts[p]++; }
+        else { V.counts[p] = Math.min(counts[p], V.counts[p] + 1); fly(cardEl(null, { back: true }), centerRect(src, pw()), centerRect(seatRect(p), 20), ms(260)); (function (pp) { setTimeout(function () { setCount(pp); }, ms(250)); })(p); }
+      }
+      Kit.sfx('deal', 0.6);
+      await wait(ms(N() > 6 ? 70 : 110));
+    }
+    V.counts = counts;
+    await wait(ms(260));
+    if (t !== token) return;
+    V.top = savedTop; V.under = savedUnder;
+    paintMid(true); Kit.sfx('flip');
+    // what the first card does
+    var ev = S.dealEv || [];
+    for (var i = 1; i < ev.length; i++) { if (t !== token) return; await stepEv(ev[i], { ev: ev }); }
+    V = viewOf(S); paintAll();
+  }
+
+  // ── The end of a hand: the moment, then the count ──
+  async function handEnd(e, mv) {
+    var t = token, L = S.last, w = e.p;
+    if (!L) return;
+    actEl.innerHTML = '';   // (the table already holds the next hand: nothing to say about whose turn it is until it's dealt)
+    ending = true;
+    // empty the winner's hand on screen
+    if (w === me() && !BLIND) { V.hand = []; paintHand(); }
+    V.counts[w] = 0; setCount(w);
+    await wait(ms(400));
+    var rare = [];
+    if (L.wild) rare.push({ title: (you(w) ? 'You' : fn(w)) + ' went out with a ' + Core.VNAME[L.last.v] + '!', line: 'A Wild to finish, and nobody could stop it.', icon: 'sparkle' });
+    if (L.big >= 0) rare.push({ title: (you(w) ? 'You' : fn(w)) + ' won while ' + (you(L.big) ? 'you held ' : fn(L.big) + ' held ') + L.bigN + ' cards', line: 'That’s a lot of points left in one hand.', icon: 'trophy' });
+    for (var i = 0; i < rare.length; i++) {
+      if (t !== token) return;
+      Kit.moment({ big: true, title: rare[i].title, line: rare[i].line, icon: rare[i].icon, pts: '+' + L.pts, at: tblBg, ms: ms(2600) });
+      Kit.sfx('win'); Kit.haptic('success'); Kit.confetti();
+      await wait(ms(2700));
+    }
+    if (t !== token) { ending = false; return; }
+    if (!rare.length) {
+      Kit.moment({ title: (you(w) ? 'You go out!' : fn(w) + ' goes out'), line: S.to ? (you(w) ? 'You score' : fn(w) + ' scores') + ' what everyone else is holding.' : null, pts: S.to ? '+' + L.pts : null, at: tblBg, ms: ms(1800) });
+      Kit.sfx(you(w) ? 'good' : 'tap'); if (you(w)) Kit.haptic('success');
+      await wait(ms(1500));
+    }
+    if (t !== token) return;
+    // the count, with every hand shown (a single hand ends on the results card instead)
+    if (S.phase === 'over' && !S.to) { ending = false; return; }
+    await showTally(L);
+    ending = false;
+  }
+  function showTally(L) {
+    return new Promise(function (res) {
+      var t = token, n = N(), w = L.w;
+      var rows = el('div', { class: 'so-rows' });
+      var order = []; for (var q = 0; q < n; q++) order.push((w + q) % n);
+      order.forEach(function (p) {
+        var pl = S.players[p], av = pl.cpu ? el('span', { class: 'avatar av', style: { '--c': color(p) }, html: Kit.icon('bot') }) : Kit.avatar.el(pl.name, 'av', color(p));
+        var cs = el('div', { class: 'cs' }); L.left[p].forEach(function (c) { cs.appendChild(cardEl(c, { cls: 'sm' })); });
+        var pts = Core.handPts(L.left[p]);
+        rows.appendChild(el('div', { class: 'r' + (p === w ? ' w' : '') }, [av, el('span', { class: 'nm', text: p === w ? (you(p) ? 'You went out' : fn(p) + ' went out') : who(p) }), el('b', { class: 'p', text: p === w ? '+' + L.pts : String(pts) }), p === w ? null : cs]));
+      });
+      var race = null;
+      if (S.to) {
+        race = el('div', { class: 'so-race' });
+        var lines = [];
+        order.slice().sort(function (a, b) { return S.scores[b] - S.scores[a]; }).forEach(function (p) {
+          var bar = el('i', { style: { width: Math.min(100, (S.scores[p] - (p === w ? L.pts : 0)) / S.to * 100) + '%', '--rc': color(p) } });
+          lines.push([bar, p]);
+          race.appendChild(el('div', { class: 'ln' }, [el('span', { class: 'nm', text: who(p) }), el('span', { class: 'tr' }, [bar]), el('b', { text: String(S.scores[p]) })]));
+        });
+        setTimeout(function () { lines.forEach(function (x) { x[0].style.width = Math.min(100, S.scores[x[1]] / S.to * 100) + '%'; }); }, 120);
+      }
+      var go = el('button', { type: 'button', class: 'btn btn-primary btn-lg btn-block', text: S.phase === 'over' ? 'See the results' : 'Deal hand ' + S.round, onclick: function () { Kit.sfx('pop'); Kit.haptic('light'); done(); } });
+      var box = el('div', { class: 'so-tally' }, [el('div', { class: 'pn' }, [
+        el('h3', { text: 'Hand ' + L.round + (you(w) ? ': you went out' : ': ' + fn(w) + ' went out') }),
+        S.to ? el('div', { class: 'sub', text: 'First to ' + S.to + ' wins' }) : null,
+        rows, race, go])]);
+      document.body.appendChild(box);
+      Kit.sfx('chip');
+      var auto = NET ? setTimeout(done, 9000) : null;
+      function done() { clearTimeout(auto); if (box.isConnected) box.remove(); if (t === token) res(); }
+    });
+  }
+
+  // ═══ Whose move is next ══════════════════════════════════════════════════════════════════════════
+  var botT = 0, watchT = 0;
+  function next() {
+    clearTimeout(botT);
+    if (!S || NET) return;
+    if (S.phase === 'over') { finish(); return; }
+    var p = Core.turn(S);
+    watchCatch();
+    if (S.players[p].cpu) {
+      paintAct();
+      var t = token;
+      botT = setTimeout(function () {
+        if (t !== token || busy) return;
+        var a = Core.bot(S, p); if (!a) return;
+        var mv = Core.apply(S, p, a); if (!mv) return;
+        run(mv);
+      }, ms(S.phase === 'drawn' ? 500 : 780 + Math.random() * 300));
+      return;
+    }
+    // a person: in pass and play the device goes to them first
+    if (!onePerson() && p !== LME) {
+      BLIND = true; paintAll();
+      Kit.handoff({ name: S.players[p].name, color: color(p), what: 'cards' }).then(function () {
+        if (!S) return;
+        LME = p; S.me = p; BLIND = false; V = viewOf(S); build(); paintAll(); save();
+        Kit.sfx('turn');
+      });
+      return;
+    }
+    LME = p; BLIND = false; paintAll();
+  }
+  // computer players watching for someone who didn't call Last card (between turns too)
+  function watchCatch() {
+    clearTimeout(watchT);
+    if (!S || NET || S.phase === 'over') return;
+    var vul = -1; for (var q = 0; q < N(); q++) if (Core.vulnerable(S, q)) vul = q;
+    if (vul < 0) return;
+    var best = null;
+    S.players.forEach(function (pl, q) { if (!pl.cpu || q === vul) return; var lv = Core.lvOf(S, q), d = lv === 'hard' ? 1300 : lv === 'normal' ? 2300 : 3800; if (!best || d < best.d) best = { q: q, d: d }; });
+    if (!best) return;
+    var t = token;
+    watchT = setTimeout(function () {
+      if (t !== token || busy || !Core.vulnerable(S, vul)) return;
+      if (Math.random() > Core.botCatchChance(Core.lvOf(S, best.q))) return;
+      var mv = Core.apply(S, best.q, { k: 'catch', t: vul }); if (!mv) return;
+      clearTimeout(botT); run(mv);
+    }, ms(best.d));
+  }
+
+  // ── Starting a hand ──
+  function begin(fresh) {
+    token++; busy = true; ending = false; var t = token;
+    closeOverlays();
+    var p0 = Core.turn(S);
+    if (!onePerson()) { var firstHuman = S.players[p0].cpu ? S.players.findIndex(function (x) { return !x.cpu; }) : p0; LME = firstHuman; S.me = LME; BLIND = false; }
+    V = viewOf(S); build(); paintAll(); save();
+    dealIn().then(function () { if (t !== token) return; busy = false; save(); next(); });
+  }
+
+  // ═══ The end of the game ═════════════════════════════════════════════════════════════════════════
+  function recordGame(st, mode, extraHl) {
+    var names = st.players.map(function (p) { return p.name; }), w = st.winner;
+    var seen = {}, hl = st.highlights.filter(function (h) { if (seen[h]) return false; seen[h] = 1; return true; });
+    if (hl.length > 9) hl = hl.slice(-9);
+    var best = st.stats.best; if (best && st.to && best.pts >= 150) hl.push('The biggest hand was ' + names[best.p] + '’s ' + best.pts + ' points in hand ' + best.r);
+    (extraHl || []).forEach(function (x) { hl.push(x); });
+    var stackMax = 0, rev = 0, skip = 0; st.hx.forEach(function (h) { stackMax = Math.max(stackMax, h.st || 0); rev += h.rv || 0; skip += h.sk || 0; });
+    var detail = { names: names, cpu: st.players.map(function (p) { return p.cpu ? 1 : 0; }).join(''), to: st.to, w: w, opts: [st.opts.stack ? 's' : '', st.opts.until ? 'u' : '', st.opts.seven ? '7' : '', st.opts.four === 'free' ? 'f' : ''].join(''),
+      hx: clone(st.hx), stack: stackMax, rev: rev, skip: skip, caught: st.stats.caught.join('.'), calls: st.stats.calls.join('.'), bluffs: st.bluffs.join('.') };
+    for (var i = 0; JSON.stringify(detail).length > 5000 && i < detail.hx.length; i++) { delete detail.hx[i].lp; delete detail.hx[i].ch; }
+    while (JSON.stringify(detail).length > 5000 && detail.hx.length > 1) detail.hx.shift();
+    return Kit.record(HKEY, {
+      started: st.started, mode: mode,
+      players: st.players.map(function (p, i) { return { name: p.name, score: st.to ? st.scores[i] : st.last.left[i].length, cpu: p.cpu }; }), lowWins: !st.to,
+      winner: names[w],
+      rounds: st.to ? { labels: st.rounds.map(function (r, i) { return 'H' + (i + 1); }), scores: st.rounds } : null,
+      highlights: hl, detail: detail,
+      summary: st.to ? null : names[w] + ' went out first'
+    });
+  }
+  function modeName(st) { return st.mode === 'local' ? 'Pass & play' : 'Against the computer'; }
+  function finish() {
+    var st = S, w = st.winner;
+    recordGame(st, modeName(st));
+    var cfg = { players: st.players, to: st.to, stack: st.opts.stack, until: st.opts.until, seven: st.opts.seven, four: st.opts.four, level: st.level };
+    var mine = w === me() && onePerson(), lose = !person(w);
+    var ranks = st.players.map(function (p, i) { return i; });
+    ranks.sort(function (a, b) { return st.to ? st.scores[b] - st.scores[a] : (a === w ? -1 : b === w ? 1 : st.hands[a].length - st.hands[b].length); });
+    clearSave(); S.phase = 'over';
+    var sub = st.to ? (mine ? 'You won by ' : 'Won by ') + (st.scores[w] - st.scores[ranks[1]]) + ' points · ' + st.hx.length + (st.hx.length === 1 ? ' hand' : ' hands') : (mine ? 'You went out first, and everyone else was left holding ' : fn(w) + ' went out first, and everyone else was left holding ') + st.last.pts + ' points of cards';
+    Kit.win({
+      title: mine ? 'You win!' : fn(w) + ' wins!',
+      sub: sub,
+      rank: ranks.map(function (p) { return { name: st.players[p].name, score: st.to ? st.scores[p] : (p === w ? 'Out' : st.last.left[p].length + (st.last.left[p].length === 1 ? ' card' : ' cards')), color: color(p), cpu: st.players[p].cpu, me: p === me() && onePerson() }; }),
+      lose: lose, icon: lose ? 'bot' : 'trophy',
+      again: function () { S = Core.newGame(cfg); S.mode = st.mode; S.me = 0; LME = 0; Kit.gameStart(); undoStack = []; begin(true); },
+      look: 'Look at the table',
+      setup: function () { clearSave(); showSetup(); }
+    });
+  }
+
+  // ── Undo (your last move) ──
+  function undo() {
+    if (busy) return Kit.toast('One moment');
+    if (!undoStack.length) return Kit.toast('Nothing to undo');
+    var back = JSON.parse(undoStack[undoStack.length - 1]);
+    if (back.round !== S.round) return Kit.toast('A finished hand can’t be taken back');
+    if (!onePerson() && Core.turn(back) !== LME) return Kit.toast('Only your own last move can be taken back');
+    undoStack.pop();
+    token++; busy = false; ending = false; clearTimeout(botT); clearTimeout(watchT); closeOverlays();
+    S = back; LME = onePerson() ? LME : Core.turn(S); BLIND = false; V = viewOf(S);
+    Kit.sfx('whoosh'); Kit.toast('Undone'); save(); build(); paintAll(); next();
+  }
+
+  // ── Turning the device: everything glides to the new shape ──
+  var rT = 0;
+  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(relayout, 40); });
+  function relayout() {
+    if (!S || !app.classList.contains('so')) return;
+    var nx = layoutFor();
+    Kit.glide(function () {
+      if (nx !== LAY) { app.classList.remove(LAY); LAY = nx; app.classList.add(LAY); }
+      paintSeats(); paintMid(); fit(); paintHand(); paintAct();
+    });
+  }
+
+  // ═══ Online (turnnet.js) ═════════════════════════════════════════════════════════════════════════
+  // The table holds the whole game, every seat a game seat. Each device draws its own hand face up and everyone
+  // else's as backs. The computer plays any empty seat; Last card and Catch can be pressed by anyone at any time.
+  var NQ = [], NGEN = 0, NETREC = {}, NOVER = null, NST = null;
+  function netOpts() {
+    var g = {}; try { g = JSON.parse(localStorage.getItem('gn_setup_spanishone')) || {}; } catch (e) {}
+    var o = g.options || {};
+    return { seats: Math.max(2, Math.min(10, +g.count || 4)), to: o.to == null ? 500 : +o.to, stack: +o.stack === 1, until: +o.until === 1, seven: +o.seven === 1, four: o.four === 'free' ? 'free' : 'challenge', level: Core.lv(o.level) };
+  }
+  function netStart(players, opts) {
+    var pl = players.map(function (x) { return { name: x.name, cpu: !!x.bot, level: x.bot ? opts.level : undefined }; });
+    var st = Core.newGame({ players: pl, to: opts.to, stack: opts.stack, until: opts.until, seven: opts.seven, four: opts.four, level: opts.level });
+    st.online = 1; return st;
+  }
+  function netTurn(st) { var p = Core.turn(st); return p < 0 ? [] : [p]; }
+  function netFree(st, seat) { if (!st || st.phase === 'over') return false; if (Core.canCall(st, seat)) return true; for (var q = 0; q < st.n; q++) if (q !== seat && Core.vulnerable(st, q)) return true; return false; }
+  function netOver(st) { if (!st || st.phase !== 'over') return null; return { win: [st.winner], text: st.players[st.winner].name + ' wins' }; }
+  function netBot(st, seat) { var a = Core.bot(st, seat); if (!a) return null; var mv = Core.apply(st, seat, a); return mv ? { state: st, mv: mv } : null; }
+  function netShow(net, info) {
+    NET = net;
+    if (info.fresh || info.again) { NQ = []; NGEN++; busy = false; netCloseOver(); }
+    NQ.push({ st: clone(net.state), prev: info.prev ? clone(info.prev) : null, mv: info.mv, info: info });
+    if (net.state && net.state.phase === 'over') netRecord(clone(net.state));
+    if (NQ.length > 6) NQ = NQ.slice(-1).map(function (x) { x.skip = true; return x; });
+    if (!busy) netPump();
+  }
+  function netCloseOver() { if (NOVER) { var o = NOVER; NOVER = null; try { o.close(); } catch (e) {} } }
+  function netPump() {
+    var it = NQ.shift(); if (!it) return;
+    var g = NGEN; busy = true;
+    netStep(it).then(function () { if (g !== NGEN) return; busy = false; if (NQ.length) netPump(); else if (NET && S) { V = viewOf(S); paintAll(); } });
+  }
+  async function netStep(it) {
+    var st = it.st, info = it.info, mv = it.mv;
+    MYSEAT = NET.seat;
+    st.players.forEach(function (pl, p) { var s = NET.seats[p]; if (s) { pl.cpu = !!s.bot; pl.away = !!(!s.bot && !s.me && s.away); } });
+    NST = st; token++;
+    var seat = MYSEAT >= 0 ? MYSEAT : 0; LME = seat;
+    if (!mv || !it.prev || info.fresh || info.again || it.skip) {
+      S = st; V = viewOf(S); build(); paintAll();
+      if (info.again) { Kit.gameStart(); Kit.callout('New game'); }
+      else if (info.fresh) Kit.gameStart();
+      if (st.phase === 'over') { setTimeout(function () { if (NET) netEnd(); }, 400); return; }
+      if (info.fresh || info.again) await dealIn();
+      return;
+    }
+    // play the move out from the table as it was, then show the table as it is
+    var prev = it.prev; prev.players = st.players;
+    S = prev; V = viewOf(S); paintAll();
+    S = st;
+    await step(mv);
+    if (st.phase === 'over') { V = viewOf(st); netEnd(); }
+  }
+  function netRecord(st) {
+    if (!NET || !st || st.phase !== 'over' || NET.seat < 0) return;
+    var key = NET.code + ':' + st.started, done = [];
+    try { done = JSON.parse(localStorage.getItem('spanishone_netrec')) || []; } catch (e) {}
+    if (NETREC[key] || done.indexOf(key) >= 0) return;
+    NETREC[key] = 1;
+    try { localStorage.setItem('spanishone_netrec', JSON.stringify(done.concat([key]).slice(-20))); } catch (e) {}
+    recordGame(st, 'Online', ['Played online at table ' + NET.code]);
+  }
+  function netEnd() {
+    if (!NET || !NST || NST.phase !== 'over') return;
+    var st = NST, w = st.winner;
+    netRecord(st);
+    var res = NET.result, left = res && res.left != null, watching = MYSEAT < 0, won = !watching && MYSEAT === w;
+    var ranks = st.players.map(function (p, i) { return i; }).sort(function (a, b) { return st.to ? st.scores[b] - st.scores[a] : (a === w ? -1 : b === w ? 1 : 0); });
+    netCloseOver(); S = st;
+    NOVER = Kit.win({
+      title: left ? res.text : won ? 'You win!' : fn(w) + ' wins!',
+      sub: st.to ? 'Won by ' + (st.scores[w] - st.scores[ranks[1]]) + ' points' : fn(w) + ' went out first',
+      rank: ranks.map(function (p) { return { name: st.players[p].name, score: st.to ? st.scores[p] : (p === w ? 'Out' : st.last.left[p].length + ' cards'), color: color(p), me: !watching && p === MYSEAT }; }),
+      lose: !won, icon: won ? 'trophy' : 'users',
+      againLabel: left ? 'Back to the lobby' : 'Play again',
+      again: function () { if (left) { TurnNet.leave(); TurnNet.open(); } else NET.again(); },
+      look: 'Look at the table',
+      closeLabel: 'Back to games'
+    });
+  }
+  function netLeave() { NET = null; NST = null; NQ = []; NGEN++; busy = false; token++; netCloseOver(); resumeLocal(true); }
+
+  // ── Boot ──
+  function resumeLocal(back) {
+    var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}
+    if (saved && saved.v === 1 && saved.hands && saved.phase !== 'over') {
+      S = saved; LME = S.me || 0; BLIND = false; Kit.gameStart();
+      if (!onePerson() && S.players[Core.turn(S)] && !S.players[Core.turn(S)].cpu) LME = Core.turn(S);
+      V = viewOf(S); build(); paintAll();
+      if (back) save();
+      next();
+    } else showSetup();
+  }
+  resumeLocal();
+  TurnNet.setup({
+    game: 'spanishone', title: 'Spanish One', min: 2, max: 10, botMs: 1000,
+    seats: function (n, o) { return Math.max(n, Math.min(10, +(o && o.seats) || 4)); },
+    opts: netOpts, start: netStart, turn: netTurn, free: netFree, over: netOver, bot: netBot,
+    show: netShow, leave: netLeave
+  });
+  // (tests)
+  window.__so = { get S() { return S; }, get busy() { return busy; }, get seat() { return me(); }, get net() { return !!NET; }, move: move, core: Core, record: recordGame, set S(v) { S = v; },
+    run: function (mv) { clearTimeout(botT); clearTimeout(watchT); run(mv); }, paint: function () { token++; busy = false; clearTimeout(botT); clearTimeout(watchT); V = viewOf(S); build(); paintAll(); }, next: next };
+})();
+</script>
+</body>
+</html>
