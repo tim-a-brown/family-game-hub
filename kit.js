@@ -2922,7 +2922,7 @@
     function fitFold() {
       if (IN_SHEET || !wrap.isConnected || scOpen || modesOpen) return;
       var se = document.scrollingElement || document.documentElement;
-      for (var i = 0; i < 3 && se.scrollHeight > se.clientHeight + 4; i++) {
+      for (var i = 0; i < 3 && se.scrollHeight > se.clientHeight + 1; i++) {
         if (!fold && (o.options || []).length) { fold = true; wrap.classList.add('k-folded'); renderOptions(); }
         else if (!snug) { snug = true; wrap.classList.add('k-snug'); }
         else if (!foldModes && modesBox) { foldModes = true; renderModes(); }

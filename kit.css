@@ -761,6 +761,8 @@ html.k-insheet .k-opt.k-sc{display:flex;flex-direction:column;gap:8px;}
 .setup.k-snug .k-who-e{width:34px;height:34px;border-radius:11px;}
 .setup.k-snug .k-who-e .ico{width:19px;height:19px;}
 .setup.k-snug .k-who-tx{display:flex;flex-wrap:wrap;align-items:center;gap:5px 10px;}
+/* (beside the title the players take the rest of the row, so their even columns are laid across it, not one under another) */
+.setup.k-snug .k-who-tx > :is(.k-toks,.k-chips){flex:1 1 0;min-width:min(100%,180px);margin-top:0;}
 .setup.k-snug .k-who-t{font-size:1rem;}
 .setup.k-snug .k-chips{margin-top:0;align-items:center;}
 .k-opt.k-sc:not(.k-open) > .seg,.k-opt.k-sc:not(.k-open) > .k-help{display:none;}
@@ -925,6 +927,20 @@ html.k-going .setup{visibility:hidden;}
 /* The start button stays in view at the bottom of the setup, whatever is above it */
 .setup .k-startdock{position:sticky;bottom:0;z-index:6;margin:-10px -16px calc(-16px - var(--safe-b));padding:18px 16px max(calc(var(--safe-b) + 14px), 18px);   /* (18px off the bottom even with no safe area: Safari with its bar tucked away; the sides are set to 17px from the screen's edge in kit.js, dockInset) */
   background:none;}
+/* A phone on its side (short and wide): two columns, so the setup fits without scrolling. The game's options fill the
+   left; the title, who's playing, anything the game adds and the start button stand at the right, where you act. */
+@media (orientation:landscape) and (max-height:520px) and (min-width:640px){
+  .stage:has(> .setup > .k-seats):has(> .setup > .k-opts){max-width:min(980px,100%);}
+  .setup:has(> .k-seats):has(> .k-opts){display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr auto;column-gap:18px;row-gap:10px;align-items:start;}
+  .setup:has(> .k-seats):has(> .k-opts) > *{grid-column:2;grid-row:4;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-column:1;grid-row:1 / span 5;}
+  .setup:has(> .k-seats):has(> .k-opts) > .setup-hero{grid-row:1;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats{grid-row:2;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-joins{grid-row:3;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-startdock{grid-row:5;align-self:end;padding-top:8px;}
+}
+}
+}
 /* a setup taller than the screen: a fade the options scroll under; one that fits has no fade (it drew a band across the sky) */
 html:not(.k-fit) .setup .k-startdock{background:linear-gradient(transparent,color-mix(in srgb,var(--bg) 82%,transparent) 62%);}
 .setup .k-startdock .k-start{margin:0;}
