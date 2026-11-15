@@ -14,18 +14,49 @@
 <script src="../arcade-hi.js"></script>
 <style>
 body{overflow-x:hidden;}
-.g48{max-width:480px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100dvh - var(--safe-t) - 70px);}
-.g48 .tip{margin-bottom:6vh;}
-.g48 > *{width:min(100%, 460px, calc(100dvh - var(--safe-t) - var(--safe-b) - 220px));min-width:min(100%,290px);}
-
+/* The screen: the tray as large as the room allows. Upright, the plates over it and the ladder under it; sideways, the
+   plates, the ladder and the tip in a column at the left and the tray (where the swipes go) at the right. */
+.g48{--bw:min(calc(100vw - 24px), calc(100dvh - var(--bar) - var(--safe-b) - 214px), 720px);
+  margin:0 auto;padding:4px 12px calc(var(--safe-b) + 18px);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:calc(100dvh - var(--bar));box-sizing:border-box;}
+.g48 > *{width:var(--bw);min-width:min(100%,290px);}
+.g48 .tip{margin-top:10px;}
 @media (min-width:700px) and (min-height:700px){
-  .g48{max-width:720px;}
-  .g48 > *{width:min(100%, 640px, calc(100dvh - var(--safe-t) - var(--safe-b) - 230px));}
-  .plaque{padding:8px 12px 9px;}
-  .plaque small{font-size:.74rem;}
-  .plaque b{font-size:1.9rem;}
-  .hud .icon-btn{width:64px;}
-  .tray{padding:12px;border-radius:26px;}
+  .plaque{padding:9px 12px 10px;border-radius:20px;}
+  .plaque small{font-size:.86rem;}
+  .plaque b{font-size:2.2rem;}
+  .hud .icon-btn{width:72px;font-size:.84rem;}
+  .tray{padding:14px;border-radius:28px;}
+  .ladder{padding:10px 12px;gap:10px;}
+  .tip{font-size:.95rem;}
+}
+@media (orientation:portrait) and (max-width:699px) and (min-height:740px){
+  .plaque{padding:10px 10px 11px;border-radius:18px;}
+  .plaque b{font-size:2rem;}
+  .hud{margin-bottom:14px;}
+  .ladder{margin-top:14px;padding:10px;}
+  .ladder .lt{aspect-ratio:1.25;}
+}
+/* Sideways: the plates over the tip at the left, the ladder standing up beside the tray, the tray at the right */
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
+  .g48{--bw:min(calc(100dvh - var(--bar) - var(--safe-b) - 22px), calc(100vw - 400px));--lw:min(calc(var(--bw) / 6 * 1.35), 104px);
+    display:grid;grid-template-columns:minmax(0,1fr) var(--lw) var(--bw);grid-template-rows:auto auto;
+    grid-template-areas:"hud lad tray" "tip lad tray";align-content:center;column-gap:clamp(14px,2.4vw,32px);row-gap:12px;
+    padding:2px calc(14px + var(--corner-x)) calc(var(--safe-b) + 12px);max-width:1180px;}
+  .g48 > *{width:auto;min-width:0;}
+  .g48 .tray{grid-area:tray;width:var(--bw);}
+  .g48 .hud{grid-area:hud;align-self:start;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .g48 .hud .icon-btn{grid-column:1 / -1;width:auto;flex-direction:row;gap:8px;height:48px;font-size:.92rem;}
+  .plaque{padding:clamp(8px,2.2vh,18px) 12px;border-radius:20px;}
+  .plaque small{font-size:clamp(.78rem,2.2vh,1rem);}
+  .plaque b{font-size:clamp(1.7rem,6vh,3.2rem);}
+  .g48 .ladder{grid-area:lad;margin:0;flex-direction:column-reverse;height:var(--bw);width:var(--lw);padding:8px;gap:8px;}
+  .g48 .ladder .lt{width:100%;flex:1;aspect-ratio:auto;}
+  .g48 .tip{grid-area:tip;align-self:end;margin:0;font-size:clamp(.85rem,2.4vh,1.05rem);}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:500px){
+  .g48 .hud .icon-btn{height:44px;}
+  .g48 .ladder{padding:6px;gap:6px;}
 }
 
 /* Score plates: night glass, your score lit gold */
@@ -92,6 +123,17 @@ body{overflow-x:hidden;}
 @keyframes spawn{0%{transform:translateY(-14px) scale(.55);opacity:0;}70%{opacity:1;}100%{transform:translateY(-3px) scale(1);opacity:1;}}
 .tray.bump{animation:bump .16s ease-out;}
 @keyframes bump{50%{transform:translate(var(--bx,0),var(--by,0));}}
+/* The ladder: the big tiles to make, the ones made lit, and a meter filling toward the next */
+.ladder{display:flex;align-items:center;gap:7px;margin:12px 0 0;padding:8px 10px;border-radius:16px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line);box-sizing:border-box;}
+.ladder .lt{flex:1;min-width:0;position:relative;aspect-ratio:1.5;border-radius:9px;display:grid;place-items:center;container-type:size;
+  background:rgba(0,0,0,.28);box-shadow:inset 0 2px 4px rgba(0,0,0,.45);color:var(--text-3);transition:background .3s,box-shadow .3s,transform .3s;}
+.ladder .lt span{font-family:var(--display);font-size:min(46cqh,30cqw);line-height:1;}
+.ladder .lt.done{background:linear-gradient(180deg,var(--a),var(--b));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 2px 0 var(--e);color:var(--k);}
+.ladder .lt.next{box-shadow:inset 0 0 0 1.5px rgba(255,211,77,.55);color:var(--text);}
+.ladder .lt .fill{position:absolute;left:4px;right:4px;bottom:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;}
+.ladder .lt .fill i{display:block;height:100%;width:0;border-radius:2px;background:linear-gradient(90deg,var(--gold-lo,#d9a21b),var(--gold-hi,#ffd34d));transition:width .35s var(--ease);}
+.ladder .lt.got{animation:ladgot .7s var(--ease);}
+@keyframes ladgot{30%{transform:scale(1.22) translateY(-3px);}}
 .tip{margin-top:12px;text-align:center;font-size:.85rem;font-weight:700;color:var(--text-3);display:flex;align-items:center;justify-content:center;gap:6px;}
 .tip .ico{width:16px;height:16px;}
 .over{position:absolute;inset:10px;border-radius:14px;display:grid;place-items:center;background:var(--shade);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);z-index:5;animation:fade .4s both;}
@@ -109,6 +151,7 @@ body{overflow-x:hidden;}
   <div class="tray wood" id="tray">
     <div class="well" id="well"><div class="slots" id="slots"></div><div class="tiles" id="tiles"></div></div>
   </div>
+  <div class="ladder" id="ladder"></div>
   <div class="tip" id="tip"></div>
 </main>
 <script>
@@ -202,7 +245,7 @@ body{overflow-x:hidden;}
   function move(dir) {
     if (!S || S.over || document.querySelector('.k-scrim,.k-win')) return;
     flush();
-    var before = JSON.stringify(S), cells = S.cells.slice(), out = [], moved = false, gained = 0, merges = [], gone = [];
+    var full = !empties().length, before = JSON.stringify(S), cells = S.cells.slice(), out = [], moved = false, gained = 0, merges = [], gone = [];
     for (var i = 0; i < 16; i++) out.push(null);
     lines(dir).forEach(function (line) {
       var k = 0, last = null; // last = target index holding a tile that can still merge
@@ -222,7 +265,7 @@ body{overflow-x:hidden;}
         }
       });
     });
-    if (!moved) { nudge(dir); return; }
+    if (!moved) { nudge(dir); Kit.sfx('tick'); Kit.haptic('light'); return; }
     U = before;
     S.cells = out.map(function (t) { return t ? { id: t.id, v: t.v } : null; });
     S.score += gained; S.moves++;
@@ -233,6 +276,7 @@ body{overflow-x:hidden;}
     Kit.sfx(merges.length ? 'pop' : 'tap'); Kit.haptic(merges.length ? 'medium' : 'tick');
     if (gained) floatAdd(gained);
     afterMove();
+    if (!S.over) moments(full, merges.length);
   }
   function afterMove() {
     var m = maxTile();
@@ -244,6 +288,25 @@ body{overflow-x:hidden;}
     if (!canMove()) { S.over = true; save(); setTimeout(gameOver, 650); }
     else save();
     updHud();
+  }
+  // Uncommon moments: passing your old best, getting out of a full board, four joins in one swipe
+  function moments(full, joins) {
+    S.hl = S.hl || {};
+    var tray = $('tray');
+    if (!S.hl.best && S.best0 > 0 && S.score > S.best0) {
+      S.hl.best = S.moves; save();
+      Kit.moment({ title: 'New best score', line: 'You just passed your old best of ' + S.best0.toLocaleString() + '.', icon: 'trophy', pts: S.score, at: tray, ms: 2600 });
+      Kit.sfx('sparkle'); Kit.haptic('success'); return;
+    }
+    if (full && joins >= 3) {
+      S.hl.jam = S.hl.jam || [S.moves, joins]; save();
+      Kit.moment({ title: 'Out of a jam', line: 'The board was full, and ' + joins + ' joins opened it up again.', icon: 'sparkle', at: tray, ms: 2400 });
+      Kit.sfx('good'); Kit.haptic('success'); return;
+    }
+    if (joins >= 4) {
+      if (!S.hl.four) { S.hl.four = S.moves; save(); }
+      Kit.callout(joins + ' joins at once'); Kit.sfx('sparkle'); Kit.haptic('medium');
+    }
   }
   function nudge(dir) {
     var t = $('tray'), d = 5;
@@ -277,14 +340,18 @@ body{overflow-x:hidden;}
     var m = maxTile(), hl = [];
     if (m >= 4096) hl.push('Reached the ' + m + ' tile');
     else if (m >= 2048) hl.push('Made the 2048 tile on move ' + S.wonAt);
-    else hl.push('Biggest tile: ' + m);
+    else hl.push('The biggest tile was ' + m);
     if (S.score > S.best0 && S.best0 > 0) hl.push('New best score: ' + S.score.toLocaleString() + ' (old best ' + S.best0.toLocaleString() + ')');
     else hl.push('Scored ' + S.score.toLocaleString() + ' points');
     if (S.marks[1024] && m < 2048) hl.push('Built a 1024 on move ' + S.marks[1024]);
+    var H = S.hl || {};
+    if (H.best) hl.push('Passed the old best score on move ' + H.best);
+    if (H.jam) hl.push('Got out of a full board with ' + H.jam[1] + ' joins on move ' + H.jam[0]);
+    if (H.four) hl.push('Made four joins in one swipe on move ' + H.four);
     if (S.won && S.moves > S.wonAt) hl.push('Kept going ' + (S.moves - S.wonAt) + (S.moves - S.wonAt === 1 ? ' move' : ' moves') + ' past 2048');
     hl.push(S.moves + ' moves' + (S.undos ? ', ' + S.undos + (S.undos === 1 ? ' undo' : ' undos') : ', no undos'));
     if (ended === 'quit') hl.push('Started a new game before the board filled up');
-    return hl.slice(0, 6);
+    return hl.slice(0, 8);
   }
   function record(ended) {
     var m = maxTile();
@@ -343,7 +410,7 @@ body{overflow-x:hidden;}
   function pos(n, i) { n.style.setProperty('--x', i % 4); n.style.setProperty('--y', Math.floor(i / 4)); }
   function setVal(n, v) { var f = n.firstChild; f.className = 'face ' + vcls(v); f.firstChild.textContent = String(v); }
   function paint(instant) {
-    var box = $('tiles'); box.innerHTML = ''; els = {};
+    var box = $('tiles'); box.innerHTML = ''; els = {}; shown = null; ladTop = 0;
     S.cells.forEach(function (t, i) { if (t) tileEl(t, i); });
     updHud();
   }
@@ -368,8 +435,30 @@ body{overflow-x:hidden;}
     busy.t = setTimeout(function () { if (busy) busy(); }, 125);
   }
   function flush() { if (busy) { clearTimeout(busy.t); busy(); } }
+  var shown = null, countT = 0;
+  function countTo(v) {
+    var n = $('score'), from = shown == null ? v : shown, t0 = performance.now(); shown = v; cancelAnimationFrame(countT);
+    if (from === v || matchMedia('(prefers-reduced-motion: reduce)').matches) { n.textContent = v.toLocaleString(); return; }
+    (function step(t) { var k = Math.min(1, (t - t0) / 320); n.textContent = Math.round(from + (v - from) * (1 - Math.pow(1 - k, 3))).toLocaleString(); if (k < 1) countT = requestAnimationFrame(step); })(t0);
+  }
+  // The ladder: the big tiles in reach, the ones made lit, a meter on the next filling as the board adds up
+  var ladTop = 0;
+  function ladder() {
+    var m = maxTile(), sum = 0, next = 64; S.cells.forEach(function (c) { if (c) sum += c.v; });
+    while (next <= m) next *= 2;
+    var end = Math.max(2048, next), vals = []; for (var v = end; vals.length < 6; v /= 2) vals.unshift(v);
+    var box = $('ladder'), key = vals.join();
+    if (box.dataset.k !== key) { box.dataset.k = key; box.innerHTML = ''; vals.forEach(function (v) { box.appendChild(el('div', { class: 'lt ' + vcls(v), 'data-v': v }, [el('span', { text: String(v) }), el('div', { class: 'fill' }, [el('i')])])); }); }
+    box.querySelectorAll('.lt').forEach(function (n) {
+      var v = +n.dataset.v, done = m >= v, was = n.classList.contains('done');
+      n.classList.toggle('done', done); n.classList.toggle('next', v === next);
+      if (done && !was && ladTop && v > ladTop) { n.classList.remove('got'); void n.offsetWidth; n.classList.add('got'); }
+      n.querySelector('.fill i').style.width = v === next ? Math.min(100, Math.round(100 * sum / v)) + '%' : '0';
+    });
+    ladTop = m;
+  }
   function updHud() {
-    $('score').textContent = S.score.toLocaleString();
+    countTo(S.score); ladder();
     $('best').textContent = Math.max(S.score, S.best0, boardBest()).toLocaleString();
     $('undoBtn').disabled = !U;
   }
@@ -408,6 +497,23 @@ body{overflow-x:hidden;}
   $('undoBtn').addEventListener('click', undo);
   $('tip').innerHTML = (matchMedia('(pointer:coarse)').matches ? Kit.icon('hand') + '<span>Swipe the tray to slide the tiles</span>' : '<span>Use the arrow keys or drag the tray</span>');
   var slots = $('slots'); for (var i = 0; i < 16; i++) slots.appendChild(document.createElement('i'));
+
+  // Turning the device: the plates, the tray and the ladder glide from where they were to the new layout
+  (function () {
+    var sel = ['.hud', '#tray', '#ladder', '#tip'], last = null, lw = innerWidth;
+    function snap() { last = sel.map(function (q) { var e = document.querySelector(q); return [e, e.getBoundingClientRect()]; }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (!last || innerWidth === lw || matchMedia('(prefers-reduced-motion: reduce)').matches) { snap(); return; }
+      last.forEach(function (a) {
+        var e = a[0], r = a[1], n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    requestAnimationFrame(snap);
+  })();
 
   // Test hook: set the board from 16 numbers (0 = empty)
   window.__g2048 = {

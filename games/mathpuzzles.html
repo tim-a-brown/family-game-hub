@@ -110,6 +110,32 @@ body{overflow:hidden;}
   .ans .eq{font-size:2.5rem;}
   .ans .box{min-width:200px;height:72px;font-size:3.2rem;}
   .note{font-size:1.3rem;}
+  .mp{max-width:720px;}
+  .pad{gap:9px;}
+  .pad button{height:70px;font-size:1.9rem;border-radius:18px;}
+  .pad .fn{font-size:1.35rem;}.pad .go{font-size:1.35rem;}
+  .strip .pill{height:42px;font-size:1rem;}
+}
+/* Sideways: the chalkboard (what you read) at the left as tall as the screen; the score pills and the number pad
+   (where the taps go) at the right */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px){
+  .mp{max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) clamp(270px,38vw,440px);grid-template-rows:auto minmax(0,1fr);
+    column-gap:clamp(14px,2.4vw,26px);row-gap:10px;padding:0 calc(12px + var(--corner-x)) max(calc(var(--safe-b) + 8px), 18px);box-sizing:border-box;}
+  .mp > .strip{grid-column:2;grid-row:1;}
+  .mp > .board{grid-column:1;grid-row:1 / 3;}
+  .mp > .pad{grid-column:2;grid-row:2;align-self:end;grid-auto-rows:1fr;height:min(100%,380px);padding:0;}
+  .mp > .pad button{height:auto;}
+  .mp > .strip .pill{padding:0 8px;}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-height:600px){
+  .mp > .pad{height:min(100%,560px);}
+}
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:520px){
+  .board{padding:7px 7px 0;border-radius:16px;}
+  .tray{height:42px;}
+  .q{gap:8px;padding:12px 12px 4px;}
+  .ans{min-height:58px;padding-bottom:6px;}
+  .ans .box{height:46px;font-size:2.1rem;}
 }
 </style>
 </head>
@@ -556,6 +582,8 @@ var GENERATORS={
     else if (S.mode === 'timed') hl.push(nm + ' solved ' + S.solved + ' in ' + (S.secs / 60) + (S.secs === 60 ? ' minute' : ' minutes'));
     else hl.push(nm + ' solved ' + S.solved + ' of ' + n + ' puzzles');
     if (prevBest >= 0 && S.score > prevBest) hl.push('New best score at this level (old best ' + prevBest + ')');
+    var flawless = S.mode === 'ten' && n >= 10 && right === n && !S.hints;   // ten for ten with no hints: a perfect worksheet
+    if (flawless) hl.push(nm + ' got every puzzle right with no hints');
     else if (!same.length) hl.push('First ' + MODES[S.mode].toLowerCase() + ' at ' + lvName(S.level));
     if (S.best >= 3) hl.push('Longest streak: ' + S.best + ' in a row');
     if (S.fast && S.fast < 8) hl.push('Fastest answer: ' + S.fast + ' seconds (' + S.fastQ.slice(0, 40) + ')');
@@ -584,10 +612,30 @@ var GENERATORS={
       var card = document.querySelector('.k-win .card .sub');
       if (card) card.after(el('div', { class: 'res', html: '<div><b>' + S.score + '</b><span>Points</span></div><div><b>' + right + '/' + n + '</b><span>Right</span></div><div><b>' + S.best + '</b><span>Streak</span></div>' }));
     }
+    // the rare finishes have their moment on the board before the results
+    var mo = flawless ? { title: 'A perfect worksheet', line: 'Ten puzzles, ten right answers, and no hints.', icon: 'star', big: true }
+      : prevBest >= 0 && S.score > prevBest ? { title: 'New best score', line: 'The old best at ' + lvName(S.level) + ' was ' + prevBest + '.', icon: 'trophy', pts: S.score } : null;
+    if (mo) { Kit.moment({ title: mo.title, line: mo.line, icon: mo.icon, pts: mo.pts, big: mo.big, at: mo.big ? null : document.querySelector('.board'), ms: 2200 }); Kit.sfx(mo.big ? 'win' : 'sparkle'); Kit.haptic('success'); if (mo.big) Kit.confetti(); }
     // Beat the clock rounds go on the level's high score board
-    ArcadeHi.check(timed ? key : '', timed ? S.score : 0, function () { hiBest = null; paintStrip(); showWin(); });
+    setTimeout(function () { ArcadeHi.check(timed ? key : '', timed ? S.score : 0, function () { hiBest = null; paintStrip(); showWin(); }); }, mo ? 2300 : 0);
     void tried;
   }
+
+  // Turning the device: the pills, the chalkboard and the pad glide from where they were to the new layout
+  (function (sel) {
+    var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+        var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    setInterval(function () { if (!document.hidden) snap(); }, 400);
+  })('.mp > .strip, .mp > .board, .mp > .pad');
 
   // ── Screen ────────────────────────────────────────────────────────────────
   var stripEl, slateEl, qEl, ansEl, noteEl, padEl, goBtn, trayEl, hintBtn, skipBtn, tbar, built = false;

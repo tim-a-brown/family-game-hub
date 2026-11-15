@@ -379,6 +379,7 @@ body{overflow-x:hidden;}
   .hints{margin-top:8px;gap:6px;}
   .hint{font-size:1rem;padding:7px 10px;}
   .desk{padding:12px 10px 12px;gap:10px;}
+  .tools{padding:0 5px;}   /* (clear of the screen's rounded corners) */
   .tools .tool{min-height:46px;flex-direction:row;gap:7px;font-size:.84rem;white-space:nowrap;}
   .tools .tool .ico{width:19px;height:19px;}
   .tools .tool .pips{position:static;}
@@ -412,13 +413,6 @@ body{overflow-x:hidden;}
   .cell .s{height:26px;font-size:1.15rem;}
   .words{gap:8px 12px;}
 }
-/* Landscape tablets and computers: what you look at (the case, the picture, the decoder) on the left, where you
-   answer (the lock, the paper and keys) on the right */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .play .clue,.play .drawer{grid-column:1;}
-  .play .file{grid-row:auto;}
-  .play .keysdesk{grid-column:2;}
-}
 
 /* Tablet portrait */
 @media (min-width:700px){
@@ -432,12 +426,45 @@ body{overflow-x:hidden;}
   .desk > .padlock,.desk > .brief,.desk > .cryptex,.desk > .kp{zoom:1.22;}
   .desk > .safe{zoom:1.12;}
 }
-/* Landscape tablets and computers: the file on the left, the desk on the right */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .cc{max-width:1180px;}
-  .play{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 26px;align-items:start;}
-  .play .file{grid-column:1;}
-  .play .desk,.play .tools,.play .solved{grid-column:2;}
+/* Upright the two columns are one: the case, the picture, then (a coded note) the paper, the decoder and the keys,
+   or (a lock) the decoder and the lock, then the tools */
+.lcol,.rcol{display:contents;}
+.play .file{order:0;}.play .drawer{order:1;}.play .clue{order:2;}.play .desk{order:3;}.play .keysdesk{order:4;}.play .tools{order:5;}.play .solved{order:6;}
+.play.msg .desk{order:2;}.play.msg .clue{order:3;}
+/* Sideways (phone, tablet, computer): what you look at (the case, the picture, the decoder) on the left, where you
+   answer (the lock, the paper and keys, the tools) on the right, each column as tall as the screen */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px){
+  .cc{max-width:1180px;padding-left:calc(12px + var(--corner-x));padding-right:calc(12px + var(--corner-x));}
+  .play{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 clamp(16px,2.6vw,28px);align-items:start;
+    height:calc(100dvh - var(--bar) - var(--safe-b) - 20px);padding-top:0;}
+  .lcol{display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto;padding:12px 4px 4px;margin:-4px -4px 0;scrollbar-width:none;}
+  .lcol::-webkit-scrollbar{display:none;}
+  .rcol{display:flex;flex-direction:column;gap:12px;align-self:center;zoom:var(--rz,1);}
+  .play .tools{width:100%;}
+}
+/* Phones sideways: the case file and the tools as compact as upright */
+@media (orientation:landscape) and (min-aspect-ratio:5/4) and (max-height:520px){
+  .file{padding:10px 12px 11px;margin-top:8px;}
+  .ft{font-size:1.3rem;margin:3px 0 2px;}
+  .fs{font-size:.84rem;line-height:1.32;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;}
+  .fs.open{display:block;-webkit-line-clamp:unset;}
+  .hint{font-size:1rem;padding:7px 10px;}
+  .desk{padding:10px 10px 12px;gap:10px;}
+  .desk > .padlock,.desk > .brief,.desk > .cryptex,.desk > .kp,.desk > .safe{zoom:1;}
+  .tools .tool{min-height:44px;flex-direction:row;gap:7px;font-size:.84rem;white-space:nowrap;}
+  .tools .tool .ico{width:19px;height:19px;}
+  .tools .tool .pips{position:static;}
+  /* the decoder takes the height left in the reading column (fitPlay's --clueH), the wheel beside its buttons */
+  .clue .cpad{max-height:var(--clueH,none);display:flex;}
+  .clue .cpad:has(.wheelpad){height:var(--clueH,auto);}
+  .clue .cpad .pad{flex:1;min-height:0;overflow:auto;padding:10px;}
+  .clue .cpad .pad > h4{display:none;}
+  .clue .wheelpad{flex-direction:row;justify-content:center;gap:10px;height:100%;}
+  .clue .cwheel{width:min(calc(var(--clueH,280px) - 20px),40vw);flex:none;align-self:center;}
+  .clue .wheelrow{flex-direction:column;gap:8px;}
+  .clue .wheelrow .k{min-width:78px;font-size:.95rem;}
+  .clue .nudge{width:40px;height:40px;}
+  .play.haspad .fs{-webkit-line-clamp:1;}
 }
 </style>
 </head>
@@ -2066,8 +2093,13 @@ body{overflow-x:hidden;}
     file.appendChild(fs);
     dom.hints = el('div', { class: 'hints' });
     file.appendChild(dom.hints);
-    play.appendChild(file);
-    dom.play = play; dom.file = file;
+    // two columns: what you read (the case, the picture, the decoder) and where you answer (the lock or the paper and
+    // keys, the tools). Upright they are one column (display: contents, put in order by CSS); sideways they stand side by side.
+    var lcol = el('div', { class: 'lcol' }), rcol = el('div', { class: 'rcol' });
+    play.appendChild(lcol); play.appendChild(rcol);
+    lcol.appendChild(file);
+    dom.play = play; dom.file = file; dom.lcol = lcol; dom.rcol = rcol;
+    if (C.dev.t === 'msg') play.classList.add('msg');
     // The picture: a drawer under the case note, opened and closed by its tab, so it can sit in view while you work
     // the decoder. The decoder has the board below (sized to the room left on screen by fitPlay).
     var ph = el('div', { class: 'photo' + (fresh ? ' in' : ''), role: 'button', 'aria-label': 'Look closer at the picture', html: '<span class="clip"></span>' + sceneSvg(C) + '<span class="zoom">' + Kit.icon('search') + '</span>' });
@@ -2075,7 +2107,7 @@ body{overflow-x:hidden;}
     dom.picBox = el('div', { class: 'picbox' }, [ph]);
     dom.picTab = el('button', { type: 'button', class: 'pictab', onclick: function () { S.pad.pic = !picOpen(); Kit.sfx(S.pad.pic ? 'pop' : 'tap', 0.6); Kit.haptic('light'); save(); paintPic(true); } });
     dom.drawer = el('div', { class: 'drawer' }, [dom.picBox, dom.picTab]);
-    play.appendChild(dom.drawer);
+    lcol.appendChild(dom.drawer);
     dom.padHost = el('div', { class: 'cpad' });
     dom.clue = el('div', { class: 'clue' }, [dom.padHost]);
     dom.desk = el('div', { class: 'desk wood' + (C.dev.t === 'msg' ? ' typer' : '') });
@@ -2083,10 +2115,10 @@ body{overflow-x:hidden;}
     if (C.dev.t === 'msg') {
       // a coded note: the paper, then the decoder, then the typewriter keys (read a letter, look it up, type it)
       dom.keys = el('div', { class: 'desk wood typer keysdesk' });
-      play.appendChild(dom.desk); play.appendChild(dom.clue); play.appendChild(dom.keys);
-    } else { play.appendChild(dom.clue); play.appendChild(dom.desk); }
+      lcol.appendChild(dom.clue); rcol.appendChild(dom.desk); rcol.appendChild(dom.keys);
+    } else { lcol.appendChild(dom.clue); rcol.appendChild(dom.desk); }
     dom.tools = el('div', { class: 'tools' });
-    play.appendChild(dom.tools);
+    rcol.appendChild(dom.tools);
     app.appendChild(play);
     buildDesk();
     for (var i = 0; i < S.hints; i++) addHint(i, false);
@@ -2098,7 +2130,7 @@ body{overflow-x:hidden;}
   }
   // the picture drawer: open or shut (remembered per case). Shut by default only on a phone with a decoder to work,
   // where the room goes to the decoder; the tab carries a little thumbnail so it's clear there's a picture inside
-  function picOpen() { if (S.pad.pic != null) return !!S.pad.pic; return !(PAD && window.matchMedia('(max-width:699px)').matches); }
+  function picOpen() { if (S.pad.pic != null) return !!S.pad.pic; return !(PAD && !window.matchMedia('(orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:900px) and (min-height:521px)').matches); }
   function paintPic(anim) {
     if (!dom.picTab) return;
     var on = picOpen();
@@ -2115,21 +2147,54 @@ body{overflow-x:hidden;}
   function fitPlay() {
     if (!dom.clue || view !== 'play' || !dom.play.isConnected) return;
     var P = dom.play.style;
-    if (S.done) { P.removeProperty('--clueH'); P.removeProperty('--picH'); return; }
+    dom.clue.style.zoom = '';
+    if (S.done) { P.removeProperty('--clueH'); P.removeProperty('--picH'); P.removeProperty('--rz'); return; }
+    if (window.matchMedia(SIDE).matches) {
+      // sideways: the answer column shrinks to the screen's height if it must; the reading column gives the picture
+      // what is left after the case and the decoder, and scrolls only when even a small picture can't fit
+      P.removeProperty('--rz'); P.removeProperty('--clueH');
+      var avail = window.innerHeight - dom.play.getBoundingClientRect().top - window.scrollY - (parseFloat(getComputedStyle(app).paddingBottom) || 18);
+      var rh = dom.rcol.scrollHeight;
+      if (rh > avail) P.setProperty('--rz', Math.max(0.6, avail / rh).toFixed(3));
+      if (!picOpen()) {
+        P.removeProperty('--picH');
+        if (PAD && window.innerHeight <= 520) {
+          var cRoom = avail - dom.file.offsetHeight - dom.picTab.offsetHeight - 34;
+          P.setProperty('--clueH', Math.round(Math.max(140, Math.min(330, cRoom))) + 'px');
+          var cOver = dom.lcol.scrollHeight - dom.lcol.clientHeight; if (cOver > 0) cRoom -= cOver;
+          P.setProperty('--clueH', Math.round(Math.max(140, Math.min(330, cRoom))) + 'px');
+          return;
+        }
+        var lo0 = dom.lcol.scrollHeight - dom.lcol.clientHeight;
+        if (lo0 > 0 && PAD && dom.clue.offsetHeight) dom.clue.style.zoom = Math.max(0.55, 1 - lo0 / dom.clue.offsetHeight).toFixed(3);
+        return;
+      }
+      var lk = [dom.file, dom.clue].filter(function (n) { return n && n.offsetParent !== null; });
+      var usedS = lk.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + lk.length * 12 + dom.picTab.offsetHeight + 46;
+      P.setProperty('--picH', Math.round(Math.max(110, Math.min(420, avail - usedS))) + 'px');
+      var lo = dom.lcol.scrollHeight - dom.lcol.clientHeight;   // still a little over: the picture gives it back
+      if (lo > 0) P.setProperty('--picH', Math.round(Math.max(100, Math.min(420, avail - usedS) - lo)) + 'px');
+      lo = dom.lcol.scrollHeight - dom.lcol.clientHeight;          // and then the decoder shrinks a little
+      if (lo > 0 && PAD && dom.clue.offsetHeight) dom.clue.style.zoom = Math.max(0.62, 1 - lo / dom.clue.offsetHeight).toFixed(3);
+      return;
+    }
+    P.removeProperty('--rz');
     if (!window.matchMedia('(max-width:699px)').matches) {
+      // a tablet upright: the picture takes what is left once everything else is drawn, so nothing scrolls
       P.removeProperty('--clueH');
-      // landscape tablet: the case, the picture and the decoder share the left column, so the picture takes what's left
-      if (!window.matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:560px)').matches || !picOpen()) { P.removeProperty('--picH'); return; }
-      var col = [dom.file, dom.clue].filter(function (n) { return n && n.offsetParent !== null; });
-      var usedL = col.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + col.length * 18 + (dom.picTab.offsetHeight + 20);
-      var topL = dom.play.getBoundingClientRect().top + window.scrollY;
-      P.setProperty('--picH', Math.round(Math.max(120, Math.min(420, window.innerHeight - topL - usedL - 30))) + 'px');
+      if (!picOpen()) { P.removeProperty('--picH'); clueGive(); return; }
+      P.setProperty('--picH', '420px');
+      var tk = [].concat([].slice.call(dom.lcol.children), [].slice.call(dom.rcol.children)).filter(function (n) { return n.offsetParent !== null && n !== dom.drawer; });
+      var tUsed = tk.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + tk.length * 14 + dom.picTab.offsetHeight + 44;
+      var tTop = dom.play.getBoundingClientRect().top + window.scrollY, tPad = parseFloat(getComputedStyle(app).paddingBottom) || 18;
+      P.setProperty('--picH', Math.round(Math.max(140, Math.min(560, window.innerHeight - tTop - tUsed - tPad))) + 'px');
+      overGive(P, '--picH', 140); clueGive();
       return;
     }
     // with a decoder, the picture is a compact strip and the decoder gets the room; without one, the picture does
     var flex = PAD ? dom.clue : (picOpen() ? dom.picBox : null);
     if (PAD) P.setProperty('--picH', '112px');
-    var kids = Array.prototype.filter.call(dom.play.children, function (n) { return n.offsetParent !== null; });
+    var kids = [].concat([].slice.call(dom.lcol.children), [].slice.call(dom.rcol.children)).filter(function (n) { return n.offsetParent !== null; });
     var used = kids.reduce(function (a, n) { return a + n.offsetHeight; }, 0) + (kids.length - 1) * 12 - (flex ? flex.offsetHeight : 0);
     var top = dom.play.getBoundingClientRect().top + window.scrollY, padB = parseFloat(getComputedStyle(app).paddingBottom) || 18;
     var room = window.innerHeight - top - used - padB - 4;
@@ -2138,8 +2203,35 @@ body{overflow-x:hidden;}
     }
     if (PAD) P.setProperty('--clueH', Math.round(Math.max(170, Math.min(330, room))) + 'px');
     else if (flex) P.setProperty('--picH', Math.round(Math.max(110, Math.min(320, room - 18))) + 'px');
+    if (PAD) overGive(P, '--clueH', 170); else if (flex) overGive(P, '--picH', 110);
   }
-  window.addEventListener('resize', function () { clearTimeout(fitPlay.t); fitPlay.t = setTimeout(fitPlay, 120); });
+  // a tablet upright: a decoder that still leaves the page too tall is drawn a little smaller
+  function clueGive() {
+    var over = document.documentElement.scrollHeight - window.innerHeight;
+    if (over > 0 && PAD && dom.clue.offsetHeight) dom.clue.style.zoom = Math.max(0.6, 1 - over / dom.clue.offsetHeight).toFixed(3);
+  }
+  // after the sums: if the page still runs past the screen by a few pixels, the stretchy part gives them back
+  function overGive(P, v, min) {
+    var over = document.documentElement.scrollHeight - window.innerHeight, cur = parseFloat(P.getPropertyValue(v));
+    if (over > 0 && over < 200 && cur) P.setProperty(v, Math.round(Math.max(min, cur - over)) + 'px');
+  }
+  var SIDE = '(orientation:landscape) and (min-aspect-ratio:5/4) and (min-width:640px)';
+  // Turning the device: the case, the picture, the decoder, the lock and the tools glide from where they were to the new layout
+  (function (sel) {
+    var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+        var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    setInterval(function () { if (!document.hidden) snap(); }, 400);
+  })('.play .file, .play .drawer, .play .clue, .play .desk, .play .tools, .play .solved');
+  window.addEventListener('resize', function () { fitPlay(); clearTimeout(fitPlay.t); fitPlay.t = setTimeout(fitPlay, 120); });
   function buildDesk() {
     if (D && D.destroy) D.destroy();
     dom.desk.innerHTML = ''; dom.padHost.innerHTML = '';
@@ -2250,11 +2342,28 @@ body{overflow-x:hidden;}
   function solved() {
     S.done = true; stopClock(); Kit.onBack = null;
     D.open(false); paintTools();
-    var prev = C.gen ? null : solvedMap()[C.id];
+    var prev = C.gen ? null : solvedMap()[C.id], before = C.gen ? null : solvedMap();
+    // uncommon moments: a whole level's cases closed, a case closed faster than before, a hard case cracked cleanly
+    var mo = null;
+    if (!C.gen && !before[C.id]) {
+      var lvAll = DATA.cases.filter(function (c) { return c.lv === C.lv; });
+      if (lvAll.every(function (c) { return c.id === C.id || before[c.id]; })) mo = { t: 'level', line: 'Every one of the ' + lvAll.length + ' ' + LV[C.lv].toLowerCase() + ' cases is closed.' };
+    }
+    if (!mo && prev && S.time < prev.secs) mo = { t: 'best', line: 'You closed it faster than your old best of ' + fmt(prev.secs) + '.' };
+    if (!mo && C.lv !== 'easy' && !S.tries && !S.hints) mo = { t: 'clean', line: 'A ' + LV[C.lv].toLowerCase() + ' code, right on the first try with no hints.' };
+    S.mo = mo ? mo.t : '';
     record(false);
     clearSave();
     var mine = S;
-    setTimeout(function () { if (S !== mine || view !== 'play') return; Kit.callout(C.dev.t === 'msg' ? 'Decoded!' : 'Open!'); showSolved(true); }, 900);
+    setTimeout(function () {
+      if (S !== mine || view !== 'play') return;
+      if (mo) {
+        var at = dom.desk && dom.desk.offsetParent ? dom.desk : null;
+        if (mo.t === 'level') { Kit.moment({ title: LV[C.lv] + ' cases all closed', line: mo.line, icon: 'trophy', big: true, ms: 3200 }); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti(); }
+        else { Kit.moment({ title: mo.t === 'best' ? 'New best time' : 'Clean crack', line: mo.line, icon: mo.t === 'best' ? 'clock' : 'key', pts: mo.t === 'best' ? fmt(S.time) : undefined, at: at, ms: 2400 }); Kit.sfx('sparkle'); Kit.haptic('success'); }
+      } else Kit.callout(C.dev.t === 'msg' ? 'Decoded!' : 'Open!');
+      showSolved(true);
+    }, 900);
     setTimeout(function () {
       if (S !== mine || view !== 'play') return;
       var nx = nextUp();
@@ -2304,7 +2413,7 @@ body{overflow-x:hidden;}
       ])
     ]);
     if (!fresh) box.style.animation = 'none';
-    dom.solved = box; dom.play.appendChild(box);
+    dom.solved = box; dom.rcol.appendChild(box);
     if (dom.keys) dom.keys.hidden = true;
     fitPlay();
     if (fresh) setTimeout(function () { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100);
@@ -2316,6 +2425,9 @@ body{overflow-x:hidden;}
     hl.push((revealed ? 'Opened ' : 'Solved ') + (C.gen ? 'a ' + LV[C.lv].toLowerCase() + ' ' + kind.toLowerCase() : 'Case ' + caseNo(C) + ', ' + C.title) + ' in ' + fmt(S.time));
     hl.push(S.tries ? plural(S.tries, 'wrong try', 'wrong tries') : 'Right on the first try');
     hl.push(S.hints ? plural(S.hints, 'hint') + ' used' : 'No hints');
+    if (S.mo === 'level') hl.push('Closed the last of the ' + LV[C.lv].toLowerCase() + ' cases');
+    if (S.mo === 'best') hl.push('Beat the old best time on this case');
+    if (S.mo === 'clean') hl.push('Cracked a ' + LV[C.lv].toLowerCase() + ' code on the first try with no hints');
     if (C.daily) hl.push('Daily code for ' + new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }));
     Kit.record(HKEY, {
       started: S.started, mode: label(), players: [{ name: S.who || 'You' }], winner: revealed ? null : (S.who || 'You'),

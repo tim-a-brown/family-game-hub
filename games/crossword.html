@@ -29,7 +29,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .top .btn{min-height:40px;padding:0 12px;font-size:.88rem;}
 
 /* The newspaper page */
-.paper{flex:none;position:relative;border-radius:6px;padding:10px 10px 0;color:var(--np-ink);
+.paper{flex:none;align-self:stretch;position:relative;border-radius:6px;padding:10px 10px 0;color:var(--np-ink);
   background:
     radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px) 0 0/3px 3px,
     linear-gradient(180deg,var(--np),var(--np-2));
@@ -38,7 +38,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .mast b{font-family:var(--display);font-size:1.02rem;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .mast span{font-size:.8rem;font-style:italic;color:var(--np-dim);white-space:nowrap;}
 .gwrap{display:flex;justify-content:center;}
-.grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);width:min(100%,var(--gw,360px),calc(100dvh - var(--safe-t) - var(--safe-b) - var(--corner-y) - 540px));min-width:200px;aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+.grid{--n:5;position:relative;display:grid;grid-template-columns:repeat(var(--n),1fr);grid-template-rows:repeat(var(--n),1fr);width:min(100%,calc(100dvh - var(--bar) - var(--safe-b) - var(--corner-y) - 476px));min-width:200px;aspect-ratio:1;border:2.5px solid var(--np-ink);background:var(--np-ink);gap:1px;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
 .sq{position:relative;background:#fffdf7;display:grid;place-items:center;cursor:pointer;}
 .sq.blk{background:var(--np-ink);cursor:default;}
 .sq .n{position:absolute;left:5%;top:3%;font-family:var(--np-serif);font-size:calc(var(--cell) * .24);line-height:1;color:var(--np-ink);}
@@ -50,6 +50,8 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 .sq.rev::before{content:"";position:absolute;right:0;top:0;border-style:solid;border-width:0 calc(var(--cell) * .26) calc(var(--cell) * .26) 0;border-color:transparent #d01b2a transparent transparent;}
 .sq.type .l{animation:ink .18s ease-out;}
 @keyframes ink{from{transform:scale(1.35);opacity:.3;}to{transform:none;opacity:1;}}
+.sq.filled .l{animation:settle .42s ease-out both;animation-delay:calc(var(--wi,0) * 35ms);}
+@keyframes settle{40%{transform:translateY(-3px) rotate(-2deg) scale(1.12);}100%{transform:rotate(-2deg);}}
 .grid.done .sq:not(.blk){animation:wave .6s ease both;animation-delay:calc(var(--d) * 40ms);}
 @keyframes wave{40%{background:#bfe7c9;transform:scale(1.08);}100%{background:#fffdf7;}}
 .grid.paused .sq:not(.blk){background:#efe9da;}
@@ -125,6 +127,8 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 @media (max-width:440px){.mast b{font-size:.94rem;}.mast span{font-size:.74rem;}}
 @media (max-width:400px){.top{gap:6px;}.puz{padding:0 8px 0 11px;}.top .btn{padding:0 10px;}.clock{padding:0 10px;}}
 @media (max-height:740px){.key{height:42px;}.cbar{min-height:48px;}.kb{gap:5px;}}
+/* short phones upright (an SE): the clue bar names the clue, so the list steps aside and the grid keeps its room */
+@media (max-height:640px) and (orientation:portrait){.cw:not(.bigp) .clues{display:none;}.grid{width:min(100%,calc(100dvh - var(--bar) - var(--safe-b) - 345px));min-width:140px;}.mast{margin-bottom:5px;}}
 @media (min-width:860px){
   .grid{width:min(100%,calc(var(--gw,360px) * 1.25),calc(100dvh - var(--safe-t) - 250px));}
   .cw{max-width:1040px;}
@@ -139,12 +143,16 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 @media (min-width:860px){.main{display:grid;}}
 /* Tablet portrait: bigger paper and keys */
 @media (min-width:700px) and (max-width:859px) and (min-height:900px){
-  .cw{max-width:680px;}
+  .cw{max-width:none;padding:0 14px;}
   .paper{padding:14px 14px 0;}
   .cbar{margin:12px -14px 0;}
-  .grid{width:min(100%,calc(var(--gw,360px) * 1.4),calc(100dvh - var(--safe-t) - var(--safe-b) - 620px));}
+  /* the clue list stands beside the paper, so the grid takes the height above the keys */
+  .main{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start;}
+  .paper{align-self:start;}
+  .grid{width:min(calc(100vw - 300px),calc(100dvh - var(--bar) - var(--safe-b) - 430px));}
+  .clues{margin:0;height:100%;max-height:100%;}
   .clue{font-size:1.02rem;}
-  .kb{gap:8px;padding-bottom:calc(var(--safe-b) + 14px);}
+  .kb{gap:8px;padding-bottom:calc(var(--safe-b) + 18px);}
   .kb .r{gap:7px;}
   .key{max-width:56px;height:58px;font-size:1.25rem;border-radius:10px;}
   .key.wide{max-width:84px;}
@@ -152,13 +160,31 @@ body{overflow:hidden;display:flex;flex-direction:column;}
 }
 /* Touch landscape (iPad): keyboard sits under the clues, beside the puzzle */
 @media (min-width:860px) and (pointer:coarse){
-  .cw{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:24px;}
+  .cw{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:24px;padding:0 18px;}
   .top{grid-column:1 / -1;}
   .main{display:contents;}
   .paper{grid-column:1;grid-row:2 / 4;align-self:start;}
   .grid{width:min(100%,calc(var(--gw,360px) * 1.25),calc(100dvh - var(--safe-t) - var(--safe-b) - 250px));}
   .clues{grid-column:2;grid-row:2;max-height:none;height:100%;min-height:0;align-self:stretch;overflow:auto;}
   .kb{grid-column:2;grid-row:3;}
+}
+
+/* A phone held sideways: the paper (grid and clue bar) at the left as tall as the screen, the buttons, the clue list
+   and the keys at the right, where the typing is */
+@media (orientation:landscape) and (max-height:520px) and (min-aspect-ratio:5/4){
+  .cw{max-width:none;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:18px;
+    padding:0 calc(10px + var(--corner-x)) 0;}
+  .main{display:contents;}
+  .top{grid-column:2;grid-row:1;padding-bottom:6px;}
+  .paper{grid-column:1;grid-row:1 / 4;align-self:start;padding:8px 8px 0;}
+  .mast{display:none;}
+  .grid{width:calc(100dvh - var(--bar) - var(--safe-b) - 86px);min-width:0;}
+  .cbar{margin:8px -8px 0;min-height:46px;}
+  .clues{grid-column:2;grid-row:2;margin:0;max-height:none;height:100%;display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-content:start;}
+  .clues > div{min-width:0;}
+  .clue{padding:5px 7px;font-size:.88rem;}
+  .kb{grid-column:2;grid-row:3;padding:6px 0 max(calc(var(--safe-b) + 8px), 18px);gap:5px;}
+  .key{height:40px;}
 }
 
 /* QWERTY keyboard: every key is one tenth of the row, rows centered (like a phone keyboard) */
@@ -445,6 +471,21 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     wrap.scrollTop = fitAxis(top, bot, wr.top, wr.bottom, wrap.scrollTop);
   }
   window.addEventListener('resize', function () { if (Z) sizeCells(); });
+  // Turning the device: the paper, the buttons, the clue list and the keys glide from where they were to the new layout
+  (function (sel) {
+    var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+    addEventListener('resize', function () {
+      if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+        var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+        var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+        e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      snap();
+    });
+    setInterval(function () { if (!document.hidden) snap(); }, 400);
+  })('.top, .paper, .clues, .kb');
   // the grid's size also settles after it's built (fonts, the game bar): letters follow it
   if (window.ResizeObserver) new ResizeObserver(function () { if (Z) sizeCells(); }).observe($('grid'));
 
@@ -528,8 +569,18 @@ body{overflow:hidden;display:flex;flex-direction:column;}
       S.fill[S.r][S.c] = ch; delete S.marks[S.r + '_' + S.c];
       var sq = sqs[S.r][S.c]; sq.classList.remove('type'); void sq.offsetWidth; sq.classList.add('type');
       Kit.sfx('tap'); Kit.haptic('tick');
+      var wDone = Z.words.filter(function (w) { return w.cells.some(function (q) { return q[0] === S.r && q[1] === S.c; }) && w.cells.every(function (q) { return S.fill[q[0]][q[1]]; }); });
+      if (wDone.length) setTimeout(function () { inked(wDone); }, 60);
     }
     advance(); paint(); save(); checkDone();
+  }
+  // a word just filled in: its letters settle in a little ripple, with a soft sound (it says nothing about right or wrong)
+  function inked(ws) {
+    if (S.solved) return;
+    var k = 0;
+    ws.forEach(function (w) { w.cells.forEach(function (q, i) { var n = sqs[q[0]][q[1]]; n.style.setProperty('--wi', i); n.classList.remove('filled'); void n.offsetWidth; n.classList.add('filled'); k++; }); });
+    setTimeout(function () { ws.forEach(function (w) { w.cells.forEach(function (q) { sqs[q[0]][q[1]].classList.remove('filled'); }); }); }, 700);
+    Kit.sfx('flip', 0.5);
   }
   function back() {
     if (S.solved || paused) return;
@@ -655,6 +706,13 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     if (!gaveUp && best && S.secs < best) hl.push('New best time (old best ' + fmt(best) + ')');
     if (revealedCells && !gaveUp) hl.push('Revealed ' + revealedCells + (revealedCells === 1 ? ' square' : ' squares'));
     if (S.checks && !gaveUp) hl.push('Used check ' + S.checks + (S.checks === 1 ? ' time' : ' times'));
+    // uncommon moments: a Mini in under a minute, a full-size grid with no help, a new best time on this puzzle
+    var mo = null;
+    if (!gaveUp && clean && Z.n <= 7 && S.secs < 60) mo = { t: 'Under a minute', line: 'You solved the whole grid with no help in ' + S.secs + ' seconds.', icon: 'bolt' };
+    else if (!gaveUp && clean && Z.n >= 13) mo = { t: 'A clean full-size grid', line: 'Every square of the ' + Z.n + '×' + Z.n + ' is yours, with no checks or reveals.', icon: 'star', big: true };
+    else if (!gaveUp && best && S.secs < best) mo = { t: 'New best time', line: 'You beat your old best of ' + fmt(best) + ' on this puzzle.', icon: 'clock', pts: fmt(S.secs) };
+    if (mo && mo.t === 'Under a minute') hl.push('Solved it in under a minute with no help');
+    if (mo && mo.big) hl.push('Solved a full-size grid with no checks or reveals');
     var longest = Z.words.slice().sort(function (a, b) { return b.ans.length - a.ans.length; })[0];
     if (longest.ans.length >= 6) hl.push('Longest answer: ' + longest.ans);
     Kit.record(KEY, {
@@ -671,6 +729,10 @@ body{overflow:hidden;display:flex;flex-direction:column;}
     var g = $('grid'); g.classList.add('done'); paint();
     if (gaveUp) { Kit.toast('Puzzle revealed'); return; }
     Kit.sfx('good');
+    if (mo) setTimeout(function () {
+      Kit.moment({ title: mo.t, line: mo.line, icon: mo.icon, pts: mo.pts, big: mo.big, at: mo.big ? null : $('paper'), ms: 2200 });
+      Kit.sfx(mo.big ? 'win' : 'sparkle'); Kit.haptic('success'); if (mo.big) Kit.confetti();
+    }, 650);
     setTimeout(function () {
       var nx = nextUnsolved();
       Kit.win({
@@ -679,7 +741,7 @@ body{overflow:hidden;display:flex;flex-direction:column;}
         look: 'Look at the grid',
         setup: openPicker, setupLabel: 'Choose a puzzle'
       });
-    }, 900);
+    }, mo ? 2700 : 900);
   }
   function nextUnsolved() {
     var done = solvedMap(), i = PUZZLES.indexOf(Z.p);
