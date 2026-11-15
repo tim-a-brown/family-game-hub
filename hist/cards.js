@@ -20,7 +20,8 @@
   function red(s) { return s === 'h' || s === 'd'; }
   // one card element at width w; code '??' = face down
   function card(code, w, cls) {
-    var c = parse(code), n = c ? K().card(c.r, c.s) : K().card('A', 's', { back: true });
+    var jk = /^JK([rb]?)$/i.exec(String(code || '').trim());   // a joker: 'JK' or 'JKr' the color printing, 'JKb' the black and white
+    var c = parse(code), n = jk ? K().card('JK', (jk[1] || 'r').toLowerCase()) : c ? K().card(c.r, c.s) : K().card('A', 's', { back: true });
     if (w) n.style.setProperty('--cw', w + 'px');
     if (cls) cls.split(' ').forEach(function (x) { if (x) n.classList.add(x); });
     return n;

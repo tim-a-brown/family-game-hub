@@ -124,14 +124,15 @@ var HistView = window.HistView = (function () {
     },
     // any SVG picture, framed like a board
     picture: function (svg, o) { o = o || {}; return el('div', { class: 'hv-snap ' + (o.frame ? 'f-' + o.frame : ''), style: o.max ? { 'max-width': o.max + 'px' } : null, html: svg }); },
-    // playing cards from codes like 'AS', '10h', 'Qd', 'Kc' ('??' = face down); o.small
+    // playing cards from codes like 'AS', '10h', 'Qd', 'Kc' ('??' = face down; 'JK' or 'JKr' the color joker, 'JKb' the
+    // black-and-white one); o.small
     cards: function (codes, o) {
       o = o || {};
       var row = el('div', { class: 'hv-cards' + (o.small === false ? '' : ' sm') + (o.fan ? ' fan' : '') });
       [].concat(codes || []).forEach(function (c) {
         c = String(c); var back = c === '??' || c === 'XX';
-        var m = /^(10|[2-9TJQKA])([shdc♠♥♦♣])$/i.exec(c.trim());
-        var card = back || !m ? K().card('A', 's', { back: true }) : K().card(m[1].toUpperCase() === 'T' ? '10' : m[1].toUpperCase(), m[2].toLowerCase());
+        var m = /^(10|[2-9TJQKA])([shdc♠♥♦♣])$/i.exec(c.trim()), jk = /^JK([rb]?)$/i.exec(c.trim());
+        var card = jk ? K().card('JK', (jk[1] || 'r').toLowerCase()) : back || !m ? K().card('A', 's', { back: true }) : K().card(m[1].toUpperCase() === 'T' ? '10' : m[1].toUpperCase(), m[2].toLowerCase());
         if (o.hl && o.hl.indexOf(c) >= 0) card.classList.add('hv-hl');
         row.appendChild(card);
       });

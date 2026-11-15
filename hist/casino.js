@@ -210,14 +210,8 @@
     return ui.el('div', { class: 'cz-felt', style: { background: 'radial-gradient(120% 120% at 50% 0%,' + f[0] + ',' + f[1] + ')' } }, [].concat(kids).filter(Boolean));
   }
   function codes(s) { return Array.isArray(s) ? s : String(s || '').split(' ').filter(Boolean); }
-  // cards row that also knows the Pai Gow joker ('JK')
-  function cardRow(ui, list, o) {
-    list = codes(list); o = o || {};
-    if (list.indexOf('JK') < 0) return ui.cards(list, o);
-    var row = ui.el('div', { class: 'hv-cards sm' });
-    list.forEach(function (c) { row.appendChild(c === 'JK' ? ui.el('div', { class: 'pcard cz-joker', html: '<span>JOKER</span>', 'aria-label': 'Joker' }) : ui.cards([c]).firstChild); });
-    return row;
-  }
+  // a row of cards (ui.cards draws the Pai Gow joker, 'JK', as the kit's color joker)
+  function cardRow(ui, list, o) { return ui.cards(codes(list), o || {}); }
   // one labelled line on the felt: label, cards, note on the right
   function line(ui, label, list, note, noteCls, o) {
     return ui.el('div', { class: 'cz-line' }, [ui.el('div', { class: 'lab', text: label }), ui.el('div', { class: 'cz-hand' }, [cardRow(ui, list, o),
@@ -296,7 +290,6 @@
     '.cz-line{display:flex;flex-direction:column;gap:4px;}',
     '.cz-line .lab{font-size:.66rem;font-weight:900;color:rgba(255,255,255,.65);}',
     '.cz-felt .hv-cards{--cw:40px;}',
-    '.cz-joker{display:grid;place-items:center;background:#fffdf6;color:#b8862a;font-weight:900;font-size:calc(var(--cw) * .2);letter-spacing:.04em;writing-mode:vertical-rl;}',
     '.cz-road{display:flex;flex-wrap:wrap;gap:3px;}',
     '.cz-rb{appearance:none;border:0;cursor:pointer;width:22px;height:22px;border-radius:5px;padding:0;font:inherit;font-size:.62rem;font-weight:900;color:#fff;background:rgba(255,255,255,.12);}',
     '.cz-rb.w{background:#16a34a;}.cz-rb.l{background:#b91c1c;}.cz-rb.p{background:#6b7280;}.cz-rb.big{background:#d4a017;color:#1b1404;}',

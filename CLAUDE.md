@@ -204,6 +204,9 @@ Underlying principles for everything:
 - **Subtle per-game identity:** layout and controls stay standard; each game
   gets its own table "box" via `THEMES` in `kit.js` (felt colour, card backs,
   wood). Keep it understated: colour and material, never mascots or emoji.
+- **The joker of a standard deck** (Tim, 2026-11-15) is the kit's: `Kit.card('JK', s)` / `Kit.joker(s)` in kit.js
+  (`.pcard.jkr` in kit.css), a jester's cap in both corners and the jester in the court frame. With two in a deck, one
+  is in color (`s` 'r', or a lone joker) and the other black and white (`s` 'b'); history codes `JK`/`JKr`/`JKb`.
 - Don't tune difficulty or design around a player's age. Match the real game and Tim's choices.
 - **Landscape: where you act on the right, what you look at on the left.** Most players are right-handed, so
   sideways layouts put the side you take action on (buttons, the board or cards you tap to play, a playfield you
