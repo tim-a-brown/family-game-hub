@@ -1378,7 +1378,9 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
    tiles and name of the game to look more like the other night glass styling"): smoked frosted glass with a hairline lit
    along its top, the name in white and how many play in the quieter gray under it */
 :root.look:not(.ng-x) .g.gr.tl .go::after{content:"";display:block;grid-row:2 / 4;grid-column:1;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(24,22,46,.84),rgba(15,14,32,.92));-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.13);}
-:root.look:not(.ng-x) .g.gr.tl{--bpt:8px;}
+:root.look:not(.ng-x) .g.gr.tl{--bpt:7px;}
+:root.look:not(.ng-x) .g.gr.tl .tx b{min-height:calc(var(--tfs) * 1.42 + var(--bpt,7px));line-height:1.12;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;text-align:left;}
+:root.look:not(.ng-x) .g.gr.tl.cart .tx b{min-height:calc(var(--tfs) * 1.42 + var(--bpt,7px) + var(--mr,25px));justify-content:center;padding-bottom:var(--bpt,7px);}
 :root.look:not(.ng-x) .g.gr.tl .tx b{text-shadow:none;}
 :root.look:not(.ng-x) .g.gr.tl .ppl{color:var(--text-2);font-weight:550;}
 :root.look:not(.ng-x) .g.gr.tl .ppl .ico{color:var(--text-3);}
@@ -2601,7 +2603,18 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
       if (!over()) return;
       var fs0 = parseFloat(getComputedStyle(b).fontSize), fs = fs0;
       while (over() && fs > fs0 * .74) { fs -= .5; b.style.fontSize = fs + 'px'; }
-      if (lines(b) > 1) { b.style.fontSize = ''; if (b.closest('.tl')) two = true; }
+      if (lines(b) > 1) {
+        // (the tile look keeps its glass foot one name's height: Tim, 2026-11-15, "these bottom bands are too tall. Reduce
+        // them, and if text needs to go over two lines, just make that text smaller": a name that won't fit on one line
+        // takes two lines at a size that fits them in the same room)
+        if (b.closest('.tl') && document.documentElement.classList.contains('look')) {
+          // (a console game's name has the count's line too, so it takes two lines at its own size)
+          fs = b.closest('.cart') ? fs0 : Math.round(fs0 * .62 * 2) / 2; b.style.fontSize = fs + 'px';
+          while ((lines(b) > 2 || b.scrollWidth > b.clientWidth) && fs > fs0 * .5) { fs -= .5; b.style.fontSize = fs + 'px'; }
+          return;
+        }
+        b.style.fontSize = ''; if (b.closest('.tl')) two = true;
+      }
     });
     // (list rows: every one as tall as the tallest, so the rows are all the same shape)
     // (the games all share one height; the Tools, which say what each does instead of who plays, share their own)
