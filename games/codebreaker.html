@@ -171,6 +171,29 @@ button.hole{cursor:pointer;}
   .acts .btn{min-height:52px;}
   .score .col .nm{max-width:220px;}
 }
+/* A phone on its side: the board at the left as tall as the screen (its rows sized in fit() so all ten show), the
+   players, whose turn and the peg tray at the right, where the taps go */
+@media (orientation:landscape) and (max-height:560px){
+  #app.stage.ipl{max-width:none;padding-left:max(17px,calc(var(--corner-x) + 6px));padding-right:max(17px,calc(var(--corner-x) + 6px));padding-bottom:max(calc(var(--safe-b) + 10px),18px);}
+  .cb{max-width:none;display:grid;grid-template-columns:minmax(0,var(--bdw,360px)) minmax(260px,520px);
+    grid-template-areas:"b s" "b t" "b y" "b .";grid-template-rows:auto auto auto 1fr;column-gap:20px;row-gap:8px;justify-content:center;align-items:start;}
+  .cb>.scores{grid-area:s;}
+  .cb>.top{grid-area:t;}
+  .cb>.bd{grid-area:b;padding:5px 8px 6px;}
+  .cb>.tray{grid-area:y;}
+  .coderow{margin-bottom:3px;}
+  .num{font-size:.72rem;}
+  .pal{flex-wrap:wrap;gap:6px;}
+  .pal .tp{--pg:40px;flex:0 0 46px;height:46px;}
+  .pal .tp::before{width:44px;height:44px;}
+  .top{min-height:32px;}
+  .top .turn{min-height:32px;}
+}
+/* the board is sized to the room in fit(); its rows and pegs follow --rh and --pg, the key pegs --kp */
+.cb.kfit .keys{grid-template-columns:repeat(2,var(--kp));grid-auto-rows:var(--kp);gap:var(--kg);}
+.cb.kfit .keys.k5{grid-template-columns:repeat(3,var(--kp5));grid-auto-rows:var(--kp5);gap:2px;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.7,.25,1);}
+::view-transition-old(root),::view-transition-new(root){animation:none;}
 </style>
 </head>
 <body>
@@ -519,6 +542,8 @@ button.hole{cursor:pointer;}
       keyAnim = -1; busy = false;
       if (out) return endRound();
       if (n === 0) Kit.toast('No color matches');
+      // every color right but not every place: a small reward, the code is one shuffle away
+      else if (n === S.P && !(S.players[S.breaker] && S.players[S.breaker].cpu)) { Kit.callout('Every color is right!'); Kit.sfx('good', 0.6); }
       render();
       if (S.players[S.breaker] && S.players[S.breaker].cpu) cpuTurn();
     }, 300 + n * 190 + 200);
@@ -535,7 +560,18 @@ button.hole{cursor:pointer;}
     save(); render();
     Kit.sfx('whoosh');
     if (r.cracked) {
-      later(function () { Kit.callout(r.n === 1 ? 'First try!' : 'Cracked!'); Kit.sfx('good'); Kit.haptic('success'); }, 450);
+      // the rarer cracks get their moment on the board: the first guess, a personal best when playing alone, three
+      // guesses or fewer, the very last guess
+      var pb = S.mode === 'solo' ? personalBest() : null, bn = breaker ? breaker.name : 'You', good = !(breaker && breaker.cpu);
+      var mo = r.n === 1 ? { big: true, title: 'First try', line: bn + ' cracked the code with the very first guess.' }
+        : pb != null && r.n < pb ? { big: true, title: 'Personal best', line: bn + ' cracked it in ' + r.n + ' guesses. The best before was ' + pb + '.' }
+        : r.n <= 3 ? { title: 'Cracked in ' + r.n, line: bn + ' needed only ' + r.n + ' guesses.' }
+        : r.n === S.R ? { title: 'Just in time', line: bn + ' cracked it with the last guess on the board.' } : null;
+      later(function () {
+        if (mo) { Kit.moment({ big: mo.big, title: mo.title, line: mo.line, icon: good ? 'sparkle' : 'bot', tone: good ? '' : 'bad', at: document.querySelector('.bd'), ms: mo.big ? 2300 : 1900 }); Kit.sfx(good ? 'sparkle' : 'bad'); }
+        else { Kit.callout('Cracked!'); Kit.sfx('good'); }
+        Kit.haptic('success');
+      }, 450);
     } else {
       later(function () { Kit.callout('Unbroken!', '#ff8a8a'); Kit.sfx('bad'); Kit.haptic('error'); }, 450);
     }
@@ -681,7 +717,7 @@ button.hole{cursor:pointer;}
     paintTurn(turn);
 
     // Board
-    var bd = el('div', { class: 'bd wood' });
+    var bd = el('div', { class: 'bd wood', style: { 'view-transition-name': 'cb-board' } });
     var cr = el('div', { class: 'coderow' }), lane = el('div', { class: 'lane' }), holes = el('div', { class: 'holes' });
     lane.appendChild(el('span', { class: 'tag', text: 'Code' }));
     var making = S.phase === 'make', src = making ? S.cur : S.code;
@@ -731,7 +767,7 @@ button.hole{cursor:pointer;}
     flash = -1;
 
     // Tray
-    var tray = el('div', { class: 'tray wood' }), tin = el('div', { class: 'tray-in felt-in' });
+    var tray = el('div', { class: 'tray wood', style: { 'view-transition-name': 'cb-tray' } }), tin = el('div', { class: 'tray-in felt-in' });
     tray.appendChild(tin);
     cb.appendChild(tray);
     if (S.phase === 'reveal' || S.phase === 'over') tin.appendChild(resultPanel());
@@ -851,9 +887,26 @@ button.hole{cursor:pointer;}
   }
 
   // Board height: keep the tray on screen; the rows scroll inside the board
-  function fit(rows, tray, st) {
-    requestAnimationFrame(function () {
+  function fit(rows, tray, st) { requestAnimationFrame(function () { fitNow(rows, tray, st); }); }
+  function fitNow(rows, tray, st) {
+    (function () {
       if (!rows.isConnected) return;
+      // Every guess row in view at every shape: the rows (and the pegs in them) are as tall as the room allows
+      var cb = rows.closest('.cb'), bd = rows.closest('.bd'), W = window.innerWidth, Hh = window.innerHeight, land = W > Hh;
+      if (cb && bd && S) {
+        var besideNow = tray.getBoundingClientRect().left >= bd.getBoundingClientRect().right - 1;
+        var room = Hh - (bd.getBoundingClientRect().top + window.scrollY) - Math.max(18, (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-b')) || 0) + 10) - (besideNow ? 0 : tray.offsetHeight + 10);
+        var maxRh = land ? (Hh < 560 ? 44 : 64) : W >= 700 ? 64 : 50;
+        var rh = Math.floor(Math.max(24, Math.min(maxRh, (room - 46 - S.R) / (S.R + 1))));
+        cb.style.setProperty('--rh', rh + 'px');
+        cb.style.setProperty('--pg', Math.round(rh * (S.P === 5 ? 0.78 : 0.82)) + 'px');
+        // the key pegs: two rows of them fit the row's height
+        var kg = rh < 34 ? 2 : rh < 50 ? 3 : 4;
+        cb.style.setProperty('--kg', kg + 'px'); cb.style.setProperty('--kp', Math.max(7, Math.min(16, Math.floor((rh - 6 - kg) / 2))) + 'px');
+        cb.style.setProperty('--kp5', Math.max(6, Math.min(13, Math.floor((rh - 6 - 2) / 2) - 1)) + 'px');
+        cb.classList.add('kfit');
+        if (land && Hh < 560) cb.style.setProperty('--bdw', Math.round(70 + S.P * rh * 1.15 + 40) + 'px');
+      }
       var top = rows.getBoundingClientRect().top + window.scrollY;
       // Landscape iPad: the tray sits beside the board, not under it
       var beside = tray.getBoundingClientRect().left >= rows.getBoundingClientRect().right;
@@ -869,9 +922,17 @@ button.hole{cursor:pointer;}
         var rt = cur.offsetTop - rows.offsetTop, h = cur.offsetHeight;
         if (rt < rows.scrollTop + 4 || rt + h > rows.scrollTop + rows.clientHeight - 4) rows.scrollTop = Math.max(0, rt - rows.clientHeight + h * 2);
       }
-    });
+    })();
   }
-  window.addEventListener('resize', function () { var r = document.querySelector('.rows'), t = document.querySelector('.tray'); if (r && t && S) fit(r, t, r.scrollTop); });
+  // Turning the device: the board and the tray glide to the new shape (a View Transition around the new sizes)
+  var lastWH = window.innerWidth + 'x' + window.innerHeight;
+  window.addEventListener('resize', function () {
+    var r = document.querySelector('.rows'), t = document.querySelector('.tray'); if (!(r && t && S)) return;
+    var wh = window.innerWidth + 'x' + window.innerHeight, st = r.scrollTop;
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (wh !== lastWH && document.startViewTransition && !reduce && !document.hidden) { lastWH = wh; try { document.startViewTransition(function () { fitNow(r, t, st); }); return; } catch (e) {} }
+    lastWH = wh; fit(r, t, st);
+  });
 
   // Drag a peg from the tray onto a hole (a plain tap drops it in the glowing hole)
   function dragify(btn, c) {
