@@ -932,7 +932,7 @@ html.k-going .setup{visibility:hidden;}
    right, where you act. (The rows have no gap of their own, so a row nobody uses takes no room; each part keeps 10px
    under it instead.) */
 @media (orientation:landscape) and (max-height:520px) and (min-width:640px){
-  .stage:has(> .setup > .k-seats):has(> .setup > .k-opts){max-width:min(980px,100%);}
+  :has(> .setup > .k-seats):has(> .setup > .k-opts){max-width:min(980px,100%);}
   .setup:has(> .k-seats):has(> .k-opts){display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:repeat(7,auto) 1fr auto;column-gap:18px;row-gap:0;align-items:start;}
   .setup:has(> .k-seats):has(> .k-opts) > *{grid-column:2;margin-bottom:10px;}
   .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-column:1;grid-row:1 / 10;margin-bottom:0;}
@@ -944,6 +944,9 @@ html.k-going .setup{visibility:hidden;}
   .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:6;}
   .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:7;}
   .setup:has(> .k-seats):has(> .k-opts) > .k-startdock{grid-row:9;align-self:end;padding-top:8px;margin-bottom:-10px;}
+  /* (a game with no options of its own: what it adds takes the left column instead, one under another) */
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts:empty{display:none;}
+  .setup:has(> .k-seats):has(> .k-opts):has(> .k-opts:empty) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-column:1 !important;grid-row:auto !important;}
   /* (a part the game adds after its options belongs with them: it goes under the options at the left) */
   .setup:has(> .k-seats):has(> .k-opts) > .k-opts:has(~ :not(.k-opts):not(.k-startdock):not(.k-joins)){grid-row:1 / 4;}
   .setup:has(> .k-seats):has(> .k-opts) > .k-opts ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-column:1 !important;grid-row:4 / 10 !important;}
@@ -2120,6 +2123,14 @@ html.k-kb-short .k-lock p{margin-bottom:4px;}
 :root:not(.ng-x) :is(.k-side,.qs-side){display:flex;gap:2px;padding:7px 4px 6px;border-radius:15px;background:var(--gl-3);box-shadow:inset 0 0 0 1px var(--gl-line);}
 :root:not(.ng-x) :is(.k-toks,.qs-toks) :is(.k-vs,.qs-vs){font-style:normal;font-weight:700;font-size:.82rem;color:var(--text-3);padding:0 2px;}
 :root:not(.ng-x) :is(.k-tok,.qs-tok){display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;text-align:center;}
+/* (one player: the card's free space is theirs, the avatar with the name beside it, centered in that space; Tim,
+   2026-11-15: "fill the player picker section when it's one player by moving the name to the right and centering
+   avatar+name in that space") */
+:root:not(.ng-x) :is(.k-toks,.qs-toks):has(> :is(.k-tok,.qs-tok):only-child){display:flex;justify-content:center;align-items:center;}
+:root:not(.ng-x) :is(.k-tok,.qs-tok):only-child{flex-direction:row;gap:12px;text-align:left;}
+:root:not(.ng-x) :is(.k-tok,.qs-tok):only-child b{font-size:1.08rem;font-weight:750;}
+:root:not(.ng-x) :is(.k-tok,.qs-tok):only-child .avatar{width:44px;height:44px;}
+.setup.k-snug .k-who-tx > :is(.k-toks):has(> .k-tok:only-child){align-self:stretch;}
 :root:not(.ng-x) :is(.k-side,.qs-side) :is(.k-tok,.qs-tok){width:60px;}
 /* a side of one is just the token (Tim vs R2-D2): the plate is for partners */
 :root:not(.ng-x) :is(.k-side,.qs-side):has(> :only-child){background:none;box-shadow:none;padding:0;}

@@ -66,17 +66,21 @@
 /* Setup: theme picker */
 .cats{display:flex;flex-wrap:wrap;gap:6px;}
 .cats .chip{min-height:40px;}
-/* Setup: today's puzzle */
-.daily{display:flex;align-items:center;gap:14px;padding:14px;border-radius:20px;background:var(--gl);box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}
-.dcal{flex:none;width:54px;border-radius:8px;overflow:hidden;text-align:center;background:linear-gradient(180deg,#fffcf3,#f3e8cf);color:#23263a;box-shadow:0 3px 0 #cbbd9c, 0 6px 12px rgba(0,0,0,.35);transform:rotate(-3deg);}
-.dcal small{display:block;background:#d0392a;color:#fff;font-size:.62rem;font-weight:900;letter-spacing:.14em;padding:3px 0 2px;}
-.dcal b{display:block;font-family:var(--display);font-weight:400;font-size:1.65rem;line-height:1.25;}
-.daily .tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
-.daily .tx b{font-size:1.05rem;font-weight:800;}
+/* Setup: today's puzzle, one card you tap: the date on its calendar leaf, what the puzzle is, and a round play button
+   in the gold at the right; the words take the room left (a narrow column on a phone held sideways) */
+.daily{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;width:100%;padding:12px 14px;border:0;border-radius:20px;background:var(--gl);color:var(--text);font:inherit;text-align:left;cursor:pointer;box-shadow:inset 0 0 0 1px var(--gl-line),var(--shadow-sm);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);transition:transform .12s ease;}
+.daily:active{transform:translateY(1px) scale(.99);}
+.dcal{flex:none;width:50px;border-radius:8px;overflow:hidden;text-align:center;background:linear-gradient(180deg,#fffcf3,#f3e8cf);color:#23263a;box-shadow:0 3px 0 #cbbd9c, 0 6px 12px rgba(0,0,0,.35);transform:rotate(-3deg);}
+.dcal small{display:block;background:#d0392a;color:#fff;font-size:.6rem;font-weight:800;padding:3px 0 2px;}
+.dcal b{display:block;font-family:var(--display);font-weight:400;font-size:1.55rem;line-height:1.25;}
+.daily .tx{min-width:0;display:flex;flex-direction:column;gap:2px;}
+.daily .tx b{font-size:1.05rem;font-weight:800;line-height:1.2;}
 .daily .tx small{font-size:.84rem;color:var(--text-2);line-height:1.3;}
 .daily .tx .st{display:inline-flex;align-items:center;gap:5px;color:var(--lit-ink);font-weight:700;}
-.daily .tx .st .ico{width:15px;height:15px;}
-.daily .btn{flex:none;}
+.daily .tx .st .ico{width:15px;height:15px;flex:none;}
+.daily .go{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:linear-gradient(180deg,var(--gold-hi),var(--gold-lo));color:var(--gold-ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 6px 14px -8px rgba(255,190,60,.7);}
+.daily.done .go{background:var(--gl-3);color:var(--text);box-shadow:inset 0 0 0 1px var(--gl-line);}
+.daily .go .ico{width:20px;height:20px;}
 @media (min-width:700px){.words{grid-template-columns:repeat(4,1fr);} .w{font-size:.95rem;}}
 /* The page as large as the screen allows: --bw is the grid's width. Upright the word list is printed under the
    grid and the page sits in the middle of the screen; sideways the list is printed to the left of the grid (in as
@@ -208,7 +212,7 @@
       options: [{ id: 'diff', label: 'Puzzle size', help: 'Bigger grids hide more words and take longer to search.', value: 'medium', choices: [['easy', 'Easy 8×8'], ['medium', 'Medium 10×10'], ['hard', 'Hard 12×12']] },
         { id: 'clock', label: 'Clock', value: 'up', choices: [['up', 'Stopwatch', 'The clock counts up. Try to beat your best time.'], ['down', 'Beat the clock', 'Find every word before time runs out.']] }],
       players: { min: 1, max: 1, label: 'Who is solving?' },
-      start: 'Print the puzzle',
+      start: 'Start searching',
       onStart: function (cfg) {
         var cat = chosen === 'Surprise' ? CATS[rnd(CATS.length)] : chosen;
         newPuzzle(cat, cfg.options.diff || 'medium', cfg.players[0].name, cfg.options.clock === 'down');
@@ -227,14 +231,14 @@
     st.el.insertBefore(el('div', null, [el('div', { class: 'label', text: 'Theme' }), box]), start);
     // Today's puzzle, under who's solving
     var t = dailyOf(today()), done = dailyDone(t.day), d = DIFF[t.diff];
-    var card = el('div', { class: 'daily' }, [
-      el('div', { class: 'dcal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }).toUpperCase() }), el('b', { text: String(new Date().getDate()) })]),
-      el('div', { class: 'tx' }, [
-        el('b', { text: 'Daily word search' }),
-        el('small', { html: Kit.esc(d.name + ' ' + d.n + '×' + d.n + ' ' + t.cat + ' puzzle') + '<br>Same for everyone today' }),
-        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>Found them all in ' + fmt(done.seconds) + '</span>' }) : null
+    var card = el('button', { type: 'button', class: 'daily' + (done ? ' done' : ''), 'aria-label': (done ? 'Play today\u2019s puzzle again' : 'Play today\u2019s puzzle'), onclick: function () { Kit.sfx('pop'); Kit.haptic('tap'); startDaily(); } }, [
+      el('div', { class: 'dcal', 'aria-hidden': 'true' }, [el('small', { text: new Date().toLocaleDateString(undefined, { weekday: 'short' }) }), el('b', { text: String(new Date().getDate()) })]),
+      el('span', { class: 'tx' }, [
+        el('b', { text: 'Today\u2019s puzzle' }),
+        el('small', { text: d.name + ' ' + d.n + '\u00d7' + d.n + ', ' + t.cat }),
+        done ? el('small', { class: 'st', html: Kit.icon('check') + '<span>You found them all in ' + fmt(done.seconds) + '</span>' }) : el('small', { text: 'The same puzzle for everyone today' })
       ]),
-      el('button', { type: 'button', class: 'btn ' + (done ? 'btn-soft' : 'btn-primary') + ' btn-sm', text: done ? 'Again' : 'Play', onclick: function () { Kit.sfx('pop'); startDaily(); } })
+      el('span', { class: 'go', 'aria-hidden': 'true', html: Kit.icon(done ? 'undo' : 'play') })
     ]);
     var seats = st.el.querySelector('.k-seats');
     if (seats && seats.nextSibling) st.el.insertBefore(card, seats.nextSibling); else st.el.insertBefore(card, st.el.firstChild);
