@@ -76,14 +76,24 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
 @media (hover:none),(pointer:coarse){ .hint{display:none;} }
 @media (max-height:720px){ .pad{width:140px;height:140px;} .pad i{width:44px;height:44px;} .pad i.l{left:3px;top:48px;} .pad i.r{right:3px;top:48px;}
   .pad .nub{width:48px;height:48px;margin:-24px 0 0 -24px;} .fbtn{width:116px;height:116px;font-size:1.2rem;} }
-/* Tablet landscape: the screen takes the full height, the stick bottom-left and the button bottom-right, under the thumbs */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px) and (pointer:coarse){
-  html.ar-on #app{max-width:none;position:relative;}
-  .ctrls{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 22px);padding:0 26px;pointer-events:none;}
-  .ctrls > *{pointer-events:auto;}
-  .pad{width:200px;height:200px;} .pad i{width:60px;height:60px;} .pad i.l{left:8px;top:70px;} .pad i.r{right:8px;top:70px;}
-  .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} .fbtn{width:160px;height:160px;font-size:1.75rem;}
+/* Sideways (a phone or an iPad on its side, html.gg-land): the upright screen takes the full height between the thumbs,
+   the stick in the lower left, the button in the lower right and pause above it */
+@media (pointer:coarse){
+  html.ar-on.gg-land #app{max-width:none;position:relative;padding-bottom:max(12px,var(--safe-b));}
+  html.gg-land .hud{position:absolute;top:0;right:max(17px,env(safe-area-inset-right));width:auto;z-index:2;}
+  html.gg-land .ctrls{position:absolute;left:0;right:0;bottom:max(18px,calc(var(--safe-b) + 10px));padding:0 max(17px,env(safe-area-inset-right)) 0 max(17px,env(safe-area-inset-left));pointer-events:none;}
+  html.gg-land .ctrls > *{pointer-events:auto;}
 }
+@media (pointer:coarse) and (min-height:600px){
+  html.gg-land .ctrls{padding:0 26px;}
+  html.gg-land .pad{width:200px;height:200px;} html.gg-land .pad i{width:60px;height:60px;} html.gg-land .pad i.l{left:8px;top:70px;} html.gg-land .pad i.r{right:8px;top:70px;}
+  html.gg-land .pad .nub{width:68px;height:68px;margin:-34px 0 0 -34px;} html.gg-land .fbtn{width:160px;height:160px;font-size:1.75rem;}
+}
+/* the cabinet's buttons keep clear of the screen's rounded corners when upright */
+.ctrls{padding:0 11px;} .hud{padding:0 9px;} html.gg-land .hud{padding:0;} html.ar-on #app{padding-bottom:max(18px,calc(var(--safe-b) + 10px));}
+/* Turning the device: the parts glide to their new places (the class is switched inside a View Transition) */
+.bezel{view-transition-name:gg-bezel;} .pad{view-transition-name:gg-pad;} .fbtn{view-transition-name:gg-fire;} .pbtn{view-transition-name:gg-pause;}
+::view-transition-group(*){animation-duration:.42s;animation-timing-function:cubic-bezier(.3,.8,.3,1);}
 </style>
 </head>
 <body>
@@ -118,6 +128,21 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   var TOUCH = window.matchMedia && matchMedia('(pointer:coarse)').matches;
   var $ = function (id) { return document.getElementById(id); };
   var W = 224, H = 288;                     // the upright arcade screen, in its own pixels
+  // Turning the device: the sideways layout (html.gg-land) is switched inside a View Transition, so the screen, the
+  // stick and the button glide to their new places
+  (function () {
+    var R = document.documentElement, q = matchMedia('(orientation:landscape)'), wait = false;
+    function set() { wait = false; R.classList.toggle('gg-land', q.matches); if (typeof fit === 'function') fit(); }
+    R.classList.toggle('gg-land', q.matches);
+    function turn() {
+      if (wait || R.classList.contains('gg-land') === q.matches) return;
+      if (document.startViewTransition && !document.hidden && R.classList.contains('ar-on') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        try { wait = true; var t = document.startViewTransition(set); [t.ready, t.finished, t.updateCallbackDone].forEach(function (x) { if (x) x.catch(function () {}); }); return; } catch (e) { wait = false; }
+      }
+      set();
+    }
+    if (q.addEventListener) q.addEventListener('change', turn); else q.addListener(turn);
+  })();
   var C = window.GGCore, M = C.M, V = window.GGVideo.create(window.GG_DATA);
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lsGet(k, d) { try { var v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }
@@ -172,7 +197,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   // a coin in the slot, and START pressed a moment later, as on the cabinet
   function insertCoin(now) {
     if (mode === 'play') return;
-    mode = 'play'; lastStage = 0;
+    mode = 'play'; lastStage = 0; mo = { pf: 0, dual: 0, top: false, perfects: [], rescues: 0 };
     C.coin(); coinT = now ? 3 : 40;
     syncButton(); syncOverlay();
   }
@@ -202,10 +227,36 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     V.draw(M, C.starCtrl(), C.starClr());
     Snd.frame(C);
     if (mode === 'play' && inGame()) {
+      watchMoments();
       var st = stage();
       if (st !== lastStage && st > 0) { lastStage = st; if (lastStage > 0) save(); }
     }
     if (overPending) { overPending = false; finishGame(); }
+  }
+
+  // ═══ Moments: read from the arcade's own flags, shown above the screen so they never cover the fighter ════
+  // a Perfect on a challenging stage (all 40 hit), a captured fighter won back as a dual fighter, and passing the
+  // best score on the board during the game
+  var mo = { pf: 0, dual: 0, top: false, perfects: [], rescues: 0 };
+  function moAt() { return document.querySelector('#view .hud'); }
+  function watchMoments() {
+    var pf = M[0x9AB4], dual = M[0x9820 + 0x07];
+    if (pf && !mo.pf) {
+      mo.perfects.push(stage());
+      Kit.moment({ title: 'Perfect!', line: 'You hit all 40 on the challenging stage, for the 10,000 point special bonus.', pts: '+10,000', at: moAt(), ms: 2600 });
+      Kit.haptic('success'); Kit.confetti && Kit.confetti();
+    }
+    if (dual && !mo.dual) {
+      mo.rescues++;
+      Kit.moment({ title: 'Dual fighter', line: 'You won your captured fighter back, and now two ships fire side by side.', icon: 'sparkle', at: moAt(), ms: 2000 });
+      Kit.haptic('success');
+    }
+    mo.pf = pf; mo.dual = dual;
+    if (!mo.top && best0 > 0 && score() > best0) {
+      mo.top = stage();
+      Kit.moment({ title: 'New high score', line: 'You just passed the best score on the board, ' + best0.toLocaleString() + ' points.', icon: 'trophy', at: moAt(), ms: 2200 });
+      Kit.haptic('success');
+    }
   }
 
   // ═══ Game over: history, high scores ════════════════════════════════════
@@ -215,6 +266,8 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
     mode = 'attract'; syncButton(); syncOverlay();
     var newTop = sc > 0 && sc > best0;
     var hl = ['Reached stage ' + st];
+    if (mo.perfects.length) hl.push(mo.perfects.length === 1 ? who + ' hit all 40 on the challenging stage at stage ' + mo.perfects[0] : who + ' hit all 40 on ' + mo.perfects.length + ' challenging stages');
+    if (mo.rescues) hl.push(who + ' won a captured fighter back ' + (mo.rescues === 1 ? 'once' : mo.rescues + ' times'));
     if (newTop) hl.push('New high score: ' + sc.toLocaleString() + (best0 ? ' (old best ' + best0.toLocaleString() + ')' : ''));
     hl.push('Hit-miss ratio ' + ratio() + '% (' + hits() + ' hits from ' + shots() + ' shots)');
     var hiL = ArcadeHi.list(HI);
@@ -319,10 +372,10 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function fit() {
     var v = $('view'); if (v.hidden) return;
     var hudH = v.querySelector('.hud').offsetHeight, ctr = v.querySelector('.ctrls'), hint = v.querySelector('.hint');
-    var land = TOUCH && innerWidth > innerHeight && innerWidth >= 900;
+    var land = TOUCH && document.documentElement.classList.contains('gg-land');
     var ctrH = ctr && getComputedStyle(ctr).display !== 'none' && !land ? Math.max(150, ctr.querySelector('.pad').offsetHeight + 16) : 0;
     var hintH = hint && getComputedStyle(hint).display !== 'none' ? hint.offsetHeight + 8 : 0;
-    var availH = v.clientHeight - hudH - ctrH - hintH - 30, availW = Math.min(v.clientWidth, 640) - 14;
+    var availH = v.clientHeight - (land ? 0 : hudH) - ctrH - hintH - (land ? 16 : 30), availW = (land ? v.clientWidth : Math.min(v.clientWidth, 640)) - 14;
     var sc = Math.max(1, Math.min(availW / W, availH / H));
     var cw = Math.floor(W * sc), ch = Math.floor(H * sc), dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.style.width = cw + 'px'; cv.style.height = ch + 'px';
@@ -393,7 +446,7 @@ html.ar-on #app{flex:1;min-height:0;width:100%;max-width:640px;margin:0 auto;pad
   function kick() { if (!raf && running()) { last = 0; acc = 0; raf = requestAnimationFrame(loop); } }
 
   // ═══ Kit shell ══════════════════════════════════════════════════════════
-  Kit.init({ orient: 'portrait',
+  Kit.init({
     id: 'galaga',
     theme: { wood: ['#1c2048', '#0a0c22'] },
     onNew: function () { clearSave(); showSetup(); },
