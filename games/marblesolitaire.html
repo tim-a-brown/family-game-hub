@@ -14,10 +14,11 @@
 <script src="../arcade-hi.js"></script>
 <style>
 body{overflow-x:hidden;}
-.ms{max-width:560px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 10px + var(--corner-y));}
+.ms{max-width:560px;margin:0 auto;padding:2px 16px calc(var(--safe-b) + 10px + var(--corner-y));min-height:calc(100dvh - var(--bar));box-sizing:border-box;display:flex;flex-direction:column;}
+.ms > .play{flex:1;min-height:0 !important;}   /* (the page is exactly the screen: no scroll of a few pixels) */
 .play{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"hud" "board" "tip" "tools";justify-items:center;align-content:center;
   min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 74px - var(--corner-y));padding-bottom:1vh;}
-.play > *{width:min(100%, 520px, calc(100dvh - var(--safe-t) - var(--safe-b) - 292px));min-width:min(100%,300px);}
+.play > *{width:min(100%, 520px, calc(100dvh - var(--bar) - var(--safe-b) - 250px));min-width:min(100%,250px);}
 .hud{grid-area:hud;}.bwrap{grid-area:board;}.tip{grid-area:tip;}.tools{grid-area:tools;}
 @media (min-width:700px) and (min-height:900px) and (orientation:portrait){
   .ms{max-width:760px;}
@@ -44,13 +45,13 @@ body{overflow-x:hidden;}
   .plaque b{font-size:1.25rem;}
   .tool{min-height:44px;}
   .tip{font-size:.78rem;min-height:36px;}
-  .bwrap{padding-bottom:0;}
+  .play > .bwrap{padding-bottom:0;}   /* (more specific than the base .bwrap rule further down) */
   .plate{display:none;}
 }
 /* phones: the kit keeps the bar 16px off the top edge (iOS drops taps there); the board gives up those 13px */
 @media (hover:none) and (pointer:coarse) and (orientation:landscape) and (max-height:500px){
   .play{min-height:calc(100dvh - max(16px, var(--safe-t)) - 67px - var(--corner-y));}
-  .play > .bwrap{width:min(calc(100dvh - max(16px, var(--safe-t)) - 81px), calc(100vw - 380px));}
+  .play > .bwrap{width:min(calc(100dvh - var(--bar) - var(--safe-b) - 14px), calc(100vw - 380px));}
 }
 
 /* Score plates: night glass, the marbles left lit gold */
@@ -1014,7 +1015,8 @@ body{overflow-x:hidden;}
     lock = Date.now() + ms;
     paint(); bump('pqLeft'); bump('pqMoves'); save();
     if (!legalAll().length) { S.phase = 'over'; updHud(); lock = Date.now() + 99999; setTimeout(finish, ms + 650); }
-    else { prefetch(); if (S.chain >= 3 && S.chain > (o.prevChain || 0)) say(Kit.icon('sparkle') + '<span>' + S.chain + ' jumps in a row!</span>', 'good', 1600); }
+    else { prefetch(); if (S.chain >= 5 && S.chain > (o.prevChain || 0)) { Kit.callout(S.chain + ' jumps with one marble'); Kit.sfx('sparkle'); Kit.haptic('success'); }
+      if (S.chain >= 3 && S.chain > (o.prevChain || 0)) say(Kit.icon('sparkle') + '<span>' + S.chain + ' jumps in a row!</span>', 'good', 1600); }
     return true;
   }
   function pickOut(h) {
@@ -1145,6 +1147,21 @@ body{overflow-x:hidden;}
       else if (e.key === 'Escape' && sel >= 0) { sel = -1; paint(); }
     });
     window.addEventListener('resize', function () { if (S && bd && !drag) layout(); });
+    // Turning the device: the board, the plates, the tip and the tools glide from where they were to the new layout
+    (function (sel) {
+      var last = [], lw = innerWidth, reduce = matchMedia('(prefers-reduced-motion: reduce)');
+      function snap() { last = []; document.querySelectorAll(sel).forEach(function (e) { last.push([e, e.getBoundingClientRect()]); }); lw = innerWidth; }
+      addEventListener('resize', function () {
+        if (innerWidth !== lw && !reduce.matches) last.forEach(function (a) {
+          var e = a[0], r = a[1]; if (!e.isConnected) return; var n = e.getBoundingClientRect(); if (!n.width || !r.width) return;
+          var dx = r.left - n.left, dy = r.top - n.top, k = r.width / n.width;
+          if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(k - 1) < 0.01) return;
+          e.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')' }, { transformOrigin: '0 0', transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        });
+        snap();
+      });
+      setInterval(function () { if (!document.hidden) snap(); }, 400);
+    })('.play > .hud, .play > .bwrap, .play > .tip, .play > .tools');
   }
 
   // ── Hints ─────────────────────────────────────────────────────────────────
@@ -1239,7 +1256,11 @@ body{overflow-x:hidden;}
     var lastId = lastH >= 0 ? S.holes[lastH] : -1;
     if (perfect && lastId >= 0) { els[lastId].classList.add('last'); Kit.sfx('good'); }
     setTip('<span>' + rt + '</span>', perfect ? 'good' : '');
-    setTimeout(function () { Kit.callout(perfect ? (center ? 'Perfect!' : 'One left!') : n + ' left'); }, perfect ? 350 : 0);
+    setTimeout(function () {
+      // the one every player is after: the last marble in the center hole of a full board
+      if (center && !B.warm) { Kit.moment({ title: 'Marble master', line: 'The last marble finished in the center hole of the ' + B.name + ' board.', icon: 'trophy', big: true, ms: 2400 }); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti(); }
+      else Kit.callout(perfect ? (center ? 'Perfect!' : 'One left!') : n + ' left');
+    }, perfect ? 350 : 0);
     var id = S.board, hiVal = clean ? ArcadeHi.marbles(n, n === 1 && !center, (S.ms || 0) / 1000) : 0;
     setTimeout(function () {
       // Finishes without hints go on the board's high score table
@@ -1256,7 +1277,7 @@ body{overflow-x:hidden;}
           scores: function () { ArcadeHi.show(hiKey(id)); showSetup(); }
         });
       });
-    }, perfect ? 1900 : 1300);
+    }, center && !B.warm ? 2900 : perfect ? 1900 : 1300);
   }
 
   // History detail: the starting colours per hole ('.' = empty, '0'-'9' = palette), the jumps in order
