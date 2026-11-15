@@ -158,8 +158,8 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
 .pk-pip.pend{opacity:0;}
 .bw-fly{position:fixed;left:0;top:0;z-index:60;pointer-events:none;width:26px;height:26px;margin:-13px 0 0 -13px;}
 .pk-tot b.bw-n{font-size:2.3rem;}
-/* iPad / desktop landscape: scoreboard beside the board so the board gets the full height */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
+/* Sideways (phone, iPad, desktop): scoreboard beside the board so the board gets the full height, the wheel's buttons at the right */
+@media (orientation:landscape) and (min-aspect-ratio:5/4){
   #app:has(.pk-frame){max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto auto auto 1fr;column-gap:28px;align-items:start;padding-top:8px;}
   #app:has(.pk-frame) .pk-show,#app:has(.pk-frame) .pk-strip,#app:has(.pk-frame) .pk-hint{grid-column:1;width:100%;max-width:320px;justify-self:end;}
   #app:has(.pk-frame) .pk-show{grid-row:1;margin-top:14px;flex-wrap:wrap;padding:14px 16px;}
@@ -176,6 +176,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   #app:has(.bw-frame) .pk-hint{grid-row:3;white-space:normal;text-align:left;justify-content:flex-start;}
   #app:has(.bw-frame) .bw-act{grid-column:3;grid-row:1 / span 5;align-self:center;justify-self:start;width:100%;max-width:320px;margin:0;}
   #app:has(.bw-frame) .bw-frame{grid-column:2;grid-row:1 / span 5;margin:0;}
+  #app:has(.bw-frame) .bw-act{flex-direction:column;} #app:has(.bw-frame) .bw-act .btn{min-height:72px;font-size:1.4rem;}
   #app:has(.bw-frame) .pk-pip{width:22px;height:22px;}
   #app:has(.bw-frame) .pk-who .nm{font-size:1.2rem;}
 }
@@ -993,7 +994,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
   }
 
   // ── Rules ─────────────────────────────────────────────────────────────────
-  Kit.init({ orient: 'portrait', orientTablets: true,
+  Kit.init({
     id: 'plinko',
     onNew: function () { clearSave(); showSetup(); },
     menu: [{ icon: 'history', label: 'Past games', onClick: function () { Kit.history(HKEY, { title: 'Plinko: past games' }); } }],
@@ -1103,10 +1104,10 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var side = getComputedStyle(dom.wf).gridColumnStart === '2';
     var W = Math.min(inner, side ? 620 : 560);
     var top = dom.wf.getBoundingClientRect().top + (window.scrollY || 0);
-    var avail = (window.innerHeight || 800) - top - (side ? 24 : 112);
+    var avail = (window.innerHeight || 800) - top - (side ? 24 : 128);
     var H = Math.min(avail, W * 1.62);
     if (H < W * 1.05) { W = Math.max(250, H / 1.05); H = Math.max(H, W * 1.05); }
-    if (side) { H = Math.max(420, Math.min((window.innerHeight || 800) - top - 24, 1.5 * W)); W = Math.min(W, H / 1.1); }
+    if (side) { H = Math.max(240, Math.min((window.innerHeight || 800) - top - 24, 1.5 * W)); W = Math.min(W, H / 1.1); }
     W = Math.floor(W); H = Math.floor(H);
     dom.wf.style.width = W + 'px';
     BW.layout(W, H);
@@ -1236,8 +1237,8 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var side = getComputedStyle(dom.frame).gridColumnStart === '2';
     var maxW = Math.min(inner, side ? 760 : 620) - 26;
     var top = dom.frame.getBoundingClientRect().top + (window.scrollY || 0);
-    var avail = (window.innerHeight || 800) - top - 26 - (side ? 14 : 64);
-    var w = Math.max(220, Math.min(maxW, avail * WU / HU));
+    var avail = (window.innerHeight || 800) - top - 26 - (side ? 18 : 90);
+    var w = Math.max(side ? 150 : 180, Math.min(maxW, avail * WU / HU));
     cssW = Math.floor(w); scale = cssW / WU; cssH = Math.round(HU * scale);
     dpr = Math.min(3, window.devicePixelRatio || 1);
     cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
@@ -1261,7 +1262,7 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     dom.frame.appendChild(frag);
   }
   var rz = 0;
-  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(function () { if (BW) wheelLayout(); else layout(); }, 120); });
+  window.addEventListener('resize', function () { if (BW) wheelLayout(); else layout(); clearTimeout(rz); rz = setTimeout(function () { if (BW) wheelLayout(); else layout(); }, 120); });
   // the header's display font can land after the first layout and push the board down: measure again
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (BW) wheelLayout(); else layout(); });
 
@@ -1642,8 +1643,10 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     if (v === 10000) {
       hold = 2900;
       dom.frame.classList.add('jack');
-      Kit.callout('$10,000!');
-      Kit.confetti({ count: 120, colors: ['#ffd45a', '#fff3c4', '#ffb000', '#ffffff', p.color] });
+      // (a second $10,000 for the same player is rarer still: it says so, and the burst is bigger)
+      var tensNow = p.res.filter(function (x) { return x === 10000; }).length;
+      Kit.callout(tensNow >= 2 ? '$10,000 again!\n' + money(tensNow * 10000) + ' from the top slot' : '$10,000!');
+      Kit.confetti({ count: tensNow >= 2 ? 200 : 120, colors: ['#ffd45a', '#fff3c4', '#ffb000', '#ffffff', p.color] });
       Kit.sfx('win'); Kit.haptic('success');
     } else if (v === 0) {
       hold = 2200;
@@ -1812,6 +1815,31 @@ body.bw-stage::after{content:"";position:fixed;left:0;right:0;bottom:0;height:34
     var n = S.players.length;
     for (var k = 0; k < n; k++) { var j = (S.cur + k) % n; if (left(S.players[j]) > 0) { S.cur = j; return; } }
   }
+})();
+</script>
+<script>
+// Turning the device: the main pieces glide from where they stood to their new places (a FLIP), with no jump.
+// Their places are noted a few times a second; on a turn each piece starts where it was, centered, and settles.
+(function () {
+  var SEL = '#app>.pk-show, #app>.pk-strip, #app>.pk-hint, #app>.pk-frame, #app>.bw-frame, #app>.bw-act', last = [], was = innerWidth > innerHeight;
+  if ((window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) || !Element.prototype.animate) return;
+  function snap() { if (document.hidden) return; last = Array.prototype.map.call(document.querySelectorAll(SEL), function (e) { return [e, e.getBoundingClientRect()]; }); }
+  setInterval(snap, 220); snap();
+  addEventListener('resize', function () {
+    var land = innerWidth > innerHeight; if (land === was) return; was = land;
+    var old = last;
+    requestAnimationFrame(function () {
+      old.forEach(function (p) {
+        var e = p[0], a = p[1]; if (!e.isConnected || !a.width || !a.height) return;
+        var b = e.getBoundingClientRect(); if (!b.width || !b.height) return;
+        var dx = (a.left + a.width / 2) - (b.left + b.width / 2), dy = (a.top + a.height / 2) - (b.top + b.height / 2);
+        var s = Math.max(0.4, Math.min(2.5, Math.sqrt((a.width / b.width) * (a.height / b.height))));
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2 && Math.abs(s - 1) < 0.02) return;
+        try { e.animate([{ transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')', opacity: 0.55 }, { transform: 'none', opacity: 1 }], { duration: 460, easing: 'cubic-bezier(.2,.8,.2,1)' }); } catch (x) {}
+      });
+      snap();
+    });
+  });
 })();
 </script>
 </body>
