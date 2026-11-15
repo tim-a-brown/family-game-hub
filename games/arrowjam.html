@@ -272,9 +272,28 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
 
   // ── State ──────────────────────────────────────────────────────────────────
   // S: {v, lv (1 to 50), gone: [arrows taken off, in order], lives, bumps, hints (left), used (hints used), ms (time played),
-  //     run (arrows in a quick run now), best (the longest run), name, done}
+  //     run (arrows in a quick run now), best (the longest run), name, done,
+  //     for the history: ot (when each arrow left), bx (each bump), hx (each hint), see rec() below}
   var S = null, L = null, gone = {}, busy = {}, over = false;
   function live() { return !!(S && !S.done && !over); }
+  // The time played (S.ms) runs while the page is in view; a long pause between taps counts as three minutes at most
+  var tickAt = 0;
+  function tick() {
+    var now = Date.now();
+    if (tickAt && S && live() && !document.hidden) S.ms = (S.ms || 0) + Math.min(now - tickAt, 180000);
+    tickAt = now;
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) { tick(); tickAt = 0; if (live()) lsSet(SAVE, JSON.stringify(S)); }
+    else tickAt = Date.now();
+  });
+  // What the history keeps of a level, as short strings (hist/arrowjam.js reads them): numbers in base 36 of a fixed
+  // width, an arrow or a step in 2 characters, a time in tenths of a second in 3. ot: a time for each arrow in S.gone;
+  // bx: each bump as the step (arrows gone by then), the arrow tapped, the arrow in its way, the time; hx: each hint as
+  // the step, the arrow lit, the time.
+  function b36(n, w) { var m = Math.pow(36, w) - 1; return ('000' + Math.max(0, Math.min(m, Math.round(n) || 0)).toString(36)).slice(-w); }
+  function tnow() { return b36((S.ms || 0) / 100, 3); }
+  function rec() { return { o: S.gone.map(function (i) { return b36(i, 2); }).join(''), ot: S.ot || '', b: S.bx || '', h: S.hx || '', t: Math.round((S.ms || 0) / 100) / 10, r: S.best || 0 }; }
   var saveT = 0;
   function save() {
     clearTimeout(saveT);
@@ -384,7 +403,8 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   function start(n, name) {
     n = Math.max(1, Math.min(N, n | 0));
     clearSave(); stopLoop();
-    S = { v: 1, lv: n, gone: [], lives: LIVES, bumps: 0, hints: HINTS, used: 0, ms: 0, run: 0, best: 0, name: name || myName(), done: false };
+    S = { v: 1, lv: n, gone: [], lives: LIVES, bumps: 0, hints: HINTS, used: 0, ms: 0, run: 0, best: 0, name: name || myName(), done: false, ot: '', bx: '', hx: '' };
+    tickAt = Date.now();
     Kit.gameStart();
     build();
     Kit.sfx('deal'); Kit.haptic('light');
@@ -397,6 +417,7 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   function resumeSaved(sv) {
     S = sv; S.name = S.name || myName(); S.run = 0;
     if (S.hints == null) S.hints = HINTS;
+    tickAt = Date.now();
     build();
   }
 
@@ -656,6 +677,7 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   var lastClear = 0;
   function tap(i) {
     if (!live() || gone[i] || busy[i]) return;
+    tick();
     var occ = C.occ(L, gone), b = C.blocker(L, i, occ);
     clearHint();
     if (b.by < 0) leaveBoard(i);
@@ -663,7 +685,7 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   }
   function leaveBoard(i) {
     var r = A[i], now = performance.now();
-    gone[i] = true; S.gone.push(i);
+    gone[i] = true; S.gone.push(i); S.ot = (S.ot || '') + tnow();
     var quick = now - lastClear < 1150 && S.run > 0;
     S.run = quick ? S.run + 1 : 1; lastClear = now;
     S.best = Math.max(S.best || 0, S.run);
@@ -683,6 +705,7 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   function bump(i, b) {
     var r = A[i];
     busy[i] = true; S.run = 0;
+    S.bx = (S.bx || '') + b36(S.gone.length, 2) + b36(i, 2) + b36(b.by, 2) + tnow();
     S.lives--; S.bumps++;
     if (S.lives <= 0) over = true;
     animate(r, 'bump', false, b);
@@ -782,7 +805,8 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
   function hint() {
     if (!live()) return;
     if (!S.hints) { Kit.toast('You have used the three hints this level gives you'); return; }
-    if (showHint(false)) { S.hints--; S.used++; updHud(); save(); }
+    tick();
+    if (showHint(false)) { S.hints--; S.used++; S.hx = (S.hx || '') + b36(S.gone.length, 2) + b36(hinted, 2) + tnow(); updHud(); save(); }
   }
   function showHint(free) {
     var f = C.free(L, gone).filter(function (i) { return !busy[i]; });
@@ -812,6 +836,9 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
     var stars = S.lives, lv = S.lv, p = prog(), before = +p.s[lv] || 0, t0 = totals();
     var first = !before, better = stars > before;
     if (better) p.s[lv] = stars;
+    // the quickest clear of each level (seconds of play), for the history's "new best"
+    var hd = rec(), pt = +p.t[lv] || 0;
+    if (hd.t > 0 && (!pt || hd.t < pt)) p.t[lv] = hd.t;
     lsSet(PROG, JSON.stringify(p));
     var t1 = totals(), allDone = t1.done === N && t0.done < N, allStars = t1.stars === N * 3 && t0.stars < N * 3;
     var perfect = S.bumps === 0, lastHeart = S.lives === 1;
@@ -827,7 +854,7 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
       players: [{ name: nm, score: stars }], winner: null, mode: 'Level ' + lv,   // (a puzzle has no winner: the history names it by what happened)
       summary: 'Cleared level ' + lv + ' with ' + stars + (stars === 1 ? ' star' : ' stars'),
       highlights: hl, meta: { lv: lv, stars: stars, bumps: S.bumps, hints: S.used, arrows: L.a.length, run: S.best || 0 },
-      detail: { level: lv, stars: stars, bumps: S.bumps, hints: S.used, arrows: L.a.length }
+      detail: Object.assign({ level: lv, stars: stars, bumps: S.bumps, hints: S.used, arrows: L.a.length, pb: before }, pt ? { pt: pt } : {}, hd)
     });
     // the board lights up from the middle out, then the moment, then the card
     var wait = 900;
@@ -883,7 +910,8 @@ html[data-o=land] .aj-tools .btn .n{margin-left:auto;}
     Kit.record(HKEY, {
       players: [{ name: nm, score: 0 }], winner: null, mode: 'Level ' + lv,
       summary: 'Ran out of hearts on level ' + lv,
-      meta: { lv: lv, stars: 0, bumps: S.bumps, hints: S.used, arrows: L.a.length, cleared: cl }, detail: { level: lv, cleared: cl, arrows: L.a.length }
+      meta: { lv: lv, stars: 0, bumps: S.bumps, hints: S.used, arrows: L.a.length, cleared: cl },
+      detail: Object.assign({ level: lv, cleared: cl, arrows: L.a.length, bumps: S.bumps, hints: S.used }, rec())
     });
     setTimeout(function () {
       Kit.win({
