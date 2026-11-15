@@ -928,21 +928,28 @@ html.k-going .setup{visibility:hidden;}
 .setup .k-startdock{position:sticky;bottom:0;z-index:6;margin:-10px -16px calc(-16px - var(--safe-b));padding:18px 16px max(calc(var(--safe-b) + 14px), 18px);   /* (18px off the bottom even with no safe area: Safari with its bar tucked away; the sides are set to 17px from the screen's edge in kit.js, dockInset) */
   background:none;}
 /* A phone on its side (short and wide): two columns, so the setup fits without scrolling. The game's options fill the
-   left; the title, who's playing, anything the game adds and the start button stand at the right, where you act. */
+   left; the title, who's playing, anything the game adds (each on a row of its own) and the start button stand at the
+   right, where you act. (The rows have no gap of their own, so a row nobody uses takes no room; each part keeps 10px
+   under it instead.) */
 @media (orientation:landscape) and (max-height:520px) and (min-width:640px){
   .stage:has(> .setup > .k-seats):has(> .setup > .k-opts){max-width:min(980px,100%);}
-  .setup:has(> .k-seats):has(> .k-opts){display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:auto auto auto 1fr auto;column-gap:18px;row-gap:10px;align-items:start;}
-  .setup:has(> .k-seats):has(> .k-opts) > *{grid-column:2;grid-row:4;}
-  .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-column:1;grid-row:1 / span 5;}
+  .setup:has(> .k-seats):has(> .k-opts){display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:repeat(7,auto) 1fr auto;column-gap:18px;row-gap:0;align-items:start;}
+  .setup:has(> .k-seats):has(> .k-opts) > *{grid-column:2;margin-bottom:10px;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts{grid-column:1;grid-row:1 / 10;margin-bottom:0;}
   .setup:has(> .k-seats):has(> .k-opts) > .setup-hero{grid-row:1;}
-  .setup:has(> .k-seats):has(> .k-opts) > .k-seats{grid-row:2;}
-  .setup:has(> .k-seats):has(> .k-opts) > .k-joins{grid-row:3;}
-  .setup:has(> .k-seats):has(> .k-opts) > .k-startdock{grid-row:5;align-self:end;padding-top:8px;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-joins{grid-row:2;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats{grid-row:3;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:4;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:5;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:6;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-seats ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins) ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-row:7;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-startdock{grid-row:9;align-self:end;padding-top:8px;margin-bottom:-10px;}
+  /* (a part the game adds after its options belongs with them: it goes under the options at the left) */
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts:has(~ :not(.k-opts):not(.k-startdock):not(.k-joins)){grid-row:1 / 4;}
+  .setup:has(> .k-seats):has(> .k-opts) > .k-opts ~ :not(.k-opts):not(.k-startdock):not(.k-joins){grid-column:1 !important;grid-row:4 / 10 !important;}
   /* (six or more folded options: each row a little shorter, still a thumb's height) */
   .setup.k-snug:has(> .k-seats) > .k-opts:has(> .k-opt:nth-child(6)) .k-scrow{min-height:40px;padding-block:5px;}
   .setup.k-snug:has(> .k-seats) > .k-opts:has(> .k-opt:nth-child(6)){gap:6px;}
-}
-}
 }
 /* a setup taller than the screen: a fade the options scroll under; one that fits has no fade (it drew a band across the sky) */
 html:not(.k-fit) .setup .k-startdock{background:linear-gradient(transparent,color-mix(in srgb,var(--bg) 82%,transparent) 62%);}
