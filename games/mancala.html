@@ -60,22 +60,45 @@
 .ctrls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px;}
 @media (min-width:640px){.mc{gap:14px;padding-top:12px;}}
 .mtags{gap:12px;justify-content:center;flex-wrap:wrap;}
-/* Landscape iPad / desktop: the board across the full width in the upper part of the screen, the player tags
-   below it on the left and Play again on the right */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:1440px;padding:4px calc(16px + var(--corner-x)) calc(var(--safe-b) + 8px + var(--corner-y));}
-  .mc{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto minmax(0,2fr);grid-template-areas:". ." "b b" "t c" ". .";
-    align-items:center;gap:18px 16px;padding-top:0;height:calc(100dvh - var(--safe-t) - var(--safe-b) - var(--corner-y) - 80px);}
-  .mc>.mboard{grid-area:b;justify-self:center;}
-  .mc>.mtags{grid-area:t;justify-content:flex-start;}
-  .mc>.ctrls{grid-area:c;margin:0;}
-  .mc>.ctrls .btn{min-width:180px;}
-  .mtag{min-height:52px;padding:6px 18px 6px 7px;}
-  .mtag .avatar{width:40px;height:40px;}
-  .mtag .nm{font-size:1.1rem;max-width:220px;}
-  .lbl{font-size:1.25rem;} .lbl.big{font-size:1.8rem;}
+/* A layout for each shape (geometry() picks it and sizes the board in pixels; #app's data-sh says which):
+   pu  a phone upright: the board stands on end between the two players, as long as the screen allows
+   tu  an iPad upright: the board on end and as tall as the screen, the two players beside it at its two ends
+   land  sideways (phone and iPad): the board lies across the full width at the top, like a real one, and under it a strip
+         with the players at the left and Play again at the right */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+::view-transition-group(mc-board){animation-duration:.4s;}
+#app.ipl[data-sh=pu] .mc{min-height:calc(100dvh - var(--bar) - var(--safe-b) - 30px);justify-content:center;}
+#app.ipl[data-sh=tu]{max-width:none;}
+#app.ipl[data-sh=tu] .mc{display:grid;grid-template-columns:minmax(220px,300px) auto;grid-template-rows:auto minmax(0,1fr) auto auto;
+  grid-template-areas:"o b" ". b" "n b" "c b";column-gap:36px;row-gap:12px;justify-content:center;align-items:start;padding-top:8px;}
+#app.ipl[data-sh=tu] .mc>.mboard{grid-area:b;}
+#app.ipl[data-sh=tu] .mc>.mtag.opp{grid-area:o;justify-self:start;}
+#app.ipl[data-sh=tu] .mc>.mtag.me{grid-area:n;justify-self:start;}
+#app.ipl[data-sh=tu] .mc>.ctrls{grid-area:c;justify-content:flex-start;margin:0;}
+#app.ipl[data-sh=tu] .mtag{min-height:56px;padding:6px 18px 6px 7px;}
+#app.ipl[data-sh=tu] .mtag .avatar{width:42px;height:42px;}
+#app.ipl[data-sh=tu] .mtag .nm{font-size:1.15rem;max-width:180px;}
+#app.ipl[data-sh=tu] .mtag .cnt{font-size:2rem;}
+#app.ipl[data-sh=tu] .mtag.on{transform:none;}
+#app.ipl[data-sh=land]{max-width:none;padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 10px) max(18px,env(safe-area-inset-left));}
+#app.ipl[data-sh=land] .mc{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) auto auto minmax(0,1fr);grid-template-areas:". ." "b b" "t c" ". .";
+  align-items:center;gap:10px 16px;padding-top:0;height:calc(100dvh - var(--bar) - var(--safe-b) - 14px);}
+#app.ipl[data-sh=land] .mc>.mboard{grid-area:b;justify-self:center;}
+#app.ipl[data-sh=land] .mc>.mtags{grid-area:t;justify-content:flex-start;flex-wrap:nowrap;}
+#app.ipl[data-sh=land] .mc>.ctrls{grid-area:c;margin:0;}
+#app.ipl[data-sh=land] .mc>.ctrls .btn{min-width:160px;}
+#app.ipl[data-sh=land] .mtag.on{transform:none;}
+@media (min-height:600px){
+  #app.ipl[data-sh=land] .mc{gap:18px 16px;grid-template-rows:minmax(0,1fr) auto auto minmax(0,2fr);}
+  #app.ipl[data-sh=land] .mtag{min-height:52px;padding:6px 18px 6px 7px;}
+  #app.ipl[data-sh=land] .mtag .avatar{width:40px;height:40px;}
+  #app.ipl[data-sh=land] .mtag .nm{font-size:1.1rem;max-width:220px;}
+  #app.ipl[data-sh=land] .lbl{font-size:1.25rem;} #app.ipl[data-sh=land] .lbl.big{font-size:1.8rem;}
 }
-@media (min-width:700px) and (orientation:portrait){ .lbl{font-size:1.2rem;} }
+#app.ipl[data-sh=tu] .lbl{font-size:1.25rem;}
+.mtag .cnt.bump{animation:pop .45s var(--spring);}
+/* A big capture: the store that takes it glows */
+.pit.store.haul{box-shadow:inset 0 9px 14px rgba(0,0,0,.55), 0 0 0 3px var(--yellow), 0 0 26px rgba(255,200,61,.8);transition:box-shadow .25s;}
 </style>
 </head>
 <body>
@@ -253,13 +276,19 @@
       cap = b[12 - lastPit] + 1;
       moveAll([lastPit, 12 - lastPit], storeOf(pl));
       S.st.caps.push({ who: pl, n: cap, pit: lastPit });
-      Kit.callout('Capture! +' + cap, who.color); Kit.sfx('good'); Kit.haptic('success');
-      delay = 700;
+      if (cap >= 9) {
+        // a haul (nine stones or more in one capture) is uncommon: a moment on the table, the store lit as it fills
+        Kit.moment({ title: 'A capture of ' + cap, line: (NET && NET.seat === pl ? 'You' : who.name) + ' took ' + cap + ' stones into the store in one move.', pts: '+' + cap, color: who.color });
+        Kit.sfx('sparkle'); Kit.haptic('success');
+        var stEl = pitEls && pitEls[storeOf(pl)]; if (stEl) { stEl.classList.add('haul'); setTimeout(function () { stEl.classList.remove('haul'); }, 1400); }
+        delay = 1100;
+      } else { Kit.callout('Capture! +' + cap, who.color); Kit.sfx('good'); Kit.haptic('success'); delay = 700; }
     }
     if (extra) {
       S.st.extra[pl]++; S.st.chain++;
       if (S.st.chain > S.st.bestChain.n) S.st.bestChain = { n: S.st.chain, who: pl };
     } else S.st.chain = 0;
+    var chainMo = extra && S.st.chain >= 3 && !RE ? S.st.chain : 0;
     S.last = lastPit;
     if (S.st.t0) { S.st.t0.push(store(0)); S.st.t1.push(store(1)); }
     paint();
@@ -281,10 +310,15 @@
         return;
       }
       if (tk !== cpuToken) return;
-      if (extra) {
+      if (chainMo) {
+        // three extra turns in a row or more (four turns running): a moment
+        Kit.moment({ title: (chainMo + 1) + ' turns in a row', line: (who.name === 'You' ? 'You' : who.name) + ' ended in the store again and ' + (who.name === 'You' ? 'go' : 'goes') + ' again.', icon: 'bolt', color: who.color });
+        Kit.sfx('sparkle'); Kit.haptic('success');
+      } else if (extra) {
         Kit.callout(who.name === 'You' ? 'Go again!' : who.name + ' goes again!', who.color);
         Kit.sfx('good'); Kit.haptic('medium');
-      } else S.cur = 1 - S.cur;
+      }
+      if (!extra) S.cur = 1 - S.cur;
       busy = false;
       save(); paint(); maybeCpu();
     }, delay);
@@ -319,6 +353,13 @@
     if (S.st.sweep && S.st.sweep.n >= 4) hl.push(P[S.st.sweep.who].name + ' swept ' + S.st.sweep.n + ' stones into their store at the end');
     if (w >= 0 && Math.abs(s0 - s1) <= 2) hl.push('A nail-biter: won by ' + Math.abs(s0 - s1));
     if (w >= 0 && Math.abs(s0 - s1) >= 16) hl.push(P[w].name + ' won by a landslide (' + Math.abs(s0 - s1) + ' stones)');
+    var back = 0;
+    if (w >= 0 && S.st.t0) S.st.t0.forEach(function (a, k) { var d = (w ? S.st.t1[k] - a : a - S.st.t1[k]); if (-d > back) back = -d; });
+    if (back >= 8) {
+      hl.unshift(P[w].name + ' came back from ' + back + ' stones behind to win');
+      Kit.moment({ title: 'A comeback', line: (P[w].name === 'You' ? 'You were' : P[w].name + ' was') + ' ' + back + ' stones behind and still won.', icon: 'trophy', color: P[w].color });
+      Kit.sfx('sparkle'); Kit.haptic('success');
+    }
     hl.push(S.per + ' stones per pit' + (S.mode === 'cpu' ? ', ' + ({ easy: 'Easy', med: 'Medium', hard: 'Hard' }[S.level]) + ' computer' : ''));
     Kit.record(KEY, {
       started: S.started, mode: S.mode === 'cpu' ? 'vs Computer' : 'Two players',
@@ -332,7 +373,7 @@
     });
     clearSave();
     var lose = w >= 0 && P[w].cpu;
-    Kit.win({
+    setTimeout(function () { Kit.win({
       icon: w < 0 ? 'users' : lose ? 'bot' : 'trophy',
       title: w < 0 ? "It's a tie!" : P[w].name === 'You' ? 'You win!' : P[w].name + ' wins!',
       sub: s0 + ' – ' + s1 + ' · Series ' + S.wins[0] + '–' + S.wins[1] + (S.wins[2] ? ' (' + S.wins[2] + ' tied)' : ''),
@@ -341,21 +382,22 @@
       again: function () { newRound(); },
       look: { label: 'Look at the board', onClick: function () { render(); } },
       setup: function () { cpuToken++; clearSave(); undoStack = []; showSetup(); }
-    });
+    }); }, back >= 8 ? 2100 : 0);
   }
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   var G = null;
+  function barH() { var b = document.querySelector('.gbar'); return b ? b.offsetHeight : 64; }
   function geometry() {
-    var land = window.matchMedia && matchMedia('(orientation:landscape) and (min-width:900px) and (min-height:600px)').matches;
-    var aw = land ? innerW() : Math.min(innerW(), 940);
-    var vertical = aw < 600;
-    // iPad / desktop: bigger pits; sideways the board lies flat across the full width, like a real one
-    var big = (window.innerWidth || 0) >= 700 && (window.innerHeight || 0) >= 600;
-    var g = { v: vertical, r: {} }, i;
+    var vw = window.innerWidth || 390, vh = window.innerHeight || 800, sb = 0;
+    try { sb = parseFloat(getComputedStyle(document.documentElement).paddingBottom) || 0; } catch (e) {}
+    var sh = vw > vh ? 'land' : vw >= 700 ? 'tu' : 'pu', vertical = sh !== 'land';
+    var big = vw >= 700 && vh >= 600, bar = barH(), aw = vw - 36;
+    var g = { v: vertical, sh: sh, r: {} }, i;
     if (vertical) {
-      var ah = (window.innerHeight || 800) - 58 - 2 * 54 - 44;
-      var D = Math.max(44, Math.min(big ? 96 : 80, (big ? ah - 30 : ah) / 9.7, (aw - 70) / 2.3));
+      // upright on a phone the players stand above and below the board; on an iPad, beside it
+      var ah = sh === 'tu' ? vh - bar - 40 : vh - bar - 2 * 52 - 16 - 50 - sb;
+      var D = Math.max(36, Math.min(sh === 'tu' ? 116 : 80, ah / 9.7, sh === 'tu' ? (aw - 260 - 36) / 3.1 : (aw - 70) / 2.3));
       var gap = Math.round(D * 0.1), rim = Math.round(D * 0.42), cg = Math.round(D * 0.22);
       var W = rim * 2 + D * 2 + cg, SH = D * 1.25, pad = Math.round(D * 0.22);
       var H = pad * 2 + SH * 2 + gap * 2 + 6 * D + 5 * gap;
@@ -370,7 +412,9 @@
       g.lbl = function (p) { var r = g.r[p]; if (p === 6 || p === 13) return null; return { x: p <= 5 ? rim / 2 : W - rim / 2, y: r.y + r.h / 2 }; };
       g.ss = Math.round(D * 0.25);
     } else {
-      var D2 = land ? Math.min(aw / 9.8, ((window.innerHeight || 800) - 220) / 3) : Math.min(big ? 104 : 84, (aw - 60) / 8.6), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
+      // sideways: as wide as the screen and as tall as the height under the bar leaves, with the strip of players below
+      var strip = big ? 90 : 62;
+      var D2 = Math.min(big ? 124 : 100, aw / 9.8, (vh - bar - strip - 16 - sb) / 2.62), gap2 = Math.round(D2 * 0.14), rim2 = Math.round(D2 * 0.38);
       var SW = D2 * 1.15, pad2 = Math.round(D2 * 0.24);
       var W2 = pad2 * 2 + SW * 2 + gap2 * 2 + 6 * D2 + 5 * gap2, H2 = rim2 * 2 + D2 * 2 + Math.round(D2 * 0.25);
       g.W = W2; g.H = H2; g.D = D2;
@@ -408,26 +452,29 @@
   function render() {
     if (!S) return;
     app.innerHTML = ''; app.classList.add('ipl');
-    G = geometry();
+    G = geometry(); app.setAttribute('data-sh', G.sh);
     var wrap = el('div', { class: 'mc' });
     tagEls = [mkTag(0), mkTag(1)];
     var near = flipped() ? 1 : 0;
+    tagEls[near].classList.add('me'); tagEls[1 - near].classList.add('opp');
+    tagEls[near].style.viewTransitionName = 'mc-me'; tagEls[1 - near].style.viewTransitionName = 'mc-opp';
     if (G.v) wrap.appendChild(tagEls[1 - near]);
     else wrap.appendChild(el('div', { class: 'row mtags' }, [tagEls[1 - near], tagEls[near]]));
-    boardEl = el('div', { class: 'mboard', style: { width: G.W + 'px', height: G.H + 'px', '--grain': G.v ? '180deg' : '90deg', '--br': Math.round(G.D * 0.7) + 'px' } });
+    boardEl = el('div', { class: 'mboard', style: { width: G.W + 'px', height: G.H + 'px', '--grain': G.v ? '180deg' : '90deg', '--br': Math.round(G.D * 0.7) + 'px', 'view-transition-name': 'mc-board' } });
     pitEls = []; lblEls = [];
     for (var i = 0; i < 14; i++) {
       (function (i) {
         var r = G.r[i], isStore = i === 6 || i === 13;
         var p = el('button', { type: 'button', class: 'pit' + (isStore ? ' store' : ''), 'aria-label': isStore ? 'Store' : 'Pit', style: { left: r.x + 'px', top: r.y + 'px', width: r.w + 'px', height: r.h + 'px' } });
         if (isStore) { p.tabIndex = -1; } else p.addEventListener('click', function () { tap(i); });
+        p.style.viewTransitionName = 'mc-pit' + i;
         pitEls[i] = p; boardEl.appendChild(p);
         var lp = G.lbl(i);
         if (lp) { var l = el('div', { class: 'lbl', style: { left: lp.x + 'px', top: lp.y + 'px' } }); lblEls[i] = l; boardEl.appendChild(l); }
       })(i);
     }
     stoneEls = S.stones.map(function (s, i) {
-      var st = el('div', { class: 'stone', style: { '--g': GLASS[s.c], '--ss': G.ss + 'px' } });
+      var st = el('div', { class: 'stone', style: { '--g': GLASS[s.c], '--ss': G.ss + 'px', 'view-transition-name': 'mc-s' + i } });
       boardEl.appendChild(st); return st;
     });
     wrap.appendChild(boardEl);
@@ -480,7 +527,8 @@
     [0, 1].forEach(function (pl) {
       var t = tagEls[pl], p = S.players[pl], on = !S.over && S.cur === pl;
       t.classList.toggle('on', on);
-      t.querySelector('.cnt').textContent = c[storeOf(pl)];
+      var ce = t.querySelector('.cnt'), cv = String(c[storeOf(pl)]);
+      if (ce.textContent !== cv) { if (ce.textContent !== '' && !instant) { ce.classList.remove('bump'); void ce.offsetWidth; ce.classList.add('bump'); } ce.textContent = cv; }
       t.querySelector('.st').textContent = S.over ? (c[storeOf(pl)] > c[storeOf(1 - pl)] ? 'Winner' : c[storeOf(pl)] === c[storeOf(1 - pl)] ? 'Tie' : 'Final') :
         NET && LEFT ? 'in store' : on ? (p.cpu ? 'Thinking…' : busy ? 'Sowing…' : NET ? (NET.seat === pl ? 'Your turn: tap a pit' : 'Their turn') : S.mode === 'cpu' ? 'Your turn: tap a pit' : Kit.poss(p.name) + ' turn') : 'in store';
     });
@@ -621,7 +669,16 @@
 
   var rT = null;
   // (also mid-move: render rebuilds from S, stones in hand included, and the sowing carries on in the new layout)
-  window.addEventListener('resize', function () { clearTimeout(rT); rT = setTimeout(function () { if (S) render(); }, 150); });
+  // A turn of the device: the board, its pits and every stone glide to their places in the new shape (a View Transition)
+  window.addEventListener('resize', function () {
+    clearTimeout(rT);
+    rT = setTimeout(function () {
+      if (!S) return;
+      var sh = (window.innerWidth > window.innerHeight ? 'land' : window.innerWidth >= 700 ? 'tu' : 'pu') !== app.getAttribute('data-sh');
+      if (sh && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(render); return; } catch (e) {} }
+      render();
+    }, 150);
+  });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
   var saved = null; try { saved = JSON.parse(localStorage.getItem(SAVE)); } catch (e) {}

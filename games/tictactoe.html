@@ -81,26 +81,52 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
 .series{text-align:center;color:var(--text-3);font-weight:650;font-size:.85rem;}
 .hint{text-align:center;color:var(--text-2);font-size:.9rem;font-weight:600;margin-top:10px;line-height:1.3;}
 
-/* iPad / large screens: bigger chalkboard; landscape puts scores and status beside it */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:760px;}
-  .frame{max-width:min(660px,calc(100dvh - 400px));}
-  .slate{padding:22px 22px 32px;}
-  .bw{max-width:280px;}
-  .score .nm{max-width:200px;font-size:.9rem;}
+/* A layout for each shape. <html data-o> says which way the screen is turned (set by the script below, not by a
+   media query), so a turn of the device can glide from the one layout to the other inside a View Transition. */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+#app.ipl>.frame{view-transition-name:ttt-board;}
+#app.ipl>.scores{view-transition-name:ttt-scores;}
+#app.ipl>.turn{view-transition-name:ttt-turn;}
+#app.ipl>.below{view-transition-name:ttt-below;}
+/* Upright: the chalkboard as wide as the screen (or as the height leaves room for), in the middle of the screen's height */
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;padding-bottom:calc(var(--safe-b) + 18px);}
+html[data-o=port] #app.ipl>.frame{width:100%;max-width:min(460px,calc(100dvh - var(--bar) - 250px));}
+html[data-o=port] #app.ipl>.scores{flex:none;}
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:780px;}
+  html[data-o=port] #app.ipl>.frame{max-width:min(736px,calc(100dvh - var(--bar) - 270px));}
+  html[data-o=port] .slate{padding:22px 22px 32px;}
+  html[data-o=port] .bw{max-width:300px;}
+  html[data-o=port] .score .nm{max-width:200px;font-size:.95rem;}
+  html[data-o=port] .score .pt{font-size:1.8rem;}
 }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;display:grid;grid-template-columns:minmax(240px,300px) auto;grid-template-rows:auto auto auto 1fr;
-    column-gap:32px;justify-content:center;align-content:start;padding-bottom:calc(var(--safe-b) + 12px);}
-  #app.ipl>.frame{grid-column:2;grid-row:1 / span 4;width:min(680px,calc(100dvh - 120px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));max-width:none;margin:0;}
-  #app.ipl>.scores{grid-column:1;flex-direction:column;margin-top:8px;overflow:visible;}
-  #app.ipl>.scores .score .nm{max-width:220px;font-size:.9rem;}
-  #app.ipl>.turn{grid-column:1;justify-self:start;}
-  #app.ipl>.hint{grid-column:1;text-align:left;}
-  #app.ipl>.below{grid-column:1;align-items:flex-start;}
-  .slate{padding:20px 20px 30px;}
-  .bw{max-width:280px;}
+/* Sideways (phone and iPad): the scores and whose turn at the left to look at; the chalkboard, where the taps go, at
+   the right and as tall as the screen allows */
+html[data-o=land] #app.stage.ipl{max-width:none;display:grid;grid-template-columns:minmax(200px,300px) auto;grid-template-rows:auto auto auto 1fr;
+  column-gap:clamp(20px,4vw,40px);justify-content:center;align-content:center;min-height:calc(100dvh - var(--bar));
+  padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 10px) max(18px,env(safe-area-inset-left));}
+html[data-o=land] #app.ipl>.frame{grid-column:2;grid-row:1 / span 4;align-self:center;max-width:none;margin:0;
+  width:min(680px,calc(100dvh - var(--bar) - 22px - var(--safe-b)),calc(100vw - 36px - 200px - clamp(20px,4vw,40px)));}
+html[data-o=land] #app.ipl>.scores{grid-column:1;flex-direction:column;margin-top:4px;overflow:visible;}
+html[data-o=land] #app.ipl>.scores .score{flex:none !important;}
+html[data-o=land] #app.ipl>.scores .score .nm{max-width:220px;font-size:.9rem;}
+html[data-o=land] #app.ipl>.turn{grid-column:1;justify-self:start;}
+html[data-o=land] #app.ipl>.hint{grid-column:1;text-align:left;}
+html[data-o=land] #app.ipl>.below{grid-column:1;align-items:flex-start;}
+html[data-o=land] .slate{padding:12px 12px 22px;}
+@media (min-height:600px){
+  html[data-o=land] .slate{padding:20px 20px 30px;}
+  html[data-o=land] .bw{max-width:280px;}
+  html[data-o=land] #app.ipl>.scores .score .pt{font-size:1.8rem;}
 }
+/* A short phone on its side: the two scores side by side, so the column stays short */
+@media (max-height:500px){
+  html[data-o=land] #app.ipl>.scores{flex-direction:row;}
+  html[data-o=land] #app.ipl>.scores .score{flex:1 1 0 !important;min-width:0;}
+}
+/* A block or a fork: the square just played glows for a moment */
+.tc.glow::before{content:"";position:absolute;inset:6%;border-radius:12px;pointer-events:none;background:radial-gradient(closest-side,rgba(255,232,140,.42),transparent);animation:tglow 1.1s ease-out both;}
+@keyframes tglow{0%{opacity:0;transform:scale(.6);}30%{opacity:1;transform:scale(1.05);}100%{opacity:0;transform:scale(1.2);}}
 </style>
 </head>
 <body>
@@ -123,6 +149,19 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  // Which way the screen is turned, as <html data-o="port|land">: the layouts hang off it rather than off a media query,
+  // so a turn of the device moves everything to the new shape inside a View Transition (the pieces glide, nothing jumps)
+  (function () {
+    var R = document.documentElement;
+    function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+    R.setAttribute('data-o', shape());
+    window.addEventListener('resize', function () {
+      var o = shape(); if (R.getAttribute('data-o') === o) return;
+      var go = function () { R.setAttribute('data-o', o); };
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
+    });
+  })();
   var SAVE = 'tictactoe_state', KEY = 'tictactoe';
   var LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
   var LINE_NAME = ['across the top', 'across the middle', 'across the bottom', 'down the left side', 'down the middle', 'down the right side', 'corner to corner', 'corner to corner'];
@@ -251,7 +290,8 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     if (!byCpu) { snapshot(); }
     var sym = p.sym;
     // Did this move block someone's win?
-    S.players.forEach(function (q, j) { if (j !== G.cur && threats(G.boards[b], q.sym).indexOf(i) >= 0 && threats(G.boards[b], sym).indexOf(i) < 0) G.blocks[G.cur]++; });
+    var blocked = false;
+    S.players.forEach(function (q, j) { if (j !== G.cur && threats(G.boards[b], q.sym).indexOf(i) >= 0 && threats(G.boards[b], sym).indexOf(i) < 0) { G.blocks[G.cur]++; blocked = true; } });
     G.boards[b][i] = sym;
     G.moves.push({ b: b, i: i, p: G.cur });
     lastMove = { b: b, i: i }; fresh = false;
@@ -261,10 +301,13 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     else if (isFull(G.boards[b])) G.meta[b] = 'D';
     if (S.variant === 'ultimate') G.next = G.meta[i] ? -1 : i;
     var res = checkEnd(G);
+    if (!res && !wonBoard) goodMove(G, b, i, p, blocked);
     if (res) {
       G.over = true; G.winner = res.winner;
       if (res.metaLine != null) G.metaLine = res.metaLine;
       if (res.winner >= 0) S.wins[res.winner]++; else S.draws++;
+      if (res.winner >= 0) S.run = S.run && S.run.p === res.winner ? { p: res.winner, n: S.run.n + 1 } : { p: res.winner, n: 1 };
+      else S.run = null;
       S.first = (S.first + 1) % S.players.length;
       save(); render();
       var delay = 900;
@@ -296,6 +339,20 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     return { winner: top === 1 ? counts.indexOf(max) : -1 };
   }
 
+  // A good move's reward, on the square where it happens: a block (their win stopped) and a fork (two ways to win at
+  // once, so the other player can stop only one) glow and are called out; a fork is uncommon, so history keeps it
+  var glowAt = null;
+  function goodMove(G, b, i, p, blocked) {
+    var mine = !p.cpu && !(NET && NET.seat >= 0 && S.players[NET.seat] !== p);
+    var fork = threats(G.boards[b], p.sym).length >= 2;
+    if (!fork && !blocked) return;
+    glowAt = { b: b, i: i, n: G.moves.length };
+    setTimeout(function () {
+      if (fork) { Kit.callout('A fork!', COL[p.sym]); Kit.sfx('good'); if (mine) Kit.haptic('medium'); }
+      else { Kit.callout('Blocked!', COL[p.sym]); Kit.sfx('chip'); if (mine) Kit.haptic('light'); }
+    }, 420);
+    if (fork) { G.fk = G.fk || []; G.fk.push(G.cur); }
+  }
   // ── Undo ──────────────────────────────────────────────────────────────────
   function snapshot() { undoStack.push(JSON.stringify(S.G)); if (undoStack.length > 60) undoStack.shift(); }
   function undo() {
@@ -486,7 +543,7 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
     for (var i = 0; i < 9; i++) {
       (function (i) {
         var v = bd[i], can = !v && !cpuTurn && legal(G, b, i);
-        var btn = el('button', { type: 'button', class: 'tc' + (winCells.indexOf(i) >= 0 ? ' w' : ''), 'aria-label': v ? SYMTXT[v] + ' in square ' + (i + 1) : 'Square ' + (i + 1) + (o.mini ? ' of board ' + (b + 1) : '') });
+        var btn = el('button', { type: 'button', class: 'tc' + (winCells.indexOf(i) >= 0 ? ' w' : '') + (glowAt && glowAt.b === b && glowAt.i === i && glowAt.n === G.moves.length ? ' glow' : ''), 'aria-label': v ? SYMTXT[v] + ' in square ' + (i + 1) : 'Square ' + (i + 1) + (o.mini ? ' of board ' + (b + 1) : '') });
         btn.disabled = !can;
         if (v) btn.innerHTML = markSvg(v, seed + i * 31, lastMove && lastMove.b === b && lastMove.i === i ? 'new' : '', o.markW);
         btn.addEventListener('click', function () { play(b, i); });
@@ -596,6 +653,14 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
       else hl.push('A tie on boards: ' + S.players.map(function (p) { return p.name + ' ' + boardsWon(G, p.sym); }).join(', '));
     }
     S.players.forEach(function (p, i) { if (G.blocks[i] >= 2) hl.push(p.name + ' blocked ' + G.blocks[i] + ' wins'); else if (G.blocks[i] === 1 && S.variant === 'classic') hl.push(p.name + ' made a key block'); });
+    S.players.forEach(function (p, i) { var k = (G.fk || []).filter(function (x) { return x === i; }).length; if (k) hl.unshift(p.name + ' set up ' + (k === 1 ? 'a fork' : k + ' forks') + ', two ways to win at once'); });
+    // Three wins in a row in the series (and every three after): a moment before the results card
+    var streak = !NET && w && S.run && S.run.p === G.winner && S.run.n >= 3 && S.run.n % 3 === 0 ? S.run.n : 0;
+    if (streak) {
+      hl.unshift(w.name + ' won ' + streak + ' games in a row');
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      Kit.moment({ title: streak + ' wins in a row', line: (w.name === 'You' ? 'You have' : w.name + ' has') + ' won the last ' + streak + ' games of the series.', icon: 'trophy', color: COL[w.sym] });
+    }
     if (vsCpu) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     if (gameNo() > 2) hl.push('Series so far: ' + S.players.map(function (p, i) { return p.name + ' ' + S.wins[i]; }).join(' – ') + (S.draws ? ', ' + S.draws + ' draws' : ''));
     var modeName = (VARIANT_NAME[S.variant] && S.mode !== S.variant ? VARIANT_NAME[S.variant] + ', ' : '') + MODE_NAME[S.mode] + (S.variant === 'multi' ? ' (' + S.nboards + ' boards)' : '');
@@ -629,6 +694,10 @@ html[data-theme="light"] .score .sym,html[data-theme="parchment"] .score .sym{fi
       return;
     }
     var lose = w && w.cpu;
+    if (streak) { setTimeout(function () { winCard(w, lose); }, 1900); return; }
+    winCard(w, lose);
+  }
+  function winCard(w, lose) {
     Kit.win({
       icon: !w ? 'users' : lose ? 'bot' : 'trophy',
       title: !w ? (S.variant === 'classic' ? "Cat's game!" : "It's a draw!") : lose ? w.name + ' wins this one' : w.name === 'You' ? 'You win!' : w.name + ' wins!',

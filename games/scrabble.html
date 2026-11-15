@@ -67,6 +67,33 @@
 .sc-bag.shake svg{animation:bagshake .5s;}
 @keyframes bagshake{20%{transform:rotate(-9deg)}45%{transform:rotate(7deg)}70%{transform:rotate(-4deg)}}
 
+/* Nothing you tap within 17px of a side or 18px of the bottom (the screen's rounded corners) */
+.sc{padding-bottom:max(calc(var(--safe-b) + 10px),20px);}
+.sc:not(.wide) .sc-top,.sc:not(.wide) .sc-side{padding-left:9px;padding-right:9px;max-width:min(100%,640px);}   /* (as wide as the screen even when the board is not, so the rack keeps one row) */
+.sc.wide{padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));}
+@media (max-width:360px){ .sc-acts .btn.play .ico{display:none;} }
+/* A phone on its side (.wide.short): the board at the left as tall as the screen allows; the players in a row, the
+   message, the rack and the buttons at the right, where the taps go; the turn log stays in its sheet (tap the message) */
+.sc.wide.short{column-gap:18px;row-gap:8px;padding-top:2px;padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right));}
+.sc.wide.short .sc-top{flex-direction:row;}
+.sc.wide.short .sc-pls{flex-direction:row;}
+.sc.wide.short .pl{flex:1 1 0;padding:5px 8px 5px 5px;}
+.sc.wide.short .pl .avatar{width:30px;height:30px;}
+.sc.wide.short .pl .nm{font-size:.82rem;}
+.sc.wide.short .pl .pt{font-size:1.3rem;}
+.sc.wide.short .sc-bag{width:54px;height:auto;display:grid;place-items:center;padding:0;}
+.sc.wide.short .sc-bag b{position:absolute;left:0;right:0;top:50%;margin-top:-1px;text-align:center;font-family:var(--display);font-size:.95rem;color:#3b2410;}
+.sc.wide.short .sc-log{display:none;}
+.sc.wide.short .sc-side{justify-content:flex-end;}
+.sc.wide.short .sc-acts .btn{min-height:50px;}
+/* Turning the device: the board, the players, the rack and the buttons glide to their places in the new layout */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.sc-frame{view-transition-name:scr-board;}
+.sc-top{view-transition-name:scr-top;}
+.sc-rackwrap{view-transition-name:scr-rack;}
+.sc-acts{view-transition-name:scr-acts;}
+.sc-msgrow{view-transition-name:scr-msg;}
+
 /* ── The board: a wooden frame around a printed board ─────────────────────── */
 .sc-frame{position:relative;padding:var(--rim);border-radius:calc(var(--rim) + 6px);
   background:var(--grain) 0 0/220px 220px,
@@ -1017,18 +1044,26 @@
       if (!V.root) return;
       // zoomed in when the device turns: the same spot of the board stays in the middle, at the same zoom
       var z = Z.z, fx = V.bs && z > 1.01 ? (V.bs / 2 - Z.tx) / (z * V.bs) : -1, fy = (V.bs / 2 - Z.ty) / (z * V.bs);
-      fit(); fit();   // twice, like the first build: the rows it measures depend on the first pass
-      if (fx >= 0) { Z.z = Math.max(1, Math.min(zmax(), z)); Z.tx = V.bs / 2 - fx * Z.z * V.bs; Z.ty = V.bs / 2 - fy * Z.z * V.bs; clampZoom(); applyZoom(false); }
+      var go = function () {
+        fit(); fit();   // twice, like the first build: the rows it measures depend on the first pass
+        if (fx >= 0) { Z.z = Math.max(1, Math.min(zmax(), z)); Z.tx = V.bs / 2 - fx * Z.z * V.bs; Z.ty = V.bs / 2 - fy * Z.z * V.bs; clampZoom(); applyZoom(false); }
+      };
+      // a turn of the device (a new layout): everything glides to its new place inside a View Transition
+      var turned = (window.innerWidth > window.innerHeight * 1.08) !== V.root.classList.contains('wide');
+      if (turned && document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
     }, 60);
   }
   function fit() {
     if (!V.root) return;
     var W = window.innerWidth, H = window.innerHeight, bar = (document.querySelector('.gbar') || { offsetHeight: 58 }).offsetHeight;
-    var safeB = 10, wide = W >= 900 && W > H * 1.08, was = V.root.classList.contains('wide');
+    // sideways, on an iPad and on a phone too, the board stands at the left and the rest beside it
+    var safeB = 10, wide = W > H * 1.08, short = wide && H < 600, was = V.root.classList.contains('wide') && !V.root.classList.contains('short');
     V.root.classList.toggle('wide', wide);
+    V.root.classList.toggle('short', short);
     var rim = Math.round(Math.max(8, Math.min(16, W * 0.022))), bs;
     if (wide) {
-      var side = W >= 1100 ? 400 : 340;
+      var side = W >= 1100 ? 400 : W >= 900 && !short ? 340 : Math.max(300, Math.min(420, W - (H - bar - 22) - 60));
       bs = Math.min(H - bar - 22 - 2 * rim, W - side - 22 - 40 - 2 * rim, 860);
       V.root.style.setProperty('--rt', Math.floor((side - 30) / 7 * 0.88) + 'px');
     } else {
@@ -1037,9 +1072,9 @@
       var topH = V.root.querySelector('.sc-top').offsetHeight || 46;
       // top strip, board, message row, rack, buttons, with the gaps between them and the page padding
       var sideH = Math.max(V.msg.parentNode.offsetHeight, 42) + V.rack.parentNode.offsetHeight + V.acts.offsetHeight;
-      bs = Math.min(W - 16 - 2 * rim, H - bar - topH - sideH - 58 - 2 * rim, 900);
+      bs = Math.min(W - 16 - 2 * rim, H - bar - topH - sideH - 68 - 2 * rim, 900);
     }
-    bs = Math.max(200, Math.floor(bs));
+    bs = Math.max(170, Math.floor(bs));
     var gap = bs > 520 ? 2 : 1, cs = (bs - 16 * gap) / 15;
     V.root.style.setProperty('--bs', bs + 'px');
     V.root.style.minHeight = wide ? '' : Math.floor(H - bar - 4) + 'px';
@@ -1049,7 +1084,7 @@
     V.root.style.setProperty('--cs', cs.toFixed(3) + 'px');
     V.bs = bs; V.cs = cs; V.gap = gap;
     clampZoom(); applyZoom(false);
-    if (was !== wide && S) { paintPlayers(); paintMsg(); }   // the bag's label and the last-move line follow the layout
+    if (was !== (wide && !short) && S) { paintPlayers(); paintMsg(); }   // the bag's label and the last-move line follow the layout
   }
 
   // ── Zoom and pan ──
@@ -1104,7 +1139,7 @@
     });
     var bn = bagN();
     V.bag.querySelector('b').textContent = String(bn);
-    if (V.root.classList.contains('wide')) V.bag.querySelector('b').textContent = bn + (bn === 1 ? ' tile in the bag' : ' tiles in the bag');
+    if (V.root.classList.contains('wide') && !V.root.classList.contains('short')) V.bag.querySelector('b').textContent = bn + (bn === 1 ? ' tile in the bag' : ' tiles in the bag');
   }
   function cellHTML(i) {
     var ch = S.board[i];
@@ -1354,11 +1389,15 @@
       countUp(seat, tally.before, P(seat).score - (S.over && S.result ? S.result.adj[seat] : 0), 650);
       if (entry.b) {
         Kit.callout('Bingo! +50'); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 });
+      } else if (entry.s >= 70) {
+        // a 70-point play without a bingo is uncommon: a moment on the table
+        Kit.moment({ title: entry.m + ' for ' + entry.s, line: (nm(seat) === 'You' ? 'You' : nm(seat)) + ' scored ' + entry.s + ' points with one word.', pts: '+' + entry.s, color: col(seat) });
+        Kit.sfx('sparkle'); Kit.haptic('success');
       } else if (entry.s >= 40) { Kit.callout(entry.m + ' ' + entry.s); Kit.sfx('sparkle'); Kit.haptic('success'); }
       else Kit.sfx('good');
       if (seat === viewSeat() && info.drawn && info.drawn.length && !veil) dealIn(info.drawn);
     }, t);
-    t += entry.b ? 1500 : entry.s >= 40 ? 1200 : 750;
+    t += entry.b ? 1500 : entry.s >= 70 ? 1700 : entry.s >= 40 ? 1200 : 750;
     later(function () { busy = false; done(); }, t);
   }
 
@@ -1686,11 +1725,27 @@
   // ═════════════════════════════════════════════════════════════════════════
   // The end
   // ═════════════════════════════════════════════════════════════════════════
+  // A comeback: the winner was 50 points or more behind someone at one point of the game
+  function comeback(w) {
+    if (w == null || w < 0) return 0;
+    var sc = S.players.map(function () { return 0; }), worst = 0;
+    S.log.forEach(function (e) { if (e.k !== 'play' || e.p == null || e.p < 0) return; sc[e.p] += e.s; var top = Math.max.apply(null, sc); if (sc[w] - top < worst) worst = sc[w] - top; });
+    return -worst;
+  }
+  var cbShown = null;
   function showResults(again) {
     if (!S || !S.over) return;
     var R = S.result, order = R.order, w = R.winner;
     if (S.mode === 'online') netRecord();
     else if (!S.recorded) { S.recorded = true; record(); save(); clearSave(); }
+    var back = comeback(w);
+    if (!again && back >= 50 && cbShown !== S.started) {
+      cbShown = S.started;
+      Kit.moment({ title: 'A comeback', line: (nm(w) === 'You' ? 'You were' : nm(w) + ' was') + ' ' + back + ' points behind and still won.', icon: 'trophy', color: col(w) });
+      Kit.sfx('sparkle'); Kit.haptic('success');
+      setTimeout(function () { showResults(again); }, 2100);
+      return;
+    }
     var best = bestPlay(), bingos = S.log.filter(function (e) { return e.k === 'play' && e.b; });
     var notes = [];
     if (bingos.length) notes.push(bingos.length === 1 ? 'Bingo: ' + nm(bingos[0].p) + ' with ' + bingos[0].m : bingos.length + ' bingos: ' + bingos.map(function (b) { return b.m; }).join(', '));
@@ -1759,6 +1814,7 @@
     if (best && !best.b) hl.push(nm(best.p) + ' played ' + best.m + ' for ' + best.s);
     plays.filter(function (e) { return e.b; }).slice(0, 3).forEach(function (e) { hl.push(nm(e.p) + ' bingoed with ' + e.m + ' for ' + e.s); });
     hl.push(R.type === 'out' ? nm(R.seat) + ' went out first' : 'Ended after six scoreless turns');
+    var back = comeback(R.winner); if (back >= 50) hl.unshift(nm(R.winner) + ' came back from ' + back + ' points behind to win');
     var cpus = S.players.filter(function (p) { return p.cpu; });
     var mode = S.mode === 'cpu' ? 'vs Computer (' + LEVEL_NAME[S.level] + ')' : S.mode === 'pp' ? 'Pass & play' : 'Online';
     if (cpus.length && S.mode !== 'cpu') hl.push('A robot took over for a player who left');

@@ -128,49 +128,65 @@
 .dg svg{display:block;border-radius:6px;box-shadow:0 3px 8px rgba(0,0,0,.35);}
 .dg small{font-size:.78rem;color:var(--text-2);text-align:center;line-height:1.25;}
 
+/* A layout for each shape. <html data-o> says which way the screen is turned (set by the script below, not by a
+   media query), so a turn of the device can glide from the one layout to the other inside a View Transition. */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+.go-col>.goban{view-transition-name:go-board;}
+.go-col>.pbar.top{view-transition-name:go-top;}
+.go-col>.pbar.bot{view-transition-name:go-bot;}
+.go-col>.turn{view-transition-name:go-turn;}
+.go-col>.acts{view-transition-name:go-acts;}
+/* Phone upright: the board as wide as the screen, the column in the middle of the screen's height */
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;padding:4px 18px calc(var(--safe-b) + 18px);}
+html[data-o=port] .go-col{width:100%;}
+html[data-o=port] .go-col>.goban{width:min(100%,calc(100dvh - var(--bar) - 300px));align-self:center;}
 /* iPad portrait: bigger board */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:none;}
-  .go-col{max-width:min(700px,calc(100dvh - 450px));}
-  .pbar{min-height:58px;}
-  .pbar .nm{font-size:1.05rem;}
-  .pbar .sub{font-size:.8rem;}
-  .info{font-size:.85rem;}
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:none;}
+  html[data-o=port] .go-col{max-width:736px;}
+  html[data-o=port] .go-col>.goban{width:min(100%,calc(100dvh - var(--bar) - 340px));}
+  html[data-o=port] .pbar{min-height:58px;}
+  html[data-o=port] .pbar .nm{font-size:1.05rem;}
+  html[data-o=port] .pbar .sub{font-size:.8rem;}
+  html[data-o=port] .info{font-size:.85rem;}
 }
-/* Landscape (iPad, desktop, phones on their side): board left, panel right */
-@media (orientation:landscape) and (min-width:640px){
-  #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 10px);padding-left:calc(16px + var(--corner-x));padding-right:calc(16px + var(--corner-x));}
-  .go-col{--bsz:min(calc(100dvh - 82px - var(--safe-t) - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 360px));max-width:none;height:calc(var(--bsz) + 8px);
+/* Sideways (iPad and phones on their side): what you look at in a panel at the left, the board where the taps go at the right */
+@media all{
+  html[data-o=land] #app.stage.ipl{max-width:none;padding-bottom:calc(var(--safe-b) + 10px);padding-left:calc(16px + var(--corner-x));padding-right:calc(16px + var(--corner-x));}
+  html[data-o=land] .go-col{--bsz:min(calc(100dvh - var(--bar) - 22px - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 360px));max-width:none;height:calc(var(--bsz) + 8px);
     display:grid;grid-template-columns:minmax(250px,320px) var(--bsz);grid-template-rows:max-content max-content max-content minmax(0,1fr) max-content max-content;
     grid-template-areas:"t b" "s b" "i b" "x b" "a b" "p b";column-gap:22px;row-gap:8px;justify-content:center;}
-  .go-col>.goban{grid-area:b;width:var(--bsz);}
-  .go-col>.pbar.top{grid-area:t;}
-  .go-col>.pbar.bot{grid-area:p;}
-  .go-col>.turn{grid-area:s;justify-content:flex-start;text-align:left;}
-  .go-col>.info{grid-area:i;text-align:left;}
-  .go-col>.scw{grid-area:x;align-self:start;min-height:0;overflow:auto;}
-  .go-col>.acts{grid-area:a;}
-  .acts .btn{max-width:none;}
+  html[data-o=land] .go-col>.goban{grid-area:b;width:var(--bsz);}
+  html[data-o=land] .go-col>.pbar.top{grid-area:t;}
+  html[data-o=land] .go-col>.pbar.bot{grid-area:p;}
+  html[data-o=land] .go-col>.turn{grid-area:s;justify-content:flex-start;text-align:left;}
+  html[data-o=land] .go-col>.info{grid-area:i;text-align:left;}
+  html[data-o=land] .go-col>.scw{grid-area:x;align-self:start;min-height:0;overflow:auto;}
+  html[data-o=land] .go-col>.acts{grid-area:a;}
+  html[data-o=land] .acts .btn{max-width:none;}
 }
-@media (orientation:landscape) and (min-width:640px) and (max-height:500px){
-  .go-col{--bsz:min(calc(100dvh - 84px - var(--safe-t) - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 330px));row-gap:6px;}
-  .pbar{min-height:44px;padding:3px 8px;}
-  .bowl{width:34px;height:34px;}
-  .bowl::before{inset:5px;}
-  .bowl i{width:9px;height:9px;}
-  .turn{min-height:28px;font-size:.95rem;}
-  .sc{padding:4px 10px 6px;}
-  .sc td{font-size:1rem;}
-  .sc tr.tot td{font-size:1.15rem;}
+@media (max-height:500px){
+  html[data-o=land] .go-col{--bsz:min(calc(100dvh - var(--bar) - 22px - var(--safe-b)),calc(100vw - 2 * var(--corner-x) - 330px));row-gap:6px;}
+  html[data-o=land] .pbar{min-height:44px;padding:3px 8px;}
+  html[data-o=land] .bowl{width:34px;height:34px;}
+  html[data-o=land] .bowl::before{inset:5px;}
+  html[data-o=land] .bowl i{width:9px;height:9px;}
+  html[data-o=land] .turn{min-height:28px;font-size:.95rem;}
+  html[data-o=land] .sc{padding:4px 10px 6px;}
+  html[data-o=land] .sc td{font-size:1rem;}
+  html[data-o=land] .sc tr.tot td{font-size:1.15rem;}
 }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  .go-col{grid-template-columns:minmax(280px,330px) var(--bsz);column-gap:28px;row-gap:10px;}
-  .pbar{min-height:60px;}
-  .pbar .nm{font-size:1.05rem;}
-  .bowl{width:48px;height:48px;}
-  .bowl::before{inset:7px;}
-  .bowl i{width:12px;height:12px;}
+@media (min-width:900px) and (min-height:600px){
+  html[data-o=land] .go-col{grid-template-columns:minmax(280px,330px) var(--bsz);column-gap:28px;row-gap:10px;}
+  html[data-o=land] .pbar{min-height:60px;}
+  html[data-o=land] .pbar .nm{font-size:1.05rem;}
+  html[data-o=land] .bowl{width:48px;height:48px;}
+  html[data-o=land] .bowl::before{inset:7px;}
+  html[data-o=land] .bowl i{width:12px;height:12px;}
 }
+/* A big capture: the stones that come off go up in a flash of light */
+.go-flash{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(closest-side,rgba(255,226,140,.9),rgba(255,226,140,0));animation:goflash .7s ease-out both;z-index:6;}
+@keyframes goflash{from{opacity:1;transform:scale(.5);}to{opacity:0;transform:scale(1.7);}}
 </style>
 </head>
 <body>
@@ -630,6 +646,19 @@ function GoEngine() {
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  // Which way the screen is turned, as <html data-o="port|land">: the layouts hang off it rather than off a media query,
+  // so a turn of the device moves everything to the new shape inside a View Transition (the pieces glide, nothing jumps)
+  (function () {
+    var R = document.documentElement;
+    function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+    R.setAttribute('data-o', shape());
+    window.addEventListener('resize', function () {
+      var o = shape(); if (R.getAttribute('data-o') === o) return;
+      var go = function () { R.setAttribute('data-o', o); };
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
+    });
+  })();
   var SAVE = 'go_state', KEY = 'go';
   var BLACK = 1, WHITE = 2;
   var E = GoEngine();
@@ -903,7 +932,8 @@ function GoEngine() {
       }
       tock(1);
       Kit.haptic(n >= 3 ? 'medium' : 'light');
-      if (n >= 5) setTimeout(function () { Kit.callout(n + ' stones captured!'); Kit.sfx('good'); }, 300);
+      if (n >= 10) setTimeout(function () { bigCapture(c, n, anim.from); }, 300);
+      else if (n >= 5) setTimeout(function () { Kit.callout(n + ' stones captured!'); Kit.sfx('good'); }, 300);
       else if (n) setTimeout(function () { Kit.sfx('pop'); }, 260);
     }
     save(); paint(anim);
@@ -995,6 +1025,13 @@ function GoEngine() {
     if (S.ml != null && S.ml.length === 2 * S.mv && S.ml.length <= 1400) d.ml = S.ml;
     return d;
   }
+  // Ten stones or more off the board in one move is uncommon: a moment on the table, the captured points lit
+  function bigCapture(c, n, from) {
+    var p = pl(c), me = NET && NET.seat >= 0 ? S.players[NET.seat] === p : !p.cpu;
+    Kit.sfx('sparkle'); if (me) Kit.haptic('success');
+    try { if (stonesL && from) from.forEach(function (x) { var f = el('div', { class: 'go-flash' }); place(f, x.i, 1.2); stonesL.appendChild(f); setTimeout(function () { f.remove(); }, 800); }); } catch (e) {}
+    Kit.moment({ title: 'A capture of ' + n + ' stones', line: (NET && me ? 'You' : p.name) + ' took ' + n + ' stones off the board with one move.', pts: '+' + n, color: c === BLACK ? '#2a2a30' : '#e9e6dd' });
+  }
   function finish(o) {
     o = o || {};
     epoch++; cancelThink(); S.busy = false; pv = -1;
@@ -1014,6 +1051,13 @@ function GoEngine() {
       if (sc.terr[tc] >= 5) hl.push(pl(tc).name + ' surrounded ' + sc.terr[tc] + ' points of territory');
     }
     if (S.kos >= 2) hl.push('A ko fight: ' + S.kos + ' ko captures back and forth');
+    // won by half a point: the closest a game of Go can be (komi breaks every tie)
+    var half = !o.resign && margin < 1;
+    if (half) {
+      hl.unshift(winner.name + ' won by half a point');
+      Kit.moment({ title: 'Half a point', line: (winner.name === 'You' ? 'You won' : winner.name + ' won') + ' by the smallest margin there is.', icon: 'trophy', color: winC === BLACK ? '#2a2a30' : '#e9e6dd' });
+      Kit.sfx('sparkle'); Kit.haptic('success');
+    }
     var setupBits = S.n + '×' + S.n + (S.hcap >= 2 ? ', ' + S.hcap + '-stone handicap' : '') + ', komi ' + S.komi + ', ' + RULE_NAME[S.rule].toLowerCase();
     if (hl.length < 6) hl.push('Played on ' + setupBits + (vsCpu() ? ' vs the ' + LEVEL_NAME[S.level] + ' computer' : '') + ' in ' + plural(S.mv, 'move'));
     Kit.record(KEY, {
@@ -1038,7 +1082,7 @@ function GoEngine() {
         look: true,
         setup: function () { epoch++; cancelThink(); clearSave(); showSetup(); }
       });
-    }, o.resign ? 300 : 900);
+    }, o.resign ? 300 : half ? 2300 : 900);
   }
 
   // ── Layout ───────────────────────────────────────────────────────────────

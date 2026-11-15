@@ -40,22 +40,48 @@
 .below{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px;}
 .note{font-size:.92rem;font-weight:600;color:var(--text-2);text-align:center;min-height:1.4em;}
 
-/* iPad: bigger sheet in portrait; landscape puts scores and status beside it */
-@media (min-width:700px) and (orientation:portrait){
-  #app.stage.ipl{max-width:760px;}
-  .desk{max-width:min(712px,calc(100dvh - 400px));margin-left:auto;margin-right:auto;}
-  .score .nm{max-width:220px;font-size:.9rem;}
+/* A layout for each shape. <html data-o> says which way the screen is turned (set by the script below, not by a
+   media query), so a turn of the device can glide from the one layout to the other inside a View Transition. */
+::view-transition-group(*){animation-duration:.45s;animation-timing-function:cubic-bezier(.22,1,.36,1);}
+#app.ipl>.desk{view-transition-name:db-board;}
+#app.ipl>.scores{view-transition-name:db-scores;}
+#app.ipl>.turn{view-transition-name:db-turn;}
+#app.ipl>.below{view-transition-name:db-below;}
+/* Upright: the sheet as wide as the screen (or as the height leaves room for), in the middle of the screen's height */
+html[data-o=port] #app.stage.ipl{min-height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;padding-bottom:calc(var(--safe-b) + 18px);}
+html[data-o=port] #app.ipl>.desk{width:100%;max-width:min(600px,calc(100dvh - var(--bar) - 236px));margin-left:auto;margin-right:auto;}
+html[data-o=port] #app.ipl>.scores{flex:none;}
+@media (min-width:700px){
+  html[data-o=port] #app.stage.ipl{max-width:800px;}
+  html[data-o=port] #app.ipl>.desk{max-width:min(736px,calc(100dvh - var(--bar) - 250px));}
+  html[data-o=port] .score .nm{max-width:220px;font-size:.95rem;}
+  html[data-o=port] .score .pt{font-size:2rem;}
 }
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  #app.stage.ipl{max-width:none;display:grid;grid-template-columns:minmax(240px,300px) auto;grid-template-rows:auto auto auto 1fr;
-    column-gap:32px;justify-content:center;align-content:start;padding-bottom:calc(var(--safe-b) + 12px);}
-  #app.ipl>.desk{grid-column:2;grid-row:1 / span 4;margin:0;width:min(calc(100dvh - 120px - var(--safe-t) - var(--safe-b)),calc(100vw - 400px));}
-  #app.ipl>.scores{grid-column:1;flex-direction:column;overflow:visible;margin-top:4px;}
-  #app.ipl>.scores .score .nm{max-width:220px;font-size:.9rem;}
-  #app.ipl>.turn{grid-column:1;justify-self:start;}
-  #app.ipl>.below{grid-column:1;align-items:flex-start;margin-top:6px;}
-  #app.ipl>.below .note{text-align:left;}
+/* Sideways (phone and iPad): the scores and whose turn at the left to look at; the sheet, where the taps go, at the
+   right and as tall as the screen allows */
+html[data-o=land] #app.stage.ipl{max-width:none;display:grid;grid-template-columns:minmax(200px,300px) auto;grid-template-rows:auto auto auto 1fr;
+  column-gap:clamp(20px,4vw,40px);justify-content:center;align-content:center;min-height:calc(100dvh - var(--bar));
+  padding:2px max(18px,env(safe-area-inset-right)) calc(var(--safe-b) + 14px) max(18px,env(safe-area-inset-left));}
+html[data-o=land] #app.ipl>.desk{grid-column:2;grid-row:1 / span 4;align-self:center;margin:0;
+  width:min(720px,calc(100dvh - var(--bar) - 44px - var(--safe-b)),calc(100vw - 36px - 200px - clamp(20px,4vw,40px)));}
+html[data-o=land] #app.ipl>.scores{grid-column:1;flex-direction:column;overflow:visible;margin-top:4px;}
+html[data-o=land] #app.ipl>.scores .score{flex:none !important;}
+html[data-o=land] #app.ipl>.scores .score .nm{max-width:220px;font-size:.9rem;}
+html[data-o=land] #app.ipl>.turn{grid-column:1;justify-self:start;}
+html[data-o=land] #app.ipl>.below{grid-column:1;align-items:flex-start;margin-top:6px;}
+html[data-o=land] #app.ipl>.below .note{text-align:left;}
+html[data-o=land] .desk{padding:10px 10px 12px;}
+@media (min-height:600px){
+  html[data-o=land] .desk{padding:14px 12px 16px;}
+  html[data-o=land] #app.ipl>.scores .score .pt{font-size:2rem;}
 }
+/* A short phone on its side: two scores side by side (three or four in a grid of two), so the column stays short */
+@media (max-height:500px){
+  html[data-o=land] #app.ipl>.scores{display:grid;grid-template-columns:1fr 1fr;}
+  html[data-o=land] #app.ipl>.scores .score{min-width:0;padding:6px 8px 8px;}
+  html[data-o=land] #app.ipl>.scores .score .pt{font-size:1.4rem;}
+}
+.score .pt.bump{animation:pop .45s var(--spring);}
 </style>
 </head>
 <body>
@@ -64,6 +90,19 @@
 (function () {
   'use strict';
   var el = Kit.el, app = document.getElementById('app');
+  // Which way the screen is turned, as <html data-o="port|land">: the layouts hang off it rather than off a media query,
+  // so a turn of the device moves everything to the new shape inside a View Transition (the pieces glide, nothing jumps)
+  (function () {
+    var R = document.documentElement;
+    function shape() { return window.innerWidth > window.innerHeight ? 'land' : 'port'; }
+    R.setAttribute('data-o', shape());
+    window.addEventListener('resize', function () {
+      var o = shape(); if (R.getAttribute('data-o') === o) return;
+      var go = function () { R.setAttribute('data-o', o); };
+      if (document.startViewTransition && !document.hidden && !matchMedia('(prefers-reduced-motion: reduce)').matches) { try { document.startViewTransition(go); return; } catch (e) {} }
+      go();
+    });
+  })();
   var SAVE = 'dotsboxes_state', KEY = 'dotsboxes', U = 100, PAD = 50;
   var INK = ['#2457c5', '#d1352b', '#1f8a4c', '#7b3fb8'];
   var LEVEL_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard' };
@@ -329,14 +368,28 @@
     } else { Kit.sfx('tap'); Kit.haptic('light'); }
     var total = S.box.filter(Boolean).length;
     if (total === S.n * S.n) {
+      chainMoment(p, S.run);
       S.over = true; S.lastBy = p;
       S.first = (S.first + 1) % S.players.length;
       save(); render();
       setTimeout(endGame, 900);
       return;
     }
-    if (!got.length) { S.cur = (S.cur + 1) % S.players.length; S.run = 0; }
+    if (!got.length) { chainMoment(p, S.run); S.cur = (S.cur + 1) % S.players.length; S.run = 0; }
     save(); render(); maybeCpu();
+  }
+  // A long chain (six boxes or more in one turn) is uncommon: when the turn that took it ends, it is a moment on the table
+  function chainMoment(p, run) {
+    if (run < 6) return;
+    var who = NET && NET.seat === p ? 'You' : S.players[p].name;
+    Kit.sfx('sparkle'); if (!S.players[p].cpu) Kit.haptic('success');
+    Kit.moment({ title: 'A ' + run + '-box chain', line: who + ' closed ' + run + ' boxes in a row in one turn.', pts: '+' + run, color: INK[p] });
+  }
+  // A comeback: the winner was 5 or more boxes behind someone at one point of the game
+  function comeback(wi) {
+    var sc = S.players.map(function () { return 0; }), worst = 0;
+    S.moves.forEach(function (m) { sc[m.p] += m.got || 0; var top = Math.max.apply(null, sc); if (sc[wi] - top < worst) worst = sc[wi] - top; });
+    return -worst;
   }
   function snapshot() { undoStack.push(JSON.stringify(S)); if (undoStack.length > 200) undoStack.shift(); }
   function undo() {
@@ -361,7 +414,7 @@
     var mx = (x1 + x2) / 2 + (r() - 0.5) * 4, my = (y1 + y2) / 2 + (r() - 0.5) * 4;
     return 'M' + (x1 + (r() - .5) * 2).toFixed(1) + ' ' + (y1 + (r() - .5) * 2).toFixed(1) + ' Q' + mx.toFixed(1) + ' ' + my.toFixed(1) + ' ' + (x2 + (r() - .5) * 2).toFixed(1) + ' ' + (y2 + (r() - .5) * 2).toFixed(1);
   }
-  var svgEl, stripEl, turnEl, noteEl;
+  var svgEl, stripEl, turnEl, noteEl, lastSc = [];
   function render() {
     app.innerHTML = ''; app.classList.add('ipl');
     stripEl = el('div', { class: 'scores' }); app.appendChild(stripEl);
@@ -415,10 +468,11 @@
     S.players.forEach(function (p, i) {
       stripEl.appendChild(el('div', { class: 'score' + (i === S.cur && !S.over ? ' on' : '') + (S.over && score(i) === max ? ' lead' : ''), style: { '--c': INK[i], flex: '1' } }, [
         el('span', { class: 'nm', html: '<span class="ini-dot" style="background:' + INK[i] + '">' + Kit.esc(initial(i)) + '</span>' + (p.cpu && NET ? Kit.icon('bot') : '') + Kit.esc(NET && NET.seat === i ? 'You' : p.name) }),
-        el('span', { class: 'pt', text: String(score(i)) }),
+        el('span', { class: 'pt' + (lastSc[i] != null && score(i) > lastSc[i] ? ' bump' : ''), text: String(score(i)) }),
         el('span', { class: 'sub', text: score(i) === 1 ? 'box' : 'boxes' })
       ]));
     });
+    lastSc = S.players.map(function (q, i) { return score(i); });
     var p = S.players[S.cur];
     turnEl.innerHTML = '';
     if (NET && LEFT) { turnEl.style.setProperty('--c', 'var(--text)'); turnEl.appendChild(el('span', { text: LEFT.text || 'The other player left' })); if (noteEl) noteEl.textContent = ''; return; }
@@ -483,6 +537,11 @@
     runs.slice(0, 2).forEach(function (x) { hl.push(S.players[x.i].name + ' took ' + ([8, 11, 18].indexOf(x.b) >= 0 ? 'an ' : 'a ') + x.b + '-box chain'); });
     S.players.forEach(function (p, i) { if (S.dd[i]) hl.push(p.name + ' left two boxes on purpose to keep control' + (S.dd[i] > 1 ? ' (' + S.dd[i] + ' times)' : '')); });
     if (S.lastBy != null) hl.push(S.players[S.lastBy].name + ' closed the last box');
+    var back = w ? comeback(wi) : 0, shut = w && sc.length === 2 && Math.min(sc[0], sc[1]) === 0;
+    if (shut) hl.unshift(w.name + ' won without giving up a single box');
+    else if (back >= 5) hl.unshift(w.name + ' came back from ' + back + ' boxes behind to win');
+    var em = shut ? { big: true, title: 'A shutout', line: (NET && NET.seat === wi ? 'You' : w.name) + ' took every box on the sheet.', icon: 'trophy', pts: String(max), color: INK[wi] }
+      : back >= 5 ? { title: 'A comeback', line: (NET && NET.seat === wi ? 'You were' : w.name + ' was') + ' ' + back + ' boxes behind and still won.', icon: 'trophy', color: INK[wi] } : null;
     if (S.players.some(function (p) { return p.cpu; })) hl.push('Computer skill: ' + LEVEL_NAME[S.level]);
     if (NET) { hl.push('Played online at table ' + NET.code); var nk = NET.code + ':' + S.started, seen = NETREC[nk]; try { seen = seen || (JSON.parse(localStorage.getItem('dotsboxes_net_rec')) || []).indexOf(nk) >= 0; } catch (e) {} NETREC[nk] = 1; if (!seen) try { var rl = JSON.parse(localStorage.getItem('dotsboxes_net_rec')) || []; rl.push(nk); localStorage.setItem('dotsboxes_net_rec', JSON.stringify(rl.slice(-30))); } catch (e) {} }
     if (!NET || !seen) Kit.record(KEY, {
@@ -496,6 +555,12 @@
         best: S.best.slice(), dd: S.dd.slice() }
     });
     var rank = S.players.map(function (p, i) { return { name: p.name, score: sc[i], color: INK[i] }; }).sort(function (a, b) { return b.score - a.score; });
+    if (em) { Kit.sfx('sparkle'); Kit.haptic('success'); Kit.moment(em); }
+    if (em) { setTimeout(function () { winCard(w, wi, sc, rank); }, 2100); if (!NET) Kit.resume.clear(); return; }
+    winCard(w, wi, sc, rank);
+    if (!NET) Kit.resume.clear();
+  }
+  function winCard(w, wi, sc, rank) {
     if (NET) {
       if (WINO) WINO.close();
       WINO = Kit.win({
@@ -516,7 +581,6 @@
       look: true,
       setup: function () { clearSave(); showSetup(); }
     });
-    Kit.resume.clear();
   }
 
   // ── Online ────────────────────────────────────────────────────────────────
