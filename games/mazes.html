@@ -113,6 +113,21 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
   .mz.play > .tools .grow{flex:none;min-width:150px;}
   .mz.play > .tip{grid-area:tip;align-self:center;margin:0;}
 }
+/* A phone held sideways (Tim, 2026-11-15: "allow all"): the maze takes the middle, as tall as the screen allows; what
+   you only look at (time, best, hints) stands in a column at the left with the hint under it, and the tools you tap
+   in a column at the right */
+@media (orientation:landscape) and (max-height:520px) and (min-width:560px){
+  .mz.play{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"hud stage tools" "tip stage tools";column-gap:14px;row-gap:10px;height:calc(100dvh - var(--bar));box-sizing:border-box;
+    padding:4px calc(17px + var(--corner-x,0px)) max(calc(var(--safe-b) + 10px), 18px);}
+  .mz.play > .stage{grid-area:stage;height:100%;}
+  .mz.play > .hud{grid-area:hud;flex-direction:column;margin:0;width:auto;max-width:none;align-self:start;}
+  .mz.play > .hud .cnt{flex:none;justify-content:flex-start;padding:7px 12px;}
+  .mz.play > .tools{grid-area:tools;flex-direction:column;flex-wrap:nowrap;align-items:stretch;align-self:center;margin:0;width:auto;max-width:none;}
+  .mz.play > .tools .grow{flex:none;max-width:none;}
+  .mz.play > .tools .zm{justify-content:center;}
+  .mz.play > .tip{grid-area:tip;align-self:start;text-align:left;margin:0;}
+}
 }
 
 /* ── Labyrinth: a wooden box with a steel ball ── */
@@ -395,7 +410,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     stage = el('div', { class: 'stage' }); app.appendChild(stage);
     tools = el('div', { class: 'tools' }); app.appendChild(tools);
     tipEl = el('div', { class: 'tip' }); app.appendChild(tipEl);
-    Kit.orient('portrait');   // phones only: a maze page (and the labyrinth) stands upright
+    Kit.orient(null);   // (any way up: a phone held sideways has the counters at the left and the tools at the right; Tim, 2026-11-15)
     if (S.mode === 'tilt') buildTilt(); else buildPencil();
     updHud(); updTime();
     if (!S.done && S.going) startClock();
@@ -469,6 +484,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     bindPencil();
   }
   // Fit the page to the screen: the maze as big as it goes, on its side when that makes the squares bigger
+  function sideCols() { return matchMedia('(orientation:landscape) and (max-height:520px) and (min-width:560px)').matches; }
   function layoutPencil() {
     if (!svg) return;
     var top = stage.getBoundingClientRect().top + (window.scrollY || 0);
@@ -477,6 +493,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var availH = Math.max(220, window.innerHeight - top - below - safeB);
     var availW = Math.min(app.clientWidth - 24, 1100);
     app.style.height = (window.innerHeight - app.getBoundingClientRect().top - (window.scrollY ? 0 : 0)) + 'px';
+    if (sideCols()) { app.style.height = ''; availH = Math.max(160, stage.clientHeight); availW = stage.clientWidth; }   // (a phone on its side: the maze has the middle column)
     var headH = svg.previousSibling ? svg.previousSibling.offsetHeight + 2 : 30;
     var W = availW - 22 - 20, H = availH - 36 - 17 - headH;
     var cap = Math.min(window.innerWidth, window.innerHeight) >= 700 ? 54 : 46;
@@ -1042,6 +1059,7 @@ svg.mzs{display:block;touch-action:none;user-select:none;-webkit-user-select:non
     var below = tools.offsetHeight + 10 + tipEl.offsetHeight + 6 + 10, safeB = parseFloat(getComputedStyle(app).paddingBottom) || 0;
     app.style.height = (window.innerHeight - app.getBoundingClientRect().top) + 'px';
     var H = Math.max(200, window.innerHeight - top - below - safeB) - 24 - 8, W = Math.min(app.clientWidth - 24, 1100) - 24;
+    if (sideCols()) { app.style.height = ''; H = Math.max(140, stage.clientHeight) - 16; W = stage.clientWidth - 8; }   // (a phone on its side: the box has the middle column)
     var bw = M.cols + 0.6, bh = M.rows + 0.6;
     var a = Math.min(W / bw, H / bh), b = Math.min(W / bh, H / bw);
     tr = b > a * 1.08;

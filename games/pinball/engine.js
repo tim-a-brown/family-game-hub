@@ -1430,7 +1430,7 @@ function* buildSceneGen(G, T, opts, mark = () => {}) {
     const add = (arr, x, y, z) => arr.push(new THREE.Vector3(x, y, z).applyMatrix4(root.matrixWorld));
     // first person: the playfield, the apron front and the glass height, from a low angle, plus the top of the
     // backbox (the whole backglass stays in frame under the page's display band, with a little cabinet over it)
-    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = o.backbox === false ? null : RC.backbox;
+    const pts = [], top = fit.top != null ? fit.top : 60, bot = fit.bottom != null ? fit.bottom : -40, bx = o.backbox === false || aspect > 1.6 ? null : RC.backbox;   // (a phone on its side: the display stands beside the table, so the head stays out of the fit and the playfield takes the height)
     add(pts, -12, bot, 0); add(pts, W + 12, bot, 0); add(pts, W + 12, L + top * 0.2, 0); add(pts, -12, L + top * 0.2, 0); add(pts, W / 2, L + 4, top); add(pts, -12, bot - 10, 105); add(pts, W + 12, bot - 10, 105);
     const core = pts.slice(0, 4);
     if (bx) { add(pts, bx.x0, bx.y, bx.z1 + 8); add(pts, bx.x1, bx.y, bx.z1 + 8); }
