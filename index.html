@@ -1006,13 +1006,14 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .sbox.ct .art .gicon.mini-ct{position:relative;left:auto;top:auto;justify-self:center;width:31px;height:42px;border-radius:0;transform:rotate(-4deg);filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));}
 :root:not(.ng-x) .sbox.ct:active .art .gicon.mini-ct{transform:scale(.92) rotate(-6deg);}
 :root:not(.ng-x) .shelf{padding-bottom:6px;}
-:root:not(.ng-x) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - var(--kpn) * 10px) / (var(--kpn) + .3));gap:9px 10px;}   /* (a little narrower than the room, so the next column peeks in at the right edge and says the shelf goes on; Tim, 2026-11-15) */
+:root:not(.ng-x) .shelf.two{display:grid;grid-template-rows:auto auto;grid-auto-flow:column;grid-auto-columns:calc((100% - (var(--kpn) - 1) * 10px) / var(--kpn));gap:9px 10px;}
+:root:not(.ng-x) .shelf.two.peek{grid-auto-columns:calc((100% - var(--kpn) * 10px) / (var(--kpn) + .3));}   /* (a little narrower than the room, so the next column peeks in at the right edge and says the shelf goes on; Tim, 2026-11-15) */
 :root:not(.ng-x) .shelf.two .sbox{width:auto;flex:none;}
 :root:not(.ng-x) .sbox .nm,:root:not(.ng-x) .sbox .nm.two{padding-right:0;margin-right:0;}
 /* (how long ago stands in the box's bottom right corner, so every name has the box's full width and they all come out
    the same size; the line under the name keeps clear of it) */
 :root:not(.ng-x) .sbox .ago,:root:not(.ng-x) .sbox.ct .ago{top:auto;bottom:8px;right:10px;}
-:root:not(.ng-x) .sbox .st > :last-child::after{content:"";display:inline-block;width:26px;}   /* (room for the time at the end of the last line only) */
+:root:not(.ng-x) .sbox .st > :last-child,:root:not(.ng-x) .sbox .st.one{padding-right:28px;}   /* (room for the time at the end of the last line only) */
 /* Keep playing stands out a little from the game tiles under it (Tim, 2026-11-15: "make the keep playing tiles slightly
    more bold than the regular tiles"): a deeper wash of the game's color, a brighter edge with a soft glow of it, a
    larger icon, and the line under the name a step brighter */
@@ -1022,6 +1023,22 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
 :root:not(.ng-x) .sbox .art .gicon{width:44px;height:44px;border-radius:12px;}
 :root:not(.ng-x) .sbox .nm{font-size:1.02rem;}
 :root:not(.ng-x) .sbox .st,:root:not(.ng-x) .sbox.ct .st{color:color-mix(in srgb,var(--text) 82%,var(--text-2));font-weight:600;}
+/* (Tim, 2026-11-15: "the info on keep playing is hard to parse and info items wrap"): where you are is one line in the
+   text's own color, the second fact under it a step quieter, each on one line (fitNames eases a long one down) */
+:root:not(.ng-x) .sbox .st > span{display:block;white-space:nowrap;overflow:hidden;text-overflow:clip;}
+:root:not(.ng-x) .sbox .st.one{white-space:nowrap;overflow:hidden;text-overflow:clip;}
+:root:not(.ng-x) .sbox .st > span:first-child,:root:not(.ng-x) .sbox .st.one{color:var(--text);font-weight:650;}
+:root:not(.ng-x) .sbox .st > span + span{color:var(--text-2);font-weight:500;font-size:.92em;}
+:root:not(.ng-x) .sbox .st > span.wrap,:root:not(.ng-x) .sbox .st.one.wrap{white-space:normal;}
+/* (a phone upright, the shelf two across with the next column peeking: the icon a little smaller and the time up beside
+   the name, so the facts have the tile's whole text width) */
+@media (max-width:559px){
+  :root:not(.ng-x) .sbox{grid-template-columns:34px minmax(0,1fr);column-gap:8px;padding:9px 8px 9px 9px;}
+  :root:not(.ng-x) .sbox .art .gicon{width:34px;height:34px;border-radius:10px;}
+  :root:not(.ng-x) .sbox .ago,:root:not(.ng-x) .sbox.ct .ago{top:9px;bottom:auto;right:9px;}
+  :root:not(.ng-x) .sbox .nm{padding-right:32px;}
+  :root:not(.ng-x) .sbox .st > :last-child,:root:not(.ng-x) .sbox .st.one{padding-right:0;}
+}
 @media (max-width:400px){:root:not(.ng-x) .sbox{grid-template-columns:40px minmax(0,1fr);} :root:not(.ng-x) .sbox .art .gicon{width:40px;height:40px;} :root:not(.ng-x) .sbox .nm{font-size:.96rem;}}
 :root:not(.ng-x) .shelf-more{bottom:6px;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bg) 80%,transparent) 60%);}
 :root:not(.ng-x) .sdel{box-shadow:0 0 0 2px #1a1c33,0 4px 10px rgba(224,36,60,.5);}
@@ -2266,6 +2283,7 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     var n = shelf.querySelectorAll('.sbox').length, w = innerWidth, cols = w >= 1180 ? 5 : w >= 900 ? 4 : w >= 560 ? 3 : w >= 360 ? 2 : 1;   // (a 320-wide phone: one column, the next peeking in)
     var two = glassOn() && n > cols;
     shelf.classList.toggle('two', two);
+    shelf.classList.toggle('peek', two && n > cols * 2);   // (the next column peeks in only when there is one)
     shelf.style.setProperty('--kpn', cols);
   }
   window.addEventListener('resize', function () { kpLayout(); });
@@ -2274,12 +2292,24 @@ html:not([data-theme="light"]):not([data-theme="parchment"]) .cont-clear{color:#
     function fit() {
       Array.prototype.forEach.call(box.querySelectorAll('.sbox .nm'), function (n) {
         n.style.fontSize = ''; n.classList.remove('two');
-        var w = n.clientWidth - 18, s = parseFloat(getComputedStyle(n).fontSize), need = n.scrollWidth - 18;
+        // (the text's own width against the room inside the padding, which keeps clear of the time at the corner)
+        var cs = getComputedStyle(n), w = n.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), s = parseFloat(cs.fontSize);
+        var rg = document.createRange(); rg.selectNodeContents(n);
+        var tw = function () { return rg.getBoundingClientRect().width; }, need = tw();
         if (w <= 0 || need <= w) return;
         var to = Math.floor(s * w / need * 10) / 10;
-        // (then a touch smaller while it still doesn't fit: the estimate rounds, and a pixel over shows "…")
-        while (to >= 9 && (n.style.fontSize = to + 'px', n.scrollWidth > n.clientWidth)) to = Math.round((to - 0.2) * 10) / 10;
+        // (then a touch smaller while it still doesn't fit: the estimate rounds)
+        while (to >= 9 && (n.style.fontSize = to + 'px', tw() > w + 0.5)) to = Math.round((to - 0.2) * 10) / 10;
         if (to < 9) { n.style.fontSize = '10px'; n.classList.add('two'); }
+      });
+      // (and each fact under the name keeps to one line: "Round 7 of 13" never breaks; a long one eases down to 78% of
+      // its size, and only past that does it wrap)
+      Array.prototype.forEach.call(box.querySelectorAll('.sbox .st > span, .sbox .st.one'), function (f) {
+        f.style.fontSize = ''; f.classList.remove('wrap');
+        if (f.scrollWidth <= f.clientWidth + 1) return;
+        var s0 = parseFloat(getComputedStyle(f).fontSize), s = s0;
+        while (s > s0 * 0.78 && f.scrollWidth > f.clientWidth + 1) { s -= 0.25; f.style.fontSize = s + 'px'; }
+        if (f.scrollWidth > f.clientWidth + 1) { f.style.fontSize = ''; f.classList.add('wrap'); }
       });
     }
     fit();
