@@ -1,4 +1,4 @@
-# Paints court cards and jokers for Kit.card: python3 scripts/cards/gen.py <work folder> KH,QS,...  (keys from prompts.json)
+# Draws the English-pattern court cards and jokers for Kit.card: python3 scripts/cards/gen.py <work folder> KH,QS,...  (keys from prompts.json)
 # Writes <work folder>/<KEY>.png and the prompt beside it as <KEY>.txt. JKB (the black-and-white joker) is an edit of
 # <work folder>/JK.png, so make JK first. Same endpoint and dummy key as scripts/anoria/art/gen.py: a proxy adds the real
 # key (never ask for one, never print one). At most 3 requests at a time; an HTTP 429 waits and retries.
@@ -7,12 +7,13 @@
 import json, sys, os, base64, urllib.request, urllib.error, time, uuid, concurrent.futures as cf
 P = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'prompts.json')))
 OUT = os.path.abspath(sys.argv[1]); keys = sys.argv[2].split(',')
+TAG = sys.argv[3] if len(sys.argv) > 3 else ''   # optional: a third argument names a variant (KH-b.png)
 os.makedirs(OUT, exist_ok=True)
 
 def prompt(k):
     c = P['cards'][k]
     if k == 'JKB': return P['bw']
-    return (P['jstyle'] if k == 'JK' else P['style']) + ' ' + P['palette'][c['suit']] + ' ' + c['brief'] + ' ' + P['tail']
+    return (P['jstyle'] if k == 'JK' else P['style']) + ' ' + c['brief'] + ' ' + P['tail']
 
 def multipart(fields, name, data):
     b = uuid.uuid4().hex; out = b''
@@ -21,14 +22,14 @@ def multipart(fields, name, data):
     return out + ('--%s--\r\n' % b).encode(), 'multipart/form-data; boundary=' + b
 
 def gen(k):
-    out = os.path.join(OUT, k + '.png')
+    out = os.path.join(OUT, k + TAG + '.png')
     if os.path.exists(out): return k + ' have'
-    text = prompt(k); open(os.path.join(OUT, k + '.txt'), 'w').write(text)
-    fields = {"model": P['model'], "prompt": text, "size": P['size'], "quality": P['quality']}
+    text = prompt(k); open(os.path.join(OUT, k + TAG + '.txt'), 'w').write(text)
+    fields = {"model": P['model'], "prompt": text, "size": P['jsize'] if k.startswith('JK') else P['size'], "quality": P['quality']}
     for attempt in range(6):
         try:
             if P['cards'][k].get('edit'):
-                src = os.path.join(OUT, P['cards'][k]['edit'] + '.png')
+                src = os.path.join(OUT, P['cards'][k]['edit'] + TAG + '.png')
                 data, ct = multipart(dict(fields, n='1'), os.path.basename(src), open(src, 'rb').read())
                 r = urllib.request.Request("https://api.openai.com/v1/images/edits", data=data, headers={"Authorization": "Bearer dummy", "Content-Type": ct})
                 with urllib.request.urlopen(r, timeout=400) as f: img = json.loads(f.read())['data'][0].get('b64_json')

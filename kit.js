@@ -3650,13 +3650,15 @@
 
   // ── Cards & dice ──────────────────────────────────────────────────────────
   var SUIT = { s: '♠', h: '♥', d: '♦', c: '♣', '♠': '♠', '♥': '♥', '♦': '♦', '♣': '♣' };
-  // The court cards and the jokers are painted (Tim, 2026-11-15: "make the art like a professional painter would").
-  // The card stays plain: the corner index, and the picture in a thin-lined box between the indexes. A court card's
-  // picture is the figure from the waist up with the same picture turned over below it, meeting at a line across the
-  // middle, as a real double-ended card is. The pictures are cards/<key>.webp (and cards/s/<key>.webp for small cards),
-  // set by kit.css from the box's data-c, so every card reuses the same few files; their prompts are cards/prompts.json.
-  // A deck's two jokers are two printings of one painting: suit 'b' is the black-and-white one, anything else ('r', or
-  // a lone joker) the color one. The joker's index is the word JOKER set down the corner.
+  // The court cards and the jokers are drawn in the English pattern (Tim, 2026-11-15), the courts of a standard Bicycle
+  // or Waddingtons deck: flat inks in bold black outlines, as the woodblock cards they come from were printed. The card
+  // stays plain: the corner index, and the picture in a thin-lined box between the indexes. A court card's picture is
+  // the figure from the crown to the chest with the same picture turned over below it, meeting at a line across the
+  // middle, and the suit sign beside the head (kit.css), as a real double-ended card is. The pictures are
+  // cards/<key>.webp (and cards/s/<key>.webp, cropped closer, for small cards), set by kit.css from the box's data-c, so
+  // every card reuses the same few files; their prompts are scripts/cards/prompts.json. A deck's two jokers are two
+  // printings of one drawing: suit 'b' is the black-ink one, anything else ('r', or a lone joker) the color one. The
+  // joker's index is the word JOKER set down the corner.
   var COURT = { K: 'k', Q: 'q', J: 'j' }, SKEY = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c' };
   function joker(suit, o) {
     o = o || {};
