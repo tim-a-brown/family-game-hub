@@ -134,7 +134,10 @@ Underlying principles for everything:
   any weight comes out the same); no Lilita, Bungee or tracked capitals on chrome (labels are sentence case). Corners
   are rounded (13 to 28px), buttons have no lip and press with a small sink. The home screen is one row per game
   (icon, name, players, a live line at the right, gold when it is something for you to do), sections marked by a bar
-  in the category's color. Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
+  in the category's color. The tile view is the art up close (Tim, 2026-11-15, chosen from six looks: "use the art up close, but i want
+  the art even bigger"): each game a tile of its own color with its art drawn large and tilted, running off the top right
+  corner, the name and player count at the lower left on the color, a console game's cartridge the same way, and the Keep
+  playing cards to match (`html.look`, the `==LOOKS==` block in index.html). Quick notes (`Kit.toast`) are lifted glass with a hairline lit along the top.
 - **Typing is on the Kit keyboard, never the phone's** (Tim, 2026-11-15: "any opportunity to type is done with a
   thoughtful onscreen keyboard not the device keyboard -- and make sure that doesn't mess up any of the formatting").
   `KitOsk` in kit.js: on a touch screen every text box (`input` text/search/email/tel/number/password/url, `textarea`)

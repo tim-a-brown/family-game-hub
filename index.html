@@ -46,13 +46,11 @@ if ('serviceWorker' in navigator) {
   });
   window.addEventListener('kit-sheet-closed', function () { setTimeout(swGo, 400); });
 }
-// Six looks for the game tiles, for Tim to choose from (temporary, 2026-11-15): ?look=1 to ?look=6 picks one and the
-// device remembers it (gn_tile_look); ?look=0 goes back to today's look. Each look's CSS is scoped under html.look-N.
-(function () {
-  var k = 'gn_tile_look', v = null;
-  try { var q = new URLSearchParams(location.search).get('look'); if (q != null) { if (/^[1-6]$/.test(q)) localStorage.setItem(k, q); else localStorage.removeItem(k); } v = localStorage.getItem(k); } catch (e) {}
-  if (v && /^[1-6]$/.test(v)) document.documentElement.classList.add('look-' + v, 'look');
-})();
+// The tile view's look (Tim, 2026-11-15, chosen from six: "use the art up close, but i want the art even bigger"):
+// each game is a tile of its own color with its art drawn large and tilted, running off the top right corner, and the
+// name at the lower left on the color. The class keeps the look's rules apart from the list view's.
+document.documentElement.classList.add('look');
+try { localStorage.removeItem('gn_tile_look'); } catch (e) {}
 // Not signed in yet (no PIN, no guest choice): send to the gate first.
 if (typeof FGHSync !== 'undefined' && !FGHSync.mode()) location.replace('./gate.html');
 document.addEventListener('visibilitychange', function () {
@@ -1283,7 +1281,7 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root:not(.ng-x) .mv-tile small{font-size:.76rem;font-weight:650;}
 :root:not(.ng-x) .al-day{font-size:.8rem;font-weight:650;}
 /* ==LOOKS== */
-/* ── Six looks for the game tiles (temporary, 2026-11-15: Tim chooses one; ?look=1 to ?look=6, ?look=0 for today's) ──
+/* ── The game tiles' look: the art up close (Tim, 2026-11-15) ──
    Tim: "I don't wanna use that exact look, but I do kind of like how those tiles cap things organized, and want the
    main tiles to look more like this, with that text space in the bottom incorporated into the icon. The tiles can be a
    little tighter than that." Every look keeps the old Keep playing cards' capped shape (the game's color as the tile,
@@ -1296,226 +1294,104 @@ html.k-kb .k-sheet:has(.gsheet){max-height:calc(var(--vvh,100vh) - 12px);}
 :root.look:not(.ng-x) .g.gr.tl .lv.y .lvs,:root.look:not(.ng-x) .sbox .lvs{display:inline;font-style:normal;}
 
 /* ── the vertical looks (1 to 5): a tile with the art up top and the name in its lower part ── */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 8px;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x).tl2 .list.rows.gtiles{row-gap:9px;}
-@media (min-width:520px){:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:11px 10px;} :root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x).tl2 .list.rows.gtiles{row-gap:11px;}}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl{--tfs:.84rem;--ah:60cqw;--ai:68cqw;overflow:hidden;isolation:isolate;border-radius:20px;background:var(--gcg);
+:root.look:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px 8px;}
+:root.look:not(.ng-x).tl2 .list.rows.gtiles{row-gap:9px;}
+@media (min-width:520px){:root.look:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:11px 10px;} :root.look:not(.ng-x).tl2 .list.rows.gtiles{row-gap:11px;}}
+:root.look:not(.ng-x) .g.gr.tl{--tfs:.84rem;--ah:60cqw;--ai:68cqw;overflow:hidden;isolation:isolate;border-radius:20px;background:var(--gcg);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),inset 0 1px 0 rgba(255,255,255,.22),0 12px 22px -16px color-mix(in srgb,var(--gc) 80%,transparent),0 8px 16px -10px rgba(0,0,0,.8);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl:hover{background:var(--gcg);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto var(--mr,25px);align-items:stretch;justify-items:stretch;gap:0;padding:0;text-align:left;border-radius:inherit;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .go:active{transform:scale(.97);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .tx{display:contents;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x).tl2 .g.gr.tl .tx b{min-height:calc(var(--tfs) * 2.3 + var(--bpt,7px) + var(--bpb,0px));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi{grid-row:1;grid-column:1;z-index:0;width:auto;height:var(--ah,58cqw);border-radius:0;box-shadow:none;overflow:visible;background:none;display:grid;place-items:center;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi > svg.gicon{width:var(--ai,74cqw);height:var(--ai,74cqw);flex:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.28));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi > svg.gicon > rect:nth-of-type(-n+2){display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .tx b{grid-row:2;grid-column:1;z-index:2;align-self:end;box-sizing:border-box;width:auto;padding:var(--bpt,7px) 9px var(--bpb,0px);min-height:calc(var(--tfs) * 1.15 + var(--bpt,7px) + var(--bpb,0px));color:#fff;text-align:left;font-size:var(--tfs);letter-spacing:-.01em;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .ppl{grid-row:3;grid-column:1;z-index:2;position:static;justify-content:flex-start;justify-self:start;align-self:start;height:17px;margin:0;padding:0 9px;gap:4px;border-radius:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
+:root.look:not(.ng-x) .g.gr.tl:hover{background:var(--gcg);}
+:root.look:not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto var(--mr,25px);align-items:stretch;justify-items:stretch;gap:0;padding:0;text-align:left;border-radius:inherit;}
+:root.look:not(.ng-x) .g.gr.tl .go:active{transform:scale(.97);}
+:root.look:not(.ng-x) .g.gr.tl .tx{display:contents;}
+:root.look:not(.ng-x).tl2 .g.gr.tl .tx b{min-height:calc(var(--tfs) * 2.3 + var(--bpt,7px) + var(--bpb,0px));}
+:root.look:not(.ng-x) .g.gr.tl .gi{grid-row:1;grid-column:1;z-index:0;width:auto;height:var(--ah,58cqw);border-radius:0;box-shadow:none;overflow:visible;background:none;display:grid;place-items:center;}
+:root.look:not(.ng-x) .g.gr.tl .gi > svg.gicon{width:var(--ai,74cqw);height:var(--ai,74cqw);flex:none;filter:drop-shadow(0 6px 8px rgba(0,0,0,.28));}
+:root.look:not(.ng-x) .g.gr.tl .gi > svg.gicon > rect:nth-of-type(-n+2){display:none;}
+:root.look:not(.ng-x) .g.gr.tl .tx b{grid-row:2;grid-column:1;z-index:2;align-self:end;box-sizing:border-box;width:auto;padding:var(--bpt,7px) 9px var(--bpb,0px);min-height:calc(var(--tfs) * 1.15 + var(--bpt,7px) + var(--bpb,0px));color:#fff;text-align:left;font-size:var(--tfs);letter-spacing:-.01em;}
+:root.look:not(.ng-x) .g.gr.tl .ppl{grid-row:3;grid-column:1;z-index:2;position:static;justify-content:flex-start;justify-self:start;align-self:start;height:17px;margin:0;padding:0 9px;gap:4px;border-radius:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;
   color:rgba(255,255,255,.78);font-size:.7rem;font-weight:650;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .ppl .ico{width:12px;height:12px;color:rgba(255,255,255,.7);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .ppl:empty{display:flex;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .ppl:empty::before{content:"\200b";}   /* (a console game or a tool says no count, and keeps the line's room) */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv{display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv.y{grid-row:3;grid-column:1;z-index:3;position:static;display:flex;flex-direction:row;align-items:center;gap:5px;justify-self:start;align-self:start;font-style:normal;width:auto;height:17px;max-width:none;margin:0;padding:0 9px;border-radius:0;background:none;box-shadow:none;
+:root.look:not(.ng-x) .g.gr.tl .ppl .ico{width:12px;height:12px;color:rgba(255,255,255,.7);}
+:root.look:not(.ng-x) .g.gr.tl .ppl:empty{display:flex;}
+:root.look:not(.ng-x) .g.gr.tl .ppl:empty::before{content:"\200b";}   /* (a console game or a tool says no count, and keeps the line's room) */
+:root.look:not(.ng-x) .g.gr.tl .lv{display:none;}
+:root.look:not(.ng-x) .g.gr.tl .lv.y{grid-row:3;grid-column:1;z-index:3;position:static;display:flex;flex-direction:row;align-items:center;gap:5px;justify-self:start;align-self:start;font-style:normal;width:auto;height:17px;max-width:none;margin:0;padding:0 9px;border-radius:0;background:none;box-shadow:none;
   font-size:min(.72rem,10.4cqw);font-weight:750;line-height:1;color:var(--lit-ink);white-space:nowrap;}
-@media (max-width:359px){:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv.y{gap:4px;padding:0 6px;} :root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv.y::before{width:6px;height:6px;} :root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .tx b{padding-left:7px;padding-right:7px;} :root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .ppl{padding:0 7px;}}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv.y > span{display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .lv.y::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--lit);box-shadow:0 0 8px var(--litg);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl:has(.lv.y) .ppl{visibility:hidden;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .fav{z-index:4;top:2px;right:2px;left:auto;width:36px;height:36px;border-radius:14px;color:#fff;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .fav:not(.on){opacity:.6;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .fav .ico{width:16px;height:16px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .fav.on{color:var(--lit);}
+@media (max-width:359px){:root.look:not(.ng-x) .g.gr.tl .lv.y{gap:4px;padding:0 6px;} :root.look:not(.ng-x) .g.gr.tl .lv.y::before{width:6px;height:6px;} :root.look:not(.ng-x) .g.gr.tl .tx b{padding-left:7px;padding-right:7px;} :root.look:not(.ng-x) .g.gr.tl .ppl{padding:0 7px;}}
+:root.look:not(.ng-x) .g.gr.tl .lv.y > span{display:none;}
+:root.look:not(.ng-x) .g.gr.tl .lv.y::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--lit);box-shadow:0 0 8px var(--litg);}
+:root.look:not(.ng-x) .g.gr.tl:has(.lv.y) .ppl{visibility:hidden;}
+:root.look:not(.ng-x) .g.gr.tl .fav{z-index:4;top:2px;right:2px;left:auto;width:36px;height:36px;border-radius:14px;color:#fff;}
+:root.look:not(.ng-x) .g.gr.tl .fav:not(.on){opacity:.6;}
+:root.look:not(.ng-x) .g.gr.tl .fav .ico{width:16px;height:16px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));}
+:root.look:not(.ng-x) .g.gr.tl .fav.on{color:var(--lit);}
 /* (your turn: the tile's edge lit in gold) */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 2px var(--lit),0 0 18px -2px var(--litg),0 8px 16px -10px rgba(0,0,0,.8);}
+:root.look:not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 2px var(--lit),0 0 18px -2px var(--litg),0 8px 16px -10px rgba(0,0,0,.8);}
 /* a console game: its cartridge standing in the color */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:52cqw;height:66cqw;align-self:end;margin-bottom:-14cqw;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:62cqw;height:62cqw;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:66cqw;height:54cqw;margin-bottom:-12cqw;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-atari2600{width:52cqw;height:64cqw;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:52cqw;height:66cqw;align-self:end;margin-bottom:-14cqw;filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:62cqw;height:62cqw;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:66cqw;height:54cqw;margin-bottom:-12cqw;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-atari2600{width:52cqw;height:64cqw;}
 /* (a console game says no count: its name takes the count's line too, so it sits as low as every other name's line pair) */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl.cart .ppl{display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl.cart .tx b{grid-row:2 / 4;padding-bottom:calc(var(--mr,25px) - 17px);min-height:calc(var(--tfs) * 1.15 + var(--bpt,7px) + var(--bpb,0px) + var(--mr,25px));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x).tl2 .g.gr.tl.cart .tx b{min-height:calc(var(--tfs) * 2.3 + var(--bpt,7px) + var(--bpb,0px) + var(--mr,25px));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .g.gr.tl.cart{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
+:root.look:not(.ng-x) .g.gr.tl.cart .ppl{display:none;}
+:root.look:not(.ng-x) .g.gr.tl.cart .tx b{grid-row:2 / 4;padding-bottom:calc(var(--mr,25px) - 17px);min-height:calc(var(--tfs) * 1.15 + var(--bpt,7px) + var(--bpb,0px) + var(--mr,25px));}
+:root.look:not(.ng-x).tl2 .g.gr.tl.cart .tx b{min-height:calc(var(--tfs) * 2.3 + var(--bpt,7px) + var(--bpb,0px) + var(--mr,25px));}
+:root.look:not(.ng-x) .g.gr.tl.cart{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
 
 /* Keep playing in the vertical looks: one row of the same capped cards, the art and where you are on the color, the
    name below (two rows only in look 6) */
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .shelf.two,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .shelf{display:flex;gap:9px;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .shelf.two .sbox{container-type:inline-size;flex:none;width:clamp(124px,31vw,150px);display:flex;flex-direction:column;align-items:stretch;min-height:0;padding:0;
+:root.look:not(.ng-x) .shelf.two,:root.look:not(.ng-x) .shelf{display:flex;gap:9px;}
+:root.look:not(.ng-x) .sbox,:root.look:not(.ng-x) .shelf.two .sbox{container-type:inline-size;flex:none;width:clamp(124px,31vw,150px);display:flex;flex-direction:column;align-items:stretch;min-height:0;padding:0;
   border-radius:20px;overflow:hidden;isolation:isolate;background:var(--gcg);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),inset 0 1px 0 rgba(255,255,255,.22),0 12px 22px -16px color-mix(in srgb,var(--gc) 80%,transparent),0 8px 16px -10px rgba(0,0,0,.8);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .art{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;position:relative;height:auto;min-height:0;aspect-ratio:1/.86;padding:0 9px 7px;overflow:hidden;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .art .gicon{position:absolute;left:50%;top:44%;width:66cqw;height:66cqw;margin:0;transform:translate(-50%,-50%);border-radius:0;filter:drop-shadow(0 6px 8px rgba(0,0,0,.3));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .art svg.gicon > rect:nth-of-type(-n+2){display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox:active .art .gicon{transform:translate(-50%,-50%) scale(.92) rotate(-5deg);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .art::after{content:"";position:absolute;inset:auto 0 0 0;height:52%;z-index:0;background:linear-gradient(transparent,rgba(0,0,0,.42));pointer-events:none;display:block;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .st{position:relative;z-index:1;align-self:stretch;padding:0;color:#fff;font-size:.74rem;font-weight:650;line-height:1.22;text-shadow:0 1px 3px rgba(0,0,0,.5);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st > span:first-child,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st.one{color:#fff;font-weight:750;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st > span + span{color:rgba(255,255,255,.86);font-weight:600;font-size:.94em;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st > :last-child,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .st.one,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.n2 .st > :last-child,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.n2 .st.one{padding-right:0;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .ago,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .ago,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.n2 .ago,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.n2.ct .ago{position:absolute;z-index:1;top:8px;bottom:auto;left:10px;right:auto;padding:0;background:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);font-size:.72rem;font-weight:750;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .nm,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .nm.two{flex:1;display:flex;flex-direction:column;justify-content:center;align-self:stretch;width:auto;padding:8px 10px 9px;margin:0;text-align:left;font-size:.86rem;line-height:1.15;color:#fff;background:rgba(10,10,28,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox .nm::before{content:none;display:none;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.old .art .gicon{filter:saturate(.5) brightness(.92) drop-shadow(0 6px 8px rgba(0,0,0,.3));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .art .gicon.mini-ct{position:absolute;left:50%;top:6%;width:58cqw;height:76cqw;transform:translateX(-50%) rotate(-6deg);filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-genesis{width:70cqw;height:58cqw;top:8%;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-snes{width:66cqw;height:66cqw;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct:active .art .gicon.mini-ct{transform:translateX(-50%) scale(.94) rotate(-9deg);}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox.ct .art::after{display:block;}
-:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .shelf-more{top:0;bottom:6px;}
-@media (min-width:560px){:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .sbox,:root:is(.look-1,.look-2,.look-3,.look-4,.look-5):not(.ng-x) .shelf.two .sbox{width:148px;}}
-
-/* ═══ Look 1. Color block and a glass band: the old card, tighter. The game's color with its art, and a band of dark
-   smoked glass across the foot with the name and how many play. A cartridge stands in the color with its foot behind
-   the band, as if half in the slot. ═══ */
-:root.look-1:not(.ng-x) .g.gr.tl{--ah:60cqw;--ai:66cqw;}
-:root.look-1:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:2 / 4;grid-column:1;z-index:1;background:rgba(12,11,30,.62);-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}
-:root.look-1:not(.ng-x) .g.gr.tl:has(.lv.y) .go::before{box-shadow:inset 0 2px 0 var(--lit);background:rgba(28,22,10,.66);}
-:root.look-1:not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 0 18px -4px var(--litg),0 8px 16px -10px rgba(0,0,0,.8);}
-
-/* ═══ Look 2. Poster: the color runs the whole tile, the art large in it, and the name sits low in the color itself over
-   a soft darkening, centered like a poster's title. How many play is a small line at the top left. ═══ */
-:root.look-2:not(.ng-x) .g.gr.tl{--tfs:.87rem;--ah:62cqw;--ai:70cqw;--bpt:1px;border-radius:22px;background:radial-gradient(120% 95% at 50% 16%,var(--gc1),var(--gc2) 80%);}
-:root.look-2:not(.ng-x) .g.gr.tl:hover{background:radial-gradient(120% 95% at 50% 16%,var(--gc1),var(--gc2) 80%);}
-:root.look-2:not(.ng-x) .g.gr.tl .gi > svg.gicon{margin-top:2cqw;}
-:root.look-2:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:1 / 4;grid-column:1;z-index:1;pointer-events:none;background:linear-gradient(transparent 40%,rgba(6,4,20,.22) 58%,rgba(6,4,20,.58));}
-:root.look-2:not(.ng-x) .g.gr.tl .tx b{text-align:center;padding-left:7px;padding-right:7px;text-shadow:0 1px 3px rgba(0,0,0,.4);}
-:root.look-2:not(.ng-x) .g.gr.tl .ppl{justify-self:center;justify-content:center;padding:0 6px;color:rgba(255,255,255,.85);}
-:root.look-2:not(.ng-x) .g.gr.tl .lv.y{justify-self:center;height:18px;margin-top:2px;padding:0 8px 0 7px;border-radius:999px;background:var(--lit);color:var(--gold-ink,#2a1c00);font-size:min(.68rem,9.8cqw);box-shadow:0 2px 8px rgba(0,0,0,.35);}
-:root.look-2:not(.ng-x) .g.gr.tl .lv.y::before{width:6px;height:6px;background:var(--gold-ink,#2a1c00);box-shadow:none;}
-:root.look-2:not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 2px var(--lit),0 0 18px -2px var(--litg),0 8px 16px -10px rgba(0,0,0,.8);}
-:root.look-2:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:46cqw;height:56cqw;margin-bottom:2cqw;}
-:root.look-2:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:62cqw;height:50cqw;margin-bottom:3cqw;}
-:root.look-2:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:54cqw;height:54cqw;}
-:root.look-2:not(.ng-x) .sbox,:root.look-2:not(.ng-x) .shelf.two .sbox{border-radius:22px;background:linear-gradient(transparent 38%,rgba(6,4,20,.3) 62%,rgba(6,4,20,.6)),radial-gradient(120% 95% at 50% 16%,var(--gc1),var(--gc2) 80%);}
-:root.look-2:not(.ng-x) .sbox.ct{background:linear-gradient(transparent 38%,rgba(6,4,20,.3) 62%,rgba(6,4,20,.6)),radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-:root.look-2:not(.ng-x) .sbox .nm,:root.look-2:not(.ng-x) .sbox .nm.two{padding-top:2px;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;text-align:center;justify-content:flex-start;text-shadow:0 1px 3px rgba(0,0,0,.4);}
-:root.look-2:not(.ng-x) .sbox .art::after{display:none;}
+:root.look:not(.ng-x) .sbox .art{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;position:relative;height:auto;min-height:0;aspect-ratio:1/.86;padding:0 9px 7px;overflow:hidden;}
+:root.look:not(.ng-x) .sbox .art .gicon{position:absolute;left:50%;top:44%;width:66cqw;height:66cqw;margin:0;transform:translate(-50%,-50%);border-radius:0;filter:drop-shadow(0 6px 8px rgba(0,0,0,.3));}
+:root.look:not(.ng-x) .sbox .art svg.gicon > rect:nth-of-type(-n+2){display:none;}
+:root.look:not(.ng-x) .sbox:active .art .gicon{transform:translate(-50%,-50%) scale(.92) rotate(-5deg);}
+:root.look:not(.ng-x) .sbox .art::after{content:"";position:absolute;inset:auto 0 0 0;height:52%;z-index:0;background:linear-gradient(transparent,rgba(0,0,0,.42));pointer-events:none;display:block;}
+:root.look:not(.ng-x) .sbox .st,:root.look:not(.ng-x) .sbox.ct .st{position:relative;z-index:1;align-self:stretch;padding:0;color:#fff;font-size:.74rem;font-weight:650;line-height:1.22;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+:root.look:not(.ng-x) .sbox .st > span:first-child,:root.look:not(.ng-x) .sbox .st.one{color:#fff;font-weight:750;}
+:root.look:not(.ng-x) .sbox .st > span + span{color:rgba(255,255,255,.86);font-weight:600;font-size:.94em;}
+:root.look:not(.ng-x) .sbox .st > :last-child,:root.look:not(.ng-x) .sbox .st.one,:root.look:not(.ng-x) .sbox.n2 .st > :last-child,:root.look:not(.ng-x) .sbox.n2 .st.one{padding-right:0;}
+:root.look:not(.ng-x) .sbox .ago,:root.look:not(.ng-x) .sbox.ct .ago,:root.look:not(.ng-x) .sbox.n2 .ago,:root.look:not(.ng-x) .sbox.n2.ct .ago{position:absolute;z-index:1;top:8px;bottom:auto;left:10px;right:auto;padding:0;background:none;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);font-size:.72rem;font-weight:750;}
+:root.look:not(.ng-x) .sbox .nm,:root.look:not(.ng-x) .sbox .nm.two{flex:1;display:flex;flex-direction:column;justify-content:center;align-self:stretch;width:auto;padding:8px 10px 9px;margin:0;text-align:left;font-size:.86rem;line-height:1.15;color:#fff;background:rgba(10,10,28,.6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);}
+:root.look:not(.ng-x) .sbox .nm::before{content:none;display:none;}
+:root.look:not(.ng-x) .sbox.old .art .gicon{filter:saturate(.5) brightness(.92) drop-shadow(0 6px 8px rgba(0,0,0,.3));}
+:root.look:not(.ng-x) .sbox.ct{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
+:root.look:not(.ng-x) .sbox.ct .art .gicon.mini-ct{position:absolute;left:50%;top:6%;width:58cqw;height:76cqw;transform:translateX(-50%) rotate(-6deg);filter:drop-shadow(0 8px 10px rgba(0,0,0,.5));}
+:root.look:not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-genesis{width:70cqw;height:58cqw;top:8%;}
+:root.look:not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-snes{width:66cqw;height:66cqw;}
+:root.look:not(.ng-x) .sbox.ct:active .art .gicon.mini-ct{transform:translateX(-50%) scale(.94) rotate(-9deg);}
+:root.look:not(.ng-x) .sbox.ct .art::after{display:block;}
+:root.look:not(.ng-x) .shelf-more{top:0;bottom:6px;}
+@media (min-width:560px){:root.look:not(.ng-x) .sbox,:root.look:not(.ng-x) .shelf.two .sbox{width:148px;}}
 
 /* ═══ Look 3. The art up close: the art drawn large and tilted, running off the tile's top right corner, and the name at
    the lower left on the color, with how many play under it. A cartridge leans out of the corner with its label showing. ═══ */
-:root.look-3:not(.ng-x) .g.gr.tl{--tfs:.87rem;--ah:56cqw;--ai:92cqw;border-radius:20px;background:linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
-:root.look-3:not(.ng-x) .g.gr.tl:hover{background:linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
-:root.look-3:not(.ng-x) .g.gr.tl .gi{place-items:start end;}
-:root.look-3:not(.ng-x) .g.gr.tl .gi > svg.gicon{margin:-22cqw -22cqw 0 0;transform:rotate(-12deg);filter:drop-shadow(-4px 8px 10px rgba(0,0,0,.3));}
-:root.look-3:not(.ng-x) .g.gr.tl:hover .gi{transform:none;}
-:root.look-3:not(.ng-x) .g.gr.tl .go:active .gi{transform:scale(.96);}
-:root.look-3:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:1 / 4;grid-column:1;z-index:1;pointer-events:none;background:linear-gradient(to top,rgba(6,4,20,.6),rgba(6,4,20,.18) 52%,transparent 70%);}
-:root.look-3:not(.ng-x) .g.gr.tl{--bpt:2px;}
-:root.look-3:not(.ng-x) .g.gr.tl .tx b{padding-left:10px;padding-right:10px;text-shadow:0 1px 3px rgba(0,0,0,.4);}
-:root.look-3:not(.ng-x) .g.gr.tl .ppl,:root.look-3:not(.ng-x) .g.gr.tl .lv.y{padding:0 10px;}
-:root.look-3:not(.ng-x) .g.gr.tl .fav{left:2px;right:auto;}
-:root.look-3:not(.ng-x) .g.gr.tl .gi.gi-ct{place-items:start end;}
-:root.look-3:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:58cqw;height:72cqw;align-self:start;margin:-5cqw 7cqw 0 0;transform:rotate(-10deg);}
-:root.look-3:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:72cqw;height:58cqw;margin:-4cqw 4cqw 0 0;}
-:root.look-3:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:66cqw;height:66cqw;margin-top:-4cqw;}
-:root.look-3:not(.ng-x) .sbox .art .gicon{left:auto;top:auto;right:-20cqw;top:-20cqw;width:92cqw;height:92cqw;transform:rotate(-12deg);}
-:root.look-3:not(.ng-x) .sbox:active .art .gicon{transform:rotate(-16deg) scale(.95);}
-:root.look-3:not(.ng-x) .sbox.ct .art .gicon.mini-ct{left:auto;right:-6cqw;top:-10cqw;width:70cqw;height:92cqw;transform:rotate(-12deg);}
-:root.look-3:not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-genesis{width:86cqw;height:70cqw;right:-14cqw;}
-:root.look-3:not(.ng-x) .sbox .ago{left:auto;right:auto;}
-:root.look-3:not(.ng-x) .sbox,:root.look-3:not(.ng-x) .shelf.two .sbox{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
-:root.look-3:not(.ng-x) .sbox.ct{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-:root.look-3:not(.ng-x) .sbox .nm,:root.look-3:not(.ng-x) .sbox .nm.two{padding-top:2px;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;justify-content:flex-start;text-shadow:0 1px 3px rgba(0,0,0,.4);}
-:root.look-3:not(.ng-x) .sbox .art::after{display:none;}
+:root.look:not(.ng-x) .g.gr.tl{--tfs:.87rem;--ah:56cqw;--ai:126cqw;border-radius:20px;background:linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
+:root.look:not(.ng-x) .g.gr.tl:hover{background:linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
+:root.look:not(.ng-x) .g.gr.tl .gi{place-items:start end;}
+:root.look:not(.ng-x) .g.gr.tl .gi > svg.gicon{margin:-40cqw -38cqw 0 0;transform:rotate(-12deg);filter:drop-shadow(-4px 8px 10px rgba(0,0,0,.3));}
+:root.look:not(.ng-x) .g.gr.tl:hover .gi{transform:none;}
+:root.look:not(.ng-x) .g.gr.tl .go:active .gi{transform:scale(.96);}
+:root.look:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:1 / 4;grid-column:1;z-index:1;pointer-events:none;background:linear-gradient(to top,rgba(6,4,20,.6),rgba(6,4,20,.18) 52%,transparent 70%);}
+:root.look:not(.ng-x) .g.gr.tl{--bpt:2px;}
+:root.look:not(.ng-x) .g.gr.tl .tx b{padding-left:10px;padding-right:10px;text-shadow:0 1px 3px rgba(0,0,0,.4);}
+:root.look:not(.ng-x) .g.gr.tl .ppl,:root.look:not(.ng-x) .g.gr.tl .lv.y{padding:0 10px;}
+:root.look:not(.ng-x) .g.gr.tl .fav{left:2px;right:auto;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct{place-items:start end;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:74cqw;height:92cqw;align-self:start;margin:-14cqw -6cqw 0 0;transform:rotate(-10deg);}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:92cqw;height:74cqw;margin:-10cqw -12cqw 0 0;}
+:root.look:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:86cqw;height:86cqw;margin-top:-12cqw;}
+:root.look:not(.ng-x) .sbox .art .gicon{left:auto;top:auto;right:-34cqw;top:-34cqw;width:124cqw;height:124cqw;transform:rotate(-12deg);}
+:root.look:not(.ng-x) .sbox:active .art .gicon{transform:rotate(-16deg) scale(.95);}
+:root.look:not(.ng-x) .sbox.ct .art .gicon.mini-ct{left:auto;right:-14cqw;top:-18cqw;width:86cqw;height:112cqw;transform:rotate(-12deg);}
+:root.look:not(.ng-x) .sbox.ct .art .gicon.mini-ct.ct-genesis{width:106cqw;height:86cqw;right:-24cqw;}
+:root.look:not(.ng-x) .sbox .ago{left:auto;right:auto;}
+:root.look:not(.ng-x) .sbox,:root.look:not(.ng-x) .shelf.two .sbox{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),linear-gradient(150deg,var(--gc1),var(--gc2) 85%);}
+:root.look:not(.ng-x) .sbox.ct{background:linear-gradient(to top,rgba(6,4,20,.62),rgba(6,4,20,.18) 48%,transparent 66%),radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
+:root.look:not(.ng-x) .sbox .nm,:root.look:not(.ng-x) .sbox .nm.two{padding-top:2px;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;justify-content:flex-start;text-shadow:0 1px 3px rgba(0,0,0,.4);}
+:root.look:not(.ng-x) .sbox .art::after{display:none;}
 
-/* ═══ Look 4. A glass tile with a window of color: the tile is Night glass tinted with its section's color, the game's
-   color a rounded window in its top, and the name centered on the glass under it. A cartridge stands in a dark recess. ═══ */
-:root.look-4:not(.ng-x) .g.gr.tl{--ah:auto;border-radius:22px;background:linear-gradient(165deg,color-mix(in srgb,var(--h) 30%,transparent),color-mix(in srgb,var(--h) 7%,rgba(255,255,255,.05)) 80%);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--h) 48%,rgba(255,255,255,.12)),inset 0 1px 0 rgba(255,255,255,.12),0 10px 22px -16px rgba(0,0,0,.95);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
-:root.look-4:not(.ng-x) .g.gr.tl:hover{background:linear-gradient(165deg,color-mix(in srgb,var(--h) 36%,transparent),color-mix(in srgb,var(--h) 9%,rgba(255,255,255,.06)) 80%);}
-:root.look-4:not(.ng-x) .g.gr.tl .gi{margin:6px 6px 0;height:58cqw;border-radius:15px;overflow:hidden;background:var(--gcg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.25),0 6px 12px -8px rgba(0,0,0,.7);}
-:root.look-4:not(.ng-x) .g.gr.tl .gi > svg.gicon{width:62cqw;height:62cqw;}
-:root.look-4:not(.ng-x) .g.gr.tl .tx b{text-align:center;padding-left:6px;padding-right:6px;}
-:root.look-4:not(.ng-x) .g.gr.tl .ppl{justify-self:center;justify-content:center;padding:0 6px;color:var(--text-2);}
-:root.look-4:not(.ng-x) .g.gr.tl .ppl .ico{color:color-mix(in srgb,var(--h) 60%,#fff);}
-:root.look-4:not(.ng-x) .g.gr.tl .lv.y{justify-self:center;padding:0 6px;}
-:root.look-4:not(.ng-x) .g.gr.tl .fav{top:7px;right:7px;}
-:root.look-4:not(.ng-x) .g.gr.tl:has(.lv.y){background:linear-gradient(165deg,rgba(255,211,77,.16),color-mix(in srgb,var(--h) 7%,rgba(255,255,255,.05)) 80%);}
-:root.look-4:not(.ng-x) .g.gr.tl.cart .gi{background:radial-gradient(110% 100% at 50% 0%,#252a40,#0b0d16 85%);box-shadow:inset 0 3px 10px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.07);overflow:hidden;}
-:root.look-4:not(.ng-x) .g.gr.tl.cart{background:linear-gradient(165deg,color-mix(in srgb,var(--h) 30%,transparent),color-mix(in srgb,var(--h) 7%,rgba(255,255,255,.05)) 80%);}
-:root.look-4:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:46cqw;height:58cqw;margin-bottom:-12cqw;}
-:root.look-4:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:60cqw;height:48cqw;margin-bottom:-8cqw;}
-:root.look-4:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:56cqw;height:56cqw;}
-:root.look-4:not(.ng-x) .sbox,:root.look-4:not(.ng-x) .shelf.two .sbox{background:linear-gradient(165deg,color-mix(in srgb,var(--h) 34%,transparent),color-mix(in srgb,var(--h) 8%,rgba(255,255,255,.06)) 80%);
-  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--h) 55%,rgba(255,255,255,.15)),0 0 18px -6px color-mix(in srgb,var(--h) 55%,transparent),0 10px 22px -16px rgba(0,0,0,.95);}
-:root.look-4:not(.ng-x) .sbox .art{margin:6px 6px 0;border-radius:15px;background:var(--gcg);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 1px 0 rgba(255,255,255,.25);}
-:root.look-4:not(.ng-x) .sbox .art .gicon{top:38%;width:58cqw;height:58cqw;}
-:root.look-4:not(.ng-x) .sbox.ct .art .gicon.mini-ct{top:4%;width:50cqw;height:64cqw;}
-:root.look-4:not(.ng-x) .sbox.ct .art{background:radial-gradient(110% 100% at 50% 0%,#252a40,#0b0d16 85%);}
-:root.look-4:not(.ng-x) .sbox .nm,:root.look-4:not(.ng-x) .sbox .nm.two{background:none;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;justify-content:center;text-align:center;padding:7px 8px 9px;}
-
-/* ═══ Look 5. A printed label: the game's color in the top of the tile with its art, and the foot a pale frosted label
-   tinted with the color, the name and how many play printed on it in dark ink, a fine light line between the two.
-   Your turn is a gold tag on the label. ═══ */
-:root.look-5:not(.ng-x) .g.gr.tl{--ah:58cqw;--ai:64cqw;--bpt:8px;--mr:26px;border-radius:18px;}
-:root.look-5:not(.ng-x) .g.gr.tl .go::before{content:"";grid-row:2 / 4;grid-column:1;z-index:1;background:linear-gradient(color-mix(in srgb,var(--gc) 16%,rgba(250,249,255,.94)),color-mix(in srgb,var(--gc) 26%,rgba(236,234,248,.94)));
-  box-shadow:0 -1px 0 rgba(255,255,255,.7),inset 0 1px 0 color-mix(in srgb,var(--gc) 40%,#fff);}
-:root.look-5:not(.ng-x) .g.gr.tl .tx b{color:#1b1631;}
-:root.look-5:not(.ng-x) .g.gr.tl .ppl{color:color-mix(in srgb,var(--gc) 35%,#3b3654);}
-:root.look-5:not(.ng-x) .g.gr.tl .ppl .ico{color:color-mix(in srgb,var(--gc) 70%,#1b1631);}
-:root.look-5:not(.ng-x) .g.gr.tl .lv.y{height:18px;margin-left:min(6px,4cqw);padding:0 min(8px,5cqw) 0 min(6px,4.5cqw);border-radius:999px;background:var(--lit);color:var(--gold-ink,#2a1c00);font-size:min(.68rem,9.8cqw);box-shadow:0 1px 4px rgba(120,80,0,.35);}
-:root.look-5:not(.ng-x) .g.gr.tl .lv.y::before{width:6px;height:6px;background:var(--gold-ink,#2a1c00);box-shadow:none;}
-:root.look-5:not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 2px var(--lit),0 0 18px -2px var(--litg),0 8px 16px -10px rgba(0,0,0,.8);}
-:root.look-5:not(.ng-x) .g.gr.tl .fav.on{filter:drop-shadow(0 1px 2px rgba(0,0,0,.35));}
-:root.look-5:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:48cqw;height:60cqw;margin-bottom:-12cqw;}
-:root.look-5:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:62cqw;height:50cqw;margin-bottom:-8cqw;}
-:root.look-5:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:58cqw;height:58cqw;}
-:root.look-5:not(.ng-x) .sbox .nm,:root.look-5:not(.ng-x) .sbox .nm.two{color:#1b1631;background:linear-gradient(color-mix(in srgb,var(--gc) 12%,rgba(250,249,255,.93)),color-mix(in srgb,var(--gc) 20%,rgba(236,234,248,.93)));-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--gc) 40%,#fff);}
-:root.look-5:not(.ng-x) .sbox{border-radius:18px;}
-
-/* ═══ Look 6. Compact cards side by side: two across on a phone, each a short card with a block of the game's color and
-   its art at the left, the name and how many play at the right, and the color running on behind them into the glass. ═══ */
-:root.look-6:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
-@media (max-width:359px){:root.look-6:not(.ng-x) .list.rows.gtiles{grid-template-columns:minmax(0,1fr);}}
-:root.look-6:not(.ng-x).tl2 .list.rows.gtiles{row-gap:8px;}
-@media (min-width:560px){:root.look-6:not(.ng-x) .list.rows.gtiles{grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:9px 10px;} :root.look-6:not(.ng-x).tl2 .list.rows.gtiles{row-gap:9px;}}
-:root.look-6:not(.ng-x) .g.gr.tl{--tfs:.86rem;--bk:58px;overflow:hidden;isolation:isolate;min-height:var(--bk);border-radius:18px;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 62%,#14122c),color-mix(in srgb,var(--gc) 20%,rgba(255,255,255,.05)) 82%);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gc) 40%,rgba(255,255,255,.14)),inset 0 1px 0 rgba(255,255,255,.12),0 10px 22px -16px rgba(0,0,0,.95);}
-:root.look-6:not(.ng-x) .g.gr.tl:hover{background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 70%,#14122c),color-mix(in srgb,var(--gc) 26%,rgba(255,255,255,.06)) 82%);}
-:root.look-6:not(.ng-x) .g.gr.tl .go{display:grid;grid-template-columns:var(--bk) minmax(0,1fr);grid-template-rows:1fr auto auto 1fr;column-gap:9px;row-gap:0;align-items:stretch;min-height:var(--bk);padding:0 30px 0 0;text-align:left;border-radius:inherit;}
-:root.look-6:not(.ng-x) .g.gr.tl .go:active{transform:scale(.97);}
-:root.look-6:not(.ng-x) .g.gr.tl .tx{display:contents;}
-:root.look-6:not(.ng-x).tl2 .g.gr.tl .tx b{min-height:calc(var(--tfs) * 2.3 + 8px);}
-:root.look-6:not(.ng-x) .g.gr.tl .gi{grid-column:1;grid-row:1 / 5;margin:0;width:auto;height:auto;align-self:stretch;border-radius:0;overflow:hidden;display:grid;place-items:center;background:var(--gcg);box-shadow:inset -1px 0 0 rgba(255,255,255,.14),6px 0 14px -8px rgba(0,0,0,.55);}
-:root.look-6:not(.ng-x) .g.gr.tl .gi > svg.gicon{width:56px;height:56px;flex:none;filter:drop-shadow(0 4px 6px rgba(0,0,0,.28));}
-:root.look-6:not(.ng-x) .g.gr.tl .gi > svg.gicon > rect:nth-of-type(-n+2){display:none;}
-:root.look-6:not(.ng-x) .g.gr.tl .tx b{grid-column:2;grid-row:2;box-sizing:border-box;width:auto;padding:8px 0 0;min-height:calc(var(--tfs) * 1.15 + 8px);color:var(--text);text-align:left;font-size:var(--tfs);letter-spacing:-.01em;}
-:root.look-6:not(.ng-x) .g.gr.tl .ppl{grid-column:2;grid-row:3;position:static;justify-content:flex-start;justify-self:start;align-self:start;box-sizing:border-box;height:26px;margin:0;padding:2px 0 8px;gap:4px;border-radius:0;background:none;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;color:var(--text-2);font-size:.72rem;font-weight:650;}
-:root.look-6:not(.ng-x) .g.gr.tl .ppl .ico{width:12px;height:12px;color:color-mix(in srgb,var(--gc) 50%,#fff);}
-:root.look-6:not(.ng-x) .g.gr.tl .ppl:empty{display:flex;}
-:root.look-6:not(.ng-x) .g.gr.tl .ppl:empty::before{content:"\200b";}
-:root.look-6:not(.ng-x) .g.gr.tl .lv{display:none;}
-:root.look-6:not(.ng-x) .g.gr.tl .lv.y{grid-column:2;grid-row:3;position:static;display:flex;flex-direction:row;align-items:center;gap:5px;justify-self:start;align-self:start;font-style:normal;box-sizing:border-box;width:auto;height:26px;max-width:none;margin:0;padding:2px 0 8px;border-radius:0;background:none;box-shadow:none;font-size:.74rem;font-weight:750;line-height:1.1;color:var(--lit-ink);white-space:nowrap;}
-:root.look-6:not(.ng-x) .g.gr.tl .lv.y > span{display:none;}
-:root.look-6:not(.ng-x) .g.gr.tl .lv.y::before{content:"";flex:none;width:7px;height:7px;border-radius:50%;background:var(--lit);box-shadow:0 0 8px var(--litg);}
-:root.look-6:not(.ng-x) .g.gr.tl:has(.lv.y) .ppl{display:none;}
-:root.look-6:not(.ng-x) .g.gr.tl:has(.lv.y){box-shadow:inset 0 0 0 1.5px var(--lit),0 0 16px -4px var(--litg),0 10px 22px -16px rgba(0,0,0,.95);}
-:root.look-6:not(.ng-x) .g.gr.tl .fav{z-index:3;top:0;right:0;left:auto;width:36px;height:36px;border-radius:0 18px 0 14px;color:var(--text-2);}
-:root.look-6:not(.ng-x) .g.gr.tl .fav .ico{width:15px;height:15px;}
-:root.look-6:not(.ng-x) .g.gr.tl .fav.on{color:var(--lit);}
-:root.look-6:not(.ng-x) .g.gr.tl.cart .ppl{display:flex;}
-:root.look-6:not(.ng-x) .g.gr.tl.cart .tx b{grid-row:2;}
-:root.look-6:not(.ng-x) .g.gr.tl.cart{background:linear-gradient(90deg,color-mix(in srgb,var(--h) 30%,#14122c),color-mix(in srgb,var(--h) 10%,rgba(255,255,255,.05)) 82%);}
-:root.look-6:not(.ng-x) .g.gr.tl.cart .gi{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-:root.look-6:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct{width:36px;height:46px;margin-top:6px;align-self:center;}
-:root.look-6:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-genesis{width:46px;height:37px;}
-:root.look-6:not(.ng-x) .g.gr.tl .gi.gi-ct .gicon.mini-ct.ct-snes{width:42px;height:42px;}
-/* (the shelf: today's two rows of cards, each with the same block of color at its left) */
-:root.look-6:not(.ng-x) .sbox{grid-template-columns:52px minmax(0,1fr);padding:0 10px 0 0;column-gap:9px;overflow:hidden;
-  background:linear-gradient(90deg,color-mix(in srgb,var(--gc) 62%,#14122c),color-mix(in srgb,var(--gc) 20%,rgba(255,255,255,.05)) 82%);
-  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gc) 45%,rgba(255,255,255,.14)),0 0 16px -6px color-mix(in srgb,var(--gc) 50%,transparent),0 10px 22px -16px rgba(0,0,0,.95);}
-:root.look-6:not(.ng-x) .sbox::before{content:"";grid-column:1;grid-row:1 / 3;align-self:stretch;margin:-1px 0;background:var(--gcg);box-shadow:inset -1px 0 0 rgba(255,255,255,.14);}
-:root.look-6:not(.ng-x) .sbox .art .gicon{grid-column:1;grid-row:1 / 3;justify-self:center;width:54px;height:54px;border-radius:0;filter:drop-shadow(0 4px 6px rgba(0,0,0,.28));}
-:root.look-6:not(.ng-x) .sbox .art svg.gicon > rect:nth-of-type(-n+2){display:none;}
-:root.look-6:not(.ng-x) .sbox .nm{padding-top:9px;}
-:root.look-6:not(.ng-x) .sbox .st{padding-bottom:9px;}
-:root.look-6:not(.ng-x) .sbox.ct{background:linear-gradient(90deg,color-mix(in srgb,var(--h) 30%,#14122c),color-mix(in srgb,var(--h) 10%,rgba(255,255,255,.05)) 82%);}
-:root.look-6:not(.ng-x) .sbox.ct::before{background:radial-gradient(120% 90% at 50% 0%,color-mix(in srgb,var(--h) 34%,#1d2236),#10131f 80%);}
-@media (max-width:559px){:root.look-6:not(.ng-x) .sbox{grid-template-columns:46px minmax(0,1fr);padding:0 8px 0 0;} :root.look-6:not(.ng-x) .sbox .art .gicon{width:48px;height:48px;} :root.look-6:not(.ng-x) .sbox.ct .art .gicon.mini-ct{--cth:38px;}}
 /* ==/LOOKS== */
 </style>
 </head>
