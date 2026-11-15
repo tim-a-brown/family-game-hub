@@ -208,8 +208,7 @@
 .cn.L-ps .act{min-height:34px;gap:4px;} .cn.L-ps .act .hint{font-size:.86rem;} .cn.L-ps .act .sub{display:none;}
 .cn.L-ps .act .row .btn{min-height:44px;font-size:.9rem;}
 .cn.L-ps .hand{padding-top:14px;}
-.cn.L-pu .act{min-height:84px;}
-.cn.L-tu .act{min-height:96px;}
+.cn.L-pu > .act,.cn.L-tu > .act{min-height:0;justify-content:flex-start;overflow:hidden;transition:height .32s cubic-bezier(.3,.7,.25,1);}
 .cn.L-tu .sd .nm,.cn.L-ts .sd .nm{font-size:.8rem;} .cn.L-tu .sd .tot,.cn.L-ts .sd .tot{font-size:2rem;}
 .cn.L-tu .act .hint,.cn.L-ts .act .hint{font-size:1.05rem;}
 .cn.L-tu .band .bh,.cn.L-ts .band .bh{font-size:.84rem;}
@@ -217,7 +216,7 @@
 .cn.L-pu .st .bk,.cn.L-ps .st .bk,.tbl.tight .st .bk{display:none;}
 .tbl.tight .ml .fan .pcard{top:calc(var(--i) * var(--cw) * .22);} .tbl.tight .ml .fan{height:calc(var(--cw) * 1.4 + (var(--k) - 1) * var(--cw) * .22);}
 .tbl.tight .band{padding:2px 5px 3px;} .tbl.tight .band .bh{font-size:.68rem;} .tbl.tight .st.turn{scale:1;} .tbl.tight .st .nm{font-size:.74rem;}
-@media (max-height:640px){ .cn.L-pu .act{min-height:58px;} .cn.L-pu{gap:4px;} } .tbl.tight .st .ct{display:none;} .tbl.tight .st{padding:2px 8px 2px 2px;} .tbl.tight .st .avatar{width:20px;height:20px;}
+@media (max-height:640px){ .cn.L-pu{gap:4px;} } .tbl.tight .st .ct{display:none;} .tbl.tight .st{padding:2px 8px 2px 2px;} .tbl.tight .st .avatar{width:20px;height:20px;}
 </style>
 </head>
 <body>
@@ -380,14 +379,15 @@
     var bands = [].slice.call(tbl.querySelectorAll('.band'));
     if (!bands.length) return;
     var r = tbl.getBoundingClientRect();
-    var room = Math.min.apply(null, bands.map(function (b) { var h = b.querySelector('.bh'); return b.clientHeight - (h ? h.offsetHeight : 0) - 12; }));
+    var shut = upright() && actEl ? Math.max(0, actFull() - actEl.getBoundingClientRect().height) / 2 : 0;   // (each band's share of the drawer's room)
+    var room = Math.min.apply(null, bands.map(function (b) { var h = b.querySelector('.bh'); return b.clientHeight - (h ? h.offsetHeight : 0) - 12 - shut; }));
     var mw = Math.max(18, Math.min(104, room / 2.15, r.width / 6.5));
     for (var i = 0; i < 30; i++) {
       tbl.style.setProperty('--mw', mw.toFixed(1) + 'px');
       // (measured from the layout, not the screen: a card in flight or a canasta squaring up is transformed)
       var ok = bands.every(function (b) {
         var ms = b.querySelector('.ms'); if (!ms) return true;
-        var bot = ms.offsetTop + ms.clientHeight + 1, rt = ms.offsetLeft + ms.clientWidth + 1;
+        var bot = ms.offsetTop + ms.clientHeight + 1 - shut, rt = ms.offsetLeft + ms.clientWidth + 1;
         return [].every.call(ms.children, function (c) { return c.offsetTop + c.offsetHeight <= bot && c.offsetLeft + c.offsetWidth <= rt; });
       });
       if (ok || mw <= 16) break;
@@ -708,7 +708,24 @@
     b.appendChild(document.createTextNode(label)); if (sub) b.appendChild(el('small', { text: sub }));
     return b;
   }
-  function paintAct() {
+  // Upright, the action bar is a drawer: only as tall as what it holds, so off your turn the felt has the room, and it
+  // slides open when your buttons come up
+  function paintAct() { paintActIn(); sizeAct(); }
+  function upright() { return LAY === 'L-pu' || LAY === 'L-tu'; }
+  function sizeAct() {
+    if (!actEl) return;
+    if (!upright()) { actEl.style.height = ''; return; }
+    if (busy && actEl.style.height) return;   // (a move playing out keeps the drawer as it is: it moves only between turns)
+    var cur = actEl.getBoundingClientRect().height;
+    actEl.style.height = 'auto';
+    var want = actEl.scrollHeight;
+    actEl.style.height = cur + 'px'; void actEl.offsetHeight;
+    actEl.style.height = want + 'px';
+  }
+  // the most the drawer holds (a sentence, a second line and a row of buttons): meld cards are sized for the table
+  // with the drawer open, so they keep their size from one turn to the next
+  function actFull() { return LAY === 'L-tu' ? 116 : 104; }
+  function paintActIn() {
     actEl.innerHTML = ''; actEl.classList.remove('nudge');
     if (!S || S.phase === 'over') return;
     var m = me(), tp = Core.turn(S);
