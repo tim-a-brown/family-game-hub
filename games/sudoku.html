@@ -16,14 +16,17 @@
 @font-face{font-family:"Sudoku Print";src:url("../fonts/pagella-700.woff2") format("woff2");font-weight:700;font-display:swap;}
 @font-face{font-family:"Sudoku Print";src:url("../fonts/pagella-400.woff2") format("woff2");font-weight:400;font-display:swap;}
 body{overflow-x:hidden;}
-.sdk{max-width:500px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 16px);}
-.sdk .play{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:calc(100dvh - var(--safe-t) - var(--safe-b) - 76px);padding-bottom:4vh;}
+.sdk{max-width:500px;margin:0 auto;padding:0 18px calc(var(--safe-b) + 16px);}
+.sdk:has(> .play){max-width:none;padding-bottom:0;}
+/* The page as large as the screen allows (--bw), and the pad's keys take the height left over */
+.sdk .play{--h:calc(100dvh - var(--bar) - var(--safe-b) - 12px);--bw:min(100vw - 36px, var(--h) - 236px, 720px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:var(--h);min-height:0;}
 .note{position:absolute;left:0;right:0;bottom:calc(100% + 4px);z-index:5;display:none;align-items:center;gap:10px;padding:10px 14px;border-radius:3px;background:linear-gradient(180deg,#fff3a6,#ffe678);color:#3a3000;font-family:var(--hand);font-size:1.12rem;line-height:1.25;box-shadow:0 8px 16px rgba(0,0,0,.35);transform:rotate(-.6deg);}
 .note.show{display:flex;animation:rise .3s var(--ease) both;}
 .note .ico{flex:none;width:22px;height:22px;color:#7a6200;}
 .note.bad{background:linear-gradient(180deg,#ffd9d2,#ffc2b6);color:#5a0e0e;}
 .note.bad .ico{color:#a8202e;}
-.sdk .play > *{width:min(100%, 476px, calc(100dvh - var(--safe-t) - var(--safe-b) - 290px));min-width:min(100%,320px);}
+.sdk .play > *{width:var(--bw);}
+.sdk .play > .page{flex:none;}
 .loading{min-height:60vh;display:grid;place-items:center;text-align:center;font-family:var(--hand);font-size:1.5rem;color:var(--text-2);}
 
 /* A page torn from a puzzle book */
@@ -72,30 +75,36 @@ body{overflow-x:hidden;}
 .tool.redo .ico{transform:scaleX(-1);}
 .tool.on{background:rgba(255,211,77,.14);color:var(--lit-ink);box-shadow:inset 0 0 0 1px rgba(255,211,77,.6),0 0 16px rgba(255,190,60,.18);}
 .pad{display:grid;grid-template-columns:repeat(9,1fr);gap:5px;}
-.pad button{position:relative;min-height:62px;border:0;border-radius:15px;background:var(--gl-2);color:var(--text);
+.pad button{position:relative;min-height:clamp(54px, calc(var(--h) - var(--bw) - 196px), 92px);border:0;border-radius:15px;background:var(--gl-2);color:var(--text);
   box-shadow:inset 0 0 0 1px var(--gl-line),0 10px 22px -16px rgba(0,0,0,.9);font-family:var(--display);font-size:1.75rem;line-height:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:transform .08s, opacity .2s, background .15s;}
+.pad button{min-width:0;padding:0;}
 .pad button small{font-family:var(--font);font-size:.68rem;font-weight:650;color:var(--text-3);}
 .pad button:active{transform:translateY(1px) scale(.95);background:var(--gl);}
 /* Tablet portrait: bigger page and pad */
 @media (min-width:700px) and (orientation:portrait){
   .sdk{max-width:720px;}
-  .sdk .play > *{width:min(100%, 660px, calc(100dvh - var(--safe-t) - var(--safe-b) - 300px));}
   .ph .t{font-size:1.15rem;}.ph .no{font-size:1rem;}.ph .tm{font-size:1.45rem;}
   .pf{font-size:.95rem;}.pf b{font-size:1.2rem;}
   .tool{min-height:60px;font-size:.8rem;}
   .pad{gap:8px;}
-  .pad button{min-height:72px;font-size:2rem;}
+  .pad button{font-size:2rem;}
 }
 /* Tablet / desktop landscape: page on the left, tools and a 3x3 pad beside it */
-@media (orientation:landscape) and (min-width:900px) and (min-height:600px){
-  .sdk{max-width:1100px;}
-  .sdk .play{display:grid;grid-template-columns:auto 330px;grid-template-rows:1fr 1fr;column-gap:30px;row-gap:16px;align-content:center;justify-content:center;padding-bottom:0;}
+@media (orientation:landscape) and (min-width:640px){
+  .sdk .play{--pw:clamp(230px,30vw,400px);--bw:min(var(--h) - 92px, 100vw - 36px - var(--pw) - 48px);
+    display:grid;grid-template-columns:auto var(--pw);grid-template-rows:auto auto;column-gap:28px;row-gap:12px;align-content:center;justify-content:center;}
   .sdk .play > *{min-width:0;}
-  .sdk .play > .page{grid-row:1 / span 2;align-self:center;width:min(640px, calc(100dvh - var(--safe-t) - var(--safe-b) - 172px));}
-  .sdk .play > .tools{width:330px;align-self:end;}
-  .sdk .play > .pad{width:330px;align-self:start;grid-template-columns:repeat(3,1fr);gap:10px;}
-  .pad button{min-height:min(84px, calc((100dvh - 330px) / 3));font-size:2.1rem;}
-  .tool{min-height:60px;}
+  .sdk .play > .page{grid-row:1 / span 2;align-self:center;width:calc(var(--bw) + 20px);}
+  .sdk .play > .tools{width:var(--pw);align-self:end;}
+  .sdk .play > .pad{width:var(--pw);align-self:start;grid-template-columns:repeat(3,1fr);gap:clamp(6px,1vw,10px);}
+  .pad button{min-height:clamp(44px, calc((var(--h) - 100px) / 3), 110px);font-size:clamp(1.6rem,5vh,2.7rem);}
+  .tool{min-height:clamp(44px, 8vh, 60px);}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .page{padding:6px 8px 5px;}
+  .ph{padding-bottom:4px;margin-bottom:5px;}
+  .pf{padding-top:3px;}
+  .pad button small{display:none;}
 }
 .pad button.done{opacity:.3;background:transparent;}
 .pad.notes button{font-family:var(--hand);font-size:1.5rem;color:var(--lit-ink);}
@@ -103,7 +112,6 @@ body{overflow-x:hidden;}
 .mini span{height:18px;display:grid;place-items:center;font-size:.72rem;border-right:1px solid rgba(0,0,0,.18);border-bottom:1px solid rgba(0,0,0,.18);color:#1f2a6b;font-family:var(--hand);}
 .mini span.g{font-family:"Sudoku Print",Georgia,serif;font-variant-numeric:lining-nums;font-weight:700;color:#1d1d26;}
 .mini span.br{border-right:1.5px solid #22222c;}.mini span.bb{border-bottom:1.5px solid #22222c;}
-@media (min-width:700px){ .pad button{min-height:58px;} }
 </style>
 </head>
 <body>
@@ -554,7 +562,11 @@ body{overflow-x:hidden;}
     var g = document.getElementById('grid'); if (g) g.classList.add('won');
     Kit.sfx('good');
     setTimeout(function () {
-      Kit.callout(best ? 'New best!' : 'Solved!');
+      // Uncommon finishes get their moment: a hard or expert grid with no hints and no wrong numbers, a new best time
+      var art = S.diff === 'easy' || S.diff === 'expert' ? 'an ' : 'a ', page = document.querySelector('.sdk .page'), wait = 900;
+      if (clean && !S.mistakes && (S.diff === 'hard' || S.diff === 'expert')) { Kit.moment({ big: true, icon: 'star', title: 'A clean sheet', line: 'You solved ' + art + name + ' sudoku with no hints and not one wrong number.', pts: fmt(S.time), at: null }); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 }); wait = 2400; }
+      else if (best && prev) { Kit.moment({ icon: 'trophy', title: 'A new best time', line: fmt(S.time) + ' beats your old best of ' + fmt(prev) + ' on ' + name + '.', at: page }); Kit.sfx('sparkle'); Kit.haptic('success'); wait = 2000; }
+      else Kit.callout('Solved!');
       setTimeout(function () {
         var diff = S.diff;
         // Clean solves (no hints) go on the level's high score board
@@ -568,7 +580,7 @@ body{overflow-x:hidden;}
             scores: function () { ArcadeHi.show(hiKey(diff)); showSetup(); }
           });
         });
-      }, 900);
+      }, wait);
     }, 900);
   }
   // History detail: givens and final grid as 81-digit strings, hinted squares, squares that had a wrong number,
@@ -691,6 +703,31 @@ body{overflow-x:hidden;}
   });
 
   // Test hook
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.sdk .play > .page, .sdk .tool, .sdk .pad button');
+
   window.__sdk = { get: function () { return S; }, fill: function (leave) {
     var n = 0; for (var i = 0; i < 81 && S; i++) if (!S.vals[i]) { if (n++ >= (leave || 0)) S.vals[i] = S.sol[i]; }
     // put the left-over blanks last: refill so exactly `leave` blanks remain

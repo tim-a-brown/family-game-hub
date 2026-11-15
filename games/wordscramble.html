@@ -96,21 +96,32 @@
   .cover h2{font-size:2.6rem;}
   .cover p{max-width:420px;font-size:1.1rem;}
 }
-@media (min-width:700px) and (min-height:900px){
-  .felt{min-height:min(720px,60dvh);}
-}
-/* iPad / laptop sideways: the wide tile table spans the top with the timer under it; below that the score and
-   streak on the left, the buttons on the right */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .sc:has(> .table){max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(440px,560px);
-    grid-template-areas:"tbl tbl" "clock clock" "scores tools" "hud tools";column-gap:24px;align-content:start;align-items:center;}
-  .sc > .table{grid-area:tbl;margin-bottom:12px;}
-  .sc > .clock{grid-area:clock;margin:0 6px 12px;}
+/* The table takes the height the screen has: the tiles in the middle of the felt, the buttons at the bottom under
+   the thumbs */
+.sc:has(> .table){display:flex;flex-direction:column;justify-content:center;height:calc(100dvh - var(--bar));padding:0 18px calc(var(--safe-b) + 18px);}
+.sc > .table{flex:0 1 480px;min-height:0;display:flex;}
+@media (min-width:700px) and (min-height:900px){ .sc > .table{flex-basis:640px;} }
+.sc > .table > .felt{flex:1;min-height:0;}
+.sc > .tools{flex:none;}
+/* Sideways: the wide tile table spans the top with the timer under it; below that the score and streak on the
+   left, the buttons on the right. The tiles are as large as the table's height allows. */
+@media (orientation:landscape) and (min-width:640px){
+  .sc:has(> .table){max-width:1180px;display:grid;grid-template-columns:minmax(0,1fr) minmax(min(440px,58vw),560px);grid-template-rows:minmax(0,1fr) auto auto auto;
+    grid-template-areas:"tbl tbl" "clock clock" "scores tools" "hud tools";column-gap:24px;align-items:center;}
+  .sc > .table{grid-area:tbl;margin-bottom:10px;align-self:stretch;}
+  .sc > .clock{grid-area:clock;margin:0 6px 10px;}
   .sc > .scores{grid-area:scores;margin:0;}
   .sc > .hud{grid-area:hud;justify-content:flex-start;margin:0;}
   .sc > .tools{grid-area:tools;margin:0;}
-  .sc .felt{min-height:clamp(300px,calc(100dvh - 250px - var(--safe-t) - var(--safe-b)),600px);}
-  .sc .row{--t:min(112px,calc((min(100vw,1180px) - 100px - (var(--n) - 1) * var(--g)) / var(--n)));}
+  .sc .row{--t:min(112px, calc((min(100vw,1180px) - 100px - (var(--n) - 1) * var(--g)) / var(--n)), calc((100dvh - var(--bar) - var(--safe-b) - 250px) / 2.3));}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:500px){
+  .sc .felt{padding-top:8px;}
+  .sc .clue{min-height:30px;margin-bottom:6px;padding:4px 12px;font-size:1rem;}
+  .sc .rackwrap{padding-top:6px;}
+  .sc .tools .btn{min-height:48px;}
+  .sc .pill{height:30px;}
+  .sc .row{--t:min(112px, calc((min(100vw,1180px) - 100px - (var(--n) - 1) * var(--g)) / var(--n)), calc((100dvh - var(--bar) - var(--safe-b) - 196px) / 2.3));}
 }
 </style>
 </head>
@@ -567,8 +578,11 @@
     slotsEl.querySelectorAll('.tile').forEach(function (t, i) { setTimeout(function () { t.classList.add('good', 'dance'); }, i * 60); });
     feltEl.appendChild(el('div', { class: 'float', text: '+' + (pts + bonus) }));
     if (guess !== R.w) setTimeout(function () { Kit.toast(guess + ' works too! (We were thinking ' + R.w + ')', 2400); }, 300);
-    if (T.streak >= 3) setTimeout(function () { Kit.callout(T.streak >= 6 ? 'Unstoppable! ' + T.streak + ' in a row' : T.streak + ' in a row! +5'); }, 200);
-    else if (!R.clueUsed && !R.hinted && R.w.length >= 8) setTimeout(function () { Kit.callout('Brilliant!'); }, 200);
+    // the rare ones are moments over the table: a long run of words, and a long word solved with no help
+    var who = S.mode === 'race' ? S.players[S.turn % S.players.length].name : 'You';
+    if (T.streak >= 6 && (T.streak === 6 || T.streak % 5 === 0)) setTimeout(function () { Kit.moment({ icon: 'flame', title: T.streak + ' words in a row', line: who + ' unscrambled ' + T.streak + ' words in a row without a skip.', pts: '+' + (pts + bonus), at: null, ms: 1700 }); Kit.sfx('sparkle'); }, 200);
+    else if (!R.clueUsed && !R.hinted && R.w.length >= 8) setTimeout(function () { Kit.moment({ icon: 'sparkle', title: 'A long one, no help', line: who + ' unscrambled ' + R.w + ', all ' + R.w.length + ' letters, without a clue or a letter.', pts: '+' + (pts + bonus), at: null, ms: 1700 }); Kit.sfx('sparkle'); }, 200);
+    else if (T.streak >= 3) setTimeout(function () { Kit.callout(T.streak + ' in a row! +5'); }, 200);
     paintHud(); paintStrip(); save();
     setTimeout(advance, 1100);
   }
@@ -880,6 +894,31 @@
     if (S.phase === 'play') { if (S.R) S.R.fresh = false; if (S.time) { paused = true; render(); } else { render(); } }
     else render();
   } else showSetup();
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.sc > .table, .sc .tools .btn, .sc .hud .pill, .sc > .clock, .sc .scores .score');
+
   window.__sc = { state: function () { return S; }, start: start, solve: function () { solved(S.R.w); }, skip: function () { skip(); }, end: function () { endTurn(); } };
 })();
 </script>

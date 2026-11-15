@@ -17,18 +17,20 @@
 <style>
 body{overflow:hidden;}
 .mm{display:flex;flex-direction:column;height:calc(100dvh - var(--bar));max-width:820px;margin:0 auto;padding:0 8px calc(var(--safe-b) + 6px);}
-@media (orientation:landscape) and (min-width:900px){ .mm{max-width:1120px;} }
-/* iPad / laptop sideways: the cards lie in a wide spread across the top; the numbers or scores and whose turn it
-   is sit in one line under the table, on the left */
-@media (orientation:landscape) and (min-width:900px) and (min-height:560px){
-  .mm{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;grid-template-areas:"tab tab" "info turn";column-gap:28px;padding-bottom:calc(var(--safe-b) + 12px);}
+/* Sideways (phone and iPad): the numbers or scores and whose turn it is stand in a column at the left, for looking
+   at; the table takes the rest of the screen at the right, where the taps go */
+@media (orientation:landscape) and (min-width:640px){
+  .mm{max-width:none;display:grid;grid-template-columns:clamp(118px,16vw,210px) minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+    grid-template-areas:"info tab" "turn tab";column-gap:12px;padding:2px 18px calc(var(--safe-b) + 10px);}
   .mm > .mtab{grid-area:tab;}
-  .mm > .stats,.mm > .scores{grid-area:info;justify-content:flex-start;padding:10px 2px 0;}
-  .mm > .scores{max-width:min(720px,62vw);}
-  .mm > .scores .score{flex:0 0 auto;min-width:130px;max-width:190px;}
-  .mm > .turnline{grid-area:turn;justify-content:flex-start;padding-top:10px;min-height:0;}
+  .mm > .stats,.mm > .scores{grid-area:info;align-self:end;padding:0;}
+  .mm > .stats{display:grid;grid-template-columns:1fr 1fr;gap:14px 6px;}
+  .mm > .scores{display:flex;flex-direction:column;gap:8px;}
+  .mm > .scores .score{flex:none;justify-content:flex-start;}
+  .mm > .turnline{grid-area:turn;align-self:start;justify-content:center;padding-top:12px;min-height:0;text-align:center;}
   .mm > .turnline .turn{margin:0;}
 }
+@media (orientation:landscape) and (min-width:640px) and (min-height:560px){ .mm > .stats .st b{font-size:1.6rem;} .mm > .stats{gap:22px 8px;} }
 .mm .scores{flex:none;margin:0;padding:2px 2px 8px;}
 .mm .score{min-width:0;flex:1 1 0;padding:6px 8px 7px;flex-direction:row;gap:8px;justify-content:center;align-items:center;}
 .mm .score .who{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
@@ -89,6 +91,17 @@ body{overflow:hidden;}
 .deck .fan span:nth-child(3){left:28px;transform:rotate(12deg);z-index:2;}
 .deck .fan svg,.deck .fan .gicon{width:26px;height:26px;}
 .deck small{display:block;font-size:.7rem;font-weight:700;color:var(--text-3);margin-top:-4px;}
+/* a short or narrow screen: the decks in one row (sideways) or four across, each a smaller fan over its name */
+@media (max-height:500px), (max-width:360px){
+  .decks{grid-template-columns:repeat(auto-fit,minmax(66px,1fr));gap:6px;}
+  .deck{gap:3px;padding:7px 3px 6px;font-size:.74rem;line-height:1.1;text-align:center;}
+  .deck .fan{width:44px;height:34px;}
+  .deck .fan span{width:23px;height:30px;border-radius:4px;}
+  .deck .fan span:nth-child(2){left:10px;}
+  .deck .fan span:nth-child(3){left:19px;}
+  .deck .fan svg,.deck .fan .gicon{width:19px;height:19px;}
+  .deck small{display:none;}
+}
 </style>
 </head>
 <body>
@@ -345,10 +358,11 @@ body{overflow:hidden;}
       S.moves++;
       var a = S.up[0], b = S.up[1], p = S.players[S.turn];
       if (S.cards[a] === S.cards[b]) {
-        if (!S.seen[a] && !firstSeen) p.lucky++;
+        var lucky = !S.seen[a] && !firstSeen;
+        if (lucky) p.lucky++;
         S.seen[a] = S.seen[b] = true;
         busy = true;
-        setTimeout(function () { match(a, b); }, 520);
+        setTimeout(function () { match(a, b, lucky); }, 520);
       } else {
         // A slip: the partner of the first card had already been seen
         var partner = -1;
@@ -372,7 +386,7 @@ body{overflow:hidden;}
     if (!solo()) { S.turn = (S.turn + 1) % S.players.length; Kit.haptic('light'); }
     paintBar(); save();
   }
-  function match(a, b) {
+  function match(a, b, lucky) {
     var p = S.players[S.turn];
     S.owner[a] = S.owner[b] = S.turn; S.up = [];
     p.pairs++; p.run++; p.best = Math.max(p.best, p.run);
@@ -380,8 +394,11 @@ body{overflow:hidden;}
     S.mo = (S.mo || []).concat([S.moves]); S.ma = (S.ma || []).concat([S.cards[a]]);
     cardEls[a].classList.add('hit'); cardEls[b].classList.add('hit');
     Kit.sfx('good'); Kit.haptic('success');
-    if (p.run === 3) Kit.callout(solo() ? 'Three in a row!' : p.name + ': three in a row!');
-    else if (p.run === 5) Kit.callout('Five in a row!');
+    // Uncommon moments: a long run of pairs, and a pair found with two cards nobody had seen
+    var who = solo() ? 'You' : p.name, left = S.owner.filter(function (o) { return o < 0; }).length;
+    if (p.run >= 5 && p.run % 5 === 0) { Kit.moment({ icon: 'flame', title: p.run + ' pairs in a row', line: who + (solo() ? ' have' : ' has') + ' found ' + p.run + ' pairs without a miss.', pts: p.run, color: p.color, at: feltEl }); Kit.sfx('sparkle'); Kit.confetti({ count: 60 }); }
+    else if (lucky && left > 0) { Kit.moment({ icon: 'sparkle', title: 'A lucky match', line: who + ' turned over both ' + artName(S.deck, S.cards[a]) + ' cards without seeing either one first.', color: p.color, at: feltEl }); Kit.sfx('sparkle', 0.7); }
+    else if (p.run === 3) Kit.callout(solo() ? 'Three in a row!' : p.name + ': three in a row!');
     var target = pileEls[S.turn] || statPairs;
     setTimeout(function () {
       flyTo(cardEls[a], target, S.cards[a]); flyTo(cardEls[b], target, S.cards[b]);
@@ -534,8 +551,10 @@ body{overflow:hidden;}
     var W = feltEl.clientWidth - 16, H = feltEl.clientHeight - 16, d = SIZES[S.size];
     function size(cols, rows) {
       var gap = Math.max(5, Math.min(12, W / cols * .1));
-      var w = Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) / 1.32);
-      return { w: Math.floor(Math.min(w, W > 600 && H > 500 ? 150 : 120)), cols: cols, rows: rows, gap: gap };
+      var w = Math.floor(Math.min((W - gap * (cols - 1)) / cols, ((H - gap * (rows - 1)) / rows) / 1.32, W > 600 && H > 500 ? 170 : 130));
+      // where the table has height to spare, the cards stand a little taller, up to a playing card's shape
+      var r = Math.max(1.32, Math.min(1.5, ((H - gap * (rows - 1)) / rows) / w));
+      return { w: w, r: r, cols: cols, rows: rows, gap: gap };
     }
     var a = size(d[0], d[1]), b = size(d[1], d[0]), g = a.w >= b.w ? a : b;
     // Wide tables (tablet landscape): also try longer, flatter layouts of the same cards
@@ -549,7 +568,7 @@ body{overflow:hidden;}
     gridEl.style.gridTemplateColumns = 'repeat(' + g.cols + ', auto)';
     gridEl.style.setProperty('--gap', Math.round(g.gap) + 'px');
     gridEl.style.setProperty('--w', g.w + 'px');
-    gridEl.style.setProperty('--h', Math.round(g.w * 1.32) + 'px');
+    gridEl.style.setProperty('--h', Math.round(g.w * g.r) + 'px');
   }
   function paintBar() {
     if (!S) return;
@@ -576,7 +595,30 @@ body{overflow:hidden;}
     }
   }
   var rzT = 0;
-  window.addEventListener('resize', function () { clearTimeout(rzT); rzT = setTimeout(function () { if (S && gridEl && gridEl.isConnected) fit(); }, 80); });
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.mm .mc, .mm .st, .mm .score, .mm .turnline .turn', function () { if (S && gridEl && gridEl.isConnected) fit(); });
   document.addEventListener('keydown', function (e) { if (e.key === ' ' && S && S.up.length === 2) { e.preventDefault(); hurry(); } });
 
   // ── Online (turnnet.js) ───────────────────────────────────────────────────

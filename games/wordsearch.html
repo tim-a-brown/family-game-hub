@@ -78,16 +78,36 @@
 .daily .tx .st .ico{width:15px;height:15px;}
 .daily .btn{flex:none;}
 @media (min-width:700px){.words{grid-template-columns:repeat(4,1fr);} .w{font-size:.95rem;}}
-/* Tablet / desktop landscape: word list printed to the left of the grid so the page fits the screen */
-@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
-  .ws{max-width:960px;--bw:min(560px,calc(100dvh - var(--safe-t) - var(--safe-b) - 300px));}
-  .desk{max-width:none;width:fit-content;}
-  .sheet{display:grid;grid-template-columns:230px var(--bw);grid-template-rows:auto 1fr;column-gap:26px;}
+/* The page as large as the screen allows: --bw is the grid's width. Upright the word list is printed under the
+   grid and the page sits in the middle of the screen; sideways the list is printed to the left of the grid (in as
+   many columns as its height needs, --wc from fitPage) and the clock, the count and the hint stand at the right. */
+.ws:has(> .desk){max-width:none;height:calc(100dvh - var(--bar));display:flex;flex-direction:column;justify-content:center;padding:0 18px calc(var(--safe-b) + 14px);
+  --h:calc(100dvh - var(--bar) - var(--safe-b) - 14px);--bw:min(100vw - 80px, var(--h) - var(--chrome,300px), 760px);}
+.ws > .desk{max-width:none;width:fit-content;}
+.ws > .desk .board{width:var(--bw);}
+.ws > .desk .words{max-width:var(--bw);}
+@media (min-width:700px) and (min-height:900px){ .ws > .desk .w{font-size:1.1rem;} .ws > .desk .sheet-head h2{font-size:1.4rem;} .ws > .desk .sheet-head small{font-size:1rem;} }
+@media (orientation:landscape) and (min-width:640px){
+  .ws:has(> .desk){display:grid;grid-template-columns:auto auto;grid-template-rows:1fr auto auto 1fr;grid-template-areas:"desk ." "desk top" "desk below" "desk .";
+    justify-content:center;align-content:center;column-gap:18px;
+    --bw:min(var(--h) - 82px, 100vw - 36px - 150px - var(--wc,1) * 128px - 96px);}
+  .ws > .desk{grid-area:desk;align-self:center;}
+  .ws > .ws-top{grid-area:top;flex-direction:column;align-items:stretch;margin:0 0 10px;}
+  .ws > .below{grid-area:below;flex-direction:column;margin:0;}
+  .ws > .below .btn{min-width:0;}
+  .sheet{display:grid;grid-template-columns:auto var(--bw);grid-template-rows:auto 1fr;column-gap:20px;}
   .sheet-head{grid-column:1 / -1;}
-  .board{width:var(--bw);grid-column:2;grid-row:2;}
-  .words{grid-column:1;grid-row:2;}
-  .words{grid-template-columns:1fr 1fr;align-content:start;gap:8px 10px;margin:4px 0 0;}
-  .w{font-size:1.02rem;}
+  .board{grid-column:2;grid-row:2;}
+  .words{grid-column:1;grid-row:2;grid-template-columns:repeat(var(--wc,1),auto);align-content:start;gap:6px 14px;margin:4px 0 0;}
+  .ws > .desk .words{max-width:none;}
+  .w{font-size:clamp(.82rem,2.2vh,1.05rem);}
+}
+@media (orientation:landscape) and (min-width:640px) and (max-height:500px){
+  .ws:has(> .desk){--bw:min(var(--h) - 72px, 100vw - 36px - 130px - var(--wc,1) * 112px - 86px);}
+  .desk{padding:8px 8px 10px;}
+  .sheet{padding:8px 10px 10px;}
+  .sheet-head{margin-bottom:5px;padding-bottom:3px;}
+  .sheet-head h2{font-size:1rem;}
 }
 </style>
 </head>
@@ -355,7 +375,7 @@
     }
     app.appendChild(below);
     bindBoard();
-    sizeFont();
+    fitPage();
     paintMarks(); paintWords(); paintTop();
   }
   function svgEl(cls) {
@@ -363,8 +383,21 @@
     s.setAttribute('class', cls); s.setAttribute('viewBox', '0 0 ' + S.n + ' ' + S.n);
     return s;
   }
+  // Fit the page to the screen: how much room the word list takes (under the grid upright, its columns beside it
+  // sideways), then the letters' size from the grid's width
+  var SIDE = window.matchMedia('(orientation:landscape) and (min-width:640px)');
+  function fitPage() {
+    if (!boardEl || !S) return;
+    if (SIDE.matches) {
+      var rows = Math.max(3, Math.floor((window.innerHeight - 170) / (window.innerHeight < 500 ? 22 : 30)));
+      app.style.setProperty('--wc', Math.min(3, Math.ceil(S.words.length / rows)));
+    } else {
+      var per = window.innerWidth >= 700 ? 4 : 3, lineH = window.innerWidth >= 700 && window.innerHeight >= 900 ? 30 : 23;
+      app.style.setProperty('--chrome', (214 + Math.ceil(S.words.length / per) * lineH) + 'px');
+    }
+    sizeFont();
+  }
   function sizeFont() { if (boardEl) boardEl.style.setProperty('--fs', Math.max(12, boardEl.clientWidth / S.n * 0.56) + 'px'); }
-  window.addEventListener('resize', sizeFont);
   function paintTop() {
     if (!topEl) return;
     topEl.innerHTML = '';
@@ -612,14 +645,18 @@
     }
     if (S.gaveUp) { Kit.sfx('flip'); return; }
     var newBest = best == null || S.seconds < best;
-    Kit.callout(fmt(S.seconds));
+    // the uncommon finishes are moments on the page: every word with no hints on Hard, and a new best time
+    var page = document.querySelector('.ws .sheet'), wait = 0;
+    if (!S.hints && S.diff === 'hard') { Kit.moment({ big: true, icon: 'star', title: 'Every word, no hints', line: S.player + ' found all ' + total + ' words of a Hard puzzle without a single hint.', pts: fmt(S.seconds), at: null }); Kit.sfx('win'); Kit.haptic('success'); Kit.confetti({ count: 120 }); wait = 1400; }
+    else if (newBest && best != null) { Kit.moment({ icon: 'trophy', title: 'A new best time', line: fmt(S.seconds) + ' beats ' + Kit.poss(S.player) + ' old best of ' + fmt(best) + '.', at: page }); Kit.sfx('sparkle'); Kit.haptic('success'); wait = 1200; }
+    else Kit.callout(fmt(S.seconds));
     setTimeout(function () {
       Kit.win({
         title: 'All found!', sub: total + ' ' + S.cat + ' words in ' + fmt(S.seconds) + (newBest && best != null ? '. A new best!' : best != null ? '. Best: ' + fmt(best) : ''),
         againLabel: 'New puzzle', again: again,
         look: 'Look at the puzzle', setup: showSetup, setupLabel: 'Change theme or size'
       });
-    }, 700);
+    }, 700 + wait);
   }
   function again() {
     var cat = catPref() === 'Surprise' || S.daily ? CATS[rnd(CATS.length)] : S.cat;
@@ -639,6 +676,31 @@
     else startDaily();
   } else if (going) resumeSaved();
   else showSetup();
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.ws > .desk, .ws .ws-top .pill, .ws .below .btn', fitPage);
+
   window.__ws = { state: function () { return S; }, hint: function () { hint(); }, start: newPuzzle, select: function (w) { sel = { r: w.r, c: w.c, dr: w.dr, dc: w.dc, len: w.w.length }; moved = true; finish(); } };
 })();
 </script>

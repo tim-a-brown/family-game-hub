@@ -242,6 +242,40 @@ body{overflow-x:hidden;}
 @media (min-width:1000px) and (min-height:700px){ .thr{--fh:200px;} }
 @media (min-width:700px) and (min-height:1000px){ .thr{--fh:250px;--tok:52px;} .bub{font-size:1.38rem;} .bub .exp{font-size:.95rem;} .bill h2{font-size:1.9rem;} .bill .rule{font-size:1.2rem;} .scene{row-gap:12px;padding-top:44px;} .actor .nmp{font-size:1rem;} }
 @media (max-height:720px) and (max-width:699px){ .thr{--fh:100px;--tok:30px;} .bub{font-size:1rem;} .bill h2{font-size:1.15rem;} .bill .rule{font-size:.9rem;} }
+/* The play fills the screen's height and the cast are as tall as the room left (fitCast sets --fh on the theatre).
+   Sideways the playbill stands at the left, for reading; the stage and the tray at the right, where the taps go. */
+.tl:has(> .play){padding:0 18px calc(var(--safe-b) + 18px);}
+.tl .play{min-height:0;height:calc(100dvh - var(--bar) - var(--safe-b) - 18px);padding-bottom:0;}
+@media (orientation:landscape) and (min-width:640px){
+  .tl:has(> .play){max-width:1240px;}
+  .tl .play{display:grid;grid-template-columns:clamp(200px,27vw,360px) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"bill thr" "bill tray";column-gap:16px;row-gap:10px;align-content:center;}
+  .tl .play > .bill{grid-area:bill;align-self:center;padding:12px 14px 14px;}
+  .tl .play > .bill h2{margin:10px 0 6px;}
+  .tl .play > .thr{grid-area:thr;align-self:end;}
+  .tl .play > .tray{grid-area:tray;max-width:none;}
+}
+@media (orientation:portrait) and (max-height:620px){
+  .tl .play{gap:8px;}
+  .tl .play > .bill{padding:6px 10px 7px;}
+  .tl .play > .bill h2{font-size:1rem;margin:3px 0 1px;}
+  .tl .play > .bill .rule{font-size:.82rem;line-height:1.25;}
+  .tl .play .thr{--tok:26px;padding:5px;}
+  .tl .play .scene{padding-top:20px;row-gap:4px;}
+  .tl .play .bub{font-size:.9rem;padding:5px 10px 6px;}
+  .tl .play .bub .who .mh{display:none;}
+  .tl .play .actor .base{height:calc(var(--tok) + 32px);}
+  .tl .play > .tray .tool,.tl .play > .tray .go{min-height:48px;}
+}
+@media (orientation:landscape) and (max-height:500px){
+  .tl .play > .tray .tool,.tl .play > .tray .go{min-height:46px;}
+  .tl .play .thr{--tok:28px;--drape:14px;padding:5px;}
+  .tl .play .scene{padding-top:22px;padding-bottom:4px;}
+  .tl .play .bub{font-size:1rem;padding:6px 11px 7px;}
+  .tl .play .actor .nmp{font-size:.78rem;}
+  .tl .play > .bill h2{font-size:1.2rem;}
+  .tl .play > .bill .rule{font-size:.92rem;}
+}
 </style>
 </head>
 <body>
@@ -1323,8 +1357,11 @@ body{overflow-x:hidden;}
     finish(false); render();
     Kit.sfx('good'); Kit.haptic('success');
     reveal(false, function () {
-      Kit.callout(P.fam === 'wd' ? 'Caught!' : 'Solved!');
-      setTimeout(winCard, 1300);
+      // a hard puzzle solved right the first time with no hints is the rare one: its moment is on the stage
+      var top = S.lvl === 'hard' && !S.wrong && !S.hints;
+      if (top) { Kit.moment({ big: true, icon: P.fam === 'wd' ? 'search' : 'star', title: 'Right the first time', line: 'You solved a Hard puzzle with no hints and no wrong guesses.', pts: fmt(S.time), at: null }); Kit.sfx('win'); Kit.confetti({ count: 120 }); }
+      else Kit.callout(P.fam === 'wd' ? 'Caught!' : 'Solved!');
+      setTimeout(winCard, top ? 2600 : 1300);
     });
   }
   function winCard(quiet) {
@@ -1514,13 +1551,27 @@ body{overflow-x:hidden;}
     scene.classList.toggle('cols', cols); scene.classList.toggle('stack', !cols);
     // the badge in each bubble's corner hangs 7px past its edge: keep 10px clear of the stage's right side
     bubbleEls.forEach(function (b) { b.style.removeProperty('--ml'); b.style.removeProperty('--tx'); b.style.setProperty('--bmax', Math.round(W * 0.92) + 'px'); });
-    if (cols) return;
+    if (cols) { fitCast(); return; }
     var ml = bubbleEls.map(function (b, i) {
       var a = actorEls[i], cx = a.offsetLeft + a.offsetWidth / 2 - pl, bw = b.offsetWidth;
       var m = Math.max(0, Math.min(W - bw - 10, cx - bw * (0.25 + 0.5 * i / Math.max(1, P.n - 1))));
       return { m: m, tx: Math.max(18, Math.min(bw - 18, cx - m)) };
     });
     bubbleEls.forEach(function (b, i) { b.style.setProperty('--ml', ml[i].m + 'px'); b.style.setProperty('--tx', ml[i].tx + 'px'); });
+    fitCast();
+  }
+  // The cast as tall as the screen allows: everything else in the play keeps its height, so the room left over (or
+  // missing) goes to the figures, never past what their column's width can show
+  var SIDE = window.matchMedia('(orientation:landscape) and (min-width:640px)');
+  function fitCast() {
+    var play = scene && scene.closest('.play'), thr = play && play.querySelector('.thr'); if (!thr) return;
+    thr.style.removeProperty('--fh');
+    var fh = parseFloat(getComputedStyle(thr).getPropertyValue('--fh')) || 118, kids = [].slice.call(play.children).filter(function (n) { return n.offsetParent && getComputedStyle(n).position !== 'fixed'; });
+    var used = SIDE.matches ? kids.filter(function (n) { return !n.classList.contains('bill'); }).reduce(function (t, n) { return t + n.offsetHeight; }, 0) + 10
+      : kids.reduce(function (t, n) { return t + n.offsetHeight; }, 0) + 12 * Math.max(0, kids.length - 1);
+    var colW = (scene.clientWidth - 24) / P.n;
+    var want = Math.max(50, Math.min(fh + play.clientHeight - used - 8, colW * 1.8, window.innerWidth >= 700 ? 340 : 230));
+    thr.style.setProperty('--fh', Math.round(want) + 'px');
   }
   var lt = 0;
   window.addEventListener('resize', function () { clearTimeout(lt); lt = setTimeout(layout, 80); });
@@ -1584,6 +1635,31 @@ body{overflow-x:hidden;}
   // Test hook
   // the history view draws each speaker's face with this (on this page only)
   window.TruthArt = { heads: function (set, names) { var L = Art.looks({ set: set, names: names, n: names.length }), u = 'hv' + Math.floor(Math.random() * 1e6); return L.map(function (x, i) { return Art.head(x, u + 'h' + i); }); } };
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.tl .play > .bill, .tl .play > .thr, .tl .tray .tool, .tl .tray .go', layout);
+
   window.__tl = { get: function () { return S; }, TL: TL, Art: Art, classics: CLASSICS, classic: classic,
     answer: function () { return P ? (P.fam === 'wd' ? P.sol.c : P.sol.t.slice()) : null; },
     mark: function (arr) { S.marks = arr.slice(); render(); save(); }, layout: function () { layout(); },

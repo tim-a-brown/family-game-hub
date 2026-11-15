@@ -14,7 +14,7 @@
 <style>
 :root{--honey:#f5a623;--honey-2:#d9820b;--wax:#f8e7b0;--wax-2:#ecc96a;--comb:#3d2706;}
 body{overflow-x:hidden;}
-.sb{max-width:480px;margin:0 auto;padding:0 12px calc(var(--safe-b) + 14px);display:flex;flex-direction:column;gap:10px;min-height:calc(100dvh - var(--bar));}
+.sb{max-width:480px;margin:0 auto;padding:0 18px calc(var(--safe-b) + 14px);display:flex;flex-direction:column;gap:10px;min-height:calc(100dvh - var(--bar));}
 .sb-modes .seg{max-width:340px;margin:0 auto;}
 .sb-modes .seg > button{min-height:38px;font-size:.88rem;}
 
@@ -149,8 +149,8 @@ body{overflow-x:hidden;}
   .sb-found .fl.wl{grid-template-columns:repeat(4,minmax(0,1fr));}
 }
 /* Tablet / desktop landscape: word list beside the board */
-@media (orientation:landscape) and (min-width:1000px) and (min-height:600px){
-  .sb{max-width:1060px;height:calc(100dvh - var(--bar));min-height:0;display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);column-gap:26px;row-gap:12px;}
+@media (orientation:landscape) and (min-width:640px){
+  .sb{max-width:1060px;height:calc(100dvh - var(--bar));min-height:0;display:grid;grid-template-columns:clamp(230px,32vw,380px) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);column-gap:clamp(14px,2.4vw,26px);row-gap:10px;padding:0 18px calc(var(--safe-b) + 18px);}
   .sb-modes,.sb-rank,.sb-found{grid-column:1;}
   .sb-modes .seg{max-width:none;}
   .sb-board{grid-column:2;grid-row:1 / span 3;max-height:none;min-height:0;}
@@ -164,7 +164,27 @@ body{overflow-x:hidden;}
   .sb-found .strip{overflow:auto;-webkit-mask-image:none;mask-image:none;}
   .sb-found{cursor:default;}
   .sb-found .chev{display:none;}
-  .hive{--W:min(124px,calc((100dvh - 330px) / 3));}
+}
+/* The hive as large as the board allows, in every shape: the board's felt is a size container and the hive takes
+   what is left of it after the word strip and the buttons */
+.sb:not(.open) .sb-felt{container-type:size;}
+.sb:not(.open) .hive{--chrome:184px;--Wmax:132px;--W:clamp(56px, min((100cqh - var(--chrome)) / 2.76, (100cqw - 12px) / 2.66), var(--Wmax));margin:4px auto 14px;}
+@media (max-height:700px){ .sb:not(.open) .hive{--chrome:160px;} }
+@media (min-width:700px) and (min-height:900px){ .sb:not(.open) .hive{--chrome:206px;--Wmax:200px;} }
+@media (orientation:landscape) and (min-width:640px){ .sb:not(.open) .hive{--Wmax:170px;} }
+/* sideways on a phone: the word over the hive, the buttons in a column at the right of it */
+@media (orientation:landscape) and (min-width:640px) and (max-height:600px){
+  .sb-felt{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"entry entry" "hive ctrls";align-items:center;padding:4px 14px 10px;}
+  .sb-entry{grid-area:entry;height:52px;}
+  .sb-word{font-size:1.7rem;min-height:40px;}
+  .sb-word::after{height:28px;}
+  .sb .hive{grid-area:hive;}
+  .sb:not(.open) .hive{--chrome:76px;--W:clamp(56px, min((100cqh - var(--chrome)) / 2.76, (100cqw - 96px) / 2.66), var(--Wmax));margin:0 auto;}
+  .sb-ctrls{grid-area:ctrls;flex-direction:column;align-items:stretch;gap:10px;}
+  .sb-ctrls .btn{min-height:46px;padding:0 16px;}
+  .sb-ctrls .btn.ic{width:auto;}
+  .sb-modes .seg > button{min-height:34px;}
+  .sb-rank{padding:2px 4px;}
 }
 </style>
 </head>
@@ -382,13 +402,14 @@ body{overflow-x:hidden;}
     msg(praise + '  +' + pts, pan ? 'pan' : '');
     var we = $('word'); we.classList.add('good');
     setTimeout(function () { we.classList.remove('good'); typed = ''; paintWord(); }, 430);
-    if (pan) { Kit.callout('Pangram!'); Kit.sfx('win'); Kit.haptic('success'); }
+    // a pangram is the hive's big find; one that uses each of the seven letters just once is rarer still
+    if (pan) { var perfectPan = w.length === 7; Kit.moment({ big: perfectPan, icon: 'sparkle', title: perfectPan ? 'A perfect pangram' : 'A pangram', line: w.toUpperCase() + (perfectPan ? ' uses each of the seven letters exactly once.' : ' uses all seven letters.'), pts: '+' + pts, at: perfectPan ? null : document.querySelector('.sb-felt') }); Kit.sfx('win'); Kit.haptic('success'); if (perfectPan) Kit.confetti({ count: 90 }); }
     else { Kit.sfx('good'); Kit.haptic('light'); }
     var after = rankIdx(total());
     save(); paintRank(); paintFound(w);
     if (after === 9) setTimeout(queenBee, 900);
     else if (after > before) setTimeout(function () {
-      if (after === 8) { Kit.callout('Genius!'); Kit.confetti(); Kit.sfx('win'); }
+      if (after === 8) { Kit.moment({ big: true, icon: 'trophy', title: 'Genius', line: 'You reached Genius with ' + total() + ' points from ' + S.found.length + ' words.', pts: total(), at: null }); Kit.confetti(); Kit.sfx('win'); Kit.haptic('success'); }
       else Kit.toast('New rank: ' + RANKS[after][0]);
     }, pan ? 1300 : 600);
   }
@@ -490,7 +511,7 @@ body{overflow-x:hidden;}
     var q = el('div', { class: 'sb-dot end' + (ri === 9 ? ' on' : ''), style: { left: 'calc(100% + 20px)' } });
     tr.appendChild(q);
   }
-  var WIDE = window.matchMedia('(orientation:landscape) and (min-width:1000px) and (min-height:600px)');
+  var WIDE = window.matchMedia('(orientation:landscape) and (min-width:640px)');
   // The hive fits the screen: phones' fonts and bars differ, so measure. If the page runs past the bottom (it would
   // scroll), the hive shrinks just enough to fit; with room to spare it stays at its usual size.
   var hiveT = 0;
@@ -621,6 +642,31 @@ body{overflow-x:hidden;}
   });
   window.addEventListener('pageshow', function (e) { if (e.persisted && S && S.kind === 'daily' && S.day !== dayNum()) open('daily'); });
   // test hook
+  // ── Turning the device: the pieces glide from where they showed in the last frame to their new places ──
+  // (taken each frame: by the time a resize is heard the page has already moved). relayout() is the game's own
+  // sizing, run first so the pieces are measured where they end up.
+  function glider(sel, relayout) {
+    var snap = new Map(), reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)');
+    function nodes() { return [].slice.call(document.querySelectorAll(sel)); }
+    (function loop() { if (!document.hidden) { var m = new Map(); nodes().forEach(function (n) { m.set(n, n.getBoundingClientRect()); }); snap = m; } requestAnimationFrame(loop); })();
+    window.addEventListener('resize', function () {
+      var ns = nodes(), before = ns.map(function (n) { return snap.get(n) || null; });
+      ns.forEach(function (n) { n.getAnimations().forEach(function (a) { if (a.id === 'glide') a.cancel(); }); });
+      if (relayout) relayout();
+      if (reduce && reduce.matches) return;
+      ns.forEach(function (n, i) {
+        var a = before[i]; if (!a || !n.isConnected) return;
+        var b = n.getBoundingClientRect(); if (!a.width || !b.width || !b.height) return;
+        var dx = a.left - b.left, dy = a.top - b.top, sx = a.width / b.width, sy = a.height / b.height;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < .01 && Math.abs(sy - 1) < .01) return;
+        var an = n.animate([{ transformOrigin: '0 0', transform: 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')' }, { transformOrigin: '0 0', transform: 'none' }],
+          { duration: 440, easing: 'cubic-bezier(.3,.7,.25,1)', composite: 'add' });
+        an.id = 'glide';
+      });
+    });
+  }
+  glider('.sb-board, .sb-modes, .sb-rank, .sb-found');
+
   window.__sb = { get S() { return S; }, get P() { return P; } };
 })();
 </script>
